@@ -57,7 +57,11 @@ analyticsRouter.post('/event', (req: Request, res: Response) => {
     const evt: AnalyticsEvent = {
       event: String(body.event).slice(0, 100),
       ref: String(body.ref || '').slice(0, 50),
-      utm: body.utm || null,
+      utm: body.utm ? {
+        source: String(body.utm.source || '').slice(0, 100),
+        medium: String(body.utm.medium || '').slice(0, 100),
+        campaign: String(body.utm.campaign || '').slice(0, 100),
+      } : null,
       url: String(body.url || '').slice(0, 200),
       ts: Date.now(),
     };
@@ -73,8 +77,13 @@ analyticsRouter.post('/event', (req: Request, res: Response) => {
   }
 });
 
-// GET /referrals — referral attribution summary (admin)
+// GET /referrals — referral attribution summary (admin, Bearer token required)
 analyticsRouter.get('/referrals', (req: Request, res: Response) => {
+  const metricsToken = process.env.METRICS_TOKEN;
+  if (!metricsToken) { res.status(403).json({ error: 'Not configured' }); return; }
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token || token !== metricsToken) { res.status(403).json({ error: 'Forbidden' }); return; }
   const events = loadEvents();
   const refCounts: Record<string, number> = {};
   for (const e of events) {

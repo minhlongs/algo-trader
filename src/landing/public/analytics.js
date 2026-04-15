@@ -59,7 +59,7 @@
     var utm = getUtm();
     if (ref || utm) {
       var payload = { event: name, ref: ref, utm: utm, url: window.location.pathname, ts: Date.now() };
-      navigator.sendBeacon('/api/analytics/event', JSON.stringify(payload));
+      navigator.sendBeacon('/api/analytics/event', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
     }
   }
 

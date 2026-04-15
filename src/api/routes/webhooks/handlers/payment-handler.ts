@@ -27,7 +27,7 @@ export async function handleIpnPaymentSuccess(
   );
 
   // Auto-generate and email invoice
-  const email = ipn.order_description?.match(/[\w.-]+@[\w.-]+/)?.[0] || ipn.order_id || '';
+  const email = ipn.order_description?.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/)?.[0] || ipn.order_id || '';
   if (email.includes('@')) {
     const tier = ipn.price_amount >= 499 ? 'Elite' : ipn.price_amount >= 149 ? 'Pro' : 'Starter';
     await generateInvoice({

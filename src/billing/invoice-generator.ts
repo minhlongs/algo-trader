@@ -6,12 +6,17 @@
  * Stores in data/invoices/. Emails invoice to customer via SendGrid.
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { EmailService } from '../notifications/email-service.js';
 import { logger } from '../utils/logger.js';
 
 const INVOICE_DIR = join(process.cwd(), 'data', 'invoices');
+
+/** Escape HTML special characters to prevent XSS in invoice templates */
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 export interface Invoice {
   invoiceId: string;
@@ -46,11 +51,11 @@ function renderInvoiceHtml(inv: Invoice): string {
   </div>
   <div style="background:#161A1E;padding:20px;border-radius:8px;margin-bottom:16px">
     <table style="width:100%;border-collapse:collapse;color:#E8EAED;font-size:14px">
-      <tr><td style="padding:8px 0;color:#888">Invoice #</td><td style="padding:8px 0;text-align:right;font-family:monospace">${inv.invoiceId}</td></tr>
+      <tr><td style="padding:8px 0;color:#888">Invoice #</td><td style="padding:8px 0;text-align:right;font-family:monospace">${esc(inv.invoiceId)}</td></tr>
       <tr><td style="padding:8px 0;color:#888">Date</td><td style="padding:8px 0;text-align:right">${new Date(inv.issuedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
-      <tr><td style="padding:8px 0;color:#888">Payment ID</td><td style="padding:8px 0;text-align:right;font-family:monospace;font-size:12px">${inv.paymentId}</td></tr>
-      <tr style="border-top:1px solid #2A2E33"><td style="padding:12px 0;color:#888">Plan</td><td style="padding:12px 0;text-align:right;font-weight:bold">${inv.tier}</td></tr>
-      <tr><td style="padding:8px 0;color:#888">Amount</td><td style="padding:8px 0;text-align:right;font-size:20px;font-weight:bold;color:#00D4AA">$${inv.amount.toFixed(2)} ${inv.currency}</td></tr>
+      <tr><td style="padding:8px 0;color:#888">Payment ID</td><td style="padding:8px 0;text-align:right;font-family:monospace;font-size:12px">${esc(inv.paymentId)}</td></tr>
+      <tr style="border-top:1px solid #2A2E33"><td style="padding:12px 0;color:#888">Plan</td><td style="padding:12px 0;text-align:right;font-weight:bold">${esc(inv.tier)}</td></tr>
+      <tr><td style="padding:8px 0;color:#888">Amount</td><td style="padding:8px 0;text-align:right;font-size:20px;font-weight:bold;color:#00D4AA">$${inv.amount.toFixed(2)} ${esc(inv.currency)}</td></tr>
       <tr><td style="padding:8px 0;color:#888">Status</td><td style="padding:8px 0;text-align:right"><span style="background:rgba(0,212,170,0.15);color:#00D4AA;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:bold">PAID</span></td></tr>
     </table>
   </div>
@@ -127,7 +132,7 @@ export async function generateInvoice(opts: {
 /** List all invoices for a given email */
 export function listInvoices(email?: string): Invoice[] {
   ensureDir();
-  const files = existsSync(INVOICE_DIR) ? require('node:fs').readdirSync(INVOICE_DIR) as string[] : [];
+  const files: string[] = existsSync(INVOICE_DIR) ? readdirSync(INVOICE_DIR) as string[] : [];
   const invoices: Invoice[] = [];
   for (const f of files) {
     if (!f.endsWith('.json')) continue;
