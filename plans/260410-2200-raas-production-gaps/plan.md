@@ -1,3 +1,5 @@
+> **Plan Status:** ARCHIVED — Gaps addressed in a16z autonomy phases 1-3
+
 # RaaS Production Gaps — Implementation Plan
 
 ## Source

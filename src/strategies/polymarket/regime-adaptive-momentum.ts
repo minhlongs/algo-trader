@@ -91,26 +91,9 @@ interface OpenPosition {
   trendDir: 'up' | 'down';
 }
 
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
-/** Simple moving average. Returns 0 for empty array. */
-export function calcSMA(prices: number[]): number {
-  if (prices.length === 0) return 0;
-  return prices.reduce((s, p) => s + p, 0) / prices.length;
-}
-
-/**
- * Compute Average True Range: average |price[i] - price[i-1]| over the prices.
- * Returns 0 if fewer than 2 prices.
- */
-function calcATR(prices: number[]): number {
-  if (prices.length < 2) return 0;
-  let sum = 0;
-  for (let i = 1; i < prices.length; i++) {
-    sum += Math.abs(prices[i] - prices[i - 1]);
-  }
-  return sum / (prices.length - 1);
-}
+// ── Pure helpers (re-exported from shared module for backward compat) ────────
+export { calcSMA, calcATR } from './strategy-math-helpers.js';
+import { calcSMA, calcATR } from './strategy-math-helpers.js';
 
 /**
  * Detect market regime based on short and long price arrays.

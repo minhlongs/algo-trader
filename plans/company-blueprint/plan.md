@@ -1,3 +1,5 @@
+> **Plan Status:** ARCHIVED — Superseded by Mekong IDE master strategy
+
 ---
 title: "AlgoTrade Company Blueprint — Zero to PSF"
 description: "Execution plan from 0 trades to live AI prediction trading + RaaS revenue"

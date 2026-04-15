@@ -1,3 +1,5 @@
+> **Plan Status:** ARCHIVED — Superseded by Mekong IDE 13-giant strategy
+
 # Unified $1M Master Plan — OpenClaw Platform
 **Created:** 2026-03-24 | **Target:** $1M ARR by 2027-Q1 | **Status:** pending
 

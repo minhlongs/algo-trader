@@ -1,3 +1,5 @@
+> **Plan Status:** COMPLETED — Paper trading live on M1 Max since 2026-04-11
+
 ---
 status: pending
 ---
