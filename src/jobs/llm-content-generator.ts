@@ -96,6 +96,8 @@ export async function generateLlmBlogPost(
     };
   } catch (err) {
     logger.warn(`[LLMContent] LLM unavailable for ${type}, using template fallback`, { error: err instanceof Error ? err.message : err });
-    return fallbackGenerator();
+    const fallback = fallbackGenerator();
+    fallback.type = type; // Ensure type matches requested type
+    return fallback;
   }
 }

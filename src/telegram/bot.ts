@@ -69,8 +69,8 @@ export class TelegramBotService {
 
     try {
       this.bot = new Bot<Context>(this.config.botToken);
-      this.setupCommands();
-      this.setupMiddleware();
+      this.setupMiddleware(); // Session creation FIRST
+      this.setupCommands();   // Command handlers SECOND (can read sessions)
       logger.info('[TelegramBot] Initialized with Telegram');
       return true;
     } catch (error) {

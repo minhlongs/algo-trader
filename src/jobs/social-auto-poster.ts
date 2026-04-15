@@ -15,14 +15,13 @@ import type { BlogPost } from './auto-marketing-daemon.js';
 
 /** Twitter/X post via API v2 (OAuth 2.0 Bearer Token) */
 async function postToTwitter(text: string): Promise<boolean> {
-  const bearerToken = process.env.TWITTER_BEARER_TOKEN;
   const apiKey = process.env.TWITTER_API_KEY;
   const apiSecret = process.env.TWITTER_API_SECRET;
   const accessToken = process.env.TWITTER_ACCESS_TOKEN;
   const accessSecret = process.env.TWITTER_ACCESS_SECRET;
 
-  if (!bearerToken && !apiKey) {
-    logger.debug('[SocialPoster] Twitter not configured, skipping');
+  if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
+    logger.debug('[SocialPoster] Twitter OAuth credentials incomplete, skipping');
     return false;
   }
 
@@ -106,8 +105,7 @@ async function postToTelegramChannel(text: string): Promise<boolean> {
     });
 
     if (!res.ok) {
-      const errBody = await res.text();
-      logger.warn(`[SocialPoster] Telegram channel error: ${res.status} ${errBody}`);
+      logger.warn(`[SocialPoster] Telegram channel error: ${res.status} ${res.statusText}`);
       return false;
     }
 
