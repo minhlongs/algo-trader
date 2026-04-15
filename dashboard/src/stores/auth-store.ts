@@ -1,16 +1,16 @@
 /**
- * Auth store — persisted login state for CashClaw.
- * Zustand + localStorage persist middleware.
- * Supports real API calls with fallback to local state.
+ * Auth store — CashClaw authentication via Better Auth.
+ * Uses Better Auth client for sign-in/sign-up/session.
+ * Zustand for local state (tier, role, apiKey not managed by Better Auth).
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-const API_BASE = (import.meta as any).env?.VITE_API_URL ?? 'https://algo-trader.agencyos-openclaw.workers.dev';
+import { authClient } from '../lib/auth-client';
 
 interface AuthState {
   loggedIn: boolean;
   email: string;
+  name: string;
   tier: 'free' | 'pro' | 'enterprise';
   role: 'admin' | 'user';
   token: string | null;
@@ -26,9 +26,10 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       loggedIn: false,
       email: '',
+      name: '',
       tier: 'free',
       role: 'user',
       token: null,
@@ -40,65 +41,63 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ loading: true, error: null });
         try {
-          const res = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
+          const { data, error } = await authClient.signIn.email({
+            email,
+            password,
           });
-          const ct = res.headers.get('content-type') ?? '';
-          if (!ct.includes('application/json')) {
-            set({ loading: false, error: 'Backend chưa được cấu hình. Liên hệ support@cashclaw.cc' });
+          if (error) {
+            set({ loading: false, error: error.message || 'Sign in failed' });
             return;
           }
-          const data = await res.json();
-          if (res.ok) {
-            set({ loggedIn: true, token: data.token, tenantId: data.tenantId, email: data.email, tier: data.tier ?? 'free', role: data.role ?? 'user', loading: false });
-            return;
+          if (data) {
+            set({
+              loggedIn: true,
+              email: data.user?.email || email,
+              name: data.user?.name || '',
+              token: data.token || null,
+              loading: false,
+            });
           }
-          set({ loading: false, error: data.error ?? 'Đăng nhập thất bại' });
         } catch {
-          set({ loading: false, error: 'Không thể kết nối server. Vui lòng thử lại.' });
+          set({ loading: false, error: 'Cannot connect to server. Please try again.' });
         }
       },
 
       signup: async (email: string, password: string, tier: 'free' | 'pro' | 'enterprise') => {
         set({ loading: true, error: null });
         try {
-          const res = await fetch(`${API_BASE}/api/auth/signup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, tier }),
+          const { data, error } = await authClient.signUp.email({
+            email,
+            password,
+            name: email.split('@')[0] || 'User',
           });
-          const ct = res.headers.get('content-type') ?? '';
-          if (!ct.includes('application/json')) {
-            set({ loading: false, error: 'Backend chưa được cấu hình. Liên hệ support@cashclaw.cc' });
+          if (error) {
+            set({ loading: false, error: error.message || 'Sign up failed' });
             return;
           }
-          const data = await res.json();
-          if (res.ok) {
-            set({ loggedIn: true, token: data.token, tenantId: data.tenantId, email: data.email, tier: data.tier ?? tier, role: data.role ?? 'user', apiKey: data.apiKey, loading: false });
-            return;
+          if (data) {
+            set({
+              loggedIn: true,
+              email: data.user?.email || email,
+              name: data.user?.name || '',
+              token: data.token || null,
+              tier,
+              loading: false,
+            });
           }
-          set({ loading: false, error: data.error ?? 'Đăng ký thất bại' });
         } catch {
-          set({ loading: false, error: 'Không thể kết nối server. Vui lòng thử lại.' });
+          set({ loading: false, error: 'Cannot connect to server. Please try again.' });
         }
       },
 
       fetchMe: async () => {
-        const token = get().token;
-        if (!token) return;
         try {
-          const res = await fetch(`${API_BASE}/api/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            const data = await res.json();
+          const { data } = await authClient.getSession();
+          if (data?.user) {
             set({
-              tenantId: data.tenantId,
-              email: data.email,
-              tier: data.tier ?? 'free',
-              role: data.role ?? 'user',
+              loggedIn: true,
+              email: data.user.email,
+              name: data.user.name || '',
             });
           }
         } catch {
@@ -106,8 +105,20 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () =>
-        set({ loggedIn: false, email: '', tier: 'free', role: 'user', token: null, tenantId: null, apiKey: null, error: null }),
+      logout: () => {
+        authClient.signOut().catch(() => {});
+        set({
+          loggedIn: false,
+          email: '',
+          name: '',
+          tier: 'free',
+          role: 'user',
+          token: null,
+          tenantId: null,
+          apiKey: null,
+          error: null,
+        });
+      },
     }),
     { name: 'cashclaw-auth' }
   )

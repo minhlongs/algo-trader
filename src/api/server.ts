@@ -21,6 +21,8 @@ import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook'
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
 import { analyticsRouter } from './routes/analytics-routes';
+import { auth } from '../auth/auth-server';
+import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
 import { errorHandler } from '../middleware/error-handler';
 
@@ -111,6 +113,12 @@ export class ApiServer {
       }
       next();
     }, getMetrics);
+
+    // Better Auth — handles /api/auth/* (sign-up, sign-in, session, etc.)
+    const authHandler = toNodeHandler(auth);
+    this.app.use('/api/auth', (req, res) => {
+      authHandler(req, res);
+    });
 
     // API routes
     this.app.use('/api/trades', tradesRouter);
