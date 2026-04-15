@@ -120,6 +120,17 @@ export const useAuthStore = create<AuthState>()(
         });
       },
     }),
-    { name: 'cashclaw-auth' }
+    {
+      name: 'cashclaw-auth',
+      partialize: (state) => ({
+        loggedIn: state.loggedIn,
+        email: state.email,
+        name: state.name,
+        tier: state.tier,
+        role: state.role,
+        tenantId: state.tenantId,
+        // Exclude token + apiKey from localStorage — cookies handle session
+      }),
+    }
   )
 );
