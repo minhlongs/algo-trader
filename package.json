@@ -98,6 +98,8 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-trace-node": "^1.25.0",
     "@cloudflare/workers-types": "^4.20241230.0",
     "@playwright/test": "^1.40.0",
     "@types/cors": "2.8.19",

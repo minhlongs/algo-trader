@@ -5,7 +5,6 @@
  * Week 3-4: Risk Management - Enhanced with 5% daily drawdown trigger
  */
 
-import { Redis } from 'ioredis';
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 import { DrawdownMonitor } from './drawdown-monitor';

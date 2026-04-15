@@ -3,7 +3,7 @@
  * License validation and tier checking functions
  */
 
-import { LicenseError, RateLimitError } from './errors';
+import { LicenseError } from './errors';
 import { TIER_CONFIG, FEATURE_TIER_MAP } from './config/tier-config';
 import { LicenseTier, LicenseStatus, License } from '../types/license';
 

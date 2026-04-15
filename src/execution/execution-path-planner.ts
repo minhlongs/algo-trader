@@ -14,7 +14,6 @@ import logger from '../utils/logger';
 import { ILPPosition, MultiLegBasket } from '../types/ilp-types';
 import {
   FrankWolfeResult,
-  LegAllocation,
   optimizeBasketExecution,
 } from './multi-leg-frank-wolfe-optimizer';
 

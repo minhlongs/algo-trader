@@ -45,7 +45,7 @@ program
     console.log('Starting... (Ctrl+C to stop)\n');
 
     // Dynamic require — wiring is excluded from tsc but compiled separately
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { startPaperTrading } = require('../wiring/paper-trading-orchestrator') as {
       startPaperTrading: (cfg: { capitalUsdc: number; intervalMs: number; maxPositions: number }) => Promise<void>;
     };
@@ -145,7 +145,8 @@ program
   .command('ledger <wallet>')
   .description('Show REAL Polymarket trades for any wallet (public data)')
   .option('--limit <n>', 'Number of trades', '50')
-  .action(async (wallet: string, opts: { limit: string }) => {
+  .action(async (wallet: string, _opts: { limit: string }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { showRealLedger } = require('../polymarket/real-trade-ledger');
     await showRealLedger(wallet);
   });

@@ -7,8 +7,8 @@
  * - orderbook:global:alert
  */
 
-import { getRedisClient, getPubClient, getSubClient } from './index';
-import { OrderBook } from './orderbook-manager';
+import { getPubClient, getSubClient } from './index';
+import type { OrderBook } from './orderbook-manager';
 
 export interface OrderbookSnapshot {
   exchange: string;

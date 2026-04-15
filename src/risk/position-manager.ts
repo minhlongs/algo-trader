@@ -3,7 +3,6 @@
  * Tracks exposure per symbol/exchange, enforces limits
  */
 
-import { Redis } from 'ioredis';
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 

@@ -89,7 +89,7 @@ export class OrderbookManager {
     const result = await this.redis.zrange(key, 0, 0, 'WITHSCORES');
     if (!result || result.length === 0) return null;
 
-    const [member, score] = result;
+    const [member, _score] = result;
     const [price, amount] = member.split(':').map(parseFloat);
     return { price, amount };
   }
@@ -102,7 +102,7 @@ export class OrderbookManager {
     const result = await this.redis.zrange(key, 0, 0, 'WITHSCORES');
     if (!result || result.length === 0) return null;
 
-    const [member, score] = result;
+    const [member, _score] = result;
     const [price, amount] = member.split(':').map(parseFloat);
     return { price, amount };
   }

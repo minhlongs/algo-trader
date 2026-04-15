@@ -15,7 +15,6 @@ import {
   RebalanceSignal,
 } from '../../types/delta-neutral-types';
 import {
-  computePortfolioDelta,
   estimateHedgeSize,
 } from './delta-calculator';
 

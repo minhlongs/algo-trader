@@ -80,7 +80,7 @@ export class RedisWSAdapter {
    * Setup WebSocket server
    */
   private setupWebSocket(): void {
-    this.wsServer.on('connection', (ws: WebSocket, req: FastifyRequest['raw']) => {
+    this.wsServer.on('connection', (ws: WebSocket, _req: FastifyRequest['raw']) => {
       const clientId = `client-${Date.now()}-${++this.clientIdCounter}`;
       const client: WSClient = {
         ws,

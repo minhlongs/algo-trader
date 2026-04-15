@@ -73,15 +73,15 @@ export class Backtester {
     totalLoss: number,
     winningTrades: number,
     losingTrades: number,
-    finalCapital: number
+    _finalCapital: number
   ): BacktestResult {
     const totalTrades = winningTrades + losingTrades;
     const netProfit = totalProfit - totalLoss;
     const netProfitPct = ((netProfit / this.config.initialCapital) * 100);
-    const winRate = totalTrades > 0 ? winningTrades / totalTrades : 0;
-    const avgWin = winningTrades > 0 ? totalProfit / winningTrades : 0;
-    const avgLoss = losingTrades > 0 ? totalLoss / losingTrades : 0;
-    const profitFactor = totalLoss > 0 ? totalProfit / totalLoss : Infinity;
+    const _winRate = totalTrades > 0 ? winningTrades / totalTrades : 0;
+    const _avgWin = winningTrades > 0 ? totalProfit / winningTrades : 0;
+    const _avgLoss = losingTrades > 0 ? totalLoss / losingTrades : 0;
+    const _profitFactor = totalLoss > 0 ? totalProfit / totalLoss : Infinity;
 
     const sharpeRatio = this.calculateSharpeRatio(opportunities);
     const maxDrawdown = this.calculateMaxDrawdown(opportunities);

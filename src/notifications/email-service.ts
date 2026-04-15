@@ -8,8 +8,6 @@ import { getRedisClient } from '../redis';
 import { logger } from '../utils/logger';
 import {
   formatAlert,
-  getUrgency,
-  getUrgencyColor,
   getActionMessage,
   generateProgressBar,
 } from './alert-formatter';
@@ -184,7 +182,7 @@ Algo Trader Alert System
     urgencyColor: string
   ): string {
     const actionMessage = getActionMessage(threshold);
-    const progressBar = generateProgressBar(percentUsed);
+    const _progressBar = generateProgressBar(percentUsed);
 
     return `
 <!DOCTYPE html>
@@ -254,7 +252,7 @@ Algo Trader Alert System
       const redis = getRedisClient();
       const key = `${this.redisKeyPrefix}global`;
       const now = Date.now();
-      const windowMs = 1000; // 1 second window
+      const _windowMs = 1000; // 1 second window (reserved for future sliding window)
 
       // Use sliding window rate limiting
       const current = await redis.get(key);

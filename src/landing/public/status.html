@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CashClaw Status — System Health</title>
+  <meta name="description" content="Real-time system status for CashClaw prediction market analytics platform." />
+  <link rel="canonical" href="https://cashclaw.cc/status" />
+  <link rel="stylesheet" href="/ui/design-system/tokens.css" />
+  <link rel="stylesheet" href="/ui/design-system/components.css" />
+  <style>
+    .status-container { max-width: 700px; margin: 0 auto; padding: var(--space-12) var(--space-6); }
+    .status-header { text-align: center; margin-bottom: var(--space-10); }
+    .status-header h1 { font-size: var(--text-3xl); font-weight: var(--weight-bold); color: var(--text-primary); margin-bottom: var(--space-2); }
+    .status-badge { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-radius: 999px; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+    .status-badge--ok { background: rgba(0,212,170,0.1); color: var(--color-accent); border: 1px solid rgba(0,212,170,0.3); }
+    .status-badge--down { background: rgba(255,75,75,0.1); color: var(--color-loss); border: 1px solid rgba(255,75,75,0.3); }
+    .status-badge--loading { background: var(--bg-elevated); color: var(--text-tertiary); border: 1px solid var(--border-subtle); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot--ok { background: var(--color-accent); }
+    .status-dot--down { background: var(--color-loss); }
+    .status-dot--loading { background: var(--text-tertiary); }
+    .service-list { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-8); }
+    .service-row { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-5); }
+    .service-name { font-weight: var(--weight-semibold); color: var(--text-primary); font-size: var(--text-sm); }
+    .service-status { font-size: var(--text-xs); color: var(--text-secondary); display: flex; align-items: center; gap: var(--space-2); }
+    .service-latency { font-family: var(--font-data); font-size: var(--text-xs); color: var(--text-tertiary); }
+    .status-footer { text-align: center; padding: var(--space-8); color: var(--text-tertiary); font-size: var(--text-xs); }
+    .last-check { text-align: center; color: var(--text-tertiary); font-size: var(--text-xs); margin-top: var(--space-6); }
+  </style>
+</head>
+<body>
+
+<nav class="cc-nav">
+  <a href="/" class="cc-nav-logo">CashClaw</a>
+  <ul class="cc-nav-links">
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/blog">Blog</a></li>
+    <li><a href="/status" style="color:var(--color-accent)">Status</a></li>
+  </ul>
+  <a href="/#pricing" class="cc-button cc-button--primary">Get Signals</a>
+</nav>
+
+<div class="status-container">
+  <div class="status-header">
+    <h1>System Status</h1>
+    <div class="status-badge status-badge--loading" id="overall-badge">
+      <span class="status-dot status-dot--loading" id="overall-dot"></span>
+      <span id="overall-text">Checking...</span>
+    </div>
+  </div>
+
+  <div class="service-list" id="services">
+    <div class="cc-card service-row">
+      <span class="service-name">Trading Engine</span>
+      <span class="service-status" id="svc-engine"><span class="status-dot status-dot--loading"></span> Checking...</span>
+    </div>
+    <div class="cc-card service-row">
+      <span class="service-name">API Gateway</span>
+      <span class="service-status" id="svc-api"><span class="status-dot status-dot--loading"></span> Checking...</span>
+    </div>
+    <div class="cc-card service-row">
+      <span class="service-name">Signal Feed</span>
+      <span class="service-status" id="svc-signals"><span class="status-dot status-dot--loading"></span> Checking...</span>
+    </div>
+    <div class="cc-card service-row">
+      <span class="service-name">Market Data</span>
+      <span class="service-status" id="svc-feeds"><span class="status-dot status-dot--loading"></span> Checking...</span>
+    </div>
+    <div class="cc-card service-row">
+      <span class="service-name">Payment System</span>
+      <span class="service-status" id="svc-billing"><span class="status-dot status-dot--loading"></span> Checking...</span>
+    </div>
+    <div class="cc-card service-row">
+      <span class="service-name">Dashboard</span>
+      <span class="service-status" id="svc-dashboard"><span class="status-dot status-dot--loading"></span> Checking...</span>
+    </div>
+  </div>
+
+  <div class="last-check" id="last-check">Last checked: --</div>
+</div>
+
+<footer class="status-footer">
+  CashClaw &copy; 2026 — Auto-refreshes every 60s
+</footer>
+
+<script>
+function setServiceStatus(id, ok, latencyMs) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var dot = document.createElement('span');
+  dot.className = 'status-dot ' + (ok ? 'status-dot--ok' : 'status-dot--down');
+  var text = document.createTextNode(ok ? ' Operational' : ' Degraded');
+  el.textContent = '';
+  el.appendChild(dot);
+  el.appendChild(text);
+  if (ok && latencyMs !== undefined) {
+    var lat = document.createElement('span');
+    lat.className = 'service-latency';
+    lat.textContent = ' (' + latencyMs + 'ms)';
+    el.appendChild(lat);
+  }
+}
+
+function setOverall(allOk) {
+  var badge = document.getElementById('overall-badge');
+  var dot = document.getElementById('overall-dot');
+  var text = document.getElementById('overall-text');
+  badge.className = 'status-badge ' + (allOk ? 'status-badge--ok' : 'status-badge--down');
+  dot.className = 'status-dot ' + (allOk ? 'status-dot--ok' : 'status-dot--down');
+  text.textContent = allOk ? 'All Systems Operational' : 'Some Systems Degraded';
+}
+
+async function checkHealth() {
+  var allOk = true;
+  try {
+    var start = Date.now();
+    var r = await fetch('/api/health');
+    var latency = Date.now() - start;
+    var data = await r.json();
+    var ok = r.ok && data.status === 'ok';
+    setServiceStatus('svc-engine', ok, latency);
+    setServiceStatus('svc-api', ok, latency);
+    if (!ok) allOk = false;
+  } catch(e) {
+    setServiceStatus('svc-engine', false);
+    setServiceStatus('svc-api', false);
+    allOk = false;
+  }
+
+  // Map health components to service rows
+  try {
+    var r2 = await fetch('/api/health');
+    var data2 = await r2.json();
+    var c = data2.components || {};
+    setServiceStatus('svc-signals', c.tradingEngine === 'ok');
+    setServiceStatus('svc-feeds', c.redis === 'ok');
+    setServiceStatus('svc-billing', c.postgres === 'ok' || c.postgres === 'disconnected');
+    setServiceStatus('svc-dashboard', true); // static assets always available
+    if (c.redis !== 'ok') allOk = false;
+    if (c.tradingEngine !== 'ok') allOk = false;
+  } catch(e) {
+    ['svc-signals','svc-feeds','svc-billing','svc-dashboard'].forEach(function(id) {
+      setServiceStatus(id, false);
+    });
+    allOk = false;
+  }
+
+  setOverall(allOk);
+  document.getElementById('last-check').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+}
+
+checkHealth();
+setInterval(checkHealth, 60000);
+</script>
+</body>
+</html>

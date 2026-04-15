@@ -10,4 +10,6 @@ export interface KellyPositionSizer {
     maxFraction?: number;
   }): number;
   getOptimalFraction(winRate: number, avgWin: number, avgLoss: number): number;
+  /** Get recommended position size for a named strategy */
+  getSize(strategyName: string): { size: number };
 }

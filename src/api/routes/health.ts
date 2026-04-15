@@ -1,56 +1,98 @@
 /**
  * Health Routes
- * GET /health - Health check
- * GET /health/metrics - System metrics (JSON)
+ * GET /health - Health check with component status, version, memory
+ * GET /health/metrics - Detailed system metrics (JSON)
  * GET /metrics - Prometheus-format metrics
  */
 
 import { Router, Request, Response } from 'express';
 import { getRedisClient } from '../../redis';
 import { getDbClient } from '../../db/postgres-client';
-import { getMetrics } from '../../middleware/prometheus-metrics';
+import { TradingEngine } from '../../engine';
+
+// Resolve package version at module load time — avoids repeated disk reads
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { version: APP_VERSION } = require('../../../package.json') as { version: string };
 
 export const healthRouter: Router = Router();
 
 /**
  * GET /health
+ *
+ * Returns liveness + readiness status with:
+ * - Component health (redis, postgres, trading engine)
+ * - Paper trading mode flag (DRY_RUN env)
+ * - App version, uptime, memory snapshot
  */
 healthRouter.get('/', async (req: Request, res: Response) => {
+  // --- Redis ---
+  let redisStatus: 'ok' | 'error' = 'ok';
+  let redisError: string | undefined;
   try {
-    // Check Redis
     const redis = getRedisClient();
     await redis.ping();
-    const redisOk = true;
-  } catch (error) {
-    return res.status(503).json({
-      status: 'unhealthy',
-      redis: 'error',
-      error: error instanceof Error ? error.message : 'Redis ping failed',
-    });
+  } catch (err) {
+    redisStatus = 'error';
+    redisError = err instanceof Error ? err.message : 'Redis ping failed';
   }
 
-  // Check PostgreSQL (optional - may not be connected)
-  let postgresOk = 'disconnected';
+  // --- PostgreSQL (optional — may not be provisioned in all envs) ---
+  let postgresStatus: 'ok' | 'error' | 'disconnected' = 'disconnected';
   try {
     const db = getDbClient();
     await db.query('SELECT 1');
-    postgresOk = 'ok';
-  } catch (error) {
-    postgresOk = 'error';
+    postgresStatus = 'ok';
+  } catch {
+    postgresStatus = 'error';
   }
 
-  res.json({
-    status: 'healthy',
-    redis: 'ok',
-    postgres: postgresOk,
+  // --- Trading engine: lightweight in-process check ---
+  // Instantiate a throwaway engine instance to verify the class is functional
+  let tradingEngineStatus: 'ok' | 'error' = 'ok';
+  try {
+    const engine = new TradingEngine();
+    // Verify basic functionality: an empty orders list is expected
+    if (!Array.isArray(engine.getOrders())) {
+      throw new Error('Unexpected engine state');
+    }
+  } catch {
+    tradingEngineStatus = 'error';
+  }
+
+  // --- Paper trading flag ---
+  const isPaperTrading = process.env['DRY_RUN'] === 'true';
+
+  // --- Memory snapshot ---
+  const mem = process.memoryUsage();
+  const memMb = {
+    rss: +(mem.rss / 1024 / 1024).toFixed(1),
+    heapUsed: +(mem.heapUsed / 1024 / 1024).toFixed(1),
+    heapTotal: +(mem.heapTotal / 1024 / 1024).toFixed(1),
+  };
+
+  // Overall status: healthy only when redis is ok (postgres is optional)
+  const overallStatus = redisStatus === 'ok' ? 'healthy' : 'unhealthy';
+  const httpCode = overallStatus === 'healthy' ? 200 : 503;
+
+  return res.status(httpCode).json({
+    status: overallStatus,
+    version: APP_VERSION,
+    uptime: +process.uptime().toFixed(2),
+    paperTrading: isPaperTrading,
+    components: {
+      redis: redisStatus,
+      postgres: postgresStatus,
+      tradingEngine: tradingEngineStatus,
+      ...(redisError ? { redisError } : {}),
+    },
+    memory: memMb,
     timestamp: Date.now(),
-    uptime: process.uptime(),
   });
 });
 
 /**
- * GET /metrics
- * System metrics in JSON format
+ * GET /health/metrics
+ * Detailed system metrics in JSON format (for dashboards / Grafana)
  */
 healthRouter.get('/metrics', async (req: Request, res: Response) => {
   const redis = getRedisClient();
@@ -62,26 +104,25 @@ healthRouter.get('/metrics', async (req: Request, res: Response) => {
     keys_count: number;
     used_memory_human?: string;
     error?: string;
-    keys?: number;
     uptime_seconds?: number;
   } = { connected: false, used_memory: 0, keys_count: 0 };
+
   try {
     const info = await redis.info();
-    // Parse Redis INFO output
-    const infoLines = info.split('\r\n').filter(line => line && !line.startsWith('#'));
+    // Parse Redis INFO output (key:value lines)
     const infoObj: Record<string, string> = {};
-    for (const line of infoLines) {
-      const [key, value] = line.split(':');
-      if (key && value) {
-        infoObj[key] = value;
+    for (const line of info.split('\r\n')) {
+      if (!line || line.startsWith('#')) continue;
+      const colonIdx = line.indexOf(':');
+      if (colonIdx !== -1) {
+        infoObj[line.slice(0, colonIdx)] = line.slice(colonIdx + 1);
       }
     }
 
-    // Get used memory in MB
-    const usedMemoryBytes = parseInt(infoObj['used_memory'] || '0', 10);
-    const usedMemoryHuman = infoObj['used_memory_human'] || `${(usedMemoryBytes / 1024 / 1024).toFixed(2)}M`;
+    const usedMemoryBytes = parseInt(infoObj['used_memory'] ?? '0', 10);
+    const usedMemoryHuman =
+      infoObj['used_memory_human'] ?? `${(usedMemoryBytes / 1024 / 1024).toFixed(2)}M`;
 
-    // Get keys count
     let keysCount = 0;
     try {
       const keys = await redis.keys('*');
@@ -95,7 +136,7 @@ healthRouter.get('/metrics', async (req: Request, res: Response) => {
       used_memory: usedMemoryBytes,
       used_memory_human: usedMemoryHuman,
       keys_count: keysCount,
-      uptime_seconds: parseInt(infoObj['uptime_in_seconds'] || '0', 10),
+      uptime_seconds: parseInt(infoObj['uptime_in_seconds'] ?? '0', 10),
     };
   } catch (error) {
     redisMetrics = {
@@ -107,13 +148,13 @@ healthRouter.get('/metrics', async (req: Request, res: Response) => {
   }
 
   res.json({
+    version: APP_VERSION,
     redis: redisMetrics,
-    keys: redisMetrics.keys_count,
     process: {
       memory_usage: process.memoryUsage(),
       cpu_usage: process.cpuUsage(),
       uptime: process.uptime(),
-      version: process.version,
+      node_version: process.version,
       platform: process.platform,
       pid: process.pid,
     },

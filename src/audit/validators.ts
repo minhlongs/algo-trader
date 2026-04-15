@@ -3,7 +3,7 @@
  * Validation and utility functions for audit logs
  */
 
-import type { AuditLog, AuditLogFilters, AuditEventType } from './audit-log-service';
+import type { AuditLog, AuditLogFilters } from './audit-log-service';
 
 export class AuditLogValidators {
   /**

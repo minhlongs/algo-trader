@@ -7,17 +7,8 @@
  */
 
 import { LicenseService } from '../billing/license-service';
-import { LicenseTier, LicenseStatus, License } from '../types/license';
-import { TIER_CONFIG, FEATURE_TIER_MAP } from './config/tier-config';
-import {
-  isFeatureEnabled,
-  getTierLevel,
-  validateLicense,
-  requireTier,
-  getRateLimits,
-  getDailyLimit,
-  getOveragePrice,
-} from './validators';
+import type { License } from '../types/license';
+import { validateLicense } from './validators';
 
 // Re-export all validators for public API
 export {
@@ -28,14 +19,17 @@ export {
   getRateLimits,
   getDailyLimit,
   getOveragePrice,
+  parseLicenseTier,
+  LicenseError,
+  RateLimitError,
 } from './validators';
 
 // License exports
 export { LicenseService };
-export { LicenseTier, LicenseStatus, License } from '../types/license';
-export { TIER_CONFIG, FEATURE_TIER_MAP } from './config/tier-config';
+export { LicenseTier, LicenseStatus } from '../types/license';
+export type { License } from '../types/license';
 export type { TierConfig } from './config/tier-config';
-export { parseLicenseTier, LicenseError, RateLimitError } from './validators';
+export { TIER_CONFIG, FEATURE_TIER_MAP } from './config/tier-config';
 
 /**
  * Default export - RaaS Gate singleton

@@ -29,11 +29,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Security audit
+        run: pnpm audit --audit-level=high || true
+
       - name: Create data directory for SQLite tests
         run: mkdir -p data
 
       - name: Type check
         run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint src/ --max-warnings 50
+
+      - name: Validate strategies
+        run: node scripts/validate-strategies.mjs
 
       - name: Run tests
         run: npx vitest run

@@ -35,7 +35,7 @@ export async function licenseValidationPlugin(fastify: FastifyInstance) {
     return !!this.licenseAuth?.isValid;
   });
 
-  fastify.addHook('preHandler', async (request, reply) => {
+  fastify.addHook('preHandler', async (request, _reply) => {
     const route = request.routeOptions.url || '';
 
     if (PUBLIC_PATHS.some((path) => route.startsWith(path))) {

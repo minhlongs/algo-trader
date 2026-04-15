@@ -169,9 +169,11 @@ export class PaymentService {
       const license = await this.licenseService.getLicenseBySubscription(subscriptionId);
       if (license) {
         const dunning = this.dunningService;
-        status === 'success'
-          ? await dunning.recordPaymentSuccess(license.id, customerEmail, subscriptionId)
-          : await dunning.recordPaymentFailure(license.id, customerEmail, subscriptionId);
+        if (status === 'success') {
+          await dunning.recordPaymentSuccess(license.id, customerEmail, subscriptionId);
+        } else {
+          await dunning.recordPaymentFailure(license.id, customerEmail, subscriptionId);
+        }
       }
     }
 

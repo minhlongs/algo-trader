@@ -181,7 +181,7 @@ export class AlphaEarClient {
         return null;
       }
       return resp.json() as Promise<T>;
-    } catch (err) {
+    } catch {
       logger.debug(`AlphaEar ${path} unavailable`, 'AlphaEarClient');
       return null;
     }

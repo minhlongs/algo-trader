@@ -149,7 +149,7 @@ async function checkPositions(): Promise<void> {
     portfolio.closedTrades.push({ ...trade, exitPrice, pnl });
     portfolio.capital += trade.size + pnl;
     portfolio.totalPnl += pnl;
-    pnl >= 0 ? portfolio.winCount++ : portfolio.lossCount++;
+    if (pnl >= 0) { portfolio.winCount++; } else { portfolio.lossCount++; }
     saveTrades();
 
     // Async reflection — non-blocking

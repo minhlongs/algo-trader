@@ -3,7 +3,6 @@
  * Halts trading on max drawdown breach
  */
 
-import { Redis } from 'ioredis';
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 

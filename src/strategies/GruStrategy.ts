@@ -4,8 +4,7 @@
  * Uses GRU model predictions for buy/sell signals.
  */
 
-import * as tf from '@tensorflow/tfjs';
-import { GruModel, GruModelConfig, PredictionResult } from '../ml/gru/gru-model';
+import { GruModel, GruModelConfig } from '../ml/gru/gru-model';
 import { DataPreprocessor, OhlcvData, prepareTrainingData } from '../ml/gru/data-preprocessor';
 import { logger } from '../utils/logger';
 
@@ -13,7 +12,7 @@ export interface ISignal {
   action: 'buy' | 'sell' | 'wait';
   confidence: number;
   reason: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ICandle {
@@ -30,7 +29,7 @@ export interface IStrategy {
   initialize(): Promise<void>;
   train?(candles: ICandle[]): Promise<void>;
   execute(candles: ICandle[]): Promise<ISignal>;
-  getStatus?(): Record<string, any>;
+  getStatus?(): Record<string, unknown>;
   dispose?(): void;
 }
 

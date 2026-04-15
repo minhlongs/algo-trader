@@ -6,7 +6,7 @@
 import twilio from 'twilio';
 import { getRedisClient } from '../redis';
 import { logger } from '../utils/logger';
-import { formatSmsBody, getUrgency, getShortKey, getShortActionMessage } from './alert-formatter';
+import { formatSmsBody } from './alert-formatter';
 
 export interface SmsConfig {
   accountSid: string;

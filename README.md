@@ -3,6 +3,8 @@
 [![CI](https://github.com/longtho638-jpg/algo-trader/actions/workflows/ci.yml/badge.svg)](https://github.com/longtho638-jpg/algo-trader/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](package.json)
+[![Strategies](https://img.shields.io/badge/strategies-33%20polymarket-brightgreen.svg)](src/strategies/polymarket/index.ts)
+[![Tests](https://img.shields.io/badge/tests-570%20passing-brightgreen.svg)](src/)
 
 Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (20%).
 

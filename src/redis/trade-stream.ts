@@ -64,7 +64,7 @@ export class TradeStream {
     const results = await this.redis.xrange(key, '-', '+', 'COUNT', count);
 
     return results.map((entry: [string, string[]]) => {
-      const [id, ...rawData] = entry[1];
+      const [_id, ...rawData] = entry[1];
       const data: Record<string, string> = {};
       for (let i = 0; i < rawData.length; i += 2) {
         if (i + 1 < rawData.length) {
@@ -95,7 +95,7 @@ export class TradeStream {
     const results = await this.redis.xrange(key, startId, '+');
 
     return results.map((entry: [string, string[]]) => {
-      const [id, ...rawData] = entry[1];
+      const [_id, ...rawData] = entry[1];
       const data: Record<string, string> = {};
       for (let i = 0; i < rawData.length; i += 2) {
         if (i + 1 < rawData.length) {

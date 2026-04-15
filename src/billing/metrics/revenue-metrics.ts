@@ -3,7 +3,7 @@
  * ROIaaS Phase 3 - Payment tracking and revenue metrics
  */
 
-import type { Payment, PaymentStatusDistribution, RevenueMetrics } from '../payment-service';
+import type { Payment, RevenueMetrics } from '../payment-service';
 
 export class RevenueMetricsCalculator {
   /**

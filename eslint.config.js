@@ -40,6 +40,15 @@ export default [
     },
   },
   {
+    // Relaxed rules for test files — allow `any` and unused imports in tests
+    // for mocking, test scaffolding, and assertion patterns
+    files: ['src/**/__tests__/**/*.ts', 'src/**/*.test.ts', 'src/**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
     // Top-level ignores (flat config style)
     ignores: [
       'node_modules/**',

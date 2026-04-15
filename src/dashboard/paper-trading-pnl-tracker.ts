@@ -59,7 +59,7 @@ export function computeDailyPnl(
     const existing = byDate.get(date) ?? { date, pnl: 0, trades: 0, wins: 0, losses: 0 };
     existing.pnl += trade.pnl;
     existing.trades += 1;
-    trade.pnl >= 0 ? existing.wins++ : existing.losses++;
+    if (trade.pnl >= 0) { existing.wins++; } else { existing.losses++; }
     byDate.set(date, existing);
   }
 

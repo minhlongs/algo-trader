@@ -205,7 +205,7 @@ Please review your usage and consider upgrading your tier if needed.
   }
 
   private generateSmsBody(notification: AlertNotification): string {
-    const { urgency, shortKey } = formatAlert({
+    const { urgency, shortKey: _shortKey } = formatAlert({
       licenseKey: notification.licenseKey,
       threshold: notification.threshold,
       currentUsage: notification.currentUsage,

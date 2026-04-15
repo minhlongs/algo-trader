@@ -242,6 +242,7 @@ export async function runActivateCommand(licenseKey?: string): Promise<void> {
 }
 
 async function promptLicenseKey(): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout,

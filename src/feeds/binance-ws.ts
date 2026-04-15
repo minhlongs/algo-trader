@@ -4,7 +4,7 @@
  * Docs: https://binance-docs.github.io/apidocs/spot/en/#websocket-market-streams
  */
 
-import { BaseWebSocketClient, WebSocketMessage, WebSocketConfig } from './websocket-client';
+import { BaseWebSocketClient, WebSocketMessage } from './websocket-client';
 
 export interface BinanceOrderBook {
   lastUpdateId: number;

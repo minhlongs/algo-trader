@@ -108,7 +108,7 @@ export class DunningService {
     return record;
   }
 
-  async recordPaymentSuccess(licenseId: string, customerEmail: string, subscriptionId?: string): Promise<DunningRecord | undefined> {
+  async recordPaymentSuccess(licenseId: string, _customerEmail: string, _subscriptionId?: string): Promise<DunningRecord | undefined> {
     const existing = this.getDunningRecordByLicense(licenseId);
     if (!existing) return undefined;
 

@@ -4,7 +4,7 @@
  * Docs: https://bybit-exchange.github.io/docs/v5/ws/connect
  */
 
-import { BaseWebSocketClient, WebSocketMessage, WebSocketConfig } from './websocket-client';
+import { BaseWebSocketClient, WebSocketMessage } from './websocket-client';
 import { logger } from '../utils/logger';
 
 export interface BybitOrderBook {

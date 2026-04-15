@@ -132,7 +132,7 @@ export class TieredDrawdownBreaker {
     this.dailyPnl = newValue - this.dailyStartValue;
 
     // Evaluate tiers (check highest severity first)
-    const previousTier = this.tier;
+    const _previousTier = this.tier; // reserved for tier-change event emission
 
     if (drawdownPercent >= this.config.hardStopThreshold) {
       this.setTier('HARD_STOP', drawdownPercent, 'CLOSE ALL — manual restart required');

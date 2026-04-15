@@ -184,7 +184,7 @@ webhookResilienceRouter.post('/dead-letter/:id/retry', async (req: Request, res:
   try {
     await processWebhook(event, handler);
     return res.json({ success: true, event });
-  } catch (err) {
+  } catch {
     return res.status(500).json({ error: 'Retry failed, re-queued or dead-lettered', event });
   }
 });

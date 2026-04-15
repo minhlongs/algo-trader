@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import { LicenseService } from './license-service';
 import { LicenseTier } from '../types/license';
 import { logger } from '../utils/logger';
+import { EmailService } from '../notifications/email-service';
 
 /** TTL for pending signups: 15 minutes in ms */
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -96,8 +97,11 @@ export class OnboardingService {
       verified: false,
     });
 
-    // Log code to console (email sending out of scope for MVP)
-    logger.info(`[Onboarding] Verification code for ${email}: ${verificationToken} (expires in 15 min)`);
+    // Send verification email via SendGrid (fallback: log to console in dev only)
+    const emailSent = await this.sendVerificationEmail(email, verificationToken);
+    if (!emailSent) {
+      logger.info(`[Onboarding] DEV ONLY — code for ${email}: ${verificationToken} (expires in 15 min)`);
+    }
 
     return { pendingId, email, verificationToken, expiresAt };
   }
@@ -174,6 +178,38 @@ export class OnboardingService {
   private generateSixDigitCode(): string {
     const code = crypto.randomInt(0, 1_000_000);
     return code.toString().padStart(6, '0');
+  }
+
+  /** Send verification code via SendGrid; returns true if sent, false if degraded */
+  private async sendVerificationEmail(email: string, code: string): Promise<boolean> {
+    try {
+      const emailSvc = EmailService.getInstance();
+      if (!emailSvc.isInitialized()) {
+        emailSvc.initialize();
+      }
+      if (!emailSvc.isInitialized()) {
+        logger.warn('[Onboarding] SendGrid not configured, code logged to console only');
+        return false;
+      }
+      const safeCode = code.replace(/[^0-9]/g, '');
+      const sent = await emailSvc.send({
+        to: email,
+        subject: `CashClaw: Your verification code is ${safeCode}`,
+        body: `Your CashClaw verification code is: ${safeCode}\n\nThis code expires in 15 minutes.\n\nIf you did not request this, ignore this email.`,
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+            <h2 style="color:#00D4AA;margin-bottom:8px">CashClaw</h2>
+            <p>Your verification code is:</p>
+            <div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#0B0E11;color:#00D4AA;text-align:center;border-radius:8px;margin:16px 0">${safeCode}</div>
+            <p style="color:#888;font-size:14px">This code expires in 15 minutes. If you did not request this, ignore this email.</p>
+          </div>`,
+      });
+      logger.info(`[Onboarding] Verification email sent to ${email}`);
+      return sent;
+    } catch (err) {
+      logger.warn(`[Onboarding] Email send failed for ${email}, code logged to console`, { err });
+      return false;
+    }
   }
 
   private isValidEmail(email: string): boolean {

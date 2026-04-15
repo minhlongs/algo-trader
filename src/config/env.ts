@@ -64,7 +64,7 @@ const REQUIRED_NOTIFICATION_VARS = [
 /**
  * Optional environment variables (won't fail startup if missing)
  */
-const OPTIONAL_VARS = [
+const _OPTIONAL_VARS = [
   'NOWPAYMENTS_API_KEY',
   'NOWPAYMENTS_IPN_SECRET',
   'REDIS_HOST',

@@ -123,7 +123,7 @@ export class KellyPositionSizer {
     return { ...this.config };
   }
 
-  private zeroResult(portfolioValue: number): KellySizingResult {
+  private zeroResult(_portfolioValue: number): KellySizingResult {
     return {
       positionSizeUsd: 0, kellyRaw: 0, kellyAdjusted: 0,
       cappedByMax: false, cappedByManaged: false,

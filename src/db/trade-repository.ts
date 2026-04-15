@@ -3,7 +3,7 @@
  * Database operations for trades
  */
 
-import { query, transaction } from './postgres-client';
+import { query } from './postgres-client';
 import { ExecutionResult } from '../execution/order-executor';
 import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
 

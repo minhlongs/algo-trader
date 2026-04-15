@@ -14,7 +14,8 @@ interface Env {
   ALLOWED_ORIGINS?: string;
 }
 
-function getCorsOrigin(env: Env, origin?: string | null): string {
+// Reserved: dynamic origin validation for multi-tenant CORS
+function _getCorsOrigin(env: Env, origin?: string | null): string {
   const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
   return origin && allowed.includes(origin) ? origin : allowed[0];
 }

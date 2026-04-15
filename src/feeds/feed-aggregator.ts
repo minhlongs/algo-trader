@@ -130,7 +130,7 @@ export class FeedAggregator {
   }
 
   public async unsubscribe(symbols: string[]): Promise<void> {
-    const unsubscriptions = Array.from(this.clients.entries()).map(async ([exchange, client]) => {
+    const unsubscriptions = Array.from(this.clients.entries()).map(async ([_exchange, client]) => {
       await client.unsubscribe(symbols);
     });
     await Promise.all(unsubscriptions);

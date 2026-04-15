@@ -97,17 +97,22 @@ describe('API Server', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('healthy');
-      expect(res.body.redis).toBe('ok');
+      expect(res.body.version).toBeDefined();
+      expect(res.body.uptime).toBeGreaterThanOrEqual(0);
+      expect(res.body.components.redis).toBe('ok');
+      expect(res.body.components.tradingEngine).toBe('ok');
+      expect(res.body.memory).toBeDefined();
+      expect(res.body.paperTrading).toBeDefined();
     });
 
     it('GET /health/metrics should return system metrics', async () => {
       const res = await request(app).get('/health/metrics');
 
-      console.log('Metrics response:', res.body);
       expect(res.status).toBe(200);
       expect(res.body.redis).toBeDefined();
-      expect(res.body.keys).toBeDefined();
+      expect(res.body.redis.keys_count).toBeDefined();
       expect(res.body.process).toBeDefined();
+      expect(res.body.version).toBeDefined();
     });
   });
 

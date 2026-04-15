@@ -30,7 +30,6 @@
     "src/api/routes/monitoring-routes.ts",
     "src/api/routes/monitoring-routes-extension.ts",
     "src/workers/**/*",
-    "src/strategies/polymarket/**/*",
     "src/wiring/**/*",
     "dist",
     "src/dashboard/dashboard-server.ts",

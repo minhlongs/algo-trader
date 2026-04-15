@@ -7,8 +7,10 @@ import { ClobClient as SdkClobClient, Chain, Side } from '@polymarket/clob-clien
 import { logger } from '../utils/logger.js';
 
 export interface OrderBookLevel {
-  price: number;
-  size: number;
+  /** Price as a string to match Polymarket CLOB SDK convention */
+  price: string;
+  /** Size as a string to match Polymarket CLOB SDK convention */
+  size: string;
 }
 
 export interface RawOrderBook {
@@ -67,8 +69,8 @@ export async function getOrderBook(tokenId: string): Promise<RawOrderBook> {
   const client = getClient();
   const book = await client.getOrderBook(tokenId);
   return {
-    bids: (book.bids ?? []).map(b => ({ price: parseFloat(b.price), size: parseFloat(b.size) })),
-    asks: (book.asks ?? []).map(a => ({ price: parseFloat(a.price), size: parseFloat(a.size) })),
+    bids: (book.bids ?? []).map(b => ({ price: String(b.price), size: String(b.size) })),
+    asks: (book.asks ?? []).map(a => ({ price: String(a.price), size: String(a.size) })),
     timestamp: Date.now(),
   };
 }
@@ -120,6 +122,12 @@ export interface ClobClientInterface {
   getPrice(tokenId: string): Promise<number>;
   getMidPrice(tokenId: string): Promise<number>;
 }
+
+/**
+ * ClobClient type alias — strategies import this type for dependency injection.
+ * Identical to ClobClientInterface; provided as a named export for clarity.
+ */
+export type ClobClient = ClobClientInterface;
 
 export const clobClient: ClobClientInterface = {
   getOrderBook,

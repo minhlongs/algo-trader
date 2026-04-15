@@ -71,7 +71,7 @@ export class OverageCalculator {
     const charges: OverageCharge[] = [];
     let totalOverage = 0;
 
-    const totalApiCalls = dailyUsage.reduce((sum, day) => sum + day.apiCalls, 0);
+    const _totalApiCalls = dailyUsage.reduce((sum, day) => sum + day.apiCalls, 0); // reserved for reporting
     const totalOverageUnits = dailyUsage.reduce((sum, day) => sum + day.overageUnits, 0);
     const totalOverageCost = dailyUsage.reduce((sum, day) => sum + day.overageCost, 0);
 

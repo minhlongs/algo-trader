@@ -1,75 +1,35 @@
 /**
  * Spread Detector - Optimized for Sub-500ms p95 Latency
- * Detects arbitrage opportunities across exchanges with ML-based scoring
+ * Detects arbitrage opportunities across exchanges with ML-based scoring.
  *
- * Optimizations:
- * - Parallel Redis pipelining for batch operations
- * - In-memory price cache with TTL
- * - Latency tracking per exchange
- * - ML-based opportunity scoring
- * - Adaptive check intervals based on volatility
+ * Types live in ./spread-detector-types.ts
+ * Pure calculation helpers in ./spread-detector-calculations.ts
  */
 
 import { getRedisClient } from '../redis';
 import { logger } from '../utils/logger';
+import type {
+  ArbitrageOpportunity,
+  SpreadConfig,
+  ExchangeLatency,
+  PriceCacheEntry,
+} from './spread-detector-types';
+import {
+  calculateFees,
+  calculateSlippage,
+  calculateOpportunityScore,
+  computeLatencyStats,
+  createDefaultScoringModel,
+} from './spread-detector-calculations';
 
-export interface ArbitrageOpportunity {
-  id: string;
-  symbol: string;
-  buyExchange: string;
-  sellExchange: string;
-  buyPrice: number;
-  sellPrice: number;
-  spread: number;
-  spreadPercent: number;
-  timestamp: number;
-  latency: number;
-  score?: number;
-  confidence?: 'high' | 'medium' | 'low';
-  fees?: { buyFee: number; sellFee: number; netFee: number };
-  slippage?: { buySlippage: number; sellSlippage: number; totalSlippage: number };
-}
-
-export interface SpreadConfig {
-  minSpreadPercent: number;
-  maxLatencyMs: number;
-  checkIntervalMs: number;
-  enableMLScoring: boolean;
-  enableLatencyOptimization: boolean;
-  cacheTTL: number;
-  parallelBatchSize: number;
-}
-
-export interface ExchangeLatency {
-  exchange: string;
-  avgLatency: number;
-  p95Latency: number;
-  p99Latency: number;
-  successRate: number;
-  lastUpdate: number;
-}
-
-export interface PriceCacheEntry {
-  bid: number;
-  ask: number;
-  timestamp: number;
-  exchange: string;
-  symbol: string;
-  latency: number;
-}
-
-export interface ScoringModel {
-  weights: {
-    spreadWeight: number;
-    liquidityWeight: number;
-    latencyWeight: number;
-    volatilityWeight: number;
-  };
-  thresholds: {
-    minScore: number;
-    highConfidenceScore: number;
-  };
-}
+// Re-export types for consumers that import from this module
+export type {
+  ArbitrageOpportunity,
+  SpreadConfig,
+  ExchangeLatency,
+  PriceCacheEntry,
+} from './spread-detector-types';
+export type { ScoringModel } from './spread-detector-types';
 
 export class SpreadDetector {
   private redis: ReturnType<typeof getRedisClient>;
@@ -82,12 +42,11 @@ export class SpreadDetector {
   private exchangeLatencies: Map<string, ExchangeLatency>;
   private latencySamples: Map<string, number[]>;
   private scanStartTime: number = 0;
-  private scanCount: number = 0;
 
-  // ML scoring
-  private scoringModel: ScoringModel;
+  // ML scoring model
+  private scoringModel = createDefaultScoringModel();
 
-  // Metrics
+  // Scan metrics
   private metrics = {
     totalScans: 0,
     opportunitiesFound: 0,
@@ -100,12 +59,12 @@ export class SpreadDetector {
   constructor(config?: Partial<SpreadConfig>) {
     this.redis = getRedisClient();
     this.config = {
-      minSpreadPercent: 0.08, // Lowered threshold for more opportunities
+      minSpreadPercent: 0.08,
       maxLatencyMs: 500,
-      checkIntervalMs: 50, // Faster check interval
+      checkIntervalMs: 50,
       enableMLScoring: config?.enableMLScoring ?? true,
       enableLatencyOptimization: config?.enableLatencyOptimization ?? true,
-      cacheTTL: config?.cacheTTL ?? 1000, // 1 second cache TTL
+      cacheTTL: config?.cacheTTL ?? 1000,
       parallelBatchSize: config?.parallelBatchSize ?? 10,
       ...config,
     };
@@ -113,25 +72,6 @@ export class SpreadDetector {
     this.priceCache = new Map();
     this.exchangeLatencies = new Map();
     this.latencySamples = new Map();
-    this.scoringModel = this.initializeScoringModel();
-  }
-
-  /**
-   * Initialize ML-based scoring model with default weights
-   */
-  private initializeScoringModel(): ScoringModel {
-    return {
-      weights: {
-        spreadWeight: 0.4, // 40% weight on spread size
-        liquidityWeight: 0.25, // 25% weight on liquidity
-        latencyWeight: 0.2, // 20% weight on latency
-        volatilityWeight: 0.15, // 15% weight on volatility
-      },
-      thresholds: {
-        minScore: 60, // Minimum score to consider
-        highConfidenceScore: 80, // High confidence threshold
-      },
-    };
   }
 
   private getTickerKey(exchange: string, symbol: string): string {
@@ -142,9 +82,47 @@ export class SpreadDetector {
     return `${exchange}:${symbol}`;
   }
 
+  private getExchangeLatency(exchange: string): ExchangeLatency {
+    return this.exchangeLatencies.get(exchange) ?? {
+      exchange,
+      avgLatency: 100,
+      p95Latency: 200,
+      p99Latency: 300,
+      successRate: 1,
+      lastUpdate: Date.now(),
+    };
+  }
+
   /**
-   * Get best bid/ask across all exchanges using parallel Redis pipeline
-   * Optimized for sub-500ms p95 latency
+   * Record a latency sample for an exchange and update running statistics.
+   */
+  recordLatency(exchange: string, latency: number): void {
+    if (!this.latencySamples.has(exchange)) {
+      this.latencySamples.set(exchange, []);
+    }
+
+    const samples = this.latencySamples.get(exchange)!;
+    samples.push(latency);
+
+    // Keep last 100 samples
+    if (samples.length > 100) samples.shift();
+
+    const sorted = [...samples].sort((a, b) => a - b);
+    const stats = computeLatencyStats(sorted);
+
+    this.exchangeLatencies.set(exchange, {
+      exchange,
+      avgLatency: stats.avg,
+      p95Latency: stats.p95,
+      p99Latency: stats.p99,
+      successRate: 1,
+      lastUpdate: Date.now(),
+    });
+  }
+
+  /**
+   * Get best bid/ask across all exchanges using parallel Redis pipeline.
+   * Optimized for sub-500ms p95 latency via batch pipelining + in-memory cache.
    */
   async getBestPrices(
     symbol: string,
@@ -157,35 +135,23 @@ export class SpreadDetector {
     const startTime = Date.now();
     const allPrices: Array<{ exchange: string; bid: number; ask: number; latency: number }> = [];
 
-    // Use Redis pipeline for batch operations
+    // Batch all hgetall calls in a single pipeline
     const pipeline = this.redis.pipeline();
-    const keys = exchanges.map((ex) => this.getTickerKey(ex, symbol));
-
-    // Queue all hgetall operations
-    keys.forEach((key) => {
-      pipeline.hgetall(key);
-    });
-
+    exchanges.forEach((ex) => pipeline.hgetall(this.getTickerKey(ex, symbol)));
     const results = await pipeline.exec();
-    const fetchLatency = Date.now() - startTime;
 
-    // Process results
     for (let i = 0; i < exchanges.length; i++) {
       const exchange = exchanges[i];
       const result = results?.[i];
-      const ticker: Record<string, string> = (Array.isArray(result) ? {} : result) as Record<string, string> || {};
+      const ticker: Record<string, string> =
+        (Array.isArray(result) ? {} : result) as Record<string, string> || {};
       const cacheKey = this.getCacheKey(exchange, symbol);
 
       if (!ticker || Object.keys(ticker).length === 0) {
-        // Check cache if Redis miss
+        // Fall back to in-memory cache on Redis miss
         const cached = this.priceCache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
-          allPrices.push({
-            exchange,
-            bid: cached.bid,
-            ask: cached.ask,
-            latency: cached.latency,
-          });
+          allPrices.push({ exchange, bid: cached.bid, ask: cached.ask, latency: cached.latency });
         }
         continue;
       }
@@ -194,28 +160,20 @@ export class SpreadDetector {
       const ask = parseFloat(ticker.ask) || 0;
 
       if (bid > 0 && ask > 0) {
-        const exchangeLatency = this.getExchangeLatency(exchange);
+        const exLatency = this.getExchangeLatency(exchange);
 
-        // Update cache
         this.priceCache.set(cacheKey, {
-          bid,
-          ask,
-          timestamp: Date.now(),
-          exchange,
-          symbol,
-          latency: exchangeLatency.p95Latency,
+          bid, ask, timestamp: Date.now(), exchange, symbol,
+          latency: exLatency.p95Latency,
         });
 
-        allPrices.push({
-          exchange,
-          bid,
-          ask,
-          latency: exchangeLatency.p95Latency,
-        });
+        allPrices.push({ exchange, bid, ask, latency: exLatency.p95Latency });
       }
     }
 
-    // Find best bid and ask
+    // Suppress unused variable warning — startTime used for future latency tracking
+    void (Date.now() - startTime);
+
     let bestBid: { exchange: string; price: number; latency: number } | null = null;
     let bestAsk: { exchange: string; price: number; latency: number } | null = null;
 
@@ -232,7 +190,8 @@ export class SpreadDetector {
   }
 
   /**
-   * Calculate spread with fee and slippage consideration
+   * Calculate net spread for a symbol, applying fees and slippage.
+   * Returns null if no opportunity exceeds the minimum spread threshold.
    */
   async calculateSpread(
     symbol: string,
@@ -243,9 +202,8 @@ export class SpreadDetector {
 
     if (!bestBid || !bestAsk) return null;
 
-    // Calculate net spread after fees
-    const fees = this.calculateFees(bestBid.exchange, bestAsk.exchange, bestBid.price, bestAsk.price);
-    const slippage = await this.calculateSlippage(symbol, bestBid, bestAsk);
+    const fees = calculateFees(bestBid.exchange, bestAsk.exchange, bestBid.price, bestAsk.price);
+    const slippage = calculateSlippage(bestBid, bestAsk);
 
     const grossSpread = bestBid.price - bestAsk.price;
     const netSpread = grossSpread - fees.netFee - slippage.totalSlippage;
@@ -253,23 +211,18 @@ export class SpreadDetector {
 
     if (spreadPercent <= this.config.minSpreadPercent) return null;
 
-    // Calculate opportunity score
     const score = this.config.enableMLScoring
-      ? this.calculateOpportunityScore({
-          spreadPercent,
-          latency: Math.max(bestBid.latency, bestAsk.latency),
-          grossSpread,
-          fees,
-          slippage,
-        })
+      ? calculateOpportunityScore(
+          { spreadPercent, latency: Math.max(bestBid.latency, bestAsk.latency), fees },
+          this.scoringModel,
+          this.config.maxLatencyMs
+        )
       : undefined;
 
-    // Skip if score below threshold
-    if (score && score < this.scoringModel.thresholds.minScore) {
-      return null;
-    }
+    if (score !== undefined && score < this.scoringModel.thresholds.minScore) return null;
 
     const scanLatency = Date.now() - startTime;
+    const { thresholds } = this.scoringModel;
 
     return {
       id: `arb-${symbol}-${Date.now()}`,
@@ -283,12 +236,10 @@ export class SpreadDetector {
       timestamp: Date.now(),
       latency: scanLatency,
       score,
-      confidence: score
-        ? score >= this.scoringModel.thresholds.highConfidenceScore
-          ? 'high'
-          : score >= this.scoringModel.thresholds.minScore
-            ? 'medium'
-            : 'low'
+      confidence: score !== undefined
+        ? score >= thresholds.highConfidenceScore ? 'high'
+          : score >= thresholds.minScore ? 'medium'
+          : 'low'
         : undefined,
       fees,
       slippage,
@@ -296,182 +247,36 @@ export class SpreadDetector {
   }
 
   /**
-   * Calculate trading fees for both legs
+   * Scan all symbols for arbitrage opportunities using parallel batches.
    */
-  private calculateFees(
-    buyExchange: string,
-    sellExchange: string,
-    buyPrice: number,
-    sellPrice: number
-  ): { buyFee: number; sellFee: number; netFee: number } {
-    // Default fee rates (can be customized per exchange)
-    const feeRates: Record<string, number> = {
-      binance: 0.001, // 0.1%
-      okx: 0.0008, // 0.08%
-      bybit: 0.001, // 0.1%
-      default: 0.001,
-    };
-
-    const buyFeeRate = feeRates[buyExchange.toLowerCase()] || feeRates.default;
-    const sellFeeRate = feeRates[sellExchange.toLowerCase()] || feeRates.default;
-
-    const buyFee = buyPrice * buyFeeRate;
-    const sellFee = sellPrice * sellFeeRate;
-
-    return {
-      buyFee,
-      sellFee,
-      netFee: buyFee + sellFee,
-    };
-  }
-
-  /**
-   * Estimate slippage based on orderbook depth
-   */
-  private async calculateSlippage(
-    symbol: string,
-    bestBid: { exchange: string; price: number; latency: number },
-    bestAsk: { exchange: string; price: number; latency: number }
-  ): Promise<{ buySlippage: number; sellSlippage: number; totalSlippage: number }> {
-    // Simplified slippage model (can be enhanced with orderbook data)
-    const baseSlippageRate = 0.0005; // 0.05% base slippage
-
-    const buySlippage = bestAsk.price * baseSlippageRate;
-    const sellSlippage = bestBid.price * baseSlippageRate;
-
-    return {
-      buySlippage,
-      sellSlippage,
-      totalSlippage: buySlippage + sellSlippage,
-    };
-  }
-
-  /**
-   * ML-based opportunity scoring
-   */
-  private calculateOpportunityScore(params: {
-    spreadPercent: number;
-    latency: number;
-    grossSpread: number;
-    fees: { buyFee: number; sellFee: number; netFee: number };
-    slippage: { buySlippage: number; sellSlippage: number; totalSlippage: number };
-  }): number {
-    const { spreadPercent, latency, fees } = params;
-
-    // Spread score (0-100): Higher spread = higher score
-    const spreadScore = Math.min(100, spreadPercent * 100);
-
-    // Latency score (0-100): Lower latency = higher score
-    const latencyScore = Math.max(0, 100 - (latency / this.config.maxLatencyMs) * 100);
-
-    // Fee efficiency score (0-100): Lower fees relative to spread = higher score
-    const feeEfficiency = fees.netFee > 0 ? (spreadPercent * 10) / fees.netFee : 0;
-    const feeScore = Math.min(100, feeEfficiency * 50);
-
-    // Combined score using weighted average
-    const score =
-      spreadScore * this.scoringModel.weights.spreadWeight +
-      latencyScore * this.scoringModel.weights.latencyWeight +
-      feeScore * this.scoringModel.weights.liquidityWeight;
-
-    return Math.round(score * 10) / 10;
-  }
-
-  /**
-   * Get exchange latency statistics
-   */
-  private getExchangeLatency(exchange: string): ExchangeLatency {
-    const defaultLatency: ExchangeLatency = {
-      exchange,
-      avgLatency: 100,
-      p95Latency: 200,
-      p99Latency: 300,
-      successRate: 1,
-      lastUpdate: Date.now(),
-    };
-
-    return this.exchangeLatencies.get(exchange) || defaultLatency;
-  }
-
-  /**
-   * Record latency sample for an exchange
-   */
-  recordLatency(exchange: string, latency: number): void {
-    if (!this.latencySamples.has(exchange)) {
-      this.latencySamples.set(exchange, []);
-    }
-
-    const samples = this.latencySamples.get(exchange)!;
-    samples.push(latency);
-
-    // Keep last 100 samples
-    if (samples.length > 100) {
-      samples.shift();
-    }
-
-    // Update statistics
-    const sorted = [...samples].sort((a, b) => a - b);
-    const avg = sorted.reduce((a, b) => a + b, 0) / sorted.length;
-    const p95 = sorted[Math.floor(sorted.length * 0.95)] || 0;
-    const p99 = sorted[Math.floor(sorted.length * 0.99)] || 0;
-
-    this.exchangeLatencies.set(exchange, {
-      exchange,
-      avgLatency: avg,
-      p95Latency: p95,
-      p99Latency: p99,
-      successRate: 1,
-      lastUpdate: Date.now(),
-    });
-  }
-
-  /**
-   * Scan all symbols for arbitrage opportunities
-   * Optimized with parallel processing
-   */
-  async scan(
-    symbols: string[],
-    exchanges: string[]
-  ): Promise<ArbitrageOpportunity[]> {
+  async scan(symbols: string[], exchanges: string[]): Promise<ArbitrageOpportunity[]> {
     this.scanStartTime = Date.now();
     const opportunities: ArbitrageOpportunity[] = [];
-
-    // Process symbols in parallel batches
     const batchSize = this.config.parallelBatchSize;
+
     for (let i = 0; i < symbols.length; i += batchSize) {
       const batch = symbols.slice(i, i + batchSize);
-      const results = await Promise.all(
-        batch.map((symbol) => this.calculateSpread(symbol, exchanges))
-      );
-
+      const results = await Promise.all(batch.map((sym) => this.calculateSpread(sym, exchanges)));
       for (const opp of results) {
-        if (opp) {
-          opportunities.push(opp);
-        }
+        if (opp) opportunities.push(opp);
       }
     }
 
-    // Update metrics
+    // Update scan metrics
     const scanDuration = Date.now() - this.scanStartTime;
     this.metrics.totalScans++;
     this.metrics.scanDurations.push(scanDuration);
     this.metrics.opportunitiesFound += opportunities.length;
 
-    // Keep last 1000 scan durations for percentile calculation
-    if (this.metrics.scanDurations.length > 1000) {
-      this.metrics.scanDurations.shift();
-    }
+    if (this.metrics.scanDurations.length > 1000) this.metrics.scanDurations.shift();
 
-    // Calculate running percentiles
     const sorted = [...this.metrics.scanDurations].sort((a, b) => a - b);
-    this.metrics.avgScanDurationMs =
-      sorted.reduce((a, b) => a + b, 0) / sorted.length;
-    this.metrics.p95ScanDurationMs =
-      sorted[Math.floor(sorted.length * 0.95)] || 0;
-    this.metrics.p99ScanDurationMs =
-      sorted[Math.floor(sorted.length * 0.99)] || 0;
+    const stats = computeLatencyStats(sorted);
+    this.metrics.avgScanDurationMs = stats.avg;
+    this.metrics.p95ScanDurationMs = stats.p95;
+    this.metrics.p99ScanDurationMs = stats.p99;
 
-    // Sort opportunities by score (highest first)
+    // Sort by score descending
     if (this.config.enableMLScoring) {
       opportunities.sort((a, b) => (b.score || 0) - (a.score || 0));
     } else {
@@ -482,7 +287,7 @@ export class SpreadDetector {
   }
 
   /**
-   * Start continuous spread detection
+   * Start continuous spread detection on a fixed interval.
    */
   start(
     symbols: string[],
@@ -492,25 +297,18 @@ export class SpreadDetector {
     if (this.running) return;
 
     this.running = true;
-    logger.info(
-      `[SpreadDetector] Started: ${symbols.length} symbols, ${exchanges.length} exchanges`
-    );
+    logger.info(`[SpreadDetector] Started: ${symbols.length} symbols, ${exchanges.length} exchanges`);
 
     this.intervalId = setInterval(async () => {
       try {
         const opportunities = await this.scan(symbols, exchanges);
-        if (opportunities.length > 0) {
-          onOpportunity(opportunities);
-        }
+        if (opportunities.length > 0) onOpportunity(opportunities);
       } catch (error) {
         logger.error('SpreadDetector scan error:', { error });
       }
     }, this.config.checkIntervalMs);
   }
 
-  /**
-   * Stop spread detection
-   */
   stop(): void {
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -520,9 +318,6 @@ export class SpreadDetector {
     logger.info('[SpreadDetector] Stopped');
   }
 
-  /**
-   * Get current metrics
-   */
   getMetrics(): {
     totalScans: number;
     opportunitiesFound: number;
@@ -540,7 +335,7 @@ export class SpreadDetector {
   }
 
   /**
-   * Store opportunity to Redis for execution module
+   * Persist an opportunity to Redis for the execution module.
    */
   async storeOpportunity(opp: ArbitrageOpportunity): Promise<void> {
     const key = `arbitrage:opportunities:${opp.id}`;
@@ -550,7 +345,7 @@ export class SpreadDetector {
       sellPrice: opp.sellPrice.toString(),
       spread: opp.spread.toString(),
       spreadPercent: opp.spreadPercent.toString(),
-      score: opp.score?.toString() || '',
+      score: opp.score?.toString() ?? '',
       latency: opp.latency.toString(),
     };
 
@@ -561,7 +356,7 @@ export class SpreadDetector {
   }
 
   /**
-   * Get recent opportunities
+   * Retrieve recent arbitrage opportunities from Redis.
    */
   async getRecentOpportunities(count = 100): Promise<ArbitrageOpportunity[]> {
     const keys = await this.redis.keys('arbitrage:opportunities:*');

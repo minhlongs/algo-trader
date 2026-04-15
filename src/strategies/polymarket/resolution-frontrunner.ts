@@ -296,8 +296,8 @@ export function createResolutionFrontrunnerTick(deps: ResolutionFrontrunnerDeps)
       if (market.noTokenId && hasPosition(market.noTokenId)) continue;
       if (isOnCooldown(market.yesTokenId)) continue;
 
-      // Volume check
-      if (market.volume24h < cfg.minVolume24h) continue;
+      // Volume check — volume24h may be absent on older markets, treat as 0
+      if ((market.volume24h ?? 0) < cfg.minVolume24h) continue;
 
       // Resolution window check
       if (!isNearResolution(market.endDate, cfg.resolutionWindowMs, now)) continue;

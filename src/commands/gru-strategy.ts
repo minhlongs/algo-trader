@@ -6,7 +6,7 @@
 
 import { GruStrategy } from '../strategies/GruStrategy';
 import { logger } from '../utils/logger';
-import { DataPreprocessor, OhlcvData } from '../ml/gru/data-preprocessor';
+import type { OhlcvData } from '../ml/gru/data-preprocessor';
 
 export interface GruCommandOptions {
   inputSteps: number;

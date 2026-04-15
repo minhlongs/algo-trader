@@ -69,7 +69,7 @@ export class UsageMeteringService extends EventEmitter {
     userId?: string
   ): Promise<UsageStatus> {
     const date = this.getCurrentDate();
-    const usageKey = `${licenseKey}:${date}`;
+    const _usageKey = `${licenseKey}:${date}`; // reserved for future Redis-backed metering
 
     const currentUsage = this.getTodayUsage(licenseKey);
     const newUsage = currentUsage + 1;

@@ -38,6 +38,20 @@ module.exports = {
       merge_logs: true,
     },
     {
+      name: 'auto-marketing',
+      script: 'dist/jobs/auto-marketing-daemon.js',
+      cwd: __dirname,
+      exec_mode: 'fork',
+      cron_restart: '0 7 * * *', // Run daily at 7 AM
+      autorestart: false, // One-shot job, cron handles restarts
+      env_production: {
+        NODE_ENV: 'production',
+      },
+      error_file: './logs/marketing-error.log',
+      out_file: './logs/marketing-out.log',
+      merge_logs: true,
+    },
+    {
       name: 'algo-dashboard',
       script: 'npx',
       args: 'serve dashboard/dist -s -l 3001',

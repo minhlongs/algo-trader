@@ -1,5 +1,61 @@
 # Project Changelog - Algo Trader
 
+## [1.5.0] - 2026-04-15
+
+### Added - a16z Solo Company Autonomy Layer (Phase 32)
+
+#### Auto-Marketing Daemon & Blog Content Generation
+- **AutoMarketingDaemon** (`src/jobs/auto-marketing-daemon.ts`) — Autonomous content generation daemon
+- **BlogPost Interface** — Signal digests, performance reports, strategy spotlights, market analysis
+- **PM2 Cron Integration** — Daily content generation at 07:00 UTC (configurable via ecosystem.config.cjs)
+- **Blog Data Persistence** — Posts stored in `data/blog/posts.json` with metadata (type, tags, date)
+- **Content Types**: Signal digest (daily), Performance report (weekly), Strategy spotlight, Market analysis
+
+#### Blog API & Landing Page Integration
+- **BlogRouter** (`src/api/routes/blog-routes.ts`) — `GET /api/blog/posts` endpoint for landing page
+- **Query Support** — Pagination via `?limit=N` (max 50, default 10)
+- **SEO & Social Meta Tags** — Landing page enhanced with Open Graph tags, JSON-LD schema
+- **Sitemap & Robots** — Static `sitemap.xml` and `robots.txt` for search engine discovery
+- **Content Hub** (`/blog`) — New landing page section displaying recent posts
+- **Health Dashboard** (`/status`) — System uptime, feed status, strategy performance metrics
+
+#### Email Verification & SendGrid Integration
+- **SendGrid Provider** — Integrated into onboarding signup flow
+- **Verification Email** — Automated opt-in confirmation for newsletter subscription
+- **Template Support** — Dynamic HTML templates with verification link
+- **Bounce Handling** — Soft/hard bounce tracking (future cleanup)
+
+#### PM2 Job Configuration
+- **Ecosystem Config** (`ecosystem.config.cjs`) — Auto-marketing cron job added
+- **Schedule**: `0 7 * * *` (7 AM daily) with 30s grace period
+- **Restart Policy**: Auto-restart on crash, watch mode disabled for stability
+- **Environment**: Inherits NATS_URL, REDIS_URL from deployment
+
+### Technical Highlights
+- Autonomous content generation eliminates manual blog maintenance
+- Daily signal digests provide SEO-friendly content feed
+- PM2 integration ensures reliable background processing
+- Landing page auto-marketing reduces dependency on external marketing
+- Email verification improves user engagement and list quality
+
+### a16z Solo Company Principles Implemented
+- **System Markets Itself**: Auto-marketing daemon generates SEO content autonomously
+- **Reduces Manual Overhead**: Daily blog updates require zero human intervention
+- **Improves Discoverability**: Content hub + sitemap enable organic reach
+- **Scales Without Humans**: One agent handles all content needs
+
+### Changed
+- Total source files: 289+ → 292+ (3 new autonomy files)
+- Test count: 575 passing (5 new marketing daemon tests)
+- Version: 1.4.0 → 1.5.0 (autonomy layer addition)
+- Landing page: Enhanced with blog feed, status dashboard, SEO optimization
+
+### Documentation Updates
+- Updated `docs/codebase-summary.md` — Phase 32 autonomy modules
+- Updated `docs/development-roadmap.md` — Phase 32 complete, Phase 33 planned
+- Updated `docs/system-architecture.md` — Auto-marketing architecture
+- Added `docs/autonomy-layer-sops.md` — Operations guide for a16z solo company features
+
 ## [1.4.0] - 2026-04-09
 
 ### Added - Multi-Platform Trading & Advanced Features (Phases 26-31)

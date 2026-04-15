@@ -9,7 +9,6 @@
  * - Real-time usage monitoring
  */
 
-import { Redis } from 'ioredis';
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 import { LicenseTier } from '../types/license';
@@ -166,7 +165,7 @@ export class UsageMeteringService extends EventEmitter {
     };
   }
 
-  private getUsageFromCache(licenseKey: string, period: string): number {
+  private getUsageFromCache(licenseKey: string, _period: string): number {
     // This would normally fetch from Redis, but we use cached value from trackTrade
     return 0;
   }

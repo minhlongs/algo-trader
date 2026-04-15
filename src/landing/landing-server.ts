@@ -72,7 +72,15 @@ export function createLandingServer(port: number): Server {
     try {
       // Map root path to index.html; strip query strings
       const urlPath = url.split('?')[0] ?? '/';
-      const staticPath = urlPath === '/' ? '/index.html' : urlPath;
+      // Route friendly URLs to their HTML files
+      const routeMap: Record<string, string> = {
+        '/': '/index.html',
+        '/blog': '/blog.html',
+        '/status': '/status.html',
+        '/register': '/register.html',
+        '/trading-performance': '/index.html', // redirects to homepage until dedicated page exists
+      };
+      const staticPath = routeMap[urlPath] ?? urlPath;
 
       // Serve design system files from src/ui/ for /ui/* paths
       if (staticPath.startsWith('/ui/')) {

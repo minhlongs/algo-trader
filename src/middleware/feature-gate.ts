@@ -15,6 +15,7 @@ import type { License } from '../types/license';
 
 // Augment Express Request to expose the license set by upstream auth middleware
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       license?: License;

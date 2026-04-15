@@ -4,7 +4,7 @@
  * Docs: https://www.okx.com/docs-v5/en/#overview-websocket
  */
 
-import { BaseWebSocketClient, WebSocketMessage, WebSocketConfig } from './websocket-client';
+import { BaseWebSocketClient, WebSocketMessage } from './websocket-client';
 import { logger } from '../utils/logger';
 
 export interface OKXOrderBook {

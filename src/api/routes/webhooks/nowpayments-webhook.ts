@@ -27,6 +27,7 @@ export const nowpaymentsWebhookRouter: Router = Router();
 
 // Capture raw body BEFORE express.json() parses it
 nowpaymentsWebhookRouter.use(
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require('express').json({
     verify: (req: any, _res: any, buf: Buffer) => {
       req.rawBody = buf.toString('utf-8');

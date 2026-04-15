@@ -4,7 +4,7 @@
  * Integrated with Phase 6 - Audit Logging
  */
 
-import { FastifyInstance, FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { UsageMeteringService } from '../metering/usage-metering-service';
 import { LicenseService } from '../billing/license-service';
 import { AuditLogService } from '../audit/audit-log-service';
@@ -37,7 +37,7 @@ export const usageTrackingPlugin: FastifyPluginAsync<UsageTrackingOptions> = asy
     return;
   }
 
-  fastify.addHook('onResponse', async (request, reply) => {
+  fastify.addHook('onResponse', async (request, _reply) => {
     const route = request.routeOptions.url || request.url;
 
     if (excludePaths.some((path) => route.startsWith(path))) {

@@ -1,7 +1,7 @@
-# Codebase Summary — Algo Trader v1.4.0
+# Codebase Summary — Algo Trader v1.5.0
 
 ## Overview
-Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platform. Supports 52+ strategies across 5 prediction markets (Polymarket, Kalshi, Limitless, PredictIt, Smarkets), real-time multi-platform price feeds, AGI intelligence suite (regime detection, triangular arb, funding-rate arb, whale tracking, cycle-end sniper), paper trading (+$2,251 P&L), and Fastify API gateway.
+Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platform with autonomous marketing. Supports 52+ strategies across 5 prediction markets (Polymarket, Kalshi, Limitless, PredictIt, Smarkets), real-time multi-platform price feeds, AGI intelligence suite (regime detection, triangular arb, funding-rate arb, whale tracking, cycle-end sniper), paper trading (+$2,251 P&L), auto-generated blog content, and Fastify API gateway.
 
 ## Project Structure
 
@@ -255,9 +255,36 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 | `btc-pattern-command.ts` | `btc:patterns` — BTC 15-min strategy launcher |
 | `cycle-end-sniper-command.ts` | `cycle:sniper` — 24h cycle-end market sniper |
 
+### src/jobs/ — Background Processing & Autonomy (Phases 18, 32)
+| File | Class | Purpose |
+|------|-------|---------|
+| `auto-marketing-daemon.ts` | `AutoMarketingDaemon` | Autonomous blog content generation (signal digests, performance reports, strategy spotlights) |
+| `bullmq-named-queue-registry-backtest-scan-webhook.ts` | — | BullMQ queue factory for backtest/scan jobs |
+| `workers/bullmq-backtest-worker-*.ts` | — | Backtest job processor |
+| `workers/bullmq-scan-worker-*.ts` | — | Scheduled strategy scan worker |
+| `ioredis-connection-factory-and-singleton-pool.ts` | — | Redis connection pooling |
+
+### src/api/routes/ — API Route Modules (Phase 32)
+| File | Methods | Purpose |
+|------|---------|---------|
+| `blog-routes.ts` | `GET /api/blog/posts` | Serve auto-generated blog posts with pagination |
+| `arbitrage-scan-execute-routes.ts` | `POST /arb/scan`, `/arb/execute` | Arbitrage operations |
+| `arbitrage-positions-history-routes.ts` | `GET /positions`, `/history`, `/stats` | Position tracking |
+| `tenant-crud-routes.ts` | `CRUD /tenants` | Tenant management |
+| `backtest-job-submission-routes.ts` | `POST /backtest` | Backtest submission |
+| `pnl-realtime-snapshot-history-routes.ts` | `GET /pnl/*` | P&L snapshots |
+
+### src/landing/ — SEO & Content Hub (Phase 32)
+| File | Purpose |
+|------|---------|
+| `landing-server.ts` | Express server for landing page |
+| `public/blog.html` | Blog content hub page |
+| `public/status.html` | System status dashboard |
+| — | Meta tags: OpenGraph, JSON-LD, sitemap.xml, robots.txt |
+
 ## Key Metrics
-- **266+ source files** (TypeScript 5.9, strict mode)
-- **570 tests** (Jest 29, 100% pass rate)
+- **292+ source files** (TypeScript 5.9, strict mode)
+- **575 tests** (Jest 29, 100% pass rate, +5 autonomy tests)
 - **25+ CLI commands** (Commander + new whale/BTC/sniper/Telegram commands)
 - **52+ trading strategies** across 5 platforms:
   - Core: RSI, SMA, MACD, Cross-Exchange, Triangular, Funding-Rate, AGI (7)
@@ -280,6 +307,9 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 - **Infrastructure hardening**: Distributed nonce, gas optimizer, TimescaleDB hypertables, Grafana/Prometheus
 - **Runtime control**: Vibe controller for dynamic mode switching (1 module)
 - **Paper trading**: +$2,251 P&L across 50 trades (66.7% win rate)
+- **Autonomous marketing**: Auto-marketing daemon (Phase 32) — daily blog generation via PM2 cron (07:00 UTC)
+- **SEO & Content**: Landing page with OpenGraph, JSON-LD, sitemap, robots.txt, status dashboard
+- **Email verification**: SendGrid integration for onboarding opt-in flow
 
 ## Quality Metrics
 - **0 TypeScript errors** (strict mode enforced)
@@ -314,4 +344,6 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 
 **Stealth**: Order splitting & timing jitter | Anti-detection middleware | Phantom order cloaking
 
-Updated: 2026-04-09
+**Autonomy**: Auto-marketing daemon (Phase 32) | PM2 job scheduling | SendGrid email
+
+Updated: 2026-04-15

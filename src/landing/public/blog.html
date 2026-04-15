@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CashClaw Blog — Prediction Market Insights & Trading Signals</title>
+  <meta name="description" content="Weekly prediction market analysis, trading signals breakdown, and AI strategy insights from CashClaw's 52+ strategy engine." />
+  <link rel="canonical" href="https://cashclaw.cc/blog" />
+  <meta property="og:type" content="blog" />
+  <meta property="og:url" content="https://cashclaw.cc/blog" />
+  <meta property="og:title" content="CashClaw Blog — Prediction Market Insights" />
+  <meta property="og:description" content="Weekly analysis, signal breakdowns, and AI strategy insights." />
+  <link rel="stylesheet" href="/ui/design-system/tokens.css" />
+  <link rel="stylesheet" href="/ui/design-system/components.css" />
+  <style>
+    .blog-container { max-width: 780px; margin: 0 auto; padding: var(--space-12) var(--space-6); }
+    .blog-header { margin-bottom: var(--space-10); }
+    .blog-header h1 { font-size: var(--text-3xl); font-weight: var(--weight-bold); color: var(--text-primary); margin-bottom: var(--space-2); }
+    .blog-header p { color: var(--text-secondary); font-size: var(--text-base); }
+    .blog-post { padding: var(--space-6); margin-bottom: var(--space-4); }
+    .blog-post-date { font-size: var(--text-xs); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--space-2); }
+    .blog-post h2 { font-size: var(--text-xl); font-weight: var(--weight-semibold); color: var(--text-primary); margin-bottom: var(--space-2); }
+    .blog-post h2 a { color: inherit; text-decoration: none; }
+    .blog-post h2 a:hover { color: var(--color-accent); }
+    .blog-post p { color: var(--text-secondary); font-size: var(--text-sm); line-height: var(--leading-relaxed); }
+    .blog-tag { display: inline-block; background: var(--bg-elevated); color: var(--text-tertiary); font-size: var(--text-xs); padding: 2px 8px; border-radius: 999px; margin-top: var(--space-3); }
+    .blog-empty { text-align: center; padding: var(--space-16) 0; color: var(--text-tertiary); }
+    .blog-footer { text-align: center; padding: var(--space-8) var(--space-6); border-top: 1px solid var(--border-subtle); color: var(--text-tertiary); font-size: var(--text-xs); }
+  </style>
+</head>
+<body>
+
+<nav class="cc-nav">
+  <a href="/" class="cc-nav-logo">CashClaw</a>
+  <ul class="cc-nav-links">
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/blog" style="color:var(--color-accent)">Blog</a></li>
+    <li><a href="/dashboard">Dashboard</a></li>
+  </ul>
+  <a href="/#pricing" class="cc-button cc-button--primary">Get Signals</a>
+</nav>
+
+<div class="blog-container">
+  <div class="blog-header">
+    <h1>Prediction Market Insights</h1>
+    <p>Weekly analysis, signal breakdowns, and strategy updates from the CashClaw engine.</p>
+  </div>
+
+  <div id="blog-posts">
+    <!-- Posts loaded dynamically from /api/blog/posts or statically seeded -->
+
+    <div class="cc-card blog-post">
+      <div class="blog-post-date">April 15, 2026</div>
+      <h2><a href="#">How We Made +$2,251 Paper Trading Polymarket in 50 Trades</a></h2>
+      <p>Our 4-layer engine combines DeepSeek R1 probability estimation with Kelly Criterion sizing to achieve a 66.7% win rate. Here's the breakdown of our first 50 paper trades — what worked, what didn't, and why simple arb is dead on Polymarket.</p>
+      <span class="blog-tag">Performance</span>
+      <span class="blog-tag">Paper Trading</span>
+    </div>
+
+    <div class="cc-card blog-post">
+      <div class="blog-post-date">April 14, 2026</div>
+      <h2><a href="#">Why YES+NO Arbitrage No Longer Works on Polymarket</a></h2>
+      <p>Polymarket's market-making is now too efficient for simple spread arb. Our analysis of 10,000+ market snapshots shows the average YES+NO sum is $0.998 — leaving zero room after fees. Here's where the real edge lives: endgame strategy and resolution timing.</p>
+      <span class="blog-tag">Strategy</span>
+      <span class="blog-tag">Polymarket</span>
+    </div>
+
+    <div class="cc-card blog-post">
+      <div class="blog-post-date">April 12, 2026</div>
+      <h2><a href="#">CashClaw vs Polymarket Agents: 20x More Capable</a></h2>
+      <p>We benchmarked CashClaw against the leading open-source alternative (Polymarket Agents, 2.8K GitHub stars). CashClaw has 52+ strategies vs 3, covers 5 platforms vs 1, and includes risk management that the competition lacks entirely.</p>
+      <span class="blog-tag">Benchmark</span>
+      <span class="blog-tag">Competition</span>
+    </div>
+
+    <div class="cc-card blog-post">
+      <div class="blog-post-date">April 10, 2026</div>
+      <h2><a href="#">The Endgame Strategy: Buying Near-Certain Outcomes Before Resolution</a></h2>
+      <p>Our highest-edge strategy buys YES tokens at $0.92-0.97 on markets with >95% implied probability of resolving YES. Small per-trade profit, but near-zero risk when properly filtered. Walk-through of our resolution criteria analysis.</p>
+      <span class="blog-tag">Strategy</span>
+      <span class="blog-tag">Alpha</span>
+    </div>
+
+  </div>
+</div>
+
+<footer class="blog-footer">
+  CashClaw &copy; 2026 — Prediction market analytics. Not financial advice.
+</footer>
+
+<script>
+// Load dynamic posts from API if available
+(function() {
+  fetch('/api/blog/posts').then(function(r) {
+    if (!r.ok) return;
+    return r.json();
+  }).then(function(posts) {
+    if (!posts || !posts.length) return;
+    var container = document.getElementById('blog-posts');
+    // Prepend dynamic posts before static seed posts
+    posts.reverse().forEach(function(post) {
+      var el = document.createElement('div');
+      el.className = 'cc-card blog-post';
+      var dateEl = document.createElement('div');
+      dateEl.className = 'blog-post-date';
+      dateEl.textContent = post.date;
+      var h2 = document.createElement('h2');
+      var a = document.createElement('a');
+      a.href = (post.url && post.url.startsWith('http')) ? post.url : '#';
+      a.textContent = post.title;
+      h2.appendChild(a);
+      var p = document.createElement('p');
+      p.textContent = post.excerpt;
+      el.appendChild(dateEl);
+      el.appendChild(h2);
+      el.appendChild(p);
+      if (post.tags) {
+        post.tags.forEach(function(tag) {
+          var span = document.createElement('span');
+          span.className = 'blog-tag';
+          span.textContent = tag;
+          el.appendChild(span);
+        });
+      }
+      container.insertBefore(el, container.firstChild);
+    });
+  }).catch(function() { /* keep seed posts */ });
+})();
+</script>
+</body>
+</html>

@@ -146,6 +146,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function promptConfirmation(): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const readline = require('readline').createInterface({
     input: process.stdin,
     output: process.stdout,

@@ -175,7 +175,6 @@ export class ApiKeyManager {
     const result: Omit<ApiKey, 'keyHash'>[] = [];
     for (const key of this.keys.values()) {
       if (key.licenseId === licenseId) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { keyHash: _omit, ...safe } = key;
         result.push(safe);
       }

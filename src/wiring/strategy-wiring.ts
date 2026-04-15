@@ -68,7 +68,8 @@ export type AllStrategyDeps = WireStrategyDeps;
 const env = (key: string, fallback: string) => process.env[key] ?? fallback;
 
 // Data-driven Polymarket strategy definitions — eliminates DRY violation
-const POLY_STRATEGIES: Array<{ id: string; name: string; envKey: string; defaultMs: string; factory: Function }> = [
+type StrategyFactory = (deps: unknown) => () => Promise<void>;
+const POLY_STRATEGIES: Array<{ id: string; name: string; envKey: string; defaultMs: string; factory: StrategyFactory }> = [
   { id: 'book-imbalance', name: 'Book Imbalance Reversal', envKey: 'BOOK_IMBALANCE_INTERVAL_MS', defaultMs: '15000', factory: createBookImbalanceReversalTick },
   { id: 'vwap-sniper', name: 'VWAP Deviation Sniper', envKey: 'VWAP_SNIPER_INTERVAL_MS', defaultMs: '10000', factory: createVwapDeviationSniperTick },
   { id: 'pairs-stat-arb', name: 'Pairs Statistical Arbitrage', envKey: 'PAIRS_STAT_ARB_INTERVAL_MS', defaultMs: '30000', factory: createPairsStatArbTick },

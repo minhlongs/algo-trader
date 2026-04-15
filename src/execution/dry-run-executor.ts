@@ -9,7 +9,6 @@
  * - Persists state to Redis for recovery
  */
 
-import { Redis } from 'ioredis';
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 

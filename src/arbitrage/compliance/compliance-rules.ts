@@ -44,7 +44,7 @@ export const POSITION_LIMIT_CHECK: ComplianceRule = {
   severity: 'high',
   validate: (context: ComplianceContext): ComplianceResult => {
     const MAX_POSITION_PER_ASSET = 1000000; // $1M default
-    const MAX_DAILY_VOLUME = 5000000; // $5M default
+    const _MAX_DAILY_VOLUME = 5000000; // $5M default (reserved for future daily volume check)
 
     const tradeValue = context.amount * context.price;
 
