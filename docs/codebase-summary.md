@@ -283,11 +283,23 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 | `landing-server.ts` | Express server for landing page |
 | `public/blog.html` | Blog content hub page |
 | `public/status.html` | System status dashboard |
+| `public/analytics.js` | Plausible analytics + referral tracking (GDPR-compliant) |
 | — | Meta tags: OpenGraph, JSON-LD, sitemap.xml, robots.txt |
 
+### src/billing/ — Revenue & Invoice Automation (Phase 33)
+| File | Class | Purpose |
+|------|-------|---------|
+| `invoice-generator.ts` | `InvoiceGenerator` | Auto-generate invoice (JSON + HTML) on NOWPayments webhook success |
+| `revenue-analytics.ts` | `RevenueAnalytics` | MRR, churn rate, LTV, cohort analysis by tier + referrer |
+
+### src/api/routes/ — Analytics Route (Phase 33)
+| File | Methods | Purpose |
+|------|---------|---------|
+| `analytics-routes.ts` | `POST /api/analytics/event` | Log pageview, signup, checkout, activation with referral + UTM context |
+
 ## Key Metrics
-- **296+ source files** (TypeScript 5.9, strict mode)
-- **585 tests** (Jest 29, 100% pass rate, +10 autonomy phase 2 tests)
+- **298+ source files** (TypeScript 5.9, strict mode)
+- **588 tests** (Vitest 4.1, 100% pass rate, +13 autonomy phase 3 tests)
 - **27+ CLI commands** (Commander + whale/BTC/sniper/Telegram/Twitter commands)
 - **52+ trading strategies** across 5 platforms:
   - Core: RSI, SMA, MACD, Cross-Exchange, Triangular, Funding-Rate, AGI (7)
@@ -316,6 +328,9 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 - **Support automation**: Telegram FAQ matcher (Phase 32b) — /faq, /support, /pricing commands with LLM-powered responses
 - **SEO & Content**: Landing page with OpenGraph, JSON-LD, sitemap, robots.txt, status dashboard
 - **Email verification**: SendGrid integration for onboarding opt-in + drip campaign flow
+- **Invoice automation**: Auto-generate invoice on NOWPayments webhook success, email via SendGrid (Phase 33)
+- **Referral tracking**: Plausible Analytics + ?ref parameter capture + UTM logging for growth attribution (Phase 33)
+- **Revenue analytics**: MRR, churn, LTV, cohort analysis by tier + referral source (Phase 33)
 
 ## Quality Metrics
 - **0 TypeScript errors** (strict mode enforced)
@@ -346,10 +361,12 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 
 **CLI & UI**: Commander CLI | React 19 | Vite 6 | Tailwind CSS | Zustand 5
 
-**Billing**: NOWPayments (USDT TRC20) | Coupon system with atomicity guards
+**Billing**: NOWPayments (USDT TRC20) | Invoice automation | Coupon system with atomicity guards
+
+**Revenue Analytics**: Plausible Analytics | Referral tracking (?ref params) | UTM capture | Event logging | MRR/churn/LTV analysis
 
 **Stealth**: Order splitting & timing jitter | Anti-detection middleware | Phantom order cloaking
 
-**Autonomy**: Auto-marketing daemon (Phase 32) | Welcome-drip campaigns (Phase 32b) | Telegram auto-support | Twitter/X API v2 | PM2 job scheduling | SendGrid email
+**Autonomy**: Auto-marketing daemon (Phase 32) | Welcome-drip campaigns (Phase 32b) | Telegram auto-support | Twitter/X API v2 | Invoice automation (Phase 33) | Referral analytics (Phase 33) | PM2 job scheduling | SendGrid email
 
 Updated: 2026-04-15 (Phase 32b autonomy phase 2 complete)

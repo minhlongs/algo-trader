@@ -5,6 +5,7 @@
 
 import { PaymentService } from '../../../../billing/payment-service';
 import { NowPaymentsIpnPayload } from '../../../../billing/nowpayments-service';
+import { generateInvoice } from '../../../../billing/invoice-generator';
 
 /**
  * Record successful payment (IPN status=finished)
@@ -24,6 +25,19 @@ export async function handleIpnPaymentSuccess(
     ipn.price_currency,
     ipn.invoice_id
   );
+
+  // Auto-generate and email invoice
+  const email = ipn.order_description?.match(/[\w.-]+@[\w.-]+/)?.[0] || ipn.order_id || '';
+  if (email.includes('@')) {
+    const tier = ipn.price_amount >= 499 ? 'Elite' : ipn.price_amount >= 149 ? 'Pro' : 'Starter';
+    await generateInvoice({
+      paymentId: ipn.payment_id,
+      email,
+      tier,
+      amount: ipn.price_amount,
+      currency: ipn.price_currency,
+    });
+  }
 }
 
 /**
