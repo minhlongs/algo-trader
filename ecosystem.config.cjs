@@ -52,6 +52,20 @@ module.exports = {
       merge_logs: true,
     },
     {
+      name: 'welcome-drip',
+      script: 'dist/jobs/welcome-email-drip.js',
+      cwd: __dirname,
+      exec_mode: 'fork',
+      cron_restart: '0 * * * *', // Run hourly
+      autorestart: false,
+      env_production: {
+        NODE_ENV: 'production',
+      },
+      error_file: './logs/drip-error.log',
+      out_file: './logs/drip-out.log',
+      merge_logs: true,
+    },
+    {
       name: 'algo-dashboard',
       script: 'npx',
       args: 'serve dashboard/dist -s -l 3001',

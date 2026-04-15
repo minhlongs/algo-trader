@@ -1,5 +1,80 @@
 # Project Changelog - Algo Trader
 
+## [1.6.0] - 2026-04-15
+
+### Added - a16z Solo Company Autonomy Phase 2 (Enhanced Auto-Marketing)
+
+#### LLM Content Generation (DeepSeek R1)
+- **LlmRouter integration** — Auto-marketing daemon now uses DeepSeek R1 for real blog content generation
+- **Fallback template system** — Graceful degradation to templates when LLM unavailable
+- **Content quality** — Raw LLM output validated and formatted for SEO
+
+#### Welcome Email Drip Campaign
+- **3-email sequence** — Triggered on signup activation (Day 0, Day 1, Day 3)
+- **PM2 cron job** — `welcome-drip` runs hourly (configurable, default 00:00 UTC)
+- **SendGrid integration** — Uses verified sender address from `.env`
+- **Personalization** — Subject lines + preview text per email
+
+#### Telegram Auto-Support & Commands
+- **/faq** — Real-time FAQ command with pattern matching
+- **/support** — Support request handler with auto-routing
+- **/pricing** — Dynamic pricing info retrieval
+- **Auto-reply FAQ matcher** — LLM-powered question matching for unknown queries
+- **Command persistence** — All interactions logged for analytics
+
+#### Social Auto-Posting
+- **Twitter/X API v2** — Native v2 endpoints for reliability
+- **Telegram channel distribution** — Blog posts auto-published to configured channel
+- **Post formatting** — Hashtags, links, engagement metrics
+- **Scheduled posting** — Coordinated with blog generation (07:00 UTC daily)
+
+#### PM2 Ecosystem Enhancements
+- **welcome-drip cron** — `0 * * * *` (hourly) with 1h grace period
+- **auto-marketing cron** — Unchanged from Phase 32 (07:00 UTC daily)
+- **Job monitoring** — PM2 tracks both daemons, auto-restart on crash
+- **Environment inheritance** — Both jobs use shared .env vars
+
+#### Environment Variables (.env.example)
+- **TWITTER_API_KEY** — v2 API key for X posts
+- **TWITTER_API_SECRET** — v2 API secret
+- **TWITTER_ACCESS_TOKEN** — v2 OAuth token
+- **TWITTER_ACCESS_SECRET** — v2 OAuth secret
+- **TWITTER_BEARER_TOKEN** — v2 bearer token (legacy support)
+- **TELEGRAM_CHANNEL_ID** — Target channel for auto-distribution
+
+#### Tests Added
+- Welcome drip email sequence validation (3 tests)
+- Telegram FAQ command matching (2 tests)
+- Twitter API v2 post formatting (3 tests)
+- LlmRouter fallback behavior (2 tests)
+- Total: 585 tests passing (10 new autonomy phase 2 tests)
+
+### a16z Solo Company Principles (Phase 2)
+- **Autonomous Content Distribution** — Blog → Email → Telegram → Twitter without human intervention
+- **Multi-Channel Marketing** — One content source, N distribution channels
+- **Engagement Loop** — User signup → welcome emails → support FAQs → social discovery
+- **Minimal Operational Overhead** — 2 PM2 jobs handle all autonomy functions
+
+### Technical Highlights
+- DeepSeek R1 enables competitive blog content without writer
+- 3-email drip improves retention + reduces support load (first week clarity)
+- Telegram FAQ matcher reduces support tickets via self-service answers
+- Twitter v2 API ensures reliability + feature parity with web platform
+- PM2 cron ensures 24/7 operation without additional infrastructure
+
+### Changed
+- Total tests: 575 → 585 (10 new)
+- PM2 jobs: 1 → 2 (auto-marketing + welcome-drip)
+- Email sequences: 1 (verification) → 4 (verification + 3-email drip)
+- Social channels: 0 → 2 (Telegram + Twitter)
+- Version: 1.5.0 → 1.6.0
+
+### Documentation Updates
+- Updated `docs/codebase-summary.md` — Phase 2 autonomy modules
+- Updated `docs/development-roadmap.md` — Phase 32b complete, Phase 33 planned
+- Updated `docs/project-changelog.md` — Current entry
+- Updated `.env.example` — TWITTER_* and TELEGRAM_CHANNEL_ID vars
+
 ## [1.5.0] - 2026-04-15
 
 ### Added - a16z Solo Company Autonomy Layer (Phase 32)

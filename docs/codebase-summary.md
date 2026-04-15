@@ -255,10 +255,13 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 | `btc-pattern-command.ts` | `btc:patterns` — BTC 15-min strategy launcher |
 | `cycle-end-sniper-command.ts` | `cycle:sniper` — 24h cycle-end market sniper |
 
-### src/jobs/ — Background Processing & Autonomy (Phases 18, 32)
+### src/jobs/ — Background Processing & Autonomy (Phases 18, 32, 32b)
 | File | Class | Purpose |
 |------|-------|---------|
-| `auto-marketing-daemon.ts` | `AutoMarketingDaemon` | Autonomous blog content generation (signal digests, performance reports, strategy spotlights) |
+| `auto-marketing-daemon.ts` | `AutoMarketingDaemon` | Blog content generation via LLM (DeepSeek R1) with template fallback |
+| `welcome-drip-daemon.ts` | `WelcomeDripDaemon` | 3-email sequence scheduler (Day 0/1/3) triggered on signup |
+| `telegram-auto-support-handler.ts` | `TelegramAutoSupportHandler` | /faq, /support, /pricing commands + LLM FAQ matcher |
+| `twitter-auto-poster.ts` | `TwitterAutoPoster` | X API v2 blog distribution + Telegram channel publishing |
 | `bullmq-named-queue-registry-backtest-scan-webhook.ts` | — | BullMQ queue factory for backtest/scan jobs |
 | `workers/bullmq-backtest-worker-*.ts` | — | Backtest job processor |
 | `workers/bullmq-scan-worker-*.ts` | — | Scheduled strategy scan worker |
@@ -283,9 +286,9 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 | — | Meta tags: OpenGraph, JSON-LD, sitemap.xml, robots.txt |
 
 ## Key Metrics
-- **292+ source files** (TypeScript 5.9, strict mode)
-- **575 tests** (Jest 29, 100% pass rate, +5 autonomy tests)
-- **25+ CLI commands** (Commander + new whale/BTC/sniper/Telegram commands)
+- **296+ source files** (TypeScript 5.9, strict mode)
+- **585 tests** (Jest 29, 100% pass rate, +10 autonomy phase 2 tests)
+- **27+ CLI commands** (Commander + whale/BTC/sniper/Telegram/Twitter commands)
 - **52+ trading strategies** across 5 platforms:
   - Core: RSI, SMA, MACD, Cross-Exchange, Triangular, Funding-Rate, AGI (7)
   - Polymarket: Delta-Neutral, Event-Driven, Momentum, Correlation, Microstructure (15)
@@ -307,9 +310,12 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 - **Infrastructure hardening**: Distributed nonce, gas optimizer, TimescaleDB hypertables, Grafana/Prometheus
 - **Runtime control**: Vibe controller for dynamic mode switching (1 module)
 - **Paper trading**: +$2,251 P&L across 50 trades (66.7% win rate)
-- **Autonomous marketing**: Auto-marketing daemon (Phase 32) — daily blog generation via PM2 cron (07:00 UTC)
+- **Autonomous marketing**: Auto-marketing daemon (Phase 32) — daily blog generation via DeepSeek R1 with template fallback
+- **Email drip campaigns**: Welcome-drip daemon (Phase 32b) — 3-email sequence (Day 0/1/3) on signup activation, PM2 hourly scheduler
+- **Social distribution**: Twitter/X API v2 + Telegram channel auto-posting of blog content (Phase 32b)
+- **Support automation**: Telegram FAQ matcher (Phase 32b) — /faq, /support, /pricing commands with LLM-powered responses
 - **SEO & Content**: Landing page with OpenGraph, JSON-LD, sitemap, robots.txt, status dashboard
-- **Email verification**: SendGrid integration for onboarding opt-in flow
+- **Email verification**: SendGrid integration for onboarding opt-in + drip campaign flow
 
 ## Quality Metrics
 - **0 TypeScript errors** (strict mode enforced)
@@ -344,6 +350,6 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 
 **Stealth**: Order splitting & timing jitter | Anti-detection middleware | Phantom order cloaking
 
-**Autonomy**: Auto-marketing daemon (Phase 32) | PM2 job scheduling | SendGrid email
+**Autonomy**: Auto-marketing daemon (Phase 32) | Welcome-drip campaigns (Phase 32b) | Telegram auto-support | Twitter/X API v2 | PM2 job scheduling | SendGrid email
 
-Updated: 2026-04-15
+Updated: 2026-04-15 (Phase 32b autonomy phase 2 complete)

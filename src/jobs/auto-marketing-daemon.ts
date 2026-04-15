@@ -16,6 +16,8 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
+import { generateLlmBlogPost } from './llm-content-generator.js';
+import { distributePost } from './social-auto-poster.js';
 
 const BLOG_DATA_DIR = join(process.cwd(), 'data', 'blog');
 const BLOG_POSTS_FILE = join(BLOG_DATA_DIR, 'posts.json');
@@ -170,22 +172,22 @@ export async function runAutoMarketing(): Promise<void> {
     return;
   }
 
-  // Generate daily signal digest
-  const digest = generateSignalDigest();
+  // Generate daily signal digest (LLM-enhanced with template fallback)
+  const digest = await generateLlmBlogPost('signal-digest', generateSignalDigest);
   posts.unshift(digest);
   logger.info(`[AutoMarketing] Generated signal digest: ${digest.title}`);
 
   // Generate weekly report on Mondays
   const dayOfWeek = new Date().getDay();
   if (dayOfWeek === 1) {
-    const report = generatePerformanceReport();
+    const report = await generateLlmBlogPost('performance', generatePerformanceReport);
     posts.unshift(report);
     logger.info(`[AutoMarketing] Generated weekly report: ${report.title}`);
   }
 
   // Generate strategy spotlight on Thursdays
   if (dayOfWeek === 4) {
-    const spotlight = generateStrategySpotlight();
+    const spotlight = await generateLlmBlogPost('strategy-spotlight', generateStrategySpotlight);
     posts.unshift(spotlight);
     logger.info(`[AutoMarketing] Generated strategy spotlight: ${spotlight.title}`);
   }
@@ -194,7 +196,13 @@ export async function runAutoMarketing(): Promise<void> {
   const trimmed = posts.slice(0, 50);
   savePosts(trimmed);
 
-  logger.info(`[AutoMarketing] Content generation complete. Total posts: ${trimmed.length}`);
+  // Distribute latest post to social channels (Twitter, Telegram channel)
+  const latestPost = trimmed[0];
+  if (latestPost) {
+    await distributePost(latestPost);
+  }
+
+  logger.info(`[AutoMarketing] Content generation + distribution complete. Total posts: ${trimmed.length}`);
 }
 
 /** Blog posts API handler — returns posts as JSON for landing page */

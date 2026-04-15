@@ -20,6 +20,13 @@ import {
   handlePositions,
   handlePnl,
 } from './bot-command-handlers';
+import {
+  handleFaq,
+  handleFaqDetail,
+  handleSupport,
+  handlePricing,
+  handleUnknownMessage,
+} from './auto-support-handlers';
 
 export interface TelegramConfig {
   botToken: string;
@@ -117,6 +124,15 @@ export class TelegramBotService {
     this.bot.command('balance', (ctx: Context) => handleBalance(ctx, sessions));
     this.bot.command('positions', (ctx: Context) => handlePositions(ctx, sessions));
     this.bot.command('pnl', (ctx: Context) => handlePnl(ctx, sessions));
+    this.bot.command('faq', (ctx: Context) => {
+      const text = (ctx.message as { text?: string })?.text || '';
+      return text.trim() === '/faq' ? handleFaq(ctx) : handleFaqDetail(ctx);
+    });
+    this.bot.command('support', (ctx: Context) => handleSupport(ctx));
+    this.bot.command('pricing', (ctx: Context) => handlePricing(ctx));
+
+    // Catch-all: auto-match unknown text messages to FAQ
+    this.bot.on('message:text', (ctx: Context) => handleUnknownMessage(ctx));
   }
 
   private setupMiddleware(): void {

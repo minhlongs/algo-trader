@@ -11,6 +11,7 @@ import { LicenseService } from './license-service';
 import { LicenseTier } from '../types/license';
 import { logger } from '../utils/logger';
 import { EmailService } from '../notifications/email-service';
+import { registerDripRecipient } from '../jobs/welcome-email-drip';
 
 /** TTL for pending signups: 15 minutes in ms */
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -164,6 +165,9 @@ export class OnboardingService {
     this.pending.delete(normalizedEmail);
 
     logger.info(`[Onboarding] License activated for ${normalizedEmail}: ${license.key} (${pending.tier})`);
+
+    // Register for welcome email drip sequence
+    registerDripRecipient(normalizedEmail, pending.tier);
 
     const apiInstructions = this.buildApiInstructions(license.key, pending.tier);
 
