@@ -1,7 +1,7 @@
 /**
  * Binance Spot Market Data + Order Client
  *
- * Uses ccxt (already in deps) for auth/REST/retry.
+ * Uses ccxt for exchange communication.
  * Perp/leverage is GATED behind CEX_PERP_ENABLED=true feature flag.
  *
  * Required env vars:
@@ -9,7 +9,6 @@
  *   BINANCE_API_SECRET  — REST API secret
  */
 
-// ccxt uses CJS exports; import as namespace to access named exchange classes
 import * as ccxt from 'ccxt';
 import type {
   CexCandle,
@@ -28,6 +27,52 @@ const BINANCE_RATE_PER_SEC = 20;
 // ccxt OHLCV tuple: [timestamp, open, high, low, close, volume]
 type OhlcvTuple = [number, number, number, number, number, number];
 
+/** Minimal interface for the ccxt exchange methods we use — enables injection in tests */
+export interface CcxtExchangeAdapter {
+  fetchOHLCV(symbol: string, timeframe: string, since: undefined, limit: number): Promise<OhlcvTuple[]>;
+  fetchOrderBook(symbol: string, limit: number): Promise<{
+    bids: [number, number][];
+    asks: [number, number][];
+    timestamp: number | undefined;
+  }>;
+  fetchBalance(): Promise<{
+    total: Record<string, number>;
+    free: Record<string, number>;
+    used: Record<string, number>;
+  }>;
+  createOrder(
+    symbol: string,
+    type: string,
+    side: string,
+    amount: number,
+    price: number | undefined,
+  ): Promise<{
+    id: string;
+    symbol: string;
+    side: string;
+    type: string;
+    amount: number;
+    price: number | null | undefined;
+    status: string | null | undefined;
+    timestamp: number | null | undefined;
+  }>;
+}
+
+/** Create a real ccxt Binance exchange instance */
+export function createBinanceExchange(): CcxtExchangeAdapter {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const BinanceCtor = (ccxt as any).binance as new (opts: unknown) => CcxtExchangeAdapter;
+  return new BinanceCtor({
+    apiKey: process.env.BINANCE_API_KEY ?? '',
+    secret: process.env.BINANCE_API_SECRET ?? '',
+    options: {
+      defaultType: 'spot',
+      adjustForTimeDifference: true,
+    },
+    enableRateLimit: true,
+  });
+}
+
 /** Maps ccxt OHLCV tuple to CexCandle */
 function toCexCandle(ohlcv: OhlcvTuple): CexCandle {
   return {
@@ -40,39 +85,17 @@ function toCexCandle(ohlcv: OhlcvTuple): CexCandle {
   };
 }
 
-/** Maps ccxt order-book raw response to CexOrderBook */
-function toCexOrderBook(
-  raw: { bids: [number, number][]; asks: [number, number][]; timestamp: number | undefined },
-  symbol: string,
-): CexOrderBook {
-  return {
-    symbol,
-    bids: raw.bids.map(([price, size]: [number, number]) => ({ price, size })),
-    asks: raw.asks.map(([price, size]: [number, number]) => ({ price, size })),
-    timestamp: raw.timestamp ?? Date.now(),
-  };
-}
-
 export class BinanceSpotClient {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private readonly exchange: any;
+  private readonly exchange: CcxtExchangeAdapter;
   private readonly flags: CexFeatureFlags;
 
-  constructor(flags?: CexFeatureFlags) {
+  /**
+   * @param flags  Feature flags (default: read from env)
+   * @param exchange  Injectable ccxt adapter (default: real Binance instance)
+   */
+  constructor(flags?: CexFeatureFlags, exchange?: CcxtExchangeAdapter) {
     this.flags = flags ?? loadFeatureFlags();
-
-    // ccxt.binance is the exchange class constructor
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const BinanceCtor = (ccxt as any).binance as new (opts: unknown) => unknown;
-    this.exchange = new BinanceCtor({
-      apiKey: process.env.BINANCE_API_KEY ?? '',
-      secret: process.env.BINANCE_API_SECRET ?? '',
-      options: {
-        defaultType: 'spot', // always spot; perp requires explicit flag
-        adjustForTimeDifference: true,
-      },
-      enableRateLimit: true, // ccxt built-in rate limiting
-    });
+    this.exchange = exchange ?? createBinanceExchange();
 
     // Register in global registry for observability/dashboards
     rateLimiterRegistry.getOrCreate('binance', BINANCE_RATE_PER_SEC);
@@ -87,7 +110,7 @@ export class BinanceSpotClient {
    * @param limit  number of candles (default 100)
    */
   async getCandles(symbol: string, timeframe = '1h', limit = 100): Promise<CexCandle[]> {
-    const raw: OhlcvTuple[] = await this.exchange.fetchOHLCV(symbol, timeframe, undefined, limit);
+    const raw = await this.exchange.fetchOHLCV(symbol, timeframe, undefined, limit);
     return raw.map(toCexCandle);
   }
 
@@ -97,9 +120,13 @@ export class BinanceSpotClient {
    * @param depth   number of price levels per side (default 20)
    */
   async getOrderBook(symbol: string, depth = 20): Promise<CexOrderBook> {
-    const raw: { bids: [number, number][]; asks: [number, number][]; timestamp: number | undefined } =
-      await this.exchange.fetchOrderBook(symbol, depth);
-    return toCexOrderBook(raw, symbol);
+    const raw = await this.exchange.fetchOrderBook(symbol, depth);
+    return {
+      symbol,
+      bids: raw.bids.map(([price, size]: [number, number]) => ({ price, size })),
+      asks: raw.asks.map(([price, size]: [number, number]) => ({ price, size })),
+      timestamp: raw.timestamp ?? Date.now(),
+    };
   }
 
   // ── Account (authenticated) ─────────────────────────────────────────────────
@@ -109,12 +136,7 @@ export class BinanceSpotClient {
    * Requires BINANCE_API_KEY + BINANCE_API_SECRET with read permission.
    */
   async getBalances(): Promise<CexBalance[]> {
-    const raw: {
-      total: Record<string, number>;
-      free: Record<string, number>;
-      used: Record<string, number>;
-    } = await this.exchange.fetchBalance();
-
+    const raw = await this.exchange.fetchBalance();
     const result: CexBalance[] = [];
     for (const [asset, total] of Object.entries(raw.total ?? {})) {
       if ((total ?? 0) === 0) continue;
@@ -143,16 +165,7 @@ export class BinanceSpotClient {
       );
     }
 
-    const raw: {
-      id: string;
-      symbol: string;
-      side: string;
-      type: string;
-      amount: number;
-      price: number | null | undefined;
-      status: string | null | undefined;
-      timestamp: number | null | undefined;
-    } = await this.exchange.createOrder(
+    const raw = await this.exchange.createOrder(
       req.symbol,
       req.type,
       req.side,

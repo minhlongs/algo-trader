@@ -1,22 +1,24 @@
 /**
- * DydxV4ReadonlyClient unit tests — resilientFetch mocked at module level.
+ * DydxV4ReadonlyClient unit tests — resilientFetch mocked via vi.hoisted.
  * No real network calls. Tests mapping, error handling, env var gating.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { DydxV4ReadonlyClient } from '../../../src/markets/cex/dydx-v4-readonly-client.js';
 
-// ── Mocks ─────────────────────────────────────────────────────────────────────
+// ── Hoisted mocks (must be before any imports that use the mocked modules) ────
+const { mockResilientFetch } = vi.hoisted(() => ({
+  mockResilientFetch: vi.fn<typeof import('../../../src/resilience/resilient-fetch.js').resilientFetch>(),
+}));
+
+vi.mock('../../../src/resilience/resilient-fetch.js', () => ({
+  resilientFetch: mockResilientFetch,
+}));
 
 vi.mock('../../../src/core/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-// Mock resilientFetch directly — avoids real HTTP and bypasses retry logic
-const mockResilientFetch = vi.fn<typeof import('../../../src/resilience/resilient-fetch.js').resilientFetch>();
-vi.mock('../../../src/resilience/resilient-fetch.js', () => ({
-  resilientFetch: mockResilientFetch,
-}));
+import { DydxV4ReadonlyClient } from '../../../src/markets/cex/dydx-v4-readonly-client.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -179,7 +181,7 @@ describe('DydxV4ReadonlyClient', () => {
 
   describe('getBalances', () => {
     it('throws when DYDX_ADDRESS is not set', async () => {
-      const client = makeClient(); // no address set
+      const client = makeClient(); // no address
       await expect(client.getBalances()).rejects.toThrow(
         'DYDX_ADDRESS env var is required',
       );
@@ -251,7 +253,6 @@ describe('DydxV4ReadonlyClient', () => {
   // ── getName ─────────────────────────────────────────────────────────────────
 
   it('getName returns dydx-v4-readonly', () => {
-    const client = makeClient();
-    expect(client.getName()).toBe('dydx-v4-readonly');
+    expect(makeClient().getName()).toBe('dydx-v4-readonly');
   });
 });
