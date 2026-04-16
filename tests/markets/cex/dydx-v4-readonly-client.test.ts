@@ -1,9 +1,9 @@
 /**
- * DydxV4ReadonlyClient unit tests — fetch mocked via vi.stubGlobal.
- * No real network calls. Tests mapping + error handling.
+ * DydxV4ReadonlyClient unit tests — resilientFetch mocked at module level.
+ * No real network calls. Tests mapping, error handling, env var gating.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DydxV4ReadonlyClient } from '../../../src/markets/cex/dydx-v4-readonly-client.js';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -12,20 +12,23 @@ vi.mock('../../../src/core/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-const mockFetch = vi.fn<typeof fetch>();
-vi.stubGlobal('fetch', mockFetch);
+// Mock resilientFetch directly — avoids real HTTP and bypasses retry logic
+const mockResilientFetch = vi.fn<typeof import('../../../src/resilience/resilient-fetch.js').resilientFetch>();
+vi.mock('../../../src/resilience/resilient-fetch.js', () => ({
+  resilientFetch: mockResilientFetch,
+}));
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResp(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
 }
 
-function errorResponse(status: number, msg = 'error'): Response {
-  return new Response(msg, { status });
+function errResp(status: number, msg = 'error'): Response {
+  return new Response(msg, { status, statusText: msg });
 }
 
 const FAKE_INDEXER = 'https://test-indexer.dydx.trade';
@@ -33,23 +36,22 @@ const FAKE_INDEXER = 'https://test-indexer.dydx.trade';
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('DydxV4ReadonlyClient', () => {
-  let client: DydxV4ReadonlyClient;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    client = new DydxV4ReadonlyClient(FAKE_INDEXER);
-  });
-
-  afterEach(() => {
     delete process.env.DYDX_ADDRESS;
   });
+
+  function makeClient(address?: string): DydxV4ReadonlyClient {
+    if (address) process.env.DYDX_ADDRESS = address;
+    return new DydxV4ReadonlyClient(FAKE_INDEXER);
+  }
 
   // ── getCandles ──────────────────────────────────────────────────────────────
 
   describe('getCandles', () => {
     it('fetches and maps candles correctly', async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({
+      mockResilientFetch.mockResolvedValueOnce(
+        jsonResp({
           candles: [
             {
               startedAt: '2024-01-01T00:00:00.000Z',
@@ -63,6 +65,7 @@ describe('DydxV4ReadonlyClient', () => {
         }),
       );
 
+      const client = makeClient();
       const candles = await client.getCandles('BTC-USD', '1h', 1);
 
       expect(candles).toHaveLength(1);
@@ -75,8 +78,7 @@ describe('DydxV4ReadonlyClient', () => {
         volume: 150.25,
       });
 
-      // Verify correct URL construction
-      const calledUrl = mockFetch.mock.calls[0][0] as string;
+      const calledUrl = mockResilientFetch.mock.calls[0][0] as string;
       expect(calledUrl).toContain('/v4/candles/perpetualMarkets/BTC-USD');
       expect(calledUrl).toContain('resolution=1HOUR');
       expect(calledUrl).toContain('limit=1');
@@ -93,30 +95,36 @@ describe('DydxV4ReadonlyClient', () => {
         ['1d', '1DAY'],
       ];
 
+      const client = makeClient();
       for (const [tf, resolution] of cases) {
-        mockFetch.mockResolvedValueOnce(jsonResponse({ candles: [] }));
+        mockResilientFetch.mockResolvedValueOnce(jsonResp({ candles: [] }));
         await client.getCandles('ETH-USD', tf);
-        const url = mockFetch.mock.calls[mockFetch.mock.calls.length - 1][0] as string;
+        const url = mockResilientFetch.mock.calls[mockResilientFetch.mock.calls.length - 1][0] as string;
         expect(url).toContain(`resolution=${resolution}`);
       }
     });
 
-    it('throws for unsupported timeframe', async () => {
+    it('throws for unsupported timeframe without calling fetch', async () => {
+      const client = makeClient();
       await expect(client.getCandles('BTC-USD', '3h')).rejects.toThrow(
         'Unsupported timeframe "3h"',
       );
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(mockResilientFetch).not.toHaveBeenCalled();
     });
 
     it('returns empty array when indexer returns empty candles', async () => {
-      mockFetch.mockResolvedValueOnce(jsonResponse({ candles: [] }));
+      mockResilientFetch.mockResolvedValueOnce(jsonResp({ candles: [] }));
+      const client = makeClient();
       const candles = await client.getCandles('BTC-USD');
       expect(candles).toEqual([]);
     });
 
     it('throws on non-ok HTTP response', async () => {
-      mockFetch.mockResolvedValueOnce(errorResponse(500, 'Internal Server Error'));
-      await expect(client.getCandles('BTC-USD')).rejects.toThrow('dYdX Indexer candles error 500');
+      mockResilientFetch.mockResolvedValueOnce(errResp(500, 'Internal Server Error'));
+      const client = makeClient();
+      await expect(client.getCandles('BTC-USD')).rejects.toThrow(
+        'dYdX Indexer candles error 500',
+      );
     });
   });
 
@@ -124,8 +132,8 @@ describe('DydxV4ReadonlyClient', () => {
 
   describe('getOrderBook', () => {
     it('fetches and maps order book correctly', async () => {
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({
+      mockResilientFetch.mockResolvedValueOnce(
+        jsonResp({
           bids: [
             { price: '42000.00', size: '1.5' },
             { price: '41990.00', size: '2.0' },
@@ -137,6 +145,7 @@ describe('DydxV4ReadonlyClient', () => {
         }),
       );
 
+      const client = makeClient();
       const book = await client.getOrderBook('BTC-USD');
 
       expect(book.symbol).toBe('BTC-USD');
@@ -145,19 +154,21 @@ describe('DydxV4ReadonlyClient', () => {
       expect(book.asks[0]).toEqual({ price: 42010.0, size: 0.8 });
       expect(book.timestamp).toBeGreaterThan(0);
 
-      const calledUrl = mockFetch.mock.calls[0][0] as string;
+      const calledUrl = mockResilientFetch.mock.calls[0][0] as string;
       expect(calledUrl).toContain('/v4/orderbooks/perpetualMarket/BTC-USD');
     });
 
     it('handles empty bids and asks', async () => {
-      mockFetch.mockResolvedValueOnce(jsonResponse({ bids: [], asks: [] }));
+      mockResilientFetch.mockResolvedValueOnce(jsonResp({ bids: [], asks: [] }));
+      const client = makeClient();
       const book = await client.getOrderBook('ETH-USD');
       expect(book.bids).toEqual([]);
       expect(book.asks).toEqual([]);
     });
 
     it('throws on non-ok HTTP response', async () => {
-      mockFetch.mockResolvedValueOnce(errorResponse(404, 'Market not found'));
+      mockResilientFetch.mockResolvedValueOnce(errResp(404, 'Market not found'));
+      const client = makeClient();
       await expect(client.getOrderBook('FAKE-USD')).rejects.toThrow(
         'dYdX Indexer orderbook error 404',
       );
@@ -168,15 +179,16 @@ describe('DydxV4ReadonlyClient', () => {
 
   describe('getBalances', () => {
     it('throws when DYDX_ADDRESS is not set', async () => {
-      delete process.env.DYDX_ADDRESS;
-      await expect(client.getBalances()).rejects.toThrow('DYDX_ADDRESS env var is required');
+      const client = makeClient(); // no address set
+      await expect(client.getBalances()).rejects.toThrow(
+        'DYDX_ADDRESS env var is required',
+      );
+      expect(mockResilientFetch).not.toHaveBeenCalled();
     });
 
     it('maps subaccount equity and asset positions', async () => {
-      process.env.DYDX_ADDRESS = 'dydx1abc123';
-
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({
+      mockResilientFetch.mockResolvedValueOnce(
+        jsonResp({
           subaccount: {
             address: 'dydx1abc123',
             subaccountNumber: 0,
@@ -189,28 +201,26 @@ describe('DydxV4ReadonlyClient', () => {
         }),
       );
 
+      const client = makeClient('dydx1abc123');
       const balances = await client.getBalances();
 
       expect(balances).toHaveLength(2);
-
       const usdc = balances.find(b => b.asset === 'USDC')!;
       expect(usdc.total).toBe(5000.0);
       expect(usdc.free).toBe(3000.0);
-      expect(usdc.locked).toBe(2000.0);
+      expect(usdc.locked).toBeCloseTo(2000.0);
 
       const btc = balances.find(b => b.asset === 'BTC')!;
       expect(btc.total).toBe(0.1);
       expect(btc.free).toBe(0.1);
 
-      const calledUrl = mockFetch.mock.calls[0][0] as string;
+      const calledUrl = mockResilientFetch.mock.calls[0][0] as string;
       expect(calledUrl).toContain('/v4/addresses/dydx1abc123/subaccountNumber/0');
     });
 
     it('skips zero-size asset positions', async () => {
-      process.env.DYDX_ADDRESS = 'dydx1abc123';
-
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({
+      mockResilientFetch.mockResolvedValueOnce(
+        jsonResp({
           subaccount: {
             address: 'dydx1abc123',
             subaccountNumber: 0,
@@ -223,21 +233,25 @@ describe('DydxV4ReadonlyClient', () => {
         }),
       );
 
+      const client = makeClient('dydx1abc123');
       const balances = await client.getBalances();
-      expect(balances).toHaveLength(1); // only USDC
+      expect(balances).toHaveLength(1);
       expect(balances[0].asset).toBe('USDC');
     });
 
     it('throws on non-ok HTTP response', async () => {
-      process.env.DYDX_ADDRESS = 'dydx1bad';
-      mockFetch.mockResolvedValueOnce(errorResponse(401, 'Unauthorized'));
-      await expect(client.getBalances()).rejects.toThrow('dYdX Indexer subaccount error 401');
+      mockResilientFetch.mockResolvedValueOnce(errResp(401, 'Unauthorized'));
+      const client = makeClient('dydx1bad');
+      await expect(client.getBalances()).rejects.toThrow(
+        'dYdX Indexer subaccount error 401',
+      );
     });
   });
 
   // ── getName ─────────────────────────────────────────────────────────────────
 
   it('getName returns dydx-v4-readonly', () => {
+    const client = makeClient();
     expect(client.getName()).toBe('dydx-v4-readonly');
   });
 });

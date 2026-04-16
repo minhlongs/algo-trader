@@ -1,6 +1,6 @@
 /**
  * BinanceSpotClient unit tests — ccxt mocked via vi.mock.
- * No real network calls. Tests our mapping and flag logic.
+ * No real network calls. Tests our adapter mapping and flag logic.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -12,7 +12,9 @@ vi.mock('../../../src/core/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-// ── ccxt mock — prevent real HTTP; test our adapter mapping ──────────────────
+// ── ccxt mock ─────────────────────────────────────────────────────────────────
+// The source uses `import * as ccxt` then `(ccxt as any).binance`
+// So the module mock must expose `binance` as a named export on the namespace object.
 
 const mockExchangeInstance = {
   fetchOHLCV: vi.fn(),
@@ -22,8 +24,10 @@ const mockExchangeInstance = {
 };
 
 vi.mock('ccxt', () => {
-  const binance = vi.fn(() => mockExchangeInstance);
-  return { binance };
+  // Return an object with `binance` as a constructor — matches `(ccxt as any).binance`
+  return {
+    binance: vi.fn(() => mockExchangeInstance),
+  };
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
