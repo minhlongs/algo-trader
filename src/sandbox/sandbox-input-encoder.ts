@@ -15,7 +15,7 @@
  * Validation via Zod ensures no NaN/Inf values leak into the sandbox.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ── Input schema ─────────────────────────────────────────────────────────────
 

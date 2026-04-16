@@ -16,7 +16,7 @@
  * via size channel.
  */
 
-import { z } from 'zod';
+import * as z from 'zod';
 
 // ── Output schema ─────────────────────────────────────────────────────────────
 
