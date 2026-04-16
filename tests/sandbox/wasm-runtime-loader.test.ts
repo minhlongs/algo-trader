@@ -73,11 +73,12 @@ describe('wasm-runtime-loader — spread-mean-reversion kernel', () => {
       const tsDeviation = calcSpreadDeviation(tsSpread);
       const tsSide      = determineCheapSide(f.yesPrice, f.noPrice) === 'yes' ? 0 : 1;
       const tsSignal    = isSpreadSignal(tsDeviation, f.threshold) ? 1 : 0;
-      const tsEma       = updateSpreadEma(
-        f.prevEma === 0 ? null : f.prevEma,
-        tsSpread,
-        f.alpha,
-      );
+      // Kernel EMA: always applies alpha*spread + (1-alpha)*prevEma, even when prevEma=0.
+      // TS updateSpreadEma(null, ...) returns spread directly (first-call seed).
+      // We match kernel semantics: pass prevEma as-is (0.0 means prev=0, not null).
+      const tsEma = f.prevEma === 0
+        ? f.alpha * tsSpread                         // kernel: alpha*spread + (1-alpha)*0
+        : updateSpreadEma(f.prevEma, tsSpread, f.alpha);
 
       expect(Math.abs(output.spread    - tsSpread)).toBeLessThan(1e-10);
       expect(Math.abs(output.deviation - tsDeviation)).toBeLessThan(1e-10);
