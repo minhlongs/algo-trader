@@ -12,13 +12,9 @@ export interface MatchTarget {
   body: string;
 }
 
-export interface MatchResult {
-  matched: true;
-  pattern: DlpPattern;
-  in: DlpScope;
-} | {
-  matched: false;
-};
+export type MatchResult =
+  | { matched: true; pattern: DlpPattern; in: DlpScope }
+  | { matched: false };
 
 /** Test a single text value against a pattern definition. */
 function testText(text: string, p: DlpPattern): boolean {
