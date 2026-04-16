@@ -28,7 +28,7 @@ export interface SubscriberDailyPnL {
   winRate: number;
 }
 
-interface TradeStatsRow {
+interface TradeStatsRow extends Record<string, string | number | boolean | null | undefined> {
   trade_count: string;
   win_count: string;
   loss_count: string;
@@ -41,7 +41,7 @@ interface TradeStatsRow {
   blocked_dlp: string;
 }
 
-interface DailyRow {
+interface DailyRow extends Record<string, string | number | boolean | null | undefined> {
   day: string;
   net_pnl: string;
   trade_count: string;
