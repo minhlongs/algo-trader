@@ -4,10 +4,14 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import type { AuthState } from '../../stores/auth-store';
+
+const mockAuthState = (overrides: Partial<AuthState> = {}): AuthState =>
+  ({ tenantId: 'sub-equity-001', ...overrides }) as AuthState;
 
 vi.mock('../../stores/auth-store', () => ({
-  useAuthStore: vi.fn((selector: (s: { tenantId: string | null }) => unknown) =>
-    selector({ tenantId: 'sub-equity-001' })
+  useAuthStore: vi.fn((selector: (s: AuthState) => unknown) =>
+    selector(mockAuthState())
   ),
 }));
 
@@ -88,7 +92,7 @@ describe('SubscriberEquityPage', () => {
   it('shows no-identity message when tenantId is null', async () => {
     const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
-      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
+      (selector: (s: AuthState) => unknown) => selector(mockAuthState({ tenantId: null }))
     );
     mockHook.mockReturnValue(hookResult({ equity: null }));
     render(<SubscriberEquityPage />);

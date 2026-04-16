@@ -5,11 +5,14 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import type { AuthState } from '../../stores/auth-store';
 
-// Mock auth store — return a real tenantId
+const mockAuthState = (overrides: Partial<AuthState> = {}): AuthState =>
+  ({ tenantId: 'sub-test-001', ...overrides }) as AuthState;
+
 vi.mock('../../stores/auth-store', () => ({
-  useAuthStore: vi.fn((selector: (s: { tenantId: string | null }) => unknown) =>
-    selector({ tenantId: 'sub-test-001' })
+  useAuthStore: vi.fn((selector: (s: AuthState) => unknown) =>
+    selector(mockAuthState())
   ),
 }));
 
@@ -93,10 +96,10 @@ describe('SubscriberOverviewPage', () => {
     expect(screen.getByText('Network failure')).toBeTruthy();
   });
 
-  it('shows no-identity message when tenantId is null', () => {
+  it('shows no-identity message when tenantId is null', async () => {
     const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
-      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
+      (selector: (s: AuthState) => unknown) => selector(mockAuthState({ tenantId: null }))
     );
     mockHook.mockReturnValue(hookResult({ summary: null }));
     render(<SubscriberOverviewPage />);
