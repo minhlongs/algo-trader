@@ -15,11 +15,11 @@ export interface SubscriberActivityMetrics {
   lastActivityMs: number | null;
 }
 
-interface SignalCountRow {
+interface SignalCountRow extends Record<string, string | number | boolean | null | undefined> {
   active_signals: string;
 }
 
-interface TradeCountRow {
+interface TradeCountRow extends Record<string, string | number | boolean | null | undefined> {
   fills: string;
   blocked: string;
   pending: string;

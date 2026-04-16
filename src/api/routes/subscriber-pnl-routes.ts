@@ -46,7 +46,7 @@ function parseRange(req: Request): { fromMs: number; toMs: number } {
 
 /** GET /subscriber/:id/pnl */
 subscriberPnlRouter.get('/:id/pnl', async (req: Request, res: Response): Promise<void> => {
-  const subscriberId = req.params.id;
+  const subscriberId = String(req.params.id ?? '');
   try {
     const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
     assertTenantAccess(subscriberId, tokenSubscriberId, isAdmin);
@@ -65,7 +65,7 @@ subscriberPnlRouter.get('/:id/pnl', async (req: Request, res: Response): Promise
 
 /** GET /subscriber/:id/equity */
 subscriberPnlRouter.get('/:id/equity', async (req: Request, res: Response): Promise<void> => {
-  const subscriberId = req.params.id;
+  const subscriberId = String(req.params.id ?? '');
   try {
     const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
     assertTenantAccess(subscriberId, tokenSubscriberId, isAdmin);
@@ -87,7 +87,7 @@ subscriberPnlRouter.get('/:id/equity', async (req: Request, res: Response): Prom
 
 /** GET /subscriber/:id/activity */
 subscriberPnlRouter.get('/:id/activity', async (req: Request, res: Response): Promise<void> => {
-  const subscriberId = req.params.id;
+  const subscriberId = String(req.params.id ?? '');
   try {
     const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
     assertTenantAccess(subscriberId, tokenSubscriberId, isAdmin);
@@ -106,7 +106,7 @@ subscriberPnlRouter.get('/:id/activity', async (req: Request, res: Response): Pr
 
 /** GET /subscriber/:id/trades — daily P&L breakdown */
 subscriberPnlRouter.get('/:id/trades', async (req: Request, res: Response): Promise<void> => {
-  const subscriberId = req.params.id;
+  const subscriberId = String(req.params.id ?? '');
   try {
     const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
     assertTenantAccess(subscriberId, tokenSubscriberId, isAdmin);

@@ -27,7 +27,7 @@ export interface SubscriberExecResult {
   executedAtMs: number;
 }
 
-interface TradeInsertRow {
+interface TradeInsertRow extends Record<string, string | number | boolean | null | undefined> {
   id: string;
 }
 

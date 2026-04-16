@@ -21,7 +21,7 @@ export interface EquityCurveResult {
   curve: EquityCurvePoint[];
 }
 
-interface DailyRow {
+interface DailyRow extends Record<string, string | number | boolean | null | undefined> {
   day: string;
   net_pnl: string;
 }
