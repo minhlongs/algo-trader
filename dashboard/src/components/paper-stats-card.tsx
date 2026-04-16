@@ -1,6 +1,7 @@
 /**
- * Paper-stats card — renders 4 headline numbers from `/paper-stats.json`.
- * Phase 02 uses static snapshot; Phase 03 swaps source for live D1 query.
+ * Paper-stats card — renders 4 headline numbers.
+ * Prefers live `/api/stats` (D1 edge mirror); falls back to static
+ * `/paper-stats.json` if the Pages Function is unavailable.
  * Polar-safe copy: avoids all flagged vocabulary.
  */
 import { useEffect, useState } from 'react';
@@ -25,6 +26,21 @@ const PLACEHOLDER: PaperStats = {
   note: '',
 };
 
+async function loadStats(): Promise<PaperStats> {
+  try {
+    const live = await fetch('/api/stats', { cache: 'no-cache' });
+    if (live.ok) {
+      const data = (await live.json()) as PaperStats;
+      if (data && typeof data.trades === 'number' && data.trades > 0) return data;
+    }
+  } catch {
+    // fall through to static
+  }
+  const res = await fetch('/paper-stats.json', { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as PaperStats;
+}
+
 function formatNumber(n: number, digits = 0): string {
   if (!Number.isFinite(n)) return '—';
   return n.toLocaleString('en-US', {
@@ -39,20 +55,10 @@ export function PaperStatsCard() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/paper-stats.json', { cache: 'no-cache' })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data: PaperStats) => {
-        if (!cancelled) setStats(data);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      });
-    return () => {
-      cancelled = true;
-    };
+    loadStats()
+      .then((data) => { if (!cancelled) setStats(data); })
+      .catch((err: Error) => { if (!cancelled) setError(err.message); });
+    return () => { cancelled = true; };
   }, []);
 
   const items: Array<{ label: string; value: string }> = [

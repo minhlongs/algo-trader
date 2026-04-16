@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Nightly sync of paper_trades_v3 (M1 Max SQLite) to D1 edge mirror.
+  Install: launchctl load ~/algo-trader/config/launchd/sync-d1.plist
+  Uninstall: launchctl unload ~/algo-trader/config/launchd/sync-d1.plist
+  Runs daily at 02:00 local time.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>cc.cashclaw.algo-trader.sync-d1</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>cd $HOME/algo-trader &amp;&amp; source $HOME/.zshrc 2&gt;/dev/null; npx tsx scripts/sync-sqlite-to-d1.ts</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>2</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/algo-trader-sync-d1.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/algo-trader-sync-d1.err</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>
