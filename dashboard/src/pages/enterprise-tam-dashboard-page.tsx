@@ -6,8 +6,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth-store';
 import { ENTERPRISE_PLANS, type EnterprisePlanKey } from '../lib/enterprise-plans';
 
 interface EnterpriseInquiry {
@@ -90,13 +88,6 @@ function InquiryRow({
 }
 
 export function EnterpriseTamDashboardPage() {
-  const role = useAuthStore((state) => state.role);
-
-  // Guard: only admin may access this internal page
-  if (role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const [inquiries, setInquiries] = useState<EnterpriseInquiry[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [errorMsg, setErrorMsg] = useState('');
