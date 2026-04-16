@@ -66,27 +66,22 @@ interface WeekStats {
 
 function fetchWeekStats(since: Date): WeekStats {
   const sinceIso = since.toISOString();
+  const T = "paper_trades_v3";
 
   const totalTradesRaw = querySqlite(
-    `SELECT COUNT(*) FROM trades WHERE created_at >= '${sinceIso}';`
+    `SELECT COUNT(*) FROM ${T} WHERE timestamp >= '${sinceIso}';`
   );
   const resolvedRaw = querySqlite(
-    `SELECT COUNT(*) FROM trades WHERE resolved_at >= '${sinceIso}' AND status='resolved';`
+    `SELECT COUNT(*) FROM ${T} WHERE timestamp >= '${sinceIso}' AND resolved=1;`
   );
   const winsRaw = querySqlite(
-    `SELECT COUNT(*) FROM trades WHERE resolved_at >= '${sinceIso}' AND outcome='win';`
+    `SELECT COUNT(*) FROM ${T} WHERE timestamp >= '${sinceIso}' AND resolved=1 AND correct=1;`
   );
   const lossesRaw = querySqlite(
-    `SELECT COUNT(*) FROM trades WHERE resolved_at >= '${sinceIso}' AND outcome='loss';`
-  );
-  const weekPnlRaw = querySqlite(
-    `SELECT ROUND(SUM(pnl),2) FROM trades WHERE resolved_at >= '${sinceIso}';`
-  );
-  const totalPnlRaw = querySqlite(
-    `SELECT ROUND(SUM(pnl),2) FROM trades WHERE status='resolved';`
+    `SELECT COUNT(*) FROM ${T} WHERE timestamp >= '${sinceIso}' AND resolved=1 AND correct=0;`
   );
   const avgEdgeRaw = querySqlite(
-    `SELECT ROUND(AVG(edge),2) FROM trades WHERE created_at >= '${sinceIso}';`
+    `SELECT ROUND(AVG(edge)*100,2) FROM ${T} WHERE timestamp >= '${sinceIso}';`
   );
 
   const totalTrades = parseInt(totalTradesRaw) || 0;
@@ -96,7 +91,7 @@ function fetchWeekStats(since: Date): WeekStats {
   const winRate =
     resolvedTrades > 0
       ? `${((wins / resolvedTrades) * 100).toFixed(1)}%`
-      : "n/a";
+      : "n/a (paper pre-resolution)";
 
   return {
     totalTrades,
@@ -104,9 +99,9 @@ function fetchWeekStats(since: Date): WeekStats {
     wins,
     losses,
     winRate,
-    totalPnl: totalPnlRaw || "0",
-    weekPnl: weekPnlRaw || "0",
-    avgEdge: avgEdgeRaw || "n/a",
+    totalPnl: "n/a (paper)",
+    weekPnl: "n/a (paper)",
+    avgEdge: avgEdgeRaw ? `${avgEdgeRaw}%` : "n/a",
   };
 }
 
@@ -161,8 +156,8 @@ period: ${formatDate(since)} → ${formatDate(now)}
 | Resolved this week | ${stats.resolvedTrades} |
 | Wins / Losses | ${stats.wins} / ${stats.losses} |
 | Win rate (resolved) | ${stats.winRate} |
-| Week P&L | \$${stats.weekPnl} |
-| Cumulative P&L | \$${stats.totalPnl} |
+| Week P&L | ${stats.weekPnl} |
+| Cumulative P&L | ${stats.totalPnl} |
 | Avg edge (new positions) | ${stats.avgEdge} |
 
 _Live dashboard: [quant.cashclaw.cc](https://quant.cashclaw.cc) · Methodology: [manifesto](/docs/manifesto.md)_
