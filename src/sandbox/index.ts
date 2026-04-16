@@ -6,6 +6,7 @@
  */
 
 export { createSandboxRunner } from './wasm-runtime-loader.js';
+export { SPREAD_MEAN_REVERSION_WASM } from './kernels/spread-mean-reversion-wasm-bytes.js';
 export type { SandboxRunner, SandboxCallParams, SandboxCallResult, KernelId, RuntimeLoaderOptions } from './wasm-runtime-loader.js';
 
 export { createLimitedMemory, bytesToPages, maxBytesForPages } from './wasm-memory-limiter.js';
