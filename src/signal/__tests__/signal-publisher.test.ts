@@ -28,14 +28,16 @@ function makeStore(subs: SignalSubscription[] = []): SignalStore {
   };
 }
 
+// Use future-safe timestamps so expiresAt is always in the future
+const BASE_TS = Date.now() - 1000; // 1s ago (still within TTL bucket)
 const BASE_INPUT = {
   market: 'BTC-USD',
   side: 'BUY' as const,
   size: 0.5,
   confidence: 0.8,
   strategy: 'momentum',
-  ttlSec: 300,
-  ts: 1_700_000_000_000,
+  ttlSec: 3600, // 1h TTL so expiresAt is always in the future
+  ts: BASE_TS,
 };
 
 describe('SignalPublisher.publish', () => {
@@ -62,7 +64,7 @@ describe('SignalPublisher.publish', () => {
     const publisher = new SignalPublisher(store);
 
     await publisher.publish(BASE_INPUT);
-    const dup = await publisher.publish({ ...BASE_INPUT, ts: BASE_INPUT.ts! + 1000 });
+    const dup = await publisher.publish({ ...BASE_INPUT, ts: BASE_TS + 1000 });
 
     expect(dup).toBeNull();
     expect(store.saveSignal).toHaveBeenCalledOnce(); // only first persisted
@@ -71,10 +73,11 @@ describe('SignalPublisher.publish', () => {
   it('assigns correct expiresAt based on ttlSec', async () => {
     const store = makeStore();
     const publisher = new SignalPublisher(store);
-    const ts = 1_700_000_000_000;
+    const ts = Date.now();
+    const ttlSec = 3600;
 
-    const result = await publisher.publish({ ...BASE_INPUT, ts });
-    expect(result?.expiresAt).toBe(ts + 300 * 1000);
+    const result = await publisher.publish({ ...BASE_INPUT, ts, ttlSec });
+    expect(result?.expiresAt).toBe(ts + ttlSec * 1000);
   });
 
   it('returns null when DB save throws', async () => {
