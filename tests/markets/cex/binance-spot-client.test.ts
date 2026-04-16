@@ -1,66 +1,54 @@
 /**
- * BinanceSpotClient unit tests — HTTP mocked via vi.stubGlobal fetch.
- * No real network calls. ccxt internals are exercised through the class.
+ * BinanceSpotClient unit tests — ccxt mocked via vi.mock.
+ * No real network calls. Tests our mapping and flag logic.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BinanceSpotClient } from '../../../src/markets/cex/binance-spot-client.js';
 
 // ── Logger mock ───────────────────────────────────────────────────────────────
+
 vi.mock('../../../src/core/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-// ── ccxt mock — avoids real HTTP/auth, tests our mapping logic ────────────────
+// ── ccxt mock — prevent real HTTP; test our adapter mapping ──────────────────
+
+const mockExchangeInstance = {
+  fetchOHLCV: vi.fn(),
+  fetchOrderBook: vi.fn(),
+  fetchBalance: vi.fn(),
+  createOrder: vi.fn(),
+};
+
 vi.mock('ccxt', () => {
-  const MockBinance = vi.fn().mockImplementation(() => ({
-    fetchOHLCV: vi.fn(),
-    fetchOrderBook: vi.fn(),
-    fetchBalance: vi.fn(),
-    createOrder: vi.fn(),
-  }));
-  return { default: { binance: MockBinance } };
+  const binance = vi.fn(() => mockExchangeInstance);
+  return { binance };
 });
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function makeCcxtOHLCV(ts = 1700000000000): ccxt.OHLCV {
-  return [ts, 30000, 31000, 29000, 30500, 100] as ccxt.OHLCV;
-}
-
-// Need ccxt type for OHLCV
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import type ccxt from 'ccxt';
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('BinanceSpotClient', () => {
   let client: BinanceSpotClient;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockExchange: any;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     client = new BinanceSpotClient({ perpEnabled: false });
-    // Access the mocked exchange instance
-    const ccxtModule = await import('ccxt');
-    const MockBinance = (ccxtModule.default as unknown as { binance: ReturnType<typeof vi.fn> }).binance;
-    mockExchange = MockBinance.mock.results[MockBinance.mock.results.length - 1].value;
   });
 
   // ── getCandles ──────────────────────────────────────────────────────────────
 
   describe('getCandles', () => {
     it('fetches candles and maps to CexCandle shape', async () => {
-      const rawOhlcv: ccxt.OHLCV[] = [
-        makeCcxtOHLCV(1700000000000),
-        makeCcxtOHLCV(1700003600000),
+      const rawOhlcv = [
+        [1700000000000, 30000, 31000, 29000, 30500, 100],
+        [1700003600000, 30500, 32000, 30000, 31500, 200],
       ];
-      mockExchange.fetchOHLCV.mockResolvedValueOnce(rawOhlcv);
+      mockExchangeInstance.fetchOHLCV.mockResolvedValueOnce(rawOhlcv);
 
       const candles = await client.getCandles('BTC/USDT', '1h', 2);
 
-      expect(mockExchange.fetchOHLCV).toHaveBeenCalledWith('BTC/USDT', '1h', undefined, 2);
+      expect(mockExchangeInstance.fetchOHLCV).toHaveBeenCalledWith('BTC/USDT', '1h', undefined, 2);
       expect(candles).toHaveLength(2);
       expect(candles[0]).toMatchObject({
         timestamp: 1700000000000,
@@ -70,16 +58,23 @@ describe('BinanceSpotClient', () => {
         close: 30500,
         volume: 100,
       });
+      expect(candles[1].close).toBe(31500);
     });
 
     it('returns empty array when exchange returns empty', async () => {
-      mockExchange.fetchOHLCV.mockResolvedValueOnce([]);
+      mockExchangeInstance.fetchOHLCV.mockResolvedValueOnce([]);
       const candles = await client.getCandles('ETH/USDT');
       expect(candles).toEqual([]);
     });
 
+    it('uses default timeframe 1h and limit 100', async () => {
+      mockExchangeInstance.fetchOHLCV.mockResolvedValueOnce([]);
+      await client.getCandles('BTC/USDT');
+      expect(mockExchangeInstance.fetchOHLCV).toHaveBeenCalledWith('BTC/USDT', '1h', undefined, 100);
+    });
+
     it('propagates exchange error', async () => {
-      mockExchange.fetchOHLCV.mockRejectedValueOnce(new Error('Network error'));
+      mockExchangeInstance.fetchOHLCV.mockRejectedValueOnce(new Error('Network error'));
       await expect(client.getCandles('BTC/USDT')).rejects.toThrow('Network error');
     });
   });
@@ -87,8 +82,8 @@ describe('BinanceSpotClient', () => {
   // ── getOrderBook ────────────────────────────────────────────────────────────
 
   describe('getOrderBook', () => {
-    it('maps order book bids and asks correctly', async () => {
-      mockExchange.fetchOrderBook.mockResolvedValueOnce({
+    it('maps bids and asks to CexBookLevel', async () => {
+      mockExchangeInstance.fetchOrderBook.mockResolvedValueOnce({
         bids: [[30000, 1.5], [29900, 2.0]],
         asks: [[30100, 0.8], [30200, 1.2]],
         timestamp: 1700000000000,
@@ -96,7 +91,7 @@ describe('BinanceSpotClient', () => {
 
       const book = await client.getOrderBook('BTC/USDT', 20);
 
-      expect(mockExchange.fetchOrderBook).toHaveBeenCalledWith('BTC/USDT', 20);
+      expect(mockExchangeInstance.fetchOrderBook).toHaveBeenCalledWith('BTC/USDT', 20);
       expect(book.symbol).toBe('BTC/USDT');
       expect(book.bids).toHaveLength(2);
       expect(book.bids[0]).toEqual({ price: 30000, size: 1.5 });
@@ -104,15 +99,20 @@ describe('BinanceSpotClient', () => {
       expect(book.timestamp).toBe(1700000000000);
     });
 
-    it('falls back to Date.now() when exchange timestamp is null', async () => {
+    it('falls back to Date.now() when exchange timestamp is undefined', async () => {
       const before = Date.now();
-      mockExchange.fetchOrderBook.mockResolvedValueOnce({
+      mockExchangeInstance.fetchOrderBook.mockResolvedValueOnce({
         bids: [],
         asks: [],
-        timestamp: null,
+        timestamp: undefined,
       });
       const book = await client.getOrderBook('ETH/USDT');
       expect(book.timestamp).toBeGreaterThanOrEqual(before);
+    });
+
+    it('propagates exchange error', async () => {
+      mockExchangeInstance.fetchOrderBook.mockRejectedValueOnce(new Error('timeout'));
+      await expect(client.getOrderBook('BTC/USDT')).rejects.toThrow('timeout');
     });
   });
 
@@ -120,7 +120,7 @@ describe('BinanceSpotClient', () => {
 
   describe('getBalances', () => {
     it('filters zero-balance assets and maps correctly', async () => {
-      mockExchange.fetchBalance.mockResolvedValueOnce({
+      mockExchangeInstance.fetchBalance.mockResolvedValueOnce({
         total: { BTC: 0.5, ETH: 0, USDT: 1000 },
         free: { BTC: 0.5, ETH: 0, USDT: 900 },
         used: { BTC: 0, ETH: 0, USDT: 100 },
@@ -136,7 +136,7 @@ describe('BinanceSpotClient', () => {
     });
 
     it('returns empty array when all balances are zero', async () => {
-      mockExchange.fetchBalance.mockResolvedValueOnce({
+      mockExchangeInstance.fetchBalance.mockResolvedValueOnce({
         total: { BTC: 0, ETH: 0 },
         free: {},
         used: {},
@@ -144,13 +144,18 @@ describe('BinanceSpotClient', () => {
       const balances = await client.getBalances();
       expect(balances).toEqual([]);
     });
+
+    it('propagates exchange error', async () => {
+      mockExchangeInstance.fetchBalance.mockRejectedValueOnce(new Error('Auth failed'));
+      await expect(client.getBalances()).rejects.toThrow('Auth failed');
+    });
   });
 
   // ── placeOrder ──────────────────────────────────────────────────────────────
 
   describe('placeOrder', () => {
-    it('places a spot market buy order successfully', async () => {
-      mockExchange.createOrder.mockResolvedValueOnce({
+    it('places a spot market buy order and maps response', async () => {
+      mockExchangeInstance.createOrder.mockResolvedValueOnce({
         id: 'order-123',
         symbol: 'BTC/USDT',
         side: 'buy',
@@ -168,26 +173,51 @@ describe('BinanceSpotClient', () => {
         amount: 0.01,
       });
 
-      expect(mockExchange.createOrder).toHaveBeenCalledWith('BTC/USDT', 'market', 'buy', 0.01, undefined);
+      expect(mockExchangeInstance.createOrder).toHaveBeenCalledWith(
+        'BTC/USDT', 'market', 'buy', 0.01, undefined,
+      );
       expect(response.id).toBe('order-123');
       expect(response.status).toBe('closed');
+      expect(response.price).toBeUndefined();
+    });
+
+    it('places a limit sell order with price', async () => {
+      mockExchangeInstance.createOrder.mockResolvedValueOnce({
+        id: 'limit-456',
+        symbol: 'ETH/USDT',
+        side: 'sell',
+        type: 'limit',
+        amount: 1.0,
+        price: 3000,
+        status: 'open',
+        timestamp: 1700000000000,
+      });
+
+      const response = await client.placeOrder({
+        symbol: 'ETH/USDT',
+        side: 'sell',
+        type: 'limit',
+        amount: 1.0,
+        price: 3000,
+      });
+
+      expect(mockExchangeInstance.createOrder).toHaveBeenCalledWith(
+        'ETH/USDT', 'limit', 'sell', 1.0, 3000,
+      );
+      expect(response.price).toBe(3000);
     });
 
     it('throws for perp symbol when CEX_PERP_ENABLED=false', async () => {
-      const perpClient = new BinanceSpotClient({ perpEnabled: false });
       await expect(
-        perpClient.placeOrder({ symbol: 'BTC/USDT:USDT', side: 'buy', type: 'market', amount: 1 }),
+        client.placeOrder({ symbol: 'BTC/USDT:USDT', side: 'buy', type: 'market', amount: 1 }),
       ).rejects.toThrow('CEX_PERP_ENABLED=false');
+      expect(mockExchangeInstance.createOrder).not.toHaveBeenCalled();
     });
 
     it('allows perp symbol when CEX_PERP_ENABLED=true', async () => {
       const perpClient = new BinanceSpotClient({ perpEnabled: true });
-      const ccxtModule = await import('ccxt');
-      const MockBinance = (ccxtModule.default as unknown as { binance: ReturnType<typeof vi.fn> }).binance;
-      const perpExchange = MockBinance.mock.results[MockBinance.mock.results.length - 1].value;
-
-      perpExchange.createOrder.mockResolvedValueOnce({
-        id: 'perp-order-1',
+      mockExchangeInstance.createOrder.mockResolvedValueOnce({
+        id: 'perp-1',
         symbol: 'BTC/USDT:USDT',
         side: 'buy',
         type: 'market',
@@ -203,7 +233,28 @@ describe('BinanceSpotClient', () => {
         type: 'market',
         amount: 1,
       });
-      expect(response.id).toBe('perp-order-1');
+      expect(response.id).toBe('perp-1');
+    });
+
+    it('falls back to unknown status when exchange returns null status', async () => {
+      mockExchangeInstance.createOrder.mockResolvedValueOnce({
+        id: 'x',
+        symbol: 'BTC/USDT',
+        side: 'buy',
+        type: 'market',
+        amount: 0.1,
+        price: null,
+        status: null,
+        timestamp: null,
+      });
+      const response = await client.placeOrder({
+        symbol: 'BTC/USDT',
+        side: 'buy',
+        type: 'market',
+        amount: 0.1,
+      });
+      expect(response.status).toBe('unknown');
+      expect(response.timestamp).toBeGreaterThan(0);
     });
   });
 
