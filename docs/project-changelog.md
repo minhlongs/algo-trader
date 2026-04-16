@@ -1,5 +1,50 @@
 # Project Changelog - Algo Trader
 
+## [1.7.0] - 2026-04-16
+
+### Added - Chính Danh a16z Dual-Layer Positioning (Phases 01/02/04 shipped)
+
+#### Phase 01: Decisions Gate + Manifesto Doctrine
+- **`docs/manifesto.md`** — 5-chapter solo quant desk manifesto (a16z thesis, Binh Pháp mapping, zero-overhead stack, open methodology, anti-commitments)
+- **Frontmatter decisions** — D1-D5 recorded (domain binding, language, P&L timing, channels, license)
+- **Polar-safe audit** — All copy scrubbed of "AI/health/wellness" keywords, verified grep = 0
+- **README.md link** — Manifesto link added to hero section
+
+#### Phase 02: Dashboard Landing + Manifesto Route
+- **Route `/`** — Community-first hero "Solo Quant Desk on Polymarket", 150 paper trades, CTAs
+- **Route `/manifesto`** — Markdown-rendered manifesto.md via react-markdown + remark-gfm
+- **Route `/methodology`** — GitHub direct link to BINH_PHAP_TRADING.md
+- **Components**: hero-solo-quant, paper-stats-card, markdown-viewer
+- **Build**: React + Vite + Tailwind, bundle <500KB gzipped, LCP <2.5s
+- **Static data**: paper-stats.json snapshot (150 trades, 14.6–25.3% avg edge)
+
+#### Phase 04: Build-In-Public Automation (Sub-phase 4C/4D)
+- **Scripts**: `generate-weekly-draft.ts`, `generate-monthly-milestone.ts` (OpenClaw-compatible)
+- **Scheduling**: launchd plist `weekly-draft.plist` (Monday 08:00)
+- **Content log**: `docs/build-in-public-log.md` (append-only post tracking)
+- **Social accounts**: `docs/social-accounts.md` with profile links (no secrets)
+- **Templates**: Stats · Commits · Learnings markdown structure (5-min human review cycle)
+
+#### CI/CD & Deployment
+- **Build**: Lint + type check green
+- **Deploy**: CF Pages `algo-trader-dashboard` project, HTTP 200 verified on all routes
+- **URL**: https://1bad493e.algo-trader-dashboard.pages.dev (custom domain post-Phase-02)
+
+### Technical Highlights
+- Manifesto frames solo company thesis + Binh Pháp chapters + proof-first positioning
+- Dashboard landing showcases paper trade results before Phase 03 live D1 integration
+- Build-in-public cadence eliminates content creation overhead via auto-generation + 5-min reviews
+- Polar-safe wording prevents payment provider rejection (critical lesson from previous Polar incidents)
+
+### Changed
+- Version: 1.6.0 → 1.7.0
+- CF Pages deployment: algo-trade-dashboard public + indexed
+- Build-in-public infrastructure: 0 → scripts + scheduling + logging
+
+### Remaining Work
+- **Phase 03** (pending): Live D1 + Worker sync for real-time trade data
+- **Phase 04 manual** (4A/4B): Polymarket profile creation + first social post (30 min estimated)
+
 ## [1.6.0] - 2026-04-15
 
 ### Added - a16z Solo Company Autonomy Phase 3 (Complete Auto-Operations)

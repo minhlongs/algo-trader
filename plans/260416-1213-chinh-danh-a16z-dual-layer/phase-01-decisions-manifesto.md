@@ -2,8 +2,9 @@
 phase: 01
 name: Decisions gate + docs/manifesto.md
 priority: P0
-status: pending
+status: completed
 blocks: [02, 03, 04]
+shipped: commit 39fc54b
 ---
 
 # Phase 01 — Decisions Gate + Manifesto Doctrine
@@ -93,16 +94,16 @@ docs/manifesto.md
 10. Commit: `docs: add solo quant desk manifesto (dual-layer positioning)`
 
 ## Todo List
-- [ ] Run AskUserQuestion for D1-D5
-- [ ] Record decisions in frontmatter
-- [ ] Write Ch. I — a16z thesis citation
-- [ ] Write Ch. II — Binh Pháp 13-chapter mapping
-- [ ] Write Ch. III — zero-overhead stack enumeration
-- [ ] Write Ch. IV — open methodology
-- [ ] Write Ch. V — anti-commitments
-- [ ] Polar-safe audit (grep check)
-- [ ] Update README.md with manifesto link
-- [ ] Commit & push
+- [x] Run AskUserQuestion for D1-D5
+- [x] Record decisions in frontmatter
+- [x] Write Ch. I — a16z thesis citation
+- [x] Write Ch. II — Binh Pháp 13-chapter mapping
+- [x] Write Ch. III — zero-overhead stack enumeration
+- [x] Write Ch. IV — open methodology
+- [x] Write Ch. V — anti-commitments
+- [x] Polar-safe audit (grep check)
+- [x] Update README.md with manifesto link
+- [x] Commit & push (commit 39fc54b)
 
 ## Success Criteria
 - `docs/manifesto.md` exists, `wc -l` ≤ 150

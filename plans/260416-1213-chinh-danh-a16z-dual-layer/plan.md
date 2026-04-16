@@ -4,9 +4,14 @@ date: 2026-04-16
 slug: chinh-danh-a16z-dual-layer
 project: algo-trader
 mode: auto
-status: pending
+status: in_progress
 sources:
   - /Users/macbookprom1/plans/reports/brainstorm-260416-1213-algo-trade-chinh-danh-a16z.md
+shipped:
+  - PR #100 commit e5b0208 — Phases 01/02/04 shipped to main
+  - CF Pages URL: https://1bad493e.algo-trader-dashboard.pages.dev
+  - Verification: HTTP 200 on /, /manifesto, /methodology, /manifesto.md
+  - CI status: Lint + Build green
 ---
 
 # Chính Danh a16z — Dual-Layer Positioning
@@ -38,10 +43,10 @@ Chính danh = honesty (what we WON'T do) + zero-overhead proof + a16z cite đún
 
 | # | Phase | Priority | Status |
 |---|---|---|---|
-| 01 | Decisions gate + `docs/manifesto.md` | P0 | pending |
-| 02 | Dashboard landing `/` + `/manifesto` route | P0 | pending |
+| 01 | Decisions gate + `docs/manifesto.md` | P0 | completed |
+| 02 | Dashboard landing `/` + `/manifesto` route | P0 | completed |
 | 03 | Live dashboard D1 + Worker sync | P1 | pending |
-| 04 | Polymarket profile + build-in-public cadence | P1 | pending |
+| 04 | Polymarket profile + build-in-public cadence | P1 | partial |
 
 ## Dependencies
 - Phase 02 blocked by Phase 01 (manifesto content needed)

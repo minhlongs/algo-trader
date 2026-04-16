@@ -2,8 +2,9 @@
 phase: 04
 name: Polymarket profile + build-in-public cadence
 priority: P1
-status: pending
+status: partial
 blockedBy: [01]
+shipped: PR #100 commit e5b0208 (4C/4D automatable), manual 4A/4B remain
 ---
 
 # Phase 04 — Polymarket Profile + Build-In-Public Cadence
@@ -97,19 +98,19 @@ Last Fri of month
 16. After 4 weeks: review what tone/format works, adjust templates
 
 ## Todo List
-- [ ] Polymarket profile + wallet
-- [ ] Profile bio + dashboard link
-- [ ] `docs/social-accounts.md` initial
-- [ ] Social handle(s) per D4
-- [ ] Pinned posts
-- [ ] weekly-draft generator
-- [ ] monthly-milestone generator
-- [ ] Template refinement (1 manual dry-run)
-- [ ] launchd weekly schedule
-- [ ] README + manifesto footer links
-- [ ] First weekly post published
-- [ ] `build-in-public-log.md` first entry
-- [ ] Commit
+- [ ] Polymarket profile + wallet (MANUAL 4A)
+- [ ] Profile bio + dashboard link (MANUAL 4A)
+- [x] `docs/social-accounts.md` initial (AUTOMATED 4C)
+- [ ] Social handle(s) per D4 (MANUAL 4B)
+- [ ] Pinned posts (MANUAL 4B)
+- [x] weekly-draft generator (AUTOMATED 4C — shipped PR #100)
+- [x] monthly-milestone generator (AUTOMATED 4C — shipped PR #100)
+- [x] Template refinement (AUTOMATED 4D)
+- [x] launchd weekly schedule (AUTOMATED 4C)
+- [x] README + manifesto footer links (AUTOMATED 4D)
+- [ ] First weekly post published (MANUAL 4B)
+- [x] `build-in-public-log.md` first entry (AUTOMATED 4D)
+- [x] Commit (PR #100 e5b0208)
 
 ## Success Criteria
 - Polymarket profile live, dashboard linked
@@ -135,6 +136,21 @@ Last Fri of month
 - Social account OAuth secrets never in repo (keep out of `docs/social-accounts.md`)
 - 2FA mandatory on all handles
 
+## Remaining Manual Tasks (4A/4B)
+**Sub-phase 4A — Polymarket Profile (requires manual signup + wallet setup):**
+- Create Polymarket account with dedicated wallet (KYC/regulatory)
+- Set bio (Polar-safe): "Solo quant desk. Methodology + P&L live at [dashboard URL]."
+- Link dashboard URL in profile + verify on-chain activity
+
+**Sub-phase 4B — Social Channels (requires manual handle registration + first post):**
+- Register handle(s) per D4 answer (Twitter/X, HN, etc.)
+- Profile bio consistency check
+- Pinned post = manifesto + dashboard link
+- Publish first weekly post (review auto-draft, manually post)
+
+**Estimated manual effort:** 30 min (signup) + 5 min per weekly post (ongoing)
+
 ## Next Steps
-- Feeds back into Phase 03 credibility (community verify numbers)
-- Long-term: once >55% accuracy validated, escalate to Phase 2 live funding, social cadence amplifies the proof
+- Manual 4A/4B can start anytime (independent of Phase 03)
+- Phase 03 blocks completion metric but not 4A/4B execution
+- Once >55% accuracy validated, social cadence amplifies credibility proof

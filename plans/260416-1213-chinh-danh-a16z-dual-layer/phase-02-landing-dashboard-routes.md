@@ -2,9 +2,10 @@
 phase: 02
 name: Dashboard landing `/` + `/manifesto` route
 priority: P0
-status: pending
+status: completed
 blockedBy: [01]
 blocks: [03]
+shipped: PR #100 commit e5b0208
 ---
 
 # Phase 02 — Dashboard Landing + Manifesto Route
@@ -112,22 +113,22 @@ Paper: 150 trades · 14.6–25.3% pre-resolution edge
 17. Commit: `feat(dashboard): dual-layer landing + manifesto route`
 
 ## Todo List
-- [ ] Install react-markdown + remark-gfm
-- [ ] Build paper-stats.ts generator
-- [ ] Generate + commit paper-stats.json snapshot
-- [ ] Hero component
-- [ ] Paper stats card component
-- [ ] Markdown viewer component
-- [ ] Landing page
-- [ ] Manifesto page + build-time copy
-- [ ] Methodology page
-- [ ] Wire routes in App.tsx
-- [ ] Dev smoke test all 3 routes
-- [ ] Polar-safe visible copy audit
-- [ ] Production build + bundle size check
-- [ ] Deploy to CF Pages
-- [ ] Verify HTTPS 200 + CI green
-- [ ] Commit
+- [x] Install react-markdown + remark-gfm
+- [x] Build paper-stats.ts generator
+- [x] Generate + commit paper-stats.json snapshot
+- [x] Hero component
+- [x] Paper stats card component
+- [x] Markdown viewer component
+- [x] Landing page
+- [x] Manifesto page + build-time copy
+- [x] Methodology page
+- [x] Wire routes in App.tsx
+- [x] Dev smoke test all 3 routes
+- [x] Polar-safe visible copy audit
+- [x] Production build + bundle size check
+- [x] Deploy to CF Pages
+- [x] Verify HTTPS 200 + CI green (HTTP 200 verified on /, /manifesto, /methodology, /manifesto.md)
+- [x] Commit (PR #100 e5b0208)
 
 ## Success Criteria
 - 3 routes respond HTTP 200 in production
