@@ -54,7 +54,11 @@ async function getModule(kernelId: KernelId): Promise<WebAssembly.Module> {
   const cached = moduleCache.get(kernelId);
   if (cached) return cached;
 
-  const bytes = KERNEL_BYTES[kernelId];
+  const raw = KERNEL_BYTES[kernelId];
+  // Ensure a plain ArrayBuffer-backed Uint8Array for WebAssembly.compile
+  const bytes: Uint8Array<ArrayBuffer> = raw.buffer instanceof ArrayBuffer
+    ? (raw as Uint8Array<ArrayBuffer>)
+    : new Uint8Array(raw);
   const module = await WebAssembly.compile(bytes);
   moduleCache.set(kernelId, module);
   return module;
