@@ -47,11 +47,11 @@ export async function verifyAttestation(
     };
   }
 
-  // Freshness check
+  // Freshness check: age >= maxAge rejects at-or-past the window boundary
   const now = Math.floor(Date.now() / 1000);
   const age = now - (payload.iat ?? 0);
-  if (age > maxAge) {
-    return { valid: false, error: `Attestation too old: ${age}s > ${maxAge}s` };
+  if (age >= maxAge) {
+    return { valid: false, error: `Attestation too old: ${age}s >= ${maxAge}s` };
   }
 
   // Optional measurement re-verification

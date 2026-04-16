@@ -50,7 +50,7 @@ describe('byok-kms-wrap — envelope encryption', () => {
     const bundle = wrapSubscriberSecret(secret);
 
     // Simulate rotation: same key material but new version label
-    const currentKekHex = process.env.CITADEL_KEK_HEX ?? 'dev0000000000000000000000000000000000000000000000000000000000000'.slice(0, 64);
+    const currentKekHex = process.env.CITADEL_KEK_HEX ?? '0'.repeat(64);
     const newKek = { version: 2, keyHex: currentKekHex };
     const rewrapped = rewrapBundle(bundle, currentKekHex, newKek);
 

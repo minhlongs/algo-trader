@@ -13,7 +13,6 @@ import crypto from 'crypto';
 
 const AES_KEY_BYTES = 32; // AES-256
 const GCM_IV_BYTES = 12;
-const GCM_AUTH_TAG_BYTES = 16;
 
 /** KEK version + material (supports rotation) */
 export interface KekMaterial {
@@ -43,12 +42,14 @@ export interface UnwrapResult {
   plaintext: string;
 }
 
+/** 64-char all-zero hex = 32 zero bytes — valid AES-256 dev key, never used in prod */
+const DEV_KEK_HEX = '0'.repeat(64);
+
 function getKek(): KekMaterial {
   const hex = process.env.CITADEL_KEK_HEX;
   if (!hex || hex.length !== 64) {
-    // Dev fallback — deterministic 32-byte key; prod MUST set env
-    const devKey = 'dev0000000000000000000000000000000000000000000000000000000000000';
-    return { version: 1, keyHex: devKey.slice(0, 64) };
+    // Dev fallback — deterministic 32-byte all-zero key; prod MUST set CITADEL_KEK_HEX
+    return { version: 1, keyHex: DEV_KEK_HEX };
   }
   const version = parseInt(process.env.CITADEL_KEK_VERSION ?? '1', 10);
   return { version, keyHex: hex };
