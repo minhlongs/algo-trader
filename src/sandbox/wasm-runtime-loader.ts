@@ -16,12 +16,12 @@
  * Host fetches market data and executes orders.
  */
 
-import { createLimitedMemory } from './wasm-memory-limiter.js';
-import { withCpuLimit } from './wasm-cpu-limiter.js';
-import { encodeInput, type SandboxInput } from './sandbox-input-encoder.js';
-import { decodeOutput, type SandboxOutput } from './sandbox-output-validator.js';
-import { createInvocationTracer, type TraceSink } from './sandbox-invocation-tracer.js';
-import { SPREAD_MEAN_REVERSION_WASM } from './kernels/spread-mean-reversion-wasm-bytes.js';
+import { createLimitedMemory } from './wasm-memory-limiter';
+import { withCpuLimit } from './wasm-cpu-limiter';
+import { encodeInput, type SandboxInput } from './sandbox-input-encoder';
+import { decodeOutput, type SandboxOutput } from './sandbox-output-validator';
+import { createInvocationTracer, type TraceSink } from './sandbox-invocation-tracer';
+import { SPREAD_MEAN_REVERSION_WASM } from './kernels/spread-mean-reversion-wasm-bytes';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

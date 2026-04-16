@@ -15,8 +15,8 @@
  * deterministic length-prefixed hex stub so tests remain hermetic.
  */
 
-import type { SandboxInput } from './sandbox-input-encoder.js';
-import type { SandboxOutput } from './sandbox-output-validator.js';
+import type { SandboxInput } from './sandbox-input-encoder';
+import type { SandboxOutput } from './sandbox-output-validator';
 
 // ── Record type ───────────────────────────────────────────────────────────────
 
