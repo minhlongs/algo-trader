@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+
+<!--
+  weekly-draft.plist — launchd agent: generate weekly build-in-public draft
+  Target machine: M1 Max (user: macbook)
+  Schedule: every Monday at 08:00
+
+  INSTALL (user domain — no sudo needed):
+    cp /Users/macbook/algo-trader/config/launchd/weekly-draft.plist \
+       ~/Library/LaunchAgents/cc.cashclaw.weekly-draft.plist
+    launchctl load ~/Library/LaunchAgents/cc.cashclaw.weekly-draft.plist
+
+  UNINSTALL:
+    launchctl unload ~/Library/LaunchAgents/cc.cashclaw.weekly-draft.plist
+    rm ~/Library/LaunchAgents/cc.cashclaw.weekly-draft.plist
+
+  RUN MANUALLY (for testing):
+    launchctl start cc.cashclaw.weekly-draft
+
+  LOGS:
+    tail -f /tmp/weekly-draft.stdout.log
+    tail -f /tmp/weekly-draft.stderr.log
+-->
+
+<plist version="1.0">
+<dict>
+
+  <!-- Unique reverse-DNS label -->
+  <key>Label</key>
+  <string>cc.cashclaw.weekly-draft</string>
+
+  <!-- Command: npx ts-node scripts/generate-weekly-draft.ts -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/macbook/.nvm/versions/node/v20.11.0/bin/npx</string>
+    <string>ts-node</string>
+    <string>--project</string>
+    <string>/Users/macbook/algo-trader/tsconfig.json</string>
+    <string>/Users/macbook/algo-trader/scripts/generate-weekly-draft.ts</string>
+  </array>
+
+  <!-- Working directory -->
+  <key>WorkingDirectory</key>
+  <string>/Users/macbook/algo-trader</string>
+
+  <!-- Monday = weekday 2 (0=Sun, 1=Mon... wait: launchd Weekday 1=Monday) -->
+  <!-- launchd: Weekday 0=Sunday, 1=Monday, ..., 6=Saturday -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>8</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <!-- Log stdout and stderr -->
+  <key>StandardOutPath</key>
+  <string>/tmp/weekly-draft.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/weekly-draft.stderr.log</string>
+
+  <!-- Run even if missed while machine was off -->
+  <key>RunAtLoad</key>
+  <false/>
+
+  <!-- Restart on crash — false: draft gen is non-critical, avoid spam -->
+  <key>KeepAlive</key>
+  <false/>
+
+  <!-- Environment: ensure PATH includes nvm node and project sqlite3 -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/macbook/.nvm/versions/node/v20.11.0/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/macbook</string>
+    <key>NODE_ENV</key>
+    <string>production</string>
+  </dict>
+
+</dict>
+</plist>

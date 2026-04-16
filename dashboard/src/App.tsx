@@ -9,6 +9,9 @@ import { SettingsPage } from './pages/settings-page';
 import { ReportingPage } from './pages/reporting-page';
 import { LicensePage } from './pages/license-page';
 import { LandingPage } from './pages/landing-page';
+import { LandingSoloQuant } from './pages/landing';
+import { ManifestoPage } from './pages/manifesto';
+import { MethodologyPage } from './pages/methodology';
 import { PricingPage } from './pages/pricing-page';
 import { LoginPage } from './pages/login-page';
 import { SignupPage } from './pages/signup-page';
@@ -34,7 +37,10 @@ export function App() {
     <ErrorBoundary onError={handleGlobalError}>
       <Routes>
         {/* Public routes - full page, no sidebar */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<LandingSoloQuant />} />
+        <Route path="/manifesto" element={<ManifestoPage />} />
+        <Route path="/methodology" element={<MethodologyPage />} />
+        <Route path="/cashclaw" element={<LandingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/docs" element={<DocsPage />} />
         <Route path="/terms" element={<TermsPage />} />

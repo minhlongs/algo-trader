@@ -1,0 +1,9 @@
+{
+  "trades": 150,
+  "batches": 3,
+  "edge_avg_pct": 18.3,
+  "actionable_pct": 55,
+  "last_updated": "2026-04-16",
+  "source": "paper",
+  "note": "pre-resolution edge, not profit"
+}

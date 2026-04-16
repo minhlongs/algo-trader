@@ -8,6 +8,9 @@
 
 Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (20%).
 
+> **Solo Quant Desk Manifesto** — one human, zero overhead, open methodology.
+> Read the doctrine: [`docs/manifesto.md`](docs/manifesto.md) · Dashboard: [quant.cashclaw.cc](https://quant.cashclaw.cc)
+
 ---
 
 ## Features
