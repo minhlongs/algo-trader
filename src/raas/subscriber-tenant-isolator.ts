@@ -40,14 +40,12 @@ export interface TenantQueryResult<T extends DbRow> {
   rows: T[];
 }
 
-/**
- * Execute a subscriber-scoped query.
- * The SQL must contain the placeholder `/*TENANT*/` which is replaced with
- * the tenant WHERE clause. This makes it impossible to forget isolation.
- *
- * @example
- *   tenantQuery('SELECT * FROM trades WHERE status=$1 /*TENANT*/ ORDER BY created_at DESC', ['FILLED'], filter)
- */
+// Execute a subscriber-scoped query.
+// The SQL must contain the placeholder {TENANT-MARKER} which is replaced with
+// the tenant WHERE clause. This makes it impossible to forget isolation.
+//
+// Example: tenantQuery("SELECT * FROM trades WHERE status=$1 {TENANT-MARKER} ORDER BY created_at DESC", ["FILLED"], filter)
+// The marker value is '/' + '*TENANT*' + '/' — avoided in JSDoc to prevent nested block-comment parsing.
 export async function tenantQuery<T extends DbRow>(
   sql: string,
   baseParams: (string | number | boolean | null)[],
