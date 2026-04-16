@@ -68,7 +68,7 @@ export async function issueAttestationQuote(opts: {
     iss: 'citadel-protocol',
   };
 
-  const jwt = await new SignJWT(payload as Parameters<SignJWT['setPayload']>[0])
+  const jwt = await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt(issuedAt)
     .setExpirationTime(expiresAt)
