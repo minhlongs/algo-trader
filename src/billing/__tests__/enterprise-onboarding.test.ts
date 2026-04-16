@@ -88,7 +88,7 @@ describe('enterprise-inquiry-store', () => {
     expect(updated?.paperdemoKey).toBe('demo_abc123');
   });
 
-  it('list returns inquiries sorted newest first', () => {
+  it('list returns inquiries sorted newest first (descending createdAt)', () => {
     const a = enterpriseInquiryStore.create({
       email: 'a@sort.test', companyName: 'A', contactName: 'A',
       tier: 'growth', useCase: 'sort test A',
@@ -99,8 +99,13 @@ describe('enterprise-inquiry-store', () => {
     });
     const list = enterpriseInquiryStore.list();
     const ids = list.map((i) => i.id);
-    // b was created after a — should appear first
-    expect(ids.indexOf(b.id)).toBeLessThanOrEqual(ids.indexOf(a.id));
+    // Both entries must be present
+    expect(ids).toContain(a.id);
+    expect(ids).toContain(b.id);
+    // List must be sorted descending by createdAt (adjacent pairs)
+    for (let i = 0; i < list.length - 1; i++) {
+      expect(list[i]!.createdAt >= list[i + 1]!.createdAt).toBe(true);
+    }
   });
 });
 
