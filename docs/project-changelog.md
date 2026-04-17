@@ -1,5 +1,24 @@
 # Project Changelog - Algo Trader
 
+## [2.4.20] - 2026-04-17
+
+### Added — Runbook Index Link-Integrity Test
+
+`docs/runbooks/README.md` (from PR #129) maps alert UIDs → 7 runbook `.md` files. If one is renamed or deleted without updating the index, operators hit 404 during an incident. This test asserts every relative `.md` link resolves to an actual file.
+
+**Test:** `tests/integration/runbook-index-link-check.test.ts` — 3 cases:
+1. Index extracts ≥5 local `.md` links (sanity).
+2. Every local `.md` link resolves to an actual file (broken-href detector).
+3. All 7 canonical runbook files exist AND are linked from the index (symmetric: no orphan files either).
+
+Skips `http(s):` / `mailto:` / `#anchor-only` links by design.
+
+**Adversarially verified:** editing `](algo-trader-deadman.md)` → `](algo-trader-deadman-BROKEN.md)` in `README.md` triggers `runbook index has 1 broken link(s): [algo-trader-deadman.md](algo-trader-deadman-BROKEN.md)`. Restore → 3/3 pass.
+
+**Zero runtime changes.**
+
+---
+
 ## [2.4.19] - 2026-04-17
 
 ### Changed — DRY'd the metric-name parser shared by two validators (refactor)
