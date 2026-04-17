@@ -97,7 +97,7 @@ Alert fires at > 48h for 30m — see docs/runbooks/qwen-strategy-review-backlog.
 
 ### Added — Runbook Index Link-Integrity Test
 
-`docs/runbooks/README.md` (from PR #129) maps alert UIDs → 7 runbook `.md` files. If one is renamed or deleted without updating the index, operators hit 404 during an incident. This test asserts every relative `.md` link resolves to an actual file.
+`docs/runbooks/README.md` (from PR #129) maps alert UIDs → 8 runbook `.md` files. If one is renamed or deleted without updating the index, operators hit 404 during an incident. This test asserts every relative `.md` link resolves to an actual file.
 
 **Test:** `tests/integration/runbook-index-link-check.test.ts` — 3 cases:
 1. Index extracts ≥5 local `.md` links (sanity).
