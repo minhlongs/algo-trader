@@ -1,0 +1,177 @@
+# Grafana-provisioned alert rules for Qwen Solo Platform (Pillar 2 follow-up).
+# Schema: Grafana v10 unified alerting — https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/
+#
+# Thresholds derived from PDF Solo Platform doctrine:
+#   - L3 drawdown : auto_disabled == 1 for 5m (any breach latches until manual re-enable)
+#   - L4 paper gate: ≤5 days remaining of 30-day window (soft early warning)
+#   - signals-loop: ≥2 errors in 1h sustained 15m (drift signal, not noise)
+#   - L1 kill-sw : env flag active (informational — operator knows why traffic stops)
+
+apiVersion: 1
+
+# Removing a rule from this file will unprovision it on next Grafana start.
+deleteRules: []
+
+groups:
+  - orgId: 1
+    name: qwen-solo-platform-rollback
+    folder: Qwen Alerts
+    interval: 1m
+    rules:
+
+      # ─── L3 drawdown breach — CRITICAL ──────────────────────────────────────
+      - uid: qwen-l3-drawdown-breached
+        title: QwenDrawdownBreached
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'algo_trader_qwen_drawdown_auto_disabled'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: critical
+          component: qwen
+          rollback_tier: L3
+        annotations:
+          summary: 'Qwen swarm auto-disabled by L3 drawdown breach'
+          description: 'Rolling 24h Qwen paper P&L crossed QWEN_DRAWDOWN_MAX_PCT (default -5%). Swarm disabled. Manual re-enable via admin API required after investigation.'
+          runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-drawdown-breach.md'
+
+      # ─── L4 paper gate ≤5d — WARNING ────────────────────────────────────────
+      - uid: qwen-l4-paper-gate-5d
+        title: QwenPaperGateLessThan5d
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'algo_trader_qwen_paper_gate_days_remaining'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lte, params: [5] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+        # Alerting (not NoData) because paper-gate metric is load-bearing:
+        # prolonged scrape outage must page, not silently hide the gate.
+        noDataState: Alerting
+        execErrState: Error
+        for: 10m
+        labels:
+          severity: warning
+          component: qwen
+          rollback_tier: L4
+        annotations:
+          summary: 'Qwen paper gate <= 5 days remaining'
+          description: 'L4 paper-validation window has ≤5 days left before Qwen is eligible to go live. Review 7d win-rate + Sharpe in Grafana dashboard before flipping QWEN_LIVE_ELIGIBLE=true.'
+          runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-paper-gate.md'
+
+      # ─── Signals-loop error spike — WARNING ─────────────────────────────────
+      - uid: qwen-signals-loop-error-spike
+        title: QwenSignalsLoopErrorSpike
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'increase(algo_trader_qwen_signals_loop_runs_total{decision="error"}[1h])'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gte, params: [2] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 15m
+        labels:
+          severity: warning
+          component: qwen
+          rollback_tier: signals_loop
+        annotations:
+          summary: 'Qwen signals-loop error rate spike'
+          description: '≥2 errored signals-loop runs in the last 1h sustained 15m. Upstream quality drift detector is failing — likely DB connectivity, OTel exporter stall, or compute-metrics regression. Check qwen_signals_loop_runs table for error_message.'
+          runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-signals-loop-error.md'
+
+      # ─── L1 kill-switch active — INFO ───────────────────────────────────────
+      - uid: qwen-l1-kill-switch-active
+        title: QwenL1KillSwitchActive
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 60, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'algo_trader_qwen_kill_switch_active{source="env"}'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: info
+          component: qwen
+          rollback_tier: L1
+        annotations:
+          summary: 'Qwen L1 env kill-switch is ACTIVE'
+          description: 'QWEN_KILL=1 env flag active — all Qwen signals blocked at swarm layer. Operator action: unset env + restart process to re-enable.'

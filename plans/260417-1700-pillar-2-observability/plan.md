@@ -78,13 +78,15 @@ Close the gap. Keep it solo-ops tight.
 ## Tasks
 
 - [x] 54. Scout + plan
-- [ ] 55. Add 3 L-tier Prometheus gauges
-- [ ] 56. Wire OTLPTraceExporter
-- [ ] 57. Instrument 3 Qwen paths with spans
-- [ ] 58. Create Grafana dashboard JSON
-- [ ] 59. Write observability tests
-- [ ] 60. Tester + code-reviewer subagents
-- [ ] 61. PR, merge, verify, 11-line report
+- [x] 55. Add 3 L-tier Prometheus gauges
+- [x] 56. Wire OTLPTraceExporter
+- [x] 57. Instrument 3 Qwen paths with spans
+- [x] 58. Create Grafana dashboard JSON
+- [x] 59. Write observability tests
+- [x] 60. Tester + code-reviewer subagents
+- [x] 61. PR, merge, verify, 11-line report
+
+**Status: SHIPPED** — PR #117 (commit f3e430a), 755/755 tests pass, all 5 CI gates green, prod HTTP 200 ✅
 
 ## Unresolved questions
 

@@ -287,6 +287,12 @@ Two-plane observability: Prometheus metrics + OpenTelemetry traces → Grafana.
 - `qwen-solo-platform.json` — L0–L4 rollback state + 24h rolling Qwen P&L + signals-loop decision breakdown + strategy-review reason mix.
 - Plus 3 pre-existing: `arbitrage-opportunities`, `system-health`, `trading-performance`.
 
+**Alerting** (`docker/grafana/provisioning/alerting/`):
+- Grafana v10.4 unified alerting — YAML-provisioned. 4 rules on L-tier gauges route to single Telegram contact point (`qwen-telegram-admin`).
+  - `QwenDrawdownBreached` — CRITICAL, 5m · `QwenPaperGateLessThan5d` — WARNING, 10m, noDataState=Alerting · `QwenSignalsLoopErrorSpike` — WARNING, 15m · `QwenL1KillSwitchActive` — INFO, 1m.
+- Contact point reuses app `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env (forwarded in `docker-compose.monitoring.yml`).
+- Runbooks at `docs/runbooks/qwen-*.md` linked from alert annotations.
+
 ### Infrastructure
 **Database** (`prisma/`):
 - PostgreSQL 16 via Prisma ORM — 9 models (Tenant, ApiKey, Strategy, Order, Trade, BacktestResult, Candle, PnlSnapshot, AlertRule).

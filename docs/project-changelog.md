@@ -1,5 +1,29 @@
 # Project Changelog - Algo Trader
 
+## [2.4.1] - 2026-04-17
+
+### Added — Grafana Alert Rules (Pillar 2 Depth)
+
+Grafana-provisioned unified alerting for all 4 Qwen L-tier rollback states, routed to Telegram admin channel. Completes the observability → action loop: gauges now page operators instead of just decorating a dashboard.
+
+**Alert rules (`docker/grafana/provisioning/alerting/qwen-alerts.yml`):**
+- `QwenDrawdownBreached` — L3, CRITICAL, `drawdown_auto_disabled == 1` for 5m.
+- `QwenPaperGateLessThan5d` — L4, WARNING, `paper_gate_days_remaining <= 5` for 10m (noDataState: Alerting — load-bearing).
+- `QwenSignalsLoopErrorSpike` — WARNING, `increase(signals_loop_runs_total{decision="error"}[1h]) >= 2` for 15m.
+- `QwenL1KillSwitchActive` — INFO, `kill_switch_active{source="env"} == 1` for 1m.
+
+**Notification:** single Telegram contact point (`qwen-telegram-admin`) re-uses existing `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env vars (forwarded to Grafana container in `docker-compose.monitoring.yml`). Policy routes all `component=qwen` alerts with 30s group_wait + 4h repeat.
+
+**Runbooks (`docs/runbooks/`):** 3 markdown stubs linked from alert annotations — drawdown-breach, paper-gate, signals-loop-error. Cover verification queries + remediation + re-enable checklists.
+
+**Tests:** 19 new smoke tests (`tests/integration/grafana-alert-provisioning.test.ts`) validate YAML parse + required fields + cross-file integrity (policy receiver → contact point name). All 792/793 vitest pass (1 pre-existing flaky LLM-content test unrelated).
+
+**Zero runtime code changes** — pure provisioning. Rollback = revert PR + Grafana restart.
+
+**Related:** Pillar 2 follow-up. Unblocks production operation of the 5-tier rollback stack.
+
+---
+
 ## [2.4.0] - 2026-04-17
 
 ### Added — Observability Completion (Solo Platform Pillar 2)
@@ -45,7 +69,7 @@ AI-first specification → design → code → deploy workflow embedded in repo 
 
 **Design:** Each phase lists required inputs, required outputs, hard algo-trader constraints, definition-of-done checklist, and hand-off contract. Phases 3 & 4 explicitly ref CI gates 1–5 and rollback hierarchy (L0–L4) from `docs/ai-first-enforcement-gates.md`.
 
-**Related:** Completes Pillar 4 of a16z Solo Platform doctrine. Pillars 1–3 already shipped (5 Enforcement Gates PR #115, Signals Loop L0+Journal PR #113/#114, partial observability). Pillar 2 (Observability/Grafana) still partial.
+**Related:** Completes Pillar 4 of a16z Solo Platform doctrine. Pillars 1–3 already shipped (5 Enforcement Gates PR #115, Signals Loop L0+Journal PR #113/#114, Observability PR #117). All 4/4 Solo Platform pillars now complete.
 
 **Zero runtime impact** — scaffolding only, no strategy changes, no 5-tier rollback stack affected.
 

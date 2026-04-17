@@ -1,0 +1,32 @@
+# Grafana contact points — Telegram (reuses existing TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID env vars).
+# Schema: https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/#contact-points
+#
+# Grafana expands $TELEGRAM_BOT_TOKEN / $TELEGRAM_CHAT_ID at provisioning time
+# from the Grafana container's environment. docker-compose.monitoring.yml must
+# forward both vars to the grafana service — see that file.
+
+apiVersion: 1
+
+# Removing a contact-point from this file will unprovision it on next Grafana start.
+deleteContactPoints: []
+
+contactPoints:
+  - orgId: 1
+    name: qwen-telegram-admin
+    receivers:
+      - uid: qwen-telegram-admin-receiver
+        type: telegram
+        disableResolveMessage: false
+        settings:
+          bottoken: ${TELEGRAM_BOT_TOKEN}
+          chatid: ${TELEGRAM_CHAT_ID}
+          parse_mode: Markdown
+          message: |
+            *[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}*
+            Severity: `{{ (index .Alerts 0).Labels.severity }}` | Tier: `{{ (index .Alerts 0).Labels.rollback_tier }}`
+
+            {{ range .Alerts -}}
+            {{ .Annotations.summary }}
+            {{ .Annotations.description }}
+            {{ if .Annotations.runbook }}Runbook: {{ .Annotations.runbook }}{{ end }}
+            {{ end }}
