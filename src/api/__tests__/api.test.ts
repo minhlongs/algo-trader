@@ -105,6 +105,14 @@ describe('API Server', () => {
       expect(res.body.paperTrading).toBeDefined();
     });
 
+    it('GET /health exposes Qwen rollback booleans (unauthenticated ops readout)', async () => {
+      const res = await request(app).get('/health');
+      expect(res.status).toBe(200);
+      expect(res.body.qwen).toBeDefined();
+      expect(typeof res.body.qwen.enabled).toBe('boolean');
+      expect(typeof res.body.qwen.killSwitchActive).toBe('boolean');
+    });
+
     it('GET /health/metrics should return system metrics', async () => {
       const res = await request(app).get('/health/metrics');
 

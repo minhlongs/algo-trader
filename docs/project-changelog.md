@@ -1,5 +1,20 @@
 # Project Changelog - Algo Trader
 
+## [2.4.9] - 2026-04-17
+
+### Added — /health exposes Qwen rollback booleans
+
+Unauthenticated ops readout: `curl https://<host>/health | jq .qwen` returns `{enabled: bool, killSwitchActive: bool}`. Uptime monitors + CLI operators no longer need an admin key just to check whether Qwen is armed.
+
+**Runtime:**
+- `src/api/routes/health.ts` — imports `isQwenEnabled` + `isKillSwitchActive` from `qwen-drawdown-monitor`; adds `qwen: {enabled, killSwitchActive}` to JSON response after `components`. Booleans only — sensitive numbers (P&L, days-remaining) stay behind admin-key at `/admin/qwen/status`.
+
+**Tests:** +1 case in `src/api/__tests__/api.test.ts` asserts presence + boolean types. 14/14 pass.
+
+**Security:** no leakage — kill-switch state is already published via Prometheus `/metrics` (unauthenticated) since PR #117. Consistency with existing exposure.
+
+---
+
 ## [2.4.8] - 2026-04-17
 
 ### Changed — Qwen Solo Platform Dashboard Refresh

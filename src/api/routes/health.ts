@@ -9,6 +9,7 @@ import { Router, Request, Response } from 'express';
 import { getRedisClient } from '../../redis';
 import { getDbClient } from '../../db/postgres-client';
 import { TradingEngine } from '../../engine';
+import { isQwenEnabled, isKillSwitchActive } from '../../wiring/qwen-drawdown-monitor';
 
 // Resolve package version at module load time — avoids repeated disk reads
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -62,6 +63,14 @@ healthRouter.get('/', async (req: Request, res: Response) => {
   // --- Paper trading flag ---
   const isPaperTrading = process.env['DRY_RUN'] === 'true';
 
+  // --- Qwen rollback state (booleans only — no sensitive numbers) ---
+  // Unauthenticated readout for uptime monitors and CLI ops (`curl /health | jq .qwen`).
+  // Detailed state with P&L / days-remaining lives behind admin-key at /admin/qwen/status.
+  const qwen = {
+    enabled: isQwenEnabled(),
+    killSwitchActive: isKillSwitchActive(),
+  };
+
   // --- Memory snapshot ---
   const mem = process.memoryUsage();
   const memMb = {
@@ -85,6 +94,7 @@ healthRouter.get('/', async (req: Request, res: Response) => {
       tradingEngine: tradingEngineStatus,
       ...(redisError ? { redisError } : {}),
     },
+    qwen,
     memory: memMb,
     timestamp: Date.now(),
   });
