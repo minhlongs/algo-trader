@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [2.4.6] - 2026-04-17
+
+### Added — Admin Resolve Endpoint for Strategy Reviews
+
+Pillar 3 operational closure: operator can now close `strategy_review_tasks` via admin API instead of psql UPDATE. Solo Platform doctrine — "agents do everything, never make human do ops work".
+
+**Runtime:**
+- `src/api/routes/admin-qwen-routes.ts` — new `POST /api/v1/admin/qwen/strategy-reviews/:id/resolve`. Single `UPDATE ... WHERE id=$1 AND status='pending' RETURNING *`. Responses: 200 + row, 404 (no match or already resolved — WHERE-clause filters out), 500 (DB error). Admin-key gated.
+- `prometheus-metrics.ts` — +1 counter `algo_trader_qwen_strategy_reviews_resolved_total` labeled by `reason` (symmetric to queued counter). Operators get `queued_total - resolved_total = backlog` for free.
+
+**Tests:** +4 new cases in `admin-qwen-strategy-reviews.test.ts` (403 no-key, 200 happy, 404 not-found, 500 DB-error). Counter incremented with correct `reason` label asserted. New inline prometheus-metrics mock added to the test file (didn't need one before). All 3 other prometheus-metrics vi.mock factories synced per feedback memory. 68/68 tests pass across touched files.
+
+**Zero schema changes** — uses existing `resolved_at` column. Rollback = revert PR; operator falls back to psql UPDATE.
+
+---
+
 ## [2.4.5] - 2026-04-17
 
 ### Added — Journal-Write Error Counter (PR #120 Runbook Follow-up)

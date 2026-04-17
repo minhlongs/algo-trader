@@ -19,6 +19,7 @@ const { mockLoopLastRunGauge, mockJournalWriteErrorsCounter } = vi.hoisted(() =>
 }));
 vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
+  qwenStrategyReviewsResolvedTotal: { inc: vi.fn() },
   qwenSignalsLoopRunsTotal: { inc: vi.fn() },
   qwenSignalsLoopLastRunTs: mockLoopLastRunGauge,
   qwenSignalsLoopJournalWriteErrorsTotal: mockJournalWriteErrorsCounter,

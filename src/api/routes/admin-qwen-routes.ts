@@ -18,6 +18,7 @@ import {
 } from '../../wiring/qwen-drawdown-monitor';
 import { checkQwenEligibility } from '../../wiring/qwen-live-eligibility-gate';
 import { query } from '../../db/postgres-client';
+import { qwenStrategyReviewsResolvedTotal } from '../../middleware/prometheus-metrics';
 
 /** Simple Express-compatible admin auth — checks X-Admin-Key header */
 function requireAdminKey(req: Request, res: Response): boolean {
@@ -127,6 +128,50 @@ export function createAdminQwenRouter(): Router {
     } catch (err) {
       logger.error('[AdminQwen] strategy-reviews query error', { err });
       res.status(500).json({ error: 'Failed to fetch strategy reviews' });
+    }
+  });
+
+  /**
+   * POST /strategy-reviews/:id/resolve
+   * Closes a queued review task — flips status pending → resolved, stamps resolved_at.
+   * Emits qwen_strategy_reviews_resolved_total{reason=...} counter on success.
+   *
+   * 200: {resolved: row} — updated successfully.
+   * 404: task not found (invalid id, or already resolved — WHERE status='pending' filters out).
+   * 500: DB error.
+   */
+  router.post('/strategy-reviews/:id/resolve', async (req: Request, res: Response) => {
+    if (!requireAdminKey(req, res)) return;
+    const id = req.params.id;
+
+    try {
+      const result = await query<{
+        id: string;
+        source: string;
+        trigger_reason: string;
+        metrics: string;
+        status: string;
+        created_at: string;
+        resolved_at: string;
+      }>(
+        `UPDATE strategy_review_tasks
+            SET status = 'resolved', resolved_at = now()
+          WHERE id = $1 AND status = 'pending'
+          RETURNING id, source, trigger_reason, metrics, status, created_at, resolved_at`,
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Review not found or already resolved' });
+      }
+
+      const row = result.rows[0];
+      qwenStrategyReviewsResolvedTotal.inc({ reason: row.trigger_reason });
+      logger.info('[AdminQwen] Resolved strategy review', { id, reason: row.trigger_reason });
+      return res.json({ resolved: row });
+    } catch (err) {
+      logger.error('[AdminQwen] strategy-reviews resolve error', { err, id });
+      return res.status(500).json({ error: 'Failed to resolve strategy review' });
     }
   });
 

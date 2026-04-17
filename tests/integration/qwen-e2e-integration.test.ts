@@ -38,6 +38,7 @@ vi.mock('../../src/middleware/prometheus-metrics.js', () => ({
   qwenSignalsLoopLastRunTs: { set: vi.fn() },
   qwenSignalsLoopJournalWriteErrorsTotal: { inc: vi.fn() },
   qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
+  qwenStrategyReviewsResolvedTotal: { inc: vi.fn() },
   setQwenKillSwitch: vi.fn(),
   setQwenPaperGateDaysRemaining: vi.fn(),
   setQwenDrawdownAutoDisabled: vi.fn(),

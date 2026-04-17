@@ -44,6 +44,14 @@ export const qwenStrategyReviewsQueuedTotal = new client.Counter({
   registers: [register],
 });
 
+/** Counter: strategy review tasks resolved via admin API (symmetric to queued counter) */
+export const qwenStrategyReviewsResolvedTotal = new client.Counter({
+  name: 'algo_trader_qwen_strategy_reviews_resolved_total',
+  help: 'Total strategy review tasks resolved via POST /admin/qwen/strategy-reviews/:id/resolve. queued_total - resolved_total = backlog.',
+  labelNames: ['reason'] as const,
+  registers: [register],
+});
+
 /** Counter: signals loop evaluation runs by decision outcome */
 export const qwenSignalsLoopRunsTotal = new client.Counter({
   name: 'algo_trader_qwen_signals_loop_runs_total',
