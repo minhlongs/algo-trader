@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.27] - 2026-04-17
+
+### Added — Runbook Metric-Reference Validator
+
+`tests/integration/runbook-metric-references.test.ts` — asserts every `algo_trader_qwen_*` token in `docs/runbooks/*.md` resolves to a declared metric `name:` field in `src/middleware/prometheus-metrics.ts`.
+
+**3 test cases:** runbook refs sanity (≥5, actual ~19), declared metrics sanity (≥10, actual 15), bijection (0 dangling refs).
+
+**Closes Pillar 2 observability integrity hexagon** (runbook↔code edge 6 — final). Prior edges:
+- PR #132 alert↔metric
+- PR #135 dashboard↔metric
+- PR #137 runbook-index↔file
+- PR #143 alert↔runbook-URL
+- PR #145 doc-enum↔code-enum
+
+Asymmetric on purpose: runbook→code only (not every metric needs a runbook, YAGNI). Producer fully validated against all 5 consumers.
+
+**106 lines, 0 runtime impact.** Review: 9.7/10, 0 critical, 0 high.
+
+---
+
 ## [2.4.26] - 2026-04-17
 
 ### Added — Strategy Review Trigger Reasons Doc-Enum Sync Test
