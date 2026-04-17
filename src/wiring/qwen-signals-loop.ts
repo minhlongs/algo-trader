@@ -9,7 +9,10 @@
 
 import { query } from '../db/postgres-client';
 import { logger } from '../utils/logger';
-import { qwenStrategyReviewsQueuedTotal } from '../middleware/prometheus-metrics';
+import {
+  qwenStrategyReviewsQueuedTotal,
+  qwenSignalsLoopRunsTotal,
+} from '../middleware/prometheus-metrics';
 
 const DEFAULT_INTERVAL_MS = 6 * 3600 * 1000;
 const DEFAULT_REVIEW_WINDOW_MS = 7 * 24 * 3600 * 1000;
@@ -139,6 +142,31 @@ export async function computeQualityMetrics(
   }
 }
 
+/**
+ * Persist one journal row for each evaluation run.
+ * Called on ALL code paths: skipped, ok, queued, error.
+ */
+export async function persistRunJournal(
+  source: string,
+  metrics: QualityMetrics,
+  decision: 'skipped_insufficient_data' | 'ok' | 'queued_review' | 'error',
+  triggerReasons: string[],
+  errorMessage?: string
+): Promise<void> {
+  try {
+    await query(
+      `INSERT INTO qwen_signals_loop_runs
+         (source, metrics, decision, trigger_reasons, error_message)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [source, JSON.stringify(metrics), decision, triggerReasons, errorMessage ?? null]
+    );
+    qwenSignalsLoopRunsTotal.inc({ decision });
+  } catch (err) {
+    // Journal failure must never crash the main evaluation flow
+    logger.error('[QwenSignalsLoop] persistRunJournal failed', { err });
+  }
+}
+
 async function insertReviewTask(
   source: string,
   triggerReason: string,
@@ -158,10 +186,27 @@ async function insertReviewTask(
 
 /**
  * Evaluate quality metrics and queue review tasks when thresholds are breached.
+ * Journals EVERY run (skipped / ok / queued_review / error) for audit trail.
  * Exported for direct test access.
  */
 export async function evaluateAndQueue(source: string): Promise<void> {
-  const metrics = await computeQualityMetrics(source);
+  let metrics: QualityMetrics = {
+    winRate: null,
+    sharpe: null,
+    signalCount: 0,
+    closedTradeCount: 0,
+    windowStartMs: 0,
+    windowEndMs: 0,
+  };
+
+  try {
+    metrics = await computeQualityMetrics(source);
+  } catch (err) {
+    logger.error('[QwenSignalsLoop] computeQualityMetrics threw unexpectedly', { err });
+    await persistRunJournal(source, metrics, 'error', [], String(err));
+    return;
+  }
+
   const minSignals = getMinSignals();
   const minTrades = getMinTradesForSharpe();
 
@@ -173,17 +218,26 @@ export async function evaluateAndQueue(source: string): Promise<void> {
     sharpe: metrics.sharpe,
   });
 
-  if (metrics.signalCount >= minSignals && metrics.winRate !== null) {
-    if (metrics.winRate < getWinRateMin()) {
-      await insertReviewTask(source, 'win_rate_below_threshold', metrics);
-    }
+  // Insufficient data — skip threshold checks
+  if (metrics.signalCount < minSignals) {
+    await persistRunJournal(source, metrics, 'skipped_insufficient_data', []);
+    return;
   }
 
-  if (metrics.closedTradeCount >= minTrades && metrics.sharpe !== null) {
-    if (metrics.sharpe < getSharpeMin()) {
-      await insertReviewTask(source, 'sharpe_below_threshold', metrics);
-    }
+  const triggerReasons: string[] = [];
+
+  if (metrics.winRate !== null && metrics.winRate < getWinRateMin()) {
+    await insertReviewTask(source, 'win_rate_below_threshold', metrics);
+    triggerReasons.push('win_rate_below_threshold');
   }
+
+  if (metrics.closedTradeCount >= minTrades && metrics.sharpe !== null && metrics.sharpe < getSharpeMin()) {
+    await insertReviewTask(source, 'sharpe_below_threshold', metrics);
+    triggerReasons.push('sharpe_below_threshold');
+  }
+
+  const decision = triggerReasons.length > 0 ? 'queued_review' : 'ok';
+  await persistRunJournal(source, metrics, decision, triggerReasons);
 }
 
 export function startSignalsLoop(intervalMs = getIntervalMs()): void {

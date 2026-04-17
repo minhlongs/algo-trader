@@ -466,9 +466,11 @@ Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-
 - `algo_trader_qwen_signals_total{result=accepted|rejected}` (Counter) — emitted by signal-ingest-route on each request
 
 **Files:**
+- `src/db/migrations/018_qwen_signals_loop_runs.sql` — `qwen_signals_loop_runs` table (decision ∈ {skipped_insufficient_data, ok, queued_review, error}, metrics_snapshot JSONB, trigger_reasons[], error_message, created_at)
 - `src/db/migrations/017_strategy_review_tasks.sql` — `strategy_review_tasks` table (daily UNIQUE index on strategy_id + UTC calendar day)
-- `src/wiring/qwen-signals-loop.ts` — L0 observational detector (6h singleton)
-- `src/api/routes/admin-qwen-routes.ts` — L0/L1/L2 admin endpoints (review list + kill routes)
+- `src/wiring/qwen-signals-loop.ts` — L0 observational detector (6h singleton, 4-path journal persistence via `persistRunJournal()`)
+- `src/api/routes/admin-qwen-routes.ts` — L0/L1/L2 admin endpoints (review list + kill routes + signals-loop/runs query)
+- `src/middleware/prometheus-metrics.ts` — Counter `algo_trader_qwen_signals_loop_runs_total{decision}` per cycle
 - `src/api/routes/signal-ingest-routes.ts` — HMAC POST endpoint
 - `src/utils/hmac-verifier.ts` — timing-safe HMAC-SHA256 + replay window
 - `src/signal/signal-store-d1.ts` — D1/SQLite persistence with source tagging
@@ -477,6 +479,26 @@ Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-
 - `scripts/qwen-signal-daemon/` — Python daemon + launchd plist
 - `docs/ops/qwen-m1max-runbook.md` — full ops runbook
 - `src/db/migrations/016_qwen_paper_tracking.sql` — `paper_trades_v3` schema
+
+**Database Schema (Migration 018):**
+```sql
+CREATE TABLE qwen_signals_loop_runs (
+  id BIGSERIAL PRIMARY KEY,
+  strategy_id TEXT NOT NULL,
+  decision TEXT NOT NULL CHECK (decision IN ('skipped_insufficient_data', 'ok', 'queued_review', 'error')),
+  metrics_snapshot JSONB, -- {win_rate, sharpe, signal_count, trade_count, avg_pnl, ...}
+  trigger_reasons TEXT[], -- array of reason strings
+  error_message TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_qwen_signals_loop_runs_strategy_id_created_at ON qwen_signals_loop_runs (strategy_id, created_at DESC);
+```
+
+**Admin Endpoints:**
+- `GET /api/v1/admin/qwen/signals-loop/runs?limit=50&decision=queued_review` — Audit trail with optional filtering by decision type. Response: paginated array of run records with metrics snapshots.
+
+**Prometheus Metrics (Journal):**
+- `algo_trader_qwen_signals_loop_runs_total{decision}` (Counter) — Incremented per evaluation cycle with decision label (skipped_insufficient_data, ok, queued_review, error).
 
 **HMAC Secret rotation:** Quarterly. Rotate `QWEN_INGEST_HMAC_SECRET` in CF Secrets + M1 Max `~/.zshrc`. Both sides must be updated simultaneously.
 

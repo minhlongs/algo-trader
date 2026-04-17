@@ -12,9 +12,10 @@ vi.mock('../../db/postgres-client.js', () => ({
 }));
 
 // ─── Mock Prometheus ──────────────────────────────────────────────────────────
-const mockReviewCounter = { inc: vi.fn() };
+const mockLoopRunsCounter = { inc: vi.fn() };
 vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
+  qwenSignalsLoopRunsTotal: { inc: vi.fn() },
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
 }));
@@ -30,6 +31,7 @@ import {
   startSignalsLoop,
   stopSignalsLoop,
   resetSignalsLoop,
+  persistRunJournal,
 } from '../qwen-signals-loop.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -132,16 +134,17 @@ describe('evaluateAndQueue', () => {
     delete process.env.QWEN_REVIEW_SHARPE_MIN;
   });
 
-  it('skips insert when signal_count < min_signals (default 20)', async () => {
+  it('skips strategy_review insert when signal_count < min_signals (default 20)', async () => {
     // signalCount=5, below min_signals=20
     mockMetricsQueries(5, 3, 1, null, null);
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // journal INSERT (skipped_insufficient_data)
 
     await evaluateAndQueue('qwen-m1max');
 
-    // Only the 3 SELECT queries, no INSERT
-    expect(mockQuery).toHaveBeenCalledTimes(3);
+    // No INSERT into strategy_review_tasks, but journal INSERT does fire
     const calls = mockQuery.mock.calls.map((c: unknown[]) => c[0] as string);
-    expect(calls.every((sql) => !sql.includes('INSERT'))).toBe(true);
+    expect(calls.some((sql) => sql.includes('strategy_review_tasks'))).toBe(false);
+    expect(calls.some((sql) => sql.includes('qwen_signals_loop_runs'))).toBe(true);
   });
 
   it('inserts win_rate_below_threshold when win rate is low', async () => {
@@ -189,15 +192,96 @@ describe('evaluateAndQueue', () => {
     });
   });
 
-  it('does not insert when metrics are above thresholds', async () => {
+  it('does not insert strategy_review_tasks when metrics are above thresholds', async () => {
     // win_rate=0.6 >= 0.4, sharpe high
     // avg=0.01, stddev=0.005 → sharpe=2*sqrt(365)≈38 >> 0.5
     mockMetricsQueries(25, 30, 18, 0.01, 0.005);
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // journal INSERT (ok)
 
     await evaluateAndQueue('qwen-m1max');
 
     const calls = mockQuery.mock.calls.map((c: unknown[]) => c[0] as string);
-    expect(calls.every((sql) => !sql.includes('INSERT'))).toBe(true);
+    // Journal insert fires (ok), but no strategy_review_tasks insert
+    expect(calls.some((sql) => sql.includes('strategy_review_tasks'))).toBe(false);
+    expect(calls.some((sql) => sql.includes('qwen_signals_loop_runs'))).toBe(true);
+  });
+});
+
+// ─── persistRunJournal / evaluateAndQueue journal integration ─────────────────
+
+describe('evaluateAndQueue — journal persistence via persistRunJournal', () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+    delete process.env.QWEN_REVIEW_MIN_SIGNALS;
+    delete process.env.QWEN_REVIEW_MIN_TRADES_FOR_SHARPE;
+    delete process.env.QWEN_REVIEW_WIN_RATE_MIN;
+    delete process.env.QWEN_REVIEW_SHARPE_MIN;
+  });
+
+  it('inserts journal row with decision=skipped_insufficient_data when signals < 20', async () => {
+    // signalCount=5 < minSignals=20 → skipped
+    mockMetricsQueries(5, 0, 0, null, null);
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // journal INSERT
+
+    await evaluateAndQueue('qwen-m1max');
+
+    const journalCall = mockQuery.mock.calls.find((c: unknown[]) =>
+      (c[0] as string).includes('qwen_signals_loop_runs')
+    );
+    expect(journalCall).toBeDefined();
+    expect(journalCall![1][2]).toBe('skipped_insufficient_data');
+    expect(journalCall![1][3]).toEqual([]);
+  });
+
+  it('inserts journal row with decision=ok when metrics pass thresholds', async () => {
+    // signalCount=25 >= 20, win_rate=0.6 >= 0.4, sharpe high
+    mockMetricsQueries(25, 30, 18, 0.01, 0.005);
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // journal INSERT
+
+    await evaluateAndQueue('qwen-m1max');
+
+    const journalCall = mockQuery.mock.calls.find((c: unknown[]) =>
+      (c[0] as string).includes('qwen_signals_loop_runs')
+    );
+    expect(journalCall).toBeDefined();
+    expect(journalCall![1][2]).toBe('ok');
+    expect(journalCall![1][3]).toEqual([]);
+  });
+
+  it('inserts journal row with decision=queued_review when threshold breached', async () => {
+    // signalCount=25, win_rate=0.3 < 0.4 → queued_review
+    mockMetricsQueries(25, 20, 6, 0.001, 0.001);
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // strategy_review_tasks INSERT
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // journal INSERT
+
+    await evaluateAndQueue('qwen-m1max');
+
+    const journalCall = mockQuery.mock.calls.find((c: unknown[]) =>
+      (c[0] as string).includes('qwen_signals_loop_runs')
+    );
+    expect(journalCall).toBeDefined();
+    expect(journalCall![1][2]).toBe('queued_review');
+    expect(journalCall![1][3]).toContain('win_rate_below_threshold');
+  });
+
+  it('inserts journal row with decision=error via persistRunJournal directly', async () => {
+    // persistRunJournal is the public API for the error path.
+    // evaluateAndQueue's error branch calls it when computeQualityMetrics throws UNEXPECTEDLY
+    // (computeQualityMetrics itself catches DB errors, so we test persistRunJournal directly).
+    const emptyMetrics = {
+      winRate: null, sharpe: null, signalCount: 0,
+      closedTradeCount: 0, windowStartMs: 0, windowEndMs: 0,
+    };
+    mockQuery.mockResolvedValueOnce({ rows: [] }); // journal INSERT
+
+    await persistRunJournal('qwen-m1max', emptyMetrics, 'error', [], 'DB exploded');
+
+    const journalCall = mockQuery.mock.calls.find((c: unknown[]) =>
+      (c[0] as string).includes('qwen_signals_loop_runs')
+    );
+    expect(journalCall).toBeDefined();
+    expect(journalCall![1][2]).toBe('error');
+    expect(journalCall![1][4]).toBe('DB exploded');
   });
 });
 

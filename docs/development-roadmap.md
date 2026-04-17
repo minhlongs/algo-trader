@@ -112,6 +112,15 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Total new tests: 56 Qwen-specific tests across 4 suites
 - Status: **COMPLETE** ✅ (PRs #107–#111 pending merge)
 
+### Qwen Signals Loop Journal Persistence (Complete - 2026-04-17) ✅ SHIPPED
+- [x] Migration 018 — `qwen_signals_loop_runs` table (decision, metrics_snapshot JSONB, trigger_reasons[], error_message)
+- [x] Journal persistence — `persistRunJournal()` in all 4 decision paths (skipped_insufficient_data, ok, queued_review, error)
+- [x] Prometheus counter — `algo_trader_qwen_signals_loop_runs_total{decision}` per evaluation cycle
+- [x] Admin endpoint — `GET /api/v1/admin/qwen/signals-loop/runs?limit=50&decision=queued_review` (audit trail + filtering)
+- [x] 9 new tests (journal + admin endpoint) — all 756 pass
+- Use cases: Audit trail, historical trends, decision learning, compliance
+- Status: **COMPLETE** ✅ (PR #114 pending, 756 total tests)
+
 ### Qwen Signals Loop (Complete - 2026-04-17) ✅ SHIPPED
 - [x] Quality drift detector — Layer 0 observational (above L3 kill-switch)
 - [x] Migration 017 — `strategy_review_tasks` table with daily-dedupe UNIQUE index

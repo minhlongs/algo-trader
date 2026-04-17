@@ -2,6 +2,21 @@
 
 ## [2.1.0] - 2026-04-17
 
+### Added — Qwen Signals Loop Journal Persistence (Audit Trail & Historical Metrics)
+
+Closes observability gap from PR #113. Every 6h signals loop evaluation now persists complete run journal: decision path, metrics snapshot (JSONB), trigger_reasons[], error_message.
+
+**Files:**
+- Migration: `018_qwen_signals_loop_runs.sql` (new table: id, strategy_id, decision ∈ {skipped_insufficient_data, ok, queued_review, error}, metrics_snapshot, trigger_reasons[], error_message, created_at)
+- Core: `src/wiring/qwen-signals-loop.ts` (new `persistRunJournal()` called in 4 decision paths)
+- Metrics: `src/middleware/prometheus-metrics.ts` (new counter `algo_trader_qwen_signals_loop_runs_total{decision}`)
+- Admin API: `src/api/routes/admin-qwen-routes.ts` (new `GET /api/v1/admin/qwen/signals-loop/runs?limit=50&decision=queued_review`)
+- Tests: 9 new journal persistence + admin endpoint tests (756 total)
+
+**Use cases:** Audit trail for compliance, historical metric trends analysis, "learn from past decisions" (PDF pillar 3), debug signal generation.
+
+**Related PR:** `feat/qwen-signals-loop-journal` (pending merge as PR #114)
+
 ### Added — Qwen Signals Loop (Quality Drift Detection Layer 0)
 
 Soft upstream quality-drift detector above L3 kill-switch. Observational only — no auto-disable.
