@@ -59,6 +59,13 @@ export const qwenSignalsLoopLastRunTs = new client.Gauge({
   registers: [register],
 });
 
+/** Counter: signals-loop journal INSERT failures (attribution for freshness alerts) */
+export const qwenSignalsLoopJournalWriteErrorsTotal = new client.Counter({
+  name: 'algo_trader_qwen_signals_loop_journal_write_errors_total',
+  help: 'Count of persistRunJournal INSERT failures. Complements QwenSignalsLoopStale: non-zero rate here + stale gauge = DB-write failing; zero rate here + stale gauge = timer dead.',
+  registers: [register],
+});
+
 // ─── L-tier rollback visibility (Pillar 2 observability) ─────────────────────
 
 /** Gauge: kill-switch active state (0=inactive, 1=active), labeled by source */

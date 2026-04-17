@@ -13,13 +13,15 @@ vi.mock('../../db/postgres-client.js', () => ({
 
 // ─── Mock Prometheus ──────────────────────────────────────────────────────────
 const mockLoopRunsCounter = { inc: vi.fn() };
-const { mockLoopLastRunGauge } = vi.hoisted(() => ({
+const { mockLoopLastRunGauge, mockJournalWriteErrorsCounter } = vi.hoisted(() => ({
   mockLoopLastRunGauge: { set: vi.fn() },
+  mockJournalWriteErrorsCounter: { inc: vi.fn() },
 }));
 vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
   qwenSignalsLoopRunsTotal: { inc: vi.fn() },
   qwenSignalsLoopLastRunTs: mockLoopLastRunGauge,
+  qwenSignalsLoopJournalWriteErrorsTotal: mockJournalWriteErrorsCounter,
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
   setQwenKillSwitch: vi.fn(),
@@ -307,6 +309,25 @@ describe('evaluateAndQueue — journal persistence via persistRunJournal', () =>
     const ts = mockLoopLastRunGauge.set.mock.calls[0][0];
     expect(ts).toBeGreaterThanOrEqual(before);
     expect(ts).toBeLessThanOrEqual(after);
+  });
+
+  it('increments journal-write-errors counter when INSERT rejects (attribution signal)', async () => {
+    const emptyMetrics = {
+      winRate: null, sharpe: null, signalCount: 0,
+      closedTradeCount: 0, windowStartMs: 0, windowEndMs: 0,
+    };
+    mockJournalWriteErrorsCounter.inc.mockClear();
+    mockLoopLastRunGauge.set.mockClear();
+    mockQuery.mockRejectedValueOnce(new Error('connection refused'));
+
+    // Must not throw — journal failure is fail-open by design.
+    await expect(
+      persistRunJournal('qwen-m1max', emptyMetrics, 'ok', [], undefined)
+    ).resolves.toBeUndefined();
+
+    expect(mockJournalWriteErrorsCounter.inc).toHaveBeenCalledOnce();
+    // Freshness gauge must NOT advance on DB-write failure
+    expect(mockLoopLastRunGauge.set).not.toHaveBeenCalled();
   });
 });
 

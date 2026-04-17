@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [2.4.5] - 2026-04-17
+
+### Added — Journal-Write Error Counter (PR #120 Runbook Follow-up)
+
+Closes the attribution gap the PR #120 runbook explicitly flagged. When `QwenSignalsLoopStale` fires, operators can now distinguish "timer dead" from "DB persistently broken" by querying the new counter.
+
+**Runtime:**
+- `prometheus-metrics.ts` +1 counter `algo_trader_qwen_signals_loop_journal_write_errors_total` (no labels, single-cause, bounded cardinality).
+- `qwen-signals-loop.ts` — `.inc()` called in `persistRunJournal` catch block, after `logger.error`. Preserves fail-open semantics (journal failure must not crash eval flow).
+
+**Tests:** +1 unit test asserts counter increments on INSERT reject AND freshness gauge does NOT advance. All 3 `vi.mock('prometheus-metrics.js')` factories synced per `feedback_prometheus_metrics_mock_sync.md` (learned 2026-04-17 from PR #121 CI fail). 78/78 tests pass across 4 impacted test files.
+
+**Zero alert rule changes.** Counter is for operator attribution + future dashboard panel. Freshness alert (PR #120) already catches prolonged failure.
+
+---
+
 ## [2.4.4] - 2026-04-17
 
 ### Added — Drawdown Monitor Freshness (symmetric to v2.4.3)

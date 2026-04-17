@@ -13,6 +13,7 @@ import {
   qwenStrategyReviewsQueuedTotal,
   qwenSignalsLoopRunsTotal,
   qwenSignalsLoopLastRunTs,
+  qwenSignalsLoopJournalWriteErrorsTotal,
 } from '../middleware/prometheus-metrics';
 import { getTracer } from '../utils/tracing';
 
@@ -165,7 +166,10 @@ export async function persistRunJournal(
     qwenSignalsLoopRunsTotal.inc({ decision });
     qwenSignalsLoopLastRunTs.set(Math.floor(Date.now() / 1000));
   } catch (err) {
-    // Journal failure must never crash the main evaluation flow
+    // Journal failure must never crash the main evaluation flow.
+    // Emit counter so operators can distinguish "DB-write failing" from
+    // "timer dead" when QwenSignalsLoopStale fires. See PR #120 runbook.
+    qwenSignalsLoopJournalWriteErrorsTotal.inc();
     logger.error('[QwenSignalsLoop] persistRunJournal failed', { err });
   }
 }
