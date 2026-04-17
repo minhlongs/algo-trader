@@ -134,6 +134,8 @@ export class ApiServer {
     this.app.use('/api/coupons', couponRouter);
     this.app.use('/api/blog', blogRouter);
     this.app.use('/api/analytics', analyticsRouter);
+    this.app.use('/api/v1/subscriber', subscriberPnlRouter);
+    this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
 
     // Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon
     // Phase 04: stub replaced with real D1-backed SignalStoreD1
