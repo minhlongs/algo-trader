@@ -1,5 +1,25 @@
 # Project Changelog - Algo Trader
 
+## [2.4.16] - 2026-04-17
+
+### Added — Gate 6: Paper Gate Date Lock (Pillar 1 doctrine extension)
+
+CI fails on any commit that introduces an actual `QWEN_LIVE_ELIGIBLE=true` assignment in `.env*` or `docker/**/*.ya?ml` files. Paper-first doctrine: the flag is operator-runtime-only, never checked in. A config leak would flip the live-trading gate at deploy time without operator intent.
+
+**Script:** `scripts/ci-gate-paper-gate-lock.sh`
+- Scans `git ls-files` output for `.env*` and `docker/**/*.ya?ml` entries.
+- Matches only actual assignments (`^QWEN_LIVE_ELIGIBLE=true$` dotenv form OR `QWEN_LIVE_ELIGIBLE: true` YAML key:value OR `- QWEN_LIVE_ELIGIBLE=true` compose list form).
+- Exempts documentation references (TypeScript comments, YAML description strings, docs/plans/runbooks).
+- Exit codes: 0 clean, 1 violation, 2 tool error.
+
+**CI workflow:** new `gate-6-paper-gate-lock` job in `.github/workflows/ci.yml` runs in parallel with gates 1-4 on every push/PR (<2s execution).
+
+**Docs:** `docs/ai-first-enforcement-gates.md` updated — "five gates" → "six gates" with Gate 6 row.
+
+**Adversarially verified:** appending `QWEN_LIVE_ELIGIBLE=true` to `.env.example` triggers `VIOLATION: .env.example contains QWEN_LIVE_ELIGIBLE=true assignment`. After restore, `Gate 6 PASSED`.
+
+---
+
 ## [2.4.15] - 2026-04-17
 
 ### Added — Alert Rule Metric-Reference Validator

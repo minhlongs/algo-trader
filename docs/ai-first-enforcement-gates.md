@@ -10,7 +10,7 @@ Without explicit enforcement points, AI regressions reach production silently.
 These gates give each AI commit a deterministic pass/fail signal the founder can audit
 in one glance via the GitHub Checks UI.
 
-## The five gates
+## The six gates
 
 Each gate maps 1:1 to a job in `.github/workflows/ci.yml`. A failure surfaces
 the offending gate by name instead of a single monolithic "CI failed".
@@ -22,9 +22,11 @@ the offending gate by name instead of a single monolithic "CI failed".
 | 3 | Quality | yes on PR | `eslint --max-warnings 0` on changed TS files only; >400 LOC files surfaced as warnings |
 | 4 | Dependency hygiene | yes | Lockfile must install reproducibly; `pnpm outdated` advisory-only |
 | 5 | Deployment smoke | yes on `main` | `ci-gate-deploy-smoke.mjs` probes `algo-trader.pages.dev` + `cashclaw.cc` with 5-attempt backoff |
+| 6 | Paper Gate Date Lock | yes | `ci-gate-paper-gate-lock.sh` — blocks any commit that sets `QWEN_LIVE_ELIGIBLE=true` as an assignment in `.env*` or `docker/**/*.ya?ml` files. Documentation references (comments, strings, runbooks) exempt |
 
 Gates 1–4 run in parallel on every push and PR. Gate 5 runs only after `main`
-is updated and depends on all prior gates passing.
+is updated. Gate 6 runs in parallel with 1–4 on every event — it is a pure
+Git metadata check (<2s), protecting paper-first doctrine until 2026-05-17.
 
 ## Secret-scan patterns
 

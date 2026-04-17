@@ -125,3 +125,14 @@ jobs:
         run: sleep 45
       - name: Production smoke test
         run: node scripts/ci-gate-deploy-smoke.mjs
+
+  gate-6-paper-gate-lock:
+    name: Gate 6 — Paper Gate Date Lock (Pillar 1 doctrine)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify QWEN_LIVE_ELIGIBLE=true is not committed as an assignment
+        run: bash scripts/ci-gate-paper-gate-lock.sh
