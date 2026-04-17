@@ -136,3 +136,17 @@ jobs:
           fetch-depth: 0
       - name: Verify QWEN_LIVE_ELIGIBLE=true is not committed as an assignment
         run: bash scripts/ci-gate-paper-gate-lock.sh
+
+  gate-7-shell-lint:
+    name: Gate 7 — Shell lint (shellcheck scripts/*.sh at warning severity)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint all scripts
+        # --severity=warning: block error/warning, allow info-level style nits
+        # (e.g. SC2086 double-quote info, SC2015 A&&B||C info) so the gate
+        # catches real bugs without churn.
+        run: shellcheck --severity=warning scripts/*.sh

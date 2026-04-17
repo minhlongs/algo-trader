@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [2.4.17] - 2026-04-17
+
+### Added — Gate 7: Shell lint (shellcheck at warning severity)
+
+CI fails on any bash bug (quoting, unset vars, subshell leaks, etc.) in `scripts/*.sh` at `shellcheck --severity=warning`. Info-level style nits (SC2086 double-quote, SC2015 `A&&B||C`) are intentionally allowed — the gate catches real bugs without churn on prior passing code.
+
+**CI workflow:** new `gate-7-shell-lint` job in `.github/workflows/ci.yml` — `sudo apt-get install -y shellcheck` + `shellcheck --severity=warning scripts/*.sh`. ~2s execution.
+
+**Baseline:** 13 scripts currently in `scripts/*.sh`. All pass at `warning` severity as of this PR.
+
+**Docs:** `ai-first-enforcement-gates.md` bumped "six gates" → "seven gates" with Gate 7 row.
+
+**Why now:** session added 2 new shell scripts (`qwen-ops.sh`, `ci-gate-paper-gate-lock.sh`); as operators add more wrappers, a baseline lint gate keeps the tree free of common footguns.
+
+---
+
 ## [2.4.16] - 2026-04-17
 
 ### Added — Gate 6: Paper Gate Date Lock (Pillar 1 doctrine extension)

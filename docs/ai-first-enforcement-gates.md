@@ -10,7 +10,7 @@ Without explicit enforcement points, AI regressions reach production silently.
 These gates give each AI commit a deterministic pass/fail signal the founder can audit
 in one glance via the GitHub Checks UI.
 
-## The six gates
+## The seven gates
 
 Each gate maps 1:1 to a job in `.github/workflows/ci.yml`. A failure surfaces
 the offending gate by name instead of a single monolithic "CI failed".
@@ -23,10 +23,13 @@ the offending gate by name instead of a single monolithic "CI failed".
 | 4 | Dependency hygiene | yes | Lockfile must install reproducibly; `pnpm outdated` advisory-only |
 | 5 | Deployment smoke | yes on `main` | `ci-gate-deploy-smoke.mjs` probes `algo-trader.pages.dev` + `cashclaw.cc` with 5-attempt backoff |
 | 6 | Paper Gate Date Lock | yes | `ci-gate-paper-gate-lock.sh` — blocks any commit that sets `QWEN_LIVE_ELIGIBLE=true` as an assignment in `.env*` or `docker/**/*.ya?ml` files. Documentation references (comments, strings, runbooks) exempt |
+| 7 | Shell lint | yes | `shellcheck --severity=warning scripts/*.sh` — catches real bash bugs (quoting, unset vars, subshell leaks) while allowing info-level style nits |
 
 Gates 1–4 run in parallel on every push and PR. Gate 5 runs only after `main`
-is updated. Gate 6 runs in parallel with 1–4 on every event — it is a pure
-Git metadata check (<2s), protecting paper-first doctrine until 2026-05-17.
+is updated. Gates 6 and 7 run in parallel with 1–4 on every event (<2s each) —
+Gate 6 protects paper-first doctrine until 2026-05-17; Gate 7 keeps the
+growing `scripts/` tree free of common bash footguns as operators accumulate
+wrappers.
 
 ## Secret-scan patterns
 
