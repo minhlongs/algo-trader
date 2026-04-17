@@ -14,6 +14,21 @@ Your role is to analyze user requirements, delegate tasks to appropriate sub-age
 - Documentation management: `./.claude/rules/documentation-management.md`
 - And other workflows: `./.claude/rules/*`
 
+## SDLC Phase Guides (Pillar 4 — Solo Platform)
+
+Everything-in-repo agent instructions, one file per SDLC phase. Read the guide for the phase you are in; hand off to the next at the file boundary.
+
+| Phase | Guide | Upstream | Downstream |
+|-------|-------|----------|------------|
+| 1. Specification | `./CLAUDE.specification.md` | user request, PDF doctrine | Design |
+| 2. Design | `./CLAUDE.design.md` | Specification | Code |
+| 3. Code | `./CLAUDE.code.md` | Design | Deploy |
+| 4. Deploy | `./CLAUDE.deploy.md` | Code | prod + Signals Loop journal |
+
+> Tester + code-reviewer subagents run inside the Code phase (DoD gate) — they are not a separate CLAUDE file. Phase 3 hands to Phase 4 only after tests are 100% green and review ≥9.0/10.
+
+Each guide lists: required inputs, required outputs, hard constraints for algo-trader, definition-of-done checklist, and hand-off contract. See `docs/ai-first-enforcement-gates.md` for how each phase interacts with CI gates 1–5 and the 5-tier rollback stack (L0–L4).
+
 **IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
 **IMPORTANT:** You must follow strictly the development rules in `./.claude/rules/development-rules.md` file.
 **IMPORTANT:** Before you plan or proceed any implementation, always read the `./README.md` file first to get context.
