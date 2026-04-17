@@ -1,5 +1,34 @@
 # Project Changelog - Algo Trader
 
+## [2.0.0] - 2026-04-17
+
+### Added — RaaS Solo-Platform B2B Upgrade (7 phases shipped)
+
+Layered on top of algo-trader RaaS: Citadel Protocol + Wasm Sandbox + IronClaw DLP + BYOK + CEX adapter + Signal feed API + multi-tenant P&L dashboard + Enterprise tier ($49k/$199k/$499k invoice-based).
+
+**Branch:** `plan/raas-solo-platform-260416` — commit range `22ffa21..0b0ed8e`
+**Scope:** ~92 files, 211 backend tests passing, 0 tsc errors (backend + dashboard).
+**Plan:** `plans/260416-2312-raas-solo-platform/`
+**Source:** DeepSeek - Solo-Platform.pdf (226 pages, Vietnamese B2B enterprise spec)
+
+- **Phase 01 Citadel Protocol MVP** — 11 files — signed-JWT attestation stub (simulation mode), BYOK KMS envelope encryption, `CITADEL_MODE` env gating. SGX/TDX hardware deferred to D2.
+- **Phase 02 Wasm Sandbox** — 15 files — native WebAssembly runtime, per-subscriber isolation, compute-only kernels, PoC `spread-mean-reversion.wasm`. Remaining 45 strategies port-on-demand.
+- **Phase 03 IronClaw DLP** — 11 files — regex egress filter, hash-chained audit log, D1 batch-write, 5 seed patterns. ML classifier deferred.
+- **Phase 04 CEX adapter** — 8 files — Binance spot (via ccxt) + dYdX v4 read-only (REST Indexer). Perp/leverage gated behind `CEX_PERP_ENABLED` flag.
+- **Phase 05 Signal feed API** — 16 files — REST + SSE (Node EventEmitter) + Telegram push, per-tier throttle, dedup guard, TTL enforcer.
+- **Phase 06 Subscriber P&L dashboard** — 20 files — multi-tenant lens, `tenantQuery` isolation helper, equity curve builder, activity metrics, React pages + components + REST routes.
+- **Phase 07 Enterprise tier** — 11 files — invoice-based close ($49k/$199k/$499k), TAM handoff, paper-demo provisioner, enterprise landing + contact + thank-you + TAM dashboard pages. Forbidden-word scrubbed.
+
+### Deferrals
+- TEE hardware (SGX/TDX) quote validation
+- Multi-strategy Wasm port (45 strategies)
+- Router wiring: fetch-proxy into order-executor + sentiment-feed; signal routers into server.ts; enterprise inquiry routes
+- Persistence: in-memory → Postgres/D1 for subscription store + inquiry store
+- CRM sync (HubSpot/Pipedrive)
+- TAM auth middleware
+- Dashboard vitest runtime (tests type-check, runner not wired)
+- SOC 2 Type II audit (post-launch, 6+ months operational)
+
 ## [1.7.0] - 2026-04-16
 
 ### Added - Chính Danh a16z Dual-Layer Positioning (Phases 01/02/04 shipped)

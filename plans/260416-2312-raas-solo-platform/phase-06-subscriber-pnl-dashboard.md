@@ -1,4 +1,7 @@
-# Phase 06 — Subscriber P&L Dashboard (Multi-Tenant Lens)
+# Phase 06 — Subscriber P&L Dashboard (Multi-Tenant Lens) ✓ DONE
+
+**Commits:** 6b089ad → f8e5c5f → fc88d0e → d68665a → db1eb48 | **20 files** | **25/25 backend tests pass** | **tsc clean backend+dashboard**. Deferral: dashboard vitest runtime.
+
 
 **File ownership:** `src/raas/subscriber-executor.ts`, `src/raas/subscriber-pnl-aggregator.ts`, `src/raas/subscriber-equity-curve-builder.ts`, `src/raas/subscriber-tenant-isolator.ts`, `src/raas/subscriber-activity-metrics.ts`, `src/raas/index.ts`, `dashboard/src/pages/subscriber-overview.tsx`, `dashboard/src/pages/subscriber-trade-history.tsx`, `dashboard/src/pages/subscriber-equity.tsx`, `dashboard/src/components/subscriber-*.tsx`, `src/db/migrations/015_subscriber_*.sql`
 

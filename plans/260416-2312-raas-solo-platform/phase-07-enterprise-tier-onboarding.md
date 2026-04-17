@@ -1,4 +1,7 @@
-# Phase 07 — Enterprise Tier + Onboarding UX ($49k-$499k)
+# Phase 07 — Enterprise Tier + Onboarding UX ($49k-$499k) ✓ DONE
+
+**Commits:** e1bff1a → 0b0ed8e (cherry-picked onto plan branch) | **11 files** | **19/19 tests pass** | **tsc clean**. Deferrals: inquiry route registration, Postgres persistence, CRM sync, TAM auth middleware, SOC 2 Type II.
+
 
 **File ownership:** `src/billing/enterprise-tier-config.ts`, `src/billing/enterprise-contract-service.ts`, `src/billing/enterprise-sla-tracker.ts`, `src/billing/enterprise-onboarding-orchestrator.ts`, `src/billing/enterprise-demo-provisioner.ts`, `dashboard/src/pages/enterprise-landing.tsx`, `dashboard/src/pages/enterprise-demo.tsx`, `dashboard/src/pages/enterprise-onboarding.tsx`, `dashboard/src/components/enterprise-*.tsx`, `src/db/migrations/016_enterprise_*.sql`
 
