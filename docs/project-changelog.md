@@ -1,5 +1,17 @@
 # Project Changelog - Algo Trader
 
+## [2.4.22] - 2026-04-17
+
+### Added — Strategy Review Trigger Reasons doc
+
+`docs/strategy-review-reasons.md` — canonical enum of `trigger_reason` values emitted by `qwen-signals-loop.ts`. Table with: reason · emit condition · PromQL observe · default threshold · remediation path. Currently 2 reasons (`win_rate_below_threshold`, `sharpe_below_threshold`). Documents source-of-truth code snippet, cardinality contract (queue ↔ resolve counter label symmetry), related Grafana panels, and deprecation policy (keep retired entries with migration note).
+
+**Runbook README** updated with "Strategy Review Trigger Reasons" section cross-referencing the doc.
+
+**Zero runtime changes.** Operator reference when novel reasons appear in Grafana.
+
+---
+
 ## [2.4.21] - 2026-04-17
 
 ### Added — `qwen-ops.sh backlog` subcommand

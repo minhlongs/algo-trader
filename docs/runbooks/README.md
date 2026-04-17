@@ -50,6 +50,10 @@ Group matcher `component = qwen` has 30s group_wait + 4h repeat_interval. `compo
 
 Grafana → **Qwen Solo Platform — L0–L4 Rollback Visibility** (UID `qwen-solo-platform`). 18 panels across 4 rows: Rollback State, Paper Performance, Signals Loop, Liveness & Review Queue.
 
+## Strategy Review Trigger Reasons
+
+Canonical enum of `trigger_reason` values emitted by `qwen-signals-loop.ts`. When a Grafana alert or counter surfaces a `reason=` label, look up its meaning + remediation in [strategy-review-reasons.md](../strategy-review-reasons.md).
+
 ## Operator CLI
 
 Use `./scripts/qwen-ops.sh <command>` instead of memorizing curl + X-Admin-Key. Commands: `health`, `status`, `kill`, `unkill`, `reviews`, `resolve <id>`, `runs`. Reads `ADMIN_API_KEY` from env; defaults base URL to `http://localhost:3000` (override with `QWEN_OPS_HOST`). Run `./scripts/qwen-ops.sh help` for full usage.
