@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import { resolve } from 'path';
 import { parse } from 'yaml';
 import {
@@ -172,6 +172,34 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
     expect(rule.labels.rollback_tier).toBe('strategy_review');
     const expr = rule.data.find((d) => d.refId === 'A')!.model.expr;
     expect(expr).toContain('algo_trader_qwen_strategy_review_oldest_pending_age_sec');
+  });
+
+  it('every rule has a runbook annotation (symmetric to runbook-index PR #137)', () => {
+    for (const rule of allRules) {
+      expect(
+        rule.annotations.runbook,
+        `${rule.uid} missing runbook: annotation — operator has no incident playbook to jump to`
+      ).toBeTruthy();
+    }
+  });
+
+  it('every runbook URL resolves to an existing file under docs/runbooks/', () => {
+    const RUNBOOKS_DIR = resolve(__dirname, '../../docs/runbooks');
+    const URL_PREFIX = 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/';
+    for (const rule of allRules) {
+      const url = rule.annotations.runbook;
+      if (!url) continue; // covered by previous test
+      expect(
+        url.startsWith(URL_PREFIX),
+        `${rule.uid} runbook URL "${url}" does not point at docs/runbooks/ — incident operator will 404`
+      ).toBe(true);
+      const filename = url.slice(URL_PREFIX.length);
+      const absolutePath = resolve(RUNBOOKS_DIR, filename);
+      expect(
+        existsSync(absolutePath) && statSync(absolutePath).isFile(),
+        `${rule.uid} runbook file "${filename}" does not exist under docs/runbooks/`
+      ).toBe(true);
+    }
   });
 
   it('every PromQL metric reference exists as an export in prometheus-metrics.ts', () => {

@@ -17,7 +17,7 @@ Ordered by severity (page-first) then rollback-tier.
 | `qwen-signals-loop-stale` | WARNING | signals_loop | `time() - qwen_signals_loop_last_run_ts > 25200` (7h) for 10m | [qwen-signals-loop-stale.md](qwen-signals-loop-stale.md) |
 | `qwen-drawdown-monitor-stale` | WARNING | drawdown_monitor | `time() - qwen_drawdown_monitor_last_run_ts > 25200` (7h) for 10m | [qwen-drawdown-monitor-stale.md](qwen-drawdown-monitor-stale.md) |
 | `qwen-strategy-review-backlog` | WARNING | strategy_review | `qwen_strategy_review_oldest_pending_age_sec > 172800` (48h) for 30m | [qwen-strategy-review-backlog.md](qwen-strategy-review-backlog.md) |
-| `qwen-l1-kill-switch-active` | INFO | L1 | `qwen_kill_switch_active{source="env"} == 1` for 1m | *(L1 kill is operator-initiated; see [qwen-drawdown-breach.md](qwen-drawdown-breach.md) re-enable checklist)* |
+| `qwen-l1-kill-switch-active` | INFO | L1 | `qwen_kill_switch_active{source="env"} == 1` for 1m | [qwen-kill-switch.md](qwen-kill-switch.md) |
 
 ## 5-Tier Rollback Stack — Doctrine
 

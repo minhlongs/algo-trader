@@ -63,11 +63,12 @@ describe('docs/runbooks/README.md — link integrity', () => {
     ).toEqual([]);
   });
 
-  it('includes all 7 canonical runbook files by filename', () => {
+  it('includes all 8 canonical runbook files by filename', () => {
     const expectedRunbooks = [
       'algo-trader-deadman.md',
       'qwen-drawdown-breach.md',
       'qwen-drawdown-monitor-stale.md',
+      'qwen-kill-switch.md',
       'qwen-paper-gate.md',
       'qwen-signals-loop-error.md',
       'qwen-signals-loop-stale.md',

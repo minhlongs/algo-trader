@@ -220,6 +220,7 @@ groups:
         annotations:
           summary: 'Qwen L1 env kill-switch is ACTIVE'
           description: 'QWEN_KILL=1 env flag active — all Qwen signals blocked at swarm layer. Operator action: unset env + restart process to re-enable.'
+          runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-kill-switch.md'
 
   # ═══ Availability — scrape-level deadman-switch ══════════════════════════
   # Closes the observability loop: if the algo-trader app stops responding to
