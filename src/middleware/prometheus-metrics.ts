@@ -19,6 +19,23 @@ client.collectDefaultMetrics({ register });
 // Custom Metrics - Trading Specific
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Qwen M1 Max Signal Pipeline Metrics ─────────────────────────────────────
+
+/** Gauge: rolling 24h paper P&L percentage for Qwen signals (decimal, e.g. -0.06 = -6%) */
+export const qwenPaperPnlPct = new client.Gauge({
+  name: 'algo_trader_qwen_paper_pnl_pct',
+  help: 'Rolling 24h paper P&L percentage for Qwen M1 Max signals (decimal)',
+  registers: [register],
+});
+
+/** Counter: Qwen signals processed by the ingest route */
+export const qwenSignalsTotal = new client.Counter({
+  name: 'algo_trader_qwen_signals_total',
+  help: 'Total Qwen signals ingested via /api/v1/signals/ingest',
+  labelNames: ['result'] as const, // result: accepted | rejected
+  registers: [register],
+});
+
 // Counter for total trades executed
 export const tradesTotal = new client.Counter({
   name: 'trades_total',

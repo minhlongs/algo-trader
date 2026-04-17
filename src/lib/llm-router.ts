@@ -1,9 +1,11 @@
 /**
  * LLM Router — Routes requests to bare-metal MLX servers on M1 Max host.
  *
- * Two routing modes:
+ * Three routing modes:
  *   chat()     — DeepSeek R1 (deep reasoning) → Ollama → Claude cloud
  *   fastChat() — Nemotron Nano (fast triage) → DeepSeek R1 → Ollama → Claude
+ *   qwenChat() — Qwen3-30B MoE (long-context) → DeepSeek R1 → Ollama → Claude
+ *               Gated by LLM_QWEN_ENABLED=true. Falls back to chat() if disabled/unhealthy.
  *
  * OpenAI-compatible /v1/chat/completions for all providers.
  */
@@ -26,7 +28,7 @@ export interface RouterRequest {
 export interface RouterResponse {
   content: string;
   model: string;
-  provider: 'mlx' | 'ollama' | 'cloud';
+  provider: 'mlx' | 'mlx-qwen' | 'ollama' | 'cloud';
   tokensUsed: number;
   latencyMs: number;
 }
@@ -80,6 +82,30 @@ export class LlmRouter extends EventEmitter {
     throw new Error('All LLM endpoints unavailable');
   }
 
+  /**
+   * Qwen MoE long-context route: Qwen3-30B → DeepSeek R1 → Ollama → Claude cloud.
+   * No-op (delegates to chat()) when LLM_QWEN_ENABLED is not 'true'.
+   * Best for: deep statistical reasoning, long market context, multi-step analysis.
+   */
+  async qwenChat(request: RouterRequest): Promise<RouterResponse> {
+    // Feature-flag: if Qwen not configured, fall straight through to chat()
+    if (!this.config.qwen) {
+      return this.chat(request);
+    }
+
+    if (this.isHealthy(this.config.qwen.url)) {
+      try {
+        return await this.callEndpoint(this.config.qwen, request, 'mlx-qwen');
+      } catch {
+        this.markUnhealthy(this.config.qwen.url);
+        this.emit('failover', { from: 'mlx-qwen', to: 'mlx-primary' });
+      }
+    }
+
+    // Qwen unhealthy — fall through to existing chat() chain
+    return this.chat(request);
+  }
+
   /** Fast triage route: Nemotron Nano (~45 tok/s) → falls back to chat() chain */
   async fastChat(request: RouterRequest): Promise<RouterResponse> {
     if (this.isHealthy(this.config.fastTriage.url)) {
@@ -97,7 +123,7 @@ export class LlmRouter extends EventEmitter {
   private async callEndpoint(
     endpoint: LlmEndpoint,
     request: RouterRequest,
-    provider: 'mlx' | 'ollama' | 'cloud'
+    provider: 'mlx' | 'mlx-qwen' | 'ollama' | 'cloud'
   ): Promise<RouterResponse> {
     const start = Date.now();
     const controller = new AbortController();

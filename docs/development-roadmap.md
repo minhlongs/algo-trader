@@ -102,6 +102,16 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] 10 new tests (585 total)
 - Status: **COMPLETE** ✅
 
+### Qwen M1 Max Integration (Complete - 2026-04-17) ✅ SHIPPED
+- [x] Phase 01 — M1 Max Qwen3-30B-A3B MLX server provisioning (PR #108, `95b3b08`, launchd PID 74355, 37.7 tok/s)
+- [x] Phase 02 — LLM router + Qwen provider + fallback chain (PR #107, `c26d4b2`, 9 unit tests)
+- [x] Phase 03 — HMAC-authed signal ingest endpoint + Python daemon (PR #109, `f79d2b8`, 12 unit tests)
+- [x] Phase 04 — Paper-gate + 4-tier rollback harness + migration 016 (PR #110, `ff3332c`, 23 tests)
+- [x] Phase 05 — E2E integration tests + Prometheus metrics + docs sync (PR #111, 12 E2E tests)
+- 30-day paper gate active — live eligibility review date: **2026-05-17**
+- Total new tests: 56 Qwen-specific tests across 4 suites
+- Status: **COMPLETE** ✅ (PRs #107–#111 pending merge)
+
 ### Phase 33: Performance Tuning & Stress Testing (Planned)
 - [ ] Load test with 5000+ concurrent users
 - [ ] Database query optimization (index analysis)

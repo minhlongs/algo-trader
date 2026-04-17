@@ -1,6 +1,7 @@
 /** Paper Trading Orchestrator — end-to-end pipeline glue.
  * market data → NATS → swarm consensus → AI validation → paper order → P&L → reflection
- * No real CLOB orders. Trades logged to data/paper-trades.json + NATS system.metrics. */
+ * No real CLOB orders. Trades logged to data/paper-trades.json + NATS system.metrics.
+ * Phase 04: Qwen signals routed to paper_trades_v3 (source='qwen'), never to live. */
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,6 +16,8 @@ import type { SignalCandidate } from '../intelligence/signal-validator';
 import type { TradeOutcome } from '../intelligence/dual-level-reflection-engine';
 import { recordPrediction, startResolutionChecker } from '../intelligence/prediction-accuracy-tracker';
 import { logger } from '../utils/logger';
+import { isQwenEnabled } from './qwen-drawdown-monitor';
+import { query } from '../db/postgres-client';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface PaperTrade {
@@ -24,10 +27,49 @@ export interface PaperTrade {
   size: number; // USDC
   entryPrice: number;
   strategy: string;
+  /** Source tag for A/B P&L ledger: 'qwen' | 'deepseek' | 'swarm' | 'legacy' */
+  source: string;
   signalConfidence: number;
   swarmApproved: boolean;
   aiValidated: boolean;
   timestamp: number;
+}
+
+/** Derive source tag from strategy name prefix */
+function deriveSource(strategy: string): string {
+  if (strategy.startsWith('qwen')) return 'qwen';
+  if (strategy.startsWith('deepseek')) return 'deepseek';
+  if (strategy.startsWith('swarm')) return 'swarm';
+  return 'legacy';
+}
+
+/**
+ * Persist a paper trade to paper_trades_v3 table (source-tagged).
+ * Qwen trades are always paper_only=TRUE — NEVER routed to live.
+ * Non-blocking: errors are logged but do not fail the trade flow.
+ */
+async function savePaperTradeV3(trade: PaperTrade): Promise<void> {
+  try {
+    await query(
+      `INSERT INTO paper_trades_v3
+         (id, market_id, side, size_usd, entry_price, strategy, source, confidence, status, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9)
+       ON CONFLICT (id) DO NOTHING`,
+      [
+        trade.id,
+        trade.marketId,
+        trade.side,
+        trade.size,
+        trade.entryPrice,
+        trade.strategy,
+        trade.source,
+        trade.signalConfidence,
+        trade.timestamp,
+      ]
+    );
+  } catch (err) {
+    logger.warn('[PaperOrchestrator] paper_trades_v3 insert failed', { id: trade.id, err });
+  }
 }
 
 export interface PaperPortfolio {
@@ -67,6 +109,16 @@ function loadTrades(): void {
 
 async function processCandidate(candidate: SignalCandidate, maxPositions: number): Promise<void> {
   const vibe = getVibeState();
+
+  // L1+L2: check Qwen kill switch and swarm-enabled flag before processing
+  const source = deriveSource(candidate.signalType ?? '');
+  if (source === 'qwen' && !isQwenEnabled()) {
+    logger.info('[PaperOrchestrator] Qwen signal BLOCKED — kill switch or drawdown disable', {
+      signalType: candidate.signalType,
+    });
+    return;
+  }
+
   // Endgame signals are mathematical — use lower threshold (0.5% min)
   const isEndgame = candidate.reasoning.includes('Endgame') || candidate.reasoning.includes('near-certain');
   const minEdge = isEndgame ? 0.005 : Math.max(0.01, vibe.minEdge / 100);
@@ -97,6 +149,7 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
   const trade: PaperTrade = {
     id: `paper-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     marketId: market.id, side, size, entryPrice, strategy: candidate.signalType,
+    source,
     signalConfidence: isEndgame ? candidate.expectedEdge : 0.8, swarmApproved: !isEndgame, aiValidated: !isEndgame,
     timestamp: Date.now(),
   };
@@ -104,6 +157,9 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
   portfolio.capital -= size;
   portfolio.positions.push(trade);
   saveTrades();
+
+  // Persist to source-tagged paper_trades_v3 for Qwen A/B P&L tracking
+  void savePaperTradeV3(trade);
 
   // Record prediction for accuracy tracking (no money needed)
   recordPrediction({

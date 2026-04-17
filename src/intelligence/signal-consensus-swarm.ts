@@ -1,8 +1,9 @@
 /**
- * Signal Consensus Swarm — 3-persona debate for signal validation.
- * Majority vote (2/3) determines approve/reject. Reduces false positives 30-40%.
+ * Signal Consensus Swarm — 3 or 4-persona debate for signal validation.
+ * Majority vote (2/3 default, 3/4 with Qwen) determines approve/reject. Reduces false positives 30-40%.
  * Fail-closed: ≥2 failed LLM calls → reject signal.
- * Env: SWARM_CONSENSUS_ENABLED (default true), SWARM_MIN_CONFIDENCE (default 0.6)
+ * Env: SWARM_CONSENSUS_ENABLED (default true), SWARM_MIN_CONFIDENCE (default 0.6),
+ *      SWARM_QWEN_ENABLED (default false) — enables 4th quantitative-analyst persona via Qwen.
  */
 
 import { loadLlmConfig } from '../config/llm-config';
@@ -10,7 +11,7 @@ import { logger } from '../utils/logger';
 import type { SignalCandidate } from './signal-validator';
 
 export interface SwarmVote {
-  persona: 'risk-analyst' | 'momentum-trader' | 'contrarian';
+  persona: 'risk-analyst' | 'momentum-trader' | 'contrarian' | 'quantitative-analyst';
   vote: 'APPROVE' | 'REJECT';
   confidence: number; // 0-1
   reasoning: string;
@@ -24,12 +25,17 @@ export interface SwarmConsensus {
 }
 
 type PersonaId = SwarmVote['persona'];
-interface Persona { id: PersonaId; systemPrompt: string; }
+interface Persona {
+  id: PersonaId;
+  systemPrompt: string;
+  /** If true, routed to Qwen endpoint when SWARM_QWEN_ENABLED=true */
+  useQwen?: boolean;
+}
 
 const JSON_SCHEMA_HINT = 'JSON schema: { "vote": "APPROVE"|"REJECT", "confidence": number 0-1, "reasoning": string 1-2 sentences }';
 const JSON_INSTRUCTION = `Respond ONLY with valid JSON. No markdown, no code blocks.\n${JSON_SCHEMA_HINT}`;
 
-const PERSONAS: Persona[] = [
+const BASE_PERSONAS: Persona[] = [
   {
     id: 'risk-analyst',
     systemPrompt: `You are a conservative risk analyst reviewing Polymarket arbitrage signals.
@@ -50,6 +56,29 @@ Approve only when the contrarian case FOR the trade is compelling despite crowd 
   },
 ];
 
+/** 4th persona — routed to Qwen MoE when SWARM_QWEN_ENABLED=true */
+const QWEN_PERSONA: Persona = {
+  id: 'quantitative-analyst',
+  systemPrompt: `You are a quantitative analyst reviewing Polymarket arbitrage signals using statistical reasoning.
+Bias: mathematical rigor. Focus: Edge significance (z-score, sample size), Kelly fraction vs full Kelly,
+market microstructure friction, statistical arbitrage validity over the holding period.
+Approve only when the expected-value calculation survives realistic slippage and fees.\n${JSON_INSTRUCTION}`,
+  useQwen: true,
+};
+
+/** Returns active persona list: 3 base + optional 4th Qwen persona */
+function buildPersonas(): Persona[] {
+  if (process.env.SWARM_QWEN_ENABLED === 'true') {
+    return [...BASE_PERSONAS, QWEN_PERSONA];
+  }
+  return BASE_PERSONAS;
+}
+
+/** Majority threshold: floor(N/2)+1 → N=3→2, N=4→3 */
+function majorityThreshold(n: number): number {
+  return Math.floor(n / 2) + 1;
+}
+
 function buildSignalSummary(signal: SignalCandidate): string {
   const marketLines = signal.markets
     .map(m => `  - ${m.title} (id=${m.id}) YES=${m.yesPrice.toFixed(3)} NO=${m.noPrice.toFixed(3)}`)
@@ -60,7 +89,25 @@ Strategy reasoning: ${signal.reasoning}
 Markets:\n${marketLines}`;
 }
 
-async function callPersona(persona: Persona, signalSummary: string, llmUrl: string, llmModel: string): Promise<string> {
+interface LlmEndpoints {
+  primaryUrl: string;
+  primaryModel: string;
+  qwenUrl?: string;
+  qwenModel?: string;
+}
+
+async function callPersona(
+  persona: Persona,
+  signalSummary: string,
+  endpoints: LlmEndpoints,
+): Promise<string> {
+  // Route quantitative-analyst to Qwen if available, else fall back to primary
+  const useQwenEndpoint = persona.useQwen && endpoints.qwenUrl && endpoints.qwenModel;
+  const llmUrl = useQwenEndpoint ? endpoints.qwenUrl! : endpoints.primaryUrl;
+  const llmModel = useQwenEndpoint ? endpoints.qwenModel! : endpoints.primaryModel;
+  // Qwen may need longer timeout for MoE cold path
+  const timeoutMs = useQwenEndpoint ? 120_000 : 120_000;
+
   const body = {
     model: llmModel,
     messages: [
@@ -75,7 +122,7 @@ async function callPersona(persona: Persona, signalSummary: string, llmUrl: stri
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120_000), // DeepSeek R1 32B local needs ~30-60s per call
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -101,7 +148,8 @@ function parseSwarmVote(raw: string, persona: PersonaId): SwarmVote {
 
 function aggregateVotes(votes: SwarmVote[], minConfidence: number): SwarmConsensus {
   const approvals = votes.filter(v => v.vote === 'APPROVE');
-  const approved = approvals.length >= 2;
+  const threshold = majorityThreshold(votes.length);
+  const approved = approvals.length >= threshold;
   const majorityVotes = approved ? approvals : votes.filter(v => v.vote === 'REJECT');
   const minorityVotes = approved ? votes.filter(v => v.vote === 'REJECT') : approvals;
 
@@ -131,13 +179,20 @@ export async function runSwarmConsensus(signal: SignalCandidate): Promise<SwarmC
     return { approved: true, votes: [], consensusConfidence: 1, dissent: null };
   }
 
-  const { url: llmUrl, model: llmModel } = loadLlmConfig().primary;
+  const llmConfig = loadLlmConfig();
+  const endpoints: LlmEndpoints = {
+    primaryUrl: llmConfig.primary.url,
+    primaryModel: llmConfig.primary.model,
+    qwenUrl: llmConfig.qwen?.url,
+    qwenModel: llmConfig.qwen?.model,
+  };
   const signalSummary = buildSignalSummary(signal);
+  const personas = buildPersonas();
 
-  logger.debug('[SwarmConsensus] Firing 3 parallel persona calls', { signalType: signal.signalType });
+  logger.debug(`[SwarmConsensus] Firing ${personas.length} parallel persona calls`, { signalType: signal.signalType });
 
   const results = await Promise.allSettled(
-    PERSONAS.map(p => callPersona(p, signalSummary, llmUrl, llmModel)),
+    personas.map(p => callPersona(p, signalSummary, endpoints)),
   );
 
   const failedCount = results.filter(r => r.status === 'rejected').length;
@@ -147,7 +202,7 @@ export async function runSwarmConsensus(signal: SignalCandidate): Promise<SwarmC
   }
 
   const votes: SwarmVote[] = results.map((result, idx) => {
-    const persona = PERSONAS[idx];
+    const persona = personas[idx];
     if (result.status === 'fulfilled') return parseSwarmVote(result.value, persona.id);
     logger.warn(`[SwarmConsensus] Persona ${persona.id} failed`, { reason: result.reason });
     return { persona: persona.id, vote: 'REJECT' as const, confidence: 0, reasoning: 'Call failed — defaulting to reject' };
