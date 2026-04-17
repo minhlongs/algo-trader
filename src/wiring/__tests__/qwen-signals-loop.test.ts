@@ -17,12 +17,18 @@ const { mockLoopLastRunGauge, mockJournalWriteErrorsCounter } = vi.hoisted(() =>
   mockLoopLastRunGauge: { set: vi.fn() },
   mockJournalWriteErrorsCounter: { inc: vi.fn() },
 }));
+const { mockBacklogSizeGauge, mockOldestAgeGauge } = vi.hoisted(() => ({
+  mockBacklogSizeGauge: { set: vi.fn() },
+  mockOldestAgeGauge: { set: vi.fn() },
+}));
 vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
   qwenStrategyReviewsResolvedTotal: { inc: vi.fn() },
   qwenSignalsLoopRunsTotal: { inc: vi.fn() },
   qwenSignalsLoopLastRunTs: mockLoopLastRunGauge,
   qwenSignalsLoopJournalWriteErrorsTotal: mockJournalWriteErrorsCounter,
+  qwenStrategyReviewBacklogSize: mockBacklogSizeGauge,
+  qwenStrategyReviewOldestPendingAgeSec: mockOldestAgeGauge,
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
   setQwenKillSwitch: vi.fn(),
@@ -42,6 +48,7 @@ import {
   stopSignalsLoop,
   resetSignalsLoop,
   persistRunJournal,
+  emitReviewBacklogGauges,
 } from '../qwen-signals-loop.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -207,12 +214,15 @@ describe('evaluateAndQueue', () => {
     // avg=0.01, stddev=0.005 → sharpe=2*sqrt(365)≈38 >> 0.5
     mockMetricsQueries(25, 30, 18, 0.01, 0.005);
     mockQuery.mockResolvedValueOnce({ rows: [] }); // journal INSERT (ok)
+    mockQuery.mockResolvedValueOnce({ rows: [{ backlog: '0', oldest_epoch: null }] }); // backlog snapshot
 
     await evaluateAndQueue('qwen-m1max');
 
     const calls = mockQuery.mock.calls.map((c: unknown[]) => c[0] as string);
-    // Journal insert fires (ok), but no strategy_review_tasks insert
-    expect(calls.some((sql) => sql.includes('strategy_review_tasks'))).toBe(false);
+    // Journal insert fires (ok), but no strategy_review_tasks INSERT.
+    // Note: emitReviewBacklogGauges runs a SELECT on strategy_review_tasks;
+    // filter specifically for INSERT statements to distinguish.
+    expect(calls.some((sql) => sql.includes('INSERT INTO strategy_review_tasks'))).toBe(false);
     expect(calls.some((sql) => sql.includes('qwen_signals_loop_runs'))).toBe(true);
   });
 });
@@ -329,6 +339,53 @@ describe('evaluateAndQueue — journal persistence via persistRunJournal', () =>
     expect(mockJournalWriteErrorsCounter.inc).toHaveBeenCalledOnce();
     // Freshness gauge must NOT advance on DB-write failure
     expect(mockLoopLastRunGauge.set).not.toHaveBeenCalled();
+  });
+});
+
+// ─── emitReviewBacklogGauges ──────────────────────────────────────────────────
+
+describe('emitReviewBacklogGauges', () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+    mockBacklogSizeGauge.set.mockClear();
+    mockOldestAgeGauge.set.mockClear();
+  });
+
+  it('emits backlog size + oldest age from single SELECT', async () => {
+    const nowEpoch = Math.floor(Date.now() / 1000);
+    const oldestEpoch = nowEpoch - 3600; // 1h old
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ backlog: '3', oldest_epoch: String(oldestEpoch) }],
+    });
+
+    await emitReviewBacklogGauges();
+
+    expect(mockBacklogSizeGauge.set).toHaveBeenCalledWith(3);
+    expect(mockOldestAgeGauge.set).toHaveBeenCalledOnce();
+    const emittedAge = mockOldestAgeGauge.set.mock.calls[0][0];
+    expect(emittedAge).toBeGreaterThanOrEqual(3599);
+    expect(emittedAge).toBeLessThanOrEqual(3601);
+  });
+
+  it('emits 0 for both when backlog empty', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ backlog: '0', oldest_epoch: null }],
+    });
+
+    await emitReviewBacklogGauges();
+
+    expect(mockBacklogSizeGauge.set).toHaveBeenCalledWith(0);
+    expect(mockOldestAgeGauge.set).toHaveBeenCalledWith(0);
+  });
+
+  it('swallows DB error without throwing (observability must not crash eval flow)', async () => {
+    mockQuery.mockRejectedValueOnce(new Error('connection refused'));
+
+    await expect(emitReviewBacklogGauges()).resolves.toBeUndefined();
+
+    // Gauges must NOT be set on DB failure (they retain last known value)
+    expect(mockBacklogSizeGauge.set).not.toHaveBeenCalled();
+    expect(mockOldestAgeGauge.set).not.toHaveBeenCalled();
   });
 });
 

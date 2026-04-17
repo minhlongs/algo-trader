@@ -138,6 +138,51 @@ groups:
           description: '≥2 errored signals-loop runs in the last 1h sustained 15m. Upstream quality drift detector is failing — likely DB connectivity, OTel exporter stall, or compute-metrics regression. Check qwen_signals_loop_runs table for error_message.'
           runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-signals-loop-error.md'
 
+      # ─── Strategy review backlog SLA — WARNING ─────────────────────────────
+      # Oldest pending strategy_review_tasks row older than 48h = operator has
+      # ignored a quality-drift signal OR sustained drift is piling up reviews
+      # faster than operator can close them. Either way, page. Snapshot gauge
+      # is emitted by the 6h signals-loop (pre-armed to 0 at boot).
+      - uid: qwen-strategy-review-backlog
+        title: QwenStrategyReviewBacklog
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 1800, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'algo_trader_qwen_strategy_review_oldest_pending_age_sec'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [172800] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+        # Gauge never emitted = signals-loop init regression (startSignalsLoop
+        # pre-arms to 0) — still a breach; route to the same runbook.
+        noDataState: Alerting
+        execErrState: Error
+        for: 30m
+        labels:
+          severity: warning
+          component: qwen
+          rollback_tier: strategy_review
+        annotations:
+          summary: 'Qwen strategy-review backlog: oldest pending task older than 48h'
+          description: 'The oldest pending strategy_review_tasks row has been sitting unresolved for >48h. Either a quality-drift signal is being ignored, or reviews are queuing faster than operator can close. Check admin API and close old tasks or investigate root cause.'
+          runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-strategy-review-backlog.md'
+
       # ─── L1 kill-switch active — INFO ───────────────────────────────────────
       - uid: qwen-l1-kill-switch-active
         title: QwenL1KillSwitchActive

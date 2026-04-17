@@ -52,6 +52,20 @@ export const qwenStrategyReviewsResolvedTotal = new client.Counter({
   registers: [register],
 });
 
+/** Gauge: current count of pending strategy review tasks (snapshot from signals-loop) */
+export const qwenStrategyReviewBacklogSize = new client.Gauge({
+  name: 'algo_trader_qwen_strategy_review_backlog_size',
+  help: 'Count of strategy_review_tasks rows WHERE status=pending. Updated each signals-loop cycle (~6h). Backlog growth indicates sustained quality drift or forgotten operator task.',
+  registers: [register],
+});
+
+/** Gauge: age in seconds of oldest pending strategy review (unix-seconds delta) */
+export const qwenStrategyReviewOldestPendingAgeSec = new client.Gauge({
+  name: 'algo_trader_qwen_strategy_review_oldest_pending_age_sec',
+  help: 'Age in seconds of the oldest pending strategy_review_tasks row. 0 when backlog empty. Used by QwenStrategyReviewBacklog alert (> 48h SLA).',
+  registers: [register],
+});
+
 /** Counter: signals loop evaluation runs by decision outcome */
 export const qwenSignalsLoopRunsTotal = new client.Counter({
   name: 'algo_trader_qwen_signals_loop_runs_total',

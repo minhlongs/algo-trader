@@ -14,6 +14,8 @@ import {
   qwenSignalsLoopRunsTotal,
   qwenSignalsLoopLastRunTs,
   qwenSignalsLoopJournalWriteErrorsTotal,
+  qwenStrategyReviewBacklogSize,
+  qwenStrategyReviewOldestPendingAgeSec,
 } from '../middleware/prometheus-metrics';
 import { getTracer } from '../utils/tracing';
 
@@ -192,6 +194,35 @@ async function insertReviewTask(
 }
 
 /**
+ * Snapshot pending backlog of strategy_review_tasks and emit gauges.
+ * Single query returns count + oldest created_at (epoch seconds). Safe to call
+ * after any mutation of the table. Failures are logged + swallowed — backlog
+ * observability must not crash the main eval flow.
+ */
+export async function emitReviewBacklogGauges(): Promise<void> {
+  try {
+    const res = await query<{ backlog: string; oldest_epoch: string | null }>(
+      `SELECT COUNT(*)::text AS backlog,
+              EXTRACT(EPOCH FROM MIN(created_at))::text AS oldest_epoch
+         FROM strategy_review_tasks
+        WHERE status = 'pending'`
+    );
+    const row = res.rows[0];
+    const backlog = parseInt(row?.backlog ?? '0', 10);
+    qwenStrategyReviewBacklogSize.set(isNaN(backlog) ? 0 : backlog);
+
+    const oldestEpoch = row?.oldest_epoch ? parseFloat(row.oldest_epoch) : null;
+    if (oldestEpoch && !isNaN(oldestEpoch)) {
+      qwenStrategyReviewOldestPendingAgeSec.set(Math.floor(Date.now() / 1000) - oldestEpoch);
+    } else {
+      qwenStrategyReviewOldestPendingAgeSec.set(0);
+    }
+  } catch (err) {
+    logger.error('[QwenSignalsLoop] emitReviewBacklogGauges failed', { err });
+  }
+}
+
+/**
  * Evaluate quality metrics and queue review tasks when thresholds are breached.
  * Journals EVERY run (skipped / ok / queued_review / error) for audit trail.
  * Exported for direct test access.
@@ -251,6 +282,10 @@ export async function evaluateAndQueue(source: string): Promise<void> {
     const decision = triggerReasons.length > 0 ? 'queued_review' : 'ok';
     span.setAttribute('qwen.decision', decision);
     await persistRunJournal(source, metrics, decision, triggerReasons);
+
+    // Snapshot backlog after journal write — reflects any new rows inserted
+    // this cycle. Failure is swallowed, not fatal.
+    await emitReviewBacklogGauges();
   });
 }
 
@@ -262,6 +297,10 @@ export function startSignalsLoop(intervalMs = getIntervalMs()): void {
   // be refreshed on the first real run; deadman-switch already covers the
   // pre-init process-death case, so no liveness coverage is lost.
   qwenSignalsLoopLastRunTs.set(Math.floor(Date.now() / 1000));
+  // Pre-arm backlog gauges so QwenStrategyReviewBacklog does not false-fire
+  // under noDataState=Alerting before the first eval cycle populates them.
+  qwenStrategyReviewBacklogSize.set(0);
+  qwenStrategyReviewOldestPendingAgeSec.set(0);
 
   logger.info('[QwenSignalsLoop] Started', { intervalMs });
   _timer = setInterval(() => {

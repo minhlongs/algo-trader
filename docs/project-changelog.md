@@ -1,5 +1,24 @@
 # Project Changelog - Algo Trader
 
+## [2.4.7] - 2026-04-17
+
+### Added — Strategy Review Backlog SLA Alert (Pillar 3 Depth)
+
+Closes the observability loop on the queue→review→resolve lifecycle shipped in PR #123. Now that operator has an API to close reviews, an alert fires if they don't — or if reviews are queuing faster than the operator closes them.
+
+**Runtime:**
+- `prometheus-metrics.ts` +2 gauges: `algo_trader_qwen_strategy_review_backlog_size` (count of pending rows) + `algo_trader_qwen_strategy_review_oldest_pending_age_sec` (age of oldest pending row).
+- `qwen-signals-loop.ts` — new `emitReviewBacklogGauges()` exported helper: single SELECT `COUNT(*)` + `EXTRACT(EPOCH FROM MIN(created_at))`. Called at end of `evaluateAndQueue()` so gauges reflect post-queue state including any newly inserted reviews. Fail-swallow (observability must not crash eval flow). Pre-armed to 0 at `startSignalsLoop()` boot.
+
+**Alert rule (appended to `qwen-solo-platform-rollback` group, 5 rules now):**
+- `QwenStrategyReviewBacklog` — WARNING, `algo_trader_qwen_strategy_review_oldest_pending_age_sec > 172800` (48h) for 30m, `noDataState: Alerting`, `rollback_tier: strategy_review`.
+
+**Runbook:** `docs/runbooks/qwen-strategy-review-backlog.md` — list/inspect/resolve/escalate paths with curl + SQL commands. Cross-refs resolve endpoint from PR #123.
+
+**Tests:** +3 unit cases for `emitReviewBacklogGauges` (happy path, empty backlog, DB failure swallow). +1 YAML smoke assertion. Existing "no-insert-above-threshold" test widened to distinguish SELECT vs INSERT on same table. All 4 prometheus-metrics `vi.mock` factories synced. 94/94 tests pass.
+
+---
+
 ## [2.4.6] - 2026-04-17
 
 ### Added — Admin Resolve Endpoint for Strategy Reviews

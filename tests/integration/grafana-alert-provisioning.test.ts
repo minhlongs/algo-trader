@@ -51,9 +51,9 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
   const availabilityGroup = doc.groups.find((g) => g.name === 'algo-trader-availability')!;
   const allRules = doc.groups.flatMap((g) => g.rules);
 
-  it('defines rollback group (4 rules) + availability group (3 rules)', () => {
+  it('defines rollback group (5 rules) + availability group (3 rules)', () => {
     expect(doc.groups).toHaveLength(2);
-    expect(rollbackGroup.rules).toHaveLength(4);
+    expect(rollbackGroup.rules).toHaveLength(5);
     expect(availabilityGroup.rules).toHaveLength(3);
   });
 
@@ -157,6 +157,16 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
     expect(expr).toContain('increase(');
     expect(expr).toContain('decision="error"');
     expect(expr).toContain('[1h]');
+  });
+
+  it('rollback group has strategy-review-backlog SLA rule (48h threshold, 30m for, warning)', () => {
+    const rule = rollbackGroup.rules.find((r) => r.uid === 'qwen-strategy-review-backlog')!;
+    expect(rule, 'missing qwen-strategy-review-backlog rule').toBeDefined();
+    expect(rule.for).toBe('30m');
+    expect(rule.labels.severity).toBe('warning');
+    expect(rule.labels.rollback_tier).toBe('strategy_review');
+    const expr = rule.data.find((d) => d.refId === 'A')!.model.expr;
+    expect(expr).toContain('algo_trader_qwen_strategy_review_oldest_pending_age_sec');
   });
 });
 
