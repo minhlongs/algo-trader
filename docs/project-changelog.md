@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.23] - 2026-04-17
+
+### Added — Migration prefix integrity test
+
+`src/db/migrations/NNN_name.{sql,ts}` drives schema evolution. Two PRs merging simultaneously with the same `NNN` prefix would silently skip or mis-apply the second migration on deploy. This test asserts:
+
+1. ≥1 migration file exists (sanity).
+2. Every file has a `NNN_` or `NNN-` numeric prefix (3+ digits).
+3. No two files share the same numeric prefix.
+
+**Gaps in numbering are intentionally allowed** — migrations are sometimes squashed or abandoned; reusing a retired number would silently re-apply on fresh DBs. This test catches conflicts, not gaps.
+
+**Adversarially verified:** duplicating `018_qwen_signals_loop_runs.sql` → `018_duplicate_race.sql` triggers `AssertionError: duplicate migration prefixes detected — merge race or accidental reuse: prefix 018: 018_duplicate_race.sql AND 018_qwen_signals_loop_runs.sql`. Both filenames surfaced for triage. After cleanup, 3/3 pass.
+
+**Zero runtime impact.**
+
+---
+
 ## [2.4.22] - 2026-04-17
 
 ### Added — Strategy Review Trigger Reasons doc
