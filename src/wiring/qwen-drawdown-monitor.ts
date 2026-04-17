@@ -10,6 +10,7 @@
 import { query } from '../db/postgres-client';
 import { telegramSignalPusher } from '../signal/telegram-signal-pusher';
 import { logger } from '../utils/logger';
+import { qwenPaperPnlPct } from '../middleware/prometheus-metrics';
 
 /** Default check interval: 6 hours */
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -113,6 +114,9 @@ export async function runDrawdownCheck(): Promise<void> {
     logger.debug('[QwenDrawdown] No closed Qwen trades in window — skip');
     return;
   }
+
+  // Emit Prometheus gauge — visible to Grafana alerting
+  qwenPaperPnlPct.set(pnlPct);
 
   logger.info('[QwenDrawdown] 24h P&L check', {
     pnlPct: (pnlPct * 100).toFixed(2) + '%',

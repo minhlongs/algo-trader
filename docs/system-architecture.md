@@ -414,3 +414,62 @@ Monthly usage quota per license key:
 - 429 response when quota exceeded
 
 ---
+
+## Qwen3-30B-A3B M1 Max Signal Pipeline (2026-04-17)
+
+Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-signed REST to CF Worker.
+
+```
+[M1 Max Daemon (Python)]
+  ├── Qwen3-30B-A3B MLX @ :11437  (18GB, 37.7 tok/s)
+  └── signal-generator-daemon.py
+        └── HMAC-SHA256 POST ──► CF Worker /api/v1/signals/ingest
+                                   │  signal-ingest-routes.ts
+                                   │  verifyHmacSha256() (5-min replay window)
+                                   ▼
+                             SignalPublisher.publish()
+                                   │
+                     ┌─────────────┼──────────────┐
+                     ▼             ▼               ▼
+               SignalStoreD1   SSE broadcast   Telegram push
+               (paper_only=1)  (existing)      (tier-gated)
+                     │
+                     ▼
+             paper-trading-orchestrator
+                     │
+          ┌──────────┼──────────────────────────┐
+          │          │                           │
+          ▼          ▼                           ▼
+    L1 KILL_SWITCH  L2 swarm flag         L3 drawdown monitor
+    (QWEN_KILL=1)   (isQwenEnabled())     (6h cron, 24h rolling)
+          │          │                           │
+          └──────────┴───────────── L4 ──────────┘
+                                  paper gate
+                              (MIN_PAPER_DAYS=30)
+                           (QWEN_AUTO_APPROVE_MAX_USD=500)
+```
+
+**4-Tier Rollback Harness:**
+- **L1 Kill switch** — `QWEN_KILL=1` env + `POST /api/v1/admin/qwen/kill` — immediate halt
+- **L2 Swarm disable** — `isQwenEnabled()` in-memory flag, `disableQwen()`/`enableQwen()` admin API
+- **L3 Drawdown auto-disable** — 6h cron checks 24h rolling P&L for `source='qwen'`; >5% → disable + Telegram alert + Prometheus `algo_trader_qwen_paper_pnl_pct` gauge
+- **L4 Hard gate** — `MIN_PAPER_DAYS=30` hardcoded; no live trades until 30d paper history; `QWEN_AUTO_APPROVE_MAX_USD=500` cap
+
+**Prometheus Metrics:**
+- `algo_trader_qwen_paper_pnl_pct` (Gauge) — rolling 24h paper P&L decimal emitted by drawdown monitor
+- `algo_trader_qwen_signals_total{result=accepted|rejected}` (Counter) — emitted by signal-ingest-route on each request
+
+**Files:**
+- `src/api/routes/signal-ingest-routes.ts` — HMAC POST endpoint
+- `src/utils/hmac-verifier.ts` — timing-safe HMAC-SHA256 + replay window
+- `src/signal/signal-store-d1.ts` — D1/SQLite persistence with source tagging
+- `src/wiring/qwen-drawdown-monitor.ts` — L3 scheduled drawdown check
+- `src/wiring/qwen-live-eligibility-gate.ts` — L4 paper-gate + USD cap
+- `src/api/routes/admin-qwen-routes.ts` — L1/L2 admin kill/unkill routes
+- `scripts/qwen-signal-daemon/` — Python daemon + launchd plist
+- `docs/ops/qwen-m1max-runbook.md` — full ops runbook
+- `src/db/migrations/016_qwen_paper_tracking.sql` — `paper_trades_v3` schema
+
+**HMAC Secret rotation:** Quarterly. Rotate `QWEN_INGEST_HMAC_SECRET` in CF Secrets + M1 Max `~/.zshrc`. Both sides must be updated simultaneously.
+
+---

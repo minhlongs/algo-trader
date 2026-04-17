@@ -18,9 +18,15 @@ vi.mock('../../db/postgres-client.js', () => ({
 }));
 
 // ─── Mock Telegram to avoid real HTTP calls ──────────────────────────────────
-const mockSendAdminAlert = vi.fn().mockResolvedValue(true);
+// Note: vi.fn() inside factory — cannot reference outer variables (hoisting)
 vi.mock('../../signal/telegram-signal-pusher.js', () => ({
-  telegramSignalPusher: { sendAdminAlert: mockSendAdminAlert },
+  telegramSignalPusher: { sendAdminAlert: vi.fn().mockResolvedValue(true) },
+}));
+
+// ─── Mock Prometheus to avoid duplicate metric registration ──────────────────
+vi.mock('../../middleware/prometheus-metrics.js', () => ({
+  qwenPaperPnlPct: { set: vi.fn() },
+  qwenSignalsTotal: { inc: vi.fn() },
 }));
 
 // ─── Mock logger ─────────────────────────────────────────────────────────────
@@ -44,6 +50,11 @@ import {
   checkQwenEligibility,
   PaperGateError,
 } from '../qwen-live-eligibility-gate.js';
+
+import { telegramSignalPusher } from '../../signal/telegram-signal-pusher.js';
+
+// Convenience accessor for the mocked sendAdminAlert (resolved after imports)
+const getMockAlert = () => vi.mocked(telegramSignalPusher.sendAdminAlert);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -69,7 +80,7 @@ describe('L1 — Kill Switch (QWEN_KILL env)', () => {
     clearQwenEnv();
     resetDrawdownMonitorState();
     mockQueryResult.mockReset();
-    mockSendAdminAlert.mockReset();
+    getMockAlert().mockReset();
   });
 
   it('isKillSwitchActive() returns false when QWEN_KILL not set', () => {
@@ -139,8 +150,8 @@ describe('L3 — Drawdown Auto-Disable (24h rolling P&L)', () => {
     clearQwenEnv();
     resetDrawdownMonitorState();
     mockQueryResult.mockReset();
-    mockSendAdminAlert.mockReset();
-    mockSendAdminAlert.mockResolvedValue(true);
+    getMockAlert().mockReset();
+    getMockAlert().mockResolvedValue(true);
   });
 
   it('computeRollingPnl returns pnlPct=null when no closed trades', async () => {
@@ -166,22 +177,22 @@ describe('L3 — Drawdown Auto-Disable (24h rolling P&L)', () => {
   it('runDrawdownCheck sends exactly one Telegram alert on breach', async () => {
     mockQueryResult.mockResolvedValue({ rows: [{ total_size: 1000, total_pnl: -60 }] });
     await runDrawdownCheck();
-    expect(mockSendAdminAlert).toHaveBeenCalledTimes(1);
-    expect(mockSendAdminAlert.mock.calls[0][0]).toContain('drawdown');
+    expect(getMockAlert()).toHaveBeenCalledTimes(1);
+    expect(getMockAlert().mock.calls[0][0]).toContain('drawdown');
   });
 
   it('runDrawdownCheck does NOT disable when drawdown is within threshold', async () => {
     mockQueryResult.mockResolvedValue({ rows: [{ total_size: 1000, total_pnl: -30 }] }); // -3% < 5%
     await runDrawdownCheck();
     expect(isQwenEnabled()).toBe(true);
-    expect(mockSendAdminAlert).not.toHaveBeenCalled();
+    expect(getMockAlert()).not.toHaveBeenCalled();
   });
 
   it('runDrawdownCheck skips check when already disabled (no double-alert)', async () => {
     disableQwen('pre-disabled');
     await runDrawdownCheck();
     expect(mockQueryResult).not.toHaveBeenCalled();
-    expect(mockSendAdminAlert).not.toHaveBeenCalled();
+    expect(getMockAlert()).not.toHaveBeenCalled();
   });
 
   it('respects custom QWEN_DRAWDOWN_MAX_PCT env (10%)', async () => {

@@ -216,6 +216,45 @@ QWEN_MODEL=mlx-community/Qwen3-30B-A3B-4bit
 
 ---
 
+## Phase 04 Admin API — Kill/Unkill & Drawdown Alerts
+
+### Admin Routes (require ADMIN_API_KEY header)
+
+```bash
+# Check Qwen status (L1 + L2 flags)
+curl -H "X-Admin-Key: $ADMIN_API_KEY" https://algo-trader.pages.dev/api/v1/admin/qwen/status
+
+# L1 Kill switch — immediate halt, daemon signals silently 401
+curl -X POST -H "X-Admin-Key: $ADMIN_API_KEY" https://algo-trader.pages.dev/api/v1/admin/qwen/kill
+
+# L1 Unkill — re-enables kill switch
+curl -X POST -H "X-Admin-Key: $ADMIN_API_KEY" https://algo-trader.pages.dev/api/v1/admin/qwen/unkill
+
+# L2 Re-enable after drawdown auto-disable (manual human action required)
+# NOT available via API — requires QWEN_KILL=0 redeploy + admin re-enable
+```
+
+### Drawdown Alert Interpretation
+
+When Telegram admin alert fires:
+```
+[ALERT] Qwen paper drawdown breached: -6.23% (threshold -5%). Auto-disabling Qwen swarm. Manual re-enable required.
+```
+
+**Steps:**
+1. Check `GET /api/v1/admin/qwen/status` → confirms `qwenEnabled: false`
+2. Review `paper_trades_v3` WHERE source='qwen' past 24h
+3. If bad signal pattern: rotate `QWEN_INGEST_HMAC_SECRET`, redeploy
+4. If market anomaly: wait 24h, then `POST /unkill` to re-enable
+5. Update `QWEN_DRAWDOWN_MAX_PCT` if threshold too aggressive (default 5%)
+
+### Prometheus Alert Conditions
+
+- `algo_trader_qwen_paper_pnl_pct < -0.05` → critical (matches L3 auto-disable threshold)
+- `algo_trader_qwen_signals_total{result="rejected"}` spike → HMAC secret mismatch or replay attack
+
+---
+
 ## Files on M1 Max
 
 | Path | Description |
