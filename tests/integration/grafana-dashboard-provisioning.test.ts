@@ -1,0 +1,113 @@
+/**
+ * Grafana Dashboard Smoke Tests — symmetric to alert-provisioning validator.
+ *
+ * Validates that the Qwen Solo Platform dashboard JSON:
+ *   - parses cleanly
+ *   - has the expected structure (panels array, UID, schema version)
+ *   - every PromQL metric reference in panel targets resolves to an actual
+ *     export in src/middleware/prometheus-metrics.ts
+ *
+ * Catches the same class of typo that PR #132 catches for alert rules: a
+ * dashboard panel referencing `algo_trader_qwen_pnl_pct` (missing `_paper_`)
+ * would silently produce an empty panel. This gate surfaces it at merge time.
+ */
+
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+const DASHBOARD_PATH = resolve(
+  __dirname,
+  '../../docker/grafana/dashboards/qwen-solo-platform.json'
+);
+const METRICS_TS_PATH = resolve(__dirname, '../../src/middleware/prometheus-metrics.ts');
+
+interface DashboardPanel {
+  type: string;
+  title: string;
+  id: number;
+  targets?: Array<{ expr?: string; refId?: string }>;
+  panels?: DashboardPanel[];
+}
+
+interface Dashboard {
+  title: string;
+  uid: string;
+  schemaVersion: number;
+  panels: DashboardPanel[];
+}
+
+const dashboard = JSON.parse(readFileSync(DASHBOARD_PATH, 'utf8')) as Dashboard;
+
+function loadExportedMetricNames(): Set<string> {
+  const src = readFileSync(METRICS_TS_PATH, 'utf8');
+  const names = new Set<string>();
+  const nameRegex = /^\s*name:\s*'(algo_trader_[a-z0-9_]+)'/gm;
+  let m: RegExpExecArray | null;
+  while ((m = nameRegex.exec(src)) !== null) {
+    names.add(m[1]);
+  }
+  return names;
+}
+
+describe('Grafana dashboard — qwen-solo-platform.json', () => {
+  it('parses valid JSON with expected top-level fields', () => {
+    expect(dashboard.title).toBe('Qwen Solo Platform — L0–L4 Rollback Visibility');
+    expect(dashboard.uid).toBe('qwen-solo-platform');
+    expect(dashboard.schemaVersion).toBeGreaterThanOrEqual(38);
+  });
+
+  it('has 4 row panels + payload panels (non-row)', () => {
+    const rowPanels = dashboard.panels.filter((p) => p.type === 'row');
+    const payloadPanels = dashboard.panels.filter((p) => p.type !== 'row');
+    expect(rowPanels.length).toBeGreaterThanOrEqual(3);
+    expect(payloadPanels.length).toBeGreaterThan(0);
+  });
+
+  it('every PromQL metric reference resolves to a prometheus-metrics.ts export', () => {
+    const exportedNames = loadExportedMetricNames();
+    expect(
+      exportedNames.size,
+      'prometheus-metrics.ts parser found 0 names — regex stale?'
+    ).toBeGreaterThan(0);
+
+    const builtins = new Set(['up']);
+    const unresolved: Array<{ panel: string; ref: string }> = [];
+
+    for (const panel of dashboard.panels) {
+      if (!panel.targets || panel.targets.length === 0) continue;
+      for (const target of panel.targets) {
+        if (!target.expr) continue;
+        const refRegex = /\b(algo_trader_[a-z0-9_]+|up)\b/g;
+        const refs = Array.from(target.expr.matchAll(refRegex), (r) => r[1]);
+        for (const ref of refs) {
+          if (builtins.has(ref)) continue;
+          if (!exportedNames.has(ref)) {
+            unresolved.push({ panel: panel.title, ref });
+          }
+        }
+      }
+    }
+
+    expect(
+      unresolved,
+      `dashboard references ${unresolved.length} metric(s) not in prometheus-metrics.ts: ` +
+        JSON.stringify(unresolved)
+    ).toEqual([]);
+  });
+
+  it('every payload panel has at least one target with non-empty expr', () => {
+    for (const panel of dashboard.panels) {
+      if (panel.type === 'row') continue;
+      expect(
+        panel.targets,
+        `panel "${panel.title}" (id=${panel.id}) has no targets[]`
+      ).toBeDefined();
+      const hasExpr = panel.targets!.some((t) => t.expr && t.expr.trim().length > 0);
+      expect(
+        hasExpr,
+        `panel "${panel.title}" (id=${panel.id}) has no non-empty expr`
+      ).toBe(true);
+    }
+  });
+});

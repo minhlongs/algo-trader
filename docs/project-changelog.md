@@ -1,5 +1,25 @@
 # Project Changelog - Algo Trader
 
+## [2.4.18] - 2026-04-17
+
+### Added — Dashboard Metric-Reference Validator (symmetric to #132)
+
+Symmetric safety net: the alert-rule validator shipped in PR #132 caught typos in `qwen-alerts.yml` PromQL. The Qwen Solo Platform dashboard (PR #125, 18 panels) has the same failure mode — a typo silently produces an empty Grafana panel. This PR adds the dashboard equivalent.
+
+**Test:** `tests/integration/grafana-dashboard-provisioning.test.ts` — 4 cases:
+1. JSON parses + correct title/UID/schema-version.
+2. Row panels + payload panels both present.
+3. **Every PromQL reference across every panel target resolves to a `prometheus-metrics.ts` export.** (core safety net)
+4. Every payload panel has ≥1 target with non-empty `expr`.
+
+Uses the same regex parser for `prometheus-metrics.ts` as PR #132. Exempts built-in `up`.
+
+**Adversarially verified:** injecting `algo_trader_qwen_bogus_dashboard_ref` into the dashboard JSON triggers `AssertionError: dashboard references 1 metric(s) not in prometheus-metrics.ts: [{"panel":"L3 drawdown auto-disabled","ref":"..."}]` — with panel title for triage. After restore, 4/4 pass.
+
+**Zero runtime changes.** Pure test-tree addition.
+
+---
+
 ## [2.4.17] - 2026-04-17
 
 ### Added — Gate 7: Shell lint (shellcheck at warning severity)
