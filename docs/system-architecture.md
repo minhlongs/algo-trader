@@ -429,14 +429,18 @@ Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-
                                    ▼
                              SignalPublisher.publish()
                                    │
-                     ┌─────────────┼──────────────┐
-                     ▼             ▼               ▼
-               SignalStoreD1   SSE broadcast   Telegram push
-               (paper_only=1)  (existing)      (tier-gated)
-                     │
-                     ▼
-             paper-trading-orchestrator
-                     │
+                     ┌─────────────┼──────────────────┬──────────┐
+                     ▼             ▼                  ▼          ▼
+               SignalStoreD1   SSE broadcast    L0 SIGNALS LOOP  Telegram
+               (paper_only=1)  (existing)       (observational)   push
+                     │                                 │         (tier-gated)
+                     │                                 ▼
+                     │                         queue review task
+                     │                         (daily dedup)
+                     │                                 │
+                     ▼                                 ▼
+             paper-trading-orchestrator         admin strategy-reviews
+                     │                              endpoint
           ┌──────────┼──────────────────────────┐
           │          │                           │
           ▼          ▼                           ▼
@@ -449,23 +453,27 @@ Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-
                            (QWEN_AUTO_APPROVE_MAX_USD=500)
 ```
 
-**4-Tier Rollback Harness:**
+**5-Tier Quality Assurance Hierarchy:**
+- **L0 Signals Loop** (observational) — `src/wiring/qwen-signals-loop.ts` 6h cron. Computes win-rate & Sharpe from paper trades (source='qwen'). Queues human review task if win_rate<0.4 OR sharpe<0.5 (min 30 trades, min 20 signals). No auto-disable — feeds humans only.
 - **L1 Kill switch** — `QWEN_KILL=1` env + `POST /api/v1/admin/qwen/kill` — immediate halt
 - **L2 Swarm disable** — `isQwenEnabled()` in-memory flag, `disableQwen()`/`enableQwen()` admin API
 - **L3 Drawdown auto-disable** — 6h cron checks 24h rolling P&L for `source='qwen'`; >5% → disable + Telegram alert + Prometheus `algo_trader_qwen_paper_pnl_pct` gauge
 - **L4 Hard gate** — `MIN_PAPER_DAYS=30` hardcoded; no live trades until 30d paper history; `QWEN_AUTO_APPROVE_MAX_USD=500` cap
 
 **Prometheus Metrics:**
+- `qwenStrategyReviewsQueuedTotal{reason=...}` (Counter) — incremented on actual task insert (reason: win_rate_below_threshold or sharpe_below_threshold)
 - `algo_trader_qwen_paper_pnl_pct` (Gauge) — rolling 24h paper P&L decimal emitted by drawdown monitor
 - `algo_trader_qwen_signals_total{result=accepted|rejected}` (Counter) — emitted by signal-ingest-route on each request
 
 **Files:**
+- `src/db/migrations/017_strategy_review_tasks.sql` — `strategy_review_tasks` table (daily UNIQUE index on strategy_id + UTC calendar day)
+- `src/wiring/qwen-signals-loop.ts` — L0 observational detector (6h singleton)
+- `src/api/routes/admin-qwen-routes.ts` — L0/L1/L2 admin endpoints (review list + kill routes)
 - `src/api/routes/signal-ingest-routes.ts` — HMAC POST endpoint
 - `src/utils/hmac-verifier.ts` — timing-safe HMAC-SHA256 + replay window
 - `src/signal/signal-store-d1.ts` — D1/SQLite persistence with source tagging
 - `src/wiring/qwen-drawdown-monitor.ts` — L3 scheduled drawdown check
 - `src/wiring/qwen-live-eligibility-gate.ts` — L4 paper-gate + USD cap
-- `src/api/routes/admin-qwen-routes.ts` — L1/L2 admin kill/unkill routes
 - `scripts/qwen-signal-daemon/` — Python daemon + launchd plist
 - `docs/ops/qwen-m1max-runbook.md` — full ops runbook
 - `src/db/migrations/016_qwen_paper_tracking.sql` — `paper_trades_v3` schema

@@ -2,6 +2,29 @@
 
 ## [2.1.0] - 2026-04-17
 
+### Added — Qwen Signals Loop (Quality Drift Detection Layer 0)
+
+Soft upstream quality-drift detector above L3 kill-switch. Observational only — no auto-disable.
+
+**Files:**
+- Migration: `017_strategy_review_tasks.sql` (UNIQUE index on strategy_id + calendar day for deduplication)
+- Core: `src/wiring/qwen-signals-loop.ts` (6h cron singleton, 5 exports: start/stop/reset/computeMetrics/evaluateAndQueue)
+- Tests: 13 unit tests + 9 admin endpoint tests (22 total)
+
+**Metrics & Thresholds:**
+- `qwenStrategyReviewsQueuedTotal` Counter (labels: reason) — incremented on actual insert only
+- Win rate < 0.4 → `win_rate_below_threshold`
+- Sharpe < 0.5 (min 30 closed trades) → `sharpe_below_threshold`
+- Min 20 signals required to fire (configurable via env)
+
+**Env vars:** QWEN_SIGNALS_LOOP_INTERVAL_MS, QWEN_REVIEW_WINDOW_MS, QWEN_REVIEW_WIN_RATE_MIN, QWEN_REVIEW_SHARPE_MIN, QWEN_REVIEW_MIN_SIGNALS, QWEN_REVIEW_MIN_TRADES_FOR_SHARPE
+
+**Architecture:** Layer 0 (Signals Loop, observational) → queues human review task → feeds Layer 3 (Drawdown Monitor) data. No disable path.
+
+**Tests:** 738/738 existing + 22 new = 760 total passing. Typecheck 0 errors. Code review blocker fixed (`date_trunc` STABLE issue, switched to AT TIME ZONE UTC cast).
+
+**Related:** `src/api/routes/admin-qwen-routes.ts` — added `GET /api/v1/admin/qwen/strategy-reviews`
+
 ### Added — Qwen M1 Max Signal Pipeline (5 phases, PRs #107-#111)
 
 Hybrid LLM signal pipeline: Qwen3-30B-A3B runs locally on M1 Max (37.7 tok/s, 18GB), pushes HMAC-signed signals to CF Worker. 30-day paper gate enforced before any live execution.

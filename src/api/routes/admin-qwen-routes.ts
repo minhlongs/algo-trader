@@ -17,6 +17,7 @@ import {
   getLastBreachAt,
 } from '../../wiring/qwen-drawdown-monitor';
 import { checkQwenEligibility } from '../../wiring/qwen-live-eligibility-gate';
+import { query } from '../../db/postgres-client';
 
 /** Simple Express-compatible admin auth — checks X-Admin-Key header */
 function requireAdminKey(req: Request, res: Response): boolean {
@@ -88,6 +89,44 @@ export function createAdminQwenRouter(): Router {
     } catch (err) {
       logger.error('[AdminQwen] Status query error', { err });
       res.status(500).json({ error: 'Failed to fetch Qwen status' });
+    }
+  });
+
+  /**
+   * GET /strategy-reviews
+   * Returns queued strategy review tasks for a given source and status.
+   * Query params: status (default 'pending'), limit (default 50, max 200), source (default 'qwen-m1max')
+   */
+  router.get('/strategy-reviews', async (req: Request, res: Response) => {
+    if (!requireAdminKey(req, res)) return;
+
+    const status = (req.query.status as string) || 'pending';
+    const source = (req.query.source as string) || 'qwen-m1max';
+    const rawLimit = parseInt((req.query.limit as string) || '50', 10);
+    const limit = isNaN(rawLimit) ? 50 : Math.min(rawLimit, 200);
+
+    try {
+      const result = await query<{
+        id: string;
+        source: string;
+        trigger_reason: string;
+        metrics: string;
+        status: string;
+        created_at: string;
+        resolved_at: string | null;
+      }>(
+        `SELECT id, source, trigger_reason, metrics, status, created_at, resolved_at
+         FROM strategy_review_tasks
+         WHERE source = $1 AND status = $2
+         ORDER BY created_at DESC
+         LIMIT $3`,
+        [source, status, limit]
+      );
+
+      res.json({ reviews: result.rows, count: result.rows.length });
+    } catch (err) {
+      logger.error('[AdminQwen] strategy-reviews query error', { err });
+      res.status(500).json({ error: 'Failed to fetch strategy reviews' });
     }
   });
 

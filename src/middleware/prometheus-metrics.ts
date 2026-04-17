@@ -36,6 +36,14 @@ export const qwenSignalsTotal = new client.Counter({
   registers: [register],
 });
 
+/** Counter: strategy review tasks queued by signals loop (labeled by trigger reason) */
+export const qwenStrategyReviewsQueuedTotal = new client.Counter({
+  name: 'algo_trader_qwen_strategy_reviews_queued_total',
+  help: 'Total strategy review tasks queued by qwen-signals-loop',
+  labelNames: ['reason'] as const,
+  registers: [register],
+});
+
 // Counter for total trades executed
 export const tradesTotal = new client.Counter({
   name: 'trades_total',

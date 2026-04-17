@@ -112,6 +112,17 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Total new tests: 56 Qwen-specific tests across 4 suites
 - Status: **COMPLETE** ✅ (PRs #107–#111 pending merge)
 
+### Qwen Signals Loop (Complete - 2026-04-17) ✅ SHIPPED
+- [x] Quality drift detector — Layer 0 observational (above L3 kill-switch)
+- [x] Migration 017 — `strategy_review_tasks` table with daily-dedupe UNIQUE index
+- [x] Signal evaluation cron — 6h singleton loop, computes win-rate/Sharpe metrics
+- [x] Human review task queueing — Prometheus counter on actual insert (reason label)
+- [x] Admin endpoint — `GET /api/v1/admin/qwen/strategy-reviews` (review task list)
+- [x] 22 new tests (13 unit + 9 admin endpoint) — all pass
+- [x] Typecheck 0 errors — fixed `date_trunc` STABLE issue via UTC cast
+- Win rate threshold: < 0.4 | Sharpe threshold: < 0.5 (min 30 trades) | Min signals: 20
+- Status: **COMPLETE** ✅ (760 total tests passing)
+
 ### Phase 33: Performance Tuning & Stress Testing (Planned)
 - [ ] Load test with 5000+ concurrent users
 - [ ] Database query optimization (index analysis)
