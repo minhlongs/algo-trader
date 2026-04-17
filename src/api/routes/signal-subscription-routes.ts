@@ -16,7 +16,7 @@ import { LicenseTier } from '../../types/license';
 import type { SignalSubscription, TierKey } from '../../signal/signal-types';
 import { logger } from '../../utils/logger';
 
-export const signalSubscriptionRouter = Router();
+export const signalSubscriptionRouter: Router = Router();
 const gate = RaasGate.getInstance();
 
 /** In-memory subscription store — replace with D1 query in production wiring */

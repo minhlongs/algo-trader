@@ -18,7 +18,7 @@ import { sseBroadcaster } from '../../signal/sse-signal-broadcaster';
 import type { TierKey } from '../../signal/signal-types';
 import { logger } from '../../utils/logger';
 
-export const signalFeedRouter = Router();
+export const signalFeedRouter: Router = Router();
 const gate = RaasGate.getInstance();
 
 const listQuerySchema = z.object({
