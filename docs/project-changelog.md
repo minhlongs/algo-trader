@@ -1,5 +1,20 @@
 # Project Changelog - Algo Trader
 
+## [2.4.19] - 2026-04-17
+
+### Changed — DRY'd the metric-name parser shared by two validators (refactor)
+
+PRs #132 and #135 both carried a near-identical regex parser for `src/middleware/prometheus-metrics.ts` exported names. Drift between them was a latent foot-gun. Extracted to `tests/integration/helpers/prometheus-metric-names.ts` exporting `loadExportedMetricNames()`, `METRIC_REF_REGEX`, `PROMETHEUS_BUILTINS`.
+
+**Changed files:**
+- `tests/integration/helpers/prometheus-metric-names.ts` — NEW (centralised).
+- `tests/integration/grafana-alert-provisioning.test.ts` — imports helper, drops duplicated parser + regex.
+- `tests/integration/grafana-dashboard-provisioning.test.ts` — same.
+
+**Behaviour unchanged.** 28/28 tests still pass. Adversarial smoke (injecting `algo_trader_qwen_bogus_dry_test` into `qwen-alerts.yml`) still triggers `AssertionError: rule qwen-l3-drawdown-breached references metric "..." which is NOT exported`.
+
+---
+
 ## [2.4.18] - 2026-04-17
 
 ### Added — Dashboard Metric-Reference Validator (symmetric to #132)

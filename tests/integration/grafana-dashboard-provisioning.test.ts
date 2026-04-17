@@ -15,12 +15,16 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import {
+  loadExportedMetricNames,
+  METRIC_REF_REGEX,
+  PROMETHEUS_BUILTINS,
+} from './helpers/prometheus-metric-names';
 
 const DASHBOARD_PATH = resolve(
   __dirname,
   '../../docker/grafana/dashboards/qwen-solo-platform.json'
 );
-const METRICS_TS_PATH = resolve(__dirname, '../../src/middleware/prometheus-metrics.ts');
 
 interface DashboardPanel {
   type: string;
@@ -38,17 +42,6 @@ interface Dashboard {
 }
 
 const dashboard = JSON.parse(readFileSync(DASHBOARD_PATH, 'utf8')) as Dashboard;
-
-function loadExportedMetricNames(): Set<string> {
-  const src = readFileSync(METRICS_TS_PATH, 'utf8');
-  const names = new Set<string>();
-  const nameRegex = /^\s*name:\s*'(algo_trader_[a-z0-9_]+)'/gm;
-  let m: RegExpExecArray | null;
-  while ((m = nameRegex.exec(src)) !== null) {
-    names.add(m[1]);
-  }
-  return names;
-}
 
 describe('Grafana dashboard — qwen-solo-platform.json', () => {
   it('parses valid JSON with expected top-level fields', () => {
@@ -71,17 +64,15 @@ describe('Grafana dashboard — qwen-solo-platform.json', () => {
       'prometheus-metrics.ts parser found 0 names — regex stale?'
     ).toBeGreaterThan(0);
 
-    const builtins = new Set(['up']);
     const unresolved: Array<{ panel: string; ref: string }> = [];
 
     for (const panel of dashboard.panels) {
       if (!panel.targets || panel.targets.length === 0) continue;
       for (const target of panel.targets) {
         if (!target.expr) continue;
-        const refRegex = /\b(algo_trader_[a-z0-9_]+|up)\b/g;
-        const refs = Array.from(target.expr.matchAll(refRegex), (r) => r[1]);
+        const refs = Array.from(target.expr.matchAll(METRIC_REF_REGEX), (r) => r[1]);
         for (const ref of refs) {
-          if (builtins.has(ref)) continue;
+          if (PROMETHEUS_BUILTINS.has(ref)) continue;
           if (!exportedNames.has(ref)) {
             unresolved.push({ panel: panel.title, ref });
           }
