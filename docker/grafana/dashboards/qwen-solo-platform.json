@@ -188,6 +188,145 @@
         }
       ],
       "options": { "orientation": "horizontal", "displayMode": "gradient" }
+    },
+    {
+      "type": "row",
+      "title": "Liveness & Review Queue (2026-04-17)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 103,
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Signals-loop freshness (min since last run)",
+      "description": "time() − algo_trader_qwen_signals_loop_last_run_ts, expressed in minutes. Alert fires at >420min (7h).",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 24 },
+      "id": 9,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "(time() - algo_trader_qwen_signals_loop_last_run_ts) / 60", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 360 },
+              { "color": "red", "value": 420 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Drawdown-monitor freshness (min since last run)",
+      "description": "time() − algo_trader_qwen_drawdown_monitor_last_run_ts. Alert fires at >420min.",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 24 },
+      "id": 10,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "(time() - algo_trader_qwen_drawdown_monitor_last_run_ts) / 60", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 360 },
+              { "color": "red", "value": 420 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Review backlog size",
+      "description": "Current rows in strategy_review_tasks WHERE status='pending'. queued − resolved.",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 24 },
+      "id": 11,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "algo_trader_qwen_strategy_review_backlog_size", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Oldest pending review (hours)",
+      "description": "algo_trader_qwen_strategy_review_oldest_pending_age_sec / 3600. Alert fires at >48h.",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 24 },
+      "id": 12,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "algo_trader_qwen_strategy_review_oldest_pending_age_sec / 3600", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 24 },
+              { "color": "red", "value": 48 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Review queue flow: queued vs resolved (1h rate)",
+      "description": "Positive queued rate = drift detected. Positive resolved rate = operator closing. Delta = backlog growth/shrink.",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 30 },
+      "id": 13,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(algo_trader_qwen_strategy_reviews_queued_total[1h]))", "refId": "A", "legendFormat": "queued/s" },
+        { "expr": "sum(rate(algo_trader_qwen_strategy_reviews_resolved_total[1h]))", "refId": "B", "legendFormat": "resolved/s" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10 }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Signals-loop journal-write errors (1h increase)",
+      "description": "Non-zero = persistRunJournal INSERTs failing. With a stale freshness gauge, this attributes to DB rather than timer death.",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 30 },
+      "id": 14,
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "increase(algo_trader_qwen_signals_loop_journal_write_errors_total[1h])", "refId": "A", "legendFormat": "DB-write errors" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 70 }
+        }
+      }
     }
   ],
   "refresh": "30s",

@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.8] - 2026-04-17
+
+### Changed — Qwen Solo Platform Dashboard Refresh
+
+Brings the Grafana dashboard up to date with all telemetry shipped this session (PRs #117–#124). Operator now sees freshness + review backlog + DB-write-errors at a glance without needing PromQL.
+
+**New row** `Liveness & Review Queue (2026-04-17)` with **6 panels**:
+- Stat: Signals-loop freshness (min since last run, green→yellow@360→red@420).
+- Stat: Drawdown-monitor freshness (same thresholds).
+- Stat: Review backlog size (green→yellow@1→red@5).
+- Stat: Oldest pending review age (hours, green→yellow@24→red@48).
+- Timeseries: Review queue flow (queued/s vs resolved/s, 1h rate).
+- Timeseries: Journal-write errors (1h increase bars).
+
+**Zero runtime changes.** Pure Grafana provisioning update; takes effect on Grafana container restart alongside the alert rules queued since PR #119.
+
+---
+
 ## [2.4.7] - 2026-04-17
 
 ### Added — Strategy Review Backlog SLA Alert (Pillar 3 Depth)
