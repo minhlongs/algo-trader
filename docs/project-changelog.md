@@ -1,5 +1,24 @@
 # Project Changelog - Algo Trader
 
+## [2.4.25] - 2026-04-17
+
+### Added — Changelog Version Monotonic Test
+
+`docs/project-changelog.md` is newest-first. Catches accidental version regressions (`2.4.10 → 2.4.2` typo), duplicate entries, or out-of-order merges.
+
+**Test:** `tests/integration/changelog-version-monotonic.test.ts` — 3 cases:
+1. ≥10 version headers extracted (sanity).
+2. Each `## [X.Y.Z]` strictly > next (descending semver).
+3. No duplicate version entries.
+
+Parses as numeric `[major, minor, patch]` tuples. Pre-release / build metadata NOT supported (project ships plain semver).
+
+**Adversarially verified:** swapping `## [2.4.24]` → `## [2.4.22]` fires both `changelog version order broken: line 3 [2.4.22] <= line 22 [2.4.23]` AND `duplicate version entries: version 2.4.22: line 3 AND line N`. After restore, 3/3 pass.
+
+**Zero runtime impact.**
+
+---
+
 ## [2.4.24] - 2026-04-17
 
 ### Added — Runbook Template File
