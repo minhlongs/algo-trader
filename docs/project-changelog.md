@@ -1,5 +1,29 @@
 # Project Changelog - Algo Trader
 
+## [2.4.14] - 2026-04-17
+
+### Added — Paper-Gate Go-Live Post-Mortem Template
+
+Operator doesn't improvise the go-live decision on 2026-05-17. `docs/paper-gate-post-mortem-template.md` is a pre-populated 9-section scaffold:
+
+1. Gate window summary (+ SQL for bounds)
+2. Quality metrics table with gate thresholds (+ SQL for 7d rolling win-rate/Sharpe)
+3. Rollback event history (L3 breaches + L1 kill audit via PromQL)
+4. Strategy review queue resolution (must-be-zero unresolved hard block)
+5. Operational health checklist (all freshness alerts + error counters must be quiet)
+6. Qualitative analysis (regime coverage, model drift, infrastructure reliability)
+7. Go/No-Go/Conditional decision tree with action checklists
+8. Sign-off block
+9. Post-go-live monitor plan (T+1h/T+6h/T+24h/T+7d cadence)
+
+Copy-to-plans flow: operator forks template on decision day, fills inline, commits to `plans/`.
+
+**Runbook README** updated with cross-ref pointer to the template.
+
+**Zero runtime changes.** Pure pre-flight checklist doctrine alignment (Solo Platform Pillar 1 / paper-first).
+
+---
+
 ## [2.4.13] - 2026-04-17
 
 ### Added — Operator CLI wrapper (`scripts/qwen-ops.sh`)

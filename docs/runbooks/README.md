@@ -64,6 +64,10 @@ export ADMIN_API_KEY=...
 ./scripts/qwen-ops.sh resolve <uuid>        # close a review
 ```
 
+## Paper-Gate Go-Live Post-Mortem
+
+When the paper gate window closes (2026-05-17) or operator considers early flip, copy `docs/paper-gate-post-mortem-template.md` to `plans/{date}-qwen-go-live-post-mortem.md` and fill in. Template includes: quality metric SQL, rollback event history, review queue resolution, operational health checklist, qualitative regime coverage, and Go/No-Go decision with post-flip monitor plan.
+
 ## Adding a New Runbook
 
 1. Create `docs/runbooks/<kebab-name>.md` with sections: What happened · Immediate actions · Root cause analysis · Remediation · Verification · Escalation.
