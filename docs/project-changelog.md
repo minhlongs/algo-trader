@@ -1,5 +1,19 @@
 # Project Changelog - Algo Trader
 
+## [2.4.12] - 2026-04-17
+
+### Added — Runbook Index
+
+`docs/runbooks/README.md` — incident navigation for Qwen Solo Platform alerts. Operators map `Alert UID → severity → metric threshold → runbook path` in a single table instead of grep'ing 7 separate files during an incident. Also documents:
+- 5-tier rollback stack (L0–L4) with recovery actions.
+- 4 attribution counters with "non-zero = X / zero = Y" decoder.
+- Notification policy routing + Grafana dashboard UID.
+- Template for adding new runbooks.
+
+**Zero runtime changes.** Pure operator-facing docs closure.
+
+---
+
 ## [2.4.11] - 2026-04-17
 
 ### Added — Drawdown PnL-Query Error Counter (symmetric to v2.4.5)
