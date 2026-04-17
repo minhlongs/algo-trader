@@ -21,6 +21,8 @@ import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook'
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
 import { analyticsRouter } from './routes/analytics-routes';
+import { subscriberPnlRouter } from './routes/subscriber-pnl-routes';
+import { enterpriseInquiryRouter } from './routes/enterprise-inquiry-routes';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
@@ -129,6 +131,8 @@ export class ApiServer {
     this.app.use('/api/coupons', couponRouter);
     this.app.use('/api/blog', blogRouter);
     this.app.use('/api/analytics', analyticsRouter);
+    this.app.use('/api/v1/subscriber', subscriberPnlRouter);
+    this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
 
     // Webhook routes (no rate limit — external provider callbacks)
     this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);
