@@ -6,7 +6,7 @@
 # QWEN_OPS_HOST env var for remote use (e.g. CF Tunnel).
 #
 # Usage: ./scripts/qwen-ops.sh <command> [args]
-# Commands: health | status | kill | unkill | reviews | resolve <id> | runs | help
+# Commands: health | backlog | status | kill | unkill | reviews | resolve <id> | runs | help
 #
 # Exit codes:
 #   0  success
