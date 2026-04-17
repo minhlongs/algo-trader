@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [2.4.29] - 2026-04-18
+
+### Added — qwen-ops.sh Subcommand Self-Consistency Validator
+
+`tests/integration/qwen-ops-subcommand-consistency.test.ts` — bijection across **3 truth sources** inside `scripts/qwen-ops.sh`: top-of-file `# Commands:` header manifest, `usage()` heredoc, and `case "$cmd" in …` dispatch.
+
+**7 test cases:** 2 sanity floors (≥6 each), 1 header-found, 4 bijection (case↔usage and case↔header in both directions). META-aliases (`help|-h|--help|*`) excluded — dispatcher-internal, not user operations.
+
+**Drive-by fix:** header `# Commands:` line gained `backlog |` — it had drifted since PR #138 added the `backlog` subcommand to case+usage but not header. Pre-existing drift caught by writing the test (test earned its keep day-zero).
+
+**Closes 8th edge of integrity polygon (heptagon → octagon).** Complements PR #148 (CLI ↔ HTTP route): this is the *intra-CLI* edge — the CLI's own self-description must stay in sync with its own dispatch, or the 3am operator running `./qwen-ops.sh` (no args) sees a stale help text → never discovers new subcommands.
+
+**163 lines, 0 runtime impact.** Review: 9.6/10 SHIP, 0 critical, 0 high, 2 medium acknowledged from PR #146/#148 lineage, 4 low.
+
+---
+
 ## [2.4.28] - 2026-04-18
 
 ### Added — qwen-ops.sh CLI ↔ admin-qwen-routes Sync Validator
