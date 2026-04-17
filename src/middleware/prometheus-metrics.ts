@@ -74,6 +74,13 @@ export const qwenAdminKillActionsTotal = new client.Counter({
   registers: [register],
 });
 
+/** Counter: drawdown-monitor DB-query failures (attribution for silent pnlPct=null results) */
+export const qwenDrawdownPnlQueryErrorsTotal = new client.Counter({
+  name: 'algo_trader_qwen_drawdown_monitor_pnl_query_errors_total',
+  help: 'Count of computeRollingPnl SELECT failures. Distinguishes DB-connectivity issue (non-zero rate) from "no closed Qwen trades in 24h window" (zero rate + pnlPct=null).',
+  registers: [register],
+});
+
 /** Counter: signals loop evaluation runs by decision outcome */
 export const qwenSignalsLoopRunsTotal = new client.Counter({
   name: 'algo_trader_qwen_signals_loop_runs_total',

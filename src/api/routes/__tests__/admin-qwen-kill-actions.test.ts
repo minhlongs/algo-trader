@@ -41,6 +41,7 @@ vi.mock('../../../middleware/prometheus-metrics.js', () => ({
   qwenStrategyReviewBacklogSize: { set: vi.fn() },
   qwenStrategyReviewOldestPendingAgeSec: { set: vi.fn() },
   qwenAdminKillActionsTotal: mockKillActionsCounter,
+  qwenDrawdownPnlQueryErrorsTotal: { inc: vi.fn() },
 }));
 
 import { createAdminQwenRouter } from '../admin-qwen-routes.js';

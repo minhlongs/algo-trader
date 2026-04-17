@@ -24,8 +24,9 @@ vi.mock('../../signal/telegram-signal-pusher.js', () => ({
 }));
 
 // ─── Mock Prometheus to avoid duplicate metric registration ──────────────────
-const { mockDrawdownLastRunGauge } = vi.hoisted(() => ({
+const { mockDrawdownLastRunGauge, mockPnlQueryErrorsCounter } = vi.hoisted(() => ({
   mockDrawdownLastRunGauge: { set: vi.fn() },
+  mockPnlQueryErrorsCounter: { inc: vi.fn() },
 }));
 vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenPaperPnlPct: { set: vi.fn() },
@@ -34,6 +35,7 @@ vi.mock('../../middleware/prometheus-metrics.js', () => ({
   setQwenPaperGateDaysRemaining: vi.fn(),
   setQwenDrawdownAutoDisabled: vi.fn(),
   qwenDrawdownMonitorLastRunTs: mockDrawdownLastRunGauge,
+  qwenDrawdownPnlQueryErrorsTotal: mockPnlQueryErrorsCounter,
   qwenSignalsLoopJournalWriteErrorsTotal: { inc: vi.fn() },
   qwenStrategyReviewsResolvedTotal: { inc: vi.fn() },
   qwenStrategyReviewBacklogSize: { set: vi.fn() },
@@ -178,6 +180,22 @@ describe('L3 — Drawdown Auto-Disable (24h rolling P&L)', () => {
     expect(result.pnlPct).toBeCloseTo(-0.06);
     expect(result.totalSize).toBe(1000);
     expect(result.totalPnl).toBe(-60);
+  });
+
+  it('computeRollingPnl increments pnl-query error counter on DB reject + preserves null fallback', async () => {
+    mockPnlQueryErrorsCounter.inc.mockClear();
+    mockQueryResult.mockRejectedValueOnce(new Error('connection refused'));
+
+    const result = await computeRollingPnl('qwen');
+
+    // Fail-open contract: null fallback must be preserved so downstream treats
+    // it the same as "no trades" and skips the breach check.
+    expect(result.pnlPct).toBeNull();
+    expect(result.totalSize).toBe(0);
+    expect(result.totalPnl).toBe(0);
+
+    // Counter distinguishes this silent null from genuine "no trades" case.
+    expect(mockPnlQueryErrorsCounter.inc).toHaveBeenCalledOnce();
   });
 
   it('runDrawdownCheck disables Qwen when drawdown exceeds 5% threshold', async () => {

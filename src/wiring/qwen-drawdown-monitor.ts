@@ -15,6 +15,7 @@ import {
   setQwenKillSwitch,
   setQwenDrawdownAutoDisabled,
   qwenDrawdownMonitorLastRunTs,
+  qwenDrawdownPnlQueryErrorsTotal,
 } from '../middleware/prometheus-metrics';
 import { getTracer } from '../utils/tracing';
 
@@ -100,6 +101,10 @@ export async function computeRollingPnl(
 
     return { pnlPct: totalPnl / totalSize, totalSize, totalPnl };
   } catch (err) {
+    // Emit counter so operators can distinguish "DB query failing" (non-zero
+    // rate) from "no closed Qwen trades in window" (zero rate + pnlPct=null).
+    // Symmetric to qwen_signals_loop_journal_write_errors_total in PR #122.
+    qwenDrawdownPnlQueryErrorsTotal.inc();
     logger.error('[QwenDrawdown] computeRollingPnl DB error', { err });
     return { pnlPct: null, totalSize: 0, totalPnl: 0 };
   }

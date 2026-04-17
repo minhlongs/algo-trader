@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [2.4.11] - 2026-04-17
+
+### Added — Drawdown PnL-Query Error Counter (symmetric to v2.4.5)
+
+`computeRollingPnl` catches DB errors and silently returns `pnlPct: null`, which downstream treats as "no Qwen trades in window" (early-return, no breach). This means a persistent DB-connectivity issue is indistinguishable from "Qwen hasn't traded today". Symmetric attribution gap to the signals-loop journal-write counter (v2.4.5). This PR adds the counter.
+
+**Runtime:**
+- `prometheus-metrics.ts` +1 counter `algo_trader_qwen_drawdown_monitor_pnl_query_errors_total` (no labels, single-cause).
+- `qwen-drawdown-monitor.ts` `.inc()` in `computeRollingPnl` catch block before existing `logger.error`. Fail-open contract preserved — function still returns `{pnlPct: null, ...}`.
+
+**Tests:** +1 unit asserts counter inc + null fallback preserved. All 5 prometheus-metrics `vi.mock` factories synced per feedback memory. 100/100 tests pass.
+
+**Operator attribution:** non-zero rate on this counter + stale `qwen_paper_pnl_pct` gauge = DB connectivity issue (fix DB). Zero rate + stale gauge = "no Qwen trades" (normal during off-hours or kill-switch active).
+
+---
+
 ## [2.4.10] - 2026-04-17
 
 ### Added — Admin Kill/Unkill Audit Counter

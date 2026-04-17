@@ -30,6 +30,7 @@ vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenStrategyReviewBacklogSize: mockBacklogSizeGauge,
   qwenStrategyReviewOldestPendingAgeSec: mockOldestAgeGauge,
   qwenAdminKillActionsTotal: { inc: vi.fn() },
+  qwenDrawdownPnlQueryErrorsTotal: { inc: vi.fn() },
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
   setQwenKillSwitch: vi.fn(),
