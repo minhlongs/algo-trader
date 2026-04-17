@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [2.4.10] - 2026-04-17
+
+### Added — Admin Kill/Unkill Audit Counter
+
+Audit trail for solo operator flipping the L1 kill switch via admin API. Counter `algo_trader_qwen_admin_kill_actions_total{action=kill|unkill}` increments on every `POST /admin/qwen/kill` and `/unkill`. Any non-zero rate in steady-state is worth journaling.
+
+**Runtime:**
+- `prometheus-metrics.ts` +1 counter with `action` label.
+- `admin-qwen-routes.ts` — `.inc({action: 'kill'})` in `POST /kill` handler, `.inc({action: 'unkill'})` in `POST /unkill`.
+
+**Tests:** new `src/api/routes/__tests__/admin-qwen-kill-actions.test.ts` with 4 cases (403 no-key × 2, happy-path × 2). All 4 prometheus-metrics `vi.mock` factories synced per feedback memory. 99/99 tests pass.
+
+**Operator value:** paired with `qwen_admin_kill_actions_total` in Grafana, operator can count "kill events per week" to spot emergency intervention frequency.
+
+---
+
 ## [2.4.9] - 2026-04-17
 
 ### Added — /health exposes Qwen rollback booleans

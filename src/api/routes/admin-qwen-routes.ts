@@ -18,7 +18,10 @@ import {
 } from '../../wiring/qwen-drawdown-monitor';
 import { checkQwenEligibility } from '../../wiring/qwen-live-eligibility-gate';
 import { query } from '../../db/postgres-client';
-import { qwenStrategyReviewsResolvedTotal } from '../../middleware/prometheus-metrics';
+import {
+  qwenStrategyReviewsResolvedTotal,
+  qwenAdminKillActionsTotal,
+} from '../../middleware/prometheus-metrics';
 
 /** Simple Express-compatible admin auth — checks X-Admin-Key header */
 function requireAdminKey(req: Request, res: Response): boolean {
@@ -48,6 +51,7 @@ export function createAdminQwenRouter(): Router {
 
     process.env.QWEN_KILL = '1';
     disableQwen('admin kill switch activated');
+    qwenAdminKillActionsTotal.inc({ action: 'kill' });
     logger.warn('[AdminQwen] KILL SWITCH ACTIVATED by admin');
 
     res.json({ status: 'killed', qwenKill: '1', qwenEnabled: false });
@@ -62,6 +66,7 @@ export function createAdminQwenRouter(): Router {
 
     process.env.QWEN_KILL = '0';
     enableQwen();
+    qwenAdminKillActionsTotal.inc({ action: 'unkill' });
     logger.info('[AdminQwen] Kill switch cleared by admin');
 
     res.json({ status: 'cleared', qwenKill: '0', qwenEnabled: true });

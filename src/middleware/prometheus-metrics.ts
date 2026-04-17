@@ -66,6 +66,14 @@ export const qwenStrategyReviewOldestPendingAgeSec = new client.Gauge({
   registers: [register],
 });
 
+/** Counter: admin kill-switch actions (audit trail for solo operator) */
+export const qwenAdminKillActionsTotal = new client.Counter({
+  name: 'algo_trader_qwen_admin_kill_actions_total',
+  help: 'Total admin actions on Qwen kill switch via /api/v1/admin/qwen/kill|unkill. Audit trail for solo operator — any non-zero rate in steady-state deserves a journal entry.',
+  labelNames: ['action'] as const,
+  registers: [register],
+});
+
 /** Counter: signals loop evaluation runs by decision outcome */
 export const qwenSignalsLoopRunsTotal = new client.Counter({
   name: 'algo_trader_qwen_signals_loop_runs_total',
