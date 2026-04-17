@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.28] - 2026-04-18
+
+### Added — qwen-ops.sh CLI ↔ admin-qwen-routes Sync Validator
+
+`tests/integration/qwen-ops-cli-route-sync.test.ts` — parses every URL `scripts/qwen-ops.sh` issues (via `http METHOD "/path"` helper or `curl -sS "$HOST/path"`) and asserts each resolves to either a `router.METHOD(...)` declaration in `src/api/routes/admin-qwen-routes.ts` (with `/api/v1/admin/qwen` mount prefix parsed from `src/api/server.ts`) or the hand-coded `/health` + `/metrics` external allow-list.
+
+**4 test cases:** CLI ref sanity (≥5, actual 8), route decl sanity (≥5, actual 6), mount prefix lock, bijection (0 dangling today).
+
+Asymmetric by design: CLI → routes only (YAGNI — not every admin route needs a CLI subcommand).
+
+**Closes operator-CLI ↔ route edge** — complements Pillar 2 observability integrity hexagon (PR #132/#135/#137/#143/#145/#146) with Pillar 3 operator-feedback-loop edge. 7-edge integrity surface now guards: alert·dashboard·runbook-index·runbook-URL·doc-enum·runbook↔code-metric + **CLI↔route**.
+
+Rationale: a renamed admin route without CLI update = 3am operator runs `./qwen-ops.sh reviews` → HTTP 404 → lost golden-minute SLO.
+
+**151 lines, 0 runtime impact.** Review: 9.6/10 SHIP, 0 critical, 0 high.
+
+---
+
 ## [2.4.27] - 2026-04-17
 
 ### Added — Runbook Metric-Reference Validator
