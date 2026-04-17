@@ -175,3 +175,55 @@ groups:
         annotations:
           summary: 'Qwen L1 env kill-switch is ACTIVE'
           description: 'QWEN_KILL=1 env flag active — all Qwen signals blocked at swarm layer. Operator action: unset env + restart process to re-enable.'
+
+  # ═══ Availability — scrape-level deadman-switch ══════════════════════════
+  # Closes the observability loop: if the algo-trader app stops responding to
+  # Prometheus scrapes, this rule fires before any L-tier rule has a chance.
+  # L3/L1 rules intentionally use `noDataState: OK` (rollback state is latched,
+  # absent data is treated as "no breach") — so they are NOT a safety net
+  # against backend death. This group is that safety net.
+  - orgId: 1
+    name: algo-trader-availability
+    folder: Qwen Alerts
+    interval: 1m
+    rules:
+
+      # ─── App scrape deadman — CRITICAL ─────────────────────────────────────
+      - uid: algo-trader-deadman
+        title: AlgoTraderDeadman
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 180, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'up{job="algo-trader"}'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [0.5] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+        # NoData here = target missing from scrape config entirely — also a breach.
+        noDataState: Alerting
+        execErrState: Error
+        for: 3m
+        labels:
+          severity: critical
+          component: algo-trader
+          rollback_tier: L0
+        annotations:
+          summary: 'algo-trader /metrics scrape has been down for 3m'
+          description: 'Prometheus cannot reach algo-trader:3000/metrics. Backend crash, container OOM, or network partition. All Qwen L-tier alerts are now blind — investigate immediately.'
+          runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/algo-trader-deadman.md'

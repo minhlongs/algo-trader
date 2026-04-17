@@ -1,5 +1,24 @@
 # Project Changelog - Algo Trader
 
+## [2.4.2] - 2026-04-17
+
+### Added — Deadman-Switch Alert (Pillar 2 Completion)
+
+Closes the last Pillar 2 observability blind spot: silent backend death now pages operator before any L-tier rule has a chance to miss a breach.
+
+**New alert rule (`docker/grafana/provisioning/alerting/qwen-alerts.yml` → new group `algo-trader-availability`):**
+- `AlgoTraderDeadman` — CRITICAL, `up{job="algo-trader"} == 0` for 3m, `noDataState: Alerting` (target-missing also breaches), `component=algo-trader`, `rollback_tier=L0`.
+
+**Runbook:** `docs/runbooks/algo-trader-deadman.md` — triage path (container health → manual metrics probe → Prom targets → scrape config drift) + remediation + post-incident checklist. Clarifies `algo-trader` (Prom job) vs `algo-trade` (docker service) naming gotcha.
+
+**Tests:** 20/20 smoke pass (was 19 in v2.4.1, +1 new). Refactored `doc.groups[0]` → explicit `rollbackGroup` + `availabilityGroup` helpers for clarity. Component label assertion widened to accept `qwen` OR `algo-trader`.
+
+**Notification routing:** unchanged. Root receiver in `notification-policies.yml` defaults to `qwen-telegram-admin`, so `component=algo-trader` deadman falls through to Telegram via root fallback — no policy changes needed.
+
+**Zero runtime code.** Rollback = revert PR + Grafana restart.
+
+---
+
 ## [2.4.1] - 2026-04-17
 
 ### Added — Grafana Alert Rules (Pillar 2 Depth)

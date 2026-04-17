@@ -47,23 +47,30 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
     expect(doc.apiVersion).toBe(1);
   });
 
-  it('defines exactly one group with 4 rules', () => {
-    expect(doc.groups).toHaveLength(1);
-    expect(doc.groups[0].rules).toHaveLength(4);
+  const rollbackGroup = doc.groups.find((g) => g.name === 'qwen-solo-platform-rollback')!;
+  const availabilityGroup = doc.groups.find((g) => g.name === 'algo-trader-availability')!;
+  const allRules = doc.groups.flatMap((g) => g.rules);
+
+  it('defines rollback group (4 rules) + availability group (1 rule)', () => {
+    expect(doc.groups).toHaveLength(2);
+    expect(rollbackGroup.rules).toHaveLength(4);
+    expect(availabilityGroup.rules).toHaveLength(1);
   });
 
-  it('group targets Qwen folder with 1m eval interval', () => {
-    expect(doc.groups[0].folder).toBe('Qwen Alerts');
-    expect(doc.groups[0].interval).toBe('1m');
+  it('both groups target Qwen folder with 1m eval interval', () => {
+    for (const group of doc.groups) {
+      expect(group.folder).toBe('Qwen Alerts');
+      expect(group.interval).toBe('1m');
+    }
   });
 
   it('every rule has a unique uid', () => {
-    const uids = doc.groups[0].rules.map((r) => r.uid);
+    const uids = allRules.map((r) => r.uid);
     expect(new Set(uids).size).toBe(uids.length);
   });
 
   it('every rule references prometheus datasource in refId A', () => {
-    for (const rule of doc.groups[0].rules) {
+    for (const rule of allRules) {
       const refA = rule.data.find((d) => d.refId === 'A');
       expect(refA, `rule ${rule.uid} missing refId A`).toBeDefined();
       expect(refA!.datasourceUid).toBe('prometheus');
@@ -71,31 +78,42 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
     }
   });
 
-  it('every rule has severity + component=qwen + rollback_tier labels', () => {
-    for (const rule of doc.groups[0].rules) {
-      expect(rule.labels.component).toBe('qwen');
+  it('every rule has severity + rollback_tier + valid component label', () => {
+    for (const rule of allRules) {
+      expect(['qwen', 'algo-trader']).toContain(rule.labels.component);
       expect(['critical', 'warning', 'info']).toContain(rule.labels.severity);
       expect(rule.labels.rollback_tier).toBeTruthy();
     }
   });
 
   it('every rule has summary + description annotations', () => {
-    for (const rule of doc.groups[0].rules) {
+    for (const rule of allRules) {
       expect(rule.annotations.summary, `${rule.uid} missing summary`).toBeTruthy();
       expect(rule.annotations.description, `${rule.uid} missing description`).toBeTruthy();
     }
   });
 
   it('covers all 4 required L-tier checks', () => {
-    const uids = doc.groups[0].rules.map((r) => r.uid);
+    const uids = rollbackGroup.rules.map((r) => r.uid);
     expect(uids).toContain('qwen-l3-drawdown-breached');
     expect(uids).toContain('qwen-l4-paper-gate-5d');
     expect(uids).toContain('qwen-signals-loop-error-spike');
     expect(uids).toContain('qwen-l1-kill-switch-active');
   });
 
+  it('availability group has deadman rule with 3m for-duration + critical + component=algo-trader', () => {
+    const deadman = availabilityGroup.rules.find((r) => r.uid === 'algo-trader-deadman')!;
+    expect(deadman, 'missing algo-trader-deadman rule').toBeDefined();
+    expect(deadman.for).toBe('3m');
+    expect(deadman.labels.severity).toBe('critical');
+    expect(deadman.labels.component).toBe('algo-trader');
+    expect(deadman.labels.rollback_tier).toBe('L0');
+    const expr = deadman.data.find((d) => d.refId === 'A')!.model.expr;
+    expect(expr).toContain('up{job="algo-trader"}');
+  });
+
   it('L3 rule queries drawdown gauge with 5m for-duration', () => {
-    const rule = doc.groups[0].rules.find((r) => r.uid === 'qwen-l3-drawdown-breached')!;
+    const rule = rollbackGroup.rules.find((r) => r.uid === 'qwen-l3-drawdown-breached')!;
     expect(rule.for).toBe('5m');
     expect(rule.labels.severity).toBe('critical');
     const expr = rule.data.find((d) => d.refId === 'A')!.model.expr;
@@ -103,13 +121,13 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
   });
 
   it('L4 paper-gate rule fires on ≤5 days with 10m for-duration', () => {
-    const rule = doc.groups[0].rules.find((r) => r.uid === 'qwen-l4-paper-gate-5d')!;
+    const rule = rollbackGroup.rules.find((r) => r.uid === 'qwen-l4-paper-gate-5d')!;
     expect(rule.for).toBe('10m');
     expect(rule.labels.severity).toBe('warning');
   });
 
   it('signals-loop rule uses increase() over 1h window', () => {
-    const rule = doc.groups[0].rules.find((r) => r.uid === 'qwen-signals-loop-error-spike')!;
+    const rule = rollbackGroup.rules.find((r) => r.uid === 'qwen-signals-loop-error-spike')!;
     expect(rule.for).toBe('15m');
     const expr = rule.data.find((d) => d.refId === 'A')!.model.expr;
     expect(expr).toContain('increase(');
