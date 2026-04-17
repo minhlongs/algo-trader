@@ -126,6 +126,7 @@ export async function executePaperSplitMerge(
     size: sizeUsdc,
     entryPrice: opportunity.totalCost,
     strategy: 'split-merge-arb',
+    source: 'legacy',
     signalConfidence: 1.0,    // mathematical certainty
     swarmApproved: true,
     aiValidated: true,
