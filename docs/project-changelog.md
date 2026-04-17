@@ -1,5 +1,28 @@
 # Project Changelog - Algo Trader
 
+## [2.4.26] - 2026-04-17
+
+### Added — Strategy Review Trigger Reasons Doc-Enum Sync Test
+
+`tests/integration/strategy-review-reasons-enum-sync.test.ts` — Bidirectional sync validator between `docs/strategy-review-reasons.md` "Active reasons" table and `insertReviewTask()` call sites in `src/wiring/qwen-signals-loop.ts`. Asserts:
+
+1. All reasons emitted by signals-loop are documented in the table.
+2. All documented reasons have at least one call site (no dead enum entries).
+3. All reason labels follow snake_case style (consistency).
+
+**5 test cases:** table existence, call-site extraction, bidirectional cardinality, enum style, malformed reason detection.
+
+**Closes Pillar 2 observability integrity pentagon** (doc-enum ↔ code-enum edge). Symmetric to:
+- PR #132 alert↔metric
+- PR #135 dashboard↔metric
+- PR #137 runbook-index↔file
+- PR #142 changelog monotonicity
+- PR #143 alert↔runbook
+
+**94 lines, 0 runtime impact.** Review: 9.6/10, 0 critical, 0 high.
+
+---
+
 ## [2.4.25] - 2026-04-17
 
 ### Added — Changelog Version Monotonic Test
