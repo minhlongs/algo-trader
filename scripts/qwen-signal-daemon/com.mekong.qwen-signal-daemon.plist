@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd plist: Qwen Signal Generator Daemon
+  Install on M1 Max:
+    cp com.mekong.qwen-signal-daemon.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.mekong.qwen-signal-daemon.plist
+
+  Runs during US market hours: 08:30-15:00 EST (13:30-20:00 UTC)
+  MaxRestarts=3 + ThrottleInterval=60 prevents crash-loop signal spam.
+
+  Kill switch (instant stop after current cycle):
+    launchctl setenv QWEN_SIGNAL_KILL 1
+    # or: add QWEN_SIGNAL_KILL=1 to ~/.zshenv then reboot
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.mekong.qwen-signal-daemon.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.mekong.qwen-signal-daemon</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/macbookprom1/algo-trader/scripts/qwen-signal-daemon/signal-generator-daemon.py</string>
+  </array>
+
+  <!-- Environment variables — real secret injected via launchctl setenv or ~/.zshenv -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>QWEN_INGEST_HMAC_SECRET</key>
+    <string>REPLACE_WITH_REAL_SECRET</string>
+    <key>QWEN_SIGNAL_INGEST_URL</key>
+    <string>https://algo-trader.pages.dev/api/v1/signals/ingest</string>
+    <key>QWEN_SERVER_URL</key>
+    <string>http://127.0.0.1:11437</string>
+    <key>QWEN_MODEL</key>
+    <string>mlx-community/Qwen3-30B-A3B-4bit</string>
+    <key>QWEN_SIGNAL_KILL</key>
+    <string></string>
+  </dict>
+
+  <!-- Auto-restart on crash — launchd handles it -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Throttle restarts: minimum 60s between launches (prevents crash loops) -->
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+
+  <!-- Log stdout/stderr to file -->
+  <key>StandardOutPath</key>
+  <string>/Users/macbookprom1/.local/logs/qwen-signal-daemon.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/macbookprom1/.local/logs/qwen-signal-daemon-err.log</string>
+
+  <!-- Start only during US market hours: 08:30 EST = 13:30 UTC -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <!-- Mon-Fri, every hour :30 between 13:00-19:00 UTC -->
+    <dict>
+      <key>Minute</key>
+      <integer>30</integer>
+      <key>Hour</key>
+      <integer>13</integer>
+    </dict>
+    <dict>
+      <key>Minute</key>
+      <integer>30</integer>
+      <key>Hour</key>
+      <integer>14</integer>
+    </dict>
+    <dict>
+      <key>Minute</key>
+      <integer>30</integer>
+      <key>Hour</key>
+      <integer>15</integer>
+    </dict>
+    <dict>
+      <key>Minute</key>
+      <integer>30</integer>
+      <key>Hour</key>
+      <integer>16</integer>
+    </dict>
+    <dict>
+      <key>Minute</key>
+      <integer>30</integer>
+      <key>Hour</key>
+      <integer>17</integer>
+    </dict>
+    <dict>
+      <key>Minute</key>
+      <integer>30</integer>
+      <key>Hour</key>
+      <integer>18</integer>
+    </dict>
+    <dict>
+      <key>Minute</key>
+      <integer>30</integer>
+      <key>Hour</key>
+      <integer>19</integer>
+    </dict>
+  </array>
+
+  <!-- Quit after 6.5 hours (covers full US session 08:30-15:00 EST) -->
+  <key>ExitTimeOut</key>
+  <integer>23400</integer>
+
+  <!-- Run as current user -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
