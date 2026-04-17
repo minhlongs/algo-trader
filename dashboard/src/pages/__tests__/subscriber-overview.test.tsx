@@ -22,9 +22,11 @@ vi.mock('../../hooks/use-subscriber-pnl', () => ({
 }));
 
 import { useSubscriberPnl } from '../../hooks/use-subscriber-pnl';
+import { useAuthStore } from '../../stores/auth-store';
 import { SubscriberOverviewPage } from '../subscriber-overview';
 
 const mockHook = vi.mocked(useSubscriberPnl);
+const mockAuth = vi.mocked(useAuthStore);
 
 const DEFAULT_SUMMARY = {
   subscriberId: 'sub-test-001',
@@ -66,6 +68,10 @@ function hookResult(overrides = {}) {
 describe('SubscriberOverviewPage', () => {
   beforeEach(() => {
     mockHook.mockReset();
+    // Restore default tenantId after any test that mutates useAuthStore
+    mockAuth.mockImplementation(
+      (selector: (s: AuthState) => unknown) => selector(mockAuthState())
+    );
   });
 
   it('renders KPI cards when data is loaded', () => {

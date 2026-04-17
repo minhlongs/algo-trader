@@ -20,9 +20,11 @@ vi.mock('../../hooks/use-subscriber-pnl', () => ({
 }));
 
 import { useSubscriberPnl } from '../../hooks/use-subscriber-pnl';
+import { useAuthStore } from '../../stores/auth-store';
 import { SubscriberTradeHistoryPage } from '../subscriber-trade-history';
 
 const mockHook = vi.mocked(useSubscriberPnl);
+const mockAuth = vi.mocked(useAuthStore);
 
 const SAMPLE_ROWS = [
   { date: '2026-04-14', netPnl: 320.5, tradeCount: 5, winRate: 0.8 },
@@ -61,6 +63,10 @@ function hookResult(overrides = {}) {
 describe('SubscriberTradeHistoryPage', () => {
   beforeEach(() => {
     mockHook.mockReset();
+    // Restore default tenantId after any test that mutates useAuthStore
+    mockAuth.mockImplementation(
+      (selector: (s: AuthState) => unknown) => selector(mockAuthState())
+    );
   });
 
   it('renders Trade History heading', () => {

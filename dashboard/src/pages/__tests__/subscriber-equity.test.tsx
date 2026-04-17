@@ -27,9 +27,11 @@ vi.mock('../../components/price-chart-lightweight', () => ({
 }));
 
 import { useSubscriberPnl } from '../../hooks/use-subscriber-pnl';
+import { useAuthStore } from '../../stores/auth-store';
 import { SubscriberEquityPage } from '../subscriber-equity';
 
 const mockHook = vi.mocked(useSubscriberPnl);
+const mockAuth = vi.mocked(useAuthStore);
 
 const DEFAULT_EQUITY = {
   subscriberId: 'sub-equity-001',
@@ -59,6 +61,10 @@ function hookResult(overrides = {}) {
 describe('SubscriberEquityPage', () => {
   beforeEach(() => {
     mockHook.mockReset();
+    // Restore default tenantId after any test that mutates useAuthStore
+    mockAuth.mockImplementation(
+      (selector: (s: AuthState) => unknown) => selector(mockAuthState())
+    );
   });
 
   it('renders KPI cards with equity data', () => {
