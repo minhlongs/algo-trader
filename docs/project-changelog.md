@@ -1,5 +1,19 @@
 # Project Changelog - Algo Trader
 
+## [2.4.15] - 2026-04-17
+
+### Added — Alert Rule Metric-Reference Validator
+
+Pure test-time safety net. Extracts every `algo_trader_*` metric reference from alert YAML PromQL expressions and asserts each exists as an exported `name: '...'` in `src/middleware/prometheus-metrics.ts`. Catches typos before Grafana silently ignores them at evaluation time.
+
+**Test:** `tests/integration/grafana-alert-provisioning.test.ts` — `"every PromQL metric reference exists as an export in prometheus-metrics.ts"`. Regex-parses `prometheus-metrics.ts` (authoritative source of truth for metric names) + walks every alert rule + asserts each reference resolves. Exempts built-in `up` metric. 24/24 tests pass.
+
+**Adversarial verified:** injecting a typo like `algo_trader_qwen_bogus_metric` into the YAML → validator fires `AssertionError: rule qwen-l3-drawdown-breached references metric "..." which is NOT exported`.
+
+**Zero runtime changes.** Pure test-tree addition.
+
+---
+
 ## [2.4.14] - 2026-04-17
 
 ### Added — Paper-Gate Go-Live Post-Mortem Template

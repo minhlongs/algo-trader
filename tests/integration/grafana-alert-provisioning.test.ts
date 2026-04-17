@@ -168,6 +168,44 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
     const expr = rule.data.find((d) => d.refId === 'A')!.model.expr;
     expect(expr).toContain('algo_trader_qwen_strategy_review_oldest_pending_age_sec');
   });
+
+  it('every PromQL metric reference exists as an export in prometheus-metrics.ts', () => {
+    // Parse the authoritative source of truth for metric names.
+    const metricsTs = readFileSync(
+      resolve(__dirname, '../../src/middleware/prometheus-metrics.ts'),
+      'utf8'
+    );
+    const exportedNames = new Set<string>();
+    const nameRegex = /^\s*name:\s*'(algo_trader_[a-z0-9_]+)'/gm;
+    let m: RegExpExecArray | null;
+    while ((m = nameRegex.exec(metricsTs)) !== null) {
+      exportedNames.add(m[1]);
+    }
+    expect(
+      exportedNames.size,
+      'prometheus-metrics.ts parser found 0 exported names — regex may be stale'
+    ).toBeGreaterThan(0);
+
+    // `up{}` is a built-in Prometheus metric, not in prometheus-metrics.ts.
+    // Exempt it + the label-selectors in the assertion below.
+    const builtins = new Set(['up']);
+
+    // Walk every alert rule, extract metric references from refId A expr.
+    for (const rule of allRules) {
+      const refA = rule.data.find((d) => d.refId === 'A');
+      if (!refA?.model.expr) continue;
+      // Match any token starting with `algo_trader_` OR bare `up` (as a name).
+      const refRegex = /\b(algo_trader_[a-z0-9_]+|up)\b/g;
+      const refs = Array.from(refA.model.expr.matchAll(refRegex), (r) => r[1]);
+      for (const ref of refs) {
+        if (builtins.has(ref)) continue;
+        expect(
+          exportedNames.has(ref),
+          `rule ${rule.uid} references metric "${ref}" which is NOT exported in src/middleware/prometheus-metrics.ts`
+        ).toBe(true);
+      }
+    }
+  });
 });
 
 describe('Grafana alert provisioning — contact-points.yml', () => {
