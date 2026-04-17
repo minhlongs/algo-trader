@@ -50,6 +50,20 @@ Group matcher `component = qwen` has 30s group_wait + 4h repeat_interval. `compo
 
 Grafana → **Qwen Solo Platform — L0–L4 Rollback Visibility** (UID `qwen-solo-platform`). 18 panels across 4 rows: Rollback State, Paper Performance, Signals Loop, Liveness & Review Queue.
 
+## Operator CLI
+
+Use `./scripts/qwen-ops.sh <command>` instead of memorizing curl + X-Admin-Key. Commands: `health`, `status`, `kill`, `unkill`, `reviews`, `resolve <id>`, `runs`. Reads `ADMIN_API_KEY` from env; defaults base URL to `http://localhost:3000` (override with `QWEN_OPS_HOST`). Run `./scripts/qwen-ops.sh help` for full usage.
+
+Typical incident flow:
+```bash
+export QWEN_OPS_HOST=https://algo-trader.pages.dev
+export ADMIN_API_KEY=...
+./scripts/qwen-ops.sh health                # uptime check (no auth)
+./scripts/qwen-ops.sh status                # eligibility + kill + drawdown
+./scripts/qwen-ops.sh reviews               # list pending reviews
+./scripts/qwen-ops.sh resolve <uuid>        # close a review
+```
+
 ## Adding a New Runbook
 
 1. Create `docs/runbooks/<kebab-name>.md` with sections: What happened · Immediate actions · Root cause analysis · Remediation · Verification · Escalation.

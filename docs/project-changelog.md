@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.13] - 2026-04-17
+
+### Added — Operator CLI wrapper (`scripts/qwen-ops.sh`)
+
+Solo operator doesn't memorize curl + X-Admin-Key. New bash script wraps the 7 most common Qwen admin operations: `health | status | kill | unkill | reviews | resolve <id> | runs`. Reads `ADMIN_API_KEY` from env; default host `http://localhost:3000` (override via `QWEN_OPS_HOST`, e.g. for CF Tunnel remote use).
+
+**Features:**
+- `health` is the only no-auth command (uptime check).
+- Proper exit codes: 0 success, 1 missing key, 2 bad usage, 3 HTTP non-2xx.
+- Usage message + example for every command.
+- Syntax-validated (`bash -n`) + smoke-tested error paths (unknown cmd, missing key).
+
+**Runbook README** updated with "Operator CLI" section + typical incident flow commands.
+
+**Zero runtime changes** — pure ops ergonomics.
+
+---
+
 ## [2.4.12] - 2026-04-17
 
 ### Added — Runbook Index
