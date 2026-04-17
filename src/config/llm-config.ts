@@ -1,12 +1,14 @@
 /**
  * LLM Configuration for M1 Max 64GB
  *
- * Dual bare-metal MLX servers (mlx_lm.server, NOT Ollama):
+ * Bare-metal MLX servers (mlx_lm.server, NOT Ollama):
  *   DeepSeek R1 :11435 — deep reasoning (~10 tok/s, 90s timeout)
  *   Nemotron Nano :11436 — fast triage (~45 tok/s, 10s timeout)
+ *   Qwen3-30B :11437 — long-context / MoE reasoning (opt-in via LLM_QWEN_ENABLED)
  *
  * Fallback chain: MLX primary → Ollama → Claude cloud
  * Fast triage: Nemotron → MLX primary → Ollama → Claude cloud
+ * Qwen route: Qwen → MLX primary → Ollama → Claude cloud
  */
 
 export interface LlmEndpoint {
@@ -21,12 +23,16 @@ export interface LlmConfig {
   primary: LlmEndpoint;
   fastTriage: LlmEndpoint;
   fallback: LlmEndpoint;
+  /** Optional Qwen MoE endpoint — enabled via LLM_QWEN_ENABLED=true */
+  qwen?: LlmEndpoint;
   cloud?: LlmEndpoint;
   healthCheckIntervalMs: number;
   cloudDailyBudgetUsd: number;
 }
 
 export function loadLlmConfig(): LlmConfig {
+  const qwenEnabled = process.env.LLM_QWEN_ENABLED === 'true';
+
   return {
     primary: {
       url: process.env.LLM_PRIMARY_URL || 'http://127.0.0.1:11435/v1',
@@ -49,6 +55,14 @@ export function loadLlmConfig(): LlmConfig {
       maxTokens: 2048,
       timeoutMs: 30000,
     },
+    /** Qwen3-30B-A3B: long-context MoE, opt-in feature flag (default OFF) */
+    qwen: qwenEnabled ? {
+      url: process.env.LLM_QWEN_URL || 'http://127.0.0.1:11437/v1',
+      model: process.env.LLM_QWEN_MODEL || 'mlx-community/Qwen3-30B-A3B-4bit',
+      priority: 1,
+      maxTokens: 4096,
+      timeoutMs: Number(process.env.LLM_QWEN_TIMEOUT_MS) || 60000,
+    } : undefined,
     cloud: process.env.CLAUDE_API_KEY ? {
       url: process.env.LLM_CLOUD_URL || 'https://api.anthropic.com/v1',
       model: process.env.LLM_CLOUD_MODEL || 'claude-sonnet-4-20250514',
