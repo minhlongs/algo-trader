@@ -242,6 +242,18 @@ graph TD
 - One command: detects `.env` → runs setup if missing → demo backtest → shows available commands.
 - Backtest/dry-run works without Docker (no DB/Redis required).
 
+## CI/CD Enforcement (Pillar 1: Solo Platform)
+
+| Gate | Job Name | Purpose | Hard Fail | Parallel |
+| ---- | -------- | ------- | --------- | -------- |
+| 1 | gate-1-validation | TypeScript check, ESLint, strategy validators, full vitest suite | Yes | Yes |
+| 2 | gate-2-security | Hardcoded-secret regex scan (9 patterns), `pnpm audit --critical` | Yes (critical only) | Yes |
+| 3 | gate-3-quality | ESLint with max-warnings=0 on changed TS files, >400 LOC file warnings | Yes on PR | Yes |
+| 4 | gate-4-dependency | Lockfile reproducibility check, `pnpm outdated` advisory | Yes | Yes |
+| 5 | gate-5-deployment-smoke | 5-attempt backoff probe of `algo-trader.pages.dev` + `cashclaw.cc` | Yes on main | Sequential (after 1-4) |
+
+**See:** `docs/ai-first-enforcement-gates.md` (source of truth for gate details, secret patterns, and rollback hierarchy).
+
 **Shell Script** (`scripts/one-click-setup-and-start.sh`):
 - Prerequisites check → npm/pnpm install → CLI wizard → optional Docker infra.
 

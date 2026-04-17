@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.2.0] - 2026-04-17
+
+### Added — AI-First Enforcement Gates (Solo Platform Pillar 1)
+
+5 hard-fail CI gates replace monolithic test job. Gates 1-4 run parallel (lint, secret scan, quality, dependency); Gate 5 (deployment smoke) runs post-merge to main only.
+
+**Files:**
+- `.github/workflows/ci.yml` — Single `lint-and-test` job rewritten as 5 named jobs: `gate-1-validation`, `gate-2-security`, `gate-3-quality`, `gate-4-dependency`, `gate-5-deployment-smoke`
+- `scripts/ci-gate-secret-scan.mjs` — 9 regex patterns (AWS/GitHub/Slack/Anthropic/OpenAI/Stripe/Google/PEM). Scans `src/`, `scripts/`, `migrations/`, `workers/`.
+- `scripts/ci-gate-deploy-smoke.mjs` — 5-attempt backoff probe of `algo-trader.pages.dev` + `cashclaw.cc`.
+- `docs/ai-first-enforcement-gates.md` — Authoritative reference: gate thresholds, patterns, rollback alignment.
+
+**Design:** Gate 2 (security) hard-fails on `critical`, downgrades `high` to annotation (6 existing transitive high advisories in vite/fastify lack upstream patches).
+
+**Related:** Pillar 1 of a16z Solo Platform doctrine. Aligns with Qwen L0-L4 rollback hierarchy.
+
+---
+
 ## [2.1.0] - 2026-04-17
 
 ### Added — Qwen Signals Loop Journal Persistence (Audit Trail & Historical Metrics)
