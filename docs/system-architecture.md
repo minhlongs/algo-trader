@@ -290,7 +290,7 @@ Two-plane observability: Prometheus metrics + OpenTelemetry traces → Grafana.
 **Alerting** (`docker/grafana/provisioning/alerting/`):
 - Grafana v10.4 unified alerting — YAML-provisioned. 5 rules across 2 groups route to single Telegram contact point (`qwen-telegram-admin`).
   - Group `qwen-solo-platform-rollback` (L-tier): `QwenDrawdownBreached` — CRITICAL, 5m · `QwenPaperGateLessThan5d` — WARNING, 10m, noDataState=Alerting · `QwenSignalsLoopErrorSpike` — WARNING, 15m · `QwenL1KillSwitchActive` — INFO, 1m.
-  - Group `algo-trader-availability` (scrape health): `AlgoTraderDeadman` — CRITICAL, `up{job="algo-trader"}==0` for 3m, noDataState=Alerting — closes the Pillar 2 blind spot (L3/L1 use noDataState=OK, so backend death would otherwise be silent).
+  - Group `algo-trader-availability` (liveness): `AlgoTraderDeadman` — CRITICAL, `up{job="algo-trader"}==0` for 3m, noDataState=Alerting — scrape-level safety net · `QwenSignalsLoopStale` — WARNING, `time() - algo_trader_qwen_signals_loop_last_run_ts > 7h` for 10m, noDataState=Alerting — catches internal 6h-cron stall while process stays alive (pre-armed at `startSignalsLoop()` boot to avoid post-deploy false-fire).
 - Contact point reuses app `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env (forwarded in `docker-compose.monitoring.yml`).
 - Runbooks at `docs/runbooks/qwen-*.md` + `docs/runbooks/algo-trader-deadman.md` linked from alert annotations.
 

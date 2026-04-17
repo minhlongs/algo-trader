@@ -227,3 +227,48 @@ groups:
           summary: 'algo-trader /metrics scrape has been down for 3m'
           description: 'Prometheus cannot reach algo-trader:3000/metrics. Backend crash, container OOM, or network partition. All Qwen L-tier alerts are now blind — investigate immediately.'
           runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/algo-trader-deadman.md'
+
+      # ─── Signals-loop freshness — WARNING ──────────────────────────────────
+      # Deadman catches process death. This catches internal job stall:
+      # the 6h cron timer died while the process stayed alive. Expressed as
+      # `time() - last_journal_write_ts`, not counter rate — rate would
+      # false-fire during cold-start before the first run.
+      - uid: qwen-signals-loop-stale
+        title: QwenSignalsLoopStale
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              # 6h cron interval + 1h grace = 25200s. Fires if no run in 7h.
+              expr: 'time() - algo_trader_qwen_signals_loop_last_run_ts'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [25200] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+        # NoData = gauge never emitted (cold-start loop-init regression) — breach.
+        noDataState: Alerting
+        execErrState: Error
+        for: 10m
+        labels:
+          severity: warning
+          component: algo-trader
+          rollback_tier: signals_loop
+        annotations:
+          summary: 'qwen-signals-loop has not run in 7h+ (6h cron stalled)'
+          description: 'The 6h signals-loop cron has not written a journal row in more than 7h. Timer died silently, init regressed, or persistRunJournal throws. Quality-drift detection is blind. Restart + investigate last journal row timestamp.'
+          runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-signals-loop-stale.md'

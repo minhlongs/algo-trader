@@ -13,9 +13,13 @@ vi.mock('../../db/postgres-client.js', () => ({
 
 // ─── Mock Prometheus ──────────────────────────────────────────────────────────
 const mockLoopRunsCounter = { inc: vi.fn() };
+const { mockLoopLastRunGauge } = vi.hoisted(() => ({
+  mockLoopLastRunGauge: { set: vi.fn() },
+}));
 vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
   qwenSignalsLoopRunsTotal: { inc: vi.fn() },
+  qwenSignalsLoopLastRunTs: mockLoopLastRunGauge,
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
   setQwenKillSwitch: vi.fn(),
@@ -285,6 +289,24 @@ describe('evaluateAndQueue — journal persistence via persistRunJournal', () =>
     expect(journalCall).toBeDefined();
     expect(journalCall![1][2]).toBe('error');
     expect(journalCall![1][4]).toBe('DB exploded');
+  });
+
+  it('sets last-run-ts gauge on successful journal write (freshness probe)', async () => {
+    const emptyMetrics = {
+      winRate: null, sharpe: null, signalCount: 0,
+      closedTradeCount: 0, windowStartMs: 0, windowEndMs: 0,
+    };
+    mockLoopLastRunGauge.set.mockClear();
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    const before = Math.floor(Date.now() / 1000);
+    await persistRunJournal('qwen-m1max', emptyMetrics, 'ok', [], undefined);
+    const after = Math.floor(Date.now() / 1000);
+
+    expect(mockLoopLastRunGauge.set).toHaveBeenCalledOnce();
+    const ts = mockLoopLastRunGauge.set.mock.calls[0][0];
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after);
   });
 });
 

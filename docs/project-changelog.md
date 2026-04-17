@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.3] - 2026-04-17
+
+### Added — Signals-Loop Freshness Probe (Pillar 2 Depth +1)
+
+Second liveness layer after deadman-switch: catches internal job stall where the 6h signals-loop cron timer dies silently while the process stays alive. Three layers now: scrape-level (deadman), DB-confirmed job tick (freshness), state latching (L-tier).
+
+**Runtime:**
+- `src/middleware/prometheus-metrics.ts` — +1 gauge `algo_trader_qwen_signals_loop_last_run_ts` (unix-seconds of last DB-confirmed journal write).
+- `src/wiring/qwen-signals-loop.ts` — `persistRunJournal` sets the gauge inside the try block, *after* `INSERT` + `counter.inc` succeed. `startSignalsLoop()` pre-arms the gauge at boot to avoid post-deploy Telegram storm (deadman already covers pre-init process death).
+
+**Alert rule (appended to `algo-trader-availability` group):**
+- `QwenSignalsLoopStale` — WARNING, `time() - algo_trader_qwen_signals_loop_last_run_ts > 25200` (6h + 1h grace) for 10m. `noDataState: Alerting` — if gauge never emits (startup init regression), that IS the breach.
+
+**Runbook:** `docs/runbooks/qwen-signals-loop-stale.md` — SQL last-row probe, log grep, env flag check, timer-died vs DB-failure vs startup-skip vs schema-drift remediation paths, and clarifies `algo-trader` (Prom job) vs `algo-trade` (docker service) naming.
+
+**Tests:** +1 unit assertion (gauge set with ts in [before, after] window via `vi.hoisted()` pattern), +1 YAML smoke (uid + 10m + warning + PromQL `time() -` shape). 40/40 touched-file tests pass.
+
+**Review:** 8.8/10 APPROVE → 1 blocker resolved (plan/code semantic clarified to "DB-confirmed"), 1 ops recommendation implemented (pre-arm at boot), 1 low nit fixed (runbook naming note).
+
+---
+
 ## [2.4.2] - 2026-04-17
 
 ### Added — Deadman-Switch Alert (Pillar 2 Completion)

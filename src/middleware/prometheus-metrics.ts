@@ -52,6 +52,13 @@ export const qwenSignalsLoopRunsTotal = new client.Counter({
   registers: [register],
 });
 
+/** Gauge: unix-seconds of last signals-loop journal write (liveness probe for 6h cron) */
+export const qwenSignalsLoopLastRunTs = new client.Gauge({
+  name: 'algo_trader_qwen_signals_loop_last_run_ts',
+  help: 'Unix-seconds timestamp of the most recent qwen-signals-loop journal write. Used by QwenSignalsLoopStale freshness alert (time() - gauge > 7h).',
+  registers: [register],
+});
+
 // ─── L-tier rollback visibility (Pillar 2 observability) ─────────────────────
 
 /** Gauge: kill-switch active state (0=inactive, 1=active), labeled by source */

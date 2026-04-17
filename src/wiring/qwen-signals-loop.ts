@@ -12,6 +12,7 @@ import { logger } from '../utils/logger';
 import {
   qwenStrategyReviewsQueuedTotal,
   qwenSignalsLoopRunsTotal,
+  qwenSignalsLoopLastRunTs,
 } from '../middleware/prometheus-metrics';
 import { getTracer } from '../utils/tracing';
 
@@ -162,6 +163,7 @@ export async function persistRunJournal(
       [source, JSON.stringify(metrics), decision, triggerReasons, errorMessage ?? null]
     );
     qwenSignalsLoopRunsTotal.inc({ decision });
+    qwenSignalsLoopLastRunTs.set(Math.floor(Date.now() / 1000));
   } catch (err) {
     // Journal failure must never crash the main evaluation flow
     logger.error('[QwenSignalsLoop] persistRunJournal failed', { err });
@@ -250,6 +252,12 @@ export async function evaluateAndQueue(source: string): Promise<void> {
 
 export function startSignalsLoop(intervalMs = getIntervalMs()): void {
   if (_timer) return;
+
+  // Pre-arm the freshness gauge at startup so QwenSignalsLoopStale does not
+  // page for the full 6h cron interval after every deploy. The gauge will
+  // be refreshed on the first real run; deadman-switch already covers the
+  // pre-init process-death case, so no liveness coverage is lost.
+  qwenSignalsLoopLastRunTs.set(Math.floor(Date.now() / 1000));
 
   logger.info('[QwenSignalsLoop] Started', { intervalMs });
   _timer = setInterval(() => {
