@@ -83,6 +83,13 @@ export const qwenDrawdownAutoDisabled = new client.Gauge({
   registers: [register],
 });
 
+/** Gauge: unix-seconds of last drawdown-monitor cycle invocation (liveness probe for 6h cron) */
+export const qwenDrawdownMonitorLastRunTs = new client.Gauge({
+  name: 'algo_trader_qwen_drawdown_monitor_last_run_ts',
+  help: 'Unix-seconds timestamp of the most recent qwen-drawdown-monitor cycle start. Used by QwenDrawdownMonitorStale freshness alert (time() - gauge > 7h).',
+  registers: [register],
+});
+
 // Counter for total trades executed
 export const tradesTotal = new client.Counter({
   name: 'trades_total',

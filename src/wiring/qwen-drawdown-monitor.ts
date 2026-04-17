@@ -14,6 +14,7 @@ import {
   qwenPaperPnlPct,
   setQwenKillSwitch,
   setQwenDrawdownAutoDisabled,
+  qwenDrawdownMonitorLastRunTs,
 } from '../middleware/prometheus-metrics';
 import { getTracer } from '../utils/tracing';
 
@@ -110,6 +111,12 @@ export async function computeRollingPnl(
  */
 export async function runDrawdownCheck(): Promise<void> {
   return getTracer().startActiveSpan('qwen.drawdown.check', async (span) => {
+    // Freshness gauge — set at the top, before any guard, so even the
+    // kill-switch/no-trades early-return paths still prove the timer is alive.
+    // Complements the state gauges (qwenPaperPnlPct, qwenDrawdownAutoDisabled)
+    // which reflect logic outcome rather than timer liveness.
+    qwenDrawdownMonitorLastRunTs.set(Math.floor(Date.now() / 1000));
+
     // Reflect L1 kill-switch env state in Prom gauge every cycle
     setQwenKillSwitch('env', isKillSwitchActive());
 
@@ -164,6 +171,12 @@ export async function runDrawdownCheck(): Promise<void> {
  */
 export function startDrawdownMonitor(intervalMs = DEFAULT_INTERVAL_MS): void {
   if (_timer) return; // already running
+
+  // Pre-arm the freshness gauge at startup so QwenDrawdownMonitorStale does not
+  // page for the full 6h cron interval after every deploy. The gauge will be
+  // refreshed on the first real cycle; deadman-switch already covers the
+  // pre-init process-death case, so no liveness coverage is lost.
+  qwenDrawdownMonitorLastRunTs.set(Math.floor(Date.now() / 1000));
 
   logger.info('[QwenDrawdown] Monitor started', { intervalMs });
   _timer = setInterval(() => {

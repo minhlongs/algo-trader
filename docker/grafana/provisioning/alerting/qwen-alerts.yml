@@ -272,3 +272,48 @@ groups:
           summary: 'qwen-signals-loop has not run in 7h+ (6h cron stalled)'
           description: 'The 6h signals-loop cron has not written a journal row in more than 7h. Timer died silently, init regressed, or persistRunJournal throws. Quality-drift detection is blind. Restart + investigate last journal row timestamp.'
           runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-signals-loop-stale.md'
+
+      # ─── Drawdown-monitor freshness — WARNING ──────────────────────────────
+      # Symmetric companion to qwen-signals-loop-stale. The 6h drawdown check
+      # runs via its own setInterval — if that timer dies while the process
+      # stays alive, L3 state gauges freeze at last-known value (likely 0 =
+      # enabled) even if real P&L is breaching. Scrape-deadman won't catch it
+      # because /metrics still serves.
+      - uid: qwen-drawdown-monitor-stale
+        title: QwenDrawdownMonitorStale
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'time() - algo_trader_qwen_drawdown_monitor_last_run_ts'
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 0, to: 0 }
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [25200] }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { type: last }
+                  type: query
+        # NoData = gauge never emitted (startDrawdownMonitor never called) → breach.
+        noDataState: Alerting
+        execErrState: Error
+        for: 10m
+        labels:
+          severity: warning
+          component: algo-trader
+          rollback_tier: drawdown_monitor
+        annotations:
+          summary: 'qwen-drawdown-monitor has not ticked in 7h+ (6h cron stalled)'
+          description: 'The 6h drawdown-monitor cron has not invoked runDrawdownCheck in more than 7h. L3 auto-disable protection is silently disarmed — real drawdown breaches will not be caught. Restart + investigate startup init.'
+          runbook: 'https://github.com/longtho638-jpg/algo-trader/blob/main/docs/runbooks/qwen-drawdown-monitor-stale.md'

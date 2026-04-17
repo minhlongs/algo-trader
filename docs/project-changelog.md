@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.4] - 2026-04-17
+
+### Added — Drawdown Monitor Freshness (symmetric to v2.4.3)
+
+Companion freshness probe for the 6h drawdown-monitor cron. Closes the last Pillar 2 liveness gap: scrape-deadman only catches process death; signals-loop freshness covers its own timer; this closes the drawdown-monitor timer.
+
+**Runtime:**
+- `prometheus-metrics.ts` +1 gauge `algo_trader_qwen_drawdown_monitor_last_run_ts` (unix-seconds of last cycle start).
+- `qwen-drawdown-monitor.ts` `runDrawdownCheck` sets gauge at the *top* of the span, before any guard — even kill-switch/no-trades early-returns still prove the timer is alive (semantic choice differs from signals-loop's "DB-confirmed": drawdown check has multiple valid early-return paths, all of which mean "timer fired"). `startDrawdownMonitor()` pre-arms the gauge at boot.
+
+**Alert rule** (3rd in `algo-trader-availability` group):
+- `QwenDrawdownMonitorStale` — WARNING, `time() - gauge > 25200` (7h) for 10m, `noDataState: Alerting`, label `rollback_tier=drawdown_monitor`.
+
+**Runbook:** `docs/runbooks/qwen-drawdown-monitor-stale.md` — startup-init regression / timer-death / env-drift triage + L3 state gauge cross-check for correctness.
+
+**Tests:** +1 unit in `qwen-rollback-harness.test.ts` (uses `vi.hoisted()` pattern for mock gauge, asserts gauge set even on kill-switch early-return path). +1 YAML smoke assertion. Bumped availability group rule count 2→3. 65/65 tests pass across touched files.
+
+**Zero new deps.** Pillar 2 full symmetry — every 6h Qwen timer now has its own freshness alert.
+
+---
+
 ## [2.4.3] - 2026-04-17
 
 ### Added — Signals-Loop Freshness Probe (Pillar 2 Depth +1)

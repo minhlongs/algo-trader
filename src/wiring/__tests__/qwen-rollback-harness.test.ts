@@ -24,12 +24,16 @@ vi.mock('../../signal/telegram-signal-pusher.js', () => ({
 }));
 
 // ─── Mock Prometheus to avoid duplicate metric registration ──────────────────
+const { mockDrawdownLastRunGauge } = vi.hoisted(() => ({
+  mockDrawdownLastRunGauge: { set: vi.fn() },
+}));
 vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
   setQwenKillSwitch: vi.fn(),
   setQwenPaperGateDaysRemaining: vi.fn(),
   setQwenDrawdownAutoDisabled: vi.fn(),
+  qwenDrawdownMonitorLastRunTs: mockDrawdownLastRunGauge,
 }));
 
 // ─── Mock logger ─────────────────────────────────────────────────────────────
@@ -196,6 +200,21 @@ describe('L3 — Drawdown Auto-Disable (24h rolling P&L)', () => {
     await runDrawdownCheck();
     expect(mockQueryResult).not.toHaveBeenCalled();
     expect(getMockAlert()).not.toHaveBeenCalled();
+  });
+
+  it('runDrawdownCheck sets freshness gauge at cycle start (even on kill-switch early-return)', async () => {
+    // Pre-condition: kill-switch active → function early-returns after gauge set
+    disableQwen('pre-disabled');
+    mockDrawdownLastRunGauge.set.mockClear();
+
+    const before = Math.floor(Date.now() / 1000);
+    await runDrawdownCheck();
+    const after = Math.floor(Date.now() / 1000);
+
+    expect(mockDrawdownLastRunGauge.set).toHaveBeenCalledOnce();
+    const ts = mockDrawdownLastRunGauge.set.mock.calls[0][0];
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after);
   });
 
   it('respects custom QWEN_DRAWDOWN_MAX_PCT env (10%)', async () => {

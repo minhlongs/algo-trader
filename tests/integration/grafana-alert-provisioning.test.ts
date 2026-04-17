@@ -51,10 +51,10 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
   const availabilityGroup = doc.groups.find((g) => g.name === 'algo-trader-availability')!;
   const allRules = doc.groups.flatMap((g) => g.rules);
 
-  it('defines rollback group (4 rules) + availability group (2 rules)', () => {
+  it('defines rollback group (4 rules) + availability group (3 rules)', () => {
     expect(doc.groups).toHaveLength(2);
     expect(rollbackGroup.rules).toHaveLength(4);
-    expect(availabilityGroup.rules).toHaveLength(2);
+    expect(availabilityGroup.rules).toHaveLength(3);
   });
 
   it('both groups target Qwen folder with 1m eval interval', () => {
@@ -122,6 +122,18 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
     const expr = stale.data.find((d) => d.refId === 'A')!.model.expr;
     expect(expr).toContain('time()');
     expect(expr).toContain('algo_trader_qwen_signals_loop_last_run_ts');
+  });
+
+  it('availability group has drawdown-monitor freshness probe with time()-gauge pattern + 10m + warning', () => {
+    const stale = availabilityGroup.rules.find((r) => r.uid === 'qwen-drawdown-monitor-stale')!;
+    expect(stale, 'missing qwen-drawdown-monitor-stale rule').toBeDefined();
+    expect(stale.for).toBe('10m');
+    expect(stale.labels.severity).toBe('warning');
+    expect(stale.labels.component).toBe('algo-trader');
+    expect(stale.labels.rollback_tier).toBe('drawdown_monitor');
+    const expr = stale.data.find((d) => d.refId === 'A')!.model.expr;
+    expect(expr).toContain('time()');
+    expect(expr).toContain('algo_trader_qwen_drawdown_monitor_last_run_ts');
   });
 
   it('L3 rule queries drawdown gauge with 5m for-duration', () => {
