@@ -1,5 +1,30 @@
 # Project Changelog - Algo Trader
 
+## [2.4.21] - 2026-04-17
+
+### Added — `qwen-ops.sh backlog` subcommand
+
+Wraps the `/metrics` scrape + awk extraction for the strategy-review backlog gauges (from PR #124). Operator runs `./scripts/qwen-ops.sh backlog` instead of curling `/metrics` and grepping.
+
+**Output:**
+```
+Strategy review backlog
+  size          : N rows
+  oldest_pending: X.Xh (Ys)
+Alert fires at > 48h for 30m — see docs/runbooks/qwen-strategy-review-backlog.md
+```
+
+**Design:**
+- No admin key required (`/metrics` is Prometheus scrape surface, unauth).
+- Missing gauges → `0` fallback (pre-arm state before first signals-loop tick).
+- Empty `/metrics` response → exit 3 with "is app up?" hint.
+- Humanise age seconds → hours via `awk` (bash float-free).
+- Shellcheck-clean at `warning` severity.
+
+**Help message** updated, smoke-tested against prod (`https://algo-trader.pages.dev`).
+
+---
+
 ## [2.4.20] - 2026-04-17
 
 ### Added — Runbook Index Link-Integrity Test

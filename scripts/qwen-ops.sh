@@ -58,6 +58,7 @@ Usage: $(basename "$0") <command> [args]
 
 Read-only (no auth required):
   health              GET /health — full service health (Redis, Postgres, engine, qwen booleans)
+  backlog             Scrape /metrics for strategy-review backlog size + oldest-age (human-readable)
 
 Admin-key required (set ADMIN_API_KEY):
   status              GET /api/v1/admin/qwen/status — eligibility + kill + drawdown
@@ -93,6 +94,25 @@ case "$cmd" in
     # No admin key needed
     curl -sS "$HOST/health"
     echo
+    ;;
+  backlog)
+    # No admin key needed — /metrics is Prometheus scrape surface (unauth).
+    # Extract 2 gauges and present human-readable. Missing gauges → "0" (pre-arm case).
+    metrics=$(curl -sS "$HOST/metrics" 2>/dev/null || true)
+    if [ -z "$metrics" ]; then
+      echo "ERROR: /metrics returned empty (is app up?)" >&2
+      exit 3
+    fi
+    size=$(echo "$metrics" | awk '/^algo_trader_qwen_strategy_review_backlog_size /{print $2; exit}')
+    age_sec=$(echo "$metrics" | awk '/^algo_trader_qwen_strategy_review_oldest_pending_age_sec /{print $2; exit}')
+    size="${size:-0}"
+    age_sec="${age_sec:-0}"
+    # Humanise age: seconds → hours (1 decimal). `awk` handles the float.
+    age_h=$(awk -v s="$age_sec" 'BEGIN {printf "%.1f", s/3600}')
+    printf 'Strategy review backlog\n'
+    printf '  size          : %s rows\n' "$size"
+    printf '  oldest_pending: %sh (%ss)\n' "$age_h" "$age_sec"
+    printf 'Alert fires at > 48h for 30m — see docs/runbooks/qwen-strategy-review-backlog.md\n'
     ;;
   status)
     need_key
