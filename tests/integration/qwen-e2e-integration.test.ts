@@ -34,6 +34,11 @@ vi.mock('../../src/signal/telegram-signal-pusher.js', () => ({
 vi.mock('../../src/middleware/prometheus-metrics.js', () => ({
   qwenSignalsTotal: { inc: vi.fn() },
   qwenPaperPnlPct: { set: vi.fn() },
+  qwenSignalsLoopRunsTotal: { inc: vi.fn() },
+  qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
+  setQwenKillSwitch: vi.fn(),
+  setQwenPaperGateDaysRemaining: vi.fn(),
+  setQwenDrawdownAutoDisabled: vi.fn(),
   metricsMiddleware: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 

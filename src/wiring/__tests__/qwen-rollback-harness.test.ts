@@ -27,6 +27,9 @@ vi.mock('../../signal/telegram-signal-pusher.js', () => ({
 vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
+  setQwenKillSwitch: vi.fn(),
+  setQwenPaperGateDaysRemaining: vi.fn(),
+  setQwenDrawdownAutoDisabled: vi.fn(),
 }));
 
 // ─── Mock logger ─────────────────────────────────────────────────────────────

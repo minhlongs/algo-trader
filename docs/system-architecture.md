@@ -257,6 +257,36 @@ graph TD
 **Shell Script** (`scripts/one-click-setup-and-start.sh`):
 - Prerequisites check → npm/pnpm install → CLI wizard → optional Docker infra.
 
+## SDLC Scaffold (Pillar 4: Solo Platform)
+
+Agent-driven specification → design → code → deploy workflow embedded as executable documentation.
+
+| Phase | File | Purpose | Hand-off to |
+|-------|------|---------|------------|
+| 1 | `CLAUDE.specification.md` | Translate user request + a16z doctrine into detailed PDR + requirements | Design phase |
+| 2 | `CLAUDE.design.md` | Architect system design, data flow, module interactions from requirements | Code phase |
+| 3 | `CLAUDE.code.md` | Implement code, run tester + code-reviewer subagents (DoD gates), verify tests + review ≥9/10 | Deploy phase |
+| 4 | `CLAUDE.deploy.md` | Verify CI gates 1–5 pass, probe production, monitor Signals Loop journal for regressions | (prod + monitoring) |
+
+Each guide lists: required inputs, required outputs, algo-trader hard constraints, definition-of-done checklist, hand-off contract. Phases 3 & 4 explicitly verify CI gate alignment + rollback hierarchy (L0–L4 from `docs/ai-first-enforcement-gates.md`). Zero runtime code change — scaffolding only, existing 5-tier rollback stack unchanged.
+
+## Observability (Pillar 2: Solo Platform)
+
+Two-plane observability: Prometheus metrics + OpenTelemetry traces → Grafana.
+
+**Traces** (`src/utils/tracing.ts`):
+- OTel OTLP HTTP exporter, activated by `OTEL_EXPORTER_OTLP_ENDPOINT` env (unset → silent noop, zero prod risk).
+- Dynamic import keeps SDK out of cold-start path when tracing disabled.
+- Three instrumented critical paths: `qwen.signals_loop.evaluate` (`src/wiring/qwen-signals-loop.ts`), `qwen.drawdown.check` (`src/wiring/qwen-drawdown-monitor.ts`), `qwen.eligibility.check` (`src/wiring/qwen-live-eligibility-gate.ts`).
+
+**Metrics** (`src/middleware/prometheus-metrics.ts`):
+- L-tier rollback visibility: `algo_trader_qwen_kill_switch_active{source=env|kv}` (L1), `algo_trader_qwen_paper_gate_days_remaining` (L4, 0–30 clamped), `algo_trader_qwen_drawdown_auto_disabled` (L3).
+- Qwen pipeline: `qwen_paper_pnl_pct`, `qwen_signals_total{result}`, `qwen_signals_loop_runs_total{decision}`, `qwen_strategy_reviews_queued_total{reason}`.
+
+**Dashboards** (`docker/grafana/dashboards/`):
+- `qwen-solo-platform.json` — L0–L4 rollback state + 24h rolling Qwen P&L + signals-loop decision breakdown + strategy-review reason mix.
+- Plus 3 pre-existing: `arbitrage-opportunities`, `system-health`, `trading-performance`.
+
 ### Infrastructure
 **Database** (`prisma/`):
 - PostgreSQL 16 via Prisma ORM — 9 models (Tenant, ApiKey, Strategy, Order, Trade, BacktestResult, Candle, PnlSnapshot, AlertRule).

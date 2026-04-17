@@ -1,5 +1,58 @@
 # Project Changelog - Algo Trader
 
+## [2.4.0] - 2026-04-17
+
+### Added — Observability Completion (Solo Platform Pillar 2)
+
+OTel OTLP HTTP tracing on 3 Qwen critical paths + 3 new L-tier Prometheus gauges + Qwen Solo-Platform Grafana dashboard. Closes the partial pillar; 4/4 pillars now complete.
+
+**Runtime:**
+- `src/utils/tracing.ts` — OTLPTraceExporter + BatchSpanProcessor wired via dynamic import. Noop fallback when `OTEL_EXPORTER_OTLP_ENDPOINT` unset → zero prod risk. Idempotent init with in-flight promise sharing.
+- `src/index.ts` — `initTracing()` called at bootstrap (after Sentry, before migrations).
+- `src/wiring/qwen-signals-loop.ts` — `evaluateAndQueue` wrapped in `qwen.signals_loop.evaluate` span.
+- `src/wiring/qwen-drawdown-monitor.ts` — `runDrawdownCheck` wrapped in `qwen.drawdown.check` span; emits kill-switch + drawdown-auto-disabled gauges.
+- `src/wiring/qwen-live-eligibility-gate.ts` — `checkQwenEligibility` wrapped in `qwen.eligibility.check` span; emits paper-gate-days-remaining gauge.
+
+**Metrics (3 new):**
+- `algo_trader_qwen_kill_switch_active{source}` — L1 kill switch state (label: env|kv)
+- `algo_trader_qwen_paper_gate_days_remaining` — L4 paper gate countdown (0–30, clamped)
+- `algo_trader_qwen_drawdown_auto_disabled` — L3 drawdown auto-disable state (0|1)
+
+**Grafana:** `docker/grafana/dashboards/qwen-solo-platform.json` — 4th dashboard, 8 panels covering L0–L4 rollback state.
+
+**Deps:** `@opentelemetry/exporter-trace-otlp-http`, `@opentelemetry/resources`, `@opentelemetry/semantic-conventions` added. `@opentelemetry/api` + `@opentelemetry/sdk-trace-node` moved from devDependencies → dependencies (fixes prod prune issue). `sdk-trace-node` upgraded to ^2.
+
+**Tests:** 755/755 vitest pass (+8 new observability tests: metric exposure, clamping, noop default, SDK failure fallback, concurrent init race). tsc 0 errors. Dashboard JSON valid.
+
+**Zero runtime risk** — OTLP exporter opt-in via env; new gauges are additive; no migrations; no existing metric names changed.
+
+**Related:** completes Pillar 2 partial status. Pillars 1/3/4 already shipped (PR #115/#113+#114/#116).
+
+---
+
+## [2.3.0] - 2026-04-17
+
+### Added — SDLC Scaffold Phase Guides (Solo Platform Pillar 4)
+
+AI-first specification → design → code → deploy workflow embedded in repo as single-source-of-truth agent guides. Four `CLAUDE.<phase>.md` files standardize hand-offs between development phases, zero runtime code impact.
+
+**Files:**
+- `CLAUDE.specification.md` (71 LOC) — Phase 1 agent guide (inputs: user request + PDF doctrine; outputs: PDR + requirements; downstream: Design)
+- `CLAUDE.design.md` (72 LOC) — Phase 2 agent guide (inputs: Specification; outputs: architecture + data flow; downstream: Code)
+- `CLAUDE.code.md` (69 LOC) — Phase 3 agent guide (inputs: Design; outputs: tested + reviewed code; includes tester/reviewer DoD gates; downstream: Deploy)
+- `CLAUDE.deploy.md` (96 LOC) — Phase 4 agent guide (inputs: Code; outputs: prod + Signals Loop journal; verifies 5 CI gates + smoke tests; upstream: Code phase DoD)
+- Updated `CLAUDE.md` with "SDLC Phase Guides" navigation section + cross-references to `docs/ai-first-enforcement-gates.md`
+
+**Design:** Each phase lists required inputs, required outputs, hard algo-trader constraints, definition-of-done checklist, and hand-off contract. Phases 3 & 4 explicitly ref CI gates 1–5 and rollback hierarchy (L0–L4) from `docs/ai-first-enforcement-gates.md`.
+
+**Related:** Completes Pillar 4 of a16z Solo Platform doctrine. Pillars 1–3 already shipped (5 Enforcement Gates PR #115, Signals Loop L0+Journal PR #113/#114, partial observability). Pillar 2 (Observability/Grafana) still partial.
+
+**Zero runtime impact** — scaffolding only, no strategy changes, no 5-tier rollback stack affected.
+
+**Tests:** 747/747 vitest pass (tester report: `plans/reports/tester-260417-1600-sdlc-scaffold-verification.md`). Code review: 9.x/10 after fixes (review report: `plans/reports/code-reviewer-260417-1600-sdlc-scaffold.md`).
+
+---
+
 ## [2.2.0] - 2026-04-17
 
 ### Added — AI-First Enforcement Gates (Solo Platform Pillar 1)

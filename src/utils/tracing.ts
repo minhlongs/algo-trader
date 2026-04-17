@@ -1,41 +1,93 @@
-// OpenTelemetry tracing initialization
-// Activate by setting OTEL_EXPORTER_OTLP_ENDPOINT env var
-// Install @opentelemetry/api and @opentelemetry/sdk-trace-node to enable
+/**
+ * OpenTelemetry tracing initialisation — Pillar 2 observability.
+ *
+ * Activation: set OTEL_EXPORTER_OTLP_ENDPOINT (e.g. http://localhost:4318/v1/traces).
+ * Unset → silent noop (zero prod risk when endpoint unreachable).
+ *
+ * Keeps dynamic import so the SDK is optional at runtime even though deps
+ * ship in package.json (see `@opentelemetry/sdk-trace-node`, `exporter-trace-otlp-http`).
+ */
 
-// Minimal tracer interface — mirrors @opentelemetry/api Tracer
-interface Tracer {
-  startSpan(name: string): { end(): void };
+import { logger } from './logger';
+
+interface Span {
+  end(): void;
+  setAttribute(key: string, value: string | number | boolean): void;
+  recordException(err: unknown): void;
 }
 
-// No-op tracer used when SDK is not installed
+interface Tracer {
+  startActiveSpan<T>(name: string, fn: (span: Span) => Promise<T>): Promise<T>;
+  startSpan(name: string): Span;
+}
+
+const noopSpan: Span = {
+  end: () => undefined,
+  setAttribute: () => undefined,
+  recordException: () => undefined,
+};
+
 const noopTracer: Tracer = {
-  startSpan: () => ({ end: () => undefined }),
+  startActiveSpan: async <T>(_name: string, fn: (s: Span) => Promise<T>) => fn(noopSpan),
+  startSpan: () => noopSpan,
 };
 
 let _tracer: Tracer = noopTracer;
+let _initPromise: Promise<void> | null = null;
 
-export function getTracer(_name = 'cashclaw'): Tracer {
+export function getTracer(_name = 'algo-trader'): Tracer {
   return _tracer;
 }
 
-export function initTracing(): void {
+async function runInit(): Promise<void> {
   const endpoint = process.env['OTEL_EXPORTER_OTLP_ENDPOINT'];
   if (!endpoint) return;
 
   try {
-    // Dynamic import to avoid bundling SDK when not needed
-    // Requires @opentelemetry/api and @opentelemetry/sdk-trace-node to be installed
-    Promise.all([
-      import('@opentelemetry/api' as string),
-      import('@opentelemetry/sdk-trace-node' as string),
-    ]).then(([otelApi, otelSdk]) => {
-      const provider = new (otelSdk as { NodeTracerProvider: new () => { register(): void } }).NodeTracerProvider();
-      provider.register();
-      _tracer = (otelApi as { trace: { getTracer(name: string): Tracer } }).trace.getTracer('cashclaw');
-    }).catch(() => {
-      // SDK not installed — tracing disabled, noop tracer remains active
+    const [otelApi, otelSdk, otelExporter] = await Promise.all([
+      import('@opentelemetry/api'),
+      import('@opentelemetry/sdk-trace-node'),
+      import('@opentelemetry/exporter-trace-otlp-http'),
+    ]);
+
+    const exporter = new otelExporter.OTLPTraceExporter({ url: endpoint });
+    const provider = new otelSdk.NodeTracerProvider({
+      spanProcessors: [new otelSdk.BatchSpanProcessor(exporter)],
     });
-  } catch {
-    // Tracing not available
+    provider.register();
+
+    const realTracer = otelApi.trace.getTracer('algo-trader');
+    _tracer = {
+      startActiveSpan: <T>(name: string, fn: (s: Span) => Promise<T>) =>
+        realTracer.startActiveSpan(name, async (span) => {
+          try {
+            return await fn(span as unknown as Span);
+          } catch (err) {
+            span.recordException(err as Error);
+            throw err;
+          } finally {
+            span.end();
+          }
+        }),
+      startSpan: (name: string) => realTracer.startSpan(name) as unknown as Span,
+    };
+    logger.info('[Tracing] OTLP exporter active', { endpoint });
+  } catch (err) {
+    logger.warn('[Tracing] SDK unavailable — spans disabled', { err: String(err) });
   }
+}
+
+/**
+ * Initialise tracing. Idempotent — concurrent callers share the same in-flight
+ * promise; subsequent calls after resolution are no-ops.
+ */
+export function initTracing(): Promise<void> {
+  if (!_initPromise) _initPromise = runInit();
+  return _initPromise;
+}
+
+/** Reset for test isolation only. */
+export function resetTracingForTests(): void {
+  _tracer = noopTracer;
+  _initPromise = null;
 }

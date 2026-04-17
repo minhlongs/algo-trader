@@ -18,6 +18,9 @@ vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenSignalsLoopRunsTotal: { inc: vi.fn() },
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
+  setQwenKillSwitch: vi.fn(),
+  setQwenPaperGateDaysRemaining: vi.fn(),
+  setQwenDrawdownAutoDisabled: vi.fn(),
 }));
 
 // ─── Mock logger ──────────────────────────────────────────────────────────────

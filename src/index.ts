@@ -6,6 +6,7 @@
 import 'dotenv/config';
 import { Command } from 'commander';
 import { initSentry } from './utils/sentry-init';
+import { initTracing } from './utils/tracing';
 import { runMigrations } from './db/migration-runner';
 import { runGruStrategy } from './commands/gru-strategy';
 import { KronosStrategy } from './strategies/kronos-strategy';
@@ -17,6 +18,10 @@ import { logger } from './utils/logger';
 
 // Initialize Sentry before anything else
 initSentry();
+
+// Initialize OTel tracing (noop if OTEL_EXPORTER_OTLP_ENDPOINT unset).
+// Non-blocking at top-level — errors are logged inside.
+initTracing().catch((err) => logger.warn('[Startup] initTracing failed', { err }));
 
 export interface GruStrategyOptions {
   inputSteps: string;

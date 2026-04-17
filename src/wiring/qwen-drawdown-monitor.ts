@@ -10,7 +10,12 @@
 import { query } from '../db/postgres-client';
 import { telegramSignalPusher } from '../signal/telegram-signal-pusher';
 import { logger } from '../utils/logger';
-import { qwenPaperPnlPct } from '../middleware/prometheus-metrics';
+import {
+  qwenPaperPnlPct,
+  setQwenKillSwitch,
+  setQwenDrawdownAutoDisabled,
+} from '../middleware/prometheus-metrics';
+import { getTracer } from '../utils/tracing';
 
 /** Default check interval: 6 hours */
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -45,6 +50,7 @@ export function isQwenEnabled(): boolean {
 export function disableQwen(reason: string): void {
   _qwenEnabled = false;
   _lastBreachAt = Date.now();
+  setQwenDrawdownAutoDisabled(true);
   logger.warn('[QwenDrawdown] Qwen swarm DISABLED', { reason });
 }
 
@@ -52,6 +58,7 @@ export function disableQwen(reason: string): void {
 export function enableQwen(): void {
   _qwenEnabled = true;
   _lastBreachAt = null;
+  setQwenDrawdownAutoDisabled(false);
   logger.info('[QwenDrawdown] Qwen swarm RE-ENABLED by admin');
 }
 
@@ -102,44 +109,53 @@ export async function computeRollingPnl(
  * Called by the scheduler and exposed for tests.
  */
 export async function runDrawdownCheck(): Promise<void> {
-  if (!isQwenEnabled()) {
-    logger.debug('[QwenDrawdown] Already disabled — skip check');
-    return;
-  }
+  return getTracer().startActiveSpan('qwen.drawdown.check', async (span) => {
+    // Reflect L1 kill-switch env state in Prom gauge every cycle
+    setQwenKillSwitch('env', isKillSwitchActive());
 
-  const threshold = getDrawdownThreshold() / 100; // convert pct to decimal
-  const { pnlPct, totalSize, totalPnl } = await computeRollingPnl('qwen');
-
-  if (pnlPct === null) {
-    logger.debug('[QwenDrawdown] No closed Qwen trades in window — skip');
-    return;
-  }
-
-  // Emit Prometheus gauge — visible to Grafana alerting
-  qwenPaperPnlPct.set(pnlPct);
-
-  logger.info('[QwenDrawdown] 24h P&L check', {
-    pnlPct: (pnlPct * 100).toFixed(2) + '%',
-    totalSize,
-    totalPnl,
-    threshold: (threshold * 100).toFixed(0) + '%',
-  });
-
-  if (pnlPct <= -threshold) {
-    const msg =
-      `[ALERT] Qwen paper drawdown breached: ` +
-      `${(pnlPct * 100).toFixed(2)}% (threshold -${(threshold * 100).toFixed(0)}%). ` +
-      `Auto-disabling Qwen swarm. Manual re-enable required.`;
-
-    disableQwen(`drawdown ${(pnlPct * 100).toFixed(2)}%`);
-
-    // Send Telegram admin alert (non-blocking)
-    try {
-      await telegramSignalPusher.sendAdminAlert(msg);
-    } catch (alertErr) {
-      logger.warn('[QwenDrawdown] Telegram alert failed', { alertErr });
+    if (!isQwenEnabled()) {
+      span.setAttribute('qwen.enabled', false);
+      logger.debug('[QwenDrawdown] Already disabled — skip check');
+      return;
     }
-  }
+
+    const threshold = getDrawdownThreshold() / 100; // convert pct to decimal
+    const { pnlPct, totalSize, totalPnl } = await computeRollingPnl('qwen');
+
+    if (pnlPct === null) {
+      span.setAttribute('qwen.drawdown.skip_reason', 'no_trades_in_window');
+      logger.debug('[QwenDrawdown] No closed Qwen trades in window — skip');
+      return;
+    }
+
+    // Emit Prometheus gauge — visible to Grafana alerting
+    qwenPaperPnlPct.set(pnlPct);
+    span.setAttribute('qwen.pnl_pct', pnlPct);
+
+    logger.info('[QwenDrawdown] 24h P&L check', {
+      pnlPct: (pnlPct * 100).toFixed(2) + '%',
+      totalSize,
+      totalPnl,
+      threshold: (threshold * 100).toFixed(0) + '%',
+    });
+
+    if (pnlPct <= -threshold) {
+      const msg =
+        `[ALERT] Qwen paper drawdown breached: ` +
+        `${(pnlPct * 100).toFixed(2)}% (threshold -${(threshold * 100).toFixed(0)}%). ` +
+        `Auto-disabling Qwen swarm. Manual re-enable required.`;
+
+      disableQwen(`drawdown ${(pnlPct * 100).toFixed(2)}%`);
+      span.setAttribute('qwen.drawdown.breach', true);
+
+      // Send Telegram admin alert (non-blocking)
+      try {
+        await telegramSignalPusher.sendAdminAlert(msg);
+      } catch (alertErr) {
+        logger.warn('[QwenDrawdown] Telegram alert failed', { alertErr });
+      }
+    }
+  });
 }
 
 /**

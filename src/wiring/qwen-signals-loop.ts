@@ -13,6 +13,7 @@ import {
   qwenStrategyReviewsQueuedTotal,
   qwenSignalsLoopRunsTotal,
 } from '../middleware/prometheus-metrics';
+import { getTracer } from '../utils/tracing';
 
 const DEFAULT_INTERVAL_MS = 6 * 3600 * 1000;
 const DEFAULT_REVIEW_WINDOW_MS = 7 * 24 * 3600 * 1000;
@@ -190,54 +191,61 @@ async function insertReviewTask(
  * Exported for direct test access.
  */
 export async function evaluateAndQueue(source: string): Promise<void> {
-  let metrics: QualityMetrics = {
-    winRate: null,
-    sharpe: null,
-    signalCount: 0,
-    closedTradeCount: 0,
-    windowStartMs: 0,
-    windowEndMs: 0,
-  };
+  return getTracer().startActiveSpan('qwen.signals_loop.evaluate', async (span) => {
+    span.setAttribute('qwen.source', source);
 
-  try {
-    metrics = await computeQualityMetrics(source);
-  } catch (err) {
-    logger.error('[QwenSignalsLoop] computeQualityMetrics threw unexpectedly', { err });
-    await persistRunJournal(source, metrics, 'error', [], String(err));
-    return;
-  }
+    let metrics: QualityMetrics = {
+      winRate: null,
+      sharpe: null,
+      signalCount: 0,
+      closedTradeCount: 0,
+      windowStartMs: 0,
+      windowEndMs: 0,
+    };
 
-  const minSignals = getMinSignals();
-  const minTrades = getMinTradesForSharpe();
+    try {
+      metrics = await computeQualityMetrics(source);
+    } catch (err) {
+      logger.error('[QwenSignalsLoop] computeQualityMetrics threw unexpectedly', { err });
+      span.recordException(err);
+      await persistRunJournal(source, metrics, 'error', [], String(err));
+      return;
+    }
 
-  logger.info('[QwenSignalsLoop] Quality check', {
-    source,
-    signalCount: metrics.signalCount,
-    closedTradeCount: metrics.closedTradeCount,
-    winRate: metrics.winRate,
-    sharpe: metrics.sharpe,
+    const minSignals = getMinSignals();
+    const minTrades = getMinTradesForSharpe();
+
+    logger.info('[QwenSignalsLoop] Quality check', {
+      source,
+      signalCount: metrics.signalCount,
+      closedTradeCount: metrics.closedTradeCount,
+      winRate: metrics.winRate,
+      sharpe: metrics.sharpe,
+    });
+
+    // Insufficient data — skip threshold checks
+    if (metrics.signalCount < minSignals) {
+      span.setAttribute('qwen.decision', 'skipped_insufficient_data');
+      await persistRunJournal(source, metrics, 'skipped_insufficient_data', []);
+      return;
+    }
+
+    const triggerReasons: string[] = [];
+
+    if (metrics.winRate !== null && metrics.winRate < getWinRateMin()) {
+      await insertReviewTask(source, 'win_rate_below_threshold', metrics);
+      triggerReasons.push('win_rate_below_threshold');
+    }
+
+    if (metrics.closedTradeCount >= minTrades && metrics.sharpe !== null && metrics.sharpe < getSharpeMin()) {
+      await insertReviewTask(source, 'sharpe_below_threshold', metrics);
+      triggerReasons.push('sharpe_below_threshold');
+    }
+
+    const decision = triggerReasons.length > 0 ? 'queued_review' : 'ok';
+    span.setAttribute('qwen.decision', decision);
+    await persistRunJournal(source, metrics, decision, triggerReasons);
   });
-
-  // Insufficient data — skip threshold checks
-  if (metrics.signalCount < minSignals) {
-    await persistRunJournal(source, metrics, 'skipped_insufficient_data', []);
-    return;
-  }
-
-  const triggerReasons: string[] = [];
-
-  if (metrics.winRate !== null && metrics.winRate < getWinRateMin()) {
-    await insertReviewTask(source, 'win_rate_below_threshold', metrics);
-    triggerReasons.push('win_rate_below_threshold');
-  }
-
-  if (metrics.closedTradeCount >= minTrades && metrics.sharpe !== null && metrics.sharpe < getSharpeMin()) {
-    await insertReviewTask(source, 'sharpe_below_threshold', metrics);
-    triggerReasons.push('sharpe_below_threshold');
-  }
-
-  const decision = triggerReasons.length > 0 ? 'queued_review' : 'ok';
-  await persistRunJournal(source, metrics, decision, triggerReasons);
 }
 
 export function startSignalsLoop(intervalMs = getIntervalMs()): void {

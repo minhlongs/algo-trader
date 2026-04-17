@@ -52,6 +52,30 @@ export const qwenSignalsLoopRunsTotal = new client.Counter({
   registers: [register],
 });
 
+// ─── L-tier rollback visibility (Pillar 2 observability) ─────────────────────
+
+/** Gauge: kill-switch active state (0=inactive, 1=active), labeled by source */
+export const qwenKillSwitchActive = new client.Gauge({
+  name: 'algo_trader_qwen_kill_switch_active',
+  help: 'L1 kill-switch active state (0|1). Labels: source=env|kv',
+  labelNames: ['source'] as const,
+  registers: [register],
+});
+
+/** Gauge: days remaining in MIN_PAPER_DAYS=30 validation window (L4) */
+export const qwenPaperGateDaysRemaining = new client.Gauge({
+  name: 'algo_trader_qwen_paper_gate_days_remaining',
+  help: 'L4 paper gate: days remaining before Qwen can flip live (0-30, clamped)',
+  registers: [register],
+});
+
+/** Gauge: L3 drawdown auto-disable state (0=enabled, 1=disabled by breach) */
+export const qwenDrawdownAutoDisabled = new client.Gauge({
+  name: 'algo_trader_qwen_drawdown_auto_disabled',
+  help: 'L3 drawdown auto-disable state (0|1). 1 = swarm disabled by -5% breach',
+  registers: [register],
+});
+
 // Counter for total trades executed
 export const tradesTotal = new client.Counter({
   name: 'trades_total',
@@ -257,6 +281,28 @@ export function setOpenPositions(symbol: string, exchange: string, count: number
  */
 export function setStrategyActive(strategy: string, active: boolean): void {
   strategyActive.set({ strategy }, active ? 1 : 0);
+}
+
+/**
+ * Set L1 kill-switch state for a given source (env flag or KV lookup).
+ * source='env' → QWEN_KILL env var; source='kv' → CF KV / admin route.
+ */
+export function setQwenKillSwitch(source: 'env' | 'kv', active: boolean): void {
+  qwenKillSwitchActive.set({ source }, active ? 1 : 0);
+}
+
+/**
+ * Set L4 paper-gate days remaining (clamped to [0, 30]).
+ * 0 = gate cleared (≥30 days of paper history); 30 = no paper trades yet.
+ */
+export function setQwenPaperGateDaysRemaining(days: number): void {
+  const clamped = Math.max(0, Math.min(30, Math.round(days * 10) / 10));
+  qwenPaperGateDaysRemaining.set(clamped);
+}
+
+/** Set L3 drawdown auto-disable state. */
+export function setQwenDrawdownAutoDisabled(disabled: boolean): void {
+  qwenDrawdownAutoDisabled.set(disabled ? 1 : 0);
 }
 
 // Export registry for custom metrics
