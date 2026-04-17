@@ -74,7 +74,8 @@ When the paper gate window closes (2026-05-17) or operator considers early flip,
 
 ## Adding a New Runbook
 
-1. Create `docs/runbooks/<kebab-name>.md` with sections: What happened · Immediate actions · Root cause analysis · Remediation · Verification · Escalation.
-2. Add row to the table above (alert UID, severity, rollback tier, metric, path).
+1. Copy [TEMPLATE.md](TEMPLATE.md) → `<kebab-alert-name>.md` (e.g. `qwen-signal-ingest-drift.md`). Fill in every `{placeholder}`.
+2. Add row to the Alert-UID table above (alert UID, severity, rollback tier, metric, path).
 3. Wire the runbook URL into the alert annotation in `qwen-alerts.yml` → `annotations.runbook`.
-4. Smoke test the URL resolves (raw github link in `docs/runbooks/<name>.md`).
+4. Add the filename to `tests/integration/runbook-index-link-check.test.ts` → `expectedRunbooks` array (ensures symmetric index↔file integrity).
+5. CI's link-checker + metric-ref validator will verify the runbook URL resolves + any referenced metrics exist.

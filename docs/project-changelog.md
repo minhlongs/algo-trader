@@ -1,5 +1,24 @@
 # Project Changelog - Algo Trader
 
+## [2.4.24] - 2026-04-17
+
+### Added — Runbook Template File
+
+`docs/runbooks/TEMPLATE.md` — copy-paste scaffold for new runbooks. 6 canonical sections (What happened · Immediate actions · RCA · Remediation · Verification · Escalation) with placeholder guidance per section. Next runbook author gets structure without copying from an existing runbook (which risks polluting with stale detail).
+
+**Runbook README** "Adding a New Runbook" section updated to:
+1. Copy `TEMPLATE.md` → `<kebab-name>.md` + fill placeholders.
+2. Add table row.
+3. Wire `annotations.runbook` in `qwen-alerts.yml`.
+4. Add filename to `runbook-index-link-check.test.ts` → `expectedRunbooks` (symmetric integrity).
+5. CI auto-validates URL + metric refs.
+
+**Link-checker compatibility:** TEMPLATE.md is linked from README → link resolves → test passes. TEMPLATE.md is NOT in `expectedRunbooks` (it's meta, not canonical) → symmetric check ignores it. 3/3 tests still pass.
+
+**Zero runtime impact.**
+
+---
+
 ## [2.4.23] - 2026-04-17
 
 ### Added — Migration prefix integrity test
