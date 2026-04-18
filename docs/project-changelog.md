@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [2.4.31] - 2026-04-18
+
+### Added — Qwen Signals Loop `decision` Enum 3-Way Sync Validator
+
+`tests/integration/qwen-signals-loop-decision-enum-sync.test.ts` — pins the `decision` enum across **3 canonical declaration sites**: DB `CHECK` constraint in `src/db/migrations/018_qwen_signals_loop_runs.sql`, its mirror in `docs/system-architecture.md`, and the TypeScript union type + `persistRunJournal` call-site literals in `src/wiring/qwen-signals-loop.ts`. Also asserts `qwenSignalsLoopRunsTotal` Prometheus counter declares `decision` as a label.
+
+**9 test cases:** 4 sanity floors (each extractor yields ≥3 values), snake_case discipline, migration↔doc bijection, migration↔union-type bijection, every migration value emitted by at least one call site, Prometheus-label-name assertion.
+
+**No drift found** — code/doc/migration were already aligned when shipped. Test earns its keep by catching FUTURE drift (e.g. a developer adds `decision='retention_drift'` to the union without updating the DB migration → INSERT fails or operator filters silently miss records).
+
+**Closes 10th integrity edge — final Pillar 3 gap.** Prior 9 edges: PR #132 (alert↔metric), #135 (dashboard↔metric), #137 (runbook-index↔file), #143 (alert↔runbook URL), #145 (doc-enum↔code-enum trigger_reason), #146 (runbook↔code-metric), #148 (CLI↔route), #150 (CLI self-consistency), #152 (CLAUDE phase guide↔CI gate). The Signals Loop decision surface — journal table, docs, TypeScript types, Prometheus label — is now fully covered by integration tests. **Integrity nonagon → decagon.**
+
+**~200-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.30] - 2026-04-18
 
 ### Added — CLAUDE SDLC Phase Guide ↔ CI Gate Reference Sync Validator
