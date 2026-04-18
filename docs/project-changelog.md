@@ -1,5 +1,48 @@
 # Project Changelog - Algo Trader
 
+## [2.4.53] - 2026-04-18
+
+### Added — GitHub Actions workflow schema + version-pin discipline 5-invariant sync (DOTRIACONTAGON — first CI-workflow edge)
+
+`tests/integration/github-actions-workflow-discipline-sync.test.ts` — locks 5 invariant axes across 4 `.github/workflows/*.yml` files. **DOTRIACONTAGON — 32nd integrity edge.** Opens **invariant family #16** (CI workflow schema + version-pin discipline).
+
+**5 invariant axes:**
+1. Schema completeness — every workflow has top-level `name:`
+2. Runner uniformity — every job `runs-on: ubuntu-latest` (bsd-vs-gnu tool drift prevention)
+3. Action version-pin security — NO `@main`/`@master`/`@latest` floating refs (supply-chain attack surface)
+4. Semver-tag OR SHA pinning — `@v4` semver OR 40-hex commit SHA (both valid security modes)
+5. 7-Gate doctrine — ci.yml has exactly Gate 1-7 consecutively (cross-edge coupling with PR #152 CLAUDE phase-guide sync)
+
+Plus: critical actions present (checkout, pnpm/action-setup, setup-node); no `pull_request_target` trigger (prevents write-access leak to fork PRs — #1 GitHub Actions CVE-class).
+
+**11 test cases:** (1) ≥ 3 workflows, (2) top-level name, (3) runs-on uniformity, (4) floating-ref prohibition, (5) semver/SHA shape, (6) exactly 7 Gate jobs, (7) Gate 1-7 consecutive, (8) critical actions present, (9) no empty workflows, (10) no pull_request_target, (11) composite 4-axis fire-together.
+
+**Novel family #16 — CI workflow schema + version-pin discipline.** Distinct from 15 prior:
+- **GitHub Actions substrate** — distinct from #173 (docker-compose YAML) and #172 (Grafana alert YAML). All 3 lock YAML but invariants differ fundamentally.
+- **Supply-chain security axis** — floating `@main` refs = compromised upstream branch injects into CI. Version-pin discipline is security primitive, not just schema validation.
+- **7-Gate doctrine cross-edge** — couples with PR #152 (CLAUDE phase-guide ↔ CI gate references). PR #152 locks the doc-side; this PR locks the CI-YAML-side. Full 2-way bijection.
+- **pull_request_target preemption** — catches #1 GitHub Actions CVE-class before it lands.
+
+**Drift scenarios covered (4):**
+- Add `uses: actions/checkout@main` (missing pin) → case 4 fails (floating ref).
+- New job omits `runs-on:` → case 3 fails.
+- 8th Gate or Gate removal in ci.yml → cases 6/7 fail.
+- Accidental `pull_request_target` trigger → case 10 fails.
+
+**Extraction scoping.** Custom YAML parser (no js-yaml dep, matches codebase pattern from #173). Strict 2-space job indent, 4-space job body. `uses:` regex intentionally over-broad to catch composite actions (`docker/build-push-action@v5`). Commit-SHA pinning accepted as alternative (GitHub-recommended max security).
+
+**No drift found in active surfaces** — 4 workflows pass all 5 axes. 7 Gate jobs consecutive 1-7. All `uses:` refs pinned to `@v3`/`@v4`. No `pull_request_target`.
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 3 Medium non-blocking):** M-1 parser 2/4-space indent coupled (loud failure if reformatted); M-2 `uses:` regex not line-start anchored (trivial hardening); M-3 case 10 re-reads files (minor I/O dup). All non-blocking.
+
+**CI note — full suite CLEAN (1097/1097, no flakes).**
+
+**Closes 32nd integrity edge — DOTRIACONTAGON.** Prior 31: PRs #132–#174. **Integrity henitriacontagon → dotriacontagon (32-gon).** 16 invariant families across 32 edges.
+
+**317-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.52] - 2026-04-18
 
 ### Added — Qwen env-var operator-knob coherence 4-invariant sync (HENITRIACONTAGON — first operator-config-surface edge)
