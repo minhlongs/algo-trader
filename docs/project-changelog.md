@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.76] - 2026-04-19
+
+### Added — SignalPublisher fan-out discipline 10-invariant sync (PENTAPENTACONTAGON)
+
+`tests/integration/signal-publisher-fan-out-discipline-sync.test.ts` — pins 10 axes on `src/signal/signal-publisher.ts`. **PENTAPENTACONTAGON — 55th integrity edge.** Opens **invariant family #39** (signal-pipeline orchestration substrate).
+
+**10 invariant axes:** SignalPublisher class + constructor `SignalStore` injection, SignalStore interface (saveSignal + getSubscriptions), RawSignalInput 6 fields + optional `ts`, publish() returns `Promise<Signal | null>`, dedup check BEFORE saveSignal (ordering lock), `expiresAt = ts + input.ttlSec * 1000` (cross-edge with PR #165 signals.expires_at DB CHECK), SignalDedupGuard.buildId positional args exact order `(strategy, market, side, ts, ttlSec)` — dedup silent-miss protection, fan-out ordering saveSignal → TTL enforcer → cache invalidate → SSE → Telegram (DB persistence before broadcast), Telegram enqueue try/catch + logger.warn (non-blocking).
+
+**Novel family #39** — first signal-pipeline orchestration substrate edge. Cross-edges: #165 (DB expires_at CHECK), #168 (trigger_reasons_array), #193 (HMAC ingest caller).
+
+**Implementation note — 1 bug caught during test-driving:**
+- cacheIdx matched import line not call site → fixed with call-site parens pattern (`invalidateSignalCache()`).
+
+**No drift found.** Reviewer 9.7/10 SHIP.
+
+**Closes 55th integrity edge — PENTAPENTACONTAGON.** Tetrapentacontagon → Pentapentacontagon (55-gon). 39 families across 55 edges.
+
+**~250-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.75] - 2026-04-19
 
 ### Added — Qwen live-eligibility gate discipline 10-invariant sync (TETRAPENTACONTAGON)
