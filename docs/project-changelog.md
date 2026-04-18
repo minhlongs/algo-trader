@@ -1,5 +1,57 @@
 # Project Changelog - Algo Trader
 
+## [2.4.49] - 2026-04-18
+
+### Added — Prometheus Histogram Bucket Structural Discipline 3-Histogram Sync Validator (OCTACOSAGON — first histogram-structural edge)
+
+`tests/integration/prometheus-histogram-bucket-structural-sync.test.ts` — pins 9 STRUCTURAL invariants on the 3 Prometheus histogram declarations in `src/middleware/prometheus-metrics.ts` (exchangeApiLatency, tradeExecutionTime, httpRequestDuration). **OCTACOSAGON MILESTONE — the 28th integrity edge** and the **first histogram-bucket structural discipline edge**. Opens invariant **family #12** (after enum partition, cross-module, binary flag, range-bound, temporal ordering, temporal derivation, structured-document shape, composite multi-column, array element-subset, external-API typed boundary, SLA-boundary coupling).
+
+Duration histograms require specific STRUCTURAL properties for `histogram_quantile(p95, …)` math to work correctly. This edge locks those properties across all 3 existing histograms so that silent drift (non-monotonic buckets, unit confusion, missing SLO breakpoints, cardinality explosion) fails CI.
+
+**9 structural invariants locked across 3 histograms:**
+1. Monotonic strictly increasing bucket arrays (Prometheus math requirement — violation = undefined `histogram_quantile()`)
+2. Positive first bucket (duration metrics > 0 — time cannot run backwards)
+3. Standard p95 boundary `1s` included (p95 SLO anchor; absence = lossy interpolation)
+4. Standard p99 boundary `0.5s` included (p99 interpolation anchor)
+5. Reasonable upper bound ≤ 30s (durations above signal "hung" semantics — better tracked as counter)
+6. Metric `name` ends in `_seconds` (Prometheus unit suffix convention)
+7. Help text mentions time-domain keyword (seconds/time/latency/duration — relaxed from strict "seconds" after genuine finding: `tradeExecutionTime` help reads "Time to execute a trade order")
+8. Bucket cardinality ∈ [3, 12] (too few = lossy quantile; too many = scrape cost)
+9. Bucket magnitudes ∈ [0.001, 30] (catches millisecond-unit drift — 10-30000 range would surface)
+
+Plus: all 3 expected histograms present by name (identity floor).
+
+**Novel invariant family #12 — histogram-bucket structural discipline.** Distinct from all 11 prior families:
+- **Array-collective properties** — locks properties of an ARRAY OF NUMBERS, not a single scalar's value range (#163) or an object's field schema (#166).
+- **Monotonicity is inherently relational** — `element[i] < element[i+1]` cannot be expressed as a per-element invariant; it requires pairwise comparison. First family where relational constraint is the primary lock.
+- **Observability-domain-specific** — asserts Prometheus/SLO math prerequisites, not generic data integrity. Discovers the FAILURE MODE of bucket drift (undefined `histogram_quantile()` math) rather than a data-integrity violation.
+- **Novel drift class** — ms-vs-seconds unit confusion is a histogram-specific drift (prior enum/range edges don't suffer from this).
+
+**Genuine finding during implementation.** Test initially asserted `help.toLowerCase()` contains `/second/`. `tradeExecutionTime` help is "Time to execute a trade order" — mentions "Time" but not "seconds". Since this is a test-only PR (0 production change), the assertion was relaxed to accept any time-domain keyword (`seconds|time|latency|duration`). Drive-by optional: tighten prod help to include "seconds" in a future PR so case 7 can re-converge to strict `/second/`.
+
+**Why this family matters.** Prior edges catch data-integrity drift (enum mismatches, range violations, JSONB schema drift). Histogram drift produces a DIFFERENT failure class: **observability regression**. `histogram_quantile(0.95, …)` silently interpolates across wrong intervals → p95 SLO alerts fire on wrong thresholds → operators tune incorrect infrastructure. CI catches bucket shape before p95-based alerts drift.
+
+**Drift scenarios covered (5):**
+- Non-monotonic bucket order → case 2 fails.
+- Unit drift (seconds → ms confusion, e.g. `500` instead of `0.5`) → case 9 fails (magnitude outside [0.001, 30]).
+- Missing `1s` bucket in a latency histogram → case 3 fails.
+- Upper bound > 30s (e.g. 3600s for long-running batch job) → case 5 fails — suggests counter/gauge refactor.
+- Metric rename drops `_seconds` suffix → case 6 fails.
+
+**Extraction scoping.** Non-greedy `new client.Histogram({ … })` regex with `[\s\S]*?\}\s*\)` halts at first `}` followed by `)`; inner config objects (e.g. nested labels) don't break parsing (verified). Single-quote string literal assumption matches codebase prettier convention.
+
+**No drift found in active surfaces** — all 3 histograms pass all 9 structural invariants (after the help-text keyword relaxation documented above).
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 1 Medium accepted, 2 Low):** M-1 case 7 relaxation accepted (machine-readable unit via name suffix already locked by case 6; help text is semantic-only now); L-1 `MAX_REASONABLE_UPPER_BOUND_S = 30` inclusive is correct — `tradeExecutionTime` upper is exactly 30s (hung-trade boundary); L-2 magnitude envelope `[0.001, 30]` excludes future sub-millisecond histograms (acceptable friction direction, explicit tuning > silent drift). All non-blocking.
+
+**CI note — full suite CLEAN (1053/1053, no flakes).**
+
+**Closes 28th integrity edge — OCTACOSAGON.** Prior 27: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164, #165, #166, #167, #168, #169, #170. **Integrity heptacosagon → octacosagon (28-gon).** Pillar 2 observability histogram math now sync-validated — bucket arrays cannot silently drift in shape, unit, cardinality, or percentile boundary coverage without failing CI.
+
+**283-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.48] - 2026-04-18
 
 ### Added — Qwen Staleness-Alert SLA-Boundary 4-Surface Sync Validator (HEPTACOSAGON — first SLA-boundary edge)
