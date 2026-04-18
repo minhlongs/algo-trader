@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.85] - 2026-04-19
+
+### Added — OpenTelemetry tracing initialization discipline 9-invariant sync (TETRAHEXACONTAGON = 64 = 2^6)
+
+`tests/integration/otel-tracing-discipline-sync.test.ts` — pins 9 axes on `src/utils/tracing.ts`. **TETRAHEXACONTAGON — 64th integrity edge (64 = 2^6).** Opens **invariant family #48** (first observability-initialization substrate).
+
+**9 invariant axes:** noop default `_tracer = noopTracer` + noopSpan end/setAttribute/recordException noops (zero prod risk), env gate `OTEL_EXPORTER_OTLP_ENDPOINT` + early-return on unset, dynamic import triple (api + sdk + exporter) via `await Promise.all([...])` (SDK stays optional), NodeTracerProvider + BatchSpanProcessor wiring + `provider.register()`, startActiveSpan lifecycle (try/await fn → catch recordException + throw → finally span.end()), idempotent initTracing with `_initPromise` singleton (concurrent-boot safe), logger.info on success + logger.warn on SDK-load failure (graceful degrade NOT throw), 3 required exports (getTracer + initTracing + resetTracingForTests), resetTracingForTests resets `_tracer` AND `_initPromise`.
+
+**Novel family #48** — first observability-initialization substrate edge. Complementary to #189 (winston logger config). Noop-default safety + lazy-load pattern + idempotent init + exception-safe span lifecycle + graceful-SDK-degradation all CI-locked.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 64th integrity edge — TETRAHEXACONTAGON (= 64 = 2^6).** Trihexacontagon → Tetrahexacontagon (64-gon). 48 families across 64 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.84] - 2026-04-19
 
 ### Added — SignalRestCache primitive discipline 9-invariant sync (TRIHEXACONTAGON)
