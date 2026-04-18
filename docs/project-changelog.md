@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [2.4.37] - 2026-04-18
+
+### Added — `paper_trades_v3.side` Enum 3-Surface Sync Validator with 4→2 Reserved-Set Asymmetry
+
+`tests/integration/paper-trades-v3-side-enum-sync.test.ts` — pins the `side` column enum on the `paper_trades_v3` ledger (Pillar 3 feedback-loop data layer, Qwen A/B P&L comparison table) across **3 canonical declaration surfaces** with a deliberate **4→2 reserved-set asymmetry** — the migration intentionally over-declares relative to today's single-domain code path. Migration 016 CHECK in `src/db/migrations/016_qwen_paper_tracking.sql:14` declares `side TEXT NOT NULL CHECK (side IN ('BUY','SELL','YES','NO'))` — 4-value authority spanning BOTH prediction-market (`'YES' | 'NO'`, Polymarket/Kalshi) and future crypto paper-trade (`'BUY' | 'SELL'`, CLOB/CCXT) expansion. The SOLE writer (`src/wiring/paper-trading-orchestrator.ts`) emits only the prediction-market subset: TS `PaperTrade.side` interface on line 26 is typed `'YES' | 'NO'` (compile-time 2-value contract) and the local literal assignment on line 145 `const side: 'YES' | 'NO' = isEndgame ? (yesPrice < 0.5 ? 'NO' : 'YES') : (yesPrice < 0.5 ? 'YES' : 'NO')` computes which prediction-market side to buy.
+
+**11 test cases:** 3 sanity floors (migration ≥ 4 sides incl. all of BUY/SELL/YES/NO, interface ≥ 2 — equals ACTIVE exactly, literal ≥ 2), UPPERCASE style discipline (distinct from snake_case used in prior status/decision/trigger_reason enums — matches DB convention for side acronyms), code⊆migration (every code literal declared in CHECK — no runtime CHECK violations), migration partition-exactness (every declared side is either ACTIVE or RESERVED — no orphan), ACTIVE_SIDES={'YES','NO'} bijection (each appears in migration AND orchestrator code), **RESERVED_SIDES={'BUY','SELL'} reservation semantics** (each appears in migration CHECK but NOT in any orchestrator code surface — asserts the 4→2 asymmetry is preserved), interface↔literal parity (`only_in_iface` + `only_in_literals` bidirectional contract-runtime check), migration = ACTIVE∪RESERVED partition-exactness with empty-intersection guard (a side cannot be simultaneously wired and reserved), RESERVED orphan guard.
+
+**Design note — 4→2 reserved-set asymmetry.** Unlike PR #158 (paper_trades_v3.status, both declared states actively exercised) and PR #157/#155 (empty `RESERVED_*`), this edge locks a migration that intentionally over-declares vs today's single-domain code path. The RESERVED slot `{'BUY','SELL'}` documents intent: when a future PR adds crypto paper-trade write site (e.g. a new orchestrator that shares `paper_trades_v3` for spot-hedge rows), the graduation protocol is (1) extend `PaperTrade.side` TS union OR introduce a new TS interface for crypto PaperTrade with its own `side: 'BUY'|'SELL'`, (2) move the graduated side from `RESERVED_SIDES` to `ACTIVE_SIDES`. Partition-exactness + reservation-semantics assertions catch any half-sweep at test time. Structurally parallel to PR #154's `RESERVED_STATUSES = {'acknowledged'}` and PR #156's `RESERVED_SOURCES = {'kv'}` (populated declared-but-not-wired slots).
+
+**UPPERCASE style convention.** `STYLE_RE = /^[A-Z][A-Z0-9_]*$/` — first uppercase-acronym enum across the 16-edge set. Deliberately different from prior status/decision/trigger_reason enums (snake_case) because side values follow DB CHECK literal convention (`'BUY'`, `'SELL'`, `'YES'`, `'NO'`). Lowercase drift (e.g. `'yes'`) fails the style assertion.
+
+**Extraction scoping.** Migration extractor pins to the `paper_trades_v3` table block's `side TEXT … CHECK (side IN (...))` structure (isolated from `status IN (...)` in the same table). Interface extractor anchors on `export interface PaperTrade { ... side: '...' | '...' }` so unrelated `side:` fields in imported types don't leak. Literal extractor covers three sub-patterns: typed-declaration union (`const side: 'X' | 'Y' = …`), equality comparison (`side === 'X'`), and `trade.side === 'X'` — scoped narrowly so unrelated string literals in the 381-line orchestrator file don't leak.
+
+**No drift found in active surfaces** — migration CHECK `('BUY','SELL','YES','NO')`, PaperTrade TS union `'YES' | 'NO'`, and orchestrator local literal `const side: 'YES' | 'NO'` assignment all align with the 4→2 asymmetry contract. Test earns its keep by catching FUTURE drift: a developer who adds `savePaperTradeV3` with a variable typed `'BUY'` without graduating BUY would fail the reserved-semantics assertion; a migration that relaxes CHECK to allow `'SPOT'` without extending the RESERVED set would fail partition-exactness.
+
+**Closes 16th integrity edge.** Prior 15: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158. Locks the second column enum on `paper_trades_v3` after PR #158 locked `status`. The Qwen A/B P&L ledger's row-level integrity contract now covers both the state-machine column (`status`) and the domain-split column (`side`) — Pillar 3 feedback-loop data-layer fully locked at row-level granularity. **Integrity pentadecagon → hexadecagon (16-gon).**
+
+**325-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.36] - 2026-04-18
 
 ### Added — `paper_trades_v3.status` Enum 3-Surface Sync Validator
