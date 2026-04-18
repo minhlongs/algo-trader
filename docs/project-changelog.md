@@ -1,5 +1,66 @@
 # Project Changelog - Algo Trader
 
+## [2.4.42] - 2026-04-18
+
+### Added — `strategy_review_tasks` Temporal Ordering 4-Surface Sync Validator (HENICOSAGON — first temporal edge)
+
+`tests/integration/strategy-review-tasks-temporal-ordering-sync.test.ts` — pins the CHRONOLOGICAL ordering invariant `resolved_at >= created_at` on `strategy_review_tasks` rows across **4 canonical declaration surfaces**. **HENICOSAGON MILESTONE — the 21st integrity edge** and the **first temporal-ordering edge** across 20 prior edges. Opens a NEW invariant family: family #5 (after string-enum partition, INTEGER binary flag, cross-module coordination, numeric range-bound).
+
+Postgres cannot express `col1 >= col2` efficiently as a CHECK constraint at declaration time for TIMESTAMPTZ comparison across row lifetime, so temporal-ordering authority lives in the WRITER CONTRACT: `DEFAULT now()` on created_at + resolver UPDATE sets `resolved_at = now()` AND guards via `WHERE status = 'pending'`. The guard clause is the temporal-enforcement mechanism — it makes the UPDATE idempotent (fires exactly once per row) so resolved_at is never over-written backwards-in-time.
+
+**4 surfaces locked:**
+1. Migration 017:12-13 column shape: `created_at TIMESTAMPTZ NOT NULL DEFAULT now()` + `resolved_at TIMESTAMPTZ` (nullable, no DEFAULT). **Asymmetric nullability** reflects the 2-state lifecycle — pending rows exist without a resolve timestamp.
+2. Admin-route UPDATE writer (`src/api/routes/admin-qwen-routes.ts:162-165`): `UPDATE strategy_review_tasks SET status = 'resolved', resolved_at = now() WHERE id = $1 AND status = 'pending' RETURNING …`. `now()` is DB-side (not user-supplied — spoofing/back-dating impossible). `WHERE status = 'pending'` guard prevents double-resolve.
+3. Admin-route UPDATE TS response type (`admin-qwen-routes.ts:160`): `resolved_at: string` (non-null) — RETURNING clause runs after SET, so value is just-set.
+4. Admin-route SELECT TS response type (`admin-qwen-routes.ts:122`): `resolved_at: string | null` (nullable) — list endpoint may return pending rows.
+
+**11 test cases:** (1) migration created_at is TIMESTAMPTZ NOT NULL DEFAULT now(), (2) migration resolved_at is TIMESTAMPTZ nullable (asymmetric), (3) resolver UPDATE parses (sanity floor), (4) resolver uses literal `now()` function — not user-supplied, (5) resolver guards `WHERE status = 'pending'` (idempotency + temporal-ordering enforcement), (6) resolver guards `WHERE id = $1` (row-targeting safety — no mass-update hazard), (7) UPDATE response types `resolved_at: string` (post-UPDATE non-null guarantee), (8) SELECT response types `resolved_at: string | null` (pending rows nullable), (9) UPDATE↔SELECT nullability is DISTINCT (asymmetry preserved — same column, different TS types because lifecycle state differs), (10) DEFAULT asymmetry — created_at has DEFAULT, resolved_at does NOT, (11) by-construction temporal-ordering proof — if all three mechanisms (DEFAULT now() + resolver now() + pending guard) hold, then `resolved_at >= created_at` by construction for every resolved row.
+
+**Novel invariant family — temporal ordering (family #5).** Prior families:
+- 16× **string-enum partition** — ACTIVE/RESERVED finite-set equality
+- 1× **INTEGER binary flag** (#162) — 2-value partition with semantic direction
+- 2× **cross-module coordination** (#143 URL, #148/#150 CLI)
+- 1× **range-bound / numeric boundary** (#163) — interval membership
+
+This PR introduces the 5th family: **temporal / chronological ordering** — constrains the CAUSAL relationship between two TIMESTAMPTZ columns on the same row. Distinct invariants:
+- **Asymmetric nullability** — reflects lifecycle states (pending=NULL, resolved=timestamp)
+- **Writer guard-clause idempotency** — `WHERE status = 'pending'` prevents UPDATE from re-firing on resolved rows (which would write a later now() overwriting the earlier resolve time)
+- **now()-only writer** — DB-side clock, not user-supplied timestamp; spoofing/back-dating impossible
+- **TS type asymmetry** — same column has different nullabilities in UPDATE response vs SELECT response (post-write non-null, list-read nullable)
+- **DEFAULT asymmetry** — auto-set on INSERT for created_at, null-until-set for resolved_at
+- **Mechanism-based proof** — test asserts the WRITER CONTRACT mechanism that makes the ordering hold, not empirical data (like a type-safety proof)
+
+**Why no CHECK constraint.** Postgres CHECK is row-local and evaluated at write-time. `CHECK (resolved_at >= created_at OR resolved_at IS NULL)` would technically work but only at each row-write moment, not across concurrent UPDATEs. The writer-contract approach (DEFAULT + guard + now()) is the right level — it closes the whole causal lifecycle, not just point-in-time row validity.
+
+**Drift scenarios covered (6):**
+- Resolver UPDATE drops `WHERE status = 'pending'` guard → can fire twice, overwrites resolved_at backwards-in-time (case 5)
+- Resolver changes `resolved_at = now()` to `resolved_at = $2` (user-supplied) → spoofing/back-dating attack (case 4)
+- Migration drops DEFAULT on created_at → callers omitting timestamp hit NOT NULL error (case 1)
+- Migration adds NOT NULL to resolved_at → pending rows can't exist without sentinel value (case 2)
+- UPDATE response type `string` → `string | null` → loses post-UPDATE non-null guarantee (case 7)
+- SELECT response type `string | null` → `string` → mis-types pending rows (case 8)
+
+**Extraction scoping.** Migration regex anchored to CREATE TABLE strategy_review_tasks body, extracts column-shape tuples for both created_at and resolved_at. Resolver UPDATE regex keyed on `UPDATE strategy_review_tasks SET … WHERE …` (template-literal-aware, multi-line reflow survives). Response-type extractor parses `await query<{…}>` type-parameter blocks in source order (SELECT block #1 at line 115, UPDATE block #2 at line 152). Third query block at line 214 for qwen_signals_loop_runs is correctly ignored (no resolved_at field).
+
+**No drift found in active surfaces** — migration (created_at NOT NULL DEFAULT now(), resolved_at nullable), resolver UPDATE (now() + pending-guard + id-guard present), response types (UPDATE=`string`, SELECT=`string|null`) all align with the temporal-ordering contract.
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 0 Medium, 3 Low):** L-1 docstring says "exactly those two query calls" but file has 3 blocks (3rd has no resolved_at — logic correct, wording could clarify); L-2 response-type extractor is order-dependent (latent risk if new query block inserted before line 115 — sanity floor catches field absence not wrong attribution); L-3 UPDATE regex `[^`]+?` would over-gulp if `UPDATE … FROM …` JOIN introduced (not on roadmap). All non-blocking.
+
+**CI note — same transient llm-content-generator flake as PRs #159–#163** (network-dependent, unrelated to this change, re-passes on retry).
+
+**Closes 21st integrity edge — HENICOSAGON**. Prior 20: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162, #163.
+
+Pillar 3 feedback-loop lifecycle now has THREE contracts locked on `strategy_review_tasks`:
+- **Status state machine** (#154 — pending/acknowledged/resolved)
+- **Trigger reason enum** (#145 — win_rate_below_threshold / sharpe_below_threshold)
+- **Temporal ordering** (#164 ← this PR — created_at ≤ resolved_at)
+
+**Integrity icosagon → henicosagon (21-gon).**
+
+**363-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.41] - 2026-04-18
 
 ### Added — `signals.confidence` [0, 1] Range-Bound 5-Surface Sync Validator (ICOSAGON MILESTONE)
