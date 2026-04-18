@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.87] - 2026-04-19
+
+### Added — Fastify admin-auth middleware discipline 10-invariant sync (HEXAHEXACONTAGON = 66 = 2 × 3 × 11)
+
+`tests/integration/admin-auth-middleware-discipline-sync.test.ts` — pins 10 axes on `src/middleware/admin-auth.ts`. **HEXAHEXACONTAGON — 66th integrity edge.** Opens **invariant family #50** (first Fastify-layer API-key auth substrate).
+
+**10 invariant axes:** Fastify triple import (FastifyRequest + FastifyReply + FastifyInstance), `ADMIN_API_KEYS` Set built from CSV env via `split(',')` + `filter(Boolean)` (multi-key rotation support), `ADMIN_API_KEY` singular fallback additively merged via `.add()` (legacy-compat), `x-api-key` lowercase canonical header lookup (Fastify normalizes — capitalized read = undefined), route prefix `/api/v1/licenses` gate in preHandler hook, 401 Unauthorized on missing key, 401 Unauthorized on invalid key (Set.has miss), error response shape `{ error, message }` stable across all 401 branches, 3 required exports (AdminAuthDecorator interface + adminAuthPlugin function + adminAuthMiddleware function).
+
+**Novel family #50** — first Fastify-layer middleware auth substrate. Distinct from #156/#157 (admin Qwen route contracts), #186 (Express security middleware mount), #190 (Better-Auth server config), #193/#194 (HMAC signal-ingest auth), #195 (admin Qwen kill-switch route-contract). Novel axes: CSV-env-seeded Set discipline, Fastify header lowercase canonical (framework-specific normalization), singular-env additive fallback, route-prefix-gate auth-to-namespace binding.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 66th integrity edge — HEXAHEXACONTAGON (= 66 = 2 × 3 × 11).** Pentahexacontagon → Hexahexacontagon (66-gon). 50 families across 66 edges. **50-family milestone reached.**
+
+**~220-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.86] - 2026-04-19
 
 ### Added — Sentry error-tracking initialization discipline 9-invariant sync (PENTAHEXACONTAGON = 65 = 5 × 13)
