@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.82] - 2026-04-19
+
+### Added — SseSignalBroadcaster primitive discipline 10-invariant sync (HENIHEXACONTAGON)
+
+`tests/integration/sse-signal-broadcaster-discipline-sync.test.ts` — pins 10 axes on `src/signal/sse-signal-broadcaster.ts`. **HENIHEXACONTAGON — 61st integrity edge.** Opens **invariant family #45** (seventh signal-pipeline substrate).
+
+**10 invariant axes:** extends EventEmitter + import, singleton pattern (private constructor + static instance + getInstance lazy-init), setMaxListeners(1100), connections Map typing `{res, heartbeat}`, SSE_HEARTBEAT_MS=20_000 + setInterval wiring with `: ping\n\n`, 4 required SSE headers (Content-Type:text/event-stream + Cache-Control:no-cache + Connection:keep-alive + X-Accel-Buffering:no — proxy-safe), subscribe initial `: connected\n\n` + flushHeaders + `res.on('close', cleanup)`, broadcast try/catch on `res.write(payload)` + dead-connection GC loop + `data: ${JSON.stringify(signal)}\n\n` format, unsubscribe clearInterval+delete, singleton export.
+
+**Novel family #45** — seventh signal-pipeline substrate edge. Cross-edges #198 (SignalPublisher caller invokes `sseBroadcaster.broadcast`) + #202 (tier-filter `canAccessSse` decides access).
+
+**No drift found.** Reviewer 9.7/10 SHIP.
+
+**Closes 61st integrity edge — HENIHEXACONTAGON.** Hexacontagon → Henihexacontagon (61-gon). 45 families across 61 edges.
+
+**~230-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.81] - 2026-04-19
 
 ### Added — Signal-types TIER_SIGNAL_CONFIG discipline 10-invariant sync 🎯 HEXACONTAGON milestone (60-gon = 3× icosagon)
