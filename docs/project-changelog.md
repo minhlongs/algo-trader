@@ -1,5 +1,57 @@
 # Project Changelog - Algo Trader
 
+## [2.4.45] - 2026-04-18
+
+### Added — paper_trades_v3 Composite {size_usd > 0, entry_price ∈ [0,1]} 5-Surface Sync Validator (TETRACOSAGON — first composite multi-column edge)
+
+`tests/integration/paper-trades-v3-composite-size-price-invariant-sync.test.ts` — pins the COMPOSITE multi-column semantic coherence invariant `size_usd > 0 AND entry_price ∈ [0, 1]` across **5 canonical declaration surfaces**. **TETRACOSAGON MILESTONE — the 24th integrity edge** and the **first composite multi-column same-row constraint edge**. Opens invariant **family #8** (after enum partition, cross-module, binary flag, range-bound, temporal ordering, temporal derivation, structured-document field shape).
+
+Unlike prior single-column (range-bound #163, binary flag #162) or same-column (temporal ordering #164, derivation #165) locks, this edge pins a SEMANTIC COHERENCE invariant where TWO columns must SIMULTANEOUSLY satisfy distinct but related bounds for the row to produce valid downstream arithmetic. The two constraints are INDEPENDENT at column level (either could violate alone) but COUPLED at row level via cost-per-share math: `shares = size / (side === 'YES' ? entryPrice : 1 - entryPrice)`. Either violation cascades to div-by-zero, phantom share counts, or inverted P&L.
+
+**5 surfaces locked:**
+1. Migration 016:15-16 — `size_usd REAL NOT NULL` + `entry_price REAL NOT NULL` — intentionally NO CHECK constraint (documented gap, writer+reader carry authority).
+2. Writer size formula (`paper-trading-orchestrator.ts:142`): `const size = Math.min(portfolio.capital * POSITION_SIZE_PCT, vibe.maxExposure)` — upper-bounded positivity via Math.min clamp.
+3. Writer entry_price ternary (`paper-trading-orchestrator.ts:148`): `const entryPrice = side === 'YES' ? market.yesPrice : market.noPrice` — 0-1 range derived from Polymarket API contract (yesPrice + noPrice both probabilities).
+4. Reader cost-per-share inversion (`paper-trading-orchestrator.ts:187`): `costPerShare = trade.side === 'YES' ? trade.entryPrice : (1 - trade.entryPrice)` — COUPLES entry_price to [0,1] range; out-of-range values produce nonsense cost, breaking `shares = size / costPerShare` arithmetic.
+5. Reader division guards (defense-in-depth for size_usd > 0):
+   - 5a. `qwen-drawdown-monitor.ts:102` JS-side: `if (totalSize === 0) return null`
+   - 5b. `qwen-signals-loop.ts:128` SQL-side: `NULLIF(SUM(size_usd), 0)` in Sharpe aggregate
+
+**11 test cases:** (1) size_usd REAL NOT NULL, (2) entry_price REAL NOT NULL, (3) NO CHECK on either column (documented gap — future CHECK addition triggers test update), (4) writer size Math.min formula present, (5) writer entry_price YES/NO ternary present, (6) drawdown-monitor JS division guard present, (7) signals-loop SQL NULLIF guard present, (8) cost-per-share inversion pattern present (coherence mechanism), (9) defense-in-depth — BOTH JS + SQL division guards simultaneously, (10) all 3 writer/reader coherence mechanisms fire together (composite invariant), (11) writer-contract is THE authority (no DB CHECK, no migration bound comment).
+
+**Novel invariant family #8 — composite multi-column same-row constraint.** Distinct from prior 7 families:
+- **Multi-column coupling** — locks a SEMANTIC invariant (prediction-market coherence) that spans two columns; single-column locks insufficient.
+- **Writer + reader cooperation mechanism** — writer ensures positivity + range by CONSTRUCTION; reader ASSUMES it by arithmetic. No DB CHECK.
+- **Defense-in-depth asymmetry** — size_usd > 0 guarded TWICE (JS + SQL, crash-critical); entry_price ∈ [0,1] guarded ZERO times (writer-boundary + inversion coherence only). Test documents this asymmetric coverage as intentional.
+- **Mechanism-based proof** (case 10) — asserts all 3 writer/reader mechanisms fire together; dropping any one breaks the semantic chain.
+- **Documented DB gap** — case 3 + 11 explicitly assert NO CHECK. Future CHECK addition (tightening) triggers a coordinated test update — no silent drift possible.
+- **Polymarket domain specificity** — the `1 - entryPrice` inversion is specific to binary prediction-market outcomes; future crypto multi-asset expansion may relax entry_price bounds, which would require a new composite-invariant edge (not an extension of this one).
+
+**Why no CHECK constraint.** Polymarket binary outcomes guarantee `yesPrice + noPrice` ∈ [0, 1] at the Gamma API boundary — writer-side assignment is safe by construction. A DB CHECK would duplicate this constraint without catching drift the writer+reader tests don't already catch, AND would force migration friction on future domain expansions (crypto orderbook prices are unbounded above). Writer-contract authority is cleaner.
+
+**Cooperation between writer + reader** (case 10). The composite invariant REQUIRES all three mechanisms in lockstep: (1) writer size ≥ Math.min positivity clamp, (2) writer entry_price ∈ [0,1] ternary on market odds, (3) reader cost-per-share inversion couples entry_price ∈ [0,1]. Dropping ANY one breaks the chain — size negative, or entry_price out of range, or inversion arithmetic wrong. The case 10 all-3-flags-AND assertion with per-flag failure message is the composite-invariant ergonomics template for future family #8 edges.
+
+**Drift scenarios covered (5):**
+- Writer drops `Math.min` clamp → size could go negative (capital bug) → size_usd < 0 persisted → case 4 fails (Math.min formula check).
+- Writer normalizes market odds to ±0.5 range without updating reader inversion → costPerShare = 1 - (-0.3) = 1.3 → share count wrong by 30% → case 5 fails (ternary shape).
+- Reader drops NULLIF → Sharpe calc poisoned with NaN/Infinity → case 7 fails.
+- Reader drops `totalSize === 0` check → JS Infinity leaks into drawdown decision → case 6 fails.
+- Cost-per-share inversion drops `(1 - entryPrice)` branch for NO side → all NO trades compute wrong share count → case 8 fails.
+
+**Extraction scoping.** Migration regex `[^,]*?(?:,|$)` non-greedily bounds per-column match; `side`'s adjacent CHECK clause does NOT bleed into size_usd/entry_price parse (verified). Writer formula regexes (Math.min, ternary, inversion) keyed on exact variable names; Prettier multi-line reformat would break (intentional loud-fail, forces coordinated sync with test when refactoring). Division-guard regexes narrow to specific patterns (`totalSize === 0`, `NULLIF(SUM(size_usd), 0)`).
+
+**No drift found in active surfaces** — migration columns REAL NOT NULL no-CHECK, writer formulas Math.min + ternary + inversion, reader guards JS + SQL all align. Test earns its keep against FUTURE drift.
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 0 Medium, 2 Low):** L-1 writer-formula regexes brittle to multi-line Prettier reformat (intentional for sync-validation — YAGNI unless flaky); L-2 case 11's `hasCheck=false` asserts redundant with case 3 (minor DRY nit — kept for explicit meta-documentation of authority locus). Both non-blocking.
+
+**CI note — full suite ran clean this time (1009/1009, no flakes).** Prior scanner + llm-content-generator transient failures from PRs #159–#166 appear resolved or de-flaked in this run.
+
+**Closes 24th integrity edge — TETRACOSAGON.** Prior 23: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164, #165, #166. **Integrity tricosagon → tetracosagon (24-gon).** Pillar 3 paper-trade ledger now has composite semantic coherence sync-validated alongside row-level enums (#158/#159/#160), binary flag (#162), range-bound (#163), temporal ordering (#164), temporal derivation (#165), and JSONB shape (#166).
+
+**341-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.44] - 2026-04-18
 
 ### Added — QualityMetrics JSONB Structured-Document Shape 4-Surface Sync Validator (TRICOSAGON — first JSONB schema edge)
