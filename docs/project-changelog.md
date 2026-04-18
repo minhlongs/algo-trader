@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.79] - 2026-04-19
+
+### Added — SignalTtlEnforcer primitive discipline 9-invariant sync (OCTAPENTACONTAGON)
+
+`tests/integration/signal-ttl-enforcer-discipline-sync.test.ts` — pins 9 axes on `src/signal/signal-ttl-enforcer.ts`. **OCTAPENTACONTAGON — 58th integrity edge.** Opens **invariant family #42** (fourth signal-pipeline substrate after #198 fan-out + #199 dedup + #200 store).
+
+**9 invariant axes:** double-Map state (`signals: Map<string, Signal>` + `timers: Map<string, ReturnType<typeof setTimeout>>`), register already-expired short-circuit (`if (delay <= 0) { evict; return; }`), register cancel-existing-timer (`if (existing) clearTimeout(existing)`), register schedule `setTimeout(() => this.evict(signal.id), delay)` + store, evict deletes both Maps + clearTimeout (double-Map atomicity), getLive filter `expiresAt > now` (direction lock), sweepExpired returns number count with iteration `sig.expiresAt <= now`, clear loops clearTimeout over timers.values() + clears both Maps, singleton export `signalTtlEnforcer`.
+
+**Novel family #42** — fourth signal-pipeline substrate edge. Cross-edges #198 (SignalPublisher caller invokes `signalTtlEnforcer.register`) + #199 (complementary Map+timer primitive) + #200 (complementary persistence layer).
+
+**No drift found.** Reviewer 9.7/10 SHIP (0 crit/high/med).
+
+**Closes 58th integrity edge — OCTAPENTACONTAGON.** Heptapentacontagon → Octapentacontagon (58-gon). 42 families across 58 edges.
+
+**~260-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.78] - 2026-04-19
 
 ### Added — SignalStoreD1 persistence discipline 10-invariant sync (HEPTAPENTACONTAGON — PR #200)
