@@ -1,5 +1,36 @@
 # Project Changelog - Algo Trader
 
+## [2.4.38] - 2026-04-18
+
+### Added — `paper_trades_v3.source` Enum 3-Surface Sync Validator (Comment-as-Declaration Authority)
+
+`tests/integration/paper-trades-v3-source-enum-sync.test.ts` — pins the `source` column enum on the `paper_trades_v3` ledger across **3 canonical declaration surfaces** using a NOVEL **comment-as-declaration authority** pattern. Unlike `status` (PR #158, 2-value CHECK) and `side` (PR #159, 4-value CHECK), `source` has NO CHECK constraint — migration 016 declares the enum exclusively in an inline SQL comment adjacent to the column DEFAULT. First such pattern across the 16-prior-edge set.
+
+**3 surfaces locked:**
+1. Migration inline comment at `src/db/migrations/016_qwen_paper_tracking.sql:20`: `source TEXT NOT NULL DEFAULT 'legacy', -- 'qwen' | 'deepseek' | 'swarm' | 'legacy' | 'manual'` (5 declared values, pipe-delimited comment enum, no CHECK authority)
+2. Migration DEFAULT literal (same line): `DEFAULT 'legacy'` — single-value fallback that must be subset of the comment enum
+3. Orchestrator `deriveSource()` function at `src/wiring/paper-trading-orchestrator.ts:39-44`: the SOLE paper_trades_v3 writer's source derivation, returns 4 of the 5 declared values (`'qwen'`, `'deepseek'`, `'swarm'`, `'legacy'`)
+
+**12 test cases:** 3 sanity floors (comment ≥ 5 values incl. all of qwen/deepseek/swarm/legacy/manual, DEFAULT extracts a single literal, deriveSource ≥ 4 returns), snake_case style discipline, deriveSource⊆comment (no undocumented writes — phantom value protection), DEFAULT⊆comment (no phantom fallback), migration partition-exactness (every comment value is ACTIVE or RESERVED), ACTIVE_SOURCES bijection (each active value in BOTH comment AND deriveSource), **RESERVED_SOURCES = {'manual'} reservation semantics** (each reserved value in comment but NOT in deriveSource), comment = ACTIVE∪RESERVED partition-exactness with empty-intersection guard, RESERVED orphan guard, DEFAULT∈ACTIVE (stronger invariant — default-inserted rows must land in a wired bucket, never on a reserved/unwired source).
+
+**Design note — comment-as-declaration authority.** Migration 016's `source` column was designed before the enum-in-CHECK convention of migration 017. Rather than refactoring migration 016 (a retroactive schema change for a live ledger is risky + requires coordination), this test pins the comment shape + DEFAULT + writer together as a unit. If a future DDL refactor strips the comment, sanity-floor fails loudly. Structurally orthogonal to PR #157's help-text-free enum (which uses code-comment + operator-docs split) — this is migration-comment + writer-function coupling.
+
+**Design note — DEFAULT∈ACTIVE (not just ⊆ comment) stronger invariant.** A default-inserted row (INSERT without explicit `source`) falls back to `DEFAULT 'legacy'`. If DEFAULT landed on a RESERVED value (e.g. `'manual'`), rollup queries that scope to active sources would silently exclude every default-inserted row — drawdown/win-rate/Sharpe rollups skewed, no error. Case 12 catches this. Stronger than the case 6 "DEFAULT ⊆ comment" invariant because it additionally asserts the default is wired.
+
+**Reserved slot.** `RESERVED_SOURCES = new Set(['manual'])` — declared in migration comment but never returned by `deriveSource()`. Reserved for future manual-operator paper-trade entry (e.g. a CLI that back-fills a trade with `source='manual'` to A/B-segment it out of automated strategy rollups). Structurally parallel to PR #154's `{'acknowledged'}`, PR #156's `{'kv'}`, PR #159's `{'BUY','SELL'}` — populated declared-but-not-wired slots.
+
+**Out of scope** — `signal-store-d1.ts` has its OWN `deriveSource()` that writes to the `signals` table (NOT `paper_trades_v3`) and emits a variant `'qwen-m1max'` tag. That's a `signals.source` enum with a separate sync contract — candidate for a future 18th edge, not this PR.
+
+**Extraction scoping.** Migration regex pins to the `paper_trades_v3` table block's `source TEXT NOT NULL DEFAULT '...' , -- '…' | '…' | ...` structure (isolated from other columns' comments in the same table). DeriveSource regex anchors on `function deriveSource(...): string { … }` block (captures only return literals inside that function body, isolated from other functions' returns in the 381-line orchestrator file).
+
+**No drift found in active surfaces** — migration comment (5 values), DEFAULT (`'legacy'`), deriveSource (4 values) all align with the 5→4 asymmetry contract. Test earns its keep against FUTURE drift: deriveSource adding `return 'manual'` without graduating → fails reservation semantics; DDL refactor stripping comment → fails sanity floor; DEFAULT rename without adding to comment → fails DEFAULT⊆comment; deriveSource renaming `'qwen'` to `'qwen-m1max'` to match signal-store without extending migration comment → fails code⊆comment.
+
+**Closes 17th integrity edge.** Prior 16: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159. Third column locked on paper_trades_v3 — row-level integrity now covers state-machine (`status`, #158), domain-split (`side`, #159), AND provenance (`source`, #160). The Qwen A/B P&L ledger's three highest-value columns are all sync-validated. **Integrity hexadecagon → heptadecagon (17-gon).** Pillar 3 feedback-loop data-layer provenance contract locked.
+
+**315-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.37] - 2026-04-18
 
 ### Added — `paper_trades_v3.side` Enum 3-Surface Sync Validator with 4→2 Reserved-Set Asymmetry
