@@ -1,5 +1,35 @@
 # Project Changelog - Algo Trader
 
+## [2.4.39] - 2026-04-18
+
+### Added — `signals.source` Enum 4-Surface Sync Validator (Code-Derived Authority)
+
+`tests/integration/signals-source-enum-sync.test.ts` — pins the `source` column enum on the `signals` table (canonical signal ledger) across **4 canonical declaration surfaces** using a NOVEL **code-derived authority** pattern. Unlike `paper_trades_v3.source` (PR #160, migration comment-as-declaration), `signals.source` has NEITHER a migration CHECK constraint NOR a comment enum — migration 016:6 declares only `ALTER TABLE signals ADD COLUMN source TEXT NOT NULL DEFAULT 'legacy'`. The authoritative source set is purely code-derived from the sole writer's `deriveSource()` return-literal set. First integrity edge where the enum is defined by a function, not a schema declaration.
+
+**4 surfaces locked:**
+1. Migration DEFAULT literal at `src/db/migrations/016_qwen_paper_tracking.sql:6`: `DEFAULT 'legacy'` — fallback for rows inserted without an explicit source (legacy pre-Phase-04 writers).
+2. Writer function returns at `src/signal/signal-store-d1.ts:14-19` `deriveSource(strategy: string): string` — the SOLE writer into `signals.source`, emits 4 literals: `'qwen-m1max'`, `'deepseek'`, `'swarm'`, `'legacy'`.
+3. Paper-gate branch literal at `src/signal/signal-store-d1.ts:33`: `const paperOnly = source === 'qwen-m1max' ? 1 : 0;` — runtime branch enforcing the 30d paper-gate for Qwen-sourced signals. Must be reachable (in writer's return set).
+4. Admin-route filter default at `src/api/routes/admin-qwen-routes.ts:110`: `const source = (req.query.source as string) || 'qwen-m1max';` — default `?source=` filter for the `/strategy-reviews` operator endpoint. Must be a wired value.
+
+**12 test cases:** 4 sanity floors (migration DEFAULT ≠ null, writer ≥ 4 returns, branch ≥ 1 literal, admin ≥ 1 default), relaxed style discipline (lowercase + hyphen + underscore to permit `'qwen-m1max'`), DEFAULT ∈ ACTIVE ∩ writer (dual defense-in-depth assertion — default-inserted rows must land on a wired bucket), paper-gate branch reachability (`branchLiterals ⊆ ACTIVE ∩ writer` — dead-branch protection for the 30d paper-gate), admin-route filter coverage (`adminRouteDefaults ⊆ ACTIVE ∩ writer` — phantom-filter protection), writer↔canonical ACTIVE bidirectional parity, RESERVED leak guard (empty today), ACTIVE∩RESERVED empty-intersection guard, cross-table asymmetry pinning (explicitly asserts `'qwen-m1max'` present, locking the intentional divergence from PR #160's `'qwen'`).
+
+**Design note — code-derived authority (novel 4th authority model).** The 17 prior edges used one of three authority models: (1) migration CHECK constraint (PRs #153/#154/#158/#159 — schema-level enforcement), (2) metric-help-text or docs (PRs #155/#156/#157 — operator-facing contract), (3) migration inline comment (PR #160 — schema-adjacent declaration). PR #161 introduces the 4th: writer-function return-literal set as the single source of truth. Any downstream literal (migration DEFAULT, internal branching, external route default) must be a subset of the writer's returns. The writer↔canonical ACTIVE equality check (case 9) gives the validator a tripwire on any drift between what the function emits and what the test declares as canonical.
+
+**Design note — 'qwen-m1max' vs 'qwen' cross-table asymmetry.** `signals.source` emits `'qwen-m1max'` (hardware-tagged at the Qwen M1 Max inference box) while `paper_trades_v3.source` (PR #160) emits `'qwen'` (untagged, at the cloud orchestrator layer after the signal crossed the network boundary). This divergence is INTENTIONAL — the two tables serve different lifecycle stages. Case 12 pins `'qwen-m1max'` literally so a future unifier PR that silently drops one side fails loudly. Style regex relaxed to `/^[a-z][a-z0-9_-]*$/` (permits hyphen) exclusively for this column's hardware-tag convention.
+
+**Reserved slot.** `RESERVED_SOURCES = new Set([])` — empty today. No declared-but-not-wired values in this surface set (contrast PR #160 where migration comment declared `'manual'` beyond the writer; here no comment surface exists to carry a reservation declaration). Structurally parallel to PR #155/#157's empty-reserved pattern.
+
+**Extraction scoping.** Migration regex keyed on `ALTER TABLE signals ... ADD COLUMN ... source ... DEFAULT '...'` — disambiguates `signals.source` from `paper_trades_v3.source` (CREATE TABLE) in the same migration file. Writer regex anchors on `function deriveSource(...): string { ... }` block (same pattern as PR #160, captures only return literals inside function body — isolated from `saveSignal`'s void returns). Branch regex captures all `source === 'X'` comparisons in signal-store-d1.ts (narrow to the file — unrelated `source ===` comparisons in other files don't leak because they're not read). Admin-route regex keyed on the narrow `req.query.source as string) || '…'` pattern — future zod-schema refactor will fail sanity floor loudly (intentional loud-fail, operator must update the test's extractor).
+
+**No drift found in active surfaces** — migration DEFAULT (`'legacy'`), writer returns (4 values), branch (`'qwen-m1max'`), admin-route default (`'qwen-m1max'`) all align. Test earns its keep against FUTURE drift: writer renames `'qwen-m1max'` → `'qwen'` → paper-gate branch becomes dead (case 7 fails) AND admin-route default becomes phantom (case 8 fails); migration DEFAULT changes without coordinating with writer → case 6 fails; writer adds a 5th return without extending ACTIVE_SOURCES → case 9 fails.
+
+**Closes 18th integrity edge.** Prior 17: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160. Sibling-table version of PR #160 (paper_trades_v3.source) but with stronger asymmetry — NO migration-level authority at all. Pillar 3 feedback-loop signal-producer contract locked alongside downstream paper-trade consumer contracts. **Integrity heptadecagon → octadecagon (18-gon).**
+
+**349-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.38] - 2026-04-18
 
 ### Added — `paper_trades_v3.source` Enum 3-Surface Sync Validator (Comment-as-Declaration Authority)
