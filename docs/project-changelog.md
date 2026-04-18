@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [2.4.56] - 2026-04-18
+
+### Added — .gitignore secret-leak-prevention discipline 6-invariant sync (PENTATRIACONTAGON)
+
+`tests/integration/gitignore-secret-leak-discipline-sync.test.ts` — pins `.gitignore` required patterns + un-ignore escape prevention + complementary-with-#174 asymmetry. **PENTATRIACONTAGON — 35th integrity edge.** Opens **invariant family #19** (.gitignore secret-leak-prevention discipline).
+
+**6 invariant axes:** REQUIRED_PATTERNS (`.env` family + `node_modules/` + `dist/` + `*.log`), secret-pattern coverage, no `!` un-ignore matching secret prefixes, complementary asymmetry (`.env.example` tracked / `.env` ignored).
+
+**Novel family #19** — first `.gitignore` substrate edge. Complementary to #174 (secret-docs tracked) — same security perimeter, disjoint surfaces. Distinct from all 18 prior families.
+
+**Drift scenarios:** delete `.env` line → case 3 fails; add `!.env.test` un-ignore → case 8 fails (escape).
+
+**No drift** — all 7 required patterns present, zero un-ignores, `.env.example` exists on disk + tracked, `.env` absent + ignored.
+
+**Reviewer (9.6/10 SHIP):** 0 Critical, 0 High, 2 Low non-blocking. Full suite clean 1130/1130.
+
+**Closes 35th integrity edge — PENTATRIACONTAGON.** Prior 34: PRs #132–#177. **Tetratriacontagon → Pentatriacontagon (35-gon).** 19 families across 35 edges.
+
+**243-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.55] - 2026-04-18
 
 ### Added — TypeScript compiler-config strict-discipline 7-invariant sync (TETRATRIACONTAGON)
