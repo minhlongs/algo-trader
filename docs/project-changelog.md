@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.65] - 2026-04-18
+
+### Added — Health endpoint response-contract discipline 8-invariant sync (TETRATETRACONTAGON)
+
+`tests/integration/health-endpoint-response-contract-discipline-sync.test.ts` — pins 8 axes on `src/api/routes/health.ts`. **TETRATETRACONTAGON — 44th integrity edge.** Opens **invariant family #28** (health endpoint response-contract discipline).
+
+**8 invariant axes:** file exists, GET `/` + GET `/metrics` routes registered, response shape fields (status/version/uptime/components/qwen/memory/timestamp), component checks (Redis ping + Postgres SELECT 1 + TradingEngine instantiation), HTTP 200 vs 503 gating (`overallStatus === 'healthy'`), Qwen rollback state unauth readout (isQwenEnabled + isKillSwitchActive + `.qwen` field), APP_VERSION from `package.json`, status enum tokens `"healthy"` / `"unhealthy"`, paperTrading flag (DRY_RUN env surfaced).
+
+**Novel family #28** — first HTTP-observability substrate edge. Cross-edge with #183 (Dockerfile HEALTHCHECK wgets /api/health) + #173 (docker-compose service_healthy) + #186 (health router mounted before rate-limit).
+
+**Implementation note — 1 bug caught during test-driving:**
+- Response-field regex required `:` but `qwen` is shorthand property without colon → relaxed to match `[:,}]` or line-end.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 44th integrity edge — TETRATETRACONTAGON.** Tritetracontagon → Tetratetracontagon (44-gon). 28 families across 44 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.64] - 2026-04-18
 
 ### Added — Express API-server security middleware mount discipline 8-invariant sync (TRITETRACONTAGON)
