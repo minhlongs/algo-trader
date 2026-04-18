@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [2.4.35] - 2026-04-18
+
+### Added — Qwen Signals-Total `result` Label Enum 3-Surface Sync Validator
+
+`tests/integration/qwen-signals-total-result-enum-sync.test.ts` — pins the `result` label on the `qwenSignalsTotal` Prometheus counter (HMAC-ingest outcome audit trail, input to the runbook `result="rejected"` spike alert) across **3 canonical declaration surfaces**: metric inline comment in `src/middleware/prometheus-metrics.ts:35` (`labelNames: ['result'] as const, // result: accepted | rejected` — code-local developer contract), route emit sites in `src/api/routes/signal-ingest-routes.ts` (`qwenSignalsTotal.inc({ result: 'rejected' })` @ HMAC-fail path line 100 + `.inc({ result: 'accepted' })` @ publish-success path line 135), and operator-facing docs in `docs/system-architecture.md:515` (`algo_trader_qwen_signals_total{result=accepted|rejected}` inline enum).
+
+**11 test cases:** 3 sanity floors (comment ≥ 2 incl. accepted+rejected, route ≥ 2, docs ≥ 2), `labelNames: ['result']` declaration assertion, snake_case discipline, route⊆comment (every emission documented in inline comment), comment⊆route∪reserved (no phantom documented value), docs⊇route (no under-documented emission in operator contract), docs⊆comment∪reserved (no phantom docs value), canonical `ACTIVE_RESULTS={'accepted','rejected'}` intersection, reserved-reservation-integrity (no `RESERVED_RESULTS` leak into route emissions).
+
+**Design note on help text vs comment vs docs.** Unlike PR #155 (kill-action) and PR #156 (kill-switch source) where the metric help string embeds the enum phrase (`/kill|unkill`, `source=env|kv`), `qwenSignalsTotal` keeps its help short ("Total Qwen signals ingested via /api/v1/signals/ingest") and places the enum in (a) the TS inline comment for developers and (b) `system-architecture.md` for operators. This is a legitimate documentation-surface split — the test locks each axis independently so the code-comment/operator-docs duality is preserved. No production code change; help text stays stable.
+
+**Reserved slot.** `RESERVED_RESULTS = new Set([])` — the partition mechanism is test-exercised (last case asserts no leak) but no current reservation exists. Structurally parallel to PR #155's empty `RESERVED_ACTIONS = Set([])`, distinct from PR #154's `{'acknowledged'}` and PR #156's `{'kv'}` (actively-populated). A future `'deduplicated'` or `'throttled'` result can be added as a reservation before wiring.
+
+**Extraction scoping.** Comment regex pinned to the `qwenSignalsTotal` declaration block + the specific `labelNames: ['result'] as const, //` pattern (no leak from other counters' comments). Route `.inc` regex keyed on the `qwenSignalsTotal` identifier (other counters using a `result` label won't leak). Docs regex scoped to lines that reference `qwen_signals_total` literal (other `{result=…}` placeholders stay isolated).
+
+**No drift found in active surfaces** — `accepted` + `rejected` align across comment, route emissions, and docs. Test earns its keep by catching FUTURE drift (e.g. a developer adds `.inc({ result: 'deduplicated' })` without updating the comment, renames `'accepted'` to `'ok'` only in docs, or introduces a silent 3-way mismatch).
+
+**Closes 14th integrity edge.** Prior 13: PRs #132 (alert↔metric), #135 (dashboard↔metric), #137 (runbook-index↔file), #143 (alert↔runbook URL), #145 (doc-enum↔code-enum trigger_reason), #146 (runbook↔code-metric), #148 (CLI↔route), #150 (CLI self-consistency), #152 (CLAUDE phase guide↔CI gate), #153 (decision enum 3-way sync), #154 (status enum 4-surface sync), #155 (kill-action enum 3-surface sync), #156 (kill-switch source enum 3-surface sync). This edge locks the signal-ingest observability contract (Pillar 2 audit trail + Pillar 3 feedback-loop intake surface) and establishes the **code-comment + operator-docs split** pattern as a valid alternative to embedding the enum in the help string. **Integrity tridecagon → tetradecagon (14-gon).**
+
+**247-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.34] - 2026-04-18
 
 ### Added — Qwen Kill-Switch `source` Label Enum 3-Surface Sync Validator
