@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.71] - 2026-04-18
+
+### Added — Signal-ingest HMAC authentication contract discipline 10-invariant sync (PENTACONTAGON — 50-gon MILESTONE)
+
+`tests/integration/signal-ingest-hmac-contract-discipline-sync.test.ts` — pins 10 security-critical axes on `src/api/routes/signal-ingest-routes.ts`. 🎯 **PENTACONTAGON — 50th integrity edge (50-gon = 2.5× icosagon).** Opens **invariant family #34** (signal-ingest HMAC authentication contract).
+
+**10 invariant axes:** verifyHmacSha256 imported + invoked, QWEN_INGEST_HMAC_SECRET env-guard with 500 fail-closed (prevents silent unauth acceptance on deploy without secret), 401 on missing X-Signature-256 OR X-Timestamp headers, ALLOWED_STRATEGIES hard enum `['qwen-m1max-v1','deepseek-m1max-v1'] as const` (injection prevention), Zod bounds size[0,1] + confidence[0,1] + ttlSec[60,86400], rate-limit windowMs=60_000 max=60 (denial-of-wallet prevention), X-Robots-Tag: noindex header (crawler-safe), factory `createSignalIngestRouter(store: SignalStore)` (test-injection), metric emit `qwenSignalsTotal.inc({result:'rejected'})` on HMAC failure (alert contract).
+
+**Novel family #34** — first security-critical endpoint contract edge. Cross-edge with #157 (result label enum), #172 (alert YAML consumer), #174 (.env.example operator surface), #186 (Express security mount).
+
+**Implementation note — 1 bug caught during test-driving:**
+- Rate-limit regex didn't handle `60_000` underscore separator → fixed with `(\d[\d_]*)` capture + `.replace(/_/g,'')`.
+
+**No drift found.** Reviewer 9.7/10 SHIP (0 crit/high/med).
+
+**🎯 Closes 50th integrity edge — PENTACONTAGON milestone (50-gon = 2.5× icosagon).** Enneatetracontagon → Pentacontagon. 34 families across 50 edges. Integrity perimeter now spans DB schemas + code constants + external APIs + Grafana + infra-as-code + CI + tsconfig + .gitignore + wrangler + package.json + vitest + DB migrations + Dockerfile + tsconfig-triangle + Prometheus + Express security/error/health + logger + Better-Auth + Postgres pool + Redis pub/sub + **HMAC authentication**.
+
+**~245-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.70] - 2026-04-18
 
 ### Added — Redis client + pub/sub triple discipline 8-invariant sync (ENNEATETRACONTAGON)
