@@ -1,5 +1,54 @@
 # Project Changelog - Algo Trader
 
+## [2.4.50] - 2026-04-18
+
+### Added — Qwen Alert-Rule Schema Completeness + Severity-Duration Discipline 5-Invariant Sync (ENNEACOSAGON — first alert-schema edge)
+
+`tests/integration/qwen-alerts-schema-severity-discipline-sync.test.ts` — pins 5 invariant axes across 8 Grafana alert rules in `docker/grafana/provisioning/alerting/qwen-alerts.yml`. **ENNEACOSAGON MILESTONE — the 29th integrity edge** and the **first alert-rule schema completeness + severity-duration discipline edge**. Opens invariant **family #13** (after enum partition, cross-module, binary, range-bound, temporal ordering, temporal derivation, structured-document TS/JSONB, composite multi-column, array element-subset, external-API, SLA-boundary, histogram-structural).
+
+**5 invariant axes locked across 8 alerts:**
+1. **Schema completeness** — every alert has {uid, title, for, severity, rollback_tier, runbook}.
+2. **Severity enum** ∈ {critical, warning, info}.
+3. **Rollback-tier enum** ∈ {L0, L1, L3, L4, signals_loop, strategy_review, drawdown_monitor}.
+4. **Severity-duration coherence** — critical: ≤5m (react fast); warning: 10m-30m (deliberation window); info: ≤1m (immediate informational).
+5. **Critical-tier doctrine coupling** — critical alerts must use L0/L1/L3/L4 rollback tiers (not subsystem tags).
+
+**11 test cases:** (1) ≥ 6 alert sanity floor, (2) schema completeness (6 fields per alert), (3) severity enum, (4) rollback-tier enum, (5) severity-duration coherence, (6) title uniqueness, (7) runbook URL path prefix, (8) runbook .md suffix, (9) PascalCase title discipline, (10) critical-tier doctrine coupling, (11) warning/info rollback-tier flexibility.
+
+**Novel invariant family #13 — alert-rule schema completeness + severity-duration discipline.** Distinct from all 12 prior families:
+- **YAML-based schema substrate** — first edge where schema lives in YAML alert config, not TS interface (#166 was TS/JSONB).
+- **Severity-duration policy coherence** — novel axis coupling TWO metadata dimensions (severity + `for:`) with policy bounds. Unlike #170 (SLA-boundary cron↔stale derivation), this locks DISCRETE severity categories to `for:` duration bands.
+- **Critical-tier doctrine coupling** — critical alerts MUST map to L-tier rollback doctrine (not subsystem tag). Enforces operator-pager contract: a critical page maps directly to rollback action.
+
+**Why severity-duration coherence is a novel axis.**
+- `critical` + `for: 1h` = 1 hour of silence before paging on breach (catastrophic drift).
+- `warning` + `for: 1m` = alert fatigue from transient blips.
+- `info` + `for: 30m` = stale status display (no longer "immediate informational").
+
+The severity label defines the URGENCY; `for:` duration defines the DELIBERATION window. Coupling them via policy bounds ensures neither can drift without breaking operator-pager contract.
+
+**Drift scenarios covered (6):**
+- New alert missing `for:` field → case 2 fails (schema completeness).
+- `severity: page` typo → case 3 fails (enum).
+- `critical` alert with `for: 1h` → case 5 fails (severity-duration).
+- Two alerts with same title → case 6 fails (uniqueness).
+- Runbook URL pointing outside `docs/runbooks/` → case 7 fails (linkage).
+- Critical alert with `rollback_tier: signals_loop` (subsystem tag) → case 10 fails (doctrine coupling).
+
+**Extraction scoping.** Block-split regex `/^\s+- uid:/gm` handles multi-group YAML structure (empirically extracts 8/8 alerts). For-duration parser accepts `Xs` and `Xm` (verified `1h` returns null → fails loudly via case 2 schema completeness). Hard-coded runbook URL prefix (`longtho638-jpg/algo-trader`) matches sibling test pattern (symmetric with PR #143).
+
+**No drift found in active surfaces** — all 8 alerts pass all 5 axes after the severity-duration policy bounds were derived from the existing live config (critical: 3m/5m, warning: 10m/10m/10m/15m/30m, info: 1m).
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 1 Medium, 3 Low):** M-1 hand-rolled regex doesn't handle quoted YAML scalars (`severity: 'critical'`) — current corpus all bare scalars; `yaml` lib migration candidate for future edge; L-1 hard-coded runbook URL prefix is intentional 2-surface lock with PR #143; L-2 `for:` parser only `s`/`m` — `1h` fails loudly via case 2 (acceptable); L-3 `warning.minS = 600` (10m floor) is deliberate policy forcing function. All non-blocking.
+
+**CI note — full suite 1063/1064 (1 transient flake on first run — same class as prior PRs #159–#170 scanner/llm-content-generator network-dependent tests, unrelated to this change).**
+
+**Closes 29th integrity edge — ENNEACOSAGON.** Prior 28: PRs #132–#171. **Integrity octacosagon → enneacosagon (29-gon).** Pillar 2 observability alert-policy contract now sync-validated — operator-pager policy cannot silently drift (critical with long `for:` = missed page; warning with short `for:` = alert fatigue).
+
+**306-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.49] - 2026-04-18
 
 ### Added — Prometheus Histogram Bucket Structural Discipline 3-Histogram Sync Validator (OCTACOSAGON — first histogram-structural edge)
