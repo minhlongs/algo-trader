@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.78] - 2026-04-19
+
+### Added — SignalStoreD1 persistence discipline 10-invariant sync (HEPTAPENTACONTAGON — PR #200)
+
+`tests/integration/signal-store-d1-persistence-discipline-sync.test.ts` — pins 10 axes on `src/signal/signal-store-d1.ts`. **HEPTAPENTACONTAGON — 57th integrity edge.** Opens **invariant family #41**. 🎯 **PR #200 milestone.**
+
+**10 invariant axes:** SignalStoreD1 class `implements SignalStore`, deriveSource 4-branch enum (qwen→'qwen-m1max' / deepseek → 'deepseek' / swarm → 'swarm' / default → 'legacy'), paperOnly binary gate `source === 'qwen-m1max' ? 1 : 0` (cross-edge with PR #162 signals.paper_only DB constraint — inverted ternary = Qwen signals LIVE by default CVE), INSERT 12-column exact-order list (id, ts, market, side, size, confidence, strategy, ttl, expires_at, created_at, source, paper_only), `ON CONFLICT (id) DO NOTHING` (idempotent retry — cross-edge #199 dedup), 12 positional params exact order matching columns, getSubscriptions `WHERE active = 1 ORDER BY created_at ASC`, saveSignal rethrows + getSubscriptions returns [] on error (non-blocking Telegram), singleton export `signalStoreD1`.
+
+**Novel family #41** — third signal-pipeline substrate edge. Cross-edges #160 (paper_trades_v3.source DB enum) + #161 (signals.source DB enum) + #162 (paper_only binary) + #198 (SignalPublisher caller) + #199 (dedup upstream).
+
+**No drift found.** Reviewer 9.6/10 SHIP (0 crit/high/med — cleanest of 57-edge set alongside #160).
+
+**Closes 57th integrity edge — HEPTAPENTACONTAGON.** Hexapentacontagon → Heptapentacontagon (57-gon). 41 families across 57 edges. 🎯 **PR #200 milestone — 57 integrity edges shipped in the integrity-polygon doctrine.**
+
+**~260-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.77] - 2026-04-19
 
 ### Added — SignalDedupGuard primitive discipline 9-invariant sync (HEXAPENTACONTAGON — 40-FAMILY MILESTONE)
