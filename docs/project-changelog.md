@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.75] - 2026-04-19
+
+### Added — Qwen live-eligibility gate discipline 10-invariant sync (TETRAPENTACONTAGON)
+
+`tests/integration/qwen-live-eligibility-gate-discipline-sync.test.ts` — pins 10 axes on `src/wiring/qwen-live-eligibility-gate.ts`. **TETRAPENTACONTAGON — 54th integrity edge.** Opens **invariant family #38** (L4/L4b paper-gate substrate).
+
+**10 invariant axes:** MIN_PAPER_DAYS = 30 HARDCODED const (NOT env-sourced — dual inversion-defense), MIN_PAPER_MS derived from MIN_PAPER_DAYS, QWEN_AUTO_APPROVE_MAX_USD env + 500 default fallback, `process.env.QWEN_LIVE_ELIGIBLE !== 'true'` strict (inversion-lock — prevents live-by-default CVE), PaperGateError class with readonly statusCode=403 (operator-actionable, NOT 500 crash), assertQwenLiveEligible(sizeUsd: number): Promise<void> throws PaperGateError, getQwenFirstTradeAgeMs SQL with `WHERE source = $1` filter binding `['qwen']` (prevents cross-source 30d-premature-clear), setQwenPaperGateDaysRemaining metric emit, EligibilityResult interface with 4 fields.
+
+**Novel family #38** — L4/L4b paper-gate substrate edge. Cross-edges with #174 (QWEN_LIVE_ELIGIBLE + QWEN_AUTO_APPROVE_MAX_USD operator-knobs) + #195 (admin kill-switch consumer) + #196 (L3 drawdown monitor complementary).
+
+**No drift found.** Reviewer 9.7/10 SHIP.
+
+**Closes 54th integrity edge — TETRAPENTACONTAGON.** Tripentacontagon → Tetrapentacontagon (54-gon). 38 families across 54 edges.
+
+**~250-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.74] - 2026-04-19
 
 ### Added — Qwen drawdown-monitor wiring discipline 10-invariant sync (TRIPENTACONTAGON)
