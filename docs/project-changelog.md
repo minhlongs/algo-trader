@@ -1,5 +1,33 @@
 # Project Changelog - Algo Trader
 
+## [2.4.55] - 2026-04-18
+
+### Added — TypeScript compiler-config strict-discipline 7-invariant sync (TETRATRIACONTAGON)
+
+`tests/integration/tsconfig-compiler-strict-discipline-sync.test.ts` — pins 7 load-bearing compilerOptions in `tsconfig.json`. **TETRATRIACONTAGON — 34th integrity edge.** Opens **invariant family #18** (TypeScript compiler-config discipline).
+
+**7 invariant axes:** strict mode, esModuleInterop, forceConsistentCasingInFileNames, resolveJsonModule, skipLibCheck, target ≥ ES2020, source-scope (include covers src, exclude covers node_modules). Plus lib includes modern ES (ES2020-ES2023+).
+
+**Novel family #18** — first compiler-config JSON substrate (distinct from #175 CI YAML, #173 docker-compose YAML, #166 TS interface). `strict: true` has no analog in prior 17 families.
+
+**Implementation note — 2 bugs caught during test-driving:** (1) docstring `src/**/*` parsed as block-comment close (removed from docstring); (2) JSON comment-strip regex `/\*[\s\S]*?\*\//g` ate `/**/` in tsconfig globs (pivoted to line-comments-only strip). Both caught locally before CI.
+
+**Extraction scoping.** Parser strips only `//` line comments (plain JSON in this repo; jsonc style would need tokenizer — documented inline). Target-year heuristic: ES5→2009, ES6→2015, ES20xx→xx.
+
+**Drift scenarios:** `strict: false` silences test failure fast → case 2 fails; `target: ES5` transpile regression → case 7 fails; include/exclude scope drift → cases 8+9 fail.
+
+**No drift found** — tsconfig strict ✓, ES2022 ✓, lib=[ES2023, DOM] ✓, include src/**/* ✓, exclude node_modules ✓.
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 2 Low documented).**
+
+**CI note — full suite CLEAN (1119/1119).**
+
+**Closes 34th integrity edge — TETRATRIACONTAGON.** Prior 33: PRs #132–#176. **Integrity tritriacontagon → tetratriacontagon (34-gon).** 18 invariant families across 34 edges.
+
+**210-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.54] - 2026-04-18
 
 ### Added — CI script-file reference integrity 5-invariant sync (TRITRIACONTAGON — 33rd edge)
