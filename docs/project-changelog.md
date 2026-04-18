@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.68] - 2026-04-18
+
+### Added — Better-Auth server config discipline 8-invariant sync (HEPTATETRACONTAGON)
+
+`tests/integration/better-auth-config-discipline-sync.test.ts` — pins 8 axes on `src/auth/auth-server.ts`. **HEPTATETRACONTAGON — 47th integrity edge.** Opens **invariant family #31** (auth-server substrate).
+
+**8 invariant axes:** betterAuth imported + invoked to build `auth`, secret resolution chain `BETTER_AUTH_SECRET || JWT_SECRET` (dual-env fallback), Postgres Pool with env creds (DB_HOST/PORT/NAME/USER/PASSWORD), basePath `/api/auth` (cross-edge with PR #186 Express mount — 2-way bijection), emailAndPassword enabled + minPasswordLength ≥ 8 (OWASP baseline), session expiresIn = 7 days + updateAge = 1 day (UX contract), trustedOrigins includes 3 production domains (cashclaw.cc + algo-trader.pages.dev + cashclaw-dashboard.pages.dev), logger level branches NODE_ENV production→error / dev→debug.
+
+**Novel family #31** — first auth-server substrate edge. Cross-edge with #186 (Express `/api/auth` mount ↔ Better-Auth `basePath: '/api/auth'` parity — drift on either side = silent 404).
+
+**No drift found.** Reviewer 9.6/10 SHIP, 0 critical/high/medium/low actionable.
+
+**Closes 47th integrity edge — HEPTATETRACONTAGON.** Hexatetracontagon → Heptatetracontagon (47-gon). 31 families across 47 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.67] - 2026-04-18
 
 ### Added — Winston logger configuration discipline 7-invariant sync (HEXATETRACONTAGON)
