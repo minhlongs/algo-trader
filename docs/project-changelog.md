@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.77] - 2026-04-19
+
+### Added — SignalDedupGuard primitive discipline 9-invariant sync (HEXAPENTACONTAGON — 40-FAMILY MILESTONE)
+
+`tests/integration/signal-dedup-guard-discipline-sync.test.ts` — pins 9 axes on `src/signal/signal-dedup-guard.ts`. **HEXAPENTACONTAGON — 56th integrity edge.** Opens **invariant family #40** (40-family MILESTONE) — SignalDedupGuard primitive discipline.
+
+**9 invariant axes:** crypto.createHash import, SignalDedupGuard class + private `seen: Map` + `cleanupIntervalId`, buildId static 5-param signature with raw-string order `${strategy}|${market}|${side}|${bucketTs}` + SHA-256 + `.slice(0, 32)`, bucketing math (`bucketMs = ttlSec * 1000`, `bucketTs = Math.floor(ts / bucketMs) * bucketMs`), isDuplicate check-then-set ordering (race protection via span-scoped body search between `isDuplicate(` and `evictExpired(`), `cleanupIntervalMs = 60_000` default + setInterval wiring, evictExpired + destroy lifecycle, singleton export `export const signalDedupGuard = new SignalDedupGuard()`.
+
+**Novel family #40 (MILESTONE)** — second signal-pipeline substrate after #198 fan-out. Cross-edge bijection with #198 buildId callsite (positional arg order must agree). Hash-collision resistance + bounded-length key + race-protection ordering + singleton integrity all CI-locked.
+
+**Implementation note — 1 bug caught during test-driving:**
+- isDuplicate body regex stopped at inner `return true;\n  }` → fixed with span-scoped search between sibling method markers.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 56th integrity edge — HEXAPENTACONTAGON.** Pentapentacontagon → Hexapentacontagon (56-gon). 40 families MILESTONE across 56 edges.
+
+**~230-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.76] - 2026-04-19
 
 ### Added — SignalPublisher fan-out discipline 10-invariant sync (PENTAPENTACONTAGON)
