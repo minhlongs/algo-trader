@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [2.4.81] - 2026-04-19
+
+### Added — Signal-types TIER_SIGNAL_CONFIG discipline 10-invariant sync 🎯 HEXACONTAGON milestone (60-gon = 3× icosagon)
+
+`tests/integration/signal-types-tier-config-discipline-sync.test.ts` — pins 10 axes on `src/signal/signal-types.ts` (canonical shape for all signal-pipeline consumers). 🎯 **HEXACONTAGON — 60th integrity edge (60-gon = 3× icosagon MILESTONE).** Opens **invariant family #44**.
+
+**10 invariant axes:** Signal interface 9 fields (id/ts/market/side/size/confidence/strategy/ttl/expiresAt), Signal.side `'BUY' | 'SELL'` closed union, SignalSubscription interface 7 fields (id/subscriberId/chatId?/tier/active/createdAt/updatedAt), SignalSubscription.tier `'FREE' | 'PRO' | 'ENTERPRISE'` union, TIER_SIGNAL_CONFIG declared with `as const` (literal-type narrowing), FREE tier (sseEnabled=false + minIntervalMs=24h + minConfidence=0.7 — cross-edge PR #163 FREE floor), PRO tier (false + 1h + 0.6), ENTERPRISE tier (true + 0 + 0.5 — realtime SSE), `TierKey = keyof typeof TIER_SIGNAL_CONFIG`.
+
+**Novel family #44 (HEXACONTAGON MILESTONE = 3× icosagon)** — sixth signal-pipeline substrate edge. Dozens of prior edges CONSUME these types; this edge locks the canonical declaration. Cross-edges #163 (ICOSAGON confidence) + #165 (DOICOSAGON expires_at) + #159 (signals.side DB) + #198/#199/#202 (consumers).
+
+**Implementation note — 2 bugs caught during test-driving:**
+- Field regex `\\s*\\w+` didn't match quoted literal `'BUY'` opener → relaxed to `\\S`.
+- Optional field `chatId?` needed dedicated `\\??` optional marker.
+
+**No drift found.** Reviewer 9.7/10 SHIP.
+
+**🎯 Closes 60th integrity edge — HEXACONTAGON MILESTONE (60-gon = 3× icosagon).** Enneapentacontagon → Hexacontagon (60-gon). 44 families across 60 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.80] - 2026-04-19
 
 ### Added — SignalTierFilter primitive discipline 9-invariant sync (ENNEAPENTACONTAGON)
