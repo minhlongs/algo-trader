@@ -1,5 +1,36 @@
 # Project Changelog - Algo Trader
 
+## [2.4.40] - 2026-04-18
+
+### Added — `signals.paper_only` INTEGER Binary Flag 3-Surface Sync Validator
+
+`tests/integration/signals-paper-only-binary-sync.test.ts` — pins the `paper_only` INTEGER binary flag on the `signals` table (30-day paper-gate enforcement toggle that guards Qwen signals from graduating to live trading) across **3 canonical declaration surfaces** using a NOVEL binary-flag lock pattern — the **first non-string-enum integrity edge** across the 18-prior-edge set (#153–#161 all lock string enums).
+
+**3 surfaces locked:**
+1. Migration column declaration + semantic comment at `src/db/migrations/016_qwen_paper_tracking.sql:7`: `ALTER TABLE signals ADD COLUMN paper_only INTEGER NOT NULL DEFAULT 0; -- 1=paper only, 0=eligible for live` — declares TYPE=INTEGER, NOT_NULL, DEFAULT=0, plus an inline semantic-comment mapping `{0: 'eligible for live', 1: 'paper only'}`.
+2. Writer ternary at `src/signal/signal-store-d1.ts:33`: `const paperOnly = source === 'qwen-m1max' ? 1 : 0;` — SOLE writer, produces exactly {0, 1}.
+3. Writer predicate literal (same line): `'qwen-m1max'` — cross-references PR #161 signals.source ACTIVE set. Ensures the paper-gate trigger stays pinned to the Qwen hardware-tagged source.
+
+**12 test cases:** (1) migration shape INTEGER/NOT NULL/DEFAULT=0 hard-pin, (2) semantic-comment partition-exactness (both 0 and 1 mapped + direction pin `1 → paper`, `0 → live/eligible` — catches security regression), (3) writer-ternary sanity floor (predicate + both outputs parse), (4) **DEFAULT ↔ FALSE-branch parity** (migration DEFAULT must equal writer false-branch — omitted-tag + non-Qwen rows land in same bucket), (5) **TRUE ≠ DEFAULT** (paper-gate must actually flip state — catches collapsed `? 0 : 0` regression), (6) **binary completeness** (writer produces exactly {0, 1} — both branches reachable), (7) writer-predicate cross-validation against signals.source ACTIVE (PR #161 link), (8) explicit `'qwen-m1max'` hardware-tag pinning (cross-PR #161/#162 unifier drift guard), (9) type discipline (integer not boolean/string), (10) RESERVED-leak guard (empty by type-cardinality — INTEGER binary physically bounded), (11) semantic-comment keys partition-exactness = ACTIVE, (12) INSERT column-list invariant (`paper_only` must appear in `INSERT INTO signals (…)` — catches silent column drop).
+
+**Novel invariant family — binary-flag locks.** Prior 18 edges lock string enums via CHECK / help-text / comment / writer-function authority models. This edge introduces 5 new invariants specific to binary flags: (a) **DEFAULT-parity-with-false-branch** (rows inserted without explicit tag match non-trigger output), (b) **state-flip-required** (TRUE ≠ DEFAULT, paper-gate can't degenerate to no-op), (c) **binary completeness** (both branches reachable, partition exactly matches type cardinality), (d) **semantic-direction pin** (comment mapping `1 → restrictive`, `0 → permissive` — silent flip is security regression where every row becomes live-eligible), (e) **cross-PR predicate pinning** (paper-gate trigger references enum locked by prior PR, so unifier drift fails loudly).
+
+**Security regression class explicitly caught.** Case 2 pins the semantic direction of the comment mapping: `1=paper only` (restrictive), `0=eligible for live` (permissive). If a future PR silently flips the migration comment to `1=eligible, 0=paper only` without updating the writer's ternary direction, every Qwen signal would become live-eligible — a silent paper-gate bypass. No prior edge catches this class; it only exists for binary flags with directional semantics.
+
+**Cross-PR #161 coordination.** Case 8 explicitly locks the writer predicate to `'qwen-m1max'` (the hardware-tagged signals.source value from PR #161). If a future unifier PR renames `'qwen-m1max'` → `'qwen'` in signal-store-d1's deriveSource (unifying with paper_trades_v3.source from PR #160), case 7 fails (predicate no longer in signals.source ACTIVE) AND case 8 fails (hardware-tag gone). Drift surfaces at both edges — forces coordinated sweep.
+
+**Reserved slot.** `RESERVED_PAPER_ONLY = new Set([])` — empty by physical type-cardinality: INTEGER binary can only hold 2 meaningful values. Reservation semantics are not applicable. Contrast with PR #160's `{'manual'}` (string enum with room for future growth).
+
+**Extraction scoping.** Migration shape regex anchored to `ALTER TABLE signals ADD COLUMN IF NOT EXISTS paper_only ...` (isolated from `paper_trades_v3` CREATE TABLE in same file + other `paper_only`-named columns in future migrations). Semantic-comment regex keyed on trailing `-- 1=X, 0=Y` pattern. Writer ternary regex keyed on `const paperOnly = source === '…' ? N : M;` shape — future refactor to if/else block fails sanity floor loudly (intentional — forces operator to update the extractor).
+
+**No drift found in active surfaces** — migration (INTEGER NOT NULL DEFAULT 0 with semantic comment), writer ternary (predicate='qwen-m1max', outputs {1, 0}), INSERT column list (paper_only present) all align. Test earns its keep against FUTURE drift (semantic-direction flip, ternary collapse, predicate rename, column drop, type change).
+
+**Closes 19th integrity edge.** Prior 18: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161. First binary-flag lock — breaks the string-enum monoculture. Pillar 3 feedback-loop paper-gate enforcement contract locked. **Integrity octadecagon → enneadecagon (19-gon).**
+
+**314-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.39] - 2026-04-18
 
 ### Added — `signals.source` Enum 4-Surface Sync Validator (Code-Derived Authority)
