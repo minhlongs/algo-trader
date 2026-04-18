@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.60] - 2026-04-18
+
+### Added — DB migration numbering + naming discipline 7-invariant sync (ENNEATRIACONTAGON)
+
+`tests/integration/db-migration-numbering-discipline-sync.test.ts` — pins 7 load-bearing axes on `src/db/migrations/` filesystem contract. **ENNEATRIACONTAGON — 39th integrity edge.** Opens **invariant family #23** (DB-migration numbering + naming discipline).
+
+**7 invariant axes:** dir non-empty, extension allowlist (.sql/.ts), 3-digit numeric prefix on every file, ID uniqueness (no boot-time race), LOAD_BEARING_IDS 014-018 present, SQL DDL/DML verb content (non-empty migration), active-range 014-018 contiguity. Plus shell-safety + comment-header sanity + lexical-sort (11 cases total).
+
+**Novel family #23** — first SQL-migration filesystem substrate edge. Complementary to 8 prior edges (#158/#162-#168) which lock CONTENT of specific migrations; this edge locks the FILESYSTEM ordering contract.
+
+**No drift found.** 7 migrations scanned (001-create-trades-table.ts + 004/014/015/016/017/018_*.sql); all pass numeric prefix + unique IDs + SQL content + contiguity. Reviewer 9.6/10 SHIP. CI CLEAN 1174/1174 (rebase onto 9d1d619).
+
+**Closes 39th integrity edge — ENNEATRIACONTAGON.** Octatriacontagon → Enneatriacontagon (39-gon). 23 families across 39 edges.
+
+**~210-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.59] - 2026-04-18
 
 ### Added — vitest test-harness configuration discipline 7-invariant sync (OCTATRIACONTAGON)
