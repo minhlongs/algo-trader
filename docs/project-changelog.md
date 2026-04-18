@@ -1,5 +1,47 @@
 # Project Changelog - Algo Trader
 
+## [2.4.52] - 2026-04-18
+
+### Added — Qwen env-var operator-knob coherence 4-invariant sync (HENITRIACONTAGON — first operator-config-surface edge)
+
+`tests/integration/qwen-env-var-operator-knob-coherence-sync.test.ts` — pins the bidirectional contract between `.env.example` (operator-facing docs) and `process.env.QWEN_*` reads in `src/`. **HENITRIACONTAGON — 31st integrity edge (post-TRIACONTAGON).** Opens **invariant family #15** (operator-facing configuration surface coherence).
+
+**CRITICAL_OPERATOR_KNOBS set (5):**
+- `QWEN_KILL` (L1 kill switch)
+- `QWEN_DRAWDOWN_MAX_PCT` (L3 auto-disable threshold)
+- `QWEN_LIVE_ELIGIBLE` (L4 paper-gate toggle)
+- `QWEN_INGEST_HMAC_SECRET` (signal-ingest auth)
+- `QWEN_AUTO_APPROVE_MAX_USD` (trade-size cap)
+
+**11 test cases:** 2 sanity floors (.env.example + code-reads ≥ 5 QWEN_* each), bidirectional presence in both surfaces (cases 3+4), naming conventions (QWEN_* SCREAMING_SNAKE_CASE, 3 surfaces), HMAC placeholder discipline (NOT a real 64-hex + contains placeholder hint), CRITICAL ⊆ (env-example ∩ code-reads) bidirectional coherence, composite sanity, L-tier doctrine meta-audit (rename trip-wire).
+
+**Novel family #15 — operator-facing configuration surface coherence.** Distinct from all 14 prior:
+- **Operator-docs substrate** — `.env.example` is the canonical operator-onboarding surface; first edge locking this specific substrate.
+- **Placeholder discipline axis** — HMAC_SECRET value must NOT be real 64-hex + must contain placeholder hint (your/example/placeholder/replace). Catches copy-paste leak BEFORE git scanners do (git-push triggers GitGuardian; this catches at `pnpm test` stage).
+- **YAGNI scoping** — locks only 5 CRITICAL rollback-doctrine knobs, not all 11 `process.env.QWEN_*` reads. Tuning knobs (review thresholds) have sensible code defaults; don't force-churn `.env.example` on every tuning sweep.
+
+**Why YAGNI scoping matters.** Code reads 11 distinct QWEN_* vars. `.env.example` documents 9. Strict "every read must be documented" assertion would fail on 2+ vars (tuning knobs) on day one — forcing test relaxation or prod `.env.example` changes. Neither desirable. CRITICAL_OPERATOR_KNOBS set names only the 5 load-bearing rollback-doctrine + HMAC + trade-cap knobs.
+
+**Drift scenarios covered (4):**
+- Remove `QWEN_DRAWDOWN_MAX_PCT` from `.env.example` → case 3 fails (bidirectional subset broken).
+- Code stops reading `QWEN_KILL` → case 4 fails.
+- Real 64-hex HMAC secret lands in `.env.example` (copy-paste accident) → case 8 fails (placeholder discipline — catches BEFORE git-push).
+- New critical knob added (e.g. `QWEN_MAX_DAILY_DRAWDOWN_USD`) → test doesn't auto-detect; author must update CRITICAL_OPERATOR_KNOBS set with rationale.
+
+**Extraction scoping.** `.env.example` regex `/^(QWEN_[A-Z0-9_]+)=/gm` handles standard KEY=value format. Code-reads use `execSync` grep across `src/**/*.ts` for `process.env.QWEN_*` pattern (portable across GNU + BSD grep — verified on macOS). Placeholder discipline checks `/^[0-9a-f]{64}$/` NOT match (real 64-hex secret) AND `/your|example|placeholder|replace/i` match (hint word present).
+
+**No drift found in active surfaces** — 5 CRITICAL knobs present in BOTH `.env.example` AND code reads. HMAC placeholder `'your-64-hex-char-secret-here'` passes both regex checks (not real hex + contains `your` hint).
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 3 Medium non-blocking, 3 Low cosmetic):** M-1 `execSync` shell dep fragile to non-POSIX runners (sanity floor fails loudly — safe); M-2 CRITICAL_OPERATOR_KNOBS maintenance overhead invisible (author docs YAGNI rationale inline); M-3 consumer-scope comment would help future reviewers. All non-blocking.
+
+**CI note — full suite CLEAN (1086/1086, no flakes).**
+
+**Closes 31st integrity edge — HENITRIACONTAGON (post-TRIACONTAGON extension).** Prior 30: PRs #132–#173. **Integrity triacontagon → henitriacontagon (31-gon).** Fifteen invariant families active across 31 edges. Family #15 opens operator-facing configuration surface substrate — future family-#15 edges could lock Wrangler `vars`, Kubernetes ConfigMaps, docker-compose `env_file` paths.
+
+**285-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.51] - 2026-04-18
 
 ### Added — 🎯 TRIACONTAGON MILESTONE: Docker-Compose Service-Dependency Coherence 5-Invariant Sync Validator
