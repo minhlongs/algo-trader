@@ -1,5 +1,48 @@
 # Project Changelog - Algo Trader
 
+## [2.4.43] - 2026-04-18
+
+### Added — `signals.expires_at` Temporal Derivation 3-Surface Sync Validator (DOICOSAGON — first computed-column edge)
+
+`tests/integration/signals-expires-at-temporal-derivation-sync.test.ts` — pins the MATHEMATICAL relationship `expires_at = ts + ttl * 1000` across **3 canonical declaration surfaces**. **DOICOSAGON MILESTONE — the 22nd integrity edge** and the **first temporal-derivation / computed-column edge** across 21 prior edges. Opens invariant **family #6** (after enum partition, cross-module, binary flag, range-bound, temporal ordering).
+
+Unlike temporal ordering (#164 — asserts `col1 ≥ col2`), temporal derivation asserts the STRONGER constraint `col_derived = f(col_source_1, col_source_2)` — a mathematical formula relating three columns on the same row with explicit unit-of-measure conversion. The `* 1000` multiplier is the seconds→milliseconds conversion required because `ts` + `expires_at` are both Unix-ms while `ttl` is operator-friendly seconds.
+
+**3 surfaces locked:**
+1. Migration 014:6,12,13 column shapes + unit-of-measure inline comments: `ts INTEGER NOT NULL, -- Unix ms of signal generation` + `ttl INTEGER NOT NULL, -- seconds until stale` + `expires_at INTEGER NOT NULL, -- Unix ms`. All three INTEGER with unit asymmetry (ms vs seconds) encoded in comments.
+2. Writer derivation formula at `src/signal/signal-publisher.ts:58`: `expiresAt: ts + input.ttlSec * 1000` — SOLE writer. Literal multiplier `1000` is the unit-conversion authority.
+3. TS interface comment at `src/signal/signal-types.ts:17`: `expiresAt: number; // Unix ms = ts + ttl*1000` — explicitly documents the formula + output unit-of-measure.
+
+**11 test cases:** (1) all three columns INTEGER NOT NULL, (2) inline unit-of-measure comments declare ts=Unix-ms/ttl=seconds/expires_at=Unix-ms, (3) writer formula parser shape sanity floor, (4) writer base = `ts` (not `Date.now()` — preserves explicit input semantics), (5) writer ttl var = `input.ttlSec` (caller-provided, not hard-coded), (6) writer multiplier exactly `1000` (seconds→ms conversion — any other value indicates unit confusion), (7) TS type is `number`, (8) TS comment formula matches writer (base='ts', ttlVar='ttl', multiplier=1000), (9) TS comment explicitly mentions "Unix ms" output unit, (10) cross-surface unit-of-measure coherence (migration comments + writer multiplier all agree), (11) monotonic derivation (multiplier positive → `expires_at > ts` by construction for ttl > 0).
+
+**Novel invariant family #6 — temporal derivation / computed-column.** Distinct invariants:
+- **Formula literal pinning** — writer must emit exact `ts + ttl * 1000`, not `ts + ttl` (seconds confusion), `ts * 1000 + ttl` (operator swap), `ts + ttl / 1000` (wrong direction), or `ts + ttl * 60 * 1000` (minute confusion).
+- **Unit-of-measure coherence** — migration inline comments + writer multiplier must all agree. A silent migration change from seconds-ttl to ms-ttl would leave writer's `* 1000` obsolete (expires 1000× too far in future).
+- **Comment ↔ formula parity** — TS type comment states the same formula the code computes. Documentation drift impossible.
+- **Monotonic by construction** — ttl > 0 AND multiplier > 0 ⇒ `expires_at > ts`. No separate temporal-ordering assertion needed.
+- **No CHECK constraint needed** — Postgres COULD express `expires_at = ts + ttl * 1000` as CHECK, but that would duplicate logic across schema + code (DRY violation) and coarsen DB errors for operator debugging. Writer-contract is the cleaner authority.
+
+**Why writer-contract authority not CHECK.** Unlike temporal ordering (#164, where Postgres genuinely can't express `col1 ≥ col2` across concurrent UPDATEs efficiently), SQLite/Postgres CHECK CAN express `expires_at = ts + ttl * 1000`. We choose not to — duplicating the formula at DB layer creates a maintenance burden (any ttl-unit refactor touches both layers) and coarsens developer diagnostics (DB CHECK failure loses the input context). The writer is the Single Source of Truth; this test is the sync-validator that locks the writer's formula against documentation.
+
+**Drift scenarios covered (5):**
+- Writer drops `* 1000` → signals expire in ms not seconds (1000× shorter — case 6 fails)
+- Writer refactors to `Date.now() + ttl * 1000` (hard-codes current-time over input.ts) → case 4 fails (base != 'ts')
+- Migration renames `ttl` to `ttl_ms` without updating writer → cases 1 + 2 fail (inline comments would state `ms` not `seconds`)
+- TS type comment drifts to `// ts + ttl * 60 * 1000` (minute confusion) without writer change → case 8 fails (comment formula parity)
+- Unit-normalization layer converts ttl to ms upstream without removing downstream `* 1000` → cases 4 + 10 catch via 1000× drift
+
+**Extraction scoping.** Migration regex extracts `(type, notNull, comment)` tuple per column; preserves inline `--` comments (doesn't strip SQL comments). Writer regex `/expiresAt\s*:\s*([a-zA-Z_][\w.]*)\s*\+\s*([a-zA-Z_][\w.]*)\s*\*\s*(\d+)/` captures `base + ttlVar * N` shape; refactor to arrow function or multiplier-via-constant fails sanity floor loudly (intentional loud-fail). TS comment regex parses `= ts + ttl*N` formula embedded in `// Unix ms = ts + ttl*1000` inline comment; reformat to JSDoc `@formula` would fail sanity floor.
+
+**CI note — same transient llm-content-generator + scanner network flakes as PRs #159–#164** (unrelated to this change; re-passes on retry).
+
+**Closes 22nd integrity edge — DOICOSAGON.** Prior 21: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164.
+
+**Integrity henicosagon → doicosagon (22-gon).** Pillar 3 signal-publishing contract locked — the signal-expiry time-derivation formula now sync-validated across migration unit declarations + writer literal + TS type documentation.
+
+**333-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.42] - 2026-04-18
 
 ### Added — `strategy_review_tasks` Temporal Ordering 4-Surface Sync Validator (HENICOSAGON — first temporal edge)
