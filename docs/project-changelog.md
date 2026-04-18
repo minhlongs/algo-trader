@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [2.4.36] - 2026-04-18
+
+### Added — `paper_trades_v3.status` Enum 3-Surface Sync Validator
+
+`tests/integration/paper-trades-v3-status-enum-sync.test.ts` — pins the `status` column enum on the `paper_trades_v3` source-tagged paper-trade ledger (Pillar 3 feedback-loop data layer, Qwen A/B P&L comparison table) across **3 canonical declaration surfaces**: DB CHECK constraint in `src/db/migrations/016_qwen_paper_tracking.sql` (`status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed'))` — authoritative schema declaration), INSERT write-site literal in `src/wiring/paper-trading-orchestrator.ts:56` (`savePaperTradeV3` inserts new rows with `VALUES (..., 'open', $9)` — only write path, every paper trade enters in `'open'`), and SELECT rollup-site literals in `src/wiring/qwen-drawdown-monitor.ts:90` + `src/wiring/qwen-signals-loop.ts:108,130` (`WHERE status = 'closed'` — three rollup queries that drive the L1 drawdown kill-switch P&L, the 7-day win-rate aggregate, and the Sharpe daily-pct aggregate — all three feed Qwen quality observability).
+
+**12 test cases:** 4 sanity floors (migration ≥ 2 statuses incl. open+closed, orchestrator INSERT ≥ 1, drawdown-monitor SELECT ≥ 1, signals-loop SELECT ≥ 1), snake_case discipline across all surfaces, code⊆migration (every code literal declared in CHECK — no runtime CHECK violations), migration partition-exactness (every declared status is either ACTIVE or RESERVED — no orphan), `ACTIVE_STATUSES={'open','closed'}` bijection (every active status appears in migration AND at least one code site), INSERT entry-state invariant (orchestrator writes `'open'`), SELECT exit-state rollup invariant (at least one rollup SELECT filters `'closed'`), RESERVED orphan guard (no orphan reservation absent from migration), reserved-reservation-integrity (no RESERVED_STATUSES leak into code literals).
+
+**Design note — second table-scoped status enum lock.** Structurally companion to PR #154 (strategy_review_tasks.status 4-surface sync, {pending|acknowledged|resolved}) but locks a DIFFERENT table with a DIFFERENT 2-state enum {open|closed}. The SELECT-rollup scope is deliberately broader than PR #154's single-route-handler scope — `paper_trades_v3` is read from three distinct wiring modules that each feed a different Pillar 3 observability signal, so the validator collects literals from all three SQL template blocks via table-scoped backtick extraction.
+
+**Extraction scoping.** The SQL template regex `/`[^`]*paper_trades_v3[^`]*`/g` isolates the ledger's SQL blocks from unrelated `status =` literals elsewhere in the codebase (circuit-breaker `'closed' | 'open' | 'half-open'` state machine, Kalshi market feed enum `'open' | 'closed' | 'settled'`, `strategy_review_tasks.status = 'pending'` in the same signals-loop file, kill-switch response envelope `{status:'killed'}`). The INSERT extractor uses a column-order-indexed walker: it finds `status` in the `INSERT INTO paper_trades_v3 (cols...)` column list, then picks the same-indexed literal from the `VALUES (vals...)` tuple — robust against the table's 10-column shape and the mixed literal/placeholder (`$1..$9`) VALUES list.
+
+**Reserved slot.** `RESERVED_STATUSES = new Set([])` — empty today; both declared states (`'open'` and `'closed'`) are actively exercised by code literals. The partition mechanism is test-exercised (last two assertions guard against orphan reservations + leaked reservations) so a future state (e.g. `'settled'` for margin-close distinction or `'liquidated'` for drawdown-forced exits) can be reserved before wiring. Structurally parallel to PR #155 (`action` — empty) and PR #157 (`result` — empty); distinct from PR #154 (`status` on strategy_review_tasks — `{acknowledged}`) and PR #156 (`source` — `{kv}`).
+
+**No drift found in active surfaces** — migration CHECK `('open','closed')`, INSERT literal `'open'`, and three SELECT literals `'closed'` all align. Test earns its keep by catching FUTURE drift: a developer who adds `status='settled'` in a rollup query without extending the migration CHECK would fail the code⊆migration assertion (runtime CHECK violation prevented at test time). A future migration that renames `'open'` to `'pending'` without updating the orchestrator INSERT would fail the INSERT-entry-state invariant. A drift where the migration relaxes the CHECK but rollup queries stay pinned to `'closed'` only would fail the partition-exactness assertion.
+
+**Closes 15th integrity edge.** Prior 14: PRs #132 (alert↔metric), #135 (dashboard↔metric), #137 (runbook-index↔file), #143 (alert↔runbook URL), #145 (doc-enum↔code-enum trigger_reason), #146 (runbook↔code-metric), #148 (CLI↔route), #150 (CLI self-consistency), #152 (CLAUDE phase guide↔CI gate), #153 (decision enum 3-way sync), #154 (strategy_review_tasks.status 4-surface sync), #155 (kill-action enum 3-surface sync), #156 (kill-switch source enum 3-surface sync), #157 (qwen-signals-total result enum 3-surface sync). This edge locks the Qwen paper-trade ledger state-machine contract — the data layer that feeds drawdown P&L, 7-day win-rate, and Sharpe observability — closing Pillar 3 feedback-loop data-layer integrity alongside the trigger_reason (#145), decision (#153), and strategy_review_tasks.status (#154) enums. **Integrity tetradecagon → pentadecagon (15-gon).**
+
+**298-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.35] - 2026-04-18
 
 ### Added — Qwen Signals-Total `result` Label Enum 3-Surface Sync Validator
