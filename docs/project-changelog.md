@@ -1,5 +1,60 @@
 # Project Changelog - Algo Trader
 
+## [2.4.47] - 2026-04-18
+
+### Added — Polymarket Gamma API External-Contract 5-Surface Sync Validator (HEXACOSAGON — first external-API edge)
+
+`tests/integration/polymarket-gamma-api-contract-sync.test.ts` — pins the dependency contract between `paper-trading-orchestrator.scanAndTrade()` and the Polymarket Gamma API across **5 canonical declaration surfaces**. **HEXACOSAGON MILESTONE — the 26th integrity edge** and the **first external-API typed boundary edge**. Opens invariant **family #10** (after enum partition, cross-module, binary flag, range-bound, temporal ordering, temporal derivation, structured-document field shape, composite multi-column, array element-subset-of-enum).
+
+Unlike all 25 prior edges which lock invariants within our OWN codebase (DB schema, TS types, metric labels, route handlers), this edge locks a DEPENDENCY contract with a THIRD-PARTY service. Authority lives OUTSIDE our control — we can only pin what WE ASSUME, not what Polymarket guarantees. A silent API evolution (field rename, envelope change, endpoint migration) would cause `scanAndTrade` to silently return zero markets → paper-trading stops with NO alert, NO exception, NO metric emission. This test makes our assumptions auditable so that when Polymarket changes their contract, our CI fails loudly before production does.
+
+**5 surfaces locked:**
+1. Fetch URL literal at `src/wiring/paper-trading-orchestrator.ts:280`: `'https://gamma-api.polymarket.com/markets?closed=false&limit=200'` — full URL with query params. Host/path/query drift fails.
+2. Timeout discipline at line 281: `AbortSignal.timeout(15_000)` — 15s availability safeguard. Drop = stalled API hangs 30s scan ticker indefinitely.
+3. Response type assertion at line 284: `Array<Record<string, unknown>>` — array-of-loose-objects envelope. Envelope change (e.g. `{markets: []}`) fails.
+4. Local PM type at line 286: `{id: string, title: string, yes: number, no: number, vol: number, group: string}` — 6 fields with per-field TS types. Our canonical ASSUMPTION about Gamma's response shape.
+5. Field-extraction at lines 289-297: reads exactly 5 raw keys (`conditionId`, `question`, `outcomePrices`, `volume`, `groupItemTitle`) via `m['key']` string-indexed access with null-safe defaults. `question` is reused for both `title` and `group` fallback (asymmetry: 5 raw → 6 PM).
+
+Plus defensive-parse shape: outer try/catch around scanAndTrade + inner try/catch per-market + `yes > 0 && no > 0` price-validity guard + nullish-coalescing defaults on every field.
+
+**11 test cases:** (1) fetch URL literal matches canonical, (2) AbortSignal.timeout = 15000ms, (3) `Array<Record<string, unknown>>` type assertion present, (4) PM type has exactly 6 canonical fields, (5) PM field TS types correct (3× string, 3× number), (6) field-extraction reads exactly 5 canonical raw keys, (7) `question` asymmetric mapping (title + group-fallback) pinned, (8) inner try/catch wraps per-market parse (defensive-parse), (9) `yes > 0 && no > 0` price-validity guard present, (10) all 5 contract surfaces fire together (composite external-API invariant), (11) single-point Gamma dependency — exactly 1 Polymarket fetch in file.
+
+**Novel invariant family #10 — external-API typed boundary.** Distinct from all 9 prior families:
+- **Authority lives outside** — Polymarket controls their backend; we pin our assumptions. Previous 25 edges all had authority INSIDE our codebase (migration, docs, interface, writer function).
+- **Silent-drift failure mode** — API evolution produces zero markets + no error, qualitatively different from internal drift which crashes or mis-writes rows.
+- **Composite 5-surface** — URL + timeout + type + extractor + defensive-parse all in lockstep. Dropping any one opens a specific failure mode (endpoint migration, stall, envelope drift, field rename, malformed-row crash).
+- **Single-point dependency canary** (case 11) — asserts exactly 1 `fetch(polymarket.com)` call in the file. Multiple endpoints = multiple drift surfaces; test flags expansion of the dependency blast radius.
+- **stripJsComments bug avoidance** — case 11 operates on raw source because URL contains `//` which naive comment-strip regex eats (bug caught during implementation; documented inline).
+
+**Why no DB CHECK.** Polymarket Gamma is an external REST API, not a DB column. There's no CHECK constraint available at this boundary. Authority mechanism is entirely static-parse of our assumptions.
+
+**Defense-in-depth shape pinned:**
+- **Outer try/catch** — fetch failure logs warning, doesn't crash the 30s scan ticker.
+- **Inner try/catch** — malformed market row skipped silently; other markets still process.
+- **Price-validity guard** `yes > 0 && no > 0` — rejects markets where `parseFloat(p[0])` produces NaN or zero.
+- **Nullish-coalescing** — every field read has `?? ''` / `?? 0` fallback so missing field produces empty/zero, not undefined.
+
+**Drift scenarios covered (5):**
+- Gamma renames `outcomePrices` → `outcome_prices` → case 6 fails (field-extraction parity).
+- Gamma changes `/markets` → `/v2/markets` → case 1 fails (URL literal pin).
+- Developer removes AbortSignal.timeout → case 2 fails.
+- PM type gains 7th field without extraction wiring → case 4 fails (6-field canonical).
+- Inner try/catch removed → malformed row crashes entire scan → case 8 fails.
+
+**Extraction scoping.** URL regex exact-literal match via `toBe(EXPECTED_URL)` — param-order sensitive (reversed query fails, which is correct). Timeout regex handles both `15_000` separator and `15000` bare forms. PM type regex anchored to `type PM = {...}` declaration — future refactor to `interface PM` would fail sanity floor loudly (intentional: forces test update on shape refactor). Raw-field scope regex anchored to `scanAndTrade` for-loop body to avoid leaking from other contexts. Case 11 operates on RAW source (not `stripJsComments` output) because URL contains `//` which the naive `\/\/[^\n]*` regex strips as line-comment.
+
+**No drift found in active surfaces** — URL, timeout, type assertion, PM type 6 fields, raw-field extraction (5 keys), all defensive-parse mechanisms, single fetch point all align.
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 1 Medium observation, 1 Low):** M-1 PM + response-type regex pin declaration shape not just semantics (deliberate, matches prior edges pattern); L-2 stripJsComments duplicated across ~26 validators — YAGNI-safe extract later (≥30 edges). All non-blocking.
+
+**CI note — full suite CLEAN (1031/1031, no flakes).**
+
+**Closes 26th integrity edge — HEXACOSAGON.** Prior 25: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164, #165, #166, #167, #168. **Integrity pentacosagon → hexacosagon (26-gon).** Pillar 3 market-data ingestion contract now sync-validated — our assumptions about Polymarket Gamma API shape are pinned in test, so silent third-party API evolution fails CI before production drops to zero markets.
+
+**392-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.46] - 2026-04-18
 
 ### Added — `qwen_signals_loop_runs.trigger_reasons TEXT[]` Element-Subset-of-Enum 4-Surface Sync Validator (PENTACOSAGON — first array-element edge)
