@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.59] - 2026-04-18
+
+### Added — vitest test-harness configuration discipline 7-invariant sync (OCTATRIACONTAGON)
+
+`tests/integration/vitest-harness-configuration-discipline-sync.test.ts` — pins 7 load-bearing axes on root + dashboard vitest configs. **OCTATRIACONTAGON — 38th integrity edge.** Opens **invariant family #22** (vitest test-harness configuration discipline).
+
+**7 invariant axes:** both configs exist, root has `globals: true` + `pool: 'forks'` (D1/Postgres isolation) + required exclude patterns (node_modules/tests/strategies/dashboard), root does NOT declare jsdom (node-only infra tests), dashboard has `environment: 'jsdom'` + non-empty `setupFiles` + `@vitejs/plugin-react` plugin + `globals: true`.
+
+**Novel family #22** — first TS-source config substrate edge. Distinct from #177 (tsconfig JSON) + #179 (wrangler TOML) + #180 (package.json JSON). Locks test-runner infrastructure — silent skip of load-bearing suites now CI-blocked.
+
+**Implementation note — 1 bug caught during test-driving:**
+- Docstring contained literal `/* */` → closed outer JSDoc block prematurely → removed literal, pivoted to descriptive text.
+
+**No drift found.** Reviewer 9.7/10 SHIP (0 Critical/High/Medium). CI CLEAN 1163/1163.
+
+**Closes 38th integrity edge — OCTATRIACONTAGON.** Heptatriacontagon → Octatriacontagon (38-gon). 22 families across 38 edges.
+
+**~215-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.58] - 2026-04-18
 
 ### Added — package.json manifest discipline 7-invariant sync (HEPTATRIACONTAGON)
