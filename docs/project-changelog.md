@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.69] - 2026-04-18
+
+### Added — Postgres client pool discipline 8-invariant sync (OCTATETRACONTAGON)
+
+`tests/integration/postgres-client-pool-discipline-sync.test.ts` — pins 8 axes on `src/db/postgres-client.ts`. **OCTATETRACONTAGON — 48th integrity edge.** Opens **invariant family #32** (database-client substrate).
+
+**8 invariant axes:** pg import + Pool destructure, singleton pool (module-scope `let pool` + `if (pool) return pool` guard), env-driven config (DB_HOST/PORT/NAME/USER/PASSWORD), maxConnections ≤ 20 upper bound (thundering-herd prevention, Neon headroom), `pool.on('error', ...)` handler with logger.error (NOT console.error — structured audit), transaction helper full lifecycle (BEGIN + COMMIT + ROLLBACK + client.release), required exports (getDbClient + query + transaction + closeDbConnection), query generic-typed with DbRow.
+
+**Novel family #32** — first database-client substrate edge. Complementary to #190 (Better-Auth's separate Pool) and #187 (health SELECT 1 downstream consumer). Singleton enforcement, connection-count bound, transaction atomicity all CI-locked.
+
+**No drift found.** Reviewer 9.7/10 SHIP (0 crit/high/med).
+
+**Closes 48th integrity edge — OCTATETRACONTAGON.** Heptatetracontagon → Octatetracontagon (48-gon). 32 families across 48 edges.
+
+**~235-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.68] - 2026-04-18
 
 ### Added — Better-Auth server config discipline 8-invariant sync (HEPTATETRACONTAGON)
