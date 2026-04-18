@@ -1,5 +1,50 @@
 # Project Changelog - Algo Trader
 
+## [2.4.41] - 2026-04-18
+
+### Added — `signals.confidence` [0, 1] Range-Bound 5-Surface Sync Validator (ICOSAGON MILESTONE)
+
+`tests/integration/signals-confidence-range-sync.test.ts` — pins the numeric range `[0, 1]` on the `signals.confidence` REAL column across **5 canonical declaration surfaces**. **ICOSAGON MILESTONE — the 20th integrity edge.** First range-bound / boundary-constraint edge across 19 prior edges (which were all enum/binary/cross-module locks). Novel invariant family opens a new locking dimension in the integrity toolkit.
+
+**5 surfaces locked:**
+1. Migration 014:10 CHECK constraint (authority): `confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1)` — inclusive `[0, 1]` range.
+2. TS Signal interface (`src/signal/signal-types.ts:14`): `confidence: number;   // 0..1` — type declaration + inline range comment that MUST match CHECK bounds.
+3. TIER_SIGNAL_CONFIG policy thresholds (`signal-types.ts:32-48`): FREE `minConfidence: 0.7`, PRO `minConfidence: 0.6`, ENTERPRISE `minConfidence: 0.5` — tier access ladder with monotonically non-increasing thresholds (strictest gate for lowest tier).
+4. Orchestrator AI-validation gate (`src/wiring/paper-trading-orchestrator.ts:87`): `const MIN_AI_CONFIDENCE = 0.7` — must equal FREE tier threshold (policy consistency).
+5. Orchestrator rejection comparison (`paper-trading-orchestrator.ts:132`): `validation.confidence < MIN_AI_CONFIDENCE` — strict `<` ensures accept-at-threshold semantics (signal exactly at threshold passes).
+
+**11 test cases:** (1) migration CHECK declares inclusive `[0, 1]` bounds (lower `>=`, upper `<=`), (2) TS type is `number` not string/unknown, (3) TS inline `// 0..1` comment ↔ CHECK bounds parity, (4) TIER_SIGNAL_CONFIG sanity floor ≥ 3 tiers, (5) every tier threshold ∈ CHECK range (no dead policy gate), (6) tier thresholds monotonically non-increasing by source order (FREE ≥ PRO ≥ ENTERPRISE), (7) MIN_AI_CONFIDENCE ∈ CHECK range, (8) MIN_AI_CONFIDENCE equals FREE tier (policy consistency canary), (9) rejection gate uses strict `<` (accept-at-threshold), (10) boundary values 0 and 1 literally within CHECK partition (catches "`> 0.001 AND < 0.999`" drift), (11) non-zero range width (catches collapsed-to-constant regression).
+
+**Novel invariant family — range-bound locks.** Prior 19 edges used partition-based locks (finite ACTIVE/RESERVED set equality). Range locks introduce a distinct family:
+- **Boundary inclusivity** — `>=` and `<=` direction pinned; drifting to strict `>` / `<` silently rejects boundary values.
+- **Policy-threshold coverage** — every downstream threshold must lie within CHECK bounds; a threshold outside `[0, 1]` becomes a dead policy gate (rejects all OR accepts all, never both).
+- **Inline-comment ↔ CHECK parity** — TS inline `// 0..1` comment parses as `X..Y` and must equal CHECK lower/upper.
+- **Rejection-gate direction** — strict `<` at the orchestrator means "reject below threshold, accept AT threshold" (policy coherent with tier boundaries being inclusive minima).
+- **Numeric width non-zero** — catches "range collapsed to constant" regression where CHECK becomes `>= 0.5 AND <= 0.5`.
+- **Type discipline** — SQL REAL maps to TS `number`; drift to `string` would make comparisons lexicographic and break range semantics.
+
+**Security impact.** Confidence validation bypass is a silent data-integrity failure — a value > 1 leaks into `validation.confidence < MIN_AI_CONFIDENCE` (`0.7`) as always-true, accepting any signal. Case 5 + case 7 catch threshold drift outside CHECK range before DB rejection surfaces the issue in production.
+
+**Policy-consistency canary** (case 8). MIN_AI_CONFIDENCE must equal FREE tier minConfidence — the AI gate and the tier gate should agree on "high confidence enough to trade on". Divergence = operator on FREE tier hits two different thresholds on the same code path (silent policy split). If future policy legitimately diverges them, the test surfaces the decision as a checkpoint.
+
+**Extraction scoping.** Migration regex anchored to `confidence REAL … CHECK (confidence OP X AND confidence OP Y)` — parses operator + values, captures canonical form. Tolerates multi-line reflow within CHECK. Not tolerant of operator-swap (`0 <= confidence`) or `BETWEEN` — intentional pinning to the canonical form used today. TS type regex anchored to `confidence: X; // Y..Z` — refactor to JSDoc `@range` would fail sanity floor loudly. TIER_SIGNAL_CONFIG extractor uses `^\}\s*as\s+const\s*;` multi-line anchor — surgical isolation from unrelated `minConfidence` fields in other configs.
+
+**No drift found in active surfaces** — migration CHECK `[0, 1]` inclusive, TS `number` type with `// 0..1` comment, tier thresholds `{0.7, 0.6, 0.5}` all in range and monotonic, MIN_AI_CONFIDENCE = 0.7 = FREE tier, gate comparison strict `<`.
+
+**Closes 20th integrity edge — THE ICOSAGON.** Prior 19: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162. Pillar 3 feedback-loop data-validation perimeter now complete at the row-level for the Qwen A/B P&L pipeline:
+- **Precision** — signals.confidence range locked (#163) ← this PR
+- **Paper-gate toggle** — signals.paper_only binary locked (#162)
+- **Signal provenance** — signals.source code-derived enum locked (#161)
+- **Paper-trade ledger row integrity** — status (#158) + side (#159) + source (#160) locked
+- **Feedback-loop state machines** — decision (#153), trigger_reason (#145), strategy_review.status (#154)
+- **Kill-switch audit trail** — action (#155), source (#156)
+
+**Integrity enneadecagon → icosagon (20-gon).** Phase 04 observability full-stack integrity achieved.
+
+**316-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.40] - 2026-04-18
 
 ### Added — `signals.paper_only` INTEGER Binary Flag 3-Surface Sync Validator
