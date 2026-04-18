@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.64] - 2026-04-18
+
+### Added — Express API-server security middleware mount discipline 8-invariant sync (TRITETRACONTAGON)
+
+`tests/integration/express-server-security-middleware-discipline-sync.test.ts` — pins 8 axes on `src/api/server.ts`. **TRITETRACONTAGON — 43rd integrity edge.** Opens **invariant family #27** (Express security middleware mount discipline).
+
+**8 invariant axes:** helmet imported+applied, cors imported+applied, rateLimit scoped to `/api` path, metricsMiddleware applied (Prometheus HTTP sampling), errorHandler applied, HSTS maxAge ≥ 31536000 (1 year) + frameguard deny + CSP frameAncestors `'none'` (OWASP security header baseline), `/metrics` endpoint Bearer-token gated (METRICS_TOKEN env + Bearer prefix + 403), errorHandler is the LAST `app.use()` call (terminal 5xx escape path).
+
+**Novel family #27** — first HTTP-server-config substrate edge. Graduates Express security posture (security header baseline + rate-limit + metrics exposure gating + error-handler ordering) from tribal knowledge to CI tripwire.
+
+**Implementation note — 1 bug caught during test-driving:**
+- Docstring text `**/metrics` contained `*/` that closed JSDoc block early → rewrote descriptively.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 43rd integrity edge — TRITETRACONTAGON.** Dotetracontagon → Tritetracontagon (43-gon). 27 families across 43 edges.
+
+**~210-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.63] - 2026-04-18
 
 ### Added — Prometheus metric naming + HELP discipline 8-invariant sync (DOTETRACONTAGON)
