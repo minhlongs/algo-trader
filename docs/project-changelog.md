@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.84] - 2026-04-19
+
+### Added — SignalRestCache primitive discipline 9-invariant sync (TRIHEXACONTAGON)
+
+`tests/integration/signal-rest-cache-discipline-sync.test.ts` — pins 9 axes on `src/signal/signal-rest-cache.ts`. **TRIHEXACONTAGON — 63rd integrity edge.** Opens **invariant family #47** (ninth signal-pipeline substrate).
+
+**9 invariant axes:** CACHE_TTL_SEC = 10 (short TTL), KEY_PREFIX = `'signal:rest:'` (Redis namespace isolation), cacheKey(tier, since, limit) positional args + `${KEY_PREFIX}${tier}:${since}:${limit}` build (tier FIRST prevents revenue-tier cross-serving), setCachedSignals via `redis.setex(key, CACHE_TTL_SEC, JSON.stringify)` atomic, getCachedSignals returns null on miss + typed `JSON.parse(raw) as Signal[]` on hit, invalidateSignalCache via `redis.keys(${KEY_PREFIX}*) + redis.del(...keys)` wildcard invalidation, all 3 ops wrapped in try/catch + logger.warn (Redis-outage non-crashing — REST survives), 3 required exports.
+
+**Novel family #47** — ninth signal-pipeline substrate edge. Cross-edges #192 (Redis client primitive) + #198 (SignalPublisher `invalidateSignalCache()` caller after publish) + #202 (TierKey supplier).
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 63rd integrity edge — TRIHEXACONTAGON.** Dihexacontagon → Trihexacontagon (63-gon). 47 families across 63 edges.
+
+**~220-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.83] - 2026-04-19
 
 ### Added — TelegramSignalPusher primitive discipline 10-invariant sync (DIHEXACONTAGON)
