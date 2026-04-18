@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.73] - 2026-04-19
+
+### Added — Admin Qwen kill-switch route contract discipline 10-invariant sync (DIPENTACONTAGON)
+
+`tests/integration/admin-qwen-kill-switch-contract-discipline-sync.test.ts` — pins 10 axes on `src/api/routes/admin-qwen-routes.ts`. **DIPENTACONTAGON — 52nd integrity edge.** Opens **invariant family #36** (admin Qwen kill-switch route contract).
+
+**10 invariant axes:** createAdminQwenRouter factory, requireAdminKey helper (ADMIN_API_KEY env + X-Admin-Key header), 503 fail-closed on missing env, 403 on invalid X-Admin-Key, POST /kill wiring (QWEN_KILL=1 + disableQwen + qwenAdminKillActionsTotal.inc({action:'kill'}) + logger.warn), POST /unkill wiring (QWEN_KILL=0 + enableQwen + metric action:unkill + logger.info), GET /status operator readout, both `action: 'kill' | 'unkill'` metric labels present, auth-helper `if (!requireAdminKey(req, res)) return;` precedes every side-effect (env assignment + metric emit).
+
+**Novel family #36** — third security-critical edge after #193 PENTACONTAGON + #194 HMAC verifier. Cross-edges with #156 (kill_switch source enum), #157 (rejected label), #193/#194 (shared auth-primitive philosophy).
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 52nd integrity edge — DIPENTACONTAGON.** Henipentacontagon → Dipentacontagon (52-gon). 36 families across 52 edges.
+
+**~235-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.72] - 2026-04-18
 
 ### Added — HMAC verifier implementation discipline 8-invariant sync (HENIPENTACONTAGON)
