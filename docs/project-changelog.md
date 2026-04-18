@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.70] - 2026-04-18
+
+### Added — Redis client + pub/sub triple discipline 8-invariant sync (ENNEATETRACONTAGON)
+
+`tests/integration/redis-client-pubsub-discipline-sync.test.ts` — pins 8 axes on `src/redis/index.ts`. **ENNEATETRACONTAGON — 49th integrity edge.** Opens **invariant family #33** (second database-client substrate, after #191 Postgres).
+
+**8 invariant axes:** ioredis default + Cluster type imports, three singletons (mainClient + pubClient + subClient — Redis requires separate pub/sub connections), env creds (REDIS_HOST/PORT/PASSWORD/DB), maxRetriesPerRequest ≤ 10 (hang prevention during Redis failover), cluster-mode gate `REDIS_CLUSTER_ENABLED === 'true'` + getRedisClusterClient() routing, mainClient.on('error') with logger.error (NOT console.error), required exports (getRedisClient + getPubClient + getSubClient), cluster re-exports (getRedisClusterClient + getClusterHealth + closeRedisClusterClient + RedisClusterConfig) + DEFAULT_CONFIG object.
+
+**Novel family #33** — second database-client substrate, distinct from #191 Postgres by: (a) pub/sub triple separation (Redis protocol-mandated), (b) cluster-mode routing gate, (c) retry-per-request bound. Complementary to #187 (health Redis ping downstream).
+
+**No drift found.** Reviewer 9.6/10 SHIP (0 crit/high/med).
+
+**Closes 49th integrity edge — ENNEATETRACONTAGON.** Octatetracontagon → Enneatetracontagon (49-gon). 33 families across 49 edges. **1 edge to pentacontagon (50-gon milestone = 2.5× icosagon).**
+
+**~245-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.69] - 2026-04-18
 
 ### Added — Postgres client pool discipline 8-invariant sync (OCTATETRACONTAGON)
