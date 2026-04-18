@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.62] - 2026-04-18
+
+### Added — Cross-tsconfig variant coherence 7-invariant sync (HENITETRACONTAGON)
+
+`tests/integration/tsconfig-variant-coherence-discipline-sync.test.ts` — pins 7 axes across the 3-way tsconfig triangle (root + tsconfig.worker.json + dashboard/tsconfig.json). **HENITETRACONTAGON — 41st integrity edge.** Opens **invariant family #25** (cross-tsconfig variant coherence).
+
+**7 invariant axes:** all 3 parse (sanity), shared baseline `strict: true` in all 3, shared baseline `skipLibCheck: true` in all 3, worker has `@cloudflare/workers-types` + `node` in types, worker `outDir: "dist/worker"` + scoped include (no cross-contamination), dashboard `jsx: "react-jsx"` + `lib` includes DOM+DOM.Iterable, worker+dashboard `isolatedModules: true` (bundler-compat), dashboard `noEmit: true` + worker module ESM-compatible. 10 test cases total.
+
+**Novel family #25** — first multi-config TypeScript triangle edge. Distinct from #177 (single-root content) and #179 (tsconfig.worker.json existence only). Locks the shared-baseline + variant-specific-divergence invariant.
+
+**Implementation note — 2 bugs caught during test-driving:**
+- Docstring glob `**/*.ts` closed JSDoc prematurely (twice, lines 39+63) → rewrote descriptively.
+
+**No drift found.** Reviewer 9.7/10 SHIP. CI CLEAN 1195/1195.
+
+**Closes 41st integrity edge — HENITETRACONTAGON.** Tetracontagon → Henitetracontagon (41-gon). 25 families across 41 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.61] - 2026-04-18
 
 ### Added — Dockerfile multi-stage build discipline 8-invariant sync (TETRACONTAGON — 40-gon milestone)
