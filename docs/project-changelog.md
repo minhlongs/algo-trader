@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.67] - 2026-04-18
+
+### Added — Winston logger configuration discipline 7-invariant sync (HEXATETRACONTAGON)
+
+`tests/integration/winston-logger-config-discipline-sync.test.ts` — pins 7 axes on `src/utils/logger.ts`. **HEXATETRACONTAGON — 46th integrity edge.** Opens **invariant family #30** (structured-logging substrate).
+
+**7 invariant axes:** winston import + createLogger, level resolved from LOG_LEVEL env with `'info'` default (env-tunable + prod-safe), JSON format in production + simple+colorize in dev (log-aggregator contract), Console transport always present (stdout baseline), File transports production-only (NODE_ENV===production gate), rotation bounds (maxsize ≥1MB + maxFiles ≥7 on every File transport — disk-exhaustion prevention), error.log at level:"error" + combined.log (persistence coverage), both named + default export (caller import-style independence).
+
+**Novel family #30** — first structured-logging substrate edge. Cross-edge with #186 (Express security mw) + #188 (error-handler logger.error audit) — silent logger drift would break both upstream audit trails.
+
+**No drift found.** Reviewer 9.6/10 SHIP. Attack-resistant (hardcoded `level:'debug'` with LOG_LEVEL-mentioning comment fails case 3 as intended).
+
+**Closes 46th integrity edge — HEXATETRACONTAGON.** Pentatetracontagon → Hexatetracontagon (46-gon). 30 families across 46 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.66] - 2026-04-18
 
 ### Added — Error-handler response-contract discipline 8-invariant sync (PENTATETRACONTAGON)
