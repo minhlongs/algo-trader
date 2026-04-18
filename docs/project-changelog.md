@@ -1,5 +1,52 @@
 # Project Changelog - Algo Trader
 
+## [2.4.48] - 2026-04-18
+
+### Added — Qwen Staleness-Alert SLA-Boundary 4-Surface Sync Validator (HEPTACOSAGON — first SLA-boundary edge)
+
+`tests/integration/qwen-stale-alert-sla-boundary-sync.test.ts` — pins the MATHEMATICAL inequality `alert_threshold_s > cron_interval_s` with canonical 1-hour grace window across **4 canonical declaration surfaces**. **HEPTACOSAGON MILESTONE — the 27th integrity edge** and the **first SLA-boundary coupling edge**. Opens invariant **family #11** (after enum partition, cross-module, binary flag, range-bound, temporal ordering, temporal derivation, structured-document shape, composite multi-column, array element-subset, external-API typed boundary).
+
+The Qwen observability stack has two stale-detection alerts that couple cron-job intervals (writer side, in MILLISECONDS) to alert-freshness thresholds (monitor side, in SECONDS). The invariant: `alert_threshold_s > cron_interval_s` (grace > 0). Drift where `alert_threshold ≤ cron_interval` would page on every normal run (page storm). Drift where `alert_threshold >> cron_interval + 1h` would allow 2+ missed runs before paging (operator blind spot). The canonical grace is **1 hour** exactly.
+
+**4 surfaces locked:**
+1. signals-loop cron at `src/wiring/qwen-signals-loop.ts:22`: `const DEFAULT_INTERVAL_MS = 6 * 3600 * 1000;` — 21,600,000 ms = 6h.
+2. drawdown-monitor cron at `src/wiring/qwen-drawdown-monitor.ts:23`: `const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;` — same 21,600,000 ms (different arithmetic syntax, semantically identical).
+3. QwenSignalsLoopStale alert threshold at `docker/grafana/provisioning/alerting/qwen-alerts.yml`: `evaluator.params: [25200]` — 25,200 seconds = 7h.
+4. QwenDrawdownMonitorStale alert threshold: same `[25200]` — 25,200 seconds.
+
+Grace = 25,200s - 21,600s = **3,600s = 1 hour**. A single delayed run doesn't page; two consecutive misses does.
+
+**11 test cases:** (1) signals-loop DEFAULT_INTERVAL_MS = 21,600,000 ms (6h), (2) drawdown-monitor DEFAULT_INTERVAL_MS = 21,600,000 ms (6h), (3) QwenSignalsLoopStale threshold = 25,200s (7h), (4) QwenDrawdownMonitorStale threshold = 25,200s (7h), (5) cross-wiring cron parity (both 6h), (6) cross-alert threshold parity (both 25,200s), (7) grace-window positivity for signals-loop (> 0, no page storm), (8) grace-window positivity for drawdown-monitor (> 0), (9) grace-window magnitude for signals-loop = 3,600s (1h canonical), (10) grace-window magnitude for drawdown-monitor = 3,600s, (11) unit-of-measure discipline — alert_threshold_s = cron_interval_ms/1000 + grace_s (end-to-end numerical relationship).
+
+**Novel invariant family #11 — SLA-boundary coupling.** Distinct from all 10 prior families:
+- **Code ↔ Infra coupling** — first edge spanning CODE (interval constant in ms) + INFRA (Grafana alert YAML threshold in seconds). Prior 26 edges all coupled code surfaces only (or code + external API #169).
+- **Unit-of-measure asymmetry** — writer side in MILLISECONDS (JS Date/setInterval convention), alert side in SECONDS (Prometheus/Grafana convention). `/ 1000` conversion factor must be respected when comparing.
+- **Mathematical inequality with bounded grace** — not "col1 ≥ col2" (like #164 temporal ordering) but `alert > cron + grace` with grace ≥ 1h canonical. The grace-window magnitude is the novel invariant — both too-small (flaky) and too-large (blind) directions fail loudly.
+- **Cross-wiring parity** — both monitors must cron identically (operator paged consistently). Split cadence requires split thresholds in coordinated sweep.
+- **Meta-assertion for typo-flip protection** (case 11) — catches the specific 25_200_000 vs 25_200 typo class (7000h blind spot if alert threshold accidentally in ms).
+
+**Why no env-override on grace.** The 1-hour canonical grace is a HARD policy, not a tuning parameter. If future operator policy relaxes to 2h, update `EXPECTED_GRACE_S` in a coordinated PR with rationale — forces deliberate policy review, not silent drift.
+
+**Drift scenarios covered (4):**
+- Cron interval doubles to 12h without alert threshold update → case 9 fails (grace = -5h = negative).
+- Alert threshold drops to 21,600s (= cron interval) → case 7 fails (grace = 0, page storm).
+- Signals-loop cron changes to 3h without drawdown-monitor following → case 5 fails (cross-wiring cron parity broken).
+- Grafana threshold typo flip from `25200` (seconds) to `25200000` (interpreted as ms) → grace becomes 7000 hours; cases 9+11 fail.
+
+**Extraction scoping.** Arithmetic parser sandboxed via `/^[0-9*]+$/` regex (no eval) — handles both `6 * 3600 * 1000` and `6 * 60 * 60 * 1000` forms, rejects injection. Alert YAML regex anchored by alert title (`QwenSignalsLoopStale\b` word boundary prevents future `…Stale2` collisions), then matches `evaluator.params: [N]` inline-brace style.
+
+**No drift found in active surfaces** — signals-loop 6h, drawdown-monitor 6h, both alert thresholds 25,200s, grace 3,600s all align with canonical 6h cron + 1h grace policy.
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 2 Medium non-blocking, 3 Low, 2 Nitpick):** M-1 arithmetic regex permits `*6*3600*1000` leading-asterisk pattern (safe-by-construction via parseInt NaN guard; could tighten); M-2 YAML regex matches inline-brace `evaluator: {...}` but not block style (Grafana accepts both; js-yaml migration candidate for future edge); L-1 `EXPECTED_*` constants intentionally independent (case 11 cross-validates); L-2 `for: 10m` Grafana clause adds effective 10-min to fire-time (out of scope, "for-duration sync" is candidate for family #11 extension); L-3 Grafana YAML schema pinning not asserted. All non-blocking.
+
+**CI note — full suite retry-CLEAN (1042/1042 on retry, 1 transient flake on first run likely network-dependent).**
+
+**Closes 27th integrity edge — HEPTACOSAGON.** Prior 26: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164, #165, #166, #167, #168, #169. **Integrity hexacosagon → heptacosagon (27-gon).** Pillar 2 observability + Pillar 3 feedback-loop cadence now coupled: cron intervals in code + freshness thresholds in Grafana alerts sync-validated; a cron-interval change that forgets the alert threshold update fails CI before production pages on every normal run or goes blind to stall-outs.
+
+**287-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.47] - 2026-04-18
 
 ### Added — Polymarket Gamma API External-Contract 5-Surface Sync Validator (HEXACOSAGON — first external-API edge)
