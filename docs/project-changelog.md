@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [2.4.34] - 2026-04-18
+
+### Added — Qwen Kill-Switch `source` Label Enum 3-Surface Sync Validator
+
+`tests/integration/qwen-kill-switch-source-enum-sync.test.ts` — pins the `source` label on the `qwenKillSwitchActive` Prometheus gauge (L1 kill-switch provenance tag) across **3 canonical declaration surfaces**: metric help text in `src/middleware/prometheus-metrics.ts` (help line ends with `Labels: source=env|kv` — operator-facing contract), TS union of the `setQwenKillSwitch(source: 'env' | 'kv', active: boolean)` helper signature (compile-time contract), and production emission sites in `src/wiring/qwen-drawdown-monitor.ts` (`setQwenKillSwitch('env', …)` — only `env` wired today, `kv` is reserved).
+
+**11 test cases:** 3 sanity floors (help ≥ 2 sources incl. env+kv, union ≥ 2, prod ≥ 1), test-harness-exercises-all-declared (`qwen-observability.test.ts` must emit every declared source), `labelNames: ['source']` declaration assertion, snake_case discipline, help↔union bijection (no declaration drift), prod⊆help∩union (every prod emission documented + typed), canonical `ACTIVE_SOURCES={'env'}` equality, reserved-reservation-integrity (every `RESERVED_SOURCES` member is declared in help + union but absent from prod emissions), partition-exactness (`help∪union` = `ACTIVE∪RESERVED` — no orphan, no unexpected).
+
+**Design note on `'kv'` — actively-populated reservation.** The L1 kill-switch has two intended provenances: `env` (boot-time `QWEN_KILL` env var, always-on L1 guard, wired in `qwen-drawdown-monitor`) and `kv` (admin-API + Cloudflare KV toggle, operator-controlled, NOT yet wired in prod). The `'kv'` slot is declared in the help text + TS union + exercised by `src/wiring/__tests__/qwen-observability.test.ts:14-15` (which asserts both labels propagate), but no `src/` production file currently emits `setQwenKillSwitch('kv', …)`. Test documents this via `RESERVED_SOURCES = new Set(['kv'])` — structurally parallel to PR #154's `RESERVED_STATUSES = {'acknowledged'}` (declared in migration CHECK but not yet wired), distinct from PR #155's empty `RESERVED_ACTIONS = Set([])` (ready-to-receive harness with no current reservation).
+
+**Reservation-graduation protocol.** When the admin-API KV toggle ships: (1) add `setQwenKillSwitch('kv', …)` in the new handler (e.g. `admin-qwen-routes.ts`), (2) move `'kv'` from `RESERVED_SOURCES` to `ACTIVE_SOURCES` in this test. The partition-exactness assertion catches any half-sweep (prod emits `kv` but test still reserves it → fails; or inverse).
+
+**Extraction scoping.** TS union parsed from the `setQwenKillSwitch` signature regex (keyed on function name so no other `source:` parameter leaks). Help-text vocabulary parsed from the trailing `source=a|b|…` phrase in the gauge's `help` string (single source of truth, stable across help-text rewrites). Call-site regex scoped to specific files (`qwen-drawdown-monitor.ts` for prod, `qwen-observability.test.ts` for harness) so unrelated tests that happen to mock `setQwenKillSwitch` don't leak.
+
+**No drift found in active surfaces** — help text (`env|kv`), TS union (`'env' | 'kv'`), prod emissions (`env` only), and test emissions (`env` + `kv`) all align with the reservation-state contract. Test earns its keep against FUTURE drift: a developer who adds `setQwenKillSwitch('kv', …)` in prod without updating `ACTIVE_SOURCES` will fail the `ACTIVE_SOURCES canonical set matches prod emissions today` assertion, surfacing the KV-toggle graduation.
+
+**Closes 13th integrity edge.** Prior 12: PRs #132 (alert↔metric), #135 (dashboard↔metric), #137 (runbook-index↔file), #143 (alert↔runbook URL), #145 (doc-enum↔code-enum trigger_reason), #146 (runbook↔code-metric), #148 (CLI↔route), #150 (CLI self-consistency), #152 (CLAUDE phase guide↔CI gate), #153 (decision enum 3-way sync), #154 (status enum 4-surface sync), #155 (kill-action enum 3-surface sync). This edge extends the Pillar 2 observability integrity shape onto the **second label dimension** (after PR #155 closed the first — kill-switch `action` verb label) and locks the L1 kill-switch provenance audit trail. **Integrity dodecagon → tridecagon (13-gon).**
+
+**283-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.33] - 2026-04-18
 
 ### Added — Admin Qwen Kill-Switch `action` Label Enum 3-Surface Sync Validator
