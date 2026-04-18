@@ -1,5 +1,25 @@
 # Project Changelog - Algo Trader
 
+## [2.4.63] - 2026-04-18
+
+### Added — Prometheus metric naming + HELP discipline 8-invariant sync (DOTETRACONTAGON)
+
+`tests/integration/prometheus-metric-naming-discipline-sync.test.ts` — pins 8 naming-convention axes on `src/middleware/prometheus-metrics.ts` (26 metrics). **DOTETRACONTAGON — 42nd integrity edge.** Opens **invariant family #26** (Prometheus metric naming + HELP discipline).
+
+**8 invariant axes:** snake_case names, Counter names end `_total` (convention), Histogram names end `_seconds` (bucket-unit parity), HELP text ≥15 chars, every metric registers to shared `register`, no duplicate names (prom-client boot-throw), Qwen-domain metrics use `algo_trader_qwen_` prefix (alert YAML contract from #172), 6 load-bearing names present (alert/dashboard reference).
+
+**Novel family #26** — first metric-registry naming-convention edge. Graduates Prometheus best practice (snake_case + suffix-by-type) from tribal knowledge to CI gate. Complementary to #171 (histogram bucket structural), #172 (alert rule schema), #157 (label enum).
+
+**Cross-edge with #172** — Qwen namespace discipline: alert rules reference `algo_trader_qwen_*` verbatim; drift breaks alerting silently.
+
+**No drift found.** 26 metrics scanned; all pass snake_case + HELP + registration + namespace contract. Reviewer 9.6/10 SHIP.
+
+**Closes 42nd integrity edge — DOTETRACONTAGON.** Henitetracontagon → Dotetracontagon (42-gon). 26 families across 42 edges.
+
+**~230-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.62] - 2026-04-18
 
 ### Added — Cross-tsconfig variant coherence 7-invariant sync (HENITETRACONTAGON)
