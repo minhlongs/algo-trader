@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.66] - 2026-04-18
+
+### Added — Error-handler response-contract discipline 8-invariant sync (PENTATETRACONTAGON)
+
+`tests/integration/error-handler-response-contract-discipline-sync.test.ts` — pins 8 axes on `src/middleware/error-handler.ts`. **PENTATETRACONTAGON — 45th integrity edge.** Opens **invariant family #29** (error-handler response-contract discipline).
+
+**8 invariant axes:** required exports (errorHandler + createApiError + asyncHandler + ApiError), ApiError interface has statusCode + code, errorHandler 4-arg Express error signature `(err, req, res, next)`, default statusCode=500 + code=INTERNAL_ERROR, response body `{ error: { message, code } }` after `res.status(statusCode).json(...)`, logger.error called (NOT console.error) with err.stack, no raw stack trace in response body (InfoDisclosure prevention), createApiError signature `(message, statusCode=500, code?)`, asyncHandler wraps fn in `Promise.resolve(...).catch(next)`.
+
+**Novel family #29** — first HTTP-error-response substrate edge. Complementary to #186 (mount order) — this locks the INTERNAL contract. Stack-in-body exclusion correctly scopes only to `res.json({...})` block; logger.error args legitimately contain `stack: err.stack` (not a false positive).
+
+**No drift found.** Reviewer 9.7/10 SHIP.
+
+**Closes 45th integrity edge — PENTATETRACONTAGON.** Tetratetracontagon → Pentatetracontagon (45-gon). 29 families across 45 edges.
+
+**~220-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.65] - 2026-04-18
 
 ### Added — Health endpoint response-contract discipline 8-invariant sync (TETRATETRACONTAGON)
