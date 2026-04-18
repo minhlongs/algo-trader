@@ -1,5 +1,47 @@
 # Project Changelog - Algo Trader
 
+## [2.4.54] - 2026-04-18
+
+### Added — CI script-file reference integrity 5-invariant sync (TRITRIACONTAGON — 33rd edge)
+
+`tests/integration/ci-script-reference-integrity-sync.test.ts` — locks the contract between `.github/workflows/ci.yml` `run:` step references to `scripts/X.Y` AND the actual file tree. **TRITRIACONTAGON — 33rd integrity edge.** Opens **invariant family #17** (CI-referenced script file reference integrity).
+
+**4 Gate-specific scripts pinned:** validate-strategies.mjs (Gate 1), ci-gate-secret-scan.mjs (Gate 2), ci-gate-deploy-smoke.mjs (Gate 5), ci-gate-paper-gate-lock.sh (Gate 6).
+
+**5 invariant axes:**
+1. Existence coherence — every `scripts/X.Y` CI ref exists on disk
+2. Shape discipline — `.mjs` files have Node-ESM shape (import/export/const/function/shebang); `.sh` files have bash shebang
+3. Gate 7 precondition — `.sh` files shellcheck-compatible
+4. Orphan-script prohibition — `ci-gate-*` prefix signals CI binding; on-disk files without CI ref fail
+5. Gate-specific presence — 4 named Gate scripts explicitly pinned
+
+**11 test cases:** sanity floor, existence check, ESM shape (.mjs), bash shebang (.sh), orphan check, non-empty, Gate 1/2/5/6 presence, composite 4-Gate integrity.
+
+**Novel family #17 — CI-referenced script file reference integrity.** Distinct from 16 prior:
+- **Filesystem side of CI contract** — complement to #175 which locks CI YAML schema side. Cross-edge coupling with #175 provides full 2-way contract (YAML syntax + filesystem existence).
+- **Prefix-as-CI-binding convention** — `ci-gate-*` prefix signals required wiring into CI; orphan = retract or wire up.
+- **Gate-7 shape precondition** — shellcheck gate depends on bash shebang; this edge catches shebang drops BEFORE shellcheck runs.
+
+**Drift scenarios covered (4):**
+- `run: node scripts/new-gate.mjs` added without committing file → case 2 fails.
+- `ci-gate-*.sh` removed from disk, CI ref kept → case 2 fails.
+- `.sh` drops shebang → case 4 fails (Gate 7 precondition).
+- New `ci-gate-X.sh` on disk without CI wiring → case 5 fails (orphan).
+
+**Extraction scoping.** Script-path regex `\bscripts/([A-Za-z0-9_.-]+)\b` captures refs across `&&`/`||` shell chains. ESM-shape detection scans first 20 lines for import/export/const/function/shebang. Bash-shebang accepts `#!/bin/bash`, `#!/usr/bin/bash`, `#!/usr/bin/env bash`.
+
+**No drift found in active surfaces** — 4 CI refs, 4 files on disk, all shape-correct. No orphan `ci-gate-*` files.
+
+**Reviewer findings (9.7/10 SHIP — 0 Critical, 0 High, 2 Medium, 4 Low):** M-1 subdir-truncation latent risk (regex doesn't span subdirs); M-2 ESM-shape 20-line window tight; L-1/2/3/4 shebang bash-vs-sh scope, multi-workflow future, composite redundancy, constant naming. All non-blocking.
+
+**CI note — full suite CLEAN (1108/1108, no flakes).**
+
+**Closes 33rd integrity edge — TRITRIACONTAGON.** Prior 32: PRs #132–#175. **Integrity dotriacontagon → tritriacontagon (33-gon).** 17 invariant families across 33 edges.
+
+**235-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.53] - 2026-04-18
 
 ### Added — GitHub Actions workflow schema + version-pin discipline 5-invariant sync (DOTRIACONTAGON — first CI-workflow edge)
