@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.80] - 2026-04-19
+
+### Added — SignalTierFilter primitive discipline 9-invariant sync (ENNEAPENTACONTAGON)
+
+`tests/integration/signal-tier-filter-discipline-sync.test.ts` — pins 9 axes on `src/signal/signal-tier-filter.ts`. **ENNEAPENTACONTAGON — 59th integrity edge.** Opens **invariant family #43** (fifth signal-pipeline substrate).
+
+**9 invariant axes:** filterSignalsForTier signature, TIER_SIGNAL_CONFIG[tier] lookup + import from signal-types (shared config not hardcoded), two-gate eligibility `confidence >= minConfidence && expiresAt > now` (cross-edge #163 range + #201 TTL direction), ENTERPRISE branch no window filter + `.sort((a,b) => b.ts - a.ts)` desc, PRO branch windowStart filter + desc sort, FREE branch bestByMarket Map keyed on `sig.market` + replacement guard `!existing || sig.ts > existing.ts`, canAccessSse returns `TIER_SIGNAL_CONFIG[tier].sseEnabled`, shouldPushRealtime strict `tier === 'ENTERPRISE'` (NOT `!== 'FREE'` — revenue-model lock).
+
+**Novel family #43** — fifth signal-pipeline substrate. Cross-edges #163 (confidence range + minConfidence) + #201 (TTL expiresAt direction) — genuine multi-edge invariant locked simultaneously in case 4.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 59th integrity edge — ENNEAPENTACONTAGON.** Octapentacontagon → Enneapentacontagon (59-gon). 43 families across 59 edges. **1 edge to HEXACONTAGON (60-gon = 3× icosagon milestone).**
+
+**~220-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.79] - 2026-04-19
 
 ### Added — SignalTtlEnforcer primitive discipline 9-invariant sync (OCTAPENTACONTAGON)
