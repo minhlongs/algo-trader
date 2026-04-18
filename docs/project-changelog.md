@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [2.4.72] - 2026-04-18
+
+### Added — HMAC verifier implementation discipline 8-invariant sync (HENIPENTACONTAGON)
+
+`tests/integration/hmac-verifier-implementation-discipline-sync.test.ts` — pins 8 axes on `src/utils/hmac-verifier.ts`. **HENIPENTACONTAGON — 51st integrity edge.** Opens **invariant family #35** (HMAC primitive implementation).
+
+**8 invariant axes:** crypto destructured import (createHmac + timingSafeEqual), computeHmacSha256 exported using `createHmac('sha256')` + `.digest('hex')`, verifyHmacSha256 5-param signature with `maxSkewMs: number = 300_000` default (5-min replay window), timestamp window check BEFORE crypto compute (DoS-prevention ordering), sha256= prefix guard + `signature.slice(7)`, buffer-length `a.length !== b.length` check BEFORE timingSafeEqual (crash prevention), `timingSafeEqual(a, b)` used (NOT `===` on buffers — timing-attack prevention), try/catch wraps Buffer.from + timingSafeEqual (graceful invalid-hex handling).
+
+**Novel family #35** — second security-critical edge after #193 PENTACONTAGON milestone. Complementary to #193 (endpoint USE of this primitive). Novel negative assertion pattern (case 8 `provided === expected` must be ABSENT) hardens against `===` swap drift.
+
+**Implementation note — 1 bug caught during test-driving:**
+- Ordering check regex matched function definition instead of callsite → scoped to `computeHmacSha256(secret, rawBody)` callsite pattern.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 51st integrity edge — HENIPENTACONTAGON.** Pentacontagon → Henipentacontagon (51-gon). 35 families across 51 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.71] - 2026-04-18
 
 ### Added — Signal-ingest HMAC authentication contract discipline 10-invariant sync (PENTACONTAGON — 50-gon MILESTONE)
