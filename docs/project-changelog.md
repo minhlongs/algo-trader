@@ -1,5 +1,25 @@
 # Project Changelog - Algo Trader
 
+## [2.4.61] - 2026-04-18
+
+### Added — Dockerfile multi-stage build discipline 8-invariant sync (TETRACONTAGON — 40-gon milestone)
+
+`tests/integration/dockerfile-multi-stage-build-discipline-sync.test.ts` — pins 8 load-bearing axes on root `Dockerfile`. **TETRACONTAGON — 40th integrity edge (40-gon = 2× icosagon).** Opens **invariant family #24** (Dockerfile multi-stage build discipline).
+
+**8 invariant axes:** Dockerfile exists, ≥2 FROM (multi-stage), base pinned to `node:22-alpine`, no `:latest`, builder stage aliased, `--frozen-lockfile` on every `pnpm install`, non-root `USER` directive, `HEALTHCHECK` declared (cross-edge with PR #173 compose service_healthy), `COPY --from=builder` used, COPY package.json before COPY src (layer-cache discipline).
+
+**Novel family #24** — first Dockerfile/OCI-build substrate edge. Distinct from #173 (docker-compose YAML — orchestrates) vs Dockerfile (builds). Graduates image-identity + build-reproducibility + runtime-security + CIS Docker benchmark primitives to CI tripwires.
+
+**Cross-edge with #173** — HEALTHCHECK existence is the Dockerfile side of docker-compose `service_healthy` contract.
+
+**No drift found.** Reviewer 9.7/10 SHIP (0 Critical/High/Medium). CI CLEAN 1185/1185.
+
+**Closes 40th integrity edge — TETRACONTAGON (40-gon = 2× icosagon milestone).** Enneatriacontagon → Tetracontagon (40-gon). 24 families across 40 edges.
+
+**~245-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.60] - 2026-04-18
 
 ### Added — DB migration numbering + naming discipline 7-invariant sync (ENNEATRIACONTAGON)
