@@ -1,5 +1,51 @@
 # Project Changelog - Algo Trader
 
+## [2.4.44] - 2026-04-18
+
+### Added — QualityMetrics JSONB Structured-Document Shape 4-Surface Sync Validator (TRICOSAGON — first JSONB schema edge)
+
+`tests/integration/strategy-review-metrics-jsonb-schema-sync.test.ts` — pins the 6-field `QualityMetrics` JSONB document shape across **4 canonical declaration surfaces**. **TRICOSAGON MILESTONE — the 23rd integrity edge** and the **first structured-document field-shape / JSONB schema edge**. Opens invariant **family #7** (after enum partition, cross-module, binary flag, range-bound, temporal ordering, temporal derivation).
+
+Two tables persist Qwen quality metrics as JSONB blobs — `strategy_review_tasks.metrics` (when a review is queued) + `qwen_signals_loop_runs.metrics` (audit journal for every evaluation run). Both accept ANY JSON at the DB layer (no CHECK jsonb_typeof, no generated columns). Authority for the structured document shape lives exclusively in the TypeScript `QualityMetrics` interface + the writer's default-literal initialization. A silent field-add, field-rename, or cross-table shape-drift would leak into BOTH tables' JSONB blobs and break any future reader expecting the documented 6-field contract.
+
+**4 surfaces locked:**
+1. Migration 017:10 + 018 `metrics JSONB NOT NULL` column declarations — unconstrained authority (accepts any valid JSON).
+2. TS `QualityMetrics` interface at `src/wiring/qwen-signals-loop.ts:63-70` — 6 fields with per-key nullability: `winRate: number | null`, `sharpe: number | null`, `signalCount: number`, `closedTradeCount: number`, `windowStartMs: number`, `windowEndMs: number`. **SINGLE SOURCE OF TRUTH.**
+3. Writer default literal `const base: QualityMetrics = {...}` at line 84 — 6-key initialization with type-checked values (nulls for rates, zeros for counts, Date.now() arithmetic for window bounds).
+4. Writer `JSON.stringify(metrics)` call sites at line 166 (persistRunJournal → qwen_signals_loop_runs) + line 189 (insertReviewTask → strategy_review_tasks) — **cross-table uniformity**. Both tables serialize the SAME shape.
+
+**12 test cases:** (1) both migrations declare `metrics JSONB NOT NULL`, (2) interface parses exactly 6 fields, (3) default literal extracts exactly 6 keys, (4) interface keys = CANONICAL_KEYS set, (5) per-key type discipline — NULLABLE_KEYS (winRate, sharpe) match `number | null`, REQUIRED_KEYS (counts + window bounds) match bare `number`, (6) default literal keys = CANONICAL_KEYS, (7) interface↔literal bidirectional parity (no missing, no extra in either direction), (8) camelCase style discipline, (9) ≥ 2 `JSON.stringify(metrics)` call sites (cross-table uniformity), (10) NULLABLE ∪ REQUIRED = CANONICAL partition with empty intersection, (11) nullability rationale — only rate/ratio keys (winRate, sharpe) are nullable per division-by-zero guard; counts + window bounds always concrete, (12) window-bounds unit coherence — both windowStartMs + windowEndMs typed `number` (Unix-ms, cross-PR #165 discipline).
+
+**Novel invariant family #7 — structured-document field shape.** Distinct from all 6 prior families:
+- **Canonical key-set partition** — locks the SHAPE of a JSONB document (key-set + per-key type), not just a scalar value.
+- **Per-key nullability discipline** — catches flips where a REQUIRED_KEY becomes nullable (silent `| null` addition) or a NULLABLE_KEY loses its null escape hatch (e.g. changes to `number`, breaking division-by-zero guard callers).
+- **Cross-table uniformity** — both tables' `metrics` JSONB must carry the same shape; future readers of either table work on the other.
+- **Nullability-rationale encoding** — test asserts which keys are nullable (winRate, sharpe) and documents WHY (rate/ratio metrics need non-zero denominator). Future contributors can't silently make counts nullable without breaking the assertion.
+- **Writer-contract authority over CHECK** — Postgres CAN express JSONB schema via `jsonb_typeof` + path extraction, but would duplicate interface shape across DB and code (DRY violation). TS interface is the single source of truth; this test is the sync-validator.
+
+**Why no CHECK constraint.** Postgres JSONB supports type-checking via `CHECK (jsonb_typeof(metrics->'winRate') = 'number' OR jsonb_typeof(metrics->'winRate') = 'null')` for each field. We choose not to use it — enforcing the 6-field shape at DB layer would require 6 CHECK clauses that shadow the TS interface, and any schema evolution would require coordinated migration + interface update (migration friction). Writer-contract authority is cleaner: TS interface is SSOT, JSON.stringify serializes deterministically, test validates synchronization.
+
+**Cross-PR #165 unit coherence canary** (case 12). `windowStartMs` and `windowEndMs` are Unix-ms (like `signals.ts` + `signals.expires_at` locked by PR #165). If a future refactor changes one to Unix-seconds without the other, cross-table rollups that join on time windows would silently miss rows. Case 12 asserts both are typed identically; cross-PR discipline propagates.
+
+**Drift scenarios covered (5):**
+- Writer adds `{ ...metrics, source: 'qwen' }` inline spread to one call site → case 9 count drops below 2, fails.
+- Interface adds `reviewId: string` without updating default literal → cases 2 + 3 size mismatch, case 7 parity fails.
+- Developer renames `winRate` → `win_rate` (snake_case drift) → case 4 fails (interface keys ≠ CANONICAL); case 8 camelCase style would catch too.
+- Nullability discipline flipped (e.g. `signalCount: number | null`) → case 5 fails (REQUIRED key now nullable).
+- One writer site stringifies a subset of fields (`{ winRate, sharpe }`) for bandwidth optimization → case 9's bare-identifier regex misses, falls below sanity floor.
+
+**Extraction scoping.** Interface regex `/export\s+interface\s+QualityMetrics\s*\{([\s\S]*?)^\}\s*$/m` anchored to QualityMetrics name. Default-literal regex `/const\s+base\s*:\s*QualityMetrics\s*=\s*\{([\s\S]*?)\};/` keyed on type annotation (isolates from other object literals in the 400-line file). JSON.stringify count regex `/JSON\.stringify\s*\(\s*metrics\s*\)/g` strict on bare-identifier argument — inline transforms or spread expressions fail sanity floor loudly (intentional loud-fail forces developer to update extractor or retract refactor).
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 2 Medium non-blocking, 3 Low):** M-1 second `let metrics: QualityMetrics = {...}` fallback literal at line 234 is invisible to `const base:` regex (TS structural typing catches it — asymmetric coverage documented); M-2 no round-trip DB write/read test (static-parse is project convention, documented non-goal); L-1 interface regex end-anchor brittle to unusual reformatting; L-2 type-token regex excludes `<>`/`Date` (fine for current shape); L-3 cross-table uniformity count-based not direct shape-comparison (pragmatic approximation). All non-blocking.
+
+**CI note — same transient scanner + llm-content-generator network flakes as PRs #159–#165** (unrelated; clean CI runner passes 7/7 gates).
+
+**Closes 23rd integrity edge — TRICOSAGON.** Prior 22: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164, #165. **Integrity doicosagon → tricosagon (23-gon).** Pillar 3 feedback-loop JSONB payload contract locked — the 6-field QualityMetrics blob that flows into BOTH audit journal and review queue has its structured shape sync-validated.
+
+**360-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.43] - 2026-04-18
 
 ### Added — `signals.expires_at` Temporal Derivation 3-Surface Sync Validator (DOICOSAGON — first computed-column edge)
