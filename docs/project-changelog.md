@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.74] - 2026-04-19
+
+### Added — Qwen drawdown-monitor wiring discipline 10-invariant sync (TRIPENTACONTAGON)
+
+`tests/integration/qwen-drawdown-monitor-wiring-discipline-sync.test.ts` — pins 10 axes on `src/wiring/qwen-drawdown-monitor.ts`. **TRIPENTACONTAGON — 53rd integrity edge.** Opens **invariant family #37** (L3 rollback-wiring substrate).
+
+**10 invariant axes:** DEFAULT_INTERVAL_MS = 6h (6*60*60*1000), ROLLING_WINDOW_MS = 24h (24*60*60*1000), QWEN_DRAWDOWN_MAX_PCT env + 5% default, isKillSwitchActive exact `process.env.QWEN_KILL === '1'` compare (inversion-lock), isQwenEnabled kill-check-FIRST then `_qwenEnabled` flag (compose-order lock), disableQwen wiring (flag=false + lastBreachAt=Date.now() + setQwenDrawdownAutoDisabled(true) + logger.warn), enableQwen wiring (flag=true + lastBreachAt=null + setQwenDrawdownAutoDisabled(false) + logger.info), 6 required exports (isKillSwitchActive + isQwenEnabled + disableQwen + enableQwen + getLastBreachAt + computeRollingPnl), computeRollingPnl typed `{pnlPct: number|null; totalSize; totalPnl}` return.
+
+**Novel family #37** — first L3 rollback-wiring substrate edge. Cross-edges with #187 (health Qwen state readout consumer) + #195 (admin kill-switch consumer). This edge locks the WIRING IMPLEMENTATION while #195 locks the route CONTRACT.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 53rd integrity edge — TRIPENTACONTAGON.** Dipentacontagon → Tripentacontagon (53-gon). 37 families across 53 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.73] - 2026-04-19
 
 ### Added — Admin Qwen kill-switch route contract discipline 10-invariant sync (DIPENTACONTAGON)
