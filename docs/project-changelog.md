@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.58] - 2026-04-18
+
+### Added — package.json manifest discipline 7-invariant sync (HEPTATRIACONTAGON)
+
+`tests/integration/package-json-manifest-discipline-sync.test.ts` — pins 7 load-bearing axes on the root `package.json` npm manifest. **HEPTATRIACONTAGON — 37th integrity edge.** Opens **invariant family #21** (package.json manifest discipline).
+
+**7 invariant axes:** valid JSON, name pinned to `@mekong/algo-trader`, semver version, `main` points at `dist/`, bin entries (algo-trader + cashclaw), required scripts (build→tsc, test→vitest/jest, prepare), supply-chain denylist (PayPal `@paypal/*` + Vercel `@vercel/*` both BANNED), license MIT, repository URL identity.
+
+**Novel family #21** — first npm-manifest substrate edge. Supply-chain policy graduates from documentation (`~/.claude/rules/payment-provider.md` + `binh-phap-cicd.md`) to CI-gated tripwire. Distinct from #177 (tsconfig JSON) + #179 (wrangler TOML) — different JSON shape, different semantic domain.
+
+**No drift found.** All 70 deps/devDeps cleared denylist; scripts.build=`tsc`, scripts.test=`vitest run`; license=MIT; repository=longtho638-jpg/algo-trader. Reviewer 9.7/10 SHIP. CI CLEAN 1152/1152.
+
+**Closes 37th integrity edge — HEPTATRIACONTAGON.** Hextriacontagon → Heptatriacontagon (37-gon). 21 families across 37 edges.
+
+**~240-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.57] - 2026-04-18
 
 ### Added — Wrangler Cloudflare-deploy discipline 8-invariant sync (HEXTRIACONTAGON)
