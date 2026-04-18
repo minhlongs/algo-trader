@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.83] - 2026-04-19
+
+### Added — TelegramSignalPusher primitive discipline 10-invariant sync (DIHEXACONTAGON)
+
+`tests/integration/telegram-signal-pusher-discipline-sync.test.ts` — pins 10 axes on `src/signal/telegram-signal-pusher.ts`. **DIHEXACONTAGON — 62nd integrity edge.** Opens **invariant family #46** (eighth signal-pipeline substrate).
+
+**10 invariant axes:** THROTTLE_MS `Record<TierKey, number>` (FREE=24h, PRO=1h, ENTERPRISE=5s — Telegram API guard), botToken fallback chain (ctor → env → empty), formatSignal renders `*Signal Alert*` + confidence% + TTL-min + 8-char ID slice, enqueue 4-gate (!active||!chatId + confidence < minConfidence + throttle window + lastPush update), flushQueue early-return + flushing flag toggle, 50ms pacing (Telegram 30 msg/sec global cap), sendMessage Bot API URL + POST JSON + `parse_mode: 'Markdown'`, sendAdminAlert TELEGRAM_CHAT_ID env + parseInt + isNaN guard, singleton export.
+
+**Novel family #46** — eighth signal-pipeline substrate edge. Cross-edges #196 (drawdown-monitor uses sendAdminAlert) + #198 (SignalPublisher calls enqueue) + #202 (tier-filter supplies minConfidence).
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 62nd integrity edge — DIHEXACONTAGON.** Henihexacontagon → Dihexacontagon (62-gon). 46 families across 62 edges.
+
+**~245-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.82] - 2026-04-19
 
 ### Added — SseSignalBroadcaster primitive discipline 10-invariant sync (HENIHEXACONTAGON)
