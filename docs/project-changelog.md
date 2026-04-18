@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.86] - 2026-04-19
+
+### Added — Sentry error-tracking initialization discipline 9-invariant sync (PENTAHEXACONTAGON = 65 = 5 × 13)
+
+`tests/integration/sentry-init-discipline-sync.test.ts` — pins 9 axes on `src/utils/sentry-init.ts`. **PENTAHEXACONTAGON — 65th integrity edge.** Opens **invariant family #49** (second observability-initialization substrate; first error-tracking substrate).
+
+**9 invariant axes:** static `import * as Sentry from '@sentry/node'` (NOT browser, NOT dynamic — pre-init error capture), initSentry signature `(): void` sync boot path, `process.env.SENTRY_DSN` env read, DSN gate `if (!dsn) return` early-return (dev/test boots clean), Sentry.init call with dsn wired, environment fallback chain `process.env.NODE_ENV || 'development'` (prevents undefined dashboard segmentation), tracesSampleRate numeric + bounded ≤ 0.5 (prod quota safety; 0.1 canonical), captureError signature `(error: Error, context?: Record<string, unknown>): void` + `Sentry.captureException(error, { extra: context })` body (context-payload routing), 2 required exports (initSentry + captureError).
+
+**Novel family #49** — second observability-initialization substrate edge (first error-tracking). Distinct from #207 (OTEL tracing, dynamic + lazy + span-oriented) via STATIC import + always-loaded + error-capture orientation. Complementary to #189 (structured logs) + #207 (distributed traces) — three observability pillars (logs + traces + errors) now CI-locked. Novel axes: static-import always-loaded discipline, tracesSampleRate quota bound (cost-safety envelope), environment fallback chain, captureError optional-payload discipline.
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 65th integrity edge — PENTAHEXACONTAGON (= 65 = 5 × 13).** Tetrahexacontagon → Pentahexacontagon (65-gon). 49 families across 65 edges.
+
+**~185-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.85] - 2026-04-19
 
 ### Added — OpenTelemetry tracing initialization discipline 9-invariant sync (TETRAHEXACONTAGON = 64 = 2^6)
