@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [2.4.33] - 2026-04-18
+
+### Added — Admin Qwen Kill-Switch `action` Label Enum 3-Surface Sync Validator
+
+`tests/integration/admin-qwen-kill-action-enum-sync.test.ts` — pins the `action` label on the `qwenAdminKillActionsTotal` Prometheus counter across **3 canonical declaration surfaces**: metric declaration in `src/middleware/prometheus-metrics.ts` (help-text-documented `/api/v1/admin/qwen/kill|unkill` vocabulary + `labelNames: ['action']`), route emission sites in `src/api/routes/admin-qwen-routes.ts` (`qwenAdminKillActionsTotal.inc({ action: 'kill' | 'unkill' })`), and route-test expectations in `src/api/routes/__tests__/admin-qwen-kill-actions.test.ts` (`toHaveBeenCalledWith({ action: '…' })`).
+
+**11 test cases:** 3 sanity floors (each surface ≥ 2 actions), `labelNames: ['action']` declaration assertion, snake_case discipline, route⊆help (every emitted action documented), help⊆route∪reserved (no phantom documented action), test⊇route (every emission asserted), test⊆route (no phantom test assertion), canonical `ACTIVE_ACTIONS={'kill','unkill'}` intersection, reserved-reservation-integrity (no `RESERVED_ACTIONS` leak into emissions).
+
+**Design note on `'armed'` — reserved slot.** Researcher's 12th-edge report flagged `'armed'` as a candidate for a future 3-state kill switch (`armed → kill → cleared`) but the current solo-platform flow wires only `kill` + `unkill`. Today `RESERVED_ACTIONS = new Set([])` — the carve-out mechanism exists and is test-exercised, ready for the first future reservation. A future PR that adds `armed` updates help-text + route emission + route test + `ACTIVE_ACTIONS` in one sweep; the validator catches any partial sweep.
+
+**Extraction scoping.** Route-side `.inc({ action: … })` extraction is keyed on the `qwenAdminKillActionsTotal` identifier so future counters that also use an `action` label don't leak into this validator. Help-text action vocabulary is parsed from the `/api/v1/admin/qwen/kill|unkill` path segment (single source of truth in the metric's `help` string).
+
+**Asymmetry documented:** metric label uses verbs (`kill`/`unkill`) while the route response body uses past-tense states (`status: 'killed'` / `status: 'cleared'`). This is intentional — metric labels are action verbs (what the operator did), response statuses are state transitions (what the system is now). The test locks each axis independently so the verb/state split is preserved.
+
+**No drift found in active surfaces** — `kill` + `unkill` align across help text, route emissions, and route-test expectations. Test earns its keep by catching FUTURE drift (e.g. a developer adds an `'armed'` emission without updating help text, or renames `'unkill'` to `'clear'` only in the test).
+
+**Closes 12th integrity edge.** Prior 11: PRs #132 (alert↔metric), #135 (dashboard↔metric), #137 (runbook-index↔file), #143 (alert↔runbook URL), #145 (doc-enum↔code-enum trigger_reason), #146 (runbook↔code-metric), #148 (CLI↔route), #150 (CLI self-consistency), #152 (CLAUDE phase guide↔CI gate), #153 (decision enum 3-way sync), #154 (status enum 4-surface sync). This edge extends the Pillar 2 observability integrity shape onto a label dimension (not just metric names) and closes the kill-switch audit-trail contract (Pillar 3 escape hatch). **Integrity hendecagon → dodecagon (12-gon).**
+
+**234-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.32] - 2026-04-18
 
 ### Added — Strategy Review Task `status` Enum 4-Surface Sync Validator
