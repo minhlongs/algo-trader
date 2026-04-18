@@ -1,5 +1,25 @@
 # Project Changelog - Algo Trader
 
+## [2.4.32] - 2026-04-18
+
+### Added — Strategy Review Task `status` Enum 4-Surface Sync Validator
+
+`tests/integration/strategy-review-status-enum-sync.test.ts` — pins the `strategy_review_tasks.status` enum across **4 canonical declaration surfaces**: DB `CHECK` constraint in `src/db/migrations/017_strategy_review_tasks.sql`, admin-route literals in `src/api/routes/admin-qwen-routes.ts` (default `?status=pending` query param + `UPDATE SET status='resolved' WHERE status='pending'` transition), backlog-query literal in `src/wiring/qwen-signals-loop.ts` (`emitReviewBacklogGauges` — `WHERE status='pending'`), and operator-facing help text in `src/middleware/prometheus-metrics.ts` (`algo_trader_qwen_strategy_review_backlog_size` help line).
+
+**9 test cases:** 3 sanity floors, snake_case discipline, code-literals-subset-of-migration (catches unknown statuses that would trigger CHECK violation at runtime), active-statuses-in-both (pending + resolved appear in migration AND code), uncategorised-in-migration (every migration value is either `ACTIVE_STATUSES` or explicitly in `RESERVED_STATUSES`), reserved-alignment (no stale reservations), help-text-mentions-active-statuses (operator doc accuracy).
+
+**Design note on `'acknowledged'` — reserved-future-use.** Migration 017 declares three states (`pending`, `acknowledged`, `resolved`) but the current solo-platform flow ships only `pending → resolved` (YAGNI skip of the middle step). The test documents this via an explicit `RESERVED_STATUSES = {'acknowledged'}` allowlist — a future PR that wires a `POST /strategy-reviews/:id/acknowledge` endpoint simply removes the carve-out, and the migration stays forward-compatible. Deleting `'acknowledged'` from the migration is an equally valid evolution, also caught by the orphaned-reservation assertion.
+
+**Extraction scoping.** SQL status literals are extracted only from template-literal blocks that reference the `strategy_review_tasks` table, eliminating false positives from unrelated surfaces (kill-switch response envelope `{status: 'killed'|'cleared'}`, `paper_trades_v3.status = 'closed'` queries).
+
+**No drift found in active surfaces** — `pending` + `resolved` align across migration, admin routes, signals-loop backlog query, and metrics help text. Test earns its keep by catching FUTURE drift (e.g. a developer adds a `status='escalated'` transition in code without extending migration 017's CHECK, or renames `'pending'` without updating help text).
+
+**Closes 11th integrity edge.** Prior 10: PRs #132 (alert↔metric), #135 (dashboard↔metric), #137 (runbook-index↔file), #143 (alert↔runbook URL), #145 (doc-enum↔code-enum trigger_reason), #146 (runbook↔code-metric), #148 (CLI↔route), #150 (CLI self-consistency), #152 (CLAUDE phase guide↔CI gate), #153 (decision enum 3-way sync). This edge extends the Pillar 3 Feedback Loop surface (trigger_reason + decision + status now all locked by sync validators) — the entire feedback-journal state machine is drift-proof. **Integrity decagon → hendecagon (11-gon).**
+
+**~215-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.31] - 2026-04-18
 
 ### Added — Qwen Signals Loop `decision` Enum 3-Way Sync Validator
