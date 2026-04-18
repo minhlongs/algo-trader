@@ -1,5 +1,57 @@
 # Project Changelog - Algo Trader
 
+## [2.4.46] - 2026-04-18
+
+### Added — `qwen_signals_loop_runs.trigger_reasons TEXT[]` Element-Subset-of-Enum 4-Surface Sync Validator (PENTACOSAGON — first array-element edge)
+
+`tests/integration/qwen-signals-loop-runs-trigger-reasons-array-sync.test.ts` — pins the invariant "every element of the `trigger_reasons` array ∈ canonical enum" across **4 canonical declaration surfaces**. **PENTACOSAGON MILESTONE — the 25th integrity edge** and the **first array-element-subset-of-sibling-enum edge**. Opens invariant **family #9** (after enum partition, cross-module, binary flag, range-bound, temporal ordering, temporal derivation, structured-document field shape, composite multi-column).
+
+Unlike prior scalar-enum locks (#145 `strategy_review_tasks.trigger_reason`), this edge locks the ARRAY variant: `qwen_signals_loop_runs.trigger_reasons` is a Postgres TEXT[] that carries the REASON SET per evaluation run. When a run triggers one or more thresholds, the writer pushes identifiers into the array. The invariant: **every element MUST be a member of the canonical trigger-reason enum** declared in `docs/strategy-review-reasons.md` (same enum locked by PR #145 on the scalar column). Cross-PR coupling — the ARRAY is pinned to the PR #145 enum without duplicating the enum declaration.
+
+**4 surfaces locked:**
+1. Migration 018:13 column declaration: `trigger_reasons TEXT[] NOT NULL DEFAULT '{}'` — unconstrained TEXT[] (no CHECK ALL(ANY) subquery). Writer + cross-PR coupling carry authority.
+2. Writer signature at `src/wiring/qwen-signals-loop.ts:154-158`: `persistRunJournal(source, metrics, decision, triggerReasons: string[], errorMessage)` — accepts `string[]` without runtime element validation.
+3. Call-site push literals at lines 274 + 279: `triggerReasons.push('win_rate_below_threshold')` + `triggerReasons.push('sharpe_below_threshold')`. Exactly 2 literals emitted today (matches PR #145 ACTIVE enum).
+4. Canonical enum in `docs/strategy-review-reasons.md` Active reasons table — same enum locked by PR #145 (doc↔code bijection on scalar column).
+
+Plus: empty-array literals at error/skipped code paths (`persistRunJournal(..., 'error', [])` at line 248, `persistRunJournal(..., 'skipped_insufficient_data', [])` at line 266) — preserves NOT NULL DEFAULT '{}' contract with uniform array shape.
+
+**11 test cases:** (1) migration TEXT[] NOT NULL DEFAULT '{}' shape, (2) writer signature `string[]` type (not ReadonlyArray/Array<string>), (3) ≥ 2 push literal sites (sanity floor), (4) canonical enum ≥ 2 active reasons (sanity floor), (5) every push literal ∈ canonical enum (ARRAY→DOC subset invariant), (6) every canonical reason has push (DOC→CODE bijection, cross-PR #145 parity), (7) ≥ 2 empty-array literal call sites (error + skipped paths), (8) push literals snake_case style, (9) composite bijection — push SET = canonical SET (defense-in-depth on 5+6), (10) migration DEFAULT '{}' matches writer empty-array discipline, (11) no DB CHECK constraint (writer + cross-PR coupling suffices).
+
+**Novel invariant family #9 — array element-subset-of-sibling-enum.** Distinct from prior 8 families:
+- **Array-of-primitives invariant** — locks element VALUES of an array column, distinct from #166 (object-field structured document).
+- **Cross-PR coupling** — array elements MUST match scalar enum from PR #145. First cross-edge vocabulary lock; neither PR owns the enum declaration alone (doc is SSOT, PR #145 locks scalar, this PR locks array side).
+- **Empty-array discipline** — NOT NULL DEFAULT '{}' forces writer to pass `[]` (not null) on error/skipped paths. Preserves uniform array shape for future readers using `ANY(trigger_reasons)` or `array_length(trigger_reasons, 1)` semantics.
+- **Column-type discipline** — TEXT[] (Postgres array of text), not JSONB array, not TEXT CSV. Preserves Postgres ANY/ALL array semantics.
+- **Composite bijection** (case 9) — defense-in-depth over cases 5+6. Asserts push set EQUALS canonical set today (not just ⊆ ∧ ⊇ separately). Operator-UX clearer on single-point failure.
+
+**Why cross-PR coupling (PR #145 + PR #168) not consolidated.** PR #145 locks scalar column `trigger_reason` (doc↔insertReviewTask 2nd arg). This PR locks array column `trigger_reasons` (doc↔push-literal set). Both tests are tiny and focused; a consolidated "trigger-reason vocabulary" super-test would obscure the specific DB-layer invariants each locks. Keeping them as separate sync validators means drift in one surface (e.g., dynamic array push) fails at a specific test boundary, not a catch-all.
+
+**Why no DB CHECK.** Postgres CAN express array-element subset via `CHECK (trigger_reasons <@ ARRAY['reason1', 'reason2']::text[])` (`<@` is "contained by"). We choose not to — the canonical enum is declared in a DOC file + scalar column (PR #145), and duplicating it at the TEXT[] column layer would create 3-way maintenance burden (any vocabulary change would require simultaneous doc + scalar + array CHECK migration). Writer + cross-PR sync is cleaner.
+
+**Cross-PR #145 coupling is the whole point** (case 6). PR #145 established the doc↔code bijection for the SCALAR `trigger_reason` column. This PR extends the bijection to the ARRAY `trigger_reasons` column. A new reason added to docs without wiring a push site would pass PR #145's doc↔code lock (if the scalar insertReviewTask gets updated) but fail this PR's doc↔array lock. Both independently enforce halves of a unified vocabulary contract.
+
+**Drift scenarios covered (5):**
+- Writer adds `triggerReasons.push('latency_drift')` without extending docs → case 5 fails (element not in canonical enum).
+- Docs adds `'new_metric_drift'` to Active reasons without wiring a push site → case 6 fails (canonical has orphan reason).
+- Migration changes column type to JSONB → case 1 fails (not TEXT[]).
+- Writer signature drifts to `ReadonlyArray<string>` → case 2 fails.
+- Error/skipped path passes `null` instead of `[]` → case 7 fails (breaks NOT NULL DEFAULT '{}' contract).
+
+**Extraction scoping.** Migration regex `(TEXT\[\]|TEXT\s+ARRAY|JSONB)` handles type-alternative drift; case 1 asserts TEXT[] specifically. Writer param regex lazy-spans multi-line signature. Push literal regex strict on `triggerReasons.push('literal')` — dynamic push `triggerReasons.push(computedVar)` evades but sanity floor trips (intentional loud-fail). Empty-array count regex matches 4th-positional `[]` argument in persistRunJournal.
+
+**No drift found in active surfaces** — migration (TEXT[] NOT NULL DEFAULT '{}'), writer signature (`string[]`), push literals ({win_rate_below_threshold, sharpe_below_threshold}), canonical enum ({win_rate_below_threshold, sharpe_below_threshold}), empty-array call sites (2: error + skipped) all align.
+
+**Reviewer findings (9.6/10 SHIP — 0 Critical, 0 High, 1 Medium acceptable, 4 Low):** M-1 case 9 composite bijection is strictly redundant with cases 5+6 (push⊆canonical ∧ canonical⊆push ≡ push==canonical) — defense-in-depth with clearer operator UX; L-1/L-2/L-3/L-4 all non-blocking regex scoping notes + doc-header coupling to PR #145 validator shape. All deferrable.
+
+**CI note — full suite CLEAN this run (1020/1020 green, no flakes).** Stable run, no transient scanner/llm-content-generator failures.
+
+**Closes 25th integrity edge — PENTACOSAGON.** Prior 24: PRs #132, #135, #137, #143, #145, #146, #148, #150, #152, #153, #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164, #165, #166, #167. **Integrity tetracosagon → pentacosagon (25-gon).** Pillar 3 feedback-loop evaluation audit trail array-payload now cross-PR-coupled to the scalar trigger_reason enum — journal TEXT[] + review scalar column share vocabulary end-to-end.
+
+**330-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.45] - 2026-04-18
 
 ### Added — paper_trades_v3 Composite {size_usd > 0, entry_price ∈ [0,1]} 5-Surface Sync Validator (TETRACOSAGON — first composite multi-column edge)
