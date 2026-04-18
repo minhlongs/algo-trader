@@ -1,5 +1,24 @@
 # Project Changelog - Algo Trader
 
+## [2.4.30] - 2026-04-18
+
+### Added — CLAUDE SDLC Phase Guide ↔ CI Gate Reference Sync Validator
+
+`tests/integration/claude-phase-gate-reference-sync.test.ts` — pins every numeric gate reference (`Gate N`, `gates N-M`, `N CI gates`) inside the 4 SDLC phase guides (`CLAUDE.specification.md`, `CLAUDE.design.md`, `CLAUDE.code.md`, `CLAUDE.deploy.md`) to a real row of the canonical gate table in `docs/ai-first-enforcement-gates.md`.
+
+**14 test cases:** canonical sanity (≥5 gates), per-guide × 3 assertions (single ref resolves, range upper bound resolves, explicit total matches canonical count), and 1 coverage check that at least one guide mentions the highest canonical gate.
+
+**Drive-by fix:** the test was born failing — `CLAUDE.code.md` said "all 5 CI gates" and no guide mentioned Gate 6 or Gate 7. Gates 6 (paper-gate date lock) and 7 (shellcheck) shipped 2026-04-17 but phase guides drifted. Same PR:
+- `CLAUDE.code.md`: "5 CI gates" → "7 CI gates".
+- `CLAUDE.specification.md`: CI-gate hard-constraint list now enumerates Gate 6 (paper-gate date lock until 2026-05-17) and Gate 7 (shellcheck on `scripts/*.sh`).
+- `CLAUDE.deploy.md`: inputs section now requires "gates 1–4, 6, 7" (Gate 5 post-merge); post-merge re-run list spells out "1–4, 6, 7"; verification report template gained rows for Gate 6 (Paper gate lock) and Gate 7 (Shell lint).
+
+**Opens 9th integrity edge, new territory.** Prior 8 edges (PRs #132/#135/#137/#143/#145/#146/#148/#150) all lived in Pillar 2 observability (metrics, dashboards, runbooks) or Pillar 3 operator-CLI. This edge is the first to span Pillar 4 (SDLC phase scaffold) ↔ Pillar 1 (enforcement gates): when gate count grows, an AI agent following stale phase instructions won't know its spec must satisfy the new gate. **Integrity octagon → nonagon.**
+
+**154-LOC test + 5 doc-line fixes, 0 runtime impact.**
+
+---
+
 ## [2.4.29] - 2026-04-18
 
 ### Added — qwen-ops.sh Subcommand Self-Consistency Validator

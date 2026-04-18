@@ -47,7 +47,7 @@ Write to `plans/{YYMMDD-HHMM}-{slug}/plan.md` + one phase file per deliverable. 
 - **Kill switch (L1)** — every new signal path MUST honour `QWEN_KILL=1` (CF KV / env, checked by ingest route + worker) + `POST /api/v1/admin/qwen/kill` (sets the KV). Note: `QWEN_SIGNAL_KILL` is a separate daemon-side stop flag, not the L1 gate.
 - **Drawdown (L3)** — any strategy that can move funds MUST be wired into `qwen-drawdown-monitor.ts` -5% auto-disable.
 - **Signals Loop (L0 dynamic)** — strategies must feed `qwen_signals_loop_runs` for journaling.
-- **CI gates (L0 static)** — spec must be satisfiable under Gate 1 (tsc/lint/tests), Gate 2 (no new critical-severity deps), Gate 3 (changed-file strict lint; >400 LOC is a soft warning, not a hard fail), Gate 4 (lockfile clean), Gate 5 (prod smoke green).
+- **CI gates (L0 static)** — spec must be satisfiable under Gate 1 (tsc/lint/tests), Gate 2 (no new critical-severity deps), Gate 3 (changed-file strict lint; >400 LOC is a soft warning, not a hard fail), Gate 4 (lockfile clean), Gate 5 (prod smoke green), Gate 6 (paper-gate date lock until 2026-05-17), Gate 7 (shellcheck on `scripts/*.sh`).
 - **No PayPal** — payment flows: Polar primary, PayOS backup (per global rule).
 - **No Vercel** — deploy only via Cloudflare Pages.
 

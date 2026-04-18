@@ -11,7 +11,7 @@ Get merged, tested code to production on Cloudflare Pages, then *prove* it's gre
 
 ## Required inputs
 
-- Green PR: CI gates 1–4 passed on the PR branch.
+- Green PR: CI gates 1–4, 6, 7 passed on the PR branch (Gate 5 runs post-merge).
 - Migration drafted (applied to staging / D1 or pending manual apply on prod Postgres — noted in PR body).
 - Code-reviewer report ≥9.0/10, 0 critical.
 - Memory + changelog drafts ready.
@@ -22,7 +22,7 @@ Get merged, tested code to production on Cloudflare Pages, then *prove* it's gre
    - Squash-merge via `gh pr merge <N> --squash --delete-branch`. Use `--admin` only when required-contexts drift from current gate names (then `gh api PATCH …/required_status_checks` first).
    - Never `--no-verify`. If a hook fails, fix it, don't bypass.
 2. **GitHub Actions on `main`**
-   - Gates 1–4 re-run, Gate 5 (deploy smoke) runs post-merge only.
+   - Gates 1–4, 6, 7 re-run on every event; Gate 5 (deploy smoke) runs post-merge only.
    - Poll `gh run list -L 5` until all `completed/success`. 5-minute ceiling per gate.
 3. **Cloudflare Pages auto-deploy**
    - Project: `algo-trader` (`algo-trader.pages.dev` + `cashclaw.cc`).
@@ -58,6 +58,8 @@ Get merged, tested code to production on Cloudflare Pages, then *prove* it's gre
 - CI Gate 3:  ✅ Quality
 - CI Gate 4:  ✅ Dependency
 - CI Gate 5:  ✅ Deploy smoke
+- CI Gate 6:  ✅ Paper gate lock
+- CI Gate 7:  ✅ Shell lint
 - CF Pages:   ✅ <deployment-id> success
 - Prod HTTP:  ✅ 200 on algo-trader.pages.dev + cashclaw.cc
 - Timestamp:  <ISO-8601 Asia/Saigon>
@@ -83,7 +85,7 @@ Missing any line = task incomplete.
 ## Definition of done
 
 - [ ] Merge completed, branch deleted.
-- [ ] All 5 gates green on `main`.
+- [ ] All 7 gates green on `main` (1–5 required, 6–7 soft-required).
 - [ ] CF Pages deployment `success`.
 - [ ] Prod HTTP 200 on both URLs.
 - [ ] Verification report posted (11 lines).

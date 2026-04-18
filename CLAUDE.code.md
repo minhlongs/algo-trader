@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Turn a frozen design into shipping code that passes all 5 CI gates on first run. Tests are non-negotiable here — no green tests, no deploy phase.
+Turn a frozen design into shipping code that passes all 7 CI gates on first run. Tests are non-negotiable here — no green tests, no deploy phase.
 
 ## Required inputs
 
