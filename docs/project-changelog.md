@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [2.4.57] - 2026-04-18
+
+### Added — Wrangler Cloudflare-deploy discipline 8-invariant sync (HEXTRIACONTAGON)
+
+`tests/integration/wrangler-cloudflare-deploy-discipline-sync.test.ts` — pins 8 load-bearing keys in `wrangler.toml`. **HEXTRIACONTAGON — 36th integrity edge.** Opens **invariant family #20** (Wrangler Cloudflare-deploy discipline).
+
+**8 invariant axes:** worker name pinned, main entry exists on disk, compatibility_date ∈ [2024, 2026], nodejs_compat flag, KV namespace bound, production vars ENVIRONMENT=production, [env.staging] + [env.staging.vars] ENVIRONMENT=staging, [build].command uses tsconfig.worker.json.
+
+**Novel family #20** — first TOML substrate edge. Env-scoping discipline + cross-edge with #177 (tsconfig.worker.json existence).
+
+**Implementation note — 2 parser bugs caught during test-driving:**
+1. JS regex `\Z` anchor doesn't exist → section extractor returned null at EOF → fixed to `(?=\n\[|$)` lookahead
+2. kv_namespaces extractor had same `\Z` bug → reviewer caught + fixed inline before merge
+
+**No drift found.** Reviewer 9.6/10 SHIP (0 Critical, 0 High, 2 Medium, 3 Low). CI CLEAN 1141/1141.
+
+**Closes 36th integrity edge — HEXTRIACONTAGON.** Pentatriacontagon → Hextriacontagon (36-gon). 20 families across 36 edges.
+
+**253-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.56] - 2026-04-18
 
 ### Added — .gitignore secret-leak-prevention discipline 6-invariant sync (PENTATRIACONTAGON)
