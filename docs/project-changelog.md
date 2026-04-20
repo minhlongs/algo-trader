@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [2.4.88] - 2026-04-20
+
+### Added — Feature-gate tier-based access-control discipline 10-invariant sync (HEPTAHEXACONTAGON = 67, prime + lucky prime)
+
+`tests/integration/feature-gate-middleware-discipline-sync.test.ts` — pins 10 axes on `src/middleware/feature-gate.ts`. **HEPTAHEXACONTAGON — 67th integrity edge.** Opens **invariant family #51** (first Express-layer tier-ordinal-ranking access-control substrate).
+
+**10 invariant axes:** Express type triple import (Request + Response + NextFunction, type-only), global `Express.Request` augmentation with `license?: License` (upstream raas-gate attach point), `TIER_HIERARCHY` ordinal monotonic invariant (FREE=0 < PRO=1 < ENTERPRISE=2 — reordering collapses privilege semantics), `FEATURE_ACCESS` registry completeness (7 canonical keys: signals.crossmarket / signals.deltaneutral / intelligence.semantic / intelligence.swarm / analytics.advanced / execution.multileg / vibe.controller) + valid-tier constraint, `canAccessFeature` open-default (unregistered feature returns true — prevents silent rollout block), `requireTier` 401 on missing license with `{ error: "No license" }`, `requireTier` 403 on insufficient tier with `{ error, required, current, upgrade }` payload (upgrade-hint UX contract), `requireFeature` delegates via `FEATURE_ACCESS[feature] ?? 'FREE'` + calls `requireTier` (no hardcoded tier), 4 required exports (FEATURE_ACCESS + canAccessFeature + requireTier + requireFeature).
+
+**Novel family #51** — first Express-layer tier-ordinal-ranking access-control substrate. Distinct from #186 (Express security middleware MOUNT — server setup, not policy enforcement), #209 (Fastify admin-auth API-KEY gate — different framework + shared-secret mechanism), #197 (Qwen live-eligibility gate — NODE_ENV + OPERATOR_CONFIRM coupling, not license-tier), #195 (admin Qwen kill-switch — binary on/off, not ordinal-tier). Novel axes: ordinal-tier monotonicity (numeric ranking strictly increasing), open-default for unregistered features (prevents silent rollout regression), 401/403 semantic split (missing vs insufficient routed to distinct client flows — token refresh vs upgrade prompt), upgrade-hint UX contract (403 payload MUST expose `upgrade` string for frontend CTA wiring).
+
+**No drift found.** Reviewer 9.6/10 SHIP.
+
+**Closes 67th integrity edge — HEPTAHEXACONTAGON (= 67, prime + lucky prime).** Hexahexacontagon → Heptahexacontagon (67-gon). 51 families across 67 edges.
+
+**~225-LOC test file, 0 production code change, 0 runtime impact.**
+
+---
+
 ## [2.4.87] - 2026-04-19
 
 ### Added — Fastify admin-auth middleware discipline 10-invariant sync (HEXAHEXACONTAGON = 66 = 2 × 3 × 11)
