@@ -4,9 +4,32 @@
  * Supports NOWPayments (crypto) as primary provider
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { LicenseService } from './license-service';
 import { AuditLogService } from '../audit/audit-log-service';
 import { LicenseTier, LicenseStatus } from '../types/license';
+
+const STORE_PATH = process.env.SUBSCRIPTION_STORE_PATH
+  || path.join(process.cwd(), 'data', 'subscriptions.json');
+
+function saveToFile(subscriptions: Map<string, Subscription>): void {
+  const dir = path.dirname(STORE_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const data = JSON.stringify(Array.from(subscriptions.entries()), null, 2);
+  fs.writeFileSync(STORE_PATH, data, { encoding: 'utf-8', mode: 0o600 });
+}
+
+function loadFromFile(): Map<string, Subscription> {
+  try {
+    if (!fs.existsSync(STORE_PATH)) return new Map();
+    const raw = fs.readFileSync(STORE_PATH, 'utf-8');
+    const entries: [string, Subscription][] = JSON.parse(raw);
+    return new Map(entries);
+  } catch {
+    return new Map();
+  }
+}
 
 export interface Subscription {
   id: string;
@@ -48,6 +71,7 @@ export class SubscriptionService {
   private constructor() {
     this.licenseService = LicenseService.getInstance();
     this.auditService = AuditLogService.getInstance();
+    this.subscriptions = loadFromFile();
   }
 
   static getInstance(): SubscriptionService {
@@ -73,6 +97,7 @@ export class SubscriptionService {
       updatedAt: now,
     };
     this.subscriptions.set(id, subscription);
+    saveToFile(this.subscriptions);
     return subscription;
   }
 
@@ -100,6 +125,7 @@ export class SubscriptionService {
     if (status === 'cancelled') sub.cancelledAt = new Date().toISOString();
 
     this.subscriptions.set(id, sub);
+    saveToFile(this.subscriptions);
     return sub;
   }
 
@@ -110,6 +136,7 @@ export class SubscriptionService {
     sub.tier = tier;
     sub.updatedAt = new Date().toISOString();
     this.subscriptions.set(id, sub);
+    saveToFile(this.subscriptions);
 
     if (sub.licenseId) await this.syncLicenseTier(sub.licenseId, tier);
     return sub;
@@ -128,6 +155,7 @@ export class SubscriptionService {
     sub.licenseId = license.id;
     sub.updatedAt = new Date().toISOString();
     this.subscriptions.set(id, sub);
+    saveToFile(this.subscriptions);
 
     await this.auditService.log(license.id, 'activated', {
       tier: sub.tier,

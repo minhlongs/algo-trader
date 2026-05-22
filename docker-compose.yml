@@ -62,7 +62,7 @@ services:
     ports:
       - '4222:4222'   # Client connections
       - '8222:8222'   # HTTP monitoring
-    command: ['--jetstream', '--store_dir', '/data', '-m', '8222', '--auth', '${NATS_TOKEN:-changeme}']
+    command: ['--jetstream', '--store_dir', '/data', '-m', '8222', '--auth', '${NATS_TOKEN:?NATS_TOKEN is required — generate with: openssl rand -hex 32}']
     volumes:
       - nats_data:/data
     healthcheck:

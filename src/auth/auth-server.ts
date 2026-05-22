@@ -16,10 +16,19 @@ import { logger } from '../utils/logger.js';
 
 const { Pool } = pg;
 
-// Fail fast if no auth secret configured
+const isProd = process.env.NODE_ENV === 'production';
+
 const authSecret = process.env.BETTER_AUTH_SECRET || process.env.JWT_SECRET;
 if (!authSecret) {
-  logger.warn('[BetterAuth] No BETTER_AUTH_SECRET or JWT_SECRET set — auth will fail at runtime');
+  if (isProd) {
+    throw new Error('[BetterAuth] FATAL: BETTER_AUTH_SECRET or JWT_SECRET must be set in production');
+  }
+  logger.warn('[BetterAuth] No BETTER_AUTH_SECRET or JWT_SECRET set — using insecure dev fallback');
+}
+
+const dbPassword = process.env.DB_PASSWORD;
+if (isProd && !dbPassword) {
+  throw new Error('[BetterAuth] FATAL: DB_PASSWORD must be set in production');
 }
 
 /** Create and export the Better Auth instance */
@@ -29,7 +38,7 @@ export const auth = betterAuth({
     port: parseInt(process.env.DB_PORT || '5432'),
     database: process.env.DB_NAME || 'algo_trader',
     user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || '',
+    password: dbPassword || '',
     max: 5,
   }),
   secret: authSecret || 'dev-only-insecure-secret-change-me',

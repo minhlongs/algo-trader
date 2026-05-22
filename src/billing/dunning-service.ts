@@ -9,10 +9,33 @@
  * 4. Auto-reinstate on payment success
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { LicenseService } from './license-service';
 import { SubscriptionService } from './subscription-service';
 import { AuditLogService } from '../audit/audit-log-service';
 import { DunningWorkflow } from './dunning/workflow';
+
+const STORE_PATH = process.env.DUNNING_STORE_PATH
+  || path.join(process.cwd(), 'data', 'dunning.json');
+
+function saveToFile(records: Map<string, DunningRecord>): void {
+  const dir = path.dirname(STORE_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const data = JSON.stringify(Array.from(records.entries()), null, 2);
+  fs.writeFileSync(STORE_PATH, data, { encoding: 'utf-8', mode: 0o600 });
+}
+
+function loadFromFile(): Map<string, DunningRecord> {
+  try {
+    if (!fs.existsSync(STORE_PATH)) return new Map();
+    const raw = fs.readFileSync(STORE_PATH, 'utf-8');
+    const entries: [string, DunningRecord][] = JSON.parse(raw);
+    return new Map(entries);
+  } catch {
+    return new Map();
+  }
+}
 
 export interface DunningRecord {
   id: string;
@@ -50,6 +73,7 @@ export class DunningService {
     this.subscriptionService = SubscriptionService.getInstance();
     this.auditService = AuditLogService.getInstance();
     this.config = this.loadConfig();
+    this.dunningRecords = loadFromFile();
   }
 
   static getInstance(): DunningService {
@@ -93,6 +117,7 @@ export class DunningService {
       }
 
       this.dunningRecords.set(existing.id, existing);
+      saveToFile(this.dunningRecords);
       return existing;
     }
 
@@ -105,6 +130,7 @@ export class DunningService {
     };
 
     this.dunningRecords.set(id, record);
+    saveToFile(this.dunningRecords);
     return record;
   }
 
@@ -122,6 +148,7 @@ export class DunningService {
     existing.retryCount = 0;
 
     this.dunningRecords.set(existing.id, existing);
+    saveToFile(this.dunningRecords);
     return existing;
   }
 

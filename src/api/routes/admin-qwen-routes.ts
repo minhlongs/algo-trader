@@ -8,6 +8,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { timingSafeEqual } from 'crypto';
 import { logger } from '../../utils/logger';
 import {
   disableQwen,
@@ -31,7 +32,11 @@ function requireAdminKey(req: Request, res: Response): boolean {
     return false;
   }
   const provided = req.headers['x-admin-key'] as string | undefined;
-  if (!provided || provided !== adminKey) {
+  if (
+    !provided ||
+    provided.length !== adminKey.length ||
+    !timingSafeEqual(Buffer.from(provided), Buffer.from(adminKey))
+  ) {
     res.status(403).json({ error: 'Forbidden — invalid X-Admin-Key' });
     return false;
   }
