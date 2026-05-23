@@ -85,7 +85,10 @@ vi.mock('../../db/pnl-service', () => ({
 describe('API Server', () => {
   let app: express.Application;
 
+  const TEST_ADMIN_KEY = 'test-admin-key-for-api-tests';
+
   beforeAll(async () => {
+    process.env.ADMIN_API_KEY = TEST_ADMIN_KEY;
     const { ApiServer } = await import('../server');
     const apiServer = new ApiServer({ port: 3001 });
     app = apiServer.getApp();
@@ -182,6 +185,7 @@ describe('API Server', () => {
     it('POST /api/admin/halt should halt trading', async () => {
       const res = await request(app)
         .post('/api/admin/halt')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
         .send({ reason: 'Testing' });
 
       expect(res.status).toBe(200);
@@ -191,6 +195,7 @@ describe('API Server', () => {
     it('POST /api/admin/halt should reject without reason', async () => {
       const res = await request(app)
         .post('/api/admin/halt')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
         .send({ reason: '' });
 
       expect(res.status).toBe(400);
@@ -198,14 +203,14 @@ describe('API Server', () => {
     });
 
     it('POST /api/admin/resume should resume trading', async () => {
-      const res = await request(app).post('/api/admin/resume');
+      const res = await request(app).post('/api/admin/resume').set('X-Admin-Key', TEST_ADMIN_KEY);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
 
     it('GET /api/admin/status should return system status', async () => {
-      const res = await request(app).get('/api/admin/status');
+      const res = await request(app).get('/api/admin/status').set('X-Admin-Key', TEST_ADMIN_KEY);
 
       expect(res.status).toBe(200);
       expect(res.body.trading).toBeDefined();
