@@ -9,6 +9,7 @@
 
 import { Router, Request, Response } from 'express';
 import { logger } from '../../../utils/logger';
+import { requireAdminKey } from '../../middleware/require-admin-key';
 
 export interface WebhookEvent {
   id: string;           // idempotency key (from webhook payload)
@@ -152,13 +153,15 @@ setInterval(runRetryPass, RETRY_INTERVAL_MS);
 export const webhookResilienceRouter: Router = Router();
 
 /** GET /api/v1/webhooks/dead-letter — list all dead-lettered events */
-webhookResilienceRouter.get('/dead-letter', (_req: Request, res: Response) => {
+webhookResilienceRouter.get('/dead-letter', (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
   const events = Array.from(deadLetterQueue.values());
   return res.json({ count: events.length, events });
 });
 
 /** POST /api/v1/webhooks/dead-letter/:id/retry — manually retry a dead-lettered event */
 webhookResilienceRouter.post('/dead-letter/:id/retry', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
   const id = req.params['id'] as string;
   const event = deadLetterQueue.get(id);
 

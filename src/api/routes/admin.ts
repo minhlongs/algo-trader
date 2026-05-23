@@ -9,6 +9,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { CircuitBreaker } from '../../risk/circuit-breaker';
 import { DrawdownMonitor } from '../../risk/drawdown-monitor';
+import { requireAdminKey } from '../middleware/require-admin-key';
 
 // Zod schemas for request body validation
 const haltSchema = z.object({
@@ -24,6 +25,7 @@ const drawdownMonitor = new DrawdownMonitor();
  * Body: reason (required)
  */
 adminRouter.post('/halt', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
   try {
     const parsed = haltSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -43,6 +45,7 @@ adminRouter.post('/halt', async (req: Request, res: Response) => {
  * POST /admin/resume
  */
 adminRouter.post('/resume', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
   try {
     await circuitBreaker.reset();
     await drawdownMonitor.resume();
@@ -58,6 +61,7 @@ adminRouter.post('/resume', async (req: Request, res: Response) => {
  * GET /admin/status
  */
 adminRouter.get('/status', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
   try {
     const [circuitStatus, drawdownMetrics] = await Promise.all([
       circuitBreaker.getStatus(),

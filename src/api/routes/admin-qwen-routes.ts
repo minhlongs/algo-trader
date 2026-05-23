@@ -8,7 +8,6 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { timingSafeEqual } from 'crypto';
 import { logger } from '../../utils/logger';
 import {
   disableQwen,
@@ -23,25 +22,7 @@ import {
   qwenStrategyReviewsResolvedTotal,
   qwenAdminKillActionsTotal,
 } from '../../middleware/prometheus-metrics';
-
-/** Simple Express-compatible admin auth — checks X-Admin-Key header */
-function requireAdminKey(req: Request, res: Response): boolean {
-  const adminKey = process.env.ADMIN_API_KEY;
-  if (!adminKey) {
-    res.status(503).json({ error: 'Admin API not configured' });
-    return false;
-  }
-  const provided = req.headers['x-admin-key'] as string | undefined;
-  if (
-    !provided ||
-    provided.length !== adminKey.length ||
-    !timingSafeEqual(Buffer.from(provided), Buffer.from(adminKey))
-  ) {
-    res.status(403).json({ error: 'Forbidden — invalid X-Admin-Key' });
-    return false;
-  }
-  return true;
-}
+import { requireAdminKey } from '../middleware/require-admin-key';
 
 export function createAdminQwenRouter(): Router {
   const router = Router();
