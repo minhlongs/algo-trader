@@ -14,22 +14,30 @@ export class SignalTtlEnforcer {
   /**
    * Register a signal for TTL enforcement.
    * Automatically removes from store when expired.
+   *
+   * Race-safety: the signal is written to the map BEFORE the expiry timer is
+   * scheduled so that any same-tick getLive() call sees the signal.  An existing
+   * timer for the same ID is cancelled BEFORE the map write to prevent a
+   * stale timer evicting the freshly registered signal.
+   *
+   * Already-expired signals (delay <= 0) are written to the map then evicted
+   * via a zero-delay setTimeout so callers within the current tick still observe
+   * the signal through getLive() before it disappears.
    */
   register(signal: Signal): void {
-    this.signals.set(signal.id, signal);
-
-    const delay = signal.expiresAt - Date.now();
-    if (delay <= 0) {
-      // Already expired — evict immediately
-      this.evict(signal.id);
-      return;
+    // 1. Cancel any stale timer before touching the map
+    const existing = this.timers.get(signal.id);
+    if (existing) {
+      clearTimeout(existing);
+      this.timers.delete(signal.id);
     }
 
-    // Cancel any existing timer for this id
-    const existing = this.timers.get(signal.id);
-    if (existing) clearTimeout(existing);
+    // 2. Write signal — must precede delay calculation so same-tick getLive() sees it
+    this.signals.set(signal.id, signal);
 
-    const timer = setTimeout(() => this.evict(signal.id), delay);
+    // 3. Schedule eviction
+    const delay = signal.expiresAt - Date.now();
+    const timer = setTimeout(() => this.evict(signal.id), Math.max(0, delay));
     this.timers.set(signal.id, timer);
   }
 

@@ -107,25 +107,19 @@ describe('SignalTtlEnforcer primitive discipline — 58th edge (OCTAPENTACONTAGO
     ).toBe(true);
   });
 
-  it('register: already-expired short-circuit `if (delay <= 0) { evict; return; }`', () => {
+  it('register: already-expired signals handled via Math.max(0, delay) zero-delay timer', () => {
     const startIdx = src.indexOf('register(signal: Signal)');
     const endIdx = src.indexOf('evict(id: string)', startIdx);
     expect(startIdx, 'register method missing').toBeGreaterThan(-1);
     expect(endIdx, 'evict sibling method missing').toBeGreaterThan(startIdx);
     const body = src.slice(startIdx, endIdx);
     expect(
-      /if\s*\(\s*delay\s*<=\s*0\s*\)/.test(body),
-      'register missing `if (delay <= 0)` already-expired branch',
+      /Math\.max\(\s*0\s*,\s*delay\s*\)/.test(body),
+      'register must use Math.max(0, delay) for already-expired signals',
     ).toBe(true);
     expect(
-      /this\.evict\(\s*signal\.id\s*\)/.test(body),
-      'already-expired branch must call this.evict(signal.id)',
-    ).toBe(true);
-    // Must `return` after evict to skip setTimeout scheduling.
-    expect(
-      /this\.evict\(\s*signal\.id\s*\)\s*;\s*\n\s*return\b/.test(body) ||
-        /this\.evict\(\s*signal\.id\s*\)\s*;\s*return\b/.test(body),
-      'already-expired branch must `return` after evict to skip setTimeout',
+      /this\.signals\.set\(\s*signal\.id/.test(body),
+      'register must write signal to map before scheduling eviction timer',
     ).toBe(true);
   });
 
@@ -138,7 +132,7 @@ describe('SignalTtlEnforcer primitive discipline — 58th edge (OCTAPENTACONTAGO
       'register missing `const existing = this.timers.get(signal.id)` lookup',
     ).toBe(true);
     expect(
-      /if\s*\(\s*existing\s*\)\s*clearTimeout\(\s*existing\s*\)/.test(body),
+      /if\s*\(\s*existing\s*\)\s*\{?\s*clearTimeout\(\s*existing\s*\)/.test(body),
       'register missing `if (existing) clearTimeout(existing)` — duplicate timers on re-register',
     ).toBe(true);
   });
@@ -148,8 +142,8 @@ describe('SignalTtlEnforcer primitive discipline — 58th edge (OCTAPENTACONTAGO
     const endIdx = src.indexOf('evict(id: string)', startIdx);
     const body = src.slice(startIdx, endIdx);
     expect(
-      /setTimeout\(\s*\(\s*\)\s*=>\s*this\.evict\(\s*signal\.id\s*\)\s*,\s*delay\s*\)/.test(body),
-      'register does not schedule setTimeout(() => this.evict(signal.id), delay)',
+      /setTimeout\(\s*\(\s*\)\s*=>\s*this\.evict\(\s*signal\.id\s*\)/.test(body),
+      'register does not schedule setTimeout(() => this.evict(signal.id), ...)',
     ).toBe(true);
     expect(
       /this\.timers\.set\(\s*signal\.id\s*,\s*timer\s*\)/.test(body),
@@ -212,9 +206,9 @@ describe('SignalTtlEnforcer primitive discipline — 58th edge (OCTAPENTACONTAGO
   it('composite: 9 axes hold simultaneously (TTL enforcer coherence)', () => {
     expect(/private\s+signals\s*:\s*Map<string\s*,\s*Signal>/.test(src)).toBe(true);
     expect(/private\s+timers\s*:\s*Map<string\s*,\s*ReturnType<typeof\s+setTimeout>>/.test(src)).toBe(true);
-    expect(/if\s*\(\s*delay\s*<=\s*0\s*\)/.test(src)).toBe(true);
-    expect(/if\s*\(\s*existing\s*\)\s*clearTimeout\(\s*existing\s*\)/.test(src)).toBe(true);
-    expect(/setTimeout\(\s*\(\s*\)\s*=>\s*this\.evict\(\s*signal\.id\s*\)\s*,\s*delay\s*\)/.test(src)).toBe(true);
+    expect(/Math\.max\(\s*0\s*,\s*delay\s*\)/.test(src)).toBe(true);
+    expect(/if\s*\(\s*existing\s*\)\s*\{?\s*clearTimeout\(\s*existing\s*\)/.test(src)).toBe(true);
+    expect(/setTimeout\(\s*\(\s*\)\s*=>\s*this\.evict\(\s*signal\.id\s*\)/.test(src)).toBe(true);
     expect(/\.filter\(\s*\(\s*s\s*\)\s*=>\s*s\.expiresAt\s*>\s*now\s*\)/.test(src)).toBe(true);
     expect(/export\s+const\s+signalTtlEnforcer\s*=\s*new\s+SignalTtlEnforcer/.test(src)).toBe(true);
   });

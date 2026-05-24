@@ -8,6 +8,8 @@ export interface MessageEnvelope<T = unknown> {
   data: T;
   timestamp: number;
   source: string;
+  /** JetStream delivery sequence number — populated by NATS consumers, undefined for Redis pub/sub */
+  deliverySeq?: number;
 }
 
 export type MessageHandler<T = unknown> = (envelope: MessageEnvelope<T>) => void | Promise<void>;

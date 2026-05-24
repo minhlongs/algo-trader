@@ -18,11 +18,14 @@ import {
   qwenDrawdownPnlQueryErrorsTotal,
 } from '../middleware/prometheus-metrics';
 import { getTracer } from '../utils/tracing';
+import { getMessageBus } from '../messaging/create-message-bus';
 
 /** Default check interval: 6 hours */
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 /** Rolling window for P&L calculation */
 const ROLLING_WINDOW_MS = 24 * 60 * 60 * 1000;
+/** Topic for cross-instance Qwen enabled-state synchronisation */
+const QWEN_STATE_TOPIC = 'qwen.state.updated';
 
 /** In-memory kill flag — set by drawdown breach or L1 kill switch */
 let _qwenEnabled = true;
@@ -54,6 +57,7 @@ export function disableQwen(reason: string): void {
   _lastBreachAt = Date.now();
   setQwenDrawdownAutoDisabled(true);
   logger.warn('[QwenDrawdown] Qwen swarm DISABLED', { reason });
+  broadcastQwenState(false, reason);
 }
 
 /** Re-enable (manual only — requires human action via admin API) */
@@ -62,11 +66,27 @@ export function enableQwen(): void {
   _lastBreachAt = null;
   setQwenDrawdownAutoDisabled(false);
   logger.info('[QwenDrawdown] Qwen swarm RE-ENABLED by admin');
+  broadcastQwenState(true, 'admin-re-enable');
 }
 
 /** Get breach timestamp for status reporting */
 export function getLastBreachAt(): number | null {
   return _lastBreachAt;
+}
+
+/**
+ * Publish Qwen enabled state to other PM2 instances via the message bus.
+ * No-op when the bus is not yet initialised (single-instance mode).
+ */
+function broadcastQwenState(enabled: boolean, reason: string): void {
+  try {
+    const bus = getMessageBus();
+    bus
+      .publish(QWEN_STATE_TOPIC, { enabled, reason, updatedAt: Date.now() }, 'qwen-drawdown-monitor')
+      .catch((err) => logger.warn('[QwenDrawdown] Failed to broadcast state', { err }));
+  } catch {
+    // Message bus not initialised — single-instance mode, ignore
+  }
 }
 
 /**
@@ -192,6 +212,37 @@ export function startDrawdownMonitor(intervalMs = DEFAULT_INTERVAL_MS): void {
 
   // Allow process to exit even if timer is active
   if (_timer.unref) _timer.unref();
+}
+
+/**
+ * Subscribe to cross-instance Qwen state updates published via the message bus.
+ * Call once during application init so every PM2 instance stays in sync when
+ * another instance triggers disableQwen() or enableQwen().
+ */
+export async function subscribeQwenStateUpdates(): Promise<void> {
+  try {
+    const bus = getMessageBus();
+    await bus.subscribe<{ enabled: boolean; reason: string; updatedAt: number }>(
+      QWEN_STATE_TOPIC,
+      (envelope) => {
+        const { enabled, reason } = envelope.data;
+        if (enabled && !_qwenEnabled) {
+          _qwenEnabled = true;
+          _lastBreachAt = null;
+          setQwenDrawdownAutoDisabled(false);
+          logger.info('[QwenDrawdown] Qwen RE-ENABLED by peer instance', { reason });
+        } else if (!enabled && _qwenEnabled) {
+          _qwenEnabled = false;
+          _lastBreachAt = Date.now();
+          setQwenDrawdownAutoDisabled(true);
+          logger.warn('[QwenDrawdown] Qwen DISABLED by peer instance', { reason });
+        }
+      }
+    );
+    logger.info('[QwenDrawdown] Subscribed to cross-instance state updates');
+  } catch {
+    logger.debug('[QwenDrawdown] Message bus not available — cross-instance sync disabled');
+  }
 }
 
 /** Stop the monitor (for graceful shutdown and tests) */

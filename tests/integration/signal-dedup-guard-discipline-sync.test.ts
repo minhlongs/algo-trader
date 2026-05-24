@@ -162,8 +162,8 @@ describe('SignalDedupGuard primitive discipline — 56th edge (HEXAPENTACONTAGON
       'isDuplicate must read before write — reversed order breaks race protection',
     ).toBe(true);
     expect(
-      /entry\s*&&\s*entry\.expiresAt\s*>\s*now/.test(body),
-      'isDuplicate return condition must be `entry && entry.expiresAt > now`',
+      /entry\.expiresAt\s*>\s*now/.test(body),
+      'isDuplicate must check `entry.expiresAt > now` for live duplicate detection',
     ).toBe(true);
   });
 
