@@ -6,7 +6,8 @@
  */
 
 import { logger } from '../utils/logger';
-import { writeJsonState, readJsonState, cashclawPath } from '../persistence/file-store';
+import { writeJsonState, cashclawPath } from '../persistence/file-store';
+import * as fs from 'node:fs';
 
 export type WalletLabel = 'own-capital' | `managed-${string}`;
 
@@ -48,6 +49,8 @@ export class WalletManager {
   private wallets: Map<WalletLabel, Wallet> = new Map();
   private tradeHistory: Map<WalletLabel, WalletTrade[]> = new Map();
   private readonly statePath: string;
+  private activeWrite: Promise<void> = Promise.resolve();
+  public writePromise: Promise<void> = Promise.resolve();
 
   constructor(statePath?: string) {
     this.statePath = statePath ?? cashclawPath('wallets.json');
@@ -151,23 +154,60 @@ export class WalletManager {
     }
   }
 
+  private writeScheduled = false;
+  private saveDeferredResolve: (() => void)[] = [];
+  private saveDeferredReject: ((err: any) => void)[] = [];
+
   private saveState(): void {
-    const state: WalletPersistedState = {
-      wallets: Array.from(this.wallets.values()),
-      tradeHistory: Object.fromEntries(
-        Array.from(this.tradeHistory.entries()).map(([k, v]) => [k, v])
-      ),
-    };
-    writeJsonState(this.statePath, state);
+    if (this.writeScheduled) {
+      return;
+    }
+    this.writeScheduled = true;
+
+    const nextWrite = new Promise<void>((resolve, reject) => {
+      this.saveDeferredResolve.push(resolve);
+      this.saveDeferredReject.push(reject);
+    });
+
+    this.writePromise = this.activeWrite.then(() => nextWrite);
+
+    setTimeout(async () => {
+      this.writeScheduled = false;
+      const resolves = this.saveDeferredResolve;
+      const rejects = this.saveDeferredReject;
+      this.saveDeferredResolve = [];
+      this.saveDeferredReject = [];
+
+      const state: WalletPersistedState = {
+        wallets: Array.from(this.wallets.values()),
+        tradeHistory: Object.fromEntries(
+          Array.from(this.tradeHistory.entries()).map(([k, v]) => [k, v])
+        ),
+      };
+
+      try {
+        await writeJsonState(this.statePath, state);
+        resolves.forEach(r => r());
+      } catch (err) {
+        logger.error('[WalletManager] Failed to save state to disk:', err);
+        rejects.forEach(r => r(err));
+      }
+    }, 50);
   }
 
   private loadState(): void {
-    const state = readJsonState<WalletPersistedState>(this.statePath);
-    if (!state) return;
-    for (const wallet of state.wallets) {
-      this.wallets.set(wallet.label, wallet);
-      this.tradeHistory.set(wallet.label, state.tradeHistory[wallet.label] ?? []);
+    try {
+      if (!fs.existsSync(this.statePath)) return;
+      const content = fs.readFileSync(this.statePath, 'utf8');
+      const state = JSON.parse(content) as WalletPersistedState;
+      if (!state) return;
+      for (const wallet of state.wallets) {
+        this.wallets.set(wallet.label, wallet);
+        this.tradeHistory.set(wallet.label, state.tradeHistory[wallet.label] ?? []);
+      }
+      logger.info(`[WalletManager] Restored ${state.wallets.length} wallets from ${this.statePath}`);
+    } catch (err) {
+      logger.warn('[WalletManager] No existing state file found or failed to parse:', err);
     }
-    logger.info(`[WalletManager] Restored ${state.wallets.length} wallets from ${this.statePath}`);
   }
 }

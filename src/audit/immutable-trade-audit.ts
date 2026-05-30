@@ -6,7 +6,8 @@
 
 import { createHash } from 'crypto';
 import { logger } from '../utils/logger';
-import { appendJsonl, readJsonl, cashclawPath } from '../persistence/file-store';
+import { appendJsonl, cashclawPath } from '../persistence/file-store';
+import * as fs from 'node:fs';
 
 export type TradeAuditEventType =
   | 'trade_decision'
@@ -51,15 +52,26 @@ export class ImmutableTradeAudit {
   private entries: TradeAuditEntry[] = [];
   private sequenceCounter: number = 0;
   private readonly logPath: string;
+  public writePromise: Promise<void> = Promise.resolve();
 
   constructor(logPath?: string) {
     this.logPath = logPath ?? cashclawPath('audit-log.jsonl');
-    // Reload existing entries from disk to restore sequence counter
-    const existing = readJsonl<TradeAuditEntry>(this.logPath);
-    if (existing.length > 0) {
-      this.entries = existing;
-      this.sequenceCounter = existing[existing.length - 1].sequenceNumber;
-      logger.info(`[TradeAudit] Restored ${existing.length} entries from ${this.logPath}`);
+    // Reload existing entries from disk to restore sequence counter synchronously at boot
+    try {
+      if (fs.existsSync(this.logPath)) {
+        const content = fs.readFileSync(this.logPath, 'utf8');
+        const existing = content
+          .split('\n')
+          .filter(line => line.trim().length > 0)
+          .map(line => JSON.parse(line) as TradeAuditEntry);
+        if (existing.length > 0) {
+          this.entries = existing;
+          this.sequenceCounter = existing[existing.length - 1].sequenceNumber;
+          logger.info(`[TradeAudit] Restored ${existing.length} entries from ${this.logPath}`);
+        }
+      }
+    } catch (err) {
+      logger.warn('[TradeAudit] No existing log file found or failed to parse:', err);
     }
   }
 
@@ -93,7 +105,9 @@ export class ImmutableTradeAudit {
     this.entries.push(finalEntry);
 
     // Persist to append-only JSONL file (immutable audit semantics)
-    appendJsonl(this.logPath, finalEntry);
+    this.writePromise = appendJsonl(this.logPath, finalEntry).catch((err) => {
+      logger.error('[TradeAudit] Failed to append to log file:', err);
+    });
 
     logger.info(`[TradeAudit] #${finalEntry.sequenceNumber} ${eventType}: ${reason}`);
     return finalEntry;

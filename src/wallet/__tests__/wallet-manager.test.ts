@@ -144,11 +144,12 @@ describe('WalletManager', () => {
   });
 
   describe('persistence', () => {
-    it('should restore wallet state after reload', () => {
+    it('should restore wallet state after reload', async () => {
       const statePath = tmpStatePath();
       const wm1 = new WalletManager(statePath);
       wm1.registerWallet('0xabc', 'own-capital', 50000);
       wm1.recordTrade({ walletLabel: 'own-capital', marketId: 'BTC', side: 'buy', sizeUsd: 1000, price: 50000, pnl: 300, timestamp: 1 }, 'own-capital');
+      await wm1.writePromise;
 
       // New instance loading from same path = simulates PM2 restart
       const wm2 = new WalletManager(statePath);

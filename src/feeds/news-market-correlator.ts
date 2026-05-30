@@ -17,15 +17,28 @@ const INTELLIGENCE_NEWS_IMPACT = 'intelligence.news.impact';
 // Keyword pre-filter (reduces expensive DeepSeek calls)
 // ---------------------------------------------------------------------------
 
-/** Extract significant tokens from a headline (lowercase, min 4 chars, alpha only) */
-function extractKeywords(text: string): Set<string> {
-  const STOP_WORDS = new Set(['that','this','with','from','they','will','have',
-    'been','when','what','which','were','their','said','more','than','about']);
-  return new Set(
-    text.toLowerCase()
-      .split(/\W+/)
-      .filter(w => w.length >= 4 && !STOP_WORDS.has(w)),
-  );
+// Define STOP_WORDS statically at module level to avoid re-allocations
+const STOP_WORDS = new Set(['that','this','with','from','they','will','have',
+  'been','when','what','which','were','their','said','more','than','about']);
+
+// Global cache for keywords of headlines/questions to avoid redundant splits/allocations
+const keywordCache = new Map<string, Set<string>>();
+
+function getCachedKeywords(text: string): Set<string> {
+  let cached = keywordCache.get(text);
+  if (!cached) {
+    cached = new Set(
+      text.toLowerCase()
+        .split(/\W+/)
+        .filter(w => w.length >= 4 && !STOP_WORDS.has(w)),
+    );
+    // Limit cache size to prevent memory leaks
+    if (keywordCache.size >= 2000) {
+      keywordCache.clear();
+    }
+    keywordCache.set(text, cached);
+  }
+  return cached;
 }
 
 /**
@@ -34,15 +47,21 @@ function extractKeywords(text: string): Set<string> {
  * plus a small random sample of others to avoid missing semantic matches.
  */
 export function preFilterMarkets(headline: string, markets: ActiveMarket[]): ActiveMarket[] {
-  const headlineKw = extractKeywords(headline);
+  const headlineKw = getCachedKeywords(headline);
   if (headlineKw.size === 0) return markets.slice(0, 20);
 
   const matched: ActiveMarket[] = [];
   const unmatched: ActiveMarket[] = [];
 
   for (const market of markets) {
-    const marketKw = extractKeywords(market.question);
-    const overlap = [...headlineKw].some(kw => marketKw.has(kw));
+    const marketKw = getCachedKeywords(market.question);
+    let overlap = false;
+    for (const kw of headlineKw) {
+      if (marketKw.has(kw)) {
+        overlap = true;
+        break;
+      }
+    }
     if (overlap) matched.push(market);
     else unmatched.push(market);
   }
@@ -104,11 +123,43 @@ export interface CorrelatorRunResult {
  * 3. Call DeepSeek for impact scoring (cached)
  * 4. Publish to NATS
  */
+/**
+ * Lightweight, zero-dependency concurrency limiter helper
+ */
+async function runWithLimit<T>(
+  limit: number,
+  items: unknown[],
+  fn: (item: any) => Promise<T>
+): Promise<T[]> {
+  const results: T[] = [];
+  const promises: Promise<void>[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const currentIndex = index++;
+      const item = items[currentIndex];
+      results[currentIndex] = await fn(item);
+    }
+  }
+
+  const numWorkers = Math.min(limit, items.length);
+  for (let i = 0; i < numWorkers; i++) {
+    promises.push(worker());
+  }
+
+  await Promise.all(promises);
+  return results;
+}
+
 export async function runNewsMarketCorrelation(
   options: CorrelatorRunOptions,
 ): Promise<CorrelatorRunResult> {
   const { markets, publish = true, maxItems = 10 } = options;
   purgeExpiredCache();
+
+  // Clear cache at start of run to keep memory clean
+  keywordCache.clear();
 
   logger.info('[NewsMarketCorrelator] Starting correlation run', {
     totalMarkets: markets.length,
@@ -128,23 +179,43 @@ export async function runNewsMarketCorrelation(
     return { processed: 0, totalImpacts: 0, results: [] };
   }
 
-  const results: NewsImpactResult[] = [];
+  // Pre-filter candidate markets to avoid processing headlines without candidates
+  interface ActiveItemWithCandidates {
+    item: NewsItem;
+    candidateMarkets: ActiveMarket[];
+  }
 
+  const activeItems: ActiveItemWithCandidates[] = [];
   for (const item of newsItems) {
     const candidateMarkets = preFilterMarkets(item.title, markets);
     if (candidateMarkets.length === 0) {
       logger.debug('[NewsMarketCorrelator] No candidate markets', { title: item.title });
       continue;
     }
-
-    const result = await analyzeNewsImpact(item, candidateMarkets);
-
-    if (result.impacts.length > 0) {
-      results.push(result);
-      if (publish) await publishImpact(result);
-    }
+    activeItems.push({ item, candidateMarkets });
   }
 
+  // Process items concurrently (up to 3 concurrent requests) to prevent DeepSeek/network bottlenecks
+  const rawResults = await runWithLimit<NewsImpactResult | null>(
+    3,
+    activeItems,
+    async (entry) => {
+      try {
+        const result = await analyzeNewsImpact(entry.item, entry.candidateMarkets);
+        if (result.impacts.length > 0) {
+          if (publish) {
+            await publishImpact(result);
+          }
+          return result;
+        }
+      } catch (err) {
+        logger.error('[NewsMarketCorrelator] Failed to analyze news impact:', err);
+      }
+      return null;
+    }
+  );
+
+  const results = rawResults.filter((r): r is NewsImpactResult => r !== null);
   const totalImpacts = results.reduce((sum, r) => sum + r.impacts.length, 0);
 
   logger.info('[NewsMarketCorrelator] Correlation run complete', {

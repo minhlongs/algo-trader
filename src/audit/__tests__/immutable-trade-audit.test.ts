@@ -174,11 +174,14 @@ describe('ImmutableTradeAudit', () => {
   });
 
   describe('persistence', () => {
-    it('should restore entries after reload (simulates PM2 restart)', () => {
+    it('should restore entries after reload (simulates PM2 restart)', async () => {
       const logPath = tmpLogPath();
       const audit1 = new ImmutableTradeAudit(logPath);
       audit1.append('trade_decision', 'Trade 1');
       audit1.append('trade_executed', 'Trade 2');
+
+      // Wait for async write to complete
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // New instance on same path = simulates PM2 restart
       const audit2 = new ImmutableTradeAudit(logPath);

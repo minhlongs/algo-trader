@@ -59,6 +59,7 @@ export class GasBatchOptimizer {
   private pendingBatch: PendingTrade[] = [];
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private isFlushing = false;
+  private flushRequested = false;
 
   /** Resolve callbacks keyed by trade ID, awaited by addTrade() callers */
   private resolvers = new Map<string, (result: TradeResult) => void>();
@@ -111,10 +112,17 @@ export class GasBatchOptimizer {
    * Falls back to individual execution if batch executor throws.
    */
   async flushBatch(): Promise<void> {
-    if (this.isFlushing || this.pendingBatch.length === 0) return;
+    if (this.isFlushing) {
+      if (this.pendingBatch.length > 0) {
+        this.flushRequested = true;
+      }
+      return;
+    }
+    if (this.pendingBatch.length === 0) return;
 
     this.isFlushing = true;
     this.flushTimer = null;
+    this.flushRequested = false;
 
     // Drain the queue atomically
     const batch = this.pendingBatch.splice(0, this.pendingBatch.length);
@@ -124,6 +132,21 @@ export class GasBatchOptimizer {
     try {
       const results = await this.batchExecutor(batch);
       this.resolveResults(results);
+
+      // Clean up any trades in this batch that were not returned in results
+      for (const trade of batch) {
+        if (this.resolvers.has(trade.id)) {
+          const resolver = this.resolvers.get(trade.id);
+          const errorResult: TradeResult = {
+            tradeId: trade.id,
+            success: false,
+            error: 'Batch executor failed to return result for this trade',
+            executedViaBatch: true,
+          };
+          resolver?.(errorResult);
+          this.resolvers.delete(trade.id);
+        }
+      }
     } catch (err) {
       logger.warn('[GasBatchOptimizer] Batch failed — falling back to individual execution', {
         error: err instanceof Error ? err.message : String(err),
@@ -132,6 +155,10 @@ export class GasBatchOptimizer {
       await this.fallbackIndividual(batch);
     } finally {
       this.isFlushing = false;
+      if (this.flushRequested && this.pendingBatch.length > 0) {
+        this.flushRequested = false;
+        this.scheduleFlush(0);
+      }
     }
   }
 

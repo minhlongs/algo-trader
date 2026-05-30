@@ -188,7 +188,7 @@ export class PnLService {
       if (cumulative > peak) {
         peak = cumulative;
       }
-      const drawdown = (peak - cumulative) / peak;
+      const drawdown = peak === 0 ? 0 : (peak - cumulative) / peak;
       if (drawdown > maxDrawdown) {
         maxDrawdown = drawdown;
       }

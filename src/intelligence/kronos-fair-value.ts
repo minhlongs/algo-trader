@@ -7,15 +7,10 @@
  */
 
 import { alphaear } from './alphaear-client.js';
+import type { OhlcvCandle, KronosOhlcvPrediction } from './alphaear-client.js';
 import { logger } from '../core/logger.js';
 
-/** OHLCV prediction point from Kronos foundation model */
-export interface KronosOhlcvPrediction {
-  close: number;
-  high: number;
-  low: number;
-  confidence: number;
-}
+export type { OhlcvCandle, KronosOhlcvPrediction };
 
 export interface KronosFairValue {
   predictedPrice: number;
@@ -23,16 +18,6 @@ export interface KronosFairValue {
   direction: 'up' | 'down' | 'flat';
   confidence: number;
   predictions?: KronosOhlcvPrediction[];
-}
-
-/** Candle shape accepted by getKronosOhlcvForecast */
-export interface OhlcvCandle {
-  timestamp: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
 }
 
 const MIN_HISTORY_LENGTH = 30;
@@ -79,12 +64,9 @@ export async function getKronosFairValue(
   };
 }
 
-const SIDECAR_URL = process.env['ALPHAEAR_URL'] || process.env['ALPHAEAR_SIDECAR_URL'] || 'http://localhost:8100';
-const OHLCV_TIMEOUT_MS = 30_000;
-
 /**
  * Get Kronos OHLCV forecast via the upgraded /v1/kronos/predict-ohlcv endpoint.
- * Calls the Python sidecar directly with full OHLCV candles.
+ * Calls the Python sidecar via the unified alphaear client singleton.
  * Returns null if sidecar unavailable or insufficient data.
  */
 export async function getKronosOhlcvForecast(
@@ -100,25 +82,12 @@ export async function getKronosOhlcvForecast(
   }
 
   try {
-    const resp = await fetch(`${SIDECAR_URL}/v1/kronos/predict-ohlcv`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candles, pred_len: predLen }),
-      signal: AbortSignal.timeout(OHLCV_TIMEOUT_MS),
-    });
-
-    if (!resp.ok) {
-      logger.warn(`KronosOHLCV sidecar returned ${resp.status}`, 'KronosFV');
-      return null;
-    }
-
-    const data = await resp.json() as { predictions?: KronosOhlcvPrediction[] };
-    if (!Array.isArray(data.predictions) || data.predictions.length === 0) {
+    const predictions = await alphaear.predictOhlcv(candles, predLen);
+    if (!predictions || predictions.length === 0) {
       logger.debug('KronosOHLCV returned empty predictions', 'KronosFV');
       return null;
     }
-
-    return data.predictions;
+    return predictions;
   } catch (err) {
     logger.debug(`KronosOHLCV sidecar unavailable: ${String(err)}`, 'KronosFV');
     return null;

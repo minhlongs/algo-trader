@@ -8,6 +8,7 @@
  */
 
 import { PolymarketSigner, PolymarketOrder, SignedOrder } from './polymarket-signer';
+import { createHmac } from 'crypto';
 
 const CLOB_BASE = 'https://clob.polymarket.com';
 
@@ -74,7 +75,7 @@ export class PolymarketAdapter {
   private readonly apiUrl: string;
   private readonly signer: PolymarketSigner;
   private readonly apiKey: string;
-  /** Used in HMAC-SHA256 signature — see _stubSignature TODO */
+  /** Used in HMAC-SHA256 signature — see _computeSignature */
   private readonly apiSecret: string;
   private readonly passphrase: string;
 
@@ -177,15 +178,13 @@ export class PolymarketAdapter {
     if (this.apiKey) {
       headers['POLY-API-KEY'] = this.apiKey;
       headers['POLY-PASSPHRASE'] = this.passphrase;
-      // TODO: compute HMAC-SHA256(timestamp + method + path + body, apiSecret)
       // and set headers['POLY-SIGNATURE'] = signature
-      headers['POLY-SIGNATURE'] = this._stubSignature(timestamp, method, path, body);
+      headers['POLY-SIGNATURE'] = this._computeSignature(timestamp, method, path, body);
     }
 
     return headers;
   }
 
-  /** Serialize a SignedOrder to the CLOB POST /order body shape */
   private serializeSignedOrder(order: SignedOrder): Record<string, unknown> {
     return {
       tokenID: order.tokenId,
@@ -201,21 +200,14 @@ export class PolymarketAdapter {
     };
   }
 
-  /**
-   * @internal stub — replace with HMAC-SHA256 using crypto module or noble/hashes
-   * TODO: import { createHmac } from 'crypto';
-   *       const msg = timestamp + method.toUpperCase() + path + (body ? JSON.stringify(body) : '');
-   *       return createHmac('sha256', this.apiSecret).update(msg).digest('base64');
-   */
-  private _stubSignature(
-    _timestamp: string,
-    _method: string,
-    _path: string,
-    _body?: Record<string, unknown>,
-  ): string {
-    // TODO: import { createHmac } from 'crypto';
-    //       const msg = timestamp + method.toUpperCase() + path + (body ? JSON.stringify(body) : '');
-    //       return createHmac('sha256', this.apiSecret).update(msg).digest('base64');
-    throw new Error('HMAC signature not implemented — replace _stubSignature() with crypto.createHmac');
-  }
+   private _computeSignature(
+     timestamp: string,
+     method: string,
+     path: string,
+     body?: Record<string, unknown>,
+   ): string {
+     if (!this.apiSecret) throw new Error('API secret required for HMAC signature');
+     const msg = timestamp + method.toUpperCase() + path + (body ? JSON.stringify(body) : '');
+     return createHmac('sha256', this.apiSecret).update(msg).digest('base64');
+   }
 }

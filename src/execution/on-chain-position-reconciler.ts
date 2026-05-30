@@ -70,24 +70,34 @@ export class OnChainPositionReconciler {
    * Keys follow pattern: polymarket:position:{marketId}:{tokenId}
    */
   private async getLocalPositions(): Promise<Array<{ marketId: string; tokenId: string; balance: number }>> {
-    // Use SCAN instead of KEYS to avoid blocking Redis on large keyspaces
-    const positions: Array<{ marketId: string; tokenId: string; balance: number }> = [];
+    // Use SCAN to gather keys first, then batch retrieve them using MGET
+    const allKeys: string[] = [];
     let cursor = '0';
     do {
       const [nextCursor, keys] = await this.redis.scan(
         cursor, 'MATCH', 'polymarket:position:*', 'COUNT', '100'
       );
       cursor = nextCursor;
-      for (const key of keys) {
-        const parts = key.split(':');
-        if (parts.length < 4) continue;
-        const marketId = parts[2];
-        const tokenId = parts[3];
-        const raw = await this.redis.get(key);
-        const balance = raw ? parseFloat(raw) : 0;
-        positions.push({ marketId, tokenId, balance });
-      }
+      allKeys.push(...keys);
     } while (cursor !== '0');
+
+    if (allKeys.length === 0) {
+      return [];
+    }
+
+    const values = await this.redis.mget(allKeys);
+    const positions: Array<{ marketId: string; tokenId: string; balance: number }> = [];
+
+    for (let i = 0; i < allKeys.length; i++) {
+      const key = allKeys[i];
+      const raw = values[i];
+      const parts = key.split(':');
+      if (parts.length < 4) continue;
+      const marketId = parts[2];
+      const tokenId = parts[3];
+      const balance = raw ? parseFloat(raw) : 0;
+      positions.push({ marketId, tokenId, balance });
+    }
 
     return positions;
   }
@@ -119,8 +129,38 @@ export class OnChainPositionReconciler {
     const localPositions = await this.getLocalPositions();
     const discrepancies: PositionDiscrepancy[] = [];
 
-    for (const pos of localPositions) {
-      const onChainBalance = await this.getOnChainBalance(pos.tokenId);
+    if (localPositions.length === 0) {
+      logger.info(`[Reconciler] Pass complete — checked=0 discrepancies=0`);
+      return { checkedAt, positionsChecked: 0, discrepancies: [] };
+    }
+
+    let onChainBalances: number[] = [];
+    try {
+      const CHUNK_SIZE = 100;
+      const rawBalances: bigint[] = [];
+
+      for (let i = 0; i < localPositions.length; i += CHUNK_SIZE) {
+        const chunk = localPositions.slice(i, i + CHUNK_SIZE);
+        const tokenIds = chunk.map((pos) => BigInt(pos.tokenId));
+        const accounts = Array(chunk.length).fill(this.walletAddress);
+        const chunkBalances: bigint[] = await this.contract.balanceOfBatch(accounts, tokenIds);
+        rawBalances.push(...chunkBalances);
+      }
+
+      onChainBalances = rawBalances.map((b) => Number(b));
+    } catch (err) {
+      logger.error(`[Reconciler] balanceOfBatch failed: ${(err as Error).message}. Falling back to individual queries.`);
+      // Fallback to individual getOnChainBalance if batch query fails
+      onChainBalances = [];
+      for (const pos of localPositions) {
+        const bal = await this.getOnChainBalance(pos.tokenId);
+        onChainBalances.push(bal);
+      }
+    }
+
+    for (let i = 0; i < localPositions.length; i++) {
+      const pos = localPositions[i];
+      const onChainBalance = onChainBalances[i];
       const difference = pos.balance - onChainBalance;
 
       if (difference !== 0 || onChainBalance === -1) {

@@ -37,37 +37,45 @@ const DEFAULT_CLUSTER_CONFIG: RedisClusterConfig = {
 let clusterClient: Cluster | null = null;
 
 /**
+ * Create a new Redis Cluster client
+ */
+export function createRedisClusterClient(): Cluster {
+  const config = DEFAULT_CLUSTER_CONFIG;
+
+  const options: ClusterOptions = {
+    clusterRetryStrategy: (times: number) => {
+      // Exponential backoff: 100ms, 200ms, 400ms, 800ms, max 2000ms
+      const delay = Math.min(100 * Math.pow(2, times), 2000);
+      logger.info(`[RedisCluster] Retry attempt ${times}, delay: ${delay}ms`);
+      return delay;
+    },
+    retryDelayOnFailover: config.retryDelayOnFailover,
+    redisOptions: {
+      password: config.password,
+      connectTimeout: 10000,
+      commandTimeout: 5000,
+      maxRetriesPerRequest: config.maxRetriesPerRequest,
+    },
+    // Enable reading from replicas for better read performance
+    scaleReads: 'master', // Options: 'all', 'master', 'slave'
+  };
+
+  const client = new Cluster(config.nodes, options);
+
+  client.on('error', (err) => {
+    logger.error('[RedisCluster] Error:', { message: err.message });
+  });
+
+  return client;
+}
+
+/**
  * Get Redis Cluster client
  * Uses ioredis Cluster mode with automatic slot routing
  */
 export function getRedisClusterClient(): Cluster {
   if (!clusterClient) {
-    const config = DEFAULT_CLUSTER_CONFIG;
-
-    const options: ClusterOptions = {
-      clusterRetryStrategy: (times: number) => {
-        // Exponential backoff: 100ms, 200ms, 400ms, 800ms, max 2000ms
-        const delay = Math.min(100 * Math.pow(2, times), 2000);
-        logger.info(`[RedisCluster] Retry attempt ${times}, delay: ${delay}ms`);
-        return delay;
-      },
-      retryDelayOnFailover: config.retryDelayOnFailover,
-      redisOptions: {
-        password: config.password,
-        connectTimeout: 10000,
-        commandTimeout: 5000,
-        maxRetriesPerRequest: config.maxRetriesPerRequest,
-      },
-      // Enable reading from replicas for better read performance
-      scaleReads: 'master', // Options: 'all', 'master', 'slave'
-    };
-
-    clusterClient = new Cluster(config.nodes, options);
-
-    // Event handlers
-    clusterClient.on('error', (err) => {
-      logger.error('[RedisCluster] Error:', { message: err.message });
-    });
+    clusterClient = createRedisClusterClient();
 
     clusterClient.on('connect', () => {
       logger.info('[RedisCluster] Connected to cluster');

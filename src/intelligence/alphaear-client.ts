@@ -49,6 +49,22 @@ export interface ForecastPoint {
   low: number;
 }
 
+export interface OhlcvCandle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface KronosOhlcvPrediction {
+  close: number;
+  high: number;
+  low: number;
+  confidence: number;
+}
+
 export interface SignalEvolution {
   status: 'STRENGTHENED' | 'WEAKENED' | 'FALSIFIED' | 'UNCHANGED';
   confidence: number;
@@ -114,6 +130,17 @@ export class AlphaEarClient {
       prices, lookback, pred_len: predLen, news_context: newsContext,
     });
     return resp?.forecast ?? [];
+  }
+
+  async predictOhlcv(
+    candles: OhlcvCandle[],
+    predLen = 5,
+  ): Promise<KronosOhlcvPrediction[] | null> {
+    const resp = await this.post<{ predictions?: KronosOhlcvPrediction[] }>('/v1/kronos/predict-ohlcv', {
+      candles,
+      pred_len: predLen,
+    });
+    return resp?.predictions ?? null;
   }
 
   // ──── Signal Tracking ────

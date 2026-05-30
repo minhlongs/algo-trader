@@ -186,13 +186,26 @@ export class TwapExecutor {
 
       try {
         // Race chunk execution against per-chunk timeout
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Chunk timeout after ${this.config.chunkTimeoutMs}ms`)), this.config.chunkTimeoutMs)
-        );
-        const { executedPrice, filledUsd } = await Promise.race([
-          executeChunk(order.marketId, order.side, chunkSize, signal),
-          timeoutPromise,
-        ]);
+        let timer: NodeJS.Timeout | null = null;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`Chunk timeout after ${this.config.chunkTimeoutMs}ms`)), this.config.chunkTimeoutMs);
+        });
+
+        let executedPrice: number;
+        let filledUsd: number;
+
+        try {
+          const res = await Promise.race([
+            executeChunk(order.marketId, order.side, chunkSize, signal),
+            timeoutPromise,
+          ]);
+          executedPrice = res.executedPrice;
+          filledUsd = res.filledUsd;
+        } finally {
+          if (timer) {
+            clearTimeout(timer);
+          }
+        }
 
         consecutiveFailures = 0; // reset on success
 
@@ -242,11 +255,18 @@ export class TwapExecutor {
       // Delay between chunks (skip after last, skip if aborted)
       if (i < chunks.length - 1 && !result.aborted && !signal.aborted) {
         await new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(resolve, delayMs);
-          signal.addEventListener('abort', () => {
+          const onAbort = () => {
             clearTimeout(timer);
+            signal.removeEventListener('abort', onAbort);
             reject(new Error('Aborted during delay'));
-          }, { once: true });
+          };
+
+          const timer = setTimeout(() => {
+            signal.removeEventListener('abort', onAbort);
+            resolve();
+          }, delayMs);
+
+          signal.addEventListener('abort', onAbort);
         }).catch(() => {
           result.aborted = true;
           result.abortReason = result.abortReason ?? 'Cancelled during inter-chunk delay';

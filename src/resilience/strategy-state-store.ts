@@ -113,9 +113,15 @@ export class StrategyStateStore {
       const files = readdirSync(this.stateDir) as string[];
       const instanceId = this.resolveInstanceId();
       const suffix = `-${instanceId}.json`;
-      return files
-        .filter(f => f.endsWith(suffix))
-        .map(f => f.slice(0, -suffix.length));
+      const ids = files
+        .filter(f => f.endsWith('.json') && !f.endsWith('.tmp'))
+        .map(f => {
+          if (f.endsWith(suffix)) {
+            return f.slice(0, -suffix.length);
+          }
+          return f.slice(0, -5);
+        });
+      return Array.from(new Set(ids));
     } catch {
       return [];
     }
@@ -134,10 +140,8 @@ export class StrategyStateStore {
   }
 
   private filePath(strategyId: string): string {
-    // Sanitize ID for filename safety; include instance ID to prevent PM2 instance clobbering
     const safe = strategyId.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const instanceId = this.resolveInstanceId();
-    return join(this.stateDir, `${safe}-${instanceId}.json`);
+    return join(this.stateDir, `${safe}.json`);
   }
 }
 

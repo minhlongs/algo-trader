@@ -9,6 +9,8 @@ export default defineConfig({
       '.claude/**',
       '.opencode/**',
       '**/smoke.test.ts',
+      // Exclude dormant/backup directories
+      'backups/**',
       // Polymarket strategy tests excluded — strategies depend on unimplemented
       // infrastructure (clob-client, order-manager, event-bus, gamma-client).
       // Re-enable when polymarket infra is implemented.

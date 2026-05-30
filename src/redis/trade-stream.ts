@@ -64,7 +64,7 @@ export class TradeStream {
     const results = await this.redis.xrange(key, '-', '+', 'COUNT', count);
 
     return results.map((entry: [string, string[]]) => {
-      const [_id, ...rawData] = entry[1];
+      const rawData = entry[1];
       const data: Record<string, string> = {};
       for (let i = 0; i < rawData.length; i += 2) {
         if (i + 1 < rawData.length) {
@@ -91,11 +91,16 @@ export class TradeStream {
     sinceTimestamp: number
   ): Promise<Trade[]> {
     const key = this.getKey(exchange, symbol);
-    const startId = `${sinceTimestamp}-0`;
+    
+    // Handle potential clock drift by querying with a safety buffer (e.g. 10s)
+    // and ensure the start timestamp is non-negative.
+    const DRIFT_BUFFER_MS = 10_000;
+    const queryTimestamp = Math.max(0, sinceTimestamp - DRIFT_BUFFER_MS);
+    const startId = `${queryTimestamp}-0`;
     const results = await this.redis.xrange(key, startId, '+');
 
-    return results.map((entry: [string, string[]]) => {
-      const [_id, ...rawData] = entry[1];
+    const trades = results.map((entry: [string, string[]]) => {
+      const rawData = entry[1];
       const data: Record<string, string> = {};
       for (let i = 0; i < rawData.length; i += 2) {
         if (i + 1 < rawData.length) {
@@ -111,6 +116,9 @@ export class TradeStream {
         tradeId: data.tradeId || undefined,
       };
     });
+
+    // Filter to return only trades that are strictly >= sinceTimestamp
+    return trades.filter((t) => t.timestamp >= sinceTimestamp);
   }
 
   /**

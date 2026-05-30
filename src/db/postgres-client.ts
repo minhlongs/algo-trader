@@ -39,7 +39,14 @@ export function getDbClient(config?: Partial<DbConfig>): pg.Pool {
     ...config,
   };
 
-  pool = new Pool(dbConfig);
+  pool = new Pool({
+    host: dbConfig.host,
+    port: dbConfig.port,
+    database: dbConfig.database,
+    user: dbConfig.user,
+    password: dbConfig.password,
+    max: dbConfig.maxConnections,
+  });
 
   pool.on('error', (err) => {
     logger.error('[PostgreSQL] Unexpected error:', { err });

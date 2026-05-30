@@ -135,7 +135,20 @@ export class PubSubManager {
    * Close connections
    */
   async close(): Promise<void> {
-    await this.sub.quit();
-    await this.pub.quit();
+    // Unsubscribe from all channels to clean up subscription state on shared client
+    const promises: Promise<any>[] = [];
+    for (const channel of this.snapshotHandlers.keys()) {
+      promises.push(this.sub.unsubscribe(channel));
+    }
+    promises.push(this.sub.unsubscribe(this.getAlertChannel()));
+    
+    try {
+      await Promise.all(promises);
+    } catch (err) {
+      // Ignore errors during cleanup
+    }
+
+    this.snapshotHandlers.clear();
+    this.alertHandlers.clear();
   }
 }

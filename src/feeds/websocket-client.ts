@@ -111,6 +111,7 @@ export abstract class BaseWebSocketClient extends EventEmitter {
     if (this.state === 'connected' && this.stats.connectedAt) {
       this.stats.uptime = now - this.stats.connectedAt;
     }
+    this.recalculateLatencyStats();
     return { ...this.stats };
   }
 
@@ -300,6 +301,20 @@ export abstract class BaseWebSocketClient extends EventEmitter {
     }
   }
 
+  protected recalculateLatencyStats(): void {
+    if (this.stats.latencySamples.length === 0) {
+      this.stats.avgLatency = 0;
+      this.stats.p95Latency = 0;
+      return;
+    }
+    const sum = this.stats.latencySamples.reduce((a, b) => a + b, 0);
+    this.stats.avgLatency = sum / this.stats.latencySamples.length;
+
+    const sorted = [...this.stats.latencySamples].sort((a, b) => a - b);
+    const p95Index = Math.floor(sorted.length * 0.95);
+    this.stats.p95Latency = sorted[p95Index] || 0;
+  }
+
   protected recordLatency(latency: number): void {
     if (!this.config.latencyTracking) return;
 
@@ -314,14 +329,10 @@ export abstract class BaseWebSocketClient extends EventEmitter {
     this.stats.minLatency = Math.min(this.stats.minLatency, latency);
     this.stats.maxLatency = Math.max(this.stats.maxLatency, latency);
 
-    // Calculate average
-    const sum = this.stats.latencySamples.reduce((a, b) => a + b, 0);
-    this.stats.avgLatency = sum / this.stats.latencySamples.length;
-
-    // Calculate p95
-    const sorted = [...this.stats.latencySamples].sort((a, b) => a - b);
-    const p95Index = Math.floor(sorted.length * 0.95);
-    this.stats.p95Latency = sorted[p95Index] || 0;
+    // Periodically recalculate (e.g., every 100 updates) to avoid sorting on every tick
+    if (this.stats.messageCount % 100 === 0) {
+      this.recalculateLatencyStats();
+    }
   }
 
   protected forceReconnect(reason: string): void {
