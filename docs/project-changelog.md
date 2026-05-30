@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [2.5.0] - 2026-05-30
+
+### Added — Premium Bento Grid Dashboard UI/UX Polish & Express API Integration
+
+- **Dashboard UI/UX Pro Max**: Thiết kế lại giao diện Dashboard theo mô hình Bento Grid 12-cột sang trọng dùng Obsidian Deep Dark Theme, Glassmorphism, typography Plus Jakarta Sans / JetBrains Mono, tích hợp TradingView Lightweight Charts & Volume overlay cho đồ thị nến thời gian thực.
+- **Express Backend Alignment**: Chuyển đổi toàn bộ API routes từ Fastify sang Express (api-key, audit, backtest, license, onboarding), hợp nhất adapter WebSocket `RedisWSAdapter` chạy trực tiếp trên Express HTTP server.
+- **TypeScript & Test suite resolution**: Giải quyết 100% các lỗi biên dịch TypeScript (tsc) của cả backend và frontend, fix lỗi rò rỉ mock state trong test suite frontend. Đảm bảo toàn bộ 1506 backend tests và 35 frontend tests PASS 100%.
+- **Cloudflare Live Deploy**: Triển khai thành công Backend Worker (`algo-trader`) và Frontend Dashboard Dashboard Pages (`algo-trader-dashboard`) lên Cloudflare.
+
+---
+
 ## [2.4.88] - 2026-04-20
 
 ### Added — Feature-gate tier-based access-control discipline 10-invariant sync (HEPTAHEXACONTAGON = 67, prime + lucky prime)

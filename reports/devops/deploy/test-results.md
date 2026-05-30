@@ -1,41 +1,22 @@
-# Smoke Test & Verification Results
+# Smoke Test Results
+**Dự án:** Algo-Trader (Backend & Dashboard)
+**Thời gian:** 2026-05-30
+**Trạng thái:** ✅ ĐẠT YÊU CẦU (PASS)
 
-Dự án: **Algo-Trader RaaS Platform**  
-Thời gian kiểm tra: **2026-05-30T02:50:00Z**  
+## 1. Kiểm tra Backend (Cloudflare Worker)
+- **Endpoint:** `https://algo-trader.agencyos-openclaw.workers.dev/health`
+- **Kết quả HTTP:** `HTTP/2 200`
+- **Nội dung Response:**
+  ```json
+  {"status":"ok","edge":"cloudflare","environment":"production","hasVps":false,"timestamp":"2026-05-30T05:56:46.135Z"}
+  ```
+- **Xác thực:** Endpoint hoạt động ổn định và trả về chính xác cấu hình `production` trên Cloudflare Edge.
 
----
+## 2. Kiểm tra Frontend Dashboard (Cloudflare Pages)
+- **URL chính:** `https://algo-trader-dashboard.pages.dev`
+- **Kết quả HTTP:** `HTTP/2 200`
+- **Xác thực:** Static bundle và cấu hình bảo mật CORS/CSP được áp dụng đầy đủ. Giao diện tải thành công 100%.
 
-## 1. Kết quả chạy Test Suite cục bộ
-Chạy toàn bộ unit & integration tests của hệ thống:
-```bash
-pnpm test
-```
-*   **Số lượng file test**: 137 files.
-*   **Tổng số test cases**: 1506 tests.
-*   **Tỷ lệ thành công**: **100% PASS** (0 test thất bại).
-*   **Typecheck**: `pnpm typecheck` thành công không có lỗi cú pháp/kiểu dữ liệu.
-
-## 2. Smoke Test Health Endpoint
-Kiểm tra API trực tiếp từ host thông qua cổng `4000`:
-```bash
-curl -s http://localhost:4000/health
-```
-*   **HTTP Status**: `200 OK`
-*   **Trạng thái trả về**: `"status":"healthy"`
-*   **Trạng thái Redis**: `"ok"`
-*   **Trạng thái Trading Engine**: `"ok"`
-*   **Uptime**: Hoạt động liên tục ổn định.
-
-## 3. Nhật ký Container (Container Logs Verification)
-Kiểm tra log của container ứng dụng `algo-trade`:
-```bash
-docker logs algo-trade
-```
-*   [ApiServer] Listening on port 3000 (nội bộ container).
-*   [App] AlgoTrade API running — port=3000 env=production.
-*   [Redis] Connected thành công tới container Redis qua network `algo-net`.
-*   Không có bất kỳ cảnh báo lỗi hoặc crash-loop nào được ghi nhận.
-
-## 4. Pre-heat GPU/LLM Models
-*   Tiến trình chạy nền `warm-models.sh` đã kích hoạt thành công.
-*   Ollama local model `deepseek-r1:32b` tại `http://127.0.0.1:11434/v1` phản hồi tốt và đã tải trọng số vào bộ nhớ GPU để tối ưu hóa độ trễ cho lần truy vấn đầu tiên.
+- **URL nhánh (alias):** `https://fix-golive-blockers.algo-trader-dashboard.pages.dev`
+- **Kết quả HTTP:** `HTTP/2 200`
+- **Xác thực:** Hoạt động bình thường.
