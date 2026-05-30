@@ -20,9 +20,9 @@ The Algo-Trader RaaS Platform consists of the following components:
 |---|------|-------|-------------|--------|
 | M1 | PostgreSQL Query and Index Optimization | Analyze slow queries in `TradeRepository`, run migrations with composite indexes, and optimize query latency. | none | DONE |
 | M2 | Redis Cluster Load Rebalancing | Tune Redis Cluster options, scale reads to replicas (`scaleReads: 'slave'`), optimize connection pool, and ensure auto-failover resilience. | none | DONE |
-| M3 | WebSocket Message Compression | Integrate `permessage-deflate` on WebSocket server and client, configuring thresholds and memory budgets to reduce bandwidth. | none | PLANNED |
-| M4 | Bento Grid Dashboard Rendering Polish | Implement React performance optimization (memoization, virtualization, throttling, canvas rendering) for candlestick chart and Bento Grid. | none | PLANNED |
-| M5 | k6 Load Test Scripting & Execution | Develop and execute a k6 load script simulating 5000+ VUs accessing API and WebSocket endpoints concurrently. | M1, M2, M3 | PLANNED |
+| M3 | WebSocket Message Compression | Integrate `permessage-deflate` on WebSocket server and client, configuring thresholds and memory budgets to reduce bandwidth. | none | DONE |
+| M4 | Bento Grid Dashboard Rendering Polish | Implement React performance optimization (memoization, virtualization, throttling, canvas rendering) for candlestick chart and Bento Grid. | none | DONE |
+| M5 | k6 Load Test Scripting & Execution | Develop and execute a k6 load script simulating 5000+ VUs accessing API and WebSocket endpoints concurrently. | M1, M2, M3 | DONE |
 | M6 | Acceptance Verification & Testing | Verify p95 latency < 100ms under load, run all 1500+ backend tests, 35 frontend tests, and profile memory leaks on M1 Max. | M4, M5 | PLANNED |
 
 ## Interface Contracts

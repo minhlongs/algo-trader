@@ -22,12 +22,30 @@ export function CandlestickChart() {
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
 
-  const prices = useTradingStore((s) => s.prices);
   const [activePair, setActivePair] = useState<string>('binance:BTC/USDT');
+  const tick = useTradingStore((s) => s.prices[activePair]);
+  const [tickers, setTickers] = useState<string[]>([]);
+  const candlesRef = useRef<CandlestickData[]>([]);
 
-  // Maintain candle history in state
-  const [candles, setCandles] = useState<CandlestickData[]>(() => {
-    // Generate initial mock history for visual excellence
+  // Get and track ticker list selectively
+  useEffect(() => {
+    setTickers(Object.keys(useTradingStore.getState().prices));
+    const unsubscribe = useTradingStore.subscribe(
+      (state) => {
+        const keys = Object.keys(state.prices);
+        setTickers((prev) => {
+          if (prev.length === keys.length && prev.every((k, i) => k === keys[i])) {
+            return prev;
+          }
+          return keys;
+        });
+      }
+    );
+    return unsubscribe;
+  }, []);
+
+  // Generate or regenerate initial candles when activePair changes
+  useEffect(() => {
     const list: CandlestickData[] = [];
     const now = Math.floor(Date.now() / 1000);
     let close = 50000;
@@ -44,59 +62,78 @@ export function CandlestickChart() {
         close,
       });
     }
-    return list;
-  });
+    candlesRef.current = list;
 
-  // Track ticker options
-  const tickers = Object.keys(prices);
+    if (candleSeriesRef.current && volumeSeriesRef.current) {
+      candleSeriesRef.current.setData(list);
 
-  // Monitor latest price tick to update last candle or insert new one
+      const volumeData = list.map((c) => {
+        const isUp = c.close >= c.open;
+        return {
+          time: c.time,
+          value: Math.abs(c.close - c.open) * (1000 + Math.random() * 500),
+          color: isUp ? 'rgba(0, 255, 163, 0.25)' : 'rgba(255, 46, 147, 0.25)',
+        };
+      });
+      volumeSeriesRef.current.setData(volumeData);
+    }
+  }, [activePair]);
+
+  // Handle price update tick in real-time using series.update()
   useEffect(() => {
-    const tick = prices[activePair];
-    if (!tick) return;
+    if (!tick || !candleSeriesRef.current || !volumeSeriesRef.current) return;
 
     const midPrice = (tick.bid + tick.ask) / 2;
     const nowSeconds = Math.floor(tick.timestamp / 1000);
     const minuteSeconds = Math.floor(nowSeconds / 60) * 60;
 
-    setCandles((prev) => {
-      if (prev.length === 0) {
-        return [{
-          time: minuteSeconds as unknown as Time,
-          open: midPrice,
-          high: midPrice,
-          low: midPrice,
-          close: midPrice,
-        }];
-      }
+    const prevCandles = candlesRef.current;
+    if (prevCandles.length === 0) {
+      const initialCandle = {
+        time: minuteSeconds as unknown as Time,
+        open: midPrice,
+        high: midPrice,
+        low: midPrice,
+        close: midPrice,
+      };
+      candlesRef.current = [initialCandle];
+      candleSeriesRef.current.setData([initialCandle]);
+      return;
+    }
 
-      const last = prev[prev.length - 1];
-      const isNewMinute = minuteSeconds > (last.time as unknown as number);
+    const last = prevCandles[prevCandles.length - 1];
+    const isNewMinute = minuteSeconds > (last.time as unknown as number);
 
-      if (isNewMinute) {
-        // Start a new candle
-        return [
-          ...prev,
-          {
-            time: minuteSeconds as unknown as Time,
-            open: last.close,
-            high: Math.max(last.close, midPrice),
-            low: Math.min(last.close, midPrice),
-            close: midPrice,
-          },
-        ].slice(-200); // Keep last 200 candles
-      } else {
-        // Update the last candle
-        const updated = {
-          ...last,
-          high: Math.max(last.high, midPrice),
-          low: Math.min(last.low, midPrice),
-          close: midPrice,
-        };
-        return [...prev.slice(0, -1), updated];
-      }
-    });
-  }, [prices, activePair]);
+    let updatedBar: CandlestickData;
+    if (isNewMinute) {
+      updatedBar = {
+        time: minuteSeconds as unknown as Time,
+        open: last.close,
+        high: Math.max(last.close, midPrice),
+        low: Math.min(last.close, midPrice),
+        close: midPrice,
+      };
+      candlesRef.current = [...prevCandles, updatedBar].slice(-200);
+    } else {
+      updatedBar = {
+        ...last,
+        high: Math.max(last.high, midPrice),
+        low: Math.min(last.low, midPrice),
+        close: midPrice,
+      };
+      candlesRef.current = [...prevCandles.slice(0, -1), updatedBar];
+    }
+
+    candleSeriesRef.current.update(updatedBar);
+
+    const isUp = updatedBar.close >= updatedBar.open;
+    const volumeBar = {
+      time: updatedBar.time,
+      value: Math.abs(updatedBar.close - updatedBar.open) * (1000 + Math.random() * 500),
+      color: isUp ? 'rgba(0, 255, 163, 0.25)' : 'rgba(255, 46, 147, 0.25)',
+    };
+    volumeSeriesRef.current.update(volumeBar);
+  }, [tick]);
 
   // Set up chart and series
   useEffect(() => {
@@ -152,6 +189,20 @@ export function CandlestickChart() {
     volumeSeriesRef.current = volumeSeries;
     chartRef.current = chart;
 
+    // Load initial data on mount if available
+    if (candlesRef.current.length > 0) {
+      candleSeries.setData(candlesRef.current);
+      const volumeData = candlesRef.current.map((c) => {
+        const isUp = c.close >= c.open;
+        return {
+          time: c.time,
+          value: Math.abs(c.close - c.open) * (1000 + Math.random() * 500),
+          color: isUp ? 'rgba(0, 255, 163, 0.25)' : 'rgba(255, 46, 147, 0.25)',
+        };
+      });
+      volumeSeries.setData(volumeData);
+    }
+
     // Responsive resize
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -169,24 +220,6 @@ export function CandlestickChart() {
       volumeSeriesRef.current = null;
     };
   }, []);
-
-  // Update chart data whenever state changes
-  useEffect(() => {
-    if (!candleSeriesRef.current || !volumeSeriesRef.current || candles.length === 0) return;
-
-    candleSeriesRef.current.setData(candles);
-
-    // Build volume histogram
-    const volumeData: VolumeData[] = candles.map((c) => {
-      const isUp = c.close >= c.open;
-      return {
-        time: c.time,
-        value: Math.abs(c.close - c.open) * (1000 + Math.random() * 500),
-        color: isUp ? 'rgba(0, 255, 163, 0.25)' : 'rgba(255, 46, 147, 0.25)',
-      };
-    });
-    volumeSeriesRef.current.setData(volumeData);
-  }, [candles]);
 
   return (
     <div className="flex flex-col h-full">

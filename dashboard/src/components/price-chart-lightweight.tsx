@@ -3,7 +3,7 @@
  * Auto-resizes via ResizeObserver, cleans up on unmount.
  */
 import { useEffect, useRef } from 'react';
-import { createChart, ColorType, LineStyle } from 'lightweight-charts';
+import { createChart, ColorType, LineStyle, ISeriesApi } from 'lightweight-charts';
 
 export interface ChartDataPoint {
   time: string;
@@ -32,7 +32,9 @@ export function PriceChartLightweight({
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart> | null>(null);
+  const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
 
+  // 1. Initialize chart instance once on mount/resize options
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -66,12 +68,8 @@ export function PriceChartLightweight({
       priceLineVisible: false,
     });
 
-    if (data && data.length > 0) {
-      series.setData(data);
-      chart.timeScale().fitContent();
-    }
-
     chartRef.current = chart;
+    seriesRef.current = series;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -85,8 +83,23 @@ export function PriceChartLightweight({
       observer.disconnect();
       chart.remove();
       chartRef.current = null;
+      seriesRef.current = null;
     };
-  }, [data, height, color]);
+  }, [height, color]);
+
+  // 2. Separate data updating effect
+  useEffect(() => {
+    const series = seriesRef.current;
+    const chart = chartRef.current;
+    if (!series || !chart) return;
+
+    if (data && data.length > 0) {
+      series.setData(data);
+      chart.timeScale().fitContent();
+    } else {
+      series.setData([]);
+    }
+  }, [data]);
 
   const hasData = data && data.length > 0;
 

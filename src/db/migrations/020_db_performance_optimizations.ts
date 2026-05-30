@@ -28,7 +28,7 @@ export async function up(client: PoolClient): Promise<void> {
   // 4. Create an expression index for epoch BIGINT to date conversions
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_trades_created_at_date_trunc
-    ON trades ((DATE_TRUNC('day', TO_TIMESTAMP(created_at / 1000))))
+    ON trades ((DATE_TRUNC('day', TO_TIMESTAMP(created_at / 1000.0) AT TIME ZONE 'UTC')))
     WHERE status = 'FILLED'
   `);
 }

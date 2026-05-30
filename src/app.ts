@@ -8,9 +8,16 @@ import 'dotenv/config';
 import { ApiServer } from './api/server';
 import { logger } from './utils/logger';
 
+import { runMigrations } from './db/migration-runner';
+
 let server: ApiServer | null = null;
 
 export async function startApp(): Promise<void> {
+  // Run DB migrations on startup
+  await runMigrations().catch((err) => {
+    logger.warn('[App] Migration runner skipped or failed:', { err });
+  });
+
   server = new ApiServer();
   await server.start();
 

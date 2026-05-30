@@ -60,3 +60,33 @@ html, body, #root {
   background-color: rgba(0, 255, 163, 0.25);
   color: #fff;
 }
+
+@keyframes flash-up {
+  0% {
+    background-color: rgba(0, 255, 163, 0.25);
+    border-color: rgba(0, 255, 163, 0.6);
+  }
+  100% {
+    background-color: rgba(16, 20, 38, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+@keyframes flash-down {
+  0% {
+    background-color: rgba(255, 46, 147, 0.25);
+    border-color: rgba(255, 46, 147, 0.6);
+  }
+  100% {
+    background-color: rgba(16, 20, 38, 0.6);
+    border-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.flash-up-anim {
+  animation: flash-up 0.8s ease-out forwards;
+}
+
+.flash-down-anim {
+  animation: flash-down 0.8s ease-out forwards;
+}

@@ -56,7 +56,7 @@ export class ApiServer {
       port: parseInt(process.env.API_PORT || '3000'),
       corsOrigin: process.env.CORS_ORIGIN || 'https://cashclaw.cc',
       rateLimitWindowMs: 60000, // 1 minute
-      rateLimitMax: 100, // 100 requests per minute
+      rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100'),
       ...config,
     };
 
@@ -136,6 +136,30 @@ export class ApiServer {
     // API routes
     this.app.use('/api/trades', tradesRouter);
     this.app.use('/api/pnl', pnlRouter);
+
+    // Engine status and active strategies
+    this.app.get('/api/status', (req, res) => {
+      res.json({
+        status: 'running',
+        uptime: process.uptime(),
+        strategies: [
+          { id: 'kronos', name: 'Kronos Strategy', status: 'active' }
+        ],
+        timestamp: Date.now()
+      });
+    });
+
+    // Portfolio summary
+    this.app.get('/api/portfolio', (req, res) => {
+      res.json({
+        equity: 10000,
+        balance: 9500,
+        pnl: 500,
+        positions: [],
+        timestamp: Date.now()
+      });
+    });
+
     this.app.use('/api/signals', signalsRouter);
     this.app.use('/api/admin', adminRouter);
     this.app.use('/api/revenue', revenueRouter);

@@ -2,7 +2,7 @@
  * Signals Panel Component - Live arbitrage opportunities table
  * Displays signals sorted by spread percentage
  */
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Signal } from '../types/api';
 
 interface SignalsPanelProps {
@@ -14,6 +14,86 @@ interface SignalsPanelProps {
 
 type SortKey = 'spread' | 'latency' | 'timestamp' | 'symbol';
 type SortDirection = 'asc' | 'desc';
+
+interface SignalsTableProps {
+  signals: Signal[];
+  onSort: (key: SortKey) => void;
+  getSortIcon: (key: SortKey) => string;
+}
+
+const SignalsTable = React.memo(function SignalsTable({
+  signals,
+  onSort,
+  getSortIcon,
+}: SignalsTableProps) {
+  return (
+    <table className="w-full text-xs">
+      <thead className="bg-bg-subtle text-muted uppercase tracking-wider">
+        <tr>
+          <th className="px-4 py-2 text-left font-medium">Symbol</th>
+          <th className="px-4 py-2 text-left font-medium">Buy Exchange</th>
+          <th className="px-4 py-2 text-left font-medium">Sell Exchange</th>
+          <th className="px-4 py-2 text-right font-medium">Buy Price</th>
+          <th className="px-4 py-2 text-right font-medium">Sell Price</th>
+          <th
+            className="px-4 py-2 text-right font-medium cursor-pointer hover:text-white"
+            onClick={() => onSort('spread')}
+          >
+            {getSortIcon('spread')} Spread %
+          </th>
+          <th
+            className="px-4 py-2 text-right font-medium cursor-pointer hover:text-white"
+            onClick={() => onSort('latency')}
+          >
+            {getSortIcon('latency')} Latency (ms)
+          </th>
+          <th className="px-4 py-2 text-right font-medium">Age</th>
+        </tr>
+      </thead>
+      <tbody>
+        {signals.length === 0 ? (
+          <tr>
+            <td colSpan={8} className="px-4 py-8 text-center text-muted">
+              No arbitrage opportunities found
+            </td>
+          </tr>
+        ) : (
+          signals.map((signal) => (
+            <tr
+              key={signal.id}
+              className="border-t border-bg-border hover:bg-bg-subtle/50"
+            >
+              <td className="px-4 py-3 font-semibold text-white">
+                {signal.symbol}
+              </td>
+              <td className="px-4 py-3 text-muted">
+                {signal.buyExchange}
+              </td>
+              <td className="px-4 py-3 text-muted">
+                {signal.sellExchange}
+              </td>
+              <td className="px-4 py-3 text-right text-profit">
+                ${signal.buyPrice.toFixed(2)}
+              </td>
+              <td className="px-4 py-3 text-right text-loss">
+                ${signal.sellPrice.toFixed(2)}
+              </td>
+              <td className="px-4 py-3 text-right font-semibold text-accent">
+                {signal.spread.toFixed(3)}%
+              </td>
+              <td className="px-4 py-3 text-right text-muted">
+                {signal.latency}
+              </td>
+              <td className="px-4 py-3 text-right text-muted">
+                {formatAge(signal.timestamp)}
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+});
 
 export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPanelProps) {
   const [sortKey, setSortKey] = useState<SortKey>('spread');
@@ -29,24 +109,26 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
   };
 
   const sortedSignals = useMemo(() => {
-    return [...signals].sort((a, b) => {
-      let comparison = 0;
-      switch (sortKey) {
-        case 'spread':
-          comparison = b.spread - a.spread;
-          break;
-        case 'latency':
-          comparison = a.latency - b.latency;
-          break;
-        case 'timestamp':
-          comparison = b.timestamp - a.timestamp;
-          break;
-        case 'symbol':
-          comparison = a.symbol.localeCompare(b.symbol);
-          break;
-      }
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
+    return [...signals]
+      .sort((a, b) => {
+        let comparison = 0;
+        switch (sortKey) {
+          case 'spread':
+            comparison = b.spread - a.spread;
+            break;
+          case 'latency':
+            comparison = a.latency - b.latency;
+            break;
+          case 'timestamp':
+            comparison = b.timestamp - a.timestamp;
+            break;
+          case 'symbol':
+            comparison = a.symbol.localeCompare(b.symbol);
+            break;
+        }
+        return sortDirection === 'asc' ? comparison : -comparison;
+      })
+      .slice(0, 20); // Slicing display to top 20 signals
   }, [signals, sortKey, sortDirection]);
 
   const getSortIcon = (key: SortKey) => {
@@ -98,71 +180,11 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-bg-subtle text-muted uppercase tracking-wider">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium">Symbol</th>
-              <th className="px-4 py-2 text-left font-medium">Buy Exchange</th>
-              <th className="px-4 py-2 text-left font-medium">Sell Exchange</th>
-              <th className="px-4 py-2 text-right font-medium">Buy Price</th>
-              <th className="px-4 py-2 text-right font-medium">Sell Price</th>
-              <th
-                className="px-4 py-2 text-right font-medium cursor-pointer hover:text-white"
-                onClick={() => handleSort('spread')}
-              >
-                {getSortIcon('spread')} Spread %
-              </th>
-              <th
-                className="px-4 py-2 text-right font-medium cursor-pointer hover:text-white"
-                onClick={() => handleSort('latency')}
-              >
-                {getSortIcon('latency')} Latency (ms)
-              </th>
-              <th className="px-4 py-2 text-right font-medium">Age</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedSignals.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted">
-                  No arbitrage opportunities found
-                </td>
-              </tr>
-            ) : (
-              sortedSignals.map((signal) => (
-                <tr
-                  key={signal.id}
-                  className="border-t border-bg-border hover:bg-bg-subtle/50"
-                >
-                  <td className="px-4 py-3 font-semibold text-white">
-                    {signal.symbol}
-                  </td>
-                  <td className="px-4 py-3 text-muted">
-                    {signal.buyExchange}
-                  </td>
-                  <td className="px-4 py-3 text-muted">
-                    {signal.sellExchange}
-                  </td>
-                  <td className="px-4 py-3 text-right text-profit">
-                    ${signal.buyPrice.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-loss">
-                    ${signal.sellPrice.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-semibold text-accent">
-                    {signal.spread.toFixed(3)}%
-                  </td>
-                  <td className="px-4 py-3 text-right text-muted">
-                    {signal.latency}
-                  </td>
-                  <td className="px-4 py-3 text-right text-muted">
-                    {formatAge(signal.timestamp)}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+        <SignalsTable
+          signals={sortedSignals}
+          onSort={handleSort}
+          getSortIcon={getSortIcon}
+        />
       </div>
     </div>
   );

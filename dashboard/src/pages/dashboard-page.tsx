@@ -2,12 +2,10 @@
  * Main dashboard page: Week 5-6 UI Polish + Beta Launch.
  * Restructured into a premium 12-column Bento Grid Layout.
  */
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTradingStore } from '../stores/trading-store';
-import { useWebSocketPriceFeed } from '../hooks/use-websocket-price-feed';
-import { useRealtimeUpdates } from '../hooks/use-realtime-updates';
-import { useSignals } from '../hooks/use-signals';
-import { usePnlAnalytics } from '../hooks/use-pnl-analytics';
+import { useDashboardStore } from '../stores/dashboard-store';
+import { useDashboardWebSocket } from '../hooks/use-dashboard-websocket';
 import { useAdminControls } from '../hooks/use-admin-controls';
 import { useHealthStatus } from '../hooks/use-health-status';
 
@@ -50,6 +48,15 @@ function useNow(): string {
   }, []);
   return now;
 }
+
+const LastUpdatedLabel = React.memo(function LastUpdatedLabel() {
+  const lastUpdate = useNow();
+  return (
+    <span className="text-muted text-xs hidden sm:inline font-mono">
+      Updated {lastUpdate}
+    </span>
+  );
+});
 
 function TerminalLogs() {
   const [logs, setLogs] = useState<string[]>([]);
@@ -123,11 +130,19 @@ function TerminalLogs() {
 }
 
 export function DashboardPage() {
-  useWebSocketPriceFeed();
-  const { connected: wsConnected, latency, error: wsError, reconnectCount } = useRealtimeUpdates();
+  const { connected: wsConnected, latency, error: wsError, reconnectCount } = useDashboardWebSocket();
 
-  const { signals, loading: signalsLoading, error: signalsError, refresh: refreshSignals } = useSignals(0, 50);
-  const { metrics, loading: pnlLoading, error: pnlError } = usePnlAnalytics();
+  const signals = useDashboardStore((s) => s.signals);
+  const lastSignalsUpdate = useDashboardStore((s) => s.lastSignalsUpdate);
+  const signalsLoading = lastSignalsUpdate === null;
+  const signalsError = null;
+  const refreshSignals = () => Promise.resolve();
+
+  const metrics = useDashboardStore((s) => s.metrics);
+  const lastMetricsUpdate = useDashboardStore((s) => s.lastMetricsUpdate);
+  const pnlLoading = lastMetricsUpdate === null;
+  const pnlError = null;
+
   const { status: adminStatus, halt, resume, loading: adminLoading, error: adminError, refresh: refreshAdmin } = useAdminControls();
   useHealthStatus();
 
@@ -137,7 +152,6 @@ export function DashboardPage() {
   const trades = useTradingStore((s: any) => s.trades);
   const botStatus = useTradingStore((s: any) => s.botStatus);
 
-  const lastUpdate = useNow();
   const isInitialLoading = pnlLoading || signalsLoading || adminLoading;
 
   const openCount = positions.filter((p: any) => p.status === 'open').length;
@@ -165,9 +179,7 @@ export function DashboardPage() {
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <CacheStatus />
-          <span className="text-muted text-xs hidden sm:inline font-mono">
-            Updated {lastUpdate}
-          </span>
+          <LastUpdatedLabel />
           <div
             className={`
               flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold
