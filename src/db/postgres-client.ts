@@ -39,13 +39,19 @@ export function getDbClient(config?: Partial<DbConfig>): pg.Pool {
     ...config,
   };
 
+  const poolMax = process.env.DB_MAX_CONNECTIONS
+    ? parseInt(process.env.DB_MAX_CONNECTIONS)
+    : dbConfig.maxConnections;
+
   pool = new Pool({
     host: dbConfig.host,
     port: dbConfig.port,
     database: dbConfig.database,
     user: dbConfig.user,
     password: dbConfig.password,
-    max: dbConfig.maxConnections,
+    max: poolMax,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 30000,
   });
 
   pool.on('error', (err) => {

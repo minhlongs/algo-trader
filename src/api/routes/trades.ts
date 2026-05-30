@@ -33,9 +33,9 @@ tradesRouter.get('/', async (req: Request, res: Response) => {
     }
     const { limit, offset } = parsed.data;
 
-    const trades = await tradeRepo.getRecent(limit);
+    const trades = await tradeRepo.getRecent(limit, offset);
     res.json({
-      data: trades.slice(offset, offset + limit),
+      data: trades,
       total: trades.length,
       limit,
       offset,

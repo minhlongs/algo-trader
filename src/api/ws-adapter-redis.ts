@@ -13,10 +13,8 @@ import { Cluster } from 'ioredis';
 import { Server as HttpServer, IncomingMessage } from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import {
-  getRedisClusterClient,
   getPubClient,
   getSubClient,
-  isClusterMode,
 } from '../redis';
 import { logger } from '../utils/logger';
 
@@ -44,6 +42,7 @@ interface WSClient {
 export class RedisWSAdapter {
   private wsServer: WebSocketServer;
   private clients: Map<string, WSClient> = new Map();
+  private channelSubscribers: Map<string, Set<WSClient>> = new Map();
   private pubClient: Cluster | any;
   private subClient: Cluster | any;
   private config: WSAdapterConfig;
@@ -56,19 +55,29 @@ export class RedisWSAdapter {
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
 
-    // Use cluster clients if enabled, else fallback to single-instance
-    if (isClusterMode()) {
-      this.pubClient = getRedisClusterClient();
-      this.subClient = getRedisClusterClient();
-    } else {
-      this.pubClient = getPubClient();
-      this.subClient = getSubClient();
-    }
+    // Use separate pub/sub clients globally to prevent connection contention
+    this.pubClient = getPubClient();
+    this.subClient = getSubClient();
 
     this.wsServer = new WebSocket.Server({
       server: this.server,
       path: this.config.path,
       maxPayload: this.config.maxPayloadSize,
+      perMessageDeflate: {
+        zlibDeflateOptions: {
+          level: 3,
+          memLevel: 8,
+          windowBits: 12,
+        },
+        zlibInflateOptions: {
+          chunkSize: 10 * 1024,
+        },
+        clientNoContextTakeover: true,
+        serverNoContextTakeover: true,
+        serverMaxWindowBits: 12,
+        concurrencyLimit: 20,
+        threshold: 1024,
+      },
     });
 
     this.setupWebSocket();
@@ -99,6 +108,15 @@ export class RedisWSAdapter {
       // Handle close
       ws.on('close', () => {
         this.clients.delete(clientId);
+        for (const channel of client.channels) {
+          const subscribers = this.channelSubscribers.get(channel);
+          if (subscribers) {
+            subscribers.delete(client);
+            if (subscribers.size === 0) {
+              this.channelSubscribers.delete(channel);
+            }
+          }
+        }
       });
 
       // Handle errors
@@ -175,6 +193,13 @@ export class RedisWSAdapter {
         case 'subscribe':
           if (this.config.channels.includes(message.channel)) {
             client.channels.add(message.channel);
+            let subscribers = this.channelSubscribers.get(message.channel);
+            if (!subscribers) {
+              subscribers = new Set();
+              this.channelSubscribers.set(message.channel, subscribers);
+            }
+            subscribers.add(client);
+
             this.sendToClient(client, {
               type: 'subscribed',
               channel: message.channel,
@@ -185,6 +210,14 @@ export class RedisWSAdapter {
 
         case 'unsubscribe':
           client.channels.delete(message.channel);
+          const subscribers = this.channelSubscribers.get(message.channel);
+          if (subscribers) {
+            subscribers.delete(client);
+            if (subscribers.size === 0) {
+              this.channelSubscribers.delete(message.channel);
+            }
+          }
+
           this.sendToClient(client, {
             type: 'unsubscribed',
             channel: message.channel,
@@ -227,11 +260,10 @@ export class RedisWSAdapter {
    * Broadcast to all clients subscribed to channel
    */
   private broadcastToChannel(channel: string, message: string): void {
-    const parsed = JSON.parse(message);
-
-    for (const client of this.clients.values()) {
-      if (client.channels.has(channel) || this.config.channels.includes(channel)) {
-        this.sendToClient(client, parsed);
+    const subscribers = this.channelSubscribers.get(channel);
+    if (subscribers) {
+      for (const client of subscribers) {
+        this.sendToClient(client, message);
       }
     }
   }
@@ -241,7 +273,11 @@ export class RedisWSAdapter {
    */
   private sendToClient(client: WSClient, message: any): void {
     if (client.ws.readyState === WebSocket.OPEN) {
-      client.ws.send(JSON.stringify(message));
+      if (typeof message === 'string') {
+        client.ws.send(message);
+      } else {
+        client.ws.send(JSON.stringify(message));
+      }
     }
   }
 
@@ -281,6 +317,7 @@ export class RedisWSAdapter {
       client.ws.close();
     }
     this.clients.clear();
+    this.channelSubscribers.clear();
 
     // Unsubscribe from all channels
     await Promise.all(

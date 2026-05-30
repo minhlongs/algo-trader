@@ -10,6 +10,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import * as migration001 from './migrations/001-create-trades-table';
 import * as migration019 from './migrations/019_add_trades_composite_index';
+import * as migration020 from './migrations/020_db_performance_optimizations';
 
 // Migration interface
 interface Migration {
@@ -111,6 +112,7 @@ const MIGRATIONS: Migration[] = [
   createSqlMigration('017_strategy_review_tasks.sql', '017_strategy_review_tasks', 'Strategy review tasks queue'),
   createSqlMigration('018_qwen_signals_loop_runs.sql', '018_qwen_signals_loop_runs', 'Qwen signals loop run journal'),
   migration019,
+  migration020,
 ];
 
 /**

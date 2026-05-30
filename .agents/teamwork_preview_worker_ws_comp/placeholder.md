@@ -1,0 +1,1 @@
+# WS Compression Worker Metadata
