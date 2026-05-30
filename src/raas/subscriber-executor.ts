@@ -6,6 +6,7 @@
 
 import { query } from '../db/postgres-client';
 import { buildTenantFilter } from './subscriber-tenant-isolator';
+import { TenantCredentialsRepository } from '../db/tenant-credentials-repository';
 
 export interface SubscriberExecRequest {
   subscriberId: string;
@@ -76,6 +77,13 @@ export class SubscriberExecutor {
 
     // Validate tenant filter is constructable (throws on empty subscriberId)
     buildTenantFilter(subscriberId, 1);
+
+    // Verify tenant credentials exist and are decodable
+    const credentialsRepo = new TenantCredentialsRepository();
+    const credentials = await credentialsRepo.get(subscriberId);
+    if (!credentials) {
+      throw new Error(`Credentials not found for subscriber: ${subscriberId}`);
+    }
 
     const tradeId = generateId();
     const attestationId = generateAttestationId(subscriberId, strategyId);

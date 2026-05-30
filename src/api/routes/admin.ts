@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { CircuitBreaker } from '../../risk/circuit-breaker';
 import { DrawdownMonitor } from '../../risk/drawdown-monitor';
 import { requireAdminKey } from '../middleware/require-admin-key';
+import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
 
 // Zod schemas for request body validation
 const haltSchema = z.object({
@@ -33,6 +34,15 @@ adminRouter.post('/halt', async (req: Request, res: Response) => {
     }
 
     await circuitBreaker.halt(parsed.data.reason);
+
+    await appendTenantAuditLog(
+      'system-tenant',
+      'admin_halt',
+      'admin',
+      `Admin forced halt: ${parsed.data.reason}`,
+      { reason: parsed.data.reason }
+    );
+
     res.json({ success: true, message: `Trading halted: ${parsed.data.reason}` });
   } catch (error) {
     res.status(500).json({
@@ -49,6 +59,15 @@ adminRouter.post('/resume', async (req: Request, res: Response) => {
   try {
     await circuitBreaker.reset();
     await drawdownMonitor.resume();
+
+    await appendTenantAuditLog(
+      'system-tenant',
+      'admin_resume',
+      'admin',
+      'Admin forced resume',
+      {}
+    );
+
     res.json({ success: true, message: 'Trading resumed' });
   } catch (error) {
     res.status(500).json({

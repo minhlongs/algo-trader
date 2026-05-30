@@ -10,6 +10,20 @@ vi.mock('../../db/postgres-client', () => ({
   query: vi.fn(),
 }));
 
+vi.mock('../../db/tenant-credentials-repository', () => ({
+  TenantCredentialsRepository: class {
+    async get(subscriberId: string) {
+      if (!subscriberId) return null;
+      return {
+        apiKey: 'mock-key',
+        apiSecret: 'mock-secret',
+        passphrase: 'mock-passphrase',
+        privateKey: 'mock-pkey',
+      };
+    }
+  }
+}));
+
 import { query } from '../../db/postgres-client';
 const mockQuery = vi.mocked(query);
 

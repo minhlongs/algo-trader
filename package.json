@@ -95,6 +95,7 @@
     "nats": "^2.29.3",
     "ollama": "^0.5.0",
     "pg": "^8.19.0",
+    "pg-query-stream": "^4.15.0",
     "prom-client": "^15.1.0",
     "technicalindicators": "^3.1.0",
     "twilio": "^5.4.0",

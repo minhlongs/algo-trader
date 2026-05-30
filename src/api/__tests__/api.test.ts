@@ -15,6 +15,10 @@ const mockRedis = {
   del: vi.fn().mockResolvedValue(1),
   keys: vi.fn().mockImplementation(async () => ['key1', 'key2', 'key3']),
   ping: vi.fn().mockResolvedValue('PONG'),
+  defineCommand: vi.fn().mockImplementation(function (name) {
+    (mockRedis as Record<string, unknown>)[name] = vi.fn().mockResolvedValue([1, 1]);
+  }),
+  rateLimit: vi.fn().mockResolvedValue([1, 1]),
   info: vi.fn().mockImplementation(async () => {
     // Return properly formatted Redis INFO response
     return [
@@ -40,6 +44,26 @@ vi.mock('../../redis', () => ({
 vi.mock('../../db/postgres-client', () => ({
   getDbClient: () => ({
     query: vi.fn().mockResolvedValue({ rows: [] }),
+  }),
+  transaction: vi.fn().mockImplementation(async (fn) => {
+    const mockClient = {
+      query: vi.fn().mockResolvedValue({
+        rows: [{
+          id: 'log-123',
+          tenant_id: 'tenant-123',
+          sequence_number: '1',
+          event_type: 'halt',
+          action_by: 'admin',
+          reason: 'test',
+          metadata: {},
+          hash: 'somehash',
+          previous_hash: null,
+          created_at: new Date().toISOString()
+        }]
+      }),
+      release: vi.fn(),
+    };
+    return fn(mockClient as unknown as import('pg').PoolClient);
   }),
 }));
 

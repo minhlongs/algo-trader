@@ -5,6 +5,7 @@
 
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
+import { appendTenantAuditLog } from '../audit/tenant-audit-log';
 
 export interface DrawdownConfig {
   maxDailyDrawdown: number;
@@ -193,15 +194,21 @@ export class DrawdownMonitor {
     return status.state !== 'HALTED';
   }
 
-  /**
-   * Halt trading
-   */
   private async halt(reason: string): Promise<void> {
+    const triggeredAt = Date.now();
     await this.redis.hset('drawdown:halt', {
       state: 'HALTED',
       reason,
-      triggeredAt: Date.now().toString(),
+      triggeredAt: triggeredAt.toString(),
     });
+
+    await appendTenantAuditLog(
+      'system-tenant',
+      'drawdown_halt',
+      'system',
+      `Drawdown breach: ${reason}`,
+      { state: 'HALTED', triggeredAt }
+    ).catch((err) => logger.error('[DrawdownMonitor] Failed to append tenant audit log:', err));
 
     logger.warn(`[DrawdownMonitor] HALTED: ${reason}`);
   }
@@ -219,6 +226,14 @@ export class DrawdownMonitor {
     // Reset daily start to current value
     const state = await this.getState();
     await this.redis.set('drawdown:daily_start', state.currentValue.toString());
+
+    await appendTenantAuditLog(
+      'system-tenant',
+      'drawdown_resume',
+      'system',
+      'Drawdown halted trading resumed',
+      { state: 'ACTIVE' }
+    ).catch((err) => logger.error('[DrawdownMonitor] Failed to append tenant audit log:', err));
 
     logger.info('[DrawdownMonitor] RESUMED');
   }

@@ -6,9 +6,10 @@
 
 import { FeedAggregator, UnifiedOrderBook, UnifiedTrade, UnifiedTicker } from '../feeds/feed-aggregator';
 import { SpreadDetector, ArbitrageOpportunity as SpreadOpportunity } from './spread-detector';
-import { ExecutionEngine, ArbitrageOpportunity, ArbitrageLeg } from './types';
+import { ExecutionEngine, ArbitrageOpportunity, ArbitrageLeg, ExchangeId } from './types';
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
+import { appendTenantAuditLog } from '../audit/tenant-audit-log';
 
 export interface TradingLoopConfig {
   symbols: string[];
@@ -237,7 +238,7 @@ export class TradingLoop extends EventEmitter {
           // Convert SpreadOpportunity to ArbitrageOpportunity format
           const legs: ArbitrageLeg[] = [
             {
-              exchange: opp.buyExchange as any,
+              exchange: opp.buyExchange as ExchangeId,
               symbol: opp.symbol,
               side: 'buy',
               price: opp.buyPrice,
@@ -245,7 +246,7 @@ export class TradingLoop extends EventEmitter {
               fee: 0.001, // Default fee
             },
             {
-              exchange: opp.sellExchange as any,
+              exchange: opp.sellExchange as ExchangeId,
               symbol: opp.symbol,
               side: 'sell',
               price: opp.sellPrice,
@@ -268,6 +269,20 @@ export class TradingLoop extends EventEmitter {
 
           const result = await this.executionEngine.execute(arbitrageOpp);
           this.metrics.opportunitiesExecuted++;
+
+          await appendTenantAuditLog(
+            'system-tenant',
+            'trade_decision',
+            'system',
+            `Trade decision: Arbitrage opportunity ${opp.id} selected for execution`,
+            {
+              opportunityId: opp.id,
+              symbol: opp.symbol,
+              spreadPercent: opp.spreadPercent,
+              confidence: opp.confidence,
+              score: opp.score,
+            }
+          ).catch((err) => logger.error('[TradingLoop] Failed to append tenant audit log:', err));
 
           if (result.success) {
             this.metrics.totalProfit += result.actualProfit;

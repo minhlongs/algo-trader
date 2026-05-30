@@ -3,6 +3,7 @@ import { LicenseService } from '../../billing/license-service';
 import { AuditLogService } from '../../audit/audit-log-service';
 import { LicenseTier, LicenseStatus, LicenseFilters } from '../../types/license';
 import { z } from 'zod';
+import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
 
 export const licenseRouter: Router = Router();
 const licenseService = LicenseService.getInstance();
@@ -92,6 +93,14 @@ licenseRouter.post('/', async (req: Request, res: Response) => {
     metadata: { name },
   });
 
+  await appendTenantAuditLog(
+    license.tenantId || 'system-tenant',
+    'license_created',
+    'admin',
+    `License created: ${name}`,
+    { licenseId: license.id, tier: license.tier, name }
+  );
+
   return res.status(201).json(license);
 });
 
@@ -113,6 +122,14 @@ licenseRouter.patch('/:id/revoke', async (req: Request, res: Response) => {
     tier: license.tier,
   });
 
+  await appendTenantAuditLog(
+    license.tenantId || 'system-tenant',
+    'license_revoked',
+    'admin',
+    `License revoked: ${license.id}`,
+    { licenseId: license.id, tier: license.tier }
+  );
+
   return res.json(license);
 });
 
@@ -133,6 +150,14 @@ licenseRouter.delete('/:id', async (req: Request, res: Response) => {
   await auditService.log(license.id, 'deleted', {
     tier: license.tier,
   });
+
+  await appendTenantAuditLog(
+    license.tenantId || 'system-tenant',
+    'license_deleted',
+    'admin',
+    `License deleted: ${license.id}`,
+    { licenseId: license.id, tier: license.tier }
+  );
 
   await licenseService.deleteLicense(licenseId);
 

@@ -20,9 +20,12 @@ interface Migration {
   down: (client: import('pg').PoolClient) => Promise<void>;
 }
 
-function getDialect(client: any): 'postgres' | 'sqlite' {
-  if (client && client.constructor && client.constructor.name.includes('Client')) {
-    return 'postgres';
+function getDialect(client: unknown): 'postgres' | 'sqlite' {
+  if (client && typeof client === 'object' && 'constructor' in client) {
+    const ctor = (client as { constructor: Function }).constructor;
+    if (ctor && typeof ctor.name === 'string' && ctor.name.includes('Client')) {
+      return 'postgres';
+    }
   }
   if (process.env.DB_HOST || process.env.DB_NAME) {
     return 'postgres';
@@ -97,6 +100,10 @@ function createSqlMigration(filename: string, id: string, description: string): 
         await client.query('DROP TABLE IF EXISTS strategy_review_tasks CASCADE');
       } else if (id === '018_qwen_signals_loop_runs') {
         await client.query('DROP TABLE IF EXISTS qwen_signals_loop_runs CASCADE');
+      } else if (id === '021_create_tenant_audit_logs') {
+        await client.query('DROP TABLE IF EXISTS tenant_audit_logs CASCADE');
+      } else if (id === '021_tenant_credentials') {
+        await client.query('DROP TABLE IF EXISTS tenant_credentials CASCADE');
       }
     }
   };
@@ -113,6 +120,8 @@ const MIGRATIONS: Migration[] = [
   createSqlMigration('018_qwen_signals_loop_runs.sql', '018_qwen_signals_loop_runs', 'Qwen signals loop run journal'),
   migration019,
   migration020,
+  createSqlMigration('021_create_tenant_audit_logs.sql', '021_create_tenant_audit_logs', 'Create Tenant Audit Logs Table'),
+  createSqlMigration('021_tenant_credentials.sql', '021_tenant_credentials', 'Tenant Credentials Table'),
 ];
 
 /**

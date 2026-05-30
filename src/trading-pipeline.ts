@@ -17,6 +17,7 @@ import { TwapExecutor, type TwapConfig } from './execution/twap-executor';
 import { WalletManager, type WalletLabel, type WalletTrade } from './wallet/wallet-manager';
 import { ImmutableTradeAudit } from './audit/immutable-trade-audit';
 import { logger } from './utils/logger';
+import { appendTenantAuditLog } from './audit/tenant-audit-log';
 
 export interface TradingPipelineConfig {
   /** Initial portfolio value in USD (used to bootstrap drawdown breaker) */
@@ -96,6 +97,23 @@ export function createTradingPipeline(
           portfolioValue: newPortfolioValue,
         },
       });
+
+      appendTenantAuditLog(
+        trade.walletLabel || 'legacy-tenant',
+        'trade_executed',
+        'system',
+        `${trade.side} $${trade.sizeUsd} on ${trade.marketId} → PnL $${trade.pnl.toFixed(2)}`,
+        {
+          walletLabel: trade.walletLabel,
+          marketId: trade.marketId,
+          side: trade.side,
+          actualSize: trade.sizeUsd,
+          price: trade.price,
+          pnl: trade.pnl,
+          drawdownTier: state.tier,
+          portfolioValue: newPortfolioValue,
+        }
+      ).catch((err) => logger.error('[TradingPipeline] Failed to append tenant audit log:', err));
 
       logger.info(`[TradingPipeline] Trade recorded: ${trade.side} $${trade.sizeUsd} | tier=${state.tier} | portfolio=$${newPortfolioValue.toFixed(2)}`);
     },

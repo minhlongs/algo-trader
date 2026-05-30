@@ -1,28 +1,44 @@
 import { Router, Request, Response } from 'express';
-import { AuditLogService, AuditLogFilters } from '../../audit/audit-log-service';
+import { getDbClient, query } from '../../db/postgres-client';
 import { LicenseService } from '../../billing/license-service';
+import { AuditLogService } from '../../audit/audit-log-service';
 import { z } from 'zod';
+import QueryStream from 'pg-query-stream';
+import { logger } from '../../utils/logger';
 
 export const auditRouter: Router = Router();
 const auditService = AuditLogService.getInstance();
 const licenseService = LicenseService.getInstance();
 
 const auditLogQuerySchema = z.object({
-  licenseId: z.string().optional(),
-  eventType: z.enum(['all', 'created', 'activated', 'revoked', 'api_call', 'ml_feature', 'rate_limit', 'deleted', 'suspension_warning', 'suspended', 'reinstated']).optional(),
+  tenantId: z.string().optional(),
+  eventType: z.string().optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   limit: z.coerce.number().int().min(1).max(1000).default(100),
-  skip: z.coerce.number().int().min(0).default(0),
+  cursorSeq: z.coerce.number().int().optional(),
+  cursorCreated: z.string().optional(),
+  cursorId: z.string().uuid().optional(),
 });
 
 const auditExportQuerySchema = z.object({
   format: z.enum(['csv', 'json']).default('json'),
-  licenseId: z.string().optional(),
-  eventType: z.enum(['all', 'created', 'activated', 'revoked', 'api_call', 'ml_feature', 'rate_limit', 'deleted', 'suspension_warning', 'suspended', 'reinstated']).optional(),
+  tenantId: z.string().optional(),
+  eventType: z.string().optional(),
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
 });
+
+function extractTokenClaims(req: Request): {
+  tokenSubscriberId: string | null;
+  isAdmin: boolean;
+} {
+  const claims = (req as Request & { claims?: { sub?: string; role?: string } }).claims;
+  return {
+    tokenSubscriberId: claims?.sub ?? null,
+    isAdmin: claims?.role === 'admin',
+  };
+}
 
 /**
  * GET /api/v1/audit/logs
@@ -33,22 +49,104 @@ auditRouter.get('/logs', async (req: Request, res: Response) => {
     return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid query' });
   }
 
-  const filters: AuditLogFilters = {
-    licenseId: parsed.data.licenseId as string | undefined,
-    eventType: parsed.data.eventType,
-    startDate: parsed.data.startDate,
-    endDate: parsed.data.endDate,
-    limit: parsed.data.limit,
-    skip: parsed.data.skip,
-  };
+  const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
+  const targetTenantId = parsed.data.tenantId || tokenSubscriberId;
 
-  const logs = await auditService.getAllLogs(filters);
+  if (!isAdmin) {
+    if (!targetTenantId) {
+      return res.status(403).json({ error: 'TenantIsolator: no subscriber identity in token' });
+    }
+    if (parsed.data.tenantId && parsed.data.tenantId !== tokenSubscriberId) {
+      return res.status(403).json({
+        error: `TenantIsolator: cross-tenant access denied - token=${tokenSubscriberId} requested=${parsed.data.tenantId}`,
+      });
+    }
+  }
 
-  return res.json({
-    logs,
-    total: logs.length,
-    hasMore: logs.length === filters.limit,
-  });
+  try {
+    let sql = 'SELECT * FROM tenant_audit_logs WHERE 1=1';
+    const params: unknown[] = [];
+
+    if (targetTenantId) {
+      params.push(targetTenantId);
+      sql += ` AND tenant_id = $${params.length}`;
+    }
+
+    if (parsed.data.eventType) {
+      params.push(parsed.data.eventType);
+      sql += ` AND event_type = $${params.length}`;
+    }
+
+    if (parsed.data.startDate) {
+      params.push(parsed.data.startDate);
+      sql += ` AND created_at >= $${params.length}`;
+    }
+
+    if (parsed.data.endDate) {
+      params.push(parsed.data.endDate);
+      sql += ` AND created_at <= $${params.length}`;
+    }
+
+    // Keyset pagination conditions
+    if (targetTenantId && parsed.data.cursorSeq !== undefined) {
+      params.push(parsed.data.cursorSeq);
+      sql += ` AND sequence_number < $${params.length}`;
+    } else if (parsed.data.cursorCreated && parsed.data.cursorId) {
+      params.push(parsed.data.cursorCreated, parsed.data.cursorId);
+      sql += ` AND (created_at, id) < ($${params.length - 1}, $${params.length})`;
+    }
+
+    if (targetTenantId) {
+      sql += ' ORDER BY sequence_number DESC';
+    } else {
+      sql += ' ORDER BY created_at DESC, id DESC';
+    }
+
+    params.push(parsed.data.limit);
+    sql += ` LIMIT $${params.length}`;
+
+    const dbResult = await query(sql, params);
+    const logs = dbResult.rows.map(row => {
+      const metadata = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata;
+      return {
+        id: row.id,
+        tenant_id: row.tenant_id,
+        sequence_number: parseInt(row.sequence_number as string, 10),
+        event_type: row.event_type,
+        action_by: row.action_by,
+        reason: row.reason,
+        metadata,
+        hash: row.hash,
+        previous_hash: row.previous_hash,
+        created_at: row.created_at,
+      };
+    });
+
+    const hasMore = logs.length === parsed.data.limit;
+    let nextCursor = null;
+    if (hasMore && logs.length > 0) {
+      const lastLog = logs[logs.length - 1];
+      if (targetTenantId) {
+        nextCursor = { cursorSeq: lastLog.sequence_number };
+      } else {
+        nextCursor = {
+          cursorCreated: lastLog.created_at,
+          cursorId: lastLog.id,
+        };
+      }
+    }
+
+    return res.json({
+      logs,
+      total: logs.length,
+      nextCursor,
+    });
+  } catch (error) {
+    logger.error('[AuditRouter] Error querying logs:', error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Internal Server Error',
+    });
+  }
 });
 
 /**
@@ -71,32 +169,141 @@ auditRouter.get('/export', async (req: Request, res: Response) => {
   }
 
   const { format } = parsed.data;
-  const filters: AuditLogFilters = {
-    licenseId: parsed.data.licenseId as string | undefined,
-    eventType: parsed.data.eventType,
-    startDate: parsed.data.startDate,
-    endDate: parsed.data.endDate,
-    limit: 10000, // Higher limit for exports
-  };
+  const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
+  const targetTenantId = parsed.data.tenantId || tokenSubscriberId;
 
-  const logs = await auditService.getAllLogs(filters);
-  let content: string;
-  let contentType: string;
-
-  if (format === 'csv') {
-    content = auditService.exportToCsv(logs);
-    contentType = 'text/csv';
-  } else {
-    content = auditService.exportToJson(logs);
-    contentType = 'application/json';
+  if (!isAdmin) {
+    if (!targetTenantId) {
+      return res.status(403).json({ error: 'TenantIsolator: no subscriber identity in token' });
+    }
+    if (parsed.data.tenantId && parsed.data.tenantId !== tokenSubscriberId) {
+      return res.status(403).json({
+        error: `TenantIsolator: cross-tenant access denied - token=${tokenSubscriberId} requested=${parsed.data.tenantId}`,
+      });
+    }
   }
 
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = `audit-logs-${timestamp}.${format}`;
+  const contentType = format === 'csv' ? 'text/csv' : 'application/json';
 
   res.setHeader('Content-Type', contentType);
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  return res.send(content);
+
+  let sql = 'SELECT * FROM tenant_audit_logs WHERE 1=1';
+  const params: unknown[] = [];
+
+  if (targetTenantId) {
+    params.push(targetTenantId);
+    sql += ` AND tenant_id = $${params.length}`;
+  }
+
+  if (parsed.data.eventType) {
+    params.push(parsed.data.eventType);
+    sql += ` AND event_type = $${params.length}`;
+  }
+
+  if (parsed.data.startDate) {
+    params.push(parsed.data.startDate);
+    sql += ` AND created_at >= $${params.length}`;
+  }
+
+  if (parsed.data.endDate) {
+    params.push(parsed.data.endDate);
+    sql += ` AND created_at <= $${params.length}`;
+  }
+
+  if (targetTenantId) {
+    sql += ' ORDER BY sequence_number DESC';
+  } else {
+    sql += ' ORDER BY created_at DESC, id DESC';
+  }
+
+  const client = await getDbClient().connect();
+  const queryStream = new QueryStream(sql, params);
+  const stream = client.query(queryStream);
+
+  const escapeCsv = (val: unknown): string => {
+    if (val === null || val === undefined) {
+      return '';
+    }
+    let str = '';
+    if (typeof val === 'object') {
+      str = JSON.stringify(val);
+    } else {
+      str = String(val);
+    }
+    if (str.includes(',') || str.includes('\n') || str.includes('"') || str.includes('\r')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  let first = true;
+
+  if (format === 'csv') {
+    res.write('id,tenant_id,sequence_number,event_type,action_by,reason,metadata,hash,previous_hash,created_at\n');
+  } else {
+    res.write('[');
+  }
+
+  stream.on('data', (row) => {
+    try {
+      if (format === 'csv') {
+        const metadataStr = typeof row.metadata === 'string' ? row.metadata : JSON.stringify(row.metadata || {});
+        const line = [
+          row.id,
+          row.tenant_id,
+          row.sequence_number,
+          row.event_type,
+          row.action_by,
+          row.reason || '',
+          metadataStr,
+          row.hash,
+          row.previous_hash || '',
+          row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at as string).toISOString(),
+        ].map(escapeCsv).join(',');
+        res.write(line + '\n');
+      } else {
+        if (!first) {
+          res.write(',');
+        }
+        first = false;
+        const metadata = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata;
+        const formatted = {
+          id: row.id,
+          tenant_id: row.tenant_id,
+          sequence_number: parseInt(row.sequence_number as string, 10),
+          event_type: row.event_type,
+          action_by: row.action_by,
+          reason: row.reason,
+          metadata,
+          hash: row.hash,
+          previous_hash: row.previous_hash,
+          created_at: row.created_at,
+        };
+        res.write(JSON.stringify(formatted));
+      }
+    } catch (err) {
+      logger.error('[AuditRouter] Error serializing export row:', err);
+    }
+  });
+
+  stream.on('end', () => {
+    if (format === 'json') {
+      res.write(']');
+    }
+    res.end();
+    client.release();
+  });
+
+  stream.on('error', (err) => {
+    logger.error('[AuditRouter] Export stream error:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Stream processing failed' });
+    }
+    client.release();
+  });
 });
 
 /**

@@ -12,6 +12,7 @@
 
 import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
 import { logger } from '../utils/logger';
+import { appendTenantAuditLog } from '../audit/tenant-audit-log';
 
 export interface ExecutionResult {
   id: string;
@@ -150,12 +151,45 @@ export class OrderExecutor {
         execution.status = 'PARTIAL';
       }
 
+      await appendTenantAuditLog(
+        'system-tenant',
+        'order_executed',
+        'system',
+        `Order execution completed with status ${execution.status}`,
+        {
+          executionId: execution.id,
+          opportunityId: execution.opportunityId,
+          status: execution.status,
+          profit: execution.profit,
+          error: execution.error,
+          buyOrder: execution.buyOrder,
+          sellOrder: execution.sellOrder,
+        }
+      ).catch((err) => logger.error('[OrderExecutor] Failed to append tenant audit log:', err));
+
       return execution;
     } catch (error) {
       if (execution.status !== 'ROLLBACK') {
         execution.status = 'FAILED';
       }
       execution.error = error instanceof Error ? error.message : 'Unknown error';
+
+      await appendTenantAuditLog(
+        'system-tenant',
+        'order_executed',
+        'system',
+        `Order execution completed with status ${execution.status}`,
+        {
+          executionId: execution.id,
+          opportunityId: execution.opportunityId,
+          status: execution.status,
+          profit: execution.profit,
+          error: execution.error,
+          buyOrder: execution.buyOrder,
+          sellOrder: execution.sellOrder,
+        }
+      ).catch((err) => logger.error('[OrderExecutor] Failed to append tenant audit log:', err));
+
       return execution;
     }
   }
