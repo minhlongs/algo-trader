@@ -1,174 +1,119 @@
-/**
- * Audit Logs API Routes
- *
- * Admin-only endpoints for querying audit logs.
- * Requires admin JWT scope for all operations.
- *
- * Endpoints:
- * - GET /api/v1/audit/logs?licenseId=xxx&eventType=xxx&startDate=xxx&endDate=xxx&limit=xxx&skip=xxx
- * - GET /api/v1/audit/export?format=csv|json&licenseId=xxx&eventType=xxx&startDate=xxx&endDate=xxx
- */
-
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { AuditLogService, AuditLogFilters, AuditEventType } from '../../audit/audit-log-service';
+import { Router, Request, Response } from 'express';
+import { AuditLogService, AuditLogFilters } from '../../audit/audit-log-service';
 import { LicenseService } from '../../billing/license-service';
+import { z } from 'zod';
 
-interface AuditLogQuery {
-  licenseId?: string;
-  eventType?: AuditEventType | 'all';
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-  skip?: number;
-}
+export const auditRouter: Router = Router();
+const auditService = AuditLogService.getInstance();
+const licenseService = LicenseService.getInstance();
 
-interface AuditExportQuery {
-  format?: 'csv' | 'json';
-  licenseId?: string;
-  eventType?: AuditEventType | 'all';
-  startDate?: string;
-  endDate?: string;
-}
+const auditLogQuerySchema = z.object({
+  licenseId: z.string().optional(),
+  eventType: z.enum(['all', 'created', 'activated', 'revoked', 'api_call', 'ml_feature', 'rate_limit', 'deleted', 'suspension_warning', 'suspended', 'reinstated']).optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  limit: z.coerce.number().int().min(1).max(1000).default(100),
+  skip: z.coerce.number().int().min(0).default(0),
+});
 
-interface AuditParams {
-  id: string;
-}
+const auditExportQuerySchema = z.object({
+  format: z.enum(['csv', 'json']).default('json'),
+  licenseId: z.string().optional(),
+  eventType: z.enum(['all', 'created', 'activated', 'revoked', 'api_call', 'ml_feature', 'rate_limit', 'deleted', 'suspension_warning', 'suspended', 'reinstated']).optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+});
 
-export async function registerAuditRoutes(server: FastifyInstance) {
-  const auditService = AuditLogService.getInstance();
-  const licenseService = LicenseService.getInstance();
+/**
+ * GET /api/v1/audit/logs
+ */
+auditRouter.get('/logs', async (req: Request, res: Response) => {
+  const parsed = auditLogQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid query' });
+  }
 
-  /**
-   * GET /api/v1/audit/logs
-   * Query audit logs with filters
-   */
-  server.get(
-    '/logs',
-    {
-      schema: {
-        querystring: {
-          type: 'object',
-          properties: {
-            licenseId: { type: 'string' },
-            eventType: { type: 'string', enum: ['all', 'created', 'activated', 'revoked', 'api_call', 'ml_feature', 'rate_limit', 'deleted', 'suspension_warning', 'suspended', 'reinstated'] },
-            startDate: { type: 'string', format: 'date-time' },
-            endDate: { type: 'string', format: 'date-time' },
-            limit: { type: 'number', default: 100, maximum: 1000 },
-            skip: { type: 'number', default: 0 },
-          },
-        },
-      },
-    },
-    async (request: FastifyRequest<{ Querystring: AuditLogQuery }>, reply: FastifyReply) => {
-      const filters: AuditLogFilters = {
-        licenseId: request.query.licenseId,
-        eventType: request.query.eventType,
-        startDate: request.query.startDate,
-        endDate: request.query.endDate,
-        limit: request.query.limit || 100,
-        skip: request.query.skip || 0,
-      };
+  const filters: AuditLogFilters = {
+    licenseId: parsed.data.licenseId as string | undefined,
+    eventType: parsed.data.eventType,
+    startDate: parsed.data.startDate,
+    endDate: parsed.data.endDate,
+    limit: parsed.data.limit,
+    skip: parsed.data.skip,
+  };
 
-      const logs = await auditService.getAllLogs(filters);
+  const logs = await auditService.getAllLogs(filters);
 
-      return reply.send({
-        logs,
-        total: logs.length,
-        hasMore: logs.length === filters.limit,
-      });
-    }
-  );
+  return res.json({
+    logs,
+    total: logs.length,
+    hasMore: logs.length === filters.limit,
+  });
+});
 
-  /**
-   * GET /api/v1/audit/logs/:id
-   * Get specific audit log by ID
-   */
-  server.get(
-    '/logs/:id',
-    async (request: FastifyRequest<{ Params: AuditParams }>, reply: FastifyReply) => {
-      // This would need a method to get single log by ID
-      // For now, return not implemented
-      return reply.code(501).send({
-        error: 'Not Implemented',
-        message: 'Get single audit log by ID is not implemented',
-      });
-    }
-  );
+/**
+ * GET /api/v1/audit/logs/:id
+ */
+auditRouter.get('/logs/:id', async (req: Request, res: Response) => {
+  return res.status(501).json({
+    error: 'Not Implemented',
+    message: 'Get single audit log by ID is not implemented',
+  });
+});
 
-  /**
-   * GET /api/v1/audit/export
-   * Export audit logs as CSV or JSON
-   */
-  server.get(
-    '/export',
-    {
-      schema: {
-        querystring: {
-          type: 'object',
-          properties: {
-            format: { type: 'string', enum: ['csv', 'json'], default: 'json' },
-            licenseId: { type: 'string' },
-            eventType: { type: 'string', enum: ['all', 'created', 'activated', 'revoked', 'api_call', 'ml_feature', 'rate_limit', 'deleted', 'suspension_warning', 'suspended', 'reinstated'] },
-            startDate: { type: 'string', format: 'date-time' },
-            endDate: { type: 'string', format: 'date-time' },
-          },
-        },
-      },
-    },
-    async (request: FastifyRequest<{ Querystring: AuditExportQuery }>, reply: FastifyReply) => {
-      const format = request.query.format || 'json';
-      const filters: AuditLogFilters = {
-        licenseId: request.query.licenseId,
-        eventType: request.query.eventType,
-        startDate: request.query.startDate,
-        endDate: request.query.endDate,
-        limit: 10000, // Higher limit for exports
-      };
+/**
+ * GET /api/v1/audit/export
+ */
+auditRouter.get('/export', async (req: Request, res: Response) => {
+  const parsed = auditExportQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid query' });
+  }
 
-      const logs = await auditService.getAllLogs(filters);
-      let content: string;
-      let contentType: string;
+  const { format } = parsed.data;
+  const filters: AuditLogFilters = {
+    licenseId: parsed.data.licenseId as string | undefined,
+    eventType: parsed.data.eventType,
+    startDate: parsed.data.startDate,
+    endDate: parsed.data.endDate,
+    limit: 10000, // Higher limit for exports
+  };
 
-      if (format === 'csv') {
-        content = auditService.exportToCsv(logs);
-        contentType = 'text/csv';
-      } else {
-        content = auditService.exportToJson(logs);
-        contentType = 'application/json';
-      }
+  const logs = await auditService.getAllLogs(filters);
+  let content: string;
+  let contentType: string;
 
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `audit-logs-${timestamp}.${format}`;
+  if (format === 'csv') {
+    content = auditService.exportToCsv(logs);
+    contentType = 'text/csv';
+  } else {
+    content = auditService.exportToJson(logs);
+    contentType = 'application/json';
+  }
 
-      return reply
-        .header('Content-Type', contentType)
-        .header('Content-Disposition', `attachment; filename="${filename}"`)
-        .send(content);
-    }
-  );
+  const timestamp = new Date().toISOString().split('T')[0];
+  const filename = `audit-logs-${timestamp}.${format}`;
 
-  /**
-   * GET /api/v1/licenses/:id/audit
-   * Get audit logs for a specific license
-   * (This is also available in license-routes.ts, kept here for consistency)
-   */
-  server.get(
-    '/license/:id/audit',
-    async (request: FastifyRequest<{ Params: AuditParams }>, reply: FastifyReply) => {
-      const license = licenseService.getLicense(request.params.id);
+  res.setHeader('Content-Type', contentType);
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  return res.send(content);
+});
 
-      if (!license) {
-        return reply.code(404).send({
-          error: 'Not Found',
-          message: `License ${request.params.id} not found`,
-        });
-      }
+/**
+ * GET /api/v1/audit/license/:id/audit
+ */
+auditRouter.get('/license/:id/audit', async (req: Request, res: Response) => {
+  const licenseId = req.params.id as string;
+  const license = licenseService.getLicense(licenseId);
 
-      const logs = await auditService.getLogsByLicense(request.params.id);
+  if (!license) {
+    return res.status(404).json({
+      error: 'Not Found',
+      message: `License ${licenseId} not found`,
+    });
+  }
 
-      return reply.send({ logs });
-    }
-  );
+  const logs = await auditService.getLogsByLicense(licenseId);
 
-  server.log.info('Audit routes registered');
-}
+  return res.json({ logs });
+});

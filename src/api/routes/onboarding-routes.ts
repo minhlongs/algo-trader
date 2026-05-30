@@ -1,129 +1,83 @@
-/**
- * Onboarding API Routes
- * RaaS Phase 16 - Buyer signup, verification, and license activation
- *
- * Endpoints:
- * - POST /api/v1/signup    — begin signup, returns pendingId + "code sent" message
- * - POST /api/v1/verify    — submit 6-digit code, marks email verified
- * - POST /api/v1/activate  — create license, return key + API instructions
- */
-
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { Router, Request, Response } from 'express';
 import { OnboardingService } from '../../billing/onboarding-service';
+import { z } from 'zod';
 
-interface SignupBody {
-  email: string;
-  tier: 'FREE' | 'PRO' | 'ENTERPRISE';
-  walletAddress?: string;
-}
+export const onboardingRouter: Router = Router();
+const onboardingService = OnboardingService.getInstance();
 
-interface VerifyBody {
-  email: string;
-  code: string;
-}
+const signupBodySchema = z.object({
+  email: z.string().email('Invalid email address'),
+  tier: z.enum(['FREE', 'PRO', 'ENTERPRISE']),
+  walletAddress: z.string().optional(),
+});
 
-interface ActivateBody {
-  email: string;
-}
+const verifyBodySchema = z.object({
+  email: z.string().min(1, 'Email is required'),
+  code: z.string().length(6, 'Verification code must be exactly 6 characters'),
+});
 
-export async function onboardingRoutes(fastify: FastifyInstance) {
-  const onboardingService = OnboardingService.getInstance();
+const activateBodySchema = z.object({
+  email: z.string().min(1, 'Email is required'),
+});
 
-  /**
-   * POST /signup
-   * Body: { email, tier, walletAddress? }
-   * Returns: { pendingId, message }
-   */
-  fastify.post(
-    '/signup',
-    {
-      schema: {
-        body: {
-          type: 'object',
-          required: ['email', 'tier'],
-          properties: {
-            email: { type: 'string', format: 'email' },
-            tier: { type: 'string', enum: ['FREE', 'PRO', 'ENTERPRISE'] },
-            walletAddress: { type: 'string' },
-          },
-        },
-      },
-    },
-    async (request: FastifyRequest<{ Body: SignupBody }>, reply: FastifyReply) => {
-      try {
-        const result = await onboardingService.signup(request.body);
-        return reply.code(201).send({
-          pendingId: result.pendingId,
-          message: 'Verification code sent. Check server logs for the code (email integration pending).',
-        });
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Signup failed';
-        const status = message.includes('already') ? 409 : 400;
-        return reply.code(status).send({ error: message });
-      }
-    }
-  );
+/**
+ * POST /api/v1/signup
+ */
+onboardingRouter.post('/signup', async (req: Request, res: Response) => {
+  const parsed = signupBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid body' });
+  }
 
-  /**
-   * POST /verify
-   * Body: { email, code }
-   * Returns: { verified: true }
-   */
-  fastify.post(
-    '/verify',
-    {
-      schema: {
-        body: {
-          type: 'object',
-          required: ['email', 'code'],
-          properties: {
-            email: { type: 'string' },
-            code: { type: 'string', minLength: 6, maxLength: 6 },
-          },
-        },
-      },
-    },
-    async (request: FastifyRequest<{ Body: VerifyBody }>, reply: FastifyReply) => {
-      try {
-        await onboardingService.verify(request.body.email, request.body.code);
-        return reply.send({ verified: true });
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Verification failed';
-        const status = message.includes('expired') ? 410 : 400;
-        return reply.code(status).send({ error: message });
-      }
-    }
-  );
+  try {
+    const result = await onboardingService.signup(parsed.data);
+    return res.status(201).json({
+      pendingId: result.pendingId,
+      message: 'Verification code sent. Check server logs for the code (email integration pending).',
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Signup failed';
+    const status = message.includes('already') ? 409 : 400;
+    return res.status(status).json({ error: message });
+  }
+});
 
-  /**
-   * POST /activate
-   * Body: { email }
-   * Returns: { licenseKey, tier, apiInstructions }
-   */
-  fastify.post(
-    '/activate',
-    {
-      schema: {
-        body: {
-          type: 'object',
-          required: ['email'],
-          properties: {
-            email: { type: 'string' },
-          },
-        },
-      },
-    },
-    async (request: FastifyRequest<{ Body: ActivateBody }>, reply: FastifyReply) => {
-      try {
-        const result = await onboardingService.activate(request.body.email);
-        return reply.code(201).send(result);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Activation failed';
-        const status = message.includes('expired') ? 410
-          : message.includes('not verified') ? 403
-          : 400;
-        return reply.code(status).send({ error: message });
-      }
-    }
-  );
-}
+/**
+ * POST /api/v1/verify
+ */
+onboardingRouter.post('/verify', async (req: Request, res: Response) => {
+  const parsed = verifyBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid body' });
+  }
+
+  try {
+    await onboardingService.verify(parsed.data.email, parsed.data.code);
+    return res.json({ verified: true });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Verification failed';
+    const status = message.includes('expired') ? 410 : 400;
+    return res.status(status).json({ error: message });
+  }
+});
+
+/**
+ * POST /api/v1/activate
+ */
+onboardingRouter.post('/activate', async (req: Request, res: Response) => {
+  const parsed = activateBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid body' });
+  }
+
+  try {
+    const result = await onboardingService.activate(parsed.data.email);
+    return res.status(201).json(result);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Activation failed';
+    const status = message.includes('expired') ? 410
+      : message.includes('not verified') ? 403
+      : 400;
+    return res.status(status).json({ error: message });
+  }
+});

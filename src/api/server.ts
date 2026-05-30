@@ -30,6 +30,12 @@ import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
 import { errorHandler } from '../middleware/error-handler';
+import { apiKeyRouter } from './routes/api-key-routes';
+import { auditRouter } from './routes/audit-routes';
+import { licenseRouter } from './routes/license-routes';
+import { onboardingRouter } from './routes/onboarding-routes';
+import { backtestRouter } from './routes/backtest';
+import { RedisWSAdapter } from './ws-adapter-redis';
 
 export interface ApiConfig {
   port: number;
@@ -42,6 +48,7 @@ export class ApiServer {
   private app: express.Application;
   private config: ApiConfig;
   private server?: Server;
+  private wsAdapter?: RedisWSAdapter;
 
   constructor(config?: Partial<ApiConfig>) {
     this.app = express();
@@ -104,6 +111,7 @@ export class ApiServer {
   private setupRoutes(): void {
     // Health checks (no rate limit)
     this.app.use('/health', healthRouter);
+    this.app.use('/api/health', healthRouter);
 
     // Prometheus metrics endpoint (excluded from rate limiting, protected by Bearer token)
     this.app.get('/metrics', (req, res, next) => {
@@ -136,6 +144,11 @@ export class ApiServer {
     this.app.use('/api/analytics', analyticsRouter);
     this.app.use('/api/v1/subscriber', subscriberPnlRouter);
     this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
+    this.app.use('/api/v1/keys', apiKeyRouter);
+    this.app.use('/api/v1/audit', auditRouter);
+    this.app.use('/api/v1/licenses', licenseRouter);
+    this.app.use('/api/v1', onboardingRouter);
+    this.app.use('/api/v1/backtest', backtestRouter);
 
     // Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon
     // Phase 04: stub replaced with real D1-backed SignalStoreD1
@@ -169,6 +182,12 @@ export class ApiServer {
     return new Promise((resolve) => {
       this.server = this.app.listen(this.config.port, () => {
         logger.info(`[ApiServer] Listening on port ${this.config.port}`);
+        try {
+          this.wsAdapter = new RedisWSAdapter(this.server!);
+          logger.info('[ApiServer] RedisWSAdapter initialized');
+        } catch (wsError) {
+          logger.error('[ApiServer] Failed to initialize RedisWSAdapter:', wsError);
+        }
         resolve();
       });
     });
@@ -178,6 +197,14 @@ export class ApiServer {
    * Stop server
    */
   async stop(): Promise<void> {
+    if (this.wsAdapter) {
+      try {
+        await this.wsAdapter.shutdown();
+        logger.info('[ApiServer] RedisWSAdapter shut down');
+      } catch (wsError) {
+        logger.error('[ApiServer] Failed to shut down RedisWSAdapter:', wsError);
+      }
+    }
     if (this.server) {
       return new Promise((resolve) => {
         this.server?.close(() => {

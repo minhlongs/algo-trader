@@ -6,14 +6,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: { DEFAULT: '#0F0F1A', card: '#1A1A2E', border: '#2D3142' },
-        accent: '#00D9FF',
-        profit: '#00FF41',
-        loss: '#FF3366',
+        bg: { DEFAULT: '#060814', card: '#101426', border: 'rgba(255, 255, 255, 0.05)' },
+        obsidian: {
+          bg: '#060814',
+          card: '#101426',
+          border: 'rgba(255, 255, 255, 0.05)',
+          glow: 'rgba(0, 255, 163, 0.15)',
+        },
+        accent: {
+          DEFAULT: '#00FFA3', // Neon Green
+          cyan: '#00D9FF',
+          pink: '#FF2E93',
+        },
+        profit: '#00FFA3',
+        loss: '#FF2E93',
         muted: '#8892B0',
       },
       fontFamily: {
-        mono: ['Menlo', 'Monaco', 'Courier New', 'monospace'],
+        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       // Mobile-first breakpoints for responsive trading dashboard
       screens: {

@@ -19,7 +19,7 @@ export function AdminControls({ status, halt, resume, loading, error, onRefresh 
   const [actionLoading, setActionLoading] = useState(false);
 
   const isTrading = status?.trading ?? false;
-  const circuitState = status?.circuitBreaker.state ?? 'CLOSED';
+  const circuitState = status?.circuitBreaker?.state ?? 'CLOSED';
 
   const handleHalt = async () => {
     if (!haltReason.trim()) return;

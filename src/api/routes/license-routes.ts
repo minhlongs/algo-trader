@@ -1,186 +1,159 @@
-/**
- * License API Routes
- * ROIaaS Phase 2 - License Management API Endpoints
- *
- * Endpoints:
- * - GET    /api/v1/licenses          - List licenses (pagination)
- * - GET    /api/v1/licenses/:id      - Get single license
- * - POST   /api/v1/licenses          - Create license
- * - PATCH  /api/v1/licenses/:id/revoke - Revoke license
- * - DELETE /api/v1/licenses/:id      - Delete license
- * - GET    /api/v1/licenses/:id/audit - Get audit logs
- * - GET    /api/v1/licenses/analytics - Get aggregate analytics
- */
-
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { Router, Request, Response } from 'express';
 import { LicenseService } from '../../billing/license-service';
 import { AuditLogService } from '../../audit/audit-log-service';
-import { LicenseTier, LicenseStatus, CreateLicenseInput, LicenseFilters } from '../../types/license';
+import { LicenseTier, LicenseStatus, LicenseFilters } from '../../types/license';
+import { z } from 'zod';
 
-interface LicenseParams {
-  id: string;
-}
+export const licenseRouter: Router = Router();
+const licenseService = LicenseService.getInstance();
+const auditService = AuditLogService.getInstance();
 
-interface LicenseListQuery {
-  take?: number;
-  skip?: number;
-  status?: LicenseStatus | 'all';
-  tier?: LicenseTier | 'all';
-}
+const createLicenseBodySchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  tier: z.nativeEnum(LicenseTier),
+  expiresAt: z.string().datetime().optional(),
+  tenantId: z.string().optional(),
+  domain: z.string().optional(),
+});
 
-export async function licenseRoutes(fastify: FastifyInstance) {
-  const licenseService = LicenseService.getInstance();
-  const auditService = AuditLogService.getInstance();
+const listLicenseQuerySchema = z.object({
+  take: z.coerce.number().int().min(1).default(10),
+  skip: z.coerce.number().int().min(0).default(0),
+  status: z.union([z.nativeEnum(LicenseStatus), z.literal('all')]).optional(),
+  tier: z.union([z.nativeEnum(LicenseTier), z.literal('all')]).optional(),
+});
 
-  fastify.get(
-    '/',
-    {
-      schema: {
-        querystring: {
-          type: 'object',
-          properties: {
-            take: { type: 'number', default: 10 },
-            skip: { type: 'number', default: 0 },
-            status: { type: 'string', enum: ['active', 'expired', 'revoked', 'all'] },
-            tier: { type: 'string', enum: ['FREE', 'PRO', 'ENTERPRISE', 'all'] },
-          },
-        },
-      },
-    },
-    async (request: FastifyRequest<{ Querystring: LicenseListQuery }>, reply: FastifyReply) => {
-      const filters: LicenseFilters = {
-        take: request.query.take || 10,
-        skip: request.query.skip || 0,
-        status: request.query.status,
-        tier: request.query.tier,
-      };
+/**
+ * GET /api/v1/licenses/analytics
+ */
+licenseRouter.get('/analytics', async (_req: Request, res: Response) => {
+  const analytics = await licenseService.getAnalytics();
+  return res.json(analytics);
+});
 
-      const result = await licenseService.listLicenses(filters);
-      return reply.send(result);
-    }
-  );
+/**
+ * GET /api/v1/licenses
+ */
+licenseRouter.get('/', async (req: Request, res: Response) => {
+  const parsed = listLicenseQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid query' });
+  }
 
-  fastify.get(
-    '/:id',
-    async (request: FastifyRequest<{ Params: LicenseParams }>, reply: FastifyReply) => {
-      const license = licenseService.getLicense(request.params.id);
+  const filters: LicenseFilters = {
+    take: parsed.data.take,
+    skip: parsed.data.skip,
+    status: parsed.data.status as LicenseStatus | 'all',
+    tier: parsed.data.tier as LicenseTier | 'all',
+  };
 
-      if (!license) {
-        return reply.code(404).send({
-          error: 'Not Found',
-          message: `License ${request.params.id} not found`,
-        });
-      }
+  const result = await licenseService.listLicenses(filters);
+  return res.json(result);
+});
 
-      return reply.send(license);
-    }
-  );
+/**
+ * GET /api/v1/licenses/:id
+ */
+licenseRouter.get('/:id', async (req: Request, res: Response) => {
+  const licenseId = req.params.id as string;
+  const license = licenseService.getLicense(licenseId);
 
-  fastify.post(
-    '/',
-    {
-      schema: {
-        body: {
-          type: 'object',
-          required: ['name', 'tier'],
-          properties: {
-            name: { type: 'string' },
-            tier: { type: 'string', enum: ['FREE', 'PRO', 'ENTERPRISE'] },
-            expiresAt: { type: 'string', format: 'date-time' },
-            tenantId: { type: 'string' },
-            domain: { type: 'string' },
-          },
-        },
-      },
-    },
-    async (
-      request: FastifyRequest<{ Body: CreateLicenseInput }>,
-      reply: FastifyReply
-    ) => {
-      const { name, tier, expiresAt, tenantId, domain } = request.body;
+  if (!license) {
+    return res.status(404).json({
+      error: 'Not Found',
+      message: `License ${licenseId} not found`,
+    });
+  }
 
-      const license = await licenseService.createLicense({
-        name,
-        tier: tier as LicenseTier,
-        expiresAt,
-        tenantId,
-        domain,
-      });
+  return res.json(license);
+});
 
-      await auditService.log(license.id, 'created', {
-        tier: license.tier,
-        metadata: { name },
-      });
+/**
+ * POST /api/v1/licenses
+ */
+licenseRouter.post('/', async (req: Request, res: Response) => {
+  const parsed = createLicenseBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid body' });
+  }
 
-      return reply.code(201).send(license);
-    }
-  );
+  const { name, tier, expiresAt, tenantId, domain } = parsed.data;
 
-  fastify.patch(
-    '/:id/revoke',
-    async (request: FastifyRequest<{ Params: LicenseParams }>, reply: FastifyReply) => {
-      const license = await licenseService.revokeLicense(request.params.id);
+  const license = await licenseService.createLicense({
+    name,
+    tier: tier as LicenseTier,
+    expiresAt,
+    tenantId,
+    domain,
+  });
 
-      if (!license) {
-        return reply.code(404).send({
-          error: 'Not Found',
-          message: `License ${request.params.id} not found`,
-        });
-      }
+  await auditService.log(license.id, 'created', {
+    tier: license.tier,
+    metadata: { name },
+  });
 
-      await auditService.log(license.id, 'revoked', {
-        tier: license.tier,
-      });
+  return res.status(201).json(license);
+});
 
-      return reply.send(license);
-    }
-  );
+/**
+ * PATCH /api/v1/licenses/:id/revoke
+ */
+licenseRouter.patch('/:id/revoke', async (req: Request, res: Response) => {
+  const licenseId = req.params.id as string;
+  const license = await licenseService.revokeLicense(licenseId);
 
-  fastify.delete(
-    '/:id',
-    async (request: FastifyRequest<{ Params: LicenseParams }>, reply: FastifyReply) => {
-      const license = licenseService.getLicense(request.params.id);
+  if (!license) {
+    return res.status(404).json({
+      error: 'Not Found',
+      message: `License ${req.params.id} not found`,
+    });
+  }
 
-      if (!license) {
-        return reply.code(404).send({
-          error: 'Not Found',
-          message: `License ${request.params.id} not found`,
-        });
-      }
+  await auditService.log(license.id, 'revoked', {
+    tier: license.tier,
+  });
 
-      await auditService.log(license.id, 'deleted', {
-        tier: license.tier,
-      });
+  return res.json(license);
+});
 
-      await licenseService.deleteLicense(request.params.id);
+/**
+ * DELETE /api/v1/licenses/:id
+ */
+licenseRouter.delete('/:id', async (req: Request, res: Response) => {
+  const licenseId = req.params.id as string;
+  const license = licenseService.getLicense(licenseId);
 
-      return reply.code(204).send();
-    }
-  );
+  if (!license) {
+    return res.status(404).json({
+      error: 'Not Found',
+      message: `License ${licenseId} not found`,
+    });
+  }
 
-  fastify.get(
-    '/:id/audit',
-    async (request: FastifyRequest<{ Params: LicenseParams }>, reply: FastifyReply) => {
-      const license = licenseService.getLicense(request.params.id);
+  await auditService.log(license.id, 'deleted', {
+    tier: license.tier,
+  });
 
-      if (!license) {
-        return reply.code(404).send({
-          error: 'Not Found',
-          message: `License ${request.params.id} not found`,
-        });
-      }
+  await licenseService.deleteLicense(licenseId);
 
-      const logs = await auditService.getLogsByLicense(request.params.id);
+  return res.status(204).send();
+});
 
-      return reply.send({ logs });
-    }
-  );
+/**
+ * GET /api/v1/licenses/:id/audit
+ */
+licenseRouter.get('/:id/audit', async (req: Request, res: Response) => {
+  const licenseId = req.params.id as string;
+  const license = licenseService.getLicense(licenseId);
 
-  fastify.get(
-    '/analytics',
-    async (_request: FastifyRequest, reply: FastifyReply) => {
-      const analytics = await licenseService.getAnalytics();
-      return reply.send(analytics);
-    }
-  );
-}
+  if (!license) {
+    return res.status(404).json({
+      error: 'Not Found',
+      message: `License ${licenseId} not found`,
+    });
+  }
+
+  const logs = await auditService.getLogsByLicense(licenseId);
+
+  return res.json({ logs });
+});

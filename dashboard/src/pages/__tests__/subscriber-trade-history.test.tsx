@@ -55,8 +55,12 @@ function hookResult(overrides = {}) {
 }
 
 describe('SubscriberTradeHistoryPage', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockHook.mockReset();
+    const { useAuthStore } = await import('../../stores/auth-store');
+    vi.mocked(useAuthStore).mockImplementation(
+      (selector: any) => selector({ tenantId: 'sub-history-001' })
+    );
   });
 
   it('renders Trade History heading', () => {
@@ -94,7 +98,7 @@ describe('SubscriberTradeHistoryPage', () => {
   it('shows no-identity message when tenantId is null', async () => {
     const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
-      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
+      (selector: any) => selector({ tenantId: null })
     );
     mockHook.mockReturnValue(hookResult({ dailyBreakdown: [] }));
     render(<SubscriberTradeHistoryPage />);

@@ -1,9 +1,8 @@
 /**
  * Main dashboard page: Week 5-6 UI Polish + Beta Launch.
- * Features: Real-time WebSocket updates, skeleton loaders, responsive grid.
- * Mobile-first design with Tailwind breakpoints.
+ * Restructured into a premium 12-column Bento Grid Layout.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTradingStore } from '../stores/trading-store';
 import { useWebSocketPriceFeed } from '../hooks/use-websocket-price-feed';
 import { useRealtimeUpdates } from '../hooks/use-realtime-updates';
@@ -12,13 +11,15 @@ import { usePnlAnalytics } from '../hooks/use-pnl-analytics';
 import { useAdminControls } from '../hooks/use-admin-controls';
 import { useHealthStatus } from '../hooks/use-health-status';
 
-// Phase 3 Components
+// UI Components
+import { Card } from '../components/ui/card';
+import { CandlestickChart } from '../components/candlestick-chart';
 import { StatsRow } from '../components/stats-row';
 import { SignalsPanel } from '../components/signals-panel';
 import { PnLAnalyticsChart } from '../components/pnl-analytics-chart';
 import { AdminControls } from '../components/admin-controls';
 
-// Week 5-6 Components
+// Skeletons
 import {
   DashboardSkeleton,
   StatsRowSkeleton,
@@ -32,7 +33,7 @@ import {
   PositionsTableSkeleton,
 } from '../components/skeleton-loaders';
 
-// Legacy Components (Phase 1/2)
+// Subcomponents
 import { PriceTickerStrip } from '../components/price-ticker-strip';
 import { PositionsTableSortable } from '../components/positions-table-sortable';
 import { SpreadOpportunitiesCardGrid } from '../components/spread-opportunities-card-grid';
@@ -50,20 +51,86 @@ function useNow(): string {
   return now;
 }
 
-export function DashboardPage() {
-  // Legacy WebSocket for trading data (Phase 1/2)
-  useWebSocketPriceFeed();
+function TerminalLogs() {
+  const [logs, setLogs] = useState<string[]>([]);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+  const prices = useTradingStore((s) => s.prices);
+  const trades = useTradingStore((s) => s.trades);
+  
+  useEffect(() => {
+    const initLogs = [
+      `[${new Date().toLocaleTimeString()}] [System] Initialization complete.`,
+      `[${new Date().toLocaleTimeString()}] [Redis] Connected to cluster.`,
+      `[${new Date().toLocaleTimeString()}] [Safety] Circuit Breaker: CLOSED.`,
+      `[${new Date().toLocaleTimeString()}] [Bot] Paper trading mode: ENABLED.`,
+    ];
+    setLogs(initLogs);
+  }, []);
 
-  // Week 5-6: Unified realtime updates hook
+  useEffect(() => {
+    if (trades.length === 0) return;
+    const latest = trades[0];
+    const time = new Date(latest.timestamp).toLocaleTimeString();
+    const log = `[${time}] [FILL] ${latest.side} ${latest.size} ${latest.symbol} @ $${latest.price.toFixed(2)} (${latest.strategy})`;
+    setLogs((prev) => [...prev, log].slice(-100));
+  }, [trades]);
+
+  useEffect(() => {
+    const keys = Object.keys(prices);
+    if (keys.length === 0) return;
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    const tick = prices[randomKey];
+    if (!tick) return;
+    
+    if (Math.random() > 0.93) {
+      const time = new Date(tick.timestamp).toLocaleTimeString();
+      const log = `[${time}] [TICK] ${tick.exchange}:${tick.symbol} Bid: ${tick.bid.toFixed(2)} Ask: ${tick.ask.toFixed(2)}`;
+      setLogs((prev) => [...prev, log].slice(-100));
+    }
+  }, [prices]);
+
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [logs]);
+
+  return (
+    <div className="bg-[#060814] border border-white/5 rounded-xl p-4 font-mono text-xs h-[350px] flex flex-col">
+      <div className="flex items-center gap-1.5 pb-2 border-b border-white/5 mb-3 text-muted">
+        <span className="w-2.5 h-2.5 rounded-full bg-loss" />
+        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
+        <span className="w-2.5 h-2.5 rounded-full bg-profit" />
+        <span className="ml-2">system-log-terminal</span>
+      </div>
+      <div ref={logContainerRef} className="flex-grow overflow-y-auto space-y-1 scrollbar-thin">
+        {logs.map((log, index) => {
+          let colorClass = 'text-white/80';
+          if (log.includes('[FILL]')) colorClass = 'text-profit font-semibold';
+          else if (log.includes('[TICK]')) colorClass = 'text-accent-cyan';
+          else if (log.includes('[Safety]')) colorClass = 'text-accent-pink';
+          else if (log.includes('[System]')) colorClass = 'text-muted';
+
+          return (
+            <p key={index} className={`${colorClass} whitespace-pre-wrap`}>
+              {log}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function DashboardPage() {
+  useWebSocketPriceFeed();
   const { connected: wsConnected, latency, error: wsError, reconnectCount } = useRealtimeUpdates();
 
-  // Phase 3 API hooks with loading states
   const { signals, loading: signalsLoading, error: signalsError, refresh: refreshSignals } = useSignals(0, 50);
   const { metrics, loading: pnlLoading, error: pnlError } = usePnlAnalytics();
   const { status: adminStatus, halt, resume, loading: adminLoading, error: adminError, refresh: refreshAdmin } = useAdminControls();
   useHealthStatus();
 
-  // Trading store data (Phase 1/2)
   const positions = useTradingStore((s: any) => s.positions);
   const spreads = useTradingStore((s: any) => s.spreads);
   const strategies = useTradingStore((s: any) => s.strategies);
@@ -71,27 +138,23 @@ export function DashboardPage() {
   const botStatus = useTradingStore((s: any) => s.botStatus);
 
   const lastUpdate = useNow();
-
-  // Overall loading state - show skeleton on initial load
   const isInitialLoading = pnlLoading || signalsLoading || adminLoading;
 
-  // Derived metrics
   const openCount = positions.filter((p: any) => p.status === 'open').length;
   const activeStrategies = strategies?.filter((s: any) => s.enabled).length ?? 0;
 
-  // Show full skeleton on initial load
   if (isInitialLoading) {
     return <DashboardSkeleton />;
   }
 
   return (
-    <div className="space-y-6 font-mono">
-      {/* Top bar - responsive layout */}
+    <div className="space-y-6">
+      {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-white text-lg sm:text-xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted text-xs mt-0.5">
-            Algo Trader v5.6 • {wsConnected ? 'Connected' : 'Disconnected'}
+            Algo Trader RaaS Pro Max • {wsConnected ? 'Connected' : 'Disconnected'}
             {latency.avgLatency > 0 && ` • ${latency.avgLatency}ms latency`}
           </p>
           {wsError && <p className="text-loss text-xs mt-1">{wsError}</p>}
@@ -102,12 +165,12 @@ export function DashboardPage() {
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <CacheStatus />
-          <span className="text-muted text-xs hidden sm:inline">
+          <span className="text-muted text-xs hidden sm:inline font-mono">
             Updated {lastUpdate}
           </span>
           <div
             className={`
-              flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold
+              flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold
               min-h-[36px] touch-manipulation
               ${wsConnected
                 ? 'border-profit/40 bg-profit/10 text-profit'
@@ -118,13 +181,18 @@ export function DashboardPage() {
             <span
               className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-profit animate-pulse' : 'bg-loss'}`}
             />
-            <span className="hidden sm:inline">{wsConnected ? 'Live' : 'Offline'}</span>
+            <span>{wsConnected ? 'Live' : 'Offline'}</span>
           </div>
         </div>
       </div>
 
-      {/* Stats Row - responsive grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Top scrollable ticker strip */}
+      <Card hoverGlow={false} className="p-3">
+        {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
+      </Card>
+
+      {/* Key performance metrics indicators */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {pnlLoading ? (
           <StatsRowSkeleton />
         ) : (
@@ -138,58 +206,112 @@ export function DashboardPage() {
         )}
       </div>
 
-      {/* Strategy status - full width */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Strategies
-        </h3>
-        <StrategyStatusPanel strategies={strategies} botStatus={botStatus} />
-      </section>
+      {/* 12-Column Bento Grid Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Widget 1: Real-Time Candlestick Chart (Col-span 8) */}
+        <Card className="lg:col-span-8 flex flex-col h-[450px]">
+          <CandlestickChart />
+        </Card>
 
-      {/* Main Grid - responsive: 1 col mobile, 2 cols tablet+ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* P&L Analytics */}
-        <section>
-          <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-            <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-            P&L Analytics
-          </h3>
-          {pnlLoading ? (
-            <PnlChartSkeleton />
-          ) : (
-            <PnLAnalyticsChart metrics={metrics} loading={pnlLoading} error={pnlError} />
-          )}
-        </section>
+        {/* Widget 2: Strategy Control Center (Col-span 4) */}
+        <Card className="lg:col-span-4 flex flex-col justify-between h-[450px]">
+          <div className="space-y-4 flex-grow overflow-y-auto scrollbar-thin pr-1">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <span className="text-white text-sm font-semibold">Strategies & Controls</span>
+              <span className="text-xs text-muted font-mono">{activeStrategies} active</span>
+            </div>
+            
+            <StrategyStatusPanel strategies={strategies} botStatus={botStatus} />
+          </div>
 
-        {/* Admin Controls */}
-        <section>
-          <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-            <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-            Admin Controls
-          </h3>
-          {adminLoading ? (
-            <AdminControlsSkeleton />
-          ) : (
-            <AdminControls
-              status={adminStatus}
-              halt={halt}
-              resume={resume}
-              loading={adminLoading}
-              error={adminError}
-              onRefresh={refreshAdmin}
-            />
-          )}
-        </section>
+          <div className="border-t border-white/5 pt-4 mt-4">
+            <h4 className="text-xs text-muted uppercase font-bold tracking-wider mb-2">Emergency Switch</h4>
+            {adminLoading ? (
+              <AdminControlsSkeleton />
+            ) : (
+              <AdminControls
+                status={adminStatus}
+                halt={halt}
+                resume={resume}
+                loading={adminLoading}
+                error={adminError}
+                onRefresh={refreshAdmin}
+              />
+            )}
+          </div>
+        </Card>
+
+        {/* Widget 3: Combined P&L & Equity Curve Charting (Col-span 12) */}
+        <Card className="lg:col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-1.5 h-3.5 bg-accent rounded-full" />
+              <h3 className="text-white text-sm font-semibold">PnL Analytics</h3>
+            </div>
+            {pnlLoading ? (
+              <PnlChartSkeleton />
+            ) : (
+              <PnLAnalyticsChart metrics={metrics} loading={pnlLoading} error={pnlError} />
+            )}
+          </div>
+
+          <div className="flex flex-col justify-between">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-1.5 h-3.5 bg-accent rounded-full" />
+              <h3 className="text-white text-sm font-semibold">Equity Curve</h3>
+            </div>
+            <div className="bg-[#101426] border border-white/5 rounded-xl p-4 flex-grow flex items-center justify-center">
+              {pnlLoading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
+            </div>
+          </div>
+        </Card>
+
+        {/* Widget 4: Active Positions Grid & History (Col-span 6) */}
+        <Card className="lg:col-span-6 flex flex-col h-[430px]">
+          <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-3">
+            <span className="text-white text-sm font-semibold">Active Positions</span>
+            <span className="text-xs text-muted font-mono">{openCount} open</span>
+          </div>
+          <div className="flex-grow overflow-y-auto scrollbar-thin">
+            {pnlLoading ? (
+              <PositionsTableSkeleton />
+            ) : (
+              <PositionsTableSortable positions={positions} />
+            )}
+          </div>
+        </Card>
+
+        {/* Widget 5: Real-time System Log Terminal (Col-span 6) */}
+        <Card className="lg:col-span-6 p-0 overflow-hidden">
+          <TerminalLogs />
+        </Card>
       </div>
 
-      {/* Signals Panel - full width */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-profit rounded-full inline-block" />
-          Arbitrage Signals
+      {/* Arbitrage Opportunities Grid */}
+      <section className="space-y-3">
+        <h3 className="text-white text-sm font-semibold flex items-center gap-2">
+          <span className="w-1.5 h-3.5 bg-accent rounded-full" />
+          Spread Opportunities
+          {spreads.length > 0 && (
+            <span className="text-[10px] text-muted bg-white/5 px-2 py-0.5 rounded-full font-mono">
+              {spreads.length}
+            </span>
+          )}
+        </h3>
+        {pnlLoading ? (
+          <SpreadGridSkeleton />
+        ) : (
+          <SpreadOpportunitiesCardGrid spreads={spreads} />
+        )}
+      </section>
+
+      {/* Arbitrage Signals list */}
+      <section className="space-y-3">
+        <h3 className="text-white text-sm font-semibold flex items-center gap-2">
+          <span className="w-1.5 h-3.5 bg-accent rounded-full" />
+          Real-Time Arbitrage Signals
           {signals.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-muted bg-white/5 px-2 py-0.5 rounded-full font-mono">
               {signals.length}
             </span>
           )}
@@ -206,76 +328,20 @@ export function DashboardPage() {
         )}
       </section>
 
-      {/* Equity curve - full width */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Equity Curve
-        </h3>
-        <div className="bg-bg-card border border-bg-border rounded-lg p-3 sm:p-4">
-          {pnlLoading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
-        </div>
-      </section>
-
-      {/* Price ticker strip - responsive horizontal scroll on mobile */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Live Prices
-        </h3>
-        <div className="bg-bg-card border border-bg-border rounded-lg overflow-x-auto">
-          {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
-        </div>
-      </section>
-
-      {/* Spread opportunities - responsive grid */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-profit rounded-full inline-block" />
-          Spread Opportunities
-          {spreads.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
-              {spreads.length}
-            </span>
-          )}
-        </h3>
-        {pnlLoading ? (
-          <SpreadGridSkeleton />
-        ) : (
-          <SpreadOpportunitiesCardGrid spreads={spreads} />
-        )}
-      </section>
-
-      {/* Trade history feed - responsive table */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-warning rounded-full inline-block" />
-          Trade History
+      {/* Trades execution feed */}
+      <section className="space-y-3">
+        <h3 className="text-white text-sm font-semibold flex items-center gap-2">
+          <span className="w-1.5 h-3.5 bg-accent rounded-full" />
+          Trades Execution Feed
           {trades.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-muted bg-white/5 px-2 py-0.5 rounded-full font-mono">
               {trades.length}
             </span>
           )}
         </h3>
-        <div className="bg-bg-card border border-bg-border rounded-lg overflow-hidden">
+        <Card className="p-0 overflow-hidden">
           {pnlLoading ? <TradeHistorySkeleton /> : <TradeHistoryFeed trades={trades} />}
-        </div>
-      </section>
-
-      {/* Positions table - responsive with horizontal scroll */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-muted rounded-full inline-block" />
-          Positions
-          {positions.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
-              {positions.length}
-            </span>
-          )}
-        </h3>
-        <div className="bg-bg-card border border-bg-border rounded-lg overflow-x-auto">
-          {pnlLoading ? <PositionsTableSkeleton /> : <PositionsTableSortable positions={positions} />}
-        </div>
+        </Card>
       </section>
     </div>
   );

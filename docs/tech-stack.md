@@ -28,6 +28,21 @@
 | Monitoring | Prometheus + Grafana | Trading metrics dashboards |
 | Billing | Polar.sh | Subscription tiers (per project rules) |
 
+## Frontend Dashboard Stack (UI/UX Pro Max)
+
+| Layer | Technology | Rationale |
+|-------|-----------|-----------|
+| Framework | React 18+ & Vite | Fast HMR development, optimal bundle size |
+| Language | TypeScript 5 | Strict typing, robust editor autocomplete |
+| Styling | Tailwind CSS | Utility-first styling, glassmorphism, responsive bento grids |
+| Navigation | React Router DOM v7 | Dynamic client-side routing, protected auth layouts |
+| State | Zustand 5 | Low-overhead global store, seamless React binding |
+| Charts | TradingView Lightweight Charts | High-performance canvas rendering for candlestick data |
+| Charts | Recharts | SVG chart components for metrics & historical P&L curves |
+| Animations | Framer Motion | Smooth layout transitions, slide-ins, micro-animations |
+| Icons | Lucide React | Clean, scalable vector icon primitives |
+| UI Primitives | Shadcn UI (Radix UI) | Accessible, unstyled primitives styled with Tailwind CSS |
+
 ## Architecture Decision Records
 
 ### ADR-1: Keep Plain HTTP for Internal API

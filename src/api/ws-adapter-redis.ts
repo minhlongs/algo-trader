@@ -1,5 +1,5 @@
 /**
- * Fastify WebSocket Adapter with Redis Cluster
+ * WebSocket Adapter with Redis Cluster (adapted for Express/http.Server)
  * Handles 1000+ concurrent WebSocket connections with cluster-aware pub/sub
  *
  * Features:
@@ -10,7 +10,7 @@
  */
 
 import { Cluster } from 'ioredis';
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { Server as HttpServer, IncomingMessage } from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import {
   getRedisClusterClient,
@@ -51,7 +51,7 @@ export class RedisWSAdapter {
   private clientIdCounter = 0;
 
   constructor(
-    private fastify: FastifyInstance,
+    private server: HttpServer,
     config?: Partial<WSAdapterConfig>
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -66,7 +66,7 @@ export class RedisWSAdapter {
     }
 
     this.wsServer = new WebSocket.Server({
-      server: fastify.server,
+      server: this.server,
       path: this.config.path,
       maxPayload: this.config.maxPayloadSize,
     });
@@ -80,7 +80,7 @@ export class RedisWSAdapter {
    * Setup WebSocket server
    */
   private setupWebSocket(): void {
-    this.wsServer.on('connection', (ws: WebSocket, _req: FastifyRequest['raw']) => {
+    this.wsServer.on('connection', (ws: WebSocket, _req: IncomingMessage) => {
       const clientId = `client-${Date.now()}-${++this.clientIdCounter}`;
       const client: WSClient = {
         ws,
@@ -297,18 +297,12 @@ export class RedisWSAdapter {
 }
 
 /**
- * Register WebSocket adapter with Fastify
+ * Register WebSocket adapter with Express Server
  */
 export async function registerWebSocketAdapter(
-  fastify: FastifyInstance,
+  server: HttpServer,
   config?: Partial<WSAdapterConfig>
 ): Promise<RedisWSAdapter> {
-  const adapter = new RedisWSAdapter(fastify, config);
-
-  // Add shutdown hook
-  fastify.addHook('onClose', async () => {
-    await adapter.shutdown();
-  });
-
+  const adapter = new RedisWSAdapter(server, config);
   return adapter;
 }
