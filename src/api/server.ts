@@ -21,6 +21,7 @@ import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook'
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
 import { analyticsRouter } from './routes/analytics-routes';
+import { personalizationRouter } from './routes/personalization-routes';
 import { subscriberPnlRouter } from './routes/subscriber-pnl-routes';
 import { enterpriseInquiryRouter } from './routes/enterprise-inquiry-routes';
 import { createSignalIngestRouter } from './routes/signal-ingest-routes';
@@ -166,6 +167,7 @@ export class ApiServer {
     this.app.use('/api/coupons', couponRouter);
     this.app.use('/api/blog', blogRouter);
     this.app.use('/api/analytics', analyticsRouter);
+    this.app.use('/api/personalization', personalizationRouter);
     this.app.use('/api/v1/subscriber', subscriberPnlRouter);
     this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
     this.app.use('/api/v1/keys', apiKeyRouter);

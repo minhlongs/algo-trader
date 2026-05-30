@@ -8,6 +8,8 @@ import { useDashboardStore } from '../stores/dashboard-store';
 import { useDashboardWebSocket } from '../hooks/use-dashboard-websocket';
 import { useAdminControls } from '../hooks/use-admin-controls';
 import { useHealthStatus } from '../hooks/use-health-status';
+import { useAuthStore } from '../stores/auth-store';
+import { useAbTestStore } from '../stores/ab-test-store';
 
 // UI Components
 import { Card } from '../components/ui/card';
@@ -132,6 +134,15 @@ function TerminalLogs() {
 export function DashboardPage() {
   const { connected: wsConnected, latency, error: wsError, reconnectCount } = useDashboardWebSocket();
 
+  const { tier, tenantId } = useAuthStore();
+  const {
+    config,
+    widgets,
+    fetchAbConfig,
+    fetchPersonalizationConfig,
+    trackEvent,
+  } = useAbTestStore();
+
   const signals = useDashboardStore((s) => s.signals);
   const lastSignalsUpdate = useDashboardStore((s) => s.lastSignalsUpdate);
   const signalsLoading = lastSignalsUpdate === null;
@@ -152,17 +163,194 @@ export function DashboardPage() {
   const trades = useTradingStore((s: any) => s.trades);
   const botStatus = useTradingStore((s: any) => s.botStatus);
 
+  // Load A/B and Personalization configurations, and track session lifecycle
+  useEffect(() => {
+    if (tenantId) {
+      fetchAbConfig(tenantId);
+    }
+    if (tier) {
+      fetchPersonalizationConfig(tier);
+    }
+
+    trackEvent('dashboard_page_load');
+
+    const startTime = Date.now();
+    return () => {
+      const durationSec = Math.floor((Date.now() - startTime) / 1000);
+      trackEvent('dashboard_session_close', { durationSeconds: durationSec });
+    };
+  }, [tenantId, tier]);
+
   const isInitialLoading = pnlLoading || signalsLoading || adminLoading;
 
   const openCount = positions.filter((p: any) => p.status === 'open').length;
   const activeStrategies = strategies?.filter((s: any) => s.enabled).length ?? 0;
+
+  const colSpanMap: Record<number, string> = {
+    1: 'lg:col-span-1',
+    2: 'lg:col-span-2',
+    3: 'lg:col-span-3',
+    4: 'lg:col-span-4',
+    5: 'lg:col-span-5',
+    6: 'lg:col-span-6',
+    7: 'lg:col-span-7',
+    8: 'lg:col-span-8',
+    9: 'lg:col-span-9',
+    10: 'lg:col-span-10',
+    11: 'lg:col-span-11',
+    12: 'lg:col-span-12',
+  };
+
+  const widgetRegistry: Record<string, (colSpan: number) => React.ReactNode> = {
+    'candlestick': (colSpan) => (
+      <Card 
+        key="candlestick" 
+        className={`${colSpanMap[colSpan] || 'lg:col-span-8'} flex flex-col h-[450px]`}
+        onClickCapture={() => trackEvent('widget_click', { widget: 'candlestick' })}
+      >
+        <CandlestickChart />
+      </Card>
+    ),
+    'strategy-controls': (colSpan) => (
+      <Card 
+        key="strategy-controls" 
+        className={`${colSpanMap[colSpan] || 'lg:col-span-4'} flex flex-col justify-between h-[450px]`}
+        onClickCapture={() => trackEvent('widget_click', { widget: 'strategy-controls' })}
+      >
+        <div className="space-y-4 flex-grow overflow-y-auto scrollbar-thin pr-1">
+          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <span className="text-white text-sm font-semibold">Strategies & Controls</span>
+            <span className="text-xs text-muted font-mono">{activeStrategies} active</span>
+          </div>
+          
+          <StrategyStatusPanel strategies={strategies} botStatus={botStatus} />
+        </div>
+
+        <div className="border-t border-white/5 pt-4 mt-4">
+          <h4 className="text-xs text-muted uppercase font-bold tracking-wider mb-2">Emergency Switch</h4>
+          {adminLoading ? (
+            <AdminControlsSkeleton />
+          ) : (
+            <AdminControls
+              status={adminStatus}
+              halt={async (reason: string) => {
+                const res = await halt(reason);
+                trackEvent('emergency_switch_trigger', { action: 'halt', reason });
+                return res;
+              }}
+              resume={async () => {
+                const res = await resume();
+                trackEvent('emergency_switch_trigger', { action: 'resume' });
+                return res;
+              }}
+              loading={adminLoading}
+              error={adminError}
+              onRefresh={refreshAdmin}
+            />
+          )}
+        </div>
+      </Card>
+    ),
+    'pnl-analytics': (colSpan) => (
+      <Card 
+        key="pnl-analytics" 
+        className={`${colSpanMap[colSpan] || 'lg:col-span-12'} grid grid-cols-1 xl:grid-cols-2 gap-6`}
+        onClickCapture={() => trackEvent('widget_click', { widget: 'pnl-analytics' })}
+      >
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1.5 h-3.5 bg-accent rounded-full" />
+            <h3 className="text-white text-sm font-semibold">PnL Analytics</h3>
+          </div>
+          {pnlLoading ? (
+            <PnlChartSkeleton />
+          ) : (
+            <PnLAnalyticsChart metrics={metrics} loading={pnlLoading} error={pnlError} />
+          )}
+        </div>
+
+        <div className="flex flex-col justify-between">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1.5 h-3.5 bg-accent rounded-full" />
+            <h3 className="text-white text-sm font-semibold">Equity Curve</h3>
+          </div>
+          <div className="bg-[#101426] border border-white/5 rounded-xl p-4 flex-grow flex items-center justify-center">
+            {pnlLoading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
+          </div>
+        </div>
+      </Card>
+    ),
+    'active-positions': (colSpan) => (
+      <Card 
+        key="active-positions" 
+        className={`${colSpanMap[colSpan] || 'lg:col-span-6'} flex flex-col h-[430px]`}
+        onClickCapture={() => trackEvent('widget_click', { widget: 'active-positions' })}
+      >
+        <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-3">
+          <span className="text-white text-sm font-semibold">Active Positions</span>
+          <span className="text-xs text-muted font-mono">{openCount} open</span>
+        </div>
+        <div className="flex-grow overflow-y-auto scrollbar-thin">
+          {pnlLoading ? (
+            <PositionsTableSkeleton />
+          ) : (
+            <PositionsTableSortable positions={positions} />
+          )}
+        </div>
+      </Card>
+    ),
+    'system-logs': (colSpan) => (
+      <Card 
+        key="system-logs" 
+        className={`${colSpanMap[colSpan] || 'lg:col-span-6'} p-0 overflow-hidden`}
+        onClickCapture={() => trackEvent('widget_click', { widget: 'system-logs' })}
+      >
+        <TerminalLogs />
+      </Card>
+    ),
+    'ai-insights-panel': (colSpan) => (
+      <Card 
+        key="ai-insights-panel" 
+        className={`${colSpanMap[colSpan] || 'lg:col-span-12'} p-6 flex flex-col`}
+        onClickCapture={() => trackEvent('widget_click', { widget: 'ai-insights-panel' })}
+      >
+        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
+          <span className="text-accent">✨</span> AI Insights Engine
+        </h3>
+        <p className="text-muted text-xs">
+          Swarm models are analyzing real-time spreads... Recommendations will appear here.
+        </p>
+      </Card>
+    ),
+  };
 
   if (isInitialLoading) {
     return <DashboardSkeleton />;
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${config?.theme === 'cyberpunk' ? 'theme-cyberpunk font-mono' : ''}`}>
+      {config?.theme === 'cyberpunk' && (
+        <style>{`
+          .theme-cyberpunk .bg-\\[\\#060814\\], 
+          .theme-cyberpunk .bg-\\[\\#0a0f24\\], 
+          .theme-cyberpunk .bg-\\[\\#101426\\],
+          .theme-cyberpunk .border-white\\/5 {
+            border-color: #ff007f !important;
+            box-shadow: 0 0 5px rgba(255, 0, 127, 0.2), inset 0 0 5px rgba(255, 0, 127, 0.1) !important;
+          }
+          .theme-cyberpunk .text-white {
+            color: #00ffff !important;
+            text-shadow: 0 0 2px rgba(0, 255, 255, 0.5) !important;
+          }
+          .theme-cyberpunk button.bg-accent {
+            background-color: #00ffff !important;
+            color: #000000 !important;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5) !important;
+          }
+        `}</style>
+      )}
+
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -199,9 +387,11 @@ export function DashboardPage() {
       </div>
 
       {/* Top scrollable ticker strip */}
-      <Card hoverGlow={false} className="p-3">
-        {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
-      </Card>
+      {(!widgets.length || widgets.find(w => w.id === 'price-ticker')?.visible !== false) && (
+        <Card hoverGlow={false} className="p-3" onClickCapture={() => trackEvent('widget_click', { widget: 'price-ticker' })}>
+          {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
+        </Card>
+      )}
 
       {/* Key performance metrics indicators */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -218,85 +408,37 @@ export function DashboardPage() {
         )}
       </div>
 
-      {/* 12-Column Bento Grid Section */}
+      {/* Promotional upgrade banner */}
+      {config?.promoBanner && (
+        <div 
+          className="bg-gradient-to-r from-accent/20 to-purple-500/20 border border-accent/40 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-center gap-3 cursor-pointer"
+          onClick={() => trackEvent('upgrade_banner_click')}
+        >
+          <div>
+            <h4 className="text-white text-sm font-semibold">⚡ Upgrade to Algo-Trader PRO</h4>
+            <p className="text-muted text-xs">Unlock real-time strategy toggles, unlimited strategies, and advanced AI Insights!</p>
+          </div>
+          <button className="bg-accent hover:bg-accent/80 text-black font-semibold text-xs px-4 py-2 rounded-lg transition-colors">
+            Upgrade Now
+          </button>
+        </div>
+      )}
+
+      {/* Dynamic Bento Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Widget 1: Real-Time Candlestick Chart (Col-span 8) */}
-        <Card className="lg:col-span-8 flex flex-col h-[450px]">
-          <CandlestickChart />
-        </Card>
-
-        {/* Widget 2: Strategy Control Center (Col-span 4) */}
-        <Card className="lg:col-span-4 flex flex-col justify-between h-[450px]">
-          <div className="space-y-4 flex-grow overflow-y-auto scrollbar-thin pr-1">
-            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-              <span className="text-white text-sm font-semibold">Strategies & Controls</span>
-              <span className="text-xs text-muted font-mono">{activeStrategies} active</span>
-            </div>
-            
-            <StrategyStatusPanel strategies={strategies} botStatus={botStatus} />
-          </div>
-
-          <div className="border-t border-white/5 pt-4 mt-4">
-            <h4 className="text-xs text-muted uppercase font-bold tracking-wider mb-2">Emergency Switch</h4>
-            {adminLoading ? (
-              <AdminControlsSkeleton />
-            ) : (
-              <AdminControls
-                status={adminStatus}
-                halt={halt}
-                resume={resume}
-                loading={adminLoading}
-                error={adminError}
-                onRefresh={refreshAdmin}
-              />
-            )}
-          </div>
-        </Card>
-
-        {/* Widget 3: Combined P&L & Equity Curve Charting (Col-span 12) */}
-        <Card className="lg:col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-1.5 h-3.5 bg-accent rounded-full" />
-              <h3 className="text-white text-sm font-semibold">PnL Analytics</h3>
-            </div>
-            {pnlLoading ? (
-              <PnlChartSkeleton />
-            ) : (
-              <PnLAnalyticsChart metrics={metrics} loading={pnlLoading} error={pnlError} />
-            )}
-          </div>
-
-          <div className="flex flex-col justify-between">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-1.5 h-3.5 bg-accent rounded-full" />
-              <h3 className="text-white text-sm font-semibold">Equity Curve</h3>
-            </div>
-            <div className="bg-[#101426] border border-white/5 rounded-xl p-4 flex-grow flex items-center justify-center">
-              {pnlLoading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
-            </div>
-          </div>
-        </Card>
-
-        {/* Widget 4: Active Positions Grid & History (Col-span 6) */}
-        <Card className="lg:col-span-6 flex flex-col h-[430px]">
-          <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-3">
-            <span className="text-white text-sm font-semibold">Active Positions</span>
-            <span className="text-xs text-muted font-mono">{openCount} open</span>
-          </div>
-          <div className="flex-grow overflow-y-auto scrollbar-thin">
-            {pnlLoading ? (
-              <PositionsTableSkeleton />
-            ) : (
-              <PositionsTableSortable positions={positions} />
-            )}
-          </div>
-        </Card>
-
-        {/* Widget 5: Real-time System Log Terminal (Col-span 6) */}
-        <Card className="lg:col-span-6 p-0 overflow-hidden">
-          <TerminalLogs />
-        </Card>
+        {widgets.length > 0 ? (
+          widgets
+            .filter((w) => w.visible && widgetRegistry[w.id])
+            .map((w) => widgetRegistry[w.id](w.colSpan))
+        ) : (
+          <>
+            {widgetRegistry['candlestick'](8)}
+            {widgetRegistry['strategy-controls'](4)}
+            {widgetRegistry['pnl-analytics'](12)}
+            {widgetRegistry['active-positions'](6)}
+            {widgetRegistry['system-logs'](6)}
+          </>
+        )}
       </div>
 
       {/* Arbitrage Opportunities Grid */}
