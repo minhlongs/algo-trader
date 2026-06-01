@@ -122,6 +122,8 @@ const MIGRATIONS: Migration[] = [
   migration020,
   createSqlMigration('021_create_tenant_audit_logs.sql', '021_create_tenant_audit_logs', 'Create Tenant Audit Logs Table'),
   createSqlMigration('021_tenant_credentials.sql', '021_tenant_credentials', 'Tenant Credentials Table'),
+  createSqlMigration('022_dna_journal.sql', '022_dna_journal', 'DNA engine multi-TF consensus journal'),
+  createSqlMigration('023_dna_engine_state.sql', '023_dna_engine_state', 'DNA engine state persistence'),
 ];
 
 /**

@@ -38,6 +38,7 @@ import { licenseRouter } from './routes/license-routes';
 import { onboardingRouter } from './routes/onboarding-routes';
 import { backtestRouter } from './routes/backtest';
 import { credentialsRouter } from './routes/credentials-routes';
+import { adminDnaRouter } from './routes/admin-dna';
 import { RedisWSAdapter } from './ws-adapter-redis';
 
 export interface ApiConfig {
@@ -169,6 +170,8 @@ export class ApiServer {
 
     this.app.use('/api/signals', signalsRouter);
     this.app.use('/api/admin', adminRouter);
+// DNA engine admin routes: status, journal, paper-mode toggle
+this.app.use('/api/admin/dna', adminDnaRouter);
     this.app.use('/api/revenue', revenueRouter);
     this.app.use('/api/coupons', couponRouter);
     this.app.use('/api/blog', blogRouter);
