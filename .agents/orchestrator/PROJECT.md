@@ -1,41 +1,66 @@
-# Project: Algo-Trader RaaS Performance Optimization and Stress Testing
+# Project: Compliance & Security Hardening Framework
 
 ## Architecture
-The Algo-Trader RaaS Platform consists of the following components:
-1. **API Server (REST + WebSocket Gateway)**: Express application serving REST routes for trading analytics, auth, PnL, and managing WebSocket connections using `RedisWSAdapter`.
-2. **PostgreSQL Database**: Connection pool (`postgres-client.ts`) for storing and querying trade history (`TradeRepository`).
-3. **Redis Cluster (6-node)**: ioredis Cluster client configuration (`cluster-config.ts`) with 3 masters + 3 replicas, providing distributed caching and pub/sub.
-4. **Dashboard**: React + TypeScript frontend dashboard, fetching REST endpoints and connecting to the `/ws` WebSocket endpoint, displaying signal Bento Grid and candlestick charts.
-5. **k6 Load Tester**: Automatic load/stress tester simulating 5000+ VUs on API Gateway and WS connections.
+The framework hardens the Algo-Trader RaaS dashboard to meet strict security and compliance standards.
+1. **Multi-Tenant Audit Logging (R1)**: A tenant-isolated, immutable audit trail for trade decisions, orders, and system configurations. Uses a SHA-256 hash chain per tenant to guarantee tamper detection. Supports quick API querying and CSV/JSON export.
+2. **Redis Distributed Rate Limiter (R2)**: Sliding window rate limiting implemented on a Redis Cluster (ports 7000-7005). Scopes limits dynamically based on the tenant's tier: FREE, PRO, or ENTERPRISE, returning HTTP 429 upon violations.
+3. **AES-256-GCM Encryption at Rest (R3)**: Automatic encryption of sensitive fields (API keys, secrets, exchange credentials) at the database layer (PostgreSQL) using AES-256-GCM, with automatic decryption at runtime.
 
 ## Code Layout
-- `src/db/`: PostgreSQL connection client, migration runner, and TradeRepository.
-- `src/redis/`: Redis cluster configuration, pub/sub client, and cache managers.
-- `src/api/`: Express HTTP server, routes, and `ws-adapter-redis.ts` websocket gateway.
-- `dashboard/`: React + TypeScript frontend code, Vite configs, components, and pages.
-- `tests/`: Integration, unit, and load tests.
+- `src/audit/`: Audit log service, immutable chain storage, validators, and exporters.
+- `src/api/routes/audit-routes.ts`: REST endpoints for querying and exporting audit logs.
+- `src/resilience/rate-limiter.ts` & `src/api/middleware/rate-limiter-middleware.ts`: Redis sliding window limiter and Express middleware.
+- `src/lib/crypto.ts`: AES-256-GCM encryption and decryption utilities.
+- `src/db/`: PostgreSQL database schema, migrations, and repositories for credentials.
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | PostgreSQL Query and Index Optimization | Analyze slow queries in `TradeRepository`, run migrations with composite indexes, and optimize query latency. | none | DONE |
-| M2 | Redis Cluster Load Rebalancing | Tune Redis Cluster options, scale reads to replicas (`scaleReads: 'slave'`), optimize connection pool, and ensure auto-failover resilience. | none | DONE |
-| M3 | WebSocket Message Compression | Integrate `permessage-deflate` on WebSocket server and client, configuring thresholds and memory budgets to reduce bandwidth. | none | DONE |
-| M4 | Bento Grid Dashboard Rendering Polish | Implement React performance optimization (memoization, virtualization, throttling, canvas rendering) for candlestick chart and Bento Grid. | none | DONE |
-| M5 | k6 Load Test Scripting & Execution | Develop and execute a k6 load script simulating 5000+ VUs accessing API and WebSocket endpoints concurrently. | M1, M2, M3 | DONE |
-| M6 | Acceptance Verification & Testing | Verify p95 latency < 100ms under load, run all 1500+ backend tests, 35 frontend tests, and profile memory leaks on M1 Max. | M4, M5 | PLANNED |
+| M0 | Exploration & Design | Perform deep dive scouting of database, rate limiting, and audit structures. | None | IN_PROGRESS |
+| M1 | Multi-Tenant Audit Logging (R1) | Implement immutable hash-chain audit log store per tenant, query/export APIs, and trigger logging for trades, orders, and configs. | M0 | PLANNED |
+| M2 | Redis Rate Limiter (R2) | Implement sliding window rate limiter in Redis Cluster, map pricing tiers, and mount middleware. | M0 | PLANNED |
+| M3 | AES-256 Encryption at Rest (R3) | Design DB schema/migrations for exchange credentials, implement automatic AES-256-GCM encryption/decryption. | M0 | PLANNED |
+| M4 | Integration & Verification | Run build/compile checks and vitest test suite, perform forensic audit. | M1, M2, M3 | PLANNED |
 
 ## Interface Contracts
-### WebSocket Client ↔ WS Adapter
-- Endpoint: `/ws`
-- Connection: WebSocket connection with support for optional `permessage-deflate` extension.
-- Incoming messages:
-  - `{ type: "subscribe", channel: string }`
-  - `{ type: "unsubscribe", channel: string }`
-  - `{ type: "ping" }`
-- Outgoing messages:
-  - `{ type: "connected", clientId: string, channels: string[], timestamp: number }`
-  - `{ type: "subscribed", channel: string, timestamp: number }`
-  - `{ type: "unsubscribed", channel: string, timestamp: number }`
-  - `{ type: "pong", timestamp: number }`
-  - `{ type: "trade" | "signal" | "order" | "market-data", channel: string, payload: any }`
+### Audit Logs Query
+- `GET /api/v1/audit/logs?tenantId=<tenantId>&eventType=<type>&startDate=<iso>&endDate=<iso>&limit=<limit>&skip=<skip>`
+- Response:
+  ```json
+  {
+    "logs": [
+      {
+        "id": "string",
+        "tenantId": "string",
+        "event": "string",
+        "metadata": {},
+        "ip": "string",
+        "userAgent": "string",
+        "hash": "string",
+        "previousHash": "string",
+        "createdAt": "string"
+      }
+    ],
+    "total": number,
+    "hasMore": boolean
+  }
+  ```
+
+### Audit Logs Export
+- `GET /api/v1/audit/export?tenantId=<tenantId>&format=<json|csv>&eventType=<type>&startDate=<iso>&endDate=<iso>`
+- Response: file attachment (CSV or JSON format)
+
+### Rate Limiter Tenant Tier Configurations
+- **FREE**: 10 requests / minute
+- **PRO**: 100 requests / minute
+- **ENTERPRISE**: 1000 requests / minute
+- Response on limit exceeded: HTTP 429 with JSON:
+  ```json
+  {
+    "error": "Too many requests, please try again later"
+  }
+  ```
+
+### Exchange Credentials Schema
+- Columns to encrypt: `api_key`, `api_secret`, `passphrase`, `private_key`.
+- Encryption Algorithm: AES-256-GCM.

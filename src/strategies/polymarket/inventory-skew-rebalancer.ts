@@ -119,14 +119,30 @@ export function createInventorySkewRebalancerTick(
   const positions: TrackedPosition[] = [];
   let lastRebalanceAt = 0;
 
-  // Listen for trade executions to track positions
-  eventBus.on('trade.executed', (payload: any) => {
-    const trade = payload.trade ?? payload;
-    const tokenId: string = trade.tokenId ?? trade.marketId;
-    const side: 'yes' | 'no' = trade.side === 'buy' ? 'yes' : 'no';
-    const size = parseFloat(trade.fillSize ?? trade.size ?? '0');
-    const price = parseFloat(trade.fillPrice ?? trade.price ?? '0');
-    const marketId: string = trade.marketId ?? tokenId;
+ // Listen for trade executions to track positions
+ eventBus.on('trade.executed', (raw) => {
+  // eventBus emits `unknown`; narrow explicitly to the TradeExecutedPayload shape.
+  const payload = raw as {
+    trade: {
+      orderId: string;
+      marketId: string;
+      side: 'buy' | 'sell';
+      fillPrice: string;
+      fillSize: string;
+      fees: string;
+      timestamp: number | string;
+      strategy?: string;
+    };
+    pnl?: string;
+    reason?: string;
+  };
+
+  const trade = payload.trade;
+  const tokenId: string = trade.marketId;
+  const side: 'yes' | 'no' = trade.side === 'buy' ? 'yes' : 'no';
+  const size = parseFloat(trade.fillSize);
+  const price = parseFloat(trade.fillPrice);
+  const marketId: string = trade.marketId;
 
     if (size <= 0) return;
 

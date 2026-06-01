@@ -1,27 +1,21 @@
-# Plan — Performance Optimization and Stress Testing
+# Plan — Compliance & Security Hardening Framework (Phase 35)
 
-This plan decomposes the performance tuning and load testing tasks into sequential milestones, allocating specialised subagents for exploration, implementation, review, and verification.
+We will use the Project Pattern to implement the Compliance & Security Hardening Framework. The work is decomposed into milestones covering R1 (Multi-Tenant Audit Logging), R2 (Redis-Based Distributed Rate Limiter), and R3 (AES-256 Encryption at Rest), followed by verification and security auditing.
 
 ## Strategy & Workflow
-We will use the **Project Pattern**:
-- **Milestones**: M1 through M6.
-- **Iteration Loop**: For each milestone, we will spawn:
-  1. `teamwork_preview_explorer` (analysis, index scan, or trace)
-  2. `teamwork_preview_worker` (implement optimizations, run tests)
-  3. `teamwork_preview_reviewer` (correctness, edge cases, performance)
-  4. `teamwork_preview_auditor` (forensic integrity verification)
-- **Exit Gate**: All criteria met, clean audit, no regression.
+1. **Decomposition & Setup**: Establish the plan, progress, and context files.
+2. **Exploration**: Spawn Explorer agents to inspect existing database schemas, tenant middleware, Redis connection configurations, and encryption/decryption patterns.
+3. **Implementation**:
+   - **Milestone 1 (R1 - Multi-Tenant Audit Logging)**: Build tenant-isolated immutable audit logs (incorporating IP, user agent, timestamp, action, and tenantId). Expose fast query/export APIs. Integrate into trades, orders, and configuration updates.
+   - **Milestone 2 (R2 - Redis-Based Distributed Rate Limiter)**: Create a sliding window rate limiter in Redis Cluster (ports 7000-7005). Adapt limits based on pricing tiers (FREE, PRO, ENTERPRISE). Replace existing express-rate-limit.
+   - **Milestone 3 (R3 - AES-256 Encryption at Rest)**: Implement AES-256-GCM encryption for API keys, secrets, and exchange credentials before writing to DB, and decrypt them on the fly at runtime.
+4. **Verification**: Compile with TypeScript (no `any`/`ts-ignore`) and run all 1500+ backend and 35+ frontend tests to ensure 100% PASS.
+5. **Auditing**: Perform forensic integrity audits to verify strict tenant isolation and secure storage.
 
-## Phase Breakdown
-
-### Phase 1: PostgreSQL & Redis Cluster Tuning (R1)
-- **M1 (PostgreSQL)**: Profile slow queries in `TradeRepository` under high concurrent reads/writes. Deploy database index optimizations via composite/partial indexes.
-- **M2 (Redis Cluster)**: Tune ioredis cluster config, configure connection pools, enable replica reads (`scaleReads: 'slave'`), and write error retry/failover logic.
-
-### Phase 2: Network & Rendering Optimization (R2)
-- **M3 (WebSocket Compression)**: Add `permessage-deflate` to ws adapter and dashboard client. Tune compression levels to balance CPU usage vs network latency.
-- **M4 (Dashboard Render Polish)**: Use React virtualization, memoization (`useMemo`, `useCallback`), custom throttling/debounce, and optimize canvas-based rendering for charts to prevent UI lagging.
-
-### Phase 3: Stress Testing & E2E Validation (R3)
-- **M5 (k6 Scripting & Baseline)**: Write and verify k6 script for API and WS endpoints, run baseline tests up to 5000+ VUs.
-- **M6 (Final Acceptance Gates)**: Run continuous 5-minute stress test, trace memory leaks, ensure p95 latency < 100ms, and verify all 1500+ backend and 35 frontend tests pass 100%.
+## Target Files (Preliminary)
+- `src/audit/` (Audit logging logic and store)
+- `src/api/routes/audit-routes.ts` (Audit query and export APIs)
+- `src/resilience/rate-limiter.ts` (Redis sliding window limiter)
+- `src/api/server.ts` (Middleware mounting and configuration)
+- `src/db/` (Migrations and repositories for key encryption)
+- `src/lib/crypto.ts` (AES-256-GCM utilities)
