@@ -9,6 +9,7 @@
 
 import { Router, Request, Response } from 'express';
 import { logger } from '../../utils/logger';
+import { evaluateAndQueue } from '../../wiring/qwen-signals-loop';
 import {
   disableQwen,
   enableQwen,
@@ -213,6 +214,23 @@ export function createAdminQwenRouter(): Router {
       res.status(500).json({ error: 'Failed to fetch signals loop runs' });
     }
   });
+
+/**
+ * POST /signals-loop/trigger
+ * Force-run the signals-loop evaluate cycle immediately and persist a journal
+ * row.  Delegates to evaluateAndQueue() which wraps computeQualityMetrics +
+ * persistRunJournal in a tracing span.
+ */
+router.post('/signals-loop/trigger', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
+  try {
+    await evaluateAndQueue('qwen-m1max');
+    res.json({ status: 'queued', source: 'qwen-m1max' });
+  } catch (err) {
+    logger.error('[AdminQwen] signals-loop/trigger error', { err });
+    res.status(500).json({ error: 'Failed to trigger signals loop' });
+  }
+});
 
   return router;
 }
