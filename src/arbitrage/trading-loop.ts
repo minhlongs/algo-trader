@@ -62,7 +62,7 @@ export class TradingLoop extends EventEmitter {
   private config: TradingLoopConfig;
   private isRunning = false;
   // EC#10: Use number instead of NodeJS.Timeout for Workers compatibility
-  private scanInterval: number | null = null;
+  private scanInterval: ReturnType<typeof setInterval> | null = null;
   // EC#12: Lock to prevent overlapping scans
   private scanLock = false;
   // EC#14: Backpressure — max queued opportunities

@@ -208,10 +208,10 @@ export class TwapExecutor {
 
       try {
         // Race chunk execution against per-chunk timeout
- const timer = setTimeout(() => reject(new Error(`Chunk timeout after ${this.config.chunkTimeoutMs}ms`)), this.config.chunkTimeoutMs);
+ const timer = setTimeout(() => this.activeTimers.delete(timer), this.config.chunkTimeoutMs);
  this.activeTimers.add(timer);
  const timeoutPromise = new Promise<never>((_, reject) => {
- setTimeout(() => reject(new Error(`Chunk timeout after ${this.config.chunkTimeoutMs}ms`)), timer);
+ setTimeout(() => reject(new Error(`Chunk timeout after ${this.config.chunkTimeoutMs}ms`)), this.config.chunkTimeoutMs);
  });
         const { executedPrice, filledUsd } = await Promise.race([
           executeChunk(order.marketId, order.side, chunkSize, signal),

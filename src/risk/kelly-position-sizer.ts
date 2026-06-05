@@ -3,35 +3,30 @@
  * Quarter-Kelly default for managed capital safety, configurable for own accounts.
  * Hard cap: no single position > 5% of portfolio.
  */
-
 import { logger } from '../utils/logger';
 
 export interface KellyConfig {
-  /** Kelly fraction multiplier (0.1-0.5). Default 0.25 (quarter-Kelly) */
   kellyFraction: number;
-  /** Max position as fraction of portfolio (default 0.05 = 5%) */
   maxPositionFraction: number;
-  /** Min position size in USD */
   minPositionUsd: number;
-  /** Whether this is managed capital (caps fraction at 0.25) */
   isManagedCapital: boolean;
 }
 
 export interface KellySizingInput {
-  winProbability: number;     // 0-1 estimated probability of winning
-  winLossRatio: number;       // average win / average loss (e.g., 1.5 means win 1.5x of loss)
-  portfolioValue: number;     // total portfolio in USD
-  currentExposure?: number;   // current total exposure in USD (optional)
+  winProbability: number;
+  winLossRatio: number;
+  portfolioValue: number;
+  currentExposure?: number;
 }
 
 export interface KellySizingResult {
   positionSizeUsd: number;
-  kellyRaw: number;           // raw Kelly fraction (before multiplier)
-  kellyAdjusted: number;      // after applying kellyFraction multiplier
-  cappedByMax: boolean;       // true if position was capped by maxPositionFraction
-  cappedByManaged: boolean;   // true if managed capital cap applied
-  fractionUsed: number;       // actual fraction used
-  portfolioPercent: number;   // position as % of portfolio
+  kellyRaw: number;
+  kellyAdjusted: number;
+  cappedByMax: boolean;
+  cappedByManaged: boolean;
+  fractionUsed: number;
+  portfolioPercent: number;
 }
 
 const MANAGED_CAPITAL_MAX_FRACTION = 0.25;
@@ -44,7 +39,6 @@ export class KellyPositionSizer {
   constructor(config?: Partial<KellyConfig>) {
     const envFraction = parseFloat(process.env.KELLY_FRACTION || '');
     const requestedFraction = config?.kellyFraction ?? (isNaN(envFraction) ? 0.25 : envFraction);
-
     const clampedFraction = Math.max(MIN_KELLY_FRACTION, Math.min(MAX_KELLY_FRACTION, requestedFraction));
     this.config = {
       kellyFraction: clampedFraction,
@@ -52,68 +46,44 @@ export class KellyPositionSizer {
       minPositionUsd: config?.minPositionUsd ?? 10,
       isManagedCapital: config?.isManagedCapital ?? false,
     };
-
-    // Managed capital: ALWAYS cap at quarter-Kelly regardless of config
     if (this.config.isManagedCapital && this.config.kellyFraction > MANAGED_CAPITAL_MAX_FRACTION) {
       this.config.kellyFraction = MANAGED_CAPITAL_MAX_FRACTION;
       logger.info(`[KellySizer] Managed capital: fraction capped at ${MANAGED_CAPITAL_MAX_FRACTION}`);
     }
   }
 
-  /** Calculate optimal position size using Kelly criterion */
   calculatePositionSize(input: KellySizingInput): KellySizingResult {
     const { winProbability, winLossRatio, portfolioValue } = input;
-
-    // Validate inputs
     if (winProbability <= 0 || winProbability >= 1 || portfolioValue <= 0) {
       return this.zeroResult(portfolioValue);
     }
-
-    // EC#24: Guard against Infinity/NaN in winLossRatio
     if (!isFinite(winLossRatio) || winLossRatio <= 0) {
       logger.warn(`[KellySizer] Invalid winLossRatio: ${winLossRatio}, returning zero result`);
       return this.zeroResult(portfolioValue);
     }
-
-    // Kelly formula: f* = (bp - q) / b
-    // where b = win/loss ratio, p = win probability, q = 1-p
     const b = winLossRatio;
     const p = winProbability;
     const q = 1 - p;
     const kellyRaw = (b * p - q) / b;
+    if (kellyRaw <= 0) return this.zeroResult(portfolioValue);
 
-    // Negative Kelly = no edge, don't bet
-    if (kellyRaw <= 0) {
-      return this.zeroResult(portfolioValue);
-    }
-
-    // Apply fraction multiplier (quarter-Kelly by default)
     let fractionUsed = this.config.kellyFraction;
     let cappedByManaged = false;
-
     if (this.config.isManagedCapital && fractionUsed > MANAGED_CAPITAL_MAX_FRACTION) {
       fractionUsed = MANAGED_CAPITAL_MAX_FRACTION;
       cappedByManaged = true;
     }
-
     const kellyAdjusted = kellyRaw * fractionUsed;
-
-    // Apply max position cap (5% of portfolio)
     let positionFraction = kellyAdjusted;
     let cappedByMax = false;
-
     if (positionFraction > this.config.maxPositionFraction) {
       positionFraction = this.config.maxPositionFraction;
       cappedByMax = true;
     }
-
     let positionSizeUsd = portfolioValue * positionFraction;
-
-    // Enforce minimum
     if (positionSizeUsd < this.config.minPositionUsd) {
       positionSizeUsd = 0;
     }
-
     return {
       positionSizeUsd,
       kellyRaw,
@@ -129,11 +99,7 @@ export class KellyPositionSizer {
     return { ...this.config };
   }
 
-private zeroResult(portfolioValue: number): KellySizingResult {
-t// EC#23: Apply minPositionUsd config — if configured > 0, still respect it
-tconst minSize = this.config.minPositionUsd > 0 ? this.config.minPositionUsd : 0;
   private zeroResult(portfolioValue: number): KellySizingResult {
-    // EC#23: Apply minPositionUsd config — if configured > 0, still respect it
     const minSize = this.config.minPositionUsd > 0 ? this.config.minPositionUsd : 0;
     return {
       positionSizeUsd: 0,

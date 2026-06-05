@@ -81,13 +81,13 @@ export function createTradingPipeline(
       const state = drawdown.update(newPortfolioValue);
 
       // 2. Only record trade if drawdown allows it
-      if (state.halted) {
+      if (state.tier === 'HALT' || state.tier === 'HARD_STOP') {
         logger.warn(`[TradingPipeline] Trade blocked by drawdown breaker: tier=${state.tier} portfolio=$${newPortfolioValue.toFixed(2)}`);
-        audit.append('trade_blocked', `Drawdown breaker halted: tier=${state.tier}`, {
+        audit.append('circuit_breaker', `Drawdown breaker halted: tier=${state.tier}`, {
           walletLabel: trade.walletLabel,
           marketId: trade.marketId,
           side: trade.side,
-          metadata: { drawdownTier: state.tier, portfolioValue: newPortfolioValue, reason: state.reason },
+          metadata: { drawdownTier: state.tier, portfolioValue: newPortfolioValue, reason: `tier=${state.tier} drawdown=${state.drawdownPercent.toFixed(2)}%` },
         });
         return;
       }
@@ -113,7 +113,7 @@ export function createTradingPipeline(
 
         logger.info(`[TradingPipeline] Trade recorded: ${trade.side} $${trade.sizeUsd} | tier=${state.tier} | portfolio=$${newPortfolioValue.toFixed(2)}`);
       } catch (error) {
-        this.metrics.errors++;
+        // metrics tracked via audit log;
         logger.error(`[TradingPipeline] Trade recording failed: ${error instanceof Error ? error.message : String(error)}`);
         // Re-throw so caller knows the trade wasn't recorded
         throw error;
