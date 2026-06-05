@@ -1,7 +1,6 @@
 /**
  * Gamma Markets API Client — type definitions for strategy consumption.
  */
-
 export interface GammaMarket {
   id: string;
   question: string;
@@ -20,11 +19,7 @@ export interface GammaMarket {
   resolved?: boolean;
   groupItemTitle?: string;
   tokens: Array<{ token_id: string; outcome: string; price: number }>;
-  /**
-   * Token ID for the YES outcome.
-   * Present on all active trading markets; strategies should filter with
-   * `if (!market.yesTokenId || ...) continue` before use.
-   */
+  /** Token ID for the YES outcome. */
   yesTokenId: string;
   /** Token ID for the NO outcome — absent on single-outcome markets */
   noTokenId?: string;

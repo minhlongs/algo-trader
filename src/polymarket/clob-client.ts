@@ -2,7 +2,6 @@
  * Polymarket CLOB Client — real SDK wrapper for trading.
  * Uses @polymarket/clob-client SDK for order book, pricing, and order management.
  */
-
 import { ClobClient as SdkClobClient, Chain, Side } from '@polymarket/clob-client';
 import { logger } from '../utils/logger.js';
 
@@ -116,7 +115,6 @@ export async function cancelOrder(orderId: string): Promise<boolean> {
   }
 }
 
-/** Re-export ClobClient interface for backward compat */
 export interface ClobClientInterface {
   getOrderBook(tokenId: string): Promise<RawOrderBook>;
   getPrice(tokenId: string): Promise<number>;
