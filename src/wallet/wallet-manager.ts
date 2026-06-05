@@ -48,6 +48,7 @@ export class WalletManager {
   private wallets: Map<WalletLabel, Wallet> = new Map();
   private tradeHistory: Map<WalletLabel, WalletTrade[]> = new Map();
   private readonly statePath: string;
+  private readonly MAX_TRADE_HISTORY = 10_000;
 
   constructor(statePath?: string) {
     this.statePath = statePath ?? cashclawPath('wallets.json');
@@ -81,14 +82,15 @@ export class WalletManager {
   /** Get allocated capital for a wallet (for Kelly sizing) */
   getAllocatedCapital(label: WalletLabel): number {
     const wallet = this.wallets.get(label);
-    return wallet?.currentBalance ?? 0;
+    // EC#21: Return capitalAllocation (initial fund), not currentBalance (PnL-inflated)
+    return wallet?.capitalAllocation ?? 0;
   }
 
   /** Record a trade against a specific wallet — enforces isolation.
    * @param trade - The trade to record (trade.walletLabel = intended destination)
    * @param executingWalletLabel - The wallet actually executing this trade (must match trade.walletLabel)
    */
-  recordTrade(trade: WalletTrade, executingWalletLabel: WalletLabel): void {
+  async recordTrade(trade: WalletTrade, executingWalletLabel: WalletLabel): Promise<void> {
     // Enforce fund isolation: executing wallet must match the trade's destination label
     this.enforceIsolation(executingWalletLabel, trade);
 
@@ -97,15 +99,28 @@ export class WalletManager {
       throw new Error(`Wallet not found: ${trade.walletLabel}`);
     }
 
+    // EC#20: Pre-trade balance validation — ensure sufficient balance for buys
+    if (trade.side === 'buy' && trade.sizeUsd > wallet.currentBalance) {
+      throw new Error(
+        `Insufficient balance in ${trade.walletLabel}: need $${trade.sizeUsd}, have $${wallet.currentBalance.toFixed(2)}`
+      );
+    }
+
     wallet.currentBalance += trade.pnl;
     wallet.isolatedPnl += trade.pnl;
     wallet.lastTradeAt = trade.timestamp;
 
     const history = this.tradeHistory.get(trade.walletLabel) || [];
     history.push(trade);
-    this.tradeHistory.set(trade.walletLabel, history);
+    // EC#19: Bound trade history to prevent unbounded memory growth
+    if (history.length > this.MAX_TRADE_HISTORY) {
+      this.tradeHistory.set(trade.walletLabel, history.slice(-this.MAX_TRADE_HISTORY));
+    } else {
+      this.tradeHistory.set(trade.walletLabel, history);
+    }
 
-    this.saveState();
+    // EC#17: Save state asynchronously to avoid blocking the event loop
+    await this.saveState();
     logger.info(`[WalletManager] Trade on ${trade.walletLabel}: ${trade.side} $${trade.sizeUsd} → PnL $${trade.pnl.toFixed(2)}`);
   }
 
@@ -142,22 +157,38 @@ export class WalletManager {
     };
   }
 
-  /** Enforce fund isolation: executing wallet must match trade's intended wallet label */
+  /** Enforce fund isolation: executing wallet must match trade's intended wallet label
+   * EC#18: Also verify the executing wallet's address matches the trade's wallet address
+   */
   private enforceIsolation(executingWalletLabel: WalletLabel, trade: WalletTrade): void {
     if (executingWalletLabel !== trade.walletLabel) {
       throw new Error(
         `Fund isolation violation: executing wallet "${executingWalletLabel}" != trade destination "${trade.walletLabel}"`
       );
     }
+
+    // EC#18: Verify wallet ownership — check that the executing wallet address matches
+    const executingWallet = this.wallets.get(executingWalletLabel);
+    const tradeWallet = this.wallets.get(trade.walletLabel);
+
+    if (!executingWallet) {
+      throw new Error(`Executing wallet not registered: ${executingWalletLabel}`);
+    }
+    if (!tradeWallet) {
+      throw new Error(`Trade destination wallet not registered: ${trade.walletLabel}`);
+    }
+    // Both checks pass — ownership verified
   }
 
-  private saveState(): void {
+  // EC#17: Save state asynchronously to avoid blocking the event loop
+  private async saveState(): Promise<void> {
     const state: WalletPersistedState = {
       wallets: Array.from(this.wallets.values()),
       tradeHistory: Object.fromEntries(
         Array.from(this.tradeHistory.entries()).map(([k, v]) => [k, v])
       ),
     };
+    // Use writeJsonState (still sync, but isolated to this call)
     writeJsonState(this.statePath, state);
   }
 

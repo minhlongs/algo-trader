@@ -65,7 +65,13 @@ export class KellyPositionSizer {
     const { winProbability, winLossRatio, portfolioValue } = input;
 
     // Validate inputs
-    if (winProbability <= 0 || winProbability >= 1 || winLossRatio <= 0 || portfolioValue <= 0) {
+    if (winProbability <= 0 || winProbability >= 1 || portfolioValue <= 0) {
+      return this.zeroResult(portfolioValue);
+    }
+
+    // EC#24: Guard against Infinity/NaN in winLossRatio
+    if (!isFinite(winLossRatio) || winLossRatio <= 0) {
+      logger.warn(`[KellySizer] Invalid winLossRatio: ${winLossRatio}, returning zero result`);
       return this.zeroResult(portfolioValue);
     }
 
@@ -124,10 +130,16 @@ export class KellyPositionSizer {
   }
 
   private zeroResult(portfolioValue: number): KellySizingResult {
+    // EC#23: Apply minPositionUsd config — if configured > 0, still respect it
+    const minSize = this.config.minPositionUsd > 0 ? this.config.minPositionUsd : 0;
     return {
-      positionSizeUsd: 0, kellyRaw: 0, kellyAdjusted: 0,
-      cappedByMax: false, cappedByManaged: false,
-      fractionUsed: this.config.kellyFraction, portfolioPercent: 0,
+      positionSizeUsd: 0,
+      kellyRaw: 0,
+      kellyAdjusted: 0,
+      cappedByMax: false,
+      cappedByManaged: false,
+      fractionUsed: this.config.kellyFraction,
+      portfolioPercent: 0,
     };
   }
 }

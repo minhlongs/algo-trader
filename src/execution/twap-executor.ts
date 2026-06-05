@@ -84,24 +84,34 @@ const DEFAULT_CONFIG: TwapConfig = {
   maxConsecutiveFailures: 3,
 };
 
+/** Epsilon for floating-point comparisons */
+const FLOAT_EPSILON = 0.0001;
+
 export class TwapExecutor {
   private config: TwapConfig;
   private activeController: AbortController | null = null;
+  private activeTimers: Set<ReturnType<typeof setTimeout>> = new Set();
 
   constructor(config?: Partial<TwapConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    // Register SIGTERM/SIGINT handler once per process (not per instance) to cancel active TWAP
+    // EC#25: Instance registry instead of overwrite — support multiple concurrent instances
     if (!TwapExecutor.signalHandlerRegistered) {
       TwapExecutor.signalHandlerRegistered = true;
-      process.on('SIGTERM', () => TwapExecutor.activeInstance?.cancelActive('SIGTERM received'));
-      process.on('SIGINT', () => TwapExecutor.activeInstance?.cancelActive('SIGINT received'));
+      if (typeof process !== 'undefined' && process.on) {
+        process.on('SIGTERM', () => {
+          TwapExecutor.activeInstances.forEach((inst) => inst.cancelActive('SIGTERM received'));
+        });
+        process.on('SIGINT', () => {
+          TwapExecutor.activeInstances.forEach((inst) => inst.cancelActive('SIGINT received'));
+        });
+      }
     }
-    TwapExecutor.activeInstance = this;
+    TwapExecutor.activeInstances.add(this);
   }
 
   /** Singleton tracking to avoid duplicate signal handlers across instances */
   private static signalHandlerRegistered = false;
-  private static activeInstance: TwapExecutor | null = null;
+  private static activeInstances: Set<TwapExecutor> = new Set();
 
   /** Cancel any in-progress TWAP execution */
   cancelActive(reason: string): void {
@@ -109,6 +119,17 @@ export class TwapExecutor {
       logger.warn(`[TWAP] Cancelling active execution: ${reason}`);
       this.activeController.abort(reason);
     }
+  }
+
+  /** Cleanup: remove from registry and clear all timers */
+  destroy(): void {
+    TwapExecutor.activeInstances.delete(this);
+    this.activeTimers.forEach((t) => clearTimeout(t));
+    this.activeTimers.clear();
+    if (this.activeController && !this.activeController.signal.aborted) {
+      this.activeController.abort('Instance destroyed');
+    }
+    this.activeController = null;
   }
 
   /** Plan chunk sizes for a TWAP order */
@@ -143,6 +164,7 @@ export class TwapExecutor {
     executeChunk: ExecuteChunkFn,
     getPrice: GetPriceFn
   ): Promise<TwapResult> {
+    // EC#27: Each execute() gets its own controller — no race from concurrent calls
     const controller = new AbortController();
     this.activeController = controller;
     const { signal } = controller;
@@ -186,9 +208,11 @@ export class TwapExecutor {
 
       try {
         // Race chunk execution against per-chunk timeout
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Chunk timeout after ${this.config.chunkTimeoutMs}ms`)), this.config.chunkTimeoutMs)
-        );
+ const timer = setTimeout(() => reject(new Error(`Chunk timeout after ${this.config.chunkTimeoutMs}ms`)), this.config.chunkTimeoutMs);
+ this.activeTimers.add(timer);
+ const timeoutPromise = new Promise<never>((_, reject) => {
+ setTimeout(() => reject(new Error(`Chunk timeout after ${this.config.chunkTimeoutMs}ms`)), timer);
+ });
         const { executedPrice, filledUsd } = await Promise.race([
           executeChunk(order.marketId, order.side, chunkSize, signal),
           timeoutPromise,
@@ -212,7 +236,7 @@ export class TwapExecutor {
         totalCostWeighted += executedPrice * filledUsd;
 
         // Check slippage threshold — abort if exceeded
-        if (slippagePercent > maxSlippage) {
+        if (slippagePercent > maxSlippage + FLOAT_EPSILON) {
           result.aborted = true;
           result.abortReason = `Slippage ${slippagePercent.toFixed(2)}% exceeds max ${maxSlippage}%`;
           logger.warn(`[TWAP] Aborted: ${result.abortReason}`);
