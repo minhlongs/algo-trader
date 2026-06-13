@@ -29,9 +29,9 @@ const RESET  = '\x1b[0m';
 
 let failCount = 0;
 const events: any[] = [];
-function ok(msg)  { console.log(`${GREEN}✅ PASS${RESET}: ${msg}`); }
-function bad(msg) { failCount++; console.log(`${RED}❌ FAIL${RESET}: ${msg}`); }
-function step(lbl){ console.log(`\n${BOLD}${YELLOW}→ ${lbl}${RESET}`); }
+function ok(msg: string) { console.log(`${GREEN}✅ PASS${RESET}: ${msg}`); }
+function bad(msg: string) { failCount++; console.log(`${RED}❌ FAIL${RESET}: ${msg}`); }
+function step(lbl: string){ console.log(`\n${BOLD}${YELLOW}→ ${lbl}${RESET}`); }
 
 // ------------------------------------------------------------------ imports
 // We need to force the postgres singleton to re-init AFTER env is set.
@@ -39,43 +39,50 @@ function step(lbl){ console.log(`\n${BOLD}${YELLOW}→ ${lbl}${RESET}`); }
 import { getDbClient, closeDbConnection, query } from '../src/db/postgres-client.js';
 import { runMigrations }                     from '../src/db/migration-runner.js';
 import { startDnaEngine, stopDnaEngine, onDnaEvent, getDnaEngine } from '../src/strategies/dna/orchestrator.js';
+import type { DnaLifecycleEvent } from '../src/strategies/dna/multi-tf-types.js';
 import { createBinanceCandleProvider, BINANCE_SYMBOL }             from '../src/strategies/dna/binance-candle-provider.js';
 import { createPostgresStateStore }                                 from '../src/strategies/dna/dna-state-store.js';
 import { setTimeout as wait } from 'node:timers/promises';
 
-const RUN_MS = 150_000; // 150 seconds — gives time for 1m + 5m candles to complete consensus
-
+const RUN_MS = 360_000; // 360 seconds — 1m + 5m candles both close at least once, enough for minTfAgreement=2 consensus
 async function initDb() {
   step('DB: connect + run migrations on staging');
-  // Force reinit so singleton picks up our env
-  getDbClient({ forceReinit: true });
-  await new Promise((ok, fail) => setTimeout(() => {
-    try { getDbClient().query('SELECT 1'); ok(); } catch (e) { fail(e); }
-  }, 500));
-
+  await new Promise<void>((ok, fail) => {
+    setTimeout(() => {
+      try {
+        getDbClient({}).query('SELECT 1');
+        ok();
+      } catch (e: unknown) {
+        const emsg = e instanceof Error ? e.message : String(e);
+        fail(new Error(emsg));
+      }
+    }, 500);
+  });
   await runMigrations();
   ok('Migrations applied');
 }
 
 function attachListener() {
   step('DNA: attaching lifecycle listener');
-  const unsub = onDnaEvent((ev) => {
-    const rec = { at: new Date().toISOString(), type: ev.type };
+  const unsub = onDnaEvent((ev: DnaLifecycleEvent) => {
+    const rec: Record<string, unknown> = { at: new Date().toISOString(), type: ev.type };
     if (ev.type === 'tick') {
       rec.tf = ev.tf;
     } else if (ev.type === 'tf_ready') {
       rec.tf = ev.tf;
       rec.candleCount = ev.candleCount;
     } else if (ev.type === 'consensus_computed') {
-      rec.action = ev.signal.action;
-      rec.confidence = ev.signal.confidence;
-      rec.regime = ev.signal.regime;
+      rec.action = (ev as { signal: { action?: string } }).signal?.action;
+      rec.confidence = (ev as { signal: { confidence?: number } }).signal?.confidence;
+      rec.regime = (ev as { signal: { regime?: string } }).signal?.regime;
     } else if (ev.type === 'journal_written') {
-      rec.traceId = ev.entry.traceId;
-      rec.decision = ev.entry.decision;
+      const jwEntry = ev as { entry: { traceId: string; decision: string } };
+      rec.traceId = jwEntry.entry.traceId;
+      rec.decision = jwEntry.entry.decision;
     } else if (ev.type === 'error') {
-      rec.context = ev.context;
-      rec.message = ev.err?.message;
+      const errEv = ev as { context: string; err: { message?: string } };
+      rec.context = errEv.context;
+      rec.message = errEv.err?.message;
     }
     events.push(rec);
     // Compact live log — only print high-signal events
@@ -101,7 +108,7 @@ async function startEngine() {
     minConsensusConfidence: 0.35,
     minConfidencePerTf: { '1m': 0.30, '5m': 0.30, '15m': 0.30, '1h': 0.30, '4h': 0.30, '1d': 0.30 },
   }, stateStore);
-  console.log(`   engine started — tfOrder: ${engine._config.tfOrder.join(', ')}`);
+console.log(` engine started`);
   console.log(`   running for ${RUN_MS/1000}s...`);
   await wait(RUN_MS);
   return engine;
@@ -131,7 +138,7 @@ async function checkJournalRows() {
   if (rows.length > 0) {
     const top = rows[0];
     ok(`Live journal rows present: ${rows.length} row(s) since start`);
-    console.log(`   latest: id=${top.id} action=${top.action} decision=${top.decision} regime=${top.regime} conf=${(+top.confidence).toFixed(3)} by=${top.executed_by} at=${top.created_at}`);
+    console.log(`   latest: id=${top.id} action=${top.action} decision=${top.decision} regime=${top.regime} conf=${(+top.confidence!).toFixed(3)} by=${top.executed_by} at=${top.created_at}`);
     if (top.decision === 'paper_only' || top.decision === 'rejected_low_confidence' || top.action !== 'hold') {
       ok('Decision looks reasonable for paper mode');
     }
@@ -168,9 +175,10 @@ async function main() {
     await stopEngine(unsub, engine);
     await checkJournalRows();
     await summarize();
-  } catch (e) {
-    bad(`Fatal: ${e.message}`);
-    console.error(e);
+ } catch (e: unknown) {
+      const emsg = e instanceof Error ? e.message : String(e);
+      bad(`Fatal: ${emsg}`);
+      console.error(e);
     try { stopDnaEngine(); } catch {}
     try { await closeDbConnection(); } catch {}
   }

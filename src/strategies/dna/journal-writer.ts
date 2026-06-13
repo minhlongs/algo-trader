@@ -5,141 +5,125 @@
  * One row per engine execution tick. The journal is the *source of truth* for
  * tractability: every execution can be replayed from journal rows alone.
  */
+
 import { query } from '../../db/postgres-client.js';
 import { logger } from '../../utils/logger.js';
-import type { ConsensusAction, DnaLifecycleEvent, Regime } from './multi-tf-types.js';
+import type {
+  ConsensusAction,
+  ConsensusSignal,
+  DnaJournalEntry,
+  DnaLifecycleEvent,
+  JournalDecision,
+  MarketRegime,
+  TfId,
+} from './multi-tf-types.js';
 
-// ─── Schema contract (must match migration 022) ──────────────────────────────
-//
-//  id               BIGSERIAL PRIMARY KEY
-//  trace_id         TEXT NOT NULL
-//  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
-//  action           TEXT NOT NULL — ConsensusAction
-//  decision         TEXT — JournalDecision
-//  confidence       NUMERIC
-//  weighted_bull    NUMERIC
-//  weighted_bear    NUMERIC
-//  reason           TEXT
-//  regime           TEXT
-//  tf_signals       JSONB
-//  executed_by      TEXT — 'live' | 'paper' | 'none'
-//  paper_mode       BOOLEAN
-//  error_message    TEXT
-//  candle_tfs       TEXT[]
-//  candle_from_ms   BIGINT
-//  candle_to_ms     BIGINT
-//
-export interface DnaJournalEntry {
-  traceId: string;
-  timestamp: number;
-  action: ConsensusAction;
-  decision?: string | null;
-  confidence: number;
-  weightedBullScore: number;
-  weightedBearScore: number;
-  regime: Regime;
-  tfSignals: { tf: string; action: string; confidence: number }[];
-  reason?: string | null;
-  executedBy: 'live' | 'paper' | 'none';
-  paperMode: boolean;
-  errorMessage?: string | null;
-  candleSnapshotTfs: string[];
-  candleTimestampRange: { from: number; to: number } | null;
-}
+const TABLE = 'dna_journal';
 
-export interface JournalWriterInput {
-  traceId: string;
-  timestamp: number;
-  action: ConsensusAction;
-  decision?: string | null;
-  confidence: number;
-  weightedBullScore: number;
-  weightedBearScore: number;
-  regime: Regime;
-  tfSignals: { tf: string; action: string; confidence: number }[];
-  reason?: string | null;
-  executedBy: 'live' | 'paper' | 'none';
-  paperMode: boolean;
-  errorMessage?: string | null;
-  candleSnapshotTfs: string[];
-  candleTimestampRange: { from: number; to: number } | null;
-}
-
-const JOURNAL_TABLE = 'dna_journal';
-
-// Column list matches migration 022 schema exactly.
 const INSERT_SQL = /* sql */ `
- INSERT INTO ${JOURNAL_TABLE}
-   (trace_id, created_at, action, decision, confidence,
-    weighted_bull, weighted_bear, regime, tf_signals, reason,
+  INSERT INTO ${TABLE} (
+    trace_id, created_at, action, decision,
+    confidence, weighted_bull, weighted_bear, regime, tf_signals, reason,
     executed_by, paper_mode, error_message,
-    candle_tfs, candle_from_ms, candle_to_ms)
- VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10,
-         $11, $12, $13, $14, $15, $16)
- `;
+    candle_tfs, candle_from_ms, candle_to_ms
+  ) VALUES (
+    $1, $2, $3, $4,
+    $5, $6, $7, $8, $9::jsonb, $10,
+    $11, $12, $13,
+    $14, $15, $16
+  )
+  RETURNING id
+`;
 
-/**
- * Map a lifecycle event to journal parameters.
- * Returns null when the event should not produce a journal row.
- */
-function eventToParams(ev: DnaLifecycleEvent): JournalWriterInput | null {
+export function deriveDecision(raw: ConsensusSignal, paperMode: boolean): JournalDecision {
+  if (paperMode) return 'paper_only';
+  return raw.action === 'hold' ? 'rejected_low_confidence' : 'executed';
+}
+
+export function deriveExecutedBy(raw: ConsensusSignal, paperMode: boolean): 'live' | 'paper' | 'none' {
+  if (paperMode) return 'paper';
+  return raw.action === 'hold' ? 'none' : 'live';
+}
+
+export function eventToParams(ev: DnaLifecycleEvent):
+  | Pick<
+      DnaJournalEntry,
+      | 'timestamp'
+      | 'action'
+      | 'decision'
+      | 'confidence'
+      | 'weightedBullScore'
+      | 'weightedBearScore'
+      | 'regime'
+      | 'tfSignalsJson'
+      | 'reason'
+      | 'executedBy'
+      | 'errorMessage'
+      | 'candleSnapshotTfs'
+      | 'candleTimestampRange'
+    >
+  | null {
   if (ev.type !== 'consensus_computed') return null;
   const c = ev.signal;
+  if (!c) return null;
+
+  const paperMode = false;
   return {
-    traceId: c.traceId,
     timestamp: c.emittedAt,
     action: c.action,
-    decision: c.decision ?? null,
+    decision: deriveDecision(c, paperMode),
     confidence: c.confidence,
     weightedBullScore: c.weightedBullScore,
     weightedBearScore: c.weightedBearScore,
     regime: c.regime,
-    tfSignals: c.tfSignals.map(s => ({ tf: s.tf, action: s.action, confidence: s.confidence })),
-    reason: c.reason ?? null,
-    executedBy: c.executedBy,
-    paperMode: false,
+    tfSignalsJson: JSON.stringify(c.tfSignals),
+    reason: c.reason,
+    executedBy: deriveExecutedBy(c, paperMode),
     errorMessage: null,
-    candleSnapshotTfs: c.candleSnapshotTfs,
+    candleSnapshotTfs: [],
     candleTimestampRange: null,
   };
 }
 
-export async function writeJournalEntry(input: JournalWriterInput): Promise<void> {
-  const entry: DnaJournalEntry = {
-    ...input,
-    tfSignals: input.tfSignals,
-  };
-
+export async function writeJournalEntry(input: {
+  traceId: string;
+  timestamp: number;
+  action: ConsensusAction;
+  decision: JournalDecision;
+  confidence: number;
+  weightedBullScore: number;
+  weightedBearScore: number;
+  regime: MarketRegime;
+  tfSignalsJson: string;
+  reason: string;
+  executedBy: 'live' | 'paper' | 'none';
+  paperMode: boolean;
+  errorMessage: string | null;
+  candleSnapshotTfs: TfId[]; // matches canonical DnaJournalEntry.candleSnapshotTfs
+  candleTimestampRange: { from: number; to: number } | null;
+}): Promise<void> {
   try {
-    await query(INSERT_SQL, [
-      entry.traceId,
-      new Date(entry.timestamp).toISOString(),
-      entry.action,
-      entry.decision,
-      entry.confidence,
-      entry.weightedBullScore,
-      entry.weightedBearScore,
-      entry.regime,
-      JSON.stringify(entry.tfSignals),
-      entry.reason,
-      entry.executedBy,
-      entry.paperMode,
-      entry.errorMessage ?? null,
-      entry.candleSnapshotTfs,
-      entry.candleTimestampRange?.from ?? null,
-      entry.candleTimestampRange?.to ?? null,
+    const result = await query<{ id: string }>(INSERT_SQL, [
+      input.traceId,
+      new Date(input.timestamp).toISOString(),
+      input.action,
+      input.decision,
+      input.confidence,
+      input.weightedBullScore,
+      input.weightedBearScore,
+      input.regime,
+      input.tfSignalsJson,
+      input.reason,
+      input.executedBy,
+      input.paperMode,
+      input.errorMessage,
+      input.candleSnapshotTfs,
+      input.candleTimestampRange?.from ?? null,
+      input.candleTimestampRange?.to ?? null,
     ]);
-    emit({ type: 'journal_written', entry });
+
   } catch (err) {
-    // Journal write must NEVER break the trading loop; log and continue.
-    logger.error('[DNA-Journal] write failed', { err, traceId: entry.traceId });
+    logger.error('[DNA-Journal] write failed', { err, traceId: input.traceId });
   }
 }
 
-/**
- * Optional lifecycle hook: re-emit `journal_written` so the orchestrator can
- * feed it back into its event bus without coupling.
- */
-function emit(ev: DnaLifecycleEvent): void {
-  // no-op placeholder for future wire-up if needed
-}

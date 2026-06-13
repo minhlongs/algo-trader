@@ -88,28 +88,28 @@ async function insertAndReadJournal(): Promise<void> {
   const c = getDbClient();
   const traceId = `phase06-verify-${Date.now()}`;
   try {
-    const sql = `
-      INSERT INTO dna_journal
-        (id, trace_id, timestamp, action, decision, confidence,
-         weighted_bull_score, weighted_bear_score, regime, tf_signals,
-         reason, executed_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-      RETURNING id
-    `;
-    const params = [
-      traceId,
-      traceId,
-      new Date().toISOString(),
-      'evaluate',
-      'HOLD',
-      0.4,
-      0.35,
-      0.30,
-      'neutral',
-      '{}',
-      'phase06-verification',
-      'phase06-verify.ts',
-    ];
+ const sql = `
+ INSERT INTO dna_journal
+ (trace_id, created_at, action, decision, confidence,
+  weighted_bull, weighted_bear, reason, regime,
+  tf_signals, executed_by, paper_mode)
+ VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+ RETURNING id
+ `;
+ const params = [
+ traceId,
+ new Date().toISOString(),
+ 'evaluate',
+ 'HOLD',
+ 0.4,
+ 0.35,
+ 0.30,
+ 'phase06-verification',
+ 'neutral',
+ '{}',
+ 'phase06-verify.ts',
+ true,
+ ];
     const { rows } = await c.query(sql, params);
     const insertedId = rows[0].id;
     pass(`Inserted journal row id=${insertedId} traceId=${traceId}`);

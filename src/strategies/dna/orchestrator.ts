@@ -35,10 +35,10 @@ import {
   DnaEngineConfig,
   DEFAULT_DNA_CONFIG,
 } from './multi-tf-types.js';
-import { buildTfSignal, buildTfSignalFromIndicators } from './tf-signal-builder.js';
+import { buildTfSignal } from './tf-signal-builder.js';
 import { detectRegime, isRegimeFresh } from './regime-detector.js';
 import { DnaStateStore, DnaEngineState, InMemoryStateStore } from './dna-state-store.js';
-import { computeConsensus, ConsensusInput } from './consensus-engine.js';
+import { computeConsensus } from './consensus-engine.js';
 import { writeJournalEntry } from './journal-writer.js';
 import { executePaperConsensus } from './paper-executor.js';
 import { logger } from '../../utils/logger.js';
@@ -203,28 +203,14 @@ export class DnaEngine {
       weightedBullScore: consensus.weightedBullScore,
       weightedBearScore: consensus.weightedBearScore,
       regime: regime.regime,
-      tfSignals: consensus.tfSignals,
+      tfSignalsJson: JSON.stringify(consensus.tfSignals),
       reason: consensus.reason,
       executedBy: this._paperMode ? 'paper' : consensus.action === 'hold' ? 'none' : 'live',
+      paperMode: true,
+ errorMessage: null,
       candleSnapshotTfs: tfSignals.map((s) => s.tf),
       candleTimestampRange: candleTsRange,
     });
-
-    emit({ type: 'journal_written', entry: { id: crypto.randomUUID(), traceId: consensus.traceId,
-      timestamp: now,
-      action: consensus.action,
-      decision,
-      confidence: consensus.confidence,
-      weightedBullScore: consensus.weightedBullScore,
-      weightedBearScore: consensus.weightedBearScore,
-      regime: regime.regime,
-      tfSignalsJson: JSON.stringify(consensus.tfSignals),
-      reason: consensus.reason,
-      executedBy: this._paperMode ? 'paper' : 'none',
-      errorMessage: null,
-      candleSnapshotTfs: tfSignals.map((s) => s.tf),
-      candleTimestampRange: candleTsRange,
-    }});
 
     emit({ type: 'consensus_computed', signal: consensus });
 

@@ -7,10 +7,11 @@ import express, { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 
 // Define hoisted mocks so they are available to hoisted vi.mock calls
-const { mockSave, mockGet, mockDelete } = vi.hoisted(() => ({
+const { mockSave, mockGet, mockDelete, mockAppendAudit } = vi.hoisted(() => ({
   mockSave: vi.fn(),
   mockGet: vi.fn(),
   mockDelete: vi.fn(),
+  mockAppendAudit: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock postgres client to prevent real DB queries
@@ -26,6 +27,11 @@ vi.mock('../../db/tenant-credentials-repository', () => ({
     get = mockGet;
     delete = mockDelete;
   },
+}));
+
+// Mock tenant-audit-log to avoid real DB writes during unit tests
+vi.mock('../../audit/tenant-audit-log', () => ({
+  appendTenantAuditLog: mockAppendAudit,
 }));
 
 import { credentialsRouter } from '../routes/credentials-routes';
