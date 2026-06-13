@@ -11,6 +11,8 @@ export default defineConfig({
       '**/smoke.test.ts',
       // Exclude dormant/backup directories
       'backups/**',
+      // E2E tests use Playwright runner, not vitest
+      'tests/e2e/**',
       // Polymarket strategy tests excluded — strategies depend on unimplemented
       // infrastructure (clob-client, order-manager, event-bus, gamma-client).
       // Re-enable when polymarket infra is implemented.

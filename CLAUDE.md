@@ -101,3 +101,63 @@ We keep all important docs in `./docs` folder and keep updating them, structure 
 ```
 
 **IMPORTANT:** *MUST READ* and *MUST COMPLY* all *INSTRUCTIONS* in project `./CLAUDE.md`, especially *WORKFLOWS* section is *CRITICALLY IMPORTANT*, this rule is *MANDATORY. NON-NEGOTIABLE. NO EXCEPTIONS. MUST REMEMBER AT ALL TIMES!!!*
+
+## MekongMind Harness Integration
+
+algo-trader integrates with **me-deep-wrapper** (MekongMind Solo Company Orchestrator) for goal-driven development workflow.
+
+### Quick Reference
+
+| Command | Action |
+|---------|--------|
+| `/mekong goal <text>` | Create/show goal |
+| `/mekong status` | Goal + gate + bottleneck |
+| `/mekong step <N>` | Execute step N |
+| `/mekong solo <dept>` | Run department |
+| `/mekong route <cmd>` | Route command to dept |
+| `/mekong gates` | Verify gate artifacts |
+| `/mekong bottlenecks` | Next bottleneck |
+| `/mekong allow <cmd>` | Check command allowed |
+| `/mekong artifact <g> <d>` | Record gate evidence |
+| `/mekong revenue` | Revenue operations |
+
+### Pre-Work Protocol
+
+1. `/mekong status` — shows active goal, gate, bottleneck
+2. `/mekong gates` — ensure current gate has evidence
+3. `/mekong allow <command>` — verify command allowed at current gate
+
+### Post-Work Protocol
+
+1. `/mekong artifact <gate> <dept> "<note>"` — record evidence
+2. `/mekong gates` — verify gate passes
+
+### Department Routing
+
+| Task | Department | Claude Action |
+|------|-----------|---------------|
+| Build feature | engineering-factory | `/cook` |
+| Code review | quality-compliance | `/review` |
+| Deploy | platform-operations | `/ship` |
+| Research | market-intelligence | `/research` |
+
+### me-deep-wrapper Paths
+
+- CLI: `me` (shell function → `/Users/macbook/Documents/me-deep-wrapper/bin/me`)
+- Repo: `/Users/macbook/Documents/me-deep-wrapper/`
+- State: `state/goal-*.md`
+- SOPs: `sops/departments/`
+
+See `.claude/skills/mekong-harness/SKILL.md` for full skill documentation.
+
+## Harness: algo-trader mekong integration
+
+**Goal:** Bridge algo-trader with me-deep-wrapper (MekongMind Solo Company Orchestrator) for goal-driven development workflow. Route commands, manage goal state, and coordinate 10 domain-specific agents through department SOP gates.
+
+**Trigger:** Harness operations → use `mekong-harness` skill. Simple questions about goal status → direct `me` CLI. Agent/skill management → use `harness` skill from me-deep-wrapper.
+
+**History:**
+
+| Date | Change | Target | Reason |
+|------|--------|---------|--------|
+| 2026-06-08 | Initial harness build | All | Bootstrap --auto --parallel |

@@ -13,6 +13,11 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-init.cjs\""
+          },
+          {
+            "type": "command",
+            "command": "bash /Users/macbook/Documents/me-deep-wrapper/bin/me goal show 2>/dev/null | head -15; echo '---'; bash /Users/macbook/Documents/me-deep-wrapper/bin/me solo gates verify 2>/dev/null | head -5",
+            "timeout": 15
           }
         ]
       }

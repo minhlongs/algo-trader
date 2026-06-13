@@ -9,8 +9,10 @@ import { ApiServer } from './api/server';
 import { logger } from './utils/logger';
 
 import { runMigrations } from './db/migration-runner';
+import { startAugmentedSignalPipeline } from './wiring/augmented-signal-pipeline';
 
 let server: ApiServer | null = null;
+let augmentedPipelineStop: (() => Promise<void>) | null = null;
 
 export async function startApp(): Promise<void> {
   // Run DB migrations on startup
@@ -21,17 +23,30 @@ export async function startApp(): Promise<void> {
   server = new ApiServer();
   await server.start();
 
+ // Phase 08: Wire augmented-signal-pipeline (AI validation gate for strategy signals)
+ // DeepSeek gating; false → bypass for backtesting or when NATS is absent.
+ const aiEnabled = (process.env.AI_VALIDATION_ENABLED ?? 'true').toLowerCase() !== 'false';
+ if (aiEnabled) {
+   augmentedPipelineStop = await startAugmentedSignalPipeline();
+   logger.info('[App] Augmented signal pipeline started (AI validation enabled)');
+ } else {
+   logger.warn('[App] AI validation disabled (AI_VALIDATION_ENABLED=false)');
+ }
+
   const port = process.env.API_PORT || '3000';
   const env = process.env.NODE_ENV || 'development';
   logger.info(`[App] AlgoTrade API running — port=${port} env=${env}`);
 }
 
 export async function stopApp(): Promise<void> {
-  if (server) {
-    await server.stop();
-    server = null;
-    logger.info('[App] Shutdown complete');
-  }
+ if (augmentedPipelineStop) {
+   await augmentedPipelineStop().catch((err) => logger.warn('[App] Pipeline shutdown failed', { err }));
+ }
+ if (server) {
+   await server.stop();
+   server = null;
+   logger.info('[App] Shutdown complete');
+ }
 }
 
 // Graceful shutdown handlers
