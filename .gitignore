@@ -15,3 +15,13 @@ Users/
 .env.local
 .env.*.local
 .wrangler/
+
+# OpenClaw/Mekong harness runtime artifacts
+.clawhub
+.openclaw-config.json
+.openclaw.pid
+state/
+tasks/
+tests/e2e/
+scripts/*.bak-*
+scripts/*.bak
