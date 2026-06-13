@@ -104,6 +104,7 @@ export function BacktestsPage() {
           <div className="flex flex-col gap-1">
             <label className="text-muted text-xs">Pair</label>
             <input
+                    data-testid="backtest-pair-input"
               type="text"
               value={pair}
               onChange={(e) => setPair(e.target.value)}
@@ -145,6 +146,7 @@ export function BacktestsPage() {
           <div className="flex flex-col gap-1">
             <label className="text-muted text-xs">Days</label>
             <input
+                    data-testid="backtest-pair-input"
               type="number"
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}

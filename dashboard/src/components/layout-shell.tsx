@@ -71,6 +71,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
               onClick={() => setSidebarOpen(true)}
               className="p-2 -ml-2 text-muted hover:text-white rounded-lg hover:bg-bg-border transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
               aria-label="Open menu"
+      data-testid="hamburger-menu"
             >
               <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />

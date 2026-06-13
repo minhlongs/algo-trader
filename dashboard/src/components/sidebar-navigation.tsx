@@ -149,6 +149,7 @@ export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
               <Link
                 to={path}
                 onClick={onNavigate}
+        data-testid={`nav-${path.replace("/app/", "").replace("/", "dashboard")}`}
                 className={`
                   flex items-center gap-3 px-4 py-2.5 text-sm font-mono transition-colors
                   ${active

@@ -58,6 +58,7 @@ export function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   autoComplete="email"
+      data-testid="email-input"
                   disabled={loading}
                   className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
@@ -71,6 +72,7 @@ export function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="current-password"
+      data-testid="password-input"
                   disabled={loading}
                   className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
@@ -78,6 +80,7 @@ export function LoginPage() {
 
               <button
                 type="submit"
+      data-testid="login-button"
                 disabled={loading}
                 className="w-full bg-[#00D9FF] text-[#0F0F1A] font-bold text-sm py-2.5 rounded hover:bg-[#00D9FF]/80 transition-colors mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
