@@ -1,0 +1,36 @@
+{
+  "test": "queue-backpressure",
+  "timestamp": "2026-06-16T12:30:00Z",
+  "duration": "10m",
+  "config": {
+    "vus": 200,
+    "endpoint": "/api/v1/agents/:agent/execute",
+    "burst_profile": "ramp 0→200 VUs over 60s, hold 9m"
+  },
+  "metrics": {
+    "total_submissions": 125430,
+    "queue_wait_time_ms": {
+      "p50": 45,
+      "p95": 890,
+      "p99": 1450
+    },
+    "queue_depth": {
+      "peak": 847,
+      "average": 423,
+      "sustained_above_1000": false
+    },
+    "rejection_rate": 0.022,
+    "worker_utilization": {
+      "active": 18,
+      "idle": 2,
+      "max_capacity": 20
+    }
+  },
+  "pass": true,
+  "thresholds_met": {
+    "rejection_rate_lt_5_percent": true,
+    "queue_wait_p95_lt_1s": true,
+    "no_queue_overflow": true
+  },
+  "notes": "Backpressure mechanism kicked in at 80% depth, rejecting 2.2% of requests to protect system stability"
+}

@@ -1,0 +1,46 @@
+{
+  "name": "mekong-harness",
+  "version": "2.0.0",
+  "description": "algo-trader integration with me-deep-wrapper (MekongMind Solo Company Orchestrator) — goal-driven development workflow for algorithmic trading platform",
+  "agents": {
+    "brainstormer": { "path": ".claude/agents/brainstormer.md", "department": "market-intelligence", "model": "sonnet" },
+    "code-reviewer": { "path": ".claude/agents/code-reviewer.md", "department": "code-quality", "model": "sonnet" },
+    "code-simplifier": { "path": ".claude/agents/code-simplifier.md", "department": "trading-engine", "model": "sonnet" },
+    "debugger": { "path": ".claude/agents/debugger.md", "department": "trading-engine", "model": "sonnet" },
+    "docs-manager": { "path": ".claude/agents/docs-manager.md", "department": "platform-ops", "model": "sonnet" },
+    "fullstack-developer": { "path": ".claude/agents/fullstack-developer.md", "department": "trading-engine", "model": "sonnet" },
+    "git-manager": { "path": ".claude/agents/git-manager.md", "department": "platform-ops", "model": "sonnet" },
+    "journal-writer": { "path": ".claude/agents/journal-writer.md", "department": "platform-ops", "model": "sonnet" },
+    "mcp-manager": { "path": ".claude/agents/mcp-manager.md", "department": "platform-ops", "model": "sonnet" },
+    "planner": { "path": ".claude/agents/planner.md", "department": "market-intelligence", "model": "opus" },
+    "project-manager": { "path": ".claude/agents/project-manager.md", "department": "trading-performance", "model": "sonnet" },
+    "researcher": { "path": ".claude/agents/researcher.md", "department": "market-intelligence", "model": "sonnet" },
+    "tester": { "path": ".claude/agents/tester.md", "department": "code-quality", "model": "sonnet" },
+    "ui-ux-designer": { "path": ".claude/agents/ui-ux-designer.md", "department": "trading-engine", "model": "sonnet" },
+    "quant-engineer": { "path": ".claude/agents/quant-engineer.md", "department": "engineering-factory", "model": "sonnet", "effort": "high" },
+    "market-data-specialist": { "path": ".claude/agents/market-data-specialist.md", "department": "engineering-factory", "model": "sonnet", "effort": "high" },
+    "risk-officer": { "path": ".claude/agents/risk-officer.md", "department": "engineering-factory", "model": "sonnet", "effort": "high" },
+    "trading-executor": { "path": ".claude/agents/trading-executor.md", "department": "engineering-factory", "model": "sonnet", "effort": "high" },
+    "backtesting-engineer": { "path": ".claude/agents/backtesting-engineer.md", "department": "engineering-factory", "model": "sonnet", "effort": "high" },
+    "ai-ml-engineer": { "path": ".claude/agents/ai-ml-engineer.md", "department": "engineering-factory", "model": "opus", "effort": "max" },
+    "raas-packager": { "path": ".claude/agents/raas-packager.md", "department": "sales-revenue", "model": "sonnet", "effort": "high" },
+    "data-engineer": { "path": ".claude/agents/data-engineer.md", "department": "engineering-factory", "model": "sonnet", "effort": "medium" },
+    "quant-researcher": { "path": ".claude/agents/quant-researcher.md", "department": "market-intelligence", "model": "opus", "effort": "high" },
+    "trading-sre": { "path": ".claude/agents/trading-sre.md", "department": "platform-operations", "model": "sonnet", "effort": "medium" }
+  },
+  "skills": [
+    "mekong-harness",
+    "brainstorm", "code-review", "cook", "debug", "docs", "fix", "git", "plan", "research", "scout", "sequential-thinking", "test", "use-mcp",
+    "quant-trading", "market-data", "risk-management", "raas-packaging", "ai-ml-pipeline", "trading-execution", "trading-sre"
+  ],
+  "integration": {
+    "algo-trader-path": "/Users/macbook/algo-trader",
+    "me-deep-wrapper-path": "/Users/macbook/Documents/me-deep-wrapper",
+    "me-cli-path": "me (shell function → /Users/macbook/Documents/me-deep-wrapper/bin/me)",
+    "state-dir": "/Users/macbook/Documents/me-deep-wrapper/state",
+    "sops-dir": "/Users/macbook/Documents/me-deep-wrapper/sops",
+    "mcp-config": ".claude/mcp/mekong-harness.json",
+    "evidence-template": ".claude/templates/evidence-mvp-live.json",
+    "bootstrap-script": ".claude/scripts/bootstrap-harness.sh"
+  }
+}

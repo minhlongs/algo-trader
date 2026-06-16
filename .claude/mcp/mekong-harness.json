@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "mekong-model-router": {
+      "command": "bash",
+      "args": ["/Users/macbook/Documents/me-deep-wrapper/lib/mcp-model-router.sh"],
+      "env": {
+        "HERMES_API_KEY": "${HERMES_API_KEY}",
+        "HERMES_PROXY_URL": "https://claude.zunef.com",
+        "HERMES_ENABLED": "auto"
+      }
+    },
+    "mekong-state": {
+      "command": "bash",
+      "args": ["/Users/macbook/Documents/me-deep-wrapper/lib/mcp-state.sh"],
+      "env": {
+        "HERMES_API_KEY": "${HERMES_API_KEY}",
+        "HERMES_PROXY_URL": "https://claude.zunef.com"
+      }
+    },
+    "mekong-agents": {
+      "command": "bash",
+      "args": ["/Users/macbook/Documents/me-deep-wrapper/lib/mcp-agents.sh"],
+      "env": {
+        "HERMES_API_KEY": "${HERMES_API_KEY}",
+        "HERMES_PROXY_URL": "https://claude.zunef.com",
+        "HERMES_ENABLED": "auto"
+      }
+    },
+    "mekong-hermes": {
+      "command": "bash",
+      "args": ["/Users/macbook/Documents/me-deep-wrapper/lib/mcp-hermes.sh"],
+      "env": {
+        "HERMES_API_KEY": "${HERMES_API_KEY}",
+        "HERMES_PROXY_URL": "https://claude.zunef.com",
+        "HERMES_ENABLED": "auto"
+      }
+    }
+  }
+}

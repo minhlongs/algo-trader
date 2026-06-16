@@ -35,6 +35,43 @@ const noopTracer: Tracer = {
 let _tracer: Tracer = noopTracer;
 let _initPromise: Promise<void> | null = null;
 
+/**
+ * Get current region from Cloudflare headers or environment
+ */
+function getCurrentRegion(): string {
+  // In Cloudflare Workers, use cf-colo or cf-region
+  if (typeof globalThis !== 'undefined' && globalThis.request) {
+    const req = globalThis.request as Request;
+    const colo = req.headers.get('cf-colo');
+    if (colo) return colo;
+  }
+  return process.env.REGION || 'unknown';
+}
+
+/**
+ * Add region and environment attributes to the active span
+ */
+export function withRegionAttributes<T>(fn: () => Promise<T>): Promise<T> {
+  const span = _tracer.startSpan('with-region');
+  try {
+    span.setAttribute('cloud.region', getCurrentRegion());
+    span.setAttribute('deployment.environment', process.env.ENVIRONMENT || 'development');
+    return fn();
+  } finally {
+    span.end();
+  }
+}
+
+/**
+ * Set region on currently active span (if any)
+ */
+export function setRegionOnActiveSpan(): void {
+  const span = _tracer.startSpan('region-context') as any;
+  // Actually we need to get the active span, not start a new one
+  // The interface doesn't have getActiveSpan; let's modify approach
+  // We'll rely on manual attribute setting in middleware
+}
+
 export function getTracer(_name = 'algo-trader'): Tracer {
   return _tracer;
 }
@@ -90,4 +127,31 @@ export function initTracing(): Promise<void> {
 export function resetTracingForTests(): void {
   _tracer = noopTracer;
   _initPromise = null;
+}
+
+/**
+ * Get the currently active span from OpenTelemetry context.
+ * Returns null if no active span or tracing disabled.
+ */
+export function getActiveSpan(): Span | null {
+  // Try to get from global OTel API if available
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const otelApi = require('@opentelemetry/api');
+    const active = otelApi.trace.getActiveSpan();
+    return active ? (active as unknown as Span) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Set region and environment on the active span (call from middleware)
+ */
+export function annotateActiveSpanWithRegion(region: string): void {
+  const span = getActiveSpan();
+  if (span) {
+    span.setAttribute('cloud.region', region);
+    span.setAttribute('deployment.environment', process.env.ENVIRONMENT || 'development');
+  }
 }

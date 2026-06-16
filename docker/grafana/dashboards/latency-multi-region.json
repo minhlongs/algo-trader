@@ -1,0 +1,245 @@
+{
+  "dashboard": {
+    "title": "Multi-Region Latency Monitoring",
+    "tags": ["latency", "multi-region", "sla"],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "HTTP Request p95 Latency by Region",
+        "type": "heatmap",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, region)) * 1000",
+            "legendFormat": "{{region}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "ms",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "red", "value": 100 }
+              ]
+            },
+            "mappings": [],
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": {
+          "legend": { "displayMode": "table", "placement": "bottom" },
+          "tooltip": { "show": true }
+        }
+      },
+      {
+        "id": 2,
+        "title": "SLA Compliance %",
+        "type": "stat",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 4 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_request_duration_seconds_bucket{le=\"0.1\"}[5m])) by (region) / sum(rate(http_request_duration_seconds_count[5m])) by (region) * 100",
+            "legendFormat": "{{region}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "percentunit",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null, "op": "lt", "value": 95 },
+                { "color": "green", "value": 95 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "colorMode": "background",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        }
+      },
+      {
+        "id": 3,
+        "title": "External API Latency (Polymarket)",
+        "type": "timeseries",
+        "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(external_api_latency_seconds_bucket{service=\"polymarket\"}[5m])) by (le, region)) * 1000",
+            "legendFormat": "{{region}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "ms",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Queue Wait Time by Priority",
+        "type": "bargauge",
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 6 },
+        "targets": [
+          {
+            "expr": "avg(queue_wait_seconds_sum / queue_wait_seconds_count) by (priority, tier) * 1000",
+            "legendFormat": "{{priority}} - {{tier}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "ms",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "red", "value": 50 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Inter-Region Replication Lag",
+        "type": "timeseries",
+        "gridPos": { "x": 0, "y": 14, "w": 12, "h": 6 },
+        "targets": [
+          {
+            "expr": "pg_replication_lag_seconds",
+            "legendFormat": "{{region}}→primary",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "s",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 5 },
+                { "color": "red", "value": 10 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Top 10 Slowest Endpoints",
+        "type": "barchart",
+        "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "topk(10, histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route))) * 1000",
+            "legendFormat": "{{route}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "ms",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" }
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "legend": { "displayMode": "hidden" }
+        }
+      },
+      {
+        "id": 7,
+        "title": "Region Health Status",
+        "type": "stat",
+        "gridPos": { "x": 12, "y": 20, "w": 12, "h": 4 },
+        "targets": [
+          {
+            "expr": "up{job=\"latency_probe\"} == 1",
+            "legendFormat": "{{region}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "short",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": 0 },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto"
+        }
+      },
+      {
+        "id": 8,
+        "title": "p99 Latency Trend",
+        "type": "timeseries",
+        "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, region)) * 1000",
+            "legendFormat": "{{region}} p99",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "ms",
+        "fieldConfig": {
+          "defaults": {
+            "color": { "mode": "palette-classic" },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 150 },
+                { "color": "red", "value": 200 }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "templated": false,
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    }
+  }
+}

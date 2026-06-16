@@ -1,0 +1,57 @@
+groups:
+  - name: latency_alerts
+    rules:
+      - alert: LatencySLA breach
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, region)) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          component: latency
+        annotations:
+          summary: "p95 latency exceeds 100ms in {{ $labels.region }}"
+          description: "p95 latency is {{ $value }}ms (threshold: 100ms)"
+
+      - alert: ExternalAPI latency
+        expr: |
+          histogram_quantile(0.95, sum(rate(external_api_latency_seconds_bucket{service="polymarket"}[5m])) by (le, region)) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          component: external-api
+        annotations:
+          summary: "Polymarket API latency high in {{ $labels.region }}"
+          description: "p95 latency {{ $value }}ms (threshold: 200ms)"
+
+      - alert: InterRegion replication lag
+        expr: |
+          pg_replication_lag_seconds > 10
+        for: 3m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Replication lag {{ $value }}s in {{ $labels.instance }}"
+          description: "Cross-region replication lag exceeds 10 seconds"
+
+      - alert: Queue backlog growing
+        expr: |
+          bullmq_queue_waiting_jobs > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: queue
+        annotations:
+          summary: "Agent queue depth {{ $value }} in {{ $labels.queue_name }}"
+          description: "Queue depth exceeds 100 jobs, indicating processing bottleneck"
+
+      - alert: p99 latency spike
+        expr: |
+          histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+          component: latency
+        annotations:
+          summary: "p99 latency spike to {{ $value }}ms"
+          description: "99th percentile latency exceeds 500ms globally"

@@ -6,6 +6,7 @@
 import client from 'prom-client';
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
+import { annotateActiveSpanWithRegion } from '../utils/tracing';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Create Registry
@@ -134,6 +135,52 @@ export const qwenDrawdownMonitorLastRunTs = new client.Gauge({
   registers: [register],
 });
 
+// ─── Memory Metrics (Task 6 - Memory Optimization) ─────────────────────────────
+
+/** Gauge: Resident Set Size (RSS) memory in bytes */
+export const memoryRssBytes = new client.Gauge({
+  name: 'algo_trader_memory_rss_bytes',
+  help: 'Resident Set Size (RSS) memory usage in bytes. Total memory allocated to the process including all heap, stack, and native allocations.',
+  registers: [register],
+});
+
+/** Gauge: Heap used memory in bytes */
+export const memoryHeapBytes = new client.Gauge({
+  name: 'algo_trader_memory_heap_bytes',
+  help: 'JavaScript heap used memory in bytes. Current active heap allocations.',
+  registers: [register],
+});
+
+/** Gauge: Memory utilization ratio (0-1) */
+export const memoryUtilizationRatio = new client.Gauge({
+  name: 'algo_trader_memory_utilization_ratio',
+  help: 'Memory utilization ratio (RSS / limit). 0 = 0%, 1 = 100% of 128MB Cloudflare Worker limit. Thresholds: warning=0.78 (100MB), critical=0.90 (115MB).',
+  registers: [register],
+});
+
+/** Counter: number of memory pressure events by level */
+export const memoryPressureEventsTotal = new client.Counter({
+  name: 'algo_trader_memory_pressure_events_total',
+  help: 'Total number of memory pressure events triggered by level.',
+  labelNames: ['level'] as const, // level: warning | critical
+  registers: [register],
+});
+
+/** Counter: cache evictions by cache type */
+export const cacheEvictionsTotal = new client.Counter({
+  name: 'algo_trader_cache_evictions_total',
+  help: 'Total number of cache evictions by cache type.',
+  labelNames: ['cache_type'] as const, // cache_type: strategy | market_data | agent_context
+  registers: [register],
+});
+
+/** Gauge: compression ratio for compressed data */
+export const compressionRatio = new client.Gauge({
+  name: 'algo_trader_compression_ratio',
+  help: 'Compression ratio achieved (original_size / compressed_size). Higher is better. Target: >1.5x for JSON data.',
+  registers: [register],
+});
+
 // Counter for total trades executed
 export const tradesTotal = new client.Counter({
   name: 'trades_total',
@@ -207,51 +254,71 @@ export const tradeExecutionTime = new client.Histogram({
   registers: [register],
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HTTP Request Metrics Middleware
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Latency Monitoring Histograms (Phase 5) ───────────────────────────────────
 
-// HTTP request counter
-const httpRequestsTotal = new client.Counter({
-  name: 'http_requests_total',
-  help: 'Total HTTP requests',
-  labelNames: ['method', 'path', 'status'] as const,
+/** HTTP request duration with region and status labels */
+export const httpRequestDuration = new client.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request duration in seconds',
+  labelNames: ['method', 'route', 'region', 'status'] as const,
+  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
   registers: [register],
 });
 
-// HTTP request duration histogram
-const httpRequestDuration = new client.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'HTTP request duration in seconds',
-  labelNames: ['method', 'path'] as const,
-  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+/** External API latency (Polymarket, exchanges, LLM gateways) */
+export const externalApiLatency = new client.Histogram({
+  name: 'external_api_latency_seconds',
+  help: 'External API call latency in seconds',
+  labelNames: ['service', 'endpoint', 'region'] as const,
+  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  registers: [register],
+});
+
+/** Durable Object shard latency */
+export const shardLatency = new client.Histogram({
+  name: 'shard_latency_seconds',
+  help: 'Durable Object shard operation latency',
+  labelNames: ['shard_id', 'operation'] as const,
+  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25],
+  registers: [register],
+});
+
+/** Agent queue wait time */
+export const queueWaitTime = new client.Histogram({
+  name: 'queue_wait_seconds',
+  help: 'Agent queue wait time before processing',
+  labelNames: ['priority', 'agent', 'tier'] as const,
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
   registers: [register],
 });
 
 /**
- * Express middleware to track HTTP requests
+ * Extract region from Cloudflare request headers or context
+ */
+function getRegionFromRequest(req: Request): string {
+  // CF provides region via cf-colo or custom header
+  return (req.headers.get('cf-colo') as string) || 'unknown';
+}
+
+/**
+ * Metrics tracking middleware with region context
+ * Records HTTP request duration to Prometheus with region and status labels
+ * Also annotates OpenTelemetry spans with region.
  */
 export function metricsMiddleware(req: Request, res: Response, next: NextFunction): void {
   const start = Date.now();
-  const path = req.route?.path || req.path;
+  const region = getRegionFromRequest(req);
+  const route = req.route?.path || req.path;
+  const method = req.method;
+
+  // Annotate active span with region (if tracing enabled)
+  annotateActiveSpanWithRegion(region);
 
   res.on('finish', () => {
     const duration = (Date.now() - start) / 1000;
     const status = res.statusCode.toString();
 
-    httpRequestsTotal.inc({
-      method: req.method,
-      path,
-      status,
-    });
-
-    httpRequestDuration.observe(
-      {
-        method: req.method,
-        path,
-      },
-      duration
-    );
+    httpRequestDuration.observe({ method, route, region, status }, duration);
   });
 
   next();
@@ -361,6 +428,58 @@ export function setQwenPaperGateDaysRemaining(days: number): void {
 /** Set L3 drawdown auto-disable state. */
 export function setQwenDrawdownAutoDisabled(disabled: boolean): void {
   qwenDrawdownAutoDisabled.set(disabled ? 1 : 0);
+}
+
+/**
+ * Update memory metrics from MemoryPressureHandler
+ * Called every 5s by memory pressure monitoring
+ */
+export function setMemoryMetrics(
+  rssBytes: number,
+  heapBytes: number,
+  limitBytes: number
+): void {
+  memoryRssBytes.set(rssBytes);
+  memoryHeapBytes.set(heapBytes);
+  memoryUtilizationRatio.set(rssBytes / limitBytes);
+}
+
+/**
+ * Record memory pressure event
+ */
+export function recordMemoryPressureEvent(level: 'warning' | 'critical'): void {
+  memoryPressureEventsTotal.inc({ level });
+}
+
+/**
+ * Record cache eviction
+ */
+export function recordCacheEviction(cacheType: 'strategy' | 'market_data' | 'agent_context'): void {
+  cacheEvictionsTotal.inc({ cache_type: cacheType });
+}
+
+/**
+ * Record compression ratio
+ */
+export function recordCompressionRatio(originalSize: number, compressedSize: number): void {
+  if (compressedSize > 0) {
+    compressionRatio.set(originalSize / compressedSize);
+  }
+}
+
+// Helper function to record external API latency (with region)
+export function recordExternalApiLatency(service: string, endpoint: string, region: string, latencySeconds: number): void {
+  externalApiLatency.observe({ service, endpoint, region }, latencySeconds);
+}
+
+// Helper function to record shard latency
+export function recordShardLatency(shardId: string, operation: string, latencySeconds: number): void {
+  shardLatency.observe({ shard_id: shardId, operation }, latencySeconds);
+}
+
+// Helper function to record queue wait time
+export function recordQueueWaitTime(priority: number, agent: string, tier: string, waitSeconds: number): void {
+  queueWaitTime.observe({ priority: String(priority), agent, tier }, waitSeconds);
 }
 
 // Export registry for custom metrics

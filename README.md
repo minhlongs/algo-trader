@@ -175,6 +175,64 @@ See `.env.example` for full dual-model configuration.
 
 ---
 
+## Scaling Architecture
+
+algo-trader scales horizontally to support 52+ strategies and 10,000+ RPS through:
+
+- **12 Durable Object Shards** - Consistent hashing distributes strategies evenly
+- **Multi-Region Deployment** - us-east (primary), eu-central, ap-southeast with auto-failover
+- **LLM Model Tiering** - Haiku (scanning) → Sonnet (analysis) → Opus (decisions)
+- **Hyperdrive Connection Pools** - Overcome Cloudflare 6-fetch limit
+- **Memory Optimization** - LRU caching, compression, pooling (<128MB/isolate)
+
+**Target Metrics:**
+- p95 latency < 100ms globally
+- 10,000 RPS sustained
+- Memory < 128MB per worker
+- Cost ~$1,500/month at scale
+
+📖 **[Scaling Architecture Deep Dive](docs/scaling-architecture.md)**
+
+### Multi-Region Deployment
+
+```bash
+# Deploy to all 3 regions
+./scripts/deploy-multi-region.sh us-east
+./scripts/deploy-multi-region.sh eu-central
+./scripts/deploy-multi-region.sh ap-southeast
+```
+
+📖 **[Multi-Region Deployment Guide](docs/deployment-multi-region.md)**
+
+### Operational Runbooks
+
+| Incident | Response |
+|----------|----------|
+| Region outage | [multi-region-outage.md](docs/runbooks/multi-region-outage.md) |
+| Hot shard (>800 RPS) | [shard-hotspot.md](docs/runbooks/shard-hotspot.md) |
+| Memory pressure (OOM risk) | [memory-pressure-critical.md](docs/runbooks/memory-pressure-critical.md) |
+| LLM gateway outage | [llm-gateway-outage.md](docs/runbooks/llm-gateway-outage.md) |
+| Database connection exhaustion | [database-connection-exhaustion.md](docs/runbooks/database-connection-exhaustion.md) |
+
+📖 **[All Runbooks](docs/runbooks/)**
+
+### Metrics & Monitoring
+
+- Prometheus metrics exposed at `/api/v1/metrics`
+- Grafana dashboards: multi-region, shard distribution, LLM gateway, database health
+- Alerts: region down, hot shard, memory pressure, replication lag
+
+📖 **[Metrics Reference](docs/metrics-reference.md)**
+
+### Developer Resources
+
+- **[Developer Onboarding](docs/developer-onboarding.md)** - Get started in 30 minutes
+- **[System Architecture](docs/system-architecture.md)** - Full system design
+- **[Development Roadmap](docs/development-roadmap.md)** - Project phases and progress
+- **[API Reference](docs/api-reference.md)** - Complete API documentation
+
+---
+
 ## Configuration
 
 Copy `.env.example` and fill in your credentials:

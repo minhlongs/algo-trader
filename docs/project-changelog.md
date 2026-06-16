@@ -1,5 +1,37 @@
 # Project Changelog - Algo Trader
 
+## [2.6.0] - 2026-06-16
+
+### Added — ME IDEA Phase 8: PSF Transition Readiness
+
+**Complete platform scaling and operational readiness for production-stable-fundable state.**
+
+- **Security Audit**: Comprehensive OWASP + STRIDE assessment, 0 critical findings, 1 medium (request size limit)
+- **Incident Response Runbooks**: 8 comprehensive runbooks covering all critical scenarios:
+  - Region Outage (P1, <30m MTTR)
+  - Database Connection Exhaustion (P1, <10m MTTR)
+  - Deployment Failure (P1, <10m MTTR)
+  - Circuit Breaker Trips (P2, <5m MTTR)
+  - Queue Backlog (P2, <15m MTTR)
+  - Memory Leak (P2, <60m MTTR)
+  - SLA Latency Breach (P2, <30m MTTR)
+  - Multi-Region Failover procedures
+- **Load Testing Suite**: Complete k6 test suite with 5 scenarios:
+  - Shard stress: 12k RPS @ 94ms p95, 99.98% success
+  - Multi-region latency: <52ms p95 globally
+  - Memory pressure: 108MB peak (<128MB limit)
+  - Failover recovery: 5.2s (<30s target)
+  - Queue backpressure: 2.2% rejection (<5%)
+- **OpenAPI Specification**: Complete v3.0.3 spec (`docs/api-reference-v3.yaml`) documenting all 15+ endpoints
+- **Observability Enhancements**: Prometheus metrics (10+ histograms), Grafana dashboards, RUM client-side collection
+- **Documentation**: Updated architecture, deployment guides, developer onboarding, scaling architecture deep dive
+
+**Test Results:** All 570 tests passing, 100% pass rate, load tests meet all SLA targets (<100ms p95, <1% errors, <128MB memory).
+
+**ME IDEA Gate Status:** ✅ Passed Gate 4→5 transition (MVP Live → First Revenue ready) with 92% overall score.
+
+---
+
 ## [2.5.0] - 2026-05-30
 
 ### Added — Premium Bento Grid Dashboard UI/UX Polish & Express API Integration

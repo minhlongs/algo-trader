@@ -7,6 +7,7 @@
 import 'dotenv/config';
 import { ApiServer } from './api/server';
 import { logger } from './utils/logger';
+import { getLatencyMonitor } from './regions/latency-monitor';
 
 import { runMigrations } from './db/migration-runner';
 import { startAugmentedSignalPipeline } from './wiring/augmented-signal-pipeline';
@@ -23,15 +24,21 @@ export async function startApp(): Promise<void> {
   server = new ApiServer();
   await server.start();
 
- // Phase 08: Wire augmented-signal-pipeline (AI validation gate for strategy signals)
- // DeepSeek gating; false → bypass for backtesting or when NATS is absent.
- const aiEnabled = (process.env.AI_VALIDATION_ENABLED ?? 'true').toLowerCase() !== 'false';
- if (aiEnabled) {
-   augmentedPipelineStop = await startAugmentedSignalPipeline();
-   logger.info('[App] Augmented signal pipeline started (AI validation enabled)');
- } else {
-   logger.warn('[App] AI validation disabled (AI_VALIDATION_ENABLED=false)');
- }
+  // Start multi-region latency monitoring (Phase 5)
+  if (process.env.ENABLE_LATENCY_MONITORING !== 'false') {
+    getLatencyMonitor().start();
+    logger.info('[App] Latency monitor started');
+  }
+
+  // Phase 08: Wire augmented-signal-pipeline (AI validation gate for strategy signals)
+  // DeepSeek gating; false → bypass for backtesting or when NATS is absent.
+  const aiEnabled = (process.env.AI_VALIDATION_ENABLED ?? 'true').toLowerCase() !== 'false';
+  if (aiEnabled) {
+    augmentedPipelineStop = await startAugmentedSignalPipeline();
+    logger.info('[App] Augmented signal pipeline started (AI validation enabled)');
+  } else {
+    logger.warn('[App] AI validation disabled (AI_VALIDATION_ENABLED=false)');
+  }
 
   const port = process.env.API_PORT || '3000';
   const env = process.env.NODE_ENV || 'development';

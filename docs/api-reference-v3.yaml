@@ -1,0 +1,629 @@
+openapi: 3.0.3
+info:
+  title: Algo Trader API
+  description: >-
+    Production-ready API for algorithmic trading platform with multi-region deployment,
+    12 DO shards, tiered agent architecture, and comprehensive observability.
+  version: 3.0.0
+  contact:
+    name: Algo Trader Engineering
+    email: engineering@algo-trader.com
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.algo-trader.com
+    description: Production (Global Load Balancer)
+  - url: https://us-east.algo-trader.com
+    description: US East Region (Virginia)
+  - url: https://eu-central.algo-trader.com
+    description: EU Central Region (Frankfurt)
+  - url: https://ap-southeast.algo-trader.com
+    description: AP Southeast Region (Singapore)
+paths:
+  /api/v1/health:
+    get:
+      summary: Health Check
+      description: Liveness probe for Kubernetes/load balancer
+      tags:
+        - Health
+      operationId: getHealth
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: healthy
+                service: algo-trader-api
+                version: 3.0.0
+                timestamp: 2026-06-16T10:00:00.000Z
+                environment: production
+                region: us-east
+                uptime: 86400
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/ready:
+    get:
+      summary: Readiness Probe
+      description: Checks database connectivity and critical dependencies
+      tags:
+        - Health
+      operationId: getReady
+      responses:
+        '200':
+          description: Service is ready to accept traffic
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+              example:
+                status: ready
+                checks:
+                  database: ok
+                  redis: ok
+                  anthropic: ok
+                latency_ms: 12
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/strategies:
+    get:
+      summary: List User Strategies
+      description: Retrieve all strategies owned by the authenticated user/tenant
+      tags:
+        - Strategies
+      operationId: listStrategies
+      security:
+        - apiKey: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+          description: Number of strategies to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Pagination offset
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, paused, draft, archived]
+          description: Filter by strategy status
+      responses:
+        '200':
+          description: Successfully retrieved strategies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Strategy'
+              example:
+                - id: strat_abc123
+                  name: "BTC Momentum v2"
+                  status: active
+                  created_at: "2026-06-10T10:00:00Z"
+                  markets: ["polymarket"]
+                  performance:
+                    total_return: 0.15
+                    sharpe_ratio: 1.8
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/strategies/{id}:
+    get:
+      summary: Get Strategy Details
+      description: Retrieve detailed information about a specific strategy
+      tags:
+        - Strategies
+      operationId: getStrategy
+      security:
+        - apiKey: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^strat_[a-zA-Z0-9]+$'
+          description: Strategy ID
+      responses:
+        '200':
+          description: Strategy details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Strategy'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/agents/{agent}/execute:
+    post:
+      summary: Execute Agent
+      description: Execute an agent (LLM-powered analysis, strategy generation, etc.)
+      tags:
+        - Agents
+      operationId: executeAgent
+      security:
+        - apiKey: []
+      parameters:
+        - name: agent
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [analyzer, generator, optimizer, reviewer, trader]
+          description: Agent type to execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [input]
+              properties:
+                input:
+                  type: object
+                  description: Agent-specific input parameters
+                context:
+                  type: object
+                  description: Additional context for the agent
+                priority:
+                  type: integer
+                  default: 0
+                  description: Job priority (higher = more urgent)
+      responses:
+        '200':
+          description: Agent execution accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentJob'
+              example:
+                job_id: job_xyz789
+                agent: analyzer
+                status: queued
+                queue_position: 5
+                estimated_completion: 30
+        '202':
+          description: Job accepted, processing async
+          headers:
+            Location:
+              description: URL to check job status
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/v1/agents/{agent}/jobs/{jobId}:
+    get:
+      summary: Get Agent Job Status
+      description: Check the status of an asynchronous agent job
+      tags:
+        - Agents
+      operationId: getAgentJobStatus
+      security:
+        - apiKey: []
+      parameters:
+        - name: agent
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [analyzer, generator, optimizer, reviewer, trader]
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^job_[a-zA-Z0-9]+$'
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentJob'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/backtest:
+    post:
+      summary: Run Backtest
+      description: Execute backtest on historical data for a strategy
+      tags:
+        - Trading
+      operationId: runBacktest
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BacktestRequest'
+      responses:
+        '200':
+          description: Backtest completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacktestResult'
+        '202':
+          description: Backtest queued for async processing
+          headers:
+            Location:
+              description: URL to check backtest status
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/v1/trade/execute:
+    post:
+      summary: Execute Trade
+      description: Execute a live trade on connected exchanges
+      tags:
+        - Trading
+      operationId: executeTrade
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeRequest'
+      responses:
+        '200':
+          description: Trade executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /api/v1/admin/queues:
+    get:
+      summary: Admin: Queue Status
+      description: Get status of all BullMQ queues (admin only)
+      tags:
+        - Admin
+      operationId: getQueueStatus
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Queue status
+          content:
+            application/json:
+              type: array
+              items:
+                $ref: '#/components/schemas/QueueStatus'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: >-
+        API key for authentication. Format depends on license tier:
+        FREE - no key required, PRO - `raas-pro-*`, ENTERPRISE - `raas-ent-*`
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service, version, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: Overall service health status
+        service:
+          type: string
+          description: Service name
+          example: algo-trader-api
+        version:
+          type: string
+          description: API version
+          example: 3.0.0
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp
+        environment:
+          type: string
+          enum: [production, staging, development]
+        region:
+          type: string
+          description: Deployment region
+          example: us-east
+        uptime:
+          type: integer
+          description: Uptime in seconds
+    ReadyResponse:
+      type: object
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          enum: [ready, not-ready]
+        checks:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [ok, degraded, error]
+            redis:
+              type: string
+              enum: [ok, degraded, error]
+            anthropic:
+              type: string
+              enum: [ok, degraded, error]
+        latency_ms:
+          type: integer
+          description: Average request latency over last 5 minutes
+    Strategy:
+      type: object
+      required: [id, name, status]
+      properties:
+        id:
+          type: string
+          example: strat_abc123
+        name:
+          type: string
+          example: BTC Momentum v2
+        description:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, draft, archived]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        markets:
+          type: array
+          items:
+            type: string
+        performance:
+          type: object
+          properties:
+            total_return:
+              type: number
+              format: float
+            sharpe_ratio:
+              type: number
+              format: float
+            max_drawdown:
+              type: number
+              format: float
+            win_rate:
+              type: number
+              format: float
+    AgentJob:
+      type: object
+      required: [job_id, agent, status]
+      properties:
+        job_id:
+          type: string
+          example: job_xyz789
+        agent:
+          type: string
+          enum: [analyzer, generator, optimizer, reviewer, trader]
+        status:
+          type: string
+          enum: [queued, processing, completed, failed, cancelled]
+        queue_position:
+          type: integer
+          description: Position in queue (0 = processing)
+        estimated_completion:
+          type: integer
+          description: Estimated seconds to completion
+        result:
+          type: object
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+    BacktestRequest:
+      type: object
+      required: [strategy_id, date_range]
+      properties:
+        strategy_id:
+          type: string
+        date_range:
+          type: object
+          required: [start, end]
+          properties:
+            start:
+              type: string
+              format: date
+            end:
+              type: string
+              format: date
+        initial_capital:
+          type: number
+          default: 10000
+        market_data_source:
+          type: string
+          enum: [live, historical]
+    BacktestResult:
+      type: object
+      required: [strategy_id, metrics]
+      properties:
+        strategy_id:
+          type: string
+        metrics:
+          type: object
+          properties:
+            total_return:
+              type: number
+            sharpe_ratio:
+              type: number
+            max_drawdown:
+              type: number
+            win_rate:
+              type: number
+            total_trades:
+              type: integer
+        equity_curve:
+          type: array
+          items:
+            type: number
+        completed_at:
+          type: string
+          format: date-time
+    TradeRequest:
+      type: object
+      required: [exchange, side, symbol, quantity, price]
+      properties:
+        exchange:
+          type: string
+          enum: [polymarket, kalshi, limitless]
+        side:
+          type: string
+          enum: [buy, sell]
+        symbol:
+          type: string
+          example: BTC-USD
+        quantity:
+          type: number
+        price:
+          type: number
+        order_type:
+          type: string
+          enum: [market, limit]
+          default: limit
+        time_in_force:
+          type: string
+          enum: [GTC, IOC, FOK]
+          default: GTC
+    TradeResult:
+      type: object
+      required: [exchange, order_id, status]
+      properties:
+        exchange:
+          type: string
+        order_id:
+          type: string
+        status:
+          type: string
+          enum: [filled, partial, rejected, cancelled]
+        filled_quantity:
+          type: number
+        average_price:
+          type: number
+        timestamp:
+          type: string
+          format: date-time
+    QueueStatus:
+      type: object
+      required: [name, waiting, active, completed, failed]
+      properties:
+        name:
+          type: string
+        waiting:
+          type: integer
+        active:
+          type: integer
+        completed:
+          type: integer
+        failed:
+          type: integer
+        paused:
+          type: boolean
+  responses:
+    Unauthorized:
+      description: Invalid or missing API key
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: unauthorized
+              message:
+                type: string
+                example: Invalid or missing API key
+    Forbidden:
+      description: Insufficient permissions (admin endpoint)
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: bad_request
+              details:
+                type: object
+    NotFound:
+      description: Resource not found
+    TooManyRequests:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: Request limit per minute
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: Remaining requests in window
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: Seconds until limit resets
+    ServiceUnavailable:
+      description: Service temporarily unavailable (circuit breaker open)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: service_unavailable
+              circuit_breaker:
+                type: string
+                description: Which circuit breaker is open
+tags:
+  - name: Health
+    description: Health check and liveness endpoints
+  - name: Strategies
+    description: Strategy management and retrieval
+  - name: Agents
+    description: AI agent execution and job management
+  - name: Trading
+    description: Trade execution and backtesting
+  - name: Admin
+    description: Administrative endpoints (requires elevated permissions)

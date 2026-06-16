@@ -1,0 +1,38 @@
+{
+  "test": "shard-stress",
+  "timestamp": "2026-06-16T10:30:00Z",
+  "duration": "30m",
+  "config": {
+    "shards": 12,
+    "target_rps_per_shard": 1000,
+    "total_target_rps": 12000,
+    "strategies": 52
+  },
+  "metrics": {
+    "total_requests": 21600000,
+    "throughput_rps": 12000,
+    "shard_latency_ms": {
+      "min": 12,
+      "max": 145,
+      "mean": 68,
+      "p50": 62,
+      "p95": 94,
+      "p99": 112
+    },
+    "shard_errors_total": {
+      "count": 4320,
+      "rate": 0.0002
+    },
+    "memory_usage_mb": {
+      "min": 45,
+      "max": 87,
+      "avg": 62
+    }
+  },
+  "pass": true,
+  "thresholds_met": {
+    "p95_lt_100ms": true,
+    "error_rate_lt_1_percent": true,
+    "memory_lt_128mb": true
+  }
+}

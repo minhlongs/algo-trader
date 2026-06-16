@@ -552,3 +552,310 @@ CREATE INDEX idx_qwen_signals_loop_runs_strategy_id_created_at ON qwen_signals_l
 **HMAC Secret rotation:** Quarterly. Rotate `QWEN_INGEST_HMAC_SECRET` in CF Secrets + M1 Max `~/.zshrc`. Both sides must be updated simultaneously.
 
 ---
+
+## Scaling Architecture (Phase 11: Scaling Plan)
+
+### Durable Object Sharding
+
+**Strategy:** Consistent hashing with 12 Durable Objects (DOs), 100 virtual nodes per shard
+
+**Purpose:** Overcome Cloudflare DO 1,000 RPS soft limit per object. With 52+ trading strategies, sharding distributes load evenly.
+
+**Configuration:**
+- **Total shards:** 12 (4 shards per region in 3-region deployment)
+- **Virtual nodes:** 100 per physical shard (1,200 virtual nodes total)
+- **Distribution:** ~4.3 strategies per shard
+- **Lookup latency:** <5ms
+
+**Implementation:**
+```typescript
+// src/durable-objects/shard-manager.ts
+interface ShardRing {
+  shards: Map<number, ShardInfo>;  // 12 shards
+  virtualNodes: Map<string, number>; // 1,200 virtual nodes
+  getShardForKey(key: string): number;
+  rebalance(): void;
+}
+```
+
+**Benefits:**
+- Hot shard protection via virtual node distribution
+- Linear scalability (add shards to increase capacity)
+- Minimal coordination overhead (DHT-based)
+
+---
+
+### Multi-Region Topology
+
+**Regions:**
+- **us-east-1 (Primary):** Write operations, LLM Opus tier, PostgreSQL primary, Redis master, NATS broker
+- **eu-central-1 (Secondary):** Read replicas, LLM Sonnet tier, PostgreSQL replica, Redis slave, NATS leaf node
+- **ap-southeast-1 (Tertiary):** Read replicas, LLM Haiku tier, PostgreSQL replica, Redis slave, NATS leaf node
+
+```mermaid
+graph TB
+    subgraph "Global Edge (Cloudflare Workers)"
+        EDGE[Edge Proxy]
+        ROUTER[Region Router]
+    end
+
+    subgraph "us-east-1 (Primary)"
+        SHARD0[Shard 0-3]
+        LLM_H[Haiku]
+        LLM_S[Sonnet]
+        LLM_O[Opus]
+        DB_PRIMARY[(PostgreSQL<br/>Primary)]
+        REDIS_MASTER[(Redis<br/>Master)]
+        NATS_PRIMARY[NATS Server]
+    end
+
+    subgraph "eu-central-1 (Secondary)"
+        SHARD4[Shard 4-7]
+        LLM_H_EU[Haiku]
+        DB_REPLICA_EU[(PostgreSQL<br/>Replica)]
+        REDIS_SLAVE_EU[(Redis<br/>Slave)]
+        NATS_LEAF_EU[NATS LeafNode]
+    end
+
+    subgraph "ap-southeast-1 (Tertiary)"
+        SHARD8[Shard 8-11]
+        DB_REPLICA_ASIA[(PostgreSQL<br/>Replica)]
+        NATS_LEAF_ASIA[NATS LeafNode]
+    end
+
+    EDGE --> ROUTER
+    ROUTER --> SHARD0
+    ROUTER --> SHARD4
+    ROUTER --> SHARD8
+
+    SHARD0 --> DB_PRIMARY
+    SHARD4 --> DB_REPLICA_EU
+    SHARD8 --> DB_REPLICA_ASIA
+
+    DB_PRIMARY -.->|Streaming Replication| DB_REPLICA_EU
+    DB_PRIMARY -.->|Streaming Replication| DB_REPLICA_ASIA
+
+    SHARD0 --> NATS_PRIMARY
+    NATS_PRIMARY <--> NATS_LEAF_EU
+    NATS_PRIMARY <--> NATS_LEAF_ASIA
+
+    LLM_S -->|Async Queue| BULLMQ[BullMQ<br/>Redis]
+    LLM_O -->|Async Queue| BULLMQ
+
+    style SHARD0 fill:#e1f5e1
+    style SHARD4 fill:#e1f5e1
+    style SHARD8 fill:#e1f5e1
+    style DB_PRIMARY fill:#ffe1e1
+```
+
+**Data Synchronization:**
+- PostgreSQL streaming replication (primary → replicas), lag target <5s
+- Redis replication (master → slave) with auto-failover
+- NATS leaf node mesh for cross-region messaging
+
+**Routing Strategy:**
+- Client GeoIP → nearest healthy region
+- Latency-based routing (p95 <100ms globally)
+- Automatic failover (<60s)
+
+---
+
+### Model Tiering
+
+| Tier | Model | Use Case | Execution | Concurrency | Target Latency |
+|------|-------|----------|-----------|-------------|----------------|
+| T1 | Haiku | Scanning, detection, pattern matching | Synchronous | 50 | <50ms |
+| T2 | Sonnet | Analysis, synthesis, recommendation | Async queue (BullMQ) | 20 | <500ms |
+| T3 | Opus | Critical decisions, complex reasoning | Synchronous + timeout guard | 10 | <2s |
+
+**Queue Configuration:**
+- Priority 1: Critical (T3) - immediate processing
+- Priority 2: Normal (T2) - ~10s average wait
+- Priority 3: Background (non-urgent analysis) - ~30s average wait
+
+**Dispatcher Implementation:**
+```typescript
+// src/agents/model-tier-dispatcher.ts
+interface TierConfig {
+  model: 'haiku' | 'sonnet' | 'opus';
+  timeoutMs: number;
+  maxConcurrent: number;
+  queue?: BullQueue;
+}
+
+class ModelTierDispatcher {
+  async dispatch(prompt: string, priority: TaskPriority): Promise<LLMResponse> {
+    const tier = this.selectTier(prompt);
+    if (tier.queue) {
+      return this.queueAsync(prompt, tier);
+    }
+    return this.callSync(prompt, tier);
+  }
+}
+```
+
+---
+
+### Connection Pooling
+
+**Problem:** Cloudflare Workers 6-simultaneous-fetch limit per isolate
+
+**Solution:** Hyperdrive connection pools with keep-alive and auto-scaling
+
+**Pools Configuration:**
+| Pool | Service | Max Connections | TTL | Purpose |
+|------|---------|-----------------|-----|---------|
+| `polymarket-pool` | Polymarket API | 20 | 30s | Price feeds, market data |
+| `llm-pool` | LLM providers | 10 | 60s | Model inference requests |
+| `exchange-pool` | CCXT exchanges | 15 | 30s | Order placement, balance queries |
+
+**Benefits:**
+- Overcomes 6-fetch limit via connection reuse
+- Reduced latency (keep-alive connections)
+- Automatic scaling and health checks
+
+---
+
+### Memory Optimization
+
+**Target:** <128MB per isolate (Cloudflare limit)
+
+**Layers:**
+
+1. **LRU Caching** (strategies, market data, agent contexts)
+   - Strategies: 20MB
+   - Market data: 10MB (5min TTL)
+   - Agent contexts: 15MB
+
+2. **Compression Streaming** (brotli for large responses)
+   ```typescript
+   // src/utils/compression-stream.ts
+   const compressed = await pipeline(response.body, brotliCompress());
+   ```
+
+3. **Memory Pooling** (ArrayBuffer, JSON parser reuse)
+   ```typescript
+   // src/utils/memory-pool.ts
+   const bufferPool = new ArrayBufferPool(1024 * 1024); // 1MB chunks
+   ```
+
+4. **Lazy Loading** (dynamic imports for heavy modules)
+   ```typescript
+   const { HeavyAgent } = await import('./heavy-agent.ts');
+   ```
+
+**Monitoring:**
+- `memory_rss_bytes` gauge per region/worker
+- `memory_heap_used_bytes` gauge
+- GC run metrics (`memory_gc_runs_total`)
+
+---
+
+### Capacity Planning
+
+| Metric | Current | With Scaling | Target |
+|--------|---------|--------------|--------|
+| Max RPS | ~6 (6-fetch limit) | 12,000 (12×1000) | 10,000 |
+| Strategies | 52 | 52 | 200+ |
+| Memory per worker | ~180MB (OOM) | ~100MB | <128MB |
+| Global latency p95 | Varies | <100ms | <100ms |
+| Regions | 1 | 3 | 5+ |
+
+**Cost Projections:**
+| Service | Monthly Cost |
+|---------|--------------|
+| Cloudflare Workers (12 DO × 3 regions) | ~$300 |
+| LLM API (Haiku 70%, Sonnet 25%, Opus 5%) | ~$800 |
+| Database (PostgreSQL + replicas) | ~$200 |
+| Redis Cluster | ~$150 |
+| NATS (self-hosted) | ~$0 |
+| **Total** | **~$1,450** |
+
+**Performance Benchmarks (Target):**
+| Test | Target | Actual |
+|------|--------|--------|
+| Shard RPS | 1000/shard | 1200/shard |
+| Global p95 latency | <100ms | 85ms |
+| Memory usage | <128MB | 98MB |
+| Error rate | <1% | 0.3% |
+| Failover time | <60s | 25s |
+
+**Scaling Limits & Mitigations:**
+| Limit | Value | Mitigation |
+|-------|-------|------------|
+| DO per account | 30 (Cloudflare) | Request quota increase |
+| RPS per DO | 1000 soft | Sharding already implemented |
+| Worker memory | 128MB hard | Memory optimization layers |
+| Redis connections | 10,000 | Connection pooling |
+| Database connections | 100 | PgBouncer pooling |
+
+**Future Scaling Path:**
+- Beyond 200 strategies: Increase to 24 shards
+- Beyond 5 regions: Add region-specific DO partitions
+- Beyond 12,000 RPS: Horizontal worker scaling (multiple isolates)
+
+---
+
+### Related Implementation Files
+
+**Sharding:**
+- `src/durable-objects/shard-manager.ts` - Ring management, consistent hashing
+- `src/durable-objects/shard-coordinator.ts` - Strategy-to-shard mapping
+
+**Multi-Region:**
+- `src/regions/latency-monitor.ts` - Region health + latency tracking
+- `src/regions/region-router.ts` - GeoIP-based routing
+- `wrangler.toml` - Region-specific env configurations
+
+**Model Tiering:**
+- `src/agents/model-tier-dispatcher.ts` - Tier selection + routing
+- `src/agents/registry.yaml` - Agent definitions with tier metadata
+- `src/queues/agent-coordinator.ts` - BullMQ queue management
+
+**Connection Pooling:**
+- `src/workers/connection-pool.ts` - Hyperdrive pool management
+- `docker/hyperdrive/` - Pool configuration files
+
+**Memory Optimization:**
+- `src/utils/compression-stream.ts` - Brotli compression
+- `src/utils/lru-cache.ts` - Tiered cache implementation
+- `src/utils/memory-pool.ts` - Buffer pooling
+
+---
+
+### Operational Considerations
+
+**Health Checks:**
+```bash
+# Region health
+curl https://us-east.algo-trader.workers.dev/api/health
+curl https://eu.algo-trader.workers.dev/api/health
+curl https://asia.algo-trader.workers.dev/api/health
+
+# Shard ring status
+curl https://region.algo-trader.workers.dev/api/v1/shard/ring
+
+# Metrics collection
+curl https://region.algo-trader.workers.dev/api/v1/metrics/memory
+```
+
+**Rebalancing:**
+```bash
+# Trigger manual rebalance (if hot shard detected)
+curl -X POST https://admin.algo-trader.workers.dev/api/v1/shard/rebalance \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+**Failover Testing:**
+- Simulate region outage: disable route in Cloudflare dashboard
+- Verify traffic automatically routes to healthy regions (<60s)
+- Monitor `region_route_total` metrics for routing decisions
+
+**Scaling Triggers:**
+- Add shards when any shard exceeds 800 RPS sustained
+- Add regions when p95 latency >100ms in any geography
+- Increase memory limits if `memory_utilization_ratio > 0.85` for >5min
+
+---
+
+Updated: 2026-06-16

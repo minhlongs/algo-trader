@@ -9,6 +9,7 @@
 
 import { PolymarketSigner, PolymarketOrder, SignedOrder } from './polymarket-signer';
 import { createHmac } from 'crypto';
+import { recordExternalApiLatency } from '../middleware/prometheus-metrics';
 
 const CLOB_BASE = 'https://clob.polymarket.com';
 
@@ -153,14 +154,21 @@ export class PolymarketAdapter {
       ...(body ? { body: JSON.stringify(body) } : {}),
     };
 
-    const res = await fetch(url, init);
+    const start = Date.now();
+    try {
+      const res = await fetch(url, init);
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => res.statusText);
-      throw new Error(`Polymarket CLOB error ${res.status}: ${text}`);
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.statusText);
+        throw new Error(`Polymarket CLOB error ${res.status}: ${text}`);
+      }
+
+      return res.json() as Promise<T>;
+    } finally {
+      const latencySec = (Date.now() - start) / 1000;
+      const region = process.env.REGION || 'unknown';
+      recordExternalApiLatency('polymarket', path, region, latencySec);
     }
-
-    return res.json() as Promise<T>;
   }
 
   /** Build auth headers required by Polymarket CLOB API */

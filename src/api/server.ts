@@ -39,6 +39,7 @@ import { onboardingRouter } from './routes/onboarding-routes';
 import { backtestRouter } from './routes/backtest';
 import { credentialsRouter } from './routes/credentials-routes';
 import { adminDnaRouter } from './routes/admin-dna';
+import { rumRouter } from './routes/rum-ingest-routes';
 import { RedisWSAdapter } from './ws-adapter-redis';
 
 export interface ApiConfig {
@@ -196,6 +197,9 @@ this.app.use('/api/admin/dna', adminDnaRouter);
 
     // Webhook routes (no rate limit — external provider callbacks)
     this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);
+
+    // RUM ingestion endpoint (no rate limit, best-effort)
+    this.app.use('/api/rum', rumRouter);
 
     // 404 handler
     this.app.use((_req, res) => {
