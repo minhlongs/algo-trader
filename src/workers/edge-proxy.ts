@@ -204,7 +204,8 @@ export default {
     // Health check
     if (path === '/health' || path === '/api/health') {
       // Region health check endpoint (for latency monitor) - must come first
-      if (path === '/api/health/region') {
+      // Note: region health is at /api/health/region (more specific check)
+      if (path === '/api/health' && url.searchParams.get('region') === 'self') {
         const health = await checkRegionHealth(env.ENVIRONMENT as RegionId);
         return new Response(JSON.stringify({
           region: env.ENVIRONMENT,

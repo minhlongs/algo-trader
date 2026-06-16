@@ -17,20 +17,6 @@ binding = "CACHE"
 id = "6c7199c0259b42db943aa13b200d8ea1"
 preview_id = "ca8f3f11882e426e952e322963077f73"
 
-# Hyperdrive connection pools for backend services
-# Create these with: wrangler hyperdrive create <name>
-[[hyperdrive]]
-binding = "HYPERDRIVE_POLYMARKET"
-id = "hyperdrive-id-placeholder" # Replace with actual Hyperdrive ID
-
-[[hyperdrive]]
-binding = "HYPERDRIVE_LLM_GATEWAY"
-id = "hyperdrive-id-placeholder" # Replace with actual Hyperdrive ID
-
-[[hyperdrive]]
-binding = "HYPERDRIVE_EXCHANGE_API"
-id = "hyperdrive-id-placeholder" # Replace with actual Hyperdrive ID
-
 # Durable Objects - Sharding Architecture
 [[durable_objects.bindings]]
 name = "SHARD_MANAGER"

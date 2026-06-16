@@ -148,11 +148,11 @@ export class StrategyRouter {
         };
       }
 
-      const result = await response.json<{
+      const result = await response.json() as {
         signal: 'BUY' | 'SELL' | 'HOLD';
         confidence: number;
         metadata?: Record<string, unknown>;
-      }>();
+      };
 
       return {
         success: true,
@@ -216,7 +216,7 @@ export class StrategyRouter {
           const url = new URL('/health', 'http://shard.local');
           const response = await stub.fetch(url.toString());
           if (response.ok) {
-            const health = await response.json<{ status: string; strategiesLoaded: number }>();
+            const health = await response.json() as { status: string; strategiesLoaded: number };
             healthStatuses.push({
               shardId,
               status: health.status,

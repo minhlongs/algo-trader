@@ -296,8 +296,13 @@ export const queueWaitTime = new client.Histogram({
  * Extract region from Cloudflare request headers or context
  */
 function getRegionFromRequest(req: Request): string {
-  // CF provides region via cf-colo or custom header
-  return (req.headers.get('cf-colo') as string) || 'unknown';
+  // CF provides region via cf-colo header
+  try {
+    const headers = req.headers as any;
+    return headers.get?.('cf-colo') || 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 /**

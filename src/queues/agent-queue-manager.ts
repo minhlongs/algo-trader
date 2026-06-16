@@ -4,7 +4,7 @@
  * Handles job submission, worker startup, and metrics.
  */
 
-import { Queue, Worker, Job, QueueScheduler, JobOptions } from 'bullmq';
+import { Queue, Worker, Job, JobsOptions } from 'bullmq';
 import Redis from 'ioredis';
 import { recordQueueWaitTime } from '../middleware/prometheus-metrics';
 
@@ -30,14 +30,8 @@ export class AgentQueueManager {
         removeOnFail: { count: 500, age: 24 * 60 * 60 * 1000 },
         attempts: 3,
         backoff: { type: 'exponential', delay: 2000 },
-        timeout: 30000,
+        // timeout removed for BullMQ v5
       },
-    });
-
-    // Queue scheduler for delayed/retry jobs with rate limiting
-    new QueueScheduler(queueName, {
-      connection: this.connection,
-      limiter: { max: rateLimit, duration: 1000 },
     });
   }
 
@@ -47,7 +41,7 @@ export class AgentQueueManager {
    * @param data Job payload
    * @param options BullMQ job options (priority, delay, etc.)
    */
-  async add(name: string, data: any, options?: JobOptions): Promise<Job> {
+  async add(name: string, data: any, options?: JobsOptions): Promise<Job> {
     return await this.queue.add(name, data, options);
   }
 
@@ -77,21 +71,22 @@ export class AgentQueueManager {
         connection: this.connection,
         concurrency: this.concurrency,
         limiter: { max: this.rateLimit, duration: 1000 },
-        settings: { stalledInterval: 30000 },
+        // stalledInterval removed for BullMQ v5
       }
     );
   }
 
   /**
-   * Get queue statistics for monitoring.
+   * Get queue statistics for monitoring (async in BullMQ v5).
    */
-  getQueueStats(): { waiting: number; active: number; completed: number; failed: number } {
-    return {
-      waiting: this.queue.getWaitingCount(),
-      active: this.queue.getActiveCount(),
-      completed: this.queue.getCompletedCount(),
-      failed: this.queue.getFailedCount(),
-    };
+  async getQueueStats(): Promise<{ waiting: number; active: number; completed: number; failed: number }> {
+    const [waiting, active, completed, failed] = await Promise.all([
+      this.queue.getWaitingCount(),
+      this.queue.getActiveCount(),
+      this.queue.getCompletedCount(),
+      this.queue.getFailedCount(),
+    ]);
+    return { waiting, active, completed, failed };
   }
 
   /**

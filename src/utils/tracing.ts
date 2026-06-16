@@ -40,9 +40,10 @@ let _initPromise: Promise<void> | null = null;
  */
 function getCurrentRegion(): string {
   // In Cloudflare Workers, use cf-colo or cf-region
-  if (typeof globalThis !== 'undefined' && globalThis.request) {
-    const req = globalThis.request as Request;
-    const colo = req.headers.get('cf-colo');
+  const globalRequest = (globalThis as any).request as Request | undefined;
+  if (globalRequest) {
+    const headers = globalRequest.headers as any;
+    const colo = headers.get?.('cf-colo') as string | undefined;
     if (colo) return colo;
   }
   return process.env.REGION || 'unknown';

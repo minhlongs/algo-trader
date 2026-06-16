@@ -4,12 +4,21 @@
  * One instance per shard (12 total)
  */
 
-import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
+import { DurableObject, DurableObjectState, DurableObjectNamespace } from '@cloudflare/workers-types';
+// Note: DO env bindings accessed via state.env in runtime but type definition varies.
+// Using 'any' for env access to avoid type errors with bindings.
+
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 import { ShardManager } from './shard-manager';
-import type { IStrategy, StrategySignal } from '../strategies/types';
+import type { IStrategy } from '../strategies/types';
 import { StrategyLoader } from '../strategies/loader';
+
+// Env interface for Durable Object bindings (KV, DO references)
+interface Env {
+  SHARD_MANAGER?: DurableObjectNamespace;
+  [key: string]: any;
+}
 
 export interface ShardExecutionResult {
   success: boolean;
@@ -29,10 +38,11 @@ export interface ShardMetrics {
   lastUpdated: number;
 }
 
-export class StrategyShard implements DurableObject {
+export class StrategyShard {
   private state: DurableObjectState;
   private redis: RedisClientType;
   private shardId: number;
+  private currentEnv?: Env; // Saved from fetch call for alarm() access
 
   // Strategy instances (4-5 per shard)
   private strategies: Map<string, IStrategy> = new Map();
@@ -57,7 +67,7 @@ export class StrategyShard implements DurableObject {
     this.state = state;
     this.redis = getRedisClient();
 
-    // Extract shardId from binding name (SHARD_0, SHARD_1, etc.)
+    // Determine shardId from state.id (consistent hashing)
     this.shardId = this.extractShardId();
 
     this.strategyLoader = new StrategyLoader();
@@ -67,23 +77,17 @@ export class StrategyShard implements DurableObject {
   }
 
   /**
-   * Extract shard ID from binding or configuration
+   * Extract shard ID from Durable Object state.id using consistent hash
+   * DO bindings don't expose binding name; use state.id for deterministic shard mapping
    */
   private extractShardId(): number {
-    const bindingName = this.state.bindingName;
-    if (bindingName?.startsWith('SHARD_')) {
-      const id = parseInt(bindingName.replace('SHARD_', ''), 10);
-      if (!isNaN(id)) return id;
+    const id = this.state.id.toString();
+    let hash = 2166136261 >>> 0; // FNV offset basis
+    for (let i = 0; i < id.length; i++) {
+      hash ^= id.charCodeAt(i);
+      hash = ((hash << 1) + (hash >>> 31) + (hash << 4) + (hash >>> 27)) >>> 0; // FNV prime
     }
-
-    const shardEnv = process.env.SHARD_ID;
-    if (shardEnv) {
-      const id = parseInt(shardEnv, 10);
-      if (!isNaN(id)) return id;
-    }
-
-    logger.warn('[StrategyShard] Could not determine shard ID, defaulting to 0');
-    return 0;
+    return hash % 12;
   }
 
   /**
@@ -152,10 +156,13 @@ export class StrategyShard implements DurableObject {
   }
 
   /**
-   * Register shard health with ShardManager
+   * Register shard health with ShardManager (called after initialization)
    */
   private async registerHealth(): Promise<void> {
-    const shardManager = this.state.env.SHARD_MANAGER as unknown as ShardManager;
+    const env = this.currentEnv;
+    if (!env) return; // Env not available yet
+
+    const shardManager = (env as any).SHARD_MANAGER as ShardManager;
     if (shardManager) {
       await shardManager.updateShardHealth(this.shardId, {
         shardId: this.shardId,
@@ -164,7 +171,7 @@ export class StrategyShard implements DurableObject {
         avgLatencyMs: 0,
         errorCount: 0,
         strategyCount: this.strategies.size,
-        status: 'healthy',
+        status: 'healthy' as const,
       });
     }
   }
@@ -175,15 +182,15 @@ export class StrategyShard implements DurableObject {
   private async restoreMetrics(): Promise<void> {
     try {
       const compressed = await this.state.storage.get<{ data: string; compressed: boolean }>('metrics');
-      if (compressed?.compressed) {
+      if (compressed?.compressed && compressed.data) {
         // Decompress if stored compressed
         const decompressed = await this.decompress(compressed.data);
         this.metrics = JSON.parse(decompressed) as ShardMetrics;
       } else if (compressed?.data) {
         this.metrics = JSON.parse(compressed.data) as ShardMetrics;
       } else if (compressed) {
-        // Legacy format
-        this.metrics = compressed as ShardMetrics;
+        // Legacy format - cast carefully
+        this.metrics = (compressed as unknown) as ShardMetrics;
       }
     } catch (error) {
       logger.error('[StrategyShard] Failed to restore metrics:', error);
@@ -213,18 +220,18 @@ export class StrategyShard implements DurableObject {
   }
 
   /**
-   * Compress string using Brotli
+   * Compress string using gzip (Cloudflare Workers supported)
    */
   private async compress(data: string): Promise<string> {
-    // Use native CompressionStream if available
+    // Use native CompressionStream if available (gzip only)
     if (typeof CompressionStream !== 'undefined') {
       try {
-        const cs = new CompressionStream('br');
+        const cs = new CompressionStream('gzip');
         const writer = cs.writable.getWriter();
         const reader = cs.readable.getReader();
         const encoder = new TextEncoder();
 
-        writer.write(data);
+        writer.write(encoder.encode(data));
         writer.close();
 
         const chunks: Uint8Array[] = [];
@@ -255,7 +262,7 @@ export class StrategyShard implements DurableObject {
   }
 
   /**
-   * Decompress string from storage
+   * Decompress string from storage (gzip)
    */
   private async decompress(compressedData: string): Promise<string> {
     try {
@@ -266,7 +273,7 @@ export class StrategyShard implements DurableObject {
       }
 
       if (typeof DecompressionStream !== 'undefined') {
-        const ds = new DecompressionStream('br');
+        const ds = new DecompressionStream('gzip');
         const writer = ds.writable.getWriter();
         const reader = ds.readable.getReader();
 
@@ -301,9 +308,15 @@ export class StrategyShard implements DurableObject {
   }
 
   /**
-   * Main fetch handler
+   * Main fetch handler - DO entry point
+   * Durable Object fetch signature: (request: Request) => Promise<Response>
+   * Bindings accessed via this.state.env (cast to any for type flexibility)
    */
   async fetch(request: Request): Promise<Response> {
+    // Save env for alarm() access (alarm doesn't receive env parameter)
+    const env = (this.state as any).env as Env;
+    this.currentEnv = env;
+
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -314,7 +327,7 @@ export class StrategyShard implements DurableObject {
 
     // Strategy execution endpoint
     if (path === '/execute' && request.method === 'POST') {
-      return this.handleExecute(request);
+      return this.handleExecute(request, env);
     }
 
     // Metrics endpoint
@@ -338,7 +351,7 @@ export class StrategyShard implements DurableObject {
   /**
    * Handle strategy execution request
    */
-  private async handleExecute(request: Request): Promise<Response> {
+  private async handleExecute(request: Request, env: Env): Promise<Response> {
     // Backpressure check
     if (this.metrics.queueLength >= this.MAX_QUEUE_SIZE) {
       return Response.json(
@@ -359,12 +372,11 @@ export class StrategyShard implements DurableObject {
     this.metrics.queueLength++;
 
     try {
-      const body = await request.json<{
+      const body = await request.json() as {
         strategyId: string;
         marketData: Record<string, unknown>;
         capitalUsdt?: number;
-      }>();
-
+      };
       const { strategyId, marketData } = body;
 
       // Check if strategy is assigned to this shard
@@ -380,8 +392,8 @@ export class StrategyShard implements DurableObject {
       this.activeExecutions++;
 
       try {
-        // Execute strategy
-        const result = this.executeStrategy(strategy, marketData);
+        // Execute strategy (support both sync and async)
+        const result = await this.executeStrategy(strategy, marketData);
         const latencyMs = Date.now() - startTime;
 
         // Update metrics
@@ -391,15 +403,19 @@ export class StrategyShard implements DurableObject {
         this.persistMetrics();
 
         // Report to ShardManager
-        const shardManager = this.state.env.SHARD_MANAGER as unknown as ShardManager;
+        const shardManager = env.SHARD_MANAGER as unknown as ShardManager;
         if (shardManager) {
           shardManager.recordMetrics(this.shardId, latencyMs, true).catch(() => {});
         }
 
         return Response.json({
-          ...result,
-          shardId: this.shardId,
+          success: true,
+          strategyId,
+          signal: result.signal,
+          confidence: result.confidence,
           latencyMs,
+          shardId: this.shardId,
+          metadata: result.metadata,
         } as ShardExecutionResult);
       } finally {
         this.activeExecutions--;
@@ -422,29 +438,30 @@ export class StrategyShard implements DurableObject {
   }
 
   /**
-   * Execute a single strategy (synchronous version)
+   * Execute a single strategy (supports sync and async)
    */
-  private executeStrategy(
+  private async executeStrategy(
     strategy: IStrategy,
     marketData: Record<string, unknown>
-  ): {
+  ): Promise<{
     signal: 'BUY' | 'SELL' | 'HOLD';
     confidence: number;
     metadata?: Record<string, unknown>;
-  } {
+  }> {
     // Check if strategy has execute method
     if (typeof strategy.execute === 'function') {
-      return strategy.execute(marketData);
+      const result = strategy.execute(marketData);
+      return result instanceof Promise ? result : Promise.resolve(result);
     }
 
     // Check for tick-based strategy pattern
     if (typeof strategy.onTick === 'function') {
       const result = strategy.onTick(marketData as any);
-      return {
+      return result instanceof Promise ? result : Promise.resolve({
         signal: result.signal,
         confidence: result.confidence || 0.5,
         metadata: result.metadata,
-      };
+      });
     }
 
     throw new Error('Strategy does not implement execute or onTick');
@@ -504,6 +521,7 @@ export class StrategyShard implements DurableObject {
    */
   async alarm(): Promise<void> {
     try {
+      const status: 'healthy' | 'degraded' = this.activeExecutions < this.MAX_CONCURRENT ? 'healthy' : 'degraded';
       const health = {
         shardId: this.shardId,
         lastHeartbeat: Date.now(),
@@ -514,10 +532,10 @@ export class StrategyShard implements DurableObject {
             : 0,
         errorCount: this.metrics.errors,
         strategyCount: this.strategies.size,
-        status: this.activeExecutions < this.MAX_CONCURRENT ? 'healthy' : 'degraded',
+        status,
       };
 
-      const shardManager = this.state.env.SHARD_MANAGER as unknown as ShardManager;
+      const shardManager = this.currentEnv?.SHARD_MANAGER as unknown as ShardManager;
       if (shardManager) {
         await shardManager.updateShardHealth(this.shardId, health).catch(() => {});
       }

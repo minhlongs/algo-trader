@@ -60,8 +60,7 @@ class LatencyMonitor {
       const res = await fetch(url, {
         method: 'GET',
         cf: { cacheTtl: 0 },
-        signal: AbortSignal.timeout(5000), // 5s timeout
-      });
+      } as any);
 
       const latency = Date.now() - start;
       const success = res.status === 200;

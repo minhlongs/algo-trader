@@ -1,9 +1,9 @@
 /**
  * Agent Coordinator Queue
- * Manages priority-based agent execution using BullMQ
+ * Manages priority-based agent execution using BullMQ v5
  */
 
-import { Queue, Worker, Job, QueueScheduler, JobOptions } from 'bullmq';
+import { Queue, Worker, Job, JobsOptions } from 'bullmq';
 import Redis from 'ioredis';
 
 export enum AgentPriority {
@@ -42,13 +42,10 @@ export interface QueueStats {
 export class AgentCoordinator {
   private queues: Map<AgentPriority, Queue>;
   private connection: Redis;
-  private schedulers: QueueScheduler[];
 
   constructor(redisUrl: string) {
     this.connection = new Redis(redisUrl);
     this.queues = new Map();
-    this.schedulers = [];
-
     this.initQueues();
   }
 
@@ -78,28 +75,18 @@ export class AgentCoordinator {
       const queue = new Queue(config.name, {
         connection: this.connection,
         defaultJobOptions: {
-          removeOnComplete: { count: 100, age: 24 * 60 * 60 * 1000 }, // Keep 100 completed for 24h
-          removeOnFail: { count: 500, age: 24 * 60 * 60 * 1000 }, // Keep 500 failed for 24h
+          removeOnComplete: { count: 100, age: 24 * 60 * 60 * 1000 },
+          removeOnFail: { count: 500, age: 24 * 60 * 60 * 1000 },
           attempts: config.priority === AgentPriority.CRITICAL ? 1 : 3,
           backoff: {
             type: 'exponential',
             delay: config.priority === AgentPriority.BACKGROUND ? 10000 : 2000,
           },
-          timeout: 30000, // 30s default
+          // timeout removed for BullMQ v5
         },
       });
 
       this.queues.set(config.priority, queue);
-
-      // Queue scheduler for delayed/retry jobs
-      const scheduler = new QueueScheduler(config.name, {
-        connection: this.connection,
-        limiter: {
-          max: config.rateLimit,
-          duration: 1000,
-        },
-      });
-      this.schedulers.push(scheduler);
     }
   }
 
@@ -131,12 +118,12 @@ export class AgentCoordinator {
       },
     };
 
-    const jobOptions: JobOptions = {
+    const jobOptions: JobsOptions = {
       priority: context.priority,
     };
 
     const job = await queue.add(agentName, task, jobOptions);
-    return job.id;
+    return job.id!;
   }
 
   /**
@@ -185,17 +172,18 @@ export class AgentCoordinator {
   }
 
   /**
-   * Get queue statistics
+   * Get queue statistics (async in BullMQ v5)
    */
-  getQueueStats(): Map<AgentPriority, QueueStats> {
+  async getQueueStats(): Promise<Map<AgentPriority, QueueStats>> {
     const stats = new Map<AgentPriority, QueueStats>();
     for (const [priority, queue] of this.queues.entries()) {
-      stats.set(priority, {
-        waiting: queue.getWaitingCount(),
-        active: queue.getActiveCount(),
-        completed: queue.getCompletedCount(),
-        failed: queue.getFailedCount(),
-      });
+      const [waiting, active, completed, failed] = await Promise.all([
+        queue.getWaitingCount(),
+        queue.getActiveCount(),
+        queue.getCompletedCount(),
+        queue.getFailedCount(),
+      ]);
+      stats.set(priority, { waiting, active, completed, failed });
     }
     return stats;
   }
@@ -243,14 +231,16 @@ export class AgentCoordinator {
           max: this.getRateLimitForPriority(priority),
           duration: 1000,
         },
-        settings: {
-          stalledInterval: 30000, // Mark job as stalled after 30s
-        },
+        // stalledInterval removed for BullMQ v5 compatibility
       }
     );
 
-    worker.on('failed', (job: Job, error: Error) => {
-      console.error(`[AgentCoordinator] Job ${job.id} failed:`, error.message);
+    worker.on('failed', (job: Job | undefined, error: Error) => {
+      if (job) {
+        console.error(`[AgentCoordinator] Job ${job.id} failed:`, error.message);
+      } else {
+        console.error('[AgentCoordinator] Job failed:', error.message);
+      }
     });
 
     return worker;

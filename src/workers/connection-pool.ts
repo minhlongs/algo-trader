@@ -1,96 +1,97 @@
 /**
- * Connection Pool Manager
- * Manages Hyperdrive connection pools for different services
+ * Connection Pool Manager for External APIs
+ * Uses BullMQ queues for backpressure (6 connections per Worker limit)
+ * NOT using Hyperdrive (database-only). Uses direct fetch with keep-alive.
  */
 
 export interface PoolConfig {
   service: 'polymarket' | 'llm' | 'exchange';
-  maxConnections: number;
-  maxIdle: number;
-  ttl: number;
+  maxConcurrent: number; // per Worker instance (6 max total across all services)
+  queueName: string;
 }
 
 export interface PoolMetrics {
   service: string;
-  activeConnections: number;
-  idleConnections: number;
-  waitQueueLength: number;
+  queuedRequests: number;
+  activeRequests: number;
+  completedRequests: number;
 }
 
 export class ConnectionPoolManager {
-  private pools: Map<string, any>; // Hyperdrive instances
   private config: PoolConfig[];
+  private queues: Map<string, any>; // BullMQ Queue instances
 
   constructor(config: PoolConfig[]) {
     this.config = config;
-    this.pools = new Map();
+    this.queues = new Map();
   }
 
   /**
-   * Initialize pool for a service (called lazily on first use)
+   * Initialize queue for a service (called during worker startup)
    */
-  private getPool(service: string): any {
-    if (!this.pools.has(service)) {
-      throw new Error(`No pool configured for service: ${service}. Call initPool() first.`);
+  initQueue(service: string, queue: any): void {
+    this.queues.set(service, queue);
+  }
+
+  /**
+   * Enqueue a request to be processed by queue consumers
+   * Returns a promise that resolves with the API response
+   */
+  async enqueueRequest(service: string, url: string, options: RequestInit = {}): Promise<Response> {
+    const queue = this.queues.get(service);
+    if (!queue) {
+      throw new Error(`No queue configured for service: ${service}`);
     }
-    return this.pools.get(service);
-  }
 
-  /**
-   * Initialize Hyperdrive pool (to be called during worker startup)
-   * In Cloudflare Workers, Hyperdrive is bound via wrangler.toml
-   */
-  initPool(service: string, hyperdriveBinding: any): void {
-    this.pools.set(service, hyperdriveBinding);
-  }
-
-  /**
-   * Execute fetch using connection pool
-   */
-  async fetchWithPool(service: string, url: string, options: RequestInit = {}): Promise<Response> {
-    const pool = this.getPool(service);
-    const request = new Request(url, {
-      ...options,
-      // Hyperdrive handles connection reuse automatically
-      cf: { cacheTtl: 0 } as any,
+    // Add to queue with priority (if provided)
+    const job = await queue.add('api-request', {
+      url,
+      method: options.method || 'GET',
+      headers: options.headers,
+      body: options.body,
     });
-    return await pool.fetch(request);
+
+    // Wait for job completion (result is the Response JSON)
+    const result = await job.finished();
+    return new Response(JSON.stringify(result), {
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   /**
-   * Get metrics for all pools
+   * Get metrics for all queues
    */
   getMetrics(): PoolMetrics[] {
     const metrics: PoolMetrics[] = [];
-    for (const [service, pool] of this.pools.entries()) {
-      const config = this.config.find(c => c.service === service);
+    for (const config of this.config) {
+      const queue = this.queues.get(config.service);
       metrics.push({
-        service,
-        activeConnections: config?.maxConnections || 0,
-        idleConnections: config?.maxIdle || 0,
-        waitQueueLength: 0, // Hyperdrive manages internally
+        service: config.service,
+        queuedRequests: queue?.getWaitingCount() || 0,
+        activeRequests: queue?.getActiveCount() || 0,
+        completedRequests: queue?.getCompletedCount() || 0,
       });
     }
     return metrics;
   }
 
   /**
-   * Check if pool exists
+   * Check if queue exists
    */
-  hasPool(service: string): boolean {
-    return this.pools.has(service);
+  hasQueue(service: string): boolean {
+    return this.queues.has(service);
   }
 }
 
-// Singleton instance for global use
+// Singleton instance
 let globalPoolManager: ConnectionPoolManager | null = null;
 
 export function getConnectionPoolManager(): ConnectionPoolManager {
   if (!globalPoolManager) {
     globalPoolManager = new ConnectionPoolManager([
-      { service: 'polymarket', maxConnections: 20, maxIdle: 10, ttl: 30 },
-      { service: 'llm', maxConnections: 10, maxIdle: 5, ttl: 60 },
-      { service: 'exchange', maxConnections: 15, maxIdle: 8, ttl: 30 },
+      { service: 'polymarket', maxConcurrent: 6, queueName: 'polymarket-queue' },
+      { service: 'llm', maxConcurrent: 6, queueName: 'llm-queue' },
+      { service: 'exchange', maxConcurrent: 6, queueName: 'exchange-queue' },
     ]);
   }
   return globalPoolManager;

@@ -7,7 +7,8 @@ import { Router, Request, Response } from 'express';
 import { logger } from '../../utils/logger';
 import { externalApiLatency } from '../../middleware/prometheus-metrics';
 
-export const rumRouter = Router();
+// Explicit type to avoid circular dependency type errors
+export const rumRouter: ReturnType<typeof Router> = Router();
 
 /**
  * POST /api/rum/ingest

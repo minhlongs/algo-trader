@@ -142,19 +142,31 @@ Internal testing performed:
 
 ---
 
-## Recommendations
+## Secret Management (Cloudflare Workers)
 
-1. **High Priority**
-   - Add request size limits to prevent DoS
-   - Schedule external pentest within 30 days of PSF transition
+All production secrets are managed via Cloudflare Workers Secrets:
 
-2. **Medium Priority**
-   - Implement request signing for internal service-to-service calls
-   - Add IP allowlist for admin routes (optional)
+- `POLAR_API_TOKEN` - Polar.sh payment integration
+- `BETTER_AUTH_SECRET` - Authentication signing secret
+- `NATS_TOKEN` - NATS messaging authentication
+- `DB_PASSWORD` - Database connection password
+- `LICENSE_ACTIVATION_SECRET` - License system activation
+- `LICENSE_ENCRYPTION_KEY` - License encryption key
+- `QWEN_INGEST_HMAC_SECRET` - Signal ingestion HMAC
 
-3. **Low Priority**
-   - Rotate all secrets post-deployment (best practice)
-   - Enable Cloudflare WAF managed rules
+Local development uses `.env` file with placeholder values `set-via-cloudflare-secret`. Production Cloudflare Worker retrieves these via `env.SECRET_NAME`.
+
+### Rotation Procedure
+
+1. Generate new secret value (use `openssl rand -hex 32` for 32-byte secrets)
+2. Update Cloudflare: `wrangler secret put SECRET_NAME` (paste new value)
+3. Deploy Cloudflare Worker: `wrangler deploy`
+4. Update any dependent systems with new secret (e.g., M1 Max daemon for HMAC secrets)
+5. Verify application functionality with new secret
+6. Invalidate old secret (Cloudflare automatically replaces)
+7. Document rotation in security changelog
+
+**Rotation Frequency:** Every 90 days for API keys, immediately if compromise suspected.
 
 ---
 

@@ -118,58 +118,60 @@ wrangler secret put LLM_API_KEY --env us-east
 
 ---
 
-### Step 2: Create Hyperdrive Connection Pools
+### Step 2: Configure Redis for Queue-Based Connection Pooling
 
-Hyperdrive overcomes the 6-simultaneous-fetch limit by managing connection pools:
+**Note:** Hyperdrive (database connection pooler) is not used. Instead, we use BullMQ queues with Redis for backpressure management to handle Cloudflare Workers' 6-simultaneous-fetch limit.
+
+#### Redis Setup
+
+Deploy Redis cluster (Upstash, AWS ElastiCache, or self-hosted):
 
 ```bash
-# Create pool for Polymarket API
-wrangler hyperdrive create polymarket-pool \
-  --config ./hyperdrive/polymarket.json \
-  --env us-east
-
-# Create pool for LLM inference
-wrangler hyperdrive create llm-pool \
-  --config ./hyperdrive/llm.json \
-  --env us-east
-
-# Create pool for exchange connections
-wrangler hyperdrive create exchange-pool \
-  --config ./hyperdrive/exchange.json \
-  --env us-east
+# Example: Upstash Redis
+# Create a Redis database with at least 1GB memory
+# Get connection string: rediss://<username>:<password>@<host>:<port>
 ```
 
-**hyperdrive/polymarket.json:**
-```json
-{
-  "host": "api.polymarket.com",
-  "port": 443,
-  "maxIdleTime": 30000,
-  "poolSize": 20
-}
+Update `wrangler.toml` with Redis connection:
+
+```toml
+[vars]
+REDIS_URL = "rediss://username:password@host:port"
 ```
 
-**hyperdrive/llm.json:**
-```json
-{
-  "host": "api.anthropic.com",
-  "port": 443,
-  "maxIdleTime": 60000,
-  "poolSize": 10
-}
+#### Queue-Based Connection Pool Architecture
+
+The `ConnectionPoolManager` (src/workers/connection-pool.ts) uses BullMQ queues:
+
+- **polymarket-queue**: For Polymarket API requests (max concurrency 6)
+- **llm-queue**: For LLM gateway requests (max concurrency 6)  
+- **exchange-queue**: For exchange API requests (max concurrency 6)
+
+Each queue has dedicated workers that respect Cloudflare's 6-fetch limit per Worker instance. Requests are enqueued and processed asynchronously with backpressure.
+
+No additional wrangler configuration needed — queues are initialized at runtime using `REDIS_URL`.
+
+1. Navigate to Cloudflare Dashboard → Workers & Pages → Hyperdrive
+2. Click "Create configuration" for each service with these settings:
+
+| Configuration | Host | Port | Pool Size | Max Idle Time (ms) |
+|---------------|------|------|-----------|-------------------|
+| polymarket | api.polymarket.com | 443 | 20 | 30000 |
+| llm-gateway | api.anthropic.com | 443 | 10 | 60000 |
+| exchange-api | exchange-api.ccxt | 443 | 15 | 30000 |
+
+3. Copy each configuration ID and update `wrangler.toml` as shown above.
+
+#### Verification
+
+After updating `wrangler.toml`, validate the configuration:
+```bash
+wrangler validate
 ```
 
-**hyperdrive/exchange.json:**
-```json
-{
-  "host": "exchange-api.ccxt",
-  "port": 443,
-  "maxIdleTime": 30000,
-  "poolSize": 15
-}
-```
+Expected output: `Validated successfully!`
 
-Repeat for `eu-central` and `ap-southeast` environments.
+**Important:** Hyperdrive configurations are account-scoped. You only need to create them once per account, not per environment. The same IDs work across all region deployments (us-east, eu-central, ap-southeast).
 
 ---
 

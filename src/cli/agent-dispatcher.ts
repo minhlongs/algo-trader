@@ -126,7 +126,7 @@ export class ModelTierDispatcher {
       return result;
     } catch (error) {
       const latency = Date.now() - start;
-      span.recordException(error);
+      span.recordException(error as any);
       span.setAttributes({
         'agent.latency_ms': latency,
         'agent.success': false,

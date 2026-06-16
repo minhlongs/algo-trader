@@ -36,7 +36,7 @@ export interface ShardMetrics {
   lastUpdated: number;
 }
 
-export class ShardManager implements DurableObject {
+export class ShardManager {
   private state: DurableObjectState;
   private redis: RedisClientType;
 
