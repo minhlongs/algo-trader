@@ -1,8 +1,10 @@
 /**
- * NegRiskDashboardPage — Negative Risk Scanner dashboard.
- * Dark theme, cyan accents, stats cards + data table + threshold control.
+ * NegRiskDashboardPage — CashClaw Negative Risk Scanner Dashboard
+ * Design: Google Stitch generated — High-Fidelity Fintech design system
+ * Colors: surface #051424, primary #4cd7f6, primary-container #06b6d4
  */
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useEffect, useCallback } from "react";
 
 export interface NegRiskOpportunity {
   id: string;
@@ -20,9 +22,26 @@ export interface NegRiskStats {
   activeTrades: number;
 }
 
+const COLORS = {
+  bg: "#051424",
+  surface: "#122131",
+  surfaceHigh: "#1c2b3c",
+  surfaceContainer: "#0d1c2d",
+  outline: "#3d494c",
+  primary: "#4cd7f6",
+  primaryContainer: "#06b6d4",
+  onSurface: "#d4e4fa",
+  onSurfaceVariant: "#bcc9cd",
+  onPrimary: "#003640",
+} as const;
+
 export function NegRiskDashboardPage() {
   const [opportunities, setOpportunities] = useState<NegRiskOpportunity[]>([]);
-  const [stats, setStats] = useState<NegRiskStats>({ opportunitiesFound: 0, lockedProfit: 0, activeTrades: 0 });
+  const [stats, setStats] = useState<NegRiskStats>({
+    opportunitiesFound: 0,
+    lockedProfit: 0,
+    activeTrades: 0,
+  });
   const [threshold, setThreshold] = useState(0.98);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,164 +50,475 @@ export function NegRiskDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      // Call neg-risk-scan CLI via backend API
-      const res = await fetch(`/dashboard/api/neg-risk-scan?threshold=${threshold}`);
+      const res = await fetch(
+        `/dashboard/api/neg-risk-scan?threshold=${threshold}`
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = (await res.json()) as {
+        opportunities?: NegRiskOpportunity[];
+        stats?: NegRiskStats;
+      };
       setOpportunities(data.opportunities ?? []);
-      setStats(data.stats ?? { opportunitiesFound: 0, lockedProfit: 0, activeTrades: 0 });
+      setStats(
+        data.stats ?? {
+          opportunitiesFound: 0,
+          lockedProfit: 0,
+          activeTrades: 0,
+        }
+      );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
-      // Demo data fallback
+      setError(e instanceof Error ? e.message : "Failed to load");
       setOpportunities(getDemoData());
-      setStats({ opportunitiesFound: 5, lockedProfit: 1247.50, activeTrades: 3 });
+      setStats({
+        opportunitiesFound: 5,
+        lockedProfit: 1247.5,
+        activeTrades: 3,
+      });
     } finally {
       setLoading(false);
     }
   }, [threshold]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleTrade = (opp: NegRiskOpportunity) => {
-    alert(`Trade initiated for ${opp.marketName}\nLocked profit: ${opp.lockedProfitPct.toFixed(2)}%`);
+    alert(
+      `Trade initiated for ${opp.marketName}\nLocked profit: ${(opp.lockedProfitPct * 100).toFixed(2)}%`
+    );
   };
 
   return (
-    <div className="min-h-screen bg-bg p-4 md:p-6 lg:p-8">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-accent tracking-tight">CashClaw</h1>
-          <p className="text-muted text-sm mt-1">Negative Risk Scanner</p>
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
+    >
+      {/* Top Navigation Bar */}
+      <header
+        className="fixed top-0 left-0 z-50 flex justify-between items-center px-6 h-16 border-b"
+        style={{
+          backgroundColor: COLORS.bg,
+          borderColor: COLORS.outline,
+        }}
+      >
+        <div className="flex items-center gap-6">
+          <span
+            className="text-2xl font-bold tracking-tighter"
+            style={{ color: COLORS.primary }}
+          >
+            CashClaw
+          </span>
+          <nav className="hidden md:flex items-center gap-6">
+            <span
+              className="text-xs font-bold tracking-wider border-b-2 pb-1 cursor-pointer"
+              style={{ color: COLORS.primary, borderColor: COLORS.primary }}
+            >
+              Dashboard
+            </span>
+            <span
+              className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white"
+              style={{ color: COLORS.onSurfaceVariant }}
+            >
+              Strategies
+            </span>
+            <span
+              className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white"
+              style={{ color: COLORS.onSurfaceVariant }}
+            >
+              Settings
+            </span>
+          </nav>
         </div>
-        <nav className="hidden md:flex items-center gap-6 text-sm">
-          <span className="text-accent cursor-pointer">Dashboard</span>
-          <span className="text-muted hover:text-white cursor-pointer transition-colors">Strategies</span>
-          <span className="text-muted hover:text-white cursor-pointer transition-colors">Settings</span>
-        </nav>
       </header>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <StatCard label="Opportunities Found" value={stats.opportunitiesFound.toString()} icon="🔍" />
-        <StatCard label="Locked Profit" value={`$${stats.lockedProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} icon="💰" />
-        <StatCard label="Active Trades" value={stats.activeTrades.toString()} icon="⚡" />
-      </div>
-
-      {/* Main Content: Table + Sidebar */}
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Table */}
-        <div className="flex-1 min-w-0">
-          <div className="bg-bg-card border border-bg-border rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-bg-border">
-              <h2 className="text-white font-semibold text-base">Market Opportunities</h2>
-              <button
-                onClick={fetchData}
-                disabled={loading}
-                className="px-4 py-2 bg-accent/10 text-accent border border-accent/30 rounded-lg text-sm font-medium hover:bg-accent/20 transition-colors disabled:opacity-50"
-              >
-                {loading ? 'Scanning...' : 'Refresh'}
-              </button>
-            </div>
-            {error && <div className="p-3 text-loss text-sm bg-loss/10 border-b border-bg-border">{error}</div>}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-muted text-xs uppercase tracking-wider border-b border-bg-border">
-                    <th className="px-4 py-3 text-left font-medium">Market</th>
-                    <th className="px-4 py-3 text-right font-medium">YES Ask</th>
-                    <th className="px-4 py-3 text-right font-medium">NO Ask</th>
-                    <th className="px-4 py-3 text-right font-medium">Sum</th>
-                    <th className="px-4 py-3 text-right font-medium">Locked Profit</th>
-                    <th className="px-4 py-3 text-center font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {opportunities.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-muted">
-                        {loading ? 'Scanning markets...' : 'No arbitrage opportunities found'}
-                      </td>
-                    </tr>
-                  ) : opportunities.map((opp) => (
-                    <tr key={opp.id} className="border-b border-bg-border hover:bg-bg-card/80 transition-colors">
-                      <td className="px-4 py-3 text-white font-mono text-xs">{opp.marketName}</td>
-                      <td className="px-4 py-3 text-right font-mono text-muted">${opp.yesAsk.toFixed(3)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-muted">${opp.noAsk.toFixed(3)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-white">{opp.sum.toFixed(3)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono font-semibold text-profit">{(opp.lockedProfitPct * 100).toFixed(2)}%</span>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => handleTrade(opp)}
-                          className="px-3 py-1.5 bg-accent text-bg rounded-md text-xs font-bold hover:bg-accent/90 transition-colors"
-                        >
-                          Trade
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+      {/* Sidebar */}
+      <aside
+        className="fixed left-0 top-16 h-[calc(100vh-64px)] w-60 flex flex-col p-4 border-r z-40"
+        style={{
+          backgroundColor: COLORS.surface,
+          borderColor: COLORS.outline,
+        }}
+      >
+        <div className="mb-6">
+          <h2
+            className="text-base font-semibold"
+            style={{ color: COLORS.primary }}
+          >
+            Risk Control
+          </h2>
+          <p
+            className="text-[12px] opacity-70"
+            style={{ color: COLORS.onSurfaceVariant }}
+          >
+            Negative Risk Engine
+          </p>
         </div>
+        <nav className="flex flex-col gap-1 flex-grow">
+          {[
+            { icon: "radar", label: "Scanner" },
+            { icon: "account_balance_wallet", label: "Portfolio" },
+            { icon: "history", label: "History" },
+            { icon: "settings", label: "Settings" },
+          ].map((item) => (
+            <a
+              key={item.label}
+              className="flex items-center gap-3 p-2 rounded-lg transition-all cursor-pointer"
+              style={{ color: COLORS.onSurfaceVariant }}
+              href="#"
+            >
+              <span
+                className="text-[20px]"
+                style={{ fontFamily: "Material Symbols Outlined" }}
+              >
+                {item.icon}
+              </span>
+              <span className="text-xs font-bold tracking-wider">
+                {item.label}
+              </span>
+            </a>
+          ))}
+        </nav>
+        <div className="mt-auto pt-4 border-t" style={{ borderColor: COLORS.outline }}>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="w-full py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            style={{
+              backgroundColor: COLORS.primary,
+              color: COLORS.onPrimary,
+            }}
+          >
+            <span
+              className="text-[20px]"
+              style={{ fontFamily: "Material Symbols Outlined" }}
+            >
+              refresh
+            </span>
+            <span className="text-xs font-bold tracking-wider">
+              {loading ? "Scanning..." : "Refresh Scan"}
+            </span>
+          </button>
+        </div>
+      </aside>
 
-        {/* Sidebar */}
-        <div className="w-full lg:w-72 shrink-0">
-          <div className="bg-bg-card border border-bg-border rounded-xl p-5">
-            <h3 className="text-white font-semibold text-sm mb-4">Control Panel</h3>
-            <div className="mb-6">
-              <label className="block text-muted text-xs mb-2">
-                Risk Threshold: <span className="text-accent font-mono">{threshold.toFixed(2)}</span>
-              </label>
-              <input
-                type="range"
-                min="0.90"
-                max="0.99"
-                step="0.01"
-                value={threshold}
-                onChange={(e) => setThreshold(parseFloat(e.target.value))}
-                className="w-full h-2 bg-bg-border rounded-lg appearance-none cursor-pointer accent-accent"
-              />
-              <div className="flex justify-between text-[10px] text-muted mt-1">
-                <span>0.90</span>
-                <span>0.99</span>
+      {/* Main Content */}
+      <main className="pt-24 pb-8 lg:pl-60 px-6">
+        <div className="max-w-[1200px] mx-auto space-y-6">
+          {/* Stats Row */}
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <StatCard
+              label="Opportunities Found"
+              value={stats.opportunitiesFound.toString()}
+              trend="+3"
+              color={COLORS.primary}
+            />
+            <StatCard
+              label="Locked Profit"
+              value={`$${stats.lockedProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              color={COLORS.primary}
+            />
+            <StatCard
+              label="Active Trades"
+              value={stats.activeTrades.toString()}
+              sub="/ 10 Limit"
+              color={COLORS.primary}
+            />
+          </section>
+
+          {/* Market Scanner Table */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h3
+                className="text-xl font-semibold"
+                style={{ color: COLORS.onSurface }}
+              >
+                Market Scanner
+              </h3>
+              <div className="flex items-center gap-2">
+                <span
+                  className="h-2 w-2 rounded-full animate-pulse"
+                  style={{ backgroundColor: COLORS.primary }}
+                />
+                <span
+                  className="text-[11px] font-bold tracking-wider"
+                  style={{ color: COLORS.onSurfaceVariant }}
+                >
+                  LIVE FEED
+                </span>
               </div>
             </div>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="w-full py-2.5 bg-accent text-bg rounded-lg font-bold text-sm hover:bg-accent/90 transition-colors disabled:opacity-50"
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{ backgroundColor: COLORS.surface }}
             >
-              {loading ? 'Scanning...' : 'Refresh Scan'}
-            </button>
-          </div>
+              <div
+                className="overflow-x-auto"
+                style={{
+                  scrollbarWidth: "thin",
+                  scrollbarColor: `${COLORS.outline} ${COLORS.surfaceContainer}`,
+                }}
+              >
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr
+                      className="border-b"
+                      style={{
+                        backgroundColor: COLORS.surfaceHigh,
+                        borderColor: COLORS.outline,
+                      }}
+                    >
+                      <th
+                        className="p-4 text-[11px] font-bold tracking-wider"
+                        style={{ color: COLORS.onSurfaceVariant }}
+                      >
+                        Market Name
+                      </th>
+                      <th
+                        className="p-4 text-[11px] font-bold tracking-wider text-right"
+                        style={{ color: COLORS.onSurfaceVariant }}
+                      >
+                        YES Ask
+                      </th>
+                      <th
+                        className="p-4 text-[11px] font-bold tracking-wider text-right"
+                        style={{ color: COLORS.onSurfaceVariant }}
+                      >
+                        NO Ask
+                      </th>
+                      <th
+                        className="p-4 text-[11px] font-bold tracking-wider text-right"
+                        style={{ color: COLORS.onSurfaceVariant }}
+                      >
+                        Sum
+                      </th>
+                      <th
+                        className="p-4 text-[11px] font-bold tracking-wider text-right"
+                        style={{ color: COLORS.onSurfaceVariant }}
+                      >
+                        Profit
+                      </th>
+                      <th
+                        className="p-4 text-[11px] font-bold tracking-wider text-right"
+                        style={{ color: COLORS.onSurfaceVariant }}
+                      >
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {opportunities.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={6}
+                          className="p-12 text-center text-sm"
+                          style={{ color: COLORS.onSurfaceVariant }}
+                        >
+                          {loading ? "Scanning markets..." : "No arbitrage opportunities found"}
+                        </td>
+                      </tr>
+                    ) : (
+                      opportunities.map((opp) => (
+                        <tr
+                          key={opp.id}
+                          className="border-b transition-colors group"
+                          style={{
+                            borderColor: `${COLORS.outline}4D`,
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor =
+                              COLORS.surfaceHigh)
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = "transparent")
+                          }
+                        >
+                          <td
+                            className="p-4 text-sm"
+                            style={{ color: COLORS.onSurface }}
+                          >
+                            {opp.marketName}
+                          </td>
+                          <td
+                            className="p-4 text-sm text-right"
+                            style={{
+                              fontFamily: "JetBrains Mono, monospace",
+                              color: COLORS.onSurface,
+                            }}
+                          >
+                            {opp.yesAsk.toFixed(3)}
+                          </td>
+                          <td
+                            className="p-4 text-sm text-right"
+                            style={{
+                              fontFamily: "JetBrains Mono, monospace",
+                              color: COLORS.onSurface,
+                            }}
+                          >
+                            {opp.noAsk.toFixed(3)}
+                          </td>
+                          <td
+                            className="p-4 text-sm text-right"
+                            style={{
+                              fontFamily: "JetBrains Mono, monospace",
+                              color: COLORS.primary,
+                            }}
+                          >
+                            {opp.sum.toFixed(3)}
+                          </td>
+                          <td
+                            className="p-4 text-sm text-right"
+                            style={{
+                              fontFamily: "JetBrains Mono, monospace",
+                              color: COLORS.primary,
+                            }}
+                          >
+                            ${opp.lockedProfit.toFixed(2)}
+                          </td>
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => handleTrade(opp)}
+                              className="px-4 py-1.5 rounded text-[10px] font-bold tracking-wider transition-all hover:opacity-90"
+                              style={{
+                                backgroundColor: `${COLORS.primary}1A`,
+                                border: `1px solid ${COLORS.primary}`,
+                                color: COLORS.primary,
+                              }}
+                            >
+                              Trade
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: string; icon: string }) {
+function StatCard({
+  label,
+  value,
+  trend,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string;
+  trend?: string;
+  sub?: string;
+  color: string;
+}) {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-xl p-5 hover:border-accent/30 transition-colors">
-      <div className="flex items-center gap-3 mb-2">
-        <span className="text-lg">{icon}</span>
-        <span className="text-muted text-xs uppercase tracking-wider">{label}</span>
+    <div
+      className="rounded-xl p-4 flex flex-col gap-1 relative overflow-hidden group"
+      style={{ backgroundColor: COLORS.surface }}
+    >
+      <div
+        className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-all group-hover:opacity-100"
+        style={{ backgroundColor: `${color}0D`, opacity: 0.5 }}
+      />
+      <span
+        className="text-[11px] font-bold tracking-wider"
+        style={{ color: COLORS.onSurfaceVariant }}
+      >
+        {label}
+      </span>
+      <div className="flex items-baseline gap-2">
+        <span
+          className="text-[32px] leading-none"
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            color,
+            fontWeight: 500,
+          }}
+        >
+          {value}
+        </span>
+        {trend && (
+          <span
+            className="text-sm flex items-center"
+            style={{ color }}
+          >
+            <span style={{ fontFamily: "Material Symbols Outlined" }}>
+              trending_up
+            </span>
+            {trend}
+          </span>
+        )}
       </div>
-      <p className="text-white font-mono font-bold text-2xl">{value}</p>
+      {sub && (
+        <span
+          className="text-xs mt-3"
+          style={{ color: COLORS.onSurfaceVariant }}
+        >
+          {sub}
+        </span>
+      )}
+      {!sub && !trend && (
+        <div
+          className="w-full h-1 rounded-full mt-3 overflow-hidden"
+          style={{ backgroundColor: COLORS.surfaceHigh }}
+        >
+          <div className="h-full rounded-full" style={{ backgroundColor: color, width: "65%" }} />
+        </div>
+      )}
     </div>
   );
 }
 
 function getDemoData(): NegRiskOpportunity[] {
   return [
-    { id: '1', marketName: 'BTC > $100K by 2026', yesAsk: 0.482, noAsk: 0.491, sum: 0.973, lockedProfit: 0.027, lockedProfitPct: 0.027 },
-    { id: '2', marketName: 'ETH ETF Approved', yesAsk: 0.355, noAsk: 0.612, sum: 0.967, lockedProfit: 0.033, lockedProfitPct: 0.033 },
-    { id: '3', marketName: 'Fed Rate Cut Jun 2026', yesAsk: 0.728, noAsk: 0.248, sum: 0.976, lockedProfit: 0.024, lockedProfitPct: 0.024 },
-    { id: '4', marketName: 'Trump Wins 2028', yesAsk: 0.421, noAsk: 0.553, sum: 0.974, lockedProfit: 0.026, lockedProfitPct: 0.026 },
-    { id: '5', marketName: 'AI Regulation Passes', yesAsk: 0.389, noAsk: 0.587, sum: 0.976, lockedProfit: 0.024, lockedProfitPct: 0.024 },
+    {
+      id: "1",
+      marketName: "BTC > $100K by 2026",
+      yesAsk: 0.482,
+      noAsk: 0.491,
+      sum: 0.973,
+      lockedProfit: 0.027,
+      lockedProfitPct: 0.027,
+    },
+    {
+      id: "2",
+      marketName: "ETH ETF Approved",
+      yesAsk: 0.355,
+      noAsk: 0.612,
+      sum: 0.967,
+      lockedProfit: 0.033,
+      lockedProfitPct: 0.033,
+    },
+    {
+      id: "3",
+      marketName: "Fed Rate Cut Jun 2026",
+      yesAsk: 0.728,
+      noAsk: 0.248,
+      sum: 0.976,
+      lockedProfit: 0.024,
+      lockedProfitPct: 0.024,
+    },
+    {
+      id: "4",
+      marketName: "Trump Wins 2028",
+      yesAsk: 0.421,
+      noAsk: 0.553,
+      sum: 0.974,
+      lockedProfit: 0.026,
+      lockedProfitPct: 0.026,
+    },
+    {
+      id: "5",
+      marketName: "AI Regulation Passes",
+      yesAsk: 0.389,
+      noAsk: 0.587,
+      sum: 0.976,
+      lockedProfit: 0.024,
+      lockedProfitPct: 0.024,
+    },
   ];
 }
