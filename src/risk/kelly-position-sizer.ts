@@ -22,12 +22,14 @@ export interface KellySizingInput {
   winLossRatio: number;       // average win / average loss (e.g., 1.5 means win 1.5x of loss)
   portfolioValue: number;     // total portfolio in USD
   currentExposure?: number;   // current total exposure in USD (optional)
+  correlation?: number;       // correlation with existing positions, 0-1 (optional, default 0)
 }
 
 export interface KellySizingResult {
   positionSizeUsd: number;
   kellyRaw: number;           // raw Kelly fraction (before multiplier)
   kellyAdjusted: number;      // after applying kellyFraction multiplier
+  correlation: number;        // correlation factor applied (0-1)
   cappedByMax: boolean;       // true if position was capped by maxPositionFraction
   cappedByManaged: boolean;   // true if managed capital cap applied
   fractionUsed: number;       // actual fraction used
@@ -40,22 +42,25 @@ const MAX_KELLY_FRACTION = 0.5;
 
 export class KellyPositionSizer {
   private config: KellyConfig;
+  private readonly managedCapApplied: boolean;
 
   constructor(config?: Partial<KellyConfig>) {
     const envFraction = parseFloat(process.env.KELLY_FRACTION || '');
     const requestedFraction = config?.kellyFraction ?? (isNaN(envFraction) ? 0.25 : envFraction);
-
     const clampedFraction = Math.max(MIN_KELLY_FRACTION, Math.min(MAX_KELLY_FRACTION, requestedFraction));
+
+    const isManagedCapital = config?.isManagedCapital ?? false;
+    this.managedCapApplied = isManagedCapital && clampedFraction > MANAGED_CAPITAL_MAX_FRACTION;
+    const finalFraction = this.managedCapApplied ? MANAGED_CAPITAL_MAX_FRACTION : clampedFraction;
+
     this.config = {
-      kellyFraction: clampedFraction,
+      kellyFraction: finalFraction,
       maxPositionFraction: config?.maxPositionFraction ?? 0.05,
       minPositionUsd: config?.minPositionUsd ?? 10,
-      isManagedCapital: config?.isManagedCapital ?? false,
+      isManagedCapital,
     };
 
-    // Managed capital: ALWAYS cap at quarter-Kelly regardless of config
-    if (this.config.isManagedCapital && this.config.kellyFraction > MANAGED_CAPITAL_MAX_FRACTION) {
-      this.config.kellyFraction = MANAGED_CAPITAL_MAX_FRACTION;
+    if (this.managedCapApplied) {
       logger.info(`[KellySizer] Managed capital: fraction capped at ${MANAGED_CAPITAL_MAX_FRACTION}`);
     }
   }
@@ -63,6 +68,7 @@ export class KellyPositionSizer {
   /** Calculate optimal position size using Kelly criterion */
   calculatePositionSize(input: KellySizingInput): KellySizingResult {
     const { winProbability, winLossRatio, portfolioValue } = input;
+    const correlation = input.correlation ?? 0;
 
     // Validate inputs
     if (winProbability <= 0 || winProbability >= 1 || winLossRatio <= 0 || portfolioValue <= 0) {
@@ -82,18 +88,15 @@ export class KellyPositionSizer {
     }
 
     // Apply fraction multiplier (quarter-Kelly by default)
-    let fractionUsed = this.config.kellyFraction;
-    let cappedByManaged = false;
-
-    if (this.config.isManagedCapital && fractionUsed > MANAGED_CAPITAL_MAX_FRACTION) {
-      fractionUsed = MANAGED_CAPITAL_MAX_FRACTION;
-      cappedByManaged = true;
-    }
+    const fractionUsed = this.config.kellyFraction;
+    const cappedByManaged = this.managedCapApplied;
 
     const kellyAdjusted = kellyRaw * fractionUsed;
 
+    // Apply correlation adjustment (reduce position for correlated exposure)
+    let positionFraction = kellyAdjusted * (1 - correlation);
+
     // Apply max position cap (5% of portfolio)
-    let positionFraction = kellyAdjusted;
     let cappedByMax = false;
 
     if (positionFraction > this.config.maxPositionFraction) {
@@ -112,6 +115,7 @@ export class KellyPositionSizer {
       positionSizeUsd,
       kellyRaw,
       kellyAdjusted,
+      correlation,
       cappedByMax,
       cappedByManaged,
       fractionUsed,
@@ -125,8 +129,8 @@ export class KellyPositionSizer {
 
   private zeroResult(_portfolioValue: number): KellySizingResult {
     return {
-      positionSizeUsd: 0, kellyRaw: 0, kellyAdjusted: 0,
-      cappedByMax: false, cappedByManaged: false,
+      positionSizeUsd: 0, kellyRaw: 0, kellyAdjusted: 0, correlation: 0,
+      cappedByMax: false, cappedByManaged: this.managedCapApplied,
       fractionUsed: this.config.kellyFraction, portfolioPercent: 0,
     };
   }
