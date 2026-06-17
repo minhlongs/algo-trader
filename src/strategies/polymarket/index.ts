@@ -98,3 +98,9 @@ export type { SpreadMeanReversionConfig, SpreadMeanReversionDeps } from './sprea
 
 export { createVolatilityTargetingTick } from './volatility-targeting.js';
 export type { VolatilityTargetingConfig, VolatilityTargetingDeps } from './volatility-targeting.js';
+
+export { createNegativeRiskScannerTick } from './negative-risk-scanner.js';
+export type {
+  NegativeRiskScannerConfig,
+  NegativeRiskScannerDeps,
+} from './negative-risk-scanner.js';

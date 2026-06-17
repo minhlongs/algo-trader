@@ -13,6 +13,8 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { runNegRiskScan } from '../commands/neg-risk-scan.js';
+
 const program = new Command()
   .name('cashclaw')
   .description('AI-powered Polymarket trading bot')
@@ -139,6 +141,22 @@ program
       console.error('Scan failed:', (err as Error).message);
       process.exit(1);
     }
+  });
+
+// ─── neg-risk-scan command ─────────────────────────────────────────────────────
+
+program
+  .command('neg-risk-scan')
+  .description('Scan for negative risk arbitrage opportunities (YES+NO sum < threshold)')
+  .option('--threshold <t>', 'Sum threshold (e.g., 0.98)', '0.98')
+  .option('--minVolume <v>', 'Minimum market volume (USDC)', '1000')
+  .option('--maxSize <s>', 'Max opportunity size per leg (USDC)', '10')
+  .action(async (opts) => {
+    await runNegRiskScan({
+      threshold: parseFloat(opts.threshold),
+      minVolumeUsdc: parseFloat(opts.minVolume),
+      maxOpportunitySizeUsdc: parseFloat(opts.maxSize),
+    });
   });
 
 program
