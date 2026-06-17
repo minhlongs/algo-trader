@@ -18,7 +18,7 @@ import { SignupPage } from './pages/signup-page';
 import { DocsPage } from './pages/docs-page';
 import { GuidePage } from './pages/guide-page';
 import { AccountPage } from './pages/account-page';
-import { CouponAdminPage } from './pages/coupon-admin-page';
+import { NegRiskDashboardPage } from './pages/neg-risk-dashboard-page';
 import { SetupGuidePage } from './pages/setup-guide-page';
 import { TermsPage } from './pages/terms-page';
 import { PrivacyPage } from './pages/privacy-page';
@@ -59,6 +59,7 @@ export function App() {
         <Route path="/app/account" element={<AuthGuard><LayoutShell><AccountPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/coupons" element={<AuthGuard><LayoutShell><CouponAdminPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/setup" element={<AuthGuard><LayoutShell><SetupGuidePage /></LayoutShell></AuthGuard>} />
+      <Route path="/app/neg-risk" element={<AuthGuard><LayoutShell><NegRiskDashboardPage /></LayoutShell></AuthGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
