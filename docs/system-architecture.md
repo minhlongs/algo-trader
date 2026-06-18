@@ -58,10 +58,32 @@ graph TD
 **Dashboard** (`dashboard/`):
 - React 19 + TypeScript 5.9 + Tailwind CSS 3.4, dark trading terminal theme.
 - Vite 6, Zustand 5 state, lightweight-charts (TradingView).
+- Stitch design system: shared UI primitives (stitch-button, stitch-card, stitch-input, etc.) with dark theme + cyan accents.
 
-**Pages**: DashboardPage, BacktestsPage, MarketplacePage, SettingsPage, ReportingPage.
+**Pages**: DashboardPage, BacktestsPage, MarketplacePage, SettingsPage, ReportingPage, AccountPage, GuidePage, SetupGuidePage, LicensePage, CouponAdminPage, NegRiskDashboardPage, RiskSettingsPage.
 
-**Components**: SidebarNavigation, PriceTickerStrip, PositionsTableSortable, SpreadOpportunitiesCardGrid.
+**Components**: SidebarNavigation, PriceTickerStrip, PositionsTableSortable, SpreadOpportunitiesCardGrid, SignalsPanel, TradeHistoryFeed, TerminalLogsWidget.
+
+**Risk Management UX** (`dashboard/src/components/risk/`):
+- **RiskGauge** — SVG semi-circle gauge showing portfolio risk level (0-100%).
+- **ExposureHeatmap** — Grid visualization of market exposure by asset with tooltip.
+- **PnlSparkline** — Mini SVG chart showing recent P&L trajectory with risk zone markers.
+- **ProactiveControlsPanel** — Auto-close rules + circuit breaker configuration.
+- **AutoCloseForm** — Profit target, stop loss, trailing stop inputs with validation.
+- **CircuitBreakerForm** — Drawdown threshold, consecutive losses, cooldown period.
+- **WhatIfCalculator** — Position size P&L estimator using Kelly Criterion.
+- **ConfidenceScore** — Signal confidence bar (0-100%) with color coding.
+- **DecisionAidsPanel** — Combined what-if + confidence display for trade decisions.
+
+**Notifications** (`dashboard/src/components/notifications/`):
+- **ToastContainer** — Fixed stacking container with severity-based styling.
+- **ToastItem** — Individual toast with icon, content, action buttons, auto-dismiss.
+- **NotificationPreferencesForm** — User preferences for email, push, sound, severity threshold.
+
+**State Management**:
+- **RiskPreferencesStore** — Zustand + localStorage persist for all risk settings (auto-close, circuit breaker, alerts, dashboard widgets, confidence thresholds).
+- **NotificationsStore** — Zustand + localStorage persist for notification queue and preferences.
+- **NegRiskScannerStore** — Extended with `shouldAutoClosePosition()` and `isCircuitBreakerTriggered()` integration.
 
 **Hooks**: `useWebSocketPriceFeed` (25ms buffered Zustand updates), `useApiClient` (typed fetch).
 

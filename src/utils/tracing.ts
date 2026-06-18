@@ -137,7 +137,7 @@ export function resetTracingForTests(): void {
 export function getActiveSpan(): Span | null {
   // Try to get from global OTel API if available
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const otelApi = require('@opentelemetry/api');
     const active = otelApi.trace.getActiveSpan();
     return active ? (active as unknown as Span) : null;

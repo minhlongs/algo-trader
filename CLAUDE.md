@@ -161,3 +161,57 @@ See `.claude/skills/mekong-harness/SKILL.md` for full skill documentation.
 | Date | Change | Target | Reason |
 |------|--------|---------|--------|
 | 2026-06-08 | Initial harness build | All | Bootstrap --auto --parallel |
+
+## Production Deployment
+
+**DO NOT** deploy to production without:
+- [ ] All scaling phases complete (1-11)
+- [ ] Integration tests passing (`npx vitest run tests/integration`)
+- [ ] Load test 12k RPS validated (see `scripts/load-test-sharding.ts`)
+- [ ] ME IDEA PSF gate approved (`/mekong gates`)
+- [ ] On-call engineer notified
+
+### Deployment Commands
+
+```bash
+# 1. Final integration check
+node scripts/final-integration-check.js
+
+# 2. Deploy regions sequentially
+./scripts/deploy-region.sh us-east
+./scripts/deploy-region.sh eu-central
+./scripts/deploy-region.sh ap-southeast
+
+# 3. Verify multi-region health
+./scripts/verify-multi-region.sh
+
+# 4. Post-deployment smoke tests
+curl https://algo-trader.workers.dev/api/health
+curl https://us-east.algo-trader.workers.dev/api/v1/shard/ring | jq
+```
+
+### Rollback (L1 Kill Switch)
+
+```bash
+# Disable multi-region routing
+curl -X POST https://algo-trader.workers.dev/api/admin/rollback/kill/MULTI_REGION \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Disable sharding
+curl -X POST https://algo-trader.workers.dev/api/admin/rollback/kill/SHARDING \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+### Post-Deployment
+
+1. Monitor Grafana dashboards for 2 hours
+2. Verify SLA: p95 <100ms, error rate <1%, memory <115MB
+3. Update goal state: `/mekong artifact scale-ready platform-operations "Production deployed"`
+4. Document any incidents in post-mortem
+
+### References
+
+- Production Rollout Plan: `docs/production-rollout-plan.md`
+- Load Test Scripts: `scripts/load-test-*.ts`
+- CI/CD Workflow: `.github/workflows/ci.yml`
+- Runbook Index: `docs/runbook-index.md`

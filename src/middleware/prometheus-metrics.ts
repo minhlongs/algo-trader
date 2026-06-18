@@ -14,7 +14,14 @@ import { annotateActiveSpanWithRegion } from '../utils/tracing';
 const register = new client.Registry();
 
 // Add default metrics (CPU, memory, event loop, etc.)
-client.collectDefaultMetrics({ register });
+// Skip in Cloudflare Workers - process metrics not available
+if (typeof process !== 'undefined' && process.versions?.node) {
+  try {
+    client.collectDefaultMetrics({ register });
+  } catch (e) {
+    logger.warn('Failed to collect default metrics (expected in Workers):', { error: String(e) });
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom Metrics - Trading Specific
