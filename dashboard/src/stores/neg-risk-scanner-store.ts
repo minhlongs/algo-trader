@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { useRiskPreferencesStore } from './risk-preferences-store';
+import { useTradingStore } from './trading-store';
+import { TradeRecord, Position } from './trading-store';
 
 export interface NegRiskOpportunity {
   id: string;
@@ -24,6 +27,9 @@ interface NegRiskScannerState {
   lastRefresh: number;
   fetchOpportunities: (threshold: number) => Promise<void>;
   executeTrade: (id: string) => void;
+  // Integration methods
+  shouldAutoClosePosition: (position: Position) => boolean;
+  isCircuitBreakerTriggered: () => boolean;
 }
 
 const emptyStats: NegRiskScannerStats = {
@@ -93,5 +99,36 @@ export const useNegRiskScannerStore = create<NegRiskScannerState>()((set) => ({
       },
       opportunities: state.opportunities.filter((opp) => opp.id !== id),
     }));
+  },
+
+  shouldAutoClosePosition: (position: Position): boolean => {
+    const prefs = useRiskPreferencesStore.getState();
+    if (!prefs.autoCloseEnabled) return false;
+
+    // Check max loss per trade (position.pnl is negative for loss)
+    if (position.pnl <= -prefs.maxLossPerTrade) {
+      return true;
+    }
+
+    // Check position size relative to portfolio (simplified: need portfolio value)
+    // For now, skip position size check as it requires total equity
+    return false;
+  },
+
+  isCircuitBreakerTriggered: (): boolean => {
+    const prefs = useRiskPreferencesStore.getState();
+    if (!prefs.circuitBreakerEnabled) return false;
+
+    const trading = useTradingStore.getState();
+    // Check consecutive losses from recent trades
+    const recentTrades = [...trading.trades].slice(0, prefs.maxConsecutiveLosses);
+    const consecutiveLosses = recentTrades.filter((t: TradeRecord) => t.pnl < 0).length;
+    if (consecutiveLosses >= prefs.maxConsecutiveLosses) {
+      return true;
+    }
+
+    // Check max drawdown (simplified: compare dailyPnl to threshold)
+    // Could use botStatus.dailyPnl if available
+    return false;
   },
 }));

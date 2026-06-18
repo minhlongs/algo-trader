@@ -6,6 +6,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { COLORS } from "../lib/stitch-design-tokens";
+import { ProactiveControlsPanel } from "../components/risk/ProactiveControlsPanel";
+import { DecisionAidsPanel } from "../components/risk/DecisionAidsPanel";
+import { useNotificationsStore } from "../stores/notifications-store";
 
 export interface NegRiskOpportunity {
   id: string;
@@ -33,7 +36,8 @@ export function NegRiskDashboardPage() {
   const [threshold, setThreshold] = useState(0.98);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+
+  const addNotification = useNotificationsStore((state) => state.addNotification);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -73,9 +77,13 @@ export function NegRiskDashboardPage() {
   }, [fetchData]);
 
   const handleTrade = (opp: NegRiskOpportunity) => {
-    const msg = `Trade initiated for ${opp.marketName} · Locked profit: ${(opp.lockedProfitPct * 100).toFixed(2)}%`;
-    setToast(msg);
-    setTimeout(() => setToast(null), 3500);
+    addNotification({
+      type: 'success',
+      severity: 'medium',
+      title: 'Trade Initiated',
+      message: `Trade initiated for ${opp.marketName} · Locked profit: ${(opp.lockedProfitPct * 100).toFixed(2)}%`,
+      duration: 3500,
+    });
   };
 
   return (
@@ -83,26 +91,6 @@ export function NegRiskDashboardPage() {
       className="min-h-screen"
       style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
     >
-      {toast && (
-        <div
-          className="fixed top-20 right-6 z-[60] max-w-sm rounded-lg border px-4 py-3 text-sm shadow-lg"
-          style={{ backgroundColor: `${COLORS.surfaceHigh}ee`, borderColor: `${COLORS.primary}66`, color: COLORS.onSurface }}
-          role="status"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <span>{toast}</span>
-            <button
-              type="button"
-              onClick={() => setToast(null)}
-              className="opacity-70 hover:opacity-100"
-              aria-label="Dismiss notification"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Top Navigation Bar */}
       <header
         className="fixed top-0 left-0 z-50 flex justify-between items-center px-6 h-16 border-b"
@@ -264,6 +252,16 @@ export function NegRiskDashboardPage() {
               {error}
             </div>
           )}
+
+          {/* Proactive Controls */}
+          <section>
+            <ProactiveControlsPanel />
+          </section>
+
+          {/* Decision Aids */}
+          <section>
+            <DecisionAidsPanel />
+          </section>
 
           {/* Market Scanner Table */}
           <section>

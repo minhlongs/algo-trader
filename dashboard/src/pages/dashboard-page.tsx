@@ -24,6 +24,9 @@ import { PriceTickerStrip } from '../components/price-ticker-strip';
 import { SpreadOpportunitiesCardGrid } from '../components/spread-opportunities-card-grid';
 import { SignalsPanel } from '../components/signals-panel';
 import { TradeHistoryFeed } from '../components/trade-history-feed';
+import { RiskGauge } from '../components/ui/risk-gauge';
+import { ExposureHeatmap } from '../components/ui/exposure-heatmap';
+import { PnlSparkline } from '../components/ui/pnl-sparkline';
 
 import { DashboardHeader } from './dashboard-header';
 import { DashboardWidgetsGrid } from './dashboard-widgets-grid';
@@ -180,6 +183,50 @@ export function DashboardPage() {
         <StitchCard className="p-0 overflow-hidden">
           {pnlLoading ? <TradeHistorySkeleton /> : <TradeHistoryFeed trades={trades} />}
         </StitchCard>
+      </section>
+
+      {/* Risk Overview Section */}
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.onSurface }}>
+          <span className="w-1.5 h-3.5 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+          Risk Overview
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StitchCard className="p-4 flex flex-col items-center">
+            <div className="mb-2 text-xs" style={{ color: COLORS.onSurfaceVariant }}>Portfolio Risk</div>
+            <RiskGauge
+              value={Math.min(positions.length / 10, 1)}
+              threshold={0.8}
+              size="md"
+            />
+          </StitchCard>
+          <StitchCard className="p-4">
+            <div className="mb-2 text-xs" style={{ color: COLORS.onSurfaceVariant }}>Exposure Heatmap</div>
+            <ExposureHeatmap
+              data={positions.map((p: any) => ({
+                marketId: p.id,
+                marketName: p.symbol,
+                exposure: p.pnl,
+                notional: p.amount * p.buyPrice,
+              }))}
+            />
+          </StitchCard>
+          <StitchCard className="p-4">
+            <div className="mb-2 text-xs" style={{ color: COLORS.onSurfaceVariant }}>Cumulative P&L</div>
+            <PnlSparkline
+              values={trades
+                .slice()
+                .sort((a: any, b: any) => a.timestamp - b.timestamp)
+                .reduce((acc: number[], t: any) => {
+                  const prev = acc.length > 0 ? acc[acc.length - 1] : 0;
+                  acc.push(prev + t.pnl);
+                  return acc;
+                }, [])}
+              width={300}
+              height={100}
+            />
+          </StitchCard>
+        </div>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

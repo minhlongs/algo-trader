@@ -4,6 +4,7 @@
  */
 import React, { useState, useMemo } from 'react';
 import type { Signal } from '../types/api';
+import { ConfidenceScore } from './risk/ConfidenceScore';
 
 interface SignalsPanelProps {
   signals: Signal[];
@@ -26,6 +27,22 @@ const SignalsTable = React.memo(function SignalsTable({
   onSort,
   getSortIcon,
 }: SignalsTableProps) {
+  const calculateConfidence = (signal: Signal): number => {
+    const now = Date.now();
+    const age = now - signal.timestamp;
+
+    // Spread score: higher spread = higher confidence (target 0.5% spread = 1.0)
+    const spreadScore = Math.min(signal.spread / 0.005, 1);
+
+    // Latency score: lower latency = higher confidence (<50ms = 1, >200ms = 0)
+    const latencyScore = Math.max(0, 1 - (Math.max(0, signal.latency - 50)) / 150);
+
+    // Age score: fresher = higher confidence (<30s = 1, >120s = 0)
+    const ageScore = Math.max(0, 1 - (Math.max(0, age - 30000)) / 90000);
+
+    return (spreadScore + latencyScore + ageScore) / 3;
+  };
+
   return (
     <table className="w-full text-xs">
       <thead className="bg-bg-subtle text-muted uppercase tracking-wider">
@@ -47,48 +64,55 @@ const SignalsTable = React.memo(function SignalsTable({
           >
             {getSortIcon('latency')} Latency (ms)
           </th>
+          <th className="px-4 py-2 text-right font-medium">Confidence</th>
           <th className="px-4 py-2 text-right font-medium">Age</th>
         </tr>
       </thead>
       <tbody>
         {signals.length === 0 ? (
           <tr>
-            <td colSpan={8} className="px-4 py-8 text-center text-muted">
+            <td colSpan={9} className="px-4 py-8 text-center text-muted">
               No arbitrage opportunities found
             </td>
           </tr>
         ) : (
-          signals.map((signal) => (
-            <tr
-              key={signal.id}
-              className="border-t border-bg-border hover:bg-bg-subtle/50"
-            >
-              <td className="px-4 py-3 font-semibold text-white">
-                {signal.symbol}
-              </td>
-              <td className="px-4 py-3 text-muted">
-                {signal.buyExchange}
-              </td>
-              <td className="px-4 py-3 text-muted">
-                {signal.sellExchange}
-              </td>
-              <td className="px-4 py-3 text-right text-profit">
-                ${signal.buyPrice.toFixed(2)}
-              </td>
-              <td className="px-4 py-3 text-right text-loss">
-                ${signal.sellPrice.toFixed(2)}
-              </td>
-              <td className="px-4 py-3 text-right font-semibold text-accent">
-                {signal.spread.toFixed(3)}%
-              </td>
-              <td className="px-4 py-3 text-right text-muted">
-                {signal.latency}
-              </td>
-              <td className="px-4 py-3 text-right text-muted">
-                {formatAge(signal.timestamp)}
-              </td>
-            </tr>
-          ))
+          signals.map((signal) => {
+            const confidence = calculateConfidence(signal);
+            return (
+              <tr
+                key={signal.id}
+                className="border-t border-bg-border hover:bg-bg-subtle/50"
+              >
+                <td className="px-4 py-3 font-semibold text-white">
+                  {signal.symbol}
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  {signal.buyExchange}
+                </td>
+                <td className="px-4 py-3 text-muted">
+                  {signal.sellExchange}
+                </td>
+                <td className="px-4 py-3 text-right text-profit">
+                  ${signal.buyPrice.toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right text-loss">
+                  ${signal.sellPrice.toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-right font-semibold text-accent">
+                  {signal.spread.toFixed(3)}%
+                </td>
+                <td className="px-4 py-3 text-right text-muted">
+                  {signal.latency}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <ConfidenceScore score={confidence} size="small" />
+                </td>
+                <td className="px-4 py-3 text-right text-muted">
+                  {formatAge(signal.timestamp)}
+                </td>
+              </tr>
+            );
+          })
         )}
       </tbody>
     </table>
