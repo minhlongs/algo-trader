@@ -28,6 +28,16 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    label: 'Neg Risk',
+    path: '/app/neg-risk',
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    ),
+  },
+  {
     label: 'Strategies',
     path: '/app/strategies',
     icon: (

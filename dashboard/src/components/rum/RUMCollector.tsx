@@ -71,7 +71,7 @@ export class RUMCollector {
     try {
       const observer = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.initiatorType === 'fetch' || entry.initiatorType === 'xmlhttprequest') {
+          if (entry instanceof PerformanceResourceTiming && (entry.initiatorType === 'fetch' || entry.initiatorType === 'xmlhttprequest')) {
             if (this.shouldSample()) {
               this.metrics.push({
                 name: 'api_call',

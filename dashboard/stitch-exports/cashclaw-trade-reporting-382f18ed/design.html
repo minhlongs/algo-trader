@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CashClaw Trade Reporting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#22d3ee',
+                        surface: '#031427',
+                        'surface-bright': '#2a3a4f',
+                        'surface-container-low': '#0b1c30',
+                        'on-surface': '#f8fafc',
+                        'on-surface-variant': '#94a3b8',
+                        'outline-variant': '#1e293b',
+                        'success': '#22d3ee',
+                        'error': '#f43f5e',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #031427; color: #f8fafc; }
+        .sidebar-active { border-right: 2px solid #22d3ee; color: #22d3ee; font-weight: 700; background: rgba(34, 211, 238, 0.05); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-64 flex flex-col border-r border-outline-variant bg-surface-container-low">
+        <div class="p-8">
+            <h1 class="text-2xl font-bold text-primary">CashClaw</h1>
+            <p class="text-xs text-on-surface-variant mt-1">Terminal v1.0</p>
+        </div>
+
+        <nav class="flex-1 px-4 space-y-2">
+            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-bright transition-colors">
+                <span class="material-icons">dashboard</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg sidebar-active transition-colors">
+                <span class="material-icons">analytics</span>
+                <span>Reports</span>
+            </a>
+            <a href="#" class="flex items-center space-x-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-bright transition-colors">
+                <span class="material-icons">settings</span>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <div class="p-6 border-t border-outline-variant">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-surface-bright flex items-center justify-center border border-primary/20">
+                    <span class="material-icons text-primary">person</span>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold">quant_user_01</p>
+                    <p class="text-[10px] text-primary uppercase tracking-wider">Pro Tier</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-y-auto bg-surface">
+        
+        <!-- Top Bar -->
+        <header class="h-16 flex items-center justify-between px-8 border-b border-outline-variant shrink-0">
+            <div class="relative w-96">
+                <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+                <input type="text" placeholder="Search orders, symbols, or dates..." 
+                    class="w-full bg-surface-container-low border border-outline-variant rounded-md py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-primary">
+            </div>
+            
+            <div class="flex items-center space-x-6">
+                <div class="flex items-center bg-surface-container-low border border-outline-variant rounded-md px-3 py-1.5 text-xs">
+                    <span class="material-icons text-on-surface-variant text-sm mr-2">calendar_today</span>
+                    <span>2023-10-01 — 2023-10-31</span>
+                </div>
+                <button class="relative text-on-surface-variant hover:text-primary transition-colors">
+                    <span class="material-icons">notifications</span>
+                    <span class="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></span>
+                </button>
+                <button class="flex items-center space-x-2 bg-primary text-surface px-4 py-2 rounded font-bold text-sm hover:opacity-90 transition-opacity">
+                    <span class="material-icons text-sm">file_download</span>
+                    <span>Export</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-8">
+            
+            <!-- Summary Stats -->
+            <div class="grid grid-cols-4 gap-6">
+                <div class="bg-surface-container-low border border-outline-variant p-6 rounded-lg">
+                    <p class="text-xs text-on-surface-variant font-semibold mb-2">Total PnL</p>
+                    <h2 class="text-3xl font-bold text-primary">+$12,450.20</h2>
+                    <p class="text-[10px] text-primary mt-2 flex items-center">
+                        <span class="material-icons text-[12px] mr-1">trending_up</span>
+                        +14.2% from last month
+                    </p>
+                </div>
+                <div class="bg-surface-container-low border border-outline-variant p-6 rounded-lg">
+                    <p class="text-xs text-on-surface-variant font-semibold mb-2">Win Rate</p>
+                    <h2 class="text-3xl font-bold">68.5%</h2>
+                    <div class="w-full bg-surface-bright h-1.5 mt-4 rounded-full overflow-hidden">
+                        <div class="bg-primary h-full" style="width: 68.5%"></div>
+                    </div>
+                </div>
+                <div class="bg-surface-container-low border border-outline-variant p-6 rounded-lg">
+                    <p class="text-xs text-on-surface-variant font-semibold mb-2">Avg Size</p>
+                    <h2 class="text-3xl font-bold">0.52 <span class="text-base text-on-surface-variant">BTC</span></h2>
+                    <p class="text-[10px] text-on-surface-variant mt-2">Standard deviation: 0.12</p>
+                </div>
+                <div class="bg-surface-container-low border border-outline-variant p-6 rounded-lg">
+                    <p class="text-xs text-on-surface-variant font-semibold mb-2">Total Trades</p>
+                    <h2 class="text-3xl font-bold">1,248</h2>
+                    <p class="text-[10px] text-on-surface-variant mt-2">Active: 4 | Closed: 1,244</p>
+                </div>
+            </div>
+
+            <!-- Trade History Section -->
+            <div class="bg-surface-container-low border border-outline-variant rounded-lg overflow-hidden">
+                <div class="p-6 flex items-center justify-between border-b border-outline-variant">
+                    <h3 class="flex items-center text-sm font-bold uppercase tracking-widest">
+                        <span class="material-icons mr-2 text-primary">history</span>
+                        Trade History
+                    </h3>
+                    <div class="flex bg-surface border border-outline-variant p-1 rounded">
+                        <button class="px-3 py-1 text-[10px] font-bold bg-primary text-surface rounded shadow-sm">ALL</button>
+                        <button class="px-3 py-1 text-[10px] font-bold text-on-surface-variant hover:text-on-surface">CRYPTO</button>
+                        <button class="px-3 py-1 text-[10px] font-bold text-on-surface-variant hover:text-on-surface">FOREX</button>
+                    </div>
+                </div>
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] text-on-surface-variant uppercase tracking-wider border-b border-outline-variant">
+                            <th class="px-6 py-3 font-semibold">Date / Time</th>
+                            <th class="px-6 py-3 font-semibold">Pair</th>
+                            <th class="px-6 py-3 font-semibold">Side</th>
+                            <th class="px-6 py-3 font-semibold">Size</th>
+                            <th class="px-6 py-3 font-semibold text-right">PNL</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-xs">
+                        <tr class="border-b border-outline-variant/30 hover:bg-surface-bright/20 transition-colors">
+                            <td class="px-6 py-4 text-on-surface-variant">2023-10-24 14:02:11</td>
+                            <td class="px-6 py-4 font-bold">BTC/USDT</td>
+                            <td class="px-6 py-4"><span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-bold">LONG</span></td>
+                            <td class="px-6 py-4">1.20 BTC</td>
+                            <td class="px-6 py-4 text-right text-primary font-bold">+$842.10</td>
+                        </tr>
+                        <tr class="border-b border-outline-variant/30 hover:bg-surface-bright/20 transition-colors">
+                            <td class="px-6 py-4 text-on-surface-variant">2023-10-24 11:45:03</td>
+                            <td class="px-6 py-4 font-bold">ETH/USDT</td>
+                            <td class="px-6 py-4"><span class="bg-error/10 text-error border border-error/20 px-2 py-0.5 rounded text-[10px] font-bold">SHORT</span></td>
+                            <td class="px-6 py-4">15.0 ETH</td>
+                            <td class="px-6 py-4 text-right text-error font-bold">-$120.44</td>
+                        </tr>
+                        <tr class="border-b border-outline-variant/30 hover:bg-surface-bright/20 transition-colors">
+                            <td class="px-6 py-4 text-on-surface-variant">2023-10-23 21:30:55</td>
+                            <td class="px-6 py-4 font-bold">SOL/USDT</td>
+                            <td class="px-6 py-4"><span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-bold">LONG</span></td>
+                            <td class="px-6 py-4">240.0 SOL</td>
+                            <td class="px-6 py-4 text-right text-primary font-bold">+$1,452.00</td>
+                        </tr>
+                        <tr class="border-b border-outline-variant/30 hover:bg-surface-bright/20 transition-colors">
+                            <td class="px-6 py-4 text-on-surface-variant">2023-10-23 18:12:22</td>
+                            <td class="px-6 py-4 font-bold">BTC/USDT</td>
+                            <td class="px-6 py-4"><span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded text-[10px] font-bold">LONG</span></td>
+                            <td class="px-6 py-4">0.45 BTC</td>
+                            <td class="px-6 py-4 text-right text-on-surface-variant font-bold">$0.00</td>
+                        </tr>
+                        <tr class="border-b border-outline-variant/30 hover:bg-surface-bright/20 transition-colors">
+                            <td class="px-6 py-4 text-on-surface-variant">2023-10-23 09:05:41</td>
+                            <td class="px-6 py-4 font-bold">DOT/USDT</td>
+                            <td class="px-6 py-4"><span class="bg-error/10 text-error border border-error/20 px-2 py-0.5 rounded text-[10px] font-bold">SHORT</span></td>
+                            <td class="px-6 py-4">1,100 DOT</td>
+                            <td class="px-6 py-4 text-right text-primary font-bold">+$214.50</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="p-4 flex items-center justify-between text-[10px] text-on-surface-variant border-t border-outline-variant/30">
+                    <p>Showing 1-8 of 1,248 entries</p>
+                    <div class="flex items-center space-x-1">
+                        <button class="p-1 hover:text-on-surface"><span class="material-icons text-sm">chevron_left</span></button>
+                        <button class="w-6 h-6 flex items-center justify-center bg-primary text-surface rounded font-bold">1</button>
+                        <button class="w-6 h-6 flex items-center justify-center hover:bg-surface-bright rounded">2</button>
+                        <button class="w-6 h-6 flex items-center justify-center hover:bg-surface-bright rounded">3</button>
+                        <span>...</span>
+                        <button class="w-6 h-6 flex items-center justify-center hover:bg-surface-bright rounded">156</button>
+                        <button class="p-1 hover:text-on-surface"><span class="material-icons text-sm">chevron_right</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Section (Chart + Status) -->
+            <div class="grid grid-cols-3 gap-6">
+                <!-- PNL Curve -->
+                <div class="col-span-2 bg-surface-container-low border border-outline-variant rounded-lg p-6 flex flex-col h-72">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xs font-bold uppercase tracking-widest">PNL Cumulative Curve</h3>
+                        <div class="flex items-center text-[10px] text-on-surface-variant">
+                            <span class="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
+                            Live Updates: On
+                        </div>
+                    </div>
+                    <div class="flex-1 flex items-end space-x-2 relative">
+                        <!-- Simplified Histogram visualization -->
+                        <div class="flex-1 bg-primary/20 h-[10%] rounded-t-sm"></div>
+                        <div class="flex-1 bg-primary/20 h-[15%] rounded-t-sm"></div>
+                        <div class="flex-1 bg-primary/20 h-[12%] rounded-t-sm"></div>
+                        <div class="flex-1 bg-primary/30 h-[25%] rounded-t-sm"></div>
+                        <div class="flex-1 bg-primary/30 h-[20%] rounded-t-sm"></div>
+                        <div class="flex-1 bg-primary/40 h-[45%] rounded-t-sm"></div>
+                        <div class="flex-1 bg-primary/60 h-[80%] rounded-t-sm relative">
+                            <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface border border-primary px-2 py-1 rounded text-[10px] font-bold whitespace-nowrap">
+                                Peak +$12.4k
+                            </div>
+                        </div>
+                        <div class="flex-1 bg-primary/20 h-[5%] rounded-t-sm"></div>
+                    </div>
+                </div>
+
+                <!-- Terminal Status -->
+                <div class="bg-surface-container-low border border-outline-variant rounded-lg p-6 flex flex-col h-72">
+                    <h3 class="text-xs font-bold uppercase tracking-widest mb-6">Terminal Status</h3>
+                    <div class="space-y-4 flex-1">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-on-surface-variant">API Connection</span>
+                            <span class="text-primary flex items-center">
+                                <span class="w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>
+                                OPERATIONAL
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-on-surface-variant">Latency</span>
+                            <span>14ms</span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-on-surface-variant">Sync Frequency</span>
+                            <span>100ms</span>
+                        </div>
+                    </div>
+                    <button class="w-full py-2 border border-outline-variant rounded text-[10px] font-bold uppercase tracking-widest hover:bg-surface-bright transition-colors">
+                        View System Logs
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>

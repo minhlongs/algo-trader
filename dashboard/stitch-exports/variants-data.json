@@ -1,0 +1,653 @@
+{
+  "projectId": "978273184525412913",
+  "sessionId": "6611610205218036335",
+  "outputComponents": [
+    {
+      "design": {
+        "screens": [
+          {
+            "screenshot": {
+              "name": "projects/978273184525412913/files/37debddbd6c143db9df3cafff31994c3",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AP1WRLtKBSZI9m7cBwlfoFn69fOwgymYbLBpV32IIARydHBOptln-dNZzEpzsV6DwQEYIewyejI-MksU3CmxlFc67ECYrsuJRRiXXkAXCEg8Yw_Cp0DKj6II_XNv3ChVJ_5AQf_Eb2-wTG2gGIZZVenAlF4QiPZC0lbNFhyvzNOKDzh1uyGZxFYio3UL3e6Lzhcuk9-oZwJePL1RkT5ibQ8w7nVSje7B3BO_8db2PEs4Ut8QwkxJHmHPW85yKA"
+            },
+            "htmlCode": {
+              "name": "projects/978273184525412913/files/a90309bc78a242f8bdde4affed07bbd0",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ6Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpZCiVodG1sXzA1NTY2Y2VhMTZhZjRjZjZiOTgzMGEyM2U4YmU5YzMzEgsSBxCFtfr62xUYAZIBIgoKcHJvamVjdF9pZBIUQhI5NzgyNzMxODQ1MjU0MTI5MTM&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "b012a5f1499e47f9bfae8f0ed851c544",
+            "generatedBy": "HatterAgent",
+            "width": "2560",
+            "height": "2048",
+            "title": "Variant 2: Monolithic Stream Terminal",
+            "prompt": "Create a radical 'Reimagine' variant called 'Monolithic Stream'.\n- Layout: Use a vertical split-screen layout. The left 60% is a dense, scrolling 'Market Stream' (the data table) with cyan row highlights. The right 40% is a fixed 'Execution Column' containing the 3 stat cards stacked vertically and the control panel with the slider.\n- Navigation: Sleek, thin top navigation. Left sidebar is a slim, collapsed icon-strip.\n- Aesthetics: Hard slate-gray surfaces, sharp corners, and neon cyan accents for data points and sparklines.\n- Interaction: Enhance hover effects in the table to highlight entire rows in cyan.\n- Content: Ensure the sparklines in the stat cards are prominent cyan strokes.",
+            "name": "projects/978273184525412913/screens/b012a5f1499e47f9bfae8f0ed851c544",
+            "theme": {
+              "colorMode": "DARK",
+              "font": "INTER",
+              "roundness": "ROUND_EIGHT",
+              "customColor": "#22d3ee",
+              "headlineFont": "INTER",
+              "bodyFont": "INTER",
+              "labelFont": "JETBRAINS_MONO",
+              "namedColors": {
+                "background": "#0e1416",
+                "error": "#ffb4ab",
+                "error_container": "#93000a",
+                "inverse_on_surface": "#2b3134",
+                "inverse_primary": "#006877",
+                "inverse_surface": "#dee3e6",
+                "on_background": "#dee3e6",
+                "on_error": "#690005",
+                "on_error_container": "#ffdad6",
+                "on_primary": "#00363e",
+                "on_primary_container": "#005763",
+                "on_primary_fixed": "#001f25",
+                "on_primary_fixed_variant": "#004e5a",
+                "on_secondary": "#233143",
+                "on_secondary_container": "#a7b6cc",
+                "on_secondary_fixed": "#0d1c2d",
+                "on_secondary_fixed_variant": "#39485a",
+                "on_surface": "#dee3e6",
+                "on_surface_variant": "#bbc9cd",
+                "on_tertiary": "#003824",
+                "on_tertiary_container": "#005a3d",
+                "on_tertiary_fixed": "#002113",
+                "on_tertiary_fixed_variant": "#005236",
+                "outline": "#859397",
+                "outline_variant": "#3c494c",
+                "primary": "#8aebff",
+                "primary_container": "#22d3ee",
+                "primary_fixed": "#a2eeff",
+                "primary_fixed_dim": "#2fd9f4",
+                "secondary": "#b9c8de",
+                "secondary_container": "#39485a",
+                "secondary_fixed": "#d4e4fa",
+                "secondary_fixed_dim": "#b9c8de",
+                "surface": "#0e1416",
+                "surface_bright": "#343a3c",
+                "surface_container": "#1a2123",
+                "surface_container_high": "#252b2d",
+                "surface_container_highest": "#303638",
+                "surface_container_low": "#161d1f",
+                "surface_container_lowest": "#090f11",
+                "surface_dim": "#0e1416",
+                "surface_tint": "#2fd9f4",
+                "surface_variant": "#303638",
+                "tertiary": "#68f5b8",
+                "tertiary_container": "#46d89d",
+                "tertiary_fixed": "#6ffbbe",
+                "tertiary_fixed_dim": "#4edea3"
+              },
+              "designMd": "---\nname: Cyber-Precision Trading\ncolors:\n  surface: '#0e1416'\n  surface-dim: '#0e1416'\n  surface-bright: '#343a3c'\n  surface-container-lowest: '#090f11'\n  surface-container-low: '#161d1f'\n  surface-container: '#1a2123'\n  surface-container-high: '#252b2d'\n  surface-container-highest: '#303638'\n  on-surface: '#dee3e6'\n  on-surface-variant: '#bbc9cd'\n  inverse-surface: '#dee3e6'\n  inverse-on-surface: '#2b3134'\n  outline: '#859397'\n  outline-variant: '#3c494c'\n  surface-tint: '#2fd9f4'\n  primary: '#8aebff'\n  on-primary: '#00363e'\n  primary-container: '#22d3ee'\n  on-primary-container: '#005763'\n  inverse-primary: '#006877'\n  secondary: '#b9c8de'\n  on-secondary: '#233143'\n  secondary-container: '#39485a'\n  on-secondary-container: '#a7b6cc'\n  tertiary: '#68f5b8'\n  on-tertiary: '#003824'\n  tertiary-container: '#46d89d'\n  on-tertiary-container: '#005a3d'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#a2eeff'\n  primary-fixed-dim: '#2fd9f4'\n  on-primary-fixed: '#001f25'\n  on-primary-fixed-variant: '#004e5a'\n  secondary-fixed: '#d4e4fa'\n  secondary-fixed-dim: '#b9c8de'\n  on-secondary-fixed: '#0d1c2d'\n  on-secondary-fixed-variant: '#39485a'\n  tertiary-fixed: '#6ffbbe'\n  tertiary-fixed-dim: '#4edea3'\n  on-tertiary-fixed: '#002113'\n  on-tertiary-fixed-variant: '#005236'\n  background: '#0e1416'\n  on-background: '#dee3e6'\n  surface-variant: '#303638'\ntypography:\n  display-lg:\n    fontFamily: Inter\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Inter\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-md:\n    fontFamily: Inter\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  headline-sm:\n    fontFamily: Inter\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n  body-lg:\n    fontFamily: Inter\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  body-md:\n    fontFamily: Inter\n    fontSize: 14px\n    fontWeight: '400'\n    lineHeight: 20px\n  label-lg:\n    fontFamily: JetBrains Mono\n    fontSize: 14px\n    fontWeight: '500'\n    lineHeight: 20px\n  label-md:\n    fontFamily: JetBrains Mono\n    fontSize: 12px\n    fontWeight: '500'\n    lineHeight: 16px\n  label-sm:\n    fontFamily: JetBrains Mono\n    fontSize: 10px\n    fontWeight: '500'\n    lineHeight: 14px\n    letterSpacing: 0.05em\n  headline-lg-mobile:\n    fontFamily: Inter\n    fontSize: 28px\n    fontWeight: '600'\n    lineHeight: 36px\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  unit: 4px\n  gutter-sm: 8px\n  gutter-md: 16px\n  margin-mobile: 16px\n  margin-desktop: 24px\n  container-max: 1440px\n---\n\n## Brand & Style\nThe design system is engineered for high-stakes financial environments where speed of comprehension and ocular endurance are paramount. It targets professional traders and analysts who require a \"heads-up display\" (HUD) experience. \n\nThe aesthetic is a sophisticated hybrid of **Modern Corporate** reliability and **Technological Minimalism**, drawing inspiration from terminal interfaces. The UI should evoke a sense of focused calm, utilizing deep slate tones to reduce eye strain during extended sessions, while employing high-frequency cyan accents to draw immediate attention to critical actions and data changes. The interface feels systematic, precise, and authoritative.\n\n## Colors\nThe palette is rooted in a \"Dark Slate\" ecosystem to maximize contrast for data visualization. \n\n- **Primary (Cyan):** Used exclusively for primary actions, active states, and critical focus indicators.\n- **Surface Tones:** A tiered grayscale of slates (`#0e1416` to `#262f32`) creates logical separation without the need for heavy borders.\n- **Semantic Colors:** Green (`#10b981`) and Red (`#ef4444`) are reserved strictly for market movement (bullish/bearish) and success/error states. \n- **Typography Colors:** High-contrast white (`#f8fafc`) for headers and muted slate-blue (`#94a3b8`) for secondary metadata to establish clear hierarchy.\n\n## Typography\nTypography in the design system prioritizes legibility and density. \n\n**Inter** serves as the primary typeface for all UI elements and narrative text, chosen for its exceptional clarity at small sizes. For data-dense environments like order books, ticker tapes, and price action, **JetBrains Mono** is introduced to provide a \"terminal\" aesthetic. This monospaced font ensures that fluctuating numbers do not cause horizontal layout shifts (layout thrashing), allowing for easier visual scanning of numerical columns. \n\nUse `label-sm` in all-caps for category headers and utility labels to enhance the professional, systematic feel.\n\n## Layout & Spacing\nThis design system utilizes a **Fixed Grid** philosophy within a flexible container. A 12-column grid is used for the main dashboard dashboard layout, allowing for complex multi-pane configurations.\n\n- **Rhythm:** A 4px baseline grid governs all internal component spacing to maintain a compact, \"pro-tool\" density. \n- **Modular Panes:** The dashboard should be divided into distinct functional tiles (e.g., Chart, Order Book, Trade History). Each tile uses 16px internal padding.\n- **Adaptation:** On mobile, the 12-column grid collapses into a single-column vertical stack, with horizontal scrolling enabled for wide data tables. Margins reduce from 24px (desktop) to 16px (mobile) to maximize screen real estate.\n\n## Elevation & Depth\nElevation is expressed through **Tonal Layering** rather than traditional drop shadows, staying true to a modern, flat-terminal aesthetic.\n\n1.  **Canvas:** The base layer uses the darkest slate (`#0e1416`).\n2.  **Panels/Cards:** Floating functional modules use a slightly lighter surface (`#1a2123`).\n3.  **Hover States:** Interactive elements lift visually by transitioning to a lighter slate or adding a subtle 1px inner stroke of the primary Cyan.\n4.  **Overlays:** Modals and dropdowns utilize a `backdrop-filter: blur(8px)` with a semi-transparent surface and a crisp 1px border (`#334155`) to distinguish themselves from the background.\n\nAvoid heavy ambient shadows; instead, use contrast and thin, high-clarity borders to define depth.\n\n## Shapes\nThe design system employs a **Rounded** shape language to soften the density of the data. \n\n- **Components:** Standard buttons, input fields, and dashboard tiles use a consistent 8px (0.5rem) corner radius.\n- **Large Elements:** Modals and large surface containers may scale up to 16px for a more modern, approachable feel.\n- **Small Elements:** Tooltips and tags/chips utilize a 4px radius to maintain sharpness even at reduced scales. \n\nAll interactive containers must maintain consistent corner ratios to ensure the interface feels unified and engineered.\n\n## Components\n- **Buttons:** Primary buttons use a solid Cyan fill with dark text. Secondary buttons use a ghost style (Cyan border, transparent fill). For trading actions, use \"Buy\" (Green fill) and \"Sell\" (Red fill) with white text.\n- **Input Fields:** Use a dark background (`#0e1416`) with a 1px slate border. On focus, the border glows with a soft Cyan outer stroke. Use monospaced font for numerical inputs.\n- **Cards/Tiles:** Dashboard tiles should have a subtle 1px border (`#262f32`) and a clear header area with a \"drag handle\" icon for custom layouts.\n- **Data Tables:** Zebra striping is discouraged. Instead, use a subtle hover highlight on the entire row. Headers should be sticky and use the `label-sm` typographic style.\n- **Chips:** Status indicators (e.g., \"Open,\" \"Filled,\" \"Cancelled\") use small, low-saturation backgrounds with high-saturation text to indicate state without overwhelming the dashboard.\n- **Sparklines:** Small, simplified line charts should be used within lists to show 24h trends at a glance, colored semantically based on net gain/loss.",
+              "colorVariant": "FIDELITY",
+              "overridePrimaryColor": "#22d3ee",
+              "overrideSecondaryColor": "#94a3b8",
+              "overrideTertiaryColor": "#10b981",
+              "overrideNeutralColor": "#0e1416",
+              "spacingScale": 2,
+              "typography": {
+                "body-lg": {
+                  "fontFamily": "Inter",
+                  "fontSize": "16px",
+                  "fontWeight": "400",
+                  "lineHeight": "24px"
+                },
+                "body-md": {
+                  "fontFamily": "Inter",
+                  "fontSize": "14px",
+                  "fontWeight": "400",
+                  "lineHeight": "20px"
+                },
+                "display-lg": {
+                  "fontFamily": "Inter",
+                  "fontSize": "48px",
+                  "fontWeight": "700",
+                  "lineHeight": "56px",
+                  "letterSpacing": "-0.02em"
+                },
+                "headline-lg": {
+                  "fontFamily": "Inter",
+                  "fontSize": "32px",
+                  "fontWeight": "600",
+                  "lineHeight": "40px",
+                  "letterSpacing": "-0.01em"
+                },
+                "headline-lg-mobile": {
+                  "fontFamily": "Inter",
+                  "fontSize": "28px",
+                  "fontWeight": "600",
+                  "lineHeight": "36px"
+                },
+                "headline-md": {
+                  "fontFamily": "Inter",
+                  "fontSize": "24px",
+                  "fontWeight": "600",
+                  "lineHeight": "32px"
+                },
+                "headline-sm": {
+                  "fontFamily": "Inter",
+                  "fontSize": "20px",
+                  "fontWeight": "600",
+                  "lineHeight": "28px"
+                },
+                "label-lg": {
+                  "fontFamily": "JetBrains Mono",
+                  "fontSize": "14px",
+                  "fontWeight": "500",
+                  "lineHeight": "20px"
+                },
+                "label-md": {
+                  "fontFamily": "JetBrains Mono",
+                  "fontSize": "12px",
+                  "fontWeight": "500",
+                  "lineHeight": "16px"
+                },
+                "label-sm": {
+                  "fontFamily": "JetBrains Mono",
+                  "fontSize": "10px",
+                  "fontWeight": "500",
+                  "lineHeight": "14px",
+                  "letterSpacing": "0.05em"
+                }
+              },
+              "spacing": {
+                "container-max": "1440px",
+                "gutter-md": "16px",
+                "gutter-sm": "8px",
+                "margin-desktop": "24px",
+                "margin-mobile": "16px",
+                "unit": "4px"
+              },
+              "headlineFontFamily": "Inter",
+              "bodyFontFamily": "Inter",
+              "labelFontFamily": "Jetbrains Mono"
+            },
+            "deviceType": "DESKTOP",
+            "screenType": "DESIGN",
+            "screenMetadata": {
+              "agentType": "PRO_AGENT",
+              "status": "COMPLETE"
+            },
+            "designSystem": {
+              "name": "assets/647880f3455742dea558fc6dc14be33a",
+              "designSystem": {
+                "displayName": "Cyber-Precision Trading",
+                "styleGuidelines": "## Brand & Style\nThe design system is engineered for high-stakes financial environments where speed of comprehension and ocular endurance are paramount. It targets professional traders and analysts who require a \"heads-up display\" (HUD) experience. \n\nThe aesthetic is a sophisticated hybrid of **Modern Corporate** reliability and **Technological Minimalism**, drawing inspiration from terminal interfaces. The UI should evoke a sense of focused calm, utilizing deep slate tones to reduce eye strain during extended sessions, while employing high-frequency cyan accents to draw immediate attention to critical actions and data changes. The interface feels systematic, precise, and authoritative.\n\n## Layout & Spacing\nThis design system utilizes a **Fixed Grid** philosophy within a flexible container. A 12-column grid is used for the main dashboard dashboard layout, allowing for complex multi-pane configurations.\n\n- **Rhythm:** A 4px baseline grid governs all internal component spacing to maintain a compact, \"pro-tool\" density. \n- **Modular Panes:** The dashboard should be divided into distinct functional tiles (e.g., Chart, Order Book, Trade History). Each tile uses 16px internal padding.\n- **Adaptation:** On mobile, the 12-column grid collapses into a single-column vertical stack, with horizontal scrolling enabled for wide data tables. Margins reduce from 24px (desktop) to 16px (mobile) to maximize screen real estate.\n\n## Elevation & Depth\nElevation is expressed through **Tonal Layering** rather than traditional drop shadows, staying true to a modern, flat-terminal aesthetic.\n\n1.  **Canvas:** The base layer uses the darkest slate (`#0e1416`).\n2.  **Panels/Cards:** Floating functional modules use a slightly lighter surface (`#1a2123`).\n3.  **Hover States:** Interactive elements lift visually by transitioning to a lighter slate or adding a subtle 1px inner stroke of the primary Cyan.\n4.  **Overlays:** Modals and dropdowns utilize a `backdrop-filter: blur(8px)` with a semi-transparent surface and a crisp 1px border (`#334155`) to distinguish themselves from the background.\n\nAvoid heavy ambient shadows; instead, use contrast and thin, high-clarity borders to define depth.\n\n## Components\n- **Buttons:** Primary buttons use a solid Cyan fill with dark text. Secondary buttons use a ghost style (Cyan border, transparent fill). For trading actions, use \"Buy\" (Green fill) and \"Sell\" (Red fill) with white text.\n- **Input Fields:** Use a dark background (`#0e1416`) with a 1px slate border. On focus, the border glows with a soft Cyan outer stroke. Use monospaced font for numerical inputs.\n- **Cards/Tiles:** Dashboard tiles should have a subtle 1px border (`#262f32`) and a clear header area with a \"drag handle\" icon for custom layouts.\n- **Data Tables:** Zebra striping is discouraged. Instead, use a subtle hover highlight on the entire row. Headers should be sticky and use the `label-sm` typographic style.\n- **Chips:** Status indicators (e.g., \"Open,\" \"Filled,\" \"Cancelled\") use small, low-saturation backgrounds with high-saturation text to indicate state without overwhelming the dashboard.\n- **Sparklines:** Small, simplified line charts should be used within lists to show 24h trends at a glance, colored semantically based on net gain/loss.",
+                "theme": {
+                  "colorMode": "DARK",
+                  "font": "INTER",
+                  "roundness": "ROUND_EIGHT",
+                  "customColor": "#22d3ee",
+                  "headlineFont": "INTER",
+                  "bodyFont": "INTER",
+                  "labelFont": "JETBRAINS_MONO",
+                  "namedColors": {
+                    "background": "#0e1416",
+                    "error": "#ffb4ab",
+                    "error_container": "#93000a",
+                    "inverse_on_surface": "#2b3134",
+                    "inverse_primary": "#006877",
+                    "inverse_surface": "#dee3e6",
+                    "on_background": "#dee3e6",
+                    "on_error": "#690005",
+                    "on_error_container": "#ffdad6",
+                    "on_primary": "#00363e",
+                    "on_primary_container": "#005763",
+                    "on_primary_fixed": "#001f25",
+                    "on_primary_fixed_variant": "#004e5a",
+                    "on_secondary": "#233143",
+                    "on_secondary_container": "#a7b6cc",
+                    "on_secondary_fixed": "#0d1c2d",
+                    "on_secondary_fixed_variant": "#39485a",
+                    "on_surface": "#dee3e6",
+                    "on_surface_variant": "#bbc9cd",
+                    "on_tertiary": "#003824",
+                    "on_tertiary_container": "#005a3d",
+                    "on_tertiary_fixed": "#002113",
+                    "on_tertiary_fixed_variant": "#005236",
+                    "outline": "#859397",
+                    "outline_variant": "#3c494c",
+                    "primary": "#8aebff",
+                    "primary_container": "#22d3ee",
+                    "primary_fixed": "#a2eeff",
+                    "primary_fixed_dim": "#2fd9f4",
+                    "secondary": "#b9c8de",
+                    "secondary_container": "#39485a",
+                    "secondary_fixed": "#d4e4fa",
+                    "secondary_fixed_dim": "#b9c8de",
+                    "surface": "#0e1416",
+                    "surface_bright": "#343a3c",
+                    "surface_container": "#1a2123",
+                    "surface_container_high": "#252b2d",
+                    "surface_container_highest": "#303638",
+                    "surface_container_low": "#161d1f",
+                    "surface_container_lowest": "#090f11",
+                    "surface_dim": "#0e1416",
+                    "surface_tint": "#2fd9f4",
+                    "surface_variant": "#303638",
+                    "tertiary": "#68f5b8",
+                    "tertiary_container": "#46d89d",
+                    "tertiary_fixed": "#6ffbbe",
+                    "tertiary_fixed_dim": "#4edea3"
+                  },
+                  "designMd": "---\nname: Cyber-Precision Trading\ncolors:\n  surface: '#0e1416'\n  surface-dim: '#0e1416'\n  surface-bright: '#343a3c'\n  surface-container-lowest: '#090f11'\n  surface-container-low: '#161d1f'\n  surface-container: '#1a2123'\n  surface-container-high: '#252b2d'\n  surface-container-highest: '#303638'\n  on-surface: '#dee3e6'\n  on-surface-variant: '#bbc9cd'\n  inverse-surface: '#dee3e6'\n  inverse-on-surface: '#2b3134'\n  outline: '#859397'\n  outline-variant: '#3c494c'\n  surface-tint: '#2fd9f4'\n  primary: '#8aebff'\n  on-primary: '#00363e'\n  primary-container: '#22d3ee'\n  on-primary-container: '#005763'\n  inverse-primary: '#006877'\n  secondary: '#b9c8de'\n  on-secondary: '#233143'\n  secondary-container: '#39485a'\n  on-secondary-container: '#a7b6cc'\n  tertiary: '#68f5b8'\n  on-tertiary: '#003824'\n  tertiary-container: '#46d89d'\n  on-tertiary-container: '#005a3d'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#a2eeff'\n  primary-fixed-dim: '#2fd9f4'\n  on-primary-fixed: '#001f25'\n  on-primary-fixed-variant: '#004e5a'\n  secondary-fixed: '#d4e4fa'\n  secondary-fixed-dim: '#b9c8de'\n  on-secondary-fixed: '#0d1c2d'\n  on-secondary-fixed-variant: '#39485a'\n  tertiary-fixed: '#6ffbbe'\n  tertiary-fixed-dim: '#4edea3'\n  on-tertiary-fixed: '#002113'\n  on-tertiary-fixed-variant: '#005236'\n  background: '#0e1416'\n  on-background: '#dee3e6'\n  surface-variant: '#303638'\ntypography:\n  display-lg:\n    fontFamily: Inter\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Inter\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-md:\n    fontFamily: Inter\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  headline-sm:\n    fontFamily: Inter\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n  body-lg:\n    fontFamily: Inter\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  body-md:\n    fontFamily: Inter\n    fontSize: 14px\n    fontWeight: '400'\n    lineHeight: 20px\n  label-lg:\n    fontFamily: JetBrains Mono\n    fontSize: 14px\n    fontWeight: '500'\n    lineHeight: 20px\n  label-md:\n    fontFamily: JetBrains Mono\n    fontSize: 12px\n    fontWeight: '500'\n    lineHeight: 16px\n  label-sm:\n    fontFamily: JetBrains Mono\n    fontSize: 10px\n    fontWeight: '500'\n    lineHeight: 14px\n    letterSpacing: 0.05em\n  headline-lg-mobile:\n    fontFamily: Inter\n    fontSize: 28px\n    fontWeight: '600'\n    lineHeight: 36px\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  unit: 4px\n  gutter-sm: 8px\n  gutter-md: 16px\n  margin-mobile: 16px\n  margin-desktop: 24px\n  container-max: 1440px\n---\n\n## Brand & Style\nThe design system is engineered for high-stakes financial environments where speed of comprehension and ocular endurance are paramount. It targets professional traders and analysts who require a \"heads-up display\" (HUD) experience. \n\nThe aesthetic is a sophisticated hybrid of **Modern Corporate** reliability and **Technological Minimalism**, drawing inspiration from terminal interfaces. The UI should evoke a sense of focused calm, utilizing deep slate tones to reduce eye strain during extended sessions, while employing high-frequency cyan accents to draw immediate attention to critical actions and data changes. The interface feels systematic, precise, and authoritative.\n\n## Colors\nThe palette is rooted in a \"Dark Slate\" ecosystem to maximize contrast for data visualization. \n\n- **Primary (Cyan):** Used exclusively for primary actions, active states, and critical focus indicators.\n- **Surface Tones:** A tiered grayscale of slates (`#0e1416` to `#262f32`) creates logical separation without the need for heavy borders.\n- **Semantic Colors:** Green (`#10b981`) and Red (`#ef4444`) are reserved strictly for market movement (bullish/bearish) and success/error states. \n- **Typography Colors:** High-contrast white (`#f8fafc`) for headers and muted slate-blue (`#94a3b8`) for secondary metadata to establish clear hierarchy.\n\n## Typography\nTypography in the design system prioritizes legibility and density. \n\n**Inter** serves as the primary typeface for all UI elements and narrative text, chosen for its exceptional clarity at small sizes. For data-dense environments like order books, ticker tapes, and price action, **JetBrains Mono** is introduced to provide a \"terminal\" aesthetic. This monospaced font ensures that fluctuating numbers do not cause horizontal layout shifts (layout thrashing), allowing for easier visual scanning of numerical columns. \n\nUse `label-sm` in all-caps for category headers and utility labels to enhance the professional, systematic feel.\n\n## Layout & Spacing\nThis design system utilizes a **Fixed Grid** philosophy within a flexible container. A 12-column grid is used for the main dashboard dashboard layout, allowing for complex multi-pane configurations.\n\n- **Rhythm:** A 4px baseline grid governs all internal component spacing to maintain a compact, \"pro-tool\" density. \n- **Modular Panes:** The dashboard should be divided into distinct functional tiles (e.g., Chart, Order Book, Trade History). Each tile uses 16px internal padding.\n- **Adaptation:** On mobile, the 12-column grid collapses into a single-column vertical stack, with horizontal scrolling enabled for wide data tables. Margins reduce from 24px (desktop) to 16px (mobile) to maximize screen real estate.\n\n## Elevation & Depth\nElevation is expressed through **Tonal Layering** rather than traditional drop shadows, staying true to a modern, flat-terminal aesthetic.\n\n1.  **Canvas:** The base layer uses the darkest slate (`#0e1416`).\n2.  **Panels/Cards:** Floating functional modules use a slightly lighter surface (`#1a2123`).\n3.  **Hover States:** Interactive elements lift visually by transitioning to a lighter slate or adding a subtle 1px inner stroke of the primary Cyan.\n4.  **Overlays:** Modals and dropdowns utilize a `backdrop-filter: blur(8px)` with a semi-transparent surface and a crisp 1px border (`#334155`) to distinguish themselves from the background.\n\nAvoid heavy ambient shadows; instead, use contrast and thin, high-clarity borders to define depth.\n\n## Shapes\nThe design system employs a **Rounded** shape language to soften the density of the data. \n\n- **Components:** Standard buttons, input fields, and dashboard tiles use a consistent 8px (0.5rem) corner radius.\n- **Large Elements:** Modals and large surface containers may scale up to 16px for a more modern, approachable feel.\n- **Small Elements:** Tooltips and tags/chips utilize a 4px radius to maintain sharpness even at reduced scales. \n\nAll interactive containers must maintain consistent corner ratios to ensure the interface feels unified and engineered.\n\n## Components\n- **Buttons:** Primary buttons use a solid Cyan fill with dark text. Secondary buttons use a ghost style (Cyan border, transparent fill). For trading actions, use \"Buy\" (Green fill) and \"Sell\" (Red fill) with white text.\n- **Input Fields:** Use a dark background (`#0e1416`) with a 1px slate border. On focus, the border glows with a soft Cyan outer stroke. Use monospaced font for numerical inputs.\n- **Cards/Tiles:** Dashboard tiles should have a subtle 1px border (`#262f32`) and a clear header area with a \"drag handle\" icon for custom layouts.\n- **Data Tables:** Zebra striping is discouraged. Instead, use a subtle hover highlight on the entire row. Headers should be sticky and use the `label-sm` typographic style.\n- **Chips:** Status indicators (e.g., \"Open,\" \"Filled,\" \"Cancelled\") use small, low-saturation backgrounds with high-saturation text to indicate state without overwhelming the dashboard.\n- **Sparklines:** Small, simplified line charts should be used within lists to show 24h trends at a glance, colored semantically based on net gain/loss.",
+                  "colorVariant": "FIDELITY",
+                  "overridePrimaryColor": "#22d3ee",
+                  "overrideSecondaryColor": "#94a3b8",
+                  "overrideTertiaryColor": "#10b981",
+                  "overrideNeutralColor": "#0e1416",
+                  "spacingScale": 2,
+                  "typography": {
+                    "body-lg": {
+                      "fontFamily": "Inter",
+                      "fontSize": "16px",
+                      "fontWeight": "400",
+                      "lineHeight": "24px"
+                    },
+                    "body-md": {
+                      "fontFamily": "Inter",
+                      "fontSize": "14px",
+                      "fontWeight": "400",
+                      "lineHeight": "20px"
+                    },
+                    "display-lg": {
+                      "fontFamily": "Inter",
+                      "fontSize": "48px",
+                      "fontWeight": "700",
+                      "lineHeight": "56px",
+                      "letterSpacing": "-0.02em"
+                    },
+                    "headline-lg": {
+                      "fontFamily": "Inter",
+                      "fontSize": "32px",
+                      "fontWeight": "600",
+                      "lineHeight": "40px",
+                      "letterSpacing": "-0.01em"
+                    },
+                    "headline-lg-mobile": {
+                      "fontFamily": "Inter",
+                      "fontSize": "28px",
+                      "fontWeight": "600",
+                      "lineHeight": "36px"
+                    },
+                    "headline-md": {
+                      "fontFamily": "Inter",
+                      "fontSize": "24px",
+                      "fontWeight": "600",
+                      "lineHeight": "32px"
+                    },
+                    "headline-sm": {
+                      "fontFamily": "Inter",
+                      "fontSize": "20px",
+                      "fontWeight": "600",
+                      "lineHeight": "28px"
+                    },
+                    "label-lg": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "14px",
+                      "fontWeight": "500",
+                      "lineHeight": "20px"
+                    },
+                    "label-md": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "12px",
+                      "fontWeight": "500",
+                      "lineHeight": "16px"
+                    },
+                    "label-sm": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "10px",
+                      "fontWeight": "500",
+                      "lineHeight": "14px",
+                      "letterSpacing": "0.05em"
+                    }
+                  },
+                  "spacing": {
+                    "container-max": "1440px",
+                    "gutter-md": "16px",
+                    "gutter-sm": "8px",
+                    "margin-desktop": "24px",
+                    "margin-mobile": "16px",
+                    "unit": "4px"
+                  },
+                  "headlineFontFamily": "Inter",
+                  "bodyFontFamily": "Inter",
+                  "labelFontFamily": "Jetbrains Mono"
+                }
+              },
+              "version": "1"
+            }
+          },
+          {
+            "screenshot": {
+              "name": "projects/978273184525412913/files/4f064a157afb4dfb81761ecda0ef5c39",
+              "downloadUrl": "https://lh3.googleusercontent.com/aida/AP1WRLtXDyOmQQqgvvuKad7utcEOYvhU7O7a4Nl67KmnK_ytH63CmX6cA0iLz61uK77P1aAFM18l3rGkwtnJoTQI_GsBMjTUyWUmWbUaMrF7wOYm-aGFtJHwT531B2NhNQa3kUMwn7TAnRSJxGhxgDnMHmaBZIKMl3u6OmgtC3cTplrZGvPJjyNiSXE5Pb616LtY42cGETARQRR-AsY4LPjnlBzMnxoJkEXbZnzMUmqy7avsIXA-LUcylVqu2Q"
+            },
+            "htmlCode": {
+              "name": "projects/978273184525412913/files/3763a948a04f435fbae5df6eac7b44d4",
+              "downloadUrl": "https://contribution.usercontent.google.com/download?c=CgthaWRhX2NvZGVmeBJ6Eh1hcHBfY29tcGFuaW9uX2dlbmVyYXRlZF9maWxlcxpZCiVodG1sXzAyZjljOWVlMTM2MTRjNDE4MWViN2NjYzE5MTVlMmU1EgsSBxCFtfr62xUYAZIBIgoKcHJvamVjdF9pZBIUQhI5NzgyNzMxODQ1MjU0MTI5MTM&filename=&opi=96797242",
+              "mimeType": "text/html"
+            },
+            "id": "09e157d0ef024b77a0de62928d44600c",
+            "generatedBy": "HatterAgent",
+            "width": "2560",
+            "height": "2048",
+            "title": "Variant 1: Orbital Command Terminal",
+            "prompt": "Create a radical 'Reimagine' variant called 'Orbital Command'. \n- Layout: Depart from the standard dashboard grid. Use a centralized 'hub' for the 3 stat cards, arranged in a circular or hexagonal cluster.\n- Sidebar: Keep icon-only left sidebar, but make it floating with a slate-glass effect.\n- Table: Place the full-width data table in a lower 'deck' with high-contrast hover states (cyan glow).\n- Control Panel: Floating right-aligned panel with the slider and action buttons.\n- Aesthetics: Dark slate background, bright cyan highlights (#00FFFF). Material Design depth with elevated surfaces and subtle shadows.\n- Navigation: Minimal top nav bar with cyan accents.",
+            "name": "projects/978273184525412913/screens/09e157d0ef024b77a0de62928d44600c",
+            "theme": {
+              "colorMode": "DARK",
+              "font": "INTER",
+              "roundness": "ROUND_EIGHT",
+              "customColor": "#22d3ee",
+              "headlineFont": "INTER",
+              "bodyFont": "INTER",
+              "labelFont": "JETBRAINS_MONO",
+              "namedColors": {
+                "background": "#0e1416",
+                "error": "#ffb4ab",
+                "error_container": "#93000a",
+                "inverse_on_surface": "#2b3134",
+                "inverse_primary": "#006877",
+                "inverse_surface": "#dee3e6",
+                "on_background": "#dee3e6",
+                "on_error": "#690005",
+                "on_error_container": "#ffdad6",
+                "on_primary": "#00363e",
+                "on_primary_container": "#005763",
+                "on_primary_fixed": "#001f25",
+                "on_primary_fixed_variant": "#004e5a",
+                "on_secondary": "#233143",
+                "on_secondary_container": "#a7b6cc",
+                "on_secondary_fixed": "#0d1c2d",
+                "on_secondary_fixed_variant": "#39485a",
+                "on_surface": "#dee3e6",
+                "on_surface_variant": "#bbc9cd",
+                "on_tertiary": "#003824",
+                "on_tertiary_container": "#005a3d",
+                "on_tertiary_fixed": "#002113",
+                "on_tertiary_fixed_variant": "#005236",
+                "outline": "#859397",
+                "outline_variant": "#3c494c",
+                "primary": "#8aebff",
+                "primary_container": "#22d3ee",
+                "primary_fixed": "#a2eeff",
+                "primary_fixed_dim": "#2fd9f4",
+                "secondary": "#b9c8de",
+                "secondary_container": "#39485a",
+                "secondary_fixed": "#d4e4fa",
+                "secondary_fixed_dim": "#b9c8de",
+                "surface": "#0e1416",
+                "surface_bright": "#343a3c",
+                "surface_container": "#1a2123",
+                "surface_container_high": "#252b2d",
+                "surface_container_highest": "#303638",
+                "surface_container_low": "#161d1f",
+                "surface_container_lowest": "#090f11",
+                "surface_dim": "#0e1416",
+                "surface_tint": "#2fd9f4",
+                "surface_variant": "#303638",
+                "tertiary": "#68f5b8",
+                "tertiary_container": "#46d89d",
+                "tertiary_fixed": "#6ffbbe",
+                "tertiary_fixed_dim": "#4edea3"
+              },
+              "designMd": "---\nname: Cyber-Precision Trading\ncolors:\n  surface: '#0e1416'\n  surface-dim: '#0e1416'\n  surface-bright: '#343a3c'\n  surface-container-lowest: '#090f11'\n  surface-container-low: '#161d1f'\n  surface-container: '#1a2123'\n  surface-container-high: '#252b2d'\n  surface-container-highest: '#303638'\n  on-surface: '#dee3e6'\n  on-surface-variant: '#bbc9cd'\n  inverse-surface: '#dee3e6'\n  inverse-on-surface: '#2b3134'\n  outline: '#859397'\n  outline-variant: '#3c494c'\n  surface-tint: '#2fd9f4'\n  primary: '#8aebff'\n  on-primary: '#00363e'\n  primary-container: '#22d3ee'\n  on-primary-container: '#005763'\n  inverse-primary: '#006877'\n  secondary: '#b9c8de'\n  on-secondary: '#233143'\n  secondary-container: '#39485a'\n  on-secondary-container: '#a7b6cc'\n  tertiary: '#68f5b8'\n  on-tertiary: '#003824'\n  tertiary-container: '#46d89d'\n  on-tertiary-container: '#005a3d'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#a2eeff'\n  primary-fixed-dim: '#2fd9f4'\n  on-primary-fixed: '#001f25'\n  on-primary-fixed-variant: '#004e5a'\n  secondary-fixed: '#d4e4fa'\n  secondary-fixed-dim: '#b9c8de'\n  on-secondary-fixed: '#0d1c2d'\n  on-secondary-fixed-variant: '#39485a'\n  tertiary-fixed: '#6ffbbe'\n  tertiary-fixed-dim: '#4edea3'\n  on-tertiary-fixed: '#002113'\n  on-tertiary-fixed-variant: '#005236'\n  background: '#0e1416'\n  on-background: '#dee3e6'\n  surface-variant: '#303638'\ntypography:\n  display-lg:\n    fontFamily: Inter\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Inter\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-md:\n    fontFamily: Inter\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  headline-sm:\n    fontFamily: Inter\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n  body-lg:\n    fontFamily: Inter\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  body-md:\n    fontFamily: Inter\n    fontSize: 14px\n    fontWeight: '400'\n    lineHeight: 20px\n  label-lg:\n    fontFamily: JetBrains Mono\n    fontSize: 14px\n    fontWeight: '500'\n    lineHeight: 20px\n  label-md:\n    fontFamily: JetBrains Mono\n    fontSize: 12px\n    fontWeight: '500'\n    lineHeight: 16px\n  label-sm:\n    fontFamily: JetBrains Mono\n    fontSize: 10px\n    fontWeight: '500'\n    lineHeight: 14px\n    letterSpacing: 0.05em\n  headline-lg-mobile:\n    fontFamily: Inter\n    fontSize: 28px\n    fontWeight: '600'\n    lineHeight: 36px\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  unit: 4px\n  gutter-sm: 8px\n  gutter-md: 16px\n  margin-mobile: 16px\n  margin-desktop: 24px\n  container-max: 1440px\n---\n\n## Brand & Style\nThe design system is engineered for high-stakes financial environments where speed of comprehension and ocular endurance are paramount. It targets professional traders and analysts who require a \"heads-up display\" (HUD) experience. \n\nThe aesthetic is a sophisticated hybrid of **Modern Corporate** reliability and **Technological Minimalism**, drawing inspiration from terminal interfaces. The UI should evoke a sense of focused calm, utilizing deep slate tones to reduce eye strain during extended sessions, while employing high-frequency cyan accents to draw immediate attention to critical actions and data changes. The interface feels systematic, precise, and authoritative.\n\n## Colors\nThe palette is rooted in a \"Dark Slate\" ecosystem to maximize contrast for data visualization. \n\n- **Primary (Cyan):** Used exclusively for primary actions, active states, and critical focus indicators.\n- **Surface Tones:** A tiered grayscale of slates (`#0e1416` to `#262f32`) creates logical separation without the need for heavy borders.\n- **Semantic Colors:** Green (`#10b981`) and Red (`#ef4444`) are reserved strictly for market movement (bullish/bearish) and success/error states. \n- **Typography Colors:** High-contrast white (`#f8fafc`) for headers and muted slate-blue (`#94a3b8`) for secondary metadata to establish clear hierarchy.\n\n## Typography\nTypography in the design system prioritizes legibility and density. \n\n**Inter** serves as the primary typeface for all UI elements and narrative text, chosen for its exceptional clarity at small sizes. For data-dense environments like order books, ticker tapes, and price action, **JetBrains Mono** is introduced to provide a \"terminal\" aesthetic. This monospaced font ensures that fluctuating numbers do not cause horizontal layout shifts (layout thrashing), allowing for easier visual scanning of numerical columns. \n\nUse `label-sm` in all-caps for category headers and utility labels to enhance the professional, systematic feel.\n\n## Layout & Spacing\nThis design system utilizes a **Fixed Grid** philosophy within a flexible container. A 12-column grid is used for the main dashboard dashboard layout, allowing for complex multi-pane configurations.\n\n- **Rhythm:** A 4px baseline grid governs all internal component spacing to maintain a compact, \"pro-tool\" density. \n- **Modular Panes:** The dashboard should be divided into distinct functional tiles (e.g., Chart, Order Book, Trade History). Each tile uses 16px internal padding.\n- **Adaptation:** On mobile, the 12-column grid collapses into a single-column vertical stack, with horizontal scrolling enabled for wide data tables. Margins reduce from 24px (desktop) to 16px (mobile) to maximize screen real estate.\n\n## Elevation & Depth\nElevation is expressed through **Tonal Layering** rather than traditional drop shadows, staying true to a modern, flat-terminal aesthetic.\n\n1.  **Canvas:** The base layer uses the darkest slate (`#0e1416`).\n2.  **Panels/Cards:** Floating functional modules use a slightly lighter surface (`#1a2123`).\n3.  **Hover States:** Interactive elements lift visually by transitioning to a lighter slate or adding a subtle 1px inner stroke of the primary Cyan.\n4.  **Overlays:** Modals and dropdowns utilize a `backdrop-filter: blur(8px)` with a semi-transparent surface and a crisp 1px border (`#334155`) to distinguish themselves from the background.\n\nAvoid heavy ambient shadows; instead, use contrast and thin, high-clarity borders to define depth.\n\n## Shapes\nThe design system employs a **Rounded** shape language to soften the density of the data. \n\n- **Components:** Standard buttons, input fields, and dashboard tiles use a consistent 8px (0.5rem) corner radius.\n- **Large Elements:** Modals and large surface containers may scale up to 16px for a more modern, approachable feel.\n- **Small Elements:** Tooltips and tags/chips utilize a 4px radius to maintain sharpness even at reduced scales. \n\nAll interactive containers must maintain consistent corner ratios to ensure the interface feels unified and engineered.\n\n## Components\n- **Buttons:** Primary buttons use a solid Cyan fill with dark text. Secondary buttons use a ghost style (Cyan border, transparent fill). For trading actions, use \"Buy\" (Green fill) and \"Sell\" (Red fill) with white text.\n- **Input Fields:** Use a dark background (`#0e1416`) with a 1px slate border. On focus, the border glows with a soft Cyan outer stroke. Use monospaced font for numerical inputs.\n- **Cards/Tiles:** Dashboard tiles should have a subtle 1px border (`#262f32`) and a clear header area with a \"drag handle\" icon for custom layouts.\n- **Data Tables:** Zebra striping is discouraged. Instead, use a subtle hover highlight on the entire row. Headers should be sticky and use the `label-sm` typographic style.\n- **Chips:** Status indicators (e.g., \"Open,\" \"Filled,\" \"Cancelled\") use small, low-saturation backgrounds with high-saturation text to indicate state without overwhelming the dashboard.\n- **Sparklines:** Small, simplified line charts should be used within lists to show 24h trends at a glance, colored semantically based on net gain/loss.",
+              "colorVariant": "FIDELITY",
+              "overridePrimaryColor": "#22d3ee",
+              "overrideSecondaryColor": "#94a3b8",
+              "overrideTertiaryColor": "#10b981",
+              "overrideNeutralColor": "#0e1416",
+              "spacingScale": 2,
+              "typography": {
+                "body-lg": {
+                  "fontFamily": "Inter",
+                  "fontSize": "16px",
+                  "fontWeight": "400",
+                  "lineHeight": "24px"
+                },
+                "body-md": {
+                  "fontFamily": "Inter",
+                  "fontSize": "14px",
+                  "fontWeight": "400",
+                  "lineHeight": "20px"
+                },
+                "display-lg": {
+                  "fontFamily": "Inter",
+                  "fontSize": "48px",
+                  "fontWeight": "700",
+                  "lineHeight": "56px",
+                  "letterSpacing": "-0.02em"
+                },
+                "headline-lg": {
+                  "fontFamily": "Inter",
+                  "fontSize": "32px",
+                  "fontWeight": "600",
+                  "lineHeight": "40px",
+                  "letterSpacing": "-0.01em"
+                },
+                "headline-lg-mobile": {
+                  "fontFamily": "Inter",
+                  "fontSize": "28px",
+                  "fontWeight": "600",
+                  "lineHeight": "36px"
+                },
+                "headline-md": {
+                  "fontFamily": "Inter",
+                  "fontSize": "24px",
+                  "fontWeight": "600",
+                  "lineHeight": "32px"
+                },
+                "headline-sm": {
+                  "fontFamily": "Inter",
+                  "fontSize": "20px",
+                  "fontWeight": "600",
+                  "lineHeight": "28px"
+                },
+                "label-lg": {
+                  "fontFamily": "JetBrains Mono",
+                  "fontSize": "14px",
+                  "fontWeight": "500",
+                  "lineHeight": "20px"
+                },
+                "label-md": {
+                  "fontFamily": "JetBrains Mono",
+                  "fontSize": "12px",
+                  "fontWeight": "500",
+                  "lineHeight": "16px"
+                },
+                "label-sm": {
+                  "fontFamily": "JetBrains Mono",
+                  "fontSize": "10px",
+                  "fontWeight": "500",
+                  "lineHeight": "14px",
+                  "letterSpacing": "0.05em"
+                }
+              },
+              "spacing": {
+                "container-max": "1440px",
+                "gutter-md": "16px",
+                "gutter-sm": "8px",
+                "margin-desktop": "24px",
+                "margin-mobile": "16px",
+                "unit": "4px"
+              },
+              "headlineFontFamily": "Inter",
+              "bodyFontFamily": "Inter",
+              "labelFontFamily": "Jetbrains Mono"
+            },
+            "deviceType": "DESKTOP",
+            "screenType": "DESIGN",
+            "screenMetadata": {
+              "agentType": "PRO_AGENT",
+              "status": "COMPLETE"
+            },
+            "designSystem": {
+              "name": "assets/647880f3455742dea558fc6dc14be33a",
+              "designSystem": {
+                "displayName": "Cyber-Precision Trading",
+                "styleGuidelines": "## Brand & Style\nThe design system is engineered for high-stakes financial environments where speed of comprehension and ocular endurance are paramount. It targets professional traders and analysts who require a \"heads-up display\" (HUD) experience. \n\nThe aesthetic is a sophisticated hybrid of **Modern Corporate** reliability and **Technological Minimalism**, drawing inspiration from terminal interfaces. The UI should evoke a sense of focused calm, utilizing deep slate tones to reduce eye strain during extended sessions, while employing high-frequency cyan accents to draw immediate attention to critical actions and data changes. The interface feels systematic, precise, and authoritative.\n\n## Layout & Spacing\nThis design system utilizes a **Fixed Grid** philosophy within a flexible container. A 12-column grid is used for the main dashboard dashboard layout, allowing for complex multi-pane configurations.\n\n- **Rhythm:** A 4px baseline grid governs all internal component spacing to maintain a compact, \"pro-tool\" density. \n- **Modular Panes:** The dashboard should be divided into distinct functional tiles (e.g., Chart, Order Book, Trade History). Each tile uses 16px internal padding.\n- **Adaptation:** On mobile, the 12-column grid collapses into a single-column vertical stack, with horizontal scrolling enabled for wide data tables. Margins reduce from 24px (desktop) to 16px (mobile) to maximize screen real estate.\n\n## Elevation & Depth\nElevation is expressed through **Tonal Layering** rather than traditional drop shadows, staying true to a modern, flat-terminal aesthetic.\n\n1.  **Canvas:** The base layer uses the darkest slate (`#0e1416`).\n2.  **Panels/Cards:** Floating functional modules use a slightly lighter surface (`#1a2123`).\n3.  **Hover States:** Interactive elements lift visually by transitioning to a lighter slate or adding a subtle 1px inner stroke of the primary Cyan.\n4.  **Overlays:** Modals and dropdowns utilize a `backdrop-filter: blur(8px)` with a semi-transparent surface and a crisp 1px border (`#334155`) to distinguish themselves from the background.\n\nAvoid heavy ambient shadows; instead, use contrast and thin, high-clarity borders to define depth.\n\n## Components\n- **Buttons:** Primary buttons use a solid Cyan fill with dark text. Secondary buttons use a ghost style (Cyan border, transparent fill). For trading actions, use \"Buy\" (Green fill) and \"Sell\" (Red fill) with white text.\n- **Input Fields:** Use a dark background (`#0e1416`) with a 1px slate border. On focus, the border glows with a soft Cyan outer stroke. Use monospaced font for numerical inputs.\n- **Cards/Tiles:** Dashboard tiles should have a subtle 1px border (`#262f32`) and a clear header area with a \"drag handle\" icon for custom layouts.\n- **Data Tables:** Zebra striping is discouraged. Instead, use a subtle hover highlight on the entire row. Headers should be sticky and use the `label-sm` typographic style.\n- **Chips:** Status indicators (e.g., \"Open,\" \"Filled,\" \"Cancelled\") use small, low-saturation backgrounds with high-saturation text to indicate state without overwhelming the dashboard.\n- **Sparklines:** Small, simplified line charts should be used within lists to show 24h trends at a glance, colored semantically based on net gain/loss.",
+                "theme": {
+                  "colorMode": "DARK",
+                  "font": "INTER",
+                  "roundness": "ROUND_EIGHT",
+                  "customColor": "#22d3ee",
+                  "headlineFont": "INTER",
+                  "bodyFont": "INTER",
+                  "labelFont": "JETBRAINS_MONO",
+                  "namedColors": {
+                    "background": "#0e1416",
+                    "error": "#ffb4ab",
+                    "error_container": "#93000a",
+                    "inverse_on_surface": "#2b3134",
+                    "inverse_primary": "#006877",
+                    "inverse_surface": "#dee3e6",
+                    "on_background": "#dee3e6",
+                    "on_error": "#690005",
+                    "on_error_container": "#ffdad6",
+                    "on_primary": "#00363e",
+                    "on_primary_container": "#005763",
+                    "on_primary_fixed": "#001f25",
+                    "on_primary_fixed_variant": "#004e5a",
+                    "on_secondary": "#233143",
+                    "on_secondary_container": "#a7b6cc",
+                    "on_secondary_fixed": "#0d1c2d",
+                    "on_secondary_fixed_variant": "#39485a",
+                    "on_surface": "#dee3e6",
+                    "on_surface_variant": "#bbc9cd",
+                    "on_tertiary": "#003824",
+                    "on_tertiary_container": "#005a3d",
+                    "on_tertiary_fixed": "#002113",
+                    "on_tertiary_fixed_variant": "#005236",
+                    "outline": "#859397",
+                    "outline_variant": "#3c494c",
+                    "primary": "#8aebff",
+                    "primary_container": "#22d3ee",
+                    "primary_fixed": "#a2eeff",
+                    "primary_fixed_dim": "#2fd9f4",
+                    "secondary": "#b9c8de",
+                    "secondary_container": "#39485a",
+                    "secondary_fixed": "#d4e4fa",
+                    "secondary_fixed_dim": "#b9c8de",
+                    "surface": "#0e1416",
+                    "surface_bright": "#343a3c",
+                    "surface_container": "#1a2123",
+                    "surface_container_high": "#252b2d",
+                    "surface_container_highest": "#303638",
+                    "surface_container_low": "#161d1f",
+                    "surface_container_lowest": "#090f11",
+                    "surface_dim": "#0e1416",
+                    "surface_tint": "#2fd9f4",
+                    "surface_variant": "#303638",
+                    "tertiary": "#68f5b8",
+                    "tertiary_container": "#46d89d",
+                    "tertiary_fixed": "#6ffbbe",
+                    "tertiary_fixed_dim": "#4edea3"
+                  },
+                  "designMd": "---\nname: Cyber-Precision Trading\ncolors:\n  surface: '#0e1416'\n  surface-dim: '#0e1416'\n  surface-bright: '#343a3c'\n  surface-container-lowest: '#090f11'\n  surface-container-low: '#161d1f'\n  surface-container: '#1a2123'\n  surface-container-high: '#252b2d'\n  surface-container-highest: '#303638'\n  on-surface: '#dee3e6'\n  on-surface-variant: '#bbc9cd'\n  inverse-surface: '#dee3e6'\n  inverse-on-surface: '#2b3134'\n  outline: '#859397'\n  outline-variant: '#3c494c'\n  surface-tint: '#2fd9f4'\n  primary: '#8aebff'\n  on-primary: '#00363e'\n  primary-container: '#22d3ee'\n  on-primary-container: '#005763'\n  inverse-primary: '#006877'\n  secondary: '#b9c8de'\n  on-secondary: '#233143'\n  secondary-container: '#39485a'\n  on-secondary-container: '#a7b6cc'\n  tertiary: '#68f5b8'\n  on-tertiary: '#003824'\n  tertiary-container: '#46d89d'\n  on-tertiary-container: '#005a3d'\n  error: '#ffb4ab'\n  on-error: '#690005'\n  error-container: '#93000a'\n  on-error-container: '#ffdad6'\n  primary-fixed: '#a2eeff'\n  primary-fixed-dim: '#2fd9f4'\n  on-primary-fixed: '#001f25'\n  on-primary-fixed-variant: '#004e5a'\n  secondary-fixed: '#d4e4fa'\n  secondary-fixed-dim: '#b9c8de'\n  on-secondary-fixed: '#0d1c2d'\n  on-secondary-fixed-variant: '#39485a'\n  tertiary-fixed: '#6ffbbe'\n  tertiary-fixed-dim: '#4edea3'\n  on-tertiary-fixed: '#002113'\n  on-tertiary-fixed-variant: '#005236'\n  background: '#0e1416'\n  on-background: '#dee3e6'\n  surface-variant: '#303638'\ntypography:\n  display-lg:\n    fontFamily: Inter\n    fontSize: 48px\n    fontWeight: '700'\n    lineHeight: 56px\n    letterSpacing: -0.02em\n  headline-lg:\n    fontFamily: Inter\n    fontSize: 32px\n    fontWeight: '600'\n    lineHeight: 40px\n    letterSpacing: -0.01em\n  headline-md:\n    fontFamily: Inter\n    fontSize: 24px\n    fontWeight: '600'\n    lineHeight: 32px\n  headline-sm:\n    fontFamily: Inter\n    fontSize: 20px\n    fontWeight: '600'\n    lineHeight: 28px\n  body-lg:\n    fontFamily: Inter\n    fontSize: 16px\n    fontWeight: '400'\n    lineHeight: 24px\n  body-md:\n    fontFamily: Inter\n    fontSize: 14px\n    fontWeight: '400'\n    lineHeight: 20px\n  label-lg:\n    fontFamily: JetBrains Mono\n    fontSize: 14px\n    fontWeight: '500'\n    lineHeight: 20px\n  label-md:\n    fontFamily: JetBrains Mono\n    fontSize: 12px\n    fontWeight: '500'\n    lineHeight: 16px\n  label-sm:\n    fontFamily: JetBrains Mono\n    fontSize: 10px\n    fontWeight: '500'\n    lineHeight: 14px\n    letterSpacing: 0.05em\n  headline-lg-mobile:\n    fontFamily: Inter\n    fontSize: 28px\n    fontWeight: '600'\n    lineHeight: 36px\nrounded:\n  sm: 0.25rem\n  DEFAULT: 0.5rem\n  md: 0.75rem\n  lg: 1rem\n  xl: 1.5rem\n  full: 9999px\nspacing:\n  unit: 4px\n  gutter-sm: 8px\n  gutter-md: 16px\n  margin-mobile: 16px\n  margin-desktop: 24px\n  container-max: 1440px\n---\n\n## Brand & Style\nThe design system is engineered for high-stakes financial environments where speed of comprehension and ocular endurance are paramount. It targets professional traders and analysts who require a \"heads-up display\" (HUD) experience. \n\nThe aesthetic is a sophisticated hybrid of **Modern Corporate** reliability and **Technological Minimalism**, drawing inspiration from terminal interfaces. The UI should evoke a sense of focused calm, utilizing deep slate tones to reduce eye strain during extended sessions, while employing high-frequency cyan accents to draw immediate attention to critical actions and data changes. The interface feels systematic, precise, and authoritative.\n\n## Colors\nThe palette is rooted in a \"Dark Slate\" ecosystem to maximize contrast for data visualization. \n\n- **Primary (Cyan):** Used exclusively for primary actions, active states, and critical focus indicators.\n- **Surface Tones:** A tiered grayscale of slates (`#0e1416` to `#262f32`) creates logical separation without the need for heavy borders.\n- **Semantic Colors:** Green (`#10b981`) and Red (`#ef4444`) are reserved strictly for market movement (bullish/bearish) and success/error states. \n- **Typography Colors:** High-contrast white (`#f8fafc`) for headers and muted slate-blue (`#94a3b8`) for secondary metadata to establish clear hierarchy.\n\n## Typography\nTypography in the design system prioritizes legibility and density. \n\n**Inter** serves as the primary typeface for all UI elements and narrative text, chosen for its exceptional clarity at small sizes. For data-dense environments like order books, ticker tapes, and price action, **JetBrains Mono** is introduced to provide a \"terminal\" aesthetic. This monospaced font ensures that fluctuating numbers do not cause horizontal layout shifts (layout thrashing), allowing for easier visual scanning of numerical columns. \n\nUse `label-sm` in all-caps for category headers and utility labels to enhance the professional, systematic feel.\n\n## Layout & Spacing\nThis design system utilizes a **Fixed Grid** philosophy within a flexible container. A 12-column grid is used for the main dashboard dashboard layout, allowing for complex multi-pane configurations.\n\n- **Rhythm:** A 4px baseline grid governs all internal component spacing to maintain a compact, \"pro-tool\" density. \n- **Modular Panes:** The dashboard should be divided into distinct functional tiles (e.g., Chart, Order Book, Trade History). Each tile uses 16px internal padding.\n- **Adaptation:** On mobile, the 12-column grid collapses into a single-column vertical stack, with horizontal scrolling enabled for wide data tables. Margins reduce from 24px (desktop) to 16px (mobile) to maximize screen real estate.\n\n## Elevation & Depth\nElevation is expressed through **Tonal Layering** rather than traditional drop shadows, staying true to a modern, flat-terminal aesthetic.\n\n1.  **Canvas:** The base layer uses the darkest slate (`#0e1416`).\n2.  **Panels/Cards:** Floating functional modules use a slightly lighter surface (`#1a2123`).\n3.  **Hover States:** Interactive elements lift visually by transitioning to a lighter slate or adding a subtle 1px inner stroke of the primary Cyan.\n4.  **Overlays:** Modals and dropdowns utilize a `backdrop-filter: blur(8px)` with a semi-transparent surface and a crisp 1px border (`#334155`) to distinguish themselves from the background.\n\nAvoid heavy ambient shadows; instead, use contrast and thin, high-clarity borders to define depth.\n\n## Shapes\nThe design system employs a **Rounded** shape language to soften the density of the data. \n\n- **Components:** Standard buttons, input fields, and dashboard tiles use a consistent 8px (0.5rem) corner radius.\n- **Large Elements:** Modals and large surface containers may scale up to 16px for a more modern, approachable feel.\n- **Small Elements:** Tooltips and tags/chips utilize a 4px radius to maintain sharpness even at reduced scales. \n\nAll interactive containers must maintain consistent corner ratios to ensure the interface feels unified and engineered.\n\n## Components\n- **Buttons:** Primary buttons use a solid Cyan fill with dark text. Secondary buttons use a ghost style (Cyan border, transparent fill). For trading actions, use \"Buy\" (Green fill) and \"Sell\" (Red fill) with white text.\n- **Input Fields:** Use a dark background (`#0e1416`) with a 1px slate border. On focus, the border glows with a soft Cyan outer stroke. Use monospaced font for numerical inputs.\n- **Cards/Tiles:** Dashboard tiles should have a subtle 1px border (`#262f32`) and a clear header area with a \"drag handle\" icon for custom layouts.\n- **Data Tables:** Zebra striping is discouraged. Instead, use a subtle hover highlight on the entire row. Headers should be sticky and use the `label-sm` typographic style.\n- **Chips:** Status indicators (e.g., \"Open,\" \"Filled,\" \"Cancelled\") use small, low-saturation backgrounds with high-saturation text to indicate state without overwhelming the dashboard.\n- **Sparklines:** Small, simplified line charts should be used within lists to show 24h trends at a glance, colored semantically based on net gain/loss.",
+                  "colorVariant": "FIDELITY",
+                  "overridePrimaryColor": "#22d3ee",
+                  "overrideSecondaryColor": "#94a3b8",
+                  "overrideTertiaryColor": "#10b981",
+                  "overrideNeutralColor": "#0e1416",
+                  "spacingScale": 2,
+                  "typography": {
+                    "body-lg": {
+                      "fontFamily": "Inter",
+                      "fontSize": "16px",
+                      "fontWeight": "400",
+                      "lineHeight": "24px"
+                    },
+                    "body-md": {
+                      "fontFamily": "Inter",
+                      "fontSize": "14px",
+                      "fontWeight": "400",
+                      "lineHeight": "20px"
+                    },
+                    "display-lg": {
+                      "fontFamily": "Inter",
+                      "fontSize": "48px",
+                      "fontWeight": "700",
+                      "lineHeight": "56px",
+                      "letterSpacing": "-0.02em"
+                    },
+                    "headline-lg": {
+                      "fontFamily": "Inter",
+                      "fontSize": "32px",
+                      "fontWeight": "600",
+                      "lineHeight": "40px",
+                      "letterSpacing": "-0.01em"
+                    },
+                    "headline-lg-mobile": {
+                      "fontFamily": "Inter",
+                      "fontSize": "28px",
+                      "fontWeight": "600",
+                      "lineHeight": "36px"
+                    },
+                    "headline-md": {
+                      "fontFamily": "Inter",
+                      "fontSize": "24px",
+                      "fontWeight": "600",
+                      "lineHeight": "32px"
+                    },
+                    "headline-sm": {
+                      "fontFamily": "Inter",
+                      "fontSize": "20px",
+                      "fontWeight": "600",
+                      "lineHeight": "28px"
+                    },
+                    "label-lg": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "14px",
+                      "fontWeight": "500",
+                      "lineHeight": "20px"
+                    },
+                    "label-md": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "12px",
+                      "fontWeight": "500",
+                      "lineHeight": "16px"
+                    },
+                    "label-sm": {
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": "10px",
+                      "fontWeight": "500",
+                      "lineHeight": "14px",
+                      "letterSpacing": "0.05em"
+                    }
+                  },
+                  "spacing": {
+                    "container-max": "1440px",
+                    "gutter-md": "16px",
+                    "gutter-sm": "8px",
+                    "margin-desktop": "24px",
+                    "margin-mobile": "16px",
+                    "unit": "4px"
+                  },
+                  "headlineFontFamily": "Inter",
+                  "bodyFontFamily": "Inter",
+                  "labelFontFamily": "Jetbrains Mono"
+                }
+              },
+              "version": "1"
+            }
+          }
+        ],
+        "theme": {}
+      }
+    },
+    {
+      "text": "I've designed two radical \"Reimagine\" variants that fundamentally challenge the traditional trading dashboard layout while strictly adhering to your dark slate and bright cyan aesthetic.\n\n### Variant 1: Orbital Command Terminal\nThis variant breaks away from the grid to create a high-focus \"HUD\" experience.\n- **Layout:** Centralized circular monitoring for key stats, creating a focal point for the trader's most important metrics.\n- **Visuals:** Floating glassmorphism panels for the sidebar and control center, emphasizing depth and modern Material Design elevation.\n- **Interaction:** The data table is anchored in a lower \"deck\" with cyan glow highlights to guide eye movement without cluttering the central view.\n\n### Variant 2: Monolithic Stream Terminal\nDesigned for maximum data density and minimal eye fatigue.\n- **Layout:** A vertical split-screen \"Stream\" architecture. The market data flows down the left side, while the execution panel remains pinned to the right.\n- **Visuals:** Hard surfaces with sharp contrast, prioritizing data readability and rapid execution.\n- **Efficiency:** Stat cards are stacked vertically to maintain a constant overview of performance while scrolling through market pairs.\n\nWhich of these structural directions feels more aligned with your professional trading goals?"
+    },
+    {
+      "suggestion": "Try a hybrid: Orbital stats with the Monolithic stream table"
+    },
+    {
+      "suggestion": "Make Variant 1 even more immersive with a darker background"
+    },
+    {
+      "suggestion": "Add real-time price alerts to the top nav of Variant 2"
+    }
+  ]
+}

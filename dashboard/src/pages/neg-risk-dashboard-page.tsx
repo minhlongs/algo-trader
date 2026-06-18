@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { COLORS } from "../lib/stitch-design-tokens";
 
 export interface NegRiskOpportunity {
   id: string;
@@ -22,19 +23,6 @@ export interface NegRiskStats {
   activeTrades: number;
 }
 
-const COLORS = {
-  bg: "#051424",
-  surface: "#122131",
-  surfaceHigh: "#1c2b3c",
-  surfaceContainer: "#0d1c2d",
-  outline: "#3d494c",
-  primary: "#4cd7f6",
-  primaryContainer: "#06b6d4",
-  onSurface: "#d4e4fa",
-  onSurfaceVariant: "#bcc9cd",
-  onPrimary: "#003640",
-} as const;
-
 export function NegRiskDashboardPage() {
   const [opportunities, setOpportunities] = useState<NegRiskOpportunity[]>([]);
   const [stats, setStats] = useState<NegRiskStats>({
@@ -45,6 +33,7 @@ export function NegRiskDashboardPage() {
   const [threshold, setThreshold] = useState(0.98);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -84,9 +73,9 @@ export function NegRiskDashboardPage() {
   }, [fetchData]);
 
   const handleTrade = (opp: NegRiskOpportunity) => {
-    alert(
-      `Trade initiated for ${opp.marketName}\nLocked profit: ${(opp.lockedProfitPct * 100).toFixed(2)}%`
-    );
+    const msg = `Trade initiated for ${opp.marketName} · Locked profit: ${(opp.lockedProfitPct * 100).toFixed(2)}%`;
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
   };
 
   return (
@@ -94,6 +83,26 @@ export function NegRiskDashboardPage() {
       className="min-h-screen"
       style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
     >
+      {toast && (
+        <div
+          className="fixed top-20 right-6 z-[60] max-w-sm rounded-lg border px-4 py-3 text-sm shadow-lg"
+          style={{ backgroundColor: `${COLORS.surfaceHigh}ee`, borderColor: `${COLORS.primary}66`, color: COLORS.onSurface }}
+          role="status"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <span>{toast}</span>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="opacity-70 hover:opacity-100"
+              aria-label="Dismiss notification"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Navigation Bar */}
       <header
         className="fixed top-0 left-0 z-50 flex justify-between items-center px-6 h-16 border-b"
@@ -153,6 +162,27 @@ export function NegRiskDashboardPage() {
           >
             Negative Risk Engine
           </p>
+        </div>
+        <div className="mb-6 p-3 rounded-lg border" style={{ borderColor: COLORS.outline, backgroundColor: `${COLORS.surfaceHigh}33` }}>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>
+              Risk Threshold
+            </label>
+            <span className="text-xs font-mono font-bold" style={{ color: COLORS.primary }}>{threshold.toFixed(2)}</span>
+          </div>
+          <input
+            type="range"
+            min={0.9}
+            max={0.99}
+            step={0.01}
+            value={threshold}
+            onChange={(e) => setThreshold(Number(e.target.value))}
+            className="w-full accent-[#4cd7f6]"
+          />
+          <div className="flex justify-between text-[10px] mt-1" style={{ color: COLORS.onSurfaceVariant }}>
+            <span>0.90</span>
+            <span>0.99</span>
+          </div>
         </div>
         <nav className="flex flex-col gap-1 flex-grow">
           {[
@@ -225,6 +255,15 @@ export function NegRiskDashboardPage() {
               color={COLORS.primary}
             />
           </section>
+
+          {error && (
+            <div
+              className="mb-4 rounded-lg border p-3 text-sm"
+              style={{ backgroundColor: `${COLORS.loss}1A`, borderColor: `${COLORS.loss}66`, color: COLORS.onSurface }}
+            >
+              {error}
+            </div>
+          )}
 
           {/* Market Scanner Table */}
           <section>

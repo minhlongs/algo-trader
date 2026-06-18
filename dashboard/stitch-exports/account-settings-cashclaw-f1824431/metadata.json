@@ -1,0 +1,7 @@
+{
+  "screenId": "f18244311d164f4cb5ca1e3e3880e5a5",
+  "title": "Account Settings - CashClaw",
+  "projectId": "1981230436523722346",
+  "name": "account",
+  "prompt": "Account page for CashClaw. Dark theme, cyan accents. User profile section (email, tenant ID, member since). Current plan limits. API key display with copy button. Billing info. Delete account option."
+}
