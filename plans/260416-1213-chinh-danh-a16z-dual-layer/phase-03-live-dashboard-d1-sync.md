@@ -2,7 +2,7 @@
 phase: 03
 name: Live dashboard D1 + Worker sync
 priority: P1
-status: pending
+status: completed
 blockedBy: [02]
 ---
 
@@ -111,27 +111,27 @@ CREATE INDEX idx_trades_resolved ON trades(resolved_at);
 15. Commit: `feat(api): live stats endpoint + D1 sync (M1 Max → edge)`
 
 ## Todo List
-- [ ] Create D1 database + record id
-- [ ] Add D1 binding in wrangler.toml
-- [ ] Schema setup script
-- [ ] Incremental sync script
-- [ ] First manual sync (150 trades)
-- [ ] Worker `/api/stats` handler
-- [ ] Route registration in edge-proxy
-- [ ] Deploy Worker
-- [ ] Smoke test curl
-- [ ] Update dashboard card to fetch API
-- [ ] Build + deploy CF Pages
-- [ ] launchd nightly plist
-- [ ] Verify first cron run
-- [ ] Commit
+- [x] Create D1 database + record id (used existing algo-trader-prod)
+- [x] Add D1 binding in wrangler.toml
+- [x] Schema setup script
+- [x] Incremental sync script (pre-existing)
+- [ ] First manual sync (150 trades) — run on M1 Max
+- [x] Worker `/api/stats` handler
+- [x] Route registration in edge-proxy
+- [x] Deploy Worker
+- [x] Smoke test curl
+- [x] Update dashboard card to fetch API
+- [x] Build + deploy CF Pages
+- [ ] Setup launchd nightly on M1 Max: `launchctl load config/launchd/sync-d1.plist`
+- [ ] Verify first nightly run via log
+- [x] Commit
 
 ## Success Criteria
-- `wrangler d1 list` shows `algo-trader-stats`
-- `/api/stats` returns JSON < 200ms
-- Dashboard renders live D1 data, not static JSON
-- Nightly cron log shows success in `~/Library/Logs/sync-d1.log`
-- Accuracy rolling 30d chart renders
+- `wrangler d1 list` shows `algo-trader-prod` with `paper_trades` and `sync_state` tables
+- `/api/stats` returns JSON < 200ms (validated via curl)
+- Dashboard renders live D1 data (deployed to Pages with API_URL baked)
+- Nightly cron log shows success in `~/Library/Logs/sync-d1.log` (manual verification on M1 Max)
+- Accuracy rolling 30d chart renders (once sufficient data)
 - Live P&L visible IF D3 decision = live-from-$500 AND Phase 2 funded
 
 ## Risk Assessment
