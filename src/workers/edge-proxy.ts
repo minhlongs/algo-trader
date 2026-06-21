@@ -5,9 +5,12 @@
  */
 
 import { handleSignup, handleLogin, handleMe, handleListUsers, handleSetRole, handleDeleteUser, corsPreflightResponse, notImplementedResponse } from './auth-handlers';
+import { default as apiStatsHandler } from './api-stats';
+import { ExecutionContext } from '@cloudflare/workers-types';
 
 interface Env {
   CACHE: KVNamespace;
+  STATS_DB: D1Database;
   ENVIRONMENT: string;
   VPS_ORIGIN?: string;
   JWT_SECRET: string;
@@ -29,7 +32,7 @@ const CORS: Record<string, string> = {
 const CACHE_TTL = 60;
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -51,6 +54,11 @@ export default {
     if (path === '/api/auth/users' && request.method === 'GET') return handleListUsers(request, env);
     if (path === '/api/auth/role' && request.method === 'POST') return handleSetRole(request, env);
     if (path === '/api/auth/delete' && request.method === 'POST') return handleDeleteUser(request, env);
+
+    // Stats endpoint — reads from D1 + KV cache
+    if (path === '/api/stats' && request.method === 'GET') {
+      return apiStatsHandler.fetch(request, env, ctx);
+    }
 
     // Markets placeholder
     if (path === '/api/markets' && request.method === 'GET') {
