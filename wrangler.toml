@@ -17,6 +17,12 @@ binding = "CACHE"
 id = "6c7199c0259b42db943aa13b200d8ea1"
 preview_id = "ca8f3f11882e426e952e322963077f73"
 
+# D1 database for stats mirror
+[[d1_databases]]
+binding = "STATS_DB"
+database_name = "algo-trader-prod"
+database_id = "472e48f7-2196-4fb5-9a26-180ad134e15b"
+
 # Staging
 [env.staging]
 name = "algo-trader-staging"

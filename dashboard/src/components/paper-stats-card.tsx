@@ -28,7 +28,9 @@ const PLACEHOLDER: PaperStats = {
 
 async function loadStats(): Promise<PaperStats> {
   try {
-    const live = await fetch('/api/stats', { cache: 'no-cache' });
+    const baseUrl = import.meta.env.VITE_API_URL || '';
+    const url = baseUrl ? `${baseUrl}/api/stats` : '/api/stats';
+    const live = await fetch(url, { cache: 'no-cache' });
     if (live.ok) {
       const data = (await live.json()) as PaperStats;
       if (data && typeof data.trades === 'number' && data.trades > 0) return data;

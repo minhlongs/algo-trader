@@ -5,6 +5,8 @@
  */
 
 import { handleSignup, handleLogin, handleMe, handleListUsers, handleSetRole, handleDeleteUser, corsPreflightResponse, notImplementedResponse } from './auth-handlers';
+import { handleStats } from './api-stats';
+import type { D1Database } from '@cloudflare/workers-types';
 
 interface Env {
   CACHE: KVNamespace;
@@ -12,6 +14,7 @@ interface Env {
   VPS_ORIGIN?: string;
   JWT_SECRET: string;
   ALLOWED_ORIGINS?: string;
+  STATS_DB: D1Database;
 }
 
 // Reserved: dynamic origin validation for multi-tenant CORS
@@ -34,7 +37,18 @@ export default {
     const path = url.pathname;
 
     // CORS preflight
-    if (request.method === 'OPTIONS') return corsPreflightResponse();
+    if (request.method === 'OPTIONS') {
+      // Special handling for stats endpoint to allow dashboard origin
+      if (path === '/api/stats') {
+        const headers = new Headers();
+        headers.set('Access-Control-Allow-Origin', '*');
+        headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+        headers.set('Access-Control-Allow-Headers', 'Content-Type, Cache-Control');
+        headers.set('Access-Control-Max-Age', '86400');
+        return new Response(null, { status: 204, headers });
+      }
+      return corsPreflightResponse();
+    }
 
     // Health check
     if (path === '/health' || path === '/api/health') {
@@ -51,6 +65,15 @@ export default {
     if (path === '/api/auth/users' && request.method === 'GET') return handleListUsers(request, env);
     if (path === '/api/auth/role' && request.method === 'POST') return handleSetRole(request, env);
     if (path === '/api/auth/delete' && request.method === 'POST') return handleDeleteUser(request, env);
+
+    // Stats endpoint — D1 edge mirror
+    if (path === '/api/stats' && request.method === 'GET') {
+      const response = await handleStats(env);
+      // Add CORS headers for cross-origin dashboard access
+      const corsHeaders = new Headers(response.headers);
+      corsHeaders.set('Access-Control-Allow-Origin', '*');
+      return new Response(response.body, { status: response.status, headers: corsHeaders });
+    }
 
     // Markets placeholder
     if (path === '/api/markets' && request.method === 'GET') {
