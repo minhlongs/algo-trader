@@ -182,6 +182,15 @@ export const exchangeApiLatency = new client.Histogram({
   registers: [register],
 });
 
+// Histogram for external API latency (Polymarket, exchanges, LLM gateways)
+export const externalApiLatency = new client.Histogram({
+  name: 'external_api_latency_seconds',
+  help: 'External API call latency in seconds',
+  labelNames: ['service', 'endpoint', 'region'] as const,
+  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  registers: [register],
+});
+
 // Counter for trading signals generated
 export const signalsTotal = new client.Counter({
   name: 'signals_total',
@@ -304,6 +313,13 @@ export function recordSignal(symbol: string, signalType: 'buy' | 'sell' | 'hold'
  */
 export function recordExchangeLatency(exchange: string, operation: string, latencySeconds: number): void {
   exchangeApiLatency.observe({ exchange, operation }, latencySeconds);
+}
+
+/**
+ * Record external API latency with region
+ */
+export function recordExternalApiLatency(service: string, endpoint: string, region: string, latencySeconds: number): void {
+  externalApiLatency.observe({ service, endpoint, region }, latencySeconds);
 }
 
 /**
