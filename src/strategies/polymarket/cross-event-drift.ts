@@ -343,11 +343,11 @@ export function createCrossEventDriftTick(deps: CrossEventDriftDeps): () => Prom
       const marketMids = new Map<string, number>();
       for (const m of activeMarkets) {
         try {
-          const book = await clob.getOrderBook(m.yesTokenId);
+          const book = await clob.getOrderBook(m.yesTokenId!);
           const mid = bestMid(book);
           if (mid <= 0 || mid >= 1) continue;
-          recordPrice(m.yesTokenId, mid);
-          marketMids.set(m.yesTokenId, mid);
+          recordPrice(m.yesTokenId!, mid);
+          marketMids.set(m.yesTokenId!, mid);
         } catch {
           continue;
         }

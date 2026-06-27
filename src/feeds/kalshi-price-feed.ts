@@ -62,6 +62,10 @@ interface KalshiSingleMarketResponse { market?: KalshiRawMarket }
 
 let cache: { data: Map<string, KalshiMarket>; expiresAt: number } | null = null;
 
+export function __resetCacheForTests(): void {
+  cache = null;
+}
+
 const isCacheValid = (): boolean => cache !== null && Date.now() < cache.expiresAt;
 
 function setCache(markets: KalshiMarket[]): void {

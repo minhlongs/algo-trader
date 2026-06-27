@@ -181,7 +181,7 @@ export class WalletManager {
   }
 
   // EC#17: Save state asynchronously to avoid blocking the event loop
-  private async saveState(): Promise<void> {
+  private saveState(): void {
     const state: WalletPersistedState = {
       wallets: Array.from(this.wallets.values()),
       tradeHistory: Object.fromEntries(

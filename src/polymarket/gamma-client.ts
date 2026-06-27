@@ -19,8 +19,8 @@ export interface GammaMarket {
   resolved?: boolean;
   groupItemTitle?: string;
   tokens: Array<{ token_id: string; outcome: string; price: number }>;
-  /** Token ID for the YES outcome. */
-  yesTokenId: string;
+  /* Token ID for the YES outcome — may be absent on single-outcome markets */
+  yesTokenId?: string;
   /** Token ID for the NO outcome — absent on single-outcome markets */
   noTokenId?: string;
   /** Current mid-price of the YES outcome (0–1) */

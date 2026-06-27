@@ -3,7 +3,7 @@ import { Order, OrderSide, OrderStatus } from './core/types';
 const MAX_PRICE = 1_000_000;
 const MAX_SIZE = 1_000_000;
 
-function deepCloneOrder(order: Order): Order {
+function cloneOrder(order: Order): Order {
   return { ...order };
 }
 
@@ -51,7 +51,7 @@ export class TradingEngine {
   }
 
   getOrders(): readonly Order[] {
-    return this.orders.map(o => deepCloneOrder(o));
+    return this.orders.map(o => cloneOrder(o));
   }
 
   clearOrders(): void {

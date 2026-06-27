@@ -333,17 +333,17 @@ export function createMomentumCascadeTick(deps: MomentumCascadeDeps): () => Prom
 
       for (const market of validMarkets) {
         try {
-          const book = await clob.getOrderBook(market.yesTokenId);
+          const book = await clob.getOrderBook(market.yesTokenId!);
           const ba = bestBidAsk(book);
           if (ba.mid <= 0 || ba.mid >= 1) continue;
 
-          recordPrice(market.yesTokenId, ba.mid);
-          const prices = getPrices(market.yesTokenId);
+          recordPrice(market.yesTokenId!, ba.mid);
+          const prices = getPrices(market.yesTokenId!);
 
           if (prices.length < 2) continue;
 
           const ret = calcReturn(prices);
-          const mom = updateMomentumEmaState(market.yesTokenId, ret);
+          const mom = updateMomentumEmaState(market.yesTokenId!, ret);
           momentums.set(market.conditionId, mom);
         } catch (err) {
           logger.debug('Price fetch error', STRATEGY_NAME, {
@@ -364,9 +364,9 @@ export function createMomentumCascadeTick(deps: MomentumCascadeDeps): () => Prom
       for (const market of validMarkets) {
         if (positions.length >= cfg.maxPositions) break;
         if (market.conditionId === leader.marketId) continue;
-        if (hasPosition(market.yesTokenId)) continue;
+        if (hasPosition(market.yesTokenId!)) continue;
         if (market.noTokenId && hasPosition(market.noTokenId)) continue;
-        if (isOnCooldown(market.yesTokenId)) continue;
+        if (isOnCooldown(market.yesTokenId!)) continue;
 
         const followerMom = momentums.get(market.conditionId);
         if (followerMom === undefined) continue;
@@ -382,7 +382,7 @@ export function createMomentumCascadeTick(deps: MomentumCascadeDeps): () => Prom
         // Positive leader momentum → followers should rise → BUY YES
         // Negative leader momentum → followers should fall → BUY NO
         const side: 'yes' | 'no' = leader.momentum > 0 ? 'yes' : 'no';
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = side === 'yes' ? market.yesTokenId! : (market.noTokenId ?? market.yesTokenId!);
 
         try {
           const book = await clob.getOrderBook(tokenId);

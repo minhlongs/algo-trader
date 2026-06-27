@@ -308,7 +308,7 @@ export function createRelativeStrengthRotationTick(
       // Filter eligible markets
       const eligible: GammaMarket[] = [];
       for (const market of markets) {
-        if (!market.yesTokenId || market.closed || market.resolved) continue;
+        if (!market.yesTokenId! || market.closed || market.resolved) continue;
         if ((market.volume ?? 0) < cfg.minVolume) continue;
         eligible.push(market);
       }
@@ -321,18 +321,18 @@ export function createRelativeStrengthRotationTick(
 
       for (const market of eligible) {
         try {
-          const book = await clob.getOrderBook(market.yesTokenId);
+          const book = await clob.getOrderBook(market.yesTokenId!);
           const ba = bestBidAsk(book);
           if (ba.mid <= 0 || ba.mid >= 1) continue;
 
-          recordPrice(market.yesTokenId, ba.mid);
-          const prices = getPrices(market.yesTokenId);
+          recordPrice(market.yesTokenId!, ba.mid);
+          const prices = getPrices(market.yesTokenId!);
 
           if (prices.length < 2) continue;
 
           const momentum = calcMomentum(prices);
-          momentums.set(market.yesTokenId, momentum);
-          marketsByToken.set(market.yesTokenId, market);
+          momentums.set(market.yesTokenId!, momentum);
+          marketsByToken.set(market.yesTokenId!, market);
         } catch {
           continue;
         }

@@ -36,7 +36,7 @@ export interface PaperTrade {
 }
 
 /** Derive source tag from strategy name prefix */
-function deriveSource(strategy: string): string {
+export function deriveSource(strategy: string): string {
   if (strategy.startsWith('qwen')) return 'qwen';
   if (strategy.startsWith('deepseek')) return 'deepseek';
   if (strategy.startsWith('swarm')) return 'swarm';
@@ -48,13 +48,13 @@ function deriveSource(strategy: string): string {
  * Qwen trades are always paper_only=TRUE — NEVER routed to live.
  * Non-blocking: errors are logged but do not fail the trade flow.
  */
-async function savePaperTradeV3(trade: PaperTrade): Promise<void> {
+export async function savePaperTradeV3(trade: PaperTrade): Promise<void> {
   try {
     await query(
       `INSERT INTO paper_trades_v3
-         (id, market_id, side, size_usd, entry_price, strategy, source, confidence, status, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9)
-       ON CONFLICT (id) DO NOTHING`,
+      (id, market_id, side, size_usd, entry_price, strategy, source, confidence, status, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9)
+      ON CONFLICT (id) DO NOTHING`,
       [
         trade.id,
         trade.marketId,
@@ -86,9 +86,33 @@ const TRADES_FILE = path.join(process.cwd(), 'data', 'paper-trades.json');
 const POSITION_SIZE_PCT = 0.05;
 const MIN_AI_CONFIDENCE = 0.7;
 
-let portfolio: PaperPortfolio = { capital: 1000, positions: [], closedTrades: [], totalPnl: 0, winCount: 0, lossCount: 0 };
+let portfolio: PaperPortfolio = {
+  capital: 1000,
+  positions: [],
+  closedTrades: [],
+  totalPnl: 0,
+  winCount: 0,
+  lossCount: 0,
+};
 
-function saveTrades(): void {
+/** Reset portfolio to defaults — for test isolation only. */
+export function __resetPortfolioForTests(): void {
+  portfolio = { capital: 1000, positions: [], closedTrades: [], totalPnl: 0, winCount: 0, lossCount: 0 };
+}
+
+/** Reset portfolio to initial state (for test isolation). */
+export function resetPortfolio(): void {
+  portfolio = {
+    capital: 1000,
+    positions: [],
+    closedTrades: [],
+    totalPnl: 0,
+    winCount: 0,
+    lossCount: 0,
+  };
+}
+
+export function saveTrades(): void {
   try {
     const dir = path.dirname(TRADES_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -96,7 +120,7 @@ function saveTrades(): void {
   } catch (err) { logger.warn('[PaperOrchestrator] Persist failed', { err }); }
 }
 
-function loadTrades(): void {
+export function loadTrades(): void {
   try {
     if (fs.existsSync(TRADES_FILE)) {
       portfolio = JSON.parse(fs.readFileSync(TRADES_FILE, 'utf-8')) as PaperPortfolio;
@@ -107,7 +131,7 @@ function loadTrades(): void {
 
 // ─── Signal processing ────────────────────────────────────────────────────────
 
-async function processCandidate(candidate: SignalCandidate, maxPositions: number): Promise<void> {
+export async function processCandidate(candidate: SignalCandidate, maxPositions: number): Promise<void> {
   const vibe = getVibeState();
 
   // L1+L2: check Qwen kill switch and swarm-enabled flag before processing
@@ -130,7 +154,8 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
 
     const validation = await validateSignal(candidate);
     if (!validation.valid || validation.confidence < MIN_AI_CONFIDENCE) {
-      logger.info('[PaperOrchestrator] AI REJECT', { type: candidate.signalType, conf: validation.confidence }); return;
+      logger.info('[PaperOrchestrator] AI REJECT', { type: candidate.signalType, conf: validation.confidence });
+      return;
     }
   } else {
     logger.info('[PaperOrchestrator] Endgame — skip AI (mathematical)', { edge: candidate.expectedEdge });
@@ -143,14 +168,20 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
   // Endgame: buy the near-certain side (NO when YES<0.05, YES when YES>0.95)
   // Non-endgame: buy whichever side the signal reasoning suggests
   const side: 'YES' | 'NO' = isEndgame
-    ? (market.yesPrice < 0.5 ? 'NO' : 'YES')  // buy the CERTAIN side
-    : (market.yesPrice < 0.5 ? 'YES' : 'NO');  // contrarian bet
+    ? (market.yesPrice < 0.5 ? 'NO' : 'YES') // buy the CERTAIN side
+    : (market.yesPrice < 0.5 ? 'YES' : 'NO'); // contrarian bet
   const entryPrice = side === 'YES' ? market.yesPrice : market.noPrice;
   const trade: PaperTrade = {
     id: `paper-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    marketId: market.id, side, size, entryPrice, strategy: candidate.signalType,
+    marketId: market.id,
+    side,
+    size,
+    entryPrice,
+    strategy: candidate.signalType,
     source,
-    signalConfidence: isEndgame ? candidate.expectedEdge : 0.8, swarmApproved: !isEndgame, aiValidated: !isEndgame,
+    signalConfidence: isEndgame ? candidate.expectedEdge : 0.8,
+    swarmApproved: !isEndgame,
+    aiValidated: !isEndgame,
     timestamp: Date.now(),
   };
 
@@ -163,10 +194,17 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
 
   // Record prediction for accuracy tracking (no money needed)
   recordPrediction({
-    id: trade.id, marketId: trade.marketId, title: market.title,
-    predictedOutcome: trade.side, confidence: trade.signalConfidence,
-    predictedAt: Date.now(), marketYesPrice: market.yesPrice, strategy: candidate.signalType,
-    actualOutcome: null, resolvedAt: null, correct: null,
+    id: trade.id,
+    marketId: trade.marketId,
+    title: market.title,
+    predictedOutcome: trade.side,
+    confidence: trade.signalConfidence,
+    predictedAt: Date.now(),
+    marketYesPrice: market.yesPrice,
+    strategy: candidate.signalType,
+    actualOutcome: null,
+    resolvedAt: null,
+    correct: null,
   });
 
   logger.info('[PaperOrchestrator] Trade OPEN', { id: trade.id, side: trade.side, size, entryPrice: trade.entryPrice });
@@ -174,7 +212,7 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
 
 // ─── Position settlement ──────────────────────────────────────────────────────
 
-async function checkPositions(): Promise<void> {
+export async function checkPositions(): Promise<void> {
   const now = Date.now();
   const stale = portfolio.positions.filter(p => now - p.timestamp > 5 * 60_000);
 
@@ -210,15 +248,23 @@ async function checkPositions(): Promise<void> {
 
     // Async reflection — non-blocking
     const outcome: TradeOutcome = {
-      tradeId: trade.id, marketId: trade.marketId, strategy: trade.strategy,
-      side: trade.side, entryPrice: trade.entryPrice, exitPrice, pnl,
-      expectedEdge: trade.signalConfidence * 0.05, actualEdge: pnl / trade.size,
-      executionLatency: 0, timestamp: trade.timestamp,
+      tradeId: trade.id,
+      marketId: trade.marketId,
+      strategy: trade.strategy,
+      side: trade.side,
+      entryPrice: trade.entryPrice,
+      exitPrice,
+      pnl,
+      expectedEdge: trade.signalConfidence * 0.05,
+      actualEdge: pnl / trade.size,
+      executionLatency: 0,
+      timestamp: trade.timestamp,
     };
     reflectOnTrade(outcome).catch(err => logger.warn('[PaperOrchestrator] Reflection error', { err }));
 
     logger.info('[PaperOrchestrator] Trade CLOSED', {
-      id: trade.id, pnl: pnl.toFixed(4),
+      id: trade.id,
+      pnl: pnl.toFixed(4),
       totalPnl: portfolio.totalPnl.toFixed(4),
       winRate: (portfolio.winCount / Math.max(1, portfolio.winCount + portfolio.lossCount)).toFixed(2),
     });
