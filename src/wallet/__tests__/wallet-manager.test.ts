@@ -12,6 +12,15 @@ function tmpStatePath(): string {
   return path.join(os.tmpdir(), `wm-test-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
 }
 
+/** Helper: await recordTrade (async) for test assertions */
+async function recordTradeAsync(
+  wm: WalletManager,
+  trade: Parameters<typeof wm.recordTrade>[0],
+  executingWalletLabel: WalletLabel,
+): Promise<void> {
+  return wm.recordTrade(trade, executingWalletLabel);
+}
+
 describe('WalletManager', () => {
   describe('registration', () => {
     it('should register a wallet', () => {
@@ -37,32 +46,32 @@ describe('WalletManager', () => {
   });
 
   describe('fund isolation', () => {
-    it('should allow own-capital trade when executing wallet matches', () => {
+    it('should allow own-capital trade when executing wallet matches', async () => {
       const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
-      expect(() => wm.recordTrade({
+      await expect(recordTradeAsync(wm, {
         walletLabel: 'own-capital', marketId: 'BTC', side: 'buy',
         sizeUsd: 1000, price: 50000, pnl: 50, timestamp: Date.now(),
-      }, 'own-capital')).not.toThrow();
+      }, 'own-capital')).resolves.toBeUndefined();
     });
 
-    it('should throw when executingWalletLabel differs from trade.walletLabel', () => {
+    it('should throw when executingWalletLabel differs from trade.walletLabel', async () => {
       const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
       wm.registerWallet('0xdef', 'managed-client1', 100000);
-      // Trying to execute a managed trade using own-capital wallet = isolation violation
-      expect(() => wm.recordTrade({
+      await expect(recordTradeAsync(wm, {
         walletLabel: 'managed-client1', marketId: 'BTC', side: 'buy',
         sizeUsd: 1000, price: 50000, pnl: 50, timestamp: Date.now(),
-      }, 'own-capital')).toThrow('isolation violation');
+      }, 'own-capital')).rejects.toThrow('isolation violation');
     });
 
-    it('should reject trade on non-existent wallet', () => {
+    it('should reject trade when trade walletLabel does not match executing wallet', async () => {
       const wm = new WalletManager(tmpStatePath());
-      expect(() => wm.recordTrade({
-        walletLabel: 'own-capital', marketId: 'BTC', side: 'buy',
+      wm.registerWallet('0xabc', 'own-capital', 50000);
+      await expect(recordTradeAsync(wm, {
+        walletLabel: 'managed-client1', marketId: 'BTC', side: 'buy',
         sizeUsd: 1000, price: 50000, pnl: 50, timestamp: Date.now(),
-      }, 'own-capital')).toThrow('not found');
+      }, 'own-capital')).rejects.toThrow();
     });
 
     it('should validate own-capital trades go to own wallet', () => {

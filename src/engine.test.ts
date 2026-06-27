@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TradingEngine, Order } from './engine';
+import { TradingEngine } from './engine';
+import type { Order } from './core/types';
 
 describe('TradingEngine', () => {
   let engine: TradingEngine;
@@ -10,26 +11,26 @@ describe('TradingEngine', () => {
 
   it('should execute valid buy order', () => {
     const order: Order = {
-      symbol: 'AAPL',
-      quantity: 100,
-      price: 150.00,
+      marketId: 'polymarket-election-2024',
       side: 'buy',
-      timestamp: new Date()
+      price: '150.00',
+      size: '100',
+      type: 'limit',
     };
 
     const result = engine.executeOrder(order);
 
     expect(result.success).toBe(true);
-    expect(result.orderId).toMatch(/^ORD-\d+-[a-z0-9]+$/);
+    expect(result.orderId).toMatch(/^ORD-\d+-\d+-[a-z0-9]+$/);
   });
 
   it('should execute valid sell order', () => {
     const order: Order = {
-      symbol: 'GOOGL',
-      quantity: 50,
-      price: 2800.00,
+      marketId: 'polymarket-election-2024',
       side: 'sell',
-      timestamp: new Date()
+      price: '2800.00',
+      size: '50',
+      type: 'limit',
     };
 
     const result = engine.executeOrder(order);
@@ -39,64 +40,63 @@ describe('TradingEngine', () => {
 
   it('should reject order with zero quantity', () => {
     const order: Order = {
-      symbol: 'AAPL',
-      quantity: 0,
-      price: 150.00,
+      marketId: 'polymarket-election-2024',
       side: 'buy',
-      timestamp: new Date()
+      price: '150.00',
+      size: '0',
+      type: 'limit',
     };
 
     const result = engine.executeOrder(order);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Quantity must be positive');
+    expect(result.error).toBe('Size must be between 0 and 1000000');
   });
 
   it('should reject order with negative quantity', () => {
     const order: Order = {
-      symbol: 'AAPL',
-      quantity: -10,
-      price: 150.00,
+      marketId: 'polymarket-election-2024',
       side: 'buy',
-      timestamp: new Date()
+      price: '150.00',
+      size: '-10',
+      type: 'limit',
     };
 
     const result = engine.executeOrder(order);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Quantity must be positive');
+    expect(result.error).toBe('Size must be between 0 and 1000000');
   });
 
   it('should reject order with zero price', () => {
     const order: Order = {
-      symbol: 'AAPL',
-      quantity: 100,
-      price: 0,
+      marketId: 'polymarket-election-2024',
       side: 'buy',
-      timestamp: new Date()
+      price: '0',
+      size: '100',
+      type: 'limit',
     };
 
     const result = engine.executeOrder(order);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Price must be positive');
+    expect(result.error).toBe('Price must be between 0 and 1000000');
   });
 
   it('should track executed orders', () => {
     const order1: Order = {
-      symbol: 'AAPL',
-      quantity: 100,
-      price: 150.00,
+      marketId: 'polymarket-election-2024',
       side: 'buy',
-      timestamp: new Date()
+      price: '150.00',
+      size: '100',
+      type: 'limit',
     };
-
     const order2: Order = {
-      symbol: 'GOOGL',
-      quantity: 50,
-      price: 2800.00,
+      marketId: 'polymarket-election-2024',
       side: 'sell',
-      timestamp: new Date()
+      price: '2800.00',
+      size: '50',
+      type: 'limit',
     };
 
     engine.executeOrder(order1);
@@ -104,17 +104,17 @@ describe('TradingEngine', () => {
 
     const orders = engine.getOrders();
     expect(orders).toHaveLength(2);
-    expect(orders[0].symbol).toBe('AAPL');
-    expect(orders[1].symbol).toBe('GOOGL');
+    expect(orders[0].marketId).toBe('polymarket-election-2024');
+    expect(orders[1].marketId).toBe('polymarket-election-2024');
   });
 
   it('should clear orders', () => {
     const order: Order = {
-      symbol: 'AAPL',
-      quantity: 100,
-      price: 150.00,
+      marketId: 'polymarket-election-2024',
       side: 'buy',
-      timestamp: new Date()
+      price: '150.00',
+      size: '100',
+      type: 'limit',
     };
 
     engine.executeOrder(order);
