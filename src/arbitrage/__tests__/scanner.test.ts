@@ -1,9 +1,41 @@
 /**
- * MultiExchangeScanner Tests
+ * MultiExchangeScanner Tests — with CCXT mocked (no network)
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MultiExchangeScanner } from '../scanner';
+
+// Mock the entire ccxt module so scanner never hits the network
+vi.mock('ccxt', () => {
+  class MockExchange {
+    fetchTicker: ReturnType<typeof vi.fn>;
+    fetchOrderBook: ReturnType<typeof vi.fn>;
+    close: ReturnType<typeof vi.fn>;
+    constructor() {
+      this.fetchTicker = vi.fn(async (symbol: string) => {
+        if (symbol === 'INVALID/PAIR') throw new Error('Invalid symbol');
+        return {
+          bid: 50000 + Math.random() * 1000,
+          ask: 50050 + Math.random() * 1000,
+          baseVolume: 1_000_000,
+        };
+      });
+      this.fetchOrderBook = vi.fn(async () => ({
+        bids: [[50000, 1]],
+        asks: [[50050, 1]],
+      }));
+      this.close = vi.fn(async () => {});
+    }
+  }
+  return {
+    default: {
+      binance: MockExchange,
+      coinbase: MockExchange,
+      kraken: MockExchange,
+      uniswap: MockExchange,
+    },
+  };
+});
 
 describe('MultiExchangeScanner', () => {
   let scanner: MultiExchangeScanner;
