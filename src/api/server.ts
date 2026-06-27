@@ -47,7 +47,15 @@ export class ApiServer {
     this.app = express();
     this.config = {
       port: parseInt(process.env.API_PORT || '3000'),
-      corsOrigin: process.env.CORS_ORIGIN || 'https://cashclaw.cc',
+      corsOrigin: process.env.CORS_ORIGIN
+        ? process.env.CORS_ORIGIN.split(',')
+        : [
+            'https://cashclaw.cc',
+            'https://cashclaw-dashboard.pages.dev',
+            'https://agencyos.network',
+            'https://sophia.agencyos.network',
+            'https://raas-landing.pages.dev',
+          ],
       rateLimitWindowMs: 60000, // 1 minute
       rateLimitMax: 100, // 100 requests per minute
       ...config,
