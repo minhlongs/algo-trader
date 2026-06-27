@@ -21,7 +21,10 @@ import { verifyHmacSha256 } from '../../utils/hmac-verifier';
 import { SignalPublisher } from '../../signal/signal-publisher';
 import type { SignalStore } from '../../signal/signal-publisher';
 import { logger } from '../../utils/logger';
+<<<<<<< HEAD
 import { qwenSignalsTotal } from '../../middleware/prometheus-metrics';
+=======
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
 
 /** Strategies allowed to ingest via this endpoint */
 const ALLOWED_STRATEGIES = ['qwen-m1max-v1', 'deepseek-m1max-v1'] as const;
@@ -97,7 +100,10 @@ export function createSignalIngestRouter(store: SignalStore): Router {
         ip: req.ip,
         ts: tsSeconds,
       });
+<<<<<<< HEAD
       qwenSignalsTotal.inc({ result: 'rejected' });
+=======
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
       res.status(401).json({ error: 'Invalid signature or expired timestamp' });
       return;
     }
@@ -132,7 +138,10 @@ export function createSignalIngestRouter(store: SignalStore): Router {
         return;
       }
 
+<<<<<<< HEAD
       qwenSignalsTotal.inc({ result: 'accepted' });
+=======
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
       logger.info(`[SignalIngest] Accepted signal id=${signal.id} strategy=${signal.strategy}`);
       res.status(202).json({ status: 'accepted', id: signal.id });
     } catch (err) {

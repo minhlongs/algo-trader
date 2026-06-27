@@ -24,8 +24,13 @@
 
   <key>ProgramArguments</key>
   <array>
+<<<<<<< HEAD
     <string>/Users/macbook/.daemon-venv/bin/python</string>
     <string>/Users/macbook/algo-trader/scripts/qwen-signal-daemon/signal-generator-daemon.py</string>
+=======
+    <string>/usr/bin/python3</string>
+    <string>/Users/macbookprom1/algo-trader/scripts/qwen-signal-daemon/signal-generator-daemon.py</string>
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
   </array>
 
   <!-- Environment variables — real secret injected via launchctl setenv or ~/.zshenv -->
@@ -36,7 +41,11 @@
     <key>QWEN_SIGNAL_INGEST_URL</key>
     <string>https://algo-trader.pages.dev/api/v1/signals/ingest</string>
     <key>QWEN_SERVER_URL</key>
+<<<<<<< HEAD
     <string>http://127.0.0.1:4002</string>
+=======
+    <string>http://127.0.0.1:11437</string>
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
     <key>QWEN_MODEL</key>
     <string>mlx-community/Qwen3-30B-A3B-4bit</string>
     <key>QWEN_SIGNAL_KILL</key>

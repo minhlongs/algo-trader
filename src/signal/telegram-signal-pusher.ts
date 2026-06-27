@@ -102,6 +102,7 @@ export class TelegramSignalPusher {
     }
   }
 
+<<<<<<< HEAD
   /**
    * Send an admin alert to the configured TELEGRAM_CHAT_ID.
    * Used by drawdown monitor for breach notifications.
@@ -120,6 +121,8 @@ export class TelegramSignalPusher {
     return this.sendMessage(chatId, text);
   }
 
+=======
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
   /** Visible for tests */
   get queueLength(): number {
     return this.queue.length;

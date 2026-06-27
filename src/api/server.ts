@@ -24,8 +24,6 @@ import { analyticsRouter } from './routes/analytics-routes';
 import { subscriberPnlRouter } from './routes/subscriber-pnl-routes';
 import { enterpriseInquiryRouter } from './routes/enterprise-inquiry-routes';
 import { createSignalIngestRouter } from './routes/signal-ingest-routes';
-import { createAdminQwenRouter } from './routes/admin-qwen-routes';
-import { signalStoreD1 } from '../signal/signal-store-d1';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
@@ -145,13 +143,13 @@ export class ApiServer {
     this.app.use('/api/v1/subscriber', subscriberPnlRouter);
     this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
 
-    // Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon
-    // Phase 04: stub replaced with real D1-backed SignalStoreD1
-    const signalIngestRouter = createSignalIngestRouter(signalStoreD1);
+    // Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon (Phase 03)
+    // Store stub — Phase 04 wires real D1/SQLite persistence
+    const signalIngestRouter = createSignalIngestRouter({
+      saveSignal: async (signal) => { logger.debug('[SignalStore] saveSignal stub', { id: signal.id }); },
+      getSubscriptions: async () => [],
+    });
     this.app.use('/api/v1/signals', signalIngestRouter);
-
-    // Admin Qwen routes: kill switch + status (L1/L2 rollback layers)
-    this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
 
     // Webhook routes (no rate limit — external provider callbacks)
     this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);

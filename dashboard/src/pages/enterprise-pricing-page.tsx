@@ -84,7 +84,11 @@ const ENTERPRISE_FAQS = [
   },
   {
     q: 'Is a custom contract available?',
+<<<<<<< HEAD
     a: 'Yes. All enterprise plans include a custom MSA. BAA and DPA available on Unlimited tier.',
+=======
+    a: 'Yes. All enterprise plans include a custom MSA. Custom DPA and data-processing addenda available on Unlimited tier.',
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
   },
 ];
 

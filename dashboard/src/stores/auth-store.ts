@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authClient } from '../lib/auth-client';
 
-interface AuthState {
+export interface AuthState {
   loggedIn: boolean;
   email: string;
   name: string;

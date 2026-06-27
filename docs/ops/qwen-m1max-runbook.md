@@ -216,6 +216,7 @@ QWEN_MODEL=mlx-community/Qwen3-30B-A3B-4bit
 
 ---
 
+<<<<<<< HEAD
 ## Phase 04 Admin API — Kill/Unkill & Drawdown Alerts
 
 ### Admin Routes (require ADMIN_API_KEY header)
@@ -255,6 +256,8 @@ When Telegram admin alert fires:
 
 ---
 
+=======
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
 ## Files on M1 Max
 
 | Path | Description |

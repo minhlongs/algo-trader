@@ -28,7 +28,11 @@ INGEST_URL = os.environ.get(
     "QWEN_SIGNAL_INGEST_URL",
     "https://algo-trader.pages.dev/api/v1/signals/ingest",
 )
+<<<<<<< HEAD
 QWEN_URL = os.environ.get("QWEN_SERVER_URL", "http://127.0.0.1:4002")
+=======
+QWEN_URL = os.environ.get("QWEN_SERVER_URL", "http://127.0.0.1:11437")
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
 QWEN_MODEL = os.environ.get("QWEN_MODEL", "mlx-community/Qwen3-30B-A3B-4bit")
 KILL_SWITCH_KEY = "QWEN_SIGNAL_KILL"  # daemon exits cleanly if set to non-empty
 POLL_INTERVAL_S = 60
@@ -108,13 +112,18 @@ Respond ONLY with valid JSON (no markdown, no explanation):
 
 def call_qwen(snapshot: dict, client: httpx.Client) -> dict:
     """
+<<<<<<< HEAD
     Call Qwen3-30B-A3B via OpenAI-compat API (port from QWEN_SERVER_URL, default :4002).
+=======
+    Call Qwen3-30B-A3B via OpenAI-compat API at :11437.
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
     Returns parsed signal dict with {side, confidence, reasoning}.
     Raises ValueError if JSON is malformed or fields missing.
     """
     prompt = SIGNAL_PROMPT_TEMPLATE.format(**snapshot)
     payload = {
         "model": QWEN_MODEL,
+<<<<<<< HEAD
         # System prompt `/no_think` disables Qwen3 thinking mode (cuts latency + avoids <think> tokens)
         "messages": [
             {"role": "system", "content": "/no_think"},
@@ -122,26 +131,41 @@ def call_qwen(snapshot: dict, client: httpx.Client) -> dict:
         ],
         "temperature": 0.3,
         "max_tokens": 300,
+=======
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": 200,
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
     }
     r = client.post(
         f"{QWEN_URL}/v1/chat/completions",
         json=payload,
+<<<<<<< HEAD
         timeout=120,
+=======
+        timeout=60,
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
     )
     r.raise_for_status()
     content = r.json()["choices"][0]["message"]["content"].strip()
 
+<<<<<<< HEAD
     # Strip Qwen3 <think>...</think> block if present (fallback if /no_think ignored)
     if "</think>" in content:
         content = content.split("</think>", 1)[1].strip()
+=======
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
     # Strip markdown fences if Qwen wraps output
     if content.startswith("```"):
         content = content.split("```")[1]
         if content.startswith("json"):
             content = content[4:]
+<<<<<<< HEAD
     # Find first { and last } to tolerate surrounding whitespace/prose
     if "{" in content and "}" in content:
         content = content[content.index("{") : content.rindex("}") + 1]
+=======
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
 
     parsed = json.loads(content)
     side = parsed.get("side")

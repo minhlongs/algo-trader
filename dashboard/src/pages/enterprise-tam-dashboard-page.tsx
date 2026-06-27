@@ -6,6 +6,11 @@
  */
 
 import { useState, useEffect } from 'react';
+<<<<<<< HEAD
+=======
+import { Navigate } from 'react-router-dom';
+import { useAuthStore } from '../stores/auth-store';
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
 import { ENTERPRISE_PLANS, type EnterprisePlanKey } from '../lib/enterprise-plans';
 
 interface EnterpriseInquiry {
@@ -88,6 +93,16 @@ function InquiryRow({
 }
 
 export function EnterpriseTamDashboardPage() {
+<<<<<<< HEAD
+=======
+  const role = useAuthStore((state) => state.role);
+
+  // Guard: only admin may access this internal page
+  if (role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
   const [inquiries, setInquiries] = useState<EnterpriseInquiry[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [errorMsg, setErrorMsg] = useState('');

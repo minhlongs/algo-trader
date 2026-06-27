@@ -5,11 +5,22 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+<<<<<<< HEAD
 
 // Mock auth store — return a real tenantId
 vi.mock('../../stores/auth-store', () => ({
   useAuthStore: vi.fn((selector: (s: { tenantId: string | null }) => unknown) =>
     selector({ tenantId: 'sub-test-001' })
+=======
+import type { AuthState } from '../../stores/auth-store';
+
+const mockAuthState = (overrides: Partial<AuthState> = {}): AuthState =>
+  ({ tenantId: 'sub-test-001', ...overrides }) as AuthState;
+
+vi.mock('../../stores/auth-store', () => ({
+  useAuthStore: vi.fn((selector: (s: AuthState) => unknown) =>
+    selector(mockAuthState())
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
   ),
 }));
 
@@ -19,9 +30,17 @@ vi.mock('../../hooks/use-subscriber-pnl', () => ({
 }));
 
 import { useSubscriberPnl } from '../../hooks/use-subscriber-pnl';
+<<<<<<< HEAD
 import { SubscriberOverviewPage } from '../subscriber-overview';
 
 const mockHook = vi.mocked(useSubscriberPnl);
+=======
+import { useAuthStore } from '../../stores/auth-store';
+import { SubscriberOverviewPage } from '../subscriber-overview';
+
+const mockHook = vi.mocked(useSubscriberPnl);
+const mockAuth = vi.mocked(useAuthStore);
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
 
 const DEFAULT_SUMMARY = {
   subscriberId: 'sub-test-001',
@@ -63,6 +82,13 @@ function hookResult(overrides = {}) {
 describe('SubscriberOverviewPage', () => {
   beforeEach(() => {
     mockHook.mockReset();
+<<<<<<< HEAD
+=======
+    // Restore default tenantId after any test that mutates useAuthStore
+    mockAuth.mockImplementation(
+      (selector: (s: AuthState) => unknown) => selector(mockAuthState())
+    );
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
   });
 
   it('renders KPI cards when data is loaded', () => {
@@ -93,10 +119,17 @@ describe('SubscriberOverviewPage', () => {
     expect(screen.getByText('Network failure')).toBeTruthy();
   });
 
+<<<<<<< HEAD
   it('shows no-identity message when tenantId is null', () => {
     const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
       (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
+=======
+  it('shows no-identity message when tenantId is null', async () => {
+    const { useAuthStore } = await import('../../stores/auth-store');
+    vi.mocked(useAuthStore).mockImplementation(
+      (selector: (s: AuthState) => unknown) => selector(mockAuthState({ tenantId: null }))
+>>>>>>> origin/feat/qwen-signal-daemon-phase03
     );
     mockHook.mockReturnValue(hookResult({ summary: null }));
     render(<SubscriberOverviewPage />);
