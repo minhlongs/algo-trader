@@ -57,3 +57,5 @@ Revert PR. Gauges vanish; alert unprovisioned on Grafana restart.
 
 ## Unresolved
 - Group placement: is backlog SLA a "rollback" concern (L-tier group) or an "availability" concern (liveness group)? Plan chooses rollback group (tier `strategy_review`) because backlog is a quality-drift signal, not a scrape/timer-liveness issue.
+---
+status: complete

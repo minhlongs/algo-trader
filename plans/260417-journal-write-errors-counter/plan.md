@@ -50,3 +50,5 @@ Revert PR. Counter disappears; no alert depends on it.
 
 ## Unresolved
 - Should we also add a Grafana panel for this counter to the qwen-solo-platform dashboard? Deferred — first prove the counter is emitting the right signal in prod.
+---
+status: complete

@@ -51,3 +51,5 @@ Revert PR. Endpoint disappears; operator falls back to psql UPDATE (existing wor
 
 ## Unresolved
 - Should resolution timestamp come from `now()` in SQL (DB clock) or from the Node process? Plan chooses `now()` — single source of truth, survives clock-skew in HA future.
+---
+status: complete

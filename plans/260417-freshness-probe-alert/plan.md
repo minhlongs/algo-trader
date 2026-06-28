@@ -52,3 +52,5 @@ Revert PR. Gauge disappears, alert unprovisioned on Grafana restart.
 
 ## Unresolved
 - Should `QwenDrawdownMonitorStale` be a companion alert (same pattern, different gauge)? Deferred — drawdown monitor emits `qwen_drawdown_auto_disabled` gauge every run, so `time() - ` on its own last-scrape time via `up{}` already gives coverage. Revisit if monitor shows stall symptoms.
+---
+status: complete

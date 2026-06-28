@@ -50,3 +50,5 @@ Revert PR. Gauge disappears; alert unprovisioned on Grafana restart.
 
 ## Unresolved
 - Should emit site be "top of runDrawdownCheck" (any invocation) or "after DB success" (DB-confirmed)? Plan chooses "top of check" — differs from signals-loop's "after DB success" — because drawdown check has multiple early-return paths (kill-switch, no-trades), all of which still prove the timer is alive. DB success is captured by `qwenPaperPnlPct` gauge freshness separately, which Grafana operators can eyeball.
+---
+status: complete

@@ -1,3 +1,6 @@
+---
+status: archived
+---
 > **Plan Status:** ARCHIVED — Superseded by Mekong IDE 13-giant strategy
 
 # Unified $1M Master Plan — OpenClaw Platform

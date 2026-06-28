@@ -50,3 +50,5 @@ Existing 4 alert rules fire on internal gauges (`algo_trader_qwen_*`). If the al
 
 ## Unresolved
 - Should we also add `absent()` guard (e.g., `absent(up{job="algo-trader"})==1`) in case the target itself disappears from config? Deferred — 3m for-duration on `==0` already catches most cases. Revisit if target config becomes dynamic.
+---
+status: complete

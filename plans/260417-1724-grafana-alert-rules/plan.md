@@ -61,3 +61,5 @@ Qwen L-tier gauges (`algo_trader_qwen_*`) emit to Grafana but no **active alerts
 ## Unresolved
 - Do we need a deadman-switch alert (e.g., `up{job="algo-trader"} == 0`)? Deferred — next PR.
 - Should signals-loop error-spike fire on a single error or require repeat? PDF silent → default 2-in-1h with 15m `for`.
+---
+status: complete

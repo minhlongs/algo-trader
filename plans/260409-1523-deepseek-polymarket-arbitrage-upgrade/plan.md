@@ -1,3 +1,6 @@
+---
+status: complete
+---
 # DeepSeek Polymarket Arbitrage Upgrade Plan
 
 ## Source

@@ -1,3 +1,6 @@
+---
+status: archived
+---
 > **Plan Status:** ARCHIVED — Concepts integrated into intelligence modules
 
 # Vibe-Trading Concepts Integration Plan

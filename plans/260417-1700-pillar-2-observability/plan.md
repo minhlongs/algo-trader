@@ -92,3 +92,5 @@ Close the gap. Keep it solo-ops tight.
 
 - Should OTLP exporter default to `http://localhost:4318/v1/traces` if grafana monitoring stack is up locally? Decision: **no**, require explicit env (safer default for CF Pages prod where endpoint isn't reachable).
 - Add `@opentelemetry/resources` for service.name attribution? Deferred — out of scope.
+---
+status: complete

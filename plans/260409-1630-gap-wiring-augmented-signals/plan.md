@@ -1,3 +1,6 @@
+---
+status: complete
+---
 # Gap Wiring: NATS Integration + Augmented Signal Engine
 
 ## Source

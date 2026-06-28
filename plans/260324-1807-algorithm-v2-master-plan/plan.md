@@ -1,3 +1,6 @@
+---
+status: complete
+---
 # Master Plan: Algorithm v2.0 — Next Iteration
 
 > BINH_PHAP_TRADING Section 7: Tactical Refinement
