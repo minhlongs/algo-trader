@@ -1,0 +1,122 @@
+name: CI/CD — Test, Build, Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Gate 1: Lint + Typecheck + Test ────────────────────────────────────────
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: latest }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npx tsc --noEmit
+      - run: npx eslint src --max-warnings 100
+      - run: npx vitest run
+
+  # ── Gate 2: Docker Build ────────────────────────────────────────────────────
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}:${{ github.sha }}
+          docker build -t $IMAGE -t ghcr.io/${{ github.repository }}:latest .
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
+
+  # ── Gate 3: Deploy Cloudflare Worker ────────────────────────────────────────
+  deploy-worker:
+    name: Deploy CF Worker
+    runs-on: ubuntu-latest
+    needs: [test, docker]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: latest }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # ── Gate 4: Health Check ─────────────────────────────────────────────────────
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: deploy-worker
+    if: github.event_name == 'push'
+    steps:
+      - name: Verify deployment
+        run: |
+          sleep 10
+          HTTP_STATUS=$(curl -sI "https://${{ secrets.CF_WORKER_DOMAIN }}/health" | head -1 | awk '{print $2}')
+          echo "Health check: HTTP $HTTP_STATUS"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Health check failed: HTTP $HTTP_STATUS"
+            exit 1
+          fi
+
+  # ── Gate 5: Deploy to VPS (SSH) ─────────────────────────────────────────────
+  deploy-vps:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: [docker, health-check]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            cd /opt/algo-trade
+            docker compose pull
+            docker compose up -d --force-recreate --no-deps algo-trade
+            docker image prune -f --filter "until=168h"
+            sleep 5
+            curl -sf http://localhost:3000/api/health || echo "WARN: health check failed"
+          EOF
