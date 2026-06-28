@@ -1,0 +1,32 @@
+# XAI (Explainable AI) dependencies
+# pip install -r requirements-xai.txt
+
+# Core ML/AI
+scikit-learn>=1.3.0
+shap>=0.43.0
+lime>=0.2.0.1
+
+# Explainability alternatives
+dalex>=1.5.0
+alibi>=0.9.0
+
+# Model-specific
+torch>=2.0.0
+transformers>=4.30.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# LLM for rationale generation
+openai>=1.0.0  # For DeepSeek-compatible API
+httpx>=0.25.0  # Async HTTP client
+
+# Visualization
+plotly>=5.17.0
+matplotlib>=3.7.0
+seaborn>=0.13.0  # Enhanced visualizations
+
+# Database persistence
+pysqlite3>=0.6.0  # Better SQLite support
+
+# Utilities
+python-multipart>=0.0.6  # For FastAPI form data

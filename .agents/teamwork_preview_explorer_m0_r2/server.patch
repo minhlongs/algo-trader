@@ -1,0 +1,29 @@
+diff --git a/src/api/server.ts b/src/api/server.ts
+index d8a9eb3..e5d8d8d 100644
+--- a/src/api/server.ts
++++ b/src/api/server.ts
+@@ -6,7 +6,7 @@
+ import express from 'express';
+ import cors from 'cors';
+ import helmet from 'helmet';
+-import rateLimit from 'express-rate-limit';
++import { distributedRateLimiter } from '../middleware/distributed-rate-limiter';
+ import * as Sentry from '@sentry/node';
+ import { Server } from 'http';
+ import { logger } from '../utils/logger';
+@@ -98,12 +98,7 @@ export class ApiServer {
+     // Prometheus metrics middleware (track all requests)
+     this.app.use(metricsMiddleware);
+ 
+-    // Rate limiting
+-    const limiter = rateLimit({
+-      windowMs: this.config.rateLimitWindowMs,
+-      max: this.config.rateLimitMax,
+-      message: { error: 'Too many requests, please try again later' },
+-    });
+-    this.app.use('/api', limiter);
++    // Distributed rate limiting
++    this.app.use('/api', distributedRateLimiter);
+   }
+ 
+   /**
