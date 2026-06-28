@@ -1,5 +1,12 @@
 # Algo-Trade Deployment Runbook
 
+## Deployed Targets
+
+| Component | URL | Status |
+|-----------|-----|--------|
+| Cloudflare Worker (edge proxy) | https://algo-trader.agencyos-openclaw.workers.dev | ✅ Live |
+| Docker stack (app + infra) | `docker compose -f docker-compose.prod.yml up -d` | 📦 Ready (image not pushed) |
+
 ## Prerequisites
 
 - Docker 24+ + Docker Compose v2
