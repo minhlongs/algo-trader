@@ -10,9 +10,9 @@
 import { describe, it, expect, expectTypeOf } from 'vitest';
 import { LicenseTier, LicenseStatus } from '../../src/shared/types/license';
 import type { License } from '../../src/shared/types/license';
-import type { MarketInfo, Order } from '../../src/core/types';
-import type { IStrategy, ISignal, ICandle } from '../../src/interfaces/IStrategy';
-import type { MarketType, OrderSide, OrderStatus } from '../../src/core/types';
+import type { MarketInfo, Order } from '../../src/desk/core/types';
+import type { IStrategy, ISignal, ICandle } from '../../src/desk/interfaces/IStrategy';
+import type { MarketType, OrderSide, OrderStatus } from '../../src/desk/core/types';
 
 // ---------------------------------------------------------------------------
 // Helpers: factory functions that produce objects satisfying each interface.

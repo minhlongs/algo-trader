@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Logger mock (suppress output) ───────────────────────────────────────────
 
-vi.mock('../../src/shared/utils/logger.js', () => ({
+vi.mock('../../src/shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
@@ -20,7 +20,7 @@ const { mockPublish, mockSubscribe } = vi.hoisted(() => ({
   mockSubscribe: vi.fn(),
 }));
 
-vi.mock('../../src/shared/messaging/create-message-bus.js', () => ({
+vi.mock('../../src/shared/messaging/create-message-bus', () => ({
   createMessageBus: vi.fn().mockResolvedValue({
     publish: mockPublish,
     subscribe: mockSubscribe,
@@ -83,12 +83,12 @@ function makeRedisMock(options: {
   return mock;
 }
 
-vi.mock('../../src/redis/index.js', () => ({
+vi.mock('../../src/redis/index', () => ({
   getRedisClient: vi.fn(),
 }));
 
-import { getRedisClient } from '../../src/redis/index.js';
-import { getVibeState, initVibeController, type VibeState, type VibeCommand } from '../../src/wiring/vibe-controller.js';
+import { getRedisClient } from '../../src/redis/index';
+import { getVibeState, initVibeController, type VibeState, type VibeCommand } from '../../src/wiring/vibe-controller';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

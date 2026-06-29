@@ -17,7 +17,7 @@ import type { Router as RouterType } from 'express';
 import { z } from 'zod';
 import { getStrategyLoader } from '../../../desk/strategies/loader';
 import { MarketplaceService } from '../../marketplace/services/marketplace.service';
-import { AuditLogService, type AuditEventType } from '../../../audit/audit-log-service';
+import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
 import type { StrategyCategory } from '../../marketplace/models/types';
 

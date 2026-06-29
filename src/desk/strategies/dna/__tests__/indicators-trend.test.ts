@@ -2,7 +2,7 @@
  * Tests for indicators-trend.ts (Phase 02 coverage gate).
  */
 import { describe, it, expect } from 'vitest';
-import { computeTrendIndicators, trendDirectionScore } from '../indicators-trend.js';
+import { computeTrendIndicators, trendDirectionScore } from '../indicators-trend';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

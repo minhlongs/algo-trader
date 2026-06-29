@@ -8,7 +8,7 @@
 import { Router, Request, Response } from 'express';
 import { getRedisClient } from '../../../redis';
 import { getDbClient } from '../../../shared/db/postgres-client';
-import { TradingEngine } from '../../../engine';
+import { TradingEngine } from '../../../desk/engine';
 import { isQwenEnabled, isKillSwitchActive } from '../../../wiring/qwen-drawdown-monitor';
 
 // Resolve package version at module load time — avoids repeated disk reads

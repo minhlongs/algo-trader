@@ -66,16 +66,41 @@ function extractImports(filePath: string): string[] {
 
 // ── Known exception patterns ─────────────────────────────────────────
 
-/** Cross-cutting imports that are documented and accepted for now. */
+/**
+ * Cross-cutting imports that are documented and accepted for now.
+ *
+ * desk→platform: These imports are currently necessary because:
+ *   - file-store was moved to shared/persistence in Phase 3 batch 2
+ *   - license-service is checked by RaaS gate for subscriber execution
+ *   - DLP outbound recording/pattern matching is triggered by ironclaw proxy
+ *   - Jobs (dunning, audit, email) bridge operational concerns
+ *   - immutable-trade-audit logs trading decisions with hash-chain integrity
+ *
+ * Resolution plan (Phase 3 Steps 5-6):
+ *   - Extract license types to shared/types/license.ts
+ *   - Move DLP pattern registry to shared/
+ *   - Move jobs/ to platform/ or create job interface in shared/
+ */
 const ALLOWED_DESK_IMPORTS: RegExp[] = [
-  /prometheus-metrics/, // metrics instrumentation (cross-cutting)
+  /prometheus-metrics/,
+  /platform\/persistence\/file-store/,   // moved to shared/ in batch 2
+  /platform\/billing\/license-service/,  // RaaS gate license check
+  /platform\/audit\//,                   // DLP + audit logging
+  /platform\/notifications\/email-service/, // welcome email drip
+  /platform\/billing\/dunning-service/,  // dunning KV sync
 ];
 
 const ALLOWED_PLATFORM_IMPORTS: RegExp[] = [
-  /desk\/strategies/,   // admin routes load strategies directly
-  /desk\/signal/,       // signal routes bridge desk signal pipeline
-  /desk\/risk/,         // admin routes reference risk monitors
-  /desk\/intelligence/, // XAI routes import intelligence client
+  /desk\/strategies/,      // admin routes load strategies directly
+  /desk\/signal/,          // signal routes bridge desk signal pipeline
+  /desk\/risk/,            // admin routes reference risk monitors
+  /desk\/intelligence/,    // XAI routes import intelligence client
+  /desk\/arbitrage/,       // backtest routes use arbitrage backtester
+  /desk\/engine/,          // health route imports engine for status
+  /desk\/gate\/raas-gate/, // signal routes use RaaS gate
+  /desk\/jobs\//,          // billing onboarding triggers desk jobs
+  /desk\/ironclaw\//,      // DLP pattern registry shared dependency
+  /desk\/feeds\//,         // telegram trading alerts reference feeds
 ];
 
 // ── Tests ────────────────────────────────────────────────────────────

@@ -8,8 +8,8 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { EmailService } from '../../notifications/email-service.js';
-import { logger } from '../../shared/utils/logger.js';
+import { EmailService } from '../notifications/email-service';
+import { logger } from '../../shared/utils/logger';
 
 const INVOICE_DIR = join(process.cwd(), 'data', 'invoices');
 

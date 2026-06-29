@@ -9,7 +9,7 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import RaasGate from '../../../gate/raas-gate';
+import RaasGate from '../../../desk/gate/raas-gate';
 import { LicenseTier } from '../../../shared/types/license';
 import { filterSignalsForTier, canAccessSse } from '../../../desk/signal/signal-tier-filter';
 import { signalTtlEnforcer } from '../../../desk/signal/signal-ttl-enforcer';

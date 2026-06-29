@@ -51,8 +51,8 @@
  * - Incorporate expected shortfall (CVaR) for tail risk
  */
 
-import type { IStrategy, ICandle, ISignal } from '../../../interfaces/IStrategy.js';
-import { logger } from '../../../shared/utils/logger.js';
+import type { IStrategy, ICandle, ISignal } from '../../interfaces/IStrategy';
+import { logger } from '../../../shared/utils/logger';
 
 const STRATEGY_NAME = 'RiskManagedKelly';
 

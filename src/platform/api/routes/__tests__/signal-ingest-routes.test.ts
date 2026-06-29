@@ -11,19 +11,19 @@ import { createHmac } from 'crypto';
 
 // --- Mocks ---
 
-vi.mock('../../../../shared/utils/logger.js', () => ({
+vi.mock('../../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 const mockPublish = vi.fn();
 
-vi.mock('../../../../desk/signal/signal-publisher.js', () => ({
+vi.mock('../../../../desk/signal/signal-publisher', () => ({
   SignalPublisher: vi.fn().mockImplementation(function () {
     this.publish = mockPublish;
   }),
 }));
 
-import { createSignalIngestRouter } from '../signal-ingest-routes.js';
+import { createSignalIngestRouter } from '../signal-ingest-routes';
 
 // --- Helpers ---
 

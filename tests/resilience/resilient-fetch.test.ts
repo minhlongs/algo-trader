@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { resilientFetch } from '../../src/shared/resilience/resilient-fetch.js';
-import { CircuitBreaker, CircuitOpenError } from '../../src/shared/resilience/circuit-breaker.js';
-import { TokenBucket } from '../../src/shared/resilience/rate-limiter.js';
+import { resilientFetch } from '../../src/shared/resilience/resilient-fetch';
+import { CircuitBreaker, CircuitOpenError } from '../../src/shared/resilience/circuit-breaker';
+import { TokenBucket } from '../../src/shared/resilience/rate-limiter';
 
 // Mock global fetch
 const mockFetch = vi.fn<typeof fetch>();
 vi.stubGlobal('fetch', mockFetch);
 
 // Suppress logger output during tests
-vi.mock('../../src/core/logger.js', () => ({
+vi.mock('../../src/desk/core/logger', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

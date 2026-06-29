@@ -5,7 +5,7 @@
  * Provider: NOWPayments (USDT TRC20)
  */
 
-import { AuditLogService } from '../../audit/audit-log-service';
+import { AuditLogService } from '../audit/audit-log-service';
 import { DunningService } from './dunning-service';
 import { LicenseService } from './license-service';
 import { RevenueMetricsCalculator } from './metrics/revenue-metrics';

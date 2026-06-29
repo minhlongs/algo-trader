@@ -9,4 +9,4 @@ export * from './drawdown-monitor';
 export * from './kelly-position-sizer';
 export * from './tiered-drawdown-breaker';
 // Re-export persistence utility for risk consumers
-export * from '../../persistence/file-store';
+export * from '../../shared/persistence/file-store';

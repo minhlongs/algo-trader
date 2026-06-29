@@ -5,8 +5,8 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { referralService } from '../../../referral/referral-service';
-import { ReferralStats, CommissionStatus } from '../../../referral/types';
+import { referralService } from '../../referral/referral-service';
+import { ReferralStats, CommissionStatus } from '../../referral/types';
 import {
   trackClickSchema,
   generateCodeSchema,

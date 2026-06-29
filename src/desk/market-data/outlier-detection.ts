@@ -4,13 +4,13 @@
  * Statistical anomaly detection for prices and volumes
  */
 
-import { logger } from '../../shared/utils/logger.js';
-import type { Candle, MarketDataSource } from './types.js';
+import { logger } from '../../shared/utils/logger';
+import type { Candle, MarketDataSource } from './types';
 import {
   recordOutlierEvent,
   recordOutlierZScore,
   recordProviderLatency,
-} from '../../platform/middleware/prometheus-metrics.js';
+} from '../../platform/middleware/prometheus-metrics';
 
 /**
  * Configuration for outlier detection

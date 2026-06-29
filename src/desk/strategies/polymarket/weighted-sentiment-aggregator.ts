@@ -13,12 +13,12 @@
  *   4. Composite score = w_imbalance * imbalance + w_velocity * velocity + w_volume * (volumeTrend - 1)
  *   5. When score > threshold → BUY YES, score < -threshold → BUY NO
  */
-import type { ClobClient, RawOrderBook } from '../../../polymarket/clob-client.js';
-import type { OrderManager } from '../../../polymarket/order-manager.js';
-import type { EventBus } from '../../../events/event-bus.js';
-import type { GammaClient, GammaMarket } from '../../../polymarket/gamma-client.js';
-import type { StrategyName } from '../../../core/types.js';
-import { logger } from '../../../core/logger.js';
+import type { ClobClient, RawOrderBook } from '../../polymarket/clob-client';
+import type { OrderManager } from '../../polymarket/order-manager';
+import type { EventBus } from '../../events/event-bus';
+import type { GammaClient, GammaMarket } from '../../polymarket/gamma-client';
+import type { StrategyName } from '../../core/types';
+import { logger } from '../../core/logger';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 

@@ -19,11 +19,11 @@ const mockNc = {
   jetstreamManager: vi.fn().mockResolvedValue(mockJsm),
 };
 
-vi.mock('../../src/shared/messaging/nats-connection-manager.js', () => ({
+vi.mock('../../src/shared/messaging/nats-connection-manager', () => ({
   getNatsConnection: () => mockNc,
 }));
 
-vi.mock('../../src/shared/utils/logger.js', () => ({
+vi.mock('../../src/shared/utils/logger', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),
@@ -39,7 +39,7 @@ import {
   buildOrderedConsumerConfig,
   createOrderedConsumer,
   getConsumerSequence,
-} from '../../src/shared/messaging/jetstream-manager.js';
+} from '../../src/shared/messaging/jetstream-manager';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // buildOrderedConsumerConfig — pure config generation, no I/O

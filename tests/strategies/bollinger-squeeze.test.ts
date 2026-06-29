@@ -9,8 +9,8 @@ import {
   DEFAULT_CONFIG,
   type BollingerSqueezeConfig,
   type BollingerSqueezeDeps,
-} from '../../src/desk/strategies/polymarket/bollinger-squeeze.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/bollinger-squeeze';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

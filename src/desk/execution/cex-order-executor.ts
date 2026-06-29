@@ -7,11 +7,11 @@
  * Perp/leverage is GATED: throws if CEX_PERP_ENABLED != "true".
  */
 
-import type { ISignal } from '../../interfaces/IStrategy.js';
-import { BinanceSpotClient } from '../../markets/cex/binance-spot-client.js';
-import type { CexSpotOrderRequest, CexOrderResponse } from '../../markets/cex/cex-types.js';
-import { loadFeatureFlags } from '../../markets/cex/cex-types.js';
-import { logger } from '../../core/logger.js';
+import type { ISignal } from '../interfaces/IStrategy';
+import { BinanceSpotClient } from '../markets/cex/binance-spot-client';
+import type { CexSpotOrderRequest, CexOrderResponse } from '../markets/cex/cex-types';
+import { loadFeatureFlags } from '../markets/cex/cex-types';
+import { logger } from '../core/logger';
 
 export interface CexExecutorConfig {
   /** ccxt-style symbol, e.g. "BTC/USDT" */

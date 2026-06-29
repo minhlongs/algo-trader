@@ -1,7 +1,7 @@
 // Resilient HTTP fetch — retry + backoff + jitter + circuit breaker + rate limit
-import { logger } from '../../core/logger.js';
-import { CircuitBreaker, CircuitOpenError } from './circuit-breaker.js';
-import { TokenBucket } from './rate-limiter.js';
+import { logger } from '../utils/logger';
+import { CircuitBreaker, CircuitOpenError } from './circuit-breaker';
+import { TokenBucket } from './rate-limiter';
 
 export interface ResilientFetchOptions {
   /** Max retry attempts (default 3) */

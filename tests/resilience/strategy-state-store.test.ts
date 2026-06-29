@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { StrategyStateStore } from '../../src/shared/resilience/strategy-state-store.js';
+import { StrategyStateStore } from '../../src/shared/resilience/strategy-state-store';
 
 describe('StrategyStateStore', () => {
   let tempDir: string;

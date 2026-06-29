@@ -1,5 +1,5 @@
 import { logger } from '../../../shared/utils/logger';
-import { AuditLogService } from '../../../audit/audit-log-service';
+import { AuditLogService } from '../../audit/audit-log-service';
 import { DisputeRepository, disputeRepository, SubscriptionRepository, subscriptionRepository } from './repositories';
 import type { IMarketplaceDispute } from '../models/types';
 

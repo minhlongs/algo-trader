@@ -15,10 +15,10 @@ import {
   getDnaEngine,
   resetDnaEngine,
   DnaEngine,
-} from '../../../desk/strategies/dna/orchestrator.js';
-import { DnaEngineConfig, DnaLifecycleEvent } from '../../../desk/strategies/dna/multi-tf-types.js';
-import type { CandleProvider } from '../../../desk/strategies/dna/orchestrator.js';
-import { InMemoryStateStore } from '../../../desk/strategies/dna/dna-state-store.js';
+} from '../../../desk/strategies/dna/orchestrator';
+import { DnaEngineConfig, DnaLifecycleEvent } from '../../../desk/strategies/dna/multi-tf-types';
+import type { CandleProvider } from '../../../desk/strategies/dna/orchestrator';
+import { InMemoryStateStore } from '../../../desk/strategies/dna/dna-state-store';
 import { requireAdminKey } from '../middleware/require-admin-key';
 
 // Injected at server startup (src/api/server.ts sets this before listen).

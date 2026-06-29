@@ -13,9 +13,9 @@ import {
   type VwapDeviationSniperDeps,
   type VwapDeviationSniperConfig,
   DEFAULT_CONFIG,
-} from '../../../src/desk/strategies/polymarket/vwap-deviation-sniper.ts';
-import type { RawOrderBook } from '../../../src/polymarket/clob-client.ts';
-import type { GammaMarket } from '../../../src/polymarket/gamma-client.ts';
+} from '../../../src/desk/strategies/polymarket/vwap-deviation-sniper';
+import type { RawOrderBook } from '../../../src/desk/polymarket/clob-client';
+import type { GammaMarket } from '../../../src/desk/polymarket/gamma-client';
 
 describe('VWAP Deviation Sniper', () => {
   describe('calcVWAP', () => {
@@ -230,7 +230,7 @@ describe('VWAP Deviation Sniper', () => {
     };
 
     it('should create tick function with default config', async () => {
-      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper.ts');
+      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper');
       const tick = createVwapDeviationSniperTick({} as any);
       expect(typeof tick).toBe('function');
     });
@@ -243,13 +243,13 @@ describe('VWAP Deviation Sniper', () => {
           deviationThreshold: 3.0,
         },
       };
-      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper.ts');
+      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper');
       const tick = createVwapDeviationSniperTick(customDeps);
       expect(typeof tick).toBe('function');
     });
 
     it('should handle empty trending markets', async () => {
-      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper.ts');
+      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper');
       mockDeps.gamma.getTrending = vi.fn().mockResolvedValue([]);
       const tick = createVwapDeviationSniperTick(mockDeps);
 
@@ -258,7 +258,7 @@ describe('VWAP Deviation Sniper', () => {
     });
 
     it('should skip markets without yesTokenId', async () => {
-      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper.ts');
+      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper');
       mockDeps.gamma.getTrending = vi.fn().mockResolvedValue([
         {
           id: 'market-1',
@@ -277,7 +277,7 @@ describe('VWAP Deviation Sniper', () => {
     });
 
     it('should skip closed or resolved markets', async () => {
-      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper.ts');
+      const { createVwapDeviationSniperTick } = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper');
       mockDeps.gamma.getTrending = vi.fn().mockResolvedValue([
         {
           id: 'market-1',
@@ -396,7 +396,7 @@ describe('VWAP Deviation Sniper', () => {
 
   describe('Type Safety', () => {
     it('should have proper exports', async () => {
-      const mod = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper.ts');
+      const mod = await import('../../../src/desk/strategies/polymarket/vwap-deviation-sniper');
       expect(mod.calcVWAP).toBeDefined();
       expect(mod.calcDeviation).toBeDefined();
       expect(mod.calcStdDev).toBeDefined();

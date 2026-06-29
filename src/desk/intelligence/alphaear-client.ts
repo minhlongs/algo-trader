@@ -11,7 +11,7 @@
  *   - Signal tracking: Evolution assessment via Nemotron LLM
  */
 
-import { logger } from '../../core/logger.js';
+import { logger } from '../core/logger';
 
 const SIDECAR_URL = process.env['ALPHAEAR_SIDECAR_URL'] || 'http://host.docker.internal:8100';
 const TIMEOUT_MS = 30_000;

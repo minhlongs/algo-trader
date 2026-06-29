@@ -7,7 +7,7 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { UsageMeteringService } from '../metering/usage-metering-service';
 import { LicenseService } from '../billing/license-service';
-import { AuditLogService } from '../../audit/audit-log-service';
+import { AuditLogService } from '../audit/audit-log-service';
 
 export interface UsageTrackingOptions {
   enabled: boolean;

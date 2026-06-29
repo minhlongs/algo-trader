@@ -6,7 +6,7 @@
  * separately; tests here assert documented behavior on valid inputs.
  */
 import { describe, it, expect } from 'vitest';
-import { computeVolatilityIndicators, type VolatilityIndicators } from '../indicators-volatility.js';
+import { computeVolatilityIndicators, type VolatilityIndicators } from '../indicators-volatility';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

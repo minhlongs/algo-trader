@@ -11,7 +11,7 @@ import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
 import { z } from 'zod';
 import { DisputeService } from '../../marketplace/services/dispute.service';
-import { AuditLogService, type AuditEventType } from '../../../audit/audit-log-service';
+import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
 
 export const marketplaceDisputeRouter: RouterType = Router();

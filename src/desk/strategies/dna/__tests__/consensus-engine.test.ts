@@ -12,13 +12,13 @@
  * via a lowered minConsensusConfidence.
  */
 import { describe, it, expect } from 'vitest';
-import { computeConsensus } from '../consensus-engine.js';
+import { computeConsensus } from '../consensus-engine';
 import type {
   TfSignal,
   RegimeSnapshot,
   ConsensusSignal,
   DnaEngineConfig,
-} from '../multi-tf-types.js';
+} from '../multi-tf-types';
 
 const NOW = 1_700_000_000_000;
 

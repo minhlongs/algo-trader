@@ -5,7 +5,7 @@ import {
   OUTPUT_OFFSETS,
   MAX_OUTPUT_BYTES,
   sideLabel,
-} from '../../src/sandbox/sandbox-output-validator.js';
+} from '../../src/desk/sandbox/sandbox-output-validator';
 
 /** Build a DataView-backed ArrayBuffer with valid output values */
 function makeOutputBuffer(overrides: Partial<{

@@ -28,8 +28,8 @@
  * - Add volume confirmation
  */
 
-import type { IStrategy, ICandle, ISignal } from '../../../interfaces/IStrategy.js';
-import { logger } from '../../../shared/utils/logger.js';
+import type { IStrategy, ICandle, ISignal } from '../../interfaces/IStrategy';
+import { logger } from '../../../shared/utils/logger';
 
 const STRATEGY_NAME = 'SmaCrossover';
 

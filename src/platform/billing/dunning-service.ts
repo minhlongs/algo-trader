@@ -11,7 +11,7 @@
 
 import { LicenseService } from './license-service';
 import { SubscriptionService } from './subscription-service';
-import { AuditLogService } from '../../audit/audit-log-service';
+import { AuditLogService } from '../audit/audit-log-service';
 import { DunningWorkflow } from './dunning/workflow';
 
 export interface DunningRecord {

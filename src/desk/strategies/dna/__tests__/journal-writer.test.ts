@@ -15,26 +15,26 @@ import {
   deriveExecutedBy,
   eventToParams,
   writeJournalEntry,
-} from '../journal-writer.js';
+} from '../journal-writer';
 
 // Mock the postgres client, logger, and prometheus counter
-vi.mock('../../../../shared/db/postgres-client.js', () => ({
+vi.mock('../../../../shared/db/postgres-client', () => ({
   query: vi.fn(),
 }));
-vi.mock('../../../../shared/utils/logger.js', () => ({
+vi.mock('../../../../shared/utils/logger', () => ({
   logger: {
     error: vi.fn(),
   },
 }));
-vi.mock('../../../../platform/middleware/prometheus-metrics.js', () => ({
+vi.mock('../../../../platform/middleware/prometheus-metrics', () => ({
   journalWriteErrorsTotal: {
     inc: vi.fn(),
   },
 }));
 
-import { query as pgQuery } from '../../../../shared/db/postgres-client.js';
-import { logger } from '../../../../shared/utils/logger.js';
-import { journalWriteErrorsTotal } from '../../../../platform/middleware/prometheus-metrics.js';
+import { query as pgQuery } from '../../../../shared/db/postgres-client';
+import { logger } from '../../../../shared/utils/logger';
+import { journalWriteErrorsTotal } from '../../platform/middleware/prometheus-metrics.js';
 
 const q = vi.mocked(pgQuery);
 const logError = vi.mocked(logger.error);

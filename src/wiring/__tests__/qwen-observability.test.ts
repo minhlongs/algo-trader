@@ -10,7 +10,7 @@ describe('L-tier Prometheus gauges', () => {
   beforeEach(() => vi.resetModules());
 
   it('exposes algo_trader_qwen_kill_switch_active with source label', async () => {
-    const mod = await import('../../platform/middleware/prometheus-metrics.js');
+    const mod = await import('../../platform/middleware/prometheus-metrics');
     mod.setQwenKillSwitch('env', true);
     mod.setQwenKillSwitch('kv', false);
     const text = await mod.register.metrics();
@@ -19,7 +19,7 @@ describe('L-tier Prometheus gauges', () => {
   });
 
   it('exposes algo_trader_qwen_paper_gate_days_remaining, clamped to [0,30]', async () => {
-    const mod = await import('../../platform/middleware/prometheus-metrics.js');
+    const mod = await import('../../platform/middleware/prometheus-metrics');
     mod.setQwenPaperGateDaysRemaining(42);
     let text = await mod.register.metrics();
     expect(text).toContain('algo_trader_qwen_paper_gate_days_remaining 30');
@@ -34,7 +34,7 @@ describe('L-tier Prometheus gauges', () => {
   });
 
   it('exposes algo_trader_qwen_drawdown_auto_disabled as 0|1', async () => {
-    const mod = await import('../../platform/middleware/prometheus-metrics.js');
+    const mod = await import('../../platform/middleware/prometheus-metrics');
     mod.setQwenDrawdownAutoDisabled(true);
     let text = await mod.register.metrics();
     expect(text).toMatch(/algo_trader_qwen_drawdown_auto_disabled 1/);
@@ -59,7 +59,7 @@ describe('OTel tracing init', () => {
   });
 
   it('noop by default — getTracer().startActiveSpan runs fn and returns value', async () => {
-    const { getTracer, resetTracingForTests } = await import('../../shared/utils/tracing.js');
+    const { getTracer, resetTracingForTests } = await import('../../shared/utils/tracing');
     resetTracingForTests();
 
     const result = await getTracer().startActiveSpan('test.span', async (span) => {
@@ -70,7 +70,7 @@ describe('OTel tracing init', () => {
   });
 
   it('initTracing is idempotent when endpoint unset', async () => {
-    const { initTracing, resetTracingForTests } = await import('../../shared/utils/tracing.js');
+    const { initTracing, resetTracingForTests } = await import('../../shared/utils/tracing');
     resetTracingForTests();
 
     await initTracing();
@@ -80,7 +80,7 @@ describe('OTel tracing init', () => {
 
   it('initTracing with OTEL_EXPORTER_OTLP_ENDPOINT attempts SDK load without throwing', async () => {
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://127.0.0.1:14318/v1/traces';
-    const { initTracing, getTracer, resetTracingForTests } = await import('../../shared/utils/tracing.js');
+    const { initTracing, getTracer, resetTracingForTests } = await import('../../shared/utils/tracing');
     resetTracingForTests();
 
     await initTracing();
@@ -95,7 +95,7 @@ describe('OTel tracing init', () => {
 
   it('concurrent initTracing calls share one in-flight promise', async () => {
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://127.0.0.1:14318/v1/traces';
-    const { initTracing, resetTracingForTests } = await import('../../shared/utils/tracing.js');
+    const { initTracing, resetTracingForTests } = await import('../../shared/utils/tracing');
     resetTracingForTests();
 
     const [a, b, c] = await Promise.all([initTracing(), initTracing(), initTracing()]);
@@ -110,7 +110,7 @@ describe('OTel tracing init', () => {
       throw new Error('simulated SDK load failure');
     });
 
-    const { initTracing, getTracer, resetTracingForTests } = await import('../../shared/utils/tracing.js');
+    const { initTracing, getTracer, resetTracingForTests } = await import('../../shared/utils/tracing');
     resetTracingForTests();
     await initTracing(); // must not throw
 

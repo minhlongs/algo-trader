@@ -3,7 +3,7 @@ import {
   createLimitedMemory,
   bytesToPages,
   maxBytesForPages,
-} from '../../src/sandbox/wasm-memory-limiter.js';
+} from '../../src/desk/sandbox/wasm-memory-limiter';
 
 describe('wasm-memory-limiter', () => {
   it('creates memory within page cap', () => {

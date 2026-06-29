@@ -10,8 +10,8 @@ import * as crypto from 'crypto';
 import { LicenseService } from './license-service';
 import { LicenseTier } from '../../shared/types/license';
 import { logger } from '../../shared/utils/logger';
-import { EmailService } from '../../notifications/email-service';
-import { registerDripRecipient } from '../../jobs/welcome-email-drip';
+import { EmailService } from '../notifications/email-service';
+import { registerDripRecipient } from '../../desk/jobs/welcome-email-drip';
 
 /** TTL for pending signups: 15 minutes in ms */
 const PENDING_TTL_MS = 15 * 60 * 1000;

@@ -4,13 +4,13 @@
  * Orchestrates all data quality monitoring components
  */
 
-import { logger } from '../../shared/utils/logger.js';
-import { MarketDataSource, Candle, QualityReport, ProviderQualityConfig } from './types.js';
-import { GapDetector, getGapDetector } from './gap-detector.js';
-import { OutlierDetector, getOutlierDetector } from './outlier-detection.js';
-import { SlaTracker, getSlaTracker } from './sla-tracker.js';
-import { FailoverManager } from './provider-failover.js';
-import type { GapStats } from './gap-detector.js';
+import { logger } from '../../shared/utils/logger';
+import { MarketDataSource, Candle, QualityReport, ProviderQualityConfig } from './types';
+import { GapDetector, getGapDetector } from './gap-detector';
+import { OutlierDetector, getOutlierDetector } from './outlier-detection';
+import { SlaTracker, getSlaTracker } from './sla-tracker';
+import { FailoverManager } from './provider-failover';
+import type { GapStats } from './gap-detector';
 
 /**
  * Quality monitoring integration

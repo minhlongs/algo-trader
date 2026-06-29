@@ -32,7 +32,7 @@ const mockRedis = {
   }),
 };
 
-vi.mock('../../redis', () => ({
+vi.mock('../../../redis', () => ({
   getRedisClient: () => mockRedis,
 }));
 

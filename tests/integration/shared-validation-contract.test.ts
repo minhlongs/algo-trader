@@ -15,8 +15,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
-import { SandboxInputSchema } from '../../src/sandbox/sandbox-input-encoder';
-import { SandboxOutputSchema } from '../../src/sandbox/sandbox-output-validator';
+import { SandboxInputSchema } from '../../src/desk/sandbox/sandbox-input-encoder';
+import { SandboxOutputSchema } from '../../src/desk/sandbox/sandbox-output-validator';
 import { trackClickSchema, validateReferralSchema } from '../../src/platform/api/schemas/referral.schemas';
 
 const VALIDATION_ROOT = path.resolve(__dirname, '../../src/validation');

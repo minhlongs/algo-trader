@@ -8,7 +8,7 @@ import express from 'express';
 import request from 'supertest';
 
 // Mock dependencies before importing route module
-vi.mock('../../../billing/enterprise-onboarding-service.js', () => ({
+vi.mock('../../../billing', () => ({
   EnterpriseOnboardingService: {
     getInstance: () => ({
       submitInquiry: vi.fn().mockResolvedValue({
@@ -28,15 +28,15 @@ vi.mock('../../../billing/enterprise-onboarding-service.js', () => ({
   },
 }));
 
-vi.mock('../../../billing/enterprise-inquiry-store.js', () => ({
+vi.mock('../../../billing', () => ({
   enterpriseInquiryStore: {},
 }));
 
-vi.mock('../../../../shared/utils/logger.js', () => ({
+vi.mock('../../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { enterpriseInquiryRouter } from '../enterprise-inquiry-routes.js';
+import { enterpriseInquiryRouter } from '../enterprise-inquiry-routes';
 
 function buildApp(adminClaims = false) {
   const app = express();

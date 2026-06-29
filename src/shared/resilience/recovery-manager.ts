@@ -1,8 +1,23 @@
 // State persistence & crash recovery - saves snapshots to disk for restart recovery
 import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { dirname, basename, join } from 'node:path';
-import { logger } from '../../core/logger.js';
-import type { StrategyConfig, Position } from '../../core/types.js';
+import { logger } from '../utils/logger';
+/** Minimal type mirrors for recovery snapshots — avoids shared→desk dependency. */
+interface StrategyConfig {
+  name: string;
+  enabled: boolean;
+  capitalAllocation: string;
+  params: Record<string, unknown>;
+}
+
+interface Position {
+  marketId: string;
+  side: 'long' | 'short';
+  entryPrice: string;
+  size: string;
+  unrealizedPnl: string;
+  openedAt: number;
+}
 
 const RECOVERY_FILE_DEFAULT = 'data/recovery-state.json';
 /** Maximum age (ms) of a recovery snapshot to be considered valid */

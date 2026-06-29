@@ -9,8 +9,8 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { EnterpriseOnboardingService } from '../../billing/enterprise-onboarding-service.js';
-import { enterpriseInquiryStore, type EnterpriseInquiryStatus } from '../../billing/enterprise-inquiry-store.js';
+import { EnterpriseOnboardingService } from '../../billing/enterprise-onboarding-service';
+import { enterpriseInquiryStore, type EnterpriseInquiryStatus } from '../../billing/enterprise-inquiry-store';
 
 export const enterpriseInquiryRouter: Router = Router();
 

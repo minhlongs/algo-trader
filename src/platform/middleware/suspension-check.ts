@@ -10,7 +10,7 @@
 import { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
 import { DunningService } from '../billing/dunning-service';
 import { LicenseService } from '../billing/license-service';
-import { AuditLogService } from '../../audit/audit-log-service';
+import { AuditLogService } from '../audit/audit-log-service';
 
 const PUBLIC_PATHS = ['/health', '/ready', '/metrics', '/api/v1/licenses'];
 

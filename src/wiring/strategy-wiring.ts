@@ -9,16 +9,16 @@ import { StrategyOrchestrator } from '../desk/strategies/strategy-orchestrator.j
 import { createPolymarketArbTick } from '../desk/strategies/polymarket-arb-strategy.js';
 import { createGridDcaTick } from '../desk/strategies/grid-dca-strategy.js';
 import { createBookImbalanceReversalTick } from '../desk/strategies/polymarket/book-imbalance-reversal.js';
-import { createVwapDeviationSniperTick } from '../desk/strategies/polymarket/vwap-deviation-sniper.js';
+import { createVwapDeviationSniperTick } from '../desk/strategies/polymarket/vwap-deviation-sniper';
 import { createPairsStatArbTick } from '../desk/strategies/polymarket/pairs-stat-arb.js';
 import { createSessionVolSniperTick } from '../desk/strategies/polymarket/session-vol-sniper.js';
-import { createOrderbookDepthRatioTick } from '../desk/strategies/polymarket/orderbook-depth-ratio.js';
-import { createCrossEventDriftTick } from '../desk/strategies/polymarket/cross-event-drift.js';
-import { createVolCompressionBreakoutTick } from '../desk/strategies/polymarket/vol-compression-breakout.js';
-import { createWhaleTrackerTick } from '../desk/strategies/polymarket/whale-tracker.js';
-import { createResolutionFrontrunnerTick } from '../desk/strategies/polymarket/resolution-frontrunner.js';
-import { createMultiLegHedgeTick } from '../desk/strategies/polymarket/multi-leg-hedge.js';
-import { createRegimeAdaptiveMomentumTick } from '../desk/strategies/polymarket/regime-adaptive-momentum.js';
+import { createOrderbookDepthRatioTick } from '../desk/strategies/polymarket/orderbook-depth-ratio';
+import { createCrossEventDriftTick } from '../desk/strategies/polymarket/cross-event-drift';
+import { createVolCompressionBreakoutTick } from '../desk/strategies/polymarket/vol-compression-breakout';
+import { createWhaleTrackerTick } from '../desk/strategies/polymarket/whale-tracker';
+import { createResolutionFrontrunnerTick } from '../desk/strategies/polymarket/resolution-frontrunner';
+import { createMultiLegHedgeTick } from '../desk/strategies/polymarket/multi-leg-hedge';
+import { createRegimeAdaptiveMomentumTick } from '../desk/strategies/polymarket/regime-adaptive-momentum';
 import { createLiquidationCascadeTick } from '../desk/strategies/polymarket/liquidation-cascade.js';
 import { createOrderFlowToxicityTick } from '../desk/strategies/polymarket/order-flow-toxicity.js';
 import { createGammaScalpingTick } from '../desk/strategies/polymarket/gamma-scalping.js';
@@ -29,7 +29,7 @@ import { createSentimentMomentumTick } from '../desk/strategies/polymarket/senti
 import { createSmartMoneyDivergenceTick } from '../desk/strategies/polymarket/smart-money-divergence.js';
 import { createVolatilitySurfaceArbTick } from '../desk/strategies/polymarket/volatility-surface-arb.js';
 import { createNewsCatalystFadeTick } from '../desk/strategies/polymarket/news-catalyst-fade.js';
-import { createInventorySkewRebalancerTick } from '../desk/strategies/polymarket/inventory-skew-rebalancer.js';
+import { createInventorySkewRebalancerTick } from '../desk/strategies/polymarket/inventory-skew-rebalancer';
 import { createKalmanFilterTrackerTick } from '../desk/strategies/polymarket/kalman-filter-tracker.js';
 import { createLiquidityVacuumTick } from '../desk/strategies/polymarket/liquidity-vacuum.js';
 import { createTwapAccumulatorTick } from '../desk/strategies/polymarket/twap-accumulator.js';
@@ -38,15 +38,15 @@ import { createEntropyScorerTick } from '../desk/strategies/polymarket/entropy-s
 import { createAdverseSelectionFilterTick } from '../desk/strategies/polymarket/adverse-selection-filter.js';
 import { createMomentumExhaustionTick } from '../desk/strategies/polymarket/momentum-exhaustion.js';
 import { createCrossPlatformBasisTick } from '../desk/strategies/polymarket/cross-platform-basis.js';
-import type { MarketScanner } from '../polymarket/market-scanner.js';
-import type { OrderManager } from '../polymarket/order-manager.js';
+import type { MarketScanner } from '../desk/polymarket/market-scanner.js';
+import type { OrderManager } from '../desk/polymarket/order-manager';
 import type { OrderExecutor } from '../cex/order-executor.js';
 import type { ExchangeClient } from '../cex/exchange-client.js';
-import type { EventBus } from '../events/event-bus.js';
-import type { GammaClient } from '../polymarket/gamma-client.js';
-import type { ClobClient } from '../polymarket/clob-client.js';
-import { startNatsEventLoop } from './nats-event-loop.js';
-import type { NatsEventLoop } from './nats-event-loop.js';
+import type { EventBus } from '../desk/events/event-bus';
+import type { GammaClient } from '../desk/polymarket/gamma-client';
+import type { ClobClient } from '../desk/polymarket/clob-client';
+import { startNatsEventLoop } from './nats-event-loop';
+import type { NatsEventLoop } from './nats-event-loop';
 
 export interface WireStrategyDeps {
   eventBus: EventBus;

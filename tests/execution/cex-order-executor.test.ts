@@ -4,14 +4,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CexOrderExecutor } from '../../src/desk/execution/cex-order-executor.js';
-import type { BinanceSpotClient } from '../../src/markets/cex/binance-spot-client.js';
-import type { CexOrderResponse } from '../../src/markets/cex/cex-types.js';
-import type { ISignal } from '../../src/interfaces/IStrategy.js';
+import { CexOrderExecutor } from '../../src/desk/execution/cex-order-executor';
+import type { BinanceSpotClient } from '../../src/desk/markets/cex/binance-spot-client';
+import type { CexOrderResponse } from '../../src/desk/markets/cex/cex-types';
+import type { ISignal } from '../../src/desk/interfaces/IStrategy';
 
 // ── Logger mock ───────────────────────────────────────────────────────────────
 
-vi.mock('../../src/core/logger.js', () => ({
+vi.mock('../../src/desk/core/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 

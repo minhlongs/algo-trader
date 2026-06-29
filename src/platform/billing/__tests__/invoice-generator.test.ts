@@ -30,13 +30,13 @@ const {
 // ---------------------------------------------------------------------------
 // Module mocks (hoisted to top of file by Vitest)
 // ---------------------------------------------------------------------------
-vi.mock('../../../notifications/email-service.js', () => ({
+vi.mock('../../notifications', () => ({
   EmailService: {
     getInstance: mockEmailGetInstance,
   },
 }));
 
-vi.mock('../../../shared/utils/logger.js', () => ({
+vi.mock('../../../shared/utils/logger', () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),

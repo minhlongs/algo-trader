@@ -12,9 +12,9 @@ import {
   onDnaEvent,
   DnaLifecycleEvent,
   CandleProvider,
-} from '../orchestrator.js';
-import { InMemoryStateStore } from '../dna-state-store.js';
-import { TfId, ConsensusSignal } from '../multi-tf-types.js';
+} from '../orchestrator';
+import { InMemoryStateStore } from '../dna-state-store';
+import { TfId, ConsensusSignal } from '../multi-tf-types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

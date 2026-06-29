@@ -10,15 +10,15 @@ import request from 'supertest';
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockQuery = vi.fn();
-vi.mock('../../../../shared/db/postgres-client.js', () => ({
+vi.mock('../../../../shared/db/postgres-client', () => ({
   query: (...args: unknown[]) => mockQuery(...args),
 }));
 
-vi.mock('../../../../shared/utils/logger.js', () => ({
+vi.mock('../../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('../../../../wiring/qwen-drawdown-monitor.js', () => ({
+vi.mock('../../../../wiring/qwen-drawdown-monitor', () => ({
   disableQwen: vi.fn(),
   enableQwen: vi.fn(),
   isQwenEnabled: vi.fn().mockReturnValue(true),
@@ -26,7 +26,7 @@ vi.mock('../../../../wiring/qwen-drawdown-monitor.js', () => ({
   getLastBreachAt: vi.fn().mockReturnValue(null),
 }));
 
-vi.mock('../../../../wiring/qwen-live-eligibility-gate.js', () => ({
+vi.mock('../../../../wiring/qwen-live-eligibility-gate', () => ({
   checkQwenEligibility: vi.fn().mockResolvedValue({ eligible: false, reason: 'paper gate' }),
 }));
 
@@ -34,7 +34,7 @@ vi.mock('../../../../wiring/qwen-live-eligibility-gate.js', () => ({
 const { mockResolvedCounter } = vi.hoisted(() => ({
   mockResolvedCounter: { inc: vi.fn() },
 }));
-vi.mock('../../../middleware/prometheus-metrics.js', () => ({
+vi.mock('../../../middleware', () => ({
   qwenStrategyReviewsResolvedTotal: mockResolvedCounter,
   qwenStrategyReviewBacklogSize: { set: vi.fn() },
   qwenStrategyReviewOldestPendingAgeSec: { set: vi.fn() },
@@ -42,7 +42,7 @@ vi.mock('../../../middleware/prometheus-metrics.js', () => ({
   qwenDrawdownPnlQueryErrorsTotal: { inc: vi.fn() },
 }));
 
-import { createAdminQwenRouter } from '../admin-qwen-routes.js';
+import { createAdminQwenRouter } from '../admin-qwen-routes';
 
 // ─── App factory ─────────────────────────────────────────────────────────────
 

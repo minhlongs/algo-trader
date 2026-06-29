@@ -12,7 +12,7 @@ import {
   TfSignal,
   RegimeSnapshot,
   ConsensusSignal,
-} from './multi-tf-types.js';
+} from './multi-tf-types';
 
 export interface DnaEngineState {
   schemaVersion: string;

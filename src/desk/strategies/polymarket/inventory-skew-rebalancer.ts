@@ -10,12 +10,12 @@
  *   4. Enforcing per-market concentration limits
  *   5. Only trimming positions with positive unrealised P&L (don't sell losers)
  */
-import type { ClobClient } from '../../../polymarket/clob-client.js';
-import type { OrderManager } from '../../../polymarket/order-manager.js';
-import type { EventBus } from '../../../events/event-bus.js';
-import type { GammaClient } from '../../../polymarket/gamma-client.js';
-import { logger } from '../../../core/logger.js';
-import type { StrategyName } from '../../../core/types.js';
+import type { ClobClient } from '../../polymarket/clob-client';
+import type { OrderManager } from '../../polymarket/order-manager';
+import type { EventBus } from '../../events/event-bus';
+import type { GammaClient } from '../../polymarket/gamma-client';
+import { logger } from '../../core/logger';
+import type { StrategyName } from '../../core/types';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 

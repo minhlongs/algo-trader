@@ -5,9 +5,9 @@ import {
   hasMomentum,
   createResolutionFrontrunnerTick,
   type ResolutionFrontrunnerDeps,
-} from '../../src/desk/strategies/polymarket/resolution-frontrunner.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
-import type { GammaMarket } from '../../src/polymarket/gamma-client.js';
+} from '../../src/desk/strategies/polymarket/resolution-frontrunner';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
+import type { GammaMarket } from '../../src/desk/polymarket/gamma-client';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

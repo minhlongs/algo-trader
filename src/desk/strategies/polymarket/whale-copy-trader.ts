@@ -6,8 +6,8 @@
 
 import { logger } from '../../../shared/utils/logger';
 import { getMessageBus } from '../../../shared/messaging/index';
-import { startWhaleActivityFeed } from '../../../feeds/whale-activity-feed';
-import type { WhaleActivity } from '../../../feeds/whale-activity-feed';
+import { startWhaleActivityFeed } from '../../feeds/whale-activity-feed';
+import type { WhaleActivity } from '../../feeds/whale-activity-feed';
 
 // ── Public types ────────────────────────────────────────────────────────────
 export interface WhaleStats {

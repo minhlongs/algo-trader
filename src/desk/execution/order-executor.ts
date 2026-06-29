@@ -10,7 +10,7 @@
  * 5. Handle partial fills & rollback
  */
 
-import { ArbitrageOpportunity } from '../../arbitrage/spread-detector';
+import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
 
 export interface ExecutionResult {
   id: string;

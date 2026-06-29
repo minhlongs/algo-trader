@@ -5,7 +5,7 @@
 
 import { SubscriptionService } from '../../../../billing/subscription-service';
 import { LicenseService } from '../../../../billing/license-service';
-import { AuditLogService } from '../../../../../audit/audit-log-service';
+import { AuditLogService } from '../../../../audit/audit-log-service';
 import { NowPaymentsService, NowPaymentsIpnPayload } from '../../../../billing/nowpayments-service';
 import { LicenseTier } from '../../../../../shared/types/license';
 

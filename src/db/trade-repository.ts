@@ -5,7 +5,7 @@
 
 import { query } from './postgres-client';
 import { ExecutionResult } from '../desk/execution/order-executor';
-import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
+import { ArbitrageOpportunity } from '../desk/arbitrage/spread-detector';
 
 export interface TradeRecord {
   id: string;

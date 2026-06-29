@@ -18,7 +18,7 @@ import {
   type AIDecisionWithMetadata,
   type RecordDecisionInput,
   type DecisionFilters,
-} from '../../../audit/ai-decision-repository';
+} from '../../audit/ai-decision-repository';
 
 const router: Router = Router();
 const repo = getAIDecisionRepository();

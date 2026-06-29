@@ -11,7 +11,7 @@
  * Entry point: analyzeBtcFifteenMinute() → BtcSignal
  */
 
-import { logger } from '../../../core/logger';
+import { logger } from '../../core/logger';
 import { fuseSignals, type SignalInput } from '../../intelligence/signal-fusion-engine';
 
 // ── Public interface ──────────────────────────────────────────────────────────

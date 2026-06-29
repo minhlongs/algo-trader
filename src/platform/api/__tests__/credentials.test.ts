@@ -30,7 +30,7 @@ vi.mock('../../../db/tenant-credentials-repository', () => ({
 }));
 
 // Mock tenant-audit-log to avoid real DB writes during unit tests
-vi.mock('../../../audit/tenant-audit-log', () => ({
+vi.mock('../../audit', () => ({
   appendTenantAuditLog: mockAppendAudit,
 }));
 
@@ -102,7 +102,7 @@ describe('Credentials Ingestion API', () => {
   });
 
   it('should throw an error and block execution inside SubscriberExecutor if credentials do not exist', async () => {
-    const { SubscriberExecutor } = await import('../../raas/subscriber-executor');
+    const { SubscriberExecutor } = await import('../../raas');
     const executor = new SubscriberExecutor();
 
     // Mock repository get returning null
@@ -119,7 +119,7 @@ describe('Credentials Ingestion API', () => {
   });
 
   it('should execute successfully inside SubscriberExecutor if credentials exist', async () => {
-    const { SubscriberExecutor } = await import('../../raas/subscriber-executor');
+    const { SubscriberExecutor } = await import('../../raas');
     const executor = new SubscriberExecutor();
 
     // Mock repository get returning credentials

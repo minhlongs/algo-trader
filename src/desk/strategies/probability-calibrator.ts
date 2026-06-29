@@ -7,7 +7,7 @@
  * All LLM calls use fetch() with OpenAI chat completions format.
  */
 
-import { BinaryMarket } from '../../arbitrage/types';
+import { BinaryMarket } from '../arbitrage/types';
 
 export interface CalibratorConfig {
   /** Local LLM base URL (default: http://127.0.0.1:11434) */

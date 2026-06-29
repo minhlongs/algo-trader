@@ -4,8 +4,8 @@
  * Uses GRU model predictions for buy/sell signals.
  */
 
-import { GruModel, GruModelConfig } from '../../ml/gru/gru-model';
-import { DataPreprocessor, OhlcvData, prepareTrainingData } from '../../ml/gru/data-preprocessor';
+import { GruModel, GruModelConfig } from '../ml/gru/gru-model';
+import { DataPreprocessor, OhlcvData, prepareTrainingData } from '../ml/gru/data-preprocessor';
 import { logger } from '../../shared/utils/logger';
 
 export interface ISignal {

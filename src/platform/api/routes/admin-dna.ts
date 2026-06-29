@@ -10,10 +10,10 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 
-import { requireAdminKey } from '../middleware/require-admin-key.js';
+import { requireAdminKey } from '../middleware/require-admin-key';
 
-import { getDnaEngine, onDnaEvent, emitDnaEvent } from '../../../desk/strategies/dna/orchestrator.js';
-import { getPaperJournal, clearPaperJournal } from '../../../desk/strategies/dna/paper-executor.js';
+import { getDnaEngine, onDnaEvent, emitDnaEvent } from '../../../desk/strategies/dna/orchestrator';
+import { getPaperJournal, clearPaperJournal } from '../../../desk/strategies/dna/paper-executor';
 
 const router: Router = Router();
 

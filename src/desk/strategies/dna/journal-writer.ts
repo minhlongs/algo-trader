@@ -6,9 +6,9 @@
  * tractability: every execution can be replayed from journal rows alone.
  */
 
-import { query } from '../../../shared/db/postgres-client.js';
-import { logger } from '../../../shared/utils/logger.js';
-import { journalWriteErrorsTotal } from '../../../platform/middleware/prometheus-metrics.js';
+import { query } from '../../../shared/db/postgres-client';
+import { logger } from '../../../shared/utils/logger';
+import { journalWriteErrorsTotal } from '../../../platform/middleware/prometheus-metrics';
 import type {
   ConsensusAction,
   ConsensusSignal,
@@ -17,7 +17,7 @@ import type {
   JournalDecision,
   MarketRegime,
   TfId,
-} from './multi-tf-types.js';
+} from './multi-tf-types';
 
 const TABLE = 'dna_journal';
 

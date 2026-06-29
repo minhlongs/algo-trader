@@ -14,7 +14,7 @@
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { LicenseService } from '../../billing/license-service';
-import { AuditLogService } from '../../../audit/audit-log-service';
+import { AuditLogService } from '../../audit/audit-log-service';
 import { LicenseTier, LicenseStatus, CreateLicenseInput, LicenseFilters } from '../../../shared/types/license';
 
 interface LicenseParams {

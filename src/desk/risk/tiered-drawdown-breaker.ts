@@ -12,7 +12,7 @@
  */
 
 import { logger } from '../../shared/utils/logger';
-import { writeJsonState, readJsonState, cashclawPath } from '../../persistence/file-store';
+import { writeJsonState, readJsonState, cashclawPath } from '../../shared/persistence/file-store';
 
 export type DrawdownTier = 'NORMAL' | 'ALERT' | 'REDUCE' | 'HALT' | 'HARD_STOP' | 'DAILY_PAUSE';
 

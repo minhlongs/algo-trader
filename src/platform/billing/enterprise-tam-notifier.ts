@@ -7,9 +7,9 @@
  * Falls back to logger.warn if EmailService is not initialised.
  */
 
-import { EmailService } from '../../notifications/email-service.js';
-import { logger } from '../../shared/utils/logger.js';
-import { EnterpriseInquiry, ENTERPRISE_TIER_LABELS, ENTERPRISE_ACV } from './enterprise-inquiry-store.js';
+import { EmailService } from '../notifications/email-service';
+import { logger } from '../../shared/utils/logger';
+import { EnterpriseInquiry, ENTERPRISE_TIER_LABELS, ENTERPRISE_ACV } from './enterprise-inquiry-store';
 
 /** TAM inbox — override via env var ENTERPRISE_TAM_EMAIL */
 function getTamEmail(): string {

@@ -9,8 +9,8 @@ import {
   DEFAULT_CONFIG,
   type RegimeSwitchDetectorConfig,
   type RegimeSwitchDetectorDeps,
-} from '../../src/desk/strategies/polymarket/regime-switch-detector.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/regime-switch-detector';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
 

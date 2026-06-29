@@ -12,9 +12,9 @@
  *   await loop.stop();
  */
 
-import { createMessageBus, closeMessageBus } from '../shared/messaging/index.js';
-import { NatsStrategyBridge } from './nats-strategy-bridge.js';
-import { logger } from '../shared/utils/logger.js';
+import { createMessageBus, closeMessageBus } from '../shared/messaging/index';
+import { NatsStrategyBridge } from './nats-strategy-bridge';
+import { logger } from '../shared/utils/logger';
 
 export interface NatsEventLoop {
   bridge: NatsStrategyBridge;

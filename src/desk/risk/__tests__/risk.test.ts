@@ -16,7 +16,7 @@ const mockRedis = {
   lrange: vi.fn().mockResolvedValue([]),
 };
 
-vi.mock('../redis', () => ({
+vi.mock('../../../redis', () => ({
   getRedisClient: () => mockRedis,
 }));
 

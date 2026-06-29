@@ -13,13 +13,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mock DB to avoid real Postgres in unit tests ────────────────────────────
 const mockQueryResult = vi.fn();
-vi.mock('../../shared/db/postgres-client.js', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
   query: (...args: unknown[]) => mockQueryResult(...args),
 }));
 
 // ─── Mock Telegram to avoid real HTTP calls ──────────────────────────────────
 // Note: vi.fn() inside factory — cannot reference outer variables (hoisting)
-vi.mock('../../desk/signal/telegram-signal-pusher.js', () => ({
+vi.mock('../../desk/signal/telegram-signal-pusher', () => ({
   telegramSignalPusher: { sendAdminAlert: vi.fn().mockResolvedValue(true) },
 }));
 
@@ -28,7 +28,7 @@ const { mockDrawdownLastRunGauge, mockPnlQueryErrorsCounter } = vi.hoisted(() =>
   mockDrawdownLastRunGauge: { set: vi.fn() },
   mockPnlQueryErrorsCounter: { inc: vi.fn() },
 }));
-vi.mock('../../platform/middleware/prometheus-metrics.js', () => ({
+vi.mock('../../platform/middleware/prometheus-metrics', () => ({
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
   setQwenKillSwitch: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock('../../platform/middleware/prometheus-metrics.js', () => ({
 }));
 
 // ─── Mock logger ─────────────────────────────────────────────────────────────
-vi.mock('../../shared/utils/logger.js', () => ({
+vi.mock('../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
@@ -57,15 +57,15 @@ import {
   runDrawdownCheck,
   resetDrawdownMonitorState,
   getLastBreachAt,
-} from '../qwen-drawdown-monitor.js';
+} from '../qwen-drawdown-monitor';
 
 import {
   assertQwenLiveEligible,
   checkQwenEligibility,
   PaperGateError,
-} from '../qwen-live-eligibility-gate.js';
+} from '../qwen-live-eligibility-gate';
 
-import { telegramSignalPusher } from '../../desk/signal/telegram-signal-pusher.js';
+import { telegramSignalPusher } from '../../desk/signal/telegram-signal-pusher';
 
 // Convenience accessor for the mocked sendAdminAlert (resolved after imports)
 const getMockAlert = () => vi.mocked(telegramSignalPusher.sendAdminAlert);

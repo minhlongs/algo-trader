@@ -9,7 +9,7 @@
  * - Rate limit compliance
  */
 
-import { ArbitrageOpportunity } from '../../arbitrage/spread-detector';
+import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
 
 export interface ValidationResult {
   valid: boolean;

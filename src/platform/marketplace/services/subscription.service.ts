@@ -1,5 +1,5 @@
 import { logger } from '../../../shared/utils/logger';
-import { AuditLogService } from '../../../audit/audit-log-service';
+import { AuditLogService } from '../../audit/audit-log-service';
 import { SubscriptionRepository, subscriptionRepository, ReviewRepository, reviewRepository, ListingRepository, listingRepository } from './repositories';
 import { NotificationService } from '../notifications/notification-service';
 import type { IMarketplaceSubscription, IMarketplaceReview, CustomRiskLimits } from '../models/types';

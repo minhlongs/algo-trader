@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { logger } from '../../core/logger.js';
+import { logger } from '../utils/logger';
 
 const STATE_DIR_DEFAULT = 'data/strategy-state';
 

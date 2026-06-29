@@ -16,22 +16,22 @@
  *
  * Pure math helpers live in ./herd-behavior-math-helpers.ts
  */
-import type { ClobClient, RawOrderBook } from '../../../polymarket/clob-client.js';
-import type { OrderManager } from '../../../polymarket/order-manager.js';
-import type { EventBus } from '../../../events/event-bus.js';
-import type { GammaClient, GammaMarket } from '../../../polymarket/gamma-client.js';
-import type { StrategyName } from '../../../core/types.js';
-import { logger } from '../../../core/logger.js';
+import type { ClobClient, RawOrderBook } from '../../polymarket/clob-client';
+import type { OrderManager } from '../../polymarket/order-manager';
+import type { EventBus } from '../../events/event-bus';
+import type { GammaClient, GammaMarket } from '../../polymarket/gamma-client';
+import type { StrategyName } from '../../core/types';
+import { logger } from '../../core/logger';
 import {
   calcReturn,
   calcAvgPairwiseCorrelation,
   detectHerdPeak,
   calcHerdDirection,
   updateEma,
-} from './herd-behavior-math-helpers.js';
+} from './herd-behavior-math-helpers';
 
 // Re-export pure helpers so existing test imports remain valid
-export { calcReturn, calcPearsonR, calcAvgPairwiseCorrelation, detectHerdPeak, calcHerdDirection } from './herd-behavior-math-helpers.js';
+export { calcReturn, calcPearsonR, calcAvgPairwiseCorrelation, detectHerdPeak, calcHerdDirection } from './herd-behavior-math-helpers';
 
 // -- Config -------------------------------------------------------------------
 

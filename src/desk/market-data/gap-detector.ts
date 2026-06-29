@@ -4,15 +4,15 @@
  * Detects missing candles and data gaps in market data feeds
  */
 
-import { logger } from '../../shared/utils/logger.js';
-import type { MarketDataSource, Candle, Timeframe } from './types.js';
+import { logger } from '../../shared/utils/logger';
+import type { MarketDataSource, Candle, Timeframe } from './types';
 import {
   recordDataGap,
   recordGapDetectionDuration,
   setExpectedCandles,
   setReceivedCandles,
   setCandleCompleteness,
-} from '../../platform/middleware/prometheus-metrics.js';
+} from '../../platform/middleware/prometheus-metrics';
 
 /**
  * Configuration for gap detection

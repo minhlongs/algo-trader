@@ -4,12 +4,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BinanceSpotClient } from '../../../src/markets/cex/binance-spot-client.js';
-import type { CcxtExchangeAdapter } from '../../../src/markets/cex/binance-spot-client.js';
+import { BinanceSpotClient } from '../../../src/desk/markets/cex/binance-spot-client';
+import type { CcxtExchangeAdapter } from '../../../src/desk/markets/cex/binance-spot-client';
 
 // ── Logger mock ───────────────────────────────────────────────────────────────
 
-vi.mock('../../../src/core/logger.js', () => ({
+vi.mock('../../../src/desk/core/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 

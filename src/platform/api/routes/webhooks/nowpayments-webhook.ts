@@ -14,7 +14,7 @@ import { NowPaymentsService, NowPaymentsIpnPayload } from '../../../billing/nowp
 import { SubscriptionService } from '../../../billing/subscription-service';
 import { PaymentService } from '../../../billing/payment-service';
 import { LicenseService } from '../../../billing/license-service';
-import { AuditLogService } from '../../../../audit/audit-log-service';
+import { AuditLogService } from '../../../audit/audit-log-service';
 import { logger } from '../../../../shared/utils/logger';
 import {
   handleIpnFinished,

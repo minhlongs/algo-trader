@@ -9,8 +9,8 @@ import {
   DEFAULT_CONFIG,
   type WeightedSentimentAggregatorConfig,
   type WeightedSentimentAggregatorDeps,
-} from '../../src/desk/strategies/polymarket/weighted-sentiment-aggregator.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/weighted-sentiment-aggregator';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
 

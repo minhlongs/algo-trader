@@ -3,14 +3,14 @@
  * Verifies: emit, journal, getPaperJournal, clearPaperJournal, FIFO eviction.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { onDnaEvent } from '../orchestrator.js';
+import { onDnaEvent } from '../orchestrator';
 import {
   executePaperConsensus,
   getPaperJournal,
   clearPaperJournal,
   type PaperJournalEntry,
-} from '../paper-executor.js';
-import type { ConsensusSignal } from '../multi-tf-types.js';
+} from '../paper-executor';
+import type { ConsensusSignal } from '../multi-tf-types';
 
 const mockSignal = (overrides: Partial<ConsensusSignal> = {}): ConsensusSignal => ({
   traceId: 'trace-1',

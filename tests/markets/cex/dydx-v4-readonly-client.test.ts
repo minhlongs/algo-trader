@@ -7,18 +7,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Hoisted mocks (must be before any imports that use the mocked modules) ────
 const { mockResilientFetch } = vi.hoisted(() => ({
-  mockResilientFetch: vi.fn<typeof import('../../../src/shared/resilience/resilient-fetch.js').resilientFetch>(),
+  mockResilientFetch: vi.fn<typeof import('../../../src/shared/resilience/resilient-fetch').resilientFetch>(),
 }));
 
-vi.mock('../../../src/shared/resilience/resilient-fetch.js', () => ({
+vi.mock('../../../src/shared/resilience/resilient-fetch', () => ({
   resilientFetch: mockResilientFetch,
 }));
 
-vi.mock('../../../src/core/logger.js', () => ({
+vi.mock('../../../src/desk/core/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { DydxV4ReadonlyClient } from '../../../src/markets/cex/dydx-v4-readonly-client.js';
+import { DydxV4ReadonlyClient } from '../../../src/desk/markets/cex/dydx-v4-readonly-client';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

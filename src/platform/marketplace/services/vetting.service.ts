@@ -4,7 +4,7 @@
  */
 
 import { logger } from '../../../shared/utils/logger';
-import { AuditLogService } from '../../../audit/audit-log-service';
+import { AuditLogService } from '../../audit/audit-log-service';
 import { StrategyRepository, VettingJobRepository } from './repositories';
 
 import type { StrategyStatus, BacktestSummary } from '../models/types';

@@ -11,7 +11,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import RaasGate from '../../../gate/raas-gate';
+import RaasGate from '../../../desk/gate/raas-gate';
 import { LicenseTier } from '../../../shared/types/license';
 import type { SignalSubscription, TierKey } from '../../../desk/signal/signal-types';
 import { logger } from '../../../shared/utils/logger';

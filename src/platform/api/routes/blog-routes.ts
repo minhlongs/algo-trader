@@ -8,7 +8,7 @@
 
 import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
-import { getBlogPosts } from '../../../jobs/auto-marketing-daemon.js';
+import { getBlogPosts } from '../../../desk/jobs/auto-marketing-daemon';
 
 export const blogRouter: RouterType = Router();
 

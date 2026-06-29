@@ -4,7 +4,7 @@
  */
 
 import { LicenseService } from '../license-service';
-import { AuditLogService } from '../../../audit/audit-log-service';
+import { AuditLogService } from '../../audit/audit-log-service';
 import { LicenseStatus } from '../../../shared/types/license';
 import type { DunningRecord, DunningConfig } from '../dunning-service';
 

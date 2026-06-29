@@ -6,8 +6,8 @@
  * Gracefully returns null if sidecar unavailable — never blocks trading.
  */
 
-import { alphaear } from './alphaear-client.js';
-import { logger } from '../../core/logger.js';
+import { alphaear } from './alphaear-client';
+import { logger } from '../core/logger';
 
 /** OHLCV prediction point from Kronos foundation model */
 export interface KronosOhlcvPrediction {

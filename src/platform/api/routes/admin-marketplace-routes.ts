@@ -19,7 +19,7 @@ import { MarketplaceService } from '../../marketplace/services/marketplace.servi
 import { VettingService } from '../../marketplace/services/vetting.service';
 import { DisputeService } from '../../marketplace/services/dispute.service';
 import { RevenueService } from '../../marketplace/services/revenue.service';
-import { AuditLogService, type AuditEventType } from '../../../audit/audit-log-service';
+import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
 
 export const adminMarketplaceRouter: RouterType = Router();

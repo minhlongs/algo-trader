@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { Backtester } from '../../../arbitrage/backtester';
-import { PricePoint, ExchangeId } from '../../../arbitrage/types';
+import { Backtester } from '../../../desk/arbitrage/backtester';
+import { PricePoint, ExchangeId } from '../../../desk/arbitrage/types';
 import { z } from 'zod';
 
 export const backtestRouter: Router = Router();

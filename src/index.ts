@@ -8,14 +8,14 @@ import { Command } from 'commander';
 import { initSentry } from './shared/utils/sentry-init';
 import { initTracing } from './shared/utils/tracing';
 import { runMigrations } from './shared/db/migration-runner';
-import { runGruStrategy } from './commands/gru-strategy';
+import { runGruStrategy } from './desk/commands/gru-strategy';
 import { KronosStrategy } from './desk/strategies/kronos-strategy';
-import { runSetupWizard } from './commands/setup-wizard';
-import { runQuickstart } from './commands/quickstart';
-import { runActivateCommand } from './commands/activate-license';
-import { runArbAuto } from './commands/arb-auto';
-import { paperStart, paperStop, paperStatus, paperReport } from './commands/paper-trading';
-import type { PaperCommandOptions } from './commands/paper-trading';
+import { runSetupWizard } from './desk/commands/setup-wizard';
+import { runQuickstart } from './desk/commands/quickstart';
+import { runActivateCommand } from './desk/commands/activate-license';
+import { runArbAuto } from './desk/commands/arb-auto';
+import { paperStart, paperStop, paperStatus, paperReport } from './desk/commands/paper-trading';
+import type { PaperCommandOptions } from './desk/commands/paper-trading';
 import { logger } from './shared/utils/logger';
 
 // Initialize Sentry before anything else

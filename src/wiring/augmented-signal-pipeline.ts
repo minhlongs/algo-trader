@@ -17,12 +17,12 @@
  *   AI_VALIDATION_MIN_CONFIDENCE → minimum confidence score (default 0.7)
  */
 
-import { validateSignal } from '../desk/intelligence/signal-validator.js';
-import type { SignalCandidate, ValidationResult } from '../desk/intelligence/signal-validator.js';
-import { getMessageBus } from '../shared/messaging/index.js';
-import { Topics } from '../shared/messaging/topic-schema.js';
-import { logger } from '../shared/utils/logger.js';
-import type { MessageEnvelope } from '../shared/messaging/message-bus-interface.js';
+import { validateSignal } from '../desk/intelligence/signal-validator';
+import type { SignalCandidate, ValidationResult } from '../desk/intelligence/signal-validator';
+import { getMessageBus } from '../shared/messaging/index';
+import { Topics } from '../shared/messaging/topic-schema';
+import { logger } from '../shared/utils/logger';
+import type { MessageEnvelope } from '../shared/messaging/message-bus-interface';
 
 // Topics produced by this pipeline (not in Topics enum — added here as constants)
 const TOPIC_SIGNAL_VALIDATED = 'signal.validated';

@@ -8,9 +8,9 @@
  * Gracefully falls back to 'wait' if the sidecar is unavailable.
  */
 
-import type { IStrategy, ICandle, ISignal } from '../../interfaces/IStrategy.js';
-import { getKronosOhlcvForecast } from '../intelligence/kronos-fair-value.js';
-import { logger } from '../../shared/utils/logger.js';
+import type { IStrategy, ICandle, ISignal } from '../interfaces/IStrategy';
+import { getKronosOhlcvForecast } from '../intelligence/kronos-fair-value';
+import { logger } from '../../shared/utils/logger';
 
 const STRATEGY_NAME = 'KronosFoundation';
 

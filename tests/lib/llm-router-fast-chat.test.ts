@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { LlmRouter } from '../../src/lib/llm-router.js';
+import { LlmRouter } from '../../src/lib/llm-router';
 
 // Mock fetch globally
 const fetchMock = vi.fn();

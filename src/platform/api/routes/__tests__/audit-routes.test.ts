@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fastify, { FastifyInstance } from 'fastify';
 import { registerAuditRoutes } from '../audit-routes';
-import { AuditLogService, AuditLogFilters, AuditEventType } from '../../../../audit/audit-log-service';
-import { LicenseService } from '../../../billing/license-service';
+import { AuditLogService, AuditLogFilters, AuditEventType } from '../../../audit';
+import { LicenseService } from '../../../billing';
 
 // ---------------------------------------------------------------------------
 // Shared mock instances — routes call getInstance() at registration time,
@@ -29,14 +29,14 @@ const mockLicenseInstance = {
   getLicense: vi.fn(),
 };
 
-vi.mock('../../../../audit/audit-log-service', () => ({
+vi.mock('../../../audit', () => ({
   AuditLogService: {
     getInstance: () => mockAuditInstance,
   },
   AuditEventType: 'created' as const,
 }));
 
-vi.mock('../../../billing/license-service', () => ({
+vi.mock('../../../billing', () => ({
   LicenseService: {
     getInstance: () => mockLicenseInstance,
   },

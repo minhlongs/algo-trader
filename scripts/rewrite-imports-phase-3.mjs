@@ -21,10 +21,15 @@ const SRC_ROOT = join(REPO_ROOT, 'src');
 
 const PLATFORM_MODULES = new Set([
   'api', 'auth', 'billing', 'marketplace', 'raas', 'metering', 'middleware',
+  'audit', 'dashboard', 'landing', 'notifications', 'persistence',
+  'referral', 'telegram', 'workers',
 ]);
 
 const DESK_MODULES = new Set([
   'strategies', 'execution', 'signal', 'risk', 'intelligence', 'market-data',
+  'arbitrage', 'citadel', 'cli', 'commands', 'core', 'data', 'events',
+  'feeds', 'gate', 'interfaces', 'ironclaw', 'jobs', 'markets', 'ml',
+  'polymarket', 'sandbox', 'wallet',
 ]);
 
 const MODULE_SIDE = new Map();

@@ -12,7 +12,7 @@
 import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import { LicenseTier } from '../../shared/types/license';
-import { NowPaymentsService } from '../billing/nowpayments-service';
+import { NowPaymentsService } from './nowpayments-service';
 import { EventEmitter } from 'events';
 
 export interface UsageStatus {

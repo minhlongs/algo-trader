@@ -10,7 +10,7 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { AuditLogService, AuditLogFilters, AuditEventType } from '../../../audit/audit-log-service';
+import { AuditLogService, AuditLogFilters, AuditEventType } from '../../audit/audit-log-service';
 import { LicenseService } from '../../billing/license-service';
 
 interface AuditLogQuery {

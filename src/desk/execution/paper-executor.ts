@@ -15,7 +15,7 @@ import {
   writeJsonState,
   readJsonState,
   cashclawPath,
-} from '../../persistence/file-store';
+} from '../../shared/persistence/file-store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

@@ -17,8 +17,8 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { logger } from '../../../shared/utils/logger.js';
-import { AlphaEarClient } from '../../../desk/intelligence/alphaear-client.js';
+import { logger } from '../../../shared/utils/logger';
+import { AlphaEarClient } from '../../../desk/intelligence/alphaear-client';
 import { getRedisClient, RedisClientType } from '../../../redis';
 
 const router: Router = Router();

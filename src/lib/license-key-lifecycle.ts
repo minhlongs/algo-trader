@@ -9,7 +9,7 @@ import {
   generateLicenseKey,
   type LicenseKey,
   type BetaInvite,
-} from './license-key-crypto.js';
+} from './license-key-crypto';
 
 /** Get default max usage based on tier */
 export function getDefaultMaxUsage(tier: 'free' | 'pro' | 'enterprise'): number {

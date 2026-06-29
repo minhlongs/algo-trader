@@ -4,18 +4,18 @@
  * Automatic failover with circuit breaker pattern
  */
 
-import { logger } from '../../shared/utils/logger.js';
+import { logger } from '../../shared/utils/logger';
 import {
   ProviderHealthStatus,
   MarketDataSource,
   ProviderFailoverConfig,
   FailoverEvent,
-} from './types.js';
-import { SlaTracker } from './sla-tracker.js';
+} from './types';
+import { SlaTracker } from './sla-tracker';
 import {
   recordFailoverEvent,
   setCircuitBreakerStateProvider,
-} from '../../platform/middleware/prometheus-metrics.js';
+} from '../../platform/middleware/prometheus-metrics';
 
 /**
  * Circuit breaker states

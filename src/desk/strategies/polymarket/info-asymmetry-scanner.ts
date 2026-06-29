@@ -14,12 +14,12 @@
  *   5. Positive asymmetry (asks depleting faster) -> buyers are aggressive -> BUY YES
  *   6. Negative asymmetry (bids depleting faster) -> sellers are aggressive -> BUY NO
  */
-import type { ClobClient, RawOrderBook } from '../../../polymarket/clob-client.js';
-import type { OrderManager } from '../../../polymarket/order-manager.js';
-import type { EventBus } from '../../../events/event-bus.js';
-import type { GammaClient, GammaMarket } from '../../../polymarket/gamma-client.js';
-import type { StrategyName } from '../../../core/types.js';
-import { logger } from '../../../core/logger.js';
+import type { ClobClient, RawOrderBook } from '../../polymarket/clob-client';
+import type { OrderManager } from '../../polymarket/order-manager';
+import type { EventBus } from '../../events/event-bus';
+import type { GammaClient, GammaMarket } from '../../polymarket/gamma-client';
+import type { StrategyName } from '../../core/types';
+import { logger } from '../../core/logger';
 
 // -- Config -------------------------------------------------------------------
 

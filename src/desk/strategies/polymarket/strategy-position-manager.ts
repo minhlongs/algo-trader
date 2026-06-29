@@ -3,8 +3,8 @@
  * Handles exit checks (TP/SL/timeout), cooldown tracking, and position lifecycle.
  */
 
-import type { BaseOpenPosition } from './strategy-shared-types.js';
-import { logger } from '../../../core/logger.js';
+import type { BaseOpenPosition } from './strategy-shared-types';
+import { logger } from '../../core/logger';
 
 /** Check if position should exit based on take-profit */
 export function shouldTakeProfit(

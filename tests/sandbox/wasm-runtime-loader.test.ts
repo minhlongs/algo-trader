@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createSandboxRunner } from '../../src/sandbox/wasm-runtime-loader.js';
-import type { InvocationRecord } from '../../src/sandbox/sandbox-invocation-tracer.js';
+import { createSandboxRunner } from '../../src/desk/sandbox/wasm-runtime-loader';
+import type { InvocationRecord } from '../../src/desk/sandbox/sandbox-invocation-tracer';
 import {
   calcSpread,
   calcSpreadDeviation,
   updateSpreadEma,
   isSpreadSignal,
   determineCheapSide,
-} from '../../src/desk/strategies/polymarket/spread-mean-reversion.js';
+} from '../../src/desk/strategies/polymarket/spread-mean-reversion';
 
 // ── Test sink that captures audit records ─────────────────────────────────────
 
@@ -170,13 +170,13 @@ describe('wasm-runtime-loader — spread-mean-reversion kernel', () => {
 
 describe('wasm-cpu-limiter', () => {
   it('withCpuLimit resolves fast synchronous work normally', async () => {
-    const { withCpuLimit } = await import('../../src/sandbox/wasm-cpu-limiter.js');
+    const { withCpuLimit } = await import('../../src/desk/sandbox/wasm-cpu-limiter');
     const result = await withCpuLimit(() => 42, { timeoutMs: 200 });
     expect(result).toBe(42);
   });
 
   it('CpuTimeoutError is thrown on simulated slow work', async () => {
-    const { withCpuLimit, CpuTimeoutError } = await import('../../src/sandbox/wasm-cpu-limiter.js');
+    const { withCpuLimit, CpuTimeoutError } = await import('../../src/desk/sandbox/wasm-cpu-limiter');
     // Simulate slow async work that outlives the deadline
     await expect(
       withCpuLimit(
@@ -191,7 +191,7 @@ describe('wasm-cpu-limiter', () => {
 
 describe('sandbox-input-encoder', () => {
   it('encodes valid input into correct memory offsets', async () => {
-    const { encodeInput, INPUT_OFFSETS } = await import('../../src/sandbox/sandbox-input-encoder.js');
+    const { encodeInput, INPUT_OFFSETS } = await import('../../src/desk/sandbox/sandbox-input-encoder');
     const buf = new ArrayBuffer(128);
     const input = { yesPrice: 0.6, noPrice: 0.45, prevEma: 1.0, alpha: 0.2, threshold: 0.05 };
     encodeInput(input, buf);
@@ -204,7 +204,7 @@ describe('sandbox-input-encoder', () => {
   });
 
   it('rejects yesPrice out of (0,1) range', async () => {
-    const { encodeInput, SandboxInputError } = await import('../../src/sandbox/sandbox-input-encoder.js');
+    const { encodeInput, SandboxInputError } = await import('../../src/desk/sandbox/sandbox-input-encoder');
     const buf = new ArrayBuffer(128);
     expect(() =>
       encodeInput({ yesPrice: 1.5, noPrice: 0.5, prevEma: 0, alpha: 0.1, threshold: 0.02 }, buf),
@@ -212,7 +212,7 @@ describe('sandbox-input-encoder', () => {
   });
 
   it('rejects NaN values', async () => {
-    const { encodeInput, SandboxInputError } = await import('../../src/sandbox/sandbox-input-encoder.js');
+    const { encodeInput, SandboxInputError } = await import('../../src/desk/sandbox/sandbox-input-encoder');
     const buf = new ArrayBuffer(128);
     expect(() =>
       encodeInput({ yesPrice: NaN, noPrice: 0.5, prevEma: 0, alpha: 0.1, threshold: 0.02 }, buf),

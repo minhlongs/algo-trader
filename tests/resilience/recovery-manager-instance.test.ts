@@ -2,11 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { RecoveryManager } from '../../src/shared/resilience/recovery-manager.js';
-import type { RecoveryState } from '../../src/shared/resilience/recovery-manager.js';
+import { RecoveryManager } from '../../src/shared/resilience/recovery-manager';
+import type { RecoveryState } from '../../src/shared/resilience/recovery-manager';
 
 // Suppress logger noise
-vi.mock('../../src/core/logger.js', () => ({
+vi.mock('../../src/desk/core/logger', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

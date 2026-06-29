@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { TenantCredentialsRepository } from '../../../db/tenant-credentials-repository';
 import { assertTenantAccess } from '../../raas/subscriber-tenant-isolator';
-import { appendTenantAuditLog } from '../../../audit/tenant-audit-log';
+import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
 
 export const credentialsRouter: Router = Router();
 const repository = new TenantCredentialsRepository();
