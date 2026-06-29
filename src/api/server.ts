@@ -7,6 +7,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { distributedRateLimiter } from '../middleware/distributed-rate-limiter';
 import * as Sentry from '@sentry/node';
 import { Server } from 'http';
 import { logger } from '../utils/logger';
@@ -17,6 +18,11 @@ import { signalsRouter } from './routes/signals';
 import { adminRouter } from './routes/admin';
 import { healthRouter } from './routes/health';
 import { revenueRouter } from './routes/revenue';
+import { marketplaceStrategyRouter } from './routes/marketplace-strategy-routes';
+import { marketplaceSubscriptionRouter } from './routes/marketplace-subscription-routes';
+import { marketplaceReviewRouter } from './routes/marketplace-review-routes';
+import { marketplaceDisputeRouter } from './routes/marketplace-dispute-routes';
+import { adminMarketplaceRouter } from './routes/admin-marketplace-routes';
 import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook';
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
@@ -96,13 +102,18 @@ export class ApiServer {
     // Prometheus metrics middleware (track all requests)
     this.app.use(metricsMiddleware);
 
-    // Rate limiting
+ // Rate limiting — distributed tier-aware limiter (Redis-backed)
+  // Rate limiting — express-rate-limit + distributed tier-aware limiter (Redis-backed)
     const limiter = rateLimit({
       windowMs: this.config.rateLimitWindowMs,
       max: this.config.rateLimitMax,
       message: { error: 'Too many requests, please try again later' },
+    standardHeaders: false,
+    legacyHeaders: false,
+  skip: () => true, // distributedRateLimiter handles actual rate limiting
     });
     this.app.use('/api', limiter);
+    this.app.use('/api', distributedRateLimiter);
   }
 
   /**
@@ -111,6 +122,7 @@ export class ApiServer {
   private setupRoutes(): void {
     // Health checks (no rate limit)
     this.app.use('/health', healthRouter);
+    this.app.use('/api/health', healthRouter);
 
     // Prometheus metrics endpoint (excluded from rate limiting, protected by Bearer token)
     this.app.get('/metrics', (req, res, next) => {
@@ -138,6 +150,15 @@ export class ApiServer {
     this.app.use('/api/signals', signalsRouter);
     this.app.use('/api/admin', adminRouter);
     this.app.use('/api/revenue', revenueRouter);
+
+// Marketplace routes
+this.app.use('/api/v1/marketplace/strategies', marketplaceStrategyRouter);
+this.app.use('/api/v1/marketplace/subscriptions', marketplaceSubscriptionRouter);
+this.app.use('/api/v1/marketplace/reviews', marketplaceReviewRouter);
+this.app.use('/api/v1/marketplace/disputes', marketplaceDisputeRouter);
+
+// Admin marketplace routes
+this.app.use('/api/admin/marketplace', adminMarketplaceRouter);
     this.app.use('/api/coupons', couponRouter);
     this.app.use('/api/blog', blogRouter);
     this.app.use('/api/analytics', analyticsRouter);

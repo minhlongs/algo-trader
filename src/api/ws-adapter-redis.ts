@@ -44,6 +44,7 @@ interface WSClient {
 export class RedisWSAdapter {
   private wsServer: WebSocketServer;
   private clients: Map<string, WSClient> = new Map();
+  private channelSubscribers: Map<string, Set<WSClient>> = new Map();
   private pubClient: Cluster | any;
   private subClient: Cluster | any;
   private config: WSAdapterConfig;
@@ -98,6 +99,12 @@ export class RedisWSAdapter {
 
       // Handle close
       ws.on('close', () => {
+        for (const [channel, subs] of this.channelSubscribers.entries()) {
+          subs.delete(client);
+          if (subs.size === 0) {
+            this.channelSubscribers.delete(channel);
+          }
+        }
         this.clients.delete(clientId);
       });
 
@@ -175,6 +182,9 @@ export class RedisWSAdapter {
         case 'subscribe':
           if (this.config.channels.includes(message.channel)) {
             client.channels.add(message.channel);
+ const subs = this.channelSubscribers.get(message.channel) ?? new Set<WSClient>();
+ subs.add(client);
+ this.channelSubscribers.set(message.channel, subs);
             this.sendToClient(client, {
               type: 'subscribed',
               channel: message.channel,
@@ -185,6 +195,13 @@ export class RedisWSAdapter {
 
         case 'unsubscribe':
           client.channels.delete(message.channel);
+ const unsub = this.channelSubscribers.get(message.channel);
+ if (unsub) {
+  unsub.delete(client);
+  if (unsub.size === 0) {
+   this.channelSubscribers.delete(message.channel);
+  }
+ }
           this.sendToClient(client, {
             type: 'unsubscribed',
             channel: message.channel,

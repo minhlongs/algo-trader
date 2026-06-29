@@ -7,6 +7,7 @@
  * Base: https://clob.polymarket.com
  */
 
+import { createHmac } from 'crypto';
 import { PolymarketSigner, PolymarketOrder, SignedOrder } from './polymarket-signer';
 
 const CLOB_BASE = 'https://clob.polymarket.com';
@@ -179,7 +180,7 @@ export class PolymarketAdapter {
       headers['POLY-PASSPHRASE'] = this.passphrase;
       // TODO: compute HMAC-SHA256(timestamp + method + path + body, apiSecret)
       // and set headers['POLY-SIGNATURE'] = signature
-      headers['POLY-SIGNATURE'] = this._stubSignature(timestamp, method, path, body);
+      headers['POLY-SIGNATURE'] = this.computeSignature(timestamp, method, path, body);
     }
 
     return headers;
@@ -201,21 +202,17 @@ export class PolymarketAdapter {
     };
   }
 
-  /**
-   * @internal stub — replace with HMAC-SHA256 using crypto module or noble/hashes
-   * TODO: import { createHmac } from 'crypto';
-   *       const msg = timestamp + method.toUpperCase() + path + (body ? JSON.stringify(body) : '');
-   *       return createHmac('sha256', this.apiSecret).update(msg).digest('base64');
-   */
-  private _stubSignature(
-    _timestamp: string,
-    _method: string,
-    _path: string,
-    _body?: Record<string, unknown>,
-  ): string {
-    // TODO: import { createHmac } from 'crypto';
-    //       const msg = timestamp + method.toUpperCase() + path + (body ? JSON.stringify(body) : '');
-    //       return createHmac('sha256', this.apiSecret).update(msg).digest('base64');
-    throw new Error('HMAC signature not implemented — replace _stubSignature() with crypto.createHmac');
-  }
+/**
+ * Compute HMAC-SHA256 signature for Polymarket CLOB auth.
+ * Signs: timestamp + METHOD + path + body
+ */
+private computeSignature(
+  timestamp: string,
+  method: string,
+  path: string,
+  body?: Record<string, unknown>,
+): string {
+  const msg = timestamp + method.toUpperCase() + path + (body ? JSON.stringify(body) : '');
+  return createHmac('sha256', this.apiSecret).update(msg).digest('hex');
+}
 }

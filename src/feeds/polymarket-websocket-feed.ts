@@ -98,11 +98,11 @@ export class PolymarketWebSocketFeed {
     this.closed = true;
     this.stopHeartbeat();
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    if (this.ws) {
-      this.ws.removeAllListeners();
-      this.ws.close();
-      this.ws = null;
-    }
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+  this.ws.removeAllListeners();
+  this.ws.close();
+}
+this.ws = null;
     logger.info('[PolyWsFeed] Closed');
   }
 

@@ -8,8 +8,8 @@
  * - MARKET_DATA: market updates (24h retention, high volume)
  */
 
-import { JetStreamClient, RetentionPolicy, StorageType, AckPolicy, DeliverPolicy } from 'nats';
-import type { JetStreamManager } from 'nats';
+import { JetStreamClient, RetentionPolicy, StorageType, AckPolicy, DeliverPolicy, ReplayPolicy } from 'nats';
+import type { JetStreamManager, ConsumerConfig } from 'nats';
 import { getNatsConnection } from './nats-connection-manager';
 import { logger } from '../utils/logger';
 
@@ -81,6 +81,45 @@ export async function createReplayConsumer(
   });
 
   logger.info(`[JetStream] Consumer ${consumerName} created on ${streamName}`);
+}
+
+/** Return the delivered stream_seq for a consumer, or null if not found */
+export async function getConsumerSequence(
+  streamName: string,
+  consumerName: string,
+): Promise<number | null> {
+  try {
+    const nc = getNatsConnection();
+    const jsm = await nc.jetstreamManager();
+    const info = await jsm.consumers.info(streamName, consumerName);
+    return info.delivered.stream_seq;
+  } catch {
+    return null;
+  }
+}
+
+/** Build config for an ordered (ephemeral) consumer */
+export function buildOrderedConsumerConfig(filterSubject: string): ConsumerConfig {
+  return {
+    ack_policy: AckPolicy.None,
+    deliver_policy: DeliverPolicy.Last,
+    max_deliver: 1,
+    inactive_threshold: 30 * 1e9, // 30 seconds in nanoseconds
+    filter_subject: filterSubject,
+    replay_policy: ReplayPolicy.Instant,
+  };
+}
+
+/** Create an ordered consumer and return the NATS-assigned name */
+export async function createOrderedConsumer(
+  streamName: string,
+  filterSubject: string,
+): Promise<string> {
+  const nc = getNatsConnection();
+  const jsm = await nc.jetstreamManager();
+  const config = buildOrderedConsumerConfig(filterSubject);
+  const result = await jsm.consumers.add(streamName, config);
+  return result.name;
 }
 
 async function ensureStream(jsm: JetStreamManager, config: StreamConfig): Promise<void> {

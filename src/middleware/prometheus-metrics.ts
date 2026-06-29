@@ -103,6 +103,14 @@ export const qwenSignalsLoopJournalWriteErrorsTotal = new client.Counter({
   registers: [register],
 });
 
+/** Counter: DNA journal write failures classified by error type (db_error | timeout | unknown) */
+export const journalWriteErrorsTotal = new client.Counter({
+  name: 'journal_write_errors_total',
+  help: 'Total DNA journal write failures. Label error_type=db_error|timeout|unknown.',
+  labelNames: ['error_type'] as const,
+  registers: [register],
+});
+
 // ─── L-tier rollback visibility (Pillar 2 observability) ─────────────────────
 
 /** Gauge: kill-switch active state (0=inactive, 1=active), labeled by source */
@@ -227,6 +235,23 @@ const httpRequestDuration = new client.Histogram({
   buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
   registers: [register],
 });
+
+// ──── Market Data Metrics ──────────────────────────────────────────────────
+const dataGapEvents = new client.Counter({ name: 'market_data_gap_events_total', help: 'Total data gap events', labelNames: ['exchange', 'symbol'] as const, registers: [register], });
+const dataGapDuration = new client.Histogram({ name: 'market_data_gap_duration_seconds', help: 'Data gap duration in seconds', buckets: [0.5, 1, 5, 15, 30], registers: [register], });
+const gapDetectionDuration = new client.Histogram({ name: 'market_data_gap_detection_seconds', help: 'Gap detection processing time in seconds', buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1], registers: [register], });
+const expectedCandles = new client.Gauge({ name: 'market_data_expected_candles', help: 'Expected candle count', registers: [register], });
+const receivedCandles = new client.Gauge({ name: 'market_data_received_candles', help: 'Received candle count', registers: [register], });
+const candleCompleteness = new client.Gauge({ name: 'market_data_candle_completeness', help: 'Candle completeness ratio (0-1)', registers: [register], });
+const outlierEvents = new client.Counter({ name: 'market_data_outlier_events_total', help: 'Total outlier events', labelNames: ['symbol', 'type', 'severity'] as const, registers: [register], });
+const outlierZScore = new client.Gauge({ name: 'market_data_outlier_zscore', help: 'Latest outlier Z-score per symbol', labelNames: ['symbol'] as const, registers: [register], });
+const providerLatency = new client.Histogram({ name: 'market_data_provider_latency_seconds', help: 'Provider API latency in seconds', labelNames: ['exchange', 'operation'] as const, buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 5], registers: [register], });
+const failoverEvents = new client.Counter({ name: 'market_data_failover_events_total', help: 'Total failover events', labelNames: ['from', 'to', 'reason'] as const, registers: [register], });
+const circuitBreakerStateProvider = new client.Gauge({ name: 'market_data_circuit_breaker_state', help: 'Circuit breaker state per provider', labelNames: ['exchange', 'state'], registers: [register], });
+const providerHealthScore = new client.Gauge({ name: 'market_data_provider_health_score', help: 'Provider health score (0-100)', labelNames: ['exchange'] as const, registers: [register], });
+const providerAvailability = new client.Gauge({ name: 'market_data_provider_availability', help: 'Provider availability (0 or 1)', labelNames: ['exchange'] as const, registers: [register], });
+const providerErrorRate = new client.Gauge({ name: 'market_data_provider_error_rate', help: 'Provider error rate (0-1)', labelNames: ['exchange'] as const, registers: [register], });
+const slaCompliance = new client.Counter({ name: 'market_data_sla_compliance_total', help: 'SLA compliance events', labelNames: ['exchange', 'compliant'] as const, registers: [register], });
 
 /**
  * Express middleware to track HTTP requests
@@ -365,3 +390,54 @@ export function setQwenDrawdownAutoDisabled(disabled: boolean): void {
 
 // Export registry for custom metrics
 export { register };
+
+// ──── Market Data Metrics ──────────────────────────────────────────────────
+/** Record a data gap event */
+export function recordDataGap(exchange: string, symbol: string, gapSeconds: number): void {
+  dataGapEvents.inc({ exchange, symbol });
+  dataGapDuration.observe(gapSeconds);
+}
+/** Record gap detection duration */
+export function recordGapDetectionDuration(exchange: string, symbol: string, durationMs: number): void {
+  gapDetectionDuration.observe(durationMs);
+}
+/** Set expected vs received candle counts */
+export function setExpectedCandles(exchange: string, symbol: string, timeframe: string, count: number): void {
+  expectedCandles.set(count);
+}
+export function setReceivedCandles(exchange: string, symbol: string, timeframe: string, count: number): void {
+  receivedCandles.set(count);
+}
+export function setCandleCompleteness(exchange: string, symbol: string, timeframe: string, ratio: number): void {
+  candleCompleteness.set(ratio);
+}
+/** Record outlier detection event */
+export function recordOutlierEvent(symbol: string, type: string, severity?: string): void {
+  outlierEvents.inc({ symbol, type, severity: severity ?? 'unknown' });
+}
+export function recordOutlierZScore(symbol: string, _type: string, zScore: number): void {
+  outlierZScore.set({ symbol }, zScore);
+}
+export function recordProviderLatency(exchange: string, operation: string, latencyMs: number): void {
+  providerLatency.observe({ exchange, operation }, latencyMs / 1000);
+}
+/** Record failover event */
+export function recordFailoverEvent(fromProvider: string, toProvider: string, reason: string): void {
+  failoverEvents.inc({ from: fromProvider, to: toProvider, reason });
+}
+export function setCircuitBreakerStateProvider(exchange: string, isOpen: boolean): void {
+  circuitBreakerStateProvider.set({ exchange }, isOpen ? 1 : 0);
+}
+/** Set provider health score (0-100) */
+export function setProviderHealthScore(exchange: string, _windowHours: number, score: number): void {
+  providerHealthScore.set({ exchange }, score);
+}
+export function setProviderAvailability(exchange: string, _windowHours: number, available: boolean): void {
+  providerAvailability.set({ exchange }, available ? 1 : 0);
+}
+export function setProviderErrorRate(exchange: string, _windowHours: number, rate: number): void {
+  providerErrorRate.set({ exchange }, rate);
+}
+export function recordSlaCompliance(exchange: string, _windowHours: number, compliant: boolean): void {
+  slaCompliance.inc({ exchange, compliant: compliant ? 'true' : 'false' });
+}

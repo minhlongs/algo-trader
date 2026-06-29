@@ -1,6 +1,6 @@
 // State persistence & crash recovery - saves snapshots to disk for restart recovery
-import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { dirname, basename, join } from 'node:path';
 import { logger } from '../core/logger.js';
 import type { StrategyConfig, Position } from '../core/types.js';
 
@@ -15,50 +15,100 @@ export interface RecoveryState {
   timestamp: number;
 }
 
+/**
+ * Resolve the instance identifier: PM2_INSTANCE_ID env var, then process.pid.
+ */
+function resolveInstanceId(): string {
+  return process.env['PM2_INSTANCE_ID'] ?? String(process.pid);
+}
+
+/**
+ * Given a base file path, return the instance-specific file path.
+ * e.g. /tmp/x/recovery-state.json -> /tmp/x/recovery-state-3.json
+ */
+function instanceFilePath(basePath: string, instanceId: string): string {
+  const dir = dirname(basePath);
+  const stem = basename(basePath, '.json');
+  return join(dir, `${stem}-${instanceId}.json`);
+}
+
+/**
+ * Return all instance file paths matching the base pattern in the same directory.
+ */
+function discoverInstanceFiles(basePath: string): string[] {
+  const dir = dirname(basePath);
+  const stem = basename(basePath, '.json');
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.startsWith(`${stem}-`) && f.endsWith('.json'))
+    .map((f) => join(dir, f));
+}
+
 export class RecoveryManager {
   private autoSaveTimer: ReturnType<typeof setInterval> | null = null;
   private readonly filePath: string;
+  private readonly instanceId: string;
 
   constructor(filePath: string = RECOVERY_FILE_DEFAULT) {
     this.filePath = filePath;
+    this.instanceId = resolveInstanceId();
   }
 
-  /** Persist state snapshot to JSON file */
+  /** The instance-specific file this manager reads/writes. */
+  get instanceFilePath(): string {
+    return instanceFilePath(this.filePath, this.instanceId);
+  }
+
+  /** Persist state snapshot to the instance-specific JSON file */
   saveState(state: RecoveryState): void {
+    const target = this.instanceFilePath;
     try {
-      const dir = dirname(this.filePath);
+      const dir = dirname(target);
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
       }
       const payload: RecoveryState = { ...state, timestamp: Date.now() };
-      writeFileSync(this.filePath, JSON.stringify(payload, null, 2), 'utf8');
-      logger.debug('Recovery state saved', 'RecoveryManager', { file: this.filePath });
+      writeFileSync(target, JSON.stringify(payload, null, 2), 'utf8');
+      logger.debug('Recovery state saved', 'RecoveryManager', { file: target });
     } catch (err) {
       logger.error('Failed to save recovery state', 'RecoveryManager', {
         error: String(err),
-        file: this.filePath,
+        file: target,
       });
     }
   }
 
-  /** Load last saved state from disk. Returns null if missing or unreadable. */
+  /**
+   * Load the most recent valid snapshot across all instance files.
+   * Returns null if no valid files exist.
+   */
   loadState(): RecoveryState | null {
-    if (!existsSync(this.filePath)) return null;
-    try {
-      const raw = readFileSync(this.filePath, 'utf8');
-      const parsed = JSON.parse(raw) as RecoveryState;
-      logger.info('Recovery state loaded', 'RecoveryManager', {
-        file: this.filePath,
-        timestamp: new Date(parsed.timestamp).toISOString(),
-      });
-      return parsed;
-    } catch (err) {
-      logger.error('Failed to load recovery state', 'RecoveryManager', {
-        error: String(err),
-        file: this.filePath,
-      });
-      return null;
+    const files = discoverInstanceFiles(this.filePath);
+    if (files.length === 0) return null;
+
+    let best: RecoveryState | null = null;
+    let bestTime = 0;
+
+    for (const f of files) {
+      try {
+        const raw = readFileSync(f, 'utf8');
+        const parsed = JSON.parse(raw) as RecoveryState;
+        if (parsed.timestamp > bestTime) {
+          bestTime = parsed.timestamp;
+          best = parsed;
+        }
+      } catch {
+        // skip corrupted files silently
+      }
     }
+
+    if (best) {
+      logger.info('Recovery state loaded', 'RecoveryManager', {
+        file: this.instanceFilePath,
+        timestamp: new Date(best.timestamp).toISOString(),
+      });
+    }
+    return best;
   }
 
   /**
@@ -108,15 +158,29 @@ export class RecoveryManager {
     return isRecent;
   }
 
-  /** Delete recovery file on clean shutdown to prevent false recovery on next start */
+  /** Delete this instance's recovery file on clean shutdown */
   clearState(): void {
-    if (!existsSync(this.filePath)) return;
+    const target = this.instanceFilePath;
+    if (!existsSync(target)) return;
     try {
-      unlinkSync(this.filePath);
-      logger.info('Recovery state cleared', 'RecoveryManager', { file: this.filePath });
+      unlinkSync(target);
+      logger.info('Recovery state cleared', 'RecoveryManager', { file: target });
     } catch (err) {
       logger.error('Failed to clear recovery state', 'RecoveryManager', { error: String(err) });
     }
+  }
+
+  /** Delete all instance recovery files in the directory */
+  clearAllStates(): void {
+    const files = discoverInstanceFiles(this.filePath);
+    for (const f of files) {
+      try {
+        unlinkSync(f);
+      } catch {
+        // ignore individual failures
+      }
+    }
+    logger.info('All recovery states cleared', 'RecoveryManager', { count: files.length });
   }
 
   isAutoSaveRunning(): boolean {

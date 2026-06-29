@@ -4,6 +4,9 @@
  * Subscribes to `vibe.command` for natural language trading directives.
  * Publishes updated state to `vibe.state.updated`.
  * State persisted to Redis key `vibe:state`; falls back to balanced defaults.
+ *
+ * Concurrency: uses WATCH/MULTI/EXEC (optimistic locking) with a CAS version
+ * field so concurrent instances cannot silently overwrite each other.
  */
 
 import { createMessageBus } from '../messaging/create-message-bus';
@@ -23,6 +26,7 @@ export interface VibeState {
   pausedMarkets: string[];
   updatedAt: number;
   updatedBy: string;
+  version: number;
 }
 
 export interface VibeCommand {
@@ -44,9 +48,9 @@ const REDIS_KEY = 'vibe:state';
 
 const MODE_PRESETS: Record<TradingMode, Pick<VibeState, 'minEdge' | 'maxExposure' | 'liquidityFloor'>> = {
   conservative: { minEdge: 3.0, maxExposure: 10, liquidityFloor: 50_000 },
-  balanced:     { minEdge: 2.5, maxExposure: 15, liquidityFloor: 10_000 },
-  aggressive:   { minEdge: 1.5, maxExposure: 25, liquidityFloor: 5_000  },
-  defensive:    { minEdge: 5.0, maxExposure: 5,  liquidityFloor: 100_000 },
+  balanced: { minEdge: 2.5, maxExposure: 15, liquidityFloor: 10_000 },
+  aggressive: { minEdge: 1.5, maxExposure: 25, liquidityFloor: 5_000 },
+  defensive: { minEdge: 5.0, maxExposure: 5, liquidityFloor: 100_000 },
 };
 
 const BALANCED_DEFAULTS: VibeState = {
@@ -56,6 +60,7 @@ const BALANCED_DEFAULTS: VibeState = {
   pausedMarkets: [],
   updatedAt: Date.now(),
   updatedBy: 'system:init',
+  version: 0,
 };
 
 // ─── Module-level state ───────────────────────────────────────────────────────
@@ -68,7 +73,12 @@ async function loadStateFromRedis(): Promise<void> {
   try {
     const raw = await getRedisClient().get(REDIS_KEY);
     if (raw) {
-      currentState = JSON.parse(raw) as VibeState;
+      const parsed = JSON.parse(raw) as VibeState;
+      currentState = {
+        ...BALANCED_DEFAULTS,
+        ...parsed,
+        version: parsed.version ?? 0,
+      };
       logger.info('[VibeController] Loaded state from Redis', { mode: currentState.mode });
     } else {
       logger.info('[VibeController] No saved state; using balanced defaults');
@@ -84,6 +94,35 @@ async function persistState(state: VibeState): Promise<void> {
   } catch (err) {
     logger.warn('[VibeController] Failed to persist state to Redis', { err });
   }
+}
+
+/**
+ * CAS persist: WATCH the key, then MULTI/SET/EXEC.
+ * If EXEC returns null (conflict), retry up to maxRetries times.
+ * Each successful write increments the version.
+ */
+async function persistStateCas(state: VibeState, maxRetries = 3): Promise<void> {
+  const redis = getRedisClient();
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    await redis.watch(REDIS_KEY);
+    const pipeline = redis.multi();
+    const toStore = { ...state, version: state.version + 1 };
+    pipeline.set(REDIS_KEY, JSON.stringify(toStore));
+    const execResult = await pipeline.exec();
+    if (execResult !== null) {
+      // Success — update local state to match what was stored
+      currentState = toStore;
+      return;
+    }
+    // Conflict — another instance wrote between WATCH and EXEC.
+    // Re-read the current state and re-apply the command on top of it.
+    const freshRaw = await redis.get(REDIS_KEY);
+    if (freshRaw) {
+      const fresh = JSON.parse(freshRaw) as VibeState;
+      state = { ...state, version: fresh.version ?? state.version };
+    }
+  }
+  throw new Error(`[VibeController] CAS persist failed after ${maxRetries} retries`);
 }
 
 // ─── Command processing ───────────────────────────────────────────────────────
@@ -175,7 +214,7 @@ export async function initVibeController(): Promise<void> {
       pausedMarkets: next.pausedMarkets,
     });
 
-    await persistState(next);
+    await persistStateCas(next);
     await bus.publish(VIBE_TOPICS.STATE_UPDATED, next, 'vibe-controller');
   });
 

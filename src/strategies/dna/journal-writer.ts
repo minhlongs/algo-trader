@@ -8,6 +8,7 @@
 
 import { query } from '../../db/postgres-client.js';
 import { logger } from '../../utils/logger.js';
+import { journalWriteErrorsTotal } from '../../middleware/prometheus-metrics.js';
 import type {
   ConsensusAction,
   ConsensusSignal,
@@ -19,6 +20,24 @@ import type {
 } from './multi-tf-types.js';
 
 const TABLE = 'dna_journal';
+
+function classifyError(err: unknown): 'db_error' | 'timeout' | 'unknown' {
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    if (msg.includes('timeout') || msg.includes('timed out')) return 'timeout';
+    if (
+      msg.includes('database') ||
+      msg.includes('connection') ||
+      msg.includes('postgres') ||
+      msg.includes('pg_') ||
+      msg.includes('econnrefused') ||
+      msg.includes('econnreset')
+    ) {
+      return 'db_error';
+    }
+  }
+  return 'unknown';
+}
 
 const INSERT_SQL = /* sql */ `
   INSERT INTO ${TABLE} (
@@ -123,7 +142,9 @@ export async function writeJournalEntry(input: {
     ]);
 
   } catch (err) {
-    logger.error('[DNA-Journal] write failed', { err, traceId: input.traceId });
+    const errorType = classifyError(err);
+    journalWriteErrorsTotal.inc({ error_type: errorType });
+    logger.error('[DNA-Journal] write failed', { err, traceId: input.traceId, errorType });
   }
 }
 

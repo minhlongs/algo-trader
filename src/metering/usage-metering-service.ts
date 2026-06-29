@@ -5,6 +5,7 @@
 
 import { LicenseTier } from '../types/license';
 import { EventEmitter } from 'events';
+import { query } from '../db/postgres-client';
 
 export interface UsageStatus {
   licenseKey: string;
@@ -68,11 +69,9 @@ export class UsageMeteringService extends EventEmitter {
     endpoint?: string,
     userId?: string
   ): Promise<UsageStatus> {
-    const date = this.getCurrentDate();
-    const _usageKey = `${licenseKey}:${date}`; // reserved for future Redis-backed metering
-
     const currentUsage = this.getTodayUsage(licenseKey);
     const newUsage = currentUsage + 1;
+    const date = this.getCurrentDate();
     this.setUsage(licenseKey, date, newUsage);
 
     const status = this.getUsageStatus(licenseKey, tier);
@@ -81,6 +80,7 @@ export class UsageMeteringService extends EventEmitter {
       this.emit('api_call', { licenseKey, endpoint, userId, timestamp: new Date().toISOString() });
     }
 
+    await this.persistDailyUsage(licenseKey, tier, status);
     this.checkThresholds(licenseKey, status);
 
     return status;
@@ -174,6 +174,35 @@ export class UsageMeteringService extends EventEmitter {
       if (dateMap.size === 0) {
         this.dailyUsage.delete(licenseKey);
       }
+    }
+  }
+
+  getMemoryUsage(): { licenseKeys: number; totalEntries: number } {
+    let totalEntries = 0;
+    for (const dateMap of this.dailyUsage.values()) {
+      totalEntries += dateMap.size;
+    }
+    return {
+      licenseKeys: this.dailyUsage.size,
+      totalEntries,
+    };
+  }
+
+  private async persistDailyUsage(
+    licenseKey: string,
+    tier: LicenseTier,
+    status: UsageStatus
+  ): Promise<void> {
+    try {
+      await query(
+        `INSERT INTO license_usage_daily (license_key, date, tier, api_calls_count, overage_units, overage_cost)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (license_key, date) DO UPDATE SET
+           api_calls_count = $4, overage_units = $5, overage_cost = $6`,
+        [licenseKey, status.date, tier, status.currentUsage, status.overageUnits, status.overageCost]
+      );
+    } catch (error) {
+      // Database errors are non-fatal — usage tracking continues in memory
     }
   }
 }

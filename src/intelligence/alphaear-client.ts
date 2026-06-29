@@ -186,6 +186,21 @@ export class AlphaEarClient {
       return null;
     }
   }
+  // ──── XAI (Explainable AI) ──────────────────────────────────────────────────
+  async explainPrediction(req: { model_type: string; features: Record<string, number>; prediction: number; trade_id?: string; generate_visualizations?: boolean; }): Promise<{ prediction: number; confidence: number; feature_importance: Record<string, number>; explanation: string; visualizations?: Record<string, unknown>; } | null> {
+    return this.post('/xai/explain', req as Record<string, unknown>);
+  }
+  async getFeatureImportance(modelType: 'rl' | 'kronos' | 'strategy', limit = 10): Promise<{ model_type: string; features: Array<{ name: string; importance: number }>; generated_at: string; metadata: Record<string, unknown>; } | null> {
+    return this.post('/xai/feature-importance', { model_type: modelType, limit } as Record<string, unknown>);
+  }
+  async generateCounterfactuals(req: { features: Record<string, number>; prediction: number; model_type: string; target_outcome?: number; constraints?: Record<string, { min: number; max: number }>; n_counterfactuals?: number; }): Promise<{ original_prediction: number; original_features: Record<string, number>; counterfactuals: Array<Record<string, unknown>>; num_generated: number; constraints_applied: boolean; } | null> {
+    return this.post('/xai/counterfactual', req as Record<string, unknown>);
+  }
+  async extractStrategyRules(req: { strategy_code: string; strategy_name: string; use_llm?: boolean; }): Promise<{ strategy_name: string; rules: Array<{ condition: string; action: string; confidence: number }>; summary: string; num_rules: number; extraction_method: string; } | null> {
+    return this.post('/xai/strategy-rules', req as Record<string, unknown>);
+  }
+
+
 }
 
 /** Singleton instance */

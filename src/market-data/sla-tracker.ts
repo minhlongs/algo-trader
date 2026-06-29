@@ -51,6 +51,7 @@ export interface SlaWindowReport {
   latencyPercentiles: { p50: number; p95: number; p99: number };
   completeness: number;
   totalRequests: number;
+  failedRequests: number;
 }
 
 /**
@@ -192,6 +193,7 @@ export class SlaTracker {
         latencyPercentiles,
         completeness,
         totalRequests: window.totalRequests,
+    failedRequests: window.failedRequests,
       };
     }
 
@@ -200,7 +202,7 @@ export class SlaTracker {
 
     // Cache health score in metrics
     if (this.config.enableMetrics) {
-      setProviderHealthScore(provider as string, healthScore);
+      setProviderHealthScore(provider as string, 0, healthScore);
     }
 
     return {
@@ -249,7 +251,7 @@ export class SlaTracker {
       }
     }
     if (this.config.enableMetrics) {
-      setProviderHealthScore(provider as string, 0);
+      setProviderHealthScore(provider as string, 0, 0);
     }
   }
 
@@ -322,7 +324,7 @@ export class SlaTracker {
       const windowHours = Number(windowHoursStr);
       setProviderAvailability(provider as string, windowHours, window.availability >= this.config.targetAvailability);
       setProviderErrorRate(provider as string, windowHours, window.errorRate);
-      recordSlaCompliance(provider as string, windowHours, window.availability * 100);
+      recordSlaCompliance(provider as string, windowHours, window.availability >= this.config.targetAvailability);
     }
   }
 

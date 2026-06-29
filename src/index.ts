@@ -14,6 +14,8 @@ import { runSetupWizard } from './commands/setup-wizard';
 import { runQuickstart } from './commands/quickstart';
 import { runActivateCommand } from './commands/activate-license';
 import { runArbAuto } from './commands/arb-auto';
+import { paperStart, paperStop, paperStatus, paperReport } from './commands/paper-trading';
+import type { PaperCommandOptions } from './commands/paper-trading';
 import { logger } from './utils/logger';
 
 // Initialize Sentry before anything else
@@ -138,7 +140,35 @@ if (!isTest) {
       logger.info('[Kronos] Strategy ready', status);
     });
 
-  program.parse(process.argv);
+  // Paper trading subcommands
+const paperProgram = program.command('paper').description('Paper trading — simulated trades without real money');
+paperProgram
+  .command('start')
+  .description('Start a paper trading session')
+  .option('-v, --verbose', 'Verbose logging', true)
+  .action(async (options: PaperCommandOptions) => {
+    await paperStart(options);
+  });
+paperProgram
+  .command('stop')
+  .description('Stop the paper trading session')
+  .action(async () => {
+    await paperStop();
+  });
+paperProgram
+  .command('status')
+  .description('Show current positions, account balance, and recent trades')
+  .action(async () => {
+    await paperStatus();
+  });
+paperProgram
+  .command('report')
+  .description('Full P&L report with daily/weekly/monthly breakdown and Prometheus metrics')
+  .action(async () => {
+    await paperReport();
+  });
+
+program.parse(process.argv);
 
   // Run main if no command specified
   if (!process.argv.slice(2).length) {

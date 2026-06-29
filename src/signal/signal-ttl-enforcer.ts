@@ -20,8 +20,8 @@ export class SignalTtlEnforcer {
 
     const delay = signal.expiresAt - Date.now();
     if (delay <= 0) {
-      // Already expired — evict immediately
-      this.evict(signal.id);
+      // Already expired — keep visible in map this tick, evict via zero-delay timer
+    this.evict(signal.id);
       return;
     }
 

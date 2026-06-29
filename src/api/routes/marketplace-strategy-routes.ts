@@ -3,13 +3,13 @@
  * CRUD operations for marketplace strategies, listings, and vetting
  *
  * Endpoints:
- * - GET    /api/v1/marketplace/strategies              - List published strategies (with filters)
- * - POST   /api/v1/marketplace/strategies/publish     - Create/publish strategy (PRO/ENT)
- * - GET    /api/v1/marketplace/strategies/:id          - Get strategy details
- * - PATCH  /api/v1/marketplace/strategies/:id          - Update strategy (owner only)
- * - POST   /api/v1/marketplace/strategies/:id/vetting/request - Submit for vetting
- * - GET    /api/v1/marketplace/strategies/:id/performance - Get performance metrics
- * - GET    /api/v1/marketplace/strategies/:id/reviews  - Get reviews
+ * - GET /api/v1/marketplace/strategies - List published strategies (with filters)
+ * - POST /api/v1/marketplace/strategies/publish - Create/publish strategy (PRO/ENT)
+ * - GET /api/v1/marketplace/strategies/:id - Get strategy details
+ * - PATCH /api/v1/marketplace/strategies/:id - Update strategy (owner only)
+ * - POST /api/v1/marketplace/strategies/:id/vetting/request - Submit for vetting
+ * - GET /api/v1/marketplace/strategies/:id/performance - Get performance metrics
+ * - GET /api/v1/marketplace/strategies/:id/reviews - Get reviews
  */
 
 import { Router, Request, Response } from 'express';
@@ -19,6 +19,7 @@ import { getStrategyLoader } from '../../strategies/loader';
 import { MarketplaceService } from '../../marketplace/services/marketplace.service';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../utils/logger';
+import type { StrategyCategory } from '../../marketplace/models/types';
 
 export const marketplaceStrategyRouter: RouterType = Router();
 
@@ -134,7 +135,7 @@ marketplaceStrategyRouter.get('/', async (req: Request, res: Response) => {
 
     const filters = parsed.data;
     const result = await marketplaceService.listStrategies({
-      category: filters.category,
+      category: filters.category as StrategyCategory | undefined,
       riskLevel: filters.riskLevel,
       minSharpe: filters.minSharpe,
       maxDrawdown: filters.maxDrawdown,
@@ -219,18 +220,17 @@ marketplaceStrategyRouter.post('/publish', async (req: Request, res: Response) =
       maxAllocationUsd: strategyData.maxAllocationUsd,
       supportedExchanges: strategyData.supportedExchanges || [],
       tags: strategyData.tags || [],
-      backtestSummary,
+      backtestSummary: backtestSummary as any,
     });
 
     // Create listing (inactive until approved)
     const listing = await marketplaceService.createListing({
       strategyId: strategy.id,
       tenantId,
-      creatorId: userId,
       priceUsdMonthly: 0, // Set by admin during vetting or creator can update later
       billingCycle: 'monthly',
       isActive: false, // Only active after strategy approval
-      status: 'pending' as const,
+      status: 'pending_vetting' as const,
     });
 
     // Audit log
@@ -283,8 +283,8 @@ marketplaceStrategyRouter.get('/:id', async (req: Request, res: Response) => {
 
     // Check tenant can view (only approved or own)
     const tenantId = getTenantId(req);
-    const isOwner = strategy.tenantId === tenantId;
-    const isApproved = strategy.status === 'approved';
+    const isOwner = strategy.strategy.tenantId === tenantId;
+    const isApproved = strategy.strategy.status === 'approved';
 
     if (!isApproved && !isOwner && !isAdmin(req)) {
       return res.status(404).json({
@@ -415,7 +415,7 @@ marketplaceStrategyRouter.post('/:id/vetting/request', async (req: Request, res:
     }
 
     // Update status to pending
-    const updated = await marketplaceService.updateStrategyStatus(id, 'pending');
+    const updated = await marketplaceService.updateStrategyStatus(id, 'pending_vetting');
 
     // Trigger vetting workflow (async)
     await marketplaceService.queueVettingJob(id);
@@ -457,16 +457,15 @@ marketplaceStrategyRouter.get('/:id/performance', async (req: Request, res: Resp
     const id = req.params.id as string;
     const period = getQueryString(req.query.period, '30d');
 
-    const performance = await marketplaceService.getStrategyPerformance(id);
-
-    if (!performance) {
+    const details = await marketplaceService.getStrategyWithDetails(id);
+    if (!details || !details.performance) {
       return res.status(404).json({
         error: 'Not found',
         message: `Performance data not found for strategy ${id}`,
       });
     }
 
-    return res.json(performance);
+    return res.json(details.performance);
   } catch (error) {
     logger.error('[Marketplace] Error getting performance', { error, strategyId: req.params.id });
     return res.status(500).json({
@@ -486,11 +485,25 @@ marketplaceStrategyRouter.get('/:id/reviews', async (req: Request, res: Response
     const page = getQueryNumber(req.query.page, 1);
     const limit = getQueryNumber(req.query.limit, 20);
 
-    const allReviews = await marketplaceService.getReviewsForStrategy(id);
+    const details = await marketplaceService.getStrategyWithDetails(id);
+    if (!details) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: `Strategy ${id} not found`,
+      });
+    }
+
+    const allReviews = details.reviews || [];
     const start = (page - 1) * limit;
     const reviews = allReviews.slice(start, start + limit);
 
-    return res.json(reviews);
+    return res.json({
+      data: reviews,
+      total: allReviews.length,
+      page,
+      limit,
+      totalPages: Math.ceil(allReviews.length / limit),
+    });
   } catch (error) {
     logger.error('[Marketplace] Error getting reviews', { error, strategyId: req.params.id });
     return res.status(500).json({

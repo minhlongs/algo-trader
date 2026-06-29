@@ -19,6 +19,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { logger } from '../../utils/logger.js';
 import { AlphaEarClient } from '../../intelligence/alphaear-client.js';
+import { getRedisClient, RedisClientType } from '../../redis';
 
 const router: Router = Router();
 const alphaear = new AlphaEarClient(process.env.ALPHAEAR_SIDECAR_URL);
@@ -132,14 +133,102 @@ interface CounterfactualResponse {
 
 // ──── Middleware ────
 
+interface RateLimitingRedisClient {
+  defineCommand(
+    name: string,
+    definition: { numberOfKeys: number; lua: string }
+  ): void;
+  rateLimit(key: string, now: number, windowMs: number, limit: number): Promise<
+    [number, number]
+  >;
+}
+
+const RATE_LIMIT_LUA = `
+  local key = KEYS[1]
+  local now = tonumber(ARGV[1])
+  local window = tonumber(ARGV[2])
+  local limit = tonumber(ARGV[3])
+  local clearBefore = now - window
+
+  redis.call('zremrangebyscore', key, 0, clearBefore)
+  local currentRequests = redis.call('zcard', key)
+
+  if currentRequests < limit then
+    redis.call('zadd', key, now, now)
+    redis.call('expire', key, math.ceil(window / 1000) + 1)
+    return {1, currentRequests + 1}
+  else
+    return {0, currentRequests}
+  end
+`;
+
 /**
- * XAI rate limiting: 30 requests/minute per IP
+ * Create a Redis-backed sliding-window rate limiter middleware.
+ * Uses the same Lua script pattern as the distributedRateLimiter in server.ts.
+ * @param limit - Max requests allowed within the window
+ * @param windowMs - Sliding window duration in milliseconds
+ * @param label - Human-readable label for log messages
  */
-const xaiRateLimit = (req: Request, res: Response, next: NextFunction) => {
-  // TODO: Implement proper rate limiting with Redis
-  // For now, just pass through
-  next();
-};
+function createXaiRateLimiter(
+  limit: number,
+  windowMs: number,
+  label: string
+) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const tenantId = (req.headers['x-api-key'] as string | undefined)
+      || (req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.slice(7)
+        : undefined)
+      || req.ip
+      || 'anonymous';
+
+    const redisKey = `ratelimit:xai:${label}:{${tenantId}}`;
+
+    try {
+      const redis = getRedisClient() as RedisClientType & RateLimitingRedisClient;
+
+      if (typeof redis.rateLimit !== 'function') {
+        redis.defineCommand('rateLimit', {
+          numberOfKeys: 1,
+          lua: RATE_LIMIT_LUA,
+        });
+      }
+
+      const now = Date.now();
+      const result = await redis.rateLimit(redisKey, now, windowMs, limit);
+      const [allowed, currentCount] = result;
+
+      res.setHeader('X-RateLimit-Limit', limit.toString());
+      res.setHeader('X-RateLimit-Remaining', Math.max(0, limit - currentCount).toString());
+
+      if (allowed === 0) {
+        logger.warn(`[XAI-RateLimiter] Limit exceeded for ${label}`, {
+          tenantId,
+          limit,
+          windowMs,
+        });
+        return res.status(429).json({
+          error: 'Too Many Requests',
+          message: `Rate limit exceeded for ${label}. Limit: ${limit} requests per ${windowMs / 1000}s.`,
+          limit,
+          windowMs,
+        });
+      }
+
+      next();
+    } catch (error) {
+      logger.error(`[XAI-RateLimiter] Error for ${label}:`, error);
+      // Fail-open: allow request when Redis is unavailable
+      next();
+    }
+  };
+}
+
+/** Explanation endpoint: 10 requests per minute per user */
+const explainRateLimiter = createXaiRateLimiter(10, 60_000, 'explain');
+
+/** Aggregation endpoint: 5 requests per minute per user */
+const aggregationRateLimiter = createXaiRateLimiter(5, 60_000, 'aggregation');
 
 // ──── Endpoints ────
 
@@ -147,7 +236,7 @@ const xaiRateLimit = (req: Request, res: Response, next: NextFunction) => {
  * POST /api/v1/xai/explain
  * Generate explanation for a model prediction
  */
-router.post('/explain', xaiRateLimit, async (req: Request, res: Response) => {
+router.post('/explain', explainRateLimiter, async (req: Request, res: Response) => {
   try {
     const validated = explainPredictionSchema.parse(req.body);
 
@@ -269,7 +358,7 @@ router.get('/feature-importance', async (req: Request, res: Response) => {
  * POST /api/v1/xai/counterfactual
  * Generate counterfactual explanations
  */
-router.post('/counterfactual', xaiRateLimit, async (req: Request, res: Response) => {
+router.post('/counterfactual', async (req: Request, res: Response) => {
   try {
     const validated = counterfactualSchema.parse(req.body);
 
@@ -320,7 +409,7 @@ router.post('/counterfactual', xaiRateLimit, async (req: Request, res: Response)
  * POST /api/v1/xai/strategy-rules
  * Extract human-readable rules from strategy code
  */
-router.post('/strategy-rules', xaiRateLimit, async (req: Request, res: Response) => {
+router.post('/strategy-rules', explainRateLimiter, async (req: Request, res: Response) => {
   try {
     const validated = strategyRulesSchema.parse(req.body);
 
@@ -361,7 +450,7 @@ router.post('/strategy-rules', xaiRateLimit, async (req: Request, res: Response)
  * GET /api/v1/xai/dashboard/overview
  * Get XAI dashboard summary data (aggregated statistics)
  */
-router.get('/dashboard/overview', async (req: Request, res: Response) => {
+router.get('/dashboard/overview', aggregationRateLimiter, async (req: Request, res: Response) => {
   try {
     const days = parseInt(req.query.days as string, 10) || 7;
 

@@ -132,6 +132,7 @@ export class GapDetector {
     if (state.lastCandleTimestamp === null) {
       state.lastCandleTimestamp = candleTime;
       state.receivedCandles++;
+    state.expectedCandles++;
       this.updateMetrics(state);
       return;
     }
@@ -146,10 +147,10 @@ export class GapDetector {
     const candlesExpected = Math.floor((candleTime - state.lastCandleTimestamp) / interval);
     const candlesActuallyReceived = 1; // We received this one
 
+  state.consecutiveMissing = 0; // Reset on each received candle
     // If there's a gap
     if (candlesExpected > 1) {
       const missingCount = candlesExpected - candlesActuallyReceived;
-      state.consecutiveMissing += missingCount;
       state.gapsDetected += missingCount;
 
       for (let i = 0; i < missingCount; i++) {
@@ -202,7 +203,7 @@ export class GapDetector {
     // Calculate how many candles should have arrived by now
     const expectedCandlesSinceLast = Math.floor((now - state.lastCandleTimestamp) / interval);
 
-    if (expectedCandlesSinceLast > this.config.maxAcceptableGap) {
+    if (expectedCandlesSinceLast > 0) {
       const actualGap = expectedCandlesSinceLast;
       state.consecutiveMissing += actualGap;
       state.gapsDetected += actualGap;

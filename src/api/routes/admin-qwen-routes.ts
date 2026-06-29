@@ -17,6 +17,7 @@ import {
   getLastBreachAt,
 } from '../../wiring/qwen-drawdown-monitor';
 import { checkQwenEligibility } from '../../wiring/qwen-live-eligibility-gate';
+import { evaluateAndQueue } from '../../wiring/qwen-signals-loop';
 import { query } from '../../db/postgres-client';
 import {
   qwenStrategyReviewsResolvedTotal,
@@ -228,5 +229,38 @@ export function createAdminQwenRouter(): Router {
     }
   });
 
-  return router;
+  /**
+ * POST /signals-loop/trigger
+ * Manually triggers the signals loop evaluation for the default source.
+ */
+router.post('/signals-loop/trigger', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
+
+  try {
+    await evaluateAndQueue('qwen-m1max');
+    res.json({ status: 'queued', source: 'qwen-m1max' });
+  } catch (err) {
+    logger.error('[AdminQwen] signals-loop/trigger error', { err });
+    res.status(500).json({ error: 'Failed to trigger signals loop' });
+  }
+});
+
+/**
+ * POST /signals-loop/trigger
+ * Manually triggers evaluateAndQueue for the default source (qwen-m1max).
+ */
+router.post('/signals-loop/trigger', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
+
+  try {
+    const source = 'qwen-m1max';
+    await evaluateAndQueue(source);
+    res.json({ status: 'queued', source });
+  } catch (err) {
+    logger.error('[AdminQwen] signals-loop/trigger error', { err });
+    res.status(500).json({ error: 'Failed to trigger signals loop' });
+  }
+});
+
+return router;
 }

@@ -17,7 +17,7 @@ import {
   writeJournalEntry,
 } from '../journal-writer.js';
 
-// Mock the postgres client and logger
+// Mock the postgres client, logger, and prometheus counter
 vi.mock('../../../db/postgres-client.js', () => ({
   query: vi.fn(),
 }));
@@ -26,12 +26,19 @@ vi.mock('../../../utils/logger.js', () => ({
     error: vi.fn(),
   },
 }));
+vi.mock('../../../middleware/prometheus-metrics.js', () => ({
+  journalWriteErrorsTotal: {
+    inc: vi.fn(),
+  },
+}));
 
 import { query as pgQuery } from '../../../db/postgres-client.js';
 import { logger } from '../../../utils/logger.js';
+import { journalWriteErrorsTotal } from '../../../middleware/prometheus-metrics.js';
 
 const q = vi.mocked(pgQuery);
 const logError = vi.mocked(logger.error);
+const incCounter = vi.mocked(journalWriteErrorsTotal.inc);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -248,8 +255,21 @@ describe('writeJournalEntry', () => {
   });
 
   it('logs only the error once on failure', async () => {
-    q.mockRejectedValueOnce(new Error('network'));
-    await writeJournalEntry(input);
-    expect(logError).toHaveBeenCalledTimes(1);
-  });
+  q.mockRejectedValueOnce(new Error('network'));
+  await writeJournalEntry(input);
+  expect(logError).toHaveBeenCalledTimes(1);
+  expect(incCounter).toHaveBeenCalledTimes(1);
+});
+
+it('classifies timeout errors correctly', async () => {
+  q.mockRejectedValueOnce(new Error('query timeout exceeded'));
+  await writeJournalEntry(input);
+  expect(incCounter).toHaveBeenCalledWith({ error_type: 'timeout' });
+});
+
+it('classifies unknown errors as unknown', async () => {
+  q.mockRejectedValueOnce(new Error('something weird'));
+  await writeJournalEntry(input);
+  expect(incCounter).toHaveBeenCalledWith({ error_type: 'unknown' });
+});
 });

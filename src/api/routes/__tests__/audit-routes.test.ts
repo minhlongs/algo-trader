@@ -1,375 +1,236 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { QueryResult, PoolClient } from 'pg';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import fastify, { FastifyInstance } from 'fastify';
+import { registerAuditRoutes } from '../audit-routes';
+import { AuditLogService, AuditLogFilters, AuditEventType } from '../../../audit/audit-log-service';
+import { LicenseService } from '../../../billing/license-service';
 
-// 1. Mock external/local dependencies first
-vi.mock('../../../db/postgres-client', () => {
-  const mockClientInstance = {
-    query: vi.fn(),
-    release: vi.fn(),
-  };
-  const mockPool = {
-    connect: vi.fn().mockResolvedValue(mockClientInstance),
-    query: vi.fn(),
-  };
-  return {
-    query: vi.fn(),
-    getDbClient: () => mockPool,
-  };
-});
+// ---------------------------------------------------------------------------
+// Shared mock instances — routes call getInstance() at registration time,
+// so we must return the SAME object that tests configure.
+// ---------------------------------------------------------------------------
 
-vi.mock('../../../billing/license-service', () => {
-  return {
-    LicenseService: {
-      getInstance: () => ({
-        getLicense: vi.fn((id: string) => {
-          if (id === 'lic-existing') {
-            return { id: 'lic-existing', status: 'active', tier: 'pro' };
-          }
-          return undefined;
-        })
-      })
-    }
-  };
-});
+const mockAuditLogs = new Map<string, {
+  id: string; licenseId: string; event: AuditEventType; tier?: string;
+  ip?: string; metadata?: Record<string, unknown>; createdAt: string;
+}>();
 
-vi.mock('../../../audit/audit-log-service', () => {
-  return {
-    AuditLogService: {
-      getInstance: () => ({
-        getLogsByLicense: vi.fn((licenseId: string) => {
-          if (licenseId === 'lic-existing') {
-            return [
-              { id: 'log-1', licenseId, event: 'activated', createdAt: new Date().toISOString() }
-            ];
-          }
-          return [];
-        })
-      })
-    }
-  };
-});
+const mockLicenseLogs = new Map<string, {
+  id: string; licenseId: string; event: AuditEventType; createdAt: string;
+}[]>();
+
+const mockAuditInstance = {
+  getAllLogs: vi.fn(),
+  getLogsByLicense: vi.fn(),
+  exportToCsv: vi.fn(),
+  exportToJson: vi.fn(),
+};
+
+const mockLicenseInstance = {
+  getLicense: vi.fn(),
+};
+
+vi.mock('../../../audit/audit-log-service', () => ({
+  AuditLogService: {
+    getInstance: () => mockAuditInstance,
+  },
+  AuditEventType: 'created' as const,
+}));
+
+vi.mock('../../../billing/license-service', () => ({
+  LicenseService: {
+    getInstance: () => mockLicenseInstance,
+  },
+}));
 
 vi.mock('pg-query-stream', () => {
   class SimpleEventEmitter {
     private listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
-    public on(event: string, fn: (...args: unknown[]) => void): this {
-      if (!this.listeners[event]) this.listeners[event] = [];
-      this.listeners[event].push(fn);
+    on(event: string, fn: (...args: unknown[]) => void): this {
+      (this.listeners[event] ??= []).push(fn);
       return this;
     }
-    public emit(event: string, ...args: unknown[]): boolean {
-      const list = this.listeners[event] || [];
-      for (const fn of list) {
-        fn(...args);
-      }
-      return list.length > 0;
+    emit(event: string, ...args: unknown[]): boolean {
+      (this.listeners[event] ?? []).forEach((fn) => fn(...args));
+      return (this.listeners[event]?.length ?? 0) > 0;
     }
   }
-
   class MockQueryStream extends SimpleEventEmitter {
-    constructor(public sql: string, public params?: unknown[]) {
-      super();
-    }
+    constructor(public sql: string, public params?: unknown[]) { super(); }
   }
-  return {
-    default: MockQueryStream
-  };
+  return { default: MockQueryStream };
 });
 
-// 2. Import express and local application code after registering mocks
-import express, { Request, Response, NextFunction } from 'express';
-import request from 'supertest';
-import { auditRouter } from '../audit-routes';
-import { query, getDbClient } from '../../../db/postgres-client';
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-interface FakeClaims {
-  sub?: string;
-  role?: string;
-}
-
-interface DbMockRow {
+interface AuditLogRow {
   id: string;
-  tenant_id: string;
-  sequence_number: string;
-  event_type: string;
-  action_by: string;
-  reason: string | null;
-  metadata: string;
-  hash: string;
-  previous_hash: string | null;
-  created_at: string;
+  licenseId: string;
+  event: AuditEventType;
+  tier?: string;
+  ip?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 }
 
-const mockDbRows: DbMockRow[] = [];
-
-function buildApp(claims?: FakeClaims) {
-  const app = express();
-  app.use(express.json());
-  app.use((req: Request & { claims?: FakeClaims }, _res: Response, next: NextFunction) => {
-    if (claims) {
-      req.claims = claims;
-    }
-    next();
-  });
-  app.use('/', auditRouter);
-  return app;
+function buildServer(): FastifyInstance {
+  const server = fastify();
+  registerAuditRoutes(server);
+  return server;
 }
+
+function seedLogs(rows: AuditLogRow[]): void {
+  mockAuditLogs.clear();
+  mockLicenseLogs.clear();
+  for (const row of rows) {
+    mockAuditLogs.set(row.id, { ...row });
+    const key = row.licenseId;
+    const existing = mockLicenseLogs.get(key) ?? [];
+    existing.push({ id: row.id, licenseId: row.licenseId, event: row.event, createdAt: row.createdAt });
+    mockLicenseLogs.set(key, existing);
+  }
+}
+
+function resetMocks(): void {
+  vi.clearAllMocks();
+  mockAuditLogs.clear();
+  mockLicenseLogs.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('Audit Routes API', () => {
-  beforeEach(async () => {
-    mockDbRows.length = 0;
-
-    // Add logs for tenant-1
-    for (let i = 1; i <= 5; i++) {
-      mockDbRows.push({
-        id: `uuid-t1-${i}`,
-        tenant_id: 'tenant-1',
-        sequence_number: String(i),
-        event_type: `event_type_${i}`,
-        action_by: 'system',
-        reason: `Reason ${i}`,
-        metadata: JSON.stringify({ index: i }),
-        hash: `hash-t1-${i}`,
-        previous_hash: i === 1 ? null : `hash-t1-${i - 1}`,
-        created_at: new Date(Date.now() - (10 - i) * 60000).toISOString(),
-      });
-    }
-
-    // Add logs for tenant-2
-    for (let i = 1; i <= 3; i++) {
-      mockDbRows.push({
-        id: `uuid-t2-${i}`,
-        tenant_id: 'tenant-2',
-        sequence_number: String(i),
-        event_type: `event_type_${i}`,
-        action_by: 'system',
-        reason: `Reason ${i}`,
-        metadata: JSON.stringify({ index: i }),
-        hash: `hash-t2-${i}`,
-        previous_hash: i === 1 ? null : `hash-t2-${i - 1}`,
-        created_at: new Date(Date.now() - (10 - i) * 60000).toISOString(),
-      });
-    }
-
-    // Mock query logic
-    vi.mocked(query).mockImplementation(async (sql: string, params?: unknown[]) => {
-      let filtered = [...mockDbRows];
-
-      const getParamIndex = (pattern: string): number => {
-        const match = sql.match(new RegExp(`${pattern}\\s*\\$(\\d+)`));
-        if (match) return parseInt(match[1], 10) - 1;
-        return -1;
-      };
-
-      const tenantIdx = getParamIndex('tenant_id\\s*=');
-      if (tenantIdx !== -1 && params) {
-        const tenantId = params[tenantIdx] as string;
-        filtered = filtered.filter(r => r.tenant_id === tenantId);
+  beforeEach(() => {
+    resetMocks();
+    mockAuditInstance.getAllLogs.mockImplementation(async (filters: AuditLogFilters) => {
+      let all = Array.from(mockAuditLogs.values());
+      if (filters.licenseId) {
+        all = all.filter((l) => l.licenseId === filters.licenseId);
       }
-
-      const eventTypeIdx = getParamIndex('event_type\\s*=');
-      if (eventTypeIdx !== -1 && params) {
-        const eventType = params[eventTypeIdx] as string;
-        filtered = filtered.filter(r => r.event_type === eventType);
-      }
-
-      const startIdx = getParamIndex('created_at\\s*>=');
-      if (startIdx !== -1 && params) {
-        const start = params[startIdx] as string;
-        filtered = filtered.filter(r => r.created_at >= start);
-      }
-
-      const endIdx = getParamIndex('created_at\\s*<=');
-      if (endIdx !== -1 && params) {
-        const end = params[endIdx] as string;
-        filtered = filtered.filter(r => r.created_at <= end);
-      }
-
-      const seqIdx = getParamIndex('sequence_number\\s*<');
-      if (seqIdx !== -1 && params) {
-        const seq = params[seqIdx] as number;
-        filtered = filtered.filter(r => parseInt(r.sequence_number, 10) < seq);
-      }
-
-      const tupleMatch = sql.match(/\(created_at,\s*id\)\s*<\s*\(\$(\d+),\s*\$(\d+)\)/);
-      if (tupleMatch && params) {
-        const createdIdx = parseInt(tupleMatch[1], 10) - 1;
-        const idIdx = parseInt(tupleMatch[2], 10) - 1;
-        const cursorCreated = params[createdIdx] as string;
-        const cursorId = params[idIdx] as string;
-        filtered = filtered.filter(r => {
-          if (r.created_at < cursorCreated) return true;
-          if (r.created_at === cursorCreated && r.id < cursorId) return true;
-          return false;
-        });
-      }
-
-      if (sql.includes('ORDER BY sequence_number DESC')) {
-        filtered.sort((a, b) => parseInt(b.sequence_number, 10) - parseInt(a.sequence_number, 10));
-      } else {
-        filtered.sort((a, b) => {
-          if (b.created_at !== a.created_at) {
-            return b.created_at.localeCompare(a.created_at);
-          }
-          return b.id.localeCompare(a.id);
-        });
-      }
-
-      if (params && params.length > 0) {
-        const limitMatch = sql.match(/LIMIT\s*\$(\d+)/);
-        if (limitMatch) {
-          const limitIdx = parseInt(limitMatch[1], 10) - 1;
-          const limit = params[limitIdx] as number;
-          filtered = filtered.slice(0, limit);
-        }
-      }
-
-      return { rows: filtered } as unknown as QueryResult<DbMockRow>;
+      return all;
     });
-
-    // Mock queryStream execution logic
-    const pool = getDbClient();
-    const mockClient = await pool.connect();
-    
-    vi.mocked(mockClient.query).mockImplementation((streamObj: unknown) => {
-      const qStream = streamObj as EventEmitter & { sql: string; params?: unknown[] };
-      setImmediate(() => {
-        let filtered = [...mockDbRows];
-        const params = qStream.params;
-        const sql = qStream.sql;
-
-        const getParamIndex = (pattern: string): number => {
-          const match = sql.match(new RegExp(`${pattern}\\s*\\$(\\d+)`));
-          if (match) return parseInt(match[1], 10) - 1;
-          return -1;
-        };
-
-        const tenantIdx = getParamIndex('tenant_id\\s*=');
-        if (tenantIdx !== -1 && params) {
-          const tenantId = (params as unknown[])[tenantIdx] as string;
-          filtered = filtered.filter(r => r.tenant_id === tenantId);
-        }
-
-        const eventTypeIdx = getParamIndex('event_type\\s*=');
-        if (eventTypeIdx !== -1 && params) {
-          const eventType = (params as unknown[])[eventTypeIdx] as string;
-          filtered = filtered.filter(r => r.event_type === eventType);
-        }
-
-        if (sql.includes('ORDER BY sequence_number DESC')) {
-          filtered.sort((a, b) => parseInt(b.sequence_number, 10) - parseInt(a.sequence_number, 10));
-        } else {
-          filtered.sort((a, b) => {
-            if (b.created_at !== a.created_at) {
-              return b.created_at.localeCompare(a.created_at);
-            }
-            return b.id.localeCompare(a.id);
-          });
-        }
-
-        for (const row of filtered) {
-          qStream.emit('data', row);
-        }
-        qStream.emit('end');
-      });
-
-      return qStream as unknown as Promise<QueryResult<unknown>>;
+    mockAuditInstance.getLogsByLicense.mockImplementation(async (licenseId: string) => {
+      return mockLicenseLogs.get(licenseId) ?? [];
     });
+    mockAuditInstance.exportToJson.mockImplementation((logs: AuditLogRow[]) => JSON.stringify(logs));
+    mockAuditInstance.exportToCsv.mockImplementation((_logs: AuditLogRow[]) =>
+      'id,licenseId,event,tier,ip,metadata,createdAt\n'
+    );
+    mockLicenseInstance.getLicense.mockImplementation((id: string) =>
+      id === 'lic-existing' ? { id: 'lic-existing', status: 'active', tier: 'pro' } : undefined
+    );
   });
+
+  // -------------------------------------------------------------------------
+  // GET /logs
+  // -------------------------------------------------------------------------
 
   describe('GET /logs', () => {
-    it('returns 403 when no tenant identity is provided', async () => {
-      const app = buildApp();
-      const res = await request(app).get('/logs');
-      expect(res.status).toBe(403);
-      expect(res.body.error).toContain('TenantIsolator');
+    it('returns 200 with all logs when no filters provided', async () => {
+      seedLogs([
+        { id: 'log-1', licenseId: 'lic-1', event: 'activated', createdAt: '2025-01-01T00:00:00Z' },
+        { id: 'log-2', licenseId: 'lic-2', event: 'created', createdAt: '2025-01-02T00:00:00Z' },
+      ]);
+
+      const server = buildServer();
+      const res = await server.inject({ method: 'GET', url: '/logs' });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.logs).toHaveLength(2);
+      expect(body.total).toBe(2);
+      expect(body.hasMore).toBe(false);
     });
 
-    it('returns 403 when requesting cross-tenant logs as non-admin', async () => {
-      const app = buildApp({ sub: 'tenant-1', role: 'user' });
-      const res = await request(app).get('/logs?tenantId=tenant-2');
-      expect(res.status).toBe(403);
-      expect(res.body.error).toContain('cross-tenant access denied');
+    it('filters logs by licenseId', async () => {
+      seedLogs([
+        { id: 'log-1', licenseId: 'lic-a', event: 'activated', createdAt: '2025-01-01T00:00:00Z' },
+        { id: 'log-2', licenseId: 'lic-b', event: 'created', createdAt: '2025-01-02T00:00:00Z' },
+      ]);
+
+      const server = buildServer();
+      const res = await server.inject({ method: 'GET', url: '/logs?licenseId=lic-a' });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.logs).toHaveLength(1);
+      expect(body.logs[0].licenseId).toBe('lic-a');
     });
 
-    it('returns 200 with tenant logs for matching tenant', async () => {
-      const app = buildApp({ sub: 'tenant-1', role: 'user' });
-      const res = await request(app).get('/logs');
-      expect(res.status).toBe(200);
-      expect(res.body.logs.length).toBe(5);
-      expect(res.body.logs[0].tenant_id).toBe('tenant-1');
-      expect(res.body.logs[0].sequence_number).toBe(5);
-    });
+    it('returns 501 for GET /logs/:id (not implemented)', async () => {
+      const server = buildServer();
+      const res = await server.inject({ method: 'GET', url: '/logs/some-id' });
 
-    it('returns 200 with tenant logs for admin querying any tenant', async () => {
-      const app = buildApp({ sub: 'admin-user', role: 'admin' });
-      const res = await request(app).get('/logs?tenantId=tenant-2');
-      expect(res.status).toBe(200);
-      expect(res.body.logs.length).toBe(3);
-      expect(res.body.logs[0].tenant_id).toBe('tenant-2');
-    });
-
-    it('supports keyset pagination using limit and cursorSeq', async () => {
-      const app = buildApp({ sub: 'tenant-1', role: 'user' });
-      // Get first 2 logs
-      const res1 = await request(app).get('/logs?limit=2');
-      expect(res1.status).toBe(200);
-      expect(res1.body.logs.length).toBe(2);
-      expect(res1.body.logs[0].sequence_number).toBe(5);
-      expect(res1.body.logs[1].sequence_number).toBe(4);
-      expect(res1.body.nextCursor).toEqual({ cursorSeq: 4 });
-
-      // Fetch next logs using cursorSeq
-      const res2 = await request(app).get('/logs?limit=2&cursorSeq=4');
-      expect(res2.status).toBe(200);
-      expect(res2.body.logs.length).toBe(2);
-      expect(res2.body.logs[0].sequence_number).toBe(3);
-      expect(res2.body.logs[1].sequence_number).toBe(2);
+      expect(res.statusCode).toBe(501);
+      const body = JSON.parse(res.payload);
+      expect(body.error).toBe('Not Implemented');
     });
   });
+
+  // -------------------------------------------------------------------------
+  // GET /export
+  // -------------------------------------------------------------------------
 
   describe('GET /export', () => {
-    it('returns 403 when requesting cross-tenant export as non-admin', async () => {
-      const app = buildApp({ sub: 'tenant-1', role: 'user' });
-      const res = await request(app).get('/export?tenantId=tenant-2');
-      expect(res.status).toBe(403);
-    });
+    it('returns JSON export with correct content-type', async () => {
+      seedLogs([
+        { id: 'log-1', licenseId: 'lic-1', event: 'activated', createdAt: '2025-01-01T00:00:00Z' },
+      ]);
 
-    it('exports tenant logs in JSON format', async () => {
-      const app = buildApp({ sub: 'tenant-2', role: 'user' });
-      const res = await request(app).get('/export?format=json');
-      expect(res.status).toBe(200);
+      const server = buildServer();
+      const res = await server.inject({ method: 'GET', url: '/export?format=json' });
+
+      expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toContain('application/json');
-      const data = JSON.parse(res.text);
-      expect(data.length).toBe(3);
-      expect(data[0].tenant_id).toBe('tenant-2');
+      expect(res.headers['content-disposition']).toMatch(/audit-logs-.*\.json/);
+      const body = JSON.parse(res.payload);
+      expect(Array.isArray(body)).toBe(true);
     });
 
-    it('exports tenant logs in CSV format', async () => {
-      const app = buildApp({ sub: 'tenant-2', role: 'user' });
-      const res = await request(app).get('/export?format=csv');
-      expect(res.status).toBe(200);
+    it('returns CSV export with correct content-type', async () => {
+      seedLogs([
+        { id: 'log-1', licenseId: 'lic-1', event: 'activated', createdAt: '2025-01-01T00:00:00Z' },
+      ]);
+
+      const server = buildServer();
+      const res = await server.inject({ method: 'GET', url: '/export?format=csv' });
+
+      expect(res.statusCode).toBe(200);
       expect(res.headers['content-type']).toContain('text/csv');
-      const lines = res.text.trim().split('\n');
-      expect(lines.length).toBe(4); // Header + 3 rows
-      expect(lines[0]).toBe('id,tenant_id,sequence_number,event_type,action_by,reason,metadata,hash,previous_hash,created_at');
-      expect(lines[1]).toContain('tenant-2');
+      expect(res.headers['content-disposition']).toMatch(/audit-logs-.*\.csv/);
+      expect(res.payload).toContain('id,licenseId,event,tier,ip,metadata,createdAt');
     });
   });
 
+  // -------------------------------------------------------------------------
+  // GET /license/:id/audit
+  // -------------------------------------------------------------------------
+
   describe('GET /license/:id/audit', () => {
-    it('returns 404 if license does not exist', async () => {
-      const app = buildApp({ role: 'admin' });
-      const res = await request(app).get('/license/lic-nonexistent/audit');
-      expect(res.status).toBe(404);
+    it('returns 404 when license does not exist', async () => {
+      const server = buildServer();
+      const res = await server.inject({ method: 'GET', url: '/license/lic-nonexistent/audit' });
+
+      expect(res.statusCode).toBe(404);
+      const body = JSON.parse(res.payload);
+      expect(body.error).toBe('Not Found');
     });
 
-    it('returns 200 with logs if license exists', async () => {
-      const app = buildApp({ role: 'admin' });
-      const res = await request(app).get('/license/lic-existing/audit');
-      expect(res.status).toBe(200);
-      expect(res.body.logs.length).toBe(1);
-      expect(res.body.logs[0].event).toBe('activated');
+    it('returns 200 with logs when license exists', async () => {
+      seedLogs([
+        { id: 'log-1', licenseId: 'lic-existing', event: 'activated', createdAt: '2025-01-01T00:00:00Z' },
+      ]);
+
+      const server = buildServer();
+      const res = await server.inject({ method: 'GET', url: '/license/lic-existing/audit' });
+
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload);
+      expect(body.logs).toHaveLength(1);
+      expect(body.logs[0].event).toBe('activated');
     });
   });
 });

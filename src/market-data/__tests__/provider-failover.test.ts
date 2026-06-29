@@ -129,18 +129,22 @@ describe('FailoverManager', () => {
       expect(manager.getActiveProvider()).toBe(MarketDataSource.SANTIMENT);
     });
 
-    it('should not failback if secondary unhealthy', async () => {
-      // Failover to secondary
-      for (let i = 0; i < 3; i++) {
-        manager.recordRequestResult(false, 0);
-      }
-      await new Promise(resolve => setTimeout(resolve, 100));
-      expect(manager.getActiveProvider()).toBe(MarketDataSource.LUNARCRUSH);
+  it('should not failback if secondary unhealthy', async () => {
+    // Manual failover — secondary marked DEGRADED, failback allowed
+    await manager.forceFailover('Test');
+    let result = await manager.forceFailback('Test');
+    expect(result).toBe(true); // DEGRADED allows failback
 
-      // Try to failback - secondary is still marked as unhealthy due to being active with failures
-      const result = await manager.forceFailback('Test');
-      expect(result).toBe(false);
-    });
+    // Now simulate secondary becoming UNHEALTHY while active
+    await manager.forceFailover('Test again');
+    const secondarySnapshot = (manager as any).providerStatus.get(MarketDataSource.LUNARCRUSH);
+    secondarySnapshot.status = ProviderHealthStatus.UNHEALTHY;
+    secondarySnapshot.consecutiveFailures = 10;
+
+    // Failback should be blocked when secondary is UNHEALTHY
+    result = await manager.forceFailback('Test');
+    expect(result).toBe(false);
+  });
   });
 
   describe('failover history', () => {

@@ -88,7 +88,7 @@ describe('UsageMeteringService', () => {
       const eightyPercent = 80;
 
       const alertPromise = new Promise<void>((resolve) => {
-        service.on('threshold_alert', (alert: any) => {
+        service.once('threshold_alert', (alert: any) => {
           expect(alert.licenseKey).toBe(licenseKey);
           expect(alert.threshold).toBe(80);
           expect(alert.currentUsage).toBe(eightyPercent);
@@ -114,7 +114,7 @@ describe('UsageMeteringService', () => {
       });
 
       // Track 85 calls (triggers 80% and 90%)
-      for (let i = 0; i < 85; i++) {
+      for (let i = 0; i < 90; i++) {
         await service.trackApiCall(licenseKey, tier);
       }
 

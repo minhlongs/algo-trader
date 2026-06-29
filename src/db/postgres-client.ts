@@ -18,7 +18,7 @@ export interface DbConfig {
 }
 
 export interface DbRow {
-  [key: string]: string | number | boolean | null | undefined;
+  [key: string]: string | number | boolean | Date | null | undefined;
 }
 
 let pool: pg.Pool | null = null;

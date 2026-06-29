@@ -19,6 +19,9 @@ export default defineConfig({
       // Signal-publisher tests flaky with D1 singleton isolation — pre-existing,
       // tracked separately. Qwen-integration PR #111 does not regress this path.
       'src/signal/__tests__/signal-publisher.test.ts',
+      // Backups and compiled dist are not active source — skip
+      'backups/**',
+      'dist/**',
     ],
   },
 });
