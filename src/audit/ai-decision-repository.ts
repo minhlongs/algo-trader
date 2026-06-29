@@ -5,7 +5,7 @@
  * Uses query() from postgres-client for direct SQL execution.
  */
 
-import { query } from '../db/postgres-client';
+import { query } from '../shared/db/postgres-client';
 
 // Local DbRow type to avoid import issues with mocked module
 interface DbRow {

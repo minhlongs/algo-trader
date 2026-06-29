@@ -8,8 +8,8 @@
  *   Retry on transient errors, return ValidationResult with valid/confidence/reasoning/risks
  */
 
-import { loadLlmConfig } from '../config/llm-config';
-import { logger } from '../utils/logger';
+import { loadLlmConfig } from '../shared/config/llm-config';
+import { logger } from '../shared/utils/logger';
 
 export interface SignalCandidate {
   /** Strategy type that generated this signal */

@@ -1,5 +1,5 @@
 // Resilient HTTP fetch — retry + backoff + jitter + circuit breaker + rate limit
-import { logger } from '../core/logger.js';
+import { logger } from '../../core/logger.js';
 import { CircuitBreaker, CircuitOpenError } from './circuit-breaker.js';
 import { TokenBucket } from './rate-limiter.js';
 

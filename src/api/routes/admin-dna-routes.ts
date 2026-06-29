@@ -8,7 +8,7 @@
  * GET  /status     — engine state: last consensus, last regime, paper mode, running
  */
 import { Router, Request, Response } from 'express';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import {
   startDnaEngine,
   stopDnaEngine,

@@ -10,7 +10,7 @@
 
 import type { IStrategy, ICandle, ISignal } from '../interfaces/IStrategy.js';
 import { getKronosOhlcvForecast } from '../intelligence/kronos-fair-value.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 
 const STRATEGY_NAME = 'KronosFoundation';
 

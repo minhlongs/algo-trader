@@ -3,7 +3,7 @@
  * Uses @polymarket/clob-client SDK for order book, pricing, and order management.
  */
 import { ClobClient as SdkClobClient, Chain, Side } from '@polymarket/clob-client';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 
 export interface OrderBookLevel {
   /** Price as a string to match Polymarket CLOB SDK convention */

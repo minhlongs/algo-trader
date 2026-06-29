@@ -3,7 +3,7 @@
  * ROIaaS Phase 4 - End-of-day billing calculation for usage overage
  */
 
-import { LicenseTier } from '../types/license';
+import { LicenseTier } from '../shared/types/license';
 import { DAILY_LIMITS, OVERAGE_PRICE_PER_CALL } from '../metering/usage-metering-service';
 
 export interface OverageCharge {

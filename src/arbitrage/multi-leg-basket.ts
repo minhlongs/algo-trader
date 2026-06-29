@@ -6,8 +6,8 @@
  */
 
 import { randomUUID } from 'crypto';
-import { logger } from '../utils/logger';
-import type { ILPResult, MultiLegBasket, BasketValidationResult, ILPSolverConfig } from '../types/ilp-types';
+import { logger } from '../shared/utils/logger';
+import type { ILPResult, MultiLegBasket, BasketValidationResult, ILPSolverConfig } from '../shared/types/ilp-types';
 
 // ── Validation ────────────────────────────────────────────────────────────
 

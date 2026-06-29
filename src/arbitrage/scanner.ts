@@ -6,7 +6,7 @@
 import ccxt from 'ccxt';
 import { PricePoint, OrderBook, OrderBookLevel, ExchangeId, ScannerConfig } from './types';
 import { DEFAULT_SCANNER_CONFIG, EXCHANGE_FEE_RATES } from './config';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 // CCXT exchange interface for type safety
 interface CcxtExchange {

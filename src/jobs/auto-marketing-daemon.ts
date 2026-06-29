@@ -15,7 +15,7 @@
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import { generateLlmBlogPost } from './llm-content-generator.js';
 import { distributePost } from './social-auto-poster.js';
 

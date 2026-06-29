@@ -13,8 +13,8 @@
 
 import solver from 'javascript-lp-solver';
 import type { Model } from 'javascript-lp-solver';
-import { logger } from '../utils/logger';
-import type { ILPResult, ILPSolverConfig, MarketOpportunity } from '../types/ilp-types';
+import { logger } from '../shared/utils/logger';
+import type { ILPResult, ILPSolverConfig, MarketOpportunity } from '../shared/types/ilp-types';
 import { buildConstraints, filterEligibleMarkets } from './ilp-constraint-builder';
 
 // ── Variable key helpers ──────────────────────────────────────────────────

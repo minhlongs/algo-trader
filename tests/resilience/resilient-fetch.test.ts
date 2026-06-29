@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { resilientFetch } from '../../src/resilience/resilient-fetch.js';
-import { CircuitBreaker, CircuitOpenError } from '../../src/resilience/circuit-breaker.js';
-import { TokenBucket } from '../../src/resilience/rate-limiter.js';
+import { resilientFetch } from '../../src/shared/resilience/resilient-fetch.js';
+import { CircuitBreaker, CircuitOpenError } from '../../src/shared/resilience/circuit-breaker.js';
+import { TokenBucket } from '../../src/shared/resilience/rate-limiter.js';
 
 // Mock global fetch
 const mockFetch = vi.fn<typeof fetch>();

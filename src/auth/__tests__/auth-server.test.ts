@@ -32,7 +32,7 @@ vi.mock('pg', () => {
   return { default: { Pool: MockPool } };
 });
 
-vi.mock('../../utils/logger.js', () => ({
+vi.mock('../../shared/utils/logger.js', () => ({
   logger: {
     info: mockLoggerInfo,
     warn: mockLoggerWarn,

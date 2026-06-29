@@ -13,7 +13,7 @@
 import { enterpriseInquiryStore, EnterpriseTier, EnterpriseInquiry } from './enterprise-inquiry-store.js';
 import { notifyTam } from './enterprise-tam-notifier.js';
 import { provisionPaperDemo, PaperDemoCredentials } from './enterprise-paper-demo-provisioner.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 
 export interface SubmitEnterpriseInquiryInput {
   email: string;

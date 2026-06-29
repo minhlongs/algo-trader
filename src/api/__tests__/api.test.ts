@@ -37,7 +37,7 @@ vi.mock('../../redis', () => ({
 }));
 
 // Mock PostgreSQL
-vi.mock('../../db/postgres-client', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
   getDbClient: () => ({
     query: vi.fn().mockResolvedValue({ rows: [] }),
   }),

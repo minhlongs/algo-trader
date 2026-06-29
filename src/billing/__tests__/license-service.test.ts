@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { LicenseService } from '../license-service';
-import { LicenseTier, LicenseStatus, CreateLicenseInput } from '../../types/license';
+import { LicenseTier, LicenseStatus, CreateLicenseInput } from '../../shared/types/license';
 
 describe('LicenseService', () => {
   let service: LicenseService;

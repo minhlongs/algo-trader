@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mock DB ──────────────────────────────────────────────────────────────────
 const mockQuery = vi.fn();
-vi.mock('../../db/postgres-client.js', () => ({
+vi.mock('../../shared/db/postgres-client.js', () => ({
   query: (...args: unknown[]) => mockQuery(...args),
 }));
 
@@ -39,7 +39,7 @@ vi.mock('../../middleware/prometheus-metrics.js', () => ({
 }));
 
 // ─── Mock logger ──────────────────────────────────────────────────────────────
-vi.mock('../../utils/logger.js', () => ({
+vi.mock('../../shared/utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

@@ -3,8 +3,8 @@
  * Detects fraudulent referral clicks using multiple signals
  */
 
-import { getDbClient } from '../db/postgres-client';
-import { logger } from '../utils/logger';
+import { getDbClient } from '../shared/db/postgres-client';
+import { logger } from '../shared/utils/logger';
 
 export interface FraudDetectionConfig {
   maxClicksPerIpPerDay: number;

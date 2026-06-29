@@ -6,9 +6,9 @@
  * Redis (tests, local dev).
  */
 
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import { VettingService } from '../services/vetting.service';
-import { getDbClient } from '../../db/postgres-client';
+import { getDbClient } from '../../shared/db/postgres-client';
 
 export interface VettingWorkerOptions {
   pollIntervalMs?: number;

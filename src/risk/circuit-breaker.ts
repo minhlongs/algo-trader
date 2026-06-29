@@ -6,7 +6,7 @@
  */
 
 import { getRedisClient, type RedisClientType } from '../redis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { DrawdownMonitor } from './drawdown-monitor';
 
 export interface CircuitBreakerConfig {

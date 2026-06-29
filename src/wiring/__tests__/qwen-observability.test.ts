@@ -59,7 +59,7 @@ describe('OTel tracing init', () => {
   });
 
   it('noop by default — getTracer().startActiveSpan runs fn and returns value', async () => {
-    const { getTracer, resetTracingForTests } = await import('../../utils/tracing.js');
+    const { getTracer, resetTracingForTests } = await import('../../shared/utils/tracing.js');
     resetTracingForTests();
 
     const result = await getTracer().startActiveSpan('test.span', async (span) => {
@@ -70,7 +70,7 @@ describe('OTel tracing init', () => {
   });
 
   it('initTracing is idempotent when endpoint unset', async () => {
-    const { initTracing, resetTracingForTests } = await import('../../utils/tracing.js');
+    const { initTracing, resetTracingForTests } = await import('../../shared/utils/tracing.js');
     resetTracingForTests();
 
     await initTracing();
@@ -80,7 +80,7 @@ describe('OTel tracing init', () => {
 
   it('initTracing with OTEL_EXPORTER_OTLP_ENDPOINT attempts SDK load without throwing', async () => {
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://127.0.0.1:14318/v1/traces';
-    const { initTracing, getTracer, resetTracingForTests } = await import('../../utils/tracing.js');
+    const { initTracing, getTracer, resetTracingForTests } = await import('../../shared/utils/tracing.js');
     resetTracingForTests();
 
     await initTracing();
@@ -95,7 +95,7 @@ describe('OTel tracing init', () => {
 
   it('concurrent initTracing calls share one in-flight promise', async () => {
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://127.0.0.1:14318/v1/traces';
-    const { initTracing, resetTracingForTests } = await import('../../utils/tracing.js');
+    const { initTracing, resetTracingForTests } = await import('../../shared/utils/tracing.js');
     resetTracingForTests();
 
     const [a, b, c] = await Promise.all([initTracing(), initTracing(), initTracing()]);
@@ -110,7 +110,7 @@ describe('OTel tracing init', () => {
       throw new Error('simulated SDK load failure');
     });
 
-    const { initTracing, getTracer, resetTracingForTests } = await import('../../utils/tracing.js');
+    const { initTracing, getTracer, resetTracingForTests } = await import('../../shared/utils/tracing.js');
     resetTracingForTests();
     await initTracing(); // must not throw
 

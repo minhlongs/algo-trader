@@ -1,9 +1,9 @@
 /** Logical Hedge Discovery — DeepSeek finds pairs where one outcome LOGICALLY NECESSITATES another. Cache: 2h. */
 
 import crypto from 'crypto';
-import { loadLlmConfig } from '../config/llm-config';
+import { loadLlmConfig } from '../shared/config/llm-config';
 import { getRedisClient } from '../redis/index';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export type HedgeTier = 'T1' | 'T2' | 'T3'; // T1: >=95%, T2: 90-95%, T3: 85-90%
 

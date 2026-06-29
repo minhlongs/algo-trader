@@ -5,8 +5,8 @@
  */
 
 import WebSocket from 'ws';
-import { logger } from '../utils/logger';
-import { getMessageBus } from '../messaging/index';
+import { logger } from '../shared/utils/logger';
+import { getMessageBus } from '../shared/messaging/index';
 import { parseWsMessage } from './polymarket-websocket-message-parser';
 
 // ---------------------------------------------------------------------------

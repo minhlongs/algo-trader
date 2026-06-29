@@ -5,8 +5,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { createMessageBus, getMessageBus } from '../messaging/create-message-bus';
-import { Topics } from '../messaging/topic-schema';
+import { createMessageBus, getMessageBus } from '../shared/messaging/create-message-bus';
+import { Topics } from '../shared/messaging/topic-schema';
 import { startNatsEventLoop } from './nats-event-loop';
 import { initVibeController, getVibeState } from './vibe-controller';
 import { runSwarmConsensus } from '../intelligence/signal-consensus-swarm';
@@ -15,9 +15,9 @@ import { reflectOnTrade } from '../intelligence/dual-level-reflection-engine';
 import type { SignalCandidate } from '../intelligence/signal-validator';
 import type { TradeOutcome } from '../intelligence/dual-level-reflection-engine';
 import { recordPrediction, startResolutionChecker } from '../intelligence/prediction-accuracy-tracker';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { isQwenEnabled } from './qwen-drawdown-monitor';
-import { query } from '../db/postgres-client';
+import { query } from '../shared/db/postgres-client';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface PaperTrade {

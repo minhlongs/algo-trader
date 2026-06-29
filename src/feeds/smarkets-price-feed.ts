@@ -4,8 +4,8 @@
  * Quotes API: https://api.smarkets.com/v3/markets/{id}/quotes/
  */
 
-import { logger } from '../utils/logger';
-import { getMessageBus } from '../messaging/index';
+import { logger } from '../shared/utils/logger';
+import { getMessageBus } from '../shared/messaging/index';
 
 // ---------------------------------------------------------------------------
 // Public types

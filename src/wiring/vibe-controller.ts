@@ -9,9 +9,9 @@
  * field so concurrent instances cannot silently overwrite each other.
  */
 
-import { createMessageBus } from '../messaging/create-message-bus';
+import { createMessageBus } from '../shared/messaging/create-message-bus';
 import { getRedisClient } from '../redis/index';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

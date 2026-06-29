@@ -10,13 +10,13 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import RaasGate from '../../gate/raas-gate';
-import { LicenseTier } from '../../types/license';
+import { LicenseTier } from '../../shared/types/license';
 import { filterSignalsForTier, canAccessSse } from '../../signal/signal-tier-filter';
 import { signalTtlEnforcer } from '../../signal/signal-ttl-enforcer';
 import { getCachedSignals, setCachedSignals } from '../../signal/signal-rest-cache';
 import { sseBroadcaster } from '../../signal/sse-signal-broadcaster';
 import type { TierKey } from '../../signal/signal-types';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 
 export const signalFeedRouter: Router = Router();
 const gate = RaasGate.getInstance();

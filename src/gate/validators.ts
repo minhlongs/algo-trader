@@ -5,7 +5,7 @@
 
 import { LicenseError } from './errors';
 import { TIER_CONFIG, FEATURE_TIER_MAP } from './config/tier-config';
-import { LicenseTier, LicenseStatus, License } from '../types/license';
+import { LicenseTier, LicenseStatus, License } from '../shared/types/license';
 
 /**
  * Parse license key to determine tier

@@ -9,7 +9,7 @@
  */
 
 import { getRedisClient } from '../redis/index';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 /** Milliseconds before a reserved nonce is considered stale and released */
 const NONCE_TTL_MS = 30_000;

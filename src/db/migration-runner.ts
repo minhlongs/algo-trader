@@ -4,7 +4,7 @@
  * Uses _migrations table to record applied migrations
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { getDbClient } from './postgres-client';
 import * as migration001 from './migrations/001-create-trades-table';
 import * as migration026 from './migrations/026-create-ai-audit-tables';

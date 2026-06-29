@@ -12,7 +12,7 @@
 
 import { betterAuth } from 'better-auth';
 import pg from 'pg';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 
 const { Pool } = pg;
 

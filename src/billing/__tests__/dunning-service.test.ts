@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DunningService } from '../dunning-service';
 import { LicenseService } from '../license-service';
-import { LicenseTier, LicenseStatus } from '../../types/license';
+import { LicenseTier, LicenseStatus } from '../../shared/types/license';
 
 describe('DunningService', () => {
   let service: DunningService;

@@ -1,4 +1,4 @@
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import {
   IMarketplaceStrategy,
   PaginatedResult,

@@ -8,7 +8,7 @@
  */
 
 import { EmailService } from '../notifications/email-service.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import { EnterpriseInquiry, ENTERPRISE_TIER_LABELS, ENTERPRISE_ACV } from './enterprise-inquiry-store.js';
 
 /** TAM inbox — override via env var ENTERPRISE_TAM_EMAIL */

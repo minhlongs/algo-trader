@@ -10,7 +10,7 @@ import rateLimit from 'express-rate-limit';
 import { distributedRateLimiter } from '../middleware/distributed-rate-limiter';
 import * as Sentry from '@sentry/node';
 import { Server } from 'http';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 import { tradesRouter } from './routes/trades';
 import { pnlRouter } from './routes/pnl';

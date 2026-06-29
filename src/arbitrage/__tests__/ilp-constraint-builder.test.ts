@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { buildConstraints } from '../ilp-constraint-builder';
-import type { MarketOpportunity, ILPSolverConfig } from '../../types/ilp-types';
+import type { MarketOpportunity, ILPSolverConfig } from '../../shared/types/ilp-types';
 
 describe('ILP Constraint Builder', () => {
   let config: ILPSolverConfig;

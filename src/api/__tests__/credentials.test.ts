@@ -15,7 +15,7 @@ const { mockSave, mockGet, mockDelete, mockAppendAudit } = vi.hoisted(() => ({
 }));
 
 // Mock postgres client to prevent real DB queries
-vi.mock('../../db/postgres-client', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
   query: vi.fn().mockResolvedValue({ rows: [] }),
   getDbClient: () => ({}),
 }));

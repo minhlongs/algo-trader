@@ -5,11 +5,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SubscriberPnLAggregator } from '../subscriber-pnl-aggregator';
 
-vi.mock('../../db/postgres-client', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
   query: vi.fn(),
 }));
 
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 const mockQuery = vi.mocked(query);
 
 describe('SubscriberPnLAggregator', () => {

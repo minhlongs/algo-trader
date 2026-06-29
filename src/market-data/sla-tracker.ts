@@ -4,7 +4,7 @@
  * Tracks provider Service Level Agreement metrics across multiple time windows
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import type { MarketDataSource } from './types.js';
 import {
   setProviderHealthScore,

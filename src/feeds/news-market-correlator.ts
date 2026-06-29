@@ -7,8 +7,8 @@
 
 import { fetchNewsItems, analyzeNewsImpact, purgeExpiredCache } from './news-impact-analyzer';
 import type { NewsItem, NewsImpactResult, ActiveMarket } from './news-impact-analyzer';
-import { getMessageBus } from '../messaging/index';
-import { logger } from '../utils/logger';
+import { getMessageBus } from '../shared/messaging/index';
+import { logger } from '../shared/utils/logger';
 
 // Define locally — do NOT modify topic-schema.ts
 const INTELLIGENCE_NEWS_IMPACT = 'intelligence.news.impact';

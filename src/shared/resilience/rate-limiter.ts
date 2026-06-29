@@ -1,5 +1,5 @@
 // Token bucket rate limiter for exchange API calls
-import { logger } from '../core/logger.js';
+import { logger } from '../../core/logger.js';
 
 const WAIT_TIMEOUT_MS = 5000;
 

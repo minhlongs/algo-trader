@@ -5,8 +5,8 @@
  * Cache results in memory (1h TTL) to avoid repeated LLM calls per market.
  */
 
-import { loadLlmConfig } from '../config/llm-config';
-import { logger } from '../utils/logger';
+import { loadLlmConfig } from '../shared/config/llm-config';
+import { logger } from '../shared/utils/logger';
 
 export interface MarketInput {
   id: string;

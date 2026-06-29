@@ -6,7 +6,7 @@
 
 import { Bot, Context } from 'grammy';
 import { getRedisClient } from '../redis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { formatTelegramMessage } from '../notifications/alert-formatter';
 import {
   handleStart,

@@ -7,7 +7,7 @@
  */
 
 import { LicenseService } from '../billing/license-service';
-import type { License } from '../types/license';
+import type { License } from '../shared/types/license';
 import { validateLicense } from './validators';
 
 // Re-export all validators for public API
@@ -26,8 +26,8 @@ export {
 
 // License exports
 export { LicenseService };
-export { LicenseTier, LicenseStatus } from '../types/license';
-export type { License } from '../types/license';
+export { LicenseTier, LicenseStatus } from '../shared/types/license';
+export type { License } from '../shared/types/license';
 export type { TierConfig } from './config/tier-config';
 export { TIER_CONFIG, FEATURE_TIER_MAP } from './config/tier-config';
 

@@ -5,7 +5,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface WebSocketMessage {
   type: 'orderbook' | 'trade' | 'ticker' | 'heartbeat' | 'error' | 'latency';

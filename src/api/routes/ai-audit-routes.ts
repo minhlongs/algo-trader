@@ -11,7 +11,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import { auth } from '../../auth/auth-server';
 import {
   getAIDecisionRepository,

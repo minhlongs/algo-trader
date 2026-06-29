@@ -8,7 +8,7 @@
 
 import * as crypto from 'crypto';
 import { EmailService } from '../notifications/email-service.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import { EnterpriseInquiry } from './enterprise-inquiry-store.js';
 
 export interface PaperDemoCredentials {

@@ -4,7 +4,7 @@
  */
 
 import pg from 'pg';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 const { Pool } = pg;
 

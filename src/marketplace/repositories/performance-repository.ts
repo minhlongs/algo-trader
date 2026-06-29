@@ -3,7 +3,7 @@
  * Database operations for marketplace_performance table
  */
 
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import type { IMarketplacePerformance, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
 export interface PerformanceFilters {

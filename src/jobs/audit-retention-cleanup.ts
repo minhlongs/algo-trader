@@ -7,7 +7,7 @@
  */
 
 import { AuditLogService } from '../audit/audit-log-service';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export class AuditRetentionCleanup {
   private static instance: AuditRetentionCleanup;

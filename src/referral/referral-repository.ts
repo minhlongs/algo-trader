@@ -3,8 +3,8 @@
  * Database operations for referral program tables
  */
 
-import { query, getDbClient } from '../db/postgres-client';
-import type { DbRow } from '../db/postgres-client';
+import { query, getDbClient } from '../shared/db/postgres-client';
+import type { DbRow } from '../shared/db/postgres-client';
 import type {
   ReferralCode,
   ReferralClick,

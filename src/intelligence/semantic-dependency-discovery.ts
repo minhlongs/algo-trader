@@ -10,14 +10,14 @@
  *   5. Cache result + publish to NATS `intelligence.dependencies.updated`
  */
 
-import { loadLlmConfig } from '../config/llm-config';
+import { loadLlmConfig } from '../shared/config/llm-config';
 import { buildMarketBatches, buildBatchPrompt } from './market-context-builder';
 import { buildDependencyGraph } from './relationship-graph-builder';
 import { getCachedGraph, setCachedGraph } from './semantic-cache';
-import { getMessageBus } from '../messaging/index';
-import { Topics } from '../messaging/topic-schema';
-import { logger } from '../utils/logger';
-import type { DependencyGraph, GammaMarket } from '../types/semantic-relationships';
+import { getMessageBus } from '../shared/messaging/index';
+import { Topics } from '../shared/messaging/topic-schema';
+import { logger } from '../shared/utils/logger';
+import type { DependencyGraph, GammaMarket } from '../shared/types/semantic-relationships';
 
 const DEEPSEEK_TIMEOUT_MS = 90_000;
 const RETRY_LIMIT = 3;

@@ -4,7 +4,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { join } from 'path';
 import Redis from 'ioredis';
 import {
@@ -14,7 +14,7 @@ import {
   activateLicenseKey,
   encryptLicenseKey,
 } from '../lib/license-keys';
-import { config } from '../config/env';
+import { config } from '../shared/config/env';
 
 const ENV_PATH = join(process.cwd(), '.env');
 

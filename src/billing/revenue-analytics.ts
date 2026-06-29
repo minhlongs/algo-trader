@@ -3,7 +3,7 @@
  * Pure computation — no DB queries; takes arrays as input.
  */
 
-import { License, LicenseTier, LicenseStatus } from '../types/license';
+import { License, LicenseTier, LicenseStatus } from '../shared/types/license';
 import { Subscription } from './subscription-service';
 
 const TIER_MO_PRICE: Record<LicenseTier, number> = {

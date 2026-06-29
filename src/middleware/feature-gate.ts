@@ -11,7 +11,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import type { License } from '../types/license';
+import type { License } from '../shared/types/license';
 
 // Augment Express Request to expose the license set by upstream auth middleware
 declare global {

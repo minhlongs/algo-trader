@@ -12,7 +12,7 @@
  * Phase 24 — Cross-Platform Arbitrage
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { PolymarketWebSocketFeed, PriceUpdate as PmPriceUpdate } from '../feeds/polymarket-websocket-feed';
 import { startKalshiPolling, KalshiMarket } from '../feeds/kalshi-price-feed';
 import { FeedAggregator, FeedMessage, UnifiedTicker } from '../feeds/feed-aggregator';

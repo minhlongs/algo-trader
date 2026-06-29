@@ -7,7 +7,7 @@
  * Phase 23 — Paper Trading Analytics
  */
 
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import { PaperExecutor, PaperTrade, getPaperExecutor } from '../../execution/paper-executor';
 
 // ─── Types ───────────────────────────────────────────────────────────────────

@@ -8,8 +8,8 @@
 
 import crypto from 'crypto';
 import { getRedisClient } from '../redis/index';
-import { logger } from '../utils/logger';
-import type { DependencyGraph } from '../types/semantic-relationships';
+import { logger } from '../shared/utils/logger';
+import type { DependencyGraph } from '../shared/types/semantic-relationships';
 
 const CACHE_TTL_SECONDS = 3600;
 const KEY_PREFIX = 'semantic:deps:';

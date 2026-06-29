@@ -4,8 +4,8 @@
  */
 import { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
 import { LicenseService } from '../billing/license-service';
-import { LicenseTier, LicenseStatus } from '../types/license';
-import { logger } from '../utils/logger';
+import { LicenseTier, LicenseStatus } from '../shared/types/license';
+import { logger } from '../shared/utils/logger';
 
 const PUBLIC_PATHS = ['/health', '/ready', '/metrics', '/api/v1/licenses'];
 

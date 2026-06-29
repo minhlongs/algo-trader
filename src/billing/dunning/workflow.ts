@@ -5,7 +5,7 @@
 
 import { LicenseService } from '../license-service';
 import { AuditLogService } from '../../audit/audit-log-service';
-import { LicenseStatus } from '../../types/license';
+import { LicenseStatus } from '../../shared/types/license';
 import type { DunningRecord, DunningConfig } from '../dunning-service';
 
 export class DunningWorkflow {

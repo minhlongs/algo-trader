@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Logger mock (suppress output) ───────────────────────────────────────────
 
-vi.mock('../../src/utils/logger.js', () => ({
+vi.mock('../../src/shared/utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
@@ -20,7 +20,7 @@ const { mockPublish, mockSubscribe } = vi.hoisted(() => ({
   mockSubscribe: vi.fn(),
 }));
 
-vi.mock('../../src/messaging/create-message-bus.js', () => ({
+vi.mock('../../src/shared/messaging/create-message-bus.js', () => ({
   createMessageBus: vi.fn().mockResolvedValue({
     publish: mockPublish,
     subscribe: mockSubscribe,

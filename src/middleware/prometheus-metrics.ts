@@ -5,7 +5,7 @@
 
 import client from 'prom-client';
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Create Registry

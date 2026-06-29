@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { SubscriptionService } from '../../marketplace/services/subscription.service';
 import { MarketplaceService } from '../../marketplace/services/marketplace.service';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 
 export const marketplaceReviewRouter: RouterType = Router();
 

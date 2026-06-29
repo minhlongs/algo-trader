@@ -5,7 +5,7 @@
  */
 
 import { GruStrategy } from '../strategies/GruStrategy';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import type { OhlcvData } from '../ml/gru/data-preprocessor';
 
 export interface GruCommandOptions {

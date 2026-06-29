@@ -5,7 +5,7 @@
 
 import sgMail from '@sendgrid/mail';
 import { getRedisClient } from '../redis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import {
   formatAlert,
   getActionMessage,

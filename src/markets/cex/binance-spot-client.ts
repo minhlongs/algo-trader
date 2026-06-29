@@ -19,7 +19,7 @@ import type {
   CexFeatureFlags,
 } from './cex-types.js';
 import { loadFeatureFlags } from './cex-types.js';
-import { rateLimiterRegistry } from '../../resilience/rate-limiter.js';
+import { rateLimiterRegistry } from '../../shared/resilience/rate-limiter.js';
 
 // Binance spot: 1200 request weight/min → ~20 req/sec conservative
 const BINANCE_RATE_PER_SEC = 20;

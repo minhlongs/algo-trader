@@ -3,10 +3,10 @@
  * Common helpers for chaos engineering tests
  */
 
-import { NatsMessageBus } from '../../src/messaging/nats-message-bus';
-import { RedisMessageBus } from '../../src/messaging/redis-message-bus';
-import { connectNats, closeNats, isNatsConnected } from '../../src/messaging/nats-connection-manager';
-import { logger } from '../../src/utils/logger';
+import { NatsMessageBus } from '../../src/shared/messaging/nats-message-bus';
+import { RedisMessageBus } from '../../src/shared/messaging/redis-message-bus';
+import { connectNats, closeNats, isNatsConnected } from '../../src/shared/messaging/nats-connection-manager';
+import { logger } from '../../src/shared/utils/logger';
 
 export interface ChaosMetrics {
   startTime: number;

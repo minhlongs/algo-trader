@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { MarketOpportunity, ILPSolverConfig } from '../../types/ilp-types';
+import type { MarketOpportunity, ILPSolverConfig } from '../../shared/types/ilp-types';
 
 describe('Integer Programming Solver', () => {
   let config: ILPSolverConfig;

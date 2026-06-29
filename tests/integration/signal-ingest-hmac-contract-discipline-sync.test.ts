@@ -106,7 +106,7 @@ describe('Signal-ingest HMAC contract discipline — 50th edge (PENTACONTAGON mi
 
   it('verifyHmacSha256 imported AND invoked', () => {
     expect(
-      /from\s+['"]\.\.\/\.\.\/utils\/hmac-verifier['"]/.test(src),
+      /from\s+['"]\.\.\/\.\.\/shared\/utils\/hmac-verifier['"]/.test(src),
       'hmac-verifier import path drifted',
     ).toBe(true);
     expect(

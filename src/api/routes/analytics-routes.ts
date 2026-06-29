@@ -12,7 +12,7 @@ import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/utils/logger.js';
 
 const DATA_DIR = join(process.cwd(), 'data', 'analytics');
 const EVENTS_FILE = join(DATA_DIR, 'events.json');

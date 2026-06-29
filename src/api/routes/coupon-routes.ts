@@ -9,7 +9,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { timingSafeEqual } from 'crypto';
 import { CouponService } from '../../billing/coupon-service';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 
 // All tiers across all projects (shared NOWPayments account)
 const TIER_PRICES: Record<string, Record<string, { price: number; invoiceId: string }>> = {

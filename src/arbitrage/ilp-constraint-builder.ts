@@ -4,9 +4,9 @@
  * Reads defaults from environment variables; accepts overrides via config object.
  */
 
-import { logger } from '../utils/logger';
-import type { ILPSolverConfig } from '../types/ilp-types';
-import type { MarketOpportunity } from '../types/ilp-types';
+import { logger } from '../shared/utils/logger';
+import type { ILPSolverConfig } from '../shared/types/ilp-types';
+import type { MarketOpportunity } from '../shared/types/ilp-types';
 import type { ConstraintBound } from 'javascript-lp-solver';
 
 // ── Defaults from environment ─────────────────────────────────────────────

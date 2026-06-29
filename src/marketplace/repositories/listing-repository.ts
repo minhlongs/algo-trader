@@ -3,7 +3,7 @@
  * Database operations for marketplace_listings table
  */
 
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import type { IMarketplaceListing, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
 export class ListingRepository {

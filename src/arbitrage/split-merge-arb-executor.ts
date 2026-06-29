@@ -8,8 +8,8 @@
  * Profitable when: yesPrice + noPrice < 0.98 (i.e. spread > 2% fee)
  */
 
-import { logger } from '../utils/logger';
-import { getMessageBus } from '../messaging/create-message-bus';
+import { logger } from '../shared/utils/logger';
+import { getMessageBus } from '../shared/messaging/create-message-bus';
 import type { PaperTrade } from '../wiring/paper-trading-orchestrator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

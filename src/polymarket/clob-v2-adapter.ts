@@ -7,7 +7,7 @@ import { ClobClient, Chain, Side, OrderType } from '@polymarket/clob-client-v2';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { polygon } from 'viem/chains';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 // ---------------------------------------------------------------------------
 // Shared types

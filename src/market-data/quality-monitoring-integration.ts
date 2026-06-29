@@ -4,7 +4,7 @@
  * Orchestrates all data quality monitoring components
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import { MarketDataSource, Candle, QualityReport, ProviderQualityConfig } from './types.js';
 import { GapDetector, getGapDetector } from './gap-detector.js';
 import { OutlierDetector, getOutlierDetector } from './outlier-detection.js';

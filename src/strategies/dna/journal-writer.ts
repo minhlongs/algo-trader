@@ -6,8 +6,8 @@
  * tractability: every execution can be replayed from journal rows alone.
  */
 
-import { query } from '../../db/postgres-client.js';
-import { logger } from '../../utils/logger.js';
+import { query } from '../../shared/db/postgres-client.js';
+import { logger } from '../../shared/utils/logger.js';
 import { journalWriteErrorsTotal } from '../../middleware/prometheus-metrics.js';
 import type {
   ConsensusAction,

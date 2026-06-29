@@ -3,9 +3,9 @@
  * ROIaaS Phase 4 - Daily API usage tracking and threshold alerts
  */
 
-import { LicenseTier } from '../types/license';
+import { LicenseTier } from '../shared/types/license';
 import { EventEmitter } from 'events';
-import { query } from '../db/postgres-client';
+import { query } from '../shared/db/postgres-client';
 
 export interface UsageStatus {
   licenseKey: string;

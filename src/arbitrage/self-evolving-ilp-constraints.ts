@@ -5,9 +5,9 @@
  * Rate limit: 1 analysis/hour. Hard limits: min_edge>=1.5%, max_exposure<=30%.
  */
 
-import { loadLlmConfig } from '../config/llm-config';
-import { getMessageBus } from '../messaging/index';
-import { logger } from '../utils/logger';
+import { loadLlmConfig } from '../shared/config/llm-config';
+import { getMessageBus } from '../shared/messaging/index';
+import { logger } from '../shared/utils/logger';
 
 const ANALYSIS_THRESHOLD = 10;
 const BUFFER_MAX = 50;

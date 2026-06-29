@@ -3,8 +3,8 @@
  * API: https://api.limitless.exchange/v1/markets
  */
 
-import { logger } from '../utils/logger';
-import { getMessageBus } from '../messaging/index';
+import { logger } from '../shared/utils/logger';
+import { getMessageBus } from '../shared/messaging/index';
 
 // ---------------------------------------------------------------------------
 // Public types

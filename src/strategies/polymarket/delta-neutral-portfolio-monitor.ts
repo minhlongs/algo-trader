@@ -7,11 +7,11 @@
  */
 
 import { EventEmitter } from 'events';
-import logger from '../../utils/logger';
+import logger from '../../shared/utils/logger';
 import {
   DeltaNeutralConfig,
   DeltaNeutralPortfolio,
-} from '../../types/delta-neutral-types';
+} from '../../shared/types/delta-neutral-types';
 import {
   computePortfolioDelta,
   computePortfolioPnl,

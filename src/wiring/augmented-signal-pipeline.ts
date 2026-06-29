@@ -19,10 +19,10 @@
 
 import { validateSignal } from '../intelligence/signal-validator.js';
 import type { SignalCandidate, ValidationResult } from '../intelligence/signal-validator.js';
-import { getMessageBus } from '../messaging/index.js';
-import { Topics } from '../messaging/topic-schema.js';
-import { logger } from '../utils/logger.js';
-import type { MessageEnvelope } from '../messaging/message-bus-interface.js';
+import { getMessageBus } from '../shared/messaging/index.js';
+import { Topics } from '../shared/messaging/topic-schema.js';
+import { logger } from '../shared/utils/logger.js';
+import type { MessageEnvelope } from '../shared/messaging/message-bus-interface.js';
 
 // Topics produced by this pipeline (not in Topics enum — added here as constants)
 const TOPIC_SIGNAL_VALIDATED = 'signal.validated';

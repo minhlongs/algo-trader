@@ -37,7 +37,7 @@ const { mockLogger } = vi.hoisted(() => {
 // Module mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('../../messaging/index', () => ({
+vi.mock('../../shared/messaging/index', () => ({
   getMessageBus: () => ({
     isConnected: mockIsConnected,
     publish: mockPublish,
@@ -49,7 +49,7 @@ vi.mock('../../feeds/kalshi-price-feed', () => ({
   KalshiMarket: {},
 }));
 
-vi.mock('../../utils/logger', () => ({
+vi.mock('../../shared/utils/logger', () => ({
   logger: mockLogger,
 }));
 

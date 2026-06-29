@@ -8,7 +8,7 @@
  *   TELEGRAM_CHAT_ID   — target chat/channel/group ID
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import type { PaperTrade, PaperPortfolio } from '../wiring/paper-trading-orchestrator';
 import type { WhaleActivity } from '../feeds/whale-activity-feed';
 

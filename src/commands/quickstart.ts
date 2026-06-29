@@ -6,7 +6,7 @@
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { runSetupWizard } from './setup-wizard';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 const ENV_PATH = join(process.cwd(), '.env');
 

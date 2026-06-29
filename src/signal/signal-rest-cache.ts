@@ -5,7 +5,7 @@
  */
 
 import { getRedisClient } from '../redis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import type { Signal, TierKey } from './signal-types';
 
 const CACHE_TTL_SEC = 10; // short TTL — signals are time-sensitive

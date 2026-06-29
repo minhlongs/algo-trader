@@ -11,7 +11,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { loadLlmConfig, LlmEndpoint, LlmConfig } from '../config/llm-config';
+import { loadLlmConfig, LlmEndpoint, LlmConfig } from '../shared/config/llm-config';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';

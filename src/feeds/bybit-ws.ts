@@ -5,7 +5,7 @@
  */
 
 import { BaseWebSocketClient, WebSocketMessage } from './websocket-client';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface BybitOrderBook {
   seq: number;

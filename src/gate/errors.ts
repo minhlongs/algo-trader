@@ -3,7 +3,7 @@
  * Error classes for license validation
  */
 
-import { LicenseTier } from '../types/license';
+import { LicenseTier } from '../shared/types/license';
 
 /**
  * License Error - Thrown when license validation fails

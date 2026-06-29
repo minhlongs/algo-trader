@@ -4,8 +4,8 @@
  * Prices are in cents (0–99); we normalize to 0–1 probability.
  */
 
-import { logger } from '../utils/logger';
-import { getMessageBus } from '../messaging/index';
+import { logger } from '../shared/utils/logger';
+import { getMessageBus } from '../shared/messaging/index';
 
 // ---------------------------------------------------------------------------
 // Public types

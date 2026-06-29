@@ -11,7 +11,7 @@
  * (the CLOB API accepts an array of signed orders).
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 /** A single trade to be batched */
 export interface PendingTrade {

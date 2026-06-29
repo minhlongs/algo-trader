@@ -13,7 +13,7 @@ import {
   CreateLicenseInput,
   LicenseFilters,
   LicenseListResponse,
-} from '../types/license';
+} from '../shared/types/license';
 
 const LICENSE_PREFIX = 'raas';
 const TIER_PREFIXES: Record<LicenseTier, string> = {

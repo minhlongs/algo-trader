@@ -6,7 +6,7 @@
 import { referralRepository } from './referral-repository';
 import { commissionCalculator } from './commission-calculator';
 import { fraudDetector, FraudDetector, FraudDetectionConfig } from './fraud-detector';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import type {
   ReferralCode,
   ReferralClick,

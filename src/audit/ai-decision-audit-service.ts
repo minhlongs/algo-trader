@@ -5,9 +5,9 @@
  * Follows patterns from: ImmutableTradeAudit, TenantAuditLog
  */
 
-import { logger } from '../utils/logger';
-import { query, transaction, getDbClient } from '../db/postgres-client';
-import { config } from '../config/env';
+import { logger } from '../shared/utils/logger';
+import { query, transaction, getDbClient } from '../shared/db/postgres-client';
+import { config } from '../shared/config/env';
 
 export interface AIPredictionLog {
   // Identifiers

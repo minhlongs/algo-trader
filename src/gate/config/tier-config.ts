@@ -5,7 +5,7 @@
  * Defines tier-based access control configuration.
  */
 
-import { LicenseTier } from '../../types/license';
+import { LicenseTier } from '../../shared/types/license';
 
 export interface TierConfig {
   requestsPerMin: number;

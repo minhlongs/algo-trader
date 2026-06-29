@@ -5,7 +5,7 @@
  */
 
 import { createHash } from 'crypto';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { appendJsonl, readJsonl, cashclawPath } from '../persistence/file-store';
 
 export type TradeAuditEventType =

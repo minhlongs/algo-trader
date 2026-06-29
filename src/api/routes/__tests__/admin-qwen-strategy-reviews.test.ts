@@ -10,11 +10,11 @@ import request from 'supertest';
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockQuery = vi.fn();
-vi.mock('../../../db/postgres-client.js', () => ({
+vi.mock('../../../shared/db/postgres-client.js', () => ({
   query: (...args: unknown[]) => mockQuery(...args),
 }));
 
-vi.mock('../../../utils/logger.js', () => ({
+vi.mock('../../../shared/utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

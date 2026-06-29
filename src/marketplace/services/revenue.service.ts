@@ -1,4 +1,4 @@
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import { RevenueShareRepository, revenueShareRepository } from './repositories';
 import type { IMarketplaceRevenueShare, IMarketplaceSubscription, RevenueShareStatus } from '../models/types';
 

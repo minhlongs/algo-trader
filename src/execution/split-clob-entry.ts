@@ -11,7 +11,7 @@
  * NOTE: Pure paper-trading calculation — no real on-chain transactions.
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 // ---------------------------------------------------------------------------
 // Types

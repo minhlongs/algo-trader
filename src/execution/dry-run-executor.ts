@@ -10,7 +10,7 @@
  */
 
 import { getRedisClient, type RedisClientType } from '../redis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface DryRunConfig {
   initialBalance: number;

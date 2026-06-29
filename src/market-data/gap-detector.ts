@@ -4,7 +4,7 @@
  * Detects missing candles and data gaps in market data feeds
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import type { MarketDataSource, Candle, Timeframe } from './types.js';
 import {
   recordDataGap,

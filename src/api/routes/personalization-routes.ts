@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 
 const DATA_DIR = join(process.cwd(), 'data', 'personalization');
 

@@ -11,11 +11,11 @@ import {
 } from '../subscriber-tenant-isolator';
 
 // Mock postgres-client so tests don't need a real DB
-vi.mock('../../db/postgres-client', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
   query: vi.fn(),
 }));
 
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 const mockQuery = vi.mocked(query);
 
 describe('buildTenantFilter', () => {

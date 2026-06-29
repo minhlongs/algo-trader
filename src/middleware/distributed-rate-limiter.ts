@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { getRedisClient, RedisClientType } from '../redis';
 import { LicenseService } from '../billing/license-service';
-import { LicenseTier } from '../types/license';
-import { logger } from '../utils/logger';
+import { LicenseTier } from '../shared/types/license';
+import { logger } from '../shared/utils/logger';
 
 // Excluded routes from rate limiting
 const EXCLUDED_PREFIXES = [

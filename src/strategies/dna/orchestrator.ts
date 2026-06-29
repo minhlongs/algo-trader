@@ -41,7 +41,7 @@ import { DnaStateStore, DnaEngineState, InMemoryStateStore } from './dna-state-s
 import { computeConsensus } from './consensus-engine.js';
 import { writeJournalEntry } from './journal-writer.js';
 import { executePaperConsensus } from './paper-executor.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '../../shared/utils/logger.js';
 
 // ─── Type for candle provider (injected — explicitness: no hidden dependency) ─
 

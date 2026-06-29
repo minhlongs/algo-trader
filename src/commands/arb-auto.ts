@@ -4,7 +4,7 @@
  */
 
 import { TradingLoop } from '../arbitrage/trading-loop';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { existsSync } from 'fs';
 import { join } from 'path';
 

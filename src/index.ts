@@ -5,9 +5,9 @@
 
 import 'dotenv/config';
 import { Command } from 'commander';
-import { initSentry } from './utils/sentry-init';
-import { initTracing } from './utils/tracing';
-import { runMigrations } from './db/migration-runner';
+import { initSentry } from './shared/utils/sentry-init';
+import { initTracing } from './shared/utils/tracing';
+import { runMigrations } from './shared/db/migration-runner';
 import { runGruStrategy } from './commands/gru-strategy';
 import { KronosStrategy } from './strategies/kronos-strategy';
 import { runSetupWizard } from './commands/setup-wizard';
@@ -16,7 +16,7 @@ import { runActivateCommand } from './commands/activate-license';
 import { runArbAuto } from './commands/arb-auto';
 import { paperStart, paperStop, paperStatus, paperReport } from './commands/paper-trading';
 import type { PaperCommandOptions } from './commands/paper-trading';
-import { logger } from './utils/logger';
+import { logger } from './shared/utils/logger';
 
 // Initialize Sentry before anything else
 initSentry();

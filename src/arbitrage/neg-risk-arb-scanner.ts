@@ -8,7 +8,7 @@
  * After accounting for Polymarket's 2% fee on profit.
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 // ---------------------------------------------------------------------------
 // Public types

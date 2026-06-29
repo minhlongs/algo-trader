@@ -12,10 +12,10 @@
  * Additionally reads QWEN_LIVE_ELIGIBLE env flag (must be 'true' AND 30d cleared).
  */
 
-import { query } from '../db/postgres-client';
-import { logger } from '../utils/logger';
+import { query } from '../shared/db/postgres-client';
+import { logger } from '../shared/utils/logger';
 import { setQwenPaperGateDaysRemaining } from '../middleware/prometheus-metrics';
-import { getTracer } from '../utils/tracing';
+import { getTracer } from '../shared/utils/tracing';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 

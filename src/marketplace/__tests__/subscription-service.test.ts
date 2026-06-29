@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock postgres-client — query returns empty rows by default
-vi.mock('../../db/postgres-client', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
   getDbClient: vi.fn(),
   transaction: vi.fn(),

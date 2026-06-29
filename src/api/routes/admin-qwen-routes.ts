@@ -8,7 +8,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import {
   disableQwen,
   enableQwen,
@@ -18,7 +18,7 @@ import {
 } from '../../wiring/qwen-drawdown-monitor';
 import { checkQwenEligibility } from '../../wiring/qwen-live-eligibility-gate';
 import { evaluateAndQueue } from '../../wiring/qwen-signals-loop';
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import {
   qwenStrategyReviewsResolvedTotal,
   qwenAdminKillActionsTotal,

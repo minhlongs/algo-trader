@@ -22,7 +22,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-vi.mock('../messaging/index.js', () => {
+vi.mock('../shared/messaging/index.js', () => {
   const publishMock = vi.fn();
   return {
     getMessageBus: () => ({
@@ -32,7 +32,7 @@ vi.mock('../messaging/index.js', () => {
   };
 });
 
-vi.mock('../utils/logger.js', () => ({
+vi.mock('../shared/utils/logger.js', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

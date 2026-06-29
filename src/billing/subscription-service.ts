@@ -6,7 +6,7 @@
 
 import { LicenseService } from './license-service';
 import { AuditLogService } from '../audit/audit-log-service';
-import { LicenseTier, LicenseStatus } from '../types/license';
+import { LicenseTier, LicenseStatus } from '../shared/types/license';
 
 export interface Subscription {
   id: string;

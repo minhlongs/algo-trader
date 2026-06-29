@@ -2,7 +2,7 @@
  * Winston logger configuration discipline 7-invariant sync — first
  * structured-logging substrate edge.
  *
- * `src/utils/logger.ts` is the single logger exported across the
+ * `src/shared/utils/logger.ts` is the single logger exported across the
  * codebase (>200 callers). Drift manifests as:
  *   - Log level dropped from env-configurable to hardcoded `'debug'` →
  *     production log bloat + cost + noise
@@ -71,7 +71,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const LOGGER_FILE = resolve(REPO_ROOT, 'src/utils/logger.ts');
+const LOGGER_FILE = resolve(REPO_ROOT, 'src/shared/utils/logger.ts');
 
 const MIN_MAXSIZE_BYTES = 1_000_000;
 const MIN_MAXFILES = 7;

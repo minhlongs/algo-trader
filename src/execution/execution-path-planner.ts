@@ -10,8 +10,8 @@
  * Used by: strategy-engine, trade-executor
  */
 
-import logger from '../utils/logger';
-import { ILPPosition, MultiLegBasket } from '../types/ilp-types';
+import logger from '../shared/utils/logger';
+import { ILPPosition, MultiLegBasket } from '../shared/types/ilp-types';
 import {
   FrankWolfeResult,
   optimizeBasketExecution,

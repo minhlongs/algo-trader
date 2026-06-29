@@ -5,10 +5,10 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UsageMeteringService, DAILY_LIMITS, OVERAGE_PRICE_PER_CALL } from './usage-metering-service';
-import { LicenseTier } from '../types/license';
+import { LicenseTier } from '../shared/types/license';
 
 // Mock the database client
-vi.mock('../db/postgres-client', () => ({
+vi.mock('../shared/db/postgres-client', () => ({
   query: vi.fn(),
 }));
 
@@ -21,7 +21,7 @@ vi.mock('../redis', () => ({
 }));
 
 // Mock logger
-vi.mock('../utils/logger', () => ({
+vi.mock('../shared/utils/logger', () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -276,7 +276,7 @@ describe('UsageMeteringService', () => {
 
   describe('Integration with database', () => {
     it('should call persistDailyUsage when tracking API calls', async () => {
-      const { query } = await import('../db/postgres-client');
+      const { query } = await import('../shared/db/postgres-client');
       vi.mocked(query).mockResolvedValue({ rows: [] } as any);
 
       const licenseKey = 'DB-PERSIST-TEST';
@@ -291,7 +291,7 @@ describe('UsageMeteringService', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      const { query } = await import('../db/postgres-client');
+      const { query } = await import('../shared/db/postgres-client');
       vi.mocked(query).mockRejectedValue(new Error('DB connection failed'));
 
       const licenseKey = 'DB-ERROR-TEST';

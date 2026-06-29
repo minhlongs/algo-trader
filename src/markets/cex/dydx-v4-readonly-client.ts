@@ -12,8 +12,8 @@
  * Docs: https://indexer.dydx.trade/v4/documentation
  */
 
-import { resilientFetch } from '../../resilience/resilient-fetch.js';
-import { rateLimiterRegistry } from '../../resilience/rate-limiter.js';
+import { resilientFetch } from '../../shared/resilience/resilient-fetch.js';
+import { rateLimiterRegistry } from '../../shared/resilience/rate-limiter.js';
 import type { CexCandle, CexOrderBook, CexBalance } from './cex-types.js';
 
 // dYdX Indexer public REST base URL (mainnet)

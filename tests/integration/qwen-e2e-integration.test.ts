@@ -14,12 +14,12 @@ import { createHmac } from 'crypto';
 
 // ─── Module mocks (must be top-level for hoisting) ────────────────────────────
 
-vi.mock('../../src/utils/logger.js', () => ({
+vi.mock('../../src/shared/utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 const mockQuery = vi.fn();
-vi.mock('../../src/db/postgres-client.js', () => ({
+vi.mock('../../src/shared/db/postgres-client.js', () => ({
   query: (...args: unknown[]) => mockQuery(...args),
 }));
 

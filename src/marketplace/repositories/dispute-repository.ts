@@ -3,7 +3,7 @@
  * Database operations for marketplace_disputes table
  */
 
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import type { IMarketplaceDispute, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
 export interface DisputeFilters {

@@ -7,9 +7,9 @@
  * Env: REFLECTION_ENABLED (default true), REFLECTION_USE_LLM (default true)
  */
 
-import { loadLlmConfig } from '../config/llm-config';
-import { getMessageBus } from '../messaging/index';
-import { logger } from '../utils/logger';
+import { loadLlmConfig } from '../shared/config/llm-config';
+import { getMessageBus } from '../shared/messaging/index';
+import { logger } from '../shared/utils/logger';
 
 // ---------------------------------------------------------------------------
 // Public types

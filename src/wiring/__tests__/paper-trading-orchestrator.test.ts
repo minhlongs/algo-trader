@@ -76,12 +76,12 @@ stop: vi.fn().mockResolvedValue(undefined),
 mockGetVibeState.mockReturnValue(mockVibeState);
 
 // ─── Mock DB ─────────────────────────────────────────────────────────────────
-vi.mock('../../db/postgres-client', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
 query: (...args: unknown[]) => mockQuery(...args),
 }));
 
 // ─── Mock NATS message bus ───────────────────────────────────────────────────
-vi.mock('../../messaging/create-message-bus', () => ({
+vi.mock('../../shared/messaging/create-message-bus', () => ({
 createMessageBus: (...args: unknown[]) => mockCreateMessageBus(...args),
 getMessageBus: (...args: unknown[]) => mockGetMessageBus(...args),
 }));
@@ -124,7 +124,7 @@ isQwenEnabled: (...args: unknown[]) => mockIsQwenEnabled(...args),
 }));
 
 // ─── Mock logger ─────────────────────────────────────────────────────────────
-vi.mock('../../utils/logger', () => ({
+vi.mock('../../shared/utils/logger', () => ({
 logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

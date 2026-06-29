@@ -7,7 +7,7 @@ import type { IMarketplacePerformance } from '../models/types';
 
 const mockQuery = vi.fn();
 
-vi.mock('../../db/postgres-client', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
   query: (...args: any[]) => mockQuery(...args),
 }));
 

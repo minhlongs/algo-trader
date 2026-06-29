@@ -4,7 +4,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { UsageMeteringService, ThresholdAlert } from '../metering/usage-metering-service';
 import { emailService } from '../notifications/email-service';
 import { smsService } from '../notifications/sms-service';

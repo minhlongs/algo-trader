@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { LicenseService } from '../../billing/license-service';
-import { LicenseTier } from '../../types/license';
+import { LicenseTier } from '../../shared/types/license';
 
 // Mock Redis
 const rateLimitMock = vi.fn();
@@ -40,7 +40,7 @@ vi.mock('../../redis', () => ({
 }));
 
 // Mock PostgreSQL
-vi.mock('../../db/postgres-client', () => ({
+vi.mock('../../shared/db/postgres-client', () => ({
   getDbClient: () => ({
     query: vi.fn().mockResolvedValue({ rows: [] }),
   }),

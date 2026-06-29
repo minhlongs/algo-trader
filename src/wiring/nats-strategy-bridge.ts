@@ -6,9 +6,9 @@
  * Strategies can also publish signals back onto the bus via publishSignal().
  */
 
-import type { IMessageBus, MessageEnvelope } from '../messaging/index.js';
-import { Topics } from '../messaging/index.js';
-import { logger } from '../utils/logger.js';
+import type { IMessageBus, MessageEnvelope } from '../shared/messaging/index.js';
+import { Topics } from '../shared/messaging/index.js';
+import { logger } from '../shared/utils/logger.js';
 
 // --- Callback types ---
 

@@ -7,7 +7,7 @@
  *   printRealLedger(ledger);
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 const DATA_API = 'https://data-api.polymarket.com';
 

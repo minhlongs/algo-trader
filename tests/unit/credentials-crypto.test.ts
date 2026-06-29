@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const mockQuery = vi.fn();
 
-vi.mock('../../src/db/postgres-client', () => ({
+vi.mock('../../src/shared/db/postgres-client', () => ({
   query: (sql: string, params?: (string | Date | number | boolean | null)[]) => mockQuery(sql, params),
 }));
 

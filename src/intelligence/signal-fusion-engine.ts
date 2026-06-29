@@ -10,7 +10,7 @@
  * Confidence = |weightedScore| clamped to [0, 1].
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface SignalInput {
   /** Signal identifier — e.g. 'momentum', 'volatility', 'mean-reversion' */

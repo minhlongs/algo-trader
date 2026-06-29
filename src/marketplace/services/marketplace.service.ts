@@ -3,7 +3,7 @@
  * DB-backed singleton, composes repositories
  */
 
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import { AuditLogService } from '../../audit/audit-log-service';
 import {
   StrategyRepository, strategyRepository,

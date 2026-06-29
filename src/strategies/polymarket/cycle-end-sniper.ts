@@ -15,7 +15,7 @@
  * this sniper targets only markets resolving in <5 min.
  */
 
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

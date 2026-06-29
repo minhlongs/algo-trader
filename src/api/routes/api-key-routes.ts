@@ -12,7 +12,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { ApiKeyManager } from '../../billing/api-key-manager';
 import { LicenseService } from '../../billing/license-service';
-import { LicenseTier } from '../../types/license';
+import { LicenseTier } from '../../shared/types/license';
 
 interface GenerateBody {
   licenseId: string;

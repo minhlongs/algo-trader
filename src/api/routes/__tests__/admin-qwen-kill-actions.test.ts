@@ -9,11 +9,11 @@ import request from 'supertest';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-vi.mock('../../../db/postgres-client.js', () => ({
+vi.mock('../../../shared/db/postgres-client.js', () => ({
   query: vi.fn(),
 }));
 
-vi.mock('../../../utils/logger.js', () => ({
+vi.mock('../../../shared/utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

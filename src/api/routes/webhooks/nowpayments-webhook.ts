@@ -15,7 +15,7 @@ import { SubscriptionService } from '../../../billing/subscription-service';
 import { PaymentService } from '../../../billing/payment-service';
 import { LicenseService } from '../../../billing/license-service';
 import { AuditLogService } from '../../../audit/audit-log-service';
-import { logger } from '../../../utils/logger';
+import { logger } from '../../../shared/utils/logger';
 import {
   handleIpnFinished,
   handleIpnRefunded,

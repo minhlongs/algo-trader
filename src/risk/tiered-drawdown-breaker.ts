@@ -11,7 +11,7 @@
  * Single-day loss >3% → pause new trades 24h
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { writeJsonState, readJsonState, cashclawPath } from '../persistence/file-store';
 
 export type DrawdownTier = 'NORMAL' | 'ALERT' | 'REDUCE' | 'HALT' | 'HARD_STOP' | 'DAILY_PAUSE';

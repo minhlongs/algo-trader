@@ -10,10 +10,10 @@
  * Optionally publishes candidates to NATS `signal.crossmarket.candidate`.
  */
 
-import { logger } from '../utils/logger';
-import type { DependencyGraph, MarketRelationship } from '../types/semantic-relationships';
-import { RelationType } from '../types/semantic-relationships';
-import type { MarketOpportunity, ILPSolverConfig, MultiLegBasket } from '../types/ilp-types';
+import { logger } from '../shared/utils/logger';
+import type { DependencyGraph, MarketRelationship } from '../shared/types/semantic-relationships';
+import { RelationType } from '../shared/types/semantic-relationships';
+import type { MarketOpportunity, ILPSolverConfig, MultiLegBasket } from '../shared/types/ilp-types';
 import { solveILP } from './integer-programming-solver';
 import { buildValidatedBasket, formatBasketSummary } from './multi-leg-basket';
 import { buildSolverConfig } from './ilp-constraint-builder';

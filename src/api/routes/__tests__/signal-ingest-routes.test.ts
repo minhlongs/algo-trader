@@ -11,7 +11,7 @@ import { createHmac } from 'crypto';
 
 // --- Mocks ---
 
-vi.mock('../../../utils/logger.js', () => ({
+vi.mock('../../../shared/utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

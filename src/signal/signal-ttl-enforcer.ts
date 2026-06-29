@@ -5,7 +5,7 @@
  */
 
 import type { Signal } from './signal-types';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export class SignalTtlEnforcer {
   private signals: Map<string, Signal> = new Map();

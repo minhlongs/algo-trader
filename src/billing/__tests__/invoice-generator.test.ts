@@ -36,7 +36,7 @@ vi.mock('../../notifications/email-service.js', () => ({
   },
 }));
 
-vi.mock('../../utils/logger.js', () => ({
+vi.mock('../../shared/utils/logger.js', () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),

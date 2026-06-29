@@ -13,7 +13,7 @@ import {
   HedgePosition,
   RebalanceResult,
   RebalanceSignal,
-} from '../../types/delta-neutral-types';
+} from '../../shared/types/delta-neutral-types';
 import {
   estimateHedgeSize,
 } from './delta-calculator';

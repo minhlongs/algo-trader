@@ -5,8 +5,8 @@
  * Reads signal_subscriptions for Telegram fan-out.
  */
 
-import { query } from '../db/postgres-client';
-import { logger } from '../utils/logger';
+import { query } from '../shared/db/postgres-client';
+import { logger } from '../shared/utils/logger';
 import type { SignalStore } from './signal-publisher';
 import type { Signal, SignalSubscription } from './signal-types';
 

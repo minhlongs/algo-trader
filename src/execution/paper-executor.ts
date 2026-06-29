@@ -8,7 +8,7 @@
  * Phase 22 — Paper Trading Infrastructure
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import {
   appendJsonl,
   readJsonl,

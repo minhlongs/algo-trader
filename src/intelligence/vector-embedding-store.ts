@@ -8,8 +8,8 @@
  */
 
 import { getRedisClient } from '../redis/index';
-import { logger } from '../utils/logger';
-import type { GammaMarket } from '../types/semantic-relationships';
+import { logger } from '../shared/utils/logger';
+import type { GammaMarket } from '../shared/types/semantic-relationships';
 
 const EMBED_KEY_PREFIX = 'embed:';
 const VOCAB_KEY = 'embed:__vocab__';

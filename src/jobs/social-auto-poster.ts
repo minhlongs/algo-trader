@@ -10,7 +10,7 @@
  * Runs as part of auto-marketing daemon cycle.
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import type { BlogPost } from './auto-marketing-daemon.js';
 
 /** Twitter/X post via API v2 (OAuth 2.0 Bearer Token) */

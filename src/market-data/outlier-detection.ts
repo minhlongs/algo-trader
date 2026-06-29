@@ -4,7 +4,7 @@
  * Statistical anomaly detection for prices and volumes
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import type { Candle, MarketDataSource } from './types.js';
 import {
   recordOutlierEvent,

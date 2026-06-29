@@ -4,7 +4,7 @@
  * broadcasts via SSE, enqueues Telegram push, and warms REST cache.
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { signalDedupGuard, SignalDedupGuard } from './signal-dedup-guard';
 import { signalTtlEnforcer } from './signal-ttl-enforcer';
 import { sseBroadcaster } from './sse-signal-broadcaster';

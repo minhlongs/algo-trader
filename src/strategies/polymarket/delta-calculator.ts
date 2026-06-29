@@ -13,7 +13,7 @@ import {
   HedgePosition,
   PortfolioDeltaResult,
   PositionDelta,
-} from '../../types/delta-neutral-types';
+} from '../../shared/types/delta-neutral-types';
 
 /**
  * Compute delta for a single binary market position.

@@ -7,8 +7,8 @@
  * Singleton: startSignalsLoop() / stopSignalsLoop() / resetSignalsLoop() for test isolation.
  */
 
-import { query } from '../db/postgres-client';
-import { logger } from '../utils/logger';
+import { query } from '../shared/db/postgres-client';
+import { logger } from '../shared/utils/logger';
 import {
   qwenStrategyReviewsQueuedTotal,
   qwenSignalsLoopRunsTotal,
@@ -17,7 +17,7 @@ import {
   qwenStrategyReviewBacklogSize,
   qwenStrategyReviewOldestPendingAgeSec,
 } from '../middleware/prometheus-metrics';
-import { getTracer } from '../utils/tracing';
+import { getTracer } from '../shared/utils/tracing';
 
 const DEFAULT_INTERVAL_MS = 6 * 3600 * 1000;
 const DEFAULT_REVIEW_WINDOW_MS = 7 * 24 * 3600 * 1000;

@@ -18,7 +18,7 @@ import {
   getSubClient,
   isClusterMode,
 } from '../redis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface WSAdapterConfig {
   path: string;

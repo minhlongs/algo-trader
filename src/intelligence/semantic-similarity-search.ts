@@ -9,7 +9,7 @@
  */
 
 import { getAllEmbeddings, getEmbedding } from './vector-embedding-store';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface SimilarMarket {
   marketId: string;

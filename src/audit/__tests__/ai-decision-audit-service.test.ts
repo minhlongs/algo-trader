@@ -9,11 +9,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryResult } from 'pg';
 
 // Mock postgres-client before importing the repository
-vi.mock('../../db/postgres-client', () => {
+vi.mock('../../shared/db/postgres-client', () => {
   return { query: vi.fn() };
 });
 
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import { AIDecisionRepository } from '../ai-decision-repository';
 
 interface MockRow {

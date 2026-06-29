@@ -6,8 +6,8 @@
  * Env: NEWS_FEED_URLS (comma-separated RSS/JSON API URLs)
  */
 
-import { loadLlmConfig } from '../config/llm-config';
-import { logger } from '../utils/logger';
+import { loadLlmConfig } from '../shared/config/llm-config';
+import { logger } from '../shared/utils/logger';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -3,8 +3,8 @@
  * Public endpoints: https://trading-api.readme.io/reference/getevents
  */
 
-import { logger } from '../utils/logger';
-import { getMessageBus } from '../messaging/index';
+import { logger } from '../shared/utils/logger';
+import { getMessageBus } from '../shared/messaging/index';
 
 // ---------------------------------------------------------------------------
 // Public types

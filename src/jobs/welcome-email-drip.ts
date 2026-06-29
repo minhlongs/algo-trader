@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { EmailService } from '../notifications/email-service.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 
 const DRIP_DATA_DIR = join(process.cwd(), 'data', 'drip');
 const DRIP_STATE_FILE = join(DRIP_DATA_DIR, 'state.json');

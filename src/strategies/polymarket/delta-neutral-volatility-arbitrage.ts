@@ -12,19 +12,19 @@
  */
 
 import { EventEmitter } from 'events';
-import logger from '../../utils/logger';
+import logger from '../../shared/utils/logger';
 import {
   DependencyGraph,
   MarketRelationship,
   RelationType,
-} from '../../types/semantic-relationships';
+} from '../../shared/types/semantic-relationships';
 import {
   DEFAULT_DELTA_NEUTRAL_CONFIG,
   DeltaNeutralConfig,
   DeltaNeutralPortfolio,
   HedgePosition,
   RebalanceSignal,
-} from '../../types/delta-neutral-types';
+} from '../../shared/types/delta-neutral-types';
 import { computePortfolioDelta } from './delta-calculator';
 import { DeltaNeutralPortfolioMonitor } from './delta-neutral-portfolio-monitor';
 

@@ -4,12 +4,12 @@
  * Validates relationship structure and filters low-confidence results.
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import {
   RelationType,
   type MarketRelationship,
   type DependencyGraph,
-} from '../types/semantic-relationships';
+} from '../shared/types/semantic-relationships';
 
 /** Minimum confidence threshold — relationships below this are discarded */
 const MIN_CONFIDENCE = 0.5;

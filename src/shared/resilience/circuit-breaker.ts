@@ -1,5 +1,5 @@
 // Circuit breaker pattern - auto-disable failing components to prevent cascade failures
-import { logger } from '../core/logger.js';
+import { logger } from '../../core/logger.js';
 
 export type CircuitState = 'closed' | 'open' | 'half-open';
 

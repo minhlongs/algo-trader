@@ -12,7 +12,7 @@
 
 import { Router, Request, Response } from 'express';
 import { UsageMeteringService } from '../../billing/usage-metering';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 
 export const revenueRouter: Router = Router();
 const usageMetering = UsageMeteringService.getInstance();

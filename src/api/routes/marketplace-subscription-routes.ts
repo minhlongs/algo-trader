@@ -14,7 +14,7 @@ import type { Router as RouterType } from 'express';
 import { z } from 'zod';
 import { SubscriptionService } from '../../marketplace/services/subscription.service';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 
 export const marketplaceSubscriptionRouter: RouterType = Router();
 

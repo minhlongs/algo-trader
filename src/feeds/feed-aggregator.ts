@@ -5,7 +5,7 @@
  */
 
 import { WebSocketMessage } from './websocket-client';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { BinanceWebSocketClient, BinanceOrderBook, BinanceTrade, BinanceTicker } from './binance-ws';
 import { OKXWebSocketClient, OKXOrderBook, OKXTrade, OKXTicker } from './okx-ws';
 import { BybitWebSocketClient, BybitOrderBook, BybitTrade, BybitTicker } from './bybit-ws';

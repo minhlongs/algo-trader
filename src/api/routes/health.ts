@@ -7,7 +7,7 @@
 
 import { Router, Request, Response } from 'express';
 import { getRedisClient } from '../../redis';
-import { getDbClient } from '../../db/postgres-client';
+import { getDbClient } from '../../shared/db/postgres-client';
 import { TradingEngine } from '../../engine';
 import { isQwenEnabled, isKillSwitchActive } from '../../wiring/qwen-drawdown-monitor';
 

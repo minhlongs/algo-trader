@@ -4,8 +4,8 @@
  * Fee model: Poly 2% + Kalshi 3% = 5% total; min net edge 2.5%.
  */
 
-import { logger } from '../utils/logger';
-import { getMessageBus } from '../messaging/index';
+import { logger } from '../shared/utils/logger';
+import { getMessageBus } from '../shared/messaging/index';
 import { getLatestKalshiPrices, KalshiMarket } from '../feeds/kalshi-price-feed';
 
 // ---------------------------------------------------------------------------

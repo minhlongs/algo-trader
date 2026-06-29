@@ -8,7 +8,7 @@ import { FeedAggregator, UnifiedOrderBook, UnifiedTrade, UnifiedTicker } from '.
 import { SpreadDetector, ArbitrageOpportunity as SpreadOpportunity } from './spread-detector';
 import { ExecutionEngine, ArbitrageOpportunity, ArbitrageLeg } from './types';
 import { EventEmitter } from 'events';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface TradingLoopConfig {
   symbols: string[];

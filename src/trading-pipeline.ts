@@ -16,7 +16,7 @@ import { TieredDrawdownBreaker, type TieredDrawdownConfig } from './risk/tiered-
 import { TwapExecutor, type TwapConfig } from './execution/twap-executor';
 import { WalletManager, type WalletLabel, type WalletTrade } from './wallet/wallet-manager';
 import { ImmutableTradeAudit } from './audit/immutable-trade-audit';
-import { logger } from './utils/logger';
+import { logger } from './shared/utils/logger';
 
 export interface TradingPipelineConfig {
   /** Initial portfolio value in USD (used to bootstrap drawdown breaker) */

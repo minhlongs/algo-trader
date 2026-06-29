@@ -7,9 +7,9 @@
  * Singleton: start()/stop()/reset() for test isolation.
  */
 
-import { query } from '../db/postgres-client';
+import { query } from '../shared/db/postgres-client';
 import { telegramSignalPusher } from '../signal/telegram-signal-pusher';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import {
   qwenPaperPnlPct,
   setQwenKillSwitch,
@@ -17,7 +17,7 @@ import {
   qwenDrawdownMonitorLastRunTs,
   qwenDrawdownPnlQueryErrorsTotal,
 } from '../middleware/prometheus-metrics';
-import { getTracer } from '../utils/tracing';
+import { getTracer } from '../shared/utils/tracing';
 
 /** Default check interval: 6 hours */
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;

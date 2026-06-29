@@ -9,7 +9,7 @@
 
 import { EventEmitter } from 'events';
 import type { Response } from 'express';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import type { Signal } from './signal-types';
 
 const SSE_HEARTBEAT_MS = 20_000; // keep-alive ping every 20s

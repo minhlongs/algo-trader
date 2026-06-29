@@ -3,7 +3,7 @@
  * ROIaaS Phase 6 - Complete governance system with retention, batch ops, and exports
  */
 
-import { config } from '../config/env';
+import { config } from '../shared/config/env';
 import { AuditLogExporter } from './exporters';
 import { AuditLogRetention } from './retention';
 import { AuditLogValidators } from './validators';

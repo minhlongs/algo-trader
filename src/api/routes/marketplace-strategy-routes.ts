@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { getStrategyLoader } from '../../strategies/loader';
 import { MarketplaceService } from '../../marketplace/services/marketplace.service';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
-import { logger } from '../../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import type { StrategyCategory } from '../../marketplace/models/types';
 
 export const marketplaceStrategyRouter: RouterType = Router();

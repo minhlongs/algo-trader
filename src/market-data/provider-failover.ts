@@ -4,7 +4,7 @@
  * Automatic failover with circuit breaker pattern
  */
 
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import {
   ProviderHealthStatus,
   MarketDataSource,

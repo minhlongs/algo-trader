@@ -9,8 +9,8 @@
  * - Payment status checking via REST API
  */
 
-import { logger } from '../utils/logger';
-import { LicenseTier } from '../types/license';
+import { logger } from '../shared/utils/logger';
+import { LicenseTier } from '../shared/types/license';
 
 // NOWPayments IPN payload from webhook
 export interface NowPaymentsIpnPayload {

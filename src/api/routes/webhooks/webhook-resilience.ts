@@ -8,7 +8,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { logger } from '../../../utils/logger';
+import { logger } from '../../../shared/utils/logger';
 
 export interface WebhookEvent {
   id: string;           // idempotency key (from webhook payload)

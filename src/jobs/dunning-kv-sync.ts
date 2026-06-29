@@ -16,7 +16,7 @@
 import { DunningService } from '../billing/dunning-service';
 import { LicenseService } from '../billing/license-service';
 import { AuditLogService } from '../audit/audit-log-service';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 interface SyncResult {
   timestamp: string;

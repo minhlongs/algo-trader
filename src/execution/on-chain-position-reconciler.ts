@@ -9,9 +9,9 @@
 
 import { ethers } from 'ethers';
 import { getRedisClient, type RedisClientType } from '../redis';
-import { getMessageBus } from '../messaging';
-import { Topics } from '../messaging/topic-schema';
-import { logger } from '../utils/logger';
+import { getMessageBus } from '../shared/messaging';
+import { Topics } from '../shared/messaging/topic-schema';
+import { logger } from '../shared/utils/logger';
 
 /** Polymarket CTF contract address on Polygon */
 const CTF_CONTRACT_ADDRESS = '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045';

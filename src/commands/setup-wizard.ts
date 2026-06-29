@@ -4,7 +4,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { join } from 'path';
 import * as readline from 'readline';
 

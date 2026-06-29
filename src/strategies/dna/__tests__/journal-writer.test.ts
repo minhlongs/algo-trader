@@ -18,10 +18,10 @@ import {
 } from '../journal-writer.js';
 
 // Mock the postgres client, logger, and prometheus counter
-vi.mock('../../../db/postgres-client.js', () => ({
+vi.mock('../../../shared/db/postgres-client.js', () => ({
   query: vi.fn(),
 }));
-vi.mock('../../../utils/logger.js', () => ({
+vi.mock('../../../shared/utils/logger.js', () => ({
   logger: {
     error: vi.fn(),
   },
@@ -32,8 +32,8 @@ vi.mock('../../../middleware/prometheus-metrics.js', () => ({
   },
 }));
 
-import { query as pgQuery } from '../../../db/postgres-client.js';
-import { logger } from '../../../utils/logger.js';
+import { query as pgQuery } from '../../../shared/db/postgres-client.js';
+import { logger } from '../../../shared/utils/logger.js';
 import { journalWriteErrorsTotal } from '../../../middleware/prometheus-metrics.js';
 
 const q = vi.mocked(pgQuery);

@@ -2,7 +2,7 @@
  * HMAC verifier implementation discipline 8-invariant sync — second
  * security-critical edge (complementary to #193).
  *
- * `src/utils/hmac-verifier.ts` provides the primitive used by signal-
+ * `src/shared/utils/hmac-verifier.ts` provides the primitive used by signal-
  * ingest (#193) and any future webhook auth. Drift manifests as:
  *   - `===` comparison instead of `timingSafeEqual` → timing-attack
  *     surface leaks per-byte match info over thousands of requests
@@ -74,7 +74,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const VERIFIER_FILE = resolve(REPO_ROOT, 'src/utils/hmac-verifier.ts');
+const VERIFIER_FILE = resolve(REPO_ROOT, 'src/shared/utils/hmac-verifier.ts');
 
 const EXPECTED_DEFAULT_WINDOW_MS = 300_000;
 

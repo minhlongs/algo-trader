@@ -5,7 +5,7 @@
  * State is persisted to ~/.cashclaw/wallets.json to survive PM2 restarts.
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { writeJsonState, readJsonState, cashclawPath } from '../persistence/file-store';
 
 export type WalletLabel = 'own-capital' | `managed-${string}`;

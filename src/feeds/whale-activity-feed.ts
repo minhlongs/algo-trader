@@ -6,8 +6,8 @@
  * Poll interval: configurable, default 30s
  */
 
-import { logger } from '../utils/logger';
-import { getMessageBus } from '../messaging/index';
+import { logger } from '../shared/utils/logger';
+import { getMessageBus } from '../shared/messaging/index';
 
 // ---------------------------------------------------------------------------
 // Public types (also consumed by whale-copy-trader)

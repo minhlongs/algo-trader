@@ -6,7 +6,7 @@
  * Phase 25 — Paper Trading CLI
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { getPaperExecutor, PaperExecutor } from '../execution/paper-executor';
 import { getPaperPnlTracker } from '../strategies/paper-trading/paper-pnl-tracker';
 import { getCrossPlatformArbDetector } from '../strategies/cross-platform-arb';

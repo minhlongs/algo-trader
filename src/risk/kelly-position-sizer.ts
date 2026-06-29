@@ -3,7 +3,7 @@
  * Quarter-Kelly default for managed capital safety, configurable for own accounts.
  * Hard cap: no single position > 5% of portfolio.
  */
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface KellyConfig {
   kellyFraction: number;

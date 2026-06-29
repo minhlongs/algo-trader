@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Request, Response } from 'express';
-import { LicenseTier, LicenseStatus } from '../../types/license';
-import type { License } from '../../types/license';
+import { LicenseTier, LicenseStatus } from '../../shared/types/license';
+import type { License } from '../../shared/types/license';
 
 // ---------------------------------------------------------------------------
 // Mock dependencies BEFORE importing the module under test
@@ -34,7 +34,7 @@ vi.mock('../../billing/license-service', () => ({
   },
 }));
 
-vi.mock('../../utils/logger', () => ({
+vi.mock('../../shared/utils/logger', () => ({
   logger: {
     warn: vi.fn(),
     error: vi.fn(),

@@ -5,7 +5,7 @@
  * Handles SIGTERM gracefully — cancels remaining chunks.
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface TwapConfig {
   /** Min chunk size in USD (default $500) */

@@ -3,7 +3,7 @@
  * Database operations for marketplace_revenue_shares table
  */
 
-import { query } from '../../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import type { IMarketplaceRevenueShare, RevenueShareStatus, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
 export interface RevenueShareFilters {

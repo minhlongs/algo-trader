@@ -6,8 +6,8 @@
  * Gamma API: https://gamma-api.polymarket.com/markets?closed=false&limit=100
  */
 
-import { logger } from '../utils/logger';
-import type { GammaMarket, MarketPromptBatch } from '../types/semantic-relationships';
+import { logger } from '../shared/utils/logger';
+import type { GammaMarket, MarketPromptBatch } from '../shared/types/semantic-relationships';
 
 const GAMMA_API_BASE = process.env.GAMMA_API_URL || 'https://gamma-api.polymarket.com';
 const FETCH_LIMIT = 100;
