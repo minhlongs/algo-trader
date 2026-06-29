@@ -57,8 +57,8 @@ describe('Desk CLI Contract', () => {
 
   // ── 2. CLI command modules exist ───────────────────────────────────
   describe('CLI commands', () => {
-    const commandsDir = join(SRC_ROOT, 'commands');
-    const cliDir = join(SRC_ROOT, 'cli');
+    const commandsDir = join(SRC_ROOT, 'desk', 'commands');
+    const cliDir = join(SRC_ROOT, 'desk', 'cli');
 
     it('commands/ directory has subcommands', () => {
       const cmdExists = existsSync(commandsDir);
@@ -96,7 +96,7 @@ describe('Desk CLI Contract', () => {
     });
 
     it('CLI commands use commander Command objects', () => {
-      const cmdsDir = join(SRC_ROOT, 'commands');
+      const cmdsDir = join(SRC_ROOT, 'desk', 'commands');
       if (!existsSync(cmdsDir)) return;
 
       const files = findTsFiles(cmdsDir).filter(f => !f.includes('__tests__'));
@@ -143,7 +143,7 @@ describe('Desk CLI Contract', () => {
     });
 
     it('strategy files do not import platform-specific modules', () => {
-      const stratDir = join(SRC_ROOT, 'strategies');
+      const stratDir = join(SRC_ROOT, 'desk', 'strategies');
       if (!existsSync(stratDir)) return;
 
       const files = findTsFiles(stratDir).filter(f => !f.includes('__tests__'));

@@ -90,9 +90,11 @@ describe('Platform Tier-Gate Contract', () => {
       // Check multiple possible locations
       const candidates = [
         join(SRC_ROOT, 'shared', 'types', 'license.ts'),
+        join(SRC_ROOT, 'platform', 'middleware', 'feature-gate.ts'),
         join(gateDir, 'validators.ts'),
         join(gateDir, 'config', 'tier-config.ts'),
-        join(SRC_ROOT, 'middleware', 'feature-gate.ts'),
+        join(SRC_ROOT, 'desk', 'gate', 'validators.ts'),
+        join(SRC_ROOT, 'desk', 'gate', 'config', 'tier-config.ts'),
       ];
       let found = false;
       for (const c of candidates) {
@@ -111,7 +113,7 @@ describe('Platform Tier-Gate Contract', () => {
   // ── 3. API routes reference tier gating ────────────────────────────
   describe('API route tier protection', () => {
     it('API routes use auth middleware or requireTier', () => {
-      const routesDir = join(SRC_ROOT, 'api', 'routes');
+      const routesDir = join(SRC_ROOT, 'platform', 'api', 'routes');
       if (!existsSync(routesDir)) return;
       const files = findTsFiles(routesDir).filter(f => !f.includes('__tests__'));
       const unprotected: string[] = [];

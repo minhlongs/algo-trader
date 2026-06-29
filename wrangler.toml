@@ -3,7 +3,7 @@
 # Main app runs on VPS (Docker), CF provides CDN + DDoS protection
 
 name = "algo-trader"
-main = "src/workers/edge-proxy.ts"
+main = "src/platform/workers/edge-proxy.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 

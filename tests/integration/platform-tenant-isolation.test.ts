@@ -60,18 +60,14 @@ describe('Platform Tenant-Isolation Contract', () => {
     it('tenant-filter utility exists in platform or raas', () => {
       const candidates = [
         join(platformDir, 'db', 'tenant-filter.ts'),
-        join(SRC_ROOT, 'raas', 'subscriber-tenant-isolator.ts'),
+        join(platformDir, 'raas', 'subscriber-tenant-isolator.ts'),
       ];
       const found = candidates.some(c => existsSync(c));
-      // If platform/ doesn't exist yet, check current raas/ location
-      expect(
-        found || existsSync(join(SRC_ROOT, 'raas', 'subscriber-tenant-isolator.ts')),
-        'tenant isolation infrastructure must exist',
-      ).toBe(true);
+      expect(found, 'tenant isolation infrastructure must exist').toBe(true);
     });
 
     it('subscriber-tenant-isolator exports buildTenantFilter or equivalent', () => {
-      const isolatorFile = join(SRC_ROOT, 'raas', 'subscriber-tenant-isolator.ts');
+      const isolatorFile = join(platformDir, 'raas', 'subscriber-tenant-isolator.ts');
       if (!existsSync(isolatorFile)) return;
       const content = readFileSync(isolatorFile, 'utf8');
       const hasBuildFilter = /buildTenantFilter|tenantClause|tenantFilter/.test(content);
@@ -83,7 +79,7 @@ describe('Platform Tenant-Isolation Contract', () => {
   // ── 2. Platform DB queries use tenant filtering ────────────────────
   describe('Platform query tenant isolation', () => {
     it('raas/ modules reference tenantId in DB operations', () => {
-      const raasDir = join(SRC_ROOT, 'raas');
+      const raasDir = join(platformDir, 'raas');
       if (!existsSync(raasDir)) return;
       const files = findTsFiles(raasDir).filter(f => !isTestFile(f));
       const withDbQuery = files.filter(f => {
@@ -107,7 +103,7 @@ describe('Platform Tenant-Isolation Contract', () => {
     });
 
     it('marketplace/ repositories reference tenantId', () => {
-      const mktRepoDir = join(SRC_ROOT, 'marketplace', 'repositories');
+      const mktRepoDir = join(platformDir, 'marketplace', 'repositories');
       if (!existsSync(mktRepoDir)) return;
       const files = findTsFiles(mktRepoDir).filter(f => !isTestFile(f));
       const violations: string[] = [];
@@ -129,7 +125,7 @@ describe('Platform Tenant-Isolation Contract', () => {
   // ── 3. Desk modules must NOT have tenant references ────────────────
   describe('Desk module tenant absence', () => {
     it('strategies/ has no tenantId references', () => {
-      const stratDir = join(SRC_ROOT, 'strategies');
+      const stratDir = join(SRC_ROOT, 'desk', 'strategies');
       if (!existsSync(stratDir)) return;
       const files = findTsFiles(stratDir).filter(f => !isTestFile(f));
       const violations: string[] = [];
@@ -151,7 +147,7 @@ describe('Platform Tenant-Isolation Contract', () => {
     });
 
     it('execution/ has no tenantId references', () => {
-      const execDir = join(SRC_ROOT, 'execution');
+      const execDir = join(SRC_ROOT, 'desk', 'execution');
       if (!existsSync(execDir)) return;
       const files = findTsFiles(execDir).filter(f => !isTestFile(f));
       const violations: string[] = [];
