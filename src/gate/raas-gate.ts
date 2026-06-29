@@ -6,7 +6,7 @@
  * Reference: docs/RAAS_API_ENDPOINTS.md, docs/LICENSE_GATING.md
  */
 
-import { LicenseService } from '../billing/license-service';
+import { LicenseService } from '../platform/billing/license-service';
 import type { License } from '../shared/types/license';
 import { validateLicense } from './validators';
 

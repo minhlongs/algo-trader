@@ -13,8 +13,8 @@
  *   # Or via cron: 0 2 * * * (daily at 2 AM)
  */
 
-import { DunningService } from '../billing/dunning-service';
-import { LicenseService } from '../billing/license-service';
+import { DunningService } from '../platform/billing/dunning-service';
+import { LicenseService } from '../platform/billing/license-service';
 import { AuditLogService } from '../audit/audit-log-service';
 import { logger } from '../shared/utils/logger';
 

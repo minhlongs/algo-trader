@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type VolatilityTargetingConfig,
   type VolatilityTargetingDeps,
-} from '../../src/strategies/polymarket/volatility-targeting.js';
+} from '../../src/desk/strategies/polymarket/volatility-targeting.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

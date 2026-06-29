@@ -2,7 +2,7 @@
  * Better-Auth server configuration discipline 8-invariant sync — first
  * auth-server substrate edge.
  *
- * `src/auth/auth-server.ts` defines the Better-Auth instance mounted at
+ * `src/platform/auth/auth-server.ts` defines the Better-Auth instance mounted at
  * `/api/auth/*` by Express. Drift manifests as:
  *   - Missing `BETTER_AUTH_SECRET` fallback → auth silently runs with
  *     a hardcoded dev secret in production (CRITICAL)
@@ -74,7 +74,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const AUTH_FILE = resolve(REPO_ROOT, 'src/auth/auth-server.ts');
+const AUTH_FILE = resolve(REPO_ROOT, 'src/platform/auth/auth-server.ts');
 
 const REQUIRED_TRUSTED_ORIGINS = [
   'https://cashclaw.cc',

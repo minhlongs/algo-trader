@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type MarkovChainPredictorConfig,
   type MarkovChainPredictorDeps,
-} from '../../src/strategies/polymarket/markov-chain-predictor.js';
+} from '../../src/desk/strategies/polymarket/markov-chain-predictor.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

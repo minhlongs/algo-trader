@@ -2,7 +2,7 @@
  * Health endpoint response-contract discipline 8-invariant sync — first
  * HTTP-observability substrate edge.
  *
- * `src/api/routes/health.ts` is the operator-facing uptime contract.
+ * `src/platform/api/routes/health.ts` is the operator-facing uptime contract.
  * Downstream consumers:
  *   - Pingdom / Better-Stack uptime monitors curl /health and parse
  *     status==='healthy'
@@ -93,7 +93,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const HEALTH_FILE = resolve(REPO_ROOT, 'src/api/routes/health.ts');
+const HEALTH_FILE = resolve(REPO_ROOT, 'src/platform/api/routes/health.ts');
 
 const REQUIRED_RESPONSE_FIELDS = [
   'status',
@@ -187,7 +187,7 @@ describe('Health endpoint response-contract discipline — 44th edge (TETRATETRA
       'APP_VERSION constant missing — version field would become uninitialized',
     ).toBe(true);
     expect(
-      /require\(\s*['"]\.\.\/\.\.\/\.\.\/package\.json['"]/.test(src),
+      /require\(\s*['"]\.\.\/\.\.\/\.\.\/\.\.\/package\.json['"]/.test(src),
       'package.json require path missing — version resolution broken',
     ).toBe(true);
   });

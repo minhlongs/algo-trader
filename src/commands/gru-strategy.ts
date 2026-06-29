@@ -4,7 +4,7 @@
  * Run GRU neural network trading strategy live or in backtest mode.
  */
 
-import { GruStrategy } from '../strategies/GruStrategy';
+import { GruStrategy } from '../desk/strategies/GruStrategy';
 import { logger } from '../shared/utils/logger';
 import type { OhlcvData } from '../ml/gru/data-preprocessor';
 

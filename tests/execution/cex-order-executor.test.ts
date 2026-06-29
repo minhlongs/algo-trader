@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CexOrderExecutor } from '../../src/execution/cex-order-executor.js';
+import { CexOrderExecutor } from '../../src/desk/execution/cex-order-executor.js';
 import type { BinanceSpotClient } from '../../src/markets/cex/binance-spot-client.js';
 import type { CexOrderResponse } from '../../src/markets/cex/cex-types.js';
 import type { ISignal } from '../../src/interfaces/IStrategy.js';

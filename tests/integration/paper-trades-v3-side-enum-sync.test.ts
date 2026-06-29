@@ -69,7 +69,7 @@
  * is fully covered.
  *
  * Non-goals: asserting the LIVE crypto trading path's `side: 'BUY' | 'SELL'`
- * types (they live in `src/polymarket/*` and `src/execution/*` and don't flow
+ * types (they live in `src/polymarket/*` and `src/desk/execution/*` and don't flow
  * into this table), validating prediction-market resolution semantics, or
  * constraining when `'BUY' / 'SELL'` should graduate from RESERVED to ACTIVE
  * (that's a future-PR policy decision).

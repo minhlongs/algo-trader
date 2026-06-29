@@ -16,7 +16,7 @@ import {
   qwenSignalsLoopJournalWriteErrorsTotal,
   qwenStrategyReviewBacklogSize,
   qwenStrategyReviewOldestPendingAgeSec,
-} from '../middleware/prometheus-metrics';
+} from '../platform/middleware/prometheus-metrics';
 import { getTracer } from '../shared/utils/tracing';
 
 const DEFAULT_INTERVAL_MS = 6 * 3600 * 1000;

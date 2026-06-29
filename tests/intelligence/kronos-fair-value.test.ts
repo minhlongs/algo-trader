@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getKronosFairValue } from '../../src/intelligence/kronos-fair-value.js';
+import { getKronosFairValue } from '../../src/desk/intelligence/kronos-fair-value.js';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);

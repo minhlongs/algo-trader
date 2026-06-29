@@ -3,7 +3,7 @@
  * first security-critical endpoint contract edge. PENTACONTAGON milestone
  * (50-gon = 2.5x icosagon).
  *
- * `src/api/routes/signal-ingest-routes.ts` is the public-internet
+ * `src/platform/api/routes/signal-ingest-routes.ts` is the public-internet
  * endpoint receiving Qwen M1 Max trade signals via HMAC-authenticated
  * POST. Every invariant here is security-critical:
  *   - Missing env-guard on `QWEN_INGEST_HMAC_SECRET` → deploy without
@@ -85,7 +85,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const INGEST_FILE = resolve(REPO_ROOT, 'src/api/routes/signal-ingest-routes.ts');
+const INGEST_FILE = resolve(REPO_ROOT, 'src/platform/api/routes/signal-ingest-routes.ts');
 
 const ALLOWED_STRATEGIES_EXPECTED = ['qwen-m1max-v1', 'deepseek-m1max-v1'];
 const EXPECTED_RATE_LIMIT_WINDOW_MS = 60_000;
@@ -106,7 +106,7 @@ describe('Signal-ingest HMAC contract discipline — 50th edge (PENTACONTAGON mi
 
   it('verifyHmacSha256 imported AND invoked', () => {
     expect(
-      /from\s+['"]\.\.\/\.\.\/shared\/utils\/hmac-verifier['"]/.test(src),
+      /from\s+['"]\.\.\/\.\.\/\.\.\/shared\/utils\/hmac-verifier['"]/.test(src),
       'hmac-verifier import path drifted',
     ).toBe(true);
     expect(

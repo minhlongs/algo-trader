@@ -7,9 +7,9 @@
  */
 
 import { logger } from '../shared/utils/logger';
-import { getPaperExecutor, PaperExecutor } from '../execution/paper-executor';
-import { getPaperPnlTracker } from '../strategies/paper-trading/paper-pnl-tracker';
-import { getCrossPlatformArbDetector } from '../strategies/cross-platform-arb';
+import { getPaperExecutor, PaperExecutor } from '../desk/execution/paper-executor';
+import { getPaperPnlTracker } from '../desk/strategies/paper-trading/paper-pnl-tracker';
+import { getCrossPlatformArbDetector } from '../desk/strategies/cross-platform-arb';
 
 export interface PaperCommandOptions {
   symbol?: string;

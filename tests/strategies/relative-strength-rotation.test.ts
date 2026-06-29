@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type RelativeStrengthRotationConfig,
   type RelativeStrengthRotationDeps,
-} from '../../src/strategies/polymarket/relative-strength-rotation.js';
+} from '../../src/desk/strategies/polymarket/relative-strength-rotation.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 import type { GammaMarketGroup } from '../../src/polymarket/gamma-client.js';
 

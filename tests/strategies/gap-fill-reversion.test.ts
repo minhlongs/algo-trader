@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type GapFillReversionConfig,
   type GapFillReversionDeps,
-} from '../../src/strategies/polymarket/gap-fill-reversion.js';
+} from '../../src/desk/strategies/polymarket/gap-fill-reversion.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

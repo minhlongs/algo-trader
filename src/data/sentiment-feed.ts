@@ -2,7 +2,7 @@
 // Sources: NewsAPI, CoinGecko, Twitter/X, AlphaEar FinBERT (sidecar)
 // AlphaEar provides deep FinBERT analysis when sidecar is available
 
-import { alphaear } from '../intelligence/alphaear-client.js';
+import { alphaear } from '../desk/intelligence/alphaear-client.js';
 
 export type SentimentScore = 'positive' | 'negative' | 'neutral';
 

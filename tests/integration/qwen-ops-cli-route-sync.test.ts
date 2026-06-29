@@ -3,8 +3,8 @@
  *
  * `scripts/qwen-ops.sh` is the solo-operator CLI wrapping the `/api/v1/admin/qwen/*`
  * admin surface + the unauth `/health` + `/metrics` surfaces. If a route is
- * renamed or retired in `src/api/routes/admin-qwen-routes.ts` (or the mount
- * prefix in `src/api/server.ts`) without updating the CLI, the 3am operator
+ * renamed or retired in `src/platform/api/routes/admin-qwen-routes.ts` (or the mount
+ * prefix in `src/platform/api/server.ts`) without updating the CLI, the 3am operator
  * running `./scripts/qwen-ops.sh reviews` gets HTTP 404 → chases a broken URL
  * while the golden-minute SLO bleeds. This test asserts every URL the CLI
  * issues resolves to an actual handler in code.
@@ -27,8 +27,8 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const CLI_PATH = resolve(__dirname, '../../scripts/qwen-ops.sh');
-const ROUTES_PATH = resolve(__dirname, '../../src/api/routes/admin-qwen-routes.ts');
-const SERVER_PATH = resolve(__dirname, '../../src/api/server.ts');
+const ROUTES_PATH = resolve(__dirname, '../../src/platform/api/routes/admin-qwen-routes.ts');
+const SERVER_PATH = resolve(__dirname, '../../src/platform/api/server.ts');
 
 const ADMIN_MOUNT = '/api/v1/admin/qwen';
 

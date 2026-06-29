@@ -11,9 +11,9 @@
  * All state persists to ~/.cashclaw/ — survives PM2 restarts.
  */
 
-import { KellyPositionSizer, type KellyConfig } from './risk/kelly-position-sizer';
-import { TieredDrawdownBreaker, type TieredDrawdownConfig } from './risk/tiered-drawdown-breaker';
-import { TwapExecutor, type TwapConfig } from './execution/twap-executor';
+import { KellyPositionSizer, type KellyConfig } from './desk/risk/kelly-position-sizer';
+import { TieredDrawdownBreaker, type TieredDrawdownConfig } from './desk/risk/tiered-drawdown-breaker';
+import { TwapExecutor, type TwapConfig } from './desk/execution/twap-executor';
 import { WalletManager, type WalletLabel, type WalletTrade } from './wallet/wallet-manager';
 import { ImmutableTradeAudit } from './audit/immutable-trade-audit';
 import { logger } from './shared/utils/logger';

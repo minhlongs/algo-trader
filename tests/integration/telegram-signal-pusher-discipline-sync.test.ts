@@ -2,7 +2,7 @@
  * TelegramSignalPusher primitive discipline 10-invariant sync — eighth
  * signal-pipeline substrate edge.
  *
- * `src/signal/telegram-signal-pusher.ts` fans out signals to Telegram
+ * `src/desk/signal/telegram-signal-pusher.ts` fans out signals to Telegram
  * chat IDs with per-tier throttling + global 30 msg/sec Telegram API
  * limit guard. Drift manifests as:
  *   - Per-tier throttle drift (FREE → hourly instead of daily) →
@@ -79,7 +79,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const TG_FILE = resolve(REPO_ROOT, 'src/signal/telegram-signal-pusher.ts');
+const TG_FILE = resolve(REPO_ROOT, 'src/desk/signal/telegram-signal-pusher.ts');
 
 function readTg(): string {
   return readFileSync(TG_FILE, 'utf8');

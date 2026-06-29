@@ -2,7 +2,7 @@
  * SignalRestCache primitive discipline 9-invariant sync — ninth
  * signal-pipeline substrate edge.
  *
- * `src/signal/signal-rest-cache.ts` is the Redis-backed KV cache for
+ * `src/desk/signal/signal-rest-cache.ts` is the Redis-backed KV cache for
  * paginated signal REST responses. Drift manifests as:
  *   - CACHE_TTL_SEC lengthens from 10s → 5min → stale signals served
  *     (signal-feed UX degradation; confidence/expiresAt lock broken)
@@ -78,7 +78,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const CACHE_FILE = resolve(REPO_ROOT, 'src/signal/signal-rest-cache.ts');
+const CACHE_FILE = resolve(REPO_ROOT, 'src/desk/signal/signal-rest-cache.ts');
 
 const REQUIRED_EXPORTS = ['setCachedSignals', 'getCachedSignals', 'invalidateSignalCache'];
 

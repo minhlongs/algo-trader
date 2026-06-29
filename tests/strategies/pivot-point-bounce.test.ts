@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type PivotPointBounceConfig,
   type PivotPointBounceDeps,
-} from '../../src/strategies/polymarket/pivot-point-bounce.js';
+} from '../../src/desk/strategies/polymarket/pivot-point-bounce.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

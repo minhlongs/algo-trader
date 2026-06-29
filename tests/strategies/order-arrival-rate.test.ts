@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type OrderArrivalRateConfig,
   type OrderArrivalRateDeps,
-} from '../../src/strategies/polymarket/order-arrival-rate.js';
+} from '../../src/desk/strategies/polymarket/order-arrival-rate.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

@@ -2,7 +2,7 @@
  * SignalDedupGuard primitive discipline 9-invariant sync — second
  * signal-pipeline substrate edge (complementary to #198 fan-out).
  *
- * `src/signal/signal-dedup-guard.ts` implements the in-memory dedup
+ * `src/desk/signal/signal-dedup-guard.ts` implements the in-memory dedup
  * primitive the SignalPublisher (#198) calls BEFORE saving to DB. Drift
  * manifests as:
  *   - buildId raw-string order changes → PR #198 buildId callsite
@@ -77,7 +77,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const DEDUP_FILE = resolve(REPO_ROOT, 'src/signal/signal-dedup-guard.ts');
+const DEDUP_FILE = resolve(REPO_ROOT, 'src/desk/signal/signal-dedup-guard.ts');
 
 const EXPECTED_CLEANUP_INTERVAL_MS = 60_000;
 

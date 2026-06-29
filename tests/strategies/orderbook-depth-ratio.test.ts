@@ -5,7 +5,7 @@ import {
   detectMomentum,
   createOrderbookDepthRatioTick,
   type OrderbookDepthDeps,
-} from '../../src/strategies/polymarket/orderbook-depth-ratio.js';
+} from '../../src/desk/strategies/polymarket/orderbook-depth-ratio.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

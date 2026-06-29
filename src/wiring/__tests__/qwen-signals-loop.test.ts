@@ -21,7 +21,7 @@ const { mockBacklogSizeGauge, mockOldestAgeGauge } = vi.hoisted(() => ({
   mockBacklogSizeGauge: { set: vi.fn() },
   mockOldestAgeGauge: { set: vi.fn() },
 }));
-vi.mock('../../middleware/prometheus-metrics.js', () => ({
+vi.mock('../../platform/middleware/prometheus-metrics.js', () => ({
   qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
   qwenStrategyReviewsResolvedTotal: { inc: vi.fn() },
   qwenSignalsLoopRunsTotal: { inc: vi.fn() },

@@ -6,7 +6,7 @@ import {
   detectBreakout,
   createVolCompressionBreakoutTick,
   type VolCompressionDeps,
-} from '../../src/strategies/polymarket/vol-compression-breakout.js';
+} from '../../src/desk/strategies/polymarket/vol-compression-breakout.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

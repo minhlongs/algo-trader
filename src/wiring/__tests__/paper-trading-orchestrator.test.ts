@@ -98,22 +98,22 @@ getVibeState: (...args: unknown[]) => mockGetVibeState(...args),
 }));
 
 // ─── Mock signal consensus swarm ────────────────────────────────────────────
-vi.mock('../../intelligence/signal-consensus-swarm', () => ({
+vi.mock('../../desk/intelligence/signal-consensus-swarm', () => ({
 runSwarmConsensus: (...args: unknown[]) => mockRunSwarmConsensus(...args),
 }));
 
 // ─── Mock signal validator ──────────────────────────────────────────────────
-vi.mock('../../intelligence/signal-validator', () => ({
+vi.mock('../../desk/intelligence/signal-validator', () => ({
 validateSignal: (...args: unknown[]) => mockValidateSignal(...args),
 }));
 
 // ─── Mock dual-level reflection engine ──────────────────────────────────────
-vi.mock('../../intelligence/dual-level-reflection-engine', () => ({
+vi.mock('../../desk/intelligence/dual-level-reflection-engine', () => ({
 reflectOnTrade: (...args: unknown[]) => mockReflectOnTrade(...args),
 }));
 
 // ─── Mock prediction accuracy tracker ──────────────────────────────────────
-vi.mock('../../intelligence/prediction-accuracy-tracker', () => ({
+vi.mock('../../desk/intelligence/prediction-accuracy-tracker', () => ({
 recordPrediction: (...args: unknown[]) => mockRecordPrediction(...args),
 startResolutionChecker: (...args: unknown[]) => mockStartResolutionChecker(...args),
 }));

@@ -31,10 +31,10 @@
  *   1. **Migration CHECK constraint** — `src/db/migrations/014_signal_feed.sql:10`:
  *        `confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1)`
  *      — authoritative range `[0, 1]` with inclusive bounds.
- *   2. **TS Signal interface** — `src/signal/signal-types.ts:14`:
+ *   2. **TS Signal interface** — `src/desk/signal/signal-types.ts:14`:
  *        `confidence: number;   // 0..1`
  *      — type is `number`, inline comment pins the semantic range.
- *   3. **TIER_SIGNAL_CONFIG thresholds** — `src/signal/signal-types.ts:32-48`:
+ *   3. **TIER_SIGNAL_CONFIG thresholds** — `src/desk/signal/signal-types.ts:32-48`:
  *        FREE.minConfidence = 0.7, PRO.minConfidence = 0.6,
  *        ENTERPRISE.minConfidence = 0.5 — all must lie within CHECK bounds.
  *   4. **Orchestrator gate constant** — `src/wiring/paper-trading-orchestrator.ts:87`:
@@ -96,7 +96,7 @@ const MIGRATION_PATH = resolve(
   REPO_ROOT,
   'src/db/migrations/014_signal_feed.sql',
 );
-const SIGNAL_TYPES_PATH = resolve(REPO_ROOT, 'src/signal/signal-types.ts');
+const SIGNAL_TYPES_PATH = resolve(REPO_ROOT, 'src/desk/signal/signal-types.ts');
 const ORCHESTRATOR_PATH = resolve(
   REPO_ROOT,
   'src/wiring/paper-trading-orchestrator.ts',

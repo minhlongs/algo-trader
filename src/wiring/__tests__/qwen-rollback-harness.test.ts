@@ -19,7 +19,7 @@ vi.mock('../../shared/db/postgres-client.js', () => ({
 
 // ─── Mock Telegram to avoid real HTTP calls ──────────────────────────────────
 // Note: vi.fn() inside factory — cannot reference outer variables (hoisting)
-vi.mock('../../signal/telegram-signal-pusher.js', () => ({
+vi.mock('../../desk/signal/telegram-signal-pusher.js', () => ({
   telegramSignalPusher: { sendAdminAlert: vi.fn().mockResolvedValue(true) },
 }));
 
@@ -28,7 +28,7 @@ const { mockDrawdownLastRunGauge, mockPnlQueryErrorsCounter } = vi.hoisted(() =>
   mockDrawdownLastRunGauge: { set: vi.fn() },
   mockPnlQueryErrorsCounter: { inc: vi.fn() },
 }));
-vi.mock('../../middleware/prometheus-metrics.js', () => ({
+vi.mock('../../platform/middleware/prometheus-metrics.js', () => ({
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
   setQwenKillSwitch: vi.fn(),
@@ -65,7 +65,7 @@ import {
   PaperGateError,
 } from '../qwen-live-eligibility-gate.js';
 
-import { telegramSignalPusher } from '../../signal/telegram-signal-pusher.js';
+import { telegramSignalPusher } from '../../desk/signal/telegram-signal-pusher.js';
 
 // Convenience accessor for the mocked sendAdminAlert (resolved after imports)
 const getMockAlert = () => vi.mocked(telegramSignalPusher.sendAdminAlert);

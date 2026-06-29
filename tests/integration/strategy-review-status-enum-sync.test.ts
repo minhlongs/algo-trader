@@ -4,11 +4,11 @@
  * The `status` column on `strategy_review_tasks` is declared in four surfaces
  * that must stay in lockstep:
  *   1. DB CHECK constraint in `src/db/migrations/017_strategy_review_tasks.sql`
- *   2. Admin route handler literals in `src/api/routes/admin-qwen-routes.ts`
+ *   2. Admin route handler literals in `src/platform/api/routes/admin-qwen-routes.ts`
  *      (default query-param value + UPDATE transition)
  *   3. Signals-loop backlog query in `src/wiring/qwen-signals-loop.ts`
  *      (`WHERE status = 'pending'` — backlog gauge source of truth)
- *   4. Prometheus metric help text in `src/middleware/prometheus-metrics.ts`
+ *   4. Prometheus metric help text in `src/platform/middleware/prometheus-metrics.ts`
  *      (operator-facing documentation of what the counter/gauge measures)
  *
  * Operators hitting `/api/v1/admin/qwen/strategy-reviews?status=...` or
@@ -51,9 +51,9 @@ import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
 const MIGRATION_PATH = resolve(REPO_ROOT, 'src/db/migrations/017_strategy_review_tasks.sql');
-const ROUTES_PATH = resolve(REPO_ROOT, 'src/api/routes/admin-qwen-routes.ts');
+const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/admin-qwen-routes.ts');
 const LOOP_PATH = resolve(REPO_ROOT, 'src/wiring/qwen-signals-loop.ts');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/middleware/prometheus-metrics.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 
 /** Migration values reserved for future use — documented but not yet emitted. */
 const RESERVED_STATUSES = new Set<string>(['acknowledged']);

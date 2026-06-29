@@ -2,7 +2,7 @@
  * Prometheus metric naming + HELP discipline 8-invariant sync — first
  * metric-registry naming-convention edge.
  *
- * `src/middleware/prometheus-metrics.ts` is the single source of truth
+ * `src/platform/middleware/prometheus-metrics.ts` is the single source of truth
  * for every Prometheus metric exposed on /metrics. Drift manifests as:
  *   - Metric name in camelCase (prom-client accepts but Prometheus
  *     recording rules / Grafana queries case-sensitive silently break)
@@ -83,7 +83,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_FILE = resolve(REPO_ROOT, 'src/middleware/prometheus-metrics.ts');
+const METRICS_FILE = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 
 const SNAKE_CASE_RE = /^[a-z][a-z0-9_]*$/;
 const MIN_HELP_LENGTH = 15;

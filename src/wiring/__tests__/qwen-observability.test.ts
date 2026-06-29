@@ -10,7 +10,7 @@ describe('L-tier Prometheus gauges', () => {
   beforeEach(() => vi.resetModules());
 
   it('exposes algo_trader_qwen_kill_switch_active with source label', async () => {
-    const mod = await import('../../middleware/prometheus-metrics.js');
+    const mod = await import('../../platform/middleware/prometheus-metrics.js');
     mod.setQwenKillSwitch('env', true);
     mod.setQwenKillSwitch('kv', false);
     const text = await mod.register.metrics();
@@ -19,7 +19,7 @@ describe('L-tier Prometheus gauges', () => {
   });
 
   it('exposes algo_trader_qwen_paper_gate_days_remaining, clamped to [0,30]', async () => {
-    const mod = await import('../../middleware/prometheus-metrics.js');
+    const mod = await import('../../platform/middleware/prometheus-metrics.js');
     mod.setQwenPaperGateDaysRemaining(42);
     let text = await mod.register.metrics();
     expect(text).toContain('algo_trader_qwen_paper_gate_days_remaining 30');
@@ -34,7 +34,7 @@ describe('L-tier Prometheus gauges', () => {
   });
 
   it('exposes algo_trader_qwen_drawdown_auto_disabled as 0|1', async () => {
-    const mod = await import('../../middleware/prometheus-metrics.js');
+    const mod = await import('../../platform/middleware/prometheus-metrics.js');
     mod.setQwenDrawdownAutoDisabled(true);
     let text = await mod.register.metrics();
     expect(text).toMatch(/algo_trader_qwen_drawdown_auto_disabled 1/);

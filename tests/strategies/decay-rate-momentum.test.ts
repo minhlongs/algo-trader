@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type DecayRateMomentumConfig,
   type DecayRateMomentumDeps,
-} from '../../src/strategies/polymarket/decay-rate-momentum.js';
+} from '../../src/desk/strategies/polymarket/decay-rate-momentum.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

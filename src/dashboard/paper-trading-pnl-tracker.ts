@@ -3,7 +3,7 @@
 
 import client from 'prom-client';
 import type { PaperPortfolio, PaperTrade } from '../wiring/paper-trading-orchestrator';
-import { register } from '../middleware/prometheus-metrics';
+import { register } from '../platform/middleware/prometheus-metrics';
 
 // ─── Public Interfaces ────────────────────────────────────────────────────────
 

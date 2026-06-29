@@ -5,7 +5,7 @@ import {
   findLeaderLaggards,
   createCrossEventDriftTick,
   type CrossEventDriftDeps,
-} from '../../src/strategies/polymarket/cross-event-drift.js';
+} from '../../src/desk/strategies/polymarket/cross-event-drift.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

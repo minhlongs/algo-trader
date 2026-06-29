@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type InfoAsymmetryScannerConfig,
   type InfoAsymmetryScannerDeps,
-} from '../../src/strategies/polymarket/info-asymmetry-scanner.js';
+} from '../../src/desk/strategies/polymarket/info-asymmetry-scanner.js';
 import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
 
 // -- Helper: build a mock orderbook ------------------------------------------

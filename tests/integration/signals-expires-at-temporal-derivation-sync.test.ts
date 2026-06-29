@@ -32,11 +32,11 @@
  *      asymmetry (ts/expires_at in ms, ttl in seconds) REQUIRES the `* 1000`
  *      conversion — a silent refactor to ms-ttl would break callers.
  *   2. **Writer derivation formula** —
- *      `src/signal/signal-publisher.ts:58`:
+ *      `src/desk/signal/signal-publisher.ts:58`:
  *        `expiresAt: ts + input.ttlSec * 1000,`
  *      — SOLE writer. The literal `* 1000` is the unit-conversion authority.
  *   3. **TS interface comment stating the formula** —
- *      `src/signal/signal-types.ts:17`:
+ *      `src/desk/signal/signal-types.ts:17`:
  *        `expiresAt: number;    // Unix ms = ts + ttl*1000`
  *      — explicitly documents the relationship. A drift where the comment
  *      says `ts*1000 + ttl` (operator-order swap) without updating the
@@ -106,8 +106,8 @@ const MIGRATION_PATH = resolve(
   REPO_ROOT,
   'src/db/migrations/014_signal_feed.sql',
 );
-const PUBLISHER_PATH = resolve(REPO_ROOT, 'src/signal/signal-publisher.ts');
-const TYPES_PATH = resolve(REPO_ROOT, 'src/signal/signal-types.ts');
+const PUBLISHER_PATH = resolve(REPO_ROOT, 'src/desk/signal/signal-publisher.ts');
+const TYPES_PATH = resolve(REPO_ROOT, 'src/desk/signal/signal-types.ts');
 
 /** Expected conversion factor (seconds → milliseconds). Pinned so a silent change to seconds-only math fails loudly. */
 const EXPECTED_MS_PER_SEC = 1000;

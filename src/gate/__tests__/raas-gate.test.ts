@@ -18,7 +18,7 @@ import RaasGate, {
   getDailyLimit,
   getOveragePrice,
 } from '../raas-gate';
-import { LicenseService } from '../billing/license-service';
+import { LicenseService } from '../platform/billing/license-service';
 import { LicenseTier, LicenseStatus, License } from '../../shared/types/license';
 
 // Import validators for direct function tests

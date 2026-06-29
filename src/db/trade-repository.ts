@@ -4,7 +4,7 @@
  */
 
 import { query } from './postgres-client';
-import { ExecutionResult } from '../execution/order-executor';
+import { ExecutionResult } from '../desk/execution/order-executor';
 import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
 
 export interface TradeRecord {

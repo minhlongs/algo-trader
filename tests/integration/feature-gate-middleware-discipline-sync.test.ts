@@ -2,7 +2,7 @@
  * Feature-gate tier-based access-control discipline 10-invariant sync —
  * first tier-ordinal-ranking substrate edge.
  *
- * `src/middleware/feature-gate.ts` is the Express-layer policy enforcer
+ * `src/platform/middleware/feature-gate.ts` is the Express-layer policy enforcer
  * that gates routes by license tier. Drift manifests as:
  *   - TIER_HIERARCHY reordered (PRO > ENTERPRISE) → premium users locked
  *     out of enterprise routes (revenue leak + support escalation)
@@ -95,7 +95,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const FEATURE_GATE_FILE = resolve(REPO_ROOT, 'src/middleware/feature-gate.ts');
+const FEATURE_GATE_FILE = resolve(REPO_ROOT, 'src/platform/middleware/feature-gate.ts');
 
 const CANONICAL_FEATURE_KEYS = [
   'signals.crossmarket',

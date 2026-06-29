@@ -9,7 +9,7 @@ import { initSentry } from './shared/utils/sentry-init';
 import { initTracing } from './shared/utils/tracing';
 import { runMigrations } from './shared/db/migration-runner';
 import { runGruStrategy } from './commands/gru-strategy';
-import { KronosStrategy } from './strategies/kronos-strategy';
+import { KronosStrategy } from './desk/strategies/kronos-strategy';
 import { runSetupWizard } from './commands/setup-wizard';
 import { runQuickstart } from './commands/quickstart';
 import { runActivateCommand } from './commands/activate-license';

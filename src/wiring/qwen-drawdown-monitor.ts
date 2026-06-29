@@ -8,7 +8,7 @@
  */
 
 import { query } from '../shared/db/postgres-client';
-import { telegramSignalPusher } from '../signal/telegram-signal-pusher';
+import { telegramSignalPusher } from '../desk/signal/telegram-signal-pusher';
 import { logger } from '../shared/utils/logger';
 import {
   qwenPaperPnlPct,
@@ -16,7 +16,7 @@ import {
   setQwenDrawdownAutoDisabled,
   qwenDrawdownMonitorLastRunTs,
   qwenDrawdownPnlQueryErrorsTotal,
-} from '../middleware/prometheus-metrics';
+} from '../platform/middleware/prometheus-metrics';
 import { getTracer } from '../shared/utils/tracing';
 
 /** Default check interval: 6 hours */

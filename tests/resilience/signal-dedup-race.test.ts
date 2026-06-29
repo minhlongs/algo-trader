@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SignalDedupGuard } from '../../src/signal/signal-dedup-guard';
-import { SignalTtlEnforcer } from '../../src/signal/signal-ttl-enforcer';
-import type { Signal } from '../../src/signal/signal-types';
+import { SignalDedupGuard } from '../../src/desk/signal/signal-dedup-guard';
+import { SignalTtlEnforcer } from '../../src/desk/signal/signal-ttl-enforcer';
+import type { Signal } from '../../src/desk/signal/signal-types';
 
 // ---------------------------------------------------------------------------
 // Helpers

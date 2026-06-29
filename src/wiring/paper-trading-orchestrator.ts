@@ -9,12 +9,12 @@ import { createMessageBus, getMessageBus } from '../shared/messaging/create-mess
 import { Topics } from '../shared/messaging/topic-schema';
 import { startNatsEventLoop } from './nats-event-loop';
 import { initVibeController, getVibeState } from './vibe-controller';
-import { runSwarmConsensus } from '../intelligence/signal-consensus-swarm';
-import { validateSignal } from '../intelligence/signal-validator';
-import { reflectOnTrade } from '../intelligence/dual-level-reflection-engine';
-import type { SignalCandidate } from '../intelligence/signal-validator';
-import type { TradeOutcome } from '../intelligence/dual-level-reflection-engine';
-import { recordPrediction, startResolutionChecker } from '../intelligence/prediction-accuracy-tracker';
+import { runSwarmConsensus } from '../desk/intelligence/signal-consensus-swarm';
+import { validateSignal } from '../desk/intelligence/signal-validator';
+import { reflectOnTrade } from '../desk/intelligence/dual-level-reflection-engine';
+import type { SignalCandidate } from '../desk/intelligence/signal-validator';
+import type { TradeOutcome } from '../desk/intelligence/dual-level-reflection-engine';
+import { recordPrediction, startResolutionChecker } from '../desk/intelligence/prediction-accuracy-tracker';
 import { logger } from '../shared/utils/logger';
 import { isQwenEnabled } from './qwen-drawdown-monitor';
 import { query } from '../shared/db/postgres-client';

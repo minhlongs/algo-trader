@@ -3,7 +3,7 @@
  * Auth verification (JWT Bearer), admin role checks, CORS with origin allowlist
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { verifyJwt } from '../api/auth-middleware.js';
+import { verifyJwt } from '../platform/api/auth-middleware.js';
 import type { Role } from '../users/subscription-tier.js';
 import { sendJson } from './dashboard-utils.js';
 

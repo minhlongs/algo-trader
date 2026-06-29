@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AlphaEarClient } from '../../src/intelligence/alphaear-client.js';
+import { AlphaEarClient } from '../../src/desk/intelligence/alphaear-client.js';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);

@@ -11,13 +11,13 @@
  * The enum is declared across three surfaces that must stay in lockstep:
  *
  *   1. **Metric declaration comment** — inline TS comment on the counter's
- *      `labelNames` line in `src/middleware/prometheus-metrics.ts`:
+ *      `labelNames` line in `src/platform/middleware/prometheus-metrics.ts`:
  *        `labelNames: ['result'] as const, // result: accepted | rejected`
  *      This is the code-local declaration of the intended vocabulary (the
  *      help-text string itself stays short — "Total Qwen signals ingested
  *      via /api/v1/signals/ingest" — and does NOT embed the enum).
  *   2. **Route emit sites** — `qwenSignalsTotal.inc({ result: 'X' })` calls
- *      in `src/api/routes/signal-ingest-routes.ts` (currently 2: `rejected`
+ *      in `src/platform/api/routes/signal-ingest-routes.ts` (currently 2: `rejected`
  *      on HMAC-failed path @ line 100, `accepted` on publish-success path
  *      @ line 135).
  *   3. **Docs declaration** — `docs/system-architecture.md` enumerates the
@@ -60,8 +60,8 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/middleware/prometheus-metrics.ts');
-const ROUTES_PATH = resolve(REPO_ROOT, 'src/api/routes/signal-ingest-routes.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
+const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/signal-ingest-routes.ts');
 const DOCS_PATH = resolve(REPO_ROOT, 'docs/system-architecture.md');
 
 /** Results declared in comment + docs but intentionally not yet emitted by route. */

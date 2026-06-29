@@ -14,7 +14,7 @@
 
 import { query } from '../shared/db/postgres-client';
 import { logger } from '../shared/utils/logger';
-import { setQwenPaperGateDaysRemaining } from '../middleware/prometheus-metrics';
+import { setQwenPaperGateDaysRemaining } from '../platform/middleware/prometheus-metrics';
 import { getTracer } from '../shared/utils/tracing';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;

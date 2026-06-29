@@ -23,7 +23,7 @@ vi.mock('../../src/shared/db/postgres-client.js', () => ({
   query: (...args: unknown[]) => mockQuery(...args),
 }));
 
-vi.mock('../../src/signal/telegram-signal-pusher.js', () => ({
+vi.mock('../../src/desk/signal/telegram-signal-pusher.js', () => ({
   telegramSignalPusher: {
     sendAdminAlert: vi.fn().mockResolvedValue(true),
     pushSignal: vi.fn().mockResolvedValue(undefined),
@@ -31,7 +31,7 @@ vi.mock('../../src/signal/telegram-signal-pusher.js', () => ({
 }));
 
 // Mock Prometheus to avoid duplicate metric registration between test runs
-vi.mock('../../src/middleware/prometheus-metrics.js', () => ({
+vi.mock('../../src/platform/middleware/prometheus-metrics.js', () => ({
   qwenSignalsTotal: { inc: vi.fn() },
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsLoopRunsTotal: { inc: vi.fn() },
@@ -52,7 +52,7 @@ vi.mock('../../src/middleware/prometheus-metrics.js', () => ({
 
 // Top-level publish mock — used across all suites
 const mockPublish = vi.fn();
-vi.mock('../../src/signal/signal-publisher.js', () => ({
+vi.mock('../../src/desk/signal/signal-publisher.js', () => ({
   SignalPublisher: vi.fn().mockImplementation(function () {
     this.publish = mockPublish;
   }),
@@ -60,7 +60,7 @@ vi.mock('../../src/signal/signal-publisher.js', () => ({
 
 // ─── Imports after mocks ──────────────────────────────────────────────────────
 
-import { createSignalIngestRouter } from '../../src/api/routes/signal-ingest-routes.js';
+import { createSignalIngestRouter } from '../../src/platform/api/routes/signal-ingest-routes.js';
 import {
   resetDrawdownMonitorState,
   disableQwen,
@@ -69,8 +69,8 @@ import {
   runDrawdownCheck,
 } from '../../src/wiring/qwen-drawdown-monitor.js';
 import { PaperGateError } from '../../src/wiring/qwen-live-eligibility-gate.js';
-import { telegramSignalPusher } from '../../src/signal/telegram-signal-pusher.js';
-import type { SignalStore } from '../../src/signal/signal-publisher.js';
+import { telegramSignalPusher } from '../../src/desk/signal/telegram-signal-pusher.js';
+import type { SignalStore } from '../../src/desk/signal/signal-publisher.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

@@ -44,7 +44,7 @@ vi.mock('prom-client', () => ({
   },
 }));
 
-vi.mock('../middleware/prometheus-metrics', () => ({
+vi.mock('../platform/middleware/prometheus-metrics', () => ({
   register: {},
 }));
 

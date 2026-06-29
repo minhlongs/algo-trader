@@ -2,7 +2,7 @@
  * SignalPublisher fan-out discipline 10-invariant sync — first
  * signal-pipeline orchestration substrate edge.
  *
- * `src/signal/signal-publisher.ts` is the orchestrator that takes a
+ * `src/desk/signal/signal-publisher.ts` is the orchestrator that takes a
  * raw strategy output, dedups, persists to D1, registers with the TTL
  * enforcer, invalidates REST cache, broadcasts via SSE, and enqueues
  * Telegram pushes. Drift manifests as:
@@ -85,7 +85,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const PUBLISHER_FILE = resolve(REPO_ROOT, 'src/signal/signal-publisher.ts');
+const PUBLISHER_FILE = resolve(REPO_ROOT, 'src/desk/signal/signal-publisher.ts');
 
 const REQUIRED_RAW_INPUT_FIELDS = ['market', 'side', 'size', 'confidence', 'strategy', 'ttlSec'];
 
