@@ -15,7 +15,7 @@ import { createSessionVolSniperTick } from '../desk/strategies/polymarket/sessio
 import { createOrderbookDepthRatioTick } from '../desk/strategies/polymarket/orderbook-depth-ratio-v2';
 import { createCrossEventDriftTick } from '../desk/strategies/polymarket/cross-event-drift-v2';
 import { createVolCompressionBreakoutTick } from '../desk/strategies/polymarket/vol-compression-breakout-v2';
-import { createWhaleTrackerTick } from '../desk/strategies/polymarket/whale-tracker';
+import { createWhaleTrackerTick } from '../desk/strategies/polymarket/whale-tracker-v2';
 import { createResolutionFrontrunnerTick } from '../desk/strategies/polymarket/resolution-frontrunner-v2';
 import { createMultiLegHedgeTick } from '../desk/strategies/polymarket/multi-leg-hedge';
 import { createRegimeAdaptiveMomentumTick } from '../desk/strategies/polymarket/regime-adaptive-momentum-v2';

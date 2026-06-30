@@ -102,13 +102,13 @@ export type { VwapDeviationSniperConfig, VwapDeviationSniperDeps } from './vwap-
 export { createWeightedSentimentAggregatorTick } from './weighted-sentiment-aggregator-v2';
 export type { WeightedSentimentAggregatorConfig, WeightedSentimentAggregatorDeps } from './weighted-sentiment-aggregator-v2';
 
-// ── Pre-migration modules (no V2 yet) ───────────────────────────────────────
+export { createWhaleTrackerTick } from './whale-tracker-v2';
+export type { WhaleTrackerConfig, WhaleTrackerDeps } from './whale-tracker-v2';
+
+// ── Pre-migration module (different archetype — portfolio meta-strategy) ─────
 
 export { createInventorySkewRebalancerTick } from './inventory-skew-rebalancer';
 export type { InventorySkewRebalancerConfig, InventorySkewRebalancerDeps } from './inventory-skew-rebalancer';
-
-export { createWhaleTrackerTick } from './whale-tracker';
-export type { WhaleTrackerConfig, WhaleTrackerDeps } from './whale-tracker';
 
 // ── Non-strategy helpers ─────────────────────────────────────────────────────
 
