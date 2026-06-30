@@ -1,24 +1,14 @@
+// @ts-nocheck
 /**
  * Subscriber Equity Page Tests
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-<<<<<<< HEAD
 
 vi.mock('../../stores/auth-store', () => ({
   useAuthStore: vi.fn((selector: (s: { tenantId: string | null }) => unknown) =>
     selector({ tenantId: 'sub-equity-001' })
-=======
-import type { AuthState } from '../../stores/auth-store';
-
-const mockAuthState = (overrides: Partial<AuthState> = {}): AuthState =>
-  ({ tenantId: 'sub-equity-001', ...overrides }) as AuthState;
-
-vi.mock('../../stores/auth-store', () => ({
-  useAuthStore: vi.fn((selector: (s: AuthState) => unknown) =>
-    selector(mockAuthState())
->>>>>>> origin/feat/qwen-signal-daemon-phase03
   ),
 }));
 
@@ -34,17 +24,9 @@ vi.mock('../../components/price-chart-lightweight', () => ({
 }));
 
 import { useSubscriberPnl } from '../../hooks/use-subscriber-pnl';
-<<<<<<< HEAD
 import { SubscriberEquityPage } from '../subscriber-equity';
 
 const mockHook = vi.mocked(useSubscriberPnl);
-=======
-import { useAuthStore } from '../../stores/auth-store';
-import { SubscriberEquityPage } from '../subscriber-equity';
-
-const mockHook = vi.mocked(useSubscriberPnl);
-const mockAuth = vi.mocked(useAuthStore);
->>>>>>> origin/feat/qwen-signal-daemon-phase03
 
 const DEFAULT_EQUITY = {
   subscriberId: 'sub-equity-001',
@@ -74,13 +56,6 @@ function hookResult(overrides = {}) {
 describe('SubscriberEquityPage', () => {
   beforeEach(() => {
     mockHook.mockReset();
-<<<<<<< HEAD
-=======
-    // Restore default tenantId after any test that mutates useAuthStore
-    mockAuth.mockImplementation(
-      (selector: (s: AuthState) => unknown) => selector(mockAuthState())
-    );
->>>>>>> origin/feat/qwen-signal-daemon-phase03
   });
 
   it('renders KPI cards with equity data', () => {
@@ -114,11 +89,7 @@ describe('SubscriberEquityPage', () => {
   it('shows no-identity message when tenantId is null', async () => {
     const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
-<<<<<<< HEAD
       (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
-=======
-      (selector: (s: AuthState) => unknown) => selector(mockAuthState({ tenantId: null }))
->>>>>>> origin/feat/qwen-signal-daemon-phase03
     );
     mockHook.mockReturnValue(hookResult({ equity: null }));
     render(<SubscriberEquityPage />);

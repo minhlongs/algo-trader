@@ -4,8 +4,9 @@
  */
 import { useState, useCallback } from 'react';
 import { useAuthStore } from '../stores/auth-store';
+import { API_BASE_PATH } from '../lib/api-client';
 
-const BASE = (import.meta.env.VITE_API_URL ?? '') + '/api/v1';
+const BASE = (import.meta.env.VITE_API_URL ?? '') + API_BASE_PATH;
 
 export function useApiClient() {
   const [loading, setLoading] = useState(false);

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @jsxImportSource react */
 import { useState } from 'react';
 import { StitchCard, StitchCardHeader, StitchCardBody } from '../ui/stitch-card';

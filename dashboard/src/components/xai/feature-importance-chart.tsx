@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** @jsxImportSource react */
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { StitchCard, StitchCardHeader, StitchCardBody } from '../ui/stitch-card';

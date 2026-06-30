@@ -93,4 +93,13 @@ Everything else is up for revision. These six are not.
 
 **Verify**: repository and live methodology at [github.com/longtho638-jpg/algo-trader](https://github.com/longtho638-jpg/algo-trader). Dashboard and rolling stats at [quant.cashclaw.cc](https://quant.cashclaw.cc). Follow-along cadence via Twitter/X (weekly) and Hacker News (monthly milestones).
 
+---
+
+> **June 2026 — Architecture Note:** The codebase is organized into three bounded contexts:
+> - `src/desk/` — Solo proprietary trading (this manifesto). Operator-only, CLI-driven, no tenant awareness.
+> - `src/platform/` — RaaS subscriber infrastructure. Multi-tenant, tier-gated, auth-protected.
+> - `src/shared/` — Shared kernel (types, DB, config, resilience). Zero business logic.
+>
+> Platform subscribers access desk strategies via tier-gated config through the shared `IStrategy` interface — without modifying desk code. The manifesto governs `desk/`. Platform follows its own product doctrine in `docs/platform-doctrine.md`.
+
 © 2026 Solo Quant Desk · Licensed CC-BY 4.0 — remix allowed, attribution required.

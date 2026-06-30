@@ -57,7 +57,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
         {/* Sidebar footer - version info */}
         <div className="p-4 border-t border-bg-border">
           <p className="text-[10px] text-muted">
-            v5.6.0 • Beta
+            v5.6.0
           </p>
         </div>
       </aside>
@@ -89,7 +89,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
         {/* Footer - desktop only */}
         <footer className="hidden md:block border-t border-bg-border py-3 px-8">
           <p className="text-xs text-muted text-center">
-            Algo Trader v5.6.0 Beta • Real-time trading dashboard
+            Algo Trader v5.6.0 • Real-time trading dashboard
           </p>
         </footer>
       </main>
