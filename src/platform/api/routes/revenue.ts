@@ -12,6 +12,7 @@
 
 import { Router, Request, Response } from 'express';
 import { UsageMeteringService } from '../../billing/usage-metering';
+import { revenueShareRepository } from '../../marketplace/repositories/revenue-share-repository';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
 
@@ -68,7 +69,7 @@ revenueRouter.get('/summary', requireTier('ENTERPRISE'), async (req: Request, re
   try {
     const period = getCurrentPeriod();
     const revenueSummary = await usageMetering.getRevenueSummary(period);
-    const mrrData = calculateMRR();
+    const mrrData = await calculateMRR();
 
     const response: RevenueSummary = {
       period,
@@ -95,7 +96,7 @@ revenueRouter.get('/summary', requireTier('ENTERPRISE'), async (req: Request, re
  */
 revenueRouter.get('/mrr', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
-    const mrrData = calculateMRR();
+    const mrrData = await calculateMRR();
     res.json(mrrData);
   } catch (error) {
     res.status(500).json({
@@ -176,7 +177,7 @@ revenueRouter.get('/overage', requireTier('ENTERPRISE'), async (req: Request, re
 revenueRouter.get('/churn', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     const period = (req.query.period as string) || getCurrentPeriod();
-    const churnData = calculateChurn(period);
+    const churnData = await calculateChurn(period);
     res.json(churnData);
   } catch (error) {
     res.status(500).json({
@@ -194,35 +195,70 @@ function getCurrentPeriod(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function calculateMRR(): MRRResponse {
-  // Placeholder - would integrate with NowPaymentsService for actual subscription data
-  const subscriptionMRR = 0;
-  const overageMRR = 0;
+async function calculateMRR(): Promise<MRRResponse> {
+  // Query marketplace revenue shares for current month gross revenue
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const [currentResult, previousResult] = await Promise.all([
+    revenueShareRepository.findAll(
+      { periodStart: monthStart, periodEnd: now },
+      { page: 1, limit: 1000 },
+    ),
+    revenueShareRepository.findAll(
+      { periodStart: prevMonthStart, periodEnd: monthStart },
+      { page: 1, limit: 1000 },
+    ),
+  ]);
+
+  const subscriptionMRR = currentResult.data.reduce((sum, r) => sum + r.grossRevenueCents, 0) / 100;
+  const overageMRR = 0; // overage tracked separately in overage_invoices
+
+  const previousMRR = previousResult.data.reduce((sum, r) => sum + r.grossRevenueCents, 0) / 100;
   const currentMRR = subscriptionMRR + overageMRR;
-  const previousMRR = 0;
 
   return {
     currentMRR,
     previousMRR,
     mrrGrowth: currentMRR - previousMRR,
     mrrGrowthRate: previousMRR > 0 ? ((currentMRR - previousMRR) / previousMRR) * 100 : 0,
-    breakdown: {
-      subscriptionMRR,
-      overageMRR,
-    },
+    breakdown: { subscriptionMRR, overageMRR },
   };
 }
 
-function calculateChurn(period: string): ChurnMetrics {
-  // Placeholder - would integrate with NowPaymentsService for actual churn data
-  return {
-    period,
-    totalCustomers: 0,
-    churnedCustomers: 0,
-    churnRate: 0,
-    revenueChurn: 0,
-    reasons: {},
-  };
+async function calculateChurn(period: string): Promise<ChurnMetrics> {
+  // Count active marketplace subscriptions (approximation via revenue shares)
+  const [yearStr, monthStr] = period.split('-');
+  const monthStart = new Date(Number(yearStr), Number(monthStr) - 1, 1);
+  const monthEnd = new Date(Number(yearStr), Number(monthStr), 0);
+
+  const currentResult = await revenueShareRepository.findAll(
+    { periodStart: monthStart, periodEnd: monthEnd },
+    { page: 1, limit: 1000 },
+  );
+
+  const activeTenantIds = new Set(currentResult.data.map((r) => r.tenantId));
+  const totalCustomers = activeTenantIds.size;
+
+  // Churned: tenants with revenue in previous month but not current
+  const prevMonthStart = new Date(Number(yearStr), Number(monthStr) - 2, 1);
+  const prevMonthEnd = new Date(Number(yearStr), Number(monthStr) - 1, 0);
+  const prevResult = await revenueShareRepository.findAll(
+    { periodStart: prevMonthStart, periodEnd: prevMonthEnd },
+    { page: 1, limit: 1000 },
+  );
+
+  const prevTenantIds = new Set(prevResult.data.map((r) => r.tenantId));
+  const churnedCustomers = [...prevTenantIds].filter((id) => !activeTenantIds.has(id)).length;
+
+  const churnRate = prevTenantIds.size > 0 ? (churnedCustomers / prevTenantIds.size) * 100 : 0;
+
+  const currentRevenue = currentResult.data.reduce((sum, r) => sum + r.grossRevenueCents, 0) / 100;
+  const prevRevenue = prevResult.data.reduce((sum, r) => sum + r.grossRevenueCents, 0) / 100;
+  const revenueChurn = prevRevenue - currentRevenue;
+
+  return { period, totalCustomers, churnedCustomers, churnRate, revenueChurn, reasons: {} };
 }
 
 logger.info('[RevenueRoutes] Registered');

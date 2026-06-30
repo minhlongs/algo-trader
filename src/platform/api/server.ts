@@ -22,6 +22,7 @@ import { marketplaceStrategyRouter } from './routes/marketplace-strategy-routes'
 import { marketplaceSubscriptionRouter } from './routes/marketplace-subscription-routes';
 import { marketplaceReviewRouter } from './routes/marketplace-review-routes';
 import { marketplaceDisputeRouter } from './routes/marketplace-dispute-routes';
+import { marketplaceCreatorRevenueRouter } from './routes/marketplace-creator-revenue-routes';
 import { adminMarketplaceRouter } from './routes/admin-marketplace-routes';
 import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook';
 import { couponRouter } from './routes/coupon-routes';
@@ -156,6 +157,7 @@ this.app.use('/api/v1/marketplace/strategies', marketplaceStrategyRouter);
 this.app.use('/api/v1/marketplace/subscriptions', marketplaceSubscriptionRouter);
 this.app.use('/api/v1/marketplace/reviews', marketplaceReviewRouter);
 this.app.use('/api/v1/marketplace/disputes', marketplaceDisputeRouter);
+this.app.use('/api/v1/marketplace/revenue', marketplaceCreatorRevenueRouter);
 
 // Admin marketplace routes
 this.app.use('/api/admin/marketplace', adminMarketplaceRouter);

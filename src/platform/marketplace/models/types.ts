@@ -18,6 +18,7 @@ export interface IMarketplaceStrategy {
   maxAllocationUsd: number; // in cents
   supportedExchanges: string[]; // e.g., ['polymarket', 'binance']
   tags: string[];
+  payoutAddress?: string; // USDT TRC20 wallet for creator payouts
   backtestSummary?: BacktestSummary;
   vettedAt?: Date;
   vettedBy?: string;

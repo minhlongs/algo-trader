@@ -11,33 +11,56 @@ vi.mock('../../../shared/db/postgres-client', () => ({
   closeDbConnection: vi.fn(),
 }));
 
-// Mock listing-repository to avoid extra DB queries in subscribe()
-vi.mock('../repositories/listing-repository', () => ({
-  ListingRepository: vi.fn().mockImplementation(() => ({
-    findById: vi.fn().mockResolvedValue(null),
-    findAll: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn().mockResolvedValue(0),
-    findByStrategyId: vi.fn().mockResolvedValue(null),
+// Mock nowpayments-service to avoid real API calls
+vi.mock('../../billing/nowpayments-service', () => ({
+  NowPaymentsService: vi.fn().mockImplementation(() => ({
+    createMarketplaceCheckoutUrl: vi.fn().mockResolvedValue(null),
+    isMarketplaceOrderId: vi.fn().mockReturnValue(false),
+    parseMarketplaceOrderId: vi.fn().mockReturnValue(null),
+    getStatusAction: vi.fn().mockReturnValue('ignore'),
+    getTierByInvoiceId: vi.fn().mockReturnValue(null),
+    verifyWebhook: vi.fn().mockResolvedValue(false),
   })),
-  listingRepository: {
+}));
+
+// Mock strategy-repository for dynamic import in strategyRepoForListing
+vi.mock('../repositories/strategy-repository', () => ({
+  StrategyRepository: vi.fn().mockImplementation(() => ({
     findById: vi.fn().mockResolvedValue(null),
     findAll: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
     count: vi.fn().mockResolvedValue(0),
-    findByStrategyId: vi.fn().mockResolvedValue(null),
+    updateStatus: vi.fn(),
+    findByStatus: vi.fn().mockResolvedValue([]),
+    findLatestPerformance: vi.fn().mockResolvedValue(null),
+  })),
+  strategyRepository: {
+    findById: vi.fn().mockResolvedValue(null),
+    findAll: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
+    updateStatus: vi.fn(),
+    findByStatus: vi.fn().mockResolvedValue([]),
+    findLatestPerformance: vi.fn().mockResolvedValue(null),
   },
+}));
+
+// Mock listing-repository
+vi.mock('../repositories/listing-repository', () => ({
+  ListingRepository: vi.fn().mockImplementation(() => mockListingRepo),
+  listingRepository: mockListingRepo,
 }));
 
 import { SubscriptionService } from '../services/subscription.service';
 
-const { mockSubRepo, mockReviewRepo: mockSubReviewRepo } = vi.hoisted(() => {
+const { mockSubRepo, mockReviewRepo: mockSubReviewRepo, mockListingRepo } = vi.hoisted(() => {
   const mockSubRepo = {
     findById: vi.fn(),
+    findByPaymentId: vi.fn(),
     findAll: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
@@ -58,7 +81,17 @@ const { mockSubRepo, mockReviewRepo: mockSubReviewRepo } = vi.hoisted(() => {
     count: vi.fn(),
     getAverageRating: vi.fn(),
   };
-  return { mockSubRepo, mockReviewRepo };
+  const mockListingRepo = {
+    findById: vi.fn(),
+    findByStrategyId: vi.fn(),
+    findAll: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+    incrementSubscriberCount: vi.fn(),
+  };
+  return { mockSubRepo, mockReviewRepo, mockListingRepo };
 });
 
 vi.mock('../repositories/subscription-repository', () => ({
@@ -96,16 +129,34 @@ describe('SubscriptionService', () => {
     updatedAt: new Date('2024-01-01'),
   };
 
-  it('should subscribe to a strategy', async () => {
+  const mockListing = {
+    id: 'listing_001',
+    strategyId: 'strat_001',
+    tenantId: 'tenant_001',
+    priceUsdMonthly: 0,
+    billingCycle: 'monthly',
+    riskLimits: { maxDailyLossPercent: 10, maxPositionSizePercent: 20, stopLossPercent: 5, maxConcurrentTrades: 5 },
+    allowedTenants: [],
+    excludedTenants: [],
+    isActive: true,
+    subscriberCount: 0,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  };
+
+  it('should subscribe to a free strategy', async () => {
+    mockListingRepo.findById.mockResolvedValue(mockListing);
+    mockSubRepo.hasActiveSubscription.mockResolvedValue(false);
     mockSubRepo.create.mockResolvedValue(mockSubscription);
-    const result = await service.subscribe({
+    const { subscription, checkoutUrl } = await service.subscribe({
       tenantId: 'tenant_001',
       userId: 'user_001',
       listingId: 'listing_001',
       allocationPercent: 25,
     });
-    expect(result.id).toBe('sub_001');
-    expect(result.status).toBe('active');
+    expect(subscription.id).toBe('sub_001');
+    expect(subscription.status).toBe('active');
+    expect(checkoutUrl).toBeNull();
   });
 
   it('should list subscriptions for tenant', async () => {
