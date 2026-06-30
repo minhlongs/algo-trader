@@ -13,6 +13,7 @@ import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
 import { z } from 'zod';
 import { SubscriptionService } from '../../marketplace/services/subscription.service';
+import { MarketplaceExecutionBridge } from '../../marketplace/services/marketplace-execution-bridge';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
@@ -324,6 +325,107 @@ marketplaceSubscriptionRouter.get('/:id/performance', requireTier('FREE'), async
     return res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to get subscription performance',
+    });
+  }
+});
+
+// ==================== Execution Routes ====================
+
+const executeSchema = z.object({
+  strategyId: z.string().min(1),
+  marketPayload: z.record(z.string(), z.unknown()).default({}),
+});
+
+const executeSingleSchema = z.object({
+  marketPayload: z.record(z.string(), z.unknown()).default({}),
+});
+
+/**
+ * POST /api/v1/marketplace/subscriptions/:id/execute
+ * Execute strategy for a specific subscription (owner or admin only).
+ * Used for on-demand execution testing.
+ */
+marketplaceSubscriptionRouter.post('/:id/execute', requireTier('FREE'), async (req: Request, res: Response) => {
+  try {
+    const id = getQueryString(req.params.id);
+    const tenantId = getTenantId(req);
+
+    const subscription = await subscriptionService.getSubscription(id);
+    if (!subscription) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: `Subscription ${id} not found`,
+      });
+    }
+
+    if (subscription.tenantId !== tenantId && !isAdmin(req)) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You can only execute your own subscriptions',
+      });
+    }
+
+    const parsed = executeSingleSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid request body',
+        details: parsed.error.issues,
+      });
+    }
+
+    const bridge = MarketplaceExecutionBridge.getInstance();
+    const result = await bridge.executeForSubscriber(id, parsed.data.marketPayload);
+
+    if (!result) {
+      return res.status(400).json({
+        error: 'Execution failed',
+        message: 'Subscription is not active or not found',
+      });
+    }
+
+    return res.json(result);
+  } catch (error) {
+    logger.error('[Marketplace] Error executing subscription', {
+      error,
+      subscriptionId: req.params.id,
+    });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to execute subscription',
+    });
+  }
+});
+
+/**
+ * POST /api/v1/marketplace/subscriptions/execute-strategy
+ * Execute strategy for ALL active subscribers (admin only).
+ */
+marketplaceSubscriptionRouter.post('/execute-strategy', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+  try {
+    const parsed = executeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid request body',
+        details: parsed.error.issues,
+      });
+    }
+
+    const bridge = MarketplaceExecutionBridge.getInstance();
+    const results = await bridge.executeActiveForStrategy(
+      parsed.data.strategyId,
+      parsed.data.marketPayload,
+    );
+
+    return res.json({
+      strategyId: parsed.data.strategyId,
+      executions: results.length,
+      results,
+    });
+  } catch (error) {
+    logger.error('[Marketplace] Error executing strategy for subscribers', { error });
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to execute strategy for subscribers',
     });
   }
 });

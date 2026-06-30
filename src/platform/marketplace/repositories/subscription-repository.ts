@@ -146,6 +146,12 @@ export class SubscriptionRepository {
     const result = await query(sql, [tenantId]);
     return result.rows as unknown as IMarketplaceSubscription[];
   }
+
+  async findActiveByStrategy(strategyId: string): Promise<IMarketplaceSubscription[]> {
+    const sql = `SELECT * FROM ${this.TABLE} WHERE strategy_id = $1 AND status = 'active' ORDER BY created_at DESC`;
+    const result = await query(sql, [strategyId]);
+    return result.rows as unknown as IMarketplaceSubscription[];
+  }
 }
 
 export const subscriptionRepository = new SubscriptionRepository();
