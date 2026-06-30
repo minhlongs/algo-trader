@@ -7,8 +7,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-// Mock dependencies before importing route module
-vi.mock('../../../billing', () => ({
+// Mock feature-gate to bypass tier gating
+vi.mock('../../../middleware/feature-gate', () => ({
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  canAccessFeature: () => true,
+  FEATURE_ACCESS: {},
+}));
+
+// Mock enterprise-onboarding-service
+vi.mock('../../../billing/enterprise-onboarding-service', () => ({
   EnterpriseOnboardingService: {
     getInstance: () => ({
       submitInquiry: vi.fn().mockResolvedValue({
@@ -28,8 +36,10 @@ vi.mock('../../../billing', () => ({
   },
 }));
 
-vi.mock('../../../billing', () => ({
+// Mock enterprise-inquiry-store
+vi.mock('../../../billing/enterprise-inquiry-store', () => ({
   enterpriseInquiryStore: {},
+  EnterpriseInquiryStatus: {},
 }));
 
 vi.mock('../../../../shared/utils/logger', () => ({

@@ -34,7 +34,7 @@ vi.mock('../../../../platform/middleware/prometheus-metrics', () => ({
 
 import { query as pgQuery } from '../../../../shared/db/postgres-client';
 import { logger } from '../../../../shared/utils/logger';
-import { journalWriteErrorsTotal } from '../../platform/middleware/prometheus-metrics.js';
+import { journalWriteErrorsTotal } from '../../../../platform/middleware/prometheus-metrics';
 
 const q = vi.mocked(pgQuery);
 const logError = vi.mocked(logger.error);

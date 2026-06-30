@@ -4,6 +4,14 @@ import express from 'express';
 import { LicenseService } from '../../billing/license-service';
 import { LicenseTier } from '../../../shared/types/license';
 
+// Mock tier gating — bypass requireTier middleware for tests
+vi.mock('../../middleware/feature-gate', () => ({
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  canAccessFeature: () => true,
+  FEATURE_ACCESS: {},
+}));
+
 // Mock Redis
 const rateLimitMock = vi.fn();
 

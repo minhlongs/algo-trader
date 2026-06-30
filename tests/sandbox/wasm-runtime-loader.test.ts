@@ -7,7 +7,7 @@ import {
   updateSpreadEma,
   isSpreadSignal,
   determineCheapSide,
-} from '../../src/desk/strategies/polymarket/spread-mean-reversion';
+} from '../../src/desk/strategies/polymarket/spread-mean-reversion-v2';
 
 // ── Test sink that captures audit records ─────────────────────────────────────
 

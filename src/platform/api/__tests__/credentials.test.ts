@@ -38,7 +38,7 @@ vi.mock('../../../db/tenant-credentials-repository', () => ({
 }));
 
 // Mock tenant-audit-log to avoid real DB writes during unit tests
-vi.mock('../../audit', () => ({
+vi.mock('../../audit/tenant-audit-log', () => ({
   appendTenantAuditLog: mockAppendAudit,
 }));
 

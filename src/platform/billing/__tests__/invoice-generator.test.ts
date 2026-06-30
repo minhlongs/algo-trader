@@ -30,7 +30,7 @@ const {
 // ---------------------------------------------------------------------------
 // Module mocks (hoisted to top of file by Vitest)
 // ---------------------------------------------------------------------------
-vi.mock('../../notifications', () => ({
+vi.mock('../../notifications/email-service', () => ({
   EmailService: {
     getInstance: mockEmailGetInstance,
   },

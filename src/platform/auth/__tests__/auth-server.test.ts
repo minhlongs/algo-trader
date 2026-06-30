@@ -103,7 +103,7 @@ describe('auth-server', () => {
 
   describe('configuration shape', () => {
     it('calls betterAuth with all required top-level keys', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       expect(config, 'betterAuth must receive a config object').toBeDefined();
@@ -118,7 +118,7 @@ describe('auth-server', () => {
     });
 
     it('sets basePath to /api/auth', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       expect(config!.basePath).toBe('/api/auth');
@@ -126,7 +126,7 @@ describe('auth-server', () => {
 
     it('uses BETTER_AUTH_URL as baseURL when set', async () => {
       setEnv({ BETTER_AUTH_URL: 'https://example.com' });
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       expect(config!.baseURL).toBe('https://example.com');
@@ -135,7 +135,7 @@ describe('auth-server', () => {
     it('falls back to API_BASE_URL when BETTER_AUTH_URL is unset', async () => {
       delete process.env.BETTER_AUTH_URL;
       setEnv({ API_BASE_URL: 'https://api.example.com' });
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       expect(config!.baseURL).toBe('https://api.example.com');
@@ -146,7 +146,7 @@ describe('auth-server', () => {
 
   describe('session configuration', () => {
     it('sets session expiry to 7 days (604800 seconds)', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const session = config!.session as Record<string, unknown>;
@@ -154,7 +154,7 @@ describe('auth-server', () => {
     });
 
     it('sets updateAge to 24 hours', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const session = config!.session as Record<string, unknown>;
@@ -162,7 +162,7 @@ describe('auth-server', () => {
     });
 
     it('enables cookie cache with 5-minute maxAge', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const session = config!.session as Record<string, unknown>;
@@ -176,7 +176,7 @@ describe('auth-server', () => {
 
   describe('emailAndPassword configuration', () => {
     it('has emailAndPassword enabled', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const eap = config!.emailAndPassword as Record<string, unknown>;
@@ -184,7 +184,7 @@ describe('auth-server', () => {
     });
 
     it('has autoSignIn enabled', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const eap = config!.emailAndPassword as Record<string, unknown>;
@@ -192,7 +192,7 @@ describe('auth-server', () => {
     });
 
     it('requires minimum password length of 8', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const eap = config!.emailAndPassword as Record<string, unknown>;
@@ -204,7 +204,7 @@ describe('auth-server', () => {
 
   describe('auth export', () => {
     it('exports a defined auth instance', async () => {
-      const module = await import('..');
+      const module = await import('../auth-server');
 
       expect(module.auth, 'auth must be exported and defined').toBeDefined();
       expect(typeof module.auth).toBe('object');
@@ -214,7 +214,7 @@ describe('auth-server', () => {
       const fakeInstance = { api: {}, handler: vi.fn(), options: { secret: 'x' } };
       mockBetterAuth.mockReturnValue(fakeInstance);
 
-      const module = await import('..');
+      const module = await import('../auth-server');
       expect(module.auth).toBe(fakeInstance);
     });
   });
@@ -224,7 +224,7 @@ describe('auth-server', () => {
   describe('secret configuration', () => {
     it('uses BETTER_AUTH_SECRET as primary secret', async () => {
       setEnv({ BETTER_AUTH_SECRET: 'primary-secret-at-least-32-chars!!' });
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       expect(config!.secret).toBe('primary-secret-at-least-32-chars!!');
@@ -233,7 +233,7 @@ describe('auth-server', () => {
     it('falls back to JWT_SECRET when BETTER_AUTH_SECRET is unset', async () => {
       delete process.env.BETTER_AUTH_SECRET;
       setEnv({ JWT_SECRET: 'jwt-fallback-secret-at-least-32-chars!!' });
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       expect(config!.secret).toBe('jwt-fallback-secret-at-least-32-chars!!');
@@ -242,7 +242,7 @@ describe('auth-server', () => {
     it('falls back to dev-only default when neither secret is set (error path)', async () => {
       delete process.env.BETTER_AUTH_SECRET;
       delete process.env.JWT_SECRET;
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       expect(config!.secret).toBe('dev-only-insecure-secret-change-me');
@@ -251,7 +251,7 @@ describe('auth-server', () => {
     it('logs a warning when no secret is configured (error path)', async () => {
       delete process.env.BETTER_AUTH_SECRET;
       delete process.env.JWT_SECRET;
-      await import('..');
+      await import('../auth-server');
 
       expect(mockLoggerWarn).toHaveBeenCalledWith(
         expect.stringContaining('No BETTER_AUTH_SECRET'),
@@ -260,7 +260,7 @@ describe('auth-server', () => {
 
     it('does NOT warn when BETTER_AUTH_SECRET is set', async () => {
       setEnv({ BETTER_AUTH_SECRET: 'present-secret-at-least-32-chars!!' });
-      await import('..');
+      await import('../auth-server');
 
       const noSecretCalls = mockLoggerWarn.mock.calls.filter(
         (call: unknown[]) =>
@@ -274,7 +274,7 @@ describe('auth-server', () => {
 
   describe('trusted origins', () => {
     it('includes https://cashclaw.cc', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const origins = config!.trustedOrigins as string[];
@@ -282,7 +282,7 @@ describe('auth-server', () => {
     });
 
     it('includes https://algo-trader.pages.dev', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const origins = config!.trustedOrigins as string[];
@@ -290,7 +290,7 @@ describe('auth-server', () => {
     });
 
     it('includes https://cashclaw-dashboard.pages.dev', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const origins = config!.trustedOrigins as string[];
@@ -298,7 +298,7 @@ describe('auth-server', () => {
     });
 
     it('includes localhost origins for local development', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const origins = config!.trustedOrigins as string[];
@@ -307,7 +307,7 @@ describe('auth-server', () => {
     });
 
     it('contains exactly 5 trusted origins', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const origins = config!.trustedOrigins as string[];
@@ -320,7 +320,7 @@ describe('auth-server', () => {
   describe('database pool configuration', () => {
     it('uses DB_HOST when set', async () => {
       setEnv({ DB_HOST: 'pg.example.com' });
-      await import('..');
+      await import('../auth-server');
 
       expect(poolConfigCalls.length).toBe(1);
       const poolCfg = getPoolConfig();
@@ -328,7 +328,7 @@ describe('auth-server', () => {
     });
 
     it('defaults DB_HOST to localhost when unset', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.host).toBe('localhost');
@@ -336,21 +336,21 @@ describe('auth-server', () => {
 
     it('parses DB_PORT as integer', async () => {
       setEnv({ DB_PORT: '15432' });
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.port).toBe(15432);
     });
 
     it('defaults DB_PORT to 5432 when unset', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.port).toBe(5432);
     });
 
     it('caps pool max connections at 5', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.max).toBe(5);
@@ -358,14 +358,14 @@ describe('auth-server', () => {
 
     it('uses DB_NAME when set', async () => {
       setEnv({ DB_NAME: 'custom_db' });
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.database).toBe('custom_db');
     });
 
     it('defaults DB_NAME to algo_trader when unset', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.database).toBe('algo_trader');
@@ -373,14 +373,14 @@ describe('auth-server', () => {
 
     it('uses DB_USER when set', async () => {
       setEnv({ DB_USER: 'custom_user' });
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.user).toBe('custom_user');
     });
 
     it('defaults DB_USER to postgres when unset', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.user).toBe('postgres');
@@ -388,14 +388,14 @@ describe('auth-server', () => {
 
     it('uses DB_PASSWORD when set', async () => {
       setEnv({ DB_PASSWORD: 's3cret!' });
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.password).toBe('s3cret!');
     });
 
     it('defaults DB_PASSWORD to empty string when unset', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.password).toBe('');
@@ -407,7 +407,7 @@ describe('auth-server', () => {
   describe('logger configuration', () => {
     it('sets log level to error in production', async () => {
       setEnv({ NODE_ENV: 'production' });
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const loggerCfg = config!.logger as Record<string, unknown>;
@@ -417,7 +417,7 @@ describe('auth-server', () => {
 
     it('sets log level to debug in non-production environments', async () => {
       setEnv({ NODE_ENV: 'development' });
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       const loggerCfg = config!.logger as Record<string, unknown>;
@@ -429,7 +429,7 @@ describe('auth-server', () => {
 
   describe('graceful degradation', () => {
     it('passes empty string for DB_PASSWORD when unset (does not crash)', async () => {
-      await import('..');
+      await import('../auth-server');
 
       const poolCfg = getPoolConfig();
       expect(poolCfg!.password).toBe('');
@@ -438,7 +438,7 @@ describe('auth-server', () => {
     it('falls back to http://localhost:3000 when both BETTER_AUTH_URL and API_BASE_URL are unset', async () => {
       delete process.env.BETTER_AUTH_URL;
       delete process.env.API_BASE_URL;
-      await import('..');
+      await import('../auth-server');
 
       const config = getAuthConfig();
       expect(config!.baseURL).toBe('http://localhost:3000');

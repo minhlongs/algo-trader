@@ -34,7 +34,7 @@ vi.mock('../../../../wiring/qwen-live-eligibility-gate', () => ({
 const { mockResolvedCounter } = vi.hoisted(() => ({
   mockResolvedCounter: { inc: vi.fn() },
 }));
-vi.mock('../../../middleware', () => ({
+vi.mock('../../../middleware/prometheus-metrics', () => ({
   qwenStrategyReviewsResolvedTotal: mockResolvedCounter,
   qwenStrategyReviewBacklogSize: { set: vi.fn() },
   qwenStrategyReviewOldestPendingAgeSec: { set: vi.fn() },

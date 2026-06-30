@@ -26,7 +26,7 @@ vi.mock('../../../redis', () => ({
 
 const mockGetLicenseByKey = vi.fn();
 
-vi.mock('../../billing', () => ({
+vi.mock('../../billing/license-service', () => ({
   LicenseService: {
     getInstance: () => ({
       getLicenseByKey: mockGetLicenseByKey,
