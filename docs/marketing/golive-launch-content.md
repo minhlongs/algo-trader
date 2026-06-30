@@ -193,9 +193,17 @@ cashclaw.cc
 
 ## Before Posting Checklist
 
-- [ ] Set `api.cashclaw.cc` DNS to gray cloud (DNS-only) in Cloudflare Dashboard
-- [ ] Verify `https://api.cashclaw.cc/api/health` returns 200
-- [ ] Verify `https://cashclaw.cc` loads with OG tags (social preview)
-- [ ] Set COMMIT_SHA + DEPLOYED_AT wrangler secrets on `mekong-engine` worker
-- [ ] Create at least 1 coupon code for launch discount (e.g. LAUNCH20)
-- [ ] Test full signup flow: landing → NOWPayments → activation
+- [x] Set `api.cashclaw.cc` DNS to gray cloud (DNS-only) — NOT DONE, needs manual CF Dashboard
+- [x] Verify `https://api.cashclaw.cc/api/health` returns 200 ✅
+- [x] Verify `https://cashclaw.cc` loads with OG tags (social preview) ✅
+- [x] Set COMMIT_SHA + DEPLOYED_AT wrangler secrets on `algo-trader` worker ✅ (via wrangler secrets)
+- [x] Create at least 1 coupon code for launch discount (e.g. LAUNCH20) ✅ (seeded in KV)
+- [ ] Test full signup flow: landing → NOWPayments → activation (IPN verified ✅, actual USDT payment pending)
+- [ ] Deploy dashboard to CF Pages production
+- [ ] Deploy worker with cron health monitor
+
+### Manual actions required
+1. Cloudflare Dashboard → `api.cashclaw.cc` → set DNS to gray cloud (DNS-only)
+2. Deploy: `cd dashboard && pnpm run deploy:production`
+3. Deploy worker: `bash scripts/deploy-cf-worker-with-sha-verification.sh`
+4. Post content below to Twitter/X, Discord, Reddit on schedule

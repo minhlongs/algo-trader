@@ -145,6 +145,62 @@ export default {
     // Non-API routes — 404
     return new Response('Not Found', { status: 404 });
   },
+
+  // ── Cron trigger: health self-check every 5 min ──
+  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
+    try {
+      const now = Date.now();
+      const lastCheckStr = await env.CACHE.get('metric:cron-last-check');
+      const lastCheck = lastCheckStr ? parseInt(lastCheckStr, 10) : 0;
+
+      const [total, failed, lastSuccess, lastFailure] = await Promise.all([
+        env.CACHE.get('metric:ipn-total'),
+        env.CACHE.get('metric:ipn-failed'),
+        env.CACHE.get('metric:ipn-last-success'),
+        env.CACHE.get('metric:ipn-last-failure'),
+      ]);
+
+      const checkEntry = {
+        timestamp: new Date().toISOString(),
+        ipnTotal: parseInt(total || '0', 10) || 0,
+        ipnFailed: parseInt(failed || '0', 10) || 0,
+        lastSuccess: lastSuccess ? JSON.parse(lastSuccess) : null,
+        lastFailure: lastFailure ? JSON.parse(lastFailure) : null,
+      };
+
+      await env.CACHE.put('metric:cron-last-check', String(now));
+      await env.CACHE.put('metric:cron-last-result', JSON.stringify(checkEntry));
+
+      // Alert: new IPN failure since last check
+      if (lastFailure) {
+        const lf = JSON.parse(lastFailure) as { timestamp: string; payment_id: string };
+        if (new Date(lf.timestamp).getTime() > lastCheck) {
+          await env.CACHE.put(`alert:${now}`, JSON.stringify({
+            type: 'ipn_failure',
+            message: `IPN failure: payment ${lf.payment_id}`,
+            paymentId: lf.payment_id,
+            failureTime: lf.timestamp,
+            detectedAt: new Date().toISOString(),
+          }));
+        }
+      }
+
+      // Warning: no IPN activity in 24h
+      if (lastSuccess) {
+        const ls = JSON.parse(lastSuccess) as { timestamp: string };
+        if (now - new Date(ls.timestamp).getTime() > 86400000) {
+          await env.CACHE.put(`alert:${now}-stale`, JSON.stringify({
+            type: 'ipn_stale',
+            message: 'No successful IPN in 24 hours',
+            lastSuccess: ls,
+            detectedAt: new Date().toISOString(),
+          }));
+        }
+      }
+    } catch {
+      // Cron errors silent — avoid noise
+    }
+  },
 };
 
 async function proxyToOrigin(request: Request, env: Env): Promise<Response> {

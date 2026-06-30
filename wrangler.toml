@@ -27,5 +27,9 @@ ENVIRONMENT = "staging"
 [build]
 command = "npx tsc -p tsconfig.worker.json"
 
+# Cron trigger: health self-check every 5 minutes
+[triggers]
+crons = ["*/5 * * * *"]
+
 # Custom domain (configure in CF dashboard)
 # routes = [{ pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }]
