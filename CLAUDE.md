@@ -26,55 +26,85 @@ Run a single test: `pnpm vitest run src/path/to/file.test.ts`
 
 **@mekong/algo-trader** — RaaS (Robot as a Service) platform. TypeScript/Node.js, targeting $1M ARR via Polymarket (80%) + CEX/DEX (20%).
 
-### Layers
+### Bounded Contexts (post-2026-06-30 separation)
 
 ```
-CLI (Commander.js) → AgentDispatcher → 19 Specialist Agents
-                                                    ↓
-Strategy Engine (PM Arb, MM, Grid/DCA, Dark Edge)  →  Client Layer
-                                                    ↓
-Core Layer (Types, Config, Risk, Utils)  →  Data Layer (SQLite/Prisma, Price Feeds)
+src/
+├── shared/         # Shared kernel — types, config, DB, utils (zero business logic)
+├── desk/           # Solo proprietary trading (operator-only, no tenant awareness)
+└── platform/       # RaaS subscriber platform (multi-tenant, tier-gated, auth-protected)
 ```
 
-### Key Modules (`src/`)
+**Import rules:**
+- `shared/` → importable by ALL layers (foundational)
+- `desk/` → imports `shared/` only; NEVER imports `platform/`
+- `platform/` → imports `shared/` + `desk/` (for strategy orchestration via shared interfaces)
+
+### Desk (`src/desk/`) — Operator-Only Trading
 
 | Module | Responsibility |
 |--------|---------------|
-| `api/` | Express REST + WebSocket gateway (server.ts, routes/) |
-| `market-data/` | Provider failover, gap detection, SLA tracking (LunarCrush, CCXT) |
-| `strategies/` | 52+ strategies: polymarket, cex, dna (GRU neural net), dark-edge |
-| `marketplace/` | Multi-tenant strategy marketplace (listings, subscriptions, reviews, disputes, vetting) |
-| `raas/` | RaaS subscriber executor — sandbox execution per tenant with DLP + attestation |
+| `strategies/` | 52+ strategies: polymarket, cex, dex, dna (GRU neural net), dark-edge |
+| `execution/` | Polymarket CLOB adapter, paper executor, order management |
+| `risk/` | Kelly criterion, drawdown protection, circuit breaker, position tracker |
+| `intelligence/` | Alpha-ear client, LLM router, market intelligence |
 | `signal/` | Signal pipeline: fusion, TTL enforcement, dedup, publishing |
-| `execution/` | Polymarket CLOB adapter, order management |
+| `market-data/` | Provider failover, gap detection, SLA tracking (LunarCrush, CCXT) |
+| `cli/` | Commander.js CLI — `algo scan`, `algo status`, `algo risk` |
+| `feeds/` | Price feeds (Kalshi, Polymarket, CEX) |
+| `ironclaw/`, `citadel/` | Experimental strategy frameworks |
+| `gate/` | RaaS gate validators, tier config |
+
+### Platform (`src/platform/`) — Subscriber-Facing
+
+| Module | Responsibility |
+|--------|---------------|
+| `api/` | Express REST + WebSocket gateway, 31 route files with tier gating |
+| `auth/` | Better Auth integration (multi-tenant sessions) |
+| `billing/` | Invoice generation, NOWPayments, license management |
+| `marketplace/` | Multi-tenant strategy marketplace (listings, subscriptions, reviews, disputes, vetting) |
+| `raas/` | RaaS subscriber executor — sandbox per tenant with DLP + attestation |
 | `metering/` | Usage metering with threshold alerts |
-| `messaging/` | NATS JetStream for async event routing |
-| `resilience/` | Circuit breakers, recovery manager |
-| `billing/` | Invoice generation, NOWPayments integration |
-| `auth/` | Better Auth integration |
-| `intelligence/` | Alpha-ear client for market intelligence |
+| `middleware/` | Tier gating (`requireTier`), rate limiting, Prometheus metrics, error handler |
+| `audit/` | AI decision audit, immutable trade audit |
+| `referral/` | Referral program management |
+| `workers/` | Cloudflare edge proxy worker |
+| `telegram/` | Telegram bot integration |
+| `notifications/` | Email service, dunning |
+
+### Shared Kernel (`src/shared/`)
+
+| Module | Responsibility |
+|--------|---------------|
+| `types/` | License, tier, strategy interfaces (IStrategy) |
+| `db/` | PostgreSQL client, migrations |
+| `config/` | Tier configs, environment schema |
+| `utils/` | Logger, encryption, sentry |
+| `resilience/` | Circuit breakers, rate limiter, recovery manager |
+| `persistence/` | File store (JSONL), used by both sides |
+| `messaging/` | NATS JetStream (extracted from platform in Phase 2) |
 
 ### Infrastructure
 
-- **DB:** PostgreSQL via Prisma (migrations in `src/db/migrations/`)
+- **DB:** PostgreSQL via Prisma (shared schema, tenantId column on platform tables only)
 - **Cache:** Redis (rate limiting, pub/sub, session state)
 - **Queue:** BullMQ + NATS JetStream
 - **Metrics:** Prometheus (custom histogram buckets, SLA gauges)
-- **AI:** Dual-model — Nemotron-3 Nano (scanner, 35-50 t/s) + DeepSeek R1 (reasoner)
+- **AI:** Dual-model — Nemotron-3 Nano (scanner) + DeepSeek R1 (reasoner)
 - **Observability:** Sentry, OpenTelemetry
 
 ### Key Patterns
 
-- **Circuit breaker** for provider failover (`market-data/provider-failover.ts`)
-- **Signal TTL** with immediate eviction for expired signals (no async race)
-- **Multi-tenant isolation** via `buildTenantFilter()` in DB queries
-- **DLP blocking** at execution gate (subscriber prefix check)
-- **Gap detection** with consecutive-missing counter reset on valid candles
-- **SLA tracking** across sliding windows (1h, 24h, 7d, 30d)
+- **Tier gating** on all platform routes: `requireTier('FREE|PRO|ENTERPRISE')` — Express middleware in `feature-gate.ts`
+- **Tenant isolation** via `buildTenantFilter(tenantId)` on every platform DB query
+- **Strategy access**: Platform imports desk strategies through shared `IStrategy` interface — direct import, no network bridge
+- **Desk = no tenant awareness**: Desk modules never reference `tenantId`, `subscriber`, or `tier`
+- **Circuit breaker** for provider failover
+- **Signal TTL** with immediate eviction for expired signals
 
 ### Marketplace Architecture
 
-Multi-tenant: providers list strategies → subscribers subscribe → platform takes 20% → creator gets 80%. Vetting workflow: draft → pending_vetting → approved/rejected. Dispute resolution with admin escalation.
+Multi-tenant: providers list strategies → subscribers subscribe → platform takes 20% → creator gets 80%. Vetting: draft → pending_vetting → approved/rejected. Dispute resolution with admin escalation.
 
 ### Workflow Rules
 
@@ -84,4 +114,4 @@ Detailed SDLC workflows in `.claude/rules/`:
 - `orchestration-protocol.md` — subagent delegation, parallel work
 - `documentation-management.md` — docs in `docs/`, plans in `plans/`
 
-Read the relevant rule file before non-trivial work. Tests must pass before stopping (`/ship` goal).
+Read the relevant rule file before non-trivial work. Tests must pass before stopping.

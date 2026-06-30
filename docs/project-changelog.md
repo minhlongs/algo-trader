@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [3.0.0] - 2026-06-30
+
+### Changed — Architecture: strict 3-context separation (desk/platform/shared)
+
+540-file codebase split into three bounded contexts:
+
+- **`src/desk/`** — Solo proprietary trading (~35 modules). Operator-only, CLI-driven, zero tenant awareness. Owns all 52+ strategies, execution, risk, intelligence, signal pipeline.
+- **`src/platform/`** — RaaS subscriber platform (~25 modules). Multi-tenant, tier-gated, auth-protected. Owns API gateway (31 route files), marketplace, billing, raas executor, metering.
+- **`src/shared/`** — Shared kernel (~10 modules). Types, DB client, config, resilience, persistence. Zero business logic. Importable by both desk and platform.
+
+**Key deliverables:**
+- 103 Express route handlers wired with `requireTier('FREE|PRO|ENTERPRISE')`
+- 4 Fastify route files with inline tier gating
+- All platform DB queries use `buildTenantFilter(tenantId)` for tenant isolation
+- Boundary enforcement: desk never imports platform; platform imports desk only via shared `IStrategy`
+- All 79 integration/contract tests pass (890 tests)
+- 0 TypeScript errors
+
+**Commits:** `7d70ec170` (Phase 1), `b0bcb43b4` (Batch 1), `f219a1ee1` (Batch 2), `c36c074aa` (tenant isolation), `e4892b686` (tier gating)
+
+---
+
 ## [2.4.88] - 2026-04-20
 
 ### Added — Feature-gate tier-based access-control discipline 10-invariant sync (HEPTAHEXACONTAGON = 67, prime + lucky prime)

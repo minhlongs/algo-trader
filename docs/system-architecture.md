@@ -1,7 +1,26 @@
 # System Architecture - Algo Trader
 
+> **Updated 2026-06-30** — Post-separation: 3 bounded contexts (desk/platform/shared).
+
 ## High-Level Architecture
-Event-Driven + Modular Architecture with 4 tiers:
+
+Three bounded contexts with strict dependency rules:
+
+```
+src/
+├── shared/  ←── desk/  (imports shared only)
+│             ←── platform/ (imports shared + desk strategies via IStrategy)
+│
+├── desk/     → imports shared/ only; NEVER imports platform/
+│   └── Operator-only trading: 52+ strategies, execution, risk, CLI
+│
+└── platform/ → imports shared/ + desk/strategies (through IStrategy interface)
+    └── Subscriber-facing: API gateway, marketplace, billing, raas executor
+```
+
+**Import rules:** `shared/` ← foundational (no inward deps). `desk/` ← solo trading, tenant-unaware. `platform/` ← multi-tenant, tier-gated, may call desk strategies through `IStrategy` interface.
+
+## Original Architecture (pre-separation, preserved for context)
 - **Execution Layer**: WS price feeds, fee-aware spread calc, atomic order execution, regime detection, order-book depth analysis
 - **RaaS API Layer**: Multi-tenant positions, scan/execute endpoints, position tracking
 - **Client Layer**: Paper trading, CLI dashboard, trade history export
