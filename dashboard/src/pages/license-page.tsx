@@ -20,7 +20,7 @@ const TABS: { id: TabType; label: string }[] = [
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="bg-bg-card border border-bg-border rounded-lg p-6">
+    <section className="bg-bg-surface border border-bg-border rounded-lg p-6">
       {children}
     </section>
   );

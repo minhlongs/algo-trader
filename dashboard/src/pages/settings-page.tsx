@@ -16,7 +16,7 @@ const MOCK_ALERTS: AlertRule[] = [];
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="bg-bg-card border border-bg-border rounded-lg p-6 space-y-4">
+    <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
       {children}
     </section>
   );

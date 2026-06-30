@@ -95,7 +95,7 @@ export function BacktestsPage() {
       <h1 className="text-white text-2xl font-bold">Backtests</h1>
 
       {/* Submit form */}
-      <section className="bg-bg-card border border-bg-border rounded-lg p-6">
+      <section className="bg-bg-surface border border-bg-border rounded-lg p-6">
         <h2 className="text-accent text-sm font-semibold uppercase tracking-wider mb-4">
           Submit Backtest
         </h2>
@@ -183,7 +183,7 @@ export function BacktestsPage() {
             {results.map((r) => (
               <div
                 key={r.id}
-                className="bg-bg-card border border-bg-border rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-center"
+                className="bg-bg-surface border border-bg-border rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-center"
               >
                 {/* Strategy + meta */}
                 <div className="col-span-2 md:col-span-1 lg:col-span-2">

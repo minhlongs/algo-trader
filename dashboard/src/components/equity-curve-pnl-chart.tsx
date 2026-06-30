@@ -34,7 +34,7 @@ export function EquityCurveChart({ positions }: EquityCurveProps) {
     return { chartData: data, isPositive: cumulative >= 0 };
   }, [positions]);
 
-  const lineColor = isPositive ? '#00FF41' : '#FF3366';
+  const lineColor = isPositive ? '#00E676' : '#FF4466';
   const hasClosed = chartData.length > 0;
 
   return (

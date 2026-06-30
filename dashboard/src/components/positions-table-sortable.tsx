@@ -117,7 +117,7 @@ export function PositionsTableSortable({ positions }: PositionsTableSortableProp
           {sorted.map((pos) => (
             <tr
               key={pos.id}
-              className="border-b border-bg-border/50 hover:bg-bg-card/60 transition-colors"
+              className="border-b border-bg-border/50 hover:bg-bg-surface/60 transition-colors"
             >
               <td className="px-3 py-2 text-white font-semibold">{pos.symbol}</td>
               <td className="px-3 py-2 text-muted">{pos.buyExchange}</td>

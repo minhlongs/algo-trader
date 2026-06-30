@@ -65,7 +65,7 @@ export function SpreadOpportunitiesCardGrid({ spreads }: SpreadOpportunitiesCard
           <div
             key={key}
             className={`
-              bg-bg-card border rounded-lg p-3 transition-all duration-200
+              bg-bg-surface border rounded-lg p-3 transition-all duration-200
               hover:scale-[1.02] ${border} ${glow}
             `}
           >

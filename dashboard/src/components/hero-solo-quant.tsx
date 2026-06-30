@@ -19,13 +19,13 @@ export function HeroSoloQuant({
   return (
     <section className="pt-32 pb-16 px-4 sm:px-6 max-w-5xl mx-auto">
       <div className="flex flex-col items-start gap-6">
-        <p className="text-[#00D9FF] text-xs uppercase tracking-[0.2em] font-mono">
+        <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] font-mono">
           Prediction-Market Desk · Polymarket
         </p>
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight text-white">
           Solo Quant Desk —
           <br />
-          <span className="text-[#00D9FF]">Live on Polymarket</span>
+          <span className="text-[#00C8E8]">Live on Polymarket</span>
         </h1>
         <h2 className="text-[#8892B0] text-lg sm:text-xl leading-relaxed max-w-2xl">
           One human. Zero overhead. Open methodology.
@@ -40,13 +40,13 @@ export function HeroSoloQuant({
             href={methodologyHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-[#00D9FF] text-[#0F0F1A] font-bold px-6 py-3 rounded hover:bg-[#00D9FF]/80 transition-colors text-sm min-h-touch inline-flex items-center"
+            className="bg-[#00C8E8] text-[#080B14] font-bold px-6 py-3 rounded hover:bg-[#00C8E8]/80 transition-colors text-sm min-h-touch inline-flex items-center"
           >
             Read Methodology
           </a>
           <Link
             to="/manifesto"
-            className="border border-[#2D3142] text-[#8892B0] hover:text-white hover:border-[#00D9FF]/50 font-semibold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center"
+            className="border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#00C8E8]/50 font-semibold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center"
           >
             Read Manifesto
           </Link>

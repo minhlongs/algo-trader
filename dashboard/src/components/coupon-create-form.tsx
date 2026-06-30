@@ -46,7 +46,7 @@ export function CouponCreateForm({ visible, onSubmit, onCancel }: CouponCreateFo
   if (!visible) return null;
 
   return (
-    <form onSubmit={handleSubmit} className="bg-bg-card border border-bg-border rounded-xl p-6 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-bg-surface border border-bg-border rounded-xl p-6 space-y-4">
       <h3 className="text-white text-sm font-semibold font-mono">New Coupon</h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

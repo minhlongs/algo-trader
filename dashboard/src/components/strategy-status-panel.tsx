@@ -27,7 +27,7 @@ function formatTimeAgo(iso: string | null): string {
 const MODE_STYLES: Record<string, { dot: string; text: string; bg: string }> = {
   live:     { dot: 'bg-profit animate-pulse', text: 'text-profit', bg: 'border-profit/30 bg-profit/5' },
   'dry-run': { dot: 'bg-accent', text: 'text-accent', bg: 'border-accent/30 bg-accent/5' },
-  stopped:  { dot: 'bg-muted', text: 'text-muted', bg: 'border-bg-border bg-bg-card' },
+  stopped:  { dot: 'bg-muted', text: 'text-muted', bg: 'border-bg-border bg-bg-surface' },
 };
 
 export function StrategyStatusPanel({ strategies, botStatus }: Props) {

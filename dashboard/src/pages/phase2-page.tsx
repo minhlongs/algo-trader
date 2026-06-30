@@ -93,7 +93,7 @@ export function Phase2Page() {
       {/* 3-column grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Zero-Shot Synthesizer */}
-        <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+        <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white text-sm font-bold">Zero-Shot Synthesizer</h3>
             <StatusBadge enabled={status.zeroShot.enabled} />
@@ -106,7 +106,7 @@ export function Phase2Page() {
         </div>
 
         {/* Cross-Chain Flash Loans */}
-        <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+        <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white text-sm font-bold">Flash Loans</h3>
             <StatusBadge enabled={status.flashLoans.enabled} />
@@ -120,7 +120,7 @@ export function Phase2Page() {
         </div>
 
         {/* Adversarial MM */}
-        <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+        <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white text-sm font-bold">Adversarial MM</h3>
             <StatusBadge enabled={status.adversarialMM.enabled} />
@@ -133,7 +133,7 @@ export function Phase2Page() {
       </div>
 
       {/* Spoof Alerts */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <h3 className="text-white text-sm font-bold mb-3">Spoof Detection Alerts</h3>
         {alerts.length === 0 ? (
           <p className="text-muted text-xs">No manipulation signals detected</p>
@@ -142,7 +142,7 @@ export function Phase2Page() {
             {alerts.map((a, i) => (
               <div key={i} className="flex items-center gap-3 text-xs py-1.5 border-b border-bg-border/50">
                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                  a.confidence > 0.9 ? 'bg-loss/20 text-loss' : 'bg-warning/20 text-warning'
+                  a.confidence > 0.9 ? 'bg-loss/20 text-loss' : 'bg-gold/20 text-gold'
                 }`}>
                   {(a.confidence * 100).toFixed(0)}%
                 </span>

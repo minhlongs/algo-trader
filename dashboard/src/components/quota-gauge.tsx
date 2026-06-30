@@ -19,13 +19,13 @@ export function QuotaGauge({ label, used, limit, unit = '', size = 'md' }: Quota
   const colorClass = percentage >= 80
     ? 'bg-loss'
     : percentage >= 50
-      ? 'bg-warning'
+      ? 'bg-gold'
       : 'bg-profit';
 
   const textColorClass = percentage >= 80
     ? 'text-loss'
     : percentage >= 50
-      ? 'text-warning'
+      ? 'text-gold'
       : 'text-profit';
 
   const sizeClasses = {
@@ -97,7 +97,7 @@ export function CircularGauge({
   const colorClass = percentage >= 80
     ? 'text-loss'
     : percentage >= 50
-      ? 'text-warning'
+      ? 'text-gold'
       : 'text-profit';
 
   return (

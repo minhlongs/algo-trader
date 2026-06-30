@@ -30,7 +30,7 @@ export function SubscriberEquityChart({
     [curve]
   );
 
-  const color = totalReturn >= 0 ? '#00FF41' : '#FF3366';
+  const color = totalReturn >= 0 ? '#00E676' : '#FF4466';
 
   if (curve.length === 0) {
     return (

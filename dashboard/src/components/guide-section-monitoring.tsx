@@ -46,7 +46,7 @@ pm2 restart cashclaw`} />
             <CopyBlock code={`# Verify license status
 pm2 logs cashclaw --lines 10 | grep -i license`} />
             <p className="mt-2">
-              Contact <span className="text-[#00D9FF]">support@cashclaw.cc</span> if issues persist.
+              Contact <span className="text-[#00C8E8]">support@cashclaw.cc</span> if issues persist.
             </p>
           </CollapsibleItem>
         </div>
@@ -56,7 +56,7 @@ pm2 logs cashclaw --lines 10 | grep -i license`} />
           <p className="text-sm font-mono text-red-400 font-bold mb-3">Emergency Stop Procedures</p>
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-mono text-[#00D9FF] font-bold mb-2">Level 1 — Quick stop</p>
+              <p className="text-sm font-mono text-[#00C8E8] font-bold mb-2">Level 1 — Quick stop</p>
               <CopyBlock code="pm2 stop cashclaw" />
             </div>
             <div>
@@ -73,8 +73,8 @@ pm2 logs cashclaw --lines 10 | grep -i license`} />
         </div>
 
         {/* Support */}
-        <div className="border border-[#00D9FF]/30 bg-[#00D9FF]/5 rounded-lg p-4">
-          <p className="text-sm font-mono text-[#00D9FF] font-bold mb-1">Need Help?</p>
+        <div className="border border-[#00C8E8]/30 bg-[#00C8E8]/5 rounded-lg p-4">
+          <p className="text-sm font-mono text-[#00C8E8] font-bold mb-1">Need Help?</p>
           <div className="text-sm font-mono text-[#8892B0] space-y-1">
             <p>Email: <span className="text-white">support@cashclaw.cc</span></p>
             <p>Telegram: <span className="text-white">@cashclaw_support</span></p>
@@ -88,12 +88,12 @@ pm2 logs cashclaw --lines 10 | grep -i license`} />
           <div className="overflow-x-auto">
             <table className="w-full text-sm font-mono border-collapse">
               <thead>
-                <tr className="border-b border-[#2D3142]">
-                  <th className="text-left py-2 pr-6 text-[#00D9FF] w-1/3">Term</th>
-                  <th className="text-left py-2 text-[#00D9FF]">Definition</th>
+                <tr className="border-b border-[#1E2640]">
+                  <th className="text-left py-2 pr-6 text-[#00C8E8] w-1/3">Term</th>
+                  <th className="text-left py-2 text-[#00C8E8]">Definition</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#2D3142]">
+              <tbody className="divide-y divide-[#1E2640]">
                 {[
                   ['bid', 'Buy price — highest price you\'re willing to pay'],
                   ['ask', 'Sell price — lowest price you\'re willing to sell at'],

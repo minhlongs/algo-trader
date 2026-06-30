@@ -4,12 +4,12 @@
 
 export const tokens = {
   colors: {
-    background: 'var(--color-background, #060912)',
-    surface: 'var(--color-surface, rgba(255,255,255,0.05))',
-    accent: 'var(--color-accent, #00FFA3)',
-    loss: 'var(--color-loss, #FF2E93)',
-    muted: 'var(--color-muted, rgba(255,255,255,0.5))',
-    border: 'var(--color-border, rgba(255,255,255,0.1))',
+    background: 'var(--color-background, #080B14)',
+    surface: 'var(--color-surface, #111627)',
+    accent: 'var(--color-accent, #00C8E8)',
+    loss: 'var(--color-loss, #FF4466)',
+    muted: 'var(--color-muted, #8892B0)',
+    border: 'var(--color-border, #1E2640)',
     text: 'var(--color-text, #FFFFFF)',
   },
   spacing: {
@@ -27,7 +27,6 @@ export const tokens = {
   },
 } as const;
 
-/** Color tokens for direct import (Stitch API) */
 export const COLORS = {
   bg: tokens.colors.background,
   surface: tokens.colors.surface,
@@ -35,13 +34,14 @@ export const COLORS = {
   onSurfaceVariant: tokens.colors.muted,
   accent: tokens.colors.accent,
   loss: tokens.colors.loss,
-  profit: tokens.colors.accent,
+  profit: '#00E676',
   muted: tokens.colors.muted,
   border: tokens.colors.border,
   outline: tokens.colors.border,
   text: tokens.colors.text,
+  gold: '#FFB800',
   primary: tokens.colors.accent,
-  onPrimary: '#060912',
+  onPrimary: '#080B14',
   white: '#FFFFFF',
   black: '#000000',
 } as const;

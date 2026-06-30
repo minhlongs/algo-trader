@@ -1,224 +1,297 @@
 /**
- * Public landing page. Full-screen dark cyberpunk, no sidebar.
- * Sections: navbar, hero, how-it-works, stats bar, pricing preview, footer.
+ * CashClaw Landing — Quant Elite design system.
+ * Polymarket automated market making platform.
+ * Geist sans for body, JetBrains Mono for data. Phosphor icons. Framer Motion.
  */
-import { useEffect } from 'react';
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, useInView } from 'motion/react';
+import {
+  MagnifyingGlass,
+  ChartLine,
+  CurrencyDollar,
+  ShieldCheck,
+  Clock,
+  Lightning,
+  CheckCircle,
+  ArrowRight,
+  Star,
+} from '@phosphor-icons/react';
 import { PublicNavbar } from '../components/public-navbar';
 import { Footer } from '../components/footer';
 import { TerminalAnimation } from '../components/terminal-animation';
 import { TIER_LIMITS } from '../lib/tier-config';
 
-function useFadeIn(selector: string) {
-  useEffect(() => {
-    const els = document.querySelectorAll<HTMLElement>(selector);
-    if (!('IntersectionObserver' in window)) {
-      els.forEach((el) => el.classList.add('visible'));
-      return;
-    }
-    const obs = new IntersectionObserver(
-      (entries) => entries.forEach((e) => { if (e.isIntersecting) { (e.target as HTMLElement).classList.add('visible'); } }),
-      { threshold: 0.1 }
-    );
-    els.forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
-  }, [selector]);
+function FadeIn({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-80px' });
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial={{ opacity: 0, y: 20 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 const HOW_ITEMS = [
   {
     title: 'Select Markets',
     body: 'The bot scans Polymarket for high-liquidity questions with favourable spreads and selects the top candidates automatically.',
-    icon: (
-      <svg width="28" height="28" fill="none" stroke="#00D9FF" strokeWidth="1.5" viewBox="0 0 24 24">
-        <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
-      </svg>
-    ),
+    icon: MagnifyingGlass,
+    accent: '#00C8E8',
   },
   {
     title: 'Bot Quotes',
     body: 'CashClaw posts bid and ask orders around the fair-value mid-price, earning the spread on every matched trade.',
-    icon: (
-      <svg width="28" height="28" fill="none" stroke="#00D9FF" strokeWidth="1.5" viewBox="0 0 24 24">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-      </svg>
-    ),
+    icon: ChartLine,
+    accent: '#00C8E8',
   },
   {
     title: 'You Profit',
     body: 'Filled orders generate spread income. Safety limits cap inventory risk. Funds stay in your Polymarket wallet.',
-    icon: (
-      <svg width="28" height="28" fill="none" stroke="#00FF41" strokeWidth="1.5" viewBox="0 0 24 24">
-        <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-      </svg>
-    ),
+    icon: CurrencyDollar,
+    accent: '#00E676',
   },
 ];
 
 const STATS = [
-  { value: '0%', label: 'maker fees on Polymarket' },
-  { value: '87.3%', label: 'of traders lose money' },
-  { value: '24/7', label: 'automated operation' },
-  { value: '< 2s', label: 'requote latency' },
+  { value: '0%', label: 'maker fees on Polymarket', icon: Star },
+  { value: '87.3%', label: 'of traders lose money — you take the other side', icon: ChartLine },
+  { value: '24/7', label: 'automated operation', icon: Clock },
+  { value: '< 2s', label: 'requote latency', icon: Lightning },
 ];
 
 const PRICING_CARDS = [
-  { name: 'Free', price: '$0', sub: 'forever', cta: 'Start Free', href: '/signup?tier=free', highlight: false,
+  {
+    name: 'Free', price: '$0', sub: 'forever', cta: 'Start Free', href: '/signup?tier=free', highlight: false,
     features: [
       `${TIER_LIMITS.free.activeStrategies} active strategy`,
-      `${TIER_LIMITS.free.tradesPerDay} trades / day`,
+      `${TIER_LIMITS.free.tradesPerDay} trades/day`,
       `${TIER_LIMITS.free.dailyLossCap} daily loss cap`,
       `${TIER_LIMITS.free.maxPosition} max position`,
-    ] },
-  { name: 'Pro', price: '$49', sub: 'per month', cta: 'Start Pro', href: '/signup?tier=pro', highlight: true,
+    ],
+  },
+  {
+    name: 'Pro', price: '$49', sub: '/month', cta: 'Start Pro', href: '/signup?tier=pro', highlight: true,
     features: [
       `${TIER_LIMITS.pro.activeStrategies} active strategies`,
-      `${TIER_LIMITS.pro.tradesPerDay} trades`,
+      `${TIER_LIMITS.pro.tradesPerDay} trades/day`,
       `${TIER_LIMITS.pro.dailyLossCap} daily loss cap`,
       `${TIER_LIMITS.pro.maxPosition} max position`,
-    ] },
-  { name: 'Enterprise', price: '$199', sub: 'per month', cta: 'Contact Us', href: '/signup?tier=enterprise', highlight: false,
+    ],
+  },
+  {
+    name: 'Enterprise', price: '$199', sub: '/month', cta: 'Contact Us', href: '/signup?tier=enterprise', highlight: false,
     features: [
       `${TIER_LIMITS.enterprise.activeStrategies} strategies`,
-      `${TIER_LIMITS.enterprise.tradesPerDay} trades`,
+      `${TIER_LIMITS.enterprise.tradesPerDay} trades/day`,
       `${TIER_LIMITS.enterprise.dailyLossCap} daily loss cap`,
       `${TIER_LIMITS.enterprise.maxPosition} max position`,
-    ] },
+    ],
+  },
 ];
 
-export function LandingPage() {
-  useFadeIn('.fade-in');
-
+function SectionEyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0F0F1A] text-white font-mono" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #2D3142 1px, transparent 0)', backgroundSize: '32px 32px' }}>
+    <p className="text-accent text-xs font-medium uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+      <span className="w-1 h-1 rounded-full bg-accent" />
+      {children}
+    </p>
+  );
+}
+
+export function LandingPage() {
+  return (
+    <div className="min-h-screen bg-bg text-white font-sans" style={{
+      backgroundImage: 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,200,232,0.06) 0%, transparent 60%), radial-gradient(circle at 1px 1px, rgba(30,38,64,0.5) 1px, transparent 0)',
+      backgroundSize: '100% 100%, 32px 32px',
+    }}>
       <PublicNavbar />
 
-      {/* Hero */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="fade-in opacity-0 transition-all duration-700 translate-y-4" style={{ '--tw-translate-y': '1rem' } as React.CSSProperties}>
-            <p className="text-[#00D9FF] text-xs uppercase tracking-widest mb-4">Prediction Market Automation</p>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-tight text-white mb-6">
-              Polymarket Market Making.<br />
-              <span className="text-[#00D9FF]">Automated.</span>
-            </h1>
-            <p className="text-[#8892B0] text-base leading-relaxed mb-8 max-w-md">
-              CashClaw quotes bid/ask spreads on Polymarket 24/7. You earn the spread. Safety limits protect your capital. No manual trading required.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                to="/signup"
-                className="bg-[#00D9FF] text-[#0F0F1A] font-bold px-6 py-3 rounded hover:bg-[#00D9FF]/80 transition-colors text-sm"
-              >
-                Start Free
-              </Link>
-              <Link
-                to="/pricing"
-                className="border border-[#2D3142] text-[#8892B0] hover:text-white hover:border-[#00D9FF]/50 font-semibold px-6 py-3 rounded transition-colors text-sm"
-              >
-                View Pricing
-              </Link>
-            </div>
-          </div>
+      {/* ── Hero ── */}
+      <section className="relative pt-28 sm:pt-36 pb-16 sm:pb-24 px-4 sm:px-6 max-w-6xl mx-auto overflow-hidden">
+        {/* Ambient glow behind hero */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[120px] opacity-10 pointer-events-none"
+          style={{ background: 'radial-gradient(circle, #00C8E8, transparent)' }} />
 
-          <div className="fade-in opacity-0 transition-all duration-700 delay-200">
-            <TerminalAnimation />
-          </div>
-        </div>
-      </section>
-
-      {/* Stats bar */}
-      <section className="border-y border-[#2D3142] bg-[#1A1A2E]/50 py-6 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
-          {STATS.map(({ value, label }) => (
-            <div key={label} className="fade-in opacity-0 transition-all duration-500">
-              <p className="text-[#00D9FF] text-xl font-bold mb-1">{value}</p>
-              <p className="text-[#8892B0] text-xs">{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="py-20 px-4 sm:px-6 max-w-6xl mx-auto">
-        <div className="text-center mb-12 fade-in opacity-0 transition-all duration-700">
-          <p className="text-[#00D9FF] text-xs uppercase tracking-widest mb-3">How It Works</p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white">Three steps to passive spread income</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {HOW_ITEMS.map(({ title, body, icon }, i) => (
-            <div
-              key={title}
-              className="fade-in opacity-0 transition-all duration-700 bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-6 hover:border-[#00D9FF]/40 transition-colors"
-              style={{ transitionDelay: `${i * 100}ms` }}
-            >
-              <div className="mb-4">{icon}</div>
-              <h3 className="text-white font-bold mb-2 text-sm">{title}</h3>
-              <p className="text-[#8892B0] text-xs leading-relaxed">{body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing preview */}
-      <section className="py-20 px-4 sm:px-6 max-w-6xl mx-auto">
-        <div className="text-center mb-12 fade-in opacity-0 transition-all duration-700">
-          <p className="text-[#00D9FF] text-xs uppercase tracking-widest mb-3">Pricing</p>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white">Simple, transparent plans</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PRICING_CARDS.map(({ name, price, sub, cta, href, highlight, features }, i) => (
-            <div
-              key={name}
-              className={`fade-in opacity-0 transition-all duration-700 rounded-lg p-6 flex flex-col gap-4 ${
-                highlight
-                  ? 'bg-[#1A1A2E] border-2 border-[#00D9FF] relative'
-                  : 'bg-[#1A1A2E] border border-[#2D3142]'
-              }`}
-              style={{ transitionDelay: `${i * 100}ms` }}
-            >
-              {highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00D9FF] text-[#0F0F1A] text-xs font-bold px-3 py-0.5 rounded-full">
-                  POPULAR
-                </span>
-              )}
-              <div>
-                <p className="text-[#8892B0] text-xs uppercase tracking-widest mb-1">{name}</p>
-                <p className="text-white text-3xl font-bold">{price}<span className="text-[#8892B0] text-sm font-normal ml-1">{sub}</span></p>
+        <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div className="flex flex-col gap-6">
+            <FadeIn>
+              <SectionEyebrow>Prediction Market Automation</SectionEyebrow>
+            </FadeIn>
+            <FadeIn delay={0.1}>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.08] tracking-[-0.02em] text-white">
+                Polymarket
+                <br />
+                <span className="text-accent">market making</span>
+                <br />
+                <span className="text-muted">automated.</span>
+              </h1>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <p className="text-muted text-base sm:text-lg leading-relaxed max-w-lg text-balance">
+                CashClaw quotes bid/ask spreads on Polymarket 24/7.
+                You earn the spread. Safety limits protect your capital.
+                No manual trading required.
+              </p>
+            </FadeIn>
+            <FadeIn delay={0.3}>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/signup"
+                  className="bg-accent text-bg font-semibold px-6 py-3 rounded-lg hover:bg-accent/80 transition-colors text-sm inline-flex items-center gap-2 group"
+                >
+                  Start Free
+                  <ArrowRight weight="bold" className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link
+                  to="/pricing"
+                  className="border border-bg-border text-muted hover:text-white hover:border-accent/50 font-medium px-6 py-3 rounded-lg transition-colors text-sm"
+                >
+                  View Pricing
+                </Link>
               </div>
-              <ul className="space-y-2 flex-1">
-                {features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-xs text-[#8892B0]">
-                    <span className="w-1 h-1 rounded-full bg-[#00D9FF] flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to={href}
-                className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
+            </FadeIn>
+            {/* Trust micro-signals */}
+            <FadeIn delay={0.4}>
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck weight="fill" className="w-4 h-4 text-profit" />
+                  <span className="text-muted text-xs">Non-custodial</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle weight="fill" className="w-4 h-4 text-profit" />
+                  <span className="text-muted text-xs">Funds stay in your wallet</span>
+                </div>
+              </div>
+            </FadeIn>
+          </div>
+
+          <FadeIn delay={0.2}>
+            <div className="bg-bg-surface border border-bg-border rounded-xl overflow-hidden shadow-[0_0_40px_rgba(0,200,232,0.04)]">
+              <TerminalAnimation />
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ── Stats Bar ── */}
+      <FadeIn>
+        <section className="border-y border-bg-border bg-bg-surface/40 backdrop-blur-sm py-8 px-4 sm:px-6">
+          <div className="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8">
+            {STATS.map(({ value, label, icon: Icon }) => (
+              <div key={label} className="text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-1.5 mb-1">
+                  <Icon weight="bold" className="w-4 h-4 text-accent" />
+                  <p className="text-accent text-xl sm:text-2xl font-bold font-mono tabular-nums">{value}</p>
+                </div>
+                <p className="text-muted text-xs leading-relaxed">{label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </FadeIn>
+
+      {/* ── How It Works ── */}
+      <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto">
+        <div className="text-center mb-14">
+          <FadeIn>
+            <SectionEyebrow>How It Works</SectionEyebrow>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-[-0.01em]">
+              Three steps to passive spread income
+            </h2>
+          </FadeIn>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {HOW_ITEMS.map(({ title, body, icon: Icon, accent }, i) => (
+            <FadeIn key={title} delay={i * 0.1}>
+              <div className="group bg-bg-surface border border-bg-border rounded-xl p-6 sm:p-8 hover:border-accent/30 transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,200,232,0.03)] flex flex-col gap-4">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${accent}14` }}>
+                  <Icon weight="bold" className="w-5 h-5" style={{ color: accent }} />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold mb-2 text-base">{title}</h3>
+                  <p className="text-muted text-sm leading-relaxed">{body}</p>
+                </div>
+              </div>
+            </FadeIn>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Pricing ── */}
+      <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto">
+        <div className="text-center mb-14">
+          <FadeIn>
+            <SectionEyebrow>Pricing</SectionEyebrow>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-[-0.01em]">
+              Simple, transparent plans
+            </h2>
+          </FadeIn>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          {PRICING_CARDS.map(({ name, price, sub, cta, href, highlight, features }, i) => (
+            <FadeIn key={name} delay={i * 0.1}>
+              <div
+                className={`relative rounded-xl p-6 sm:p-8 flex flex-col gap-5 transition-all duration-300 ${
                   highlight
-                    ? 'bg-[#00D9FF] text-[#0F0F1A] hover:bg-[#00D9FF]/80'
-                    : 'border border-[#2D3142] text-[#8892B0] hover:text-white hover:border-[#00D9FF]/50'
+                    ? 'bg-bg-surface border-2 border-accent shadow-[0_0_30px_rgba(0,200,232,0.08)]'
+                    : 'bg-bg-surface border border-bg-border hover:border-accent/20'
                 }`}
               >
-                {cta}
-              </Link>
-            </div>
+                {highlight && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-bg text-[11px] font-bold px-3 py-0.5 rounded-full tracking-wide">
+                    POPULAR
+                  </span>
+                )}
+                <div>
+                  <p className="text-muted text-xs font-medium uppercase tracking-wider mb-1">{name}</p>
+                  <p className="text-white text-4xl font-bold tracking-tight font-mono tabular-nums">
+                    {price}
+                    <span className="text-muted text-sm font-normal font-sans ml-1">{sub}</span>
+                  </p>
+                </div>
+                <ul className="space-y-3 flex-1">
+                  {features.map((f) => (
+                    <li key={f} className="flex items-center gap-2.5 text-sm text-muted">
+                      <CheckCircle weight="fill" className="w-4 h-4 text-accent flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to={href}
+                  className={`text-center text-sm font-semibold px-5 py-3 rounded-lg transition-all duration-200 ${
+                    highlight
+                      ? 'bg-accent text-bg hover:bg-accent/80 shadow-[0_4px_20px_rgba(0,200,232,0.2)]'
+                      : 'border border-bg-border text-muted hover:text-white hover:border-accent/40'
+                  }`}
+                >
+                  {cta}
+                </Link>
+              </div>
+            </FadeIn>
           ))}
         </div>
-        <p className="text-center mt-6">
-          <Link to="/pricing" className="text-[#00D9FF] text-xs hover:underline">
-            See full pricing details
-          </Link>
-        </p>
+        <FadeIn delay={0.2}>
+          <p className="text-center mt-8">
+            <Link to="/pricing" className="text-accent text-sm hover:underline inline-flex items-center gap-1">
+              See full pricing details <ArrowRight className="w-3 h-3" />
+            </Link>
+          </p>
+        </FadeIn>
       </section>
 
       <Footer />
-
-      <style>{`
-        .fade-in.visible { opacity: 1 !important; transform: translateY(0) !important; }
-      `}</style>
     </div>
   );
 }

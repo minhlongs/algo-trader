@@ -9,7 +9,7 @@ export function CopyBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="relative group">
-      <pre className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-4 text-sm font-mono text-[#8892B0] overflow-x-auto">
+      <pre className="bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm font-mono text-[#8892B0] overflow-x-auto">
         {code}
       </pre>
       <button
@@ -22,7 +22,7 @@ export function CopyBlock({ code }: { code: string }) {
           }
           setTimeout(() => setCopied(false), 2000);
         }}
-        className="absolute top-2 right-2 px-2 py-1 text-xs bg-[#2D3142] text-[#8892B0] rounded hover:text-white transition opacity-0 group-hover:opacity-100"
+        className="absolute top-2 right-2 px-2 py-1 text-xs bg-[#1E2640] text-[#8892B0] rounded hover:text-white transition opacity-0 group-hover:opacity-100"
       >
         {copied ? 'Copied!' : 'Copy'}
       </button>
@@ -33,11 +33,11 @@ export function CopyBlock({ code }: { code: string }) {
 export function CollapsibleItem({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-[#2D3142] rounded-lg overflow-hidden">
+    <div className="border border-[#1E2640] rounded-lg overflow-hidden">
       <button
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-mono text-[#8892B0] hover:text-white hover:bg-[#1A1A2E] transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-mono text-[#8892B0] hover:text-white hover:bg-[#111627] transition-colors"
       >
         <span>{title}</span>
         <svg
@@ -61,7 +61,7 @@ type BannerColor = 'cyan' | 'yellow' | 'red' | 'green';
 
 export function InfoBanner({ color, label, children }: { color: BannerColor; label: string; children: React.ReactNode }) {
   const colorMap: Record<string, { border: string; bg: string; text: string }> = {
-    cyan: { border: 'border-[#00D9FF]/30', bg: 'bg-[#00D9FF]/5', text: 'text-[#00D9FF]' },
+    cyan: { border: 'border-[#00C8E8]/30', bg: 'bg-[#00C8E8]/5', text: 'text-[#00C8E8]' },
     yellow: { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', text: 'text-yellow-400' },
     red: { border: 'border-red-500/30', bg: 'bg-red-500/5', text: 'text-red-400' },
     green: { border: 'border-emerald-500/30', bg: 'bg-emerald-500/5', text: 'text-emerald-400' },

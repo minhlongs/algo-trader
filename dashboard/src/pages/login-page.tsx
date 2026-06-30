@@ -31,20 +31,20 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F0F1A] font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] font-mono flex flex-col">
       <PublicNavbar />
 
       <div className="flex-1 flex items-center justify-center px-4 pt-16">
         <div className="w-full max-w-sm">
-          <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-8">
+          <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-8">
             {/* Header */}
             <div className="mb-6">
-              <p className="text-[#00D9FF] text-xs uppercase tracking-widest mb-2">Welcome back</p>
+              <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-2">Welcome back</p>
               <h1 className="text-white text-xl font-bold">Sign in to CashClaw</h1>
             </div>
 
             {displayError && (
-              <div className="mb-4 px-3 py-2 bg-[#FF3366]/10 border border-[#FF3366]/30 rounded text-[#FF3366] text-xs">
+              <div className="mb-4 px-3 py-2 bg-[#FF4466]/10 border border-[#FF4466]/30 rounded text-[#FF4466] text-xs">
                 {displayError}
               </div>
             )}
@@ -59,7 +59,7 @@ export function LoginPage() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   disabled={loading}
-                  className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -72,14 +72,14 @@ export function LoginPage() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   disabled={loading}
-                  className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#00D9FF] text-[#0F0F1A] font-bold text-sm py-2.5 rounded hover:bg-[#00D9FF]/80 transition-colors mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-[#00C8E8] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
@@ -87,7 +87,7 @@ export function LoginPage() {
 
             <p className="text-[#8892B0] text-xs text-center mt-6">
               No account?{' '}
-              <Link to="/signup" className="text-[#00D9FF] hover:underline">
+              <Link to="/signup" className="text-[#00C8E8] hover:underline">
                 Create one free
               </Link>
             </p>

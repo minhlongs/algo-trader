@@ -159,7 +159,7 @@ export function LicenseListTable({
 
       {/* Table */}
       {sortedLicenses.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-muted font-mono bg-bg-card border border-bg-border rounded-lg">
+        <div className="flex flex-col items-center justify-center py-12 text-muted font-mono bg-bg-surface border border-bg-border rounded-lg">
           <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" className="mb-3 opacity-30">
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <line x1="3" y1="9" x2="21" y2="9" />
@@ -177,10 +177,10 @@ export function LicenseListTable({
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto bg-bg-card border border-bg-border rounded-lg">
+        <div className="overflow-x-auto bg-bg-surface border border-bg-border rounded-lg">
           <table className="w-full min-w-[800px] text-xs font-mono border-collapse">
             <thead>
-              <tr className="border-b border-bg-border bg-bg-card/50">
+              <tr className="border-b border-bg-border bg-bg-surface/50">
                 {COLUMNS.map(({ key, label, align }) => (
                   <th
                     key={key}
@@ -204,7 +204,7 @@ export function LicenseListTable({
               {sortedLicenses.map((license) => (
                 <tr
                   key={license.id}
-                  className="border-b border-bg-border/50 hover:bg-bg-card/60 transition-colors"
+                  className="border-b border-bg-border/50 hover:bg-bg-surface/60 transition-colors"
                 >
                   <td className="px-3 py-3 text-white font-semibold">{license.name}</td>
                   <td className="px-3 py-3 text-muted font-mono text-[10px]">{license.key}</td>
@@ -255,7 +255,7 @@ export function LicenseListTable({
                             className="fixed inset-0 z-10"
                             onClick={() => setActionMenuOpen(null)}
                           />
-                          <div className="absolute right-0 top-8 z-20 bg-bg-card border border-bg-border rounded shadow-lg min-w-[140px]">
+                          <div className="absolute right-0 top-8 z-20 bg-bg-surface border border-bg-border rounded shadow-lg min-w-[140px]">
                             <button
                               onClick={() => {
                                 onRevoke?.(license.id);

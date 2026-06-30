@@ -117,7 +117,7 @@ export function AuditLogViewer({ licenseId }: AuditLogViewerProps) {
               ${
                 filter === type.id
                   ? `bg-accent/20 ${type.color} border-accent/40`
-                  : 'bg-bg-card/50 text-muted border-bg-border hover:border-muted/40'
+                  : 'bg-bg-surface/50 text-muted border-bg-border hover:border-muted/40'
               }
             `}
           >
@@ -128,7 +128,7 @@ export function AuditLogViewer({ licenseId }: AuditLogViewerProps) {
 
       {/* Timeline */}
       {filteredLogs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-muted font-mono bg-bg-card border border-bg-border rounded-lg">
+        <div className="flex flex-col items-center justify-center py-12 text-muted font-mono bg-bg-surface border border-bg-border rounded-lg">
           <svg className="w-12 h-12 mb-4 opacity-30" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -161,7 +161,7 @@ export function AuditLogViewer({ licenseId }: AuditLogViewerProps) {
                 />
 
                 {/* Log Card */}
-                <div className="bg-bg-card border border-bg-border rounded-lg p-4 hover:bg-bg-card/60 transition-colors">
+                <div className="bg-bg-surface border border-bg-border rounded-lg p-4 hover:bg-bg-surface/60 transition-colors">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">

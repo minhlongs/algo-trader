@@ -51,7 +51,7 @@ export function UsageAnalyticsDashboard() {
           <select
             value={selectedLicense}
             onChange={(e) => setSelectedLicense(e.target.value)}
-            className="px-3 py-1.5 text-xs font-mono rounded border border-bg-border bg-bg-card text-muted hover:text-white focus:border-accent focus:outline-none"
+            className="px-3 py-1.5 text-xs font-mono rounded border border-bg-border bg-bg-surface text-muted hover:text-white focus:border-accent focus:outline-none"
           >
             <option value="">All Licenses</option>
             {/* In production, populate from active licenses API */}
@@ -132,7 +132,7 @@ export function UsageAnalyticsDashboard() {
         {/* Left Column - Tier Distribution & Usage Gauges */}
         <div className="lg:col-span-2 space-y-6">
           {/* Tier Distribution Chart */}
-          <div className="bg-bg-card border border-bg-border rounded-lg p-6">
+          <div className="bg-bg-surface border border-bg-border rounded-lg p-6">
             <h4 className="text-white font-semibold mb-4">License Distribution by Tier</h4>
             <div className="grid grid-cols-3 gap-4">
               <TierDistributionCard
@@ -160,7 +160,7 @@ export function UsageAnalyticsDashboard() {
           </div>
 
           {/* Usage Breakdown Gauges */}
-          <div className="bg-bg-card border border-bg-border rounded-lg p-6">
+          <div className="bg-bg-surface border border-bg-border rounded-lg p-6">
             <h4 className="text-white font-semibold mb-4">Usage Breakdown</h4>
             <div className="space-y-5">
               <QuotaGauge
@@ -189,7 +189,7 @@ export function UsageAnalyticsDashboard() {
 
           {/* Tenant Quota (if available) */}
           {quota && (
-            <div className="bg-bg-card border border-bg-border rounded-lg p-6">
+            <div className="bg-bg-surface border border-bg-border rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-white font-semibold">Your Quota</h4>
                 <span className="text-xs text-muted font-mono">
@@ -226,7 +226,7 @@ export function UsageAnalyticsDashboard() {
         {/* Right Column - Activity Feed & Status Gauges */}
         <div className="space-y-6">
           {/* Overall Usage Circular Gauge */}
-          <div className="bg-bg-card border border-bg-border rounded-lg p-6">
+          <div className="bg-bg-surface border border-bg-border rounded-lg p-6">
             <h4 className="text-white font-semibold mb-4 text-center">Overall Usage</h4>
             <CircularGauge
               value={(analytics?.usage.apiCalls || 0) + (analytics?.usage.mlFeatures || 0)}
@@ -239,7 +239,7 @@ export function UsageAnalyticsDashboard() {
           </div>
 
           {/* Status Distribution */}
-          <div className="bg-bg-card border border-bg-border rounded-lg p-6">
+          <div className="bg-bg-surface border border-bg-border rounded-lg p-6">
             <h4 className="text-white font-semibold mb-4">License Status</h4>
             <div className="space-y-3">
               <StatusRow
@@ -264,7 +264,7 @@ export function UsageAnalyticsDashboard() {
           </div>
 
           {/* Recent Activity Feed */}
-          <div className="bg-bg-card border border-bg-border rounded-lg p-6">
+          <div className="bg-bg-surface border border-bg-border rounded-lg p-6">
             <h4 className="text-white font-semibold mb-4">Recent Activity</h4>
             <div className="space-y-3 max-h-80 overflow-y-auto">
               {analytics?.recentActivity && analytics.recentActivity.length > 0 ? (
@@ -298,11 +298,11 @@ function SummaryCard({ label, value, icon, accent = 'default' }: SummaryCardProp
     default: 'text-white',
     profit: 'text-profit',
     accent: 'text-accent',
-    warning: 'text-warning',
+    warning: 'text-gold',
   };
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
       <div className="flex items-start justify-between mb-2">
         <span className="text-muted text-[10px] uppercase tracking-widest">{label}</span>
         {icon && <span className="text-muted">{icon}</span>}

@@ -36,7 +36,7 @@ export function LicenseHealthGauge({
 
   const getHealthColor = (score: number) => {
     if (score >= 80) return 'text-profit';
-    if (score >= 60) return 'text-warning';
+    if (score >= 60) return 'text-gold';
     return 'text-loss';
   };
 
@@ -47,7 +47,7 @@ export function LicenseHealthGauge({
   };
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-6">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-6">
       <h4 className="text-white font-semibold mb-4 text-center">
         License Health Overview
       </h4>
@@ -99,7 +99,7 @@ export function LicenseHealthGauge({
           </div>
           <div className="flex justify-between items-center text-xs">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-warning" />
+              <div className="w-2 h-2 rounded-full bg-gold" />
               <span className="text-muted">At Risk</span>
             </div>
             <span className="text-white font-mono">{atRisk} ({atRiskPercent.toFixed(0)}%)</span>

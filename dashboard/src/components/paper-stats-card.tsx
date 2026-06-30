@@ -70,9 +70,9 @@ export function PaperStatsCard() {
 
   return (
     <section className="px-4 sm:px-6 max-w-5xl mx-auto pb-4">
-      <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-6">
+      <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-6">
         <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-          <p className="text-[#00D9FF] text-xs uppercase tracking-[0.2em] font-mono">
+          <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] font-mono">
             Paper Run · Snapshot
           </p>
           <p className="text-[#8892B0] text-xs font-mono">
@@ -95,7 +95,7 @@ export function PaperStatsCard() {
           </p>
         )}
         {error && (
-          <p className="text-[#FF3366] text-xs mt-3 font-mono">
+          <p className="text-[#FF4466] text-xs mt-3 font-mono">
             Stats unavailable ({error}) — showing placeholder.
           </p>
         )}

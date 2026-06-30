@@ -115,7 +115,7 @@ export function Phase3Page() {
       {/* 3-column grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* MEV Sandwich */}
-        <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+        <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white text-sm font-bold">MEV Sandwich</h3>
             <StatusBadge enabled={mevSandwich.enabled} />
@@ -128,7 +128,7 @@ export function Phase3Page() {
         </div>
 
         {/* Portfolio Rebalancer */}
-        <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+        <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white text-sm font-bold">Portfolio Rebalancer</h3>
             <StatusBadge enabled={portfolioRebalancer.enabled} />
@@ -146,7 +146,7 @@ export function Phase3Page() {
         </div>
 
         {/* Predatory Liquidity */}
-        <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+        <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-white text-sm font-bold">Predatory Liquidity</h3>
             <StatusBadge enabled={predatoryLiquidity.enabled} />
@@ -160,7 +160,7 @@ export function Phase3Page() {
       </div>
 
       {/* MEV Bundle Alerts */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <h3 className="text-white text-sm font-bold mb-3">MEV Bundle Activity</h3>
         {mevAlerts.length === 0 ? (
           <p className="text-muted text-xs">No MEV bundles submitted yet</p>

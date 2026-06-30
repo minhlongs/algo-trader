@@ -12,14 +12,14 @@ const TIER_LABELS: Record<string, string> = {
 };
 
 const TIER_BADGE_COLORS: Record<string, string> = {
-  free: 'bg-[#2D3142] text-[#8892B0]',
-  pro: 'bg-[#00D9FF]/10 text-[#00D9FF] border border-[#00D9FF]/30',
+  free: 'bg-[#1E2640] text-[#8892B0]',
+  pro: 'bg-[#00C8E8]/10 text-[#00C8E8] border border-[#00C8E8]/30',
   enterprise: 'bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30',
 };
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="bg-bg-card border border-bg-border rounded-lg p-6 space-y-4">
+    <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
       <h2 className="text-white text-sm font-bold font-mono">{title}</h2>
       {children}
     </section>
@@ -70,7 +70,7 @@ export function AccountPage() {
       {/* Profile */}
       <Card title="Profile">
         <Row label="Email" value={email || '—'} />
-        <Row label="Tenant ID" value={<code className="text-[#00D9FF] text-[10px]">{tenantId ?? '—'}</code>} />
+        <Row label="Tenant ID" value={<code className="text-[#00C8E8] text-[10px]">{tenantId ?? '—'}</code>} />
         <Row label="Member since" value={memberSince} />
       </Card>
 
@@ -82,7 +82,7 @@ export function AccountPage() {
           </span>
           <Link
             to="/pricing"
-            className="text-xs font-mono text-[#00D9FF] hover:underline"
+            className="text-xs font-mono text-[#00C8E8] hover:underline"
           >
             Upgrade plan →
           </Link>
@@ -99,13 +99,13 @@ export function AccountPage() {
         <p className="text-muted text-xs font-mono">
           Use this key to authenticate CLI and programmatic access.
         </p>
-        <div className="bg-[#0F0F1A] border border-[#2D3142] rounded px-4 py-3 flex items-center justify-between gap-3">
-          <code className="text-[#00D9FF] text-xs font-mono">{maskedKey}</code>
+        <div className="bg-[#080B14] border border-[#1E2640] rounded px-4 py-3 flex items-center justify-between gap-3">
+          <code className="text-[#00C8E8] text-xs font-mono">{maskedKey}</code>
           <button
             disabled
             title="Contact support to regenerate your API key"
             aria-label="Regenerate API key — contact support to enable"
-            className="text-xs px-3 py-1.5 border border-[#2D3142] rounded text-muted font-mono cursor-not-allowed opacity-50"
+            className="text-xs px-3 py-1.5 border border-[#1E2640] rounded text-muted font-mono cursor-not-allowed opacity-50"
           >
             Regenerate
           </button>
@@ -114,7 +114,7 @@ export function AccountPage() {
           Key regeneration is disabled.{' '}
           <a
             href="mailto:support@cashclaw.cc"
-            className="text-[#00D9FF] hover:underline"
+            className="text-[#00C8E8] hover:underline"
           >
             Contact support
           </a>{' '}
@@ -129,7 +129,7 @@ export function AccountPage() {
             <p className="text-muted text-xs font-mono">You're on the free plan.</p>
             <Link
               to="/pricing"
-              className="bg-[#00D9FF] text-[#0F0F1A] font-bold text-xs px-4 py-2 rounded hover:bg-[#00D9FF]/80 transition-colors font-mono"
+              className="bg-[#00C8E8] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#00C8E8]/80 transition-colors font-mono"
             >
               Upgrade
             </Link>
@@ -141,7 +141,7 @@ export function AccountPage() {
             </p>
             <Link
               to="/pricing"
-              className="text-xs px-4 py-2 border border-[#2D3142] rounded text-[#00D9FF] hover:bg-[#00D9FF]/10 transition-colors font-mono"
+              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors font-mono"
             >
               Upgrade / Manage →
             </Link>
@@ -157,7 +157,7 @@ export function AccountPage() {
         <button
           disabled
           title="Contact support to delete your account"
-          className="text-xs px-4 py-2 border border-[#FF3366]/30 rounded text-[#FF3366]/50 font-mono cursor-not-allowed opacity-50"
+          className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 font-mono cursor-not-allowed opacity-50"
         >
           Delete Account
         </button>

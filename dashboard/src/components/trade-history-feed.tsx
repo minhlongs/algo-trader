@@ -29,7 +29,7 @@ export function TradeHistoryFeed({ trades }: Props) {
   return (
     <div className="overflow-x-auto max-h-80 overflow-y-auto">
       <table className="w-full text-xs font-mono">
-        <thead className="sticky top-0 bg-bg-card">
+        <thead className="sticky top-0 bg-bg-surface">
           <tr className="text-muted text-[10px] uppercase tracking-widest border-b border-bg-border">
             <th className="text-left py-2 px-3">Time</th>
             <th className="text-left py-2 px-3">Strategy</th>

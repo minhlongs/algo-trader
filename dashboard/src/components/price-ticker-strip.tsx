@@ -74,7 +74,7 @@ export function PriceTickerStrip() {
               ? 'bg-profit/15 border-profit/40'
               : flash === 'down'
               ? 'bg-loss/15 border-loss/40'
-              : 'bg-bg-card border-bg-border';
+              : 'bg-bg-surface border-bg-border';
 
           return (
             <div

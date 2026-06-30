@@ -31,10 +31,10 @@ const PRINCIPLES: Array<{ label: string; body: string }> = [
 export function LandingSoloQuant() {
   return (
     <div
-      className="min-h-screen bg-[#0F0F1A] text-white font-sans"
+      className="min-h-screen bg-[#080B14] text-white font-sans"
       style={{
         backgroundImage:
-          'radial-gradient(circle at 1px 1px, #2D3142 1px, transparent 0)',
+          'radial-gradient(circle at 1px 1px, #1E2640 1px, transparent 0)',
         backgroundSize: '32px 32px',
       }}
     >
@@ -46,14 +46,14 @@ export function LandingSoloQuant() {
 
       {/* Principles strip */}
       <section className="py-16 px-4 sm:px-6 max-w-5xl mx-auto">
-        <p className="text-[#00D9FF] text-xs uppercase tracking-[0.2em] font-mono mb-8">
+        <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] font-mono mb-8">
           What the desk refuses to become
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {PRINCIPLES.map(({ label, body }) => (
             <div
               key={label}
-              className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-6 hover:border-[#00D9FF]/40 transition-colors"
+              className="bg-[#111627] border border-[#1E2640] rounded-lg p-6 hover:border-[#00C8E8]/40 transition-colors"
             >
               <p className="text-white font-bold text-sm mb-2 font-mono">
                 {label}
@@ -76,7 +76,7 @@ export function LandingSoloQuant() {
         <div className="flex flex-wrap justify-center gap-3">
           <Link
             to="/manifesto"
-            className="bg-[#00D9FF] text-[#0F0F1A] font-bold px-6 py-3 rounded hover:bg-[#00D9FF]/80 transition-colors text-sm min-h-touch inline-flex items-center"
+            className="bg-[#00C8E8] text-[#080B14] font-bold px-6 py-3 rounded hover:bg-[#00C8E8]/80 transition-colors text-sm min-h-touch inline-flex items-center"
           >
             Read the Manifesto
           </Link>
@@ -84,7 +84,7 @@ export function LandingSoloQuant() {
             href="https://github.com/longtho638-jpg/algo-trader"
             target="_blank"
             rel="noopener noreferrer"
-            className="border border-[#2D3142] text-[#8892B0] hover:text-white hover:border-[#00D9FF]/50 font-semibold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center"
+            className="border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#00C8E8]/50 font-semibold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center"
           >
             View Source
           </a>

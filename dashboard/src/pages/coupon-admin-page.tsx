@@ -103,7 +103,7 @@ export function CouponAdminPage() {
 
       {/* API key prompt */}
       {!apiKey && (
-        <div className="bg-bg-card border border-bg-border rounded-xl p-6">
+        <div className="bg-bg-surface border border-bg-border rounded-xl p-6">
           <p className="text-muted text-sm mb-3">Enter your admin API key to manage coupons.</p>
           <div className="flex gap-3">
             <input
@@ -145,7 +145,7 @@ export function CouponAdminPage() {
 
       {/* Coupon table */}
       {apiKey && (
-        <div className="bg-bg-card border border-bg-border rounded-xl overflow-hidden">
+        <div className="bg-bg-surface border border-bg-border rounded-xl overflow-hidden">
           {loading && (
             <p className="p-6 text-muted text-sm">Loading coupons...</p>
           )}

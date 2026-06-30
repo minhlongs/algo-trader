@@ -49,18 +49,18 @@ export function DocsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0F1A] flex flex-col">
+    <div className="min-h-screen bg-[#080B14] flex flex-col">
       <PublicNavbar />
 
       {/* Mobile TOC — horizontal scroll bar */}
-      <div className="md:hidden sticky top-14 z-40 bg-[#0F0F1A]/95 backdrop-blur border-b border-[#2D3142] px-4 py-2 overflow-x-auto">
+      <div className="md:hidden sticky top-14 z-40 bg-[#080B14]/95 backdrop-blur border-b border-[#1E2640] px-4 py-2 overflow-x-auto">
         <div className="flex gap-4 whitespace-nowrap">
           {TOC_ITEMS.map(({ id, label }) => (
             <button
               key={id}
               onClick={() => scrollTo(id)}
               className={`text-xs font-mono py-1 transition-colors ${
-                activeId === id ? 'text-[#00D9FF]' : 'text-[#8892B0] hover:text-white'
+                activeId === id ? 'text-[#00C8E8]' : 'text-[#8892B0] hover:text-white'
               }`}
             >
               {label}
@@ -83,7 +83,7 @@ export function DocsPage() {
                   onClick={() => scrollTo(id)}
                   className={`block w-full text-left text-xs font-mono py-1.5 px-2 rounded transition-colors ${
                     activeId === id
-                      ? 'text-[#00D9FF] bg-[#00D9FF]/10'
+                      ? 'text-[#00C8E8] bg-[#00C8E8]/10'
                       : 'text-[#8892B0] hover:text-white'
                   }`}
                 >
@@ -92,11 +92,11 @@ export function DocsPage() {
               ))}
             </nav>
 
-            <div className="mt-8 pt-6 border-t border-[#2D3142]">
+            <div className="mt-8 pt-6 border-t border-[#1E2640]">
               <p className="text-xs font-mono text-[#8892B0] mb-2">Have an account?</p>
               <Link
                 to="/app/guide"
-                className="text-xs font-mono text-[#00D9FF] hover:underline"
+                className="text-xs font-mono text-[#00C8E8] hover:underline"
               >
                 View in app →
               </Link>

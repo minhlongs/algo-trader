@@ -16,10 +16,10 @@ export function GuideQuickStart() {
         {/* Step 1 */}
         <div>
           <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 1:</span> Create Polymarket Wallet
+            <span className="text-[#00C8E8] font-bold">Step 1:</span> Create Polymarket Wallet
           </p>
           <p className="text-sm font-mono text-[#8892B0]">
-            Go to <span className="text-[#00D9FF]">polymarket.com</span> &rarr; connect wallet &rarr; save your{' '}
+            Go to <span className="text-[#00C8E8]">polymarket.com</span> &rarr; connect wallet &rarr; save your{' '}
             <span className="text-yellow-400">PRIVATE KEY</span> securely.
             Fund your wallet with at least $100 USDC on Polygon.
           </p>
@@ -28,7 +28,7 @@ export function GuideQuickStart() {
         {/* Step 2 */}
         <div>
           <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 2:</span> Rent a VPS
+            <span className="text-[#00C8E8] font-bold">Step 2:</span> Rent a VPS
           </p>
           <p className="text-sm font-mono text-[#8892B0] mb-2">
             Any Linux VPS works. Recommended: DigitalOcean, Hetzner, or Vultr.
@@ -36,13 +36,13 @@ export function GuideQuickStart() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs font-mono border-collapse">
               <thead>
-                <tr className="border-b border-[#2D3142]">
-                  <th className="text-left py-2 pr-4 text-[#00D9FF]">Provider</th>
-                  <th className="text-left py-2 pr-4 text-[#00D9FF]">Price</th>
-                  <th className="text-left py-2 text-[#00D9FF]">Specs</th>
+                <tr className="border-b border-[#1E2640]">
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Provider</th>
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Price</th>
+                  <th className="text-left py-2 text-[#00C8E8]">Specs</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#2D3142]">
+              <tbody className="divide-y divide-[#1E2640]">
                 <tr>
                   <td className="py-2 pr-4 text-white">DigitalOcean</td>
                   <td className="py-2 pr-4">$12/mo</td>
@@ -66,7 +66,7 @@ export function GuideQuickStart() {
         {/* Step 3 */}
         <div>
           <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 3:</span> Install CashClaw
+            <span className="text-[#00C8E8] font-bold">Step 3:</span> Install CashClaw
           </p>
           <CopyBlock code={`ssh root@YOUR_VPS_IP
 
@@ -87,7 +87,7 @@ cp .env.example .env`} />
         {/* Step 4 */}
         <div>
           <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 4:</span> Configure .env
+            <span className="text-[#00C8E8] font-bold">Step 4:</span> Configure .env
           </p>
           <CopyBlock code={`# Your Polymarket credentials
 PRIVATE_KEY=0x_your_private_key
@@ -104,15 +104,15 @@ MM_MAX_MARKETS=5
           <div className="mt-3 border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-3">
             <p className="text-xs font-mono text-yellow-400 font-bold mb-1">License Tiers</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono text-[#8892B0]">
-              <div className="bg-[#1A1A2E] rounded p-2">
+              <div className="bg-[#111627] rounded p-2">
                 <span className="text-white block mb-1">Starter ($49/mo)</span>
                 1 strategy &middot; Polymarket only
               </div>
-              <div className="bg-[#1A1A2E] rounded p-2">
-                <span className="text-[#00D9FF] block mb-1">Pro ($149/mo)</span>
+              <div className="bg-[#111627] rounded p-2">
+                <span className="text-[#00C8E8] block mb-1">Pro ($149/mo)</span>
                 5 strategies &middot; all markets &middot; AI scanner
               </div>
-              <div className="bg-[#1A1A2E] rounded p-2">
+              <div className="bg-[#111627] rounded p-2">
                 <span className="text-yellow-400 block mb-1">Elite ($499/mo)</span>
                 Unlimited &middot; all features &middot; dedicated support
               </div>
@@ -123,7 +123,7 @@ MM_MAX_MARKETS=5
         {/* Step 5 */}
         <div>
           <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 5:</span> Start the Bot
+            <span className="text-[#00C8E8] font-bold">Step 5:</span> Start the Bot
           </p>
           <CopyBlock code={`# Start in DRY RUN first (no real money)
 pm2 start "npx tsx src/app.ts" --name cashclaw
@@ -141,7 +141,7 @@ pm2 save && pm2 startup`} />
         {/* Step 6 */}
         <div>
           <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 6:</span> Go Live
+            <span className="text-[#00C8E8] font-bold">Step 6:</span> Go Live
           </p>
           <p className="text-sm font-mono text-[#8892B0] mb-2">
             After 2-3 days of successful DRY_RUN, switch to live trading:
@@ -191,7 +191,7 @@ cp .env.example .env
 # Start bot
 pm2 start "npx tsx src/app.ts" --name cashclaw`} />
             <p className="mt-2">
-              <span className="text-[#00D9FF]">Bonus:</span> On Apple Silicon with 32GB+ RAM, you can run local AI models
+              <span className="text-[#00C8E8]">Bonus:</span> On Apple Silicon with 32GB+ RAM, you can run local AI models
               (Nemotron, DeepSeek R1) for enhanced market scanning without API costs.
             </p>
           </CollapsibleItem>

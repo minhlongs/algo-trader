@@ -56,7 +56,7 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
 
   if (loading) {
     return (
-      <div className="bg-bg-card border border-bg-border rounded-lg p-8 text-center">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
         <p className="text-muted text-sm">Loading signals...</p>
       </div>
     );
@@ -64,7 +64,7 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
 
   if (error) {
     return (
-      <div className="bg-bg-card border border-bg-border rounded-lg p-8 text-center">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
         <p className="text-loss text-sm mb-2">{error}</p>
         {onRefresh && (
           <button
@@ -79,7 +79,7 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
   }
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg overflow-hidden">
+    <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-bg-border">
         <h3 className="text-white text-sm font-semibold">

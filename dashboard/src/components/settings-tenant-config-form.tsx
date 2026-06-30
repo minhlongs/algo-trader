@@ -44,7 +44,7 @@ export function SettingsTenantConfigForm({ tenant }: Props) {
   return (
     <>
       {/* Tenant Info */}
-      <section className="bg-bg-card border border-bg-border rounded-lg p-6 space-y-4">
+      <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
         <SectionHeader title="Tenant Info" />
         <div className="grid grid-cols-2 gap-4 text-sm font-mono">
           <div>
@@ -69,7 +69,7 @@ export function SettingsTenantConfigForm({ tenant }: Props) {
       </section>
 
       {/* Exchange Config */}
-      <section className="bg-bg-card border border-bg-border rounded-lg p-6 space-y-4">
+      <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
         <SectionHeader title="Exchange Config" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {Object.entries(EXCHANGE_LABELS).map(([key, label]) => {

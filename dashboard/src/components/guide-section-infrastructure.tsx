@@ -14,22 +14,22 @@ export function GuideInfrastructure() {
       </div>
 
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-        <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-3">
-          <p className="text-[#00FF41] font-bold mb-2">You Own</p>
+        <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-3">
+          <p className="text-[#00E676] font-bold mb-2">You Own</p>
           <p>Private keys, VPS, all profits</p>
         </div>
-        <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-3">
-          <p className="text-[#00D9FF] font-bold mb-2">We Provide</p>
+        <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-3">
+          <p className="text-[#00C8E8] font-bold mb-2">We Provide</p>
           <p>Bot software, dashboard, updates, AI models</p>
         </div>
-        <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-3">
+        <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-3">
           <p className="text-yellow-400 font-bold mb-2">You Need</p>
           <p>VPS ($10-20/mo) + Polymarket wallet + CashClaw tier</p>
         </div>
       </div>
 
-      <div className="mt-6 bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-4">
-        <p className="text-[#00D9FF] font-bold mb-2 text-sm font-mono">How Market Making Works</p>
+      <div className="mt-6 bg-[#111627] border border-[#1E2640] rounded-lg p-4">
+        <p className="text-[#00C8E8] font-bold mb-2 text-sm font-mono">How Market Making Works</p>
         <div className="text-sm font-mono text-[#8892B0] space-y-2">
           <p>Bot places BUY and SELL orders simultaneously on Polymarket.</p>
           <p>When someone takes your order, you earn the spread.</p>
@@ -37,9 +37,9 @@ export function GuideInfrastructure() {
           <div className="mt-3 bg-[#0D1117] rounded p-3">
             <p>Market: <span className="text-white">&quot;Bitcoin hits $200K?&quot;</span></p>
             <p className="mt-1">
-              BID YES @ <span className="text-[#00FF41]">0.42</span>{' '}
-              &rarr; ASK YES @ <span className="text-[#00FF41]">0.52</span>{' '}
-              &rarr; <span className="text-[#00D9FF] font-bold">$0.10/share profit</span>
+              BID YES @ <span className="text-[#00E676]">0.42</span>{' '}
+              &rarr; ASK YES @ <span className="text-[#00E676]">0.52</span>{' '}
+              &rarr; <span className="text-[#00C8E8] font-bold">$0.10/share profit</span>
             </p>
           </div>
         </div>
@@ -51,13 +51,13 @@ export function GuideInfrastructure() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm font-mono border-collapse">
             <thead>
-              <tr className="border-b border-[#2D3142]">
-                <th className="text-left py-2 pr-6 text-[#00D9FF]">Capital</th>
-                <th className="text-left py-2 pr-6 text-[#00D9FF]">Daily</th>
-                <th className="text-left py-2 text-[#00D9FF]">Monthly</th>
+              <tr className="border-b border-[#1E2640]">
+                <th className="text-left py-2 pr-6 text-[#00C8E8]">Capital</th>
+                <th className="text-left py-2 pr-6 text-[#00C8E8]">Daily</th>
+                <th className="text-left py-2 text-[#00C8E8]">Monthly</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2D3142]">
+            <tbody className="divide-y divide-[#1E2640]">
               <tr>
                 <td className="py-2 pr-6 text-white">$1,000</td>
                 <td className="py-2 pr-6">$5-25</td>

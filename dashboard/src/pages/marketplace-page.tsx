@@ -136,7 +136,7 @@ export function MarketplacePage() {
           >
             {tab.label}
             {tab.count > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-bg-card border border-bg-border">
+              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-bg-surface border border-bg-border">
                 {tab.count}
               </span>
             )}
@@ -161,12 +161,12 @@ export function MarketplacePage() {
               placeholder="Search strategies..."
               value={filters.search ?? ''}
               onChange={(e) => handleFilter('search', e.target.value || undefined)}
-              className="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-xs text-white placeholder-muted w-48 focus:outline-none focus:border-accent/50"
+              className="bg-bg-surface border border-bg-border rounded px-3 py-1.5 text-xs text-white placeholder-muted w-48 focus:outline-none focus:border-accent/50"
             />
             <select
               value={filters.category ?? ''}
               onChange={(e) => handleFilter('category', e.target.value || undefined)}
-              className="bg-bg-card border border-bg-border rounded px-2.5 py-1.5 text-xs text-white cursor-pointer"
+              className="bg-bg-surface border border-bg-border rounded px-2.5 py-1.5 text-xs text-white cursor-pointer"
             >
               <option value="">All Categories</option>
               {CATEGORIES.map((c) => (
@@ -180,7 +180,7 @@ export function MarketplacePage() {
                 setFilters((prev) => ({ ...prev, sortBy, sortOrder: sortOrder as 'asc' | 'desc', page: 1 }));
                 loadStrategies({ ...filters, sortBy, sortOrder: sortOrder as 'asc' | 'desc' });
               }}
-              className="bg-bg-card border border-bg-border rounded px-2.5 py-1.5 text-xs text-white cursor-pointer"
+              className="bg-bg-surface border border-bg-border rounded px-2.5 py-1.5 text-xs text-white cursor-pointer"
             >
               {SORT_OPTIONS.map((o) => (
                 <option key={o.value} value={`${o.value}-desc`}>{o.label}</option>
@@ -203,7 +203,7 @@ export function MarketplacePage() {
                 return (
                   <div
                     key={s.id}
-                    className={`bg-bg-card border rounded-lg p-4 flex flex-col gap-3 transition-colors ${
+                    className={`bg-bg-surface border rounded-lg p-4 flex flex-col gap-3 transition-colors ${
                       isSubbed ? 'border-accent/40' : 'border-bg-border hover:border-accent/30'
                     }`}
                   >
@@ -303,7 +303,7 @@ export function MarketplacePage() {
             subscriptions.map((sub) => (
               <div
                 key={sub.id}
-                className={`bg-bg-card border rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3 ${
+                className={`bg-bg-surface border rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3 ${
                   sub.status === 'active' ? 'border-accent/30' : 'border-bg-border'
                 }`}
               >
@@ -373,7 +373,7 @@ export function MarketplacePage() {
       {subscribeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setSubscribeModal(null)}>
           <div
-            className="bg-bg-card border border-bg-border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl"
+            className="bg-bg-surface border border-bg-border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">

@@ -39,7 +39,7 @@ export function CacheStatus() {
 
   if (loading) {
     return (
-      <div className="w-64 bg-bg-card border border-bg-border rounded-lg">
+      <div className="w-64 bg-bg-surface border border-bg-border rounded-lg">
         <div className="p-4">
           <div className="animate-pulse space-y-2">
             <div className="h-4 bg-muted rounded w-24" />
@@ -56,7 +56,7 @@ export function CacheStatus() {
   const sizeMB = (stats.localSize / 1024 / 1024).toFixed(1);
 
   return (
-    <div className="w-64 bg-bg-card border border-bg-border rounded-lg">
+    <div className="w-64 bg-bg-surface border border-bg-border rounded-lg">
       <div className="p-4">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Build Cache</span>

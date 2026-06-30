@@ -64,30 +64,30 @@ export function SignupPage() {
 
   if (shownApiKey) {
     return (
-      <div className="min-h-screen bg-[#0F0F1A] font-mono flex flex-col">
+      <div className="min-h-screen bg-[#080B14] font-mono flex flex-col">
         <PublicNavbar />
         <div className="flex-1 flex items-center justify-center px-4 pt-16 py-10">
           <div className="w-full max-w-md">
-            <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-8 space-y-5">
+            <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-8 space-y-5">
               <div>
-                <p className="text-[#00FF41] text-xs uppercase tracking-widest mb-2">Account created</p>
+                <p className="text-[#00E676] text-xs uppercase tracking-widest mb-2">Account created</p>
                 <h1 className="text-white text-xl font-bold">Save your API Key</h1>
               </div>
 
-              <div className="bg-[#FF3366]/10 border border-[#FF3366]/40 rounded px-4 py-3">
-                <p className="text-[#FF3366] text-xs font-bold uppercase tracking-wide mb-1">Warning</p>
-                <p className="text-[#FF3366] text-xs">
+              <div className="bg-[#FF4466]/10 border border-[#FF4466]/40 rounded px-4 py-3">
+                <p className="text-[#FF4466] text-xs font-bold uppercase tracking-wide mb-1">Warning</p>
+                <p className="text-[#FF4466] text-xs">
                   This key will only be shown once. Copy and store it securely before continuing.
                 </p>
               </div>
 
-              <div className="bg-[#0F0F1A] border border-[#00D9FF]/30 rounded px-4 py-3">
+              <div className="bg-[#080B14] border border-[#00C8E8]/30 rounded px-4 py-3">
                 <p className="text-[#8892B0] text-[10px] uppercase tracking-widest mb-2">API Key</p>
                 <div className="flex items-center gap-2">
-                  <code className="text-[#00D9FF] text-xs break-all flex-1 select-all">{shownApiKey}</code>
+                  <code className="text-[#00C8E8] text-xs break-all flex-1 select-all">{shownApiKey}</code>
                   <button
                     onClick={handleCopy}
-                    className="flex-shrink-0 text-xs px-3 py-1.5 border border-[#00D9FF]/40 rounded text-[#00D9FF] hover:bg-[#00D9FF]/10 transition-colors"
+                    className="flex-shrink-0 text-xs px-3 py-1.5 border border-[#00C8E8]/40 rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors"
                   >
                     {copied ? 'Copied!' : 'Copy'}
                   </button>
@@ -96,7 +96,7 @@ export function SignupPage() {
 
               <button
                 onClick={() => navigate('/app')}
-                className="w-full bg-[#00D9FF] text-[#0F0F1A] font-bold text-sm py-2.5 rounded hover:bg-[#00D9FF]/80 transition-colors"
+                className="w-full bg-[#00C8E8] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors"
               >
                 I've saved my key — Continue
               </button>
@@ -108,20 +108,20 @@ export function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F0F1A] font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] font-mono flex flex-col">
       <PublicNavbar />
 
       <div className="flex-1 flex items-center justify-center px-4 pt-16 py-10">
         <div className="w-full max-w-md">
-          <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-8">
+          <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-8">
             {/* Header */}
             <div className="mb-6">
-              <p className="text-[#00D9FF] text-xs uppercase tracking-widest mb-2">Get started</p>
+              <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-2">Get started</p>
               <h1 className="text-white text-xl font-bold">Create your account</h1>
             </div>
 
             {displayError && (
-              <div className="mb-4 px-3 py-2 bg-[#FF3366]/10 border border-[#FF3366]/30 rounded text-[#FF3366] text-xs">
+              <div className="mb-4 px-3 py-2 bg-[#FF4466]/10 border border-[#FF4466]/30 rounded text-[#FF4466] text-xs">
                 {displayError}
               </div>
             )}
@@ -137,7 +137,7 @@ export function SignupPage() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   disabled={loading}
-                  className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -151,7 +151,7 @@ export function SignupPage() {
                   placeholder="min 8 characters"
                   autoComplete="new-password"
                   disabled={loading}
-                  className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -167,8 +167,8 @@ export function SignupPage() {
                       disabled={loading}
                       className={`flex flex-col items-center py-3 px-2 rounded border text-xs transition-colors disabled:opacity-50 ${
                         tier === value
-                          ? 'border-[#00D9FF] bg-[#00D9FF]/10 text-[#00D9FF]'
-                          : 'border-[#2D3142] text-[#8892B0] hover:border-[#00D9FF]/40 hover:text-white'
+                          ? 'border-[#00C8E8] bg-[#00C8E8]/10 text-[#00C8E8]'
+                          : 'border-[#1E2640] text-[#8892B0] hover:border-[#00C8E8]/40 hover:text-white'
                       }`}
                     >
                       <span className="font-bold mb-0.5">{label}</span>
@@ -181,7 +181,7 @@ export function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#00D9FF] text-[#0F0F1A] font-bold text-sm py-2.5 rounded hover:bg-[#00D9FF]/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-[#00C8E8] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating account…' : 'Create Account'}
               </button>
@@ -189,7 +189,7 @@ export function SignupPage() {
 
             <p className="text-[#8892B0] text-xs text-center mt-6">
               Already have an account?{' '}
-              <Link to="/login" className="text-[#00D9FF] hover:underline">
+              <Link to="/login" className="text-[#00C8E8] hover:underline">
                 Sign in
               </Link>
             </p>

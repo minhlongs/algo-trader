@@ -80,7 +80,7 @@ export function CreateLicenseModal({ open, onClose, onSuccess }: CreateLicenseMo
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-bg-card border border-bg-border rounded-lg shadow-2xl w-full max-w-lg font-mono">
+        <div className="bg-bg-surface border border-bg-border rounded-lg shadow-2xl w-full max-w-lg font-mono">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-bg-border">
             <h2 className="text-white text-base font-bold tracking-tight">

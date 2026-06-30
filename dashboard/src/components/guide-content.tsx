@@ -22,13 +22,13 @@ export function GuideContent() {
           CashClaw provides the software + dashboard + updates.
         </p>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="bg-[#1A1A2E] rounded p-2">
-            <span className="text-[#00FF41]">Setup:</span> ~15 minutes
+          <div className="bg-[#111627] rounded p-2">
+            <span className="text-[#00E676]">Setup:</span> ~15 minutes
           </div>
-          <div className="bg-[#1A1A2E] rounded p-2">
-            <span className="text-[#00D9FF]">Cost:</span> VPS $5-20/mo + CashClaw tier
+          <div className="bg-[#111627] rounded p-2">
+            <span className="text-[#00C8E8]">Cost:</span> VPS $5-20/mo + CashClaw tier
           </div>
-          <div className="bg-[#1A1A2E] rounded p-2">
+          <div className="bg-[#111627] rounded p-2">
             <span className="text-yellow-400">Payment:</span> Crypto (USDT, BTC, ETH, 100+)
           </div>
         </div>
@@ -36,7 +36,7 @@ export function GuideContent() {
 
       {/* Table of Contents */}
       <nav aria-label="Table of contents">
-        <p className="text-xs font-mono text-[#00D9FF] uppercase tracking-widest mb-3">Contents</p>
+        <p className="text-xs font-mono text-[#00C8E8] uppercase tracking-widest mb-3">Contents</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-mono">
           {[
             { href: '#how-it-works', label: '1. How CashClaw Works' },
@@ -49,7 +49,7 @@ export function GuideContent() {
             <a
               key={item.href}
               href={item.href}
-              className="text-[#8892B0] hover:text-[#00D9FF] transition-colors"
+              className="text-[#8892B0] hover:text-[#00C8E8] transition-colors"
             >
               {item.label}
             </a>

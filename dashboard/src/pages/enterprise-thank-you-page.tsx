@@ -13,7 +13,7 @@ export function EnterpriseThankYouPage() {
   const inquiryId = searchParams.get('inquiry') ?? '';
 
   return (
-    <div className="min-h-screen bg-[#0F0F1A] text-white font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white font-mono flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-xl mx-auto w-full">
@@ -31,7 +31,7 @@ export function EnterpriseThankYouPage() {
         </div>
 
         {/* What happens next */}
-        <div className="border border-[#2D3142] bg-[#1A1A2E] rounded-lg p-6 mb-6">
+        <div className="border border-[#1E2640] bg-[#111627] rounded-lg p-6 mb-6">
           <h2 className="text-sm font-bold text-white mb-4">What happens next</h2>
           <ol className="space-y-4">
             {NEXT_STEPS.map((step, i) => (
@@ -49,8 +49,8 @@ export function EnterpriseThankYouPage() {
         </div>
 
         {/* Paper demo notice */}
-        <div className="border border-[#00D9FF]/20 bg-[#00D9FF]/5 rounded-lg p-5 mb-8">
-          <p className="text-xs text-[#00D9FF] uppercase tracking-widest mb-2">Paper-trading demo</p>
+        <div className="border border-[#00C8E8]/20 bg-[#00C8E8]/5 rounded-lg p-5 mb-8">
+          <p className="text-xs text-[#00C8E8] uppercase tracking-widest mb-2">Paper-trading demo</p>
           <p className="text-sm text-[#8892B0]">
             A 30-day paper-trading demo environment has been provisioned for your team.
             Check your inbox for credentials — no payment or setup required.
@@ -67,13 +67,13 @@ export function EnterpriseThankYouPage() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             to="/docs"
-            className="text-center text-sm border border-[#2D3142] text-[#8892B0] px-5 py-2.5 rounded hover:text-white hover:border-[#00D9FF]/40 transition-colors"
+            className="text-center text-sm border border-[#1E2640] text-[#8892B0] px-5 py-2.5 rounded hover:text-white hover:border-[#00C8E8]/40 transition-colors"
           >
             Read the docs
           </Link>
           <Link
             to="/"
-            className="text-center text-sm bg-[#00D9FF] text-[#0F0F1A] font-bold px-5 py-2.5 rounded hover:bg-[#00D9FF]/80 transition-colors"
+            className="text-center text-sm bg-[#00C8E8] text-[#080B14] font-bold px-5 py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors"
           >
             Back to home
           </Link>

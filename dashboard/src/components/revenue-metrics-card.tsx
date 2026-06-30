@@ -30,7 +30,7 @@ export function RevenueMetricsCard({
     profit: 'text-profit',
     loss: 'text-loss',
     accent: 'text-accent',
-    warning: 'text-warning',
+    warning: 'text-gold',
   };
 
   const changeColorClass = isPositive
