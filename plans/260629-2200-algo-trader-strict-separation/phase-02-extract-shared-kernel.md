@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Extract Shared Kernel"
-status: pending
+status: complete
 priority: P1
 effort: "2 weeks"
 dependencies: [1]
@@ -191,3 +191,24 @@ For each module (types → config → validation → utils → db):
 | Business logic accidentally left in shared | Medium | Review each moved file against strip checklist; second reviewer |
 | Path alias breaks test runner | Medium | Update vitest.config.ts alongside tsconfig.json; verify first |
 | Circular dependency via shared re-exports | Low | Shared has no imports from desk/platform by construction |
+
+## Completion Notes (2026-06-30)
+
+**Actual scope delivered** (adjusted from plan due to Phase 1 partial extraction):
+
+| Activity | Status |
+|----------|--------|
+| 5 integration contract tests | ✅ 131 assertions all pass |
+| Barrel exports (7 subdirectories + root) | ✅ Created |
+| Path aliases (`@shared/*` → `src/shared/*`) | ✅ tsconfig + vitest |
+| DB consolidation (migrations → shared/db/) | ✅ Done |
+| `src/db/index.ts` → re-export bridge | ✅ Done |
+| Zero business logic in shared/ | ✅ Verified |
+| Zero desk/platform imports in shared/ | ✅ Verified |
+| 2,430 tests pass + 0 type errors | ✅ Gate passed |
+
+**Key decisions:**
+- Business services (pnl-service, trade-repository, tenant-credentials-repository) left in `src/db/` for Phase 3
+- Old `src/db/postgres-client.ts` and `src/db/migration-runner.ts` kept as dead code (delete in Phase 4 cleanup)
+- Empty `src/validation/` directory left as-is (populate or delete in Phase 4)
+- Commit: `85ac8714b` on branch `feat/phase02-extract-shared-kernel`

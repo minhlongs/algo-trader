@@ -3,7 +3,7 @@ title: "Algo-Trader Strict Separation Architecture"
 description: "Split 540-file codebase into desk/ (solo proprietary trading) + platform/ (RaaS subscriber) + shared/ (kernel) bounded contexts. 10-week phased migration preserving all 2,214 tests."
 status: in-progress
 priority: P1
-branch: "main"
+branch: "feat/phase02-extract-shared-kernel"
 tags: [architecture, refactor, separation, tdd]
 blockedBy: []
 blocks: []
@@ -29,7 +29,7 @@ Split the 540-file, 65-module TypeScript codebase into three bounded contexts wi
 | Phase | Name | Status | Duration | TDD Gate |
 |-------|------|--------|----------|----------|
 | 1 | [Stabilize Working Tree](./phase-01-stabilize-working-tree.md) | **Complete** | Week 1-2 | Tests for 5 highest-risk modules written first |
-| 2 | [Extract Shared Kernel](./phase-02-extract-shared-kernel.md) | Pending | Week 3-4 | Integration tests for shared module contracts written first |
+| 2 | [Extract Shared Kernel](./phase-02-extract-shared-kernel.md) | **Complete** | Week 3-4 | Integration tests for shared module contracts written first |
 | 3 | [Split Desk and Platform](./phase-03-split-desk-and-platform.md) | Pending | Week 5-8 | Boundary contract tests written first |
 | 4 | [Clean Up and Document](./phase-04-clean-up-and-document.md) | Pending | Week 9-10 | Strategy base class tests written first |
 
