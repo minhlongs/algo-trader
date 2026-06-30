@@ -5,7 +5,7 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 **Target**: Enterprise-grade quantitative trading platform with autonomous marketing. Phase 32 complete, Phase 33 planned.
 
-> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced, 79 contract tests passing. See `docs/system-architecture.md`.
+> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced. Phase 4 cleanup: 4 oversized files split, 23 dead files deleted (~21K lines), 4 ADRs + platform doctrine written, `BasePolymarketStrategy` base class with POC migration (55% smaller). 2,344 tests passing. See `docs/system-architecture.md`.
 
 ---
 
