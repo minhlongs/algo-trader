@@ -75,8 +75,8 @@ echo ""
 echo "== Gate 3: Vitest =="
 printf "  %-50s " "vitest run..."
 TEST_OUT=$(pnpm test 2>&1) || true
-FAILED=$(echo "$TEST_OUT" | grep -oP '\d+ failed' | head -1 | grep -oP '\d+' || echo "0")
-PASSED=$(echo "$TEST_OUT" | grep -oP '\d+ passed' | head -1 | grep -oP '\d+' || echo "0")
+FAILED=$(echo "$TEST_OUT" | grep -oE '[0-9]+ failed' | head -1 | grep -oE '[0-9]+' || echo "0")
+PASSED=$(echo "$TEST_OUT" | grep -oE '[0-9]+ passed' | head -1 | grep -oE '[0-9]+' || echo "0")
 if [ "$FAILED" -eq 0 ] && [ "$PASSED" -gt 0 ]; then
   echo -e "$PASS ($PASSED tests passed)"
 else
