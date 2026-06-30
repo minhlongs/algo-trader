@@ -86,10 +86,17 @@ export abstract class BasePolymarketStrategy {
 
   /**
    * Override to add strategy-specific exit conditions beyond TP/SL/maxHold.
+   * @param _pos   — the open position being checked
+   * @param _currentPrice — mid price from latest orderbook fetch
+   * @param _book   — the full orderbook snapshot (optional, for depth/ratio checks)
    * Return { exit: true, reason: '...' } or { exit: false }.
    * Default: never exit beyond TP/SL/maxHold.
    */
-  protected getCustomExitCondition(_pos: OpenPosition): { exit: boolean; reason: string } {
+  protected getCustomExitCondition(
+    _pos: OpenPosition,
+    _currentPrice: number,
+    _book?: RawOrderBook,
+  ): { exit: boolean; reason: string } {
     return { exit: false, reason: '' };
   }
 
@@ -181,10 +188,11 @@ export abstract class BasePolymarketStrategy {
       let shouldExit = false;
       let reason = '';
 
-      // Get current mid price
+      // Get current mid price and orderbook
       let currentPrice: number;
+      let book: RawOrderBook | undefined;
       try {
-        const book = await this.deps.clob.getOrderBook(pos.tokenId);
+        book = await this.deps.clob.getOrderBook(pos.tokenId);
         currentPrice = this.bestBidAsk(book).mid;
       } catch {
         continue;
@@ -208,7 +216,7 @@ export abstract class BasePolymarketStrategy {
 
       // Custom exit condition
       if (!shouldExit) {
-        const custom = this.getCustomExitCondition(pos);
+        const custom = this.getCustomExitCondition(pos, currentPrice, book);
         if (custom.exit) {
           shouldExit = true;
           reason = custom.reason;

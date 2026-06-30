@@ -10,23 +10,20 @@
  * entry criteria) is unchanged.
  */
 
-import type { ClobClient, RawOrderBook } from '../../polymarket/clob-client';
-import type { OrderManager } from '../../polymarket/order-manager';
-import type { EventBus } from '../../events/event-bus';
-import type { GammaClient, GammaMarket } from '../../polymarket/gamma-client';
+import type { GammaMarket } from '../../polymarket/gamma-client';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import { BasePolymarketStrategy, type BaseStrategyConfig, type StrategyDeps } from './base-polymarket-strategy';
 
 // ── Config (extends base with strategy-specific fields) ────────────────────────
 
-export interface SpreadMeanReversionConfigV2 extends BaseStrategyConfig {
+export interface SpreadMeanReversionConfig extends BaseStrategyConfig {
   spreadWindow: number;
   spreadThreshold: number;
   spreadEmaAlpha: number;
 }
 
-export const DEFAULT_CONFIG_V2: SpreadMeanReversionConfigV2 = {
+export const DEFAULT_CONFIG: SpreadMeanReversionConfig = {
   minVolume: 5000,
   takeProfitPct: 0.02,
   stopLossPct: 0.015,
@@ -68,15 +65,15 @@ export function isSpreadSignal(deviation: number, threshold: number): boolean {
 
 // ── Strategy class ─────────────────────────────────────────────────────────────
 
-export class SpreadMeanReversionV2 extends BasePolymarketStrategy {
-  private readonly cfg: SpreadMeanReversionConfigV2;
+export class SpreadMeanReversionStrategy extends BasePolymarketStrategy {
+  private readonly cfg: SpreadMeanReversionConfig;
 
   // Per-market state (strategy-specific)
   private readonly spreadHistory = new Map<string, number[]>();
   private readonly spreadEmaState = new Map<string, number>();
 
-  constructor(deps: StrategyDeps, configOverride?: Partial<SpreadMeanReversionConfigV2>) {
-    const cfg: SpreadMeanReversionConfigV2 = { ...DEFAULT_CONFIG_V2, ...configOverride };
+  constructor(deps: StrategyDeps, configOverride?: Partial<SpreadMeanReversionConfig>) {
+    const cfg: SpreadMeanReversionConfig = { ...DEFAULT_CONFIG, ...configOverride };
     super(deps, cfg, STRATEGY_NAME);
     this.cfg = cfg;
   }
@@ -172,15 +169,11 @@ export class SpreadMeanReversionV2 extends BasePolymarketStrategy {
 
 // ── Legacy factory (backward compatible) ───────────────────────────────────────
 
-export interface SpreadMeanReversionV2Deps {
-  clob: ClobClient;
-  orderManager: OrderManager;
-  eventBus: EventBus;
-  gamma: GammaClient;
-  config?: Partial<SpreadMeanReversionConfigV2>;
+export interface SpreadMeanReversionDeps extends StrategyDeps {
+  config?: Partial<SpreadMeanReversionConfig>;
 }
 
-export function createSpreadMeanReversionTickV2(deps: SpreadMeanReversionV2Deps): () => Promise<void> {
-  const strategy = new SpreadMeanReversionV2(deps, deps.config);
+export function createSpreadMeanReversionTick(deps: SpreadMeanReversionDeps): () => Promise<void> {
+  const strategy = new SpreadMeanReversionStrategy(deps, deps.config);
   return strategy.toTickFn();
 }
