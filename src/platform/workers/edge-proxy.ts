@@ -5,6 +5,9 @@
  */
 
 import { handleSignup, handleLogin, handleMe, handleListUsers, handleSetRole, handleDeleteUser, corsPreflightResponse, notImplementedResponse } from './auth-handlers';
+import { handleListCoupons, handleValidateCoupon, handleActivateCoupon, handleApplyCoupon, seedCoupons } from './coupon-handlers';
+import { handlePublicStats } from './stats-handler';
+import { handleNowPaymentsIpn } from './webhook-handlers';
 
 interface Env {
   CACHE: KVNamespace;
@@ -15,6 +18,8 @@ interface Env {
   COMMIT_SHA?: string;
   DEPLOYED_AT?: string;
   DEPLOY_BRANCH?: string;
+  NOWPAYMENTS_API_KEY?: string;
+  NOWPAYMENTS_IPN_SECRET?: string;
 }
 
 // Reserved: dynamic origin validation for multi-tenant CORS
@@ -39,11 +44,23 @@ export default {
     // CORS preflight
     if (request.method === 'OPTIONS') return corsPreflightResponse();
 
-    // Health check
+    // Health check — includes IPN metrics
     if (path === '/health' || path === '/api/health') {
+      const [total, failed, lastSuccess, lastFailure] = await Promise.all([
+        env.CACHE.get('metric:ipn-total'),
+        env.CACHE.get('metric:ipn-failed'),
+        env.CACHE.get('metric:ipn-last-success'),
+        env.CACHE.get('metric:ipn-last-failure'),
+      ]);
       return new Response(JSON.stringify({
         status: 'ok', edge: 'cloudflare', environment: env.ENVIRONMENT,
         hasVps: !!env.VPS_ORIGIN, timestamp: new Date().toISOString(),
+        ipn: {
+          total: parseInt(total || '0', 10) || 0,
+          failed: parseInt(failed || '0', 10) || 0,
+          lastSuccess: lastSuccess ? JSON.parse(lastSuccess) : null,
+          lastFailure: lastFailure ? JSON.parse(lastFailure) : null,
+        },
       }), { headers: CORS });
     }
 
@@ -82,6 +99,21 @@ export default {
         return new Response(JSON.stringify({ error: 'Failed to save' }), { status: 500, headers: CORS });
       }
     }
+
+    // Seed default coupons on first access
+    await seedCoupons(env);
+
+    // Coupon routes — CF-native, no VPS needed
+    if (path === '/api/coupons' && request.method === 'GET') return handleListCoupons(env);
+    if (path === '/api/coupons/validate' && request.method === 'POST') return handleValidateCoupon(request, env);
+    if (path === '/api/coupons/activate' && request.method === 'POST') return handleActivateCoupon(request, env);
+    if (path === '/api/coupons/apply' && request.method === 'POST') return handleApplyCoupon(request, env);
+
+    // Public stats — CF-native, no VPS needed
+    if (path === '/api/public/stats' && request.method === 'GET') return handlePublicStats(env);
+
+    // Webhook routes — CF-native, no VPS needed
+    if (path === '/api/webhooks/nowpayments' && request.method === 'POST') return handleNowPaymentsIpn(request, env);
 
     // If VPS_ORIGIN is set, proxy remaining API requests
     if (env.VPS_ORIGIN && path.startsWith('/api/')) {
