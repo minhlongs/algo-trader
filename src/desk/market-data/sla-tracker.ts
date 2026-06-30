@@ -4,14 +4,12 @@
  * Tracks provider Service Level Agreement metrics across multiple time windows
  */
 
-import { logger } from '../../shared/utils/logger';
 import type { MarketDataSource } from './types';
 import {
   setProviderHealthScore,
   setProviderAvailability,
   setProviderErrorRate,
   recordSlaCompliance,
-  recordProviderLatency,
 } from '../../platform/middleware/prometheus-metrics';
 
 /**

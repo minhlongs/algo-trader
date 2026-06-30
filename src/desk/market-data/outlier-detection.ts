@@ -9,7 +9,6 @@ import type { Candle, MarketDataSource } from './types';
 import {
   recordOutlierEvent,
   recordOutlierZScore,
-  recordProviderLatency,
 } from '../../platform/middleware/prometheus-metrics';
 
 /**

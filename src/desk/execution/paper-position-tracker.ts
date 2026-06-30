@@ -11,7 +11,6 @@ import {
   appendJsonl,
   writeJsonState,
   readJsonState,
-  cashclawPath,
 } from '../../shared/persistence/file-store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -238,7 +237,7 @@ export function persistPaperState(
 export function loadPaperState(
   accountFile: string,
   positionsFile: string,
-  tradesFile: string,
+  _tradesFile: string,
 ): { account: PaperAccount | undefined; positions: PaperPosition[]; trades: PaperTrade[] } {
   const account = readJsonState<PaperAccount>(accountFile);
   const positions = readJsonState<PaperPosition[]>(positionsFile) ?? [];

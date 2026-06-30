@@ -8,7 +8,6 @@
  */
 
 import { getPubClient, getSubClient } from './index';
-import type { OrderBook } from './orderbook-manager';
 
 export interface OrderbookSnapshot {
   exchange: string;
