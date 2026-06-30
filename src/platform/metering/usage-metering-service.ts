@@ -201,7 +201,7 @@ export class UsageMeteringService extends EventEmitter {
            api_calls_count = $4, overage_units = $5, overage_cost = $6`,
         [licenseKey, status.date, tier, status.currentUsage, status.overageUnits, status.overageCost]
       );
-    } catch (error) {
+    } catch (_error) {
       // Database errors are non-fatal — usage tracking continues in memory
     }
   }

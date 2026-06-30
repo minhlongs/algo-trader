@@ -5,7 +5,7 @@
  */
 
 import { logger } from '../../shared/utils/logger';
-import type { MarketDataSource, Candle, Timeframe } from './types';
+import type { MarketDataSource as _MarketDataSource, Candle, Timeframe as _Timeframe } from './types';
 import {
   recordDataGap,
   recordGapDetectionDuration,
@@ -229,7 +229,7 @@ export class GapDetector {
    */
   recordStaleData(provider: string, symbol: string, timeframe: string, candleTimestamp: number, receivedAt: number): void {
     const key = this.getKey(provider, symbol, timeframe);
-    const state = this.getOrCreateState(key, provider, symbol, timeframe);
+    const _state = this.getOrCreateState(key, provider, symbol, timeframe);
 
     const interval = this.config.timeframeIntervals[timeframe];
     if (!interval) return;
@@ -258,7 +258,7 @@ export class GapDetector {
     if (!state) return null;
 
     const now = Date.now();
-    const windowHours = (now - state.windowStartTime) / (60 * 60 * 1000);
+    const _windowHours = (now - state.windowStartTime) / (60 * 60 * 1000);
     const totalExpected = state.expectedCandles;
     const totalReceived = state.receivedCandles;
     const completeness = totalExpected > 0 ? (totalReceived / totalExpected) * 100 : 100;
@@ -281,7 +281,7 @@ export class GapDetector {
    */
   getAllStats(): GapStats[] {
     const stats: GapStats[] = [];
-    for (const [key, state] of this.trackingStates) {
+    for (const [_key, state] of this.trackingStates) {
       const stat = this.getStats(state.provider, state.symbol, state.timeframe);
       if (stat) stats.push(stat);
     }
@@ -333,7 +333,7 @@ export class GapDetector {
     state.windowStartTime = Date.now();
   }
 
-  private recordGapEvent(state: GapTrackingState, timestamp: number, gapType: 'missing_candle' | 'stale_data'): void {
+  private recordGapEvent(state: GapTrackingState, timestamp: number, _gapType: 'missing_candle' | 'stale_data'): void {
     if (!this.config.enableMetrics) return;
 
     const duration = Date.now() - timestamp;
@@ -341,7 +341,7 @@ export class GapDetector {
     recordGapDetectionDuration(state.provider, state.symbol, duration);
   }
 
-  private recordStaleDataMetric(symbol: string, timeframe: string, staleMinutes: number): void {
+  private recordStaleDataMetric(_symbol: string, _timeframe: string, _staleMinutes: number): void {
     if (!this.config.enableMetrics) return;
     // Implementation: could record a metric if needed
   }

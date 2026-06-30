@@ -5,7 +5,7 @@
  */
 
 import { query } from '../../shared/db/postgres-client';
-import { logger } from '../../shared/utils/logger';
+import { logger as _logger } from '../../shared/utils/logger';
 import { buildTenantFilter } from './subscriber-tenant-isolator';
 import { TenantCredentialsRepository } from '../../db/tenant-credentials-repository';
 

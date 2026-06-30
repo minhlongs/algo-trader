@@ -8,7 +8,7 @@
 
 import { logger } from '../../../shared/utils/logger';
 import { VettingService } from '../services/vetting.service';
-import { getDbClient } from '../../../shared/db/postgres-client';
+import { getDbClient as _getDbClient } from '../../../shared/db/postgres-client';
 
 export interface VettingWorkerOptions {
   pollIntervalMs?: number;

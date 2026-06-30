@@ -2,10 +2,10 @@
  * License Validation Middleware
  * ROIaaS Phase 2 - RaaS gate middleware for license enforcement
  */
-import { FastifyRequest, FastifyReply, FastifyInstance } from 'fastify';
+import { FastifyRequest, FastifyReply as _FastifyReply, FastifyInstance } from 'fastify';
 import { LicenseService } from '../billing/license-service';
 import { LicenseTier, LicenseStatus } from '../../shared/types/license';
-import { logger } from '../../shared/utils/logger';
+import { logger as _logger } from '../../shared/utils/logger';
 
 const PUBLIC_PATHS = ['/health', '/ready', '/metrics', '/api/v1/licenses'];
 
