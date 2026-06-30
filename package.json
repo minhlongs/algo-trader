@@ -56,7 +56,8 @@
     "sync-dunning-kv": "ts-node src/jobs/dunning-kv-sync.ts",
     "audit": "pnpm exec ts-node src/audit/index.ts",
     "chaos-test": "pnpm exec ts-node src/testing/chaos/index.ts",
-    "deploy:worker": "wrangler deploy --config wrangler.toml"
+    "deploy:worker": "wrangler deploy --config wrangler.toml",
+    "deploy:cf": "bash scripts/deploy-cf-worker-with-sha-verification.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",

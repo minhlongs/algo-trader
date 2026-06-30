@@ -12,6 +12,9 @@ interface Env {
   VPS_ORIGIN?: string;
   JWT_SECRET: string;
   ALLOWED_ORIGINS?: string;
+  COMMIT_SHA?: string;
+  DEPLOYED_AT?: string;
+  DEPLOY_BRANCH?: string;
 }
 
 // Reserved: dynamic origin validation for multi-tenant CORS
@@ -41,6 +44,17 @@ export default {
       return new Response(JSON.stringify({
         status: 'ok', edge: 'cloudflare', environment: env.ENVIRONMENT,
         hasVps: !!env.VPS_ORIGIN, timestamp: new Date().toISOString(),
+      }), { headers: CORS });
+    }
+
+    // Version — deploy verification (SHA injected via wrangler secrets)
+    if (path === '/api/version') {
+      const shortSha = (env.COMMIT_SHA || 'unknown').slice(0, 8);
+      return new Response(JSON.stringify({
+        shortSha,
+        deployedAt: env.DEPLOYED_AT || null,
+        deployBranch: env.DEPLOY_BRANCH || null,
+        environment: env.ENVIRONMENT,
       }), { headers: CORS });
     }
 

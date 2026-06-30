@@ -1,0 +1,13 @@
+{
+  "name": "cashclaw-landing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CashClaw landing page — static site deployed to CF Pages",
+  "scripts": {
+    "deploy": "bash scripts/deploy-cf-pages.sh",
+    "verify": "bash scripts/verify-deploy.sh",
+    "open": "open src/index.html",
+    "lint:css": "echo 'TODO: stylelint src/'",
+    "lint:html": "echo 'TODO: htmlhint src/'"
+  }
+}
