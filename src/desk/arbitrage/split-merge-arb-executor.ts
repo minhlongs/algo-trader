@@ -10,7 +10,7 @@
 
 import { logger } from '../../shared/utils/logger';
 import { getMessageBus } from '../../shared/messaging/create-message-bus';
-import type { PaperTrade } from '../../wiring/paper-trading-orchestrator';
+import type { PaperTrade } from '../wiring/paper-trading-orchestrator';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

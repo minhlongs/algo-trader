@@ -20,6 +20,120 @@ src/
 
 **Import rules:** `shared/` ← foundational (no inward deps). `desk/` ← solo trading, tenant-unaware. `platform/` ← multi-tenant, tier-gated, may call desk strategies through `IStrategy` interface.
 
+### Import Rule Diagram (ASCII)
+
+```
+                    ┌─────────────────────────┐
+                    │      src/shared/         │
+                    │  types, db, config,      │
+                    │  utils, resilience,      │
+                    │  persistence, messaging, │
+                    │  redis                   │
+                    │  (ZERO business logic)   │
+                    └────┬──────────────┬──────┘
+                         │              │
+              imports    │              │    imports
+              shared     │              │    shared
+              only       │              │    + desk via
+                         ▼              │    IStrategy
+              ┌──────────────────┐      │
+              │    src/desk/     │      │
+              │                  │      │
+              │  strategies (52+)│      │
+              │  execution       │      │
+              │  risk            │      │
+              │  intelligence    │◄─────┘
+              │  signal          │  platform imports desk
+              │  market-data     │  strategies through
+              │  cli             │  shared IStrategy
+              │  feeds           │  interface (NOT directly)
+              │  arbitrage       │
+              │  gate (read-only │      ┌──────────────────┐
+              │    tier config)  │      │  src/platform/   │
+              │  wiring          │      │                  │
+              │                  │      │  api (31 routes) │
+              │  NEVER imports   │      │  auth             │
+              │  platform/       │      │  billing          │
+              └──────────────────┘      │  marketplace      │
+                      ▲                 │  raas             │
+                      │                 │  metering         │
+                      │                 │  middleware       │
+                 NO direct              │  audit            │
+                 imports                │  referral         │
+                 either way             │  telegram         │
+                      │                 │  notifications    │
+                      │                 │  dashboard        │
+                      ▼                 │                   │
+              ┌──────────────────┐      │  tenantId on      │
+              │  desk ↔ platform │      │  every DB query   │
+              │  communicate via │      └──────────────────┘
+              │  shared types    │
+              │  + NATS messages │
+              └──────────────────┘
+```
+
+### What Lives in Each Context
+
+| Context | Ownership | Tenant Awareness | User | Examples |
+|---------|-----------|-----------------|------|----------|
+| `shared/` | Infrastructure | Neither | Both | IStrategy, DB client, Logger, CircuitBreaker, NATS client, Redis |
+| `desk/` | Operator | None (global) | CLI | SpreadMeanReversion, KellyRisk, SignalFusion, PaperTrading, arb:agi |
+| `platform/` | Platform team | Mandatory (tenantId) | HTTP API | Marketplace routes, Billing webhooks, RaaS executor, Tier gating |
+
+### Shared Kernel (`src/shared/`) — Detailed
+
+| Module | Responsibility | Imported by |
+|--------|---------------|-------------|
+| `types/` | License, Tier, IStrategy, Signal, shared enums | desk, platform |
+| `db/` | PostgreSQL client factory, migration runner | desk, platform |
+| `config/` | Tier configs, environment schema, Zod validators | desk, platform |
+| `utils/` | Logger, encryption, Sentry, HMAC verifier | desk, platform |
+| `resilience/` | Circuit breakers, rate limiter, recovery manager | desk, platform |
+| `persistence/` | JSONL file store, key-value store | desk, platform |
+| `messaging/` | NATS JetStream client, pub/sub abstractions | desk, platform |
+| `redis/` | Redis client singleton, pub/sub helpers | desk, platform |
+
+### Desk (`src/desk/`) — Detailed
+
+| Module | Responsibility | Import rule |
+|--------|---------------|-------------|
+| `strategies/` | 52+ strategy implementations (Polymarket V2, CEX, DEX, DNA, dark-edge) | shared only |
+| `execution/` | Polymarket CLOB adapter, paper executor, order management | shared only |
+| `risk/` | Kelly criterion, drawdown protection, circuit breaker, position tracker | shared only |
+| `intelligence/` | Alpha-ear client, LLM router, market intelligence, signal fusion | shared only |
+| `signal/` | Signal pipeline: fusion, TTL enforcement, dedup, publishing | shared only |
+| `market-data/` | Provider failover, gap detection, SLA tracking | shared only |
+| `cli/` | Commander.js CLI -- `algo scan`, `algo status`, `algo risk` | shared only |
+| `feeds/` | Price feeds (Kalshi, Polymarket, CEX) | shared only |
+| `arbitrage/` | Cross-market ILP solver, Frank-Wolfe optimizer | shared only |
+| `gate/` | RaaS gate validators, strategy registry (reads tier config from shared) | shared only |
+| `wiring/` | Signal loops, drawdown monitor, vibe controller, eligibility gate | shared only |
+
+### Platform (`src/platform/`) — Detailed
+
+| Module | Responsibility | Import rule |
+|--------|---------------|-------------|
+| `api/` | Express REST + WebSocket gateway, 31 route files with tier gating | shared + desk (IStrategy) |
+| `auth/` | Better Auth integration (multi-tenant sessions) | shared only |
+| `billing/` | Invoice generation, NOWPayments, license management | shared only |
+| `marketplace/` | Multi-tenant strategy marketplace (listings, subscriptions, reviews, disputes, vetting) | shared + desk (registry) |
+| `raas/` | RaaS subscriber executor -- sandbox per tenant with DLP + attestation | shared + desk (IStrategy) |
+| `metering/` | Usage metering with threshold alerts | shared only |
+| `middleware/` | Tier gating (`requireTier`), rate limiting, tenant isolation, Prometheus metrics, error handler | shared only |
+| `audit/` | AI decision audit, immutable trade audit | shared only |
+| `referral/` | Referral program management | shared only |
+| `workers/` | Cloudflare edge proxy worker | shared only |
+| `telegram/` | Telegram bot integration | shared only |
+| `notifications/` | Email service, dunning | shared only |
+
+### Architecture Decision Records
+
+See `docs/architecture/decisions/`:
+- [ADR-001: Shared Kernel Boundary](architecture/decisions/shared-kernel-boundary.md)
+- [ADR-002: Desk-Platform Separation](architecture/decisions/desk-platform-separation.md)
+- [ADR-003: Strategy Ownership Model](architecture/decisions/strategy-ownership-model.md)
+- [ADR-004: Tenant Isolation Pattern](architecture/decisions/tenant-isolation-pattern.md)
+
 ## Original Architecture (pre-separation, preserved for context)
 - **Execution Layer**: WS price feeds, fee-aware spread calc, atomic order execution, regime detection, order-book depth analysis
 - **RaaS API Layer**: Multi-tenant positions, scan/execute endpoints, position tracking

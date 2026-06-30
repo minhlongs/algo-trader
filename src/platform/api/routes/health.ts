@@ -9,7 +9,7 @@ import { Router, Request, Response } from 'express';
 import { getRedisClient } from '../../../redis';
 import { getDbClient } from '../../../shared/db/postgres-client';
 import { TradingEngine } from '../../../desk/engine';
-import { isQwenEnabled, isKillSwitchActive } from '../../../wiring/qwen-drawdown-monitor';
+import { isQwenEnabled, isKillSwitchActive } from '../../../desk/wiring/qwen-drawdown-monitor';
 
 // Resolve package version at module load time — avoids repeated disk reads
 // eslint-disable-next-line @typescript-eslint/no-require-imports

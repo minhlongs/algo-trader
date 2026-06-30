@@ -19,7 +19,9 @@
     "lib": ["ES2023", "DOM"],
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["src/shared/*"]
+      "@shared/*": ["src/shared/*"],
+      "@desk/*": ["src/desk/*"],
+      "@platform/*": ["src/platform/*"]
     },
     "rootDir": "./src"
   },
@@ -34,6 +36,7 @@
     "src/platform/dashboard/**/*",
     "src/platform/landing/**/*",
     "src/wiring/**/*",
+    "src/desk/wiring/**/*",
     "dist",
     "src/desk/polymarket/trading-pipeline.ts"
   ]

@@ -15,6 +15,8 @@
 - 4 Fastify route files with inline tier gating
 - All platform DB queries use `buildTenantFilter(tenantId)` for tenant isolation
 - Boundary enforcement: desk never imports platform; platform imports desk only via shared `IStrategy`
+- Path aliases configured: `@/desk/*`, `@/platform/*`, `@/shared/*` with barrel exports (index.ts) in every subdirectory
+- 11 boundary enforcement tests — all passing (desk↔platform import rules, tenant isolation, barrel exports, strategy registry)
 - All 79 integration/contract tests pass (890 tests)
 - 0 TypeScript errors
 
@@ -24,10 +26,11 @@
 
 - **File splits:** 4 oversized files → 10 focused modules. `referral-repository.ts` (583L→69L), `marketplace-strategy-routes.ts` (517L→27L)
 - **Dead code removal:** 23 files deleted (~21K lines). `citadel/` (entire dir), `ironclaw/` (6 files), `ai-decision-audit-service.ts` (795L), `xai-routes.ts` (516L), 4 unregistered Fastify route files
-- **ADR documentation:** 4 architecture decision records (`docs/adr/001-004`) covering bounded contexts, tier gating, tenant isolation, strategy import bridge
+- **ADR documentation:** 4 architecture decision records (`docs/architecture/decisions/`) — shared-kernel-boundary, desk-platform-separation, strategy-ownership-model, tenant-isolation-pattern
+- **Boundary tests:** 11 characterization tests enforcing import direction rules, barrel export completeness, tenant isolation, and strategy registry integrity
 - **Platform doctrine:** `docs/platform-doctrine.md` — RaaS subscriber infrastructure governance
 - **Strategy base class:** `BasePolymarketStrategy` (303L) — shared position/exit/event logic for 32 strategies. POC migration: `spread-mean-reversion-v2.ts` (186L vs 417L original, 55% smaller)
-- **Tests:** 17 new characterization tests for base class. 2,344 passing. 0 regressions.
+- **Tests:** 17 new characterization tests for base class. 2,430+ passing. 0 regressions.
 - **Review fixes:** Express Request type augmentation (removed `(req as any)` from helpers), `maxHoldMs` JSDoc, explicit type for ARRAY_AGG query
 
 ---

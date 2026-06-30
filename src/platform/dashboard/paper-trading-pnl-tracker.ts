@@ -2,7 +2,7 @@
  * Pure computation: accepts PaperPortfolio as input, no DB or file I/O. */
 
 import client from 'prom-client';
-import type { PaperPortfolio, PaperTrade } from '../../wiring/paper-trading-orchestrator';
+import type { PaperPortfolio, PaperTrade } from '../../desk/wiring/paper-trading-orchestrator';
 import { register } from '../middleware/prometheus-metrics';
 
 // ─── Public Interfaces ────────────────────────────────────────────────────────

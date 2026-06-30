@@ -15,9 +15,9 @@ import {
  isQwenEnabled,
  isKillSwitchActive,
  getLastBreachAt,
-} from '../../../wiring/qwen-drawdown-monitor';
-import { checkQwenEligibility } from '../../../wiring/qwen-live-eligibility-gate';
-import { evaluateAndQueue } from '../../../wiring/qwen-signals-loop';
+} from '../../../desk/wiring/qwen-drawdown-monitor';
+import { checkQwenEligibility } from '../../../desk/wiring/qwen-live-eligibility-gate';
+import { evaluateAndQueue } from '../../../desk/wiring/qwen-signals-loop';
 import { query } from '../../../shared/db/postgres-client';
 import {
  qwenStrategyReviewsResolvedTotal,

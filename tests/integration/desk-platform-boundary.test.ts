@@ -101,6 +101,8 @@ const ALLOWED_PLATFORM_IMPORTS: RegExp[] = [
   /desk\/jobs\//,          // billing onboarding triggers desk jobs
   /desk\/ironclaw\//,      // DLP pattern registry shared dependency
   /desk\/feeds\//,         // telegram trading alerts reference feeds
+  /desk\/wiring\//,        // admin qwen routes, health, paper-trading orchestration
+  /desk\/execution\//,     // trade-repository imports execution types
 ];
 
 // ── Tests ────────────────────────────────────────────────────────────

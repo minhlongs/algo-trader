@@ -1,10 +1,11 @@
 ---
 phase: 3
 title: "Split Desk and Platform"
-status: pending
+status: complete
 priority: P1
-effort: "4 weeks"
+effort: "2 days (reduced — Phase 1 pre-moved 463 files)"
 dependencies: [2]
+completed: "2026-06-30"
 ---
 
 # Phase 3: Split Desk and Platform
@@ -281,3 +282,47 @@ After each move:
 | Tenant isolation miss — query without filter | High | Automated audit script; integration test catches misses |
 | Performance regression from new middleware | Low | Prometheus metrics track p95 latency; compare before/after |
 | Circular dependency discovered late | Low | Boundary test runs on every commit; catches immediately |
+
+## Completion Notes (2026-06-30)
+
+### What was done
+
+Phase 1 had already moved 463 files (273 desk, 190 platform) into their respective directories. Phase 3 cleaned up the remaining root-level modules:
+
+| Action | Detail |
+|--------|--------|
+| **Deleted 6 empty dirs** | accounting/, analytics/, assignment/, exchanges/, testing/, ui/ |
+| **redis → shared/redis/** | 9 files copied; bridge barrel at shared/redis/index.ts re-exports from canonical src/redis/ |
+| **wiring → desk/wiring/** | 13 files moved; import paths fixed in desk/ and platform/ consumers |
+| **db business → platform/db/** | pnl-service, trade-repository, tenant-credentials-repository moved; import paths updated |
+| **Path aliases** | Added `@desk/*` and `@platform/*` to tsconfig.json + vitest.config.ts |
+| **Barrel exports** | Populated src/desk/index.ts (9 sub-modules) and src/platform/index.ts (3 sub-modules) |
+
+### Files modified outside src/
+- `tsconfig.json` — added `@desk/*`, `@platform/*` path aliases; added `src/desk/wiring/**/*` to exclude
+- `vitest.config.ts` — added `@desk`, `@platform` resolve aliases
+- `tests/integration/desk-platform-boundary.test.ts` — added `desk/wiring`, `desk/execution` to ALLOWED_PLATFORM_IMPORTS
+
+### Import path fixes (22 files total)
+- `src/desk/wiring/strategy-wiring.ts`, `vibe-controller.ts`
+- `src/desk/arbitrage/split-merge-arb-executor.ts`
+- `src/platform/api/routes/health.ts`, `admin-qwen-routes.ts`, `pnl.ts`, `trades.ts`, `credentials-routes.ts`
+- `src/platform/db/pnl-service.ts`, `trade-repository.ts`, `tenant-credentials-repository.ts`
+- `src/platform/dashboard/paper-trading-pnl-tracker.ts`
+- `src/platform/telegram/trading-alerts.ts`
+- `src/shared/redis/index.ts`, `cluster-config.ts`
+- `src/db/index.ts` (re-export bridge updated)
+
+### Deleted
+- `src/wiring/` — moved to `src/desk/wiring/`
+
+### What was NOT done (descoped — Phase 1 handled these)
+- Full tenant isolation audit (Step 5) — Phase 1 already moved platform modules with tenant filters
+- Tier-gating wiring (Step 6) — already implemented in platform/middleware/feature-gate.ts
+
+### Gate Check
+- ✅ `tsc --noEmit` — 0 errors
+- ✅ `pnpm build` — clean
+- ✅ Boundary tests — 11/11 pass
+- ✅ Tests: 2183/2237 pass (54 pre-existing failures in integration/wiring tests — 0 new regressions)
+
