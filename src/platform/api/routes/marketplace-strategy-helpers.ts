@@ -9,13 +9,11 @@ import { z } from 'zod';
 // Augment Express Request with properties set by upstream middleware.
 // Single canonical identity source: req.tenant.id (set by raas-gate).
 // req.user and req.apiKey are fallbacks for legacy middleware paths.
-declare global {
-  namespace Express {
-    interface Request {
-      tenant?: { id: string; tier?: string };
-      user?: { id: string; tenantId?: string; tier?: string; role?: string };
-      apiKey?: { userId?: string; isAdmin?: boolean };
-    }
+declare module 'express' {
+  interface Request {
+    tenant?: { id: string; tier?: string };
+    user?: { id: string; tenantId?: string; tier?: string; role?: string };
+    apiKey?: { userId?: string; isAdmin?: boolean };
   }
 }
 

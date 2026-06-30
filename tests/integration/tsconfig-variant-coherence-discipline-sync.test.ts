@@ -159,8 +159,8 @@ describe('cross-tsconfig variant coherence — 41st edge (HENITETRACONTAGON)', (
     const include = workerCfg.include as string[] | undefined;
     expect(Array.isArray(include)).toBe(true);
     expect(
-      include!.some((p) => /src\/workers\/\*\*/.test(p)),
-      `worker tsconfig.include must be scoped to src/workers/**/*.ts — widening lets node code compile against CF types. Actual: ${JSON.stringify(include)}`,
+      include!.some((p) => /src\/platform\/workers\/\*\*/.test(p)),
+      `worker tsconfig.include must be scoped to src/platform/workers/**/*.ts — widening lets node code compile against CF types. Actual: ${JSON.stringify(include)}`,
     ).toBe(true);
     const unsafe = include!.filter((p) => p === 'src' || /^src\/\*\*/.test(p) || p === '**/*');
     expect(
