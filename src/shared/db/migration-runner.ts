@@ -6,8 +6,8 @@
 
 import { logger } from '../utils/logger';
 import { getDbClient } from './postgres-client';
-import * as migration001 from '../../db/migrations/001-create-trades-table';
-import * as migration026 from '../../db/migrations/026-create-ai-audit-tables';
+import * as migration001 from './migrations/001-create-trades-table';
+import * as migration026 from './migrations/026-create-ai-audit-tables';
 
 // Migration interface
 interface Migration {

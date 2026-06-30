@@ -18,6 +18,9 @@
     "downlevelIteration": true,
     "lib": ["ES2023", "DOM"],
     "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["src/shared/*"]
+    },
     "rootDir": "./src"
   },
   "include": [
