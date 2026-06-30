@@ -22,6 +22,12 @@ export class SubscriptionRepository {
     return (result.rows[0] as unknown as IMarketplaceSubscription) || null;
   }
 
+  async findByPaymentId(paymentId: string): Promise<IMarketplaceSubscription | null> {
+    const sql = `SELECT * FROM ${this.TABLE} WHERE payment_id = $1`;
+    const result = await query(sql, [paymentId]);
+    return (result.rows[0] as unknown as IMarketplaceSubscription) || null;
+  }
+
   async findAll(
     filters?: SubscriptionFilters,
     pagination?: PaginationParams,
@@ -61,15 +67,20 @@ export class SubscriptionRepository {
   async create(data: {
     id: string; tenantId: string; listingId: string; strategyId: string;
     allocationPercent: number; customRiskLimits?: Record<string, unknown>; currentInvestmentUsd: number;
+    paymentId?: string; paymentStatus?: string; initialStatus?: string;
   }): Promise<IMarketplaceSubscription> {
+    const status = data.initialStatus ?? 'active';
     const sql = `INSERT INTO ${this.TABLE}
-      (id, tenant_id, listing_id, strategy_id, status, allocation_percent, custom_risk_limits, current_investment_usd, subscription_started_at, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, 'active', $5, $6, $7, NOW(), NOW(), NOW()) RETURNING *`;
+      (id, tenant_id, listing_id, strategy_id, status, allocation_percent, custom_risk_limits, current_investment_usd, payment_id, payment_status, subscription_started_at, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW(), NOW()) RETURNING *`;
     const params = [
       data.id, data.tenantId, data.listingId, data.strategyId,
+      status,
       data.allocationPercent,
       data.customRiskLimits ? JSON.stringify(data.customRiskLimits) : null,
       data.currentInvestmentUsd,
+      data.paymentId ?? null,
+      data.paymentStatus ?? (data.paymentId ? 'pending' : null),
     ];
     const result = await query(sql, params);
     return result.rows[0] as unknown as IMarketplaceSubscription;
@@ -84,6 +95,7 @@ export class SubscriptionRepository {
       status: 'status', allocationPercent: 'allocation_percent',
       customRiskLimits: 'custom_risk_limits', currentInvestmentUsd: 'current_investment_usd',
       totalPnlUsd: 'total_pnl_usd',
+      paymentId: 'payment_id', paymentStatus: 'payment_status',
     };
 
     for (const [key, column] of Object.entries(columnMap)) {

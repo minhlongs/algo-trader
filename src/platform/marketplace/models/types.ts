@@ -96,6 +96,8 @@ export interface IMarketplaceSubscription {
   customRiskLimits?: CustomRiskLimits;
   currentInvestmentUsd: number; // in cents
   totalPnlUsd: number; // in cents
+  paymentId?: string;
+  paymentStatus?: PaymentStatus;
   subscriptionStartedAt: Date;
   pausedAt?: Date;
   cancelledAt?: Date;
@@ -107,7 +109,16 @@ export type SubscriptionStatus =
   | 'active'
   | 'paused'
   | 'cancelled'
-  | 'suspended';
+  | 'suspended'
+  | 'pending_payment';
+
+export type PaymentStatus =
+  | 'pending'
+  | 'processing'
+  | 'paid'
+  | 'failed'
+  | 'refunded'
+  | 'expired';
 
 // ==================== Performance ====================
 

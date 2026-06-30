@@ -185,6 +185,92 @@ export class NowPaymentsService {
   }
 
   /**
+   * Generate a marketplace checkout URL by creating a dynamic NOWPayments invoice.
+   * Returns { checkoutUrl, paymentId } or null on failure.
+   */
+  async createMarketplaceCheckoutUrl(params: {
+    listingId: string;
+    strategyName: string;
+    priceUsd: number;
+    tenantId: string;
+    ipnCallbackUrl?: string;
+  }): Promise<{ checkoutUrl: string; paymentId: string } | null> {
+    if (!this.apiKey) {
+      logger.error('NOWPAYMENTS_API_KEY not configured');
+      return null;
+    }
+
+    try {
+      const orderId = `mp_${params.listingId}_${params.tenantId.slice(0, 8)}_${Date.now()}`;
+      const ipnUrl = params.ipnCallbackUrl ?? process.env.NOWPAYMENTS_IPN_URL ?? '';
+
+      const res = await fetch(`${this.baseUrl}/invoice`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          price_amount: params.priceUsd,
+          price_currency: 'usd',
+          pay_currency: 'usdttrc20',
+          order_id: orderId,
+          order_description: `AlgoTrader: ${params.strategyName}`,
+          ipn_callback_url: ipnUrl,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        logger.error('NOWPayments invoice creation failed', { status: res.status, body });
+        return null;
+      }
+
+      const invoice = (await res.json()) as {
+        id: string;
+        invoice_url: string;
+        payment_id?: string;
+      };
+
+      logger.info('Marketplace invoice created', {
+        invoiceId: invoice.id,
+        listingId: params.listingId,
+        tenantId: params.tenantId,
+      });
+
+      return {
+        checkoutUrl: invoice.invoice_url,
+        paymentId: invoice.payment_id ?? invoice.id,
+      };
+    } catch (error) {
+      logger.error('Failed to create marketplace checkout URL', { error });
+      return null;
+    }
+  }
+
+  /**
+   * Check if an order_id is a marketplace payment (prefix: mp_)
+   */
+  isMarketplaceOrderId(orderId: string): boolean {
+    return orderId.startsWith('mp_');
+  }
+
+  /**
+   * Parse marketplace order_id back to listing and tenant info.
+   * Format: mp_{listingId}_{tenantIdPrefix}_{timestamp}
+   */
+  parseMarketplaceOrderId(orderId: string): { listingId: string; tenantIdPrefix: string } | null {
+    const parts = orderId.split('_');
+    if (parts.length >= 4 && parts[0] === 'mp') {
+      return {
+        listingId: parts[1],
+        tenantIdPrefix: parts[2],
+      };
+    }
+    return null;
+  }
+
+  /**
    * Map IPN status to internal action
    */
   getStatusAction(status: NowPaymentsStatus): 'activate' | 'cancel' | 'ignore' {

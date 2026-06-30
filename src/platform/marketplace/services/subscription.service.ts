@@ -1,6 +1,8 @@
 import { AuditLogService } from '../../audit/audit-log-service';
 import { SubscriptionRepository, subscriptionRepository, ReviewRepository, reviewRepository, ListingRepository, listingRepository } from './repositories';
 import { NotificationService } from '../notifications/notification-service';
+import { NowPaymentsService } from '../../billing/nowpayments-service';
+import { logger } from '../../../shared/utils/logger';
 import type { IMarketplaceSubscription, IMarketplaceReview, CustomRiskLimits } from '../models/types';
 
 export class SubscriptionService {
@@ -32,31 +34,68 @@ export class SubscriptionService {
     listingId: string;
     allocationPercent: number;
     customRiskLimits?: CustomRiskLimits;
-  }): Promise<IMarketplaceSubscription> {
+  }): Promise<{ subscription: IMarketplaceSubscription; checkoutUrl: string | null }> {
     const id = `sub_${Date.now()}_${data.userId.slice(0, 8)}`;
+
+    // Look up listing for price + strategy info
+    const listing = await this.listingRepo.findById(data.listingId);
+    if (!listing) {
+      throw new Error('Listing not found');
+    }
+    if (!listing.isActive) {
+      throw new Error('Listing is not active');
+    }
+
+    // Check for existing active subscription
+    const hasActive = await this.subRepo.hasActiveSubscription(data.tenantId, listing.strategyId);
+    if (hasActive) {
+      throw new Error('Already subscribed to this strategy');
+    }
+
+    // Generate NOWPayments checkout if listing has a price
+    let paymentId: string | undefined;
+    let checkoutUrl: string | null = null;
+    let strategy: { id: string; creatorId: string; name: string } | null = null;
+
+    if (listing.priceUsdMonthly > 0) {
+      const nowpaymentsService = NowPaymentsService.getInstance();
+      strategy = await this.strategyRepoForListing(listing.strategyId);
+      const strategyName = strategy?.name ?? 'Strategy Subscription';
+
+      const result = await nowpaymentsService.createMarketplaceCheckoutUrl({
+        listingId: data.listingId,
+        strategyName,
+        priceUsd: listing.priceUsdMonthly / 100, // Convert cents to dollars
+        tenantId: data.tenantId,
+      });
+
+      if (result) {
+        paymentId = result.paymentId;
+        checkoutUrl = result.checkoutUrl;
+      }
+    }
+
     const subscription = await this.subRepo.create({
       id,
       tenantId: data.tenantId,
       listingId: data.listingId,
-      strategyId: '', // Will be set from listing
+      strategyId: listing.strategyId,
       allocationPercent: data.allocationPercent,
       customRiskLimits: data.customRiskLimits as Record<string, unknown> | undefined,
       currentInvestmentUsd: 0,
+      paymentId,
+      paymentStatus: paymentId ? 'pending' : undefined,
+      initialStatus: paymentId ? 'pending_payment' : 'active',
     });
 
-    // Notify buyer and seller
-    const listing = await this.listingRepo.findById(data.listingId);
-    if (listing) {
-      const strategy = await this.strategyRepoForListing(listing.strategyId);
-      if (strategy) {
-        this.notificationService.sendSubscriptionConfirmation({
-          subscriptionId: subscription.id,
-          buyerId: data.tenantId,
-          sellerId: strategy.creatorId,
-          strategyName: strategy.name,
-          priceUsdMonthly: listing.priceUsdMonthly,
-        });
-      }
+    if (checkoutUrl && strategy) {
+      this.notificationService.sendSubscriptionConfirmation({
+        subscriptionId: subscription.id,
+        buyerId: data.tenantId,
+        sellerId: strategy.creatorId,
+        strategyName: strategy.name,
+        priceUsdMonthly: listing.priceUsdMonthly,
+      });
     }
 
     await this.auditService.log(data.tenantId, 'api_call' as any, {
@@ -65,10 +104,89 @@ export class SubscriptionService {
         action: 'subscription_created',
         userId: data.userId,
         resourceId: subscription.id,
+        listingId: data.listingId,
+        paymentId: paymentId ?? null,
       },
     });
 
-    return subscription;
+    return { subscription, checkoutUrl };
+  }
+
+  /**
+   * Activate a subscription by payment_id (called from NOWPayments webhook).
+   * Transitions pending_payment → active and increments subscriber count.
+   */
+  async activateByPaymentId(paymentId: string): Promise<IMarketplaceSubscription | null> {
+    const sub = await this.subRepo.findByPaymentId(paymentId);
+    if (!sub) {
+      logger.warn('No marketplace subscription found for payment', { paymentId });
+      return null;
+    }
+
+    if (sub.status === 'active') {
+      logger.info('Subscription already active', { subscriptionId: sub.id, paymentId });
+      return sub;
+    }
+
+    const updated = await this.subRepo.update(sub.id, {
+      status: 'active' as any,
+      paymentStatus: 'paid',
+    });
+
+    if (updated) {
+      // Increment listing subscriber count
+      await this.listingRepo.incrementSubscriberCount(sub.listingId, 1);
+
+      await this.auditService.log(sub.tenantId, 'api_call' as any, {
+        tier: undefined,
+        metadata: {
+          action: 'subscription_activated',
+          resourceId: sub.id,
+          paymentId,
+          listingId: sub.listingId,
+        },
+      });
+
+      logger.info('Marketplace subscription activated via payment', {
+        subscriptionId: sub.id,
+        paymentId,
+        tenantId: sub.tenantId,
+        listingId: sub.listingId,
+      });
+    }
+
+    return updated;
+  }
+
+  /**
+   * Cancel a subscription by payment_id (called from NOWPayments refunded/failed webhook).
+   */
+  async cancelByPaymentId(paymentId: string): Promise<IMarketplaceSubscription | null> {
+    const sub = await this.subRepo.findByPaymentId(paymentId);
+    if (!sub) {
+      logger.warn('No marketplace subscription found for payment', { paymentId });
+      return null;
+    }
+
+    if (sub.status === 'cancelled') return sub;
+
+    const updated = await this.subRepo.update(sub.id, {
+      status: 'cancelled' as any,
+      paymentStatus: 'failed',
+    });
+
+    if (updated) {
+      await this.auditService.log(sub.tenantId, 'api_call' as any, {
+        tier: undefined,
+        metadata: {
+          action: 'subscription_payment_failed',
+          resourceId: sub.id,
+          paymentId,
+        },
+      });
+    }
+
+    return updated;
   }
 
   async listSubscriptions(
@@ -168,6 +286,29 @@ export class SubscriptionService {
   async flagReview(id: string): Promise<IMarketplaceReview | null> {
     this.reviewRepo.incrementReported(id);
     return this.reviewRepo.update(id, { isFlagged: true });
+  }
+
+  /**
+   * Look up subscription by NOWPayments payment_id (used by webhook handler).
+   */
+  async getSubscriptionByPaymentId(paymentId: string): Promise<IMarketplaceSubscription | null> {
+    return this.subRepo.findByPaymentId(paymentId);
+  }
+
+  /**
+   * Get strategy metadata for a subscription (used for revenue attribution).
+   */
+  async getStrategyForSubscription(strategyId: string): Promise<{ id: string; creatorId: string; name: string } | null> {
+    return this.strategyRepoForListing(strategyId);
+  }
+
+  /**
+   * Get listing metadata for a subscription (used for revenue calculation).
+   */
+  async getListingForSubscription(listingId: string): Promise<{ priceUsdMonthly: number; billingCycle: string } | null> {
+    const listing = await this.listingRepo.findById(listingId);
+    if (!listing) return null;
+    return { priceUsdMonthly: listing.priceUsdMonthly, billingCycle: listing.billingCycle };
   }
 
   // ── Private helpers ──────────────────────────────────────────────

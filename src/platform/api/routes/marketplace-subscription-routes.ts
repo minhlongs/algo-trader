@@ -105,7 +105,7 @@ marketplaceSubscriptionRouter.post('/', requireTier('FREE'), async (req: Request
       });
     }
 
-    const subscription = await subscriptionService.subscribe({
+    const result = await subscriptionService.subscribe({
       tenantId,
       userId,
       listingId: parsed.data.listingId,
@@ -121,19 +121,24 @@ marketplaceSubscriptionRouter.post('/', requireTier('FREE'), async (req: Request
         metadata: {
           action: 'subscription_created',
           userId,
-          resourceId: subscription.id,
+          resourceId: result.subscription.id,
           listingId: parsed.data.listingId,
+          requiresPayment: result.checkoutUrl !== null,
         },
       }
     );
 
     logger.info('[Marketplace] Subscription created', {
-      subscriptionId: subscription.id,
+      subscriptionId: result.subscription.id,
       tenantId,
       listingId: parsed.data.listingId,
+      requiresPayment: result.checkoutUrl !== null,
     });
 
-    return res.status(201).json(subscription);
+    return res.status(201).json({
+      subscription: result.subscription,
+      checkoutUrl: result.checkoutUrl,
+    });
   } catch (error) {
     const tenantId = getTenantId(req);
     logger.error('[Marketplace] Error creating subscription', { error, tenantId });

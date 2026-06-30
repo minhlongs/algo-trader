@@ -21,6 +21,8 @@ import {
   handleIpnRefunded,
   handleIpnPaymentSuccess,
   handleIpnPaymentFailed,
+  handleMarketplaceIpnFinished,
+  handleMarketplaceIpnCancelled,
 } from './handlers';
 
 export const nowpaymentsWebhookRouter: Router = Router();
@@ -62,24 +64,47 @@ nowpaymentsWebhookRouter.post('/', async (req: Request, res: Response) => {
 
     const action = nowpaymentsService.getStatusAction(ipn.payment_status);
 
-    logger.info(`[NOWPayments IPN] payment_id=${ipn.payment_id} status=${ipn.payment_status} action=${action}`);
+    // Detect marketplace payments by order_id prefix
+    const isMarketplace = ipn.order_id
+      ? nowpaymentsService.isMarketplaceOrderId(ipn.order_id)
+      : false;
 
-    switch (action) {
-      case 'activate':
-        await handleIpnFinished(ipn, nowpaymentsService, subscriptionService, licenseService, auditService);
-        await handleIpnPaymentSuccess(ipn, paymentService);
-        break;
+    logger.info(`[NOWPayments IPN] payment_id=${ipn.payment_id} status=${ipn.payment_status} action=${action} marketplace=${isMarketplace}`);
 
-      case 'cancel':
-        if (ipn.payment_status === 'refunded') {
-          await handleIpnRefunded(ipn, subscriptionService);
-        }
-        await handleIpnPaymentFailed(ipn, paymentService);
-        break;
+    if (isMarketplace) {
+      // Marketplace strategy subscription payment flow
+      switch (action) {
+        case 'activate':
+          await handleMarketplaceIpnFinished(ipn, nowpaymentsService);
+          await handleIpnPaymentSuccess(ipn, paymentService);
+          break;
+        case 'cancel':
+          await handleMarketplaceIpnCancelled(ipn);
+          await handleIpnPaymentFailed(ipn, paymentService);
+          break;
+        case 'ignore':
+          logger.info(`[NOWPayments IPN] Intermediate marketplace status ${ipn.payment_status}, no action`);
+          break;
+      }
+    } else {
+      // Platform license subscription payment flow
+      switch (action) {
+        case 'activate':
+          await handleIpnFinished(ipn, nowpaymentsService, subscriptionService, licenseService, auditService);
+          await handleIpnPaymentSuccess(ipn, paymentService);
+          break;
 
-      case 'ignore':
-        logger.info(`[NOWPayments IPN] Intermediate status ${ipn.payment_status}, no action`);
-        break;
+        case 'cancel':
+          if (ipn.payment_status === 'refunded') {
+            await handleIpnRefunded(ipn, subscriptionService);
+          }
+          await handleIpnPaymentFailed(ipn, paymentService);
+          break;
+
+        case 'ignore':
+          logger.info(`[NOWPayments IPN] Intermediate status ${ipn.payment_status}, no action`);
+          break;
+      }
     }
 
     return res.status(200).json({ received: true });

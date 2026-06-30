@@ -9,3 +9,8 @@ export {
 
 export { handleIpnPaymentSuccess, handleIpnPaymentFailed } from './payment-handler';
 
+export {
+  handleMarketplaceIpnFinished,
+  handleMarketplaceIpnCancelled,
+} from './marketplace-payment-handler';
+
