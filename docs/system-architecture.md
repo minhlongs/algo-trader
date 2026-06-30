@@ -50,10 +50,9 @@ graph TD
 ## Core Components
 
 ### Phase 1: Core Strategy Engine
-- **BotEngine** (`src/core/BotEngine.ts`): Signal routing, strategy orchestration.
-- **Strategy Layer** (`src/strategies/`): RSI, SMA, Cross-Exchange, Triangular, Statistical, AGI Arbitrage.
-- **RiskManager** (`src/core/`): Position sizing, risk calculation.
-- **OrderManager** (`src/core/`): Order state tracking.
+- **Desk Strategy Engine** (`src/desk/strategies/`): 52+ strategies via `BasePolymarketStrategy` abstract class, execution, risk management.
+- **RiskManager** (`src/desk/risk/`): Position sizing, risk calculation.
+- **OrderManager** (`src/desk/execution/`): Order state tracking.
 
 ### Phase 2: AGI RaaS Arbitrage Core (Execution Foundation)
 **Execution Layer** (`src/execution/`):
@@ -61,12 +60,12 @@ graph TD
 - **FeeAwareCrossExchangeSpreadCalculator** — Net spread = gross spread - maker/taker fees - slippage, 5min TTL cache.
 - **AtomicCrossExchangeOrderExecutor** — Promise.allSettled buy/sell parallel, rollback on partial failure.
 
-**Multi-Tenant Core** (`src/core/`):
+**Multi-Tenant Core** (`src/platform/`):
 - **TenantArbPositionTracker** — Per-tenant positions, tier limits (Basic/Pro/Enterprise).
 - **PaperTradingEngine** — Virtual trading simulation, P&L tracking.
 - **WebSocketServer** — Real-time `spread` + `position` channel broadcast.
 
-**RaaS API** (`src/api/routes/`):
+**RaaS API** (`src/platform/api/`):
 - `POST /api/v1/arb/scan` — Dry-run spread scan.
 - `POST /api/v1/arb/execute` — Execute trade (Pro/Enterprise).
 - `GET /api/v1/arb/positions` — Current positions.
@@ -157,7 +156,7 @@ graph TD
 - **MultiLegBasket** — Represents multi-leg arbitrage position (buy Market A, sell Market B, sell Market C)
 
 ### Phase 22: Delta-Neutral Volatility Arbitrage & Frank-Wolfe Optimizer
-**Polymarket Strategy** (`src/strategies/polymarket/`):
+**Polymarket Strategy** (`src/desk/strategies/polymarket/`):
 - **DeltaNeutralVolatilityArbitrage** — Market-neutral position pairs: long volatility + short correlated market
 - **DeltaCalculator** — Computes delta exposure per market, rebalancing signals
 - **DeltaNeutralPortfolioMonitor** — Real-time monitoring of aggregate delta, alerts on drift
@@ -176,7 +175,7 @@ graph TD
 
 **Monitoring Stack** (`docker/`):
 - **Prometheus** — 9090 scraping metrics from app + TimescaleDB; 15s scrape interval
-- **Grafana** — 3001 with pre-built dashboards: Arbitrage Metrics, Risk Dashboard, Infrastructure Health
+- **Grafana** — 3002 with pre-built dashboards: Arbitrage Metrics, Risk Dashboard, Infrastructure Health
 - **Dashboard 1: Arbitrage Metrics** — Spread finder latency (p50/p95), ILP solver execution time, liquidity check miss rate
 - **Dashboard 2: Risk Dashboard** — Portfolio delta, cumulative slippage, correlation matrix heatmap
 - **Dashboard 3: Infrastructure Health** — NATS broker uptime, Redis pub/sub lag, DB query latency, GC pressure
@@ -205,13 +204,13 @@ graph TD
 - **WhaleAnalyticsReport** — Daily whale leaderboard, win rate, edge estimation, correlation matrix.
 
 ### Phase 29: BTC 15-Minute Pattern Detection
-**Intraday Strategies** (`src/strategies/intraday/`):
+**Intraday Strategies** (`src/desk/strategies/polymarket/`):
 - **BtcFifteenMinuteStrategy** — Real-time 15-min candle analysis from Kraken/Coinbase, pattern detection (momentum, reversal, volatility clusters).
 - **BitcoinVolatilityScanner** — Detect intraday volatility spikes >2σ, flag for Polymarket BTC price prediction markets.
 - **BreakoutDetector** — Identify 15-min breakouts (2-hour range), map to Polymarket "BTC > X by Y date" positions.
 
 ### Phase 30: Cycle-End Sniper & Resolution Criteria Analyzer
-**End-Game Strategy** (`src/strategies/polymarket/`):
+**End-Game Strategy** (`src/desk/strategies/polymarket/`):
 - **CycleEndSniperStrategy** — Target markets resolving within 24h, dynamic bid-ask placing as outcome probability crystallizes.
 - **ResolutionCriteriaAnalyzer** — Parse Polymarket contract text (UMA resolution criteria), extract success conditions via DeepSeek reasoning.
 - **UmaOracleTiming** — Monitor UMA challenge window (1-2 days post-resolution), detect oracle manipulation signals for reversal trades.
@@ -331,7 +330,7 @@ Two-plane observability: Prometheus metrics + OpenTelemetry traces → Grafana.
   - Dashboard integration: CashClaw dashboard on CF Pages displays coupon input, integrates with pricing section
 
 **Monitoring** (`docker-compose.yml`):
-- Prometheus (:9090) + Grafana (:3001).
+- Prometheus (:9090) + Grafana (:3002).
 
 ### Server Bootstrap (Phase 18+)
 **Location**: `src/app.ts` (50 lines)
@@ -371,7 +370,7 @@ All Opportunities →
 | Database | PostgreSQL 16 via Prisma |
 | Validation | Zod 4.3 |
 | Logging | Winston |
-| Testing | Jest 29 |
+| Testing | vitest |
 | CLI | Commander |
 | Dashboard | React 19, Vite 6, Zustand 5, Tailwind, TradingView Charts |
 
@@ -411,8 +410,8 @@ All Opportunities →
 - Phase 31: Signal Fusion Engine & Multi-Resolution Analytics (Weighted signal voting, conviction scoring, criteria extraction)
 
 ### Quality Gates
-- **570 tests** (Jest 29, 100% pass rate)
-- **266+ source files** (TypeScript 5.9, strict mode)
+- **2,430+ tests** (vitest, 100% pass rate, 204 test files)
+- **600+ source files** (TypeScript 5.9, strict mode)
 - **0 TypeScript errors**
 - **0 `any` types** (test mocks only — acceptable)
 - **0 console.log** (production clean)
@@ -424,7 +423,7 @@ All Opportunities →
 - **26 PR Merges** (Session: #58-#85) — CLOB v2, WebSocket feeds, CLI enhancements, multi-platform support
 - **Target**: $1M ARR via RaaS + white-label licensing
 
-Updated: 2026-04-09
+Updated: 2026-06-30
 
 ---
 
@@ -537,9 +536,9 @@ Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-
 - `src/db/migrations/018_qwen_signals_loop_runs.sql` — `qwen_signals_loop_runs` table (decision ∈ {skipped_insufficient_data, ok, queued_review, error}, metrics_snapshot JSONB, trigger_reasons[], error_message, created_at)
 - `src/db/migrations/017_strategy_review_tasks.sql` — `strategy_review_tasks` table (daily UNIQUE index on strategy_id + UTC calendar day)
 - `src/wiring/qwen-signals-loop.ts` — L0 observational detector (6h singleton, 4-path journal persistence via `persistRunJournal()`)
-- `src/api/routes/admin-qwen-routes.ts` — L0/L1/L2 admin endpoints (review list + kill routes + signals-loop/runs query)
+- `src/platform/api/routes/admin-qwen-routes.ts` — L0/L1/L2 admin endpoints (review list + kill routes + signals-loop/runs query)
 - `src/middleware/prometheus-metrics.ts` — Counter `algo_trader_qwen_signals_loop_runs_total{decision}` per cycle
-- `src/api/routes/signal-ingest-routes.ts` — HMAC POST endpoint
+- `src/platform/api/routes/signal-ingest-routes.ts` — HMAC POST endpoint
 - `src/utils/hmac-verifier.ts` — timing-safe HMAC-SHA256 + replay window
 - `src/signal/signal-store-d1.ts` — D1/SQLite persistence with source tagging
 - `src/wiring/qwen-drawdown-monitor.ts` — L3 scheduled drawdown check
