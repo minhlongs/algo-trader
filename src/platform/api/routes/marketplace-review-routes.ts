@@ -15,6 +15,7 @@ import { SubscriptionService } from '../../marketplace/services/subscription.ser
 import { MarketplaceService } from '../../marketplace/services/marketplace.service';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const marketplaceReviewRouter: RouterType = Router();
 
@@ -82,7 +83,7 @@ function isAdmin(req: Request): boolean {
  * POST /api/v1/marketplace/reviews
  * Create a review - only verified subscribers can review
  */
-marketplaceReviewRouter.post('/', async (req: Request, res: Response) => {
+marketplaceReviewRouter.post('/', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -169,7 +170,7 @@ marketplaceReviewRouter.post('/', async (req: Request, res: Response) => {
  * GET /api/v1/marketplace/reviews/strategies/:id
  * List reviews for a strategy
  */
-marketplaceReviewRouter.get('/strategies/:id', async (req: Request, res: Response) => {
+marketplaceReviewRouter.get('/strategies/:id', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = getQueryString(req.params.id);
 
@@ -220,7 +221,7 @@ marketplaceReviewRouter.get('/strategies/:id', async (req: Request, res: Respons
  * POST /api/v1/marketplace/reviews/:id/helpful
  * Mark review as helpful
  */
-marketplaceReviewRouter.post('/:id/helpful', async (req: Request, res: Response) => {
+marketplaceReviewRouter.post('/:id/helpful', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = getQueryString(req.params.id);
     const tenantId = getTenantId(req);
@@ -274,7 +275,7 @@ marketplaceReviewRouter.post('/:id/helpful', async (req: Request, res: Response)
  * POST /api/v1/marketplace/reviews/:id/report
  * Flag review for moderation
  */
-marketplaceReviewRouter.post('/:id/report', async (req: Request, res: Response) => {
+marketplaceReviewRouter.post('/:id/report', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = getQueryString(req.params.id);
     const tenantId = getTenantId(req);

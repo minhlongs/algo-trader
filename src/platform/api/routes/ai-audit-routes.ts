@@ -19,6 +19,7 @@ import {
   type RecordDecisionInput,
   type DecisionFilters,
 } from '../../audit/ai-decision-repository';
+import { requireTier } from '../../middleware/feature-gate';
 
 const router: Router = Router();
 const repo = getAIDecisionRepository();
@@ -69,7 +70,7 @@ async function authenticate(req: Request, res: Response, next: NextFunction) {
  * POST /api/v1/ai-audit/decisions
  * Record a new AI decision with optional metadata
  */
-router.post('/decisions', authenticate, async (req: Request, res: Response) => {
+router.post('/decisions', requireTier('PRO'), authenticate, async (req: Request, res: Response) => {
   try {
     const body = recordDecisionSchema.parse(req.body);
 
@@ -112,7 +113,7 @@ router.post('/decisions', authenticate, async (req: Request, res: Response) => {
  * GET /api/v1/ai/audit/decisions
  * List decisions with optional filters (model_name, date range, confidence range)
  */
-router.get('/decisions', authenticate, async (req: Request, res: Response) => {
+router.get('/decisions', requireTier('PRO'), authenticate, async (req: Request, res: Response) => {
   try {
     const filters = decisionFiltersSchema.parse(req.query) as DecisionFilters;
 
@@ -144,7 +145,7 @@ router.get('/decisions', authenticate, async (req: Request, res: Response) => {
  * GET /api/v1/ai/audit/decisions/:id
  * Get a single decision with all its metadata entries
  */
-router.get('/decisions/:id', authenticate, async (req: Request, res: Response) => {
+router.get('/decisions/:id', requireTier('PRO'), authenticate, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 

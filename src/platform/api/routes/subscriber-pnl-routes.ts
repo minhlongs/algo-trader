@@ -14,6 +14,7 @@ import { SubscriberPnLAggregator } from '../../raas/subscriber-pnl-aggregator';
 import { SubscriberEquityCurveBuilder } from '../../raas/subscriber-equity-curve-builder';
 import { SubscriberActivityMetricsService } from '../../raas/subscriber-activity-metrics';
 import { assertTenantAccess } from '../../raas/subscriber-tenant-isolator';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const subscriberPnlRouter: Router = Router();
 
@@ -45,7 +46,7 @@ function parseRange(req: Request): { fromMs: number; toMs: number } {
 }
 
 /** GET /subscriber/:id/pnl */
-subscriberPnlRouter.get('/:id/pnl', async (req: Request, res: Response): Promise<void> => {
+subscriberPnlRouter.get('/:id/pnl', requireTier('PRO'), async (req: Request, res: Response): Promise<void> => {
   const subscriberId = String(req.params.id ?? '');
   try {
     const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
@@ -64,7 +65,7 @@ subscriberPnlRouter.get('/:id/pnl', async (req: Request, res: Response): Promise
 });
 
 /** GET /subscriber/:id/equity */
-subscriberPnlRouter.get('/:id/equity', async (req: Request, res: Response): Promise<void> => {
+subscriberPnlRouter.get('/:id/equity', requireTier('PRO'), async (req: Request, res: Response): Promise<void> => {
   const subscriberId = String(req.params.id ?? '');
   try {
     const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
@@ -86,7 +87,7 @@ subscriberPnlRouter.get('/:id/equity', async (req: Request, res: Response): Prom
 });
 
 /** GET /subscriber/:id/activity */
-subscriberPnlRouter.get('/:id/activity', async (req: Request, res: Response): Promise<void> => {
+subscriberPnlRouter.get('/:id/activity', requireTier('PRO'), async (req: Request, res: Response): Promise<void> => {
   const subscriberId = String(req.params.id ?? '');
   try {
     const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);
@@ -105,7 +106,7 @@ subscriberPnlRouter.get('/:id/activity', async (req: Request, res: Response): Pr
 });
 
 /** GET /subscriber/:id/trades — daily P&L breakdown */
-subscriberPnlRouter.get('/:id/trades', async (req: Request, res: Response): Promise<void> => {
+subscriberPnlRouter.get('/:id/trades', requireTier('PRO'), async (req: Request, res: Response): Promise<void> => {
   const subscriberId = String(req.params.id ?? '');
   try {
     const { tokenSubscriberId, isAdmin } = extractTokenClaims(req);

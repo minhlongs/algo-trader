@@ -37,6 +37,18 @@ function resolveTier(licenseId: string): LicenseTier {
   return license?.tier ?? LicenseTier.FREE;
 }
 
+/** Tier gate guard — returns false if response already sent */
+function requireTierGate(request: FastifyRequest, reply: FastifyReply, minTier: string): boolean {
+  const userTier = request.getLicenseTier();
+  if (!userTier) { reply.code(401).send({ error: 'No license' }); return false; }
+  const order: Record<string, number> = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
+  if ((order[userTier ?? ''] ?? 0) < (order[minTier] ?? 0)) {
+    reply.code(403).send({ error: 'Insufficient tier', required: minTier, current: userTier });
+    return false;
+  }
+  return true;
+}
+
 export async function apiKeyRoutes(fastify: FastifyInstance) {
   const manager = ApiKeyManager.getInstance();
 
@@ -62,6 +74,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Body: GenerateBody }>,
       reply: FastifyReply
     ) => {
+    if (!requireTierGate(request, reply, 'PRO')) return;
       const { licenseId } = request.body;
 
       // Verify license exists
@@ -108,6 +121,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Body: RotateBody }>,
       reply: FastifyReply
     ) => {
+    if (!requireTierGate(request, reply, 'PRO')) return;
       const { licenseId } = request.body;
 
       const license = LicenseService.getInstance().getLicense(licenseId);
@@ -141,6 +155,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Params: KeyParams }>,
       reply: FastifyReply
     ) => {
+    if (!requireTierGate(request, reply, 'PRO')) return;
       const { keyId } = request.params;
       const revoked = manager.revokeApiKey(keyId);
 
@@ -178,6 +193,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Querystring: ListQuery }>,
       reply: FastifyReply
     ) => {
+    if (!requireTierGate(request, reply, 'PRO')) return;
       const { licenseId } = request.query;
 
       const license = LicenseService.getInstance().getLicense(licenseId);

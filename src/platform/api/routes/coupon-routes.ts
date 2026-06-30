@@ -10,6 +10,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { timingSafeEqual } from 'crypto';
 import { CouponService } from '../../billing/coupon-service';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 // All tiers across all projects (shared NOWPayments account)
 const TIER_PRICES: Record<string, Record<string, { price: number; invoiceId: string }>> = {
@@ -77,7 +78,7 @@ export const couponRouter: Router = Router();
 const couponService = CouponService.getInstance();
 
 // Admin: create coupon (auth required)
-couponRouter.post('/', requireAdmin, async (req: Request, res: Response) => {
+couponRouter.post('/', requireTier('FREE'), requireAdmin, async (req: Request, res: Response) => {
   try {
     const coupon = couponService.createCoupon(req.body);
     return res.json({ success: true, coupon });
@@ -87,19 +88,19 @@ couponRouter.post('/', requireAdmin, async (req: Request, res: Response) => {
 });
 
 // Admin: list coupons (auth required)
-couponRouter.get('/', requireAdmin, (_req: Request, res: Response) => {
+couponRouter.get('/', requireTier('FREE'), requireAdmin, (_req: Request, res: Response) => {
   return res.json({ coupons: couponService.listCoupons() });
 });
 
 // Admin: deactivate coupon (auth required)
-couponRouter.delete('/:code', requireAdmin, (req: Request, res: Response) => {
+couponRouter.delete('/:code', requireTier('FREE'), requireAdmin, (req: Request, res: Response) => {
   const ok = couponService.deactivateCoupon(req.params.code as string);
   return res.json({ success: ok });
 });
 
 // Customer: apply coupon → create discounted NOWPayments invoice → return checkout URL
 // Accepts: { code, tier, project? } — project defaults to "cashclaw"
-couponRouter.post('/apply', async (req: Request, res: Response) => {
+couponRouter.post('/apply', requireTier('FREE'), async (req: Request, res: Response) => {
   const { code, tier, project } = req.body;
   if (!code || !tier) {
     return res.status(400).json({ error: 'code and tier required' });

@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { getRedisClient } from '../../../redis';
+import { requireTier } from '../../middleware/feature-gate';
 
 // Zod schema for query validation
 const signalsQuerySchema = z.object({
@@ -32,7 +33,7 @@ const redis = getRedisClient();
  * GET /signals
  * Query params: minSpread (default 0), limit (default 50)
  */
-signalsRouter.get('/', async (req: Request, res: Response) => {
+signalsRouter.get('/', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const parsed = signalsQuerySchema.safeParse(req.query);
     if (!parsed.success) {

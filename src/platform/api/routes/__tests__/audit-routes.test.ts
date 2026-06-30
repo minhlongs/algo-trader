@@ -76,6 +76,10 @@ interface AuditLogRow {
 
 function buildServer(): FastifyInstance {
   const server = fastify();
+  // Mock license plugin for tier gating
+  server.decorateRequest('getLicenseTier', () => 'ENTERPRISE');
+  server.decorateRequest('isLicenseValid', () => true);
+
   registerAuditRoutes(server);
   return server;
 }

@@ -6,6 +6,14 @@ import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 
+// Mock tier gating — tests don't run the full raas-gate middleware chain
+vi.mock('../../middleware/feature-gate', () => ({
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  canAccessFeature: () => true,
+  FEATURE_ACCESS: {},
+}));
+
 // Mock Redis
 const mockRedis = {
   hgetall: vi.fn().mockResolvedValue({}),

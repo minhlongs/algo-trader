@@ -119,6 +119,11 @@ function buildApp(store: SignalStore, secret = TEST_SECRET) {
   process.env.QWEN_INGEST_HMAC_SECRET = secret;
   const app = express();
   app.use(express.json());
+  // Inject mock license for tier-gate middleware (requireTier checks req.license)
+  app.use((_req, _res, next) => {
+    (_req as Record<string, unknown>).license = { tier: 'PRO', id: 'test-license', status: 'ACTIVE' };
+    next();
+  });
   app.use('/api/v1/signals', createSignalIngestRouter(store));
   return app;
 }

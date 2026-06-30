@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { DisputeService } from '../../marketplace/services/dispute.service';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const marketplaceDisputeRouter: RouterType = Router();
 
@@ -88,7 +89,7 @@ function isAdmin(req: Request): boolean {
  * POST /api/v1/marketplace/disputes
  * File a dispute against a strategy subscription
  */
-marketplaceDisputeRouter.post('/', async (req: Request, res: Response) => {
+marketplaceDisputeRouter.post('/', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -165,7 +166,7 @@ marketplaceDisputeRouter.post('/', async (req: Request, res: Response) => {
  * GET /api/v1/marketplace/disputes
  * List my disputes
  */
-marketplaceDisputeRouter.get('/', async (req: Request, res: Response) => {
+marketplaceDisputeRouter.get('/', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 
@@ -198,7 +199,7 @@ marketplaceDisputeRouter.get('/', async (req: Request, res: Response) => {
  * GET /api/v1/marketplace/disputes/:id
  * Get dispute details
  */
-marketplaceDisputeRouter.get('/:id', async (req: Request, res: Response) => {
+marketplaceDisputeRouter.get('/:id', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
     const id = getQueryString(req.params.id);
     const tenantId = getTenantId(req);

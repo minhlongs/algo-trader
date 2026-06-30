@@ -17,6 +17,7 @@ import { getCachedSignals, setCachedSignals } from '../../../desk/signal/signal-
 import { sseBroadcaster } from '../../../desk/signal/sse-signal-broadcaster';
 import type { TierKey } from '../../../desk/signal/signal-types';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const signalFeedRouter: Router = Router();
 const gate = RaasGate.getInstance();
@@ -46,7 +47,7 @@ function resolveTier(req: Request): TierKey {
  * GET /api/v1/signals/stream
  * SSE stream — ENTERPRISE tier only. Must be registered before /:id to avoid conflict.
  */
-signalFeedRouter.get('/stream', (req: Request, res: Response) => {
+signalFeedRouter.get('/stream', requireTier('PRO'), (req: Request, res: Response) => {
   const tier = resolveTier(req);
 
   if (!canAccessSse(tier)) {
@@ -66,7 +67,7 @@ signalFeedRouter.get('/stream', (req: Request, res: Response) => {
  * GET /api/v1/signals?since=<ts>&limit=<n>
  * Returns filtered + paginated signals for the caller's tier.
  */
-signalFeedRouter.get('/', async (req: Request, res: Response) => {
+signalFeedRouter.get('/', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
     const parsed = listQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -103,7 +104,7 @@ signalFeedRouter.get('/', async (req: Request, res: Response) => {
  * GET /api/v1/signals/:id
  * Returns a single signal if not expired and visible to caller's tier.
  */
-signalFeedRouter.get('/:id', (req: Request, res: Response) => {
+signalFeedRouter.get('/:id', requireTier('PRO'), (req: Request, res: Response) => {
   const { id } = req.params;
   const tier = resolveTier(req);
 

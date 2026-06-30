@@ -7,6 +7,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { TradeRepository } from '../../../db/trade-repository';
+import { requireTier } from '../../middleware/feature-gate';
 
 // Zod schemas for query validation
 const listQuerySchema = z.object({
@@ -25,7 +26,7 @@ const tradeRepo = new TradeRepository();
  * GET /trades
  * Query params: limit (default 100), offset (default 0)
  */
-tradesRouter.get('/', async (req: Request, res: Response) => {
+tradesRouter.get('/', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const parsed = listQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -50,7 +51,7 @@ tradesRouter.get('/', async (req: Request, res: Response) => {
 /**
  * GET /trades/:id
  */
-tradesRouter.get('/:id', async (req: Request, res: Response) => {
+tradesRouter.get('/:id', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const parsed = tradeIdSchema.safeParse(req.params);
     if (!parsed.success) {

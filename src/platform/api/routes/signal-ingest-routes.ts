@@ -22,6 +22,7 @@ import { SignalPublisher } from '../../../desk/signal/signal-publisher';
 import type { SignalStore } from '../../../desk/signal/signal-publisher';
 import { logger } from '../../../shared/utils/logger';
 import { qwenSignalsTotal } from '../../middleware/prometheus-metrics';
+import { requireTier } from '../../middleware/feature-gate';
 
 /** Strategies allowed to ingest via this endpoint */
 const ALLOWED_STRATEGIES = ['qwen-m1max-v1', 'deepseek-m1max-v1'] as const;
@@ -65,7 +66,7 @@ export function createSignalIngestRouter(store: SignalStore): Router {
    * Body: { market, side, size, confidence, strategy, ttlSec, ts? }
    * Headers: X-Signature-256: sha256=<hex>, X-Timestamp: <unix_seconds>
    */
-  router.post('/ingest', ingestRateLimit, async (req: Request, res: Response) => {
+  router.post('/ingest', requireTier('PRO'), ingestRateLimit, async (req: Request, res: Response) => {
     const secret = process.env.QWEN_INGEST_HMAC_SECRET;
     if (!secret) {
       logger.error('[SignalIngest] QWEN_INGEST_HMAC_SECRET not configured');

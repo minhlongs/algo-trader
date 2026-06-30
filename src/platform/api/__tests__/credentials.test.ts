@@ -6,6 +6,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express, { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 
+// Mock tier gating — route tests do not run raas-gate middleware
+vi.mock('../../middleware/feature-gate', () => ({
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  canAccessFeature: () => true,
+  FEATURE_ACCESS: {},
+}));
+
 // Define hoisted mocks so they are available to hoisted vi.mock calls
 const { mockSave, mockGet, mockDelete, mockAppendAudit } = vi.hoisted(() => ({
   mockSave: vi.fn(),

@@ -13,6 +13,7 @@ import type { Router as RouterType } from 'express';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 const DATA_DIR = join(process.cwd(), 'data', 'analytics');
 const EVENTS_FILE = join(DATA_DIR, 'events.json');
@@ -46,7 +47,7 @@ function saveEvents(events: AnalyticsEvent[]): void {
 export const analyticsRouter: RouterType = Router();
 
 // POST /event — receive beacon from analytics.js
-analyticsRouter.post('/event', (req: Request, res: Response) => {
+analyticsRouter.post('/event', requireTier('FREE'), (req: Request, res: Response) => {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     if (!body || !body.event) {
@@ -78,7 +79,7 @@ analyticsRouter.post('/event', (req: Request, res: Response) => {
 });
 
 // GET /referrals — referral attribution summary (admin, Bearer token required)
-analyticsRouter.get('/referrals', (req: Request, res: Response) => {
+analyticsRouter.get('/referrals', requireTier('FREE'), (req: Request, res: Response) => {
   const metricsToken = process.env.METRICS_TOKEN;
   if (!metricsToken) { res.status(403).json({ error: 'Not configured' }); return; }
   const authHeader = req.headers.authorization;

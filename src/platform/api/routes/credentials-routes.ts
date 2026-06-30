@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { TenantCredentialsRepository } from '../../../db/tenant-credentials-repository';
 import { assertTenantAccess } from '../../raas/subscriber-tenant-isolator';
 import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const credentialsRouter: Router = Router();
 const repository = new TenantCredentialsRepository();
@@ -25,7 +26,7 @@ function extractTokenClaims(req: Request): {
   };
 }
 
-credentialsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
+credentialsRouter.post('/', requireTier('FREE'), async (req: Request, res: Response): Promise<void> => {
   const parsed = bodySchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid body' });

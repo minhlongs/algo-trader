@@ -7,6 +7,7 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { requireTier } from '../../middleware/feature-gate';
 import { CircuitBreaker } from '../../../desk/risk/circuit-breaker';
 import { DrawdownMonitor } from '../../../desk/risk/drawdown-monitor';
 
@@ -23,7 +24,7 @@ const drawdownMonitor = new DrawdownMonitor();
  * POST /admin/halt
  * Body: reason (required)
  */
-adminRouter.post('/halt', async (req: Request, res: Response) => {
+adminRouter.post('/halt', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     const parsed = haltSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -42,7 +43,7 @@ adminRouter.post('/halt', async (req: Request, res: Response) => {
 /**
  * POST /admin/resume
  */
-adminRouter.post('/resume', async (req: Request, res: Response) => {
+adminRouter.post('/resume', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     await circuitBreaker.reset();
     await drawdownMonitor.resume();
@@ -57,7 +58,7 @@ adminRouter.post('/resume', async (req: Request, res: Response) => {
 /**
  * GET /admin/status
  */
-adminRouter.get('/status', async (req: Request, res: Response) => {
+adminRouter.get('/status', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     const [circuitStatus, drawdownMetrics] = await Promise.all([
       circuitBreaker.getStatus(),

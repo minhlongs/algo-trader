@@ -11,6 +11,7 @@
 import { Router, Request, Response } from 'express';
 import { EnterpriseOnboardingService } from '../../billing/enterprise-onboarding-service';
 import { enterpriseInquiryStore, type EnterpriseInquiryStatus } from '../../billing/enterprise-inquiry-store';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const enterpriseInquiryRouter: Router = Router();
 
@@ -28,7 +29,7 @@ const VALID_STATUSES: EnterpriseInquiryStatus[] = [
 ];
 
 /** POST /inquiries — public endpoint: submit enterprise contact form */
-enterpriseInquiryRouter.post('/inquiries', async (req: Request, res: Response): Promise<void> => {
+enterpriseInquiryRouter.post('/inquiries', requireTier('ENTERPRISE'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, companyName, contactName, tier, useCase, teamSize } = req.body as Record<string, string>;
 
@@ -57,7 +58,7 @@ enterpriseInquiryRouter.post('/inquiries', async (req: Request, res: Response): 
 });
 
 /** GET /inquiries — admin: list all inquiries sorted by createdAt desc */
-enterpriseInquiryRouter.get('/inquiries', (req: Request, res: Response): void => {
+enterpriseInquiryRouter.get('/inquiries', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;
@@ -68,7 +69,7 @@ enterpriseInquiryRouter.get('/inquiries', (req: Request, res: Response): void =>
 });
 
 /** GET /inquiries/:id — admin: fetch single inquiry */
-enterpriseInquiryRouter.get('/inquiries/:id', (req: Request, res: Response): void => {
+enterpriseInquiryRouter.get('/inquiries/:id', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;
@@ -84,7 +85,7 @@ enterpriseInquiryRouter.get('/inquiries/:id', (req: Request, res: Response): voi
 });
 
 /** PATCH /inquiries/:id/status — admin: update status, tamAssigned, notes */
-enterpriseInquiryRouter.patch('/inquiries/:id/status', (req: Request, res: Response): void => {
+enterpriseInquiryRouter.patch('/inquiries/:id/status', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;

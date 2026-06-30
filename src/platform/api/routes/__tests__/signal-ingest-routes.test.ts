@@ -9,6 +9,14 @@ import express from 'express';
 import request from 'supertest';
 import { createHmac } from 'crypto';
 
+// Mock tier gating — route-level tests don't run raas-gate middleware
+vi.mock('../../../middleware/feature-gate', () => ({
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  canAccessFeature: () => true,
+  FEATURE_ACCESS: {},
+}));
+
 // --- Mocks ---
 
 vi.mock('../../../../shared/utils/logger', () => ({

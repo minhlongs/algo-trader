@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { SubscriptionService } from '../../marketplace/services/subscription.service';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const marketplaceSubscriptionRouter: RouterType = Router();
 
@@ -91,7 +92,7 @@ function isAdmin(req: Request): boolean {
  * POST /api/v1/marketplace/subscriptions
  * Subscribe to a strategy listing
  */
-marketplaceSubscriptionRouter.post('/', async (req: Request, res: Response) => {
+marketplaceSubscriptionRouter.post('/', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -147,7 +148,7 @@ marketplaceSubscriptionRouter.post('/', async (req: Request, res: Response) => {
  * GET /api/v1/marketplace/subscriptions
  * List my subscriptions
  */
-marketplaceSubscriptionRouter.get('/', async (req: Request, res: Response) => {
+marketplaceSubscriptionRouter.get('/', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
 
@@ -180,7 +181,7 @@ marketplaceSubscriptionRouter.get('/', async (req: Request, res: Response) => {
  * GET /api/v1/marketplace/subscriptions/:id
  * Get subscription details
  */
-marketplaceSubscriptionRouter.get('/:id', async (req: Request, res: Response) => {
+marketplaceSubscriptionRouter.get('/:id', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = getQueryString(req.params.id);
     const tenantId = getTenantId(req);
@@ -217,7 +218,7 @@ marketplaceSubscriptionRouter.get('/:id', async (req: Request, res: Response) =>
  * PATCH /api/v1/marketplace/subscriptions/:id
  * Update subscription (pause/resume/cancel)
  */
-marketplaceSubscriptionRouter.patch('/:id', async (req: Request, res: Response) => {
+marketplaceSubscriptionRouter.patch('/:id', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = getQueryString(req.params.id);
     const tenantId = getTenantId(req);
@@ -288,7 +289,7 @@ marketplaceSubscriptionRouter.patch('/:id', async (req: Request, res: Response) 
  * GET /api/v1/marketplace/subscriptions/:id/performance
  * Get subscriber-specific performance
  */
-marketplaceSubscriptionRouter.get('/:id/performance', async (req: Request, res: Response) => {
+marketplaceSubscriptionRouter.get('/:id/performance', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = getQueryString(req.params.id);
     const tenantId = getTenantId(req);

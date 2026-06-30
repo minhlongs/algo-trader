@@ -26,6 +26,18 @@ interface ActivateBody {
   email: string;
 }
 
+/** Tier gate guard — returns false if response already sent */
+function requireTierGate(request: FastifyRequest, reply: FastifyReply, minTier: string): boolean {
+  const userTier = request.getLicenseTier();
+  if (!userTier) { reply.code(401).send({ error: 'No license' }); return false; }
+  const order: Record<string, number> = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
+  if ((order[userTier ?? ''] ?? 0) < (order[minTier] ?? 0)) {
+    reply.code(403).send({ error: 'Insufficient tier', required: minTier, current: userTier });
+    return false;
+  }
+  return true;
+}
+
 export async function onboardingRoutes(fastify: FastifyInstance) {
   const onboardingService = OnboardingService.getInstance();
 
@@ -50,6 +62,7 @@ export async function onboardingRoutes(fastify: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Body: SignupBody }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'FREE')) return;
       try {
         const result = await onboardingService.signup(request.body);
         return reply.code(201).send({
@@ -84,6 +97,7 @@ export async function onboardingRoutes(fastify: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Body: VerifyBody }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'FREE')) return;
       try {
         await onboardingService.verify(request.body.email, request.body.code);
         return reply.send({ verified: true });
@@ -114,6 +128,7 @@ export async function onboardingRoutes(fastify: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Body: ActivateBody }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'FREE')) return;
       try {
         const result = await onboardingService.activate(request.body.email);
         return reply.code(201).send(result);

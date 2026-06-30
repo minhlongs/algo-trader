@@ -13,6 +13,7 @@
 import { Router, Request, Response } from 'express';
 import { UsageMeteringService } from '../../billing/usage-metering';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const revenueRouter: Router = Router();
 const usageMetering = UsageMeteringService.getInstance();
@@ -63,7 +64,7 @@ interface MRRResponse {
  * GET /revenue/summary
  * Get complete revenue analytics
  */
-revenueRouter.get('/summary', async (req: Request, res: Response) => {
+revenueRouter.get('/summary', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     const period = getCurrentPeriod();
     const revenueSummary = await usageMetering.getRevenueSummary(period);
@@ -92,7 +93,7 @@ revenueRouter.get('/summary', async (req: Request, res: Response) => {
  * GET /revenue/mrr
  * Get MRR metrics
  */
-revenueRouter.get('/mrr', async (req: Request, res: Response) => {
+revenueRouter.get('/mrr', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     const mrrData = calculateMRR();
     res.json(mrrData);
@@ -107,7 +108,7 @@ revenueRouter.get('/mrr', async (req: Request, res: Response) => {
  * GET /revenue/usage
  * Get usage by customer
  */
-revenueRouter.get('/usage', async (req: Request, res: Response) => {
+revenueRouter.get('/usage', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     const period = (req.query.period as string) || getCurrentPeriod();
     const limit = parseInt((req.query.limit as string) || '100');
@@ -141,7 +142,7 @@ revenueRouter.get('/usage', async (req: Request, res: Response) => {
  * GET /revenue/overage
  * Get overage revenue details
  */
-revenueRouter.get('/overage', async (req: Request, res: Response) => {
+revenueRouter.get('/overage', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     const period = (req.query.period as string) || getCurrentPeriod();
     const revenueSummary = await usageMetering.getRevenueSummary(period);
@@ -172,7 +173,7 @@ revenueRouter.get('/overage', async (req: Request, res: Response) => {
  * GET /revenue/churn
  * Get churn metrics
  */
-revenueRouter.get('/churn', async (req: Request, res: Response) => {
+revenueRouter.get('/churn', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     const period = (req.query.period as string) || getCurrentPeriod();
     const churnData = calculateChurn(period);

@@ -20,6 +20,7 @@ import { MarketplaceService } from '../../marketplace/services/marketplace.servi
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
 import type { StrategyCategory } from '../../marketplace/models/types';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const marketplaceStrategyRouter: RouterType = Router();
 
@@ -123,7 +124,7 @@ function isAdmin(req: Request): boolean {
  * GET /api/v1/marketplace/strategies
  * List published strategies with optional filters
  */
-marketplaceStrategyRouter.get('/', async (req: Request, res: Response) => {
+marketplaceStrategyRouter.get('/', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const parsed = strategyFilterSchema.safeParse(req.query);
     if (!parsed.success) {
@@ -161,7 +162,7 @@ marketplaceStrategyRouter.get('/', async (req: Request, res: Response) => {
  * POST /api/v1/marketplace/strategies/publish
  * Create a new strategy listing (PRO/ENT tenants only)
  */
-marketplaceStrategyRouter.post('/publish', async (req: Request, res: Response) => {
+marketplaceStrategyRouter.post('/publish', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
@@ -269,7 +270,7 @@ marketplaceStrategyRouter.post('/publish', async (req: Request, res: Response) =
  * GET /api/v1/marketplace/strategies/:id
  * Get strategy details with performance and reviews
  */
-marketplaceStrategyRouter.get('/:id', async (req: Request, res: Response) => {
+marketplaceStrategyRouter.get('/:id', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
     const strategy = await marketplaceService.getStrategyWithDetails(id);
@@ -307,7 +308,7 @@ marketplaceStrategyRouter.get('/:id', async (req: Request, res: Response) => {
  * PATCH /api/v1/marketplace/strategies/:id
  * Update strategy (owner only, not allowed after vetting started)
  */
-marketplaceStrategyRouter.patch('/:id', async (req: Request, res: Response) => {
+marketplaceStrategyRouter.patch('/:id', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
     const tenantId = getTenantId(req);
@@ -375,7 +376,7 @@ marketplaceStrategyRouter.patch('/:id', async (req: Request, res: Response) => {
  * POST /api/v1/marketplace/strategies/:id/vetting/request
  * Submit strategy for vetting (after creating draft)
  */
-marketplaceStrategyRouter.post('/:id/vetting/request', async (req: Request, res: Response) => {
+marketplaceStrategyRouter.post('/:id/vetting/request', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
     const tenantId = getTenantId(req);
@@ -452,7 +453,7 @@ marketplaceStrategyRouter.post('/:id/vetting/request', async (req: Request, res:
  * GET /api/v1/marketplace/strategies/:id/performance
  * Get performance metrics for a strategy
  */
-marketplaceStrategyRouter.get('/:id/performance', async (req: Request, res: Response) => {
+marketplaceStrategyRouter.get('/:id/performance', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
     const period = getQueryString(req.query.period, '30d');
@@ -479,7 +480,7 @@ marketplaceStrategyRouter.get('/:id/performance', async (req: Request, res: Resp
  * GET /api/v1/marketplace/strategies/:id/reviews
  * Get reviews for a strategy
  */
-marketplaceStrategyRouter.get('/:id/reviews', async (req: Request, res: Response) => {
+marketplaceStrategyRouter.get('/:id/reviews', requireTier('FREE'), async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
     const page = getQueryNumber(req.query.page, 1);

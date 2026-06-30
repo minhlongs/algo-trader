@@ -15,6 +15,7 @@ import RaasGate from '../../../desk/gate/raas-gate';
 import { LicenseTier } from '../../../shared/types/license';
 import type { SignalSubscription, TierKey } from '../../../desk/signal/signal-types';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const signalSubscriptionRouter: Router = Router();
 const gate = RaasGate.getInstance();
@@ -47,7 +48,7 @@ function resolveSubscriberId(req: Request): { subscriberId: string; tier: TierKe
  * POST /api/v1/signals/subscribe
  * Body: { chatId?: number }
  */
-signalSubscriptionRouter.post('/subscribe', (req: Request, res: Response) => {
+signalSubscriptionRouter.post('/subscribe', requireTier('PRO'), (req: Request, res: Response) => {
   const identity = resolveSubscriberId(req);
   if (!identity) {
     res.status(401).json({ error: 'Valid API key required' });
@@ -82,7 +83,7 @@ signalSubscriptionRouter.post('/subscribe', (req: Request, res: Response) => {
 /**
  * POST /api/v1/signals/unsubscribe
  */
-signalSubscriptionRouter.post('/unsubscribe', (req: Request, res: Response) => {
+signalSubscriptionRouter.post('/unsubscribe', requireTier('PRO'), (req: Request, res: Response) => {
   const identity = resolveSubscriberId(req);
   if (!identity) {
     res.status(401).json({ error: 'Valid API key required' });
@@ -106,7 +107,7 @@ signalSubscriptionRouter.post('/unsubscribe', (req: Request, res: Response) => {
 /**
  * GET /api/v1/signals/subscription
  */
-signalSubscriptionRouter.get('/subscription', (req: Request, res: Response) => {
+signalSubscriptionRouter.get('/subscription', requireTier('PRO'), (req: Request, res: Response) => {
   const identity = resolveSubscriberId(req);
   if (!identity) {
     res.status(401).json({ error: 'Valid API key required' });

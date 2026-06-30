@@ -20,6 +20,7 @@ import { z } from 'zod';
 import { logger } from '../../../shared/utils/logger';
 import { AlphaEarClient } from '../../../desk/intelligence/alphaear-client';
 import { getRedisClient, RedisClientType } from '../../../redis';
+import { requireTier } from '../../middleware/feature-gate';
 
 const router: Router = Router();
 const alphaear = new AlphaEarClient(process.env.ALPHAEAR_SIDECAR_URL);
@@ -236,7 +237,7 @@ const aggregationRateLimiter = createXaiRateLimiter(5, 60_000, 'aggregation');
  * POST /api/v1/xai/explain
  * Generate explanation for a model prediction
  */
-router.post('/explain', explainRateLimiter, async (req: Request, res: Response) => {
+router.post('/explain', requireTier('PRO'), explainRateLimiter, async (req: Request, res: Response) => {
   try {
     const validated = explainPredictionSchema.parse(req.body);
 
@@ -298,7 +299,7 @@ router.post('/explain', explainRateLimiter, async (req: Request, res: Response) 
  * GET /api/v1/xai/explanation/:explanationId
  * Retrieve stored explanation by trade ID
  */
-router.get('/explanation/:explanationId', async (req: Request, res: Response) => {
+router.get('/explanation/:explanationId', requireTier('PRO'), async (req: Request, res: Response) => {
   const { explanationId } = req.params;
 
   try {
@@ -320,7 +321,7 @@ router.get('/explanation/:explanationId', async (req: Request, res: Response) =>
  * GET /api/v1/xai/feature-importance
  * Get aggregated feature importance for a model type
  */
-router.get('/feature-importance', async (req: Request, res: Response) => {
+router.get('/feature-importance', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
     const modelType = req.query.model_type as string;
     const limit = parseInt(req.query.limit as string, 10) || 10;
@@ -358,7 +359,7 @@ router.get('/feature-importance', async (req: Request, res: Response) => {
  * POST /api/v1/xai/counterfactual
  * Generate counterfactual explanations
  */
-router.post('/counterfactual', async (req: Request, res: Response) => {
+router.post('/counterfactual', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
     const validated = counterfactualSchema.parse(req.body);
 
@@ -409,7 +410,7 @@ router.post('/counterfactual', async (req: Request, res: Response) => {
  * POST /api/v1/xai/strategy-rules
  * Extract human-readable rules from strategy code
  */
-router.post('/strategy-rules', explainRateLimiter, async (req: Request, res: Response) => {
+router.post('/strategy-rules', requireTier('PRO'), explainRateLimiter, async (req: Request, res: Response) => {
   try {
     const validated = strategyRulesSchema.parse(req.body);
 
@@ -450,7 +451,7 @@ router.post('/strategy-rules', explainRateLimiter, async (req: Request, res: Res
  * GET /api/v1/xai/dashboard/overview
  * Get XAI dashboard summary data (aggregated statistics)
  */
-router.get('/dashboard/overview', aggregationRateLimiter, async (req: Request, res: Response) => {
+router.get('/dashboard/overview', requireTier('PRO'), aggregationRateLimiter, async (req: Request, res: Response) => {
   try {
     const days = parseInt(req.query.days as string, 10) || 7;
 
@@ -483,7 +484,7 @@ router.get('/dashboard/overview', aggregationRateLimiter, async (req: Request, r
  * GET /api/v1/xai/health
  * Health check for XAI service (proxies to sidecar)
  */
-router.get('/health', async (req: Request, res: Response) => {
+router.get('/health', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
     const health = await alphaear.checkHealth();
 

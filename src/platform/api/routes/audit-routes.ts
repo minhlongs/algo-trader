@@ -34,6 +34,18 @@ interface AuditParams {
   id: string;
 }
 
+/** Tier gate guard — returns false if response already sent */
+function requireTierGate(request: FastifyRequest, reply: FastifyReply, minTier: string): boolean {
+  const userTier = request.getLicenseTier();
+  if (!userTier) { reply.code(401).send({ error: 'No license' }); return false; }
+  const order: Record<string, number> = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
+  if ((order[userTier ?? ''] ?? 0) < (order[minTier] ?? 0)) {
+    reply.code(403).send({ error: 'Insufficient tier', required: minTier, current: userTier });
+    return false;
+  }
+  return true;
+}
+
 export async function registerAuditRoutes(server: FastifyInstance) {
   const auditService = AuditLogService.getInstance();
   const licenseService = LicenseService.getInstance();
@@ -60,6 +72,7 @@ export async function registerAuditRoutes(server: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Querystring: AuditLogQuery }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const filters: AuditLogFilters = {
         licenseId: request.query.licenseId,
         eventType: request.query.eventType,
@@ -86,6 +99,7 @@ export async function registerAuditRoutes(server: FastifyInstance) {
   server.get(
     '/logs/:id',
     async (request: FastifyRequest<{ Params: AuditParams }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       // This would need a method to get single log by ID
       // For now, return not implemented
       return reply.code(501).send({
@@ -116,6 +130,7 @@ export async function registerAuditRoutes(server: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Querystring: AuditExportQuery }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const format = request.query.format || 'json';
       const filters: AuditLogFilters = {
         licenseId: request.query.licenseId,
@@ -155,6 +170,7 @@ export async function registerAuditRoutes(server: FastifyInstance) {
   server.get(
     '/license/:id/audit',
     async (request: FastifyRequest<{ Params: AuditParams }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const license = licenseService.getLicense(request.params.id);
 
       if (!license) {

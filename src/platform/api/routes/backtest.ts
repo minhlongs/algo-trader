@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Backtester } from '../../../desk/arbitrage/backtester';
 import { PricePoint, ExchangeId } from '../../../desk/arbitrage/types';
 import { z } from 'zod';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const backtestRouter: Router = Router();
 
@@ -74,7 +75,7 @@ function generateMockHistoricalData(): PricePoint[][] {
  * POST /api/v1/backtest/submit
  * Submits a new backtest task
  */
-backtestRouter.post('/submit', async (req: Request, res: Response) => {
+backtestRouter.post('/submit', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
     const parsed = submitBodySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -128,7 +129,7 @@ backtestRouter.post('/submit', async (req: Request, res: Response) => {
  * Lists all backtest results directly as an array (for frontend compatibility)
  * If id=xxx is provided, returns that specific result
  */
-backtestRouter.get('/results', async (req: Request, res: Response) => {
+backtestRouter.get('/results', requireTier('PRO'), async (req: Request, res: Response) => {
   const { id } = req.query;
 
   if (id && typeof id === 'string') {

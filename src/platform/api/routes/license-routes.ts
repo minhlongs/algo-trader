@@ -28,6 +28,18 @@ interface LicenseListQuery {
   tier?: LicenseTier | 'all';
 }
 
+/** Tier gate guard — returns false if response already sent */
+function requireTierGate(request: FastifyRequest, reply: FastifyReply, minTier: string): boolean {
+  const userTier = request.getLicenseTier();
+  if (!userTier) { reply.code(401).send({ error: 'No license' }); return false; }
+  const order: Record<string, number> = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
+  if ((order[userTier ?? ''] ?? 0) < (order[minTier] ?? 0)) {
+    reply.code(403).send({ error: 'Insufficient tier', required: minTier, current: userTier });
+    return false;
+  }
+  return true;
+}
+
 export async function licenseRoutes(fastify: FastifyInstance) {
   const licenseService = LicenseService.getInstance();
   const auditService = AuditLogService.getInstance();
@@ -48,6 +60,7 @@ export async function licenseRoutes(fastify: FastifyInstance) {
       },
     },
     async (request: FastifyRequest<{ Querystring: LicenseListQuery }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const filters: LicenseFilters = {
         take: request.query.take || 10,
         skip: request.query.skip || 0,
@@ -63,6 +76,7 @@ export async function licenseRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/:id',
     async (request: FastifyRequest<{ Params: LicenseParams }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const license = licenseService.getLicense(request.params.id);
 
       if (!license) {
@@ -97,6 +111,7 @@ export async function licenseRoutes(fastify: FastifyInstance) {
       request: FastifyRequest<{ Body: CreateLicenseInput }>,
       reply: FastifyReply
     ) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const { name, tier, expiresAt, tenantId, domain } = request.body;
 
       const license = await licenseService.createLicense({
@@ -119,6 +134,7 @@ export async function licenseRoutes(fastify: FastifyInstance) {
   fastify.patch(
     '/:id/revoke',
     async (request: FastifyRequest<{ Params: LicenseParams }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const license = await licenseService.revokeLicense(request.params.id);
 
       if (!license) {
@@ -139,6 +155,7 @@ export async function licenseRoutes(fastify: FastifyInstance) {
   fastify.delete(
     '/:id',
     async (request: FastifyRequest<{ Params: LicenseParams }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const license = licenseService.getLicense(request.params.id);
 
       if (!license) {
@@ -161,6 +178,7 @@ export async function licenseRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/:id/audit',
     async (request: FastifyRequest<{ Params: LicenseParams }>, reply: FastifyReply) => {
+    if (!requireTierGate(request, reply, 'ENTERPRISE')) return;
       const license = licenseService.getLicense(request.params.id);
 
       if (!license) {
@@ -179,6 +197,7 @@ export async function licenseRoutes(fastify: FastifyInstance) {
   fastify.get(
     '/analytics',
     async (_request: FastifyRequest, reply: FastifyReply) => {
+    if (!requireTierGate(_request, reply, 'ENTERPRISE')) return;
       const analytics = await licenseService.getAnalytics();
       return reply.send(analytics);
     }

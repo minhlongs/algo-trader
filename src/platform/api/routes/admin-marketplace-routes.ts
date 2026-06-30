@@ -21,6 +21,7 @@ import { DisputeService } from '../../marketplace/services/dispute.service';
 import { RevenueService } from '../../marketplace/services/revenue.service';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
+import { requireTier } from '../../middleware/feature-gate';
 
 export const adminMarketplaceRouter: RouterType = Router();
 
@@ -87,7 +88,7 @@ function getQueryString(value: unknown, defaultValue: string = ''): string {
  * GET /api/admin/marketplace/strategies/pending
  * List pending vetting strategies
  */
-adminMarketplaceRouter.get('/strategies/pending', async (req: Request, res: Response) => {
+adminMarketplaceRouter.get('/strategies/pending', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
@@ -116,7 +117,7 @@ adminMarketplaceRouter.get('/strategies/pending', async (req: Request, res: Resp
  * POST /api/admin/marketplace/strategies/:id/vetting/decision
  * Approve or reject a strategy
  */
-adminMarketplaceRouter.post('/strategies/:id/vetting/decision', async (req: Request, res: Response) => {
+adminMarketplaceRouter.post('/strategies/:id/vetting/decision', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
@@ -190,7 +191,7 @@ adminMarketplaceRouter.post('/strategies/:id/vetting/decision', async (req: Requ
  * GET /api/admin/marketplace/strategies/:id/history
  * Vetting audit trail for a strategy
  */
-adminMarketplaceRouter.get('/strategies/:id/history', async (req: Request, res: Response) => {
+adminMarketplaceRouter.get('/strategies/:id/history', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
@@ -213,7 +214,7 @@ adminMarketplaceRouter.get('/strategies/:id/history', async (req: Request, res: 
  * GET /api/admin/marketplace/disputes
  * List all disputes (admin view)
  */
-adminMarketplaceRouter.get('/disputes', async (req: Request, res: Response) => {
+adminMarketplaceRouter.get('/disputes', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
@@ -250,7 +251,7 @@ adminMarketplaceRouter.get('/disputes', async (req: Request, res: Response) => {
  * PATCH /api/admin/marketplace/disputes/:id/resolve
  * Resolve a dispute
  */
-adminMarketplaceRouter.patch('/disputes/:id/resolve', async (req: Request, res: Response) => {
+adminMarketplaceRouter.patch('/disputes/:id/resolve', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
@@ -318,7 +319,7 @@ adminMarketplaceRouter.patch('/disputes/:id/resolve', async (req: Request, res: 
  * PATCH /api/admin/marketplace/disputes/:id/escalate
  * Escalate a dispute
  */
-adminMarketplaceRouter.patch('/disputes/:id/escalate', async (req: Request, res: Response) => {
+adminMarketplaceRouter.patch('/disputes/:id/escalate', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
@@ -366,7 +367,7 @@ adminMarketplaceRouter.patch('/disputes/:id/escalate', async (req: Request, res:
  * GET /api/admin/marketplace/revenue
  * Platform revenue overview
  */
-adminMarketplaceRouter.get('/revenue', async (req: Request, res: Response) => {
+adminMarketplaceRouter.get('/revenue', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
@@ -399,7 +400,7 @@ adminMarketplaceRouter.get('/revenue', async (req: Request, res: Response) => {
  * GET /api/admin/marketplace/revenue/creators
  * All creator payouts
  */
-adminMarketplaceRouter.get('/revenue/creators', async (req: Request, res: Response) => {
+adminMarketplaceRouter.get('/revenue/creators', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   try {
     if (!isAdmin(req)) {
       return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
