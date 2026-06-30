@@ -21,6 +21,7 @@
 ## Architecture Patterns
 - **Duck-typed interfaces**: Auth middleware dùng duck types thay vì import trực tiếp Fastify types
 - **Factory pattern**: BullMQ workers, Redis connections dùng factory functions
+- **Abstract base class (Strategy)**: Polymarket strategies extend `BasePolymarketStrategy` (`src/desk/strategies/polymarket/base-polymarket-strategy.ts`) — provides position management, TP/SL exits, cooldowns, event emission. Strategies override `scanEntries()` for entry logic and `getCustomExitCondition()` for custom exits. Each V2 strategy exports a backward-compatible `createXxxTick()` via `toTickFn()`.
 - **Event-driven**: WebSocket price feeds emit events, consumers subscribe
 - **Atomic execution**: Cross-exchange orders dùng Promise.allSettled + rollback
 

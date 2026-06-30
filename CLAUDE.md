@@ -44,7 +44,7 @@ src/
 
 | Module | Responsibility |
 |--------|---------------|
-| `strategies/` | 52+ strategies: polymarket, cex, dex, dna (GRU neural net), dark-edge |
+| `strategies/` | 52+ strategies: polymarket (30 V2 via `BasePolymarketStrategy` abstract class + 2 pre-migration), cex, dex, dna (GRU neural net), dark-edge |
 | `execution/` | Polymarket CLOB adapter, paper executor, order management |
 | `risk/` | Kelly criterion, drawdown protection, circuit breaker, position tracker |
 | `intelligence/` | Alpha-ear client, LLM router, market intelligence |
