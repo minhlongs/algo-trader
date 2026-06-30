@@ -76,12 +76,12 @@ stop: vi.fn().mockResolvedValue(undefined),
 mockGetVibeState.mockReturnValue(mockVibeState);
 
 // ─── Mock DB ─────────────────────────────────────────────────────────────────
-vi.mock('../../shared/db/postgres-client', () => ({
+vi.mock('../../../shared/db/postgres-client', () => ({
 query: (...args: unknown[]) => mockQuery(...args),
 }));
 
 // ─── Mock NATS message bus ───────────────────────────────────────────────────
-vi.mock('../../shared/messaging/create-message-bus', () => ({
+vi.mock('../../../shared/messaging/create-message-bus', () => ({
 createMessageBus: (...args: unknown[]) => mockCreateMessageBus(...args),
 getMessageBus: (...args: unknown[]) => mockGetMessageBus(...args),
 }));
@@ -98,22 +98,22 @@ getVibeState: (...args: unknown[]) => mockGetVibeState(...args),
 }));
 
 // ─── Mock signal consensus swarm ────────────────────────────────────────────
-vi.mock('../../desk/intelligence/signal-consensus-swarm', () => ({
+vi.mock('../../intelligence/signal-consensus-swarm', () => ({
 runSwarmConsensus: (...args: unknown[]) => mockRunSwarmConsensus(...args),
 }));
 
 // ─── Mock signal validator ──────────────────────────────────────────────────
-vi.mock('../../desk/intelligence/signal-validator', () => ({
+vi.mock('../../intelligence/signal-validator', () => ({
 validateSignal: (...args: unknown[]) => mockValidateSignal(...args),
 }));
 
 // ─── Mock dual-level reflection engine ──────────────────────────────────────
-vi.mock('../../desk/intelligence/dual-level-reflection-engine', () => ({
+vi.mock('../../intelligence/dual-level-reflection-engine', () => ({
 reflectOnTrade: (...args: unknown[]) => mockReflectOnTrade(...args),
 }));
 
 // ─── Mock prediction accuracy tracker ──────────────────────────────────────
-vi.mock('../../desk/intelligence/prediction-accuracy-tracker', () => ({
+vi.mock('../../intelligence/prediction-accuracy-tracker', () => ({
 recordPrediction: (...args: unknown[]) => mockRecordPrediction(...args),
 startResolutionChecker: (...args: unknown[]) => mockStartResolutionChecker(...args),
 }));
@@ -124,7 +124,7 @@ isQwenEnabled: (...args: unknown[]) => mockIsQwenEnabled(...args),
 }));
 
 // ─── Mock logger ─────────────────────────────────────────────────────────────
-vi.mock('../../shared/utils/logger', () => ({
+vi.mock('../../../shared/utils/logger', () => ({
 logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

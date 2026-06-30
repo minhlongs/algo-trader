@@ -21,7 +21,7 @@ const { mockDisableQwen, mockEnableQwen } = vi.hoisted(() => ({
   mockDisableQwen: vi.fn(),
   mockEnableQwen: vi.fn(),
 }));
-vi.mock('../../../../wiring/qwen-drawdown-monitor', () => ({
+vi.mock('../../../../desk/wiring/qwen-drawdown-monitor', () => ({
   disableQwen: mockDisableQwen,
   enableQwen: mockEnableQwen,
   isQwenEnabled: vi.fn().mockReturnValue(true),
@@ -29,7 +29,7 @@ vi.mock('../../../../wiring/qwen-drawdown-monitor', () => ({
   getLastBreachAt: vi.fn().mockReturnValue(null),
 }));
 
-vi.mock('../../../../wiring/qwen-live-eligibility-gate', () => ({
+vi.mock('../../../../desk/wiring/qwen-live-eligibility-gate', () => ({
   checkQwenEligibility: vi.fn().mockResolvedValue({ eligible: false, reason: 'paper gate' }),
 }));
 

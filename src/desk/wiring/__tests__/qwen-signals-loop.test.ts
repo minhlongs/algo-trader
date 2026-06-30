@@ -7,7 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mock DB ──────────────────────────────────────────────────────────────────
 const mockQuery = vi.fn();
-vi.mock('../../shared/db/postgres-client', () => ({
+vi.mock('../../../shared/db/postgres-client', () => ({
   query: (...args: unknown[]) => mockQuery(...args),
 }));
 
@@ -21,7 +21,7 @@ const { mockBacklogSizeGauge, mockOldestAgeGauge } = vi.hoisted(() => ({
   mockBacklogSizeGauge: { set: vi.fn() },
   mockOldestAgeGauge: { set: vi.fn() },
 }));
-vi.mock('../../platform/middleware/prometheus-metrics', () => ({
+vi.mock('../../../platform/middleware/prometheus-metrics', () => ({
   qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
   qwenStrategyReviewsResolvedTotal: { inc: vi.fn() },
   qwenSignalsLoopRunsTotal: { inc: vi.fn() },
@@ -39,7 +39,7 @@ vi.mock('../../platform/middleware/prometheus-metrics', () => ({
 }));
 
 // ─── Mock logger ──────────────────────────────────────────────────────────────
-vi.mock('../../shared/utils/logger', () => ({
+vi.mock('../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
