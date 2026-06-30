@@ -21,14 +21,21 @@ done
 HTML=$(curl -sL "$PAGES_URL")
 echo "$HTML" | grep -q '<title>' && echo -e "${GREEN}✓ <title>${NC}" || echo -e "${RED}✗ <title>${NC}"
 echo "$HTML" | grep -q '<meta name="description"' && echo -e "${GREEN}✓ meta description${NC}" || echo -e "${RED}✗ meta description${NC}"
-echo "$HTML" | grep -q '<nav' && echo -e "${GREEN}✓ <nav>${NC}" || echo -e "${RED}✗ <nav>${NC}"
+echo "$HTML" | grep -q '<header>' && echo -e "${GREEN}✓ <header>${NC}" || echo -e "${RED}✗ <header>${NC}"
+echo "$HTML" | grep -q '<main' && echo -e "${GREEN}✓ <main>${NC}" || echo -e "${RED}✗ <main>${NC}"
+echo "$HTML" | grep -q 'type="module"' && echo -e "${GREEN}✓ ES module entry${NC}" || echo -e "${RED}✗ ES module entry${NC}"
 
 # 4. CSS
-CSS=$(curl -sL "$PAGES_URL/ui/design-system/tokens.css")
+CSS=$(curl -sL "$PAGES_URL/seed/tokens.css")
 [ -n "$CSS" ] && echo -e "${GREEN}✓ tokens.css ($(echo "$CSS" | wc -c) bytes)${NC}" || echo -e "${RED}✗ tokens.css empty${NC}"
 
 # 5. robots.txt
 ROBOTS=$(curl -sL "$PAGES_URL/robots.txt")
 echo "$ROBOTS" | grep -q "User-agent" && echo -e "${GREEN}✓ robots.txt${NC}" || echo -e "${RED}✗ robots.txt${NC}"
+
+# 6. Business logic sections
+for section in "How It Works" "Everything You Need" "Simple Pricing" "Frequently Asked Questions" "We Eat Our Own Cooking"; do
+  echo "$HTML" | grep -q "$section" && echo -e "${GREEN}✓ Section: $section${NC}" || echo -e "${RED}✗ Missing: $section${NC}"
+done
 
 echo "✅ Verify complete"

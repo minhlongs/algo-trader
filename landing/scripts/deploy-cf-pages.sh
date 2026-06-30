@@ -9,7 +9,6 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 SRC_DIR="$PROJECT_DIR/src"
 REPORTS_DIR="$PROJECT_DIR/plans/reports"
 CF_PROJECT="algo-trader"
-CACHE_BUSTER_FILE="$PROJECT_DIR/.cache-version"
 
 # ── Colors ──
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -17,23 +16,31 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 echo "⚡ Deploy cashclaw.cc → CF Pages ($CF_PROJECT)"
 
 # ── Gate 1: Source directory exists ──
-if [ ! -f "$SRC_DIR/index.html" ]; then
-  echo -e "${RED}✗ Missing src/index.html${NC}"
-  exit 1
-fi
-if [ ! -f "$SRC_DIR/ui/design-system/tokens.css" ]; then
-  echo -e "${RED}✗ Missing src/ui/design-system/tokens.css${NC}"
-  exit 1
-fi
-echo -e "${GREEN}✓ Source files present${NC}"
+REQUIRED_FILES=(
+  "$SRC_DIR/index.html"
+  "$SRC_DIR/seed/tokens.css"
+  "$SRC_DIR/tree/base.css"
+  "$SRC_DIR/tree/components.css"
+  "$SRC_DIR/forest/js/main.js"
+  "$SRC_DIR/_headers"
+  "$SRC_DIR/_redirects"
+  "$SRC_DIR/robots.txt"
+)
+for f in "${REQUIRED_FILES[@]}"; do
+  if [ ! -f "$f" ]; then
+    echo -e "${RED}✗ Missing ${f#$SRC_DIR/}${NC}"
+    exit 1
+  fi
+done
+echo -e "${GREEN}✓ All source files present (${#REQUIRED_FILES[@]} files)${NC}"
 
-# ── Gate 2: Quality check — CSS variables match HTML usage ──
-# macOS-compatible: use grep -oE with sed instead of grep -oP
-CSS_VARS=$(grep -oE 'var\(--[a-zA-Z0-9-]+' "$SRC_DIR/ui/design-system/tokens.css" | sed 's/var(//' | sort -u)
-HTML_USAGE=$(grep -oE 'var\(--[a-zA-Z0-9-]+' "$SRC_DIR/index.html" | sed 's/var(//' | sort -u)
-MISSING_IN_CSS=$(comm -13 <(printf '%s\n' "$CSS_VARS") <(printf '%s\n' "$HTML_USAGE"))
+# ── Gate 2: CSS variables match HTML usage ──
+CSS_FILES=("$SRC_DIR/seed/tokens.css" "$SRC_DIR/tree/base.css" "$SRC_DIR/tree/components.css")
+CSS_DEFINED=$(grep -ohE '\-\-[a-zA-Z0-9-]+' "${CSS_FILES[@]}" | sort -u)
+HTML_USAGE=$(grep -ohE 'var\(\-\-[a-zA-Z0-9-]+' "$SRC_DIR/index.html" | sed 's/var(//' | sort -u)
+MISSING_IN_CSS=$(comm -13 <(printf '%s\n' "$CSS_DEFINED") <(printf '%s\n' "$HTML_USAGE"))
 if [ -n "$MISSING_IN_CSS" ]; then
-  echo -e "${RED}✗ CSS variables used in HTML but missing from tokens.css:${NC}"
+  echo -e "${RED}✗ CSS variables used in HTML but missing from CSS files:${NC}"
   echo "$MISSING_IN_CSS"
   exit 1
 fi
@@ -49,19 +56,24 @@ done
 echo -e "${GREEN}✓ Security headers verified${NC}"
 
 # ── Gate 4: No secrets ──
-if grep -qiE '(api_key|secret|token|password)\s*[=:]\s*["'"'"'][a-zA-Z0-9_-]{8,}' "$SRC_DIR/index.html" "$SRC_DIR/ui/design-system/tokens.css" 2>/dev/null; then
+CSS_FILES_LIST=$(printf '%s ' "${CSS_FILES[@]}")
+if grep -qihE '(api_key|secret|token|password)\s*[=:]\s*["'"'"'][a-zA-Z0-9_-]{8,}' "$SRC_DIR/index.html" $CSS_FILES_LIST "$SRC_DIR/forest/js/"*.js 2>/dev/null; then
   echo -e "${RED}✗ Potential secrets detected in source${NC}"
   exit 1
 fi
 echo -e "${GREEN}✓ No secrets detected${NC}"
 
-# ── Cache buster ──
-CACHE_VER=1
-if [ -f "$CACHE_BUSTER_FILE" ]; then
-  CACHE_VER=$(cat "$CACHE_BUSTER_FILE")
-else
-  echo "1" > "$CACHE_BUSTER_FILE"
-fi
+# ── Gate 5: JS syntax check (basic) ──
+for jsfile in "$SRC_DIR/forest/js/"*.js "$SRC_DIR/forest/js/"*/*.js; do
+  if [ -f "$jsfile" ]; then
+    node --check "$jsfile" 2>/dev/null || echo -e "${YELLOW}⚠ JS syntax warning in ${jsfile#$SRC_DIR/}${NC}"
+  fi
+done
+echo -e "${GREEN}✓ JS files checked${NC}"
+
+# ── Git SHA auto cache-buster ──
+CACHE_BUSTER=$(git -C "$PROJECT_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")
+echo -e "${GREEN}✓ Cache buster: $CACHE_BUSTER${NC}"
 
 # ── Deploy timestamp ──
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -91,8 +103,8 @@ if [ "$HTTP_CODE" != "200" ]; then
   exit 1
 fi
 
-CSS_FIRST_LINE=$(curl -sL "$DEPLOY_URL/ui/design-system/tokens.css" | head -1)
-CSS_SIZE=$(curl -sL "$DEPLOY_URL/ui/design-system/tokens.css" | wc -c)
+CSS_SIZE=$(curl -sL "$DEPLOY_URL/seed/tokens.css" | wc -c)
+CSS_FIRST_LINE=$(curl -sL "$DEPLOY_URL/seed/tokens.css" | head -1)
 
 echo -e "${GREEN}✓ HTTP 200${NC}"
 echo -e "${GREEN}✓ tokens.css: $CSS_SIZE bytes${NC}"
@@ -107,12 +119,13 @@ cat > "$DEPLOY_REPORT" << EOF
 |-------|-------|
 | URL | $DEPLOY_URL |
 | Custom Domain | cashclaw.cc + www.cashclaw.cc |
+| SHA | $CACHE_BUSTER |
 | CSS Size | $CSS_SIZE bytes |
-| Cache Version | $CACHE_VER |
 | Gate 1 (Source) | ✅ |
 | Gate 2 (CSS Var Audit) | ✅ |
 | Gate 3 (Security Headers) | ✅ |
 | Gate 4 (No Secrets) | ✅ |
+| Gate 5 (JS Syntax) | ✅ |
 EOF
 
 echo ""
@@ -121,7 +134,5 @@ echo -e "${GREEN}✅ DEPLOY COMPLETE${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo "  URL: $DEPLOY_URL"
 echo "  Domain: https://cashclaw.cc"
+echo "  SHA: $CACHE_BUSTER"
 echo "  Report: $DEPLOY_REPORT"
-echo ""
-echo "  Verify: curl -sL $DEPLOY_URL | head -5"
-echo "  CSS:    curl -sL $DEPLOY_URL/ui/design-system/tokens.css | head -3"

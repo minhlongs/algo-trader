@@ -3,350 +3,251 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CashClaw — AI Prediction Market Terminal</title>
-<meta name="description" content="Beat prediction markets with calibrated AI. Kelly Criterion sizing, live P&L, real-time edge detection. From $49/mo.">
+<title>CashClaw — AI-Powered Prediction Market Analytics</title>
+<meta name="description" content="Beat prediction markets with calibrated AI. Kelly Criterion sizing, live P&L, we trade our own signals. From $49/mo.">
 <meta name="theme-color" content="#060912">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@500;600;700;800;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ui/design-system/tokens.css?v=3">
-<style>
-  /* ── Sparkline & Terminal Tweaks ── */
-  .hero-spark{position:relative;height:140px;background:var(--color-bg-card);border:1px solid var(--color-border-subtle);border-radius:var(--radius-lg);overflow:hidden}
-  .hero-spark svg{width:100%;height:100%}
-  .sparkline{fill:none;stroke:var(--color-gold);stroke-width:1.5;stroke-linecap:round;filter:drop-shadow(0 0 10px rgba(245,158,11,0.35))}
-  .sparkfill{fill:url(#areaGrad)}
-  .sparkdot{fill:var(--color-gold-bright);filter:drop-shadow(0 0 8px rgba(251,191,36,0.7))}
-  .edge-pill{position:absolute;bottom:var(--space-3);right:var(--space-4);background:rgba(52,211,153,0.1);color:var(--color-emerald);border:1px solid rgba(52,211,153,0.2);padding:3px var(--space-3);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:0.5px}
-
-  /* ── OB Depth Visualization ── */
-  .ob-row{position:relative}
-  .ob-row .depth-bar{position:absolute;right:0;top:0;bottom:0;opacity:0.08;border-radius:0 2px 2px 0}
-  .ob-row .depth-bar.bid{background:var(--signal-bull)}
-  .ob-row .depth-bar.ask{background:var(--signal-bear)}
-
-  /* ── Scrolling ticker animation ── */
-  @keyframes ticker-scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-  .ticker-scroll{display:flex;animation:ticker-scroll 40s linear infinite;width:max-content}
-  .ticker-scroll:hover{animation-play-state:paused}
-
-  /* ── Brutal number counter animation ── */
-  @keyframes count-in{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
-  .count-in{animation:count-in 0.6s var(--ease-out) both}
-  .count-in:nth-child(2){animation-delay:0.1s}
-  .count-in:nth-child(3){animation-delay:0.2s}
-  .count-in:nth-child(4){animation-delay:0.3s}
-
-  /* ── Marquee divider ── */
-  .section-divider{width:100%;height:1px;background:linear-gradient(90deg,transparent,var(--color-border),transparent);margin:var(--space-16) 0}
-</style>
+<link rel="stylesheet" href="/seed/tokens.css">
+<link rel="stylesheet" href="/tree/base.css">
+<link rel="stylesheet" href="/tree/components.css">
 </head>
 <body>
+
+<a href="#main-content" class="sr-only" style="position:absolute;top:0;left:0;z-index:9999;padding:var(--space-3);background:var(--color-gold);color:var(--text-inverse);font-weight:700">Skip to main content</a>
 
 <div class="ambient-glow gold" aria-hidden="true"></div>
 <div class="ambient-glow purple" aria-hidden="true"></div>
 
-<a href="#features" style="position:absolute;top:0;left:0;z-index:200;background:var(--color-gold);color:var(--text-inverse);padding:8px 16px;font-weight:700;font-size:14px;border-radius:0 0 var(--radius-md) 0">Skip to content</a>
-
-<!-- ════════════════ NAV ════════════════ -->
-<nav aria-label="Main">
+<!-- ════════════ NAV ════════════ -->
+<header>
+<nav aria-label="Main navigation">
   <div class="container">
-    <a href="/" class="nav-logo" aria-label="CashClaw">
+    <a href="/" class="nav-logo" aria-label="CashClaw Home">
       <div class="nav-logo-icon">CC</div>
       CashClaw
     </a>
     <div class="nav-links">
       <a href="#features">Features</a>
-      <a href="#orderbook">Orderbook</a>
       <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
       <a href="/dashboard">Dashboard</a>
     </div>
     <a href="/dashboard" class="nav-cta">Open Terminal</a>
   </div>
 </nav>
+</header>
 
-<!-- ════════════════ HERO ════════════════ -->
-<section class="hero-section">
+<main id="main-content">
+
+<!-- ════════════ HERO ════════════ -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="pulse" aria-hidden="true"></span>
+    LIVE ALPHA DETECTION
+  </div>
+  <h1>Beat the <span class="gold">market</span><br>Don't join it</h1>
+  <p class="hero-subtitle">Real-time edge detection across Polymarket, Kalshi &amp; Metaculus. Kelly-optimal sizing. Zero emotion. Pure signal.</p>
+  <div class="hero-actions">
+    <a href="#pricing" class="btn btn-primary btn-lg">Get Started →</a>
+    <a href="/dashboard" class="btn btn-secondary">Open Terminal</a>
+  </div>
+</section>
+
+<!-- ════════════ STATS ════════════ -->
+<section class="stats-bar" aria-label="Platform statistics">
+  <div class="stat-card"><div class="stat-value">$4.2M</div><div class="stat-label">Trading Volume</div><div class="stat-sub">↑ +12% this month</div></div>
+  <div class="stat-card"><div class="stat-value">+18.4%</div><div class="stat-label">Avg Monthly ROI</div><div class="stat-sub">Kelly-optimized sizing</div></div>
+  <div class="stat-card"><div class="stat-value">94.2%</div><div class="stat-label">Signal Accuracy</div><div class="stat-sub">30-day rolling window</div></div>
+  <div class="stat-card"><div class="stat-value">3,847</div><div class="stat-label">Active Signals</div><div class="stat-sub">Across 12 markets</div></div>
+</section>
+
+<!-- ════════════ HOW IT WORKS ════════════ -->
+<section class="section" id="features">
   <div class="container">
-    <div class="hero-grid">
-      <div class="hero-content">
-        <div class="hero-badge">
-          <span class="pulse" aria-hidden="true"></span>
-          LIVE ALPHA DETECTION
-        </div>
-        <h1 class="hero-title">
-          Beat the <span class="gold">market</span><br>
-          <span class="slash">/</span> Don't join it
-        </h1>
-        <p class="hero-subtitle">
-          Real-time edge detection across Polymarket, Kalshi &amp; Metaculus. Kelly-optimal sizing. Zero emotion. Pure signal.
-        </p>
-        <div class="hero-actions">
-          <a href="/dashboard" class="btn btn-primary">
-            Launch Terminal <span aria-hidden="true">→</span>
-          </a>
-          <a href="#pricing" class="btn btn-ghost">
-            Plans from $49
-          </a>
-        </div>
-        <!-- Live Ticker Scroll -->
-        <div style="margin-top:var(--space-8);overflow:hidden;border:1px solid var(--color-border-subtle);border-radius:var(--radius-md);padding:var(--space-2) 0;background:var(--color-bg-card)">
-          <div class="ticker-scroll">
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">BTC/YES <span style="color:var(--signal-bull)">▲ 0.62</span> +2.4%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">ETH/NO <span style="color:var(--signal-bear)">▼ 0.38</span> -1.1%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">FED-HOLD <span style="color:var(--signal-bull)">▲ 0.71</span> +3.8%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">AI-BILL <span style="color:var(--signal-bear)">▼ 0.38</span> -0.6%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">SOL/YES <span style="color:var(--signal-bull)">▲ 0.55</span> +5.1%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">XAU/NO <span style="color:var(--signal-bear)">▼ 0.42</span> -0.9%</span>
-            <!-- Duplicate for seamless loop -->
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">BTC/YES <span style="color:var(--signal-bull)">▲ 0.62</span> +2.4%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">ETH/NO <span style="color:var(--signal-bear)">▼ 0.38</span> -1.1%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">FED-HOLD <span style="color:var(--signal-bull)">▲ 0.71</span> +3.8%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">AI-BILL <span style="color:var(--signal-bear)">▼ 0.38</span> -0.6%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">SOL/YES <span style="color:var(--signal-bull)">▲ 0.55</span> +5.1%</span>
-            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);padding:0 var(--space-5);white-space:nowrap">XAU/NO <span style="color:var(--signal-bear)">▼ 0.42</span> -0.9%</span>
-          </div>
-        </div>
+    <h2 class="section-heading">How It Works</h2>
+    <p class="section-subheading">Three steps from signal to profit. No emotions, just math.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">1</div>
+        <h3>AI Scans Markets</h3>
+        <p>Dual-model engine scans 200+ markets every 60s. Finds price discrepancies between market odds and true probability.</p>
       </div>
-      <div class="hero-terminal">
-        <!-- Sparkline -->
-        <div class="hero-spark" aria-label="Edge chart trending up" role="img">
-          <svg viewBox="0 0 440 140" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.25"/>
-                <stop offset="100%" stop-color="#F59E0B" stop-opacity="0.0"/>
-              </linearGradient>
-            </defs>
-            <path class="sparkfill" d="M0,100 L20,92 L40,85 L60,88 L80,78 L100,68 L120,73 L140,58 L160,52 L180,60 L200,45 L220,48 L240,38 L260,32 L280,42 L300,30 L320,36 L340,24 L360,20 L380,18 L400,15 L420,12 L440,14 L440,140 L0,140 Z"/>
-            <path class="sparkline" d="M0,100 L20,92 L40,85 L60,88 L80,78 L100,68 L120,73 L140,58 L160,52 L180,60 L200,45 L220,48 L240,38 L260,32 L280,42 L300,30 L320,36 L340,24 L360,20 L380,18 L400,15 L420,12 L440,14"/>
-            <circle class="sparkdot" cx="440" cy="14" r="5"/>
-          </svg>
-          <div class="edge-pill">EDGE +7.3%</div>
-        </div>
-        <!-- Terminal Widget -->
-        <div class="terminal-main">
-          <div class="terminal-header">
-            <span class="terminal-dot r" aria-hidden="true"></span>
-            <span class="terminal-dot y" aria-hidden="true"></span>
-            <span class="terminal-dot g" aria-hidden="true"></span>
-            <span class="terminal-title">alpha-engine — live signal feed</span>
-          </div>
-          <div class="terminal-body">
-            <div class="terminal-row"><span class="sym">signal/btc-above-100k</span><span class="bid">BUY 0.62</span></div>
-            <div class="terminal-row"><span class="sym">signal/fed-hold-rates</span><span class="bid">BUY 0.71</span></div>
-            <div class="terminal-row"><span class="sym">signal/ai-safety-bill</span><span class="ask">SELL 0.38</span></div>
-            <div class="terminal-row"><span class="sym">signal/sol-breakout</span><span class="bid">BUY 0.55</span></div>
-            <div class="terminal-row"><span class="sym">signal/eth-etf-approval</span><span class="bid">BUY 0.84</span></div>
-            <div class="terminal-row"><span class="sym">signal/gold-correction</span><span class="ask">SELL 0.42</span></div>
-            <div class="terminal-prompt">alpha-engine@cashclaw:~/_</div>
-          </div>
-        </div>
-        <!-- Ticker Bar -->
-        <div class="ticker-bar">
-          <div class="ticker-item"><span class="pair">POLY/USDC</span><span class="price">0.62</span><span class="chg up">+2.4%</span></div>
-          <div class="ticker-item"><span class="pair">KALSHI/USD</span><span class="price">0.71</span><span class="chg up">+3.8%</span></div>
-          <div class="ticker-item"><span class="pair">META/BTC</span><span class="price">0.38</span><span class="chg down">-0.6%</span></div>
-          <div class="ticker-item"><span class="pair">VOL/24H</span><span class="price">$142K</span><span class="chg up">+18%</span></div>
-        </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <h3>Kelly Sizing Calibrates</h3>
+        <p>Optimal bet size based on your bankroll. Fractional Kelly with Bayesian edge estimation. Never overbet, never underbet.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <h3>Execute or Auto-Trade</h3>
+        <p>Manual signals in Telegram, or auto-execution on your Polymarket wallet with hard-coded risk limits.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ════════════════ STATS ════════════════ -->
-<section class="stats-section">
+<!-- ════════════ FEATURES ════════════ -->
+<section class="section">
   <div class="container">
-    <div class="stats-grid">
-      <div class="stat-card count-in">
-        <div class="stat-value accent">$4.2M</div>
-        <div class="stat-label">Trading Volume</div>
-        <div class="stat-sub">↑ +12% this month</div>
-      </div>
-      <div class="stat-card count-in">
-        <div class="stat-value green">+18.4%</div>
-        <div class="stat-label">Avg Monthly ROI</div>
-        <div class="stat-sub">Kelly-optimized sizing</div>
-      </div>
-      <div class="stat-card count-in">
-        <div class="stat-value">94.2%</div>
-        <div class="stat-label">Signal Accuracy</div>
-        <div class="stat-sub">30-day rolling window</div>
-      </div>
-      <div class="stat-card count-in">
-        <div class="stat-value">3,847</div>
-        <div class="stat-label">Active Signals</div>
-        <div class="stat-sub">Across 12 markets</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ════════════════ FEATURES ════════════════ -->
-<section class="features-section" id="features" aria-labelledby="features-title">
-  <div class="container">
-    <div class="eyebrow">// Core Engine</div>
-    <h2 class="section-title" id="features-title">Everything you need to trade with edge</h2>
-    <p class="section-subtitle">
-      From signal discovery to execution, CashClaw turns prediction markets into a calibrated trading desk — no emotions, just math.
-    </p>
+    <h2 class="section-heading">Everything You Need</h2>
+    <p class="section-subheading">Built for traders who want edge, not emotions.</p>
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-num">01</div>
-        <div class="feature-icon" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-        </div>
+        <div class="feature-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
         <h3>AI Signal Engine</h3>
-        <p>Dual-model architecture: Nemotron Nano scans 200+ markets every 60 seconds. DeepSeek R1 calibrates probability estimates with chain-of-thought reasoning.</p>
+        <p>Nemotron Nano scans 200+ markets every 60s. DeepSeek R1 calibrates with chain-of-thought. Edge > 5% only.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-num">02</div>
-        <div class="feature-icon" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        </div>
+        <div class="feature-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
         <h3>Kelly Criterion Sizing</h3>
-        <p>Optimal bet sizing using fractional Kelly with Bayesian edge estimation. Never overbet. Never underbet. Position sizes calibrated to your bankroll in real-time.</p>
+        <p>Fractional Kelly with Bayesian edge estimation. Position sizes calibrated to your bankroll in real-time.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-num">03</div>
-        <div class="feature-icon" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        </div>
+        <div class="feature-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
         <h3>Live P&amp;L Dashboard</h3>
-        <p>Real-time portfolio tracking with win rate, Sharpe ratio, max drawdown, and signal attribution. Every trade timestamped and auditable on-chain.</p>
+        <p>Real-time portfolio tracking. Win rate, Sharpe ratio, max drawdown, signal attribution. Every trade auditable.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-num">04</div>
-        <div class="feature-icon" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="4"/></svg>
-        </div>
-        <h3>Multi-Market Arbitrage</h3>
-        <p>Cross-venue signal fusion across Polymarket, Kalshi, and Metaculus. Identify price discrepancies before the market corrects them. First-mover advantage at scale.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-num">05</div>
-        <div class="feature-icon" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </div>
+        <div class="feature-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
         <h3>Risk Controls</h3>
-        <p>Circuit breakers, drawdown limits, and exposure caps. Auto-kill switches fire when thresholds breach. You sleep. CashClaw watches.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-num">06</div>
-        <div class="feature-icon" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-        </div>
-        <h3>BYOK — Your Keys</h3>
-        <p>Bring your own Polymarket API keys. CashClaw never touches your funds. Self-custody trading with enterprise-grade encryption.</p>
+        <p>Circuit breakers, drawdown limits, exposure caps. Auto-kill switches when thresholds breach. You sleep. We watch.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ════════════════ ORDERBOOK ════════════════ -->
-<section class="ob-section" id="orderbook">
+<!-- ════════════ PRICING ════════════ -->
+<section class="section" id="pricing">
   <div class="container">
-    <div class="eyebrow">// Live Orderbook</div>
-    <h2 class="section-title">Depth of market. <span style="color:var(--text-muted)">Real-time.</span></h2>
-    <p class="section-subtitle">Aggregated liquidity across all venues. Every tick, every size, every venue — in one view.</p>
-    <div class="ob-panel">
-      <!-- Bids -->
-      <div class="ob-side">
-        <div class="ob-header bids">Bids <span style="color:var(--text-muted)">Size / Total</span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bull)">0.624</span><span class="size">12,450</span><span class="total">12,450</span><span class="depth-bar bid" style="right:0;width:100%"></span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bull)">0.621</span><span class="size">8,320</span><span class="total">20,770</span><span class="depth-bar bid" style="right:0;width:75%"></span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bull)">0.618</span><span class="size">15,100</span><span class="total">35,870</span><span class="depth-bar bid" style="right:0;width:85%"></span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bull)">0.615</span><span class="size">6,780</span><span class="total">42,650</span><span class="depth-bar bid" style="right:0;width:45%"></span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bull)">0.612</span><span class="size">22,400</span><span class="total">65,050</span><span class="depth-bar bid" style="right:0;width:90%"></span></div>
+    <h2 class="section-heading">Simple Pricing</h2>
+    <p class="section-subheading">Pick your edge. Cancel anytime. Pay with USDT via NOWPayments.</p>
+
+    <!-- Coupon -->
+    <div class="coupon-section">
+      <span class="coupon-label">Have a coupon code?</span>
+      <div class="coupon-row">
+        <input type="text" id="coupon-input" class="coupon-input" placeholder="Enter code (e.g. LAUNCH20)" autocomplete="off" spellcheck="false" maxlength="32">
+        <button id="coupon-apply-btn" class="btn btn-primary coupon-apply-btn" type="button">Apply</button>
       </div>
-      <!-- Asks -->
-      <div class="ob-side">
-        <div class="ob-header asks">Asks <span style="color:var(--text-muted)">Size / Total</span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bear)">0.628</span><span class="size">9,200</span><span class="total">9,200</span><span class="depth-bar ask" style="right:0;width:55%"></span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bear)">0.631</span><span class="size">14,600</span><span class="total">23,800</span><span class="depth-bar ask" style="right:0;width:80%"></span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bear)">0.635</span><span class="size">5,400</span><span class="total">29,200</span><span class="depth-bar ask" style="right:0;width:30%"></span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bear)">0.640</span><span class="size">18,900</span><span class="total">48,100</span><span class="depth-bar ask" style="right:0;width:95%"></span></div>
-        <div class="ob-row"><span class="price" style="color:var(--signal-bear)">0.645</span><span class="size">11,200</span><span class="total">59,300</span><span class="depth-bar ask" style="right:0;width:65%"></span></div>
-      </div>
+      <div id="coupon-message" class="coupon-message" aria-live="polite"></div>
     </div>
-    <div style="text-align:center;margin-top:var(--space-4)">
-      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">Spread: <span style="color:var(--text-primary);font-weight:600">0.004</span> (0.64%)</span>
+
+    <div class="pricing-grid">
+      <!-- Starter -->
+      <div class="price-card">
+        <div class="price-tier">Starter</div>
+        <div class="price-amount" id="price-starter">$49<span>/mo</span></div>
+        <div class="price-desc">Daily signal digest — know what to trade, decide yourself</div>
+        <ul class="price-features">
+          <li>Daily signal digest via Telegram</li>
+          <li>AI edge scores per market</li>
+          <li>Top 10 opportunities each morning</li>
+          <li>Kelly-sizing recommendations</li>
+          <li>Community Discord access</li>
+          <li>Monthly performance report</li>
+        </ul>
+        <a href="#" class="btn btn-secondary" id="btn-starter">Get Starter</a>
+      </div>
+      <!-- Pro -->
+      <div class="price-card price-card--popular">
+        <div class="price-popular-tag">Most Popular</div>
+        <div class="price-tier">Pro</div>
+        <div class="price-amount" id="price-pro">$149<span>/mo</span></div>
+        <div class="price-desc">Real-time signals + optional auto-execution on your wallet</div>
+        <ul class="price-features">
+          <li>Everything in Starter</li>
+          <li>Real-time signal stream (15-min)</li>
+          <li>REST API access</li>
+          <li>Auto-execution on your Polymarket wallet</li>
+          <li>Per-account risk manager</li>
+          <li>Priority Telegram support</li>
+          <li>Weekly calibration report</li>
+        </ul>
+        <a href="#" class="btn btn-primary" id="btn-pro">Start Pro Trial</a>
+      </div>
+      <!-- Elite -->
+      <div class="price-card">
+        <div class="price-tier">Elite</div>
+        <div class="price-amount" id="price-elite">$499<span>/mo</span></div>
+        <div class="price-desc">Full managed service with custom focus and performance dashboard</div>
+        <ul class="price-features">
+          <li>Everything in Pro</li>
+          <li>Custom market focus (your categories)</li>
+          <li>Personal performance dashboard</li>
+          <li>Live P&amp;L by position</li>
+          <li>Sharpe, drawdown, win rate analytics</li>
+          <li>Direct founder support (24h response)</li>
+          <li>Early access to new strategies</li>
+        </ul>
+        <a href="#" class="btn btn-secondary" id="btn-elite">Get Elite</a>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ════════════════ PRICING — Data Table ════════════════ -->
-<section class="pricing-section" id="pricing" aria-labelledby="pricing-title">
+<!-- ════════════ SOCIAL PROOF ════════════ -->
+<section class="social-proof">
+  <h2 class="section-heading">We Eat Our Own Cooking</h2>
+  <p>Every signal we sell, we trade with real capital. Full P&amp;L — wins and losses — published daily.</p>
+  <a href="/trading-performance" class="btn btn-secondary btn-lg">View Live P&amp;L Track Record →</a>
+</section>
+
+<!-- ════════════ FAQ ════════════ -->
+<section class="section" id="faq">
   <div class="container">
-    <div class="eyebrow">// Plans</div>
-    <h2 class="section-title" id="pricing-title">Calibrated pricing. <span style="color:var(--text-muted)">No BS.</span></h2>
-    <p class="section-subtitle">7-day free trial on all plans. No credit card. Cancel anytime.</p>
-    <div style="overflow-x:auto">
-      <table class="pricing-table">
-        <thead>
-          <tr><th>Plan</th><th>Price</th><th>Markets</th><th>Exec</th><th>Kelly</th><th>P&amp;L</th><th>Support</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="plan-name">Signal</td>
-            <td class="plan-price">$49<span style="font-size:12px;color:var(--text-muted);font-weight:400">/mo</span></td>
-            <td>5 trackers</td>
-            <td><span class="dash">—</span></td>
-            <td><span class="check">✓</span></td>
-            <td><span class="dash">—</span></td>
-            <td style="color:var(--text-muted)">Email</td>
-            <td><a href="/dashboard" class="btn btn-ghost" style="padding:var(--space-1) var(--space-4)">Start</a></td>
-          </tr>
-          <tr class="featured-row">
-            <td class="plan-name">Alpha</td>
-            <td class="plan-price">$149<span style="font-size:12px;color:var(--text-muted);font-weight:400">/mo</span></td>
-            <td><span class="check">Unlimited</span></td>
-            <td><span class="check">Auto</span></td>
-            <td><span class="check">✓</span></td>
-            <td><span class="check">Live</span></td>
-            <td style="color:var(--color-gold)">Priority</td>
-            <td><a href="/dashboard" class="btn btn-primary" style="padding:var(--space-1) var(--space-4);font-size:var(--text-sm)">Start</a></td>
-          </tr>
-          <tr>
-            <td class="plan-name">Institution</td>
-            <td class="plan-price">$499<span style="font-size:12px;color:var(--text-muted);font-weight:400">/mo</span></td>
-            <td><span class="check">Unlimited</span></td>
-            <td><span class="check">Auto</span></td>
-            <td><span class="check">✓</span></td>
-            <td><span class="check">Live+API</span></td>
-            <td style="color:var(--color-purple)">Dedicated</td>
-            <td><a href="mailto:hello@cashclaw.cc" class="btn btn-ghost" style="padding:var(--space-1) var(--space-4)">Contact</a></td>
-          </tr>
-        </tbody>
-      </table>
+    <h2 class="section-heading">Frequently Asked Questions</h2>
+    <p class="section-subheading">Everything you need to know before subscribing.</p>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>Is my wallet safe with auto-execution?</summary>
+        <div class="faq-answer">Your private key is encrypted at rest (AES-256-GCM). The engine only has trade access, never withdrawal. Hard-coded 2% max position, 5% daily stop-loss enforced.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What is the edge based on?</summary>
+        <div class="faq-answer">Our LLM (OpenClaw) estimates resolution probability independently of market price. Edge = our estimate minus market-implied probability. Only signals with edge > 5% are published.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can I cancel anytime?</summary>
+        <div class="faq-answer">Yes. Cancel anytime. You keep access until the end of your billing period. No lock-in.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What markets are covered?</summary>
+        <div class="faq-answer">Polymarket — all active binary markets. We filter for resolution within 7–30 days and minimum liquidity thresholds for reliable pricing.</div>
+      </details>
     </div>
   </div>
 </section>
 
-<!-- ════════════════ CTA ════════════════ -->
-<section class="cta-section" id="cta" aria-labelledby="cta-title">
-  <div class="container">
-    <div class="cta-card">
-      <h2 class="section-title" id="cta-title">Ready to trade <span style="color:var(--color-gold)">with edge</span>?</h2>
-      <p class="section-subtitle">Join traders who turned prediction markets into a calibrated income stream. 7-day free trial. No credit card.</p>
-      <a href="/dashboard" class="btn btn-primary">Launch Terminal — Free</a>
-    </div>
-  </div>
-</section>
+</main>
 
-<!-- ════════════════ FOOTER ════════════════ -->
-<footer>
-  <div class="container">
-    <div class="footer-grid">
-      <div class="footer-copy">© 2026 CashClaw. All rights reserved.</div>
-      <div class="footer-links">
-        <a href="/trading-performance">Performance</a>
-        <a href="mailto:hello@cashclaw.cc">Contact</a>
-        <a href="https://twitter.com/cashclaw">X / Twitter</a>
-      </div>
+<!-- ════════════ ACTIVATION MODAL ════════════ -->
+<div class="modal-overlay" id="activation-modal" role="dialog" aria-modal="true" aria-label="Account activation">
+  <div class="modal-box">
+    <button class="modal-close" aria-label="Close modal">&times;</button>
+    <div id="modal-form">
+      <h3>🎉 Free Access Granted!</h3>
+      <p>Create your account to activate <strong id="modal-tier">Starter</strong> plan. No payment required.</p>
+      <input type="email" class="modal-input" id="modal-email" placeholder="Email" required autocomplete="email">
+      <input type="password" class="modal-input" id="modal-password" placeholder="Password (min 6 chars)" minlength="6" required autocomplete="new-password">
+      <button class="modal-btn" id="modal-submit">Create Account &amp; Activate</button>
+      <div id="modal-error" style="color:var(--color-rose);font-size:var(--text-xs);margin-top:var(--space-2)" role="alert"></div>
+    </div>
+    <div id="modal-done" style="display:none">
+      <h3>✅ Account Created!</h3>
+      <p>Welcome, <strong id="modal-confirm-email"></strong>! Your <span id="modal-confirm-tier"></span> plan is active.</p>
+      <a id="modal-dashboard-link" href="https://cashclaw-dashboard.pages.dev/app" class="modal-btn" style="margin-top:var(--space-4)">Go to Dashboard →</a>
     </div>
   </div>
+</div>
+
+<!-- ════════════ FOOTER ════════════ -->
+<footer class="landing-footer">
+  CashClaw © 2026 — Prediction market analytics. Not financial advice.
 </footer>
+
+<script type="module" src="/forest/js/main.js"></script>
 
 </body>
 </html>
