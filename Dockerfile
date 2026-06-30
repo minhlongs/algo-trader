@@ -15,7 +15,6 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json tsconfig.worker.json ./
 COPY src ./src
-COPY scripts ./scripts
 
 # Build TypeScript → dist/
 RUN pnpm run build
