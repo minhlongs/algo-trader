@@ -131,3 +131,90 @@ export interface ApiError {
 
 // === Time Range Types ===
 export type TimeRange = 'day' | 'week' | 'month' | 'all';
+
+// === Marketplace Types ===
+export interface MarketplaceStrategy {
+  id: string;
+  tenantId: string;
+  creatorId: string;
+  name: string;
+  description: string;
+  category: string;
+  status: string;
+  riskLevel: number;
+  minAllocationUsd: number;
+  maxAllocationUsd: number;
+  supportedExchanges: string[];
+  tags: string[];
+  backtestSummary?: BacktestSummary;
+  vettedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BacktestSummary {
+  sharpe: number;
+  maxDrawdown: number;
+  winRate: number;
+  periodDays: number;
+  totalTrades: number;
+  totalPnlUsd: number;
+  profitFactor: number;
+}
+
+export interface MarketplaceListing {
+  id: string;
+  strategyId: string;
+  tenantId: string;
+  priceUsdMonthly: number;
+  billingCycle: string;
+  riskLimits: RiskLimits;
+  isActive: boolean;
+  subscriberCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskLimits {
+  maxDailyLossPercent: number;
+  maxPositionSizePercent: number;
+  stopLossPercent: number;
+  maxConcurrentTrades: number;
+}
+
+export interface MarketplaceSubscription {
+  id: string;
+  tenantId: string;
+  listingId: string;
+  strategyId: string;
+  status: string;
+  allocationPercent: number;
+  customRiskLimits?: RiskLimits;
+  currentInvestmentUsd: number;
+  totalPnlUsd: number;
+  subscriptionStartedAt: string;
+  pausedAt?: string;
+  cancelledAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MarketplaceReview {
+  id: string;
+  tenantId: string;
+  strategyId: string;
+  subscriptionId: string;
+  rating: number;
+  comment: string;
+  isVerified: boolean;
+  helpfulVotes: number;
+  createdAt: string;
+}
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
