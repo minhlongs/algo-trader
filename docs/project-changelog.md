@@ -1,40 +1,5 @@
 # Project Changelog - Algo Trader
 
-## [3.0.0] - 2026-06-30
-
-### Changed — Architecture: strict 3-context separation (desk/platform/shared)
-
-540-file codebase split into three bounded contexts:
-
-- **`src/desk/`** — Solo proprietary trading (~35 modules). Operator-only, CLI-driven, zero tenant awareness. Owns all 52+ strategies, execution, risk, intelligence, signal pipeline.
-- **`src/platform/`** — RaaS subscriber platform (~25 modules). Multi-tenant, tier-gated, auth-protected. Owns API gateway (31 route files), marketplace, billing, raas executor, metering.
-- **`src/shared/`** — Shared kernel (~10 modules). Types, DB client, config, resilience, persistence. Zero business logic. Importable by both desk and platform.
-
-**Key deliverables:**
-- 103 Express route handlers wired with `requireTier('FREE|PRO|ENTERPRISE')`
-- 4 Fastify route files with inline tier gating
-- All platform DB queries use `buildTenantFilter(tenantId)` for tenant isolation
-- Boundary enforcement: desk never imports platform; platform imports desk only via shared `IStrategy`
-- Path aliases configured: `@/desk/*`, `@/platform/*`, `@/shared/*` with barrel exports (index.ts) in every subdirectory
-- 11 boundary enforcement tests — all passing (desk↔platform import rules, tenant isolation, barrel exports, strategy registry)
-- All 79 integration/contract tests pass (890 tests)
-- 0 TypeScript errors
-
-**Commits:** `7d70ec170` (Phase 1), `b0bcb43b4` (Batch 1), `f219a1ee1` (Batch 2), `c36c074aa` (tenant isolation), `e4892b686` (tier gating)
-
-### Phase 4 — Cleanup, documentation, and strategy refactoring
-
-- **File splits:** 4 oversized files → 10 focused modules. `referral-repository.ts` (583L→69L), `marketplace-strategy-routes.ts` (517L→27L)
-- **Dead code removal:** 23 files deleted (~21K lines). `citadel/` (entire dir), `ironclaw/` (6 files), `ai-decision-audit-service.ts` (795L), `xai-routes.ts` (516L), 4 unregistered Fastify route files
-- **ADR documentation:** 4 architecture decision records (`docs/architecture/decisions/`) — shared-kernel-boundary, desk-platform-separation, strategy-ownership-model, tenant-isolation-pattern
-- **Boundary tests:** 11 characterization tests enforcing import direction rules, barrel export completeness, tenant isolation, and strategy registry integrity
-- **Platform doctrine:** `docs/platform-doctrine.md` — RaaS subscriber infrastructure governance
-- **Strategy base class:** `BasePolymarketStrategy` (303L) — shared position/exit/event logic for 32 strategies. POC migration: `spread-mean-reversion-v2.ts` (186L vs 417L original, 55% smaller)
-- **Tests:** 17 new characterization tests for base class. 2,430+ passing. 0 regressions.
-- **Review fixes:** Express Request type augmentation (removed `(req as any)` from helpers), `maxHoldMs` JSDoc, explicit type for ARRAY_AGG query
-
----
-
 ## [3.1.0] - 2026-07-01
 
 ### Added — Marketplace E2E flow: subscribe, checkout, activate, execute
@@ -78,6 +43,39 @@ Complete end-to-end marketplace subscription flow from dashboard to strategy exe
 **Files modified:** 8 existing files (nowpayments webhook, billing service, server.ts, types, tests)
 
 ---
+
+## [3.0.0] - 2026-06-30
+
+### Changed — Architecture: strict 3-context separation (desk/platform/shared)
+
+540-file codebase split into three bounded contexts:
+
+- **`src/desk/`** — Solo proprietary trading (~35 modules). Operator-only, CLI-driven, zero tenant awareness. Owns all 52+ strategies, execution, risk, intelligence, signal pipeline.
+- **`src/platform/`** — RaaS subscriber platform (~25 modules). Multi-tenant, tier-gated, auth-protected. Owns API gateway (31 route files), marketplace, billing, raas executor, metering.
+- **`src/shared/`** — Shared kernel (~10 modules). Types, DB client, config, resilience, persistence. Zero business logic. Importable by both desk and platform.
+
+**Key deliverables:**
+- 103 Express route handlers wired with `requireTier('FREE|PRO|ENTERPRISE')`
+- 4 Fastify route files with inline tier gating
+- All platform DB queries use `buildTenantFilter(tenantId)` for tenant isolation
+- Boundary enforcement: desk never imports platform; platform imports desk only via shared `IStrategy`
+- Path aliases configured: `@/desk/*`, `@/platform/*`, `@/shared/*` with barrel exports (index.ts) in every subdirectory
+- 11 boundary enforcement tests — all passing (desk↔platform import rules, tenant isolation, barrel exports, strategy registry)
+- All 79 integration/contract tests pass (890 tests)
+- 0 TypeScript errors
+
+**Commits:** `7d70ec170` (Phase 1), `b0bcb43b4` (Batch 1), `f219a1ee1` (Batch 2), `c36c074aa` (tenant isolation), `e4892b686` (tier gating)
+
+### Phase 4 — Cleanup, documentation, and strategy refactoring
+
+- **File splits:** 4 oversized files → 10 focused modules. `referral-repository.ts` (583L→69L), `marketplace-strategy-routes.ts` (517L→27L)
+- **Dead code removal:** 23 files deleted (~21K lines). `citadel/` (entire dir), `ironclaw/` (6 files), `ai-decision-audit-service.ts` (795L), `xai-routes.ts` (516L), 4 unregistered Fastify route files
+- **ADR documentation:** 4 architecture decision records (`docs/architecture/decisions/`) — shared-kernel-boundary, desk-platform-separation, strategy-ownership-model, tenant-isolation-pattern
+- **Boundary tests:** 11 characterization tests enforcing import direction rules, barrel export completeness, tenant isolation, and strategy registry integrity
+- **Platform doctrine:** `docs/platform-doctrine.md` — RaaS subscriber infrastructure governance
+- **Strategy base class:** `BasePolymarketStrategy` (303L) — shared position/exit/event logic for 32 strategies. POC migration: `spread-mean-reversion-v2.ts` (186L vs 417L original, 55% smaller)
+- **Tests:** 17 new characterization tests for base class. 2,430+ passing. 0 regressions.
+- **Review fixes:** Express Request type augmentation (removed `(req as any)` from helpers), `maxHoldMs` JSDoc, explicit type for ARRAY_AGG query
 
 ### Added — Feature-gate tier-based access-control discipline 10-invariant sync (HEPTAHEXACONTAGON = 67, prime + lucky prime)
 

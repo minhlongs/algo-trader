@@ -7,7 +7,10 @@
 import { logger } from '../utils/logger';
 import { getDbClient } from './postgres-client';
 import * as migration001 from './migrations/001-create-trades-table';
+import * as migration025 from './migrations/025-marketplace-schema';
 import * as migration026 from './migrations/026-create-ai-audit-tables';
+import * as migration031 from './migrations/031-add-marketplace-subscription-payment';
+import * as migration032 from './migrations/032-add-marketplace-payout-address';
 
 // Migration interface
 interface Migration {
@@ -20,7 +23,10 @@ interface Migration {
 // Ordered list of all migrations
 const MIGRATIONS: Migration[] = [
   migration001,
+  migration025,
   migration026,
+  migration031,
+  migration032,
 ];
 
 /**
