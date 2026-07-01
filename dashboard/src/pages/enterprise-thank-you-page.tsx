@@ -13,7 +13,7 @@ export function EnterpriseThankYouPage() {
   const inquiryId = searchParams.get('inquiry') ?? '';
 
   return (
-    <div className="min-h-screen bg-[#080B14] text-white font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-xl mx-auto w-full">
@@ -60,7 +60,7 @@ export function EnterpriseThankYouPage() {
         {/* Reference ID */}
         {inquiryId && (
           <p className="text-center text-xs text-[#555] mb-8">
-            Reference: <span className="font-mono text-[#8892B0]">{inquiryId}</span>
+            Reference: <span className="text-[#8892B0]">{inquiryId}</span>
           </p>
         )}
 

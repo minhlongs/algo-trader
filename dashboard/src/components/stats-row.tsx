@@ -29,7 +29,7 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
       {/* Total Equity */}
       <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Total Equity</p>
-        <p className="text-xl font-bold text-white">
+        <p className="text-xl font-bold text-white font-mono tabular-nums">
           {totalEquity ? formatUsd(totalEquity) : '—'}
         </p>
       </div>
@@ -37,7 +37,7 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
       {/* Open Positions */}
       <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Open Positions</p>
-        <p className="text-xl font-bold text-white">
+        <p className="text-xl font-bold text-white font-mono tabular-nums">
           {openPositions ?? '—'}
         </p>
       </div>
@@ -45,7 +45,7 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
       {/* Today's P&L */}
       <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Today's P&L</p>
-        <p className={`text-xl font-bold ${pnlPositive ? 'text-profit' : 'text-loss'}`}>
+        <p className={`text-xl font-bold font-mono tabular-nums ${pnlPositive ? 'text-profit' : 'text-loss'}`}>
           {formatUsd(pnlValue)}
         </p>
       </div>
@@ -53,7 +53,7 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
       {/* Active Strategies */}
       <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Active Strategies</p>
-        <p className="text-xl font-bold text-accent">
+        <p className="text-xl font-bold text-accent font-mono tabular-nums">
           {activeStrategies ?? '—'}
         </p>
       </div>

@@ -16,7 +16,7 @@ export function UsageAnalyticsDashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted font-mono">
+      <div className="flex flex-col items-center justify-center py-12 text-muted">
         <svg className="animate-spin h-8 w-8 mb-4" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -51,7 +51,7 @@ export function UsageAnalyticsDashboard() {
           <select
             value={selectedLicense}
             onChange={(e) => setSelectedLicense(e.target.value)}
-            className="px-3 py-1.5 text-xs font-mono rounded border border-bg-border bg-bg-surface text-muted hover:text-white focus:border-accent focus:outline-none"
+            className="px-3 py-1.5 text-xs rounded border border-bg-border bg-bg-surface text-muted hover:text-white focus:border-accent focus:outline-none"
           >
             <option value="">All Licenses</option>
             {/* In production, populate from active licenses API */}
@@ -67,7 +67,7 @@ export function UsageAnalyticsDashboard() {
                 key={range.value}
                 onClick={() => setTimeRange(range.value)}
                 className={`
-                  px-3 py-1.5 text-xs font-mono rounded border transition-colors
+                  px-3 py-1.5 text-xs rounded border transition-colors
                   ${timeRange === range.value
                     ? 'border-accent text-accent bg-accent/10'
                     : 'border-bg-border text-muted hover:text-white hover:border-white/30'
@@ -192,7 +192,7 @@ export function UsageAnalyticsDashboard() {
             <div className="bg-bg-surface border border-bg-border rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-white font-semibold">Your Quota</h4>
-                <span className="text-xs text-muted font-mono">
+                <span className="text-xs text-muted">
                   Resets: {new Date(quota.resetDate).toLocaleDateString()}
                 </span>
               </div>
@@ -307,7 +307,7 @@ function SummaryCard({ label, value, icon, accent = 'default' }: SummaryCardProp
         <span className="text-muted text-[10px] uppercase tracking-widest">{label}</span>
         {icon && <span className="text-muted">{icon}</span>}
       </div>
-      <div className={`${accentClasses[accent]} text-2xl font-bold font-mono`}>
+      <div className={`${accentClasses[accent]} text-2xl font-bold`}>
         {value}
       </div>
     </div>
@@ -327,12 +327,12 @@ function TierDistributionCard({ tier, count, total, color, barColor }: TierDistr
 
   return (
     <div className="text-center">
-      <div className={`text-2xl font-bold ${color} font-mono mb-1`}>{count}</div>
+      <div className={`text-2xl font-bold ${color} mb-1`}>{count}</div>
       <div className="text-muted text-[10px] uppercase tracking-wider mb-2">{tier}</div>
       <div className="h-1.5 bg-bg-border rounded-full overflow-hidden">
         <div className={`h-full ${barColor}`} style={{ width: `${percentage}%` }} />
       </div>
-      <div className="text-muted text-[10px] mt-1 font-mono">{percentage}%</div>
+      <div className="text-muted text-[10px] mt-1">{percentage}%</div>
     </div>
   );
 }
@@ -351,7 +351,7 @@ function StatusRow({ label, count, color, textColor }: StatusRowProps) {
         <div className={`w-2 h-2 rounded-full ${color}`} />
         <span className="text-muted text-sm">{label}</span>
       </div>
-      <span className={`${textColor} font-mono font-semibold`}>{count}</span>
+      <span className={`${textColor} font-semibold`}>{count}</span>
     </div>
   );
 }
@@ -405,7 +405,7 @@ function ActivityItem({ activity }: ActivityItemProps) {
         <div className="text-white text-sm capitalize">
           {activity.event.replace(/_/g, ' ')}
         </div>
-        <div className="text-muted text-[10px] font-mono truncate">
+        <div className="text-muted text-[10px] truncate">
           {activity.licenseId}
         </div>
         <div className="text-muted text-[10px] mt-0.5">

@@ -59,7 +59,7 @@ export function DocsPage() {
             <button
               key={id}
               onClick={() => scrollTo(id)}
-              className={`text-xs font-mono py-1 transition-colors ${
+              className={`text-xs py-1 transition-colors ${
                 activeId === id ? 'text-[#00C8E8]' : 'text-[#8892B0] hover:text-white'
               }`}
             >
@@ -75,13 +75,13 @@ export function DocsPage() {
         {/* Desktop sidebar TOC */}
         <aside className="hidden md:block w-[200px] flex-shrink-0">
           <div className="sticky top-24">
-            <p className="text-xs font-mono text-[#8892B0] uppercase tracking-widest mb-4">On this page</p>
+            <p className="text-xs text-[#8892B0] uppercase tracking-widest mb-4">On this page</p>
             <nav className="space-y-1">
               {TOC_ITEMS.map(({ id, label }) => (
                 <button
                   key={id}
                   onClick={() => scrollTo(id)}
-                  className={`block w-full text-left text-xs font-mono py-1.5 px-2 rounded transition-colors ${
+                  className={`block w-full text-left text-xs py-1.5 px-2 rounded transition-colors ${
                     activeId === id
                       ? 'text-[#00C8E8] bg-[#00C8E8]/10'
                       : 'text-[#8892B0] hover:text-white'
@@ -93,10 +93,10 @@ export function DocsPage() {
             </nav>
 
             <div className="mt-8 pt-6 border-t border-[#1E2640]">
-              <p className="text-xs font-mono text-[#8892B0] mb-2">Have an account?</p>
+              <p className="text-xs text-[#8892B0] mb-2">Have an account?</p>
               <Link
                 to="/app/guide"
-                className="text-xs font-mono text-[#00C8E8] hover:underline"
+                className="text-xs text-[#00C8E8] hover:underline"
               >
                 View in app →
               </Link>
@@ -107,8 +107,8 @@ export function DocsPage() {
         {/* Content */}
         <main className="flex-1 max-w-[800px]">
           <div className="mb-10">
-            <h1 className="text-2xl font-bold font-mono text-white mb-2">Operator Guide</h1>
-            <p className="text-sm font-mono text-[#8892B0]">
+            <h1 className="text-2xl font-bold text-white mb-2">Operator Guide</h1>
+            <p className="text-sm text-[#8892B0]">
               CashClaw SOPs — everything you need to run the market-making bot profitably.
             </p>
           </div>

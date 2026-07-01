@@ -76,7 +76,7 @@ export function SubscriberTradeTable({ rows, loading = false }: SubscriberTradeT
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10 text-muted text-xs font-mono">
+      <div className="flex items-center justify-center py-10 text-muted text-xs">
         Loading trades...
       </div>
     );
@@ -84,7 +84,7 @@ export function SubscriberTradeTable({ rows, loading = false }: SubscriberTradeT
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center py-10 text-muted text-xs font-mono">
+      <div className="flex items-center justify-center py-10 text-muted text-xs">
         No trade data for this period
       </div>
     );
@@ -92,7 +92,7 @@ export function SubscriberTradeTable({ rows, loading = false }: SubscriberTradeT
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm font-mono">
+      <table className="w-full text-sm">
         <thead className="bg-surface/60 border-b border-border">
           <tr>
             <Th label="Date" col="date" current={sortKey} dir={sortDir} onClick={handleSort} />

@@ -188,7 +188,7 @@ export function LandingPage() {
               <div key={label} className="text-center sm:text-left">
                 <div className="flex items-center justify-center sm:justify-start gap-1.5 mb-1">
                   <Icon weight="bold" className="w-4 h-4 text-accent" />
-                  <p className="text-accent text-xl sm:text-2xl font-bold font-mono tabular-nums">{value}</p>
+                  <p className="text-accent text-xl sm:text-2xl font-bold tabular-nums">{value}</p>
                 </div>
                 <p className="text-muted text-xs leading-relaxed">{label}</p>
               </div>
@@ -255,7 +255,7 @@ export function LandingPage() {
                 )}
                 <div>
                   <p className="text-muted text-xs font-medium uppercase tracking-wider mb-1">{name}</p>
-                  <p className="text-white text-4xl font-bold tracking-tight font-mono tabular-nums">
+                  <p className="text-white text-4xl font-bold tracking-tight tabular-nums">
                     {price}
                     <span className="text-muted text-sm font-normal font-sans ml-1">{sub}</span>
                   </p>

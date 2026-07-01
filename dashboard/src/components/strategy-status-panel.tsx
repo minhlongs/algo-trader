@@ -45,7 +45,7 @@ export function StrategyStatusPanel({ strategies, botStatus }: Props) {
           </span>
         </div>
         {botStatus && botStatus.running && (
-          <div className="flex items-center gap-4 text-xs text-muted font-mono">
+          <div className="flex items-center gap-4 text-xs text-muted">
             <span>Up: {formatUptime(botStatus.uptime)}</span>
             <span>Signals: {botStatus.totalSignals}</span>
             <span>Trades: {botStatus.executedTrades}</span>
@@ -72,7 +72,7 @@ export function StrategyStatusPanel({ strategies, botStatus }: Props) {
                   <span className="text-white text-sm font-semibold truncate">{s.name}</span>
                   <span className={`w-2 h-2 rounded-full ${sStyle.dot}`} />
                 </div>
-                <div className="space-y-1 text-xs font-mono text-muted">
+                <div className="space-y-1 text-xs text-muted">
                   <div className="flex justify-between">
                     <span>Signals</span>
                     <span className="text-white">{s.signalCount}</span>

@@ -79,7 +79,7 @@ export function SettingsAlertRulesForm({ alerts, onAddAlert, onDeleteAlert }: Pr
             <input
               value={metric}
               onChange={(e) => setMetric(e.target.value)}
-              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-accent"
+              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-accent"
               required
             />
           </div>
@@ -88,7 +88,7 @@ export function SettingsAlertRulesForm({ alerts, onAddAlert, onDeleteAlert }: Pr
             <select
               value={condition}
               onChange={(e) => setCondition(e.target.value as AlertCondition)}
-              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-accent"
+              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-accent"
             >
               <option value=">">{'>'}</option>
               <option value="<">{'<'}</option>
@@ -102,7 +102,7 @@ export function SettingsAlertRulesForm({ alerts, onAddAlert, onDeleteAlert }: Pr
               step="any"
               value={threshold}
               onChange={(e) => setThreshold(Number(e.target.value))}
-              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-accent"
+              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-accent"
               required
             />
           </div>
@@ -111,7 +111,7 @@ export function SettingsAlertRulesForm({ alerts, onAddAlert, onDeleteAlert }: Pr
             <select
               value={action}
               onChange={(e) => setAction(e.target.value as AlertAction)}
-              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-accent"
+              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-accent"
             >
               <option value="webhook">webhook</option>
               <option value="email">email</option>
@@ -123,7 +123,7 @@ export function SettingsAlertRulesForm({ alerts, onAddAlert, onDeleteAlert }: Pr
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               placeholder={action === 'webhook' ? 'https://…' : 'you@example.com'}
-              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs font-mono focus:outline-none focus:border-accent"
+              className="bg-bg-surface border border-bg-border rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-accent"
               required
             />
           </div>
@@ -148,15 +148,15 @@ export function SettingsAlertRulesForm({ alerts, onAddAlert, onDeleteAlert }: Pr
             key={a.id}
             className="flex items-center justify-between bg-bg border border-bg-border rounded px-3 py-2 gap-2"
           >
-            <code className="text-white text-xs font-mono">
+            <code className="text-white text-xs">
               {a.metric} {a.condition} {a.threshold}
             </code>
-            <span className="text-muted text-xs font-mono shrink-0">
+            <span className="text-muted text-xs shrink-0">
               {a.action}: {a.target.length > 30 ? a.target.slice(0, 28) + '…' : a.target}
             </span>
             <button
               onClick={() => onDeleteAlert(a.id)}
-              className="text-loss text-xs hover:underline font-mono shrink-0"
+              className="text-loss text-xs hover:underline shrink-0"
             >
               Delete
             </button>

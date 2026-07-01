@@ -35,7 +35,7 @@ function SharpeChip({ value }: { value: number }) {
         ? 'text-loss border-loss'
         : 'text-muted border-bg-border';
   return (
-    <span className={`text-xs border rounded px-1.5 py-0.5 font-mono ${cls}`}>
+    <span className={`text-xs border rounded px-1.5 py-0.5 ${cls}`}>
       {value.toFixed(2)}
     </span>
   );
@@ -108,7 +108,7 @@ export function BacktestsPage() {
               value={pair}
               onChange={(e) => setPair(e.target.value)}
               placeholder="BTC/USDT"
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
               required
             />
           </div>
@@ -119,7 +119,7 @@ export function BacktestsPage() {
             <select
               value={timeframe}
               onChange={(e) => setTimeframe(e.target.value)}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
             >
               {TIMEFRAMES.map((tf) => (
                 <option key={tf} value={tf}>{tf}</option>
@@ -133,7 +133,7 @@ export function BacktestsPage() {
             <select
               value={strategy}
               onChange={(e) => setStrategy(e.target.value)}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
             >
               {STRATEGIES.map((s) => (
                 <option key={s} value={s}>{s}</option>
@@ -150,7 +150,7 @@ export function BacktestsPage() {
               onChange={(e) => setDays(Number(e.target.value))}
               min={1}
               max={365}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
               required
             />
           </div>
@@ -165,7 +165,7 @@ export function BacktestsPage() {
               {submitting ? 'Submitting…' : 'Run Backtest'}
             </button>
             {successMsg && (
-              <span className="text-profit text-sm font-mono">{successMsg}</span>
+              <span className="text-profit text-sm">{successMsg}</span>
             )}
           </div>
         </form>
@@ -187,7 +187,7 @@ export function BacktestsPage() {
               >
                 {/* Strategy + meta */}
                 <div className="col-span-2 md:col-span-1 lg:col-span-2">
-                  <p className="text-white font-mono text-sm font-semibold">{r.strategyName}</p>
+                  <p className="text-white text-sm font-semibold">{r.strategyName}</p>
                   <p className="text-muted text-xs mt-0.5">
                     {r.pair} · {r.timeframe} · {r.days}d
                   </p>

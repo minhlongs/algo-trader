@@ -141,7 +141,7 @@ export function XAIDashboardPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-mono transition-colors border-b-2 ${
+              className={`flex items-center gap-2 px-4 py-2 text-sm transition-colors border-b-2 ${
                 isActive
                   ? 'border-accent text-accent'
                   : 'border-transparent text-muted hover:text-white'
@@ -164,7 +164,7 @@ export function XAIDashboardPage() {
           <div className="space-y-4">
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">Quick Test</h3>
+                <h3 className="font-semibold">Quick Test</h3>
               </StitchCardHeader>
               <StitchCardBody className="space-y-4">
                 <div className="space-y-2">
@@ -172,7 +172,7 @@ export function XAIDashboardPage() {
                   <select
                     value={selectedModelType}
                     onChange={(e) => setSelectedModelType(e.target.value as 'rl' | 'kronos' | 'strategy')}
-                    className="w-full px-3 py-2 text-sm font-mono rounded-lg border outline-none transition-colors focus:border-[#4cd7f6]/70"
+                    className="w-full px-3 py-2 text-sm rounded-lg border outline-none transition-colors focus:border-[#4cd7f6]/70"
                     style={{
                       backgroundColor: 'var(--colors-surface)',
                       borderColor: 'var(--colors-outline)',
@@ -187,7 +187,7 @@ export function XAIDashboardPage() {
 
                 <div className="p-3 bg-white/5 rounded-md border border-white/10">
                   <p className="text-xs text-muted-foreground mb-2">Example features:</p>
-                  <pre className="text-xs overflow-auto font-mono text-white/70">
+                  <pre className="text-xs overflow-auto text-white/70">
                     {JSON.stringify(exampleFeatures, null, 2)}
                   </pre>
                 </div>
@@ -208,7 +208,7 @@ export function XAIDashboardPage() {
 
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">Recent Explanations</h3>
+                <h3 className="font-semibold">Recent Explanations</h3>
               </StitchCardHeader>
               <StitchCardBody>
                 {explanations.length === 0 ? (
@@ -224,7 +224,7 @@ export function XAIDashboardPage() {
                         className="w-full text-left px-3 py-2 rounded bg-white/5 hover:bg-white/10 transition-colors"
                       >
                         <div className="flex flex-col items-start">
-                          <span className="font-mono text-xs">{exp.tradeId}</span>
+                          <span className="text-xs">{exp.tradeId}</span>
                           <span className="text-xs text-muted-foreground">
                             {exp.modelType} - {(exp.prediction * 100).toFixed(1)}%
                           </span>
@@ -244,7 +244,7 @@ export function XAIDashboardPage() {
           <div className="lg:col-span-2 space-y-4">
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">Feature Importance</h3>
+                <h3 className="font-semibold">Feature Importance</h3>
               </StitchCardHeader>
               <StitchCardBody>
                 {featureImportanceData.length > 0 ? (
@@ -265,7 +265,7 @@ export function XAIDashboardPage() {
           <div className="space-y-4">
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">Model Selection</h3>
+                <h3 className="font-semibold">Model Selection</h3>
               </StitchCardHeader>
               <StitchCardBody className="space-y-4">
                 <div className="space-y-2">
@@ -273,7 +273,7 @@ export function XAIDashboardPage() {
                   <select
                     value={selectedModelType}
                     onChange={(e) => setSelectedModelType(e.target.value as 'rl' | 'kronos' | 'strategy')}
-                    className="w-full px-3 py-2 text-sm font-mono rounded-lg border outline-none transition-colors focus:border-[#4cd7f6]/70"
+                    className="w-full px-3 py-2 text-sm rounded-lg border outline-none transition-colors focus:border-[#4cd7f6]/70"
                     style={{
                       backgroundColor: 'var(--colors-surface)',
                       borderColor: 'var(--colors-outline)',
@@ -295,14 +295,14 @@ export function XAIDashboardPage() {
 
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">Top Features</h3>
+                <h3 className="font-semibold">Top Features</h3>
               </StitchCardHeader>
               <StitchCardBody>
                 {featureImportanceData.length > 0 ? (
                   <div className="space-y-2">
                     {featureImportanceData.slice(0, 10).map((feature, idx) => (
                       <div key={feature.name} className="flex items-center gap-2">
-                        <span className="text-xs font-mono w-8 text-muted-foreground">
+                        <span className="text-xs w-8 text-muted-foreground">
                           #{idx + 1}
                         </span>
                         <div className="flex-1">
@@ -336,7 +336,7 @@ export function XAIDashboardPage() {
           <div className="lg:col-span-2">
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">What-If Analysis</h3>
+                <h3 className="font-semibold">What-If Analysis</h3>
               </StitchCardHeader>
               <StitchCardBody>
                 {currentExplanation ? (
@@ -362,7 +362,7 @@ export function XAIDashboardPage() {
           <div className="space-y-4">
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">About Counterfactuals</h3>
+                <h3 className="font-semibold">About Counterfactuals</h3>
               </StitchCardHeader>
               <StitchCardBody>
                 <p className="text-sm text-muted-foreground">
@@ -381,7 +381,7 @@ export function XAIDashboardPage() {
 
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">How to Use</h3>
+                <h3 className="font-semibold">How to Use</h3>
               </StitchCardHeader>
               <StitchCardBody className="space-y-2 text-sm text-muted-foreground">
                 <p>1. Generate an explanation for a trade</p>
@@ -399,7 +399,7 @@ export function XAIDashboardPage() {
           <div className="lg:col-span-2">
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">Extracted Strategy Rules</h3>
+                <h3 className="font-semibold">Extracted Strategy Rules</h3>
               </StitchCardHeader>
               <StitchCardBody>
                 <StrategyRulesViewer rules={strategyRules} />
@@ -410,7 +410,7 @@ export function XAIDashboardPage() {
           <div className="space-y-4">
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">Extract Rules</h3>
+                <h3 className="font-semibold">Extract Rules</h3>
               </StitchCardHeader>
               <StitchCardBody className="space-y-4">
                 <div className="space-y-2">
@@ -420,7 +420,7 @@ export function XAIDashboardPage() {
                     value={selectedStrategyName}
                     onChange={(e) => setSelectedStrategyName(e.target.value)}
                     placeholder="MyTradingStrategy"
-                    className="w-full px-3 py-2 text-sm border rounded-lg font-mono outline-none focus:border-[#4cd7f6]/70 transition-colors"
+                    className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-[#4cd7f6]/70 transition-colors"
                     style={{
                       backgroundColor: 'var(--colors-surface)',
                       borderColor: 'var(--colors-outline)',
@@ -436,7 +436,7 @@ export function XAIDashboardPage() {
                     onChange={(e) => setStrategyCode(e.target.value)}
                     placeholder="Paste your strategy code here..."
                     rows={10}
-                    className="w-full px-3 py-2 text-sm border rounded-lg font-mono outline-none focus:border-[#4cd7f6]/70 transition-colors resize-y"
+                    className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-[#4cd7f6]/70 transition-colors resize-y"
                     style={{
                       backgroundColor: 'var(--colors-surface)',
                       borderColor: 'var(--colors-outline)',
@@ -462,7 +462,7 @@ export function XAIDashboardPage() {
 
             <StitchCard>
               <StitchCardHeader>
-                <h3 className="font-mono font-semibold">About Rule Extraction</h3>
+                <h3 className="font-semibold">About Rule Extraction</h3>
               </StitchCardHeader>
               <StitchCardBody>
                 <p className="text-sm text-muted-foreground mb-3">

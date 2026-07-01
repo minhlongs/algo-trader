@@ -123,13 +123,13 @@ export function AdminControls({ status, halt, resume, loading, error, onRefresh 
           <div className="bg-bg-subtle rounded p-3 text-xs">
             <div className="flex justify-between mb-1">
               <span className="text-muted">Current Drawdown</span>
-              <span className="text-white font-mono">
+              <span className="text-white">
                 {(status.drawdown.currentDrawdown * 100).toFixed(2)}%
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted">Max Drawdown</span>
-              <span className="text-white font-mono">
+              <span className="text-white">
                 {(status.drawdown.maxDrawdown * 100).toFixed(2)}%
               </span>
             </div>

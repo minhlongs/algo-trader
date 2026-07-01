@@ -31,7 +31,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080B14] font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] flex flex-col">
       <PublicNavbar />
 
       <div className="flex-1 flex items-center justify-center px-4 pt-16">

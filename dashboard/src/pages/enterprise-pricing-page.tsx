@@ -90,7 +90,7 @@ const ENTERPRISE_FAQS = [
 
 export function EnterprisePricingPage() {
   return (
-    <div className="min-h-screen bg-[#080B14] text-white font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">

@@ -46,7 +46,7 @@ export function LandingSoloQuant() {
 
       {/* Principles strip */}
       <section className="py-16 px-4 sm:px-6 max-w-5xl mx-auto">
-        <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] font-mono mb-8">
+        <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] mb-8">
           What the desk refuses to become
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -55,7 +55,7 @@ export function LandingSoloQuant() {
               key={label}
               className="bg-[#111627] border border-[#1E2640] rounded-lg p-6 hover:border-[#00C8E8]/40 transition-colors"
             >
-              <p className="text-white font-bold text-sm mb-2 font-mono">
+              <p className="text-white font-bold text-sm mb-2">
                 {label}
               </p>
               <p className="text-[#8892B0] text-sm leading-relaxed">{body}</p>

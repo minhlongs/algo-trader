@@ -60,7 +60,7 @@ function InquiryRow({
       <td className="py-3 px-4">
         <p className="text-sm font-semibold text-white">{inquiry.companyName}</p>
         <p className="text-xs text-[#8892B0]">{inquiry.contactName}</p>
-        <p className="text-xs text-[#555] font-mono">{inquiry.email}</p>
+        <p className="text-xs text-[#555]">{inquiry.email}</p>
       </td>
       <td className="py-3 px-4 text-xs text-white">{plan?.price ?? inquiry.tier}</td>
       <td className="py-3 px-4"><StatusBadge status={inquiry.status} /></td>
@@ -137,7 +137,7 @@ export function EnterpriseTamDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080B14] text-white font-mono p-6">
+    <div className="min-h-screen bg-[#080B14] text-white p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-2">Internal</p>

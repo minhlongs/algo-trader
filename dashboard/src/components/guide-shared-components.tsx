@@ -9,7 +9,7 @@ export function CopyBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="relative group">
-      <pre className="bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm font-mono text-[#8892B0] overflow-x-auto">
+      <pre className="bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm text-[#8892B0] overflow-x-auto">
         {code}
       </pre>
       <button
@@ -37,7 +37,7 @@ export function CollapsibleItem({ title, children }: { title: string; children: 
       <button
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left text-sm font-mono text-[#8892B0] hover:text-white hover:bg-[#111627] transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-left text-sm text-[#8892B0] hover:text-white hover:bg-[#111627] transition-colors"
       >
         <span>{title}</span>
         <svg
@@ -52,7 +52,7 @@ export function CollapsibleItem({ title, children }: { title: string; children: 
           <path d="M4 6l4 4 4-4" />
         </svg>
       </button>
-      {open && <div className="px-4 pb-4 pt-1 text-sm font-mono text-[#8892B0] space-y-2">{children}</div>}
+      {open && <div className="px-4 pb-4 pt-1 text-sm text-[#8892B0] space-y-2">{children}</div>}
     </div>
   );
 }
@@ -69,8 +69,8 @@ export function InfoBanner({ color, label, children }: { color: BannerColor; lab
   const c = colorMap[color] ?? colorMap.cyan;
   return (
     <div className={`border ${c.border} ${c.bg} rounded-lg p-4`}>
-      <p className={`text-sm font-mono ${c.text} font-bold mb-1`}>{label}</p>
-      <div className="text-sm font-mono text-[#8892B0] leading-relaxed">{children}</div>
+      <p className={`text-sm ${c.text} font-bold mb-1`}>{label}</p>
+      <div className="text-sm text-[#8892B0] leading-relaxed">{children}</div>
     </div>
   );
 }

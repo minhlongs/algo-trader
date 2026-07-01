@@ -81,7 +81,7 @@ export function LicenseHealthGauge({
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`${sizeClasses[size].text} font-bold font-mono ${getHealthColor(healthScore)}`}>
+            <span className={`${sizeClasses[size].text} font-bold ${getHealthColor(healthScore)}`}>
               {healthScore}
             </span>
             <span className="text-muted text-xs">/100</span>
@@ -95,21 +95,21 @@ export function LicenseHealthGauge({
               <div className="w-2 h-2 rounded-full bg-profit" />
               <span className="text-muted">Healthy</span>
             </div>
-            <span className="text-white font-mono">{healthy} ({healthyPercent.toFixed(0)}%)</span>
+            <span className="text-white">{healthy} ({healthyPercent.toFixed(0)}%)</span>
           </div>
           <div className="flex justify-between items-center text-xs">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-gold" />
               <span className="text-muted">At Risk</span>
             </div>
-            <span className="text-white font-mono">{atRisk} ({atRiskPercent.toFixed(0)}%)</span>
+            <span className="text-white">{atRisk} ({atRiskPercent.toFixed(0)}%)</span>
           </div>
           <div className="flex justify-between items-center text-xs">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-loss" />
               <span className="text-muted">Exceeded</span>
             </div>
-            <span className="text-white font-mono">{exceeded} ({exceededPercent.toFixed(0)}%)</span>
+            <span className="text-white">{exceeded} ({exceededPercent.toFixed(0)}%)</span>
           </div>
         </div>
       </div>

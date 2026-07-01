@@ -62,14 +62,14 @@ export function RevenueMetricsCard({
       </div>
 
       {/* Value */}
-      <div className={`${accentClasses[accent]} text-2xl font-bold font-mono mb-2`}>
+      <div className={`${accentClasses[accent]} text-2xl font-bold mb-2`}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </div>
 
       {/* Change indicator */}
       {change !== undefined && (
         <div className="flex items-center gap-1.5">
-          <span className={`flex items-center gap-0.5 text-xs font-mono ${changeColorClass}`}>
+          <span className={`flex items-center gap-0.5 text-xs ${changeColorClass}`}>
             {arrowIcon}
             {Math.abs(change).toFixed(1)}%
           </span>
@@ -79,7 +79,7 @@ export function RevenueMetricsCard({
 
       {/* Sub-value (e.g., activity rate) */}
       {subValue && (
-        <div className="mt-2 text-muted text-xs font-mono">
+        <div className="mt-2 text-muted text-xs">
           {subValue}
         </div>
       )}

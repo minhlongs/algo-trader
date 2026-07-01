@@ -99,7 +99,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <summary className="text-accent text-xs font-semibold cursor-pointer">
                   Error Details
                 </summary>
-                <div className="text-xs text-muted font-mono break-all">
+                <div className="text-xs text-muted break-all">
                   <p className="text-loss font-semibold">{this.state.error.name}</p>
                   <p>{this.state.error.message}</p>
                 </div>

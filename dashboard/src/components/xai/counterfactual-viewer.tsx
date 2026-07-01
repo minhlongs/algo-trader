@@ -88,7 +88,7 @@ export function CounterfactualViewer({
   return (
     <StitchCard className={className}>
       <StitchCardHeader>
-        <h3 className="text-lg font-mono font-semibold flex items-center gap-2">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
           <span className="text-purple-400">🤔</span>
           What-If Scenarios
         </h3>

@@ -34,7 +34,7 @@ export function SubscriberEquityChart({
 
   if (curve.length === 0) {
     return (
-      <div className="flex items-center justify-center text-muted text-xs font-mono" style={{ height }}>
+      <div className="flex items-center justify-center text-muted text-xs" style={{ height }}>
         No equity data yet
       </div>
     );

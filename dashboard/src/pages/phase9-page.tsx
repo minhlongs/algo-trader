@@ -16,7 +16,7 @@ function StatusBadge({ status }: { status: MetricCard['status'] }) {
     warning: 'bg-yellow-500/20 text-yellow-400',
   };
   return (
-    <span className={`px-2 py-0.5 rounded text-xs font-mono ${colors[status]}`}>
+    <span className={`px-2 py-0.5 rounded text-xs ${colors[status]}`}>
       {status.toUpperCase()}
     </span>
   );
@@ -25,13 +25,13 @@ function StatusBadge({ status }: { status: MetricCard['status'] }) {
 function ModulePanel({ title, metrics }: { title: string; metrics: MetricCard[] }) {
   return (
     <div className="border border-bg-border rounded-lg p-4 bg-bg-secondary">
-      <h3 className="text-sm font-mono text-accent mb-3">{title}</h3>
+      <h3 className="text-sm text-accent mb-3">{title}</h3>
       <div className="grid grid-cols-2 gap-3">
         {metrics.map((m) => (
           <div key={m.label} className="flex flex-col gap-1">
-            <span className="text-xs text-muted font-mono">{m.label}</span>
+            <span className="text-xs text-muted">{m.label}</span>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-mono text-white">{m.value}</span>
+              <span className="text-sm text-white">{m.value}</span>
               <StatusBadge status={m.status} />
             </div>
           </div>
@@ -67,8 +67,8 @@ export function Phase9Page() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-mono text-white">Phase 9 — Singularity Engine</h2>
-        <p className="text-xs text-muted font-mono mt-1">
+        <h2 className="text-lg text-white">Phase 9 — Singularity Engine</h2>
+        <p className="text-xs text-muted mt-1">
           QSV + NS3 + OMSO modules. All disabled by default.
         </p>
       </div>
@@ -80,8 +80,8 @@ export function Phase9Page() {
       </div>
 
       <div className="border border-bg-border rounded-lg p-4 bg-bg-secondary">
-        <h3 className="text-sm font-mono text-accent mb-2">Configuration</h3>
-        <pre className="text-xs text-muted font-mono overflow-auto max-h-48">
+        <h3 className="text-sm text-accent mb-2">Configuration</h3>
+        <pre className="text-xs text-muted overflow-auto max-h-48">
 {`{
   "quantumSafeVault": { "enabled": false, "pqcAlgorithm": "Dilithium5" },
   "neuralSymbolicSynthesizer": { "enabled": false, "populationSize": 1000 },

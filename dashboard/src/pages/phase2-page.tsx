@@ -84,7 +84,7 @@ export function Phase2Page() {
   }, [handleMessage]);
 
   return (
-    <div className="space-y-6 font-mono">
+    <div className="space-y-6">
       <div>
         <h2 className="text-white text-lg font-bold tracking-tight">Phase 2 — AGI Modules</h2>
         <p className="text-muted text-xs mt-0.5">Zero-Shot Synthesizer / Flash Loans / Adversarial MM</p>

@@ -64,7 +64,7 @@ export function FeatureImportanceChart({
   return (
     <StitchCard className="w-full">
       <StitchCardHeader>
-        <h3 className="text-lg flex items-center gap-2 font-mono">
+        <h3 className="text-lg flex items-center gap-2">
           <span className="text-cyan-400">📊</span>
           {title}
         </h3>

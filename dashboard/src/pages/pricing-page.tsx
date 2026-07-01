@@ -110,7 +110,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
     <div className="border-b border-[#1E2640]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left text-sm font-mono text-white hover:text-[#00C8E8] transition-colors"
+        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-[#00C8E8] transition-colors"
       >
         <span>{q}</span>
         <svg
@@ -121,7 +121,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         </svg>
       </button>
       {open && (
-        <p className="text-[#8892B0] text-xs leading-relaxed pb-4 font-mono">{a}</p>
+        <p className="text-[#8892B0] text-xs leading-relaxed pb-4">{a}</p>
       )}
     </div>
   );
@@ -129,7 +129,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export function PricingPage() {
   return (
-    <div className="min-h-screen bg-[#080B14] text-white font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
@@ -171,7 +171,7 @@ export function PricingPage() {
                 {features.map(({ label, value }) => (
                   <li key={label} className="flex items-center justify-between text-xs">
                     <span className="text-[#8892B0]">{label}</span>
-                    <span className="flex items-center gap-1 font-mono">
+                    <span className="flex items-center gap-1">
                       {typeof value === 'boolean' ? (
                         value ? <CheckIcon /> : <XIcon />
                       ) : (

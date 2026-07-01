@@ -14,7 +14,7 @@ export function MethodologyPage() {
 
   return (
     <div className="min-h-screen bg-[#080B14] text-[#C9D1D9] flex items-center justify-center px-4">
-      <div className="text-center font-mono">
+      <div className="text-center">
         <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] mb-3">
           Redirecting
         </p>

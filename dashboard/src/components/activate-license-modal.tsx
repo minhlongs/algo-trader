@@ -67,7 +67,7 @@ export function ActivateLicenseModal({ open, onClose, onSuccess }: ActivateLicen
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="bg-bg-surface border border-bg-border rounded-lg shadow-2xl w-full max-w-lg font-mono">
+        <div className="bg-bg-surface border border-bg-border rounded-lg shadow-2xl w-full max-w-lg">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-bg-border">
             <h2 className="text-white text-base font-bold tracking-tight">
@@ -128,7 +128,7 @@ export function ActivateLicenseModal({ open, onClose, onSuccess }: ActivateLicen
                     JWT Token (valid 24h)
                   </label>
                   <div className="flex items-center gap-2">
-                    <code className="text-accent text-xs flex-1 break-all font-mono max-h-24 overflow-y-auto">
+                    <code className="text-accent text-xs flex-1 break-all max-h-24 overflow-y-auto">
                       {result.jwt.split('.').slice(0, 2).join('.')}...
                     </code>
                     <button
@@ -180,7 +180,7 @@ export function ActivateLicenseModal({ open, onClose, onSuccess }: ActivateLicen
                     onChange={(e) => setLicenseKey(e.target.value)}
                     placeholder="e.g., raas-free-abc123-XYZ789"
                     required
-                    className="w-full px-3 py-2 bg-bg-primary border border-bg-border text-white text-sm rounded focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-muted/50 font-mono"
+                    className="w-full px-3 py-2 bg-bg-primary border border-bg-border text-white text-sm rounded focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-muted/50"
                   />
                   <p className="text-muted text-[10px] mt-1.5">Enter the license key to activate</p>
                 </div>
@@ -228,7 +228,7 @@ export function ActivateLicenseModal({ open, onClose, onSuccess }: ActivateLicen
                       onChange={(e) => setMkApiKey(e.target.value)}
                       placeholder="mk_<key>:<tenantId>:<tier>"
                       required={useRaasGateway}
-                      className="w-full px-3 py-2 bg-bg-primary border border-bg-border text-white text-sm rounded focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-muted/50 font-mono"
+                      className="w-full px-3 py-2 bg-bg-primary border border-bg-border text-white text-sm rounded focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-muted/50"
                     />
                     <p className="text-muted text-[10px] mt-1.5">Format: mk_&lt;key&gt;:&lt;tenantId&gt;:&lt;tier&gt;</p>
                   </div>

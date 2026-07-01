@@ -6,12 +6,12 @@ import { CopyBlock, CollapsibleItem } from './guide-shared-components';
 export function GuideTroubleshooting() {
   return (
     <section id="troubleshooting">
-      <h2 className="text-xl font-bold font-mono text-white mb-4">Troubleshooting & Emergency</h2>
+      <h2 className="text-xl font-bold text-white mb-4">Troubleshooting & Emergency</h2>
 
       <div className="space-y-6">
         {/* Common Issues */}
         <div className="space-y-2">
-          <p className="text-sm font-mono text-white font-bold mb-2">Common Issues</p>
+          <p className="text-sm text-white font-bold mb-2">Common Issues</p>
           <CollapsibleItem title="Bot stopped unexpectedly">
             <p>Check logs and restart:</p>
             <CopyBlock code={`pm2 logs cashclaw --lines 50
@@ -53,19 +53,19 @@ pm2 logs cashclaw --lines 10 | grep -i license`} />
 
         {/* Emergency Stop */}
         <div>
-          <p className="text-sm font-mono text-red-400 font-bold mb-3">Emergency Stop Procedures</p>
+          <p className="text-sm text-red-400 font-bold mb-3">Emergency Stop Procedures</p>
           <div className="space-y-4">
             <div>
-              <p className="text-sm font-mono text-[#00C8E8] font-bold mb-2">Level 1 — Quick stop</p>
+              <p className="text-sm text-[#00C8E8] font-bold mb-2">Level 1 — Quick stop</p>
               <CopyBlock code="pm2 stop cashclaw" />
             </div>
             <div>
-              <p className="text-sm font-mono text-yellow-400 font-bold mb-2">Level 2 — Cancel all orders</p>
+              <p className="text-sm text-yellow-400 font-bold mb-2">Level 2 — Cancel all orders</p>
               <CopyBlock code={`pm2 stop cashclaw
 # Go to polymarket.com -> My Portfolio -> Cancel All Orders`} />
             </div>
             <div>
-              <p className="text-sm font-mono text-red-400 font-bold mb-2">Level 3 — Full shutdown + withdraw</p>
+              <p className="text-sm text-red-400 font-bold mb-2">Level 3 — Full shutdown + withdraw</p>
               <CopyBlock code={`pm2 delete cashclaw
 # Go to polymarket.com -> withdraw all USDC to your wallet`} />
             </div>
@@ -74,8 +74,8 @@ pm2 logs cashclaw --lines 10 | grep -i license`} />
 
         {/* Support */}
         <div className="border border-[#00C8E8]/30 bg-[#00C8E8]/5 rounded-lg p-4">
-          <p className="text-sm font-mono text-[#00C8E8] font-bold mb-1">Need Help?</p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-1">
+          <p className="text-sm text-[#00C8E8] font-bold mb-1">Need Help?</p>
+          <div className="text-sm text-[#8892B0] space-y-1">
             <p>Email: <span className="text-white">support@cashclaw.cc</span></p>
             <p>Telegram: <span className="text-white">@cashclaw_support</span></p>
             <p>Response time: &lt;24 hours (Pro/Elite: &lt;4 hours)</p>
@@ -84,9 +84,9 @@ pm2 logs cashclaw --lines 10 | grep -i license`} />
 
         {/* Glossary */}
         <div>
-          <p className="text-sm font-mono text-white font-bold mb-3">Glossary</p>
+          <p className="text-sm text-white font-bold mb-3">Glossary</p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm font-mono border-collapse">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-[#1E2640]">
                   <th className="text-left py-2 pr-6 text-[#00C8E8] w-1/3">Term</th>

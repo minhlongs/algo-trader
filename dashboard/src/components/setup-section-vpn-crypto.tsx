@@ -7,18 +7,18 @@ import { CopyBlock, CollapsibleItem, InfoBanner } from './guide-shared-component
 export function SetupVpnCrypto() {
   return (
     <section id="phase-a">
-      <h2 className="text-xl font-bold font-mono text-white mb-2">Phase A: Accounts & Crypto</h2>
-      <p className="text-sm font-mono text-[#8892B0] mb-6">
+      <h2 className="text-xl font-bold text-white mb-2">Phase A: Accounts & Crypto</h2>
+      <p className="text-sm text-[#8892B0] mb-6">
         Skip this phase if you already have a funded Polymarket account.
       </p>
 
       <div className="space-y-8">
         {/* A1: VPN */}
         <div id="vpn-setup">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">A1.</span> VPN Setup (required for restricted regions)
           </p>
-          <p className="text-sm font-mono text-[#8892B0] mb-3">
+          <p className="text-sm text-[#8892B0] mb-3">
             Polymarket is restricted in some countries. Use a VPN to access it.
           </p>
           <div className="space-y-3">
@@ -47,16 +47,16 @@ brew install --cask cloudflare-warp
 
         {/* A2: MetaMask */}
         <div id="metamask-setup">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">A2.</span> MetaMask Wallet
           </p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-2">
+          <div className="text-sm text-[#8892B0] space-y-2">
             <p>1. Install MetaMask browser extension from <span className="text-[#00C8E8]">metamask.io/download</span></p>
             <p>2. Create new wallet &rarr; <span className="text-yellow-400">SAVE 12 SEED WORDS ON PAPER</span></p>
             <p>3. Add Polygon network:</p>
           </div>
           <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-xs font-mono border-collapse">
+            <table className="w-full text-xs border-collapse">
               <tbody className="divide-y divide-[#1E2640]">
                 <tr><td className="py-1 pr-4 text-[#8892B0]">Network</td><td className="py-1 text-white">Polygon Mainnet</td></tr>
                 <tr><td className="py-1 pr-4 text-[#8892B0]">RPC URL</td><td className="py-1 text-white">https://polygon-rpc.com</td></tr>
@@ -70,10 +70,10 @@ brew install --cask cloudflare-warp
 
         {/* A3: Buy USDC */}
         <div id="buy-usdc">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">A3.</span> Buy USDC
           </p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-2">
+          <div className="text-sm text-[#8892B0] space-y-2">
             <p>1. Register at <span className="text-[#00C8E8]">binance.com</span> (email + ID verification)</p>
             <p>2. Trade &rarr; P2P &rarr; Buy &rarr; USDC &rarr; your currency &rarr; Bank Transfer</p>
             <p>3. Buy $500+ USDC (minimum $100, recommended $500-2000)</p>
@@ -85,26 +85,26 @@ brew install --cask cloudflare-warp
 
         {/* A4: Transfer */}
         <div id="transfer-usdc">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">A4.</span> Transfer USDC to MetaMask
           </p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-2">
+          <div className="text-sm text-[#8892B0] space-y-2">
             <p>1. Binance &rarr; Wallet &rarr; Withdraw &rarr; USDC</p>
             <p>2. Address: your MetaMask address (0x...)</p>
             <p>3. Network: <span className="text-red-400 font-bold">Polygon (NOT Ethereum!)</span></p>
             <p>4. Also withdraw 1 MATIC for gas fees</p>
           </div>
           <div className="mt-2 border-l-4 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-lg">
-            <p className="text-sm font-mono text-red-400 font-bold">ALWAYS send $1 test transaction first!</p>
+            <p className="text-sm text-red-400 font-bold">ALWAYS send $1 test transaction first!</p>
           </div>
         </div>
 
         {/* A5: Polymarket */}
         <div id="polymarket-account">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">A5.</span> Polymarket Account
           </p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-2">
+          <div className="text-sm text-[#8892B0] space-y-2">
             <p>1. Enable VPN &rarr; visit <span className="text-[#00C8E8]">polymarket.com</span></p>
             <p>2. Log In &rarr; Connect Wallet &rarr; MetaMask</p>
             <p>3. Deposit USDC into Polymarket</p>
@@ -113,10 +113,10 @@ brew install --cask cloudflare-warp
 
         {/* A6: API Keys */}
         <div id="api-keys">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">A6.</span> Polymarket API Keys
           </p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-2">
+          <div className="text-sm text-[#8892B0] space-y-2">
             <p>1. Polymarket &rarr; Settings &rarr; API Keys &rarr; Create API Key</p>
             <p>2. Save these 3 values:</p>
           </div>
@@ -127,10 +127,10 @@ POLYMARKET_PASSPHRASE=your_passphrase`} />
 
         {/* A7: Private Key */}
         <div id="private-key">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">A7.</span> Export Wallet Private Key
           </p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-2">
+          <div className="text-sm text-[#8892B0] space-y-2">
             <p>MetaMask &rarr; &hellip; &rarr; Account Details &rarr; Show Private Key &rarr; Enter password</p>
             <p className="text-yellow-400">Recommended: create a dedicated bot wallet (MetaMask &rarr; Add Account)</p>
           </div>

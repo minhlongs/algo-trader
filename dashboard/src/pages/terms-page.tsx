@@ -7,7 +7,7 @@ import { Footer } from '../components/footer';
 
 export function TermsPage() {
   return (
-    <div className="min-h-screen bg-[#080B14] text-white font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
       <PublicNavbar />
       <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 py-20">
         <h1 className="text-2xl font-bold text-white mb-6">Terms of Service</h1>

@@ -6,12 +6,12 @@ import { CopyBlock } from './guide-shared-components';
 export function GuideParameters() {
   return (
     <section id="parameters">
-      <h2 className="text-xl font-bold font-mono text-white mb-4">Trading Parameters</h2>
+      <h2 className="text-xl font-bold text-white mb-4">Trading Parameters</h2>
 
       <div className="space-y-6">
         {/* Parameter Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm font-mono border-collapse">
+          <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-[#1E2640]">
                 <th className="text-left py-2 pr-6 text-[#00C8E8]">Parameter</th>
@@ -50,7 +50,7 @@ export function GuideParameters() {
         </div>
 
         {/* Tuning Rules */}
-        <div className="space-y-2 text-sm font-mono">
+        <div className="space-y-2 text-sm">
           <p className="text-white font-bold mb-2">Tuning Rules</p>
           <p>Fills &lt;3/day &rarr; reduce spread (tighter)</p>
           <p>Fills &gt;30/day &rarr; increase spread (wider)</p>
@@ -60,8 +60,8 @@ export function GuideParameters() {
 
         {/* Fair Value Mode */}
         <div>
-          <p className="text-sm font-mono text-white font-bold mb-2">Fair Value Mode (Advanced)</p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-2">
+          <p className="text-sm text-white font-bold mb-2">Fair Value Mode (Advanced)</p>
+          <div className="text-sm text-[#8892B0] space-y-2">
             <p>
               By default the bot quotes around the <span className="text-white">market midpoint</span> (blind mode).
               Set your own probability estimate for better edge:
@@ -75,7 +75,7 @@ pnpm fv -- set will-btc-hit-100k 0.35 medium "Based on on-chain data"
 # Remove estimate (revert to blind mode)
 pnpm fv -- remove will-btc-hit-100k`} />
             <div className="overflow-x-auto mt-3">
-              <table className="w-full text-xs font-mono border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[#1E2640]">
                     <th className="text-left py-2 pr-6 text-[#00C8E8]">Confidence</th>

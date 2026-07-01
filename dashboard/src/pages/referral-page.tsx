@@ -118,7 +118,7 @@ export function ReferralPage() {
               <div className="flex-1">
                 {referralCode ? (
                   <div className="flex items-center gap-3">
-                    <code className="px-4 py-3 rounded bg-[#1e293b] text-[#4cd7f6] text-lg font-mono border border-[#334155]">
+                    <code className="px-4 py-3 rounded bg-[#1e293b] text-[#4cd7f6] text-lg border border-[#334155]">
                       {referralCode.code}
                     </code>
                     <StitchButton variant="secondary" onClick={handleCopyCode}>
@@ -146,7 +146,7 @@ export function ReferralPage() {
                     type="text"
                     readOnly
                     value={shareLink}
-                    className="flex-1 px-3 py-2 rounded bg-[#1e293b] border border-[#334155] text-sm font-mono"
+                    className="flex-1 px-3 py-2 rounded bg-[#1e293b] border border-[#334155] text-sm"
                     style={{ color: COLORS.onSurface }}
                   />
                   <StitchButton
@@ -164,7 +164,7 @@ export function ReferralPage() {
             <div className="grid grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: COLORS.outline }}>
               <div>
                 <div className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>Times Used</div>
-                <div className="text-lg font-mono" style={{ color: COLORS.onSurface }}>
+                <div className="text-lg" style={{ color: COLORS.onSurface }}>
                   {referralCode?.usedCount ?? 0}
                 </div>
               </div>
@@ -230,7 +230,7 @@ export function ReferralPage() {
                     className="flex items-center justify-between p-3 rounded bg-[#1e293b]"
                   >
                     <div>
-                      <div className="text-sm font-mono" style={{ color: COLORS.onSurface }}>
+                      <div className="text-sm" style={{ color: COLORS.onSurface }}>
                         {formatCurrency(commission.commissionAmount)}
                       </div>
                       <div className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>
@@ -278,7 +278,7 @@ export function ReferralPage() {
                     className="flex items-center justify-between p-3 rounded bg-[#1e293b]"
                   >
                     <div>
-                      <div className="text-sm font-mono" style={{ color: COLORS.onSurface }}>
+                      <div className="text-sm" style={{ color: COLORS.onSurface }}>
                         {formatCurrency(payout.amount)}
                       </div>
                       <div className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>
@@ -320,7 +320,7 @@ export function ReferralPage() {
                       {index + 1}
                     </div>
                     <div>
-                      <div className="text-sm font-mono" style={{ color: COLORS.onSurface }}>
+                      <div className="text-sm" style={{ color: COLORS.onSurface }}>
                         {referrer.tenantId.slice(0, 12)}...
                       </div>
                       <div className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>
@@ -328,7 +328,7 @@ export function ReferralPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-sm font-mono" style={{ color: COLORS.profit }}>
+                  <div className="text-sm" style={{ color: COLORS.profit }}>
                     {formatCurrency(referrer.commissionEarned)}
                   </div>
                 </div>

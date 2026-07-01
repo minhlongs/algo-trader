@@ -143,19 +143,19 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
                   <td className="px-4 py-3 text-muted">
                     {signal.sellExchange}
                   </td>
-                  <td className="px-4 py-3 text-right text-profit">
+                  <td className="px-4 py-3 text-right text-profit font-mono tabular-nums">
                     ${signal.buyPrice.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-right text-loss">
+                  <td className="px-4 py-3 text-right text-loss font-mono tabular-nums">
                     ${signal.sellPrice.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold text-accent">
+                  <td className="px-4 py-3 text-right font-semibold text-accent font-mono tabular-nums">
                     {signal.spread.toFixed(3)}%
                   </td>
-                  <td className="px-4 py-3 text-right text-muted">
+                  <td className="px-4 py-3 text-right text-muted font-mono tabular-nums">
                     {signal.latency}
                   </td>
-                  <td className="px-4 py-3 text-right text-muted">
+                  <td className="px-4 py-3 text-right text-muted font-mono tabular-nums">
                     {formatAge(signal.timestamp)}
                   </td>
                 </tr>

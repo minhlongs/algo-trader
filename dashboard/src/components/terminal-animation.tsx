@@ -12,7 +12,7 @@ const LINES = [
 
 export function TerminalAnimation() {
   return (
-    <div className="bg-[#0A0A14] border border-[#1E2640] rounded-lg p-4 font-mono text-xs overflow-hidden">
+    <div className="bg-[#0A0A14] border border-[#1E2640] rounded-lg p-4 text-xs overflow-hidden">
       {/* Title bar */}
       <div className="flex items-center gap-1.5 mb-3 pb-3 border-b border-[#1E2640]">
         <span className="w-2.5 h-2.5 rounded-full bg-[#FF4466]" />

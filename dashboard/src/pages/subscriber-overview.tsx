@@ -19,7 +19,7 @@ function pctFmt(n: number): string {
 interface ErrorBannerProps { message: string; onRetry: () => void }
 function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
   return (
-    <div className="p-4 bg-loss/10 border border-loss/40 rounded-lg text-loss text-sm font-mono flex items-center justify-between">
+    <div className="p-4 bg-loss/10 border border-loss/40 rounded-lg text-loss text-sm flex items-center justify-between">
       <span>{message}</span>
       <button
         onClick={onRetry}
@@ -37,7 +37,7 @@ export function SubscriberOverviewPage() {
 
   if (!tenantId) {
     return (
-      <div className="p-6 text-muted text-sm font-mono">
+      <div className="p-6 text-muted text-sm">
         No subscriber identity found. Please log in with a valid license key.
       </div>
     );
@@ -45,7 +45,7 @@ export function SubscriberOverviewPage() {
 
   if (loading && !summary) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted font-mono text-sm">
+      <div className="flex flex-col items-center justify-center py-20 text-muted text-sm">
         Loading subscriber metrics...
       </div>
     );
@@ -56,15 +56,15 @@ export function SubscriberOverviewPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white font-mono">Subscriber Overview</h1>
-          <p className="text-muted text-xs font-mono mt-0.5">
+          <h1 className="text-xl font-bold text-white">Subscriber Overview</h1>
+          <p className="text-muted text-xs mt-0.5">
             Tenant: <span className="text-accent">{tenantId}</span>
           </p>
         </div>
         <button
           onClick={refresh}
           disabled={loading}
-          className="px-3 py-1.5 bg-surface border border-border rounded text-xs font-mono text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
+          className="px-3 py-1.5 bg-surface border border-border rounded text-xs text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
         >
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
@@ -74,7 +74,7 @@ export function SubscriberOverviewPage() {
 
       {/* P&L KPI row */}
       <section>
-        <h2 className="text-[10px] uppercase tracking-widest text-muted font-mono mb-3">
+        <h2 className="text-[10px] uppercase tracking-widest text-muted mb-3">
           P&amp;L Summary
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -107,7 +107,7 @@ export function SubscriberOverviewPage() {
 
       {/* Activity KPI row */}
       <section>
-        <h2 className="text-[10px] uppercase tracking-widest text-muted font-mono mb-3">
+        <h2 className="text-[10px] uppercase tracking-widest text-muted mb-3">
           Activity
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -138,7 +138,7 @@ export function SubscriberOverviewPage() {
       {/* Best / Worst */}
       {summary && (
         <section>
-          <h2 className="text-[10px] uppercase tracking-widest text-muted font-mono mb-3">
+          <h2 className="text-[10px] uppercase tracking-widest text-muted mb-3">
             Trade Extremes
           </h2>
           <div className="grid grid-cols-2 gap-4">

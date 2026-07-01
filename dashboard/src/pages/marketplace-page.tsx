@@ -97,7 +97,7 @@ export function MarketplacePage() {
   }, [executeSubscription, loadSubscriptions]);
 
   return (
-    <div className="space-y-6 font-mono">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -214,7 +214,7 @@ export function MarketplacePage() {
                       </h3>
                       <div className="flex gap-1.5 shrink-0">
                         {isSubbed && (
-                          <span className={`text-[10px] border px-1.5 py-0.5 rounded font-mono ${statusColor('active')}`}>
+                          <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor('active')}`}>
                             Subscribed
                           </span>
                         )}
@@ -240,7 +240,7 @@ export function MarketplacePage() {
                         ].map(([label, value]) => (
                           <div key={label} className="flex justify-between text-[10px]">
                             <span className="text-muted">{label}</span>
-                            <span className="text-white font-mono">{value ?? '—'}</span>
+                            <span className="text-white">{value ?? '—'}</span>
                           </div>
                         ))}
                       </div>
@@ -312,7 +312,7 @@ export function MarketplacePage() {
                     <span className="text-white font-semibold text-xs">
                       Strategy #{sub.strategyId.slice(0, 12)}...
                     </span>
-                    <span className={`text-[10px] border px-1.5 py-0.5 rounded font-mono ${statusColor(sub.status)}`}>
+                    <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor(sub.status)}`}>
                       {sub.status}
                     </span>
                   </div>

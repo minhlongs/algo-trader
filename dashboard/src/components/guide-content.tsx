@@ -36,8 +36,8 @@ export function GuideContent() {
 
       {/* Table of Contents */}
       <nav aria-label="Table of contents">
-        <p className="text-xs font-mono text-[#00C8E8] uppercase tracking-widest mb-3">Contents</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-mono">
+        <p className="text-xs text-[#00C8E8] uppercase tracking-widest mb-3">Contents</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           {[
             { href: '#how-it-works', label: '1. How CashClaw Works' },
             { href: '#quick-start', label: '2. Quick Start (15 min)' },

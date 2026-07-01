@@ -19,7 +19,7 @@ export function HeroSoloQuant({
   return (
     <section className="pt-32 pb-16 px-4 sm:px-6 max-w-5xl mx-auto">
       <div className="flex flex-col items-start gap-6">
-        <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] font-mono">
+        <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em]">
           Prediction-Market Desk · Polymarket
         </p>
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight text-white">
@@ -30,7 +30,7 @@ export function HeroSoloQuant({
         <h2 className="text-[#8892B0] text-lg sm:text-xl leading-relaxed max-w-2xl">
           One human. Zero overhead. Open methodology.
         </h2>
-        <p className="text-[#8892B0]/80 text-sm sm:text-base leading-relaxed max-w-2xl font-mono">
+        <p className="text-[#8892B0]/80 text-sm sm:text-base leading-relaxed max-w-2xl">
           A single operator runs an entire quantitative desk with an autonomous
           agent stack, a local model, and a public trade log. The claim is
           verifiable — every trade is recorded, every batch is published.

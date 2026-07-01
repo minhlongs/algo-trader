@@ -230,7 +230,7 @@ export function CandlestickChart() {
           <select
             value={activePair}
             onChange={(e) => setActivePair(e.target.value)}
-            className="bg-bg border border-white/5 rounded px-2.5 py-1 text-accent text-xs font-mono focus:outline-none focus:border-accent"
+            className="bg-bg border border-white/5 rounded px-2.5 py-1 text-accent text-xs focus:outline-none focus:border-accent"
           >
             {tickers.length > 0 ? (
               tickers.map((t) => (

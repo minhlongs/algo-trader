@@ -39,7 +39,7 @@ export function OverageRevenueCard({
           <span className="text-muted text-[10px] uppercase tracking-widest">
             Overage Revenue
           </span>
-          <div className="text-gold text-2xl font-bold font-mono mt-1">
+          <div className="text-gold text-2xl font-bold mt-1">
             {formatCurrency(overageRevenue)}
           </div>
         </div>
@@ -63,15 +63,15 @@ export function OverageRevenueCard({
       <div className="space-y-2 pt-3 border-t border-bg-border">
         <div className="flex justify-between items-center text-xs">
           <span className="text-muted">Overage Calls</span>
-          <span className="text-white font-mono">{formatNumber(overageCalls)}</span>
+          <span className="text-white">{formatNumber(overageCalls)}</span>
         </div>
         <div className="flex justify-between items-center text-xs">
           <span className="text-muted">Licenses in Overage</span>
-          <span className="text-white font-mono">{licensesInOverage}</span>
+          <span className="text-white">{licensesInOverage}</span>
         </div>
         <div className="flex justify-between items-center text-xs">
           <span className="text-muted">Projected Monthly</span>
-          <span className="text-accent font-mono">{formatCurrency(projectedOverage)}</span>
+          <span className="text-accent">{formatCurrency(projectedOverage)}</span>
         </div>
       </div>
     </div>

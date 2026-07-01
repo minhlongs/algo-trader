@@ -54,7 +54,7 @@ export function AnalyticsPage() {
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
-        <p className="text-sm font-mono">Loading analytics...</p>
+        <p className="text-sm">Loading analytics...</p>
       </div>
     );
   }
@@ -66,7 +66,7 @@ export function AnalyticsPage() {
         <p className="text-sm mb-4">{error}</p>
         <button
           onClick={reload}
-          className="px-4 py-2 bg-loss/20 hover:bg-loss/30 rounded text-xs font-mono transition-colors"
+          className="px-4 py-2 bg-loss/20 hover:bg-loss/30 rounded text-xs transition-colors"
         >
           Retry
         </button>
@@ -83,7 +83,7 @@ export function AnalyticsPage() {
           <div className="flex items-center gap-3 mt-1">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${isPolling ? 'bg-profit animate-pulse' : 'bg-muted'}`} />
-              <span className="text-xs text-muted font-mono">
+              <span className="text-xs text-muted">
                 {isPolling ? `Live · Updated ${formatLastUpdated()}` : 'Paused'}
               </span>
             </div>
@@ -98,7 +98,7 @@ export function AnalyticsPage() {
                 key={range.value}
                 onClick={() => setTimeRange(range.value)}
                 className={`
-                  px-3 py-1.5 text-xs font-mono rounded transition-colors
+                  px-3 py-1.5 text-xs rounded transition-colors
                   ${timeRange === range.value
                     ? 'bg-accent/20 text-accent border border-accent/30'
                     : 'text-muted hover:text-white'
@@ -114,7 +114,7 @@ export function AnalyticsPage() {
           <button
             onClick={togglePolling}
             className={`
-              px-3 py-1.5 text-xs font-mono rounded border transition-colors
+              px-3 py-1.5 text-xs rounded border transition-colors
               ${isPolling
                 ? 'border-profit/30 text-profit hover:border-profit/50'
                 : 'border-bg-border text-muted hover:text-white'
@@ -249,7 +249,7 @@ export function AnalyticsPage() {
                 `}
               >
                 <span>{tier.tier}</span>
-                <span className="text-xs font-mono">{tier.subscriptionCount} subs</span>
+                <span className="text-xs">{tier.subscriptionCount} subs</span>
               </button>
             ))}
           </div>
@@ -261,13 +261,13 @@ export function AnalyticsPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <div className="text-muted text-xs mb-1">Total Revenue</div>
-              <div className="text-white font-bold font-mono text-lg">
+              <div className="text-white font-bold text-lg">
                 ${metrics?.trend.reduce((sum, t) => sum + t.totalMRR, 0).toLocaleString() || 0}
               </div>
             </div>
             <div>
               <div className="text-muted text-xs mb-1">Avg Growth</div>
-              <div className={`font-bold font-mono text-lg ${
+              <div className={`font-bold text-lg ${
                 (metrics?.mrrGrowth || 0) >= 0 ? 'text-profit' : 'text-loss'
               }`}>
                 {(metrics?.mrrGrowth || 0) >= 0 ? '+' : ''}{metrics?.mrrGrowth?.toFixed(1) || 0}%
@@ -275,13 +275,13 @@ export function AnalyticsPage() {
             </div>
             <div>
               <div className="text-muted text-xs mb-1">Active Subscriptions</div>
-              <div className="text-white font-bold font-mono text-lg">
+              <div className="text-white font-bold text-lg">
                 {metrics?.byTier.reduce((sum, t) => sum + t.subscriptionCount, 0).toLocaleString() || 0}
               </div>
             </div>
             <div>
               <div className="text-muted text-xs mb-1">Data Freshness</div>
-              <div className="text-profit font-bold font-mono text-lg">
+              <div className="text-profit font-bold text-lg">
                 {formatLastUpdated()}
               </div>
             </div>

@@ -7,15 +7,15 @@ import { CopyBlock, CollapsibleItem, InfoBanner } from './guide-shared-component
 export function SetupBotInstall() {
   return (
     <section id="phase-b">
-      <h2 className="text-xl font-bold font-mono text-white mb-2">Phase B: Bot Installation</h2>
-      <p className="text-sm font-mono text-[#8892B0] mb-6">
+      <h2 className="text-xl font-bold text-white mb-2">Phase B: Bot Installation</h2>
+      <p className="text-sm text-[#8892B0] mb-6">
         Install CashClaw, download AI model, configure and run.
       </p>
 
       <div className="space-y-8">
         {/* B1: Dependencies */}
         <div id="install-deps">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">B1.</span> Install Dependencies
           </p>
           <CollapsibleItem title="macOS (Apple Silicon M1/M2/M3/M4)">
@@ -71,14 +71,14 @@ node --version  # v20+`} />
 
         {/* B2: AI Model */}
         <div id="ai-model">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">B2.</span> Download AI Model
           </p>
-          <p className="text-sm font-mono text-[#8892B0] mb-3">
+          <p className="text-sm text-[#8892B0] mb-3">
             CashClaw uses a dual-model AI pipeline for market scanning and deep analysis.
           </p>
           <div className="overflow-x-auto mb-3">
-            <table className="w-full text-xs font-mono border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#1E2640]">
                   <th className="text-left py-2 pr-4 text-[#00C8E8]">Model</th>
@@ -146,7 +146,7 @@ curl http://localhost:11434/api/tags
 
         {/* B3: Clone & Build */}
         <div id="clone-build">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">B3.</span> Clone & Build CashClaw
           </p>
           <CopyBlock code={`git clone https://github.com/longtho638-jpg/algo-trader.git
@@ -159,7 +159,7 @@ npx tsc
 
         {/* B4: Configure */}
         <div id="configure-env">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">B4.</span> Configure Environment
           </p>
           <CopyBlock code={`cp .env.example .env
@@ -167,7 +167,7 @@ npx tsc
 # Edit .env with your credentials:
 nano .env`} />
           <div className="mt-3">
-            <p className="text-xs font-mono text-[#8892B0] mb-2">Required .env variables:</p>
+            <p className="text-xs text-[#8892B0] mb-2">Required .env variables:</p>
             <CopyBlock code={`# License (from CashClaw purchase)
 LICENSE_KEY=your-license-key
 LICENSE_SECRET=your-license-secret
@@ -195,7 +195,7 @@ MM_MAX_MARKETS=5`} />
 
         {/* B5: Dry Run */}
         <div id="dry-run">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">B5.</span> Test with Dry Run
           </p>
           <CopyBlock code={`# Start in DRY RUN mode (no real money)
@@ -216,7 +216,7 @@ pm2 logs cashclaw --lines 30
 
         {/* B6: Go Live */}
         <div id="go-live">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">B6.</span> Go Live
           </p>
           <CopyBlock code={`# Edit .env: change DRY_RUN=false
@@ -225,13 +225,13 @@ nano .env
 # Restart with live trading
 pm2 restart cashclaw`} />
           <div className="mt-2 border-l-4 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-lg">
-            <p className="text-sm font-mono text-red-400 font-bold">Start with $100-200. Watch for 48 hours. Scale up slowly.</p>
+            <p className="text-sm text-red-400 font-bold">Start with $100-200. Watch for 48 hours. Scale up slowly.</p>
           </div>
         </div>
 
         {/* B7: Run 24/7 */}
         <div id="run-247">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">B7.</span> Run 24/7
           </p>
           <CopyBlock code={`# PM2 auto-restart on server reboot
@@ -268,10 +268,10 @@ launchctl load ~/Library/LaunchAgents/com.cashclaw.bot.plist`} />
 
         {/* B8: Connect Dashboard */}
         <div id="connect-dashboard">
-          <p className="text-sm font-mono text-white mb-2">
+          <p className="text-sm text-white mb-2">
             <span className="text-[#00C8E8] font-bold">B8.</span> Connect to Dashboard (Order Book)
           </p>
-          <p className="text-sm font-mono text-[#8892B0] mb-3">
+          <p className="text-sm text-[#8892B0] mb-3">
             Connect your local bot to the CashClaw dashboard to see real-time order book data, P&L, and trade history.
           </p>
           <CopyBlock code={`# The API server exposes your bot's data (port 3000)
@@ -288,7 +288,7 @@ brew install cloudflared   # macOS
 cloudflared tunnel --url http://localhost:3000
 
 # Copy the https://xxx.trycloudflare.com URL`} />
-          <div className="mt-3 bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm font-mono text-[#8892B0] space-y-2">
+          <div className="mt-3 bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm text-[#8892B0] space-y-2">
             <p className="text-white font-bold">Connect to dashboard:</p>
             <p>1. Go to this dashboard &rarr; <span className="text-[#00C8E8]">Settings</span> tab</p>
             <p>2. Paste your tunnel URL in <span className="text-white">Bot API URL</span></p>

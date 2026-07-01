@@ -20,7 +20,7 @@ function formatDate(ts: number): string {
 export function TradeHistoryFeed({ trades }: Props) {
   if (trades.length === 0) {
     return (
-      <div className="text-center text-muted text-sm py-8 font-mono">
+      <div className="text-center text-muted text-sm py-8">
         No trades yet — waiting for bot signals
       </div>
     );
@@ -28,7 +28,7 @@ export function TradeHistoryFeed({ trades }: Props) {
 
   return (
     <div className="overflow-x-auto max-h-80 overflow-y-auto">
-      <table className="w-full text-xs font-mono">
+      <table className="w-full text-xs">
         <thead className="sticky top-0 bg-bg-surface">
           <tr className="text-muted text-[10px] uppercase tracking-widest border-b border-bg-border">
             <th className="text-left py-2 px-3">Time</th>
@@ -59,9 +59,9 @@ export function TradeHistoryFeed({ trades }: Props) {
                 </span>
               </td>
               <td className="py-2 px-3 text-white truncate max-w-[100px]">{t.symbol}</td>
-              <td className="py-2 px-3 text-right text-white">${t.price.toFixed(4)}</td>
-              <td className="py-2 px-3 text-right text-white">{t.size}</td>
-              <td className={`py-2 px-3 text-right font-semibold ${
+              <td className="py-2 px-3 text-right text-white font-mono tabular-nums">${t.price.toFixed(4)}</td>
+              <td className="py-2 px-3 text-right text-white font-mono tabular-nums">{t.size}</td>
+              <td className={`py-2 px-3 text-right font-semibold font-mono tabular-nums ${
                 t.pnl >= 0 ? 'text-profit' : 'text-loss'
               }`}>
                 {t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}

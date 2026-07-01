@@ -80,10 +80,10 @@ export function RoiMetricsOverview({
             />
           </svg>
         </div>
-        <div className="text-accent text-xl font-bold font-mono mb-1">
+        <div className="text-accent text-xl font-bold mb-1">
           {formatCurrency(mrr)}
         </div>
-        <div className="text-muted text-xs font-mono">
+        <div className="text-muted text-xs">
           ARR: {formatCurrency(arr)}
         </div>
       </div>
@@ -110,11 +110,11 @@ export function RoiMetricsOverview({
             />
           </svg>
         </div>
-        <div className="text-white text-xl font-bold font-mono mb-1">
+        <div className="text-white text-xl font-bold mb-1">
           {formatCurrency(totalRevenue)}
         </div>
         {overageRevenue > 0 && (
-          <div className="text-gold text-xs font-mono">
+          <div className="text-gold text-xs">
             +{formatCurrency(overageRevenue)} overage
           </div>
         )}
@@ -142,11 +142,11 @@ export function RoiMetricsOverview({
             />
           </svg>
         </div>
-        <div className="text-white text-xl font-bold font-mono mb-1">
+        <div className="text-white text-xl font-bold mb-1">
           LTV: {formatCurrency(ltv)}
         </div>
         <div
-          className={`text-xs font-mono ${getChurnColor(churnRate)}`}
+          className={`text-xs ${getChurnColor(churnRate)}`}
         >
           Churn: {formatPercent(churnRate)}
         </div>
@@ -175,11 +175,11 @@ export function RoiMetricsOverview({
           </svg>
         </div>
         <div
-          className={`${getHealthColor(healthScore)} text-xl font-bold font-mono mb-1`}
+          className={`${getHealthColor(healthScore)} text-xl font-bold mb-1`}
         >
           {healthScore}/100
         </div>
-        <div className="text-muted text-xs font-mono">
+        <div className="text-muted text-xs">
           Overall health score
         </div>
       </div>

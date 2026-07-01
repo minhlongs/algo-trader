@@ -76,7 +76,7 @@ export function ExplanationPanel({ explanation }: ExplanationPanelProps) {
     <StitchCard>
       <StitchCardHeader>
         <div className="flex items-center justify-between">
-          <h3 className="font-mono font-semibold text-lg">Trade Explanation</h3>
+          <h3 className="font-semibold text-lg">Trade Explanation</h3>
           <div className="flex items-center gap-2">
             {prediction !== undefined && (
               <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider text-white ${getActionColor(prediction)}`}>
@@ -96,7 +96,7 @@ export function ExplanationPanel({ explanation }: ExplanationPanelProps) {
         <div className="flex gap-2 border-b border-border pb-2">
           <button
             onClick={() => setActiveTab('summary')}
-            className={`px-3 py-1 text-xs font-mono uppercase transition-colors border-b-2 ${
+            className={`px-3 py-1 text-xs uppercase transition-colors border-b-2 ${
               activeTab === 'summary'
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted hover:text-white'
@@ -106,7 +106,7 @@ export function ExplanationPanel({ explanation }: ExplanationPanelProps) {
           </button>
           <button
             onClick={() => setActiveTab('attributions')}
-            className={`px-3 py-1 text-xs font-mono uppercase transition-colors border-b-2 ${
+            className={`px-3 py-1 text-xs uppercase transition-colors border-b-2 ${
               activeTab === 'attributions'
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted hover:text-white'
@@ -119,7 +119,7 @@ export function ExplanationPanel({ explanation }: ExplanationPanelProps) {
           </button>
           <button
             onClick={() => setActiveTab('counterfactual')}
-            className={`px-3 py-1 text-xs font-mono uppercase transition-colors border-b-2 ${
+            className={`px-3 py-1 text-xs uppercase transition-colors border-b-2 ${
               activeTab === 'counterfactual'
                 ? 'border-accent text-accent'
                 : 'border-transparent text-muted hover:text-white'
@@ -158,7 +158,7 @@ export function ExplanationPanel({ explanation }: ExplanationPanelProps) {
                 <div className="space-y-2">
                   {sortedFeatures.map(([name, importance], idx) => (
                     <div key={name} className="flex items-center gap-2">
-                      <span className="text-xs font-mono w-8 text-muted-foreground">#{idx + 1}</span>
+                      <span className="text-xs w-8 text-muted-foreground">#{idx + 1}</span>
                       <div className="flex-1">
                         <div className="flex justify-between text-sm">
                           <span>{name}</span>
@@ -201,7 +201,7 @@ export function ExplanationPanel({ explanation }: ExplanationPanelProps) {
                         .slice(0, 10)
                         .map(([name, value]) => (
                           <div key={name} className="flex items-center gap-2">
-                            <span className="text-xs font-mono w-24 truncate">{name}</span>
+                            <span className="text-xs w-24 truncate">{name}</span>
                             <div className="flex-1">
                               <div className="flex justify-between text-sm">
                                 <span>{value.toFixed(4)}</span>
@@ -228,7 +228,7 @@ export function ExplanationPanel({ explanation }: ExplanationPanelProps) {
                         .slice(0, 10)
                         .map(([name, value]) => (
                           <div key={name} className="flex items-center gap-2">
-                            <span className="text-xs font-mono w-24 truncate">{name}</span>
+                            <span className="text-xs w-24 truncate">{name}</span>
                             <div className="flex-1">
                               <div className="flex justify-between text-sm">
                                 <span>{value.toFixed(4)}</span>

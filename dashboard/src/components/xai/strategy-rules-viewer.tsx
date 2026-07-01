@@ -76,7 +76,7 @@ export function StrategyRulesViewer({
   return (
     <StitchCard className={className}>
       <StitchCardHeader>
-        <h3 className="text-lg flex items-center gap-2 font-mono">
+        <h3 className="text-lg flex items-center gap-2">
           <span className="text-cyan-400">📜</span>
           Strategy Rules: {strategyName}
         </h3>
@@ -132,7 +132,7 @@ export function StrategyRulesViewer({
                       <div className="space-y-2">
                         <div>
                           <div className="text-xs text-gray-500 mb-1">Condition</div>
-                          <code className="block bg-gray-950 p-2 rounded text-sm text-cyan-300 font-mono border border-gray-800">
+                          <code className="block bg-gray-950 p-2 rounded text-sm text-cyan-300 border border-gray-800">
                             {rule.condition}
                           </code>
                         </div>

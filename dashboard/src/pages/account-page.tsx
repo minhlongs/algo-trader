@@ -20,7 +20,7 @@ const TIER_BADGE_COLORS: Record<string, string> = {
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
-      <h2 className="text-white text-sm font-bold font-mono">{title}</h2>
+      <h2 className="text-white text-sm font-bold">{title}</h2>
       {children}
     </section>
   );
@@ -29,8 +29,8 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between py-2 border-b border-bg-border last:border-0">
-      <span className="text-muted text-xs font-mono">{label}</span>
-      <span className="text-white text-xs font-mono">{value}</span>
+      <span className="text-muted text-xs">{label}</span>
+      <span className="text-white text-xs">{value}</span>
     </div>
   );
 }
@@ -65,7 +65,7 @@ export function AccountPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-white text-2xl font-bold font-mono">Account</h1>
+      <h1 className="text-white text-2xl font-bold">Account</h1>
 
       {/* Profile */}
       <Card title="Profile">
@@ -77,12 +77,12 @@ export function AccountPage() {
       {/* Current Plan */}
       <Card title="Current Plan">
         <div className="flex items-center justify-between mb-4">
-          <span className={`px-2.5 py-1 rounded text-xs font-bold font-mono ${badgeClass}`}>
+          <span className={`px-2.5 py-1 rounded text-xs font-bold ${badgeClass}`}>
             {tierLabel}
           </span>
           <Link
             to="/pricing"
-            className="text-xs font-mono text-[#00C8E8] hover:underline"
+            className="text-xs text-[#00C8E8] hover:underline"
           >
             Upgrade plan →
           </Link>
@@ -96,21 +96,21 @@ export function AccountPage() {
 
       {/* API Key */}
       <Card title="API Key">
-        <p className="text-muted text-xs font-mono">
+        <p className="text-muted text-xs">
           Use this key to authenticate CLI and programmatic access.
         </p>
         <div className="bg-[#080B14] border border-[#1E2640] rounded px-4 py-3 flex items-center justify-between gap-3">
-          <code className="text-[#00C8E8] text-xs font-mono">{maskedKey}</code>
+          <code className="text-[#00C8E8] text-xs">{maskedKey}</code>
           <button
             disabled
             title="Contact support to regenerate your API key"
             aria-label="Regenerate API key — contact support to enable"
-            className="text-xs px-3 py-1.5 border border-[#1E2640] rounded text-muted font-mono cursor-not-allowed opacity-50"
+            className="text-xs px-3 py-1.5 border border-[#1E2640] rounded text-muted cursor-not-allowed opacity-50"
           >
             Regenerate
           </button>
         </div>
-        <p className="text-muted text-[10px] font-mono">
+        <p className="text-muted text-[10px]">
           Key regeneration is disabled.{' '}
           <a
             href="mailto:support@cashclaw.cc"
@@ -126,22 +126,22 @@ export function AccountPage() {
       <Card title="Billing">
         {tier === 'free' ? (
           <div className="flex items-center justify-between">
-            <p className="text-muted text-xs font-mono">You're on the free plan.</p>
+            <p className="text-muted text-xs">You're on the free plan.</p>
             <Link
               to="/pricing"
-              className="bg-[#00C8E8] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#00C8E8]/80 transition-colors font-mono"
+              className="bg-[#00C8E8] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#00C8E8]/80 transition-colors"
             >
               Upgrade
             </Link>
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <p className="text-muted text-xs font-mono">
+            <p className="text-muted text-xs">
               Active <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass}`}>{tierLabel}</span> subscription.
             </p>
             <Link
               to="/pricing"
-              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors font-mono"
+              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors"
             >
               Upgrade / Manage →
             </Link>
@@ -151,13 +151,13 @@ export function AccountPage() {
 
       {/* Danger Zone */}
       <Card title="Danger Zone">
-        <p className="text-muted text-xs font-mono">
+        <p className="text-muted text-xs">
           Permanently delete your account and all associated data.
         </p>
         <button
           disabled
           title="Contact support to delete your account"
-          className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 font-mono cursor-not-allowed opacity-50"
+          className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 cursor-not-allowed opacity-50"
         >
           Delete Account
         </button>

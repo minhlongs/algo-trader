@@ -106,7 +106,7 @@ export function Phase3Page() {
   const { mevSandwich, portfolioRebalancer, predatoryLiquidity } = status;
 
   return (
-    <div className="space-y-6 font-mono">
+    <div className="space-y-6">
       <div>
         <h2 className="text-white text-lg font-bold tracking-tight">Phase 3 — AGI Modules</h2>
         <p className="text-muted text-xs mt-0.5">MEV Sandwich / Portfolio Rebalancer / Predatory Liquidity</p>
@@ -171,7 +171,7 @@ export function Phase3Page() {
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-accent/20 text-accent">
                   {String(a.chain ?? 'eth').toUpperCase()}
                 </span>
-                <span className="text-white font-mono truncate max-w-[180px]">
+                <span className="text-white truncate max-w-[180px]">
                   {String(a.bundleHash ?? 'pending')}
                 </span>
                 <span className="text-muted ml-auto">{new Date(a.timestamp).toLocaleTimeString()}</span>
