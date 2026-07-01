@@ -340,19 +340,20 @@ describe('docker-compose service-dependency coherence — TRIACONTAGON (30th edg
     ).toBe(true);
   });
 
-  it("algo-trade has depends_on {redis: service_healthy, nats: service_healthy} (primary-dependency doctrine)", () => {
+  it("algo-trade has depends_on {redis: service_healthy, nats: service_healthy, postgres: service_healthy} (primary-dependency doctrine)", () => {
     const algo = services.get('algo-trade');
     expect(algo).toBeDefined();
-    expect(algo!.dependsOn.sort()).toEqual(['nats', 'redis']);
+    expect(algo!.dependsOn.sort()).toEqual(['nats', 'postgres', 'redis']);
   });
 
-  it('composite: all 3 essential services (algo-trade + redis + nats) present with healthchecks', () => {
-    for (const required of ['algo-trade', 'redis', 'nats']) {
+  it('composite: all 4 essential services (algo-trade + redis + nats + postgres) present with healthchecks', () => {
+    for (const required of ['algo-trade', 'redis', 'nats', 'postgres']) {
       const svc = services.get(required);
       expect(svc, `required service '${required}' missing`).toBeDefined();
     }
     expect(services.get('redis')!.healthcheckPresent).toBe(true);
     expect(services.get('nats')!.healthcheckPresent).toBe(true);
     expect(services.get('algo-trade')!.healthcheckPresent).toBe(true);
+    expect(services.get('postgres')!.healthcheckPresent).toBe(true);
   });
 });

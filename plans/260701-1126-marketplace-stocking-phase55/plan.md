@@ -10,10 +10,10 @@ Marketplace has 1 active strategy. 30+ Polymarket strategies already built but i
 
 | # | Phase | Effort | Status |
 |---|-------|--------|--------|
-| 01 | Listing Arbitrage Sniper (new) | ~200 lines | pending |
-| 02 | Activate Cross-Platform Arb | Wire existing 298-line standalone class | pending |
-| 03 | Surface 3 Existing Strategies | DB records + execution bridge adapters | pending |
-| 04 | Frontend Verification & Polish | Verify + minor badges | pending |
+| 01 | Listing Arbitrage Sniper (new) | ~200 lines | ✅ done (seeded via seedDeskStrategies) |
+| 02 | Activate Cross-Platform Arb | Wire existing 298-line standalone class | ✅ done (seeded via seedDeskStrategies) |
+| 03 | Surface 3 Existing Strategies | DB records + execution bridge adapters | ✅ done (generic bridge, no per-strategy adapters needed) |
+| 04 | Frontend Verification & Polish | Verify + minor badges | ✅ done (typecheck passed, API live, tier-gated) |
 
 ## Strategy Lineup
 
