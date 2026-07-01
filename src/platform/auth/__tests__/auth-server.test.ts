@@ -239,22 +239,19 @@ describe('auth-server', () => {
       expect(config!.secret).toBe('jwt-fallback-secret-at-least-32-chars!!');
     });
 
-    it('falls back to dev-only default when neither secret is set (error path)', async () => {
+    it('throws when neither secret is set (fail-fast)', async () => {
       delete process.env.BETTER_AUTH_SECRET;
       delete process.env.JWT_SECRET;
-      await import('../auth-server');
-
-      const config = getAuthConfig();
-      expect(config!.secret).toBe('dev-only-insecure-secret-change-me');
+      await expect(import('../auth-server')).rejects.toThrow(
+        'BETTER_AUTH_SECRET or JWT_SECRET must be set',
+      );
     });
 
-    it('logs a warning when no secret is configured (error path)', async () => {
+    it('throws when no secret is configured (was warn, now fail-fast)', async () => {
       delete process.env.BETTER_AUTH_SECRET;
       delete process.env.JWT_SECRET;
-      await import('../auth-server');
-
-      expect(mockLoggerWarn).toHaveBeenCalledWith(
-        expect.stringContaining('No BETTER_AUTH_SECRET'),
+      await expect(import('../auth-server')).rejects.toThrow(
+        'BETTER_AUTH_SECRET or JWT_SECRET must be set',
       );
     });
 

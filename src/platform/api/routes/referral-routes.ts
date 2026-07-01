@@ -7,6 +7,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { referralService } from '../../referral/referral-service';
 import { ReferralStats, CommissionStatus } from '../../referral/types';
+import { logger } from '../../../shared/utils/logger';
 import {
   trackClickSchema,
   generateCodeSchema,
@@ -68,7 +69,7 @@ referralRouter.get('/stats', requireTier('ENTERPRISE'), async (req: Request, res
     }
     return res.json({ data: stats });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get stats:', error);
+    logger.error('[ReferralRoutes] Failed to get stats:', error);
     return res.status(500).json({ error: 'Failed to fetch referral stats' });
   }
 });
@@ -93,7 +94,7 @@ referralRouter.get('/code', requireTier('ENTERPRISE'), async (req: Request, res:
     }
     return res.json({ data: code });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get referral code:', error);
+    logger.error('[ReferralRoutes] Failed to get referral code:', error);
     return res.status(500).json({ error: 'Failed to fetch referral code' });
   }
 });
@@ -120,7 +121,7 @@ referralRouter.post('/generate-code', requireTier('ENTERPRISE'), async (req: Req
     const code = await referralService.registerReferralCode(targetTenantId);
     return res.status(201).json({ data: code });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to generate code:', error);
+    logger.error('[ReferralRoutes] Failed to generate code:', error);
     const message = error instanceof Error ? error.message : 'Failed to generate referral code';
     return res.status(400).json({ error: message });
   }
@@ -151,7 +152,7 @@ referralRouter.post('/track-click', requireTier('ENTERPRISE'), async (req: Reque
     );
     return res.status(201).json({ data: tracking });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to track click:', error);
+    logger.error('[ReferralRoutes] Failed to track click:', error);
     const message = error instanceof Error ? error.message : 'Failed to track click';
     return res.status(400).json({ error: message });
   }
@@ -192,7 +193,7 @@ referralRouter.get('/commissions', requireTier('ENTERPRISE'), async (req: Reques
       },
     });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get commissions:', error);
+    logger.error('[ReferralRoutes] Failed to get commissions:', error);
     return res.status(500).json({ error: 'Failed to fetch commissions' });
   }
 });
@@ -249,7 +250,7 @@ referralRouter.get('/payouts', requireTier('ENTERPRISE'), async (req: Request, r
       },
     });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get payouts:', error);
+    logger.error('[ReferralRoutes] Failed to get payouts:', error);
     return res.status(500).json({ error: 'Failed to fetch payouts' });
   }
 });
@@ -316,7 +317,7 @@ referralRouter.post('/validate', requireTier('ENTERPRISE'), async (req: Request,
       },
     });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to validate code:', error);
+    logger.error('[ReferralRoutes] Failed to validate code:', error);
     return res.status(500).json({ error: 'Failed to validate referral code' });
   }
 });
@@ -340,7 +341,7 @@ referralRouter.get('/my-code', requireTier('ENTERPRISE'), async (req: Request, r
     }
     return res.json({ data: code });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get/generate code:', error);
+    logger.error('[ReferralRoutes] Failed to get/generate code:', error);
     return res.status(500).json({ error: 'Failed to get referral code' });
   }
 });
@@ -385,7 +386,7 @@ referralRouter.get('/clicks/:code', requireTier('ENTERPRISE'), async (req: Reque
       },
     });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get clicks:', error);
+    logger.error('[ReferralRoutes] Failed to get clicks:', error);
     return res.status(500).json({ error: 'Failed to fetch clicks' });
   }
 });

@@ -19,7 +19,7 @@ const { Pool } = pg;
 // Fail fast if no auth secret configured
 const authSecret = process.env.BETTER_AUTH_SECRET || process.env.JWT_SECRET;
 if (!authSecret) {
-  logger.warn('[BetterAuth] No BETTER_AUTH_SECRET or JWT_SECRET set — auth will fail at runtime');
+  throw new Error('[BetterAuth] BETTER_AUTH_SECRET or JWT_SECRET must be set. Auth cannot start without a secret.');
 }
 
 /** Create and export the Better Auth instance */
