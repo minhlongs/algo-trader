@@ -245,9 +245,9 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] Conditional VaR (CVaR)
 - [x] Drawdown tracking and alerts (drawdown-monitor.ts, circuit-breaker.ts)
 - [x] Position sizing engine (Kelly Criterion, kelly-position-sizer.ts)
-- [ ] Stop-loss automation (ATR-based trailing stops)
+- [x] Stop-loss automation (ATR-based trailing stops, atr-trailing-stop.ts)
 - Timeline: 2026-08-01 to 2026-09-15
-- Status: **IN PROGRESS** (5/6 items done, ATR trailing stop remaining)
+- Status: **COMPLETE** ✅ (6/6 items shipped 2026-07-01)
 
 ---
 
