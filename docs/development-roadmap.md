@@ -212,18 +212,18 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Timeline: 2026-05-01 to 2026-05-15
 - Status: **PLANNED**
 
-### Phase 35: Compliance & Security Hardening (Planned)
-- [ ] Audit logging for all trades and orders
+### Phase 35: Compliance & Security Hardening (Partially Implemented)
+- [x] Audit logging for all trades and orders (11 audit files in src/platform/audit/)
+- [x] Rate limiting per tenant (distributed-rate-limiter.ts)
+- [x] Encrypted sensitive data at rest (AES-256 utils/encryption)
+- [x] OWASP Top 10 security assessment (ck:security audit 2026-07-01)
 - [ ] KYC/AML integration (Persona or similar)
-- [ ] Rate limiting per tenant
-- [ ] Encrypted sensitive data at rest (AES-256)
 - [ ] SSL/TLS certificate management
-- [ ] OWASP Top 10 security assessment
 - [ ] Third-party security audit
 - Timeline: 2026-05-16 to 2026-06-15
-- Status: **PLANNED**
+- Status: **MOSTLY DONE** (3 items deferred)
 
-### Phase 36: Marketplace & Multi-Tenant Monetization (In Progress)
+### Phase 36: Marketplace & Multi-Tenant Monetization (Implementation Complete ✅)
 - [x] Strategy listing catalogue with browse, filter, sort
 - [x] Subscribe → checkout → payment flow (NOWPayments)
 - [x] Subscription lifecycle (pending_payment → active → paused → cancelled)
@@ -232,20 +232,22 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] Revenue reconciliation (80/20 platform split, payout scheduler, creator API)
 - [x] ConfirmationDialog + SubscriptionDetail UI components
 - [x] Strategy versioning & update mechanism
+- [x] Price display fix (cents→dollars), payment polling, IPN callback wiring
+- [x] Marketplace migrations registered in runner (025, 031, 032)
 - [ ] Deployment pipelines for third-party strategies
 - [ ] Backtesting harness for community uploads
-- Timeline: 2026-06-16 to 2026-07-31
-- Status: **IN PROGRESS** (implementation complete, env vars need manual setup)
+- Timeline: 2026-06-16 to 2026-07-01 (core flow shipped July 1)
+- Status: **CORE COMPLETE** (2 stretch items deferred)
 
-### Phase 37: Advanced Risk Management (Planned)
-- [ ] Portfolio correlation matrix
-- [ ] Value-at-Risk (VaR) calculations (95%, 99%)
-- [ ] Conditional VaR (CVaR)
+### Phase 37: Advanced Risk Management (In Progress)
+- [x] Portfolio correlation matrix
+- [x] Value-at-Risk (VaR) calculations (95%, 99%)
+- [x] Conditional VaR (CVaR)
 - [ ] Drawdown tracking and alerts
 - [ ] Stop-loss automation (ATR-based trailing stops)
 - [ ] Position sizing engine (Kelly Criterion variant)
 - Timeline: 2026-08-01 to 2026-09-15
-- Status: **PLANNED**
+- Status: **IN PROGRESS**
 
 ---
 

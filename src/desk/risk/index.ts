@@ -8,5 +8,7 @@ export * from './position-manager';
 export * from './drawdown-monitor';
 export * from './kelly-position-sizer';
 export * from './tiered-drawdown-breaker';
+export * from './portfolio-correlation';
+export * from './value-at-risk';
 // Re-export persistence utility for risk consumers
 export * from '../../shared/persistence/file-store';
