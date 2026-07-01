@@ -36,6 +36,7 @@ import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
 import { errorHandler } from '../middleware/error-handler';
+import { seedDeskStrategies } from '../marketplace/services/desk-strategy-seeder';
 
 export interface ApiConfig {
   port: number;
@@ -202,6 +203,11 @@ this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
     return new Promise((resolve) => {
       this.server = this.app.listen(this.config.port, () => {
         logger.info(`[ApiServer] Listening on port ${this.config.port}`);
+        // Seed marketplace strategies (idempotent — skips existing)
+        seedDeskStrategies().then(
+          (r) => logger.info('[ApiServer] Marketplace seeding complete', r),
+          (e) => logger.error('[ApiServer] Marketplace seeding failed', { err: String(e) }),
+        );
         resolve();
       });
     });
