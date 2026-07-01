@@ -20,6 +20,12 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - NATS_URL=nats://nats:4222
+      - DATABASE_URL=postgresql://algo:${DB_PASSWORD:-algo_local}@postgres:5432/algo_trade
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=algo_trade
+      - DB_USER=algo
+      - DB_PASSWORD=${DB_PASSWORD:-algo_local}
     volumes:
       - ./data:/app/data
     healthcheck:
@@ -33,6 +39,8 @@ services:
         condition: service_healthy
       nats:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - algo-net
 
@@ -42,7 +50,7 @@ services:
     container_name: algo-trade-redis
     restart: unless-stopped
     ports:
-      - '6379:6379'
+      - '6380:6379'
     command: ['redis-server', '--maxmemory', '512mb', '--maxmemory-policy', 'allkeys-lru']
     volumes:
       - redis_data:/data
@@ -73,6 +81,28 @@ services:
     networks:
       - algo-net
 
+  # PostgreSQL — primary database (marketplace, auth, billing, trades)
+  postgres:
+    image: postgres:16-alpine
+    container_name: algo-trade-postgres
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=algo
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-algo_local}
+      - POSTGRES_DB=algo_trade
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U algo -d algo_trade']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - algo-net
+
 networks:
   algo-net:
     driver: bridge
@@ -80,3 +110,4 @@ networks:
 volumes:
   redis_data:
   nats_data:
+  pg_data:

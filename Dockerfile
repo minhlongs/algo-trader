@@ -51,4 +51,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
 
 # Entry point
-CMD ["node", "dist/cli/index.js"]
+CMD ["node", "dist/app.js"]

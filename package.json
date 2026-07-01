@@ -22,7 +22,6 @@
     "sop:dev": "node --watch src/agi-sops/index.js",
     "disk:check": "pnpm exec ts-node scripts/disk-monitor.ts",
     "disk:check:sh": "sh scripts/pre-build-check.sh",
-    "prebuild": "npm run disk:check:sh",
     "build": "tsc",
     "build:fast": "tsc --incremental",
     "build:clean": "rm -rf dist && tsc",
