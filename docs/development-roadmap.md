@@ -243,11 +243,11 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] Portfolio correlation matrix
 - [x] Value-at-Risk (VaR) calculations (95%, 99%)
 - [x] Conditional VaR (CVaR)
-- [ ] Drawdown tracking and alerts
+- [x] Drawdown tracking and alerts (drawdown-monitor.ts, circuit-breaker.ts)
+- [x] Position sizing engine (Kelly Criterion, kelly-position-sizer.ts)
 - [ ] Stop-loss automation (ATR-based trailing stops)
-- [ ] Position sizing engine (Kelly Criterion variant)
 - Timeline: 2026-08-01 to 2026-09-15
-- Status: **IN PROGRESS**
+- Status: **IN PROGRESS** (5/6 items done, ATR trailing stop remaining)
 
 ---
 

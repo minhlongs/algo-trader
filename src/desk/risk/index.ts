@@ -10,5 +10,6 @@ export * from './kelly-position-sizer';
 export * from './tiered-drawdown-breaker';
 export * from './portfolio-correlation';
 export * from './value-at-risk';
+export * from './atr-trailing-stop';
 // Re-export persistence utility for risk consumers
 export * from '../../shared/persistence/file-store';
