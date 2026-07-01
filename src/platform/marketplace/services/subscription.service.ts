@@ -67,6 +67,7 @@ export class SubscriptionService {
         strategyName,
         priceUsd: listing.priceUsdMonthly / 100, // Convert cents to dollars
         tenantId: data.tenantId,
+        ipnCallbackUrl: process.env.NOWPAYMENTS_IPN_URL || 'https://api.cashclaw.cc/api/webhooks/nowpayments',
       });
 
       if (result) {

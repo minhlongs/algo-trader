@@ -11,6 +11,7 @@
 
 import { SubscriptionService } from '../../../../marketplace/services/subscription.service';
 import { RevenueService } from '../../../../marketplace/services/revenue.service';
+import { marketplaceExecutionBridge } from '../../../../marketplace/services/marketplace-execution-bridge';
 import { AuditLogService } from '../../../../audit/audit-log-service';
 import { NowPaymentsService, NowPaymentsIpnPayload } from '../../../../billing/nowpayments-service';
 import { logger } from '../../../../../shared/utils/logger';
@@ -72,6 +73,33 @@ export async function handleMarketplaceIpnFinished(
         amount: ipn.price_amount,
       },
     });
+
+    // Auto-trigger strategy execution for newly activated subscription.
+    // Failure here must NOT block activation — subscription is already active.
+    try {
+      const execResult = await marketplaceExecutionBridge.executeForSubscriber(
+        activated.id,
+        { trigger: 'subscription_activation', paymentId: ipn.payment_id },
+      );
+      if (execResult) {
+        logger.info('Auto-execution triggered on subscription activation', {
+          subscriptionId: activated.id,
+          strategyId: execResult.strategyId,
+          signal: execResult.execResult.signal,
+          profit: execResult.execResult.profit,
+        });
+      } else {
+        logger.warn('Auto-execution returned null (subscription not executable)', {
+          subscriptionId: activated.id,
+          status: activated.status,
+        });
+      }
+    } catch (execError) {
+      logger.error('Auto-execution failed on subscription activation (activation unaffected)', {
+        subscriptionId: activated.id,
+        error: execError,
+      });
+    }
 
     logger.info('Marketplace payment processed', {
       paymentId: ipn.payment_id,

@@ -8,6 +8,9 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useMarketplace } from '../hooks/use-marketplace';
 import type { MarketplaceSubscription, StrategyFilters } from '../hooks/use-marketplace';
+import { ConfirmationDialog } from '../components/confirmation-dialog';
+import { SubscriptionDetail } from '../components/subscription-detail';
+import type { ExecutionRecord } from '../components/subscription-detail';
 
 const CATEGORIES = ['arbitrage', 'momentum', 'mean-reversion', 'statistical', 'portfolio', 'risk', 'hedging', 'other'];
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -19,10 +22,6 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
 ];
 
 type TabId = 'browse' | 'subscriptions';
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(0)}`;
-}
 
 function statusColor(status: string): string {
   switch (status) {
@@ -43,10 +42,16 @@ export function MarketplacePage() {
 
   const [activeTab, setActiveTab] = useState<TabId>('browse');
   const [filters, setFilters] = useState<StrategyFilters>({ sortBy: 'sharpe', sortOrder: 'desc', limit: 12 });
-  const [subscribeModal, setSubscribeModal] = useState<{ listingId: string; strategyName: string; priceUsd: number } | null>(null);
+  const [subscribeModal, setSubscribeModal] = useState<{ listingId: string; strategyName: string; priceCents: number } | null>(null);
   const [allocPercent, setAllocPercent] = useState(25);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [executing, setExecuting] = useState<string | null>(null);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  const [pollingPayment, setPollingPayment] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<MarketplaceSubscription | null>(null);
+  const [executionHistory, setExecutionHistory] = useState<Map<string, ExecutionRecord>>(new Map());
+
 
   useEffect(() => {
     loadSubscriptions();
@@ -74,14 +79,48 @@ export function MarketplacePage() {
 
   const handleSubscribe = useCallback(async () => {
     if (!subscribeModal) return;
-    const result = await subscribe(subscribeModal.listingId, allocPercent);
-    if (result?.checkoutUrl) {
-      setCheckoutUrl(result.checkoutUrl);
-    } else {
-      setSubscribeModal(null);
-      loadSubscriptions();
+    setSubscribing(true);
+    setSubscribeError(null);
+    try {
+      const result = await subscribe(subscribeModal.listingId, allocPercent);
+      if (result?.checkoutUrl) {
+        setCheckoutUrl(result.checkoutUrl);
+      } else {
+        setSubscribeModal(null);
+        setCheckoutUrl(null);
+        loadSubscriptions();
+      }
+    } catch (err) {
+      setSubscribeError(err instanceof Error ? err.message : 'Subscribe failed. Please try again.');
+    } finally {
+      setSubscribing(false);
     }
   }, [subscribeModal, allocPercent, subscribe, loadSubscriptions]);
+
+  const handleCheckPayment = useCallback(async () => {
+    if (!subscribeModal) return;
+    setPollingPayment(true);
+    const maxAttempts = 10;
+    const intervalMs = 3000;
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise((r) => setTimeout(r, intervalMs));
+      const subs = await loadSubscriptions();
+      if (!subs) continue;
+      const found = subs.find(
+        (s) => s.status === 'active' && s.listingId === subscribeModal.listingId,
+      );
+      if (found) {
+        setSubscribeModal(null);
+        setCheckoutUrl(null);
+        setPollingPayment(false);
+        return;
+      }
+    }
+    setPollingPayment(false);
+    setSubscribeModal(null);
+    setCheckoutUrl(null);
+    loadSubscriptions();
+  }, [subscribeModal, loadSubscriptions]);
 
   const handlePauseResume = useCallback(async (sub: MarketplaceSubscription) => {
     const action = sub.status === 'active' ? 'pause' : 'resume';
@@ -89,17 +128,38 @@ export function MarketplacePage() {
     loadSubscriptions();
   }, [updateSubscription, loadSubscriptions]);
 
-  const handleCancel = useCallback(async (sub: MarketplaceSubscription) => {
-    if (!confirm('Cancel this subscription?')) return;
-    await updateSubscription(sub.id, 'cancel');
+  const handleCancel = useCallback((sub: MarketplaceSubscription) => {
+    setCancelTarget(sub);
+  }, []);
+
+  const confirmCancel = useCallback(async () => {
+    if (!cancelTarget) return;
+    await updateSubscription(cancelTarget.id, 'cancel');
+    setCancelTarget(null);
     loadSubscriptions();
-  }, [updateSubscription, loadSubscriptions]);
+  }, [cancelTarget, updateSubscription, loadSubscriptions]);
 
   const handleExecute = useCallback(async (sub: MarketplaceSubscription) => {
     setExecuting(sub.id);
-    await executeSubscription(sub.id);
-    setExecuting(null);
-    loadSubscriptions();
+    try {
+      const result = await executeSubscription(sub.id) as ExecutionRecord | null;
+      setExecutionHistory((prev) => {
+        const next = new Map(prev);
+        next.set(sub.id, result
+          ? { ...result, timestamp: Date.now() }
+          : { timestamp: Date.now() });
+        return next;
+      });
+    } catch {
+      setExecutionHistory((prev) => {
+        const next = new Map(prev);
+        next.set(sub.id, { timestamp: Date.now(), error: 'Execution failed' });
+        return next;
+      });
+    } finally {
+      setExecuting(null);
+      loadSubscriptions();
+    }
   }, [executeSubscription, loadSubscriptions]);
 
   return (
@@ -206,11 +266,13 @@ export function MarketplacePage() {
               {strategies.map((s) => {
                 const mySub = subByStrategy.get(s.id);
                 const isSubbed = mySub?.status === 'active';
+                const isPending = mySub?.status === 'pending_payment';
+                const isPaused = mySub?.status === 'paused';
                 return (
                   <div
                     key={s.id}
                     className={`bg-bg-surface border rounded-lg p-4 flex flex-col gap-3 transition-colors ${
-                      isSubbed ? 'border-accent/40' : 'border-bg-border hover:border-accent/30'
+                      isSubbed ? 'border-accent/40' : isPending ? 'border-yellow-400/40' : 'border-bg-border hover:border-accent/30'
                     }`}
                   >
                     {/* Name + Badges */}
@@ -222,6 +284,11 @@ export function MarketplacePage() {
                         {isSubbed && (
                           <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor('active')}`}>
                             Subscribed
+                          </span>
+                        )}
+                        {isPending && (
+                          <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor('pending_payment')}`}>
+                            Payment Pending
                           </span>
                         )}
                         <span className="text-[10px] border border-bg-border text-muted px-1.5 py-0.5 rounded">
@@ -257,18 +324,26 @@ export function MarketplacePage() {
                       <div className="text-center text-[10px] text-accent font-bold py-1.5 border border-accent/30 rounded">
                         ✓ Active
                       </div>
+                    ) : isPending ? (
+                      <div className="text-center text-[10px] text-yellow-400 py-1.5 border border-yellow-400/30 rounded">
+                        Payment pending — subscribe to retry
+                      </div>
+                    ) : isPaused ? (
+                      <div className="text-center text-[10px] text-muted py-1.5 border border-bg-border rounded">
+                        Paused — manage in My Subscriptions
+                      </div>
                     ) : (
                       <button
                         type="button"
                         onClick={() => setSubscribeModal({
                           listingId: s.listingId ?? s.id,
                           strategyName: s.name,
-                          priceUsd: s.listingPriceUsdMonthly ?? 0,
+                          priceCents: s.listingPriceUsdMonthly ?? 0,
                         })}
                         className="text-center text-xs font-bold bg-accent text-bg py-2 rounded hover:bg-accent/80 transition-colors"
                       >
                         {s.listingPriceUsdMonthly && s.listingPriceUsdMonthly > 0
-                          ? `Subscribe — $${s.listingPriceUsdMonthly}/mo`
+                          ? `Subscribe — $${(s.listingPriceUsdMonthly / 100).toFixed(2)}/mo`
                           : 'Subscribe (Free)'}
                       </button>
                     )}
@@ -304,74 +379,52 @@ export function MarketplacePage() {
       {activeTab === 'subscriptions' && (
         <div className="space-y-3">
           {subscriptions.length === 0 ? (
-            <div className="text-muted text-xs py-12 text-center">
-              No subscriptions yet. Browse strategies to subscribe.
+            <div className="text-center py-12 space-y-3">
+              <p className="text-muted text-xs">
+                No subscriptions yet. Browse strategies to get started.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('browse');
+                  loadStrategies(filters);
+                }}
+                className="px-4 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors"
+              >
+                Browse Strategies
+              </button>
+            </div>
+          ) : subscriptions.every((s) => s.status !== 'active') ? (
+            <div className="text-center py-12 space-y-3">
+              <p className="text-muted text-xs">
+                You have no active subscriptions.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('browse');
+                  loadStrategies(filters);
+                }}
+                className="px-4 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors"
+              >
+                Browse Strategies
+              </button>
             </div>
           ) : (
             subscriptions.map((sub) => (
-              <div
+              <SubscriptionDetail
                 key={sub.id}
-                className={`bg-bg-surface border rounded-lg p-4 flex flex-col md:flex-row md:items-center gap-3 ${
-                  sub.status === 'active' ? 'border-accent/30' : 'border-bg-border'
-                }`}
-              >
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-semibold text-xs">
-                      {strategyNameById.get(sub.strategyId) ?? `Strategy #${sub.strategyId.slice(0, 12)}...`}
-                    </span>
-                    <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor(sub.status)}`}>
-                      {sub.status}
-                    </span>
-                  </div>
-                  <div className="flex gap-3 text-[10px] text-muted">
-                    <span>Alloc: {sub.allocationPercent}%</span>
-                    <span>Invested: {formatCents(sub.currentInvestmentUsd)}</span>
-                    <span className={sub.totalPnlUsd >= 0 ? 'text-profit' : 'text-loss'}>
-                      P&L: {formatCents(sub.totalPnlUsd)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-1.5 shrink-0">
-                  {sub.status === 'active' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleExecute(sub)}
-                        disabled={executing === sub.id}
-                        className="px-3 py-1.5 text-[10px] font-bold bg-accent/20 text-accent border border-accent/30 rounded hover:bg-accent/30 disabled:opacity-50"
-                      >
-                        {executing === sub.id ? '...' : 'Execute'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePauseResume(sub)}
-                        className="px-3 py-1.5 text-[10px] font-bold text-yellow-400 border border-yellow-400/30 rounded hover:bg-yellow-400/10"
-                      >
-                        Pause
-                      </button>
-                    </>
-                  )}
-                  {sub.status === 'paused' && (
-                    <button
-                      type="button"
-                      onClick={() => handlePauseResume(sub)}
-                      className="px-3 py-1.5 text-[10px] font-bold text-profit border border-profit/30 rounded hover:bg-profit/10"
-                    >
-                      Resume
-                    </button>
-                  )}
-                  {(sub.status === 'active' || sub.status === 'paused') && (
-                    <button
-                      type="button"
-                      onClick={() => handleCancel(sub)}
-                      className="px-3 py-1.5 text-[10px] font-bold text-loss border border-loss/30 rounded hover:bg-loss/10"
-                    >
-                      Cancel
-                    </button>
-                  )}
-                </div>
-              </div>
+                subscription={sub}
+                strategyName={
+                  strategyNameById.get(sub.strategyId) ??
+                  `Strategy #${sub.strategyId.slice(0, 12)}...`
+                }
+                executionHistory={executionHistory}
+                isExecuting={executing === sub.id}
+                onPauseResume={handlePauseResume}
+                onCancel={handleCancel}
+                onExecute={handleExecute}
+              />
             ))
           )}
         </div>
@@ -418,10 +471,14 @@ export function MarketplacePage() {
               </div>
             </div>
 
-            {subscribeModal.priceUsd > 0 && (
+            {subscribeModal.priceCents > 0 && (
               <p className="text-xs text-white">
-                Price: <span className="text-gold font-bold">${subscribeModal.priceUsd}/mo</span>
+                Price: <span className="text-gold font-bold">${(subscribeModal.priceCents / 100).toFixed(2)}/mo</span>
               </p>
+            )}
+
+            {subscribeError && (
+              <p className="text-xs text-red-400">{subscribeError}</p>
             )}
 
             {checkoutUrl ? (
@@ -439,26 +496,53 @@ export function MarketplacePage() {
                 </a>
                 <button
                   type="button"
-                  onClick={() => { setCheckoutUrl(null); setSubscribeModal(null); loadSubscriptions(); }}
-                  className="w-full text-center text-[10px] text-muted hover:text-white"
+                  onClick={handleCheckPayment}
+                  disabled={pollingPayment}
+                  className="w-full text-center text-[10px] text-muted hover:text-white disabled:opacity-50"
                 >
-                  I already paid
+                  {pollingPayment ? 'Checking payment status...' : 'I already paid'}
                 </button>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={handleSubscribe}
-                className="w-full text-xs font-bold bg-accent text-bg py-2.5 rounded hover:bg-accent/80 transition-colors"
+                disabled={subscribing}
+                className="w-full text-xs font-bold bg-accent text-bg py-2.5 rounded hover:bg-accent/80 transition-colors disabled:opacity-50"
               >
-                {subscribeModal.priceUsd > 0
-                  ? `Subscribe — $${subscribeModal.priceUsd}/mo`
-                  : 'Subscribe (Free)'}
+                {subscribing
+                  ? 'Subscribing...'
+                  : subscribeModal.priceCents > 0
+                    ? `Subscribe — $${(subscribeModal.priceCents / 100).toFixed(2)}/mo`
+                    : 'Subscribe (Free)'}
               </button>
             )}
           </div>
         </div>
       )}
+
+      {/* Cancel Confirmation Dialog */}
+      <ConfirmationDialog
+        open={cancelTarget !== null}
+        title="Cancel Subscription"
+        message={
+          cancelTarget && (
+            <span>
+              Cancel subscription to{' '}
+              <span className="text-white font-semibold">
+                {strategyNameById.get(cancelTarget.strategyId) ??
+                  `Strategy #${cancelTarget.strategyId.slice(0, 12)}...`}
+              </span>
+              ? This cannot be undone.
+            </span>
+          )
+        }
+        confirmLabel="Cancel Subscription"
+        cancelLabel="Go Back"
+        variant="danger"
+        onConfirm={confirmCancel}
+        onCancel={() => setCancelTarget(null)}
+      />
     </div>
   );
 }

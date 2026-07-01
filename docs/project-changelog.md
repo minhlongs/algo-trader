@@ -35,7 +35,49 @@
 
 ---
 
-## [2.4.88] - 2026-04-20
+## [3.1.0] - 2026-07-01
+
+### Added — Marketplace E2E flow: subscribe, checkout, activate, execute
+
+Complete end-to-end marketplace subscription flow from dashboard to strategy execution:
+
+**Subscription Service** (`src/platform/marketplace/services/subscription.service.ts`):
+- `subscribe()` — Creates subscription + NOWPayments checkout URL for paid listings
+- `activateByPaymentId()` — Transitions `pending_payment` → `active` on IPN `finished`
+- `cancelByPaymentId()` — Handles refunded/failed payments
+- `updateSubscription()` — Pause/resume/cancel lifecycle
+
+**Marketplace Payment Handler** (`src/platform/api/routes/webhooks/handlers/marketplace-payment-handler.ts`):
+- NOWPayments IPN `status=finished` → activates subscription + records 80/20 revenue share
+- Auto-triggers execution bridge on successful activation
+
+**Marketplace Execution Bridge** (`src/platform/marketplace/services/marketplace-execution-bridge.ts`):
+- Connects active marketplace subscriptions to RaaS `SubscriberExecutor`
+- `executeForSubscriber()` — Single-subscriber execution with custom risk limits
+- `executeActiveForStrategy()` — Fan-out execution to all active subscribers
+- Syncs execution results back to subscription P&L
+
+**Revenue Reconciliation — Phase 04**:
+- `MarketplacePayoutScheduler` — BullMQ weekly cron (Sun 2AM) for auto-payout
+- Creator revenue API (`GET /v1/marketplace/revenue/my-earnings`)
+- Admin batch mark-as-paid (`POST /admin/marketplace/revenue/mark-paid`)
+- Real MRR/churn calculations from `marketplace_revenue_shares`
+
+**Dashboard UI** (`dashboard/src/`):
+- `MarketplacePage` (550 lines) — Full browse/filter/subscribe/manage flow
+- `SubscriptionDetail` (216 lines) — Subscription card with status, P&L, execution history, actions
+- `ConfirmationDialog` (77 lines) — Reusable confirm/cancel modal
+- Payment polling: auto-polls subscription status after checkout redirect
+
+**Infrastructure changes:**
+- 5 marketplace strategies auto-seeded on server startup ($79-$149/mo)
+- New DB migration: `032_add_marketplace_payout_address.sql`
+- New env vars: `NOWPAYMENTS_IPN_URL` (callback URL), `NOWPAYMENTS_INVOICE_PRO`, `NOWPAYMENTS_INVOICE_ENTERPRISE`
+
+**Files added:** 14 new files (routes, services, repositories, handlers, UI components, tests)
+**Files modified:** 8 existing files (nowpayments webhook, billing service, server.ts, types, tests)
+
+---
 
 ### Added — Feature-gate tier-based access-control discipline 10-invariant sync (HEPTAHEXACONTAGON = 67, prime + lucky prime)
 

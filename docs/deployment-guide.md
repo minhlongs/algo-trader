@@ -77,7 +77,14 @@ wrangler pages deploy dist/ --project-name cashclaw-dashboard
 | `REDIS_URL` | Redis connection string |
 | `NOWPAYMENTS_API_KEY` | NOWPayments API key for billing |
 | `NOWPAYMENTS_IPN_SECRET` | NOWPayments IPN secret for webhook verification |
+| `NOWPAYMENTS_IPN_URL` | Public callback URL for NOWPayments IPN (e.g. `https://api.cashclaw.cc/api/webhooks/nowpayments`) |
 | `USDT_TRC20_WALLET` | TRC20 wallet address for USDT receivals |
+
+### NOWPayments (Marketplace & Licensing)
+| Var | Description |
+|-----|-------------|
+| `NOWPAYMENTS_INVOICE_PRO` | Pre-created invoice ID for PRO tier (from NOWPayments dashboard) |
+| `NOWPAYMENTS_INVOICE_ENTERPRISE` | Pre-created invoice ID for ENTERPRISE tier (from NOWPayments dashboard) |
 
 ### Database & Redis
 | Var | Default | Description |
@@ -394,6 +401,14 @@ Before deploying to production:
 - [ ] SSH keys rotated
 - [ ] Health checks passing
 - [ ] CI/CD pipeline green
+
+### Marketplace Setup
+
+- [ ] NOWPayments invoice IDs created in dashboard (`NOWPAYMENTS_INVOICE_PRO`, `NOWPAYMENTS_INVOICE_ENTERPRISE`)
+- [ ] `NOWPAYMENTS_IPN_URL` points to public webhook endpoint (e.g. `https://api.cashclaw.cc/api/webhooks/nowpayments`)
+- [ ] Marketplace strategies seeded on startup (auto-seeded, verify with `GET /api/v1/marketplace/strategies`)
+- [ ] Test subscribe → checkout → payment flow end-to-end
+- [ ] Verify IPN webhook activates subscription on payment `finished`
 
 ## References
 

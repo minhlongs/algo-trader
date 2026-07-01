@@ -223,15 +223,19 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Timeline: 2026-05-16 to 2026-06-15
 - Status: **PLANNED**
 
-### Phase 36: Marketplace & Multi-Tenant Monetization (Planned)
-- [ ] Marketplace for custom strategies
-- [ ] Revenue sharing model (80/20 platform split)
-- [ ] Strategy versioning & update mechanism
+### Phase 36: Marketplace & Multi-Tenant Monetization (In Progress)
+- [x] Strategy listing catalogue with browse, filter, sort
+- [x] Subscribe → checkout → payment flow (NOWPayments)
+- [x] Subscription lifecycle (pending_payment → active → paused → cancelled)
+- [x] Marketplace payment webhook handler (IPN status=finished activation)
+- [x] Marketplace execution bridge (auto-trigger RaaS on activation)
+- [x] Revenue reconciliation (80/20 platform split, payout scheduler, creator API)
+- [x] ConfirmationDialog + SubscriptionDetail UI components
+- [x] Strategy versioning & update mechanism
 - [ ] Deployment pipelines for third-party strategies
-- [ ] Strategy rating/review system
 - [ ] Backtesting harness for community uploads
 - Timeline: 2026-06-16 to 2026-07-31
-- Status: **PLANNED**
+- Status: **IN PROGRESS** (implementation complete, env vars need manual setup)
 
 ### Phase 37: Advanced Risk Management (Planned)
 - [ ] Portfolio correlation matrix

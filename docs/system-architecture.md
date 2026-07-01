@@ -116,7 +116,7 @@ src/
 | `api/` | Express REST + WebSocket gateway, 31 route files with tier gating | shared + desk (IStrategy) |
 | `auth/` | Better Auth integration (multi-tenant sessions) | shared only |
 | `billing/` | Invoice generation, NOWPayments, license management | shared only |
-| `marketplace/` | Multi-tenant strategy marketplace (listings, subscriptions, reviews, disputes, vetting) | shared + desk (registry) |
+| `marketplace/` | Multi-tenant strategy marketplace (listings, subscriptions, payment flow, execution bridge, revenue shares, reviews, disputes, vetting) | shared + desk (registry) |
 | `raas/` | RaaS subscriber executor -- sandbox per tenant with DLP + attestation | shared + desk (IStrategy) |
 | `metering/` | Usage metering with threshold alerts | shared only |
 | `middleware/` | Tier gating (`requireTier`), rate limiting, tenant isolation, Prometheus metrics, error handler | shared only |
@@ -537,7 +537,7 @@ All Opportunities →
 - **26 PR Merges** (Session: #58-#85) — CLOB v2, WebSocket feeds, CLI enhancements, multi-platform support
 - **Target**: $1M ARR via RaaS + white-label licensing
 
-Updated: 2026-06-30
+Updated: 2026-07-01
 
 ---
 
