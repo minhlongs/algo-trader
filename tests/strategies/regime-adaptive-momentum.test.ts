@@ -7,8 +7,8 @@ import {
   calcTrendDirection,
   createRegimeAdaptiveMomentumTick,
   type RegimeAdaptiveMomentumDeps,
-} from '../../src/strategies/polymarket/regime-adaptive-momentum.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/regime-adaptive-momentum';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -2,7 +2,7 @@
  * Qwen live-eligibility gate discipline 10-invariant sync — L4/L4b
  * paper-gate substrate edge.
  *
- * `src/wiring/qwen-live-eligibility-gate.ts` enforces the paper-gate
+ * `src/desk/wiring/qwen-live-eligibility-gate.ts` enforces the paper-gate
  * before any Qwen signal can touch live money:
  *   - L4: MIN_PAPER_DAYS = 30 (HARDCODED — not env-overridable)
  *   - L4b: QWEN_AUTO_APPROVE_MAX_USD = 500 (env, default 500)
@@ -84,7 +84,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const GATE_FILE = resolve(REPO_ROOT, 'src/wiring/qwen-live-eligibility-gate.ts');
+const GATE_FILE = resolve(REPO_ROOT, 'src/desk/wiring/qwen-live-eligibility-gate.ts');
 
 const EXPECTED_MIN_PAPER_DAYS = 30;
 const EXPECTED_AUTO_APPROVE_DEFAULT_USD = 500;

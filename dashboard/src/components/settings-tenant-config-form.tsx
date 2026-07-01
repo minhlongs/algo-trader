@@ -44,9 +44,9 @@ export function SettingsTenantConfigForm({ tenant }: Props) {
   return (
     <>
       {/* Tenant Info */}
-      <section className="bg-bg-card border border-bg-border rounded-lg p-6 space-y-4">
+      <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
         <SectionHeader title="Tenant Info" />
-        <div className="grid grid-cols-2 gap-4 text-sm font-mono">
+        <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted text-xs mb-1">Name</p>
             <p className="text-white">{tenant.name}</p>
@@ -69,7 +69,7 @@ export function SettingsTenantConfigForm({ tenant }: Props) {
       </section>
 
       {/* Exchange Config */}
-      <section className="bg-bg-card border border-bg-border rounded-lg p-6 space-y-4">
+      <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
         <SectionHeader title="Exchange Config" />
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {Object.entries(EXCHANGE_LABELS).map(([key, label]) => {
@@ -77,7 +77,7 @@ export function SettingsTenantConfigForm({ tenant }: Props) {
             return (
               <div
                 key={key}
-                className={`flex items-center gap-2 border rounded px-3 py-2 text-xs font-mono ${
+                className={`flex items-center gap-2 border rounded px-3 py-2 text-xs ${
                   enabled
                     ? 'border-profit/40 text-profit bg-profit/5'
                     : 'border-bg-border text-muted bg-bg'

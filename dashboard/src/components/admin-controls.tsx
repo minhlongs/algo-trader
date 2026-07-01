@@ -47,7 +47,7 @@ export function AdminControls({ status, halt, resume, loading, error, onRefresh 
       case 'OPEN':
         return 'text-loss';
       case 'HALF_OPEN':
-        return 'text-warning';
+        return 'text-gold';
       default:
         return 'text-muted';
     }
@@ -67,7 +67,7 @@ export function AdminControls({ status, halt, resume, loading, error, onRefresh 
   };
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-white text-sm font-semibold">Admin Controls</h3>
@@ -123,13 +123,13 @@ export function AdminControls({ status, halt, resume, loading, error, onRefresh 
           <div className="bg-bg-subtle rounded p-3 text-xs">
             <div className="flex justify-between mb-1">
               <span className="text-muted">Current Drawdown</span>
-              <span className="text-white font-mono">
+              <span className="text-white">
                 {(status.drawdown.currentDrawdown * 100).toFixed(2)}%
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted">Max Drawdown</span>
-              <span className="text-white font-mono">
+              <span className="text-white">
                 {(status.drawdown.maxDrawdown * 100).toFixed(2)}%
               </span>
             </div>
@@ -170,7 +170,7 @@ export function AdminControls({ status, halt, resume, loading, error, onRefresh 
       {/* Halt Modal */}
       {showHaltModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-bg-card border border-bg-border rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="bg-bg-surface border border-bg-border rounded-lg p-6 max-w-md w-full mx-4">
             <h4 className="text-white text-sm font-semibold mb-4">Halt Trading</h4>
             <p className="text-muted text-xs mb-4">
               This will immediately stop all trading activity. Provide a reason for the halt.

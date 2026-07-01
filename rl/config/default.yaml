@@ -1,0 +1,97 @@
+# Default RL configuration
+# This file can be edited to customize training behavior
+
+initial_balance: 10000.0
+max_episode_steps: 1000
+transaction_cost: 0.001
+slippage: 0.0005
+window_size: 20
+
+action_type: "continuous"
+discrete_action_levels: 5
+continuous_position_limit: 1.0
+
+reward_type: "sharpe"
+reward_window: 100
+max_drawdown_penalty: 0.0
+turnover_penalty: 0.0
+reward_scale: 100.0
+
+data_path: null
+feature_columns:
+  - "open"
+  - "high"
+  - "low"
+  - "close"
+  - "volume"
+technical_indicators: true
+train_split: 0.7
+validation_split: 0.15
+normalization: "standard"
+
+total_timesteps: 100000
+learning_rate: 0.0003
+batch_size: 64
+gamma: 0.99
+n_steps: 2048
+n_epochs: 10
+gae_lambda: 0.95
+clip_range: 0.2
+ent_coef: 0.01
+vf_coef: 0.5
+max_grad_norm: 0.5
+
+buffer_size: 100000
+learning_starts: 1000
+tau: 0.005
+train_freq: 1
+target_entropy: "auto"
+
+exploration_fraction: 0.1
+exploration_final_eps: 0.01
+target_update_interval: 10000
+double_q: true
+dueling: false
+
+log_dir: "./logs"
+model_dir: "./models"
+tensorboard_log: "./tensorboard"
+
+# --- Walk-Forward Analysis ---
+wfa_n_splits: 5
+wfa_train_expansion: true
+wfa_initial_train_size: 0.3
+wfa_retrain_frequency: 1
+wfa_save_models: true
+wfa_save_metrics: true
+
+# --- Ensemble ---
+ensemble_n_models: 5
+ensemble_method: "weighted"
+ensemble_weight_metric: "sharpe_ratio"
+ensemble_min_weight: 0.1
+ensemble_save: true
+
+# --- Paper Trading ---
+paper_trading_initial_capital: 10000.0
+paper_trading_session_duration: null
+paper_trading_save_interval: 100
+paper_trading_persist_state: true
+paper_trading_state_file: null
+
+# --- Capital Allocation ---
+capital_total: 100000.0
+capital_allocation_stages: [0.01, 0.05, 0.10]
+capital_performance_window: 100
+capital_sharpe_threshold_up: 1.5
+capital_sharpe_threshold_down: 0.5
+capital_max_drawdown_limit: 0.10
+capital_consecutive_wins: 5
+capital_cooldown_period: 20
+
+# --- Benchmark ---
+benchmark_strategies: ["buy_and_hold", "equal_weight", "random"]
+benchmark_metrics: ["sharpe_ratio", "total_return", "max_drawdown", "calmar_ratio"]
+benchmark_tracking_error_window: 50
+benchmark_information_ratio_annualization: 252.0
+benchmark_save_history: true

@@ -7,7 +7,7 @@ import {
   classifyMarketCategory,
   FEE_SCHEDULES,
   type PolymarketCategory,
-} from '../../src/polymarket/polymarket-fee-calculator.js';
+} from '../../src/desk/polymarket/polymarket-fee-calculator';
 
 describe('Polymarket Fee Calculator', () => {
   describe('calcTakerFee', () => {

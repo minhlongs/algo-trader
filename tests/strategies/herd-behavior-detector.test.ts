@@ -9,8 +9,8 @@ import {
   DEFAULT_CONFIG,
   type HerdBehaviorDetectorConfig,
   type HerdBehaviorDetectorDeps,
-} from '../../src/strategies/polymarket/herd-behavior-detector.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/herd-behavior-detector';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
 

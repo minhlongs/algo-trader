@@ -46,20 +46,20 @@ export function RoiMetricsOverview({
 
   const getHealthColor = (score: number) => {
     if (score >= 80) return 'text-profit';
-    if (score >= 60) return 'text-warning';
+    if (score >= 60) return 'text-gold';
     return 'text-loss';
   };
 
   const getChurnColor = (rate: number) => {
     if (rate <= 3) return 'text-profit';
-    if (rate <= 7) return 'text-warning';
+    if (rate <= 7) return 'text-gold';
     return 'text-loss';
   };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* MRR + ARR Card */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
         <div className="flex items-start justify-between mb-2">
           <span className="text-muted text-[10px] uppercase tracking-widest">
             MRR / ARR
@@ -80,16 +80,16 @@ export function RoiMetricsOverview({
             />
           </svg>
         </div>
-        <div className="text-accent text-xl font-bold font-mono mb-1">
+        <div className="text-accent text-xl font-bold mb-1">
           {formatCurrency(mrr)}
         </div>
-        <div className="text-muted text-xs font-mono">
+        <div className="text-muted text-xs">
           ARR: {formatCurrency(arr)}
         </div>
       </div>
 
       {/* Total Revenue + Overage Card */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
         <div className="flex items-start justify-between mb-2">
           <span className="text-muted text-[10px] uppercase tracking-widest">
             Revenue
@@ -110,18 +110,18 @@ export function RoiMetricsOverview({
             />
           </svg>
         </div>
-        <div className="text-white text-xl font-bold font-mono mb-1">
+        <div className="text-white text-xl font-bold mb-1">
           {formatCurrency(totalRevenue)}
         </div>
         {overageRevenue > 0 && (
-          <div className="text-warning text-xs font-mono">
+          <div className="text-gold text-xs">
             +{formatCurrency(overageRevenue)} overage
           </div>
         )}
       </div>
 
       {/* LTV + Churn Card */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
         <div className="flex items-start justify-between mb-2">
           <span className="text-muted text-[10px] uppercase tracking-widest">
             Customer Value
@@ -142,18 +142,18 @@ export function RoiMetricsOverview({
             />
           </svg>
         </div>
-        <div className="text-white text-xl font-bold font-mono mb-1">
+        <div className="text-white text-xl font-bold mb-1">
           LTV: {formatCurrency(ltv)}
         </div>
         <div
-          className={`text-xs font-mono ${getChurnColor(churnRate)}`}
+          className={`text-xs ${getChurnColor(churnRate)}`}
         >
           Churn: {formatPercent(churnRate)}
         </div>
       </div>
 
       {/* Health Score Card */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4 hover:border-bg-border/60 transition-colors">
         <div className="flex items-start justify-between mb-2">
           <span className="text-muted text-[10px] uppercase tracking-widest">
             License Health
@@ -175,11 +175,11 @@ export function RoiMetricsOverview({
           </svg>
         </div>
         <div
-          className={`${getHealthColor(healthScore)} text-xl font-bold font-mono mb-1`}
+          className={`${getHealthColor(healthScore)} text-xl font-bold mb-1`}
         >
           {healthScore}/100
         </div>
-        <div className="text-muted text-xs font-mono">
+        <div className="text-muted text-xs">
           Overall health score
         </div>
       </div>

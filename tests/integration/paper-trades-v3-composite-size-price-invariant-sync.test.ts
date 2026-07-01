@@ -40,7 +40,7 @@
  *      Authority for the positivity + range bounds lives in the WRITER +
  *      READER contracts (documented gap).
  *   2. **Writer size formula (upper-bounded by Math.min)** —
- *      `src/wiring/paper-trading-orchestrator.ts:142`:
+ *      `src/desk/wiring/paper-trading-orchestrator.ts:142`:
  *        `const size = Math.min(portfolio.capital * POSITION_SIZE_PCT, vibe.maxExposure);`
  *      — guarantees size > 0 when capital > 0 AND POSITION_SIZE_PCT > 0 AND
  *      vibe.maxExposure > 0 (all enforced upstream). `Math.min(...)` is the
@@ -127,10 +127,14 @@ const MIGRATION_PATH = resolve(
 );
 const ORCHESTRATOR_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/paper-trading-orchestrator.ts',
+  'src/desk/wiring/paper-trading-orchestrator.ts',
 );
-const DRAWDOWN_PATH = resolve(REPO_ROOT, 'src/wiring/qwen-drawdown-monitor.ts');
-const SIGNALS_LOOP_PATH = resolve(REPO_ROOT, 'src/wiring/qwen-signals-loop.ts');
+const PERSISTENCE_PATH = resolve(
+  REPO_ROOT,
+  'src/desk/wiring/paper-trading-persistence.ts',
+);
+const DRAWDOWN_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-monitor.ts');
+const SIGNALS_LOOP_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
 
 /** Strip SQL comments. */
 function stripSqlComments(src: string): string {
@@ -227,6 +231,7 @@ function hasSignalsLoopNullifGuard(src: string): boolean {
 describe('paper_trades_v3 composite {size_usd > 0, entry_price ∈ [0,1]} — 5-surface sync', () => {
   const migration = readFileSync(MIGRATION_PATH, 'utf8');
   const orchestrator = readFileSync(ORCHESTRATOR_PATH, 'utf8');
+  const persistence = readFileSync(PERSISTENCE_PATH, 'utf8');
   const drawdown = readFileSync(DRAWDOWN_PATH, 'utf8');
   const signalsLoop = readFileSync(SIGNALS_LOOP_PATH, 'utf8');
 
@@ -288,8 +293,8 @@ describe('paper_trades_v3 composite {size_usd > 0, entry_price ∈ [0,1]} — 5-
 
   it('cost-per-share inversion pattern present — couples entry_price to [0,1] range semantic', () => {
     expect(
-      hasCostPerShareInversion(orchestrator),
-      "paper-trading-orchestrator.ts missing `costPerShare = trade.side === 'YES' ? trade.entryPrice : (1 - trade.entryPrice)` — COHERENCE mechanism lost; if entry_price drifts outside [0,1] the inversion produces nonsense cost, breaking shares=size/costPerShare arithmetic",
+      hasCostPerShareInversion(orchestrator) || hasCostPerShareInversion(persistence),
+      'no code site contains `costPerShare = trade.side === \'YES\' ? trade.entryPrice : (1 - trade.entryPrice)` — COHERENCE mechanism lost; if entry_price drifts outside [0,1] the inversion produces nonsense cost, breaking shares=size/costPerShare arithmetic',
     ).toBe(true);
   });
 
@@ -316,7 +321,7 @@ describe('paper_trades_v3 composite {size_usd > 0, entry_price ∈ [0,1]} — 5-
     // three fire together — the "composite" part of the composite invariant.
     const s = hasSizeMathMinFormula(orchestrator);
     const e = hasEntryPriceYesNoTernary(orchestrator);
-    const c = hasCostPerShareInversion(orchestrator);
+    const c = hasCostPerShareInversion(orchestrator) || hasCostPerShareInversion(persistence);
     expect(
       s && e && c,
       `composite invariant broken: size-Math.min=${s}, entry_price-ternary=${e}, costPerShare-inversion=${c} — all three writer/reader mechanisms must fire together; dropping one cascades to wrong shares/wrong P&L/wrong Sharpe`,

@@ -1,7 +1,7 @@
 /**
- * Main dashboard page: Week 5-6 UI Polish + Beta Launch.
- * Features: Real-time WebSocket updates, skeleton loaders, responsive grid.
- * Mobile-first design with Tailwind breakpoints.
+ * Main dashboard page — Quant Elite design.
+ * Real-time WebSocket updates, skeleton loaders, responsive grid.
+ * Geist sans for UI, JetBrains Mono for data/metrics.
  */
 import { useState, useEffect } from 'react';
 import { useTradingStore } from '../stores/trading-store';
@@ -85,13 +85,13 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 font-mono">
+    <div className="space-y-6 font-sans">
       {/* Top bar - responsive layout */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-white text-lg sm:text-xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted text-xs mt-0.5">
-            Algo Trader v5.6 • {wsConnected ? 'Connected' : 'Disconnected'}
+            Algo Trader v5.7.0 • {wsConnected ? 'Connected' : 'Disconnected'}
             {latency.avgLatency > 0 && ` • ${latency.avgLatency}ms latency`}
           </p>
           {wsError && <p className="text-loss text-xs mt-1">{wsError}</p>}
@@ -212,7 +212,7 @@ export function DashboardPage() {
           <span className="w-1 h-4 bg-accent rounded-full inline-block" />
           Equity Curve
         </h3>
-        <div className="bg-bg-card border border-bg-border rounded-lg p-3 sm:p-4">
+        <div className="bg-bg-surface border border-bg-border rounded-lg p-3 sm:p-4">
           {pnlLoading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
         </div>
       </section>
@@ -223,7 +223,7 @@ export function DashboardPage() {
           <span className="w-1 h-4 bg-accent rounded-full inline-block" />
           Live Prices
         </h3>
-        <div className="bg-bg-card border border-bg-border rounded-lg overflow-x-auto">
+        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-x-auto">
           {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
         </div>
       </section>
@@ -249,7 +249,7 @@ export function DashboardPage() {
       {/* Trade history feed - responsive table */}
       <section>
         <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-warning rounded-full inline-block" />
+          <span className="w-1 h-4 bg-gold rounded-full inline-block" />
           Trade History
           {trades.length > 0 && (
             <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
@@ -257,7 +257,7 @@ export function DashboardPage() {
             </span>
           )}
         </h3>
-        <div className="bg-bg-card border border-bg-border rounded-lg overflow-hidden">
+        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
           {pnlLoading ? <TradeHistorySkeleton /> : <TradeHistoryFeed trades={trades} />}
         </div>
       </section>
@@ -273,7 +273,7 @@ export function DashboardPage() {
             </span>
           )}
         </h3>
-        <div className="bg-bg-card border border-bg-border rounded-lg overflow-x-auto">
+        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-x-auto">
           {pnlLoading ? <PositionsTableSkeleton /> : <PositionsTableSortable positions={positions} />}
         </div>
       </section>

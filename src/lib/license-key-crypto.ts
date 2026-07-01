@@ -98,24 +98,39 @@ export function extractTierFromKey(key: string): 'free' | 'pro' | 'enterprise' |
   }
 }
 
-/** Encrypt license key for secure storage (AES-256-CBC) */
+/** Encrypt license key for secure storage (AES-256-GCM) */
 export function encryptLicenseKey(key: string): string {
   const encKey = getEncryptionKey();
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', encKey, iv);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', encKey, iv);
   let encrypted = cipher.update(key, 'utf8', 'hex');
   encrypted += cipher.final('hex');
-  return iv.toString('hex') + ':' + encrypted;
+  const tag = cipher.getAuthTag().toString('hex');
+  return iv.toString('hex') + ':' + tag + ':' + encrypted;
 }
 
-/** Decrypt license key from storage */
+/** Decrypt license key from storage (supports both GCM 3-part and legacy CBC 2-part format) */
 export function decryptLicenseKey(encrypted: string): string {
   const encKey = getEncryptionKey();
   const parts = encrypted.split(':');
-  if (parts.length !== 2) throw new Error('Invalid encrypted license key format');
-  const iv = Buffer.from(parts[0]!, 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', encKey, iv);
-  let decrypted = decipher.update(parts[1]!, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
+  if (parts.length === 3) {
+    // GCM format: iv:tag:ciphertext
+    const iv = Buffer.from(parts[0]!, 'hex');
+    const tag = Buffer.from(parts[1]!, 'hex');
+    const ciphertext = parts[2]!;
+    const decipher = crypto.createDecipheriv('aes-256-gcm', encKey, iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  }
+  if (parts.length === 2) {
+    // Legacy CBC format: iv:ciphertext
+    const iv = Buffer.from(parts[0]!, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', encKey, iv);
+    let decrypted = decipher.update(parts[1]!, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  }
+  throw new Error('Invalid encrypted license key format');
 }

@@ -218,7 +218,7 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
         if (PROMETHEUS_BUILTINS.has(ref)) continue;
         expect(
           exportedNames.has(ref),
-          `rule ${rule.uid} references metric "${ref}" which is NOT exported in src/middleware/prometheus-metrics.ts`
+          `rule ${rule.uid} references metric "${ref}" which is NOT exported in src/platform/middleware/prometheus-metrics.ts`
         ).toBe(true);
       }
     }

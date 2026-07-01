@@ -158,7 +158,7 @@ export function ReportingPage() {
           { label: 'Win Rate', value: `${stats.winRate.toFixed(1)}%`, cls: 'text-profit' },
           { label: 'Avg Trade Size', value: `$${fmt(stats.avgSize, 0)}`, cls: 'text-white' },
         ].map((s) => (
-          <div key={s.label} className="bg-bg-card border border-bg-border rounded-lg p-4">
+          <div key={s.label} className="bg-bg-surface border border-bg-border rounded-lg p-4">
             <p className="text-muted text-xs mb-1">{s.label}</p>
             <p className={`font-mono text-lg font-bold ${s.cls}`}>{s.value}</p>
           </div>
@@ -166,16 +166,16 @@ export function ReportingPage() {
       </div>
 
       {/* Trade history table */}
-      <div className="bg-bg-card border border-bg-border rounded-lg overflow-hidden">
+      <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
         {trades.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-muted text-sm font-mono">Chưa có giao dịch.</p>
-            <p className="text-muted text-xs font-mono mt-1">Dữ liệu sẽ xuất hiện sau khi bot thực hiện giao dịch đầu tiên.</p>
+            <p className="text-muted text-sm">Chưa có giao dịch.</p>
+            <p className="text-muted text-xs mt-1">Dữ liệu sẽ xuất hiện sau khi bot thực hiện giao dịch đầu tiên.</p>
           </div>
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-xs font-mono">
+              <table className="w-full min-w-[700px] text-xs">
                 <thead className="border-b border-bg-border bg-bg">
                   <tr>
                     {COLS.map((c) => (
@@ -252,7 +252,7 @@ export function ReportingPage() {
                 >
                   ← Prev
                 </button>
-                <span className="px-3 py-1 text-xs text-muted font-mono">
+                <span className="px-3 py-1 text-xs text-muted">
                   {page + 1} / {totalPages}
                 </span>
                 <button

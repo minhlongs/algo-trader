@@ -23,7 +23,7 @@
  *      comment mapping `1=paper only, 0=eligible for live`. The comment is
  *      the only place the binary values carry human-readable semantics — a
  *      DDL refactor that strips the comment silently loses the meaning.
- *   2. **Writer ternary output set** — `src/signal/signal-store-d1.ts:33`:
+ *   2. **Writer ternary output set** — `src/desk/signal/signal-store-d1.ts:33`:
  *        `const paperOnly = source === 'qwen-m1max' ? 1 : 0;`
  *      produces exactly two values {0, 1} based on the source classification.
  *      The SOLE writer into `signals.paper_only`.
@@ -85,7 +85,7 @@ const MIGRATION_PATH = resolve(
   REPO_ROOT,
   'src/db/migrations/016_qwen_paper_tracking.sql',
 );
-const SIGNAL_STORE_PATH = resolve(REPO_ROOT, 'src/signal/signal-store-d1.ts');
+const SIGNAL_STORE_PATH = resolve(REPO_ROOT, 'src/desk/signal/signal-store-d1.ts');
 
 /** Binary values the writer must produce. Empty RESERVED — INTEGER binary column cardinality is physically bounded at 2. */
 const ACTIVE_PAPER_ONLY = new Set<number>([0, 1]);

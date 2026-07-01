@@ -1,9 +1,10 @@
 /**
- * Sticky public navbar for landing, pricing, login, signup pages.
- * Blurs on scroll. Mobile hamburger menu.
+ * Sticky public navbar — Quant Elite design.
+ * Phosphor icons. Blurs on scroll. Mobile hamburger menu.
  */
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { X, List } from '@phosphor-icons/react';
 
 export function PublicNavbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -15,95 +16,40 @@ export function PublicNavbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  const linkClass = 'text-muted hover:text-white text-sm transition-colors';
+  const ctaClass = 'bg-accent text-bg text-sm font-semibold px-4 py-1.5 rounded-lg hover:bg-accent/80 transition-colors';
+
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
-        scrolled ? 'bg-[#0F0F1A]/90 backdrop-blur-md border-b border-[#2D3142]' : 'bg-transparent'
-      }`}
-    >
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
+      scrolled ? 'bg-bg/90 backdrop-blur-md border-b border-bg-border' : 'bg-transparent'
+    }`}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="text-[#00D9FF] font-bold text-lg font-mono tracking-tight">
+        <Link to="/" className="text-accent font-bold text-lg tracking-tight">
           CashClaw
         </Link>
 
-        {/* Desktop links */}
         <nav className="hidden md:flex items-center gap-6">
-          <Link
-            to="/pricing"
-            className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
-          >
-            Pricing
-          </Link>
-          <Link
-            to="/docs"
-            className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
-          >
-            Docs
-          </Link>
-          <Link
-            to="/login"
-            className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
-          >
-            Login
-          </Link>
-          <Link
-            to="/signup"
-            className="bg-[#00D9FF] text-[#0F0F1A] text-sm font-bold font-mono px-4 py-1.5 rounded hover:bg-[#00D9FF]/80 transition-colors"
-          >
-            Get Started
-          </Link>
+          <Link to="/pricing" className={linkClass}>Pricing</Link>
+          <Link to="/docs" className={linkClass}>Docs</Link>
+          <Link to="/login" className={linkClass}>Login</Link>
+          <Link to="/signup" className={ctaClass}>Get Started</Link>
         </nav>
 
-        {/* Mobile hamburger */}
         <button
-          className="md:hidden text-[#8892B0] hover:text-white p-1"
+          className="md:hidden text-muted hover:text-white p-1 min-h-touch min-w-touch flex items-center justify-center"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label="Toggle menu"
         >
-          {menuOpen ? (
-            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 12h18M3 6h18M3 18h18" />
-            </svg>
-          )}
+          {menuOpen ? <X weight="bold" className="w-6 h-6" /> : <List weight="bold" className="w-6 h-6" />}
         </button>
       </div>
 
-      {/* Mobile dropdown */}
       {menuOpen && (
-        <div className="md:hidden bg-[#1A1A2E] border-b border-[#2D3142] px-4 py-4 flex flex-col gap-3">
-          <Link
-            to="/pricing"
-            onClick={() => setMenuOpen(false)}
-            className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
-          >
-            Pricing
-          </Link>
-          <Link
-            to="/docs"
-            onClick={() => setMenuOpen(false)}
-            className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
-          >
-            Docs
-          </Link>
-          <Link
-            to="/login"
-            onClick={() => setMenuOpen(false)}
-            className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
-          >
-            Login
-          </Link>
-          <Link
-            to="/signup"
-            onClick={() => setMenuOpen(false)}
-            className="bg-[#00D9FF] text-[#0F0F1A] text-sm font-bold font-mono px-4 py-1.5 rounded text-center hover:bg-[#00D9FF]/80 transition-colors"
-          >
-            Get Started
-          </Link>
+        <div className="md:hidden bg-bg-surface border-b border-bg-border px-4 py-4 flex flex-col gap-3">
+          <Link to="/pricing" onClick={() => setMenuOpen(false)} className={linkClass}>Pricing</Link>
+          <Link to="/docs" onClick={() => setMenuOpen(false)} className={linkClass}>Docs</Link>
+          <Link to="/login" onClick={() => setMenuOpen(false)} className={linkClass}>Login</Link>
+          <Link to="/signup" onClick={() => setMenuOpen(false)} className={`${ctaClass} text-center`}>Get Started</Link>
         </div>
       )}
     </header>

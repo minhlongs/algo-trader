@@ -8,8 +8,8 @@ import {
   DEFAULT_CONFIG,
   type PriceImpactEstimatorConfig,
   type PriceImpactEstimatorDeps,
-} from '../../src/strategies/polymarket/price-impact-estimator.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/price-impact-estimator';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
 

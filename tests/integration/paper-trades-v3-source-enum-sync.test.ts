@@ -28,7 +28,7 @@
  *      The default must be one of the comment-declared values (otherwise a
  *      row with no source tag creates a phantom undocumented source).
  *   3. **Orchestrator `deriveSource()` function** —
- *      `src/wiring/paper-trading-orchestrator.ts:39-44`:
+ *      `src/desk/wiring/paper-trading-orchestrator.ts:39-44`:
  *        function deriveSource(strategy: string): string {
  *          if (strategy.startsWith('qwen'))      return 'qwen';
  *          if (strategy.startsWith('deepseek'))  return 'deepseek';
@@ -49,7 +49,7 @@
  * `{'acknowledged'}`, PR #156's `{'kv'}`, PR #159's `{'BUY','SELL'}` —
  * populated declared-but-not-wired slots.
  *
- * Note — signal-store-d1 is a SEPARATE concern. `src/signal/signal-store-d1.ts`
+ * Note — signal-store-d1 is a SEPARATE concern. `src/desk/signal/signal-store-d1.ts`
  * also has a `deriveSource()` function that writes to the `signals` table
  * (NOT `paper_trades_v3`) and emits a variant `'qwen-m1max'` tag. That's a
  * `signals.source` enum — out of scope for this test. If the two tables'
@@ -101,7 +101,7 @@ const MIGRATION_PATH = resolve(
 );
 const ORCHESTRATOR_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/paper-trading-orchestrator.ts',
+  'src/desk/wiring/paper-trading-orchestrator.ts',
 );
 
 /** Source values declared in migration comment but not yet returned by deriveSource(). Reserved for future manual operator-initiated paper-trade entry. */

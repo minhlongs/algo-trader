@@ -2,7 +2,7 @@
  * Sentry error-tracking initialization discipline 9-invariant sync —
  * second observability-initialization substrate edge.
  *
- * `src/utils/sentry-init.ts` provides the error-tracking SDK bootstrap
+ * `src/shared/utils/sentry-init.ts` provides the error-tracking SDK bootstrap
  * plus a manual captureError helper. Drift manifests as:
  *   - DSN env gate removed → Sentry.init throws on empty DSN during
  *     local/dev boot
@@ -78,7 +78,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const SENTRY_FILE = resolve(REPO_ROOT, 'src/utils/sentry-init.ts');
+const SENTRY_FILE = resolve(REPO_ROOT, 'src/shared/utils/sentry-init.ts');
 
 const REQUIRED_EXPORTS = ['initSentry', 'captureError'];
 

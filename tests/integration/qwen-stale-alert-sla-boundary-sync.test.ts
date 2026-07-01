@@ -6,13 +6,13 @@
  *
  *   - **QwenSignalsLoopStale** fires when `time() - last_run_ts > 25,200s`
  *     (7 hours). The signals-loop cron runs every `6 * 3600 * 1000 ms`
- *     (6 hours) in `src/wiring/qwen-signals-loop.ts`. The alert threshold
+ *     (6 hours) in `src/desk/wiring/qwen-signals-loop.ts`. The alert threshold
  *     is the cron interval + a 1-hour GRACE WINDOW so a single delayed
  *     run doesn't page; two consecutive misses does.
  *
  *   - **QwenDrawdownMonitorStale** fires on the identical schema: cron
  *     runs every `6 * 60 * 60 * 1000 ms` (6h) in
- *     `src/wiring/qwen-drawdown-monitor.ts`, alert threshold `25,200s`.
+ *     `src/desk/wiring/qwen-drawdown-monitor.ts`, alert threshold `25,200s`.
  *
  * The SLA-boundary invariant: **alert_threshold > cron_interval**
  * (grace > 0). Drift where `alert_threshold ≤ cron_interval` would cause
@@ -38,11 +38,11 @@
  * The SLA is declared across four surfaces that must stay in lockstep:
  *
  *   1. **signals-loop cron interval** —
- *      `src/wiring/qwen-signals-loop.ts:22`:
+ *      `src/desk/wiring/qwen-signals-loop.ts:22`:
  *        `const DEFAULT_INTERVAL_MS = 6 * 3600 * 1000;`
  *      — 21,600,000 ms = 6 hours. The cron period.
  *   2. **drawdown-monitor cron interval** —
- *      `src/wiring/qwen-drawdown-monitor.ts:23`:
+ *      `src/desk/wiring/qwen-drawdown-monitor.ts:23`:
  *        `const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;`
  *      — same 21,600,000 ms (different syntax: `6 * 60 * 60 * 1000` vs
  *      `6 * 3600 * 1000`; semantically equivalent). Both wirings cron on
@@ -114,11 +114,11 @@ import { resolve } from 'path';
 const REPO_ROOT = resolve(__dirname, '../..');
 const SIGNALS_LOOP_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/qwen-signals-loop.ts',
+  'src/desk/wiring/qwen-signals-loop.ts',
 );
 const DRAWDOWN_MONITOR_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/qwen-drawdown-monitor.ts',
+  'src/desk/wiring/qwen-drawdown-monitor.ts',
 );
 const ALERTS_YAML_PATH = resolve(
   REPO_ROOT,

@@ -46,26 +46,26 @@ export function CouponCreateForm({ visible, onSubmit, onCancel }: CouponCreateFo
   if (!visible) return null;
 
   return (
-    <form onSubmit={handleSubmit} className="bg-bg-card border border-bg-border rounded-xl p-6 space-y-4">
-      <h3 className="text-white text-sm font-semibold font-mono">New Coupon</h3>
+    <form onSubmit={handleSubmit} className="bg-bg-surface border border-bg-border rounded-xl p-6 space-y-4">
+      <h3 className="text-white text-sm font-semibold">New Coupon</h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Code */}
         <div>
-          <label className="block text-xs text-muted font-mono mb-1">Code</label>
+          <label className="block text-xs text-muted mb-1">Code</label>
           <input
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="SAVE20"
             required
-            className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+            className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
           />
         </div>
 
         {/* Discount % */}
         <div>
-          <label className="block text-xs text-muted font-mono mb-1">Discount % ({discountPercent})</label>
+          <label className="block text-xs text-muted mb-1">Discount % ({discountPercent})</label>
           <input
             type="range" min={1} max={100} value={discountPercent}
             onChange={(e) => setDiscountPercent(Number(e.target.value))}
@@ -75,31 +75,31 @@ export function CouponCreateForm({ visible, onSubmit, onCancel }: CouponCreateFo
 
         {/* Max uses */}
         <div>
-          <label className="block text-xs text-muted font-mono mb-1">Max Uses (0 = unlimited)</label>
+          <label className="block text-xs text-muted mb-1">Max Uses (0 = unlimited)</label>
           <input
             type="number" min={0} value={maxUses}
             onChange={(e) => setMaxUses(Number(e.target.value))}
-            className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+            className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
           />
         </div>
 
         {/* Valid until */}
         <div>
-          <label className="block text-xs text-muted font-mono mb-1">Valid Until (optional)</label>
+          <label className="block text-xs text-muted mb-1">Valid Until (optional)</label>
           <input
             type="date" value={validUntil}
             onChange={(e) => setValidUntil(e.target.value)}
-            className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+            className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
           />
         </div>
       </div>
 
       {/* Tiers */}
       <div>
-        <label className="block text-xs text-muted font-mono mb-2">Applicable Tiers (empty = all)</label>
+        <label className="block text-xs text-muted mb-2">Applicable Tiers (empty = all)</label>
         <div className="flex gap-3">
           {TIERS.map((t) => (
-            <label key={t} className="flex items-center gap-1.5 text-sm font-mono text-muted cursor-pointer">
+            <label key={t} className="flex items-center gap-1.5 text-sm text-muted cursor-pointer">
               <input
                 type="checkbox"
                 checked={tiers.includes(t)}
@@ -117,14 +117,14 @@ export function CouponCreateForm({ visible, onSubmit, onCancel }: CouponCreateFo
         <button
           type="submit"
           disabled={submitting || !code.trim()}
-          className="px-4 py-2 bg-accent text-bg-primary text-sm font-semibold font-mono rounded hover:bg-accent/90 transition-colors disabled:opacity-50"
+          className="px-4 py-2 bg-accent text-bg-primary text-sm font-semibold rounded hover:bg-accent/90 transition-colors disabled:opacity-50"
         >
           {submitting ? 'Creating...' : 'Create Coupon'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 bg-bg-border text-white text-sm font-mono rounded hover:bg-white/10 transition-colors"
+          className="px-4 py-2 bg-bg-border text-white text-sm rounded hover:bg-white/10 transition-colors"
         >
           Cancel
         </button>

@@ -1,5 +1,21 @@
 # Deployment
 
+## Cloudflare Workers (Edge Proxy)
+
+- **URL:** https://algo-trader.agencyos-openclaw.workers.dev
+- **Health:** https://algo-trader.agencyos-openclaw.workers.dev/health
+
+```bash
+# IMPORTANT: Must use --config flag because a global wrangler.jsonc exists in $HOME
+npx wrangler deploy --config wrangler.toml
+```
+
+**Worker:** `src/platform/workers/edge-proxy.ts`
+- Edge proxy + standalone auth (KV-backed)
+- Caches GET API responses at edge (60s TTL)
+- Proxies to VPS origin when `VPS_ORIGIN` env var is set
+- KV namespace: `CACHE` (id: `6c7199c0259b42db943aa13b200d8ea1`)
+
 ## Prerequisites
 
 - Node.js 20+

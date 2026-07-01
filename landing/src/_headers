@@ -1,0 +1,35 @@
+/seed/tokens.lint.json
+  Cache-Control: no-cache, no-store
+  X-Robots-Tag: noindex
+
+/seed/*
+  Cache-Control: public, max-age=31536000, immutable
+  Vary: Accept-Encoding
+
+/tree/*
+  Cache-Control: public, max-age=31536000, immutable
+  Vary: Accept-Encoding
+
+/forest/*
+  Cache-Control: public, max-age=31536000, immutable
+  Vary: Accept-Encoding
+
+/ui/*
+  Cache-Control: public, max-age=31536000, immutable
+  Vary: Accept-Encoding
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+  Vary: Accept-Encoding
+
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Vary: Accept-Encoding
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://api.cashclaw.cc; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()

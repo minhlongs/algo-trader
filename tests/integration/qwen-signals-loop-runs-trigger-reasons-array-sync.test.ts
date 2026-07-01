@@ -38,7 +38,7 @@
  *      CHECK ALL element IN (...) subquery). Writer + cross-PR coupling
  *      carry authority.
  *   2. **Writer function signature** —
- *      `src/wiring/qwen-signals-loop.ts:154-158`:
+ *      `src/desk/wiring/qwen-signals-loop.ts:154-158`:
  *        export async function persistRunJournal(
  *          source: string,
  *          metrics: QualityMetrics,
@@ -116,7 +116,7 @@ const MIGRATION_PATH = resolve(
 );
 const SIGNALS_LOOP_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/qwen-signals-loop.ts',
+  'src/desk/wiring/qwen-signals-loop.ts',
 );
 const DOCS_PATH = resolve(
   REPO_ROOT,

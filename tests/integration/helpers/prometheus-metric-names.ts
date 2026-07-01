@@ -1,7 +1,7 @@
 /**
  * Shared helper for Grafana provisioning validators.
  *
- * Parses `src/middleware/prometheus-metrics.ts` and returns the set of
+ * Parses `src/platform/middleware/prometheus-metrics.ts` and returns the set of
  * `algo_trader_*` metric names that are actually exported. Used by both:
  *
  *   - tests/integration/grafana-alert-provisioning.test.ts  (PR #132)
@@ -17,7 +17,7 @@ import { resolve } from 'path';
 /** Path to the authoritative source of truth for metric names. */
 export const METRICS_TS_PATH = resolve(
   __dirname,
-  '../../../src/middleware/prometheus-metrics.ts'
+  '../../../src/platform/middleware/prometheus-metrics.ts'
 );
 
 /** Built-in Prometheus metrics that are valid in PromQL but not declared in our file. */

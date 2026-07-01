@@ -2,7 +2,7 @@
  * SignalStoreD1 persistence discipline 10-invariant sync — third
  * signal-pipeline substrate edge.
  *
- * `src/signal/signal-store-d1.ts` is the concrete SignalStore
+ * `src/desk/signal/signal-store-d1.ts` is the concrete SignalStore
  * implementation used by the SignalPublisher (#198) and instantiated
  * by the signal-ingest route (#193). Drift manifests as:
  *   - `deriveSource` misclassifies strategy prefix → violates PR #161
@@ -87,7 +87,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const STORE_FILE = resolve(REPO_ROOT, 'src/signal/signal-store-d1.ts');
+const STORE_FILE = resolve(REPO_ROOT, 'src/desk/signal/signal-store-d1.ts');
 
 const EXPECTED_INSERT_COLUMNS = [
   'id',

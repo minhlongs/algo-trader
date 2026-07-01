@@ -2,7 +2,7 @@
  * Error-handler middleware response-contract discipline 8-invariant sync
  * — first HTTP-error-response substrate edge.
  *
- * `src/middleware/error-handler.ts` is the terminal 5xx handler (mount
+ * `src/platform/middleware/error-handler.ts` is the terminal 5xx handler (mount
  * locked by PR #186). It defines the RESPONSE SHAPE consumed by every
  * API client: dashboard, subscriber frontend, webhook retry logic,
  * CLI ops. Drift manifests as:
@@ -77,7 +77,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const ERROR_HANDLER_FILE = resolve(REPO_ROOT, 'src/middleware/error-handler.ts');
+const ERROR_HANDLER_FILE = resolve(REPO_ROOT, 'src/platform/middleware/error-handler.ts');
 
 const REQUIRED_EXPORTS = ['errorHandler', 'createApiError', 'asyncHandler', 'ApiError'];
 const REQUIRED_APIERROR_FIELDS = ['statusCode', 'code'];

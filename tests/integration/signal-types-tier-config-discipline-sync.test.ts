@@ -2,7 +2,7 @@
  * Signal-types TIER_SIGNAL_CONFIG + interface-triple discipline 10-invariant sync.
  * HEXACONTAGON MILESTONE (60-gon = 3× icosagon).
  *
- * `src/signal/signal-types.ts` is the canonical shape declaration
+ * `src/desk/signal/signal-types.ts` is the canonical shape declaration
  * consumed by every signal-pipeline module:
  *   - #163 ICOSAGON: signals.confidence [0,1] + FREE tier floor 0.7
  *   - #165 DOICOSAGON: signals.expires_at = ts + ttl*1000
@@ -89,7 +89,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const TYPES_FILE = resolve(REPO_ROOT, 'src/signal/signal-types.ts');
+const TYPES_FILE = resolve(REPO_ROOT, 'src/desk/signal/signal-types.ts');
 
 const SIGNAL_FIELDS = [
   'id',

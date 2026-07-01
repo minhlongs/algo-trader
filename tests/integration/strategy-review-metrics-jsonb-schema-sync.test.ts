@@ -27,7 +27,7 @@
  *      — unconstrained JSONB accepts any valid JSON. The structural shape comes from
  *      the writer, not the schema.
  *   2. **TS `QualityMetrics` interface** —
- *      `src/wiring/qwen-signals-loop.ts:63-70`:
+ *      `src/desk/wiring/qwen-signals-loop.ts:63-70`:
  *        export interface QualityMetrics {
  *          winRate: number | null;
  *          sharpe: number | null;
@@ -119,7 +119,7 @@ const MIGRATION_018_PATH = resolve(
 );
 const SIGNALS_LOOP_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/qwen-signals-loop.ts',
+  'src/desk/wiring/qwen-signals-loop.ts',
 );
 
 /** Canonical QualityMetrics field set — the single source of truth for this test. */

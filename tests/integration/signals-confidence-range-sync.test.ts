@@ -31,13 +31,13 @@
  *   1. **Migration CHECK constraint** — `src/db/migrations/014_signal_feed.sql:10`:
  *        `confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1)`
  *      — authoritative range `[0, 1]` with inclusive bounds.
- *   2. **TS Signal interface** — `src/signal/signal-types.ts:14`:
+ *   2. **TS Signal interface** — `src/desk/signal/signal-types.ts:14`:
  *        `confidence: number;   // 0..1`
  *      — type is `number`, inline comment pins the semantic range.
- *   3. **TIER_SIGNAL_CONFIG thresholds** — `src/signal/signal-types.ts:32-48`:
+ *   3. **TIER_SIGNAL_CONFIG thresholds** — `src/desk/signal/signal-types.ts:32-48`:
  *        FREE.minConfidence = 0.7, PRO.minConfidence = 0.6,
  *        ENTERPRISE.minConfidence = 0.5 — all must lie within CHECK bounds.
- *   4. **Orchestrator gate constant** — `src/wiring/paper-trading-orchestrator.ts:87`:
+ *   4. **Orchestrator gate constant** — `src/desk/wiring/paper-trading-orchestrator.ts:87`:
  *        `const MIN_AI_CONFIDENCE = 0.7` — AI validation gate. Must lie
  *      within CHECK bounds AND equal at least one TIER_SIGNAL_CONFIG
  *      threshold (policy consistency — the FREE tier threshold is the
@@ -96,10 +96,14 @@ const MIGRATION_PATH = resolve(
   REPO_ROOT,
   'src/db/migrations/014_signal_feed.sql',
 );
-const SIGNAL_TYPES_PATH = resolve(REPO_ROOT, 'src/signal/signal-types.ts');
+const SIGNAL_TYPES_PATH = resolve(REPO_ROOT, 'src/desk/signal/signal-types.ts');
 const ORCHESTRATOR_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/paper-trading-orchestrator.ts',
+  'src/desk/wiring/paper-trading-orchestrator.ts',
+);
+const PERSISTENCE_PATH = resolve(
+  REPO_ROOT,
+  'src/desk/wiring/paper-trading-persistence.ts',
 );
 
 /** Expected range for confidence column (inclusive). */
@@ -193,11 +197,12 @@ describe('signals.confidence [0, 1] range-bound 5-surface sync', () => {
   const migration = readFileSync(MIGRATION_PATH, 'utf8');
   const signalTypes = readFileSync(SIGNAL_TYPES_PATH, 'utf8');
   const orchestrator = readFileSync(ORCHESTRATOR_PATH, 'utf8');
+  const persistence = readFileSync(PERSISTENCE_PATH, 'utf8');
 
   const migRange = extractMigrationRange(migration);
   const tsShape = extractTsTypeAndRangeComment(signalTypes);
   const tierThresholds = extractTierThresholds(signalTypes);
-  const gateValue = extractOrchestratorGate(orchestrator);
+  const gateValue = extractOrchestratorGate(orchestrator) ?? extractOrchestratorGate(persistence);
   const gateOp = extractGateComparison(orchestrator);
 
   it('migration CHECK declares confidence in [0, 1] with INCLUSIVE bounds', () => {

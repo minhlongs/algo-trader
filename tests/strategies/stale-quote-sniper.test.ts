@@ -8,8 +8,8 @@ import {
   DEFAULT_CONFIG,
   type StaleQuoteSniperConfig,
   type StaleQuoteSniperDeps,
-} from '../../src/strategies/polymarket/stale-quote-sniper.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/stale-quote-sniper';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/longtho638-jpg/algo-trader/actions/workflows/ci.yml/badge.svg)](https://github.com/longtho638-jpg/algo-trader/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](package.json)
-[![Strategies](https://img.shields.io/badge/strategies-33%20polymarket-brightgreen.svg)](src/strategies/polymarket/index.ts)
-[![Tests](https://img.shields.io/badge/tests-570%20passing-brightgreen.svg)](src/)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](package.json)
+[![Strategies](https://img.shields.io/badge/strategies-52%2B-brightgreen.svg)](src/desk/strategies/)
+[![Tests](https://img.shields.io/badge/tests-2430%2B%20passing-brightgreen.svg)](src/)
 
 Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (20%).
 
@@ -31,7 +31,7 @@ Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (2
 - 19 specialist agents including 9 dark edge agents + HFT loop for 24/7 solo operation
 - **Dual-model AI prediction ensemble**: Nemotron-3 Nano (fast scanner, 35-50 t/s) + DeepSeek R1 (deep reasoner) with consensus voting
 - Telegram trading alerts and CashClaw CLI for distributed trading operations
-- 570 automated tests for reliability and code quality
+- 2,430+ automated tests for reliability and code quality
 
 ---
 
@@ -130,6 +130,8 @@ See `.env.example` for full dual-model configuration.
 
 ## Architecture
 
+**v3.0.0 architecture separation** -- codebase organized into 3 bounded contexts: `src/desk/` (solo proprietary trading), `src/platform/` (RaaS subscriber platform), `src/shared/` (shared kernel). Desk imports shared only. Platform imports shared + desk through `IStrategy` interface.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                   CLI (25 commands)                          │
@@ -216,10 +218,9 @@ Key variables:
 
 | Tier | Price | Strategies | Markets |
 |---|---|---|---|
-| Starter | $49/mo | 1 | Polymarket only |
-| Pro | $149/mo | 5 | Polymarket + 1 CEX |
-| Growth | $399/mo | 20 | All markets |
-| Enterprise | Custom | Unlimited | All + dedicated support |
+| FREE | $0 | 1 | Polymarket only |
+| PRO | $149/mo | 5 | Polymarket + 1 CEX |
+| ENTERPRISE | Custom | Unlimited | All markets + dedicated support |
 
 ---
 

@@ -2,7 +2,7 @@
  * SseSignalBroadcaster primitive discipline 10-invariant sync — seventh
  * signal-pipeline substrate edge.
  *
- * `src/signal/sse-signal-broadcaster.ts` is the in-process SSE fan-out
+ * `src/desk/signal/sse-signal-broadcaster.ts` is the in-process SSE fan-out
  * that delivers realtime signals to ENTERPRISE SSE subscribers. Drift
  * manifests as:
  *   - Missing `X-Accel-Buffering: no` → nginx buffers SSE → clients
@@ -77,7 +77,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const SSE_FILE = resolve(REPO_ROOT, 'src/signal/sse-signal-broadcaster.ts');
+const SSE_FILE = resolve(REPO_ROOT, 'src/desk/signal/sse-signal-broadcaster.ts');
 
 const REQUIRED_SSE_HEADERS = [
   ['Content-Type', 'text/event-stream'],

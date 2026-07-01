@@ -5,8 +5,8 @@
  */
 
 import 'dotenv/config';
-import { ApiServer } from './api/server';
-import { logger } from './utils/logger';
+import { ApiServer } from './platform/api/server';
+import { logger } from './shared/utils/logger';
 
 let server: ApiServer | null = null;
 

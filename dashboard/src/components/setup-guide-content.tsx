@@ -18,19 +18,19 @@ export function SetupGuideContent() {
           Polymarket account, bot installation, AI models, and connecting to dashboard.
         </p>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="bg-[#1A1A2E] rounded p-2">
-            <span className="text-[#00D9FF]">Phase A:</span> Accounts & Crypto (~30 min)
+          <div className="bg-[#111627] rounded p-2">
+            <span className="text-[#00C8E8]">Phase A:</span> Accounts & Crypto (~30 min)
           </div>
-          <div className="bg-[#1A1A2E] rounded p-2">
-            <span className="text-[#00FF41]">Phase B:</span> Bot Installation (~15 min)
+          <div className="bg-[#111627] rounded p-2">
+            <span className="text-[#00E676]">Phase B:</span> Bot Installation (~15 min)
           </div>
         </div>
       </InfoBanner>
 
       {/* Prerequisites */}
       <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-4">
-        <p className="text-sm font-mono text-yellow-400 font-bold mb-2">Prerequisites</p>
-        <ul className="text-sm font-mono text-[#8892B0] space-y-1">
+        <p className="text-sm text-yellow-400 font-bold mb-2">Prerequisites</p>
+        <ul className="text-sm text-[#8892B0] space-y-1">
           <li>Apple Silicon Mac (M1/M2/M3/M4) with 32GB+ RAM, <strong className="text-white">OR</strong></li>
           <li>Cloud VPS with NVIDIA GPU (RTX 4090 recommended) + 64GB RAM, <strong className="text-white">OR</strong></li>
           <li>Any Linux VPS with 2GB+ RAM (CPU-only, no local AI)</li>
@@ -39,8 +39,8 @@ export function SetupGuideContent() {
 
       {/* Table of Contents */}
       <nav aria-label="Setup guide table of contents">
-        <p className="text-xs font-mono text-[#00D9FF] uppercase tracking-widest mb-3">Setup Steps</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-mono">
+        <p className="text-xs text-[#00C8E8] uppercase tracking-widest mb-3">Setup Steps</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           {[
             { href: '#vpn-setup', label: 'A1. VPN Setup (1.1.1.1 / ProtonVPN)' },
             { href: '#metamask-setup', label: 'A2. MetaMask Wallet' },
@@ -61,7 +61,7 @@ export function SetupGuideContent() {
             <a
               key={item.href}
               href={item.href}
-              className="text-[#8892B0] hover:text-[#00D9FF] transition-colors"
+              className="text-[#8892B0] hover:text-[#00C8E8] transition-colors"
             >
               {item.label}
             </a>
@@ -74,8 +74,8 @@ export function SetupGuideContent() {
 
       {/* Verification Checklist */}
       <section id="verification">
-        <h2 className="text-xl font-bold font-mono text-white mb-4">Verification Checklist</h2>
-        <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-4 text-sm font-mono text-[#8892B0] space-y-2">
+        <h2 className="text-xl font-bold text-white mb-4">Verification Checklist</h2>
+        <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm text-[#8892B0] space-y-2">
           {[
             { cmd: 'node --version', expect: 'v20+' },
             { cmd: 'curl http://localhost:11435/v1/models', expect: 'LLM responding (macOS)' },
@@ -84,7 +84,7 @@ export function SetupGuideContent() {
             { cmd: 'curl http://localhost:3000/api/health', expect: '{"status":"ok"}' },
           ].map(({ cmd, expect }) => (
             <div key={cmd} className="flex gap-4">
-              <code className="text-[#00FF41] whitespace-nowrap">{cmd}</code>
+              <code className="text-[#00E676] whitespace-nowrap">{cmd}</code>
               <span>&rarr; {expect}</span>
             </div>
           ))}

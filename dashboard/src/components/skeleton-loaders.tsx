@@ -13,7 +13,7 @@ export function StatsRowSkeleton() {
       {[...Array(4)].map((_, i) => (
         <div
           key={i}
-          className="bg-bg-card border border-bg-border rounded-lg p-4 space-y-3"
+          className="bg-bg-surface border border-bg-border rounded-lg p-4 space-y-3"
         >
           <div className="h-3 w-20 bg-bg-border rounded animate-pulse" />
           <div className="h-8 w-full bg-bg-border rounded animate-pulse" />
@@ -29,7 +29,7 @@ export function StatsRowSkeleton() {
  */
 export function PnlChartSkeleton() {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4 space-y-4">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4 space-y-4">
       <div className="flex justify-between items-center">
         <div className="h-4 w-32 bg-bg-border rounded animate-pulse" />
         <div className="h-6 w-24 bg-bg-border rounded animate-pulse" />
@@ -49,7 +49,7 @@ export function PnlChartSkeleton() {
  */
 export function AdminControlsSkeleton() {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4 space-y-4">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4 space-y-4">
       <div className="h-4 w-28 bg-bg-border rounded animate-pulse" />
       <div className="flex gap-3">
         <div className="h-10 w-24 bg-bg-border rounded animate-pulse" />
@@ -65,7 +65,7 @@ export function AdminControlsSkeleton() {
  */
 export function SignalsPanelSkeleton() {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4 space-y-3">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4 space-y-3">
       <div className="flex justify-between items-center">
         <div className="h-4 w-40 bg-bg-border rounded animate-pulse" />
         <div className="h-6 w-16 bg-bg-border rounded animate-pulse" />
@@ -90,7 +90,7 @@ export function SignalsPanelSkeleton() {
  */
 export function PositionsTableSkeleton() {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg overflow-hidden">
+    <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
       <div className="p-4 border-b border-bg-border">
         <div className="h-4 w-24 bg-bg-border rounded animate-pulse" />
       </div>
@@ -118,7 +118,7 @@ export function SpreadGridSkeleton() {
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
-          className="bg-bg-card border border-bg-border rounded-lg p-4 space-y-3"
+          className="bg-bg-surface border border-bg-border rounded-lg p-4 space-y-3"
         >
           <div className="flex justify-between">
             <div className="h-3 w-24 bg-bg-border rounded animate-pulse" />
@@ -140,7 +140,7 @@ export function SpreadGridSkeleton() {
  */
 export function TradeHistorySkeleton() {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg overflow-hidden">
+    <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
       <div className="p-4 border-b border-bg-border">
         <div className="h-4 w-32 bg-bg-border rounded animate-pulse" />
       </div>
@@ -166,7 +166,7 @@ export function TradeHistorySkeleton() {
  */
 export function StrategyStatusSkeleton() {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4 space-y-3">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4 space-y-3">
       <div className="h-4 w-28 bg-bg-border rounded animate-pulse" />
       {[...Array(3)].map((_, i) => (
         <div
@@ -189,7 +189,7 @@ export function StrategyStatusSkeleton() {
  */
 export function PriceTickerSkeleton() {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
       <div className="flex gap-8 overflow-hidden">
         {[...Array(6)].map((_, i) => (
           <div key={i} className="flex-shrink-0 space-y-2">
@@ -207,7 +207,7 @@ export function PriceTickerSkeleton() {
  */
 export function EquityCurveSkeleton() {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4 space-y-4">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4 space-y-4">
       <div className="h-4 w-32 bg-bg-border rounded animate-pulse" />
       <div className="h-40 w-full bg-bg-border rounded animate-pulse" />
     </div>

@@ -70,19 +70,19 @@ export function PaperStatsCard() {
 
   return (
     <section className="px-4 sm:px-6 max-w-5xl mx-auto pb-4">
-      <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-6">
+      <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-6">
         <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-          <p className="text-[#00D9FF] text-xs uppercase tracking-[0.2em] font-mono">
+          <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em]">
             Paper Run · Snapshot
           </p>
-          <p className="text-[#8892B0] text-xs font-mono">
+          <p className="text-[#8892B0] text-xs">
             as of {stats.last_updated}
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {items.map(({ label, value }) => (
             <div key={label}>
-              <p className="text-white text-2xl sm:text-3xl font-bold font-mono">
+              <p className="text-white text-2xl sm:text-3xl font-bold">
                 {value}
               </p>
               <p className="text-[#8892B0] text-xs leading-snug mt-1">{label}</p>
@@ -95,7 +95,7 @@ export function PaperStatsCard() {
           </p>
         )}
         {error && (
-          <p className="text-[#FF3366] text-xs mt-3 font-mono">
+          <p className="text-[#FF4466] text-xs mt-3">
             Stats unavailable ({error}) — showing placeholder.
           </p>
         )}

@@ -8,8 +8,8 @@ import {
   DEFAULT_CONFIG,
   type MeanVarianceOptimizerConfig,
   type MeanVarianceOptimizerDeps,
-} from '../../src/strategies/polymarket/mean-variance-optimizer.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/mean-variance-optimizer';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
 

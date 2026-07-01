@@ -7,8 +7,8 @@ import {
   createMultiLegHedgeTick,
   type MultiLegHedgeDeps,
   type MultiLegHedgeConfig,
-} from '../../src/strategies/polymarket/multi-leg-hedge.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/multi-leg-hedge';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

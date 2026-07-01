@@ -148,7 +148,7 @@ export function RevenueByTierChart({
                 className="w-3 h-3 rounded-sm"
                 style={{ backgroundColor: colors.bar }}
               />
-              <span className="text-xs text-muted font-mono">{tier}</span>
+              <span className="text-xs text-muted">{tier}</span>
             </div>
           ))}
         </div>
@@ -172,7 +172,7 @@ export function RevenueByTierChart({
                 return (
                   <div key={item.tier} className="text-center">
                     <div
-                      className="text-lg font-bold font-mono"
+                      className="text-lg font-bold"
                       style={{ color: colors.bar }}
                     >
                       ${item.revenue.toLocaleString()}

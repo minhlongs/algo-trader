@@ -5,16 +5,18 @@
 
 import 'dotenv/config';
 import { Command } from 'commander';
-import { initSentry } from './utils/sentry-init';
-import { initTracing } from './utils/tracing';
-import { runMigrations } from './db/migration-runner';
-import { runGruStrategy } from './commands/gru-strategy';
-import { KronosStrategy } from './strategies/kronos-strategy';
-import { runSetupWizard } from './commands/setup-wizard';
-import { runQuickstart } from './commands/quickstart';
-import { runActivateCommand } from './commands/activate-license';
-import { runArbAuto } from './commands/arb-auto';
-import { logger } from './utils/logger';
+import { initSentry } from './shared/utils/sentry-init';
+import { initTracing } from './shared/utils/tracing';
+import { runMigrations } from './shared/db/migration-runner';
+import { runGruStrategy } from './desk/commands/gru-strategy';
+import { KronosStrategy } from './desk/strategies/kronos-strategy';
+import { runSetupWizard } from './desk/commands/setup-wizard';
+import { runQuickstart } from './desk/commands/quickstart';
+import { runActivateCommand } from './desk/commands/activate-license';
+import { runArbAuto } from './desk/commands/arb-auto';
+import { paperStart, paperStop, paperStatus, paperReport } from './desk/commands/paper-trading';
+import type { PaperCommandOptions } from './desk/commands/paper-trading';
+import { logger } from './shared/utils/logger';
 
 // Initialize Sentry before anything else
 initSentry();
@@ -138,7 +140,35 @@ if (!isTest) {
       logger.info('[Kronos] Strategy ready', status);
     });
 
-  program.parse(process.argv);
+  // Paper trading subcommands
+const paperProgram = program.command('paper').description('Paper trading — simulated trades without real money');
+paperProgram
+  .command('start')
+  .description('Start a paper trading session')
+  .option('-v, --verbose', 'Verbose logging', true)
+  .action(async (options: PaperCommandOptions) => {
+    await paperStart(options);
+  });
+paperProgram
+  .command('stop')
+  .description('Stop the paper trading session')
+  .action(async () => {
+    await paperStop();
+  });
+paperProgram
+  .command('status')
+  .description('Show current positions, account balance, and recent trades')
+  .action(async () => {
+    await paperStatus();
+  });
+paperProgram
+  .command('report')
+  .description('Full P&L report with daily/weekly/monthly breakdown and Prometheus metrics')
+  .action(async () => {
+    await paperReport();
+  });
+
+program.parse(process.argv);
 
   // Run main if no command specified
   if (!process.argv.slice(2).length) {

@@ -10,7 +10,7 @@
  *
  * Migration 016 intentionally admits all four so that a future crypto paper
  * ledger expansion reuses the same table. Today, the SOLE writer
- * (`src/wiring/paper-trading-orchestrator.ts` `savePaperTradeV3`) only emits
+ * (`src/desk/wiring/paper-trading-orchestrator.ts` `savePaperTradeV3`) only emits
  * prediction-market sides — the `PaperTrade.side` TS field is typed
  * `'YES' | 'NO'` and every local literal assignment is constrained to that
  * union. `'BUY' / 'SELL'` exist in isolated crypto-domain modules (clob-client,
@@ -21,7 +21,7 @@
  *   1. **DB CHECK constraint** — `src/db/migrations/016_qwen_paper_tracking.sql:14`:
  *        `side TEXT NOT NULL CHECK (side IN ('BUY','SELL','YES','NO'))`
  *      is the authoritative 4-value schema declaration.
- *   2. **TS PaperTrade interface** — `src/wiring/paper-trading-orchestrator.ts:26`:
+ *   2. **TS PaperTrade interface** — `src/desk/wiring/paper-trading-orchestrator.ts:26`:
  *        `side: 'YES' | 'NO'` is the 2-value compile-time contract for the
  *      sole writer of `paper_trades_v3`. Every `savePaperTradeV3(trade)` call
  *      is type-narrowed to this union before reaching the INSERT.
@@ -69,7 +69,7 @@
  * is fully covered.
  *
  * Non-goals: asserting the LIVE crypto trading path's `side: 'BUY' | 'SELL'`
- * types (they live in `src/polymarket/*` and `src/execution/*` and don't flow
+ * types (they live in `src/polymarket/*` and `src/desk/execution/*` and don't flow
  * into this table), validating prediction-market resolution semantics, or
  * constraining when `'BUY' / 'SELL'` should graduate from RESERVED to ACTIVE
  * (that's a future-PR policy decision).
@@ -86,7 +86,7 @@ const MIGRATION_PATH = resolve(
 );
 const ORCHESTRATOR_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/paper-trading-orchestrator.ts',
+  'src/desk/wiring/paper-trading-orchestrator.ts',
 );
 
 /** Sides declared in migration CHECK but not yet written by any code path to paper_trades_v3. Reserved for future crypto paper-trade ledger expansion. */

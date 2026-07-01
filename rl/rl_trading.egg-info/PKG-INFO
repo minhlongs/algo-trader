@@ -1,0 +1,447 @@
+Metadata-Version: 2.4
+Name: rl-trading
+Version: 0.1.0
+Summary: Reinforcement Learning Framework for Algorithmic Trading
+Author: AlgoTrader Team
+License: MIT
+Keywords: reinforcement learning,trading,gymnasium,stable-baselines3
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Office/Business :: Financial :: Investment
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: gymnasium>=0.28.0
+Requires-Dist: stable-baselines3>=2.0.0
+Requires-Dist: torch>=2.0.0
+Requires-Dist: numpy>=1.21.0
+Requires-Dist: pandas>=1.3.0
+Requires-Dist: ta>=0.10.0
+Requires-Dist: matplotlib>=3.5.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: tensorboard>=2.12.0
+Requires-Dist: scikit-learn>=1.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Provides-Extra: docs
+
+# Reinforcement Learning (RL) Trading Framework
+
+A production-ready reinforcement learning framework for algorithmic trading, built on [Gymnasium](https://gymnasium.farama.org/) and [Stable Baselines3](https://stable-baselines3.readthedocs.io/). This framework provides a complete pipeline for training, evaluating, and deploying RL agents in financial markets.
+
+## Features
+
+- **Gymnasium-compatible environment** (`MarketEnv`) with realistic market simulation
+- **Flexible action spaces**: discrete (hold/buy/sell with fixed sizing) and continuous (smooth position control)
+- **Multiple reward functions**: Sharpe ratio (default), Sortino, Calmar, raw P&L
+- **Technical indicators**: RSI, MACD, Bollinger Bands, ATR, SMA, EMA
+- **Three state-of-the-art algorithms**: PPO, SAC, DQN
+- **End-to-end training pipeline** with configuration management
+- **Evaluation & backtesting** with performance metrics
+- **Visualization tools** for equity curves, drawdowns, and trade analysis
+- **Type-safe, well-tested** with ≥80% coverage target
+
+## Advanced Features
+
+- **Walk-Forward Analysis (WFA)**: Robust out-of-sample validation with expanding/rolling window splits. Automatically trains on multiple time windows and aggregates performance metrics (mean Sharpe, stability, max drawdown).
+- **Ensemble Training**: Train multiple agents with different hyperparameters and combine predictions using voting, weighted averaging, or best-model selection. Improves robustness and reduces overfitting.
+- **Paper Trading**: Simulate live trading with virtual capital. State persistence, order execution modeling (slippage, commissions), and detailed session logs. Perfect for strategy validation before live deployment.
+- **Gradual Capital Allocation**: Progressive capital scaling (e.g., 1% → 5% → 10% of total capital) based on performance thresholds. Automatically increases allocation when Sharpe > threshold and decreases on drawdowns.
+- **Performance Monitoring & Benchmarking**: Compare agent performance against benchmarks (buy-and-hold, SMA crossover, random). Track alpha, beta, information ratio, tracking error. Configurable alerts for underperformance.
+
+## Quickstart
+
+### 1. Install Dependencies
+
+```bash
+cd rl
+pip install -r requirements.txt
+```
+
+### 2. Generate Sample Data
+
+```bash
+python -m rl.scripts.generate_synthetic_data --steps 10000 --output data/sample.csv
+```
+
+### 3. Train a Model
+
+```bash
+# Using default config (PPO, continuous actions)
+python -m rl.cli.main train --data-path data/sample.csv --timesteps 50000
+
+# Or with discrete actions and DQN
+python -m rl.cli.main train --data-path data/sample.csv --algorithm dqn --action-type discrete --timesteps 50000
+```
+
+### 4. Evaluate
+
+```bash
+python -m rl.cli.main evaluate --model models/best_model.zip --algorithm ppo --data-path data/sample.csv --episodes 5
+```
+
+### 5. Predict
+
+```bash
+python -m rl.cli.main predict --model models/best_model.zip --algorithm ppo --steps 100
+```
+
+### 6. Walk-Forward Analysis
+
+```bash
+python -m rl.cli.main walk-forward \
+  --data-path data/sample.csv \
+  --algorithm ppo \
+  --splits 5 \
+  --output-dir ./wfa_results
+```
+
+### 7. Ensemble Training
+
+```bash
+python -m rl.cli.main ensemble-train \
+  --data-path data/sample.csv \
+  --algorithm ppo \
+  --n-models 5 \
+  --method weighted \
+  --output-dir ./ensemble_models
+```
+
+### 8. Paper Trading
+
+```bash
+python -m rl.cli.main paper-trade \
+  --model models/best_model.zip \
+  --data-path data/live_data.csv \
+  --capital 10000.0
+```
+
+### 9. Capital Allocation Management
+
+```bash
+# Simulate allocation decisions from performance log
+python -m rl.cli.main capital-allocate \
+  --total-capital 100000.0 \
+  --stages 0.01,0.05,0.10 \
+  --performance-file performance_log.json \
+  --output allocation_history.csv
+```
+
+### 10. Performance Monitoring
+
+```bash
+python -m rl.cli.main monitor \
+  --returns-file agent_returns.json \
+  --benchmark-file benchmarks.json \
+  --window 100 \
+  --output performance_report.json
+```
+
+## Architecture
+
+```
+rl/
+├── config/
+│   ├── config.py          # RLConfig dataclass (with advanced features)
+│   └── default.yaml       # Default configuration
+├── environment/
+│   ├── market_env.py      # Gymnasium environment
+│   ├── action_space.py    # Discrete/Continuous action spaces
+│   ├── reward.py          # Reward calculation (Sharpe, Sortino, etc.)
+│   └── state_builder.py   # Observation construction
+├── data/
+│   ├── loader.py          # CSV loading, normalization, sequences
+│   └── features.py        # Technical indicators & feature engineering
+├── algorithms/
+│   ├── base.py            # BaseTrainer & TrainingConfig
+│   ├── ppo_trainer.py     # PPO wrapper
+│   ├── sac_trainer.py     # SAC wrapper
+│   ├── dqn_trainer.py     # DQN wrapper
+│   └── registry.py        # Algorithm registry
+├── training/
+│   ├── pipeline.py        # End-to-end training orchestration
+│   ├── walk_forward.py    # Walk-forward analysis
+│   ├── ensemble.py        # Ensemble training
+│   ├── paper_trader.py    # Paper trading simulation
+│   └── capital_allocator.py  # Capital allocation manager
+├── evaluation/
+│   ├── backtest.py        # Backtesting engine
+│   ├── benchmark.py       # Benchmark strategies
+│   ├── monitor.py         # Performance monitoring & alerts
+│   ├── metrics.py         # Performance metrics
+│   └── visualizer.py      # Plotting utilities
+├── utils/
+│   ├── logging.py         # Logging & TensorBoard
+│   └── metrics.py         # Standalone metric functions
+├── cli/
+│   └── main.py            # Command-line interface (extended)
+├── types.py               # Dataclasses for all domain types
+├── tests/                  # Unit & integration tests
+├── scripts/
+│   └── generate_synthetic_data.py
+├── requirements.txt
+├── pyproject.toml
+└── README.md
+```
+
+## Configuration
+
+All training parameters can be set via YAML config:
+
+```yaml
+# config.yaml
+initial_balance: 10000.0
+max_episode_steps: 1000
+transaction_cost: 0.001  # 0.1%
+
+action_type: "continuous"  # or "discrete"
+reward_type: "sharpe"
+
+data_path: "data/sample.csv"
+feature_columns:
+  - "open"
+  - "high"
+  - "low"
+  - "close"
+  - "volume"
+technical_indicators: true
+normalization: "standard"
+
+total_timesteps: 100000
+learning_rate: 0.0003
+batch_size: 64
+```
+
+Pass config to CLI:
+
+```bash
+python -m rl.cli.main train --config config.yaml
+```
+
+### Configuration Class
+
+```python
+from rl.config import RLConfig
+
+config = RLConfig(
+    initial_balance=10000.0,
+    action_type="continuous",
+    reward_type="sharpe",
+    total_timesteps=100_000,
+    data_path="data/market.csv"
+)
+```
+
+## Environment Details
+
+### Observation Space
+
+The environment returns a flattened vector containing:
+
+- **Position state** (4 dims): size, entry_price, unrealized_pnl, realized_pnl
+- **Account state** (4 dims): balance, equity, margin, buying_power
+- **Market data** (5+N dims): open, high, low, close, volume + N technical indicators
+
+Total dimension = 13 + N (where N = number of indicators)
+
+### Action Space
+
+- **Discrete** (`action_type="discrete"`): `gym.spaces.Discrete(1 + 2*L)` where L = number of position levels (default 5).
+  - Action 0: hold
+  - Actions 1..L: buy with position size = (action_idx / L) * capital
+  - Actions L+1..2L: sell with same encoding
+
+- **Continuous** (`action_type="continuous"`): `gym.spaces.Box(0, 1, shape=(4,))`
+  - Vector: `[hold_prob, buy_prob, sell_prob, position_size]`
+  - `position_size` interpreted as fraction of available capital (0 to 1)
+
+### Reward Function
+
+By default, the reward is a **rolling annualized Sharpe ratio** computed over the last `reward_window` steps. Optional penalties:
+
+- `max_drawdown_penalty`: coefficient × |max_drawdown| subtracted from reward
+- `turnover_penalty`: coefficient × turnover (fraction of capital traded) subtracted
+
+Other reward types: `"sortino"`, `"calmar"`, `"pnl"` (raw per-step P&L scaled by 1000).
+
+### Transaction Costs
+
+- **Commission**: `transaction_cost` × trade value (default 0.1%)
+- **Slippage**: Applied to execution price as `price * (1 ± slippage)` (configurable, default 0.05%)
+
+## Training Pipeline
+
+The `TrainingPipeline` class orchestrates the full workflow:
+
+```python
+from rl.training import TrainingPipeline
+from rl.config import RLConfig
+
+config = RLConfig(data_path="data/sample.csv", total_timesteps=100000)
+pipeline = TrainingPipeline(config)
+
+# Train with PPO
+results = pipeline.train(algorithm_name="ppo", eval_freq=10000)
+print(f"Best reward: {results['best_reward']}")
+```
+
+The pipeline automatically:
+- Loads and preprocesses data (technical indicators, normalization)
+- Splits into train/validation/test sets
+- Creates training and evaluation environments
+- Instantiates the chosen algorithm with hyperparameters
+- Runs the training loop with periodic evaluation and checkpointing
+- Saves best and final models to `models/` directory
+
+### Supported Algorithms
+
+| Algorithm | Action Space | Key Hyperparameters | Notes |
+|-----------|--------------|---------------------|-------|
+| PPO | Continuous | `n_steps`, `n_epochs`, `clip_range`, `ent_coef` | On-policy, stable, good for continuous control |
+| SAC | Continuous | `buffer_size`, `tau`, `target_entropy` | Off-policy, entropy regularization |
+| DQN | Discrete | `double_q`, `dueling`, `exploration_fraction` | Value-based, good for discrete actions |
+
+All algorithms wrap Stable Baselines3 implementations with a unified interface.
+
+## Evaluation
+
+Evaluate a trained model on a test set or custom data:
+
+```python
+from rl.training import TrainingPipeline
+from rl.config import RLConfig
+
+config = RLConfig(data_path="data/test.csv")
+pipeline = TrainingPipeline(config)
+
+metrics = pipeline.evaluate(
+    model_path="models/best_model.zip",
+    algorithm_name="ppo",
+    n_episodes=10
+)
+print(metrics)
+```
+
+Metrics include:
+- `mean_reward`, `std_reward`, `min_reward`, `max_reward`
+- `total_return`, `annualized_return`, `annualized_volatility`
+- `sharpe_ratio`, `sortino_ratio`, `calmar_ratio`
+- `max_drawdown`, `win_rate`
+
+### Backtesting
+
+For detailed backtesting with visualization:
+
+```python
+from rl.evaluation import Backtester
+from rl.algorithms import get_algorithm, TrainingConfig
+
+# Load your data and environment
+env = ...  # MarketEnv with test data
+
+# Load trained model
+trainer_class = get_algorithm("ppo")
+trainer = trainer_class(env=env, config=TrainingConfig())
+trainer.load_checkpoint("models/best_model.zip")
+
+# Run backtest
+backtester = Backtester(env)
+results = backtester.run(predict_func=lambda obs: trainer.predict(obs, deterministic=True), n_episodes=1)
+
+print(results.to_dict())
+```
+
+## Visualization
+
+Generate plots from backtest results:
+
+```python
+from rl.evaluation import visualizer
+import matplotlib.pyplot as plt
+
+# Assuming you have history from env.episode_history
+visualizer.plot_equity_curve(env.episode_history.equity_curve)
+visualizer.plot_drawdown_chart(env.episode_history.equity_curve)
+visualizer.plot_returns_distribution(env.episode_history.returns)
+visualizer.plot_trade_analysis(env.episode_history.trades)
+visualizer.save_plots(output_dir="reports/plots/", equity_curve=..., returns=..., trades=...)
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+cd rl
+pytest tests/ -v --cov=rl --cov-report=html
+```
+
+Test coverage:
+- Environment: `test_environment.py` (MarketEnv, action spaces, reward)
+- Data: `test_data.py` (loader, normalization, features)
+- Algorithms: `test_algorithms.py` (trainer creation, short training)
+- Reward: `test_reward.py` (metric calculations)
+
+## Development
+
+### Project Structure
+
+This package is designed as a standalone Python module under the `rl/` directory. It follows standard Python packaging conventions (`pyproject.toml`). You can install it in editable mode:
+
+```bash
+cd rl
+pip install -e .
+```
+
+### Adding New Indicators
+
+Edit `rl/data/features.py` and add your indicator computation in `compute_technical_indicators()`. The pipeline automatically includes all numeric columns in the observation.
+
+### Custom Reward Functions
+
+Subclass or modify `RewardCalculator` in `rl/environment/reward.py`. The `calculate()` method receives the episode history and current step return; implement your own logic.
+
+### Registering New Algorithms
+
+```python
+from rl.algorithms.registry import register_algorithm
+from rl.algorithms.base import BaseTrainer
+
+class MyTrainer(BaseTrainer):
+    # implement _build_model, predict, save_checkpoint, load_checkpoint
+    ...
+
+register_algorithm("my_algo", MyTrainer)
+```
+
+## Limitations & Caveats
+
+- **No live trading integration**: This is a research/experimental framework. Real-time market data, order management, and exchange connectivity are not provided.
+- **Single-asset focus**: The environment models a single instrument. Portfolio/multi-asset trading requires extension.
+- **Simplified margin model**: Buying power equals equity (no leverage constraints beyond position sizing).
+- **Idealized execution**: Trades execute at close price with slippage modeled as a percentage. No order book simulation.
+- **Stationarity assumption**: Training on historical data assumes market dynamics are stationary; performance may degrade in regimes not represented in training data.
+
+## Future Work
+
+Potential enhancements:
+- Multi-asset portfolio environment
+- Order book-based execution (limit orders, market depth)
+- Live trading adapters (CCXT, exchange APIs)
+- Recurrent policies (LSTM) for longer-term memory
+- Hierarchical RL for multi-timeframe strategies
+- Meta-learning for rapid adaptation to new assets
+- Risk-aware exploration (constrained RL)
+
+## Contributing
+
+This framework is part of the AlgoTrader monorepo. Please follow the development guidelines in `../docs/code-standards.md`.
+
+## License
+
+MIT

@@ -3,7 +3,7 @@
  *
  * `docs/strategy-review-reasons.md` declares the canonical enum of
  * `trigger_reason` values. The only code site that emits these values is
- * `src/wiring/qwen-signals-loop.ts` via `insertReviewTask(source, '<reason>', metrics)`
+ * `src/desk/wiring/qwen-signals-loop.ts` via `insertReviewTask(source, '<reason>', metrics)`
  * call sites. If the two drift, the doc becomes stale guidance and operators
  * chasing a `reason=` label in a Grafana panel hit a dead reference.
  *
@@ -20,7 +20,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const DOC_PATH = resolve(__dirname, '../../docs/strategy-review-reasons.md');
-const CODE_PATH = resolve(__dirname, '../../src/wiring/qwen-signals-loop.ts');
+const CODE_PATH = resolve(__dirname, '../../src/desk/wiring/qwen-signals-loop.ts');
 
 /**
  * Strip `//` line comments and `/* ... *\/` block comments so that commented-out

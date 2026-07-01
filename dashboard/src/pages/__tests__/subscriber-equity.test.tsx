@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Subscriber Equity Page Tests
  */

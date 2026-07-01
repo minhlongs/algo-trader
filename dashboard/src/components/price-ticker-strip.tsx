@@ -58,7 +58,7 @@ export function PriceTickerStrip() {
 
   if (entries.length === 0) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2 text-muted text-xs font-mono">
+      <div className="flex items-center gap-2 px-4 py-2 text-muted text-xs">
         <span className="animate-pulse">Waiting for price data...</span>
       </div>
     );
@@ -74,7 +74,7 @@ export function PriceTickerStrip() {
               ? 'bg-profit/15 border-profit/40'
               : flash === 'down'
               ? 'bg-loss/15 border-loss/40'
-              : 'bg-bg-card border-bg-border';
+              : 'bg-bg-surface border-bg-border';
 
           return (
             <div
@@ -86,27 +86,27 @@ export function PriceTickerStrip() {
             >
               {/* Header: exchange + symbol */}
               <div className="flex items-center justify-between gap-2">
-                <span className="text-accent text-xs font-mono font-bold truncate">
+                <span className="text-accent text-xs font-bold truncate">
                   {tick.exchange}
                 </span>
-                <span className="text-white text-xs font-mono font-semibold">
+                <span className="text-white text-xs font-semibold">
                   {tick.symbol}
                 </span>
               </div>
 
               {/* Bid / Ask */}
-              <div className="flex gap-2 text-xs font-mono">
-                <span className={`${flash === 'up' ? 'text-profit' : flash === 'down' ? 'text-loss' : 'text-white'} transition-colors duration-300`}>
+              <div className="flex gap-2 text-xs">
+                <span className={`font-mono tabular-nums ${flash === 'up' ? 'text-profit' : flash === 'down' ? 'text-loss' : 'text-white'} transition-colors duration-300`}>
                   B {formatPrice(tick.bid)}
                 </span>
                 <span className="text-muted">|</span>
-                <span className={`${flash === 'up' ? 'text-profit' : flash === 'down' ? 'text-loss' : 'text-muted'} transition-colors duration-300`}>
+                <span className={`font-mono tabular-nums ${flash === 'up' ? 'text-profit' : flash === 'down' ? 'text-loss' : 'text-muted'} transition-colors duration-300`}>
                   A {formatPrice(tick.ask)}
                 </span>
               </div>
 
               {/* Spread */}
-              <div className="text-muted text-[10px] font-mono">
+              <div className="text-muted text-[10px] font-mono tabular-nums">
                 {spreadBps(tick.bid, tick.ask)}
               </div>
             </div>

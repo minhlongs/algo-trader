@@ -18,7 +18,7 @@ export function SubscriberEquityPage() {
 
   if (!tenantId) {
     return (
-      <div className="p-6 text-muted text-sm font-mono">
+      <div className="p-6 text-muted text-sm">
         No subscriber identity found. Please log in with a valid license key.
       </div>
     );
@@ -26,7 +26,7 @@ export function SubscriberEquityPage() {
 
   if (loading && !equity) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted text-sm font-mono">
+      <div className="flex items-center justify-center py-20 text-muted text-sm">
         Loading equity curve...
       </div>
     );
@@ -34,7 +34,7 @@ export function SubscriberEquityPage() {
 
   if (error) {
     return (
-      <div className="p-4 bg-loss/10 border border-loss/40 rounded-lg text-loss text-sm font-mono flex items-center justify-between">
+      <div className="p-4 bg-loss/10 border border-loss/40 rounded-lg text-loss text-sm flex items-center justify-between">
         <span>{error}</span>
         <button
           onClick={refresh}
@@ -56,15 +56,15 @@ export function SubscriberEquityPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white font-mono">Equity Curve</h1>
-          <p className="text-muted text-xs font-mono mt-0.5">
+          <h1 className="text-xl font-bold text-white">Equity Curve</h1>
+          <p className="text-muted text-xs mt-0.5">
             Tenant: <span className="text-accent">{tenantId}</span>
           </p>
         </div>
         <button
           onClick={refresh}
           disabled={loading}
-          className="px-3 py-1.5 bg-surface border border-border rounded text-xs font-mono text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
+          className="px-3 py-1.5 bg-surface border border-border rounded text-xs text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
         >
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
@@ -106,7 +106,7 @@ export function SubscriberEquityPage() {
 
       {/* Data points count */}
       {equity && equity.curve.length > 0 && (
-        <p className="text-muted text-[10px] font-mono text-right">
+        <p className="text-muted text-[10px] text-right">
           {equity.curve.length} daily snapshots · last: {equity.curve[equity.curve.length - 1].date}
         </p>
       )}

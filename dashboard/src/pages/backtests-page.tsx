@@ -35,7 +35,7 @@ function SharpeChip({ value }: { value: number }) {
         ? 'text-loss border-loss'
         : 'text-muted border-bg-border';
   return (
-    <span className={`text-xs border rounded px-1.5 py-0.5 font-mono ${cls}`}>
+    <span className={`text-xs border rounded px-1.5 py-0.5 ${cls}`}>
       {value.toFixed(2)}
     </span>
   );
@@ -95,7 +95,7 @@ export function BacktestsPage() {
       <h1 className="text-white text-2xl font-bold">Backtests</h1>
 
       {/* Submit form */}
-      <section className="bg-bg-card border border-bg-border rounded-lg p-6">
+      <section className="bg-bg-surface border border-bg-border rounded-lg p-6">
         <h2 className="text-accent text-sm font-semibold uppercase tracking-wider mb-4">
           Submit Backtest
         </h2>
@@ -108,7 +108,7 @@ export function BacktestsPage() {
               value={pair}
               onChange={(e) => setPair(e.target.value)}
               placeholder="BTC/USDT"
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
               required
             />
           </div>
@@ -119,7 +119,7 @@ export function BacktestsPage() {
             <select
               value={timeframe}
               onChange={(e) => setTimeframe(e.target.value)}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
             >
               {TIMEFRAMES.map((tf) => (
                 <option key={tf} value={tf}>{tf}</option>
@@ -133,7 +133,7 @@ export function BacktestsPage() {
             <select
               value={strategy}
               onChange={(e) => setStrategy(e.target.value)}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
             >
               {STRATEGIES.map((s) => (
                 <option key={s} value={s}>{s}</option>
@@ -150,7 +150,7 @@ export function BacktestsPage() {
               onChange={(e) => setDays(Number(e.target.value))}
               min={1}
               max={365}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
               required
             />
           </div>
@@ -165,7 +165,7 @@ export function BacktestsPage() {
               {submitting ? 'Submitting…' : 'Run Backtest'}
             </button>
             {successMsg && (
-              <span className="text-profit text-sm font-mono">{successMsg}</span>
+              <span className="text-profit text-sm">{successMsg}</span>
             )}
           </div>
         </form>
@@ -183,11 +183,11 @@ export function BacktestsPage() {
             {results.map((r) => (
               <div
                 key={r.id}
-                className="bg-bg-card border border-bg-border rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-center"
+                className="bg-bg-surface border border-bg-border rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-center"
               >
                 {/* Strategy + meta */}
                 <div className="col-span-2 md:col-span-1 lg:col-span-2">
-                  <p className="text-white font-mono text-sm font-semibold">{r.strategyName}</p>
+                  <p className="text-white text-sm font-semibold">{r.strategyName}</p>
                   <p className="text-muted text-xs mt-0.5">
                     {r.pair} · {r.timeframe} · {r.days}d
                   </p>

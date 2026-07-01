@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/auth-store';
 import type { ApiError } from '../types/api';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+export const API_BASE_PATH = '/api';
 const DEFAULT_TIMEOUT = 10000; // 10s
 const MAX_RETRIES = 2;
 
@@ -38,7 +39,7 @@ async function fetchWithRetry<T>(
         ...options.headers,
       };
 
-      const response = await fetch(`${BASE_URL}/api${path}`, {
+      const response = await fetch(`${BASE_URL}${API_BASE_PATH}${path}`, {
         ...options,
         headers,
         signal: controller.signal,

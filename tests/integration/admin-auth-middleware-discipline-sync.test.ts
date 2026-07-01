@@ -2,7 +2,7 @@
  * Fastify admin-auth middleware discipline 10-invariant sync —
  * first Fastify-layer API-key auth substrate edge.
  *
- * `src/middleware/admin-auth.ts` gates `/api/v1/licenses` with
+ * `src/platform/middleware/admin-auth.ts` gates `/api/v1/licenses` with
  * `X-API-Key` header validation backed by a CSV-seeded Set. Drift
  * manifests as:
  *   - Env parse loses CSV split → multi-key deployments collapse to
@@ -79,7 +79,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const ADMIN_AUTH_FILE = resolve(REPO_ROOT, 'src/middleware/admin-auth.ts');
+const ADMIN_AUTH_FILE = resolve(REPO_ROOT, 'src/platform/middleware/admin-auth.ts');
 
 const REQUIRED_EXPORTS = {
   type: ['AdminAuthDecorator'],

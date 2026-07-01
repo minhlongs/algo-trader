@@ -27,33 +27,33 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {/* Total Equity */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Total Equity</p>
-        <p className="text-xl font-bold text-white">
+        <p className="text-xl font-bold text-white font-mono tabular-nums">
           {totalEquity ? formatUsd(totalEquity) : '—'}
         </p>
       </div>
 
       {/* Open Positions */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Open Positions</p>
-        <p className="text-xl font-bold text-white">
+        <p className="text-xl font-bold text-white font-mono tabular-nums">
           {openPositions ?? '—'}
         </p>
       </div>
 
       {/* Today's P&L */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Today's P&L</p>
-        <p className={`text-xl font-bold ${pnlPositive ? 'text-profit' : 'text-loss'}`}>
+        <p className={`text-xl font-bold font-mono tabular-nums ${pnlPositive ? 'text-profit' : 'text-loss'}`}>
           {formatUsd(pnlValue)}
         </p>
       </div>
 
       {/* Active Strategies */}
-      <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
         <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Active Strategies</p>
-        <p className="text-xl font-bold text-accent">
+        <p className="text-xl font-bold text-accent font-mono tabular-nums">
           {activeStrategies ?? '—'}
         </p>
       </div>

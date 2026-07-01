@@ -7,13 +7,13 @@
  * must stay in lockstep:
  *
  *   1. **Metric declaration** — `qwenAdminKillActionsTotal` Counter in
- *      `src/middleware/prometheus-metrics.ts` (labelNames: ['action'] + help
+ *      `src/platform/middleware/prometheus-metrics.ts` (labelNames: ['action'] + help
  *      text documenting the `/kill|unkill` operator endpoints).
  *   2. **Route emission sites** — `qwenAdminKillActionsTotal.inc({ action: 'X' })`
- *      calls in `src/api/routes/admin-qwen-routes.ts` (one per toggle
+ *      calls in `src/platform/api/routes/admin-qwen-routes.ts` (one per toggle
  *      endpoint; current set = {kill, unkill}).
  *   3. **Route test expectations** — `{ action: 'X' }` assertions in
- *      `src/api/routes/__tests__/admin-qwen-kill-actions.test.ts`.
+ *      `src/platform/api/routes/__tests__/admin-qwen-kill-actions.test.ts`.
  *
  * A drift in any direction is silently destructive:
  *   - Route adds `action: 'armed'` without updating help-text → operator
@@ -57,11 +57,11 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/middleware/prometheus-metrics.ts');
-const ROUTES_PATH = resolve(REPO_ROOT, 'src/api/routes/admin-qwen-routes.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
+const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/admin-qwen-routes.ts');
 const ROUTE_TEST_PATH = resolve(
   REPO_ROOT,
-  'src/api/routes/__tests__/admin-qwen-kill-actions.test.ts',
+  'src/platform/api/routes/__tests__/admin-qwen-kill-actions.test.ts',
 );
 
 /** Actions declared in the metric help text but intentionally not yet wired. */

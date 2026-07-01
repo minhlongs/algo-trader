@@ -5,7 +5,7 @@
  *   - parses cleanly
  *   - has the expected structure (panels array, UID, schema version)
  *   - every PromQL metric reference in panel targets resolves to an actual
- *     export in src/middleware/prometheus-metrics.ts
+ *     export in src/platform/middleware/prometheus-metrics.ts
  *
  * Catches the same class of typo that PR #132 catches for alert rules: a
  * dashboard panel referencing `algo_trader_qwen_pnl_pct` (missing `_paper_`)

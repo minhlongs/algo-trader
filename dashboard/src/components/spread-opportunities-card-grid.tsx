@@ -43,7 +43,7 @@ function spreadIntensityClass(spreadPct: number): { border: string; badge: strin
 export function SpreadOpportunitiesCardGrid({ spreads }: SpreadOpportunitiesCardGridProps) {
   if (spreads.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted font-mono">
+      <div className="flex flex-col items-center justify-center py-12 text-muted">
         <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" className="mb-3 opacity-30">
           <circle cx="12" cy="12" r="9" />
           <path d="M8 12h8M12 8v8" />
@@ -65,20 +65,20 @@ export function SpreadOpportunitiesCardGrid({ spreads }: SpreadOpportunitiesCard
           <div
             key={key}
             className={`
-              bg-bg-card border rounded-lg p-3 transition-all duration-200
+              bg-bg-surface border rounded-lg p-3 transition-all duration-200
               hover:scale-[1.02] ${border} ${glow}
             `}
           >
             {/* Symbol + spread badge */}
             <div className="flex items-start justify-between gap-2 mb-2">
-              <span className="text-white font-mono font-bold text-sm">{opp.symbol}</span>
-              <span className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded ${badge}`}>
+              <span className="text-white font-bold text-sm">{opp.symbol}</span>
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${badge}`}>
                 {formatSpreadPct(opp.spreadPct)}
               </span>
             </div>
 
             {/* Exchange route */}
-            <div className="flex items-center gap-1.5 mb-3 font-mono text-xs">
+            <div className="flex items-center gap-1.5 mb-3 text-xs">
               <span className="text-accent truncate max-w-[72px]">{opp.buyExchange}</span>
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="text-muted flex-shrink-0">
                 <path d="M5 12h14M13 6l6 6-6 6" />
@@ -87,7 +87,7 @@ export function SpreadOpportunitiesCardGrid({ spreads }: SpreadOpportunitiesCard
             </div>
 
             {/* Net profit */}
-            <div className="flex items-center justify-between font-mono">
+            <div className="flex items-center justify-between">
               <span className="text-muted text-[10px] uppercase tracking-wide">Net Profit</span>
               <span className={`text-sm font-semibold ${opp.netProfitUsd >= 0 ? 'text-profit' : 'text-loss'}`}>
                 {formatUsd(opp.netProfitUsd)}

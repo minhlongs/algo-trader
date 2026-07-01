@@ -2,7 +2,7 @@
  * SignalTierFilter primitive discipline 9-invariant sync — fifth
  * signal-pipeline substrate edge.
  *
- * `src/signal/signal-tier-filter.ts` filters the signal fan-out
+ * `src/desk/signal/signal-tier-filter.ts` filters the signal fan-out
  * based on subscriber license tier (FREE / PRO / ENTERPRISE). Drift
  * manifests as:
  *   - ENTERPRISE tier loses sort-by-ts descending → feed order breaks
@@ -83,7 +83,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const FILTER_FILE = resolve(REPO_ROOT, 'src/signal/signal-tier-filter.ts');
+const FILTER_FILE = resolve(REPO_ROOT, 'src/desk/signal/signal-tier-filter.ts');
 
 function readFilter(): string {
   return readFileSync(FILTER_FILE, 'utf8');

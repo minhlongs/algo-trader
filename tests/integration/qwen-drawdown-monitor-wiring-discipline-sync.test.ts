@@ -2,7 +2,7 @@
  * Qwen drawdown-monitor wiring discipline 10-invariant sync —
  * first L3 rollback-wiring substrate edge.
  *
- * `src/wiring/qwen-drawdown-monitor.ts` is the L3 auto-rollback layer
+ * `src/desk/wiring/qwen-drawdown-monitor.ts` is the L3 auto-rollback layer
  * referenced by:
  *   - Admin kill-switch routes (#195 DIPENTACONTAGON — calls
  *     disableQwen / enableQwen / isKillSwitchActive / isQwenEnabled)
@@ -89,7 +89,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const MONITOR_FILE = resolve(REPO_ROOT, 'src/wiring/qwen-drawdown-monitor.ts');
+const MONITOR_FILE = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-monitor.ts');
 
 const EXPECTED_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const EXPECTED_WINDOW_MS = 24 * 60 * 60 * 1000;

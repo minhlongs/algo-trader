@@ -1,4 +1,6 @@
-# Deployment Guide — Algo-Trader v5.0
+# Deployment Guide — Algo-Trader v3.0.0
+
+**v3.0.0 architecture:** Codebase organized into 3 bounded contexts — `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All three deploy as a single service from the same Docker image.
 
 ## Zero-Config Quickstart (Recommended)
 
@@ -360,30 +362,6 @@ TELEGRAM_BOT_TOKEN=1234567890:ABCdef...
 
 For complete notification setup and usage, see [notification-system.md](./notification-system.md).
 
-## Production Deployment
-
-### Docker Compose (Single Server)
-```bash
-docker compose -f docker-compose.yml up -d
-```
-
-### Kubernetes
-```yaml
-# Deployment resource limits (recommended)
-resources:
-  requests:
-    memory: "256Mi"
-    cpu: "250m"
-  limits:
-    memory: "512Mi"
-    cpu: "500m"
-```
-
-### Scaling
-- **Horizontal**: Multiple algo-trader replicas behind load balancer
-- **Redis**: Single instance sufficient for <100 tenants
-- **PostgreSQL**: Read replicas for analytics queries
-
 ## Troubleshooting
 
 | Issue | Solution |
@@ -426,4 +404,4 @@ Before deploying to production:
 
 ---
 
-Updated: 2026-03-27
+Updated: 2026-06-30

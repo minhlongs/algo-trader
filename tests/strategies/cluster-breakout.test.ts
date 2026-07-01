@@ -8,8 +8,8 @@ import {
   DEFAULT_CONFIG,
   type ClusterBreakoutConfig,
   type ClusterBreakoutDeps,
-} from '../../src/strategies/polymarket/cluster-breakout.js';
-import type { RawOrderBook } from '../../src/polymarket/clob-client.js';
+} from '../../src/desk/strategies/polymarket/cluster-breakout';
+import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
 

@@ -7,19 +7,19 @@ import { CopyBlock, CollapsibleItem } from './guide-shared-components';
 export function GuideQuickStart() {
   return (
     <section id="quick-start">
-      <h2 className="text-xl font-bold font-mono text-white mb-2">Quick Start</h2>
-      <p className="text-sm font-mono text-[#8892B0] mb-4">
+      <h2 className="text-xl font-bold text-white mb-2">Quick Start</h2>
+      <p className="text-sm text-[#8892B0] mb-4">
         Setup takes ~15 minutes. You need: a Polymarket account, a VPS ($10-20/mo), and a terminal.
       </p>
 
       <div className="space-y-6">
         {/* Step 1 */}
         <div>
-          <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 1:</span> Create Polymarket Wallet
+          <p className="text-sm text-white mb-2">
+            <span className="text-[#00C8E8] font-bold">Step 1:</span> Create Polymarket Wallet
           </p>
-          <p className="text-sm font-mono text-[#8892B0]">
-            Go to <span className="text-[#00D9FF]">polymarket.com</span> &rarr; connect wallet &rarr; save your{' '}
+          <p className="text-sm text-[#8892B0]">
+            Go to <span className="text-[#00C8E8]">polymarket.com</span> &rarr; connect wallet &rarr; save your{' '}
             <span className="text-yellow-400">PRIVATE KEY</span> securely.
             Fund your wallet with at least $100 USDC on Polygon.
           </p>
@@ -27,22 +27,22 @@ export function GuideQuickStart() {
 
         {/* Step 2 */}
         <div>
-          <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 2:</span> Rent a VPS
+          <p className="text-sm text-white mb-2">
+            <span className="text-[#00C8E8] font-bold">Step 2:</span> Rent a VPS
           </p>
-          <p className="text-sm font-mono text-[#8892B0] mb-2">
+          <p className="text-sm text-[#8892B0] mb-2">
             Any Linux VPS works. Recommended: DigitalOcean, Hetzner, or Vultr.
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs font-mono border-collapse">
+            <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="border-b border-[#2D3142]">
-                  <th className="text-left py-2 pr-4 text-[#00D9FF]">Provider</th>
-                  <th className="text-left py-2 pr-4 text-[#00D9FF]">Price</th>
-                  <th className="text-left py-2 text-[#00D9FF]">Specs</th>
+                <tr className="border-b border-[#1E2640]">
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Provider</th>
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Price</th>
+                  <th className="text-left py-2 text-[#00C8E8]">Specs</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#2D3142]">
+              <tbody className="divide-y divide-[#1E2640]">
                 <tr>
                   <td className="py-2 pr-4 text-white">DigitalOcean</td>
                   <td className="py-2 pr-4">$12/mo</td>
@@ -65,8 +65,8 @@ export function GuideQuickStart() {
 
         {/* Step 3 */}
         <div>
-          <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 3:</span> Install CashClaw
+          <p className="text-sm text-white mb-2">
+            <span className="text-[#00C8E8] font-bold">Step 3:</span> Install CashClaw
           </p>
           <CopyBlock code={`ssh root@YOUR_VPS_IP
 
@@ -86,8 +86,8 @@ cp .env.example .env`} />
 
         {/* Step 4 */}
         <div>
-          <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 4:</span> Configure .env
+          <p className="text-sm text-white mb-2">
+            <span className="text-[#00C8E8] font-bold">Step 4:</span> Configure .env
           </p>
           <CopyBlock code={`# Your Polymarket credentials
 PRIVATE_KEY=0x_your_private_key
@@ -102,17 +102,17 @@ MM_MAX_MARKETS=5
 # License (omit = FREE tier: 1 market, 5 trades/day)
 # RAAS_LICENSE_KEY=your_license_key_here`} />
           <div className="mt-3 border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-3">
-            <p className="text-xs font-mono text-yellow-400 font-bold mb-1">License Tiers</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono text-[#8892B0]">
-              <div className="bg-[#1A1A2E] rounded p-2">
+            <p className="text-xs text-yellow-400 font-bold mb-1">License Tiers</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-[#8892B0]">
+              <div className="bg-[#111627] rounded p-2">
                 <span className="text-white block mb-1">Starter ($49/mo)</span>
                 1 strategy &middot; Polymarket only
               </div>
-              <div className="bg-[#1A1A2E] rounded p-2">
-                <span className="text-[#00D9FF] block mb-1">Pro ($149/mo)</span>
+              <div className="bg-[#111627] rounded p-2">
+                <span className="text-[#00C8E8] block mb-1">Pro ($149/mo)</span>
                 5 strategies &middot; all markets &middot; AI scanner
               </div>
-              <div className="bg-[#1A1A2E] rounded p-2">
+              <div className="bg-[#111627] rounded p-2">
                 <span className="text-yellow-400 block mb-1">Elite ($499/mo)</span>
                 Unlimited &middot; all features &middot; dedicated support
               </div>
@@ -122,8 +122,8 @@ MM_MAX_MARKETS=5
 
         {/* Step 5 */}
         <div>
-          <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 5:</span> Start the Bot
+          <p className="text-sm text-white mb-2">
+            <span className="text-[#00C8E8] font-bold">Step 5:</span> Start the Bot
           </p>
           <CopyBlock code={`# Start in DRY RUN first (no real money)
 pm2 start "npx tsx src/app.ts" --name cashclaw
@@ -140,10 +140,10 @@ pm2 save && pm2 startup`} />
 
         {/* Step 6 */}
         <div>
-          <p className="text-sm font-mono text-white mb-2">
-            <span className="text-[#00D9FF] font-bold">Step 6:</span> Go Live
+          <p className="text-sm text-white mb-2">
+            <span className="text-[#00C8E8] font-bold">Step 6:</span> Go Live
           </p>
-          <p className="text-sm font-mono text-[#8892B0] mb-2">
+          <p className="text-sm text-[#8892B0] mb-2">
             After 2-3 days of successful DRY_RUN, switch to live trading:
           </p>
           <CopyBlock code={`# Edit .env: change DRY_RUN=false
@@ -152,8 +152,8 @@ nano .env
 # Restart with live trading
 pm2 restart cashclaw`} />
           <div className="mt-3 border-l-4 border-red-500 bg-red-500/10 px-4 py-3 rounded-r-lg">
-            <p className="text-sm font-mono text-red-400 font-bold">Before going live</p>
-            <p className="text-sm font-mono text-red-300 mt-1">
+            <p className="text-sm text-red-400 font-bold">Before going live</p>
+            <p className="text-sm text-red-300 mt-1">
               Start with small bankroll ($100-200). Watch for 48 hours. Scale up slowly.
             </p>
           </div>
@@ -161,7 +161,7 @@ pm2 restart cashclaw`} />
 
         {/* Docker alternative */}
         <div>
-          <p className="text-sm font-mono text-white font-bold mb-2">Alternative: Docker Setup</p>
+          <p className="text-sm text-white font-bold mb-2">Alternative: Docker Setup</p>
           <CollapsibleItem title="Use Docker instead of bare metal">
             <CopyBlock code={`# Install Docker
 curl -fsSL https://get.docker.com | sh
@@ -179,7 +179,7 @@ docker compose logs -f cashclaw`} />
 
         {/* Apple Silicon */}
         <div>
-          <p className="text-sm font-mono text-white font-bold mb-2">Alternative: Apple Silicon (M1/M2/M3/M4)</p>
+          <p className="text-sm text-white font-bold mb-2">Alternative: Apple Silicon (M1/M2/M3/M4)</p>
           <CollapsibleItem title="Run on your Mac instead of VPS">
             <p className="mb-2">If you have a Mac with Apple Silicon, you can run CashClaw locally with bonus AI features:</p>
             <CopyBlock code={`# Clone and install (same as VPS)
@@ -191,7 +191,7 @@ cp .env.example .env
 # Start bot
 pm2 start "npx tsx src/app.ts" --name cashclaw`} />
             <p className="mt-2">
-              <span className="text-[#00D9FF]">Bonus:</span> On Apple Silicon with 32GB+ RAM, you can run local AI models
+              <span className="text-[#00C8E8]">Bonus:</span> On Apple Silicon with 32GB+ RAM, you can run local AI models
               (Nemotron, DeepSeek R1) for enhanced market scanning without API costs.
             </p>
           </CollapsibleItem>

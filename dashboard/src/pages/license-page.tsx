@@ -20,7 +20,7 @@ const TABS: { id: TabType; label: string }[] = [
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="bg-bg-card border border-bg-border rounded-lg p-6">
+    <section className="bg-bg-surface border border-bg-border rounded-lg p-6">
       {children}
     </section>
   );
@@ -153,7 +153,7 @@ export function LicensePage() {
   }
 
   return (
-    <div className="space-y-6 font-mono">
+    <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -170,7 +170,7 @@ export function LicensePage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                px-1 py-2 text-sm font-mono border-b-2 transition-colors
+                px-1 py-2 text-sm border-b-2 transition-colors
                 ${
                   activeTab === tab.id
                     ? 'border-accent text-accent'

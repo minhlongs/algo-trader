@@ -31,7 +31,7 @@
  *      — asymmetric nullability (created_at NOT NULL with DEFAULT, resolved_at
  *      nullable). Reflects the 2-state lifecycle at DB shape.
  *   2. **Admin-route UPDATE writer** —
- *      `src/api/routes/admin-qwen-routes.ts:162-165`:
+ *      `src/platform/api/routes/admin-qwen-routes.ts:162-165`:
  *        `UPDATE strategy_review_tasks`
  *        `   SET status = 'resolved', resolved_at = now()`
  *        ` WHERE id = $1 AND status = 'pending'`
@@ -115,7 +115,7 @@ const MIGRATION_PATH = resolve(
 );
 const ADMIN_ROUTE_PATH = resolve(
   REPO_ROOT,
-  'src/api/routes/admin-qwen-routes.ts',
+  'src/platform/api/routes/admin-qwen-routes.ts',
 );
 
 /** Strip SQL `--` line comments + `/* ... *\/` blocks. */

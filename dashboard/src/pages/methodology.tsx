@@ -13,9 +13,9 @@ export function MethodologyPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0F0F1A] text-[#C9D1D9] flex items-center justify-center px-4">
-      <div className="text-center font-mono">
-        <p className="text-[#00D9FF] text-xs uppercase tracking-[0.2em] mb-3">
+    <div className="min-h-screen bg-[#080B14] text-[#C9D1D9] flex items-center justify-center px-4">
+      <div className="text-center">
+        <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] mb-3">
           Redirecting
         </p>
         <p className="text-[#8892B0] text-sm mb-4">
@@ -23,7 +23,7 @@ export function MethodologyPage() {
         </p>
         <a
           href={METHODOLOGY_URL}
-          className="text-[#00D9FF] underline text-sm"
+          className="text-[#00C8E8] underline text-sm"
           rel="noopener noreferrer"
         >
           Click here if nothing happens

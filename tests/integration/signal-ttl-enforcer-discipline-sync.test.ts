@@ -2,7 +2,7 @@
  * SignalTtlEnforcer primitive discipline 9-invariant sync — fourth
  * signal-pipeline substrate edge.
  *
- * `src/signal/signal-ttl-enforcer.ts` is the in-memory live-cache that
+ * `src/desk/signal/signal-ttl-enforcer.ts` is the in-memory live-cache that
  * tracks active signals and auto-evicts them at expiry. Drift manifests
  * as:
  *   - Double-Map coupling broken (`signals` without `timers` clear) →
@@ -83,7 +83,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const TTL_FILE = resolve(REPO_ROOT, 'src/signal/signal-ttl-enforcer.ts');
+const TTL_FILE = resolve(REPO_ROOT, 'src/desk/signal/signal-ttl-enforcer.ts');
 
 function readTtl(): string {
   return readFileSync(TTL_FILE, 'utf8');

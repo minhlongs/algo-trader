@@ -18,6 +18,11 @@
     "downlevelIteration": true,
     "lib": ["ES2023", "DOM"],
     "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["src/shared/*"],
+      "@desk/*": ["src/desk/*"],
+      "@platform/*": ["src/platform/*"]
+    },
     "rootDir": "./src"
   },
   "include": [
@@ -27,20 +32,12 @@
     "node_modules",
     "node_modules/.cache",
     "**/*.test.ts",
-    "src/api/routes/monitoring-routes.ts",
-    "src/api/routes/monitoring-routes-extension.ts",
-    "src/workers/**/*",
+    "src/platform/workers/**/*",
+    "src/platform/dashboard/**/*",
+    "src/platform/landing/**/*",
     "src/wiring/**/*",
+    "src/desk/wiring/**/*",
     "dist",
-    "src/dashboard/dashboard-server.ts",
-    "src/dashboard/dashboard-routes.ts",
-    "src/dashboard/dashboard-middleware.ts",
-    "src/dashboard/dashboard-demo-data.ts",
-    "src/dashboard/dashboard-utils.ts",
-    "src/dashboard/dashboard-admin-routes.ts",
-    "src/dashboard/dashboard-api-get-routes.ts",
-    "src/dashboard/dashboard-route-helpers.ts",
-    "src/landing/landing-server.ts",
-    "src/polymarket/trading-pipeline.ts"
+    "src/desk/polymarket/trading-pipeline.ts"
   ]
 }

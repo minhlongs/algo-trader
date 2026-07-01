@@ -21,15 +21,15 @@ function formatTiers(tiers: string[]) {
 function CouponRow({ coupon, onDeactivate }: { coupon: Coupon; onDeactivate: (code: string) => void }) {
   return (
     <tr className="border-t border-bg-border hover:bg-white/[0.02] transition-colors">
-      <td className="py-3 px-4 font-mono text-sm text-white font-semibold tracking-wider">{coupon.code}</td>
-      <td className="py-3 px-4 font-mono text-sm text-accent">{coupon.discountPercent}%</td>
-      <td className="py-3 px-4 font-mono text-sm text-muted">
+      <td className="py-3 px-4 text-sm text-white font-semibold tracking-wider">{coupon.code}</td>
+      <td className="py-3 px-4 text-sm text-accent">{coupon.discountPercent}%</td>
+      <td className="py-3 px-4 text-sm text-muted">
         {coupon.currentUses}/{coupon.maxUses === 0 ? '∞' : coupon.maxUses}
       </td>
-      <td className="py-3 px-4 font-mono text-sm">{formatTiers(coupon.applicableTiers)}</td>
-      <td className="py-3 px-4 font-mono text-sm text-muted">{formatExpiry(coupon.validUntil)}</td>
+      <td className="py-3 px-4 text-sm">{formatTiers(coupon.applicableTiers)}</td>
+      <td className="py-3 px-4 text-sm text-muted">{formatExpiry(coupon.validUntil)}</td>
       <td className="py-3 px-4">
-        <span className={`text-xs font-mono font-semibold px-2 py-0.5 rounded-full ${
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
           coupon.active ? 'text-profit bg-profit/10' : 'text-muted bg-white/5'
         }`}>
           {coupon.active ? 'Active' : 'Inactive'}
@@ -39,7 +39,7 @@ function CouponRow({ coupon, onDeactivate }: { coupon: Coupon; onDeactivate: (co
         {coupon.active && (
           <button
             onClick={() => onDeactivate(coupon.code)}
-            className="text-xs font-mono text-loss hover:text-loss/80 transition-colors border border-loss/30 px-2 py-1 rounded hover:bg-loss/10"
+            className="text-xs text-loss hover:text-loss/80 transition-colors border border-loss/30 px-2 py-1 rounded hover:bg-loss/10"
           >
             Deactivate
           </button>
@@ -84,7 +84,7 @@ export function CouponAdminPage() {
   }
 
   return (
-    <div className="space-y-6 font-mono">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -103,7 +103,7 @@ export function CouponAdminPage() {
 
       {/* API key prompt */}
       {!apiKey && (
-        <div className="bg-bg-card border border-bg-border rounded-xl p-6">
+        <div className="bg-bg-surface border border-bg-border rounded-xl p-6">
           <p className="text-muted text-sm mb-3">Enter your admin API key to manage coupons.</p>
           <div className="flex gap-3">
             <input
@@ -112,7 +112,7 @@ export function CouponAdminPage() {
               onChange={(e) => setApiKeyInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && saveApiKey()}
               placeholder="Admin API key..."
-              className="flex-1 bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent"
+              className="flex-1 bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
             />
             <button
               onClick={saveApiKey}
@@ -145,7 +145,7 @@ export function CouponAdminPage() {
 
       {/* Coupon table */}
       {apiKey && (
-        <div className="bg-bg-card border border-bg-border rounded-xl overflow-hidden">
+        <div className="bg-bg-surface border border-bg-border rounded-xl overflow-hidden">
           {loading && (
             <p className="p-6 text-muted text-sm">Loading coupons...</p>
           )}
@@ -160,13 +160,13 @@ export function CouponAdminPage() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="text-muted text-xs uppercase">
-                    <th className="py-3 px-4 font-mono">Code</th>
-                    <th className="py-3 px-4 font-mono">Discount</th>
-                    <th className="py-3 px-4 font-mono">Uses</th>
-                    <th className="py-3 px-4 font-mono">Tiers</th>
-                    <th className="py-3 px-4 font-mono">Expires</th>
-                    <th className="py-3 px-4 font-mono">Status</th>
-                    <th className="py-3 px-4 font-mono">Actions</th>
+                    <th className="py-3 px-4">Code</th>
+                    <th className="py-3 px-4">Discount</th>
+                    <th className="py-3 px-4">Uses</th>
+                    <th className="py-3 px-4">Tiers</th>
+                    <th className="py-3 px-4">Expires</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

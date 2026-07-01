@@ -18,16 +18,16 @@ interface PriceChartProps {
 }
 
 const CHART_COLORS = {
-  background: '#0F0F1A',
+  background: '#080B14',
   text: '#8892B0',
-  grid: '#2D3142',
-  crosshair: '#00D9FF',
+  grid: '#1E2640',
+  crosshair: '#00C8E8',
 } as const;
 
 export function PriceChartLightweight({
   data,
   height = 300,
-  color = '#00D9FF',
+  color = '#00C8E8',
   title,
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);

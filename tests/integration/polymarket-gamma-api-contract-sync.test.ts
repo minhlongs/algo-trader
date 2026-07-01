@@ -31,7 +31,7 @@
  * The contract is declared across five surfaces that must stay in lockstep:
  *
  *   1. **Fetch URL literal** —
- *      `src/wiring/paper-trading-orchestrator.ts:280`:
+ *      `src/desk/wiring/paper-trading-orchestrator.ts:280`:
  *        `const resp = await fetch('https://gamma-api.polymarket.com/markets?closed=false&limit=200', {`
  *      — specific URL (host + path + query params). URL change = silent
  *      endpoint migration; query-param change (e.g. `limit=500`) = doubled
@@ -130,7 +130,7 @@ import { resolve } from 'path';
 const REPO_ROOT = resolve(__dirname, '../..');
 const ORCHESTRATOR_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/paper-trading-orchestrator.ts',
+  'src/desk/wiring/paper-trading-market-scanner.ts',
 );
 
 /** Canonical Gamma API endpoint URL — full path + query params. */

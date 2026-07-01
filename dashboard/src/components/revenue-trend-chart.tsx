@@ -129,7 +129,7 @@ export function RevenueTrendChart({
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-accent/40"></span>
-          <span className="text-xs text-muted font-mono">MRR (USD)</span>
+          <span className="text-xs text-muted">MRR (USD)</span>
         </div>
       </div>
 

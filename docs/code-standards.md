@@ -19,8 +19,11 @@
 - **Test files**: `*.test.ts` cùng thư mục hoặc trong `tests/`
 
 ## Architecture Patterns
+
+- **3-context separation**: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). Desk imports shared-only. Platform imports shared + desk via `IStrategy`.
 - **Duck-typed interfaces**: Auth middleware dùng duck types thay vì import trực tiếp Fastify types
 - **Factory pattern**: BullMQ workers, Redis connections dùng factory functions
+- **Abstract base class (Strategy)**: Polymarket strategies extend `BasePolymarketStrategy` (`src/desk/strategies/polymarket/base-polymarket-strategy.ts`) — provides position management, TP/SL exits, cooldowns, event emission. Strategies override `scanEntries()` for entry logic and `getCustomExitCondition()` for custom exits. Each V2 strategy exports a backward-compatible `createXxxTick()` via `toTickFn()`.
 - **Event-driven**: WebSocket price feeds emit events, consumers subscribe
 - **Atomic execution**: Cross-exchange orders dùng Promise.allSettled + rollback
 
@@ -32,7 +35,7 @@
 
 ## API Standards
 - **Fastify 5**: Route registration, Zod schema validation
-- **JWT + API Key**: Multi-tenant auth via `tenant-auth-middleware.ts`
+- **Better Auth**: Multi-tenant sessions via Better Auth integration (`src/platform/auth/`)
 - **Rate Limiting**: Sliding window per-tenant, X-RateLimit-* headers
 - **RESTful**: POST cho actions (scan, execute), GET cho queries (positions, history)
 
@@ -46,8 +49,8 @@
 ✅ **0 `any` types** — all values properly typed
 ✅ **0 console.log** — production-ready code
 ✅ **0 TODO/FIXME** — no technical debt
-✅ **868 tests** — 100% pass rate (Jest 29)
+✅ **2,430+ tests** — 100% pass rate (vitest)
 ✅ **Kebab-case files** — consistent naming across codebase
 ✅ **Max 200 lines** — modular file structure verified
 
-Updated: 2026-03-02
+Updated: 2026-06-30

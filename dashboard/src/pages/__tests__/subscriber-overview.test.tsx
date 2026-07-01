@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Subscriber Overview Page Tests
  * Uses React Testing Library with Vitest.

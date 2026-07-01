@@ -13,7 +13,7 @@
  * constraint NOR a comment enum — migration 016:6 declares only
  * `ALTER TABLE signals ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'legacy'`.
  * The authoritative source set is therefore **code-derived** from the single
- * writer: `src/signal/signal-store-d1.ts` `deriveSource()` returning one of
+ * writer: `src/desk/signal/signal-store-d1.ts` `deriveSource()` returning one of
  * four literals. The test locks those four values as ACTIVE and asserts that
  * all downstream literal references (migration DEFAULT, admin-route filter
  * default, internal branching comparison) are SUBSETS of the writer's return
@@ -34,7 +34,7 @@
  *        `ALTER TABLE signals ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'legacy'`
  *      — single-value fallback for rows inserted without an explicit source
  *      tag (legacy pre-Phase-04 writers).
- *   2. **Writer function returns** — `src/signal/signal-store-d1.ts:14-19`:
+ *   2. **Writer function returns** — `src/desk/signal/signal-store-d1.ts:14-19`:
  *        function deriveSource(strategy: string): string {
  *          if (strategy.startsWith('qwen'))      return 'qwen-m1max';
  *          if (strategy.startsWith('deepseek'))  return 'deepseek';
@@ -43,13 +43,13 @@
  *        }
  *      This is the SOLE writer into `signals.source`; returns 4 literals
  *      that define the ACTIVE enum.
- *   3. **Paper-only branching literal** — `src/signal/signal-store-d1.ts:33`:
+ *   3. **Paper-only branching literal** — `src/desk/signal/signal-store-d1.ts:33`:
  *        `const paperOnly = source === 'qwen-m1max' ? 1 : 0;`
  *      — runtime branch that enforces the 30d paper-gate for Qwen-sourced
  *      signals. The `'qwen-m1max'` literal must be reachable (i.e. in the
  *      writer's return set), otherwise the branch is dead and the paper-gate
  *      never fires.
- *   4. **Admin-route filter default** — `src/api/routes/admin-qwen-routes.ts:110`:
+ *   4. **Admin-route filter default** — `src/platform/api/routes/admin-qwen-routes.ts:110`:
  *        `const source = (req.query.source as string) || 'qwen-m1max';`
  *      — default source filter when operator hits `/strategy-reviews`
  *      without `?source=`. Must be a wired value, otherwise the operator
@@ -107,10 +107,10 @@ const MIGRATION_PATH = resolve(
   REPO_ROOT,
   'src/db/migrations/016_qwen_paper_tracking.sql',
 );
-const SIGNAL_STORE_PATH = resolve(REPO_ROOT, 'src/signal/signal-store-d1.ts');
+const SIGNAL_STORE_PATH = resolve(REPO_ROOT, 'src/desk/signal/signal-store-d1.ts');
 const ADMIN_ROUTE_PATH = resolve(
   REPO_ROOT,
-  'src/api/routes/admin-qwen-routes.ts',
+  'src/platform/api/routes/admin-qwen-routes.ts',
 );
 
 /** Source values declared somewhere but not yet emitted by the writer. Empty — no comment/doc surface declares anything beyond what deriveSource returns today. */

@@ -8,7 +8,7 @@
  */
 
 import { Cluster, ClusterNode, ClusterOptions } from 'ioredis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 export interface RedisClusterConfig {
   nodes: ClusterNode[];

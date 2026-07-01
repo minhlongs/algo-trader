@@ -2,7 +2,7 @@
  * OpenTelemetry tracing initialization discipline 9-invariant sync —
  * first observability-initialization substrate edge.
  *
- * `src/utils/tracing.ts` provides the optional OTEL spans via dynamic
+ * `src/shared/utils/tracing.ts` provides the optional OTEL spans via dynamic
  * import. Drift manifests as:
  *   - Noop default broken → unreachable endpoint crashes app boot
  *   - Env gate flipped → spans attempt init even when endpoint unset
@@ -71,7 +71,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const TRACE_FILE = resolve(REPO_ROOT, 'src/utils/tracing.ts');
+const TRACE_FILE = resolve(REPO_ROOT, 'src/shared/utils/tracing.ts');
 
 const REQUIRED_EXPORTS = ['getTracer', 'initTracing', 'resetTracingForTests'];
 

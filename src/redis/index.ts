@@ -8,7 +8,7 @@
 
 import Redis from 'ioredis';
 import type { Cluster } from 'ioredis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 
 // Re-export cluster client functions
 import {

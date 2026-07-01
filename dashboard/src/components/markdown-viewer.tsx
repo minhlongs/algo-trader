@@ -45,7 +45,7 @@ export function MarkdownViewer({
   if (error) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <p className="text-[#FF3366] font-mono text-sm">
+        <p className="text-[#FF4466] text-sm">
           Failed to load document: {error}
         </p>
       </div>
@@ -55,7 +55,7 @@ export function MarkdownViewer({
   if (markdown === null) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <p className="text-[#8892B0] font-mono text-sm animate-pulse">
+        <p className="text-[#8892B0] text-sm animate-pulse">
           {loadingLabel}
         </p>
       </div>

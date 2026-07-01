@@ -19,13 +19,13 @@ export function QuotaGauge({ label, used, limit, unit = '', size = 'md' }: Quota
   const colorClass = percentage >= 80
     ? 'bg-loss'
     : percentage >= 50
-      ? 'bg-warning'
+      ? 'bg-gold'
       : 'bg-profit';
 
   const textColorClass = percentage >= 80
     ? 'text-loss'
     : percentage >= 50
-      ? 'text-warning'
+      ? 'text-gold'
       : 'text-profit';
 
   const sizeClasses = {
@@ -50,7 +50,7 @@ export function QuotaGauge({ label, used, limit, unit = '', size = 'md' }: Quota
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <span className={`text-muted ${labelSizeClasses[size]}`}>{label}</span>
-        <span className={`text-white font-mono ${valueSizeClasses[size]}`}>
+        <span className={`text-white ${valueSizeClasses[size]}`}>
           {used.toLocaleString()} / {limit.toLocaleString()} {unit}
         </span>
       </div>
@@ -60,7 +60,7 @@ export function QuotaGauge({ label, used, limit, unit = '', size = 'md' }: Quota
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <div className={`text-right ${textColorClass} ${valueSizeClasses[size]} font-mono`}>
+      <div className={`text-right ${textColorClass} ${valueSizeClasses[size]}`}>
         {percentage.toFixed(1)}% used
       </div>
     </div>
@@ -97,7 +97,7 @@ export function CircularGauge({
   const colorClass = percentage >= 80
     ? 'text-loss'
     : percentage >= 50
-      ? 'text-warning'
+      ? 'text-gold'
       : 'text-profit';
 
   return (
@@ -136,14 +136,14 @@ export function CircularGauge({
         </svg>
         {/* Center content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-2xl font-bold text-white font-mono`}>
+          <span className={`text-2xl font-bold text-white`}>
             {percentage.toFixed(0)}%
           </span>
         </div>
       </div>
       <div className="mt-2 text-center">
         <div className="text-white text-sm font-semibold">{label}</div>
-        {subLabel && <div className="text-muted text-xs font-mono">{subLabel}</div>}
+        {subLabel && <div className="text-muted text-xs">{subLabel}</div>}
       </div>
     </div>
   );

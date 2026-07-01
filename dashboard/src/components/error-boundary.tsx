@@ -67,7 +67,7 @@ export class ErrorBoundary extends Component<Props, State> {
       // Default error UI - dark theme matching dashboard
       return (
         <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-bg-card border border-bg-border rounded-lg p-6 space-y-4">
+          <div className="max-w-md w-full bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
             {/* Error Icon */}
             <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-loss/20 border border-loss/40">
               <svg
@@ -99,7 +99,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <summary className="text-accent text-xs font-semibold cursor-pointer">
                   Error Details
                 </summary>
-                <div className="text-xs text-muted font-mono break-all">
+                <div className="text-xs text-muted break-all">
                   <p className="text-loss font-semibold">{this.state.error.name}</p>
                   <p>{this.state.error.message}</p>
                 </div>

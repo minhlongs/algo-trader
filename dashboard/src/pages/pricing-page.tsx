@@ -90,7 +90,7 @@ const FAQS = [
 
 function CheckIcon() {
   return (
-    <svg width="14" height="14" fill="none" stroke="#00FF41" strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="14" height="14" fill="none" stroke="#00E676" strokeWidth="2" viewBox="0 0 24 24">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -107,10 +107,10 @@ function XIcon() {
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-[#2D3142]">
+    <div className="border-b border-[#1E2640]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left text-sm font-mono text-white hover:text-[#00D9FF] transition-colors"
+        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-[#00C8E8] transition-colors"
       >
         <span>{q}</span>
         <svg
@@ -121,7 +121,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         </svg>
       </button>
       {open && (
-        <p className="text-[#8892B0] text-xs leading-relaxed pb-4 font-mono">{a}</p>
+        <p className="text-[#8892B0] text-xs leading-relaxed pb-4">{a}</p>
       )}
     </div>
   );
@@ -129,13 +129,13 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export function PricingPage() {
   return (
-    <div className="min-h-screen bg-[#0F0F1A] text-white font-mono flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-[#00D9FF] text-xs uppercase tracking-widest mb-3">Pricing</p>
+          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-3">Pricing</p>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, transparent plans</h1>
           <p className="text-[#8892B0] text-sm max-w-md mx-auto">
             Start free. Upgrade when you're ready. No hidden fees. Cancel anytime.
@@ -149,12 +149,12 @@ export function PricingPage() {
               key={name}
               className={`relative rounded-lg p-6 flex flex-col gap-5 ${
                 highlight
-                  ? 'border-2 border-[#00D9FF] bg-[#1A1A2E]'
-                  : 'border border-[#2D3142] bg-[#1A1A2E]'
+                  ? 'border-2 border-[#00C8E8] bg-[#111627]'
+                  : 'border border-[#1E2640] bg-[#111627]'
               }`}
             >
               {highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00D9FF] text-[#0F0F1A] text-xs font-bold px-3 py-0.5 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00C8E8] text-[#080B14] text-xs font-bold px-3 py-0.5 rounded-full">
                   POPULAR
                 </span>
               )}
@@ -171,7 +171,7 @@ export function PricingPage() {
                 {features.map(({ label, value }) => (
                   <li key={label} className="flex items-center justify-between text-xs">
                     <span className="text-[#8892B0]">{label}</span>
-                    <span className="flex items-center gap-1 font-mono">
+                    <span className="flex items-center gap-1">
                       {typeof value === 'boolean' ? (
                         value ? <CheckIcon /> : <XIcon />
                       ) : (
@@ -186,8 +186,8 @@ export function PricingPage() {
                 to={href}
                 className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
                   highlight
-                    ? 'bg-[#00D9FF] text-[#0F0F1A] hover:bg-[#00D9FF]/80'
-                    : 'border border-[#2D3142] text-[#8892B0] hover:text-white hover:border-[#00D9FF]/50'
+                    ? 'bg-[#00C8E8] text-[#080B14] hover:bg-[#00C8E8]/80'
+                    : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#00C8E8]/50'
                 }`}
               >
                 {cta}

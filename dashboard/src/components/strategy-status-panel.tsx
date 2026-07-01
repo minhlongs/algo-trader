@@ -27,7 +27,7 @@ function formatTimeAgo(iso: string | null): string {
 const MODE_STYLES: Record<string, { dot: string; text: string; bg: string }> = {
   live:     { dot: 'bg-profit animate-pulse', text: 'text-profit', bg: 'border-profit/30 bg-profit/5' },
   'dry-run': { dot: 'bg-accent', text: 'text-accent', bg: 'border-accent/30 bg-accent/5' },
-  stopped:  { dot: 'bg-muted', text: 'text-muted', bg: 'border-bg-border bg-bg-card' },
+  stopped:  { dot: 'bg-muted', text: 'text-muted', bg: 'border-bg-border bg-bg-surface' },
 };
 
 export function StrategyStatusPanel({ strategies, botStatus }: Props) {
@@ -45,7 +45,7 @@ export function StrategyStatusPanel({ strategies, botStatus }: Props) {
           </span>
         </div>
         {botStatus && botStatus.running && (
-          <div className="flex items-center gap-4 text-xs text-muted font-mono">
+          <div className="flex items-center gap-4 text-xs text-muted">
             <span>Up: {formatUptime(botStatus.uptime)}</span>
             <span>Signals: {botStatus.totalSignals}</span>
             <span>Trades: {botStatus.executedTrades}</span>
@@ -72,7 +72,7 @@ export function StrategyStatusPanel({ strategies, botStatus }: Props) {
                   <span className="text-white text-sm font-semibold truncate">{s.name}</span>
                   <span className={`w-2 h-2 rounded-full ${sStyle.dot}`} />
                 </div>
-                <div className="space-y-1 text-xs font-mono text-muted">
+                <div className="space-y-1 text-xs text-muted">
                   <div className="flex justify-between">
                     <span>Signals</span>
                     <span className="text-white">{s.signalCount}</span>

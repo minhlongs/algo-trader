@@ -1,0 +1,71 @@
+# Docker ignore — keep image lean and secure
+# =============================================================================
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build artifacts
+dist
+build
+*.tsbuildinfo
+
+# Dev files
+.git
+.github
+.vscode
+.idea
+*.md
+!README.md
+
+# Tests
+tests
+**/*.test.ts
+**/*.spec.ts
+coverage
+
+# CI/CD
+.github
+.gitlab-ci.yml
+Jenkinsfile
+
+# Scripts (not needed at runtime)
+scripts
+
+# Docs
+docs
+*.md
+
+# IDE
+.claude
+.antigravity
+.cache
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Env (secrets never in image)
+.env
+.env.*
+!.env.example
+
+# Docker
+docker-compose*.yml
+docker/
+Dockerfile*
+
+# Monitoring configs (mounted at runtime)
+docker/monitoring/
+
+# Logs
+logs
+*.log
+
+# Data (mounted as volume)
+data/
+
+# Workers source (CF deploys separately)
+src/workers/

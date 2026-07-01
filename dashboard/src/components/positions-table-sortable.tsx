@@ -78,7 +78,7 @@ export function PositionsTableSortable({ positions }: PositionsTableSortableProp
 
   if (positions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted font-mono">
+      <div className="flex flex-col items-center justify-center py-12 text-muted">
         <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" className="mb-3 opacity-30">
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <line x1="3" y1="9" x2="21" y2="9" />
@@ -92,7 +92,7 @@ export function PositionsTableSortable({ positions }: PositionsTableSortableProp
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[600px] text-xs font-mono border-collapse">
+      <table className="w-full min-w-[600px] text-xs border-collapse">
         <thead>
           <tr className="border-b border-bg-border">
             {COLUMNS.map(({ key, label, align }) => (
@@ -117,15 +117,15 @@ export function PositionsTableSortable({ positions }: PositionsTableSortableProp
           {sorted.map((pos) => (
             <tr
               key={pos.id}
-              className="border-b border-bg-border/50 hover:bg-bg-card/60 transition-colors"
+              className="border-b border-bg-border/50 hover:bg-bg-surface/60 transition-colors"
             >
               <td className="px-3 py-2 text-white font-semibold">{pos.symbol}</td>
               <td className="px-3 py-2 text-muted">{pos.buyExchange}</td>
               <td className="px-3 py-2 text-muted">{pos.sellExchange}</td>
-              <td className="px-3 py-2 text-right text-white">{pos.amount.toFixed(4)}</td>
-              <td className="px-3 py-2 text-right text-muted">{formatPrice(pos.buyPrice)}</td>
-              <td className="px-3 py-2 text-right text-muted">{formatPrice(pos.sellPrice)}</td>
-              <td className={`px-3 py-2 text-right font-semibold ${pos.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
+              <td className="px-3 py-2 text-right text-white font-mono tabular-nums">{pos.amount.toFixed(4)}</td>
+              <td className="px-3 py-2 text-right text-muted font-mono tabular-nums">{formatPrice(pos.buyPrice)}</td>
+              <td className="px-3 py-2 text-right text-muted font-mono tabular-nums">{formatPrice(pos.sellPrice)}</td>
+              <td className={`px-3 py-2 text-right font-semibold font-mono tabular-nums ${pos.pnl >= 0 ? 'text-profit' : 'text-loss'}`}>
                 {formatUsd(pos.pnl)}
               </td>
               <td className="px-3 py-2">

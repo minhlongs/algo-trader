@@ -2,7 +2,7 @@
  * Express API-server security middleware mount discipline 8-invariant
  * sync — first HTTP-server-config substrate edge.
  *
- * `src/api/server.ts` is the single HTTP gateway. The middleware mount
+ * `src/platform/api/server.ts` is the single HTTP gateway. The middleware mount
  * order + required-middleware set is load-bearing:
  *   - Drop `helmet` → every HTTP response loses the security header
  *     baseline (HSTS, frameguard, CSP)
@@ -82,7 +82,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const SERVER_FILE = resolve(REPO_ROOT, 'src/api/server.ts');
+const SERVER_FILE = resolve(REPO_ROOT, 'src/platform/api/server.ts');
 
 const HSTS_MIN_MAX_AGE = 31536000;
 

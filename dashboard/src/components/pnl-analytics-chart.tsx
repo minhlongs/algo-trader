@@ -52,7 +52,7 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
 
   if (loading) {
     return (
-      <div className="bg-bg-card border border-bg-border rounded-lg p-8 text-center">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
         <p className="text-muted text-sm">Loading analytics...</p>
       </div>
     );
@@ -60,7 +60,7 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
 
   if (error) {
     return (
-      <div className="bg-bg-card border border-bg-border rounded-lg p-8 text-center">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
         <p className="text-loss text-sm">{error}</p>
       </div>
     );
@@ -68,16 +68,16 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
 
   if (!metrics) {
     return (
-      <div className="bg-bg-card border border-bg-border rounded-lg p-8 text-center">
-        <p className="text-muted text-sm font-mono">Chưa có dữ liệu P&L.</p>
-        <p className="text-muted text-xs font-mono mt-1">Dữ liệu sẽ xuất hiện sau khi bot thực hiện giao dịch đầu tiên.</p>
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
+        <p className="text-muted text-sm">Chưa có dữ liệu P&L.</p>
+        <p className="text-muted text-xs mt-1">Dữ liệu sẽ xuất hiện sau khi bot thực hiện giao dịch đầu tiên.</p>
       </div>
     );
   }
 
   if (data.length === 0) {
     return (
-      <div className="bg-bg-card border border-bg-border rounded-lg p-8 text-center">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
         {metrics && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-6">
             <MetricCard label="Total P&L" value={formatUsd(metrics.totalPnl)} />
@@ -87,19 +87,19 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
             <MetricCard label="Avg Trade" value={formatUsd(metrics.avgTrade)} />
           </div>
         )}
-        <p className="text-muted text-sm font-mono">Chưa có lịch sử giao dịch để vẽ biểu đồ.</p>
+        <p className="text-muted text-sm">Chưa có lịch sử giao dịch để vẽ biểu đồ.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4">
+    <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
       {/* Header with Time Range Tabs */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-white text-sm font-semibold">P&L Analytics</h3>
           {metrics && (
-            <p className="text-[10px] text-muted mt-0.5">
+            <p className="text-[10px] text-muted mt-0.5 font-mono tabular-nums">
               Win Rate: {(metrics.winRate * 100).toFixed(1)}% | Sharpe: {metrics.sharpeRatio.toFixed(2)}
             </p>
           )}
@@ -206,7 +206,7 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-bg-subtle rounded p-2 text-center">
       <p className="text-[9px] text-muted uppercase tracking-wider">{label}</p>
-      <p className="text-sm font-semibold text-white mt-0.5">{value}</p>
+      <p className="text-sm font-semibold text-white mt-0.5 font-mono tabular-nums">{value}</p>
     </div>
   );
 }

@@ -14,7 +14,7 @@ export {
   decryptLicenseKey,
   type LicenseKey,
   type BetaInvite,
-} from './license-key-crypto.js';
+} from './license-key-crypto';
 
 export {
   createLicenseKey,
@@ -24,4 +24,4 @@ export {
   getDefaultMaxUsage,
   generateInviteEmail,
   LicenseStore,
-} from './license-key-lifecycle.js';
+} from './license-key-lifecycle';

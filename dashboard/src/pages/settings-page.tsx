@@ -16,7 +16,7 @@ const MOCK_ALERTS: AlertRule[] = [];
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="bg-bg-card border border-bg-border rounded-lg p-6 space-y-4">
+    <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
       {children}
     </section>
   );
@@ -65,33 +65,33 @@ function MmParametersForm() {
   return (
     <form onSubmit={handleSave} className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-white text-sm font-bold font-mono">MM Parameters</h2>
+        <h2 className="text-white text-sm font-bold">MM Parameters</h2>
         {statusMsg && (
-          <span className={`text-xs font-mono ${statusMsg.ok ? 'text-profit' : 'text-muted'}`}>
+          <span className={`text-xs ${statusMsg.ok ? 'text-profit' : 'text-muted'}`}>
             {statusMsg.text}
           </span>
         )}
       </div>
-      <p className="text-muted text-xs font-mono">Market making strategy configuration. Changes take effect on next requote cycle.</p>
+      <p className="text-muted text-xs">Market making strategy configuration. Changes take effect on next requote cycle.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {MM_FIELDS.map(({ key, label, description, placeholder }) => (
           <div key={key}>
-            <label className="block text-accent text-xs font-mono mb-1">{label}</label>
+            <label className="block text-accent text-xs mb-1">{label}</label>
             <input
               type="text"
               value={values[key]}
               onChange={(e) => handleChange(key, e.target.value)}
               placeholder={placeholder}
-              className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-accent placeholder:text-muted transition-colors"
+              className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent placeholder:text-muted transition-colors"
             />
-            <p className="text-muted text-[10px] font-mono mt-1">{description}</p>
+            <p className="text-muted text-[10px] mt-1">{description}</p>
           </div>
         ))}
       </div>
       <button
         type="submit"
         disabled={saving}
-        className="bg-accent text-bg font-bold text-xs font-mono px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors"
+        className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors"
       >
         {saving ? 'Saving…' : 'Save Parameters'}
       </button>

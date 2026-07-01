@@ -56,7 +56,7 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
 
   if (loading) {
     return (
-      <div className="bg-bg-card border border-bg-border rounded-lg p-8 text-center">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
         <p className="text-muted text-sm">Loading signals...</p>
       </div>
     );
@@ -64,7 +64,7 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
 
   if (error) {
     return (
-      <div className="bg-bg-card border border-bg-border rounded-lg p-8 text-center">
+      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
         <p className="text-loss text-sm mb-2">{error}</p>
         {onRefresh && (
           <button
@@ -79,7 +79,7 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
   }
 
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg overflow-hidden">
+    <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-bg-border">
         <h3 className="text-white text-sm font-semibold">
@@ -143,19 +143,19 @@ export function SignalsPanel({ signals, loading, error, onRefresh }: SignalsPane
                   <td className="px-4 py-3 text-muted">
                     {signal.sellExchange}
                   </td>
-                  <td className="px-4 py-3 text-right text-profit">
+                  <td className="px-4 py-3 text-right text-profit font-mono tabular-nums">
                     ${signal.buyPrice.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-right text-loss">
+                  <td className="px-4 py-3 text-right text-loss font-mono tabular-nums">
                     ${signal.sellPrice.toFixed(2)}
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold text-accent">
+                  <td className="px-4 py-3 text-right font-semibold text-accent font-mono tabular-nums">
                     {signal.spread.toFixed(3)}%
                   </td>
-                  <td className="px-4 py-3 text-right text-muted">
+                  <td className="px-4 py-3 text-right text-muted font-mono tabular-nums">
                     {signal.latency}
                   </td>
-                  <td className="px-4 py-3 text-right text-muted">
+                  <td className="px-4 py-3 text-right text-muted font-mono tabular-nums">
                     {formatAge(signal.timestamp)}
                   </td>
                 </tr>

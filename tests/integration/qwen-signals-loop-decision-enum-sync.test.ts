@@ -5,7 +5,7 @@
  * places that must stay in lockstep:
  *   1. DB CHECK constraint in `src/db/migrations/018_qwen_signals_loop_runs.sql`
  *   2. Mirror of that CHECK in `docs/system-architecture.md`
- *   3. TypeScript union type + call-site literals in `src/wiring/qwen-signals-loop.ts`
+ *   3. TypeScript union type + call-site literals in `src/desk/wiring/qwen-signals-loop.ts`
  *
  * Operators filtering `/api/v1/admin/qwen/signals-loop/runs?decision=...`,
  * Grafana panels filtering the `algo_trader_qwen_signals_loop_runs_total{decision}`
@@ -36,8 +36,8 @@ import { resolve } from 'path';
 const REPO_ROOT = resolve(__dirname, '../..');
 const MIGRATION_PATH = resolve(REPO_ROOT, 'src/db/migrations/018_qwen_signals_loop_runs.sql');
 const DOC_PATH = resolve(REPO_ROOT, 'docs/system-architecture.md');
-const CODE_PATH = resolve(REPO_ROOT, 'src/wiring/qwen-signals-loop.ts');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/middleware/prometheus-metrics.ts');
+const CODE_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 
 /**
  * Strip JS/TS comments so commented-out literals / union members are not

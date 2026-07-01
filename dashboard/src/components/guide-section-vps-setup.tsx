@@ -6,42 +6,42 @@ import { CopyBlock } from './guide-shared-components';
 export function GuideParameters() {
   return (
     <section id="parameters">
-      <h2 className="text-xl font-bold font-mono text-white mb-4">Trading Parameters</h2>
+      <h2 className="text-xl font-bold text-white mb-4">Trading Parameters</h2>
 
       <div className="space-y-6">
         {/* Parameter Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm font-mono border-collapse">
+          <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-[#2D3142]">
-                <th className="text-left py-2 pr-6 text-[#00D9FF]">Parameter</th>
-                <th className="text-left py-2 pr-4 text-[#00FF41]">Safe</th>
-                <th className="text-left py-2 pr-4 text-[#00D9FF]">Optimal</th>
+              <tr className="border-b border-[#1E2640]">
+                <th className="text-left py-2 pr-6 text-[#00C8E8]">Parameter</th>
+                <th className="text-left py-2 pr-4 text-[#00E676]">Safe</th>
+                <th className="text-left py-2 pr-4 text-[#00C8E8]">Optimal</th>
                 <th className="text-left py-2 text-red-400">Dangerous</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2D3142]">
+            <tbody className="divide-y divide-[#1E2640]">
               <tr>
                 <td className="py-2 pr-6 text-white">MM_SPREAD</td>
-                <td className="py-2 pr-4 text-[#00FF41]">0.10</td>
+                <td className="py-2 pr-4 text-[#00E676]">0.10</td>
                 <td className="py-2 pr-4">0.06-0.08</td>
                 <td className="py-2 text-red-400">&lt;0.04</td>
               </tr>
               <tr>
                 <td className="py-2 pr-6 text-white">MM_SIZE</td>
-                <td className="py-2 pr-4 text-[#00FF41]">20</td>
+                <td className="py-2 pr-4 text-[#00E676]">20</td>
                 <td className="py-2 pr-4">30-50</td>
                 <td className="py-2 text-red-400">&gt;100</td>
               </tr>
               <tr>
                 <td className="py-2 pr-6 text-white">MM_MAX_MARKETS</td>
-                <td className="py-2 pr-4 text-[#00FF41]">5</td>
+                <td className="py-2 pr-4 text-[#00E676]">5</td>
                 <td className="py-2 pr-4">8-10</td>
                 <td className="py-2 text-red-400">&gt;15</td>
               </tr>
               <tr>
                 <td className="py-2 pr-6 text-white">MAX_BANKROLL</td>
-                <td className="py-2 pr-4 text-[#00FF41]">200</td>
+                <td className="py-2 pr-4 text-[#00E676]">200</td>
                 <td className="py-2 pr-4">500-2000</td>
                 <td className="py-2 text-red-400">&gt;5000</td>
               </tr>
@@ -50,7 +50,7 @@ export function GuideParameters() {
         </div>
 
         {/* Tuning Rules */}
-        <div className="space-y-2 text-sm font-mono">
+        <div className="space-y-2 text-sm">
           <p className="text-white font-bold mb-2">Tuning Rules</p>
           <p>Fills &lt;3/day &rarr; reduce spread (tighter)</p>
           <p>Fills &gt;30/day &rarr; increase spread (wider)</p>
@@ -60,8 +60,8 @@ export function GuideParameters() {
 
         {/* Fair Value Mode */}
         <div>
-          <p className="text-sm font-mono text-white font-bold mb-2">Fair Value Mode (Advanced)</p>
-          <div className="text-sm font-mono text-[#8892B0] space-y-2">
+          <p className="text-sm text-white font-bold mb-2">Fair Value Mode (Advanced)</p>
+          <div className="text-sm text-[#8892B0] space-y-2">
             <p>
               By default the bot quotes around the <span className="text-white">market midpoint</span> (blind mode).
               Set your own probability estimate for better edge:
@@ -75,17 +75,17 @@ pnpm fv -- set will-btc-hit-100k 0.35 medium "Based on on-chain data"
 # Remove estimate (revert to blind mode)
 pnpm fv -- remove will-btc-hit-100k`} />
             <div className="overflow-x-auto mt-3">
-              <table className="w-full text-xs font-mono border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-[#2D3142]">
-                    <th className="text-left py-2 pr-6 text-[#00D9FF]">Confidence</th>
-                    <th className="text-left py-2 pr-6 text-[#00D9FF]">Auto Spread</th>
-                    <th className="text-left py-2 text-[#00D9FF]">When to use</th>
+                  <tr className="border-b border-[#1E2640]">
+                    <th className="text-left py-2 pr-6 text-[#00C8E8]">Confidence</th>
+                    <th className="text-left py-2 pr-6 text-[#00C8E8]">Auto Spread</th>
+                    <th className="text-left py-2 text-[#00C8E8]">When to use</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#2D3142]">
+                <tbody className="divide-y divide-[#1E2640]">
                   <tr>
-                    <td className="py-2 pr-6 text-[#00FF41]">high</td>
+                    <td className="py-2 pr-6 text-[#00E676]">high</td>
                     <td className="py-2 pr-6">6c</td>
                     <td className="py-2">Strong research, primary sources</td>
                   </tr>

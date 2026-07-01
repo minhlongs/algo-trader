@@ -12,18 +12,18 @@
  *      is the authoritative schema declaration. CHECK failure at INSERT/UPDATE
  *      is the last-resort guard, but silent divergence above it still leaves
  *      rollup queries reading from a stale label vocabulary.
- *   2. **INSERT literal** — `src/wiring/paper-trading-orchestrator.ts`
+ *   2. **INSERT literal** — `src/desk/wiring/paper-trading-orchestrator.ts`
  *      `savePaperTradeV3` writes new rows with `VALUES (..., 'open', $9)` on
  *      line 56. This is the only write site — every paper trade enters the
  *      ledger in `'open'` state.
  *   3. **SELECT literals** — rollup queries read rows with
  *      `WHERE status = 'closed'` in three locations that drive the operator's
  *      observability signals:
- *        - `src/wiring/qwen-drawdown-monitor.ts:90` (rolling 24h P&L — feeds
+ *        - `src/desk/wiring/qwen-drawdown-monitor.ts:90` (rolling 24h P&L — feeds
  *           the L1 drawdown kill-switch kill/unkill decision)
- *        - `src/wiring/qwen-signals-loop.ts:108` (7-day win-rate aggregate —
+ *        - `src/desk/wiring/qwen-signals-loop.ts:108` (7-day win-rate aggregate —
  *           feeds `qwen_strategy_reviews_queued_total` threshold trigger)
- *        - `src/wiring/qwen-signals-loop.ts:130` (Sharpe daily pct aggregate —
+ *        - `src/desk/wiring/qwen-signals-loop.ts:130` (Sharpe daily pct aggregate —
  *           feeds same threshold trigger)
  *
  * A drift in any direction is silently destructive:
@@ -73,10 +73,14 @@ const MIGRATION_PATH = resolve(
 );
 const ORCHESTRATOR_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/paper-trading-orchestrator.ts',
+  'src/desk/wiring/paper-trading-orchestrator.ts',
 );
-const DRAWDOWN_PATH = resolve(REPO_ROOT, 'src/wiring/qwen-drawdown-monitor.ts');
-const SIGNALS_LOOP_PATH = resolve(REPO_ROOT, 'src/wiring/qwen-signals-loop.ts');
+const PERSISTENCE_PATH = resolve(
+  REPO_ROOT,
+  'src/desk/wiring/paper-trading-persistence.ts',
+);
+const DRAWDOWN_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-monitor.ts');
+const SIGNALS_LOOP_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
 
 /** Migration values reserved for future use — declared in CHECK but not yet exercised by code literals. Empty today — both declared states are wired. */
 const RESERVED_STATUSES = new Set<string>([]);
@@ -168,12 +172,17 @@ function extractSqlStatusesForTable(src: string, table: string): Set<string> {
 describe('paper_trades_v3.status enum — 3-surface sync', () => {
   const migration = readFileSync(MIGRATION_PATH, 'utf8');
   const orchestrator = readFileSync(ORCHESTRATOR_PATH, 'utf8');
+  const persistence = readFileSync(PERSISTENCE_PATH, 'utf8');
   const drawdown = readFileSync(DRAWDOWN_PATH, 'utf8');
   const signalsLoop = readFileSync(SIGNALS_LOOP_PATH, 'utf8');
 
   const migrationStatuses = extractMigrationStatuses(stripSqlComments(migration));
   const orchestratorStatuses = extractSqlStatusesForTable(
     stripJsComments(orchestrator),
+    'paper_trades_v3',
+  );
+  const persistenceStatuses = extractSqlStatusesForTable(
+    stripJsComments(persistence),
     'paper_trades_v3',
   );
   const drawdownStatuses = extractSqlStatusesForTable(
@@ -186,6 +195,7 @@ describe('paper_trades_v3.status enum — 3-surface sync', () => {
   );
   const codeStatuses = new Set<string>([
     ...orchestratorStatuses,
+    ...persistenceStatuses,
     ...drawdownStatuses,
     ...signalsLoopStatuses,
   ]);
@@ -200,9 +210,10 @@ describe('paper_trades_v3.status enum — 3-surface sync', () => {
   });
 
   it('paper-trading-orchestrator INSERT parser extracts at least 1 status literal (sanity floor)', () => {
+    const insertStatuses = orchestratorStatuses.size + persistenceStatuses.size;
     expect(
-      orchestratorStatuses.size,
-      'paper-trading-orchestrator.ts parsed 0 paper_trades_v3 status literals — INSERT shape drifted',
+      insertStatuses,
+      'neither paper-trading-orchestrator.ts nor paper-trading-persistence.ts parsed paper_trades_v3 status literals — INSERT shape drifted',
     ).toBeGreaterThanOrEqual(1);
   });
 
@@ -262,8 +273,8 @@ describe('paper_trades_v3.status enum — 3-surface sync', () => {
 
   it("INSERT write site emits 'open' (entry-state invariant for paper-trade ledger)", () => {
     expect(
-      orchestratorStatuses.has('open'),
-      "paper-trading-orchestrator.ts INSERT does not write status='open' — ledger entry-state invariant broken",
+      orchestratorStatuses.has('open') || persistenceStatuses.has('open'),
+      "no code site writes status='open' — ledger entry-state invariant broken",
     ).toBe(true);
   });
 
