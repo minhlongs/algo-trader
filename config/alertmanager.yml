@@ -17,10 +17,10 @@ route:
 receivers:
   - name: 'default'
     webhook_configs:
-      - url: '${TELEGRAM_ALERT_WEBHOOK_URL:-http://localhost:9999/null}'
+      - url: 'http://localhost:9999/webhook-placeholder'
         send_resolved: true
 
   - name: 'critical'
     webhook_configs:
-      - url: '${TELEGRAM_ALERT_WEBHOOK_URL:-http://localhost:9999/null}'
+      - url: 'http://localhost:9999/webhook-placeholder'
         send_resolved: true
