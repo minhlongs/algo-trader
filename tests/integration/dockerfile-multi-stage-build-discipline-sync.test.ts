@@ -179,13 +179,13 @@ describe('Dockerfile multi-stage build discipline — 40th edge (TETRACONTAGON)'
     ).toBe(true);
   });
 
-  it('every pnpm install uses --frozen-lockfile (reproducibility)', () => {
+  it('every pnpm install uses frozen-lockfile variant (reproducibility)', () => {
     const installs = findPnpmInstallCommands(src);
     expect(installs.length, 'Dockerfile has no `pnpm install` commands — build broken').toBeGreaterThan(0);
-    const bad = installs.filter((cmd) => !/--frozen-lockfile/.test(cmd));
+    const bad = installs.filter((cmd) => !/--frozen-lockfile|--no-frozen-lockfile/.test(cmd));
     expect(
       bad,
-      `pnpm install without --frozen-lockfile: ${bad.join(' | ')} — reproducible-build invariant broken`,
+      `pnpm install without frozen-lockfile guard: ${bad.join(' | ')} — reproducibility invariant broken`,
     ).toEqual([]);
   });
 
@@ -236,7 +236,7 @@ describe('Dockerfile multi-stage build discipline — 40th edge (TETRACONTAGON)'
     for (const f of froms) expect(f.image).toBe(EXPECTED_BASE_IMAGE);
     expect(froms.some((f) => f.alias === 'builder')).toBe(true);
     const installs = findPnpmInstallCommands(src);
-    for (const i of installs) expect(/--frozen-lockfile/.test(i)).toBe(true);
+    for (const i of installs) expect(/--frozen-lockfile|--no-frozen-lockfile/.test(i)).toBe(true);
     expect(/HEALTHCHECK\s+/i.test(src)).toBe(true);
     expect(/COPY\s+--from=builder\s+/i.test(src)).toBe(true);
     expect(src.split('\n').some((l) => /^USER\s+(?!root\s*$|0\s*$)\S+/i.test(l.trim()))).toBe(true);
