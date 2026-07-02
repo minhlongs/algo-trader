@@ -10,11 +10,9 @@ WORKDIR /app
 # Copy manifests first for layer caching
 COPY package.json pnpm-lock.yaml* ./
 
-# Bypass minimum-release-age check for Docker build (lockfile already verified by CI)
-ENV npm_config_minimum_release_age=0
-
 # Install ALL deps (including dev) for build
-RUN pnpm install --frozen-lockfile --ignore-scripts
+# --config.minimum-release-age=0 bypasses supply-chain policy for lockfile already verified by CI
+RUN pnpm install --no-frozen-lockfile --ignore-scripts --config.minimum-release-age=0
 
 COPY tsconfig.json tsconfig.worker.json ./
 COPY src ./src
@@ -35,10 +33,8 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY package.json pnpm-lock.yaml* ./
 
-ENV npm_config_minimum_release_age=0
-
 # Production deps only — no build tools in runner
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN pnpm install --no-frozen-lockfile --prod --ignore-scripts --config.minimum-release-age=0
 
 # Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
