@@ -7,7 +7,7 @@ services:
     container_name: algo-prometheus
     restart: unless-stopped
     ports:
-      - '9090:9090'
+      - '9091:9090'
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./config/prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro
