@@ -17,6 +17,9 @@ import * as migration035 from './migrations/035-add-blog-engagement-tables';
 import * as migration036 from './migrations/036-add-kyc-verifications';
 import * as migration037 from './migrations/037-add-newsletter-preferences';
 import * as migration038 from './migrations/038-add-community-strategies';
+import * as migration039 from './migrations/039-add-api-keys';
+import * as migration040 from './migrations/040-add-listing-badges';
+import * as migration041 from './migrations/041-add-subscription-improvements';
 
 // Migration interface
 interface Migration {
@@ -39,6 +42,9 @@ const MIGRATIONS: Migration[] = [
   migration036,
   migration037,
   migration038,
+  migration039,
+  migration040,
+  migration041,
 ];
 
 /**
