@@ -72,6 +72,16 @@ export function MarketplacePage() {
     return m;
   }, [strategies]);
 
+  /** Sort featured strategies first, then by name. */
+  const sortedStrategies = useMemo(() => {
+    return [...strategies].sort((a, b) => {
+      const aFeatured = a.tags?.includes('featured') ?? false;
+      const bFeatured = b.tags?.includes('featured') ?? false;
+      if (aFeatured !== bFeatured) return aFeatured ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [strategies]);
+
   const handleFilter = useCallback((key: string, value: string | number | undefined) => {
     setFilters((prev) => {
       const next = { ...prev, [key]: value || undefined, page: 1 };
@@ -265,7 +275,7 @@ export function MarketplacePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {strategies.map((s) => {
+              {sortedStrategies.map((s) => {
                 const mySub = subByStrategy.get(s.id);
                 const isSubbed = mySub?.status === 'active';
                 const isPending = mySub?.status === 'pending_payment';
@@ -294,6 +304,11 @@ export function MarketplacePage() {
                         {isPending && (
                           <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor('pending_payment')}`}>
                             Payment Pending
+                          </span>
+                        )}
+                        {s.tags?.includes('featured') && (
+                          <span className="text-[10px] border border-gold/40 text-gold px-1.5 py-0.5 rounded">
+                            🏆 Top Performer
                           </span>
                         )}
                         <span className="text-[10px] border border-bg-border text-muted px-1.5 py-0.5 rounded">
