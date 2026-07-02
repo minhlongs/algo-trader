@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](package.json)
 [![Strategies](https://img.shields.io/badge/strategies-52%2B-brightgreen.svg)](src/desk/strategies/)
-[![Tests](https://img.shields.io/badge/tests-2783%20passing-brightgreen.svg)](src/)
+[![Tests](https://img.shields.io/badge/tests-2798%20passing-brightgreen.svg)](src/)
 
 Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (20%).
 
@@ -221,6 +221,7 @@ Key variables:
 | FREE | $0 | 1 | Polymarket only |
 | PRO | $149/mo | 5 | Polymarket + 1 CEX |
 | ENTERPRISE | Custom | Unlimited | All markets + dedicated support |
+| MASTER | $999/mo | Unlimited | All markets + white-label reports + dedicated account manager + unlimited API |
 
 ---
 

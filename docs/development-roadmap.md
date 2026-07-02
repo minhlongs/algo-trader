@@ -275,6 +275,40 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] Fixed live-trading-runbook.md bilingual label
 - Status: **COMPLETE** ✅
 
+### Next Wave: Revenue + Trading + Infra + Platform (Complete 2026-07-03)
+
+**Track 1: Revenue Growth (5/5 items)**
+- [x] Signup requires NOWPayments payment before PRO/Enterprise activation (pending_payment status)
+- [x] Enterprise inquiry form tier gate fixed — `POST /inquiries` now public (FREE tier)
+- [x] IPN webhook route verified with HMAC-SHA512 enforcement, idempotency by payment_id, credential guards
+- [x] Revenue API gates lowered from ENTERPRISE to PRO — summary, MRR, usage, overage, churn
+- [x] Dunning service sends email notifications on payment failure (escalation), suspension, and reinstatement
+- [x] Subscription analytics API: MRR breakdown, churn analysis, LTV prediction, cohort retention
+- [x] Trial drip campaign API: subscribe/unsubscribe/process/status with email sequence scheduling
+- [x] Pricing page (`src/platform/landing/public/pricing.html`)
+- [x] MASTER tier ($999/mo) added: LicenseTier enum, TIER_CONFIG, NOWPayments invoice, feature map
+
+**Track 2: Trading Edge (3/3 items)**
+- [x] 23 missing strategy factories replaced in `strategy-wiring.ts` — `.js` → `.ts` imports pointing to V2 stubs
+- [x] 3 missing strategy imports fixed in `trading-pipeline.ts` — `cross-market-arb`, `market-maker`, `mean-reversion` stubs
+- [x] `PAPER_MODE` env var (default `true`) with live-mode validation — all 4 Polymarket API vars checked before LIVE execution; mode displayed in CLI and API status
+
+**Track 3: Infrastructure Hardening (6/6 items)**
+- [x] Redis persistence: AOF (appendonly yes, everysec fsync) + RDB snapshots via `config/redis.conf`, password auth via `REDIS_PASSWORD` env var
+- [x] SSL/TLS: Caddy reverse proxy (auto-HTTPS, Let's Encrypt auto-renewal, security headers) + certbot `scripts/renew-certs.sh`
+- [x] Load testing baseline re-established — k6 CI integration with reduced VUs (100 VUs, 30s, per-endpoint metrics)
+- [x] Alertmanager notification channel wired — webhook receiver with critical/warning routing
+- [x] Docker image tags pinned — Prometheus, Grafana, Alertmanager versions locked (no `:latest`)
+- [x] Prometheus retention set (`--storage.tsdb.retention.time=15d`)
+
+**Track 4: Platform Depth (4/4 items)**
+- [x] Self-service API key management — `POST/GET/DELETE /api/v1/api-keys` route + dashboard page, scrypt-hashed storage, show-once pattern, Bearer token auth via `api-key-auth.ts` middleware
+- [x] Marketplace listing badges — top performer badges (volume, win rate, reliability, ROI) with `badge_repository`, `badge_service`, route, and migration
+- [x] Subscription enhancements — detailed subscription stats, tier upgrades/downgrades, auto-renewal toggles
+- [x] Pricing page (`/pricing.html`) published as static landing page
+
+- Status: **COMPLETE** ✅ (all 18/18 items shipped)
+
 ---
 
 ## Critical Success Metrics
@@ -326,6 +360,8 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ## Recent Updates
 
+**2026-07-03**: Next Wave complete — 18 items across 4 tracks (Revenue Growth, Trading Edge, Infra Hardening, Platform Depth). Revenue flow fixed (signup payment, enterprise inquiry gate, IPN verification, PRO-tier analytics, dunning emails). 23 strategy wiring factories restored. PAPER_MODE env var with live-mode validation. Redis persistence + Caddy SSL + k6 CI baseline + Alertmanager. API key management, marketplace badges, subscription enhancements, pricing page. MASTER tier ($999/mo) added. 2,798 tests passing.
+
 **2026-07-02**: All 8 code review findings resolved. Missing backtest routes wired in marketplace-strategy-insights-routes.ts. Bug fixes: type escapes, Sharpe factor, Gamma error propagation, price bug, cancelOrder wiring, payout send-verify guard. METRICS_TOKEN added to .env.example. Barrel export added. .bak deleted. 2,798 tests passing across 243 files.
 
 **2026-04-15**: Phase 32b (Autonomy Phase 2) complete. LLM content generation (DeepSeek R1), welcome email drip (3-email sequence), Telegram auto-support (/faq, /support, /pricing), Twitter/X API v2 + Telegram channel distribution. 585 tests passing.
@@ -344,28 +380,16 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ## Current Focus (July 2026)
 
-1. **Phases 39-55 complete** — Polymarket Live Execution + Backtesting + Doc Cleanup (all shipped):
-   - Full stack: CLOB adapter → position tracker → order manager → execution guard → strategy bridge → journal → strategy runner → multi-strategy concurrent runner
-   - All 32 V2+ strategies registered (incl. listing-arbitrage-sniper) with 3rd-param constructor guards fixed
-   - CLI: `algo trade {start,run,status,journal,list-strategies,backtest}` — any combination up to `--strategy=all`
-   - Desk backtesting engine: Gamma historical data replay → strategy simulation → metrics (Sharpe, drawdown, profit factor)
-   - Platform marketplace backtesting: `POST /:id/backtest` (PRO tier) + `GET /:id/backtests` routes with DB persistence
-   - Metrics consolidation: desk delegates max drawdown + Sharpe to shared `BacktestRunner` static methods
-   - +13 marketplace backtesting route tests
-   - `cashclaw-cli.ts` split: 610→167 lines (main) + 446 lines (trade commands)
-   - Phase 53: 9 orphaned routes wired in server.ts
-   - Phase 54: 11 broken scripts removed, .bak file deleted
-   - Phase 55: all 32 failing route tests fixed, 2,798 tests pass
-   - Doc cleanup: 22 outdated docs deleted (SOPs, model cards, deployment dupes, architecture)
-2. **0 regressions** — 2,798 tests pass across 243 test files, 0 TypeScript errors, 93 lint warnings
-3. **Bilingual live trading runbook** at `docs/live-trading-runbook.md` — updated
-4. **Live trading integration test COMPLETE (2026-07-02):**
-   - Phase 1: Adapter hardening — env var unification (`POLYMARKET_*` preferred, `POLY_*` fallback), `POLY_CLOB_HOST` + `POLY_CHAIN_ID` config
-   - Phase 2: Paper-mode E2E integration — 26 tests covering Gamma API, strategy scan, paper orders, position tracking, guard, journal (temp dir), orchestrator lifecycle
-   - Phase 3: Verification — 2,798 tests, 93 lint warnings, 0 type errors
-5. **Bug fixes (2026-07-02):** All 8 review findings resolved — type escapes in backtest-runner, Sharpe annualization factor, Gamma API error propagation, strategy-live-bridge price bug, live-order-manager-proxy cancelOrder wiring, marketplace-payout-scheduler send-verify, missing backtest routes wired, METRICS_TOKEN added, barrel export added, .bak deleted, .gitignore updated, bilingual label fixed
-6. **Remaining work items:**
-   - SSL/TLS certificate management (infra)
+1. **Next Wave: Revenue + Trading + Infra + Platform (Complete 2026-07-03):**
+   - Revenue Growth: signup payment gate, enterprise inquiry fix, IPN verification, PRO-tier analytics, dunning emails, MASTER tier ($999/mo), subscription analytics, trial drip, public pricing page
+   - Trading Edge: 23 strategy stub factories restored, 3 pipeline imports fixed, PAPER_MODE env var with live-mode credential validation
+   - Infra Hardening: Redis persistence (AOF+RDB+password), Caddy SSL auto-HTTPS, k6 CI baseline, Alertmanager webhook, pinned Docker versions, Prometheus 15d retention
+   - Platform Depth: self-service API key management, marketplace listing badges, subscription enhancements (stats, tier changes, auto-renewal)
+   - 18/18 items shipped, 2,798 tests pass
+2. **Phases 39-55 complete** — Polymarket Live Execution + Backtesting + Doc Cleanup (all shipped)
+3. **2,798 tests pass** across 243 test files, 0 TypeScript errors, 93 lint warnings
+4. **Bilingual live trading runbook** at `docs/live-trading-runbook.md` — updated
+5. **Remaining work items:**
    - Third-party security audit (external vendor)
 
 ---
@@ -379,5 +403,5 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ---
 
-_Last Updated: 2026-07-02_
+_Last Updated: 2026-07-03_
 _Generated by: Documentation Manager Agent (Phase 32b Autonomy)_

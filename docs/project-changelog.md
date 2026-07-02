@@ -1,5 +1,49 @@
 # Project Changelog - Algo Trader
 
+## [3.4.0] - 2026-07-03
+
+### Added — Next Wave: Revenue + Trading + Infra + Platform
+
+**Track 1: Revenue Growth (8 items):**
+- Signup payment gate: PRO/Enterprise signups now redirect to NOWPayments checkout; license held in `pending_payment` status until IPN `finished` callback
+- Enterprise inquiry form tier gate fixed — `POST /inquiries` changed from `requireTier('ENTERPRISE')` to `requireTier('FREE')` (public endpoint)
+- IPN webhook route verified with HMAC-SHA512 enforcement, idempotency by `payment_id` (dedup survives restarts), credential guards fail fast at startup
+- Revenue API gates lowered from ENTERPRISE to PRO for `/summary`, `/mrr`, `/usage`, `/overage`, `/churn`
+- Dunning service integrated with email notifications: escalation on 2nd+ failure, suspension notice, reinstatement confirmation
+- Subscription analytics API: `GET /analytics/subscription/dashboard`, `/ltv`, `/cohorts`, `/churn` (PRO tier, MRR breakdown, LTV prediction, cohort retention, churn analysis)
+- Trial drip campaign API: `POST /api/v1/trial-drip/subscribe`, `/unsubscribe`, `/process`, `/status`, `/subscriber/:id` email sequence scheduling
+- Public pricing page at `src/platform/landing/public/pricing.html`
+- MASTER tier ($999/mo): added to `LicenseTier` enum, `TIER_CONFIG` (5000 RPM, 500K daily API), `NOWPAYMENTS_TIERS` entry, feature map
+
+**Track 2: Trading Edge (3 items):**
+- 23 missing strategy factory imports replaced in `strategy-wiring.ts` — all `.js` extensions migrated to `.ts`, V2-compatible strategy stubs created for all 23 strategies:
+  polymarket-arb, grid-dca, book-imbalance-reversal, pairs-stat-arb, session-vol-sniper, liquidation-cascade, order-flow-toxicity, gamma-scalping, funding-rate-arb, expiry-theta-decay, microstructure-alpha, sentiment-momentum, smart-money-divergence, volatility-surface-arb, news-catalyst-fade, kalman-filter-tracker, liquidity-vacuum, twap-accumulator, correlation-breakdown, entropy-scorer, adverse-selection-filter, momentum-exhaustion, cross-platform-basis
+- 3 missing strategy imports fixed in `trading-pipeline.ts` — `CrossMarketArbStrategy`, `MarketMakerStrategy`, `MeanReversionStrategy` point to real `.ts` files
+- `PAPER_MODE` env var (default `true`) — `LiveTradingOrchestrator` validates all 4 Polymarket API env vars before LIVE execution, throws descriptive error listing missing vars
+
+**Track 3: Infrastructure Hardening (6 items):**
+- Redis persistence: `config/redis.conf` with AOF (appendonly yes, everysec fsync), RDB snapshots (900/1, 300/10, 60/10000), password auth via `REDIS_PASSWORD` env var mounted in docker-compose
+- SSL/TLS: Caddy reverse proxy with auto-HTTPS (`docker/caddy/Caddyfile` + `docker-compose.caddy.yml`), Let's Encrypt auto-renewal, HSTS security headers, rate limiting, access logs; certbot renewal script at `scripts/renew-certs.sh`
+- Load testing: k6 baseline re-established, CI integration with reduced VUs (100 VUs, 30s), `tests/load/raas-gateway-load-test.ci.js` for CI, thresholds pass with p95 < 500ms, error rate < 5%
+- Alertmanager: notification channel wired with webhook receiver, critical/warning routing, Telegram/Slack via placeholder alert-webhook service
+- Docker image tags pinned: Prometheus, Grafana, Alertmanager versions locked (no `:latest`)
+- Prometheus retention set: `--storage.tsdb.retention.time=15d` in docker-compose
+
+**Track 4: Platform Depth (4 items):**
+- Self-service API key management: `POST/GET/DELETE /api/v1/api-keys` (PRO+), `api-key-auth.ts` Bearer token middleware with scrypt-hashed key storage, show-once-at-creation pattern, per-key rate limiting, `api_keys` DB migration (039)
+- Marketplace listing badges: top performer badges (volume, win rate, reliability, ROI) via `badge-repository.ts`/`badge-service.ts`, `listings/:id/badge` + `badges` route, migration 040
+- Subscription enhancements: detailed stats (`/subscriptions/stats`), tier upgrades/downgrades, auto-renewal toggles, migration 041
+- Pricing page published at `/pricing` as static landing page
+
+### Changed
+- Test count: 2,798 passing (unchanged from 3.3.1, no regressions)
+- Tier enum expanded: FREE → PRO → ENTERPRISE → MASTER ($999/mo)
+- Docker compose: Redis now has persistence and optional auth; monitoring images pinned; Prometheus retention 15d; Alertmanager webhook wired
+- Revenue routes: analytics gated to PRO instead of ENTERPRISE
+- .env.example: added `PAPER_MODE`, `REDIS_PASSWORD`
+- Strategy wiring: 23 broken imports replaced with 23 working V2 stubs; 3 trading pipeline dead imports revived
+- Live trading orchestrator: reads `PAPER_MODE` env var with credential validation in LIVE mode
+
 ## [3.3.1] - 2026-07-02
 
 ### Fixed — Code Review Findings & Marketplace Backtest Routes

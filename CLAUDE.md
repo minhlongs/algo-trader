@@ -95,7 +95,7 @@ src/
 
 ### Key Patterns
 
-- **Tier gating** on all platform routes: `requireTier('FREE|PRO|ENTERPRISE')` — Express middleware in `feature-gate.ts`
+- **Tier gating** on all platform routes: `requireTier('FREE|PRO|ENTERPRISE|MASTER')` — Express middleware in `feature-gate.ts`
 - **Tenant isolation** via `buildTenantFilter(tenantId)` on every platform DB query
 - **Strategy access**: Platform imports desk strategies through shared `IStrategy` interface — direct import, no network bridge
 - **Desk = no tenant awareness**: Desk modules never reference `tenantId`, `subscriber`, or `tier`
