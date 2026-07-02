@@ -123,6 +123,7 @@ describe('Distributed Rate Limiter Integration Tests', () => {
     // Set environment variables
     process.env.ADMIN_API_KEY = 'test-admin-key-for-rate-limiting';
     process.env.METRICS_TOKEN = 'test-metrics-token';
+    process.env.BETTER_AUTH_SECRET = 'test-auth-secret';
 
     // Clear and create test licenses
     const licenseService = LicenseService.getInstance();

@@ -94,6 +94,7 @@ describe('API Server', () => {
   let app: express.Application;
 
   beforeAll(async () => {
+    process.env.BETTER_AUTH_SECRET = 'test-auth-secret';
     const { ApiServer } = await import('../server');
     const apiServer = new ApiServer({ port: 3001 });
     app = apiServer.getApp();
