@@ -25,6 +25,8 @@ services:
       - DB_NAME=algo_trade
       - DB_USER=algo
       - DB_PASSWORD=${DB_PASSWORD:-algo_local}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev-secret-local-docker-algo-trader}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
     volumes:
       - ./data:/app/data
     healthcheck:
