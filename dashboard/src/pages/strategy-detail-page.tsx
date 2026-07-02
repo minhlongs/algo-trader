@@ -7,7 +7,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApiClient } from '../hooks/use-api-client';
-import type { MarketplaceStrategy, BacktestSummary } from '../types/api';
+import type { MarketplaceStrategy } from '../types/api';
 import { BacktestResults } from '../components/backtest-results';
 import { PriceChartLightweight } from '../components/price-chart-lightweight';
 import type { ChartDataPoint } from '../components/price-chart-lightweight';
@@ -60,7 +60,7 @@ export function StrategyDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchApi<MarketplaceStrategy>(`/v1/marketplace/strategies/${encodeURIComponent(id)}`);
+        const data = await fetchApi<MarketplaceStrategy>(`/v1/marketplace/strategies/${encodeURIComponent(id!)}`);
         if (!cancelled) {
           if (data) setStrategy(data);
           else setError('Strategy not found');
@@ -171,7 +171,7 @@ export function StrategyDetailPage() {
       {bs ? (
         <>
           <section>
-            <h2 className="text-xs font-semibold text-white mb-3">Backtest Summary</h2>
+            <h2 className="text-xs font-semibold text-accent mb-3">Backtest Summary</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               {metricCard('Sharpe Ratio', bs.sharpe?.toFixed(2) ?? '—', (bs.sharpe ?? 0) >= 1 ? 'profit' : 'loss')}
               {metricCard('Max Drawdown', pctStr(bs.maxDrawdown), ((bs.maxDrawdown ?? 0) < 0.2) ? 'profit' : 'loss')}
@@ -185,7 +185,7 @@ export function StrategyDetailPage() {
           {/* Performance Chart */}
           {chartData.length > 0 && (
             <section>
-              <h2 className="text-xs font-semibold text-white mb-3">Equity Curve (Estimated)</h2>
+              <h2 className="text-xs font-semibold text-accent mb-3">Equity Curve (Estimated)</h2>
               <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
                 <PriceChartLightweight
                   data={chartData}
@@ -199,7 +199,7 @@ export function StrategyDetailPage() {
 
           {/* Additional metrics */}
           <section>
-            <h2 className="text-xs font-semibold text-white mb-3">Additional Details</h2>
+            <h2 className="text-xs font-semibold text-accent mb-3">Additional Details</h2>
             <div className="bg-bg-surface border border-bg-border rounded-lg p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
                 <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Total Trades</p>
@@ -229,7 +229,7 @@ export function StrategyDetailPage() {
       {/* Backtest History */}
       {id && (
         <section>
-          <h2 className="text-xs font-semibold text-white mb-3">Backtest History</h2>
+          <h2 className="text-xs font-semibold text-accent mb-3">Backtest History</h2>
           <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
             <BacktestResults strategyId={id} />
           </div>

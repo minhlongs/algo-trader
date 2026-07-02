@@ -41,11 +41,11 @@ function Th({ label, col, current, dir, onClick }: ThProps) {
   const active = col === current;
   return (
     <th
-      className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-muted cursor-pointer select-none hover:text-white transition-colors"
+      className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-muted cursor-pointer select-none hover:text-accent transition-colors"
       onClick={() => onClick(col)}
     >
       {label}
-      {active && <span className="ml-1 opacity-60">{dir === 'asc' ? '▲' : '▼'}</span>}
+      {active && <span className="ml-1 text-accent">{dir === 'asc' ? '▲' : '▼'}</span>}
     </th>
   );
 }

@@ -45,7 +45,7 @@ export function SubscriberTradeHistoryPage() {
         <button
           onClick={() => { refresh(); setPage(0); }}
           disabled={loading}
-          className="px-3 py-1.5 bg-surface border border-border rounded text-xs text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
+          className="px-3 py-1.5 bg-surface border border-border rounded text-xs text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40 min-h-touch"
         >
           {loading ? 'Loading...' : 'Refresh'}
         </button>

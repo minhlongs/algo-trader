@@ -51,7 +51,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       <p className="text-muted text-xs mb-6">Create a key for CLI or programmatic access to your account.</p>
       <button
         onClick={onCreate}
-        className="bg-accent text-bg text-xs font-bold px-4 py-2 rounded hover:bg-accent/80 transition-colors"
+        className="bg-accent text-bg text-xs font-bold px-4 py-2 rounded hover:bg-accent/80 transition-colors min-h-touch"
       >
         + Create API Key
       </button>
@@ -180,7 +180,7 @@ export function ApiKeysPage() {
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="bg-accent text-bg text-xs font-bold px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors"
+            className="bg-accent text-bg text-xs font-bold px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors min-h-touch"
           >
             {creating ? 'Creating...' : '+ New Key'}
           </button>
@@ -207,7 +207,7 @@ export function ApiKeysPage() {
             </div>
             <button
               onClick={dismissFreshKey}
-              className="text-muted hover:text-white text-xs flex-shrink-0"
+              className="text-muted hover:text-white text-xs flex-shrink-0 min-h-touch"
             >
               &times;
             </button>
@@ -244,7 +244,7 @@ export function ApiKeysPage() {
               <button
                 onClick={() => setRevokeTarget(k)}
                 disabled={revoking}
-                className="text-loss text-xs px-2 py-1 rounded hover:bg-loss/10 transition-colors disabled:opacity-50 flex-shrink-0"
+                className="text-loss text-xs px-2 py-1 rounded hover:bg-loss/10 transition-colors disabled:opacity-50 flex-shrink-0 min-h-touch"
               >
                 Revoke
               </button>

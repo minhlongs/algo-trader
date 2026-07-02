@@ -160,7 +160,7 @@ export function BacktestsPage() {
             <button
               type="submit"
               disabled={submitting || loading}
-              className="bg-accent text-bg font-bold text-sm px-6 py-2 rounded hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="bg-accent text-bg font-bold text-sm px-6 py-2 rounded hover:opacity-90 disabled:opacity-50 transition-opacity min-h-touch"
             >
               {submitting ? 'Submitting…' : 'Run Backtest'}
             </button>

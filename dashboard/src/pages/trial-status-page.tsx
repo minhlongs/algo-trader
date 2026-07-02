@@ -277,7 +277,7 @@ export function TrialStatusPage() {
             {status.daysRemaining <= 7 && (
               <a
                 href="/pricing"
-                className="bg-accent text-bg text-xs font-bold px-3 py-1.5 rounded hover:bg-accent/80 transition-colors"
+                className="bg-accent text-bg text-xs font-bold px-3 py-1.5 rounded hover:bg-accent/80 transition-colors min-h-touch"
               >
                 Upgrade Now
               </a>

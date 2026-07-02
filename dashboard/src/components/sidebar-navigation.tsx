@@ -69,7 +69,7 @@ export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
               <Link
                 to={path}
                 onClick={onNavigate}
-                className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+                className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors min-h-touch ${
                   active
                     ? 'text-accent bg-accent/10 border-l-[3px] border-accent font-medium'
                     : 'text-muted hover:text-white border-l-[3px] border-transparent'
@@ -95,7 +95,7 @@ export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
         )}
         <button
           onClick={logout}
-          className="w-full text-left text-xs text-muted hover:text-loss transition-colors py-1 flex items-center gap-1.5"
+          className="w-full text-left text-xs text-muted hover:text-loss transition-colors py-1 flex items-center gap-1.5 min-h-touch"
         >
           <SignOut className="w-3.5 h-3.5" />
           Sign out

@@ -140,7 +140,7 @@ export function ReportingPage() {
         <h1 className="text-white text-2xl font-bold">Reporting</h1>
         <button
           onClick={() => exportCsv(sorted)}
-          className="text-xs bg-accent text-bg font-bold px-4 py-2 rounded hover:opacity-90 transition-opacity"
+          className="text-xs bg-accent text-bg font-bold px-4 py-2 rounded hover:opacity-90 transition-opacity min-h-touch"
         >
           Export CSV
         </button>
@@ -248,7 +248,7 @@ export function ReportingPage() {
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   disabled={page === 0}
                   aria-label="Previous page"
-                  className="px-3 py-1 text-xs border border-bg-border rounded text-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1 text-xs border border-bg-border rounded text-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors min-h-touch"
                 >
                   ← Prev
                 </button>
@@ -259,7 +259,7 @@ export function ReportingPage() {
                   onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                   disabled={page >= totalPages - 1}
                   aria-label="Next page"
-                  className="px-3 py-1 text-xs border border-bg-border rounded text-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1 text-xs border border-bg-border rounded text-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors min-h-touch"
                 >
                   Next →
                 </button>

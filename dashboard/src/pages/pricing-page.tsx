@@ -110,7 +110,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
     <div className="border-b border-[#1E2640]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-[#F59E0B] transition-colors"
+        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-[#F59E0B] transition-colors min-h-touch"
       >
         <span>{q}</span>
         <svg
@@ -184,7 +184,7 @@ export function PricingPage() {
 
               <Link
                 to={href}
-                className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
+                className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors min-h-touch ${
                   highlight
                     ? 'bg-[#F59E0B] text-[#080B14] hover:bg-[#F59E0B]/80'
                     : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#F59E0B]/50'

@@ -87,7 +87,7 @@ export function SignupPage() {
                   <code className="text-[#F59E0B] text-xs break-all flex-1 select-all">{shownApiKey}</code>
                   <button
                     onClick={handleCopy}
-                    className="flex-shrink-0 text-xs px-3 py-1.5 border border-[#F59E0B]/40 rounded text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors"
+                    className="flex-shrink-0 text-xs px-3 py-1.5 border border-[#F59E0B]/40 rounded text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors min-h-touch"
                   >
                     {copied ? 'Copied!' : 'Copy'}
                   </button>
@@ -96,7 +96,7 @@ export function SignupPage() {
 
               <button
                 onClick={() => navigate('/app')}
-                className="w-full bg-[#F59E0B] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors"
+                className="w-full bg-[#F59E0B] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors min-h-touch"
               >
                 I've saved my key — Continue
               </button>
@@ -165,7 +165,7 @@ export function SignupPage() {
                       key={value}
                       onClick={() => setTier(value)}
                       disabled={loading}
-                      className={`flex flex-col items-center py-3 px-2 rounded border text-xs transition-colors disabled:opacity-50 ${
+                      className={`flex flex-col items-center py-3 px-2 rounded border text-xs transition-colors disabled:opacity-50 min-h-touch ${
                         tier === value
                           ? 'border-[#F59E0B] bg-[#F59E0B]/10 text-[#F59E0B]'
                           : 'border-[#1E2640] text-[#8892B0] hover:border-[#F59E0B]/40 hover:text-white'
@@ -181,7 +181,7 @@ export function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#F59E0B] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-[#F59E0B] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed min-h-touch"
               >
                 {loading ? 'Creating account…' : 'Create Account'}
               </button>

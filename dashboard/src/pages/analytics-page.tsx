@@ -66,7 +66,7 @@ export function AnalyticsPage() {
         <p className="text-sm mb-4">{error}</p>
         <button
           onClick={reload}
-          className="px-4 py-2 bg-loss/20 hover:bg-loss/30 rounded text-xs transition-colors"
+          className="px-4 py-2 bg-loss/20 hover:bg-loss/30 rounded text-xs transition-colors min-h-touch"
         >
           Retry
         </button>
@@ -98,7 +98,7 @@ export function AnalyticsPage() {
                 key={range.value}
                 onClick={() => setTimeRange(range.value)}
                 className={`
-                  px-3 py-1.5 text-xs rounded transition-colors
+                  px-3 py-1.5 text-xs rounded transition-colors min-h-touch
                   ${timeRange === range.value
                     ? 'bg-accent/20 text-accent border border-accent/30'
                     : 'text-muted hover:text-white'
@@ -114,7 +114,7 @@ export function AnalyticsPage() {
           <button
             onClick={togglePolling}
             className={`
-              px-3 py-1.5 text-xs rounded border transition-colors
+              px-3 py-1.5 text-xs rounded border transition-colors min-h-touch
               ${isPolling
                 ? 'border-profit/30 text-profit hover:border-profit/50'
                 : 'border-bg-border text-muted hover:text-white'
@@ -227,7 +227,7 @@ export function AnalyticsPage() {
             <button
               onClick={() => setSelectedTier('all')}
               className={`
-                w-full px-3 py-2 text-sm text-left rounded border transition-colors
+                w-full px-3 py-2 text-sm text-left rounded border transition-colors min-h-touch
                 ${selectedTier === 'all'
                   ? 'bg-accent/20 text-accent border-accent/30'
                   : 'border-bg-border text-muted hover:text-white'
@@ -241,7 +241,7 @@ export function AnalyticsPage() {
                 key={tier.tier}
                 onClick={() => setSelectedTier(tier.tier)}
                 className={`
-                  w-full px-3 py-2 text-sm text-left rounded border transition-colors flex items-center justify-between
+                  w-full px-3 py-2 text-sm text-left rounded border transition-colors min-h-touch flex items-center justify-between
                   ${selectedTier === tier.tier
                     ? 'bg-accent/20 text-accent border-accent/30'
                     : 'border-bg-border text-muted hover:text-white'

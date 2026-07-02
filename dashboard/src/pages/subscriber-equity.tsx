@@ -72,7 +72,7 @@ export function SubscriberEquityPage() {
         <button
           onClick={refresh}
           disabled={loading}
-          className="px-3 py-1.5 bg-surface border border-border rounded text-xs text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
+          className="px-3 py-1.5 bg-surface border border-border rounded text-xs text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40 min-h-touch"
         >
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>

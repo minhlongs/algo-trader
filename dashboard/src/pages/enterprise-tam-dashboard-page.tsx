@@ -78,7 +78,7 @@ function InquiryRow({
         <select
           value={inquiry.status}
           onChange={(e) => onStatusChange(inquiry.id, e.target.value)}
-          className="text-xs bg-[#161A1E] border border-[#1E2640] text-[#8892B0] rounded px-2 py-1 outline-none focus:border-[#F59E0B]/50"
+          className="text-xs bg-[#161A1E] border border-[#1E2640] text-[#8892B0] rounded px-2 py-1 outline-none focus:border-[#F59E0B]/50 min-h-touch"
         >
           {['new','tam_notified','contacted','demo_active','negotiating','closed_won','closed_lost'].map((s) => (
             <option key={s} value={s}>{s.replace('_',' ')}</option>
@@ -145,7 +145,7 @@ export function EnterpriseTamDashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {[
             { label: 'Total inquiries', value: stats.total },
             { label: 'Open', value: stats.open },
@@ -166,7 +166,7 @@ export function EnterpriseTamDashboardPage() {
           <p className="text-red-400 text-sm text-center py-12">{errorMsg}</p>
         )}
         {loadState === 'ready' && (
-          <div className="border border-[#1E2640] rounded-lg overflow-hidden">
+          <div className="border border-[#1E2640] rounded-lg overflow-x-auto">
             {inquiries.length === 0 ? (
               <p className="text-[#8892B0] text-sm text-center py-12">No enterprise inquiries yet.</p>
             ) : (

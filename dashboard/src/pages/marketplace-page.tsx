@@ -207,7 +207,7 @@ export function MarketplacePage() {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${
+            className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors min-h-touch ${
               activeTab === tab.id
                 ? 'text-accent border-accent'
                 : 'text-muted border-transparent hover:text-white'
@@ -308,7 +308,7 @@ export function MarketplacePage() {
                           </span>
                         )}
                         {s.tags?.includes('featured') && (
-                          <span className="text-[10px] border border-gold/40 text-gold px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] border border-accent/40 text-accent px-1.5 py-0.5 rounded">
                             🏆 Top Performer
                           </span>
                         )}
@@ -352,7 +352,7 @@ export function MarketplacePage() {
                     <div className="flex gap-2">
                       <Link
                         to={`/app/strategies/${s.id}`}
-                        className="flex-1 text-center text-[10px] text-accent border border-accent/30 py-2 rounded hover:bg-accent/10 transition-colors"
+                        className="flex-1 text-center text-[10px] text-accent border border-accent/30 py-2 rounded hover:bg-accent/10 transition-colors min-h-touch"
                       >
                         View Details
                       </Link>
@@ -376,7 +376,7 @@ export function MarketplacePage() {
                             strategyName: s.name,
                             priceCents: s.listingPriceUsdMonthly ?? 0,
                           })}
-                          className="flex-1 text-center text-[10px] font-bold bg-accent text-bg py-2 rounded hover:bg-accent/80 transition-colors"
+                          className="flex-1 text-center text-[10px] font-bold bg-accent text-bg py-2 rounded hover:bg-accent/80 transition-colors min-h-touch"
                         >
                           {s.listingPriceUsdMonthly && s.listingPriceUsdMonthly > 0
                             ? `Subscribe $${(s.listingPriceUsdMonthly / 100).toFixed(2)}/mo`
@@ -398,7 +398,7 @@ export function MarketplacePage() {
                   key={p}
                   type="button"
                   onClick={() => handleFilter('page', p)}
-                  className={`px-3 py-1 text-xs rounded border ${
+                  className={`px-3 py-1 text-xs rounded border min-h-touch ${
                     (filters.page ?? 1) === p
                       ? 'border-accent text-accent bg-accent/10'
                       : 'border-bg-border text-muted hover:text-white'
@@ -426,7 +426,7 @@ export function MarketplacePage() {
                   setActiveTab('browse');
                   loadStrategies(filters);
                 }}
-                className="px-4 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors"
+                className="px-4 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors min-h-touch"
               >
                 Browse Strategies
               </button>
@@ -442,7 +442,7 @@ export function MarketplacePage() {
                   setActiveTab('browse');
                   loadStrategies(filters);
                 }}
-                className="px-4 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors"
+                className="px-4 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors min-h-touch"
               >
                 Browse Strategies
               </button>
@@ -610,7 +610,7 @@ export function MarketplacePage() {
 
                 {subscribeModal.priceCents > 0 && (
                   <p className="text-xs text-white">
-                    Price: <span className="text-gold font-bold">${(subscribeModal.priceCents / 100).toFixed(2)}/mo</span>
+                    Price: <span className="text-accent font-bold">${(subscribeModal.priceCents / 100).toFixed(2)}/mo</span>
                   </p>
                 )}
 

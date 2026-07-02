@@ -101,7 +101,7 @@ export function EnterpriseContactPage() {
                   key={key}
                   type="button"
                   onClick={() => set('tier', key)}
-                  className={`p-3 rounded border text-xs text-left transition-colors ${
+                  className={`p-3 rounded border text-xs text-left transition-colors min-h-touch ${
                     fields.tier === key
                       ? 'border-[#F59E0B] bg-[#F59E0B]/10 text-white'
                       : 'border-[#1E2640] text-[#8892B0] hover:border-[#F59E0B]/40'
@@ -172,7 +172,7 @@ export function EnterpriseContactPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#F59E0B] text-[#080B14] font-bold py-3 rounded hover:bg-[#F59E0B]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#F59E0B] text-[#080B14] font-bold py-3 rounded hover:bg-[#F59E0B]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-touch"
           >
             {isSubmitting ? 'Sending…' : 'Request enterprise access'}
           </button>

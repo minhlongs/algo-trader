@@ -178,7 +178,7 @@ function PositionsTable({
                   <button
                     onClick={() => onClosePosition(r.id)}
                     disabled={isClosing}
-                    className={`px-2 py-1 rounded text-xs font-bold border transition-colors ${
+                    className={`px-2 py-1 rounded text-xs font-bold border transition-colors min-h-touch ${
                       isClosing
                         ? 'bg-bg-border text-muted border-bg-border cursor-not-allowed'
                         : 'bg-loss/10 border-loss/40 text-loss hover:bg-loss/20 hover:border-loss/60'
@@ -592,21 +592,21 @@ export function LiveTradingPage() {
           {adminLoading && <span className="text-muted text-xs">Refreshing...</span>}
           <button
             onClick={() => setAutoRefresh((p) => !p)}
-            className="text-xs text-muted border border-bg-border px-3 py-1.5 rounded hover:text-white hover:border-muted/50 transition-colors"
+            className="text-xs text-muted border border-bg-border px-3 py-1.5 rounded hover:text-white hover:border-muted/50 transition-colors min-h-touch"
           >
             {autoRefresh ? 'Pause' : 'Resume'}
           </button>
           {running && (
             <button
               onClick={() => setStopDialogOpen(true)}
-              className="text-xs text-loss font-bold border border-loss/40 px-3 py-1.5 rounded hover:bg-loss/10 transition-colors"
+              className="text-xs text-loss font-bold border border-loss/40 px-3 py-1.5 rounded hover:bg-loss/10 transition-colors min-h-touch"
             >
               Stop Bot
             </button>
           )}
           <button
             onClick={refreshAdmin}
-            className="text-xs text-muted border border-bg-border px-3 py-1.5 rounded hover:text-white hover:border-muted/50 transition-colors"
+            className="text-xs text-muted border border-bg-border px-3 py-1.5 rounded hover:text-white hover:border-muted/50 transition-colors min-h-touch"
           >
             Refresh
           </button>

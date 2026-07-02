@@ -203,7 +203,7 @@ function StrategyDetailCard({ strategy, allStrategies, onClose }: StrategyDetail
         <h3 className="text-white text-sm font-bold capitalize">{strategy.strategy.replace(/-/g, ' ')}</h3>
         <button
           onClick={onClose}
-          className="text-muted hover:text-white text-xs transition-colors"
+          className="text-muted hover:text-white text-xs transition-colors min-h-touch min-w-touch"
           aria-label="Close detail"
         >
           ✕
@@ -316,7 +316,7 @@ export function StrategyPerformancePage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-white text-2xl font-bold">Strategy Performance</h1>
+        <h1 className="text-accent text-2xl font-bold">Strategy Performance</h1>
         <div className="bg-bg-surface border border-bg-border rounded-lg p-8">
           <div className="animate-pulse space-y-3">
             <div className="h-4 bg-bg-border rounded w-1/3" />
@@ -333,13 +333,13 @@ export function StrategyPerformancePage() {
   if (error) {
     return (
       <div className="space-y-4">
-        <h1 className="text-white text-2xl font-bold">Strategy Performance</h1>
+        <h1 className="text-accent text-2xl font-bold">Strategy Performance</h1>
         <div className="bg-bg-surface border border-loss/30 rounded-lg p-8 text-center">
           <p className="text-loss text-sm">Failed to load data.</p>
           <p className="text-muted text-xs mt-1">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-4 text-xs bg-accent text-bg font-bold px-4 py-2 rounded hover:opacity-90 transition-opacity"
+            className="mt-4 text-xs bg-accent text-bg font-bold px-4 py-2 rounded hover:opacity-90 transition-opacity min-h-touch"
           >
             Retry
           </button>
@@ -352,7 +352,7 @@ export function StrategyPerformancePage() {
   if (tradedStrategies.length === 0) {
     return (
       <div className="space-y-4">
-        <h1 className="text-white text-2xl font-bold">Strategy Performance</h1>
+        <h1 className="text-accent text-2xl font-bold">Strategy Performance</h1>
         <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
           <p className="text-muted text-sm">No strategy performance data available.</p>
           <p className="text-muted text-xs mt-1">
@@ -367,7 +367,7 @@ export function StrategyPerformancePage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-white text-2xl font-bold">Strategy Performance</h1>
+        <h1 className="text-accent text-2xl font-bold">Strategy Performance</h1>
         {!isProOrAbove && (
           <span className="text-xs text-muted border border-bg-border rounded px-2 py-1">
             FREE tier — summary view. Upgrade to PRO+ for comparison.
@@ -461,7 +461,7 @@ export function StrategyPerformancePage() {
                         onClick={() => setSelectedStrategy(
                           selectedStrategy === s.strategy ? null : s.strategy
                         )}
-                        className="text-[10px] text-accent hover:text-accent/80 transition-colors"
+                        className="text-[10px] text-accent hover:text-accent/80 transition-colors min-h-touch min-w-touch"
                         aria-label={selectedStrategy === s.strategy ? 'Collapse' : 'Expand'}
                       >
                         {selectedStrategy === s.strategy ? '−' : '+'}

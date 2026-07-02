@@ -129,6 +129,8 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
       'microstructure-alpha', 'order-flow-toxicity', 'correlation-breakdown',
       'pairs-stat-arb', 'funding-rate-arb', 'gamma-scalping',
       'kalman-filter-tracker', 'liquidation-cascade',
+      // Phase 4 — Next Wave II strategies
+      'book-imbalance', 'session-vol-sniper', 'sentiment-momentum', 'momentum-exhaustion',
     ]);
 
     for (const s of POLY_STRATEGIES) {

@@ -108,7 +108,7 @@ export function DashboardPage() {
           <div
             className={`
               flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold
-              min-h-[36px] touch-manipulation
+              min-h-touch touch-manipulation
               ${wsConnected
                 ? 'border-profit/40 bg-profit/10 text-profit'
                 : 'border-loss/40 bg-loss/10 text-loss'

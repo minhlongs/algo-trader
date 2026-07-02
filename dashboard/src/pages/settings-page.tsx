@@ -91,7 +91,7 @@ function MmParametersForm() {
       <button
         type="submit"
         disabled={saving}
-        className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors"
+        className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors min-h-touch"
       >
         {saving ? 'Saving…' : 'Save Parameters'}
       </button>

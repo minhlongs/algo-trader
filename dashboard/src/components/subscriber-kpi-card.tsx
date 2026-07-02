@@ -15,7 +15,7 @@ const ACCENT_CLASS: Record<NonNullable<SubscriberKpiCardProps['accent']>, string
   default: 'text-white',
   profit: 'text-profit',
   loss: 'text-loss',
-  warning: 'text-gold',
+  warning: 'text-accent',
   muted: 'text-muted',
 };
 

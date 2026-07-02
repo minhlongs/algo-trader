@@ -105,7 +105,7 @@ export function AccountPage() {
             disabled
             title="Contact support to regenerate your API key"
             aria-label="Regenerate API key — contact support to enable"
-            className="text-xs px-3 py-1.5 border border-[#1E2640] rounded text-muted cursor-not-allowed opacity-50"
+            className="text-xs px-3 py-1.5 border border-[#1E2640] rounded text-muted cursor-not-allowed opacity-50 min-h-touch"
           >
             Regenerate
           </button>
@@ -129,7 +129,7 @@ export function AccountPage() {
             <p className="text-muted text-xs">You're on the free plan.</p>
             <Link
               to="/pricing"
-              className="bg-[#F59E0B] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#F59E0B]/80 transition-colors"
+              className="bg-[#F59E0B] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#F59E0B]/80 transition-colors min-h-touch"
             >
               Upgrade
             </Link>
@@ -141,7 +141,7 @@ export function AccountPage() {
             </p>
             <Link
               to="/pricing"
-              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors"
+              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors min-h-touch"
             >
               Upgrade / Manage →
             </Link>
@@ -157,7 +157,7 @@ export function AccountPage() {
         <button
           disabled
           title="Contact support to delete your account"
-          className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 cursor-not-allowed opacity-50"
+          className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 cursor-not-allowed opacity-50 min-h-touch"
         >
           Delete Account
         </button>

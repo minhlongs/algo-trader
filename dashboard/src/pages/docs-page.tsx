@@ -59,7 +59,7 @@ export function DocsPage() {
             <button
               key={id}
               onClick={() => scrollTo(id)}
-              className={`text-xs py-1 transition-colors ${
+              className={`text-xs py-1 transition-colors min-h-touch ${
                 activeId === id ? 'text-[#F59E0B]' : 'text-[#8892B0] hover:text-white'
               }`}
             >
@@ -81,7 +81,7 @@ export function DocsPage() {
                 <button
                   key={id}
                   onClick={() => scrollTo(id)}
-                  className={`block w-full text-left text-xs py-1.5 px-2 rounded transition-colors ${
+                  className={`block w-full text-left text-xs py-1.5 px-2 rounded transition-colors min-h-touch ${
                     activeId === id
                       ? 'text-[#F59E0B] bg-[#F59E0B]/10'
                       : 'text-[#8892B0] hover:text-white'
