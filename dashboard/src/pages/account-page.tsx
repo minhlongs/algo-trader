@@ -13,7 +13,7 @@ const TIER_LABELS: Record<string, string> = {
 
 const TIER_BADGE_COLORS: Record<string, string> = {
   free: 'bg-[#1E2640] text-[#8892B0]',
-  pro: 'bg-[#00C8E8]/10 text-[#00C8E8] border border-[#00C8E8]/30',
+  pro: 'bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/30',
   enterprise: 'bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30',
 };
 
@@ -70,7 +70,7 @@ export function AccountPage() {
       {/* Profile */}
       <Card title="Profile">
         <Row label="Email" value={email || '—'} />
-        <Row label="Tenant ID" value={<code className="text-[#00C8E8] text-[10px]">{tenantId ?? '—'}</code>} />
+        <Row label="Tenant ID" value={<code className="text-[#F59E0B] text-[10px]">{tenantId ?? '—'}</code>} />
         <Row label="Member since" value={memberSince} />
       </Card>
 
@@ -82,7 +82,7 @@ export function AccountPage() {
           </span>
           <Link
             to="/pricing"
-            className="text-xs text-[#00C8E8] hover:underline"
+            className="text-xs text-[#F59E0B] hover:underline"
           >
             Upgrade plan →
           </Link>
@@ -100,7 +100,7 @@ export function AccountPage() {
           Use this key to authenticate CLI and programmatic access.
         </p>
         <div className="bg-[#080B14] border border-[#1E2640] rounded px-4 py-3 flex items-center justify-between gap-3">
-          <code className="text-[#00C8E8] text-xs">{maskedKey}</code>
+          <code className="text-[#F59E0B] text-xs">{maskedKey}</code>
           <button
             disabled
             title="Contact support to regenerate your API key"
@@ -114,7 +114,7 @@ export function AccountPage() {
           Key regeneration is disabled.{' '}
           <a
             href="mailto:support@cashclaw.cc"
-            className="text-[#00C8E8] hover:underline"
+            className="text-[#F59E0B] hover:underline"
           >
             Contact support
           </a>{' '}
@@ -129,7 +129,7 @@ export function AccountPage() {
             <p className="text-muted text-xs">You're on the free plan.</p>
             <Link
               to="/pricing"
-              className="bg-[#00C8E8] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#00C8E8]/80 transition-colors"
+              className="bg-[#F59E0B] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#F59E0B]/80 transition-colors"
             >
               Upgrade
             </Link>
@@ -141,7 +141,7 @@ export function AccountPage() {
             </p>
             <Link
               to="/pricing"
-              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors"
+              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors"
             >
               Upgrade / Manage →
             </Link>

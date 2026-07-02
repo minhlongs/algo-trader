@@ -39,7 +39,7 @@ export function LoginPage() {
           <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-8">
             {/* Header */}
             <div className="mb-6">
-              <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-2">Welcome back</p>
+              <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-2">Welcome back</p>
               <h1 className="text-white text-xl font-bold">Sign in to CashClaw</h1>
             </div>
 
@@ -59,7 +59,7 @@ export function LoginPage() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   disabled={loading}
-                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -72,14 +72,14 @@ export function LoginPage() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   disabled={loading}
-                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#00C8E8] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-[#F59E0B] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
@@ -87,7 +87,7 @@ export function LoginPage() {
 
             <p className="text-[#8892B0] text-xs text-center mt-6">
               No account?{' '}
-              <Link to="/signup" className="text-[#00C8E8] hover:underline">
+              <Link to="/signup" className="text-[#F59E0B] hover:underline">
                 Create one free
               </Link>
             </p>

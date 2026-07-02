@@ -176,7 +176,7 @@ export function CandlestickChart() {
     });
 
     const volumeSeries = chart.addHistogramSeries({
-      color: '#00C8E8',
+      color: '#F59E0B',
       priceFormat: { type: 'volume' },
       priceScaleId: '', // overlay volume on main chart
     });

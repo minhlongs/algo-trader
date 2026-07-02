@@ -1,38 +1,60 @@
-/* ── CashClaw Design Tokens (seed layer) ── */
-/* Foundational primitives — importable by all layers */
+/* ════════════════════════════════════════════════════════
+   Gold Standard Design Tokens — Algo-Trade RaaS Platform
+   Canonical source: design-system/tokens.json
+   ════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Background ── */
+  /* ── Colors ── */
+  --color-primary: #F59E0B;
+  --color-primary-bright: #FBBF24;
+  --color-primary-dim: rgba(245, 158, 11, 0.12);
+  --color-primary-glow: rgba(245, 158, 11, 0.5);
+  --color-primary-border-glow: rgba(245, 158, 11, 0.25);
+  --color-secondary: #8B5CF6;
+  --color-positive: #34D399;
+  --color-positive-glow: rgba(52, 211, 153, 0.3);
+  --color-negative: #EF4444;
+
+  /* ── Backgrounds ── */
   --color-bg: #060912;
   --color-bg-elevated: #0B1120;
   --color-bg-card: #0F172A;
   --color-bg-card-hover: #141F38;
-
-  /* ── Border ── */
-  --color-border: #1E3A5F;
-  --color-border-subtle: #152240;
-  --color-border-glow: rgba(245, 158, 11, 0.25);
-
-  /* ── Accent ── */
-  --color-gold: #F59E0B;
-  --color-gold-bright: #FBBF24;
-  --color-gold-dim: rgba(245, 158, 11, 0.12);
-  --color-gold-glow: rgba(245, 158, 11, 0.5);
-  --color-emerald: #34D399;
-  --color-emerald-glow: rgba(52, 211, 153, 0.3);
-  --color-rose: #FB7185;
+  --color-bg-border: #1E293B;
+  --color-bg-border-subtle: #152240;
 
   /* ── Text ── */
-  --text-primary: #F8FAFC;
-  --text-secondary: #CBD5E1;
-  --text-muted: #64748B;
-  --text-inverse: #060912;
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #CBD5E1;
+  --color-text-muted: #64748B;
+  --color-text-inverse: #060912;
 
   /* ── Typography ── */
-  --font-heading: 'Cabinet Grotesk', system-ui, sans-serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Calistoga', serif;
+  --font-heading: var(--font-display);  /* alias for backward compat */
+  --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
+  /* ════════════════════════════════════════════════════════
+     BACKWARD-COMPATIBLE ALIASES
+     Old names → new canonical names. Safe to remove once
+     all consumers migrate to new names.
+     ════════════════════════════════════════════════════════ */
+  --color-gold: var(--color-primary);
+  --color-gold-bright: var(--color-primary-bright);
+  --color-gold-dim: var(--color-primary-dim);
+  --color-gold-glow: var(--color-primary-glow);
+  --color-border-glow: var(--color-primary-border-glow);
+  --color-emerald: var(--color-positive);
+  --color-emerald-glow: var(--color-positive-glow);
+  --color-rose: var(--color-negative);
+  --color-border: var(--color-bg-border);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --text-inverse: var(--color-text-inverse);
+
+  /* ── Font size scale ── */
   --text-hero: clamp(3.5rem, 7vw, 6rem);
   --text-display: clamp(2.25rem, 4vw, 3.5rem);
   --text-2xl: 1.625rem;
@@ -52,7 +74,7 @@
 
   /* ── Shadows ── */
   --shadow-gold: 0 0 60px rgba(245, 158, 11, 0.2), 0 0 120px rgba(245, 158, 11, 0.08);
-  --shadow-card: 0 4px 32px rgba(0, 0, 0, 0.6), 0 1px 0 var(--color-border-subtle);
+  --shadow-card: 0 4px 32px rgba(0, 0, 0, 0.6), 0 1px 0 var(--color-bg-border);
 
   /* ── Motion ── */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

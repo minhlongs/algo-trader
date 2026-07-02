@@ -27,7 +27,7 @@ interface StrategyAllocationChartProps {
 
 const DONUT_COLORS = [
   '#00E676',
-  '#00C8E8',
+  '#F59E0B',
   '#FFB800',
   '#FF4466',
   '#7C3AED',

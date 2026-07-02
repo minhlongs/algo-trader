@@ -81,13 +81,13 @@ export function SignupPage() {
                 </p>
               </div>
 
-              <div className="bg-[#080B14] border border-[#00C8E8]/30 rounded px-4 py-3">
+              <div className="bg-[#080B14] border border-[#F59E0B]/30 rounded px-4 py-3">
                 <p className="text-[#8892B0] text-[10px] uppercase tracking-widest mb-2">API Key</p>
                 <div className="flex items-center gap-2">
-                  <code className="text-[#00C8E8] text-xs break-all flex-1 select-all">{shownApiKey}</code>
+                  <code className="text-[#F59E0B] text-xs break-all flex-1 select-all">{shownApiKey}</code>
                   <button
                     onClick={handleCopy}
-                    className="flex-shrink-0 text-xs px-3 py-1.5 border border-[#00C8E8]/40 rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors"
+                    className="flex-shrink-0 text-xs px-3 py-1.5 border border-[#F59E0B]/40 rounded text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors"
                   >
                     {copied ? 'Copied!' : 'Copy'}
                   </button>
@@ -96,7 +96,7 @@ export function SignupPage() {
 
               <button
                 onClick={() => navigate('/app')}
-                className="w-full bg-[#00C8E8] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors"
+                className="w-full bg-[#F59E0B] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors"
               >
                 I've saved my key — Continue
               </button>
@@ -116,7 +116,7 @@ export function SignupPage() {
           <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-8">
             {/* Header */}
             <div className="mb-6">
-              <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-2">Get started</p>
+              <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-2">Get started</p>
               <h1 className="text-white text-xl font-bold">Create your account</h1>
             </div>
 
@@ -137,7 +137,7 @@ export function SignupPage() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   disabled={loading}
-                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -151,7 +151,7 @@ export function SignupPage() {
                   placeholder="min 8 characters"
                   autoComplete="new-password"
                   disabled={loading}
-                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -167,8 +167,8 @@ export function SignupPage() {
                       disabled={loading}
                       className={`flex flex-col items-center py-3 px-2 rounded border text-xs transition-colors disabled:opacity-50 ${
                         tier === value
-                          ? 'border-[#00C8E8] bg-[#00C8E8]/10 text-[#00C8E8]'
-                          : 'border-[#1E2640] text-[#8892B0] hover:border-[#00C8E8]/40 hover:text-white'
+                          ? 'border-[#F59E0B] bg-[#F59E0B]/10 text-[#F59E0B]'
+                          : 'border-[#1E2640] text-[#8892B0] hover:border-[#F59E0B]/40 hover:text-white'
                       }`}
                     >
                       <span className="font-bold mb-0.5">{label}</span>
@@ -181,7 +181,7 @@ export function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#00C8E8] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full bg-[#F59E0B] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating account…' : 'Create Account'}
               </button>
@@ -189,7 +189,7 @@ export function SignupPage() {
 
             <p className="text-[#8892B0] text-xs text-center mt-6">
               Already have an account?{' '}
-              <Link to="/login" className="text-[#00C8E8] hover:underline">
+              <Link to="/login" className="text-[#F59E0B] hover:underline">
                 Sign in
               </Link>
             </p>

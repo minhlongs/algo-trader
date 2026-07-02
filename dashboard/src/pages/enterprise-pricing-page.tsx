@@ -30,12 +30,12 @@ function PlanCard({
     <div
       className={`relative rounded-lg p-6 flex flex-col gap-5 ${
         highlight
-          ? 'border-2 border-[#00C8E8] bg-[#111627]'
+          ? 'border-2 border-[#F59E0B] bg-[#111627]'
           : 'border border-[#1E2640] bg-[#111627]'
       }`}
     >
       {highlight && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00C8E8] text-[#080B14] text-xs font-bold px-3 py-0.5 rounded-full">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F59E0B] text-[#080B14] text-xs font-bold px-3 py-0.5 rounded-full">
           MOST POPULAR
         </span>
       )}
@@ -59,8 +59,8 @@ function PlanCard({
         to={`/enterprise/contact?tier=${planKey}`}
         className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
           highlight
-            ? 'bg-[#00C8E8] text-[#080B14] hover:bg-[#00C8E8]/80'
-            : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#00C8E8]/50'
+            ? 'bg-[#F59E0B] text-[#080B14] hover:bg-[#F59E0B]/80'
+            : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#F59E0B]/50'
         }`}
       >
         Contact sales
@@ -96,7 +96,7 @@ export function EnterprisePricingPage() {
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-3">Enterprise</p>
+          <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-3">Enterprise</p>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Built for institutional desks
           </h1>
@@ -123,7 +123,7 @@ export function EnterprisePricingPage() {
           </p>
           <Link
             to="/pricing"
-            className="inline-block text-sm border border-[#1E2640] text-[#8892B0] px-5 py-2 rounded hover:text-white hover:border-[#00C8E8]/40 transition-colors"
+            className="inline-block text-sm border border-[#1E2640] text-[#8892B0] px-5 py-2 rounded hover:text-white hover:border-[#F59E0B]/40 transition-colors"
           >
             View standard pricing
           </Link>

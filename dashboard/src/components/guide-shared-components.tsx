@@ -61,7 +61,7 @@ type BannerColor = 'cyan' | 'yellow' | 'red' | 'green';
 
 export function InfoBanner({ color, label, children }: { color: BannerColor; label: string; children: React.ReactNode }) {
   const colorMap: Record<string, { border: string; bg: string; text: string }> = {
-    cyan: { border: 'border-[#00C8E8]/30', bg: 'bg-[#00C8E8]/5', text: 'text-[#00C8E8]' },
+    cyan: { border: 'border-[#F59E0B]/30', bg: 'bg-[#F59E0B]/5', text: 'text-[#F59E0B]' },
     yellow: { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', text: 'text-yellow-400' },
     red: { border: 'border-red-500/30', bg: 'bg-red-500/5', text: 'text-red-400' },
     green: { border: 'border-emerald-500/30', bg: 'bg-emerald-500/5', text: 'text-emerald-400' },

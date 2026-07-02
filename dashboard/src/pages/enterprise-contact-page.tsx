@@ -83,7 +83,7 @@ export function EnterpriseContactPage() {
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-xl mx-auto w-full">
         <div className="mb-10">
-          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-3">Enterprise</p>
+          <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-3">Enterprise</p>
           <h1 className="text-3xl font-bold text-white mb-3">Talk to our team</h1>
           <p className="text-[#8892B0] text-sm">
             Enterprise plans are invoice-based with dedicated onboarding. Fill in the form and we will
@@ -103,8 +103,8 @@ export function EnterpriseContactPage() {
                   onClick={() => set('tier', key)}
                   className={`p-3 rounded border text-xs text-left transition-colors ${
                     fields.tier === key
-                      ? 'border-[#00C8E8] bg-[#00C8E8]/10 text-white'
-                      : 'border-[#1E2640] text-[#8892B0] hover:border-[#00C8E8]/40'
+                      ? 'border-[#F59E0B] bg-[#F59E0B]/10 text-white'
+                      : 'border-[#1E2640] text-[#8892B0] hover:border-[#F59E0B]/40'
                   }`}
                 >
                   <p className="font-bold text-sm mb-0.5">{plan.price}</p>
@@ -172,7 +172,7 @@ export function EnterpriseContactPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#00C8E8] text-[#080B14] font-bold py-3 rounded hover:bg-[#00C8E8]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-[#F59E0B] text-[#080B14] font-bold py-3 rounded hover:bg-[#F59E0B]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Sending…' : 'Request enterprise access'}
           </button>
@@ -189,7 +189,7 @@ export function EnterpriseContactPage() {
 }
 
 const inputCls =
-  'w-full bg-[#161A1E] border border-[#1E2640] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[#00C8E8]/60 transition-colors placeholder-[#555]';
+  'w-full bg-[#161A1E] border border-[#1E2640] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[#F59E0B]/60 transition-colors placeholder-[#555]';
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (

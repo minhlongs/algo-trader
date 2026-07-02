@@ -71,8 +71,8 @@ function ProgressBar({ current, max }: { current: number; max: number }) {
         className="h-full rounded-full transition-all duration-700 ease-out"
         style={{
           width: `${pct}%`,
-          background: pct > 66 ? 'linear-gradient(90deg, #00E676, #00C8E8)' :
-                     pct > 33 ? 'linear-gradient(90deg, #FFB800, #00C8E8)' :
+          background: pct > 66 ? 'linear-gradient(90deg, #00E676, #F59E0B)' :
+                     pct > 33 ? 'linear-gradient(90deg, #FFB800, #F59E0B)' :
                      'linear-gradient(90deg, #FF4466, #FFB800)',
         }}
       />

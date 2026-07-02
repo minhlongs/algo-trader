@@ -78,7 +78,7 @@ function InquiryRow({
         <select
           value={inquiry.status}
           onChange={(e) => onStatusChange(inquiry.id, e.target.value)}
-          className="text-xs bg-[#161A1E] border border-[#1E2640] text-[#8892B0] rounded px-2 py-1 outline-none focus:border-[#00C8E8]/50"
+          className="text-xs bg-[#161A1E] border border-[#1E2640] text-[#8892B0] rounded px-2 py-1 outline-none focus:border-[#F59E0B]/50"
         >
           {['new','tam_notified','contacted','demo_active','negotiating','closed_won','closed_lost'].map((s) => (
             <option key={s} value={s}>{s.replace('_',' ')}</option>
@@ -140,7 +140,7 @@ export function EnterpriseTamDashboardPage() {
     <div className="min-h-screen bg-[#080B14] text-white p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-2">Internal</p>
+          <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-2">Internal</p>
           <h1 className="text-2xl font-bold">Enterprise TAM Dashboard</h1>
         </div>
 

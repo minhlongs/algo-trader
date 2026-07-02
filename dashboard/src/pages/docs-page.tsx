@@ -60,7 +60,7 @@ export function DocsPage() {
               key={id}
               onClick={() => scrollTo(id)}
               className={`text-xs py-1 transition-colors ${
-                activeId === id ? 'text-[#00C8E8]' : 'text-[#8892B0] hover:text-white'
+                activeId === id ? 'text-[#F59E0B]' : 'text-[#8892B0] hover:text-white'
               }`}
             >
               {label}
@@ -83,7 +83,7 @@ export function DocsPage() {
                   onClick={() => scrollTo(id)}
                   className={`block w-full text-left text-xs py-1.5 px-2 rounded transition-colors ${
                     activeId === id
-                      ? 'text-[#00C8E8] bg-[#00C8E8]/10'
+                      ? 'text-[#F59E0B] bg-[#F59E0B]/10'
                       : 'text-[#8892B0] hover:text-white'
                   }`}
                 >
@@ -96,7 +96,7 @@ export function DocsPage() {
               <p className="text-xs text-[#8892B0] mb-2">Have an account?</p>
               <Link
                 to="/app/guide"
-                className="text-xs text-[#00C8E8] hover:underline"
+                className="text-xs text-[#F59E0B] hover:underline"
               >
                 View in app →
               </Link>

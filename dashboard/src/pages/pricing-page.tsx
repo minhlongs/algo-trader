@@ -110,7 +110,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
     <div className="border-b border-[#1E2640]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-[#00C8E8] transition-colors"
+        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-[#F59E0B] transition-colors"
       >
         <span>{q}</span>
         <svg
@@ -135,7 +135,7 @@ export function PricingPage() {
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-3">Pricing</p>
+          <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-3">Pricing</p>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, transparent plans</h1>
           <p className="text-[#8892B0] text-sm max-w-md mx-auto">
             Start free. Upgrade when you're ready. No hidden fees. Cancel anytime.
@@ -149,12 +149,12 @@ export function PricingPage() {
               key={name}
               className={`relative rounded-lg p-6 flex flex-col gap-5 ${
                 highlight
-                  ? 'border-2 border-[#00C8E8] bg-[#111627]'
+                  ? 'border-2 border-[#F59E0B] bg-[#111627]'
                   : 'border border-[#1E2640] bg-[#111627]'
               }`}
             >
               {highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00C8E8] text-[#080B14] text-xs font-bold px-3 py-0.5 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F59E0B] text-[#080B14] text-xs font-bold px-3 py-0.5 rounded-full">
                   POPULAR
                 </span>
               )}
@@ -186,8 +186,8 @@ export function PricingPage() {
                 to={href}
                 className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
                   highlight
-                    ? 'bg-[#00C8E8] text-[#080B14] hover:bg-[#00C8E8]/80'
-                    : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#00C8E8]/50'
+                    ? 'bg-[#F59E0B] text-[#080B14] hover:bg-[#F59E0B]/80'
+                    : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#F59E0B]/50'
                 }`}
               >
                 {cta}

@@ -31,14 +31,14 @@ export function TerminalAnimation() {
           >
             <span className={
               line.startsWith('[FILL]') ? 'text-[#00E676]' :
-              line.startsWith('[Safety]') ? 'text-[#00C8E8]' :
+              line.startsWith('[Safety]') ? 'text-[#F59E0B]' :
               line.startsWith('[MM]') ? 'text-[#8892B0]' :
               'text-white'
             }>
               {line}
             </span>
             {i === LINES.length - 1 && (
-              <span className="inline-block w-1.5 h-3.5 bg-[#00C8E8] ml-0.5 animate-pulse align-middle" />
+              <span className="inline-block w-1.5 h-3.5 bg-[#F59E0B] ml-0.5 animate-pulse align-middle" />
             )}
           </p>
         ))}

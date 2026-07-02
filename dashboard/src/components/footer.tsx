@@ -11,7 +11,7 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
           {/* Brand */}
           <div>
-            <p className="text-[#00C8E8] font-bold text-base mb-2">CashClaw</p>
+            <p className="text-[#F59E0B] font-bold text-base mb-2">CashClaw</p>
             <p className="text-[#8892B0] text-xs leading-relaxed">
               Automated market making for Polymarket prediction markets.
             </p>

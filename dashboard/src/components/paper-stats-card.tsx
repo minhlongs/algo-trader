@@ -72,7 +72,7 @@ export function PaperStatsCard() {
     <section className="px-4 sm:px-6 max-w-5xl mx-auto pb-4">
       <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-6">
         <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-          <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em]">
+          <p className="text-[#F59E0B] text-xs uppercase tracking-[0.2em]">
             Paper Run · Snapshot
           </p>
           <p className="text-[#8892B0] text-xs">
