@@ -10,7 +10,6 @@ services:
     restart: unless-stopped
     ports:
       - '3000:3000'   # API + /metrics
-      - '3001:3001'   # Dashboard
       - '3002:3002'   # Webhooks
     env_file:
       - path: .env
