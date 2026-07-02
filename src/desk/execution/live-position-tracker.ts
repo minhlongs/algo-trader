@@ -10,6 +10,7 @@
  */
 
 import { logger } from '../../shared/utils/logger';
+import { recordTrade, dailyPnlUsd, winRatePercent } from '../../platform/middleware/prometheus-metrics';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,8 @@ export class LivePositionTracker {
         // Full close + potential flip
         const closePnl = this.computeClosePnl(existing, fill.price);
         this.realizedPnl += closePnl;
+        recordTrade(fill.tokenId, 'polymarket', fill.side.toLowerCase() as 'buy' | 'sell', closePnl);
+        dailyPnlUsd.set({ strategy: 'live' }, this.realizedPnl);
         const remaining = fill.size - existing.size;
         if (remaining > 0) {
           // Flipped — create new position on opposite side
@@ -115,6 +118,8 @@ export class LivePositionTracker {
           (fill.price - existing.entryPrice) * fill.size *
           (existing.side === 'BUY' ? 1 : -1);
         this.realizedPnl += closePnl;
+        recordTrade(fill.tokenId, 'polymarket', fill.side.toLowerCase() as 'buy' | 'sell', closePnl);
+        dailyPnlUsd.set({ strategy: 'live' }, this.realizedPnl);
         existing.size -= fill.size;
         existing.unrealizedPnl = this.computeUnrealizedPnl(existing);
       }
@@ -166,6 +171,7 @@ export class LivePositionTracker {
       totalUnrealizedPnl += pos.unrealizedPnl;
     }
 
+    winRatePercent.set({ strategy: 'live' }, 0);
     return {
       positionCount: this.positions.size,
       totalExposure,

@@ -1,0 +1,57 @@
+groups:
+  - name: algo-trade-critical
+    interval: 30s
+    rules:
+      - alert: DailyLossExceeded
+        expr: daily_pnl_usd < -50
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Daily loss exceeded threshold'
+          description: 'Daily P&L is {{ $value | humanize }}. Trading may be halted.'
+
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Circuit breaker is OPEN'
+          description: 'Trading circuit breaker triggered. Investigate immediately.'
+
+      - alert: HighExchangeLatency
+        expr: exchange_api_latency_seconds{quantile="0.99"} > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High exchange API latency on {{ $labels.exchange }}'
+          description: 'p99 latency is {{ $value | humanize }}. Possible connectivity issue.'
+
+      - alert: DataGapDetected
+        expr: rate(market_data_gap_events_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Data gap detected on {{ $labels.exchange }}'
+          description: 'Data gap events for {{ $labels.symbol }}.'
+
+      - alert: ProviderDown
+        expr: market_data_provider_availability == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Provider {{ $labels.exchange }} is DOWN'
+          description: 'Provider has been unavailable for > 1 minute.'
+
+      - alert: HighHTTPErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'High HTTP 5xx error rate'
+          description: 'Error rate is {{ $value | humanizePercentage }}.'

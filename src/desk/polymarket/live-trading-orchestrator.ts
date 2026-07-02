@@ -22,6 +22,7 @@ import { LivePositionTracker, type PositionSummary } from '../execution/live-pos
 import { LiveOrderManager, type OrderState } from '../execution/live-order-manager';
 import { LiveExecutionGuard, type GuardStatus } from '../execution/live-execution-guard';
 import { LiveTradingJournal, type DailyPnlState } from '../execution/live-trading-journal';
+import { setStrategyActive } from '../../platform/middleware/prometheus-metrics';
 import { logger } from '../../shared/utils/logger';
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -106,6 +107,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
       }
 
       this.status = 'running';
+      setStrategyActive('live-orchestrator', true);
       this.emit('started', { mode });
       logger.info(`Orchestrator running (${mode})`, 'Orchestrator');
     } catch (err) {
@@ -130,6 +132,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
     this.persistState();
 
     this.status = 'stopped';
+    setStrategyActive('live-orchestrator', false);
     this.emit('stopped');
     logger.info('Orchestrator stopped', 'Orchestrator');
   }

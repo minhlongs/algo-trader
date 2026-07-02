@@ -14,6 +14,7 @@
 
 import type { LivePositionTracker } from './live-position-tracker';
 import type { PolymarketOrder } from './polymarket-signer';
+import { setCircuitBreakerState } from '../../platform/middleware/prometheus-metrics';
 import { logger } from '../../shared/utils/logger';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -173,6 +174,7 @@ export class LiveExecutionGuard {
 
     if (this.consecutiveLosses >= this.config.maxConsecutiveLosses) {
       this.circuitTripped = true;
+      setCircuitBreakerState(true);
       logger.error(
         `Circuit breaker tripped after ${this.consecutiveLosses} consecutive losses`,
         'LiveExecutionGuard',
@@ -187,6 +189,7 @@ export class LiveExecutionGuard {
   /** Manually reset the circuit breaker */
   resetCircuit(): void {
     this.circuitTripped = false;
+    setCircuitBreakerState(false);
     this.consecutiveLosses = 0;
     logger.info('Circuit breaker reset', 'LiveExecutionGuard');
   }
