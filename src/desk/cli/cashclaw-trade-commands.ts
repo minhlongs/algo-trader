@@ -33,14 +33,17 @@ export function registerTradeCommands(tradeCmd: Command): void {
       if (opts.json) {
         console.log(JSON.stringify({
           mode: 'live',
+          paperMode: process.env['PAPER_MODE'] ?? 'true',
           note: 'Status available when orchestrator is running. Use "trade start" first.',
           timestamp: new Date().toISOString(),
         }));
         return;
       }
 
+      const paperMode = process.env['PAPER_MODE'] ?? 'true';
       console.log('CashClaw Live Trading Status');
       console.log('─'.repeat(40));
+      console.log(`PAPER_MODE: ${paperMode === 'false' ? 'LIVE' : 'PAPER'}`);
       console.log('No live orchestrator running.');
       console.log('Start with: cashclaw trade start --mode=live --capital=1000');
       console.log('');

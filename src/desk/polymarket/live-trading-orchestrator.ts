@@ -25,6 +25,31 @@ import { LiveTradingJournal, type DailyPnlState } from '../execution/live-tradin
 import { setStrategyActive } from '../../platform/middleware/prometheus-metrics';
 import { logger } from '../../shared/utils/logger';
 
+// ── Env-var validation ───────────────────────────────────────────────────────────
+
+const REQUIRED_LIVE_VARS: Array<{ envKey: string; legacyKey: string; label: string }> = [
+  { envKey: 'POLYMARKET_API_KEY', legacyKey: 'POLY_API_KEY', label: 'Polymarket API Key' },
+  { envKey: 'POLYMARKET_API_SECRET', legacyKey: 'POLY_API_SECRET', label: 'Polymarket API Secret' },
+  { envKey: 'POLYMARKET_PASSPHRASE', legacyKey: 'POLY_PASSPHRASE', label: 'Polymarket Passphrase' },
+  { envKey: 'POLYMARKET_ETH_ADDRESS', legacyKey: 'POLY_ETH_ADDRESS', label: 'Polymarket ETH Address' },
+];
+
+function validateLiveEnv(): void {
+  const missing: string[] = [];
+  for (const v of REQUIRED_LIVE_VARS) {
+    const val = process.env[v.envKey] ?? process.env[v.legacyKey] ?? '';
+    if (!val) {
+      missing.push(`${v.label} (${v.envKey} or ${v.legacyKey})`);
+    }
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `LIVE mode requires all Polymarket API env vars:\n  ${missing.join('\n  ')}\n` +
+      'Set them in your .env or use PAPER_MODE=true for paper trading.',
+    );
+  }
+}
+
 // ── Config ────────────────────────────────────────────────────────────────────
 
 export interface LiveTradingConfig extends PolymarketExecutionConfig {
@@ -56,9 +81,14 @@ export class LiveTradingOrchestrator extends EventEmitter {
 
   constructor(config: LiveTradingConfig) {
     super();
+
+    // Respect PAPER_MODE env var if set, but allow explicit config to override
+    const envPaperMode = process.env['PAPER_MODE'];
+    const paperTrading = config.paperTrading ?? (envPaperMode !== undefined ? envPaperMode !== 'false' : true);
+
     this.config = {
       capitalUsdc: config.capitalUsdc,
-      paperTrading: config.paperTrading ?? true,
+      paperTrading,
       maxPositionFraction: config.maxPositionFraction ?? 0.02,
       maxDailyDrawdown: config.maxDailyDrawdown ?? 0.05,
       maxConcurrentPositions: config.maxConcurrentPositions ?? 10,
@@ -87,9 +117,16 @@ export class LiveTradingOrchestrator extends EventEmitter {
     if (this.status === 'running') return;
     this.status = 'starting';
 
+    // Validate env vars before starting in LIVE mode
+    if (!this.config.paperTrading) {
+      validateLiveEnv();
+    }
+
     const mode = this.config.paperTrading ? 'PAPER' : 'LIVE';
+    const paperModeEnv = process.env['PAPER_MODE'] ?? 'true';
     logger.info(`LiveTradingOrchestrator starting in ${mode} mode`, 'Orchestrator', {
       capital: this.config.capitalUsdc,
+      envPaperMode: paperModeEnv,
     });
 
     try {
