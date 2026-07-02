@@ -12,7 +12,7 @@ COPY package.json pnpm-lock.yaml* ./
 
 # Install ALL deps (including dev) for build
 # --config.minimum-release-age=0 bypasses supply-chain policy for lockfile already verified by CI
-RUN pnpm install --no-frozen-lockfile --ignore-scripts --config.minimum-release-age=0
+RUN pnpm install --frozen-lockfile --ignore-scripts --config.minimum-release-age=0
 
 COPY tsconfig.json tsconfig.worker.json ./
 COPY src ./src
@@ -34,7 +34,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 COPY package.json pnpm-lock.yaml* ./
 
 # Production deps only — no build tools in runner
-RUN pnpm install --no-frozen-lockfile --prod --ignore-scripts --config.minimum-release-age=0
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts --config.minimum-release-age=0
 
 # Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
