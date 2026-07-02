@@ -2,18 +2,28 @@
  * Subscriber Overview Page
  * KPI cards: total P&L, win rate, fills, blocked-DLP count, active signals.
  * Entry point for the multi-tenant subscriber lens.
+ * Auto-refreshes every 60 seconds to prevent stale data.
  */
 
+import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/auth-store';
 import { useSubscriberPnl } from '../hooks/use-subscriber-pnl';
 import { SubscriberKpiCard } from '../components/subscriber-kpi-card';
 
-function fmt(n: number, dec = 2): string {
+function fmtNum(n: number, dec = 2): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
-function pctFmt(n: number): string {
-  return `${fmt(n * 100, 1)}%`;
+function fmtUsd(n: number, dec = 2): string {
+  const abs = Math.abs(n);
+  const formatted = abs >= 1000
+    ? abs.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })
+    : abs.toFixed(dec);
+  return (n < 0 ? '-' : '') + '$' + formatted;
+}
+
+function pctStr(n: number): string {
+  return `${fmtNum(n * 100, 1)}%`;
 }
 
 interface ErrorBannerProps { message: string; onRetry: () => void }
@@ -34,6 +44,16 @@ function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
 export function SubscriberOverviewPage() {
   const tenantId = useAuthStore((s) => s.tenantId);
   const { summary, activity, loading, error, refresh } = useSubscriberPnl(tenantId);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auto-refresh every 60 seconds to combat stale data
+  useEffect(() => {
+    if (!tenantId) return;
+    intervalRef.current = setInterval(() => { refresh(); }, 60000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [tenantId, refresh]);
 
   if (!tenantId) {
     return (
@@ -59,6 +79,9 @@ export function SubscriberOverviewPage() {
           <h1 className="text-xl font-bold text-white">Subscriber Overview</h1>
           <p className="text-muted text-xs mt-0.5">
             Tenant: <span className="text-accent">{tenantId}</span>
+            <span className="ml-3 text-muted text-[10px]">
+              Auto-refreshes every 60s
+            </span>
           </p>
         </div>
         <button
@@ -80,13 +103,15 @@ export function SubscriberOverviewPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           <SubscriberKpiCard
             label="Total Realized P&L"
-            value={summary ? (summary.totalRealizedPnl >= 0 ? '+' : '') + fmt(summary.totalRealizedPnl, 4) : '—'}
+            value={summary
+              ? (summary.totalRealizedPnl >= 0 ? '+' : '') + fmtUsd(summary.totalRealizedPnl, 4)
+              : '—'}
             accent={summary && summary.totalRealizedPnl >= 0 ? 'profit' : 'loss'}
             subLabel="USDT"
           />
           <SubscriberKpiCard
             label="Win Rate"
-            value={summary ? pctFmt(summary.winRate) : '—'}
+            value={summary ? pctStr(summary.winRate) : '—'}
             accent={summary && summary.winRate >= 0.5 ? 'profit' : 'loss'}
             subLabel={summary ? `${summary.winCount}W / ${summary.lossCount}L` : undefined}
           />
@@ -98,7 +123,7 @@ export function SubscriberOverviewPage() {
           <SubscriberKpiCard
             label="Profit Factor"
             value={summary
-              ? summary.profitFactor === Infinity ? '∞' : fmt(summary.profitFactor)
+              ? summary.profitFactor === Infinity ? '∞' : fmtNum(summary.profitFactor)
               : '—'}
             accent={summary && summary.profitFactor >= 1 ? 'profit' : 'loss'}
           />
@@ -144,13 +169,13 @@ export function SubscriberOverviewPage() {
           <div className="grid grid-cols-2 gap-4">
             <SubscriberKpiCard
               label="Best Trade"
-              value={`+${fmt(summary.bestTrade, 4)}`}
+              value={`+${fmtUsd(summary.bestTrade, 4)}`}
               accent="profit"
               subLabel="USDT"
             />
             <SubscriberKpiCard
               label="Worst Trade"
-              value={fmt(summary.worstTrade, 4)}
+              value={summary.worstTrade < 0 ? fmtUsd(summary.worstTrade, 4) : '-' + fmtUsd(summary.worstTrade, 4)}
               accent="loss"
               subLabel="USDT"
             />

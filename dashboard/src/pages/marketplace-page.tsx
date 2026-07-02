@@ -279,9 +279,12 @@ export function MarketplacePage() {
                   >
                     {/* Name + Badges */}
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-white font-semibold text-xs leading-snug">
+                      <Link
+                        to={`/app/strategies/${s.id}`}
+                        className="text-white font-semibold text-xs leading-snug hover:text-accent transition-colors"
+                      >
                         {s.name}
-                      </h3>
+                      </Link>
                       <div className="flex gap-1.5 shrink-0">
                         {isSubbed && (
                           <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor('active')}`}>
@@ -329,33 +332,41 @@ export function MarketplacePage() {
                     )}
 
                     {/* CTA */}
-                    {isSubbed ? (
-                      <div className="text-center text-[10px] text-accent font-bold py-1.5 border border-accent/30 rounded">
-                        ✓ Active
-                      </div>
-                    ) : isPending ? (
-                      <div className="text-center text-[10px] text-yellow-400 py-1.5 border border-yellow-400/30 rounded">
-                        Payment pending — subscribe to retry
-                      </div>
-                    ) : isPaused ? (
-                      <div className="text-center text-[10px] text-muted py-1.5 border border-bg-border rounded">
-                        Paused — manage in My Subscriptions
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setSubscribeModal({
-                          listingId: s.listingId ?? s.id,
-                          strategyName: s.name,
-                          priceCents: s.listingPriceUsdMonthly ?? 0,
-                        })}
-                        className="text-center text-xs font-bold bg-accent text-bg py-2 rounded hover:bg-accent/80 transition-colors"
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/app/strategies/${s.id}`}
+                        className="flex-1 text-center text-[10px] text-accent border border-accent/30 py-2 rounded hover:bg-accent/10 transition-colors"
                       >
-                        {s.listingPriceUsdMonthly && s.listingPriceUsdMonthly > 0
-                          ? `Subscribe — $${(s.listingPriceUsdMonthly / 100).toFixed(2)}/mo`
-                          : 'Subscribe (Free)'}
-                      </button>
-                    )}
+                        View Details
+                      </Link>
+                      {isSubbed ? (
+                        <div className="flex-1 text-center text-[10px] text-profit font-bold py-2 border border-profit/30 rounded">
+                          ✓ Active
+                        </div>
+                      ) : isPending ? (
+                        <div className="flex-1 text-center text-[10px] text-yellow-400 py-2 border border-yellow-400/30 rounded">
+                          Payment pending
+                        </div>
+                      ) : isPaused ? (
+                        <div className="flex-1 text-center text-[10px] text-muted py-2 border border-bg-border rounded">
+                          Paused
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setSubscribeModal({
+                            listingId: s.listingId ?? s.id,
+                            strategyName: s.name,
+                            priceCents: s.listingPriceUsdMonthly ?? 0,
+                          })}
+                          className="flex-1 text-center text-[10px] font-bold bg-accent text-bg py-2 rounded hover:bg-accent/80 transition-colors"
+                        >
+                          {s.listingPriceUsdMonthly && s.listingPriceUsdMonthly > 0
+                            ? `Subscribe $${(s.listingPriceUsdMonthly / 100).toFixed(2)}/mo`
+                            : 'Subscribe (Free)'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}

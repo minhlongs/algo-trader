@@ -8,7 +8,15 @@ import { useSubscriberPnl } from '../hooks/use-subscriber-pnl';
 import { SubscriberEquityChart } from '../components/subscriber-equity-chart';
 import { SubscriberKpiCard } from '../components/subscriber-kpi-card';
 
-function fmt(n: number, dec = 4): string {
+function fmtUsd(n: number, dec = 2): string {
+  const abs = Math.abs(n);
+  const formatted = abs >= 1000
+    ? abs.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })
+    : abs.toFixed(dec);
+  return (n < 0 ? '-' : '') + '$' + formatted;
+}
+
+function fmtNum(n: number, dec = 4): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
@@ -74,23 +82,23 @@ export function SubscriberEquityPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <SubscriberKpiCard
           label="Starting Capital"
-          value={fmt(startingCapital)}
+          value={fmtUsd(startingCapital)}
           subLabel="USDT"
         />
         <SubscriberKpiCard
           label="Current NAV"
-          value={fmt(currentNav)}
+          value={fmtUsd(currentNav)}
           accent={currentNav >= startingCapital ? 'profit' : 'loss'}
           subLabel="USDT"
         />
         <SubscriberKpiCard
           label="Total Return"
-          value={`${totalReturn >= 0 ? '+' : ''}${fmt(totalReturn * 100, 2)}%`}
+          value={`${totalReturn >= 0 ? '+' : ''}${fmtNum(totalReturn * 100, 2)}%`}
           accent={totalReturn >= 0 ? 'profit' : 'loss'}
         />
         <SubscriberKpiCard
           label="Max Drawdown"
-          value={`${fmt(maxDrawdown * 100, 2)}%`}
+          value={`${fmtNum(maxDrawdown * 100, 2)}%`}
           accent={maxDrawdown > 0.1 ? 'loss' : 'warning'}
         />
       </div>
