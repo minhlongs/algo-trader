@@ -94,7 +94,7 @@ describe('SubscriberOverviewPage', () => {
     expect(screen.getByText('Network failure')).toBeTruthy();
   });
 
-  it('shows no-identity message when tenantId is null', () => {
+  it('shows no-identity message when tenantId is null', async () => {
     const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
       (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
@@ -102,6 +102,10 @@ describe('SubscriberOverviewPage', () => {
     mockHook.mockReturnValue(hookResult({ summary: null }));
     render(<SubscriberOverviewPage />);
     expect(screen.getByText(/No subscriber identity/i)).toBeTruthy();
+    // Restore default mock so subsequent tests aren't poisoned
+    vi.mocked(useAuthStore).mockImplementation(
+      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: 'sub-test-001' })
+    );
   });
 
   it('displays blocked DLP count with loss accent when > 0', () => {

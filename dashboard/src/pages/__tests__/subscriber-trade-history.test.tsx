@@ -100,6 +100,10 @@ describe('SubscriberTradeHistoryPage', () => {
     mockHook.mockReturnValue(hookResult({ dailyBreakdown: [] }));
     render(<SubscriberTradeHistoryPage />);
     expect(screen.getByText(/No subscriber identity/i)).toBeTruthy();
+    // Restore default mock so subsequent tests aren't poisoned
+    vi.mocked(useAuthStore).mockImplementation(
+      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: 'sub-history-001' }),
+    );
   });
 
   it('shows lifetime fills count from summary', () => {

@@ -14,6 +14,7 @@ import {
   User,
   BookOpen,
   Wrench,
+  ShareNetwork,
   SignOut,
 } from '@phosphor-icons/react';
 import { useTradingStore } from '../stores/trading-store';
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { label: 'Reporting', path: '/app/reporting', Icon: FileText },
   { label: 'Settings', path: '/app/settings', Icon: Gear },
   { label: 'Account', path: '/app/account', Icon: User },
+  { label: 'Referral', path: '/app/referral', Icon: ShareNetwork },
   { label: 'Guide', path: '/app/guide', Icon: BookOpen },
   { label: 'Full Setup', path: '/app/setup', Icon: Wrench },
 ];
