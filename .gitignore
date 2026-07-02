@@ -18,3 +18,5 @@ plans/
 dashboard/plans/
 landing/plans/
 .claude/cache/
+__pycache__/
+.claude/scripts/__pycache__/
