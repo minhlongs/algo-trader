@@ -13,6 +13,7 @@ import { ConfirmationDialog } from '../components/confirmation-dialog';
 import { SubscriptionDetail } from '../components/subscription-detail';
 import type { ExecutionRecord } from '../components/subscription-detail';
 import { BacktestResults } from '../components/backtest-results';
+import { MarketplaceBadge } from '../components/marketplace-badge';
 
 const CATEGORIES = ['arbitrage', 'momentum', 'mean-reversion', 'statistical', 'portfolio', 'risk', 'hedging', 'other'];
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -311,6 +312,7 @@ export function MarketplacePage() {
                             🏆 Top Performer
                           </span>
                         )}
+                        {s.listingId && <MarketplaceBadge listingId={s.listingId} />}
                         <span className="text-[10px] border border-bg-border text-muted px-1.5 py-0.5 rounded">
                           {s.category}
                         </span>

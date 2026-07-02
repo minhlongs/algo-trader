@@ -20,6 +20,7 @@ import * as migration038 from './migrations/038-add-community-strategies';
 import * as migration039 from './migrations/039-add-api-keys';
 import * as migration040 from './migrations/040-add-listing-badges';
 import * as migration041 from './migrations/041-add-subscription-improvements';
+import * as migration042 from './migrations/042-add-dunning-state';
 
 // Migration interface
 interface Migration {
@@ -45,6 +46,7 @@ const MIGRATIONS: Migration[] = [
   migration039,
   migration040,
   migration041,
+  migration042,
 ];
 
 /**

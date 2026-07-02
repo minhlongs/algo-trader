@@ -26,6 +26,8 @@ import { PrivacyPage } from './pages/privacy-page';
 import { LiveTradingPage } from './pages/live-trading-page';
 import { StrategyDetailPage } from './pages/strategy-detail-page';
 import { StrategyPerformancePage } from './pages/strategy-performance-page';
+import { ApiKeysPage } from './pages/api-keys-page';
+import { TrialStatusPage } from './pages/trial-status-page';
 
 /**
  * Handle uncaught errors in the app.
@@ -67,6 +69,8 @@ export function App() {
         <Route path="/app/live-trading" element={<AuthGuard><LayoutShell><LiveTradingPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/strategy-performance" element={<AuthGuard><LayoutShell><StrategyPerformancePage /></LayoutShell></AuthGuard>} />
         <Route path="/app/strategies/:id" element={<AuthGuard><LayoutShell><StrategyDetailPage /></LayoutShell></AuthGuard>} />
+        <Route path="/app/api-keys" element={<AuthGuard><LayoutShell><ApiKeysPage /></LayoutShell></AuthGuard>} />
+        <Route path="/app/trial" element={<AuthGuard><LayoutShell><TrialStatusPage /></LayoutShell></AuthGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

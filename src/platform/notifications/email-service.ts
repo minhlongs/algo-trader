@@ -47,6 +47,29 @@ export class EmailService {
     return EmailService.instance;
   }
 
+  /**
+   * Startup health check: fails loudly if SENDGRID_API_KEY is missing in production.
+   * Call during app initialization to catch misconfiguration early.
+   */
+  static startupCheck(): void {
+    if (process.env.NODE_ENV !== 'production') return;
+    const apiKey = process.env.SENDGRID_API_KEY;
+    const fromEmail = process.env.SENDGRID_FROM_EMAIL;
+    if (!apiKey) {
+      throw new Error(
+        '[EmailService] FATAL: SENDGRID_API_KEY is not set. Email service cannot start in production. ' +
+        'Set SENDGRID_API_KEY in your environment or .env file.'
+      );
+    }
+    if (!fromEmail) {
+      throw new Error(
+        '[EmailService] FATAL: SENDGRID_FROM_EMAIL is not set. Email service cannot start in production. ' +
+        'Set SENDGRID_FROM_EMAIL in your environment or .env file.'
+      );
+    }
+    logger.info('[EmailService] Startup check passed: SENDGRID_API_KEY is configured');
+  }
+
   initialize(): boolean {
     if (!this.config.apiKey || !this.config.fromEmail) {
       logger.warn('[EmailService] Missing SENDGRID_API_KEY or SENDGRID_FROM_EMAIL');

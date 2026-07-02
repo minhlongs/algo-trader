@@ -25,6 +25,7 @@ import { marketplaceDisputeRouter } from './routes/marketplace-dispute-routes';
 import { marketplaceCreatorRevenueRouter } from './routes/marketplace-creator-revenue-routes';
 import { adminMarketplaceRouter } from './routes/admin-marketplace-routes';
 import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook';
+import { nowpaymentsApiRouter } from './routes/nowpayments-api-routes';
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
 import { blogEngagementRouter } from './routes/blog-engagement-routes';
@@ -82,6 +83,7 @@ export class ApiServer {
             'https://agencyos.network',
             'https://sophia.agencyos.network',
             'https://raas-landing.pages.dev',
+            'http://localhost:3001', // Landing server (marketing pages + pricing)
           ],
       rateLimitWindowMs: 60000, // 1 minute
       rateLimitMax: 100, // 100 requests per minute
@@ -214,6 +216,9 @@ this.app.use('/api/v1/marketplace/badges', marketplaceBadgeDefinitionRouter);
 this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
 
 // Webhook routes (no rate limit — external provider callbacks)
+    // NOWPayments API routes (invoice creation for license checkout)
+    this.app.use('/api/v1/nowpayments', nowpaymentsApiRouter);
+
     this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);
 
     // Orphaned route wiring — Phase 53 (fully coded, tier-gated routes)

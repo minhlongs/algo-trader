@@ -17,6 +17,8 @@ import {
   ShareNetwork,
   SignOut,
   ChartBar,
+  Lock,
+  Clock,
 } from '@phosphor-icons/react';
 import { useTradingStore } from '../stores/trading-store';
 import { useAuthStore } from '../stores/auth-store';
@@ -26,6 +28,8 @@ const NAV_ITEMS = [
   { label: 'Strategies', path: '/app/strategies', Icon: Lightning },
   { label: 'Backtests', path: '/app/backtests', Icon: ChartLine },
   { label: 'Licenses', path: '/app/licenses', Icon: Key },
+  { label: 'API Keys', path: '/app/api-keys', Icon: Lock },
+  { label: 'Trial', path: '/app/trial', Icon: Clock },
   { label: 'Coupons', path: '/app/coupons', adminOnly: true, Icon: Ticket },
   { label: 'Reporting', path: '/app/reporting', Icon: FileText },
   { label: 'Performance', path: '/app/strategy-performance', Icon: ChartBar },

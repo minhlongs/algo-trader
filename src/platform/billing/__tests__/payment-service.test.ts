@@ -19,7 +19,6 @@ describe('PaymentService', () => {
     dunningService = DunningService.getInstance();
     (service as any).payments.clear();
     (licenseService as any).licenses.clear();
-    (dunningService as any).dunningRecords.clear();
   });
 
   describe('createPayment', () => {

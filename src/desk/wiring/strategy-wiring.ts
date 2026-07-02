@@ -123,9 +123,17 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
   // All Polymarket strategies (need clobClient + orderManager + gammaClient)
   if (clobClient && orderManager && gammaClient) {
     const polyDeps = { clob: clobClient, orderManager, eventBus, gamma: gammaClient };
+
+    // Phase 3 implemented strategies are enabled by default
+    const ENABLED_STRATEGIES = new Set([
+      'microstructure-alpha', 'order-flow-toxicity', 'correlation-breakdown',
+      'pairs-stat-arb', 'funding-rate-arb', 'gamma-scalping',
+      'kalman-filter-tracker', 'liquidation-cascade',
+    ]);
+
     for (const s of POLY_STRATEGIES) {
       orc.register(
-        { id: s.id, name: s.name, type: s.id, enabled: false, params: {}, intervalMs: parseInt(env(s.envKey, s.defaultMs), 10) },
+        { id: s.id, name: s.name, type: s.id, enabled: ENABLED_STRATEGIES.has(s.id), params: {}, intervalMs: parseInt(env(s.envKey, s.defaultMs), 10) },
         s.factory(polyDeps),
       );
     }

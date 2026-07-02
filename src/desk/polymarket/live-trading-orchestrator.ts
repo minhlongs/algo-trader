@@ -22,6 +22,7 @@ import { LivePositionTracker, type PositionSummary } from '../execution/live-pos
 import { LiveOrderManager, type OrderState } from '../execution/live-order-manager';
 import { LiveExecutionGuard, type GuardStatus } from '../execution/live-execution-guard';
 import { LiveTradingJournal, type DailyPnlState } from '../execution/live-trading-journal';
+import { RiskGateManager } from '../risk/risk-gate-manager';
 import { setStrategyActive } from '../../platform/middleware/prometheus-metrics';
 import { logger } from '../../shared/utils/logger';
 
@@ -77,6 +78,8 @@ export class LiveTradingOrchestrator extends EventEmitter {
   private orderManager: LiveOrderManager | null = null;
   private guard: LiveExecutionGuard;
   private journal: LiveTradingJournal;
+  private riskManager: RiskGateManager;
+  private paperStats = new Map<string, { paperTrades: number; paperPnl: number }>();
   private pricePollInterval: NodeJS.Timeout | null = null;
 
   constructor(config: LiveTradingConfig) {
@@ -106,6 +109,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
     });
     this.guard.attachTracker(this.positionTracker);
     this.journal = new LiveTradingJournal();
+    this.riskManager = new RiskGateManager(this.guard);
 
     // Restore previous state on startup
     this.restoreState();
@@ -357,5 +361,68 @@ export class LiveTradingOrchestrator extends EventEmitter {
   /** Get the journal for external consumers (CLI, dashboard) */
   getJournal(): LiveTradingJournal {
     return this.journal;
+  }
+
+  // ── Strategy tick execution ───────────────────────────────────────────
+
+  /**
+   * Execute a strategy tick with a pre-tick risk gate check and error boundary.
+   *
+   * - Calls `RiskGateManager.check(strategyKey)` to verify global risk
+   *   conditions (circuit breaker, drawdown, concurrent positions).
+   * - If blocked: logs a warning and skips the tick (does NOT crash).
+   * - Wraps the tick function in try/catch — one strategy failure does
+   *   not stop other strategies from executing.
+   * - In PAPER mode, increments the per-strategy paper trade counter.
+   *
+   * @param strategyKey — unique strategy identifier (e.g. 'vwap-sniper')
+   * @param tickFn      — the strategy's tick function
+   */
+  async executeStrategyTick(strategyKey: string, tickFn: () => Promise<void>): Promise<void> {
+    try {
+      // Pre-tick risk gate check (no order = global conditions only)
+      const result = await this.riskManager.check(strategyKey);
+      if (!result.allowed) {
+        logger.warn(`Strategy tick skipped for ${strategyKey}`, 'Orchestrator', {
+          reason: result.reason,
+        });
+        return;
+      }
+
+      // Track paper trades
+      if (this.config.paperTrading) {
+        const stats = this.paperStats.get(strategyKey) ?? { paperTrades: 0, paperPnl: 0 };
+        stats.paperTrades++;
+        this.paperStats.set(strategyKey, stats);
+      }
+
+      await tickFn();
+    } catch (err) {
+      // Per-strategy error boundary — log and continue
+      logger.error(`Strategy tick failed for ${strategyKey}`, 'Orchestrator', {
+        err: String(err),
+      });
+    }
+  }
+
+  /**
+   * Update per-strategy paper P&L after a trade completes.
+   * Called from external consumers (CLI, dashboard) when paper trade
+   * results are known.
+   */
+  updatePaperPnl(strategyKey: string, pnlDelta: number): void {
+    const stats = this.paperStats.get(strategyKey) ?? { paperTrades: 0, paperPnl: 0 };
+    stats.paperPnl += pnlDelta;
+    this.paperStats.set(strategyKey, stats);
+  }
+
+  /** Get per-strategy paper trade stats */
+  getPaperStats(): ReadonlyMap<string, { paperTrades: number; paperPnl: number }> {
+    return this.paperStats;
+  }
+
+  /** Access the RiskGateManager (for external consumers) */
+  getRiskManager(): RiskGateManager {
+    return this.riskManager;
   }
 }

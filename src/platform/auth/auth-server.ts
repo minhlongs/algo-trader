@@ -13,6 +13,7 @@
 import { betterAuth } from 'better-auth';
 import pg from 'pg';
 import { logger } from '../../shared/utils/logger';
+import { TrialDripService } from '../billing/trial-drip-service';
 
 const { Pool } = pg;
 
@@ -58,6 +59,32 @@ export const auth = betterAuth({
   logger: {
     disabled: false,
     level: process.env.NODE_ENV === 'production' ? 'error' : 'debug',
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          try {
+            const trialDrip = TrialDripService.getInstance();
+            trialDrip.subscribe(
+              user.email,
+              user.id,
+              'FREE',
+              7,
+            );
+            logger.info('[BetterAuth] Trial drip registered for new user', {
+              email: user.email,
+              userId: user.id,
+            });
+          } catch (err) {
+            logger.warn('[BetterAuth] Trial drip registration failed (non-fatal)', {
+              email: user.email,
+              error: String(err),
+            });
+          }
+        },
+      },
+    },
   },
 });
 

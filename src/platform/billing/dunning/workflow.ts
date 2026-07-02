@@ -1,6 +1,9 @@
 /**
  * Dunning Workflow
  * License suspension/reinstatement workflow helpers
+ *
+ * The `saveRecord` callback replaces the in-memory Map for persistence.
+ * Callers (e.g. DunningService) provide DB-backed or test-specific save logic.
  */
 
 import { LicenseService } from '../license-service';
@@ -14,7 +17,7 @@ export class DunningWorkflow {
     record: DunningRecord,
     licenseService: LicenseService,
     auditService: AuditLogService,
-    dunningRecords: Map<string, DunningRecord>
+    saveRecord: (record: DunningRecord) => Promise<void>,
   ): Promise<void> {
     const license = licenseService.getLicense(licenseId);
     if (!license) return;
@@ -26,7 +29,7 @@ export class DunningWorkflow {
     record.suspensionDate = new Date().toISOString();
     record.updatedAt = new Date().toISOString();
 
-    dunningRecords.set(record.id, record);
+    await saveRecord(record);
 
     await auditService.log(licenseId, 'revoked', {
       metadata: {
@@ -42,7 +45,7 @@ export class DunningWorkflow {
     record: DunningRecord,
     licenseService: LicenseService,
     auditService: AuditLogService,
-    dunningRecords: Map<string, DunningRecord>
+    saveRecord: (record: DunningRecord) => Promise<void>,
   ): Promise<void> {
     const license = licenseService.getLicense(licenseId);
     if (!license) return;
@@ -54,7 +57,7 @@ export class DunningWorkflow {
     record.reinstatementDate = new Date().toISOString();
     record.updatedAt = new Date().toISOString();
 
-    dunningRecords.set(record.id, record);
+    await saveRecord(record);
 
     await auditService.log(licenseId, 'activated', {
       metadata: {
