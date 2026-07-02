@@ -5,7 +5,7 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 **Target**: Enterprise-grade quantitative trading platform with autonomous marketing. v3.0.0 shipped -- 3-bounded-context architecture (desk/platform/shared) complete.
 
-> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced. Phase 4 cleanup: 4 oversized files split, 23 dead files deleted (~21K lines), 4 ADRs + platform doctrine written, `BasePolymarketStrategy` base class with POC migration (55% smaller). 2,430+ tests passing. See `docs/system-architecture.md`.
+> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced. Phase 4 cleanup: 4 oversized files split, 23 dead files deleted (~21K lines), 4 ADRs + platform doctrine written, `BasePolymarketStrategy` base class with POC migration (55% smaller). 2,798 tests passing. Live trading env var unification + paper-mode E2E integration (26 tests) complete. See `docs/system-architecture.md`.
 
 ---
 
@@ -190,38 +190,38 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] 4 Architecture Decision Records: shared-kernel-boundary, desk-platform-separation, strategy-ownership-model, tenant-isolation-pattern
 - [x] 11 boundary enforcement tests — all passing (desk↔platform import rules, tenant isolation, barrel exports)
 - [x] Docs sync: CLAUDE.md, system-architecture.md, development-roadmap.md, project-changelog.md
-- [x] 2,430+ tests passing, 0 TypeScript errors, 0 regressions
+- [x] 2,798+ tests passing, 0 TypeScript errors, 0 regressions
 - Status: **COMPLETE** ✅
 
-### Phase 34: Performance Tuning & Stress Testing (Planned)
-- [ ] Load test with 5000+ concurrent users
-- [ ] Database query optimization (index analysis)
-- [ ] Redis cluster rebalancing under load
-- [ ] WebSocket message compression (deflate)
-- [ ] CPU/memory profiling on M1 Max
-- [ ] Identify bottlenecks in arbitrage execution path
+### Phase 34: Performance Tuning & Stress Testing (Partially Done 2026-07-01)
+- [x] WebSocket message compression (permessage-deflate) — ws-adapter-redis.ts, ~70% bandwidth reduction
+- [x] Database query optimization (index analysis) — 5 new composite indexes in migration 033
+- [x] Identify bottlenecks in arbitrage execution path — spread detector verified well-optimized
+- [ ] Load test with 5000+ concurrent users (deferred: requires Docker stack)
+- [ ] Redis cluster rebalancing under load (deferred: requires running production stack)
+- [ ] CPU/memory profiling on M1 Max (deferred: requires instrumentation)
 - Timeline: 2026-04-16 to 2026-04-30
-- Status: **PLANNED**
+- Status: **3/6 DONE (3 items deferred — require infrastructure)**
 
-### Phase 34: Content Personalization & AI Recommendations (Planned)
-- [ ] Blog content A/B testing (CTR tracking)
-- [ ] User engagement analytics (page views, time-on-page)
-- [ ] AI-driven post recommendations (similarity search)
-- [ ] Newsletter segmentation (user interests/strategy preferences)
-- [ ] Comment system with LLM moderation
-- Timeline: 2026-05-01 to 2026-05-15
-- Status: **PLANNED**
+### Phase 34b: Content Personalization & AI Recommendations (Complete 2026-07-01)
+- [x] Blog content A/B testing (CTR tracking) — `blog_ab_tests` table, impression/click endpoints
+- [x] AI-driven post recommendations (similarity search) — `post-similarity-engine.ts`, TF-IDF + tag overlap
+- [x] Comment system with LLM moderation — `comment-moderation-service.ts`, keyword fallback, XSS protection
+- [x] User engagement analytics (page views, time-on-page) — `POST /api/analytics/page-view`, `POST /api/analytics/time-on-page`, engagement summary
+- [x] Newsletter segmentation (user interests/strategy preferences) — `newsletter_preferences` table, subscribe/unsubscribe/preferences/segments API
+- Timeline: 2026-07-01
+- Status: **COMPLETE** ✅ (5/5 items shipped)
 
-### Phase 35: Compliance & Security Hardening (Partially Implemented)
+### Phase 35: Compliance & Security Hardening (Mostly Complete 2026-07-01)
 - [x] Audit logging for all trades and orders (11 audit files in src/platform/audit/)
 - [x] Rate limiting per tenant (distributed-rate-limiter.ts)
 - [x] Encrypted sensitive data at rest (AES-256 utils/encryption)
 - [x] OWASP Top 10 security assessment (ck:security audit 2026-07-01)
-- [ ] KYC/AML integration (Persona or similar)
-- [ ] SSL/TLS certificate management
-- [ ] Third-party security audit
-- Timeline: 2026-05-16 to 2026-06-15
-- Status: **MOSTLY DONE** (3 items deferred)
+- [x] KYC/AML integration (Persona BYOK) — `kyc_verifications` table, init/status/admin lookup endpoints
+- [ ] SSL/TLS certificate management — deferred (requires infra)
+- [ ] Third-party security audit — deferred (requires external vendor)
+- Timeline: 2026-05-16 to 2026-07-01
+- Status: **MOSTLY DONE** (5/7 items — 2 require external vendors)
 
 ### Phase 36: Marketplace & Multi-Tenant Monetization (Implementation Complete ✅)
 - [x] Strategy listing catalogue with browse, filter, sort
@@ -249,13 +249,39 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Timeline: 2026-08-01 to 2026-09-15
 - Status: **COMPLETE** ✅ (6/6 items shipped 2026-07-01)
 
+### Phase 38: Marketplace Backtesting Harness (Complete 2026-07-01)
+- [x] BacktestRunner engine (Sharpe, maxDrawdown, winRate, profitFactor, equityCurve)
+- [x] `POST /api/v1/marketplace/strategies/:id/backtest` (tier-gated: PRO)
+- [x] `GET /api/v1/marketplace/strategies/:id/backtests` (list history)
+- [x] `marketplace_backtests` table with equity curve JSONB (migration 034)
+- [x] 14 unit tests for BacktestRunner
+- [x] Dashboard: BacktestResults component + strategy card integration
+- [x] Backend: sync backtest summary to marketplace_strategies.backtest_summary
+- [x] Community strategy upload with sandbox — `community_strategies` table, upload/backtest endpoints
+- Status: **COMPLETE** ✅ (8/8 items shipped)
+
+### Phase 38b: Marketplace Backtesting & Bug Fixes (Complete 2026-07-02)
+- [x] Missing backtest routes added to marketplace-strategy-insights-routes.ts: `POST /:id/backtest`, `GET /:id/backtests`
+- [x] Backtest runner type escapes fixed
+- [x] Sharpe annualization factor corrected
+- [x] Gamma API error propagation fixed
+- [x] Strategy-live-bridge price bug fixed
+- [x] Live-order-manager-proxy cancelOrder wiring fixed
+- [x] Marketplace-payout-scheduler: only marks paid when crypto actually sent
+- [x] METRICS_TOKEN added to .env.example
+- [x] Backtesting barrel export added to desk/index.ts
+- [x] Deleted admin-dna-routes.ts.bak
+- [x] Updated .gitignore with plan/artifact directories
+- [x] Fixed live-trading-runbook.md bilingual label
+- Status: **COMPLETE** ✅
+
 ---
 
 ## Critical Success Metrics
 
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
-| Test Coverage | 90%+ | 100% (2,430+/2,430+) | ✅ |
+| Test Coverage | 90%+ | 100% (2,798/2,798) | ✅ |
 | Type Safety | 0 `any` types | 0 | ✅ |
 | Build Time | < 10s | ~5s | ✅ |
 | API Latency (p95) | < 100ms | ~45ms | ✅ |
@@ -300,6 +326,8 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ## Recent Updates
 
+**2026-07-02**: All 8 code review findings resolved. Missing backtest routes wired in marketplace-strategy-insights-routes.ts. Bug fixes: type escapes, Sharpe factor, Gamma error propagation, price bug, cancelOrder wiring, payout send-verify guard. METRICS_TOKEN added to .env.example. Barrel export added. .bak deleted. 2,798 tests passing across 243 files.
+
 **2026-04-15**: Phase 32b (Autonomy Phase 2) complete. LLM content generation (DeepSeek R1), welcome email drip (3-email sequence), Telegram auto-support (/faq, /support, /pricing), Twitter/X API v2 + Telegram channel distribution. 585 tests passing.
 
 **2026-04-15**: Phase 32 (Autonomy Layer) complete. Auto-marketing daemon, blog content hub, landing page SEO, SendGrid email verification. 575 tests passing.
@@ -314,25 +342,42 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ---
 
-## Current Focus (June 2026)
+## Current Focus (July 2026)
 
-1. **Architecture Separation (COMPLETE):** 3 bounded contexts (shared/desk/platform), path aliases, barrel exports, 11/11 boundary tests, 4 ADRs, BasePolymarketStrategy base class
-2. Phase 36: Marketplace & multi-tenant monetization (strategies as products, revenue sharing)
-3. Phase 37: Advanced risk management (VaR, CVaR, portfolio correlation)
-4. KYC/AML provider integration
-5. Phase 34: Performance tuning & stress testing (5000+ concurrent users)
-6. Content personalization & A/B testing
+1. **Phases 39-55 complete** — Polymarket Live Execution + Backtesting + Doc Cleanup (all shipped):
+   - Full stack: CLOB adapter → position tracker → order manager → execution guard → strategy bridge → journal → strategy runner → multi-strategy concurrent runner
+   - All 32 V2+ strategies registered (incl. listing-arbitrage-sniper) with 3rd-param constructor guards fixed
+   - CLI: `algo trade {start,run,status,journal,list-strategies,backtest}` — any combination up to `--strategy=all`
+   - Desk backtesting engine: Gamma historical data replay → strategy simulation → metrics (Sharpe, drawdown, profit factor)
+   - Platform marketplace backtesting: `POST /:id/backtest` (PRO tier) + `GET /:id/backtests` routes with DB persistence
+   - Metrics consolidation: desk delegates max drawdown + Sharpe to shared `BacktestRunner` static methods
+   - +13 marketplace backtesting route tests
+   - `cashclaw-cli.ts` split: 610→167 lines (main) + 446 lines (trade commands)
+   - Phase 53: 9 orphaned routes wired in server.ts
+   - Phase 54: 11 broken scripts removed, .bak file deleted
+   - Phase 55: all 32 failing route tests fixed, 2,798 tests pass
+   - Doc cleanup: 22 outdated docs deleted (SOPs, model cards, deployment dupes, architecture)
+2. **0 regressions** — 2,798 tests pass across 243 test files, 0 TypeScript errors, 93 lint warnings
+3. **Bilingual live trading runbook** at `docs/live-trading-runbook.md` — updated
+4. **Live trading integration test COMPLETE (2026-07-02):**
+   - Phase 1: Adapter hardening — env var unification (`POLYMARKET_*` preferred, `POLY_*` fallback), `POLY_CLOB_HOST` + `POLY_CHAIN_ID` config
+   - Phase 2: Paper-mode E2E integration — 26 tests covering Gamma API, strategy scan, paper orders, position tracking, guard, journal (temp dir), orchestrator lifecycle
+   - Phase 3: Verification — 2,798 tests, 93 lint warnings, 0 type errors
+5. **Bug fixes (2026-07-02):** All 8 review findings resolved — type escapes in backtest-runner, Sharpe annualization factor, Gamma API error propagation, strategy-live-bridge price bug, live-order-manager-proxy cancelOrder wiring, marketplace-payout-scheduler send-verify, missing backtest routes wired, METRICS_TOKEN added, barrel export added, .bak deleted, .gitignore updated, bilingual label fixed
+6. **Remaining work items:**
+   - SSL/TLS certificate management (infra)
+   - Third-party security audit (external vendor)
 
 ---
 
 ## Contact & Ownership
 
 - **Project Lead**: Internal Team (algo-trade)
-- **Architecture**: Fastify 5 + React 19 + Prisma + Redis Cluster
+- **Architecture**: 3 bounded contexts (shared/desk/platform). Express (platform API) + Fastify 5 (desk internal). React 19 + Prisma + Redis
 - **Deployment**: Cloudflare Pages (landing/dashboard) + Docker/Kubernetes (API)
 - **Monitoring**: Prometheus + Grafana + Sentry (planned Phase 21)
 
 ---
 
-_Last Updated: 2026-06-30_
+_Last Updated: 2026-07-02_
 _Generated by: Documentation Manager Agent (Phase 32b Autonomy)_
