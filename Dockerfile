@@ -10,6 +10,9 @@ WORKDIR /app
 # Copy manifests first for layer caching
 COPY package.json pnpm-lock.yaml* ./
 
+# Bypass minimum-release-age check for Docker build (lockfile already verified by CI)
+ENV PNPM_MINIMUM_RELEASE_AGE=0
+
 # Install ALL deps (including dev) for build
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
@@ -31,6 +34,8 @@ WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY package.json pnpm-lock.yaml* ./
+
+ENV PNPM_MINIMUM_RELEASE_AGE=0
 
 # Production deps only — no build tools in runner
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
