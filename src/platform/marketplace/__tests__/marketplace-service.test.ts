@@ -168,11 +168,12 @@ describe('MarketplaceService', () => {
       limit: 20,
       totalPages: 1,
     });
+    mockPerfRepo.getLatestByStrategy.mockResolvedValue([]);
     const result = await service.listStrategies({ status: 'draft' });
     expect(result.data).toHaveLength(1);
     expect(mockStrategyRepo.findAll).toHaveBeenCalledWith(
       { status: 'draft' },
-      { page: 1, limit: 20 },
+      { page: 1, limit: 1000 },
       { field: 'created_at', order: 'desc' }
     );
   });

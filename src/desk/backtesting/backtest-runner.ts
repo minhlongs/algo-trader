@@ -165,15 +165,13 @@ export class BacktestRunner {
       throw new Error('No historical data available for backtest');
     }
 
-    // Create strategy with backtesting deps
+    // Build mock services with a shared tick state object so both the
+    // GammaClient (getTrending) and ClobClient (getOrderBook) read the
+    // same current-snapshot data without desynchronizing.
     const orderManager = new BacktestOrderManager(config.capitalUsdc);
-    const gammaClient = this.createHistoricalGammaClient(snapshots);
-
-    const mockClob: ClobClient = {
-      getOrderBook: async (_tokenId: string): Promise<RawOrderBook> => ({ bids: [], asks: [], timestamp: 0 }),
-      getPrice: async (_tokenId: string): Promise<number> => 0,
-      getMidPrice: async (_tokenId: string): Promise<number> => 0,
-    };
+    const tickState = this.createTickState(snapshots);
+    const gammaClient = this.createHistoricalGammaClient(tickState);
+    const mockClob = this.createMockClob(tickState);
 
     const deps: StrategyDeps = {
       clob: mockClob,
@@ -188,8 +186,12 @@ export class BacktestRunner {
       config.strategy as StrategyName,
     );
 
-    // Replay ticks
-    for (const snapshot of snapshots) {
+    // Replay ticks - advance tick state before each execute so strategies
+    // see fresh market data on every call.
+    for (let tickIdx = 0; tickIdx < snapshots.length; tickIdx++) {
+      const snapshot = snapshots[tickIdx];
+      tickState.setCurrent(snapshot);
+
       try {
         await (strategy as BasePolymarketStrategy).execute();
       } catch (err) {
@@ -241,38 +243,113 @@ export class BacktestRunner {
 
   // ── Private ─────────────────────────────────────────────────────────────────
 
-  private createHistoricalGammaClient(snapshots: HistoricalSnapshot[]): GammaClient {
-    let tickIndex = 0;
+  // ── Tick State ────────────────────────────────────────────────────────────
+
+  /**
+   * Shared mutable state that advances on every tick.
+   * Both gamma client and clob client read from the same current snapshot.
+   */
+  private createTickState(snapshots: HistoricalSnapshot[]) {
+    let current: HistoricalSnapshot | null = snapshots.length > 0 ? snapshots[0] : null;
+
+    function snapshotToMarkets(snapshot: HistoricalSnapshot): GammaMarket[] {
+      return snapshot.markets.map((m) => ({
+        id: m.conditionId,
+        question: m.question,
+        conditionId: m.conditionId,
+        slug: '',
+        outcomes: ['Yes', 'No'],
+        outcomePrices: [String(m.yesPrice), String(1 - m.yesPrice)],
+        volume: m.volume,
+        liquidity: m.liquidity,
+        endDate: m.endDate,
+        active: true,
+        closed: m.closed,
+        tokens: [
+          { token_id: m.yesTokenId ?? `${m.conditionId}-yes`, outcome: 'Yes', price: m.yesPrice },
+          { token_id: m.noTokenId ?? `${m.conditionId}-no`, outcome: 'No', price: 1 - m.yesPrice },
+        ],
+        yesTokenId: m.yesTokenId ?? `${m.conditionId}-yes`,
+        noTokenId: m.noTokenId ?? `${m.conditionId}-no`,
+        yesPrice: m.yesPrice,
+      }));
+    }
 
     return {
+      /** Return GammaMarket[] for the current tick */
+      getMarkets(): GammaMarket[] {
+        if (!current) return [];
+        return snapshotToMarkets(current);
+      },
+      /** Advance to the next snapshot */
+      setCurrent(snapshot: HistoricalSnapshot): void {
+        current = snapshot;
+      },
+    };
+  }
+
+  /**
+   * Create a mock ClobClient that builds synthetic order books from the
+   * current tick state.
+   */
+  private createMockClob(tickState: ReturnType<BacktestRunner['createTickState']>): ClobClient {
+    return {
+      async getOrderBook(tokenId: string): Promise<RawOrderBook> {
+        const markets = tickState.getMarkets();
+        const market = markets.find(
+          (m) => m.yesTokenId === tokenId || m.noTokenId === tokenId,
+        );
+        if (!market) return { bids: [], asks: [], timestamp: 0 };
+
+        const isYes = market.yesTokenId === tokenId;
+        const price = isYes ? market.yesPrice : 1 - market.yesPrice;
+        const ts = Date.now();
+
+        // Build a plausible order book around the mid price
+        const spread = 0.002; // ~0.2% spread
+        const levels = 5;
+        const bids: Array<{ price: string; size: string }> = [];
+        const asks: Array<{ price: string; size: string }> = [];
+
+        for (let i = 0; i < levels; i++) {
+          const offset = (i + 1) * spread;
+          bids.push({
+            price: Math.max(0.001, price - offset).toFixed(4),
+            size: String((Math.random() * 500 + 100).toFixed(0)),
+          });
+          asks.push({
+            price: Math.min(0.999, price + offset).toFixed(4),
+            size: String((Math.random() * 500 + 100).toFixed(0)),
+          });
+        }
+
+        return { bids, asks, timestamp: ts };
+      },
+      async getPrice(tokenId: string): Promise<number> {
+        const book = await this.getOrderBook(tokenId);
+        if (book.bids.length === 0) return 0;
+        const bestBid = parseFloat(book.bids[0].price);
+        const bestAsk = parseFloat(book.asks[0].price);
+        return (bestBid + bestAsk) / 2;
+      },
+      async getMidPrice(tokenId: string): Promise<number> {
+        return this.getPrice(tokenId);
+      },
+    };
+  }
+
+  private createHistoricalGammaClient(tickState: ReturnType<BacktestRunner['createTickState']>): GammaClient {
+    return {
       async getMarkets(): Promise<GammaMarket[]> {
-        if (tickIndex >= snapshots.length) return [];
-        const snapshot = snapshots[tickIndex++];
-        return snapshot.markets.map((m) => ({
-          id: m.conditionId,
-          question: m.question,
-          conditionId: m.conditionId,
-          slug: '',
-          outcomes: ['Yes', 'No'],
-          outcomePrices: [String(m.yesPrice), String(1 - m.yesPrice)],
-          volume: m.volume,
-          liquidity: m.liquidity,
-          endDate: m.endDate,
-          active: true,
-          closed: m.closed,
-          tokens: [
-            { token_id: m.yesTokenId ?? `${m.conditionId}-yes`, outcome: 'Yes', price: m.yesPrice },
-            { token_id: m.noTokenId ?? `${m.conditionId}-no`, outcome: 'No', price: 1 - m.yesPrice },
-          ],
-          yesTokenId: m.yesTokenId ?? `${m.conditionId}-yes`,
-          noTokenId: m.noTokenId ?? `${m.conditionId}-no`,
-          yesPrice: m.yesPrice,
-        }));
+        return tickState.getMarkets();
       },
       async getMarket(): Promise<GammaMarket | null> { return null; },
       async getMarketGroup(): Promise<null> { return null; },
       async searchMarkets(): Promise<GammaMarket[]> { return []; },
-      async getTrending(): Promise<GammaMarket[]> { return []; },
+      async getTrending(_limit?: number): Promise<GammaMarket[]> {
+        const markets = tickState.getMarkets();
+        return markets.slice(0, _limit ?? 15);
+      },
       async getEvents(): Promise<Array<{ id: string; title: string; slug: string; markets: GammaMarket[] }>> { return []; },
     };
   }

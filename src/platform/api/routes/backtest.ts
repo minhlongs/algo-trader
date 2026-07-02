@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { Backtester } from '../../../desk/arbitrage/backtester';
-import { PricePoint, ExchangeId } from '../../../desk/arbitrage/types';
+import { PricePoint} from '../../../desk/arbitrage/types';
 import { z } from 'zod';
 import { requireTier } from '../../middleware/feature-gate';
 

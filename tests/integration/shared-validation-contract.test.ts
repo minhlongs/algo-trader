@@ -1,11 +1,15 @@
 /**
  * Shared validation contract tests.
  *
- * Verifies validation module contracts so tests pass BEFORE modules move to shared/.
+ * Verifies validation module contracts across the codebase.
  * Uses real Zod schemas imported from the codebase — no mocks, no synthetic schemas.
  *
+ * Post-architecture-separation (2026-07-01): validation modules are co-located
+ * with domain logic (sandbox/, platform/api/schemas/) rather than in a centralized
+ * src/validation/ directory (removed in Phase 34b cleanup).
+ *
  * Requirements: at least 5 tests covering:
- *   1. Validation module directory structure exists
+ *   1. Domain-level validation modules exist (sandbox + referral schemas)
  *   2. Real Zod schema parses valid data
  *   3. Same schema rejects invalid data
  *   4. Zod is importable with expected methods
@@ -19,27 +23,34 @@ import { SandboxInputSchema } from '../../src/desk/sandbox/sandbox-input-encoder
 import { SandboxOutputSchema } from '../../src/desk/sandbox/sandbox-output-validator';
 import { trackClickSchema, validateReferralSchema } from '../../src/platform/api/schemas/referral.schemas';
 
-const VALIDATION_ROOT = path.resolve(__dirname, '../../src/validation');
-
-// ── 1. Validation module directory structure ─────────────────────────────────
+// ── 1. Domain validation module structure ────────────────────────────────
 
 describe('validation module directory structure', () => {
-  const requiredDirs = ['middleware', 'sanitizers', 'schemas', 'utils'];
-
-  it('has a top-level src/validation/ directory', () => {
-    expect(fs.existsSync(VALIDATION_ROOT)).toBe(true);
-    const stat = fs.statSync(VALIDATION_ROOT);
-    expect(stat.isDirectory()).toBe(true);
+  it('has sandbox input encoder with validation schema', () => {
+    const sandboxDir = path.resolve(__dirname, '../../src/desk/sandbox');
+    expect(fs.existsSync(sandboxDir)).toBe(true);
+    expect(fs.existsSync(path.join(sandboxDir, 'sandbox-input-encoder.ts'))).toBe(true);
   });
 
-  for (const dir of requiredDirs) {
-    it(`has a "${dir}" subdirectory under src/validation/`, () => {
-      const fullPath = path.join(VALIDATION_ROOT, dir);
-      expect(fs.existsSync(fullPath)).toBe(true);
-      const stat = fs.statSync(fullPath);
-      expect(stat.isDirectory()).toBe(true);
-    });
-  }
+  it('has sandbox output validator with validation schema', () => {
+    const sandboxDir = path.resolve(__dirname, '../../src/desk/sandbox');
+    expect(fs.existsSync(path.join(sandboxDir, 'sandbox-output-validator.ts'))).toBe(true);
+  });
+
+  it('has referral schemas for API validation', () => {
+    const schemasDir = path.resolve(__dirname, '../../src/platform/api/schemas');
+    expect(fs.existsSync(schemasDir)).toBe(true);
+    expect(fs.existsSync(path.join(schemasDir, 'referral.schemas.ts'))).toBe(true);
+  });
+
+  it('has marketplace backtesting shared module', () => {
+    const backtestingDir = path.resolve(__dirname, '../../src/shared/backtesting');
+    expect(fs.existsSync(backtestingDir)).toBe(true);
+  });
+
+  it('has post similarity engine in shared utils', () => {
+    expect(fs.existsSync(path.resolve(__dirname, '../../src/shared/utils/post-similarity-engine.ts'))).toBe(true);
+  });
 });
 
 // ── 2. Zod is importable with expected methods ───────────────────────────────

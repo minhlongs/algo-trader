@@ -165,7 +165,7 @@ export class UsageMeteringService extends EventEmitter {
     };
   }
 
-  private getUsageFromCache(licenseKey: string, _period: string): number {
+  private getUsageFromCache(_licenseKey: string, _period: string): number {
     // This would normally fetch from Redis, but we use cached value from trackTrade
     return 0;
   }

@@ -13,7 +13,7 @@ import type { Router as RouterType } from 'express';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
 import { getDbClient } from '../../../shared/db/postgres-client';
-import { } from '../../../platform/notifications/email-service';
+
 
 export const newsletterRouter: RouterType = Router();
 

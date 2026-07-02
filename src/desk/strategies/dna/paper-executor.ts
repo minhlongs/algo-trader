@@ -12,7 +12,7 @@
  */
 
 import { emitDnaEvent } from './orchestrator';
-import type { ConsensusSignal, TfId, MarketRegime, PaperJournalEntry, DnaJournalEntry } from './multi-tf-types';
+import type { ConsensusSignal, PaperJournalEntry} from './multi-tf-types';
 
 
 // ─── In-memory journal store (replace with a real DB in future) ───────────────

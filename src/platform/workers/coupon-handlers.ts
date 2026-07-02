@@ -5,7 +5,7 @@
  * Uses SDK-style validation + structured errors from nowpayments-utils.
  */
 
-import { assertString, isNonEmptyString, validationError, configError, apiError } from './nowpayments-utils';
+import { isNonEmptyString, validationError, apiError } from './nowpayments-utils';
 
 interface Env {
   CACHE: KVNamespace;
@@ -39,7 +39,7 @@ interface ActivateBody {
 }
 
 const TIER_PRICES: Record<string, number> = { STARTER: 49, PRO: 149, ELITE: 499 };
-const INVOICE_IDS: Record<string, string> = { STARTER: '4725459350', PRO: '5493882802', ELITE: '5264305822' };
+const _INVOICE_IDS: Record<string, string> = { STARTER: '4725459350', PRO: '5493882802', ELITE: '5264305822' };
 const SUCCESS_URL = 'https://cashclaw.cc/dashboard.html';
 const CANCEL_URL = 'https://cashclaw.cc/#pricing';
 

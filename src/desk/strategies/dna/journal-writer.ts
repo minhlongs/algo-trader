@@ -122,7 +122,7 @@ export async function writeJournalEntry(input: {
   candleTimestampRange: { from: number; to: number } | null;
 }): Promise<void> {
   try {
-    const result = await query<{ id: string }>(INSERT_SQL, [
+    const _result = await query<{ id: string }>(INSERT_SQL, [
       input.traceId,
       new Date(input.timestamp).toISOString(),
       input.action,

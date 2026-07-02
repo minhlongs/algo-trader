@@ -94,7 +94,7 @@ export class ListingArbitrageSniper extends BasePolymarketStrategy {
     const fullConfig: ListingArbConfig = { ...DEFAULT_LISTING_ARB_CONFIG, ...config };
     super(deps, fullConfig, STRATEGY_NAME);
     this.cfg = fullConfig;
-    this.getTime = clock ?? (() => Date.now());
+    this.getTime = typeof clock === 'function' ? clock : () => Date.now();
   }
 
   // ── Market age tracking ───────────────────────────────────────────────────

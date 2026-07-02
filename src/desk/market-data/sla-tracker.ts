@@ -93,7 +93,7 @@ export class SlaTracker {
     this.ensureProvider(provider);
 
     for (const windowHours of this.config.windows) {
-      const windowMs = windowHours * 60 * 60 * 1000;
+      const _windowMs = windowHours * 60 * 60 * 1000;
       const window = this.getOrCreateWindow(provider, windowHours, now);
 
       window.totalRequests++;
@@ -157,8 +157,8 @@ export class SlaTracker {
       //   continue;
       // }
 
-      const windowMs = windowHours * 60 * 60 * 1000;
-      const age = now - window.startTime;
+      const _windowMs = windowHours * 60 * 60 * 1000;
+      const _age = now - window.startTime;
 
       const availability = window.totalRequests > 0
         ? ((window.totalRequests - window.failedRequests) / window.totalRequests) * 100
@@ -238,7 +238,7 @@ export class SlaTracker {
     const providerData = this.providerMetrics.get(provider);
     if (providerData) {
       // Reset each window to initial state instead of deleting
-      for (const [windowHours, window] of providerData) {
+      for (const [_windowHours, window] of providerData) {
         window.totalRequests = 0;
         window.failedRequests = 0;
         window.totalLatency = 0;

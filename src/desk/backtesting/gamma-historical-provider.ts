@@ -81,6 +81,11 @@ export class GammaHistoricalProvider {
 
   // ── Private ─────────────────────────────────────────────────────────────────
 
+  /**
+   * Fetch current markets from the Gamma API and normalise them into GammaMarket
+   * objects. The raw API does NOT return yesPrice, yesTokenId, noTokenId, or tokens
+   * as top-level fields — we derive them from outcomePrices and conditionId.
+   */
   private async fetchCurrentMarkets(): Promise<GammaMarket[]> {
     try {
       const resp = await fetch(
@@ -88,7 +93,40 @@ export class GammaHistoricalProvider {
         { signal: AbortSignal.timeout(15_000) },
       );
       if (!resp.ok) throw new Error(`Gamma API error ${resp.status}`);
-      return (await resp.json()) as GammaMarket[];
+      const raw: Array<Record<string, unknown>> = await resp.json();
+
+      return raw.map((r) => {
+        const conditionId = String(r.conditionId ?? '');
+        const outcomePrices: string[] = Array.isArray(r.outcomePrices)
+          ? (r.outcomePrices as string[])
+          : ['0.5', '0.5'];
+        const yesPrice = parseFloat(outcomePrices[0] ?? '0.5');
+        const noPrice = parseFloat(outcomePrices[1] ?? String(1 - yesPrice));
+
+        // Build synthetic GammaMarket — the API doesn't include yesTokenId/noTokenId
+        // or tokens as top-level fields, so we derive them from conditionId.
+        return {
+          id: String(r.id ?? conditionId),
+          question: String(r.question ?? ''),
+          conditionId,
+          slug: String(r.slug ?? ''),
+          outcomes: Array.isArray(r.outcomes) ? (r.outcomes as string[]) : ['Yes', 'No'],
+          outcomePrices,
+          volume: Number(r.volume ?? 0),
+          liquidity: Number(r.liquidity ?? 0),
+          endDate: String(r.endDate ?? ''),
+          active: r.active !== false,
+          closed: r.closed === true,
+          resolved: r.resolved === true,
+          tokens: [
+            { token_id: `${conditionId}-yes`, outcome: 'Yes', price: yesPrice },
+            { token_id: `${conditionId}-no`, outcome: 'No', price: noPrice },
+          ],
+          yesTokenId: `${conditionId}-yes`,
+          noTokenId: `${conditionId}-no`,
+          yesPrice,
+        };
+      });
     } catch (err) {
       logger.error('Failed to fetch Gamma markets', 'GammaHistoricalProvider', {
         err: String(err),

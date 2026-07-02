@@ -1,6 +1,9 @@
 /**
  * Polymarket CLOB Client — real SDK wrapper for trading.
  * Uses @polymarket/clob-client SDK for order book, pricing, and order management.
+ *
+ * Auth: POLYMARKET_API_KEY, POLYMARKET_API_SECRET, POLYMARKET_PASSPHRASE
+ * (deprecated POLY_* equivalents still accepted with warning)
  */
 import { ClobClient as SdkClobClient, Chain, Side } from '@polymarket/clob-client';
 import { logger } from '../../shared/utils/logger';
@@ -35,17 +38,30 @@ export interface OpenOrder {
 const CLOB_HOST = process.env.POLY_CLOB_HOST || 'https://clob.polymarket.com';
 const CHAIN_ID = Chain.POLYGON;
 
+// ── Env var resolution (POLYMARKET_* preferred, POLY_* fallback) ─────────────
+
+function resolveEnvVar(newName: string, oldName: string): string | undefined {
+  const newVal = process.env[newName];
+  if (newVal) return newVal;
+  const oldVal = process.env[oldName];
+  if (oldVal) {
+    logger.warn(`[ClobClient] Deprecated env var ${oldName} used — switch to ${newName}`);
+    return oldVal;
+  }
+  return undefined;
+}
+
 /**
  * Create an authenticated CLOB client from environment variables.
  * Requires: POLY_API_KEY, POLY_API_SECRET, POLY_PASSPHRASE, POLY_PRIVATE_KEY
  */
 export function createClobClient(): SdkClobClient {
-  const apiKey = process.env.POLY_API_KEY;
-  const apiSecret = process.env.POLY_API_SECRET;
-  const passphrase = process.env.POLY_PASSPHRASE;
+  const apiKey = resolveEnvVar('POLYMARKET_API_KEY', 'POLY_API_KEY');
+  const apiSecret = resolveEnvVar('POLYMARKET_API_SECRET', 'POLY_API_SECRET');
+  const passphrase = resolveEnvVar('POLYMARKET_PASSPHRASE', 'POLY_PASSPHRASE');
 
   if (!apiKey || !apiSecret || !passphrase) {
-    logger.warn('POLY_API_KEY/SECRET/PASSPHRASE not set — read-only mode');
+    logger.warn('POLYMARKET_API_KEY/SECRET/PASSPHRASE not set — read-only mode');
     return new SdkClobClient(CLOB_HOST, CHAIN_ID);
   }
 

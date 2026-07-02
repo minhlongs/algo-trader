@@ -23,13 +23,13 @@ import {
   TfId,
   TF_RESOLUTIONS,
 } from './multi-tf-types';
-import { computeTrendIndicators } from './indicators-trend';
+import { } from './indicators-trend';
 
 // ─── Regime thresholds ────────────────────────────────────────────────────────
 
 const ADX_TRENDING_THRESHOLD = 25;
 const ATR_PCT_VOLATILE = 0.04;  // ATR% > 4% → volatile
-const ATR_PCT_NORMAL = 0.02;
+const _ATR_PCT_NORMAL = 0.02;
 
 function classifyTf(tf: TfId, indicators: TimeframeIndicators): MarketRegime {
   const { adx, adxTrend } = indicators.trend;

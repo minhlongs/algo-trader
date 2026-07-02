@@ -109,7 +109,7 @@ import { resolve } from 'path';
 const REPO_ROOT = resolve(__dirname, '../..');
 const METRICS_PATH = resolve(
   REPO_ROOT,
-  'src/platform/middleware/prometheus-metrics.ts',
+  'src/platform/middleware/prometheus-metrics-definitions.ts',
 );
 
 /** Standard percentile boundary: every latency histogram must include the 1-second bucket (p95 SLO anchor). */

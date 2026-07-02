@@ -11,81 +11,27 @@
 
 import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
-import { z } from 'zod';
 import { SubscriptionService } from '../../marketplace/services/subscription.service';
 import { MarketplaceExecutionBridge } from '../../marketplace/services/marketplace-execution-bridge';
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
+import {
+  subscribeSchema,
+  updateSubscriptionSchema,
+  subscriptionFilterSchema,
+  executeSchema,
+  executeSingleSchema,
+  getTenantId,
+  getUserId,
+  getQueryString,
+  isAdmin,
+} from './marketplace-subscription-helpers';
 
 export const marketplaceSubscriptionRouter: RouterType = Router();
 
 const subscriptionService = SubscriptionService.getInstance();
 const auditService = AuditLogService.getInstance();
-
-// ==================== Validation Schemas ====================
-
-const subscribeSchema = z.object({
-  listingId: z.string().min(1),
-  allocationPercent: z.number().int().min(1).max(100),
-  customRiskLimits: z.object({
-    maxDailyLossPercent: z.number().optional(),
-    maxPositionSizePercent: z.number().optional(),
-    stopLossPercent: z.number().optional(),
-    maxConcurrentTrades: z.number().optional(),
-  }).optional(),
-});
-
-const updateSubscriptionSchema = z.object({
-  action: z.enum(['pause', 'resume', 'cancel']),
-});
-
-const subscriptionFilterSchema = z.object({
-  status: z.enum(['active', 'paused', 'cancelled', 'suspended']).optional(),
-  page: z.number().int().min(1).optional(),
-  limit: z.number().int().min(1).max(100).optional(),
-});
-
-// ==================== Helper Functions ====================
-
-function getTenantId(req: Request): string {
-  const tenantId = (req as any).tenant?.id || (req as any).user?.tenantId;
-  if (!tenantId) throw new Error('Unauthorized: No tenant context');
-  return String(tenantId);
-}
-
-function getUserId(req: Request): string {
-  const userId = (req as any).user?.id || (req as any).apiKey?.userId;
-  if (!userId) throw new Error('Unauthorized: No user context');
-  return String(userId);
-}
-
-function getQueryString(value: unknown, defaultValue: string = ''): string {
-  if (value === undefined || value === null) return defaultValue;
-  if (Array.isArray(value)) {
-    const first = value[0];
-    return typeof first === 'string' ? first : String(first);
-  }
-  if (typeof value === 'string') return value;
-  return String(value);
-}
-
-function getQueryNumber(value: unknown, defaultValue: number = 0): number {
-  if (value === undefined || value === null) return defaultValue;
-  if (Array.isArray(value)) {
-    const first = value[0];
-    if (typeof first === 'string') return parseInt(first, 10) || defaultValue;
-    if (typeof first === 'number') return first;
-    return defaultValue;
-  }
-  if (typeof value === 'string') return parseInt(value, 10) || defaultValue;
-  if (typeof value === 'number') return value;
-  return defaultValue;
-}
-
-function isAdmin(req: Request): boolean {
-  return (req as any).user?.role === 'admin' || (req as any).apiKey?.isAdmin === true;
-}
 
 // ==================== Routes ====================
 
@@ -330,15 +276,6 @@ marketplaceSubscriptionRouter.get('/:id/performance', requireTier('FREE'), async
 });
 
 // ==================== Execution Routes ====================
-
-const executeSchema = z.object({
-  strategyId: z.string().min(1),
-  marketPayload: z.record(z.string(), z.unknown()).default({}),
-});
-
-const executeSingleSchema = z.object({
-  marketPayload: z.record(z.string(), z.unknown()).default({}),
-});
 
 /**
  * POST /api/v1/marketplace/subscriptions/:id/execute

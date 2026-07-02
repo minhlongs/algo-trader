@@ -17,7 +17,7 @@ import { resolve } from 'path';
 /** Path to the authoritative source of truth for metric names. */
 export const METRICS_TS_PATH = resolve(
   __dirname,
-  '../../../src/platform/middleware/prometheus-metrics.ts'
+  '../../../src/platform/middleware/prometheus-metrics-definitions.ts'
 );
 
 /** Built-in Prometheus metrics that are valid in PromQL but not declared in our file. */

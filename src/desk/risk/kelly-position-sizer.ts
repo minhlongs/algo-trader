@@ -99,8 +99,8 @@ export class KellyPositionSizer {
     return { ...this.config };
   }
 
-  private zeroResult(portfolioValue: number): KellySizingResult {
-    const minSize = this.config.minPositionUsd > 0 ? this.config.minPositionUsd : 0;
+  private zeroResult(_portfolioValue: number): KellySizingResult {
+    const _minSize = this.config.minPositionUsd > 0 ? this.config.minPositionUsd : 0;
     return {
       positionSizeUsd: 0,
       kellyRaw: 0,

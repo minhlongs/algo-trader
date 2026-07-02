@@ -80,14 +80,14 @@ export class OutlierDetector {
   /**
    * Add a price sample for a symbol
    */
-  addPriceSample(symbol: string, price: number, provider?: MarketDataSource): void {
+  addPriceSample(symbol: string, price: number, _provider?: MarketDataSource): void {
     this.addToWindow(this.priceWindows, symbol, price);
   }
 
   /**
    * Add a volume sample for a symbol
    */
-  addVolumeSample(symbol: string, volume: number, provider?: MarketDataSource): void {
+  addVolumeSample(symbol: string, volume: number, _provider?: MarketDataSource): void {
     this.addToWindow(this.volumeWindows, symbol, volume);
   }
 
@@ -213,7 +213,7 @@ export class OutlierDetector {
   /**
    * Detect price gap between two consecutive prices
    */
-  detectPriceGap(symbol: string, prevPrice: number, currentPrice: number, provider: MarketDataSource): any {
+  detectPriceGap(symbol: string, prevPrice: number, currentPrice: number, _provider: MarketDataSource): any {
     const percentChange = Math.abs((currentPrice - prevPrice) / prevPrice) * 100;
 
     // Thresholds for gap detection
@@ -359,7 +359,7 @@ export class OutlierDetector {
     return sorted[lower] * (1 - weight) + sorted[upper] * weight;
   }
 
-  private calculateSeverity(zScore: number, iqrScore: number, value: number, range: [number, number]): 'low' | 'medium' | 'high' | 'critical' {
+  private calculateSeverity(zScore: number, iqrScore: number, _value: number, _range: [number, number]): 'low' | 'medium' | 'high' | 'critical' {
     // Use the larger of zScore and iqrScore to determine severity
     const score = Math.max(zScore, iqrScore);
 

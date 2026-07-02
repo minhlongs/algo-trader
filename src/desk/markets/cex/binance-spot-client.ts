@@ -60,7 +60,7 @@ export interface CcxtExchangeAdapter {
 
 /** Create a real ccxt Binance exchange instance */
 export function createBinanceExchange(): CcxtExchangeAdapter {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const BinanceCtor = (ccxt as any).binance as new (opts: unknown) => CcxtExchangeAdapter;
   return new BinanceCtor({
     apiKey: process.env.BINANCE_API_KEY ?? '',

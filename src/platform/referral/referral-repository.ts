@@ -4,7 +4,7 @@
  * Preserves the singleton pattern for backward compatibility.
  */
 
-import type { ReferralCode, ReferralClick, CommissionRecord, ReferralStats, CommissionStatus } from './types';
+import type { ReferralCode, ReferralClick, ReferralStats, CommissionStatus } from './types';
 import * as crud from './referral-crud';
 import * as analytics from './referral-analytics';
 

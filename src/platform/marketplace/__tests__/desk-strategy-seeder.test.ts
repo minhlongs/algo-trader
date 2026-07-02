@@ -24,7 +24,7 @@ describe('seedDeskStrategies', () => {
     vi.clearAllMocks();
   });
 
-  it('creates all 5 desk strategies when none exist', async () => {
+  it('creates all 9 desk strategies when none exist', async () => {
     mockGetStrategy.mockResolvedValue(null); // none exist
     mockCreateStrategy.mockResolvedValue({ id: 'test' });
     mockUpdateStatus.mockResolvedValue({ id: 'test' });
@@ -32,11 +32,11 @@ describe('seedDeskStrategies', () => {
 
     const result = await seedDeskStrategies();
 
-    expect(result.created).toBe(5);
+    expect(result.created).toBe(9);
     expect(result.skipped).toBe(0);
-    expect(mockCreateStrategy).toHaveBeenCalledTimes(5);
-    expect(mockUpdateStatus).toHaveBeenCalledTimes(5);
-    expect(mockCreateListing).toHaveBeenCalledTimes(5);
+    expect(mockCreateStrategy).toHaveBeenCalledTimes(9);
+    expect(mockUpdateStatus).toHaveBeenCalledTimes(9);
+    expect(mockCreateListing).toHaveBeenCalledTimes(9);
   });
 
   it('verifies first strategy has correct fields', async () => {
@@ -72,18 +72,16 @@ describe('seedDeskStrategies', () => {
     const result = await seedDeskStrategies();
 
     expect(result.created).toBe(0);
-    expect(result.skipped).toBe(5);
+    expect(result.skipped).toBe(9);
     expect(mockCreateStrategy).not.toHaveBeenCalled();
   });
 
   it('mixes created and skipped when some exist', async () => {
-    // First 2 exist, last 3 don't
+    // First 2 exist, rest don't
     mockGetStrategy
       .mockResolvedValueOnce({ id: 'cross-platform-arb' })
       .mockResolvedValueOnce({ id: 'whale-copy-trader' })
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null);
+      .mockResolvedValue(null);
 
     mockCreateStrategy.mockResolvedValue({ id: 'test' });
     mockUpdateStatus.mockResolvedValue({ id: 'test' });
@@ -91,9 +89,9 @@ describe('seedDeskStrategies', () => {
 
     const result = await seedDeskStrategies();
 
-    expect(result.created).toBe(3);
+    expect(result.created).toBe(7);
     expect(result.skipped).toBe(2);
-    expect(mockCreateStrategy).toHaveBeenCalledTimes(3);
+    expect(mockCreateStrategy).toHaveBeenCalledTimes(7);
   });
 
   it('all strategies are approved (bypass vetting)', async () => {
@@ -131,11 +129,13 @@ describe('seedDeskStrategies', () => {
     await seedDeskStrategies();
 
     const prices = mockCreateListing.mock.calls.map((c) => c[0].priceUsdMonthly);
-    // cross-platform-arb: 14900, whale-copy-trader: 9900, delta-neutral: 12900,
-    // resolution-frontrunner: 7900, listing-arbitrage-sniper: 7900
+    // cross-platform-arb: 14900, whale-copy-trader: 9900, delta-neutral-vol-arb: 12900,
+    // resolution-frontrunner: 7900, listing-arbitrage-sniper: 7900, cycle-end-sniper: 8900,
+    // delta-neutral-volatility-arbitrage: 12900, cross-event-drift-v2: 7900, resolution-frontrunner-v2: 7900
     expect(prices).toContain(14900);
     expect(prices).toContain(9900);
     expect(prices).toContain(12900);
-    expect(prices.filter((p: number) => p === 7900).length).toBe(2); // 2 strategies at $79
+    expect(prices).toContain(8900);
+    expect(prices.filter((p: number) => p === 7900).length).toBe(4); // 4 strategies at $79
   });
 });

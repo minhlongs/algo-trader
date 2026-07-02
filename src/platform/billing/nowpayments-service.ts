@@ -271,6 +271,62 @@ export class NowPaymentsService {
   }
 
   /**
+   * Create a payout (USDT TRC20) to a creator wallet via NOWPayments Payout API.
+   * Used by the marketplace payout scheduler to send actual crypto.
+   */
+  async createPayout(params: {
+    address: string;
+    amount: number; // in USD
+    currency?: string;
+    ipnCallbackUrl?: string;
+  }): Promise<{ payoutId: string } | null> {
+    if (!this.apiKey) {
+      logger.error('NOWPAYMENTS_API_KEY not configured — cannot send payout');
+      return null;
+    }
+
+    try {
+      const ipnUrl = params.ipnCallbackUrl ?? process.env.NOWPAYMENTS_IPN_URL ?? '';
+      const currency = params.currency ?? 'usdttrc20';
+
+      const res = await fetch(`${this.baseUrl}/payout`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: params.address,
+          currency,
+          amount: params.amount,
+          ipn_callback_url: ipnUrl,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        logger.error('NOWPayments payout creation failed', { status: res.status, body });
+        return null;
+      }
+
+      const payout = (await res.json()) as { id?: string; payout_id?: string; status?: string };
+      const payoutId = payout.id ?? payout.payout_id ?? 'unknown';
+
+      logger.info('NOWPayments payout created', {
+        payoutId,
+        address: params.address,
+        amount: params.amount,
+        currency,
+      });
+
+      return { payoutId };
+    } catch (error) {
+      logger.error('Failed to create NOWPayments payout', { error });
+      return null;
+    }
+  }
+
+  /**
    * Map IPN status to internal action
    */
   getStatusAction(status: NowPaymentsStatus): 'activate' | 'cancel' | 'ignore' {

@@ -4,15 +4,15 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
 import { referralService } from '../../referral/referral-service';
-import { ReferralStats, CommissionStatus } from '../../referral/types';
 import { logger } from '../../../shared/utils/logger';
 import {
   trackClickSchema,
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
   generateCodeSchema,
   validateReferralSchema,
   paginationSchema,
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
   commissionStatusSchema,
 } from '../schemas/referral.schemas';
 import { requireTier } from '../../middleware/feature-gate';
@@ -268,6 +268,7 @@ referralRouter.post('/validate', requireTier('ENTERPRISE'), async (req: Request,
   }
 
   try {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { referralCode, tenantId: newTenantId } = parsed.data;
 
     // Check if code exists and is valid

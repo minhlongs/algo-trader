@@ -78,7 +78,7 @@ function computeMACD(candles: Candle[]): { macdLine: number; macdSignal: number;
   const slowEma = ema(closes, MACD_SLOW);
   // Align: slow starts later; take the tail where both exist.
   const offset = slowEma.length - fastEma.length;
-  const macdLine = fastEma.slice(offset > 0 ? offset : 0);
+  const _macdLine = fastEma.slice(offset > 0 ? offset : 0);
   // Actually the fastEma and slowEma have different lengths — align from the end.
   const minLen = Math.min(fastEma.length, slowEma.length);
   const macd = fastEma.slice(fastEma.length - minLen).map((v, i) => v - slowEma[slowEma.length - minLen + i]);

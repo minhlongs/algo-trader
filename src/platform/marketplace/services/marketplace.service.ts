@@ -16,7 +16,7 @@ import { NotificationService } from '../notifications/notification-service';
 import { VettingWorker } from '../workers/vetting-worker';
 import type {
   IMarketplaceStrategy, IMarketplaceListing, StrategyCategory, StrategyStatus,
-  BacktestSummary, PaginatedResult, PaginationParams, SortOrder, SortField,
+  BacktestSummary, PaginatedResult,
   IMarketplaceReview, IMarketplacePerformance,
 } from '../models/types';
 
@@ -98,25 +98,94 @@ export class MarketplaceService {
     if (filters?.search) strategyFilters.search = filters.search;
     if (filters?.riskLevel) strategyFilters.riskLevel = filters.riskLevel;
 
+    // Performance-based sort/filter fields require in-memory processing
+    // because the strategy repo does not JOIN with marketplace_performance.
+    const perfSortFields = new Set(['sharpe', 'win_rate', 'total_pnl', 'max_drawdown']);
+    const sortBy = filters?.sortBy ?? 'created_at';
+    const usePerfSort = perfSortFields.has(sortBy);
+
+    // When sorting by performance, fetch without DB-level sort (default to created_at)
+    // and re-sort in-memory after attaching performance data.
     const result = await this.strategyRepo.findAll(
       strategyFilters,
-      { page: filters?.page ?? 1, limit: filters?.limit ?? 20 },
-      { field: filters?.sortBy ?? 'created_at', order: filters?.sortOrder ?? 'desc' },
+      { page: 1, limit: 1000 }, // fetch enough for in-memory sort + pagination
+      { field: usePerfSort ? 'created_at' : sortBy, order: filters?.sortOrder ?? 'desc' },
     );
 
-    // Batch-fetch listings to include price data in strategy response
+    // Batch-fetch listings to include price/subscriber data
     if (result.data.length > 0) {
       const strategyIds = result.data.map((s) => s.id);
+
+      // Fetch listings
       const listings = await this.listingRepo.findByStrategyIds(strategyIds);
       const listingMap = new Map(listings.map((l) => [l.strategyId, l]));
+
+      // Fetch latest performance for each strategy
+      const perfMap = new Map<string, IMarketplacePerformance>();
+      for (const sid of strategyIds) {
+        const perfs = await this.perfRepo.getLatestByStrategy(sid, 1);
+        if (perfs.length > 0) perfMap.set(sid, perfs[0]);
+      }
+
       for (const strategy of result.data) {
         const listing = listingMap.get(strategy.id);
         if (listing) {
           strategy.listingId = listing.id;
           strategy.listingPriceUsdMonthly = listing.priceUsdMonthly;
           strategy.listingBillingCycle = listing.billingCycle;
+          strategy.listingSubscriberCount = listing.subscriberCount;
+        }
+
+        const perf = perfMap.get(strategy.id);
+        if (perf) {
+          strategy.sharpeRatio = perf.sharpeRatio;
+          strategy.winRate = perf.winRate;
+          strategy.maxDrawdown = perf.maxDrawdown;
+          strategy.totalPnlUsd = perf.totalPnlUsd;
+        } else if (strategy.backtestSummary) {
+          // Fall back to backtest summary if no live performance data
+          strategy.sharpeRatio = strategy.backtestSummary.sharpe;
+          strategy.winRate = strategy.backtestSummary.winRate;
+          strategy.maxDrawdown = strategy.backtestSummary.maxDrawdown;
+          strategy.totalPnlUsd = strategy.backtestSummary.totalPnlUsd;
         }
       }
+
+      // In-memory sort for performance fields
+      if (usePerfSort) {
+        const order = filters?.sortOrder === 'asc' ? 1 : -1;
+        result.data.sort((a, b) => {
+          let valA = 0;
+          let valB = 0;
+          switch (sortBy) {
+            case 'sharpe': valA = a.sharpeRatio ?? 0; valB = b.sharpeRatio ?? 0; break;
+            case 'win_rate': valA = a.winRate ?? 0; valB = b.winRate ?? 0; break;
+            case 'total_pnl': valA = a.totalPnlUsd ?? 0; valB = b.totalPnlUsd ?? 0; break;
+            case 'max_drawdown': valA = a.maxDrawdown ?? 0; valB = b.maxDrawdown ?? 0; break;
+          }
+          return valA < valB ? -order : valA > valB ? order : 0;
+        });
+
+        // Re-paginate after sort
+        const page = filters?.page ?? 1;
+        const limit = filters?.limit ?? 20;
+        const start = (page - 1) * limit;
+        result.data = result.data.slice(start, start + limit);
+        result.page = page;
+        result.limit = limit;
+        result.totalPages = Math.ceil(result.total / limit);
+      }
+    }
+
+    // Apply in-memory filters for minSharpe / maxDrawdown
+    if (filters?.minSharpe !== undefined || filters?.maxDrawdown !== undefined) {
+      result.data = result.data.filter((s) => {
+        if (filters.minSharpe !== undefined && (s.sharpeRatio ?? 0) < filters.minSharpe) return false;
+        if (filters.maxDrawdown !== undefined && (s.maxDrawdown ?? 0) > filters.maxDrawdown) return false;
+        return true;
+      });
+      result.total = result.data.length;
+      result.totalPages = Math.ceil(result.total / (filters?.limit ?? 20));
     }
 
     return result;
@@ -218,6 +287,7 @@ export class MarketplaceService {
     });
   }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
   async purchaseStrategy(strategyId: string, userId: string): Promise<{ success: boolean; transactionId?: string }> {
     const strategy = await this.strategyRepo.findById(strategyId);
     if (!strategy) return { success: false };

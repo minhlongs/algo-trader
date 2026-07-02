@@ -39,12 +39,6 @@ function computeEMA(values: number[], period: number): number | null {
 
 // ─── ADX (Wilder smoothing) ───────────────────────────────────────────────────
 
-interface TrComponents {
-  plusDM: number;
-  minusDM: number;
-  tr: number;
-}
-
 function computeADX(candles: Candle[]): { adx: number; adxTrend: TrendIndicators['adxTrend'] } | null {
   if (candles.length < ADX_PERIOD + 1) return null;
 

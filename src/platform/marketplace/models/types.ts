@@ -22,7 +22,13 @@ export interface IMarketplaceStrategy {
   listingId?: string;
   listingPriceUsdMonthly?: number;
   listingBillingCycle?: string;
+  listingSubscriberCount?: number;
   backtestSummary?: BacktestSummary;
+  /** Latest performance metrics (populated by listStrategies) */
+  sharpeRatio?: number;
+  winRate?: number;
+  maxDrawdown?: number;
+  totalPnlUsd?: number;
   vettedAt?: Date;
   vettedBy?: string;
   rejectionReason?: string;

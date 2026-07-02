@@ -237,7 +237,9 @@ export function getPaperExecutor(config?: Partial<PaperExecutorConfig>): PaperEx
 export function resetPaperExecutor(): void {
   instance = null;
   // Clear persisted state so tests start fresh
+  /* eslint-disable @typescript-eslint/no-require-imports */
   try { require('fs').unlinkSync(require('os').homedir() + '/.cashclaw/paper-account.json'); } catch {}
   try { require('fs').unlinkSync(require('os').homedir() + '/.cashclaw/paper-positions.json'); } catch {}
   try { require('fs').unlinkSync(require('os').homedir() + '/.cashclaw/paper-trades.jsonl'); } catch {}
+  /* eslint-enable @typescript-eslint/no-require-imports */
 }

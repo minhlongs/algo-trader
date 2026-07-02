@@ -70,6 +70,23 @@ export class RedisWSAdapter {
       server: fastify.server,
       path: this.config.path,
       maxPayload: this.config.maxPayloadSize,
+      // permessage-deflate: ~70% bandwidth reduction on JSON payloads
+      // level=3 balances speed vs compression ratio (typical trading data compresses well)
+      perMessageDeflate: {
+        zlibDeflateOptions: {
+          chunkSize: 1024,
+          memLevel: 7,
+          level: 3,
+        },
+        zlibInflateOptions: {
+          chunkSize: 10 * 1024,
+        },
+        clientNoContextTakeover: true,
+        serverNoContextTakeover: true,
+        serverMaxWindowBits: 10,
+        concurrencyLimit: 10,
+        threshold: 1024, // skip compression for messages < 1KB
+      },
     });
 
     this.setupWebSocket();

@@ -11,6 +11,12 @@ import * as migration025 from './migrations/025-marketplace-schema';
 import * as migration026 from './migrations/026-create-ai-audit-tables';
 import * as migration031 from './migrations/031-add-marketplace-subscription-payment';
 import * as migration032 from './migrations/032-add-marketplace-payout-address';
+import * as migration033 from './migrations/033-add-marketplace-performance-indexes';
+import * as migration034 from './migrations/034-add-marketplace-backtests';
+import * as migration035 from './migrations/035-add-blog-engagement-tables';
+import * as migration036 from './migrations/036-add-kyc-verifications';
+import * as migration037 from './migrations/037-add-newsletter-preferences';
+import * as migration038 from './migrations/038-add-community-strategies';
 
 // Migration interface
 interface Migration {
@@ -27,6 +33,12 @@ const MIGRATIONS: Migration[] = [
   migration026,
   migration031,
   migration032,
+  migration033,
+  migration034,
+  migration035,
+  migration036,
+  migration037,
+  migration038,
 ];
 
 /**

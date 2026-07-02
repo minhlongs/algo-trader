@@ -10,7 +10,7 @@ import { GapDetector, getGapDetector } from './gap-detector';
 import { OutlierDetector, getOutlierDetector } from './outlier-detection';
 import { SlaTracker, getSlaTracker } from './sla-tracker';
 import { FailoverManager } from './provider-failover';
-import type { GapStats } from './gap-detector';
+import type { } from './gap-detector';
 
 /**
  * Quality monitoring integration
@@ -44,7 +44,7 @@ export class QualityMonitoringIntegration {
   async initializeAll(configs: Record<string, ProviderQualityConfig>): Promise<void> {
     logger.info('QualityMonitoringIntegration: Initializing with provider configs', { providerCount: Object.keys(configs).length });
 
-    for (const [name, config] of Object.entries(configs)) {
+    for (const [_name, config] of Object.entries(configs)) {
       this.providerConfigs.set(config.provider, config);
 
       // Start gap tracking for this provider if enabled
@@ -65,7 +65,7 @@ export class QualityMonitoringIntegration {
   /**
    * Get active provider for a data type
    */
-  getActiveProvider(dataType: string): MarketDataSource | null {
+  getActiveProvider(_dataType: string): MarketDataSource | null {
     // Find failover manager for this data type
     for (const [key, manager] of this.failoverManagers) {
       return manager.getActiveProvider();
@@ -137,7 +137,7 @@ export class QualityMonitoringIntegration {
     const provider = this.parseProvider(providerName);
     if (!provider) return;
 
-    const receivedTime = receivedAt ?? Date.now();
+    const _receivedTime = receivedAt ?? Date.now();
 
     // Record in gap detector
     this.gapDetector.recordCandle(provider as string, symbol, timeframe, candle);

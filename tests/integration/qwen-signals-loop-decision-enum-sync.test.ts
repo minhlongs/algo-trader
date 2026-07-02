@@ -37,7 +37,7 @@ const REPO_ROOT = resolve(__dirname, '../..');
 const MIGRATION_PATH = resolve(REPO_ROOT, 'src/db/migrations/018_qwen_signals_loop_runs.sql');
 const DOC_PATH = resolve(REPO_ROOT, 'docs/system-architecture.md');
 const CODE_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics-definitions.ts');
 
 /**
  * Strip JS/TS comments so commented-out literals / union members are not

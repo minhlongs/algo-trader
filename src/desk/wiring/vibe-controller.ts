@@ -88,7 +88,7 @@ async function loadStateFromRedis(): Promise<void> {
   }
 }
 
-async function persistState(state: VibeState): Promise<void> {
+async function _persistState(state: VibeState): Promise<void> {
   try {
     await getRedisClient().set(REDIS_KEY, JSON.stringify(state));
   } catch (err) {

@@ -7,7 +7,7 @@
  */
 
 import type { ICandle } from '../../interfaces/IStrategy';
-import { logger } from '../../../shared/utils/logger';
+import { } from '../../../shared/utils/';
 
 export interface Position {
   entryPrice: number;

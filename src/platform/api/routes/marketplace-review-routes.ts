@@ -69,7 +69,7 @@ function getQueryString(value: unknown, defaultValue: string = ''): string {
   return String(value);
 }
 
-function getQueryNumber(value: unknown, defaultValue: number = 0): number {
+function _getQueryNumber(value: unknown, defaultValue: number = 0): number {
   if (value === undefined || value === null) return defaultValue;
   if (Array.isArray(value)) {
     const first = value[0];
@@ -82,7 +82,7 @@ function getQueryNumber(value: unknown, defaultValue: number = 0): number {
   return defaultValue;
 }
 
-function isAdmin(req: Request): boolean {
+function _isAdmin(req: Request): boolean {
   return req.user?.role === 'admin' || req.apiKey?.isAdmin === true;
 }
 

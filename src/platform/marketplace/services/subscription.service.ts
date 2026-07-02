@@ -315,6 +315,7 @@ export class SubscriptionService {
   // ── Private helpers ──────────────────────────────────────────────
 
   private async strategyRepoForListing(strategyId: string): Promise<{ id: string; creatorId: string; name: string } | null> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { StrategyRepository, strategyRepository } = await import('./repositories');
     const repo = strategyRepository as InstanceType<typeof StrategyRepository>;
     const strategy = await repo.findById(strategyId);
