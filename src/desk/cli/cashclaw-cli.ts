@@ -1,17 +1,23 @@
 #!/usr/bin/env node
 /**
- * CashClaw CLI — simple entry point for Polymarket paper trading.
+ * CashClaw CLI — Polymarket trading bot.
  *
  * Usage:
- *   npx cashclaw paper              — start paper trading ($200 default)
- *   npx cashclaw paper --capital 500  — start with $500
- *   npx cashclaw status             — show current P&L + positions
- *   npx cashclaw scan               — one-time market scan (no trading)
+ *   npx cashclaw paper                    — start paper trading ($200 default)
+ *   npx cashclaw paper --capital 500      — start with $500
+ *   npx cashclaw status                   — show current P&L + positions
+ *   npx cashclaw scan                     — one-time market scan (no trading)
+ *   npx cashclaw trade start --mode=live  — LIVE trading (real USDC, requires env vars)
+ *   npx cashclaw trade start              — paper trading via trade command
+ *   npx cashclaw trade status             — check live trading state
+ *   npx cashclaw backtest                 — run backtest on paper trading history
+ *   npx cashclaw backtest --format=json   — backtest results as JSON
  */
 
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
+import type { BacktestTrade } from '../../shared/backtesting/backtest-runner';
 
 const program = new Command()
   .name('cashclaw')
@@ -150,6 +156,89 @@ program
     const { showRealLedger } = require('../polymarket');
     await showRealLedger(wallet);
   });
+
+// ─── backtest command ─────────────────────────────────────────────────────────
+
+program
+  .command('backtest')
+  .description('Run backtest on paper trading history')
+  .option('--file <path>', 'Path to trade history JSON file', 'data/paper-trades.json')
+  .option('--capital <amount>', 'Initial capital in USDC', '1000')
+  .option('--format <format>', 'Output format: table|json', 'table')
+  .action(async (opts: { file: string; capital: string; format: string }) => {
+    const capital = parseFloat(opts.capital);
+    if (isNaN(capital) || capital <= 0) {
+      console.error('Error: --capital must be a positive number');
+      process.exit(1);
+    }
+
+    const filePath = path.resolve(process.cwd(), opts.file);
+    if (!fs.existsSync(filePath)) {
+      console.error(`Error: Trade history file not found: ${filePath}`);
+      console.error('Run paper trading first: cashclaw paper');
+      process.exit(1);
+    }
+
+    try {
+      interface PaperPortfolio {
+        capital: number;
+        totalPnl: number;
+        closedTrades: BacktestTrade[];
+      }
+
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as PaperPortfolio;
+      const trades = data.closedTrades ?? [];
+
+      if (trades.length === 0) {
+        console.log('No closed trades in file. Keep trading to build history.');
+        return;
+      }
+
+      // Dynamic import — shared backtesting engine
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { BacktestRunner } = require('../../shared/backtesting/backtest-runner') as {
+        BacktestRunner: { run: (trades: BacktestTrade[], config: Record<string, number>) => Record<string, unknown> };
+      };
+
+      const result = BacktestRunner.run(trades, {
+        initialCapitalUsd: capital,
+        riskFreeRateAnnual: 0.05,
+      });
+
+      if (opts.format === 'json') {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+
+      // ── Table output ──────────────────────────────────────────────────
+      const ddPct = (Number(result.maxDrawdown) * 100).toFixed(1);
+      const winPct = (Number(result.winRate) * 100).toFixed(0);
+      const pnlSign = Number(result.totalPnlUsd) >= 0 ? '+' : '';
+      const tradesStr = `${result.totalTrades} (${result.winningTrades}W / ${result.losingTrades}L)`;
+
+      // Best/worst from raw trades
+      const best = Math.max(...trades.map((t) => t.pnlUsd));
+      const worst = Math.min(...trades.map((t) => t.pnlUsd));
+
+      console.log('');
+      console.log(`Strategy: paper-trading  │ Capital: $${capital}`);
+      console.log(`Sharpe: ${Number(result.sharpeRatio).toFixed(2)}  │ Max Drawdown: ${ddPct}%  │ Win Rate: ${winPct}%`);
+      console.log(`Total P&L: ${pnlSign}$${Number(result.totalPnlUsd).toFixed(2)}  │ Profit Factor: ${Number(result.profitFactor).toFixed(2)}`);
+      console.log(`Trades: ${tradesStr}  │ Best: +$${best.toFixed(2)}  │ Worst: -$${Math.abs(worst).toFixed(2)}`);
+      console.log('');
+    } catch (err) {
+      console.error('Backtest failed:', (err as Error).message);
+      process.exit(1);
+    }
+  });
+
+// ─── trade commands ──────────────────────────────────────────────────────────────
+
+import { registerTradeCommands } from './cashclaw-trade-commands';
+const tradeCmd = program
+  .command('trade')
+  .description('Live/paper trading management');
+registerTradeCommands(tradeCmd);
 
 // ─── parse ────────────────────────────────────────────────────────────────────
 
