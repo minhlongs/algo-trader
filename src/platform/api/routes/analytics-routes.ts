@@ -1,11 +1,12 @@
 /**
- * Analytics API Routes (Express)
+ * Analytics & Strategy Performance API Routes (Express)
  * Receives referral + conversion events from landing page analytics.js
  * Stores in data/referrals.json for attribution tracking.
  *
  * Endpoints:
  * - POST /api/analytics/event — receive tracked event (via sendBeacon)
  * - GET  /api/analytics/referrals — list referral stats (admin only)
+ * - GET  /api/v1/strategy-performance — backtest strategy results from CSV
  */
 
 import { Router, Request, Response } from 'express';
@@ -101,6 +102,100 @@ analyticsRouter.get('/referrals', requireTier('FREE'), (req: Request, res: Respo
     .map(([ref, count]) => ({ ref, count }));
 
   res.json({ total: events.length, referrals: sorted });
+});
+
+// ─── Strategy Performance (from backtest CSV) ─────────────────────────
+
+interface StrategyResult {
+  strategy: string;
+  sharpe_ratio: number;
+  win_rate_pct: number;
+  total_pnl_usd: number;
+  profit_factor: number;
+  max_drawdown_pct: number;
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  avg_pnl_per_trade_usd: number;
+  best_trade_usd: number;
+  worst_trade_usd: number;
+  duration_ms: number;
+  status: string;
+}
+
+/**
+ * Parse the backtest CSV into structured strategy result objects.
+ * Returns an empty array on any read or parse error (logged but not thrown).
+ */
+function parseStrategyCsv(): StrategyResult[] {
+  const csvPath = join(process.cwd(), 'reports', 'backtest-results.csv');
+  if (!existsSync(csvPath)) {
+    logger.warn('[StrategyPerformance] CSV not found at', { path: csvPath });
+    return [];
+  }
+
+  try {
+    const raw = readFileSync(csvPath, 'utf-8').trim();
+    if (!raw) return [];
+
+    const lines = raw.split('\n');
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(',').map((h) => h.trim());
+    const results: StrategyResult[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const vals = line.split(',');
+      if (vals.length < headers.length) continue;
+
+      const row: Record<string, string> = {};
+      for (let j = 0; j < headers.length; j++) {
+        row[headers[j]] = vals[j]?.trim() ?? '';
+      }
+
+      const totalTrades = Number(row.total_trades) || 0;
+
+      const result: StrategyResult = {
+        strategy: row.strategy ?? '',
+        sharpe_ratio: Number(row.sharpe_ratio) || 0,
+        win_rate_pct: Number(row.win_rate_pct) || 0,
+        total_pnl_usd: Number(row.total_pnl_usd) || 0,
+        profit_factor: row.profit_factor === 'Infinity' ? Infinity : Number(row.profit_factor) || 0,
+        max_drawdown_pct: Number(row.max_drawdown_pct) || 0,
+        total_trades: totalTrades,
+        winning_trades: Number(row.winning_trades) || 0,
+        losing_trades: Number(row.losing_trades) || 0,
+        avg_pnl_per_trade_usd: Number(row.avg_pnl_per_trade_usd) || 0,
+        best_trade_usd: Number(row.best_trade_usd) || 0,
+        worst_trade_usd: Number(row.worst_trade_usd) || 0,
+        duration_ms: Number(row.duration_ms) || 0,
+        status: row.status ?? '',
+      };
+
+      results.push(result);
+    }
+
+    return results;
+  } catch (err) {
+    logger.error('[StrategyPerformance] Failed to parse CSV', { err: String(err) });
+    return [];
+  }
+}
+
+/** Router mounted at /api/v1/strategy-performance */
+export const strategyPerformanceRouter: RouterType = Router();
+
+strategyPerformanceRouter.get('/', requireTier('FREE'), (_req: Request, res: Response) => {
+  try {
+    const strategies = parseStrategyCsv();
+    res.json(strategies);
+  } catch (err) {
+    logger.error('[StrategyPerformance] Handler error', { err: String(err) });
+    res.status(500).json({ error: 'Failed to load strategy performance data' });
+  }
 });
 
 // ─── Engagement Analytics (Phase 34b) ─────────────────────────────

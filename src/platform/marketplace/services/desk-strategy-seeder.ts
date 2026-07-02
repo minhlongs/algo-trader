@@ -87,7 +87,7 @@ const DESK_STRATEGIES: DeskStrategySeed[] = [
     category: 'arbitrage',
     riskLevel: 4,
     priceUsdMonthly: 12900, // $129/mo
-    tags: ['delta-neutral', 'volatility', 'arbitrage', 'polymarket', 'pairs'],
+    tags: ['delta-neutral', 'volatility', 'arbitrage', 'polymarket', 'pairs', 'featured'],
     backtestSummary: { sharpe: 2.1, maxDrawdown: 6, winRate: 65, periodDays: 90, totalTrades: 210, totalPnlUsd: 15600 },
   },
   {
@@ -98,7 +98,7 @@ const DESK_STRATEGIES: DeskStrategySeed[] = [
     category: 'statistical',
     riskLevel: 3,
     priceUsdMonthly: 7900, // $79/mo
-    tags: ['resolution', 'convergence', 'polymarket', 'low-risk'],
+    tags: ['resolution', 'convergence', 'polymarket', 'low-risk', 'featured'],
     backtestSummary: { sharpe: 2.4, maxDrawdown: 4, winRate: 72, periodDays: 180, totalTrades: 180, totalPnlUsd: 8800 },
   },
   {
@@ -120,7 +120,7 @@ const DESK_STRATEGIES: DeskStrategySeed[] = [
     category: 'statistical',
     riskLevel: 3,
     priceUsdMonthly: 8900, // $89/mo
-    tags: ['cycle', 'sniper', 'polymarket', 'timing', 'resolution'],
+    tags: ['cycle', 'sniper', 'polymarket', 'timing', 'resolution', 'featured'],
     backtestSummary: { sharpe: 2.6, maxDrawdown: 3, winRate: 78, periodDays: 120, totalTrades: 280, totalPnlUsd: 7200 },
   },
   {

@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useApiClient } from '../hooks/use-api-client';
 
-interface Trade {
+export interface Trade {
   id: string;
   date: string;
   pair: string;
