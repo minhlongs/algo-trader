@@ -14,3 +14,7 @@ Users/
 .env.production
 .env.local
 .env.*.local
+plans/
+dashboard/plans/
+landing/plans/
+.claude/cache/
