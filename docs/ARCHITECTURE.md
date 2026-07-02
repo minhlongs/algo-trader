@@ -1,5 +1,9 @@
 # Architecture
 
+> **DEPRECATED (2026-07-02):** This document describes the pre-separation architecture (flat `src/` structure). The codebase was reorganized into 3 bounded contexts on 2026-06-30. See [`docs/system-architecture.md`](./system-architecture.md) for the current architecture.
+>
+> The content below is preserved for historical reference of the original engine design.
+
 ## Trading Engine Flow
 
 ```

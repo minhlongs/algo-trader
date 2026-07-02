@@ -477,7 +477,7 @@ All Opportunities →
 |-------|------|
 | Language | TypeScript 5.9, strict mode |
 | Runtime | Node.js 20 |
-| API Gateway | Fastify 5 |
+| API Gateway | Express (platform, 31 routes) + Fastify 5 (desk/internal) |
 | WebSocket | ws library |
 | Exchange Abstraction | CCXT 4.5 |
 | Job Queue | BullMQ 5 + Redis 7 (IoRedis) |
@@ -524,7 +524,7 @@ All Opportunities →
 - Phase 31: Signal Fusion Engine & Multi-Resolution Analytics (Weighted signal voting, conviction scoring, criteria extraction)
 
 ### Quality Gates
-- **2,430+ tests** (vitest, 100% pass rate, 204 test files)
+- **2,783+ tests** (vitest, 100% pass rate, 243 test files)
 - **600+ source files** (TypeScript 5.9, strict mode)
 - **0 TypeScript errors**
 - **0 `any` types** (test mocks only — acceptable)

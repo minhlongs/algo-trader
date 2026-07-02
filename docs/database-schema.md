@@ -1,11 +1,13 @@
 # Database Schema
 
+> **NOTE (2026-07-02):** This document is a partial reference showing the original `trades` table schema. The full Prisma schema is defined in `prisma/schema.prisma` and includes 9+ models (Tenant, Strategy, Order, Trade, ApiKey, BacktestResult, Candle, PnlSnapshot, AlertRule) plus marketplace tables (marketplace_strategies, marketplace_subscriptions, marketplace_reviews, marketplace_disputes, marketplace_backtests, community_strategies), billing tables (invoices, coupons, licenses), audit tables, referral tables, KYC tables, and more.
+
 ## Storage Overview
 
 | Store | Type | Purpose |
 |-------|------|---------|
-| PostgreSQL | Relational DB | Trades, P&L, audit logs |
-| Redis | In-memory / KV | Paper trading state, signals cache, pubsub |
+| PostgreSQL | Relational DB (Prisma ORM) | Trades, P&L, audit logs, marketplace, billing, referrals |
+| Redis | In-memory / KV | Paper trading state, signals cache, pubsub, rate limiting |
 | JSON file (`data/licenses.json`) | File | License records (persistent) |
 
 ---

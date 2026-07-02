@@ -1,6 +1,6 @@
 # Phase 3: Marketplace End-to-End
 
-**Status:** planning → phase-01 in_progress
+**Status: superseded — work completed under larger plans
 **Start:** 2026-07-01 00:30
 **Goal:** Marketplace từ "code complete" → "production complete" (listing → subscribe → pay → execute → revenue)
 

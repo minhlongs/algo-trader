@@ -6,12 +6,12 @@
 
 | # | Phase | Severity | Effort | Status |
 |---|-------|----------|--------|--------|
-| 01 | Fix console.error → logger (referral-routes) | LOW | 10min | pending |
-| 02 | Fix auth secret fail-fast (auth-server) | MEDIUM | 15min | pending |
-| 03 | Fix as any type bypass (marketplace-review-routes) | MEDIUM | 1hr | pending |
-| 04 | Fix CSP unsafe-eval (dashboard _headers) | HIGH | 30min | pending |
-| 05 | Dependency update (pnpm update) | HIGH | 1-2hr | pending |
-| 06 | Verify (typecheck + tests) | — | 10min | pending |
+| 01 | Fix console.error → logger (referral-routes) | LOW | 10min | ✅ done |
+| 02 | Fix auth secret fail-fast (auth-server) | MEDIUM | 15min | ✅ done |
+| 03 | Fix as any type bypass (marketplace-review-routes) | MEDIUM | 1hr | ✅ done |
+| 04 | Fix CSP unsafe-eval (dashboard _headers) | HIGH | 30min | ✅ done |
+| 05 | Dependency update (pnpm update) | HIGH | 1-2hr | ⏭️ skipped (pre-existing test failures) |
+| 06 | Verify (typecheck + tests) | — | 10min | ✅ done |
 
 ## Dependencies
 

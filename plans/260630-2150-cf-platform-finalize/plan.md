@@ -1,6 +1,6 @@
 # Plan — CF Platform Finalize + Go-Live
 
-**Date:** 2026-06-30 | **Status:** in_progress
+**Date:** 2026-06-30 | **Status:** superseded — see plans/260702-1411-go-live-week-1
 **Mode:** --deep --parallel | **Desk compute:** User MacBook M1 Max (out of scope)
 
 ## Context
