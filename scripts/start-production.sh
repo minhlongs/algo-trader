@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
-COMPOSE_FILES="-f docker-compose.yml -f docker/monitoring/docker-compose.monitoring.yml"
+COMPOSE_FILES="-f docker-compose.yml"
 DETACH=""
 
 for arg in "$@"; do
@@ -63,8 +63,9 @@ if [ -n "$DETACH" ]; then
   echo "=== Endpoints ==="
   echo "  API:        http://localhost:3000"
   echo "  Dashboard:  http://localhost:3001"
-  echo "  Grafana:    http://localhost:3030 (admin/changeme)"
-  echo "  Prometheus: http://localhost:9090"
+  echo "  Grafana:    http://localhost:3001 (admin/${GRAFANA_PASSWORD:-admin})"
+  echo "  Prometheus: http://localhost:9092"
+  echo "  Alertmanager: http://localhost:9093"
   echo "  NATS:       http://localhost:8222"
   echo "  Redis:      localhost:6379"
 fi
