@@ -393,7 +393,17 @@ Before deploying to production:
 
 - [ ] All environment variables configured
 - [ ] Database migrations applied
-- [ ] SSL certificates configured (reverse proxy)
+- [ ] SSL/TLS configured
+  - **CF Worker endpoints**: Automatic via Cloudflare (no action needed)
+  - **Docker/VPS endpoints**: Set up reverse proxy with Let's Encrypt:
+    ```bash
+    # Install Caddy (auto-HTTPS) or nginx + certbot
+    # Caddy example:
+    #   caddy reverse-proxy --from api.cashclaw.cc:443 --to localhost:3000
+    # Certbot example:
+    #   sudo certbot --nginx -d api.cashclaw.cc
+    ```
+  - **Verify**: `curl -vI https://your-domain.com/api/health 2>&1 | grep "SSL connection"`
 - [ ] Monitoring stack verified (Grafana dashboards loading)
 - [ ] Alert thresholds configured
 - [ ] Notification channels tested

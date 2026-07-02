@@ -104,7 +104,7 @@ services:
       - algo-net
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.51.0
     container_name: algo-trade-prometheus
     restart: unless-stopped
     ports:
@@ -116,11 +116,12 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
     networks:
       - algo-net
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.4.0
     container_name: algo-trade-grafana
     restart: unless-stopped
     ports:
@@ -138,7 +139,7 @@ services:
       - algo-net
 
   alertmanager:
-    image: prom/alertmanager:latest
+    image: prom/alertmanager:v0.27.0
     container_name: algo-trade-alertmanager
     restart: unless-stopped
     ports:
