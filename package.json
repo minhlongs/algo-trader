@@ -36,7 +36,7 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "test:load": "k6 run tests/load/raas-gateway-load-test.js",
-    "test:load:ci": "k6 run --quiet tests/load/raas-gateway-load-test.js",
+    "test:load:ci": "k6 run --quiet tests/load/raas-gateway-load-test.ci.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --max-warnings 100",
     "dashboard:dev": "cd dashboard && npx vite",

@@ -1,0 +1,52 @@
+# Caddy Reverse Proxy — Auto-HTTPS with Let's Encrypt
+# ============================================================
+# Usage:
+#   docker compose -f docker-compose.yml -f docker/caddy/docker-compose.caddy.yml up -d
+#
+# Or integrate into start-production.sh:
+#   export CADDY_ENABLED=true
+#   ./scripts/start-production.sh [--with-caddy]
+#
+# Caddy automatically:
+#   - Obtains TLS certificates from Let's Encrypt
+#   - Renews certificates 30 days before expiry
+#   - Redirects HTTP -> HTTPS
+#   - Handles ACME challenges on port 80
+#
+# Prerequisites:
+#   1. DNS A-records pointing to your VPS IP
+#      - api.your-domain.com
+#      - monitoring.your-domain.com
+#   2. Ports 80 and 443 open on your firewall
+# ============================================================
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: algo-trade-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - TZ=UTC
+    networks:
+      - algo-net
+    depends_on:
+      - algo-trade
+      - grafana
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local

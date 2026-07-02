@@ -168,7 +168,7 @@ jobs:
     name: Production Health Check
     runs-on: ubuntu-latest
     needs: deploy
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Wait for deployment
@@ -185,3 +185,20 @@ jobs:
       - name: Verify Grafana
         run: |
           curl -f https://${{ secrets.VPS_HOST }}/grafana/login || exit 1
+
+      # ════════════════════════════════════════════════════════════
+      # k6 Load Test (post-deploy smoke check)
+      # ════════════════════════════════════════════════════════════
+      - name: Checkout code for k6 script
+        uses: actions/checkout@v4
+
+      - name: k6 Load Test (CI variant)
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: tests/load/raas-gateway-load-test.ci.js
+          flags: --summary-trend-stats="avg,p(95),p(99)"
+        env:
+          API_HOST: ${{ secrets.VPS_HOST }}
+          API_PORT: '443'
+          VUS: '50'
+          DURATION: 20s

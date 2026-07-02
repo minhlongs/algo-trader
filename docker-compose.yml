@@ -46,20 +46,32 @@ services:
       - algo-net
 
   # Redis — cache, pub/sub fallback, nonce manager, semantic cache, embeddings
+  # Persistence: AOF + RDB via config/redis.conf
+  # Auth: password via REDIS_PASSWORD env var (optional — backward compatible)
+  # If REDIS_PASSWORD is set, --requirepass is added; otherwise no auth required.
   redis:
     image: redis:7-alpine
     container_name: algo-trade-redis
     restart: unless-stopped
     ports:
       - '6380:6379'
-    command: ['redis-server', '--maxmemory', '512mb', '--maxmemory-policy', 'allkeys-lru']
+    command:
+      - 'sh'
+      - '-c'
+      # $$ escapes docker-compose var substitution; shell expands at runtime
+      # If REDIS_PASSWORD is empty/unset, --requirepass is omitted (backward compatible)
+      - 'redis-server /usr/local/etc/redis/redis.conf $${REDIS_PASSWORD:+--requirepass $${REDIS_PASSWORD}}'
     volumes:
       - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD-SHELL', 'if [ -n "$$REDIS_PASSWORD" ]; then redis-cli -a "$$REDIS_PASSWORD" ping; else redis-cli ping; fi']
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 5s
     networks:
       - algo-net
 

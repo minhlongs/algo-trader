@@ -17,6 +17,10 @@ for arg in "$@"; do
       COMPOSE_FILES="$COMPOSE_FILES -f docker/timescaledb/docker-compose.timescaledb.yml"
       echo "[+] TimescaleDB enabled"
       ;;
+    --with-caddy)
+      COMPOSE_FILES="$COMPOSE_FILES -f docker/caddy/docker-compose.caddy.yml"
+      echo "[+] Caddy reverse proxy (auto-HTTPS) enabled"
+      ;;
     --detach|-d)
       DETACH="-d"
       ;;

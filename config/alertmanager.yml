@@ -1,3 +1,15 @@
+# Alertmanager Configuration — Algo-Trader
+# ============================================================
+# Routes: critical alerts repeat every 1h, warnings every 4h.
+# Default receiver: webhook (configure ALERT_WEBHOOK_URL).
+# For Telegram: use Grafana contact points (already configured
+# in grafana/provisioning/contact-points.yml).
+#
+# To enable native Telegram Alertmanager receiver:
+#   Create config/alertmanager.yml.tpl with ${TELEGRAM_BOT_TOKEN}
+#   and use envsubst entrypoint (see notes in docker/alertmanager/)
+# ============================================================
+
 route:
   group_by: ['alertname', 'severity']
   group_wait: 30s
@@ -9,10 +21,6 @@ route:
         severity: critical
       receiver: 'critical'
       repeat_interval: 1h
-    - match:
-        severity: warning
-      receiver: 'default'
-      repeat_interval: 4h
 
 receivers:
   - name: 'default'
