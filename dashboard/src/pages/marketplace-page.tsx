@@ -6,11 +6,13 @@
  *  - My Subscriptions — manage active/paused subscriptions, view P&L
  */
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useMarketplace } from '../hooks/use-marketplace';
 import type { MarketplaceSubscription, StrategyFilters } from '../hooks/use-marketplace';
 import { ConfirmationDialog } from '../components/confirmation-dialog';
 import { SubscriptionDetail } from '../components/subscription-detail';
 import type { ExecutionRecord } from '../components/subscription-detail';
+import { BacktestResults } from '../components/backtest-results';
 
 const CATEGORIES = ['arbitrage', 'momentum', 'mean-reversion', 'statistical', 'portfolio', 'risk', 'hedging', 'other'];
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -48,6 +50,7 @@ export function MarketplacePage() {
   const [executing, setExecuting] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  const [subscribeSuccess, setSubscribeSuccess] = useState(false);
   const [pollingPayment, setPollingPayment] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<MarketplaceSubscription | null>(null);
   const [executionHistory, setExecutionHistory] = useState<Map<string, ExecutionRecord>>(new Map());
@@ -81,13 +84,14 @@ export function MarketplacePage() {
     if (!subscribeModal) return;
     setSubscribing(true);
     setSubscribeError(null);
+    setSubscribeSuccess(false);
     try {
       const result = await subscribe(subscribeModal.listingId, allocPercent);
       if (result?.checkoutUrl) {
         setCheckoutUrl(result.checkoutUrl);
       } else {
-        setSubscribeModal(null);
-        setCheckoutUrl(null);
+        // Free subscription — show success briefly
+        setSubscribeSuccess(true);
         loadSubscriptions();
       }
     } catch (err) {
@@ -100,8 +104,9 @@ export function MarketplacePage() {
   const handleCheckPayment = useCallback(async () => {
     if (!subscribeModal) return;
     setPollingPayment(true);
+    setSubscribeError(null);
     const maxAttempts = 10;
-    const intervalMs = 3000;
+    const intervalMs = 5000;
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise((r) => setTimeout(r, intervalMs));
       const subs = await loadSubscriptions();
@@ -110,16 +115,13 @@ export function MarketplacePage() {
         (s) => s.status === 'active' && s.listingId === subscribeModal.listingId,
       );
       if (found) {
-        setSubscribeModal(null);
-        setCheckoutUrl(null);
         setPollingPayment(false);
+        setSubscribeSuccess(true);
         return;
       }
     }
     setPollingPayment(false);
-    setSubscribeModal(null);
-    setCheckoutUrl(null);
-    loadSubscriptions();
+    setSubscribeError('Payment not detected yet. If you already paid, the system may take a few minutes to process. Please try again later.');
   }, [subscribeModal, loadSubscriptions]);
 
   const handlePauseResume = useCallback(async (sub: MarketplaceSubscription) => {
@@ -319,6 +321,13 @@ export function MarketplacePage() {
                       </div>
                     )}
 
+                    {/* Backtest history (expandable) */}
+                    {isSubbed && (
+                      <div className="border-t border-bg-border pt-2">
+                        <BacktestResults strategyId={s.id} />
+                      </div>
+                    )}
+
                     {/* CTA */}
                     {isSubbed ? (
                       <div className="text-center text-[10px] text-accent font-bold py-1.5 border border-accent/30 rounded">
@@ -432,7 +441,7 @@ export function MarketplacePage() {
 
       {/* Subscribe Modal */}
       {subscribeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setSubscribeModal(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => { setSubscribeModal(null); setCheckoutUrl(null); setSubscribeError(null); setSubscribeSuccess(false); }}>
           <div
             className="bg-bg-surface border border-bg-border rounded-xl p-6 w-full max-w-sm space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -441,81 +450,168 @@ export function MarketplacePage() {
               <h2 className="text-white font-bold text-sm">Subscribe</h2>
               <button
                 type="button"
-                onClick={() => setSubscribeModal(null)}
+                onClick={() => { setSubscribeModal(null); setCheckoutUrl(null); setSubscribeError(null); setSubscribeSuccess(false); }}
                 className="text-muted hover:text-white text-lg leading-none"
               >
                 ×
               </button>
             </div>
 
-            <p className="text-muted text-xs">
-              Subscribe to <span className="text-white">{subscribeModal.strategyName}</span>
-            </p>
-
-            <div className="space-y-2">
-              <label className="text-[10px] text-muted block">
-                Allocation Percentage
-              </label>
-              <input
-                type="range"
-                min={1}
-                max={100}
-                value={allocPercent}
-                onChange={(e) => setAllocPercent(Number(e.target.value))}
-                className="w-full accent-accent"
-              />
-              <div className="flex justify-between text-[10px] text-muted">
-                <span>1%</span>
-                <span className="text-accent font-bold">{allocPercent}%</span>
-                <span>100%</span>
-              </div>
-            </div>
-
-            {subscribeModal.priceCents > 0 && (
-              <p className="text-xs text-white">
-                Price: <span className="text-gold font-bold">${(subscribeModal.priceCents / 100).toFixed(2)}/mo</span>
-              </p>
-            )}
-
-            {subscribeError && (
-              <p className="text-xs text-red-400">{subscribeError}</p>
-            )}
-
-            {checkoutUrl ? (
-              <div className="space-y-3">
-                <p className="text-xs text-yellow-400">
-                  Complete payment to activate your subscription:
-                </p>
-                <a
-                  href={checkoutUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-center text-xs font-bold bg-accent text-bg py-2.5 rounded hover:bg-accent/80 transition-colors"
-                >
-                  Pay with USDT (NOWPayments)
-                </a>
+            {subscribeSuccess ? (
+              /* ── Success State ── */
+              <div className="space-y-4 py-4 text-center">
+                <div className="w-16 h-16 mx-auto rounded-full bg-profit/20 flex items-center justify-center">
+                  <span className="text-profit text-3xl font-bold">✓</span>
+                </div>
+                <div>
+                  <p className="text-white font-bold text-sm">Strategy Activated!</p>
+                  <p className="text-muted text-xs mt-1">
+                    Your subscription to{' '}
+                    <span className="text-white">{subscribeModal.strategyName}</span>{' '}
+                    is now active.
+                  </p>
+                </div>
+                <div className="border-t border-bg-border pt-3 mt-2">
+                  <p className="text-[10px] text-muted mb-2">
+                    Refer friends and earn 10% of their fees.{' '}
+                    <Link to="/app/referral" className="text-accent hover:underline">
+                      Learn more
+                    </Link>
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={handleCheckPayment}
-                  disabled={pollingPayment}
-                  className="w-full text-center text-[10px] text-muted hover:text-white disabled:opacity-50"
+                  onClick={() => { setSubscribeModal(null); setCheckoutUrl(null); setSubscribeError(null); setSubscribeSuccess(false); setPollingPayment(false); }}
+                  className="px-6 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors"
                 >
-                  {pollingPayment ? 'Checking payment status...' : 'I already paid'}
+                  Done
                 </button>
               </div>
+            ) : subscribing ? (
+              /* ── Loading State (checkout URL generating) ── */
+              <div className="space-y-4 py-4 text-center">
+                <div className="flex justify-center">
+                  <svg className="animate-spin h-8 w-8 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                </div>
+                <p className="text-muted text-xs">
+                  Generating checkout URL...
+                </p>
+                <p className="text-muted text-[10px]">
+                  Please wait while we prepare your payment link.
+                </p>
+              </div>
+            ) : checkoutUrl ? (
+              /* ── Payment Pending State ── */
+              <div className="space-y-3">
+                {subscribeError && (
+                  <div className="bg-loss/10 border border-loss/30 rounded p-3 text-xs text-loss">
+                    {subscribeError}
+                  </div>
+                )}
+                <p className="text-xs text-yellow-400 font-medium">
+                  Complete payment to activate your subscription:
+                </p>
+
+                {/* Checkout link */}
+                <div className="bg-bg-surface/50 border border-bg-border rounded p-3">
+                  <p className="text-[10px] text-muted mb-2">Send USDT payment via:</p>
+                  <a
+                    href={checkoutUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-center text-xs font-bold bg-accent text-bg py-2.5 rounded hover:bg-accent/80 transition-colors"
+                  >
+                    Pay with USDT (NOWPayments)
+                  </a>
+                </div>
+
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleCheckPayment}
+                    disabled={pollingPayment}
+                    className="w-full text-center text-xs font-bold bg-accent/20 text-accent border border-accent/30 py-2 rounded hover:bg-accent/30 disabled:opacity-50 transition-colors"
+                  >
+                    {pollingPayment ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        Checking payment status...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        I've paid
+                      </span>
+                    )}
+                  </button>
+                  <p className="text-[10px] text-muted text-center">
+                    After sending payment, click "I've paid" to verify. Status checks every 5 seconds.
+                  </p>
+                </div>
+              </div>
             ) : (
-              <button
-                type="button"
-                onClick={handleSubscribe}
-                disabled={subscribing}
-                className="w-full text-xs font-bold bg-accent text-bg py-2.5 rounded hover:bg-accent/80 transition-colors disabled:opacity-50"
-              >
-                {subscribing
-                  ? 'Subscribing...'
-                  : subscribeModal.priceCents > 0
+              /* ── Subscribe Form ── */
+              <>
+                <p className="text-muted text-xs">
+                  Subscribe to <span className="text-white">{subscribeModal.strategyName}</span>
+                </p>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] text-muted block">
+                    Allocation Percentage
+                  </label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={100}
+                    value={allocPercent}
+                    onChange={(e) => setAllocPercent(Number(e.target.value))}
+                    className="w-full accent-accent"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted">
+                    <span>1%</span>
+                    <span className="text-accent font-bold">{allocPercent}%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+
+                {subscribeModal.priceCents > 0 && (
+                  <p className="text-xs text-white">
+                    Price: <span className="text-gold font-bold">${(subscribeModal.priceCents / 100).toFixed(2)}/mo</span>
+                  </p>
+                )}
+
+                {subscribeError && (
+                  <div className="bg-loss/10 border border-loss/30 rounded p-3 text-xs text-loss">
+                    {subscribeError}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSubscribe}
+                  className="w-full text-xs font-bold bg-accent text-bg py-2.5 rounded hover:bg-accent/80 transition-colors"
+                >
+                  {subscribeModal.priceCents > 0
                     ? `Subscribe — $${(subscribeModal.priceCents / 100).toFixed(2)}/mo`
                     : 'Subscribe (Free)'}
-              </button>
+                </button>
+
+                {subscribeError && (
+                  <button
+                    type="button"
+                    onClick={handleSubscribe}
+                    className="w-full text-center text-[10px] text-accent hover:text-white transition-colors"
+                  >
+                    Retry
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

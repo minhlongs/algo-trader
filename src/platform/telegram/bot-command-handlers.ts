@@ -8,6 +8,7 @@ import type { Context } from 'grammy';
 import { getRedisClient } from '../../redis';
 import { formatTelegramMessage, getTelegramActionMessage, generateTelegramProgressBar, getShortKey } from '../notifications/alert-formatter';
 import type { UserSession } from './bot';
+import { MarketplaceService } from '../../platform/marketplace/services/marketplace.service';
 
 // Re-export types used by handlers for convenience
 export type { UserSession };
@@ -23,6 +24,8 @@ I'll send you instant alerts when your API usage reaches critical thresholds.
 *Available Commands:*
 /help - Show this help message
 /status - Check your current usage
+/campaign - Browse marketplace strategies
+/results - View subscription P&L
 /link - Link a license key
 /unlink - Unlink a license key
 /notifications - Toggle alerts
@@ -44,6 +47,9 @@ export async function handleHelp(ctx: Context): Promise<void> {
 /start - Welcome message
 /help - Show this help
 /status - Current usage stats
+/campaign - Browse marketplace strategies
+/campaign <id> — Strategy details
+/results - View subscription P&L
 /link <key> - Link license key
 /unlink <key> - Unlink license key
 /notifications - Toggle on/off
@@ -311,6 +317,124 @@ export async function handlePnl(ctx: Context, userSessions: Map<number, UserSess
   `.trim();
 
   await ctx.reply(pnlMessage, { parse_mode: 'Markdown' });
+}
+
+// -- /campaign -------------------------------------------------------------
+
+export async function handleCampaign(ctx: Context): Promise<void> {
+  const text = (ctx.message as { text?: string })?.text || '';
+  const parts = text.split(' ');
+
+  // /campaign <id> — strategy detail
+  if (parts.length > 1) {
+    const strategyId = parts[1]!;
+    try {
+      const service = MarketplaceService.getInstance();
+      const detail = await service.getStrategyWithDetails(strategyId);
+      if (!detail) {
+        await ctx.reply('❌ Strategy not found.');
+        return;
+      }
+      const s = detail.strategy;
+      const price = s.listingPriceUsdMonthly != null
+        ? `$${(s.listingPriceUsdMonthly / 100).toFixed(2)}/month`
+        : 'Free';
+      const msg = `
+📊 *${s.name}*
+
+${s.description}
+
+*Price:* ${price}
+*Category:* ${s.category}
+*Risk Level:* ${'🔴'.repeat(s.riskLevel) || 'N/A'}
+*Tags:* ${s.tags.join(', ') || 'None'}
+      `.trim();
+      await ctx.reply(msg, { parse_mode: 'Markdown' });
+    } catch (error) {
+      await ctx.reply('❌ Could not fetch strategy details. Please try again.');
+    }
+    return;
+  }
+
+  // /campaign — list published strategies
+  try {
+    const service = MarketplaceService.getInstance();
+    const result = await service.listStrategies({ status: 'approved', limit: 20 });
+    if (!result.data.length) {
+      await ctx.reply('📭 No strategies currently available in the marketplace.');
+      return;
+    }
+    const lines = result.data.map((s, i) => {
+      const price = s.listingPriceUsdMonthly != null
+        ? `$${(s.listingPriceUsdMonthly / 100).toFixed(2)}/mo`
+        : 'Free';
+      return `${i + 1}. *${s.name}* — ${price}\n   ${(s.description || '').slice(0, 120)}${s.description?.length > 120 ? '…' : ''}`;
+    });
+    const msg = `
+📢 *Marketplace Campaigns*
+
+${lines.join('\n\n')}
+
+Use /campaign <id> for details.
+    `.trim();
+    await ctx.reply(msg, { parse_mode: 'Markdown' });
+  } catch (error) {
+    await ctx.reply('❌ Could not fetch marketplace campaigns. Please try again later.');
+  }
+}
+
+// -- /results --------------------------------------------------------------
+
+export async function handleResults(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+  const userId = ctx.from?.id;
+  if (!userId) return;
+
+  const session = userSessions.get(userId);
+  if (!session || session.licenseKeys.length === 0) {
+    await ctx.reply('No license keys linked. Use /link <your-key> to get started.');
+    return;
+  }
+
+  const redis = getRedisClient();
+  let totalRealized = 0;
+  let totalUnrealized = 0;
+  let totalTrades = 0;
+  let totalWins = 0;
+
+  for (const key of session.licenseKeys) {
+    try {
+      const pnlData = await redis.hgetall(`pnl:${key}`);
+      if (pnlData && pnlData.realized != null) {
+        totalRealized += parseFloat(pnlData.realized as string || '0');
+        totalUnrealized += parseFloat(pnlData.unrealized as string || '0');
+        totalTrades += parseInt(pnlData.totalTrades as string || '0', 10);
+        totalWins += parseInt(pnlData.winningTrades as string || '0', 10);
+      }
+    } catch {
+      // Skip keys with no P&L data
+    }
+  }
+
+  const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : '0';
+  const losses = totalTrades - totalWins;
+  const totalPnl = totalRealized + totalUnrealized;
+
+  const msg = `
+📈 *Subscription Results (Aggregated)*
+
+*Across:* ${session.licenseKeys.length} linked key(s)
+
+*Realized P&L:* $${totalRealized.toFixed(2)}
+*Unrealized P&L:* $${totalUnrealized.toFixed(2)}
+*Total P&L:* $${totalPnl.toFixed(2)}
+
+*Trades:* ${totalTrades}
+*Wins:* ${totalWins}
+*Losses:* ${losses}
+*Win Rate:* ${winRate}%
+  `.trim();
+
+  await ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 
 // -- Alert formatting helpers (thin wrappers kept for cohesion) -----------
