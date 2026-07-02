@@ -36,7 +36,6 @@ fi
 echo "[OK] .env found"
 
 # Create shared network (for override files with external: true)
-docker network create algo-trader_algo-net 2>/dev/null || true
 echo "[OK] Network algo-trader_algo-net ready"
 
 # Pull images
