@@ -11,7 +11,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
 
 # Bypass minimum-release-age check for Docker build (lockfile already verified by CI)
-ENV PNPM_MINIMUM_RELEASE_AGE=0
+ENV npm_config_minimum_release_age=0
 
 # Install ALL deps (including dev) for build
 RUN pnpm install --frozen-lockfile --ignore-scripts
@@ -35,7 +35,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY package.json pnpm-lock.yaml* ./
 
-ENV PNPM_MINIMUM_RELEASE_AGE=0
+ENV npm_config_minimum_release_age=0
 
 # Production deps only — no build tools in runner
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
