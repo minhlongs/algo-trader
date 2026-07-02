@@ -65,6 +65,13 @@ export const NOWPAYMENTS_TIERS: Record<string, NowPaymentsTierConfig> = {
     currency: 'USD',
     name: 'Enterprise',
   },
+  MASTER: {
+    tier: LicenseTier.MASTER,
+    invoiceId: process.env.NOWPAYMENTS_INVOICE_MASTER || '',
+    price: 999,
+    currency: 'USD',
+    name: 'Master Trader',
+  },
 };
 
 export class NowPaymentsService {

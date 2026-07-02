@@ -29,7 +29,7 @@ const VALID_STATUSES: EnterpriseInquiryStatus[] = [
 ];
 
 /** POST /inquiries — public endpoint: submit enterprise contact form */
-enterpriseInquiryRouter.post('/inquiries', requireTier('ENTERPRISE'), async (req: Request, res: Response): Promise<void> => {
+enterpriseInquiryRouter.post('/inquiries', requireTier('FREE'), async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, companyName, contactName, tier, useCase, teamSize } = req.body as Record<string, string>;
 

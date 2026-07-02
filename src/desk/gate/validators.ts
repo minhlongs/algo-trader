@@ -51,6 +51,7 @@ export function getTierLevel(tier: LicenseTier): number {
     case LicenseTier.FREE: return 0;
     case LicenseTier.PRO: return 1;
     case LicenseTier.ENTERPRISE: return 2;
+    case LicenseTier.MASTER: return 3;
     default: return 0;
   }
 }

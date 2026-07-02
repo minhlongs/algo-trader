@@ -75,6 +75,7 @@ export function createLandingServer(port: number): Server {
       // Route friendly URLs to their HTML files
       const routeMap: Record<string, string> = {
         '/': '/index.html',
+        '/pricing': '/pricing.html',
         '/blog': '/blog.html',
         '/status': '/status.html',
         '/register': '/register.html',

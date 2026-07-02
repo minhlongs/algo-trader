@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pricing — AlgoTrader RaaS | Prediction Market Strategy Platform</title>
+  <meta name="description" content="Compare FREE, PRO, ENTERPRISE, and MASTER tier plans. AI-powered prediction market strategies with Kelly Criterion sizing. Start free, upgrade as you grow." />
+  <link rel="canonical" href="https://cashclaw.cc/pricing" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://cashclaw.cc/pricing" />
+  <meta property="og:title" content="Pricing — AlgoTrader RaaS" />
+  <meta property="og:description" content="AI prediction market strategies. Free tier available. PRO from $99/mo." />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Pricing — AlgoTrader RaaS" />
+
+  <!-- Analytics -->
+  <script defer data-domain="cashclaw.cc" src="https://plausible.io/js/script.js"></script>
+
+  <link rel="stylesheet" href="/ui/design-system/tokens.css" />
+  <link rel="stylesheet" href="/ui/design-system/components.css" />
+  <style>
+    .page-header {
+      text-align: center;
+      padding: var(--space-12) var(--space-6) var(--space-8);
+    }
+    .page-header h1 {
+      font-family: var(--font-ui);
+      font-size: var(--text-hero);
+      font-weight: var(--weight-black);
+      color: var(--text-primary);
+      margin-bottom: var(--space-4);
+      letter-spacing: -1px;
+    }
+    .page-header p {
+      font-size: var(--text-lg);
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* -- Toggle: Monthly / Annual -- */
+    .billing-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-10);
+    }
+    .billing-toggle label {
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .billing-toggle label.active {
+      color: var(--text-primary);
+    }
+    .toggle-track {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      background: var(--border-subtle);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    .toggle-track.active {
+      background: var(--color-accent);
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: var(--text-primary);
+      border-radius: 50%;
+      transition: transform var(--transition-fast);
+    }
+    .toggle-track.active .toggle-thumb {
+      transform: translateX(22px);
+    }
+    .save-badge {
+      font-size: var(--text-xs);
+      background: var(--color-accent-dim);
+      color: var(--color-accent);
+      padding: var(--space-1) var(--space-3);
+      border-radius: 999px;
+      font-weight: var(--weight-semibold);
+    }
+
+    /* -- Pricing cards grid -- */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-4);
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--space-6) var(--space-12);
+    }
+    .price-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      transition: box-shadow var(--transition-base), border-color var(--transition-base);
+    }
+    .price-card:hover {
+      border-color: var(--border-default);
+    }
+    .price-card--popular {
+      border-color: var(--color-accent);
+      box-shadow: var(--shadow-accent);
+    }
+    .price-card--popular:hover {
+      border-color: var(--color-accent);
+    }
+    .price-tag {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--color-accent);
+      color: #0B0E11;
+      font-size: var(--text-xs);
+      font-weight: var(--weight-bold);
+      padding: var(--space-1) var(--space-4);
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .price-tier-name {
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: var(--space-1);
+    }
+    .price-amount {
+      font-family: var(--font-data);
+      font-size: 42px;
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-1);
+      line-height: 1.1;
+    }
+    .price-amount .period {
+      font-size: var(--text-base);
+      color: var(--text-tertiary);
+      font-weight: var(--weight-normal);
+    }
+    .price-amount .annual-note {
+      display: block;
+      font-size: var(--text-xs);
+      color: var(--text-tertiary);
+      font-weight: var(--weight-normal);
+      margin-top: var(--space-1);
+    }
+    .price-desc {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-6);
+      line-height: var(--leading-relaxed);
+      min-height: 3em;
+    }
+    .price-features {
+      list-style: none;
+      margin-bottom: var(--space-6);
+      flex: 1;
+    }
+    .price-features li {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      padding: var(--space-2) 0;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-2);
+    }
+    .price-features li .check {
+      color: var(--color-accent);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .price-features li .na {
+      color: var(--text-tertiary);
+      flex-shrink: 0;
+      opacity: 0.4;
+    }
+    .price-card .cc-button {
+      width: 100%;
+      text-align: center;
+      margin-top: auto;
+    }
+
+    /* -- Tier comparison table -- */
+    .comparison-section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 var(--space-6) var(--space-16);
+    }
+    .comparison-section h2 {
+      text-align: center;
+      font-size: var(--text-2xl);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-8);
+    }
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--text-sm);
+    }
+    .comparison-table th,
+    .comparison-table td {
+      padding: var(--space-3) var(--space-4);
+      text-align: center;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .comparison-table th {
+      font-weight: var(--weight-semibold);
+      color: var(--text-primary);
+      text-transform: uppercase;
+      font-size: var(--text-xs);
+      letter-spacing: 0.5px;
+    }
+    .comparison-table td:first-child {
+      text-align: left;
+      color: var(--text-secondary);
+      font-weight: var(--weight-medium);
+    }
+    .comparison-table td .check { color: var(--color-accent); }
+    .comparison-table td .na { color: var(--text-tertiary); opacity: 0.4; }
+    .comparison-table tr:hover td {
+      background: var(--bg-hover);
+    }
+    .section-label td {
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      text-align: left !important;
+      padding-top: var(--space-5);
+      border-bottom: 2px solid var(--border-default);
+    }
+
+    /* -- FAQ -- */
+    .faq-section {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 0 var(--space-6) var(--space-16);
+    }
+    .faq-section h2 {
+      text-align: center;
+      font-size: var(--text-2xl);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-8);
+    }
+    .faq-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: var(--space-3);
+    }
+    .faq-item summary {
+      padding: var(--space-4) var(--space-6);
+      font-weight: var(--weight-semibold);
+      font-size: var(--text-sm);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background var(--transition-fast);
+    }
+    .faq-item summary:hover { background: var(--bg-hover); }
+    .faq-item summary::after {
+      content: '+';
+      font-family: var(--font-data);
+      font-size: var(--text-lg);
+      color: var(--text-tertiary);
+      transition: transform var(--transition-base);
+    }
+    .faq-item[open] summary::after { transform: rotate(45deg); }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-answer {
+      padding: 0 var(--space-6) var(--space-4);
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+
+    /* -- Footer -- */
+    .pricing-footer {
+      text-align: center;
+      padding: var(--space-8) var(--space-6);
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-tertiary);
+      font-size: var(--text-xs);
+    }
+
+    /* -- Responsive -- */
+    @media (max-width: 1024px) {
+      .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; }
+      .page-header h1 { font-size: var(--text-3xl); }
+      .price-amount { font-size: 36px; }
+      .comparison-section { overflow-x: auto; }
+    }
+    html { scroll-behavior: smooth; }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="cc-nav">
+  <a href="/" class="cc-nav-logo">AlgoTrader</a>
+  <ul class="cc-nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/pricing" class="active">Pricing</a></li>
+  </ul>
+  <a href="/register" class="cc-button cc-button--primary">Get Started Free</a>
+</nav>
+
+<!-- Header -->
+<section class="page-header">
+  <h1>Choose Your Edge</h1>
+  <p>AI-powered prediction market strategies at every scale. Start free, upgrade when you grow.</p>
+</section>
+
+<!-- Billing Toggle -->
+<div class="billing-toggle">
+  <label id="label-monthly" class="active">Monthly</label>
+  <div class="toggle-track active" id="toggle-track" role="button" tabindex="0" aria-label="Toggle monthly/annual billing">
+    <div class="toggle-thumb"></div>
+  </div>
+  <label id="label-annual">Annual</label>
+  <span class="save-badge">Save 20%</span>
+</div>
+
+<!-- Pricing Cards -->
+<div class="pricing-grid" id="pricing-grid">
+
+  <!-- FREE -->
+  <div class="price-card">
+    <div class="price-tier-name">Free</div>
+    <div class="price-amount" data-monthly="$0" data-annual="$0">$0<span class="period">/mo</span></div>
+    <div class="price-desc">Explore the platform. See what the engine can do.</div>
+    <ul class="price-features">
+      <li><span class="check">&#10003;</span> Daily signal digest</li>
+      <li><span class="check">&#10003;</span> Top 5 opportunities</li>
+      <li><span class="check">&#10003;</span> Kelly-sizing recommendations</li>
+      <li><span class="check">&#10003;</span> Community Discord access</li>
+      <li><span class="na">&#8212;</span> Real-time signal stream</li>
+      <li><span class="na">&#8212;</span> REST API access</li>
+      <li><span class="na">&#8212;</span> Auto-execution</li>
+    </ul>
+    <a href="/register" class="cc-button cc-button--secondary">Get Started Free</a>
+  </div>
+
+  <!-- PRO -->
+  <div class="price-card price-card--popular">
+    <div class="price-tag">Most Popular</div>
+    <div class="price-tier-name">Pro</div>
+    <div class="price-amount" data-monthly="$99" data-annual="$79">$99<span class="period">/mo</span></div>
+    <div class="price-desc">Real-time signals + REST API for active traders.</div>
+    <ul class="price-features">
+      <li><span class="check">&#10003;</span> Everything in Free</li>
+      <li><span class="check">&#10003;</span> Real-time signal stream (15-min)</li>
+      <li><span class="check">&#10003;</span> REST API access</li>
+      <li><span class="check">&#10003;</span> Auto-execution on your wallet</li>
+      <li><span class="check">&#10003;</span> Per-account risk manager</li>
+      <li><span class="check">&#10003;</span> Priority support (24h)</li>
+      <li><span class="check">&#10003;</span> Weekly calibration report</li>
+    </ul>
+    <a href="/register?tier=pro" class="cc-button cc-button--primary">Start Pro Trial</a>
+  </div>
+
+  <!-- ENTERPRISE -->
+  <div class="price-card">
+    <div class="price-tier-name">Enterprise</div>
+    <div class="price-amount" data-monthly="$299" data-annual="$239">$299<span class="period">/mo</span></div>
+    <div class="price-desc">Multi-account management with advanced analytics.</div>
+    <ul class="price-features">
+      <li><span class="check">&#10003;</span> Everything in Pro</li>
+      <li><span class="check">&#10003;</span> Multi-account management</li>
+      <li><span class="check">&#10003;</span> Advanced analytics dashboard</li>
+      <li><span class="check">&#10003;</span> Multi-leg execution</li>
+      <li><span class="check">&#10003;</span> Swarm intelligence insights</li>
+      <li><span class="check">&#10003;</span> Direct founder support (12h)</li>
+      <li><span class="check">&#10003;</span> Custom market focus</li>
+    </ul>
+    <a href="/register?tier=enterprise" class="cc-button cc-button--secondary">Get Enterprise</a>
+  </div>
+
+  <!-- MASTER -->
+  <div class="price-card">
+    <div class="price-tier-name">Master</div>
+    <div class="price-amount" data-monthly="$999" data-annual="$799">$999<span class="period">/mo</span></div>
+    <div class="price-desc">Full managed service. Custom strategies, dedicated support.</div>
+    <ul class="price-features">
+      <li><span class="check">&#10003;</span> Everything in Enterprise</li>
+      <li><span class="check">&#10003;</span> Dedicated strategy development</li>
+      <li><span class="check">&#10003;</span> Personal account manager</li>
+      <li><span class="check">&#10003;</span> Custom risk parameters</li>
+      <li><span class="check">&#10003;</span> White-label reporting</li>
+      <li><span class="check">&#10003;</span> API rate limit: unlimited</li>
+      <li><span class="check">&#10003;</span> Priority support (4h)</li>
+    </ul>
+    <a href="/register?tier=master" class="cc-button cc-button--secondary">Contact Sales</a>
+  </div>
+</div>
+
+<!-- Feature Comparison Table -->
+<section class="comparison-section">
+  <h2>Full Feature Comparison</h2>
+  <div style="overflow-x:auto">
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th>Free</th>
+        <th>Pro</th>
+        <th>Enterprise</th>
+        <th>Master</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="section-label"><td colspan="5">Signals</td></tr>
+      <tr><td>Daily signal digest</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Top opportunities per day</td><td>5</td><td>20</td><td>50</td><td>Unlimited</td></tr>
+      <tr><td>Real-time signal stream</td><td><span class="na">&#8212;</span></td><td>15-min</td><td>5-min</td><td>Real-time</td></tr>
+      <tr><td>Cross-market signals</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Delta-neutral signals</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+
+      <tr class="section-label"><td colspan="5">API &amp; Access</td></tr>
+      <tr><td>REST API</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>API rate limit (req/min)</td><td>10</td><td>100</td><td>500</td><td>Unlimited</td></tr>
+      <tr><td>Auto-execution</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Multi-leg execution</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+
+      <tr class="section-label"><td colspan="5">Analytics</td></tr>
+      <tr><td>Basic P&amp;L tracking</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Advanced analytics</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Semantic intelligence</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Swarm intelligence</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>White-label reports</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td></tr>
+
+      <tr class="section-label"><td colspan="5">Support</td></tr>
+      <tr><td>Community Discord</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Support response time</td><td>N/A</td><td>24h</td><td>12h</td><td>4h</td></tr>
+      <tr><td>Account manager</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td></tr>
+
+      <tr class="section-label"><td colspan="5">Billing</td></tr>
+      <tr><td>Monthly price</td><td>$0</td><td>$99</td><td>$299</td><td>$999</td></tr>
+      <tr><td>Annual price (per month)</td><td>$0</td><td>$79</td><td>$239</td><td>$799</td></tr>
+      <tr><td>Payment methods</td><td>N/A</td><td>USDT, Crypto</td><td>USDT, Crypto</td><td>USDT, Crypto</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <h2>Frequently Asked Questions</h2>
+
+  <details class="faq-item">
+    <summary>Can I switch plans later?</summary>
+    <div class="faq-answer">Yes. You can upgrade or downgrade anytime. Changes take effect at the start of your next billing cycle. No penalties.</div>
+  </details>
+  <details class="faq-item">
+    <summary>What payment methods are accepted?</summary>
+    <div class="faq-answer">We accept USDT TRC20 via NOWPayments. Enterprise and Master plans can also arrange wire transfers or custom billing.</div>
+  </details>
+  <details class="faq-item">
+    <summary>Is there a free trial for paid plans?</summary>
+    <div class="faq-answer">Yes. Every paid plan comes with a 7-day free trial. Cancel anytime before the trial ends and you won't be charged.</div>
+  </details>
+  <details class="faq-item">
+    <summary>Can I cancel anytime?</summary>
+    <div class="faq-answer">Absolutely. Cancel anytime from your dashboard. You retain access until the end of your billing period.</div>
+  </details>
+  <details class="faq-item">
+    <summary>Do you offer refunds?</summary>
+    <div class="faq-answer">We offer a 14-day refund policy on first-time Pro and Enterprise subscriptions. Master plan refunds are handled on a case-by-case basis.</div>
+  </details>
+</section>
+
+<footer class="pricing-footer">
+  AlgoTrader RaaS &copy; 2026 &mdash; AI prediction market strategies. Not financial advice.
+</footer>
+
+<script>
+// Billing toggle: monthly / annual
+(function() {
+  var track = document.getElementById('toggle-track');
+  var labelM = document.getElementById('label-monthly');
+  var labelA = document.getElementById('label-annual');
+  var cards = document.querySelectorAll('.price-amount');
+  var isAnnual = false;
+
+  function updatePricing() {
+    cards.forEach(function(el) {
+      var monthly = el.getAttribute('data-monthly');
+      var annual = el.getAttribute('data-annual');
+      if (isAnnual && annual) {
+        el.innerHTML = annual + '<span class="period">/mo</span><span class="annual-note">billed annually</span>';
+      } else {
+        el.innerHTML = monthly + '<span class="period">/mo</span>';
+      }
+    });
+    labelM.classList.toggle('active', !isAnnual);
+    labelA.classList.toggle('active', isAnnual);
+    track.classList.toggle('active', isAnnual);
+  }
+
+  track.addEventListener('click', function() {
+    isAnnual = !isAnnual;
+    updatePricing();
+  });
+  track.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      isAnnual = !isAnnual;
+      updatePricing();
+    }
+  });
+  labelM.addEventListener('click', function() { isAnnual = false; updatePricing(); });
+  labelA.addEventListener('click', function() { isAnnual = true; updatePricing(); });
+})();
+</script>
+</body>
+</html>

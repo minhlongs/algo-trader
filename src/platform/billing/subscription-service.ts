@@ -171,9 +171,10 @@ export class SubscriptionService {
 
   private getDefaultMaxUsage(tier: LicenseTier): number {
     switch (tier) {
-      case LicenseTier.FREE: return 100;
-      case LicenseTier.PRO: return 10000;
-      case LicenseTier.ENTERPRISE: return 100000;
+      case LicenseTier.FREE:        return 100;
+      case LicenseTier.PRO:         return 10000;
+      case LicenseTier.ENTERPRISE:  return 100000;
+      case LicenseTier.MASTER:      return 500000;
     }
   }
 

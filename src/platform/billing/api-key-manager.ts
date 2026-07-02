@@ -32,6 +32,7 @@ const TIER_ABBREV: Record<LicenseTier, string> = {
   [LicenseTier.FREE]: 'free',
   [LicenseTier.PRO]: 'pro',
   [LicenseTier.ENTERPRISE]: 'ent',
+  [LicenseTier.MASTER]: 'mst',
 };
 
 const STORE_PATH = process.env.API_KEY_STORE_PATH

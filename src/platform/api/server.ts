@@ -46,6 +46,12 @@ import { positionsRouter } from './routes/positions';
 import { signalFeedRouter } from './routes/signal-feed-routes';
 import { signalSubscriptionRouter } from './routes/signal-subscription-routes';
 import { webhookResilienceRouter } from './routes/webhooks/webhook-resilience';
+import { subscriptionAnalyticsRouter } from './routes/subscription-analytics-routes';
+import { trialDripRouter } from './routes/trial-drip-routes';
+import { apiKeysRouter } from './routes/api-keys';
+import { marketplaceListingBadgeRouter, marketplaceBadgeDefinitionRouter } from './routes/marketplace-badge-routes';
+import { marketplaceSubscriptionEnhancementsRouter } from './routes/marketplace-subscription-enhancements';
+import { marketplaceSubscriptionStatsRouter } from './routes/marketplace-subscription-stats-routes';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
@@ -169,6 +175,10 @@ export class ApiServer {
 
 // Marketplace routes
 this.app.use('/api/v1/marketplace/strategies', marketplaceStrategyRouter);
+// Subscription routes — mount stats/enhancements BEFORE the base subscription router
+// to avoid the existing GET /:id intercepting GET /stats
+this.app.use('/api/v1/marketplace/subscriptions', marketplaceSubscriptionStatsRouter);
+this.app.use('/api/v1/marketplace/subscriptions', marketplaceSubscriptionEnhancementsRouter);
 this.app.use('/api/v1/marketplace/subscriptions', marketplaceSubscriptionRouter);
 this.app.use('/api/v1/marketplace/reviews', marketplaceReviewRouter);
 this.app.use('/api/v1/marketplace/disputes', marketplaceDisputeRouter);
@@ -176,6 +186,11 @@ this.app.use('/api/v1/marketplace/revenue', marketplaceCreatorRevenueRouter);
 
 // Admin marketplace routes
 this.app.use('/api/admin/marketplace', adminMarketplaceRouter);
+
+// Platform depth — API keys, badges, subscription enhancements
+this.app.use('/api/v1/api-keys', apiKeysRouter);
+this.app.use('/api/v1/marketplace/listings', marketplaceListingBadgeRouter);
+this.app.use('/api/v1/marketplace/badges', marketplaceBadgeDefinitionRouter);
     this.app.use('/api/coupons', couponRouter);
     this.app.use('/api/blog', blogRouter);
     this.app.use('/api/blog', blogEngagementRouter);
@@ -212,6 +227,10 @@ this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
     this.app.use('/api/v1/signals', signalFeedRouter);
     this.app.use('/api/v1/signals/subscriptions', signalSubscriptionRouter);
     this.app.use('/api/webhooks/resilience', webhookResilienceRouter);
+
+    // Revenue growth routes — Phase 01 (subscription analytics, trial drip)
+    this.app.use('/api/analytics/subscription', subscriptionAnalyticsRouter);
+    this.app.use('/api/v1/trial-drip', trialDripRouter);
 
     // 404 handler
     this.app.use((_req, res) => {

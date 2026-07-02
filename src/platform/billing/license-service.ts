@@ -20,6 +20,7 @@ const TIER_PREFIXES: Record<LicenseTier, string> = {
   [LicenseTier.FREE]: 'free',
   [LicenseTier.PRO]: 'rpp',
   [LicenseTier.ENTERPRISE]: 'rep',
+  [LicenseTier.MASTER]: 'rmt',
 };
 
 /** Path to the JSON file storing licenses. Configurable via env var. */
@@ -107,12 +108,10 @@ export class LicenseService {
 
   private getDefaultMaxUsage(tier: LicenseTier): number {
     switch (tier) {
-      case LicenseTier.FREE:
-        return 100;
-      case LicenseTier.PRO:
-        return 10000;
-      case LicenseTier.ENTERPRISE:
-        return 100000;
+      case LicenseTier.FREE:        return 100;
+      case LicenseTier.PRO:         return 10000;
+      case LicenseTier.ENTERPRISE:  return 100000;
+      case LicenseTier.MASTER:      return 500000;
     }
   }
 
@@ -184,10 +183,11 @@ export class LicenseService {
   async getAnalytics() {
     const allLicenses = Array.from(this.licenses.values());
 
-    const byTier = {
+    const byTier: Record<string, number> = {
       [LicenseTier.FREE]: allLicenses.filter((l) => l.tier === LicenseTier.FREE).length,
       [LicenseTier.PRO]: allLicenses.filter((l) => l.tier === LicenseTier.PRO).length,
       [LicenseTier.ENTERPRISE]: allLicenses.filter((l) => l.tier === LicenseTier.ENTERPRISE).length,
+      [LicenseTier.MASTER]: allLicenses.filter((l) => l.tier === LicenseTier.MASTER).length,
     };
 
     const byStatus = {

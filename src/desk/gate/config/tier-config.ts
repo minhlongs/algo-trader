@@ -44,6 +44,14 @@ export const TIER_CONFIG: Record<LicenseTier, TierConfig> = {
     overagePrice: 0.005,
     features: ['all_pro_features', 'arbitrage_scanning', 'multi_exchange_trading', 'custom_strategies', 'priority_support'],
   },
+  [LicenseTier.MASTER]: {
+    requestsPerMin: 5000,
+    requestsPerHour: 50000,
+    burstPerSec: 200,
+    dailyApiLimit: 500000,
+    overagePrice: 0.001,
+    features: ['all_enterprise_features', 'dedicated_strategies', 'personal_account_manager', 'custom_risk_parameters', 'white_label_reports', 'unlimited_api'],
+  },
 };
 
 /**

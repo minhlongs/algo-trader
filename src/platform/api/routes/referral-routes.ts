@@ -392,4 +392,92 @@ referralRouter.get('/clicks/:code', requireTier('FREE'), async (req: Request, re
   }
 });
 
+/**
+ * GET /api/v1/referral/conversion-summary
+ * Get referral conversion overview: total clicks, conversions, conversion rate, and revenue
+ */
+referralRouter.get('/conversion-summary', requireTier('FREE'), async (req: Request, res: Response) => {
+  const tenantId = extractTenantId(req);
+  if (!tenantId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const stats = await referralService.getReferralStats(tenantId);
+    if (!stats) {
+      return res.status(404).json({ error: 'No referral data found' });
+    }
+
+    res.json({
+      totalClicks: stats.totalClicks,
+      uniqueClicks: stats.uniqueClicks,
+      conversions: stats.conversions,
+      conversionRate: stats.conversionRate,
+      totalRevenue: stats.totalRevenue,
+      totalCommissions: stats.totalCommissions,
+      pendingCommissions: stats.pendingCommissions,
+      paidCommissions: stats.paidCommissions,
+      topReferrers: stats.topReferrers,
+      period: stats.period,
+    });
+  } catch (error) {
+    logger.error('[ReferralRoutes] Failed to get conversion summary:', error);
+    return res.status(500).json({ error: 'Failed to fetch conversion summary' });
+  }
+});
+
+/**
+ * POST /api/v1/referral/record-conversion
+ * Internal endpoint to record a referral conversion when a new tenant signs up
+ * Typically called by the auth/signup handler
+ */
+referralRouter.post('/record-conversion', requireTier('FREE'), async (req: Request, res: Response) => {
+  const tenantId = extractTenantId(req);
+  if (!tenantId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { trackingId, referralCode } = req.body as { trackingId?: string; referralCode?: string };
+
+  if (!trackingId && !referralCode) {
+    return res.status(400).json({ error: 'Either trackingId or referralCode is required' });
+  }
+
+  try {
+    // Resolve tracking ID from referral code if only code was provided
+    let resolvedTrackingId = trackingId;
+
+    if (!resolvedTrackingId && referralCode) {
+      // Look up the most recent click with this code that hasn't converted yet
+      const clicks = await referralService.getClicks(referralCode, 1, 0);
+      const unconverted = clicks.find((c) => !c.convertedAt);
+      if (!unconverted) {
+        return res.status(404).json({ error: 'No unconverted click found for this referral code' });
+      }
+      resolvedTrackingId = unconverted.id;
+    }
+
+    if (!resolvedTrackingId) {
+      return res.status(400).json({ error: 'Could not resolve tracking ID' });
+    }
+
+    const convertedTenantId = req.body.convertedTenantId || tenantId;
+    const convertedUserId = req.body.convertedUserId || convertedTenantId;
+
+    await referralService.recordConversion(resolvedTrackingId, convertedTenantId, convertedUserId);
+
+    logger.info('[ReferralRoutes] Conversion recorded', {
+      trackingId: resolvedTrackingId,
+      convertedTenantId,
+      referredBy: referralCode || 'unknown',
+    });
+
+    return res.status(201).json({ success: true, trackingId: resolvedTrackingId });
+  } catch (error) {
+    logger.error('[ReferralRoutes] Failed to record conversion:', error);
+    const message = error instanceof Error ? error.message : 'Failed to record conversion';
+    return res.status(400).json({ error: message });
+  }
+});
+
 export default referralRouter;

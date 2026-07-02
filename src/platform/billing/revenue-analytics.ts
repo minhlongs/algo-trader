@@ -10,6 +10,7 @@ const TIER_MO_PRICE: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 0,
   [LicenseTier.PRO]: 49,
   [LicenseTier.ENTERPRISE]: 199,
+  [LicenseTier.MASTER]: 999,
 };
 
 export interface RevenueMetrics {
@@ -150,7 +151,7 @@ export function analyzeChurn(
   const currentMonth = toYM(new Date());
   const churned = licenses.filter((l) => l.status !== LicenseStatus.ACTIVE && l.updatedAt && toYM(new Date(l.updatedAt)) === currentMonth);
 
-  const churnByTier: Record<string, number> = { [LicenseTier.FREE]: 0, [LicenseTier.PRO]: 0, [LicenseTier.ENTERPRISE]: 0 };
+  const churnByTier: Record<string, number> = { [LicenseTier.FREE]: 0, [LicenseTier.PRO]: 0, [LicenseTier.ENTERPRISE]: 0, [LicenseTier.MASTER]: 0 };
   for (const l of churned) churnByTier[l.tier] = (churnByTier[l.tier] ?? 0) + 1;
 
   const activeIds = new Set(licenses.filter(isActive).map((l) => l.id));

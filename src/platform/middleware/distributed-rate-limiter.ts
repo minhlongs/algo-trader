@@ -16,6 +16,7 @@ const TIER_LIMITS: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 10,
   [LicenseTier.PRO]: 100,
   [LicenseTier.ENTERPRISE]: 1000,
+  [LicenseTier.MASTER]: 5000,
 };
 
 interface RateLimitingRedisClient {
