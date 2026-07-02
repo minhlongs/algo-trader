@@ -1,6 +1,6 @@
 /**
  * Run-All-Backtests — Iterate all registered strategies, run a 30-day backtest
- * for a representative sample, and write results to CSV.
+ * for each viable strategy, and write results to CSV.
  *
  * Usage:
  *    cd /Users/macbook/algo-trader && pnpm exec tsx scripts/run-all-backtests.ts
@@ -13,22 +13,18 @@ import { BacktestRunner } from '../src/desk/backtesting/backtest-runner';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// ── Representative sample: 10 strategies covering diverse approaches ──────────
+// ── Strategy selection ──────────────────────────────────────────────────
 
-const SAMPLE_STRATEGIES = [
-  'spread-mean-reversion',
-  'bollinger-squeeze',
-  'momentum-cascade',
-  'vwap-deviation-sniper',
-  'whale-tracker',
-  'orderbook-depth-ratio',
-  'tail-risk-harvester',
-  'volatility-targeting',
-  'mean-variance-optimizer',
-  'cluster-breakout',
-];
+const EXCLUDED_STRATEGIES = new Set([
+  // Event-driven / manual — not suitable for automated backtesting
+  'resolution-frontrunner',   // relies on event deadline proximity
+  'listing-arbitrage-sniper', // relies on new listings
+]);
 
-// ── CSV Header ───────────────────────────────────────────────────────────────
+// Max 5 minutes per strategy before skipping (timeout)
+const PER_STRATEGY_TIMEOUT_MS = 5 * 60 * 1000;
+
+// ── CSV Header ───────────────────────────────────────────────────────────
 
 const CSV_HEADER = [
   'strategy',
@@ -40,58 +36,62 @@ const CSV_HEADER = [
   'total_trades',
   'winning_trades',
   'losing_trades',
-  'avg_win_usd',
-  'avg_loss_usd',
+  'avg_pnl_per_trade_usd',
   'best_trade_usd',
   'worst_trade_usd',
   'duration_ms',
   'status',
 ].join(',');
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Main ─────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const reportsDir = path.resolve(__dirname, '..', 'reports');
   fs.mkdirSync(reportsDir, { recursive: true });
 
   const csvPath = path.join(reportsDir, 'backtest-results.csv');
-  // Write header (overwrite)
   fs.writeFileSync(csvPath, CSV_HEADER + '\n');
 
   const allStrategies = listStrategies();
-  console.log(`\nStrategy Registry: ${allStrategies.length} strategies total`);
-  console.log(`Running representative sample (${SAMPLE_STRATEGIES.length} strategies)`);
+  const viable = allStrategies.filter((s) => !EXCLUDED_STRATEGIES.has(s.name));
+  console.log(`\nStrategy Registry: ${allStrategies.length} total`);
+  console.log(`Viable for backtest: ${viable.length} (${allStrategies.length - viable.length} excluded)`);
   console.log('─'.repeat(60));
 
   let completed = 0;
   let failed = 0;
+  let skipped = 0;
 
-  for (const name of SAMPLE_STRATEGIES) {
-    const entry = allStrategies.find((s) => s.name === name);
-    if (!entry) {
-      console.log(`  [SKIP] ${name} — not found in registry`);
-      const row = [name, '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', 'SKIPPED'].join(',');
-      fs.appendFileSync(csvPath, row + '\n');
-      continue;
-    }
-
-    console.log(`\n  [${completed + failed + 1}/${SAMPLE_STRATEGIES.length}] Backtesting ${name}...`);
+  for (const entry of viable) {
+    console.log(`\n  [${completed + failed + skipped + 1}/${viable.length}] ${entry.name}`);
     console.log(`    ${entry.description}`);
 
     const runner = new BacktestRunner();
     try {
-      const result = await runner.run({
-        strategy: name,
-        paperTrading: true,
-        capitalUsdc: 5000,
-        days: 30,
-      });
+      // Run with per-strategy timeout
+      const result = await Promise.race([
+        runner.run({
+          strategy: entry.name,
+          paperTrading: true,
+          capitalUsdc: 5000,
+          days: 30,
+        }),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT')), PER_STRATEGY_TIMEOUT_MS)
+        ),
+      ]);
+
+      // If result is null (timeout), handled by catch
+      if (!result) {
+        failed++;
+        continue;
+      }
 
       const m = result.metrics;
 
       // Round values for CSV
       const row = [
-        name,
+        entry.name,
         m.sharpeRatio.toFixed(4),
         (m.winRate * 100).toFixed(2),
         m.totalPnl.toFixed(2),
@@ -101,8 +101,6 @@ async function main(): Promise<void> {
         m.winningTrades,
         m.losingTrades,
         m.avgPnlPerTrade.toFixed(2),
-        // We don't have avgWinUsd/avgLossUsd in MetricsReport, compute from total
-        // Best/worst from MetricsReport
         m.bestTrade.toFixed(2),
         m.worstTrade.toFixed(2),
         result.durationMs,
@@ -112,22 +110,47 @@ async function main(): Promise<void> {
       fs.appendFileSync(csvPath, row + '\n');
       completed++;
 
-      console.log(`    Result: Sharpe=${m.sharpeRatio.toFixed(2)} | Win=${(m.winRate * 100).toFixed(1)}% | PnL=$${m.totalPnl.toFixed(2)} | DD=${(Math.abs(m.maxDrawdown) * 100).toFixed(1)}% | Trades=${m.totalTrades}`);
+      console.log(`    Result: Sharpe=${m.sharpeRatio.toFixed(2)} | Win=${(m.winRate * 100).toFixed(1)}% | PnL=$${m.totalPnl.toFixed(2)} | DD=${(Math.abs(m.maxDrawdown) * 100).toFixed(1)}% | Trades=${m.totalTrades} | Dur=${(result.durationMs / 1000).toFixed(0)}s`);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.error(`    FAILED: ${errMsg}`);
-      failed++;
+      const reason = errMsg === 'TIMEOUT' ? 'TIMEOUT (>5min)' : errMsg.slice(0, 60);
 
-      const row = [name, '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', `ERROR: ${errMsg.slice(0, 40)}`].join(',');
+      const row = [entry.name, '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', reason].join(',');
       fs.appendFileSync(csvPath, row + '\n');
+
+      if (errMsg === 'TIMEOUT') {
+        skipped++;
+        console.log(`    ${reason} — skipped`);
+      } else {
+        failed++;
+        console.error(`    FAILED: ${reason}`);
+      }
     } finally {
       runner.clearCache();
     }
   }
 
   console.log('\n' + '═'.repeat(60));
-  console.log(`Backtest batch complete: ${completed} OK, ${failed} failed, ${SAMPLE_STRATEGIES.length - completed - failed} skipped`);
+  console.log(`Backtest batch complete: ${completed} OK, ${failed} failed, ${skipped} timed out`);
   console.log(`CSV written to: ${csvPath}`);
+
+  // Summary of top performers
+  console.log('\n── Top 5 by Sharpe Ratio ──');
+  try {
+    const csv = fs.readFileSync(csvPath, 'utf-8');
+    const lines = csv.trim().split('\n').slice(1);
+    const parsed = lines
+      .map((l) => l.split(','))
+      .filter((cols) => cols[14] === 'OK') // status field
+      .map((cols) => ({ name: cols[0], sharpe: parseFloat(cols[1]) }))
+      .sort((a, b) => b.sharpe - a.sharpe)
+      .slice(0, 5);
+    for (const s of parsed) {
+      console.log(`  ${s.name}: Sharpe=${s.sharpe.toFixed(2)}`);
+    }
+  } catch {
+    console.log('  (could not parse results)');
+  }
 }
 
 main().catch((err) => {

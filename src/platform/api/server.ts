@@ -28,7 +28,7 @@ import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook'
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
 import { blogEngagementRouter } from './routes/blog-engagement-routes';
-import { analyticsRouter } from './routes/analytics-routes';
+import { analyticsRouter, strategyPerformanceRouter } from './routes/analytics-routes';
 import { kycRouter } from './routes/kyc-routes';
 import { newsletterRouter } from './routes/newsletter-routes';
 import { communityStrategyRouter } from './routes/community-strategy-routes';
@@ -179,6 +179,7 @@ this.app.use('/api/admin/marketplace', adminMarketplaceRouter);
     this.app.use('/api/blog', blogRouter);
     this.app.use('/api/blog', blogEngagementRouter);
     this.app.use('/api/analytics', analyticsRouter);
+    this.app.use('/api/v1/strategy-performance', strategyPerformanceRouter);
     this.app.use('/api/kyc', kycRouter);
     this.app.use('/api/newsletter', newsletterRouter);
     this.app.use('/api/community/strategies', communityStrategyRouter);

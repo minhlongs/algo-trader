@@ -90,7 +90,7 @@ export function ReferralPage() {
     }
   };
 
-  const shareLink = `${window.location.origin}/signup?ref=${referralCode?.code || ''}`;
+  const shareLink = `https://quant.cashclaw.cc?ref=${referralCode?.code || ''}`;
 
   return (
     <div className="space-y-6" style={{ color: COLORS.onSurface }}>

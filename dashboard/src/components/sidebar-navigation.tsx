@@ -16,6 +16,7 @@ import {
   Wrench,
   ShareNetwork,
   SignOut,
+  ChartBar,
 } from '@phosphor-icons/react';
 import { useTradingStore } from '../stores/trading-store';
 import { useAuthStore } from '../stores/auth-store';
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { label: 'Licenses', path: '/app/licenses', Icon: Key },
   { label: 'Coupons', path: '/app/coupons', adminOnly: true, Icon: Ticket },
   { label: 'Reporting', path: '/app/reporting', Icon: FileText },
+  { label: 'Performance', path: '/app/strategy-performance', Icon: ChartBar },
   { label: 'Settings', path: '/app/settings', Icon: Gear },
   { label: 'Account', path: '/app/account', Icon: User },
   { label: 'Referral', path: '/app/referral', Icon: ShareNetwork },

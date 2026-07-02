@@ -56,7 +56,7 @@ function isAdmin(req: Request): boolean {
  * GET /api/v1/referral/stats
  * Get referral dashboard metrics for current tenant
  */
-referralRouter.get('/stats', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.get('/stats', requireTier('FREE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -78,7 +78,7 @@ referralRouter.get('/stats', requireTier('ENTERPRISE'), async (req: Request, res
  * GET /api/v1/referral/code
  * Get current tenant's referral code
  */
-referralRouter.get('/code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.get('/code', requireTier('FREE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -103,7 +103,7 @@ referralRouter.get('/code', requireTier('ENTERPRISE'), async (req: Request, res:
  * POST /api/v1/referral/generate-code
  * Generate a new referral code for current tenant (or specified tenant if admin)
  */
-referralRouter.post('/generate-code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.post('/generate-code', requireTier('FREE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -132,7 +132,7 @@ referralRouter.post('/generate-code', requireTier('ENTERPRISE'), async (req: Req
  * Public endpoint to track a referral link click
  * No authentication required, but rate limited
  */
-referralRouter.post('/track-click', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.post('/track-click', async (req: Request, res: Response) => {
   const { code } = req.query as { code?: string };
   const parsed = trackClickSchema.safeParse(req.body);
 
@@ -162,7 +162,7 @@ referralRouter.post('/track-click', requireTier('ENTERPRISE'), async (req: Reque
  * GET /api/v1/referral/commissions
  * Get commission records for current tenant
  */
-referralRouter.get('/commissions', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.get('/commissions', requireTier('FREE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -203,7 +203,7 @@ referralRouter.get('/commissions', requireTier('ENTERPRISE'), async (req: Reques
  * Get payout history for current tenant
  * (Currently aggregates commission periods; future: Stripe payout details)
  */
-referralRouter.get('/payouts', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.get('/payouts', requireTier('FREE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -260,7 +260,7 @@ referralRouter.get('/payouts', requireTier('ENTERPRISE'), async (req: Request, r
  * Validate a referral code (used during signup)
  * Public endpoint
  */
-referralRouter.post('/validate', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.post('/validate', async (req: Request, res: Response) => {
   const parsed = validateReferralSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -328,7 +328,7 @@ referralRouter.post('/validate', requireTier('ENTERPRISE'), async (req: Request,
  * Get referral code for the current tenant (shorthand for /code)
  * Also generates one if it doesn't exist
  */
-referralRouter.get('/my-code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.get('/my-code', requireTier('FREE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -351,7 +351,7 @@ referralRouter.get('/my-code', requireTier('ENTERPRISE'), async (req: Request, r
  * GET /api/v1/referral/clicks/:code
  * Get clicks for a specific referral code (for the code owner)
  */
-referralRouter.get('/clicks/:code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+referralRouter.get('/clicks/:code', requireTier('FREE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
