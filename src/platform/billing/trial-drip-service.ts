@@ -10,8 +10,10 @@
  *   Day 10 — Post-expiry: "Come back" offer
  *
  * Uses the existing EmailService for delivery.
+ * Storage: PostgreSQL via postgres-client
  */
 
+import { query } from '../../shared/db/postgres-client';
 import { EmailService } from '../notifications/email-service';
 import { logger } from '../../shared/utils/logger';
 
@@ -31,12 +33,37 @@ export interface DripCampaignState {
   lastProcessedAt: string;
 }
 
+interface DripSubscriberRow {
+  tenant_id: string;
+  email: string;
+  tier: string;
+  subscribed_at: Date;
+  trial_ends_at: Date;
+  days_since_trial_start: number;
+  last_email_day: number;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
 // Template map: day number -> email content generator
 type EmailTemplate = (sub: DripSubscriber) => { subject: string; body: string; html: string };
 
+function rowToDripSubscriber(row: DripSubscriberRow): DripSubscriber {
+  return {
+    email: row.email,
+    tenantId: row.tenant_id,
+    tier: row.tier,
+    subscribedAt: row.subscribed_at.toISOString(),
+    trialEndsAt: row.trial_ends_at.toISOString(),
+    daysSinceTrialStart: row.days_since_trial_start,
+    lastEmailDay: row.last_email_day,
+    isActive: row.is_active,
+  };
+}
+
 export class TrialDripService {
   private static instance: TrialDripService;
-  private subscribers: Map<string, DripSubscriber> = new Map();
   private emailService: EmailService;
 
   private readonly TEMPLATES: Record<number, EmailTemplate> = {
@@ -81,22 +108,38 @@ export class TrialDripService {
   /**
    * Register a new trial subscriber for the drip campaign.
    */
-  subscribe(email: string, tenantId: string, tier: string, trialDays: number = 7): DripSubscriber {
+  async subscribe(email: string, tenantId: string, tier: string, trialDays: number = 7): Promise<DripSubscriber> {
     const now = new Date();
     const endsAt = new Date(now.getTime() + trialDays * 86400000);
 
-    const subscriber: DripSubscriber = {
-      email,
-      tenantId,
-      tier,
-      subscribedAt: now.toISOString(),
-      trialEndsAt: endsAt.toISOString(),
-      daysSinceTrialStart: 0,
-      lastEmailDay: 0,
-      isActive: true,
-    };
+    const result = await query(
+      `INSERT INTO drip_subscribers (tenant_id, email, tier, subscribed_at, trial_ends_at, days_since_trial_start, last_email_day, is_active, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (tenant_id) DO UPDATE SET
+         email = EXCLUDED.email,
+         tier = EXCLUDED.tier,
+         subscribed_at = EXCLUDED.subscribed_at,
+         trial_ends_at = EXCLUDED.trial_ends_at,
+         days_since_trial_start = EXCLUDED.days_since_trial_start,
+         last_email_day = 0,
+         is_active = true,
+         updated_at = EXCLUDED.updated_at
+       RETURNING *`,
+      [
+        tenantId,
+        email,
+        tier,
+        now.toISOString(),
+        endsAt.toISOString(),
+        0,
+        0,
+        true,
+        now.toISOString(),
+        now.toISOString(),
+      ]
+    );
 
-    this.subscribers.set(tenantId, subscriber);
+    const subscriber = rowToDripSubscriber(result.rows[0] as unknown as DripSubscriberRow);
     logger.info('[TrialDrip] Subscriber registered', { email, tenantId, tier });
     return subscriber;
   }
@@ -104,10 +147,13 @@ export class TrialDripService {
   /**
    * Unsubscribe from the drip campaign (e.g., when user upgrades or cancels).
    */
-  unsubscribe(tenantId: string): boolean {
-    const sub = this.subscribers.get(tenantId);
-    if (!sub) return false;
-    sub.isActive = false;
+  async unsubscribe(tenantId: string): Promise<boolean> {
+    const result = await query(
+      `UPDATE drip_subscribers SET is_active = false, updated_at = NOW() WHERE tenant_id = $1 RETURNING tenant_id`,
+      [tenantId]
+    );
+
+    if (result.rows.length === 0) return false;
     logger.info('[TrialDrip] Subscriber unsubscribed', { tenantId });
     return true;
   }
@@ -122,7 +168,10 @@ export class TrialDripService {
     let skipped = 0;
     let errors = 0;
 
-    for (const [tenantId, sub] of this.subscribers) {
+    const result = await query('SELECT * FROM drip_subscribers WHERE is_active = true');
+    const subscribers = result.rows.map((r) => rowToDripSubscriber(r as unknown as DripSubscriberRow));
+
+    for (const sub of subscribers) {
       if (!sub.isActive) {
         skipped++;
         continue;
@@ -153,16 +202,21 @@ export class TrialDripService {
           });
 
           if (success) {
+            // Update last_email_day
+            await query(
+              'UPDATE drip_subscribers SET last_email_day = $1, days_since_trial_start = $2, updated_at = NOW() WHERE tenant_id = $3',
+              [day, daysSinceStart, sub.tenantId]
+            );
             sub.lastEmailDay = day;
             sent++;
-            logger.info('[TrialDrip] Email sent', { tenantId, day, subject: email.subject });
+            logger.info('[TrialDrip] Email sent', { tenantId: sub.tenantId, day, subject: email.subject });
           } else {
             errors++;
-            logger.warn('[TrialDrip] Email send failed', { tenantId, day });
+            logger.warn('[TrialDrip] Email send failed', { tenantId: sub.tenantId, day });
           }
         } catch (err) {
           errors++;
-          logger.error('[TrialDrip] Email error', { tenantId, day, error: String(err) });
+          logger.error('[TrialDrip] Email error', { tenantId: sub.tenantId, day, error: String(err) });
         }
       }
     }
@@ -173,18 +227,25 @@ export class TrialDripService {
   /**
    * Get the current campaign state for monitoring.
    */
-  getState(): { activeSubscribers: number; totalSubscribers: number } {
-    const activeSubscribers = Array.from(this.subscribers.values()).filter((s) => s.isActive).length;
+  async getState(): Promise<{ activeSubscribers: number; totalSubscribers: number }> {
+    const activeResult = await query('SELECT COUNT(*) as count FROM drip_subscribers WHERE is_active = true');
+    const totalResult = await query('SELECT COUNT(*) as count FROM drip_subscribers');
+
+    const activeSubscribers = parseInt(activeResult.rows[0].count as string, 10);
+    const totalSubscribers = parseInt(totalResult.rows[0].count as string, 10);
+
     return {
       activeSubscribers,
-      totalSubscribers: this.subscribers.size,
+      totalSubscribers,
     };
   }
 
   /**
    * Get subscriber details for a given tenant.
    */
-  getSubscriber(tenantId: string): DripSubscriber | undefined {
-    return this.subscribers.get(tenantId);
+  async getSubscriber(tenantId: string): Promise<DripSubscriber | undefined> {
+    const result = await query('SELECT * FROM drip_subscribers WHERE tenant_id = $1', [tenantId]);
+    if (result.rows.length === 0) return undefined;
+    return rowToDripSubscriber(result.rows[0] as unknown as DripSubscriberRow);
   }
 }

@@ -3,20 +3,129 @@
  * Payment provider-agnostic subscription lifecycle management tests
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SubscriptionService } from '../subscription-service';
-import { LicenseService } from '../license-service';
 import { LicenseTier, LicenseStatus } from '../../../shared/types/license';
+
+const { mockData, mockQuery } = vi.hoisted(() => {
+  const subs = new Map<string, Record<string, any>>();
+  const licenses = new Map<string, Record<string, any>>();
+
+  const fn = vi.fn((text: string, params?: any[]) => {
+    // --- Subscriptions table ---
+    if (text.startsWith('INSERT INTO subscriptions')) {
+      const row: Record<string, any> = {
+        id: params![0],
+        provider_payment_id: params![1],
+        customer_email: params![2],
+        product_id: params![3],
+        status: params![4],
+        tier: params![5],
+        current_period_start: params![6],
+        current_period_end: params![7],
+        amount: params![8],
+        currency: params![9],
+        created_at: params![10],
+        updated_at: params![11],
+        license_id: null,
+        cancelled_at: null,
+      };
+      subs.set(row.id, row);
+      return { rows: [row] };
+    }
+    if (text === 'SELECT * FROM subscriptions WHERE id = $1') {
+      const row = subs.get(params![0]);
+      return { rows: row ? [row] : [] };
+    }
+    if (text === 'SELECT * FROM subscriptions WHERE provider_payment_id = $1') {
+      const rows = [...subs.values()].filter((r: any) => r.provider_payment_id === params![0]);
+      return { rows };
+    }
+    if (text === 'SELECT * FROM subscriptions WHERE customer_email = $1') {
+      const rows = [...subs.values()].filter((r: any) => r.customer_email === params![0]);
+      return { rows };
+    }
+    if (text === 'SELECT * FROM subscriptions') {
+      return { rows: [...subs.values()] };
+    }
+    // UPDATE subscriptions SET status ... or UPDATE subscriptions SET tier ...
+    if (text.startsWith('UPDATE subscriptions SET status') || text.startsWith('UPDATE subscriptions SET tier')) {
+      const row = subs.get(params![params!.length - 1]);
+      if (row) {
+        if (params![0] && typeof params![0] === 'string' && ['pending', 'active', 'cancelled', 'expired'].includes(params![0])) {
+          row.status = params![0];
+        } else {
+          row.tier = params![0];
+        }
+        row.updated_at = params![1];
+        if (text.includes('cancelled_at')) row.cancelled_at = params![1];
+      }
+      return { rows: row ? [row] : [] };
+    }
+    // UPDATE subscriptions SET license_id ... (activateSubscription)
+    if (text.startsWith('UPDATE subscriptions SET license_id')) {
+      const row = subs.get(params![params!.length - 1]);
+      if (row) {
+        row.license_id = params![0];
+        row.updated_at = params![1];
+      }
+      return { rows: row ? [row] : [] };
+    }
+
+    // --- Licenses table (used by LicenseService internally) ---
+    if (text.startsWith('INSERT INTO licenses')) {
+      const lic: Record<string, any> = {
+        id: params![0], name: params![1], key: params![2],
+        tier: params![3], status: params![4],
+        created_at: params![5], updated_at: params![6],
+        usage_count: params![7], max_usage: params![8],
+        tenant_id: params![9], domain: params![10],
+        expires_at: params![11],
+        subscription_id: null,
+      };
+      licenses.set(lic.id, lic);
+      return { rows: [lic] };
+    }
+    if (text === 'SELECT * FROM licenses WHERE id = $1') {
+      const row = licenses.get(params![0]);
+      return { rows: row ? [row] : [] };
+    }
+    // UPDATE licenses SET ... (syncLicenseTier / downgradeLicenseToFree)
+    if (text.startsWith('UPDATE licenses SET')) {
+      const row = licenses.get(params![params!.length - 1]);
+      if (row) {
+        row.tier = params![0] ?? row.tier;
+        row.status = params![1] ?? row.status;
+        row.max_usage = text.includes('max_usage') ? (params![1] ?? params![2]) : row.max_usage;
+        row.updated_at = params![params!.length - 2];
+      }
+      return { rows: row ? [row] : [] };
+    }
+
+    return { rows: [] };
+  });
+  return { mockData: { subscriptions: subs, licenses }, mockQuery: fn };
+});
+
+vi.mock('../../../shared/db/postgres-client', () => ({
+  query: mockQuery,
+}));
+
+vi.mock('../../audit/audit-log-service', () => ({
+  AuditLogService: {
+    getInstance: () => ({
+      log: vi.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
 
 describe('SubscriptionService', () => {
   let service: SubscriptionService;
-  let licenseService: LicenseService;
 
   beforeEach(() => {
     service = SubscriptionService.getInstance();
-    licenseService = LicenseService.getInstance();
-    (service as any).subscriptions.clear();
-    (licenseService as any).licenses.clear();
+    mockData.subscriptions.clear();
+    mockData.licenses.clear();
   });
 
   describe('createSubscription', () => {

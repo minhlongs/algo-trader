@@ -13,7 +13,7 @@ All credentials stay in password manager + 2FA mandatory on every handle.
 | Wallet address (public) | `<0x...>` |
 | Bio | Solo quant desk. Methodology + P&L live at quant.cashclaw.cc |
 | Linked dashboard | https://quant.cashclaw.cc |
-| Status | MANUAL — not yet created (see Phase 04 todo) |
+| Status | PENDING — content ready, wallet needs manual creation |
 
 > Note: Polymarket wallet is isolated from any personal trading wallet.
 > On-chain activity is the source of truth — dashboard numbers sync from the same resolution events.
@@ -28,7 +28,7 @@ All credentials stay in password manager + 2FA mandatory on every handle.
 | Profile URL | `<https://twitter.com/handle>` |
 | Bio | Solo quant desk. Algorithmic position-taking on binary outcome markets. P&L public. |
 | Pinned post | `<url-to-pinned-post>` — links to manifesto + dashboard |
-| Status | MANUAL — not yet registered (see Phase 04 todo) |
+| Status | PENDING — launch posts ready, account needs manual registration |
 
 ---
 
@@ -39,7 +39,17 @@ All credentials stay in password manager + 2FA mandatory on every handle.
 | Username | `<hn-username>` |
 | Profile URL | `<https://news.ycombinator.com/user?id=username>` |
 | About | Solo quant desk. Building in public — monthly milestones on HN Show. |
-| Status | MANUAL — not yet registered (see Phase 04 todo) |
+| Status | PENDING — content ready, account needs manual registration |
+
+---
+
+## Discord
+
+| Field | Value |
+|---|---|
+| Server invite | https://discord.gg/cashclaw |
+| Purpose | Community for algo traders — strategy discussions, early access, support |
+| Status | PENDING — server needs manual creation, announcement draft ready in `docs/marketing/discord-announce.md` |
 
 ---
 
@@ -72,5 +82,5 @@ All credentials stay in password manager + 2FA mandatory on every handle.
 
 ---
 
-_Last updated: 2026-04-16_
+_Last updated: 2026-07-03_
 _NEVER add secrets, seed phrases, or auth tokens to this file._

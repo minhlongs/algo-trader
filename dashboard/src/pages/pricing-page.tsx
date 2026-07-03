@@ -4,89 +4,10 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PublicNavbar } from '../components/public-navbar';
 import { Footer } from '../components/footer';
 import { TIER_LIMITS } from '../lib/tier-config';
-
-const PLANS = [
-  {
-    name: 'Free',
-    price: '$0',
-    sub: 'forever',
-    href: '/signup?tier=free',
-    cta: 'Get Started',
-    highlight: false,
-    features: [
-      { label: 'Active strategies', value: TIER_LIMITS.free.activeStrategies },
-      { label: 'Trades per day', value: TIER_LIMITS.free.tradesPerDay },
-      { label: 'Daily loss cap', value: TIER_LIMITS.free.dailyLossCap },
-      { label: 'Max position size', value: TIER_LIMITS.free.maxPosition },
-      { label: 'Market scanning', value: 'Basic' },
-      { label: 'Safety limits', value: true },
-      { label: 'API access', value: false },
-      { label: 'Priority support', value: false },
-    ],
-  },
-  {
-    name: 'Pro',
-    price: '$49',
-    sub: '/ month',
-    href: '/signup?tier=pro',
-    cta: 'Start Pro',
-    highlight: true,
-    features: [
-      { label: 'Active strategies', value: TIER_LIMITS.pro.activeStrategies },
-      { label: 'Trades per day', value: TIER_LIMITS.pro.tradesPerDay },
-      { label: 'Daily loss cap', value: TIER_LIMITS.pro.dailyLossCap },
-      { label: 'Max position size', value: TIER_LIMITS.pro.maxPosition },
-      { label: 'Market scanning', value: 'Advanced' },
-      { label: 'Safety limits', value: true },
-      { label: 'API access', value: true },
-      { label: 'Priority support', value: false },
-    ],
-  },
-  {
-    name: 'Enterprise',
-    price: '$199',
-    sub: '/ month',
-    href: '/signup?tier=enterprise',
-    cta: 'Get Started',
-    highlight: false,
-    features: [
-      { label: 'Active strategies', value: TIER_LIMITS.enterprise.activeStrategies },
-      { label: 'Trades per day', value: TIER_LIMITS.enterprise.tradesPerDay },
-      { label: 'Daily loss cap', value: TIER_LIMITS.enterprise.dailyLossCap },
-      { label: 'Max position size', value: TIER_LIMITS.enterprise.maxPosition },
-      { label: 'Market scanning', value: 'Full coverage' },
-      { label: 'Safety limits', value: true },
-      { label: 'API access', value: true },
-      { label: 'Priority support', value: true },
-    ],
-  },
-];
-
-const FAQS = [
-  {
-    q: 'How does CashClaw make money for me?',
-    a: 'CashClaw posts bid and ask orders around the fair-value mid-price on Polymarket. When both sides fill, you earn the spread. Higher liquidity markets produce more fills.',
-  },
-  {
-    q: 'Is my capital at risk?',
-    a: 'All trading carries risk. CashClaw enforces daily loss caps and maximum position sizes to limit downside. You control your Polymarket wallet at all times — funds never leave your account.',
-  },
-  {
-    q: 'What markets does CashClaw trade?',
-    a: 'The bot targets high-liquidity Polymarket prediction markets with measurable spreads. The selection algorithm scores markets by volume, liquidity depth, and spread width.',
-  },
-  {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. Pro and Enterprise plans are month-to-month with no lock-in. Cancel before your next billing date and you will not be charged again.',
-  },
-  {
-    q: 'Do I need a Polymarket account?',
-    a: 'Yes. CashClaw connects to your existing Polymarket account via API key. You retain full custody of funds.',
-  },
-];
 
 function CheckIcon() {
   return (
@@ -128,6 +49,72 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export function PricingPage() {
+  const { t } = useTranslation();
+
+  const plans = [
+    {
+      name: 'Free',
+      price: '$0',
+      sub: t('pricing.forever'),
+      href: '/signup?tier=free',
+      cta: t('pricing.ctaFree'),
+      highlight: false,
+      features: [
+        { label: t('pricing.features.activeStrategies'), value: TIER_LIMITS.free.activeStrategies },
+        { label: t('pricing.features.tradesPerDay'), value: TIER_LIMITS.free.tradesPerDay },
+        { label: t('pricing.features.dailyLossCap'), value: TIER_LIMITS.free.dailyLossCap },
+        { label: t('pricing.features.maxPositionSize'), value: TIER_LIMITS.free.maxPosition },
+        { label: t('pricing.features.marketScanning'), value: t('pricing.scanLevels.basic') },
+        { label: t('pricing.features.safetyLimits'), value: true },
+        { label: t('pricing.features.apiAccess'), value: false },
+        { label: t('pricing.features.prioritySupport'), value: false },
+      ],
+    },
+    {
+      name: 'Pro',
+      price: '$49',
+      sub: t('pricing.perMonth'),
+      href: '/signup?tier=pro',
+      cta: t('pricing.ctaPro'),
+      highlight: true,
+      features: [
+        { label: t('pricing.features.activeStrategies'), value: TIER_LIMITS.pro.activeStrategies },
+        { label: t('pricing.features.tradesPerDay'), value: TIER_LIMITS.pro.tradesPerDay },
+        { label: t('pricing.features.dailyLossCap'), value: TIER_LIMITS.pro.dailyLossCap },
+        { label: t('pricing.features.maxPositionSize'), value: TIER_LIMITS.pro.maxPosition },
+        { label: t('pricing.features.marketScanning'), value: t('pricing.scanLevels.advanced') },
+        { label: t('pricing.features.safetyLimits'), value: true },
+        { label: t('pricing.features.apiAccess'), value: true },
+        { label: t('pricing.features.prioritySupport'), value: false },
+      ],
+    },
+    {
+      name: 'Enterprise',
+      price: '$199',
+      sub: t('pricing.perMonth'),
+      href: '/signup?tier=enterprise',
+      cta: t('pricing.ctaEnterprise'),
+      highlight: false,
+      features: [
+        { label: t('pricing.features.activeStrategies'), value: TIER_LIMITS.enterprise.activeStrategies },
+        { label: t('pricing.features.tradesPerDay'), value: TIER_LIMITS.enterprise.tradesPerDay },
+        { label: t('pricing.features.dailyLossCap'), value: TIER_LIMITS.enterprise.dailyLossCap },
+        { label: t('pricing.features.maxPositionSize'), value: TIER_LIMITS.enterprise.maxPosition },
+        { label: t('pricing.features.marketScanning'), value: t('pricing.scanLevels.fullCoverage') },
+        { label: t('pricing.features.safetyLimits'), value: true },
+        { label: t('pricing.features.apiAccess'), value: true },
+        { label: t('pricing.features.prioritySupport'), value: true },
+      ],
+    },
+  ];
+
+  const faqs = [
+    { q: t('pricing.faq.howItWorks.q'), a: t('pricing.faq.howItWorks.a') },
+    { q: t('pricing.faq.risk.q'), a: t('pricing.faq.risk.a') },
+    { q: t('pricing.faq.markets.q'), a: t('pricing.faq.markets.a') },
+    { q: t('pricing.faq.cancel.q'), a: t('pricing.faq.cancel.a') },
+    { q: t('pricing.faq.account.q'), a: t('pricing.faq.account.a') },
+  ];
   return (
     <div className="min-h-screen bg-[#060912] text-white flex flex-col">
       <PublicNavbar />
@@ -135,16 +122,16 @@ export function PricingPage() {
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-3">Pricing</p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, transparent plans</h1>
+          <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-3">{t('pricing.title')}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">{t('pricing.heading')}</h1>
           <p className="text-[#8892B0] text-sm max-w-md mx-auto">
-            Start free. Upgrade when you're ready. No hidden fees. Cancel anytime.
+            {t('pricing.subtitle')}
           </p>
         </div>
 
         {/* Plan cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-          {PLANS.map(({ name, price, sub, href, cta, highlight, features }) => (
+          {plans.map(({ name, price, sub, href, cta, highlight, features }) => (
             <div
               key={name}
               className={`relative p-6 flex flex-col gap-5 bg-bg-surface/80 backdrop-blur-sm rounded-lg overflow-hidden hover:border-accent/30 transition-all duration-300 ${
@@ -155,7 +142,7 @@ export function PricingPage() {
             >
               {highlight && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] text-xs font-bold px-3 py-0.5 rounded-full">
-                  POPULAR
+                  {t('pricing.mostPopular')}
                 </span>
               )}
 
@@ -198,9 +185,9 @@ export function PricingPage() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-xl font-bold text-white mb-6 text-center">Frequently asked questions</h2>
+          <h2 className="text-xl font-bold text-white mb-6 text-center">{t('pricing.faqTitle')}</h2>
           <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
-            {FAQS.map(({ q, a }) => (
+            {faqs.map(({ q, a }) => (
               <FaqItem key={q} q={q} a={a} />
             ))}
           </div>

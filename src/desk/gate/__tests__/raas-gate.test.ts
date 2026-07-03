@@ -3,7 +3,7 @@
  * ROIaaS - Revenue-as-a-Service License Gating tests
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import RaasGate, {
   LicenseError,
   RateLimitError,
@@ -20,6 +20,37 @@ import RaasGate, {
 } from '../raas-gate';
 import { LicenseService } from '../../../platform/billing/license-service';
 import { LicenseTier, LicenseStatus, License } from '../../../shared/types/license';
+
+const { mockLicenses, mockQuery } = vi.hoisted(() => {
+  const data = new Map<string, Record<string, any>>();
+  const fn = vi.fn((text: string, params?: any[]) => {
+    if (text.startsWith('INSERT INTO licenses')) {
+      const row: Record<string, any> = {
+        id: params![0], name: params![1], key: params![2],
+        tier: params![3], status: params![4],
+        created_at: params![5], updated_at: params![6],
+        usage_count: params![7], max_usage: params![8],
+        tenant_id: params![9], domain: params![10],
+        expires_at: params![11],
+      };
+      data.set(row.id, row);
+      return { rows: [row] };
+    }
+    if (text === 'SELECT * FROM licenses WHERE id = $1') {
+      return { rows: data.get(params![0]) ? [data.get(params![0])] : [] };
+    }
+    if (text === 'SELECT * FROM licenses WHERE key = $1') {
+      const rows = [...data.values()].filter((r: any) => r.key === params![0]);
+      return { rows };
+    }
+    return { rows: [] };
+  });
+  return { mockLicenses: data, mockQuery: fn };
+});
+
+vi.mock('../../../shared/db/postgres-client', () => ({
+  query: mockQuery,
+}));
 
 // Import validators for direct function tests
 import {
@@ -250,7 +281,7 @@ describe('raas-gate', () => {
     beforeEach(() => {
       gate = RaasGate.getInstance();
       licenseService = gate.getLicenseService();
-      (licenseService as any).licenses.clear();
+      mockLicenses.clear();
     });
 
     describe('validateApiKey', () => {
@@ -262,7 +293,7 @@ describe('raas-gate', () => {
         });
 
         // Invalid key should return undefined
-        const result = gate.validateApiKey('INVALID-KEY');
+        const result = await gate.validateApiKey('INVALID-KEY');
         expect(result).toBeUndefined();
       });
     });

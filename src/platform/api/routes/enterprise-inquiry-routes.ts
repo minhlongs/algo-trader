@@ -58,24 +58,24 @@ enterpriseInquiryRouter.post('/inquiries', requireTier('FREE'), async (req: Requ
 });
 
 /** GET /inquiries — admin: list all inquiries sorted by createdAt desc */
-enterpriseInquiryRouter.get('/inquiries', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
+enterpriseInquiryRouter.get('/inquiries', requireTier('ENTERPRISE'), async (req: Request, res: Response): Promise<void> => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;
   }
 
-  const inquiries = onboardingService.listInquiries();
+  const inquiries = await onboardingService.listInquiries();
   res.json(inquiries);
 });
 
 /** GET /inquiries/:id — admin: fetch single inquiry */
-enterpriseInquiryRouter.get('/inquiries/:id', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
+enterpriseInquiryRouter.get('/inquiries/:id', requireTier('ENTERPRISE'), async (req: Request, res: Response): Promise<void> => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;
   }
 
-  const inquiry = onboardingService.getInquiry(String(req.params.id ?? ''));
+  const inquiry = await onboardingService.getInquiry(String(req.params.id ?? ''));
   if (!inquiry) {
     res.status(404).json({ error: 'Inquiry not found' });
     return;
@@ -85,7 +85,7 @@ enterpriseInquiryRouter.get('/inquiries/:id', requireTier('ENTERPRISE'), (req: R
 });
 
 /** PATCH /inquiries/:id/status — admin: update status, tamAssigned, notes */
-enterpriseInquiryRouter.patch('/inquiries/:id/status', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
+enterpriseInquiryRouter.patch('/inquiries/:id/status', requireTier('ENTERPRISE'), async (req: Request, res: Response): Promise<void> => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;
@@ -110,7 +110,7 @@ enterpriseInquiryRouter.patch('/inquiries/:id/status', requireTier('ENTERPRISE')
   if (tamAssigned !== undefined) patch.tamAssigned = tamAssigned;
   if (notes !== undefined) patch.notes = notes;
 
-  const updated = onboardingService.updateInquiry(id, patch);
+  const updated = await onboardingService.updateInquiry(id, patch);
   if (!updated) {
     res.status(404).json({ error: 'Inquiry not found' });
     return;

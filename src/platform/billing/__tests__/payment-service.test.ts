@@ -3,22 +3,91 @@
  * Payment tracking and revenue metrics tests (NOWPayments provider)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PaymentService } from '../payment-service';
-import { LicenseService } from '../license-service';
-import { DunningService } from '../dunning-service';
+
+const { mockPayments, mockQuery } = vi.hoisted(() => {
+  const data = new Map<string, Record<string, any>>();
+  const fn = vi.fn((text: string, params?: any[]) => {
+    // INSERT INTO payments
+    if (text.startsWith('INSERT INTO payments')) {
+      const row: Record<string, any> = {
+        id: params![0],
+        provider_payment_id: params![1],
+        subscription_id: params![2],
+        customer_email: params![3],
+        amount: params![4],
+        currency: params![5],
+        status: params![6],
+        product_id: params![7],
+        metadata: params![8],
+        created_at: params![9],
+        updated_at: params![10],
+      };
+      data.set(row.id, row);
+      return { rows: [row] };
+    }
+    // SELECT by id
+    if (text === 'SELECT * FROM payments WHERE id = $1') {
+      const row = data.get(params![0]);
+      return { rows: row ? [row] : [] };
+    }
+    // SELECT by provider_payment_id
+    if (text === 'SELECT * FROM payments WHERE provider_payment_id = $1') {
+      const rows = [...data.values()].filter((r: any) => r.provider_payment_id === params![0]);
+      return { rows };
+    }
+    // SELECT by customer_email
+    if (text === 'SELECT * FROM payments WHERE customer_email = $1') {
+      const rows = [...data.values()].filter((r: any) => r.customer_email === params![0]);
+      return { rows };
+    }
+    // SELECT all
+    if (text === 'SELECT * FROM payments') {
+      return { rows: [...data.values()] };
+    }
+    // UPDATE status
+    if (text.startsWith('UPDATE payments SET status')) {
+      const [status, updatedAt, id] = params!;
+      const row = data.get(id);
+      if (row) {
+        row.status = status;
+        row.updated_at = updatedAt;
+      }
+      return { rows: row ? [row] : [] };
+    }
+    return { rows: [] };
+  });
+  return { mockPayments: data, mockQuery: fn };
+});
+
+vi.mock('../../../shared/db/postgres-client', () => ({
+  query: mockQuery,
+}));
+
+vi.mock('../../audit/audit-log-service', () => ({
+  AuditLogService: {
+    getInstance: () => ({
+      log: vi.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
+
+vi.mock('../dunning-service', () => ({
+  DunningService: {
+    getInstance: () => ({
+      recordPaymentFailure: vi.fn().mockResolvedValue(undefined),
+      recordPaymentSuccess: vi.fn().mockResolvedValue(undefined),
+    }),
+  },
+}));
 
 describe('PaymentService', () => {
   let service: PaymentService;
-  let licenseService: LicenseService;
-  let dunningService: DunningService;
 
   beforeEach(() => {
     service = PaymentService.getInstance();
-    licenseService = LicenseService.getInstance();
-    dunningService = DunningService.getInstance();
-    (service as any).payments.clear();
-    (licenseService as any).licenses.clear();
+    mockPayments.clear();
   });
 
   describe('createPayment', () => {

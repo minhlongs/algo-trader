@@ -1,10 +1,9 @@
 /**
  * Coupon Service
- * Manages discount codes — persisted to JSON file so coupons survive PM2 restarts.
+ * Manages discount codes — persisted to PostgreSQL so coupons survive restarts.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { query } from '../../shared/db/postgres-client';
 import { logger } from '../../shared/utils/logger';
 
 export interface Coupon {
@@ -18,91 +17,95 @@ export interface Coupon {
   active: boolean;
 }
 
-const DATA_FILE = join(process.cwd(), 'data', 'coupons.json');
+interface CouponRow {
+  code: string;
+  discount_percent: number;
+  max_uses: number;
+  current_uses: number;
+  valid_until: Date | null;
+  applicable_tiers: string[];
+  created_at: Date;
+  active: boolean;
+}
+
+function rowToCoupon(row: CouponRow): Coupon {
+  return {
+    code: row.code,
+    discountPercent: row.discount_percent,
+    maxUses: row.max_uses,
+    currentUses: row.current_uses,
+    validUntil: row.valid_until ? row.valid_until.toISOString() : null,
+    applicableTiers: row.applicable_tiers ?? [],
+    createdAt: row.created_at.toISOString(),
+    active: row.active,
+  };
+}
 
 export class CouponService {
   private static instance: CouponService;
-  private coupons: Map<string, Coupon> = new Map();
 
-  private constructor() {
-    this.load();
-  }
+  private constructor() {}
 
   static getInstance(): CouponService {
     if (!CouponService.instance) CouponService.instance = new CouponService();
     return CouponService.instance;
   }
 
-  /** Load coupons from disk */
-  private load(): void {
-    try {
-      if (existsSync(DATA_FILE)) {
-        const raw = readFileSync(DATA_FILE, 'utf-8');
-        const arr: Coupon[] = JSON.parse(raw);
-        for (const c of arr) this.coupons.set(c.code, c);
-        logger.info(`[Coupon] Loaded ${arr.length} coupons from disk`);
-      }
-    } catch (err) {
-      logger.error('[Coupon] Failed to load coupons file', err);
-    }
-  }
-
-  /** Save coupons to disk */
-  private save(): void {
-    try {
-      const dir = join(process.cwd(), 'data');
-      if (!existsSync(dir)) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { mkdirSync } = require('fs');
-        mkdirSync(dir, { recursive: true });
-      }
-      writeFileSync(DATA_FILE, JSON.stringify(this.listCoupons(), null, 2));
-    } catch (err) {
-      logger.error('[Coupon] Failed to save coupons file', err);
-    }
-  }
-
   /** Admin: create a coupon */
-  createCoupon(input: {
+  async createCoupon(input: {
     code: string;
     discountPercent: number;
     maxUses?: number;
     validUntil?: string;
     applicableTiers?: string[];
-  }): Coupon {
+  }): Promise<Coupon> {
     const code = input.code.toUpperCase().trim();
-    if (this.coupons.has(code)) throw new Error(`Coupon ${code} already exists`);
     if (input.discountPercent < 1 || input.discountPercent > 100) {
       throw new Error('Discount must be 1-100%');
     }
 
-    const coupon: Coupon = {
-      code,
-      discountPercent: input.discountPercent,
-      maxUses: input.maxUses ?? 0,
-      currentUses: 0,
-      validUntil: input.validUntil ?? null,
-      applicableTiers: input.applicableTiers ?? [],
-      createdAt: new Date().toISOString(),
-      active: true,
-    };
+    // Check if already exists
+    const existing = await query('SELECT code FROM coupons WHERE code = $1', [code]);
+    if (existing.rows.length > 0) throw new Error(`Coupon ${code} already exists`);
 
-    this.coupons.set(code, coupon);
-    this.save();
+    const result = await query(
+      `INSERT INTO coupons (code, discount_percent, max_uses, current_uses, valid_until, applicable_tiers, active)
+       VALUES ($1, $2, $3, $4, $5, $6, true)
+       RETURNING *`,
+      [
+        code,
+        input.discountPercent,
+        input.maxUses ?? 0,
+        0,
+        input.validUntil ?? null,
+        input.applicableTiers ?? [],
+      ]
+    );
+
+    const coupon = rowToCoupon(result.rows[0] as unknown as CouponRow);
     logger.info(`[Coupon] Created: ${code} (${input.discountPercent}% off)`);
     return coupon;
   }
 
   /** Validate and apply coupon, returns discounted price */
-  applyCoupon(code: string, tier: string, originalPrice: number): {
+  async applyCoupon(code: string, tier: string, originalPrice: number): Promise<{
     valid: boolean;
     discountedPrice: number;
     discountPercent: number;
     error?: string;
-  } {
-    const coupon = this.coupons.get(code.toUpperCase().trim());
+  }> {
+    const result = await query(
+      'SELECT * FROM coupons WHERE code = $1',
+      [code.toUpperCase().trim()]
+    );
 
-    if (!coupon || !coupon.active) {
+    if (result.rows.length === 0) {
+      return { valid: false, discountedPrice: originalPrice, discountPercent: 0, error: 'Invalid coupon code' };
+    }
+
+    const coupon = rowToCoupon(result.rows[0] as unknown as CouponRow);
+
+    if (!coupon.active) {
       return { valid: false, discountedPrice: originalPrice, discountPercent: 0, error: 'Invalid coupon code' };
     }
 
@@ -124,26 +127,30 @@ export class CouponService {
   }
 
   /** Record a coupon use after payment is confirmed */
-  recordUse(code: string): void {
-    const coupon = this.coupons.get(code.toUpperCase().trim());
-    if (coupon) {
-      coupon.currentUses++;
-      this.save();
+  async recordUse(code: string): Promise<void> {
+    const result = await query(
+      `UPDATE coupons SET current_uses = current_uses + 1 WHERE code = $1 RETURNING *`,
+      [code.toUpperCase().trim()]
+    );
+
+    if (result.rows.length > 0) {
+      const coupon = rowToCoupon(result.rows[0] as unknown as CouponRow);
       logger.info(`[Coupon] Use recorded: ${coupon.code} (${coupon.currentUses}/${coupon.maxUses || '∞'})`);
     }
   }
 
   /** Admin: list all coupons */
-  listCoupons(): Coupon[] {
-    return Array.from(this.coupons.values());
+  async listCoupons(): Promise<Coupon[]> {
+    const result = await query('SELECT * FROM coupons ORDER BY created_at DESC');
+    return result.rows.map((r) => rowToCoupon(r as unknown as CouponRow));
   }
 
   /** Admin: deactivate coupon */
-  deactivateCoupon(code: string): boolean {
-    const coupon = this.coupons.get(code.toUpperCase().trim());
-    if (!coupon) return false;
-    coupon.active = false;
-    this.save();
-    return true;
+  async deactivateCoupon(code: string): Promise<boolean> {
+    const result = await query(
+      'UPDATE coupons SET active = false WHERE code = $1 RETURNING code',
+      [code.toUpperCase().trim()]
+    );
+    return result.rows.length > 0;
   }
 }

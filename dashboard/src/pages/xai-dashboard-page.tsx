@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { useXAI } from '../hooks/use-xai';
 import { ExplanationPanel } from '../components/xai/explanation-panel';
@@ -7,14 +6,12 @@ import { CounterfactualViewer } from '../components/xai/counterfactual-viewer';
 import { StrategyRulesViewer } from '../components/xai/strategy-rules-viewer';
 import { StitchCard, StitchCardHeader, StitchCardBody } from '../components/ui/stitch-card';
 import { Button } from '../components/ui/button';
-import { StitchBadge } from '../components/ui/stitch-badge';
 import { AlertCircle, Brain, BarChart3, GitBranch, Lightbulb } from 'lucide-react';
 
 export function XAIDashboardPage() {
   const {
     explanations,
     currentExplanation,
-    selectedTradeId,
     strategyRules,
     isLoading,
     error,
@@ -23,7 +20,6 @@ export function XAIDashboardPage() {
     fetchFeatureImportance,
     generateCounterfactuals,
     extractStrategyRules,
-    selectTrade,
     clearError,
   } = useXAI();
 
@@ -341,9 +337,9 @@ export function XAIDashboardPage() {
               <StitchCardBody>
                 {currentExplanation ? (
                   <CounterfactualViewer
-                    counterfactuals={currentExplanation.counterfactuals || []}
-                    currentFeatures={currentExplanation.feature_importance}
-                    onSimulate={generateCounterfactuals}
+                    originalFeatures={currentExplanation.featureImportance ?? {}}
+                    counterfactuals={currentExplanation.counterfactuals ?? []}
+                    onSimulate={async (features, prediction, modelType) => { await generateCounterfactuals({ features, prediction, model_type: modelType }); }}
                   />
                 ) : (
                   <div className="h-64 flex items-center justify-center text-muted-foreground border rounded-lg bg-white/5">
@@ -402,7 +398,7 @@ export function XAIDashboardPage() {
                 <h3 className="font-semibold">Extracted Strategy Rules</h3>
               </StitchCardHeader>
               <StitchCardBody>
-                <StrategyRulesViewer rules={strategyRules} />
+                <StrategyRulesViewer strategyRules={strategyRules[selectedStrategyName] ?? null} />
               </StitchCardBody>
             </StitchCard>
           </div>

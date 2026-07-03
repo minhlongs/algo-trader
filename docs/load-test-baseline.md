@@ -60,14 +60,58 @@
 3. **WebSocket connections fail** -- the WS gateway likely requires authentication or session context not provided by the test script.
 4. **Overall HTTP throughput is good** at 32 req/s with low latency even under rate-limiting load.
 
-## Gap
+## Auth Header Fix (2026-07-03)
 
-The existing load test script (`tests/load/raas-gateway-load-test.js`) does not include auth headers or API key setup, so it only validates public endpoint behavior. A meaningful load test requires either:
-- A test-specific auth bypass mode on the API, or
-- Pre-provisioned test credentials injected via env vars.
+Both k6 scripts now accept a `TEST_API_KEY` environment variable to supply authentication:
+
+- When `TEST_API_KEY` is set, both `x-api-key` and `Authorization: Bearer <key>` headers are included on all protected endpoint requests.
+- `GET /api/health` remains unauthenticated (it is a public endpoint).
+- WebSocket connections also pass the auth headers during the upgrade handshake.
+
+### Known Limitation: Missing Express Middleware Chain
+
+Even with a valid `TEST_API_KEY`, protected routes will still return 401. Root cause:
+
+1. The `distributed-rate-limiter.ts` middleware reads `x-api-key` and validates the license against the DB to assign the correct rate-limit tier, but it does **not** set `req.license`.
+2. The `requireTier()` middleware in `feature-gate.ts` checks `req.license` exclusively -- it expects an upstream "raas-gate" Express middleware to populate it.
+3. No such Express middleware exists today. The `license-validation.ts` middleware is a Fastify plugin (used by the Fastify server), not an Express middleware.
+4. Therefore, every request to a `requireTier()`-gated route hits `req.license === undefined` and returns 401.
+
+**To fix:** Write an Express middleware that reads `x-api-key` (or `Authorization: Bearer`), calls `LicenseService.getLicenseByKey(apiKey)`, and sets `req.license = license`. Mount it in `server.ts` before the route registrations.
+
+```
+// Pseudocode for the missing middleware:
+app.use('/api', async (req, res, next) => {
+  const apiKey = req.headers['x-api-key'] as string
+    || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : undefined);
+  if (apiKey) {
+    const license = await LicenseService.getInstance().getLicenseByKey(apiKey);
+    if (license) req.license = license;
+  }
+  next();
+});
+```
+
+## Endpoint Coverage Gap: `/api/status`
+
+The /api/status route called by the load test does not exist in `server.ts` route registrations. Inspecting the server:
+
+| Route | Exists | Auth | Notes |
+|-------|--------|------|-------|
+| `/api/health` | Yes | None | Public health check |
+| `/api/status` | No | -- | Returns 404 |
+| `/api/admin/status` | Yes | `requireTier('ENTERPRISE')` | System status |
+| `/api/portfolio` | No* | -- | May be a frontend-only route |
+| `/api/trades` | Yes | `requireTier('FREE')` | Trades list |
+| `/api/pnl` | Yes | `requireTier('FREE')` | P&L metrics |
+
+* `/api/portfolio` is not registered in `server.ts`. It may be a placeholder, a dashboard-only route, or deleted.
 
 ## Next Steps
 
-- Add auth token acquisition to the k6 script for authenticated endpoint coverage.
-- Add gradual ramp-up stages to observe rate-limit activation thresholds.
-- Include a broader set of endpoints (signals, subscriptions, marketplace).
+1. **Implement Express auth middleware** that reads `x-api-key` and sets `req.license`. This is the #1 blocker for authenticated load testing.
+2. **Add `/api/status` route** (or remove the check from the k6 script).
+3. **Add `/api/portfolio` route** (or remove the check from the k6 script).
+4. **Run k6 with a valid test license** after the middleware fix is deployed.
+5. **Gradual ramp-up stages** are already configured -- add per-stage thresholds to observe rate-limit activation.
+6. **Include a broader set of endpoints** (signals, subscriptions, marketplace) in future iterations.

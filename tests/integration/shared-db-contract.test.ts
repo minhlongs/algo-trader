@@ -60,6 +60,34 @@ function extractInterfaceBody(src: string, name: string): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Read migration-runner.ts import paths to discover all migration IDs.
+ * This keeps tests in sync with the actual migration list.
+ * Reads each migration file's `export const id` to handle filename-vs-id mismatches.
+ */
+function getAllMigrationIds(): string[] {
+  const runnerSrc = readFile(MIGRATION_RUNNER_FILE);
+  const re = /from\s+['"][^'"]*migrations\/([^'"]+)['"]/g;
+  const ids: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(runnerSrc)) !== null) {
+    const fname = match[1];
+    // Resolve to the actual file in src/shared/db/migrations/
+    const filePath = resolve(REPO_ROOT, 'src/shared/db/migrations', fname + '.ts');
+    try {
+      const content = readFileSync(filePath, 'utf8');
+      const idMatch = content.match(/export\s+const\s+id\s*=\s*['"]([^'"]+)['"]/);
+      if (idMatch) {
+        ids.push(idMatch[1]);
+      }
+    } catch {
+      // Fall back to file name if file can't be read
+      ids.push(fname);
+    }
+  }
+  return ids;
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('Shared DB Contract', () => {
@@ -208,15 +236,14 @@ describe('Shared DB Contract', () => {
     });
 
     it('skips when all migrations already applied', async () => {
-      // Return both migration IDs as already applied.
+      // Dynamically discover all migration IDs from the runner source,
+      // so this test stays in sync as migrations are added.
+      const allIds = getAllMigrationIds();
       mockPoolInstance.query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // ensureMigrationsTable
         .mockResolvedValueOnce({
-          rows: [
-            { id: '001-create-trades-table' },
-            { id: '026-create-ai-audit-tables' },
-          ],
-          rowCount: 2,
+          rows: allIds.map((id) => ({ id })),
+          rowCount: allIds.length,
         }); // getAppliedMigrations
 
       const { runMigrations } = await import('../../src/db/migration-runner');
@@ -228,12 +255,14 @@ describe('Shared DB Contract', () => {
     });
 
     it('runs pending migration (not yet applied)', async () => {
-      // Only 001 is applied; 026 is pending.
+      // All migrations except 026 are applied; only 026 is pending.
+      const pendingIds = getAllMigrationIds();
+      const appliedIds = pendingIds.filter((id) => id !== '026-create-ai-audit-tables');
       mockPoolInstance.query
         .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // ensureMigrationsTable
         .mockResolvedValueOnce({
-          rows: [{ id: '001-create-trades-table' }],
-          rowCount: 1,
+          rows: appliedIds.map((id) => ({ id })),
+          rowCount: appliedIds.length,
         }); // getAppliedMigrations
 
       const { runMigrations } = await import('../../src/db/migration-runner');

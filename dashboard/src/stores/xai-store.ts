@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export interface Counterfactual {
+  feature: string;
+  currentValue: number;
+  counterfactualValue: number;
+  requiredChange: number;
+  wouldFlipPredictionTo: number;
+  description: string;
+}
+
+export interface Visualization {
+  chartType: string;
+  data: Record<string, unknown>;
+  layout?: Record<string, unknown>;
+}
+
 export interface Explanation {
   id: string;
   tradeId: string;
@@ -10,14 +25,10 @@ export interface Explanation {
   rationale: string;
   confidence: number;
   timestamp: string;
-  counterfactuals?: Array<{
-    feature: string;
-    currentValue: number;
-    counterfactualValue: number;
-    description: string;
-  }>;
+  counterfactuals?: Counterfactual[];
   shapValues?: Record<string, number>;
   limeValues?: Record<string, number>;
+  visualizations?: Visualization[];
 }
 
 export interface StrategyRules {

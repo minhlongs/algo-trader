@@ -66,7 +66,7 @@ export const auth = betterAuth({
         after: async (user) => {
           try {
             const trialDrip = TrialDripService.getInstance();
-            trialDrip.subscribe(
+            await trialDrip.subscribe(
               user.email,
               user.id,
               'FREE',

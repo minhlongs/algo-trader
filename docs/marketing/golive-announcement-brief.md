@@ -10,7 +10,7 @@
 1. **For traders:** "52 AI strategies analyzing prediction markets. You get the signals. We do the math."
 2. **For skeptics:** "Kelly-optimal position sizing. Dual-model risk calibration. Not a meme, not a signal group — a proper RaaS platform."
 3. **For Polymarket power users:** "Stop guessing your position size. CashClaw tells you how much to bet and when."
-4. **For investors/partners:** "Prediction market RaaS. $49-$499/mo. 85% margins. Production-grade at launch."
+4. **For investors/partners:** "Prediction market RaaS. $99-$999/mo. 85% margins. Production-grade at launch."
 
 ---
 
@@ -39,7 +39,7 @@
   3. Solution (CashClaw + 52 strategies)
   4. How it works (subscribe, get signals, trade)
   5. The math (Kelly sizing explanation)
-  6. Pricing (Starter $49 / Pro $149 / Elite $499)
+  6. Pricing (Pro $99 / Enterprise $299 / Master $999)
   7. Link + CTA
 - **Hashtags:** #PredictionMarkets #Polymarket #TradingSignals #Crypto #AI #DeFi
 
@@ -93,7 +93,7 @@ cashclaw.cc (all CTAs point here)
 
 - **52+ chiến lược AI** phân tích Polymarket, CEX, DEX
 - **Kelly-optimal sizing** — công thức toán học tối ưu hóa kích thước lệnh
-- **3 gói thuê bao:** Starter ($49), Pro ($149), Elite ($499) — thanh toán qua USDT (NOWPayments)
+- **3 gói thuê bao:** Pro ($99), Enterprise ($299), Master ($999) — thanh toán qua USDT (NOWPayments)
 - **Kênh phân phối:** Dashboard web + Telegram Bot (@Sophia_Bbot)
 - **Đối tượng chính:** Trader Polymarket (80%), trader CEX/DEX (20%)
 

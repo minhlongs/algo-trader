@@ -8,8 +8,8 @@ import { Subscription } from './subscription-service';
 
 const TIER_MO_PRICE: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 0,
-  [LicenseTier.PRO]: 49,
-  [LicenseTier.ENTERPRISE]: 199,
+  [LicenseTier.PRO]: 99,
+  [LicenseTier.ENTERPRISE]: 299,
   [LicenseTier.MASTER]: 999,
 };
 

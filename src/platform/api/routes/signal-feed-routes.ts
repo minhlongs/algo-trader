@@ -28,12 +28,12 @@ const listQuerySchema = z.object({
 });
 
 /** Resolve tier from Bearer API key header */
-function resolveTier(req: Request): TierKey {
+async function resolveTier(req: Request): Promise<TierKey> {
   const authHeader = req.headers.authorization ?? '';
   const apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!apiKey) return 'FREE';
 
-  const license = gate.validateApiKey(apiKey);
+  const license = await gate.validateApiKey(apiKey);
   if (!license) return 'FREE';
 
   switch (license.tier) {
@@ -47,8 +47,8 @@ function resolveTier(req: Request): TierKey {
  * GET /api/v1/signals/stream
  * SSE stream — ENTERPRISE tier only. Must be registered before /:id to avoid conflict.
  */
-signalFeedRouter.get('/stream', requireTier('PRO'), (req: Request, res: Response) => {
-  const tier = resolveTier(req);
+signalFeedRouter.get('/stream', requireTier('PRO'), async (req: Request, res: Response) => {
+  const tier = await resolveTier(req);
 
   if (!canAccessSse(tier)) {
     res.status(403).json({
@@ -76,7 +76,7 @@ signalFeedRouter.get('/', requireTier('PRO'), async (req: Request, res: Response
     }
 
     const { since, limit } = parsed.data;
-    const tier = resolveTier(req);
+    const tier = await resolveTier(req);
 
     // Try cache first
     const cached = await getCachedSignals(tier, since, limit);
@@ -104,9 +104,9 @@ signalFeedRouter.get('/', requireTier('PRO'), async (req: Request, res: Response
  * GET /api/v1/signals/:id
  * Returns a single signal if not expired and visible to caller's tier.
  */
-signalFeedRouter.get('/:id', requireTier('PRO'), (req: Request, res: Response) => {
+signalFeedRouter.get('/:id', requireTier('PRO'), async (req: Request, res: Response) => {
   const { id } = req.params;
-  const tier = resolveTier(req);
+  const tier = await resolveTier(req);
 
   const live = signalTtlEnforcer.getLive();
   const signal = live.find((s) => s.id === id);

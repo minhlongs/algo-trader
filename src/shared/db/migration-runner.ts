@@ -40,6 +40,15 @@ import * as migration039 from './migrations/039-add-api-keys';
 import * as migration040 from './migrations/040-add-listing-badges';
 import * as migration041 from './migrations/041-add-subscription-improvements';
 import * as migration042 from './migrations/042-add-dunning-state';
+import * as migration043 from './migrations/043-add-billing-subscriptions';
+import * as migration044 from './migrations/044-add-billing-payments';
+import * as migration045 from './migrations/045-add-billing-licenses';
+import * as migration046 from './migrations/046-add-billing-coupons';
+import * as migration047 from './migrations/047-add-billing-drip-subscribers';
+import * as migration048 from './migrations/048-add-billing-enterprise-inquiries';
+import * as migration049 from './migrations/049-add-billing-api-keys';
+import * as migration050 from './migrations/050-add-billing-onboarding-signups';
+import * as migration051 from './migrations/051-add-usage-metering';
 
 // Migration interface
 interface Migration {
@@ -85,6 +94,15 @@ const MIGRATIONS: Migration[] = [
   migration040,
   migration041,
   migration042,
+  migration043,
+  migration044,
+  migration045,
+  migration046,
+  migration047,
+  migration048,
+  migration049,
+  migration050,
+  migration051,
 ];
 
 /**

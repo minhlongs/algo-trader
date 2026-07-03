@@ -48,10 +48,39 @@ vi.mock('../../../redis', () => ({
 }));
 
 // Mock PostgreSQL
+const { mockLicenseQuery } = vi.hoisted(() => {
+  const licenses = new Map<string, Record<string, any>>();
+  const fn = vi.fn((text: string, params?: any[]) => {
+    if (text.startsWith('INSERT INTO licenses')) {
+      const row: Record<string, any> = {
+        id: params![0], name: params![1], key: params![2],
+        tier: params![3], status: params![4],
+        created_at: params![5], updated_at: params![6],
+        usage_count: params![7], max_usage: params![8],
+        tenant_id: params![9], domain: params![10],
+        expires_at: params![11],
+      };
+      licenses.set(row.id, row);
+      return { rows: [row] };
+    }
+    if (text === 'SELECT * FROM licenses WHERE key = $1') {
+      const rows = [...licenses.values()].filter((r: any) => r.key === params![0]);
+      return { rows };
+    }
+    if (text === 'SELECT * FROM licenses WHERE id = $1') {
+      const row = licenses.get(params![0]);
+      return { rows: row ? [row] : [] };
+    }
+    return { rows: [] };
+  });
+  return { mockLicenseQuery: fn };
+});
+
 vi.mock('../../../shared/db/postgres-client', () => ({
   getDbClient: () => ({
     query: vi.fn().mockResolvedValue({ rows: [] }),
   }),
+  query: mockLicenseQuery,
   transaction: vi.fn().mockImplementation(async (fn) => {
     const mockClient = {
       query: vi.fn().mockResolvedValue({
@@ -125,9 +154,8 @@ describe('Distributed Rate Limiter Integration Tests', () => {
     process.env.METRICS_TOKEN = 'test-metrics-token';
     process.env.BETTER_AUTH_SECRET = 'test-auth-secret';
 
-    // Clear and create test licenses
+    // Create test licenses
     const licenseService = LicenseService.getInstance();
-    (licenseService as unknown as { licenses: { clear(): void } }).licenses.clear();
 
     const freeLic = await licenseService.createLicense({
       name: 'Free License',

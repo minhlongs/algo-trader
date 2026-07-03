@@ -21,6 +21,7 @@ import { TradingEquityChart } from '../components/trading-equity-chart';
 import type { EquityDataPoint } from '../components/trading-equity-chart';
 import { StrategyAllocationChart } from '../components/strategy-allocation-chart';
 import type { AllocationItem } from '../components/strategy-allocation-chart';
+import { useTranslation } from 'react-i18next';
 
 /* ── Local types ── */
 
@@ -104,6 +105,7 @@ function KpiCard({ label, value, accent = 'default', subLabel }: KpiCardProps) {
 /* ------------------------------------------------------------------ */
 
 function ModeBadge({ mode }: { mode: string }) {
+  const { t } = useTranslation();
   const isLive = mode === 'live';
   return (
     <span
@@ -114,7 +116,7 @@ function ModeBadge({ mode }: { mode: string }) {
       }`}
     >
       <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-profit animate-pulse' : 'bg-yellow-400'}`} />
-      {isLive ? 'LIVE' : 'PAPER'}
+      {isLive ? t('liveTrading.live') : t('liveTrading.paper')}
     </span>
   );
 }
@@ -143,20 +145,24 @@ function PositionsTable({
   closingPositionId: string | null;
   onClosePosition: (id: string) => void;
 }) {
+  const { t } = useTranslation();
+
   if (rows.length === 0) {
     return (
       <div className="text-muted text-xs py-8 text-center border border-dashed border-bg-border rounded-lg">
-        No open positions
+        {t('liveTrading.noOpenPositions')}
       </div>
     );
   }
+
+  const headers = [t('liveTrading.token'), t('liveTrading.side'), t('liveTrading.size'), t('liveTrading.entry'), t('liveTrading.current'), t('liveTrading.unrealizedPnl'), ''];
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[520px] sm:min-w-[700px] text-xs">
         <thead className="border-b border-bg-border bg-bg">
           <tr>
-            {['Token', 'Side', 'Size', 'Entry', 'Current', 'Unreal. PnL', ''].map((h) => (
+            {headers.map((h) => (
               <th key={h} className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-muted whitespace-nowrap">{h}</th>
             ))}
           </tr>
@@ -183,12 +189,12 @@ function PositionsTable({
                         ? 'bg-bg-border text-muted border-bg-border cursor-not-allowed'
                         : 'bg-loss/10 border-loss/40 text-loss hover:bg-loss/20 hover:border-loss/60'
                     }`}
-                    aria-label={`Close position ${r.tokenId}`}
+                    aria-label={`${t('liveTrading.close')} ${r.tokenId}`}
                   >
                     {isClosing ? (
                       <span className="inline-block w-3 h-3 border-2 border-muted border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      'Close'
+                      t('liveTrading.close')
                     )}
                   </button>
                 </td>
@@ -218,20 +224,24 @@ interface TradeRow {
 }
 
 function TradesTable({ rows }: { rows: TradeRow[] }) {
+  const { t } = useTranslation();
+
   if (rows.length === 0) {
     return (
       <div className="text-muted text-xs py-8 text-center border border-dashed border-bg-border rounded-lg">
-        No trades yet
+        {t('liveTrading.noTradesYet')}
       </div>
     );
   }
+
+  const headers = [t('liveTrading.time'), t('liveTrading.strategy'), t('liveTrading.side'), t('liveTrading.symbol'), t('liveTrading.price'), t('liveTrading.size'), t('liveTrading.pnl'), t('liveTrading.mode')];
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[520px] sm:min-w-[700px] text-xs">
         <thead className="border-b border-bg-border bg-bg">
           <tr>
-            {['Time', 'Strategy', 'Side', 'Symbol', 'Price', 'Size', 'PnL', 'Mode'].map((h) => (
+            {headers.map((h) => (
               <th key={h} className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-muted whitespace-nowrap">{h}</th>
             ))}
           </tr>
@@ -250,9 +260,9 @@ function TradesTable({ rows }: { rows: TradeRow[] }) {
               </td>
               <td className="px-3 py-2">
                 {r.dryRun ? (
-                  <span className="text-yellow-400 text-[10px]">PAPER</span>
+                  <span className="text-yellow-400 text-[10px]">{t('liveTrading.paper')}</span>
                 ) : (
-                  <span className="text-profit text-[10px]">LIVE</span>
+                  <span className="text-profit text-[10px]">{t('liveTrading.live')}</span>
                 )}
               </td>
             </tr>
@@ -268,6 +278,7 @@ function TradesTable({ rows }: { rows: TradeRow[] }) {
 /* ------------------------------------------------------------------ */
 
 export function LiveTradingPage() {
+  const { t, i18n } = useTranslation();
   const { fetchApi } = useApiClient();
 
   // Store-derived data
@@ -323,10 +334,10 @@ export function LiveTradingPage() {
       if (data) {
         setApiTrades(data);
       } else {
-        setTradesError('Failed to load trade data');
+        setTradesError(t('liveTrading.failedLoadTrades'));
       }
     } catch {
-      setTradesError('Failed to load trade data');
+      setTradesError(t('liveTrading.failedLoadTrades'));
     } finally {
       setTradesLoading(false);
     }
@@ -388,7 +399,7 @@ export function LiveTradingPage() {
       .slice(0, 50)
       .map((t) => ({
         id: t.id,
-        time: new Date(t.timestamp).toLocaleString('en-US', {
+        time: new Date(t.timestamp).toLocaleString(i18n.language, {
           month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit',
         }),
         strategy: t.strategy,
@@ -436,11 +447,11 @@ export function LiveTradingPage() {
     const capitalUsedVal = Math.max(positionSizeVal, equityUsed);
 
     return [
-      { label: 'Daily Loss', value: Math.round(dailyLossVal * 10) / 10, max: 5, format: 'percent' as const },
-      { label: 'Position Size', value: Math.round(positionSizeVal * 10) / 10, max: 20, format: 'percent' as const },
-      { label: 'Drawdown', value: Math.round(drawdownVal * 10) / 10, max: Math.round(maxDrawdownVal * 10) / 10, format: 'percent' as const },
-      { label: 'Consecutive Losses', value: consecutiveLosses, max: 5, format: 'count' as const },
-      { label: 'Capital Used', value: Math.round(capitalUsedVal * 10) / 10, max: 100, format: 'percent' as const },
+      { label: t('liveTrading.dailyLoss'), value: Math.round(dailyLossVal * 10) / 10, max: 5, format: 'percent' as const },
+      { label: t('liveTrading.positionSize'), value: Math.round(positionSizeVal * 10) / 10, max: 20, format: 'percent' as const },
+      { label: t('liveTrading.drawdown'), value: Math.round(drawdownVal * 10) / 10, max: Math.round(maxDrawdownVal * 10) / 10, format: 'percent' as const },
+      { label: t('liveTrading.consecutiveLosses'), value: consecutiveLosses, max: 5, format: 'count' as const },
+      { label: t('liveTrading.capitalUsed'), value: Math.round(capitalUsedVal * 10) / 10, max: 100, format: 'percent' as const },
     ];
   }, [adminStatus, botStatus, positionRows, consecutiveLosses]);
 
@@ -456,7 +467,7 @@ export function LiveTradingPage() {
       });
       setStopDialogOpen(false);
     } else {
-      setStopError('Failed to stop bot. Please try again.');
+      setStopError(t('liveTrading.failedStopBot'));
     }
     setStopping(false);
   }, [fetchApi, botStatus]);
@@ -469,7 +480,7 @@ export function LiveTradingPage() {
     try {
       const position = (positions as Position[]).find((p) => p.id === id);
       if (!position) {
-        setToast({ msg: 'Position not found', type: 'error' });
+        setToast({ msg: t('liveTrading.positionNotFound'), type: 'error' });
         return;
       }
       const result = await fetchApi<{ success: boolean }>(`/positions/${id}/close`, {
@@ -482,12 +493,12 @@ export function LiveTradingPage() {
       });
       if (result?.success) {
         setClosedPositionIds((prev) => new Set(prev).add(id));
-        setToast({ msg: 'Position closed', type: 'success' });
+        setToast({ msg: t('liveTrading.positionClosed'), type: 'success' });
       } else {
-        setToast({ msg: 'Failed to close position', type: 'error' });
+        setToast({ msg: t('liveTrading.failedClose'), type: 'error' });
       }
     } catch {
-      setToast({ msg: 'Failed to close position', type: 'error' });
+      setToast({ msg: t('liveTrading.failedClose'), type: 'error' });
     } finally {
       setClosingPositionId(null);
     }
@@ -583,32 +594,32 @@ export function LiveTradingPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-4">
-          <h1 className="text-white text-2xl font-bold">Live Trading</h1>
+          <h1 className="text-white text-2xl font-bold">{t('liveTrading.title')}</h1>
           <ModeBadge mode={mode} />
         </div>
         <div className="flex items-center gap-2">
-          {isStale && <span className="text-gold text-[10px]">stale</span>}
-          <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-profit animate-pulse' : 'bg-bg-border'}`} title={autoRefresh ? 'Connected' : 'Paused'} />
-          {adminLoading && <span className="text-muted text-xs">Refreshing...</span>}
+          {isStale && <span className="text-gold text-[10px]">{t('liveTrading.stale')}</span>}
+          <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-profit animate-pulse' : 'bg-bg-border'}`} title={autoRefresh ? t('liveTrading.connected') : t('liveTrading.paused')} />
+          {adminLoading && <span className="text-muted text-xs">{t('liveTrading.refreshing')}</span>}
           <button
             onClick={() => setAutoRefresh((p) => !p)}
             className="text-xs text-muted border border-bg-border px-3 py-1.5 rounded hover:text-white hover:border-muted/50 transition-colors min-h-touch"
           >
-            {autoRefresh ? 'Pause' : 'Resume'}
+            {autoRefresh ? t('liveTrading.pause') : t('liveTrading.resume')}
           </button>
           {running && (
             <button
               onClick={() => setStopDialogOpen(true)}
               className="text-xs text-loss font-bold border border-loss/40 px-3 py-1.5 rounded hover:bg-loss/10 transition-colors min-h-touch"
             >
-              Stop Bot
+              {t('liveTrading.stopBot')}
             </button>
           )}
           <button
             onClick={refreshAdmin}
             className="text-xs text-muted border border-bg-border px-3 py-1.5 rounded hover:text-white hover:border-muted/50 transition-colors min-h-touch"
           >
-            Refresh
+            {t('liveTrading.refresh')}
           </button>
         </div>
       </div>
@@ -634,27 +645,27 @@ export function LiveTradingPage() {
       {/* KPI Cards with sparklines — responsive 2-col on mobile, 4-col on desktop */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <TradingKpiCard
-          label="Daily P&L"
+          label={t('liveTrading.dailyPnl')}
           value={fmtUsd(botStatus?.dailyPnl ?? 0)}
           accent={(botStatus?.dailyPnl ?? 0) >= 0 ? 'profit' : 'loss'}
           trend={dailyPnlTrend}
           sparklineData={dailyPnlSparkline}
         />
         <TradingKpiCard
-          label="Win Rate"
+          label={t('liveTrading.winRate')}
           value={fmtPercent(winRate)}
           accent={winRate >= 50 ? 'profit' : winRate > 0 ? 'warning' : 'loss'}
           trend={winRateTrend}
           sparklineData={winRateSparkline}
         />
         <TradingKpiCard
-          label="Open Positions"
+          label={t('liveTrading.openPositionsLabel')}
           value={String(openPosCount)}
           accent={openPosCount > 0 ? 'profit' : 'muted'}
         />
         <TradingKpiCard
-          label="Circuit Breaker"
-          value={isCircuitOpen ? 'OPEN' : circuitBreakerState === 'HALF_OPEN' ? 'HALF_OPEN' : 'CLOSED'}
+          label={t('liveTrading.circuitBreaker')}
+          value={isCircuitOpen ? t('liveTrading.circuitOpen') : circuitBreakerState === 'HALF_OPEN' ? t('liveTrading.circuitHalfOpen') : t('liveTrading.circuitClosed')}
           accent={isCircuitOpen ? 'loss' : circuitBreakerState === 'HALF_OPEN' ? 'warning' : 'profit'}
           subLabel={adminStatus?.circuitBreaker?.reason ?? undefined}
         />
@@ -663,23 +674,23 @@ export function LiveTradingPage() {
       {/* Guard Status Card */}
       <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard
-          label="Bot Status"
-          value={running ? 'Running' : 'Stopped'}
+          label={t('liveTrading.botStatus')}
+          value={running ? t('liveTrading.running') : t('liveTrading.stopped')}
           accent={running ? 'profit' : 'loss'}
         />
         <KpiCard
-          label="Daily P&L"
+          label={t('liveTrading.dailyPnl')}
           value={fmtUsd(botStatus?.dailyPnl ?? 0)}
           accent={(botStatus?.dailyPnl ?? 0) >= 0 ? 'profit' : 'loss'}
         />
         <KpiCard
-          label="Circuit Breaker"
-          value={isCircuitOpen ? 'OPEN' : circuitBreakerState === 'HALF_OPEN' ? 'HALF_OPEN' : 'CLOSED'}
+          label={t('liveTrading.circuitBreaker')}
+          value={isCircuitOpen ? t('liveTrading.circuitOpen') : circuitBreakerState === 'HALF_OPEN' ? t('liveTrading.circuitHalfOpen') : t('liveTrading.circuitClosed')}
           accent={isCircuitOpen ? 'loss' : circuitBreakerState === 'HALF_OPEN' ? 'warning' : 'profit'}
           subLabel={adminStatus?.circuitBreaker?.reason ?? undefined}
         />
         <KpiCard
-          label="Consecutive Losses"
+          label={t('liveTrading.consecutiveLosses')}
           value={String(consecutiveLosses)}
           accent={consecutiveLosses >= 3 ? 'loss' : consecutiveLosses > 0 ? 'warning' : 'profit'}
         />
@@ -692,16 +703,16 @@ export function LiveTradingPage() {
 
       {/* Bot engine stats */}
       <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard label="Uptime" value={botStatus ? `${Math.floor(botStatus.uptime / 3600)}h ${Math.floor((botStatus.uptime % 3600) / 60)}m` : '—'} />
-        <KpiCard label="Total Signals" value={String(botStatus?.totalSignals ?? '—')} />
-        <KpiCard label="Executed Trades" value={String(botStatus?.executedTrades ?? '—')} accent="profit" />
-        <KpiCard label="Rejected Trades" value={String(botStatus?.rejectedTrades ?? '—')} accent={(botStatus?.rejectedTrades ?? 0) > 0 ? 'warning' : 'muted'} />
+        <KpiCard label={t('liveTrading.uptime')} value={botStatus ? `${Math.floor(botStatus.uptime / 3600)}h ${Math.floor((botStatus.uptime % 3600) / 60)}m` : '—'} />
+        <KpiCard label={t('liveTrading.totalSignals')} value={String(botStatus?.totalSignals ?? '—')} />
+        <KpiCard label={t('liveTrading.executedTrades')} value={String(botStatus?.executedTrades ?? '—')} accent="profit" />
+        <KpiCard label={t('liveTrading.rejectedTrades')} value={String(botStatus?.rejectedTrades ?? '—')} accent={(botStatus?.rejectedTrades ?? 0) > 0 ? 'warning' : 'muted'} />
       </div>
 
       {/* Current Positions */}
       <section>
         <h2 className="text-xs font-semibold text-white mb-3">
-          Open Positions ({positionRows.length})
+          {t('liveTrading.openPositions', { count: positionRows.length })}
         </h2>
         <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           <PositionsTable
@@ -715,9 +726,9 @@ export function LiveTradingPage() {
       {/* Recent Trades */}
       <section>
         <h2 className="text-xs font-semibold text-white mb-3">
-          Recent Trades ({tradeRows.length})
-          {tradesLoading && <span className="text-muted text-[10px] ml-2 font-normal">syncing...</span>}
-          {apiTrades.length > 0 && <span className="text-muted text-[10px] ml-2 font-normal">({apiTrades.length} synced)</span>}
+          {t('liveTrading.recentTrades', { count: tradeRows.length })}
+          {tradesLoading && <span className="text-muted text-[10px] ml-2 font-normal">{t('liveTrading.syncing')}</span>}
+          {apiTrades.length > 0 && <span className="text-muted text-[10px] ml-2 font-normal">{t('liveTrading.synced', { count: apiTrades.length })}</span>}
         </h2>
         <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           <TradesTable rows={tradeRows} />
@@ -741,16 +752,16 @@ export function LiveTradingPage() {
       {/* Stop confirmation dialog */}
       <ConfirmationDialog
         open={stopDialogOpen}
-        title="Stop Trading Bot"
+        title={t('liveTrading.stopTitle')}
         message={
           <>
-            <p>Are you sure? This will stop all trading.</p>
+            <p>{t('liveTrading.stopMessage')}</p>
             {stopError && (
               <p className="text-loss mt-2 text-xs">{stopError}</p>
             )}
           </>
         }
-        confirmLabel={stopping ? 'Stopping...' : 'Stop Bot'}
+        confirmLabel={stopping ? t('liveTrading.stopping') : t('liveTrading.stopBot')}
         variant="danger"
         onConfirm={handleStopBot}
         onCancel={() => {
@@ -761,7 +772,7 @@ export function LiveTradingPage() {
 
       {/* Timeline note */}
       <p className="text-muted text-[10px] text-right">
-        Data sourced from live bot engine{!autoRefresh ? ' · Auto-refresh PAUSED' : ' · Auto-refreshing every 5s'}
+        {t('liveTrading.dataSource')}{!autoRefresh ? t('liveTrading.autoRefreshPaused') : t('liveTrading.autoRefreshing')}
       </p>
     </div>
   );

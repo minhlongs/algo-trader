@@ -53,7 +53,7 @@ export default class RaasGate {
     return this.licenseService;
   }
 
-  validateApiKey(apiKey: string): License | undefined {
+  async validateApiKey(apiKey: string): Promise<License | undefined> {
     return this.licenseService.getLicenseByKey(apiKey);
   }
 

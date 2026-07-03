@@ -3,8 +3,10 @@
  * Payment tracking and revenue metrics
  * Integrated with Dunning System for suspension/reinstatement
  * Provider: NOWPayments (USDT TRC20)
+ * Storage: PostgreSQL via postgres-client
  */
 
+import { query } from '../../shared/db/postgres-client';
 import { AuditLogService } from '../audit/audit-log-service';
 import { DunningService } from './dunning-service';
 import { LicenseService } from './license-service';
@@ -52,9 +54,24 @@ export interface PaymentStatusDistribution {
   refunded: number;
 }
 
+function rowToPayment(row: any): Payment {
+  return {
+    id: row.id,
+    providerPaymentId: row.provider_payment_id,
+    subscriptionId: row.subscription_id ?? undefined,
+    customerEmail: row.customer_email,
+    amount: Number(row.amount),
+    currency: row.currency,
+    status: row.status as PaymentStatus,
+    productId: row.product_id ?? undefined,
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+    updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+    metadata: row.metadata ?? undefined,
+  };
+}
+
 export class PaymentService {
   private static instance: PaymentService;
-  private payments: Map<string, Payment> = new Map();
   private auditService: AuditLogService;
   private dunningService: DunningService;
   private licenseService: LicenseService;
@@ -74,49 +91,53 @@ export class PaymentService {
     const id = `pay_${this.generateId()}`;
     const now = new Date().toISOString();
 
-    const payment: Payment = {
-      id,
-      providerPaymentId: input.providerPaymentId,
-      subscriptionId: input.subscriptionId,
-      customerEmail: input.customerEmail,
-      amount: input.amount,
-      currency: input.currency,
-      status: input.status,
-      productId: input.productId,
-      createdAt: now,
-      updatedAt: now,
-      metadata: input.metadata,
-    };
+    const result = await query(
+      `INSERT INTO payments (id, provider_payment_id, subscription_id, customer_email, amount, currency, status, product_id, metadata, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       RETURNING *`,
+      [
+        id,
+        input.providerPaymentId,
+        input.subscriptionId ?? null,
+        input.customerEmail,
+        input.amount,
+        input.currency,
+        input.status,
+        input.productId ?? null,
+        input.metadata ? JSON.stringify(input.metadata) : null,
+        now,
+        now,
+      ]
+    );
 
-    this.payments.set(id, payment);
-    return payment;
+    return rowToPayment(result.rows[0]);
   }
 
   async getPayment(id: string): Promise<Payment | undefined> {
-    return this.payments.get(id);
+    const result = await query('SELECT * FROM payments WHERE id = $1', [id]);
+    if (result.rows.length === 0) return undefined;
+    return rowToPayment(result.rows[0]);
   }
 
   async getPaymentByProviderId(providerId: string): Promise<Payment | undefined> {
-    for (const payment of this.payments.values()) {
-      if (payment.providerPaymentId === providerId) return payment;
-    }
-    return undefined;
+    const result = await query('SELECT * FROM payments WHERE provider_payment_id = $1', [providerId]);
+    if (result.rows.length === 0) return undefined;
+    return rowToPayment(result.rows[0]);
   }
 
   async getPaymentsByCustomer(customerEmail: string): Promise<Payment[]> {
-    return Array.from(this.payments.values()).filter(
-      (p) => p.customerEmail === customerEmail
-    );
+    const result = await query('SELECT * FROM payments WHERE customer_email = $1', [customerEmail]);
+    return result.rows.map(rowToPayment);
   }
 
   async updatePaymentStatus(id: string, status: PaymentStatus): Promise<Payment | undefined> {
-    const payment = this.payments.get(id);
-    if (!payment) return undefined;
-
-    payment.status = status;
-    payment.updatedAt = new Date().toISOString();
-    this.payments.set(id, payment);
-    return payment;
+    const now = new Date().toISOString();
+    const result = await query(
+      'UPDATE payments SET status = $1, updated_at = $2 WHERE id = $3 RETURNING *',
+      [status, now, id]
+    );
+    if (result.rows.length === 0) return undefined;
+    return rowToPayment(result.rows[0]);
   }
 
   async recordPaymentSuccess(
@@ -187,11 +208,13 @@ export class PaymentService {
   }
 
   async getAllPayments(): Promise<Payment[]> {
-    return Array.from(this.payments.values());
+    const result = await query('SELECT * FROM payments');
+    return result.rows.map(rowToPayment);
   }
 
   async getRevenueMetrics(): Promise<RevenueMetrics> {
-    const payments = Array.from(this.payments.values());
+    const result = await query('SELECT * FROM payments');
+    const payments = result.rows.map(rowToPayment);
     return RevenueMetricsCalculator.calculate(payments);
   }
 

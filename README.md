@@ -219,8 +219,8 @@ Key variables:
 | Tier | Price | Strategies | Markets |
 |---|---|---|---|
 | FREE | $0 | 1 | Polymarket only |
-| PRO | $149/mo | 5 | Polymarket + 1 CEX |
-| ENTERPRISE | Custom | Unlimited | All markets + dedicated support |
+| PRO | $99/mo | 5 | Polymarket + 1 CEX |
+| ENTERPRISE | $299/mo | Unlimited | All markets + dedicated support |
 | MASTER | $999/mo | Unlimited | All markets + white-label reports + dedicated account manager + unlimited API |
 
 ---

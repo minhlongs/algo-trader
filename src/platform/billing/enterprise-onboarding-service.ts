@@ -65,15 +65,15 @@ export class EnterpriseOnboardingService {
     validateInput(input);
 
     // Prevent duplicate submissions (same email + active inquiry)
-    const existing = enterpriseInquiryStore
-      .getByEmail(input.email.trim().toLowerCase())
+    const existing = (await enterpriseInquiryStore
+      .getByEmail(input.email.trim().toLowerCase()))
       .filter((i) => !['closed_won', 'closed_lost'].includes(i.status));
 
     if (existing.length > 0) {
       throw new Error('An open enterprise inquiry already exists for this email. Our team will be in touch.');
     }
 
-    const inquiry = enterpriseInquiryStore.create({
+    const inquiry = await enterpriseInquiryStore.create({
       email: input.email.trim().toLowerCase(),
       companyName: input.companyName.trim(),
       contactName: input.contactName.trim(),
@@ -91,13 +91,13 @@ export class EnterpriseOnboardingService {
     // Notify TAM (non-blocking failure)
     const tamNotified = await notifyTam(inquiry);
     if (tamNotified) {
-      enterpriseInquiryStore.update(inquiry.id, { status: 'tam_notified' });
+      await enterpriseInquiryStore.update(inquiry.id, { status: 'tam_notified' });
     }
 
     // Provision paper demo (non-blocking failure)
     const paperDemo = await provisionPaperDemo(inquiry);
     if (paperDemo) {
-      enterpriseInquiryStore.update(inquiry.id, {
+      await enterpriseInquiryStore.update(inquiry.id, {
         paperdemoProvisioned: true,
         paperdemoKey: paperDemo.demoKey,
         status: 'demo_active',
@@ -113,20 +113,20 @@ export class EnterpriseOnboardingService {
   }
 
   /** Retrieve a single inquiry by ID (for TAM dashboard). */
-  getInquiry(id: string): EnterpriseInquiry | undefined {
+  async getInquiry(id: string): Promise<EnterpriseInquiry | undefined> {
     return enterpriseInquiryStore.getById(id);
   }
 
   /** List all inquiries (TAM dashboard). */
-  listInquiries(): EnterpriseInquiry[] {
+  async listInquiries(): Promise<EnterpriseInquiry[]> {
     return enterpriseInquiryStore.list();
   }
 
   /** Update inquiry status or TAM assignment. */
-  updateInquiry(
+  async updateInquiry(
     id: string,
     patch: Partial<Pick<EnterpriseInquiry, 'status' | 'tamAssigned' | 'notes'>>,
-  ): EnterpriseInquiry | undefined {
+  ): Promise<EnterpriseInquiry | undefined> {
     return enterpriseInquiryStore.update(id, patch);
   }
 }

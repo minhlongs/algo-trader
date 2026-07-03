@@ -12,7 +12,7 @@ Prediction markets are booming. But most traders lose because they size position
 
 In 24 hours, that changes.
 
-CashClaw — 52 AI strategies. Kelly-optimal sizing. From $49/mo.
+CashClaw — 52 AI strategies. Kelly-optimal sizing. From $99/mo.
 
 cashclaw.cc
 ```
@@ -68,7 +68,7 @@ You get the signal. We do the math.
 ```
 How CashClaw works:
 
-1. Subscribe ($49/$149/$499 per month)
+1. Subscribe ($99/$299/$999 per month)
 2. Get signals via dashboard or Telegram
 3. Execute on Polymarket — we tell you exactly what and how much
 4. Track P&L in real-time
@@ -91,13 +91,13 @@ Together they tell you: bet X% on YES at price Y. Period.
 ```
 CashClaw pricing:
 
-Starter — $49/mo
+Pro — $99/mo
   5 strategies, basic signals
 
-Pro — $149/mo
+Enterprise — $299/mo
   25 strategies, priority signals, Telegram bot
 
-Elite — $499/mo
+Master — $999/mo
   52 strategies, custom filters, API access, priority support
 
 All plans: 7-day free trial. Cancel anytime.
@@ -107,7 +107,7 @@ All plans: 7-day free trial. Cancel anytime.
 ```
 Prediction markets reward the prepared.
 
-52 strategies. Kelly sizing. $49 to start.
+52 strategies. Kelly sizing. $99 to start.
 
 → cashclaw.cc
 
@@ -133,7 +133,7 @@ What it does:
 
 We trade our own signals. The platform is built by traders, for traders.
 
-cashclaw.cc — 7-day free trial, no card required for Starter.
+cashclaw.cc — 7-day free trial, no card required for Pro.
 
 Happy to answer questions here or in DMs. Not here to shill — here to build.
 ```
@@ -164,7 +164,7 @@ Most signal groups give you "BUY YES 60c" with no size. That's half the trade. K
 This is early. We have paying customers but we're transparent about what's beta and what's production. The strategies are real, the P&L tracking is real, but like any quant system — past performance doesn't guarantee future results.
 
 **Pricing:**
-$49-$499/mo. 7-day free trial. We use NOWPayments (USDT). No card required for trial.
+$99-$999/mo. 7-day free trial. We use NOWPayments (USDT). No card required for trial.
 
 cashclaw.cc
 

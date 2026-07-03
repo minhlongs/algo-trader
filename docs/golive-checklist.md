@@ -37,7 +37,7 @@
 
 ### Landing Page (cashclaw.cc) ✅ DONE
 - [x] Deployed and verified (HTTP 200)
-- [x] Tier pricing shown (Starter $49 / Pro $149 / Elite $499)
+- [x] Tier pricing shown (Pro $99 / Enterprise $299 / Master $999)
 - [x] CTA linking to checkout flow
 - [x] Mobile-responsive
 

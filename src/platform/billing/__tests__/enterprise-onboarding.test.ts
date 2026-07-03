@@ -3,6 +3,8 @@
  * Covers: inquiry store CRUD, validation, duplicate guard,
  * TAM notifier (mocked email), paper-demo provisioner,
  * and full orchestration via EnterpriseOnboardingService.
+ *
+ * Storage: PostgreSQL via postgres-client (mocked)
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -22,6 +24,75 @@ vi.mock('../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+const { mockData, mockQuery } = vi.hoisted(() => {
+  const data = new Map<string, Record<string, any>>();
+  const fn = vi.fn((text: string, params?: any[]) => {
+    // INSERT INTO enterprise_inquiries
+    if (text.startsWith('INSERT INTO enterprise_inquiries')) {
+      const row: Record<string, any> = {
+        id: params![0],
+        email: params![1],
+        company_name: params![2],
+        contact_name: params![3],
+        tier: params![4],
+        use_case: params![5],
+        team_size: params![6],
+        status: params![7],
+        paperdemo_provisioned: params![8],
+        created_at: new Date(),
+        updated_at: new Date(),
+        tam_assigned: null,
+        paperdemo_key: null,
+        notes: null,
+      };
+      data.set(row.id, row);
+      return { rows: [row] };
+    }
+    // SELECT by id
+    if (text === 'SELECT * FROM enterprise_inquiries WHERE id = $1') {
+      const row = data.get(params![0]);
+      return { rows: row ? [row] : [] };
+    }
+    // SELECT by email
+    if (text === 'SELECT * FROM enterprise_inquiries WHERE email = $1 ORDER BY created_at DESC') {
+      const rows = [...data.values()].filter((r: any) => r.email === params![0]);
+      return { rows };
+    }
+    // SELECT all
+    if (text === 'SELECT * FROM enterprise_inquiries ORDER BY created_at DESC') {
+      return { rows: [...data.values()].sort((a: any, b: any) => b.created_at - a.created_at) };
+    }
+    // UPDATE
+    if (text.startsWith('UPDATE enterprise_inquiries SET')) {
+      const row = data.get(params![params!.length - 1]); // last param is id
+      if (row) {
+        // Parse SET clauses
+        const setPart = text.match(/SET (.+?) WHERE/)?.[1] || '';
+        const setClauses = setPart.split(',').map(s => s.trim());
+        let paramIdx = 0;
+        for (const clause of setClauses) {
+          const col = clause.split('=')[0].trim();
+          if (col === 'updated_at') {
+            // skip, handled by param
+            paramIdx++;
+            continue;
+          }
+          const val = params![paramIdx];
+          row[col] = val;
+          paramIdx++;
+        }
+      }
+      return { rows: row ? [row] : [] };
+    }
+    return { rows: [] };
+  });
+  return { mockData: data, mockQuery: fn };
+});
+
+vi.mock('../../../shared/db/postgres-client', () => ({
+  query: mockQuery,
+}));
+
 import {
   enterpriseInquiryStore,
   ENTERPRISE_MONTHLY_PRICE,
@@ -32,12 +103,14 @@ import { notifyTam } from '../enterprise-tam-notifier';
 import { provisionPaperDemo } from '../enterprise-paper-demo-provisioner';
 import { EnterpriseOnboardingService } from '../enterprise-onboarding-service';
 
-// Reset singleton store state between tests by rebuilding a fresh instance
-// via the public API (no private access needed — store is additive-only in tests)
-
 describe('enterprise-inquiry-store', () => {
-  it('creates inquiry with correct defaults', () => {
-    const inq = enterpriseInquiryStore.create({
+  beforeEach(() => {
+    mockData.clear();
+    mockQuery.mockClear();
+  });
+
+  it('creates inquiry with correct defaults', async () => {
+    const inq = await enterpriseInquiryStore.create({
       email: 'test@acme.com',
       companyName: 'Acme Corp',
       contactName: 'Alice',
@@ -53,30 +126,32 @@ describe('enterprise-inquiry-store', () => {
     expect(typeof inq.createdAt).toBe('string');
   });
 
-  it('retrieves inquiry by id', () => {
-    const inq = enterpriseInquiryStore.create({
+  it('retrieves inquiry by id', async () => {
+    const inq = await enterpriseInquiryStore.create({
       email: 'byid@corp.io',
       companyName: 'Corp',
       contactName: 'Bob',
       tier: 'ENTERPRISE',
       useCase: 'Scale our trading ops',
     });
-    expect(enterpriseInquiryStore.getById(inq.id)).toEqual(inq);
+    const retrieved = await enterpriseInquiryStore.getById(inq.id);
+    expect(retrieved).toEqual(inq);
   });
 
-  it('returns undefined for unknown id', () => {
-    expect(enterpriseInquiryStore.getById('enq_nonexistent')).toBeUndefined();
+  it('returns undefined for unknown id', async () => {
+    const result = await enterpriseInquiryStore.getById('enq_nonexistent');
+    expect(result).toBeUndefined();
   });
 
-  it('updates status and paperdemo fields', () => {
-    const inq = enterpriseInquiryStore.create({
+  it('updates status and paperdemo fields', async () => {
+    const inq = await enterpriseInquiryStore.create({
       email: 'update@corp.io',
       companyName: 'UpdateCo',
       contactName: 'Carol',
       tier: 'MASTER',
       useCase: 'Full platform for hedge fund desk',
     });
-    const updated = enterpriseInquiryStore.update(inq.id, {
+    const updated = await enterpriseInquiryStore.update(inq.id, {
       status: 'tam_notified',
       tamAssigned: 'john.doe@cashclaw.cc',
       paperdemoProvisioned: true,
@@ -88,21 +163,19 @@ describe('enterprise-inquiry-store', () => {
     expect(updated?.paperdemoKey).toBe('demo_abc123');
   });
 
-  it('list returns inquiries sorted newest first (descending createdAt)', () => {
-    const a = enterpriseInquiryStore.create({
+  it('list returns inquiries sorted newest first (descending createdAt)', async () => {
+    const a = await enterpriseInquiryStore.create({
       email: 'a@sort.test', companyName: 'A', contactName: 'A',
       tier: 'PRO', useCase: 'sort test A',
     });
-    const b = enterpriseInquiryStore.create({
+    const b = await enterpriseInquiryStore.create({
       email: 'b@sort.test', companyName: 'B', contactName: 'B',
       tier: 'ENTERPRISE', useCase: 'sort test B',
     });
-    const list = enterpriseInquiryStore.list();
+    const list = await enterpriseInquiryStore.list();
     const ids = list.map((i) => i.id);
-    // Both entries must be present
     expect(ids).toContain(a.id);
     expect(ids).toContain(b.id);
-    // List must be sorted descending by createdAt (adjacent pairs)
     for (let i = 0; i < list.length - 1; i++) {
       expect(list[i]!.createdAt >= list[i + 1]!.createdAt).toBe(true);
     }
@@ -125,20 +198,29 @@ describe('ENTERPRISE_MONTHLY_PRICE constants', () => {
 });
 
 describe('notifyTam', () => {
+  beforeEach(() => {
+    mockData.clear();
+    mockQuery.mockClear();
+  });
+
   it('returns false when EmailService not initialised (graceful degradation)', async () => {
-    const inq = enterpriseInquiryStore.create({
+    const inq = await enterpriseInquiryStore.create({
       email: 'tam-test@corp.com', companyName: 'TamCo', contactName: 'Dave',
       tier: 'PRO', useCase: 'TAM notification test case',
     });
-    // EmailService mock returns isInitialized: false → should not throw, returns false
     const result = await notifyTam(inq);
     expect(result).toBe(false);
   });
 });
 
 describe('provisionPaperDemo', () => {
+  beforeEach(() => {
+    mockData.clear();
+    mockQuery.mockClear();
+  });
+
   it('returns credentials with correct shape', async () => {
-    const inq = enterpriseInquiryStore.create({
+    const inq = await enterpriseInquiryStore.create({
       email: 'demo@prospect.com', companyName: 'ProspectCo', contactName: 'Eve',
       tier: 'ENTERPRISE', useCase: 'Paper demo provisioning test case',
     });
@@ -152,7 +234,7 @@ describe('provisionPaperDemo', () => {
   });
 
   it('expiry is ~30 days from now', async () => {
-    const inq = enterpriseInquiryStore.create({
+    const inq = await enterpriseInquiryStore.create({
       email: 'expiry@prospect.com', companyName: 'ExpiryCo', contactName: 'Frank',
       tier: 'MASTER', useCase: 'Expiry check for paper demo',
     });
@@ -167,6 +249,11 @@ describe('provisionPaperDemo', () => {
 
 describe('EnterpriseOnboardingService', () => {
   const svc = EnterpriseOnboardingService.getInstance();
+
+  beforeEach(() => {
+    mockData.clear();
+    mockQuery.mockClear();
+  });
 
   it('rejects invalid email', async () => {
     await expect(
@@ -229,8 +316,6 @@ describe('EnterpriseOnboardingService', () => {
     expect(result.status).toBe('received');
     expect(result.inquiryId).toMatch(/^enq_/);
     expect(result.message).toBeTruthy();
-    // paperDemo: EmailService is mocked as not-initialised so email skipped,
-    // but provisioner still returns credentials
     expect(result.paperDemo).not.toBeNull();
     expect(result.paperDemo!.demoKey).toMatch(/^demo_/);
   });
@@ -256,12 +341,14 @@ describe('EnterpriseOnboardingService', () => {
     ).rejects.toThrow('open enterprise inquiry already exists');
   });
 
-  it('getInquiry returns undefined for unknown id', () => {
-    expect(svc.getInquiry('enq_unknown')).toBeUndefined();
+  it('getInquiry returns undefined for unknown id', async () => {
+    const result = await svc.getInquiry('enq_unknown');
+    expect(result).toBeUndefined();
   });
 
-  it('listInquiries returns array', () => {
-    expect(Array.isArray(svc.listInquiries())).toBe(true);
+  it('listInquiries returns array', async () => {
+    const result = await svc.listInquiries();
+    expect(Array.isArray(result)).toBe(true);
   });
 
   it('updateInquiry patches status', async () => {
@@ -273,7 +360,7 @@ describe('EnterpriseOnboardingService', () => {
       useCase: 'Testing status update through the enterprise onboarding service.',
     });
 
-    const updated = svc.updateInquiry(result.inquiryId, { status: 'negotiating', tamAssigned: 'tam@cashclaw.cc' });
+    const updated = await svc.updateInquiry(result.inquiryId, { status: 'negotiating', tamAssigned: 'tam@cashclaw.cc' });
     expect(updated?.status).toBe('negotiating');
     expect(updated?.tamAssigned).toBe('tam@cashclaw.cc');
   });

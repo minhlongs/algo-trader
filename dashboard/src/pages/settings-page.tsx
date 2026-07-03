@@ -118,6 +118,7 @@ export function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(MOCK_KEYS);
   const [alerts, setAlerts] = useState<AlertRule[]>(MOCK_ALERTS);
   const [newKeyVisible, setNewKeyVisible] = useState<string | null>(null);
+  const [keyError, setKeyError] = useState<string | null>(null);
   const [creatingKey, setCreatingKey] = useState(false);
 
   useEffect(() => {
@@ -129,6 +130,8 @@ export function SettingsPage() {
 
   async function handleCreateKey() {
     setCreatingKey(true);
+    setKeyError(null);
+    setNewKeyVisible(null);
     const res = await fetchApi<{ key: string; id: string; prefix: string; maskedKey: string }>(
       `/tenants/${tenant.id}/api-keys`,
       { method: 'POST', body: JSON.stringify({}) },
@@ -143,9 +146,7 @@ export function SettingsPage() {
         createdAt: new Date().toISOString(),
       }]);
     } else {
-      const mockKey = 'ak_live_mock_' + Math.random().toString(36).slice(2, 10);
-      setNewKeyVisible(mockKey);
-      setApiKeys((prev) => [...prev, { id: `k${Date.now()}`, prefix: 'ak_live', maskedKey: mockKey.slice(0, 8) + '••••••••', createdAt: new Date().toISOString() }]);
+      setKeyError('Backend unreachable. Cannot create API key. Please ensure the API server is running and try again.');
     }
   }
 
@@ -181,6 +182,17 @@ export function SettingsPage() {
 
       <SettingsTenantConfigForm tenant={tenant} />
       <Card>
+        {keyError && (
+          <div className="bg-loss/10 border border-loss/30 rounded p-3 mb-4">
+            <p className="text-loss text-xs font-medium">{keyError}</p>
+            <button
+              onClick={() => setKeyError(null)}
+              className="mt-1 text-muted text-xs underline hover:text-white"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         <SettingsExchangeKeysForm
           tenantId={tenant.id}
           apiKeys={apiKeys}
@@ -188,7 +200,7 @@ export function SettingsPage() {
           creatingKey={creatingKey}
           onCreateKey={handleCreateKey}
           onDeleteKey={handleDeleteKey}
-          onDismissNewKey={() => setNewKeyVisible(null)}
+          onDismissNewKey={() => { setNewKeyVisible(null); setKeyError(null); }}
         />
       </Card>
       <Card>

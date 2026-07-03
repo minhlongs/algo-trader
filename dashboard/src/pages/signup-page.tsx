@@ -5,6 +5,7 @@
  */
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/auth-store';
 import { PublicNavbar } from '../components/public-navbar';
 
@@ -17,6 +18,7 @@ const TIERS: { value: Tier; label: string; price: string }[] = [
 ];
 
 export function SignupPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { signup, loading, error: storeError } = useAuthStore();
@@ -37,11 +39,11 @@ export function SignupPage() {
     e.preventDefault();
     setLocalError('');
     if (!email.trim() || !password.trim()) {
-      setLocalError('Email and password are required.');
+      setLocalError(t('signup.errorRequired'));
       return;
     }
     if (password.length < 8) {
-      setLocalError('Password must be at least 8 characters.');
+      setLocalError(t('signup.errorPasswordMin'));
       return;
     }
     await signup(email.trim(), password, tier);
@@ -70,14 +72,14 @@ export function SignupPage() {
           <div className="w-full max-w-md">
             <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-8 space-y-5">
               <div>
-                <p className="text-[#00E676] text-xs uppercase tracking-widest mb-2">Account created</p>
-                <h1 className="text-white text-xl font-bold">Save your API Key</h1>
+                <p className="text-[#00E676] text-xs uppercase tracking-widest mb-2">{t('signup.accountCreated')}</p>
+                <h1 className="text-white text-xl font-bold">{t('signup.apiKeyTitle')}</h1>
               </div>
 
               <div className="bg-[#FF4466]/10 border border-[#FF4466]/40 rounded px-4 py-3">
-                <p className="text-[#FF4466] text-xs font-bold uppercase tracking-wide mb-1">Warning</p>
+                <p className="text-[#FF4466] text-xs font-bold uppercase tracking-wide mb-1">{t('signup.apiKeyWarning')}</p>
                 <p className="text-[#FF4466] text-xs">
-                  This key will only be shown once. Copy and store it securely before continuing.
+                  {t('signup.apiKeyWarningText')}
                 </p>
               </div>
 
@@ -89,7 +91,7 @@ export function SignupPage() {
                     onClick={handleCopy}
                     className="flex-shrink-0 text-xs px-3 py-1.5 border border-accent/40 rounded text-accent hover:bg-accent/10 transition-colors min-h-touch"
                   >
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? t('signup.apiKeyCopied') : t('signup.apiKeyCopy')}
                   </button>
                 </div>
               </div>
@@ -98,7 +100,7 @@ export function SignupPage() {
                 onClick={() => navigate('/app')}
                 className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] font-bold text-sm py-2.5 rounded hover:brightness-110 transition-all duration-200 min-h-touch"
               >
-                I've saved my key — Continue
+                {t('signup.apiKeyContinue')}
               </button>
             </div>
           </div>
@@ -116,8 +118,8 @@ export function SignupPage() {
           <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-8">
             {/* Header */}
             <div className="mb-6">
-              <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-2">Get started</p>
-              <h1 className="text-white text-xl font-bold">Create your account</h1>
+              <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-2">{t('signup.subtitle')}</p>
+              <h1 className="text-white text-xl font-bold">{t('signup.title')}</h1>
             </div>
 
             {displayError && (
@@ -129,12 +131,12 @@ export function SignupPage() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div>
-                <label className="block text-[#8892B0] text-xs mb-1.5">Email</label>
+                <label className="block text-[#8892B0] text-xs mb-1.5">{t('signup.email')}</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('signup.emailPlaceholder')}
                   autoComplete="email"
                   disabled={loading}
                   className="w-full bg-[#060912] border border-bg-border rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
@@ -143,12 +145,12 @@ export function SignupPage() {
 
               {/* Password */}
               <div>
-                <label className="block text-[#8892B0] text-xs mb-1.5">Password</label>
+                <label className="block text-[#8892B0] text-xs mb-1.5">{t('signup.password')}</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="min 8 characters"
+                  placeholder={t('signup.passwordPlaceholder')}
                   autoComplete="new-password"
                   disabled={loading}
                   className="w-full bg-[#060912] border border-bg-border rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
@@ -157,7 +159,7 @@ export function SignupPage() {
 
               {/* Tier selector */}
               <div>
-                <label className="block text-[#8892B0] text-xs mb-2">Plan</label>
+                <label className="block text-[#8892B0] text-xs mb-2">{t('signup.plan')}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {TIERS.map(({ value, label, price }) => (
                     <button
@@ -183,14 +185,14 @@ export function SignupPage() {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] font-bold text-sm py-2.5 rounded hover:brightness-110 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed min-h-touch"
               >
-                {loading ? 'Creating account…' : 'Create Account'}
+                {loading ? t('signup.creatingAccount') : t('signup.createAccount')}
               </button>
             </form>
 
             <p className="text-[#8892B0] text-xs text-center mt-6">
-              Already have an account?{' '}
+              {t('signup.alreadyHaveAccount')}{' '}
               <Link to="/login" className="text-accent hover:underline">
-                Sign in
+                {t('signup.signIn')}
               </Link>
             </p>
           </div>

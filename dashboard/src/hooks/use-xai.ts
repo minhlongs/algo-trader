@@ -24,7 +24,11 @@ function transformExplanation(backendExp: any) {
     })) || [],
     shapValues: backendExp.shap_values,
     limeValues: backendExp.lime_values,
-    visualizations: backendExp.visualizations,
+    visualizations: backendExp.visualizations?.map((viz: any) => ({
+      chartType: viz.chart_type,
+      data: viz.data,
+      layout: viz.layout,
+    })),
   };
 }
 

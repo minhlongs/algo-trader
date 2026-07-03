@@ -8,6 +8,8 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useMarketplace } from '../hooks/use-marketplace';
+import { useAuthStore } from '../stores/auth-store';
+import { useTranslation } from 'react-i18next';
 import type { MarketplaceSubscription, StrategyFilters } from '../hooks/use-marketplace';
 import { ConfirmationDialog } from '../components/confirmation-dialog';
 import { SubscriptionDetail } from '../components/subscription-detail';
@@ -37,6 +39,8 @@ function statusColor(status: string): string {
 }
 
 export function MarketplacePage() {
+  const { t } = useTranslation();
+
   const {
     strategies, subscriptions, loading, error, total, totalPages,
     loadStrategies, loadSubscriptions,
@@ -56,6 +60,7 @@ export function MarketplacePage() {
   const [cancelTarget, setCancelTarget] = useState<MarketplaceSubscription | null>(null);
   const [executionHistory, setExecutionHistory] = useState<Map<string, ExecutionRecord>>(new Map());
 
+  const tenantId = useAuthStore((s) => s.tenantId);
 
   useEffect(() => {
     loadSubscriptions();
@@ -180,19 +185,27 @@ export function MarketplacePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">Marketplace</h1>
+          <h1 className="text-white text-2xl font-bold tracking-tight">{t('marketplace.title')}</h1>
           <p className="text-muted text-xs mt-1">
-            Discover and subscribe to algorithmic trading strategies.
-            {total > 0 && ` ${total} strategies available.`}
+            {t('marketplace.subtitle')}
+            {total > 0 && ` ${t('marketplace.strategiesAvailable', { count: total })}`}
           </p>
         </div>
         <div className="flex gap-2">
+          {tenantId && (
+            <Link
+              to={`/app/subscriber/${tenantId}/overview`}
+              className="text-xs text-accent border border-accent/30 px-3 py-1.5 rounded hover:bg-accent/10 transition-colors"
+            >
+              {t('marketplace.subscriberPortal')}
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => { loadSubscriptions(); loadStrategies(filters); }}
             className="text-xs text-muted border border-bg-border px-3 py-1.5 rounded hover:text-white hover:border-muted/50 transition-colors"
           >
-            ↻ Refresh
+            ↻ {t('marketplace.refresh')}
           </button>
         </div>
       </div>
@@ -200,8 +213,8 @@ export function MarketplacePage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-bg-border pb-0">
         {([
-          { id: 'browse' as TabId, label: 'Browse', count: total },
-          { id: 'subscriptions' as TabId, label: 'My Subscriptions', count: subscriptions.length },
+          { id: 'browse' as TabId, label: t('marketplace.browse'), count: total },
+          { id: 'subscriptions' as TabId, label: t('marketplace.mySubscriptions'), count: subscriptions.length },
         ]).map((tab) => (
           <button
             key={tab.id}
@@ -237,7 +250,7 @@ export function MarketplacePage() {
           <div className="flex flex-wrap gap-3 items-center">
             <input
               type="text"
-              placeholder="Search strategies..."
+              placeholder={t('marketplace.searchPlaceholder')}
               value={filters.search ?? ''}
               onChange={(e) => handleFilter('search', e.target.value || undefined)}
               className="bg-bg-surface border border-bg-border rounded px-3 py-1.5 text-xs text-white placeholder-muted w-48 focus:outline-none focus:border-accent/50"
@@ -247,7 +260,7 @@ export function MarketplacePage() {
               onChange={(e) => handleFilter('category', e.target.value || undefined)}
               className="bg-bg-surface border border-bg-border rounded px-2.5 py-1.5 text-xs text-white cursor-pointer"
             >
-              <option value="">All Categories</option>
+              <option value="">{t('marketplace.allCategories')}</option>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -269,10 +282,10 @@ export function MarketplacePage() {
 
           {/* Strategy Grid */}
           {loading ? (
-            <div className="text-muted text-xs py-12 text-center">Loading strategies...</div>
+            <div className="text-muted text-xs py-12 text-center">{t('marketplace.loadingStrategies')}</div>
           ) : strategies.length === 0 ? (
             <div className="text-muted text-xs py-12 text-center">
-              No strategies found. Try adjusting filters.
+              {t('marketplace.noStrategiesFound')}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -299,17 +312,17 @@ export function MarketplacePage() {
                       <div className="flex gap-1.5 shrink-0">
                         {isSubbed && (
                           <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor('active')}`}>
-                            Subscribed
+                            {t('marketplace.subscribed')}
                           </span>
                         )}
                         {isPending && (
                           <span className={`text-[10px] border px-1.5 py-0.5 rounded ${statusColor('pending_payment')}`}>
-                            Payment Pending
+                            {t('marketplace.paymentPending')}
                           </span>
                         )}
                         {s.tags?.includes('featured') && (
                           <span className="text-[10px] border border-accent/40 text-accent px-1.5 py-0.5 rounded">
-                            🏆 Top Performer
+                            🏆 {t('marketplace.topPerformer')}
                           </span>
                         )}
                         {s.listingId && <MarketplaceBadge listingId={s.listingId} />}
@@ -321,7 +334,7 @@ export function MarketplacePage() {
 
                     {/* Description */}
                     <p className="text-muted text-[11px] leading-relaxed line-clamp-2">
-                      {s.description || 'No description provided.'}
+                      {s.description || t('marketplace.noDescription')}
                     </p>
 
                     {/* Stats */}
@@ -354,19 +367,19 @@ export function MarketplacePage() {
                         to={`/app/strategies/${s.id}`}
                         className="flex-1 text-center text-[10px] text-accent border border-accent/30 py-2 rounded hover:bg-accent/10 transition-colors min-h-touch"
                       >
-                        View Details
+                        {t('marketplace.viewDetails')}
                       </Link>
                       {isSubbed ? (
                         <div className="flex-1 text-center text-[10px] text-profit font-bold py-2 border border-profit/30 rounded">
-                          ✓ Active
+                          {t('marketplace.active')}
                         </div>
                       ) : isPending ? (
                         <div className="flex-1 text-center text-[10px] text-yellow-400 py-2 border border-yellow-400/30 rounded">
-                          Payment pending
+                          {t('marketplace.paymentPending')}
                         </div>
                       ) : isPaused ? (
                         <div className="flex-1 text-center text-[10px] text-muted py-2 border border-bg-border rounded">
-                          Paused
+                          {t('marketplace.paused')}
                         </div>
                       ) : (
                         <button
@@ -379,8 +392,8 @@ export function MarketplacePage() {
                           className="flex-1 text-center text-[10px] font-bold bg-accent text-bg py-2 rounded hover:bg-accent/80 transition-colors min-h-touch"
                         >
                           {s.listingPriceUsdMonthly && s.listingPriceUsdMonthly > 0
-                            ? `Subscribe $${(s.listingPriceUsdMonthly / 100).toFixed(2)}/mo`
-                            : 'Subscribe (Free)'}
+                            ? t('marketplace.subscribePrice', { price: (s.listingPriceUsdMonthly / 100).toFixed(2) })
+                            : t('marketplace.subscribeFree')}
                         </button>
                       )}
                     </div>
@@ -418,7 +431,7 @@ export function MarketplacePage() {
           {subscriptions.length === 0 ? (
             <div className="text-center py-12 space-y-3">
               <p className="text-muted text-xs">
-                No subscriptions yet. Browse strategies to get started.
+                {t('marketplace.noSubscriptions')}
               </p>
               <button
                 type="button"
@@ -428,13 +441,13 @@ export function MarketplacePage() {
                 }}
                 className="px-4 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors min-h-touch"
               >
-                Browse Strategies
+                {t('marketplace.browseStrategies')}
               </button>
             </div>
           ) : subscriptions.every((s) => s.status !== 'active') ? (
             <div className="text-center py-12 space-y-3">
               <p className="text-muted text-xs">
-                You have no active subscriptions.
+                {t('marketplace.noActiveSubscriptions')}
               </p>
               <button
                 type="button"
@@ -444,7 +457,7 @@ export function MarketplacePage() {
                 }}
                 className="px-4 py-2 text-xs font-bold bg-accent text-bg rounded hover:bg-accent/80 transition-colors min-h-touch"
               >
-                Browse Strategies
+                {t('marketplace.browseStrategies')}
               </button>
             </div>
           ) : (
@@ -475,7 +488,7 @@ export function MarketplacePage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-white font-bold text-sm">Subscribe</h2>
+              <h2 className="text-white font-bold text-sm">{t('marketplace.subscribeModalTitle')}</h2>
               <button
                 type="button"
                 onClick={() => { setSubscribeModal(null); setCheckoutUrl(null); setSubscribeError(null); setSubscribeSuccess(false); }}
@@ -648,7 +661,7 @@ export function MarketplacePage() {
       {/* Cancel Confirmation Dialog */}
       <ConfirmationDialog
         open={cancelTarget !== null}
-        title="Cancel Subscription"
+        title={t('marketplace.cancelSubscription')}
         message={
           cancelTarget && (
             <span>
@@ -661,8 +674,8 @@ export function MarketplacePage() {
             </span>
           )
         }
-        confirmLabel="Cancel Subscription"
-        cancelLabel="Go Back"
+        confirmLabel={t('marketplace.cancelSubscription')}
+        cancelLabel={t('marketplace.goBack')}
         variant="danger"
         onConfirm={confirmCancel}
         onCancel={() => setCancelTarget(null)}

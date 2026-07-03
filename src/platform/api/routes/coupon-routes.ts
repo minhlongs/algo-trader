@@ -16,12 +16,12 @@ import { requireTier } from '../../middleware/feature-gate';
 const TIER_PRICES: Record<string, Record<string, { price: number; invoiceId: string }>> = {
   cashclaw: {
     STARTER: { price: 49, invoiceId: '4725459350' },
-    PRO: { price: 149, invoiceId: '5493882802' },
+    PRO: { price: 99, invoiceId: '5493882802' },
     ELITE: { price: 499, invoiceId: '5264305182' },
   },
   openclaw: {
     STARTER: { price: 49, invoiceId: '6245075877' },
-    PRO: { price: 149, invoiceId: '5438578229' },
+    PRO: { price: 99, invoiceId: '5438578229' },
     GROWTH: { price: 399, invoiceId: '5749708735' },
     PREMIUM: { price: 799, invoiceId: '4598891970' },
     MASTER: { price: 4999, invoiceId: '4296538179' },
@@ -36,7 +36,7 @@ const TIER_PRICES: Record<string, Record<string, { price: number; invoiceId: str
   },
   mekong: {
     STARTER: { price: 49, invoiceId: '6245075877' },
-    PRO: { price: 149, invoiceId: '5438578229' },
+    PRO: { price: 99, invoiceId: '5438578229' },
   },
 };
 
@@ -80,7 +80,7 @@ const couponService = CouponService.getInstance();
 // Admin: create coupon (auth required)
 couponRouter.post('/', requireTier('FREE'), requireAdmin, async (req: Request, res: Response) => {
   try {
-    const coupon = couponService.createCoupon(req.body);
+    const coupon = await couponService.createCoupon(req.body);
     return res.json({ success: true, coupon });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -88,13 +88,13 @@ couponRouter.post('/', requireTier('FREE'), requireAdmin, async (req: Request, r
 });
 
 // Admin: list coupons (auth required)
-couponRouter.get('/', requireTier('FREE'), requireAdmin, (_req: Request, res: Response) => {
-  return res.json({ coupons: couponService.listCoupons() });
+couponRouter.get('/', requireTier('FREE'), requireAdmin, async (_req: Request, res: Response) => {
+  return res.json({ coupons: await couponService.listCoupons() });
 });
 
 // Admin: deactivate coupon (auth required)
-couponRouter.delete('/:code', requireTier('FREE'), requireAdmin, (req: Request, res: Response) => {
-  const ok = couponService.deactivateCoupon(req.params.code as string);
+couponRouter.delete('/:code', requireTier('FREE'), requireAdmin, async (req: Request, res: Response) => {
+  const ok = await couponService.deactivateCoupon(req.params.code as string);
   return res.json({ success: ok });
 });
 
@@ -118,14 +118,14 @@ couponRouter.post('/apply', requireTier('FREE'), async (req: Request, res: Respo
     return res.status(400).json({ error: `Invalid tier for ${projectKey}. Use: ${validTiers}` });
   }
 
-  const result = couponService.applyCoupon(code, tierKey, tierConfig.price);
+  const result = await couponService.applyCoupon(code, tierKey, tierConfig.price);
   if (!result.valid) {
     return res.status(400).json({ error: result.error });
   }
 
   // 100% discount = free
   if (result.discountedPrice === 0) {
-    couponService.recordUse(code);
+    await couponService.recordUse(code);
     return res.json({
       success: true,
       discountPercent: result.discountPercent,
@@ -162,7 +162,7 @@ couponRouter.post('/apply', requireTier('FREE'), async (req: Request, res: Respo
       return res.status(500).json({ error: 'Payment provider error' });
     }
 
-    couponService.recordUse(code);
+    await couponService.recordUse(code);
     return res.json({
       success: true,
       discountPercent: result.discountPercent,

@@ -3,10 +3,11 @@
  * RaaS Phase 16 - Customer signup, email verification, license activation
  *
  * Flow: signup → verify (6-digit code) → activate (creates license)
- * Storage: in-memory Map with 15-minute TTL (no DB needed for MVP)
+ * Storage: PostgreSQL via postgres-client with 15-minute TTL cleanup
  */
 
 import * as crypto from 'crypto';
+import { query } from '../../shared/db/postgres-client';
 import { LicenseService } from './license-service';
 import { LicenseTier } from '../../shared/types/license';
 import { logger } from '../../shared/utils/logger';
@@ -39,11 +40,31 @@ interface PendingSignup {
   verified: boolean;
 }
 
+interface OnboardingSignupRow {
+  pending_id: string;
+  email: string;
+  tier: string;
+  wallet_address: string | null;
+  verification_token: string;
+  expires_at: number;
+  verified: boolean;
+  created_at: Date;
+}
+
+function rowToPendingSignup(row: OnboardingSignupRow): PendingSignup {
+  return {
+    pendingId: row.pending_id,
+    email: row.email,
+    tier: row.tier as LicenseTier,
+    walletAddress: row.wallet_address ?? undefined,
+    verificationToken: row.verification_token,
+    expiresAt: row.expires_at,
+    verified: row.verified,
+  };
+}
+
 export class OnboardingService {
   private static instance: OnboardingService;
-
-  /** In-memory store of pending signups: email → PendingSignup */
-  private pending: Map<string, PendingSignup> = new Map();
 
   private constructor() {}
 
@@ -76,10 +97,19 @@ export class OnboardingService {
       throw new Error('Email already has an active license');
     }
 
-    // Check for non-expired pending signup
-    const existing = this.pending.get(email);
-    if (existing && existing.expiresAt > Date.now()) {
-      throw new Error('Signup already pending. Check your verification code.');
+    // Check for non-expired pending signup (clean up expired ones)
+    const existingResult = await query(
+      'SELECT * FROM onboarding_signups WHERE email = $1',
+      [email]
+    );
+
+    for (const row of existingResult.rows) {
+      const pending = rowToPendingSignup(row as unknown as OnboardingSignupRow);
+      if (pending.expiresAt > Date.now()) {
+        throw new Error('Signup already pending. Check your verification code.');
+      }
+      // Clean up expired pending signups
+      await query('DELETE FROM onboarding_signups WHERE pending_id = $1', [pending.pendingId]);
     }
 
     const verificationToken = this.generateSixDigitCode();
@@ -88,15 +118,19 @@ export class OnboardingService {
 
     const tierEnum = req.tier as LicenseTier;
 
-    this.pending.set(email, {
-      pendingId,
-      email,
-      tier: tierEnum,
-      walletAddress: req.walletAddress,
-      verificationToken,
-      expiresAt,
-      verified: false,
-    });
+    await query(
+      `INSERT INTO onboarding_signups (pending_id, email, tier, wallet_address, verification_token, expires_at, verified)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        pendingId,
+        email,
+        tierEnum,
+        req.walletAddress ?? null,
+        verificationToken,
+        expiresAt,
+        false,
+      ]
+    );
 
     // Send verification email via SendGrid (fallback: log to console in dev only)
     const emailSent = await this.sendVerificationEmail(email, verificationToken);
@@ -113,14 +147,19 @@ export class OnboardingService {
    */
   async verify(email: string, code: string): Promise<void> {
     const normalizedEmail = email.trim().toLowerCase();
-    const pending = this.pending.get(normalizedEmail);
+    const result = await query(
+      'SELECT * FROM onboarding_signups WHERE email = $1',
+      [normalizedEmail]
+    );
 
-    if (!pending) {
+    if (result.rows.length === 0) {
       throw new Error('No pending signup found for this email');
     }
 
+    const pending = rowToPendingSignup(result.rows[0] as unknown as OnboardingSignupRow);
+
     if (Date.now() > pending.expiresAt) {
-      this.pending.delete(normalizedEmail);
+      await query('DELETE FROM onboarding_signups WHERE email = $1', [normalizedEmail]);
       throw new Error('Verification code has expired. Please sign up again.');
     }
 
@@ -128,8 +167,10 @@ export class OnboardingService {
       throw new Error('Invalid verification code');
     }
 
-    pending.verified = true;
-    this.pending.set(normalizedEmail, pending);
+    await query(
+      'UPDATE onboarding_signups SET verified = true WHERE email = $1',
+      [normalizedEmail]
+    );
 
     logger.info(`[Onboarding] Email verified: ${normalizedEmail}`);
   }
@@ -140,18 +181,23 @@ export class OnboardingService {
    */
   async activate(email: string): Promise<{ licenseKey: string; tier: LicenseTier; apiInstructions: string }> {
     const normalizedEmail = email.trim().toLowerCase();
-    const pending = this.pending.get(normalizedEmail);
+    const result = await query(
+      'SELECT * FROM onboarding_signups WHERE email = $1',
+      [normalizedEmail]
+    );
 
-    if (!pending) {
+    if (result.rows.length === 0) {
       throw new Error('No pending signup found for this email');
     }
+
+    const pending = rowToPendingSignup(result.rows[0] as unknown as OnboardingSignupRow);
 
     if (!pending.verified) {
       throw new Error('Email not verified. Complete verification first.');
     }
 
     if (Date.now() > pending.expiresAt) {
-      this.pending.delete(normalizedEmail);
+      await query('DELETE FROM onboarding_signups WHERE email = $1', [normalizedEmail]);
       throw new Error('Session expired. Please sign up again.');
     }
 
@@ -162,7 +208,7 @@ export class OnboardingService {
     });
 
     // Clean up pending entry
-    this.pending.delete(normalizedEmail);
+    await query('DELETE FROM onboarding_signups WHERE email = $1', [normalizedEmail]);
 
     logger.info(`[Onboarding] License activated for ${normalizedEmail}: ${license.key} (${pending.tier})`);
 

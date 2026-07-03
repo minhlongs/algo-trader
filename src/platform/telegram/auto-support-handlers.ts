@@ -84,7 +84,7 @@ export async function handleSupport(ctx: Context): Promise<void> {
 // -- /pricing -------------------------------------------------------------
 
 export async function handlePricing(ctx: Context): Promise<void> {
-  const msg = `*CashClaw Pricing*\n\n*Starter — $49/mo*\nDaily signal digest, AI edge scores, Kelly sizing recommendations\n\n*Pro — $149/mo* (Most Popular)\nReal-time signals, REST API, auto-execution, priority support\n\n*Elite — $499/mo*\nCustom market focus, personal dashboard, direct founder support\n\nPay with USDT. Cancel anytime.\n\nSign up: cashclaw.cc/#pricing`;
+  const msg = `*CashClaw Pricing*\n\n*Pro — $99/mo*\nDaily signal digest, AI edge scores, Kelly sizing recommendations\n\n*Enterprise — $299/mo* (Most Popular)\nReal-time signals, REST API, auto-execution, priority support\n\n*Master — $999/mo*\nCustom market focus, personal dashboard, direct founder support\n\nPay with USDT. Cancel anytime.\n\nSign up: cashclaw.cc/#pricing`;
   await ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 

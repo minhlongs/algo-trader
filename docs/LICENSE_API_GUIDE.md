@@ -30,8 +30,8 @@ Algo Trader implements tier-based licensing to gate premium features while keepi
 | Tier | Price | Max Strategies | Max Daily Loss | Max Position | Features |
 |------|-------|----------------|----------------|--------------|----------|
 | **FREE** | $0 | 1 | $50 | $500 | Base strategies, live trading, basic backtest (<10k candles) |
-| **PRO** | $49/mo | 5 | $500 | $5,000 | + ML models, premium data, walk-forward, Monte Carlo |
-| **ENTERPRISE** | $199/mo | ∞ | $5,000 | $50,000 | + Priority support, custom strategies, multi-exchange |
+| **PRO** | $99/mo | 5 | $500 | $5,000 | + ML models, premium data, walk-forward, Monte Carlo |
+| **ENTERPRISE** | $299/mo | ∞ | $5,000 | $50,000 | + Priority support, custom strategies, multi-exchange |
 
 ---
 
@@ -262,8 +262,8 @@ grep -r "walkForward\|monteCarlo\|GruPrice" src/
 | If you use... | Upgrade to... |
 |---------------|---------------|
 | Only RSI/SMA strategies | FREE (no action) |
-| ML models, walk-forward | PRO ($49/mo) |
-| Multi-exchange arbitrage | ENTERPRISE ($199/mo) |
+| ML models, walk-forward | PRO ($99/mo) |
+| Multi-exchange arbitrage | ENTERPRISE ($299/mo) |
 
 #### Step 3: Set License Key
 

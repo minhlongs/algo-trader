@@ -14,8 +14,31 @@ import { LicenseTier } from '../../../shared/types/license';
 // Mock DB client to avoid real database dependency
 const mockQuery = vi.fn();
 const mockPool = { query: mockQuery };
+
+const { mockLicenseQuery, licenses } = vi.hoisted(() => {
+  const data = new Map<string, Record<string, any>>();
+  const fn = vi.fn((text: string, params?: any[]) => {
+    if (text.startsWith('INSERT INTO licenses')) {
+      const row: Record<string, any> = {
+        id: params![0], name: params![1], key: params![2],
+        tier: params![3], status: params![4],
+        created_at: params![5], updated_at: params![6],
+        usage_count: params![7], max_usage: params![8],
+        tenant_id: params![9], domain: params![10],
+        expires_at: params![11],
+        subscription_id: null, user_id: null,
+      };
+      data.set(row.id, row);
+      return { rows: [row] };
+    }
+    return { rows: [] };
+  });
+  return { mockLicenseQuery: fn, licenses: data };
+});
+
 vi.mock('../../../shared/db/postgres-client', () => ({
   getDbClient: () => mockPool,
+  query: mockLicenseQuery,
 }));
 
 // Mock logger
@@ -42,7 +65,7 @@ describe('DunningService', () => {
     vi.clearAllMocks();
     service = DunningService.getInstance();
     licenseService = LicenseService.getInstance();
-    (licenseService as any).licenses.clear();
+    licenses.clear();
 
     // Default mock: no existing dunning records
     mockQuery.mockReset();

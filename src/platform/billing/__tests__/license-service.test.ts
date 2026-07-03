@@ -3,17 +3,88 @@
  * ROIaaS Phase 2 - License CRUD and key generation tests
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { LicenseService } from '../license-service';
 import { LicenseTier, LicenseStatus, CreateLicenseInput } from '../../../shared/types/license';
+
+const { mockLicenses, mockQuery } = vi.hoisted(() => {
+  const data = new Map<string, Record<string, any>>();
+  const fn = vi.fn((text: string, params?: any[]) => {
+    // INSERT INTO licenses
+    if (text.startsWith('INSERT INTO licenses')) {
+      const row: Record<string, any> = {
+        id: params![0],
+        name: params![1],
+        key: params![2],
+        tier: params![3],
+        status: params![4],
+        created_at: params![5],
+        updated_at: params![6],
+        usage_count: params![7],
+        max_usage: params![8],
+        tenant_id: params![9],
+        domain: params![10],
+        expires_at: params![11],
+        subscription_id: null,
+        user_id: null,
+        overage_units: null,
+        overage_allowed: null,
+      };
+      data.set(row.id, row);
+      return { rows: [row] };
+    }
+    // SELECT by id
+    if (text === 'SELECT * FROM licenses WHERE id = $1') {
+      const row = data.get(params![0]);
+      return { rows: row ? [row] : [] };
+    }
+    // SELECT by key
+    if (text === 'SELECT * FROM licenses WHERE key = $1') {
+      const rows = [...data.values()].filter((r: any) => r.key === params![0]);
+      return { rows };
+    }
+    // SELECT by subscription_id
+    if (text === 'SELECT * FROM licenses WHERE subscription_id = $1') {
+      const rows = [...data.values()].filter((r: any) => r.subscription_id === params![0]);
+      return { rows };
+    }
+    // SELECT all
+    if (text === 'SELECT * FROM licenses') {
+      return { rows: [...data.values()] };
+    }
+    // UPDATE status
+    if (text.startsWith('UPDATE licenses SET status')) {
+      const [status, updatedAt, id] = params!;
+      const row = data.get(id);
+      if (row) {
+        row.status = status;
+        row.updated_at = updatedAt;
+      }
+      return { rows: row ? [row] : [] };
+    }
+    // DELETE
+    if (text.startsWith('DELETE FROM licenses')) {
+      const [id] = params!;
+      const existed = data.has(id);
+      if (existed) data.delete(id);
+      return { rows: existed ? [{ id }] : [] };
+    }
+    return { rows: [] };
+  });
+  return { mockLicenses: data, mockQuery: fn };
+});
+
+vi.mock('../../../shared/db/postgres-client', () => ({
+  query: mockQuery,
+}));
 
 describe('LicenseService', () => {
   let service: LicenseService;
 
   beforeEach(() => {
-    // Get singleton instance and clear licenses
+    // Get singleton instance and clear mock data
     service = LicenseService.getInstance();
-    (service as any).licenses.clear();
+    mockLicenses.clear();
   });
 
   describe('generateLicenseKey', () => {
@@ -97,14 +168,14 @@ describe('LicenseService', () => {
         tier: LicenseTier.PRO,
       });
 
-      const retrieved = service.getLicense(created.id);
+      const retrieved = await service.getLicense(created.id);
 
       expect(retrieved?.id).toBe(created.id);
       expect(retrieved?.key).toBe(created.key);
     });
 
-    it('should return undefined for non-existent license', () => {
-      const result = service.getLicense('non-existent-id');
+    it('should return undefined for non-existent license', async () => {
+      const result = await service.getLicense('non-existent-id');
       expect(result).toBeUndefined();
     });
   });
@@ -116,14 +187,14 @@ describe('LicenseService', () => {
         tier: LicenseTier.FREE,
       });
 
-      const retrieved = service.getLicenseByKey(created.key);
+      const retrieved = await service.getLicenseByKey(created.key);
 
       expect(retrieved?.id).toBe(created.id);
       expect(retrieved?.name).toBe('Key Lookup Test');
     });
 
-    it('should return undefined for non-existent key', () => {
-      const result = service.getLicenseByKey('NON-EXISTENT-KEY');
+    it('should return undefined for non-existent key', async () => {
+      const result = await service.getLicenseByKey('NON-EXISTENT-KEY');
       expect(result).toBeUndefined();
     });
   });
@@ -136,18 +207,16 @@ describe('LicenseService', () => {
       });
 
       // Manually set subscriptionId for testing
-      (service as any).licenses.set(created.id, {
-        ...created,
-        subscriptionId: 'sub-123',
-      });
+      const row = mockLicenses.get(created.id);
+      if (row) row.subscription_id = 'sub-123';
 
-      const retrieved = service.getLicenseBySubscription('sub-123');
+      const retrieved = await service.getLicenseBySubscription('sub-123');
 
       expect(retrieved?.id).toBe(created.id);
     });
 
-    it('should return undefined when no subscriptionId matches', () => {
-      const result = service.getLicenseBySubscription('non-existent-sub');
+    it('should return undefined when no subscriptionId matches', async () => {
+      const result = await service.getLicenseBySubscription('non-existent-sub');
       expect(result).toBeUndefined();
     });
   });
@@ -222,7 +291,7 @@ describe('LicenseService', () => {
       const deleted = await service.deleteLicense(license.id);
 
       expect(deleted).toBe(true);
-      expect(service.getLicense(license.id)).toBeUndefined();
+      expect(await service.getLicense(license.id)).toBeUndefined();
     });
 
     it('should return false for non-existent license', async () => {

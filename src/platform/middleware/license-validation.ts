@@ -87,7 +87,7 @@ export async function licenseValidationPlugin(fastify: FastifyInstance) {
       return;
     }
 
-    const license = licenseService.getLicenseByKey(apiKey);
+    const license = await licenseService.getLicenseByKey(apiKey);
     if (!license) {
       request.licenseAuth = {
         licenseId: '',

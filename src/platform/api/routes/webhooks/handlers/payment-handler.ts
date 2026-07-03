@@ -29,7 +29,7 @@ export async function handleIpnPaymentSuccess(
   // Auto-generate and email invoice
   const email = ipn.order_description?.match(/[\w.-]+@[\w.-]+\.[a-zA-Z]{2,}/)?.[0] || ipn.order_id || '';
   if (email.includes('@')) {
-    const tier = ipn.price_amount >= 499 ? 'Elite' : ipn.price_amount >= 149 ? 'Pro' : 'Starter';
+    const tier = ipn.price_amount >= 999 ? 'Master' : ipn.price_amount >= 299 ? 'Enterprise' : 'Pro';
     await generateInvoice({
       paymentId: ipn.payment_id,
       email,

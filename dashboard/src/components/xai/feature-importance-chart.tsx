@@ -1,4 +1,3 @@
-// @ts-nocheck
 /** @jsxImportSource react */
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { StitchCard, StitchCardHeader, StitchCardBody } from '../ui/stitch-card';
@@ -70,7 +69,7 @@ export function FeatureImportanceChart({
         </h3>
       </StitchCardHeader>
       <StitchCardBody>
-        <ResponsiveContainer width="100%" height={height}>
+        <ResponsiveContainer width={'100%' as const} height={height as number}>
           <BarChart
             data={chartData}
             layout="horizontal"
@@ -80,7 +79,7 @@ export function FeatureImportanceChart({
             <XAxis
               type="number"
               tick={{ fill: '#9ca3af' }}
-              tickFormatter={(value: number | string) => value ? `${value}%` : ''}
+              tickFormatter={(val: unknown) => `${Number(val) >= 0 ? `${(Number(val) * 100).toFixed(0)}%` : ''}`}
               domain={[0, 'dataMax']}
             />
             <YAxis
@@ -91,7 +90,7 @@ export function FeatureImportanceChart({
             />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="importance" fill={color} radius={[0, 4, 4, 0]}>
-              {chartData.map((entry, index) => (
+              {chartData.map((_entry, index) => (
                 <Cell key={`cell-${index}`} fill={color} opacity={0.8 + (index * 0.05)} />
               ))}
             </Bar>
