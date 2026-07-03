@@ -29,6 +29,7 @@ import {
   handlePricing,
   handleUnknownMessage,
 } from './auto-support-handlers';
+import { handleAsk } from './ask-handler';
 
 export interface TelegramConfig {
   botToken: string;
@@ -139,6 +140,24 @@ export class TelegramBotService {
     });
     this.bot.command('support', (ctx: Context) => handleSupport(ctx));
     this.bot.command('pricing', (ctx: Context) => handlePricing(ctx));
+    this.bot.command('ask', async (ctx: Context) => {
+      const text = (ctx.message as { text?: string })?.text || '';
+      const query = text.replace(/^\/ask(\s|@\w+)*/, '').trim();
+      if (!query) {
+        await ctx.reply(
+          '🤖 *AI Co-pilot*\n\nAsk me anything about your trading:\n\n' +
+          '• `/ask what is my risk exposure?`\n' +
+          '• `/ask find arbitrage opportunities`\n' +
+          '• `/ask how are my strategies performing?`\n' +
+          '• `/ask what is the market doing?`\n' +
+          '• `/ask generate a weekly report`\n\n' +
+          'Example: `/ask what is my risk exposure?`',
+          { parse_mode: 'Markdown' },
+        );
+        return;
+      }
+      await handleAsk(ctx, query);
+    });
 
     // Catch-all: auto-match unknown text messages to FAQ
     this.bot.on('message:text', (ctx: Context) => handleUnknownMessage(ctx));
