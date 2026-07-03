@@ -14,6 +14,31 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Light mode overrides — applied when .dark class is NOT on <html> */
+  html:not(.dark),
+  html:not(.dark) body,
+  html:not(.dark) #root {
+    background-color: #f1f5f9;
+  }
+
+  html:not(.dark) aside {
+    background-color: #ffffff !important;
+    border-right-color: #e2e8f0 !important;
+  }
+
+  html:not(.dark) main {
+    background-color: #f8fafc !important;
+  }
+
+  html:not(.dark) footer {
+    border-top-color: #e2e8f0 !important;
+  }
+
+  html:not(.dark) .glass {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border-color: #e2e8f0 !important;
+  }
+
   ::selection {
     background-color: rgba(0, 200, 232, 0.25);
     color: #fff;
@@ -60,4 +85,8 @@
   .text-balance {
     text-wrap: balance;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

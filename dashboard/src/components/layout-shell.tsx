@@ -12,6 +12,14 @@ export function LayoutShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-bg font-sans">
+      {/* Skip to main content */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-accent focus:text-bg focus:rounded-lg focus:text-sm focus:font-semibold focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       {/* Mobile overlay */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -57,7 +65,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+      <main id="main-content" className="flex-1 overflow-y-auto flex flex-col min-w-0">
         {/* Mobile header */}
         <header className="sticky top-0 z-30 md:hidden glass border-b border-bg-border">
           <div className="flex items-center justify-between h-14 px-4">

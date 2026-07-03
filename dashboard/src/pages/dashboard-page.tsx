@@ -4,6 +4,7 @@
  * Geist sans for UI, JetBrains Mono for data/metrics.
  */
 import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { useTradingStore } from '../stores/trading-store';
 import { useWebSocketPriceFeed } from '../hooks/use-websocket-price-feed';
 import { useRealtimeUpdates } from '../hooks/use-realtime-updates';
@@ -85,7 +86,13 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 font-sans">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      viewport={{ once: true }}
+      className="space-y-6 font-sans"
+    >
       {/* Top bar - responsive layout */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -287,6 +294,6 @@ export function DashboardPage() {
           {pnlLoading ? <PositionsTableSkeleton /> : <PositionsTableSortable positions={positions} />}
         </div>
       </section>
-    </div>
+    </motion.div>
   );
 }

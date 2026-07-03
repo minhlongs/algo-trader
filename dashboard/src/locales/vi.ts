@@ -9,6 +9,27 @@ export default {
     analytics: 'Analytics',
   },
 
+  // Sidebar Navigation
+  sidebar: {
+    dashboard: 'Bảng Điều Khiển',
+    strategies: 'Chiến Lược',
+    backtests: 'Backtest',
+    licenses: 'License',
+    apiKeys: 'API Keys',
+    trial: 'Dùng Thử',
+    coupons: 'Mã Giảm Giá',
+    reporting: 'Báo Cáo',
+    performance: 'Hiệu Suất',
+    settings: 'Cài Đặt',
+    account: 'Tài Khoản',
+    referral: 'Giới Thiệu',
+    guide: 'Hướng Dẫn',
+    fullSetup: 'Cài Đặt Đầy Đủ',
+    signOut: 'Đăng Xuất',
+    connected: 'Đã Kết Nối',
+    disconnected: 'Mất Kết Nối',
+  },
+
   // License Page
   license: {
     title: 'Quản Lý License',

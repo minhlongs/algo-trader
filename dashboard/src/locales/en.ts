@@ -9,6 +9,27 @@ export default {
     analytics: 'Analytics',
   },
 
+  // Sidebar Navigation
+  sidebar: {
+    dashboard: 'Dashboard',
+    strategies: 'Strategies',
+    backtests: 'Backtests',
+    licenses: 'Licenses',
+    apiKeys: 'API Keys',
+    trial: 'Trial',
+    coupons: 'Coupons',
+    reporting: 'Reporting',
+    performance: 'Performance',
+    settings: 'Settings',
+    account: 'Account',
+    referral: 'Referral',
+    guide: 'Guide',
+    fullSetup: 'Full Setup',
+    signOut: 'Sign out',
+    connected: 'Connected',
+    disconnected: 'Disconnected',
+  },
+
   // License Page
   license: {
     title: 'License Management',
