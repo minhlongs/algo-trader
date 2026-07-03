@@ -14,6 +14,7 @@ const EXCLUDED_PREFIXES = [
 // Tier configs (requests per minute)
 const TIER_LIMITS: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 10,
+  [LicenseTier.STARTER]: 50,
   [LicenseTier.PRO]: 100,
   [LicenseTier.ENTERPRISE]: 1000,
   [LicenseTier.MASTER]: 5000,

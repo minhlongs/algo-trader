@@ -24,7 +24,7 @@ declare global {
 }
 
 /** Supported tier identifiers (mirrors LicenseTier enum values) */
-type Tier = 'FREE' | 'PRO' | 'ENTERPRISE' | 'MASTER';
+type Tier = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE' | 'MASTER';
 
 /**
  * Ordinal ranking for tiers — higher number = more privileged.
@@ -32,6 +32,7 @@ type Tier = 'FREE' | 'PRO' | 'ENTERPRISE' | 'MASTER';
  */
 const TIER_HIERARCHY: Record<Tier, number> = {
   FREE: 0,
+  STARTER: 0.5,
   PRO: 1,
   ENTERPRISE: 2,
   MASTER: 3,

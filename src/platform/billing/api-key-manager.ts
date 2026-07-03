@@ -30,6 +30,7 @@ const MAX_ACTIVE_KEYS = 3;
 /** Tier abbreviations for key prefix */
 const TIER_ABBREV: Record<LicenseTier, string> = {
   [LicenseTier.FREE]: 'free',
+  [LicenseTier.STARTER]: 'str',
   [LicenseTier.PRO]: 'pro',
   [LicenseTier.ENTERPRISE]: 'ent',
   [LicenseTier.MASTER]: 'mst',

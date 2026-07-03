@@ -43,14 +43,18 @@ describe('UsageMeteringService', () => {
   describe('Constants', () => {
     it('should have correct daily limits per tier', () => {
       expect(DAILY_LIMITS[LicenseTier.FREE]).toBe(100);
+      expect(DAILY_LIMITS[LicenseTier.STARTER]).toBe(5000);
       expect(DAILY_LIMITS[LicenseTier.PRO]).toBe(10000);
       expect(DAILY_LIMITS[LicenseTier.ENTERPRISE]).toBe(100000);
+      expect(DAILY_LIMITS[LicenseTier.MASTER]).toBe(500000);
     });
 
     it('should have correct overage prices per tier', () => {
       expect(OVERAGE_PRICE_PER_CALL[LicenseTier.FREE]).toBe(0);
+      expect(OVERAGE_PRICE_PER_CALL[LicenseTier.STARTER]).toBe(0);
       expect(OVERAGE_PRICE_PER_CALL[LicenseTier.PRO]).toBe(0.01);
       expect(OVERAGE_PRICE_PER_CALL[LicenseTier.ENTERPRISE]).toBe(0.005);
+      expect(OVERAGE_PRICE_PER_CALL[LicenseTier.MASTER]).toBe(0.001);
     });
   });
 

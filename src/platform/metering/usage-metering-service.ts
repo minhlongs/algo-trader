@@ -31,6 +31,7 @@ export interface ThresholdAlert {
 
 export const DAILY_LIMITS: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 100,
+  [LicenseTier.STARTER]: 5000,
   [LicenseTier.PRO]: 10000,
   [LicenseTier.ENTERPRISE]: 100000,
   [LicenseTier.MASTER]: 500000,
@@ -38,6 +39,7 @@ export const DAILY_LIMITS: Record<LicenseTier, number> = {
 
 export const OVERAGE_PRICE_PER_CALL: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 0,
+  [LicenseTier.STARTER]: 0,
   [LicenseTier.PRO]: 0.01,
   [LicenseTier.ENTERPRISE]: 0.005,
   [LicenseTier.MASTER]: 0.001,

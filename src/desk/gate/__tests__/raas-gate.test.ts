@@ -46,6 +46,11 @@ describe('raas-gate', () => {
       expect(parseTier('RAAS-RPP-ABC12345-DEF67890')).toBe(LicenseTier.PRO);
     });
 
+    it('should parse STARTER tier from key', () => {
+      expect(parseTier('RAAS-RST-ABC12345-DEF67890')).toBe(LicenseTier.STARTER);
+      expect(parseTier('RST-ABC12345-DEF67890')).toBe(LicenseTier.STARTER);
+    });
+
     it('should parse ENTERPRISE tier from key', () => {
       expect(parseTier('RAAS-ENT-ABC12345-DEF67890')).toBe(LicenseTier.ENTERPRISE);
       expect(parseTier('REP-ABC12345-DEF67890')).toBe(LicenseTier.ENTERPRISE);
@@ -67,8 +72,10 @@ describe('raas-gate', () => {
   describe('getTierLevel', () => {
     it('should return correct tier levels', () => {
       expect(tierLevel(LicenseTier.FREE)).toBe(0);
-      expect(tierLevel(LicenseTier.PRO)).toBe(1);
-      expect(tierLevel(LicenseTier.ENTERPRISE)).toBe(2);
+      expect(tierLevel(LicenseTier.STARTER)).toBe(1);
+      expect(tierLevel(LicenseTier.PRO)).toBe(2);
+      expect(tierLevel(LicenseTier.ENTERPRISE)).toBe(3);
+      expect(tierLevel(LicenseTier.MASTER)).toBe(4);
     });
   });
 
@@ -83,6 +90,18 @@ describe('raas-gate', () => {
       expect(isFeature('ml_strategies', LicenseTier.FREE)).toBe(false);
       expect(isFeature('premium_data', LicenseTier.FREE)).toBe(false);
       expect(isFeature('advanced_optimization', LicenseTier.FREE)).toBe(false);
+    });
+
+    it('should allow FREE and STARTER features for STARTER tier', () => {
+      expect(isFeature('basic_strategies', LicenseTier.STARTER)).toBe(true);
+      expect(isFeature('live_trading', LicenseTier.STARTER)).toBe(true);
+      expect(isFeature('tenant_management', LicenseTier.STARTER)).toBe(true);
+    });
+
+    it('should deny PRO features for STARTER tier', () => {
+      expect(isFeature('ml_strategies', LicenseTier.STARTER)).toBe(false);
+      expect(isFeature('premium_data', LicenseTier.STARTER)).toBe(false);
+      expect(isFeature('advanced_optimization', LicenseTier.STARTER)).toBe(false);
     });
 
     it('should allow PRO features for PRO tier', () => {
@@ -118,6 +137,13 @@ describe('raas-gate', () => {
       expect(limits.burstPerSec).toBe(2);
     });
 
+    it('should return correct rate limits for STARTER tier', () => {
+      const limits = rateLimits(LicenseTier.STARTER);
+      expect(limits.requestsPerMin).toBe(50);
+      expect(limits.requestsPerHour).toBe(500);
+      expect(limits.burstPerSec).toBe(5);
+    });
+
     it('should return correct rate limits for PRO tier', () => {
       const limits = rateLimits(LicenseTier.PRO);
       expect(limits.requestsPerMin).toBe(100);
@@ -136,6 +162,7 @@ describe('raas-gate', () => {
   describe('getDailyLimit', () => {
     it('should return correct daily limits', () => {
       expect(dailyLimit(LicenseTier.FREE)).toBe(100);
+      expect(dailyLimit(LicenseTier.STARTER)).toBe(5000);
       expect(dailyLimit(LicenseTier.PRO)).toBe(10000);
       expect(dailyLimit(LicenseTier.ENTERPRISE)).toBe(100000);
     });
@@ -144,6 +171,7 @@ describe('raas-gate', () => {
   describe('getOveragePrice', () => {
     it('should return correct overage prices', () => {
       expect(overagePrice(LicenseTier.FREE)).toBe(0);
+      expect(overagePrice(LicenseTier.STARTER)).toBe(0);
       expect(overagePrice(LicenseTier.PRO)).toBe(0.01);
       expect(overagePrice(LicenseTier.ENTERPRISE)).toBe(0.005);
     });
@@ -300,6 +328,13 @@ describe('raas-gate', () => {
       expect(features).toContain('basic_backtest');
     });
 
+    it('should have correct features for STARTER tier', () => {
+      const features = TIER_CONFIG[LicenseTier.STARTER].features;
+      expect(features).toContain('basic_strategies');
+      expect(features).toContain('live_trading');
+      expect(features).toContain('tenant_management');
+    });
+
     it('should have correct features for PRO tier', () => {
       const features = TIER_CONFIG[LicenseTier.PRO].features;
       expect(features).toContain('ml_strategies');
@@ -322,10 +357,13 @@ describe('raas-gate', () => {
       expect(FEATURE_TIER_MAP['basic_backtest']).toBe(LicenseTier.FREE);
     });
 
+    it('should map all STARTER features correctly', () => {
+      expect(FEATURE_TIER_MAP['tenant_management']).toBe(LicenseTier.STARTER);
+    });
+
     it('should map all PRO features correctly', () => {
       expect(FEATURE_TIER_MAP['ml_strategies']).toBe(LicenseTier.PRO);
       expect(FEATURE_TIER_MAP['premium_data']).toBe(LicenseTier.PRO);
-      expect(FEATURE_TIER_MAP['tenant_management']).toBe(LicenseTier.PRO);
     });
 
     it('should map all ENTERPRISE features correctly', () => {
