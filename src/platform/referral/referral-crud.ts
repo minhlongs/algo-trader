@@ -5,6 +5,7 @@
 
 import { query } from '../../shared/db/postgres-client';
 import type { ReferralCode, ReferralClick, CommissionStatus } from './types';
+import { generateReferralCode } from './referral-code-generator';
 
 // ==================== Mappers ====================
 
@@ -60,7 +61,7 @@ export function mapReferralClick(row: {
 
 // ==================== Code CRUD ====================
 
-export async function createReferralCode(
+export async function insertReferralCodeRow(
   code: string,
   tenantId: string,
   isActive: boolean = true,
@@ -76,6 +77,30 @@ export async function createReferralCode(
       created_at = NOW()
   `;
   await query(sql, [code, tenantId, isActive, maxUses]);
+}
+
+/**
+ * createReferralCode
+ * High-level function: generates a unique referral code for a tenant, checks
+ * uniqueness in the database, inserts it, and returns the created code record.
+ */
+export async function createReferralCode(tenantId: string): Promise<ReferralCode> {
+  const maxAttempts = 10;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const code = generateReferralCode(tenantId);
+    const existing = await getReferralCodeByCode(code);
+    if (!existing) {
+      await insertReferralCodeRow(code, tenantId, true, null);
+      const created = await getReferralCodeByCode(code);
+      if (!created) {
+        throw new Error('Failed to retrieve created referral code');
+      }
+      return created;
+    }
+  }
+
+  throw new Error('Failed to generate unique referral code after maximum attempts');
 }
 
 export async function getReferralCodeByTenant(tenantId: string): Promise<ReferralCode | null> {
