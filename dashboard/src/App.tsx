@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from './components/error-boundary';
 import { LayoutShell } from './components/layout-shell';
 import { AuthGuard } from './components/auth-guard';
+import { CoPilotChat } from './components/co-pilot/co-pilot-chat';
 import { DashboardPage } from './pages/dashboard-page';
 import { BacktestsPage } from './pages/backtests-page';
 import { MarketplacePage } from './pages/marketplace-page';
@@ -74,6 +75,7 @@ export function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <CoPilotChat />
     </ErrorBoundary>
   );
 }
