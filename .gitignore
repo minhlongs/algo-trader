@@ -20,3 +20,6 @@ landing/plans/
 .claude/cache/
 __pycache__/
 .claude/scripts/__pycache__/
+coverage/
+dashboard/coverage/
+test-results/
