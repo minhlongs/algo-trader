@@ -40,6 +40,8 @@ import * as migration039 from './migrations/039-add-api-keys';
 import * as migration040 from './migrations/040-add-listing-badges';
 import * as migration041 from './migrations/041-add-subscription-improvements';
 import * as migration042 from './migrations/042-add-dunning-state';
+import * as migration052 from './migrations/052-add-starter-tier-and-billing-interval';
+import * as migration053 from './migrations/053-add-telegram-sessions';
 
 // Migration interface
 interface Migration {
@@ -85,6 +87,8 @@ const MIGRATIONS: Migration[] = [
   migration040,
   migration041,
   migration042,
+  migration052,
+  migration053,
 ];
 
 /**
