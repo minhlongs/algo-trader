@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.5.0] - 2026-07-03
+
+### Added - Final Merge (Phase A + D)
+- Signup page at src/platform/landing/public/signup.html -- NOWPayments checkout redirect with tier selection
+- Migration 052: Add STARTER tier (tier CHECK constraint expansion) and billing_interval column (monthly/annual) to subscriptions table
+- Migration 053: Create telegram_sessions table for persistent user sessions across restarts
+- Alertmanager notification channel tuned: webhook receiver, critical/warning routing, reduced alert fatigue
+- Environment config: .env.example updated with alertmanager, backup, and monitoring vars
+- Live trading runbook: bilingual (VN/EN) runbook at docs/live-trading-runbook.md
+- Backup scripts: full backup/restore pipeline (scripts/backup-postgres.sh, restore-backup.sh, setup-backup-cron.sh, verify-restore-drill.sh, profile-hot-paths.sh)
+- Load testing: k6 baseline CI script updated, per-endpoint thresholds, PRO-tier gateway coverage
+- Infrastructure tests: backup-restore.test.ts, profile-hot-paths.test.ts
+
+### Fixed
+- stripTsComments() block comment regex in discipline-sync test - the naive /\*[\s\S]*?\*/ regex matched /** glob patterns inside string literals (e.g. **/node_modules/**), corrupting exclude-glob assertions
+
 ## [3.4.0] - 2026-07-03
 
 ### Added — Next Wave: Revenue + Trading + Infra + Platform
@@ -66,7 +82,7 @@
 
 ### Changed
 - Test count: 2,783 -> 2,798 across 243 test files (15 new tests)
-- All 2,798 tests pass with 0 TypeScript errors
+- All 2,806 tests pass with 0 TypeScript errors
 - 0 regressions verified
 
 ## [3.3.0] - 2026-07-01

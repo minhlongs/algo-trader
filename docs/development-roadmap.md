@@ -5,7 +5,7 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 **Target**: Enterprise-grade quantitative trading platform with autonomous marketing. v3.0.0 shipped -- 3-bounded-context architecture (desk/platform/shared) complete.
 
-> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced. Phase 4 cleanup: 4 oversized files split, 23 dead files deleted (~21K lines), 4 ADRs + platform doctrine written, `BasePolymarketStrategy` base class with POC migration (55% smaller). 2,798 tests passing. Live trading env var unification + paper-mode E2E integration (26 tests) complete. See `docs/system-architecture.md`.
+> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced. Phase 4 cleanup: 4 oversized files split, 23 dead files deleted (~21K lines), 4 ADRs + platform doctrine written, `BasePolymarketStrategy` base class with POC migration (55% smaller). 2,806 tests passing. Live trading env var unification + paper-mode E2E integration (26 tests) complete. See `docs/system-architecture.md`.
 
 ---
 
@@ -360,9 +360,9 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ## Recent Updates
 
-**2026-07-03**: Next Wave complete — 18 items across 4 tracks (Revenue Growth, Trading Edge, Infra Hardening, Platform Depth). Revenue flow fixed (signup payment, enterprise inquiry gate, IPN verification, PRO-tier analytics, dunning emails). 23 strategy wiring factories restored. PAPER_MODE env var with live-mode validation. Redis persistence + Caddy SSL + k6 CI baseline + Alertmanager. API key management, marketplace badges, subscription enhancements, pricing page. MASTER tier ($999/mo) added. 2,798 tests passing.
+**2026-07-03**: Next Wave complete — 18 items across 4 tracks (Revenue Growth, Trading Edge, Infra Hardening, Platform Depth). Revenue flow fixed (signup payment, enterprise inquiry gate, IPN verification, PRO-tier analytics, dunning emails). 23 strategy wiring factories restored. PAPER_MODE env var with live-mode validation. Redis persistence + Caddy SSL + k6 CI baseline + Alertmanager. API key management, marketplace badges, subscription enhancements, pricing page. MASTER tier ($999/mo) added. 2,806 tests passing.
 
-**2026-07-02**: All 8 code review findings resolved. Missing backtest routes wired in marketplace-strategy-insights-routes.ts. Bug fixes: type escapes, Sharpe factor, Gamma error propagation, price bug, cancelOrder wiring, payout send-verify guard. METRICS_TOKEN added to .env.example. Barrel export added. .bak deleted. 2,798 tests passing across 243 files.
+**2026-07-02**: All 8 code review findings resolved. Missing backtest routes wired in marketplace-strategy-insights-routes.ts. Bug fixes: type escapes, Sharpe factor, Gamma error propagation, price bug, cancelOrder wiring, payout send-verify guard. METRICS_TOKEN added to .env.example. Barrel export added. .bak deleted. 2,806 tests passing across 243 files.
 
 **2026-04-15**: Phase 32b (Autonomy Phase 2) complete. LLM content generation (DeepSeek R1), welcome email drip (3-email sequence), Telegram auto-support (/faq, /support, /pricing), Twitter/X API v2 + Telegram channel distribution. 585 tests passing.
 
@@ -385,9 +385,9 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
    - Trading Edge: 23 strategy stub factories restored, 3 pipeline imports fixed, PAPER_MODE env var with live-mode credential validation
    - Infra Hardening: Redis persistence (AOF+RDB+password), Caddy SSL auto-HTTPS, k6 CI baseline, Alertmanager webhook, pinned Docker versions, Prometheus 15d retention
    - Platform Depth: self-service API key management, marketplace listing badges, subscription enhancements (stats, tier changes, auto-renewal)
-   - 18/18 items shipped, 2,798 tests pass
+   - 18/18 items shipped, 2,806 tests pass
 2. **Phases 39-55 complete** — Polymarket Live Execution + Backtesting + Doc Cleanup (all shipped)
-3. **2,798 tests pass** across 243 test files, 0 TypeScript errors, 93 lint warnings
+3. **2,806 tests pass** across 243 test files, 0 TypeScript errors, 93 lint warnings
 4. **Bilingual live trading runbook** at `docs/live-trading-runbook.md` — updated
 5. **Remaining work items:**
    - Third-party security audit (external vendor)

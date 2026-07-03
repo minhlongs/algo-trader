@@ -10,7 +10,7 @@ pnpm build            # TypeScript compile (tsc)
 pnpm build:clean      # Clean rebuild
 pnpm dev              # Run via ts-node (development)
 pnpm start            # Run compiled dist/index.js
-pnpm test             # Run vitest suite (190 files, ~2100 tests)
+pnpm test             # Run vitest suite (190 files, 2806 tests)
 pnpm test:coverage    # Vitest with coverage
 pnpm test:e2e         # Playwright E2E tests
 pnpm test:load        # k6 load test
