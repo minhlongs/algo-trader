@@ -22,6 +22,11 @@ describe('LicenseService', () => {
       expect(key).toMatch(/^RAAS-FREE-[A-Z0-9]{8}-[A-Z0-9]{8}$/);
     });
 
+    it('should generate license key with STARTER tier prefix', () => {
+      const key = service.generateLicenseKey(LicenseTier.STARTER);
+      expect(key).toMatch(/^RAAS-RST-[A-Z0-9]{8}-[A-Z0-9]{8}$/);
+    });
+
     it('should generate license key with PRO tier prefix', () => {
       const key = service.generateLicenseKey(LicenseTier.PRO);
       expect(key).toMatch(/^RAAS-RPP-[A-Z0-9]{8}-[A-Z0-9]{8}$/);
@@ -69,6 +74,14 @@ describe('LicenseService', () => {
         tier: LicenseTier.FREE,
       });
       expect(license.maxUsage).toBe(100);
+    });
+
+    it('should set correct maxUsage for STARTER tier', async () => {
+      const license = await service.createLicense({
+        name: 'Starter License',
+        tier: LicenseTier.STARTER,
+      });
+      expect(license.maxUsage).toBe(5000);
     });
 
     it('should set correct maxUsage for ENTERPRISE tier', async () => {

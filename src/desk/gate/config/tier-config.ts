@@ -28,6 +28,14 @@ export const TIER_CONFIG: Record<LicenseTier, TierConfig> = {
     overagePrice: 0,
     features: ['basic_strategies', 'live_trading', 'basic_backtest'],
   },
+  [LicenseTier.STARTER]: {
+    requestsPerMin: 50,
+    requestsPerHour: 500,
+    burstPerSec: 5,
+    dailyApiLimit: 5000,
+    overagePrice: 0,
+    features: ['basic_strategies', 'live_trading', 'basic_backtest', 'tenant_management'],
+  },
   [LicenseTier.PRO]: {
     requestsPerMin: 100,
     requestsPerHour: 1000,
@@ -63,13 +71,15 @@ export const FEATURE_TIER_MAP: Record<string, LicenseTier> = {
   live_trading: LicenseTier.FREE,
   basic_backtest: LicenseTier.FREE,
 
+  // STARTER features
+  tenant_management: LicenseTier.STARTER,
+
   // PRO features
   ml_strategies: LicenseTier.PRO,
   premium_data: LicenseTier.PRO,
   advanced_optimization: LicenseTier.PRO,
   hyperparameter_tuning: LicenseTier.PRO,
   ml_model_weights: LicenseTier.PRO,
-  tenant_management: LicenseTier.PRO,
 
   // ENTERPRISE features
   arbitrage_scanning: LicenseTier.ENTERPRISE,

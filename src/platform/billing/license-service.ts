@@ -18,6 +18,7 @@ import {
 const LICENSE_PREFIX = 'raas';
 const TIER_PREFIXES: Record<LicenseTier, string> = {
   [LicenseTier.FREE]: 'free',
+  [LicenseTier.STARTER]: 'rst',
   [LicenseTier.PRO]: 'rpp',
   [LicenseTier.ENTERPRISE]: 'rep',
   [LicenseTier.MASTER]: 'rmt',
@@ -109,6 +110,7 @@ export class LicenseService {
   private getDefaultMaxUsage(tier: LicenseTier): number {
     switch (tier) {
       case LicenseTier.FREE:        return 100;
+      case LicenseTier.STARTER:     return 5000;
       case LicenseTier.PRO:         return 10000;
       case LicenseTier.ENTERPRISE:  return 100000;
       case LicenseTier.MASTER:      return 500000;
@@ -185,6 +187,7 @@ export class LicenseService {
 
     const byTier: Record<string, number> = {
       [LicenseTier.FREE]: allLicenses.filter((l) => l.tier === LicenseTier.FREE).length,
+      [LicenseTier.STARTER]: allLicenses.filter((l) => l.tier === LicenseTier.STARTER).length,
       [LicenseTier.PRO]: allLicenses.filter((l) => l.tier === LicenseTier.PRO).length,
       [LicenseTier.ENTERPRISE]: allLicenses.filter((l) => l.tier === LicenseTier.ENTERPRISE).length,
       [LicenseTier.MASTER]: allLicenses.filter((l) => l.tier === LicenseTier.MASTER).length,

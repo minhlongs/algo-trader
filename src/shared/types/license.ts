@@ -5,6 +5,7 @@
 
 export enum LicenseTier {
   FREE = 'FREE',
+  STARTER = 'STARTER',
   PRO = 'PRO',
   ENTERPRISE = 'ENTERPRISE',
   MASTER = 'MASTER',

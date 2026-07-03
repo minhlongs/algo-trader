@@ -51,6 +51,13 @@ export interface NowPaymentsTierConfig {
 
 // Configure invoice IDs from NOWPayments dashboard (customers set these in .env or config)
 export const NOWPAYMENTS_TIERS: Record<string, NowPaymentsTierConfig> = {
+  STARTER: {
+    tier: LicenseTier.STARTER,
+    invoiceId: process.env.NOWPAYMENTS_INVOICE_STARTER || '',
+    price: 19,
+    currency: 'USD',
+    name: 'Starter',
+  },
   PRO: {
     tier: LicenseTier.PRO,
     invoiceId: process.env.NOWPAYMENTS_INVOICE_PRO || '',

@@ -116,6 +116,7 @@ vi.mock('../../../db/pnl-service', () => ({
 describe('Distributed Rate Limiter Integration Tests', () => {
   let app: express.Application;
   let freeKey = '';
+  let starterKey = '';
   let proKey = '';
   let enterpriseKey = '';
 
@@ -135,6 +136,13 @@ describe('Distributed Rate Limiter Integration Tests', () => {
       tenantId: 'tenant-free',
     });
     freeKey = freeLic.key;
+
+    const starterLic = await licenseService.createLicense({
+      name: 'Starter License',
+      tier: LicenseTier.STARTER,
+      tenantId: 'tenant-starter',
+    });
+    starterKey = starterLic.key;
 
     const proLic = await licenseService.createLicense({
       name: 'Pro License',
@@ -173,6 +181,19 @@ describe('Distributed Rate Limiter Integration Tests', () => {
       expect(res.headers['x-ratelimit-limit']).toBe('10');
       expect(res.headers['x-ratelimit-remaining']).toBe('9');
       expect(rateLimitMock).toHaveBeenCalledWith('ratelimit:{tenant-free}', expect.any(Number), 60000, 10);
+    });
+
+    it('should allow requests under the limit for STARTER tier', async () => {
+      rateLimitMock.mockResolvedValue([1, 5]); // [allowed, currentCount]
+
+      const res = await request(app)
+        .get('/api/trades')
+        .set('x-api-key', starterKey);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['x-ratelimit-limit']).toBe('50');
+      expect(res.headers['x-ratelimit-remaining']).toBe('45');
+      expect(rateLimitMock).toHaveBeenCalledWith('ratelimit:{tenant-starter}', expect.any(Number), 60000, 50);
     });
 
     it('should allow requests under the limit for PRO tier', async () => {

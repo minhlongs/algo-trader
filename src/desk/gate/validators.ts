@@ -15,6 +15,10 @@ export function parseLicenseTier(key: string): LicenseTier {
 
   const upperKey = key.toUpperCase();
 
+  if (upperKey.startsWith('RAAS-RST-') || upperKey.startsWith('RST-')) {
+    return LicenseTier.STARTER;
+  }
+
   if (upperKey.startsWith('RAAS-PRO-') || upperKey.startsWith('RPP-') || upperKey.startsWith('RAAS-RPP-')) {
     return LicenseTier.PRO;
   }
@@ -49,9 +53,10 @@ export function isFeatureEnabled(feature: string, tier: LicenseTier): boolean {
 export function getTierLevel(tier: LicenseTier): number {
   switch (tier) {
     case LicenseTier.FREE: return 0;
-    case LicenseTier.PRO: return 1;
-    case LicenseTier.ENTERPRISE: return 2;
-    case LicenseTier.MASTER: return 3;
+    case LicenseTier.STARTER: return 1;
+    case LicenseTier.PRO: return 2;
+    case LicenseTier.ENTERPRISE: return 3;
+    case LicenseTier.MASTER: return 4;
     default: return 0;
   }
 }
