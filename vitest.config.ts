@@ -31,5 +31,31 @@ export default defineConfig({
       'backups/**',
       'dist/**',
     ],
+    coverage: {
+      provider: 'v8',
+      enabled: true,
+      reporter: ['text', 'text-summary', 'json-summary'],
+      reportOnFailure: true,
+      thresholds: {
+        branches: 80,
+        functions: 80,
+        lines: 80,
+        statements: 80,
+      },
+      // Exclude same patterns as test.exclude plus config/build artifacts
+      exclude: [
+        '**/node_modules/**',
+        '.claude/**',
+        '.opencode/**',
+        'tests/strategies/**',
+        'dashboard/**',
+        'backups/**',
+        'dist/**',
+        '**/*.config.{ts,js}',
+        '**/migrations/**',
+        'src/**/*.test.ts',
+        'src/**/__tests__/**',
+      ],
+    },
   },
 });
