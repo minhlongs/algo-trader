@@ -59,7 +59,7 @@ export async function distributedRateLimiter(
 
   if (apiKey) {
     const licenseService = LicenseService.getInstance();
-    const license = await licenseService.getLicenseByKey(apiKey);
+    const license = licenseService.getLicenseByKey(apiKey);
 
     if (license && license.status === 'active') {
       tenantId = license.tenantId || license.id;

@@ -9,7 +9,6 @@
 import { LicenseService } from '../license-service';
 import { AuditLogService } from '../../audit/audit-log-service';
 import { LicenseStatus } from '../../../shared/types/license';
-import { query } from '../../../shared/db/postgres-client';
 import type { DunningRecord, DunningConfig } from '../dunning-service';
 
 export class DunningWorkflow {
@@ -20,10 +19,11 @@ export class DunningWorkflow {
     auditService: AuditLogService,
     saveRecord: (record: DunningRecord) => Promise<void>,
   ): Promise<void> {
-    const license = await licenseService.getLicense(licenseId);
+    const license = licenseService.getLicense(licenseId);
     if (!license) return;
 
-    await licenseService.revokeLicense(licenseId);
+    license.status = LicenseStatus.REVOKED;
+    license.updatedAt = new Date().toISOString();
 
     record.status = 'suspended';
     record.suspensionDate = new Date().toISOString();
@@ -47,14 +47,11 @@ export class DunningWorkflow {
     auditService: AuditLogService,
     saveRecord: (record: DunningRecord) => Promise<void>,
   ): Promise<void> {
-    const license = await licenseService.getLicense(licenseId);
+    const license = licenseService.getLicense(licenseId);
     if (!license) return;
 
-    const now = new Date().toISOString();
-    await query(
-      'UPDATE licenses SET status = $1, updated_at = $2 WHERE id = $3',
-      [LicenseStatus.ACTIVE, now, licenseId]
-    );
+    license.status = LicenseStatus.ACTIVE;
+    license.updatedAt = new Date().toISOString();
 
     record.status = 'reinstated';
     record.reinstatementDate = new Date().toISOString();

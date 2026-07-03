@@ -1,11 +1,10 @@
 /**
  * Enterprise plan definitions — single source of truth for dashboard UI.
- * Tiers: PRO ($99/mo) / ENTERPRISE ($299/mo) / MASTER ($999/mo).
- * Monthly subscription, invoice-based. No self-serve checkout.
+ * Pricing: $49k / $199k / $499k, invoice-based. No Polar.sh checkout.
  * Keep copy free of "AI", "health", "wellness", "medical" per Polar acceptable-use rule.
  */
 
-export type EnterprisePlanKey = 'PRO' | 'ENTERPRISE' | 'MASTER';
+export type EnterprisePlanKey = 'growth' | 'scale' | 'unlimited';
 
 export interface EnterprisePlan {
   name: string;
@@ -16,47 +15,47 @@ export interface EnterprisePlan {
 }
 
 export const ENTERPRISE_PLANS: Record<EnterprisePlanKey, EnterprisePlan> = {
-  PRO: {
-    name: 'PRO',
-    price: '$99 / mo',
-    acv: 1_188,
-    tagline: 'For individual traders and small teams',
+  growth: {
+    name: 'Growth',
+    price: '$49k / yr',
+    acv: 49_000,
+    tagline: 'For teams getting systematic at scale',
     features: [
-      'Up to 5 strategy seats',
+      'Up to 10 strategy seats',
       'Dedicated onboarding session',
       'SLA: next-business-day support',
       'Custom position & loss limits',
       'API + webhook access',
-      'Monthly performance reports',
+      'Quarterly business review',
     ],
   },
-  ENTERPRISE: {
-    name: 'ENTERPRISE',
-    price: '$299 / mo',
-    acv: 3_588,
-    tagline: 'For growing funds and trading desks',
+  scale: {
+    name: 'Scale',
+    price: '$199k / yr',
+    acv: 199_000,
+    tagline: 'For funds running multi-strategy operations',
     features: [
-      'Up to 25 strategy seats',
-      'Dedicated Account Manager',
+      'Up to 50 strategy seats',
+      'Dedicated Technical Account Manager',
       'SLA: 4-hour response',
       'Custom risk parameters per desk',
       'White-label reporting',
-      'Weekly executive review',
+      'Monthly executive review',
       'Priority feature roadmap access',
     ],
   },
-  MASTER: {
-    name: 'MASTER',
-    price: '$999 / mo',
-    acv: 11_988,
+  unlimited: {
+    name: 'Unlimited',
+    price: '$499k / yr',
+    acv: 499_000,
     tagline: 'For institutional desks requiring full control',
     features: [
       'Unlimited strategy seats',
-      'Dedicated TAM + engineering support',
+      'Dedicated TAM + engineering pod',
       'SLA: 1-hour response, 99.9% uptime',
       'Custom integrations & private deployments',
       'Full audit logs & compliance exports',
-      'Daily executive review',
+      'Weekly executive review',
       'Co-development on roadmap items',
     ],
   },

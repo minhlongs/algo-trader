@@ -53,7 +53,7 @@ export async function suspensionCheckPlugin(fastify: FastifyInstance) {
 
     // Block suspended licenses
     if (suspensionStatus.isSuspended) {
-      const license = await licenseService.getLicense(licenseId);
+      const license = licenseService.getLicense(licenseId);
 
       // Log suspension event to audit trail
       await auditService.log(licenseId, 'suspension_warning', {
@@ -84,7 +84,7 @@ export async function suspensionCheckPlugin(fastify: FastifyInstance) {
 /**
  * Standalone middleware function for manual use
  */
-export async function suspensionCheckMiddleware(
+export function suspensionCheckMiddleware(
   request: FastifyRequest,
   reply: FastifyReply,
   done: () => void
@@ -94,17 +94,16 @@ export async function suspensionCheckMiddleware(
 
   const apiKey = request.headers['x-api-key'] as string | undefined;
   if (!apiKey) {
-    return done();
+    return done(); // Let license-validation handle this
   }
 
-  const license = await licenseService.getLicenseByKey(apiKey);
+  const license = licenseService.getLicenseByKey(apiKey);
   if (!license) {
-    return done();
+    return done(); // Let license-validation handle this
   }
 
   // Check suspension status
-  try {
-    const status = await dunningService.getSuspensionStatus(license.id);
+  dunningService.getSuspensionStatus(license.id).then((status) => {
     (request as any).suspensionCheck = status;
 
     if (status.isSuspended) {
@@ -122,7 +121,7 @@ export async function suspensionCheckMiddleware(
     }
 
     done();
-  } catch {
-    done();
-  }
+  }).catch(() => {
+    done(); // Continue on error, let other middleware handle it
+  });
 }

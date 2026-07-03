@@ -1,7 +1,6 @@
 /**
  * Account page — profile, current plan, API key, billing, danger zone.
  */
-import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/auth-store';
 import { Link } from 'react-router-dom';
 import { getTierLimits } from '../lib/tier-config';
@@ -40,7 +39,6 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function AccountPage() {
-  const { t } = useTranslation();
   const { email, tier, tenantId, apiKey, token } = useAuthStore();
 
   const limits = getTierLimits(tier);
@@ -72,18 +70,18 @@ export function AccountPage() {
     <div className="space-y-6 max-w-2xl">
         <div className="flex items-center gap-2 mb-6">
           <span className="w-1 h-5 bg-accent rounded-full" />
-          <h1 className="text-white text-xl font-bold tracking-tight">{t('account.title')}</h1>
+          <h1 className="text-white text-xl font-bold tracking-tight">Account</h1>
         </div>
 
       {/* Profile */}
-      <Card title={t('account.profile')}>
-        <Row label={t('account.email')} value={email || '—'} />
-        <Row label={t('account.tenantId')} value={<code className="text-accent text-[10px]">{tenantId ?? '—'}</code>} />
-        <Row label={t('account.memberSince')} value={memberSince} />
+      <Card title="Profile">
+        <Row label="Email" value={email || '—'} />
+        <Row label="Tenant ID" value={<code className="text-accent text-[10px]">{tenantId ?? '—'}</code>} />
+        <Row label="Member since" value={memberSince} />
       </Card>
 
       {/* Current Plan */}
-      <Card title={t('account.currentPlan')}>
+      <Card title="Current Plan">
         <div className="flex items-center justify-between mb-4">
           <span className={`px-2.5 py-1 rounded text-xs font-bold ${badgeClass}`}>
             {tierLabel}
@@ -92,20 +90,20 @@ export function AccountPage() {
             to="/pricing"
             className="text-xs text-accent hover:underline"
           >
-            {t('account.upgradePlan')}
+            Upgrade plan →
           </Link>
         </div>
         <div className="space-y-0">
-          <Row label={t('account.tradesPerDay')} value={limits.tradesPerDay} />
-          <Row label={t('account.dailyLossCap')} value={limits.dailyLossCap} />
-          <Row label={t('account.maxPositionSize')} value={limits.maxPosition} />
+          <Row label="Trades / day" value={limits.tradesPerDay} />
+          <Row label="Daily loss cap" value={limits.dailyLossCap} />
+          <Row label="Max position size" value={limits.maxPosition} />
         </div>
       </Card>
 
       {/* API Key */}
-      <Card title={t('account.apiKey')}>
+      <Card title="API Key">
         <p className="text-muted text-xs">
-          {t('account.apiKeyDescription')}
+          Use this key to authenticate CLI and programmatic access.
         </p>
         <div className="bg-bg border border-bg-border rounded px-4 py-3 flex items-center justify-between gap-3">
           <code className="text-accent text-xs">{maskedKey}</code>
@@ -115,52 +113,59 @@ export function AccountPage() {
             aria-label="Regenerate API key — contact support to enable"
             className="text-xs px-3 py-1.5 border border-bg-border rounded text-muted cursor-not-allowed opacity-50 min-h-touch"
           >
-            {t('account.regenerate')}
+            Regenerate
           </button>
         </div>
         <p className="text-muted text-[10px]">
-          {t('account.regenerationDisabled')}
+          Key regeneration is disabled.{' '}
+          <a
+            href="mailto:support@cashclaw.cc"
+            className="text-accent hover:underline"
+          >
+            Contact support
+          </a>{' '}
+          to rotate your key.
         </p>
       </Card>
 
       {/* Billing */}
-      <Card title={t('account.billing')}>
+      <Card title="Billing">
         {tier === 'free' ? (
           <div className="flex items-center justify-between">
-            <p className="text-muted text-xs">{t('account.freePlan')}</p>
+            <p className="text-muted text-xs">You're on the free plan.</p>
             <Link
               to="/pricing"
               className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 transition-colors min-h-touch"
             >
-              {t('account.upgrade')}
+              Upgrade
             </Link>
           </div>
         ) : (
           <div className="flex items-center justify-between">
             <p className="text-muted text-xs">
-              {t('account.activeSubscription', { tier: tierLabel })}
+              Active <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass}`}>{tierLabel}</span> subscription.
             </p>
             <Link
               to="/pricing"
               className="text-xs px-4 py-2 border border-bg-border rounded text-accent hover:bg-accent/10 transition-colors min-h-touch"
             >
-              {t('account.upgradeManage')}
+              Upgrade / Manage →
             </Link>
           </div>
         )}
       </Card>
 
       {/* Danger Zone */}
-      <Card title={t('account.dangerZone')}>
+      <Card title="Danger Zone">
         <p className="text-muted text-xs">
-          {t('account.deleteDescription')}
+          Permanently delete your account and all associated data.
         </p>
         <button
           disabled
-          title={t('account.deleteAccount')}
+          title="Contact support to delete your account"
           className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 cursor-not-allowed opacity-50 min-h-touch"
         >
-          {t('account.deleteAccount')}
+          Delete Account
         </button>
       </Card>
     </div>

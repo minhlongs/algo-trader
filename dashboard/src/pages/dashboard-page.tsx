@@ -5,14 +5,13 @@
  */
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { useTradingStore, type TradingState, type Position, type StrategyStatus } from '../stores/trading-store';
+import { useTradingStore } from '../stores/trading-store';
 import { useWebSocketPriceFeed } from '../hooks/use-websocket-price-feed';
 import { useRealtimeUpdates } from '../hooks/use-realtime-updates';
 import { useSignals } from '../hooks/use-signals';
 import { usePnlAnalytics } from '../hooks/use-pnl-analytics';
 import { useAdminControls } from '../hooks/use-admin-controls';
 import { useHealthStatus } from '../hooks/use-health-status';
-import { useTranslation } from 'react-i18next';
 
 // Phase 3 Components
 import { StatsRow } from '../components/stats-row';
@@ -53,8 +52,6 @@ function useNow(): string {
 }
 
 export function DashboardPage() {
-  const { t } = useTranslation();
-
   // Legacy WebSocket for trading data (Phase 1/2)
   useWebSocketPriceFeed();
 
@@ -68,11 +65,11 @@ export function DashboardPage() {
   useHealthStatus();
 
   // Trading store data (Phase 1/2)
-  const positions = useTradingStore((state: TradingState) => state.positions);
-  const spreads = useTradingStore((state: TradingState) => state.spreads);
-  const strategies = useTradingStore((state: TradingState) => state.strategies);
-  const trades = useTradingStore((state: TradingState) => state.trades);
-  const botStatus = useTradingStore((state: TradingState) => state.botStatus);
+  const positions = useTradingStore((s: any) => s.positions);
+  const spreads = useTradingStore((s: any) => s.spreads);
+  const strategies = useTradingStore((s: any) => s.strategies);
+  const trades = useTradingStore((s: any) => s.trades);
+  const botStatus = useTradingStore((s: any) => s.botStatus);
 
   const lastUpdate = useNow();
 
@@ -80,8 +77,8 @@ export function DashboardPage() {
   const isInitialLoading = pnlLoading || signalsLoading || adminLoading;
 
   // Derived metrics
-  const openCount = positions.filter((position: Position) => position.status === 'open').length;
-  const activeStrategies = strategies?.filter((strategy: StrategyStatus) => strategy.enabled).length ?? 0;
+  const openCount = positions.filter((p: any) => p.status === 'open').length;
+  const activeStrategies = strategies?.filter((s: any) => s.enabled).length ?? 0;
 
   // Show full skeleton on initial load
   if (isInitialLoading) {
@@ -99,21 +96,21 @@ export function DashboardPage() {
       {/* Top bar - responsive layout */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-white text-lg sm:text-xl font-bold tracking-tight">{t('dashboard.title')}</h2>
+          <h2 className="text-white text-lg sm:text-xl font-bold tracking-tight">Dashboard</h2>
           <p className="text-muted text-xs mt-0.5">
-            Algo Trader v5.7.0 • {wsConnected ? t('dashboard.connected') : t('dashboard.disconnected')}
-            {latency.avgLatency > 0 && ` • ${t('dashboard.latency', { ms: latency.avgLatency })}`}
+            Algo Trader v5.7.0 • {wsConnected ? 'Connected' : 'Disconnected'}
+            {latency.avgLatency > 0 && ` • ${latency.avgLatency}ms latency`}
           </p>
           {wsError && <p className="text-loss text-xs mt-1">{wsError}</p>}
           {reconnectCount > 0 && (
-            <p className="text-muted text-[10px] mt-0.5">{t('dashboard.reconnected', { count: reconnectCount })}</p>
+            <p className="text-muted text-[10px] mt-0.5">Reconnected {reconnectCount}x</p>
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <CacheStatus />
           <span className="text-muted text-xs hidden sm:inline">
-            {t('dashboard.updated')} {lastUpdate}
+            Updated {lastUpdate}
           </span>
           <div
             className={`
@@ -128,7 +125,7 @@ export function DashboardPage() {
             <span
               className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-profit animate-pulse' : 'bg-loss'}`}
             />
-            <span className="hidden sm:inline">{wsConnected ? t('dashboard.live') : t('dashboard.offline')}</span>
+            <span className="hidden sm:inline">{wsConnected ? 'Live' : 'Offline'}</span>
           </div>
         </div>
       </div>
@@ -152,7 +149,7 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-4 bg-accent rounded-full" />
-          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.strategies')}</h3>
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Strategies</h3>
         </div>
         <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           <StrategyStatusPanel strategies={strategies} botStatus={botStatus} />
@@ -165,7 +162,7 @@ export function DashboardPage() {
         <section>
           <div className="flex items-center gap-2 mb-3">
             <span className="w-1 h-4 bg-accent rounded-full" />
-            <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.pnlAnalytics')}</h3>
+            <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">P&amp;L Analytics</h3>
           </div>
           <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
             {pnlLoading ? (
@@ -180,7 +177,7 @@ export function DashboardPage() {
         <section>
           <div className="flex items-center gap-2 mb-3">
             <span className="w-1 h-4 bg-accent rounded-full" />
-            <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.adminControls')}</h3>
+            <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Admin Controls</h3>
           </div>
           <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
             {adminLoading ? (
@@ -203,7 +200,7 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-4 bg-profit rounded-full" />
-          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.arbitrageSignals')}</h3>
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Arbitrage Signals</h3>
           {signals.length > 0 && (
             <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded font-mono ml-auto">
               {signals.length}
@@ -228,7 +225,7 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-4 bg-accent rounded-full" />
-          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.equityCurve')}</h3>
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Equity Curve</h3>
         </div>
         <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-3 sm:p-4">
           {pnlLoading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
@@ -239,7 +236,7 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-4 bg-accent rounded-full" />
-          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.livePrices')}</h3>
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Live Prices</h3>
         </div>
         <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
@@ -250,7 +247,7 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-4 bg-profit rounded-full" />
-          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.spreadOpportunities')}</h3>
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Spread Opportunities</h3>
           {spreads.length > 0 && (
             <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded font-mono ml-auto">
               {spreads.length}
@@ -270,7 +267,7 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-4 bg-gold rounded-full" />
-          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.tradeHistory')}</h3>
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Trade History</h3>
           {trades.length > 0 && (
             <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded font-mono ml-auto">
               {trades.length}
@@ -286,7 +283,7 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <span className="w-1 h-4 bg-muted rounded-full" />
-          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('dashboard.positions')}</h3>
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Positions</h3>
           {positions.length > 0 && (
             <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded font-mono ml-auto">
               {positions.length}

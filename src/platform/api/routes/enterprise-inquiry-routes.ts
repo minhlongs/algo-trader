@@ -42,7 +42,7 @@ enterpriseInquiryRouter.post('/inquiries', requireTier('FREE'), async (req: Requ
       email,
       companyName,
       contactName,
-      tier: tier as 'PRO' | 'ENTERPRISE' | 'MASTER',
+      tier: tier as 'growth' | 'scale' | 'unlimited',
       useCase,
       teamSize,
     });
@@ -58,24 +58,24 @@ enterpriseInquiryRouter.post('/inquiries', requireTier('FREE'), async (req: Requ
 });
 
 /** GET /inquiries — admin: list all inquiries sorted by createdAt desc */
-enterpriseInquiryRouter.get('/inquiries', requireTier('ENTERPRISE'), async (req: Request, res: Response): Promise<void> => {
+enterpriseInquiryRouter.get('/inquiries', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;
   }
 
-  const inquiries = await onboardingService.listInquiries();
+  const inquiries = onboardingService.listInquiries();
   res.json(inquiries);
 });
 
 /** GET /inquiries/:id — admin: fetch single inquiry */
-enterpriseInquiryRouter.get('/inquiries/:id', requireTier('ENTERPRISE'), async (req: Request, res: Response): Promise<void> => {
+enterpriseInquiryRouter.get('/inquiries/:id', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;
   }
 
-  const inquiry = await onboardingService.getInquiry(String(req.params.id ?? ''));
+  const inquiry = onboardingService.getInquiry(String(req.params.id ?? ''));
   if (!inquiry) {
     res.status(404).json({ error: 'Inquiry not found' });
     return;
@@ -85,7 +85,7 @@ enterpriseInquiryRouter.get('/inquiries/:id', requireTier('ENTERPRISE'), async (
 });
 
 /** PATCH /inquiries/:id/status — admin: update status, tamAssigned, notes */
-enterpriseInquiryRouter.patch('/inquiries/:id/status', requireTier('ENTERPRISE'), async (req: Request, res: Response): Promise<void> => {
+enterpriseInquiryRouter.patch('/inquiries/:id/status', requireTier('ENTERPRISE'), (req: Request, res: Response): void => {
   if (!isAdmin(req)) {
     res.status(403).json({ error: 'Forbidden: admin access required' });
     return;
@@ -105,12 +105,12 @@ enterpriseInquiryRouter.patch('/inquiries/:id/status', requireTier('ENTERPRISE')
     return;
   }
 
-  const patch: Parameters<typeof onboardingService.updateInquiry>[1] = {};
+  const patch: Parameters<typeof enterpriseInquiryStore.update>[1] = {};
   if (status !== undefined) patch.status = status as EnterpriseInquiryStatus;
   if (tamAssigned !== undefined) patch.tamAssigned = tamAssigned;
   if (notes !== undefined) patch.notes = notes;
 
-  const updated = await onboardingService.updateInquiry(id, patch);
+  const updated = onboardingService.updateInquiry(id, patch);
   if (!updated) {
     res.status(404).json({ error: 'Inquiry not found' });
     return;

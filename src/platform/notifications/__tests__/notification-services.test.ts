@@ -133,11 +133,11 @@ describe('TelegramBotService', () => {
     vi.clearAllMocks();
   });
 
-  it('should fail initialization with missing config', async () => {
+  it('should fail initialization with missing config', () => {
     const service = TelegramBotService.getInstance({
       botToken: '',
     });
-    const result = await service.initialize();
+    const result = service.initialize();
     expect(result).toBe(false);
   });
 

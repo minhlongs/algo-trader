@@ -49,7 +49,7 @@ export const usageTrackingPlugin: FastifyPluginAsync<UsageTrackingOptions> = asy
       return;
     }
 
-    const license = await licenseService.getLicenseByKey(apiKey);
+    const license = licenseService.getLicenseByKey(apiKey);
     if (!license) {
       return;
     }
@@ -85,13 +85,13 @@ export const usageTrackingPlugin: FastifyPluginAsync<UsageTrackingOptions> = asy
     }
   });
 
-  fastify.decorateRequest('getUsageStatus', async function (this: FastifyRequest) {
+  fastify.decorateRequest('getUsageStatus', function (this: FastifyRequest) {
     const apiKey = this.headers['x-api-key'] as string | undefined;
     if (!apiKey) {
       return null;
     }
 
-    const license = await licenseService.getLicenseByKey(apiKey);
+    const license = licenseService.getLicenseByKey(apiKey);
     if (!license) {
       return null;
     }

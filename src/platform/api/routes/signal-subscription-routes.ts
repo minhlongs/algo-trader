@@ -28,12 +28,12 @@ const subscribeBodySchema = z.object({
 });
 
 /** Extract subscriberId from API key (simplified — maps licenseId → userId) */
-async function resolveSubscriberId(req: Request): Promise<{ subscriberId: string; tier: TierKey } | null> {
+function resolveSubscriberId(req: Request): { subscriberId: string; tier: TierKey } | null {
   const authHeader = req.headers.authorization ?? '';
   const apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!apiKey) return null;
 
-  const license = await gate.validateApiKey(apiKey);
+  const license = gate.validateApiKey(apiKey);
   if (!license) return null;
 
   let tier: TierKey = 'FREE';
@@ -48,8 +48,8 @@ async function resolveSubscriberId(req: Request): Promise<{ subscriberId: string
  * POST /api/v1/signals/subscribe
  * Body: { chatId?: number }
  */
-signalSubscriptionRouter.post('/subscribe', requireTier('PRO'), async (req: Request, res: Response) => {
-  const identity = await resolveSubscriberId(req);
+signalSubscriptionRouter.post('/subscribe', requireTier('PRO'), (req: Request, res: Response) => {
+  const identity = resolveSubscriberId(req);
   if (!identity) {
     res.status(401).json({ error: 'Valid API key required' });
     return;
@@ -83,8 +83,8 @@ signalSubscriptionRouter.post('/subscribe', requireTier('PRO'), async (req: Requ
 /**
  * POST /api/v1/signals/unsubscribe
  */
-signalSubscriptionRouter.post('/unsubscribe', requireTier('PRO'), async (req: Request, res: Response) => {
-  const identity = await resolveSubscriberId(req);
+signalSubscriptionRouter.post('/unsubscribe', requireTier('PRO'), (req: Request, res: Response) => {
+  const identity = resolveSubscriberId(req);
   if (!identity) {
     res.status(401).json({ error: 'Valid API key required' });
     return;
@@ -107,8 +107,8 @@ signalSubscriptionRouter.post('/unsubscribe', requireTier('PRO'), async (req: Re
 /**
  * GET /api/v1/signals/subscription
  */
-signalSubscriptionRouter.get('/subscription', requireTier('PRO'), async (req: Request, res: Response) => {
-  const identity = await resolveSubscriberId(req);
+signalSubscriptionRouter.get('/subscription', requireTier('PRO'), (req: Request, res: Response) => {
+  const identity = resolveSubscriberId(req);
   if (!identity) {
     res.status(401).json({ error: 'Valid API key required' });
     return;

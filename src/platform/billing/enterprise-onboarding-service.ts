@@ -6,7 +6,7 @@
  *   3. Auto-provision paper-trading demo
  *   4. Return credentials to caller
  *
- * Pricing: $99/mo (PRO) / $299/mo (ENTERPRISE) / $999/mo (MASTER) — invoice only.
+ * Pricing: $49k (growth) / $199k (scale) / $499k (unlimited) — invoice only.
  * Polar.sh is NOT used for enterprise; checkout is handled offline by TAM.
  */
 
@@ -39,8 +39,8 @@ function validateInput(input: SubmitEnterpriseInquiryInput): void {
   if (!validateEmail(input.email)) throw new Error('Invalid email address');
   if (!input.companyName.trim()) throw new Error('Company name is required');
   if (!input.contactName.trim()) throw new Error('Contact name is required');
-  if (!['PRO', 'ENTERPRISE', 'MASTER'].includes(input.tier)) {
-    throw new Error('Invalid enterprise tier. Must be PRO, ENTERPRISE, or MASTER');
+  if (!['growth', 'scale', 'unlimited'].includes(input.tier)) {
+    throw new Error('Invalid enterprise tier. Must be growth, scale, or unlimited');
   }
   if (!input.useCase.trim() || input.useCase.trim().length < 20) {
     throw new Error('Use case description must be at least 20 characters');
@@ -65,15 +65,15 @@ export class EnterpriseOnboardingService {
     validateInput(input);
 
     // Prevent duplicate submissions (same email + active inquiry)
-    const existing = (await enterpriseInquiryStore
-      .getByEmail(input.email.trim().toLowerCase()))
+    const existing = enterpriseInquiryStore
+      .getByEmail(input.email.trim().toLowerCase())
       .filter((i) => !['closed_won', 'closed_lost'].includes(i.status));
 
     if (existing.length > 0) {
       throw new Error('An open enterprise inquiry already exists for this email. Our team will be in touch.');
     }
 
-    const inquiry = await enterpriseInquiryStore.create({
+    const inquiry = enterpriseInquiryStore.create({
       email: input.email.trim().toLowerCase(),
       companyName: input.companyName.trim(),
       contactName: input.contactName.trim(),
@@ -91,13 +91,13 @@ export class EnterpriseOnboardingService {
     // Notify TAM (non-blocking failure)
     const tamNotified = await notifyTam(inquiry);
     if (tamNotified) {
-      await enterpriseInquiryStore.update(inquiry.id, { status: 'tam_notified' });
+      enterpriseInquiryStore.update(inquiry.id, { status: 'tam_notified' });
     }
 
     // Provision paper demo (non-blocking failure)
     const paperDemo = await provisionPaperDemo(inquiry);
     if (paperDemo) {
-      await enterpriseInquiryStore.update(inquiry.id, {
+      enterpriseInquiryStore.update(inquiry.id, {
         paperdemoProvisioned: true,
         paperdemoKey: paperDemo.demoKey,
         status: 'demo_active',
@@ -113,20 +113,20 @@ export class EnterpriseOnboardingService {
   }
 
   /** Retrieve a single inquiry by ID (for TAM dashboard). */
-  async getInquiry(id: string): Promise<EnterpriseInquiry | undefined> {
+  getInquiry(id: string): EnterpriseInquiry | undefined {
     return enterpriseInquiryStore.getById(id);
   }
 
   /** List all inquiries (TAM dashboard). */
-  async listInquiries(): Promise<EnterpriseInquiry[]> {
+  listInquiries(): EnterpriseInquiry[] {
     return enterpriseInquiryStore.list();
   }
 
   /** Update inquiry status or TAM assignment. */
-  async updateInquiry(
+  updateInquiry(
     id: string,
     patch: Partial<Pick<EnterpriseInquiry, 'status' | 'tamAssigned' | 'notes'>>,
-  ): Promise<EnterpriseInquiry | undefined> {
+  ): EnterpriseInquiry | undefined {
     return enterpriseInquiryStore.update(id, patch);
   }
 }

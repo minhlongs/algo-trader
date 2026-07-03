@@ -66,7 +66,7 @@ const VALID_INQUIRY = {
   email: 'cto@acme.com',
   companyName: 'Acme Corp',
   contactName: 'Alice',
-  tier: 'PRO',
+  tier: 'growth',
   useCase: 'Automate prediction market operations for our desk',
 };
 

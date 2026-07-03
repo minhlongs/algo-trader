@@ -33,15 +33,6 @@ vi.mock('../../stores/trading-store', () => ({
   useTradingStore: vi.fn(),
 }));
 
-// ── i18n mock (return keys as-is) ──
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: { language: 'en' },
-  }),
-}));
-
 // ── Component mocks (avoid Recharts / heavy deps in jsdom) ──
 
 vi.mock('../../components/confirmation-dialog', () => ({
@@ -210,41 +201,41 @@ describe('LiveTradingPage', () => {
 
   it('renders page heading', () => {
     renderPage();
-    expect(screen.getByText('liveTrading.title')).toBeTruthy();
+    expect(screen.getByText('Live Trading')).toBeTruthy();
   });
 
   it('renders trading mode badge', () => {
     renderPage();
-    expect(screen.getByText('liveTrading.live')).toBeTruthy();
+    expect(screen.getByText('LIVE')).toBeTruthy();
   });
 
   it('renders KPI card labels', () => {
     renderPage();
     // Regular KpiCard section
-    expect(screen.getByText('liveTrading.botStatus')).toBeTruthy();
-    expect(screen.getByText('liveTrading.consecutiveLosses')).toBeTruthy();
+    expect(screen.getByText('Bot Status')).toBeTruthy();
+    expect(screen.getByText('Consecutive Losses')).toBeTruthy();
     // TradingKpiCard section (sparkline cards)
-    expect(screen.getByTestId('kpi-liveTrading.dailyPnl')).toBeTruthy();
-    expect(screen.getByTestId('kpi-liveTrading.winRate')).toBeTruthy();
-    expect(screen.getByTestId('kpi-liveTrading.openPositionsLabel')).toBeTruthy();
+    expect(screen.getByTestId('kpi-Daily P&L')).toBeTruthy();
+    expect(screen.getByTestId('kpi-Win Rate')).toBeTruthy();
+    expect(screen.getByTestId('kpi-Open Positions')).toBeTruthy();
   });
 
   it('renders bot engine stats', () => {
     renderPage();
-    expect(screen.getByText('liveTrading.uptime')).toBeTruthy();
-    expect(screen.getByText('liveTrading.totalSignals')).toBeTruthy();
-    expect(screen.getByText('liveTrading.executedTrades')).toBeTruthy();
-    expect(screen.getByText('liveTrading.rejectedTrades')).toBeTruthy();
+    expect(screen.getByText('Uptime')).toBeTruthy();
+    expect(screen.getByText('Total Signals')).toBeTruthy();
+    expect(screen.getByText('Executed Trades')).toBeTruthy();
+    expect(screen.getByText('Rejected Trades')).toBeTruthy();
   });
 
   it('renders positions heading with count', () => {
     renderPage();
-    expect(screen.getByText('liveTrading.openPositions')).toBeTruthy();
+    expect(screen.getByText('Open Positions (2)')).toBeTruthy();
   });
 
   it('renders trades heading', () => {
     renderPage();
-    expect(screen.getByText(/liveTrading\.recentTrades/)).toBeTruthy();
+    expect(screen.getByText(/Recent Trades/)).toBeTruthy();
   });
 
   it('renders risk gauges', () => {
@@ -270,25 +261,25 @@ describe('LiveTradingPage', () => {
 
   it('renders Close buttons for each open position', () => {
     renderPage();
-    const closeButtons = screen.getAllByRole('button', { name: /liveTrading\.close/i });
+    const closeButtons = screen.getAllByRole('button', { name: /Close position/i });
     expect(closeButtons).toHaveLength(2);
   });
 
   it('shows Running status', () => {
     renderPage();
-    expect(screen.getByText('liveTrading.running')).toBeTruthy();
+    expect(screen.getByText('Running')).toBeTruthy();
   });
 
   /* ── Empty state tests ── */
 
   it('shows "No open positions" when positions array is empty', () => {
     renderPage({ storeOverrides: { positions: [] } });
-    expect(screen.getByText('liveTrading.noOpenPositions')).toBeTruthy();
+    expect(screen.getByText('No open positions')).toBeTruthy();
   });
 
   it('shows "No trades yet" when trades array is empty', () => {
     renderPage({ storeOverrides: { trades: [] } });
-    expect(screen.getByText('liveTrading.noTradesYet')).toBeTruthy();
+    expect(screen.getByText('No trades yet')).toBeTruthy();
   });
 
   it('shows "No active strategies" when no strategies enabled', () => {
@@ -309,19 +300,19 @@ describe('LiveTradingPage', () => {
         refresh: vi.fn(),
       },
     });
-    expect(screen.getByText('liveTrading.refreshing')).toBeTruthy();
+    expect(screen.getByText('Refreshing...')).toBeTruthy();
   });
 
   /* ── Mode badge tests ── */
 
   it('shows PAPER badge when mode is dry-run', () => {
     renderPage({ storeOverrides: { botStatus: { ...DEFAULT_BOT_STATUS, mode: 'dry-run' } } });
-    expect(screen.getByText('liveTrading.paper')).toBeTruthy();
+    expect(screen.getByText('PAPER')).toBeTruthy();
   });
 
   it('shows Stopped when bot is not running', () => {
     renderPage({ storeOverrides: { botStatus: { ...DEFAULT_BOT_STATUS, running: false } } });
-    expect(screen.getByText('liveTrading.stopped')).toBeTruthy();
+    expect(screen.getByText('Stopped')).toBeTruthy();
   });
 
   /* ── Close position tests ── */
@@ -333,7 +324,7 @@ describe('LiveTradingPage', () => {
     });
     renderPage({ fetchImpl: mockFetch });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /liveTrading\.close/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Close position/i })[0]);
     await flushTimers();
 
     expect(mockFetch).toHaveBeenCalledWith('/positions/pos-001/close', {
@@ -353,10 +344,10 @@ describe('LiveTradingPage', () => {
     });
     renderPage({ fetchImpl: mockFetch });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /liveTrading\.close/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Close position/i })[0]);
     await flushTimers();
 
-    expect(screen.getByText('liveTrading.positionClosed')).toBeTruthy();
+    expect(screen.getByText('Position closed')).toBeTruthy();
   });
 
   it('shows error toast when close API fails', async () => {
@@ -366,10 +357,10 @@ describe('LiveTradingPage', () => {
     });
     renderPage({ fetchImpl: mockFetch });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /liveTrading\.close/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Close position/i })[0]);
     await flushTimers();
 
-    expect(screen.getByText('liveTrading.failedClose')).toBeTruthy();
+    expect(screen.getByText('Failed to close position')).toBeTruthy();
   });
 
   it('shows error toast when close API throws', async () => {
@@ -379,10 +370,10 @@ describe('LiveTradingPage', () => {
     });
     renderPage({ fetchImpl: mockFetch });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /liveTrading\.close/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Close position/i })[0]);
     await flushTimers();
 
-    expect(screen.getByText('liveTrading.failedClose')).toBeTruthy();
+    expect(screen.getByText('Failed to close position')).toBeTruthy();
   });
 
   it('disables close button while closing', async () => {
@@ -393,8 +384,8 @@ describe('LiveTradingPage', () => {
     });
     renderPage({ fetchImpl: mockFetch });
 
-    fireEvent.click(screen.getAllByRole('button', { name: /liveTrading\.close/i })[0]);
-    expect(screen.getAllByRole('button', { name: /liveTrading\.close/i })[0]).toBeDisabled();
+    fireEvent.click(screen.getAllByRole('button', { name: /Close position/i })[0]);
+    expect(screen.getAllByRole('button', { name: /Close position/i })[0]).toBeDisabled();
     resolvePromise({ success: true });
   });
 
@@ -408,7 +399,7 @@ describe('LiveTradingPage', () => {
     expect(screen.getByText('BTC/USD')).toBeTruthy();
     expect(screen.getByText('ETH/USD')).toBeTruthy();
 
-    fireEvent.click(screen.getAllByRole('button', { name: /liveTrading\.close/i })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /Close position/i })[0]);
     await flushTimers();
 
     expect(screen.queryByText('BTC/USD')).toBeNull();
@@ -419,17 +410,17 @@ describe('LiveTradingPage', () => {
 
   it('shows stop bot button when bot is running', () => {
     renderPage();
-    expect(screen.getByText('liveTrading.stopBot')).toBeTruthy();
+    expect(screen.getByText('Stop Bot')).toBeTruthy();
   });
 
   it('does not show stop bot button when bot is stopped', () => {
     renderPage({ storeOverrides: { botStatus: { ...DEFAULT_BOT_STATUS, running: false } } });
-    expect(screen.queryByText('liveTrading.stopBot')).toBeNull();
+    expect(screen.queryByText('Stop Bot')).toBeNull();
   });
 
   it('shows confirmation dialog when Stop Bot is clicked', () => {
     renderPage();
-    fireEvent.click(screen.getByText('liveTrading.stopBot'));
+    fireEvent.click(screen.getByText('Stop Bot'));
     expect(screen.getByTestId('confirmation-dialog')).toBeTruthy();
   });
 
@@ -437,12 +428,12 @@ describe('LiveTradingPage', () => {
 
   it('shows Pause button by default', () => {
     renderPage();
-    expect(screen.getByText('liveTrading.pause')).toBeTruthy();
+    expect(screen.getByText('Pause')).toBeTruthy();
   });
 
   it('shows Resume button after clicking Pause', () => {
     renderPage();
-    fireEvent.click(screen.getByText('liveTrading.pause'));
-    expect(screen.getByText('liveTrading.resume')).toBeTruthy();
+    fireEvent.click(screen.getByText('Pause'));
+    expect(screen.getByText('Resume')).toBeTruthy();
   });
 });

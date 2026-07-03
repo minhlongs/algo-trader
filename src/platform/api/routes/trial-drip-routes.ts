@@ -36,7 +36,7 @@ trialDripRouter.post('/subscribe', requireTier('FREE'), async (req: Request, res
       return;
     }
 
-    const subscriber = await trialDripService.subscribe(email, tenantId, tier, trialDays);
+    const subscriber = trialDripService.subscribe(email, tenantId, tier, trialDays);
     res.status(201).json({ data: subscriber });
   } catch (error) {
     logger.error('[TrialDrip] Subscribe error:', { error: String(error) });
@@ -57,7 +57,7 @@ trialDripRouter.post('/unsubscribe', requireTier('FREE'), async (req: Request, r
       return;
     }
 
-    const unsubscribed = await trialDripService.unsubscribe(tenantId);
+    const unsubscribed = trialDripService.unsubscribe(tenantId);
     if (!unsubscribed) {
       res.status(404).json({ error: 'Subscriber not found' });
       return;
@@ -91,7 +91,7 @@ trialDripRouter.post('/process', requireTier('PRO'), async (_req: Request, res: 
  */
 trialDripRouter.get('/status', requireTier('PRO'), async (_req: Request, res: Response) => {
   try {
-    const state = await trialDripService.getState();
+    const state = trialDripService.getState();
     res.json(state);
   } catch (error) {
     logger.error('[TrialDrip] Status error:', { error: String(error) });
@@ -105,7 +105,7 @@ trialDripRouter.get('/status', requireTier('PRO'), async (_req: Request, res: Re
  */
 trialDripRouter.get('/subscriber/:id', requireTier('PRO'), async (req: Request, res: Response) => {
   try {
-    const subscriber = await trialDripService.getSubscriber(String(req.params.id));
+    const subscriber = trialDripService.getSubscriber(String(req.params.id));
     if (!subscriber) {
       res.status(404).json({ error: 'Subscriber not found' });
       return;

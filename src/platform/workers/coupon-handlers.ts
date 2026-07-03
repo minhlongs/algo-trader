@@ -38,8 +38,8 @@ interface ActivateBody {
   project?: string;
 }
 
-const TIER_PRICES: Record<string, number> = { PRO: 99, ENTERPRISE: 299, MASTER: 999 };
-const _INVOICE_IDS: Record<string, string> = { PRO: '5493882802', ENTERPRISE: '5264305182', MASTER: '4296538179' };
+const TIER_PRICES: Record<string, number> = { STARTER: 49, PRO: 149, ELITE: 499 };
+const _INVOICE_IDS: Record<string, string> = { STARTER: '4725459350', PRO: '5493882802', ELITE: '5264305822' };
 const SUCCESS_URL = 'https://cashclaw.cc/dashboard.html';
 const CANCEL_URL = 'https://cashclaw.cc/#pricing';
 
@@ -98,7 +98,7 @@ export async function seedCoupons(env: Env): Promise<void> {
     maxUses: 100,
     currentUses: 0,
     validUntil: '2026-07-30T00:00:00.000Z',
-    applicableTiers: ['PRO', 'ENTERPRISE', 'MASTER'],
+    applicableTiers: ['STARTER', 'PRO', 'ELITE'],
     createdAt: new Date().toISOString(),
     active: true,
   };

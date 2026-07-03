@@ -5,7 +5,6 @@
  * GET /tenants/me, GET /tenants/:id/api-keys, GET /tenants/:id/alert-rules
  */
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useApiClient } from '../hooks/use-api-client';
 import { useAuthStore } from '../stores/auth-store';
 import { SettingsTenantConfigForm, type TenantInfo } from '../components/settings-tenant-config-form';
@@ -31,7 +30,6 @@ const MM_FIELDS: { key: string; label: string; description: string; placeholder:
 ];
 
 function MmParametersForm() {
-  const { t } = useTranslation();
   const { fetchApi } = useApiClient();
   const { tenantId } = useAuthStore();
   const [values, setValues] = useState<Record<string, string>>({
@@ -58,9 +56,9 @@ function MmParametersForm() {
     });
     setSaving(false);
     if (res !== null) {
-      setStatusMsg({ text: t('settings.saved'), ok: true });
+      setStatusMsg({ text: 'Saved', ok: true });
     } else {
-      setStatusMsg({ text: t('settings.backendNotConfigured'), ok: false });
+      setStatusMsg({ text: 'Backend not configured — changes not persisted', ok: false });
     }
   }
 
@@ -69,7 +67,7 @@ function MmParametersForm() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="w-1 h-4 bg-accent rounded-full" />
-          <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('settings.mmParameters')}</h2>
+          <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">MM Parameters</h2>
         </div>
         {statusMsg && (
           <span className={`text-xs ${statusMsg.ok ? 'text-profit' : 'text-muted'}`}>
@@ -77,7 +75,7 @@ function MmParametersForm() {
           </span>
         )}
       </div>
-      <p className="text-muted text-xs">{t('settings.mmConfigDescription')}</p>
+      <p className="text-muted text-xs">Market making strategy configuration. Changes take effect on next requote cycle.</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {MM_FIELDS.map(({ key, label, description, placeholder }) => (
           <div key={key}>
@@ -98,14 +96,13 @@ function MmParametersForm() {
         disabled={saving}
         className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors min-h-touch"
       >
-        {saving ? t('settings.savingParams') : t('settings.saveParameters')}
+        {saving ? 'Saving…' : 'Save Parameters'}
       </button>
     </form>
   );
 }
 
 export function SettingsPage() {
-  const { t } = useTranslation();
   const { fetchApi } = useApiClient();
   const { email, tier, tenantId } = useAuthStore();
 
@@ -121,7 +118,6 @@ export function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(MOCK_KEYS);
   const [alerts, setAlerts] = useState<AlertRule[]>(MOCK_ALERTS);
   const [newKeyVisible, setNewKeyVisible] = useState<string | null>(null);
-  const [keyError, setKeyError] = useState<string | null>(null);
   const [creatingKey, setCreatingKey] = useState(false);
 
   useEffect(() => {
@@ -133,8 +129,6 @@ export function SettingsPage() {
 
   async function handleCreateKey() {
     setCreatingKey(true);
-    setKeyError(null);
-    setNewKeyVisible(null);
     const res = await fetchApi<{ key: string; id: string; prefix: string; maskedKey: string }>(
       `/tenants/${tenant.id}/api-keys`,
       { method: 'POST', body: JSON.stringify({}) },
@@ -149,7 +143,9 @@ export function SettingsPage() {
         createdAt: new Date().toISOString(),
       }]);
     } else {
-      setKeyError(t('settings.keyCreationFailed'));
+      const mockKey = 'ak_live_mock_' + Math.random().toString(36).slice(2, 10);
+      setNewKeyVisible(mockKey);
+      setApiKeys((prev) => [...prev, { id: `k${Date.now()}`, prefix: 'ak_live', maskedKey: mockKey.slice(0, 8) + '••••••••', createdAt: new Date().toISOString() }]);
     }
   }
 
@@ -175,7 +171,7 @@ export function SettingsPage() {
     <div className="space-y-8 max-w-3xl">
       <div className="flex items-center gap-2 mb-6">
         <span className="w-1 h-5 bg-accent rounded-full" />
-        <h1 className="text-white text-xl font-bold tracking-tight">{t('settings.title')}</h1>
+        <h1 className="text-white text-xl font-bold tracking-tight">Settings</h1>
       </div>
 
       {/* MM Parameters */}
@@ -185,17 +181,6 @@ export function SettingsPage() {
 
       <SettingsTenantConfigForm tenant={tenant} />
       <Card>
-        {keyError && (
-          <div className="bg-loss/10 border border-loss/30 rounded p-3 mb-4">
-            <p className="text-loss text-xs font-medium">{keyError}</p>
-            <button
-              onClick={() => setKeyError(null)}
-              className="mt-1 text-muted text-xs underline hover:text-white"
-            >
-              {t('settings.dismiss')}
-            </button>
-          </div>
-        )}
         <SettingsExchangeKeysForm
           tenantId={tenant.id}
           apiKeys={apiKeys}
@@ -203,7 +188,7 @@ export function SettingsPage() {
           creatingKey={creatingKey}
           onCreateKey={handleCreateKey}
           onDeleteKey={handleDeleteKey}
-          onDismissNewKey={() => { setNewKeyVisible(null); setKeyError(null); }}
+          onDismissNewKey={() => setNewKeyVisible(null)}
         />
       </Card>
       <Card>

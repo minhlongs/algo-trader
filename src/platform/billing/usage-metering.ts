@@ -6,11 +6,10 @@
  * - Track trades per license tier (1k/10k/100k per month)
  * - Calculate overage charges
  * - Sync usage data with NOWPayments
- * - Real-time usage monitoring (Redis) + persistent records (PostgreSQL)
+ * - Real-time usage monitoring
  */
 
 import { getRedisClient, type RedisClientType } from '../../redis';
-import { query } from '../../shared/db/postgres-client';
 import { logger } from '../../shared/utils/logger';
 import { LicenseTier } from '../../shared/types/license';
 import { NowPaymentsService } from './nowpayments-service';
@@ -63,32 +62,11 @@ export const OVERAGE_PRICE_PER_TRADE: Record<LicenseTier, number> = {
 
 const ALERT_THRESHOLDS = [80, 90, 100];
 
-interface UsageRecordRow {
-  id: string;
-  license_key: string;
-  period: string;
-  tier: string;
-  total_trades: number;
-  success_count: number;
-  fail_count: number;
-  total_volume: number;
-  monthly_limit: number;
-  overage_units: number;
-  overage_cost: number;
-  created_at: Date;
-  updated_at: Date;
-}
-
-interface AlertedThresholdRow {
-  license_key: string;
-  threshold: number;
-  alerted_at: Date;
-}
-
 export class UsageMeteringService extends EventEmitter {
   private static instance: UsageMeteringService;
   private redis: RedisClientType;
   private nowPaymentsService?: NowPaymentsService;
+  private alertedThresholds: Map<string, Set<number>> = new Map();
 
   private constructor() {
     super();
@@ -140,8 +118,8 @@ export class UsageMeteringService extends EventEmitter {
     // Get updated status
     const status = this.getUsageStatus(licenseKey, tier, newUsage);
 
-    // Check thresholds using PostgreSQL
-    await this.checkThresholds(licenseKey, status);
+    // Check thresholds and emit alerts
+    this.checkThresholds(licenseKey, status);
 
     // Emit trade event
     this.emit('trade_tracked', {
@@ -167,10 +145,10 @@ export class UsageMeteringService extends EventEmitter {
     const monthlyLimit = MONTHLY_LIMITS[tier];
     const currentUsage = cachedUsage !== undefined
       ? cachedUsage
-      : 0;
+      : this.getUsageFromCache(licenseKey, period);
 
     const remaining = Math.max(0, monthlyLimit - currentUsage);
-    const percentUsed = monthlyLimit > 0 ? (currentUsage / monthlyLimit) * 100 : 0;
+    const percentUsed = (currentUsage / monthlyLimit) * 100;
     const isExceeded = currentUsage > monthlyLimit;
     const overageUnits = isExceeded ? currentUsage - monthlyLimit : 0;
     const overageCost = overageUnits * OVERAGE_PRICE_PER_TRADE[tier];
@@ -187,6 +165,11 @@ export class UsageMeteringService extends EventEmitter {
       overageUnits,
       overageCost,
     };
+  }
+
+  private getUsageFromCache(_licenseKey: string, _period: string): number {
+    // This would normally fetch from Redis, but we use cached value from trackTrade
+    return 0;
   }
 
   /**
@@ -239,7 +222,7 @@ export class UsageMeteringService extends EventEmitter {
   }
 
   /**
-   * Sync usage data with payment provider and persist to PostgreSQL
+   * Sync usage data with payment provider
    */
   async syncUsage(licenseKey: string, tier: LicenseTier): Promise<boolean> {
     if (!this.nowPaymentsService) {
@@ -248,55 +231,24 @@ export class UsageMeteringService extends EventEmitter {
     }
 
     try {
-      const period = this.getCurrentPeriod();
+      const status = this.getUsageStatus(licenseKey, tier);
       const metrics = await this.getMetrics(licenseKey);
-      const limit = MONTHLY_LIMITS[tier];
-      const percentUsed = limit > 0 ? (metrics.totalTrades / limit) * 100 : 0;
-      const isExceeded = metrics.totalTrades > limit;
-      const overageUnits = isExceeded ? metrics.totalTrades - limit : 0;
-      const overageCost = overageUnits * OVERAGE_PRICE_PER_TRADE[tier];
 
-      // Persist usage record to PostgreSQL
+      // Prepare usage data for sync
       const usageData = {
         licenseKey,
-        period,
+        period: status.period,
         totalTrades: metrics.totalTrades,
-        monthlyLimit: limit,
-        percentUsed,
-        overageUnits,
-        overageCost,
+        monthlyLimit: status.monthlyLimit,
+        percentUsed: status.percentUsed,
+        overageUnits: status.overageUnits,
+        overageCost: status.overageCost,
         syncedAt: Date.now(),
       };
 
-      await query(
-        `INSERT INTO usage_records (id, license_key, period, tier, total_trades, success_count, fail_count, total_volume, monthly_limit, overage_units, overage_cost)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         ON CONFLICT (id) DO UPDATE SET
-           total_trades = EXCLUDED.total_trades,
-           success_count = EXCLUDED.success_count,
-           fail_count = EXCLUDED.fail_count,
-           total_volume = EXCLUDED.total_volume,
-           overage_units = EXCLUDED.overage_units,
-           overage_cost = EXCLUDED.overage_cost,
-           updated_at = NOW()`,
-        [
-          `ur_${licenseKey}_${period}`,
-          licenseKey,
-          period,
-          tier,
-          metrics.totalTrades,
-          metrics.successfulTrades,
-          metrics.failedTrades,
-          metrics.totalVolume,
-          limit,
-          overageUnits,
-          overageCost,
-        ]
-      );
-
-      // Store sync timestamp in Redis
+      // Store sync timestamp
       await this.redis.hset(`usage:${licenseKey}:sync`, {
-        lastPeriod: period,
+        lastPeriod: status.period,
         lastSyncedAt: Date.now().toString(),
         lastUsage: JSON.stringify(usageData),
       });
@@ -312,30 +264,41 @@ export class UsageMeteringService extends EventEmitter {
   }
 
   /**
-   * Get all usage data for revenue analytics from PostgreSQL
+   * Get all usage data for revenue analytics
    */
   async getAllUsageData(period?: string): Promise<UsageStatus[]> {
     const targetPeriod = period || this.getCurrentPeriod();
-    const result = await query(
-      'SELECT * FROM usage_records WHERE period = $1 ORDER BY created_at DESC',
-      [targetPeriod]
-    );
+    const pattern = `usage:*:${targetPeriod}`;
 
-    return result.rows.map((row: unknown) => {
-      const r = row as UsageRecordRow;
-      return {
-        licenseKey: r.license_key,
-        period: r.period,
-        tier: r.tier as LicenseTier,
-        monthlyLimit: r.monthly_limit,
-        currentUsage: r.total_trades,
-        remaining: Math.max(0, r.monthly_limit - r.total_trades),
-        percentUsed: r.monthly_limit > 0 ? (r.total_trades / r.monthly_limit) * 100 : 0,
-        isExceeded: r.total_trades > r.monthly_limit,
-        overageUnits: r.overage_units,
-        overageCost: Number(r.overage_cost),
-      };
-    });
+    const keys = await this.redis.keys(pattern);
+    const usageData: UsageStatus[] = [];
+
+    for (const key of keys) {
+      // Extract license key from pattern usage:<license>:<period>
+      const parts = key.split(':');
+      if (parts.length >= 3) {
+        const licenseKey = parts[1];
+        // Tier would need to be looked up from license service
+        // For now, return with unknown tier
+        const usage = await this.redis.get(key);
+        if (usage) {
+          usageData.push({
+            licenseKey,
+            period: targetPeriod,
+            tier: LicenseTier.PRO, // Placeholder
+            monthlyLimit: 10000,
+            currentUsage: parseInt(usage),
+            remaining: 0,
+            percentUsed: 0,
+            isExceeded: false,
+            overageUnits: 0,
+            overageCost: 0,
+          });
+        }
+      }
+    }
+
+    return usageData;
   }
 
   /**
@@ -386,32 +349,20 @@ export class UsageMeteringService extends EventEmitter {
     }
 
     // Clear alerted thresholds
-    await query(
-      'DELETE FROM usage_alerted_thresholds WHERE license_key = $1',
-      [licenseKey]
-    );
+    this.alertedThresholds.delete(licenseKey);
 
     logger.info(`[UsageMetering] Reset for ${licenseKey}, archived ${currentUsage} trades`);
   }
 
-  private async checkThresholds(licenseKey: string, status: UsageStatus): Promise<void> {
+  private checkThresholds(licenseKey: string, status: UsageStatus): void {
+    if (!this.alertedThresholds.has(licenseKey)) {
+      this.alertedThresholds.set(licenseKey, new Set());
+    }
+    const alerted = this.alertedThresholds.get(licenseKey)!;
+
     for (const threshold of ALERT_THRESHOLDS) {
-      if (status.percentUsed < threshold) continue;
-
-      // Check if this threshold has already been alerted (PostgreSQL)
-      const existing = await query(
-        'SELECT threshold FROM usage_alerted_thresholds WHERE license_key = $1 AND threshold = $2',
-        [licenseKey, threshold]
-      );
-
-      if (existing.rows.length > 0) continue; // Already alerted
-
-      // Insert new threshold alert
-      try {
-        await query(
-          'INSERT INTO usage_alerted_thresholds (license_key, threshold) VALUES ($1, $2)',
-          [licenseKey, threshold]
-        );
+      if (status.percentUsed >= threshold && !alerted.has(threshold)) {
+        alerted.add(threshold);
 
         const alert = {
           licenseKey,
@@ -426,11 +377,6 @@ export class UsageMeteringService extends EventEmitter {
 
         this.emit('threshold_alert', alert);
         logger.info(`[UsageMetering] Alert: ${licenseKey} at ${status.percentUsed.toFixed(1)}%`);
-      } catch {
-        // Race condition: another process already inserted this threshold.
-        // This is safe to ignore (unique constraint) because the next read
-        // will see the existing row and skip the insert.
-        logger.warn('[UsageMetering] Duplicate threshold alert (race condition ignored):', { licenseKey, threshold });
       }
     }
   }

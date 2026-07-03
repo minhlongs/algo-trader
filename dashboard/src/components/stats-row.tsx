@@ -4,7 +4,6 @@
  */
 import { motion } from 'motion/react';
 import type { PerformanceMetrics } from '../types/api';
-import { useTranslation } from 'react-i18next';
 
 interface StatsRowProps {
   totalEquity?: number;
@@ -23,7 +22,6 @@ function formatUsd(n: number): string {
 }
 
 export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategies, metrics }: StatsRowProps) {
-  const { t } = useTranslation();
   const pnlValue = todayPnl ?? metrics?.dailyPnl ?? 0;
   const pnlPositive = pnlValue >= 0;
 
@@ -53,7 +51,7 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
         whileHover={{ scale: 1.02 }}
         className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-4 hover:border-accent/30 transition-all duration-300 group"
       >
-        <p className="text-muted text-[10px] uppercase tracking-widest mb-1 font-mono">{t('dashboard.totalEquity')}</p>
+        <p className="text-muted text-[10px] uppercase tracking-widest mb-1 font-mono">Total Equity</p>
         <p className="text-xl font-bold text-white font-mono tabular-nums">
           {totalEquity ? formatUsd(totalEquity) : '—'}
         </p>
@@ -70,11 +68,11 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
         whileHover={{ scale: 1.02 }}
         className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-4 hover:border-accent/30 transition-all duration-300 group"
       >
-        <p className="text-muted text-[10px] uppercase tracking-widest mb-1 font-mono">{t('dashboard.openPositionsLabel')}</p>
+        <p className="text-muted text-[10px] uppercase tracking-widest mb-1 font-mono">Open Positions</p>
         <p className="text-xl font-bold text-white font-mono tabular-nums">
           {openPositions ?? '—'}
         </p>
-        <p className="text-[10px] text-muted mt-2 font-mono">{t('dashboard.marginUsage')}</p>
+        <p className="text-[10px] text-muted mt-2 font-mono">Margin Usage: —</p>
       </motion.div>
 
       {/* Today's P&L */}
@@ -85,7 +83,7 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
         whileHover={{ scale: 1.02 }}
         className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-4 hover:border-accent/30 transition-all duration-300 group"
       >
-        <p className="text-muted text-[10px] uppercase tracking-widest mb-1 font-mono">{t('dashboard.todayPnl')}</p>
+        <p className="text-muted text-[10px] uppercase tracking-widest mb-1 font-mono">Today's P&L</p>
         <p className={`text-xl font-bold font-mono tabular-nums ${pnlPositive ? 'text-profit' : 'text-loss'}`}>
           {formatUsd(pnlValue)}
         </p>
@@ -106,11 +104,11 @@ export function StatsRow({ totalEquity, openPositions, todayPnl, activeStrategie
         whileHover={{ scale: 1.02 }}
         className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-4 hover:border-accent/30 transition-all duration-300 group"
       >
-        <p className="text-muted text-[10px] uppercase tracking-widest mb-1 font-mono">{t('dashboard.activeStrategies')}</p>
+        <p className="text-muted text-[10px] uppercase tracking-widest mb-1 font-mono">Active Strategies</p>
         <p className="text-xl font-bold text-accent font-mono tabular-nums">
           {activeStrategies ?? '—'}
         </p>
-        <p className="text-[10px] text-profit mt-2 font-mono">{t('dashboard.systemHealth')}</p>
+        <p className="text-[10px] text-profit mt-2 font-mono">System Health: Optimal</p>
       </motion.div>
     </motion.div>
   );

@@ -16,7 +16,6 @@ import {
   CheckCircle,
   ArrowRight,
   Star,
-  Globe,
 } from '@phosphor-icons/react';
 import { PublicNavbar } from '../components/public-navbar';
 import { Footer } from '../components/footer';
@@ -67,38 +66,6 @@ const STATS = [
   { value: '< 2s', label: 'requote latency', icon: Lightning },
 ];
 
-// i18n placeholder — replace `t` with actual translation function when i18n is wired
-const t = (s: string) => s;
-
-const TRUST_STATS = [
-  { value: '52+', label: t('Strategies'), icon: ChartLine },
-  { value: '8', label: t('Platforms'), icon: Globe },
-  { value: '2798+', label: t('Tests Passed'), icon: CheckCircle },
-  { value: '$0', label: t('Maker Fees'), icon: Star },
-] as const;
-
-const TICKER_ITEMS = [
-  { label: 'Ironclaw', value: '+12.4%', up: true },
-  { label: 'Citadel', value: '+8.7%', up: true },
-  { label: 'Dark-Edge', value: '-2.1%', up: false },
-  { label: 'Poly-Gamma', value: '+15.3%', up: true },
-  { label: 'CEX-Arb', value: '+5.8%', up: true },
-  { label: 'DEX-LP', value: '-0.9%', up: false },
-  { label: 'Poly-Delta', value: '+22.1%', up: true },
-  { label: 'Momentum', value: '+3.2%', up: true },
-];
-
-const MARKET_TICKERS = [
-  { symbol: 'BTC/USD', price: '67,421.50', change: '+2.34%', up: true },
-  { symbol: 'ETH/USD', price: '3,421.80', change: '+1.15%', up: true },
-  { symbol: 'SOL/USD', price: '142.35', change: '-0.78%', up: false },
-  { symbol: 'LINK/USD', price: '14.82', change: '+4.21%', up: true },
-  { symbol: 'AVAX/USD', price: '28.44', change: '-1.33%', up: false },
-  { symbol: 'DOGE/USD', price: '0.1245', change: '+6.72%', up: true },
-  { symbol: 'DOT/USD', price: '5.88', change: '+0.42%', up: true },
-  { symbol: 'MATIC/USD', price: '0.62', change: '-2.15%', up: false },
-];
-
 const PRICING_CARDS = [
   {
     name: 'Free', price: '$0', sub: 'forever', cta: 'Start Free', href: '/signup?tier=free', highlight: false,
@@ -110,7 +77,7 @@ const PRICING_CARDS = [
     ],
   },
   {
-    name: 'Pro', price: '$99', sub: '/month', cta: 'Start Pro', href: '/signup?tier=pro', highlight: true,
+    name: 'Pro', price: '$49', sub: '/month', cta: 'Start Pro', href: '/signup?tier=pro', highlight: true,
     features: [
       `${TIER_LIMITS.pro.activeStrategies} active strategies`,
       `${TIER_LIMITS.pro.tradesPerDay} trades/day`,
@@ -119,21 +86,12 @@ const PRICING_CARDS = [
     ],
   },
   {
-    name: 'Enterprise', price: '$299', sub: '/month', cta: 'Contact Us', href: '/signup?tier=enterprise', highlight: false,
+    name: 'Enterprise', price: '$199', sub: '/month', cta: 'Contact Us', href: '/signup?tier=enterprise', highlight: false,
     features: [
       `${TIER_LIMITS.enterprise.activeStrategies} strategies`,
       `${TIER_LIMITS.enterprise.tradesPerDay} trades/day`,
       `${TIER_LIMITS.enterprise.dailyLossCap} daily loss cap`,
       `${TIER_LIMITS.enterprise.maxPosition} max position`,
-    ],
-  },
-  {
-    name: 'Master', price: '$999', sub: '/month', cta: 'Go Master', href: '/signup?tier=master', highlight: false,
-    features: [
-      `${t('All strategies included')}`,
-      `${t('Unlimited trades')}`,
-      `${t('Custom loss cap')}`,
-      `${t('Unlimited position')}`,
     ],
   },
 ];
@@ -239,49 +197,6 @@ export function LandingPage() {
         </section>
       </FadeIn>
 
-      {/* ── Trust Bar ── */}
-      <FadeIn>
-        <section className="py-8 px-4 sm:px-6 bg-gradient-to-r from-bg-surface/20 via-bg-surface/40 to-bg-surface/20 border-b border-bg-border">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8">
-              {TRUST_STATS.map(({ value, label, icon: Icon }) => (
-                <div key={label} className="flex flex-col items-center gap-1.5 text-center">
-                  <div className="flex items-center gap-2">
-                    <Icon weight="bold" className="w-5 h-5 text-accent" />
-                    <span className="text-accent text-2xl sm:text-3xl font-bold tabular-nums">{value}</span>
-                  </div>
-                  <span className="text-muted text-xs">{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </FadeIn>
-
-      {/* ── P&L Ticker Marquee ── */}
-      <section className="relative overflow-hidden py-5 border-b border-bg-border bg-bg-surface/30">
-        <div className="flex whitespace-nowrap gap-0 ticker-track">
-          {/* Duplicated for seamless loop */}
-          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-            <span key={i} className="inline-flex items-center gap-2 mx-4">
-              <span className="text-muted text-xs font-mono uppercase tracking-wider">{item.label}</span>
-              <span className={`text-sm font-bold tabular-nums font-mono ${item.up ? 'text-profit' : 'text-loss'}`}>
-                {item.value}
-              </span>
-            </span>
-          ))}
-        </div>
-        <style>{`
-          .ticker-track {
-            animation: ticker 30s linear infinite;
-            width: max-content;
-          }
-          @media (prefers-reduced-motion: reduce) {
-            .ticker-track { animation: none; }
-          }
-        `}</style>
-      </section>
-
       {/* ── How It Works ── */}
       <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto">
         <div className="text-center mb-14">
@@ -311,33 +226,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Market Prices ── */}
-      <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto">
-        <div className="text-center mb-14">
-          <FadeIn>
-            <SectionEyebrow>{t('Market Data')}</SectionEyebrow>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-[-0.01em]">
-              {t('Real-time prices from the ecosystem')}
-            </h2>
-          </FadeIn>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {MARKET_TICKERS.map(({ symbol, price, change, up }, i) => (
-            <FadeIn key={symbol} delay={i * 0.05}>
-              <div className="bg-bg-surface border border-bg-border rounded-lg p-4 flex flex-col gap-1.5 hover:border-accent/20 transition-colors">
-                <p className="text-muted text-[10px] font-mono uppercase tracking-wider">{symbol}</p>
-                <p className="text-white text-base font-bold tabular-nums font-mono">${price}</p>
-                <p className={`text-xs font-semibold tabular-nums font-mono ${up ? 'text-profit' : 'text-loss'}`}>
-                  {change}
-                </p>
-              </div>
-            </FadeIn>
-          ))}
-        </div>
-      </section>
-
       {/* ── Pricing ── */}
       <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto">
         <div className="text-center mb-14">
@@ -350,7 +238,7 @@ export function LandingPage() {
             </h2>
           </FadeIn>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {PRICING_CARDS.map(({ name, price, sub, cta, href, highlight, features }, i) => (
             <FadeIn key={name} delay={i * 0.1}>
               <div
@@ -401,37 +289,6 @@ export function LandingPage() {
             </Link>
           </p>
         </FadeIn>
-      </section>
-
-      {/* ── Discord Community ── */}
-      <section className="py-20 sm:py-28 px-4 sm:px-6 border-t border-bg-border bg-bg-surface/20">
-        <div className="max-w-3xl mx-auto text-center">
-          <FadeIn>
-            <SectionEyebrow>Community</SectionEyebrow>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-[-0.01em] mb-4">
-              Join Our Community
-            </h2>
-          </FadeIn>
-          <FadeIn delay={0.2}>
-            <p className="text-muted text-base sm:text-lg leading-relaxed max-w-lg mx-auto mb-8 text-balance">
-              Connect with fellow algorithmic traders. Share strategies, discuss market opportunities,
-              and get early access to new features before anyone else.
-            </p>
-          </FadeIn>
-          <FadeIn delay={0.3}>
-            <a
-              href="https://discord.gg/cashclaw"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-accent text-bg font-semibold px-6 py-3 rounded-lg hover:bg-accent/80 transition-colors text-sm group"
-            >
-              Join Discord
-              <ArrowRight weight="bold" className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </a>
-          </FadeIn>
-        </div>
       </section>
 
       <Footer />
