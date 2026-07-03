@@ -18,26 +18,26 @@ const rampDownDuration = __ENV.RAMP_DOWN || '1m';
 /*
  * Auth headers for protected endpoints.
  *
- * The API authenticates via x-api-key header (or Authorization: Bearer fallback).
- * Set TEST_API_KEY to a pre-provisioned license key (format: RAAS-PRO-* or similar)
- * to exercise tier-gated routes. Without it, only /api/health will succeed and
- * all protected routes will be rejected at the requireTier middleware level.
+
+ * The API uses Authorization: Bearer with a LOAD_TEST_TOKEN for tier-gated routes.
+ * Set LOAD_TEST_TOKEN to a pre-provisioned token to test protected routes.
+ * Without it, only unprotected routes (/api/health) will succeed; all protected
+ * routes will be rejected (401) by the requireTier middleware.
  *
- * NOTE: Even with a valid TEST_API_KEY, protected routes may still return 401
- * because there is NO Express middleware that reads x-api-key and sets req.license.
- * The distributed-rate-limiter (the only consumer of x-api-key today) validates the
- * key for rate-limit tier assignment but does NOT propagate it to req.license.
- * The requireTier middleware in feature-gate.ts depends on req.license being set
- * by an upstream "raas-gate middleware" that does not yet exist for Express routes.
- * This is a known auth-chain gap that must be closed before authenticated load
- * testing can work.
+ * KNOWN AUTH GAP: The requireTier middleware in feature-gate.ts depends on
+ * req.license being set by an upstream "raas-gate middleware" that does not
+ * yet exist for Express routes. Even with a valid LOAD_TEST_TOKEN, protected
+ * routes may still return 401 because no middleware reads the Bearer token and
+ * populates req.license. Fix: implement raas-gate Express middleware that
+ * validates the token and sets req.license before requireTier runs.
  */
-const testApiKey = __ENV.TEST_API_KEY;
+const loadTestToken = __ENV.LOAD_TEST_TOKEN || __ENV.TEST_API_KEY;
 const headers = {};
-if (testApiKey) {
-  headers['x-api-key'] = testApiKey;
-  // Also set Authorization: Bearer as fallback in case middleware prefers that
-  headers['Authorization'] = `Bearer ${testApiKey}`;
+if (loadTestToken) {
+  headers['Authorization'] = `Bearer ${loadTestToken}`;
+  // Also set x-api-key as fallback in case middleware prefers that
+  headers['x-api-key'] = loadTestToken;
+
 }
 
 export const options = {
@@ -69,42 +69,53 @@ export default function () {
 
   // 1. Target REST endpoints sequentially
 
-  // GET /api/health (public — no auth required)
+
+  // GET /api/health (UNPROTECTED — no auth required)
+
   const healthRes = http.get(`${baseUrl}/api/health`);
   check(healthRes, {
     'health returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // GET /api/status (protected — returns 404 because no /api/status route exists in server.ts)
+
+  // GET /api/status (PROTECTED — requires LOAD_TEST_TOKEN)
+  // NOTE: may return 401 due to raas-gate middleware auth gap (see comment above)
+
   const statusRes = http.get(`${baseUrl}/api/status`, { headers });
   check(statusRes, {
     'status returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // GET /api/portfolio (protected)
+
+  // GET /api/portfolio (PROTECTED)
+
   const portfolioRes = http.get(`${baseUrl}/api/portfolio`, { headers });
   check(portfolioRes, {
     'portfolio returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // GET /api/trades (passing limit and offset pagination parameters) (protected)
+
+  // GET /api/trades (PROTECTED — passing limit and offset pagination parameters)
+
   const tradesRes = http.get(`${baseUrl}/api/trades?limit=20&offset=0`, { headers });
   check(tradesRes, {
     'trades returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // GET /api/pnl (protected)
+
+  // GET /api/pnl (PROTECTED)
+
   const pnlRes = http.get(`${baseUrl}/api/pnl`, { headers });
   check(pnlRes, {
     'pnl returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // 2. Connect to WebSocket gateway
+  // 2. Connect to WebSocket gateway (PROTECTED — passes auth headers)
   const startTime = Date.now();
   const wsRes = ws.connect(wsUrl, { headers }, function (socket) {
     socket.on('open', function () {
