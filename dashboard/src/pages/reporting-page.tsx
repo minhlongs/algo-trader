@@ -136,8 +136,11 @@ export function ReportingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-white text-2xl font-bold">Reporting</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-2">
+        <div className="flex items-center gap-2">
+          <span className="w-1 h-5 bg-accent rounded-full" />
+          <h1 className="text-white text-xl font-bold tracking-tight">Reporting</h1>
+        </div>
         <button
           onClick={() => exportCsv(sorted)}
           className="text-xs bg-accent text-bg font-bold px-4 py-2 rounded hover:opacity-90 transition-opacity min-h-touch"
@@ -158,7 +161,7 @@ export function ReportingPage() {
           { label: 'Win Rate', value: `${stats.winRate.toFixed(1)}%`, cls: 'text-profit' },
           { label: 'Avg Trade Size', value: `$${fmt(stats.avgSize, 0)}`, cls: 'text-white' },
         ].map((s) => (
-          <div key={s.label} className="bg-bg-surface border border-bg-border rounded-lg p-4">
+          <div key={s.label} className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-4">
             <p className="text-muted text-xs mb-1">{s.label}</p>
             <p className={`font-mono text-lg font-bold ${s.cls}`}>{s.value}</p>
           </div>
@@ -166,7 +169,7 @@ export function ReportingPage() {
       </div>
 
       {/* Trade history table */}
-      <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
+      <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
         {trades.length === 0 ? (
           <div className="p-8 text-center">
             <p className="text-muted text-sm">Chưa có giao dịch.</p>

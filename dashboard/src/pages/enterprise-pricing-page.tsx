@@ -30,25 +30,25 @@ function PlanCard({
     <div
       className={`relative rounded-lg p-6 flex flex-col gap-5 ${
         highlight
-          ? 'border-2 border-[#F59E0B] bg-[#111627]'
-          : 'border border-[#1E2640] bg-[#111627]'
+          ? 'border-2 border-accent bg-bg-surface/80 backdrop-blur-sm'
+          : 'border border-bg-border bg-bg-surface/80 backdrop-blur-sm'
       }`}
     >
       {highlight && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F59E0B] text-[#080B14] text-xs font-bold px-3 py-0.5 rounded-full">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-bg text-xs font-bold px-3 py-0.5 rounded-full">
           MOST POPULAR
         </span>
       )}
 
       <div>
-        <p className="text-[#8892B0] text-xs uppercase tracking-widest mb-2">{plan.name}</p>
+        <p className="text-muted text-xs uppercase tracking-widest mb-2">{plan.name}</p>
         <p className="text-white text-3xl font-bold mb-1">{plan.price}</p>
-        <p className="text-[#8892B0] text-xs">{plan.tagline}</p>
+        <p className="text-muted text-xs">{plan.tagline}</p>
       </div>
 
       <ul className="space-y-2.5 flex-1">
         {plan.features.map((feat) => (
-          <li key={feat} className="flex items-start gap-2 text-xs text-[#8892B0]">
+          <li key={feat} className="flex items-start gap-2 text-xs text-muted">
             <span className="flex-shrink-0 mt-0.5"><CheckIcon /></span>
             <span>{feat}</span>
           </li>
@@ -59,8 +59,8 @@ function PlanCard({
         to={`/enterprise/contact?tier=${planKey}`}
         className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
           highlight
-            ? 'bg-[#F59E0B] text-[#080B14] hover:bg-[#F59E0B]/80'
-            : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#F59E0B]/50'
+            ? 'bg-accent text-bg hover:bg-accent/80'
+            : 'border border-bg-border text-muted hover:text-white hover:border-accent/50'
         }`}
       >
         Contact sales
@@ -90,17 +90,20 @@ const ENTERPRISE_FAQS = [
 
 export function EnterprisePricingPage() {
   return (
-    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
+    <div className="min-h-screen bg-bg text-white flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-3">Enterprise</p>
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <span className="w-1 h-4 bg-accent rounded-full" />
+            <p className="text-accent text-xs uppercase tracking-widest font-mono font-bold">Enterprise</p>
+          </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
             Built for institutional desks
           </h1>
-          <p className="text-[#8892B0] text-sm max-w-lg mx-auto">
+          <p className="text-muted text-sm max-w-lg mx-auto">
             Annual contracts, dedicated support, and custom integrations.
             Pricing is invoice-based — our team works with you on terms.
           </p>
@@ -116,14 +119,14 @@ export function EnterprisePricingPage() {
         </div>
 
         {/* Compared to self-serve */}
-        <div className="border border-[#1E2640] bg-[#111627] rounded-lg p-6 mb-16 max-w-2xl mx-auto text-center">
-          <p className="text-xs text-[#8892B0] uppercase tracking-widest mb-3">Looking for self-serve?</p>
-          <p className="text-sm text-[#8892B0] mb-4">
+        <div className="border border-bg-border bg-bg-surface/80 backdrop-blur-sm rounded-lg p-6 mb-16 max-w-2xl mx-auto text-center">
+          <p className="text-xs text-muted uppercase tracking-widest mb-3">Looking for self-serve?</p>
+          <p className="text-sm text-muted mb-4">
             Individual and small-team plans start free. Upgrade to Pro for $49/month via our standard checkout.
           </p>
           <Link
             to="/pricing"
-            className="inline-block text-sm border border-[#1E2640] text-[#8892B0] px-5 py-2 rounded hover:text-white hover:border-[#F59E0B]/40 transition-colors"
+            className="inline-block text-sm border border-bg-border text-muted px-5 py-2 rounded hover:text-white hover:border-accent/40 transition-colors"
           >
             View standard pricing
           </Link>
@@ -131,12 +134,15 @@ export function EnterprisePricingPage() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-xl font-bold text-white mb-6 text-center">Enterprise FAQ</h2>
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <span className="w-1 h-5 bg-accent rounded-full" />
+            <h2 className="text-xl font-bold text-white">Enterprise FAQ</h2>
+          </div>
           <div className="space-y-4">
             {ENTERPRISE_FAQS.map(({ q, a }) => (
-              <div key={q} className="border border-[#1E2640] rounded-lg p-5">
+              <div key={q} className="border border-bg-border bg-bg-surface/80 backdrop-blur-sm rounded-lg p-5">
                 <p className="text-sm font-semibold text-white mb-2">{q}</p>
-                <p className="text-xs text-[#8892B0] leading-relaxed">{a}</p>
+                <p className="text-xs text-muted leading-relaxed">{a}</p>
               </div>
             ))}
           </div>

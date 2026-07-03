@@ -92,13 +92,17 @@ export function BacktestsPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-white text-2xl font-bold">Backtests</h1>
+      <div className="flex items-center gap-2 mb-6">
+        <span className="w-1 h-5 bg-accent rounded-full" />
+        <h1 className="text-white text-xl font-bold tracking-tight">Backtests</h1>
+      </div>
 
       {/* Submit form */}
-      <section className="bg-bg-surface border border-bg-border rounded-lg p-6">
-        <h2 className="text-accent text-sm font-semibold uppercase tracking-wider mb-4">
-          Submit Backtest
-        </h2>
+      <section className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-1 h-4 bg-accent rounded-full" />
+          <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Submit Backtest</h2>
+        </div>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Pair */}
           <div className="flex flex-col gap-1">
@@ -173,9 +177,10 @@ export function BacktestsPage() {
 
       {/* Results list */}
       <section>
-        <h2 className="text-accent text-sm font-semibold uppercase tracking-wider mb-4">
-          Results ({results.length})
-        </h2>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-1 h-4 bg-accent rounded-full" />
+          <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Results ({results.length})</h2>
+        </div>
         {results.length === 0 ? (
           <p className="text-muted text-sm">No backtest results yet.</p>
         ) : (

@@ -91,7 +91,7 @@ function KpiCard({ label, value, accent = 'default', subLabel }: KpiCardProps) {
     muted: 'text-muted',
   };
   return (
-    <div className="bg-bg-surface border border-bg-border rounded-lg p-4 flex flex-col gap-1">
+    <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-4 flex flex-col gap-1">
       <p className="text-muted text-[10px] uppercase tracking-widest">{label}</p>
       <p className={`text-2xl font-bold ${accents[accent]}`}>{value}</p>
       {subLabel && <p className="text-muted text-xs">{subLabel}</p>}
@@ -661,7 +661,7 @@ export function LiveTradingPage() {
       </div>
 
       {/* Guard Status Card */}
-      <div className="bg-bg-surface border border-bg-border rounded-lg p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard
           label="Bot Status"
           value={running ? 'Running' : 'Stopped'}
@@ -691,7 +691,7 @@ export function LiveTradingPage() {
       </section>
 
       {/* Bot engine stats */}
-      <div className="bg-bg-surface border border-bg-border rounded-lg p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
         <KpiCard label="Uptime" value={botStatus ? `${Math.floor(botStatus.uptime / 3600)}h ${Math.floor((botStatus.uptime % 3600) / 60)}m` : '—'} />
         <KpiCard label="Total Signals" value={String(botStatus?.totalSignals ?? '—')} />
         <KpiCard label="Executed Trades" value={String(botStatus?.executedTrades ?? '—')} accent="profit" />
@@ -703,7 +703,7 @@ export function LiveTradingPage() {
         <h2 className="text-xs font-semibold text-white mb-3">
           Open Positions ({positionRows.length})
         </h2>
-        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           <PositionsTable
             rows={positionRows}
             closingPositionId={closingPositionId}
@@ -719,7 +719,7 @@ export function LiveTradingPage() {
           {tradesLoading && <span className="text-muted text-[10px] ml-2 font-normal">syncing...</span>}
           {apiTrades.length > 0 && <span className="text-muted text-[10px] ml-2 font-normal">({apiTrades.length} synced)</span>}
         </h2>
-        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           <TradesTable rows={tradeRows} />
         </div>
       </section>

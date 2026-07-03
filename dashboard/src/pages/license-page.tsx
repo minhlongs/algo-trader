@@ -20,7 +20,7 @@ const TABS: { id: TabType; label: string }[] = [
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="bg-bg-surface border border-bg-border rounded-lg p-6">
+    <section className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-6">
       {children}
     </section>
   );
@@ -74,8 +74,9 @@ export function LicensePage() {
   function renderLicensesTab() {
     return (
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white text-sm font-semibold">License Keys</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-1 h-4 bg-accent rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">License Keys</h3>
           <div className="flex gap-2">
             <button
               onClick={handleActivateLicense}
@@ -128,8 +129,9 @@ export function LicensePage() {
   function renderAuditLogsTab() {
     return (
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-white text-sm font-semibold">Audit Logs</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-1 h-4 bg-accent rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Audit Logs</h3>
           {selectedLicenseId && (
             <button
               onClick={() => setSelectedLicenseId(null)}
@@ -155,11 +157,9 @@ export function LicensePage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-white text-lg font-bold tracking-tight">License Management</h2>
-          <p className="text-muted text-xs mt-0.5">Manage RaaS licenses and view usage analytics</p>
-        </div>
+      <div className="flex items-center gap-2 mb-6">
+        <span className="w-1 h-5 bg-accent rounded-full" />
+        <h2 className="text-white text-xl font-bold tracking-tight">License Management</h2>
       </div>
 
       {/* Tabs */}

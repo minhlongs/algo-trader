@@ -140,140 +140,150 @@ export function DashboardPage() {
 
       {/* Strategy status - full width */}
       <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Strategies
-        </h3>
-        <StrategyStatusPanel strategies={strategies} botStatus={botStatus} />
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-4 bg-accent rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Strategies</h3>
+        </div>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
+          <StrategyStatusPanel strategies={strategies} botStatus={botStatus} />
+        </div>
       </section>
 
       {/* Main Grid - responsive: 1 col mobile, 2 cols tablet+ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* P&L Analytics */}
         <section>
-          <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-            <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-            P&L Analytics
-          </h3>
-          {pnlLoading ? (
-            <PnlChartSkeleton />
-          ) : (
-            <PnLAnalyticsChart metrics={metrics} loading={pnlLoading} error={pnlError} />
-          )}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1 h-4 bg-accent rounded-full" />
+            <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">P&amp;L Analytics</h3>
+          </div>
+          <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
+            {pnlLoading ? (
+              <PnlChartSkeleton />
+            ) : (
+              <PnLAnalyticsChart metrics={metrics} loading={pnlLoading} error={pnlError} />
+            )}
+          </div>
         </section>
 
         {/* Admin Controls */}
         <section>
-          <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-            <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-            Admin Controls
-          </h3>
-          {adminLoading ? (
-            <AdminControlsSkeleton />
-          ) : (
-            <AdminControls
-              status={adminStatus}
-              halt={halt}
-              resume={resume}
-              loading={adminLoading}
-              error={adminError}
-              onRefresh={refreshAdmin}
-            />
-          )}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1 h-4 bg-accent rounded-full" />
+            <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Admin Controls</h3>
+          </div>
+          <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
+            {adminLoading ? (
+              <AdminControlsSkeleton />
+            ) : (
+              <AdminControls
+                status={adminStatus}
+                halt={halt}
+                resume={resume}
+                loading={adminLoading}
+                error={adminError}
+                onRefresh={refreshAdmin}
+              />
+            )}
+          </div>
         </section>
       </div>
 
       {/* Signals Panel - full width */}
       <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-profit rounded-full inline-block" />
-          Arbitrage Signals
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-4 bg-profit rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Arbitrage Signals</h3>
           {signals.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded font-mono ml-auto">
               {signals.length}
             </span>
           )}
-        </h3>
-        {signalsLoading ? (
-          <SignalsPanelSkeleton />
-        ) : (
-          <SignalsPanel
-            signals={signals}
-            loading={signalsLoading}
-            error={signalsError}
-            onRefresh={refreshSignals}
-          />
-        )}
+        </div>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
+          {signalsLoading ? (
+            <SignalsPanelSkeleton />
+          ) : (
+            <SignalsPanel
+              signals={signals}
+              loading={signalsLoading}
+              error={signalsError}
+              onRefresh={refreshSignals}
+            />
+          )}
+        </div>
       </section>
 
       {/* Equity curve - full width */}
       <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Equity Curve
-        </h3>
-        <div className="bg-bg-surface border border-bg-border rounded-lg p-3 sm:p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-4 bg-accent rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Equity Curve</h3>
+        </div>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-3 sm:p-4">
           {pnlLoading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
         </div>
       </section>
 
-      {/* Price ticker strip - responsive horizontal scroll on mobile */}
+      {/* Live Prices */}
       <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Live Prices
-        </h3>
-        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-x-auto">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-4 bg-accent rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Live Prices</h3>
+        </div>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
         </div>
       </section>
 
-      {/* Spread opportunities - responsive grid */}
+      {/* Spread opportunities */}
       <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-profit rounded-full inline-block" />
-          Spread Opportunities
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-4 bg-profit rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Spread Opportunities</h3>
           {spreads.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded font-mono ml-auto">
               {spreads.length}
             </span>
           )}
-        </h3>
-        {pnlLoading ? (
-          <SpreadGridSkeleton />
-        ) : (
-          <SpreadOpportunitiesCardGrid spreads={spreads} />
-        )}
+        </div>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
+          {pnlLoading ? (
+            <SpreadGridSkeleton />
+          ) : (
+            <SpreadOpportunitiesCardGrid spreads={spreads} />
+          )}
+        </div>
       </section>
 
-      {/* Trade history feed - responsive table */}
+      {/* Trade history */}
       <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-gold rounded-full inline-block" />
-          Trade History
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-4 bg-gold rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Trade History</h3>
           {trades.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded font-mono ml-auto">
               {trades.length}
             </span>
           )}
-        </h3>
-        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
+        </div>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           {pnlLoading ? <TradeHistorySkeleton /> : <TradeHistoryFeed trades={trades} />}
         </div>
       </section>
 
-      {/* Positions table - responsive with horizontal scroll */}
+      {/* Positions */}
       <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-muted rounded-full inline-block" />
-          Positions
+        <div className="flex items-center gap-2 mb-3">
+          <span className="w-1 h-4 bg-muted rounded-full" />
+          <h3 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Positions</h3>
           {positions.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
+            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded font-mono ml-auto">
               {positions.length}
             </span>
           )}
-        </h3>
-        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-x-auto">
+        </div>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
           {pnlLoading ? <PositionsTableSkeleton /> : <PositionsTableSortable positions={positions} />}
         </div>
       </section>

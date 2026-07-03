@@ -31,15 +31,15 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080B14] flex flex-col">
+    <div className="min-h-screen bg-[#060912] flex flex-col">
       <PublicNavbar />
 
       <div className="flex-1 flex items-center justify-center px-4 pt-16">
         <div className="w-full max-w-sm">
-          <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-8">
+          <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-8">
             {/* Header */}
             <div className="mb-6">
-              <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-2">Welcome back</p>
+              <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-2">Welcome back</p>
               <h1 className="text-white text-xl font-bold">Sign in to CashClaw</h1>
             </div>
 
@@ -59,7 +59,7 @@ export function LoginPage() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   disabled={loading}
-                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#060912] border border-bg-border rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -72,14 +72,14 @@ export function LoginPage() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   disabled={loading}
-                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#060912] border border-bg-border rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#F59E0B] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors mt-2 disabled:opacity-60 disabled:cursor-not-allowed min-h-touch"
+                className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] font-bold text-sm py-2.5 rounded hover:brightness-110 transition-all duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed min-h-touch"
               >
                 {loading ? 'Signing in…' : 'Sign In'}
               </button>
@@ -87,7 +87,7 @@ export function LoginPage() {
 
             <p className="text-[#8892B0] text-xs text-center mt-6">
               No account?{' '}
-              <Link to="/signup" className="text-[#F59E0B] hover:underline">
+              <Link to="/signup" className="text-accent hover:underline">
                 Create one free
               </Link>
             </p>

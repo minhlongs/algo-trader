@@ -56,29 +56,29 @@ function InquiryRow({
 }) {
   const plan = ENTERPRISE_PLANS[inquiry.tier];
   return (
-    <tr className="border-b border-[#1E2640] hover:bg-[#111627]/50">
+    <tr className="border-b border-bg-border hover:bg-bg-surface/50">
       <td className="py-3 px-4">
         <p className="text-sm font-semibold text-white">{inquiry.companyName}</p>
-        <p className="text-xs text-[#8892B0]">{inquiry.contactName}</p>
-        <p className="text-xs text-[#555]">{inquiry.email}</p>
+        <p className="text-xs text-muted">{inquiry.contactName}</p>
+        <p className="text-xs text-muted/50">{inquiry.email}</p>
       </td>
       <td className="py-3 px-4 text-xs text-white">{plan?.price ?? inquiry.tier}</td>
       <td className="py-3 px-4"><StatusBadge status={inquiry.status} /></td>
-      <td className="py-3 px-4 text-xs text-[#8892B0]">
+      <td className="py-3 px-4 text-xs text-muted">
         {inquiry.paperdemoProvisioned ? (
-          <span className="text-[#00D4AA]">Active</span>
+          <span className="text-profit">Active</span>
         ) : (
-          <span className="text-[#555]">—</span>
+          <span className="text-muted/50">—</span>
         )}
       </td>
-      <td className="py-3 px-4 text-xs text-[#8892B0]">
+      <td className="py-3 px-4 text-xs text-muted">
         {new Date(inquiry.createdAt).toLocaleDateString()}
       </td>
       <td className="py-3 px-4">
         <select
           value={inquiry.status}
           onChange={(e) => onStatusChange(inquiry.id, e.target.value)}
-          className="text-xs bg-[#161A1E] border border-[#1E2640] text-[#8892B0] rounded px-2 py-1 outline-none focus:border-[#F59E0B]/50 min-h-touch"
+          className="text-xs bg-bg-surface border border-bg-border text-muted rounded px-2 py-1 outline-none focus:border-accent/50 min-h-touch"
         >
           {['new','tam_notified','contacted','demo_active','negotiating','closed_won','closed_lost'].map((s) => (
             <option key={s} value={s}>{s.replace('_',' ')}</option>
@@ -137,11 +137,14 @@ export function EnterpriseTamDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080B14] text-white p-6">
+    <div className="min-h-screen bg-bg text-white p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <p className="text-[#F59E0B] text-xs uppercase tracking-widest mb-2">Internal</p>
-          <h1 className="text-2xl font-bold">Enterprise TAM Dashboard</h1>
+        <div className="flex items-center gap-2 mb-8">
+          <span className="w-1 h-5 bg-accent rounded-full" />
+          <div>
+            <p className="text-accent text-xs uppercase tracking-widest font-mono font-bold">Internal</p>
+            <h1 className="text-2xl font-bold">Enterprise TAM Dashboard</h1>
+          </div>
         </div>
 
         {/* Stats */}
@@ -151,30 +154,30 @@ export function EnterpriseTamDashboardPage() {
             { label: 'Open', value: stats.open },
             { label: 'Closed won', value: stats.won },
           ].map(({ label, value }) => (
-            <div key={label} className="border border-[#1E2640] bg-[#111627] rounded-lg p-4">
-              <p className="text-xs text-[#8892B0] mb-1">{label}</p>
-              <p className="text-2xl font-bold text-white">{value}</p>
+            <div key={label} className="border border-bg-border bg-bg-surface/80 backdrop-blur-sm rounded-lg p-4">
+              <p className="text-xs text-muted mb-1">{label}</p>
+              <p className="text-2xl font-bold text-white font-mono">{value}</p>
             </div>
           ))}
         </div>
 
         {/* Table */}
         {loadState === 'loading' && (
-          <p className="text-[#8892B0] text-sm text-center py-12">Loading inquiries…</p>
+          <p className="text-muted text-sm text-center py-12">Loading inquiries…</p>
         )}
         {loadState === 'error' && (
-          <p className="text-red-400 text-sm text-center py-12">{errorMsg}</p>
+          <p className="text-loss text-sm text-center py-12">{errorMsg}</p>
         )}
         {loadState === 'ready' && (
-          <div className="border border-[#1E2640] rounded-lg overflow-x-auto">
+          <div className="border border-bg-border bg-bg-surface/80 backdrop-blur-sm rounded-lg overflow-x-auto">
             {inquiries.length === 0 ? (
-              <p className="text-[#8892B0] text-sm text-center py-12">No enterprise inquiries yet.</p>
+              <p className="text-muted text-sm text-center py-12">No enterprise inquiries yet.</p>
             ) : (
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-[#1E2640] bg-[#161A1E]">
+                  <tr className="border-b border-bg-border bg-bg-surface">
                     {['Company / Contact', 'Tier', 'Status', 'Demo', 'Submitted', 'Update status'].map((h) => (
-                      <th key={h} className="py-2.5 px-4 text-xs text-[#8892B0] font-semibold uppercase tracking-wider">
+                      <th key={h} className="py-2.5 px-4 text-xs text-muted font-semibold uppercase tracking-wider">
                         {h}
                       </th>
                     ))}

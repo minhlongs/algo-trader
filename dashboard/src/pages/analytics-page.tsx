@@ -79,7 +79,10 @@ export function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Revenue Analytics</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-1 h-5 bg-accent rounded-full" />
+            <h1 className="text-xl font-bold text-white tracking-tight">Revenue Analytics</h1>
+          </div>
           <div className="flex items-center gap-3 mt-1">
             <div className="flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${isPolling ? 'bg-profit animate-pulse' : 'bg-muted'}`} />
@@ -92,7 +95,7 @@ export function AnalyticsPage() {
 
         <div className="flex items-center gap-3">
           {/* Time Range Selector */}
-          <div className="flex items-center gap-1 bg-bg-secondary border border-bg-border rounded p-1">
+          <div className="flex items-center gap-1 bg-bg-secondary/80 backdrop-blur-sm border border-bg-border rounded p-1">
             {TIME_RANGES.map((range) => (
               <button
                 key={range.value}
@@ -221,8 +224,11 @@ export function AnalyticsPage() {
       {/* Additional Info Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Tier Filter Info */}
-        <div className="bg-bg-secondary border border-bg-border rounded-lg p-4">
-          <h4 className="text-white font-semibold mb-3">Filter by Tier</h4>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1 h-4 bg-accent rounded-full" />
+            <h4 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Filter by Tier</h4>
+          </div>
           <div className="space-y-2">
             <button
               onClick={() => setSelectedTier('all')}
@@ -256,8 +262,11 @@ export function AnalyticsPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="bg-bg-secondary border border-bg-border rounded-lg p-4 lg:col-span-2">
-          <h4 className="text-white font-semibold mb-3">Quick Stats</h4>
+        <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-4 lg:col-span-2">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-1 h-4 bg-accent rounded-full" />
+            <h4 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">Quick Stats</h4>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <div className="text-muted text-xs mb-1">Total Revenue</div>
