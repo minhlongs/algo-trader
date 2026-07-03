@@ -53,6 +53,7 @@ import { apiKeysRouter } from './routes/api-keys';
 import { marketplaceListingBadgeRouter, marketplaceBadgeDefinitionRouter } from './routes/marketplace-badge-routes';
 import { marketplaceSubscriptionEnhancementsRouter } from './routes/marketplace-subscription-enhancements';
 import { marketplaceSubscriptionStatsRouter } from './routes/marketplace-subscription-stats-routes';
+import { coPilotRouter } from './routes/co-pilot-routes';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
@@ -236,6 +237,9 @@ this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
     // Revenue growth routes — Phase 01 (subscription analytics, trial drip)
     this.app.use('/api/analytics/subscription', subscriptionAnalyticsRouter);
     this.app.use('/api/v1/trial-drip', trialDripRouter);
+
+    // Co-pilot routes — Phase 01 (AI assistant for trading queries)
+    this.app.use(coPilotRouter);
 
     // 404 handler
     this.app.use((_req, res) => {
