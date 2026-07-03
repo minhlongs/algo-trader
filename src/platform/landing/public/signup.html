@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up — AlgoTrader RaaS | Choose Your Plan</title>
+  <meta name="description" content="Choose your plan and start trading with AI-powered prediction market strategies." />
+  <link rel="canonical" href="https://cashclaw.cc/signup" />
+  <link rel="stylesheet" href="/ui/design-system/tokens.css" />
+  <link rel="stylesheet" href="/ui/design-system/components.css" />
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+    }
+
+    .signup-card {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .auth-logo {
+      text-align: center;
+      margin-bottom: var(--space-6);
+    }
+
+    .auth-logo h1 {
+      font-family: var(--font-data);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      color: var(--color-accent);
+      letter-spacing: -0.5px;
+    }
+
+    .auth-logo p {
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+      margin-top: var(--space-1);
+    }
+
+    .form-group {
+      margin-bottom: var(--space-4);
+    }
+
+    .error-msg {
+      background: rgba(255, 71, 87, 0.1);
+      border: 1px solid rgba(255, 71, 87, 0.3);
+      color: var(--color-loss);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-4);
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    .auth-submit {
+      width: 100%;
+      margin-top: var(--space-2);
+    }
+
+    .api-key-box {
+      background: var(--bg-primary);
+      border: 1px solid var(--color-accent);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-top: var(--space-6);
+      display: none;
+    }
+    .api-key-box.visible { display: block; }
+    .api-key-box p { font-size: var(--text-xs); color: var(--text-secondary); margin-bottom: var(--space-2); }
+    .api-key-box code {
+      font-family: var(--font-data);
+      font-size: var(--text-xs);
+      color: var(--color-accent);
+      word-break: break-all;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: var(--space-6);
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+    }
+    .auth-footer a { color: var(--color-accent); text-decoration: none; font-weight: var(--weight-medium); }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    .auth-back {
+      text-align: center;
+      margin-top: var(--space-4);
+      font-size: var(--text-xs);
+    }
+    .auth-back a { color: var(--text-tertiary); text-decoration: none; }
+    .auth-back a:hover { color: var(--text-secondary); }
+
+    .quickstart {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-top: var(--space-4);
+      display: none;
+      font-size: var(--text-xs);
+      color: var(--text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+    .quickstart.visible { display: block; }
+    .quickstart p { margin-bottom: var(--space-1); }
+    .quickstart a { color: var(--color-accent); text-decoration: none; }
+
+    /* -- Tier selection cards -- */
+    .tier-selector { margin-bottom: var(--space-6); }
+    .tier-selector h3 { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text-primary); margin-bottom: var(--space-3); }
+    .tier-options { display: flex; flex-direction: column; gap: var(--space-2); }
+    .tier-option {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .tier-option:hover { border-color: var(--border-default); }
+    .tier-option.selected {
+      border-color: var(--color-accent);
+      box-shadow: var(--shadow-accent);
+      background: rgba(0, 212, 170, 0.05);
+    }
+    .tier-option input[type="radio"] { accent-color: var(--color-accent); }
+    .tier-option-info { flex: 1; }
+    .tier-option-name { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--text-primary); }
+    .tier-option-price { font-family: var(--font-data); font-size: var(--text-sm); color: var(--color-accent); white-space: nowrap; }
+    .tier-option-desc { font-size: var(--text-xs); color: var(--text-tertiary); margin-top: 2px; }
+    .tier-option-na { opacity: 0.4; }
+
+    /* -- Billing interval toggle -- */
+    .billing-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+      padding: var(--space-3);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+    .billing-toggle label {
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .billing-toggle label.active { color: var(--text-primary); }
+    .billing-toggle .toggle-track {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: var(--border-subtle);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    .billing-toggle .toggle-track.active { background: var(--color-accent); }
+    .billing-toggle .toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: var(--text-primary);
+      border-radius: 50%;
+      transition: transform var(--transition-fast);
+    }
+    .billing-toggle .toggle-track.active .toggle-thumb { transform: translateX(20px); }
+    .save-badge {
+      font-size: var(--text-xs);
+      background: var(--color-accent-dim);
+      color: var(--color-accent);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: var(--weight-semibold);
+    }
+  </style>
+</head>
+<body>
+  <div class="cc-card signup-card">
+    <div class="auth-logo">
+      <h1>AlgoTrader</h1>
+      <p>Choose your plan and create your account</p>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <form id="signupForm">
+      <!-- Billing interval toggle -->
+      <div class="billing-toggle">
+        <label id="label-monthly" class="active">Monthly</label>
+        <div class="toggle-track active" id="toggle-track" role="button" tabindex="0" aria-label="Toggle monthly/annual billing">
+          <div class="toggle-thumb"></div>
+        </div>
+        <label id="label-annual">Annual</label>
+        <span class="save-badge">Save 20%</span>
+      </div>
+
+      <!-- Tier selection -->
+      <div class="tier-selector">
+        <h3>Select Plan</h3>
+        <div class="tier-options" id="tierOptions">
+          <!-- Free -->
+          <label class="tier-option tier-option-na" id="tier-free" data-tier="free" data-monthly="$0" data-annual="$0">
+            <input type="radio" name="tier" value="free" />
+            <div class="tier-option-info">
+              <div class="tier-option-name">Free</div>
+              <div class="tier-option-desc">Explore the platform</div>
+            </div>
+            <div class="tier-option-price">$0/mo</div>
+          </label>
+
+          <!-- Starter -->
+          <label class="tier-option" id="tier-starter" data-tier="starter" data-monthly="$29" data-annual="$23">
+            <input type="radio" name="tier" value="starter" checked />
+            <div class="tier-option-info">
+              <div class="tier-option-name">Starter</div>
+              <div class="tier-option-desc">Real-time signals + REST API</div>
+            </div>
+            <div class="tier-option-price" id="price-starter">$29/mo</div>
+          </label>
+
+          <!-- Pro -->
+          <label class="tier-option" id="tier-pro" data-tier="pro" data-monthly="$99" data-annual="$79">
+            <input type="radio" name="tier" value="pro" />
+            <div class="tier-option-info">
+              <div class="tier-option-name">Pro <span style="font-size:var(--text-xs);color:var(--color-accent);font-weight:var(--weight-semibold)">Most Popular</span></div>
+              <div class="tier-option-desc">Full auto-execution + risk management</div>
+            </div>
+            <div class="tier-option-price" id="price-pro">$99/mo</div>
+          </label>
+
+          <!-- Enterprise -->
+          <label class="tier-option" id="tier-enterprise" data-tier="enterprise" data-monthly="$299" data-annual="$239">
+            <input type="radio" name="tier" value="enterprise" />
+            <div class="tier-option-info">
+              <div class="tier-option-name">Enterprise</div>
+              <div class="tier-option-desc">Multi-account + advanced analytics</div>
+            </div>
+            <div class="tier-option-price" id="price-enterprise">$299/mo</div>
+          </label>
+
+          <!-- Master -->
+          <label class="tier-option" id="tier-master" data-tier="master" data-monthly="$999" data-annual="$799">
+            <input type="radio" name="tier" value="master" />
+            <div class="tier-option-info">
+              <div class="tier-option-name">Master</div>
+              <div class="tier-option-desc">Full managed service + dedicated support</div>
+            </div>
+            <div class="tier-option-price" id="price-master">$999/mo</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="cc-input-label" for="email">Email</label>
+        <input class="cc-input" type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label class="cc-input-label" for="password">Password</label>
+        <input class="cc-input" type="password" id="password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label class="cc-input-label" for="confirmPassword">Confirm Password</label>
+        <input class="cc-input" type="password" id="confirmPassword" name="confirmPassword" placeholder="Repeat your password" required autocomplete="new-password" />
+      </div>
+
+      <button type="submit" class="cc-button cc-button--primary cc-button--lg auth-submit" id="submitBtn">Create Account</button>
+    </form>
+
+    <div class="api-key-box" id="apiKeyBox">
+      <p>Your API key (save it — shown once):</p>
+      <code id="apiKeyValue"></code>
+    </div>
+
+    <div class="quickstart" id="quickstart">
+      <p style="font-weight:600;margin-bottom:var(--space-2)">Quick Start:</p>
+      <p>1. Your API key is above — save it securely</p>
+      <p>2. Paper trading is ON by default (no risk)</p>
+      <p>3. Click "Go to Dashboard" to start a strategy</p>
+      <p style="margin-top:var(--space-2)">
+        API docs: <a href="/api/docs">/api/docs</a> |
+        Quickstart: <a href="/api/onboarding/quickstart">/api/onboarding/quickstart</a>
+      </p>
+    </div>
+
+    <div class="auth-footer">
+      Already have an account? <a href="/login.html">Sign in</a>
+    </div>
+
+    <div class="auth-back">
+      <a href="/">&larr; Back to AlgoTrader</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var form = document.getElementById('signupForm');
+      var errorMsg = document.getElementById('errorMsg');
+      var submitBtn = document.getElementById('submitBtn');
+      var apiKeyBox = document.getElementById('apiKeyBox');
+      var apiKeyValue = document.getElementById('apiKeyValue');
+      var quickstart = document.getElementById('quickstart');
+      var tierOptions = document.querySelectorAll('.tier-option');
+
+      // Billing toggle
+      var track = document.getElementById('toggle-track');
+      var labelM = document.getElementById('label-monthly');
+      var labelA = document.getElementById('label-annual');
+      var isAnnual = false;
+
+      function showError(msg) {
+        errorMsg.textContent = msg;
+        errorMsg.classList.add('visible');
+      }
+      function hideError() {
+        errorMsg.classList.remove('visible');
+      }
+
+      function updateTierPrices() {
+        tierOptions.forEach(function(el) {
+          var monthlyPrice = el.getAttribute('data-monthly');
+          var annualPrice = el.getAttribute('data-annual');
+          var priceEl = el.querySelector('.tier-option-price');
+          if (priceEl) {
+            if (isAnnual) {
+              priceEl.textContent = annualPrice + '/mo';
+            } else {
+              priceEl.textContent = monthlyPrice + '/mo';
+            }
+          }
+        });
+        labelM.classList.toggle('active', !isAnnual);
+        labelA.classList.toggle('active', isAnnual);
+        track.classList.toggle('active', isAnnual);
+      }
+
+      track.addEventListener('click', function() {
+        isAnnual = !isAnnual;
+        updateTierPrices();
+      });
+      track.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          isAnnual = !isAnnual;
+          updateTierPrices();
+        }
+      });
+      labelM.addEventListener('click', function() { isAnnual = false; updateTierPrices(); });
+      labelA.addEventListener('click', function() { isAnnual = true; updateTierPrices(); });
+
+      // Tier selection visual
+      tierOptions.forEach(function(el) {
+        el.addEventListener('click', function() {
+          tierOptions.forEach(function(opt) { opt.classList.remove('selected'); });
+          el.classList.add('selected');
+          el.querySelector('input[type="radio"]').checked = true;
+        });
+      });
+
+      // Pre-select tier from URL param
+      (function() {
+        var params = new URLSearchParams(window.location.search);
+        var tierParam = params.get('tier');
+        var intervalParam = params.get('interval');
+        if (tierParam) {
+          var target = document.getElementById('tier-' + tierParam.toLowerCase());
+          if (target) {
+            tierOptions.forEach(function(opt) { opt.classList.remove('selected'); });
+            target.classList.add('selected');
+            target.querySelector('input[type="radio"]').checked = true;
+          }
+        }
+        if (intervalParam === 'annual') {
+          isAnnual = true;
+          updateTierPrices();
+        }
+      })();
+
+      // Form submission
+      form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        hideError();
+
+        var email = document.getElementById('email').value.trim();
+        var password = document.getElementById('password').value;
+        var confirmPassword = document.getElementById('confirmPassword').value;
+        var selectedTier = document.querySelector('input[name="tier"]:checked');
+        var tier = selectedTier ? selectedTier.value : 'free';
+        var interval = isAnnual ? 'annual' : 'monthly';
+
+        if (password !== confirmPassword) {
+          showError('Passwords do not match');
+          return;
+        }
+        if (password.length < 8) {
+          showError('Password must be at least 8 characters');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating account...';
+
+        try {
+          var res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: email,
+              password: password,
+              confirmPassword: confirmPassword,
+              tier: tier,
+              billingInterval: interval,
+            }),
+          });
+          var data = await res.json();
+
+          if (!res.ok) {
+            showError(data.error || 'Registration failed');
+            return;
+          }
+
+          localStorage.setItem('algo_token', data.token);
+
+          if (data.user && data.user.apiKey) {
+            apiKeyValue.textContent = data.user.apiKey;
+            apiKeyBox.classList.add('visible');
+            quickstart.classList.add('visible');
+            submitBtn.textContent = 'Go to Dashboard →';
+            submitBtn.disabled = false;
+            submitBtn.onclick = function() { window.location.href = '/dashboard'; };
+          } else {
+            window.location.href = '/dashboard?tier=' + encodeURIComponent(tier) + '&interval=' + interval;
+          }
+        } catch (err) {
+          showError('Network error — please try again');
+        } finally {
+          submitBtn.disabled = false;
+          if (submitBtn.textContent === 'Creating account...') {
+            submitBtn.textContent = 'Create Account';
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

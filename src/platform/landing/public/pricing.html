@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pricing — AlgoTrader RaaS | Prediction Market Strategy Platform</title>
-  <meta name="description" content="Compare FREE, PRO, ENTERPRISE, and MASTER tier plans. AI-powered prediction market strategies with Kelly Criterion sizing. Start free, upgrade as you grow." />
+  <meta name="description" content="Compare FREE, STARTER, PRO, ENTERPRISE, and MASTER tier plans. AI-powered prediction market strategies with Kelly Criterion sizing. Start free at $29/mo, upgrade as you grow." />
   <link rel="canonical" href="https://cashclaw.cc/pricing" />
 
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://cashclaw.cc/pricing" />
   <meta property="og:title" content="Pricing — AlgoTrader RaaS" />
-  <meta property="og:description" content="AI prediction market strategies. Free tier available. PRO from $99/mo." />
+  <meta property="og:description" content="AI prediction market strategies. Free tier available. STARTER from $29/mo, PRO from $99/mo." />
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
@@ -96,11 +96,20 @@
     /* -- Pricing cards grid -- */
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: var(--space-4);
-      max-width: 1200px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: var(--space-3);
+      max-width: 1400px;
       margin: 0 auto;
       padding: 0 var(--space-6) var(--space-12);
+    }
+    .price-card {
+      padding: var(--space-5);
+    }
+    .price-card .price-amount {
+      font-size: 34px;
+    }
+    .price-card .price-features li {
+      font-size: var(--text-xs);
     }
     .price-card {
       position: relative;
@@ -310,7 +319,10 @@
     }
 
     /* -- Responsive -- */
-    @media (max-width: 1024px) {
+    @media (max-width: 1200px) {
+      .pricing-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 768px) {
       .pricing-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 640px) {
@@ -331,7 +343,7 @@
     <li><a href="/">Home</a></li>
     <li><a href="/pricing" class="active">Pricing</a></li>
   </ul>
-  <a href="/register" class="cc-button cc-button--primary">Get Started Free</a>
+  <a href="/signup" class="cc-button cc-button--primary">Get Started Free</a>
 </nav>
 
 <!-- Header -->
@@ -370,6 +382,23 @@
     <a href="/register" class="cc-button cc-button--secondary">Get Started Free</a>
   </div>
 
+  <!-- STARTER -->
+  <div class="price-card">
+    <div class="price-tier-name">Starter</div>
+    <div class="price-amount" data-monthly="$29" data-annual="$23">$29<span class="period">/mo</span></div>
+    <div class="price-desc">Real-time signals + REST API for serious beginners.</div>
+    <ul class="price-features">
+      <li><span class="check">&#10003;</span> Everything in Free</li>
+      <li><span class="check">&#10003;</span> Real-time signal stream (15-min)</li>
+      <li><span class="check">&#10003;</span> REST API access</li>
+      <li><span class="check">&#10003;</span> Auto-execution on your wallet</li>
+      <li><span class="check">&#10003;</span> Up to 3 concurrent strategies</li>
+      <li><span class="na">&#8212;</span> Per-account risk manager</li>
+      <li><span class="na">&#8212;</span> Priority support</li>
+    </ul>
+    <a href="/signup?tier=starter&interval=monthly" class="cc-button cc-button--secondary">Get Started</a>
+  </div>
+
   <!-- PRO -->
   <div class="price-card price-card--popular">
     <div class="price-tag">Most Popular</div>
@@ -377,15 +406,15 @@
     <div class="price-amount" data-monthly="$99" data-annual="$79">$99<span class="period">/mo</span></div>
     <div class="price-desc">Real-time signals + REST API for active traders.</div>
     <ul class="price-features">
-      <li><span class="check">&#10003;</span> Everything in Free</li>
-      <li><span class="check">&#10003;</span> Real-time signal stream (15-min)</li>
-      <li><span class="check">&#10003;</span> REST API access</li>
-      <li><span class="check">&#10003;</span> Auto-execution on your wallet</li>
+      <li><span class="check">&#10003;</span> Everything in Starter</li>
       <li><span class="check">&#10003;</span> Per-account risk manager</li>
+      <li><span class="check">&#10003;</span> ML-enhanced strategies</li>
+      <li><span class="check">&#10003;</span> Unlock premium data feeds</li>
+      <li><span class="check">&#10003;</span> Up to 10 concurrent strategies</li>
       <li><span class="check">&#10003;</span> Priority support (24h)</li>
       <li><span class="check">&#10003;</span> Weekly calibration report</li>
     </ul>
-    <a href="/register?tier=pro" class="cc-button cc-button--primary">Start Pro Trial</a>
+    <a href="/signup?tier=pro&interval=monthly" class="cc-button cc-button--primary">Start Pro Trial</a>
   </div>
 
   <!-- ENTERPRISE -->
@@ -432,41 +461,43 @@
       <tr>
         <th>Feature</th>
         <th>Free</th>
+        <th>Starter</th>
         <th>Pro</th>
         <th>Enterprise</th>
         <th>Master</th>
       </tr>
     </thead>
     <tbody>
-      <tr class="section-label"><td colspan="5">Signals</td></tr>
-      <tr><td>Daily signal digest</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>Top opportunities per day</td><td>5</td><td>20</td><td>50</td><td>Unlimited</td></tr>
-      <tr><td>Real-time signal stream</td><td><span class="na">&#8212;</span></td><td>15-min</td><td>5-min</td><td>Real-time</td></tr>
-      <tr><td>Cross-market signals</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>Delta-neutral signals</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr class="section-label"><td colspan="6">Signals</td></tr>
+      <tr><td>Daily signal digest</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Top opportunities per day</td><td>5</td><td>5</td><td>20</td><td>50</td><td>Unlimited</td></tr>
+      <tr><td>Real-time signal stream</td><td><span class="na">&#8212;</span></td><td>15-min</td><td>15-min</td><td>5-min</td><td>Real-time</td></tr>
+      <tr><td>Cross-market signals</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Delta-neutral signals</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
 
-      <tr class="section-label"><td colspan="5">API &amp; Access</td></tr>
-      <tr><td>REST API</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>API rate limit (req/min)</td><td>10</td><td>100</td><td>500</td><td>Unlimited</td></tr>
-      <tr><td>Auto-execution</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>Multi-leg execution</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr class="section-label"><td colspan="6">API &amp; Access</td></tr>
+      <tr><td>REST API</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>API rate limit (req/min)</td><td>10</td><td>100</td><td>100</td><td>500</td><td>Unlimited</td></tr>
+      <tr><td>Concurrent strategies</td><td>1</td><td>3</td><td>10</td><td>25</td><td>Unlimited</td></tr>
+      <tr><td>Auto-execution</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Multi-leg execution</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
 
-      <tr class="section-label"><td colspan="5">Analytics</td></tr>
-      <tr><td>Basic P&amp;L tracking</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>Advanced analytics</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>Semantic intelligence</td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>Swarm intelligence</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>White-label reports</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr class="section-label"><td colspan="6">Analytics</td></tr>
+      <tr><td>Basic P&amp;L tracking</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Advanced analytics</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Semantic intelligence</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Swarm intelligence</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>White-label reports</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td></tr>
 
-      <tr class="section-label"><td colspan="5">Support</td></tr>
-      <tr><td>Community Discord</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
-      <tr><td>Support response time</td><td>N/A</td><td>24h</td><td>12h</td><td>4h</td></tr>
-      <tr><td>Account manager</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr class="section-label"><td colspan="6">Support</td></tr>
+      <tr><td>Community Discord</td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td><td><span class="check">&#10003;</span></td></tr>
+      <tr><td>Support response time</td><td>N/A</td><td>N/A</td><td>24h</td><td>12h</td><td>4h</td></tr>
+      <tr><td>Account manager</td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="na">&#8212;</span></td><td><span class="check">&#10003;</span></td></tr>
 
-      <tr class="section-label"><td colspan="5">Billing</td></tr>
-      <tr><td>Monthly price</td><td>$0</td><td>$99</td><td>$299</td><td>$999</td></tr>
-      <tr><td>Annual price (per month)</td><td>$0</td><td>$79</td><td>$239</td><td>$799</td></tr>
-      <tr><td>Payment methods</td><td>N/A</td><td>USDT, Crypto</td><td>USDT, Crypto</td><td>USDT, Crypto</td></tr>
+      <tr class="section-label"><td colspan="6">Billing</td></tr>
+      <tr><td>Monthly price</td><td>$0</td><td>$29</td><td>$99</td><td>$299</td><td>$999</td></tr>
+      <tr><td>Annual price (per month)</td><td>$0</td><td>$23</td><td>$79</td><td>$239</td><td>$799</td></tr>
+      <tr><td>Payment methods</td><td>N/A</td><td>USDT, Crypto</td><td>USDT, Crypto</td><td>USDT, Crypto</td><td>USDT, Crypto</td></tr>
     </tbody>
   </table>
   </div>
@@ -509,6 +540,7 @@
   var labelM = document.getElementById('label-monthly');
   var labelA = document.getElementById('label-annual');
   var cards = document.querySelectorAll('.price-amount');
+  var ctas = document.querySelectorAll('.price-card .cc-button');
   var isAnnual = false;
 
   function updatePricing() {
@@ -519,6 +551,14 @@
         el.innerHTML = annual + '<span class="period">/mo</span><span class="annual-note">billed annually</span>';
       } else {
         el.innerHTML = monthly + '<span class="period">/mo</span>';
+      }
+    });
+    // Update CTA links to include interval param
+    ctas.forEach(function(btn) {
+      var href = btn.getAttribute('href');
+      if (href && href.indexOf('/signup?') === 0) {
+        var base = href.split('&interval=')[0];
+        btn.setAttribute('href', base + '&interval=' + (isAnnual ? 'annual' : 'monthly'));
       }
     });
     labelM.classList.toggle('active', !isAnnual);
