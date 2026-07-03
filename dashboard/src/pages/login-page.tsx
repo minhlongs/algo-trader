@@ -3,10 +3,12 @@
  */
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../stores/auth-store';
 import { PublicNavbar } from '../components/public-navbar';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, loading, error: storeError } = useAuthStore();
   const [email, setEmail] = useState('');
@@ -19,7 +21,7 @@ export function LoginPage() {
     e.preventDefault();
     setLocalError('');
     if (!email.trim() || !password.trim()) {
-      setLocalError('Email and password are required.');
+      setLocalError(t('login.errorRequired'));
       return;
     }
     await login(email.trim(), password);
@@ -39,8 +41,8 @@ export function LoginPage() {
           <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-8">
             {/* Header */}
             <div className="mb-6">
-              <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-2">Welcome back</p>
-              <h1 className="text-white text-xl font-bold">Sign in to CashClaw</h1>
+              <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-2">{t('login.welcomeBack')}</p>
+              <h1 className="text-white text-xl font-bold">{t('login.signInTitle')}</h1>
             </div>
 
             {displayError && (
@@ -51,12 +53,12 @@ export function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[#8892B0] text-xs mb-1.5">Email</label>
+                <label className="block text-[#8892B0] text-xs mb-1.5">{t('login.email')}</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t('login.emailPlaceholder')}
                   autoComplete="email"
                   disabled={loading}
                   className="w-full bg-[#060912] border border-bg-border rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
@@ -64,12 +66,12 @@ export function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-[#8892B0] text-xs mb-1.5">Password</label>
+                <label className="block text-[#8892B0] text-xs mb-1.5">{t('login.password')}</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t('login.passwordPlaceholder')}
                   autoComplete="current-password"
                   disabled={loading}
                   className="w-full bg-[#060912] border border-bg-border rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
@@ -81,14 +83,14 @@ export function LoginPage() {
                 disabled={loading}
                 className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] font-bold text-sm py-2.5 rounded hover:brightness-110 transition-all duration-200 mt-2 disabled:opacity-60 disabled:cursor-not-allowed min-h-touch"
               >
-                {loading ? 'Signing in…' : 'Sign In'}
+                {loading ? t('login.signingIn') : t('login.signIn')}
               </button>
             </form>
 
             <p className="text-[#8892B0] text-xs text-center mt-6">
-              No account?{' '}
+              {t('login.noAccount')}{' '}
               <Link to="/signup" className="text-accent hover:underline">
-                Create one free
+                {t('login.createOne')}
               </Link>
             </p>
           </div>

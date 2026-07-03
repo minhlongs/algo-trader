@@ -427,8 +427,10 @@ export class UsageMeteringService extends EventEmitter {
         this.emit('threshold_alert', alert);
         logger.info(`[UsageMetering] Alert: ${licenseKey} at ${status.percentUsed.toFixed(1)}%`);
       } catch {
-        // Race condition: another process already inserted this threshold
-        // This is safe to ignore (unique constraint)
+        // Race condition: another process already inserted this threshold.
+        // This is safe to ignore (unique constraint) because the next read
+        // will see the existing row and skip the insert.
+        logger.warn('[UsageMetering] Duplicate threshold alert (race condition ignored):', { licenseKey, threshold });
       }
     }
   }

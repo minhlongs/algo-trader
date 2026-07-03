@@ -105,7 +105,7 @@ enterpriseInquiryRouter.patch('/inquiries/:id/status', requireTier('ENTERPRISE')
     return;
   }
 
-  const patch: Parameters<typeof enterpriseInquiryStore.update>[1] = {};
+  const patch: Parameters<typeof onboardingService.updateInquiry>[1] = {};
   if (status !== undefined) patch.status = status as EnterpriseInquiryStatus;
   if (tamAssigned !== undefined) patch.tamAssigned = tamAssigned;
   if (notes !== undefined) patch.notes = notes;

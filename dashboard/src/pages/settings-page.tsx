@@ -5,6 +5,7 @@
  * GET /tenants/me, GET /tenants/:id/api-keys, GET /tenants/:id/alert-rules
  */
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApiClient } from '../hooks/use-api-client';
 import { useAuthStore } from '../stores/auth-store';
 import { SettingsTenantConfigForm, type TenantInfo } from '../components/settings-tenant-config-form';
@@ -30,6 +31,7 @@ const MM_FIELDS: { key: string; label: string; description: string; placeholder:
 ];
 
 function MmParametersForm() {
+  const { t } = useTranslation();
   const { fetchApi } = useApiClient();
   const { tenantId } = useAuthStore();
   const [values, setValues] = useState<Record<string, string>>({
@@ -56,9 +58,9 @@ function MmParametersForm() {
     });
     setSaving(false);
     if (res !== null) {
-      setStatusMsg({ text: 'Saved', ok: true });
+      setStatusMsg({ text: t('settings.saved'), ok: true });
     } else {
-      setStatusMsg({ text: 'Backend not configured — changes not persisted', ok: false });
+      setStatusMsg({ text: t('settings.backendNotConfigured'), ok: false });
     }
   }
 
@@ -67,7 +69,7 @@ function MmParametersForm() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="w-1 h-4 bg-accent rounded-full" />
-          <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">MM Parameters</h2>
+          <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{t('settings.mmParameters')}</h2>
         </div>
         {statusMsg && (
           <span className={`text-xs ${statusMsg.ok ? 'text-profit' : 'text-muted'}`}>
@@ -75,7 +77,7 @@ function MmParametersForm() {
           </span>
         )}
       </div>
-      <p className="text-muted text-xs">Market making strategy configuration. Changes take effect on next requote cycle.</p>
+      <p className="text-muted text-xs">{t('settings.mmConfigDescription')}</p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {MM_FIELDS.map(({ key, label, description, placeholder }) => (
           <div key={key}>
@@ -96,13 +98,14 @@ function MmParametersForm() {
         disabled={saving}
         className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors min-h-touch"
       >
-        {saving ? 'Saving…' : 'Save Parameters'}
+        {saving ? t('settings.savingParams') : t('settings.saveParameters')}
       </button>
     </form>
   );
 }
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const { fetchApi } = useApiClient();
   const { email, tier, tenantId } = useAuthStore();
 
@@ -146,7 +149,7 @@ export function SettingsPage() {
         createdAt: new Date().toISOString(),
       }]);
     } else {
-      setKeyError('Backend unreachable. Cannot create API key. Please ensure the API server is running and try again.');
+      setKeyError(t('settings.keyCreationFailed'));
     }
   }
 
@@ -172,7 +175,7 @@ export function SettingsPage() {
     <div className="space-y-8 max-w-3xl">
       <div className="flex items-center gap-2 mb-6">
         <span className="w-1 h-5 bg-accent rounded-full" />
-        <h1 className="text-white text-xl font-bold tracking-tight">Settings</h1>
+        <h1 className="text-white text-xl font-bold tracking-tight">{t('settings.title')}</h1>
       </div>
 
       {/* MM Parameters */}
@@ -189,7 +192,7 @@ export function SettingsPage() {
               onClick={() => setKeyError(null)}
               className="mt-1 text-muted text-xs underline hover:text-white"
             >
-              Dismiss
+              {t('settings.dismiss')}
             </button>
           </div>
         )}
