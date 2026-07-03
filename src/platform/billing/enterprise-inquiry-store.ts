@@ -1,25 +1,25 @@
 /**
  * Enterprise Inquiry Store
  * In-memory store for enterprise contact form submissions.
- * Enterprise tier: $49k / $199k / $499k — invoice-based, manual close.
+ * Enterprise tier: $99 / $299 / $999 per month — invoice-based, manual close.
  * No self-serve checkout; Polar.sh bypassed entirely for enterprise.
  */
 
 import * as crypto from 'crypto';
 
-export type EnterpriseTier = 'growth' | 'scale' | 'unlimited';
+export type EnterpriseTier = 'PRO' | 'ENTERPRISE' | 'MASTER';
 
-/** Annual contract value per tier */
-export const ENTERPRISE_ACV: Record<EnterpriseTier, number> = {
-  growth: 49_000,
-  scale: 199_000,
-  unlimited: 499_000,
+/** Monthly price per tier (these are recurring monthly rates, not annual ACV) */
+export const ENTERPRISE_MONTHLY_PRICE: Record<EnterpriseTier, number> = {
+  PRO: 99,
+  ENTERPRISE: 299,
+  MASTER: 999,
 };
 
 export const ENTERPRISE_TIER_LABELS: Record<EnterpriseTier, string> = {
-  growth: 'Growth — $49k/yr',
-  scale: 'Scale — $199k/yr',
-  unlimited: 'Unlimited — $499k/yr',
+  PRO: 'PRO — $99/mo',
+  ENTERPRISE: 'ENTERPRISE — $299/mo',
+  MASTER: 'MASTER — $999/mo',
 };
 
 export interface EnterpriseInquiry {

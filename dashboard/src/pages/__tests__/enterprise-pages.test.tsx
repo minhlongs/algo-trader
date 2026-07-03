@@ -1,8 +1,7 @@
 /**
- * Enterprise dashboard page type-check tests.
- * Runtime vitest execution is deferred — these tests exist to enforce
- * TypeScript correctness on all enterprise page components and the
- * enterprise-plans lib. Run: pnpm tsc --noEmit from dashboard/
+ * Enterprise page type-check tests.
+ * Enforces TypeScript correctness on the consolidated enterprise page component
+ * and the enterprise-plans lib. Run: pnpm tsc --noEmit from dashboard/
  */
 
 import { describe, it, expect } from 'vitest';
@@ -15,7 +14,7 @@ import {
 // ── Static shape tests (no DOM, no render) ──────────────────────────────────
 
 describe('enterprise-plans lib', () => {
-  const TIERS: EnterprisePlanKey[] = ['growth', 'scale', 'unlimited'];
+  const TIERS: EnterprisePlanKey[] = ['PRO', 'ENTERPRISE', 'MASTER'];
 
   it('exports exactly three tiers', () => {
     expect(Object.keys(ENTERPRISE_PLANS)).toHaveLength(3);
@@ -30,16 +29,16 @@ describe('enterprise-plans lib', () => {
     expect(plan.features.length).toBeGreaterThan(0);
   });
 
-  it('growth ACV is 49000', () => {
-    expect(ENTERPRISE_PLANS.growth.acv).toBe(49_000);
+  it('PRO ACV is 1188', () => {
+    expect(ENTERPRISE_PLANS.PRO.acv).toBe(1_188);
   });
 
-  it('scale ACV is 199000', () => {
-    expect(ENTERPRISE_PLANS.scale.acv).toBe(199_000);
+  it('ENTERPRISE ACV is 3588', () => {
+    expect(ENTERPRISE_PLANS.ENTERPRISE.acv).toBe(3_588);
   });
 
-  it('unlimited ACV is 499000', () => {
-    expect(ENTERPRISE_PLANS.unlimited.acv).toBe(499_000);
+  it('MASTER ACV is 11988', () => {
+    expect(ENTERPRISE_PLANS.MASTER.acv).toBe(11_988);
   });
 
   it('no tier copy contains forbidden words', () => {
@@ -54,36 +53,17 @@ describe('enterprise-plans lib', () => {
     }
   });
 
-  it('scale tier is marked as the highlight (most popular)', () => {
-    // Scale is the mid-tier — pricing page renders it as highlighted
-    expect(ENTERPRISE_PLANS.scale.acv).toBeGreaterThan(ENTERPRISE_PLANS.growth.acv);
-    expect(ENTERPRISE_PLANS.scale.acv).toBeLessThan(ENTERPRISE_PLANS.unlimited.acv);
+  it('ENTERPRISE tier is marked as the highlight (most popular)', () => {
+    expect(ENTERPRISE_PLANS.ENTERPRISE.acv).toBeGreaterThan(ENTERPRISE_PLANS.PRO.acv);
+    expect(ENTERPRISE_PLANS.ENTERPRISE.acv).toBeLessThan(ENTERPRISE_PLANS.MASTER.acv);
   });
 });
 
-// ── Component import smoke tests ─────────────────────────────────────────────
-// These imports will cause tsc to type-check the component files.
-// We do NOT render them (no jsdom configured) — the import alone triggers
-// TypeScript validation of props, hooks, and return types.
+// ── Component import smoke test ─────────────────────────────────────────────
 
-describe('enterprise page component imports', () => {
-  it('EnterpriseContactPage exports a function component', async () => {
-    const mod = await import('../enterprise-contact-page');
-    expect(typeof mod.EnterpriseContactPage).toBe('function');
-  });
-
-  it('EnterpriseThankYouPage exports a function component', async () => {
-    const mod = await import('../enterprise-thank-you-page');
-    expect(typeof mod.EnterpriseThankYouPage).toBe('function');
-  });
-
-  it('EnterprisePricingPage exports a function component', async () => {
-    const mod = await import('../enterprise-pricing-page');
-    expect(typeof mod.EnterprisePricingPage).toBe('function');
-  });
-
-  it('EnterpriseTamDashboardPage exports a function component', async () => {
-    const mod = await import('../enterprise-tam-dashboard-page');
-    expect(typeof mod.EnterpriseTamDashboardPage).toBe('function');
+describe('enterprise page component import', () => {
+  it('EnterprisePage exports a function component', async () => {
+    const mod = await import('../enterprise-page');
+    expect(typeof mod.EnterprisePage).toBe('function');
   });
 });

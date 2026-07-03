@@ -9,7 +9,7 @@
 
 import { EmailService } from '../notifications/email-service';
 import { logger } from '../../shared/utils/logger';
-import { EnterpriseInquiry, ENTERPRISE_TIER_LABELS, ENTERPRISE_ACV } from './enterprise-inquiry-store';
+import { EnterpriseInquiry, ENTERPRISE_TIER_LABELS, ENTERPRISE_MONTHLY_PRICE } from './enterprise-inquiry-store';
 
 /** TAM inbox — override via env var ENTERPRISE_TAM_EMAIL */
 function getTamEmail(): string {
@@ -17,14 +17,14 @@ function getTamEmail(): string {
 }
 
 function buildTamEmailBody(inquiry: EnterpriseInquiry): string {
-  const acv = ENTERPRISE_ACV[inquiry.tier].toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  const price = ENTERPRISE_MONTHLY_PRICE[inquiry.tier].toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   return [
     'NEW ENTERPRISE INQUIRY',
     '======================',
     `ID:        ${inquiry.id}`,
     `Company:   ${inquiry.companyName}`,
     `Contact:   ${inquiry.contactName} <${inquiry.email}>`,
-    `Tier:      ${ENTERPRISE_TIER_LABELS[inquiry.tier]} (ACV ${acv})`,
+    `Tier:      ${ENTERPRISE_TIER_LABELS[inquiry.tier]} (${price}/mo)`,
     `Team size: ${inquiry.teamSize ?? 'not specified'}`,
     '',
     'USE CASE:',
@@ -37,7 +37,7 @@ function buildTamEmailBody(inquiry: EnterpriseInquiry): string {
 }
 
 function buildTamEmailHtml(inquiry: EnterpriseInquiry): string {
-  const acv = ENTERPRISE_ACV[inquiry.tier].toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  const price = ENTERPRISE_MONTHLY_PRICE[inquiry.tier].toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   return `
@@ -48,7 +48,7 @@ function buildTamEmailHtml(inquiry: EnterpriseInquiry): string {
     <tr><td style="color:#888;padding:6px 0">Company</td><td>${esc(inquiry.companyName)}</td></tr>
     <tr><td style="color:#888;padding:6px 0">Contact</td><td>${esc(inquiry.contactName)} &lt;${esc(inquiry.email)}&gt;</td></tr>
     <tr><td style="color:#888;padding:6px 0">Tier</td><td><strong style="color:#00D4AA">${esc(ENTERPRISE_TIER_LABELS[inquiry.tier])}</strong></td></tr>
-    <tr><td style="color:#888;padding:6px 0">ACV</td><td><strong>${esc(acv)}</strong></td></tr>
+    <tr><td style="color:#888;padding:6px 0">Price</td><td><strong>${esc(price)}/mo</strong></td></tr>
     <tr><td style="color:#888;padding:6px 0">Team size</td><td>${esc(inquiry.teamSize ?? '—')}</td></tr>
   </table>
   <div style="margin:16px 0;padding:16px;background:#161A1E;border-radius:8px">

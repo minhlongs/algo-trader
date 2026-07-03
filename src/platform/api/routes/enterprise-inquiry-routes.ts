@@ -42,7 +42,7 @@ enterpriseInquiryRouter.post('/inquiries', requireTier('FREE'), async (req: Requ
       email,
       companyName,
       contactName,
-      tier: tier as 'growth' | 'scale' | 'unlimited',
+      tier: tier as 'PRO' | 'ENTERPRISE' | 'MASTER',
       useCase,
       teamSize,
     });

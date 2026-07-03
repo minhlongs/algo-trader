@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { ErrorBoundary } from './components/error-boundary';
 import { LayoutShell } from './components/layout-shell';
 import { AuthGuard } from './components/auth-guard';
@@ -9,7 +9,6 @@ import { SettingsPage } from './pages/settings-page';
 import { ReportingPage } from './pages/reporting-page';
 import { LicensePage } from './pages/license-page';
 import { LandingPage } from './pages/landing-page';
-import { LandingSoloQuant } from './pages/landing';
 import { ManifestoPage } from './pages/manifesto';
 import { MethodologyPage } from './pages/methodology';
 import { PricingPage } from './pages/pricing-page';
@@ -28,6 +27,10 @@ import { StrategyDetailPage } from './pages/strategy-detail-page';
 import { StrategyPerformancePage } from './pages/strategy-performance-page';
 import { ApiKeysPage } from './pages/api-keys-page';
 import { TrialStatusPage } from './pages/trial-status-page';
+import { EnterprisePage } from './pages/enterprise-page';
+import { SubscriberOverviewPage } from './pages/subscriber-overview';
+import { SubscriberEquityPage } from './pages/subscriber-equity';
+import { SubscriberTradeHistoryPage } from './pages/subscriber-trade-history';
 
 /**
  * Handle uncaught errors in the app.
@@ -38,16 +41,24 @@ function handleGlobalError(error: Error): void {
   // Future: Send to Sentry or other error tracking service
 }
 
+/**
+ * Redirect /app/subscriber/:id to /app/subscriber/:id/overview
+ */
+function SubscriberRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/app/subscriber/${id}/overview`} replace />;
+}
+
 export function App() {
   return (
     <ErrorBoundary onError={handleGlobalError}>
       <Routes>
         {/* Public routes - full page, no sidebar */}
-        <Route path="/" element={<LandingSoloQuant />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/manifesto" element={<ManifestoPage />} />
         <Route path="/methodology" element={<MethodologyPage />} />
-        <Route path="/cashclaw" element={<LandingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/enterprise" element={<EnterprisePage />} />
         <Route path="/docs" element={<DocsPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
@@ -71,6 +82,12 @@ export function App() {
         <Route path="/app/strategies/:id" element={<AuthGuard><LayoutShell><StrategyDetailPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/api-keys" element={<AuthGuard><LayoutShell><ApiKeysPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/trial" element={<AuthGuard><LayoutShell><TrialStatusPage /></LayoutShell></AuthGuard>} />
+
+        {/* Subscriber portal routes */}
+        <Route path="/app/subscriber/:id" element={<SubscriberRedirect />} />
+        <Route path="/app/subscriber/:id/overview" element={<AuthGuard><LayoutShell><SubscriberOverviewPage /></LayoutShell></AuthGuard>} />
+        <Route path="/app/subscriber/:id/equity" element={<AuthGuard><LayoutShell><SubscriberEquityPage /></LayoutShell></AuthGuard>} />
+        <Route path="/app/subscriber/:id/trades" element={<AuthGuard><LayoutShell><SubscriberTradeHistoryPage /></LayoutShell></AuthGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

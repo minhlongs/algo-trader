@@ -6,7 +6,7 @@
  *   3. Auto-provision paper-trading demo
  *   4. Return credentials to caller
  *
- * Pricing: $49k (growth) / $199k (scale) / $499k (unlimited) — invoice only.
+ * Pricing: $99/mo (PRO) / $299/mo (ENTERPRISE) / $999/mo (MASTER) — invoice only.
  * Polar.sh is NOT used for enterprise; checkout is handled offline by TAM.
  */
 
@@ -39,8 +39,8 @@ function validateInput(input: SubmitEnterpriseInquiryInput): void {
   if (!validateEmail(input.email)) throw new Error('Invalid email address');
   if (!input.companyName.trim()) throw new Error('Company name is required');
   if (!input.contactName.trim()) throw new Error('Contact name is required');
-  if (!['growth', 'scale', 'unlimited'].includes(input.tier)) {
-    throw new Error('Invalid enterprise tier. Must be growth, scale, or unlimited');
+  if (!['PRO', 'ENTERPRISE', 'MASTER'].includes(input.tier)) {
+    throw new Error('Invalid enterprise tier. Must be PRO, ENTERPRISE, or MASTER');
   }
   if (!input.useCase.trim() || input.useCase.trim().length < 20) {
     throw new Error('Use case description must be at least 20 characters');
