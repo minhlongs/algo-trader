@@ -15,6 +15,29 @@ const duration = __ENV.DURATION || '5m';
 const rampUpDuration = __ENV.RAMP_UP || '1m';
 const rampDownDuration = __ENV.RAMP_DOWN || '1m';
 
+/*
+ * Auth headers for protected endpoints.
+ *
+ * The API uses Authorization: Bearer with a LOAD_TEST_TOKEN for tier-gated routes.
+ * Set LOAD_TEST_TOKEN to a pre-provisioned token to test protected routes.
+ * Without it, only unprotected routes (/api/health) will succeed; all protected
+ * routes will be rejected (401) by the requireTier middleware.
+ *
+ * KNOWN AUTH GAP: The requireTier middleware in feature-gate.ts depends on
+ * req.license being set by an upstream "raas-gate middleware" that does not
+ * yet exist for Express routes. Even with a valid LOAD_TEST_TOKEN, protected
+ * routes may still return 401 because no middleware reads the Bearer token and
+ * populates req.license. Fix: implement raas-gate Express middleware that
+ * validates the token and sets req.license before requireTier runs.
+ */
+const loadTestToken = __ENV.LOAD_TEST_TOKEN || __ENV.TEST_API_KEY;
+const headers = {};
+if (loadTestToken) {
+  headers['Authorization'] = `Bearer ${loadTestToken}`;
+  // Also set x-api-key as fallback in case middleware prefers that
+  headers['x-api-key'] = loadTestToken;
+}
+
 export const options = {
   scenarios: {
     raas_load: {
@@ -43,45 +66,46 @@ export default function () {
   const wsUrl = `ws://${host}:${port}/ws`;
 
   // 1. Target REST endpoints sequentially
-  
-  // GET /api/health
+
+  // GET /api/health (UNPROTECTED — no auth required)
   const healthRes = http.get(`${baseUrl}/api/health`);
   check(healthRes, {
     'health returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // GET /api/status
-  const statusRes = http.get(`${baseUrl}/api/status`);
+  // GET /api/status (PROTECTED — requires LOAD_TEST_TOKEN)
+  // NOTE: may return 401 due to raas-gate middleware auth gap (see comment above)
+  const statusRes = http.get(`${baseUrl}/api/status`, { headers });
   check(statusRes, {
     'status returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // GET /api/portfolio
-  const portfolioRes = http.get(`${baseUrl}/api/portfolio`);
+  // GET /api/portfolio (PROTECTED)
+  const portfolioRes = http.get(`${baseUrl}/api/portfolio`, { headers });
   check(portfolioRes, {
     'portfolio returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // GET /api/trades (passing limit and offset pagination parameters)
-  const tradesRes = http.get(`${baseUrl}/api/trades?limit=20&offset=0`);
+  // GET /api/trades (PROTECTED — passing limit and offset pagination parameters)
+  const tradesRes = http.get(`${baseUrl}/api/trades?limit=20&offset=0`, { headers });
   check(tradesRes, {
     'trades returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // GET /api/pnl
-  const pnlRes = http.get(`${baseUrl}/api/pnl`);
+  // GET /api/pnl (PROTECTED)
+  const pnlRes = http.get(`${baseUrl}/api/pnl`, { headers });
   check(pnlRes, {
     'pnl returns 200': (r) => r.status === 200,
   });
   sleep(0.1);
 
-  // 2. Connect to WebSocket gateway
+  // 2. Connect to WebSocket gateway (PROTECTED — passes auth headers)
   const startTime = Date.now();
-  const wsRes = ws.connect(wsUrl, {}, function (socket) {
+  const wsRes = ws.connect(wsUrl, { headers }, function (socket) {
     socket.on('open', function () {
       wsConnSuccess.add(1);
       wsConnDuration.add(Date.now() - startTime);

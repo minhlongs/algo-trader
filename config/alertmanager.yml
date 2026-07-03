@@ -1,61 +1,34 @@
 # Alertmanager Configuration — Algo-Trader
 # ============================================================
-# Routes: critical alerts repeat every 1h, warnings every 4h.
-# Default receiver: webhook (configure ALERT_WEBHOOK_URL).
-# For Telegram: use Grafana contact points (already configured
-# in grafana/provisioning/contact-points.yml).
-#
-# To enable native Telegram Alertmanager receiver:
-#   Create config/alertmanager.yml.tpl with ${TELEGRAM_BOT_TOKEN}
-#   and use envsubst entrypoint (see notes in docker/alertmanager/)
+# Routes: all alerts to Telegram-critical receiver via webhook bridge.
+# Webhook target: alert-webhook service at port 8080.
+# For native Telegram Alertmanager receiver (bot token mode):
+#   Use config/alertmanager.yml.tpl with TELEGRAM_BOT_TOKEN
 # ============================================================
 
 route:
-  group_by: ['alertname', 'severity']
+  group_by: ['alertname']
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
-  receiver: 'default'
-  routes:
-    - match:
-        severity: critical
-      receiver: 'critical'
-      repeat_interval: 1h
+  receiver: 'telegram-critical'
 
 receivers:
-  # Default receiver — no webhook configured.
-  # Set ALERTMANAGER_WEBHOOK_URL env var and uncomment below to enable:
-  # webhook_configs:
-  #   - url: 'http://localhost:9999/webhook-placeholder'
-  #     send_resolved: true
+  # Default receiver — Telegram webhook bridge.
+  # Uses alert-webhook service that forwards to Telegram.
   - name: 'default'
+    webhook_configs:
+      - url: 'http://alert-webhook:8080/telegram'
+        send_resolved: true
 
-  # Critical alerts receiver — same placeholder as default.
-  # Configure via environment or alertmanager.yml.tpl:
-  # webhook_configs:
-  #   - url: 'http://localhost:9999/webhook-placeholder'
-  #     send_resolved: true
+  # Critical alerts receiver — Telegram with same webhook.
   - name: 'critical'
+    webhook_configs:
+      - url: 'http://alert-webhook:8080/telegram'
+        send_resolved: true
 
-  # ===========================================================================
-  # PagerDuty integration pattern (commented out — activate when PD is set up)
-  # ===========================================================================
-  # 1. Create a PagerDuty service with Events API v2 integration.
-  # 2. Copy the Integration Key (32-char hex string).
-  # 3. Set PAGERDUTY_ROUTING_KEY in environment or .env.
-  # 4. Uncomment the receiver below and add it to a route.
-  #
-  # - name: 'pagerduty-critical'
-  #   pagerduty_configs:
-  #     - routing_key: '${PAGERDUTY_ROUTING_KEY}'
-  #       severity: 'critical'          # maps alert severity → PagerDuty severity
-  #       description: '{{ .GroupLabels.alertname }}'
-  #       client: 'Algo-Trader'
-  #       client_url: 'https://algo-trader.example.com'
-  #       send_resolved: true           # auto-resolve PD incidents
-  #
-  # Route example (add under route.routes):
-  #   - match:
-  #       severity: critical
-  #     receiver: 'pagerduty-critical'
-  #     repeat_interval: 1h
+  # Telegram-critical receiver (explicit name for route targeting)
+  - name: 'telegram-critical'
+    webhook_configs:
+      - url: 'http://alert-webhook:8080/telegram'
+        send_resolved: true

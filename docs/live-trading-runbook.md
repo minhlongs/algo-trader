@@ -379,6 +379,111 @@ CLI (cashclaw-cli.ts)
 
 ---
 
+## 12. Alert Debugging / Gỡ lỗi cảnh báo
+
+> Huong dan kiem tra va debug Alertmanager / Telegram alerts.
+> Guide for checking and debugging Alertmanager / Telegram alerts.
+
+### Kiem tra alert dang fire / Check firing alerts
+
+```bash
+# List all alerts
+curl -s http://localhost:9093/api/v2/alerts | jq '.'
+
+# List only firing alerts (status=active)
+curl -s http://localhost:9093/api/v2/alerts | jq '[.[] | select(.status.state == "active")]'
+
+# Check alert silences
+curl -s http://localhost:9093/api/v2/silences | jq '.'
+```
+
+### Test Telegram notification / Kich hoat test alert
+
+Cach nhanh nhat de test Telegram alert la trigger circuit breaker:
+
+```bash
+# 1. Simulate 3 consecutive losses (circuit breaker threshold)
+#    In source code: circuit_breaker:loss_streak increment
+#    Or use Redis directly:
+redis-cli SET circuit_breaker:loss_streak 3
+redis-cli SET circuit_breaker:state 1
+
+# 2. Force Prometheus metric (if using custom metrics endpoint):
+curl -X POST http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]={__name__="circuit_breaker_state"}
+
+# 3. Hoac directly test Alertmanager webhook:
+curl -X POST http://localhost:9093/api/v1/alerts \
+  -H "Content-Type: application/json" \
+  -d '[{
+    "labels": {"alertname": "CircuitBreakerOpen", "severity": "critical"},
+    "annotations": {"summary": "Test alert — circuit breaker is OPEN", "description": "This is a test from live-trading-runbook Section 12"},
+    "generatorURL": "http://localhost:9090/graph"
+  }]'
+```
+
+### Environment variables / Bien moi truong can thiet
+
+| Variable | Required for | Ghi chu |
+|----------|-------------|---------|
+| `TELEGRAM_BOT_TOKEN` | Alertmanager Telegram receiver | Bot token from @BotFather |
+| `ALERT_CHAT_ID` | Alertmanager Telegram receiver | Chat ID (numeric, negative for group) |
+| `TELEGRAM_CHAT_ID` | Grafana contact points | Grafana-specific (may differ from ALERT_CHAT_ID) |
+
+### Troubleshooting / Xu ly su co
+
+**Telegram khong nhan duoc message:**
+
+1. Kiem tra bot token:
+   ```bash
+   # Test bot token truc tiep
+   curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe"
+   # Expected: {"ok":true,"result":{"id":...,"is_bot":true,"first_name":"..."}}
+   ```
+
+2. Kiem tra chat ID:
+   ```bash
+   # Get updates to find your chat ID
+   curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates"
+   # Look for "chat":{"id":...} in the response
+   ```
+
+3. Kiem tra Alertmanager logs:
+   ```bash
+   docker logs alertmanager --tail 50
+   # Look for: "telegram" notification errors or "webhook" call failures
+   ```
+
+4. Kiem tra Grafana contact point (alternative path):
+   - Grafana UI → Alerting → Contact points
+   - Verify qwen-telegram-admin has correct bot token and chat ID
+   - Click "Test" to send a test notification
+
+5. Verificar webhook bridge (if using alert-webhook service):
+   ```bash
+   # Check webhook service is running
+   curl -s http://alert-webhook:8080/health
+   # Check webhook logs
+   docker logs alert-webhook --tail 50
+   ```
+
+6. Network connectivity:
+   ```bash
+   # Can Alertmanager reach the webhook service?
+   curl -s http://alert-webhook:8080/telegram -X POST \
+     -H "Content-Type: application/json" \
+     -d '{"text":"test"}'
+   ```
+
+### Alert rules reference
+
+| Rule | Severity | Description | Location |
+|------|----------|-------------|----------|
+| CircuitBreakerOpen | critical | Trading halted by circuit breaker | `config/prometheus-alerts.yml` |
+| DailyLossThresholdExceeded | critical | Daily P&L below threshold | `config/prometheus-alerts.yml` |
+| ProviderDown | critical | Market data provider unavailable | `config/prometheus-alerts.yml` |
+
+---
+
 ## 11. Lien he / Support
 
 - **Ma nguon:** `src/desk/polymarket/`, `src/desk/cli/`, `src/desk/risk/`, `src/desk/execution/`
