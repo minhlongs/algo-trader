@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 import { referralService } from '../../referral/referral-service';
+import { createReferralCode } from '../../referral/referral-crud';
 import { logger } from '../../../shared/utils/logger';
 import {
   trackClickSchema,
@@ -118,8 +119,8 @@ referralRouter.post('/generate-code', requireTier('FREE'), async (req: Request, 
   }
 
   try {
-    const code = await referralService.registerReferralCode(targetTenantId);
-    return res.status(201).json({ data: code });
+    const code = await createReferralCode(targetTenantId);
+    return res.status(201).json({ code: code.code, createdAt: code.createdAt });
   } catch (error) {
     logger.error('[ReferralRoutes] Failed to generate code:', error);
     const message = error instanceof Error ? error.message : 'Failed to generate referral code';

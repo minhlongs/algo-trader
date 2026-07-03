@@ -19,7 +19,7 @@ export interface AuthState {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, tier: 'free' | 'pro' | 'enterprise') => Promise<void>;
+  signup: (email: string, password: string, tier: 'free' | 'pro' | 'enterprise', referralCode?: string) => Promise<void>;
   fetchMe: () => Promise<void>;
   logout: () => void;
 }
@@ -63,7 +63,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      signup: async (email: string, password: string, tier: 'free' | 'pro' | 'enterprise') => {
+      signup: async (email: string, password: string, tier: 'free' | 'pro' | 'enterprise', referralCode?: string) => {
         set({ loading: true, error: null });
         try {
           const { data, error } = await authClient.signUp.email({
@@ -84,6 +84,18 @@ export const useAuthStore = create<AuthState>()(
               tier,
               loading: false,
             });
+            // Track referral click after successful signup
+            if (referralCode) {
+              fetch('/api/v1/referral/track-click?code=' + encodeURIComponent(referralCode), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ip: '',
+                  userAgent: navigator.userAgent,
+                  metadata: { source: 'auth-store-signup' },
+                }),
+              }).catch(() => {});
+            }
           }
         } catch {
           set({ loading: false, error: 'Cannot connect to server. Please try again.' });

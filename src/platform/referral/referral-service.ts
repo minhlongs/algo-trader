@@ -37,7 +37,7 @@ export class ReferralService {
       throw new Error('Invalid referral code format. Must be 8 alphanumeric characters.');
     }
 
-    await referralRepository.createReferralCode(code, tenantId, true, maxUses);
+    await referralRepository.insertReferralCodeRow(code, tenantId, true, maxUses);
     const createdCode = await referralRepository.getReferralCodeByTenant(tenantId);
     if (!createdCode) {
       throw new Error('Failed to create referral code');

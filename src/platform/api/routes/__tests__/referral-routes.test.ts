@@ -25,6 +25,14 @@ const mocks = vi.hoisted(() => ({
     getCommissions: vi.fn().mockResolvedValue(undefined),
     getClicks: vi.fn().mockResolvedValue([]),
   },
+  mockCreateReferralCode: vi.fn().mockResolvedValue({
+    code: 'TEN-ABC12',
+    tenantId: 'tenant_001',
+    createdAt: new Date('2026-07-03T12:00:00Z'),
+    isActive: true,
+    usedCount: 0,
+    maxUses: null,
+  } as any),
 }));
 
 vi.mock('../../../referral/referral-service', () => ({
@@ -33,6 +41,10 @@ vi.mock('../../../referral/referral-service', () => ({
 
 vi.mock('../../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+}));
+
+vi.mock('../../../referral/referral-crud', () => ({
+  createReferralCode: mocks.mockCreateReferralCode,
 }));
 
 import { referralRouter } from '../referral-routes';
@@ -60,14 +72,15 @@ describe('Referral Routes', () => {
   });
 
   describe('POST /generate-code', () => {
-    it('returns 201 with referral code', async () => {
+    it('returns 201 with referral code and createdAt', async () => {
       const app = buildApp({ sub: 'tenant_001' });
       const res = await request(app)
         .post('/api/v1/referral/generate-code')
         .send({});
 
       expect(res.status).toBe(201);
-      expect(res.body.data.code).toBe('REFCODE1');
+      expect(res.body.code).toBe('TEN-ABC12');
+      expect(res.body.createdAt).toBeDefined();
     });
 
     it('returns 401 without claims', async () => {
