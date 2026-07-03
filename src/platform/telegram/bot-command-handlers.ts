@@ -22,6 +22,7 @@ export async function handleStart(ctx: Context): Promise<void> {
 I'll send you instant alerts when your API usage reaches critical thresholds.
 
 *Available Commands:*
+/ask - Ask AI Co-pilot a trading question
 /help - Show this help message
 /status - Check your current usage
 /campaign - Browse marketplace strategies
@@ -45,6 +46,7 @@ export async function handleHelp(ctx: Context): Promise<void> {
 
 *Commands:*
 /start - Welcome message
+/ask - Ask AI Co-pilot a question
 /help - Show this help
 /status - Current usage stats
 /campaign - Browse marketplace strategies
