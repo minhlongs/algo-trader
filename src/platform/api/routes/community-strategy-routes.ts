@@ -7,6 +7,17 @@
  * - GET    /api/community/strategies          — list approved strategies (FREE)
  * - GET    /api/community/strategies/:id      — get strategy detail + backtest (FREE)
  * - POST   /api/community/strategies/:id/backtest — run backtest on uploaded strategy (PRO)
+ *
+ * KNOWN GAP: No isolated live execution sandbox for community strategies.
+ * Currently sandbox_status is a passive DB column (pending/passed/failed) updated
+ * only by the backtest endpoint. There is no containerized or VM-isolated runtime
+ * that executes uploaded community strategy code in a live market feed environment
+ * with resource limits, DLP attestation, or kill-switch enforcement. The RaaS
+ * subscriber-executor (src/platform/raas/subscriber-executor.ts) provides tenant-
+ * isolated execution for official marketplace strategies, but community-uploaded
+ * strategies bypass this entirely — they are only backtested, never live-executed
+ * in isolation. This is a security and reliability gap for community-contributed
+ * strategies intended for live trading.
  */
 import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';

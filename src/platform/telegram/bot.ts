@@ -46,6 +46,11 @@ export class TelegramBotService {
   private config: TelegramConfig;
   private bot: Bot<Context> | null = null;
   private initialized: boolean = false;
+  // TODO: Migrate userSessions from in-memory Map to PostgreSQL (src/shared/db/) for persistence
+  // across restarts. The Map is ephemeral — sessions are lost on process restart.
+  // Migration approach: load sessions from DB on init(), flush updates on each mutation
+  // (linkLicenseKey, unlinkLicenseKey, toggle notifications), or use a write-through
+  // cache pattern. Keep the Map as a read cache to avoid DB round-trips on every message.
   private userSessions: Map<number, UserSession> = new Map();
   private rateLimitDelay: number = 1000; // 1 second between messages
   private redisKeyPrefix: string = 'algo:rate_limit:telegram:';

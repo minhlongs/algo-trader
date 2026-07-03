@@ -44,6 +44,11 @@ services:
         condition: service_healthy
     networks:
       - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
 
   # Redis — cache, pub/sub fallback, nonce manager, semantic cache, embeddings
   # Persistence: AOF + RDB via config/redis.conf
@@ -74,6 +79,11 @@ services:
       start_period: 5s
     networks:
       - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
 
   # NATS — primary event-driven message bus + JetStream
   nats:
@@ -93,6 +103,11 @@ services:
       retries: 3
     networks:
       - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
 
   # PostgreSQL — primary database (marketplace, auth, billing, trades)
   postgres:
@@ -115,6 +130,11 @@ services:
       retries: 3
     networks:
       - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
 
   prometheus:
     image: prom/prometheus:v2.51.0
@@ -132,6 +152,11 @@ services:
       - '--storage.tsdb.retention.time=15d'
     networks:
       - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
 
   grafana:
     image: grafana/grafana:10.4.0
@@ -150,6 +175,11 @@ services:
       - prometheus
     networks:
       - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
@@ -167,6 +197,11 @@ services:
       - prometheus
     networks:
       - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
 
 networks:
   algo-net:

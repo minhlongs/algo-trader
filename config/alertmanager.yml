@@ -36,3 +36,26 @@ receivers:
   #   - url: 'http://localhost:9999/webhook-placeholder'
   #     send_resolved: true
   - name: 'critical'
+
+  # ===========================================================================
+  # PagerDuty integration pattern (commented out — activate when PD is set up)
+  # ===========================================================================
+  # 1. Create a PagerDuty service with Events API v2 integration.
+  # 2. Copy the Integration Key (32-char hex string).
+  # 3. Set PAGERDUTY_ROUTING_KEY in environment or .env.
+  # 4. Uncomment the receiver below and add it to a route.
+  #
+  # - name: 'pagerduty-critical'
+  #   pagerduty_configs:
+  #     - routing_key: '${PAGERDUTY_ROUTING_KEY}'
+  #       severity: 'critical'          # maps alert severity → PagerDuty severity
+  #       description: '{{ .GroupLabels.alertname }}'
+  #       client: 'Algo-Trader'
+  #       client_url: 'https://algo-trader.example.com'
+  #       send_resolved: true           # auto-resolve PD incidents
+  #
+  # Route example (add under route.routes):
+  #   - match:
+  #       severity: critical
+  #     receiver: 'pagerduty-critical'
+  #     repeat_interval: 1h

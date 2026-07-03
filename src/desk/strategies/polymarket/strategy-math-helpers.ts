@@ -6,6 +6,12 @@
  * OBI (order book imbalance), percentile rank, price range position.
  */
 
+/** Arithmetic mean of an array. Returns 0 for empty array. */
+export function calcMean(values: number[]): number {
+  if (values.length === 0) return 0;
+  return values.reduce((s, v) => s + v, 0) / values.length;
+}
+
 /** Simple moving average. Returns 0 for empty array. */
 export function calcSMA(prices: number[]): number {
   if (prices.length === 0) return 0;
