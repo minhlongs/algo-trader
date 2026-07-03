@@ -30,11 +30,16 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
 # ── Modes ──────────────────────────────────────────────────────────────────────
 MODE="--dry-run"
-RELOAD_SERVICES="nginx"  # default; change to "caddy" if using Caddy, or "none"
+# Note: This project uses Caddy as reverse proxy (auto-HTTPS via Let's Encrypt).
+# If Caddy is active, certbot is redundant for automated renewal — Caddy handles
+# cert issuance and renewal automatically. This script is retained for manual
+# renewal scenarios or non-Caddy setups. Change to "caddy" to reload Caddy after
+# a manual certbot run, or "none" to skip service reload entirely.
+RELOAD_SERVICES="caddy"  # default; change to "nginx" if using nginx, or "none"
 
 if [ "${1:-}" = "--live" ]; then
   MODE=""
-  RELOAD_SERVICES="${RELOAD_SERVICES:-nginx}"
+  RELOAD_SERVICES="${RELOAD_SERVICES:-caddy}"
   echo "[LIVE MODE] Renewing certificates and reloading services..."
 else
   echo "[DRY-RUN MODE] Use --live to actually renew"

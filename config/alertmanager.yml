@@ -23,12 +23,16 @@ route:
       repeat_interval: 1h
 
 receivers:
+  # Default receiver — no webhook configured.
+  # Set ALERTMANAGER_WEBHOOK_URL env var and uncomment below to enable:
+  # webhook_configs:
+  #   - url: 'http://localhost:9999/webhook-placeholder'
+  #     send_resolved: true
   - name: 'default'
-    webhook_configs:
-      - url: 'http://localhost:9999/webhook-placeholder'
-        send_resolved: true
 
+  # Critical alerts receiver — same placeholder as default.
+  # Configure via environment or alertmanager.yml.tpl:
+  # webhook_configs:
+  #   - url: 'http://localhost:9999/webhook-placeholder'
+  #     send_resolved: true
   - name: 'critical'
-    webhook_configs:
-      - url: 'http://localhost:9999/webhook-placeholder'
-        send_resolved: true

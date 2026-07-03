@@ -17,8 +17,27 @@ import { logger } from '../src/shared/utils/logger';
 
 // Import all migrations (same list as migration-runner.ts)
 import * as migration001 from '../src/shared/db/migrations/001-create-trades-table';
+import * as migration004 from '../src/shared/db/migrations/004-better-auth-tables';
+import * as migration010 from '../src/shared/db/migrations/010-citadel-attestations';
+import * as migration011 from '../src/shared/db/migrations/011-sandbox-invocations';
+import * as migration012 from '../src/shared/db/migrations/012-ironclaw-audit';
+import * as migration014 from '../src/shared/db/migrations/014-signal-feed';
+import * as migration015 from '../src/shared/db/migrations/015-subscriber-attribution';
+import * as migration016 from '../src/shared/db/migrations/016-qwen-paper-tracking';
+import * as migration017 from '../src/shared/db/migrations/017-strategy-review-tasks';
+import * as migration018 from '../src/shared/db/migrations/018-qwen-signals-loop-runs';
+import * as migration019 from '../src/shared/db/migrations/019_add_trades_composite_index';
+import * as migration020 from '../src/shared/db/migrations/020_db_performance_optimizations';
+import * as migration021 from '../src/shared/db/migrations/021-tenant-audit';
+import * as migration022 from '../src/shared/db/migrations/022-dna-journal';
+import * as migration023 from '../src/shared/db/migrations/023-dna-engine-state';
+import * as migration024 from '../src/shared/db/migrations/024-create-referral-tables';
 import * as migration025 from '../src/shared/db/migrations/025-marketplace-schema';
 import * as migration026 from '../src/shared/db/migrations/026-create-ai-audit-tables';
+import * as migration027 from '../src/shared/db/migrations/027-usage-metering-schema';
+import * as migration028 from '../src/shared/db/migrations/028-tenant-audit-logs';
+import * as migration029 from '../src/shared/db/migrations/029-tenant-credentials';
+import * as migration030 from '../src/shared/db/migrations/030_create_marketplace_tables';
 import * as migration031 from '../src/shared/db/migrations/031-add-marketplace-subscription-payment';
 import * as migration032 from '../src/shared/db/migrations/032-add-marketplace-payout-address';
 import * as migration033 from '../src/shared/db/migrations/033-add-marketplace-performance-indexes';
@@ -42,8 +61,27 @@ interface Migration {
 // Canonical ordered migration list (must match migration-runner.ts)
 const MIGRATIONS: Migration[] = [
   migration001,
+  migration004,
+  migration010,
+  migration011,
+  migration012,
+  migration014,
+  migration015,
+  migration016,
+  migration017,
+  migration018,
+  migration019,
+  migration020,
+  migration021,
+  migration022,
+  migration023,
+  migration024,
   migration025,
   migration026,
+  migration027,
+  migration028,
+  migration029,
+  migration030,
   migration031,
   migration032,
   migration033,

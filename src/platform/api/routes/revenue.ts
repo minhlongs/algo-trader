@@ -15,6 +15,7 @@ import { UsageMeteringService } from '../../billing/usage-metering';
 import { revenueShareRepository } from '../../marketplace/repositories/revenue-share-repository';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
+import { getDbClient } from '../../../shared/db/postgres-client';
 
 export const revenueRouter: Router = Router();
 const usageMetering = UsageMeteringService.getInstance();
@@ -200,8 +201,9 @@ async function calculateMRR(): Promise<MRRResponse> {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-  const [currentResult, previousResult] = await Promise.all([
+  const [currentResult, previousResult, overageResult] = await Promise.all([
     revenueShareRepository.findAll(
       { periodStart: monthStart, periodEnd: now },
       { page: 1, limit: 1000 },
@@ -210,10 +212,18 @@ async function calculateMRR(): Promise<MRRResponse> {
       { periodStart: prevMonthStart, periodEnd: monthStart },
       { page: 1, limit: 1000 },
     ),
+    getDbClient().query<{ total: number | null }>(
+      `SELECT COALESCE(SUM(total_amount), 0) AS total
+       FROM overage_invoices
+       WHERE status IN ('paid', 'pending')
+         AND period_end >= $1
+         AND period_start <= $2`,
+      [monthStart.toISOString().slice(0, 10), monthEnd.toISOString().slice(0, 10)],
+    ),
   ]);
 
   const subscriptionMRR = currentResult.data.reduce((sum, r) => sum + r.grossRevenueCents, 0) / 100;
-  const overageMRR = 0; // overage tracked separately in overage_invoices
+  const overageMRR = parseFloat(String(overageResult.rows[0]?.total || 0));
 
   const previousMRR = previousResult.data.reduce((sum, r) => sum + r.grossRevenueCents, 0) / 100;
   const currentMRR = subscriptionMRR + overageMRR;
