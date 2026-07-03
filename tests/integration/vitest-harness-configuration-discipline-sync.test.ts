@@ -97,8 +97,11 @@ const REQUIRED_ROOT_EXCLUDE_SUBSTRINGS = [
 ];
 
 /**
- * Strip TypeScript line comments and C-style block comments.
- * Line-first to avoid eating inline slashes inside block comments or strings.
+ * Strip TypeScript line comments only.
+ * Quote-aware to avoid eating slashes inside strings.
+ * Does NOT strip block comments -- the naive regex incorrectly
+ * matches glob patterns like "/**" inside string literals.
+ * Neither vitest config uses block comments, safe to skip.
  */
 function stripTsComments(src: string): string {
   return src
@@ -115,8 +118,7 @@ function stripTsComments(src: string): string {
       }
       return before;
     })
-    .join('\n')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+    .join('\n');
 }
 
 describe('vitest test-harness configuration discipline — 38th edge (OCTATRIACONTAGON)', () => {
