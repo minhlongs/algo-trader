@@ -309,6 +309,41 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 - Status: **COMPLETE** ✅ (all 18/18 items shipped)
 
+### Next Wave IV: AI Co-pilot + GTM Launch (Complete 2026-07-04)
+
+**Phase 1: Co-pilot API (7/7)**
+- [x] Intent classifier — classifies user queries into 6 intents (performance, risk, regime, arbitrage, report, fallback)
+- [x] Performance handler — portfolio P&L, Sharpe, win rate, drawdown stats
+- [x] Risk handler — current drawdown, circuit status, positions, exposure, VaR
+- [x] Regime handler — market regime detection (trending/ranging/volatile/calm) with regime history
+- [x] Arbitrage handler — cross-exchange, triangular opportunities with profit estimates
+- [x] Report handler — generates structured text reports with optional period filtering
+- [x] Fallback handler — LLM-powered response for unrecognized queries
+
+**Phase 2: Email Campaign Co-pilot (2/2)**
+- [x] AI co-pilot email templates for launch campaign (features, benefits, use cases)
+- [x] STARTER tier email templates for tier promotion
+- [x] `scripts/send-email-campaign.ts` — programmatic email campaign sender
+- [x] `scripts/validate-email-campaign.sh` — email validation and delivery checker
+
+**Phase 3: Dashboard UI (4/4)**
+- [x] Co-pilot FAB button — floating action button in dashboard bottom-right
+- [x] Co-pilot chat panel — expandable chat overlay with message history
+- [x] Co-pilot message component — renders Markdown + action buttons
+- [x] Co-pilot input component — send/stop controls
+- [x] Co-pilot actions — one-click action buttons from AI responses
+- [x] Zustand store — request state management, history, abort support
+- [x] 377-line test suite covering FAB, chat, input, actions, error states
+
+**Phase 4: Telegram /ask + Launch Docs (3/3)**
+- [x] `/ask` command — natural-language queries to the co-pilot
+- [x] Intent-based routing to all 6 co-pilot handlers
+- [x] Rate-limit protection (10 req/min FREE/PRO, 30 req/min ENTERPRISE/MASTER)
+- [x] 223-line test suite covering all intents, errors, rate limits
+- [x] Launch docs: blog post, Twitter thread, Discord announcement, Reddit post
+
+- Status: **COMPLETE** ✅ (all 14/14 items shipped, 2,916 tests passing)
+
 ---
 
 ## Critical Success Metrics
@@ -360,6 +395,8 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ## Recent Updates
 
+**2026-07-04**: Next Wave IV (AI Co-pilot + GTM Launch) complete — 14 items across 4 phases. AI co-pilot API with 6 intent handlers, dashboard FAB+chat UI, Telegram /ask command, email campaign scripts, launch marketing docs. 2,916 tests passing.
+
 **2026-07-03**: Next Wave complete — 18 items across 4 tracks (Revenue Growth, Trading Edge, Infra Hardening, Platform Depth). Revenue flow fixed (signup payment, enterprise inquiry gate, IPN verification, PRO-tier analytics, dunning emails). 23 strategy wiring factories restored. PAPER_MODE env var with live-mode validation. Redis persistence + Caddy SSL + k6 CI baseline + Alertmanager. API key management, marketplace badges, subscription enhancements, pricing page. MASTER tier ($999/mo) added. 2,806 tests passing.
 
 **2026-07-02**: All 8 code review findings resolved. Missing backtest routes wired in marketplace-strategy-insights-routes.ts. Bug fixes: type escapes, Sharpe factor, Gamma error propagation, price bug, cancelOrder wiring, payout send-verify guard. METRICS_TOKEN added to .env.example. Barrel export added. .bak deleted. 2,806 tests passing across 243 files.
@@ -380,7 +417,14 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ## Current Focus (July 2026)
 
-1. **Next Wave: Revenue + Trading + Infra + Platform (Complete 2026-07-03):**
+1. **Next Wave IV: AI Co-pilot + GTM Launch (Complete 2026-07-04):**
+   - AI co-pilot: intent classification, 6 handler modules (performance, risk, regime, arbitrage, report, fallback)
+   - Dashboard: FAB button, chat panel with history, action buttons, Zustand state store
+   - Telegram: /ask command with intent routing and rate-limit protection
+   - Email campaigns: AI-generated co-pilot and STARTER tier templates, sender and validation scripts
+   - Launch docs: blog post, Twitter thread, Discord announcement, Reddit post
+   - 14/14 items shipped, 2,916 tests pass
+2. **Next Wave: Revenue + Trading + Infra + Platform (Complete 2026-07-03):**
    - Revenue Growth: signup payment gate, enterprise inquiry fix, IPN verification, PRO-tier analytics, dunning emails, MASTER tier ($999/mo), subscription analytics, trial drip, public pricing page
    - Trading Edge: 23 strategy stub factories restored, 3 pipeline imports fixed, PAPER_MODE env var with live-mode credential validation
    - Infra Hardening: Redis persistence (AOF+RDB+password), Caddy SSL auto-HTTPS, k6 CI baseline, Alertmanager webhook, pinned Docker versions, Prometheus 15d retention
@@ -403,5 +447,5 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ---
 
-_Last Updated: 2026-07-03_
+_Last Updated: 2026-07-04_
 _Generated by: Documentation Manager Agent (Phase 32b Autonomy)_

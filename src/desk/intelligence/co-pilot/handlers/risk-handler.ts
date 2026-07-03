@@ -33,12 +33,12 @@ export async function handleRiskQuery(
     positionManager?: PositionManager;
   },
 ): Promise<CopilotResponse> {
-  const kellySizer = deps?.kellySizer ?? new KellyPositionSizer();
+  const _kellySizer = deps?.kellySizer ?? new KellyPositionSizer();
   const drawdownMonitor = deps?.drawdownMonitor ?? new DrawdownMonitor();
   const circuitBreaker = deps?.circuitBreaker ?? new CircuitBreaker();
   const positionManager = deps?.positionManager ?? new PositionManager();
 
-  const [metrics, circuitStatus, positions, exposure] = await Promise.all([
+  const [metrics, circuitStatus, positions, _exposure] = await Promise.all([
     drawdownMonitor.getMetrics(),
     circuitBreaker.getStatus(),
     positionManager.getAllPositions(),

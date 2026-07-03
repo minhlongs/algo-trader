@@ -1,6 +1,50 @@
 # Project Changelog - Algo Trader
 
-## [3.5.0] - 2026-07-03
+## ## [3.6.0] - 2026-07-04
+
+### Added — AI Co-pilot Next Wave IV
+
+**Phase 1: Co-pilot API (7 items)**
+- Intent classifier: classifies user queries into 6 intents (performance, risk, regime, arbitrage, report, fallback) via keyword + LLM hybrid
+- Performance handler: portfolio P&L, Sharpe ratio, win rate, max drawdown with period filtering
+- Risk handler: current drawdown, circuit breaker status, open positions, exposure summary, VaR estimates
+- Regime handler: market regime detection (trending/ranging/volatile/calm) with regime history and regime-aware recommendations
+- Arbitrage handler: cross-exchange and triangular arbitrage opportunities with profit estimates and confidence scores
+- Report handler: structured text report generation with optional period filtering, covers all metrics
+- Fallback handler: LLM-powered contextual response for unrecognized or out-of-scope queries
+- Co-pilot Express router: `POST /api/v1/co-pilot/ask` with intent extraction, handler dispatch, tier-gated rate limiting (10 req/min FREE/PRO, 30 req/min ENTERPRISE/MASTER)
+- 465-line test suite covering all intents, tier gating, rate limiting, error states
+
+**Phase 2: Email Campaign Co-pilot (4 items)**
+- AI co-pilot launch email templates (features, benefits, use case education)
+- STARTER tier promotion email templates (upgrade path, value props)
+- `scripts/send-email-campaign.ts` — programmatic email campaign sender with template rendering
+- `scripts/validate-email-campaign.sh` — email address validation, SMTP delivery check
+
+**Phase 3: Dashboard UI (7 items)**
+- Co-pilot FAB button: floating action button positioned bottom-right with hover/focus states, pulse animation
+- Co-pilot chat panel: expandable slide-up overlay with message history, auto-scroll, loading states, error recovery
+- Co-pilot message component: renders Markdown content with syntax highlighting and action buttons
+- Co-pilot input component: text input with placeholder, keyboard submit, disabled state during loading
+- Co-pilot actions: one-click action buttons rendered dynamically from AI response suggestions
+- Zustand store: request state management (idle/loading/error/success), message history, abort controller support
+- 377-line test suite covering FAB render, chat open/close, message flow, input states, actions
+
+**Phase 4: Telegram /ask + Launch Docs (5 items)**
+- `/ask` command: natural-language queries routed through the co-pilot intent engine
+- Intent-based dispatch: maps /ask queries to the same 6 handler modules via REST API
+- Rate-limit enforcement: 10 req/min FREE/PRO, 30 req/min ENTERPRISE/MASTER with user-level tracking
+- 223-line test suite covering all intents, auth errors, rate limit enforcement, API failures
+- Launch marketing docs: blog post, Twitter/X thread, Discord announcement, Reddit post
+
+### Changed
+- Test count: 2,806 -> 2,916 across 249 test files (+110 tests, +6 test files)
+- Lint warnings: 16 -> 10 (6 new warnings fixed, 10 pre-existing remain)
+- TypeScript: 0 new errors in src/ (single pre-existing `node_modules/ox` dependency error)
+- Dashboard package: added Zustand dependency, co-pilot UI components, 377-line test file
+- Telegram bot: added /ask command handler, intent-based co-pilot routing, rate-limit middleware
+
+[3.5.0] - 2026-07-03
 
 ### Added - Final Merge (Phase A + D)
 - Signup page at src/platform/landing/public/signup.html -- NOWPayments checkout redirect with tier selection

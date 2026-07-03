@@ -352,7 +352,7 @@ ${s.description}
 *Tags:* ${s.tags.join(', ') || 'None'}
       `.trim();
       await ctx.reply(msg, { parse_mode: 'Markdown' });
-    } catch (error) {
+    } catch {
       await ctx.reply('❌ Could not fetch strategy details. Please try again.');
     }
     return;
@@ -380,7 +380,7 @@ ${lines.join('\n\n')}
 Use /campaign <id> for details.
     `.trim();
     await ctx.reply(msg, { parse_mode: 'Markdown' });
-  } catch (error) {
+  } catch {
     await ctx.reply('❌ Could not fetch marketplace campaigns. Please try again later.');
   }
 }

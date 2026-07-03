@@ -17,7 +17,6 @@ import { handleReportQuery } from '../../../desk/intelligence/co-pilot/handlers/
 import { handleFallback } from '../../../desk/intelligence/co-pilot/handlers/fallback-handler';
 import type { CopilotResponse } from '../../../desk/intelligence/co-pilot/response-formatter';
 import type { Intent } from '../../../desk/intelligence/co-pilot/intent-classifier';
-import type { LicenseTier } from '../../../shared/types/license';
 
 // Per-user in-memory request tracking for co-pilot rate limiting
 export const userRequestCounts = new Map<string, { count: number; resetAt: number }>();

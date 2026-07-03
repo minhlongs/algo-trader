@@ -83,7 +83,6 @@ export async function handleAsk(ctx: Context, query: string): Promise<void> {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
       if (response.status === 429) {
         await ctx.reply(
           '⏳ You have exceeded the rate limit. Please wait a moment and try again.',
