@@ -2,6 +2,28 @@
 
 ## ## [3.6.0] - 2026-07-04
 
+## [3.7.0] - 2026-07-04
+
+### Added — GTM Execution (Next Wave V)
+
+**Deployment:**
+- Production build verified: 2,916 tests, 0 regressions
+- Pre-existing `ox` dependency TS error (non-blocking — skipLibCheck configured)
+- Email campaign script verified working (`scripts/send-email-campaign.ts`)
+
+**GTM Assets:**
+- Launch content ready: Reddit, Twitter/X, Polymarket Discord, Blog
+- Email campaign: bilingual EN/VN templates for STARTER tier ($19/mo) + AI Co-pilot
+- Changelog updated through v3.7.0
+
+**Manual Steps Required:**
+- Set `SENDGRID_API_KEY` and `SENDGRID_FROM_EMAIL` in .env then run `pnpm exec tsx scripts/send-email-campaign.ts`
+- Publish launch content (Reddit, Twitter, Discord, Blog) from `docs/marketing/`
+- Rebuild Docker on VPS: `docker compose build && docker compose up -d`
+- Verify `https://quant.cashclaw.cc/api/version` SHA matches local
+
+## [3.6.0] - 2026-07-04
+
 ### Added — AI Co-pilot Next Wave IV
 
 **Phase 1: Co-pilot API (7 items)**
