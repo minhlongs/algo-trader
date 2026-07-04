@@ -77,14 +77,7 @@ wrangler pages deploy dist/ --project-name cashclaw-dashboard
 | `REDIS_URL` | Redis connection string |
 | `NOWPAYMENTS_API_KEY` | NOWPayments API key for billing |
 | `NOWPAYMENTS_IPN_SECRET` | NOWPayments IPN secret for webhook verification |
-| `NOWPAYMENTS_IPN_URL` | Public callback URL for NOWPayments IPN (e.g. `https://api.cashclaw.cc/api/webhooks/nowpayments`) |
 | `USDT_TRC20_WALLET` | TRC20 wallet address for USDT receivals |
-
-### NOWPayments (Marketplace & Licensing)
-| Var | Description |
-|-----|-------------|
-| `NOWPAYMENTS_INVOICE_PRO` | Pre-created invoice ID for PRO tier (from NOWPayments dashboard) |
-| `NOWPAYMENTS_INVOICE_ENTERPRISE` | Pre-created invoice ID for ENTERPRISE tier (from NOWPayments dashboard) |
 
 ### Database & Redis
 | Var | Default | Description |
@@ -387,92 +380,13 @@ For complete notification setup and usage, see [notification-system.md](./notifi
 | SMS failing | Confirm `TWILIO_ACCOUNT_SID` and phone number format |
 | Telegram not responding | Check bot token, ensure bot is started (`/start`) |
 
-## Load Testing (k6)
-
-Algo-Trader includes k6-based load tests for API and WebSocket endpoints.
-
-### Test Scripts
-
-| Script | VUs | Duration | Use Case |
-|--------|-----|----------|----------|
-| `tests/load/raas-gateway-load-test.js` | 5000 (configurable) | 5m | Full-scale, pre-release benchmark |
-| `tests/load/raas-gateway-load-test.ci.js` | 100 (configurable) | 30s | CI pipeline regression gate |
-
-### Running Load Tests
-
-```bash
-# Default (5000 VUs, 5 min — run against staging/production)
-pnpm test:load
-
-# CI variant (100 VUs, 30s — quick regression check)
-pnpm test:load:ci
-
-# Custom parameters
-VUS=200 DURATION=1m pnpm test:load:ci
-
-# Against a different host
-API_HOST=staging.example.com API_PORT=443 pnpm test:load
-```
-
-### Thresholds
-
-| Metric | Full-Scale | CI Variant |
-|--------|-----------|------------|
-| p95 HTTP latency | <200ms | <500ms |
-| HTTP error rate | <1% | <5% |
-| WS connection success | >99% | >95% |
-
-Thresholds are defined in each test file and can be adjusted based on baseline results.
-
-### CI Integration
-
-The k6 CI variant runs automatically in the CI/CD pipeline after the test stage as a post-build smoke check. Results are reported in the CI output with p95 latency and error rate summaries.
-
-### Establishing a Baseline
-
-Before major releases, run a full-scale load test against a staging environment:
-
-```bash
-# Save baseline report
-k6 run tests/load/raas-gateway-load-test.js \
-  --summary-export=reports/load-test/baseline-$(date +%Y%m%d).json \
-  --summary-trend-stats="avg,p(95),p(99)" \
-  --out json=reports/load-test/baseline-$(date +%Y%m%d).json
-```
-
-Compare new baselines against previous ones to detect performance regressions.
-
 ## Production Checklist
 
 Before deploying to production:
 
 - [ ] All environment variables configured
 - [ ] Database migrations applied
-- [ ] SSL/TLS configured
-  - **Option A: Caddy reverse proxy (auto-HTTPS, recommended)**
-    ```bash
-    # Start with Caddy for automatic Let's Encrypt certs
-    docker compose -f docker-compose.yml -f docker/caddy/docker-compose.caddy.yml up -d
-    
-    # Caddy automatically:
-    #   - Obtains TLS certs on first request
-    #   - Renews 30 days before expiry
-    #   - Redirects HTTP -> HTTPS
-    # Requires DNS A-records: api.your-domain.com, monitoring.your-domain.com
-    ```
-  - **Option B: certbot renewal script**
-    ```bash
-    # Install certbot and obtain certs
-    sudo certbot certonly --standalone -d api.your-domain.com -d monitoring.your-domain.com
-    
-    # Schedule auto-renewal (crontab)
-    # 0 3 * * * /opt/algo-trader/scripts/renew-certs.sh --live
-    
-    # Test renewal
-    ./scripts/renew-certs.sh
-    ./scripts/renew-certs.sh --live  # dry-run first, then live
-    ```
-  - **Verify**: `curl -vI https://your-domain.com/api/health 2>&1 | grep "SSL connection"`
+- [ ] SSL certificates configured (reverse proxy)
 - [ ] Monitoring stack verified (Grafana dashboards loading)
 - [ ] Alert thresholds configured
 - [ ] Notification channels tested
@@ -480,15 +394,6 @@ Before deploying to production:
 - [ ] SSH keys rotated
 - [ ] Health checks passing
 - [ ] CI/CD pipeline green
-- [ ] Load test baseline established (see Load Testing section below)
-
-### Marketplace Setup
-
-- [ ] NOWPayments invoice IDs created in dashboard (`NOWPAYMENTS_INVOICE_PRO`, `NOWPAYMENTS_INVOICE_ENTERPRISE`)
-- [ ] `NOWPAYMENTS_IPN_URL` points to public webhook endpoint (e.g. `https://api.cashclaw.cc/api/webhooks/nowpayments`)
-- [ ] Marketplace strategies seeded on startup (auto-seeded, verify with `GET /api/v1/marketplace/strategies`)
-- [ ] Test subscribe → checkout → payment flow end-to-end
-- [ ] Verify IPN webhook activates subscription on payment `finished`
 
 ## References
 
@@ -499,4 +404,4 @@ Before deploying to production:
 
 ---
 
-Updated: 2026-07-03
+Updated: 2026-06-30

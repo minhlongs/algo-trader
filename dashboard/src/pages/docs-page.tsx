@@ -49,18 +49,18 @@ export function DocsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
+    <div className="min-h-screen bg-[#080B14] flex flex-col">
       <PublicNavbar />
 
       {/* Mobile TOC — horizontal scroll bar */}
-      <div className="md:hidden sticky top-14 z-40 bg-bg/95 backdrop-blur border-b border-bg-border px-4 py-2 overflow-x-auto">
+      <div className="md:hidden sticky top-14 z-40 bg-[#080B14]/95 backdrop-blur border-b border-[#1E2640] px-4 py-2 overflow-x-auto">
         <div className="flex gap-4 whitespace-nowrap">
           {TOC_ITEMS.map(({ id, label }) => (
             <button
               key={id}
               onClick={() => scrollTo(id)}
-              className={`text-xs py-1 transition-colors min-h-touch ${
-                activeId === id ? 'text-accent' : 'text-muted hover:text-white'
+              className={`text-xs py-1 transition-colors ${
+                activeId === id ? 'text-[#00C8E8]' : 'text-[#8892B0] hover:text-white'
               }`}
             >
               {label}
@@ -75,16 +75,16 @@ export function DocsPage() {
         {/* Desktop sidebar TOC */}
         <aside className="hidden md:block w-[200px] flex-shrink-0">
           <div className="sticky top-24">
-            <p className="text-xs text-muted uppercase tracking-widest mb-4">On this page</p>
+            <p className="text-xs text-[#8892B0] uppercase tracking-widest mb-4">On this page</p>
             <nav className="space-y-1">
               {TOC_ITEMS.map(({ id, label }) => (
                 <button
                   key={id}
                   onClick={() => scrollTo(id)}
-                  className={`block w-full text-left text-xs py-1.5 px-2 rounded transition-colors min-h-touch ${
+                  className={`block w-full text-left text-xs py-1.5 px-2 rounded transition-colors ${
                     activeId === id
-                      ? 'text-accent bg-accent/10'
-                      : 'text-muted hover:text-white'
+                      ? 'text-[#00C8E8] bg-[#00C8E8]/10'
+                      : 'text-[#8892B0] hover:text-white'
                   }`}
                 >
                   {label}
@@ -92,11 +92,11 @@ export function DocsPage() {
               ))}
             </nav>
 
-            <div className="mt-8 pt-6 border-t border-bg-border">
-              <p className="text-xs text-muted mb-2">Have an account?</p>
+            <div className="mt-8 pt-6 border-t border-[#1E2640]">
+              <p className="text-xs text-[#8892B0] mb-2">Have an account?</p>
               <Link
                 to="/app/guide"
-                className="text-xs text-accent hover:underline"
+                className="text-xs text-[#00C8E8] hover:underline"
               >
                 View in app →
               </Link>
@@ -107,11 +107,8 @@ export function DocsPage() {
         {/* Content */}
         <main className="flex-1 max-w-[800px]">
           <div className="mb-10">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-1 h-5 bg-accent rounded-full" />
-              <h1 className="text-2xl font-bold text-white">Operator Guide</h1>
-            </div>
-            <p className="text-sm text-muted">
+            <h1 className="text-2xl font-bold text-white mb-2">Operator Guide</h1>
+            <p className="text-sm text-[#8892B0]">
               CashClaw SOPs — everything you need to run the market-making bot profitably.
             </p>
           </div>

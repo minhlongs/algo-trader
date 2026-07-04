@@ -21,11 +21,11 @@ export function PrivacyPage() {
         </p>
         <p className="text-[#8892B0] text-sm leading-relaxed mb-8">
           Full privacy policy coming soon. For questions contact{' '}
-          <a href="mailto:support@cashclaw.cc" className="text-[#F59E0B] hover:underline">
+          <a href="mailto:support@cashclaw.cc" className="text-[#00C8E8] hover:underline">
             support@cashclaw.cc
           </a>.
         </p>
-        <Link to="/" className="text-[#F59E0B] text-sm hover:underline">← Back to home</Link>
+        <Link to="/" className="text-[#00C8E8] text-sm hover:underline">← Back to home</Link>
       </main>
       <Footer />
     </div>

@@ -19,7 +19,7 @@ export function SetupGuideContent() {
         </p>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
           <div className="bg-[#111627] rounded p-2">
-            <span className="text-[#F59E0B]">Phase A:</span> Accounts & Crypto (~30 min)
+            <span className="text-[#00C8E8]">Phase A:</span> Accounts & Crypto (~30 min)
           </div>
           <div className="bg-[#111627] rounded p-2">
             <span className="text-[#00E676]">Phase B:</span> Bot Installation (~15 min)
@@ -39,7 +39,7 @@ export function SetupGuideContent() {
 
       {/* Table of Contents */}
       <nav aria-label="Setup guide table of contents">
-        <p className="text-xs text-[#F59E0B] uppercase tracking-widest mb-3">Setup Steps</p>
+        <p className="text-xs text-[#00C8E8] uppercase tracking-widest mb-3">Setup Steps</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           {[
             { href: '#vpn-setup', label: 'A1. VPN Setup (1.1.1.1 / ProtonVPN)' },
@@ -61,7 +61,7 @@ export function SetupGuideContent() {
             <a
               key={item.href}
               href={item.href}
-              className="text-[#8892B0] hover:text-[#F59E0B] transition-colors"
+              className="text-[#8892B0] hover:text-[#00C8E8] transition-colors"
             >
               {item.label}
             </a>

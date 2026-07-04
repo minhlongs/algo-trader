@@ -107,10 +107,10 @@ function XIcon() {
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-bg-border">
+    <div className="border-b border-[#1E2640]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-accent transition-colors min-h-touch"
+        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-[#00C8E8] transition-colors"
       >
         <span>{q}</span>
         <svg
@@ -129,13 +129,13 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 
 export function PricingPage() {
   return (
-    <div className="min-h-screen bg-[#060912] text-white flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-3">Pricing</p>
+          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-3">Pricing</p>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, transparent plans</h1>
           <p className="text-[#8892B0] text-sm max-w-md mx-auto">
             Start free. Upgrade when you're ready. No hidden fees. Cancel anytime.
@@ -147,21 +147,21 @@ export function PricingPage() {
           {PLANS.map(({ name, price, sub, href, cta, highlight, features }) => (
             <div
               key={name}
-              className={`relative p-6 flex flex-col gap-5 bg-bg-surface/80 backdrop-blur-sm rounded-lg overflow-hidden hover:border-accent/30 transition-all duration-300 ${
+              className={`relative rounded-lg p-6 flex flex-col gap-5 ${
                 highlight
-                  ? 'border-2 border-accent'
-                  : 'border border-bg-border'
+                  ? 'border-2 border-[#00C8E8] bg-[#111627]'
+                  : 'border border-[#1E2640] bg-[#111627]'
               }`}
             >
               {highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] text-xs font-bold px-3 py-0.5 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00C8E8] text-[#080B14] text-xs font-bold px-3 py-0.5 rounded-full">
                   POPULAR
                 </span>
               )}
 
               <div>
-                <p className="text-[#8892B0] text-xs font-mono uppercase tracking-widest mb-2">{name}</p>
-                <p className="text-white text-4xl font-bold font-mono">
+                <p className="text-[#8892B0] text-xs uppercase tracking-widest mb-2">{name}</p>
+                <p className="text-white text-4xl font-bold">
                   {price}
                   <span className="text-[#8892B0] text-sm font-normal ml-1">{sub}</span>
                 </p>
@@ -184,10 +184,10 @@ export function PricingPage() {
 
               <Link
                 to={href}
-                className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-all duration-200 min-h-touch ${
+                className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
                   highlight
-                    ? 'bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] hover:brightness-110'
-                    : 'border border-bg-border text-[#8892B0] hover:text-white hover:border-accent/30'
+                    ? 'bg-[#00C8E8] text-[#080B14] hover:bg-[#00C8E8]/80'
+                    : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#00C8E8]/50'
                 }`}
               >
                 {cta}
@@ -199,7 +199,7 @@ export function PricingPage() {
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
           <h2 className="text-xl font-bold text-white mb-6 text-center">Frequently asked questions</h2>
-          <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden">
+          <div>
             {FAQS.map(({ q, a }) => (
               <FaqItem key={q} q={q} a={a} />
             ))}

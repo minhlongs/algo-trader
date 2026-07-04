@@ -6,15 +6,11 @@
 
 import 'dotenv/config';
 import { ApiServer } from './platform/api/server';
-import { EmailService } from './platform/notifications/email-service';
 import { logger } from './shared/utils/logger';
 
 let server: ApiServer | null = null;
 
 export async function startApp(): Promise<void> {
-  // Email service startup check: fails loudly in production if SENDGRID_API_KEY missing
-  EmailService.startupCheck();
-
   server = new ApiServer();
   await server.start();
 

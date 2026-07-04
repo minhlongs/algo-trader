@@ -17,7 +17,6 @@ import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
   type BaseStrategyConfig,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
   type OpenPosition,
   type StrategyDeps,
 } from './base-polymarket-strategy';

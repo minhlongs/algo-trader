@@ -168,7 +168,7 @@ export class RsiMeanReversionStrategy implements IStrategy {
   /**
    * Calculate buy confidence based on RSI depth and recovery strength
    */
-  private calculateBuyConfidence(current: number, recent: number[], _closes: number[]): number {
+  private calculateBuyConfidence(current: number, recent: number[], closes: number[]): number {
     const minRsi = Math.min(...recent);
     const depth = this.oversold - minRsi; // How deep into oversold
     const baseConfidence = 0.6 + Math.min(depth / 20, 0.3);
@@ -183,7 +183,7 @@ export class RsiMeanReversionStrategy implements IStrategy {
   /**
    * Calculate sell confidence based on RSI height and rollover strength
    */
-  private calculateSellConfidence(current: number, recent: number[], _closes: number[]): number {
+  private calculateSellConfidence(current: number, recent: number[], closes: number[]): number {
     const maxRsi = Math.max(...recent);
     const height = maxRsi - this.overbought; // How high into overbought
     const baseConfidence = 0.6 + Math.min(height / 20, 0.3);

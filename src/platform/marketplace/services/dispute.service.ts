@@ -107,7 +107,7 @@ export class DisputeService {
     });
   }
 
-  async escalateDispute(id: string, _adminId: string): Promise<IMarketplaceDispute | null> {
+  async escalateDispute(id: string, adminId: string): Promise<IMarketplaceDispute | null> {
     return this.disputeRepo.update(id, { status: 'escalated' as any });
   }
 }

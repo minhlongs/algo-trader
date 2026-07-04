@@ -10,7 +10,7 @@ pnpm build            # TypeScript compile (tsc)
 pnpm build:clean      # Clean rebuild
 pnpm dev              # Run via ts-node (development)
 pnpm start            # Run compiled dist/index.js
-pnpm test             # Run vitest suite (190 files, 2806 tests)
+pnpm test             # Run vitest suite (190 files, ~2100 tests)
 pnpm test:coverage    # Vitest with coverage
 pnpm test:e2e         # Playwright E2E tests
 pnpm test:load        # k6 load test
@@ -95,7 +95,7 @@ src/
 
 ### Key Patterns
 
-- **Tier gating** on all platform routes: `requireTier('FREE|PRO|ENTERPRISE|MASTER')` — Express middleware in `feature-gate.ts`
+- **Tier gating** on all platform routes: `requireTier('FREE|PRO|ENTERPRISE')` — Express middleware in `feature-gate.ts`
 - **Tenant isolation** via `buildTenantFilter(tenantId)` on every platform DB query
 - **Strategy access**: Platform imports desk strategies through shared `IStrategy` interface — direct import, no network bridge
 - **Desk = no tenant awareness**: Desk modules never reference `tenantId`, `subscriber`, or `tier`

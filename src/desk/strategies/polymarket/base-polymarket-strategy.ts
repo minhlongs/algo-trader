@@ -18,7 +18,6 @@ import type { OrderManager } from '../../polymarket/order-manager';
 import type { EventBus } from '../../events/event-bus';
 import type { GammaClient, GammaMarket } from '../../polymarket/gamma-client';
 import type { StrategyName } from '../../core/types';
-import type { RiskGateManager } from '../../risk/risk-gate-manager';
 import { logger } from '../../core/logger';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -51,16 +50,10 @@ export interface OpenPosition {
 }
 
 export interface StrategyDeps {
-  /** Polymarket CLOB client for orderbook and price data */
   clob: ClobClient;
-  /** Order manager for placing and tracking orders */
   orderManager: OrderManager;
-  /** Event bus for trade and signal events */
   eventBus: EventBus;
-  /** Gamma API client for market discovery */
   gamma: GammaClient;
-  /** Optional risk gate manager for pre-order risk checks */
-  riskManager?: RiskGateManager;
 }
 
 export interface TradeEvent {

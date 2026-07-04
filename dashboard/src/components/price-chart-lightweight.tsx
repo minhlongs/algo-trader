@@ -21,13 +21,13 @@ const CHART_COLORS = {
   background: '#080B14',
   text: '#8892B0',
   grid: '#1E2640',
-  crosshair: '#F59E0B',
+  crosshair: '#00C8E8',
 } as const;
 
 export function PriceChartLightweight({
   data,
   height = 300,
-  color = '#F59E0B',
+  color = '#00C8E8',
   title,
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);

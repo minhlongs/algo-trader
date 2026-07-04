@@ -89,7 +89,7 @@ export class ResolutionFrontrunnerStrategy extends BasePolymarketStrategy {
     const fullConfig: ResolutionFrontrunnerConfig = { ...DEFAULT_CONFIG, ...config };
     super(deps, fullConfig, STRATEGY_NAME);
     this.cfg = fullConfig;
-    this.getTime = typeof clock === 'function' ? clock : () => Date.now();
+    this.getTime = clock ?? (() => Date.now());
   }
 
   private recordPrice(tokenId: string, price: number): void {

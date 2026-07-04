@@ -14,10 +14,9 @@ import {
  stopDnaEngine,
  getDnaEngine,
  resetDnaEngine,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
  DnaEngine,
 } from '../../../desk/strategies/dna/orchestrator';
-import { DnaEngineConfig } from '../../../desk/strategies/dna/multi-tf-types';
+import { DnaEngineConfig, DnaLifecycleEvent } from '../../../desk/strategies/dna/multi-tf-types';
 import type { CandleProvider } from '../../../desk/strategies/dna/orchestrator';
 import { InMemoryStateStore } from '../../../desk/strategies/dna/dna-state-store';
 import { requireAdminKey } from '../middleware/require-admin-key';
@@ -82,7 +81,7 @@ export function createAdminDnaRouter(): Router {
  if (!_provider) {
  return res.status(503).json({ error: 'DnaProvider not configured — call setDnaProvider at startup' });
  }
- const _stateStore = new InMemoryStateStore();
+ const stateStore = new InMemoryStateStore();
  const engine = startDnaEngine(_provider, {
  paperMode: paperMode ?? true,
  ...(config ?? {}),

@@ -112,7 +112,7 @@ export class VolCompressionBreakoutStrategy extends BasePolymarketStrategy {
     const fullConfig: VolCompressionConfig = { ...DEFAULT_CONFIG, ...config };
     super(deps, fullConfig, STRATEGY_NAME);
     this.cfg = fullConfig;
-    this.kellySizer = kellySizer && typeof kellySizer.getSize === 'function' ? kellySizer : undefined;
+    this.kellySizer = kellySizer;
   }
 
   private recordTick(tokenId: string, price: number): void {

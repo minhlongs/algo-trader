@@ -19,7 +19,6 @@ const { mockStrategyRepo, mockListingRepo, mockVettingRepo, mockReviewRepo, mock
   const mockListingRepo = {
     findById: vi.fn(),
     findByStrategyId: vi.fn(),
-    findByStrategyIds: vi.fn().mockResolvedValue([]),
     findAll: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
@@ -168,12 +167,11 @@ describe('MarketplaceService', () => {
       limit: 20,
       totalPages: 1,
     });
-    mockPerfRepo.getLatestByStrategy.mockResolvedValue([]);
     const result = await service.listStrategies({ status: 'draft' });
     expect(result.data).toHaveLength(1);
     expect(mockStrategyRepo.findAll).toHaveBeenCalledWith(
       { status: 'draft' },
-      { page: 1, limit: 1000 },
+      { page: 1, limit: 20 },
       { field: 'created_at', order: 'desc' }
     );
   });

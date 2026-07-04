@@ -15,9 +15,7 @@ import { logger } from '../../../shared/utils/logger';
 import { auth } from '../../auth/auth-server';
 import {
   getAIDecisionRepository,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
   type AIDecisionWithMetadata,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
   type RecordDecisionInput,
   type DecisionFilters,
 } from '../../audit/ai-decision-repository';

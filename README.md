@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](package.json)
 [![Strategies](https://img.shields.io/badge/strategies-52%2B-brightgreen.svg)](src/desk/strategies/)
-[![Tests](https://img.shields.io/badge/tests-2798%20passing-brightgreen.svg)](src/)
+[![Tests](https://img.shields.io/badge/tests-2430%2B%20passing-brightgreen.svg)](src/)
 
 Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (20%).
 
@@ -31,7 +31,7 @@ Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (2
 - 19 specialist agents including 9 dark edge agents + HFT loop for 24/7 solo operation
 - **Dual-model AI prediction ensemble**: Nemotron-3 Nano (fast scanner, 35-50 t/s) + DeepSeek R1 (deep reasoner) with consensus voting
 - Telegram trading alerts and CashClaw CLI for distributed trading operations
-- 2,783+ automated tests for reliability and code quality
+- 2,430+ automated tests for reliability and code quality
 
 ---
 
@@ -219,9 +219,8 @@ Key variables:
 | Tier | Price | Strategies | Markets |
 |---|---|---|---|
 | FREE | $0 | 1 | Polymarket only |
-| PRO | $99/mo | 5 | Polymarket + 1 CEX |
-| ENTERPRISE | $299/mo | Unlimited | All markets + dedicated support |
-| MASTER | $999/mo | Unlimited | All markets + white-label reports + dedicated account manager + unlimited API |
+| PRO | $149/mo | 5 | Polymarket + 1 CEX |
+| ENTERPRISE | Custom | Unlimited | All markets + dedicated support |
 
 ---
 

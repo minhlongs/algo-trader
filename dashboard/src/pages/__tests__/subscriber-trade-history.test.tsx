@@ -95,15 +95,11 @@ describe('SubscriberTradeHistoryPage', () => {
   it('shows no-identity message when tenantId is null', async () => {
     const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
-      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null }),
+      (selector: (s: AuthState) => unknown) => selector(mockAuthState({ tenantId: null }))
     );
     mockHook.mockReturnValue(hookResult({ dailyBreakdown: [] }));
     render(<SubscriberTradeHistoryPage />);
     expect(screen.getByText(/No subscriber identity/i)).toBeTruthy();
-    // Restore default mock so subsequent tests aren't poisoned
-    vi.mocked(useAuthStore).mockImplementation(
-      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: 'sub-history-001' }),
-    );
   });
 
   it('shows lifetime fills count from summary', () => {

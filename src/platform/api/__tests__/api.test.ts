@@ -10,7 +10,6 @@ import express from 'express';
 vi.mock('../../middleware/feature-gate', () => ({
   requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
-  requireSignalTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   canAccessFeature: () => true,
   FEATURE_ACCESS: {},
 }));
@@ -95,7 +94,6 @@ describe('API Server', () => {
   let app: express.Application;
 
   beforeAll(async () => {
-    process.env.BETTER_AUTH_SECRET = 'test-auth-secret';
     const { ApiServer } = await import('../server');
     const apiServer = new ApiServer({ port: 3001 });
     app = apiServer.getApp();

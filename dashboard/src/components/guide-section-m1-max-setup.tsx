@@ -16,10 +16,10 @@ export function GuideQuickStart() {
         {/* Step 1 */}
         <div>
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">Step 1:</span> Create Polymarket Wallet
+            <span className="text-[#00C8E8] font-bold">Step 1:</span> Create Polymarket Wallet
           </p>
           <p className="text-sm text-[#8892B0]">
-            Go to <span className="text-[#F59E0B]">polymarket.com</span> &rarr; connect wallet &rarr; save your{' '}
+            Go to <span className="text-[#00C8E8]">polymarket.com</span> &rarr; connect wallet &rarr; save your{' '}
             <span className="text-yellow-400">PRIVATE KEY</span> securely.
             Fund your wallet with at least $100 USDC on Polygon.
           </p>
@@ -28,7 +28,7 @@ export function GuideQuickStart() {
         {/* Step 2 */}
         <div>
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">Step 2:</span> Rent a VPS
+            <span className="text-[#00C8E8] font-bold">Step 2:</span> Rent a VPS
           </p>
           <p className="text-sm text-[#8892B0] mb-2">
             Any Linux VPS works. Recommended: DigitalOcean, Hetzner, or Vultr.
@@ -37,9 +37,9 @@ export function GuideQuickStart() {
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#1E2640]">
-                  <th className="text-left py-2 pr-4 text-[#F59E0B]">Provider</th>
-                  <th className="text-left py-2 pr-4 text-[#F59E0B]">Price</th>
-                  <th className="text-left py-2 text-[#F59E0B]">Specs</th>
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Provider</th>
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Price</th>
+                  <th className="text-left py-2 text-[#00C8E8]">Specs</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1E2640]">
@@ -66,7 +66,7 @@ export function GuideQuickStart() {
         {/* Step 3 */}
         <div>
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">Step 3:</span> Install CashClaw
+            <span className="text-[#00C8E8] font-bold">Step 3:</span> Install CashClaw
           </p>
           <CopyBlock code={`ssh root@YOUR_VPS_IP
 
@@ -87,7 +87,7 @@ cp .env.example .env`} />
         {/* Step 4 */}
         <div>
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">Step 4:</span> Configure .env
+            <span className="text-[#00C8E8] font-bold">Step 4:</span> Configure .env
           </p>
           <CopyBlock code={`# Your Polymarket credentials
 PRIVATE_KEY=0x_your_private_key
@@ -109,7 +109,7 @@ MM_MAX_MARKETS=5
                 1 strategy &middot; Polymarket only
               </div>
               <div className="bg-[#111627] rounded p-2">
-                <span className="text-[#F59E0B] block mb-1">Pro ($149/mo)</span>
+                <span className="text-[#00C8E8] block mb-1">Pro ($149/mo)</span>
                 5 strategies &middot; all markets &middot; AI scanner
               </div>
               <div className="bg-[#111627] rounded p-2">
@@ -123,7 +123,7 @@ MM_MAX_MARKETS=5
         {/* Step 5 */}
         <div>
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">Step 5:</span> Start the Bot
+            <span className="text-[#00C8E8] font-bold">Step 5:</span> Start the Bot
           </p>
           <CopyBlock code={`# Start in DRY RUN first (no real money)
 pm2 start "npx tsx src/app.ts" --name cashclaw
@@ -141,7 +141,7 @@ pm2 save && pm2 startup`} />
         {/* Step 6 */}
         <div>
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">Step 6:</span> Go Live
+            <span className="text-[#00C8E8] font-bold">Step 6:</span> Go Live
           </p>
           <p className="text-sm text-[#8892B0] mb-2">
             After 2-3 days of successful DRY_RUN, switch to live trading:
@@ -191,7 +191,7 @@ cp .env.example .env
 # Start bot
 pm2 start "npx tsx src/app.ts" --name cashclaw`} />
             <p className="mt-2">
-              <span className="text-[#F59E0B]">Bonus:</span> On Apple Silicon with 32GB+ RAM, you can run local AI models
+              <span className="text-[#00C8E8]">Bonus:</span> On Apple Silicon with 32GB+ RAM, you can run local AI models
               (Nemotron, DeepSeek R1) for enhanced market scanning without API costs.
             </p>
           </CollapsibleItem>

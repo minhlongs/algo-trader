@@ -112,8 +112,8 @@ marketplaceStrategyListingsRouter.post('/publish', requireTier('FREE'), async (r
     const listing = await marketplaceService.createListing({
       strategyId: strategy.id,
       tenantId,
-      priceUsdMonthly: strategyData.priceUsdMonthly ?? 0,
-      billingCycle: strategyData.billingCycle ?? 'monthly',
+      priceUsdMonthly: 0,
+      billingCycle: 'monthly',
       isActive: false,
       status: 'pending_vetting' as const,
     });

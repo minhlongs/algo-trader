@@ -25,17 +25,17 @@ import {
 import { computeTrendIndicators, trendDirectionScore } from './indicators-trend';
 import { computeMomentumIndicators, momentumDirection } from './indicators-momentum';
 import { computeVolatilityIndicators } from './indicators-volatility';
-import { computeMicroIndicators} from './indicators-microstructure';
+import { computeMicroIndicators, isMicroTf } from './indicators-microstructure';
 
 // ─── Thresholds (explicit policy) ─────────────────────────────────────────────
 
-const _TREND_CONFIDENCE_HIGH = 0.70;
-const _TREND_CONFIDENCE_MID = 0.50;
+const TREND_CONFIDENCE_HIGH = 0.70;
+const TREND_CONFIDENCE_MID = 0.50;
 
-const _RSI_OVERBOUGHT = 70;
-const _RSI_OVERSOLD = 30;
+const RSI_OVERBOUGHT = 70;
+const RSI_OVERSOLD = 30;
 
-const _MACD_HIST_POSITIVE_THRESHOLD = 0;
+const MACD_HIST_POSITIVE_THRESHOLD = 0;
 
 const OBI_BID_HEAVY = 0.20;   // obi > 0.2 → bid-heavy
 const OBI_ASK_HEAVY = -0.20;  // obi < -0.2 → ask-heavy

@@ -13,38 +13,35 @@ export function EnterpriseThankYouPage() {
   const inquiryId = searchParams.get('inquiry') ?? '';
 
   return (
-    <div className="min-h-screen bg-bg text-white flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-xl mx-auto w-full">
         {/* Success header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-profit/10 border border-profit/30 mb-6">
-            <svg width="28" height="28" fill="none" stroke="#34D399" strokeWidth="2" viewBox="0 0 24 24">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#00D4AA]/10 border border-[#00D4AA]/30 mb-6">
+            <svg width="28" height="28" fill="none" stroke="#00D4AA" strokeWidth="2" viewBox="0 0 24 24">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white mb-3">Inquiry received</h1>
-          <p className="text-muted text-sm max-w-sm mx-auto">
+          <p className="text-[#8892B0] text-sm max-w-sm mx-auto">
             Our team will reach out within 24 hours to schedule a walkthrough and discuss contract terms.
           </p>
         </div>
 
         {/* What happens next */}
-        <div className="border border-bg-border bg-bg-surface/80 backdrop-blur-sm rounded-lg p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-1 h-4 bg-accent rounded-full" />
-            <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">What happens next</h2>
-          </div>
+        <div className="border border-[#1E2640] bg-[#111627] rounded-lg p-6 mb-6">
+          <h2 className="text-sm font-bold text-white mb-4">What happens next</h2>
           <ol className="space-y-4">
             {NEXT_STEPS.map((step, i) => (
               <li key={i} className="flex gap-3">
-                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-profit/15 border border-profit/40 text-profit text-xs flex items-center justify-center font-bold">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#00D4AA]/15 border border-[#00D4AA]/40 text-[#00D4AA] text-xs flex items-center justify-center font-bold">
                   {i + 1}
                 </span>
                 <div>
                   <p className="text-sm text-white font-semibold mb-0.5">{step.title}</p>
-                  <p className="text-xs text-muted">{step.desc}</p>
+                  <p className="text-xs text-[#8892B0]">{step.desc}</p>
                 </div>
               </li>
             ))}
@@ -52,12 +49,9 @@ export function EnterpriseThankYouPage() {
         </div>
 
         {/* Paper demo notice */}
-        <div className="border border-accent/20 bg-accent/5 rounded-lg p-5 mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="w-1 h-4 bg-accent rounded-full" />
-            <p className="text-xs text-accent uppercase tracking-widest font-mono font-bold">Paper-trading demo</p>
-          </div>
-          <p className="text-sm text-muted">
+        <div className="border border-[#00C8E8]/20 bg-[#00C8E8]/5 rounded-lg p-5 mb-8">
+          <p className="text-xs text-[#00C8E8] uppercase tracking-widest mb-2">Paper-trading demo</p>
+          <p className="text-sm text-[#8892B0]">
             A 30-day paper-trading demo environment has been provisioned for your team.
             Check your inbox for credentials — no payment or setup required.
           </p>
@@ -65,21 +59,21 @@ export function EnterpriseThankYouPage() {
 
         {/* Reference ID */}
         {inquiryId && (
-          <p className="text-center text-xs text-muted/50 mb-8">
-            Reference: <span className="text-muted">{inquiryId}</span>
+          <p className="text-center text-xs text-[#555] mb-8">
+            Reference: <span className="text-[#8892B0]">{inquiryId}</span>
           </p>
         )}
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
             to="/docs"
-            className="text-center text-sm border border-bg-border text-muted px-5 py-2.5 rounded hover:text-white hover:border-accent/40 transition-colors"
+            className="text-center text-sm border border-[#1E2640] text-[#8892B0] px-5 py-2.5 rounded hover:text-white hover:border-[#00C8E8]/40 transition-colors"
           >
             Read the docs
           </Link>
           <Link
             to="/"
-            className="text-center text-sm bg-accent text-bg font-bold px-5 py-2.5 rounded hover:bg-accent/80 transition-colors"
+            className="text-center text-sm bg-[#00C8E8] text-[#080B14] font-bold px-5 py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors"
           >
             Back to home
           </Link>

@@ -19,7 +19,7 @@ export function GuideInfrastructure() {
           <p>Private keys, VPS, all profits</p>
         </div>
         <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-3">
-          <p className="text-[#F59E0B] font-bold mb-2">We Provide</p>
+          <p className="text-[#00C8E8] font-bold mb-2">We Provide</p>
           <p>Bot software, dashboard, updates, AI models</p>
         </div>
         <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-3">
@@ -29,7 +29,7 @@ export function GuideInfrastructure() {
       </div>
 
       <div className="mt-6 bg-[#111627] border border-[#1E2640] rounded-lg p-4">
-        <p className="text-[#F59E0B] font-bold mb-2 text-sm">How Market Making Works</p>
+        <p className="text-[#00C8E8] font-bold mb-2 text-sm">How Market Making Works</p>
         <div className="text-sm text-[#8892B0] space-y-2">
           <p>Bot places BUY and SELL orders simultaneously on Polymarket.</p>
           <p>When someone takes your order, you earn the spread.</p>
@@ -39,7 +39,7 @@ export function GuideInfrastructure() {
             <p className="mt-1">
               BID YES @ <span className="text-[#00E676]">0.42</span>{' '}
               &rarr; ASK YES @ <span className="text-[#00E676]">0.52</span>{' '}
-              &rarr; <span className="text-[#F59E0B] font-bold">$0.10/share profit</span>
+              &rarr; <span className="text-[#00C8E8] font-bold">$0.10/share profit</span>
             </p>
           </div>
         </div>
@@ -52,9 +52,9 @@ export function GuideInfrastructure() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-[#1E2640]">
-                <th className="text-left py-2 pr-6 text-[#F59E0B]">Capital</th>
-                <th className="text-left py-2 pr-6 text-[#F59E0B]">Daily</th>
-                <th className="text-left py-2 text-[#F59E0B]">Monthly</th>
+                <th className="text-left py-2 pr-6 text-[#00C8E8]">Capital</th>
+                <th className="text-left py-2 pr-6 text-[#00C8E8]">Daily</th>
+                <th className="text-left py-2 text-[#00C8E8]">Monthly</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1E2640]">

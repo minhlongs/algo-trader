@@ -149,7 +149,7 @@ services:
       - ./docker/monitoring/grafana-dashboards:/etc/grafana/provisioning/dashboards:ro
       - ./docker/monitoring/grafana-datasources:/etc/grafana/provisioning/datasources:ro
     ports:
-      - "3030:3000"
+      - "3001:3000"
     depends_on:
       - prometheus
     networks:

@@ -60,7 +60,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics-definitions.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/signal-ingest-routes.ts');
 const DOCS_PATH = resolve(REPO_ROOT, 'docs/system-architecture.md');
 

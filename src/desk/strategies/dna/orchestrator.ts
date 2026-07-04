@@ -283,7 +283,7 @@ export class DnaEngine {
     this._stateStore.save(state).catch((err) => {
       logger.error('[DNA] state save failed', { err });
     });
-    for (const [_tf, timer] of this._timers) {
+    for (const [tf, timer] of this._timers) {
       clearTimeout(timer as any);
       clearInterval(timer as any);
     }

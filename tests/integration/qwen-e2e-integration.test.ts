@@ -67,8 +67,8 @@ import {
   enableQwen,
   isQwenEnabled,
   runDrawdownCheck,
-} from '../../src/desk/wiring/qwen-drawdown-monitor';
-import { PaperGateError } from '../../src/desk/wiring/qwen-live-eligibility-gate';
+} from '../../src/wiring/qwen-drawdown-monitor';
+import { PaperGateError } from '../../src/wiring/qwen-live-eligibility-gate';
 import { telegramSignalPusher } from '../../src/desk/signal/telegram-signal-pusher';
 import type { SignalStore } from '../../src/desk/signal/signal-publisher';
 

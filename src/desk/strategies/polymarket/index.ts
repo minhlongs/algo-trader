@@ -42,9 +42,6 @@ export type { InfoAsymmetryScannerConfig, InfoAsymmetryScannerDeps } from './inf
 export { createLiquidityMigrationTick } from './liquidity-migration-v2';
 export type { LiquidityMigrationConfig, LiquidityMigrationDeps } from './liquidity-migration-v2';
 
-export { createListingArbitrageSniperTick } from './listing-arbitrage-sniper';
-export type { ListingArbConfig, ListingArbDeps } from './listing-arbitrage-sniper';
-
 export { createMarkovChainPredictorTick } from './markov-chain-predictor-v2';
 export type { MarkovChainPredictorConfig, MarkovChainPredictorDeps } from './markov-chain-predictor-v2';
 
@@ -107,32 +104,6 @@ export type { WeightedSentimentAggregatorConfig, WeightedSentimentAggregatorDeps
 
 export { createWhaleTrackerTick } from './whale-tracker-v2';
 export type { WhaleTrackerConfig, WhaleTrackerDeps } from './whale-tracker-v2';
-
-// ── Post-migration V2 strategies (formerly stubs) ───────────────────────────
-
-export { createCrossPlatformBasisTick } from './cross-platform-basis';
-export type { CrossPlatformBasisConfig } from './cross-platform-basis';
-
-export { createEntropyScorerTick } from './entropy-scorer';
-export type { EntropyScorerConfig } from './entropy-scorer';
-
-export { createExpiryThetaDecayTick } from './expiry-theta-decay';
-export type { ExpiryThetaDecayConfig } from './expiry-theta-decay';
-
-export { createLiquidityVacuumTick } from './liquidity-vacuum';
-export type { LiquidityVacuumConfig } from './liquidity-vacuum';
-
-export { createNewsCatalystFadeTick } from './news-catalyst-fade';
-export type { NewsCatalystFadeConfig } from './news-catalyst-fade';
-
-export { createSmartMoneyDivergenceTick } from './smart-money-divergence';
-export type { SmartMoneyDivergenceConfig } from './smart-money-divergence';
-
-export { createTwapAccumulatorTick } from './twap-accumulator';
-export type { TwapAccumulatorConfig } from './twap-accumulator';
-
-export { createVolatilitySurfaceArbTick } from './volatility-surface-arb';
-export type { VolatilitySurfaceArbConfig } from './volatility-surface-arb';
 
 // ── Pre-migration module (different archetype — portfolio meta-strategy) ─────
 

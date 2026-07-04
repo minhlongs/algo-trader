@@ -34,7 +34,7 @@
 - **Graceful shutdown**: SIGINT/SIGTERM handlers cho API server, WebSocket, workers
 
 ## API Standards
-- **Express + Fastify**: Platform API uses Express (31 route files, tier-gated). Desk/internal uses Fastify 5 for Zod schema validation.
+- **Fastify 5**: Route registration, Zod schema validation
 - **Better Auth**: Multi-tenant sessions via Better Auth integration (`src/platform/auth/`)
 - **Rate Limiting**: Sliding window per-tenant, X-RateLimit-* headers
 - **RESTful**: POST cho actions (scan, execute), GET cho queries (positions, history)
@@ -49,8 +49,8 @@
 ✅ **0 `any` types** — all values properly typed
 ✅ **0 console.log** — production-ready code
 ✅ **0 TODO/FIXME** — no technical debt
-✅ **2,798+ tests** — 100% pass rate (vitest)
+✅ **2,430+ tests** — 100% pass rate (vitest)
 ✅ **Kebab-case files** — consistent naming across codebase
 ✅ **Max 200 lines** — modular file structure verified
 
-Updated: 2026-07-02
+Updated: 2026-06-30

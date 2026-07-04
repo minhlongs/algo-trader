@@ -3,7 +3,7 @@
  * Calculates referral commissions based on revenue
  */
 
-import { } from './referral-repository';
+import { referralRepository } from './referral-repository';
 
 export class CommissionCalculator {
   private readonly DEFAULT_COMMISSION_RATE = 0.10; // 10%

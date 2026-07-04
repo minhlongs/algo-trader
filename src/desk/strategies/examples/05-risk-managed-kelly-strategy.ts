@@ -148,8 +148,8 @@ export class RiskManagedKellyStrategy implements IStrategy {
     currentTime: number,
     kellyPosition: { size: number; confidence: number; stopPercent: number },
     side: 'long' | 'short',
-    _sma10: number,
-    _sma30: number,
+    sma10: number,
+    sma30: number,
   ): ISignal {
     this.lastSignalTime = currentTime;
     const position: Position = {

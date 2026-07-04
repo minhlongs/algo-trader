@@ -5,7 +5,7 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 **Target**: Enterprise-grade quantitative trading platform with autonomous marketing. v3.0.0 shipped -- 3-bounded-context architecture (desk/platform/shared) complete.
 
-> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced. Phase 4 cleanup: 4 oversized files split, 23 dead files deleted (~21K lines), 4 ADRs + platform doctrine written, `BasePolymarketStrategy` base class with POC migration (55% smaller). 2,806 tests passing. Live trading env var unification + paper-mode E2E integration (26 tests) complete. See `docs/system-architecture.md`.
+> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced. Phase 4 cleanup: 4 oversized files split, 23 dead files deleted (~21K lines), 4 ADRs + platform doctrine written, `BasePolymarketStrategy` base class with POC migration (55% smaller). 2,430+ tests passing. See `docs/system-architecture.md`.
 
 ---
 
@@ -190,159 +190,58 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] 4 Architecture Decision Records: shared-kernel-boundary, desk-platform-separation, strategy-ownership-model, tenant-isolation-pattern
 - [x] 11 boundary enforcement tests — all passing (desk↔platform import rules, tenant isolation, barrel exports)
 - [x] Docs sync: CLAUDE.md, system-architecture.md, development-roadmap.md, project-changelog.md
-- [x] 2,798+ tests passing, 0 TypeScript errors, 0 regressions
+- [x] 2,430+ tests passing, 0 TypeScript errors, 0 regressions
 - Status: **COMPLETE** ✅
 
-### Phase 34: Performance Tuning & Stress Testing (Partially Done 2026-07-01)
-- [x] WebSocket message compression (permessage-deflate) — ws-adapter-redis.ts, ~70% bandwidth reduction
-- [x] Database query optimization (index analysis) — 5 new composite indexes in migration 033
-- [x] Identify bottlenecks in arbitrage execution path — spread detector verified well-optimized
-- [ ] Load test with 5000+ concurrent users (deferred: requires Docker stack)
-- [ ] Redis cluster rebalancing under load (deferred: requires running production stack)
-- [ ] CPU/memory profiling on M1 Max (deferred: requires instrumentation)
+### Phase 34: Performance Tuning & Stress Testing (Planned)
+- [ ] Load test with 5000+ concurrent users
+- [ ] Database query optimization (index analysis)
+- [ ] Redis cluster rebalancing under load
+- [ ] WebSocket message compression (deflate)
+- [ ] CPU/memory profiling on M1 Max
+- [ ] Identify bottlenecks in arbitrage execution path
 - Timeline: 2026-04-16 to 2026-04-30
-- Status: **3/6 DONE (3 items deferred — require infrastructure)**
+- Status: **PLANNED**
 
-### Phase 34b: Content Personalization & AI Recommendations (Complete 2026-07-01)
-- [x] Blog content A/B testing (CTR tracking) — `blog_ab_tests` table, impression/click endpoints
-- [x] AI-driven post recommendations (similarity search) — `post-similarity-engine.ts`, TF-IDF + tag overlap
-- [x] Comment system with LLM moderation — `comment-moderation-service.ts`, keyword fallback, XSS protection
-- [x] User engagement analytics (page views, time-on-page) — `POST /api/analytics/page-view`, `POST /api/analytics/time-on-page`, engagement summary
-- [x] Newsletter segmentation (user interests/strategy preferences) — `newsletter_preferences` table, subscribe/unsubscribe/preferences/segments API
-- Timeline: 2026-07-01
-- Status: **COMPLETE** ✅ (5/5 items shipped)
+### Phase 34: Content Personalization & AI Recommendations (Planned)
+- [ ] Blog content A/B testing (CTR tracking)
+- [ ] User engagement analytics (page views, time-on-page)
+- [ ] AI-driven post recommendations (similarity search)
+- [ ] Newsletter segmentation (user interests/strategy preferences)
+- [ ] Comment system with LLM moderation
+- Timeline: 2026-05-01 to 2026-05-15
+- Status: **PLANNED**
 
-### Phase 35: Compliance & Security Hardening (Mostly Complete 2026-07-01)
-- [x] Audit logging for all trades and orders (11 audit files in src/platform/audit/)
-- [x] Rate limiting per tenant (distributed-rate-limiter.ts)
-- [x] Encrypted sensitive data at rest (AES-256 utils/encryption)
-- [x] OWASP Top 10 security assessment (ck:security audit 2026-07-01)
-- [x] KYC/AML integration (Persona BYOK) — `kyc_verifications` table, init/status/admin lookup endpoints
-- [ ] SSL/TLS certificate management — deferred (requires infra)
-- [ ] Third-party security audit — deferred (requires external vendor)
-- Timeline: 2026-05-16 to 2026-07-01
-- Status: **MOSTLY DONE** (5/7 items — 2 require external vendors)
+### Phase 35: Compliance & Security Hardening (Planned)
+- [ ] Audit logging for all trades and orders
+- [ ] KYC/AML integration (Persona or similar)
+- [ ] Rate limiting per tenant
+- [ ] Encrypted sensitive data at rest (AES-256)
+- [ ] SSL/TLS certificate management
+- [ ] OWASP Top 10 security assessment
+- [ ] Third-party security audit
+- Timeline: 2026-05-16 to 2026-06-15
+- Status: **PLANNED**
 
-### Phase 36: Marketplace & Multi-Tenant Monetization (Implementation Complete ✅)
-- [x] Strategy listing catalogue with browse, filter, sort
-- [x] Subscribe → checkout → payment flow (NOWPayments)
-- [x] Subscription lifecycle (pending_payment → active → paused → cancelled)
-- [x] Marketplace payment webhook handler (IPN status=finished activation)
-- [x] Marketplace execution bridge (auto-trigger RaaS on activation)
-- [x] Revenue reconciliation (80/20 platform split, payout scheduler, creator API)
-- [x] ConfirmationDialog + SubscriptionDetail UI components
-- [x] Strategy versioning & update mechanism
-- [x] Price display fix (cents→dollars), payment polling, IPN callback wiring
-- [x] Marketplace migrations registered in runner (025, 031, 032)
+### Phase 36: Marketplace & Multi-Tenant Monetization (Planned)
+- [ ] Marketplace for custom strategies
+- [ ] Revenue sharing model (80/20 platform split)
+- [ ] Strategy versioning & update mechanism
 - [ ] Deployment pipelines for third-party strategies
+- [ ] Strategy rating/review system
 - [ ] Backtesting harness for community uploads
-- Timeline: 2026-06-16 to 2026-07-01 (core flow shipped July 1)
-- Status: **CORE COMPLETE** (2 stretch items deferred)
+- Timeline: 2026-06-16 to 2026-07-31
+- Status: **PLANNED**
 
-### Phase 37: Advanced Risk Management (In Progress)
-- [x] Portfolio correlation matrix
-- [x] Value-at-Risk (VaR) calculations (95%, 99%)
-- [x] Conditional VaR (CVaR)
-- [x] Drawdown tracking and alerts (drawdown-monitor.ts, circuit-breaker.ts)
-- [x] Position sizing engine (Kelly Criterion, kelly-position-sizer.ts)
-- [x] Stop-loss automation (ATR-based trailing stops, atr-trailing-stop.ts)
+### Phase 37: Advanced Risk Management (Planned)
+- [ ] Portfolio correlation matrix
+- [ ] Value-at-Risk (VaR) calculations (95%, 99%)
+- [ ] Conditional VaR (CVaR)
+- [ ] Drawdown tracking and alerts
+- [ ] Stop-loss automation (ATR-based trailing stops)
+- [ ] Position sizing engine (Kelly Criterion variant)
 - Timeline: 2026-08-01 to 2026-09-15
-- Status: **COMPLETE** ✅ (6/6 items shipped 2026-07-01)
-
-### Phase 38: Marketplace Backtesting Harness (Complete 2026-07-01)
-- [x] BacktestRunner engine (Sharpe, maxDrawdown, winRate, profitFactor, equityCurve)
-- [x] `POST /api/v1/marketplace/strategies/:id/backtest` (tier-gated: PRO)
-- [x] `GET /api/v1/marketplace/strategies/:id/backtests` (list history)
-- [x] `marketplace_backtests` table with equity curve JSONB (migration 034)
-- [x] 14 unit tests for BacktestRunner
-- [x] Dashboard: BacktestResults component + strategy card integration
-- [x] Backend: sync backtest summary to marketplace_strategies.backtest_summary
-- [x] Community strategy upload with sandbox — `community_strategies` table, upload/backtest endpoints
-- Status: **COMPLETE** ✅ (8/8 items shipped)
-
-### Phase 38b: Marketplace Backtesting & Bug Fixes (Complete 2026-07-02)
-- [x] Missing backtest routes added to marketplace-strategy-insights-routes.ts: `POST /:id/backtest`, `GET /:id/backtests`
-- [x] Backtest runner type escapes fixed
-- [x] Sharpe annualization factor corrected
-- [x] Gamma API error propagation fixed
-- [x] Strategy-live-bridge price bug fixed
-- [x] Live-order-manager-proxy cancelOrder wiring fixed
-- [x] Marketplace-payout-scheduler: only marks paid when crypto actually sent
-- [x] METRICS_TOKEN added to .env.example
-- [x] Backtesting barrel export added to desk/index.ts
-- [x] Deleted admin-dna-routes.ts.bak
-- [x] Updated .gitignore with plan/artifact directories
-- [x] Fixed live-trading-runbook.md bilingual label
-- Status: **COMPLETE** ✅
-
-### Next Wave: Revenue + Trading + Infra + Platform (Complete 2026-07-03)
-
-**Track 1: Revenue Growth (5/5 items)**
-- [x] Signup requires NOWPayments payment before PRO/Enterprise activation (pending_payment status)
-- [x] Enterprise inquiry form tier gate fixed — `POST /inquiries` now public (FREE tier)
-- [x] IPN webhook route verified with HMAC-SHA512 enforcement, idempotency by payment_id, credential guards
-- [x] Revenue API gates lowered from ENTERPRISE to PRO — summary, MRR, usage, overage, churn
-- [x] Dunning service sends email notifications on payment failure (escalation), suspension, and reinstatement
-- [x] Subscription analytics API: MRR breakdown, churn analysis, LTV prediction, cohort retention
-- [x] Trial drip campaign API: subscribe/unsubscribe/process/status with email sequence scheduling
-- [x] Pricing page (`src/platform/landing/public/pricing.html`)
-- [x] MASTER tier ($999/mo) added: LicenseTier enum, TIER_CONFIG, NOWPayments invoice, feature map
-
-**Track 2: Trading Edge (3/3 items)**
-- [x] 23 missing strategy factories replaced in `strategy-wiring.ts` — `.js` → `.ts` imports pointing to V2 stubs
-- [x] 3 missing strategy imports fixed in `trading-pipeline.ts` — `cross-market-arb`, `market-maker`, `mean-reversion` stubs
-- [x] `PAPER_MODE` env var (default `true`) with live-mode validation — all 4 Polymarket API vars checked before LIVE execution; mode displayed in CLI and API status
-
-**Track 3: Infrastructure Hardening (6/6 items)**
-- [x] Redis persistence: AOF (appendonly yes, everysec fsync) + RDB snapshots via `config/redis.conf`, password auth via `REDIS_PASSWORD` env var
-- [x] SSL/TLS: Caddy reverse proxy (auto-HTTPS, Let's Encrypt auto-renewal, security headers) + certbot `scripts/renew-certs.sh`
-- [x] Load testing baseline re-established — k6 CI integration with reduced VUs (100 VUs, 30s, per-endpoint metrics)
-- [x] Alertmanager notification channel wired — webhook receiver with critical/warning routing
-- [x] Docker image tags pinned — Prometheus, Grafana, Alertmanager versions locked (no `:latest`)
-- [x] Prometheus retention set (`--storage.tsdb.retention.time=15d`)
-
-**Track 4: Platform Depth (4/4 items)**
-- [x] Self-service API key management — `POST/GET/DELETE /api/v1/api-keys` route + dashboard page, scrypt-hashed storage, show-once pattern, Bearer token auth via `api-key-auth.ts` middleware
-- [x] Marketplace listing badges — top performer badges (volume, win rate, reliability, ROI) with `badge_repository`, `badge_service`, route, and migration
-- [x] Subscription enhancements — detailed subscription stats, tier upgrades/downgrades, auto-renewal toggles
-- [x] Pricing page (`/pricing.html`) published as static landing page
-
-- Status: **COMPLETE** ✅ (all 18/18 items shipped)
-
-### Next Wave IV: AI Co-pilot + GTM Launch (Complete 2026-07-04)
-
-**Phase 1: Co-pilot API (7/7)**
-- [x] Intent classifier — classifies user queries into 6 intents (performance, risk, regime, arbitrage, report, fallback)
-- [x] Performance handler — portfolio P&L, Sharpe, win rate, drawdown stats
-- [x] Risk handler — current drawdown, circuit status, positions, exposure, VaR
-- [x] Regime handler — market regime detection (trending/ranging/volatile/calm) with regime history
-- [x] Arbitrage handler — cross-exchange, triangular opportunities with profit estimates
-- [x] Report handler — generates structured text reports with optional period filtering
-- [x] Fallback handler — LLM-powered response for unrecognized queries
-
-**Phase 2: Email Campaign Co-pilot (2/2)**
-- [x] AI co-pilot email templates for launch campaign (features, benefits, use cases)
-- [x] STARTER tier email templates for tier promotion
-- [x] `scripts/send-email-campaign.ts` — programmatic email campaign sender
-- [x] `scripts/validate-email-campaign.sh` — email validation and delivery checker
-
-**Phase 3: Dashboard UI (4/4)**
-- [x] Co-pilot FAB button — floating action button in dashboard bottom-right
-- [x] Co-pilot chat panel — expandable chat overlay with message history
-- [x] Co-pilot message component — renders Markdown + action buttons
-- [x] Co-pilot input component — send/stop controls
-- [x] Co-pilot actions — one-click action buttons from AI responses
-- [x] Zustand store — request state management, history, abort support
-- [x] 377-line test suite covering FAB, chat, input, actions, error states
-
-**Phase 4: Telegram /ask + Launch Docs (3/3)**
-- [x] `/ask` command — natural-language queries to the co-pilot
-- [x] Intent-based routing to all 6 co-pilot handlers
-- [x] Rate-limit protection (10 req/min FREE/PRO, 30 req/min ENTERPRISE/MASTER)
-- [x] 223-line test suite covering all intents, errors, rate limits
-- [x] Launch docs: blog post, Twitter thread, Discord announcement, Reddit post
-
-- Status: **COMPLETE** ✅ (all 14/14 items shipped, 2,916 tests passing)
+- Status: **PLANNED**
 
 ---
 
@@ -350,7 +249,7 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
-| Test Coverage | 90%+ | 100% (2,798/2,798) | ✅ |
+| Test Coverage | 90%+ | 100% (2,430+/2,430+) | ✅ |
 | Type Safety | 0 `any` types | 0 | ✅ |
 | Build Time | < 10s | ~5s | ✅ |
 | API Latency (p95) | < 100ms | ~45ms | ✅ |
@@ -395,12 +294,6 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ## Recent Updates
 
-**2026-07-04**: Next Wave IV (AI Co-pilot + GTM Launch) complete — 14 items across 4 phases. AI co-pilot API with 6 intent handlers, dashboard FAB+chat UI, Telegram /ask command, email campaign scripts, launch marketing docs. 2,916 tests passing.
-
-**2026-07-03**: Next Wave complete — 18 items across 4 tracks (Revenue Growth, Trading Edge, Infra Hardening, Platform Depth). Revenue flow fixed (signup payment, enterprise inquiry gate, IPN verification, PRO-tier analytics, dunning emails). 23 strategy wiring factories restored. PAPER_MODE env var with live-mode validation. Redis persistence + Caddy SSL + k6 CI baseline + Alertmanager. API key management, marketplace badges, subscription enhancements, pricing page. MASTER tier ($999/mo) added. 2,806 tests passing.
-
-**2026-07-02**: All 8 code review findings resolved. Missing backtest routes wired in marketplace-strategy-insights-routes.ts. Bug fixes: type escapes, Sharpe factor, Gamma error propagation, price bug, cancelOrder wiring, payout send-verify guard. METRICS_TOKEN added to .env.example. Barrel export added. .bak deleted. 2,806 tests passing across 243 files.
-
 **2026-04-15**: Phase 32b (Autonomy Phase 2) complete. LLM content generation (DeepSeek R1), welcome email drip (3-email sequence), Telegram auto-support (/faq, /support, /pricing), Twitter/X API v2 + Telegram channel distribution. 585 tests passing.
 
 **2026-04-15**: Phase 32 (Autonomy Layer) complete. Auto-marketing daemon, blog content hub, landing page SEO, SendGrid email verification. 575 tests passing.
@@ -415,37 +308,25 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ---
 
-## Current Focus (July 2026)
+## Current Focus (June 2026)
 
-1. **Next Wave IV: AI Co-pilot + GTM Launch (Complete 2026-07-04):**
-   - AI co-pilot: intent classification, 6 handler modules (performance, risk, regime, arbitrage, report, fallback)
-   - Dashboard: FAB button, chat panel with history, action buttons, Zustand state store
-   - Telegram: /ask command with intent routing and rate-limit protection
-   - Email campaigns: AI-generated co-pilot and STARTER tier templates, sender and validation scripts
-   - Launch docs: blog post, Twitter thread, Discord announcement, Reddit post
-   - 14/14 items shipped, 2,916 tests pass
-2. **Next Wave: Revenue + Trading + Infra + Platform (Complete 2026-07-03):**
-   - Revenue Growth: signup payment gate, enterprise inquiry fix, IPN verification, PRO-tier analytics, dunning emails, MASTER tier ($999/mo), subscription analytics, trial drip, public pricing page
-   - Trading Edge: 23 strategy stub factories restored, 3 pipeline imports fixed, PAPER_MODE env var with live-mode credential validation
-   - Infra Hardening: Redis persistence (AOF+RDB+password), Caddy SSL auto-HTTPS, k6 CI baseline, Alertmanager webhook, pinned Docker versions, Prometheus 15d retention
-   - Platform Depth: self-service API key management, marketplace listing badges, subscription enhancements (stats, tier changes, auto-renewal)
-   - 18/18 items shipped, 2,806 tests pass
-2. **Phases 39-55 complete** — Polymarket Live Execution + Backtesting + Doc Cleanup (all shipped)
-3. **2,806 tests pass** across 243 test files, 0 TypeScript errors, 93 lint warnings
-4. **Bilingual live trading runbook** at `docs/live-trading-runbook.md` — updated
-5. **Remaining work items:**
-   - Third-party security audit (external vendor)
+1. **Architecture Separation (COMPLETE):** 3 bounded contexts (shared/desk/platform), path aliases, barrel exports, 11/11 boundary tests, 4 ADRs, BasePolymarketStrategy base class
+2. Phase 36: Marketplace & multi-tenant monetization (strategies as products, revenue sharing)
+3. Phase 37: Advanced risk management (VaR, CVaR, portfolio correlation)
+4. KYC/AML provider integration
+5. Phase 34: Performance tuning & stress testing (5000+ concurrent users)
+6. Content personalization & A/B testing
 
 ---
 
 ## Contact & Ownership
 
 - **Project Lead**: Internal Team (algo-trade)
-- **Architecture**: 3 bounded contexts (shared/desk/platform). Express (platform API) + Fastify 5 (desk internal). React 19 + Prisma + Redis
+- **Architecture**: Fastify 5 + React 19 + Prisma + Redis Cluster
 - **Deployment**: Cloudflare Pages (landing/dashboard) + Docker/Kubernetes (API)
 - **Monitoring**: Prometheus + Grafana + Sentry (planned Phase 21)
 
 ---
 
-_Last Updated: 2026-07-04_
+_Last Updated: 2026-06-30_
 _Generated by: Documentation Manager Agent (Phase 32b Autonomy)_

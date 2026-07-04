@@ -19,16 +19,7 @@ export interface IMarketplaceStrategy {
   supportedExchanges: string[]; // e.g., ['polymarket', 'binance']
   tags: string[];
   payoutAddress?: string; // USDT TRC20 wallet for creator payouts
-  listingId?: string;
-  listingPriceUsdMonthly?: number;
-  listingBillingCycle?: string;
-  listingSubscriberCount?: number;
   backtestSummary?: BacktestSummary;
-  /** Latest performance metrics (populated by listStrategies) */
-  sharpeRatio?: number;
-  winRate?: number;
-  maxDrawdown?: number;
-  totalPnlUsd?: number;
   vettedAt?: Date;
   vettedBy?: string;
   rejectionReason?: string;

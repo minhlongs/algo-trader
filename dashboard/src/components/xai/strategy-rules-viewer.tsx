@@ -58,7 +58,7 @@ export function StrategyRulesViewer({
     switch (type) {
       case 'technical_indicator': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'sentiment': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      case 'extracted': return 'bg-purple/20 text-purple border-purple/30';
+      case 'extracted': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case 'custom': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
       default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
     }
@@ -77,7 +77,7 @@ export function StrategyRulesViewer({
     <StitchCard className={className}>
       <StitchCardHeader>
         <h3 className="text-lg flex items-center gap-2">
-          <span className="text-accent">📜</span>
+          <span className="text-cyan-400">📜</span>
           Strategy Rules: {strategyName}
         </h3>
         <p className="text-sm text-gray-400">
@@ -109,7 +109,7 @@ export function StrategyRulesViewer({
                   {rulesByAction[action].map((rule, idx) => (
                     <div
                       key={rule.rule_id}
-                      className="p-3 rounded-lg border border-gray-800 bg-gray-900/50 hover:border-accent/50 transition-all cursor-pointer"
+                      className="p-3 rounded-lg border border-gray-800 bg-gray-900/50 hover:border-cyan-500/50 transition-all cursor-pointer"
                       onClick={() => onRuleClick?.(rule)}
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
@@ -132,7 +132,7 @@ export function StrategyRulesViewer({
                       <div className="space-y-2">
                         <div>
                           <div className="text-xs text-gray-500 mb-1">Condition</div>
-                          <code className="block bg-gray-950 p-2 rounded text-sm text-purple border border-gray-800">
+                          <code className="block bg-gray-950 p-2 rounded text-sm text-cyan-300 border border-gray-800">
                             {rule.condition}
                           </code>
                         </div>

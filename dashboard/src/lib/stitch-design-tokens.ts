@@ -6,7 +6,7 @@ export const tokens = {
   colors: {
     background: 'var(--color-background, #080B14)',
     surface: 'var(--color-surface, #111627)',
-    accent: 'var(--color-accent, #F59E0B)',
+    accent: 'var(--color-accent, #00C8E8)',
     loss: 'var(--color-loss, #FF4466)',
     muted: 'var(--color-muted, #8892B0)',
     border: 'var(--color-border, #1E2640)',

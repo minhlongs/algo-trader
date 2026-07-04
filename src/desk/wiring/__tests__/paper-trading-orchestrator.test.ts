@@ -529,12 +529,10 @@ const TRADES_FILE = '/tmp/paper-trades-orchestrator-test.json';
 beforeEach(() => {
 __resetPortfolioForTests();
 vi.clearAllMocks();
-/* eslint-disable-next-line @typescript-eslint/no-require-imports */
 try { require('fs').unlinkSync(TRADES_FILE); } catch { /* ignore */ }
 });
 
 afterEach(() => {
-/* eslint-disable-next-line @typescript-eslint/no-require-imports */
 try { require('fs').unlinkSync(TRADES_FILE); } catch { /* ignore */ }
 });
 

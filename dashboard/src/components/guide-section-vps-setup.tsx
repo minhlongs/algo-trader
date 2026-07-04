@@ -14,9 +14,9 @@ export function GuideParameters() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-[#1E2640]">
-                <th className="text-left py-2 pr-6 text-[#F59E0B]">Parameter</th>
+                <th className="text-left py-2 pr-6 text-[#00C8E8]">Parameter</th>
                 <th className="text-left py-2 pr-4 text-[#00E676]">Safe</th>
-                <th className="text-left py-2 pr-4 text-[#F59E0B]">Optimal</th>
+                <th className="text-left py-2 pr-4 text-[#00C8E8]">Optimal</th>
                 <th className="text-left py-2 text-red-400">Dangerous</th>
               </tr>
             </thead>
@@ -78,9 +78,9 @@ pnpm fv -- remove will-btc-hit-100k`} />
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-[#1E2640]">
-                    <th className="text-left py-2 pr-6 text-[#F59E0B]">Confidence</th>
-                    <th className="text-left py-2 pr-6 text-[#F59E0B]">Auto Spread</th>
-                    <th className="text-left py-2 text-[#F59E0B]">When to use</th>
+                    <th className="text-left py-2 pr-6 text-[#00C8E8]">Confidence</th>
+                    <th className="text-left py-2 pr-6 text-[#00C8E8]">Auto Spread</th>
+                    <th className="text-left py-2 text-[#00C8E8]">When to use</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1E2640]">

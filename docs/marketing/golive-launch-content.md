@@ -39,7 +39,7 @@ Subscribe. Get signals. Trade. No config needed.
 ```
 How it works in 3 steps:
 
-1. Subscribe — Pro ($99), Enterprise ($299), or Master ($999)/mo
+1. Subscribe — Starter ($49), Pro ($149), or Elite ($499)/mo
 2. Get signals — via dashboard or Telegram bot
 3. Trade — with mathematically-optimized position sizes
 
@@ -71,9 +71,9 @@ Production-grade. Day one.
 ```
 Simple tiers. No hidden fees.
 
-Pro — $99/mo → Core signals + dashboard
-Enterprise — $299/mo → Priority signals + advanced analytics  
-Master — $999/mo → Full strategy suite + direct support
+Starter — $49/mo → Core signals + dashboard
+Pro — $149/mo → Priority signals + advanced analytics  
+Elite — $499/mo → Full strategy suite + direct support
 
 All paid in USDT. Cancel anytime.
 ```
@@ -104,7 +104,7 @@ What it does:
 Quick facts:
 • 2,430+ tests, production-grade from day one
 • Dual-model AI: market scanner + risk calibrator
-• $99-$999/mo, USDT via NOWPayments
+• $49-$499/mo, USDT via NOWPayments
 
 We're not another alpha group or meme signal channel. This is a proper RaaS platform. Happy to answer questions.
 
@@ -152,7 +152,7 @@ Ask me anything about the architecture, the strategies, or the Kelly implementat
 • Dashboard is open at cashclaw.cc
 
 What people are asking:
-Q: "Why not a free tier?" → AI inference costs real money. But Pro is $99.
+Q: "Why not a free tier?" → AI inference costs real money. But Starter is $49.
 Q: "How is this different from signal groups?" → Kelly sizing + dual-model AI + production infra.
 
 Questions? Drop them below. 👇

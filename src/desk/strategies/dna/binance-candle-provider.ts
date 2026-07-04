@@ -15,7 +15,7 @@
  */
 
 import type { Candle, TfId } from './multi-tf-types';
-import type { } from './orchestrator';
+import type { CandleProvider } from './orchestrator';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

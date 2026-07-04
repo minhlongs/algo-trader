@@ -31,18 +31,14 @@ export interface ThresholdAlert {
 
 export const DAILY_LIMITS: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 100,
-  [LicenseTier.STARTER]: 5000,
   [LicenseTier.PRO]: 10000,
   [LicenseTier.ENTERPRISE]: 100000,
-  [LicenseTier.MASTER]: 500000,
 };
 
 export const OVERAGE_PRICE_PER_CALL: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 0,
-  [LicenseTier.STARTER]: 0,
   [LicenseTier.PRO]: 0.01,
   [LicenseTier.ENTERPRISE]: 0.005,
-  [LicenseTier.MASTER]: 0.001,
 };
 
 const ALERT_THRESHOLDS = [80, 90, 100];
@@ -205,7 +201,7 @@ export class UsageMeteringService extends EventEmitter {
            api_calls_count = $4, overage_units = $5, overage_cost = $6`,
         [licenseKey, status.date, tier, status.currentUsage, status.overageUnits, status.overageCost]
       );
-    } catch {
+    } catch (_error) {
       // Database errors are non-fatal — usage tracking continues in memory
     }
   }

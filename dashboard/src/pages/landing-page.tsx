@@ -43,13 +43,13 @@ const HOW_ITEMS = [
     title: 'Select Markets',
     body: 'The bot scans Polymarket for high-liquidity questions with favourable spreads and selects the top candidates automatically.',
     icon: MagnifyingGlass,
-    accent: '#F59E0B',
+    accent: '#00C8E8',
   },
   {
     title: 'Bot Quotes',
     body: 'CashClaw posts bid and ask orders around the fair-value mid-price, earning the spread on every matched trade.',
     icon: ChartLine,
-    accent: '#F59E0B',
+    accent: '#00C8E8',
   },
   {
     title: 'You Profit',
@@ -117,7 +117,7 @@ export function LandingPage() {
       <section className="relative pt-28 sm:pt-36 pb-16 sm:pb-24 px-4 sm:px-6 max-w-6xl mx-auto overflow-hidden">
         {/* Ambient glow behind hero */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full blur-[120px] opacity-10 pointer-events-none"
-          style={{ background: 'radial-gradient(circle, #F59E0B, transparent)' }} />
+          style={{ background: 'radial-gradient(circle, #00C8E8, transparent)' }} />
 
         <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="flex flex-col gap-6">

@@ -21,7 +21,6 @@ import {
   savePaperTradeV3,
   settleStalePositions,
   __resetPortfolioForTests,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
   resetPortfolio,
   POSITION_SIZE_PCT,
   MIN_AI_CONFIDENCE,

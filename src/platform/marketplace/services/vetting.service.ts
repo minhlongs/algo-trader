@@ -7,7 +7,7 @@ import { logger } from '../../../shared/utils/logger';
 import { AuditLogService } from '../../audit/audit-log-service';
 import { StrategyRepository, VettingJobRepository } from './repositories';
 
-import type { } from '../models/types';
+import type { StrategyStatus, BacktestSummary } from '../models/types';
 
 import type { IMarketplaceStrategy } from '../models/types';
 
@@ -49,7 +49,7 @@ export class VettingService {
     return VettingService.instance;
   }
 
-  async submitForVetting(strategyId: string, _tenantId: string): Promise<{ id: string; strategyId: string; decision: string }> {
+  async submitForVetting(strategyId: string, tenantId: string): Promise<{ id: string; strategyId: string; decision: string }> {
     try {
       const strategy = await this.strategyRepo.findById(strategyId);
       if (!strategy) throw new Error('Strategy not found');

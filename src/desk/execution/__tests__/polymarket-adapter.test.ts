@@ -32,15 +32,12 @@ vi.mock('../polymarket-signer', () => ({
 const TEST_API_URL = 'https://clob.polymarket.com';
 
 function setupEnv(): void {
-  process.env.POLYMARKET_API_KEY = 'test-api-key';
-  process.env.POLYMARKET_API_SECRET = 'test-api-secret';
-  process.env.POLYMARKET_PASSPHRASE = 'test-passphrase';
+  process.env.POLY_API_KEY = 'test-api-key';
+  process.env.POLY_API_SECRET = 'test-api-secret';
+  process.env.POLY_PASSPHRASE = 'test-passphrase';
 }
 
 function clearEnv(): void {
-  delete process.env.POLYMARKET_API_KEY;
-  delete process.env.POLYMARKET_API_SECRET;
-  delete process.env.POLYMARKET_PASSPHRASE;
   delete process.env.POLY_API_KEY;
   delete process.env.POLY_API_SECRET;
   delete process.env.POLY_PASSPHRASE;
@@ -404,77 +401,6 @@ describe('PolymarketAdapter', () => {
 
       const [url] = localFetch.mock.calls[0] as [string, RequestInit];
       expect(url).toBe('https://clob.polymarket.com/order/order-001');
-    });
-  });
-
-  // ── Env var unification ────────────────────────────────────────────────
-
-  describe('env var unification', () => {
-    it('should fall back to POLY_* env vars when POLYMARKET_* is not set', async () => {
-      clearEnv();
-      process.env.POLY_API_KEY = 'fallback-key';
-      process.env.POLY_API_SECRET = 'fallback-secret';
-      process.env.POLY_PASSPHRASE = 'fallback-passphrase';
-
-      const fallbackAdapter = createAdapter(TEST_API_URL);
-      const localFetch = makeFetchStub({ orderID: 'order-002', status: 'matched' });
-
-      await fallbackAdapter.placeOrder(makeOrder());
-
-      const [, init] = localFetch.mock.calls[0] as [string, RequestInit];
-      const headers = init.headers as Record<string, string>;
-
-      expect(headers['POLY-API-KEY']).toBe('fallback-key');
-      expect(headers['POLY-PASSPHRASE']).toBe('fallback-passphrase');
-      expect(headers['POLY-SIGNATURE']).toBeTruthy();
-
-      // Cleanup
-      delete process.env.POLY_API_KEY;
-      delete process.env.POLY_API_SECRET;
-      delete process.env.POLY_PASSPHRASE;
-    });
-
-    it('should prefer POLYMARKET_* over POLY_* when both are set', async () => {
-      clearEnv();
-      process.env.POLYMARKET_API_KEY = 'new-key';
-      process.env.POLYMARKET_API_SECRET = 'new-secret';
-      process.env.POLYMARKET_PASSPHRASE = 'new-passphrase';
-      process.env.POLY_API_KEY = 'old-key';
-      process.env.POLY_API_SECRET = 'old-secret';
-      process.env.POLY_PASSPHRASE = 'old-passphrase';
-
-      const bothAdapter = createAdapter(TEST_API_URL);
-      const localFetch = makeFetchStub({ orderID: 'order-003', status: 'matched' });
-
-      await bothAdapter.placeOrder(makeOrder());
-
-      const [, init] = localFetch.mock.calls[0] as [string, RequestInit];
-      const headers = init.headers as Record<string, string>;
-
-      expect(headers['POLY-API-KEY']).toBe('new-key');
-
-      // Cleanup
-      delete process.env.POLYMARKET_API_KEY;
-      delete process.env.POLYMARKET_API_SECRET;
-      delete process.env.POLYMARKET_PASSPHRASE;
-      delete process.env.POLY_API_KEY;
-      delete process.env.POLY_API_SECRET;
-      delete process.env.POLY_PASSPHRASE;
-    });
-  });
-
-  // ── CLOB host override ─────────────────────────────────────────────────
-
-  describe('CLOB host override', () => {
-    it('should use custom API URL when provided', async () => {
-      setupEnv();
-      const customAdapter = createAdapter('https://clob.staging.polymarket.com');
-
-      const localFetch = makeFetchStub({ orderID: 'order-004', status: 'matched' });
-      await customAdapter.placeOrder(makeOrder());
-
-      const [url] = localFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('https://clob.staging.polymarket.com/order');
     });
   });
 });

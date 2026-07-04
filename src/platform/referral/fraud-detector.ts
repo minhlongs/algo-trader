@@ -4,7 +4,7 @@
  */
 
 import { getDbClient } from '../../shared/db/postgres-client';
-import { } from '../../shared/utils/';
+import { logger } from '../../shared/utils/logger';
 
 export interface FraudDetectionConfig {
   maxClicksPerIpPerDay: number;

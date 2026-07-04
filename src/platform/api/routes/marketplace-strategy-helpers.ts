@@ -27,8 +27,6 @@ export const publishBodySchema = z.object({
   minAllocationUsd: z.number().int().min(100).max(100000),
   maxAllocationUsd: z.number().int().min(100).max(10000000),
   supportedExchanges: z.array(z.string()).optional(),
-  priceUsdMonthly: z.number().int().min(0).max(1000000).default(0),
-  billingCycle: z.enum(['monthly', 'quarterly', 'yearly']).default('monthly'),
   tags: z.array(z.string()).max(10).optional(),
   backtestSummary: z.object({
     sharpe: z.number(),

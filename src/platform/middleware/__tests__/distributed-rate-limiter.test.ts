@@ -106,20 +106,6 @@ function makeProLicense(overrides: Partial<License> = {}): License {
   };
 }
 
-function makeStarterLicense(overrides: Partial<License> = {}): License {
-  return {
-    id: 'lic_test_starter',
-    name: 'Starter License',
-    key: 'RAAS-RST-ABCD1234-EFGH5678',
-    tier: LicenseTier.STARTER,
-    status: LicenseStatus.ACTIVE,
-    createdAt: new Date().toISOString(),
-    usageCount: 0,
-    tenantId: 'tenant-starter-42',
-    ...overrides,
-  };
-}
-
 function makeFreeLicense(overrides: Partial<License> = {}): License {
   return {
     id: 'lic_test_free',
@@ -254,36 +240,9 @@ describe('distributedRateLimiter middleware (unit)', () => {
   });
 
   // -----------------------------------------------------------------------
-  // 3. Valid API key with active tier licenses -> tier limits
+  // 3. Valid API key with active PRO license -> PRO tier limits
   // -----------------------------------------------------------------------
-  describe('authenticated tier requests', () => {
-    it('should apply STARTER tier limits for a valid active STARTER license via x-api-key', async () => {
-      const starterLicense = makeStarterLicense();
-      mockGetLicenseByKey.mockReturnValue(starterLicense);
-
-      const req = createMockReq({
-        originalUrl: '/api/trades',
-        headers: { 'x-api-key': starterLicense.key },
-      });
-      const res = createMockRes();
-      const next = vi.fn();
-
-      rateLimitFn.mockResolvedValue([1, 5]); // allowed, currentCount=5
-
-      await distributedRateLimiter(req, res as unknown as Response, next);
-
-      expect(mockGetLicenseByKey).toHaveBeenCalledWith(starterLicense.key);
-      expect(res._headers['x-ratelimit-limit']).toBe('50');
-      expect(res._headers['x-ratelimit-remaining']).toBe('45'); // 50 - 5
-      expect(rateLimitFn).toHaveBeenCalledWith(
-        'ratelimit:{tenant-starter-42}',
-        expect.any(Number),
-        60000,
-        50,
-      );
-      expect(next).toHaveBeenCalled();
-    });
-
+  describe('authenticated PRO tier requests', () => {
     it('should apply PRO tier limits for a valid active PRO license via x-api-key', async () => {
       const proLicense = makeProLicense();
       mockGetLicenseByKey.mockReturnValue(proLicense);

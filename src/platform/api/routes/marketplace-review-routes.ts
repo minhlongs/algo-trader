@@ -36,25 +36,16 @@ const reviewFilterSchema = z.object({
   limit: z.number().int().min(1).max(100).optional(),
 });
 
-// ==================== Typed Auth Context ====================
-declare module 'express' {
-  interface Request {
-    tenant?: { id: string; tier?: string };
-    user?: { id: string; tenantId?: string; tier?: string; role?: string };
-    apiKey?: { userId?: string; isAdmin?: boolean };
-  }
-}
-
 // ==================== Helper Functions ====================
 
 function getTenantId(req: Request): string {
-  const tenantId = req.tenant?.id || req.user?.tenantId;
+  const tenantId = (req as any).tenant?.id || (req as any).user?.tenantId;
   if (!tenantId) throw new Error('Unauthorized: No tenant context');
   return String(tenantId);
 }
 
 function getUserId(req: Request): string {
-  const userId = req.user?.id || req.apiKey?.userId;
+  const userId = (req as any).user?.id || (req as any).apiKey?.userId;
   if (!userId) throw new Error('Unauthorized: No user context');
   return String(userId);
 }
@@ -69,7 +60,7 @@ function getQueryString(value: unknown, defaultValue: string = ''): string {
   return String(value);
 }
 
-function _getQueryNumber(value: unknown, defaultValue: number = 0): number {
+function getQueryNumber(value: unknown, defaultValue: number = 0): number {
   if (value === undefined || value === null) return defaultValue;
   if (Array.isArray(value)) {
     const first = value[0];
@@ -82,8 +73,8 @@ function _getQueryNumber(value: unknown, defaultValue: number = 0): number {
   return defaultValue;
 }
 
-function _isAdmin(req: Request): boolean {
-  return req.user?.role === 'admin' || req.apiKey?.isAdmin === true;
+function isAdmin(req: Request): boolean {
+  return (req as any).user?.role === 'admin' || (req as any).apiKey?.isAdmin === true;
 }
 
 // ==================== Routes ====================
@@ -147,7 +138,8 @@ marketplaceReviewRouter.post('/', requireTier('FREE'), async (req: Request, res:
       tenantId,
       'api_call' as AuditEventType,
       {
-        tier: req.user?.tier,        metadata: {
+        tier: (req as any).user?.tier,
+        metadata: {
           action: 'review_created',
           userId,
           resourceId: review.id,
@@ -256,7 +248,8 @@ marketplaceReviewRouter.post('/:id/helpful', requireTier('FREE'), async (req: Re
       tenantId,
       'api_call' as AuditEventType,
       {
-        tier: req.user?.tier,        metadata: {
+        tier: (req as any).user?.tier,
+        metadata: {
           action: 'review_marked_helpful',
           userId,
           resourceId: id,
@@ -302,7 +295,8 @@ marketplaceReviewRouter.post('/:id/report', requireTier('FREE'), async (req: Req
       tenantId,
       'api_call' as AuditEventType,
       {
-        tier: req.user?.tier,        metadata: {
+        tier: (req as any).user?.tier,
+        metadata: {
           action: 'review_reported',
           userId,
           resourceId: id,

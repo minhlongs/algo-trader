@@ -83,7 +83,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_FILE = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics-definitions.ts');
+const METRICS_FILE = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 
 const SNAKE_CASE_RE = /^[a-z][a-z0-9_]*$/;
 const MIN_HELP_LENGTH = 15;

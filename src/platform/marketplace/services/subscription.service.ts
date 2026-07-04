@@ -67,7 +67,6 @@ export class SubscriptionService {
         strategyName,
         priceUsd: listing.priceUsdMonthly / 100, // Convert cents to dollars
         tenantId: data.tenantId,
-        ipnCallbackUrl: process.env.NOWPAYMENTS_IPN_URL || 'https://api.cashclaw.cc/api/webhooks/nowpayments',
       });
 
       if (result) {
@@ -315,7 +314,6 @@ export class SubscriptionService {
   // ── Private helpers ──────────────────────────────────────────────
 
   private async strategyRepoForListing(strategyId: string): Promise<{ id: string; creatorId: string; name: string } | null> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { StrategyRepository, strategyRepository } = await import('./repositories');
     const repo = strategyRepository as InstanceType<typeof StrategyRepository>;
     const strategy = await repo.findById(strategyId);

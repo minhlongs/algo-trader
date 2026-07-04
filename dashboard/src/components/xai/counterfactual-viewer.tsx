@@ -89,7 +89,7 @@ export function CounterfactualViewer({
     <StitchCard className={className}>
       <StitchCardHeader>
         <h3 className="text-lg font-semibold flex items-center gap-2">
-          <span className="text-purple">🤔</span>
+          <span className="text-purple-400">🤔</span>
           What-If Scenarios
         </h3>
         <p className="text-sm text-muted-foreground">
@@ -99,7 +99,7 @@ export function CounterfactualViewer({
       <StitchCardBody className="space-y-6">
         {/* Counterfactual list */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-accent">Suggested Changes</h4>
+          <h4 className="text-sm font-semibold text-cyan-400">Suggested Changes</h4>
           {counterfactuals.length === 0 ? (
             <p className="text-muted-foreground text-sm">No counterfactual scenarios available</p>
           ) : (
@@ -129,7 +129,7 @@ export function CounterfactualViewer({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Target:</span>
-                    <span className="text-accent">{cf.counterfactual_value.toFixed(4)}</span>
+                    <span className="text-cyan-400">{cf.counterfactual_value.toFixed(4)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Change:</span>
@@ -148,11 +148,11 @@ export function CounterfactualViewer({
           <>
             <div className="border-t border-border" />
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-purple">Custom Scenario</h4>
+              <h4 className="text-sm font-semibold text-cyan-400">Custom Scenario</h4>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{selectedFeature}</span>
-                  <span className="text-accent">{customValue.toFixed(4)}</span>
+                  <span className="text-cyan-400">{customValue.toFixed(4)}</span>
                 </div>
                 <input
                   type="range"

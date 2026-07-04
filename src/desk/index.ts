@@ -45,8 +45,5 @@ export * from './arbitrage/index';
 // RaaS gate config
 export * from './gate/config/index';
 
-// Backtesting
-export * from './backtesting/index';
-
 // Sandbox
 export * from './sandbox/index';

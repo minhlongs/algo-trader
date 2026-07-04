@@ -25,42 +25,17 @@ import { marketplaceDisputeRouter } from './routes/marketplace-dispute-routes';
 import { marketplaceCreatorRevenueRouter } from './routes/marketplace-creator-revenue-routes';
 import { adminMarketplaceRouter } from './routes/admin-marketplace-routes';
 import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook';
-import { nowpaymentsApiRouter } from './routes/nowpayments-api-routes';
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
-import { blogEngagementRouter } from './routes/blog-engagement-routes';
-import { analyticsRouter, strategyPerformanceRouter } from './routes/analytics-routes';
-import { kycRouter } from './routes/kyc-routes';
-import { newsletterRouter } from './routes/newsletter-routes';
-import { communityStrategyRouter } from './routes/community-strategy-routes';
+import { analyticsRouter } from './routes/analytics-routes';
 import { subscriberPnlRouter } from './routes/subscriber-pnl-routes';
 import { enterpriseInquiryRouter } from './routes/enterprise-inquiry-routes';
 import { createSignalIngestRouter } from './routes/signal-ingest-routes';
 import { createAdminQwenRouter } from './routes/admin-qwen-routes';
-import { adminDnaRouter } from './routes/admin-dna';
-import { backtestRouter } from './routes/backtest';
-import { createAdminDnaRouter } from './routes/admin-dna-routes';
-import { credentialsRouter } from './routes/credentials-routes';
-import { personalizationRouter } from './routes/personalization-routes';
-import { referralRouter } from './routes/referral-routes';
-import { positionsRouter } from './routes/positions';
-import { signalsApiRouter } from './routes/signals-api-routes';
-import { signalFeedRouter } from './routes/signal-feed-routes';
-import { signalSubscriptionRouter } from './routes/signal-subscription-routes';
-import { webhookResilienceRouter } from './routes/webhooks/webhook-resilience';
-import { subscriptionAnalyticsRouter } from './routes/subscription-analytics-routes';
-import { trialDripRouter } from './routes/trial-drip-routes';
-import { apiKeysRouter } from './routes/api-keys';
-import { marketplaceListingBadgeRouter, marketplaceBadgeDefinitionRouter } from './routes/marketplace-badge-routes';
-import { marketplaceSubscriptionEnhancementsRouter } from './routes/marketplace-subscription-enhancements';
-import { marketplaceSubscriptionStatsRouter } from './routes/marketplace-subscription-stats-routes';
-import { coPilotRouter } from './routes/co-pilot-routes';
-import { leaderboardRouter } from './routes/leaderboard-routes';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
 import { errorHandler } from '../middleware/error-handler';
-import { seedDeskStrategies } from '../marketplace/services/desk-strategy-seeder';
 
 export interface ApiConfig {
   port: number;
@@ -86,7 +61,6 @@ export class ApiServer {
             'https://agencyos.network',
             'https://sophia.agencyos.network',
             'https://raas-landing.pages.dev',
-            'http://localhost:3001', // Landing server (marketing pages + pricing)
           ],
       rateLimitWindowMs: 60000, // 1 minute
       rateLimitMax: 100, // 100 requests per minute
@@ -180,10 +154,6 @@ export class ApiServer {
 
 // Marketplace routes
 this.app.use('/api/v1/marketplace/strategies', marketplaceStrategyRouter);
-// Subscription routes — mount stats/enhancements BEFORE the base subscription router
-// to avoid the existing GET /:id intercepting GET /stats
-this.app.use('/api/v1/marketplace/subscriptions', marketplaceSubscriptionStatsRouter);
-this.app.use('/api/v1/marketplace/subscriptions', marketplaceSubscriptionEnhancementsRouter);
 this.app.use('/api/v1/marketplace/subscriptions', marketplaceSubscriptionRouter);
 this.app.use('/api/v1/marketplace/reviews', marketplaceReviewRouter);
 this.app.use('/api/v1/marketplace/disputes', marketplaceDisputeRouter);
@@ -191,20 +161,9 @@ this.app.use('/api/v1/marketplace/revenue', marketplaceCreatorRevenueRouter);
 
 // Admin marketplace routes
 this.app.use('/api/admin/marketplace', adminMarketplaceRouter);
-
-// Platform depth — API keys, badges, subscription enhancements
-this.app.use('/api/v1/api-keys', apiKeysRouter);
-this.app.use('/api/v1/marketplace/listings', marketplaceListingBadgeRouter);
-this.app.use('/api/v1/marketplace/badges', marketplaceBadgeDefinitionRouter);
     this.app.use('/api/coupons', couponRouter);
     this.app.use('/api/blog', blogRouter);
-    this.app.use('/api/blog', blogEngagementRouter);
     this.app.use('/api/analytics', analyticsRouter);
-    this.app.use('/api/v1/strategy-performance', strategyPerformanceRouter);
-    this.app.use('/api/v1/leaderboard', leaderboardRouter);
-    this.app.use('/api/kyc', kycRouter);
-    this.app.use('/api/newsletter', newsletterRouter);
-    this.app.use('/api/community/strategies', communityStrategyRouter);
     this.app.use('/api/v1/subscriber', subscriberPnlRouter);
     this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
 
@@ -220,33 +179,7 @@ this.app.use('/api/v1/marketplace/badges', marketplaceBadgeDefinitionRouter);
 this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
 
 // Webhook routes (no rate limit — external provider callbacks)
-    // NOWPayments API routes (invoice creation for license checkout)
-    this.app.use('/api/v1/nowpayments', nowpaymentsApiRouter);
-
     this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);
-
-    // Orphaned route wiring — Phase 53 (fully coded, tier-gated routes)
-    this.app.use('/api/v1/backtest', backtestRouter);
-    this.app.use('/api/v1/admin/dna', createAdminDnaRouter());
-    this.app.use('/api/admin/dna', adminDnaRouter);
-    this.app.use('/api/v1/credentials', credentialsRouter);
-    this.app.use('/api/v1/personalization', personalizationRouter);
-    this.app.use('/api/v1/referral', referralRouter);
-    this.app.use('/api/positions', positionsRouter);
-
-    // Signals API routes (Phase 02 — must precede signalFeedRouter to avoid /feed matching /:id)
-    this.app.use('/api/v1/signals', signalsApiRouter);
-
-    this.app.use('/api/v1/signals', signalFeedRouter);
-    this.app.use('/api/v1/signals/subscriptions', signalSubscriptionRouter);
-    this.app.use('/api/webhooks/resilience', webhookResilienceRouter);
-
-    // Revenue growth routes — Phase 01 (subscription analytics, trial drip)
-    this.app.use('/api/analytics/subscription', subscriptionAnalyticsRouter);
-    this.app.use('/api/v1/trial-drip', trialDripRouter);
-
-    // Co-pilot routes — Phase 01 (AI assistant for trading queries)
-    this.app.use(coPilotRouter);
 
     // 404 handler
     this.app.use((_req, res) => {
@@ -269,11 +202,6 @@ this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
     return new Promise((resolve) => {
       this.server = this.app.listen(this.config.port, () => {
         logger.info(`[ApiServer] Listening on port ${this.config.port}`);
-        // Seed marketplace strategies (idempotent — skips existing)
-        seedDeskStrategies().then(
-          (r) => logger.info('[ApiServer] Marketplace seeding complete', r),
-          (e) => logger.error('[ApiServer] Marketplace seeding failed', { err: String(e) }),
-        );
         resolve();
       });
     });

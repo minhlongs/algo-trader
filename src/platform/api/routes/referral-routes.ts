@@ -4,16 +4,14 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { referralService } from '../../referral/referral-service';
-import { createReferralCode } from '../../referral/referral-crud';
-import { logger } from '../../../shared/utils/logger';
+import { ReferralStats, CommissionStatus } from '../../referral/types';
 import {
   trackClickSchema,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
   generateCodeSchema,
   validateReferralSchema,
   paginationSchema,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
   commissionStatusSchema,
 } from '../schemas/referral.schemas';
 import { requireTier } from '../../middleware/feature-gate';
@@ -57,7 +55,7 @@ function isAdmin(req: Request): boolean {
  * GET /api/v1/referral/stats
  * Get referral dashboard metrics for current tenant
  */
-referralRouter.get('/stats', requireTier('FREE'), async (req: Request, res: Response) => {
+referralRouter.get('/stats', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -70,7 +68,7 @@ referralRouter.get('/stats', requireTier('FREE'), async (req: Request, res: Resp
     }
     return res.json({ data: stats });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to get stats:', error);
+    console.error('[ReferralRoutes] Failed to get stats:', error);
     return res.status(500).json({ error: 'Failed to fetch referral stats' });
   }
 });
@@ -79,7 +77,7 @@ referralRouter.get('/stats', requireTier('FREE'), async (req: Request, res: Resp
  * GET /api/v1/referral/code
  * Get current tenant's referral code
  */
-referralRouter.get('/code', requireTier('FREE'), async (req: Request, res: Response) => {
+referralRouter.get('/code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -95,7 +93,7 @@ referralRouter.get('/code', requireTier('FREE'), async (req: Request, res: Respo
     }
     return res.json({ data: code });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to get referral code:', error);
+    console.error('[ReferralRoutes] Failed to get referral code:', error);
     return res.status(500).json({ error: 'Failed to fetch referral code' });
   }
 });
@@ -104,7 +102,7 @@ referralRouter.get('/code', requireTier('FREE'), async (req: Request, res: Respo
  * POST /api/v1/referral/generate-code
  * Generate a new referral code for current tenant (or specified tenant if admin)
  */
-referralRouter.post('/generate-code', requireTier('FREE'), async (req: Request, res: Response) => {
+referralRouter.post('/generate-code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -119,10 +117,10 @@ referralRouter.post('/generate-code', requireTier('FREE'), async (req: Request, 
   }
 
   try {
-    const code = await createReferralCode(targetTenantId);
-    return res.status(201).json({ code: code.code, createdAt: code.createdAt });
+    const code = await referralService.registerReferralCode(targetTenantId);
+    return res.status(201).json({ data: code });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to generate code:', error);
+    console.error('[ReferralRoutes] Failed to generate code:', error);
     const message = error instanceof Error ? error.message : 'Failed to generate referral code';
     return res.status(400).json({ error: message });
   }
@@ -133,7 +131,7 @@ referralRouter.post('/generate-code', requireTier('FREE'), async (req: Request, 
  * Public endpoint to track a referral link click
  * No authentication required, but rate limited
  */
-referralRouter.post('/track-click', async (req: Request, res: Response) => {
+referralRouter.post('/track-click', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const { code } = req.query as { code?: string };
   const parsed = trackClickSchema.safeParse(req.body);
 
@@ -153,7 +151,7 @@ referralRouter.post('/track-click', async (req: Request, res: Response) => {
     );
     return res.status(201).json({ data: tracking });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to track click:', error);
+    console.error('[ReferralRoutes] Failed to track click:', error);
     const message = error instanceof Error ? error.message : 'Failed to track click';
     return res.status(400).json({ error: message });
   }
@@ -163,7 +161,7 @@ referralRouter.post('/track-click', async (req: Request, res: Response) => {
  * GET /api/v1/referral/commissions
  * Get commission records for current tenant
  */
-referralRouter.get('/commissions', requireTier('FREE'), async (req: Request, res: Response) => {
+referralRouter.get('/commissions', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -194,7 +192,7 @@ referralRouter.get('/commissions', requireTier('FREE'), async (req: Request, res
       },
     });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to get commissions:', error);
+    console.error('[ReferralRoutes] Failed to get commissions:', error);
     return res.status(500).json({ error: 'Failed to fetch commissions' });
   }
 });
@@ -204,7 +202,7 @@ referralRouter.get('/commissions', requireTier('FREE'), async (req: Request, res
  * Get payout history for current tenant
  * (Currently aggregates commission periods; future: Stripe payout details)
  */
-referralRouter.get('/payouts', requireTier('FREE'), async (req: Request, res: Response) => {
+referralRouter.get('/payouts', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -251,7 +249,7 @@ referralRouter.get('/payouts', requireTier('FREE'), async (req: Request, res: Re
       },
     });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to get payouts:', error);
+    console.error('[ReferralRoutes] Failed to get payouts:', error);
     return res.status(500).json({ error: 'Failed to fetch payouts' });
   }
 });
@@ -261,7 +259,7 @@ referralRouter.get('/payouts', requireTier('FREE'), async (req: Request, res: Re
  * Validate a referral code (used during signup)
  * Public endpoint
  */
-referralRouter.post('/validate', async (req: Request, res: Response) => {
+referralRouter.post('/validate', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const parsed = validateReferralSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -269,7 +267,6 @@ referralRouter.post('/validate', async (req: Request, res: Response) => {
   }
 
   try {
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { referralCode, tenantId: newTenantId } = parsed.data;
 
     // Check if code exists and is valid
@@ -319,7 +316,7 @@ referralRouter.post('/validate', async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to validate code:', error);
+    console.error('[ReferralRoutes] Failed to validate code:', error);
     return res.status(500).json({ error: 'Failed to validate referral code' });
   }
 });
@@ -329,7 +326,7 @@ referralRouter.post('/validate', async (req: Request, res: Response) => {
  * Get referral code for the current tenant (shorthand for /code)
  * Also generates one if it doesn't exist
  */
-referralRouter.get('/my-code', requireTier('FREE'), async (req: Request, res: Response) => {
+referralRouter.get('/my-code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -343,7 +340,7 @@ referralRouter.get('/my-code', requireTier('FREE'), async (req: Request, res: Re
     }
     return res.json({ data: code });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to get/generate code:', error);
+    console.error('[ReferralRoutes] Failed to get/generate code:', error);
     return res.status(500).json({ error: 'Failed to get referral code' });
   }
 });
@@ -352,7 +349,7 @@ referralRouter.get('/my-code', requireTier('FREE'), async (req: Request, res: Re
  * GET /api/v1/referral/clicks/:code
  * Get clicks for a specific referral code (for the code owner)
  */
-referralRouter.get('/clicks/:code', requireTier('FREE'), async (req: Request, res: Response) => {
+referralRouter.get('/clicks/:code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
   const tenantId = extractTenantId(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -388,96 +385,8 @@ referralRouter.get('/clicks/:code', requireTier('FREE'), async (req: Request, re
       },
     });
   } catch (error) {
-    logger.error('[ReferralRoutes] Failed to get clicks:', error);
+    console.error('[ReferralRoutes] Failed to get clicks:', error);
     return res.status(500).json({ error: 'Failed to fetch clicks' });
-  }
-});
-
-/**
- * GET /api/v1/referral/conversion-summary
- * Get referral conversion overview: total clicks, conversions, conversion rate, and revenue
- */
-referralRouter.get('/conversion-summary', requireTier('FREE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
-  if (!tenantId) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  try {
-    const stats = await referralService.getReferralStats(tenantId);
-    if (!stats) {
-      return res.status(404).json({ error: 'No referral data found' });
-    }
-
-    res.json({
-      totalClicks: stats.totalClicks,
-      uniqueClicks: stats.uniqueClicks,
-      conversions: stats.conversions,
-      conversionRate: stats.conversionRate,
-      totalRevenue: stats.totalRevenue,
-      totalCommissions: stats.totalCommissions,
-      pendingCommissions: stats.pendingCommissions,
-      paidCommissions: stats.paidCommissions,
-      topReferrers: stats.topReferrers,
-      period: stats.period,
-    });
-  } catch (error) {
-    logger.error('[ReferralRoutes] Failed to get conversion summary:', error);
-    return res.status(500).json({ error: 'Failed to fetch conversion summary' });
-  }
-});
-
-/**
- * POST /api/v1/referral/record-conversion
- * Internal endpoint to record a referral conversion when a new tenant signs up
- * Typically called by the auth/signup handler
- */
-referralRouter.post('/record-conversion', requireTier('FREE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
-  if (!tenantId) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const { trackingId, referralCode } = req.body as { trackingId?: string; referralCode?: string };
-
-  if (!trackingId && !referralCode) {
-    return res.status(400).json({ error: 'Either trackingId or referralCode is required' });
-  }
-
-  try {
-    // Resolve tracking ID from referral code if only code was provided
-    let resolvedTrackingId = trackingId;
-
-    if (!resolvedTrackingId && referralCode) {
-      // Look up the most recent click with this code that hasn't converted yet
-      const clicks = await referralService.getClicks(referralCode, 1, 0);
-      const unconverted = clicks.find((c) => !c.convertedAt);
-      if (!unconverted) {
-        return res.status(404).json({ error: 'No unconverted click found for this referral code' });
-      }
-      resolvedTrackingId = unconverted.id;
-    }
-
-    if (!resolvedTrackingId) {
-      return res.status(400).json({ error: 'Could not resolve tracking ID' });
-    }
-
-    const convertedTenantId = req.body.convertedTenantId || tenantId;
-    const convertedUserId = req.body.convertedUserId || convertedTenantId;
-
-    await referralService.recordConversion(resolvedTrackingId, convertedTenantId, convertedUserId);
-
-    logger.info('[ReferralRoutes] Conversion recorded', {
-      trackingId: resolvedTrackingId,
-      convertedTenantId,
-      referredBy: referralCode || 'unknown',
-    });
-
-    return res.status(201).json({ success: true, trackingId: resolvedTrackingId });
-  } catch (error) {
-    logger.error('[ReferralRoutes] Failed to record conversion:', error);
-    const message = error instanceof Error ? error.message : 'Failed to record conversion';
-    return res.status(400).json({ error: message });
   }
 });
 

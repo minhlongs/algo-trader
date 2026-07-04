@@ -147,9 +147,6 @@ export interface MarketplaceStrategy {
   supportedExchanges: string[];
   tags: string[];
   backtestSummary?: BacktestSummary;
-  listingId?: string;
-  listingPriceUsdMonthly?: number;
-  listingBillingCycle?: string;
   vettedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -220,21 +217,4 @@ export interface PaginatedResult<T> {
   page: number;
   limit: number;
   totalPages: number;
-}
-
-// === Leaderboard API ===
-export interface LeaderboardEntry {
-  rank: number;
-  strategy: string;
-  winRate: number;
-  sharpe: number;
-  pnl: number;
-  drawdown: number;
-  trades: number;
-  badge?: 'top_performer' | 'rising_star' | 'verified' | 'new';
-}
-
-export interface LeaderboardResponse {
-  data: LeaderboardEntry[];
-  total: number;
 }

@@ -24,7 +24,7 @@ import { readFileSync, readdirSync } from 'fs';
 import { resolve, join } from 'path';
 
 const RUNBOOK_DIR = resolve(__dirname, '../../docs/runbooks');
-const METRICS_PATH = resolve(__dirname, '../../src/platform/middleware/prometheus-metrics-definitions.ts');
+const METRICS_PATH = resolve(__dirname, '../../src/platform/middleware/prometheus-metrics.ts');
 
 const METRIC_PREFIX = 'algo_trader_qwen_';
 const IDENT_RE = new RegExp(`\\b${METRIC_PREFIX}[a-z][a-z0-9_]*\\b`, 'g');

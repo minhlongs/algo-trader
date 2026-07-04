@@ -1,6 +1,6 @@
 # System Architecture - Algo Trader
 
-> **Updated 2026-07-03** — Post-separation: 3 bounded contexts (desk/platform/shared). Next Wave: Revenue, Trading, Infra, Platform Depth.
+> **Updated 2026-06-30** — Post-separation: 3 bounded contexts (desk/platform/shared).
 
 ## High-Level Architecture
 
@@ -113,10 +113,10 @@ src/
 
 | Module | Responsibility | Import rule |
 |--------|---------------|-------------|
-| `api/` | Express REST + WebSocket gateway, 35+ route files with tier gating | shared + desk (IStrategy) |
-| `auth/` | Better Auth integration (multi-tenant sessions), API key Bearer auth | shared only |
-| `billing/` | Invoice generation, NOWPayments, license management (FREE/PRO/ENTERPRISE/MASTER), trial drip campaigns | shared only |
-| `marketplace/` | Multi-tenant strategy marketplace (listings, subscriptions, payment flow, execution bridge, revenue shares, reviews, disputes, vetting) | shared + desk (registry) |
+| `api/` | Express REST + WebSocket gateway, 31 route files with tier gating | shared + desk (IStrategy) |
+| `auth/` | Better Auth integration (multi-tenant sessions) | shared only |
+| `billing/` | Invoice generation, NOWPayments, license management | shared only |
+| `marketplace/` | Multi-tenant strategy marketplace (listings, subscriptions, reviews, disputes, vetting) | shared + desk (registry) |
 | `raas/` | RaaS subscriber executor -- sandbox per tenant with DLP + attestation | shared + desk (IStrategy) |
 | `metering/` | Usage metering with threshold alerts | shared only |
 | `middleware/` | Tier gating (`requireTier`), rate limiting, tenant isolation, Prometheus metrics, error handler | shared only |
@@ -175,7 +175,7 @@ graph TD
 - **AtomicCrossExchangeOrderExecutor** — Promise.allSettled buy/sell parallel, rollback on partial failure.
 
 **Multi-Tenant Core** (`src/platform/`):
-- **TenantArbPositionTracker** — Per-tenant positions, tier limits (FREE/PRO/ENTERPRISE/MASTER).
+- **TenantArbPositionTracker** — Per-tenant positions, tier limits (Basic/Pro/Enterprise).
 - **PaperTradingEngine** — Virtual trading simulation, P&L tracking.
 - **WebSocketServer** — Real-time `spread` + `position` channel broadcast.
 
@@ -426,6 +426,7 @@ Two-plane observability: Prometheus metrics + OpenTelemetry traces → Grafana.
 - Contact point reuses app `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env (forwarded in `docker-compose.monitoring.yml`).
 - Runbooks at `docs/runbooks/qwen-*.md` + `docs/runbooks/algo-trader-deadman.md` linked from alert annotations.
 
+### Infrastructure
 **Database** (`prisma/`):
 - PostgreSQL 16 via Prisma ORM — 9 models (Tenant, ApiKey, Strategy, Order, Trade, BacktestResult, Candle, PnlSnapshot, AlertRule).
 - Row-level isolation via tenantId FK on all business tables.
@@ -434,32 +435,16 @@ Two-plane observability: Prometheus metrics + OpenTelemetry traces → Grafana.
 - BullMQ + Redis 7 — 4 queues: backtest, scan, webhook, optimization.
 - Workers: backtest runner, scan detector, signed webhook delivery, grid search optimizer.
 
-**Billing** (`src/platform/billing/`):
-- NOWPayments USDT TRC20 — 4 tiers (FREE $0, PRO $149, ENTERPRISE $299, MASTER $999), HMAC-SHA512 webhook verification.
-- IPN webhook (`POST /api/webhooks/nowpayments`): HMAC-SHA512 signature verification, idempotency by `payment_id`, credential validation at startup
-- **Signup flow**: PRO/Enterprise signups held in `pending_payment` status until IPN `finished` callback activates license
-- **Dunning service** (`dunning-service.ts`): multi-stage collection (payment_failed → warning → escalation → suspension → reinstatement), integrated with email notifications
-- **Coupon System** (`coupon-system.ts`):
-  - Coupon DB table with code, discount_pct, max_uses, use_count
+**Billing** (`src/billing/`):
+- NOWPayments USDT TRC20 — 3 tiers (FREE $0, PRO $49, ENTERPRISE $299), HMAC-SHA512 webhook verification.
+- **Coupon System** (`src/billing/coupon-system.ts`):
   - Admin routes: `POST /api/admin/coupons` (create), `GET /api/admin/coupons` (list) — require `X-API-Key` header auth
   - Validation route: `POST /api/coupons/validate` — checks code, discount, applies without incrementing use-count
   - Record use: `POST /api/coupons/:code/use` — atomically increments use-count, guards against race conditions
   - Dashboard integration: CashClaw dashboard on CF Pages displays coupon input, integrates with pricing section
-- **Tier config**: FREE (10 RPM, 100 daily) / PRO (100 RPM, 10K daily) / ENTERPRISE (1000 RPM, 100K daily) / MASTER (5000 RPM, 500K daily, unlimited API, white-label reports)
-- **Subscription analytics**: `GET /analytics/subscription/dashboard`, `/ltv`, `/cohorts`, `/churn` — MRR breakdown, LTV prediction, cohort retention, churn analysis (PRO tier)
-- **Trial drip campaigns**: `POST /api/v1/trial-drip/subscribe`, `/unsubscribe`, `/process`, `/status` — email sequence scheduling for trial-to-paid conversion
 
-**Platform Depth:**
-- **Self-service API key management**: `POST/GET/DELETE /api/v1/api-keys` (PRO+), Bearer token middleware (`api-key-auth.ts`), scrypt-hashed storage, show-once-at-creation pattern, `api_keys` DB table
-- **Marketplace badges**: top performer badges (volume, win rate, reliability, ROI), badge definitions and listing assignment via `badge-repository.ts`/`badge-service.ts`
-- **Subscription enhancements**: detailed subscription stats, tier upgrades/downgrades, auto-renewal toggles
-
-**Infrastructure** (Docker Compose):
-- PostgreSQL 16 (`:16-alpine`), Redis 7 (`:7-alpine` with AOF+RDB persistence via `config/redis.conf`, optional password via `REDIS_PASSWORD`)
-- Prometheus (`prom/prometheus:v2.51.0`, `--storage.tsdb.retention.time=15d`, port 9091), Grafana (`grafana/grafana:10.4.0`, port 3001), Alertmanager (`prom/alertmanager:v0.27.0`, port 9093) — all pinned versions
-- Caddy reverse proxy (`docker/caddy/`): auto-HTTPS via Let's Encrypt, HSTS security headers, rate limiting, access logs (optional compose override)
-- SSL/TLS cert renewal: `scripts/renew-certs.sh` (certbot, dry-run + --live modes)
-- k6 load testing: CI-integrated (`tests/load/raas-gateway-load-test.ci.js`), 100 VUs, 30s, p95 < 500ms threshold, error rate < 5%
+**Monitoring** (`docker-compose.yml`):
+- Prometheus (:9090) + Grafana (:3002).
 
 ### Server Bootstrap (Phase 18+)
 **Location**: `src/app.ts` (50 lines)
@@ -492,7 +477,7 @@ All Opportunities →
 |-------|------|
 | Language | TypeScript 5.9, strict mode |
 | Runtime | Node.js 20 |
-| API Gateway | Express (platform, 35+ routes) + Fastify 5 (desk/internal) |
+| API Gateway | Fastify 5 |
 | WebSocket | ws library |
 | Exchange Abstraction | CCXT 4.5 |
 | Job Queue | BullMQ 5 + Redis 7 (IoRedis) |
@@ -539,7 +524,7 @@ All Opportunities →
 - Phase 31: Signal Fusion Engine & Multi-Resolution Analytics (Weighted signal voting, conviction scoring, criteria extraction)
 
 ### Quality Gates
-- **2,783+ tests** (vitest, 100% pass rate, 243 test files)
+- **2,430+ tests** (vitest, 100% pass rate, 204 test files)
 - **600+ source files** (TypeScript 5.9, strict mode)
 - **0 TypeScript errors**
 - **0 `any` types** (test mocks only — acceptable)
@@ -552,7 +537,7 @@ All Opportunities →
 - **26 PR Merges** (Session: #58-#85) — CLOB v2, WebSocket feeds, CLI enhancements, multi-platform support
 - **Target**: $1M ARR via RaaS + white-label licensing
 
-Updated: 2026-07-01
+Updated: 2026-06-30
 
 ---
 

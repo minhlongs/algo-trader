@@ -16,7 +16,7 @@ export function SetupBotInstall() {
         {/* B1: Dependencies */}
         <div id="install-deps">
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">B1.</span> Install Dependencies
+            <span className="text-[#00C8E8] font-bold">B1.</span> Install Dependencies
           </p>
           <CollapsibleItem title="macOS (Apple Silicon M1/M2/M3/M4)">
             <CopyBlock code={`# Install Homebrew (if not installed)
@@ -72,7 +72,7 @@ node --version  # v20+`} />
         {/* B2: AI Model */}
         <div id="ai-model">
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">B2.</span> Download AI Model
+            <span className="text-[#00C8E8] font-bold">B2.</span> Download AI Model
           </p>
           <p className="text-sm text-[#8892B0] mb-3">
             CashClaw uses a dual-model AI pipeline for market scanning and deep analysis.
@@ -81,11 +81,11 @@ node --version  # v20+`} />
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[#1E2640]">
-                  <th className="text-left py-2 pr-4 text-[#F59E0B]">Model</th>
-                  <th className="text-left py-2 pr-4 text-[#F59E0B]">Size</th>
-                  <th className="text-left py-2 pr-4 text-[#F59E0B]">RAM</th>
-                  <th className="text-left py-2 pr-4 text-[#F59E0B]">Speed</th>
-                  <th className="text-left py-2 text-[#F59E0B]">Purpose</th>
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Model</th>
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Size</th>
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">RAM</th>
+                  <th className="text-left py-2 pr-4 text-[#00C8E8]">Speed</th>
+                  <th className="text-left py-2 text-[#00C8E8]">Purpose</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1E2640]">
@@ -147,7 +147,7 @@ curl http://localhost:11434/api/tags
         {/* B3: Clone & Build */}
         <div id="clone-build">
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">B3.</span> Clone & Build CashClaw
+            <span className="text-[#00C8E8] font-bold">B3.</span> Clone & Build CashClaw
           </p>
           <CopyBlock code={`git clone https://github.com/longtho638-jpg/algo-trader.git
 cd algo-trader
@@ -160,7 +160,7 @@ npx tsc
         {/* B4: Configure */}
         <div id="configure-env">
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">B4.</span> Configure Environment
+            <span className="text-[#00C8E8] font-bold">B4.</span> Configure Environment
           </p>
           <CopyBlock code={`cp .env.example .env
 
@@ -196,7 +196,7 @@ MM_MAX_MARKETS=5`} />
         {/* B5: Dry Run */}
         <div id="dry-run">
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">B5.</span> Test with Dry Run
+            <span className="text-[#00C8E8] font-bold">B5.</span> Test with Dry Run
           </p>
           <CopyBlock code={`# Start in DRY RUN mode (no real money)
 pm2 start "npx tsx src/app.ts" --name cashclaw
@@ -217,7 +217,7 @@ pm2 logs cashclaw --lines 30
         {/* B6: Go Live */}
         <div id="go-live">
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">B6.</span> Go Live
+            <span className="text-[#00C8E8] font-bold">B6.</span> Go Live
           </p>
           <CopyBlock code={`# Edit .env: change DRY_RUN=false
 nano .env
@@ -232,7 +232,7 @@ pm2 restart cashclaw`} />
         {/* B7: Run 24/7 */}
         <div id="run-247">
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">B7.</span> Run 24/7
+            <span className="text-[#00C8E8] font-bold">B7.</span> Run 24/7
           </p>
           <CopyBlock code={`# PM2 auto-restart on server reboot
 pm2 save
@@ -269,7 +269,7 @@ launchctl load ~/Library/LaunchAgents/com.cashclaw.bot.plist`} />
         {/* B8: Connect Dashboard */}
         <div id="connect-dashboard">
           <p className="text-sm text-white mb-2">
-            <span className="text-[#F59E0B] font-bold">B8.</span> Connect to Dashboard (Order Book)
+            <span className="text-[#00C8E8] font-bold">B8.</span> Connect to Dashboard (Order Book)
           </p>
           <p className="text-sm text-[#8892B0] mb-3">
             Connect your local bot to the CashClaw dashboard to see real-time order book data, P&L, and trade history.
@@ -290,7 +290,7 @@ cloudflared tunnel --url http://localhost:3000
 # Copy the https://xxx.trycloudflare.com URL`} />
           <div className="mt-3 bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm text-[#8892B0] space-y-2">
             <p className="text-white font-bold">Connect to dashboard:</p>
-            <p>1. Go to this dashboard &rarr; <span className="text-[#F59E0B]">Settings</span> tab</p>
+            <p>1. Go to this dashboard &rarr; <span className="text-[#00C8E8]">Settings</span> tab</p>
             <p>2. Paste your tunnel URL in <span className="text-white">Bot API URL</span></p>
             <p>3. Click <span className="text-white">Save</span></p>
             <p>4. Dashboard now shows your live order book, trades, and P&L</p>

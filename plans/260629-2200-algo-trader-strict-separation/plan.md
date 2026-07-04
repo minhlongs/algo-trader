@@ -1,7 +1,7 @@
 ---
 title: "Algo-Trader Strict Separation Architecture"
 description: "Split 540-file codebase into desk/ (solo proprietary trading) + platform/ (RaaS subscriber) + shared/ (kernel) bounded contexts. 10-week phased migration preserving all 2,214 tests."
-status: completed
+status: in-progress
 priority: P1
 branch: "main"
 tags: [architecture, refactor, separation, tdd]

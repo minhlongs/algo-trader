@@ -1,6 +1,6 @@
 import { logger } from '../../../shared/utils/logger';
 import { RevenueShareRepository, revenueShareRepository } from './repositories';
-import type { IMarketplaceRevenueShare, IMarketplaceSubscription} from '../models/types';
+import type { IMarketplaceRevenueShare, IMarketplaceSubscription, RevenueShareStatus } from '../models/types';
 
 const PLATFORM_FEE_PERCENT = 0.2;   // 20%
 const CREATOR_SHARE_PERCENT = 0.8;  // 80%
@@ -213,7 +213,6 @@ export class RevenueService {
   // --- private helpers ---
 
   private async lookupSubscription(subscriptionId: string): Promise<IMarketplaceSubscription | null> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { SubscriptionRepository, subscriptionRepository } = await import('./repositories');
     const repo = subscriptionRepository as InstanceType<typeof SubscriptionRepository>;
     return repo.findById(subscriptionId);

@@ -88,7 +88,7 @@ vi.mock('../../src/redis/index', () => ({
 }));
 
 import { getRedisClient } from '../../src/redis/index';
-import { getVibeState, initVibeController, type VibeState, type VibeCommand } from '../../src/desk/wiring/vibe-controller';
+import { getVibeState, initVibeController, type VibeState, type VibeCommand } from '../../src/wiring/vibe-controller';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

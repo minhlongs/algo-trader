@@ -28,7 +28,7 @@ export function FeatureImportanceChart({
   data,
   title = 'Feature Importance',
   maxFeatures = 10,
-  color = '#F59E0B',
+  color = '#3182ce',
   height = 400,
   showDescription = false
 }: FeatureImportanceChartProps) {
@@ -50,7 +50,7 @@ export function FeatureImportanceChart({
       const data = payload[0].payload;
       return (
         <div className="bg-gray-800 text-white p-3 rounded shadow-lg border border-gray-700">
-          <p className="font-semibold text-accent">{data.name}</p>
+          <p className="font-semibold text-cyan-400">{data.name}</p>
           <p className="text-sm">Importance: {(data.importance * 100).toFixed(1)}%</p>
           {data.description && (
             <p className="text-xs text-gray-400 mt-1">{data.description}</p>
@@ -65,7 +65,7 @@ export function FeatureImportanceChart({
     <StitchCard className="w-full">
       <StitchCardHeader>
         <h3 className="text-lg flex items-center gap-2">
-          <span className="text-accent">📊</span>
+          <span className="text-cyan-400">📊</span>
           {title}
         </h3>
       </StitchCardHeader>

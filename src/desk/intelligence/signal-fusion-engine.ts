@@ -11,8 +11,6 @@
  */
 
 import { logger } from '../../shared/utils/logger';
-import { detectRegime } from '../strategies/dna/regime-detector';
-import type { TfId, TimeframeIndicators } from '../strategies/dna/multi-tf-types';
 
 export interface SignalInput {
   /** Signal identifier — e.g. 'momentum', 'volatility', 'mean-reversion' */
@@ -51,25 +49,21 @@ const MAX_WEIGHT = 2.0;
  * Fuse multiple signal inputs via weighted average.
  * Returns direction, confidence, and human-readable reasoning.
  *
- * If regime is provided, adapt weights for the current market regime before fusion.
  * If total weight is 0 (all weights zero), returns NEUTRAL with 0 confidence.
  */
-export function fuseSignals(signals: SignalInput[], regime?: string): FusionResult {
-  // Apply regime-adaptive weight adjustments if regime provided
-  const regimeAdapted = regime ? adaptWeightsForRegime(signals, regime) : signals;
-
-  if (regimeAdapted.length === 0) {
+export function fuseSignals(signals: SignalInput[]): FusionResult {
+  if (signals.length === 0) {
     return {
       direction: 'NEUTRAL',
       confidence: 0,
       weightedScore: 0,
-      signals: regimeAdapted,
+      signals,
       reasoning: 'No signals provided',
     };
   }
 
   // Clamp individual scores to [-1, 1] defensively
-  const clamped = regimeAdapted.map(s => ({
+  const clamped = signals.map(s => ({
     ...s,
     score: Math.max(-1, Math.min(1, s.score)),
     weight: Math.max(0, s.weight),
@@ -103,81 +97,16 @@ export function fuseSignals(signals: SignalInput[], regime?: string): FusionResu
   const signalLines = clamped
     .map(s => `${s.name}=${s.score.toFixed(3)}(w=${s.weight.toFixed(2)})`)
     .join(', ');
-  const regimeNote = regime ? ` regime=${regime}` : '';
-  const reasoning = `Weighted score ${weightedScore.toFixed(3)} → ${direction} @ ${(confidence * 100).toFixed(1)}% confidence.${regimeNote} Signals: [${signalLines}]`;
+  const reasoning = `Weighted score ${weightedScore.toFixed(3)} → ${direction} @ ${(confidence * 100).toFixed(1)}% confidence. Signals: [${signalLines}]`;
 
   logger.debug('[SignalFusion] Fusion complete', {
     direction,
     confidence,
     weightedScore,
     signalCount: signals.length,
-    regime,
   });
 
   return { direction, confidence, weightedScore, signals: clamped, reasoning };
-}
-
-// ── Regime-adaptive weight adjustment ─────────────────────────────────────────
-
-/**
- * Adjust signal weights based on detected market regime.
- *
- * trending_up   → momentum/trend signals +20%, mean-reversion -10%
- * trending_down → mean-reversion signals +20%, momentum -10%
- * ranging       → range-bound/volatility signals +15%
- * default       → no adjustment
- *
- * Signal name prefix matching (case-insensitive):
- *   momentum/trend/macd → momentum signals
- *   revert/reversal     → mean-reversion signals
- *   volatility/range/bb → range-bound signals
- */
-export function adaptWeightsForRegime(
-  signals: SignalInput[],
-  regime: string,
-): SignalInput[] {
-  if (!signals.length || !regime) return signals;
-
-  const r = regime.toLowerCase();
-
-  return signals.map(s => {
-    const name = s.name.toLowerCase();
-    let multiplier = 1;
-
-    if (r === 'trending_up') {
-      if (/^(momentum|trend|macd)/.test(name)) {
-        multiplier = 1.2;  // +20% boost
-      } else if (/^(revert|reversal)/.test(name)) {
-        multiplier = 0.9;  // -10% penalty
-      }
-    } else if (r === 'trending_down') {
-      if (/^(revert|reversal)/.test(name)) {
-        multiplier = 1.2;  // +20% boost
-      } else if (/^(momentum|trend|macd)/.test(name)) {
-        multiplier = 0.9;  // -10% penalty
-      }
-    } else if (r === 'ranging') {
-      if (/^(volatility|range|bb)/.test(name)) {
-        multiplier = 1.15; // +15% boost
-      }
-    }
-    // volatile and unrecognised regimes: multiplier stays 1 (no change)
-
-    return { ...s, weight: s.weight * multiplier };
-  });
-}
-
-/**
- * Convenience: detect current market regime and fuse signals with
- * regime-adaptive weighting in a single call.
- */
-export function fuseWithRegimeAwareness(
-  signals: SignalInput[],
-  timeframeIndicators: Map<TfId, TimeframeIndicators>,
-): FusionResult {
-  const now = Date.now();
-  const snapshot = detectRegime(timeframeIndicators, now);
-  return fuseSignals(signals, snapshot.regime);
 }
 
 // ── Adaptive weight update (self-learning EMA) ────────────────────────────────

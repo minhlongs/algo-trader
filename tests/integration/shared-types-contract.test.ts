@@ -74,26 +74,23 @@ function makeSignal(overrides: Partial<ISignal> = {}): ISignal {
 // ---------------------------------------------------------------------------
 
 describe('LicenseTier enum', () => {
-  it('has exactly the five expected values', () => {
+  it('has exactly the three expected values', () => {
     const values = Object.values(LicenseTier);
     expect(values).toContain('FREE');
-    expect(values).toContain('STARTER');
     expect(values).toContain('PRO');
     expect(values).toContain('ENTERPRISE');
-    expect(values).toContain('MASTER');
-    expect(values).toHaveLength(5);
+    expect(values).toHaveLength(3);
   });
 
   it('maps string keys to correct values', () => {
     expect(LicenseTier.FREE).toBe('FREE');
-    expect(LicenseTier.STARTER).toBe('STARTER');
     expect(LicenseTier.PRO).toBe('PRO');
     expect(LicenseTier.ENTERPRISE).toBe('ENTERPRISE');
-    expect(LicenseTier.MASTER).toBe('MASTER');
   });
 
   it('contains no unexpected keys (boundary)', () => {
-    const allowed = new Set(['FREE', 'STARTER', 'PRO', 'ENTERPRISE', 'MASTER']);
+    // The enum should not grow accidentally — platform depends on exactly 3 tiers.
+    const allowed = new Set(['FREE', 'PRO', 'ENTERPRISE']);
     for (const v of Object.values(LicenseTier)) {
       expect(allowed.has(v as string)).toBe(true);
     }

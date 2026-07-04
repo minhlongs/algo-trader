@@ -12,18 +12,15 @@ const TIER_LABELS: Record<string, string> = {
 };
 
 const TIER_BADGE_COLORS: Record<string, string> = {
-  free: 'bg-bg-border text-muted',
-  pro: 'bg-accent/10 text-accent border border-accent/30',
-  enterprise: 'bg-gold/10 text-gold border border-gold/30',
+  free: 'bg-[#1E2640] text-[#8892B0]',
+  pro: 'bg-[#00C8E8]/10 text-[#00C8E8] border border-[#00C8E8]/30',
+  enterprise: 'bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30',
 };
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <span className="w-1 h-4 bg-accent rounded-full" />
-        <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">{title}</h2>
-      </div>
+    <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
+      <h2 className="text-white text-sm font-bold">{title}</h2>
       {children}
     </section>
   );
@@ -68,15 +65,12 @@ export function AccountPage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-        <div className="flex items-center gap-2 mb-6">
-          <span className="w-1 h-5 bg-accent rounded-full" />
-          <h1 className="text-white text-xl font-bold tracking-tight">Account</h1>
-        </div>
+      <h1 className="text-white text-2xl font-bold">Account</h1>
 
       {/* Profile */}
       <Card title="Profile">
         <Row label="Email" value={email || '—'} />
-        <Row label="Tenant ID" value={<code className="text-accent text-[10px]">{tenantId ?? '—'}</code>} />
+        <Row label="Tenant ID" value={<code className="text-[#00C8E8] text-[10px]">{tenantId ?? '—'}</code>} />
         <Row label="Member since" value={memberSince} />
       </Card>
 
@@ -88,7 +82,7 @@ export function AccountPage() {
           </span>
           <Link
             to="/pricing"
-            className="text-xs text-accent hover:underline"
+            className="text-xs text-[#00C8E8] hover:underline"
           >
             Upgrade plan →
           </Link>
@@ -105,13 +99,13 @@ export function AccountPage() {
         <p className="text-muted text-xs">
           Use this key to authenticate CLI and programmatic access.
         </p>
-        <div className="bg-bg border border-bg-border rounded px-4 py-3 flex items-center justify-between gap-3">
-          <code className="text-accent text-xs">{maskedKey}</code>
+        <div className="bg-[#080B14] border border-[#1E2640] rounded px-4 py-3 flex items-center justify-between gap-3">
+          <code className="text-[#00C8E8] text-xs">{maskedKey}</code>
           <button
             disabled
             title="Contact support to regenerate your API key"
             aria-label="Regenerate API key — contact support to enable"
-            className="text-xs px-3 py-1.5 border border-bg-border rounded text-muted cursor-not-allowed opacity-50 min-h-touch"
+            className="text-xs px-3 py-1.5 border border-[#1E2640] rounded text-muted cursor-not-allowed opacity-50"
           >
             Regenerate
           </button>
@@ -120,7 +114,7 @@ export function AccountPage() {
           Key regeneration is disabled.{' '}
           <a
             href="mailto:support@cashclaw.cc"
-            className="text-accent hover:underline"
+            className="text-[#00C8E8] hover:underline"
           >
             Contact support
           </a>{' '}
@@ -135,7 +129,7 @@ export function AccountPage() {
             <p className="text-muted text-xs">You're on the free plan.</p>
             <Link
               to="/pricing"
-              className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 transition-colors min-h-touch"
+              className="bg-[#00C8E8] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#00C8E8]/80 transition-colors"
             >
               Upgrade
             </Link>
@@ -147,7 +141,7 @@ export function AccountPage() {
             </p>
             <Link
               to="/pricing"
-              className="text-xs px-4 py-2 border border-bg-border rounded text-accent hover:bg-accent/10 transition-colors min-h-touch"
+              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors"
             >
               Upgrade / Manage →
             </Link>
@@ -163,7 +157,7 @@ export function AccountPage() {
         <button
           disabled
           title="Contact support to delete your account"
-          className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 cursor-not-allowed opacity-50 min-h-touch"
+          className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 cursor-not-allowed opacity-50"
         >
           Delete Account
         </button>

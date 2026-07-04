@@ -6,39 +6,38 @@
  * strategies can receive event-driven market updates in addition to tick polling.
  */
 import { StrategyOrchestrator } from '../strategies/strategy-orchestrator.js';
-import { createPolymarketArbTick } from '../strategies/polymarket-arb-strategy';
-import { createGridDcaTick } from '../strategies/grid-dca-strategy';
-import { createBookImbalanceReversalTick } from '../strategies/polymarket/book-imbalance-reversal';
+import { createPolymarketArbTick } from '../strategies/polymarket-arb-strategy.js';
+import { createGridDcaTick } from '../strategies/grid-dca-strategy.js';
+import { createBookImbalanceReversalTick } from '../strategies/polymarket/book-imbalance-reversal.js';
 import { createVwapDeviationSniperTick } from '../strategies/polymarket/vwap-deviation-sniper-v2';
-import { createPairsStatArbTick } from '../strategies/polymarket/pairs-stat-arb';
-import { createSessionVolSniperTick } from '../strategies/polymarket/session-vol-sniper';
+import { createPairsStatArbTick } from '../strategies/polymarket/pairs-stat-arb.js';
+import { createSessionVolSniperTick } from '../strategies/polymarket/session-vol-sniper.js';
 import { createOrderbookDepthRatioTick } from '../strategies/polymarket/orderbook-depth-ratio-v2';
 import { createCrossEventDriftTick } from '../strategies/polymarket/cross-event-drift-v2';
 import { createVolCompressionBreakoutTick } from '../strategies/polymarket/vol-compression-breakout-v2';
 import { createWhaleTrackerTick } from '../strategies/polymarket/whale-tracker-v2';
-import { createListingArbitrageSniperTick } from '../strategies/polymarket/listing-arbitrage-sniper';
 import { createResolutionFrontrunnerTick } from '../strategies/polymarket/resolution-frontrunner-v2';
 import { createMultiLegHedgeTick } from '../strategies/polymarket/multi-leg-hedge';
 import { createRegimeAdaptiveMomentumTick } from '../strategies/polymarket/regime-adaptive-momentum-v2';
-import { createLiquidationCascadeTick } from '../strategies/polymarket/liquidation-cascade';
-import { createOrderFlowToxicityTick } from '../strategies/polymarket/order-flow-toxicity';
-import { createGammaScalpingTick } from '../strategies/polymarket/gamma-scalping';
-import { createFundingRateArbTick } from '../strategies/polymarket/funding-rate-arb';
-import { createExpiryThetaDecayTick } from '../strategies/polymarket/expiry-theta-decay';
-import { createMicrostructureAlphaTick } from '../strategies/polymarket/microstructure-alpha';
-import { createSentimentMomentumTick } from '../strategies/polymarket/sentiment-momentum';
-import { createSmartMoneyDivergenceTick } from '../strategies/polymarket/smart-money-divergence';
-import { createVolatilitySurfaceArbTick } from '../strategies/polymarket/volatility-surface-arb';
-import { createNewsCatalystFadeTick } from '../strategies/polymarket/news-catalyst-fade';
+import { createLiquidationCascadeTick } from '../strategies/polymarket/liquidation-cascade.js';
+import { createOrderFlowToxicityTick } from '../strategies/polymarket/order-flow-toxicity.js';
+import { createGammaScalpingTick } from '../strategies/polymarket/gamma-scalping.js';
+import { createFundingRateArbTick } from '../strategies/polymarket/funding-rate-arb.js';
+import { createExpiryThetaDecayTick } from '../strategies/polymarket/expiry-theta-decay.js';
+import { createMicrostructureAlphaTick } from '../strategies/polymarket/microstructure-alpha.js';
+import { createSentimentMomentumTick } from '../strategies/polymarket/sentiment-momentum.js';
+import { createSmartMoneyDivergenceTick } from '../strategies/polymarket/smart-money-divergence.js';
+import { createVolatilitySurfaceArbTick } from '../strategies/polymarket/volatility-surface-arb.js';
+import { createNewsCatalystFadeTick } from '../strategies/polymarket/news-catalyst-fade.js';
 import { createInventorySkewRebalancerTick } from '../strategies/polymarket/inventory-skew-rebalancer';
-import { createKalmanFilterTrackerTick } from '../strategies/polymarket/kalman-filter-tracker';
-import { createLiquidityVacuumTick } from '../strategies/polymarket/liquidity-vacuum';
-import { createTwapAccumulatorTick } from '../strategies/polymarket/twap-accumulator';
-import { createCorrelationBreakdownTick } from '../strategies/polymarket/correlation-breakdown';
-import { createEntropyScorerTick } from '../strategies/polymarket/entropy-scorer';
-import { createAdverseSelectionFilterTick } from '../strategies/polymarket/adverse-selection-filter';
-import { createMomentumExhaustionTick } from '../strategies/polymarket/momentum-exhaustion';
-import { createCrossPlatformBasisTick } from '../strategies/polymarket/cross-platform-basis';
+import { createKalmanFilterTrackerTick } from '../strategies/polymarket/kalman-filter-tracker.js';
+import { createLiquidityVacuumTick } from '../strategies/polymarket/liquidity-vacuum.js';
+import { createTwapAccumulatorTick } from '../strategies/polymarket/twap-accumulator.js';
+import { createCorrelationBreakdownTick } from '../strategies/polymarket/correlation-breakdown.js';
+import { createEntropyScorerTick } from '../strategies/polymarket/entropy-scorer.js';
+import { createAdverseSelectionFilterTick } from '../strategies/polymarket/adverse-selection-filter.js';
+import { createMomentumExhaustionTick } from '../strategies/polymarket/momentum-exhaustion.js';
+import { createCrossPlatformBasisTick } from '../strategies/polymarket/cross-platform-basis.js';
 import type { MarketScanner } from '../polymarket/market-scanner.js';
 import type { OrderManager } from '../polymarket/order-manager';
 import type { OrderExecutor } from '../cex/order-executor.js';
@@ -83,7 +82,6 @@ const POLY_STRATEGIES: Array<{ id: string; name: string; envKey: string; default
   { id: 'multi-leg-hedge', name: 'Multi-Leg Hedge', envKey: 'MULTI_LEG_HEDGE_INTERVAL_MS', defaultMs: '20000', factory: createMultiLegHedgeTick },
   { id: 'regime-adaptive-momentum', name: 'Regime-Adaptive Momentum', envKey: 'REGIME_MOMENTUM_INTERVAL_MS', defaultMs: '10000', factory: createRegimeAdaptiveMomentumTick },
   { id: 'liquidation-cascade', name: 'Liquidation Cascade', envKey: 'LIQUIDATION_CASCADE_INTERVAL_MS', defaultMs: '5000', factory: createLiquidationCascadeTick },
-  { id: 'listing-arbitrage-sniper', name: 'Listing Arbitrage Sniper', envKey: 'LISTING_ARB_SNIPER_INTERVAL_MS', defaultMs: '60000', factory: createListingArbitrageSniperTick },
   { id: 'order-flow-toxicity', name: 'Order Flow Toxicity', envKey: 'ORDER_FLOW_TOXICITY_INTERVAL_MS', defaultMs: '8000', factory: createOrderFlowToxicityTick },
   { id: 'gamma-scalping', name: 'Gamma Scalping', envKey: 'GAMMA_SCALPING_INTERVAL_MS', defaultMs: '10000', factory: createGammaScalpingTick },
   { id: 'funding-rate-arb', name: 'Funding Rate Arbitrage', envKey: 'FUNDING_RATE_ARB_INTERVAL_MS', defaultMs: '15000', factory: createFundingRateArbTick },
@@ -123,19 +121,9 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
   // All Polymarket strategies (need clobClient + orderManager + gammaClient)
   if (clobClient && orderManager && gammaClient) {
     const polyDeps = { clob: clobClient, orderManager, eventBus, gamma: gammaClient };
-
-    // Phase 3 implemented strategies are enabled by default
-    const ENABLED_STRATEGIES = new Set([
-      'microstructure-alpha', 'order-flow-toxicity', 'correlation-breakdown',
-      'pairs-stat-arb', 'funding-rate-arb', 'gamma-scalping',
-      'kalman-filter-tracker', 'liquidation-cascade',
-      // Phase 4 — Next Wave II strategies
-      'book-imbalance', 'session-vol-sniper', 'sentiment-momentum', 'momentum-exhaustion',
-    ]);
-
     for (const s of POLY_STRATEGIES) {
       orc.register(
-        { id: s.id, name: s.name, type: s.id, enabled: ENABLED_STRATEGIES.has(s.id), params: {}, intervalMs: parseInt(env(s.envKey, s.defaultMs), 10) },
+        { id: s.id, name: s.name, type: s.id, enabled: false, params: {}, intervalMs: parseInt(env(s.envKey, s.defaultMs), 10) },
         s.factory(polyDeps),
       );
     }

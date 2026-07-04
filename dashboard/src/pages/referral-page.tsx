@@ -6,6 +6,7 @@
 import { useEffect } from 'react';
 import { useReferralStore } from '../stores/referral-store';
 import { StitchCard, StitchCardBody, StitchCardHeader } from '../components/ui/stitch-card';
+import { StitchSectionTitle } from '../components/ui/stitch-section-title';
 import { StitchButton } from '../components/ui/stitch-button';
 import { StitchBadge } from '../components/ui/stitch-badge';
 import { COLORS } from '../lib/stitch-design-tokens';
@@ -89,17 +90,14 @@ export function ReferralPage() {
     }
   };
 
-  const shareLink = `https://quant.cashclaw.cc?ref=${referralCode?.code || ''}`;
+  const shareLink = `${window.location.origin}/signup?ref=${referralCode?.code || ''}`;
 
   return (
     <div className="space-y-6" style={{ color: COLORS.onSurface }}>
-      <div className="flex items-center gap-2 mb-6 mt-2">
-        <span className="w-1 h-5 bg-accent rounded-full" />
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent">Growth Program</p>
-          <h2 className="text-xl font-semibold text-white">Referral Program</h2>
-        </div>
-      </div>
+      <StitchSectionTitle
+        eyebrow="Growth Program"
+        title="Referral Program"
+      />
 
       {error && (
         <div className="p-4 rounded" style={{ backgroundColor: COLORS.loss + '20', color: COLORS.loss }}>
@@ -120,7 +118,7 @@ export function ReferralPage() {
               <div className="flex-1">
                 {referralCode ? (
                   <div className="flex items-center gap-3">
-                    <code className="px-4 py-3 rounded bg-bg border border-bg-border text-accent text-lg font-mono">
+                    <code className="px-4 py-3 rounded bg-[#1e293b] text-[#4cd7f6] text-lg border border-[#334155]">
                       {referralCode.code}
                     </code>
                     <StitchButton variant="secondary" onClick={handleCopyCode}>
@@ -148,7 +146,7 @@ export function ReferralPage() {
                     type="text"
                     readOnly
                     value={shareLink}
-                    className="flex-1 px-3 py-2 rounded bg-bg border border-bg-border text-sm"
+                    className="flex-1 px-3 py-2 rounded bg-[#1e293b] border border-[#334155] text-sm"
                     style={{ color: COLORS.onSurface }}
                   />
                   <StitchButton
@@ -229,7 +227,7 @@ export function ReferralPage() {
                 {commissions.map((commission) => (
                   <div
                     key={commission.id}
-                    className="flex items-center justify-between p-3 rounded bg-bg border border-bg-border/50"
+                    className="flex items-center justify-between p-3 rounded bg-[#1e293b]"
                   >
                     <div>
                       <div className="text-sm" style={{ color: COLORS.onSurface }}>
@@ -277,7 +275,7 @@ export function ReferralPage() {
                 {payouts.map((payout) => (
                   <div
                     key={payout.id}
-                    className="flex items-center justify-between p-3 rounded bg-bg border border-bg-border/50"
+                    className="flex items-center justify-between p-3 rounded bg-[#1e293b]"
                   >
                     <div>
                       <div className="text-sm" style={{ color: COLORS.onSurface }}>

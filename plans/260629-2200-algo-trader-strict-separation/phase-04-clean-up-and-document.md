@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Clean Up and Document"
-status: completed
+status: pending
 priority: P2
 effort: "2 weeks"
 dependencies: [3]

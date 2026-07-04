@@ -11,15 +11,13 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml* ./
 
 # Install ALL deps (including dev) for build
-# --config.minimum-release-age=0 bypasses pnpm v11 supply-chain policy
-# Use npx tsc directly (avoid pnpm run build which triggers pnpm install in v11)
-RUN pnpm install --no-frozen-lockfile --ignore-scripts --config.minimum-release-age=0
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json tsconfig.worker.json ./
 COPY src ./src
 
-# Build TypeScript → dist/ via npx (not pnpm run, which triggers pnpm install in v11)
-RUN npx --yes tsc
+# Build TypeScript → dist/
+RUN pnpm run build
 
 # Stage 2: Production runtime
 FROM node:22-alpine AS runner
@@ -34,12 +32,11 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY package.json pnpm-lock.yaml* ./
 
-# Copy deps + compiled output from builder (single install avoids --prod + --frozen-lockfile incompatibility)
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
+# Production deps only — no build tools in runner
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# Prune devDependencies to minimize image size
-RUN pnpm prune --prod --ignore-scripts --config.minimum-release-age=0
+# Copy compiled output from builder
+COPY --from=builder /app/dist ./dist
 
 # Create data dir with correct ownership
 RUN mkdir -p /app/data && chown -R appuser:appgroup /app
@@ -54,4 +51,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
 
 # Entry point
-CMD ["node", "dist/app.js"]
+CMD ["node", "dist/cli/index.js"]

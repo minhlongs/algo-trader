@@ -6,7 +6,7 @@
  *   1. DB CHECK constraint in `src/db/migrations/017_strategy_review_tasks.sql`
  *   2. Admin route handler literals in `src/platform/api/routes/admin-qwen-routes.ts`
  *      (default query-param value + UPDATE transition)
- *   3. Signals-loop backlog query in `src/desk/wiring/qwen-signals-loop.ts`
+ *   3. Signals-loop backlog query in `src/wiring/qwen-signals-loop.ts`
  *      (`WHERE status = 'pending'` — backlog gauge source of truth)
  *   4. Prometheus metric help text in `src/platform/middleware/prometheus-metrics.ts`
  *      (operator-facing documentation of what the counter/gauge measures)
@@ -52,8 +52,8 @@ import { resolve } from 'path';
 const REPO_ROOT = resolve(__dirname, '../..');
 const MIGRATION_PATH = resolve(REPO_ROOT, 'src/db/migrations/017_strategy_review_tasks.sql');
 const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/admin-qwen-routes.ts');
-const LOOP_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics-definitions.ts');
+const LOOP_PATH = resolve(REPO_ROOT, 'src/wiring/qwen-signals-loop.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 
 /** Migration values reserved for future use — documented but not yet emitted. */
 const RESERVED_STATUSES = new Set<string>(['acknowledged']);

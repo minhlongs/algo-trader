@@ -3,8 +3,7 @@
  * Bridges the algo-trader execution engine with Polymarket's REST CLOB API.
  * Docs: https://docs.polymarket.com/#clob-api
  *
- * Auth: POLYMARKET_API_KEY, POLYMARKET_API_SECRET, POLYMARKET_PASSPHRASE from process.env
- * (deprecated POLY_* equivalents still accepted with warning)
+ * Auth: POLY_API_KEY, POLY_API_SECRET, POLY_PASSPHRASE from process.env
  * Base: https://clob.polymarket.com
  */
 
@@ -12,16 +11,6 @@ import { createHmac } from 'crypto';
 import { PolymarketSigner, PolymarketOrder, SignedOrder } from './polymarket-signer';
 
 const CLOB_BASE = 'https://clob.polymarket.com';
-
-// ── Env var resolution (POLYMARKET_* preferred, POLY_* fallback) ──────────────
-
-function resolveEnvVar(newName: string, oldName: string): string {
-  const newVal = process.env[newName];
-  if (newVal) return newVal;
-  const oldVal = process.env[oldName];
-  if (oldVal) return oldVal;
-  return '';
-}
 
 // ── Response shapes from CLOB API ────────────────────────────────────────────
 
@@ -86,7 +75,7 @@ export class PolymarketAdapter {
   private readonly apiUrl: string;
   private readonly signer: PolymarketSigner;
   private readonly apiKey: string;
-  /** API secret for HMAC-SHA256 request signing */
+  /** Used in HMAC-SHA256 signature — see _stubSignature TODO */
   private readonly apiSecret: string;
   private readonly passphrase: string;
 
@@ -100,9 +89,9 @@ export class PolymarketAdapter {
   ) {
     this.signer = signer;
     this.apiUrl = apiUrl.replace(/\/$/, '');
-    this.apiKey = resolveEnvVar('POLYMARKET_API_KEY', 'POLY_API_KEY');
-    this.apiSecret = resolveEnvVar('POLYMARKET_API_SECRET', 'POLY_API_SECRET');
-    this.passphrase = resolveEnvVar('POLYMARKET_PASSPHRASE', 'POLY_PASSPHRASE');
+    this.apiKey = process.env.POLY_API_KEY || '';
+    this.apiSecret = process.env.POLY_API_SECRET || '';
+    this.passphrase = process.env.POLY_PASSPHRASE || '';
   }
 
   /**
@@ -189,6 +178,8 @@ export class PolymarketAdapter {
     if (this.apiKey) {
       headers['POLY-API-KEY'] = this.apiKey;
       headers['POLY-PASSPHRASE'] = this.passphrase;
+      // TODO: compute HMAC-SHA256(timestamp + method + path + body, apiSecret)
+      // and set headers['POLY-SIGNATURE'] = signature
       headers['POLY-SIGNATURE'] = this.computeSignature(timestamp, method, path, body);
     }
 

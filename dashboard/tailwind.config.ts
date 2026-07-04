@@ -6,17 +6,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: { DEFAULT: '#060912', surface: '#0F172A', border: '#1E293B' },
-        accent: '#F59E0B',
-        purple: '#8B5CF6',
-        profit: '#34D399',
-        loss: '#EF4444',
-        gold: '#F59E0B',
-        muted: '#64748B',
+        bg: { DEFAULT: '#080B14', surface: '#111627', border: '#1E2640' },
+        accent: '#00C8E8',
+        profit: '#00E676',
+        loss: '#FF4466',
+        gold: '#FFB800',
+        muted: '#8892B0',
       },
       fontFamily: {
-        display: ['Calistoga', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Geist', 'Geist Fallback', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
       },
       minHeight: {

@@ -21,14 +21,6 @@ export class ListingRepository {
     return (result.rows[0] as unknown as IMarketplaceListing) || null;
   }
 
-  async findByStrategyIds(strategyIds: string[]): Promise<IMarketplaceListing[]> {
-    if (strategyIds.length === 0) return [];
-    const placeholders = strategyIds.map((_, i) => `$${i + 1}`).join(', ');
-    const sql = `SELECT * FROM ${this.TABLE} WHERE strategy_id IN (${placeholders})`;
-    const result = await query(sql, strategyIds);
-    return result.rows as unknown as IMarketplaceListing[];
-  }
-
   async findAll(
     filters?: { strategyId?: string; tenantId?: string; isActive?: boolean },
     pagination?: PaginationParams,

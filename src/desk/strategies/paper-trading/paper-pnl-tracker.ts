@@ -29,9 +29,9 @@ export interface PnlPeriod {
  equity: number;
 }
 
-export type DailyPnl = PnlPeriod;
-export type WeeklyPnl = PnlPeriod;
-export type MonthlyPnl = PnlPeriod;
+export interface DailyPnl extends PnlPeriod {}
+export interface WeeklyPnl extends PnlPeriod {}
+export interface MonthlyPnl extends PnlPeriod {}
 
 export interface PnlSummary {
   daily: DailyPnl[];
@@ -98,7 +98,7 @@ export class PaperPnlTracker {
   exportPrometheus(): string {
     const summary = this.getSummary();
     const at = summary.allTime;
-    const _today = summary.daily[0] ?? at;
+    const today = summary.daily[0] ?? at;
     const lines: string[] = [];
 
     // Help + type declarations

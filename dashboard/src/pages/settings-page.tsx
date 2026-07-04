@@ -16,7 +16,7 @@ const MOCK_ALERTS: AlertRule[] = [];
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <section className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg p-6 space-y-4">
+    <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
       {children}
     </section>
   );
@@ -65,10 +65,7 @@ function MmParametersForm() {
   return (
     <form onSubmit={handleSave} className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full" />
-          <h2 className="text-accent text-xs font-mono font-bold uppercase tracking-widest">MM Parameters</h2>
-        </div>
+        <h2 className="text-white text-sm font-bold">MM Parameters</h2>
         {statusMsg && (
           <span className={`text-xs ${statusMsg.ok ? 'text-profit' : 'text-muted'}`}>
             {statusMsg.text}
@@ -94,7 +91,7 @@ function MmParametersForm() {
       <button
         type="submit"
         disabled={saving}
-        className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors min-h-touch"
+        className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors"
       >
         {saving ? 'Saving…' : 'Save Parameters'}
       </button>
@@ -169,10 +166,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      <div className="flex items-center gap-2 mb-6">
-        <span className="w-1 h-5 bg-accent rounded-full" />
-        <h1 className="text-white text-xl font-bold tracking-tight">Settings</h1>
-      </div>
+      <h1 className="text-white text-2xl font-bold">Settings</h1>
 
       {/* MM Parameters */}
       <Card>

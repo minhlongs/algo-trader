@@ -89,7 +89,7 @@ export class TimeWeightedMeanReversionStrategy extends BasePolymarketStrategy {
     const fullConfig: TimeWeightedMeanReversionConfig = { ...DEFAULT_CONFIG, ...config };
     super(deps, fullConfig, STRATEGY_NAME);
     this.cfg = fullConfig;
-    this.getCurrentHour = typeof getCurrentHour === 'function' ? getCurrentHour : () => new Date().getHours();
+    this.getCurrentHour = getCurrentHour ?? (() => new Date().getHours());
   }
 
   private recordPrice(tokenId: string, price: number): void {

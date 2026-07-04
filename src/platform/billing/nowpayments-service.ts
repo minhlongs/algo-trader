@@ -42,7 +42,7 @@ export type NowPaymentsStatus =
 
 // Tier configuration with pre-created invoice IDs from NOWPayments dashboard
 export interface NowPaymentsTierConfig {
-  tier: LicenseTier | string;
+  tier: LicenseTier;
   invoiceId: string;
   price: number;
   currency: string;
@@ -51,13 +51,6 @@ export interface NowPaymentsTierConfig {
 
 // Configure invoice IDs from NOWPayments dashboard (customers set these in .env or config)
 export const NOWPAYMENTS_TIERS: Record<string, NowPaymentsTierConfig> = {
-  STARTER: {
-    tier: LicenseTier.STARTER,
-    invoiceId: process.env.NOWPAYMENTS_INVOICE_STARTER || '',
-    price: 19,
-    currency: 'USD',
-    name: 'Starter',
-  },
   PRO: {
     tier: LicenseTier.PRO,
     invoiceId: process.env.NOWPAYMENTS_INVOICE_PRO || '',
@@ -71,34 +64,6 @@ export const NOWPAYMENTS_TIERS: Record<string, NowPaymentsTierConfig> = {
     price: 299,
     currency: 'USD',
     name: 'Enterprise',
-  },
-  MASTER: {
-    tier: LicenseTier.MASTER,
-    invoiceId: process.env.NOWPAYMENTS_INVOICE_MASTER || '',
-    price: 999,
-    currency: 'USD',
-    name: 'Master Trader',
-  },
-  SIGNALS_BASIC: {
-    tier: 'SIGNALS_BASIC',
-    invoiceId: process.env.NOWPAYMENTS_INVOICE_SIGNALS_BASIC || '',
-    price: 29,
-    currency: 'USD',
-    name: 'Signals Basic',
-  },
-  SIGNALS_PRO: {
-    tier: 'SIGNALS_PRO',
-    invoiceId: process.env.NOWPAYMENTS_INVOICE_SIGNALS_PRO || '',
-    price: 99,
-    currency: 'USD',
-    name: 'Signals Pro',
-  },
-  SIGNALS_ENTERPRISE: {
-    tier: 'SIGNALS_ENTERPRISE',
-    invoiceId: process.env.NOWPAYMENTS_INVOICE_SIGNALS_ENTERPRISE || '',
-    price: 299,
-    currency: 'USD',
-    name: 'Signals Enterprise',
   },
 };
 
@@ -303,62 +268,6 @@ export class NowPaymentsService {
       };
     }
     return null;
-  }
-
-  /**
-   * Create a payout (USDT TRC20) to a creator wallet via NOWPayments Payout API.
-   * Used by the marketplace payout scheduler to send actual crypto.
-   */
-  async createPayout(params: {
-    address: string;
-    amount: number; // in USD
-    currency?: string;
-    ipnCallbackUrl?: string;
-  }): Promise<{ payoutId: string } | null> {
-    if (!this.apiKey) {
-      logger.error('NOWPAYMENTS_API_KEY not configured — cannot send payout');
-      return null;
-    }
-
-    try {
-      const ipnUrl = params.ipnCallbackUrl ?? process.env.NOWPAYMENTS_IPN_URL ?? '';
-      const currency = params.currency ?? 'usdttrc20';
-
-      const res = await fetch(`${this.baseUrl}/payout`, {
-        method: 'POST',
-        headers: {
-          'x-api-key': this.apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          address: params.address,
-          currency,
-          amount: params.amount,
-          ipn_callback_url: ipnUrl,
-        }),
-      });
-
-      if (!res.ok) {
-        const body = await res.text();
-        logger.error('NOWPayments payout creation failed', { status: res.status, body });
-        return null;
-      }
-
-      const payout = (await res.json()) as { id?: string; payout_id?: string; status?: string };
-      const payoutId = payout.id ?? payout.payout_id ?? 'unknown';
-
-      logger.info('NOWPayments payout created', {
-        payoutId,
-        address: params.address,
-        amount: params.amount,
-        currency,
-      });
-
-      return { payoutId };
-    } catch (error) {
-      logger.error('Failed to create NOWPayments payout', { error });
-      return null;
-    }
   }
 
   /**

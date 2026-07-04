@@ -46,14 +46,14 @@ export function LandingSoloQuant() {
 
       {/* Principles strip */}
       <section className="py-16 px-4 sm:px-6 max-w-5xl mx-auto">
-        <p className="text-[#F59E0B] text-xs uppercase tracking-[0.2em] mb-8">
+        <p className="text-[#00C8E8] text-xs uppercase tracking-[0.2em] mb-8">
           What the desk refuses to become
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {PRINCIPLES.map(({ label, body }) => (
             <div
               key={label}
-              className="bg-[#111627] border border-[#1E2640] rounded-lg p-6 hover:border-[#F59E0B]/40 transition-colors"
+              className="bg-[#111627] border border-[#1E2640] rounded-lg p-6 hover:border-[#00C8E8]/40 transition-colors"
             >
               <p className="text-white font-bold text-sm mb-2">
                 {label}
@@ -76,7 +76,7 @@ export function LandingSoloQuant() {
         <div className="flex flex-wrap justify-center gap-3">
           <Link
             to="/manifesto"
-            className="bg-[#F59E0B] text-[#080B14] font-bold px-6 py-3 rounded hover:bg-[#F59E0B]/80 transition-colors text-sm min-h-touch inline-flex items-center"
+            className="bg-[#00C8E8] text-[#080B14] font-bold px-6 py-3 rounded hover:bg-[#00C8E8]/80 transition-colors text-sm min-h-touch inline-flex items-center"
           >
             Read the Manifesto
           </Link>
@@ -84,7 +84,7 @@ export function LandingSoloQuant() {
             href="https://github.com/longtho638-jpg/algo-trader"
             target="_blank"
             rel="noopener noreferrer"
-            className="border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#F59E0B]/50 font-semibold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center"
+            className="border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#00C8E8]/50 font-semibold px-6 py-3 rounded transition-colors text-sm min-h-touch inline-flex items-center"
           >
             View Source
           </a>

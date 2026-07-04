@@ -2,20 +2,20 @@
 // Paper trading is the DEFAULT mode (safe). Set paperTrading: false for live execution.
 import { EventEmitter } from 'events';
 import { ClobClient } from './clob-client';
-import { OrderBookStream } from './orderbook-stream';
-import { MarketScanner } from './market-scanner';
+import { OrderBookStream } from './orderbook-stream.js';
+import { MarketScanner } from './market-scanner.js';
 import { OrderManager } from './order-manager';
-import { CrossMarketArbStrategy } from '../../strategies/polymarket/cross-market-arb';
-import { MarketMakerStrategy } from '../../strategies/polymarket/market-maker';
-import { StrategyRunner } from '../../engine/strategy-runner';
-import { TradeExecutor } from '../../engine/trade-executor';
-import { PaperExchange } from '../../paper-trading/paper-exchange';
-import { RiskManager } from '../core/risk-manager';
-import { getDatabase } from '../data/database';
-import { buildPolymarketAdapter } from './polymarket-execution-adapter';
-import { PredictionLoop } from './prediction-loop';
-import { PredictionExecutor } from './prediction-executor';
-import { MeanReversionStrategy } from '../../strategies/polymarket/mean-reversion';
+import { CrossMarketArbStrategy } from '../../strategies/polymarket/cross-market-arb.js';
+import { MarketMakerStrategy } from '../../strategies/polymarket/market-maker.js';
+import { StrategyRunner } from '../../engine/strategy-runner.js';
+import { TradeExecutor } from '../../engine/trade-executor.js';
+import { PaperExchange } from '../../paper-trading/paper-exchange.js';
+import { RiskManager } from '../core/risk-manager.js';
+import { getDatabase } from '../data/database.js';
+import { buildPolymarketAdapter } from './polymarket-execution-adapter.js';
+import { PredictionLoop } from './prediction-loop.js';
+import { PredictionExecutor } from './prediction-executor.js';
+import { MeanReversionStrategy } from '../../strategies/polymarket/mean-reversion.js';
 import { logger } from '../core/logger';
 import type { StrategyConfig } from '../core/types';
 

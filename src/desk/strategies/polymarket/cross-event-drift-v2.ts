@@ -8,7 +8,7 @@
  * Custom exit: convergence (laggard caught up to ≥50% of leader's move).
  */
 
-import type { GammaMarket, GammaMarketGroup } from '../../polymarket/gamma-client';
+import type { GammaClient, GammaMarket, GammaMarketGroup } from '../../polymarket/gamma-client';
 import type { KellyPositionSizer } from '../../polymarket/kelly-position-sizer';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';

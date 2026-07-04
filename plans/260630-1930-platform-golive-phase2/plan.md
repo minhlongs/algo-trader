@@ -1,7 +1,7 @@
 # Plan — Platform Go-Live Phase 2 (CF-Only)
 
 **Date:** 2026-06-30 | **Parent:** [brainstorm](../../../plans/reports/brainstorm-260630-1930-platform-go-live-phase2.md)
-**Status:** superseded — see plans/260702-1411-go-live-week-1
+**Status:** in_progress (04/05 phases complete)
 
 ## Context
 

@@ -78,17 +78,14 @@ export function EnterpriseContactPage() {
   const isSubmitting = formState === 'submitting';
 
   return (
-    <div className="min-h-screen bg-bg text-white flex flex-col">
+    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-xl mx-auto w-full">
         <div className="mb-10">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="w-1 h-4 bg-accent rounded-full" />
-            <p className="text-accent text-xs uppercase tracking-widest font-mono font-bold">Enterprise</p>
-          </div>
+          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-3">Enterprise</p>
           <h1 className="text-3xl font-bold text-white mb-3">Talk to our team</h1>
-          <p className="text-muted text-sm">
+          <p className="text-[#8892B0] text-sm">
             Enterprise plans are invoice-based with dedicated onboarding. Fill in the form and we will
             reach out within 24 hours.
           </p>
@@ -97,17 +94,17 @@ export function EnterpriseContactPage() {
         <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-5">
           {/* Tier selector */}
           <div>
-            <label className="block text-xs text-muted mb-1.5">Plan interest</label>
+            <label className="block text-xs text-[#8892B0] mb-1.5">Plan interest</label>
             <div className="grid grid-cols-3 gap-2">
               {(Object.entries(ENTERPRISE_PLANS) as [EnterprisePlanKey, (typeof ENTERPRISE_PLANS)[EnterprisePlanKey]][]).map(([key, plan]) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => set('tier', key)}
-                  className={`p-3 rounded border text-xs text-left transition-colors min-h-touch ${
+                  className={`p-3 rounded border text-xs text-left transition-colors ${
                     fields.tier === key
-                      ? 'border-accent bg-accent/10 text-white'
-                      : 'border-bg-border text-muted hover:border-accent/40'
+                      ? 'border-[#00C8E8] bg-[#00C8E8]/10 text-white'
+                      : 'border-[#1E2640] text-[#8892B0] hover:border-[#00C8E8]/40'
                   }`}
                 >
                   <p className="font-bold text-sm mb-0.5">{plan.price}</p>
@@ -167,7 +164,7 @@ export function EnterpriseContactPage() {
           </Field>
 
           {formState === 'error' && (
-            <p className="text-loss text-xs border border-loss/30 bg-loss/10 rounded px-3 py-2">
+            <p className="text-red-400 text-xs border border-red-400/30 bg-red-400/10 rounded px-3 py-2">
               {errorMsg}
             </p>
           )}
@@ -175,12 +172,12 @@ export function EnterpriseContactPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-accent text-bg font-bold py-3 rounded hover:bg-accent/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-touch"
+            className="w-full bg-[#00C8E8] text-[#080B14] font-bold py-3 rounded hover:bg-[#00C8E8]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? 'Sending…' : 'Request enterprise access'}
           </button>
 
-          <p className="text-muted/50 text-xs text-center">
+          <p className="text-[#555] text-xs text-center">
             No payment required. Invoice-based close only.
           </p>
         </form>
@@ -192,12 +189,12 @@ export function EnterpriseContactPage() {
 }
 
 const inputCls =
-  'w-full bg-bg-surface/80 backdrop-blur-sm border border-bg-border text-white text-sm rounded px-3 py-2.5 outline-none focus:border-accent/60 transition-colors placeholder-muted/50';
+  'w-full bg-[#161A1E] border border-[#1E2640] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[#00C8E8]/60 transition-colors placeholder-[#555]';
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="block text-xs text-muted mb-1.5">{label}</label>
+      <label htmlFor={htmlFor} className="block text-xs text-[#8892B0] mb-1.5">{label}</label>
       {children}
     </div>
   );

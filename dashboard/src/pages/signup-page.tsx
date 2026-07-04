@@ -64,11 +64,11 @@ export function SignupPage() {
 
   if (shownApiKey) {
     return (
-      <div className="min-h-screen bg-[#060912] flex flex-col">
+      <div className="min-h-screen bg-[#080B14] flex flex-col">
         <PublicNavbar />
         <div className="flex-1 flex items-center justify-center px-4 pt-16 py-10">
           <div className="w-full max-w-md">
-            <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-8 space-y-5">
+            <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-8 space-y-5">
               <div>
                 <p className="text-[#00E676] text-xs uppercase tracking-widest mb-2">Account created</p>
                 <h1 className="text-white text-xl font-bold">Save your API Key</h1>
@@ -81,13 +81,13 @@ export function SignupPage() {
                 </p>
               </div>
 
-              <div className="bg-[#060912] border border-accent/30 rounded px-4 py-3">
+              <div className="bg-[#080B14] border border-[#00C8E8]/30 rounded px-4 py-3">
                 <p className="text-[#8892B0] text-[10px] uppercase tracking-widest mb-2">API Key</p>
                 <div className="flex items-center gap-2">
-                  <code className="text-accent text-xs break-all flex-1 select-all">{shownApiKey}</code>
+                  <code className="text-[#00C8E8] text-xs break-all flex-1 select-all">{shownApiKey}</code>
                   <button
                     onClick={handleCopy}
-                    className="flex-shrink-0 text-xs px-3 py-1.5 border border-accent/40 rounded text-accent hover:bg-accent/10 transition-colors min-h-touch"
+                    className="flex-shrink-0 text-xs px-3 py-1.5 border border-[#00C8E8]/40 rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors"
                   >
                     {copied ? 'Copied!' : 'Copy'}
                   </button>
@@ -96,7 +96,7 @@ export function SignupPage() {
 
               <button
                 onClick={() => navigate('/app')}
-                className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] font-bold text-sm py-2.5 rounded hover:brightness-110 transition-all duration-200 min-h-touch"
+                className="w-full bg-[#00C8E8] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors"
               >
                 I've saved my key — Continue
               </button>
@@ -113,10 +113,10 @@ export function SignupPage() {
 
       <div className="flex-1 flex items-center justify-center px-4 pt-16 py-10">
         <div className="w-full max-w-md">
-          <div className="bg-bg-surface/80 backdrop-blur-sm border border-bg-border rounded-lg overflow-hidden p-8">
+          <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-8">
             {/* Header */}
             <div className="mb-6">
-              <p className="text-accent text-xs font-mono font-bold uppercase tracking-widest mb-2">Get started</p>
+              <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-2">Get started</p>
               <h1 className="text-white text-xl font-bold">Create your account</h1>
             </div>
 
@@ -137,7 +137,7 @@ export function SignupPage() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   disabled={loading}
-                  className="w-full bg-[#060912] border border-bg-border rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -151,7 +151,7 @@ export function SignupPage() {
                   placeholder="min 8 characters"
                   autoComplete="new-password"
                   disabled={loading}
-                  className="w-full bg-[#060912] border border-bg-border rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-accent placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
+                  className="w-full bg-[#080B14] border border-[#1E2640] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00C8E8] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -165,10 +165,10 @@ export function SignupPage() {
                       key={value}
                       onClick={() => setTier(value)}
                       disabled={loading}
-                      className={`flex flex-col items-center py-3 px-2 rounded border text-xs transition-colors disabled:opacity-50 min-h-touch ${
+                      className={`flex flex-col items-center py-3 px-2 rounded border text-xs transition-colors disabled:opacity-50 ${
                         tier === value
-                          ? 'border-accent bg-accent/10 text-accent'
-                          : 'border-bg-border text-[#8892B0] hover:border-accent/40 hover:text-white'
+                          ? 'border-[#00C8E8] bg-[#00C8E8]/10 text-[#00C8E8]'
+                          : 'border-[#1E2640] text-[#8892B0] hover:border-[#00C8E8]/40 hover:text-white'
                       }`}
                     >
                       <span className="font-bold mb-0.5">{label}</span>
@@ -181,7 +181,7 @@ export function SignupPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-[#060912] font-bold text-sm py-2.5 rounded hover:brightness-110 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed min-h-touch"
+                className="w-full bg-[#00C8E8] text-[#080B14] font-bold text-sm py-2.5 rounded hover:bg-[#00C8E8]/80 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? 'Creating account…' : 'Create Account'}
               </button>
@@ -189,7 +189,7 @@ export function SignupPage() {
 
             <p className="text-[#8892B0] text-xs text-center mt-6">
               Already have an account?{' '}
-              <Link to="/login" className="text-accent hover:underline">
+              <Link to="/login" className="text-[#00C8E8] hover:underline">
                 Sign in
               </Link>
             </p>

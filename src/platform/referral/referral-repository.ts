@@ -4,17 +4,14 @@
  * Preserves the singleton pattern for backward compatibility.
  */
 
-import type { ReferralCode, ReferralClick, ReferralStats, CommissionStatus } from './types';
+import type { ReferralCode, ReferralClick, CommissionRecord, ReferralStats, CommissionStatus } from './types';
 import * as crud from './referral-crud';
 import * as analytics from './referral-analytics';
 
 export class ReferralRepository {
   // ── Code CRUD ──────────────────────────────────────────
-  async insertReferralCodeRow(code: string, tenantId: string, isActive = true, maxUses: number | null = null) {
-    return crud.insertReferralCodeRow(code, tenantId, isActive, maxUses);
-  }
-  async createReferralCode(tenantId: string): Promise<ReferralCode> {
-    return crud.createReferralCode(tenantId);
+  async createReferralCode(code: string, tenantId: string, isActive = true, maxUses: number | null = null) {
+    return crud.createReferralCode(code, tenantId, isActive, maxUses);
   }
   async getReferralCodeByTenant(tenantId: string): Promise<ReferralCode | null> {
     return crud.getReferralCodeByTenant(tenantId);

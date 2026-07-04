@@ -14,7 +14,7 @@
  *      `Labels: source=env|kv` — the operator-facing contract.
  *   2. **Helper function TS union** — `setQwenKillSwitch(source: 'env' | 'kv',
  *      active: boolean)` in the same file — the compile-time contract.
- *   3. **Production emit sites** — only `src/desk/wiring/qwen-drawdown-monitor.ts`
+ *   3. **Production emit sites** — only `src/wiring/qwen-drawdown-monitor.ts`
  *      currently calls `setQwenKillSwitch('env', …)`; the `'kv'` source is
  *      declared + tested but not yet wired in prod (reserved slot pending the
  *      admin-API KV toggle).
@@ -33,7 +33,7 @@
  *
  * Reserved-slot semantics:
  *   `RESERVED_SOURCES = {'kv'}` — declared in help text + TS union + exercised
- *   by `src/desk/wiring/__tests__/qwen-observability.test.ts:14-15` (which emits
+ *   by `src/wiring/__tests__/qwen-observability.test.ts:14-15` (which emits
  *   BOTH `env` and `kv` to prove both labels propagate), but NOT yet emitted
  *   from production `src/` code. This is structurally parallel to PR #154's
  *   `RESERVED_STATUSES = {'acknowledged'}` (declared in migration CHECK but
@@ -68,15 +68,14 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics-definitions.ts');
-const METRICS_FUNCTIONS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 const DRAWDOWN_MONITOR_PATH = resolve(
   REPO_ROOT,
-  'src/desk/wiring/qwen-drawdown-monitor.ts',
+  'src/wiring/qwen-drawdown-monitor.ts',
 );
 const OBSERVABILITY_TEST_PATH = resolve(
   REPO_ROOT,
-  'src/desk/wiring/__tests__/qwen-observability.test.ts',
+  'src/wiring/__tests__/qwen-observability.test.ts',
 );
 
 /** Sources declared in help text + TS union but intentionally not yet emitted by prod code. */
@@ -155,12 +154,11 @@ function extractCallSiteSources(src: string): Set<string> {
 
 describe('Qwen kill-switch source label enum 3-surface sync', () => {
   const metricsSrc = readFileSync(METRICS_PATH, 'utf8');
-  const metricsFunctionsSrc = readFileSync(METRICS_FUNCTIONS_PATH, 'utf8');
   const drawdownMonitorSrc = readFileSync(DRAWDOWN_MONITOR_PATH, 'utf8');
   const observabilityTestSrc = readFileSync(OBSERVABILITY_TEST_PATH, 'utf8');
 
   const helpSources = extractHelpTextSources(metricsSrc);
-  const unionSources = extractTsUnionSources(metricsFunctionsSrc);
+  const unionSources = extractTsUnionSources(metricsSrc);
   const prodSources = extractCallSiteSources(drawdownMonitorSrc);
   const testSources = extractCallSiteSources(observabilityTestSrc);
 

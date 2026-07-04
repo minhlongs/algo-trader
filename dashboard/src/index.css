@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Calistoga&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,34 +9,9 @@
     margin: 0;
     min-height: 100vh;
     background-color: #080B14;
-    font-family: 'Inter', 'Inter Fallback', system-ui, sans-serif;
+    font-family: 'Geist', 'Geist Fallback', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* Light mode overrides — applied when .dark class is NOT on <html> */
-  html:not(.dark),
-  html:not(.dark) body,
-  html:not(.dark) #root {
-    background-color: #f1f5f9;
-  }
-
-  html:not(.dark) aside {
-    background-color: #ffffff !important;
-    border-right-color: #e2e8f0 !important;
-  }
-
-  html:not(.dark) main {
-    background-color: #f8fafc !important;
-  }
-
-  html:not(.dark) footer {
-    border-top-color: #e2e8f0 !important;
-  }
-
-  html:not(.dark) .glass {
-    background: rgba(255, 255, 255, 0.8) !important;
-    border-color: #e2e8f0 !important;
   }
 
   ::selection {
@@ -85,8 +60,4 @@
   .text-balance {
     text-wrap: balance;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
