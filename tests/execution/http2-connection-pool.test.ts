@@ -4,12 +4,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { Http2ConnectionPool } from '../../src/execution/http2-connection-pool';
+import { Http2ConnectionPool } from '../../src/desk/execution/http2-connection-pool';
 import * as http2 from 'node:http2';
-import { logger } from '../../src/utils/logger';
+import { logger } from '../../src/shared/utils/logger';
 
 // Mock logger
-vi.mock('../src/utils/logger', () => ({
+vi.mock('../../src/shared/utils/logger', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

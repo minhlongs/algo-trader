@@ -9,7 +9,7 @@ import {
   isBalanced,
   serializeRing,
   deserializeRing,
-} from '../../src/utils/consistent-hash';
+} from '../../src/shared/utils/consistent-hash';
 
 describe('Consistent Hashing', () => {
   describe('hashString', () => {

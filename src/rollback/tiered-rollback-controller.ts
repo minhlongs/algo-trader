@@ -14,10 +14,10 @@
  */
 
 import { getRedisClient, type RedisClientType } from '../redis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { setQwenKillSwitch, setQwenDrawdownAutoDisabled, setQwenPaperGateDaysRemaining } from '../middleware/prometheus-metrics';
-import { getTracer } from '../utils/tracing';
-import { getMessageBus } from '../messaging/create-message-bus';
+import { getTracer } from '../shared/utils/tracing';
+import { getMessageBus } from '../shared/messaging/create-message-bus';
 
 export enum RollbackLayer {
   L0_SIGNALS = 'L0_SIGNALS',

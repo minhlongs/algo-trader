@@ -14,7 +14,7 @@ export interface CompressionStreamOptions {
   flushOnFinish?: boolean;
 }
 
-import { recordCompressionRatio } from '../middleware/prometheus-metrics';
+import { recordCompressionRatio } from '../../platform/middleware/prometheus-metrics';
 
 /**
  * Compression Stream Manager

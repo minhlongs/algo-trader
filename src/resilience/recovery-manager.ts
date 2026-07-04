@@ -9,8 +9,8 @@ import {
   renameSync,
 } from 'node:fs';
 import { dirname, basename, extname, join } from 'node:path';
-import { logger } from '../core/logger.js';
-import type { StrategyConfig, Position } from '../core/types.js';
+import { logger } from '../shared/utils/logger';
+import type { StrategyConfig, Position } from '../desk/core/types';
 
 const RECOVERY_FILE_DEFAULT = 'data/recovery-state.json';
 /** Maximum age (ms) of a recovery snapshot to be considered valid */

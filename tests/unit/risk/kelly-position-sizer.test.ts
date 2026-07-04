@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { KellyPositionSizer, KellyConfig } from '../../../src/risk/kelly-position-sizer';
+import { KellyPositionSizer, KellyConfig } from '../../../src/desk/risk/kelly-position-sizer';
 
 // Permissive config: no max cap interference for most tests
 const permissiveConfig: Partial<KellyConfig> = {

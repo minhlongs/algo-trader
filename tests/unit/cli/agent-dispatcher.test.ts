@@ -10,7 +10,7 @@ const chatMock = vi.fn();
 let mockGatewayInstance: any = null;
 
 // Mock OpenClawGateway
-vi.mock('../../../src/workers/openclaw-gateway/client', () => {
+vi.mock('../../../src/platform/workers/openclaw-gateway/client', () => {
   return {
     OpenClawGateway: class {
       chat = chatMock;
@@ -34,7 +34,7 @@ vi.mock('../../../src/queues/agent-queue-manager', () => {
 });
 
 // Mock circuit-breaker
-vi.mock('../../../src/resilience/circuit-breaker', () => ({
+vi.mock('../../../src/shared/resilience/circuit-breaker', () => ({
   CircuitBreaker: class {
     constructor() {}
     async execute(fn: Function) { return fn(); }
@@ -61,7 +61,7 @@ vi.mock('../../../src/agents/agent-config', () => {
   };
 });
 
-import { ModelTierDispatcher } from '../../../src/cli/agent-dispatcher';
+import { ModelTierDispatcher } from '../../../src/desk/cli/agent-dispatcher';
 
 describe('ModelTierDispatcher', () => {
   let dispatcher: ModelTierDispatcher;

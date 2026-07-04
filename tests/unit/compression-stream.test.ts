@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CompressionStreamManager, CompressionAlgorithm } from '../../src/utils/compression-stream';
+import { CompressionStreamManager, CompressionAlgorithm } from '../../src/shared/utils/compression-stream';
 
 // Mock CompressionStream and DecompressionStream if not available in test environment
 const mockCompressionStream = vi.fn();

@@ -4,9 +4,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PolymarketAdapter } from '../../src/execution/polymarket-adapter';
-import { PolymarketSigner } from '../../src/execution/polymarket-signer';
-import { Http2ConnectionPool } from '../../src/execution/http2-connection-pool';
+import { PolymarketAdapter } from '../../src/desk/execution/polymarket-adapter';
+import { PolymarketSigner } from '../../src/desk/execution/polymarket-signer';
+import { Http2ConnectionPool } from '../../src/desk/execution/http2-connection-pool';
 
 // No need to mock prometheus metrics; they are initialized lazily
 

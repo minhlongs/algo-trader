@@ -9,7 +9,7 @@
 
 import { PolymarketSigner, PolymarketOrder, SignedOrder } from './polymarket-signer';
 import { createHmac } from 'crypto';
-import { recordExternalApiLatency } from '../middleware/prometheus-metrics';
+import { recordExternalApiLatency } from '../../platform/middleware/prometheus-metrics';
 import { Http2ConnectionPool } from './http2-connection-pool';
 import * as http2 from 'node:http2';
 import { logger } from '../utils/logger';

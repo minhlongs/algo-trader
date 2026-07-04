@@ -17,7 +17,7 @@ vi.mock('../../src/redis', () => ({
   getRedisClient: vi.fn(() => mockRedisClient),
 }));
 
-import { MemoryPressureHandler, PressureLevel, MemoryMetrics } from '../../src/utils/memory-pressure-handler';
+import { MemoryPressureHandler, PressureLevel, MemoryMetrics } from '../../src/shared/utils/memory-pressure-handler';
 
 // Mock performance.memory
 const mockMemory = {

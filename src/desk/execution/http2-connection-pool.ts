@@ -7,7 +7,7 @@
 import * as http2 from 'node:http2';
 import { lookup, ADDRCONFIG, V4MAPPED } from 'node:dns';
 import { promisify } from 'node:util';
-import { logger } from '../utils/logger';
+import { logger } from '../../shared/utils/logger';
 import { register } from '../middleware/prometheus-metrics';
 import { Counter, Gauge, Histogram } from 'prom-client';
 

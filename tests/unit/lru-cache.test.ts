@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { LRUCache, StrategyCache, MarketDataCache, AgentContextCache } from '../../src/utils/lru-cache';
+import { LRUCache, StrategyCache, MarketDataCache, AgentContextCache } from '../../src/shared/utils/lru-cache';
 
 describe('LRUCache', () => {
   describe('Basic Operations', () => {

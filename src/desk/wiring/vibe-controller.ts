@@ -4,9 +4,9 @@
  * Multi-instance safety: WATCH/MULTI/EXEC CAS prevents lost updates across PM2 instances.
  */
 
-import { createMessageBus } from '../messaging/create-message-bus';
-import { getRedisClient } from '../redis/index';
-import { logger } from '../utils/logger';
+import { createMessageBus } from '../../shared/messaging/create-message-bus';
+import { getRedisClient } from '../../redis/index';
+import { logger } from '../../shared/utils/logger';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

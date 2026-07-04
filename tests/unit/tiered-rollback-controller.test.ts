@@ -26,7 +26,7 @@ vi.mock('../../src/middleware/prometheus-metrics', () => ({
 }));
 
 // Mock getTracer and getMessageBus
-vi.mock('../../src/utils/tracing', () => ({
+vi.mock('../../src/shared/utils/tracing', () => ({
   getTracer: vi.fn(() => ({
     startActiveSpan: vi.fn((name, fn) => fn({ setAttribute: vi.fn() })),
   })),

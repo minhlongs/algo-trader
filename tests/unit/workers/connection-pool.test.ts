@@ -3,7 +3,7 @@ import {
   ConnectionPoolManager,
   PoolConfig,
   getConnectionPoolManager,
-} from '../../../src/workers/connection-pool';
+} from '../../../src/platform/workers/connection-pool';
 
 describe('ConnectionPoolManager', () => {
   let config: PoolConfig[];

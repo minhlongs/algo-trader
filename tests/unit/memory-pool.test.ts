@@ -10,7 +10,7 @@ import {
   parserPool,
   bufferPool,
   strategyPool,
-} from '../../src/utils/memory-pool';
+} from '../../src/shared/utils/memory-pool';
 
 // Mock class with reset method
 class MockObject {

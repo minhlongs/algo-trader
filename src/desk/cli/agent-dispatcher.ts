@@ -6,10 +6,10 @@
  */
 
 import { trace } from '@opentelemetry/api';
-import { AgentQueueManager } from '../queues/agent-queue-manager';
-import { OpenClawGateway } from '../workers/openclaw-gateway/client';
-import { CircuitBreaker } from '../resilience/circuit-breaker';
-import { AgentConfig, ModelTier, TIER_CONFIG, getAgentConfig } from '../agents/agent-config';
+import { AgentQueueManager } from '../../queues/agent-queue-manager';
+import { OpenClawGateway } from '../../platform/workers/openclaw-gateway/client';
+import { CircuitBreaker } from '../../shared/resilience/circuit-breaker';
+import { AgentConfig, ModelTier, TIER_CONFIG, getAgentConfig } from '../../agents/agent-config';
 
 export interface AgentExecutionContext {
   tenantId: string;
