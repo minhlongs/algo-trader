@@ -14,12 +14,12 @@
  *
  *   Optionally hedge with offsetting position on second-most mispriced leg.
  */
-import type { ClobClient } from '../../polymarket/clob-client';
-import type { OrderManager } from '../../polymarket/order-manager';
-import type { EventBus } from '../../events/event-bus';
-import type { GammaClient, GammaMarket, GammaMarketGroup } from '../../polymarket/gamma-client';
-import type { StrategyName } from '../../core/types';
-import { logger } from '../../core/logger';
+import type { ClobClient } from '../../polymarket/clob-client.js';
+import type { OrderManager } from '../../polymarket/order-manager.js';
+import type { EventBus } from '../../events/event-bus.js';
+import type { GammaClient, GammaMarket, GammaMarketGroup } from '../../polymarket/gamma-client.js';
+import type { StrategyName } from '../../core/types.js';
+import { logger } from '../../core/logger.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -335,10 +335,10 @@ export function createMultiLegHedgeTick(deps: MultiLegHedgeDeps): () => Promise<
         // Primary leg
         const primarySide: 'yes' | 'no' = signal === 'overpriced' ? 'no' : 'yes';
         const primaryTokenId = primarySide === 'yes'
-          ? primaryMarket.yesTokenId!
-          : (primaryMarket.noTokenId ?? primaryMarket.yesTokenId!);
+          ? primaryMarket.yesTokenId
+          : (primaryMarket.noTokenId ?? primaryMarket.yesTokenId);
 
-        const primaryBook = await clob.getOrderBook(primaryMarket.yesTokenId!);
+        const primaryBook = await clob.getOrderBook(primaryMarket.yesTokenId);
         const primaryMid = bestMid(primaryBook);
         const entryPrice = primarySide === 'yes'
           ? (primaryBook.asks.length > 0 ? parseFloat(primaryBook.asks[0].price) : primaryMid)
@@ -359,10 +359,10 @@ export function createMultiLegHedgeTick(deps: MultiLegHedgeDeps): () => Promise<
             // Hedge is the opposite side from primary
             const hedgeSide: 'yes' | 'no' = signal === 'overpriced' ? 'yes' : 'no';
             const hedgeTokenId = hedgeSide === 'yes'
-              ? hedgeMarket.yesTokenId!
-              : (hedgeMarket.noTokenId ?? hedgeMarket.yesTokenId!);
+              ? hedgeMarket.yesTokenId
+              : (hedgeMarket.noTokenId ?? hedgeMarket.yesTokenId);
 
-            const hedgeBook = await clob.getOrderBook(hedgeMarket.yesTokenId!);
+            const hedgeBook = await clob.getOrderBook(hedgeMarket.yesTokenId);
             const hedgeMid = bestMid(hedgeBook);
             const hedgeEntryPrice = hedgeSide === 'yes'
               ? (hedgeBook.asks.length > 0 ? parseFloat(hedgeBook.asks[0].price) : hedgeMid)
