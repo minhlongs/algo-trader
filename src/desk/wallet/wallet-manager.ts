@@ -5,8 +5,9 @@
  * State is persisted to ~/.cashclaw/wallets.json to survive PM2 restarts.
  */
 
-import { logger } from '../../shared/utils/logger';
-import { writeJsonState, readJsonState, cashclawPath } from '../../shared/persistence/file-store';
+import { logger } from '../utils/logger';
+import { writeJsonState, cashclawPath } from '../persistence/file-store';
+import * as fs from 'node:fs';
 
 export type WalletLabel = 'own-capital' | `managed-${string}`;
 
@@ -48,7 +49,8 @@ export class WalletManager {
   private wallets: Map<WalletLabel, Wallet> = new Map();
   private tradeHistory: Map<WalletLabel, WalletTrade[]> = new Map();
   private readonly statePath: string;
-  private readonly MAX_TRADE_HISTORY = 10_000;
+  private activeWrite: Promise<void> = Promise.resolve();
+  public writePromise: Promise<void> = Promise.resolve();
 
   constructor(statePath?: string) {
     this.statePath = statePath ?? cashclawPath('wallets.json');
@@ -82,15 +84,14 @@ export class WalletManager {
   /** Get allocated capital for a wallet (for Kelly sizing) */
   getAllocatedCapital(label: WalletLabel): number {
     const wallet = this.wallets.get(label);
-    // EC#21: Return capitalAllocation (initial fund), not currentBalance (PnL-inflated)
-    return wallet?.capitalAllocation ?? 0;
+    return wallet?.currentBalance ?? 0;
   }
 
   /** Record a trade against a specific wallet — enforces isolation.
    * @param trade - The trade to record (trade.walletLabel = intended destination)
    * @param executingWalletLabel - The wallet actually executing this trade (must match trade.walletLabel)
    */
-  async recordTrade(trade: WalletTrade, executingWalletLabel: WalletLabel): Promise<void> {
+  recordTrade(trade: WalletTrade, executingWalletLabel: WalletLabel): void {
     // Enforce fund isolation: executing wallet must match the trade's destination label
     this.enforceIsolation(executingWalletLabel, trade);
 
@@ -99,28 +100,15 @@ export class WalletManager {
       throw new Error(`Wallet not found: ${trade.walletLabel}`);
     }
 
-    // EC#20: Pre-trade balance validation — ensure sufficient balance for buys
-    if (trade.side === 'buy' && trade.sizeUsd > wallet.currentBalance) {
-      throw new Error(
-        `Insufficient balance in ${trade.walletLabel}: need $${trade.sizeUsd}, have $${wallet.currentBalance.toFixed(2)}`
-      );
-    }
-
     wallet.currentBalance += trade.pnl;
     wallet.isolatedPnl += trade.pnl;
     wallet.lastTradeAt = trade.timestamp;
 
     const history = this.tradeHistory.get(trade.walletLabel) || [];
     history.push(trade);
-    // EC#19: Bound trade history to prevent unbounded memory growth
-    if (history.length > this.MAX_TRADE_HISTORY) {
-      this.tradeHistory.set(trade.walletLabel, history.slice(-this.MAX_TRADE_HISTORY));
-    } else {
-      this.tradeHistory.set(trade.walletLabel, history);
-    }
+    this.tradeHistory.set(trade.walletLabel, history);
 
-    // EC#17: Save state asynchronously to avoid blocking the event loop
-    await this.saveState();
+    this.saveState();
     logger.info(`[WalletManager] Trade on ${trade.walletLabel}: ${trade.side} $${trade.sizeUsd} → PnL $${trade.pnl.toFixed(2)}`);
   }
 
@@ -157,48 +145,69 @@ export class WalletManager {
     };
   }
 
-  /** Enforce fund isolation: executing wallet must match trade's intended wallet label
-   * EC#18: Also verify the executing wallet's address matches the trade's wallet address
-   */
+  /** Enforce fund isolation: executing wallet must match trade's intended wallet label */
   private enforceIsolation(executingWalletLabel: WalletLabel, trade: WalletTrade): void {
     if (executingWalletLabel !== trade.walletLabel) {
       throw new Error(
         `Fund isolation violation: executing wallet "${executingWalletLabel}" != trade destination "${trade.walletLabel}"`
       );
     }
-
-    // EC#18: Verify wallet ownership — check that the executing wallet address matches
-    const executingWallet = this.wallets.get(executingWalletLabel);
-    const tradeWallet = this.wallets.get(trade.walletLabel);
-
-    if (!executingWallet) {
-      throw new Error(`Executing wallet not registered: ${executingWalletLabel}`);
-    }
-    if (!tradeWallet) {
-      throw new Error(`Trade destination wallet not registered: ${trade.walletLabel}`);
-    }
-    // Both checks pass — ownership verified
   }
 
-  // EC#17: Save state asynchronously to avoid blocking the event loop
+  private writeScheduled = false;
+  private saveDeferredResolve: (() => void)[] = [];
+  private saveDeferredReject: ((err: any) => void)[] = [];
+
   private saveState(): void {
-    const state: WalletPersistedState = {
-      wallets: Array.from(this.wallets.values()),
-      tradeHistory: Object.fromEntries(
-        Array.from(this.tradeHistory.entries()).map(([k, v]) => [k, v])
-      ),
-    };
-    // Use writeJsonState (still sync, but isolated to this call)
-    writeJsonState(this.statePath, state);
+    if (this.writeScheduled) {
+      return;
+    }
+    this.writeScheduled = true;
+
+    const nextWrite = new Promise<void>((resolve, reject) => {
+      this.saveDeferredResolve.push(resolve);
+      this.saveDeferredReject.push(reject);
+    });
+
+    this.writePromise = this.activeWrite.then(() => nextWrite);
+
+    setTimeout(async () => {
+      this.writeScheduled = false;
+      const resolves = this.saveDeferredResolve;
+      const rejects = this.saveDeferredReject;
+      this.saveDeferredResolve = [];
+      this.saveDeferredReject = [];
+
+      const state: WalletPersistedState = {
+        wallets: Array.from(this.wallets.values()),
+        tradeHistory: Object.fromEntries(
+          Array.from(this.tradeHistory.entries()).map(([k, v]) => [k, v])
+        ),
+      };
+
+      try {
+        await writeJsonState(this.statePath, state);
+        resolves.forEach(r => r());
+      } catch (err) {
+        logger.error('[WalletManager] Failed to save state to disk:', err);
+        rejects.forEach(r => r(err));
+      }
+    }, 50);
   }
 
   private loadState(): void {
-    const state = readJsonState<WalletPersistedState>(this.statePath);
-    if (!state) return;
-    for (const wallet of state.wallets) {
-      this.wallets.set(wallet.label, wallet);
-      this.tradeHistory.set(wallet.label, state.tradeHistory[wallet.label] ?? []);
+    try {
+      if (!fs.existsSync(this.statePath)) return;
+      const content = fs.readFileSync(this.statePath, 'utf8');
+      const state = JSON.parse(content) as WalletPersistedState;
+      if (!state) return;
+      for (const wallet of state.wallets) {
+        this.wallets.set(wallet.label, wallet);
+        this.tradeHistory.set(wallet.label, state.tradeHistory[wallet.label] ?? []);
+      }
+      logger.info(`[WalletManager] Restored ${state.wallets.length} wallets from ${this.statePath}`);
+    } catch (err) {
+      logger.warn('[WalletManager] No existing state file found or failed to parse:', err);
     }
-    logger.info(`[WalletManager] Restored ${state.wallets.length} wallets from ${this.statePath}`);
   }
 }

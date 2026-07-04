@@ -4,12 +4,9 @@
  * Records each execution result to trades table with subscriber_id + attestation_id.
  */
 
-import { query } from '../../shared/db/postgres-client';
-import { logger as _logger } from '../../shared/utils/logger';
+import { query } from '../db/postgres-client';
 import { buildTenantFilter } from './subscriber-tenant-isolator';
-import { TenantCredentialsRepository } from '../../db/tenant-credentials-repository';
-
-const credentialsRepo = new TenantCredentialsRepository();
+import { TenantCredentialsRepository } from '../db/tenant-credentials-repository';
 
 export interface SubscriberExecRequest {
   subscriberId: string;
@@ -80,12 +77,13 @@ export class SubscriberExecutor {
 
     // Validate tenant filter is constructable (throws on empty subscriberId)
     buildTenantFilter(subscriberId, 1);
-  // Verify credentials exist for this subscriber
-  const creds = await credentialsRepo.get(subscriberId);
-  if (!creds) {
-    throw new Error("Credentials not found for subscriber: " + subscriberId);
-  }
 
+    // Verify tenant credentials exist and are decodable
+    const credentialsRepo = new TenantCredentialsRepository();
+    const credentials = await credentialsRepo.get(subscriberId);
+    if (!credentials) {
+      throw new Error(`Credentials not found for subscriber: ${subscriberId}`);
+    }
 
     const tradeId = generateId();
     const attestationId = generateAttestationId(subscriberId, strategyId);

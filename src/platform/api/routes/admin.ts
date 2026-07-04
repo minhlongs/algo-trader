@@ -7,9 +7,10 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { requireTier } from '../../middleware/feature-gate';
-import { CircuitBreaker } from '../../../desk/risk/circuit-breaker';
-import { DrawdownMonitor } from '../../../desk/risk/drawdown-monitor';
+import { CircuitBreaker } from '../../risk/circuit-breaker';
+import { DrawdownMonitor } from '../../risk/drawdown-monitor';
+import { requireAdminKey } from '../middleware/require-admin-key';
+import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
 
 // Zod schemas for request body validation
 const haltSchema = z.object({
@@ -24,7 +25,8 @@ const drawdownMonitor = new DrawdownMonitor();
  * POST /admin/halt
  * Body: reason (required)
  */
-adminRouter.post('/halt', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+adminRouter.post('/halt', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
   try {
     const parsed = haltSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -32,6 +34,15 @@ adminRouter.post('/halt', requireTier('ENTERPRISE'), async (req: Request, res: R
     }
 
     await circuitBreaker.halt(parsed.data.reason);
+
+    await appendTenantAuditLog(
+      'system-tenant',
+      'admin_halt',
+      'admin',
+      `Admin forced halt: ${parsed.data.reason}`,
+      { reason: parsed.data.reason }
+    );
+
     res.json({ success: true, message: `Trading halted: ${parsed.data.reason}` });
   } catch (error) {
     res.status(500).json({
@@ -43,10 +54,20 @@ adminRouter.post('/halt', requireTier('ENTERPRISE'), async (req: Request, res: R
 /**
  * POST /admin/resume
  */
-adminRouter.post('/resume', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+adminRouter.post('/resume', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
   try {
     await circuitBreaker.reset();
     await drawdownMonitor.resume();
+
+    await appendTenantAuditLog(
+      'system-tenant',
+      'admin_resume',
+      'admin',
+      'Admin forced resume',
+      {}
+    );
+
     res.json({ success: true, message: 'Trading resumed' });
   } catch (error) {
     res.status(500).json({
@@ -58,7 +79,8 @@ adminRouter.post('/resume', requireTier('ENTERPRISE'), async (req: Request, res:
 /**
  * GET /admin/status
  */
-adminRouter.get('/status', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
+adminRouter.get('/status', async (req: Request, res: Response) => {
+  if (!requireAdminKey(req, res)) return;
   try {
     const [circuitStatus, drawdownMetrics] = await Promise.all([
       circuitBreaker.getStatus(),

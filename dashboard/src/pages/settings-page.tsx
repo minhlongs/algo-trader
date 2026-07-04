@@ -3,6 +3,7 @@
  * Data is fetched here and passed down to each sub-component.
  * POST /tenants/:id/api-keys, DELETE /tenants/:id/api-keys/:keyId
  * GET /tenants/me, GET /tenants/:id/api-keys, GET /tenants/:id/alert-rules
+ * Refactored to use Stitch design system.
  */
 import React, { useState, useEffect } from 'react';
 import { useApiClient } from '../hooks/use-api-client';
@@ -10,28 +11,18 @@ import { useAuthStore } from '../stores/auth-store';
 import { SettingsTenantConfigForm, type TenantInfo } from '../components/settings-tenant-config-form';
 import { SettingsExchangeKeysForm, type ApiKey } from '../components/settings-exchange-keys-form';
 import { SettingsAlertRulesForm, type AlertRule } from '../components/settings-alert-rules-form';
+import { StitchCard, StitchInput, StitchButton, StitchBadge } from '../components/ui/stitch-components';
+import { COLORS } from '../lib/stitch-design-tokens';
 
 const MOCK_KEYS: ApiKey[] = [];
 const MOCK_ALERTS: AlertRule[] = [];
 
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
-      {children}
-    </section>
-  );
+interface MmParametersFormProps {
+  tenantId?: string;
+  fetchApi: <T>(path: string, options?: any) => Promise<T | null>;
 }
 
-const MM_FIELDS: { key: string; label: string; description: string; placeholder: string }[] = [
-  { key: 'MM_SPREAD', label: 'MM_SPREAD', description: 'Half-spread quoted on each side (e.g. 0.05 = 5%)', placeholder: '0.05' },
-  { key: 'MM_SIZE', label: 'MM_SIZE', description: 'Position size per order in USDC', placeholder: '10' },
-  { key: 'MM_MAX_MARKETS', label: 'MM_MAX_MARKETS', description: 'Maximum number of markets to quote simultaneously', placeholder: '5' },
-  { key: 'MM_MAX_INVENTORY', label: 'MM_MAX_INVENTORY', description: 'Max net inventory exposure per market in USDC', placeholder: '50' },
-];
-
-function MmParametersForm() {
-  const { fetchApi } = useApiClient();
-  const { tenantId } = useAuthStore();
+function MmParametersForm({ tenantId, fetchApi }: MmParametersFormProps) {
   const [values, setValues] = useState<Record<string, string>>({
     MM_SPREAD: '0.05',
     MM_SIZE: '10',
@@ -50,52 +41,60 @@ function MmParametersForm() {
     e.preventDefault();
     setSaving(true);
     setStatusMsg(null);
-    const res = await fetchApi(`/tenants/${tenantId ?? 'me'}/mm-parameters`, {
-      method: 'POST',
-      body: JSON.stringify(values),
-    });
-    setSaving(false);
-    if (res !== null) {
-      setStatusMsg({ text: 'Saved', ok: true });
-    } else {
-      setStatusMsg({ text: 'Backend not configured — changes not persisted', ok: false });
+    try {
+      const res = await fetchApi(`/tenants/${tenantId ?? 'me'}/mm-parameters`, {
+        method: 'POST',
+        body: JSON.stringify(values),
+      });
+      if (res !== null) {
+        setStatusMsg({ text: 'Saved', ok: true });
+      } else {
+        setStatusMsg({ text: 'Backend not configured — changes not persisted', ok: false });
+      }
+    } catch {
+      setStatusMsg({ text: 'Error saving', ok: false });
+    } finally {
+      setSaving(false);
     }
   }
 
+  const MM_FIELDS = [
+    { key: 'MM_SPREAD', label: 'MM_SPREAD', desc: 'Half-spread quoted on each side (e.g. 0.05 = 5%)' },
+    { key: 'MM_SIZE', label: 'MM_SIZE', desc: 'Position size per order in USDC' },
+    { key: 'MM_MAX_MARKETS', label: 'MM_MAX_MARKETS', desc: 'Maximum number of markets to quote simultaneously' },
+    { key: 'MM_MAX_INVENTORY', label: 'MM_MAX_INVENTORY', desc: 'Max net inventory exposure per market in USDC' },
+  ];
+
   return (
-    <form onSubmit={handleSave} className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-white text-sm font-bold">MM Parameters</h2>
-        {statusMsg && (
-          <span className={`text-xs ${statusMsg.ok ? 'text-profit' : 'text-muted'}`}>
-            {statusMsg.text}
-          </span>
-        )}
-      </div>
-      <p className="text-muted text-xs">Market making strategy configuration. Changes take effect on next requote cycle.</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {MM_FIELDS.map(({ key, label, description, placeholder }) => (
-          <div key={key}>
-            <label className="block text-accent text-xs mb-1">{label}</label>
-            <input
-              type="text"
-              value={values[key]}
-              onChange={(e) => handleChange(key, e.target.value)}
-              placeholder={placeholder}
-              className="w-full bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent placeholder:text-muted transition-colors"
-            />
-            <p className="text-muted text-[10px] mt-1">{description}</p>
-          </div>
-        ))}
-      </div>
-      <button
-        type="submit"
-        disabled={saving}
-        className="bg-accent text-bg font-bold text-xs px-4 py-2 rounded hover:bg-accent/80 disabled:opacity-50 transition-colors"
-      >
-        {saving ? 'Saving…' : 'Save Parameters'}
-      </button>
-    </form>
+    <StitchCard className="p-6 space-y-4">
+      <form onSubmit={handleSave}>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold font-mono" style={{ color: COLORS.onSurface }}>MM Parameters</h2>
+          {statusMsg && (
+            <StitchBadge label={statusMsg.text} tone={statusMsg.ok ? 'profit' : 'neutral'} />
+          )}
+        </div>
+        <p className="text-xs font-mono" style={{ color: COLORS.onSurfaceVariant }}>
+          Market making strategy configuration. Changes take effect on next requote cycle.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {MM_FIELDS.map(({ key, label, desc }) => (
+            <div key={key}>
+              <StitchInput
+                label={label}
+                value={values[key]}
+                onChange={(val) => handleChange(key, val)}
+                placeholder=""
+              />
+              <p className="text-[10px] font-mono mt-1" style={{ color: COLORS.onSurfaceVariant }}>{desc}</p>
+            </div>
+          ))}
+        </div>
+        <StitchButton type="submit" disabled={saving} variant="primary">
+          {saving ? 'Saving…' : 'Save Parameters'}
+        </StitchButton>
+      </form>
+    </StitchCard>
   );
 }
 
@@ -166,15 +165,13 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      <h1 className="text-white text-2xl font-bold">Settings</h1>
+      <h1 className="text-2xl font-bold" style={{ color: COLORS.onSurface }}>Settings</h1>
 
-      {/* MM Parameters */}
-      <Card>
-        <MmParametersForm />
-      </Card>
+      <MmParametersForm tenantId={tenant.id} fetchApi={fetchApi} />
 
       <SettingsTenantConfigForm tenant={tenant} />
-      <Card>
+
+      <StitchCard className="p-6 space-y-4">
         <SettingsExchangeKeysForm
           tenantId={tenant.id}
           apiKeys={apiKeys}
@@ -184,14 +181,15 @@ export function SettingsPage() {
           onDeleteKey={handleDeleteKey}
           onDismissNewKey={() => setNewKeyVisible(null)}
         />
-      </Card>
-      <Card>
+      </StitchCard>
+
+      <StitchCard className="p-6 space-y-4">
         <SettingsAlertRulesForm
           alerts={alerts}
           onAddAlert={handleAddAlert}
           onDeleteAlert={handleDeleteAlert}
         />
-      </Card>
+      </StitchCard>
     </div>
   );
 }

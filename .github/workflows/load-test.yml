@@ -1,0 +1,87 @@
+name: Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+  schedule:
+    - cron: '0 2 * * 0' # Weekly Sunday 2am
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Install k6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg2 curl
+          curl -s https://dl.k6.io/key.gpg | sudo apt-key add -
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Create reports directory
+        run: mkdir -p reports
+
+      - name: Run shard stress test
+        run: |
+          k6 run --out json=reports/shard-stress.json \
+            scripts/load-test-sharding.ts
+        env:
+          K6_OUT: json
+
+      - name: Run multi-region latency test
+        run: |
+          k6 run --out json=reports/region-latency.json \
+            scripts/load-test-multi-region.ts
+
+      - name: Run memory pressure test
+        run: |
+          k6 run --out json=reports/memory-pressure.json \
+            --vus 1000 --duration 10m \
+            scripts/load-test-memory.ts
+
+      - name: Run failover test
+        run: |
+          k6 run --out json=reports/failover.json \
+            scripts/load-test-failover.ts
+
+      - name: Run queue backpressure test
+        run: |
+          k6 run --out json=reports/queue-backpressure.json \
+            scripts/load-test-queue-backpressure.ts
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-reports
+          path: reports/*.json
+
+      - name: Generate summary
+        run: node scripts/generate-load-summary.js reports/
+
+      - name: Check pass criteria
+        run: |
+          node scripts/validate-load-results.js reports/

@@ -5,14 +5,40 @@
  */
 
 import 'dotenv/config';
-import { ApiServer } from './platform/api/server';
-import { logger } from './shared/utils/logger';
+import { ApiServer } from './api/server';
+import { logger } from './utils/logger';
+import { getLatencyMonitor } from './regions/latency-monitor';
+
+import { runMigrations } from './db/migration-runner';
+import { startAugmentedSignalPipeline } from './wiring/augmented-signal-pipeline';
 
 let server: ApiServer | null = null;
+let augmentedPipelineStop: (() => Promise<void>) | null = null;
 
 export async function startApp(): Promise<void> {
+  // Run DB migrations on startup
+  await runMigrations().catch((err) => {
+    logger.warn('[App] Migration runner skipped or failed:', { err });
+  });
+
   server = new ApiServer();
   await server.start();
+
+  // Start multi-region latency monitoring (Phase 5)
+  if (process.env.ENABLE_LATENCY_MONITORING !== 'false') {
+    getLatencyMonitor().start();
+    logger.info('[App] Latency monitor started');
+  }
+
+  // Phase 08: Wire augmented-signal-pipeline (AI validation gate for strategy signals)
+  // DeepSeek gating; false → bypass for backtesting or when NATS is absent.
+  const aiEnabled = (process.env.AI_VALIDATION_ENABLED ?? 'true').toLowerCase() !== 'false';
+  if (aiEnabled) {
+    augmentedPipelineStop = await startAugmentedSignalPipeline();
+    logger.info('[App] Augmented signal pipeline started (AI validation enabled)');
+  } else {
+    logger.warn('[App] AI validation disabled (AI_VALIDATION_ENABLED=false)');
+  }
 
   const port = process.env.API_PORT || '3000';
   const env = process.env.NODE_ENV || 'development';
@@ -20,11 +46,14 @@ export async function startApp(): Promise<void> {
 }
 
 export async function stopApp(): Promise<void> {
-  if (server) {
-    await server.stop();
-    server = null;
-    logger.info('[App] Shutdown complete');
-  }
+ if (augmentedPipelineStop) {
+   await augmentedPipelineStop().catch((err) => logger.warn('[App] Pipeline shutdown failed', { err }));
+ }
+ if (server) {
+   await server.stop();
+   server = null;
+   logger.info('[App] Shutdown complete');
+ }
 }
 
 // Graceful shutdown handlers

@@ -7,9 +7,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Use fake timers globally — needed by all engine intervals.
 vi.useFakeTimers();
 
-import { startDnaEngine, stopDnaEngine, getDnaEngine, onDnaEvent } from '../orchestrator';
-import type { Candle } from '../multi-tf-types';
-import { InMemoryStateStore } from '../dna-state-store';
+import { startDnaEngine, stopDnaEngine, getDnaEngine, onDnaEvent } from '../orchestrator.js';
+import type { Candle } from '../multi-tf-types.js';
+import { InMemoryStateStore } from '../dna-state-store.js';
 
 /** Deterministic candle generator for paper-only smoke tests. */
 function makeCandles(): Candle[] {

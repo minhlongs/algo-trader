@@ -3,7 +3,7 @@
  * third security-critical edge (after #193 signal-ingest HMAC + #194
  * HMAC verifier).
  *
- * `src/platform/api/routes/admin-qwen-routes.ts` exposes the L1 kill-switch +
+ * `src/api/routes/admin-qwen-routes.ts` exposes the L1 kill-switch +
  * status endpoints mounted at `/api/v1/admin/qwen`. Drift manifests as:
  *   - Auth check removed → anyone on the internet can toggle the kill
  *     switch (operator-critical)
@@ -74,14 +74,20 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const ADMIN_FILE = resolve(REPO_ROOT, 'src/platform/api/routes/admin-qwen-routes.ts');
+const ADMIN_FILE = resolve(REPO_ROOT, 'src/api/routes/admin-qwen-routes.ts');
+const MIDDLEWARE_FILE = resolve(REPO_ROOT, 'src/api/middleware/require-admin-key.ts');
 
 function readAdmin(): string {
   return readFileSync(ADMIN_FILE, 'utf8');
 }
 
+function readMiddleware(): string {
+  return readFileSync(MIDDLEWARE_FILE, 'utf8');
+}
+
 describe('Admin Qwen kill-switch contract discipline — 52nd edge (DIPENTACONTAGON)', () => {
   const src = readAdmin();
+  const mw = readMiddleware();
 
   it('admin-qwen-routes.ts exists and is non-empty (sanity floor)', () => {
     expect(src.length).toBeGreaterThan(1000);
@@ -95,30 +101,33 @@ describe('Admin Qwen kill-switch contract discipline — 52nd edge (DIPENTACONTA
   });
 
   it('requireAdminKey helper: ADMIN_API_KEY env + X-Admin-Key header compare', () => {
+    const hasImport = /import\s*\{[^}]*requireAdminKey[^}]*\}/.test(src);
+    const hasDef = /function\s+requireAdminKey\s*\(/.test(mw);
     expect(
-      /function\s+requireAdminKey\s*\(/.test(src),
-      'requireAdminKey helper missing',
+      hasImport || /function\s+requireAdminKey\s*\(/.test(src),
+      'requireAdminKey not imported or defined',
+    ).toBe(true);
+    expect(hasDef, 'requireAdminKey not defined in middleware').toBe(true);
+    expect(
+      /process\.env\.ADMIN_API_KEY/.test(mw),
+      'ADMIN_API_KEY env not read in middleware',
     ).toBe(true);
     expect(
-      /process\.env\.ADMIN_API_KEY/.test(src),
-      'ADMIN_API_KEY env not read',
-    ).toBe(true);
-    expect(
-      /x-admin-key/i.test(src),
-      'X-Admin-Key header not referenced',
+      /x-admin-key/i.test(mw),
+      'X-Admin-Key header not referenced in middleware',
     ).toBe(true);
   });
 
   it('503 fail-closed when ADMIN_API_KEY not configured', () => {
     expect(
-      /res\.status\(503\)/.test(src),
+      /res\.status\(503\)/.test(mw),
       '503 response missing for missing ADMIN_API_KEY — unconfigured admin would silently accept',
     ).toBe(true);
   });
 
   it('403 on invalid / missing X-Admin-Key (auth-default)', () => {
     expect(
-      /res\.status\(403\)/.test(src),
+      /res\.status\(403\)/.test(mw),
       '403 response missing for invalid X-Admin-Key — enumeration surface',
     ).toBe(true);
   });
@@ -221,8 +230,8 @@ describe('Admin Qwen kill-switch contract discipline — 52nd edge (DIPENTACONTA
 
   it('composite: 10 axes hold simultaneously (admin kill-switch coherence)', () => {
     expect(/export\s+function\s+createAdminQwenRouter\s*\(/.test(src)).toBe(true);
-    expect(/process\.env\.ADMIN_API_KEY/.test(src)).toBe(true);
-    expect(/res\.status\(503\)/.test(src) && /res\.status\(403\)/.test(src)).toBe(true);
+    expect(/process\.env\.ADMIN_API_KEY/.test(mw)).toBe(true);
+    expect(/res\.status\(503\)/.test(mw) && /res\.status\(403\)/.test(mw)).toBe(true);
     expect(/router\.post\(\s*['"]\/kill['"]/.test(src)).toBe(true);
     expect(/router\.post\(\s*['"]\/unkill['"]/.test(src)).toBe(true);
     expect(/router\.get\(\s*['"]\/status['"]/.test(src)).toBe(true);

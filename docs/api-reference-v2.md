@@ -316,6 +316,205 @@ Polar webhook handler for subscription events.
 
 ---
 
+## Admin & Scaling APIs
+
+**Authentication:** Requires admin role (X-API-Key with admin flag)
+
+### GET /api/v1/shard/stats
+
+Get shard distribution and performance statistics.
+
+**Response:**
+```json
+{
+  "success": true,
+  "shards": [
+    {
+      "shard_id": 0,
+      "requests_per_second": 450,
+      "active_strategies": ["polymarket-btc", "polymarket-eth"],
+      "avg_latency_ms": 25,
+      "memory_bytes": 5242880
+    }
+  ],
+  "total_shards": 12,
+  "total_rps": 5400,
+  "ring_health": "stable"
+}
+```
+
+### POST /api/v1/admin/shard/rebalance
+
+Trigger shard rebalancing (redistribute strategies across shards).
+
+**Request:**
+```json
+{
+  "strategy": "consistent-hashing",
+  "increase_virtual_nodes": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "job_id": "rebalance-20260616-1234",
+  "status": "started",
+  "estimated_duration_seconds": 300
+}
+```
+
+**Check status:** `GET /api/v1/admin/shard/rebalance/status?job_id=...`
+
+---
+
+### GET /api/v1/region/health
+
+Get health status of all regions.
+
+**Response:**
+```json
+{
+  "success": true,
+  "regions": {
+    "us-east": {
+      "healthy": true,
+      "latency_ms": 12,
+      "database": "connected",
+      "redis": "connected",
+      "nats": "connected"
+    },
+    "eu-central": {
+      "healthy": true,
+      "latency_ms": 45,
+      "database": "connected",
+      "replication_lag_seconds": 1.2
+    },
+    "ap-southeast": {
+      "healthy": false,
+      "latency_ms": null,
+      "database": "timeout"
+    }
+  }
+}
+```
+
+---
+
+### GET /api/v1/metrics/memory
+
+Get detailed memory breakdown by component.
+
+**Response:**
+```json
+{
+  "region": "us-east",
+  "rss_bytes": 125000000,
+  "heap_used_bytes": 98000000,
+  "heap_total_bytes": 120000000,
+  "external_bytes": 15000000,
+  "rss_mb": 119.1,
+  "utilization_ratio": 0.93,
+  "gc_runs_last_minute": 15,
+  "breakdown": {
+    "runtime": 25000000,
+    "code": 35000000,
+    "strategies": 45000000,
+    "agents": 33000000,
+    "caches": 30000000
+  }
+}
+```
+
+---
+
+### GET /api/v1/queue/stats
+
+Get queue depth and metrics for async processing.
+
+**Response:**
+```json
+{
+  "success": true,
+  "queues": {
+    "llm-haiku": {
+      "depth": 5,
+      "active": 50,
+      "wait_time_avg_seconds": 0.5,
+      "processed_last_5m": 2500
+    },
+    "llm-sonnet": {
+      "depth": 45,
+      "active": 20,
+      "wait_time_avg_seconds": 12,
+      "processed_last_5m": 800
+    },
+    "llm-opus": {
+      "depth": 2,
+      "active": 10,
+      "wait_time_avg_seconds": 1,
+      "processed_last_5m": 200
+    }
+  }
+}
+```
+
+---
+
+### POST /api/v1/admin/llm/override
+
+Force LLM tier override (emergency use).
+
+**Request:**
+```json
+{
+  "forced_tier": "haiku",
+  "reason": "Anthropic API outage",
+  "expires_in_seconds": 3600
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "override": {
+    "tier": "haiku",
+    "expires_at": "2026-06-16T13:45:00.000Z",
+    "reason": "Anthropic API outage"
+  }
+}
+```
+
+**Clear override:** `POST /api/v1/admin/llm/override/clear`
+
+---
+
+### POST /api/v1/admin/agents/disable
+
+Disable specific agents (memory pressure mitigation).
+
+**Request:**
+```json
+{
+  "agent_name": "deep-reasoning-agent",
+  "reason": "Memory pressure critical"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "agent": "deep-reasoning-agent",
+  "previous_state": "enabled",
+  "new_state": "disabled"
+}
+```
+
+---
+
 ## OpenAPI Spec
 
 Interactive docs: `/api-docs`

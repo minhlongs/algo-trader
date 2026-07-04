@@ -14,12 +14,14 @@ Users/
 .env.production
 .env.local
 .env.*.local
-plans/
-dashboard/plans/
-landing/plans/
-.claude/cache/
-__pycache__/
-.claude/scripts/__pycache__/
-coverage/
-dashboard/coverage/
-test-results/
+.wrangler/
+
+# OpenClaw/Mekong harness runtime artifacts
+.clawhub
+.openclaw-config.json
+.openclaw.pid
+state/
+tasks/
+tests/e2e/
+scripts/*.bak-*
+scripts/*.bak

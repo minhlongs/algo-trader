@@ -1,45 +1,28 @@
-/**
- * StitchBadge — design-system badge component.
- * Supports both label+tone (Stitch API) and children+variant (standard API).
- */
-import * as React from 'react';
+import { COLORS } from '../../lib/stitch-design-tokens';
 
 interface StitchBadgeProps {
-  children?: React.ReactNode;
-  label?: string;
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
-  tone?: string; // Stitch API compatibility
+  label: string;
+  tone?: 'primary' | 'profit' | 'loss' | 'warning' | 'neutral';
   className?: string;
 }
 
-export function StitchBadge({ children, label, variant = 'default', tone, className = '' }: StitchBadgeProps) {
-  // Stitch tone → variant mapping
-  const toneMap: Record<string, string> = {
-    success: 'success',
-    warning: 'warning',
-    danger: 'danger',
-    error: 'danger',
-    info: 'info',
-    pending: 'warning',
-    approved: 'success',
-    paid: 'success',
-    void: 'default',
-  };
-  const resolvedVariant = tone ? (toneMap[tone] || 'default') : variant;
+const toneStyle: Record<string, { bg: string; color: string; border: string }> = {
+  primary: { bg: `${COLORS.primary}1a`, color: COLORS.primary, border: `${COLORS.primary}4d` },
+  profit: { bg: `${COLORS.profit}1a`, color: COLORS.profit, border: `${COLORS.profit}4d` },
+  loss: { bg: `${COLORS.loss}1a`, color: COLORS.loss, border: `${COLORS.loss}4d` },
+  warning: { bg: `${COLORS.warning}1a`, color: COLORS.warning, border: `${COLORS.warning}4d` },
+  neutral: { bg: `${COLORS.surfaceHigh}66`, color: COLORS.onSurfaceVariant, border: `${COLORS.outline}66` },
+};
 
-  const variants: Record<string, string> = {
-    default: 'bg-white/10 text-white/80 border-white/15',
-    success: 'bg-accent/10 text-accent border-accent/20',
-    warning: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-    danger: 'bg-loss/10 text-loss border-loss/20',
-    info: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  };
-
-  const display = label || children;
+export function StitchBadge({ label, tone = 'neutral', className = '' }: StitchBadgeProps) {
+  const style = toneStyle[tone];
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${variants[resolvedVariant]} ${className}`}>
-      {display}
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${className}`}
+      style={{ backgroundColor: style.bg, color: style.color, border: `1px solid ${style.border}` }}
+    >
+      {label}
     </span>
   );
 }

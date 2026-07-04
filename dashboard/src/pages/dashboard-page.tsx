@@ -1,195 +1,164 @@
 /**
- * Main dashboard page — Quant Elite design.
- * Real-time WebSocket updates, skeleton loaders, responsive grid.
- * Geist sans for UI, JetBrains Mono for data/metrics.
+ * Main dashboard page: Week 5-6 UI Polish + Beta Launch.
+ * Refactored to use Stitch design system components.
  */
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useTradingStore } from '../stores/trading-store';
-import { useWebSocketPriceFeed } from '../hooks/use-websocket-price-feed';
-import { useRealtimeUpdates } from '../hooks/use-realtime-updates';
-import { useSignals } from '../hooks/use-signals';
-import { usePnlAnalytics } from '../hooks/use-pnl-analytics';
+import { useDashboardStore } from '../stores/dashboard-store';
 import { useAdminControls } from '../hooks/use-admin-controls';
 import { useHealthStatus } from '../hooks/use-health-status';
+import { useAuthStore } from '../stores/auth-store';
+import { useAbTestStore } from '../stores/ab-test-store';
+import { StitchButton, StitchCard, StitchStatCard } from '../components/ui/stitch-components';
+import { COLORS } from '../lib/stitch-design-tokens';
 
-// Phase 3 Components
-import { StatsRow } from '../components/stats-row';
-import { SignalsPanel } from '../components/signals-panel';
-import { PnLAnalyticsChart } from '../components/pnl-analytics-chart';
-import { AdminControls } from '../components/admin-controls';
-
-// Week 5-6 Components
 import {
   DashboardSkeleton,
-  StatsRowSkeleton,
-  PnlChartSkeleton,
-  AdminControlsSkeleton,
-  SignalsPanelSkeleton,
-  EquityCurveSkeleton,
   PriceTickerSkeleton,
+  SignalsPanelSkeleton,
   SpreadGridSkeleton,
   TradeHistorySkeleton,
-  PositionsTableSkeleton,
 } from '../components/skeleton-loaders';
 
-// Legacy Components (Phase 1/2)
 import { PriceTickerStrip } from '../components/price-ticker-strip';
-import { PositionsTableSortable } from '../components/positions-table-sortable';
 import { SpreadOpportunitiesCardGrid } from '../components/spread-opportunities-card-grid';
-import { EquityCurveChart } from '../components/equity-curve-pnl-chart';
-import { CacheStatus } from '../components/cache-status';
-import { StrategyStatusPanel } from '../components/strategy-status-panel';
+import { SignalsPanel } from '../components/signals-panel';
 import { TradeHistoryFeed } from '../components/trade-history-feed';
+import { RiskGauge } from '../components/ui/risk-gauge';
+import { ExposureHeatmap } from '../components/ui/exposure-heatmap';
+import { PnlSparkline } from '../components/ui/pnl-sparkline';
 
-function useNow(): string {
-  const [now, setNow] = useState(() => new Date().toLocaleTimeString('en-US', { hour12: false }));
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date().toLocaleTimeString('en-US', { hour12: false })), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
+import { DashboardHeader } from './dashboard-header';
+import { DashboardWidgetsGrid } from './dashboard-widgets-grid';
+import { TerminalLogsWidget } from './dashboard-widgets/logs-widget';
+
+function formatUsd(n: number): string {
+  const abs = Math.abs(n);
+  const s = abs >= 1000
+    ? abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : abs.toFixed(2);
+  return (n < 0 ? '-' : '') + '$' + s;
 }
 
 export function DashboardPage() {
-  // Legacy WebSocket for trading data (Phase 1/2)
-  useWebSocketPriceFeed();
+  const { tier, tenantId } = useAuthStore();
+  const { config, widgets, fetchAbConfig, fetchPersonalizationConfig, trackEvent } = useAbTestStore();
 
-  // Week 5-6: Unified realtime updates hook
-  const { connected: wsConnected, latency, error: wsError, reconnectCount } = useRealtimeUpdates();
+  const signals = useDashboardStore((s) => s.signals);
+  const lastSignalsUpdate = useDashboardStore((s) => s.lastSignalsUpdate);
+  const signalsLoading = lastSignalsUpdate === null;
 
-  // Phase 3 API hooks with loading states
-  const { signals, loading: signalsLoading, error: signalsError, refresh: refreshSignals } = useSignals(0, 50);
-  const { metrics, loading: pnlLoading, error: pnlError } = usePnlAnalytics();
-  const { status: adminStatus, halt, resume, loading: adminLoading, error: adminError, refresh: refreshAdmin } = useAdminControls();
+  const metrics = useDashboardStore((s) => s.metrics);
+  const lastMetricsUpdate = useDashboardStore((s) => s.lastMetricsUpdate);
+  const pnlLoading = lastMetricsUpdate === null;
+
+  const { loading: adminLoading } = useAdminControls();
   useHealthStatus();
 
-  // Trading store data (Phase 1/2)
   const positions = useTradingStore((s: any) => s.positions);
   const spreads = useTradingStore((s: any) => s.spreads);
   const strategies = useTradingStore((s: any) => s.strategies);
   const trades = useTradingStore((s: any) => s.trades);
-  const botStatus = useTradingStore((s: any) => s.botStatus);
 
-  const lastUpdate = useNow();
+  useEffect(() => {
+    if (tenantId) fetchAbConfig(tenantId);
+    if (tier) fetchPersonalizationConfig(tier);
+    trackEvent('dashboard_page_load');
+    const startTime = Date.now();
+    return () => {
+      const durationSec = Math.floor((Date.now() - startTime) / 1000);
+      trackEvent('dashboard_session_close', { durationSeconds: durationSec });
+    };
+  }, [tenantId, tier]);
 
-  // Overall loading state - show skeleton on initial load
   const isInitialLoading = pnlLoading || signalsLoading || adminLoading;
-
-  // Derived metrics
   const openCount = positions.filter((p: any) => p.status === 'open').length;
   const activeStrategies = strategies?.filter((s: any) => s.enabled).length ?? 0;
+  const pnlValue = metrics?.dailyPnl ?? 0;
+  const pnlTone: 'profit' | 'loss' | 'primary' = pnlValue >= 0 ? 'profit' : 'loss';
 
-  // Show full skeleton on initial load
-  if (isInitialLoading) {
-    return <DashboardSkeleton />;
-  }
+  if (isInitialLoading) return <DashboardSkeleton />;
 
   return (
-    <div className="space-y-6 font-sans">
-      {/* Top bar - responsive layout */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h2 className="text-white text-lg sm:text-xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted text-xs mt-0.5">
-            Algo Trader v5.7.0 • {wsConnected ? 'Connected' : 'Disconnected'}
-            {latency.avgLatency > 0 && ` • ${latency.avgLatency}ms latency`}
-          </p>
-          {wsError && <p className="text-loss text-xs mt-1">{wsError}</p>}
-          {reconnectCount > 0 && (
-            <p className="text-muted text-[10px] mt-0.5">Reconnected {reconnectCount}x</p>
-          )}
-        </div>
+    <div className={`space-y-6 ${config?.theme === 'cyberpunk' ? 'font-mono' : ''}`}>
+      {config?.theme === 'cyberpunk' && (
+        <style>{`
+          .theme-cyberpunk .border-white\\/5 { border-color: #ff007f !important; }
+          .theme-cyberpunk .text-white { color: #00ffff !important; }
+          .theme-cyberpunk button.bg-accent { background-color: #00ffff !important; color: #000000 !important; }
+        `}</style>
+      )}
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <CacheStatus />
-          <span className="text-muted text-xs hidden sm:inline">
-            Updated {lastUpdate}
-          </span>
-          <div
-            className={`
-              flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold
-              min-h-[36px] touch-manipulation
-              ${wsConnected
-                ? 'border-profit/40 bg-profit/10 text-profit'
-                : 'border-loss/40 bg-loss/10 text-loss'
-              }
-            `}
-          >
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-profit animate-pulse' : 'bg-loss'}`}
-            />
-            <span className="hidden sm:inline">{wsConnected ? 'Live' : 'Offline'}</span>
-          </div>
-        </div>
-      </div>
+      <DashboardHeader />
 
-      {/* Stats Row - responsive grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {(!widgets.length || widgets.find(w => w.id === 'price-ticker')?.visible !== false) && (
+        <StitchCard className="p-3" onClick={() => trackEvent('widget_click', { widget: 'price-ticker' })}>
+          {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
+        </StitchCard>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {pnlLoading ? (
-          <StatsRowSkeleton />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="rounded-xl border p-5" style={{ backgroundColor: COLORS.surface, borderColor: COLORS.outline }}>
+                <div className="h-3 w-20 rounded" style={{ backgroundColor: COLORS.outline }} />
+                <div className="mt-3 h-8 w-24 rounded" style={{ backgroundColor: COLORS.outline }} />
+              </div>
+            ))}
+          </div>
         ) : (
-          <StatsRow
-            totalEquity={metrics?.totalPnl}
-            openPositions={openCount}
-            todayPnl={metrics?.dailyPnl}
-            activeStrategies={activeStrategies}
-            metrics={metrics}
-          />
+          <>
+            <StitchStatCard label="Total Equity" value={metrics?.totalPnl ? formatUsd(metrics.totalPnl) : '—'} />
+            <StitchStatCard label="Open Positions" value={String(openCount)} />
+            <StitchStatCard label="Today's P&L" value={formatUsd(pnlValue)} tone={pnlTone} />
+            <StitchStatCard label="Active Strategies" value={String(activeStrategies)} tone="primary" />
+          </>
         )}
       </div>
 
-      {/* Strategy status - full width */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Strategies
+      {config?.promoBanner && (
+        <div
+          className="p-4 cursor-pointer border rounded-xl"
+          style={{
+            backgroundColor: `${COLORS.primary}1a`,
+            borderColor: `${COLORS.primary}4d`,
+          }}
+          onClick={() => trackEvent('upgrade_banner_click')}
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div>
+              <h4 className="text-sm font-semibold" style={{ color: COLORS.onSurface }}>⚡ Upgrade to Algo-Trader PRO</h4>
+              <p className="text-xs mt-0.5" style={{ color: COLORS.onSurfaceVariant }}>
+                Unlock real-time strategy toggles, unlimited strategies, and advanced AI Insights!
+              </p>
+            </div>
+            <StitchButton variant="primary">Upgrade Now</StitchButton>
+          </div>
+        </div>
+      )}
+
+      <DashboardWidgetsGrid widgets={widgets} trackEvent={trackEvent} />
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.onSurface }}>
+          <span className="w-1.5 h-3.5 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+          Spread Opportunities
+          {spreads.length > 0 && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-mono" style={{ backgroundColor: `${COLORS.surfaceHigh}66`, color: COLORS.onSurfaceVariant }}>
+              {spreads.length}
+            </span>
+          )}
         </h3>
-        <StrategyStatusPanel strategies={strategies} botStatus={botStatus} />
+        {pnlLoading ? <SpreadGridSkeleton /> : <SpreadOpportunitiesCardGrid spreads={spreads} />}
       </section>
 
-      {/* Main Grid - responsive: 1 col mobile, 2 cols tablet+ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* P&L Analytics */}
-        <section>
-          <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-            <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-            P&L Analytics
-          </h3>
-          {pnlLoading ? (
-            <PnlChartSkeleton />
-          ) : (
-            <PnLAnalyticsChart metrics={metrics} loading={pnlLoading} error={pnlError} />
-          )}
-        </section>
-
-        {/* Admin Controls */}
-        <section>
-          <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-            <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-            Admin Controls
-          </h3>
-          {adminLoading ? (
-            <AdminControlsSkeleton />
-          ) : (
-            <AdminControls
-              status={adminStatus}
-              halt={halt}
-              resume={resume}
-              loading={adminLoading}
-              error={adminError}
-              onRefresh={refreshAdmin}
-            />
-          )}
-        </section>
-      </div>
-
-      {/* Signals Panel - full width */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-profit rounded-full inline-block" />
-          Arbitrage Signals
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.onSurface }}>
+          <span className="w-1.5 h-3.5 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+          Real-Time Arbitrage Signals
           {signals.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-mono" style={{ backgroundColor: `${COLORS.surfaceHigh}66`, color: COLORS.onSurfaceVariant }}>
               {signals.length}
             </span>
           )}
@@ -197,86 +166,76 @@ export function DashboardPage() {
         {signalsLoading ? (
           <SignalsPanelSkeleton />
         ) : (
-          <SignalsPanel
-            signals={signals}
-            loading={signalsLoading}
-            error={signalsError}
-            onRefresh={refreshSignals}
-          />
+          <SignalsPanel signals={signals} loading={signalsLoading} error={null} onRefresh={() => Promise.resolve()} />
         )}
       </section>
 
-      {/* Equity curve - full width */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Equity Curve
-        </h3>
-        <div className="bg-bg-surface border border-bg-border rounded-lg p-3 sm:p-4">
-          {pnlLoading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
-        </div>
-      </section>
-
-      {/* Price ticker strip - responsive horizontal scroll on mobile */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-accent rounded-full inline-block" />
-          Live Prices
-        </h3>
-        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-x-auto">
-          {pnlLoading ? <PriceTickerSkeleton /> : <PriceTickerStrip />}
-        </div>
-      </section>
-
-      {/* Spread opportunities - responsive grid */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-profit rounded-full inline-block" />
-          Spread Opportunities
-          {spreads.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
-              {spreads.length}
-            </span>
-          )}
-        </h3>
-        {pnlLoading ? (
-          <SpreadGridSkeleton />
-        ) : (
-          <SpreadOpportunitiesCardGrid spreads={spreads} />
-        )}
-      </section>
-
-      {/* Trade history feed - responsive table */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-gold rounded-full inline-block" />
-          Trade History
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.onSurface }}>
+          <span className="w-1.5 h-3.5 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+          Trades Execution Feed
           {trades.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-mono" style={{ backgroundColor: `${COLORS.surfaceHigh}66`, color: COLORS.onSurfaceVariant }}>
               {trades.length}
             </span>
           )}
         </h3>
-        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
+        <StitchCard className="p-0 overflow-hidden">
           {pnlLoading ? <TradeHistorySkeleton /> : <TradeHistoryFeed trades={trades} />}
+        </StitchCard>
+      </section>
+
+      {/* Risk Overview Section */}
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: COLORS.onSurface }}>
+          <span className="w-1.5 h-3.5 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+          Risk Overview
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StitchCard className="p-4 flex flex-col items-center">
+            <div className="mb-2 text-xs" style={{ color: COLORS.onSurfaceVariant }}>Portfolio Risk</div>
+            <RiskGauge
+              value={Math.min(positions.length / 10, 1)}
+              threshold={0.8}
+              size="md"
+            />
+          </StitchCard>
+          <StitchCard className="p-4">
+            <div className="mb-2 text-xs" style={{ color: COLORS.onSurfaceVariant }}>Exposure Heatmap</div>
+            <ExposureHeatmap
+              data={positions.map((p: any) => ({
+                marketId: p.id,
+                marketName: p.symbol,
+                exposure: p.pnl,
+                notional: p.amount * p.buyPrice,
+              }))}
+            />
+          </StitchCard>
+          <StitchCard className="p-4">
+            <div className="mb-2 text-xs" style={{ color: COLORS.onSurfaceVariant }}>Cumulative P&L</div>
+            <PnlSparkline
+              values={trades
+                .slice()
+                .sort((a: any, b: any) => a.timestamp - b.timestamp)
+                .reduce((acc: number[], t: any) => {
+                  const prev = acc.length > 0 ? acc[acc.length - 1] : 0;
+                  acc.push(prev + t.pnl);
+                  return acc;
+                }, [])}
+              width={300}
+              height={100}
+            />
+          </StitchCard>
         </div>
       </section>
 
-      {/* Positions table - responsive with horizontal scroll */}
-      <section>
-        <h3 className="text-white text-sm font-semibold mb-2 flex items-center gap-2">
-          <span className="w-1 h-4 bg-muted rounded-full inline-block" />
-          Positions
-          {positions.length > 0 && (
-            <span className="text-[10px] text-muted bg-bg-border px-1.5 py-0.5 rounded">
-              {positions.length}
-            </span>
-          )}
-        </h3>
-        <div className="bg-bg-surface border border-bg-border rounded-lg overflow-x-auto">
-          {pnlLoading ? <PositionsTableSkeleton /> : <PositionsTableSortable positions={positions} />}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-6">
+          <TerminalLogsWidget />
         </div>
-      </section>
+      </div>
     </div>
   );
 }
+
+export default DashboardPage;

@@ -5,7 +5,8 @@
 
 import client from 'prom-client';
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../../shared/utils/logger';
+import { logger } from '../utils/logger';
+import { annotateActiveSpanWithRegion } from '../utils/tracing';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Create Registry
@@ -13,7 +14,14 @@ import { logger } from '../../shared/utils/logger';
 const register = new client.Registry();
 
 // Add default metrics (CPU, memory, event loop, etc.)
-client.collectDefaultMetrics({ register });
+// Skip in Cloudflare Workers - process metrics not available
+if (typeof process !== 'undefined' && process.versions?.node) {
+  try {
+    client.collectDefaultMetrics({ register });
+  } catch (e) {
+    logger.warn('Failed to collect default metrics (expected in Workers):', { error: String(e) });
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Custom Metrics - Trading Specific
@@ -103,14 +111,6 @@ export const qwenSignalsLoopJournalWriteErrorsTotal = new client.Counter({
   registers: [register],
 });
 
-/** Counter: DNA journal write failures classified by error type (db_error | timeout | unknown) */
-export const journalWriteErrorsTotal = new client.Counter({
-  name: 'journal_write_errors_total',
-  help: 'Total DNA journal write failures. Label error_type=db_error|timeout|unknown.',
-  labelNames: ['error_type'] as const,
-  registers: [register],
-});
-
 // ─── L-tier rollback visibility (Pillar 2 observability) ─────────────────────
 
 /** Gauge: kill-switch active state (0=inactive, 1=active), labeled by source */
@@ -139,6 +139,52 @@ export const qwenDrawdownAutoDisabled = new client.Gauge({
 export const qwenDrawdownMonitorLastRunTs = new client.Gauge({
   name: 'algo_trader_qwen_drawdown_monitor_last_run_ts',
   help: 'Unix-seconds timestamp of the most recent qwen-drawdown-monitor cycle start. Used by QwenDrawdownMonitorStale freshness alert (time() - gauge > 7h).',
+  registers: [register],
+});
+
+// ─── Memory Metrics (Task 6 - Memory Optimization) ─────────────────────────────
+
+/** Gauge: Resident Set Size (RSS) memory in bytes */
+export const memoryRssBytes = new client.Gauge({
+  name: 'algo_trader_memory_rss_bytes',
+  help: 'Resident Set Size (RSS) memory usage in bytes. Total memory allocated to the process including all heap, stack, and native allocations.',
+  registers: [register],
+});
+
+/** Gauge: Heap used memory in bytes */
+export const memoryHeapBytes = new client.Gauge({
+  name: 'algo_trader_memory_heap_bytes',
+  help: 'JavaScript heap used memory in bytes. Current active heap allocations.',
+  registers: [register],
+});
+
+/** Gauge: Memory utilization ratio (0-1) */
+export const memoryUtilizationRatio = new client.Gauge({
+  name: 'algo_trader_memory_utilization_ratio',
+  help: 'Memory utilization ratio (RSS / limit). 0 = 0%, 1 = 100% of 128MB Cloudflare Worker limit. Thresholds: warning=0.78 (100MB), critical=0.90 (115MB).',
+  registers: [register],
+});
+
+/** Counter: number of memory pressure events by level */
+export const memoryPressureEventsTotal = new client.Counter({
+  name: 'algo_trader_memory_pressure_events_total',
+  help: 'Total number of memory pressure events triggered by level.',
+  labelNames: ['level'] as const, // level: warning | critical
+  registers: [register],
+});
+
+/** Counter: cache evictions by cache type */
+export const cacheEvictionsTotal = new client.Counter({
+  name: 'algo_trader_cache_evictions_total',
+  help: 'Total number of cache evictions by cache type.',
+  labelNames: ['cache_type'] as const, // cache_type: strategy | market_data | agent_context
+  registers: [register],
+});
+
+/** Gauge: compression ratio for compressed data */
+export const compressionRatio = new client.Gauge({
+  name: 'algo_trader_compression_ratio',
+  help: 'Compression ratio achieved (original_size / compressed_size). Higher is better. Target: >1.5x for JSON data.',
   registers: [register],
 });
 
@@ -215,68 +261,76 @@ export const tradeExecutionTime = new client.Histogram({
   registers: [register],
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HTTP Request Metrics Middleware
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Latency Monitoring Histograms (Phase 5) ───────────────────────────────────
 
-// HTTP request counter
-const httpRequestsTotal = new client.Counter({
-  name: 'http_requests_total',
-  help: 'Total HTTP requests',
-  labelNames: ['method', 'path', 'status'] as const,
-  registers: [register],
-});
-
-// HTTP request duration histogram
-const httpRequestDuration = new client.Histogram({
+/** HTTP request duration with region and status labels */
+export const httpRequestDuration = new client.Histogram({
   name: 'http_request_duration_seconds',
   help: 'HTTP request duration in seconds',
-  labelNames: ['method', 'path'] as const,
-  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  labelNames: ['method', 'route', 'region', 'status'] as const,
+  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
   registers: [register],
 });
 
-// ──── Market Data Metrics ──────────────────────────────────────────────────
-const dataGapEvents = new client.Counter({ name: 'market_data_gap_events_total', help: 'Total data gap events', labelNames: ['exchange', 'symbol'] as const, registers: [register], });
-const dataGapDuration = new client.Histogram({ name: 'market_data_gap_duration_seconds', help: 'Data gap duration in seconds', buckets: [0.5, 1, 5, 15, 30], registers: [register], });
-const gapDetectionDuration = new client.Histogram({ name: 'market_data_gap_detection_seconds', help: 'Gap detection processing time in seconds', buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1], registers: [register], });
-const expectedCandles = new client.Gauge({ name: 'market_data_expected_candles', help: 'Expected candle count', registers: [register], });
-const receivedCandles = new client.Gauge({ name: 'market_data_received_candles', help: 'Received candle count', registers: [register], });
-const candleCompleteness = new client.Gauge({ name: 'market_data_candle_completeness', help: 'Candle completeness ratio (0-1)', registers: [register], });
-const outlierEvents = new client.Counter({ name: 'market_data_outlier_events_total', help: 'Total outlier events', labelNames: ['symbol', 'type', 'severity'] as const, registers: [register], });
-const outlierZScore = new client.Gauge({ name: 'market_data_outlier_zscore', help: 'Latest outlier Z-score per symbol', labelNames: ['symbol'] as const, registers: [register], });
-const providerLatency = new client.Histogram({ name: 'market_data_provider_latency_seconds', help: 'Provider API latency in seconds', labelNames: ['exchange', 'operation'] as const, buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 5], registers: [register], });
-const failoverEvents = new client.Counter({ name: 'market_data_failover_events_total', help: 'Total failover events', labelNames: ['from', 'to', 'reason'] as const, registers: [register], });
-const circuitBreakerStateProvider = new client.Gauge({ name: 'market_data_circuit_breaker_state', help: 'Circuit breaker state per provider', labelNames: ['exchange', 'state'], registers: [register], });
-const providerHealthScore = new client.Gauge({ name: 'market_data_provider_health_score', help: 'Provider health score (0-100)', labelNames: ['exchange'] as const, registers: [register], });
-const providerAvailability = new client.Gauge({ name: 'market_data_provider_availability', help: 'Provider availability (0 or 1)', labelNames: ['exchange'] as const, registers: [register], });
-const providerErrorRate = new client.Gauge({ name: 'market_data_provider_error_rate', help: 'Provider error rate (0-1)', labelNames: ['exchange'] as const, registers: [register], });
-const slaCompliance = new client.Counter({ name: 'market_data_sla_compliance_total', help: 'SLA compliance events', labelNames: ['exchange', 'compliant'] as const, registers: [register], });
+/** External API latency (Polymarket, exchanges, LLM gateways) */
+export const externalApiLatency = new client.Histogram({
+  name: 'external_api_latency_seconds',
+  help: 'External API call latency in seconds',
+  labelNames: ['service', 'endpoint', 'region'] as const,
+  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  registers: [register],
+});
+
+/** Durable Object shard latency */
+export const shardLatency = new client.Histogram({
+  name: 'shard_latency_seconds',
+  help: 'Durable Object shard operation latency',
+  labelNames: ['shard_id', 'operation'] as const,
+  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25],
+  registers: [register],
+});
+
+/** Agent queue wait time */
+export const queueWaitTime = new client.Histogram({
+  name: 'queue_wait_seconds',
+  help: 'Agent queue wait time before processing',
+  labelNames: ['priority', 'agent', 'tier'] as const,
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  registers: [register],
+});
 
 /**
- * Express middleware to track HTTP requests
+ * Extract region from Cloudflare request headers or context
+ */
+function getRegionFromRequest(req: Request): string {
+  // CF provides region via cf-colo header
+  try {
+    const headers = req.headers as any;
+    return headers.get?.('cf-colo') || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Metrics tracking middleware with region context
+ * Records HTTP request duration to Prometheus with region and status labels
+ * Also annotates OpenTelemetry spans with region.
  */
 export function metricsMiddleware(req: Request, res: Response, next: NextFunction): void {
   const start = Date.now();
-  const path = req.route?.path || req.path;
+  const region = getRegionFromRequest(req);
+  const route = req.route?.path || req.path;
+  const method = req.method;
+
+  // Annotate active span with region (if tracing enabled)
+  annotateActiveSpanWithRegion(region);
 
   res.on('finish', () => {
     const duration = (Date.now() - start) / 1000;
     const status = res.statusCode.toString();
 
-    httpRequestsTotal.inc({
-      method: req.method,
-      path,
-      status,
-    });
-
-    httpRequestDuration.observe(
-      {
-        method: req.method,
-        path,
-      },
-      duration
-    );
+    httpRequestDuration.observe({ method, route, region, status }, duration);
   });
 
   next();
@@ -388,56 +442,57 @@ export function setQwenDrawdownAutoDisabled(disabled: boolean): void {
   qwenDrawdownAutoDisabled.set(disabled ? 1 : 0);
 }
 
+/**
+ * Update memory metrics from MemoryPressureHandler
+ * Called every 5s by memory pressure monitoring
+ */
+export function setMemoryMetrics(
+  rssBytes: number,
+  heapBytes: number,
+  limitBytes: number
+): void {
+  memoryRssBytes.set(rssBytes);
+  memoryHeapBytes.set(heapBytes);
+  memoryUtilizationRatio.set(rssBytes / limitBytes);
+}
+
+/**
+ * Record memory pressure event
+ */
+export function recordMemoryPressureEvent(level: 'warning' | 'critical'): void {
+  memoryPressureEventsTotal.inc({ level });
+}
+
+/**
+ * Record cache eviction
+ */
+export function recordCacheEviction(cacheType: 'strategy' | 'market_data' | 'agent_context'): void {
+  cacheEvictionsTotal.inc({ cache_type: cacheType });
+}
+
+/**
+ * Record compression ratio
+ */
+export function recordCompressionRatio(originalSize: number, compressedSize: number): void {
+  if (compressedSize > 0) {
+    compressionRatio.set(originalSize / compressedSize);
+  }
+}
+
+// Helper function to record external API latency (with region)
+export function recordExternalApiLatency(service: string, endpoint: string, region: string, latencySeconds: number): void {
+  externalApiLatency.observe({ service, endpoint, region }, latencySeconds);
+}
+
+// Helper function to record shard latency
+export function recordShardLatency(shardId: string, operation: string, latencySeconds: number): void {
+  shardLatency.observe({ shard_id: shardId, operation }, latencySeconds);
+}
+
+// Helper function to record queue wait time
+export function recordQueueWaitTime(priority: number, agent: string, tier: string, waitSeconds: number): void {
+  queueWaitTime.observe({ priority: String(priority), agent, tier }, waitSeconds);
+}
+
 // Export registry for custom metrics
 export { register };
-
-// ──── Market Data Metrics ──────────────────────────────────────────────────
-/** Record a data gap event */
-export function recordDataGap(exchange: string, symbol: string, gapSeconds: number): void {
-  dataGapEvents.inc({ exchange, symbol });
-  dataGapDuration.observe(gapSeconds);
-}
-/** Record gap detection duration */
-export function recordGapDetectionDuration(exchange: string, symbol: string, durationMs: number): void {
-  gapDetectionDuration.observe(durationMs);
-}
-/** Set expected vs received candle counts */
-export function setExpectedCandles(exchange: string, symbol: string, timeframe: string, count: number): void {
-  expectedCandles.set(count);
-}
-export function setReceivedCandles(exchange: string, symbol: string, timeframe: string, count: number): void {
-  receivedCandles.set(count);
-}
-export function setCandleCompleteness(exchange: string, symbol: string, timeframe: string, ratio: number): void {
-  candleCompleteness.set(ratio);
-}
-/** Record outlier detection event */
-export function recordOutlierEvent(symbol: string, type: string, severity?: string): void {
-  outlierEvents.inc({ symbol, type, severity: severity ?? 'unknown' });
-}
-export function recordOutlierZScore(symbol: string, _type: string, zScore: number): void {
-  outlierZScore.set({ symbol }, zScore);
-}
-export function recordProviderLatency(exchange: string, operation: string, latencyMs: number): void {
-  providerLatency.observe({ exchange, operation }, latencyMs / 1000);
-}
-/** Record failover event */
-export function recordFailoverEvent(fromProvider: string, toProvider: string, reason: string): void {
-  failoverEvents.inc({ from: fromProvider, to: toProvider, reason });
-}
-export function setCircuitBreakerStateProvider(exchange: string, isOpen: boolean): void {
-  circuitBreakerStateProvider.set({ exchange }, isOpen ? 1 : 0);
-}
-/** Set provider health score (0-100) */
-export function setProviderHealthScore(exchange: string, _windowHours: number, score: number): void {
-  providerHealthScore.set({ exchange }, score);
-}
-export function setProviderAvailability(exchange: string, _windowHours: number, available: boolean): void {
-  providerAvailability.set({ exchange }, available ? 1 : 0);
-}
-export function setProviderErrorRate(exchange: string, _windowHours: number, rate: number): void {
-  providerErrorRate.set({ exchange }, rate);
-}
-export function recordSlaCompliance(exchange: string, _windowHours: number, compliant: boolean): void {
-  slaCompliance.inc({ exchange, compliant: compliant ? 'true' : 'false' });
-}

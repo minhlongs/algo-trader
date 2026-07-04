@@ -11,8 +11,9 @@
  * Single-day loss >3% → pause new trades 24h
  */
 
-import { logger } from '../../shared/utils/logger';
-import { writeJsonState, readJsonState, cashclawPath } from '../../shared/persistence/file-store';
+import { logger } from '../utils/logger';
+import { writeJsonState, cashclawPath } from '../persistence/file-store';
+import * as fs from 'node:fs';
 
 export type DrawdownTier = 'NORMAL' | 'ALERT' | 'REDUCE' | 'HALT' | 'HARD_STOP' | 'DAILY_PAUSE';
 
@@ -98,6 +99,8 @@ export class TieredDrawdownBreaker {
   private events: DrawdownEvent[] = [];
   private onEvent?: (event: DrawdownEvent) => void;
   private readonly statePath: string;
+  private activeWrite: Promise<void> = Promise.resolve();
+  public writePromise: Promise<void> = Promise.resolve();
 
   constructor(
     initialPortfolioValue: number,
@@ -289,32 +292,69 @@ export class TieredDrawdownBreaker {
     }
   }
 
+  private writeScheduled = false;
+  private saveDeferredResolve: (() => void)[] = [];
+  private saveDeferredReject: ((err: any) => void)[] = [];
+
   private saveState(): void {
-    const state: DrawdownPersistedState = {
-      highWaterMark: this.highWaterMark,
-      currentValue: this.currentValue,
-      tier: this.tier,
-      haltedUntil: this.haltedUntil,
-      dailyPausedUntil: this.dailyPausedUntil,
-      dailyStartValue: this.dailyStartValue,
-      dailyPnl: this.dailyPnl,
-      events: this.events,
-    };
-    writeJsonState(this.statePath, state);
+    if (this.writeScheduled) {
+      return;
+    }
+    this.writeScheduled = true;
+
+    const nextWrite = new Promise<void>((resolve, reject) => {
+      this.saveDeferredResolve.push(resolve);
+      this.saveDeferredReject.push(reject);
+    });
+
+    this.writePromise = this.activeWrite.then(() => nextWrite);
+
+    setTimeout(async () => {
+      this.writeScheduled = false;
+      const resolves = this.saveDeferredResolve;
+      const rejects = this.saveDeferredReject;
+      this.saveDeferredResolve = [];
+      this.saveDeferredReject = [];
+
+      const state: DrawdownPersistedState = {
+        highWaterMark: this.highWaterMark,
+        currentValue: this.currentValue,
+        tier: this.tier,
+        haltedUntil: this.haltedUntil,
+        dailyPausedUntil: this.dailyPausedUntil,
+        dailyStartValue: this.dailyStartValue,
+        dailyPnl: this.dailyPnl,
+        events: this.events,
+      };
+
+      try {
+        await writeJsonState(this.statePath, state);
+        resolves.forEach(r => r());
+      } catch (err) {
+        logger.error('[TieredDrawdown] Failed to save state to disk:', err);
+        rejects.forEach(r => r(err));
+      }
+    }, 50);
   }
 
   private loadState(initialPortfolioValue: number): void {
-    const state = readJsonState<DrawdownPersistedState>(this.statePath);
-    if (!state) return;
-    // Restore critical fields; keep initialPortfolioValue as fallback for currentValue
-    this.highWaterMark = state.highWaterMark;
-    this.currentValue = state.currentValue ?? initialPortfolioValue;
-    this.tier = state.tier ?? 'NORMAL';
-    this.haltedUntil = state.haltedUntil;
-    this.dailyPausedUntil = state.dailyPausedUntil;
-    this.dailyStartValue = state.dailyStartValue ?? initialPortfolioValue;
-    this.dailyPnl = state.dailyPnl ?? 0;
-    this.events = state.events ?? [];
-    logger.info(`[TieredDrawdown] Restored state from disk: tier=${this.tier}, HWM=$${this.highWaterMark.toFixed(2)}`);
+    try {
+      if (!fs.existsSync(this.statePath)) return;
+      const content = fs.readFileSync(this.statePath, 'utf8');
+      const state = JSON.parse(content) as DrawdownPersistedState;
+      if (!state) return;
+      // Restore critical fields; keep initialPortfolioValue as fallback for currentValue
+      this.highWaterMark = state.highWaterMark;
+      this.currentValue = state.currentValue ?? initialPortfolioValue;
+      this.tier = state.tier ?? 'NORMAL';
+      this.haltedUntil = state.haltedUntil;
+      this.dailyPausedUntil = state.dailyPausedUntil;
+      this.dailyStartValue = state.dailyStartValue ?? initialPortfolioValue;
+      this.dailyPnl = state.dailyPnl ?? 0;
+      this.events = state.events ?? [];
+      logger.info(`[TieredDrawdown] Restored state from disk: tier=${this.tier}, HWM=$${this.highWaterMark.toFixed(2)}`);
+    } catch (err) {
+      logger.warn('[TieredDrawdown] No existing state file found or failed to parse:', err);
+    }
   }
 }

@@ -13,7 +13,7 @@
  *                 to unit-test, replay.
  */
 
-import { Candle, MicroStructureIndicators, TfId } from './multi-tf-types';
+import { Candle, MicroStructureIndicators, TfId } from './multi-tf-types.js';
 
 // Only these TFs have meaningful microstructure data.
 const MICRO_TFS: TfId[] = ['1m', '5m'];

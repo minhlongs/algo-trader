@@ -11,7 +11,7 @@
  *  - Tractability: computedAt is set by caller so replay is consistent.
  */
 
-import { Candle, MomentumIndicators } from './multi-tf-types';
+import { Candle, MomentumIndicators } from './multi-tf-types.js';
 
 const RSI_PERIOD = 14;
 const MACD_FAST = 12;

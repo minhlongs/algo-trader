@@ -10,7 +10,7 @@
  *                 compression/expansion regime.
  */
 
-import { Candle, VolatilityIndicators } from './multi-tf-types';
+import { Candle, VolatilityIndicators } from './multi-tf-types.js';
 
 const ATR_PERIOD = 14;
 const BB_PERIOD = 20;

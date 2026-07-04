@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '../utils/logger';
 
@@ -61,12 +61,14 @@ export class StrategyStateStore {
     }
   }
 
-  /** Flush all dirty entries to disk */
+  /** Flush all dirty entries to disk (atomic write via tmp + rename) */
   flush(): void {
     for (const [id, entry] of this.dirty) {
       try {
         const filePath = this.filePath(id);
-        writeFileSync(filePath, JSON.stringify(entry, null, 2), 'utf8');
+        const tmpPath = filePath + '.tmp';
+        writeFileSync(tmpPath, JSON.stringify(entry, null, 2), 'utf8');
+        renameSync(tmpPath, filePath);
       } catch (err) {
         logger.error('Failed to flush strategy state', 'StrategyStateStore', {
           strategyId: id, error: String(err),
@@ -105,11 +107,21 @@ export class StrategyStateStore {
     } catch { /* ignore */ }
   }
 
-  /** List all strategy IDs that have saved state */
+  /** List strategy IDs that have saved state for this PM2 instance */
   listSaved(): string[] {
     try {
       const files = readdirSync(this.stateDir) as string[];
-      return files.filter(f => f.endsWith('.json')).map(f => f.replace('.json', ''));
+      const instanceId = this.resolveInstanceId();
+      const suffix = `-${instanceId}.json`;
+      const ids = files
+        .filter(f => f.endsWith('.json') && !f.endsWith('.tmp'))
+        .map(f => {
+          if (f.endsWith(suffix)) {
+            return f.slice(0, -suffix.length);
+          }
+          return f.slice(0, -5);
+        });
+      return Array.from(new Set(ids));
     } catch {
       return [];
     }
@@ -122,8 +134,12 @@ export class StrategyStateStore {
     logger.info('Strategy state store shut down', 'StrategyStateStore');
   }
 
+  /** Resolve PM2 instance ID, falling back to PID for non-PM2 processes */
+  private resolveInstanceId(): string {
+    return process.env.PM2_INSTANCE_ID ?? String(process.pid);
+  }
+
   private filePath(strategyId: string): string {
-    // Sanitize ID for filename safety
     const safe = strategyId.replace(/[^a-zA-Z0-9_-]/g, '_');
     return join(this.stateDir, `${safe}.json`);
   }

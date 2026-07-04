@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RedisWSAdapter } from '../ws-adapter-redis';
-import { getPubClient, getSubClient } from '../../../redis';
+import { getPubClient, getSubClient } from '../../redis';
 import WebSocket from 'ws';
 import { Server as HttpServer } from 'http';
 
 // Mock Redis functions
-vi.mock('../../../redis', () => {
+vi.mock('../../redis', () => {
   const mockPub = {
     publish: vi.fn(),
   };

@@ -17,11 +17,314 @@ binding = "CACHE"
 id = "6c7199c0259b42db943aa13b200d8ea1"
 preview_id = "ca8f3f11882e426e952e322963077f73"
 
+# Durable Objects - Sharding Architecture
+[[durable_objects.bindings]]
+name = "SHARD_MANAGER"
+class_name = "ShardManager"
+
+[[durable_objects.bindings]]
+name = "SHARD_0"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_1"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_2"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_3"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_4"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_5"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_6"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_7"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_8"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_9"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_10"
+class_name = "StrategyShard"
+
+[[durable_objects.bindings]]
+name = "SHARD_11"
+class_name = "StrategyShard"
+
+# Migrations for DO deployment
+[[migrations]]
+tag = "v1-sharding"
+new_classes = ["ShardManager", "StrategyShard"]
+
 # Staging
 [env.staging]
 name = "algo-trader-staging"
 [env.staging.vars]
 ENVIRONMENT = "staging"
+
+# Staging needs its own KV namespace (preview_id not used for env)
+[[env.staging.kv_namespaces]]
+binding = "CACHE"
+id = "6c7199c0259b42db943aa13b200d8ea1"
+
+# Staging durable objects - same as production
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_MANAGER"
+class_name = "ShardManager"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_0"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_1"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_2"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_3"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_4"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_5"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_6"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_7"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_8"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_9"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_10"
+class_name = "StrategyShard"
+
+[[env.staging.durable_objects.bindings]]
+name = "SHARD_11"
+class_name = "StrategyShard"
+
+# Multi-region deployments
+[env.us-east]
+name = "algo-trader-us-east"
+[env.us-east.vars]
+ENVIRONMENT = "us-east"
+REGION_ROUTING_ENABLED = "true"
+
+[[env.us-east.kv_namespaces]]
+binding = "CACHE"
+id = "6c7199c0259b42db943aa13b200d8ea1"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_MANAGER"
+class_name = "ShardManager"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_0"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_1"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_2"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_3"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_4"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_5"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_6"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_7"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_8"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_9"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_10"
+class_name = "StrategyShard"
+
+[[env.us-east.durable_objects.bindings]]
+name = "SHARD_11"
+class_name = "StrategyShard"
+
+[env.eu-central]
+name = "algo-trader-eu-central"
+[env.eu-central.vars]
+ENVIRONMENT = "eu-central"
+REGION_ROUTING_ENABLED = "true"
+
+[[env.eu-central.kv_namespaces]]
+binding = "CACHE"
+id = "6c7199c0259b42db943aa13b200d8ea1"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_MANAGER"
+class_name = "ShardManager"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_0"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_1"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_2"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_3"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_4"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_5"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_6"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_7"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_8"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_9"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_10"
+class_name = "StrategyShard"
+
+[[env.eu-central.durable_objects.bindings]]
+name = "SHARD_11"
+class_name = "StrategyShard"
+
+[env.ap-southeast]
+name = "algo-trader-ap-southeast"
+[env.ap-southeast.vars]
+ENVIRONMENT = "ap-southeast"
+REGION_ROUTING_ENABLED = "true"
+
+[[env.ap-southeast.kv_namespaces]]
+binding = "CACHE"
+id = "6c7199c0259b42db943aa13b200d8ea1"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_MANAGER"
+class_name = "ShardManager"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_0"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_1"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_2"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_3"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_4"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_5"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_6"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_7"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_8"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_9"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_10"
+class_name = "StrategyShard"
+
+[[env.ap-southeast.durable_objects.bindings]]
+name = "SHARD_11"
+class_name = "StrategyShard"
 
 # Build config
 [build]

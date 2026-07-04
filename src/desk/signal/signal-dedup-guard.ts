@@ -35,17 +35,33 @@ export class SignalDedupGuard {
   /**
    * Returns true if this signal is a duplicate (already seen and not expired).
    * If not a duplicate, registers it.
+   *
+   * Race-safety: when an entry exists but has expired we delete it here (atomic
+   * within the single-threaded event loop) before writing the new entry.  This
+   * prevents the periodic eviction interval from running between the expiry
+   * check and the Map write and inadvertently resetting the TTL bucket for the
+   * same signal ID.
    */
   isDuplicate(signal: Signal): boolean {
     const entry = this.seen.get(signal.id);
     const now = Date.now();
 
-    if (entry && entry.expiresAt > now) {
-      return true;
+    if (entry) {
+      if (entry.expiresAt > now) {
+        // Still live — genuine duplicate
+        return true;
+      }
+      // Expired entry present — evict it now so registration is a clean write
+      this.seen.delete(signal.id);
     }
 
     this.seen.set(signal.id, { expiresAt: signal.expiresAt });
     return false;
+  }
+
+  /** Remove a signal from the dedup map — used when downstream persistence fails */
+  rollback(signalId: string): void {
+    this.seen.delete(signalId);
   }
 
   /** Evict expired signal IDs from memory */

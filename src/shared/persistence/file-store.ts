@@ -4,9 +4,11 @@
  * All data stored under ~/.cashclaw/ to survive PM2 restarts.
  */
 
+import { promises as fsp } from 'fs';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as readline from 'readline';
 
 /** Resolve a path under ~/.cashclaw/, creating the dir if needed */
 export function cashclawPath(filename: string): string {
@@ -20,51 +22,59 @@ export function cashclawPath(filename: string): string {
 /**
  * Append a single JSON record as one line to a JSONL file.
  * Append-only = immutable audit log semantics.
+ * Non-blocking async implementation.
  */
-export function appendJsonl(filePath: string, record: unknown): void {
+export async function appendJsonl(filePath: string, record: unknown): Promise<void> {
   const line = JSON.stringify(record) + '\n';
-  fs.appendFileSync(filePath, line, 'utf8');
+  await fsp.appendFile(filePath, line, 'utf8');
 }
 
 /**
- * Read all lines from a JSONL file, returning parsed objects.
- * Streams line-by-line to handle large files without loading entire content into memory.
- * Returns empty array if file does not exist.
+ * Read all lines from a JSONL file using a readline stream.
+ * Does not load the entire file in-memory.
  */
-export function readJsonl<T>(filePath: string): T[] {
-  if (!fs.existsSync(filePath)) return [];
-  // Guard against corrupted/giant files that exceed V8 string limits
-  const stat = fs.statSync(filePath);
-  if (stat.size > 50_000_000) {
-    // File > 50MB — return empty to avoid OOM on test runs
-    // Production code should use streaming or paginated reads
+export async function readJsonl<T>(filePath: string): Promise<T[]> {
+  try {
+    await fsp.access(filePath);
+  } catch {
     return [];
   }
-  const content = fs.readFileSync(filePath, 'utf8');
-  if (content.trim().length === 0) return [];
-  return content
-  .split('\n')
-  .filter(line => line.trim().length > 0)
-  .map(line => JSON.parse(line) as T);
+
+  const results: T[] = [];
+  const fileStream = fs.createReadStream(filePath, 'utf8');
+  const rl = readline.createInterface({
+    input: fileStream,
+    crlfDelay: Infinity,
+  });
+
+  for await (const line of rl) {
+    if (line.trim().length > 0) {
+      results.push(JSON.parse(line) as T);
+    }
+  }
+
+  return results;
 }
 
 /**
  * Atomically write a JSON state file using a temp-then-rename pattern.
  * Prevents partial-write corruption on crash mid-write.
+ * Non-blocking async implementation.
  */
-export function writeJsonState<T>(filePath: string, state: T): void {
-  const tmp = filePath + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf8');
-  fs.renameSync(tmp, filePath);
+export async function writeJsonState<T>(filePath: string, state: T): Promise<void> {
+  const tmp = `${filePath}-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`;
+  await fsp.writeFile(tmp, JSON.stringify(state, null, 2), 'utf8');
+  await fsp.rename(tmp, filePath);
 }
 
 /**
  * Read a JSON state file, returning undefined if not found or invalid.
+ * Non-blocking async implementation.
  */
-export function readJsonState<T>(filePath: string): T | undefined {
-  if (!fs.existsSync(filePath)) return undefined;
+export async function readJsonState<T>(filePath: string): Promise<T | undefined> {
   try {
-    const content = fs.readFileSync(filePath, 'utf8');
+    await fsp.access(filePath);
+    const content = await fsp.readFile(filePath, 'utf8');
     return JSON.parse(content) as T;
   } catch {
     return undefined;

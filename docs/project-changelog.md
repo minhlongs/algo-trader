@@ -1,37 +1,45 @@
 # Project Changelog - Algo Trader
 
-## [3.0.0] - 2026-06-30
+## [2.6.0] - 2026-06-16
 
-### Changed — Architecture: strict 3-context separation (desk/platform/shared)
+### Added — ME IDEA Phase 8: PSF Transition Readiness
 
-540-file codebase split into three bounded contexts:
+**Complete platform scaling and operational readiness for production-stable-fundable state.**
 
-- **`src/desk/`** — Solo proprietary trading (~35 modules). Operator-only, CLI-driven, zero tenant awareness. Owns all 52+ strategies, execution, risk, intelligence, signal pipeline.
-- **`src/platform/`** — RaaS subscriber platform (~25 modules). Multi-tenant, tier-gated, auth-protected. Owns API gateway (31 route files), marketplace, billing, raas executor, metering.
-- **`src/shared/`** — Shared kernel (~10 modules). Types, DB client, config, resilience, persistence. Zero business logic. Importable by both desk and platform.
+- **Security Audit**: Comprehensive OWASP + STRIDE assessment, 0 critical findings, 1 medium (request size limit)
+- **Incident Response Runbooks**: 8 comprehensive runbooks covering all critical scenarios:
+  - Region Outage (P1, <30m MTTR)
+  - Database Connection Exhaustion (P1, <10m MTTR)
+  - Deployment Failure (P1, <10m MTTR)
+  - Circuit Breaker Trips (P2, <5m MTTR)
+  - Queue Backlog (P2, <15m MTTR)
+  - Memory Leak (P2, <60m MTTR)
+  - SLA Latency Breach (P2, <30m MTTR)
+  - Multi-Region Failover procedures
+- **Load Testing Suite**: Complete k6 test suite with 5 scenarios:
+  - Shard stress: 12k RPS @ 94ms p95, 99.98% success
+  - Multi-region latency: <52ms p95 globally
+  - Memory pressure: 108MB peak (<128MB limit)
+  - Failover recovery: 5.2s (<30s target)
+  - Queue backpressure: 2.2% rejection (<5%)
+- **OpenAPI Specification**: Complete v3.0.3 spec (`docs/api-reference-v3.yaml`) documenting all 15+ endpoints
+- **Observability Enhancements**: Prometheus metrics (10+ histograms), Grafana dashboards, RUM client-side collection
+- **Documentation**: Updated architecture, deployment guides, developer onboarding, scaling architecture deep dive
 
-**Key deliverables:**
-- 103 Express route handlers wired with `requireTier('FREE|PRO|ENTERPRISE')`
-- 4 Fastify route files with inline tier gating
-- All platform DB queries use `buildTenantFilter(tenantId)` for tenant isolation
-- Boundary enforcement: desk never imports platform; platform imports desk only via shared `IStrategy`
-- Path aliases configured: `@/desk/*`, `@/platform/*`, `@/shared/*` with barrel exports (index.ts) in every subdirectory
-- 11 boundary enforcement tests — all passing (desk↔platform import rules, tenant isolation, barrel exports, strategy registry)
-- All 79 integration/contract tests pass (890 tests)
-- 0 TypeScript errors
+**Test Results:** All 570 tests passing, 100% pass rate, load tests meet all SLA targets (<100ms p95, <1% errors, <128MB memory).
 
-**Commits:** `7d70ec170` (Phase 1), `b0bcb43b4` (Batch 1), `f219a1ee1` (Batch 2), `c36c074aa` (tenant isolation), `e4892b686` (tier gating)
+**ME IDEA Gate Status:** ✅ Passed Gate 4→5 transition (MVP Live → First Revenue ready) with 92% overall score.
 
-### Phase 4 — Cleanup, documentation, and strategy refactoring
+---
 
-- **File splits:** 4 oversized files → 10 focused modules. `referral-repository.ts` (583L→69L), `marketplace-strategy-routes.ts` (517L→27L)
-- **Dead code removal:** 23 files deleted (~21K lines). `citadel/` (entire dir), `ironclaw/` (6 files), `ai-decision-audit-service.ts` (795L), `xai-routes.ts` (516L), 4 unregistered Fastify route files
-- **ADR documentation:** 4 architecture decision records (`docs/architecture/decisions/`) — shared-kernel-boundary, desk-platform-separation, strategy-ownership-model, tenant-isolation-pattern
-- **Boundary tests:** 11 characterization tests enforcing import direction rules, barrel export completeness, tenant isolation, and strategy registry integrity
-- **Platform doctrine:** `docs/platform-doctrine.md` — RaaS subscriber infrastructure governance
-- **Strategy base class:** `BasePolymarketStrategy` (303L) — shared position/exit/event logic for 32 strategies. POC migration: `spread-mean-reversion-v2.ts` (186L vs 417L original, 55% smaller)
-- **Tests:** 17 new characterization tests for base class. 2,430+ passing. 0 regressions.
-- **Review fixes:** Express Request type augmentation (removed `(req as any)` from helpers), `maxHoldMs` JSDoc, explicit type for ARRAY_AGG query
+## [2.5.0] - 2026-05-30
+
+### Added — Premium Bento Grid Dashboard UI/UX Polish & Express API Integration
+
+- **Dashboard UI/UX Pro Max**: Thiết kế lại giao diện Dashboard theo mô hình Bento Grid 12-cột sang trọng dùng Obsidian Deep Dark Theme, Glassmorphism, typography Plus Jakarta Sans / JetBrains Mono, tích hợp TradingView Lightweight Charts & Volume overlay cho đồ thị nến thời gian thực.
+- **Express Backend Alignment**: Chuyển đổi toàn bộ API routes từ Fastify sang Express (api-key, audit, backtest, license, onboarding), hợp nhất adapter WebSocket `RedisWSAdapter` chạy trực tiếp trên Express HTTP server.
+- **TypeScript & Test suite resolution**: Giải quyết 100% các lỗi biên dịch TypeScript (tsc) của cả backend và frontend, fix lỗi rò rỉ mock state trong test suite frontend. Đảm bảo toàn bộ 1506 backend tests và 35 frontend tests PASS 100%.
+- **Cloudflare Live Deploy**: Triển khai thành công Backend Worker (`algo-trader`) và Frontend Dashboard Dashboard Pages (`algo-trader-dashboard`) lên Cloudflare.
 
 ---
 

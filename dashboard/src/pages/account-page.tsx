@@ -1,9 +1,15 @@
 /**
  * Account page — profile, current plan, API key, billing, danger zone.
+ * Stitch-aligned UI using shared components.
  */
 import { useAuthStore } from '../stores/auth-store';
 import { Link } from 'react-router-dom';
 import { getTierLimits } from '../lib/tier-config';
+import { StitchCard, StitchCardBody, StitchCardHeader } from '../components/ui/stitch-card';
+import { StitchBadge } from '../components/ui/stitch-badge';
+import { StitchButton } from '../components/ui/stitch-button';
+import { StitchSectionTitle } from '../components/ui/stitch-section-title';
+import { COLORS } from '../lib/stitch-design-tokens';
 
 const TIER_LABELS: Record<string, string> = {
   free: 'Free',
@@ -11,26 +17,17 @@ const TIER_LABELS: Record<string, string> = {
   enterprise: 'Enterprise',
 };
 
-const TIER_BADGE_COLORS: Record<string, string> = {
-  free: 'bg-[#1E2640] text-[#8892B0]',
-  pro: 'bg-[#00C8E8]/10 text-[#00C8E8] border border-[#00C8E8]/30',
-  enterprise: 'bg-[#FFD700]/10 text-[#FFD700] border border-[#FFD700]/30',
+const TIER_TONES: Record<string, 'neutral' | 'primary' | 'warning'> = {
+  free: 'neutral',
+  pro: 'primary',
+  enterprise: 'warning',
 };
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
-      <h2 className="text-white text-sm font-bold">{title}</h2>
-      {children}
-    </section>
-  );
-}
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-2 border-b border-bg-border last:border-0">
-      <span className="text-muted text-xs">{label}</span>
-      <span className="text-white text-xs">{value}</span>
+    <div className="flex items-center justify-between py-2 border-b border-[#3f4e5f] last:border-0">
+      <span className="text-[#94a3b8] text-xs font-mono">{label}</span>
+      <span className="text-[#e2e8f0] text-xs font-mono">{value}</span>
     </div>
   );
 }
@@ -39,7 +36,7 @@ export function AccountPage() {
   const { email, tier, tenantId, apiKey, token } = useAuthStore();
 
   const limits = getTierLimits(tier);
-  const badgeClass = TIER_BADGE_COLORS[tier] ?? TIER_BADGE_COLORS['free'];
+  const badgeTone = TIER_TONES[tier] ?? 'neutral';
   const tierLabel = TIER_LABELS[tier] ?? tier;
 
   // Mask the API key — show prefix + first 8 chars then ****
@@ -64,104 +61,126 @@ export function AccountPage() {
   })();
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <h1 className="text-white text-2xl font-bold">Account</h1>
+    <div className="space-y-6 max-w-2xl" style={{ color: COLORS.onSurface }}>
+      <StitchSectionTitle
+        eyebrow="Account Settings"
+        title="Account"
+      />
 
       {/* Profile */}
-      <Card title="Profile">
-        <Row label="Email" value={email || '—'} />
-        <Row label="Tenant ID" value={<code className="text-[#00C8E8] text-[10px]">{tenantId ?? '—'}</code>} />
-        <Row label="Member since" value={memberSince} />
-      </Card>
+      <StitchCard>
+        <StitchCardHeader>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>Profile</span>
+        </StitchCardHeader>
+        <StitchCardBody className="space-y-0">
+          <Row label="Email" value={email || '—'} />
+          <Row label="Tenant ID" value={<code className="text-[#4cd7f6] text-[10px]">{tenantId ?? '—'}</code>} />
+          <Row label="Member since" value={memberSince} />
+        </StitchCardBody>
+      </StitchCard>
 
       {/* Current Plan */}
-      <Card title="Current Plan">
-        <div className="flex items-center justify-between mb-4">
-          <span className={`px-2.5 py-1 rounded text-xs font-bold ${badgeClass}`}>
-            {tierLabel}
-          </span>
-          <Link
-            to="/pricing"
-            className="text-xs text-[#00C8E8] hover:underline"
-          >
-            Upgrade plan →
-          </Link>
-        </div>
-        <div className="space-y-0">
-          <Row label="Trades / day" value={limits.tradesPerDay} />
-          <Row label="Daily loss cap" value={limits.dailyLossCap} />
-          <Row label="Max position size" value={limits.maxPosition} />
-        </div>
-      </Card>
+      <StitchCard>
+        <StitchCardHeader>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>Current Plan</span>
+        </StitchCardHeader>
+        <StitchCardBody>
+          <div className="flex items-center justify-between mb-4">
+            <StitchBadge label={tierLabel} tone={badgeTone} />
+            <Link
+              to="/pricing"
+              className="text-xs font-mono text-[#4cd7f6] hover:underline"
+            >
+              Upgrade plan →
+            </Link>
+          </div>
+          <div className="space-y-0">
+            <Row label="Trades / day" value={String(limits.tradesPerDay)} />
+            <Row label="Daily loss cap" value={limits.dailyLossCap} />
+            <Row label="Max position size" value={limits.maxPosition} />
+          </div>
+        </StitchCardBody>
+      </StitchCard>
 
       {/* API Key */}
-      <Card title="API Key">
-        <p className="text-muted text-xs">
-          Use this key to authenticate CLI and programmatic access.
-        </p>
-        <div className="bg-[#080B14] border border-[#1E2640] rounded px-4 py-3 flex items-center justify-between gap-3">
-          <code className="text-[#00C8E8] text-xs">{maskedKey}</code>
-          <button
-            disabled
-            title="Contact support to regenerate your API key"
-            aria-label="Regenerate API key — contact support to enable"
-            className="text-xs px-3 py-1.5 border border-[#1E2640] rounded text-muted cursor-not-allowed opacity-50"
-          >
-            Regenerate
-          </button>
-        </div>
-        <p className="text-muted text-[10px]">
-          Key regeneration is disabled.{' '}
-          <a
-            href="mailto:support@cashclaw.cc"
-            className="text-[#00C8E8] hover:underline"
-          >
-            Contact support
-          </a>{' '}
-          to rotate your key.
-        </p>
-      </Card>
+      <StitchCard>
+        <StitchCardHeader>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>API Key</span>
+        </StitchCardHeader>
+        <StitchCardBody className="space-y-3">
+          <p className="text-[#94a3b8] text-xs font-mono">
+            Use this key to authenticate CLI and programmatic access.
+          </p>
+          <div className="bg-[#051424] border border-[#3f4e5f] rounded px-4 py-3 flex items-center justify-between gap-3">
+            <code className="text-[#4cd7f6] text-xs font-mono">{maskedKey}</code>
+            <StitchButton
+              variant="secondary"
+              onClick={() => {}}
+              disabled
+              title="Contact support to regenerate your API key"
+            >
+              Regenerate
+            </StitchButton>
+          </div>
+          <p className="text-[#94a3b8] text-[10px] font-mono">
+            Key regeneration is disabled.{' '}
+            <a
+              href="mailto:support@cashclaw.cc"
+              className="text-[#4cd7f6] hover:underline"
+            >
+              Contact support
+            </a>{' '}
+            to rotate your key.
+          </p>
+        </StitchCardBody>
+      </StitchCard>
 
       {/* Billing */}
-      <Card title="Billing">
-        {tier === 'free' ? (
-          <div className="flex items-center justify-between">
-            <p className="text-muted text-xs">You're on the free plan.</p>
-            <Link
-              to="/pricing"
-              className="bg-[#00C8E8] text-[#080B14] font-bold text-xs px-4 py-2 rounded hover:bg-[#00C8E8]/80 transition-colors"
-            >
-              Upgrade
-            </Link>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <p className="text-muted text-xs">
-              Active <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass}`}>{tierLabel}</span> subscription.
-            </p>
-            <Link
-              to="/pricing"
-              className="text-xs px-4 py-2 border border-[#1E2640] rounded text-[#00C8E8] hover:bg-[#00C8E8]/10 transition-colors"
-            >
-              Upgrade / Manage →
-            </Link>
-          </div>
-        )}
-      </Card>
+      <StitchCard>
+        <StitchCardHeader>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>Billing</span>
+        </StitchCardHeader>
+        <StitchCardBody>
+          {tier === 'free' ? (
+            <div className="flex items-center justify-between">
+              <p className="text-[#94a3b8] text-xs font-mono">You're on the free plan.</p>
+              <StitchButton asChild>
+                <Link to="/pricing">Upgrade</Link>
+              </StitchButton>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <p className="text-[#94a3b8] text-xs font-mono">
+                Active <StitchBadge label={tierLabel} tone={badgeTone} /> subscription.
+              </p>
+              <StitchButton variant="secondary" asChild>
+                <Link to="/pricing">Upgrade / Manage →</Link>
+              </StitchButton>
+            </div>
+          )}
+        </StitchCardBody>
+      </StitchCard>
 
       {/* Danger Zone */}
-      <Card title="Danger Zone">
-        <p className="text-muted text-xs">
-          Permanently delete your account and all associated data.
-        </p>
-        <button
-          disabled
-          title="Contact support to delete your account"
-          className="text-xs px-4 py-2 border border-[#FF4466]/30 rounded text-[#FF4466]/50 cursor-not-allowed opacity-50"
-        >
-          Delete Account
-        </button>
-      </Card>
+      <StitchCard>
+        <StitchCardHeader>
+          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>Danger Zone</span>
+        </StitchCardHeader>
+        <StitchCardBody className="space-y-2">
+          <p className="text-[#94a3b8] text-xs font-mono">
+            Permanently delete your account and all associated data.
+          </p>
+          <StitchButton
+            variant="secondary"
+            onClick={() => {}}
+            disabled
+            title="Contact support to delete your account"
+            style={{ borderColor: '#ef444480', color: '#ef444480' }}
+          >
+            Delete Account
+          </StitchButton>
+        </StitchCardBody>
+      </StitchCard>
     </div>
   );
 }

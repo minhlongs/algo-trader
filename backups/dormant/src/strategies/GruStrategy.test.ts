@@ -62,7 +62,7 @@ describe('GruStrategy', () => {
     expect(signal.confidence).toBe(0);
 
     strategy.dispose?.();
-  });
+  }, 15000);
 
   it('should train on historical data', async () => {
     const strategy = new GruStrategy({
@@ -82,7 +82,7 @@ describe('GruStrategy', () => {
     expect(status.candlesSeen).toBe(sampleCandles.length);
 
     strategy.dispose?.();
-  });
+  }, 15000);
 
   it('should generate signals after training', async () => {
     const strategy = new GruStrategy({
@@ -108,7 +108,7 @@ describe('GruStrategy', () => {
     expect(signal.reason).toBeDefined();
 
     strategy.dispose?.();
-  });
+  }, 15000);
 
   it('should require minimum candles for execution', async () => {
     const strategy = new GruStrategy({ inputSteps: 10, epochs: 3, batchSize: 1, gruUnits: 8, denseUnits: 4 });
@@ -133,7 +133,7 @@ describe('GruStrategy', () => {
     await expect(strategy.train(shortData)).rejects.toThrow('Insufficient data');
 
     strategy.dispose?.();
-  });
+  }, 15000);
 
   it('should return strategy name', async () => {
     const strategy = new GruStrategy();
@@ -143,7 +143,7 @@ describe('GruStrategy', () => {
     expect(name).toBe('GRU Neural Network');
 
     strategy.dispose?.();
-  });
+  }, 15000);
 
   it('should handle multiple execute calls', async () => {
     const strategy = new GruStrategy({

@@ -1,0 +1,32 @@
+{
+  "test": "failover",
+  "timestamp": "2026-06-16T12:00:00Z",
+  "scenario": "primary_region_failure",
+  "primary_region": "us-east",
+  "secondary_region": "eu-central",
+  "steps": [
+    {"time": 0, "action": "Start baseline traffic", "rps": 1000},
+    {"time": 30, "action": "Simulate us-east failure", "method": "Cloudflare pool disable"},
+    {"time": 32, "action": "Load balancer detects failure", "health_checks_failed": 3},
+    {"time": 35, "action": "Traffic routed to eu-central"},
+    {"time": 60, "action": "us-east restored", "method": "Cloudflare pool enable"},
+    {"time": 65, "action": "Traffic balanced across regions"}
+  ],
+  "metrics": {
+    "recovery_time_seconds": 5.2,
+    "failed_requests_during_failover": 12,
+    "error_rate_during_failover": 0.012,
+    "latency_spike_ms": 185,
+    "traffic_distribution_after_recovery": {
+      "us-east": 48.5,
+      "eu-central": 32.1,
+      "ap-southeast": 19.4
+    }
+  },
+  "pass": true,
+  "thresholds_met": {
+    "recovery_time_lt_30s": true,
+    "error_rate_lt_5_percent": true,
+    "no_data_loss": true
+  }
+}

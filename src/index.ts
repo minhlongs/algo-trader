@@ -5,18 +5,15 @@
 
 import 'dotenv/config';
 import { Command } from 'commander';
-import { initSentry } from './shared/utils/sentry-init';
-import { initTracing } from './shared/utils/tracing';
-import { runMigrations } from './shared/db/migration-runner';
-import { runGruStrategy } from './desk/commands/gru-strategy';
-import { KronosStrategy } from './desk/strategies/kronos-strategy';
-import { runSetupWizard } from './desk/commands/setup-wizard';
-import { runQuickstart } from './desk/commands/quickstart';
-import { runActivateCommand } from './desk/commands/activate-license';
-import { runArbAuto } from './desk/commands/arb-auto';
-import { paperStart, paperStop, paperStatus, paperReport } from './desk/commands/paper-trading';
-import type { PaperCommandOptions } from './desk/commands/paper-trading';
-import { logger } from './shared/utils/logger';
+import { initSentry } from './utils/sentry-init';
+import { initTracing } from './utils/tracing';
+import { runMigrations } from './db/migration-runner';
+import { KronosStrategy } from './strategies/kronos-strategy';
+import { runSetupWizard } from './commands/setup-wizard';
+import { runQuickstart } from './commands/quickstart';
+import { runActivateCommand } from './commands/activate-license';
+import { runArbAuto } from './commands/arb-auto';
+import { logger } from './utils/logger';
 
 // Initialize Sentry before anything else
 initSentry();
@@ -24,15 +21,6 @@ initSentry();
 // Initialize OTel tracing (noop if OTEL_EXPORTER_OTLP_ENDPOINT unset).
 // Non-blocking at top-level — errors are logged inside.
 initTracing().catch((err) => logger.warn('[Startup] initTracing failed', { err }));
-
-export interface GruStrategyOptions {
-  inputSteps: string;
-  gruUnits: string;
-  epochs: string;
-  threshold: string;
-  symbol: string;
-  mode: string;
-}
 
 export interface ArbAutoOptions {
   symbols: string;
@@ -62,26 +50,6 @@ if (!isTest) {
     .name('algo-trader')
     .description('Algorithmic trading bot with ML strategies and zero-config onboarding')
     .version(version);
-
-  program
-    .command('gru')
-    .description('Run GRU Neural Network trading strategy')
-    .option('-i, --input-steps <number>', 'Number of historical candles', '60')
-    .option('-u, --gru-units <number>', 'GRU layer units', '64')
-    .option('-e, --epochs <number>', 'Training epochs', '50')
-    .option('-t, --threshold <number>', 'Confidence threshold (0-1)', '0.7')
-    .option('-s, --symbol <symbol>', 'Trading pair', 'BTC/USDT')
-    .option('-m, --mode <mode>', 'Running mode (live/backtest)', 'backtest')
-    .action(async (options: GruStrategyOptions) => {
-      await runGruStrategy({
-        inputSteps: parseInt(options.inputSteps),
-        gruUnits: parseInt(options.gruUnits),
-        epochs: parseInt(options.epochs),
-        confidenceThreshold: parseFloat(options.threshold),
-        symbol: options.symbol,
-        mode: options.mode as 'live' | 'backtest',
-      });
-    });
 
   program
     .command('setup')
@@ -140,35 +108,7 @@ if (!isTest) {
       logger.info('[Kronos] Strategy ready', status);
     });
 
-  // Paper trading subcommands
-const paperProgram = program.command('paper').description('Paper trading — simulated trades without real money');
-paperProgram
-  .command('start')
-  .description('Start a paper trading session')
-  .option('-v, --verbose', 'Verbose logging', true)
-  .action(async (options: PaperCommandOptions) => {
-    await paperStart(options);
-  });
-paperProgram
-  .command('stop')
-  .description('Stop the paper trading session')
-  .action(async () => {
-    await paperStop();
-  });
-paperProgram
-  .command('status')
-  .description('Show current positions, account balance, and recent trades')
-  .action(async () => {
-    await paperStatus();
-  });
-paperProgram
-  .command('report')
-  .description('Full P&L report with daily/weekly/monthly breakdown and Prometheus metrics')
-  .action(async () => {
-    await paperReport();
-  });
-
-program.parse(process.argv);
+  program.parse(process.argv);
 
   // Run main if no command specified
   if (!process.argv.slice(2).length) {

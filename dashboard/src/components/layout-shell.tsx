@@ -65,6 +65,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
               onClick={() => setSidebarOpen(true)}
               className="p-2 -ml-2 text-muted hover:text-white rounded-lg hover:bg-bg-border transition-colors min-h-touch min-w-touch flex items-center justify-center"
               aria-label="Open menu"
+      data-testid="hamburger-menu"
             >
               <List weight="bold" className="w-6 h-6" />
             </button>

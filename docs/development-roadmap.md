@@ -3,9 +3,7 @@
 ## Project Overview
 Algo Trader is a full-stack trading platform with multi-exchange support, algorithmic strategies, real-time WebSocket feeds, and subscription billing. Built with Fastify 5, React 19, Prisma, Redis Cluster, and NOWPayments crypto billing.
 
-**Target**: Enterprise-grade quantitative trading platform with autonomous marketing. v3.0.0 shipped -- 3-bounded-context architecture (desk/platform/shared) complete.
-
-> **June 2026 — Architecture Separation Complete:** Codebase reorganized into 3 bounded contexts: `src/desk/` (solo trading), `src/platform/` (RaaS subscribers), `src/shared/` (kernel). All 103 API routes tier-gated, tenant isolation enforced. Phase 4 cleanup: 4 oversized files split, 23 dead files deleted (~21K lines), 4 ADRs + platform doctrine written, `BasePolymarketStrategy` base class with POC migration (55% smaller). 2,430+ tests passing. See `docs/system-architecture.md`.
+**Target**: Enterprise-grade quantitative trading platform with autonomous marketing. Phase 32 complete, Phase 33 planned.
 
 ---
 
@@ -155,44 +153,6 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] Docs — `docs/ai-first-enforcement-gates.md` (source of truth) + rollback hierarchy alignment
 - Status: **COMPLETE** ✅ (Pillar 1 of a16z Solo Platform doctrine)
 
-### Architecture Separation Phase 1: Bounded Contexts (Complete - 2026-06-28) ✅ SHIPPED
-- [x] 540-file codebase split into 3 bounded contexts: `src/desk/`, `src/platform/`, `src/shared/`
-- [x] Desk (~35 modules): strategies, execution, risk, intelligence, signal, market-data, CLI, feeds, arbitrage
-- [x] Platform (~25 modules): API gateway (31 route files), marketplace, billing, raas executor, metering, audit
-- [x] Shared (~10 modules): types, DB client, config, resilience, persistence, messaging, redis
-- [x] Path aliases configured: `@/desk/*`, `@/platform/*`, `@/shared/*`
-- [x] Import rules enforced: shared ← desk/platform; desk ← shared only; platform ← shared + desk (IStrategy)
-- Status: **COMPLETE** ✅
-
-### Architecture Separation Phase 2: Barrel Exports & Path Rewriting (Complete - 2026-06-28) ✅ SHIPPED
-- [x] Every `shared/` subdirectory exports index.ts barrel (types, db, config, utils, resilience, persistence, messaging, redis)
-- [x] Every `desk/` subdirectory exports index.ts barrel (strategies, execution, risk, intelligence, signal, market-data, cli, feeds, arbitrage, gate, wiring)
-- [x] Every `platform/` subdirectory exports index.ts barrel (api, auth, billing, marketplace, raas, metering, middleware, audit, referral, telegram, notifications)
-- [x] 200+ import paths rewritten to canonical `@/desk/*`, `@/platform/*`, `@/shared/*` form
-- [x] NATS messaging client extracted from `platform/` → `shared/messaging/`
-- [x] Redis client extracted from embedded locations → `shared/redis/`
-- Status: **COMPLETE** ✅
-
-### Architecture Separation Phase 3: Tenant Isolation & Tier Gating (Complete - 2026-06-29) ✅ SHIPPED
-- [x] `buildTenantFilter(tenantId)` on every platform DB query -- verified by grep audit
-- [x] `requireTier('FREE|PRO|ENTERPRISE')` middleware on all 103 Express route handlers + 4 Fastify route files
-- [x] Desk confirmed zero tenant awareness -- no desk module references `tenantId`, `subscriber`, or `tier`
-- [x] Cross-context communication via shared types only: `IStrategy` interface, `Signal` type, NATS topic schemas
-- [x] Strategy registry in `desk/gate/` maps strategy names → constructors for platform access
-- [x] All 79 integration/contract tests pass
-- Status: **COMPLETE** ✅
-
-### Architecture Separation Phase 4: Cleanup & Documentation (Complete - 2026-06-30) ✅ SHIPPED
-- [x] 4 oversized files split → 10 focused modules (`referral-repository.ts` 583L→69L, `marketplace-strategy-routes.ts` 517L→27L)
-- [x] 23 dead files deleted (~21K lines): `citadel/` entire dir, `ironclaw/` 6 files, `ai-decision-audit-service.ts` (795L), `xai-routes.ts` (516L), 4 unregistered Fastify route files
-- [x] `BasePolymarketStrategy` base class (303L) — shared position/exit/event logic for 32 strategies
-- [x] POC migration: `spread-mean-reversion-v2.ts` (186L vs 417L original, 55% smaller)
-- [x] 4 Architecture Decision Records: shared-kernel-boundary, desk-platform-separation, strategy-ownership-model, tenant-isolation-pattern
-- [x] 11 boundary enforcement tests — all passing (desk↔platform import rules, tenant isolation, barrel exports)
-- [x] Docs sync: CLAUDE.md, system-architecture.md, development-roadmap.md, project-changelog.md
-- [x] 2,430+ tests passing, 0 TypeScript errors, 0 regressions
-- Status: **COMPLETE** ✅
-
 ### Phase 34: Performance Tuning & Stress Testing (Planned)
 - [ ] Load test with 5000+ concurrent users
 - [ ] Database query optimization (index analysis)
@@ -243,13 +203,54 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Timeline: 2026-08-01 to 2026-09-15
 - Status: **PLANNED**
 
+### Phase Scaling Implementation (In Progress - 2026-06-16)
+
+Horizontal scaling architecture for 52+ strategies, multi-region deployment, and 10,000 RPS target.
+
+| Sub-Phase | Name | Status | Key Deliverables |
+|-----------|------|--------|------------------|
+| 1 | DO Sharding Architecture | 🟡 In Progress | `src/durable-objects/shard-manager.ts`, 12 shards, consistent hashing, 52 strategies distributed |
+| 2 | Multi-Region Deployment | 🟡 In Progress | `wrangler.toml` regions, `docs/deployment-multi-region.md`, us-east/eu/asia deployment |
+| 3 | Model Tiering | ⚪ Pending | `src/agents/model-tier-dispatcher.ts`, Haiku→Sonnet→Opus cascade, async queue |
+| 4 | Connection Pool + Queue | ⚪ Pending | `src/workers/connection-pool.ts`, `src/queues/agent-coordinator.ts`, Hyperdrive pools |
+| 5 | Latency Monitoring | ⚪ Pending | `src/regions/latency-monitor.ts`, p95 <100ms target, Grafana dashboard |
+| 6 | Memory Optimization | ⚪ Pending | `src/utils/compression-stream.ts`, `src/utils/lru-cache.ts`, <128MB per isolate |
+| 7 | Load Testing | ⚪ Pending | `scripts/load-test-sharding.ts`, 12k RPS validation, pass rate >99% |
+| 8 | ME IDEA Transition | ⚪ Pending | Zero→PSF criteria met, all gates passed |
+| 9 | Rollback Strategy | ⚪ Pending | `src/rollback/tiered-rollback-controller.ts`, L0-L4 tiers, <30s rollback |
+| 10 | Observability Enhancements | ⚪ Pending | `src/regions/metrics-collector.ts`, multi-region metrics, shard health dashboards |
+| 11 | Documentation Updates | 🟢 In Progress (this doc) | `docs/scaling-architecture.md`, 5 runbooks, metrics reference, deployment guide |
+| 12 | Final Integration & Deployment | ⚪ Pending | End-to-end testing, CI/CD updated, production rollout |
+
+**Documentation Deliverables (Phase 11):**
+- `docs/deployment-multi-region.md` - Step-by-step multi-region deployment
+- `docs/scaling-architecture.md` - Deep dive on sharding, tiering, pools
+- `docs/runbooks/` (5 new): multi-region-outage, shard-hotspot, memory-pressure-critical, llm-gateway-outage, database-connection-exhaustion
+- `docs/metrics-reference.md` - Complete Prometheus metrics reference
+- `docs/developer-onboarding.md` - Quick start for scaling architecture
+- `docs/system-architecture.md` (updated) - Scaling section with diagrams
+- `docs/development-roadmap.md` (this document) - Progress tracking
+- `README.md` (updated) - Links to new documentation
+
+**Overall Scaling Status:** 🟡 IN PROGRESS (Phases 1-2 in progress, 3-12 pending)
+
+**Target Completion:** 2026-07-15 (6 weeks)
+
+**Success Criteria:**
+- [ ] All 12 shards deployed across 3 regions
+- [ ] p95 latency < 100ms globally
+- [ ] Memory < 128MB per isolate in production
+- [ ] Load test: 12,000 RPS with < 1% error rate
+- [ ] All 5 runbooks reviewed and tested
+- [ ] Documentation 100% complete and linked from README
+
 ---
 
 ## Critical Success Metrics
 
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
-| Test Coverage | 90%+ | 100% (2,430+/2,430+) | ✅ |
+| Test Coverage | 90%+ | 100% (585/585) | ✅ |
 | Type Safety | 0 `any` types | 0 | ✅ |
 | Build Time | < 10s | ~5s | ✅ |
 | API Latency (p95) | < 100ms | ~45ms | ✅ |
@@ -294,6 +295,8 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ## Recent Updates
 
+**2026-05-30**: Premium Bento Grid Dashboard UI/UX Polish & Express API Integration. Chuyển đổi API routes sang Express, tích hợp đồ thị TradingView Lightweight Charts & Volume overlay. Giải quyết toàn bộ lỗi biên dịch và test suite (1506 tests backend, 35 tests frontend pass 100%). Deploy thành công backend và frontend lên Cloudflare.
+
 **2026-04-15**: Phase 32b (Autonomy Phase 2) complete. LLM content generation (DeepSeek R1), welcome email drip (3-email sequence), Telegram auto-support (/faq, /support, /pricing), Twitter/X API v2 + Telegram channel distribution. 585 tests passing.
 
 **2026-04-15**: Phase 32 (Autonomy Layer) complete. Auto-marketing daemon, blog content hub, landing page SEO, SendGrid email verification. 575 tests passing.
@@ -308,14 +311,14 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ---
 
-## Current Focus (June 2026)
+## Next Sprint (Week of 2026-04-16)
 
-1. **Architecture Separation (COMPLETE):** 3 bounded contexts (shared/desk/platform), path aliases, barrel exports, 11/11 boundary tests, 4 ADRs, BasePolymarketStrategy base class
-2. Phase 36: Marketplace & multi-tenant monetization (strategies as products, revenue sharing)
-3. Phase 37: Advanced risk management (VaR, CVaR, portfolio correlation)
-4. KYC/AML provider integration
-5. Phase 34: Performance tuning & stress testing (5000+ concurrent users)
-6. Content personalization & A/B testing
+1. Phase 33: Performance tuning & stress testing (5000+ concurrent users)
+2. Database query optimization and index analysis
+3. Redis cluster rebalancing under load
+4. WebSocket message compression (deflate)
+5. CPU/memory profiling on M1 Max
+6. Content personalization & A/B testing (Phase 34 foundation)
 
 ---
 
@@ -328,5 +331,5 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ---
 
-_Last Updated: 2026-06-30_
+_Last Updated: 2026-05-30_
 _Generated by: Documentation Manager Agent (Phase 32b Autonomy)_

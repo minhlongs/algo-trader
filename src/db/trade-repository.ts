@@ -89,13 +89,13 @@ export class TradeRepository {
   /**
    * Get recent trades
    */
-  async getRecent(limit = 100): Promise<TradeRecord[]> {
+  async getRecent(limit = 100, offset = 0): Promise<TradeRecord[]> {
     const sql = `
       SELECT * FROM trades
       ORDER BY created_at DESC
-      LIMIT $1
+      LIMIT $1 OFFSET $2
     `;
-    const result = await query(sql, [limit]);
+    const result = await query(sql, [limit, offset]);
     return result.rows as unknown as TradeRecord[];
   }
 

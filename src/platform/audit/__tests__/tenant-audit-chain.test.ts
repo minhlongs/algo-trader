@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryResult, PoolClient } from 'pg';
 
 // First, mock the module (hoisted) to make sure they are mock functions
-vi.mock('../../../shared/db/postgres-client', () => {
+vi.mock('../../db/postgres-client', () => {
   return {
     query: vi.fn(),
     transaction: vi.fn(),
@@ -10,7 +10,7 @@ vi.mock('../../../shared/db/postgres-client', () => {
 });
 
 // Import the database client and the module under test
-import { query, transaction } from '../../../shared/db/postgres-client';
+import { query, transaction } from '../../db/postgres-client';
 import { appendTenantAuditLog, verifyTenantChain, computeTenantAuditHash, canonicalJsonStringify } from '../tenant-audit-log';
 
 interface MockRow {

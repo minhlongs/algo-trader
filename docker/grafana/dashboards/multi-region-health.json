@@ -1,0 +1,279 @@
+{
+  "dashboard": {
+    "title": "Multi-Region Health & Latency",
+    "uid": "multi-region-health-v1",
+    "timezone": "UTC",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Region Health Status",
+        "type": "stat",
+        "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "region_healthy",
+            "legendFormat": "{{region}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": 0 },
+                { "color": "green", "value": 1 }
+              ]
+            },
+            "mappings": [
+              { "type": "value", "options": { "0": { "text": "Unhealthy" }, "1": { "text": "Healthy" } } }
+            ],
+            "colors": { "mode": "thresholds" }
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto"
+        }
+      },
+      {
+        "id": 2,
+        "title": "p95 Latency by Region",
+        "type": "timeseries",
+        "gridPos": { "x": 6, "y": 0, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(region_latency_seconds_bucket[5m])) by (le, region)) * 1000",
+            "legendFormat": "{{region}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 50 },
+                { "color": "red", "value": 100 }
+              ]
+            }
+          }
+        },
+        "options": {
+          "tooltip": { "mode": "single" },
+          "legend": { "displayMode": "table", "placement": "bottom" },
+          "xaxis": { "mode": "time" },
+          "yaxis": { "format": "ms" }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Region Latency Heatmap",
+        "type": "heatmap",
+        "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "sum(rate(region_latency_seconds_bucket[5m])) by (le, region)",
+            "legendFormat": "{{region}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "scaleDistribution": { "type": "sqrt" },
+              "axis": { "show": true, "label": "Requests/s" }
+            },
+            "color": {
+              "mode": "spectrum",
+              "spectrum": {
+                "opacity": 0.8,
+                "colorScheme": "Green-Yellow-Red"
+              }
+            }
+          }
+        },
+        "options": {
+          "legend": { "displayMode": "table", "placement": "bottom" },
+          "xAxis": {
+            "mode": "time",
+            "show": true
+          },
+          "yAxis": {
+            "mode": "histogram",
+            "show": true,
+            "logBase": 2,
+            "bucketOffset": 1
+          },
+          "legendSort": "avg"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Request Distribution by Region",
+        "type": "piechart",
+        "gridPos": { "x": 0, "y": 12, "w": 6, "h": 6 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) by (region)",
+            "legendFormat": "{{region}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "mappings": []
+          }
+        },
+        "options": {
+          "legend": { "displayMode": "list", "placement": "right" },
+          "pieType": "pie",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Inter-Region Replication Lag",
+        "type": "timeseries",
+        "gridPos": { "x": 6, "y": 8, "w": 12, "h": 6 },
+        "targets": [
+          {
+            "expr": "replication_lag_seconds",
+            "legendFormat": "{{region}}→primary",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 5 },
+                { "color": "red", "value": 10 }
+              ]
+            }
+          }
+        },
+        "options": {
+          "tooltip": { "mode": "single" },
+          "legend": { "displayMode": "table", "placement": "bottom" }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Region Error Rate",
+        "type": "bargauge",
+        "gridPos": { "x": 6, "y": 14, "w": 12, "h": 4 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (region) / sum(rate(http_requests_total[5m])) by (region) * 100",
+            "legendFormat": "{{region}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": 0 },
+                { "color": "yellow", "value": 1 },
+                { "color": "red", "value": 5 }
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "basic",
+          "legend": { "displayMode": "hidden" }
+        }
+      },
+      {
+        "id": 7,
+        "title": "SLA Compliance %",
+        "type": "stat",
+        "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+        "targets": [
+          {
+            "expr": "sum(rate(http_request_duration_seconds_bucket{le=\"0.1\"}[5m])) by (region) / sum(rate(http_request_duration_seconds_count[5m])) by (region) * 100",
+            "legendFormat": "{{region}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": 0 },
+                { "color": "green", "value": 95 }
+              ]
+            },
+            "color": { "mode": "thresholds" }
+          }
+        },
+        "options": {
+          "orientation": "auto",
+          "colorMode": "background",
+          "graphMode": "none",
+          "justifyMode": "auto"
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "id": "region_filter",
+          "name": "region",
+          "label": "Region",
+          "type": "query",
+          "datasource": "Prometheus",
+          "query": "label_values(region_healthy, region)",
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "id": "failover_events",
+          "name": "Failover Events",
+          "datasource": "Prometheus",
+          "query": "sum(failover_triggered_total) by (region)",
+          "iconColor": "red",
+          "enable": true
+        }
+      ]
+    }
+  }
+}

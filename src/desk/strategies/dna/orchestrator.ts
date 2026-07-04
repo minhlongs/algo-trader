@@ -34,14 +34,14 @@ import {
   DnaLifecycleListener,
   DnaEngineConfig,
   DEFAULT_DNA_CONFIG,
-} from './multi-tf-types';
-import { buildTfSignal } from './tf-signal-builder';
-import { detectRegime, isRegimeFresh } from './regime-detector';
-import { DnaStateStore, DnaEngineState, InMemoryStateStore } from './dna-state-store';
-import { computeConsensus } from './consensus-engine';
-import { writeJournalEntry } from './journal-writer';
-import { executePaperConsensus } from './paper-executor';
-import { logger } from '../../../shared/utils/logger';
+} from './multi-tf-types.js';
+import { buildTfSignal } from './tf-signal-builder.js';
+import { detectRegime, isRegimeFresh } from './regime-detector.js';
+import { DnaStateStore, DnaEngineState, InMemoryStateStore } from './dna-state-store.js';
+import { computeConsensus } from './consensus-engine.js';
+import { writeJournalEntry } from './journal-writer.js';
+import { executePaperConsensus } from './paper-executor.js';
+import { logger } from '../../utils/logger.js';
 
 // ─── Type for candle provider (injected — explicitness: no hidden dependency) ─
 
@@ -194,7 +194,7 @@ export class DnaEngine {
         to: Math.max(...tfSignals.map((s) => s.emittedAt)),
       }
       : null;
-    writeJournalEntry({
+    await writeJournalEntry({
       traceId: consensus.traceId,
       timestamp: now,
       action: consensus.action,
@@ -251,19 +251,15 @@ export class DnaEngine {
       const now = Date.now();
       const boundaryMs = intervalMs - (now % intervalMs);
       const initialDelay = tf === '1m' ? Math.min(boundaryMs, 5_000) : boundaryMs;
-      // Use recursive setTimeout instead of setInterval so fake timers work
-      // reliably in tests (setInterval callbacks don't fire on advanceTimersByTime).
-      const timer = setTimeout(() => this._scheduleRecurringTick(tf, intervalMs), initialDelay);
+      const timer = setTimeout(() => {
+        // Use setInterval after first tick.
+        const recurring = setInterval(() => this.onTfTick(tf), intervalMs);
+        this._timers.set(tf, recurring);
+        this.onTfTick(tf); // fire first tick immediately
+      }, initialDelay);
       this._timers.set(tf, timer);
     }
     logger.info('[DNA] engine started', { tfs: this._config.tfOrder, paperMode: this._paperMode });
-  }
-
-  private _scheduleRecurringTick(tf: TfId, intervalMs: number): void {
-    if (!this._running) return;
-    this.onTfTick(tf);
-    const timer = setTimeout(() => this._scheduleRecurringTick(tf, intervalMs), intervalMs);
-    this._timers.set(tf, timer);
   }
 
   stop() {

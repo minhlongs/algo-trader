@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SignalDedupGuard } from '../../src/desk/signal/signal-dedup-guard';
-import { SignalTtlEnforcer } from '../../src/desk/signal/signal-ttl-enforcer';
-import type { Signal } from '../../src/desk/signal/signal-types';
+import { SignalDedupGuard } from '../../src/signal/signal-dedup-guard';
+import { SignalTtlEnforcer } from '../../src/signal/signal-ttl-enforcer';
+import type { Signal } from '../../src/signal/signal-types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -148,14 +148,18 @@ describe('SignalTtlEnforcer — register-before-timer race', () => {
     expect(enforcer.size).toBe(0);
   });
 
-it('already-expired signal is evicted immediately', () => {
-  // Signal expired 1ms ago
-  const signal = makeSignal({ expiresAt: Date.now() - 1 });
-  enforcer.register(signal);
+  it('already-expired signal is visible in same tick then evicted async', async () => {
+    // Signal expired 1ms ago
+    const signal = makeSignal({ expiresAt: Date.now() - 1 });
+    enforcer.register(signal);
 
-  // Already-expired signals are evicted immediately (no setTimeout)
-  expect(enforcer.size).toBe(0);
-});
+    // Same tick: signal is in the map (timer not yet fired)
+    expect(enforcer.size).toBe(1);
+
+    // Advance timers so the zero-delay setTimeout fires
+    vi.advanceTimersByTime(0);
+    expect(enforcer.size).toBe(0);
+  });
 
   it('re-registering same ID cancels old timer and extends TTL', () => {
     const now = Date.now();

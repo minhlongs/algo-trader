@@ -4,10 +4,13 @@
  * Uses _migrations table to record applied migrations
  */
 
-import { logger } from '../shared/utils/logger';
+import { logger } from '../utils/logger';
 import { getDbClient } from './postgres-client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import * as migration001 from './migrations/001-create-trades-table';
-import * as migration026 from './migrations/026-create-ai-audit-tables';
+import * as migration019 from './migrations/019_add_trades_composite_index';
+import * as migration020 from './migrations/020_db_performance_optimizations';
 
 // Migration interface
 interface Migration {
@@ -17,10 +20,110 @@ interface Migration {
   down: (client: import('pg').PoolClient) => Promise<void>;
 }
 
+function getDialect(client: unknown): 'postgres' | 'sqlite' {
+  if (client && typeof client === 'object' && 'constructor' in client) {
+    const ctor = (client as { constructor: Function }).constructor;
+    if (ctor && typeof ctor.name === 'string' && ctor.name.includes('Client')) {
+      return 'postgres';
+    }
+  }
+  if (process.env.DB_HOST || process.env.DB_NAME) {
+    return 'postgres';
+  }
+  return 'sqlite';
+}
+
+function parseAndRewriteSql(rawSql: string, dialect: 'postgres' | 'sqlite'): string {
+  let sql = rawSql;
+  if (dialect === 'postgres') {
+    // Replace SQLite strftime with Postgres equivalent
+    sql = sql.replace(/strftime\(\s*['"]%s['"]\s*,\s*['"]now['"]\s*\)\s*\*\s*1000/g, "(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::bigint");
+    sql = sql.replace(/strftime\(\s*['"]%s['"]\s*,\s*['"]now['"]\s*\)/g, "EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::bigint");
+    sql = sql.replace(/\bAUTOINCREMENT\b/gi, '');
+  } else {
+    // Replace PostgreSQL gen_random_uuid() with hex(randomblob())
+    sql = sql.replace(/gen_random_uuid\(\)::text/gi, "(lower(hex(randomblob(16))))");
+    sql = sql.replace(/gen_random_uuid\(\)/gi, "(lower(hex(randomblob(16))))");
+    // Replace EXTRACT(EPOCH FROM NOW()) with strftime('%s','now')
+    sql = sql.replace(/EXTRACT\(EPOCH FROM (?:NOW\(\)|CURRENT_TIMESTAMP)\)\s*\*\s*1000::bigint/gi, "(strftime('%s','now') * 1000)");
+    sql = sql.replace(/EXTRACT\(EPOCH FROM (?:NOW\(\)|CURRENT_TIMESTAMP)\)::bigint\s*\*\s*1000/gi, "(strftime('%s','now') * 1000)");
+    sql = sql.replace(/EXTRACT\(EPOCH FROM (?:NOW\(\)|CURRENT_TIMESTAMP)\)\s*\*\s*1000/gi, "(strftime('%s','now') * 1000)");
+    sql = sql.replace(/EXTRACT\(EPOCH FROM (?:NOW\(\)|CURRENT_TIMESTAMP)\)/gi, "strftime('%s','now')");
+    sql = sql.replace(/::bigint/gi, '');
+    sql = sql.replace(/::text/gi, '');
+    sql = sql.replace(/\bUUID\b/gi, 'TEXT');
+    sql = sql.replace(/\bTIMESTAMPTZ\b/gi, 'TIMESTAMP');
+    sql = sql.replace(/\bJSONB\b/gi, 'TEXT');
+    sql = sql.replace(/\bTEXT\[\]\b/gi, 'TEXT');
+    sql = sql.replace(/\bnow\(\)/gi, "CURRENT_TIMESTAMP");
+    sql = sql.replace(/\(\(created_at\s+AT\s+TIME\s+ZONE\s+['"]UTC['"]\)::date\)/gi, "date(created_at)");
+  }
+  return sql;
+}
+
+function createSqlMigration(filename: string, id: string, description: string): Migration {
+  return {
+    id,
+    description,
+    up: async (client) => {
+      const sqlPath = join(__dirname, 'migrations', filename);
+      const rawSql = readFileSync(sqlPath, 'utf8');
+      const dialect = getDialect(client);
+      const rewrittenSql = parseAndRewriteSql(rawSql, dialect);
+      // Run the entire script (pg and sqlite both support multi-statement queries without params)
+      await client.query(rewrittenSql);
+    },
+    down: async (client) => {
+      if (id === '004_better_auth_tables') {
+        await client.query('DROP TABLE IF EXISTS verification CASCADE');
+        await client.query('DROP TABLE IF EXISTS account CASCADE');
+        await client.query('DROP TABLE IF EXISTS session CASCADE');
+        await client.query('DROP TABLE IF EXISTS "user" CASCADE');
+      } else if (id === '014_signal_feed') {
+        await client.query('DROP TABLE IF EXISTS signal_delivery_log CASCADE');
+        await client.query('DROP TABLE IF EXISTS signal_subscriptions CASCADE');
+        await client.query('DROP TABLE IF EXISTS signals CASCADE');
+      } else if (id === '015_subscriber_attribution') {
+        await client.query('DROP TABLE IF EXISTS subscriber_equity_snapshots CASCADE');
+        try {
+          await client.query('ALTER TABLE trades DROP COLUMN IF EXISTS subscriber_id');
+          await client.query('ALTER TABLE trades DROP COLUMN IF EXISTS attestation_id');
+          await client.query('ALTER TABLE signals DROP COLUMN IF EXISTS subscriber_id');
+        } catch {}
+      } else if (id === '016_qwen_paper_tracking') {
+        await client.query('DROP TABLE IF EXISTS paper_trades_v3 CASCADE');
+        try {
+          await client.query('ALTER TABLE signals DROP COLUMN IF EXISTS source');
+          await client.query('ALTER TABLE signals DROP COLUMN IF EXISTS paper_only');
+        } catch {}
+      } else if (id === '017_strategy_review_tasks') {
+        await client.query('DROP TABLE IF EXISTS strategy_review_tasks CASCADE');
+      } else if (id === '018_qwen_signals_loop_runs') {
+        await client.query('DROP TABLE IF EXISTS qwen_signals_loop_runs CASCADE');
+      } else if (id === '021_create_tenant_audit_logs') {
+        await client.query('DROP TABLE IF EXISTS tenant_audit_logs CASCADE');
+      } else if (id === '021_tenant_credentials') {
+        await client.query('DROP TABLE IF EXISTS tenant_credentials CASCADE');
+      }
+    }
+  };
+}
+
 // Ordered list of all migrations
 const MIGRATIONS: Migration[] = [
   migration001,
-  migration026,
+  createSqlMigration('004_better_auth_tables.sql', '004_better_auth_tables', 'Better Auth Schema Migration'),
+  createSqlMigration('014_signal_feed.sql', '014_signal_feed', 'Signal feed tables'),
+  createSqlMigration('015_subscriber_attribution.sql', '015_subscriber_attribution', 'Subscriber Attribution'),
+  createSqlMigration('016_qwen_paper_tracking.sql', '016_qwen_paper_tracking', 'Qwen paper-trading tracking'),
+  createSqlMigration('017_strategy_review_tasks.sql', '017_strategy_review_tasks', 'Strategy review tasks queue'),
+  createSqlMigration('018_qwen_signals_loop_runs.sql', '018_qwen_signals_loop_runs', 'Qwen signals loop run journal'),
+  migration019,
+  migration020,
+  createSqlMigration('021_create_tenant_audit_logs.sql', '021_create_tenant_audit_logs', 'Create Tenant Audit Logs Table'),
+  createSqlMigration('021_tenant_credentials.sql', '021_tenant_credentials', 'Tenant Credentials Table'),
+  createSqlMigration('022_dna_journal.sql', '022_dna_journal', 'DNA engine multi-TF consensus journal'),
+  createSqlMigration('023_dna_engine_state.sql', '023_dna_engine_state', 'DNA engine state persistence'),
 ];
 
 /**
@@ -28,6 +131,11 @@ const MIGRATIONS: Migration[] = [
  */
 async function ensureMigrationsTable(): Promise<void> {
   const pool = getDbClient();
+  try {
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
+  } catch (err) {
+    logger.warn('[Migrations] Could not create pgcrypto extension:', err);
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS _migrations (
       id VARCHAR(128) PRIMARY KEY,

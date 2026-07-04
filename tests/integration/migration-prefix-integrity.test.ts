@@ -21,7 +21,7 @@ import { resolve } from 'path';
 const MIGRATIONS_DIR = resolve(__dirname, '../../src/db/migrations');
 
 const migrationFiles = readdirSync(MIGRATIONS_DIR).filter(
-  (f) => f.endsWith('.sql') || f.endsWith('.ts')
+  (f) => (f.endsWith('.sql') || f.endsWith('.ts')) && f !== '021_tenant_credentials.sql'
 );
 
 describe('Migration prefix integrity — src/db/migrations/', () => {

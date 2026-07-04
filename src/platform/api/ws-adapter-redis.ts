@@ -1,5 +1,5 @@
 /**
- * Fastify WebSocket Adapter with Redis Cluster
+ * WebSocket Adapter with Redis Cluster (adapted for Express/http.Server)
  * Handles 1000+ concurrent WebSocket connections with cluster-aware pub/sub
  *
  * Features:
@@ -10,15 +10,13 @@
  */
 
 import { Cluster } from 'ioredis';
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { Server as HttpServer, IncomingMessage } from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import {
-  getRedisClusterClient,
   getPubClient,
   getSubClient,
-  isClusterMode,
-} from '../../redis';
-import { logger } from '../../shared/utils/logger';
+} from '../redis';
+import { logger } from '../utils/logger';
 
 export interface WSAdapterConfig {
   path: string;
@@ -29,7 +27,7 @@ export interface WSAdapterConfig {
 
 const DEFAULT_CONFIG: WSAdapterConfig = {
   path: '/ws',
-  channels: ['trades', 'signals', 'orders', 'market-data'],
+  channels: ['trades', 'signals', 'orders', 'market-data', 'pnl', 'price_update'],
   heartbeatIntervalMs: 30000,
   maxPayloadSize: 1024 * 1024, // 1MB
 };
@@ -52,40 +50,33 @@ export class RedisWSAdapter {
   private clientIdCounter = 0;
 
   constructor(
-    private fastify: FastifyInstance,
+    private server: HttpServer,
     config?: Partial<WSAdapterConfig>
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
 
-    // Use cluster clients if enabled, else fallback to single-instance
-    if (isClusterMode()) {
-      this.pubClient = getRedisClusterClient();
-      this.subClient = getRedisClusterClient();
-    } else {
-      this.pubClient = getPubClient();
-      this.subClient = getSubClient();
-    }
+    // Use separate pub/sub clients globally to prevent connection contention
+    this.pubClient = getPubClient();
+    this.subClient = getSubClient();
 
     this.wsServer = new WebSocket.Server({
-      server: fastify.server,
+      server: this.server,
       path: this.config.path,
       maxPayload: this.config.maxPayloadSize,
-      // permessage-deflate: ~70% bandwidth reduction on JSON payloads
-      // level=3 balances speed vs compression ratio (typical trading data compresses well)
       perMessageDeflate: {
         zlibDeflateOptions: {
-          chunkSize: 1024,
-          memLevel: 7,
           level: 3,
+          memLevel: 8,
+          windowBits: 12,
         },
         zlibInflateOptions: {
           chunkSize: 10 * 1024,
         },
         clientNoContextTakeover: true,
         serverNoContextTakeover: true,
-        serverMaxWindowBits: 10,
-        concurrencyLimit: 10,
-        threshold: 1024, // skip compression for messages < 1KB
+        serverMaxWindowBits: 12,
+        concurrencyLimit: 20,
+        threshold: 1024,
       },
     });
 
@@ -98,7 +89,7 @@ export class RedisWSAdapter {
    * Setup WebSocket server
    */
   private setupWebSocket(): void {
-    this.wsServer.on('connection', (ws: WebSocket, _req: FastifyRequest['raw']) => {
+    this.wsServer.on('connection', (ws: WebSocket, _req: IncomingMessage) => {
       const clientId = `client-${Date.now()}-${++this.clientIdCounter}`;
       const client: WSClient = {
         ws,
@@ -116,13 +107,16 @@ export class RedisWSAdapter {
 
       // Handle close
       ws.on('close', () => {
-        for (const [channel, subs] of this.channelSubscribers.entries()) {
-          subs.delete(client);
-          if (subs.size === 0) {
-            this.channelSubscribers.delete(channel);
+        this.clients.delete(clientId);
+        for (const channel of client.channels) {
+          const subscribers = this.channelSubscribers.get(channel);
+          if (subscribers) {
+            subscribers.delete(client);
+            if (subscribers.size === 0) {
+              this.channelSubscribers.delete(channel);
+            }
           }
         }
-        this.clients.delete(clientId);
       });
 
       // Handle errors
@@ -199,9 +193,13 @@ export class RedisWSAdapter {
         case 'subscribe':
           if (this.config.channels.includes(message.channel)) {
             client.channels.add(message.channel);
- const subs = this.channelSubscribers.get(message.channel) ?? new Set<WSClient>();
- subs.add(client);
- this.channelSubscribers.set(message.channel, subs);
+            let subscribers = this.channelSubscribers.get(message.channel);
+            if (!subscribers) {
+              subscribers = new Set();
+              this.channelSubscribers.set(message.channel, subscribers);
+            }
+            subscribers.add(client);
+
             this.sendToClient(client, {
               type: 'subscribed',
               channel: message.channel,
@@ -212,13 +210,14 @@ export class RedisWSAdapter {
 
         case 'unsubscribe':
           client.channels.delete(message.channel);
- const unsub = this.channelSubscribers.get(message.channel);
- if (unsub) {
-  unsub.delete(client);
-  if (unsub.size === 0) {
-   this.channelSubscribers.delete(message.channel);
-  }
- }
+          const subscribers = this.channelSubscribers.get(message.channel);
+          if (subscribers) {
+            subscribers.delete(client);
+            if (subscribers.size === 0) {
+              this.channelSubscribers.delete(message.channel);
+            }
+          }
+
           this.sendToClient(client, {
             type: 'unsubscribed',
             channel: message.channel,
@@ -261,11 +260,10 @@ export class RedisWSAdapter {
    * Broadcast to all clients subscribed to channel
    */
   private broadcastToChannel(channel: string, message: string): void {
-    const parsed = JSON.parse(message);
-
-    for (const client of this.clients.values()) {
-      if (client.channels.has(channel) || this.config.channels.includes(channel)) {
-        this.sendToClient(client, parsed);
+    const subscribers = this.channelSubscribers.get(channel);
+    if (subscribers) {
+      for (const client of subscribers) {
+        this.sendToClient(client, message);
       }
     }
   }
@@ -275,7 +273,11 @@ export class RedisWSAdapter {
    */
   private sendToClient(client: WSClient, message: any): void {
     if (client.ws.readyState === WebSocket.OPEN) {
-      client.ws.send(JSON.stringify(message));
+      if (typeof message === 'string') {
+        client.ws.send(message);
+      } else {
+        client.ws.send(JSON.stringify(message));
+      }
     }
   }
 
@@ -315,6 +317,7 @@ export class RedisWSAdapter {
       client.ws.close();
     }
     this.clients.clear();
+    this.channelSubscribers.clear();
 
     // Unsubscribe from all channels
     await Promise.all(
@@ -331,18 +334,12 @@ export class RedisWSAdapter {
 }
 
 /**
- * Register WebSocket adapter with Fastify
+ * Register WebSocket adapter with Express Server
  */
 export async function registerWebSocketAdapter(
-  fastify: FastifyInstance,
+  server: HttpServer,
   config?: Partial<WSAdapterConfig>
 ): Promise<RedisWSAdapter> {
-  const adapter = new RedisWSAdapter(fastify, config);
-
-  // Add shutdown hook
-  fastify.addHook('onClose', async () => {
-    await adapter.shutdown();
-  });
-
+  const adapter = new RedisWSAdapter(server, config);
   return adapter;
 }

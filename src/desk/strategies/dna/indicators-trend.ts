@@ -14,7 +14,7 @@
  *                  `computedAt`, so the journal can replay.
  */
 
-import { Candle, TrendIndicators, TfId } from './multi-tf-types';
+import { Candle, TrendIndicators, TfId } from './multi-tf-types.js';
 
 // ─── Constants (explicit — no magic numbers) ──────────────────────────────────
 

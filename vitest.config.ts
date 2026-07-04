@@ -17,10 +17,10 @@ export default defineConfig({
       '.claude/**',
       '.opencode/**',
       '**/smoke.test.ts',
-      // Polymarket strategy tests excluded — strategies depend on unimplemented
-      // infrastructure (clob-client, order-manager, event-bus, gamma-client).
-      // Re-enable when polymarket infra is implemented.
-      'tests/strategies/**',
+      // Exclude dormant/backup directories
+      'backups/**',
+      // E2E tests use Playwright runner, not vitest
+      'tests/e2e/**',
       // Dashboard has its own vitest config (jsdom + @testing-library/react).
       // Root vitest (node env) cannot resolve dashboard-local deps.
       'dashboard/**',

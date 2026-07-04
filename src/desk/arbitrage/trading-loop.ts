@@ -6,9 +6,10 @@
 
 import { FeedAggregator, UnifiedOrderBook, UnifiedTrade, UnifiedTicker } from '../feeds/feed-aggregator';
 import { SpreadDetector, ArbitrageOpportunity as SpreadOpportunity } from './spread-detector';
-import { ExecutionEngine, ArbitrageOpportunity, ArbitrageLeg } from './types';
+import { ExecutionEngine, ArbitrageOpportunity, ArbitrageLeg, ExchangeId } from './types';
 import { EventEmitter } from 'events';
-import { logger } from '../../shared/utils/logger';
+import { logger } from '../utils/logger';
+import { appendTenantAuditLog } from '../audit/tenant-audit-log';
 
 export interface TradingLoopConfig {
   symbols: string[];
@@ -18,14 +19,6 @@ export interface TradingLoopConfig {
   enableDryRun: boolean;
   enableLogging: boolean;
   checkIntervalMs: number;
-  /** EC#14: Max queued opportunities before dropping (default 50) */
-  maxQueuedOpportunities?: number;
-  /** EC#15: Default arbitrage amount in USD (default 1000) */
-  defaultArbAmountUsd?: number;
-  /** EC#15: Default fee rate (default 0.001 = 0.1%) */
-  defaultFeeRate?: number;
-  /** EC#16: Arbitrage opportunity TTL in ms (default 5000) */
-  opportunityTtlMs?: number;
 }
 
 export interface TradingLoopMetrics {
@@ -61,13 +54,7 @@ export class TradingLoop extends EventEmitter {
   private executionEngine: ExecutionEngine;
   private config: TradingLoopConfig;
   private isRunning = false;
-  // EC#10: Use number instead of NodeJS.Timeout for Workers compatibility
-  private scanInterval: ReturnType<typeof setInterval> | null = null;
-  // EC#12: Lock to prevent overlapping scans
-  private scanLock = false;
-  // EC#14: Backpressure — max queued opportunities
-  private readonly MAX_QUEUED_OPPORTUNITIES = 50;
-  private opportunityQueue: SpreadOpportunity[] = [];
+  private scanInterval: NodeJS.Timeout | null = null;
   private startTime = 0;
   private metrics: TradingLoopMetrics = {
     isRunning: false,
@@ -251,7 +238,7 @@ export class TradingLoop extends EventEmitter {
           // Convert SpreadOpportunity to ArbitrageOpportunity format
           const legs: ArbitrageLeg[] = [
             {
-              exchange: opp.buyExchange as any,
+              exchange: opp.buyExchange as ExchangeId,
               symbol: opp.symbol,
               side: 'buy',
               price: opp.buyPrice,
@@ -259,7 +246,7 @@ export class TradingLoop extends EventEmitter {
               fee: 0.001, // Default fee
             },
             {
-              exchange: opp.sellExchange as any,
+              exchange: opp.sellExchange as ExchangeId,
               symbol: opp.symbol,
               side: 'sell',
               price: opp.sellPrice,
@@ -282,6 +269,20 @@ export class TradingLoop extends EventEmitter {
 
           const result = await this.executionEngine.execute(arbitrageOpp);
           this.metrics.opportunitiesExecuted++;
+
+          await appendTenantAuditLog(
+            'system-tenant',
+            'trade_decision',
+            'system',
+            `Trade decision: Arbitrage opportunity ${opp.id} selected for execution`,
+            {
+              opportunityId: opp.id,
+              symbol: opp.symbol,
+              spreadPercent: opp.spreadPercent,
+              confidence: opp.confidence,
+              score: opp.score,
+            }
+          ).catch((err) => logger.error('[TradingLoop] Failed to append tenant audit log:', err));
 
           if (result.success) {
             this.metrics.totalProfit += result.actualProfit;
@@ -308,19 +309,13 @@ export class TradingLoop extends EventEmitter {
       this.latencySamples.shift();
     }
 
-    const avg = this.latencySamples.reduce((a, b) => a + b, 0) / this.latencySamples.length;
-    const p95 = this.medianAtPercentile(0.95);
+    const sorted = [...this.latencySamples].sort((a, b) => a - b);
+    const avg = sorted.reduce((a, b) => a + b, 0) / sorted.length;
+    const p95Index = Math.floor(sorted.length * 0.95);
+    const p95 = sorted[p95Index] || 0;
 
     this.metrics.avgLatencyMs = avg;
     this.metrics.p95LatencyMs = p95;
-  }
-
-  /** O(1) amortized running median for percentile tracking (no full sort) */
-  private medianAtPercentile(p: number): number {
-    const samples = this.latencySamples;
-    if (samples.length === 0) return 0;
-    const idx = Math.floor(samples.length * p);
-    return samples[Math.min(idx, samples.length - 1)];
   }
 
   /**

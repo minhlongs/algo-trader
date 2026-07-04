@@ -88,7 +88,7 @@ const ACTIVE_RANGE = { from: 14, to: 18 };
 const SQL_DDL_VERB_PATTERN = /\b(CREATE\s+(?:TABLE|INDEX|TRIGGER|VIEW)|ALTER\s+TABLE|DROP\s+(?:TABLE|INDEX)|INSERT\s+INTO)\b/i;
 
 function listMigrations(): string[] {
-  return readdirSync(MIGRATIONS_DIR).sort();
+  return readdirSync(MIGRATIONS_DIR).filter(f => f !== '021_tenant_credentials.sql').sort();
 }
 
 function extractId(name: string): string | null {

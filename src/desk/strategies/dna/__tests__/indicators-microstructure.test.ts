@@ -17,8 +17,8 @@ import {
   computeVWAP,
   computeDeltaCandle,
   computeMicroIndicators,
-} from '../indicators-microstructure';
-import type { Candle } from '../multi-tf-types';
+} from '../indicators-microstructure.js';
+import type { Candle } from '../multi-tf-types.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

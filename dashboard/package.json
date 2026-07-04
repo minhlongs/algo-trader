@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "pnpm run prebuild:manifesto && vite",
     "prebuild:manifesto": "cp ../docs/manifesto.md public/manifesto.md",
-    "build": "pnpm run prebuild:manifesto && tsc -b && vite build",
+    "build": "pnpm run prebuild:manifesto && tsc --noEmit && vite build",
     "preview": "vite preview",
     "deploy:staging": "wrangler pages deploy dist --project-name=algo-trader-dashboard --branch=staging",
     "deploy:production": "wrangler pages deploy dist --project-name=algo-trader-dashboard",

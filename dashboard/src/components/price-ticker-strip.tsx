@@ -2,12 +2,13 @@
  * Horizontal scrollable strip showing real-time bid/ask prices per exchange:symbol.
  * Flashes green on price increase, red on decrease.
  */
-import { useEffect, useRef, useState } from 'react';
-import { useTradingStore, PriceTick } from '../stores/trading-store';
+import { useRef } from 'react';
+import { useTradingStore } from '../stores/trading-store';
 
-interface TickerState {
-  tick: PriceTick;
+interface TickerPrevState {
+  mid: number;
   flash: 'up' | 'down' | null;
+  timestamp: number;
 }
 
 function formatPrice(n: number): string {
@@ -23,42 +24,13 @@ function spreadBps(bid: number, ask: number): string {
 
 export function PriceTickerStrip() {
   const prices = useTradingStore((s) => s.prices);
-  const prevRef = useRef<Record<string, number>>({});
-  const [tickers, setTickers] = useState<Record<string, TickerState>>({});
+  const prevRef = useRef<Record<string, TickerPrevState>>({});
 
-  useEffect(() => {
-    setTickers((prev) => {
-      const next: Record<string, TickerState> = {};
-      for (const [key, tick] of Object.entries(prices)) {
-        const prevMid = prevRef.current[key];
-        const mid = (tick.bid + tick.ask) / 2;
-        let flash: 'up' | 'down' | null = null;
-        if (prevMid !== undefined) {
-          if (mid > prevMid) flash = 'up';
-          else if (mid < prevMid) flash = 'down';
-        }
-        next[key] = { tick, flash: flash ?? prev[key]?.flash ?? null };
-        prevRef.current[key] = mid;
-      }
-      return next;
-    });
-
-    // Clear flashes after 600ms
-    const t = setTimeout(() => {
-      setTickers((prev) => {
-        const cleared: Record<string, TickerState> = {};
-        for (const [k, v] of Object.entries(prev)) cleared[k] = { ...v, flash: null };
-        return cleared;
-      });
-    }, 600);
-    return () => clearTimeout(t);
-  }, [prices]);
-
-  const entries = Object.values(tickers);
+  const entries = Object.values(prices);
 
   if (entries.length === 0) {
     return (
-      <div className="flex items-center gap-2 px-4 py-2 text-muted text-xs">
+      <div className="flex items-center gap-2 px-4 py-2 text-muted text-xs font-mono">
         <span className="animate-pulse">Waiting for price data...</span>
       </div>
     );
@@ -67,46 +39,67 @@ export function PriceTickerStrip() {
   return (
     <div className="overflow-x-auto scrollbar-thin">
       <div className="flex gap-3 px-1 py-1 min-w-max">
-        {entries.map(({ tick, flash }) => {
+        {entries.map((tick) => {
           const key = `${tick.exchange}:${tick.symbol}`;
+          const mid = (tick.bid + tick.ask) / 2;
+          const prev = prevRef.current[key];
+
+          let flash: 'up' | 'down' | null = null;
+          if (prev !== undefined) {
+            if (tick.timestamp !== prev.timestamp) {
+              if (mid > prev.mid) {
+                flash = 'up';
+              } else if (mid < prev.mid) {
+                flash = 'down';
+              } else {
+                flash = prev.flash;
+              }
+            } else {
+              flash = prev.flash;
+            }
+          }
+
+          // Save current state to ref for the next render
+          prevRef.current[key] = { mid, flash, timestamp: tick.timestamp };
+
           const flashClass =
             flash === 'up'
-              ? 'bg-profit/15 border-profit/40'
+              ? 'flash-up-anim border-profit/40'
               : flash === 'down'
-              ? 'bg-loss/15 border-loss/40'
-              : 'bg-bg-surface border-bg-border';
+              ? 'flash-down-anim border-loss/40'
+              : 'bg-bg-card border-bg-border';
 
           return (
             <div
               key={key}
               className={`
-                flex flex-col gap-0.5 px-3 py-2 rounded border transition-colors duration-300
+                flex flex-col gap-0.5 px-3 py-2 rounded border
                 min-w-[140px] ${flashClass}
               `}
             >
               {/* Header: exchange + symbol */}
               <div className="flex items-center justify-between gap-2">
-                <span className="text-accent text-xs font-bold truncate">
+                <span className="text-accent text-xs font-mono font-bold truncate">
                   {tick.exchange}
                 </span>
-                <span className="text-white text-xs font-semibold">
+                <span className="text-white text-xs font-mono font-semibold">
                   {tick.symbol}
                 </span>
               </div>
 
               {/* Bid / Ask */}
-              <div className="flex gap-2 text-xs">
-                <span className={`font-mono tabular-nums ${flash === 'up' ? 'text-profit' : flash === 'down' ? 'text-loss' : 'text-white'} transition-colors duration-300`}>
+              <div className="flex gap-2 text-xs font-mono">
+                <span className={`${flash === 'up' ? 'text-profit' : flash === 'down' ? 'text-loss' : 'text-white'}`}>
                   B {formatPrice(tick.bid)}
                 </span>
                 <span className="text-muted">|</span>
-                <span className={`font-mono tabular-nums ${flash === 'up' ? 'text-profit' : flash === 'down' ? 'text-loss' : 'text-muted'} transition-colors duration-300`}>
+                <span className={`${flash === 'up' ? 'text-profit' : flash === 'down' ? 'text-loss' : 'text-muted'}`}>
                   A {formatPrice(tick.ask)}
                 </span>
               </div>
 
               {/* Spread */}
-              <div className="text-muted text-[10px] font-mono tabular-nums">
+              <div className="text-muted text-[10px] font-mono">
                 {spreadBps(tick.bid, tick.ask)}
               </div>
             </div>

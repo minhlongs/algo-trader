@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Orbital Command Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "orbital-bg": "#0B1015",
+                        "orbital-surface": "#121A22",
+                        "orbital-surface-elevated": "#1A242F",
+                        "orbital-cyan": "#00FFFF",
+                        "orbital-cyan-dim": "rgba(0, 255, 255, 0.2)",
+                        "orbital-text": "#E2E8F0",
+                        "orbital-text-muted": "#94A3B8",
+                        "orbital-border": "#2A3B4C",
+                        "orbital-green": "#00FF9D",
+                        "orbital-red": "#FF3366",
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "1rem",
+                        "2xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-md": ["JetBrains Mono"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-lg": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "boxShadow": {
+                        'glow': '0 0 15px rgba(0, 255, 255, 0.5)',
+                        'glow-sm': '0 0 5px rgba(0, 255, 255, 0.3)',
+                        'floating': '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.orbital-bg');
+            color: theme('colors.orbital-text');
+            background-image: radial-gradient(circle at center, rgba(0,255,255,0.03) 0%, transparent 70%);
+            background-attachment: fixed;
+        }
+        /* Custom scrollbar for data tables */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.orbital-border');
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.orbital-cyan');
+        }
+        .glass-panel {
+            background: rgba(18, 26, 34, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid theme('colors.orbital-border');
+        }
+        .hex-hub {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+        }
+        .hex-card {
+            clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+            background: theme('colors.orbital-surface-elevated');
+            border: 2px solid theme('colors.orbital-border');
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 240px;
+            height: 240px;
+            transition: all 0.3s ease;
+        }
+        .hex-card:hover {
+            border-color: theme('colors.orbital-cyan');
+            box-shadow: 0 0 20px rgba(0,255,255,0.2) inset;
+        }
+        @media (min-width: 768px) {
+            .hex-card-1 { position: absolute; top: 0; left: 50%; transform: translateX(-50%); }
+            .hex-card-2 { position: absolute; bottom: 0; left: 30%; }
+            .hex-card-3 { position: absolute; bottom: 0; right: 30%; }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen bg-orbital-bg text-orbital-text font-body-lg selection:bg-orbital-cyan selection:text-black">
+<!-- Minimal Top Nav -->
+<header class="flex justify-between items-center px-6 w-full fixed top-0 z-50 glass-panel h-14 border-b-0 border-b-2 border-transparent hover:border-orbital-cyan transition-colors duration-500">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-orbital-cyan shadow-glow-sm rounded-full">public</span>
+<span class="font-headline-sm text-headline-sm font-bold text-white tracking-widest uppercase">Orbital <span class="text-orbital-cyan">Command</span></span>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden md:flex items-center gap-2 px-3 py-1 bg-orbital-surface rounded-full border border-orbital-border text-label-sm text-orbital-cyan">
+<div class="w-2 h-2 rounded-full bg-orbital-cyan animate-pulse"></div>
+            System Online
+        </div>
+<button class="text-orbital-text-muted hover:text-orbital-cyan transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+</button>
+<button class="w-8 h-8 rounded-full border border-orbital-cyan flex items-center justify-center text-orbital-cyan hover:bg-orbital-cyan-dim transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[18px]" data-icon="person">person</span>
+</button>
+</div>
+</header>
+<div class="flex flex-1 pt-14 h-screen overflow-hidden relative">
+<!-- Floating Left Sidebar (Icon Only) -->
+<nav class="hidden md:flex flex-col items-center py-6 glass-panel w-16 fixed left-4 top-24 bottom-24 rounded-xl z-40 shadow-floating border border-orbital-border/50">
+<div class="flex flex-col gap-8 w-full">
+<a class="flex justify-center text-orbital-text-muted hover:text-orbital-cyan hover:shadow-glow-sm transition-all cursor-pointer relative group" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="absolute left-14 bg-orbital-surface-elevated text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-orbital-border">Portfolio</span>
+</a>
+<a class="flex justify-center text-orbital-cyan shadow-glow-sm transition-all cursor-pointer relative group" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="query_stats">query_stats</span>
+<div class="absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-6 bg-orbital-cyan rounded-r"></div>
+</a>
+<a class="flex justify-center text-orbital-text-muted hover:text-orbital-cyan hover:shadow-glow-sm transition-all cursor-pointer relative group" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="swap_horiz">swap_horiz</span>
+</a>
+<a class="flex justify-center text-orbital-text-muted hover:text-orbital-cyan hover:shadow-glow-sm transition-all cursor-pointer relative group mt-auto" href="#">
+<span class="material-symbols-outlined text-[24px]" data-icon="settings">settings</span>
+</a>
+</div>
+</nav>
+<!-- Main Canvas -->
+<main class="flex-1 overflow-y-auto px-4 md:pl-28 md:pr-80 pt-8 pb-24 relative z-10 flex flex-col gap-12">
+<!-- Centralized Hub -->
+<div class="flex flex-col items-center">
+<h1 class="font-headline-lg text-headline-lg text-white mb-8 tracking-wider text-center w-full uppercase"><span class="text-orbital-cyan opacity-50 text-headline-md mr-2">/</span> Overview</h1>
+<div class="w-full max-w-4xl flex flex-col md:flex-row justify-center items-center gap-6 md:gap-12 relative">
+<!-- Connective lines background for desktop -->
+<div class="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-1 border-t border-orbital-border/50 z-0"></div>
+<div class="hidden md:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-24 w-1 border-l border-orbital-border/50 z-0"></div>
+<!-- Stat Card 1 -->
+<div class="bg-orbital-surface-elevated border border-orbital-border rounded-xl p-6 flex flex-col relative group w-full md:w-64 shadow-floating hover:border-orbital-cyan transition-colors z-10">
+<div class="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-orbital-cyan to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-widest mb-2 flex items-center justify-between">
+                        Total Balance
+                        <span class="material-symbols-outlined text-[14px] text-orbital-cyan">account_balance</span>
+</div>
+<div class="font-headline-md text-headline-md text-white mb-1">$124,592.80</div>
+<div class="font-label-sm text-label-sm text-orbital-green flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">north_east</span>
+                        +2.4%
+                    </div>
+</div>
+<!-- Stat Card 2 (Center/Elevated) -->
+<div class="bg-orbital-surface-elevated border-2 border-orbital-cyan/30 rounded-xl p-6 flex flex-col relative group w-full md:w-72 md:-translate-y-6 shadow-[0_0_30px_rgba(0,255,255,0.1)] hover:border-orbital-cyan transition-all z-10">
+<div class="absolute -top-px left-1/2 -translate-x-1/2 w-1/2 h-px bg-orbital-cyan shadow-glow"></div>
+<div class="font-label-sm text-label-sm text-orbital-cyan uppercase tracking-widest mb-2 flex items-center justify-between">
+                        Daily Profit
+                        <span class="material-symbols-outlined text-[14px]">monitoring</span>
+</div>
+<div class="font-headline-lg text-headline-lg text-orbital-cyan mb-1">+$3,420.50</div>
+<div class="font-label-sm text-label-sm text-orbital-green flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">north_east</span>
+                        +1.2%
+                    </div>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-orbital-surface-elevated border border-orbital-border rounded-xl p-6 flex flex-col relative group w-full md:w-64 shadow-floating hover:border-orbital-cyan transition-colors z-10">
+<div class="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-orbital-cyan to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-widest mb-2 flex items-center justify-between">
+                        Active Trades
+                        <span class="material-symbols-outlined text-[14px] text-orbital-cyan">radar</span>
+</div>
+<div class="font-headline-md text-headline-md text-white mb-1">12 Positions</div>
+<div class="font-label-sm text-label-sm text-orbital-text-muted flex items-center gap-1">
+                        Status: <span class="text-orbital-cyan">Open</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Lower Deck: Data Table -->
+<div class="mt-8">
+<h2 class="font-label-lg text-label-lg text-orbital-cyan mb-4 uppercase tracking-widest flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+                Market Feeds
+            </h2>
+<div class="glass-panel rounded-xl border border-orbital-border overflow-hidden shadow-floating">
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse whitespace-nowrap">
+<thead class="bg-orbital-surface border-b border-orbital-border">
+<tr>
+<th class="px-6 py-4 font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-widest font-medium">Pair</th>
+<th class="px-6 py-4 font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-widest font-medium text-right">Price</th>
+<th class="px-6 py-4 font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-widest font-medium text-right">24h Chg</th>
+<th class="px-6 py-4 font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-widest font-medium text-right">Vol</th>
+</tr>
+</thead>
+<tbody class="font-label-md text-label-md text-white">
+<!-- Row 1 -->
+<tr class="border-b border-orbital-border/50 hover:bg-orbital-cyan/5 hover:shadow-[inset_0_0_10px_rgba(0,255,255,0.2)] transition-all cursor-pointer group">
+<td class="px-6 py-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-orbital-surface border border-orbital-border group-hover:border-orbital-cyan flex items-center justify-center text-orange-400 font-bold text-xs transition-colors">₿</div>
+<span class="font-bold tracking-wide group-hover:text-orbital-cyan transition-colors">BTC/USD</span>
+</td>
+<td class="px-6 py-4 text-right font-mono">$64,230.50</td>
+<td class="px-6 py-4 text-right text-orbital-green font-mono">+2.45%</td>
+<td class="px-6 py-4 text-right text-orbital-text-muted font-mono">1.2B</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-orbital-border/50 hover:bg-orbital-cyan/5 hover:shadow-[inset_0_0_10px_rgba(0,255,255,0.2)] transition-all cursor-pointer group">
+<td class="px-6 py-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-orbital-surface border border-orbital-border group-hover:border-orbital-cyan flex items-center justify-center text-blue-400 font-bold text-xs transition-colors">Ξ</div>
+<span class="font-bold tracking-wide group-hover:text-orbital-cyan transition-colors">ETH/USD</span>
+</td>
+<td class="px-6 py-4 text-right font-mono">$3,450.20</td>
+<td class="px-6 py-4 text-right text-orbital-green font-mono">+1.80%</td>
+<td class="px-6 py-4 text-right text-orbital-text-muted font-mono">850M</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-orbital-border/50 hover:bg-orbital-cyan/5 hover:shadow-[inset_0_0_10px_rgba(0,255,255,0.2)] transition-all cursor-pointer group">
+<td class="px-6 py-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-orbital-surface border border-orbital-border group-hover:border-orbital-cyan flex items-center justify-center text-teal-400 font-bold text-xs transition-colors">S</div>
+<span class="font-bold tracking-wide group-hover:text-orbital-cyan transition-colors">SOL/USD</span>
+</td>
+<td class="px-6 py-4 text-right font-mono">$145.60</td>
+<td class="px-6 py-4 text-right text-orbital-red font-mono">-4.20%</td>
+<td class="px-6 py-4 text-right text-orbital-text-muted font-mono">420M</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-orbital-cyan/5 hover:shadow-[inset_0_0_10px_rgba(0,255,255,0.2)] transition-all cursor-pointer group">
+<td class="px-6 py-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-orbital-surface border border-orbital-border group-hover:border-orbital-cyan flex items-center justify-center text-yellow-400 font-bold text-xs transition-colors">B</div>
+<span class="font-bold tracking-wide group-hover:text-orbital-cyan transition-colors">BNB/USD</span>
+</td>
+<td class="px-6 py-4 text-right font-mono">$580.90</td>
+<td class="px-6 py-4 text-right text-orbital-green font-mono">+0.50%</td>
+<td class="px-6 py-4 text-right text-orbital-text-muted font-mono">310M</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Right Control Panel -->
+<aside class="w-full md:w-[300px] glass-panel border border-orbital-border rounded-xl p-5 flex flex-col gap-6 overflow-y-auto shrink-0 md:fixed md:right-4 md:top-24 md:bottom-24 z-40 shadow-floating">
+<div class="flex items-center gap-2 border-b border-orbital-border/50 pb-3">
+<span class="material-symbols-outlined text-orbital-cyan text-[20px]">tune</span>
+<h2 class="font-label-lg text-label-lg text-white uppercase tracking-widest">Execute</h2>
+</div>
+<!-- Action Toggle -->
+<div class="flex bg-orbital-surface rounded p-1 border border-orbital-border">
+<button class="flex-1 py-1.5 text-center rounded bg-orbital-cyan/20 text-orbital-cyan border border-orbital-cyan/50 font-label-md text-label-md font-bold transition-all shadow-[inset_0_0_10px_rgba(0,255,255,0.2)]">BUY</button>
+<button class="flex-1 py-1.5 text-center rounded text-orbital-text-muted hover:text-white font-label-md text-label-md transition-all">SELL</button>
+</div>
+<!-- Form Elements -->
+<div class="flex flex-col gap-5">
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-wide">Target Asset</label>
+<div class="relative group">
+<select class="w-full bg-orbital-surface border border-orbital-border rounded py-2 pl-3 pr-10 font-label-md text-label-md text-white appearance-none focus:outline-none focus:border-orbital-cyan focus:ring-1 focus:ring-orbital-cyan transition-colors group-hover:border-orbital-cyan/50">
+<option>BTC/USD</option>
+<option>ETH/USD</option>
+<option>SOL/USD</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 transform -translate-y-1/2 text-orbital-cyan pointer-events-none text-[18px]">arrow_drop_down</span>
+</div>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-wide">Entry Price</label>
+<input class="w-full bg-orbital-surface/50 border border-orbital-border/50 rounded py-2 px-3 font-label-md text-label-md text-orbital-text-muted cursor-not-allowed text-center uppercase tracking-widest" disabled="" type="text" value="Market Order"/>
+</div>
+<div class="flex flex-col gap-1.5">
+<label class="font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-wide">Volume (BTC)</label>
+<div class="relative group">
+<input class="w-full bg-orbital-surface border border-orbital-border rounded py-2 px-3 font-mono text-label-md text-orbital-cyan focus:outline-none focus:border-orbital-cyan focus:ring-1 focus:ring-orbital-cyan transition-all text-right pr-12 group-hover:border-orbital-cyan/50 bg-black/20" placeholder="0.00" type="number"/>
+<span class="absolute right-3 top-1/2 transform -translate-y-1/2 font-label-sm text-label-sm text-orbital-text-muted">BTC</span>
+</div>
+</div>
+<!-- Cyan Slider -->
+<div class="flex flex-col gap-2 mt-2">
+<div class="flex justify-between font-label-sm text-label-sm text-orbital-text-muted text-[10px]">
+<span>0%</span>
+<span>25%</span>
+<span>50%</span>
+<span>75%</span>
+<span>MAX</span>
+</div>
+<div class="relative w-full h-1 bg-orbital-surface rounded-full outline outline-1 outline-orbital-border overflow-visible">
+<div class="absolute left-0 top-0 h-full bg-orbital-cyan rounded-l-full shadow-glow" style="width: 25%;"></div>
+<div class="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-orbital-bg rounded-full cursor-pointer border-2 border-orbital-cyan shadow-glow" style="left: 25%;">
+<div class="w-1 h-1 bg-orbital-cyan rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></div>
+</div>
+</div>
+</div>
+<div class="flex justify-between items-center py-3 border-t border-b border-orbital-border/50 mt-2 bg-orbital-surface/30 px-2 rounded">
+<span class="font-label-sm text-label-sm text-orbital-text-muted uppercase tracking-widest">Est. Value</span>
+<span class="font-mono text-label-md text-orbital-cyan font-bold">$0.00</span>
+</div>
+<button class="w-full bg-orbital-cyan/10 hover:bg-orbital-cyan hover:text-black border border-orbital-cyan text-orbital-cyan transition-all font-label-lg text-label-lg font-bold py-3 rounded mt-2 flex justify-center items-center gap-2 uppercase tracking-widest shadow-[inset_0_0_15px_rgba(0,255,255,0.2)] hover:shadow-glow">
+                Transmit Order
+                <span class="material-symbols-outlined text-[18px]">rocket_launch</span>
+</button>
+</div>
+</aside>
+</div>
+<!-- Mobile Bottom Nav -->
+<nav class="md:hidden flex justify-around items-center h-16 glass-panel border-t border-orbital-border w-full fixed bottom-0 z-50">
+<a class="flex flex-col items-center justify-center w-full h-full text-orbital-text-muted hover:text-orbital-cyan transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-orbital-cyan border-t-2 border-orbital-cyan bg-orbital-cyan/10 shadow-[inset_0_10px_20px_-10px_rgba(0,255,255,0.3)]" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-orbital-text-muted hover:text-orbital-cyan transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="swap_horiz">swap_horiz</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-orbital-text-muted hover:text-orbital-cyan transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</a>
+</nav>
+</body></html>

@@ -23,6 +23,10 @@ const mockRedis = {
   del: vi.fn().mockResolvedValue(1),
   keys: vi.fn().mockImplementation(async () => ['key1', 'key2', 'key3']),
   ping: vi.fn().mockResolvedValue('PONG'),
+  defineCommand: vi.fn().mockImplementation(function (name) {
+    (mockRedis as Record<string, unknown>)[name] = vi.fn().mockResolvedValue([1, 1]);
+  }),
+  rateLimit: vi.fn().mockResolvedValue([1, 1]),
   info: vi.fn().mockImplementation(async () => {
     // Return properly formatted Redis INFO response
     return [
@@ -48,6 +52,26 @@ vi.mock('../../../redis', () => ({
 vi.mock('../../../shared/db/postgres-client', () => ({
   getDbClient: () => ({
     query: vi.fn().mockResolvedValue({ rows: [] }),
+  }),
+  transaction: vi.fn().mockImplementation(async (fn) => {
+    const mockClient = {
+      query: vi.fn().mockResolvedValue({
+        rows: [{
+          id: 'log-123',
+          tenant_id: 'tenant-123',
+          sequence_number: '1',
+          event_type: 'halt',
+          action_by: 'admin',
+          reason: 'test',
+          metadata: {},
+          hash: 'somehash',
+          previous_hash: null,
+          created_at: new Date().toISOString()
+        }]
+      }),
+      release: vi.fn(),
+    };
+    return fn(mockClient as unknown as import('pg').PoolClient);
   }),
 }));
 
@@ -93,7 +117,10 @@ vi.mock('../../../db/pnl-service', () => ({
 describe('API Server', () => {
   let app: express.Application;
 
+  const TEST_ADMIN_KEY = 'test-admin-key-for-api-tests';
+
   beforeAll(async () => {
+    process.env.ADMIN_API_KEY = TEST_ADMIN_KEY;
     const { ApiServer } = await import('../server');
     const apiServer = new ApiServer({ port: 3001 });
     app = apiServer.getApp();
@@ -190,6 +217,7 @@ describe('API Server', () => {
     it('POST /api/admin/halt should halt trading', async () => {
       const res = await request(app)
         .post('/api/admin/halt')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
         .send({ reason: 'Testing' });
 
       expect(res.status).toBe(200);
@@ -199,6 +227,7 @@ describe('API Server', () => {
     it('POST /api/admin/halt should reject without reason', async () => {
       const res = await request(app)
         .post('/api/admin/halt')
+        .set('X-Admin-Key', TEST_ADMIN_KEY)
         .send({ reason: '' });
 
       expect(res.status).toBe(400);
@@ -206,14 +235,14 @@ describe('API Server', () => {
     });
 
     it('POST /api/admin/resume should resume trading', async () => {
-      const res = await request(app).post('/api/admin/resume');
+      const res = await request(app).post('/api/admin/resume').set('X-Admin-Key', TEST_ADMIN_KEY);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
 
     it('GET /api/admin/status should return system status', async () => {
-      const res = await request(app).get('/api/admin/status');
+      const res = await request(app).get('/api/admin/status').set('X-Admin-Key', TEST_ADMIN_KEY);
 
       expect(res.status).toBe(200);
       expect(res.body.trading).toBeDefined();

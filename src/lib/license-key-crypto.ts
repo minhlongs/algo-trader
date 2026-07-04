@@ -109,28 +109,30 @@ export function encryptLicenseKey(key: string): string {
   return iv.toString('hex') + ':' + tag + ':' + encrypted;
 }
 
-/** Decrypt license key from storage (supports both GCM 3-part and legacy CBC 2-part format) */
+/** Decrypt license key from storage with GCM and CBC backward compatibility */
 export function decryptLicenseKey(encrypted: string): string {
   const encKey = getEncryptionKey();
   const parts = encrypted.split(':');
-  if (parts.length === 3) {
-    // GCM format: iv:tag:ciphertext
-    const iv = Buffer.from(parts[0]!, 'hex');
-    const tag = Buffer.from(parts[1]!, 'hex');
-    const ciphertext = parts[2]!;
-    const decipher = crypto.createDecipheriv('aes-256-gcm', encKey, iv);
-    decipher.setAuthTag(tag);
-    let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  }
+  
   if (parts.length === 2) {
-    // Legacy CBC format: iv:ciphertext
     const iv = Buffer.from(parts[0]!, 'hex');
     const decipher = crypto.createDecipheriv('aes-256-cbc', encKey, iv);
     let decrypted = decipher.update(parts[1]!, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
   }
-  throw new Error('Invalid encrypted license key format');
+  
+  if (parts.length !== 3) {
+    throw new Error('Invalid encrypted license key format');
+  }
+  
+  const iv = Buffer.from(parts[0]!, 'hex');
+  const tag = Buffer.from(parts[1]!, 'hex');
+  const ciphertext = parts[2]!;
+  
+  const decipher = crypto.createDecipheriv('aes-256-gcm', encKey, iv);
+  decipher.setAuthTag(tag);
+  let decrypted = decipher.update(ciphertext, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
 }

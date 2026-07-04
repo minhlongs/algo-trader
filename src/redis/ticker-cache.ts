@@ -75,17 +75,24 @@ export class TickerCache {
     };
   }
 
-  /**
-   * Get tickers for multiple symbols - O(N)
-   */
   async getTickers(exchange: string, symbols: string[]): Promise<Map<string, Ticker>> {
     const results = new Map<string, Ticker>();
+    if (symbols.length === 0) return results;
 
+    const pipeline = this.redis.pipeline();
     for (const symbol of symbols) {
       const key = this.getKey(exchange, symbol);
-      const data = await this.redis.hgetall(key);
+      pipeline.hgetall(key);
+    }
 
-      if (data && Object.keys(data).length > 0) {
+    const replies = await pipeline.exec();
+    if (!replies) return results;
+
+    for (let i = 0; i < symbols.length; i++) {
+      const symbol = symbols[i];
+      const [err, data] = replies[i] as [Error | null, any];
+
+      if (!err && data && Object.keys(data).length > 0) {
         results.set(symbol, {
           last: parseFloat(data.last) || 0,
           bid: parseFloat(data.bid) || 0,
@@ -108,21 +115,32 @@ export class TickerCache {
     Map<string, { exchange: string; bid: number }>
   > {
     const bestBids = new Map<string, { exchange: string; bid: number }>();
+    if (symbols.length === 0 || exchanges.length === 0) return bestBids;
+
+    const pipeline = this.redis.pipeline();
+    const keysOrder: { symbol: string; exchange: string }[] = [];
 
     for (const symbol of symbols) {
-      let bestBid = 0;
-      let bestExchange = '';
-
       for (const exchange of exchanges) {
-        const ticker = await this.getTicker(exchange, symbol);
-        if (ticker && ticker.bid > bestBid) {
-          bestBid = ticker.bid;
-          bestExchange = exchange;
-        }
+        const key = this.getKey(exchange, symbol);
+        pipeline.hgetall(key);
+        keysOrder.push({ symbol, exchange });
       }
+    }
 
-      if (bestExchange) {
-        bestBids.set(symbol, { exchange: bestExchange, bid: bestBid });
+    const replies = await pipeline.exec();
+    if (!replies) return bestBids;
+
+    for (let i = 0; i < keysOrder.length; i++) {
+      const { symbol, exchange } = keysOrder[i];
+      const [err, data] = replies[i] as [Error | null, any];
+
+      if (!err && data && Object.keys(data).length > 0) {
+        const bid = parseFloat(data.bid) || 0;
+        const currentBest = bestBids.get(symbol);
+        if (bid > (currentBest?.bid ?? 0)) {
+          bestBids.set(symbol, { exchange, bid });
+        }
       }
     }
 

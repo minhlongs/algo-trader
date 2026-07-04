@@ -30,11 +30,11 @@ export class OrderbookManager {
   }
 
   private getBidsKey(exchange: string, symbol: string): string {
-    return `orderbook:${exchange}:${symbol}:bids`;
+    return `orderbook:{${exchange}:${symbol}}:bids`;
   }
 
   private getAsksKey(exchange: string, symbol: string): string {
-    return `orderbook:${exchange}:${symbol}:asks`;
+    return `orderbook:{${exchange}:${symbol}}:asks`;
   }
 
   /**
@@ -61,24 +61,24 @@ export class OrderbookManager {
       value: `${level.price}:${level.amount}`,
     }));
 
-    const pipeline = this.redis.pipeline();
+    const tx = this.redis.multi();
 
-    // Clear and set new state (snapshot approach)
-    pipeline.del(bidsKey);
-    pipeline.del(asksKey);
+    // Clear and set new state atomically inside a transaction
+    tx.del(bidsKey);
+    tx.del(asksKey);
 
     if (bidMembers.length > 0) {
-      pipeline.zadd(bidsKey, ...bidMembers.flatMap((m) => [m.score, m.value]));
+      tx.zadd(bidsKey, ...bidMembers.flatMap((m) => [m.score, m.value]));
     }
     if (askMembers.length > 0) {
-      pipeline.zadd(asksKey, ...askMembers.flatMap((m) => [m.score, m.value]));
+      tx.zadd(asksKey, ...askMembers.flatMap((m) => [m.score, m.value]));
     }
 
     // Set TTL 1 hour (auto-cleanup stale data)
-    pipeline.expire(bidsKey, 3600);
-    pipeline.expire(asksKey, 3600);
+    tx.expire(bidsKey, 3600);
+    tx.expire(asksKey, 3600);
 
-    await pipeline.exec();
+    await tx.exec();
   }
 
   /**
@@ -86,10 +86,10 @@ export class OrderbookManager {
    */
   async getBestBid(exchange: string, symbol: string): Promise<OrderBookLevel | null> {
     const key = this.getBidsKey(exchange, symbol);
-    const result = await this.redis.zrange(key, 0, 0, 'WITHSCORES');
+    const result = await this.redis.zrange(key, 0, 0);
     if (!result || result.length === 0) return null;
 
-    const [member, _score] = result;
+    const member = result[0];
     const [price, amount] = member.split(':').map(parseFloat);
     return { price, amount };
   }
@@ -99,10 +99,10 @@ export class OrderbookManager {
    */
   async getBestAsk(exchange: string, symbol: string): Promise<OrderBookLevel | null> {
     const key = this.getAsksKey(exchange, symbol);
-    const result = await this.redis.zrange(key, 0, 0, 'WITHSCORES');
+    const result = await this.redis.zrange(key, 0, 0);
     if (!result || result.length === 0) return null;
 
-    const [member, _score] = result;
+    const member = result[0];
     const [price, amount] = member.split(':').map(parseFloat);
     return { price, amount };
   }
@@ -119,13 +119,13 @@ export class OrderbookManager {
     const asksKey = this.getAsksKey(exchange, symbol);
 
     const [bidsRaw, asksRaw] = await Promise.all([
-      this.redis.zrange(bidsKey, 0, levels - 1, 'WITHSCORES'),
-      this.redis.zrange(asksKey, 0, levels - 1, 'WITHSCORES'),
+      this.redis.zrange(bidsKey, 0, levels - 1),
+      this.redis.zrange(asksKey, 0, levels - 1),
     ]);
 
     const parseLevels = (raw: string[]): OrderBookLevel[] => {
       const result: OrderBookLevel[] = [];
-      for (let i = 0; i < raw.length; i += 2) {
+      for (let i = 0; i < raw.length; i++) {
         const [price, amount] = raw[i].split(':').map(parseFloat);
         result.push({ price, amount });
       }

@@ -11,8 +11,8 @@
  *  - paperMode=false → executor is no-op (conservative default)
  */
 
-import { emitDnaEvent } from './orchestrator';
-import type { ConsensusSignal, TfId, MarketRegime, PaperJournalEntry, DnaJournalEntry } from './multi-tf-types';
+import { emitDnaEvent } from './orchestrator.js';
+import type { ConsensusSignal, TfId, MarketRegime, PaperJournalEntry, DnaJournalEntry } from './multi-tf-types.js';
 
 
 // ─── In-memory journal store (replace with a real DB in future) ───────────────
@@ -90,4 +90,4 @@ export function executePaperConsensus(
 
 // ─── Re-export types consumers may want ──────────────────────────────────────
 
-export { ConsensusAction, MarketRegime, TfId } from './multi-tf-types';
+export { ConsensusAction, MarketRegime, TfId } from './multi-tf-types.js';

@@ -6,14 +6,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express, { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 
-// Mock tier gating — route tests do not run raas-gate middleware
-vi.mock('../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
-  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
-  canAccessFeature: () => true,
-  FEATURE_ACCESS: {},
-}));
-
 // Define hoisted mocks so they are available to hoisted vi.mock calls
 const { mockSave, mockGet, mockDelete, mockAppendAudit } = vi.hoisted(() => ({
   mockSave: vi.fn(),
@@ -23,13 +15,13 @@ const { mockSave, mockGet, mockDelete, mockAppendAudit } = vi.hoisted(() => ({
 }));
 
 // Mock postgres client to prevent real DB queries
-vi.mock('../../../shared/db/postgres-client', () => ({
+vi.mock('../../db/postgres-client', () => ({
   query: vi.fn().mockResolvedValue({ rows: [] }),
   getDbClient: () => ({}),
 }));
 
 // Mock TenantCredentialsRepository methods using hoisted variables
-vi.mock('../../../db/tenant-credentials-repository', () => ({
+vi.mock('../../db/tenant-credentials-repository', () => ({
   TenantCredentialsRepository: class {
     save = mockSave;
     get = mockGet;
@@ -110,7 +102,7 @@ describe('Credentials Ingestion API', () => {
   });
 
   it('should throw an error and block execution inside SubscriberExecutor if credentials do not exist', async () => {
-    const { SubscriberExecutor } = await import('../../raas');
+    const { SubscriberExecutor } = await import('../../raas/subscriber-executor');
     const executor = new SubscriberExecutor();
 
     // Mock repository get returning null
@@ -127,7 +119,7 @@ describe('Credentials Ingestion API', () => {
   });
 
   it('should execute successfully inside SubscriberExecutor if credentials exist', async () => {
-    const { SubscriberExecutor } = await import('../../raas');
+    const { SubscriberExecutor } = await import('../../raas/subscriber-executor');
     const executor = new SubscriberExecutor();
 
     // Mock repository get returning credentials

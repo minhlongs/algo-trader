@@ -12,7 +12,7 @@ import {
   TfSignal,
   RegimeSnapshot,
   ConsensusSignal,
-} from './multi-tf-types';
+} from './multi-tf-types.js';
 
 export interface DnaEngineState {
   schemaVersion: string;
@@ -63,6 +63,6 @@ export class PostgresStateStore implements DnaStateStore {
 
 /** Convenience factory — imports postgres-client lazily to keep this module tree-shakeable. */
 export async function createPostgresStateStore(): Promise<PostgresStateStore> {
-  const { query } = await import('../../../db/postgres-client');
+  const { query } = await import('../../db/postgres-client');
   return new PostgresStateStore((sql, params) => query(sql, params));
 }

@@ -11,7 +11,7 @@ import {
   InMemoryStateStore,
   PostgresStateStore,
   type DnaEngineState,
-} from '../dna-state-store';
+} from '../dna-state-store.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

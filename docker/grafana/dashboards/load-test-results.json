@@ -1,0 +1,128 @@
+{
+  "dashboard": {
+    "title": "Load Test Results",
+    "tags": ["load-test", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "10s",
+    "time": { "from": "now-15m", "to": "now" },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Shard Latency p95",
+        "type": "stat",
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 4 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(shard_latency_seconds_bucket[5m])) by (le, shard)) * 1000",
+            "legendFormat": "Shard {{shard}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "ms",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 100 }] },
+            "color": { "mode": "thresholds" }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Shard Error Rate",
+        "type": "stat",
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 4 },
+        "targets": [
+          {
+            "expr": "rate(shard_errors_total[5m])",
+            "legendFormat": "Shard {{shard}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "1/s",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0.01 }] },
+            "color": { "mode": "thresholds" }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Memory Usage (MB)",
+        "type": "timeseries",
+        "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "test_memory_target_mb",
+            "legendFormat": "VU count: {{vu}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "MB"
+      },
+      {
+        "id": 4,
+        "title": "Queue Depth",
+        "type": "bargauge",
+        "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "agent_queue_depth",
+            "legendFormat": "Priority {{priority}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "jobs"
+      },
+      {
+        "id": 5,
+        "title": "Region Latency Comparison",
+        "type": "heatmap",
+        "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(region_latency_seconds_bucket[5m])) by (le, region)) * 1000",
+            "legendFormat": "{{region}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "ms"
+      },
+      {
+        "id": 6,
+        "title": "Failover Recovery Time",
+        "type": "stat",
+        "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+        "targets": [
+          {
+            "expr": "failover_recovery_seconds",
+            "legendFormat": "{{from}}→{{to}}",
+            "datasource": "Prometheus"
+          }
+        ],
+        "unit": "s",
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 30 }] },
+            "color": { "mode": "thresholds" }
+          }
+        }
+      }
+    ],
+    "templated": false,
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    }
+  }
+}

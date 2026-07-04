@@ -2,8 +2,7 @@ import { Router, Request, Response } from 'express';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
-import { logger } from '../../../shared/utils/logger';
-import { requireTier } from '../../middleware/feature-gate';
+import { logger } from '../../utils/logger';
 
 const DATA_DIR = join(process.cwd(), 'data', 'personalization');
 
@@ -22,7 +21,7 @@ export const personalizationRouter: Router = Router();
  * GET /api/personalization/config?tier=FREE|PRO|ENTERPRISE
  * Returns widget layout structures and active feature flags.
  */
-personalizationRouter.get('/config', requireTier('FREE'), (req: Request, res: Response): void => {
+personalizationRouter.get('/config', (req: Request, res: Response): void => {
   const tier = (req.query.tier as string || 'FREE').toUpperCase();
   
   if (tier !== 'FREE' && tier !== 'PRO' && tier !== 'ENTERPRISE') {
@@ -79,7 +78,7 @@ personalizationRouter.get('/config', requireTier('FREE'), (req: Request, res: Re
  * GET /api/personalization/ab-config?tenantId=<tenantId>
  * Deterministically splits tenant users into A/B variants to ensure consistent UI experiences.
  */
-personalizationRouter.get('/ab-config', requireTier('FREE'), (req: Request, res: Response): void => {
+personalizationRouter.get('/ab-config', (req: Request, res: Response): void => {
   const tenantId = req.query.tenantId as string;
 
   if (!tenantId || typeof tenantId !== 'string' || !TENANT_ID_REGEX.test(tenantId)) {
@@ -109,7 +108,7 @@ personalizationRouter.get('/ab-config', requireTier('FREE'), (req: Request, res:
  * POST /api/personalization/events
  * Collects client interactions and appends them to tenant-isolated storage files.
  */
-personalizationRouter.post('/events', requireTier('FREE'), (req: Request, res: Response): void => {
+personalizationRouter.post('/events', (req: Request, res: Response): void => {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { tenantId, eventType, eventData } = body || {};

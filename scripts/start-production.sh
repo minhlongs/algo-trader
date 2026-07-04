@@ -72,3 +72,8 @@ if [ -n "$DETACH" ]; then
   echo "  NATS:       http://localhost:8222"
   echo "  Redis:      localhost:6379"
 fi
+
+# Pre-warm GPU/LLM models in the background
+echo "[+] Starting background model warming..."
+"$SCRIPT_DIR/warm-models.sh" > /tmp/model-warming.log 2>&1 &
+echo "[+] Stack is up and warming is running in the background (log at /tmp/model-warming.log)"

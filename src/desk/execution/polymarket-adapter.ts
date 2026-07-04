@@ -7,8 +7,12 @@
  * Base: https://clob.polymarket.com
  */
 
-import { createHmac } from 'crypto';
 import { PolymarketSigner, PolymarketOrder, SignedOrder } from './polymarket-signer';
+import { createHmac } from 'crypto';
+import { recordExternalApiLatency } from '../middleware/prometheus-metrics';
+import { Http2ConnectionPool } from './http2-connection-pool';
+import * as http2 from 'node:http2';
+import { logger } from '../utils/logger';
 
 const CLOB_BASE = 'https://clob.polymarket.com';
 
@@ -70,28 +74,57 @@ export interface PolymarketMarketInfo {
 /**
  * Execution adapter for Polymarket CLOB REST API.
  * Handles order placement, cancellation, and market queries.
+ * Uses HTTP/2 connection pooling for reduced latency.
  */
 export class PolymarketAdapter {
   private readonly apiUrl: string;
   private readonly signer: PolymarketSigner;
   private readonly apiKey: string;
-  /** Used in HMAC-SHA256 signature — see _stubSignature TODO */
+  /** Used in HMAC-SHA256 signature — see _computeSignature */
   private readonly apiSecret: string;
   private readonly passphrase: string;
+  private readonly http2Pool: Http2ConnectionPool;
 
   /**
    * @param apiUrl - CLOB base URL (default: https://clob.polymarket.com)
    * @param signer - Configured PolymarketSigner instance
+   * @param http2Pool - Optional HTTP/2 connection pool (creates singleton if not provided)
    */
   constructor(
     signer: PolymarketSigner,
     apiUrl: string = CLOB_BASE,
+    http2Pool?: Http2ConnectionPool,
   ) {
     this.signer = signer;
     this.apiUrl = apiUrl.replace(/\/$/, '');
     this.apiKey = process.env.POLY_API_KEY || '';
     this.apiSecret = process.env.POLY_API_SECRET || '';
     this.passphrase = process.env.POLY_PASSPHRASE || '';
+    this.http2Pool = http2Pool || Http2ConnectionPool.getInstance();
+
+    // Warm connections on startup (async, don't await)
+    this.warmPool().catch((err: unknown) => {
+      if (err instanceof Error) {
+        logger.warn('Failed to warm HTTP/2 pool', { error: err.message });
+      } else {
+        logger.warn('Failed to warm HTTP/2 pool', { error: String(err) });
+      }
+    });
+  }
+
+  /**
+   * Pre-warm the connection pool for faster first requests
+   */
+  private async warmPool(): Promise<void> {
+    try {
+      await this.http2Pool.warmConnections(this.apiUrl, 3);
+    } catch (err) {
+      if (err instanceof Error) {
+        logger.warn('Pool warming failed', { error: err.message });
+      } else {
+        logger.warn('Pool warming failed', { error: String(err) });
+      }
+    }
   }
 
   /**
@@ -139,6 +172,9 @@ export class PolymarketAdapter {
 
   // ── Internal helpers ─────────────────────────────────────────────────────
 
+  /**
+   * Make an HTTP/2 request using pooled sessions
+   */
   private async request<T>(
     method: 'GET' | 'POST' | 'DELETE',
     path: string,
@@ -146,21 +182,89 @@ export class PolymarketAdapter {
   ): Promise<T> {
     const url = `${this.apiUrl}${path}`;
     const headers = this.buildHeaders(method, path, body);
+    const start = Date.now();
+    let session: http2.ClientHttp2Session | null = null;
 
-    const init: RequestInit = {
-      method,
-      headers,
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    };
+    try {
+      // Acquire session from pool
+      session = await this.http2Pool.getSession(url);
 
-    const res = await fetch(url, init);
+      // Build HTTP/2 request options
+      const reqOptions: any = {
+        ':method': method,
+        ':path': path,
+        // Convert headers to lowercase (HTTP/2 requirement)
+        headers: Object.entries(headers).reduce((acc, [key, value]) => {
+          acc[key.toLowerCase()] = value;
+          return acc;
+        }, {} as Record<string, string>),
+      };
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => res.statusText);
-      throw new Error(`Polymarket CLOB error ${res.status}: ${text}`);
+      return await new Promise<T>((resolve, reject) => {
+        const reqStream = session!.request(reqOptions);
+
+        let responseData = '';
+
+        // Response headers received
+        reqStream.on('response', (headers) => {
+          const status = headers[':status'] as number;
+
+          if (status < 200 || status >= 300) {
+            // Error status - read body and reject
+            reqStream.on('data', (chunk) => {
+              responseData += chunk.toString();
+            });
+            reqStream.on('end', () => {
+              reject(new Error(`Polymarket CLOB error ${status}: ${responseData || headers[':status']}`));
+            });
+            return;
+          }
+
+          // Success - collect response body
+          reqStream.on('data', (chunk) => {
+            responseData += chunk;
+          });
+
+          reqStream.on('end', () => {
+            try {
+              const parsed = JSON.parse(responseData) as T;
+              resolve(parsed);
+            } catch (parseErr) {
+              reject(new Error(`Failed to parse response: ${parseErr}`));
+            }
+          });
+        });
+
+        // Stream error
+        reqStream.on('error', (err: any) => {
+          reject(new Error(`HTTP/2 stream error: ${err.message}`));
+        });
+
+        // Write body if present
+        if (body) {
+          reqStream.write(JSON.stringify(body));
+        }
+
+        reqStream.end();
+      });
+    } catch (err) {
+      // On error, mark session as problematic and release
+      if (session && err instanceof Error && err.message.includes('session')) {
+        // Session-level error will be cleaned up by pool
+        logger.warn('HTTP/2 session error, will be recycled', { url, error: err.message });
+      }
+      throw err;
+    } finally {
+      // Always release session back to pool
+      if (session) {
+        this.http2Pool.releaseSession(url, session);
+      }
+
+      // Record latency metrics
+      const latencyMs = Date.now() - start;
+      const region = process.env.REGION || 'unknown';
+      recordExternalApiLatency('polymarket', path, region, latencyMs / 1000);
     }
-
-    return res.json() as Promise<T>;
   }
 
   /** Build auth headers required by Polymarket CLOB API */
@@ -178,15 +282,13 @@ export class PolymarketAdapter {
     if (this.apiKey) {
       headers['POLY-API-KEY'] = this.apiKey;
       headers['POLY-PASSPHRASE'] = this.passphrase;
-      // TODO: compute HMAC-SHA256(timestamp + method + path + body, apiSecret)
       // and set headers['POLY-SIGNATURE'] = signature
-      headers['POLY-SIGNATURE'] = this.computeSignature(timestamp, method, path, body);
+      headers['POLY-SIGNATURE'] = this._computeSignature(timestamp, method, path, body);
     }
 
     return headers;
   }
 
-  /** Serialize a SignedOrder to the CLOB POST /order body shape */
   private serializeSignedOrder(order: SignedOrder): Record<string, unknown> {
     return {
       tokenID: order.tokenId,
@@ -202,17 +304,14 @@ export class PolymarketAdapter {
     };
   }
 
-/**
- * Compute HMAC-SHA256 signature for Polymarket CLOB auth.
- * Signs: timestamp + METHOD + path + body
- */
-private computeSignature(
-  timestamp: string,
-  method: string,
-  path: string,
-  body?: Record<string, unknown>,
-): string {
-  const msg = timestamp + method.toUpperCase() + path + (body ? JSON.stringify(body) : '');
-  return createHmac('sha256', this.apiSecret).update(msg).digest('hex');
-}
+   private _computeSignature(
+     timestamp: string,
+     method: string,
+     path: string,
+     body?: Record<string, unknown>,
+   ): string {
+     if (!this.apiSecret) throw new Error('API secret required for HMAC signature');
+     const msg = timestamp + method.toUpperCase() + path + (body ? JSON.stringify(body) : '');
+     return createHmac('sha256', this.apiSecret).update(msg).digest('base64');
+   }
 }

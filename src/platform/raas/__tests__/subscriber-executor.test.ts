@@ -4,27 +4,27 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { SubscriberExecutor } from '../subscriber-executor';
 
-// Mock tenant-credentials-repository BEFORE importing subscriber-executor
-// (module-level `new TenantCredentialsRepository()` in subscriber-executor.ts
-//  must be intercepted at import time)
-vi.mock('../../../db/tenant-credentials-repository', () => {
-  const mockGet = vi.fn().mockResolvedValue({ apiKey: 'test', apiSecret: 'test' });
-  const MockRepo = vi.fn().mockImplementation(function () {
-    (this as any).get = mockGet;
-  });
-  (MockRepo as any).mockGet = mockGet;
-  return { TenantCredentialsRepository: MockRepo };
-});
-
-// Mock postgres-client
-vi.mock('../../../shared/db/postgres-client', () => ({
+vi.mock('../../db/postgres-client', () => ({
   query: vi.fn(),
 }));
 
-import { query } from '../../../shared/db/postgres-client';
-import { SubscriberExecutor } from '../subscriber-executor';
+vi.mock('../../db/tenant-credentials-repository', () => ({
+  TenantCredentialsRepository: class {
+    async get(subscriberId: string) {
+      if (!subscriberId) return null;
+      return {
+        apiKey: 'mock-key',
+        apiSecret: 'mock-secret',
+        passphrase: 'mock-passphrase',
+        privateKey: 'mock-pkey',
+      };
+    }
+  }
+}));
 
+import { query } from '../../db/postgres-client';
 const mockQuery = vi.mocked(query);
 
 describe('SubscriberExecutor', () => {

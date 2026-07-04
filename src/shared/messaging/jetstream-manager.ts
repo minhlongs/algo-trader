@@ -8,7 +8,7 @@
  * - MARKET_DATA: market updates (24h retention, high volume)
  */
 
-import { JetStreamClient, RetentionPolicy, StorageType, AckPolicy, DeliverPolicy, ReplayPolicy } from 'nats';
+import { JetStreamClient, RetentionPolicy, StorageType, AckPolicy, DeliverPolicy } from 'nats';
 import type { JetStreamManager, ConsumerConfig } from 'nats';
 import { getNatsConnection } from './nats-connection-manager';
 import { logger } from '../utils/logger';
@@ -83,43 +83,71 @@ export async function createReplayConsumer(
   logger.info(`[JetStream] Consumer ${consumerName} created on ${streamName}`);
 }
 
-/** Return the delivered stream_seq for a consumer, or null if not found */
-export async function getConsumerSequence(
-  streamName: string,
-  consumerName: string,
-): Promise<number | null> {
-  try {
-    const nc = getNatsConnection();
-    const jsm = await nc.jetstreamManager();
-    const info = await jsm.consumers.info(streamName, consumerName);
-    return info.delivered.stream_seq;
-  } catch {
-    return null;
-  }
-}
-
-/** Build config for an ordered (ephemeral) consumer */
-export function buildOrderedConsumerConfig(filterSubject: string): ConsumerConfig {
+/**
+ * Build ConsumerConfig for an ordered push consumer on a single subject.
+ *
+ * Ordered guarantees:
+ * - FIFO delivery per subject (DeliverPolicy.Last catches up from latest message)
+ * - No redelivery (max_deliver: 1) — consensus votes are time-sensitive; stale retries skew results
+ * - inactive_threshold: auto-deletes the ephemeral consumer after 30 s of idle
+ *
+ * The caller is responsible for adding the consumer via jsm.consumers.add().
+ * Returning the config object (not void) makes the factory unit-testable without a live NATS server.
+ */
+export function buildOrderedConsumerConfig(filterSubject: string): Partial<ConsumerConfig> {
   return {
-    ack_policy: AckPolicy.None,
-    deliver_policy: DeliverPolicy.Last,
-    max_deliver: 1,
-    inactive_threshold: 30 * 1e9, // 30 seconds in nanoseconds
+    // No durable_name — ephemeral consumer; NATS auto-assigns a name
+    ack_policy: AckPolicy.None,          // ordered consumers must not ack
+    deliver_policy: DeliverPolicy.Last,  // start from the latest message, not the beginning
     filter_subject: filterSubject,
-    replay_policy: ReplayPolicy.Instant,
+    max_deliver: 1,                      // no redelivery — consensus is point-in-time
+    inactive_threshold: 30 * 1e9,        // 30 s in nanoseconds — auto-cleanup when idle
   };
 }
 
-/** Create an ordered consumer and return the NATS-assigned name */
+/**
+ * Create an ordered push consumer scoped to a single subject.
+ * Returns the NATS-assigned consumer name for use with getConsumerSequence().
+ *
+ * Use for consensus-critical subscribers (signal-consensus-swarm) where
+ * out-of-order delivery would cause stale signal evaluation.
+ */
 export async function createOrderedConsumer(
   streamName: string,
   filterSubject: string,
 ): Promise<string> {
   const nc = getNatsConnection();
   const jsm = await nc.jetstreamManager();
-  const config = buildOrderedConsumerConfig(filterSubject);
-  const result = await jsm.consumers.add(streamName, config);
-  return result.name;
+  const cfg = buildOrderedConsumerConfig(filterSubject);
+
+  const info = await jsm.consumers.add(streamName, cfg);
+  const consumerName = info.name;
+
+  logger.info(`[JetStream] Ordered consumer ${consumerName} created on ${streamName} subject=${filterSubject}`);
+  return consumerName;
+}
+
+/**
+ * Return the last delivered stream sequence number for lag monitoring.
+ * A growing gap between this and the stream's last_seq indicates consumer lag.
+ * Returns null if the consumer is not found (already cleaned up after inactivity).
+ */
+export async function getConsumerSequence(
+  streamName: string,
+  consumerName: string,
+): Promise<number | null> {
+  const nc = getNatsConnection();
+  const jsm = await nc.jetstreamManager();
+
+  try {
+    const info = await jsm.consumers.info(streamName, consumerName);
+    return info.delivered.stream_seq;
+  } catch (err) {
+    logger.warn(`[JetStream] getConsumerSequence: consumer ${consumerName} not found on ${streamName}`, {
+      error: (err as Error).message,
+    });
+    return null;
+  }
 }
 
 async function ensureStream(jsm: JetStreamManager, config: StreamConfig): Promise<void> {

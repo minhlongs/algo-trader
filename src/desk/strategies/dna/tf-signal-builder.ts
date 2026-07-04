@@ -21,11 +21,11 @@ import {
   TfSignal,
   TfSignalAction,
   TfId,
-} from './multi-tf-types';
-import { computeTrendIndicators, trendDirectionScore } from './indicators-trend';
-import { computeMomentumIndicators, momentumDirection } from './indicators-momentum';
-import { computeVolatilityIndicators } from './indicators-volatility';
-import { computeMicroIndicators, isMicroTf } from './indicators-microstructure';
+} from './multi-tf-types.js';
+import { computeTrendIndicators, trendDirectionScore } from './indicators-trend.js';
+import { computeMomentumIndicators, momentumDirection } from './indicators-momentum.js';
+import { computeVolatilityIndicators } from './indicators-volatility.js';
+import { computeMicroIndicators, isMicroTf } from './indicators-microstructure.js';
 
 // ─── Thresholds (explicit policy) ─────────────────────────────────────────────
 

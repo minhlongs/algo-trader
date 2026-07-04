@@ -1,19 +1,24 @@
 /**
  * App guide page at /app/guide — inside LayoutShell sidebar.
  * Renders GuideContent directly; sidebar provided by LayoutShell.
+ * Stitch-aligned UI using shared components.
  */
 import { GuideContent } from '../components/guide-content';
+import { StitchPageShell } from '../components/ui/stitch-page-shell';
+import { StitchSectionTitle } from '../components/ui/stitch-section-title';
 
 export function GuidePage() {
   return (
-    <div className="max-w-[800px] mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white mb-2">Operator Guide</h1>
-        <p className="text-sm text-[#8892B0]">
-          CashClaw SOPs — everything you need to run the market-making bot profitably.
-        </p>
+    <StitchPageShell>
+      <div className="max-w-[800px] mx-auto px-4 py-8">
+        <StitchSectionTitle
+          eyebrow="Operator Guide"
+          title="CashClaw SOPs"
+        >
+          Everything you need to run the market-making bot profitably.
+        </StitchSectionTitle>
+        <GuideContent />
       </div>
-      <GuideContent />
-    </div>
+    </StitchPageShell>
   );
 }

@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { getRedisClient, RedisClientType } from '../../redis';
+import { getRedisClient, RedisClientType } from '../redis';
 import { LicenseService } from '../billing/license-service';
-import { LicenseTier } from '../../shared/types/license';
-import { logger } from '../../shared/utils/logger';
+import { LicenseTier } from '../types/license';
+import { logger } from '../utils/logger';
 
 // Excluded routes from rate limiting
 const EXCLUDED_PREFIXES = [
@@ -118,9 +118,11 @@ export async function distributedRateLimiter(
     const allowed = result[0];
     const currentCount = result[1];
 
+    // Set rate limit headers
+    res.setHeader('X-RateLimit-Limit', limit.toString());
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, limit - currentCount).toString());
+
     if (allowed === 0) {
-      res.setHeader('X-RateLimit-Limit', limit.toString());
-      res.setHeader('X-RateLimit-Remaining', '0');
       logger.warn(`[RateLimiter] Rate limit exceeded for tenant=${tenantId} tier=${tier} limit=${limit}`);
       res.status(429).json({
         error: 'Too Many Requests',
@@ -131,14 +133,10 @@ export async function distributedRateLimiter(
       return;
     }
 
-    res.setHeader('X-RateLimit-Limit', limit.toString());
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, limit - currentCount).toString());
-
     next();
   } catch (error) {
     logger.error('[RateLimiter] Error executing rate limiting script:', error);
-    // Fail-open: allow request to proceed without rate limit headers
-    // when Redis is unavailable, to protect availability
+    // Fail-open: allow request to proceed in case of Redis failure to protect availability
     next();
   }
 }

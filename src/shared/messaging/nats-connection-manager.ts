@@ -34,6 +34,10 @@ export async function connectNats(config?: Partial<NatsConfig>): Promise<NatsCon
 
   connectionConfig = { ...DEFAULT_CONFIG, ...config };
 
+  if (process.env.NODE_ENV === 'production' && !connectionConfig.token) {
+    logger.warn('[NATS] No NATS_TOKEN configured in production — connection may be unauthenticated');
+  }
+
   try {
     connection = await connect({
       servers: connectionConfig.url,

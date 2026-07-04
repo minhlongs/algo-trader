@@ -1,0 +1,14 @@
+{
+  "routes": ["/api/health", "/api/status", "/api/strategies/*"],
+  "apis": ["strategy-engine", "market-data-feed", "risk-manager", "backtest-engine"],
+  "data_model": {
+    "strategies": "id,name,type,params,active",
+    "trades": "id,strategy_id,exchange,pair,side,amount,price,status,pnl",
+    "market_data": "exchange,pair,timestamp,bid,ask,last,volume"
+  },
+  "integrations": ["ccxt-exchanges", "polymarket-clob", "ethers-js", "jupiter"],
+  "checkout_path": "N/A (trading platform, no checkout)",
+  "build_command": "npm run build && npm test",
+  "tests_run": true,
+  "known_risks": []
+}

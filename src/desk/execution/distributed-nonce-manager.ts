@@ -36,6 +36,8 @@ export class DistributedNonceManager {
    * @returns On-chain transaction count (next valid nonce)
    */
   private readonly getOnChainNonce: (walletAddress: string) => Promise<number>;
+  private readonly initPromises = new Map<string, Promise<void>>();
+  private readonly initializedWallets = new Set<string>();
 
   constructor(getOnChainNonce: (walletAddress: string) => Promise<number>) {
     this.getOnChainNonce = getOnChainNonce;
@@ -51,22 +53,43 @@ export class DistributedNonceManager {
    * Uses SET NX (set-if-not-exists) so only the first caller seeds it.
    */
   private async ensureInitialised(walletAddress: string): Promise<void> {
-    const redis = getRedisClient();
-    const key = this.nonceKey(walletAddress);
+    const addressKey = walletAddress.toLowerCase();
+    if (this.initializedWallets.has(addressKey)) return;
 
-    // Check if already seeded
-    const existing = await redis.get(key);
-    if (existing !== null) return;
+    let initPromise = this.initPromises.get(addressKey);
+    if (!initPromise) {
+      initPromise = (async () => {
+        try {
+          const redis = getRedisClient();
+          const key = this.nonceKey(walletAddress);
 
-    // Fetch on-chain nonce and seed (NX = only set if missing to avoid race)
-    const onChainNonce = await this.getOnChainNonce(walletAddress);
-    // Use SET NX — if another worker seeded between our GET and SET, that's fine
-    await redis.set(key, onChainNonce, 'NX' as never);
+          // Check if already seeded
+          const existing = await redis.get(key);
+          if (existing !== null) {
+            this.initializedWallets.add(addressKey);
+            return;
+          }
 
-    logger.info('[NonceManager] Seeded nonce from chain', {
-      walletAddress,
-      onChainNonce,
-    });
+          // Fetch on-chain nonce and seed (NX = only set if missing to avoid race)
+          const onChainNonce = await this.getOnChainNonce(walletAddress);
+          // Use SET NX — if another worker seeded between our GET and SET, that's fine
+          await redis.set(key, onChainNonce, 'NX' as never);
+
+          logger.info('[NonceManager] Seeded nonce from chain', {
+            walletAddress,
+            onChainNonce,
+          });
+
+          this.initializedWallets.add(addressKey);
+        } catch (err) {
+          this.initPromises.delete(addressKey);
+          throw err;
+        }
+      })();
+      this.initPromises.set(addressKey, initPromise);
+    }
+
+    await initPromise;
   }
 
   /**
@@ -120,12 +143,29 @@ export class DistributedNonceManager {
 
     const redis = getRedisClient();
     const key = this.nonceKey(reservation.walletAddress);
-    await redis.decr(key);
+    
+    // Fix unsafe decr: only decrement if Redis value is exactly reservation.nonce + 1
+    const script = `
+      if redis.call('get', KEYS[1]) == ARGV[1] then
+        return redis.call('decr', KEYS[1])
+      else
+        return nil
+      end
+    `;
+    const result = await redis.eval(script, 1, key, (reservation.nonce + 1).toString());
 
-    logger.info('[NonceManager] Released nonce', {
-      walletAddress: reservation.walletAddress,
-      nonce: reservation.nonce,
-    });
+    if (result !== null) {
+      logger.info('[NonceManager] Released nonce', {
+        walletAddress: reservation.walletAddress,
+        nonce: reservation.nonce,
+        newVal: result,
+      });
+    } else {
+      logger.warn('[NonceManager] Nonce release skipped — newer nonce already reserved', {
+        walletAddress: reservation.walletAddress,
+        nonce: reservation.nonce,
+      });
+    }
   }
 
   /**
@@ -146,6 +186,10 @@ export class DistributedNonceManager {
     const onChainNonce = await this.getOnChainNonce(walletAddress);
     const redis = getRedisClient();
     await redis.set(this.nonceKey(walletAddress), onChainNonce);
+
+    const addressKey = walletAddress.toLowerCase();
+    this.initializedWallets.add(addressKey);
+    this.initPromises.delete(addressKey);
 
     logger.info('[NonceManager] Resynced nonce from chain', {
       walletAddress,

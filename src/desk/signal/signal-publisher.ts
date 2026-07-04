@@ -68,7 +68,8 @@ export class SignalPublisher {
     try {
       await this.store.saveSignal(signal);
     } catch (err) {
-      logger.error('[SignalPublisher] DB save failed', { err });
+      logger.error('[SignalPublisher] DB save failed — rolling back dedup entry', { err, signalId: id });
+      signalDedupGuard.rollback(id);
       return null;
     }
 

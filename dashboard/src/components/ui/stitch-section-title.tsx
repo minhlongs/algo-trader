@@ -1,24 +1,22 @@
-/**
- * StitchSectionTitle — design-system section title component.
- * Supports eyebrow heading pattern for Stitch design system.
- */
-import * as React from 'react';
+import { type ReactNode } from 'react';
+import { COLORS } from '../../lib/stitch-design-tokens';
 
 interface StitchSectionTitleProps {
-  children?: React.ReactNode;
-  title?: string;
-  subtitle?: string;
+  title: string;
   eyebrow?: string;
-  className?: string;
+  action?: ReactNode;
+  children?: ReactNode;
 }
 
-export function StitchSectionTitle({ children, title, subtitle, eyebrow, className = '' }: StitchSectionTitleProps) {
-  // Support both: <StitchSectionTitle eyebrow="X" title="Y" /> and <StitchSectionTitle>Text</StitchSectionTitle>
+export function StitchSectionTitle({ title, eyebrow, action, children }: StitchSectionTitleProps) {
   return (
-    <div className={`mb-6 ${className}`}>
-      {eyebrow && <p className="text-xs font-semibold uppercase tracking-widest text-accent mb-2">{eyebrow}</p>}
-      <h2 className="text-xl font-semibold text-white">{title || children}</h2>
-      {subtitle && <p className="text-sm text-muted mt-1">{subtitle}</p>}
+    <div className="mb-4 flex items-start justify-between gap-4">
+      <div>
+        {eyebrow && <div className="mb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: COLORS.primary }}>{eyebrow}</div>}
+        <h2 className="text-xl font-semibold" style={{ color: COLORS.onSurface }}>{title}</h2>
+        {children && <p className="mt-1 text-sm" style={{ color: COLORS.onSurfaceVariant }}>{children}</p>}
+      </div>
+      {action && <div className="flex-shrink-0">{action}</div>}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   getRedisClusterClient,
   getClusterHealth,
   closeRedisClusterClient,
+  createRedisClusterClient,
   type RedisClusterConfig,
 } from './cluster-config';
 
@@ -22,6 +23,7 @@ export {
   getRedisClusterClient,
   getClusterHealth,
   closeRedisClusterClient,
+  createRedisClusterClient,
   RedisClusterConfig,
 };
 
@@ -50,6 +52,10 @@ let mainClient: Redis | null = null;
 let pubClient: Redis | null = null;
 let subClient: Redis | null = null;
 
+// Dedicated Pub/Sub cluster connections
+let clusterPubClient: Cluster | null = null;
+let clusterSubClient: Cluster | null = null;
+
 /**
  * Get Redis client - supports both single-instance and cluster mode
  * Use REDIS_CLUSTER_ENABLED=true to use cluster mode
@@ -71,7 +77,10 @@ export function getRedisClient(): Redis | Cluster {
 
 export function getPubClient(): Redis | Cluster {
   if (process.env.REDIS_CLUSTER_ENABLED === 'true') {
-    return getRedisClusterClient();
+    if (!clusterPubClient) {
+      clusterPubClient = createRedisClusterClient();
+    }
+    return clusterPubClient;
   }
   if (!pubClient) {
     pubClient = new Redis({ ...DEFAULT_CONFIG, db: DEFAULT_CONFIG.db });
@@ -81,7 +90,10 @@ export function getPubClient(): Redis | Cluster {
 
 export function getSubClient(): Redis | Cluster {
   if (process.env.REDIS_CLUSTER_ENABLED === 'true') {
-    return getRedisClusterClient();
+    if (!clusterSubClient) {
+      clusterSubClient = createRedisClusterClient();
+    }
+    return clusterSubClient;
   }
   if (!subClient) {
     subClient = new Redis({ ...DEFAULT_CONFIG, db: DEFAULT_CONFIG.db });
@@ -95,7 +107,13 @@ export function getSubClient(): Redis | Cluster {
 export async function closeRedisConnections(): Promise<void> {
   // Close cluster client if enabled
   if (process.env.REDIS_CLUSTER_ENABLED === 'true') {
-    await closeRedisClusterClient();
+    await Promise.all([
+      closeRedisClusterClient(),
+      clusterPubClient?.quit(),
+      clusterSubClient?.quit(),
+    ]);
+    clusterPubClient = null;
+    clusterSubClient = null;
   }
 
   // Close single-instance clients

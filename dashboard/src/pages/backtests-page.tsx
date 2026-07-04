@@ -4,6 +4,14 @@
  */
 import { useState, useEffect, FormEvent } from 'react';
 import { useApiClient } from '../hooks/use-api-client';
+import { StitchPageShell } from '../components/ui/stitch-page-shell';
+import { StitchCard, StitchCardHeader, StitchCardBody } from '../components/ui/stitch-card';
+import { StitchBadge } from '../components/ui/stitch-badge';
+import { StitchButton } from '../components/ui/stitch-button';
+import { StitchSectionTitle } from '../components/ui/stitch-section-title';
+import { StitchInput } from '../components/ui/stitch-input';
+import { StitchTable } from '../components/ui/stitch-table';
+import { COLORS } from '../lib/stitch-design-tokens';
 
 interface BacktestResult {
   id: string;
@@ -19,43 +27,22 @@ interface BacktestResult {
 }
 
 const TIMEFRAMES = ['1m', '5m', '15m', '1h', '4h', '1d'] as const;
-const STRATEGIES = [
-  'arb-spread-v1',
-  'mean-reversion',
-  'trend-follow',
-  'stat-arb',
-  'momentum',
-] as const;
+const STRATEGIES = ['arb-spread-v1', 'mean-reversion', 'trend-follow', 'stat-arb', 'momentum'] as const;
 
-function SharpeChip({ value }: { value: number }) {
-  const cls =
-    value > 1
-      ? 'text-profit border-profit'
-      : value < 0
-        ? 'text-loss border-loss'
-        : 'text-muted border-bg-border';
-  return (
-    <span className={`text-xs border rounded px-1.5 py-0.5 ${cls}`}>
-      {value.toFixed(2)}
-    </span>
-  );
+function SharpeBadge({ value }: { value: number }) {
+  const tone = value > 1 ? 'profit' : value < 0 ? 'loss' : 'neutral';
+  return <StitchBadge label={value.toFixed(2)} tone={tone} />;
 }
 
 function MetricCell({ label, value, colored }: { label: string; value: string; colored?: 'profit' | 'loss' | 'neutral' }) {
-  const valueClass =
-    colored === 'profit'
-      ? 'text-profit'
-      : colored === 'loss'
-        ? 'text-loss'
-        : 'text-white';
+  const color = colored === 'profit' ? COLORS.profit : colored === 'loss' ? COLORS.loss : COLORS.onSurface;
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-muted text-xs">{label}</span>
-      <span className={`font-mono text-sm ${valueClass}`}>{value}</span>
+    <div className="flex flex-col gap-1">
+      <span className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>{label}</span>
+      <span className="font-mono text-sm" style={{ color }}>{value}</span>
     </div>
   );
 }
-
 
 export function BacktestsPage() {
   const { fetchApi, loading } = useApiClient();
@@ -91,141 +78,82 @@ export function BacktestsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-white text-2xl font-bold">Backtests</h1>
+    <StitchPageShell>
+      <div className="space-y-6 p-6">
+        <StitchSectionTitle title="Backtests" eyebrow="STRATEGY TESTING" />
 
-      {/* Submit form */}
-      <section className="bg-bg-surface border border-bg-border rounded-lg p-6">
-        <h2 className="text-accent text-sm font-semibold uppercase tracking-wider mb-4">
-          Submit Backtest
-        </h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Pair */}
-          <div className="flex flex-col gap-1">
-            <label className="text-muted text-xs">Pair</label>
-            <input
-              type="text"
-              value={pair}
-              onChange={(e) => setPair(e.target.value)}
-              placeholder="BTC/USDT"
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-              required
-            />
-          </div>
-
-          {/* Timeframe */}
-          <div className="flex flex-col gap-1">
-            <label className="text-muted text-xs">Timeframe</label>
-            <select
-              value={timeframe}
-              onChange={(e) => setTimeframe(e.target.value)}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-            >
-              {TIMEFRAMES.map((tf) => (
-                <option key={tf} value={tf}>{tf}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Strategy */}
-          <div className="flex flex-col gap-1">
-            <label className="text-muted text-xs">Strategy</label>
-            <select
-              value={strategy}
-              onChange={(e) => setStrategy(e.target.value)}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-            >
-              {STRATEGIES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Days */}
-          <div className="flex flex-col gap-1">
-            <label className="text-muted text-xs">Days</label>
-            <input
-              type="number"
-              value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
-              min={1}
-              max={365}
-              className="bg-bg border border-bg-border rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-accent"
-              required
-            />
-          </div>
-
-          {/* Submit */}
-          <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-4">
-            <button
-              type="submit"
-              disabled={submitting || loading}
-              className="bg-accent text-bg font-bold text-sm px-6 py-2 rounded hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {submitting ? 'Submitting…' : 'Run Backtest'}
-            </button>
-            {successMsg && (
-              <span className="text-profit text-sm">{successMsg}</span>
-            )}
-          </div>
-        </form>
-      </section>
-
-      {/* Results list */}
-      <section>
-        <h2 className="text-accent text-sm font-semibold uppercase tracking-wider mb-4">
-          Results ({results.length})
-        </h2>
-        {results.length === 0 ? (
-          <p className="text-muted text-sm">No backtest results yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {results.map((r) => (
-              <div
-                key={r.id}
-                className="bg-bg-surface border border-bg-border rounded-lg p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 items-center"
-              >
-                {/* Strategy + meta */}
-                <div className="col-span-2 md:col-span-1 lg:col-span-2">
-                  <p className="text-white text-sm font-semibold">{r.strategyName}</p>
-                  <p className="text-muted text-xs mt-0.5">
-                    {r.pair} · {r.timeframe} · {r.days}d
-                  </p>
-                  <p className="text-muted text-xs">{new Date(r.createdAt).toLocaleDateString()}</p>
-                </div>
-
-                {/* Sharpe */}
-                <div className="flex flex-col gap-1">
-                  <span className="text-muted text-xs">Sharpe</span>
-                  <SharpeChip value={r.sharpeRatio} />
-                </div>
-
-                {/* Sortino */}
-                <MetricCell
-                  label="Sortino"
-                  value={r.sortinoRatio.toFixed(2)}
-                  colored={r.sortinoRatio > 1 ? 'profit' : r.sortinoRatio < 0 ? 'loss' : 'neutral'}
-                />
-
-                {/* Drawdown */}
-                <MetricCell
-                  label="Max DD"
-                  value={`-${r.maxDrawdownPct.toFixed(1)}%`}
-                  colored="loss"
-                />
-
-                {/* Return */}
-                <MetricCell
-                  label="Return"
-                  value={`${r.totalReturnPct >= 0 ? '+' : ''}${r.totalReturnPct.toFixed(1)}%`}
-                  colored={r.totalReturnPct >= 0 ? 'profit' : 'loss'}
-                />
+        <StitchCard>
+          <StitchCardHeader>
+            <span style={{ color: COLORS.onSurface, fontWeight: 600 }}>Submit Backtest</span>
+          </StitchCardHeader>
+          <StitchCardBody>
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <StitchInput label="Pair" value={pair} onChange={setPair} placeholder="BTC/USDT" required />
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-mono" style={{ color: COLORS.onSurfaceVariant }}>Timeframe</label>
+                <select
+                  value={timeframe}
+                  onChange={(e) => setTimeframe(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-sm font-mono"
+                  style={{ backgroundColor: `${COLORS.bg}55`, borderColor: COLORS.outline, color: COLORS.onSurface }}
+                >
+                  {TIMEFRAMES.map((tf) => <option key={tf} value={tf}>{tf}</option>)}
+                </select>
               </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-mono" style={{ color: COLORS.onSurfaceVariant }}>Strategy</label>
+                <select
+                  value={strategy}
+                  onChange={(e) => setStrategy(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-sm font-mono"
+                  style={{ backgroundColor: `${COLORS.bg}55`, borderColor: COLORS.outline, color: COLORS.onSurface }}
+                >
+                  {STRATEGIES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <StitchInput label="Days" type="number" value={days} onChange={(v) => setDays(Number(v))} min={1} max={365} required />
+              <div className="sm:col-span-2 lg:col-span-4 flex items-center gap-4">
+                <StitchButton type="submit" disabled={submitting || loading}>
+                  {submitting ? 'Submitting…' : 'Run Backtest'}
+                </StitchButton>
+                {successMsg && <span className="text-sm font-mono" style={{ color: COLORS.profit }}>{successMsg}</span>}
+              </div>
+            </form>
+          </StitchCardBody>
+        </StitchCard>
+
+        <StitchSectionTitle title="Results" eyebrow={`${results.length} RUNS`} />
+        {results.length === 0 ? (
+          <p className="text-sm" style={{ color: COLORS.onSurfaceVariant }}>No backtest results yet.</p>
+        ) : (
+          <StitchTable headers={['Strategy', 'Sharpe', 'Sortino', 'Max DD', 'Return']}>
+            {results.map((r) => (
+              <tr key={r.id}>
+                <td className="px-4 py-3">
+                  <div>
+                    <p className="font-mono text-sm" style={{ color: COLORS.onSurface }}>{r.strategyName}</p>
+                    <p className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>
+                      {r.pair} · {r.timeframe} · {r.days}d
+                    </p>
+                    <p className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>{new Date(r.createdAt).toLocaleDateString()}</p>
+                  </div>
+                </td>
+                <td className="px-4 py-3"><SharpeBadge value={r.sharpeRatio} /></td>
+                <td className="px-4 py-3">
+                  <MetricCell label="" value={r.sortinoRatio.toFixed(2)} colored={r.sortinoRatio > 1 ? 'profit' : r.sortinoRatio < 0 ? 'loss' : 'neutral'} />
+                </td>
+                <td className="px-4 py-3">
+                  <MetricCell label="" value={`-${r.maxDrawdownPct.toFixed(1)}%`} colored="loss" />
+                </td>
+                <td className="px-4 py-3">
+                  <MetricCell label="" value={`${r.totalReturnPct >= 0 ? '+' : ''}${r.totalReturnPct.toFixed(1)}%`} colored={r.totalReturnPct >= 0 ? 'profit' : 'loss'} />
+                </td>
+              </tr>
             ))}
-          </div>
+          </StitchTable>
         )}
-      </section>
-    </div>
+      </div>
+    </StitchPageShell>
   );
 }
 

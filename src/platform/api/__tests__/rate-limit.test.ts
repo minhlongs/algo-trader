@@ -2,15 +2,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { LicenseService } from '../../billing/license-service';
-import { LicenseTier } from '../../../shared/types/license';
-
-// Mock tier gating — bypass requireTier middleware for tests
-vi.mock('../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
-  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
-  canAccessFeature: () => true,
-  FEATURE_ACCESS: {},
-}));
+import { LicenseTier } from '../../types/license';
 
 // Mock Redis
 const rateLimitMock = vi.fn();
@@ -43,12 +35,12 @@ const mockRedis = {
   }),
 };
 
-vi.mock('../../../redis', () => ({
+vi.mock('../../redis', () => ({
   getRedisClient: () => mockRedis,
 }));
 
 // Mock PostgreSQL
-vi.mock('../../../shared/db/postgres-client', () => ({
+vi.mock('../../db/postgres-client', () => ({
   getDbClient: () => ({
     query: vi.fn().mockResolvedValue({ rows: [] }),
   }),
@@ -75,7 +67,7 @@ vi.mock('../../../shared/db/postgres-client', () => ({
 }));
 
 // Mock TradeRepository
-vi.mock('../../../db/trade-repository', () => ({
+vi.mock('../../db/trade-repository', () => ({
   TradeRepository: class {
     getRecent = vi.fn().mockResolvedValue([]);
     getById = vi.fn().mockResolvedValue(null);
@@ -83,7 +75,7 @@ vi.mock('../../../db/trade-repository', () => ({
 }));
 
 // Mock PnLService
-vi.mock('../../../db/pnl-service', () => ({
+vi.mock('../../db/pnl-service', () => ({
   PnLService: class {
     getPerformanceMetrics = vi.fn().mockResolvedValue({
       totalPnl: 100,

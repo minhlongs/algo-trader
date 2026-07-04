@@ -1,115 +1,82 @@
-# Design Guidelines - AGI Trader RaaS Platform
+# Design Guidelines - AGI Trader RaaS Platform (UI/UX Pro Max)
 
 ## Brand Personality
-Professional, data-rich, trustworthy. Bloomberg Terminal density meets TradingView clarity.
-Target: retail crypto traders, quant devs, prop trading firms.
+Professional, tech-first, premium, high-density. Bloomberg Terminal density meets futuristic Cyberpunk minimalist clarity.
 
-## Color Palette (Dark Trading Theme)
+---
+
+## 1. Color Palette (Obsidian Deep Dark Theme)
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `--bg-primary` | `#0d1117` | Page background |
-| `--bg-secondary` | `#161b22` | Card/panel background |
-| `--bg-tertiary` | `#1c2333` | Elevated surfaces, hover |
-| `--border` | `#30363d` | Borders, dividers |
-| `--border-active` | `#484f58` | Focus/active borders |
-| `--text-primary` | `#e6edf3` | Headings, primary text |
-| `--text-secondary` | `#8b949e` | Labels, descriptions |
-| `--text-muted` | `#484f58` | Disabled, placeholder |
-| `--profit` | `#00d4aa` | Positive P&L, buy signals |
-| `--profit-bg` | `rgba(0,212,170,0.12)` | Profit badge background |
-| `--loss` | `#ff4757` | Negative P&L, sell signals |
-| `--loss-bg` | `rgba(255,71,87,0.12)` | Loss badge background |
-| `--accent` | `#58a6ff` | Links, interactive elements |
-| `--warning` | `#d29922` | Alerts, caution states |
-| `--info` | `#8b5cf6` | Info badges, strategy tags |
+| `--bg-primary` | `#060814` | Page background (Deep Navy-Black) |
+| `--bg-secondary` | `#101426` | Card/panel background (Obsidian Dark) |
+| `--bg-tertiary` | `#171c36` | Elevated surfaces, popovers, hover states |
+| `--border-base` | `rgba(255,255,255,0.05)` | Default card and button border |
+| `--border-active` | `rgba(255,255,255,0.20)` | Hover and active borders |
+| `--text-primary` | `#f1f5f9` | Primary headings and text (Slate 100) |
+| `--text-secondary` | `#94a3b8` | Subheadings, labels, descriptions (Slate 400) |
+| `--text-muted` | `#475569` | Disabled/placeholder text (Slate 600) |
+| `--profit` | `#00FFA3` | Neon Mint Green: Positive P&L, Buy/Long signals |
+| `--profit-glow` | `rgba(0,255,163,0.15)` | Area chart fill, badge glow background |
+| `--loss` | `#FF2E93` | Electric Crimson: Negative P&L, Sell/Short signals |
+| `--loss-glow` | `rgba(255,46,147,0.15)` | Area chart fill, loss glow background |
+| `--accent` | `#00D8FF` | Cyber Cyan: Webhooks, networks, active states |
+| `--accent-secondary` | `#8B5CF6` | Tech Violet: Premium features, AI status |
 
-## Typography
+---
 
-| Role | Font | Weight | Size |
-|------|------|--------|------|
-| UI Headings | `Inter, system-ui, sans-serif` | 600 | 20/16/14px |
-| UI Body | `Inter, system-ui, sans-serif` | 400 | 14/13px |
-| Data/Numbers | `JetBrains Mono, monospace` | 500 | 14/13/12px |
-| Code Blocks | `JetBrains Mono, monospace` | 400 | 13px |
-| Labels | `Inter, system-ui, sans-serif` | 500 | 11px uppercase |
+## 2. Typography & Numbers
 
-**Line heights:** Headings 1.3, Body 1.5, Data 1.4, Code 1.6.
+| Role | Font | Weight | Size / Style |
+|------|------|--------|--------------|
+| UI Headings | `Plus Jakarta Sans, sans-serif` | 600 | 24/18/14px |
+| UI Body | `Inter, sans-serif` | 400 | 14/13px |
+| Data/Numbers | `JetBrains Mono, monospace` | 500 | 14/13/12px (`tabular-nums` active) |
+| System Logs | `Fira Code, monospace` | 400 | 12px (syntax highlighted) |
 
-## Spacing System (4px Grid)
+*   **Tabular Numbers Enforcement**: Mọi hiển thị số liệu động (PnL, Số dư, Giá) bắt buộc sử dụng `font-variant-numeric: tabular-nums` (Tailwind: `tabular-nums`) để triệt tiêu hiện tượng chữ nhảy (jittering).
+*   **Case styling**: Tiêu đề nhãn (Labels) dùng `text-xs uppercase font-semibold letter-spacing-wide`.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--sp-1` | 4px | Inline gaps, icon margins |
-| `--sp-2` | 8px | Tight element spacing |
-| `--sp-3` | 12px | Component internal padding |
-| `--sp-4` | 16px | Card padding, section gaps |
-| `--sp-5` | 20px | Panel padding |
-| `--sp-6` | 24px | Major section separators |
-| `--sp-8` | 32px | Page-level spacing |
+---
 
-**Border radius:** 4px (inputs), 6px (cards), 8px (modals), 12px (panels).
+## 3. Spacing & Borders (Bento Grid)
+*   **Bento Layout**: Khoảng cách mặc định giữa các card trong Bento Grid là `16px` (`gap-4`).
+*   **Border Radius**:
+    *   Các Widget chính (Card, Charts): `12px` (`rounded-xl`).
+    *   Các Input, Button, Badge: `6px` (`rounded-md`).
+*   **Glassmorphism Effect**:
+    *   Card background: `background: rgba(16, 20, 38, 0.6)`
+    *   Glass blur: `backdrop-filter: blur(12px)`
+    *   Border: `1px solid rgba(255, 255, 255, 0.05)`
 
-## Component Patterns
+---
 
-### Cards
-Dark surface (`--bg-secondary`), 1px `--border`, 6px radius, 16px padding.
-Hover: border shifts to `--border-active`, subtle `translateY(-1px)`.
+## 4. Components & Micro-Interactions
 
-### Data Tables
-Header row: `--bg-tertiary`, 11px uppercase labels, `--text-secondary`.
-Rows: `--bg-secondary`, 14px monospace data. Alternate row: `--bg-primary`.
-Profit cells green `--profit`, loss cells red `--loss`.
+### A. Glassmorphic Card
+Card Obsidian Glass có hiệu ứng hover đổi màu border:
+*   Mặc định: `border-white/5`
+*   Hover: `border-white/20`, phóng to nhẹ `scale-[1.01]`, tăng nhẹ cường độ đổ bóng `shadow-2xl`.
 
-### Stat Badges
-Inline pill: 4px/8px padding, 4px radius, 12px monospace text.
-Variants: profit (`--profit` + `--profit-bg`), loss (`--loss` + `--loss-bg`),
-neutral (`--text-secondary` + `--bg-tertiary`), info (`--info` + info-bg).
+### B. Real-Time Price/PnL Flash
+Khi giá trị thay đổi thông qua WebSocket:
+*   **Tăng**: Tạo hiệu ứng flash nền xanh lục nhạt `rgba(0,255,163,0.1)` trong 200ms sau đó mờ dần.
+*   **Giảm**: Tạo hiệu ứng flash nền đỏ nhạt `rgba(255,46,147,0.1)` trong 200ms sau đó mờ dần.
 
-### Charts
-Background: `--bg-secondary`. Grid lines: `--border` at 0.3 opacity.
-Equity curve: `--profit` line, gradient fill to transparent.
-Volume bars: `--accent` at 40% opacity. Crosshair: `--text-muted`.
+### C. Pulse Status Indicator
+Đèn LED hiển thị trạng thái hoạt động của Bot hoặc RaaS node:
+*   `Active/Running`: Đèn xanh Mint Green (`#00FFA3`) kết hợp animation nhấp nháy `animate-pulse`.
+*   `Error/Disconnected`: Đèn đỏ Crimson (`#FF2E93`).
 
-### Sidebar Navigation
-Width: 240px collapsed to 56px. Background: `--bg-secondary`.
-Active item: `--accent` left border 2px, `--bg-tertiary` background.
-Icons: 20px, `--text-secondary`, active: `--text-primary`.
+---
 
-### Buttons
-Primary: `--accent` bg, #fff text, 8px/16px padding.
-Danger: `--loss` bg, #fff text. Ghost: transparent, `--text-secondary`.
-All: 4px radius, 13px font, 500 weight, 150ms transition.
-
-### Status Indicators
-Dot: 8px circle. Running: `--profit` + pulse animation.
-Stopped: `--loss`. Paused: `--warning`. Idle: `--text-muted`.
-
-## Layout
-
-- **Sidebar + Main** layout. Sidebar fixed left, main scrollable.
-- **Header:** 48px height, sticky top. Logo left, nav center, user right.
-- **Grid:** CSS Grid for dashboard panels, 12-col for content pages.
-- **Breakpoints:** Mobile 640px, Tablet 768px, Desktop 1024px, Wide 1440px.
-- **Mobile:** Sidebar collapses to bottom tab bar, cards stack vertically.
-
-## Accessibility
-
-- Color contrast: WCAG AA minimum (4.5:1 text, 3:1 large text).
-- Never use color alone for P&L: always include +/- prefix and arrow icons.
-- Focus rings: 2px `--accent` outline with 2px offset.
-- Reduced motion: disable animations when `prefers-reduced-motion: reduce`.
-- Minimum touch target: 44x44px on mobile.
-
-## Chart Color Sequences
-For multi-series: `#58a6ff`, `#00d4aa`, `#8b5cf6`, `#d29922`, `#ff4757`, `#f97583`.
-
-## Dark Mode Only
-This platform is dark-mode exclusively. No light theme variant planned.
-All mockups and implementations must use the dark palette above.
-
-## References
-- Bloomberg Terminal (information density)
-- TradingView (chart UX, clean layout)
-- QuantConnect (strategy management, backtesting UI)
-- Binance Pro (trading data display, order books)
+## 5. Charts Integration
+*   **Candlestick Chart (Lightweight Charts)**:
+    *   Background: `#101426` (đồng bộ màu card).
+    *   Grid lines: Vertical/Horizontal grid lines màu `rgba(255,255,255,0.02)`.
+    *   Nến tăng: Nền xanh `#00FFA3`, viền xanh.
+    *   Nến giảm: Nền đỏ `#FF2E93`, viền đỏ.
+*   **PnL & Equity Curve Chart (Recharts)**:
+    *   Line color: `#00FFA3` (PnL dương) hoặc `#8B5CF6` (Tổng tài sản).
+    *   Area Fill: LinearGradient chuyển dần từ `--profit-glow` hoặc `--accent-secondary` sang hoàn toàn trong suốt (`opacity: 0`).

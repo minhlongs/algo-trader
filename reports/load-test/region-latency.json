@@ -1,0 +1,21 @@
+{
+  "test": "multi-region-latency",
+  "timestamp": "2026-06-16T11:00:00Z",
+  "duration": "45m",
+  "regions": ["us-east", "eu-central", "ap-southeast"],
+  "metrics": {
+    "region_latency_ms": {
+      "us-east": {"p50": 18, "p95": 42, "p99": 78},
+      "eu-central": {"p50": 22, "p95": 48, "p99": 85},
+      "ap-southeast": {"p50": 25, "p95": 52, "p99": 94}
+    },
+    "global_p95": 47,
+    "error_rate": 0.0003
+  },
+  "pass": true,
+  "thresholds_met": {
+    "all_regions_p95_lt_100ms": true,
+    "global_p95_lt_100ms": true,
+    "error_rate_lt_1_percent": true
+  }
+}

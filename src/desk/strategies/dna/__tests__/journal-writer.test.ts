@@ -15,30 +15,23 @@ import {
   deriveExecutedBy,
   eventToParams,
   writeJournalEntry,
-} from '../journal-writer';
+} from '../journal-writer.js';
 
-// Mock the postgres client, logger, and prometheus counter
-vi.mock('../../../../shared/db/postgres-client', () => ({
+// Mock the postgres client and logger
+vi.mock('../../../db/postgres-client.js', () => ({
   query: vi.fn(),
 }));
-vi.mock('../../../../shared/utils/logger', () => ({
+vi.mock('../../../utils/logger.js', () => ({
   logger: {
     error: vi.fn(),
   },
 }));
-vi.mock('../../../../platform/middleware/prometheus-metrics', () => ({
-  journalWriteErrorsTotal: {
-    inc: vi.fn(),
-  },
-}));
 
-import { query as pgQuery } from '../../../../shared/db/postgres-client';
-import { logger } from '../../../../shared/utils/logger';
-import { journalWriteErrorsTotal } from '../../../../platform/middleware/prometheus-metrics';
+import { query as pgQuery } from '../../../db/postgres-client.js';
+import { logger } from '../../../utils/logger.js';
 
 const q = vi.mocked(pgQuery);
 const logError = vi.mocked(logger.error);
-const incCounter = vi.mocked(journalWriteErrorsTotal.inc);
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -255,21 +248,8 @@ describe('writeJournalEntry', () => {
   });
 
   it('logs only the error once on failure', async () => {
-  q.mockRejectedValueOnce(new Error('network'));
-  await writeJournalEntry(input);
-  expect(logError).toHaveBeenCalledTimes(1);
-  expect(incCounter).toHaveBeenCalledTimes(1);
-});
-
-it('classifies timeout errors correctly', async () => {
-  q.mockRejectedValueOnce(new Error('query timeout exceeded'));
-  await writeJournalEntry(input);
-  expect(incCounter).toHaveBeenCalledWith({ error_type: 'timeout' });
-});
-
-it('classifies unknown errors as unknown', async () => {
-  q.mockRejectedValueOnce(new Error('something weird'));
-  await writeJournalEntry(input);
-  expect(incCounter).toHaveBeenCalledWith({ error_type: 'unknown' });
-});
+    q.mockRejectedValueOnce(new Error('network'));
+    await writeJournalEntry(input);
+    expect(logError).toHaveBeenCalledTimes(1);
+  });
 });

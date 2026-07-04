@@ -10,9 +10,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { detectRegime, isRegimeFresh } from '../regime-detector';
-import type { TimeframeIndicators, RegimeSnapshot } from '../regime-detector';
-import type { Candle, TfId } from '../multi-tf-types';
+import { detectRegime, isRegimeFresh } from '../regime-detector.js';
+import type { TimeframeIndicators, RegimeSnapshot } from '../regime-detector.js';
+import type { Candle, TfId } from '../multi-tf-types.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

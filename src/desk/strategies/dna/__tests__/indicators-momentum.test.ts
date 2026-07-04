@@ -2,7 +2,7 @@
  * Tests for indicators-momentum.ts (Phase 02 coverage gate).
  */
 import { describe, it, expect } from 'vitest';
-import { computeMomentumIndicators, momentumDirection } from '../indicators-momentum';
+import { computeMomentumIndicators, momentumDirection } from '../indicators-momentum.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

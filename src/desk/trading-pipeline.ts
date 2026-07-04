@@ -15,8 +15,9 @@ import { KellyPositionSizer, type KellyConfig } from './risk/kelly-position-size
 import { TieredDrawdownBreaker, type TieredDrawdownConfig } from './risk/tiered-drawdown-breaker';
 import { TwapExecutor, type TwapConfig } from './execution/twap-executor';
 import { WalletManager, type WalletLabel, type WalletTrade } from './wallet/wallet-manager';
-import { ImmutableTradeAudit } from '../platform/audit/immutable-trade-audit';
-import { logger } from '../shared/utils/logger';
+import { ImmutableTradeAudit } from './audit/immutable-trade-audit';
+import { logger } from './utils/logger';
+import { appendTenantAuditLog } from './audit/tenant-audit-log';
 
 export interface TradingPipelineConfig {
   /** Initial portfolio value in USD (used to bootstrap drawdown breaker) */
@@ -39,10 +40,12 @@ export interface TradingPipeline {
   twap: TwapExecutor;
   wallet: WalletManager;
   audit: ImmutableTradeAudit;
+  /** The wallet label this pipeline is bound to */
   walletLabel: WalletLabel;
+  /** USD threshold above which TWAP is used */
   twapThresholdUsd: number;
-  /** Record a completed trade outcome — checks drawdown BEFORE mutating wallet balance */
-  recordTradeOutcome(trade: WalletTrade, newPortfolioValue: number): Promise<void>;
+  /** Record a completed trade outcome — updates wallet balance and drawdown state */
+  recordTradeOutcome(trade: WalletTrade, newPortfolioValue: number): void;
 }
 
 /**
@@ -74,50 +77,45 @@ export function createTradingPipeline(
     walletLabel,
     twapThresholdUsd,
 
-    async recordTradeOutcome(trade: WalletTrade, newPortfolioValue: number): Promise<void> {
-      // EC#32: Make async (wallet.recordTrade is now async)
-      // EC#8: Check drawdown BEFORE mutating wallet — order was wrong before
-      // 1. Check drawdown breaker FIRST (non-mutating read)
+    recordTradeOutcome(trade: WalletTrade, newPortfolioValue: number): void {
+      // 1. Record trade on wallet (enforces fund isolation)
+      wallet.recordTrade(trade, walletLabel);
+
+      // 2. Update drawdown breaker with new portfolio value
       const state = drawdown.update(newPortfolioValue);
 
-      // 2. Only record trade if drawdown allows it
-      if (state.tier === 'HALT' || state.tier === 'HARD_STOP') {
-        logger.warn(`[TradingPipeline] Trade blocked by drawdown breaker: tier=${state.tier} portfolio=$${newPortfolioValue.toFixed(2)}`);
-        audit.append('circuit_breaker', `Drawdown breaker halted: tier=${state.tier}`, {
-          walletLabel: trade.walletLabel,
-          marketId: trade.marketId,
-          side: trade.side,
-          metadata: { drawdownTier: state.tier, portfolioValue: newPortfolioValue, reason: `tier=${state.tier} drawdown=${state.drawdownPercent.toFixed(2)}%` },
-        });
-        return;
-      }
+      // 3. Audit the trade execution
+      audit.append('trade_executed', `${trade.side} $${trade.sizeUsd} on ${trade.marketId} → PnL $${trade.pnl.toFixed(2)}`, {
+        walletLabel: trade.walletLabel,
+        marketId: trade.marketId,
+        side: trade.side,
+        actualSize: trade.sizeUsd,
+        price: trade.price,
+        metadata: {
+          pnl: trade.pnl,
+          drawdownTier: state.tier,
+          portfolioValue: newPortfolioValue,
+        },
+      });
 
-      // EC#9: Wrap remaining operations in try-catch for error handling
-      try {
-        // 2. Record trade on wallet (enforces fund isolation, mutates balance)
-        await wallet.recordTrade(trade, walletLabel);
-
-        // 3. Audit the trade execution
-        audit.append('trade_executed', `${trade.side} $${trade.sizeUsd} on ${trade.marketId} → PnL $${trade.pnl.toFixed(2)}`, {
+      appendTenantAuditLog(
+        trade.walletLabel || 'legacy-tenant',
+        'trade_executed',
+        'system',
+        `${trade.side} $${trade.sizeUsd} on ${trade.marketId} → PnL $${trade.pnl.toFixed(2)}`,
+        {
           walletLabel: trade.walletLabel,
           marketId: trade.marketId,
           side: trade.side,
           actualSize: trade.sizeUsd,
           price: trade.price,
-          metadata: {
-            pnl: trade.pnl,
-            drawdownTier: state.tier,
-            portfolioValue: newPortfolioValue,
-          },
-        });
+          pnl: trade.pnl,
+          drawdownTier: state.tier,
+          portfolioValue: newPortfolioValue,
+        }
+      ).catch((err) => logger.error('[TradingPipeline] Failed to append tenant audit log:', err));
 
-        logger.info(`[TradingPipeline] Trade recorded: ${trade.side} $${trade.sizeUsd} | tier=${state.tier} | portfolio=$${newPortfolioValue.toFixed(2)}`);
-      } catch (error) {
-        // metrics tracked via audit log;
-        logger.error(`[TradingPipeline] Trade recording failed: ${error instanceof Error ? error.message : String(error)}`);
-        // Re-throw so caller knows the trade wasn't recorded
-        throw error;
-      }
+      logger.info(`[TradingPipeline] Trade recorded: ${trade.side} $${trade.sizeUsd} | tier=${state.tier} | portfolio=$${newPortfolioValue.toFixed(2)}`);
     },
   };
 }

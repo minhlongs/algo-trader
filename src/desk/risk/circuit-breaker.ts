@@ -8,6 +8,7 @@
 import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import { DrawdownMonitor } from './drawdown-monitor';
+import { appendTenantAuditLog } from '../audit/tenant-audit-log';
 
 export interface CircuitBreakerConfig {
   maxLossStreak: number;
@@ -150,6 +151,14 @@ export class CircuitBreaker {
       triggeredAt: this.triggeredAt.toString(),
     });
 
+    await appendTenantAuditLog(
+      'system-tenant',
+      'circuit_breaker_tripped',
+      'system',
+      `Circuit breaker tripped: ${reason}`,
+      { details, state: 'OPEN', triggeredAt: this.triggeredAt }
+    ).catch((err) => logger.error('[CircuitBreaker] Failed to append tenant audit log:', err));
+
     logger.warn(`[CircuitBreaker] TRIPPED: ${reason} - ${details}`);
   }
 
@@ -175,6 +184,14 @@ export class CircuitBreaker {
     });
 
     await this.redis.del('circuit_breaker:loss_streak');
+
+    await appendTenantAuditLog(
+      'system-tenant',
+      'circuit_breaker_reset',
+      'system',
+      'Circuit breaker reset to CLOSED',
+      { state: 'CLOSED' }
+    ).catch((err) => logger.error('[CircuitBreaker] Failed to append tenant audit log:', err));
 
     logger.info('[CircuitBreaker] RESET');
   }

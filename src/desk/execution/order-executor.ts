@@ -11,6 +11,8 @@
  */
 
 import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
+import { logger } from '../utils/logger';
+import { appendTenantAuditLog } from '../audit/tenant-audit-log';
 
 export interface ExecutionResult {
   id: string;
@@ -66,6 +68,8 @@ export class OrderExecutor {
     opportunity: ArbitrageOpportunity,
     amount?: number
   ): Promise<ExecutionResult> {
+    this.cleanup(); // Clean up old executions automatically to prevent memory growth
+
     const execAmount = amount || this.config.defaultAmount;
     const execution: ExecutionResult = {
       id: `exec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -79,35 +83,66 @@ export class OrderExecutor {
     try {
       execution.status = 'EXECUTING';
 
-      // Place buy order on lower exchange
-      execution.buyOrder = await this.placeOrder({
-        exchange: opportunity.buyExchange,
-        symbol: opportunity.symbol,
-        side: 'buy',
-        price: opportunity.buyPrice,
-        amount: execAmount,
-      });
+      let buyOrder: OrderResult | null = null;
+      let sellOrder: OrderResult | null = null;
+      let buyError: Error | null = null;
+      let sellError: Error | null = null;
 
-      if (execution.buyOrder.status === 'rejected') {
-        throw new Error(`Buy order rejected: ${execution.buyOrder.orderId}`);
+      const [buyRes, sellRes] = await Promise.allSettled([
+        this.placeOrder({
+          exchange: opportunity.buyExchange,
+          symbol: opportunity.symbol,
+          side: 'buy',
+          price: opportunity.buyPrice,
+          amount: execAmount,
+        }),
+        this.placeOrder({
+          exchange: opportunity.sellExchange,
+          symbol: opportunity.symbol,
+          side: 'sell',
+          price: opportunity.sellPrice,
+          amount: execAmount,
+        })
+      ]);
+
+      if (buyRes.status === 'fulfilled') {
+        buyOrder = buyRes.value;
+        execution.buyOrder = buyOrder;
+      } else {
+        buyError = buyRes.reason instanceof Error ? buyRes.reason : new Error(String(buyRes.reason));
       }
 
-      // Place sell order on higher exchange
-      execution.sellOrder = await this.placeOrder({
-        exchange: opportunity.sellExchange,
-        symbol: opportunity.symbol,
-        side: 'sell',
-        price: opportunity.sellPrice,
-        amount: execAmount,
-      });
+      if (sellRes.status === 'fulfilled') {
+        sellOrder = sellRes.value;
+        execution.sellOrder = sellOrder;
+      } else {
+        sellError = sellRes.reason instanceof Error ? sellRes.reason : new Error(String(sellRes.reason));
+      }
 
-      if (execution.sellOrder.status === 'rejected') {
-        throw new Error(`Sell order rejected: ${execution.sellOrder.orderId}`);
+      const buyFailed = buyError || (buyOrder && buyOrder.status === 'rejected');
+      const sellFailed = sellError || (sellOrder && sellOrder.status === 'rejected');
+
+      if (buyFailed || sellFailed) {
+        if (!buyFailed && buyOrder) {
+          await this.rollbackOrder(buyOrder);
+          execution.status = 'ROLLBACK';
+          const errMsg = sellError ? sellError.message : `Sell order rejected: ${sellOrder?.orderId}`;
+          throw new Error(`Sell side failed (${errMsg}). Buy order rolled back.`);
+        } else if (!sellFailed && sellOrder) {
+          await this.rollbackOrder(sellOrder);
+          execution.status = 'ROLLBACK';
+          const errMsg = buyError ? buyError.message : `Buy order rejected: ${buyOrder?.orderId}`;
+          throw new Error(`Buy side failed (${errMsg}). Sell order rolled back.`);
+        } else {
+          const buyMsg = buyError ? buyError.message : `Buy order rejected`;
+          const sellMsg = sellError ? sellError.message : `Sell order rejected`;
+          throw new Error(`Both sides failed. Buy: ${buyMsg}, Sell: ${sellMsg}`);
+        }
       }
 
       // Check if both orders filled
-      const buyFilled = execution.buyOrder.filled / execution.buyOrder.amount;
-      const sellFilled = execution.sellOrder.filled / execution.sellOrder.amount;
+      const buyFilled = buyOrder!.filled / buyOrder!.amount;
+      const sellFilled = sellOrder!.filled / sellOrder!.amount;
 
       if (buyFilled >= 0.99 && sellFilled >= 0.99) {
         execution.status = 'FILLED';
@@ -116,11 +151,85 @@ export class OrderExecutor {
         execution.status = 'PARTIAL';
       }
 
+      await appendTenantAuditLog(
+        'system-tenant',
+        'order_executed',
+        'system',
+        `Order execution completed with status ${execution.status}`,
+        {
+          executionId: execution.id,
+          opportunityId: execution.opportunityId,
+          status: execution.status,
+          profit: execution.profit,
+          error: execution.error,
+          buyOrder: execution.buyOrder,
+          sellOrder: execution.sellOrder,
+        }
+      ).catch((err) => logger.error('[OrderExecutor] Failed to append tenant audit log:', err));
+
       return execution;
     } catch (error) {
-      execution.status = 'FAILED';
+      if (execution.status !== 'ROLLBACK') {
+        execution.status = 'FAILED';
+      }
       execution.error = error instanceof Error ? error.message : 'Unknown error';
+
+      await appendTenantAuditLog(
+        'system-tenant',
+        'order_executed',
+        'system',
+        `Order execution completed with status ${execution.status}`,
+        {
+          executionId: execution.id,
+          opportunityId: execution.opportunityId,
+          status: execution.status,
+          profit: execution.profit,
+          error: execution.error,
+          buyOrder: execution.buyOrder,
+          sellOrder: execution.sellOrder,
+        }
+      ).catch((err) => logger.error('[OrderExecutor] Failed to append tenant audit log:', err));
+
       return execution;
+    }
+  }
+
+  /**
+   * Cancel order on the exchange API
+   */
+  private async cancelOrder(exchange: string, orderId: string): Promise<boolean> {
+    // Mock order cancellation API call
+    logger.info(`[OrderExecutor] Sending cancellation request to ${exchange} for order ${orderId}`);
+    return true;
+  }
+
+  /**
+   * Rollback order by placing an offsetting order or canceling if still open
+   */
+  private async rollbackOrder(order: OrderResult): Promise<void> {
+    logger.warn(`[OrderExecutor] Rolling back order:`, { order });
+    try {
+      if (order.status === 'open') {
+        const success = await this.cancelOrder(order.exchange, order.orderId);
+        if (success) {
+          order.status = 'canceled';
+          logger.info(`[OrderExecutor] Canceled open order ${order.orderId} via exchange API`);
+        } else {
+          throw new Error(`Exchange API rejected cancellation for order ${order.orderId}`);
+        }
+      } else if (order.status === 'closed') {
+        const oppositeSide = order.side === 'buy' ? 'sell' : 'buy';
+        logger.info(`[OrderExecutor] Placing offsetting ${oppositeSide} order for ${order.amount} units`);
+        await this.placeOrder({
+          exchange: order.exchange,
+          symbol: order.symbol,
+          side: oppositeSide,
+          price: order.price,
+          amount: order.amount,
+        });
+      }
+    } catch (err) {
+      logger.error(`[OrderExecutor] Rollback failed for order ${order.orderId}:`, err);
     }
   }
 
@@ -200,7 +309,7 @@ export class OrderExecutor {
     const now = Date.now();
     for (const [id, execution] of this.pendingExecutions.entries()) {
       if (
-        ['FILLED', 'FAILED', 'ROLLBACK'].includes(execution.status) &&
+        ['FILLED', 'FAILED', 'ROLLBACK', 'CANCELED', 'PARTIAL'].includes(execution.status) &&
         now - execution.timestamp > ttlMs
       ) {
         this.pendingExecutions.delete(id);

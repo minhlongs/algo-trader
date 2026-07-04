@@ -11,6 +11,15 @@ Ordered by severity (page-first) then rollback-tier.
 | Alert UID | Severity | Rollback Tier | Metric (threshold) | Runbook |
 |---|---|---|---|---|
 | `algo-trader-deadman` | CRITICAL | L0 | `up{job="algo-trader"} == 0` for 3m | [algo-trader-deadman.md](algo-trader-deadman.md) |
+| `multi-region-outage` | CRITICAL | L0 | `up{region=~"us-east|eu-central|ap-southeast"} == 0` for 2m | [multi-region-outage.md](multi-region-outage.md) |
+| `database-connection-exhaustion` | CRITICAL | L2 | `pgpool_active_connections / pgpool_max_connections > 0.95` for 1m | [db-connection-exhaustion.md](db-connection-exhaustion.md) |
+| `deployment-failure` | CRITICAL | L0 | `cloudflare_deployment_status{status!="success"} == 1` | [deployment-failure.md](deployment-failure.md) |
+| `circuit-breaker-open` | WARNING | L2 | `circuit_breaker_state{state="open"} == 1` | [circuit-breaker-trip.md](circuit-breaker-trip.md) |
+| `queue-backlog-critical` | WARNING | L2 | `agent_queue_depth > 1000` for 2m | [queue-backlog.md](queue-backlog.md) |
+| `memory-leak-detected` | WARNING | L3 | `deriv(process_resident_memory_bytes[10m]) > 10MB` | [memory-leak.md](memory-leak.md) |
+| `memory-pressure-critical` | WARNING | L3 | `process_resident_memory_bytes > 110 * 1024 * 1024` for 5m | [memory-pressure-critical.md](memory-pressure-critical.md) |
+| `sla-latency-breach` | WARNING | L2 | `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.1` | [sla-latency-breach.md](sla-latency-breach.md) |
+| `shard-hotspot` | WARNING | L2 | `max(shard_latency_p95) / min(shard_latency_p95) > 3` | [shard-hotspot.md](shard-hotspot.md) |
 | `qwen-l3-drawdown-breached` | CRITICAL | L3 | `qwen_drawdown_auto_disabled == 1` for 5m | [qwen-drawdown-breach.md](qwen-drawdown-breach.md) |
 | `qwen-l4-paper-gate-5d` | WARNING | L4 | `qwen_paper_gate_days_remaining <= 5` for 10m | [qwen-paper-gate.md](qwen-paper-gate.md) |
 | `qwen-signals-loop-error-spike` | WARNING | signals_loop | `increase(qwen_signals_loop_runs_total{decision="error"}[1h]) >= 2` for 15m | [qwen-signals-loop-error.md](qwen-signals-loop-error.md) |

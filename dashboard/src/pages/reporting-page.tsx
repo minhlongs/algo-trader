@@ -1,274 +1,172 @@
 /**
- * Reporting page: paginated trade history table with CSV export and summary stats.
- * GET /trades or /arb/positions — sortable columns, PnL coloring, 20 rows per page.
+ * Reporting page: generate and export analytics reports.
  */
-import { useState, useEffect, useMemo } from 'react';
-import { useApiClient } from '../hooks/use-api-client';
+import { useState } from 'react';
+import { StitchPageShell } from '../components/ui/stitch-page-shell';
+import { StitchCard, StitchCardHeader, StitchCardBody } from '../components/ui/stitch-card';
+import { StitchStatCard } from '../components/ui/stitch-stat-card';
+import { StitchBadge } from '../components/ui/stitch-badge';
+import { StitchButton } from '../components/ui/stitch-button';
+import { StitchTabs } from '../components/ui/stitch-tabs';
+import { StitchSectionTitle } from '../components/ui/stitch-section-title';
+import { COLORS } from '../lib/stitch-design-tokens';
+import { useRevenueAnalytics } from '../hooks/use-revenue-analytics';
+import { useLicenseAnalytics } from '../hooks/use-license-analytics';
+import { ExportReportButton } from '../components/export-report-button';
 
-interface Trade {
-  id: string;
-  date: string;
-  pair: string;
-  side: 'BUY' | 'SELL';
-  price: number;
-  amount: number;
-  fee: number;
-  pnl: number;
-  exchange: string;
-}
+type ReportType = 'revenue' | 'licenses' | 'usage' | 'combined';
+type StatTone = 'primary' | 'profit' | 'loss' | 'warning' | 'neutral';
 
-type SortKey = keyof Trade;
-type SortDir = 'asc' | 'desc';
+const REPORT_TYPES = [
+  { id: 'revenue', label: 'Revenue' },
+  { id: 'licenses', label: 'Licenses' },
+  { id: 'usage', label: 'Usage' },
+  { id: 'combined', label: 'Combined' },
+] as const;
 
-const PAGE_SIZE = 20;
-
-
-function fmt(n: number, decimals = 2) {
-  return n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-}
-
-function pnlClass(v: number) {
-  return v > 0 ? 'text-profit' : v < 0 ? 'text-loss' : 'text-muted';
-}
-
-function exportCsv(trades: Trade[]) {
-  const headers = ['Date', 'Pair', 'Side', 'Price', 'Amount', 'Fee', 'PnL', 'Exchange'];
-  const rows = trades.map((t) => [
-    new Date(t.date).toISOString(),
-    t.pair,
-    t.side,
-    t.price.toFixed(2),
-    t.amount.toFixed(6),
-    t.fee.toFixed(4),
-    t.pnl.toFixed(2),
-    t.exchange,
-  ]);
-  const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `trades-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-interface SortHeaderProps {
-  label: string;
-  col: SortKey;
-  current: SortKey;
-  dir: SortDir;
-  onSort: (col: SortKey) => void;
-}
-
-function SortHeader({ label, col, current, dir, onSort }: SortHeaderProps) {
-  const active = current === col;
-  return (
-    <th
-      onClick={() => onSort(col)}
-      className="px-3 py-2 text-left text-xs font-semibold text-muted cursor-pointer hover:text-accent select-none whitespace-nowrap"
-    >
-      {label}
-      {active && <span className="ml-1 text-accent">{dir === 'asc' ? '▲' : '▼'}</span>}
-    </th>
-  );
-}
+const TIME_RANGES = [
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
+  { value: '90d', label: '90 days' },
+  { value: '1y', label: '1 year' },
+];
 
 export function ReportingPage() {
-  const { fetchApi } = useApiClient();
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [sortKey, setSortKey] = useState<SortKey>('date');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [page, setPage] = useState(0);
+  const [activeReport, setActiveReport] = useState<ReportType>('revenue');
+  const [timeRange, setTimeRange] = useState('30d');
+  const { metrics } = useRevenueAnalytics();
+  const { analytics: licenseAnalytics } = useLicenseAnalytics();
 
-  useEffect(() => {
-    fetchApi<Trade[]>('/trades').then((data) => {
-      if (data && data.length > 0) setTrades(data);
-    });
-  }, [fetchApi]);
+  const formatCurrency = (v: number) => `$${v.toLocaleString()}`;
+  const formatNumber = (v: number) => v.toLocaleString();
 
-  function handleSort(col: SortKey) {
-    if (col === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(col);
-      setSortDir('desc');
+  const getStats = (): Array<{ label: string; value: string; tone: StatTone }> => {
+    if (!metrics) return [];
+    switch (activeReport) {
+      case 'revenue':
+        return [
+          { label: 'Total Revenue', value: formatCurrency(licenseAnalytics?.revenue?.totalRevenue || 0), tone: 'primary' as const },
+          { label: 'MRR', value: formatCurrency(metrics.mrr), tone: 'primary' },
+          { label: 'DAL', value: formatNumber(metrics.dal), tone: 'profit' },
+          { label: 'Churn Rate', value: `${metrics.churnRate.toFixed(2)}%`, tone: 'warning' },
+        ];
+      case 'licenses':
+        return licenseAnalytics
+          ? [
+              { label: 'Total Licenses', value: formatNumber(licenseAnalytics.licenseHealth?.healthy || 0), tone: 'primary' as const },
+              { label: 'At Risk', value: formatNumber(licenseAnalytics.licenseHealth?.atRisk || 0), tone: 'warning' },
+              { label: 'Exceeded', value: formatNumber(licenseAnalytics.licenseHealth?.exceeded || 0), tone: 'loss' },
+              { label: 'Health Score', value: `${licenseAnalytics.licenseHealth?.healthScore || 0}%`, tone: 'primary' },
+            ]
+          : [];
+      default:
+        return [];
     }
-    setPage(0);
-  }
+  };
 
-  const sorted = useMemo(() => {
-    return [...trades].sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
-      const cmp =
-        typeof av === 'number' && typeof bv === 'number'
-          ? av - bv
-          : String(av).localeCompare(String(bv));
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-  }, [trades, sortKey, sortDir]);
-
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const pageSlice = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
-  const stats = useMemo(() => {
-    const totalPnl = trades.reduce((s, t) => s + t.pnl, 0);
-    const wins = trades.filter((t) => t.pnl > 0).length;
-    const winRate = trades.length > 0 ? (wins / trades.length) * 100 : 0;
-    const avgSize =
-      trades.length > 0
-        ? trades.reduce((s, t) => s + t.price * t.amount, 0) / trades.length
-        : 0;
-    return { totalPnl, winRate, avgSize };
-  }, [trades]);
-
-  const COLS: { label: string; key: SortKey }[] = [
-    { label: 'Date', key: 'date' },
-    { label: 'Pair', key: 'pair' },
-    { label: 'Side', key: 'side' },
-    { label: 'Price', key: 'price' },
-    { label: 'Amount', key: 'amount' },
-    { label: 'Fee', key: 'fee' },
-    { label: 'PnL', key: 'pnl' },
-    { label: 'Exchange', key: 'exchange' },
-  ];
+  const stats = getStats();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-white text-2xl font-bold">Reporting</h1>
-        <button
-          onClick={() => exportCsv(sorted)}
-          className="text-xs bg-accent text-bg font-bold px-4 py-2 rounded hover:opacity-90 transition-opacity"
-        >
-          Export CSV
-        </button>
-      </div>
-
-      {/* Summary stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Trades', value: trades.length.toString(), cls: 'text-white' },
-          {
-            label: 'Total PnL',
-            value: `${stats.totalPnl >= 0 ? '+' : ''}$${fmt(stats.totalPnl)}`,
-            cls: pnlClass(stats.totalPnl),
-          },
-          { label: 'Win Rate', value: `${stats.winRate.toFixed(1)}%`, cls: 'text-profit' },
-          { label: 'Avg Trade Size', value: `$${fmt(stats.avgSize, 0)}`, cls: 'text-white' },
-        ].map((s) => (
-          <div key={s.label} className="bg-bg-surface border border-bg-border rounded-lg p-4">
-            <p className="text-muted text-xs mb-1">{s.label}</p>
-            <p className={`font-mono text-lg font-bold ${s.cls}`}>{s.value}</p>
+    <StitchPageShell>
+      <div className="space-y-6 p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: COLORS.onSurface }}>Reporting</h1>
+            <p className="text-sm" style={{ color: COLORS.onSurfaceVariant }}>Generate and export analytics reports</p>
           </div>
-        ))}
-      </div>
-
-      {/* Trade history table */}
-      <div className="bg-bg-surface border border-bg-border rounded-lg overflow-hidden">
-        {trades.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-muted text-sm">Chưa có giao dịch.</p>
-            <p className="text-muted text-xs mt-1">Dữ liệu sẽ xuất hiện sau khi bot thực hiện giao dịch đầu tiên.</p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1" style={{ backgroundColor: `${COLORS.bg}55`, border: `1px solid ${COLORS.outline}`, borderRadius: '0.5rem' }}>
+              {TIME_RANGES.map((r) => (
+                <button
+                  key={r.value}
+                  onClick={() => setTimeRange(r.value)}
+                  className="px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: timeRange === r.value ? `${COLORS.primary}33` : 'transparent',
+                    color: timeRange === r.value ? COLORS.primary : COLORS.onSurfaceVariant,
+                  }}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            {metrics && <ExportReportButton metrics={metrics} timeRange={timeRange} variant="primary" />}
           </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px] text-xs">
-                <thead className="border-b border-bg-border bg-bg">
-                  <tr>
-                    {COLS.map((c) => (
-                      <SortHeader
-                        key={c.key}
-                        label={c.label}
-                        col={c.key}
-                        current={sortKey}
-                        dir={sortDir}
-                        onSort={handleSort}
-                      />
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageSlice.map((t, idx) => (
-                    <tr
-                      key={t.id}
-                      className={`border-b border-bg-border hover:bg-bg/50 transition-colors ${
-                        idx % 2 === 0 ? '' : 'bg-bg/20'
-                      }`}
-                    >
-                      <td className="px-3 py-2 text-muted whitespace-nowrap">
-                        {new Date(t.date).toLocaleString('en-US', {
-                          month: 'short',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="px-3 py-2 text-white whitespace-nowrap">{t.pair}</td>
-                      <td
-                        className={`px-3 py-2 font-bold whitespace-nowrap ${
-                          t.side === 'BUY' ? 'text-accent' : 'text-loss'
-                        }`}
-                      >
-                        {t.side}
-                      </td>
-                      <td className="px-3 py-2 text-white text-right whitespace-nowrap">
-                        ${fmt(t.price)}
-                      </td>
-                      <td className="px-3 py-2 text-white text-right whitespace-nowrap">
-                        {t.amount.toFixed(4)}
-                      </td>
-                      <td className="px-3 py-2 text-muted text-right whitespace-nowrap">
-                        ${t.fee.toFixed(4)}
-                      </td>
-                      <td
-                        className={`px-3 py-2 font-bold text-right whitespace-nowrap ${pnlClass(t.pnl)}`}
-                      >
-                        {t.pnl >= 0 ? '+' : ''}${fmt(t.pnl)}
-                      </td>
-                      <td className="px-3 py-2 text-muted whitespace-nowrap capitalize">
-                        {t.exchange}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-bg-border">
-              <span className="text-muted text-xs">
-                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} of{' '}
-                {sorted.length} trades
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  aria-label="Previous page"
-                  className="px-3 py-1 text-xs border border-bg-border rounded text-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  ← Prev
-                </button>
-                <span className="px-3 py-1 text-xs text-muted">
-                  {page + 1} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                  disabled={page >= totalPages - 1}
-                  aria-label="Next page"
-                  className="px-3 py-1 text-xs border border-bg-border rounded text-muted hover:border-accent hover:text-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  Next →
-                </button>
-              </div>
-            </div>
-          </>
+        <StitchTabs active={activeReport} tabs={REPORT_TYPES.map((t) => t.label)} onChange={(label) => {
+          const next = REPORT_TYPES.find((t) => t.label === label);
+          if (next) setActiveReport(next.id);
+        }} />
+
+        {stats.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((s) => <StitchStatCard key={s.label} label={s.label} value={s.value} tone={s.tone} />)}
+          </div>
         )}
+
+        <StitchCard>
+          <StitchCardHeader>
+            <div className="flex items-center gap-3">
+              <StitchBadge label={REPORT_TYPES.find((t) => t.id === activeReport)!.label} tone="primary" />
+              <span className="text-sm" style={{ color: COLORS.onSurfaceVariant }}>{timeRange} reporting period</span>
+            </div>
+            <StitchButton onClick={() => {}} variant="secondary">Schedule Report</StitchButton>
+          </StitchCardHeader>
+          <StitchCardBody>
+            {activeReport === 'revenue' && (
+              <>
+                <p style={{ color: COLORS.onSurfaceVariant }}>Revenue reports: MRR, DAL, churn, ARPA. Updated every 30s.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <StitchButton variant="secondary">View Details</StitchButton>
+                  <StitchButton variant="ghost">Download Template</StitchButton>
+                </div>
+              </>
+            )}
+            {activeReport === 'licenses' && (
+              <>
+                <p style={{ color: COLORS.onSurfaceVariant }}>License reports: active licenses, usage, audit logs, health metrics.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <StitchButton variant="secondary">View Details</StitchButton>
+                  <StitchButton variant="ghost">Download Template</StitchButton>
+                </div>
+              </>
+            )}
+            {activeReport === 'usage' && (
+              <>
+                <p style={{ color: COLORS.onSurfaceVariant }}>Usage reports: API volumes, endpoint breakdown, quota consumption.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <StitchButton variant="secondary">View Details</StitchButton>
+                  <StitchButton variant="ghost">Download Template</StitchButton>
+                </div>
+              </>
+            )}
+            {activeReport === 'combined' && (
+              <>
+                <p style={{ color: COLORS.onSurfaceVariant }}>Combined: all metrics in a single comprehensive export.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <StitchButton variant="secondary">Generate Full Report</StitchButton>
+                  <StitchButton variant="ghost">Customize Fields</StitchButton>
+                </div>
+              </>
+            )}
+          </StitchCardBody>
+        </StitchCard>
+
+        <StitchSectionTitle title="Quick Actions" eyebrow="SHORTCUTS" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {['Daily Summary', 'Weekly Trends', 'Monthly Package', 'Real-time'].map((label, i) => (
+            <StitchButton key={label} variant="secondary" className="h-auto py-4 flex flex-col items-start gap-2">
+              <span className="text-lg">{['📊','📈','🎯','⚡'][i]}</span>
+              <span className="font-semibold">{label}</span>
+              <span className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>
+                {['Last 24h','7-day comparison','Full month data','Live snapshot'][i]}
+              </span>
+            </StitchButton>
+          ))}
+        </div>
       </div>
-    </div>
+    </StitchPageShell>
   );
 }
 

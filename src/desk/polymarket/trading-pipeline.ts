@@ -207,16 +207,28 @@ export class TradingPipeline extends EventEmitter {
     }
   }
 
-  /** Get the running MarketMakerStrategy instance (if any) */
-  private getMarketMakerInstance(): MarketMakerStrategy | null {
-    try {
-      const strategies = (this.strategyRunner as any)?.strategies;
-      if (strategies instanceof Map) {
-        return strategies.get('market-maker') ?? null;
-      }
-    } catch {}
-    return null;
+/**
+ * Internal extension of StrategyRunner that exposes the strategy registry map.
+ * The base `StrategyRunner` (workspace package `engine`) hides `.strategies`
+ * behind a private field — this typed view is the narrowest surface needed
+ * by the trading pipeline to look up a running strategy instance by name.
+ */
+interface StrategyRunnerWithMap extends StrategyRunner {
+  strategies: Map<string, unknown>;
+}
+
+private getMarketMakerInstance(): MarketMakerStrategy | null {
+  try {
+    const runner = this.strategyRunner as StrategyRunnerWithMap;
+    const strategies = runner.strategies;
+    if (strategies instanceof Map) {
+      return (strategies.get('market-maker') as MarketMakerStrategy | undefined) ?? null;
+    }
+  } catch {
+    // strategyRunner not yet initialised or registry shape mismatch — treat as absent
   }
+  return null;
+}
 
   /** Start prediction loop and feed AI fair values to MarketMaker + Executor */
   private startPredictionFeed(): void {
