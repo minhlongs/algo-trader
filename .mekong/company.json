@@ -1,54 +1,65 @@
 {
   "name": "AlgoTrade",
-  "stage": "zero",
-  "stage_label": "Zero → PSF (Product-Signal Fit)",
-  "model": "Open Source Engine + RaaS Subscription",
+  "stage": "scale",
+  "stage_label": "Scale-Up — proven unit economics, structured product",
+  "model": "RaaS Platform (Robot-as-a-Service) + Signals API Marketplace",
   "target_arr": "$1M",
   "currency": "USD",
-  "icp": "Crypto-savvy retail traders who want AI-powered prediction market edges without coding",
-  "moat": "OpenClaw local LLM analysis + Kelly sizing + long-tail market selection algorithm",
+  "icp": "Crypto-savvy retail traders wanting AI-powered prediction market edges; quant funds wanting signal feeds",
+  "moat": "AI Co-pilot + Regime-adaptive signal fusion + 52 strategies + Multi-tenant marketplace + Signals API",
   "pricing": {
-    "starter": { "price": 49, "interval": "month", "label": "Starter" },
-    "pro": { "price": 149, "interval": "month", "label": "Pro" },
-    "elite": { "price": 499, "interval": "month", "label": "Elite" }
+    "starter": {"price": 19, "interval": "month", "label": "STARTER"},
+    "pro": {"price": 99, "interval": "month", "label": "PRO"},
+    "enterprise": {"price": 299, "interval": "month", "label": "ENTERPRISE"},
+    "master": {"price": 999, "interval": "month", "label": "MASTER"},
+    "signals_basic": {"price": 29, "interval": "month", "label": "Signals Basic"},
+    "signals_pro": {"price": 99, "interval": "month", "label": "Signals Pro"},
+    "signals_enterprise": {"price": 299, "interval": "month", "label": "Signals Enterprise"}
   },
-  "billing": "Polar.sh",
+  "billing": "NOWPayments (crypto), annual prepay at 20% discount",
   "strategy": {
-    "focus": "AI prediction edge on long-tail Polymarket markets (<$100K volume, 7-30 day resolution)",
-    "not": "Market making / HFT (arb window 2.7s, 73% captured by sub-100ms bots — unwinnable)",
-    "edge": "Information quality advantage where LLM analysis speed (500ms-2s) is irrelevant"
+    "focus": "AI prediction edge on Polymarket prediction markets with regime-adaptive signal fusion",
+    "not": "Market making / HFT (arb window 2.7s, 73% captured by sub-100ms bots)",
+    "edge": "Information quality advantage: local DeepSeek R1 + Nemotron + ensemble voting + regime detection"
   },
   "tech": {
-    "runtime": "Bun (TypeScript)",
-    "llm": "OpenClaw (local Qwen/DeepSeek via MLX on M1 Max)",
-    "sizing": "Kelly Criterion (half-Kelly)",
-    "market": "Polymarket CLOB API",
-    "tests": "2396/2398 passing (Vitest)"
+    "runtime": "TypeScript (Node.js + Express + React 19)",
+    "llm": "Dual-model: Nemotron-3 Nano (scanner, 35-50 t/s) + DeepSeek R1 (reasoner, 8-15 t/s) via MLX on M1 Max",
+    "sizing": "Kelly Criterion (quarter-Kelly), 15% max drawdown, 5% daily loss limit",
+    "market": "Polymarket CLOB v2, CCXT (Binance/Bybit), ethers.js (Ethereum/Polygon/Arbitrum), Jupiter (Solana)",
+    "tests": "3194/3198 passing (Vitest + Playwright)",
+    "db": "PostgreSQL + Prisma + Redis (AOF+RDB persistence)",
+    "infra": "Docker + Caddy SSL + Prometheus + Grafana + Alertmanager + Cloudflare Workers"
+  },
+  "features": {
+    "ai_co_pilot": true,
+    "strategy_leaderboard": true,
+    "signals_api_marketplace": true,
+    "multi_tenant_marketplace": true,
+    "self_service_api_keys": true,
+    "referral_program": true,
+    "telegram_bot": true,
+    "full_i18n_en_vn": true,
+    "backup_pipeline": true
   },
   "agents": {
     "CEO": "Strategy, positioning, $1M ARR target ownership",
-    "Product": "Feature roadmap, RaaS packaging, UX for traders",
-    "Engineering": "CTO — fix tests, paper trading loop, live execution",
-    "Revenue": "RaaS subscriptions + own-account trading P&L",
-    "Ops": "Monitoring, uptime, OpenClaw inference health"
+    "CTO": "Architecture, code quality, AI pipeline, 3194 tests",
+    "Product": "Feature roadmap, RaaS packaging, UX",
+    "Revenue": "NOWPayments billing, Signals API, strategy marketplace 80/20 split",
+    "Marketing": "SEO content, email campaigns, Reddit/Twitter/Discord launch",
+    "Ops": "Monitoring, backup, alerting, infra"
   },
   "status": {
     "trades_executed": 0,
+    "paper_trading_pnl": "$2,251 (66.7% win rate)",
+    "live_trading_ready": true,
+    "live_trading_active": false,
     "api_keys_configured": false,
-    "paper_trading": false,
-    "revenue": "$0",
-    "codebase_files": 411,
-    "test_pass_rate": "2396/2398"
-  },
-  "binh_phap_state": {
-    "current_chapter": 11,
-    "current_phase": "scale",
-    "completed_chapters": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    "chain_status": "phase5_complete",
-    "next_command": "/growth:experiment",
-    "campaign": "first_blood",
-    "target_mrr": 1000
+    "revenue": "$0 (first paying customer pending)",
+    "codebase_files": 886,
+    "test_pass_rate": "3194/3198"
   },
   "created": "2026-03-23",
-  "updated": "2026-03-24"
+  "updated": "2026-07-05"
 }
