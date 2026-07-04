@@ -201,6 +201,34 @@ export function getAccuracyReport(): AccuracyReport {
   };
 }
 
+/**
+ * Per-strategy accuracy summary for the leaderboard overlay.
+ * Only strategies with at least one resolved prediction are included.
+ */
+export interface StrategyAccuracy {
+  strategyName: string;
+  winRate: number;
+  totalTrades: number;
+  lastUpdated: string;
+}
+
+/**
+ * Extract per-strategy accuracy from the full report.
+ * Only includes strategies with at least one resolved prediction.
+ * The returned totalTrades reflects resolved predictions (not total recorded).
+ */
+export function getAllStrategyAccuracy(): StrategyAccuracy[] {
+  const report = getAccuracyReport();
+  return Object.entries(report.byStrategy)
+    .filter(([, s]) => s.total > 0)
+    .map(([strategyName, s]) => ({
+      strategyName,
+      winRate: s.winRate,
+      totalTrades: s.total,
+      lastUpdated: new Date().toISOString(),
+    }));
+}
+
 /** Print formatted accuracy report to logger (info level) */
 export function printAccuracyReport(): void {
   const r = getAccuracyReport();

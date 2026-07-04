@@ -54,6 +54,7 @@ import { marketplaceListingBadgeRouter, marketplaceBadgeDefinitionRouter } from 
 import { marketplaceSubscriptionEnhancementsRouter } from './routes/marketplace-subscription-enhancements';
 import { marketplaceSubscriptionStatsRouter } from './routes/marketplace-subscription-stats-routes';
 import { coPilotRouter } from './routes/co-pilot-routes';
+import { leaderboardRouter } from './routes/leaderboard-routes';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
@@ -199,6 +200,7 @@ this.app.use('/api/v1/marketplace/badges', marketplaceBadgeDefinitionRouter);
     this.app.use('/api/blog', blogEngagementRouter);
     this.app.use('/api/analytics', analyticsRouter);
     this.app.use('/api/v1/strategy-performance', strategyPerformanceRouter);
+    this.app.use('/api/v1/leaderboard', leaderboardRouter);
     this.app.use('/api/kyc', kycRouter);
     this.app.use('/api/newsletter', newsletterRouter);
     this.app.use('/api/community/strategies', communityStrategyRouter);
