@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-time D1 schema setup for algo-trader-stats
+# One-time D1 schema setup for algo-trader-prod
 # Usage: bash scripts/setup-d1.sh
 # Requires: wrangler auth + CLOUDFLARE_API_TOKEN env
 

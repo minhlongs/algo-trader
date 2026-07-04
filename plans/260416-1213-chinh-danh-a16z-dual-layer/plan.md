@@ -45,7 +45,7 @@ Chính danh = honesty (what we WON'T do) + zero-overhead proof + a16z cite đún
 |---|---|---|---|
 | 01 | Decisions gate + `docs/manifesto.md` | P0 | completed |
 | 02 | Dashboard landing `/` + `/manifesto` route | P0 | completed |
-| 03 | Live dashboard D1 + Worker sync | P1 | completed |
+| 03 | Live dashboard D1 + Worker sync | P1 | pending |
 | 04 | Polymarket profile + build-in-public cadence | P1 | partial |
 
 ## Dependencies
