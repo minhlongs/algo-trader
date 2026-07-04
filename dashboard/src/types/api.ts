@@ -221,3 +221,20 @@ export interface PaginatedResult<T> {
   limit: number;
   totalPages: number;
 }
+
+// === Leaderboard API ===
+export interface LeaderboardEntry {
+  rank: number;
+  strategy: string;
+  winRate: number;
+  sharpe: number;
+  pnl: number;
+  drawdown: number;
+  trades: number;
+  badge?: 'top_performer' | 'rising_star' | 'verified' | 'new';
+}
+
+export interface LeaderboardResponse {
+  data: LeaderboardEntry[];
+  total: number;
+}

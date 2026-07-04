@@ -29,6 +29,7 @@ import { StrategyDetailPage } from './pages/strategy-detail-page';
 import { StrategyPerformancePage } from './pages/strategy-performance-page';
 import { ApiKeysPage } from './pages/api-keys-page';
 import { TrialStatusPage } from './pages/trial-status-page';
+import { LeaderboardPage } from './pages/leaderboard-page';
 
 /**
  * Handle uncaught errors in the app.
@@ -72,6 +73,7 @@ export function App() {
         <Route path="/app/strategies/:id" element={<AuthGuard><LayoutShell><StrategyDetailPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/api-keys" element={<AuthGuard><LayoutShell><ApiKeysPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/trial" element={<AuthGuard><LayoutShell><TrialStatusPage /></LayoutShell></AuthGuard>} />
+        <Route path="/app/leaderboard" element={<AuthGuard><LayoutShell><LeaderboardPage /></LayoutShell></AuthGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

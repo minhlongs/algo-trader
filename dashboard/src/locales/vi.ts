@@ -13,6 +13,7 @@ export default {
   sidebar: {
     dashboard: 'Bảng Điều Khiển',
     strategies: 'Chiến Lược',
+    leaderboard: 'Bảng Xếp Hạng',
     backtests: 'Backtest',
     licenses: 'License',
     apiKeys: 'API Keys',

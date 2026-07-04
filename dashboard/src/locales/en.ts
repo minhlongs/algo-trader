@@ -13,6 +13,7 @@ export default {
   sidebar: {
     dashboard: 'Dashboard',
     strategies: 'Strategies',
+    leaderboard: 'Leaderboard',
     backtests: 'Backtests',
     licenses: 'Licenses',
     apiKeys: 'API Keys',
