@@ -28,12 +28,7 @@ const PLACEHOLDER: PaperStats = {
 
 async function loadStats(): Promise<PaperStats> {
   try {
-    // Prefer Worker edge API if VITE_API_URL is set, else same-origin Pages Function
-    const base = typeof import.meta.env?.VITE_API_URL === 'string' && import.meta.env.VITE_API_URL.trim() !== ''
-      ? import.meta.env.VITE_API_URL.replace(/\/$/, '')
-      : '';
-    const apiUrl = base ? `${base}/api/stats` : '/api/stats';
-    const live = await fetch(apiUrl, { cache: 'no-cache' });
+    const live = await fetch('/api/stats', { cache: 'no-cache' });
     if (live.ok) {
       const data = (await live.json()) as PaperStats;
       if (data && typeof data.trades === 'number' && data.trades > 0) return data;
