@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [3.8.0] - 2026-07-04
+
+### Added — Live Trading Readiness (Next Wave VI)
+
+**Phase 1: Strategy Selection**
+- Backtest suite ready: `scripts/backtest-all-strategies.sh`
+- Selection criteria: win rate > 60%, Sharpe > 1.0, max drawdown < 10%
+
+**Phase 2: Risk Configuration**
+- Kelly position sizer: quarter-Kelly, maxPositionFraction=0.05 (5% of capital)
+- Drawdown monitor: 15% max drawdown, 5 daily consecutive loss limit
+- Circuit breaker: threshold 15%, 60min cooldown
+- Live execution guard: min $1000 liquidity, 2% max slippage
+
+**Manual Steps Required:**
+- Backtest all strategies: `npx ts-node scripts/backtest-all-strategies.sh`
+- Fund $500 USDC on Polymarket (Polygon network)
+- Set .env: PAPER_MODE=false, 4 Polymarket API keys, Telegram alerts
+- Start live bot: `PAPER_MODE=false npx ts-node src/index.ts start`
+- Verify first trade, monitor 24h, enable auto-execution
+
 ## ## [3.6.0] - 2026-07-04
 
 ## [3.7.0] - 2026-07-04
