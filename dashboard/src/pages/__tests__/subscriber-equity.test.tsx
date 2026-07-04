@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Subscriber Equity Page Tests
  */
@@ -54,12 +53,8 @@ function hookResult(overrides = {}) {
 }
 
 describe('SubscriberEquityPage', () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     mockHook.mockReset();
-    const { useAuthStore } = await import('../../stores/auth-store');
-    vi.mocked(useAuthStore).mockImplementation(
-      (selector: any) => selector({ tenantId: 'sub-equity-001' })
-    );
   });
 
   it('renders KPI cards with equity data', () => {
@@ -93,15 +88,11 @@ describe('SubscriberEquityPage', () => {
   it('shows no-identity message when tenantId is null', async () => {
     const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
-      (selector: any) => selector({ tenantId: null })
+      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
     );
     mockHook.mockReturnValue(hookResult({ equity: null }));
     render(<SubscriberEquityPage />);
     expect(screen.getByText(/No subscriber identity/i)).toBeTruthy();
-    // Restore default mock so subsequent tests aren't poisoned
-    vi.mocked(useAuthStore).mockImplementation(
-      (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: 'sub-equity-001' })
-    );
   });
 
   it('shows snapshot count in footer', () => {

@@ -2,34 +2,24 @@
  * Subscriber Overview Page
  * KPI cards: total P&L, win rate, fills, blocked-DLP count, active signals.
  * Entry point for the multi-tenant subscriber lens.
- * Auto-refreshes every 60 seconds to prevent stale data.
  */
 
-import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../stores/auth-store';
 import { useSubscriberPnl } from '../hooks/use-subscriber-pnl';
 import { SubscriberKpiCard } from '../components/subscriber-kpi-card';
 
-function fmtNum(n: number, dec = 2): string {
+function fmt(n: number, dec = 2): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
-function fmtUsd(n: number, dec = 2): string {
-  const abs = Math.abs(n);
-  const formatted = abs >= 1000
-    ? abs.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec })
-    : abs.toFixed(dec);
-  return (n < 0 ? '-' : '') + '$' + formatted;
-}
-
-function pctStr(n: number): string {
-  return `${fmtNum(n * 100, 1)}%`;
+function pctFmt(n: number): string {
+  return `${fmt(n * 100, 1)}%`;
 }
 
 interface ErrorBannerProps { message: string; onRetry: () => void }
 function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
   return (
-    <div className="p-4 bg-loss/10 border border-loss/40 rounded-lg text-loss text-sm flex items-center justify-between">
+    <div className="p-4 bg-loss/10 border border-loss/40 rounded-lg text-loss text-sm font-mono flex items-center justify-between">
       <span>{message}</span>
       <button
         onClick={onRetry}
@@ -44,20 +34,10 @@ function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
 export function SubscriberOverviewPage() {
   const tenantId = useAuthStore((s) => s.tenantId);
   const { summary, activity, loading, error, refresh } = useSubscriberPnl(tenantId);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Auto-refresh every 60 seconds to combat stale data
-  useEffect(() => {
-    if (!tenantId) return;
-    intervalRef.current = setInterval(() => { refresh(); }, 60000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [tenantId, refresh]);
 
   if (!tenantId) {
     return (
-      <div className="p-6 text-muted text-sm">
+      <div className="p-6 text-muted text-sm font-mono">
         No subscriber identity found. Please log in with a valid license key.
       </div>
     );
@@ -65,7 +45,7 @@ export function SubscriberOverviewPage() {
 
   if (loading && !summary) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted text-sm">
+      <div className="flex flex-col items-center justify-center py-20 text-muted font-mono text-sm">
         Loading subscriber metrics...
       </div>
     );
@@ -76,18 +56,15 @@ export function SubscriberOverviewPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Subscriber Overview</h1>
-          <p className="text-muted text-xs mt-0.5">
+          <h1 className="text-xl font-bold text-white font-mono">Subscriber Overview</h1>
+          <p className="text-muted text-xs font-mono mt-0.5">
             Tenant: <span className="text-accent">{tenantId}</span>
-            <span className="ml-3 text-muted text-[10px]">
-              Auto-refreshes every 60s
-            </span>
           </p>
         </div>
         <button
           onClick={refresh}
           disabled={loading}
-          className="px-3 py-1.5 bg-surface border border-border rounded text-xs text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
+          className="px-3 py-1.5 bg-surface border border-border rounded text-xs font-mono text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
         >
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
@@ -97,21 +74,19 @@ export function SubscriberOverviewPage() {
 
       {/* P&L KPI row */}
       <section>
-        <h2 className="text-[10px] uppercase tracking-widest text-muted mb-3">
+        <h2 className="text-[10px] uppercase tracking-widest text-muted font-mono mb-3">
           P&amp;L Summary
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           <SubscriberKpiCard
             label="Total Realized P&L"
-            value={summary
-              ? (summary.totalRealizedPnl >= 0 ? '+' : '') + fmtUsd(summary.totalRealizedPnl, 4)
-              : '—'}
+            value={summary ? (summary.totalRealizedPnl >= 0 ? '+' : '') + fmt(summary.totalRealizedPnl, 4) : '—'}
             accent={summary && summary.totalRealizedPnl >= 0 ? 'profit' : 'loss'}
             subLabel="USDT"
           />
           <SubscriberKpiCard
             label="Win Rate"
-            value={summary ? pctStr(summary.winRate) : '—'}
+            value={summary ? pctFmt(summary.winRate) : '—'}
             accent={summary && summary.winRate >= 0.5 ? 'profit' : 'loss'}
             subLabel={summary ? `${summary.winCount}W / ${summary.lossCount}L` : undefined}
           />
@@ -123,7 +98,7 @@ export function SubscriberOverviewPage() {
           <SubscriberKpiCard
             label="Profit Factor"
             value={summary
-              ? summary.profitFactor === Infinity ? '∞' : fmtNum(summary.profitFactor)
+              ? summary.profitFactor === Infinity ? '∞' : fmt(summary.profitFactor)
               : '—'}
             accent={summary && summary.profitFactor >= 1 ? 'profit' : 'loss'}
           />
@@ -132,7 +107,7 @@ export function SubscriberOverviewPage() {
 
       {/* Activity KPI row */}
       <section>
-        <h2 className="text-[10px] uppercase tracking-widest text-muted mb-3">
+        <h2 className="text-[10px] uppercase tracking-widest text-muted font-mono mb-3">
           Activity
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -163,19 +138,19 @@ export function SubscriberOverviewPage() {
       {/* Best / Worst */}
       {summary && (
         <section>
-          <h2 className="text-[10px] uppercase tracking-widest text-muted mb-3">
+          <h2 className="text-[10px] uppercase tracking-widest text-muted font-mono mb-3">
             Trade Extremes
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <SubscriberKpiCard
               label="Best Trade"
-              value={`+${fmtUsd(summary.bestTrade, 4)}`}
+              value={`+${fmt(summary.bestTrade, 4)}`}
               accent="profit"
               subLabel="USDT"
             />
             <SubscriberKpiCard
               label="Worst Trade"
-              value={summary.worstTrade < 0 ? fmtUsd(summary.worstTrade, 4) : '-' + fmtUsd(summary.worstTrade, 4)}
+              value={fmt(summary.worstTrade, 4)}
               accent="loss"
               subLabel="USDT"
             />

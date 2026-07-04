@@ -12,12 +12,8 @@
  * Additionally reads QWEN_LIVE_ELIGIBLE env flag (must be 'true' AND 30d cleared).
  */
 
-import { query } from '../../shared/db/postgres-client';
-import { logger } from '../../shared/utils/logger';
-import { setQwenPaperGateDaysRemaining } from '../../platform/middleware/prometheus-metrics';
-import { getTracer } from '../../shared/utils/tracing';
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+import { query } from '../db/postgres-client';
+import { logger } from '../utils/logger';
 
 /** Hardcoded — MUST NOT be changed to env-configurable. */
 const MIN_PAPER_DAYS = 30;
@@ -108,44 +104,34 @@ export async function assertQwenLiveEligible(sizeUsd: number): Promise<void> {
 /**
  * Non-throwing eligibility check — returns result object.
  * Used for status endpoints and monitoring.
- * Emits L4 paper-gate-days-remaining Prom gauge on every call.
  */
 export async function checkQwenEligibility(sizeUsd = 0): Promise<EligibilityResult> {
-  return getTracer().startActiveSpan('qwen.eligibility.check', async (span) => {
-    if (process.env.QWEN_LIVE_ELIGIBLE !== 'true') {
-      span.setAttribute('qwen.eligible', false);
-      return { eligible: false, reason: 'QWEN_LIVE_ELIGIBLE not set to true' };
-    }
+  if (process.env.QWEN_LIVE_ELIGIBLE !== 'true') {
+    return { eligible: false, reason: 'QWEN_LIVE_ELIGIBLE not set to true' };
+  }
 
-    const ageMs = await getQwenFirstTradeAgeMs();
-    if (ageMs === null) {
-      // No trades yet — full 30d window remaining
-      setQwenPaperGateDaysRemaining(MIN_PAPER_DAYS);
-      return { eligible: false, reason: 'No Qwen paper trades recorded' };
-    }
+  const ageMs = await getQwenFirstTradeAgeMs();
+  if (ageMs === null) {
+    return { eligible: false, reason: 'No Qwen paper trades recorded' };
+  }
+  if (ageMs < MIN_PAPER_MS) {
+    const daysRemaining = ((MIN_PAPER_MS - ageMs) / (24 * 60 * 60 * 1000)).toFixed(1);
+    return {
+      eligible: false,
+      reason: `${daysRemaining}d remaining in paper validation window`,
+      firstTradeAgeMs: ageMs,
+    };
+  }
 
-    const daysRemainingNum = Math.max(0, (MIN_PAPER_MS - ageMs) / MS_PER_DAY);
-    setQwenPaperGateDaysRemaining(daysRemainingNum);
-    span.setAttribute('qwen.paper_gate_days_remaining', daysRemainingNum);
+  const maxUsd = getMaxAutoApproveUsd();
+  if (sizeUsd > maxUsd) {
+    return {
+      eligible: true,
+      requiresManualApproval: true,
+      reason: `Size $${sizeUsd.toFixed(2)} exceeds auto-approve cap $${maxUsd}`,
+      firstTradeAgeMs: ageMs,
+    };
+  }
 
-    if (ageMs < MIN_PAPER_MS) {
-      return {
-        eligible: false,
-        reason: `${daysRemainingNum.toFixed(1)}d remaining in paper validation window`,
-        firstTradeAgeMs: ageMs,
-      };
-    }
-
-    const maxUsd = getMaxAutoApproveUsd();
-    if (sizeUsd > maxUsd) {
-      return {
-        eligible: true,
-        requiresManualApproval: true,
-        reason: `Size $${sizeUsd.toFixed(2)} exceeds auto-approve cap $${maxUsd}`,
-        firstTradeAgeMs: ageMs,
-      };
-    }
-
-    return { eligible: true, firstTradeAgeMs: ageMs };
-  });
+  return { eligible: true, firstTradeAgeMs: ageMs };
 }

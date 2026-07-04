@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── mock EmailService before importing modules that use it ──
-vi.mock('../../notifications', () => ({
+vi.mock('../../notifications/email-service.js', () => ({
   EmailService: {
     getInstance: () => ({
       isInitialized: () => false,
@@ -18,7 +18,7 @@ vi.mock('../../notifications', () => ({
   },
 }));
 
-vi.mock('../../../shared/utils/logger', () => ({
+vi.mock('../../utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
@@ -27,10 +27,10 @@ import {
   ENTERPRISE_ACV,
   ENTERPRISE_TIER_LABELS,
   type EnterpriseTier,
-} from '../enterprise-inquiry-store';
-import { notifyTam } from '../enterprise-tam-notifier';
-import { provisionPaperDemo } from '../enterprise-paper-demo-provisioner';
-import { EnterpriseOnboardingService } from '../enterprise-onboarding-service';
+} from '../enterprise-inquiry-store.js';
+import { notifyTam } from '../enterprise-tam-notifier.js';
+import { provisionPaperDemo } from '../enterprise-paper-demo-provisioner.js';
+import { EnterpriseOnboardingService } from '../enterprise-onboarding-service.js';
 
 // Reset singleton store state between tests by rebuilding a fresh instance
 // via the public API (no private access needed — store is additive-only in tests)

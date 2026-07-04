@@ -41,11 +41,11 @@ function Th({ label, col, current, dir, onClick }: ThProps) {
   const active = col === current;
   return (
     <th
-      className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-muted cursor-pointer select-none hover:text-accent transition-colors"
+      className="px-3 py-2 text-left text-[10px] uppercase tracking-widest text-muted cursor-pointer select-none hover:text-white transition-colors"
       onClick={() => onClick(col)}
     >
       {label}
-      {active && <span className="ml-1 text-accent">{dir === 'asc' ? '▲' : '▼'}</span>}
+      {active && <span className="ml-1 opacity-60">{dir === 'asc' ? '▲' : '▼'}</span>}
     </th>
   );
 }
@@ -76,7 +76,7 @@ export function SubscriberTradeTable({ rows, loading = false }: SubscriberTradeT
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10 text-muted text-xs">
+      <div className="flex items-center justify-center py-10 text-muted text-xs font-mono">
         Loading trades...
       </div>
     );
@@ -84,7 +84,7 @@ export function SubscriberTradeTable({ rows, loading = false }: SubscriberTradeT
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center py-10 text-muted text-xs">
+      <div className="flex items-center justify-center py-10 text-muted text-xs font-mono">
         No trade data for this period
       </div>
     );
@@ -92,7 +92,7 @@ export function SubscriberTradeTable({ rows, loading = false }: SubscriberTradeT
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm font-mono">
         <thead className="bg-surface/60 border-b border-border">
           <tr>
             <Th label="Date" col="date" current={sortKey} dir={sortDir} onClick={handleSort} />

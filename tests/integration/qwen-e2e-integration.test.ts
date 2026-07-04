@@ -14,16 +14,16 @@ import { createHmac } from 'crypto';
 
 // ─── Module mocks (must be top-level for hoisting) ────────────────────────────
 
-vi.mock('../../src/shared/utils/logger', () => ({
+vi.mock('../../src/utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 const mockQuery = vi.fn();
-vi.mock('../../src/shared/db/postgres-client', () => ({
+vi.mock('../../src/db/postgres-client.js', () => ({
   query: (...args: unknown[]) => mockQuery(...args),
 }));
 
-vi.mock('../../src/desk/signal/telegram-signal-pusher', () => ({
+vi.mock('../../src/signal/telegram-signal-pusher.js', () => ({
   telegramSignalPusher: {
     sendAdminAlert: vi.fn().mockResolvedValue(true),
     pushSignal: vi.fn().mockResolvedValue(undefined),
@@ -31,28 +31,15 @@ vi.mock('../../src/desk/signal/telegram-signal-pusher', () => ({
 }));
 
 // Mock Prometheus to avoid duplicate metric registration between test runs
-vi.mock('../../src/platform/middleware/prometheus-metrics', () => ({
+vi.mock('../../src/middleware/prometheus-metrics.js', () => ({
   qwenSignalsTotal: { inc: vi.fn() },
   qwenPaperPnlPct: { set: vi.fn() },
-  qwenSignalsLoopRunsTotal: { inc: vi.fn() },
-  qwenSignalsLoopLastRunTs: { set: vi.fn() },
-  qwenSignalsLoopJournalWriteErrorsTotal: { inc: vi.fn() },
-  qwenStrategyReviewsQueuedTotal: { inc: vi.fn() },
-  qwenStrategyReviewsResolvedTotal: { inc: vi.fn() },
-  qwenStrategyReviewBacklogSize: { set: vi.fn() },
-  qwenStrategyReviewOldestPendingAgeSec: { set: vi.fn() },
-  qwenAdminKillActionsTotal: { inc: vi.fn() },
-  qwenDrawdownPnlQueryErrorsTotal: { inc: vi.fn() },
-  setQwenKillSwitch: vi.fn(),
-  setQwenPaperGateDaysRemaining: vi.fn(),
-  setQwenDrawdownAutoDisabled: vi.fn(),
-  qwenDrawdownMonitorLastRunTs: { set: vi.fn() },
   metricsMiddleware: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 
 // Top-level publish mock — used across all suites
 const mockPublish = vi.fn();
-vi.mock('../../src/desk/signal/signal-publisher', () => ({
+vi.mock('../../src/signal/signal-publisher.js', () => ({
   SignalPublisher: vi.fn().mockImplementation(function () {
     this.publish = mockPublish;
   }),
@@ -60,17 +47,17 @@ vi.mock('../../src/desk/signal/signal-publisher', () => ({
 
 // ─── Imports after mocks ──────────────────────────────────────────────────────
 
-import { createSignalIngestRouter } from '../../src/platform/api/routes/signal-ingest-routes';
+import { createSignalIngestRouter } from '../../src/api/routes/signal-ingest-routes.js';
 import {
   resetDrawdownMonitorState,
   disableQwen,
   enableQwen,
   isQwenEnabled,
   runDrawdownCheck,
-} from '../../src/wiring/qwen-drawdown-monitor';
-import { PaperGateError } from '../../src/wiring/qwen-live-eligibility-gate';
-import { telegramSignalPusher } from '../../src/desk/signal/telegram-signal-pusher';
-import type { SignalStore } from '../../src/desk/signal/signal-publisher';
+} from '../../src/wiring/qwen-drawdown-monitor.js';
+import { PaperGateError } from '../../src/wiring/qwen-live-eligibility-gate.js';
+import { telegramSignalPusher } from '../../src/signal/telegram-signal-pusher.js';
+import type { SignalStore } from '../../src/signal/signal-publisher.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -119,11 +106,6 @@ function buildApp(store: SignalStore, secret = TEST_SECRET) {
   process.env.QWEN_INGEST_HMAC_SECRET = secret;
   const app = express();
   app.use(express.json());
-  // Inject mock license for tier-gate middleware (requireTier checks req.license)
-  app.use((_req, _res, next) => {
-    (_req as Record<string, unknown>).license = { tier: 'PRO', id: 'test-license', status: 'ACTIVE' };
-    next();
-  });
   app.use('/api/v1/signals', createSignalIngestRouter(store));
   return app;
 }

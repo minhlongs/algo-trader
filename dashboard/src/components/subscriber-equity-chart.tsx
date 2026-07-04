@@ -30,11 +30,11 @@ export function SubscriberEquityChart({
     [curve]
   );
 
-  const color = totalReturn >= 0 ? '#00E676' : '#FF4466';
+  const color = totalReturn >= 0 ? '#00FF41' : '#FF3366';
 
   if (curve.length === 0) {
     return (
-      <div className="flex items-center justify-center text-muted text-xs" style={{ height }}>
+      <div className="flex items-center justify-center text-muted text-xs font-mono" style={{ height }}>
         No equity data yet
       </div>
     );

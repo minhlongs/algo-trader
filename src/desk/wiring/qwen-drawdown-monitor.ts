@@ -10,22 +10,12 @@
 import { query } from '../db/postgres-client';
 import { telegramSignalPusher } from '../signal/telegram-signal-pusher';
 import { logger } from '../utils/logger';
-import {
-  qwenPaperPnlPct,
-  setQwenKillSwitch,
-  setQwenDrawdownAutoDisabled,
-  qwenDrawdownMonitorLastRunTs,
-  qwenDrawdownPnlQueryErrorsTotal,
-} from '../middleware/prometheus-metrics';
-import { getTracer } from '../utils/tracing';
-import { getMessageBus } from '../messaging/create-message-bus';
+import { qwenPaperPnlPct } from '../middleware/prometheus-metrics';
 
 /** Default check interval: 6 hours */
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;
 /** Rolling window for P&L calculation */
 const ROLLING_WINDOW_MS = 24 * 60 * 60 * 1000;
-/** Topic for cross-instance Qwen enabled-state synchronisation */
-const QWEN_STATE_TOPIC = 'qwen.state.updated';
 
 /** In-memory kill flag — set by drawdown breach or L1 kill switch */
 let _qwenEnabled = true;
@@ -55,38 +45,19 @@ export function isQwenEnabled(): boolean {
 export function disableQwen(reason: string): void {
   _qwenEnabled = false;
   _lastBreachAt = Date.now();
-  setQwenDrawdownAutoDisabled(true);
   logger.warn('[QwenDrawdown] Qwen swarm DISABLED', { reason });
-  broadcastQwenState(false, reason);
 }
 
 /** Re-enable (manual only — requires human action via admin API) */
 export function enableQwen(): void {
   _qwenEnabled = true;
   _lastBreachAt = null;
-  setQwenDrawdownAutoDisabled(false);
   logger.info('[QwenDrawdown] Qwen swarm RE-ENABLED by admin');
-  broadcastQwenState(true, 'admin-re-enable');
 }
 
 /** Get breach timestamp for status reporting */
 export function getLastBreachAt(): number | null {
   return _lastBreachAt;
-}
-
-/**
- * Publish Qwen enabled state to other PM2 instances via the message bus.
- * No-op when the bus is not yet initialised (single-instance mode).
- */
-function broadcastQwenState(enabled: boolean, reason: string): void {
-  try {
-    const bus = getMessageBus();
-    bus
-      .publish(QWEN_STATE_TOPIC, { enabled, reason, updatedAt: Date.now() }, 'qwen-drawdown-monitor')
-      .catch((err) => logger.warn('[QwenDrawdown] Failed to broadcast state', { err }));
-  } catch {
-    // Message bus not initialised — single-instance mode, ignore
-  }
 }
 
 /**
@@ -121,10 +92,6 @@ export async function computeRollingPnl(
 
     return { pnlPct: totalPnl / totalSize, totalSize, totalPnl };
   } catch (err) {
-    // Emit counter so operators can distinguish "DB query failing" (non-zero
-    // rate) from "no closed Qwen trades in window" (zero rate + pnlPct=null).
-    // Symmetric to qwen_signals_loop_journal_write_errors_total in PR #122.
-    qwenDrawdownPnlQueryErrorsTotal.inc();
     logger.error('[QwenDrawdown] computeRollingPnl DB error', { err });
     return { pnlPct: null, totalSize: 0, totalPnl: 0 };
   }
@@ -135,59 +102,44 @@ export async function computeRollingPnl(
  * Called by the scheduler and exposed for tests.
  */
 export async function runDrawdownCheck(): Promise<void> {
-  return getTracer().startActiveSpan('qwen.drawdown.check', async (span) => {
-    // Freshness gauge — set at the top, before any guard, so even the
-    // kill-switch/no-trades early-return paths still prove the timer is alive.
-    // Complements the state gauges (qwenPaperPnlPct, qwenDrawdownAutoDisabled)
-    // which reflect logic outcome rather than timer liveness.
-    qwenDrawdownMonitorLastRunTs.set(Math.floor(Date.now() / 1000));
+  if (!isQwenEnabled()) {
+    logger.debug('[QwenDrawdown] Already disabled — skip check');
+    return;
+  }
 
-    // Reflect L1 kill-switch env state in Prom gauge every cycle
-    setQwenKillSwitch('env', isKillSwitchActive());
+  const threshold = getDrawdownThreshold() / 100; // convert pct to decimal
+  const { pnlPct, totalSize, totalPnl } = await computeRollingPnl('qwen');
 
-    if (!isQwenEnabled()) {
-      span.setAttribute('qwen.enabled', false);
-      logger.debug('[QwenDrawdown] Already disabled — skip check');
-      return;
-    }
+  if (pnlPct === null) {
+    logger.debug('[QwenDrawdown] No closed Qwen trades in window — skip');
+    return;
+  }
 
-    const threshold = getDrawdownThreshold() / 100; // convert pct to decimal
-    const { pnlPct, totalSize, totalPnl } = await computeRollingPnl('qwen');
+  // Emit Prometheus gauge — visible to Grafana alerting
+  qwenPaperPnlPct.set(pnlPct);
 
-    if (pnlPct === null) {
-      span.setAttribute('qwen.drawdown.skip_reason', 'no_trades_in_window');
-      logger.debug('[QwenDrawdown] No closed Qwen trades in window — skip');
-      return;
-    }
-
-    // Emit Prometheus gauge — visible to Grafana alerting
-    qwenPaperPnlPct.set(pnlPct);
-    span.setAttribute('qwen.pnl_pct', pnlPct);
-
-    logger.info('[QwenDrawdown] 24h P&L check', {
-      pnlPct: (pnlPct * 100).toFixed(2) + '%',
-      totalSize,
-      totalPnl,
-      threshold: (threshold * 100).toFixed(0) + '%',
-    });
-
-    if (pnlPct <= -threshold) {
-      const msg =
-        `[ALERT] Qwen paper drawdown breached: ` +
-        `${(pnlPct * 100).toFixed(2)}% (threshold -${(threshold * 100).toFixed(0)}%). ` +
-        `Auto-disabling Qwen swarm. Manual re-enable required.`;
-
-      disableQwen(`drawdown ${(pnlPct * 100).toFixed(2)}%`);
-      span.setAttribute('qwen.drawdown.breach', true);
-
-      // Send Telegram admin alert (non-blocking)
-      try {
-        await telegramSignalPusher.sendAdminAlert(msg);
-      } catch (alertErr) {
-        logger.warn('[QwenDrawdown] Telegram alert failed', { alertErr });
-      }
-    }
+  logger.info('[QwenDrawdown] 24h P&L check', {
+    pnlPct: (pnlPct * 100).toFixed(2) + '%',
+    totalSize,
+    totalPnl,
+    threshold: (threshold * 100).toFixed(0) + '%',
   });
+
+  if (pnlPct <= -threshold) {
+    const msg =
+      `[ALERT] Qwen paper drawdown breached: ` +
+      `${(pnlPct * 100).toFixed(2)}% (threshold -${(threshold * 100).toFixed(0)}%). ` +
+      `Auto-disabling Qwen swarm. Manual re-enable required.`;
+
+    disableQwen(`drawdown ${(pnlPct * 100).toFixed(2)}%`);
+
+    // Send Telegram admin alert (non-blocking)
+    try {
+      await telegramSignalPusher.sendAdminAlert(msg);
+    } catch (alertErr) {
+      logger.warn('[QwenDrawdown] Telegram alert failed', { alertErr });
+    }
+  }
 }
 
 /**
@@ -196,12 +148,6 @@ export async function runDrawdownCheck(): Promise<void> {
  */
 export function startDrawdownMonitor(intervalMs = DEFAULT_INTERVAL_MS): void {
   if (_timer) return; // already running
-
-  // Pre-arm the freshness gauge at startup so QwenDrawdownMonitorStale does not
-  // page for the full 6h cron interval after every deploy. The gauge will be
-  // refreshed on the first real cycle; deadman-switch already covers the
-  // pre-init process-death case, so no liveness coverage is lost.
-  qwenDrawdownMonitorLastRunTs.set(Math.floor(Date.now() / 1000));
 
   logger.info('[QwenDrawdown] Monitor started', { intervalMs });
   _timer = setInterval(() => {
@@ -212,37 +158,6 @@ export function startDrawdownMonitor(intervalMs = DEFAULT_INTERVAL_MS): void {
 
   // Allow process to exit even if timer is active
   if (_timer.unref) _timer.unref();
-}
-
-/**
- * Subscribe to cross-instance Qwen state updates published via the message bus.
- * Call once during application init so every PM2 instance stays in sync when
- * another instance triggers disableQwen() or enableQwen().
- */
-export async function subscribeQwenStateUpdates(): Promise<void> {
-  try {
-    const bus = getMessageBus();
-    await bus.subscribe<{ enabled: boolean; reason: string; updatedAt: number }>(
-      QWEN_STATE_TOPIC,
-      (envelope) => {
-        const { enabled, reason } = envelope.data;
-        if (enabled && !_qwenEnabled) {
-          _qwenEnabled = true;
-          _lastBreachAt = null;
-          setQwenDrawdownAutoDisabled(false);
-          logger.info('[QwenDrawdown] Qwen RE-ENABLED by peer instance', { reason });
-        } else if (!enabled && _qwenEnabled) {
-          _qwenEnabled = false;
-          _lastBreachAt = Date.now();
-          setQwenDrawdownAutoDisabled(true);
-          logger.warn('[QwenDrawdown] Qwen DISABLED by peer instance', { reason });
-        }
-      }
-    );
-    logger.info('[QwenDrawdown] Subscribed to cross-instance state updates');
-  } catch {
-    logger.debug('[QwenDrawdown] Message bus not available — cross-instance sync disabled');
-  }
 }
 
 /** Stop the monitor (for graceful shutdown and tests) */

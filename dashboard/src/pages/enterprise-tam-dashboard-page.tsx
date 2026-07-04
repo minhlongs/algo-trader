@@ -6,8 +6,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth-store';
 import { ENTERPRISE_PLANS, type EnterprisePlanKey } from '../lib/enterprise-plans';
 
 interface EnterpriseInquiry {
@@ -56,11 +54,11 @@ function InquiryRow({
 }) {
   const plan = ENTERPRISE_PLANS[inquiry.tier];
   return (
-    <tr className="border-b border-[#1E2640] hover:bg-[#111627]/50">
+    <tr className="border-b border-[#2D3142] hover:bg-[#1A1A2E]/50">
       <td className="py-3 px-4">
         <p className="text-sm font-semibold text-white">{inquiry.companyName}</p>
         <p className="text-xs text-[#8892B0]">{inquiry.contactName}</p>
-        <p className="text-xs text-[#555]">{inquiry.email}</p>
+        <p className="text-xs text-[#555] font-mono">{inquiry.email}</p>
       </td>
       <td className="py-3 px-4 text-xs text-white">{plan?.price ?? inquiry.tier}</td>
       <td className="py-3 px-4"><StatusBadge status={inquiry.status} /></td>
@@ -78,7 +76,7 @@ function InquiryRow({
         <select
           value={inquiry.status}
           onChange={(e) => onStatusChange(inquiry.id, e.target.value)}
-          className="text-xs bg-[#161A1E] border border-[#1E2640] text-[#8892B0] rounded px-2 py-1 outline-none focus:border-[#00C8E8]/50"
+          className="text-xs bg-[#161A1E] border border-[#2D3142] text-[#8892B0] rounded px-2 py-1 outline-none focus:border-[#00D9FF]/50"
         >
           {['new','tam_notified','contacted','demo_active','negotiating','closed_won','closed_lost'].map((s) => (
             <option key={s} value={s}>{s.replace('_',' ')}</option>
@@ -90,13 +88,6 @@ function InquiryRow({
 }
 
 export function EnterpriseTamDashboardPage() {
-  const role = useAuthStore((state) => state.role);
-
-  // Guard: only admin may access this internal page
-  if (role !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const [inquiries, setInquiries] = useState<EnterpriseInquiry[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -137,10 +128,10 @@ export function EnterpriseTamDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080B14] text-white p-6">
+    <div className="min-h-screen bg-[#0F0F1A] text-white font-mono p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-2">Internal</p>
+          <p className="text-[#00D9FF] text-xs uppercase tracking-widest mb-2">Internal</p>
           <h1 className="text-2xl font-bold">Enterprise TAM Dashboard</h1>
         </div>
 
@@ -151,7 +142,7 @@ export function EnterpriseTamDashboardPage() {
             { label: 'Open', value: stats.open },
             { label: 'Closed won', value: stats.won },
           ].map(({ label, value }) => (
-            <div key={label} className="border border-[#1E2640] bg-[#111627] rounded-lg p-4">
+            <div key={label} className="border border-[#2D3142] bg-[#1A1A2E] rounded-lg p-4">
               <p className="text-xs text-[#8892B0] mb-1">{label}</p>
               <p className="text-2xl font-bold text-white">{value}</p>
             </div>
@@ -166,13 +157,13 @@ export function EnterpriseTamDashboardPage() {
           <p className="text-red-400 text-sm text-center py-12">{errorMsg}</p>
         )}
         {loadState === 'ready' && (
-          <div className="border border-[#1E2640] rounded-lg overflow-hidden">
+          <div className="border border-[#2D3142] rounded-lg overflow-hidden">
             {inquiries.length === 0 ? (
               <p className="text-[#8892B0] text-sm text-center py-12">No enterprise inquiries yet.</p>
             ) : (
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-[#1E2640] bg-[#161A1E]">
+                  <tr className="border-b border-[#2D3142] bg-[#161A1E]">
                     {['Company / Contact', 'Tier', 'Status', 'Demo', 'Submitted', 'Update status'].map((h) => (
                       <th key={h} className="py-2.5 px-4 text-xs text-[#8892B0] font-semibold uppercase tracking-wider">
                         {h}

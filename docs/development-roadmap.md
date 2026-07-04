@@ -7,19 +7,6 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 ---
 
-## a16z Solo Platform Progress (Pillar Tracking)
-
-| Pillar | Name | Status | Shipped | Details |
-|--------|------|--------|---------|---------|
-| 1 | CI/CD Enforcement Gates | ✅ COMPLETE | PR #115 (2026-04-17) | 5 hard-fail gates (validation, security, quality, dependency, smoke). Source: `docs/ai-first-enforcement-gates.md` |
-| 2 | Observability & Monitoring | ✅ COMPLETE | PR #114/#117 (2026-04-17) | Prometheus (3 new L-tier gauges), Grafana (4 dashboards incl. `qwen-solo-platform`), OTel OTLP HTTP tracing on 3 Qwen critical paths. |
-| 3 | Signals Loop & Journal | ✅ COMPLETE | PR #113/#114 (2026-04-17) | L0 observational quality drift (6h cron), migration 017/018, 9 journal persistence tests, admin audit trail endpoints. |
-| 4 | SDLC Scaffold Phase Guides | ✅ COMPLETE | PR #116 (2026-04-17) | Four `CLAUDE.<phase>.md` files (Specification, Design, Code, Deploy). Zero runtime impact, scaffolding only. |
-
-**Overall Solo Platform:** 4/4 pillars complete. Rollback hierarchy (L0–L4) fully intact + visible in Grafana.
-
----
-
 ## Phase Breakdown & Status
 
 ### Phase 1-5: Foundation (Complete - 2026-02-22 to 2026-03-02)
@@ -125,35 +112,7 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Total new tests: 56 Qwen-specific tests across 4 suites
 - Status: **COMPLETE** ✅ (PRs #107–#111 pending merge)
 
-### Qwen Signals Loop Journal Persistence (Complete - 2026-04-17) ✅ SHIPPED
-- [x] Migration 018 — `qwen_signals_loop_runs` table (decision, metrics_snapshot JSONB, trigger_reasons[], error_message)
-- [x] Journal persistence — `persistRunJournal()` in all 4 decision paths (skipped_insufficient_data, ok, queued_review, error)
-- [x] Prometheus counter — `algo_trader_qwen_signals_loop_runs_total{decision}` per evaluation cycle
-- [x] Admin endpoint — `GET /api/v1/admin/qwen/signals-loop/runs?limit=50&decision=queued_review` (audit trail + filtering)
-- [x] 9 new tests (journal + admin endpoint) — all 756 pass
-- Use cases: Audit trail, historical trends, decision learning, compliance
-- Status: **COMPLETE** ✅ (PR #114 pending, 756 total tests)
-
-### Qwen Signals Loop (Complete - 2026-04-17) ✅ SHIPPED
-- [x] Quality drift detector — Layer 0 observational (above L3 kill-switch)
-- [x] Migration 017 — `strategy_review_tasks` table with daily-dedupe UNIQUE index
-- [x] Signal evaluation cron — 6h singleton loop, computes win-rate/Sharpe metrics
-- [x] Human review task queueing — Prometheus counter on actual insert (reason label)
-- [x] Admin endpoint — `GET /api/v1/admin/qwen/strategy-reviews` (review task list)
-- [x] 22 new tests (13 unit + 9 admin endpoint) — all pass
-- [x] Typecheck 0 errors — fixed `date_trunc` STABLE issue via UTC cast
-- Win rate threshold: < 0.4 | Sharpe threshold: < 0.5 (min 30 trades) | Min signals: 20
-- Status: **COMPLETE** ✅ (760 total tests passing)
-
-### Phase 33: AI-First Enforcement Gates (Complete - 2026-04-17) ✅ SHIPPED
-- [x] CI/CD restructure — Single job → 5 named gates (validation, security, quality, dependency, deployment-smoke)
-- [x] Secret scan — `ci-gate-secret-scan.mjs` with 9 hardcoded-secret patterns
-- [x] Deployment smoke test — `ci-gate-deploy-smoke.mjs` probes production URLs with 5-attempt backoff
-- [x] Security threshold — Hard-fail on critical, downgrade high to annotation (transitive vite/fastify exceptions)
-- [x] Docs — `docs/ai-first-enforcement-gates.md` (source of truth) + rollback hierarchy alignment
-- Status: **COMPLETE** ✅ (Pillar 1 of a16z Solo Platform doctrine)
-
-### Phase 34: Performance Tuning & Stress Testing (Planned)
+### Phase 33: Performance Tuning & Stress Testing (Planned)
 - [ ] Load test with 5000+ concurrent users
 - [ ] Database query optimization (index analysis)
 - [ ] Redis cluster rebalancing under load
@@ -202,47 +161,6 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [ ] Position sizing engine (Kelly Criterion variant)
 - Timeline: 2026-08-01 to 2026-09-15
 - Status: **PLANNED**
-
-### Phase Scaling Implementation (In Progress - 2026-06-16)
-
-Horizontal scaling architecture for 52+ strategies, multi-region deployment, and 10,000 RPS target.
-
-| Sub-Phase | Name | Status | Key Deliverables |
-|-----------|------|--------|------------------|
-| 1 | DO Sharding Architecture | 🟡 In Progress | `src/durable-objects/shard-manager.ts`, 12 shards, consistent hashing, 52 strategies distributed |
-| 2 | Multi-Region Deployment | 🟡 In Progress | `wrangler.toml` regions, `docs/deployment-multi-region.md`, us-east/eu/asia deployment |
-| 3 | Model Tiering | ⚪ Pending | `src/agents/model-tier-dispatcher.ts`, Haiku→Sonnet→Opus cascade, async queue |
-| 4 | Connection Pool + Queue | ⚪ Pending | `src/workers/connection-pool.ts`, `src/queues/agent-coordinator.ts`, Hyperdrive pools |
-| 5 | Latency Monitoring | ⚪ Pending | `src/regions/latency-monitor.ts`, p95 <100ms target, Grafana dashboard |
-| 6 | Memory Optimization | ⚪ Pending | `src/utils/compression-stream.ts`, `src/utils/lru-cache.ts`, <128MB per isolate |
-| 7 | Load Testing | ⚪ Pending | `scripts/load-test-sharding.ts`, 12k RPS validation, pass rate >99% |
-| 8 | ME IDEA Transition | ⚪ Pending | Zero→PSF criteria met, all gates passed |
-| 9 | Rollback Strategy | ⚪ Pending | `src/rollback/tiered-rollback-controller.ts`, L0-L4 tiers, <30s rollback |
-| 10 | Observability Enhancements | ⚪ Pending | `src/regions/metrics-collector.ts`, multi-region metrics, shard health dashboards |
-| 11 | Documentation Updates | 🟢 In Progress (this doc) | `docs/scaling-architecture.md`, 5 runbooks, metrics reference, deployment guide |
-| 12 | Final Integration & Deployment | ⚪ Pending | End-to-end testing, CI/CD updated, production rollout |
-
-**Documentation Deliverables (Phase 11):**
-- `docs/deployment-multi-region.md` - Step-by-step multi-region deployment
-- `docs/scaling-architecture.md` - Deep dive on sharding, tiering, pools
-- `docs/runbooks/` (5 new): multi-region-outage, shard-hotspot, memory-pressure-critical, llm-gateway-outage, database-connection-exhaustion
-- `docs/metrics-reference.md` - Complete Prometheus metrics reference
-- `docs/developer-onboarding.md` - Quick start for scaling architecture
-- `docs/system-architecture.md` (updated) - Scaling section with diagrams
-- `docs/development-roadmap.md` (this document) - Progress tracking
-- `README.md` (updated) - Links to new documentation
-
-**Overall Scaling Status:** 🟡 IN PROGRESS (Phases 1-2 in progress, 3-12 pending)
-
-**Target Completion:** 2026-07-15 (6 weeks)
-
-**Success Criteria:**
-- [ ] All 12 shards deployed across 3 regions
-- [ ] p95 latency < 100ms globally
-- [ ] Memory < 128MB per isolate in production
-- [ ] Load test: 12,000 RPS with < 1% error rate
-- [ ] All 5 runbooks reviewed and tested
-- [ ] Documentation 100% complete and linked from README
 
 ---
 
@@ -295,8 +213,6 @@ Horizontal scaling architecture for 52+ strategies, multi-region deployment, and
 
 ## Recent Updates
 
-**2026-05-30**: Premium Bento Grid Dashboard UI/UX Polish & Express API Integration. Chuyển đổi API routes sang Express, tích hợp đồ thị TradingView Lightweight Charts & Volume overlay. Giải quyết toàn bộ lỗi biên dịch và test suite (1506 tests backend, 35 tests frontend pass 100%). Deploy thành công backend và frontend lên Cloudflare.
-
 **2026-04-15**: Phase 32b (Autonomy Phase 2) complete. LLM content generation (DeepSeek R1), welcome email drip (3-email sequence), Telegram auto-support (/faq, /support, /pricing), Twitter/X API v2 + Telegram channel distribution. 585 tests passing.
 
 **2026-04-15**: Phase 32 (Autonomy Layer) complete. Auto-marketing daemon, blog content hub, landing page SEO, SendGrid email verification. 575 tests passing.
@@ -331,5 +247,5 @@ Horizontal scaling architecture for 52+ strategies, multi-region deployment, and
 
 ---
 
-_Last Updated: 2026-05-30_
+_Last Updated: 2026-04-15_
 _Generated by: Documentation Manager Agent (Phase 32b Autonomy)_

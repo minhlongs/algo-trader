@@ -1,140 +1,7 @@
 # System Architecture - Algo Trader
 
-> **Updated 2026-06-30** — Post-separation: 3 bounded contexts (desk/platform/shared).
-
 ## High-Level Architecture
-
-Three bounded contexts with strict dependency rules:
-
-```
-src/
-├── shared/  ←── desk/  (imports shared only)
-│             ←── platform/ (imports shared + desk strategies via IStrategy)
-│
-├── desk/     → imports shared/ only; NEVER imports platform/
-│   └── Operator-only trading: 52+ strategies, execution, risk, CLI
-│
-└── platform/ → imports shared/ + desk/strategies (through IStrategy interface)
-    └── Subscriber-facing: API gateway, marketplace, billing, raas executor
-```
-
-**Import rules:** `shared/` ← foundational (no inward deps). `desk/` ← solo trading, tenant-unaware. `platform/` ← multi-tenant, tier-gated, may call desk strategies through `IStrategy` interface.
-
-### Import Rule Diagram (ASCII)
-
-```
-                    ┌─────────────────────────┐
-                    │      src/shared/         │
-                    │  types, db, config,      │
-                    │  utils, resilience,      │
-                    │  persistence, messaging, │
-                    │  redis                   │
-                    │  (ZERO business logic)   │
-                    └────┬──────────────┬──────┘
-                         │              │
-              imports    │              │    imports
-              shared     │              │    shared
-              only       │              │    + desk via
-                         ▼              │    IStrategy
-              ┌──────────────────┐      │
-              │    src/desk/     │      │
-              │                  │      │
-              │  strategies (52+)│      │
-              │  execution       │      │
-              │  risk            │      │
-              │  intelligence    │◄─────┘
-              │  signal          │  platform imports desk
-              │  market-data     │  strategies through
-              │  cli             │  shared IStrategy
-              │  feeds           │  interface (NOT directly)
-              │  arbitrage       │
-              │  gate (read-only │      ┌──────────────────┐
-              │    tier config)  │      │  src/platform/   │
-              │  wiring          │      │                  │
-              │                  │      │  api (31 routes) │
-              │  NEVER imports   │      │  auth             │
-              │  platform/       │      │  billing          │
-              └──────────────────┘      │  marketplace      │
-                      ▲                 │  raas             │
-                      │                 │  metering         │
-                      │                 │  middleware       │
-                 NO direct              │  audit            │
-                 imports                │  referral         │
-                 either way             │  telegram         │
-                      │                 │  notifications    │
-                      │                 │  dashboard        │
-                      ▼                 │                   │
-              ┌──────────────────┐      │  tenantId on      │
-              │  desk ↔ platform │      │  every DB query   │
-              │  communicate via │      └──────────────────┘
-              │  shared types    │
-              │  + NATS messages │
-              └──────────────────┘
-```
-
-### What Lives in Each Context
-
-| Context | Ownership | Tenant Awareness | User | Examples |
-|---------|-----------|-----------------|------|----------|
-| `shared/` | Infrastructure | Neither | Both | IStrategy, DB client, Logger, CircuitBreaker, NATS client, Redis |
-| `desk/` | Operator | None (global) | CLI | SpreadMeanReversion, KellyRisk, SignalFusion, PaperTrading, arb:agi |
-| `platform/` | Platform team | Mandatory (tenantId) | HTTP API | Marketplace routes, Billing webhooks, RaaS executor, Tier gating |
-
-### Shared Kernel (`src/shared/`) — Detailed
-
-| Module | Responsibility | Imported by |
-|--------|---------------|-------------|
-| `types/` | License, Tier, IStrategy, Signal, shared enums | desk, platform |
-| `db/` | PostgreSQL client factory, migration runner | desk, platform |
-| `config/` | Tier configs, environment schema, Zod validators | desk, platform |
-| `utils/` | Logger, encryption, Sentry, HMAC verifier | desk, platform |
-| `resilience/` | Circuit breakers, rate limiter, recovery manager | desk, platform |
-| `persistence/` | JSONL file store, key-value store | desk, platform |
-| `messaging/` | NATS JetStream client, pub/sub abstractions | desk, platform |
-| `redis/` | Redis client singleton, pub/sub helpers | desk, platform |
-
-### Desk (`src/desk/`) — Detailed
-
-| Module | Responsibility | Import rule |
-|--------|---------------|-------------|
-| `strategies/` | 52+ strategy implementations (Polymarket V2, CEX, DEX, DNA, dark-edge) | shared only |
-| `execution/` | Polymarket CLOB adapter, paper executor, order management | shared only |
-| `risk/` | Kelly criterion, drawdown protection, circuit breaker, position tracker | shared only |
-| `intelligence/` | Alpha-ear client, LLM router, market intelligence, signal fusion | shared only |
-| `signal/` | Signal pipeline: fusion, TTL enforcement, dedup, publishing | shared only |
-| `market-data/` | Provider failover, gap detection, SLA tracking | shared only |
-| `cli/` | Commander.js CLI -- `algo scan`, `algo status`, `algo risk` | shared only |
-| `feeds/` | Price feeds (Kalshi, Polymarket, CEX) | shared only |
-| `arbitrage/` | Cross-market ILP solver, Frank-Wolfe optimizer | shared only |
-| `gate/` | RaaS gate validators, strategy registry (reads tier config from shared) | shared only |
-| `wiring/` | Signal loops, drawdown monitor, vibe controller, eligibility gate | shared only |
-
-### Platform (`src/platform/`) — Detailed
-
-| Module | Responsibility | Import rule |
-|--------|---------------|-------------|
-| `api/` | Express REST + WebSocket gateway, 31 route files with tier gating | shared + desk (IStrategy) |
-| `auth/` | Better Auth integration (multi-tenant sessions) | shared only |
-| `billing/` | Invoice generation, NOWPayments, license management | shared only |
-| `marketplace/` | Multi-tenant strategy marketplace (listings, subscriptions, reviews, disputes, vetting) | shared + desk (registry) |
-| `raas/` | RaaS subscriber executor -- sandbox per tenant with DLP + attestation | shared + desk (IStrategy) |
-| `metering/` | Usage metering with threshold alerts | shared only |
-| `middleware/` | Tier gating (`requireTier`), rate limiting, tenant isolation, Prometheus metrics, error handler | shared only |
-| `audit/` | AI decision audit, immutable trade audit | shared only |
-| `referral/` | Referral program management | shared only |
-| `workers/` | Cloudflare edge proxy worker | shared only |
-| `telegram/` | Telegram bot integration | shared only |
-| `notifications/` | Email service, dunning | shared only |
-
-### Architecture Decision Records
-
-See `docs/architecture/decisions/`:
-- [ADR-001: Shared Kernel Boundary](architecture/decisions/shared-kernel-boundary.md)
-- [ADR-002: Desk-Platform Separation](architecture/decisions/desk-platform-separation.md)
-- [ADR-003: Strategy Ownership Model](architecture/decisions/strategy-ownership-model.md)
-- [ADR-004: Tenant Isolation Pattern](architecture/decisions/tenant-isolation-pattern.md)
-
-## Original Architecture (pre-separation, preserved for context)
+Event-Driven + Modular Architecture with 4 tiers:
 - **Execution Layer**: WS price feeds, fee-aware spread calc, atomic order execution, regime detection, order-book depth analysis
 - **RaaS API Layer**: Multi-tenant positions, scan/execute endpoints, position tracking
 - **Client Layer**: Paper trading, CLI dashboard, trade history export
@@ -164,9 +31,10 @@ graph TD
 ## Core Components
 
 ### Phase 1: Core Strategy Engine
-- **Desk Strategy Engine** (`src/desk/strategies/`): 52+ strategies via `BasePolymarketStrategy` abstract class, execution, risk management.
-- **RiskManager** (`src/desk/risk/`): Position sizing, risk calculation.
-- **OrderManager** (`src/desk/execution/`): Order state tracking.
+- **BotEngine** (`src/core/BotEngine.ts`): Signal routing, strategy orchestration.
+- **Strategy Layer** (`src/strategies/`): RSI, SMA, Cross-Exchange, Triangular, Statistical, AGI Arbitrage.
+- **RiskManager** (`src/core/`): Position sizing, risk calculation.
+- **OrderManager** (`src/core/`): Order state tracking.
 
 ### Phase 2: AGI RaaS Arbitrage Core (Execution Foundation)
 **Execution Layer** (`src/execution/`):
@@ -174,12 +42,12 @@ graph TD
 - **FeeAwareCrossExchangeSpreadCalculator** — Net spread = gross spread - maker/taker fees - slippage, 5min TTL cache.
 - **AtomicCrossExchangeOrderExecutor** — Promise.allSettled buy/sell parallel, rollback on partial failure.
 
-**Multi-Tenant Core** (`src/platform/`):
+**Multi-Tenant Core** (`src/core/`):
 - **TenantArbPositionTracker** — Per-tenant positions, tier limits (Basic/Pro/Enterprise).
 - **PaperTradingEngine** — Virtual trading simulation, P&L tracking.
 - **WebSocketServer** — Real-time `spread` + `position` channel broadcast.
 
-**RaaS API** (`src/platform/api/`):
+**RaaS API** (`src/api/routes/`):
 - `POST /api/v1/arb/scan` — Dry-run spread scan.
 - `POST /api/v1/arb/execute` — Execute trade (Pro/Enterprise).
 - `GET /api/v1/arb/positions` — Current positions.
@@ -190,32 +58,10 @@ graph TD
 **Dashboard** (`dashboard/`):
 - React 19 + TypeScript 5.9 + Tailwind CSS 3.4, dark trading terminal theme.
 - Vite 6, Zustand 5 state, lightweight-charts (TradingView).
-- Stitch design system: shared UI primitives (stitch-button, stitch-card, stitch-input, etc.) with dark theme + cyan accents.
 
-**Pages**: DashboardPage, BacktestsPage, MarketplacePage, SettingsPage, ReportingPage, AccountPage, GuidePage, SetupGuidePage, LicensePage, CouponAdminPage, NegRiskDashboardPage, RiskSettingsPage.
+**Pages**: DashboardPage, BacktestsPage, MarketplacePage, SettingsPage, ReportingPage.
 
-**Components**: SidebarNavigation, PriceTickerStrip, PositionsTableSortable, SpreadOpportunitiesCardGrid, SignalsPanel, TradeHistoryFeed, TerminalLogsWidget.
-
-**Risk Management UX** (`dashboard/src/components/risk/`):
-- **RiskGauge** — SVG semi-circle gauge showing portfolio risk level (0-100%).
-- **ExposureHeatmap** — Grid visualization of market exposure by asset with tooltip.
-- **PnlSparkline** — Mini SVG chart showing recent P&L trajectory with risk zone markers.
-- **ProactiveControlsPanel** — Auto-close rules + circuit breaker configuration.
-- **AutoCloseForm** — Profit target, stop loss, trailing stop inputs with validation.
-- **CircuitBreakerForm** — Drawdown threshold, consecutive losses, cooldown period.
-- **WhatIfCalculator** — Position size P&L estimator using Kelly Criterion.
-- **ConfidenceScore** — Signal confidence bar (0-100%) with color coding.
-- **DecisionAidsPanel** — Combined what-if + confidence display for trade decisions.
-
-**Notifications** (`dashboard/src/components/notifications/`):
-- **ToastContainer** — Fixed stacking container with severity-based styling.
-- **ToastItem** — Individual toast with icon, content, action buttons, auto-dismiss.
-- **NotificationPreferencesForm** — User preferences for email, push, sound, severity threshold.
-
-**State Management**:
-- **RiskPreferencesStore** — Zustand + localStorage persist for all risk settings (auto-close, circuit breaker, alerts, dashboard widgets, confidence thresholds).
-- **NotificationsStore** — Zustand + localStorage persist for notification queue and preferences.
-- **NegRiskScannerStore** — Extended with `shouldAutoClosePosition()` and `isCircuitBreakerTriggered()` integration.
+**Components**: SidebarNavigation, PriceTickerStrip, PositionsTableSortable, SpreadOpportunitiesCardGrid.
 
 **Hooks**: `useWebSocketPriceFeed` (25ms buffered Zustand updates), `useApiClient` (typed fetch).
 
@@ -292,7 +138,7 @@ graph TD
 - **MultiLegBasket** — Represents multi-leg arbitrage position (buy Market A, sell Market B, sell Market C)
 
 ### Phase 22: Delta-Neutral Volatility Arbitrage & Frank-Wolfe Optimizer
-**Polymarket Strategy** (`src/desk/strategies/polymarket/`):
+**Polymarket Strategy** (`src/strategies/polymarket/`):
 - **DeltaNeutralVolatilityArbitrage** — Market-neutral position pairs: long volatility + short correlated market
 - **DeltaCalculator** — Computes delta exposure per market, rebalancing signals
 - **DeltaNeutralPortfolioMonitor** — Real-time monitoring of aggregate delta, alerts on drift
@@ -311,7 +157,7 @@ graph TD
 
 **Monitoring Stack** (`docker/`):
 - **Prometheus** — 9090 scraping metrics from app + TimescaleDB; 15s scrape interval
-- **Grafana** — 3002 with pre-built dashboards: Arbitrage Metrics, Risk Dashboard, Infrastructure Health
+- **Grafana** — 3001 with pre-built dashboards: Arbitrage Metrics, Risk Dashboard, Infrastructure Health
 - **Dashboard 1: Arbitrage Metrics** — Spread finder latency (p50/p95), ILP solver execution time, liquidity check miss rate
 - **Dashboard 2: Risk Dashboard** — Portfolio delta, cumulative slippage, correlation matrix heatmap
 - **Dashboard 3: Infrastructure Health** — NATS broker uptime, Redis pub/sub lag, DB query latency, GC pressure
@@ -340,13 +186,13 @@ graph TD
 - **WhaleAnalyticsReport** — Daily whale leaderboard, win rate, edge estimation, correlation matrix.
 
 ### Phase 29: BTC 15-Minute Pattern Detection
-**Intraday Strategies** (`src/desk/strategies/polymarket/`):
+**Intraday Strategies** (`src/strategies/intraday/`):
 - **BtcFifteenMinuteStrategy** — Real-time 15-min candle analysis from Kraken/Coinbase, pattern detection (momentum, reversal, volatility clusters).
 - **BitcoinVolatilityScanner** — Detect intraday volatility spikes >2σ, flag for Polymarket BTC price prediction markets.
 - **BreakoutDetector** — Identify 15-min breakouts (2-hour range), map to Polymarket "BTC > X by Y date" positions.
 
 ### Phase 30: Cycle-End Sniper & Resolution Criteria Analyzer
-**End-Game Strategy** (`src/desk/strategies/polymarket/`):
+**End-Game Strategy** (`src/strategies/polymarket/`):
 - **CycleEndSniperStrategy** — Target markets resolving within 24h, dynamic bid-ask placing as outcome probability crystallizes.
 - **ResolutionCriteriaAnalyzer** — Parse Polymarket contract text (UMA resolution criteria), extract success conditions via DeepSeek reasoning.
 - **UmaOracleTiming** — Monitor UMA challenge window (1-2 days post-resolution), detect oracle manipulation signals for reversal trades.
@@ -396,57 +242,8 @@ graph TD
 - One command: detects `.env` → runs setup if missing → demo backtest → shows available commands.
 - Backtest/dry-run works without Docker (no DB/Redis required).
 
-## CI/CD Enforcement (Pillar 1: Solo Platform)
-
-| Gate | Job Name | Purpose | Hard Fail | Parallel |
-| ---- | -------- | ------- | --------- | -------- |
-| 1 | gate-1-validation | TypeScript check, ESLint, strategy validators, full vitest suite | Yes | Yes |
-| 2 | gate-2-security | Hardcoded-secret regex scan (9 patterns), `pnpm audit --critical` | Yes (critical only) | Yes |
-| 3 | gate-3-quality | ESLint with max-warnings=0 on changed TS files, >400 LOC file warnings | Yes on PR | Yes |
-| 4 | gate-4-dependency | Lockfile reproducibility check, `pnpm outdated` advisory | Yes | Yes |
-| 5 | gate-5-deployment-smoke | 5-attempt backoff probe of `algo-trader.pages.dev` + `cashclaw.cc` | Yes on main | Sequential (after 1-4) |
-
-**See:** `docs/ai-first-enforcement-gates.md` (source of truth for gate details, secret patterns, and rollback hierarchy).
-
 **Shell Script** (`scripts/one-click-setup-and-start.sh`):
 - Prerequisites check → npm/pnpm install → CLI wizard → optional Docker infra.
-
-## SDLC Scaffold (Pillar 4: Solo Platform)
-
-Agent-driven specification → design → code → deploy workflow embedded as executable documentation.
-
-| Phase | File | Purpose | Hand-off to |
-|-------|------|---------|------------|
-| 1 | `CLAUDE.specification.md` | Translate user request + a16z doctrine into detailed PDR + requirements | Design phase |
-| 2 | `CLAUDE.design.md` | Architect system design, data flow, module interactions from requirements | Code phase |
-| 3 | `CLAUDE.code.md` | Implement code, run tester + code-reviewer subagents (DoD gates), verify tests + review ≥9/10 | Deploy phase |
-| 4 | `CLAUDE.deploy.md` | Verify CI gates 1–5 pass, probe production, monitor Signals Loop journal for regressions | (prod + monitoring) |
-
-Each guide lists: required inputs, required outputs, algo-trader hard constraints, definition-of-done checklist, hand-off contract. Phases 3 & 4 explicitly verify CI gate alignment + rollback hierarchy (L0–L4 from `docs/ai-first-enforcement-gates.md`). Zero runtime code change — scaffolding only, existing 5-tier rollback stack unchanged.
-
-## Observability (Pillar 2: Solo Platform)
-
-Two-plane observability: Prometheus metrics + OpenTelemetry traces → Grafana.
-
-**Traces** (`src/utils/tracing.ts`):
-- OTel OTLP HTTP exporter, activated by `OTEL_EXPORTER_OTLP_ENDPOINT` env (unset → silent noop, zero prod risk).
-- Dynamic import keeps SDK out of cold-start path when tracing disabled.
-- Three instrumented critical paths: `qwen.signals_loop.evaluate` (`src/wiring/qwen-signals-loop.ts`), `qwen.drawdown.check` (`src/wiring/qwen-drawdown-monitor.ts`), `qwen.eligibility.check` (`src/wiring/qwen-live-eligibility-gate.ts`).
-
-**Metrics** (`src/middleware/prometheus-metrics.ts`):
-- L-tier rollback visibility: `algo_trader_qwen_kill_switch_active{source=env|kv}` (L1), `algo_trader_qwen_paper_gate_days_remaining` (L4, 0–30 clamped), `algo_trader_qwen_drawdown_auto_disabled` (L3).
-- Qwen pipeline: `qwen_paper_pnl_pct`, `qwen_signals_total{result}`, `qwen_signals_loop_runs_total{decision}`, `qwen_strategy_reviews_queued_total{reason}`.
-
-**Dashboards** (`docker/grafana/dashboards/`):
-- `qwen-solo-platform.json` — L0–L4 rollback state + 24h rolling Qwen P&L + signals-loop decision breakdown + strategy-review reason mix.
-- Plus 3 pre-existing: `arbitrage-opportunities`, `system-health`, `trading-performance`.
-
-**Alerting** (`docker/grafana/provisioning/alerting/`):
-- Grafana v10.4 unified alerting — YAML-provisioned. 5 rules across 2 groups route to single Telegram contact point (`qwen-telegram-admin`).
-  - Group `qwen-solo-platform-rollback` (L-tier): `QwenDrawdownBreached` — CRITICAL, 5m · `QwenPaperGateLessThan5d` — WARNING, 10m, noDataState=Alerting · `QwenSignalsLoopErrorSpike` — WARNING, 15m · `QwenL1KillSwitchActive` — INFO, 1m.
-  - Group `algo-trader-availability` (liveness, 3 rules): `AlgoTraderDeadman` — CRITICAL, `up{job="algo-trader"}==0` for 3m — scrape-level safety net · `QwenSignalsLoopStale` — WARNING, `time() - signals_loop_last_run_ts > 7h` — signals-loop 6h timer freshness · `QwenDrawdownMonitorStale` — WARNING, `time() - drawdown_monitor_last_run_ts > 7h` — drawdown 6h timer freshness. All three noDataState=Alerting; both freshness gauges pre-armed at their respective `start*()` boot.
-- Contact point reuses app `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` env (forwarded in `docker-compose.monitoring.yml`).
-- Runbooks at `docs/runbooks/qwen-*.md` + `docs/runbooks/algo-trader-deadman.md` linked from alert annotations.
 
 ### Infrastructure
 **Database** (`prisma/`):
@@ -466,7 +263,7 @@ Two-plane observability: Prometheus metrics + OpenTelemetry traces → Grafana.
   - Dashboard integration: CashClaw dashboard on CF Pages displays coupon input, integrates with pricing section
 
 **Monitoring** (`docker-compose.yml`):
-- Prometheus (:9090) + Grafana (:3002).
+- Prometheus (:9090) + Grafana (:3001).
 
 ### Server Bootstrap (Phase 18+)
 **Location**: `src/app.ts` (50 lines)
@@ -506,7 +303,7 @@ All Opportunities →
 | Database | PostgreSQL 16 via Prisma |
 | Validation | Zod 4.3 |
 | Logging | Winston |
-| Testing | vitest |
+| Testing | Jest 29 |
 | CLI | Commander |
 | Dashboard | React 19, Vite 6, Zustand 5, Tailwind, TradingView Charts |
 
@@ -546,8 +343,8 @@ All Opportunities →
 - Phase 31: Signal Fusion Engine & Multi-Resolution Analytics (Weighted signal voting, conviction scoring, criteria extraction)
 
 ### Quality Gates
-- **2,430+ tests** (vitest, 100% pass rate, 204 test files)
-- **600+ source files** (TypeScript 5.9, strict mode)
+- **570 tests** (Jest 29, 100% pass rate)
+- **266+ source files** (TypeScript 5.9, strict mode)
 - **0 TypeScript errors**
 - **0 `any` types** (test mocks only — acceptable)
 - **0 console.log** (production clean)
@@ -559,7 +356,7 @@ All Opportunities →
 - **26 PR Merges** (Session: #58-#85) — CLOB v2, WebSocket feeds, CLI enhancements, multi-platform support
 - **Target**: $1M ARR via RaaS + white-label licensing
 
-Updated: 2026-06-30
+Updated: 2026-04-09
 
 ---
 
@@ -632,18 +429,14 @@ Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-
                                    ▼
                              SignalPublisher.publish()
                                    │
-                     ┌─────────────┼──────────────────┬──────────┐
-                     ▼             ▼                  ▼          ▼
-               SignalStoreD1   SSE broadcast    L0 SIGNALS LOOP  Telegram
-               (paper_only=1)  (existing)       (observational)   push
-                     │                                 │         (tier-gated)
-                     │                                 ▼
-                     │                         queue review task
-                     │                         (daily dedup)
-                     │                                 │
-                     ▼                                 ▼
-             paper-trading-orchestrator         admin strategy-reviews
-                     │                              endpoint
+                     ┌─────────────┼──────────────┐
+                     ▼             ▼               ▼
+               SignalStoreD1   SSE broadcast   Telegram push
+               (paper_only=1)  (existing)      (tier-gated)
+                     │
+                     ▼
+             paper-trading-orchestrator
+                     │
           ┌──────────┼──────────────────────────┐
           │          │                           │
           ▼          ▼                           ▼
@@ -656,360 +449,27 @@ Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-
                            (QWEN_AUTO_APPROVE_MAX_USD=500)
 ```
 
-**5-Tier Quality Assurance Hierarchy:**
-- **L0 Signals Loop** (observational) — `src/wiring/qwen-signals-loop.ts` 6h cron. Computes win-rate & Sharpe from paper trades (source='qwen'). Queues human review task if win_rate<0.4 OR sharpe<0.5 (min 30 trades, min 20 signals). No auto-disable — feeds humans only.
+**4-Tier Rollback Harness:**
 - **L1 Kill switch** — `QWEN_KILL=1` env + `POST /api/v1/admin/qwen/kill` — immediate halt
 - **L2 Swarm disable** — `isQwenEnabled()` in-memory flag, `disableQwen()`/`enableQwen()` admin API
 - **L3 Drawdown auto-disable** — 6h cron checks 24h rolling P&L for `source='qwen'`; >5% → disable + Telegram alert + Prometheus `algo_trader_qwen_paper_pnl_pct` gauge
 - **L4 Hard gate** — `MIN_PAPER_DAYS=30` hardcoded; no live trades until 30d paper history; `QWEN_AUTO_APPROVE_MAX_USD=500` cap
 
 **Prometheus Metrics:**
-- `qwenStrategyReviewsQueuedTotal{reason=...}` (Counter) — incremented on actual task insert (reason: win_rate_below_threshold or sharpe_below_threshold)
 - `algo_trader_qwen_paper_pnl_pct` (Gauge) — rolling 24h paper P&L decimal emitted by drawdown monitor
 - `algo_trader_qwen_signals_total{result=accepted|rejected}` (Counter) — emitted by signal-ingest-route on each request
 
 **Files:**
-- `src/db/migrations/018_qwen_signals_loop_runs.sql` — `qwen_signals_loop_runs` table (decision ∈ {skipped_insufficient_data, ok, queued_review, error}, metrics_snapshot JSONB, trigger_reasons[], error_message, created_at)
-- `src/db/migrations/017_strategy_review_tasks.sql` — `strategy_review_tasks` table (daily UNIQUE index on strategy_id + UTC calendar day)
-- `src/wiring/qwen-signals-loop.ts` — L0 observational detector (6h singleton, 4-path journal persistence via `persistRunJournal()`)
-- `src/platform/api/routes/admin-qwen-routes.ts` — L0/L1/L2 admin endpoints (review list + kill routes + signals-loop/runs query)
-- `src/middleware/prometheus-metrics.ts` — Counter `algo_trader_qwen_signals_loop_runs_total{decision}` per cycle
-- `src/platform/api/routes/signal-ingest-routes.ts` — HMAC POST endpoint
+- `src/api/routes/signal-ingest-routes.ts` — HMAC POST endpoint
 - `src/utils/hmac-verifier.ts` — timing-safe HMAC-SHA256 + replay window
 - `src/signal/signal-store-d1.ts` — D1/SQLite persistence with source tagging
 - `src/wiring/qwen-drawdown-monitor.ts` — L3 scheduled drawdown check
 - `src/wiring/qwen-live-eligibility-gate.ts` — L4 paper-gate + USD cap
+- `src/api/routes/admin-qwen-routes.ts` — L1/L2 admin kill/unkill routes
 - `scripts/qwen-signal-daemon/` — Python daemon + launchd plist
 - `docs/ops/qwen-m1max-runbook.md` — full ops runbook
 - `src/db/migrations/016_qwen_paper_tracking.sql` — `paper_trades_v3` schema
 
-**Database Schema (Migration 018):**
-```sql
-CREATE TABLE qwen_signals_loop_runs (
-  id BIGSERIAL PRIMARY KEY,
-  strategy_id TEXT NOT NULL,
-  decision TEXT NOT NULL CHECK (decision IN ('skipped_insufficient_data', 'ok', 'queued_review', 'error')),
-  metrics_snapshot JSONB, -- {win_rate, sharpe, signal_count, trade_count, avg_pnl, ...}
-  trigger_reasons TEXT[], -- array of reason strings
-  error_message TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_qwen_signals_loop_runs_strategy_id_created_at ON qwen_signals_loop_runs (strategy_id, created_at DESC);
-```
-
-**Admin Endpoints:**
-- `GET /api/v1/admin/qwen/signals-loop/runs?limit=50&decision=queued_review` — Audit trail with optional filtering by decision type. Response: paginated array of run records with metrics snapshots.
-
-**Prometheus Metrics (Journal):**
-- `algo_trader_qwen_signals_loop_runs_total{decision}` (Counter) — Incremented per evaluation cycle with decision label (skipped_insufficient_data, ok, queued_review, error).
-
 **HMAC Secret rotation:** Quarterly. Rotate `QWEN_INGEST_HMAC_SECRET` in CF Secrets + M1 Max `~/.zshrc`. Both sides must be updated simultaneously.
 
 ---
-
-## Scaling Architecture (Phase 11: Scaling Plan)
-
-### Durable Object Sharding
-
-**Strategy:** Consistent hashing with 12 Durable Objects (DOs), 100 virtual nodes per shard
-
-**Purpose:** Overcome Cloudflare DO 1,000 RPS soft limit per object. With 52+ trading strategies, sharding distributes load evenly.
-
-**Configuration:**
-- **Total shards:** 12 (4 shards per region in 3-region deployment)
-- **Virtual nodes:** 100 per physical shard (1,200 virtual nodes total)
-- **Distribution:** ~4.3 strategies per shard
-- **Lookup latency:** <5ms
-
-**Implementation:**
-```typescript
-// src/durable-objects/shard-manager.ts
-interface ShardRing {
-  shards: Map<number, ShardInfo>;  // 12 shards
-  virtualNodes: Map<string, number>; // 1,200 virtual nodes
-  getShardForKey(key: string): number;
-  rebalance(): void;
-}
-```
-
-**Benefits:**
-- Hot shard protection via virtual node distribution
-- Linear scalability (add shards to increase capacity)
-- Minimal coordination overhead (DHT-based)
-
----
-
-### Multi-Region Topology
-
-**Regions:**
-- **us-east-1 (Primary):** Write operations, LLM Opus tier, PostgreSQL primary, Redis master, NATS broker
-- **eu-central-1 (Secondary):** Read replicas, LLM Sonnet tier, PostgreSQL replica, Redis slave, NATS leaf node
-- **ap-southeast-1 (Tertiary):** Read replicas, LLM Haiku tier, PostgreSQL replica, Redis slave, NATS leaf node
-
-```mermaid
-graph TB
-    subgraph "Global Edge (Cloudflare Workers)"
-        EDGE[Edge Proxy]
-        ROUTER[Region Router]
-    end
-
-    subgraph "us-east-1 (Primary)"
-        SHARD0[Shard 0-3]
-        LLM_H[Haiku]
-        LLM_S[Sonnet]
-        LLM_O[Opus]
-        DB_PRIMARY[(PostgreSQL<br/>Primary)]
-        REDIS_MASTER[(Redis<br/>Master)]
-        NATS_PRIMARY[NATS Server]
-    end
-
-    subgraph "eu-central-1 (Secondary)"
-        SHARD4[Shard 4-7]
-        LLM_H_EU[Haiku]
-        DB_REPLICA_EU[(PostgreSQL<br/>Replica)]
-        REDIS_SLAVE_EU[(Redis<br/>Slave)]
-        NATS_LEAF_EU[NATS LeafNode]
-    end
-
-    subgraph "ap-southeast-1 (Tertiary)"
-        SHARD8[Shard 8-11]
-        DB_REPLICA_ASIA[(PostgreSQL<br/>Replica)]
-        NATS_LEAF_ASIA[NATS LeafNode]
-    end
-
-    EDGE --> ROUTER
-    ROUTER --> SHARD0
-    ROUTER --> SHARD4
-    ROUTER --> SHARD8
-
-    SHARD0 --> DB_PRIMARY
-    SHARD4 --> DB_REPLICA_EU
-    SHARD8 --> DB_REPLICA_ASIA
-
-    DB_PRIMARY -.->|Streaming Replication| DB_REPLICA_EU
-    DB_PRIMARY -.->|Streaming Replication| DB_REPLICA_ASIA
-
-    SHARD0 --> NATS_PRIMARY
-    NATS_PRIMARY <--> NATS_LEAF_EU
-    NATS_PRIMARY <--> NATS_LEAF_ASIA
-
-    LLM_S -->|Async Queue| BULLMQ[BullMQ<br/>Redis]
-    LLM_O -->|Async Queue| BULLMQ
-
-    style SHARD0 fill:#e1f5e1
-    style SHARD4 fill:#e1f5e1
-    style SHARD8 fill:#e1f5e1
-    style DB_PRIMARY fill:#ffe1e1
-```
-
-**Data Synchronization:**
-- PostgreSQL streaming replication (primary → replicas), lag target <5s
-- Redis replication (master → slave) with auto-failover
-- NATS leaf node mesh for cross-region messaging
-
-**Routing Strategy:**
-- Client GeoIP → nearest healthy region
-- Latency-based routing (p95 <100ms globally)
-- Automatic failover (<60s)
-
----
-
-### Model Tiering
-
-| Tier | Model | Use Case | Execution | Concurrency | Target Latency |
-|------|-------|----------|-----------|-------------|----------------|
-| T1 | Haiku | Scanning, detection, pattern matching | Synchronous | 50 | <50ms |
-| T2 | Sonnet | Analysis, synthesis, recommendation | Async queue (BullMQ) | 20 | <500ms |
-| T3 | Opus | Critical decisions, complex reasoning | Synchronous + timeout guard | 10 | <2s |
-
-**Queue Configuration:**
-- Priority 1: Critical (T3) - immediate processing
-- Priority 2: Normal (T2) - ~10s average wait
-- Priority 3: Background (non-urgent analysis) - ~30s average wait
-
-**Dispatcher Implementation:**
-```typescript
-// src/agents/model-tier-dispatcher.ts
-interface TierConfig {
-  model: 'haiku' | 'sonnet' | 'opus';
-  timeoutMs: number;
-  maxConcurrent: number;
-  queue?: BullQueue;
-}
-
-class ModelTierDispatcher {
-  async dispatch(prompt: string, priority: TaskPriority): Promise<LLMResponse> {
-    const tier = this.selectTier(prompt);
-    if (tier.queue) {
-      return this.queueAsync(prompt, tier);
-    }
-    return this.callSync(prompt, tier);
-  }
-}
-```
-
----
-
-### Connection Pooling
-
-**Problem:** Cloudflare Workers 6-simultaneous-fetch limit per isolate
-
-**Solution:** Hyperdrive connection pools with keep-alive and auto-scaling
-
-**Pools Configuration:**
-| Pool | Service | Max Connections | TTL | Purpose |
-|------|---------|-----------------|-----|---------|
-| `polymarket-pool` | Polymarket API | 20 | 30s | Price feeds, market data |
-| `llm-pool` | LLM providers | 10 | 60s | Model inference requests |
-| `exchange-pool` | CCXT exchanges | 15 | 30s | Order placement, balance queries |
-
-**Benefits:**
-- Overcomes 6-fetch limit via connection reuse
-- Reduced latency (keep-alive connections)
-- Automatic scaling and health checks
-
----
-
-### Memory Optimization
-
-**Target:** <128MB per isolate (Cloudflare limit)
-
-**Layers:**
-
-1. **LRU Caching** (strategies, market data, agent contexts)
-   - Strategies: 20MB
-   - Market data: 10MB (5min TTL)
-   - Agent contexts: 15MB
-
-2. **Compression Streaming** (brotli for large responses)
-   ```typescript
-   // src/utils/compression-stream.ts
-   const compressed = await pipeline(response.body, brotliCompress());
-   ```
-
-3. **Memory Pooling** (ArrayBuffer, JSON parser reuse)
-   ```typescript
-   // src/utils/memory-pool.ts
-   const bufferPool = new ArrayBufferPool(1024 * 1024); // 1MB chunks
-   ```
-
-4. **Lazy Loading** (dynamic imports for heavy modules)
-   ```typescript
-   const { HeavyAgent } = await import('./heavy-agent.ts');
-   ```
-
-**Monitoring:**
-- `memory_rss_bytes` gauge per region/worker
-- `memory_heap_used_bytes` gauge
-- GC run metrics (`memory_gc_runs_total`)
-
----
-
-### Capacity Planning
-
-| Metric | Current | With Scaling | Target |
-|--------|---------|--------------|--------|
-| Max RPS | ~6 (6-fetch limit) | 12,000 (12×1000) | 10,000 |
-| Strategies | 52 | 52 | 200+ |
-| Memory per worker | ~180MB (OOM) | ~100MB | <128MB |
-| Global latency p95 | Varies | <100ms | <100ms |
-| Regions | 1 | 3 | 5+ |
-
-**Cost Projections:**
-| Service | Monthly Cost |
-|---------|--------------|
-| Cloudflare Workers (12 DO × 3 regions) | ~$300 |
-| LLM API (Haiku 70%, Sonnet 25%, Opus 5%) | ~$800 |
-| Database (PostgreSQL + replicas) | ~$200 |
-| Redis Cluster | ~$150 |
-| NATS (self-hosted) | ~$0 |
-| **Total** | **~$1,450** |
-
-**Performance Benchmarks (Target):**
-| Test | Target | Actual |
-|------|--------|--------|
-| Shard RPS | 1000/shard | 1200/shard |
-| Global p95 latency | <100ms | 85ms |
-| Memory usage | <128MB | 98MB |
-| Error rate | <1% | 0.3% |
-| Failover time | <60s | 25s |
-
-**Scaling Limits & Mitigations:**
-| Limit | Value | Mitigation |
-|-------|-------|------------|
-| DO per account | 30 (Cloudflare) | Request quota increase |
-| RPS per DO | 1000 soft | Sharding already implemented |
-| Worker memory | 128MB hard | Memory optimization layers |
-| Redis connections | 10,000 | Connection pooling |
-| Database connections | 100 | PgBouncer pooling |
-
-**Future Scaling Path:**
-- Beyond 200 strategies: Increase to 24 shards
-- Beyond 5 regions: Add region-specific DO partitions
-- Beyond 12,000 RPS: Horizontal worker scaling (multiple isolates)
-
----
-
-### Related Implementation Files
-
-**Sharding:**
-- `src/durable-objects/shard-manager.ts` - Ring management, consistent hashing
-- `src/durable-objects/shard-coordinator.ts` - Strategy-to-shard mapping
-
-**Multi-Region:**
-- `src/regions/latency-monitor.ts` - Region health + latency tracking
-- `src/regions/region-router.ts` - GeoIP-based routing
-- `wrangler.toml` - Region-specific env configurations
-
-**Model Tiering:**
-- `src/agents/model-tier-dispatcher.ts` - Tier selection + routing
-- `src/agents/registry.yaml` - Agent definitions with tier metadata
-- `src/queues/agent-coordinator.ts` - BullMQ queue management
-
-**Connection Pooling:**
-- `src/workers/connection-pool.ts` - Hyperdrive pool management
-- `docker/hyperdrive/` - Pool configuration files
-
-**Memory Optimization:**
-- `src/utils/compression-stream.ts` - Brotli compression
-- `src/utils/lru-cache.ts` - Tiered cache implementation
-- `src/utils/memory-pool.ts` - Buffer pooling
-
----
-
-### Operational Considerations
-
-**Health Checks:**
-```bash
-# Region health
-curl https://us-east.algo-trader.workers.dev/api/health
-curl https://eu.algo-trader.workers.dev/api/health
-curl https://asia.algo-trader.workers.dev/api/health
-
-# Shard ring status
-curl https://region.algo-trader.workers.dev/api/v1/shard/ring
-
-# Metrics collection
-curl https://region.algo-trader.workers.dev/api/v1/metrics/memory
-```
-
-**Rebalancing:**
-```bash
-# Trigger manual rebalance (if hot shard detected)
-curl -X POST https://admin.algo-trader.workers.dev/api/v1/shard/rebalance \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-
-**Failover Testing:**
-- Simulate region outage: disable route in Cloudflare dashboard
-- Verify traffic automatically routes to healthy regions (<60s)
-- Monitor `region_route_total` metrics for routing decisions
-
-**Scaling Triggers:**
-- Add shards when any shard exceeds 800 RPS sustained
-- Add regions when p95 latency >100ms in any geography
-- Increase memory limits if `memory_utilization_ratio > 0.85` for >5min
-
----
-
-Updated: 2026-06-16

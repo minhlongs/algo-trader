@@ -13,38 +13,24 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mock DB to avoid real Postgres in unit tests ────────────────────────────
 const mockQueryResult = vi.fn();
-vi.mock('../../shared/db/postgres-client', () => ({
+vi.mock('../../db/postgres-client.js', () => ({
   query: (...args: unknown[]) => mockQueryResult(...args),
 }));
 
 // ─── Mock Telegram to avoid real HTTP calls ──────────────────────────────────
 // Note: vi.fn() inside factory — cannot reference outer variables (hoisting)
-vi.mock('../../desk/signal/telegram-signal-pusher', () => ({
+vi.mock('../../signal/telegram-signal-pusher.js', () => ({
   telegramSignalPusher: { sendAdminAlert: vi.fn().mockResolvedValue(true) },
 }));
 
 // ─── Mock Prometheus to avoid duplicate metric registration ──────────────────
-const { mockDrawdownLastRunGauge, mockPnlQueryErrorsCounter } = vi.hoisted(() => ({
-  mockDrawdownLastRunGauge: { set: vi.fn() },
-  mockPnlQueryErrorsCounter: { inc: vi.fn() },
-}));
-vi.mock('../../platform/middleware/prometheus-metrics', () => ({
+vi.mock('../../middleware/prometheus-metrics.js', () => ({
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
-  setQwenKillSwitch: vi.fn(),
-  setQwenPaperGateDaysRemaining: vi.fn(),
-  setQwenDrawdownAutoDisabled: vi.fn(),
-  qwenDrawdownMonitorLastRunTs: mockDrawdownLastRunGauge,
-  qwenDrawdownPnlQueryErrorsTotal: mockPnlQueryErrorsCounter,
-  qwenSignalsLoopJournalWriteErrorsTotal: { inc: vi.fn() },
-  qwenStrategyReviewsResolvedTotal: { inc: vi.fn() },
-  qwenStrategyReviewBacklogSize: { set: vi.fn() },
-  qwenStrategyReviewOldestPendingAgeSec: { set: vi.fn() },
-  qwenAdminKillActionsTotal: { inc: vi.fn() },
 }));
 
 // ─── Mock logger ─────────────────────────────────────────────────────────────
-vi.mock('../../shared/utils/logger', () => ({
+vi.mock('../../utils/logger.js', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
@@ -57,15 +43,15 @@ import {
   runDrawdownCheck,
   resetDrawdownMonitorState,
   getLastBreachAt,
-} from '../qwen-drawdown-monitor';
+} from '../qwen-drawdown-monitor.js';
 
 import {
   assertQwenLiveEligible,
   checkQwenEligibility,
   PaperGateError,
-} from '../qwen-live-eligibility-gate';
+} from '../qwen-live-eligibility-gate.js';
 
-import { telegramSignalPusher } from '../../desk/signal/telegram-signal-pusher';
+import { telegramSignalPusher } from '../../signal/telegram-signal-pusher.js';
 
 // Convenience accessor for the mocked sendAdminAlert (resolved after imports)
 const getMockAlert = () => vi.mocked(telegramSignalPusher.sendAdminAlert);
@@ -182,22 +168,6 @@ describe('L3 — Drawdown Auto-Disable (24h rolling P&L)', () => {
     expect(result.totalPnl).toBe(-60);
   });
 
-  it('computeRollingPnl increments pnl-query error counter on DB reject + preserves null fallback', async () => {
-    mockPnlQueryErrorsCounter.inc.mockClear();
-    mockQueryResult.mockRejectedValueOnce(new Error('connection refused'));
-
-    const result = await computeRollingPnl('qwen');
-
-    // Fail-open contract: null fallback must be preserved so downstream treats
-    // it the same as "no trades" and skips the breach check.
-    expect(result.pnlPct).toBeNull();
-    expect(result.totalSize).toBe(0);
-    expect(result.totalPnl).toBe(0);
-
-    // Counter distinguishes this silent null from genuine "no trades" case.
-    expect(mockPnlQueryErrorsCounter.inc).toHaveBeenCalledOnce();
-  });
-
   it('runDrawdownCheck disables Qwen when drawdown exceeds 5% threshold', async () => {
     mockQueryResult.mockResolvedValue({ rows: [{ total_size: 1000, total_pnl: -60 }] });
     await runDrawdownCheck();
@@ -223,21 +193,6 @@ describe('L3 — Drawdown Auto-Disable (24h rolling P&L)', () => {
     await runDrawdownCheck();
     expect(mockQueryResult).not.toHaveBeenCalled();
     expect(getMockAlert()).not.toHaveBeenCalled();
-  });
-
-  it('runDrawdownCheck sets freshness gauge at cycle start (even on kill-switch early-return)', async () => {
-    // Pre-condition: kill-switch active → function early-returns after gauge set
-    disableQwen('pre-disabled');
-    mockDrawdownLastRunGauge.set.mockClear();
-
-    const before = Math.floor(Date.now() / 1000);
-    await runDrawdownCheck();
-    const after = Math.floor(Date.now() / 1000);
-
-    expect(mockDrawdownLastRunGauge.set).toHaveBeenCalledOnce();
-    const ts = mockDrawdownLastRunGauge.set.mock.calls[0][0];
-    expect(ts).toBeGreaterThanOrEqual(before);
-    expect(ts).toBeLessThanOrEqual(after);
   });
 
   it('respects custom QWEN_DRAWDOWN_MAX_PCT env (10%)', async () => {
