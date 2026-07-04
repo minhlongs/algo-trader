@@ -1,5 +1,33 @@
 # Project Changelog - Algo Trader
 
+## [3.9.0] - 2026-07-04
+
+### Added — Strategy Leaderboard (Next Wave VII)
+
+**Phase 1: Backend API**
+- `GET /api/v1/leaderboard` returns strategy rankings with win rate, Sharpe, P&L, drawdown
+- Sort by query params: `?sort=winRate|sharpe|pnl|drawdown&order=asc|desc&limit=50`
+- Tier gating: FREE=view only, PRO+=sort/filter/export
+- Exported accuracy data interface from prediction-accuracy-tracker
+
+**Phase 2: Dashboard Page**
+- /leaderboard page with sortable table (click column headers to sort asc/desc)
+- Rank, Strategy Name, Win Rate, Sharpe, P&L, Drawdown, Trades, Badge columns
+- Top 3 highlighted with gold/silver/bronze
+- Performance badges: Top Performer, Rising Star, Verified, New
+- Search/filter by strategy name
+- Loading, error, and empty states
+
+**Phase 3: Telegram Command**
+- /leaderboard command returns top 5 strategies with metrics
+- Formatted as Markdown with win rate + Sharpe
+- Error handling for API failures
+
+### Quality
+- 2,936+ tests pass, 0 regressions
+- 0 TypeScript errors in source code
+- Pushed to GitHub
+
 ## [3.8.0] - 2026-07-04
 
 ### Added — Live Trading Readiness (Next Wave VI)
