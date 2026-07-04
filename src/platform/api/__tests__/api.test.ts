@@ -10,6 +10,7 @@ import express from 'express';
 vi.mock('../../middleware/feature-gate', () => ({
   requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireSignalTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   canAccessFeature: () => true,
   FEATURE_ACCESS: {},
 }));

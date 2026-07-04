@@ -23,8 +23,8 @@ declare global {
   }
 }
 
-/** Supported tier identifiers (mirrors LicenseTier enum values) */
-type Tier = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE' | 'MASTER';
+/** Supported tier identifiers (mirrors LicenseTier enum values plus signal add-ons) */
+type Tier = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE' | 'MASTER' | 'SIGNALS_BASIC' | 'SIGNALS_PRO' | 'SIGNALS_ENTERPRISE';
 
 /**
  * Ordinal ranking for tiers — higher number = more privileged.
@@ -36,6 +36,10 @@ const TIER_HIERARCHY: Record<Tier, number> = {
   PRO: 1,
   ENTERPRISE: 2,
   MASTER: 3,
+  // Signal tiers — separate from platform tiers, below FREE range
+  SIGNALS_BASIC: 0.01,
+  SIGNALS_PRO: 0.02,
+  SIGNALS_ENTERPRISE: 0.03,
 };
 
 /**
@@ -43,6 +47,7 @@ const TIER_HIERARCHY: Record<Tier, number> = {
  * Unregistered features default to accessible (FREE-level).
  */
 export const FEATURE_ACCESS: Record<string, Tier> = {
+  'signals_basic': 'PRO',
   'signals.crossmarket': 'PRO',
   'signals.deltaneutral': 'PRO',
   'intelligence.semantic': 'PRO',
@@ -107,4 +112,45 @@ export function requireTier(minTier: Tier) {
 export function requireFeature(feature: string) {
   const requiredTier: Tier = FEATURE_ACCESS[feature] ?? 'FREE';
   return requireTier(requiredTier);
+}
+
+/** Signal-tier names for runtime checks */
+const SIGNAL_TIERS: readonly Tier[] = ['SIGNALS_BASIC', 'SIGNALS_PRO', 'SIGNALS_ENTERPRISE'];
+
+/**
+ * Middleware factory: block requests whose signal tier is below `minSignalTier`.
+ *
+ * Signal tiers are separate from platform tiers (FREE/PRO/ENTERPRISE/MASTER).
+ * A user must have a signal tier license to access signal-gated routes.
+ *
+ * Returns 401 when no license is present, 403 when signal tier is insufficient.
+ */
+export function requireSignalTier(minSignalTier: 'SIGNALS_BASIC' | 'SIGNALS_PRO' | 'SIGNALS_ENTERPRISE') {
+  const requiredLevel = TIER_HIERARCHY[minSignalTier];
+
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const license = req.license;
+
+    if (!license) {
+      res.status(401).json({ error: 'No license' });
+      return;
+    }
+
+    const currentTier = license.tier as unknown as Tier;
+    const userTierLevel = TIER_HIERARCHY[currentTier] ?? 0;
+
+    // Signal tiers live below the FREE tier in the hierarchy, so normal
+    // platform tier checks won't accidentally satisfy a signal gate.
+    if (userTierLevel < requiredLevel || !SIGNAL_TIERS.includes(currentTier)) {
+      res.status(403).json({
+        error: 'Insufficient signal tier',
+        required: minSignalTier,
+        current: currentTier,
+        upgrade: 'Upgrade your signal plan to access this feature',
+      });
+      return;
+    }
+
+    next();
+  };
 }

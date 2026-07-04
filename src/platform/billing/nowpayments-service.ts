@@ -42,7 +42,7 @@ export type NowPaymentsStatus =
 
 // Tier configuration with pre-created invoice IDs from NOWPayments dashboard
 export interface NowPaymentsTierConfig {
-  tier: LicenseTier;
+  tier: LicenseTier | string;
   invoiceId: string;
   price: number;
   currency: string;
@@ -78,6 +78,27 @@ export const NOWPAYMENTS_TIERS: Record<string, NowPaymentsTierConfig> = {
     price: 999,
     currency: 'USD',
     name: 'Master Trader',
+  },
+  SIGNALS_BASIC: {
+    tier: 'SIGNALS_BASIC',
+    invoiceId: process.env.NOWPAYMENTS_INVOICE_SIGNALS_BASIC || '',
+    price: 29,
+    currency: 'USD',
+    name: 'Signals Basic',
+  },
+  SIGNALS_PRO: {
+    tier: 'SIGNALS_PRO',
+    invoiceId: process.env.NOWPAYMENTS_INVOICE_SIGNALS_PRO || '',
+    price: 99,
+    currency: 'USD',
+    name: 'Signals Pro',
+  },
+  SIGNALS_ENTERPRISE: {
+    tier: 'SIGNALS_ENTERPRISE',
+    invoiceId: process.env.NOWPAYMENTS_INVOICE_SIGNALS_ENTERPRISE || '',
+    price: 299,
+    currency: 'USD',
+    name: 'Signals Enterprise',
   },
 };
 

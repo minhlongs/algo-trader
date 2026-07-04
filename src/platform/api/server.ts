@@ -44,6 +44,7 @@ import { credentialsRouter } from './routes/credentials-routes';
 import { personalizationRouter } from './routes/personalization-routes';
 import { referralRouter } from './routes/referral-routes';
 import { positionsRouter } from './routes/positions';
+import { signalsApiRouter } from './routes/signals-api-routes';
 import { signalFeedRouter } from './routes/signal-feed-routes';
 import { signalSubscriptionRouter } from './routes/signal-subscription-routes';
 import { webhookResilienceRouter } from './routes/webhooks/webhook-resilience';
@@ -232,6 +233,10 @@ this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
     this.app.use('/api/v1/personalization', personalizationRouter);
     this.app.use('/api/v1/referral', referralRouter);
     this.app.use('/api/positions', positionsRouter);
+
+    // Signals API routes (Phase 02 — must precede signalFeedRouter to avoid /feed matching /:id)
+    this.app.use('/api/v1/signals', signalsApiRouter);
+
     this.app.use('/api/v1/signals', signalFeedRouter);
     this.app.use('/api/v1/signals/subscriptions', signalSubscriptionRouter);
     this.app.use('/api/webhooks/resilience', webhookResilienceRouter);

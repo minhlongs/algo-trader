@@ -28,7 +28,7 @@ export async function handleIpnFinished(
   const tierConfig = ipn.invoice_id
     ? nowpaymentsService.getTierByInvoiceId(ipn.invoice_id)
     : null;
-  const tier = tierConfig?.tier || LicenseTier.PRO;
+  const tier = (tierConfig?.tier as LicenseTier) || LicenseTier.PRO;
 
   // Check idempotency — skip if already processed
   const existing = await subscriptionService.getSubscriptionByProviderId(ipn.payment_id);

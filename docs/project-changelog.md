@@ -1,5 +1,34 @@
 # Project Changelog - Algo Trader
 
+## [4.0.0] - 2026-07-04
+
+### Added — Signals API Marketplace (Next Wave VIII)
+
+**Phase 1: Backend Signal Publisher**
+- `SignalPublisher` class: subscribes to `FusionResult` output, dispatches to registered subscribers with tier-based rate limiting
+- `SignalSubscriptionService` in-memory CRUD with webhook URL validation, tier assignment, subscription lifecycle
+- DB migration `054-signals-api-subscriptions.sql`: `signals_api_subscriptions` and `signal_events` tables
+- Tier rate limits (signals/min): FREE=2, STARTER=10, PRO=30, ENTERPRISE=120, MASTER=unlimited
+
+**Phase 2: API Endpoints**
+- `POST /api/v1/signals/subscribe` — create signal subscription (tier-gated with `requireSignalTier`)
+- `GET /api/v1/signals/feed` — paginated signal feed with rate limiting (30 req/min), Redis caching, tier filtering
+- `POST /api/v1/signals/webhook` — register webhook URL for push delivery
+- Signal-specific tier gating via `requireSignalTier` middleware with 3 levels: SIGNALS_BASIC, SIGNALS_PRO, SIGNALS_ENTERPRISE
+- Rate limit headers on feed endpoint
+
+**Phase 3: NOWPayments Billing**
+- Three signal billing tiers: Signal Basic ($29/mo), Signal Pro ($99/mo), Signal Enterprise ($299/mo)
+- `NOWPAYMENTS_INVOICE_SIGNALS_*` environment variables for invoice configuration
+- Signal tiers in `NOWPAYMENTS_TIERS` config with invoice ID resolution
+- Type-safe `LicenseTier | string` for tier config to support signal add-on tiers
+
+### Quality
+- 2,960+ tests pass, 0 regressions from existing tests
+- 0 TypeScript errors in source code (pre-existing `ox` dependency type is unchanged)
+- 0 ESLint errors
+- Pushed to GitHub
+
 ## [3.9.0] - 2026-07-04
 
 ### Added — Strategy Leaderboard (Next Wave VII)
