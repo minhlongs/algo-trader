@@ -30,6 +30,7 @@ import {
   handleUnknownMessage,
 } from './auto-support-handlers';
 import { handleAsk } from './ask-handler';
+import { handleLeaderboard } from './leaderboard-handler';
 
 export interface TelegramConfig {
   botToken: string;
@@ -140,6 +141,7 @@ export class TelegramBotService {
     });
     this.bot.command('support', (ctx: Context) => handleSupport(ctx));
     this.bot.command('pricing', (ctx: Context) => handlePricing(ctx));
+    this.bot.command('leaderboard', (ctx: Context) => handleLeaderboard(ctx));
     this.bot.command('ask', async (ctx: Context) => {
       const text = (ctx.message as { text?: string })?.text || '';
       const query = text.replace(/^\/ask(\s|@\w+)*/, '').trim();
