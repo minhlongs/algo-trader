@@ -169,7 +169,6 @@ graph TD
 - **PredictItPriceFeed** — PredictIt REST API with market snapshot caching (5min TTL).
 - **SmarketsPriceFeed** — Smarkets exchange feed via native API, real-time order book.
 - **KalshiPriceFeed** — Kalshi orderbook feed with atomic tick broadcast.
-- **CoinGeckoPriceFeed** — CoinGecko cryptocurrency market data REST API polling with caching, rate limiting, and NATS publishing.
 - **UnifiedPriceFeedAggregator** — Normalizes ticks across all platforms to common schema, broadcasts to signal engines.
 
 ### Phase 27: CLOB v2 Adapter & Split/Merge Arbitrage
