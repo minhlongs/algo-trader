@@ -20,6 +20,7 @@ import {
   ChartBar,
   Lock,
   Clock,
+  Trophy,
 } from '@phosphor-icons/react';
 import { useTradingStore } from '../stores/trading-store';
 import { useAuthStore } from '../stores/auth-store';
@@ -29,6 +30,7 @@ import { LanguageSwitcher } from './language-switcher';
 const NAV_ITEMS = [
   { label: 'Dashboard', tKey: 'sidebar.dashboard', path: '/app', Icon: SquaresFour },
   { label: 'Strategies', tKey: 'sidebar.strategies', path: '/app/strategies', Icon: Lightning },
+  { label: 'Leaderboard', tKey: 'sidebar.leaderboard', path: '/app/leaderboard', Icon: Trophy },
   { label: 'Backtests', tKey: 'sidebar.backtests', path: '/app/backtests', Icon: ChartLine },
   { label: 'Licenses', tKey: 'sidebar.licenses', path: '/app/licenses', Icon: Key },
   { label: 'API Keys', tKey: 'sidebar.apiKeys', path: '/app/api-keys', Icon: Lock },
