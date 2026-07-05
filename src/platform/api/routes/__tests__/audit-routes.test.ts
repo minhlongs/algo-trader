@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { QueryResult, PoolClient } from 'pg';
 
 // 1. Mock external/local dependencies first
-vi.mock('../../../db/postgres-client', () => {
+vi.mock('../../../../../db/postgres-client', () => {
   const mockClientInstance = {
     query: vi.fn(),
     release: vi.fn(),
@@ -79,8 +79,8 @@ vi.mock('pg-query-stream', () => {
 // 2. Import express and local application code after registering mocks
 import express, { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
-import { auditRouter } from '../audit-routes';
-import { query, getDbClient } from '../../../db/postgres-client';
+import { auditRouter } from '../../../../api/routes/audit-routes';
+import { query, getDbClient } from '../../../../../db/postgres-client';
 
 interface FakeClaims {
   sub?: string;

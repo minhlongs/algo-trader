@@ -7,10 +7,10 @@
  * Singleton: start()/stop()/reset() for test isolation.
  */
 
-import { query } from '../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import { telegramSignalPusher } from '../signal/telegram-signal-pusher';
-import { logger } from '../utils/logger';
-import { qwenPaperPnlPct } from '../middleware/prometheus-metrics';
+import { logger } from '../../shared/utils/logger';
+import { qwenPaperPnlPct } from '../../middleware/prometheus-metrics';
 
 /** Default check interval: 6 hours */
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;

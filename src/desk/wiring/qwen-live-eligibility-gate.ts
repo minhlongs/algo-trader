@@ -12,7 +12,7 @@
  * Additionally reads QWEN_LIVE_ELIGIBLE env flag (must be 'true' AND 30d cleared).
  */
 
-import { query } from '../db/postgres-client';
+import { query } from '../../shared/db/postgres-client';
 import { logger } from '../utils/logger';
 
 /** Hardcoded — MUST NOT be changed to env-configurable. */

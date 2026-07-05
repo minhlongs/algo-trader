@@ -8,7 +8,7 @@
 import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import { DrawdownMonitor } from './drawdown-monitor';
-import { appendTenantAuditLog } from '../audit/tenant-audit-log';
+import { appendTenantAuditLog } from '../../platform/audit/tenant-audit-log';
 
 export interface CircuitBreakerConfig {
   maxLossStreak: number;

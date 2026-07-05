@@ -15,8 +15,8 @@ import WebSocket, { WebSocketServer } from 'ws';
 import {
   getPubClient,
   getSubClient,
-} from '../redis';
-import { logger } from '../utils/logger';
+} from '../../redis';
+import { logger } from '../../shared/utils/logger';
 
 export interface WSAdapterConfig {
   path: string;

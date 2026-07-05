@@ -3,9 +3,9 @@
  * Halts trading on max drawdown breach
  */
 
-import { getRedisClient, type RedisClientType } from '../redis';
-import { logger } from '../utils/logger';
-import { appendTenantAuditLog } from '../audit/tenant-audit-log';
+import { getRedisClient, type RedisClientType } from '../../redis';
+import { logger } from '../../shared/utils/logger';
+import { appendTenantAuditLog } from '../../platform/audit/tenant-audit-log';
 
 export interface DrawdownConfig {
   maxDailyDrawdown: number;

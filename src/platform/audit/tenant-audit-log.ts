@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
-import { transaction, query } from '../db/postgres-client';
+import { transaction, query } from '../../shared/db/postgres-client';
 import { PoolClient } from 'pg';
-import { logger } from '../utils/logger';
+import { logger } from '../../shared/utils/logger';
 
 export interface TenantAuditLog {
   id: string;

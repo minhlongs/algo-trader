@@ -7,8 +7,8 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { CircuitBreaker } from '../../risk/circuit-breaker';
-import { DrawdownMonitor } from '../../risk/drawdown-monitor';
+import { CircuitBreaker } from '../../../desk/risk/circuit-breaker';
+import { DrawdownMonitor } from '../../../desk/risk/drawdown-monitor';
 import { requireAdminKey } from '../middleware/require-admin-key';
 import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
 

@@ -5,8 +5,8 @@
 
 import client from 'prom-client';
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
-import { annotateActiveSpanWithRegion } from '../utils/tracing';
+import { logger } from '../../shared/utils/logger';
+import { annotateActiveSpanWithRegion } from '../../shared/utils/tracing';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Create Registry

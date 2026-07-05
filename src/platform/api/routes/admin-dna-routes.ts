@@ -8,17 +8,17 @@
  * GET  /status     — engine state: last consensus, last regime, paper mode, running
  */
 import { Router, Request, Response } from 'express';
-import { logger } from '../../utils/logger';
+import { logger } from '../../../shared/utils/logger';
 import {
   startDnaEngine,
   stopDnaEngine,
   getDnaEngine,
   resetDnaEngine,
   DnaEngine,
-} from '../../strategies/dna/orchestrator.js';
+} from '../../../desk/strategies/dna/orchestrator.js';
 import { DnaEngineConfig, DnaLifecycleEvent } from '../../strategies/dna/multi-tf-types.js';
-import type { CandleProvider } from '../../strategies/dna/orchestrator.js';
-import { InMemoryStateStore } from '../../strategies/dna/dna-state-store.js';
+import type { CandleProvider } from '../../../desk/strategies/dna/orchestrator.js';
+import { InMemoryStateStore } from '../../../desk/strategies/dna/dna-state-store.js';
 import { requireAdminKey } from '../middleware/require-admin-key';
 
 // Injected at server startup (src/api/server.ts sets this before listen).
