@@ -14,7 +14,7 @@ RAAS (ROI as a Service) License Gate provides tier-based feature access control 
 | Tier | Features | Price |
 |------|----------|-------|
 | **FREE** | `basic_strategies`, `live_trading`, `basic_backtest` | $0 |
-| **PRO** | FREE + `ml_models`, `premium_data`, `advanced_optimization` | $49/mo |
+| **PRO** | FREE + `ml_models`, `premium_data`, `advanced_optimization` | $99/mo |
 | **ENTERPRISE** | PRO + `priority_support`, `custom_strategies`, `multi_exchange` | Custom |
 
 ---

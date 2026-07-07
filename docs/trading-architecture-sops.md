@@ -573,7 +573,7 @@ Per-tenant: strategies, positions, P&L, orders
 | Tier | Price | Limits |
 |------|-------|--------|
 | FREE | $0 | 1 pair, 10 RPM, paper only |
-| PRO | $49/mo | 5 pairs, 60 RPM, live trading |
+| PRO | $99/mo | 5 pairs, 60 RPM, live trading |
 | ENTERPRISE | Custom | Unlimited, priority, dedicated |
 
 ### Rate Limiting
