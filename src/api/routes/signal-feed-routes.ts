@@ -9,14 +9,14 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import RaasGate from '../../gate/raas-gate';
-import { LicenseTier } from '../../types/license';
-import { filterSignalsForTier, canAccessSse } from '../../signal/signal-tier-filter';
-import { signalTtlEnforcer } from '../../signal/signal-ttl-enforcer';
-import { getCachedSignals, setCachedSignals } from '../../signal/signal-rest-cache';
-import { sseBroadcaster } from '../../signal/sse-signal-broadcaster';
-import type { TierKey } from '../../signal/signal-types';
-import { logger } from '../../utils/logger';
+import RaasGate from '@desk/gate/raas-gate';
+import { LicenseTier } from '@platform/types/license';
+import { filterSignalsForTier, canAccessSse } from '@desk/signal/signal-tier-filter';
+import { signalTtlEnforcer } from '@desk/signal/signal-ttl-enforcer';
+import { getCachedSignals, setCachedSignals } from '@desk/signal/signal-rest-cache';
+import { sseBroadcaster } from '@desk/signal/sse-signal-broadcaster';
+import type { TierKey } from '@desk/signal/signal-types';
+import { logger } from '@platform/utils/logger';
 
 export const signalFeedRouter: Router = Router();
 const gate = RaasGate.getInstance();

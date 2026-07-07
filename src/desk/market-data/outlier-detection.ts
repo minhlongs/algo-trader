@@ -104,7 +104,7 @@ export class OutlierDetector {
   /**
    * Detect price outlier using Z-score and IQR
    */
-  detectPriceOutlier(symbol: string, currentPrice: number, window: StatsWindow): any {
+  detectPriceOutlier(symbol: string, currentPrice: number, window: StatsWindow, provider?: MarketDataSource): any {
     if (window.values.length < this.config.minSamples) {
       return null;
     }
@@ -148,8 +148,8 @@ export class OutlierDetector {
       };
 
       if (this.config.enableMetrics) {
-        recordOutlierEvent(symbol, 'price_spike', severity);
-        recordOutlierZScore(symbol, 'price_spike', zScore);
+        recordOutlierEvent(provider ?? 'unknown', symbol, 'price_spike');
+        recordOutlierZScore(provider ?? 'unknown', symbol, 'price_spike', zScore);
       }
 
       this.emitOutlier(outlier);
@@ -162,7 +162,7 @@ export class OutlierDetector {
   /**
    * Detect volume outlier
    */
-  detectVolumeOutlier(symbol: string, currentVolume: number, window: StatsWindow): any {
+  detectVolumeOutlier(symbol: string, currentVolume: number, window: StatsWindow, provider?: MarketDataSource): any {
     if (window.values.length < this.config.minSamples) {
       return null;
     }
@@ -199,8 +199,8 @@ export class OutlierDetector {
       };
 
       if (this.config.enableMetrics) {
-        recordOutlierEvent(symbol, 'volume_anomaly', severity);
-        recordOutlierZScore(symbol, 'volume_anomaly', zScore);
+        recordOutlierEvent(provider ?? 'unknown', symbol, 'volume_anomaly');
+        recordOutlierZScore(provider ?? 'unknown', symbol, 'volume_anomaly', zScore);
       }
 
       this.emitOutlier(outlier);
@@ -249,7 +249,7 @@ export class OutlierDetector {
     };
 
     if (this.config.enableMetrics) {
-      recordOutlierEvent(symbol, 'price_gap', severity);
+      recordOutlierEvent(provider ?? 'unknown', symbol, 'price_gap');
     }
 
     this.emitOutlier(outlier);

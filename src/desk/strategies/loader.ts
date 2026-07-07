@@ -4,8 +4,8 @@
  * Implements strategy registry and assignment lookup
  */
 
-import { getRedisClient, type RedisClientType } from '../redis';
-import { logger } from '../utils/logger';
+import { getRedisClient, type RedisClientType } from '../../redis';
+import { logger } from '../../shared/utils/logger';
 import type { IStrategy } from './types';
 
 // Strategy registry entry

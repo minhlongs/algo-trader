@@ -76,6 +76,12 @@ export class DunningService {
     this.dunningRecords = loadFromFile();
   }
 
+  /** Persist a single dunning record (Promise-returning callback for Inngest). */
+  saveDunningRecord(record: DunningRecord): Promise<void> {
+    this.dunningRecords.set(record.licenseId, record);
+    return Promise.resolve();
+  }
+
   static getInstance(): DunningService {
     if (!DunningService.instance) DunningService.instance = new DunningService();
     return DunningService.instance;
@@ -102,7 +108,7 @@ export class DunningService {
       );
 
       if (shouldSuspend) {
-        await DunningWorkflow.suspendLicense(licenseId, existing, this.licenseService, this.auditService, this.dunningRecords);
+        await DunningWorkflow.suspendLicense(licenseId, existing, this.licenseService, this.auditService, this.saveDunningRecord.bind(this));
       } else {
         existing.status = 'warning';
         await this.auditService.log(licenseId, 'rate_limit', {
@@ -139,7 +145,7 @@ export class DunningService {
     if (!existing) return undefined;
 
     if (existing.status === 'suspended') {
-      await DunningWorkflow.reinstateLicense(licenseId, existing, this.licenseService, this.auditService, this.dunningRecords);
+      await DunningWorkflow.reinstateLicense(licenseId, existing, this.licenseService, this.auditService, this.saveDunningRecord.bind(this));
     }
 
     existing.reinstatementDate = new Date().toISOString();
@@ -194,7 +200,7 @@ export class DunningService {
 
       const { shouldSuspend } = DunningWorkflow.shouldSuspend(record.retryCount, record.firstFailureDate, this.config);
       if (shouldSuspend) {
-        await DunningWorkflow.suspendLicense(record.licenseId, record, this.licenseService, this.auditService, this.dunningRecords);
+        await DunningWorkflow.suspendLicense(record.licenseId, record, this.licenseService, this.auditService, this.saveDunningRecord.bind(this));
         suspended.push(record.licenseId);
       }
     }

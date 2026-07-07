@@ -341,7 +341,8 @@ export async function getUnifiedValidation(signal: SignalCandidate): Promise<Uni
   }
 
   const llmConfig = loadLlmConfig();
-  const { url: llmUrl, model: llmModel, timeoutMs } = llmConfig.primary;
+		const { url: llmUrl, model: llmModel } = llmConfig.primary;
+		const timeoutMs = 10000;
   const systemPrompt = getCombinedSystemPrompt();
   const userPrompt = buildCombinedUserPrompt(signal);
 

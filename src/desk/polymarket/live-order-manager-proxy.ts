@@ -35,8 +35,8 @@ export class LiveOrderManagerProxy implements OrderManager {
   async placeOrder(params: {
     tokenId: string;
     side: 'buy' | 'sell';
-    price: string;
-    size: string;
+    price: string | number;
+    size: string | number;
     orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
   }): Promise<{ id: string }> {
     this.orderCount++;
@@ -44,8 +44,8 @@ export class LiveOrderManagerProxy implements OrderManager {
     const signal: TradeSignal = {
       tokenId: params.tokenId,
       side: params.side === 'buy' ? 'BUY' : 'SELL',
-      price: parseFloat(params.price),
-      size: parseFloat(params.size),
+      price: parseFloat(String(params.price)),
+      size: parseFloat(String(params.size)),
       description: `${this.strategyName}:order#${this.orderCount}`,
       confidence: 0.7,
     };

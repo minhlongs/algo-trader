@@ -8,12 +8,11 @@
 
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
-import { getCompressionManager } from './compression-stream';
 import {
   setMemoryMetrics,
   recordMemoryPressureEvent,
   recordCacheEviction,
-} from '../middleware/prometheus-metrics';
+} from '../../shared/observability/prometheus-metrics';
 
 export interface MemoryMetrics {
   rss: number; // Resident set size
@@ -221,7 +220,6 @@ export class MemoryPressureHandler {
       logger.info('[MemoryPressure] Cleaning up memory resources...');
 
       // Clear compression manager cache
-      const compressionManager = getCompressionManager();
       // compression manager has no state to clear currently
 
       // Signal to other components via Redis
@@ -258,7 +256,7 @@ export class MemoryPressureHandler {
     const utilization = metrics.rss / metrics.limit;
 
     // Update Prometheus gauges
-    setMemoryMetrics(metrics.rss, metrics.heapUsed, metrics.limit);
+    setMemoryMetrics(metrics.rss, metrics.heapUsed);
 
     // Log summary periodically (every 10th check to avoid spam)
     if (this.metricsHistory.length % 10 === 0) {

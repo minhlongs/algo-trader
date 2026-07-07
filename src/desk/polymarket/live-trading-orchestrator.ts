@@ -302,7 +302,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
 
   // ── Private: persistence ──────────────────────────────────────────────────
 
-  private persistState(): void {
+  private async persistState(): Promise<void> {
     try {
       // Save positions
       const positions = this.positionTracker.getPositions();
@@ -311,8 +311,9 @@ export class LiveTradingOrchestrator extends EventEmitter {
       // Save daily P&L
       const summary = this.positionTracker.getSummary();
       const guard = this.guard.getStatus();
+      const today = this.journal.getToday();
       const pnlState: DailyPnlState = {
-        date: this.journal.getToday(),
+        date: today,
         realizedPnl: summary.totalRealizedPnl,
         tradeCount: guard.totalWins + guard.totalLosses,
         winCount: guard.totalWins,
@@ -332,7 +333,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
     }
   }
 
-  private restoreState(): void {
+  private async restoreState(): Promise<void> {
     try {
       // Check day rollover
       const rolled = this.journal.checkDayRollover();
@@ -343,15 +344,15 @@ export class LiveTradingOrchestrator extends EventEmitter {
       }
 
       // Restore daily P&L if same day
-      const savedPnl = this.journal.loadDailyPnl();
+      const savedPnl = await this.journal.loadDailyPnl();
       if (savedPnl) {
         logger.info('Restored daily P&L', 'Orchestrator', savedPnl);
       }
 
       logger.info('State restored', 'Orchestrator', {
-        positionsLoaded: this.journal.loadPositions().length,
-        fillCount: this.journal.getLifetimeStats().totalFills,
-        today: this.journal.getToday(),
+        positionsLoaded: (await this.journal.loadPositions()).length,
+        fillCount: (await this.journal.getLifetimeStats()).totalFills,
+        today: await this.journal.getToday(),
       });
     } catch (err) {
       logger.warn('Failed to restore state — starting fresh', 'Orchestrator', { err: String(err) });

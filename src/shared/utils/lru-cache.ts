@@ -5,7 +5,7 @@
  * Target: <10ms eviction latency, >80% hit rate for hot strategies
  */
 
-import { recordCacheEviction } from '../../platform/middleware/prometheus-metrics';
+import { recordCacheEviction } from '../../shared/observability/prometheus-metrics';
 
 export interface CacheEntry<T> {
   value: T;

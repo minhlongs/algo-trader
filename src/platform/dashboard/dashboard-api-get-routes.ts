@@ -2,16 +2,16 @@
  * Public/authenticated dashboard API GET route handlers
  * Handles all authenticated /dashboard/api/* GET endpoints
  */
-import { authenticateRequest } from './dashboard-middleware.js';
-import { sendJson } from './dashboard-utils.js';
-import { getSystemHealth, getRevenueSummary, getAiInsights } from './dashboard-route-helpers.js';
+import { authenticateRequest } from'./dashboard-middleware';
+import { sendJson } from'./dashboard-utils';
+import { getSystemHealth, getRevenueSummary, getAiInsights } from'./dashboard-route-helpers';
 import {
 getPaperTradingStatus,
 getSdkExamples,
 getMarketplaceBrowse,
 getOnboardingChecklist,
-} from './dashboard-demo-data.js';
-import type { RouteContext } from './dashboard-routes.js';
+} from'./dashboard-demo-data';
+import type { RouteContext } from'./dashboard-routes';
 
 /** Handle public/authenticated dashboard API GET routes */
 export function handleApiGetRoutes(ctx: RouteContext): boolean {

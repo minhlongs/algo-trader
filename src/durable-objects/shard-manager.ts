@@ -8,7 +8,7 @@
 
 import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
 import { getRedisClient, type RedisClientType } from '../redis';
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import {
   buildRing,
   getShardForStrategy,
@@ -17,7 +17,7 @@ import {
   serializeRing,
   deserializeRing,
   type HashRing,
-} from '../utils/consistent-hash';
+} from '../desk/utils/consistent-hash';
 
 export interface ShardHealth {
   shardId: number;

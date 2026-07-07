@@ -198,7 +198,7 @@ export class Http2ConnectionPool {
   public getStats(): Record<string, unknown> {
     const stats: Record<string, unknown> = {};
 
-    for (const [, sessions] of this.sessions.entries()) {
+    for (const [origin, sessions] of this.sessions.entries()) {
       stats[origin] = {
         total: sessions.length,
         inUse: sessions.reduce((sum, s) => sum + s.inUse, 0),
@@ -216,7 +216,7 @@ export class Http2ConnectionPool {
   public async shutdown(): Promise<void> {
     logger.info('Shutting down HTTP/2 connection pool');
 
-    for (const [, sessions] of this.sessions.entries()) {
+    for (const [origin, sessions] of this.sessions.entries()) {
       await Promise.allSettled(
         sessions.map(s =>
           new Promise((resolve) => {

@@ -16,7 +16,7 @@ import { StrategyLoader } from '../strategies/loader';
 
 // Env interface for Durable Object bindings (KV, DO references)
 interface Env {
-  SHARD_MANAGER?: DurableObjectNamespace;
+  SHARD_MANAGER?: DurableObjectNamespace<DurableObject>;
   [key: string]: any;
 }
 
@@ -63,12 +63,15 @@ export class StrategyShard {
   private readonly MAX_CONCURRENT = 10;
   private activeExecutions = 0;
 
-  constructor(state: DurableObjectState) {
+  constructor(state: DurableObjectState, shardId?: number) {
     this.state = state;
     this.redis = getRedisClient();
 
-    // Determine shardId from state.id (consistent hashing)
-    this.shardId = this.extractShardId();
+ // Seed env for tests/early registration (fetch() will overwrite with full env)
+ this.currentEnv = (state as any).env;
+
+ // Determine shardId from state.id (consistent hashing), allow override for tests
+ this.shardId = shardId !== undefined ? shardId : this.extractShardId();
 
     this.strategyLoader = new StrategyLoader();
     this.initialize().catch(error => {
@@ -103,7 +106,7 @@ export class StrategyShard {
         try {
           const strategy = await this.strategyLoader.loadStrategy(strategyId);
           if (strategy) {
-            this.strategies.set(strategyId, strategy);
+            this.strategies.set(strategyId, (strategy as IStrategy));
             logger.info('[StrategyShard] Loaded strategy', {
               shardId: this.shardId,
               strategyId,

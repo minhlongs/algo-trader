@@ -15,5 +15,5 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["src/workers/**/*.ts", "src/regions/**/*.ts"]
+  "include": ["src/platform/workers/**/*.ts"]
 }

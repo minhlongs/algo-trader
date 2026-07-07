@@ -10,7 +10,11 @@
 import { query } from '../../shared/db/postgres-client';
 import { telegramSignalPusher } from '../signal/telegram-signal-pusher';
 import { logger } from '../../shared/utils/logger';
-import { qwenPaperPnlPct } from '../../middleware/prometheus-metrics';
+import {
+  setQwenDrawdownAutoDisabled,
+  setQwenKillSwitch,
+  qwenPaperPnlPct,
+} from '../../platform/middleware/prometheus-metrics';
 
 /** Default check interval: 6 hours */
 const DEFAULT_INTERVAL_MS = 6 * 60 * 60 * 1000;
@@ -45,6 +49,7 @@ export function isQwenEnabled(): boolean {
 export function disableQwen(reason: string): void {
   _qwenEnabled = false;
   _lastBreachAt = Date.now();
+  setQwenDrawdownAutoDisabled(true);
   logger.warn('[QwenDrawdown] Qwen swarm DISABLED', { reason });
 }
 
@@ -52,6 +57,7 @@ export function disableQwen(reason: string): void {
 export function enableQwen(): void {
   _qwenEnabled = true;
   _lastBreachAt = null;
+  setQwenDrawdownAutoDisabled(false);
   logger.info('[QwenDrawdown] Qwen swarm RE-ENABLED by admin');
 }
 
@@ -102,6 +108,7 @@ export async function computeRollingPnl(
  * Called by the scheduler and exposed for tests.
  */
 export async function runDrawdownCheck(): Promise<void> {
+  setQwenKillSwitch('env', isKillSwitchActive());
   if (!isQwenEnabled()) {
     logger.debug('[QwenDrawdown] Already disabled — skip check');
     return;

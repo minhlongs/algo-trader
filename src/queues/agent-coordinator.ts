@@ -1,3 +1,5 @@
+import type { ConnectionOptions } from 'bullmq';
+
 /**
  * Agent Coordinator Queue
  * Manages priority-based agent execution using BullMQ v5
@@ -73,7 +75,7 @@ export class AgentCoordinator {
 
     for (const config of queueConfigs) {
       const queue = new Queue(config.name, {
-        connection: this.connection,
+        connection: this.connection as unknown as ConnectionOptions,
         defaultJobOptions: {
           removeOnComplete: { count: 100, age: 24 * 60 * 60 * 1000 },
           removeOnFail: { count: 500, age: 24 * 60 * 60 * 1000 },
@@ -225,7 +227,7 @@ export class AgentCoordinator {
         }
       },
       {
-        connection: this.connection,
+        connection: this.connection as unknown as ConnectionOptions,
         concurrency: this.getConcurrencyForPriority(priority),
         limiter: {
           max: this.getRateLimitForPriority(priority),

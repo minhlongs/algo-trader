@@ -261,6 +261,139 @@ export const tradeExecutionTime = new client.Histogram({
   registers: [register],
 });
 
+// ─── Market Data Quality Metrics (Gap Detection, Outlier Detection, SLA) ────
+
+// Gap detection gauges
+export const dataGapsTotal = new client.Counter({
+  name: 'market_data_gaps_total',
+  help: 'Total number of data gaps detected across all providers/symbols',
+  labelNames: ['provider', 'symbol'] as const,
+  registers: [register],
+});
+export const gapDetectionDuration = new client.Histogram({
+  name: 'market_data_gap_detection_seconds',
+  help: 'Time spent detecting gaps per cycle',
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [register],
+});
+export const expectedCandles = new client.Gauge({
+  name: 'market_data_expected_candles',
+  help: 'Expected candle count per symbol/timeframe window',
+  labelNames: ['symbol', 'timeframe'] as const,
+  registers: [register],
+});
+export const receivedCandles = new client.Gauge({
+  name: 'market_data_received_candles',
+  help: 'Received candle count per symbol/timeframe window',
+  labelNames: ['symbol', 'timeframe'] as const,
+  registers: [register],
+});
+export const candleCompleteness = new client.Gauge({
+  name: 'market_data_candle_completeness',
+  help: 'Candle completeness ratio (received/expected) per symbol/timeframe',
+  labelNames: ['symbol', 'timeframe'] as const,
+  registers: [register],
+});
+
+// Outlier detection metrics
+export const outlierEventsTotal = new client.Counter({
+  name: 'market_data_outlier_events_total',
+  help: 'Total outlier detection events by provider/symbol/field',
+  labelNames: ['provider', 'symbol', 'field'] as const,
+  registers: [register],
+});
+export const outlierZScore = new client.Histogram({
+  name: 'market_data_outlier_z_score_seconds',
+  help: 'Z-score event detection latency by outlier symbol provider',
+  labelNames: ['provider', 'symbol', 'field'] as const,
+  buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1],
+  registers: [register],
+});
+
+// Provider failover metrics
+export const failoverEventsTotal = new client.Counter({
+  name: 'provider_failover_events_total',
+  help: 'Total provider failover events by provider/direction',
+  labelNames: ['provider', 'direction'] as const,
+  registers: [register],
+});
+
+// SLA / provider health metrics
+export const providerHealthScore = new client.Gauge({
+  name: 'provider_health_score',
+  help: 'Provider health score (0-100)',
+  labelNames: ['provider'] as const,
+  registers: [register],
+});
+export const providerAvailability = new client.Gauge({
+  name: 'provider_availability',
+  help: 'Provider availability ratio (0-1)',
+  labelNames: ['provider'] as const,
+  registers: [register],
+});
+export const providerErrorRate = new client.Gauge({
+  name: 'provider_error_rate',
+  help: 'Provider error rate (0-1)',
+  labelNames: ['provider'] as const,
+  registers: [register],
+});
+export const slaComplianceTotal = new client.Counter({
+  name: 'sla_compliance_total',
+  help: 'SLA compliance check results by provider/result',
+  labelNames: ['provider', 'result'] as const,
+  registers: [register],
+});
+
+// ─── Record Functions for Market Data Metrics ─────────────────────────────────
+
+export function recordDataGap(provider: string, symbol: string, _durationMs?: number): void {
+  dataGapsTotal.inc({ provider, symbol });
+}
+
+export function recordGapDetectionDuration(provider: string, symbol: string, seconds: number): void {
+  gapDetectionDuration.observe(seconds);
+}
+
+export function setExpectedCandles(_provider: string, symbol: string, timeframe: string, count: number): void {
+  expectedCandles.set({ symbol, timeframe }, count);
+}
+
+export function setReceivedCandles(provider: string, symbol: string, timeframe: string, count: number): void {
+  receivedCandles.set({ symbol, timeframe }, count);
+}
+
+export function setCandleCompleteness(provider: string, symbol: string, timeframe: string, ratio: number): void {
+  candleCompleteness.set({ symbol, timeframe }, ratio);
+}
+
+export function recordOutlierEvent(provider: string, symbol: string, field: string): void {
+  outlierEventsTotal.inc({ provider, symbol, field });
+}
+
+export function recordOutlierZScore(provider: string, symbol: string, field: string, zScore: number): void {
+  outlierZScore.observe({ provider, symbol, field }, zScore);
+}
+
+export function recordFailoverEvent(provider: string, direction: 'primary_to_fallback' | 'fallback_to_primary'): void {
+  failoverEventsTotal.inc({ provider, direction });
+}
+
+export function setProviderHealthScore(provider: string, score: number): void {
+  providerHealthScore.set({ provider }, score);
+}
+
+export function setProviderAvailability(provider: string, ratio: number): void {
+  providerAvailability.set({ provider }, ratio);
+}
+
+export function setProviderErrorRate(provider: string, rate: number): void {
+  providerErrorRate.set({ provider }, rate);
+}
+
+export function recordSlaCompliance(provider: string, compliant: boolean): void {
+  slaComplianceTotal.inc({ provider, result: compliant ? 'compliant' : 'breached' });
+}
+
 // ─── Latency Monitoring Histograms (Phase 5) ───────────────────────────────────
 
 /** HTTP request duration with region and status labels */
@@ -286,7 +419,7 @@ export const shardLatency = new client.Histogram({
   name: 'shard_latency_seconds',
   help: 'Durable Object shard operation latency',
   labelNames: ['shard_id', 'operation'] as const,
-  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25],
+  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5],
   registers: [register],
 });
 

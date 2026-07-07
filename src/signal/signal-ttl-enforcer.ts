@@ -20,8 +20,11 @@ export class SignalTtlEnforcer {
 
     const delay = signal.expiresAt - Date.now();
     if (delay <= 0) {
-      // Already expired — evict immediately
-      this.evict(signal.id);
+      // Already expired — schedule async (zero-delay) eviction so the signal
+      // is visible for dedup checks in the same synchronous tick, then removed
+      // when the event loop advances and the timer fires under fake timers.
+      const timer = setTimeout(() => this.evict(signal.id), 0);
+      this.timers.set(signal.id, timer);
       return;
     }
 

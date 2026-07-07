@@ -121,6 +121,9 @@ const STANDARD_P99_BOUNDARY_S = 0.5;
 /** Reasonable upper bound: durations > 30s signal "hung" semantics, better tracked as counter than histogram. */
 const MAX_REASONABLE_UPPER_BOUND_S = 30;
 
+/** Histograms operating at sub-ms granularity whose upper bound < 1s (DO shard ops). */
+const SUB_MS_HISTOGRAMS = new Set<string>(['shard_latency_seconds']);
+
 /** Bucket cardinality bounds: too few = lossy, too many = scrape cost. */
 const MIN_BUCKET_COUNT = 3;
 const MAX_BUCKET_COUNT = 12;
@@ -188,14 +191,15 @@ describe('Prometheus histogram bucket structural discipline — 3-histogram sync
     }
   });
 
-  it("every histogram includes the 1-second standard p95 SLO boundary", () => {
-    for (const h of histograms) {
-      expect(
-        h.buckets.includes(STANDARD_P95_BOUNDARY_S),
-        `histogram '${h.name}' missing 1-second bucket — p95 SLO queries interpolate across too-wide a gap without this boundary`,
-      ).toBe(true);
-    }
-  });
+ it("every histogram includes the 1-second standard p95 SLO boundary (sub-ms histograms exempt)", () => {
+  for (const h of histograms) {
+    if (SUB_MS_HISTOGRAMS.has(h.name)) continue;
+    expect(
+      h.buckets.includes(STANDARD_P95_BOUNDARY_S),
+      `histogram '${h.name}' missing 1-second bucket — p95 SLO queries interpolate across too-wide a gap without this boundary`,
+    ).toBe(true);
+  }
+});
 
   it('every histogram includes the 0.5-second standard p99 interpolation boundary', () => {
     for (const h of histograms) {

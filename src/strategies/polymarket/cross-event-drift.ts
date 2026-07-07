@@ -21,13 +21,12 @@
  *   - Max hold:    position older than maxHoldMs
  *   - Convergence: laggard caught up to within 50% of leader's move
  */
-import type { ClobClient, RawOrderBook } from '../../polymarket/clob-client.js';
-import type { OrderManager } from '../../polymarket/order-manager.js';
-import type { EventBus } from '../../events/event-bus.js';
-import type { GammaClient, GammaMarket, GammaMarketGroup } from '../../polymarket/gamma-client.js';
-import type { KellyPositionSizer } from '../../polymarket/kelly-position-sizer.js';
-import type { StrategyName } from '../../core/types.js';
-import { logger } from '../../core/logger.js';
+import type { ClobClient, RawOrderBook } from '../../desk/polymarket/clob-client';
+import type { OrderManager } from '../../desk/polymarket/order-manager';
+import type { EventBus } from '../../desk/events/event-bus';
+import type { GammaClient, GammaMarket, GammaMarketGroup } from '../../desk/polymarket/gamma-client';
+import type { KellyPositionSizer } from '../../desk/polymarket/kelly-position-sizer';
+import { logger } from '../../engine/core/logger';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -73,7 +72,7 @@ const DEFAULT_CONFIG: CrossEventDriftConfig = {
   scanLimit: 8,
 };
 
-const STRATEGY_NAME: StrategyName = 'cross-event-drift' as StrategyName;
+const STRATEGY_NAME = 'cross-event-drift';
 
 // ── Internal types ───────────────────────────────────────────────────────────
 
@@ -335,7 +334,7 @@ export function createCrossEventDriftTick(deps: CrossEventDriftDeps): () => Prom
 
       // Filter to active, open markets with YES tokens
       const activeMarkets = event.markets.filter(
-        m => m.yesTokenId && !m.closed && !m.resolved && m.active,
+        (m: GammaMarket) => m.yesTokenId && !m.closed && !m.resolved && m.active,
       );
       if (activeMarkets.length < 2) continue;
 
@@ -389,7 +388,7 @@ export function createCrossEventDriftTick(deps: CrossEventDriftDeps): () => Prom
         const side: 'yes' | 'no' = leader.ret > 0 ? 'yes' : 'no';
 
         // Find the GammaMarket for this laggard to get noTokenId
-        const laggardMarket = activeMarkets.find(m => m.yesTokenId === laggardId);
+        const laggardMarket = activeMarkets.find((m: GammaMarket) => m.yesTokenId === laggardId);
         if (!laggardMarket) continue;
 
         const entryTokenId = side === 'yes' ? laggardId : (laggardMarket.noTokenId ?? laggardId);

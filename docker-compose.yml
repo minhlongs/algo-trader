@@ -9,9 +9,9 @@ services:
     container_name: algo-trade
     restart: unless-stopped
     ports:
-      - '4000:3000'   # API + /metrics
-      - '4001:3001'   # Dashboard
-      - '4002:3002'   # Webhooks
+      - '4000:3000' # API + /metrics
+      - '4001:3001' # Dashboard
+      - '4002:3002' # Webhooks
     env_file:
       - path: .env
         required: false
@@ -33,43 +33,60 @@ services:
         condition: service_healthy
       nats:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - algo-net
 
-  # Redis — cache, pub/sub fallback, nonce manager, semantic cache, embeddings
   redis:
     image: redis:7-alpine
     container_name: algo-trade-redis
     restart: unless-stopped
-    ports:
-      - '6385:6379'
-    command: ['redis-server', '--maxmemory', '512mb', '--maxmemory-policy', 'allkeys-lru']
-    volumes:
-      - redis_data:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 5s
     networks:
       - algo-net
+    volumes:
+      - redis_data:/data
 
-  # NATS — primary event-driven message bus + JetStream
   nats:
-    image: nats:2.10-alpine
+    image: nats:2-alpine
     container_name: algo-trade-nats
     restart: unless-stopped
-    ports:
-      - '4222:4222'   # Client connections
-      - '8222:8222'   # HTTP monitoring
-    command: ['--jetstream', '--store_dir', '/data', '-m', '8222', '--auth', '${NATS_TOKEN:?NATS_TOKEN is required — generate with: openssl rand -hex 32}']
-    volumes:
-      - nats_data:/data
+    command: ['-js', '-m', '8222']
     healthcheck:
-      test: ['CMD', 'wget', '-qO-', 'http://localhost:8222/healthz']
+      test: ['CMD-SHELL', 'nc -z localhost 4222']
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 5s
+    networks:
+      - algo-net
+    volumes:
+      - nats_data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: algo-trade-postgres
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    environment:
+      - POSTGRES_USER=algo
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-algo_pass}
+      - POSTGRES_DB=algo_trade
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U algo']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     networks:
       - algo-net
 
@@ -80,3 +97,4 @@ networks:
 volumes:
   redis_data:
   nats_data:
+  postgres_data:

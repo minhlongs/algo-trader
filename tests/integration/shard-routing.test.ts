@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { getStrategyRouter, StrategyRouter, getShardId } from '../../src/strategies/router';
-import { ShardManager, StrategyShard } from '../../src/durable-objects';
+import { getStrategyRouter, StrategyRouter, getShardId } from '../../src/desk/strategies/router';
+import { ShardManager, StrategyShard } from '../../src/desk/durable-objects';
 import type { DurableObjectState, DurableObject } from '@cloudflare/workers-types';
 
 // Mock the redis client
@@ -218,7 +218,8 @@ describe('StrategyShard Durable Object', () => {
         get: vi.fn().mockResolvedValue(null),
         put: vi.fn().mockResolvedValue(undefined),
       },
-      env: {
+         id: { toString: () => `shard-${shardId}` },
+env: {
         SHARD_MANAGER: {
           updateShardHealth: vi.fn().mockResolvedValue(undefined),
         } as any,
@@ -232,7 +233,7 @@ describe('StrategyShard Durable Object', () => {
     mockState = createMockState();
     vi.clearAllMocks();
 
-    strategyShard = new StrategyShard(mockState);
+    strategyShard = new StrategyShard(mockState, 0);
   });
 
   describe('initialize', () => {

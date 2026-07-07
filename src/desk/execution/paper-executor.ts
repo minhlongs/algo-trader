@@ -76,7 +76,7 @@ export class PaperExecutor {
     if (persisted) {
       this.account = persisted;
       this.positions = readJsonState<PaperPosition[]>(this.POSITIONS_FILE) ?? [];
-      this.tradeHistory = readJsonl<PaperTrade>(this.TRADES_FILE);
+      this.tradeHistory = await readJsonl<PaperTrade>(this.TRADES_FILE);
       logger.info('[PaperExecutor] Restored persisted state', {
         balance: this.account.balance,
         trades: this.tradeHistory.length,

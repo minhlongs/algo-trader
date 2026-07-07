@@ -5,7 +5,7 @@
  */
 
 import { logger } from '../utils/logger';
-import { externalApiLatency, recordExternalApiLatency } from '../middleware/prometheus-metrics';
+import { externalApiLatency, recordExternalApiLatency } from '../platform/middleware/prometheus-metrics';
 
 export interface RegionMetrics {
   region: string;

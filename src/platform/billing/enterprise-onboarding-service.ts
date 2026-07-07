@@ -10,10 +10,10 @@
  * Polar.sh is NOT used for enterprise; checkout is handled offline by TAM.
  */
 
-import { enterpriseInquiryStore, EnterpriseTier, EnterpriseInquiry } from './enterprise-inquiry-store.js';
-import { notifyTam } from './enterprise-tam-notifier.js';
-import { provisionPaperDemo, PaperDemoCredentials } from './enterprise-paper-demo-provisioner.js';
-import { logger } from '../utils/logger.js';
+import { enterpriseInquiryStore, EnterpriseTier, EnterpriseInquiry } from'./enterprise-inquiry-store';
+import { notifyTam } from'./enterprise-tam-notifier';
+import { provisionPaperDemo, PaperDemoCredentials } from'./enterprise-paper-demo-provisioner';
+import { logger } from'../utils/logger';
 
 export interface SubmitEnterpriseInquiryInput {
   email: string;

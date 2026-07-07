@@ -338,8 +338,8 @@ export async function handleCampaign(ctx: Context): Promise<void> {
         return;
       }
       const s = detail.strategy;
-      const price = s.listingPriceUsdMonthly != null
-        ? `$${(s.listingPriceUsdMonthly / 100).toFixed(2)}/month`
+      const price = detail.listing?.priceUsdMonthly != null
+        ? `$${(detail.listing.priceUsdMonthly / 100).toFixed(2)}/month`
         : 'Free';
       const msg = `
 📊 *${s.name}*
@@ -367,9 +367,7 @@ ${s.description}
       return;
     }
     const lines = result.data.map((s, i) => {
-      const price = s.listingPriceUsdMonthly != null
-        ? `$${(s.listingPriceUsdMonthly / 100).toFixed(2)}/mo`
-        : 'Free';
+  const price = 'Free'; // listing unavailable in list view
       return `${i + 1}. *${s.name}* — ${price}\n   ${(s.description || '').slice(0, 120)}${s.description?.length > 120 ? '…' : ''}`;
     });
     const msg = `

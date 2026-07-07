@@ -107,8 +107,8 @@ describe('AgentCoordinator', () => {
   });
 
   describe('getQueueStats', () => {
-    it('should return a Map with stats for all priorities', () => {
-      const stats = coordinator.getQueueStats();
+    it('should return a Map with stats for all priorities', async () => {
+      const stats = await coordinator.getQueueStats();
       expect(stats instanceof Map).toBe(true);
       expect(stats.size).toBe(3);
     });

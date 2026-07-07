@@ -4,13 +4,16 @@
  * Uses _migrations table to record applied migrations
  */
 
-import { logger } from '../utils/logger';
+import { logger } from '../shared/utils/logger';
 import { getDbClient } from './postgres-client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import * as migration001 from './migrations/001-create-trades-table';
 import * as migration019 from './migrations/019_add_trades_composite_index';
 import * as migration020 from './migrations/020_db_performance_optimizations';
+import * as migration025 from './migrations/025-marketplace-schema';
+import * as migration026 from './migrations/026-create-ai-audit-tables';
+import * as migration030 from './migrations/030_create_marketplace_tables';
 
 // Migration interface
 interface Migration {
@@ -120,10 +123,18 @@ const MIGRATIONS: Migration[] = [
   createSqlMigration('018_qwen_signals_loop_runs.sql', '018_qwen_signals_loop_runs', 'Qwen signals loop run journal'),
   migration019,
   migration020,
-  createSqlMigration('021_create_tenant_audit_logs.sql', '021_create_tenant_audit_logs', 'Create Tenant Audit Logs Table'),
-  createSqlMigration('021_tenant_credentials.sql', '021_tenant_credentials', 'Tenant Credentials Table'),
-  createSqlMigration('022_dna_journal.sql', '022_dna_journal', 'DNA engine multi-TF consensus journal'),
-  createSqlMigration('023_dna_engine_state.sql', '023_dna_engine_state', 'DNA engine state persistence'),
+ createSqlMigration('021_create_tenant_audit_logs.sql', '021_create_tenant_audit_logs', 'Create Tenant Audit Logs Table'),
+ createSqlMigration('021_tenant_credentials.sql', '021_tenant_credentials', 'Tenant Credentials Table'),
+ createSqlMigration('022_dna_journal.sql', '022_dna_journal', 'DNA engine multi-TF consensus journal'),
+ createSqlMigration('023_dna_engine_state.sql', '023_dna_engine_state', 'DNA engine state persistence'),
+ createSqlMigration('024_create_referral_tables.sql', '024_create_referral_tables', 'Referral tables'),
+ migration025,
+ migration026,
+ createSqlMigration('027-usage-metering-schema.sql', '027-usage-metering-schema', 'Usage metering schema'),
+ createSqlMigration('029_tenant_credentials.sql', '029_tenant_credentials', 'Tenant Credentials Table v2'),
+ migration030,
+ createSqlMigration('031_add_marketplace_subscription_payment.sql', '031_add_marketplace_subscription_payment', 'Marketplace subscription and payment tables'),
+ createSqlMigration('032_add_marketplace_payout_address.sql', '032_add_marketplace_payout_address', 'Marketplace payout address support'),
 ];
 
 /**

@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { LicenseService } from '../../billing/license-service';
-import { AuditLogService } from '../../audit/audit-log-service';
-import { LicenseTier, LicenseStatus, LicenseFilters } from '../../types/license';
+import { LicenseService } from '@platform/billing/license-service';
+import { AuditLogService } from '@platform/audit/audit-log-service';
+import { LicenseTier, LicenseStatus, LicenseFilters } from '@platform/types/license';
 import { z } from 'zod';
-import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
+import { appendTenantAuditLog } from '@platform/audit/tenant-audit-log';
 
 export const licenseRouter: Router = Router();
 const licenseService = LicenseService.getInstance();

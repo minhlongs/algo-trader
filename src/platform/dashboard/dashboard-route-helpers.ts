@@ -3,7 +3,7 @@
  * Imported by dashboard-routes.ts, dashboard-admin-routes.ts, dashboard-api-get-routes.ts
  */
 import type { IncomingMessage } from 'node:http';
-import { AdminAnalytics } from '../../admin/admin-analytics.js';
+import { AdminAnalytics } from'../../admin/admin-analytics';
 import type { DashboardDeps } from './dashboard-server';
 
 // ── System health ────────────────────────────────────────────────────────────

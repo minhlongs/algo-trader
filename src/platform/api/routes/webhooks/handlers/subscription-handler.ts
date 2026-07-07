@@ -73,6 +73,6 @@ export async function handleIpnRefunded(
 ): Promise<void> {
   const subscription = await subscriptionService.getSubscriptionByProviderId(ipn.payment_id);
   if (subscription) {
-    await subscriptionService.cancelSubscription(subscription.id);
+    await subscriptionService.updateSubscriptionStatus(subscription.id, 'cancelled');
   }
 }

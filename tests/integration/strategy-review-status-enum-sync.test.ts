@@ -52,7 +52,7 @@ import { resolve } from 'path';
 const REPO_ROOT = resolve(__dirname, '../..');
 const MIGRATION_PATH = resolve(REPO_ROOT, 'src/db/migrations/017_strategy_review_tasks.sql');
 const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/admin-qwen-routes.ts');
-const LOOP_PATH = resolve(REPO_ROOT, 'src/wiring/qwen-signals-loop.ts');
+const LOOP_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
 const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 
 /** Migration values reserved for future use — documented but not yet emitted. */

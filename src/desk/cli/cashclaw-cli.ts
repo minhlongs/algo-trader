@@ -19,7 +19,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { BacktestTrade } from '../../shared/backtesting/backtest-runner';
 
-import { runNegRiskScan } from '../commands/neg-risk-scan.js';
+import { runNegRiskScan } from'../commands/neg-risk-scan';
 
 const program = new Command()
   .name('cashclaw')

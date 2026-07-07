@@ -34,14 +34,14 @@ import {
   DnaLifecycleListener,
   DnaEngineConfig,
   DEFAULT_DNA_CONFIG,
-} from './multi-tf-types.js';
-import { buildTfSignal } from './tf-signal-builder.js';
-import { detectRegime, isRegimeFresh } from './regime-detector.js';
-import { DnaStateStore, DnaEngineState, InMemoryStateStore } from './dna-state-store.js';
-import { computeConsensus } from './consensus-engine.js';
-import { writeJournalEntry } from './journal-writer.js';
-import { executePaperConsensus } from './paper-executor.js';
-import { logger } from '../../utils/logger.js';
+} from'./multi-tf-types';
+import { buildTfSignal } from'./tf-signal-builder';
+import { detectRegime, isRegimeFresh } from'./regime-detector';
+import { DnaStateStore, DnaEngineState, InMemoryStateStore } from'./dna-state-store';
+import { computeConsensus } from'./consensus-engine';
+import { writeJournalEntry } from'./journal-writer';
+import { executePaperConsensus } from'./paper-executor';
+import { logger } from'../../utils/logger';
 
 // ─── Type for candle provider (injected — explicitness: no hidden dependency) ─
 

@@ -105,9 +105,11 @@ export class ImmutableTradeAudit {
     this.entries.push(finalEntry);
 
     // Persist to append-only JSONL file (immutable audit semantics)
-    this.writePromise = appendJsonl(this.logPath, finalEntry).catch((err) => {
-      logger.error('[TradeAudit] Failed to append to log file:', err);
-    });
+try {
+  appendJsonl(this.logPath, finalEntry);
+} catch (err) {
+  logger.error('[TradeAudit] Failed to append to log file:', err as Error);
+}
 
     logger.info(`[TradeAudit] #${finalEntry.sequenceNumber} ${eventType}: ${reason}`);
     return finalEntry;

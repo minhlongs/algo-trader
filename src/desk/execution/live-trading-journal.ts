@@ -27,7 +27,7 @@ export interface JournalEntry {
 }
 
 export interface DailyPnlState {
-  date: string;       // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   realizedPnl: number;
   tradeCount: number;
   winCount: number;
@@ -58,14 +58,14 @@ export class LiveTradingJournal {
   }
 
   /** Load all historical fills */
-  loadFills(): FilledOrder[] {
-    return readJsonl<FilledOrder>(TRADES_FILE);
+  loadFills(): Promise<FilledOrder[]> {
+    return readJsonl<FilledOrder>(TRADES_FILE) ?? Promise.resolve([]);
   }
 
   /** Count fills for a given date */
-  countFillsForDate(date: string): number {
-    return readJsonl<{ filledAt: number }>(TRADES_FILE)
-      .filter((f) => this.dateKey(new Date(f.filledAt)) === date).length;
+  async countFillsForDate(date: string): Promise<number> {
+    const fills = await readJsonl<{ filledAt: number }>(TRADES_FILE);
+    return fills.filter((f) => this.dateKey(new Date(f.filledAt)) === date).length;
   }
 
   // ── Positions ──────────────────────────────────────────────────────────────
@@ -106,13 +106,14 @@ export class LiveTradingJournal {
   }
 
   /** Load all journal events */
-  loadEvents(): JournalEntry[] {
+  loadEvents(): Promise<JournalEntry[]> {
     return readJsonl<JournalEntry>(JOURNAL_FILE);
   }
 
   /** Load events of a specific type */
-  loadEventsByType(type: JournalEntry['type']): JournalEntry[] {
-    return this.loadEvents().filter((e) => e.type === type);
+  async loadEventsByType(type: JournalEntry['type']): Promise<JournalEntry[]> {
+    const events = await this.loadEvents();
+    return events.filter((e) => e.type === type);
   }
 
   // ── Day rollover ───────────────────────────────────────────────────────────
@@ -135,8 +136,8 @@ export class LiveTradingJournal {
   // ── Stats ──────────────────────────────────────────────────────────────────
 
   /** Get total trade count and P&L across all time */
-  getLifetimeStats(): { totalTrades: number; totalFills: number } {
-    const fills = this.loadFills();
+  async getLifetimeStats(): Promise<{ totalTrades: number; totalFills: number }> {
+    const fills = await this.loadFills();
     return {
       totalTrades: fills.length,
       totalFills: fills.length,

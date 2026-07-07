@@ -198,6 +198,7 @@ async function main() {
       return result.positionSizeUsd;
     };
     const rng = new SeededRandom(RANDOM_SEED);
+  const kellyResults: { name: string; metrics: ReturnType<typeof simulateTrades> }[] = [];
     kellyResults.push({
       name: `Kelly (corr=${correlation})`,
       metrics: simulateTrades(

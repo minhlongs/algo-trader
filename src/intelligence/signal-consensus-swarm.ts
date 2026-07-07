@@ -6,9 +6,9 @@
  *      SWARM_QWEN_ENABLED (default false) — enables 4th quantitative-analyst persona via Qwen.
  */
 
-import { loadLlmConfig } from '../config/llm-config';
-import { logger } from '../utils/logger';
-import type { SignalCandidate } from './signal-validator';
+import { loadLlmConfig } from '../shared/config/llm-config';
+import { logger } from '../shared/utils/logger';
+import type { SignalCandidate } from '../desk/intelligence/signal-validator';
 
 export interface SwarmVote {
   persona: 'risk-analyst' | 'momentum-trader' | 'contrarian' | 'quantitative-analyst';

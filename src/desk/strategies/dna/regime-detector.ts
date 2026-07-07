@@ -22,8 +22,8 @@ import {
   RegimeSnapshot,
   TfId,
   TF_RESOLUTIONS,
-} from './multi-tf-types.js';
-import { computeTrendIndicators } from './indicators-trend.js';
+} from'./multi-tf-types';
+import { computeTrendIndicators } from'./indicators-trend';
 
 // ─── Regime thresholds ────────────────────────────────────────────────────────
 

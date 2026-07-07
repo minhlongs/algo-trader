@@ -7,9 +7,9 @@
 
 import { trace } from '@opentelemetry/api';
 import { AgentQueueManager } from '../../queues/agent-queue-manager';
-import { OpenClawGateway } from '../../platform/workers/openclaw-gateway/client';
 import { CircuitBreaker } from '../../shared/resilience/circuit-breaker';
 import { AgentConfig, ModelTier, TIER_CONFIG, getAgentConfig } from '../../agents/agent-config';
+import { OpenClawGateway } from '../../platform/workers/openclaw-gateway/client';
 
 export interface AgentExecutionContext {
   tenantId: string;
@@ -31,18 +31,18 @@ export interface AgentExecutionResult {
  */
 export class ModelTierDispatcher {
   private tierQueues: Map<ModelTier, AgentQueueManager>;
-  private gateway: OpenClawGateway;
   private circuitBreaker: CircuitBreaker;
 
-  constructor(redisUrl: string) {
+ private gateway: OpenClawGateway;
+ constructor(redisUrl: string, gateway?: OpenClawGateway) {
     this.tierQueues = new Map();
-    this.gateway = new OpenClawGateway();
+	this.gateway = gateway ?? new OpenClawGateway();
     this.circuitBreaker = new CircuitBreaker({
       failureThreshold: 3,
       resetTimeoutMs: 60000,
       name: 'openclaw-gateway',
       onStateChange: (prev, next) => {
-        console.log(`[ModelTierDispatcher] CircuitBreaker: ${prev} → ${next}`);
+        console.log(`[ModelTierDispatcher] CircuitBreaker: ${prev} -> ${next}`);
       },
     });
 
@@ -147,8 +147,8 @@ export class ModelTierDispatcher {
   }
 
   /**
-   * Direct synchronous execution via OpenClawGateway.
-   * Used for Tier1 and Tier3 (with optional fallback).
+   * Direct synchronous execution via fetch to LLM endpoint.
+   * Used for Tier1 and Tier3 (with optional fallback to Tier2).
    */
   private async executeDirect(
     config: AgentConfig,
@@ -157,46 +157,40 @@ export class ModelTierDispatcher {
     enableFallback: boolean = false
   ): Promise<AgentExecutionResult> {
     const tierConfig = TIER_CONFIG[config.tier];
-    const timeout = config.timeout || tierConfig.defaultTimeout;
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const timeoutId = setTimeout(() => controller.abort(), tierConfig.defaultTimeout);
 
-    try {
-      const response = await this.circuitBreaker.execute(() =>
-        this.gateway.chat(config, input, { signal: controller.signal })
-      );
+ try {
+  const response = await this.circuitBreaker.execute(async () => {
+   return await this.gateway.chat(config, input, { signal: controller.signal });
+  });
 
-      return {
-        success: true,
-        data: response,
-        latencyMs: 0, // will be set by caller
-        agentName: config.name,
-        modelTier: config.tier,
-      };
-    } catch (error: any) {
-      // Fallback to Tier2 if enabled and error is timeout or rate-limit (429)
-      if (
-        enableFallback &&
-        config.fallbackTier &&
-        (error.name === 'AbortError' || error.message.includes('429') || error.message.includes('rate limit'))
-      ) {
-        console.warn(`[ModelTierDispatcher] Tier3 timeout/rate-limit for ${config.name}, falling back to Tier2`);
-        const result = await this.executeQueued({ ...config, tier: config.fallbackTier }, input, context);
-        result.modelTier = config.fallbackTier;
-        return result;
-      }
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        latencyMs: 0,
-        agentName: config.name,
-        modelTier: config.tier,
-      };
-    } finally {
-      clearTimeout(timeoutId);
-    }
+  return {
+   success: true,
+   data: response,
+   latencyMs: 0,
+   agentName: config.name,
+   modelTier: config.tier,
+  };
+ } catch (error: any) {
+  if (enableFallback && config.fallbackTier && (error.name === 'AbortError' || error.message.includes('429') || error.message.includes('rate limit'))) {
+   console.warn(`[ModelTierDispatcher] Tier3 timeout/rate-limit for ${config.name}, falling back to Tier2`);
+   const result = await this.executeQueued({ ...config, tier: config.fallbackTier }, input, context);
+   result.modelTier = config.fallbackTier;
+   return result;
   }
+  return {
+   success: false,
+   error: error instanceof Error ? error.message : String(error),
+   latencyMs: 0,
+   agentName: config.name,
+   modelTier: config.tier,
+  };
+ } finally {
+  clearTimeout(timeoutId);
+ }
+}
+
 
   /**
    * Queue-based asynchronous execution for Tier2 (and Tier3 fallback).
@@ -211,7 +205,10 @@ export class ModelTierDispatcher {
     const job = await queue.add(config.name, {
       agentName: config.name,
       input,
-      context: { tenantId: context.tenantId, strategyId: context.strategyId },
+      context: {
+        tenantId: context.tenantId,
+        strategyId: context.strategyId,
+      },
     });
 
     return {
@@ -229,7 +226,9 @@ export class ModelTierDispatcher {
    * Pass a map keyed by ModelTier for the tiers you want to process.
    * Example: { [ModelTier.TIER2_SONNET]: async (task) => { ... } }
    */
-  async startWorkers(processors: Partial<Record<ModelTier, (task: any) => Promise<any>>>): Promise<void> {
+  async startWorkers(
+    processors: Partial<Record<ModelTier, (task: any) => Promise<any>>>
+  ): Promise<void> {
     for (const [tier, processor] of Object.entries(processors) as [ModelTier, (task: any) => Promise<any>][]) {
       const queue = this.tierQueues.get(tier);
       if (queue && processor) {

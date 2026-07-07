@@ -4,10 +4,18 @@
  * Used by ModelTierDispatcher to route agent execution.
  */
 
-import { AgentConfig, TIER_CONFIG } from '../../agents/agent-config';
-import { recordExternalApiLatency } from '../../middleware/prometheus-metrics';
+import { AgentConfig, TIER_CONFIG } from '../../../agents/agent-config';
+
+/** Latency callback type — caller provides the implementation. */
+export type LatencyRecorder = (service: string, endpoint: string, region: string, latencySec: number) => void;
 
 export class OpenClawGateway {
+  private recordLatency: LatencyRecorder | null;
+
+  constructor(recordLatency?: LatencyRecorder) {
+    this.recordLatency = recordLatency ?? null;
+  }
+
   /**
    * Execute an agent via the appropriate LLM endpoint.
    * @param config Agent configuration (provides tier and timeout)
@@ -41,10 +49,10 @@ export class OpenClawGateway {
 
       return response.json();
     } finally {
-      const latencySec = (Date.now() - start) / 1000;
-      // Record latency with region derived from endpoint or default
-      const region = process.env.REGION || 'unknown';
-      recordExternalApiLatency('openclaw', config.name, region, latencySec);
+      if (this.recordLatency) {
+        const latencySec = (Date.now() - start) / 1000;
+        this.recordLatency('openclaw', config.name, process.env.REGION || 'unknown', latencySec);
+      }
     }
   }
 }

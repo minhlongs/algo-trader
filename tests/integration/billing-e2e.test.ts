@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { PRICING_TIERS, getPricingTier, annualPrice } from '../../src/billing/pricing-tiers';
-import { LicenseService } from '../../src/billing/license-service';
-import { SubscriptionService } from '../../src/billing/subscription-service';
-import { PaymentService } from '../../src/billing/payment-service';
+import { PRICING_TIERS, getPricingTier, annualPrice } from '../../src/platform/billing/pricing-tiers';
+import { LicenseService } from '../../src/platform/billing/license-service';
+import { SubscriptionService } from '../../src/platform/billing/subscription-service';
+import { PaymentService } from '../../src/platform/billing/payment-service';
 
 describe('Billing E2E - Pricing Tiers', () => {
   it('should have FREE tier with correct pricing', () => {
@@ -60,7 +60,7 @@ describe('Billing E2E - License Generation', () => {
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
     });
 
-    expect(license).toMatch(/^raas-pro-[a-zA-Z0-9]+$/);
+    expect(license).toMatch(/^RAAS-RPP-[A-Z0-9]+-[A-Z0-9]+$/);
     expect(licenseService.validateLicense(license, 'user_123')).toBe(true);
   });
 
@@ -71,7 +71,7 @@ describe('Billing E2E - License Generation', () => {
       validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
     });
 
-    expect(license).toMatch(/^raas-ent-[a-zA-Z0-9]+$/);
+    expect(license).toMatch(/^RAAS-REP-[A-Z0-9]+-[A-Z0-9]+$/);
     expect(licenseService.validateLicense(license, 'user_456')).toBe(true);
   });
 
@@ -182,9 +182,9 @@ describe('Billing E2E - Subscription Lifecycle', () => {
     await subscriptionService.handleCancellation(userId);
 
     const subscription = await subscriptionService.getSubscription(userId);
-    expect(subscription.status).toBe('canceled');
+    expect(subscription.status).toBe('cancelled');
     // Should remain active until period end
-    expect(subscription.currentPeriodEnd).toBeGreaterThan(new Date());
+    expect(new Date(subscription.currentPeriodEnd).getTime()).toBeGreaterThan(Date.now());
   });
 });
 
@@ -195,18 +195,18 @@ describe('Billing E2E - Tier-Based Feature Access', () => {
     const entFeatures = PRICING_TIERS.ENTERPRISE.features;
 
     // FREE has basic only
-    expect(freeFeatures).toContain('basic_backtest');
-    expect(freeFeatures).not.toContain('ml_strategies');
+    expect(freeFeatures).toContain('basic-backtest');
+    expect(freeFeatures).not.toContain('ml-models');
 
     // PRO has ML but not enterprise
-    expect(proFeatures).toContain('ml_strategies');
-    expect(proFeatures).toContain('premium_data');
-    expect(proFeatures).not.toContain('custom_strategies');
+    expect(proFeatures).toContain('ml-models');
+    expect(proFeatures).toContain('premium-data');
+    expect(proFeatures).not.toContain('custom-strategies');
 
     // ENTERPRISE has everything
-    expect(entFeatures).toContain('all_pro_features');
-    expect(entFeatures).toContain('custom_strategies');
-    expect(entFeatures).toContain('priority_support');
+    expect(entFeatures).toContain('unlimited');
+    expect(entFeatures).toContain('custom-strategies');
+    expect(entFeatures).toContain('priority-support');
   });
 
   it('should enforce API rate limits by tier', () => {

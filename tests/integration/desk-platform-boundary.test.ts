@@ -88,6 +88,7 @@ const ALLOWED_DESK_IMPORTS: RegExp[] = [
   /platform\/audit\//,                   // DLP + audit logging
   /platform\/notifications\/email-service/, // welcome email drip
   /platform\/billing\/dunning-service/,  // dunning KV sync
+ /platform\/workers\/openclaw-gateway\//, // desk agent dispatcher uses platform worker gateway
 ];
 
 const ALLOWED_PLATFORM_IMPORTS: RegExp[] = [

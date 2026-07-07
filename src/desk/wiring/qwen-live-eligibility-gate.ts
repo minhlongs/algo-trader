@@ -14,6 +14,7 @@
 
 import { query } from '../../shared/db/postgres-client';
 import { logger } from '../utils/logger';
+import { setQwenPaperGateDaysRemaining } from '../middleware/prometheus-metrics';
 
 /** Hardcoded — MUST NOT be changed to env-configurable. */
 const MIN_PAPER_DAYS = 30;
@@ -116,6 +117,7 @@ export async function checkQwenEligibility(sizeUsd = 0): Promise<EligibilityResu
   }
   if (ageMs < MIN_PAPER_MS) {
     const daysRemaining = ((MIN_PAPER_MS - ageMs) / (24 * 60 * 60 * 1000)).toFixed(1);
+    setQwenPaperGateDaysRemaining(parseFloat(daysRemaining));
     return {
       eligible: false,
       reason: `${daysRemaining}d remaining in paper validation window`,

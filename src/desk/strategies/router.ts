@@ -4,11 +4,11 @@
  * Uses consistent hashing for deterministic shard assignment
  */
 
-import { getRedisClient, type RedisClientType } from '../redis';
-import { logger } from '../utils/logger';
-import { hashString } from '../utils/consistent-hash';
+import { getRedisClient, type RedisClientType } from '../../redis';
+import { logger } from '../../shared/utils/logger';
+import { hashString } from '../../shared/utils/consistent-hash';
 import type { IStrategy, StrategySignal } from './types';
-import { recordShardLatency } from '../middleware/prometheus-metrics';
+import { recordShardLatency } from '../../middleware/prometheus-metrics';
 
 // Configuration
 const TOTAL_SHARDS = 12;

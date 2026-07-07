@@ -80,6 +80,5 @@ export interface StrategyConfig {
 export interface StrategyContext {
   strategyId: string;
   shardId: number;
-  tenantId?: string;
   requestId: string;
 }

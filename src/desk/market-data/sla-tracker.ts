@@ -200,7 +200,7 @@ export class SlaTracker {
 
     // Cache health score in metrics
     if (this.config.enableMetrics) {
-      setProviderHealthScore(provider as string, 0, healthScore);
+      setProviderHealthScore(provider as string, healthScore);
     }
 
     return {
@@ -249,7 +249,7 @@ export class SlaTracker {
       }
     }
     if (this.config.enableMetrics) {
-      setProviderHealthScore(provider as string, 0, 0);
+      setProviderHealthScore(provider as string, 0);
     }
   }
 
@@ -320,9 +320,9 @@ export class SlaTracker {
     // Update gauges for each window
     for (const [windowHoursStr, window] of Object.entries(report.windows)) {
       const windowHours = Number(windowHoursStr);
-      setProviderAvailability(provider as string, windowHours, window.availability >= this.config.targetAvailability);
-      setProviderErrorRate(provider as string, windowHours, window.errorRate);
-      recordSlaCompliance(provider as string, windowHours, window.availability >= this.config.targetAvailability);
+      setProviderAvailability(provider as string, window.availability / 100);
+      setProviderErrorRate(provider as string, window.errorRate);
+      recordSlaCompliance(provider as string, window.availability >= this.config.targetAvailability);
     }
   }
 

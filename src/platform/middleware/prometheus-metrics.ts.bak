@@ -1,0 +1,616 @@
+import * as client from 'prom-client';
+import { Registry, Counter, Gauge, Histogram } from 'prom-client';
+
+// ─── Register (shared across all metric instances) ───────────────────────────
+export const register = new Registry();
+
+// ─── Internal lazy-init containers ────────────────────────────────────────────
+let _gapCounter: Counter<string> | undefined;
+let _gapDurationHist: Histogram<string> | undefined;
+let _expectedGauge: Gauge<string> | undefined;
+let _receivedGauge: Gauge<string> | undefined;
+let _outlierCounter: Counter<string> | undefined;
+let _outlierZScoreGauge: Gauge<string> | undefined;
+let _failoverCounter: Counter<string> | undefined;
+let _circuitBreakerGauge: Gauge<string> | undefined;
+let _healthScoreGauge: Gauge<string> | undefined;
+let _availabilityGauge: Gauge<string> | undefined;
+let _errorRateGauge: Gauge<string> | undefined;
+let _slaCounter: Counter<string> | undefined;
+let _candleCompletenessGauge: Gauge<string> | undefined;
+let _dataGapsCounter: Counter<string> | undefined;
+
+// ─── Additional metric containers ────────────────────────────────────────────
+let _apiRequestCounter: Counter<string> | undefined;
+let _apiErrorCounter: Counter<string> | undefined;
+let _apiRequestDuration: Histogram<string> | undefined;
+let _shardLatencyHist: Histogram<string> | undefined;
+let _jobsActiveGauge: Gauge<string> | undefined;
+let _jobsCompletedCounter: Counter<string> | undefined;
+let _externalApiLatencyHist: Histogram<string> | undefined;
+let _queueWaitTimeHist: Histogram<string> | undefined;
+let _tradeCounter: Counter<string> | undefined;
+let _dailyPnlGauge: Gauge<string> | undefined;
+let _winRateGauge: Gauge<string> | undefined;
+let _qwenSignalsCounter: Counter<string> | undefined;
+let _qwenStrategyReviewsCounter: Counter<string> | undefined;
+let _qwenAdminKillActionsCounter: Counter<string> | undefined;
+let _qwenPaperPnlPctGauge: Gauge<string> | undefined;
+let _qwenKillSwitchGauge: Gauge<string> | undefined;
+let _qwenDrawdownAutoDisabledGauge: Gauge<string> | undefined;
+let _qwenPaperGateDaysRemainingGauge: Gauge<string> | undefined;
+let _memoryRssGauge: Gauge<string> | undefined;
+let _memoryHeapGauge: Gauge<string> | undefined;
+let _memoryPressureEventCounter: Counter<string> | undefined;
+let _cacheEvictionCounter: Counter<string> | undefined;
+let _compressionRatioGauge: Gauge<string> | undefined;
+let _strategyActiveGauge: Gauge<string> | undefined;
+
+// ─── Lazy-init helpers ────────────────────────────────────────────────────────
+function lbl<T extends client.Metric<T>>(c: T | undefined, def: T): T { return c ?? def; }
+
+function gapCounter(): Counter<string> {
+  if (!_gapCounter) {
+    _gapCounter = new Counter({
+      name: 'algo_trader_gap_detections_total',
+      help: 'Total gap detection events',
+      labelNames: ['provider', 'symbol', 'gap_type'],
+      registers: [register],
+    });
+  }
+  return _gapCounter;
+}
+function gapDurationHist(): Histogram<string> {
+  if (!_gapDurationHist) {
+    _gapDurationHist = new Histogram({
+      name: 'algo_trader_gap_detection_duration_seconds',
+      help: 'Gap detection latency in seconds',
+      labelNames: ['provider', 'symbol'],
+      buckets: [0.1, 0.5, 1, 5, 10, 30, 60],
+      registers: [register],
+    });
+  }
+  return _gapDurationHist;
+}
+function expectedCandlesGauge(): Gauge<string> {
+  if (!_expectedGauge) {
+    _expectedGauge = new Gauge({
+      name: 'algo_trader_expected_candle_count',
+      help: 'Expected number of candles in a window',
+      labelNames: ['symbol', 'timeframe', 'provider'],
+      registers: [register],
+    });
+  }
+  return _expectedGauge;
+}
+function receivedCandlesGauge(): Gauge<string> {
+  if (!_receivedGauge) {
+    _receivedGauge = new Gauge({
+      name: 'algo_trader_received_candle_count',
+      help: 'Actual number of candles received in a window',
+      labelNames: ['symbol', 'timeframe', 'provider'],
+      registers: [register],
+    });
+  }
+  return _receivedGauge;
+}
+function outlierCounter(): Counter<string> {
+  if (!_outlierCounter) {
+    _outlierCounter = new Counter({
+      name: 'algo_trader_outlier_events_total',
+      help: 'Total outlier events detected',
+      labelNames: ['symbol', 'outlier_type'],
+      registers: [register],
+    });
+  }
+  return _outlierCounter;
+}
+function outlierZScoreGauge(): Gauge<string> {
+  if (!_outlierZScoreGauge) {
+    _outlierZScoreGauge = new Gauge({
+      name: 'algo_trader_outlier_zscore',
+      help: 'Latest z-score for outlier detection',
+      labelNames: ['symbol'],
+      registers: [register],
+    });
+  }
+  return _outlierZScoreGauge;
+}
+function failoverCounter(): Counter<string> {
+  if (!_failoverCounter) {
+    _failoverCounter = new Counter({
+      name: 'algo_trader_failover_events_total',
+      help: 'Total provider failover events',
+      labelNames: ['from_provider', 'to_provider', 'reason'],
+      registers: [register],
+    });
+  }
+  return _failoverCounter;
+}
+function circuitBreakerGauge(): Gauge<string> {
+  if (!_circuitBreakerGauge) {
+    _circuitBreakerGauge = new Gauge({
+      name: 'algo_trader_circuit_breaker_open',
+      help: 'Circuit breaker state (1=open, 0=closed)',
+      labelNames: ['provider'],
+      registers: [register],
+    });
+  }
+  return _circuitBreakerGauge;
+}
+function healthScoreGauge(): Gauge<string> {
+  if (!_healthScoreGauge) {
+    _healthScoreGauge = new Gauge({
+      name: 'algo_trader_provider_health_score',
+      help: 'Provider health score (0-100)',
+      labelNames: ['provider'],
+      registers: [register],
+    });
+  }
+  return _healthScoreGauge;
+}
+function availabilityGauge(): Gauge<string> {
+  if (!_availabilityGauge) {
+    _availabilityGauge = new Gauge({
+      name: 'algo_trader_provider_availability',
+      help: 'Provider availability ratio (0-1)',
+      labelNames: ['provider'],
+      registers: [register],
+    });
+  }
+  return _availabilityGauge;
+}
+function errorRateGauge(): Gauge<string> {
+  if (!_errorRateGauge) {
+    _errorRateGauge = new Gauge({
+      name: 'algo_trader_provider_error_rate',
+      help: 'Provider error rate (0-1)',
+      labelNames: ['provider'],
+      registers: [register],
+    });
+  }
+  return _errorRateGauge;
+}
+function slaCounter(): Counter<string> {
+  if (!_slaCounter) {
+    _slaCounter = new Counter({
+      name: 'algo_trader_sla_compliance_total',
+      help: 'SLA compliance checks',
+      labelNames: ['provider', 'sla_tier', 'compliant'],
+      registers: [register],
+    });
+  }
+  return _slaCounter;
+}
+function candleCompletenessGauge(): Gauge<string> {
+  if (!_candleCompletenessGauge) {
+    _candleCompletenessGauge = new Gauge({
+      name: 'algo_trader_candle_completeness_ratio',
+      help: 'Candle completeness ratio (0-100)',
+      labelNames: ['symbol'],
+      registers: [register],
+    });
+  }
+  return _candleCompletenessGauge;
+}
+function dataGapsCounter(): Counter<string> {
+  if (!_dataGapsCounter) {
+    _dataGapsCounter = new Counter({
+      name: 'algo_trader_data_gaps_total',
+      help: 'Total candle data gaps detected',
+      labelNames: ['symbol', 'provider'],
+      registers: [register],
+    });
+  }
+  return _dataGapsCounter;
+}
+function apiRequestCounter(): Counter<string> {
+  if (!_apiRequestCounter) {
+    _apiRequestCounter = new Counter({
+      name: 'algo_trader_api_requests_total',
+      help: 'Total API requests',
+      labelNames: ['method', 'path', 'status'],
+      registers: [register],
+    });
+  }
+  return _apiRequestCounter;
+}
+function apiErrorCounter(): Counter<string> {
+  if (!_apiErrorCounter) {
+    _apiErrorCounter = new Counter({
+      name: 'algo_trader_api_errors_total',
+      help: 'Total API errors',
+      labelNames: ['method', 'path'],
+      registers: [register],
+    });
+  }
+  return _apiErrorCounter;
+}
+function apiRequestDuration(): Histogram<string> {
+  if (!_apiRequestDuration) {
+    _apiRequestDuration = new Histogram({
+      name: 'algo_trader_api_request_duration_seconds',
+      help: 'API request latency in seconds',
+      labelNames: ['method', 'path'],
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+      registers: [register],
+    });
+  }
+  return _apiRequestDuration;
+}
+function shardLatencyHist(): Histogram<string> {
+  if (!_shardLatencyHist) {
+    _shardLatencyHist = new Histogram({
+      name: 'algo_trader_shard_latency_seconds',
+      help: 'Shard execution latency in seconds',
+      labelNames: ['shard_id', 'operation'],
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+      registers: [register],
+    });
+  }
+  return _shardLatencyHist;
+}
+function jobsActiveGauge(): Gauge<string> {
+  if (!_jobsActiveGauge) {
+    _jobsActiveGauge = new Gauge({
+      name: 'algo_trader_jobs_active',
+      help: 'Currently active BullMQ jobs',
+      labelNames: ['queue', 'priority'],
+      registers: [register],
+    });
+  }
+  return _jobsActiveGauge;
+}
+function jobsCompletedCounter(): Counter<string> {
+  if (!_jobsCompletedCounter) {
+    _jobsCompletedCounter = new Counter({
+      name: 'algo_trader_jobs_completed_total',
+      help: 'Total completed BullMQ jobs',
+      labelNames: ['queue', 'status'],
+      registers: [register],
+    });
+  }
+  return _jobsCompletedCounter;
+}
+
+// Metrics for external API latency (used by latency-monitor, polymarket-adapter)
+function externalApiLatencyHist(): Histogram<string> {
+  if (!_externalApiLatencyHist) {
+    _externalApiLatencyHist = new Histogram({
+      name: 'algo_trader_external_api_latency_seconds',
+      help: 'External API call latency in seconds',
+      labelNames: ['service', 'endpoint', 'region'],
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30],
+      registers: [register],
+    });
+  }
+  return _externalApiLatencyHist;
+}
+
+// Metrics for queue wait time (used by agent-queue-manager)
+function queueWaitTimeHist(): Histogram<string> {
+  if (!_queueWaitTimeHist) {
+    _queueWaitTimeHist = new Histogram({
+      name: 'algo_trader_queue_wait_time_seconds',
+      help: 'Time jobs spend waiting in BullMQ queue',
+      labelNames: ['queue', 'priority'],
+      buckets: [0.1, 0.5, 1, 5, 10, 30, 60, 300],
+      registers: [register],
+    });
+  }
+  return _queueWaitTimeHist;
+}
+
+// Metrics for trade tracking (used by live-position-tracker)
+function tradeCounter(): Counter<string> {
+  if (!_tradeCounter) {
+    _tradeCounter = new Counter({
+      name: 'algo_trader_trades_total',
+      help: 'Total trades executed',
+      labelNames: ['token_id', 'exchange', 'side', 'result'],
+      registers: [register],
+    });
+  }
+  return _tradeCounter;
+}
+function dailyPnlGauge(): Gauge<string> {
+  if (!_dailyPnlGauge) {
+    _dailyPnlGauge = new Gauge({
+      name: 'algo_trader_daily_pnl_usd',
+      help: 'Daily P&L in USD',
+      labelNames: ['strategy'],
+      registers: [register],
+    });
+  }
+  return _dailyPnlGauge;
+}
+function winRateGauge(): Gauge<string> {
+  if (!_winRateGauge) {
+    _winRateGauge = new Gauge({
+      name: 'algo_trader_win_rate_percent',
+      help: 'Win rate percentage (0-100)',
+      labelNames: ['strategy'],
+      registers: [register],
+    });
+  }
+  return _winRateGauge;
+}
+
+// Metrics for Qwen strategy (used by rollback controller)
+function qwenPaperPnlPctGauge(): Gauge<string> {
+  if (!_qwenPaperPnlPctGauge) {
+    _qwenPaperPnlPctGauge = new Gauge({
+      name: 'algo_trader_qwen_paper_pnl_pct',
+      help: 'Qwen paper trading P&L percentage',
+      labelNames: ['period'],
+      registers: [register],
+    });
+  }
+  return _qwenPaperPnlPctGauge;
+}
+function qwenKillSwitchGauge(): Gauge<string> {
+  if (!_qwenKillSwitchGauge) {
+    _qwenKillSwitchGauge = new Gauge({
+      name: 'algo_trader_qwen_kill_switch',
+      help: 'Qwen kill switch state (1=active, 0=inactive)',
+      registers: [register],
+    });
+  }
+  return _qwenKillSwitchGauge;
+}
+function qwenDrawdownAutoDisabledGauge(): Gauge<string> {
+  if (!_qwenDrawdownAutoDisabledGauge) {
+    _qwenDrawdownAutoDisabledGauge = new Gauge({
+      name: 'algo_trader_qwen_drawdown_auto_disabled',
+      help: 'Qwen drawdown auto-disable state (1=disabled, 0=active)',
+      registers: [register],
+    });
+  }
+  return _qwenDrawdownAutoDisabledGauge;
+}
+function qwenPaperGateDaysRemainingGauge(): Gauge<string> {
+  if (!_qwenPaperGateDaysRemainingGauge) {
+    _qwenPaperGateDaysRemainingGauge = new Gauge({
+      name: 'algo_trader_qwen_paper_gate_days_remaining',
+      help: 'Days remaining before Qwen paper gate lifts',
+      registers: [register],
+    });
+  }
+  return _qwenPaperGateDaysRemainingGauge;
+}
+function qwenSignalsCounter(): Counter<string> {
+  if (!_qwenSignalsCounter) {
+    _qwenSignalsCounter = new Counter({
+      name: 'algo_trader_qwen_signals_total',
+      help: 'Total Qwen signals received',
+      labelNames: ['signal_type', 'status'],
+      registers: [register],
+    });
+  }
+  return _qwenSignalsCounter;
+}
+function qwenStrategyReviewsCounter(): Counter<string> {
+  if (!_qwenStrategyReviewsCounter) {
+    _qwenStrategyReviewsCounter = new Counter({
+      name: 'algo_trader_qwen_strategy_reviews_resolved_total',
+      help: 'Total Qwen strategy reviews resolved',
+      labelNames: ['resolution'],
+      registers: [register],
+    });
+  }
+  return _qwenStrategyReviewsCounter;
+}
+function qwenAdminKillActionsCounter(): Counter<string> {
+  if (!_qwenAdminKillActionsCounter) {
+    _qwenAdminKillActionsCounter = new Counter({
+      name: 'algo_trader_qwen_admin_kill_actions_total',
+      help: 'Total admin kill actions on Qwen',
+      labelNames: ['action'],
+      registers: [register],
+    });
+  }
+  return _qwenAdminKillActionsCounter;
+}
+
+// Metrics for memory pressure (used by memory-pressure-handler)
+function memoryRssGauge(): Gauge<string> {
+  if (!_memoryRssGauge) {
+    _memoryRssGauge = new Gauge({
+      name: 'algo_trader_memory_rss_bytes',
+      help: 'Process RSS memory in bytes',
+      registers: [register],
+    });
+  }
+  return _memoryRssGauge;
+}
+function memoryHeapGauge(): Gauge<string> {
+  if (!_memoryHeapGauge) {
+    _memoryHeapGauge = new Gauge({
+      name: 'algo_trader_memory_heap_used_bytes',
+      help: 'V8 heap used bytes',
+      registers: [register],
+    });
+  }
+  return _memoryHeapGauge;
+}
+function memoryPressureEventCounter(): Counter<string> {
+  if (!_memoryPressureEventCounter) {
+    _memoryPressureEventCounter = new Counter({
+      name: 'algo_trader_memory_pressure_events_total',
+      help: 'Total memory pressure events detected',
+      labelNames: ['level'],
+      registers: [register],
+    });
+  }
+  return _memoryPressureEventCounter;
+}
+function cacheEvictionCounter(): Counter<string> {
+  if (!_cacheEvictionCounter) {
+    _cacheEvictionCounter = new Counter({
+      name: 'algo_trader_cache_eviction_total',
+      help: 'Total cache eviction events',
+      labelNames: ['cache_name'],
+      registers: [register],
+    });
+  }
+  return _cacheEvictionCounter;
+}
+function compressionRatioGauge(): Gauge<string> {
+  if (!_compressionRatioGauge) {
+    _compressionRatioGauge = new Gauge({
+      name: 'algo_trader_compression_ratio',
+      help: 'Compression ratio (original/compressed)',
+      labelNames: ['algorithm'],
+      registers: [register],
+    });
+  }
+  return _compressionRatioGauge;
+}
+
+// Strategy active state
+function strategyActiveGauge(): Gauge<string> {
+  if (!_strategyActiveGauge) {
+    _strategyActiveGauge = new Gauge({
+      name: 'algo_trader_strategy_active',
+      help: 'Whether a strategy is currently active (1=yes, 0=no)',
+      labelNames: ['strategy'],
+      registers: [register],
+    });
+  }
+  return _strategyActiveGauge;
+}
+
+// ─── Public API — wrappers used across the codebase ──────────────────────────
+
+// Candle data metrics (called by gap-detector.ts)
+export function recordDataGap(provider: string, symbol: string, _duration: number): void {
+  gapCounter().inc({ provider, symbol, gap_type: 'missing_candle' });
+}
+export function recordGapDetectionDuration(provider: string, symbol: string, durationSeconds: number): void {
+  gapDurationHist().observe({ provider, symbol }, durationSeconds);
+}
+export function setCandleCompleteness(provider: string, symbol: string, timeframe: string, ratio: number): void {
+  candleCompletenessGauge().set({ symbol }, ratio);
+}
+export function setExpectedCandles(provider: string, symbol: string, timeframe: string, count: number): void {
+  expectedCandlesGauge().set({ symbol, timeframe, provider }, count);
+}
+export function setReceivedCandles(provider: string, symbol: string, timeframe: string, count: number): void {
+  receivedCandlesGauge().set({ symbol, timeframe, provider }, count);
+}
+
+// Outlier metrics (called by outlier-detection.ts)
+export function recordOutlierEvent(symbol: string, outlierType: string, _severity: string): void {
+  outlierCounter().inc({ symbol, outlier_type: outlierType });
+}
+export function recordOutlierZScore(symbol: string, outlierType: string, zScore: number): void {
+  outlierZScoreGauge().set({ symbol }, zScore);
+}
+
+// Provider failover metrics (called by provider-failover.ts)
+export function recordFailoverEvent(fromProvider: string, toProvider: string, reasonType: string): void {
+  failoverCounter().inc({ from_provider: fromProvider, to_provider: toProvider, reason: reasonType });
+}
+
+// Circuit breaker (called by provider-failover.ts, live-execution-guard.ts)
+export function setCircuitBreakerStateProvider(provider: string, isOpen: boolean): void;
+export function setCircuitBreakerState(isOpen: boolean): void;
+export function setCircuitBreakerState(providerOrIsOpen: string | boolean, isOpen?: boolean): void {
+  if (typeof providerOrIsOpen === 'boolean') {
+    // Called as setCircuitBreakerState(isOpen) — use 'global' provider
+    circuitBreakerGauge().set({ provider: 'global' }, providerOrIsOpen ? 1 : 0);
+  } else {
+    // Called as setCircuitBreakerStateProvider(provider, isOpen)
+    circuitBreakerGauge().set({ provider: providerOrIsOpen }, isOpen ? 1 : 0);
+  }
+}
+
+// SLA metrics (called by sla-tracker.ts)
+export function setProviderHealthScore(provider: string, _unused: number, score: number): void {
+  healthScoreGauge().set({ provider }, score);
+}
+export function setProviderAvailability(provider: string, _unused: number, available: boolean): void {
+  availabilityGauge().set({ provider }, available ? 1 : 0);
+}
+export function setProviderErrorRate(provider: string, _unused: number, errorRate: number): void {
+  errorRateGauge().set({ provider }, errorRate);
+}
+export function recordSlaCompliance(provider: string, _unused: number, compliant: boolean): void {
+  slaCounter().inc({ provider, sla_tier: 'default', compliant: compliant ? 'true' : 'false' });
+}
+
+// Shard latency (used by strategy-router.ts)
+export function recordShardLatency(shardId: string, operation: string, latencySeconds: number): void {
+  shardLatencyHist().observe({ shard_id: shardId, operation }, latencySeconds);
+}
+
+// BullMQ queue metrics (used by agent-queue-manager.ts, agent-coordinator.ts)
+export function recordQueueWaitTime(queue: string, priority: string, waitSeconds: number): void {
+  queueWaitTimeHist().observe({ queue, priority }, waitSeconds);
+}
+
+// External API latency (used by latency-monitor.ts, polymarket-adapter.ts)
+export function recordExternalApiLatency(service: string, endpoint: string, region: string, latencySeconds: number): void {
+  externalApiLatencyHist().observe({ service, endpoint, region }, latencySeconds);
+}
+
+// Trade tracking (used by live-position-tracker.ts)
+export function recordTrade(tokenId: string, exchange: string, side: 'buy' | 'sell', pnl: number): void {
+  tradeCounter().inc({ token_id: tokenId, exchange, side, result: pnl >= 0 ? 'win' : 'loss' });
+}
+export const dailyPnlUsd: Gauge<string> = dailyPnlGauge();
+export const winRatePercent: Gauge<string> = winRateGauge();
+
+// Qwen strategy metrics (used by rollback/tiered-rollback-controller.ts)
+export function setQwenPaperPnlPct(period: string, pct: number): void {
+  qwenPaperPnlPctGauge().set({ period }, pct);
+}
+export const qwenPaperPnlPct: Gauge<string> = qwenPaperPnlPctGauge();
+export const qwenSignalsTotal: Counter<string> = qwenSignalsCounter();
+export const qwenStrategyReviewsResolvedTotal: Counter<string> = qwenStrategyReviewsCounter();
+export const qwenAdminKillActionsTotal: Counter<string> = qwenAdminKillActionsCounter();
+export function setQwenKillSwitch(active: boolean): void {
+  qwenKillSwitchGauge().set({}, active ? 1 : 0);
+}
+export function setQwenDrawdownAutoDisabled(disabled: boolean): void {
+  qwenDrawdownAutoDisabledGauge().set({}, disabled ? 1 : 0);
+}
+export function setQwenPaperGateDaysRemaining(days: number): void {
+  qwenPaperGateDaysRemainingGauge().set({}, days);
+}
+
+// Memory metrics (used by memory-pressure-handler.ts)
+export function setMemoryMetrics(rss: number, heapUsed: number): void {
+  memoryRssGauge().set({}, rss);
+  memoryHeapGauge().set({}, heapUsed);
+}
+export function recordMemoryPressureEvent(level: string): void {
+  memoryPressureEventCounter().inc({ level });
+}
+export function recordCacheEviction(cacheName: string): void {
+  cacheEvictionCounter().inc({ cache_name: cacheName });
+}
+export function recordCompressionRatio(originalSize: number, compressedSize: number): void {
+  if (compressedSize > 0) {
+    compressionRatioGauge().set({ algorithm: 'gzip' }, originalSize / compressedSize);
+  }
+}
+
+// Strategy active state (used by live-trading-orchestrator.ts)
+export function setStrategyActive(strategy: string, active: boolean): void {
+  strategyActiveGauge().set({ strategy }, active ? 1 : 0);
+}
+
+// API metrics (used by middleware)
+export function metricsMiddleware(req: { method: string; url: string }, _res: unknown, durationMs: number): void {
+  const method = req.method;
+  const path = req.url;
+  apiRequestCounter().inc({ method, path, status: '200' });
+  apiRequestDuration().observe({ method, path }, durationMs / 1000);
+}
+export function getMetrics(): Promise<string> {
+  return register.metrics();
+}
+
+// External API latency — re-export from lazy init
+export { externalApiLatencyHist as externalApiLatency };

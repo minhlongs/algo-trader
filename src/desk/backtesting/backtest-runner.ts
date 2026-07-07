@@ -44,13 +44,13 @@ class BacktestOrderManager implements OrderManager {
   async placeOrder(params: {
     tokenId: string;
     side: 'buy' | 'sell';
-    price: string;
-    size: string;
+    price: string | number;
+    size: string | number;
     orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
   }): Promise<{ id: string }> {
     const side = params.side === 'buy' ? 'BUY' : 'SELL';
-    const price = parseFloat(params.price);
-    const size = parseFloat(params.size);
+    const price = parseFloat(String(params.price));
+    const size = parseFloat(String(params.size));
     const pnl = this.computePnl(params.tokenId, side, price, size);
 
     const trade: BacktestTrade = {

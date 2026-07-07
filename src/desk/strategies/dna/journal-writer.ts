@@ -6,8 +6,8 @@
  * tractability: every execution can be replayed from journal rows alone.
  */
 
-import { query } from '../../db/postgres-client.js';
-import { logger } from '../../utils/logger.js';
+import { query } from '../../db/postgres-client';
+import { logger } from '../../utils/logger';
 import type {
   ConsensusAction,
   ConsensusSignal,
@@ -16,7 +16,7 @@ import type {
   JournalDecision,
   MarketRegime,
   TfId,
-} from './multi-tf-types.js';
+} from './multi-tf-types';
 
 const TABLE = 'dna_journal';
 

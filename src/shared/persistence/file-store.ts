@@ -1,14 +1,15 @@
+
 /**
  * File-based persistence utilities for stateful trading components.
  * Uses append-only JSONL for audit logs and atomic-rename JSON for mutable state.
  * All data stored under ~/.cashclaw/ to survive PM2 restarts.
  */
 
-import { promises as fsp } from 'fs';
+import * as fsp from 'fs/promises';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import * as readline from 'readline';
+import { createInterface } from 'readline';
 
 /** Resolve a path under ~/.cashclaw/, creating the dir if needed */
 export function cashclawPath(filename: string): string {
@@ -22,30 +23,26 @@ export function cashclawPath(filename: string): string {
 /**
  * Append a single JSON record as one line to a JSONL file.
  * Append-only = immutable audit log semantics.
- * Non-blocking async implementation.
  */
-export async function appendJsonl(filePath: string, record: unknown): Promise<void> {
+export function appendJsonl(filePath: string, record: unknown): void {
   const line = JSON.stringify(record) + '\n';
-  await fsp.appendFile(filePath, line, 'utf8');
+  fs.appendFileSync(filePath, line, 'utf8');
 }
 
 /**
- * Read all lines from a JSONL file using a readline stream.
+ * Read all lines from a JSONL file.
  * Does not load the entire file in-memory.
  */
 export async function readJsonl<T>(filePath: string): Promise<T[]> {
   try {
-    await fsp.access(filePath);
+    fs.accessSync(filePath);
   } catch {
     return [];
   }
 
   const results: T[] = [];
   const fileStream = fs.createReadStream(filePath, 'utf8');
-  const rl = readline.createInterface({
-    input: fileStream,
-    crlfDelay: Infinity,
-  });
+  const rl = createInterface({ input: fileStream, crlfDelay: Infinity });
 
   for await (const line of rl) {
     if (line.trim().length > 0) {
@@ -59,22 +56,21 @@ export async function readJsonl<T>(filePath: string): Promise<T[]> {
 /**
  * Atomically write a JSON state file using a temp-then-rename pattern.
  * Prevents partial-write corruption on crash mid-write.
- * Non-blocking async implementation.
  */
-export async function writeJsonState<T>(filePath: string, state: T): Promise<void> {
+export function writeJsonState<T>(filePath: string, state: T): void {
   const tmp = `${filePath}-${Date.now()}-${Math.random().toString(36).slice(2)}.tmp`;
-  await fsp.writeFile(tmp, JSON.stringify(state, null, 2), 'utf8');
-  await fsp.rename(tmp, filePath);
+  fs.writeFileSync(tmp, JSON.stringify(state, null, 2), 'utf8');
+  fs.renameSync(tmp, filePath);
 }
 
 /**
  * Read a JSON state file, returning undefined if not found or invalid.
- * Non-blocking async implementation.
+ * Returns the parsed value directly.
  */
-export async function readJsonState<T>(filePath: string): Promise<T | undefined> {
+export function readJsonState<T>(filePath: string): T | undefined {
   try {
-    await fsp.access(filePath);
-    const content = await fsp.readFile(filePath, 'utf8');
+    fs.accessSync(filePath);
+    const content = fs.readFileSync(filePath, 'utf8');
     return JSON.parse(content) as T;
   } catch {
     return undefined;

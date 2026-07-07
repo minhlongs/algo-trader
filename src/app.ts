@@ -6,11 +6,11 @@
 
 import 'dotenv/config';
 import { ApiServer } from './api/server';
-import { logger } from './utils/logger';
+import { logger } from './shared/utils/logger';
 import { getLatencyMonitor } from './regions/latency-monitor';
 
 import { runMigrations } from './db/migration-runner';
-import { startAugmentedSignalPipeline } from './wiring/augmented-signal-pipeline';
+import { startAugmentedSignalPipeline } from './desk/wiring/augmented-signal-pipeline';
 
 let server: ApiServer | null = null;
 let augmentedPipelineStop: (() => Promise<void>) | null = null;

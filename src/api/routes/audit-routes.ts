@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { getDbClient, query } from '../../db/postgres-client';
-import { LicenseService } from '../../billing/license-service';
-import { AuditLogService } from '../../audit/audit-log-service';
+import { LicenseService } from '@platform/billing/license-service';
+import { AuditLogService } from '@platform/audit/audit-log-service';
 import { z } from 'zod';
 import QueryStream from 'pg-query-stream';
-import { logger } from '../../utils/logger';
+import { logger } from '@platform/utils/logger';
+import { appendTenantAuditLog } from '@platform/audit/tenant-audit-log';
 
 export const auditRouter: Router = Router();
 const auditService = AuditLogService.getInstance();
@@ -221,7 +222,7 @@ auditRouter.get('/export', async (req: Request, res: Response) => {
 
   const client = await getDbClient().connect();
   const queryStream = new QueryStream(sql, params);
-  const stream = client.query(queryStream);
+  const stream = client.query(queryStream) as unknown as NodeJS.ReadWriteStream;
 
   const escapeCsv = (val: unknown): string => {
     if (val === null || val === undefined) {
@@ -247,21 +248,23 @@ auditRouter.get('/export', async (req: Request, res: Response) => {
     res.write('[');
   }
 
-  stream.on('data', (row) => {
+  stream.on('data', (row: Record<string, unknown>) => {
     try {
       if (format === 'csv') {
-        const metadataStr = typeof row.metadata === 'string' ? row.metadata : JSON.stringify(row.metadata || {});
+        const metadataStr = typeof (row as Record<string, unknown>).metadata === 'string'
+          ? (row as Record<string, unknown>).metadata as string
+          : JSON.stringify((row as Record<string, unknown>).metadata || {});
         const line = [
-          row.id,
-          row.tenant_id,
-          row.sequence_number,
-          row.event_type,
-          row.action_by,
-          row.reason || '',
+          (row as Record<string, unknown>).id,
+          (row as Record<string, unknown>).tenant_id,
+          parseInt((row as Record<string, unknown>).sequence_number as string, 10),
+          (row as Record<string, unknown>).event_type,
+          (row as Record<string, unknown>).action_by,
+          (row as Record<string, unknown>).reason || '',
           metadataStr,
-          row.hash,
-          row.previous_hash || '',
-          row.created_at instanceof Date ? row.created_at.toISOString() : new Date(row.created_at as string).toISOString(),
+          (row as Record<string, unknown>).hash,
+          (row as Record<string, unknown>).previous_hash || '',
+					new Date((row as Record<string, unknown>).created_at as string | Date).toISOString(),
         ].map(escapeCsv).join(',');
         res.write(line + '\n');
       } else {
@@ -269,18 +272,20 @@ auditRouter.get('/export', async (req: Request, res: Response) => {
           res.write(',');
         }
         first = false;
-        const metadata = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata;
+        const metadata = typeof (row as Record<string, unknown>).metadata === 'string'
+          ? JSON.parse((row as Record<string, unknown>).metadata as string)
+          : (row as Record<string, unknown>).metadata;
         const formatted = {
-          id: row.id,
-          tenant_id: row.tenant_id,
-          sequence_number: parseInt(row.sequence_number as string, 10),
-          event_type: row.event_type,
-          action_by: row.action_by,
-          reason: row.reason,
+          id: (row as Record<string, unknown>).id,
+          tenant_id: (row as Record<string, unknown>).tenant_id,
+          sequence_number: parseInt((row as Record<string, unknown>).sequence_number as string, 10),
+          event_type: (row as Record<string, unknown>).event_type,
+          action_by: (row as Record<string, unknown>).action_by,
+          reason: (row as Record<string, unknown>).reason,
           metadata,
-          hash: row.hash,
-          previous_hash: row.previous_hash,
-          created_at: row.created_at,
+          hash: (row as Record<string, unknown>).hash,
+          previous_hash: (row as Record<string, unknown>).previous_hash,
+          created_at: (row as Record<string, unknown>).created_at,
         };
         res.write(JSON.stringify(formatted));
       }
@@ -297,7 +302,7 @@ auditRouter.get('/export', async (req: Request, res: Response) => {
     client.release();
   });
 
-  stream.on('error', (err) => {
+  stream.on('error', (err: Error) => {
     logger.error('[AuditRouter] Export stream error:', err);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Stream processing failed' });

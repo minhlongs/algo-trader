@@ -469,6 +469,16 @@ Option B daemon architecture: M1 Max generates signals locally, pushes via HMAC-
 - `scripts/qwen-signal-daemon/` — Python daemon + launchd plist
 - `docs/ops/qwen-m1max-runbook.md` — full ops runbook
 - `src/db/migrations/016_qwen_paper_tracking.sql` — `paper_trades_v3` schema
+- `src/db/migrations/018_qwen_signals_loop_runs.sql` — Signals Loop journal + backlog tables, decision CHECK:
+
+```sql
+CREATE TABLE IF NOT EXISTS qwen_signals_loop_runs (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL,
+  decision TEXT NOT NULL CHECK (decision IN ('skipped_insufficient_data', 'ok', 'queued_review', 'error')),
+  ...
+);
+```
 
 **HMAC Secret rotation:** Quarterly. Rotate `QWEN_INGEST_HMAC_SECRET` in CF Secrets + M1 Max `~/.zshrc`. Both sides must be updated simultaneously.
 

@@ -11,10 +11,10 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import RaasGate from '../../gate/raas-gate';
-import { LicenseTier } from '../../types/license';
-import type { SignalSubscription, TierKey } from '../../signal/signal-types';
-import { logger } from '../../utils/logger';
+import RaasGate from '@desk/gate/raas-gate';
+import { LicenseTier } from '@platform/types/license';
+import type { SignalSubscription, TierKey } from '@desk/signal/signal-types';
+import { logger } from '@platform/utils/logger';
 
 export const signalSubscriptionRouter: Router = Router();
 const gate = RaasGate.getInstance();

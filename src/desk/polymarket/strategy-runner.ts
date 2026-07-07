@@ -135,7 +135,7 @@ class GammaClientImpl implements GammaClient {
         outcome: t['outcome'] as string,
         price: Number(t['price'] ?? 0),
       })),
-      yesTokenId: yesToken?.['token_id'] as string | undefined,
+      yesTokenId: (yesToken?.['token_id'] ?? `${m['id']}-yes`) as string,
       noTokenId: noToken?.['token_id'] as string | undefined,
       yesPrice: parseFloat(prices[0] ?? '0'),
     };

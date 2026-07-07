@@ -41,7 +41,7 @@ import {
   RegimeSnapshot,
   DnaEngineConfig,
   DEFAULT_DNA_CONFIG,
-} from './multi-tf-types.js';
+} from'./multi-tf-types';
 
 // ─── Default TF weights (long TFs dominate, short TFs provide timing) ─────────
 

@@ -17,11 +17,11 @@
 import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
-import { verifyHmacSha256 } from '../../utils/hmac-verifier';
+import { verifyHmacSha256 } from '../../shared/utils/hmac-verifier';
 import { SignalPublisher } from '../../signal/signal-publisher';
 import type { SignalStore } from '../../signal/signal-publisher';
-import { logger } from '../../utils/logger';
-import { qwenSignalsTotal } from '../../middleware/prometheus-metrics';
+import { logger } from '../../shared/utils/logger';
+import { qwenSignalsTotal } from '../../platform/middleware/prometheus-metrics';
 
 /** Strategies allowed to ingest via this endpoint */
 const ALLOWED_STRATEGIES = ['qwen-m1max-v1', 'deepseek-m1max-v1'] as const;

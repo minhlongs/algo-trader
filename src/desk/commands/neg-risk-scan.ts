@@ -9,7 +9,7 @@
 
 import { Command } from 'commander';
 import { ClobClient } from '@polymarket/clob-client';
-import { logger } from '../utils/logger.js';
+import { logger } from'../utils/logger';
 
 const CLOB_HOST = 'https://clob.polymarket.com';
 const CHAIN_ID = 137; // Polygon
@@ -52,10 +52,10 @@ export async function runNegRiskScan(options: {
       const volume = Number(market.volume ?? 0);
       if (volume < minVolumeUsdc) continue;
 
-      // Fetch order books in parallel
-      const [yesBook, noBook] = await Promise.all([
-        clob.getOrderBook(yesTokenId),
-        clob.getOrderBook(noTokenId),
+// Fetch order books in parallel
+ const [yesBook, noBook] = await Promise.all([
+   (clob.getOrderBook(yesTokenId) as Promise<{ asks: { price: string }[]; bids: { price: string }[] }>),
+   (clob.getOrderBook(noTokenId) as Promise<{ asks: { price: string }[]; bids: { price: string }[] }>),
       ]);
 
       const yesAsk = yesBook.asks.length > 0 ? parseFloat(yesBook.asks[0].price) : 1;

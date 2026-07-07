@@ -7,10 +7,10 @@
  *   dashboard-route-helpers.ts   — getSystemHealth, getRevenueSummary, getAiInsights, readBody
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import type { DashboardDataProvider } from './dashboard-data.js';
-import type { UserStore } from '../../users/user-store.js';
-import { AdminAnalytics } from '../../admin/admin-analytics.js';
-import { handleRegister, handleLogin } from '../../../platform/api/auth-routes.js';
+import type { DashboardDataProvider } from'./dashboard-data';
+import type { UserStore } from'../../users/user-store';
+import { AdminAnalytics } from'../../admin/admin-analytics';
+import { handleRegister, handleLogin } from'../../../platform/api/auth-routes';
 import type { DashboardDeps } from './dashboard-server';
 
 // Re-export helpers so existing callers that import from dashboard-routes still work

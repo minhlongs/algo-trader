@@ -328,7 +328,7 @@ export class TieredDrawdownBreaker {
       };
 
       try {
-        await writeJsonState(this.statePath, state);
+        writeJsonState(this.statePath, state);
         resolves.forEach(r => r());
       } catch (err) {
         logger.error('[TieredDrawdown] Failed to save state to disk:', err);

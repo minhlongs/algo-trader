@@ -16,6 +16,7 @@ export interface KellySizingInput {
   winProbability: number;
   winLossRatio: number;
   portfolioValue: number;
+  correlation?: number;
   currentExposure?: number;
 }
 
@@ -27,6 +28,7 @@ export interface KellySizingResult {
   cappedByManaged: boolean;
   fractionUsed: number;
   portfolioPercent: number;
+  correlation: number;
 }
 
 const MANAGED_CAPITAL_MAX_FRACTION = 0.25;
@@ -35,25 +37,25 @@ const MAX_KELLY_FRACTION = 0.5;
 
 export class KellyPositionSizer {
   private config: KellyConfig;
+  private originalRequestedFraction: number;
 
   constructor(config?: Partial<KellyConfig>) {
     const envFraction = parseFloat(process.env.KELLY_FRACTION || '');
-    const requestedFraction = config?.kellyFraction ?? (isNaN(envFraction) ? 0.25 : envFraction);
-    const clampedFraction = Math.max(MIN_KELLY_FRACTION, Math.min(MAX_KELLY_FRACTION, requestedFraction));
+    this.originalRequestedFraction = config?.kellyFraction ?? (isNaN(envFraction) ? 0.25 : envFraction);
+    const clampedFraction = Math.max(MIN_KELLY_FRACTION, Math.min(MAX_KELLY_FRACTION, this.originalRequestedFraction));
     this.config = {
       kellyFraction: clampedFraction,
       maxPositionFraction: config?.maxPositionFraction ?? 0.05,
       minPositionUsd: config?.minPositionUsd ?? 10,
       isManagedCapital: config?.isManagedCapital ?? false,
     };
-    if (this.config.isManagedCapital && this.config.kellyFraction > MANAGED_CAPITAL_MAX_FRACTION) {
-      this.config.kellyFraction = MANAGED_CAPITAL_MAX_FRACTION;
+    if (this.config.isManagedCapital && this.originalRequestedFraction > MANAGED_CAPITAL_MAX_FRACTION) {
       logger.info(`[KellySizer] Managed capital: fraction capped at ${MANAGED_CAPITAL_MAX_FRACTION}`);
     }
   }
 
   calculatePositionSize(input: KellySizingInput): KellySizingResult {
-    const { winProbability, winLossRatio, portfolioValue } = input;
+    const { winProbability, winLossRatio, portfolioValue, correlation = 0 } = input;
     if (winProbability <= 0 || winProbability >= 1 || portfolioValue <= 0) {
       return this.zeroResult(portfolioValue);
     }
@@ -67,13 +69,9 @@ export class KellyPositionSizer {
     const kellyRaw = (b * p - q) / b;
     if (kellyRaw <= 0) return this.zeroResult(portfolioValue);
 
-    let fractionUsed = this.config.kellyFraction;
-    let cappedByManaged = false;
-    if (this.config.isManagedCapital && fractionUsed > MANAGED_CAPITAL_MAX_FRACTION) {
-      fractionUsed = MANAGED_CAPITAL_MAX_FRACTION;
-      cappedByManaged = true;
-    }
-    const kellyAdjusted = kellyRaw * fractionUsed;
+    // Determine effective fraction and whether managed cap applied
+    const effectiveFraction = this.getEffectiveFraction();
+    const kellyAdjusted = kellyRaw * effectiveFraction;
     let positionFraction = kellyAdjusted;
     let cappedByMax = false;
     if (positionFraction > this.config.maxPositionFraction) {
@@ -81,6 +79,7 @@ export class KellyPositionSizer {
       cappedByMax = true;
     }
     let positionSizeUsd = portfolioValue * positionFraction;
+    positionSizeUsd *= (1 - correlation);
     if (positionSizeUsd < this.config.minPositionUsd) {
       positionSizeUsd = 0;
     }
@@ -89,10 +88,19 @@ export class KellyPositionSizer {
       kellyRaw,
       kellyAdjusted,
       cappedByMax,
-      cappedByManaged,
-      fractionUsed,
+      cappedByManaged: effectiveFraction < this.originalRequestedFraction,
+      fractionUsed: effectiveFraction,
       portfolioPercent: portfolioValue > 0 ? (positionSizeUsd / portfolioValue) * 100 : 0,
+      correlation,
     };
+  }
+
+  private getEffectiveFraction(): number {
+    const requested = this.originalRequestedFraction;
+    if (this.config.isManagedCapital && requested > MANAGED_CAPITAL_MAX_FRACTION) {
+      return MANAGED_CAPITAL_MAX_FRACTION;
+    }
+    return this.config.kellyFraction;
   }
 
   getConfig(): KellyConfig {
@@ -109,6 +117,7 @@ export class KellyPositionSizer {
       cappedByManaged: false,
       fractionUsed: this.config.kellyFraction,
       portfolioPercent: 0,
+      correlation: 0,
     };
   }
 }

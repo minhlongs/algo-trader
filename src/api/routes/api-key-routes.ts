@@ -4,9 +4,9 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { ApiKeyManager } from '../../billing/api-key-manager';
-import { LicenseService } from '../../billing/license-service';
-import { LicenseTier } from '../../types/license';
+import { ApiKeyManager } from '@platform/billing/api-key-manager';
+import { LicenseService } from '@platform/billing/license-service';
+import { LicenseTier } from '@platform/types/license';
 import { z } from 'zod';
 
 const generateBodySchema = z.object({

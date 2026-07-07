@@ -63,15 +63,22 @@ export class MarketplaceService {
     return this.strategyRepo.findById(id);
   }
 
-  async getStrategyWithDetails(id: string): Promise<{ strategy: IMarketplaceStrategy; performance?: IMarketplacePerformance; reviews: IMarketplaceReview[]; } | null> {
+  async getStrategyWithDetails(id: string): Promise<{
+    strategy: IMarketplaceStrategy;
+    listing?: IMarketplaceListing;
+    performance?: IMarketplacePerformance;
+    reviews: IMarketplaceReview[];
+  } | null> {
     const strategy = await this.strategyRepo.findById(id);
     if (!strategy) return null;
+    const listing = await this.listingRepo.findByStrategyId(id).catch(() => undefined);
     const [performance, reviews] = await Promise.all([
       this.perfRepo.getLatestByStrategy(id, 1),
       this.reviewRepo.findAll({ strategyId: id }),
     ]);
     return {
       strategy,
+      listing: listing ?? undefined,
       performance: performance[0] || undefined,
       reviews: reviews.data,
     };

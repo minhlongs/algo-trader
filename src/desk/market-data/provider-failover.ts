@@ -14,7 +14,7 @@ import {
 import { SlaTracker } from './sla-tracker';
 import {
   recordFailoverEvent,
-  setCircuitBreakerStateProvider,
+  setCircuitBreakerState,
 } from '../../platform/middleware/prometheus-metrics';
 
 /**
@@ -259,7 +259,7 @@ export class FailoverManager {
 
     // Update circuit breaker metric
     const isOpen = this.circuitState === CircuitState.OPEN;
-    setCircuitBreakerStateProvider(activeProvider as string, isOpen);
+    setCircuitBreakerState(isOpen);
   }
 
   private updateStatus(provider: MarketDataSource, newStatus: ProviderHealthStatus): void {
@@ -343,11 +343,11 @@ export class FailoverManager {
     }
 
     // Record metric
-    const reasonType = reason.includes('consecutive') ? 'health_check' : triggeredBy;
-    recordFailoverEvent(
-      fromProvider as string,
-      toProvider as string,
-      reasonType as 'automatic' | 'manual' | 'health_check'
-    );
+    const reasonType = reason.includes("consecutive") ? "health_check" : triggeredBy;
+    const direction =
+      fromProvider === this.config.primary
+        ? "primary_to_fallback"
+        : "fallback_to_primary";
+    recordFailoverEvent(fromProvider as string, direction);
   }
 }

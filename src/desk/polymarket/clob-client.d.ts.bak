@@ -1,0 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+declare const ClobClient: any;
+declare const Chain: any;
+declare const Side: any;
+
+export { ClobClient, Chain, Side };

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { OnboardingService } from '../../billing/onboarding-service';
+import { OnboardingService } from '@platform/billing/onboarding-service';
 import { z } from 'zod';
 
 export const onboardingRouter: Router = Router();

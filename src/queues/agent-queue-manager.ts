@@ -5,8 +5,9 @@
  */
 
 import { Queue, Worker, Job, JobsOptions } from 'bullmq';
+import type { ConnectionOptions } from 'bullmq';
 import Redis from 'ioredis';
-import { recordQueueWaitTime } from '../middleware/prometheus-metrics';
+import { recordQueueWaitTime as recordQueueWaitTimeMetric } from '../platform/middleware/prometheus-metrics';
 
 export class AgentQueueManager {
   private queue: Queue;
@@ -24,7 +25,7 @@ export class AgentQueueManager {
     this.tier = tier || queueName;
 
     this.queue = new Queue(queueName, {
-      connection: this.connection,
+      connection: this.connection as unknown as ConnectionOptions,
       defaultJobOptions: {
         removeOnComplete: { count: 100, age: 24 * 60 * 60 * 1000 },
         removeOnFail: { count: 500, age: 24 * 60 * 60 * 1000 },
@@ -59,7 +60,7 @@ export class AgentQueueManager {
           const waitSeconds = (Date.now() - job.timestamp) / 1000;
           const priority = job.opts?.priority || 1;
           const agentName = task.agentName || job.name;
-          recordQueueWaitTime(priority, agentName, this.tier, waitSeconds);
+          recordQueueWaitTimeMetric(priority, agentName, this.tier, waitSeconds);
 
           const result = await processor(task);
           return result;
@@ -68,7 +69,7 @@ export class AgentQueueManager {
         }
       },
       {
-        connection: this.connection,
+        connection: this.connection as unknown as ConnectionOptions,
         concurrency: this.concurrency,
         limiter: { max: this.rateLimit, duration: 1000 },
         // stalledInterval removed for BullMQ v5

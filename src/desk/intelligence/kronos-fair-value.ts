@@ -6,9 +6,9 @@
  * Gracefully returns null if sidecar unavailable — never blocks trading.
  */
 
-import { alphaear } from './alphaear-client.js';
-import type { OhlcvCandle, KronosOhlcvPrediction } from './alphaear-client.js';
-import { logger } from '../core/logger.js';
+import { alphaear } from'./alphaear-client';
+import type { OhlcvCandle, KronosOhlcvPrediction } from'./alphaear-client';
+import { logger } from'../core/logger';
 
 export type { OhlcvCandle, KronosOhlcvPrediction };
 

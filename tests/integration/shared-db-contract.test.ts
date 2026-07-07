@@ -208,16 +208,29 @@ describe('Shared DB Contract', () => {
     });
 
     it('skips when all migrations already applied', async () => {
-      // Return both migration IDs as already applied.
-      mockPoolInstance.query
-        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // ensureMigrationsTable
-        .mockResolvedValueOnce({
-          rows: [
-            { id: '001-create-trades-table' },
-            { id: '026-create-ai-audit-tables' },
-          ],
-          rowCount: 2,
-        }); // getAppliedMigrations
+       // Dynamically extract all migration IDs from the runner so the test stays in sync.
+ const runnerSrc = readFile(MIGRATION_RUNNER_FILE);
+ const allIds: string[] = [];
+ const sqlIdRe = /createSqlMigration\([^,]+,\s*'([^']+)'/g;
+ let mm: RegExpExecArray | null;
+ sqlIdRe.lastIndex = 0;
+ while ((mm = sqlIdRe.exec(runnerSrc)) !== null) {
+  allIds.push(mm[1]);
+ }
+ const importRe = /import \* as migration(\d+) from '\.\/migrations\/([^']+)'/g;
+ importRe.lastIndex = 0;
+ while ((mm = importRe.exec(runnerSrc)) !== null) {
+  try {
+   const tsSrc = readFileSync(MIGRATIONS_DIR + '/' + mm[2] + '.ts', 'utf8');
+   const idMatch = tsSrc.match(/export\s+const\s+id\s*=\s*'([^']+)'/);
+   if (idMatch) allIds.push(idMatch[1]);
+  } catch {}
+ }
+ // Return all IDs as already applied.
+ mockPoolInstance.query
+ .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // CREATE EXTENSION
+ .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // CREATE TABLE
+ .mockResolvedValueOnce({ rows: allIds.map(id => ({ id })), rowCount: allIds.length });
 
       const { runMigrations } = await import('../../src/db/migration-runner');
 
@@ -228,15 +241,29 @@ describe('Shared DB Contract', () => {
     });
 
     it('runs pending migration (not yet applied)', async () => {
-      // Only 001 is applied; 026 is pending.
-      mockPoolInstance.query
-        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // ensureMigrationsTable
-        .mockResolvedValueOnce({
-          rows: [{ id: '001-create-trades-table' }],
-          rowCount: 1,
-        }); // getAppliedMigrations
-
-      const { runMigrations } = await import('../../src/db/migration-runner');
+       // Dynamically extract all migration IDs from the runner so the test stays in sync.
+ const runnerSrc = readFile(MIGRATION_RUNNER_FILE);
+ const allIds: string[] = [];
+ const sqlIdRe = /createSqlMigration\([^,]+,\s*'([^']+)'/g;
+ let mm: RegExpExecArray | null;
+ sqlIdRe.lastIndex = 0;
+ while ((mm = sqlIdRe.exec(runnerSrc)) !== null) {
+  allIds.push(mm[1]);
+ }
+ const importRe = /import \* as migration(\d+) from '\.\/migrations\/([^']+)'/g;
+ importRe.lastIndex = 0;
+ while ((mm = importRe.exec(runnerSrc)) !== null) {
+  try {
+   const tsSrc = readFileSync(MIGRATIONS_DIR + '/' + mm[2] + '.ts', 'utf8');
+   const idMatch = tsSrc.match(/export\s+const\s+id\s*=\s*'([^']+)'/);
+   if (idMatch) allIds.push(idMatch[1]);
+  } catch {}
+ }
+ const appliedRows = allIds.slice(0, -1).map(id => ({ id }));
+ mockPoolInstance.query
+ .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // CREATE EXTENSION
+ .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // CREATE TABLE
+ .mockResolvedValueOnce({ rows: appliedRows, rowCount: appliedRows.length }); const { runMigrations } = await import('../../src/db/migration-runner');
 
       await expect(runMigrations()).resolves.toBeUndefined();
 

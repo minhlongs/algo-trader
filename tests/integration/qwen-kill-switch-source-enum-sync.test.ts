@@ -71,11 +71,11 @@ const REPO_ROOT = resolve(__dirname, '../..');
 const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 const DRAWDOWN_MONITOR_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/qwen-drawdown-monitor.ts',
+  'src/desk/wiring/qwen-drawdown-monitor.ts',
 );
 const OBSERVABILITY_TEST_PATH = resolve(
   REPO_ROOT,
-  'src/wiring/__tests__/qwen-observability.test.ts',
+  'src/desk/wiring/__tests__/qwen-observability.test.ts',
 );
 
 /** Sources declared in help text + TS union but intentionally not yet emitted by prod code. */
