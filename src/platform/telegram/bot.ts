@@ -31,6 +31,7 @@ import {
 } from './auto-support-handlers';
 import { handleAsk } from './ask-handler';
 import { handleLeaderboard } from './leaderboard-handler';
+import { userSessionRepo } from './user-session-repository-d1';
 
 export interface TelegramConfig {
   botToken: string;
@@ -48,12 +49,6 @@ export class TelegramBotService {
   private config: TelegramConfig;
   private bot: Bot<Context> | null = null;
   private initialized: boolean = false;
-  // TODO: Migrate userSessions from in-memory Map to PostgreSQL (src/shared/db/) for persistence
-  // across restarts. The Map is ephemeral — sessions are lost on process restart.
-  // Migration approach: load sessions from DB on init(), flush updates on each mutation
-  // (linkLicenseKey, unlinkLicenseKey, toggle notifications), or use a write-through
-  // cache pattern. Keep the Map as a read cache to avoid DB round-trips on every message.
-  private userSessions: Map<number, UserSession> = new Map();
   private rateLimitDelay: number = 1000; // 1 second between messages
   private redisKeyPrefix: string = 'algo:rate_limit:telegram:';
 
@@ -97,6 +92,9 @@ export class TelegramBotService {
       throw new Error('TelegramBot not initialized');
     }
 
+    // Ensure D1 table exists before handling any commands
+    await userSessionRepo.ensureTable();
+
     this.bot.start({
       onStart: (info) => {
         logger.info(`[TelegramBot] Running as @${info.username}`);
@@ -121,20 +119,18 @@ export class TelegramBotService {
   private setupCommands(): void {
     if (!this.bot) return;
 
-    const sessions = this.userSessions;
-
     this.bot.command('start', (ctx: Context) => handleStart(ctx));
     this.bot.command('help', (ctx: Context) => handleHelp(ctx));
-    this.bot.command('status', (ctx: Context) => handleStatus(ctx, sessions));
-    this.bot.command('link', (ctx: Context) => handleLink(ctx, sessions));
-    this.bot.command('unlink', (ctx: Context) => handleUnlink(ctx, sessions));
-    this.bot.command('notifications', (ctx: Context) => handleNotifications(ctx, sessions));
+    this.bot.command('status', (ctx: Context) => handleStatus(ctx));
+    this.bot.command('link', async (ctx: Context) => handleLink(ctx));
+    this.bot.command('unlink', async (ctx: Context) => handleUnlink(ctx));
+    this.bot.command('notifications', async (ctx: Context) => handleNotifications(ctx));
     this.bot.command('limits', (ctx: Context) => handleLimits(ctx));
-    this.bot.command('balance', (ctx: Context) => handleBalance(ctx, sessions));
-    this.bot.command('positions', (ctx: Context) => handlePositions(ctx, sessions));
-    this.bot.command('pnl', (ctx: Context) => handlePnl(ctx, sessions));
+    this.bot.command('balance', async (ctx: Context) => handleBalance(ctx));
+    this.bot.command('positions', async (ctx: Context) => handlePositions(ctx));
+    this.bot.command('pnl', async (ctx: Context) => handlePnl(ctx));
     this.bot.command('campaign', (ctx: Context) => handleCampaign(ctx));
-    this.bot.command('results', (ctx: Context) => handleResults(ctx, sessions));
+    this.bot.command('results', async (ctx: Context) => handleResults(ctx));
     this.bot.command('faq', (ctx: Context) => {
       const text = (ctx.message as { text?: string })?.text || '';
       return text.trim() === '/faq' ? handleFaq(ctx) : handleFaqDetail(ctx);
@@ -168,18 +164,8 @@ export class TelegramBotService {
   private setupMiddleware(): void {
     if (!this.bot) return;
 
-    this.bot.use(async (ctx: Context, next: () => Promise<void>) => {
-      const userId = ctx.from?.id;
-      if (userId && !this.userSessions.has(userId)) {
-        this.userSessions.set(userId, {
-          userId,
-          licenseKeys: [],
-          notificationsEnabled: true,
-          lastCommand: '',
-        });
-      }
-      await next();
-    });
+    // Sessions are persisted in D1 — no auto-creation needed.
+    this.bot.use(async (_ctx: Context, next: () => Promise<void>) => next());
   }
 
   async sendThresholdAlert(
@@ -197,7 +183,7 @@ export class TelegramBotService {
 
     await this.applyRateLimitRedis(chatId);
 
-    const session = this.userSessions.get(chatId);
+    const session = await userSessionRepo.getByUserId(chatId);
     if (session && !session.notificationsEnabled) {
       logger.info(`[TelegramBot] Notifications disabled for user ${chatId}`);
       return false;
@@ -230,10 +216,11 @@ export class TelegramBotService {
   ): Promise<number> {
     let sentCount = 0;
 
-    for (const [userId, session] of this.userSessions.entries()) {
+    const allSessions = await userSessionRepo.getAll();
+    for (const session of allSessions) {
       if (session.licenseKeys.includes(licenseKey) && session.notificationsEnabled) {
         const success = await this.sendThresholdAlert(
-          userId,
+          session.userId,
           licenseKey,
           threshold,
           currentUsage,
@@ -269,30 +256,16 @@ export class TelegramBotService {
     }
   }
 
-  getUserSession(userId: number): UserSession | undefined {
-    return this.userSessions.get(userId);
+  async getUserSession(userId: number): Promise<UserSession | undefined> {
+    return userSessionRepo.getByUserId(userId);
   }
 
-  linkLicenseKey(userId: number, licenseKey: string): void {
-    let session = this.userSessions.get(userId);
-    if (!session) {
-      session = { userId, licenseKeys: [], notificationsEnabled: true, lastCommand: '' };
-      this.userSessions.set(userId, session);
-    }
-
-    if (!session.licenseKeys.includes(licenseKey)) {
-      session.licenseKeys.push(licenseKey);
-    }
+  async linkLicenseKey(userId: number, licenseKey: string): Promise<void> {
+    await userSessionRepo.linkLicenseKey(userId, licenseKey);
   }
 
-  unlinkLicenseKey(userId: number, licenseKey: string): void {
-    const session = this.userSessions.get(userId);
-    if (session) {
-      const index = session.licenseKeys.indexOf(licenseKey);
-      if (index > -1) {
-        session.licenseKeys.splice(index, 1);
-      }
-    }
+  async unlinkLicenseKey(userId: number, licenseKey: string): Promise<void> {
+    await userSessionRepo.unlinkLicenseKey(userId, licenseKey);
   }
 }
 

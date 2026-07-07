@@ -1,129 +1,195 @@
 /**
- * Signal Subscription Routes
- * POST /api/v1/signals/subscribe      — subscribe (set chatId, activate)
- * POST /api/v1/signals/unsubscribe    — deactivate subscription
- * GET  /api/v1/signals/subscription   — get current subscription status
+ * Signal Subscription Routes — Platform v2 (D1 Backed)
  *
- * Auth: Better Auth session (cookie) OR Bearer API key.
- * Telegram commands (/subscribe, /unsubscribe) handled by bot command handler.
+ * Endpoints:
+ * GET  /subscriptions/active        — list all active subscriptions (admin/internal)
+ * GET  /subscriptions/:tenantId     — get subscription for a specific tenant
+ * POST /subscriptions               — create or update subscription (requires SIGNALS_BASIC tier)
+ * DELETE /subscriptions/:id         — cancel subscription
+ * GET  /usage/:subscriberId         — usage snapshot for a subscriber
+ * GET  /billing/stats               — tier breakdown for dashboard
+ *
+ * Auth: Bearer API key via resolveSubscriberId (RaasGate).
+ * Tier gating: requireSignalTier('SIGNALS_BASIC') on the POST route.
+ * Persistence: D1 via signalSubscriberRepo (replaces old SignalSubscriptionServiceD1).
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import RaasGate from '../../../desk/gate/raas-gate';
-import { LicenseTier } from '../../../shared/types/license';
-import type { SignalSubscription, TierKey } from '../../../desk/signal/signal-types';
+import { z } from 'zod';
+import { signalSubscriberRepo } from '../../signal/signal-subscriber-repository-d1';
+import { usageMetering } from '../../signals-api/usage-metering-service';
+import { requireSignalTier } from '../../middleware/feature-gate';
+import { resolveSubscriberId } from '../../middleware/signal-tier-resolver';
+import type { TierKey } from '../../../desk/signal/signal-types';
 import { logger } from '../../../shared/utils/logger';
-import { requireTier } from '../../middleware/feature-gate';
 
 export const signalSubscriptionRouter: Router = Router();
-const gate = RaasGate.getInstance();
 
-/** In-memory subscription store — replace with D1 query in production wiring */
-const subscriptions: Map<string, SignalSubscription> = new Map();
+// ---------------------------------------------------------------------------
+// Schemas
+// ---------------------------------------------------------------------------
 
 const subscribeBodySchema = z.object({
   chatId: z.number().int().optional(),
 });
 
-/** Extract subscriberId from API key (simplified — maps licenseId → userId) */
-function resolveSubscriberId(req: Request): { subscriberId: string; tier: TierKey } | null {
-  const authHeader = req.headers.authorization ?? '';
-  const apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!apiKey) return null;
-
-  const license = gate.validateApiKey(apiKey);
-  if (!license) return null;
-
-  let tier: TierKey = 'FREE';
-  if (license.tier === LicenseTier.ENTERPRISE) tier = 'ENTERPRISE';
-  else if (license.tier === LicenseTier.PRO) tier = 'PRO';
-
-  const subscriberId = license.userId ?? license.id;
-  return { subscriberId, tier };
-}
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
 
 /**
- * POST /api/v1/signals/subscribe
- * Body: { chatId?: number }
+ * GET /subscriptions/active — list all active subscriptions (admin/internal)
  */
-signalSubscriptionRouter.post('/subscribe', requireTier('PRO'), (req: Request, res: Response) => {
-  const identity = resolveSubscriberId(req);
-  if (!identity) {
-    res.status(401).json({ error: 'Valid API key required' });
-    return;
+signalSubscriptionRouter.get('/subscriptions/active', async (_req: Request, res: Response) => {
+  try {
+    const subs = await signalSubscriberRepo.getActiveSubscriptions();
+    res.json({ data: subs });
+  } catch (err) {
+    logger.error('[SignalSub] List active error', { err });
+    res.status(500).json({ error: 'Failed to list subscriptions' });
   }
-
-  const parsed = subscribeBodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid body' });
-    return;
-  }
-
-  const { subscriberId, tier } = identity;
-  const existing = subscriptions.get(subscriberId);
-  const now = Date.now();
-
-  const sub: SignalSubscription = {
-    id: existing?.id ?? randomUUID(),
-    subscriberId,
-    chatId: parsed.data.chatId ?? existing?.chatId,
-    tier,
-    active: true,
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-  };
-
-  subscriptions.set(subscriberId, sub);
-  logger.info(`[SignalSub] Subscribed subscriberId=${subscriberId} tier=${tier}`);
-  res.json({ data: sub, message: 'Subscribed successfully' });
 });
 
 /**
- * POST /api/v1/signals/unsubscribe
+ * GET /subscriptions/:tenantId — get subscription for a specific tenant
  */
-signalSubscriptionRouter.post('/unsubscribe', requireTier('PRO'), (req: Request, res: Response) => {
-  const identity = resolveSubscriberId(req);
-  if (!identity) {
-    res.status(401).json({ error: 'Valid API key required' });
-    return;
+signalSubscriptionRouter.get('/subscriptions/:tenantId', async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.params.tenantId as string;
+    // Re-resolve from DB by subscriber_id (tenantId maps to subscriberId)
+    const sub = await signalSubscriberRepo.getBySubscriberId(tenantId);
+    if (!sub) {
+      res.status(404).json({ error: 'Subscription not found' });
+      return;
+    }
+    res.json({ data: sub });
+  } catch (err) {
+    logger.error('[SignalSub] Get by tenant error', { err });
+    res.status(500).json({ error: 'Failed to fetch subscription' });
   }
-
-  const { subscriberId } = identity;
-  const existing = subscriptions.get(subscriberId);
-
-  if (!existing) {
-    res.status(404).json({ error: 'No active subscription found' });
-    return;
-  }
-
-  existing.active = false;
-  existing.updatedAt = Date.now();
-  logger.info(`[SignalSub] Unsubscribed subscriberId=${subscriberId}`);
-  res.json({ message: 'Unsubscribed successfully' });
 });
 
 /**
- * GET /api/v1/signals/subscription
+ * POST /subscriptions — create or update subscription
  */
-signalSubscriptionRouter.get('/subscription', requireTier('PRO'), (req: Request, res: Response) => {
-  const identity = resolveSubscriberId(req);
-  if (!identity) {
-    res.status(401).json({ error: 'Valid API key required' });
-    return;
-  }
+signalSubscriptionRouter.post(
+  '/subscriptions',
+  requireSignalTier('SIGNALS_BASIC'),
+  async (req: Request, res: Response) => {
+    const identity = resolveSubscriberId(req);
+    if (!identity) {
+      res.status(401).json({ error: 'Valid API key required' });
+      return;
+    }
 
-  const sub = subscriptions.get(identity.subscriberId);
-  if (!sub) {
-    res.status(404).json({ error: 'No subscription found' });
-    return;
-  }
+    const parsed = subscribeBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid body' });
+      return;
+    }
 
-  res.json({ data: sub });
+    try {
+      const { subscriberId, tier } = identity;
+      const existing = await signalSubscriberRepo.getBySubscriberId(subscriberId);
+      const now = Date.now();
+
+      const sub = {
+        id: existing?.id ?? randomUUID(),
+        subscriberId,
+        tier,
+        active: true,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      };
+
+      await signalSubscriberRepo.upsert(sub);
+
+      if (parsed.data.chatId != null) {
+        await signalSubscriberRepo.upsert({ ...sub, chatId: parsed.data.chatId });
+      }
+
+      logger.info('[SignalSub] Subscription created/updated', { subscriberId, tier });
+      res.json({ data: sub, message: 'Subscription updated' });
+    } catch (err) {
+      logger.error('[SignalSub] Create/update error', { err });
+      res.status(500).json({ error: 'Failed to create subscription' });
+    }
+  },
+);
+
+/**
+ * DELETE /subscriptions/:id — cancel subscription
+ */
+signalSubscriptionRouter.delete('/subscriptions/:id', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const existing = await signalSubscriberRepo.getActiveSubscriptions();
+    const found = existing.some((s) => s.id === id);
+    if (!found) {
+      res.status(404).json({ error: 'Subscription not found or already cancelled' });
+      return;
+    }
+    await signalSubscriberRepo.setActive(id, false);
+    res.json({ message: 'Subscription cancelled' });
+  } catch (err) {
+    logger.error('[SignalSub] Cancel error', { err });
+    res.status(500).json({ error: 'Failed to cancel subscription' });
+  }
 });
 
-/** Export subscriptions map for use by signal publisher (read-only access) */
-export function getActiveSubscriptions(): SignalSubscription[] {
-  return Array.from(subscriptions.values()).filter((s) => s.active);
-}
+/**
+ * GET /usage/:subscriberId — usage snapshot for a subscriber
+ *
+ * Returns current period usage: callsThisPeriod, periodLimit, overage.
+ * Source: UsageMeteringService (D1-persisted).
+ */
+signalSubscriptionRouter.get('/usage/:subscriberId', async (req: Request, res: Response) => {
+  try {
+    const subscriberId = req.params.subscriberId as string;
+    if (!subscriberId || subscriberId.trim() === '') {
+      res.status(400).json({ error: 'subscriberId required' });
+      return;
+    }
+
+    const snapshot = await usageMetering.getSnapshot(subscriberId);
+    if (!snapshot) {
+      res.status(404).json({ error: 'No usage data for subscriber' });
+      return;
+    }
+
+    res.json({
+      subscriberId: snapshot.subscriberId,
+      period: snapshot.period,
+      callsThisPeriod: snapshot.callsThisPeriod,
+      periodLimit: snapshot.periodLimit,
+      overage: snapshot.overageCalls,
+    });
+  } catch (err) {
+    logger.error('[SignalSub] Usage snapshot error', { err });
+    res.status(500).json({ error: 'Failed to fetch usage' });
+  }
+});
+
+/**
+ * GET /billing/stats — tier breakdown for dashboard
+ *
+ * Returns active subscription count per tier from D1.
+ * Full usage aggregation via UsageMeteringService is available
+ * via GET /usage/:subscriberId for per-subscriber snapshots.
+ */
+signalSubscriptionRouter.get('/billing/stats', async (_req: Request, res: Response) => {
+  try {
+    const subs = await signalSubscriberRepo.getActiveSubscriptions();
+    // Group by tier — partial stats until metering layer provides real data
+    const breakdown: Record<string, number> = {};
+    for (const s of subs) {
+      const t: TierKey = s.tier ?? 'FREE';
+      breakdown[t] = (breakdown[t] ?? 0) + 1;
+    }
+    res.json({ data: breakdown });
+  } catch (err) {
+    logger.error('[SignalSub] Billing stats error', { err });
+    res.status(500).json({ error: 'Failed to fetch billing stats' });
+  }
+});

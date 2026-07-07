@@ -408,7 +408,7 @@ Hybrid LLM signal pipeline: Qwen3-30B-A3B runs locally on M1 Max (37.7 tok/s, 18
 - **SDK change**: Removed `@polar-sh/sdk`, using native fetch + Web Crypto for HMAC-SHA512
 - **Webhook**: Updated signature header from `polar-signature` → `x-nowpayments-sig`, algorithm HMAC-SHA256 → HMAC-SHA512
 - **Webhook endpoint**: `/api/webhooks/nowpayments` (was `/api/webhooks/polar`)
-- **Pricing**: PRO $49/month, ENTERPRISE $299/month (both in USDT)
+- **Pricing**: PRO $99/month, ENTERPRISE $299/month (both in USDT)
 
 ### Documentation Updates
 - Updated `docs/deployment-guide.md` — env vars section

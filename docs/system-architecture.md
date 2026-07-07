@@ -255,7 +255,7 @@ graph TD
 - Workers: backtest runner, scan detector, signed webhook delivery, grid search optimizer.
 
 **Billing** (`src/billing/`):
-- NOWPayments USDT TRC20 — 3 tiers (FREE $0, PRO $49, ENTERPRISE $299), HMAC-SHA512 webhook verification.
+- NOWPayments USDT TRC20 — 3 tiers (FREE $0, PRO $99, ENTERPRISE $299), HMAC-SHA512 webhook verification.
 - **Coupon System** (`src/billing/coupon-system.ts`):
   - Admin routes: `POST /api/admin/coupons` (create), `GET /api/admin/coupons` (list) — require `X-API-Key` header auth
   - Validation route: `POST /api/coupons/validate` — checks code, discount, applies without incrementing use-count
