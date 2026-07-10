@@ -334,5 +334,5 @@ command = "npx tsc -p tsconfig.worker.json"
 [triggers]
 crons = ["*/5 * * * *"]
 
-# Custom domain (configure in CF dashboard)
-# routes = [{ pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }]
+# Custom domain routing — api.cashclaw.cc → this Worker
+routes = [{ pattern = "api.cashclaw.cc/*", zone_name = "cashclaw.cc" }]

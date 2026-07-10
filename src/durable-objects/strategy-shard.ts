@@ -12,11 +12,11 @@ import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 import { ShardManager } from './shard-manager';
 import type { IStrategy } from '../strategies/types';
-import { StrategyLoader } from '../strategies/loader';
+import { StrategyLoader } from '../desk/strategies/loader';
 
 // Env interface for Durable Object bindings (KV, DO references)
 interface Env {
-  SHARD_MANAGER?: DurableObjectNamespace<DurableObject>;
+  SHARD_MANAGER?: DurableObjectNamespace;
   [key: string]: any;
 }
 

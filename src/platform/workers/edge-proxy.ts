@@ -6,10 +6,10 @@
 
 import { handleSignup, handleLogin, handleMe, handleListUsers, handleSetRole, handleDeleteUser, corsPreflightResponse, notImplementedResponse } from './auth-handlers';
 // Durable Object exports for sharding architecture
-export { ShardManager, StrategyShard } from '../durable-objects';
+export { ShardManager, StrategyShard } from '../../durable-objects';
 
 import { KVNamespace } from '@cloudflare/workers-types';
-import { getLatencyMonitor } from '../regions/latency-monitor';
+import { getLatencyMonitor, type ProbeResult } from '../../regions/latency-monitor';
 
 interface Env {
   CACHE: KVNamespace;
@@ -305,7 +305,7 @@ export default {
     lines.push(`# HELP region_probes_total Total number of latency probes`);
     lines.push(`# TYPE region_probes_total counter`);
     for (const region of ['us-east', 'eu-central', 'ap-southeast']) {
-      const count = latencyMonitor.getResults().filter(r => r.region === region).length;
+      const count = latencyMonitor.getResults().filter((r: ProbeResult) => r.region === region).length;
       lines.push(`region_probes_total{region="${region}"} ${count}`);
     }
 

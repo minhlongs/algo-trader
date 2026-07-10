@@ -1,19 +1,18 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "bundler",
-    "lib": ["ES2022"],
-    "types": ["@cloudflare/workers-types", "node"],
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types"],
     "outDir": "dist/worker",
     "declaration": false,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["src/platform/workers/**/*.ts"]
+  "include": [
+    "src/platform/workers/**/*.ts",
+    "src/durable-objects/**/*.ts",
+    "src/regions/**/*.ts"
+  ]
 }
