@@ -216,7 +216,7 @@ export function getLatencyMonitor(): LatencyMonitor {
       ['us-east', 'eu-central', 'ap-southeast'],
       {
         probeInterval: 30000,
-        alertThresholdP95: Number(process.env.LATENCY_SLA_THRESHOLD_MS) || 100,
+        alertThresholdP95: 100, // default SLA threshold (ms)
         onAlert: (region, p95) => {
           // Could integrate with Telegram/PagerDuty here
           logger.warn(`[SLA] Region ${region} exceeded latency threshold: ${p95.toFixed(1)}ms`);
