@@ -35,7 +35,7 @@ export const PRICING_TIERS: Record<string, PricingTier> = {
 	},
 	PRO: {
 		name: 'Pro',
-		price: 49,
+		price: 99,
 		strategies: 5,
 		markets: ['polymarket', 'kalshi', 'limitless'],
 		apiCallsPerMonth: 10000,

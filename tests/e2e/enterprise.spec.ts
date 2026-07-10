@@ -5,29 +5,25 @@ test.describe('Enterprise Page', () => {
     await page.goto('/dashboard/enterprise');
     await page.waitForLoadState('networkidle');
 
-    // Tab navigation should be visible with Pricing and Contact tabs
-    const pricingTab = page.getByText('Pricing').first();
-    await expect(pricingTab).toBeVisible();
-
-    const contactTab = page.getByText('Contact').first();
-    await expect(contactTab).toBeVisible();
+    // Tab navigation visible
+    await expect(page.getByText('Pricing').first()).toBeVisible();
+    await expect(page.getByText('Contact').first()).toBeVisible();
+    await expect(page.getByText('Success').first()).toBeVisible();
   });
 
-  test('should show enterprise plan cards (PRO, ENTERPRISE, MASTER)', async ({ page }) => {
+  test('should show enterprise plan cards (Pro, Enterprise, Master)', async ({ page }) => {
     await page.goto('/dashboard/enterprise');
     await page.waitForLoadState('networkidle');
 
-    // Enterprise plan cards should be visible
-    await expect(page.getByText('PRO', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('ENTERPRISE', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('MASTER', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Pro', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Enterprise', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Master', { exact: true }).first()).toBeVisible();
   });
 
   test('should display enterprise plan prices', async ({ page }) => {
     await page.goto('/dashboard/enterprise');
     await page.waitForLoadState('networkidle');
 
-    // Prices should be visible
     await expect(page.getByText('$99 / mo').first()).toBeVisible();
     await expect(page.getByText('$299 / mo').first()).toBeVisible();
     await expect(page.getByText('$999 / mo').first()).toBeVisible();
@@ -37,20 +33,13 @@ test.describe('Enterprise Page', () => {
     await page.goto('/dashboard/enterprise');
     await page.waitForLoadState('networkidle');
 
-    // Click the Contact tab
-    const contactTab = page.getByText('Contact').first();
-    await contactTab.click();
+    await page.getByText('Contact').first().click();
 
-    // After switching to Contact tab, the form heading should appear
     await expect(page.getByText('Talk to our team').first()).toBeVisible();
-
-    // Form fields should be present
     await expect(page.locator('#email')).toBeVisible();
     await expect(page.locator('#contactName')).toBeVisible();
     await expect(page.locator('#companyName')).toBeVisible();
     await expect(page.locator('#useCase')).toBeVisible();
-
-    // Submit button should be visible
     await expect(page.getByText('Request enterprise access')).toBeVisible();
   });
 });

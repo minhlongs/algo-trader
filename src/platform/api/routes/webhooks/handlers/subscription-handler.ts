@@ -19,16 +19,20 @@ export async function handleIpnFinished(
   licenseService: LicenseService,
   auditService: AuditLogService
 ): Promise<void> {
-  const customerRef = ipn.order_id
-    ? nowpaymentsService.parseCustomerRef(ipn.order_id)
-    : null;
-  const customerEmail = customerRef || `payment_${ipn.payment_id}`;
-
   // Determine tier from invoice ID
   const tierConfig = ipn.invoice_id
     ? nowpaymentsService.getTierByInvoiceId(ipn.invoice_id)
     : null;
   const tier = (tierConfig?.tier as LicenseTier) || LicenseTier.PRO;
+
+  // Customer email: parse from order_id (algotrade_{ref}_{ts}) or use order_id directly if it looks like an email
+  let customerEmail: string;
+  if (ipn.order_id) {
+    const parsed = nowpaymentsService.parseCustomerRef(ipn.order_id);
+    customerEmail = parsed || (ipn.order_id.includes('@') ? ipn.order_id : `payment_${ipn.payment_id}`);
+  } else {
+    customerEmail = `payment_${ipn.payment_id}`;
+  }
 
   // Check idempotency — skip if already processed
   const existing = await subscriptionService.getSubscriptionByProviderId(ipn.payment_id);
@@ -51,8 +55,20 @@ export async function handleIpnFinished(
     currency: ipn.price_currency,
   });
 
-  // Activate and create license
+  // Activate subscription and create linked license
   await subscriptionService.activateSubscription(subscription.id);
+
+  const licenseKey = licenseService.generateLicense({
+    userId: customerEmail,
+    tier: tier as unknown as string,
+    validUntil: periodEnd,
+  });
+  const license = licenseService.getLicenseByKey(licenseKey);
+  // Set licenseId on subscription directly for immediate availability
+  if (license) {
+    license.subscriptionId = subscription.id;
+    await subscriptionService.updateSubscriptionTier(subscription.id, tier, licenseKey);
+	}
 
   await auditService.log(customerEmail, 'created', {
     metadata: {

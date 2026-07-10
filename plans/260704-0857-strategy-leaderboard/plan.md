@@ -1,7 +1,7 @@
 ---
 title: "Strategy Leaderboard — Next Wave VII"
 description: "Public rankings page: win rate, Sharpe, P&L per strategy. Dashboard page + API + Telegram."
-status: pending
+status: complete
 priority: P2
 branch: main
 tags:

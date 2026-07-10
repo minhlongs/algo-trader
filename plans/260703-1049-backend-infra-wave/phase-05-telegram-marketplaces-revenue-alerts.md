@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Telegram/Marketplaces/Revenue/Alerts"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---

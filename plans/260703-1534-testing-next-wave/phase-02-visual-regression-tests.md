@@ -1,21 +1,20 @@
 ---
 phase: 2
 title: "Visual Regression Tests"
-status: pending
+status: complete
 effort: S
 ---
 
 # Phase 2: Visual Regression Tests
 
 ## Overview
-Take baseline screenshots of 5 key pages for visual regression comparison.
+Baseline screenshots already captured. Capture script and README present.
 
-## Implementation Steps
-1. Start dashboard dev server
-2. Capture screenshots: landing, pricing, enterprise, manifesto, 404
-3. Save to `tests/visual/baseline/`
-4. Document baseline screenshot process in testing docs
+## Existing Assets
+- `tests/visual/baseline/` — 5 PNG files (landing, pricing, enterprise, manifesto, methodology)
+- `tests/visual/capture-baseline.mjs` — Playwright-based capture script
+- `tests/visual/README.md` — process documentation
 
 ## Success Criteria
-- [ ] 5 baseline screenshots captured
-- [ ] Process documented for future comparison runs
+- [x] 5 baseline screenshots captured
+- [x] Process documented for future comparison runs

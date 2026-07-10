@@ -77,6 +77,10 @@ export class LicenseService {
 	}
 
 	/** Standard singleton — production use */
+	static resetInstance(): void {
+		LicenseService.instance = null as unknown as LicenseService;
+	}
+
 	static getInstance(options?: LicenseServiceOptions): LicenseService {
 		if (!LicenseService.instance) {
 			LicenseService.instance = new LicenseService(options);

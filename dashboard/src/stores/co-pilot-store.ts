@@ -82,7 +82,7 @@ export const useCoPilotStore = create<CoPilotState>()(
           const assistantMsg: Message = {
             id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             role: 'assistant',
-            content: data.response || data.content || 'No response content.',
+            content: data.answer || 'No response content.',
             actions: data.actions ?? undefined,
             timestamp: Date.now(),
           };

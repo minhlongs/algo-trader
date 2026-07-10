@@ -172,7 +172,7 @@ export function XAIDashboardPage() {
                   <select
                     value={selectedModelType}
                     onChange={(e) => setSelectedModelType(e.target.value as 'rl' | 'kronos' | 'strategy')}
-                    className="w-full px-3 py-2 text-sm rounded-lg border outline-none transition-colors focus:border-[#4cd7f6]/70"
+                    className="w-full px-3 py-2 text-sm rounded-lg border outline-none transition-colors focus:border-accent/70"
                     style={{
                       backgroundColor: 'var(--colors-surface)',
                       borderColor: 'var(--colors-outline)',
@@ -273,7 +273,7 @@ export function XAIDashboardPage() {
                   <select
                     value={selectedModelType}
                     onChange={(e) => setSelectedModelType(e.target.value as 'rl' | 'kronos' | 'strategy')}
-                    className="w-full px-3 py-2 text-sm rounded-lg border outline-none transition-colors focus:border-[#4cd7f6]/70"
+                    className="w-full px-3 py-2 text-sm rounded-lg border outline-none transition-colors focus:border-accent/70"
                     style={{
                       backgroundColor: 'var(--colors-surface)',
                       borderColor: 'var(--colors-outline)',
@@ -420,7 +420,7 @@ export function XAIDashboardPage() {
                     value={selectedStrategyName}
                     onChange={(e) => setSelectedStrategyName(e.target.value)}
                     placeholder="MyTradingStrategy"
-                    className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-[#4cd7f6]/70 transition-colors"
+                    className="w-full px-3 py-2 text-sm border rounded-lg outline-none focus:border-accent/70 transition-colors"
                     style={{
                       backgroundColor: 'var(--colors-surface)',
                       borderColor: 'var(--colors-outline)',

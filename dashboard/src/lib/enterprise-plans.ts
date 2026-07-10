@@ -1,10 +1,9 @@
 /**
  * Enterprise plan definitions — single source of truth for dashboard UI.
- * Pricing: $49k / $199k / $499k, invoice-based. No Polar.sh checkout.
- * Keep copy free of "AI", "health", "wellness", "medical" per Polar acceptable-use rule.
+ * Pricing: $99 / $299 / $999 / month. Invoice-based for enterprise tiers.
  */
 
-export type EnterprisePlanKey = 'growth' | 'scale' | 'unlimited';
+export type EnterprisePlanKey = 'pro' | 'enterprise' | 'master';
 
 export interface EnterprisePlan {
   name: string;
@@ -15,48 +14,50 @@ export interface EnterprisePlan {
 }
 
 export const ENTERPRISE_PLANS: Record<EnterprisePlanKey, EnterprisePlan> = {
-  growth: {
-    name: 'Growth',
-    price: '$49k / yr',
-    acv: 49_000,
-    tagline: 'For teams getting systematic at scale',
+  pro: {
+    name: 'Pro',
+    price: '$99 / mo',
+    acv: 1_188,
+    tagline: 'For serious traders ready to scale',
     features: [
-      'Up to 10 strategy seats',
-      'Dedicated onboarding session',
-      'SLA: next-business-day support',
+      'Up to 5 active strategies',
+      'Advanced market scanning',
+      'Telegram signal alerts',
       'Custom position & loss limits',
       'API + webhook access',
-      'Quarterly business review',
+      'Email support',
     ],
   },
-  scale: {
-    name: 'Scale',
-    price: '$199k / yr',
-    acv: 199_000,
+  enterprise: {
+    name: 'Enterprise',
+    price: '$299 / mo',
+    acv: 3_588,
     tagline: 'For funds running multi-strategy operations',
     features: [
-      'Up to 50 strategy seats',
+      'Up to 20 active strategies',
+      'All market access',
       'Dedicated Technical Account Manager',
-      'SLA: 4-hour response',
       'Custom risk parameters per desk',
       'White-label reporting',
       'Monthly executive review',
       'Priority feature roadmap access',
+      'SLA: 4-hour response',
     ],
   },
-  unlimited: {
-    name: 'Unlimited',
-    price: '$499k / yr',
-    acv: 499_000,
+  master: {
+    name: 'Master',
+    price: '$999 / mo',
+    acv: 11_988,
     tagline: 'For institutional desks requiring full control',
     features: [
-      'Unlimited strategy seats',
+      'Unlimited strategies',
       'Dedicated TAM + engineering pod',
       'SLA: 1-hour response, 99.9% uptime',
       'Custom integrations & private deployments',
       'Full audit logs & compliance exports',
       'Weekly executive review',
       'Co-development on roadmap items',
+      'On-premise deployment option',
     ],
   },
 };

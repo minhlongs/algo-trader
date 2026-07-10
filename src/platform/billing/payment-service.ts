@@ -96,15 +96,6 @@ export class PaymentService {
 		return PaymentService.instance;
 	}
 
-	signNOWPaymentsWebhook(payload: unknown, secret: string): string {
-		const raw = JSON.stringify(payload);
-		return crypto.createHmac('sha256', secret).update(raw, 'utf8').digest('hex');
-	}
-
-	verifyNOWPaymentsSignature(payload: unknown, signature: string, secret: string): boolean {
-		const expected = this.signNOWPaymentsWebhook(payload, secret);
-		return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-	}
 
 	signStripeWebhook(event: unknown, secret: string): string {
 		const raw = JSON.stringify(event);

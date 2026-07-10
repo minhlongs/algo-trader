@@ -51,7 +51,7 @@ export function LeaderboardPage() {
   const filtered = useMemo(() => {
     if (!search.trim()) return data;
     const q = search.toLowerCase();
-    return data.filter((e) => e.strategy.toLowerCase().includes(q));
+    return data.filter((e) => e.strategyName.toLowerCase().includes(q));
   }, [data, search]);
 
   /* ── Loading state ── */
@@ -154,17 +154,17 @@ export function LeaderboardPage() {
             <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Avg Sharpe</p>
             <p className="text-accent font-mono text-lg font-bold">
               {data.length > 0
-                ? (data.reduce((s, e) => s + e.sharpe, 0) / data.length).toFixed(2)
+                ? (data.reduce((s, e) => s + e.sharpeRatio, 0) / data.length).toFixed(2)
                 : '—'}
             </p>
           </div>
           <div className="bg-bg-surface border border-bg-border rounded-lg p-4">
             <p className="text-muted text-[10px] uppercase tracking-widest mb-1">Total P&L</p>
             <p className={`font-mono text-lg font-bold ${
-              data.reduce((s, e) => s + e.pnl, 0) >= 0 ? 'text-profit' : 'text-loss'
+              data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-profit' : 'text-loss'
             }`}>
               {(() => {
-                const totalPnl = data.reduce((s, e) => s + e.pnl, 0);
+                const totalPnl = data.reduce((s, e) => s + (e.pnl || 0), 0);
                 const abs = Math.abs(totalPnl);
                 const formatted = abs >= 1000
                   ? abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

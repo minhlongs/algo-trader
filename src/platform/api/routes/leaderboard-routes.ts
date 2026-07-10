@@ -27,6 +27,8 @@ export interface LeaderboardEntry {
   totalTrades: number;
   profitFactor: number;
   lastUpdated: string;
+  pnl: number;
+  badge?: 'top_performer' | 'rising_star' | 'verified' | 'new' | null;
 }
 
 interface CsvRow {
@@ -124,6 +126,7 @@ function buildLeaderboard(): LeaderboardEntry[] {
       strategyName,
       winRate: accuracy?.winRate ?? (backtest ? backtest.win_rate_pct / 100 : 0),
       sharpeRatio: backtest?.sharpe_ratio ?? 0,
+ pnl: 0,
       maxDrawdown: backtest ? backtest.max_drawdown_pct / 100 : 0,
       totalTrades: backtest?.total_trades ?? accuracy?.totalTrades ?? 0,
       profitFactor: backtest?.profit_factor ?? 0,

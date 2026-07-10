@@ -2,6 +2,9 @@
  * Telegram Bot Command Handlers
  * Individual command handler methods extracted from TelegramBotService.
  * Each handler corresponds to a bot slash command.
+ *
+ * NOTE: user sessions are persisted in D1 via userSessionRepo (not in-memory Map).
+ * grammy passes only (ctx) to command handlers — no Map argument.
  */
 
 import type { Context } from 'grammy';
@@ -9,6 +12,7 @@ import { getRedisClient } from '../../redis';
 import { formatTelegramMessage, getTelegramActionMessage, generateTelegramProgressBar, getShortKey } from '../notifications/alert-formatter';
 import type { UserSession } from './bot';
 import { MarketplaceService } from '../../platform/marketplace/services/marketplace.service';
+import { userSessionRepo } from './user-session-repository-d1';
 
 // Re-export types used by handlers for convenience
 export type { UserSession };
@@ -33,7 +37,7 @@ I'll send you instant alerts when your API usage reaches critical thresholds.
 /limits - View tier limits
 
 Get started by linking your license key with /link <your-key>
-  `.trim();
+`.trim();
 
   await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
 }
@@ -64,18 +68,18 @@ export async function handleHelp(ctx: Context): Promise<void> {
 
 *Support:*
 Contact support for assistance.
-  `.trim();
+`.trim();
 
   await ctx.reply(helpMessage, { parse_mode: 'Markdown' });
 }
 
 // -- /status --------------------------------------------------------------
 
-export async function handleStatus(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+export async function handleStatus(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const session = userSessions.get(userId);
+  const session = await userSessionRepo.getByUserId(userId);
   if (!session || session.licenseKeys.length === 0) {
     await ctx.reply('No license keys linked. Use /link <your-key> to get started.');
     return;
@@ -86,14 +90,14 @@ export async function handleStatus(ctx: Context, userSessions: Map<number, UserS
 ${session.licenseKeys.map(key => `• \`${key}\``).join('\n')}
 
 Use /status <key> for detailed usage.
-  `.trim();
+`.trim();
 
   await ctx.reply(statusMessage, { parse_mode: 'Markdown' });
 }
 
-// -- /link ----------------------------------------------------------------
+// -- /link -----------------------------------------------------------------
 
-export async function handleLink(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+export async function handleLink(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
@@ -104,11 +108,20 @@ export async function handleLink(ctx: Context, userSessions: Map<number, UserSes
   }
 
   const licenseKey = args[1];
-  let session = userSessions.get(userId);
+  let session = await userSessionRepo.getByUserId(userId);
 
   if (!session) {
-    session = { userId, licenseKeys: [], notificationsEnabled: true, lastCommand: 'link' };
-    userSessions.set(userId, session);
+    await userSessionRepo.upsert({
+      userId,
+      licenseKeys: [licenseKey],
+      notificationsEnabled: true,
+      lastCommand: 'link',
+    });
+    await ctx.reply(
+      `✅ License key \`${licenseKey}\` linked successfully!\n\nYou'll now receive alerts for this key.`,
+      { parse_mode: 'Markdown' },
+    );
+    return;
   }
 
   if (session.licenseKeys.includes(licenseKey)) {
@@ -117,17 +130,22 @@ export async function handleLink(ctx: Context, userSessions: Map<number, UserSes
   }
 
   session.licenseKeys.push(licenseKey);
-  session.lastCommand = 'link';
+  await userSessionRepo.upsert({
+    userId,
+    licenseKeys: session.licenseKeys,
+    notificationsEnabled: session.notificationsEnabled,
+    lastCommand: 'link',
+  });
 
   await ctx.reply(
     `✅ License key \`${licenseKey}\` linked successfully!\n\nYou'll now receive alerts for this key.`,
-    { parse_mode: 'Markdown' }
+    { parse_mode: 'Markdown' },
   );
 }
 
-// -- /unlink --------------------------------------------------------------
+// -- /unlink ---------------------------------------------------------------
 
-export async function handleUnlink(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+export async function handleUnlink(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
@@ -138,7 +156,7 @@ export async function handleUnlink(ctx: Context, userSessions: Map<number, UserS
   }
 
   const licenseKey = args[1];
-  const session = userSessions.get(userId);
+  const session = await userSessionRepo.getByUserId(userId);
 
   if (!session) {
     await ctx.reply('No license keys linked.');
@@ -152,31 +170,47 @@ export async function handleUnlink(ctx: Context, userSessions: Map<number, UserS
   }
 
   session.licenseKeys.splice(index, 1);
-  session.lastCommand = 'unlink';
+  await userSessionRepo.upsert({
+    userId,
+    licenseKeys: session.licenseKeys,
+    notificationsEnabled: session.notificationsEnabled,
+    lastCommand: 'unlink',
+  });
 
-  await ctx.reply(`✅ License key \`${licenseKey}\` unlinked.`, { parse_mode: 'Markdown' });
+  await ctx.reply(`✅ License key \`${licenseKey}\` unlinked.`);
 }
 
-// -- /notifications -------------------------------------------------------
+// -- /notifications --------------------------------------------------------
 
-export async function handleNotifications(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+export async function handleNotifications(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  let session = userSessions.get(userId);
+  let session = await userSessionRepo.getByUserId(userId);
 
   if (!session) {
-    session = { userId, licenseKeys: [], notificationsEnabled: true, lastCommand: 'notifications' };
-    userSessions.set(userId, session);
+    await userSessionRepo.upsert({
+      userId,
+      licenseKeys: [],
+      notificationsEnabled: true,
+      lastCommand: 'notifications',
+    });
+    await ctx.reply('🔔 Notifications enabled.\n\nYou will receive threshold alerts.', { parse_mode: 'Markdown' });
+    return;
   }
 
   session.notificationsEnabled = !session.notificationsEnabled;
-  session.lastCommand = 'notifications';
+  await userSessionRepo.upsert({
+    userId,
+    licenseKeys: session.licenseKeys,
+    notificationsEnabled: session.notificationsEnabled,
+    lastCommand: 'notifications',
+  });
 
   const status = session.notificationsEnabled ? 'enabled' : 'disabled';
   await ctx.reply(
     `🔔 Notifications ${status}.\n\nYou will ${session.notificationsEnabled ? '' : 'NOT '}receive threshold alerts.`,
-    { parse_mode: 'Markdown' }
+    { parse_mode: 'Markdown' },
   );
 }
 
@@ -204,18 +238,18 @@ export async function handleLimits(ctx: Context): Promise<void> {
 • 100% - Critical
 
 Upgrade anytime to increase your limits.
-  `.trim();
+`.trim();
 
   await ctx.reply(limitsMessage, { parse_mode: 'Markdown' });
 }
 
 // -- /balance -------------------------------------------------------------
 
-export async function handleBalance(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+export async function handleBalance(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const session = userSessions.get(userId);
+  const session = await userSessionRepo.getByUserId(userId);
   if (!session || session.licenseKeys.length === 0) {
     await ctx.reply('No license keys linked. Use /link <your-key> to get started.');
     return;
@@ -233,7 +267,7 @@ export async function handleBalance(ctx: Context, userSessions: Map<number, User
 *Equity:* $${equity.toFixed(2)}
 
 *Linked Keys:* ${session.licenseKeys.length}
-  `.trim();
+`.trim();
 
   await ctx.reply(balanceMessage, { parse_mode: 'Markdown' });
 }
@@ -249,11 +283,11 @@ interface Position {
   unrealizedPnl: number;
 }
 
-export async function handlePositions(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+export async function handlePositions(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const session = userSessions.get(userId);
+  const session = await userSessionRepo.getByUserId(userId);
   if (!session || session.licenseKeys.length === 0) {
     await ctx.reply('No license keys linked. Use /link <your-key> to get started.');
     return;
@@ -279,46 +313,61 @@ Entry: $${p.entryPrice.toFixed(2)}
 Current: $${p.currentPrice.toFixed(2)}
 P&L: $${p.unrealizedPnl.toFixed(2)}
 `).join('\n')}
-  `.trim();
+`.trim();
 
   await ctx.reply(positionsMessage, { parse_mode: 'Markdown' });
 }
 
 // -- /pnl -----------------------------------------------------------------
 
-export async function handlePnl(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+export async function handlePnl(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const session = userSessions.get(userId);
+  const session = await userSessionRepo.getByUserId(userId);
   if (!session || session.licenseKeys.length === 0) {
     await ctx.reply('No license keys linked. Use /link <your-key> to get started.');
     return;
   }
 
   const redis = getRedisClient();
-  const pnlData = await redis.hgetall(`pnl:${session.licenseKeys[0]}`);
-  const realizedPnl = parseFloat(pnlData.realized || '0');
-  const unrealizedPnl = parseFloat(pnlData.unrealized || '0');
-  const totalTrades = parseInt(pnlData.totalTrades || '0');
-  const winningTrades = parseInt(pnlData.winningTrades || '0');
+  let totalRealized = 0;
+  let totalUnrealized = 0;
+  let totalTrades = 0;
+  let totalWins = 0;
 
-  const winRate = totalTrades > 0 ? ((winningTrades / totalTrades) * 100).toFixed(1) : '0';
+  for (const key of session.licenseKeys) {
+    try {
+      const pnlData = await redis.hgetall(`pnl:${key}`);
+      if (pnlData && pnlData.realized != null) {
+        totalRealized += parseFloat(pnlData.realized as string || '0');
+        totalUnrealized += parseFloat(pnlData.unrealized as string || '0');
+        totalTrades += parseInt(pnlData.totalTrades as string || '0', 10);
+        totalWins += parseInt(pnlData.winningTrades as string || '0', 10);
+      }
+    } catch {
+      // Skip keys with no P&L data
+    }
+  }
 
-  const pnlMessage = `
+  const winRate = totalTrades > 0 ? ((totalWins / totalTrades) * 100).toFixed(1) : '0';
+  const losses = totalTrades - totalWins;
+  const totalPnl = totalRealized + totalUnrealized;
+
+  const msg = `
 📈 *P&L Statistics*
 
-*Realized P&L:* $${realizedPnl.toFixed(2)}
-*Unrealized P&L:* $${unrealizedPnl.toFixed(2)}
-*Total:* $${(realizedPnl + unrealizedPnl).toFixed(2)}
+*Realized P&L:* $${totalRealized.toFixed(2)}
+*Unrealized P&L:* $${totalUnrealized.toFixed(2)}
+*Total P&L:* $${totalPnl.toFixed(2)}
 
 *Trades:* ${totalTrades}
-*Wins:* ${winningTrades}
-*Losses:* ${totalTrades - winningTrades}
+*Wins:* ${totalWins}
+*Losses:* ${losses}
 *Win Rate:* ${winRate}%
-  `.trim();
+`.trim();
 
-  await ctx.reply(pnlMessage, { parse_mode: 'Markdown' });
+  await ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 
 // -- /campaign -------------------------------------------------------------
@@ -350,7 +399,7 @@ ${s.description}
 *Category:* ${s.category}
 *Risk Level:* ${'🔴'.repeat(s.riskLevel) || 'N/A'}
 *Tags:* ${s.tags.join(', ') || 'None'}
-      `.trim();
+`.trim();
       await ctx.reply(msg, { parse_mode: 'Markdown' });
     } catch {
       await ctx.reply('❌ Could not fetch strategy details. Please try again.');
@@ -367,8 +416,8 @@ ${s.description}
       return;
     }
     const lines = result.data.map((s, i) => {
-  const price = 'Free'; // listing unavailable in list view
-      return `${i + 1}. *${s.name}* — ${price}\n   ${(s.description || '').slice(0, 120)}${s.description?.length > 120 ? '…' : ''}`;
+      const price = 'Free'; // listing unavailable in list view
+      return `${i + 1}. *${s.name}* — ${price}\n ${(s.description || '').slice(0, 120)}${s.description?.length > 120 ? '…' : ''}`;
     });
     const msg = `
 📢 *Marketplace Campaigns*
@@ -376,7 +425,7 @@ ${s.description}
 ${lines.join('\n\n')}
 
 Use /campaign <id> for details.
-    `.trim();
+`.trim();
     await ctx.reply(msg, { parse_mode: 'Markdown' });
   } catch {
     await ctx.reply('❌ Could not fetch marketplace campaigns. Please try again later.');
@@ -385,11 +434,11 @@ Use /campaign <id> for details.
 
 // -- /results --------------------------------------------------------------
 
-export async function handleResults(ctx: Context, userSessions: Map<number, UserSession>): Promise<void> {
+export async function handleResults(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) return;
 
-  const session = userSessions.get(userId);
+  const session = await userSessionRepo.getByUserId(userId);
   if (!session || session.licenseKeys.length === 0) {
     await ctx.reply('No license keys linked. Use /link <your-key> to get started.');
     return;
@@ -432,11 +481,11 @@ export async function handleResults(ctx: Context, userSessions: Map<number, User
 *Wins:* ${totalWins}
 *Losses:* ${losses}
 *Win Rate:* ${winRate}%
-  `.trim();
+`.trim();
 
   await ctx.reply(msg, { parse_mode: 'Markdown' });
 }
 
-// -- Alert formatting helpers (thin wrappers kept for cohesion) -----------
+// -- Alert formatting helpers (thin wrappers kept for cohesion) ------------
 
 export { formatTelegramMessage, getTelegramActionMessage, generateTelegramProgressBar, getShortKey };

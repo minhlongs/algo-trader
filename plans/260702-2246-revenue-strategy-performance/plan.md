@@ -31,8 +31,8 @@ Two tracks run in parallel:
 | 2 | [B: Strategy Performance Dashboard](./phase-02-b-strategy-performance-dashboard.md) | ✅ Complete | P1 | A |
 | 3 | [C: Featured Marketplace Listings](./phase-03-c-featured-marketplace-listings.md) | ✅ Complete | P1 | A |
 | 4 | [D: Referral Go-Live](./phase-04-d-referral-go-live.md) | ✅ Complete | P2 | — |
-| 5 | [E: Launch Content](./phase-05-e-launch-content.md) | ⏳ Pending | P1 | A |
-| 6 | [F: Strategy Comparison Report](./phase-06-f-strategy-comparison-report.md) | ⏳ Pending | P2 | A, B |
+| 5 | [E: Launch Content](./phase-05-e-launch-content.md) | ⚠️ Partially Complete | P1 | A |
+| 6 | [F: Strategy Comparison Report](./phase-06-f-strategy-comparison-report.md) | ✅ Complete | P2 | A, B |
 
 ## Dependencies
 

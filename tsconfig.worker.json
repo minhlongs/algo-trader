@@ -3,16 +3,20 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ES2022",
-    "moduleResolution": "bundler",
-    "types": ["node"],
-    "typeRoots": ["./node_modules/@types"],
+    "moduleResolution": "node",
     "outDir": "dist/worker",
-    "declaration": false,
-    "noEmit": true
+    "noEmit": false,
+    "incremental": false,
+    "noEmitOnError": false,
+    "skipLibCheck": true,
+    "strict": false,
+    "typeRoots": ["./node_modules/@types", "./node_modules/@cloudflare"],
+    "types": ["node", "workers-types"]
   },
   "include": [
     "src/platform/workers/**/*.ts",
     "src/durable-objects/**/*.ts",
     "src/regions/**/*.ts"
-  ]
+  ],
+  "exclude": []
 }

@@ -7,6 +7,7 @@
 import type { ReferralCode, ReferralClick, CommissionRecord, ReferralStats, CommissionStatus } from './types';
 import * as crud from './referral-crud';
 import * as analytics from './referral-analytics';
+import { cookieAttributionService } from './cookie-attribution';
 
 export class ReferralRepository {
   // ── Code CRUD ──────────────────────────────────────────
@@ -64,6 +65,30 @@ export class ReferralRepository {
   async getPendingCommissions(periodStart: Date, periodEnd: Date, minAmount = 10) {
     return analytics.getPendingCommissions(periodStart, periodEnd, minAmount);
   }
+// ── Cookie Attribution ──────────────────────────────────
+async createCookieMapping(referralCode: string, ip: string): Promise<string> {
+  return cookieAttributionService.createMapping(referralCode, ip);
+}
+
+async getReferralCodeByCookieHash(cookieHash: string): Promise<string | null> {
+  return cookieAttributionService.getReferralCodeByHash(cookieHash);
+}
+
+async getTrackingByCookieHash(cookieHash: string): Promise<ReferralClick | null> {
+  const code = await cookieAttributionService.getReferralCodeByHash(cookieHash);
+  if (!code) return null;
+  const clicks = await analytics.getClicksByCode(code, 1, 0);
+  return clicks[0] || null;
+}
+
+async recordAttribution(
+  cookieHash: string,
+  tenantId: string,
+  clickId: string,
+  signupTimestamp: Date
+): Promise<void> {
+  return cookieAttributionService.recordAttribution(cookieHash, tenantId, clickId, signupTimestamp);
+}
 }
 
 export const referralRepository = new ReferralRepository();

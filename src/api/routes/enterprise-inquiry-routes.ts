@@ -41,7 +41,7 @@ enterpriseInquiryRouter.post('/inquiries', async (req: Request, res: Response): 
       email,
       companyName,
       contactName,
-      tier: tier as 'growth' | 'scale' | 'unlimited',
+      tier: tier as 'pro' | 'enterprise' | 'master',
       useCase,
       teamSize,
     });

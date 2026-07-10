@@ -1,0 +1,473 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Algo-Trader Signals API v2",
+    "description": "Production-ready trading signal delivery API. Tier-gated access via Bearer API key. Base URL: `https://algo-trader.workers.dev/api/v1/signals`",
+    "version": "2.0.0",
+    "contact": { "name": "Algo-Trader Platform" }
+  },
+  "servers": [
+    { "url": "https://algo-trader.workers.dev/api/v1/signals", "description": "Production" },
+    { "url": "http://localhost:3000/api/v1/signals", "description": "Local dev" }
+  ],
+  "security": [{ "BearerAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API key issued via NOWPayments IPN"
+      }
+    },
+    "schemas": {
+      "Signal": {
+        "type": "object",
+        "description": "Live trading signal emitted by strategy engine",
+        "properties": {
+          "id":          { "type": "string", "description": "SHA-256 of strategy+market+side+bucketTs" },
+          "ts":          { "type": "integer", "description": "Unix ms of signal generation" },
+          "market":      { "type": "string",  "description": "Market identifier, e.g. BTC-USD" },
+          "side":        { "type": "string",  "enum": ["BUY", "SELL"], "description": "Trade direction" },
+          "size":        { "type": "number",  "minimum": 0, "maximum": 1, "description": "Normalized position size" },
+          "confidence":  { "type": "number",  "minimum": 0, "maximum": 1, "description": "Signal confidence score" },
+          "strategy":    { "type": "string" },
+          "ttl":         { "type": "integer", "description": "Seconds until signal expires" }
+        },
+        "required": ["id", "ts", "market", "side", "size", "confidence", "strategy", "ttl"]
+      },
+      "SignalSubscription": {
+        "type": "object",
+        "description": "Subscriber record persisted in D1",
+        "properties": {
+          "id":          { "type": "string" },
+          "subscriberId":{ "type": "string", "description": "Better Auth user ID" },
+          "chatId":      { "type": ["integer", "null"] },
+          "tier":        { "type": "string", "enum": ["FREE", "PRO", "ENTERPRISE"] },
+          "active":      { "type": "boolean" },
+          "createdAt":   { "type": "integer", "description": "Unix ms" },
+          "updatedAt":   { "type": "integer", "description": "Unix ms" }
+        },
+        "required": ["id", "subscriberId", "tier", "active", "createdAt", "updatedAt"]
+      },
+      "SubscribeBody": {
+        "type": "object",
+        "properties": {
+          "chatId": { "type": "integer", "description": "Telegram chat ID for signal delivery" }
+        }
+      },
+      "WebhookBody": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string", "format": "uri", "description": "Webhook endpoint URL" }
+        },
+        "required": ["url"]
+      },
+      "FeedQuery": {
+        "type": "object",
+        "properties": {
+          "since": { "type": "integer", "minimum": 0, "default": 0, "description": "Unix ms — return signals after this timestamp" },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20, "description": "Max results per page" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        },
+        "required": ["error"]
+      },
+      "TierKey": {
+        "type": "string",
+        "enum": ["FREE", "PRO", "ENTERPRISE"]
+      },
+      "TierRank": {
+        "type": "object",
+        "description": "Ordinal ranking for tier comparison (higher = more privileged)",
+        "properties": {
+          "FREE":      { "type": "integer", "enum": [0] },
+          "PRO":       { "type": "integer", "enum": [1] },
+          "ENTERPRISE":{ "type": "integer", "enum": [2] }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/subscribe": {
+      "post": {
+        "operationId": "subscribe",
+        "summary": "Create or update signal subscription",
+        "description": "Creates or updates a signal subscription for the authenticated user. Requires SIGNALS_BASIC tier (PRO minimum).",
+        "tags": ["Signals API"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SubscribeBody" },
+              "examples": {
+                "withTelegram": {
+                  "summary": "Subscribe with Telegram chat",
+                  "value": { "chatId": 123456789 }
+                },
+                "basic": {
+                  "summary": "Basic subscription",
+                  "value": {}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subscription created/updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data":    { "$ref": "#/components/schemas/SignalSubscription" },
+                    "message": { "type": "string", "example": "Subscription updated" }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": "uuid-here",
+                    "subscriberId": "user_abc123",
+                    "chatId": 123456789,
+                    "tier": "PRO",
+                    "active": true,
+                    "createdAt": 1752000000000,
+                    "updatedAt": 1752000000000
+                  },
+                  "message": "Subscription updated"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Invalid body: chatId must be a number" } } }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Valid API key required" } } }
+          },
+          "403": {
+            "description": "Insufficient tier (requires PRO minimum)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Insufficient tier" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Failed to create subscription" } } }
+          }
+        }
+      }
+    },
+    "/feed": {
+      "get": {
+        "operationId": "getFeed",
+        "summary": "Get live signal feed",
+        "description": "Returns live trading signals filtered for the subscriber's tier. Rate-limited to 30 req/min. Results are cached.",
+        "tags": ["Signals API"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "since", "in": "query", "schema": { "type": "integer", "minimum": 0, "default": 0 }, "description": "Unix ms — only return signals generated after this timestamp" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }, "description": "Max results per page" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Signal feed response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data":   { "type": "array", "items": { "$ref": "#/components/schemas/Signal" } },
+                    "count":  { "type": "integer" },
+                    "tier":   { "$ref": "#/components/schemas/TierKey" },
+                    "cached": { "type": "boolean", "description": "true if served from cache" }
+                  }
+                },
+                "example": {
+                  "data": [
+                    { "id": "abc123", "ts": 1752000000000, "market": "BTC-USD", "side": "BUY", "size": 0.8, "confidence": 0.85, "strategy": "rsi-sma-crossover", "ttl": 3600 }
+                  ],
+                  "count": 1,
+                  "tier": "PRO",
+                  "cached": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "403": {
+            "description": "Insufficient tier",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "429": {
+            "description": "Rate limit exceeded (30 req/min)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Rate limit exceeded for signal feed" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/webhook": {
+      "post": {
+        "operationId": "registerWebhook",
+        "summary": "Register webhook for signal delivery",
+        "description": "Registers a webhook URL. The platform calls this URL on each new signal published for this subscriber.",
+        "tags": ["Signals API"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WebhookBody" },
+              "examples": {
+                "example": {
+                  "summary": "Register callback URL",
+                  "value": { "url": "https://myapp.com/api/signals/callback" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data":    { "type": "object", "properties": { "subscriberId": { "type": "string" }, "url": { "type": "string" } } },
+                    "message": { "type": "string", "example": "Webhook registered" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid webhook URL",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Invalid webhook URL" } } }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "403": {
+            "description": "Insufficient tier",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/subscriptions/active": {
+      "get": {
+        "operationId": "listActiveSubscriptions",
+        "summary": "List all active subscriptions",
+        "description": "Admin/internal endpoint. Lists all active signal subscriptions across all tiers.",
+        "tags": ["Signal Subscriptions"],
+        "responses": {
+          "200": {
+            "description": "Active subscriptions list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/SignalSubscription" } }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/subscriptions/{tenantId}": {
+      "get": {
+        "operationId": "getSubscription",
+        "summary": "Get subscription by tenant",
+        "description": "Returns subscription record for a specific tenant (mapped to subscriberId).",
+        "tags": ["Signal Subscriptions"],
+        "parameters": [
+          { "name": "tenantId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Subscriber ID (tenant identifier)" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/SignalSubscription" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Subscription not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Subscription not found" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/subscriptions": {
+      "post": {
+        "operationId": "createOrUpdateSubscription",
+        "summary": "Create or update signal subscription",
+        "description": "Create or update subscription. Requires SIGNALS_BASIC tier (PRO minimum).",
+        "tags": ["Signal Subscriptions"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SubscribeBody" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Subscription created/updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data":    { "$ref": "#/components/schemas/SignalSubscription" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Missing or invalid API key",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "403": {
+            "description": "Insufficient tier",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/subscriptions/{subscriptionId}": {
+      "delete": {
+        "operationId": "cancelSubscription",
+        "summary": "Cancel subscription",
+        "description": "Cancels a signal subscription by setting active=false. Subscription must be currently active.",
+        "tags": ["Signal Subscriptions"],
+        "parameters": [
+          { "name": "subscriptionId", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Subscription UUID" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subscription cancelled",
+            "content": { "application/json": { "example": { "message": "Subscription cancelled" } } }
+          },
+          "404": {
+            "description": "Subscription not found or already cancelled",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Subscription not found or already cancelled" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/usage/{subscriberId}": {
+      "get": {
+        "operationId": "getUsageSnapshot",
+        "summary": "Get usage snapshot for subscriber",
+        "description": "Returns usage metrics for a specific subscriber. (Stub: full metering not yet wired — Phase 2)",
+        "tags": ["Usage & Billing"],
+        "parameters": [
+          { "name": "subscriberId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "501": {
+            "description": "Usage metering not yet wired (Phase 2 stub)",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" }, "example": { "error": "Usage metering not yet wired (Phase 2)" } } }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/billing/stats": {
+      "get": {
+        "operationId": "getBillingStats",
+        "summary": "Get tier breakdown for billing dashboard",
+        "description": "Returns active subscription counts grouped by tier. Partial stats until metering layer is wired.",
+        "tags": ["Usage & Billing"],
+        "responses": {
+          "200": {
+            "description": "Tier breakdown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": { "type": "integer" },
+                      "example": { "FREE": 10, "PRO": 45, "ENTERPRISE": 3 }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Signals API", "description": "Core signal subscription and live feed endpoints" },
+    { "name": "Signal Subscriptions", "description": "Subscription CRUD — manage signal subscriptions" },
+    { "name": "Usage & Billing", "description": "Usage metering and billing statistics" }
+  ]
+}

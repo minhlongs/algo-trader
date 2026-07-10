@@ -17,6 +17,15 @@ import { signalsRouter } from './routes/signals';
 import { adminRouter } from './routes/admin';
 import { healthRouter } from './routes/health';
 import { revenueRouter } from './routes/revenue';
+import { marketplaceStrategyRouter } from './routes/marketplace-strategy-routes';
+import { marketplaceSubscriptionRouter } from './routes/marketplace-subscription-routes';
+import { marketplaceSubscriptionStatsRouter } from './routes/marketplace-subscription-stats-routes';
+import { marketplaceSubscriptionEnhancementsRouter } from './routes/marketplace-subscription-enhancements';
+import { marketplaceReviewRouter } from './routes/marketplace-review-routes';
+import { marketplaceDisputeRouter } from './routes/marketplace-dispute-routes';
+import { marketplaceCreatorRevenueRouter } from './routes/marketplace-creator-revenue-routes';
+import { marketplaceProviderRouter } from './routes/marketplace-provider-routes';
+import { marketplaceListingBadgeRouter, marketplaceBadgeDefinitionRouter } from './routes/marketplace-badge-routes';
 import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook';
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
@@ -25,6 +34,9 @@ import { subscriberPnlRouter } from './routes/subscriber-pnl-routes';
 import { enterpriseInquiryRouter } from './routes/enterprise-inquiry-routes';
 import { createSignalIngestRouter } from './routes/signal-ingest-routes';
 import { createAdminQwenRouter } from './routes/admin-qwen-routes';
+import { signalSubscriptionRouter } from './routes/signal-subscription-routes';
+import { leaderboardRouter } from './routes/leaderboard-routes';
+import { coPilotRouter } from './routes/co-pilot-routes';
 import { signalStoreD1 } from '../../signal/signal-store-d1';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
@@ -148,7 +160,11 @@ export class ApiServer {
     // Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon
     // Phase 04: stub replaced with real D1-backed SignalStoreD1
     const signalIngestRouter = createSignalIngestRouter(signalStoreD1);
-    this.app.use('/api/v1/signals', signalIngestRouter);
+    this.app.use('/api/v1/signals/ingest', signalIngestRouter);
+this.app.use('/api/v1/signals', signalSubscriptionRouter);
+
+// Co-pilot routes: AI trading assistant (PRO+ tier gated, rate limited)
+this.app.use('/api/v1/co-pilot', coPilotRouter);
 
     // Admin Qwen routes: kill switch + status (L1/L2 rollback layers)
     this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());

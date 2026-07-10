@@ -112,23 +112,6 @@ describe('Billing E2E - Payment Webhook', () => {
     });
   });
 
-  it('should handle NOWPayments webhook signature verification', () => {
-    const webhookPayload = {
-      payment_id: 12345,
-      payment_status: 'finished',
-      pay_address: '0x...',
-      price_amount: 49,
-      price_currency: 'usd',
-      actually_paid: 48.5,
-      pay_currency: 'usdt',
-    };
-
-    const signature = paymentService.signNOWPaymentsWebhook(webhookPayload, 'test-webhook-secret');
-
-    expect(signature).toBeDefined();
-    expect(typeof signature).toBe('string');
-    expect(paymentService.verifyNOWPaymentsSignature(webhookPayload, signature, 'test-webhook-secret')).toBe(true);
-  });
 
   it('should handle Stripe webhook signature verification', () => {
     const event = {

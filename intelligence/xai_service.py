@@ -770,7 +770,8 @@ Write a clear explanation of why this trade was made, referencing the key factor
     def extract_strategy_rules(
         self,
         strategy_code: str,
-        strategy_name: str
+        strategy_name: str,
+        use_llm: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Extract human-readable trading rules from strategy code.

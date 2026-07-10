@@ -39,7 +39,7 @@ export async function verifyPassword(password: string, hash: string, salt: strin
   const saltBytes = fromHex(salt);
   const key = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']);
   const derived = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: saltBytes, iterations: 100000, hash: 'SHA-256' }, key, 256,
+    { name: 'PBKDF2', salt: saltBytes as unknown as ArrayBuffer, iterations: 100000, hash: 'SHA-256' }, key, 256,
   );
   return toHex(derived) === hash;
 }

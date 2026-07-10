@@ -5,7 +5,6 @@
  */
 
 import { logger } from '../utils/logger';
-import { externalApiLatency, recordExternalApiLatency } from '../platform/middleware/prometheus-metrics';
 
 export interface RegionMetrics {
   region: string;
@@ -65,8 +64,14 @@ class LatencyMonitor {
       const latency = Date.now() - start;
       const success = res.status === 200;
 
-      // Record to Prometheus (as external API latency)
-      recordExternalApiLatency('probe', region, region, latency / 1000);
+    // Record to Prometheus (dynamic import to avoid module-scope crash)
+    try {
+      const mod = await import('../platform/middleware/prometheus-metrics');
+      mod.recordExternalApiLatency('probe', region, region, latency / 1000);
+    } catch {
+      // Prometheus unavailable in Workers runtime -- silently skip
+    }
+
 
       return {
         region,

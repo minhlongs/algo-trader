@@ -370,16 +370,15 @@ async def get_feature_importance_chart(
 
 
 @router.get("/xai/health")
-async def health_check(
-    xai_service: XAIService = Depends(get_xai_service)
-) -> Dict[str, Any]:
-    """Health check for XAI service."""
+async def health_check() -> Dict[str, Any]:
+    """Health check for XAI service (works even if service not initialized)."""
+    service = _xai_service
     return {
-        "status": "healthy",
-        "shap_available": xai_service._shap_available if hasattr(xai_service, '_shap_available') else False,
-        "lime_available": xai_service._lime_available if hasattr(xai_service, '_lime_available') else False,
-        "llm_enabled": xai_service.deepseek_api_key is not None,
-        "persistence_enabled": xai_service.enable_persistence,
+        "status": "healthy" if service is not None else "degraded",
+        "shap_available": getattr(service, '_shap_available', False) if service else False,
+        "lime_available": getattr(service, '_lime_available', False) if service else False,
+        "llm_enabled": getattr(service, 'deepseek_api_key', None) is not None if service else False,
+        "persistence_enabled": getattr(service, 'enable_persistence', False) if service else False,
         "timestamp": datetime.now().isoformat()
     }
 

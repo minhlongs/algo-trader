@@ -34,18 +34,20 @@ class HealthResponse(BaseModel):
     finbert_loaded: bool
     news_sources: int
     polymarket_api: bool
+    xai_available: bool
 
 
 # ──── Module References (populated in lifespan) ────
 
 _news_mod = None
 _pred_mod = None
+_xai_mod = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize all skill modules on startup."""
-    global _news_mod, _pred_mod
+    global _news_mod, _pred_mod, _xai_mod
 
     logger.info("Starting AlphaEar Intelligence Sidecar...")
 
@@ -98,6 +100,19 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning(f"Prediction endpoints not available: {exc}")
 
+
+    # XAI service — initialized with persistence
+    try:
+        from xai_service import create_xai_service # noqa: PLC0415
+        _xai_service_inst = create_xai_service()
+        import xai_endpoints # noqa: PLC0415
+        xai_endpoints.set_xai_service(_xai_service_inst)
+        _xai_mod = xai_endpoints
+        logger.info("XAI service loaded")
+    except Exception as exc:
+        logger.warning(f"XAI service not available: {exc}")
+        _xai_service_inst = None
+
     yield
     logger.info("Shutting down AlphaEar Intelligence Sidecar")
 
@@ -114,6 +129,7 @@ for _name, _mod_name in [
     ("news-endpoints", "news_endpoints"),
     ("prediction-endpoints", "prediction_endpoints"),
     ("signal-tracker", "signal_tracker_endpoint"),
+    ("xai-endpoints", "xai_endpoints"),
 ]:
     try:
         import importlib  # noqa: PLC0415
@@ -140,12 +156,14 @@ async def health():
         except Exception:
             pass
 
+    xai_ok = _xai_mod is not None
     return HealthResponse(
         status="healthy",
         kronos_loaded=k_engine is not None and k_engine.loaded,
         finbert_loaded=s_tools is not None,
         news_sources=len(getattr(n_tools, "SOURCES", [])) if n_tools else 0,
         polymarket_api=pm_ok,
+        xai_available=xai_ok,
     )
 
 

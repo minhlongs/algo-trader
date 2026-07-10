@@ -1,7 +1,7 @@
 ---
 title: "Enterprise Consolidation + Investor One-Pager"
 description: "Scope: enterprise page consolidation (pricing+contact→1 route) + investor one-pager full rewrite"
-status: pending
+status: completed
 priority: P1
 branch: main
 tags:
@@ -28,11 +28,11 @@ brainstorm: plans/reports/brainstorm-260703-1337-next-wave-report.md
 
 | Phase | Name | Status | Effort |
 |-------|------|--------|--------|
-| 1 | [Scout & Verify](./phase-01-scout-verify.md) | Pending | S |
-| 2 | [Enterprise Consolidation](./phase-02-enterprise-consolidation.md) | Pending | S |
-| 3 | [Investor One-Pager Rewrite](./phase-03-investor-one-pager-rewrite.md) | Pending | S |
-| 4 | [Fix Enterprise Backend](./phase-04-fix-enterprise-backend.md) | Pending | S |
-| 5 | [Verify & Merge](./phase-05-verify-merge.md) | Pending | S |
+| 1 | [Scout & Verify](./phase-01-scout-verify.md) | Completed | S |
+| 2 | [Enterprise Consolidation](./phase-02-enterprise-consolidation.md) | Completed | S |
+| 3 | [Investor One-Pager Rewrite](./phase-03-investor-one-pager-rewrite.md) | Completed | S |
+| 4 | [Fix Enterprise Backend](./phase-04-fix-enterprise-backend.md) | Completed | S |
+| 5 | [Verify & Merge](./phase-05-verify-merge.md) | Completed | S |
 
 Phases 1→(2+4)→5 sequential. Phase 3 runs parallel to everything (markdown only, no code changes).
 

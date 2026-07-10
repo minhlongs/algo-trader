@@ -7,7 +7,7 @@
 import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import { hashString } from '../../shared/utils/consistent-hash';
-import type { IStrategy, StrategySignal } from './types';
+import type { IStrategy } from './types';
 import { recordShardLatency } from '../../middleware/prometheus-metrics';
 
 // Configuration
@@ -105,7 +105,8 @@ export class StrategyRouter {
     options?: { timeoutMs?: number }
   ): Promise<{
     success: boolean;
-    signal?: StrategySignal;
+  signal?: 'BUY' | 'SELL' | 'HOLD';
+  confidence?: number;
     shardId: number;
     latencyMs: number;
     error?: string;
@@ -156,7 +157,8 @@ export class StrategyRouter {
 
       return {
         success: true,
-        signal: result,
+  signal: result.signal,
+  confidence: result.confidence,
         shardId,
         latencyMs,
       };
@@ -176,7 +178,9 @@ export class StrategyRouter {
         shardId,
         latencyMs,
         error: String(error),
-      };
+  signal: 'HOLD',
+  confidence: 0,
+ };
     }
   }
 

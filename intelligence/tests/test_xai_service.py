@@ -7,13 +7,23 @@ from pathlib import Path
 import tempfile
 import shutil
 
-from intelligence.xai_service import (
-    XAIService,
-    ExplanationResult,
-    FeatureExplanation,
-    TradeRationale,
-    VisualizationData
-)
+# Support both `cd intelligence && python -m pytest tests/...` and parent-dir runs
+try:
+    from intelligence.xai_service import (
+        XAIService,
+        ExplanationResult,
+        FeatureExplanation,
+        TradeRationale,
+        VisualizationData,
+    )
+except ModuleNotFoundError:
+    from xai_service import (
+        XAIService,
+        ExplanationResult,
+        FeatureExplanation,
+        TradeRationale,
+        VisualizationData,
+    )
 
 class TestXAIService:
     """Test suite for XAIService."""
@@ -55,7 +65,7 @@ class TestXAIService:
     def sample_model(self):
         """Mock model for testing."""
         class MockModel:
-            def predict(self, obs):
+            def predict(self, obs, **kwargs):
                 return np.array([0.75]), None
         return MockModel()
 
@@ -441,24 +451,24 @@ class TestXAIService:
 
     def test_database_table_creation(self, temp_db):
         """Test database tables are created correctly."""
+        from intelligence.xai_service import XAIService
+
+        # Initialize XAIService with persistence to create tables
+        service = XAIService(
+            use_shap=False,
+            use_lime=False,
+            enable_persistence=True,
+            db_path=temp_db,
+        )
+        assert service.enable_persistence is True
+
         import sqlite3
         conn = sqlite3.connect(temp_db)
         cursor = conn.cursor()
-
-        # Check explanations table exists
-        cursor.execute("""
-            SELECT name FROM sqlite_master
-            WHERE type='table' AND name='explanations'
-        """)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='explanations'")
         assert cursor.fetchone() is not None
-
-        # Check strategy_rules table exists
-        cursor.execute("""
-            SELECT name FROM sqlite_master
-            WHERE type='table' AND name='strategy_rules'
-        """)
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='strategy_rules'")
         assert cursor.fetchone() is not None
-
         conn.close()
 
     def test_rsi_condition_description(self, xai_service):

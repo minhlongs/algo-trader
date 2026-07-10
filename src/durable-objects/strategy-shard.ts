@@ -8,7 +8,7 @@ import { DurableObject, DurableObjectState, DurableObjectNamespace } from '@clou
 // Note: DO env bindings accessed via state.env in runtime but type definition varies.
 // Using 'any' for env access to avoid type errors with bindings.
 
-import { getRedisClient, type RedisClientType } from '../redis';
+import type { RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 import { ShardManager } from './shard-manager';
 import type { IStrategy } from '../strategies/types';
@@ -40,13 +40,15 @@ export interface ShardMetrics {
 
 export class StrategyShard {
   private state: DurableObjectState;
-  private redis: RedisClientType;
+  private redis: RedisClientType | null = null;
+  private redisInitPromise: Promise<RedisClientType | null> | null = null;
   private shardId: number;
   private currentEnv?: Env; // Saved from fetch call for alarm() access
 
   // Strategy instances (4-5 per shard)
   private strategies: Map<string, IStrategy> = new Map();
   private strategyLoader: StrategyLoader;
+
 
   // Metrics and backpressure
   private metrics: ShardMetrics = {
@@ -65,7 +67,7 @@ export class StrategyShard {
 
   constructor(state: DurableObjectState, shardId?: number) {
     this.state = state;
-    this.redis = getRedisClient();
+    // Redis lazy-loaded via getRedis() - avoids ioredis at module scope
 
  // Seed env for tests/early registration (fetch() will overwrite with full env)
  this.currentEnv = (state as any).env;
@@ -106,7 +108,7 @@ export class StrategyShard {
         try {
           const strategy = await this.strategyLoader.loadStrategy(strategyId);
           if (strategy) {
-            this.strategies.set(strategyId, (strategy as IStrategy));
+            this.strategies.set(strategyId, (strategy as any as IStrategy));
             logger.info('[StrategyShard] Loaded strategy', {
               shardId: this.shardId,
               strategyId,
@@ -142,12 +144,32 @@ export class StrategyShard {
   /**
    * Get strategy assignments for this shard
    */
+/** Lazy Redis init - avoids loading ioredis at module scope (Node.js-only) */
+private async getRedis(): Promise<RedisClientType | null> {
+ if (this.redis) return this.redis;
+ if (this.redisInitPromise) return this.redisInitPromise;
+ this.redisInitPromise = (async (): Promise<RedisClientType | null> => {
+   try {
+     const mod = await import('../redis');
+     this.redis = mod.getRedisClient();
+     return this.redis;
+   } catch (err) {
+     logger.warn('[StrategyShard] Redis unavailable in WASM runtime', { error: String(err) });
+     return null;
+   }
+ })();
+ return this.redisInitPromise;
+}
+
   private async getStrategyAssignments(): Promise<string[]> {
     const assignmentsKey = `shard:${this.shardId}:strategies`;
-    const cached = await this.redis.smembers(assignmentsKey);
-    if (cached.length > 0) {
-      return cached;
-    }
+ const _r = await this.getRedis();
+ if (_r) {
+    const cached = await _r.smembers(assignmentsKey);
+     if (cached.length > 0) {
+        return cached;
+     }
+ }
 
     const stored = await this.state.storage.get<string[]>('assignedStrategies');
     if (stored) {
@@ -543,11 +565,14 @@ export class StrategyShard {
         await shardManager.updateShardHealth(this.shardId, health).catch(() => {});
       }
 
-      await this.redis.hset(
-        'shard:health',
-        this.shardId.toString(),
-        JSON.stringify(health)
-      );
+ const _r2 = await this.getRedis();
+ if (_r2) {
+  await _r2.hset(
+  'shard:health',
+  this.shardId.toString(),
+  JSON.stringify(health)
+  );
+ }
     } catch (error) {
       logger.error('[StrategyShard] Alarm failed:', error);
     }

@@ -44,7 +44,7 @@ export interface AuditLogFilters {
 export type { BatchWriteEntry, BatchWriteResult };
 
 export class AuditLogService {
-  private static instance: AuditLogService;
+  private static instance: AuditLogService | null;
   private logs: Map<string, AuditLog> = new Map();
   private licenseLogs: Map<string, AuditLog[]> = new Map();
   private retentionDays: number;
@@ -55,7 +55,11 @@ export class AuditLogService {
     this.batchSize = parseInt(config.AUDIT_BATCH_SIZE || '100', 10);
   }
 
-  static getInstance(): AuditLogService {
+  static resetInstance(): void {
+  AuditLogService.instance = null;
+ }
+
+ static getInstance(): AuditLogService {
     if (!AuditLogService.instance) {
       AuditLogService.instance = new AuditLogService();
     }

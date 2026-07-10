@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ENTERPRISE_PLANS, type EnterprisePlanKey } from '../lib/enterprise-plans';
+import { ENTERPRISE_PLANS, type EnterprisePlanKey } from '../../lib/enterprise-plans';
 
 interface EnterpriseInquiry {
   id: string;

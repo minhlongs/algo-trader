@@ -6,11 +6,11 @@
  * and subscription lifecycle (create, read, list, cancel).
  *
  * Tier rate limits (signals/minute):
- *   FREE:  2
- *   STARTER: 10
- *   PRO:     30
- *   ENTERPRISE: 120
- *   MASTER:   unlimited (-1)
+ * FREE: 2
+ * STARTER: 10
+ * PRO: 30
+ * ENTERPRISE: 120
+ * MASTER: unlimited (-1)
  */
 
 import { logger } from '../../shared/utils/logger';
@@ -23,7 +23,9 @@ export interface SignalSubscription {
   tier: TierLabel;
   status: SubscriptionStatus;
   webhookUrl: string | null;
+  chatId: number | null;
   createdAt: Date;
+  updatedAt: Date;
   expiresAt: Date | null;
 }
 
@@ -76,7 +78,9 @@ export class SignalSubscriptionService {
       tier: input.tier,
       status: 'active',
       webhookUrl: input.webhookUrl ?? null,
+      chatId: null,
       createdAt: now,
+      updatedAt: now,
       expiresAt: input.expiresAt ?? null,
     };
 

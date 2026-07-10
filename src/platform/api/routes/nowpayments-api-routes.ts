@@ -20,7 +20,7 @@ const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
 const NOWPAYMENTS_API_BASE = 'https://api.nowpayments.io/v1';
 
 const invoiceSchema = z.object({
-  tier: z.enum(['PRO', 'ENTERPRISE', 'MASTER']),
+  tier: z.enum(['PRO', 'ENTERPRISE', 'MASTER', 'SIGNALS_BASIC', 'SIGNALS_PRO', 'SIGNALS_ENTERPRISE']),
 });
 
 export const nowpaymentsApiRouter: Router = Router();

@@ -9,7 +9,7 @@ import { LeaderboardBadge } from './leaderboard-badge';
 
 interface LeaderboardRowProps {
   entry: LeaderboardEntry;
-  isTop3: boolean;
+  rank: number;
 }
 
 function fmtUsd(n: number): string {
@@ -34,15 +34,15 @@ const RANK_MEDAL: Record<number, string> = {
   3: 'text-bronze',
 };
 
-export function LeaderboardRow({ entry, isTop3 }: LeaderboardRowProps) {
-  const { rank, strategy, winRate, sharpe, pnl, drawdown, trades, badge } = entry;
+export function LeaderboardRow({ entry, rank }: LeaderboardRowProps) {
+  const { strategyName: strategy, winRate, sharpeRatio: sharpe, pnl = 0, maxDrawdown: drawdown, totalTrades: trades, badge } = entry;
   const medalColor = RANK_MEDAL[rank] ?? 'text-muted';
 
   return (
-    <tr className={`border-b border-bg-border/50 hover:bg-bg-surface/60 transition-colors ${isTop3 ? 'bg-bg-surface/40' : ''}`}>
+    <tr className={`border-b border-bg-border/50 hover:bg-bg-surface/60 transition-colors ${rank <= 3 ? 'bg-bg-surface/40' : ''}`}>
       {/* Rank */}
       <td className="px-3 py-2.5">
-        <span className={`font-mono text-sm font-bold ${isTop3 ? medalColor : 'text-muted'}`}>
+        <span className={`font-mono text-sm font-bold ${rank <= 3 ? medalColor : 'text-muted'}`}>
           {rank}
         </span>
       </td>

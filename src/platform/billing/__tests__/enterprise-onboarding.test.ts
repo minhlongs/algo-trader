@@ -41,7 +41,7 @@ describe('enterprise-inquiry-store', () => {
       email: 'test@acme.com',
       companyName: 'Acme Corp',
       contactName: 'Alice',
-      tier: 'growth',
+      tier: 'pro',
       useCase: 'Automate prediction market operations',
     });
 
@@ -49,7 +49,7 @@ describe('enterprise-inquiry-store', () => {
     expect(inq.status).toBe('new');
     expect(inq.paperdemoProvisioned).toBe(false);
     expect(inq.email).toBe('test@acme.com');
-    expect(inq.tier).toBe('growth');
+    expect(inq.tier).toBe('pro');
     expect(typeof inq.createdAt).toBe('string');
   });
 
@@ -58,7 +58,7 @@ describe('enterprise-inquiry-store', () => {
       email: 'byid@corp.io',
       companyName: 'Corp',
       contactName: 'Bob',
-      tier: 'scale',
+      tier: 'enterprise',
       useCase: 'Scale our trading ops',
     });
     expect(enterpriseInquiryStore.getById(inq.id)).toEqual(inq);
@@ -73,7 +73,7 @@ describe('enterprise-inquiry-store', () => {
       email: 'update@corp.io',
       companyName: 'UpdateCo',
       contactName: 'Carol',
-      tier: 'unlimited',
+      tier: 'master',
       useCase: 'Full platform for hedge fund desk',
     });
     const updated = enterpriseInquiryStore.update(inq.id, {
@@ -91,11 +91,11 @@ describe('enterprise-inquiry-store', () => {
   it('list returns inquiries sorted newest first (descending createdAt)', () => {
     const a = enterpriseInquiryStore.create({
       email: 'a@sort.test', companyName: 'A', contactName: 'A',
-      tier: 'growth', useCase: 'sort test A',
+      tier: 'pro', useCase: 'sort test A',
     });
     const b = enterpriseInquiryStore.create({
       email: 'b@sort.test', companyName: 'B', contactName: 'B',
-      tier: 'scale', useCase: 'sort test B',
+      tier: 'enterprise', useCase: 'sort test B',
     });
     const list = enterpriseInquiryStore.list();
     const ids = list.map((i) => i.id);
@@ -111,13 +111,13 @@ describe('enterprise-inquiry-store', () => {
 
 describe('ENTERPRISE_ACV constants', () => {
   it('has correct ACV values', () => {
-    expect(ENTERPRISE_ACV.growth).toBe(49_000);
-    expect(ENTERPRISE_ACV.scale).toBe(199_000);
-    expect(ENTERPRISE_ACV.unlimited).toBe(499_000);
+    expect(ENTERPRISE_ACV.pro).toBe(99 * 12);
+    expect(ENTERPRISE_ACV.enterprise).toBe(299 * 12);
+    expect(ENTERPRISE_ACV.master).toBe(999 * 12);
   });
 
   it('has label for every tier', () => {
-    const tiers: EnterpriseTier[] = ['growth', 'scale', 'unlimited'];
+    const tiers: EnterpriseTier[] = ['pro', 'enterprise', 'master'];
     for (const t of tiers) {
       expect(ENTERPRISE_TIER_LABELS[t]).toBeTruthy();
     }
@@ -128,7 +128,7 @@ describe('notifyTam', () => {
   it('returns false when EmailService not initialised (graceful degradation)', async () => {
     const inq = enterpriseInquiryStore.create({
       email: 'tam-test@corp.com', companyName: 'TamCo', contactName: 'Dave',
-      tier: 'growth', useCase: 'TAM notification test case',
+      tier: 'pro', useCase: 'TAM notification test case',
     });
     // EmailService mock returns isInitialized: false → should not throw, returns false
     const result = await notifyTam(inq);
@@ -140,7 +140,7 @@ describe('provisionPaperDemo', () => {
   it('returns credentials with correct shape', async () => {
     const inq = enterpriseInquiryStore.create({
       email: 'demo@prospect.com', companyName: 'ProspectCo', contactName: 'Eve',
-      tier: 'scale', useCase: 'Paper demo provisioning test case',
+      tier: 'enterprise', useCase: 'Paper demo provisioning test case',
     });
     const creds = await provisionPaperDemo(inq);
     expect(creds).not.toBeNull();
@@ -154,7 +154,7 @@ describe('provisionPaperDemo', () => {
   it('expiry is ~30 days from now', async () => {
     const inq = enterpriseInquiryStore.create({
       email: 'expiry@prospect.com', companyName: 'ExpiryCo', contactName: 'Frank',
-      tier: 'unlimited', useCase: 'Expiry check for paper demo',
+      tier: 'master', useCase: 'Expiry check for paper demo',
     });
     const before = Date.now();
     const creds = await provisionPaperDemo(inq);
@@ -174,7 +174,7 @@ describe('EnterpriseOnboardingService', () => {
         email: 'not-an-email',
         companyName: 'TestCo',
         contactName: 'Alice',
-        tier: 'growth',
+        tier: 'pro',
         useCase: 'Testing invalid email path in service',
       })
     ).rejects.toThrow('Invalid email address');
@@ -186,7 +186,7 @@ describe('EnterpriseOnboardingService', () => {
         email: 'valid@corp.com',
         companyName: '   ',
         contactName: 'Alice',
-        tier: 'growth',
+        tier: 'pro',
         useCase: 'Testing empty company name validation',
       })
     ).rejects.toThrow('Company name is required');
@@ -198,7 +198,7 @@ describe('EnterpriseOnboardingService', () => {
         email: 'short@corp.com',
         companyName: 'ShortCo',
         contactName: 'Alice',
-        tier: 'growth',
+        tier: 'pro',
         useCase: 'Too short',
       })
     ).rejects.toThrow('Use case description');
@@ -221,7 +221,7 @@ describe('EnterpriseOnboardingService', () => {
       email: 'valid-full@enterprise.com',
       companyName: 'Enterprise Ltd',
       contactName: 'Grace',
-      tier: 'scale',
+      tier: 'enterprise',
       useCase: 'We need a full-featured prediction market operations platform for our fund.',
       teamSize: '25-50',
     });
@@ -241,7 +241,7 @@ describe('EnterpriseOnboardingService', () => {
       email,
       companyName: 'DupCo',
       contactName: 'Hank',
-      tier: 'growth',
+      tier: 'pro',
       useCase: 'First inquiry from this company to test duplicate guard.',
     });
 
@@ -250,7 +250,7 @@ describe('EnterpriseOnboardingService', () => {
         email,
         companyName: 'DupCo',
         contactName: 'Hank',
-        tier: 'scale',
+        tier: 'enterprise',
         useCase: 'Second inquiry — should be blocked by duplicate guard logic.',
       })
     ).rejects.toThrow('open enterprise inquiry already exists');
@@ -269,7 +269,7 @@ describe('EnterpriseOnboardingService', () => {
       email: 'update-svc@corp.io',
       companyName: 'UpdateSvcCo',
       contactName: 'Iris',
-      tier: 'unlimited',
+      tier: 'master',
       useCase: 'Testing status update through the enterprise onboarding service.',
     });
 

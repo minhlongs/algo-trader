@@ -3,6 +3,7 @@ import { ErrorBoundary } from './components/error-boundary';
 import { LayoutShell } from './components/layout-shell';
 import { AuthGuard } from './components/auth-guard';
 import { ToastContainer } from './components/notifications/ToastContainer';
+import { CoPilotChat } from './components/co-pilot/co-pilot-chat';
 import { DashboardPage } from './pages/dashboard-page';
 import { BacktestsPage } from './pages/backtests-page';
 import { MarketplacePage } from './pages/marketplace-page';
@@ -13,6 +14,7 @@ import { LandingPage } from './pages/landing-page';
 import { LandingSoloQuant } from './pages/landing';
 import { ManifestoPage } from './pages/manifesto';
 import { MethodologyPage } from './pages/methodology';
+import { EnterprisePage } from './pages/enterprise-page';
 import { PricingPage } from './pages/pricing-page';
 import { LoginPage } from './pages/login-page';
 import { SignupPage } from './pages/signup-page';
@@ -25,6 +27,7 @@ import { SetupGuidePage } from './pages/setup-guide-page';
 import { TermsPage } from './pages/terms-page';
 import { PrivacyPage } from './pages/privacy-page';
 import { RiskSettingsPage } from './pages/risk-settings-page';
+import { LeaderboardPage } from './pages/leaderboard-page';
 
 /**
  * Handle uncaught errors in the app.
@@ -38,7 +41,10 @@ function handleGlobalError(error: Error): void {
 export function App() {
   return (
     <ErrorBoundary onError={handleGlobalError}>
-      <ToastContainer />
+      <>
+        <ToastContainer />
+        <CoPilotChat />
+      </>
       <Routes>
         {/* Public routes - full page, no sidebar */}
         <Route path="/" element={<LandingSoloQuant />} />
@@ -46,6 +52,7 @@ export function App() {
         <Route path="/methodology" element={<MethodologyPage />} />
         <Route path="/cashclaw" element={<LandingPage />} />
         <Route path="/pricing" element={<PricingPage />} />
+<Route path="/enterprise" element={<EnterprisePage />} />
         <Route path="/docs" element={<DocsPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />

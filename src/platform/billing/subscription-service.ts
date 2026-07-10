@@ -19,6 +19,12 @@ function saveToFile(subscriptions: Map<string, Subscription>): void {
 	fs.writeFileSync(STORE_PATH, data, { encoding: 'utf-8', mode: 0o600 });
 }
 
+function clearStoreFile(): void {
+	try {
+		if (fs.existsSync(STORE_PATH)) fs.unlinkSync(STORE_PATH);
+	} catch { /* ignore */ }
+}
+
 function loadFromFile(): Map<string, Subscription> {
 	try {
 		if (!fs.existsSync(STORE_PATH)) return new Map();
@@ -63,18 +69,29 @@ export interface CreateSubscriptionInput {
 }
 
 export class SubscriptionService {
+	private static instance: SubscriptionService | null = null;
 	private subscriptions: Map<string, Subscription> = new Map();
-	private licenseService: LicenseService;
-	private auditService: AuditLogService;
+	private licenseService!: LicenseService;
+	private auditService!: AuditLogService;
 
 	constructor() {
+		if (SubscriptionService.instance) return SubscriptionService.instance as SubscriptionService;
 		this.licenseService = LicenseService.getInstance();
 		this.auditService = AuditLogService.getInstance();
 		this.subscriptions = loadFromFile();
+		SubscriptionService.instance = this;
 	}
 
 	static getInstance(): SubscriptionService {
-		return new SubscriptionService();
+		if (!SubscriptionService.instance) {
+			SubscriptionService.instance = new SubscriptionService();
+		}
+		return SubscriptionService.instance;
+	}
+
+	static resetInstance(): void {
+		clearStoreFile();
+		SubscriptionService.instance = null;
 	}
 
 	async createSubscription(input: CreateSubscriptionInput): Promise<Subscription> {
@@ -130,13 +147,14 @@ export class SubscriptionService {
 		return sub;
 	}
 
-	async updateSubscriptionTier(id: string, tier: LicenseTier): Promise<Subscription | undefined> {
+async updateSubscriptionTier(id: string, tier: LicenseTier, licenseId?: string): Promise<Subscription | undefined> {
 		const sub = this.subscriptions.get(id);
 		if (!sub) return undefined;
 
 		sub.tier = tier;
 		sub.updatedAt = new Date().toISOString();
 		this.subscriptions.set(id, sub);
+ if (licenseId) sub.licenseId = licenseId;
 		saveToFile(this.subscriptions);
 
 		if (sub.licenseId) await this.syncLicenseTier(sub.licenseId, tier);
@@ -176,7 +194,7 @@ export class SubscriptionService {
 		// Look for existing subscription by userId
 		let existing: Subscription | undefined;
 		for (const sub of this.subscriptions.values()) {
-			if (sub.userId === input.userId) {
+			if (sub.userId && sub.userId === input.userId) {
 				existing = sub;
 				break;
 			}

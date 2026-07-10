@@ -33,7 +33,7 @@ export function StrategyRulesViewer({
   rules,
   strategyName,
   className,
-  onRuleClick
+  onRuleClick,
 }: StrategyRulesViewerProps) {
   const getTypeIcon = (type: StrategyRule['type']): string => {
     switch (type) {
@@ -47,20 +47,20 @@ export function StrategyRulesViewer({
 
   const getActionColor = (action: StrategyRule['action']): string => {
     switch (action) {
-      case 'BUY': return 'bg-green-500/20 text-green-400 border-green-500/50';
-      case 'SELL': return 'bg-red-500/20 text-red-400 border-red-500/50';
-      case 'HOLD': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/50';
+      case 'BUY': return 'text-profit border-outline bg-profit/10';
+      case 'SELL': return 'text-loss border-outline bg-loss/10';
+      case 'HOLD': return 'text-warning border-outline bg-warning/10';
+      default: return 'text-muted border-outline bg-muted/10';
     }
   };
 
   const getTypeColor = (type: StrategyRule['type']): string => {
     switch (type) {
-      case 'technical_indicator': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'sentiment': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      case 'extracted': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-      case 'custom': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      case 'technical_indicator': return 'text-accent border-outline bg-accent/10';
+      case 'sentiment': return 'text-accent border-outline bg-accent/10';
+      case 'extracted': return 'text-accent border-outline bg-accent/10';
+      case 'custom': return 'text-muted border-outline bg-muted/10';
+      default: return 'text-muted border-outline bg-muted/10';
     }
   };
 
@@ -77,18 +77,18 @@ export function StrategyRulesViewer({
     <StitchCard className={className}>
       <StitchCardHeader>
         <h3 className="text-lg flex items-center gap-2">
-          <span className="text-cyan-400">📜</span>
+          <span className="text-accent">📜</span>
           Strategy Rules: {strategyName}
         </h3>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Extracted {rules.length} rule{rules.length !== 1 ? 's' : ''} from strategy code
         </p>
       </StitchCardHeader>
       <StitchCardBody>
         {rules.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted">
             <p className="text-lg mb-2">No rules extracted</p>
-            <p className="text-sm">
+            <p className="text-sm text-muted-foreground">
               This strategy may use complex logic or custom indicators that
               couldn't be automatically parsed.
             </p>
@@ -101,15 +101,15 @@ export function StrategyRulesViewer({
                   <span className={cn("px-2 py-1 text-xs", getActionColor(action as StrategyRule['action']))}>
                     {action}
                   </span>
-                  <span className="text-gray-400">
+                  <span className="text-muted-foreground">
                     ({rulesByAction[action].length} rule{rulesByAction[action].length !== 1 ? 's' : ''})
                   </span>
                 </h4>
                 <div className="space-y-2">
-                  {rulesByAction[action].map((rule, idx) => (
+                  {rulesByAction[action].map((rule) => (
                     <div
                       key={rule.rule_id}
-                      className="p-3 rounded-lg border border-gray-800 bg-gray-900/50 hover:border-cyan-500/50 transition-all cursor-pointer"
+                      className="p-3 rounded-lg border border-outline bg-bg-surface/50 hover:border-accent/50 transition-all cursor-pointer"
                       onClick={() => onRuleClick?.(rule)}
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
@@ -119,27 +119,27 @@ export function StrategyRulesViewer({
                             {rule.type.replace('_', ' ')}
                           </span>
                           {rule.indicator && (
-                            <span className="px-2 py-1 text-xs border bg-gray-800 text-gray-300 border-gray-700">
+                            <span className="px-2 py-1 text-xs border border-outline text-muted bg-bg-surface">
                               {rule.indicator}
                             </span>
                           )}
                           {rule.line_number && (
-                            <span className="text-xs text-gray-500">Line {rule.line_number}</span>
+                            <span className="text-xs text-muted">Line {rule.line_number}</span>
                           )}
                         </div>
                       </div>
 
                       <div className="space-y-2">
                         <div>
-                          <div className="text-xs text-gray-500 mb-1">Condition</div>
-                          <code className="block bg-gray-950 p-2 rounded text-sm text-cyan-300 border border-gray-800">
+                          <div className="text-xs text-muted mb-1">Condition</div>
+                          <code className="block bg-bg p-2 rounded text-sm text-accent border border-outline">
                             {rule.condition}
                           </code>
                         </div>
 
                         <div>
-                          <div className="text-xs text-gray-500 mb-1">Description</div>
-                          <p className="text-sm text-gray-300">{rule.description}</p>
+                          <div className="text-xs text-muted mb-1">Description</div>
+                          <p className="text-sm text-muted-foreground">{rule.description}</p>
                         </div>
                       </div>
                     </div>

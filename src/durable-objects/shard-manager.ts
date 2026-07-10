@@ -6,8 +6,7 @@
  * Architecture: 12 shards with 100 virtual nodes each
  */
 
-import { DurableObject, DurableObjectState } from '@cloudflare/workers-types';
-import { getRedisClient, type RedisClientType } from '../redis';
+import type { RedisClientType } from '../redis';
 import { logger } from '../shared/utils/logger';
 import {
   buildRing,
@@ -38,7 +37,8 @@ export interface ShardMetrics {
 
 export class ShardManager {
   private state: DurableObjectState;
-  private redis: RedisClientType;
+  private redis: RedisClientType | null = null;
+  private redisInitPromise: Promise<RedisClientType | null> | null = null;
 
   // Ring configuration
   private readonly TOTAL_SHARDS = 12;
@@ -51,10 +51,28 @@ export class ShardManager {
 
   constructor(state: DurableObjectState) {
     this.state = state;
-    this.redis = getRedisClient();
+    // Redis lazy-loaded via getRedis() — avoids ioredis at module scope
+    this.redisInitPromise = null;
     this.initializeRing().catch(error => {
       logger.error('[ShardManager] Init failed:', error);
     });
+  }
+
+  /** Lazy Redis init — avoids loading ioredis at module scope (Node.js-only) */
+  private async getRedis(): Promise<RedisClientType | null> {
+    if (this.redis) return this.redis;
+    if (this.redisInitPromise) return this.redisInitPromise;
+    this.redisInitPromise = (async (): Promise<RedisClientType | null> => {
+      try {
+        const mod = await import('../redis');
+        this.redis = mod.getRedisClient();
+        return this.redis;
+      } catch (err) {
+        logger.warn('[ShardManager] Redis unavailable in WASM runtime', { error: String(err) });
+        return null;
+      }
+    })();
+    return this.redisInitPromise;
   }
 
   /**
@@ -234,12 +252,15 @@ export class ShardManager {
     await this.state.storage.put('shardHealths', this.shardHealths);
 
     // Also publish to Redis for cross-region visibility
-    await this.redis.hset(
+      const _r = await this.getRedis();
+      if (_r) {
+        await _r.hset(
       'shard:health',
       shardId.toString(),
       JSON.stringify(updated)
     );
   }
+      }
 
   /**
    * Get health for all shards
@@ -365,18 +386,20 @@ export class ShardManager {
    */
   private async getAllStrategyIds(): Promise<string[]> {
     // Try Redis cache first
-    const cached = await this.redis.get('strategies:all');
+  const _r3 = await this.getRedis();
+  if (!_r3) return [];
+  const cached = await _r3.get('strategies:all');
     if (cached) {
       return JSON.parse(cached);
     }
 
     // Get from strategy registry (would be populated by strategy loader)
     const registryKey = 'strategies:registry';
-    const registryJson = await this.redis.get(registryKey);
+    const registryJson = await _r3.get(registryKey);
     if (registryJson) {
       const registry = JSON.parse(registryJson);
       const strategyIds = Object.keys(registry);
-      await this.redis.setex('strategies:all', 300, JSON.stringify(strategyIds));
+      await _r3.setex('strategies:all', 300, JSON.stringify(strategyIds));
       return strategyIds;
     }
 

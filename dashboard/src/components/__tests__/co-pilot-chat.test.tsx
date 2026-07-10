@@ -6,7 +6,6 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { CoPilotChat } from '../co-pilot/co-pilot-chat';
 import { useCoPilotStore } from '../../stores/co-pilot-store';
@@ -71,10 +70,10 @@ describe('CoPilotChat', () => {
       expect(fab).toBeInTheDocument();
     });
 
-    it('calls toggleOpen when FAB is clicked', async () => {
+    it('calls toggleOpen when FAB is clicked', () => {
       renderChat();
       const fab = screen.getByRole('button', { name: /open ai co-pilot/i });
-      await userEvent.click(fab);
+      fireEvent.click(fab);
       expect(mockToggleOpen).toHaveBeenCalledTimes(1);
     });
 
@@ -121,7 +120,7 @@ describe('CoPilotChat', () => {
       expect(screen.getByRole('dialog')).toHaveAttribute('aria-label', 'AI Co-pilot chat');
     });
 
-    it('calls closePanel when close button is clicked', async () => {
+    it('calls closePanel when close button is clicked', () => {
       (useCoPilotStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [],
         isOpen: true,
@@ -135,7 +134,7 @@ describe('CoPilotChat', () => {
       });
       renderChat();
       const closeBtn = screen.getByRole('button', { name: /close chat/i });
-      await userEvent.click(closeBtn);
+      fireEvent.click(closeBtn);
       expect(mockClosePanel).toHaveBeenCalledTimes(1);
     });
 
@@ -158,7 +157,7 @@ describe('CoPilotChat', () => {
       expect(screen.getByText('Generate report')).toBeInTheDocument();
     });
 
-    it('sends query when quick action chip is clicked', async () => {
+    it('sends query when quick action chip is clicked', () => {
       (useCoPilotStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [],
         isOpen: true,
@@ -171,11 +170,11 @@ describe('CoPilotChat', () => {
         retryLast: mockRetryLast,
       });
       renderChat();
-      await userEvent.click(screen.getByText('Market regime?'));
+      fireEvent.click(screen.getByText('Market regime?'));
       expect(mockSendQuery).toHaveBeenCalledWith('Market regime?');
     });
 
-    it('calls clearHistory when clear button is clicked', async () => {
+    it('calls clearHistory when clear button is clicked', () => {
       (useCoPilotStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [
           { id: '1', role: 'user', content: 'hi', timestamp: Date.now() },
@@ -191,7 +190,7 @@ describe('CoPilotChat', () => {
       });
       renderChat();
       const clearBtn = screen.getByRole('button', { name: /clear chat history/i });
-      await userEvent.click(clearBtn);
+      fireEvent.click(clearBtn);
       expect(mockClearHistory).toHaveBeenCalledTimes(1);
     });
   });
@@ -238,13 +237,16 @@ describe('CoPilotChat', () => {
   });
 
   describe('Error state', () => {
-    it('shows error message with retry button', async () => {
+    it('shows error message with retry button', () => {
       const now = Date.now();
       (useCoPilotStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [
           {
-            id: '1', role: 'assistant', content: 'Failed to connect',
-            error: true, timestamp: now,
+            id: '1',
+            role: 'assistant',
+            content: 'Failed to connect',
+            error: true,
+            timestamp: now,
             actions: [{ label: 'Retry', action: 'retry' }],
           },
         ],
@@ -262,7 +264,7 @@ describe('CoPilotChat', () => {
       expect(screen.getByText('Failed to connect')).toBeInTheDocument();
       const retryBtn = screen.getByRole('button', { name: /retry/i });
       expect(retryBtn).toBeInTheDocument();
-      await userEvent.click(retryBtn);
+      fireEvent.click(retryBtn);
       expect(mockRetryLast).toHaveBeenCalledTimes(1);
     });
   });
@@ -302,7 +304,7 @@ describe('CoPilotChat', () => {
       expect(sendBtn).toBeDisabled();
     });
 
-    it('submits query on Enter', async () => {
+    it('submits query on Enter', () => {
       (useCoPilotStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [],
         isOpen: true,
@@ -316,11 +318,12 @@ describe('CoPilotChat', () => {
       });
       renderChat();
       const input = screen.getByPlaceholderText('Type a question...');
-      await userEvent.type(input, 'What is my PnL?{Enter}');
+      fireEvent.change(input, { target: { value: 'What is my PnL?' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
       expect(mockSendQuery).toHaveBeenCalledWith('What is my PnL?');
     });
 
-    it('does not submit empty text', async () => {
+    it('does not submit empty text', () => {
       (useCoPilotStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [],
         isOpen: true,
@@ -334,7 +337,8 @@ describe('CoPilotChat', () => {
       });
       renderChat();
       const input = screen.getByPlaceholderText('Type a question...');
-      await userEvent.type(input, '   {Enter}');
+      fireEvent.change(input, { target: { value: ' ' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
       expect(mockSendQuery).not.toHaveBeenCalled();
     });
 
@@ -356,7 +360,7 @@ describe('CoPilotChat', () => {
   });
 
   describe('Keyboard shortcut', () => {
-    it('closes chat panel on Escape key', async () => {
+    it('closes chat panel on Escape key', () => {
       (useCoPilotStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         messages: [],
         isOpen: true,

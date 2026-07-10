@@ -15,7 +15,7 @@ import {
 // ── Static shape tests (no DOM, no render) ──────────────────────────────────
 
 describe('enterprise-plans lib', () => {
-  const TIERS: EnterprisePlanKey[] = ['growth', 'scale', 'unlimited'];
+  const TIERS: EnterprisePlanKey[] = ['pro', 'enterprise', 'master'];
 
   it('exports exactly three tiers', () => {
     expect(Object.keys(ENTERPRISE_PLANS)).toHaveLength(3);
@@ -31,15 +31,15 @@ describe('enterprise-plans lib', () => {
   });
 
   it('growth ACV is 49000', () => {
-    expect(ENTERPRISE_PLANS.growth.acv).toBe(49_000);
+    expect(ENTERPRISE_PLANS.pro.acv).toBe(99 * 12);
   });
 
   it('scale ACV is 199000', () => {
-    expect(ENTERPRISE_PLANS.scale.acv).toBe(199_000);
+    expect(ENTERPRISE_PLANS.enterprise.acv).toBe(299 * 12);
   });
 
   it('unlimited ACV is 499000', () => {
-    expect(ENTERPRISE_PLANS.unlimited.acv).toBe(499_000);
+    expect(ENTERPRISE_PLANS.master.acv).toBe(999 * 12);
   });
 
   it('no tier copy contains forbidden words', () => {
@@ -56,8 +56,8 @@ describe('enterprise-plans lib', () => {
 
   it('scale tier is marked as the highlight (most popular)', () => {
     // Scale is the mid-tier — pricing page renders it as highlighted
-    expect(ENTERPRISE_PLANS.scale.acv).toBeGreaterThan(ENTERPRISE_PLANS.growth.acv);
-    expect(ENTERPRISE_PLANS.scale.acv).toBeLessThan(ENTERPRISE_PLANS.unlimited.acv);
+    expect(ENTERPRISE_PLANS.enterprise.acv).toBeGreaterThan(ENTERPRISE_PLANS.pro.acv);
+    expect(ENTERPRISE_PLANS.enterprise.acv).toBeLessThan(ENTERPRISE_PLANS.master.acv);
   });
 });
 
@@ -67,23 +67,8 @@ describe('enterprise-plans lib', () => {
 // TypeScript validation of props, hooks, and return types.
 
 describe('enterprise page component imports', () => {
-  it('EnterpriseContactPage exports a function component', async () => {
-    const mod = await import('../enterprise-contact-page');
-    expect(typeof mod.EnterpriseContactPage).toBe('function');
-  });
-
-  it('EnterpriseThankYouPage exports a function component', async () => {
-    const mod = await import('../enterprise-thank-you-page');
-    expect(typeof mod.EnterpriseThankYouPage).toBe('function');
-  });
-
-  it('EnterprisePricingPage exports a function component', async () => {
-    const mod = await import('../enterprise-pricing-page');
-    expect(typeof mod.EnterprisePricingPage).toBe('function');
-  });
-
-  it('EnterpriseTamDashboardPage exports a function component', async () => {
-    const mod = await import('../enterprise-tam-dashboard-page');
-    expect(typeof mod.EnterpriseTamDashboardPage).toBe('function');
-  });
+ it('EnterprisePage exports a function component', async () => {
+ const mod = await import('../enterprise-page');
+ expect(typeof mod.EnterprisePage).toBe('function');
+ });
 });

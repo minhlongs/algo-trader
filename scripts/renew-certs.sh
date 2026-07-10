@@ -22,6 +22,16 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # ── Configuration ──────────────────────────────────────────────────────────────
+# NOTE: This project uses Caddy as the reverse proxy with auto-HTTPS enabled
+# via Let's Encrypt. Caddy handles certificate issuance and automatic renewal
+# out-of-the-box — certbot is NOT needed while Caddy is active.
+#
+# This script is retained for:
+#   (a) manual renewal if Caddy's auto-renewal fails
+#   (b) non-Caddy environments (backup/legacy deploys)
+#
+# To disable Caddy's auto-HTTPS and manage certs manually, remove the
+# `tls` directive from docker/caddy/Caddyfile and run this script.
 DOMAINS="${DOMAINS:-api.your-domain.com monitoring.your-domain.com}"
 EMAIL="${EMAIL:-admin@your-domain.com}"
 
@@ -30,12 +40,10 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
 # ── Modes ──────────────────────────────────────────────────────────────────────
 MODE="--dry-run"
-# Note: This project uses Caddy as reverse proxy (auto-HTTPS via Let's Encrypt).
-# If Caddy is active, certbot is redundant for automated renewal — Caddy handles
-# cert issuance and renewal automatically. This script is retained for manual
-# renewal scenarios or non-Caddy setups. Change to "caddy" to reload Caddy after
-# a manual certbot run, or "none" to skip service reload entirely.
-RELOAD_SERVICES="caddy"  # default; change to "nginx" if using nginx, or "none"
+# Caddy is the reverse proxy (auto-HTTPS via Let's Encrypt).
+# If Caddy is active, certbot is redundant for automated renewal.
+# This script is retained for manual renewal or non-Caddy setups.
+RELOAD_SERVICES="caddy" # change to "nginx" if using nginx, or "none" to skip
 
 if [ "${1:-}" = "--live" ]; then
   MODE=""

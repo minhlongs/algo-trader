@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "CEX-DEX Connectors"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---

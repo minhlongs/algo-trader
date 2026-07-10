@@ -8,7 +8,6 @@ import { handleSignup, handleLogin, handleMe, handleListUsers, handleSetRole, ha
 // Durable Object exports for sharding architecture
 export { ShardManager, StrategyShard } from '../../durable-objects';
 
-import { KVNamespace } from '@cloudflare/workers-types';
 import { getLatencyMonitor, type ProbeResult } from '../../regions/latency-monitor';
 
 interface Env {

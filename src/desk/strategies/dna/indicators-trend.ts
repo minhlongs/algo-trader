@@ -85,6 +85,8 @@ function computeADX(candles: Candle[]): { adx: number; adxTrend: TrendIndicators
   let smoothPlusDm = plusDmAccum.slice(0, ADX_PERIOD).reduce((a, b) => a + b, 0);
   let smoothMinusDm = minusDmAccum.slice(0, ADX_PERIOD).reduce((a, b) => a + b, 0);
 
+  let plusDI = 0;
+  let minusDI = 0;
   const dxValues: number[] = [];
 
   // Start from index ADX_PERIOD (we now have a full Wilder window)
@@ -97,8 +99,8 @@ function computeADX(candles: Candle[]): { adx: number; adxTrend: TrendIndicators
       dxValues.push(0);
       continue;
     }
-    const plusDI = 100 * smoothPlusDm / smoothTr;
-    const minusDI = 100 * smoothMinusDm / smoothTr;
+    plusDI = 100 * smoothPlusDm / smoothTr;
+    minusDI = 100 * smoothMinusDm / smoothTr;
     const diDiff = Math.abs(plusDI - minusDI);
     const diSum = plusDI + minusDI;
     const dx = diSum === 0 ? 0 : 100 * diDiff / diSum;
@@ -113,10 +115,11 @@ function computeADX(candles: Candle[]): { adx: number; adxTrend: TrendIndicators
     adx = (adx * (ADX_PERIOD - 1) + dxValues[i]) / ADX_PERIOD;
   }
 
-  const adxTrend: TrendIndicators['adxTrend'] =
-    adx >= ADX_TRENDING_THRESHOLD ? 'up' // placeholder; direction is derived later
-    : adx < ADX_WEAK_THRESHOLD ? 'sideways'
-    : 'down'; // ambiguous middle zone
+        const adxTrend: TrendIndicators['adxTrend'] =
+      adx < ADX_WEAK_THRESHOLD ? 'sideways'
+      : plusDI > minusDI ? 'up'
+      : minusDI > plusDI ? 'down'
+      : 'sideways'; // equal DIs = no directional edge
 
   return { adx: Math.round(adx * 100) / 100, adxTrend };
 }

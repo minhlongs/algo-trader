@@ -164,6 +164,7 @@ export class AtrTrailingStop {
     candles: AtrCandle[],
     stops: number[],
     direction: 'long' | 'short',
+  lastAtr?: number,
   ): AtrResult {
     if (stops.length === 0 || candles.length === 0) {
       return { atr: 0, stop: 0, stopped: false, direction };
@@ -180,7 +181,7 @@ export class AtrTrailingStop {
 
     // Approximate current ATR from stop distance
     // (full ATR array passed to trailingStop* — we use the last computed value)
-    const atr = 0; // computed externally, not stored in stops array
+    const atr = lastAtr ?? 0; // passed explicitly by caller when known
 
     return { atr, stop: lastStop, stopped, direction };
   }
