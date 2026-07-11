@@ -69,7 +69,7 @@ async function getRegionHealth(env: Env): Promise<RegionHealth[]> {
     lastCheck: Date.now(),
   }));
 
-  await env.CACHE.put('region:health', JSON.stringify(defaultHealth), { expirationTtl: 30 });
+  await env.CACHE.put('region:health', JSON.stringify(defaultHealth), { expirationTtl: CACHE_TTL });
   return defaultHealth;
 }
 

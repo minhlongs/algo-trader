@@ -18,6 +18,12 @@ import {
   type HashRing,
 } from '../desk/utils/consistent-hash';
 
+// Minimal Env interface for DO bindings (KV, Admin API key)
+interface Env {
+  SHARD_MANAGER?: DurableObjectNamespace;
+  [key: string]: any;
+}
+
 export interface ShardHealth {
   shardId: number;
   lastHeartbeat: number;
@@ -36,6 +42,7 @@ export interface ShardMetrics {
 }
 
 export class ShardManager {
+  private currentEnv?: Env; // Saved from fetch/alarm for env access
   private state: DurableObjectState;
   private redis: RedisClientType | null = null;
   private redisInitPromise: Promise<RedisClientType | null> | null = null;
@@ -51,6 +58,7 @@ export class ShardManager {
 
   constructor(state: DurableObjectState) {
     this.state = state;
+    this.currentEnv = (state as any).env;
     // Redis lazy-loaded via getRedis() — avoids ioredis at module scope
     this.redisInitPromise = null;
     this.initializeRing().catch(error => {
@@ -126,6 +134,8 @@ export class ShardManager {
    * Main fetch handler - routes requests to appropriate shard or handles admin ops
    */
   async fetch(request: Request): Promise<Response> {
+  // Save env for alarm() access (alarm doesn't receive env parameter)
+  this.currentEnv = (this.state as any).env as Env;
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -422,8 +432,9 @@ export class ShardManager {
 
     // Check for admin API key or JWT
     const apiKey = request.headers.get('X-Admin-Key');
-    if (apiKey && process.env.ADMIN_API_KEY) {
-      return apiKey === process.env.ADMIN_API_KEY;
+  const adminKey = (this.currentEnv as any)?.ADMIN_API_KEY;
+    if (apiKey && adminKey) {
+      return apiKey === adminKey;
     }
 
     // JWT check would go here

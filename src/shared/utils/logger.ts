@@ -8,10 +8,14 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const LEVELS: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
-const DEFAULT_LEVEL: LogLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
+let _logLevel: LogLevel = 'info';
 
-function shouldLog(level: LogLevel): boolean {
-  return LEVELS[level] >= LEVELS[DEFAULT_LEVEL];
+function getLogLevel(): LogLevel { return _logLevel; }
+
+function setLogLevel(level: LogLevel): void { _logLevel = level; }
+
+function shouldLog(current: LogLevel): boolean {
+  return LEVELS[current] >= LEVELS[_logLevel];
 }
 
 function formatMessage(level: string, msg: string, meta?: unknown): string {

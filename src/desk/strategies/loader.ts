@@ -4,7 +4,6 @@
  * Implements strategy registry and assignment lookup
  */
 
-import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import type { IStrategy } from './types';
 
@@ -19,17 +18,29 @@ export interface StrategyRegistryEntry {
 }
 
 export class StrategyLoader {
-  private redis: RedisClientType;
   private strategyCache: Map<string, IStrategy> = new Map();
   private cacheTimestamps: Map<string, number> = new Map();
   private readonly CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  private redis: ReturnType<typeof import('../../redis').getRedisClient> | null = null;
 
   // Strategy registry - maps strategy names to module paths
   private registry: Map<string, StrategyRegistryEntry> = new Map();
 
   constructor() {
-    this.redis = getRedisClient();
+    // Redis is NOT initialized here — use initRedis() for lazy init
+    // This avoids triggering ioredis import at module scope (Node.js-only)
     this.initializeRegistry();
+  }
+
+  /** Lazy Redis init — called only when Redis is actually needed */
+  async initRedis(): Promise<void> {
+    if (this.redis) return;
+    try {
+      const mod = await import('../../redis');
+      this.redis = mod.getRedisClient();
+    } catch {
+      // Redis not available in this runtime (e.g., Workers WASM)
+    }
   }
 
   /**
@@ -76,46 +87,11 @@ export class StrategyLoader {
 
     // DNA strategies (5)
     const dnaStrategies: StrategyRegistryEntry[] = [
-      {
-        name: 'kronos-strategy',
-        module: '../strategies/kronos-strategy',
-        category: 'temporal',
-        priority: 3,
-        memoryFootprintMb: 12,
-        isHeavy: false,
-      },
-      {
-        name: 'consensus-engine',
-        module: '../strategies/dna/consensus-engine',
-        category: 'signals',
-        priority: 2,
-        memoryFootprintMb: 10,
-        isHeavy: false,
-      },
-      {
-        name: 'dna-state-store',
-        module: '../strategies/dna/dna-state-store',
-        category: 'state',
-        priority: 4,
-        memoryFootprintMb: 5,
-        isHeavy: false,
-      },
-      {
-        name: 'orchestrator',
-        module: '../strategies/dna/orchestrator',
-        category: 'meta',
-        priority: 1,
-        memoryFootprintMb: 15,
-        isHeavy: false,
-      },
-      {
-        name: 'paper-executor',
-        module: '../strategies/dna/paper-executor',
-        category: 'execution',
-        priority: 2,
-        memoryFootprintMb: 8,
-        isHeavy: false,
-      },
+      { name: 'kronos-strategy', module: '../strategies/kronos-strategy', category: 'temporal', priority: 3, memoryFootprintMb: 12, isHeavy: false },
+      { name: 'consensus-engine', module: '../strategies/dna/consensus-engine', category: 'signals', priority: 2, memoryFootprintMb: 10, isHeavy: false },
+      { name: 'dna-state-store', module: '../strategies/dna/dna-state-store', category: 'state', priority: 4, memoryFootprintMb: 5, isHeavy: false },
+      { name: 'orchestrator', module: '../strategies/dna/orchestrator', category: 'meta', priority: 1, memoryFootprintMb: 15, isHeavy: false },
+      { name: 'paper-executor', module: '../strategies/dna/paper-executor', category: 'execution', priority: 2, memoryFootprintMb: 8, isHeavy: false },
     ];
 
     // Register all strategies
@@ -130,23 +106,17 @@ export class StrategyLoader {
     });
   }
 
-  /**
-   * Get registry entry for a strategy
-   */
+  /** Get registry entry for a strategy */
   getRegistryEntry(strategyId: string): StrategyRegistryEntry | undefined {
     return this.registry.get(strategyId);
   }
 
-  /**
-   * Get all registered strategies
-   */
+  /** Get all registered strategies */
   getAllRegistered(): StrategyRegistryEntry[] {
     return Array.from(this.registry.values());
   }
 
-  /**
-   * Load strategy by ID (lazy loading with simple cache)
-   */
+  /** Load strategy by ID (lazy loading with simple cache) */
   async loadStrategy(strategyId: string): Promise<IStrategy | null> {
     // Check cache first
     const cached = this.strategyCache.get(strategyId);
@@ -167,7 +137,7 @@ export class StrategyLoader {
       logger.debug('[StrategyLoader] Loading strategy', { strategyId, module: entry.module });
 
       // Dynamic import for lazy loading
-      const module = await import(entry.module);
+      const module = await import(/* @vite-ignore */ entry.module);
       const strategy = module.default || module;
 
       // Cache the strategy
@@ -218,11 +188,9 @@ export class StrategyLoader {
     return results;
   }
 
-  /**
-   * Get cache statistics
-   */
+  /** Get cache statistics */
   getCacheStats(): { entries: number; hitCount: number; missCount: number } {
-    // Simplified - would need tracking counters for accurate hit/miss
+    // Simplified — would need tracking counters for accurate hit/miss
     return {
       entries: this.strategyCache.size,
       hitCount: 0,
@@ -230,22 +198,17 @@ export class StrategyLoader {
     };
   }
 
-  /**
-   * Clear strategy cache (for memory pressure handling)
-   */
+  /** Clear strategy cache (for memory pressure handling) */
   clearCache(): void {
     this.strategyCache.clear();
     this.cacheTimestamps.clear();
     logger.info('[StrategyLoader] Cache cleared');
   }
 
-  /**
-   * Persist strategy assignments to Redis for cross-region visibility
-   */
-  async persistAssignments(
-    shardId: number,
-    strategyIds: string[]
-  ): Promise<void> {
+  /** Persist strategy assignments to Redis for cross-region visibility */
+  async persistAssignments(shardId: number, strategyIds: string[]): Promise<void> {
+    await this.initRedis();
+    if (!this.redis) return;
     const key = `shard:${shardId}:strategies`;
     await this.redis.del(key);
     if (strategyIds.length > 0) {
@@ -253,21 +216,11 @@ export class StrategyLoader {
     }
   }
 
-  /**
-   * Get all strategies assigned to a shard
-   */
+  /** Get all strategies assigned to a shard */
   async getShardAssignments(shardId: number): Promise<string[]> {
+    await this.initRedis();
+    if (!this.redis) return [];
     const key = `shard:${shardId}:strategies`;
     return this.redis.smembers(key);
   }
-}
-
-// Singleton instance
-let strategyLoaderInstance: StrategyLoader | null = null;
-
-export function getStrategyLoader(): StrategyLoader {
-  if (!strategyLoaderInstance) {
-    strategyLoaderInstance = new StrategyLoader();
-  }
-  return strategyLoaderInstance;
 }

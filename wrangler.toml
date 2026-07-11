@@ -10,6 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 # Production (default)
 [vars]
 ENVIRONMENT = "production"
+REGION_ROUTING_ENABLED = "false"
 
 # KV namespace for edge caching
 [[kv_namespaces]]

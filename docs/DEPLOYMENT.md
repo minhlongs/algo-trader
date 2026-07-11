@@ -145,3 +145,24 @@ PM2 and Docker stop commands both send `SIGTERM`, so shutdown is clean.
 | PM2 process keeps restarting | Check `logs/algo-trader-error.log`; likely bad .env config |
 | Arb commands fail with auth error | Set per-exchange keys (`BINANCE_API_KEY`, `OKX_API_KEY`, etc.) in `.env` |
 | High memory usage | PM2 restarts at 512 MB; reduce `TickStore` size (default 10k ticks) if needed |
+
+## Cloudflare Workers (Edge Proxy + Sharding)
+
+- **URL:** https://algo-trader.agencyos-openclaw.workers.dev
+- **Health endpoint:** `/api/health`
+- **Metrics endpoint:** `/metrics` (Prometheus format)
+
+```bash
+npx wrangler deploy --config wrangler.toml src/platform/workers/edge-proxy.ts
+```
+
+**Architecture:**
+- Edge proxy handles CORS, auth (KV-backed), and region routing
+- 12-strategy sharding across Durable Objects (`SHARD_0`–`SHARD_11` + `SHARD_MANAGER`)
+- KV namespace `CACHE` for edge caching (60s TTL) and tenant config
+
+**Environment variables** (set in `wrangler.toml [vars]`):
+- `ENVIRONMENT` — `production` | `preview`
+- `REGION_ROUTING_ENABLED` — `"false"` to disable multi-region routing (set `"true"` when regions are deployed)
+
+**Custom domain:** Configure CNAME `api.cashclaw.cc` → `algo-trader.agencyos-openclaw.workers.dev` in Cloudflare Dashboard.
