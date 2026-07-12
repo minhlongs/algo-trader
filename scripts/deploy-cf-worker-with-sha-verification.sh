@@ -47,7 +47,7 @@ echo "$DEPLOY_BRANCH" | npx wrangler secret put DEPLOY_BRANCH --config wrangler.
 echo "==> wrangler deploy"
 npx wrangler deploy --config wrangler.toml
 
-# ─── Verify SHA match ───────────────────────────────────────────────
+# ─── Verify SHA match (workers.dev + custom domain) ────────────────
 WORKER_URL="https://algo-trader.agencyos-openclaw.workers.dev"
 echo ""
 echo "==> Verifying deploy SHA..."
@@ -60,9 +60,15 @@ else
   exit 1
 fi
 
-# ─── Health check ───────────────────────────────────────────────────
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$WORKER_URL/health")
-echo "✅ Health: HTTP $HTTP_CODE"
+# ─── Verify custom domain ───────────────────────────────────────────
+echo ""
+CUSTOM_URL="https://api.cashclaw.cc"
+API_HTTP=$(curl -s -o /tmp/api_health_body -w "%{http_code}" "$CUSTOM_URL/api/health")
+if [ "$API_HTTP" = "200" ]; then
+  echo "✅ Custom domain: HTTP $API_HTTP (api.cashclaw.cc operational)"
+else
+  echo "⚠️  Custom domain: HTTP $API_HTTP — check CF Dashboard CNAME for api.cashclaw.cc"
+fi
 
 echo ""
-echo "Deploy complete: $WORKER_URL"
+echo "Deploy complete: $WORKER_URL | $CUSTOM_URL"

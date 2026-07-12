@@ -200,6 +200,17 @@ export default {
       }
     }
 
+ // Root — API info page
+ if (path === '/' && request.method === 'GET') {
+   return new Response(JSON.stringify({
+     service: 'algo-trader API',
+     version: '1.0',
+     endpoints: ['/api/health', '/api/auth/*'],
+     status: 'ok',
+     origin: env.VPS_ORIGIN || 'standalone',
+   }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+ }
+
     // Health check
     if (path === '/health' || path === '/api/health') {
       // Region health check endpoint (for latency monitor) - must come first
