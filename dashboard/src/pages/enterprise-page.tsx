@@ -133,7 +133,7 @@ const COPY: Record<Lang, Record<string, string>> = {
 const TEAM_SIZE_OPTIONS = ['1-10', '11-50', '51-200', '201-500', '500+'];
 
 function glassCard(extra = ''): string {
-  return `bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl ${extra}`.trim();
+  return `bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl ${extra}`.trim();
 }
 
 function FadeIn({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -178,11 +178,11 @@ function PlanCard({
   return (
     <div
       className={`relative rounded-2xl p-6 flex flex-col gap-5 ${
-        highlight ? 'border-2 border-[#F59E0B]' : 'border border-[#414754]'
+        highlight ? 'border-2 border-[${COLORS.warning}]' : 'border border-[${COLORS.outline}]'
       } ${glassCard()}`}
     >
       {highlight && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#F59E0B] text-black text-xs font-bold px-3 py-0.5 rounded-full">
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[${COLORS.warning}] text-black text-xs font-bold px-3 py-0.5 rounded-full">
           {mostPopular}
         </span>
       )}
@@ -211,7 +211,7 @@ function PlanCard({
       <button
         onClick={() => onSelect(planKey)}
         className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
-          highlight ? 'bg-[#F59E0B] text-black hover:bg-[#F59E0B]/80' : 'border border-[#414754] hover:border-[#F59E0B]/50'
+          highlight ? 'bg-[${COLORS.warning}] text-black hover:bg-[${COLORS.warning}]/80' : 'border border-[${COLORS.outline}] hover:border-[${COLORS.warning}]/50'
         }`}
         style={!highlight ? { color: COLORS.onSurfaceVariant } : undefined}
       >
@@ -265,7 +265,7 @@ const faqs = [
           </p>
           <a
             href="/pricing"
-            className="inline-block text-sm border border-[#414754] px-5 py-2 rounded transition-colors"
+            className="inline-block text-sm border border-[${COLORS.outline}] px-5 py-2 rounded transition-colors"
             style={{ color: COLORS.onSurfaceVariant }}
           >
             {t.viewStandardPricing}
@@ -296,7 +296,7 @@ const faqs = [
 }
 
 const inputCls =
-  'w-full bg-[#121414]/80 backdrop-blur-xl border border-[#414754] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[#F59E0B]/60 transition-colors placeholder-[#c1c6d7]/50';
+  'w-full bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[${COLORS.warning}]/60 transition-colors placeholder-[${COLORS.onSurfaceVariant}]/50';
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (
@@ -389,8 +389,8 @@ function ContactTab({ t, defaultTier, onSuccess }: { t: Record<string, string>; 
                     onClick={() => set('tier', key)}
                     className={`p-3 rounded border text-xs text-left transition-colors min-h-touch ${
                       fields.tier === key
-                        ? 'border-[#F59E0B] bg-[#F59E0B]/10 text-white'
-                        : 'border-[#414754] hover:border-[#F59E0B]/40'
+                        ? 'border-[${COLORS.warning}] bg-[${COLORS.warning}]/10 text-white'
+                        : 'border-[${COLORS.outline}] hover:border-[${COLORS.warning}]/40'
                     }`}
                     style={fields.tier !== key ? { color: COLORS.onSurfaceVariant } : undefined}
                   >
@@ -475,7 +475,7 @@ function ContactTab({ t, defaultTier, onSuccess }: { t: Record<string, string>; 
           <button
             type="submit"
             disabled={formState === 'submitting'}
-            className="w-full bg-[#F59E0B] text-black font-bold py-3 rounded hover:bg-[#F59E0B]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-touch"
+            className="w-full bg-[${COLORS.warning}] text-black font-bold py-3 rounded hover:bg-[${COLORS.warning}]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-touch"
           >
             {formState === 'submitting' ? t.submitting : t.requestAccess}
           </button>
@@ -504,7 +504,7 @@ function SuccessTab({ t }: { t: Record<string, string> }) {
             className="inline-flex items-center justify-center w-16 h-16 rounded-full border mb-6"
             style={{ backgroundColor: `${COLORS.profit}1a`, borderColor: `${COLORS.profit}4d` }}
           >
-            <svg width="28" height="28" fill="none" stroke="#34D399" strokeWidth="2" viewBox="0 0 24 24">
+            <svg width="28" height="28" fill="none" stroke="${COLORS.profit}" strokeWidth="2" viewBox="0 0 24 24">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
@@ -557,14 +557,14 @@ function SuccessTab({ t }: { t: Record<string, string> }) {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
             href="/docs"
-            className="text-center text-sm border border-[#414754] px-5 py-2.5 rounded transition-colors"
+            className="text-center text-sm border border-[${COLORS.outline}] px-5 py-2.5 rounded transition-colors"
             style={{ color: COLORS.onSurfaceVariant }}
           >
             {t.readDocs}
           </a>
           <a
             href="/"
-            className="text-center text-sm bg-[#F59E0B] text-black font-bold px-5 py-2.5 rounded hover:bg-[#F59E0B]/80 transition-colors"
+            className="text-center text-sm bg-[${COLORS.warning}] text-black font-bold px-5 py-2.5 rounded hover:bg-[${COLORS.warning}]/80 transition-colors"
           >
             {t.backToHome}
           </a>
@@ -591,7 +591,7 @@ export function EnterprisePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
@@ -624,7 +624,7 @@ export function EnterprisePage() {
                 className="px-6 py-2 text-sm font-semibold rounded-md transition-colors"
                 style={
                   activeTab === key
-                    ? { backgroundColor: COLORS.warning, color: '#000' }
+                    ? { backgroundColor: COLORS.warning, color: COLORS.bg }
                     : { color: COLORS.onSurfaceVariant }
                 }
               >

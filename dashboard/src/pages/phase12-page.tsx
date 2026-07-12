@@ -91,12 +91,12 @@ export default function Phase12Page() {
   const t = COPY[lang];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       {/* Language Toggle */}
       <div className="fixed top-4 right-4 z-50">
         <button
           onClick={() => setLang((l) => (l === 'en' ? 'vi' : 'en'))}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#121414]/80 backdrop-blur-xl border border-[#414754] text-[#e3e2e2] hover:text-[#aec6ff] transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] text-[${COLORS.onSurface}] hover:text-[${COLORS.primary}] transition-colors"
           aria-label={`Switch to ${t.langToggle}`}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -111,12 +111,12 @@ export default function Phase12Page() {
       <div className="p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">{t.title}</h1>
-          <p className="text-[#c1c6d7]">{t.subtitle}</p>
+          <p className="text-[${COLORS.onSurfaceVariant}]">{t.subtitle}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Autopoietic Engine */}
-          <div className={`${COLORS.surface}/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4`}>
+          <div className={`bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4`}>
             <h2 className="text-lg font-semibold" style={{ color: COLORS.primary }}>{t.autopoieticEngine}</h2>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between"><span>{t.evolutionRuns}</span><span style={{ color: COLORS.primary }}>0</span></div>
@@ -124,11 +124,11 @@ export default function Phase12Page() {
               <div className="flex justify-between"><span>{t.prsCreated}</span><span style={{ color: COLORS.primary }}>0</span></div>
               <div className="flex justify-between"><span>{t.lastRun}</span><span style={{ color: COLORS.primary }}>{t.never}</span></div>
             </div>
-            <div className="mt-3 text-xs text-[#c1c6d7]">{t.autoEvolveDesc}</div>
+            <div className="mt-3 text-xs text-[${COLORS.onSurfaceVariant}]">{t.autoEvolveDesc}</div>
           </div>
 
           {/* Energy Arbitrage */}
-          <div className={`${COLORS.surface}/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4`}>
+          <div className={`bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4`}>
             <h2 className="text-lg font-semibold" style={{ color: COLORS.profit }}>{t.energyArbitrage}</h2>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between"><span>{t.computeCost}</span><span style={{ color: COLORS.profit }}>$0.00</span></div>
@@ -136,11 +136,11 @@ export default function Phase12Page() {
               <div className="flex justify-between"><span>{t.profitMargin}</span><span style={{ color: COLORS.profit }}>0%</span></div>
               <div className="flex justify-between"><span>{t.miningEarnings}</span><span style={{ color: COLORS.profit }}>$0.00</span></div>
             </div>
-            <div className="mt-3 text-xs text-[#c1c6d7]">{t.energyDesc}</div>
+            <div className="mt-3 text-xs text-[${COLORS.onSurfaceVariant}]">{t.energyDesc}</div>
           </div>
 
           {/* Market Morphogenesis */}
-          <div className={`${COLORS.surface}/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4`}>
+          <div className={`bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4`}>
             <h2 className="text-lg font-semibold" style={{ color: COLORS.warning }}>{t.marketMorphogenesis}</h2>
             <div className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between"><span>{t.dexVolume}</span><span style={{ color: COLORS.warning }}>$0.00</span></div>
@@ -148,13 +148,13 @@ export default function Phase12Page() {
               <div className="flex justify-between"><span>{t.validatorRewards}</span><span style={{ color: COLORS.warning }}>$0.00</span></div>
               <div className="flex justify-between"><span>{t.totalRevenue}</span><span style={{ color: COLORS.warning }}>$0.00</span></div>
             </div>
-            <div className="mt-3 text-xs text-[#c1c6d7]">{t.morphogenesisDesc}</div>
+            <div className="mt-3 text-xs text-[${COLORS.onSurfaceVariant}]">{t.morphogenesisDesc}</div>
           </div>
         </div>
 
-        <div className={`${COLORS.surface}/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4`}>
+        <div className={`bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4`}>
           <h3 className="font-semibold" style={{ color: COLORS.warning }}>{t.omegaStatus}</h3>
-          <p className="text-sm text-[#c1c6d7] mt-2">
+          <p className="text-sm text-[${COLORS.onSurfaceVariant}] mt-2">
             {t.statusBody1} {t.statusBody2}
           </p>
         </div>

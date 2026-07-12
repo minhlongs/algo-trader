@@ -25,7 +25,7 @@ export function ManifestoPage() {
   const t = COPY[lang];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex flex-col">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex flex-col">
       {/* Globe language toggle */}
       <div className="p-4 flex justify-end">
         <button
@@ -55,7 +55,7 @@ export function ManifestoPage() {
       </div>
 
       <main className="flex-1 pt-4">
-        <div className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl mx-4">
+        <div className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl mx-4">
           <MarkdownViewer
             src="/manifesto.md"
             loadingLabel={t.loading}

@@ -148,13 +148,13 @@ function dismissFreshKey() { setFreshKey(null); }
 /* ── Loading ── */
 if (pageLoading) {
 return (
-<div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex items-center justify-center">
+<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex items-center justify-center">
 <div className="flex flex-col items-center gap-3">
-<svg className="animate-spin h-8 w-8 text-[#0070f3]" fill="none" viewBox="0 0 24 24">
+<svg className="animate-spin h-8 w-8 text-[${COLORS.primary}]" fill="none" viewBox="0 0 24 24">
 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
 </svg>
-<p className="text-[#c1c6d7] text-xs">{t.loadingKeys}</p>
+<p className="text-[${COLORS.onSurfaceVariant}] text-xs">{t.loadingKeys}</p>
 </div>
 </div>
 );
@@ -162,12 +162,12 @@ return (
 
 /* ── Main ── */
 return (
-<div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
 {/* Lang toggle */}
 <div className="flex justify-end px-4 sm:px-8 pt-6">
 <button
 onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
 aria-label="Toggle language"
 >
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -183,7 +183,7 @@ aria-label="Toggle language"
 <div className="flex items-center justify-between">
 <div>
 <h1 className="text-white text-2xl font-bold">{t.title}</h1>
-<p className="text-[#c1c6d7] text-xs mt-1">{t.subtitle}</p>
+<p className="text-[${COLORS.onSurfaceVariant}] text-xs mt-1">{t.subtitle}</p>
 </div>
 {keys.length > 0 && (
 <StitchButton onClick={handleCreate} variant="primary" disabled={creating}>
@@ -194,26 +194,26 @@ aria-label="Toggle language"
 
 {/* Error banner */}
 {error && (
-<div className="bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 rounded-xl p-3 flex items-center justify-between">
-<span className="text-[#ffb4ab] text-xs">{error}</span>
-<button onClick={() => setError(null)} className="text-[#ffb4ab]/60 text-xs hover:text-[#ffb4ab] ml-3">×</button>
+<div className="bg-[${COLORS.loss}]/10 border border-[${COLORS.loss}]/30 rounded-xl p-3 flex items-center justify-between">
+<span className="text-[${COLORS.loss}] text-xs">{error}</span>
+<button onClick={() => setError(null)} className="text-[${COLORS.loss}]/60 text-xs hover:text-[${COLORS.loss}] ml-3">×</button>
 </div>
 )}
 
 {/* Fresh key banner */}
 {freshKey && (
-<div className="bg-[#3b82f6]/10 border border-[#3b82f6]/30 rounded-xl p-4 space-y-2">
+<div className="bg-[${COLORS.profit}]/10 border border-[${COLORS.profit}]/30 rounded-xl p-4 space-y-2">
 <div className="flex items-start justify-between gap-3">
 <div>
-<p className="text-[#3b82f6] text-xs font-bold mb-1">{t.freshTitle}</p>
-<p className="text-[#3b82f6]/80 text-[10px]">{t.freshDesc}</p>
+<p className="text-[${COLORS.profit}] text-xs font-bold mb-1">{t.freshTitle}</p>
+<p className="text-[${COLORS.profit}]/80 text-[10px]">{t.freshDesc}</p>
 </div>
-<button onClick={dismissFreshKey} className="text-[#c1c6d7] hover:text-white text-xs flex-shrink-0">×</button>
+<button onClick={dismissFreshKey} className="text-[${COLORS.onSurfaceVariant}] hover:text-white text-xs flex-shrink-0">×</button>
 </div>
-<div className="bg-[#0a0a0a] border border-[#414754] rounded-xl px-3 py-2.5">
+<div className="bg-[${COLORS.bg}] border border-[${COLORS.outline}] rounded-xl px-3 py-2.5">
 <code className="text-white text-xs break-all select-all">{freshKey}</code>
 </div>
-<button onClick={() => navigator.clipboard.writeText(freshKey)} className="text-[#aec6ff] text-[10px] hover:underline">
+<button onClick={() => navigator.clipboard.writeText(freshKey)} className="text-[${COLORS.primary}] text-[10px] hover:underline">
 {t.btnCopy}
 </button>
 </div>
@@ -232,7 +232,7 @@ aria-label="Toggle language"
 ) : (
 <div className="space-y-2">
 {keys.map((k) => (
-<div key={k.id} className="bg-[#121414]/80 border border-[#414754] rounded-xl px-4 py-3 flex items-center justify-between gap-4 hover:border-[#0070f3]/30 transition-colors">
+<div key={k.id} className="bg-[${COLORS.surface}]/80 border border-[${COLORS.outline}] rounded-xl px-4 py-3 flex items-center justify-between gap-4 hover:border-[${COLORS.primary}]/30 transition-colors">
 <div className="min-w-0 flex-1">
 <div className="flex items-center gap-2 mb-0.5">
 <code className="text-white text-xs truncate">{k.maskedKey}</code>
@@ -243,7 +243,7 @@ aria-label="Toggle language"
 <button
 onClick={() => setRevokeTarget(k)}
 disabled={revoking}
-className="text-xs px-2 py-1 rounded-lg hover:bg-[#ffb4ab]/10 transition-colors disabled:opacity-50 flex-shrink-0"
+className="text-xs px-2 py-1 rounded-lg hover:bg-[${COLORS.loss}]/10 transition-colors disabled:opacity-50 flex-shrink-0"
 style={{ color: COLORS.loss }}
 >
 {t.labelRevoke}
@@ -256,14 +256,14 @@ style={{ color: COLORS.loss }}
 {/* Revoke dialog */}
 {revokeTarget && (
 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setRevokeTarget(null)}>
-<div className="bg-[#121414]/90 border border-[#414754] rounded-2xl p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+<div className="bg-[${COLORS.surface}]/90 border border-[${COLORS.outline}] rounded-2xl p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
 <h3 className="text-sm font-semibold text-white mb-2">{t.dialogTitle}</h3>
 <p className="text-xs mb-4" style={{ color: COLORS.onSurfaceVariant }}>
 {t.dialogMsg}{' '}
 <code className="text-white">{revokeTarget.maskedKey}</code>
 </p>
 <div className="flex gap-2 justify-end">
-<button onClick={() => setRevokeTarget(null)} className="px-3 py-1.5 text-xs rounded-lg border border-[#414754] text-[#c1c6d7] hover:border-[#aec6ff] transition-colors">
+<button onClick={() => setRevokeTarget(null)} className="px-3 py-1.5 text-xs rounded-lg border border-[${COLORS.outline}] text-[${COLORS.onSurfaceVariant}] hover:border-[${COLORS.primary}] transition-colors">
 {t.btnCancel}
 </button>
 <button onClick={handleRevokeConfirm} disabled={revoking} className="px-3 py-1.5 text-xs rounded-lg font-semibold text-white disabled:opacity-50 transition-colors" style={{ backgroundColor: COLORS.loss }}>

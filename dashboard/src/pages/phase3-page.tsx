@@ -113,8 +113,8 @@ function StatusBadgeBilingual({ enabled, t }: { enabled: boolean; t: Record<stri
 
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex justify-between items-center py-1.5 border-b border-[#414754]/50 last:border-0">
-      <span className="text-[#c1c6d7] text-xs">{label}</span>
+    <div className="flex justify-between items-center py-1.5 border-b border-[${COLORS.outline}]/50 last:border-0">
+      <span className="text-[${COLORS.onSurfaceVariant}] text-xs">{label}</span>
       <span className="text-white text-sm font-semibold">{value}</span>
     </div>
   );
@@ -165,7 +165,7 @@ export function Phase3Page() {
   const { mevSandwich, portfolioRebalancer, predatoryLiquidity } = status;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       <div className="space-y-6 p-6">
         {/* Header + language toggle */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -198,7 +198,7 @@ export function Phase3Page() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* MEV Sandwich */}
           <div
-            className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4"
+            className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4"
           >
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-white text-sm font-bold">{t.mevSandwich}</h3>
@@ -213,7 +213,7 @@ export function Phase3Page() {
 
           {/* Portfolio Rebalancer */}
           <div
-            className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4"
+            className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4"
           >
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-white text-sm font-bold">{t.portfolioRebalancer}</h3>
@@ -235,7 +235,7 @@ export function Phase3Page() {
 
           {/* Predatory Liquidity */}
           <div
-            className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4"
+            className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4"
           >
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-white text-sm font-bold">{t.predatoryLiquidity}</h3>
@@ -251,15 +251,15 @@ export function Phase3Page() {
 
         {/* MEV Bundle Alerts */}
         <div
-          className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4"
+          className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4"
         >
           <h3 className="text-white text-sm font-bold mb-3">{t.mevBundleActivity}</h3>
           {mevAlerts.length === 0 ? (
-            <p className="text-[#c1c6d7] text-xs">{t.noBundles}</p>
+            <p className="text-[${COLORS.onSurfaceVariant}] text-xs">{t.noBundles}</p>
           ) : (
             <div className="max-h-64 overflow-y-auto space-y-1">
               {mevAlerts.map((a, i) => (
-                <div key={i} className="flex items-center gap-3 text-xs py-1.5 border-b border-[#414754]/50">
+                <div key={i} className="flex items-center gap-3 text-xs py-1.5 border-b border-[${COLORS.outline}]/50">
                   <span
                     className="px-1.5 py-0.5 rounded text-[10px] font-bold"
                     style={{ backgroundColor: `${COLORS.primary}20`, color: COLORS.primary }}
@@ -269,7 +269,7 @@ export function Phase3Page() {
                   <span className="text-white truncate max-w-[180px]">
                     {String(a.bundleHash ?? 'pending')}
                   </span>
-                  <span className="text-[#c1c6d7] ml-auto">
+                  <span className="text-[${COLORS.onSurfaceVariant}] ml-auto">
                     {new Date(a.timestamp).toLocaleTimeString()}
                   </span>
                 </div>

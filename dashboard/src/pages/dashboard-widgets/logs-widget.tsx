@@ -1,3 +1,4 @@
+import { COLORS } from '../../lib/stitch-design-tokens';
 /**
  * Terminal logs widget for dashboard.
  */
@@ -52,7 +53,7 @@ export function TerminalLogsWidget() {
     <div
       className="rounded-xl border overflow-hidden"
       style={{
-        backgroundColor: '#060814',
+        backgroundColor: COLORS.bg,
         borderColor: 'rgba(255, 255, 255, 0.05)',
       }}
     >

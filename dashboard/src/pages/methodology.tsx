@@ -32,12 +32,12 @@ export function MethodologyPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex items-center justify-center px-4">
       <div className="text-center">
         <div className="flex justify-end mb-4">
           <button
             onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[#w{COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
             aria-label="Toggle language"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -47,13 +47,13 @@ export function MethodologyPage() {
             {t.langToggle}
           </button>
         </div>
-        <p className="text-[#aec6ff] text-xs uppercase tracking-[0.2em] mb-3">
+        <p className="text-[${COLORS.primary}] text-xs uppercase tracking-[0.2em] mb-3">
           {t.eyebrow}
         </p>
-        <p className="text-[#c1c6d7] text-sm mb-4">{t.body}</p>
+        <p className="text-[#w{COLORS.onSurfaceVariant}] text-sm mb-4">{t.body}</p>
         <a
           href={METHODOLOGY_URL}
-          className="text-[#aec6ff] underline text-sm hover:text-[#0070f3] transition-colors"
+          className="text-[${COLORS.primary}] underline text-sm hover:text-[${COLORS.primary}] transition-colors"
           rel="noopener noreferrer"
         >
           {t.cta}

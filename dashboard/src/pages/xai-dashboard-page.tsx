@@ -225,7 +225,7 @@ export function XAIDashboardPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       {/* Language Toggle */}
       <div className="fixed top-4 right-4 z-50">
         <button

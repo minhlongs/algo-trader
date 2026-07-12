@@ -60,7 +60,7 @@ export function PnLAnalyticsWidget({
           <h3 className="text-white text-sm font-semibold">Equity Curve</h3>
         </div>
         <div
-          className="bg-[#101426] border border-white/5 rounded-xl p-4 flex-grow flex items-center justify-center"
+          className="bg-[${COLORS.surfaceHigh}] border border-white/5 rounded-xl p-4 flex-grow flex items-center justify-center"
         >
           {loading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
         </div>

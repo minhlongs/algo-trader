@@ -112,7 +112,7 @@ function CheckIcon() {
 }
 
 const glassCard = (extra = '') =>
- `bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl ${extra}`.trim();
+ `bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl ${extra}`.trim();
 
 // ---- Tier gate simulation (replace with real auth check later) ----
 // For Phase 01 A3 compliance: FREE users see locked state.
@@ -138,7 +138,7 @@ export function AlphaVangPage() {
   }, [fetchMe]);
 
  return (
-   <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+   <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
      <PublicNavbar />
 
      <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">

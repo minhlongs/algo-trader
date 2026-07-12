@@ -31,7 +31,7 @@ export function PrivacyPage() {
   const langLabel = lang === 'en' ? 'VI' : 'EN';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       <PublicNavbar />
 
       <div className="flex justify-end px-4 sm:px-6 pt-4">
@@ -68,18 +68,18 @@ export function PrivacyPage() {
           {t.title}
         </h1>
 
-        <div className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-6 sm:p-8 space-y-4">
-          <p className="text-[#c1c6d7] text-sm leading-relaxed">
+        <div className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-6 sm:p-8 space-y-4">
+          <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed">
             {t.description}
           </p>
-          <p className="text-[#c1c6d7] text-sm leading-relaxed">
+          <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed">
             {t.credentialsNote}
           </p>
-          <p className="text-[#c1c6d7] text-sm leading-relaxed">
+          <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed">
             {t.supportNote}{' '}
             <a
               href="mailto:support@cashclaw.cc"
-              className="text-[#aec6ff] hover:underline"
+              className="text-[${COLORS.primary}] hover:underline"
             >
               support@cashclaw.cc
             </a>
@@ -90,7 +90,7 @@ export function PrivacyPage() {
         <div className="mt-6">
           <Link
             to="/"
-            className="text-[#aec6ff] text-sm hover:underline"
+            className="text-[${COLORS.primary}] text-sm hover:underline"
           >
             &larr; {t.backToHome}
           </Link>

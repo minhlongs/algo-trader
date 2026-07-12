@@ -172,7 +172,7 @@ const FAQS = [
 ];
 
 function glassCard(extra = '') {
-  return `bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl ${extra}`.trim();
+  return `bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl ${extra}`.trim();
 }
 
 function CheckIcon() {
@@ -195,10 +195,10 @@ function XIcon() {
 function FaqItem({ qKey, aKey, t }: { qKey: string; aKey: string; t: Record<string, string> }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-[#414754]">
+    <div className="border-b border-[${COLORS.outline}]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left text-sm text-[#e3e2e2] hover:text-[#0070f3] transition-colors"
+        className="w-full flex items-center justify-between py-4 text-left text-sm text-[${COLORS.onSurface}] hover:text-[${COLORS.primary}] transition-colors"
       >
         <span>{t[qKey]}</span>
         <svg
@@ -214,7 +214,7 @@ function FaqItem({ qKey, aKey, t }: { qKey: string; aKey: string; t: Record<stri
         </svg>
       </button>
       {open && (
-        <p className="text-[#c1c6d7] text-sm leading-relaxed pb-4">{t[aKey]}</p>
+        <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed pb-4">{t[aKey]}</p>
       )}
     </div>
   );
@@ -225,14 +225,14 @@ export function PricingPage() {
   const t = COPY[lang];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex flex-col">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex flex-col">
       <PublicNavbar />
 
       {/* Language toggle */}
       <div className="flex justify-end px-4 sm:px-6 pt-4 max-w-6xl mx-auto w-full">
         <button
           onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
           aria-label="Toggle language"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -246,9 +246,9 @@ export function PricingPage() {
       <main className="flex-1 pt-12 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-[#aec6ff] text-xs uppercase tracking-widest mb-3">{t.eyebrow}</p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-[#e3e2e2] mb-4">{t.title}</h1>
-          <p className="text-[#c1c6d7] text-sm max-w-md mx-auto">{t.subtitle}</p>
+          <p className="text-[${COLORS.primary}] text-xs uppercase tracking-widest mb-3">{t.eyebrow}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-[${COLORS.onSurface}] mb-4">{t.title}</h1>
+          <p className="text-[${COLORS.onSurfaceVariant}] text-sm max-w-md mx-auto">{t.subtitle}</p>
         </div>
 
         {/* Plan cards */}
@@ -256,19 +256,19 @@ export function PricingPage() {
           {PLANS.map(({ name, price, sub, href, cta, highlight, features }) => (
             <div
               key={name}
-              className={`relative p-6 flex flex-col gap-5 ${highlight ? glassCard('border-2 border-[#0070f3]') : glassCard()}`}
+              className={`relative p-6 flex flex-col gap-5 ${highlight ? glassCard('border-2 border-[${COLORS.primary}]') : glassCard()}`}
             >
               {highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0070f3] text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[${COLORS.primary}] text-white text-xs font-bold px-3 py-0.5 rounded-full">
                   {t.popular}
                 </span>
               )}
 
               <div>
-                <p className="text-[#c1c6d7] text-xs uppercase tracking-widest mb-2">{t[`plan${name}` as keyof typeof t] as string}</p>
-                <p className="text-[#e3e2e2] text-4xl font-bold">
+                <p className="text-[${COLORS.onSurfaceVariant}] text-xs uppercase tracking-widest mb-2">{t[`plan${name}` as keyof typeof t] as string}</p>
+                <p className="text-[${COLORS.onSurface}] text-4xl font-bold">
                   {price}
-                  <span className="text-[#c1c6d7] text-sm font-normal ml-1">
+                  <span className="text-[${COLORS.onSurfaceVariant}] text-sm font-normal ml-1">
                     {sub === 'forever' ? t.subFree : t.subMonthly}
                   </span>
                 </p>
@@ -277,12 +277,12 @@ export function PricingPage() {
               <ul className="space-y-2.5 flex-1">
                 {features.map(({ label, value }) => (
                   <li key={label} className="flex items-center justify-between text-xs">
-                    <span className="text-[#c1c6d7]">{t[label as keyof typeof t] as string}</span>
+                    <span className="text-[${COLORS.onSurfaceVariant}]">{t[label as keyof typeof t] as string}</span>
                     <span className="flex items-center gap-1">
                       {typeof value === 'boolean' ? (
                         value ? <CheckIcon /> : <XIcon />
                       ) : (
-                        <span className="text-[#e3e2e2]">{value}</span>
+                        <span className="text-[${COLORS.onSurface}]">{value}</span>
                       )}
                     </span>
                   </li>
@@ -293,8 +293,8 @@ export function PricingPage() {
                 to={href}
                 className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
                   highlight
-                    ? 'bg-[#0070f3] text-white hover:bg-[#0070f3]/80'
-                    : 'border border-[#414754] text-[#c1c6d7] hover:text-[#e3e2e2] hover:border-[#aec6ff]'
+                    ? 'bg-[${COLORS.primary}] text-white hover:bg-[${COLORS.primary}]/80'
+                    : 'border border-[${COLORS.outline}] text-[${COLORS.onSurfaceVariant}] hover:text-[${COLORS.onSurface}] hover:border-[${COLORS.primary}]'
                 }`}
               >
                 {t[cta as keyof typeof t] as string}
@@ -305,7 +305,7 @@ export function PricingPage() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-xl font-bold text-[#e3e2e2] mb-6 text-center">{t.faqTitle}</h2>
+          <h2 className="text-xl font-bold text-[${COLORS.onSurface}] mb-6 text-center">{t.faqTitle}</h2>
           <div className={glassCard('p-6')}>
             {FAQS.map(({ q, a }) => (
               <FaqItem key={q} qKey={q} aKey={a} t={t} />

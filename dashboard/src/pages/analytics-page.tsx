@@ -115,7 +115,7 @@ export function AnalyticsPage() {
 
   if (loading && !metrics) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+      <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
         <div className="flex flex-col items-center justify-center py-20" style={{ color: COLORS.onSurfaceVariant }}>
           <svg className="animate-spin h-10 w-10 mb-4" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -129,7 +129,7 @@ export function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+      <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
         <div className="p-6 rounded-lg" style={{ backgroundColor: `${COLORS.loss}15`, border: `1px solid ${COLORS.loss}55`, color: COLORS.loss }}>
           <h3 className="font-semibold mb-2">{t.errorHeading}</h3>
           <p className="text-sm mb-4">{error}</p>
@@ -146,7 +146,7 @@ export function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       <div className="space-y-6 p-6">
         {/* Header + language toggle */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

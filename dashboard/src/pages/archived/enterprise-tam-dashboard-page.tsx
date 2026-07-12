@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { ENTERPRISE_PLANS, type EnterprisePlanKey } from '../../lib/enterprise-plans';
 
+
 interface EnterpriseInquiry {
   id: string;
   email: string;
@@ -30,7 +31,7 @@ const STATUS_COLORS: Record<string, string> = {
   new: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
   tam_notified: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
   contacted: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
-  demo_active: 'bg-[#00D4AA]/15 text-[#00D4AA] border-[#00D4AA]/30',
+  demo_active: 'bg-[${COLORS.profit}]/15 text-[${COLORS.profit}] border-[${COLORS.profit}]/30',
   negotiating: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
   closed_won: 'bg-green-500/15 text-green-400 border-green-500/30',
   closed_lost: 'bg-red-500/15 text-red-400 border-red-500/30',
@@ -54,29 +55,29 @@ function InquiryRow({
 }) {
   const plan = ENTERPRISE_PLANS[inquiry.tier];
   return (
-    <tr className="border-b border-[#2D3142] hover:bg-[#1A1A2E]/50">
+    <tr className="border-b border-[${COLORS.outline}] hover:bg-[${COLORS.surfaceHigh}]/50">
       <td className="py-3 px-4">
         <p className="text-sm font-semibold text-white">{inquiry.companyName}</p>
-        <p className="text-xs text-[#8892B0]">{inquiry.contactName}</p>
-        <p className="text-xs text-[#555] font-mono">{inquiry.email}</p>
+        <p className="text-xs text-[${COLORS.onSurfaceVariant}]">{inquiry.contactName}</p>
+        <p className="text-xs text-[${COLORS.onSurfaceVariant}] font-mono">{inquiry.email}</p>
       </td>
       <td className="py-3 px-4 text-xs text-white">{plan?.price ?? inquiry.tier}</td>
       <td className="py-3 px-4"><StatusBadge status={inquiry.status} /></td>
-      <td className="py-3 px-4 text-xs text-[#8892B0]">
+      <td className="py-3 px-4 text-xs text-[${COLORS.onSurfaceVariant}]">
         {inquiry.paperdemoProvisioned ? (
-          <span className="text-[#00D4AA]">Active</span>
+          <span className="text-[${COLORS.profit}]">Active</span>
         ) : (
-          <span className="text-[#555]">—</span>
+          <span className="text-[${COLORS.onSurfaceVariant}]">—</span>
         )}
       </td>
-      <td className="py-3 px-4 text-xs text-[#8892B0]">
+      <td className="py-3 px-4 text-xs text-[${COLORS.onSurfaceVariant}]">
         {new Date(inquiry.createdAt).toLocaleDateString()}
       </td>
       <td className="py-3 px-4">
         <select
           value={inquiry.status}
           onChange={(e) => onStatusChange(inquiry.id, e.target.value)}
-          className="text-xs bg-[#161A1E] border border-[#2D3142] text-[#8892B0] rounded px-2 py-1 outline-none focus:border-[#00D9FF]/50"
+          className="text-xs bg-[${COLORS.surface}] border border-[${COLORS.outline}] text-[${COLORS.onSurfaceVariant}] rounded px-2 py-1 outline-none focus:border-[${COLORS.primary}]/50"
         >
           {['new','tam_notified','contacted','demo_active','negotiating','closed_won','closed_lost'].map((s) => (
             <option key={s} value={s}>{s.replace('_',' ')}</option>
@@ -128,10 +129,10 @@ export function EnterpriseTamDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0F1A] text-white font-mono p-6">
+    <div className="min-h-screen bg-[${COLORS.surfaceHigh}] text-white font-mono p-6">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <p className="text-[#00D9FF] text-xs uppercase tracking-widest mb-2">Internal</p>
+          <p className="text-[${COLORS.primary}] text-xs uppercase tracking-widest mb-2">Internal</p>
           <h1 className="text-2xl font-bold">Enterprise TAM Dashboard</h1>
         </div>
 
@@ -142,8 +143,8 @@ export function EnterpriseTamDashboardPage() {
             { label: 'Open', value: stats.open },
             { label: 'Closed won', value: stats.won },
           ].map(({ label, value }) => (
-            <div key={label} className="border border-[#2D3142] bg-[#1A1A2E] rounded-lg p-4">
-              <p className="text-xs text-[#8892B0] mb-1">{label}</p>
+            <div key={label} className="border border-[${COLORS.outline}] bg-[${COLORS.surfaceHigh}] rounded-lg p-4">
+              <p className="text-xs text-[${COLORS.onSurfaceVariant}] mb-1">{label}</p>
               <p className="text-2xl font-bold text-white">{value}</p>
             </div>
           ))}
@@ -151,21 +152,21 @@ export function EnterpriseTamDashboardPage() {
 
         {/* Table */}
         {loadState === 'loading' && (
-          <p className="text-[#8892B0] text-sm text-center py-12">Loading inquiries…</p>
+          <p className="text-[${COLORS.onSurfaceVariant}] text-sm text-center py-12">Loading inquiries…</p>
         )}
         {loadState === 'error' && (
           <p className="text-red-400 text-sm text-center py-12">{errorMsg}</p>
         )}
         {loadState === 'ready' && (
-          <div className="border border-[#2D3142] rounded-lg overflow-hidden">
+          <div className="border border-[${COLORS.outline}] rounded-lg overflow-hidden">
             {inquiries.length === 0 ? (
-              <p className="text-[#8892B0] text-sm text-center py-12">No enterprise inquiries yet.</p>
+              <p className="text-[${COLORS.onSurfaceVariant}] text-sm text-center py-12">No enterprise inquiries yet.</p>
             ) : (
               <table className="w-full text-left">
                 <thead>
-                  <tr className="border-b border-[#2D3142] bg-[#161A1E]">
+                  <tr className="border-b border-[${COLORS.outline}] bg-[${COLORS.surface}]">
                     {['Company / Contact', 'Tier', 'Status', 'Demo', 'Submitted', 'Update status'].map((h) => (
-                      <th key={h} className="py-2.5 px-4 text-xs text-[#8892B0] font-semibold uppercase tracking-wider">
+                      <th key={h} className="py-2.5 px-4 text-xs text-[${COLORS.onSurfaceVariant}] font-semibold uppercase tracking-wider">
                         {h}
                       </th>
                     ))}

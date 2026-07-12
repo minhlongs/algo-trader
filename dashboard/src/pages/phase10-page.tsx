@@ -122,7 +122,7 @@ export function Phase10Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       <div className="relative">
         <div className="flex justify-end p-4">
           <button
