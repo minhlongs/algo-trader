@@ -1,12 +1,95 @@
 /**
  * Public pricing page. Full-page, no sidebar.
  * 3-column plan table + FAQ accordion.
+ * Stitch dark fintech bilingual VN+EN.
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PublicNavbar } from '../components/public-navbar';
 import { Footer } from '../components/footer';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { TIER_LIMITS } from '../lib/tier-config';
+
+type Lang = 'en' | 'vi';
+
+const COPY: Record<Lang, Record<string, string>> = {
+  en: {
+    langToggle: 'Tiếng Việt',
+    eyebrow: 'Pricing',
+    title: 'Simple, transparent plans',
+    subtitle: 'Start free. Upgrade when you\'re ready. No hidden fees. Cancel anytime.',
+    planFree: 'Free',
+    planPro: 'Pro',
+    planEnterprise: 'Enterprise',
+    priceFree: '$0',
+    pricePro: '$49',
+    priceEnterprise: '$199',
+    subFree: 'forever',
+    subMonthly: '/ month',
+    ctaGetStarted: 'Get Started',
+    ctaStartPro: 'Start Pro',
+    popular: 'POPULAR',
+    featActiveStrategies: 'Active strategies',
+    featTradesPerDay: 'Trades per day',
+    featDailyLossCap: 'Daily loss cap',
+    featMaxPosition: 'Max position size',
+    featScanningBasic: 'Basic',
+    featScanningAdvanced: 'Advanced',
+    featScanningFull: 'Full coverage',
+    featSafetyLimits: 'Safety limits',
+    featApiAccess: 'API access',
+    featPrioritySupport: 'Priority support',
+    faqTitle: 'Frequently asked questions',
+    faq1q: 'How does CashClaw make money for me?',
+    faq1a: 'CashClaw posts bid and ask orders around the fair-value mid-price on Polymarket. When both sides fill, you earn the spread. Higher liquidity markets produce more fills.',
+    faq2q: 'Is my capital at risk?',
+    faq2a: 'All trading carries risk. CashClaw enforces daily loss caps and maximum position sizes to limit downside. You control your Polymarket wallet at all times — funds never leave your account.',
+    faq3q: 'What markets does CashClaw trade?',
+    faq3a: 'The bot targets high-liquidity Polymarket prediction markets with measurable spreads. The selection algorithm scores markets by volume, liquidity depth, and spread width.',
+    faq4q: 'Can I cancel anytime?',
+    faq4a: 'Yes. Pro and Enterprise plans are month-to-month with no lock-in. Cancel before your next billing date and you will not be charged again.',
+    faq5q: 'Do I need a Polymarket account?',
+    faq5a: 'Yes. CashClaw connects to your existing Polymarket account via API key. You retain full custody of funds.',
+  },
+  vi: {
+    langToggle: 'English',
+    eyebrow: 'Bảng giá',
+    title: 'Gói dịch vụ đơn giản, minh bạch',
+    subtitle: 'Dùng thử miễn phí. Nâng cấp khi bạn sẵn sàng. Không phí ẩn. Hủy bất cứ lúc nào.',
+    planFree: 'Free',
+    planPro: 'Pro',
+    planEnterprise: 'Enterprise',
+    priceFree: '$0',
+    pricePro: '$49',
+    priceEnterprise: '$199',
+    subFree: 'vĩnh viễn',
+    subMonthly: '/ tháng',
+    ctaGetStarted: 'Bắt đầu',
+    ctaStartPro: 'Dùng Pro',
+    popular: 'PHỔ BIẾN',
+    featActiveStrategies: 'Chiến lược hoạt động',
+    featTradesPerDay: 'Giao dịch/ngày',
+    featDailyLossCap: 'Giới hạn lỗ/ngày',
+    featMaxPosition: 'Vị thế tối đa',
+    featScanningBasic: 'Cơ bản',
+    featScanningAdvanced: 'Nâng cao',
+    featScanningFull: 'Toàn diện',
+    featSafetyLimits: 'Giới hạn bảo vệ',
+    featApiAccess: 'Truy cập API',
+    featPrioritySupport: 'Hỗ trợ ưu tiên',
+    faqTitle: 'Câu hỏi thường gặp',
+    faq1q: 'CashClaw giúp tôi kiếm tiền như thế nào?',
+    faq1a: 'CashClaw đặt lệnh mua và bán quanh giá trung bình trên Polymarket. Khi cả hai phía được khớp, bạn kiếm được spread. Thị trường thanh khoản cao tạo ra nhiều khớp lệnh hơn.',
+    faq2q: 'Vốn của tôi có bị rủi ro không?',
+    faq2a: 'Mọi giao dịch đều có rủi ro. CashClaw áp dụng giới hạn lỗ hàng ngày và giới hạn vị thế tối đa để giảm thiểu rủi ro. Bạn kiểm soát hoàn toàn ví Polymarket — tiền không rời khỏi tài khoản của bạn.',
+    faq3q: 'CashClaw giao dịch những thị trường nào?',
+    faq3a: 'Bot nhắm đến các thị trường dự đoán Polymarket có thanh khoản cao và spread đo lường được. Thuật toán chọn lọc thị trường theo khối lượng, độ sâu thanh khoản và độ rộng spread.',
+    faq4q: 'Tôi có thể hủy bất cứ lúc nào không?',
+    faq4a: 'Có. Gói Pro và Enterprise tính theo tháng, không ràng buộc. Hủy trước ngày thanh toán tiếp theo và bạn sẽ không bị tính phí thêm.',
+    faq5q: 'Tôi có cần tài khoản Polymarket không?',
+    faq5a: 'Có. CashClaw kết nối với tài khoản Polymarket hiện tại của bạn qua API key. Bạn giữ quyền kiểm soát vốn hoàn toàn.',
+  },
+};
 
 const PLANS = [
   {
@@ -14,17 +97,17 @@ const PLANS = [
     price: '$0',
     sub: 'forever',
     href: '/signup?tier=free',
-    cta: 'Get Started',
+    cta: 'ctaGetStarted',
     highlight: false,
     features: [
-      { label: 'Active strategies', value: TIER_LIMITS.free.activeStrategies },
-      { label: 'Trades per day', value: TIER_LIMITS.free.tradesPerDay },
-      { label: 'Daily loss cap', value: TIER_LIMITS.free.dailyLossCap },
-      { label: 'Max position size', value: TIER_LIMITS.free.maxPosition },
-      { label: 'Market scanning', value: 'Basic' },
-      { label: 'Safety limits', value: true },
-      { label: 'API access', value: false },
-      { label: 'Priority support', value: false },
+      { label: 'featActiveStrategies', value: TIER_LIMITS.free.activeStrategies },
+      { label: 'featTradesPerDay', value: TIER_LIMITS.free.tradesPerDay },
+      { label: 'featDailyLossCap', value: TIER_LIMITS.free.dailyLossCap },
+      { label: 'featMaxPosition', value: TIER_LIMITS.free.maxPosition },
+      { label: 'featScanningBasic', value: true },
+      { label: 'featSafetyLimits', value: true },
+      { label: 'featApiAccess', value: false },
+      { label: 'featPrioritySupport', value: false },
     ],
   },
   {
@@ -32,17 +115,17 @@ const PLANS = [
     price: '$49',
     sub: '/ month',
     href: '/signup?tier=pro',
-    cta: 'Start Pro',
+    cta: 'ctaStartPro',
     highlight: true,
     features: [
-      { label: 'Active strategies', value: TIER_LIMITS.pro.activeStrategies },
-      { label: 'Trades per day', value: TIER_LIMITS.pro.tradesPerDay },
-      { label: 'Daily loss cap', value: TIER_LIMITS.pro.dailyLossCap },
-      { label: 'Max position size', value: TIER_LIMITS.pro.maxPosition },
-      { label: 'Market scanning', value: 'Advanced' },
-      { label: 'Safety limits', value: true },
-      { label: 'API access', value: true },
-      { label: 'Priority support', value: false },
+      { label: 'featActiveStrategies', value: TIER_LIMITS.pro.activeStrategies },
+      { label: 'featTradesPerDay', value: TIER_LIMITS.pro.tradesPerDay },
+      { label: 'featDailyLossCap', value: TIER_LIMITS.pro.dailyLossCap },
+      { label: 'featMaxPosition', value: TIER_LIMITS.pro.maxPosition },
+      { label: 'featScanningAdvanced', value: true },
+      { label: 'featSafetyLimits', value: true },
+      { label: 'featApiAccess', value: true },
+      { label: 'featPrioritySupport', value: false },
     ],
   },
   {
@@ -50,47 +133,51 @@ const PLANS = [
     price: '$199',
     sub: '/ month',
     href: '/signup?tier=enterprise',
-    cta: 'Get Started',
+    cta: 'ctaGetStarted',
     highlight: false,
     features: [
-      { label: 'Active strategies', value: TIER_LIMITS.enterprise.activeStrategies },
-      { label: 'Trades per day', value: TIER_LIMITS.enterprise.tradesPerDay },
-      { label: 'Daily loss cap', value: TIER_LIMITS.enterprise.dailyLossCap },
-      { label: 'Max position size', value: TIER_LIMITS.enterprise.maxPosition },
-      { label: 'Market scanning', value: 'Full coverage' },
-      { label: 'Safety limits', value: true },
-      { label: 'API access', value: true },
-      { label: 'Priority support', value: true },
+      { label: 'featActiveStrategies', value: TIER_LIMITS.enterprise.activeStrategies },
+      { label: 'featTradesPerDay', value: TIER_LIMITS.enterprise.tradesPerDay },
+      { label: 'featDailyLossCap', value: TIER_LIMITS.enterprise.dailyLossCap },
+      { label: 'featMaxPosition', value: TIER_LIMITS.enterprise.maxPosition },
+      { label: 'featScanningFull', value: true },
+      { label: 'featSafetyLimits', value: true },
+      { label: 'featApiAccess', value: true },
+      { label: 'featPrioritySupport', value: true },
     ],
   },
 ];
 
 const FAQS = [
   {
-    q: 'How does CashClaw make money for me?',
-    a: 'CashClaw posts bid and ask orders around the fair-value mid-price on Polymarket. When both sides fill, you earn the spread. Higher liquidity markets produce more fills.',
+    q: 'faq1q',
+    a: 'faq1a',
   },
   {
-    q: 'Is my capital at risk?',
-    a: 'All trading carries risk. CashClaw enforces daily loss caps and maximum position sizes to limit downside. You control your Polymarket wallet at all times — funds never leave your account.',
+    q: 'faq2q',
+    a: 'faq2a',
   },
   {
-    q: 'What markets does CashClaw trade?',
-    a: 'The bot targets high-liquidity Polymarket prediction markets with measurable spreads. The selection algorithm scores markets by volume, liquidity depth, and spread width.',
+    q: 'faq3q',
+    a: 'faq3a',
   },
   {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. Pro and Enterprise plans are month-to-month with no lock-in. Cancel before your next billing date and you will not be charged again.',
+    q: 'faq4q',
+    a: 'faq4a',
   },
   {
-    q: 'Do I need a Polymarket account?',
-    a: 'Yes. CashClaw connects to your existing Polymarket account via API key. You retain full custody of funds.',
+    q: 'faq5q',
+    a: 'faq5a',
   },
 ];
 
+function glassCard(extra = '') {
+  return `bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl ${extra}`.trim();
+}
+
 function CheckIcon() {
   return (
-    <svg width="14" height="14" fill="none" stroke="#00E676" strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="14" height="14" fill="none" stroke={COLORS.profit} strokeWidth="2" viewBox="0 0 24 24">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -98,48 +185,70 @@ function CheckIcon() {
 
 function XIcon() {
   return (
-    <svg width="14" height="14" fill="none" stroke="#8892B0" strokeWidth="2" viewBox="0 0 24 24">
-      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+    <svg width="14" height="14" fill="none" stroke={COLORS.onSurfaceVariant} strokeWidth="2" viewBox="0 0 24 24">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 }
 
-function FaqItem({ q, a }: { q: string; a: string }) {
+function FaqItem({ qKey, aKey, t }: { qKey: string; aKey: string; t: Record<string, string> }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-[#1E2640]">
+    <div className="border-b border-[#414754]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left text-sm text-white hover:text-[#00C8E8] transition-colors"
+        className="w-full flex items-center justify-between py-4 text-left text-sm text-[#e3e2e2] hover:text-[#0070f3] transition-colors"
       >
-        <span>{q}</span>
+        <span>{t[qKey]}</span>
         <svg
-          width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
           className={`flex-shrink-0 ml-4 transition-transform ${open ? 'rotate-180' : ''}`}
         >
           <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
       {open && (
-        <p className="text-[#8892B0] text-xs leading-relaxed pb-4">{a}</p>
+        <p className="text-[#c1c6d7] text-sm leading-relaxed pb-4">{t[aKey]}</p>
       )}
     </div>
   );
 }
 
 export function PricingPage() {
+  const [lang, setLang] = useState<Lang>('en');
+  const t = COPY[lang];
+
   return (
-    <div className="min-h-screen bg-[#080B14] text-white flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex flex-col">
       <PublicNavbar />
 
-      <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
+      {/* Language toggle */}
+      <div className="flex justify-end px-4 sm:px-6 pt-4 max-w-6xl mx-auto w-full">
+        <button
+          onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+          aria-label="Toggle language"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
+          </svg>
+          {t.langToggle}
+        </button>
+      </div>
+
+      <main className="flex-1 pt-12 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-[#00C8E8] text-xs uppercase tracking-widest mb-3">Pricing</p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple, transparent plans</h1>
-          <p className="text-[#8892B0] text-sm max-w-md mx-auto">
-            Start free. Upgrade when you're ready. No hidden fees. Cancel anytime.
-          </p>
+          <p className="text-[#aec6ff] text-xs uppercase tracking-widest mb-3">{t.eyebrow}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-[#e3e2e2] mb-4">{t.title}</h1>
+          <p className="text-[#c1c6d7] text-sm max-w-md mx-auto">{t.subtitle}</p>
         </div>
 
         {/* Plan cards */}
@@ -147,35 +256,33 @@ export function PricingPage() {
           {PLANS.map(({ name, price, sub, href, cta, highlight, features }) => (
             <div
               key={name}
-              className={`relative rounded-lg p-6 flex flex-col gap-5 ${
-                highlight
-                  ? 'border-2 border-[#00C8E8] bg-[#111627]'
-                  : 'border border-[#1E2640] bg-[#111627]'
-              }`}
+              className={`relative p-6 flex flex-col gap-5 ${highlight ? glassCard('border-2 border-[#0070f3]') : glassCard()}`}
             >
               {highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00C8E8] text-[#080B14] text-xs font-bold px-3 py-0.5 rounded-full">
-                  POPULAR
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#0070f3] text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                  {t.popular}
                 </span>
               )}
 
               <div>
-                <p className="text-[#8892B0] text-xs uppercase tracking-widest mb-2">{name}</p>
-                <p className="text-white text-4xl font-bold">
+                <p className="text-[#c1c6d7] text-xs uppercase tracking-widest mb-2">{t[`plan${name}` as keyof typeof t] as string}</p>
+                <p className="text-[#e3e2e2] text-4xl font-bold">
                   {price}
-                  <span className="text-[#8892B0] text-sm font-normal ml-1">{sub}</span>
+                  <span className="text-[#c1c6d7] text-sm font-normal ml-1">
+                    {sub === 'forever' ? t.subFree : t.subMonthly}
+                  </span>
                 </p>
               </div>
 
               <ul className="space-y-2.5 flex-1">
                 {features.map(({ label, value }) => (
                   <li key={label} className="flex items-center justify-between text-xs">
-                    <span className="text-[#8892B0]">{label}</span>
+                    <span className="text-[#c1c6d7]">{t[label as keyof typeof t] as string}</span>
                     <span className="flex items-center gap-1">
                       {typeof value === 'boolean' ? (
                         value ? <CheckIcon /> : <XIcon />
                       ) : (
-                        <span className="text-white">{value}</span>
+                        <span className="text-[#e3e2e2]">{value}</span>
                       )}
                     </span>
                   </li>
@@ -186,11 +293,11 @@ export function PricingPage() {
                 to={href}
                 className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
                   highlight
-                    ? 'bg-[#00C8E8] text-[#080B14] hover:bg-[#00C8E8]/80'
-                    : 'border border-[#1E2640] text-[#8892B0] hover:text-white hover:border-[#00C8E8]/50'
+                    ? 'bg-[#0070f3] text-white hover:bg-[#0070f3]/80'
+                    : 'border border-[#414754] text-[#c1c6d7] hover:text-[#e3e2e2] hover:border-[#aec6ff]'
                 }`}
               >
-                {cta}
+                {t[cta as keyof typeof t] as string}
               </Link>
             </div>
           ))}
@@ -198,10 +305,10 @@ export function PricingPage() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-xl font-bold text-white mb-6 text-center">Frequently asked questions</h2>
-          <div>
+          <h2 className="text-xl font-bold text-[#e3e2e2] mb-6 text-center">{t.faqTitle}</h2>
+          <div className={glassCard('p-6')}>
             {FAQS.map(({ q, a }) => (
-              <FaqItem key={q} q={q} a={a} />
+              <FaqItem key={q} qKey={q} aKey={a} t={t} />
             ))}
           </div>
         </div>

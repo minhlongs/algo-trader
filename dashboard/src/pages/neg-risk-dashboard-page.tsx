@@ -1,7 +1,6 @@
 /**
  * NegRiskDashboardPage — CashClaw Negative Risk Scanner Dashboard
- * Design: Google Stitch generated — High-Fidelity Fintech design system
- * Colors: surface #051424, primary #4cd7f6, primary-container #06b6d4
+ * Design: Google Stitch dark fintech bilingual VN+EN
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -26,7 +25,75 @@ export interface NegRiskStats {
   activeTrades: number;
 }
 
+type Lang = "en" | "vi";
+
+const COPY = {
+  en: {
+    langToggle: "EN",
+    title: "Negative Risk Scanner",
+    subtitle: "Negative Risk Engine",
+    dashboard: "Dashboard",
+    strategies: "Strategies",
+    settings: "Settings",
+    riskControl: "Risk Control",
+    riskThreshold: "Risk Threshold",
+    scanner: "Scanner",
+    portfolio: "Portfolio",
+    history: "History",
+    refreshScan: "Refresh Scan",
+    scanning: "Scanning...",
+    opportunitiesFound: "Opportunities Found",
+    lockedProfit: "Locked Profit",
+    activeTrades: "Active Trades",
+    tradeLimit: "/ 10 Limit",
+    tradeInitiated: "Trade Initiated",
+    marketScanner: "Market Scanner",
+    liveFeed: "LIVE FEED",
+    marketName: "Market Name",
+    yesAsk: "YES Ask",
+    noAsk: "NO Ask",
+    sum: "Sum",
+    profit: "Profit",
+    action: "Action",
+    trade: "Trade",
+    scanningMarkets: "Scanning markets...",
+    noOpportunities: "No arbitrage opportunities found",
+  },
+  vi: {
+    langToggle: "VI",
+    title: "Negative Risk Scanner",
+    subtitle: "Negative Risk Engine",
+    dashboard: "Bảng điều khiển",
+    strategies: "Chiến lược",
+    settings: "Cài đặt",
+    riskControl: "Kiểm soát rủi ro",
+    riskThreshold: "Ngưỡng rủi ro",
+    scanner: "Quét",
+    portfolio: "Danh mục",
+    history: "Lịch sử",
+    refreshScan: "Quét lại",
+    scanning: "Đang quét...",
+    opportunitiesFound: "Cơ hội tìm thấy",
+    lockedProfit: "Lợi nhuận khóa",
+    activeTrades: "Giao dịch đang chạy",
+    tradeLimit: "/ Giới hạn 10",
+    tradeInitiated: "Giao dịch đã khởi tạo",
+    marketScanner: "Quét thị trường",
+    liveFeed: "FEED TRỰC TIẾP",
+    marketName: "Tên thị trường",
+    yesAsk: "YES Ask",
+    noAsk: "NO Ask",
+    sum: "Tổng",
+    profit: "Lợi nhuận",
+    action: "Hành động",
+    trade: "Giao dịch",
+    scanningMarkets: "Đang quét thị trường...",
+    noOpportunities: "Không tìm thấy cơ hội chênh lệch giá",
+  },
+};
+
 export function NegRiskDashboardPage() {
+  const [lang, setLang] = useState<Lang>("en");
   const [opportunities, setOpportunities] = useState<NegRiskOpportunity[]>([]);
   const [stats, setStats] = useState<NegRiskStats>({
     opportunitiesFound: 0,
@@ -37,7 +104,11 @@ export function NegRiskDashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const addNotification = useNotificationsStore((state) => state.addNotification);
+  const t = COPY[lang];
+
+  const addNotification = useNotificationsStore(
+    (state) => state.addNotification
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -78,85 +149,78 @@ export function NegRiskDashboardPage() {
 
   const handleTrade = (opp: NegRiskOpportunity) => {
     addNotification({
-      type: 'success',
-      severity: 'medium',
-      title: 'Trade Initiated',
-      message: `Trade initiated for ${opp.marketName} · Locked profit: ${(opp.lockedProfitPct * 100).toFixed(2)}%`,
+      type: "success",
+      severity: "medium",
+      title: t.tradeInitiated,
+      message: `Trade initiated for ${opp.marketName} · Locked profit: ${(
+        opp.lockedProfitPct * 100
+      ).toFixed(2)}%`,
       duration: 3500,
     });
   };
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
-    >
-      {/* Top Navigation Bar */}
-      <header
-        className="fixed top-0 left-0 z-50 flex justify-between items-center px-6 h-16 border-b"
-        style={{
-          backgroundColor: COLORS.bg,
-          borderColor: COLORS.outline,
-        }}
-      >
-        <div className="flex items-center gap-6">
-          <span
-            className="text-2xl font-bold tracking-tighter"
-            style={{ color: COLORS.primary }}
+    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+      {/* Language Toggle */}
+      <div className="fixed top-4 right-4 z-50">
+        <button
+          onClick={() => setLang((l: Lang) => (l === "en" ? "vi" : "en"))}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+          aria-label="Toggle language"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
+          </svg>
+          {t.langToggle}
+        </button>
+      </div>
+
+      {/* Top Navigation Bar */}
+      <header className="fixed top-0 left-0 z-40 flex justify-between items-center px-6 h-16 border-b border-[#414754] bg-[#0a0a0a]">
+        <div className="flex items-center gap-6">
+          <span className="text-2xl font-bold tracking-tighter text-[#aec6ff]">
             CashClaw
           </span>
           <nav className="hidden md:flex items-center gap-6">
-            <span
-              className="text-xs font-bold tracking-wider border-b-2 pb-1 cursor-pointer"
-              style={{ color: COLORS.primary, borderColor: COLORS.primary }}
-            >
-              Dashboard
+            <span className="text-xs font-bold tracking-wider border-b-2 border-[#aec6ff] pb-1 text-[#aec6ff] cursor-pointer">
+              {t.dashboard}
             </span>
-            <span
-              className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white"
-              style={{ color: COLORS.onSurfaceVariant }}
-            >
-              Strategies
+            <span className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white text-[#c1c6d7]">
+              {t.strategies}
             </span>
-            <span
-              className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white"
-              style={{ color: COLORS.onSurfaceVariant }}
-            >
-              Settings
+            <span className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white text-[#c1c6d7]">
+              {t.settings}
             </span>
           </nav>
         </div>
       </header>
 
       {/* Sidebar */}
-      <aside
-        className="fixed left-0 top-16 h-[calc(100vh-64px)] w-60 flex flex-col p-4 border-r z-40"
-        style={{
-          backgroundColor: COLORS.surface,
-          borderColor: COLORS.outline,
-        }}
-      >
+      <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-60 flex flex-col p-4 border-r border-[#414754] bg-[#121414]/80 z-30">
         <div className="mb-6">
-          <h2
-            className="text-base font-semibold"
-            style={{ color: COLORS.primary }}
-          >
-            Risk Control
+          <h2 className="text-base font-semibold text-[#aec6ff]">
+            {t.riskControl}
           </h2>
-          <p
-            className="text-[12px] opacity-70"
-            style={{ color: COLORS.onSurfaceVariant }}
-          >
-            Negative Risk Engine
-          </p>
+          <p className="text-[12px] text-[#c1c6d7] opacity-70">{t.subtitle}</p>
         </div>
-        <div className="mb-6 p-3 rounded-lg border" style={{ borderColor: COLORS.outline, backgroundColor: `${COLORS.surfaceHigh}33` }}>
+        <div className="mb-6 p-3 rounded-lg border border-[#414754] bg-[#121414]/80">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>
-              Risk Threshold
+            <label className="text-xs font-bold tracking-wider text-[#c1c6d7]">
+              {t.riskThreshold}
             </label>
-            <span className="text-xs font-mono font-bold" style={{ color: COLORS.primary }}>{threshold.toFixed(2)}</span>
+            <span className="text-xs font-mono font-bold text-[#aec6ff]">
+              {threshold.toFixed(2)}
+            </span>
           </div>
           <input
             type="range"
@@ -165,24 +229,23 @@ export function NegRiskDashboardPage() {
             step={0.01}
             value={threshold}
             onChange={(e) => setThreshold(Number(e.target.value))}
-            className="w-full accent-[#4cd7f6]"
+            className="w-full accent-[#aec6ff]"
           />
-          <div className="flex justify-between text-[10px] mt-1" style={{ color: COLORS.onSurfaceVariant }}>
+          <div className="flex justify-between text-[10px] mt-1 text-[#c1c6d7]">
             <span>0.90</span>
             <span>0.99</span>
           </div>
         </div>
         <nav className="flex flex-col gap-1 flex-grow">
           {[
-            { icon: "radar", label: "Scanner" },
-            { icon: "account_balance_wallet", label: "Portfolio" },
-            { icon: "history", label: "History" },
-            { icon: "settings", label: "Settings" },
+            { icon: "radar", label: t.scanner },
+            { icon: "account_balance_wallet", label: t.portfolio },
+            { icon: "history", label: t.history },
+            { icon: "settings", label: t.settings },
           ].map((item) => (
             <a
               key={item.label}
-              className="flex items-center gap-3 p-2 rounded-lg transition-all cursor-pointer"
-              style={{ color: COLORS.onSurfaceVariant }}
+              className="flex items-center gap-3 p-2 rounded-lg transition-all cursor-pointer text-[#c1c6d7]"
               href="#"
             >
               <span
@@ -197,15 +260,11 @@ export function NegRiskDashboardPage() {
             </a>
           ))}
         </nav>
-        <div className="mt-auto pt-4 border-t" style={{ borderColor: COLORS.outline }}>
+        <div className="mt-auto pt-4 border-t border-[#414754]">
           <button
             onClick={fetchData}
             disabled={loading}
-            className="w-full py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
-            style={{
-              backgroundColor: COLORS.primary,
-              color: COLORS.onPrimary,
-            }}
+            className="w-full py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 bg-[#0070f3] text-[#002e6b]"
           >
             <span
               className="text-[20px]"
@@ -214,7 +273,7 @@ export function NegRiskDashboardPage() {
               refresh
             </span>
             <span className="text-xs font-bold tracking-wider">
-              {loading ? "Scanning..." : "Refresh Scan"}
+              {loading ? t.scanning : t.refreshScan}
             </span>
           </button>
         </div>
@@ -226,20 +285,23 @@ export function NegRiskDashboardPage() {
           {/* Stats Row */}
           <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
-              label="Opportunities Found"
+              label={t.opportunitiesFound}
               value={stats.opportunitiesFound.toString()}
               trend="+3"
               color={COLORS.primary}
             />
             <StatCard
-              label="Locked Profit"
-              value={`$${stats.lockedProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              label={t.lockedProfit}
+              value={`$${stats.lockedProfit.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`}
               color={COLORS.primary}
             />
             <StatCard
-              label="Active Trades"
+              label={t.activeTrades}
               value={stats.activeTrades.toString()}
-              sub="/ 10 Limit"
+              sub={t.tradeLimit}
               color={COLORS.primary}
             />
           </section>
@@ -247,7 +309,11 @@ export function NegRiskDashboardPage() {
           {error && (
             <div
               className="mb-4 rounded-lg border p-3 text-sm"
-              style={{ backgroundColor: `${COLORS.loss}1A`, borderColor: `${COLORS.loss}66`, color: COLORS.onSurface }}
+              style={{
+                backgroundColor: `${COLORS.loss}1A`,
+                borderColor: `${COLORS.loss}66`,
+                color: COLORS.onSurface,
+              }}
             >
               {error}
             </div>
@@ -266,11 +332,8 @@ export function NegRiskDashboardPage() {
           {/* Market Scanner Table */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h3
-                className="text-xl font-semibold"
-                style={{ color: COLORS.onSurface }}
-              >
-                Market Scanner
+              <h3 className="text-xl font-semibold text-[#e3e2e2]">
+                {t.marketScanner}
               </h3>
               <div className="flex items-center gap-2">
                 <span
@@ -278,17 +341,13 @@ export function NegRiskDashboardPage() {
                   style={{ backgroundColor: COLORS.primary }}
                 />
                 <span
-                  className="text-[11px] font-bold tracking-wider"
-                  style={{ color: COLORS.onSurfaceVariant }}
+                  className="text-[11px] font-bold tracking-wider text-[#c1c6d7]"
                 >
-                  LIVE FEED
+                  {t.liveFeed}
                 </span>
               </div>
             </div>
-            <div
-              className="rounded-xl overflow-hidden"
-              style={{ backgroundColor: COLORS.surface }}
-            >
+            <div className="rounded-xl overflow-hidden bg-[#121414]/80 backdrop-blur-xl border border-[#414754]">
               <div
                 className="overflow-x-auto"
                 style={{
@@ -306,40 +365,34 @@ export function NegRiskDashboardPage() {
                       }}
                     >
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider"
-                        style={{ color: COLORS.onSurfaceVariant }}
+                        className="p-4 text-[11px] font-bold tracking-wider text-[#c1c6d7]"
                       >
-                        Market Name
+                        {t.marketName}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right"
-                        style={{ color: COLORS.onSurfaceVariant }}
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
                       >
-                        YES Ask
+                        {t.yesAsk}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right"
-                        style={{ color: COLORS.onSurfaceVariant }}
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
                       >
-                        NO Ask
+                        {t.noAsk}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right"
-                        style={{ color: COLORS.onSurfaceVariant }}
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
                       >
-                        Sum
+                        {t.sum}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right"
-                        style={{ color: COLORS.onSurfaceVariant }}
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
                       >
-                        Profit
+                        {t.profit}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right"
-                        style={{ color: COLORS.onSurfaceVariant }}
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
                       >
-                        Action
+                        {t.action}
                       </th>
                     </tr>
                   </thead>
@@ -348,10 +401,9 @@ export function NegRiskDashboardPage() {
                       <tr>
                         <td
                           colSpan={6}
-                          className="p-12 text-center text-sm"
-                          style={{ color: COLORS.onSurfaceVariant }}
+                          className="p-12 text-center text-sm text-[#c1c6d7]"
                         >
-                          {loading ? "Scanning markets..." : "No arbitrage opportunities found"}
+                          {loading ? t.scanningMarkets : t.noOpportunities}
                         </td>
                       </tr>
                     ) : (
@@ -359,70 +411,56 @@ export function NegRiskDashboardPage() {
                         <tr
                           key={opp.id}
                           className="border-b transition-colors group"
-                          style={{
-                            borderColor: `${COLORS.outline}4D`,
-                          }}
+                          style={{ borderColor: `${COLORS.outline}4D` }}
                           onMouseEnter={(e) =>
                             (e.currentTarget.style.backgroundColor =
                               COLORS.surfaceHigh)
                           }
                           onMouseLeave={(e) =>
-                            (e.currentTarget.style.backgroundColor = "transparent")
+                            (e.currentTarget.style.backgroundColor =
+                              "transparent")
                           }
                         >
                           <td
-                            className="p-4 text-sm"
-                            style={{ color: COLORS.onSurface }}
+                            className="p-4 text-sm text-[#e3e2e2]"
                           >
                             {opp.marketName}
                           </td>
                           <td
-                            className="p-4 text-sm text-right"
-                            style={{
-                              fontFamily: "JetBrains Mono, monospace",
-                              color: COLORS.onSurface,
-                            }}
+                            className="p-4 text-sm text-right font-mono text-[#e3e2e2]"
+                            style={{ fontFamily: "JetBrains Mono, monospace" }}
                           >
                             {opp.yesAsk.toFixed(3)}
                           </td>
                           <td
-                            className="p-4 text-sm text-right"
-                            style={{
-                              fontFamily: "JetBrains Mono, monospace",
-                              color: COLORS.onSurface,
-                            }}
+                            className="p-4 text-sm text-right font-mono text-[#e3e2e2]"
+                            style={{ fontFamily: "JetBrains Mono, monospace" }}
                           >
                             {opp.noAsk.toFixed(3)}
                           </td>
                           <td
-                            className="p-4 text-sm text-right"
-                            style={{
-                              fontFamily: "JetBrains Mono, monospace",
-                              color: COLORS.primary,
-                            }}
+                            className="p-4 text-sm text-right font-mono text-[#aec6ff]"
+                            style={{ fontFamily: "JetBrains Mono, monospace" }}
                           >
                             {opp.sum.toFixed(3)}
                           </td>
                           <td
-                            className="p-4 text-sm text-right"
-                            style={{
-                              fontFamily: "JetBrains Mono, monospace",
-                              color: COLORS.primary,
-                            }}
+                            className="p-4 text-sm text-right font-mono text-[#3b82f6]"
+                            style={{ fontFamily: "JetBrains Mono, monospace" }}
                           >
                             ${opp.lockedProfit.toFixed(2)}
                           </td>
                           <td className="p-4 text-right">
                             <button
                               onClick={() => handleTrade(opp)}
-                              className="px-4 py-1.5 rounded text-[10px] font-bold tracking-wider transition-all hover:opacity-90"
+                              className="px-4 py-1.5 rounded text-[10px] font-bold tracking-wider transition-all hover:opacity-90 border border-[#0070f3] text-[#0070f3]"
                               style={{
                                 backgroundColor: `${COLORS.primary}1A`,
                                 border: `1px solid ${COLORS.primary}`,
                                 color: COLORS.primary,
                               }}
                             >
-                              Trade
+                              {t.trade}
                             </button>
                           </td>
                         </tr>
@@ -453,17 +491,13 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div
-      className="rounded-xl p-4 flex flex-col gap-1 relative overflow-hidden group"
-      style={{ backgroundColor: COLORS.surface }}
-    >
+    <div className="rounded-xl p-4 flex flex-col gap-1 relative overflow-hidden group bg-[#121414]/80 backdrop-blur-xl border border-[#414754]">
       <div
         className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-all group-hover:opacity-100"
         style={{ backgroundColor: `${color}0D`, opacity: 0.5 }}
       />
       <span
-        className="text-[11px] font-bold tracking-wider"
-        style={{ color: COLORS.onSurfaceVariant }}
+        className="text-[11px] font-bold tracking-wider text-[#c1c6d7]"
       >
         {label}
       </span>
@@ -479,10 +513,7 @@ function StatCard({
           {value}
         </span>
         {trend && (
-          <span
-            className="text-sm flex items-center"
-            style={{ color }}
-          >
+          <span className="text-sm flex items-center" style={{ color }}>
             <span style={{ fontFamily: "Material Symbols Outlined" }}>
               trending_up
             </span>
@@ -491,10 +522,7 @@ function StatCard({
         )}
       </div>
       {sub && (
-        <span
-          className="text-xs mt-3"
-          style={{ color: COLORS.onSurfaceVariant }}
-        >
+        <span className="text-xs mt-3 text-[#c1c6d7]">
           {sub}
         </span>
       )}
@@ -503,7 +531,10 @@ function StatCard({
           className="w-full h-1 rounded-full mt-3 overflow-hidden"
           style={{ backgroundColor: COLORS.surfaceHigh }}
         >
-          <div className="h-full rounded-full" style={{ backgroundColor: color, width: "65%" }} />
+          <div
+            className="h-full rounded-full"
+            style={{ backgroundColor: color, width: "65%" }}
+          />
         </div>
       )}
     </div>

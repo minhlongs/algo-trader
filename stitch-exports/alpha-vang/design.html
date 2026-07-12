@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Alpha Vang Energy 9 | Institutional Grade Energy Trading</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glow-hover:hover {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+        .grid-pattern {
+            background-image: radial-gradient(#262626 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .glass-card {
+            background: rgba(19, 19, 19, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid #262626;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-container": "#4d8eff",
+                      "secondary-container": "#3e495d",
+                      "surface-container-lowest": "#0e0e0e",
+                      "on-background": "#e5e2e1",
+                      "on-secondary-fixed": "#111c2d",
+                      "on-secondary": "#263143",
+                      "tertiary-container": "#4c93e7",
+                      "primary-fixed": "#d8e2ff",
+                      "surface-bright": "#3a3939",
+                      "outline": "#8c909f",
+                      "surface": "#131313",
+                      "error-container": "#93000a",
+                      "on-primary-container": "#00285d",
+                      "surface-container-highest": "#353534",
+                      "tertiary-fixed-dim": "#a4c9ff",
+                      "on-primary-fixed": "#001a42",
+                      "on-secondary-container": "#aeb9d0",
+                      "on-tertiary-fixed-variant": "#004883",
+                      "on-tertiary": "#00315d",
+                      "on-tertiary-fixed": "#001c39",
+                      "inverse-surface": "#e5e2e1",
+                      "surface-variant": "#353534",
+                      "primary": "#adc6ff",
+                      "inverse-primary": "#005ac2",
+                      "surface-tint": "#adc6ff",
+                      "on-tertiary-container": "#002a51",
+                      "on-primary-fixed-variant": "#004395",
+                      "surface-container-low": "#1c1b1b",
+                      "background": "#131313",
+                      "on-surface": "#e5e2e1",
+                      "secondary": "#bcc7de",
+                      "tertiary": "#a4c9ff",
+                      "outline-variant": "#424754",
+                      "error": "#ffb4ab",
+                      "surface-container-high": "#2a2a2a",
+                      "surface-container": "#201f1f",
+                      "primary-fixed-dim": "#adc6ff",
+                      "surface-dim": "#131313",
+                      "inverse-on-surface": "#313030",
+                      "on-secondary-fixed-variant": "#3c475a",
+                      "tertiary-fixed": "#d4e3ff",
+                      "on-surface-variant": "#c2c6d6",
+                      "on-error-container": "#ffdad6",
+                      "secondary-fixed": "#d8e3fb",
+                      "on-error": "#690005",
+                      "on-primary": "#002e6a",
+                      "secondary-fixed-dim": "#bcc7de"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "container-max-width": "1440px",
+                      "unit": "4px",
+                      "gutter": "16px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "32px"
+              },
+              "fontFamily": {
+                      "headline-lg-mobile": ["Geist"],
+                      "label-sm": ["Geist"],
+                      "body-md": ["Geist"],
+                      "headline-md": ["Geist"],
+                      "display": ["Geist"],
+                      "headline-lg": ["Geist"],
+                      "body-lg": ["Geist"],
+                      "mono-data": ["Geist"]
+              },
+              "fontSize": {
+                      "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                      "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "mono-data": ["14px", {"lineHeight": "20px", "letterSpacing": "-0.01em", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-[#0a0a0a] text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<nav class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-margin-desktop h-16 bg-surface/90 backdrop-blur-md border-b border-outline-variant">
+<div class="flex items-center gap-8">
+<span class="text-headline-md font-headline-md font-bold text-primary">Alpha Vang</span>
+<div class="hidden md:flex gap-6">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-label-sm uppercase tracking-wider" href="#product">Product</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-sm uppercase tracking-wider" href="#features">Features</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-sm uppercase tracking-wider" href="#how-it-works">How it Works</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-sm uppercase tracking-wider" href="#pricing">Pricing</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-sm uppercase tracking-wider" href="#faq">FAQ</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant font-label-sm px-3 py-1 border border-outline-variant rounded hover:border-primary transition-all">VN/EN</button>
+<button class="bg-[#3B82F6] text-white font-label-sm px-6 py-2 rounded-sm font-bold hover:brightness-110 active:scale-95 transition-all">Get Started</button>
+</div>
+</nav>
+<main class="pt-16">
+<!-- Hero Section -->
+<section class="relative h-[921px] flex items-center justify-center overflow-hidden grid-pattern">
+<div class="absolute inset-0 bg-gradient-to-b from-transparent via-[#0a0a0a]/50 to-[#0a0a0a]"></div>
+<!-- Atmospheric Glow -->
+<div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/10 blur-[120px] rounded-full"></div>
+<div class="container mx-auto px-margin-desktop relative z-10 text-center">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 mb-8 animate-pulse">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-primary font-label-sm uppercase tracking-widest">v9.0 Live Engine</span>
+</div>
+<h1 class="font-display text-display mb-6 tracking-tighter">
+                    Alpha Vang Energy 9<br/>
+<span class="text-primary/80">Giải Pháp Alpha Vang Energy 9</span>
+</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto mb-10">
+                    Institutional-grade energy trading solutions. Advanced algorithmic execution for global energy markets with mathematical precision.
+                </p>
+<div class="flex flex-col md:flex-row gap-4 justify-center items-center">
+<button class="bg-[#3B82F6] text-white px-8 py-4 font-bold rounded-sm text-lg glow-hover transition-all flex items-center gap-2">
+                        Start Trading Now <span class="material-symbols-outlined">trending_up</span>
+</button>
+<button class="border border-[#262626] bg-surface text-on-surface px-8 py-4 font-bold rounded-sm text-lg hover:bg-surface-container-high transition-all">
+                        Technical Specs
+                    </button>
+</div>
+</div>
+<!-- Decorative Terminal Element -->
+<div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-64 glass-card rounded-t-xl p-4 opacity-40 translate-y-20 scale-105 pointer-events-none">
+<div class="flex items-center gap-2 mb-4 border-b border-[#262626] pb-2">
+<div class="w-2 h-2 rounded-full bg-red-500"></div>
+<div class="w-2 h-2 rounded-full bg-yellow-500"></div>
+<div class="w-2 h-2 rounded-full bg-green-500"></div>
+<span class="ml-4 text-[10px] font-mono text-on-surface-variant">terminal@alpha-vang:~/energy-market-scan --realtime</span>
+</div>
+<div class="font-mono text-[12px] text-primary/60 space-y-1">
+<p>> initializing kelly_criterion_v4.dll...</p>
+<p>> scanning 104 international power hubs...</p>
+<p>> spread identified: LNG/ICE [0.042] - executing hedge...</p>
+<p>> system health: 100% | latency: 0.4ms</p>
+</div>
+</div>
+</section>
+<!-- Features Grid -->
+<section class="py-24 bg-[#0a0a0a]" id="features">
+<div class="container mx-auto px-margin-desktop">
+<div class="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
+<div>
+<span class="text-primary font-label-sm uppercase tracking-[0.2em]">Core Capabilities</span>
+<h2 class="font-headline-lg text-headline-lg mt-2">Institutional Features</h2>
+</div>
+<p class="text-on-surface-variant max-w-md">Precision-engineered tools designed for the world's most volatile energy markets.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Feature 1: Large Scan -->
+<div class="md:col-span-8 group glass-card p-8 rounded-lg hover:border-primary/50 transition-all cursor-default">
+<div class="flex justify-between items-start mb-12">
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">travel_explore</span>
+<span class="text-[10px] font-mono text-on-surface-variant opacity-50">SCN_MOD_100</span>
+</div>
+<h3 class="text-headline-md font-bold mb-2">Scans 100+ Markets</h3>
+<p class="text-on-surface-variant mb-6 Vietnamese-label">Quét hơn 100 thị trường năng lượng toàn cầu theo thời gian thực.</p>
+<div class="h-32 flex items-end gap-1 overflow-hidden">
+<!-- Visual placeholder for scan visualization -->
+<div class="flex-1 bg-primary/20 h-1/2 group-hover:h-3/4 transition-all duration-700"></div>
+<div class="flex-1 bg-primary/10 h-1/3 group-hover:h-1/2 transition-all duration-500"></div>
+<div class="flex-1 bg-primary/30 h-2/3 group-hover:h-5/6 transition-all duration-1000"></div>
+<div class="flex-1 bg-primary/20 h-1/4 group-hover:h-1/2 transition-all duration-300"></div>
+<div class="flex-1 bg-primary/10 h-1/2 group-hover:h-2/3 transition-all duration-700"></div>
+</div>
+</div>
+<!-- Feature 2: Kelly -->
+<div class="md:col-span-4 glass-card p-8 rounded-lg border-primary/20 hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-4xl text-primary mb-12" style="font-variation-settings: 'FILL' 1;">calculate</span>
+<h3 class="text-headline-md font-bold mb-2">Kelly Integration</h3>
+<p class="text-on-surface-variant Vietnamese-label">Tích hợp công thức Kelly để tối ưu hóa quản lý rủi ro và vốn.</p>
+</div>
+<!-- Feature 3: Real-time -->
+<div class="md:col-span-4 glass-card p-8 rounded-lg hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-4xl text-primary mb-12" style="font-variation-settings: 'FILL' 1;">sensors</span>
+<h3 class="text-headline-md font-bold mb-2">Real-time Signals</h3>
+<p class="text-on-surface-variant Vietnamese-label">Tín hiệu giao dịch thời gian thực với độ trễ cực thấp.</p>
+</div>
+<!-- Feature 4: Backtesting -->
+<div class="md:col-span-4 glass-card p-8 rounded-lg hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-4xl text-primary mb-12" style="font-variation-settings: 'FILL' 1;">history</span>
+<h3 class="text-headline-md font-bold mb-2">Advanced Backtesting</h3>
+<p class="text-on-surface-variant Vietnamese-label">Kiểm thử chiến lược nâng cao trên dữ liệu lịch sử chất lượng cao.</p>
+</div>
+<!-- Feature 5: Paper Trading -->
+<div class="md:col-span-4 glass-card p-8 rounded-lg hover:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-4xl text-primary mb-12" style="font-variation-settings: 'FILL' 1;">experiment</span>
+<h3 class="text-headline-md font-bold mb-2">Paper Trading</h3>
+<p class="text-on-surface-variant Vietnamese-label">Môi trường giao dịch thử nghiệm an toàn, mô phỏng thị trường thực.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- How It Works (Stepper) -->
+<section class="py-24 border-y border-outline-variant bg-surface-container-lowest" id="how-it-works">
+<div class="container mx-auto px-margin-desktop">
+<div class="text-center mb-20">
+<h2 class="font-headline-lg text-headline-lg mb-4">Implementation Protocol</h2>
+<p class="text-on-surface-variant">Five steps to deploy institutional energy strategies.</p>
+</div>
+<div class="relative flex flex-col md:flex-row justify-between items-start gap-12">
+<!-- Progress Line -->
+<div class="absolute top-10 left-0 w-full h-[1px] bg-outline-variant hidden md:block"></div>
+<!-- Step 1 -->
+<div class="relative z-10 flex flex-col items-center md:items-start flex-1 group">
+<div class="w-10 h-10 rounded-full bg-[#0a0a0a] border-2 border-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="text-primary font-bold">01</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Setup</h4>
+<p class="text-on-surface-variant text-sm md:text-left text-center">Initial platform configuration and node deployment.</p>
+<span class="text-xs text-primary mt-2 uppercase tracking-tighter Vietnamese-label">Cài đặt hệ thống</span>
+</div>
+<!-- Step 2 -->
+<div class="relative z-10 flex flex-col items-center md:items-start flex-1 group">
+<div class="w-10 h-10 rounded-full bg-[#0a0a0a] border-2 border-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="text-primary font-bold">02</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Connect Data</h4>
+<p class="text-on-surface-variant text-sm md:text-left text-center">Bridge to 100+ global energy data streams.</p>
+<span class="text-xs text-primary mt-2 uppercase tracking-tighter Vietnamese-label">Kết nối dữ liệu</span>
+</div>
+<!-- Step 3 -->
+<div class="relative z-10 flex flex-col items-center md:items-start flex-1 group">
+<div class="w-10 h-10 rounded-full bg-[#0a0a0a] border-2 border-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="text-primary font-bold">03</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Configure Strategy</h4>
+<p class="text-on-surface-variant text-sm md:text-left text-center">Set Kelly parameters and execution logic.</p>
+<span class="text-xs text-primary mt-2 uppercase tracking-tighter Vietnamese-label">Cấu hình chiến lược</span>
+</div>
+<!-- Step 4 -->
+<div class="relative z-10 flex flex-col items-center md:items-start flex-1 group">
+<div class="w-10 h-10 rounded-full bg-[#0a0a0a] border-2 border-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="text-primary font-bold">04</span>
+</div>
+<h4 class="font-bold text-lg mb-2">Backtest</h4>
+<p class="text-on-surface-variant text-sm md:text-left text-center">Stress test on 10 years of historical ticks.</p>
+<span class="text-xs text-primary mt-2 uppercase tracking-tighter Vietnamese-label">Kiểm thử</span>
+</div>
+<!-- Step 5 -->
+<div class="relative z-10 flex flex-col items-center md:items-start flex-1 group">
+<div class="w-10 h-10 rounded-full bg-primary border-2 border-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+<span class="text-on-primary font-bold">05</span>
+</div>
+<h4 class="font-bold text-lg mb-2 text-primary">Go Live</h4>
+<p class="text-on-surface-variant text-sm md:text-left text-center">Activate algorithmic execution on live markets.</p>
+<span class="text-xs text-primary mt-2 uppercase tracking-tighter Vietnamese-label">Triển khai thực tế</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Pricing Tiers -->
+<section class="py-24 bg-[#0a0a0a]" id="pricing">
+<div class="container mx-auto px-margin-desktop">
+<div class="text-center mb-16">
+<h2 class="font-headline-lg text-headline-lg mb-4">Scalable Licensing</h2>
+<p class="text-on-surface-variant">From individual quantitative analysts to global energy desks.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+<!-- Basic -->
+<div class="glass-card p-6 flex flex-col hover:border-outline transition-all">
+<h4 class="font-bold mb-4 opacity-70">BASIC</h4>
+<div class="mb-6">
+<span class="text-3xl font-display">$99</span><span class="text-on-surface-variant">/mo</span>
+</div>
+<ul class="space-y-3 mb-8 flex-1 text-sm text-on-surface-variant">
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> 5 Markets</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Basic Backtest</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Community Support</li>
+</ul>
+<button class="w-full py-2 border border-outline-variant text-sm font-bold hover:bg-surface-container-high transition-all">Select Plan</button>
+</div>
+<!-- Starter -->
+<div class="glass-card p-6 flex flex-col hover:border-outline transition-all">
+<h4 class="font-bold mb-4 opacity-70">STARTER</h4>
+<div class="mb-6">
+<span class="text-3xl font-display">$299</span><span class="text-on-surface-variant">/mo</span>
+</div>
+<ul class="space-y-3 mb-8 flex-1 text-sm text-on-surface-variant">
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> 20 Markets</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Full Kelly Calc</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Email Support</li>
+</ul>
+<button class="w-full py-2 border border-outline-variant text-sm font-bold hover:bg-surface-container-high transition-all">Select Plan</button>
+</div>
+<!-- Pro -->
+<div class="glass-card p-6 flex flex-col border-primary/50 relative overflow-hidden bg-primary/5">
+<div class="absolute top-0 right-0 bg-primary text-on-primary text-[10px] px-3 py-1 font-bold uppercase rotate-45 translate-x-4 translate-y-2">Popular</div>
+<h4 class="font-bold mb-4 text-primary">PRO</h4>
+<div class="mb-6">
+<span class="text-3xl font-display">$999</span><span class="text-on-surface-variant">/mo</span>
+</div>
+<ul class="space-y-3 mb-8 flex-1 text-sm">
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> 100+ Markets</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> API Access</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> 24/7 Desk Support</li>
+</ul>
+<button class="w-full py-2 bg-primary text-on-primary text-sm font-bold hover:brightness-110 transition-all">Select Plan</button>
+</div>
+<!-- Enterprise -->
+<div class="glass-card p-6 flex flex-col hover:border-outline transition-all">
+<h4 class="font-bold mb-4 opacity-70">ENTERPRISE</h4>
+<div class="mb-6">
+<span class="text-3xl font-display">$2,499</span><span class="text-on-surface-variant">/mo</span>
+</div>
+<ul class="space-y-3 mb-8 flex-1 text-sm text-on-surface-variant">
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Unlimited Markets</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Custom Algorithms</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Dedicated Server</li>
+</ul>
+<button class="w-full py-2 border border-outline-variant text-sm font-bold hover:bg-surface-container-high transition-all">Select Plan</button>
+</div>
+<!-- Master -->
+<div class="glass-card p-6 flex flex-col hover:border-outline transition-all">
+<h4 class="font-bold mb-4 opacity-70">MASTER</h4>
+<div class="mb-6">
+<span class="text-3xl font-display">Custom</span>
+</div>
+<ul class="space-y-3 mb-8 flex-1 text-sm text-on-surface-variant">
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Institutional License</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> White Label Option</li>
+<li class="flex items-center gap-2"><span class="material-symbols-outlined text-sm text-primary">check</span> Priority R&D</li>
+</ul>
+<button class="w-full py-2 border border-outline-variant text-sm font-bold hover:bg-surface-container-high transition-all">Contact Sales</button>
+</div>
+</div>
+</div>
+</section>
+<!-- FAQ Section -->
+<section class="py-24 border-t border-outline-variant" id="faq">
+<div class="container mx-auto px-margin-desktop max-w-4xl">
+<h2 class="font-headline-lg text-headline-lg mb-12 text-center">Frequently Asked Questions</h2>
+<div class="space-y-4">
+<!-- FAQ 1 -->
+<div class="glass-card overflow-hidden">
+<button class="w-full p-6 flex justify-between items-center text-left hover:bg-surface-container transition-all" onclick="toggleFaq(this)">
+<div>
+<h4 class="font-bold">How secure is the platform?</h4>
+<p class="text-xs text-primary Vietnamese-label mt-1">Nền tảng bảo mật như thế nào?</p>
+</div>
+<span class="material-symbols-outlined transform transition-transform">expand_more</span>
+</button>
+<div class="faq-content hidden p-6 pt-0 text-on-surface-variant border-t border-[#262626]">
+                            Alpha Vang Energy 9 uses bank-grade AES-256 encryption and multi-factor authentication. All algorithmic execution is isolated on private VPC instances.
+                        </div>
+</div>
+<!-- FAQ 2 -->
+<div class="glass-card overflow-hidden">
+<button class="w-full p-6 flex justify-between items-center text-left hover:bg-surface-container transition-all" onclick="toggleFaq(this)">
+<div>
+<h4 class="font-bold">What is the market coverage?</h4>
+<p class="text-xs text-primary Vietnamese-label mt-1">Phạm vi thị trường bao gồm những gì?</p>
+</div>
+<span class="material-symbols-outlined transform transition-transform">expand_more</span>
+</button>
+<div class="faq-content hidden p-6 pt-0 text-on-surface-variant border-t border-[#262626]">
+                            We cover over 100+ global energy markets including Crude Oil (WTI/Brent), Natural Gas, Electricity spot markets, Carbon Credits, and LNG futures across major exchanges (ICE, CME, NYMEX).
+                        </div>
+</div>
+<!-- FAQ 3 -->
+<div class="glass-card overflow-hidden">
+<button class="w-full p-6 flex justify-between items-center text-left hover:bg-surface-container transition-all" onclick="toggleFaq(this)">
+<div>
+<h4 class="font-bold">Do you provide API access for third-party tools?</h4>
+<p class="text-xs text-primary Vietnamese-label mt-1">Bạn có cung cấp quyền truy cập API cho bên thứ ba không?</p>
+</div>
+<span class="material-symbols-outlined transform transition-transform">expand_more</span>
+</button>
+<div class="faq-content hidden p-6 pt-0 text-on-surface-variant border-t border-[#262626]">
+                            Yes, PRO and Enterprise licenses include full REST and WebSocket API access, allowing you to integrate Alpha Vang data and execution signals into your proprietary systems.
+                        </div>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA -->
+<section class="py-24 container mx-auto px-margin-desktop">
+<div class="glass-card p-12 rounded-xl bg-gradient-to-br from-primary/10 to-transparent border-primary/20 text-center relative overflow-hidden">
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 blur-[80px] rounded-full"></div>
+<h2 class="font-display text-4xl mb-6">Ready to Command the Energy Markets?</h2>
+<p class="text-on-surface-variant mb-10 max-w-xl mx-auto">Join institutional traders worldwide utilizing Alpha Vang Energy 9 for precise, automated trading execution.</p>
+<div class="flex flex-wrap justify-center gap-4">
+<button class="bg-[#3B82F6] text-white px-10 py-4 font-bold rounded-sm hover:brightness-110 active:scale-95 transition-all">
+                        Request Institutional Demo
+                    </button>
+<button class="border border-[#262626] bg-[#0a0a0a] text-on-surface px-10 py-4 font-bold rounded-sm hover:bg-surface-container-high transition-all">
+                        Contact Sales
+                    </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-margin-desktop px-margin-desktop flex flex-col md:flex-row justify-between items-start gap-gutter bg-surface-container-lowest border-t border-outline-variant">
+<div class="flex flex-col gap-4 max-w-sm">
+<span class="text-headline-md font-headline-md font-bold text-on-surface">Alpha Vang</span>
+<p class="text-on-surface-variant font-body-md">
+                © 2024 Alpha Vang Energy 9. Institutional Grade Energy Trading Solutions. Risk Disclosure: Trading involves significant risk and is not suitable for everyone.
+            </p>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-8">
+<div class="flex flex-col gap-3">
+<h5 class="text-primary font-bold text-sm uppercase">Legal</h5>
+<a class="text-on-surface-variant text-sm hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant text-sm hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="text-on-surface-variant text-sm hover:text-primary transition-colors" href="#">Risk Disclosure</a>
+</div>
+<div class="flex flex-col gap-3">
+<h5 class="text-primary font-bold text-sm uppercase">Support</h5>
+<a class="text-on-surface-variant text-sm hover:text-primary transition-colors" href="#">Contact Support</a>
+<a class="text-on-surface-variant text-sm hover:text-primary transition-colors" href="#">API Documentation</a>
+<a class="text-on-surface-variant text-sm hover:text-primary transition-colors" href="#">Help Center</a>
+</div>
+<div class="flex flex-col gap-3">
+<h5 class="text-primary font-bold text-sm uppercase">Status</h5>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+<span class="text-on-surface-variant text-sm">System Operational</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green-500"></span>
+<span class="text-on-surface-variant text-sm">Market Feed: Live</span>
+</div>
+</div>
+</div>
+</footer>
+<script>
+        function toggleFaq(button) {
+            const content = button.nextElementSibling;
+            const icon = button.querySelector('span');
+            const allContents = document.querySelectorAll('.faq-content');
+            const allIcons = document.querySelectorAll('.faq-content + button span');
+            
+            const isOpen = !content.classList.contains('hidden');
+            
+            // Close all
+            allContents.forEach(c => c.classList.add('hidden'));
+            document.querySelectorAll('.material-symbols-outlined.rotate-180').forEach(i => i.classList.remove('rotate-180'));
+            
+            if (!isOpen) {
+                content.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            }
+        }
+
+        // Smooth Scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Subtle Header scroll effect
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 20) {
+                nav.classList.add('shadow-xl', 'border-primary/20');
+            } else {
+                nav.classList.remove('shadow-xl', 'border-primary/20');
+            }
+        });
+    </script>
+</body></html>

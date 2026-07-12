@@ -3,143 +3,32 @@
 <html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>QUANTUM TERMINAL | PRICING</title>
+<title>Pricing Plans | CashClaw AI Trading</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<!-- Tailwind Configuration -->
-<script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            "colors": {
-                    "surface-container-highest": "#31343f",
-                    "secondary-fixed": "#e9ddff",
-                    "on-tertiary-fixed": "#002113",
-                    "primary": "#ffc174",
-                    "on-surface": "#e0e2f0",
-                    "tertiary-container": "#30c88f",
-                    "inverse-primary": "#855300",
-                    "on-error-container": "#ffdad6",
-                    "primary-container": "#f59e0b",
-                    "outline": "#a08e7a",
-                    "on-tertiary-fixed-variant": "#005236",
-                    "on-secondary-fixed-variant": "#5516be",
-                    "surface-bright": "#363943",
-                    "surface-tint": "#ffb95f",
-                    "on-tertiary": "#003824",
-                    "background": "#060912", /* Overridden for prompt specificity */
-                    "secondary-container": "#571bc1",
-                    "inverse-on-surface": "#2d303a",
-                    "tertiary": "#56e5a9",
-                    "surface-container-low": "#181b25",
-                    "on-tertiary-container": "#004e34",
-                    "on-primary-container": "#613b00",
-                    "secondary-fixed-dim": "#d0bcff",
-                    "on-surface-variant": "#d8c3ad",
-                    "surface-container-high": "#262a34",
-                    "on-background": "#e0e2f0",
-                    "surface": "#10131d",
-                    "error-container": "#93000a",
-                    "inverse-surface": "#e0e2f0",
-                    "on-secondary-container": "#c4abff",
-                    "surface-dim": "#10131d",
-                    "tertiary-fixed-dim": "#4edea3",
-                    "surface-container-lowest": "#0a0e17",
-                    "outline-variant": "#534434",
-                    "on-primary-fixed-variant": "#653e00",
-                    "on-secondary": "#3c0091",
-                    "primary-fixed": "#ffddb8",
-                    "tertiary-fixed": "#6ffbbe",
-                    "on-primary": "#472a00",
-                    "error": "#ffb4ab",
-                    "secondary": "#d0bcff",
-                    "on-secondary-fixed": "#23005c",
-                    "primary-fixed-dim": "#ffb95f",
-                    "surface-container": "#1c1f29",
-                    "on-primary-fixed": "#2a1700",
-                    "surface-variant": "#31343f",
-                    "on-error": "#690005"
-            },
-            "borderRadius": {
-                    "DEFAULT": "0px",
-                    "lg": "0px",
-                    "xl": "0px",
-                    "full": "9999px"
-            },
-            "spacing": {
-                    "base": "4px",
-                    "md": "16px",
-                    "xl": "40px",
-                    "lg": "24px",
-                    "container-max": "1200px",
-                    "gutter": "16px",
-                    "xs": "4px",
-                    "sm": "8px"
-            },
-            "fontFamily": {
-                    "body-lg": ["JetBrains Mono"],
-                    "code-snippet": ["JetBrains Mono"],
-                    "body-md": ["JetBrains Mono"],
-                    "headline-lg-mobile": ["JetBrains Mono"],
-                    "headline-md": ["JetBrains Mono"],
-                    "display": ["JetBrains Mono"],
-                    "headline-lg": ["JetBrains Mono"],
-                    "label-sm": ["JetBrains Mono"]
-            },
-            "fontSize": {
-                    "body-lg": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
-                    "code-snippet": ["13px", {"lineHeight": "1.5", "fontWeight": "400"}],
-                    "body-md": ["14px", {"lineHeight": "1.6", "fontWeight": "400"}],
-                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "600"}],
-                    "headline-md": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
-                    "display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-                    "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "500"}]
-            }
-          },
-        },
-      }
-    </script>
 <style>
+        @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
+        
         body {
-            background-color: #060912;
-            color: #e0e2f0;
-            font-family: 'JetBrains Mono', monospace;
+            background-color: #0a0a0a;
+            color: #e3e2e2;
+            font-family: 'Geist', sans-serif;
+            margin: 0;
+            padding: 0;
             overflow-x: hidden;
         }
-        
-        .scanline-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 4px, 3px 100%;
-            pointer-events: none;
-            z-index: 9999;
-            opacity: 0.15;
-        }
 
-        .terminal-border {
-            border: 1px solid #1E293B;
+        .glass-card {
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid #222222;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .pro-glow {
-            box-shadow: 0px 0px 20px rgba(245, 158, 11, 0.15);
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #0a0e17;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #1E293B;
+            border: 1px solid #aec6ff;
+            box-shadow: 0 0 20px rgba(174, 198, 255, 0.15);
         }
 
         .material-symbols-outlined {
@@ -147,268 +36,311 @@
             vertical-align: middle;
         }
 
-        .faq-accordion[open] .faq-icon {
-            transform: rotate(180deg);
-            color: #ffc174;
+        .check-icon { color: #aec6ff; }
+        .cross-icon { color: #414754; }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
         }
 
-        .btn-hover-glow:hover {
-            box-shadow: 0px 0px 12px rgba(245, 158, 11, 0.4);
+        @media (max-width: 1024px) {
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#ffb596",
+                        "tertiary-container": "#ca4e00",
+                        "surface-bright": "#383939",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-surface": "#e3e2e2",
+                        "surface-tint": "#aec6ff",
+                        "outline-variant": "#414754",
+                        "inverse-primary": "#0059c5",
+                        "secondary-fixed": "#e2e2e2",
+                        "background": "#121414",
+                        "error-container": "#93000a",
+                        "on-primary-fixed": "#001a43",
+                        "surface": "#121414",
+                        "secondary-container": "#454747",
+                        "surface-dim": "#121414",
+                        "inverse-surface": "#e3e2e2",
+                        "surface-container-lowest": "#0d0e0f",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-highest": "#343535",
+                        "surface-variant": "#343535",
+                        "surface-container-low": "#1b1c1c",
+                        "primary": "#aec6ff",
+                        "on-secondary-fixed": "#1a1c1c",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-surface-variant": "#c1c6d7",
+                        "on-primary-container": "#ffffff",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-secondary-container": "#b4b5b5",
+                        "on-background": "#e3e2e2",
+                        "outline": "#8b90a0",
+                        "surface-container-high": "#292a2a",
+                        "on-primary": "#002e6b",
+                        "surface-container": "#1f2020",
+                        "on-primary-fixed-variant": "#004397",
+                        "inverse-on-surface": "#303031",
+                        "primary-container": "#0070f3",
+                        "on-secondary-fixed-variant": "#454747",
+                        "on-error": "#690005",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "on-tertiary-container": "#fffeff",
+                        "secondary-fixed-dim": "#c6c6c7",
+                        "secondary": "#c6c6c7",
+                        "on-tertiary": "#581e00",
+                        "primary-fixed-dim": "#aec6ff",
+                        "on-secondary": "#2f3131"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "base": "4px",
+                        "xl": "80px",
+                        "lg": "48px",
+                        "max_width": "1280px",
+                        "sm": "16px",
+                        "xs": "8px",
+                        "margin": "32px",
+                        "md": "24px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["geist"],
+                        "body-md": ["geist"],
+                        "label-md": ["geist"],
+                        "display-lg": ["geist"],
+                        "headline-md": ["geist"],
+                        "body-lg": ["geist"],
+                        "headline-lg": ["geist"]
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body class="custom-scrollbar">
-<div class="scanline-overlay"></div>
-<!-- Shared TopNavBar Execution -->
-<nav class="flex justify-between items-center px-lg py-md w-full sticky top-0 z-50 bg-background border-b border-outline-variant font-body-md text-body-md">
-<div class="font-headline-md text-headline-md font-bold text-primary tracking-tighter">
-            QUANTUM_TERMINAL
-        </div>
-<div class="hidden md:flex items-center gap-xl">
-<a class="text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Markets</a>
-<a class="text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Dashboard</a>
-<a class="text-primary border-b-2 border-primary pb-1" href="#">Pricing</a>
-<a class="text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Docs</a>
+<body class="bg-surface text-on-surface selection:bg-primary selection:text-on-primary">
+<!-- Navigation -->
+<nav class="fixed top-0 w-full bg-surface/60 backdrop-blur-md border-b border-outline-variant z-50">
+<div class="flex justify-between items-center h-16 px-margin max-w-max_width mx-auto">
+<div class="font-headline-md text-headline-md font-bold text-primary">CashClaw</div>
+<div class="hidden md:flex gap-md items-center">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Markets</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Features</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Documentation</a>
 </div>
-<div class="flex items-center gap-md">
-<span class="material-symbols-outlined text-primary cursor-pointer">search</span>
-<button class="bg-primary text-on-primary-container px-lg py-sm font-bold tracking-tight active:opacity-80 transition-all uppercase text-label-sm">
-                LOGIN
-            </button>
+<div class="flex gap-sm items-center">
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">Sign In</button>
+<button class="bg-primary-container text-on-primary-container px-md py-xs rounded-lg font-label-md text-label-md hover:opacity-90 active:scale-95 transition-all">Start Trading</button>
+</div>
 </div>
 </nav>
-<main class="relative">
 <!-- Hero Section -->
-<section class="relative h-[614px] flex flex-col items-center justify-center text-center px-md overflow-hidden">
-
-<div class="relative z-10 max-w-4xl">
-<div class="inline-block border border-primary px-sm py-1 mb-md text-primary text-label-sm tracking-[0.2em] uppercase">
-                    Pricing Modules // v4.0.2
-                </div>
-<h1 class="font-display text-display text-primary mb-md tracking-tighter">
-                    QUANTUM_PRICING
-                </h1>
-<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
-                    Scalable infrastructure for high-frequency execution. Professional grade data pipelines and sub-millisecond routing.
-                </p>
-</div>
-<div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-background to-transparent"></div>
+<main class="pt-xl pb-lg px-margin max-w-max_width mx-auto">
+<section class="text-center mb-xl">
+<h1 class="font-display-lg text-display-lg mb-xs">Pricing Plans</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant uppercase tracking-[0.2em]">choose your tier</p>
 </section>
 <!-- Pricing Grid -->
-<section class="container-max mx-auto px-lg pb-xl relative z-10 -mt-20">
-<div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
-<!-- Free Card -->
-<div class="terminal-border bg-surface-container-lowest p-lg flex flex-col group hover:border-outline transition-colors duration-300">
-<div class="mb-lg">
-<h3 class="font-headline-md text-headline-md text-on-surface mb-xs uppercase">Basic Terminal</h3>
-<p class="text-on-surface-variant text-label-sm">Ideal for casual monitoring</p>
+<div class="pricing-grid">
+<!-- FREE Tier -->
+<div class="glass-card p-lg flex flex-col h-full rounded-xl">
+<div class="mb-md">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-xs">FREE</h3>
+<div class="text-on-surface font-bold text-[32px]">Start Free</div>
+<p class="text-on-surface-variant font-body-md text-body-md mt-xs">For testing waters.</p>
 </div>
-<div class="mb-xl">
-<span class="font-display text-headline-lg text-on-surface">Free Forever</span>
+<div class="flex-grow space-y-sm mb-lg">
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>1 Active Strategy</span>
 </div>
-<ul class="space-y-md mb-xl flex-grow">
-<li class="flex items-start gap-sm text-body-md text-on-surface-variant">
-<span class="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
-<span>Standard 5s Latency Data</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface-variant">
-<span class="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
-<span>3 Active Watchlists</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface-variant">
-<span class="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
-<span>Public Terminal Access</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface-variant">
-<span class="material-symbols-outlined text-on-surface-variant text-[18px]">close</span>
-<span>Standard API (10 req/min)</span>
-</li>
-</ul>
-<button class="w-full border border-on-surface-variant text-on-surface py-md font-bold text-label-sm hover:bg-on-surface-variant hover:text-background transition-all uppercase tracking-widest">
-                        Start Free
-                    </button>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>Basic Email Support</span>
 </div>
-<!-- PRO Card -->
-<div class="relative bg-surface-container-low p-lg flex flex-col pro-glow border-2 border-primary scale-105 z-20">
-<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-secondary text-on-secondary px-lg py-1 text-label-sm font-bold tracking-widest uppercase">
-                        MOST POPULAR
-                    </div>
-<div class="mb-lg">
-<div class="flex justify-between items-start">
-<h3 class="font-headline-md text-headline-md text-primary mb-xs uppercase">Quantum Pro</h3>
-<span class="bg-tertiary-container text-on-tertiary-container px-xs text-[10px] font-bold">L2 LIVE</span>
+<div class="flex items-center gap-xs font-body-md text-body-md text-on-surface-variant/50">
+<span class="material-symbols-outlined cross-icon">cancel</span>
+<span>API Access</span>
 </div>
-<p class="text-on-surface-variant text-label-sm">Professional Grade Execution</p>
-</div>
-<div class="mb-xl flex items-baseline gap-xs">
-<span class="font-display text-display text-primary">$99</span>
-<span class="text-on-surface-variant text-body-md">/mo</span>
-</div>
-<ul class="space-y-md mb-xl flex-grow">
-<li class="flex items-start gap-sm text-body-md text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">terminal</span>
-<span>Real-time L2 Order Books</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">terminal</span>
-<span>Unlimited Active Watchlists</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">terminal</span>
-<span>Advanced Algorithmic Router</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">terminal</span>
-<span>Direct Node Access</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">terminal</span>
-<span>Priority Execution Lane</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">terminal</span>
-<span>Pro API (1000 req/min)</span>
-</li>
-</ul>
-<button class="w-full bg-primary text-on-primary-container py-md font-extrabold text-label-sm btn-hover-glow transition-all uppercase tracking-[0.2em]">
-                        GO PRO
-                    </button>
-</div>
-<!-- Enterprise Card -->
-<div class="terminal-border bg-surface-container-lowest p-lg flex flex-col group hover:border-secondary transition-colors duration-300">
-<div class="mb-lg">
-<h3 class="font-headline-md text-headline-md text-on-surface mb-xs uppercase">Custom Solutions</h3>
-<p class="text-on-surface-variant text-label-sm">Institutional Scalability</p>
-</div>
-<div class="mb-xl">
-<span class="font-display text-headline-lg text-secondary">CONTACT</span>
-</div>
-<ul class="space-y-md mb-xl flex-grow">
-<li class="flex items-start gap-sm text-body-md text-on-surface-variant">
-<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
-<span>Colocated Hosting Options</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface-variant">
-<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
-<span>Dedicated Account Engineer</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface-variant">
-<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
-<span>Unlimited WebSocket Conns</span>
-</li>
-<li class="flex items-start gap-sm text-body-md text-on-surface-variant">
-<span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
-<span>SLA Latency Guarantee</span>
-</li>
-</ul>
-<button class="w-full border border-secondary text-secondary py-md font-bold text-label-sm hover:bg-secondary hover:text-on-secondary transition-all uppercase tracking-widest">
-                        Contact Sales
-                    </button>
+<div class="flex items-center gap-xs font-body-md text-body-md text-on-surface-variant/50">
+<span class="material-symbols-outlined cross-icon">cancel</span>
+<span>Custom Dashboards</span>
 </div>
 </div>
-</section>
-<!-- FAQ Section -->
-<section class="container-max mx-auto px-lg py-xl">
-<div class="flex flex-col md:flex-row gap-xl">
-<div class="md:w-1/3">
-<h2 class="font-headline-lg text-headline-lg text-on-surface mb-md">SYSTEM_FAQS</h2>
-<p class="text-on-surface-variant text-body-md">Technical documentation and common inquiries regarding the Quantum Terminal network architecture.</p>
+<button class="w-full py-md border border-outline-variant text-on-surface font-label-md text-label-md rounded-lg hover:border-on-surface transition-colors active:scale-95">Get Started</button>
 </div>
-<div class="md:w-2/3 space-y-md">
-<!-- Q1 -->
-<details class="faq-accordion group border-b border-outline-variant pb-md" open="">
-<summary class="flex justify-between items-center cursor-pointer list-none py-md outline-none">
-<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors">What is the API rate limit?</span>
-<span class="material-symbols-outlined faq-icon transition-transform duration-300">expand_more</span>
-</summary>
-<div class="mt-md text-body-md text-on-surface-variant border-l-2 border-primary pl-md">
-                            Our standard rate limits are tiered by subscription level. Free users receive 10 requests per minute. Pro users benefit from 1,000 requests per minute with burst capability. Enterprise users have custom defined limits based on infrastructure load.
-                        </div>
-</details>
-<!-- Q2 -->
-<details class="faq-accordion group border-b border-outline-variant pb-md">
-<summary class="flex justify-between items-center cursor-pointer list-none py-md outline-none">
-<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors">Is there a latency guarantee?</span>
-<span class="material-symbols-outlined faq-icon transition-transform duration-300">expand_more</span>
-</summary>
-<div class="mt-md text-body-md text-on-surface-variant border-l-2 border-secondary pl-md">
-                            We provide a 99.99% uptime SLA for Pro and Enterprise tiers. For latency, Enterprise users can access direct fiber-optic cross-connects at our primary exchange hubs for sub-millisecond execution speeds.
-                        </div>
-</details>
-<!-- Q3 -->
-<details class="faq-accordion group border-b border-outline-variant pb-md">
-<summary class="flex justify-between items-center cursor-pointer list-none py-md outline-none">
-<span class="font-headline-md text-headline-md text-on-surface group-hover:text-primary transition-colors">Can I upgrade mid-cycle?</span>
-<span class="material-symbols-outlined faq-icon transition-transform duration-300">expand_more</span>
-</summary>
-<div class="mt-md text-body-md text-on-surface-variant border-l-2 border-primary pl-md">
-                            Yes. Upgrades are processed instantly. Your account will be charged a prorated amount for the remainder of the current billing cycle, and new tier benefits (like increased API limits) will be applied to your token immediately.
-                        </div>
-</details>
+<!-- STARTER Tier -->
+<div class="glass-card p-lg flex flex-col h-full rounded-xl">
+<div class="mb-md">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-xs">STARTER</h3>
+<div class="text-on-surface font-bold text-[32px]">$29<span class="text-on-surface-variant text-body-md">/month</span></div>
+<p class="text-on-surface-variant font-body-md text-body-md mt-xs">Perfect for individuals.</p>
+</div>
+<div class="flex-grow space-y-sm mb-lg">
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>5 Active Strategies</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>Standard Email Support</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>Basic API Read-only</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md text-on-surface-variant/50">
+<span class="material-symbols-outlined cross-icon">cancel</span>
+<span>Strategy Optimization</span>
 </div>
 </div>
-</section>
-<!-- CTA Section -->
-<section class="bg-surface-container-low border-y border-outline-variant py-xl overflow-hidden relative">
-<div class="absolute inset-0 opacity-10 grayscale" data-alt="A macro cinematic shot of a computer motherboard with glowing gold and purple circuitry. The lighting is low-key, emphasizing the high-tech, futuristic aesthetic of a trading terminal. Digital particles and data streams float in the shallow depth of field, suggesting rapid data transmission and high-frequency execution." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB2pN1ydT_RdCDLMixt23QH9oJdk3Zv0Lf-fJ-irysKgJCMtaZuz1q8RtV2Dp2LxsLvBsnXE1oH2s5rCj0LpfGyOeahtCOkHo0tUAu_eKc51v4KCdJ_0fhBkDcfyMF56EN4CrJLSSZdLFvFSFJSN8hNIw2NtqQgNNGnD0fVBo8HiDrEHTth1NGICtk1-j-eCeyNdwSh6T5UETEXH__2Qg-FqzYbQLwYt__JjUSNh4tSXVEfjccOtb89sY2tolXEeDYxnC5_og2JZXRI')"></div>
-<div class="container-max mx-auto px-lg text-center relative z-10">
-<h2 class="font-headline-lg text-headline-lg text-primary mb-lg uppercase tracking-widest">Execute with Precision</h2>
-<div class="flex flex-col md:flex-row justify-center gap-md">
-<button class="bg-primary text-on-primary-container px-xl py-lg font-bold text-label-sm btn-hover-glow transition-all uppercase tracking-widest">
-                        Initialize Terminal
-                    </button>
-<button class="border border-on-surface-variant text-on-surface px-xl py-lg font-bold text-label-sm hover:bg-on-surface-variant hover:text-background transition-all uppercase tracking-widest">
-                        View Documentation
-                    </button>
+<button class="w-full py-md border border-outline-variant text-on-surface font-label-md text-label-md rounded-lg hover:border-on-surface transition-colors active:scale-95">Upgrade Now</button>
+</div>
+<!-- PRO Tier (Recommended) -->
+<div class="glass-card pro-glow p-lg flex flex-col h-full rounded-xl relative scale-105 z-10">
+<div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-on-primary px-sm py-[2px] rounded-full font-label-sm text-label-sm uppercase tracking-wider">Recommended</div>
+<div class="mb-md">
+<h3 class="font-headline-md text-headline-md text-primary mb-xs">PRO</h3>
+<div class="text-on-surface font-bold text-[32px]">$99<span class="text-on-surface-variant text-body-md">/month</span></div>
+<p class="text-on-surface-variant font-body-md text-body-md mt-xs">Professional grade tools.</p>
+</div>
+<div class="flex-grow space-y-sm mb-lg">
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span class="font-bold">Unlimited Strategies</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>Priority Support</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>Full API Write Access</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>Advanced Analytics</span>
+</div>
+</div>
+<button class="w-full py-md bg-primary text-on-primary font-label-md text-label-md rounded-lg hover:brightness-110 shadow-[0_0_15px_rgba(174,198,255,0.3)] active:scale-95 transition-all">Go Professional</button>
+</div>
+<!-- ENTERPRISE Tier -->
+<div class="glass-card p-lg flex flex-col h-full rounded-xl">
+<div class="mb-md">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-xs">ENTERPRISE</h3>
+<div class="text-on-surface font-bold text-[32px]">$299<span class="text-on-surface-variant text-body-md">/month</span></div>
+<p class="text-on-surface-variant font-body-md text-body-md mt-xs">Institutional solutions.</p>
+</div>
+<div class="flex-grow space-y-sm mb-lg">
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>Custom Market Solutions</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>Dedicated Account Manager</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>SLA Guarantees</span>
+</div>
+<div class="flex items-center gap-xs font-body-md text-body-md">
+<span class="material-symbols-outlined check-icon">check_circle</span>
+<span>On-premise Options</span>
+</div>
+</div>
+<button class="w-full py-md border border-outline-variant text-on-surface font-label-md text-label-md rounded-lg hover:border-on-surface transition-colors active:scale-95">Contact Sales</button>
+</div>
+</div>
+<!-- Trust Badges & Payments -->
+<section class="mt-xl grid md:grid-cols-2 gap-lg items-center border-t border-outline-variant pt-lg">
+<div class="flex items-center gap-md">
+<div class="bg-surface-container-high p-sm rounded-full">
+<span class="material-symbols-outlined text-primary text-[32px]">verified_user</span>
+</div>
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface">30-day money-back guarantee</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Try any pro plan risk-free. If it's not right for you, we'll refund every cent.</p>
+</div>
+</div>
+<div class="flex flex-col md:items-end gap-sm">
+<p class="font-label-md text-label-md text-on-surface-variant">Secure Global Payments</p>
+<div class="flex items-center gap-md">
+<div class="bg-surface-container p-xs rounded border border-outline-variant px-md py-sm">
+<span class="font-label-md text-label-md text-on-surface">NOWPayments accepted</span>
+</div>
+<div class="flex gap-xs grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition-all cursor-default">
+<span class="material-symbols-outlined">payments</span>
+<span class="material-symbols-outlined">currency_bitcoin</span>
+<span class="material-symbols-outlined">credit_card</span>
+</div>
 </div>
 </div>
 </section>
 </main>
-<!-- Shared Footer Execution -->
-<footer class="w-full px-lg py-md flex flex-col md:flex-row justify-between items-center gap-md bg-surface-container-lowest border-t border-outline-variant font-code-snippet text-code-snippet">
-<div class="flex items-center gap-md">
-<span class="font-bold text-primary">QUANTUM TERMINAL</span>
-<div class="flex items-center gap-xs">
-<span class="w-2 h-2 bg-tertiary rounded-full animate-pulse"></span>
-<span class="text-on-surface-variant uppercase">SYSTEM STATUS: OPTIMAL</span>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest border-t border-outline-variant w-full py-lg mt-xl">
+<div class="flex flex-col md:flex-row justify-between items-center px-margin max-w-max_width mx-auto gap-md">
+<div class="flex flex-col gap-xs">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">CashClaw</div>
+<p class="font-body-md text-body-md text-on-surface-variant">© 2024 CashClaw. Precision trading for prediction markets.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-md">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">Terms of Service</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">Risk Disclosure</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">Security</a>
 </div>
 </div>
-<div class="flex gap-lg">
-<a class="text-on-surface-variant hover:text-secondary transition-all hover:underline" href="#">API_LIMITS</a>
-<a class="text-on-surface-variant hover:text-secondary transition-all hover:underline" href="#">DATA_LATENCY</a>
-<a class="text-on-surface-variant hover:text-secondary transition-all hover:underline" href="#">BILLING</a>
-<a class="text-on-surface-variant hover:text-secondary transition-all hover:underline" href="#">LEGAL</a>
-<a class="text-on-surface-variant hover:text-secondary transition-all hover:underline" href="#">PRIVACY</a>
-</div>
-<div class="text-on-surface-variant opacity-50">
-            © 2024 QUANTUM TERMINAL.
-        </div>
 </footer>
+<!-- Micro-interaction Script -->
 <script>
-        // Micro-interactions for terminal feel
-        document.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('mousedown', () => {
-                btn.style.transform = 'scale(0.98)';
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+                
+                // Subtle lift effect
+                if(!card.classList.contains('pro-glow')) {
+                    card.style.transform = `translateY(-4px)`;
+                    card.style.borderColor = '#414754';
+                }
             });
-            btn.addEventListener('mouseup', () => {
-                btn.style.transform = 'scale(1)';
+
+            card.addEventListener('mouseleave', () => {
+                if(!card.classList.contains('pro-glow')) {
+                    card.style.transform = `translateY(0px)`;
+                    card.style.borderColor = '#222222';
+                }
             });
         });
-
-        // Typing effect for the Hero subtext
-        const subtext = document.querySelector('p.text-body-lg');
-        if (subtext) {
-            const content = subtext.innerText;
-            subtext.innerText = '';
-            let i = 0;
-            const typing = setInterval(() => {
-                if (i < content.length) {
-                    subtext.innerText += content.charAt(i);
-                    i++;
-                } else {
-                    clearInterval(typing);
-                }
-            }, 15);
-        }
     </script>
 </body></html>

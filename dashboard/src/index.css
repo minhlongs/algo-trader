@@ -8,8 +8,7 @@
   body {
     @apply font-sans text-white bg-bg antialiased;
   }
-  
-  /* Standardise tabular-nums for numeric values globally */
+
   .numeric-val {
     font-variant-numeric: tabular-nums;
     @apply font-mono;
@@ -19,74 +18,80 @@
 html, body, #root {
   margin: 0;
   min-height: 100vh;
-  background-color: #060814;
 }
 
-/* Glassmorphism custom utilities */
+/* Stitch design system overrides (sourced from stitch-exports/design.html) */
 .glass-card {
-  background: rgba(16, 20, 38, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.glass-card-glow {
+  background: rgba(17, 17, 17, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid #222222;
+  border-radius: 0.75rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glass-card-glow:hover {
-  box-shadow: 0 0 25px rgba(0, 255, 163, 0.08);
-  border-color: rgba(0, 255, 163, 0.2);
+.glass-card:hover {
+  border-color: #414754;
 }
 
-/* Custom scrollbar for dark theme */
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-.scrollbar-thin::-webkit-scrollbar {
-  height: 6px;
-  width: 6px;
-}
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+.terminal-grid {
+  background-image: radial-gradient(circle, #222222 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
+/* P&L sparkline / inline SVG charts */
+.chart-area-gradient {
+  background-image: linear-gradient(#aec6ff33, transparent);
+}
+
+/* Scan Bars (Alpha Vang page) */
+.scan-bar {
+  background: rgba(59, 130, 246, 0.2);
+  border-radius: 2px;
+  animation: scan-pulse var(--bar-duration) ease-in-out infinite;
+  animation-delay: var(--bar-delay);
+}
+
+@keyframes scan-pulse {
+  0%, 100% { height: var(--bar-base); }
+  50% { height: 85%; }
+}
+
+/* Selection */
 ::selection {
-  background-color: rgba(0, 255, 163, 0.25);
-  color: #fff;
+  background-color: #0070f333;
+  color: #e3e2e2;
 }
 
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #343535;
+  border-radius: 2px;
+}
+
+/* Legacy flash animations (used by position table) */
 @keyframes flash-up {
-  0% {
-    background-color: rgba(0, 255, 163, 0.25);
-    border-color: rgba(0, 255, 163, 0.6);
-  }
-  100% {
-    background-color: rgba(16, 20, 38, 0.6);
-    border-color: rgba(255, 255, 255, 0.05);
-  }
+  0%   { background-color: rgba(59, 130, 246, 0.25); }
+  100% { background-color: rgba(16, 20, 38, 0.6); }
 }
 
 @keyframes flash-down {
-  0% {
-    background-color: rgba(255, 46, 147, 0.25);
-    border-color: rgba(255, 46, 147, 0.6);
-  }
-  100% {
-    background-color: rgba(16, 20, 38, 0.6);
-    border-color: rgba(255, 255, 255, 0.05);
-  }
+  0%   { background-color: rgba(239, 68, 68, 0.25); }
+  100% { background-color: rgba(16, 20, 38, 0.6); }
 }
 
 .flash-up-anim {
   animation: flash-up 0.8s ease-out forwards;
 }
-
 .flash-down-anim {
   animation: flash-down 0.8s ease-out forwards;
 }
+
+/* Geist font family */
+.font-geist { font-family: 'Geist', 'Inter', sans-serif; }

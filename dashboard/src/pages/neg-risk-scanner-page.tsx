@@ -1,24 +1,87 @@
 /**
  * NegRiskScannerPage — Dashboard for Polymarket Negative Risk Arbitrage Scanner
  *
- * Features:
- * - Stats cards: Opportunities Found, Locked Profit, Active Trades
- * - Data table: Market, YES Ask, NO Ask, Sum, Locked Profit, Trade button
- * - Sidebar: threshold slider (0.90–0.99, default 0.98), refresh button
- * - Dark theme, cyan accents, desktop layout
+ * Stitch redesign: dark fintech, bilingual VN+EN.
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import { useNegRiskScannerStore } from '../stores/neg-risk-scanner-store';
 
+const COPY = {
+  en: {
+    langToggle: 'Tiếng Việt',
+    title: 'Negative Risk Scanner',
+    subtitle: 'Polymarket arbitrage opportunities',
+    navScanner: 'Scanner',
+    navStrategies: 'Strategies',
+    navSettings: 'Settings',
+    sidebarTitle: 'Neg Risk Scanner',
+    thresholdLabel: 'Risk Threshold',
+    scanning: 'Scanning...',
+    refresh: '↻ Refresh',
+    lastScan: 'Last scan',
+    sessionStats: 'Session Stats',
+    scanned: 'Scanned',
+    opportunities: 'Opportunities',
+    avgProfit: 'Avg Profit',
+    emptyTitle: 'No arbitrage opportunities detected',
+    emptyDesc: 'Try lowering the threshold or refreshing',
+    colMarket: 'Market',
+    colYesAsk: 'YES Ask',
+    colNoAsk: 'NO Ask',
+    colSum: 'Sum',
+    colLockedProfit: 'Locked Profit',
+    colAction: 'Action',
+    trade: 'Trade',
+    arbitrageTitle: 'Arbitrage Opportunities',
+    marketsCount: 'markets',
+    statOpportunities: 'Opportunities Found',
+    statLockedProfit: 'Locked Profit',
+    statActiveTrades: 'Active Trades',
+  },
+  vi: {
+    langToggle: 'English',
+    title: 'Negative Risk Scanner',
+    subtitle: 'Cơ hội arbitrage trên Polymarket',
+    navScanner: 'Quét',
+    navStrategies: 'Chiến Thuật',
+    navSettings: 'Cài Đặt',
+    sidebarTitle: 'Neg Risk Scanner',
+    thresholdLabel: 'Ngưỡng Rủi Ro',
+    scanning: 'Đang quét...',
+    refresh: '↻ Làm Mới',
+    lastScan: 'Quét lần cuối',
+    sessionStats: 'Thống Kê Phiên',
+    scanned: 'Đã Quét',
+    opportunities: 'Cơ Hội',
+    avgProfit: 'Lợi Nhuận TB',
+    emptyTitle: 'Không phát hiện cơ hội arbitrage',
+    emptyDesc: 'Thử hạ ngưỡng hoặc làm mới lại',
+    colMarket: 'Thị Trường',
+    colYesAsk: 'YES Ask',
+    colNoAsk: 'NO Ask',
+    colSum: 'Tổng',
+    colLockedProfit: 'Lợi Nhuận',
+    colAction: 'Hành Động',
+    trade: 'Giao Dịch',
+    arbitrageTitle: 'Cơ Hội Arbitrage',
+    marketsCount: 'thị trường',
+    statOpportunities: 'Cơ Hội Tìm Thấy',
+    statLockedProfit: 'Lợi Nhuận',
+    statActiveTrades: 'Giao Dịch Đang Hoạt Động',
+  },
+};
+
+type Lang = 'en' | 'vi';
+
 // ─── Stats Cards ─────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-bg-card border border-bg-border rounded-lg p-4 transition-all duration-200 hover:border-accent/30">
-      <p className="text-muted text-xs font-medium uppercase tracking-wider mb-1">{label}</p>
+    <div className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4 transition-all duration-200 hover:border-[#aec6ff]/30">
+      <p className="text-[#c1c6d7] text-xs font-medium uppercase tracking-wider mb-1">{label}</p>
       <p className="text-white font-mono font-bold text-2xl">{value}</p>
-      {sub && <p className="text-accent text-xs font-mono mt-1">{sub}</p>}
+      {sub && <p className="text-[#3b82f6] text-xs font-mono mt-1">{sub}</p>}
     </div>
   );
 }
@@ -28,14 +91,16 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
 function ThresholdControl({
   value,
   onChange,
+  t,
 }: {
   value: number;
   onChange: (v: number) => void;
+  t: typeof COPY['en'];
 }) {
   return (
     <div className="space-y-3">
-      <label className="text-muted text-xs font-medium uppercase tracking-wider block">
-        Risk Threshold
+      <label className="text-[#c1c6d7] text-xs font-medium uppercase tracking-wider block">
+        {t.thresholdLabel}
       </label>
       <input
         type="range"
@@ -44,12 +109,12 @@ function ThresholdControl({
         step={0.01}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full h-2 bg-bg-border rounded-lg appearance-none cursor-pointer accent-accent"
+        className="w-full h-2 bg-[#414754] rounded-lg appearance-none cursor-pointer accent-[#aec6ff]"
         data-testid="threshold-slider"
       />
-      <div className="flex justify-between text-[10px] text-muted font-mono">
+      <div className="flex justify-between text-[10px] text-[#c1c6d7] font-mono">
         <span>0.90</span>
-        <span className="text-accent font-bold">{value.toFixed(2)}</span>
+        <span className="text-[#aec6ff] font-bold">{value.toFixed(2)}</span>
         <span>0.99</span>
       </div>
     </div>
@@ -61,6 +126,7 @@ function ThresholdControl({
 function OpportunitiesTable({
   opportunities,
   onTrade,
+  t,
 }: {
   opportunities: Array<{
     id: string;
@@ -71,16 +137,17 @@ function OpportunitiesTable({
     lockedProfit: number;
   }>;
   onTrade: (id: string) => void;
+  t: typeof COPY['en'];
 }) {
   if (opportunities.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted">
+      <div className="flex flex-col items-center justify-center py-12 text-[#c1c6d7]">
         <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" className="mb-3 opacity-30">
           <circle cx="12" cy="12" r="9" />
           <path d="M8 12h8M12 8v8" />
         </svg>
-        <p className="text-sm">No arbitrage opportunities detected</p>
-        <p className="text-xs mt-1">Try lowering the threshold or refreshing</p>
+        <p className="text-sm">{t.emptyTitle}</p>
+        <p className="text-xs mt-1">{t.emptyDesc}</p>
       </div>
     );
   }
@@ -89,34 +156,34 @@ function OpportunitiesTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm" data-testid="opportunities-table">
         <thead>
-          <tr className="border-b border-bg-border text-muted text-xs uppercase tracking-wider">
-            <th className="text-left py-3 px-4 font-medium">Market</th>
-            <th className="text-right py-3 px-4 font-medium">YES Ask</th>
-            <th className="text-right py-3 px-4 font-medium">NO Ask</th>
-            <th className="text-right py-3 px-4 font-medium">Sum</th>
-            <th className="text-right py-3 px-4 font-medium">Locked Profit</th>
-            <th className="text-center py-3 px-4 font-medium">Action</th>
+          <tr className="border-b border-[#414754] text-[#c1c6d7] text-xs uppercase tracking-wider">
+            <th className="text-left py-3 px-4 font-medium">{t.colMarket}</th>
+            <th className="text-right py-3 px-4 font-medium">{t.colYesAsk}</th>
+            <th className="text-right py-3 px-4 font-medium">{t.colNoAsk}</th>
+            <th className="text-right py-3 px-4 font-medium">{t.colSum}</th>
+            <th className="text-right py-3 px-4 font-medium">{t.colLockedProfit}</th>
+            <th className="text-center py-3 px-4 font-medium">{t.colAction}</th>
           </tr>
         </thead>
         <tbody>
           {opportunities.map((opp) => (
             <tr
               key={opp.id}
-              className="border-b border-bg-border/50 hover:bg-bg-card/80 transition-colors"
+              className="border-b border-[#414754]/50 hover:bg-[#121414]/80 transition-colors"
               data-testid={`opportunity-row-${opp.id}`}
             >
               <td className="py-3 px-4 text-white font-mono text-xs">{opp.market}</td>
-              <td className="py-3 px-4 text-right font-mono text-muted">${opp.yesAsk.toFixed(2)}</td>
-              <td className="py-3 px-4 text-right font-mono text-muted">${opp.noAsk.toFixed(2)}</td>
-              <td className="py-3 px-4 text-right font-mono text-accent">{opp.sum.toFixed(3)}</td>
-              <td className="py-3 px-4 text-right font-mono text-profit">{(opp.lockedProfit * 100).toFixed(2)}%</td>
+              <td className="py-3 px-4 text-right font-mono text-[#c1c6d7]">${opp.yesAsk.toFixed(2)}</td>
+              <td className="py-3 px-4 text-right font-mono text-[#c1c6d7]">${opp.noAsk.toFixed(2)}</td>
+              <td className="py-3 px-4 text-right font-mono text-[#aec6ff]">{opp.sum.toFixed(3)}</td>
+              <td className="py-3 px-4 text-right font-mono text-[#3b82f6]">{(opp.lockedProfit * 100).toFixed(2)}%</td>
               <td className="py-3 px-4 text-center">
                 <button
                   onClick={() => onTrade(opp.id)}
-                  className="px-3 py-1.5 bg-accent/10 text-accent border border-accent/30 rounded text-xs font-medium hover:bg-accent/20 hover:border-accent/50 transition-all duration-150"
+                  className="px-3 py-1.5 bg-[#aec6ff]/10 text-[#aec6ff] border border-[#aec6ff]/30 rounded text-xs font-medium hover:bg-[#aec6ff]/20 hover:border-[#aec6ff]/50 transition-all duration-150"
                   data-testid={`trade-btn-${opp.id}`}
                 >
-                  Trade
+                  {t.trade}
                 </button>
               </td>
             </tr>
@@ -130,8 +197,11 @@ function OpportunitiesTable({
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export function NegRiskScannerPage() {
+  const [lang, setLang] = useState<Lang>('en');
   const [threshold, setThreshold] = useState(0.98);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const t = COPY[lang];
 
   const opportunities = useNegRiskScannerStore((s) => s.opportunities);
   const stats = useNegRiskScannerStore((s) => s.stats);
@@ -168,142 +238,159 @@ export function NegRiskScannerPage() {
     new Date(ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg">
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+      {/* Lang toggle */}
+      <div className="flex justify-end px-4 sm:px-6 pt-4">
+        <button
+          onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+          aria-label="Toggle language"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
+          </svg>
+          {t.langToggle}
+        </button>
+      </div>
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-bg-card border-r border-bg-border transform transition-transform duration-300 md:relative md:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}
-      >
-        {/* Sidebar header */}
-        <div className="flex items-center justify-between h-14 px-4 border-b border-bg-border">
-          <div>
-            <h1 className="text-accent font-bold text-base tracking-tight">CashClaw</h1>
-            <p className="text-muted text-[10px] mt-0.5">Neg Risk Scanner</p>
-          </div>
-          <button
+      <div className="flex h-screen overflow-hidden">
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-2 text-muted hover:text-white"
-            aria-label="Close sidebar"
-          >
-            ✕
-          </button>
-        </div>
+          />
+        )}
 
-        {/* Controls */}
-        <div className="p-4 space-y-6">
-          <ThresholdControl value={threshold} onChange={handleThresholdChange} />
-
-          <div className="space-y-2">
+        {/* Sidebar */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#121414]/80 backdrop-blur-xl border-r border-[#414754] transform transition-transform duration-300 md:relative md:translate-x-0 ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          }`}
+        >
+          {/* Sidebar header */}
+          <div className="flex items-center justify-between h-14 px-4 border-b border-[#414754]">
+            <div>
+              <h1 className="text-[#aec6ff] font-bold text-base tracking-tight">CashClaw</h1>
+              <p className="text-[#c1c6d7] text-[10px] mt-0.5">{t.sidebarTitle}</p>
+            </div>
             <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="w-full py-2.5 bg-accent/10 text-accent border border-accent/30 rounded-lg text-sm font-medium hover:bg-accent/20 hover:border-accent/50 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              data-testid="refresh-btn"
+              onClick={() => setSidebarOpen(false)}
+              className="md:hidden p-2 text-[#c1c6d7] hover:text-white"
+              aria-label="Close sidebar"
             >
-              {loading ? (
-                <>
-                  <span className="animate-spin">⟳</span> Scanning...
-                </>
-              ) : (
-                <>↻ Refresh</>
-              )}
+              ✕
             </button>
-            {lastRefresh > 0 && (
-              <p className="text-[10px] text-muted text-center">
-                Last scan: {formatTime(lastRefresh)}
-              </p>
-            )}
           </div>
 
-          {/* Mini stats */}
-          <div className="space-y-2 pt-4 border-t border-bg-border">
-            <p className="text-muted text-[10px] uppercase tracking-wider">Session Stats</p>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted">Scanned</span>
-                <span className="text-white font-mono">{stats.totalScanned}</span>
+          {/* Controls */}
+          <div className="p-4 space-y-6">
+            <ThresholdControl value={threshold} onChange={handleThresholdChange} t={t} />
+
+            <div className="space-y-2">
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="w-full py-2.5 bg-[#aec6ff]/10 text-[#aec6ff] border border-[#aec6ff]/30 rounded-lg text-sm font-medium hover:bg-[#aec6ff]/20 hover:border-[#aec6ff]/50 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                data-testid="refresh-btn"
+              >
+                {loading ? (
+                  <>
+                    <span className="animate-spin">⟳</span> {t.scanning}
+                  </>
+                ) : (
+                  <>↻ {t.refresh}</>
+                )}
+              </button>
+              {lastRefresh > 0 && (
+                <p className="text-[10px] text-[#c1c6d7] text-center">
+                  {t.lastScan}: {formatTime(lastRefresh)}
+                </p>
+              )}
+            </div>
+
+            {/* Mini stats */}
+            <div className="space-y-2 pt-4 border-t border-[#414754]">
+              <p className="text-[#c1c6d7] text-[10px] uppercase tracking-wider">{t.sessionStats}</p>
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#c1c6d7]">{t.scanned}</span>
+                  <span className="text-white font-mono">{stats.totalScanned}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#c1c6d7]">{t.opportunities}</span>
+                  <span className="text-[#aec6ff] font-mono">{stats.opportunitiesFound}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#c1c6d7]">{t.avgProfit}</span>
+                  <span className="text-[#3b82f6] font-mono">
+                    {stats.avgProfit > 0 ? `${(stats.avgProfit * 100).toFixed(2)}%` : '—'}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted">Opportunities</span>
-                <span className="text-accent font-mono">{stats.opportunitiesFound}</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted">Avg Profit</span>
-                <span className="text-profit font-mono">
-                  {stats.avgProfit > 0 ? `${(stats.avgProfit * 100).toFixed(2)}%` : '—'}
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+          {/* Mobile header */}
+          <header className="sticky top-0 z-30 md:hidden bg-[#0a0a0a]/95 backdrop-blur border-b border-[#414754]">
+            <div className="flex items-center justify-between h-14 px-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-2 -ml-2 text-[#c1c6d7] hover:text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Open menu"
+              >
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+              </button>
+              <span className="text-[#aec6ff] font-bold text-base">CashClaw</span>
+              <div className="w-10" />
+            </div>
+          </header>
+
+          {/* Desktop header */}
+          <header className="hidden md:flex items-center justify-between h-14 px-6 border-b border-[#414754] bg-[#0a0a0a]/80 backdrop-blur">
+            <div>
+              <h2 className="text-white font-semibold text-lg">{t.title}</h2>
+              <p className="text-[#c1c6d7] text-xs">{t.subtitle}</p>
+            </div>
+            <nav className="flex items-center gap-6 text-sm">
+              <span className="text-[#aec6ff] cursor-pointer">{t.navScanner}</span>
+              <span className="text-[#c1c6d7] hover:text-white cursor-pointer transition-colors">{t.navStrategies}</span>
+              <span className="text-[#c1c6d7] hover:text-white cursor-pointer transition-colors">{t.navSettings}</span>
+            </nav>
+          </header>
+
+          {/* Content */}
+          <div className="flex-1 p-4 md:p-6 space-y-6">
+            {/* Stats cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <StatCard label={t.statOpportunities} value={stats.opportunitiesFound} />
+              <StatCard
+                label={t.statLockedProfit}
+                value={stats.totalLockedProfit > 0 ? `$${stats.totalLockedProfit.toFixed(2)}` : '$0.00'}
+                sub={stats.avgProfit > 0 ? `${(stats.avgProfit * 100).toFixed(2)}% avg` : undefined}
+              />
+              <StatCard label={t.statActiveTrades} value={stats.activeTrades} />
+            </div>
+
+            {/* Table */}
+            <div className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl">
+              <div className="px-4 py-3 border-b border-[#414754] flex items-center justify-between">
+                <h3 className="text-white font-medium text-sm">{t.arbitrageTitle}</h3>
+                <span className="text-[#c1c6d7] text-xs font-mono">
+                  {opportunities.length} {t.marketsCount}
                 </span>
               </div>
+              <OpportunitiesTable opportunities={opportunities} onTrade={handleTrade} t={t} />
             </div>
           </div>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
-        {/* Mobile header */}
-        <header className="sticky top-0 z-30 md:hidden bg-bg/95 backdrop-blur border-b border-bg-border">
-          <div className="flex items-center justify-between h-14 px-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 -ml-2 text-muted hover:text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
-              aria-label="Open menu"
-            >
-              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              </svg>
-            </button>
-            <span className="text-accent font-bold text-base">CashClaw</span>
-            <div className="w-10" />
-          </div>
-        </header>
-
-        {/* Desktop header */}
-        <header className="hidden md:flex items-center justify-between h-14 px-6 border-b border-bg-border bg-bg/80 backdrop-blur">
-          <div>
-            <h2 className="text-white font-semibold text-lg">Negative Risk Scanner</h2>
-            <p className="text-muted text-xs">Polymarket arbitrage opportunities</p>
-          </div>
-          <nav className="flex items-center gap-6 text-sm">
-            <span className="text-accent cursor-pointer">Scanner</span>
-            <span className="text-muted hover:text-white cursor-pointer transition-colors">Strategies</span>
-            <span className="text-muted hover:text-white cursor-pointer transition-colors">Settings</span>
-          </nav>
-        </header>
-
-        {/* Content */}
-        <div className="flex-1 p-4 md:p-6 space-y-6">
-          {/* Stats cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Opportunities Found" value={stats.opportunitiesFound} />
-            <StatCard
-              label="Locked Profit"
-              value={stats.totalLockedProfit > 0 ? `$${stats.totalLockedProfit.toFixed(2)}` : '$0.00'}
-              sub={stats.avgProfit > 0 ? `${(stats.avgProfit * 100).toFixed(2)}% avg` : undefined}
-            />
-            <StatCard label="Active Trades" value={stats.activeTrades} />
-          </div>
-
-          {/* Table */}
-          <div className="bg-bg-card border border-bg-border rounded-lg">
-            <div className="px-4 py-3 border-b border-bg-border flex items-center justify-between">
-              <h3 className="text-white font-medium text-sm">Arbitrage Opportunities</h3>
-              <span className="text-muted text-xs font-mono">
-                {opportunities.length} markets
-              </span>
-            </div>
-            <OpportunitiesTable opportunities={opportunities} onTrade={handleTrade} />
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

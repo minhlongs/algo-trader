@@ -5,353 +5,331 @@
  * and a drip schedule timeline.
  *
  * Endpoints:
- *   GET  /api/v1/trial-drip/status
- *   POST /api/v1/trial-drip/subscribe
+ * GET /api/v1/trial-drip/status
+ * POST /api/v1/trial-drip/subscribe
  *
- * Protected route: /app/trial
+ * Stitch redesign: dark fintech, bilingual VN+EN.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useApiClient } from '../hooks/use-api-client';
+import { StitchButton } from '../components/ui/stitch-components';
+import { COLORS } from '../lib/stitch-design-tokens';
 
-/* ─── Types ──────────────────────────────────────── */
+const COPY = {
+en: {
+langToggle: 'Tiếng Việt',
+trialProgress: 'Trial Progress',
+daysLeft: 'days left',
+trialDay: 'day trial',
+currentPlan: 'Current Plan:', 'upgradeNow': 'Upgrade Now',
+emailPref: 'Email Preferences',
+subscribed: 'Subscribed',
+unsubscribed: 'Unsubscribed',
+subDesc: 'Receive drip emails with tips, strategy highlights, and product updates during your trial.',
+subOff: 'You will not receive any drip emails.',
+toggleSaving: 'Saving...',
+dripSchedule: 'Drip Schedule',
+emailsOn: 'Emails on', emailsOff: 'Emails off',
+dripDesc: 'Timeline of emails, feature unlocks, and milestones during your trial.',
+infoNote: 'Trial status and drip preferences are managed server-side via the trial-drip API.',
+loading: 'Loading trial status...',
+errorLoad: 'Failed to load trial status.',
+errorToggle: 'Failed to update subscription preference.',
+typeEmail: 'email',
+typeFeature: 'feature',
+typeMilestone: 'milestone',
+},
+vi: {
+langToggle: 'English',
+trialProgress: 'Tiến Độ Dùng Thử',
+daysLeft: 'ngày còn lại',
+trialDay: 'ngày dùng thử',
+currentPlan: 'Gói Hiện Tại:', 'upgradeNow': 'Nâng Cấp Ngay',
+emailPref: 'Tùy Chọn Email',
+subscribed: 'Đã đăng ký',
+unsubscribed: 'Chưa đăng ký',
+subDesc: 'Nhận email drip với mẹo, highlight chiến lược, và cập nhật sản phẩm trong thời gian dùng thử.',
+subOff: 'Bạn sẽ không nhận email drip nào.',
+toggleSaving: 'Đang lưu...',
+dripSchedule: 'Lịch Drip',
+emailsOn: 'Email bật', emailsOff: 'Email tắt',
+dripDesc: 'Dòng thời gian emails, mở khóa tính năng, và milestones trong thời gian dùng thử.',
+infoNote: 'Trạng thái dùng thử và tùy chọn drip được quản lý server-side qua API trial-drip.',
+loading: 'Đang tải trạng thái dùng thử...',
+errorLoad: 'Không thể tải trạng thái dùng thử.',
+errorToggle: 'Không thể cập nhật tùy chọn đăng ký.',
+typeEmail: 'email',
+typeFeature: 'tính năng',
+typeMilestone: 'milestone',
+},
+};
+
+type Lang = 'en' | 'vi';
+type DripType = 'email' | 'feature' | 'milestone';
 
 interface TrialStatus {
-  daysRemaining: number;
-  totalDays: number;
-  startDate: string;
-  endDate: string;
-  subscribed: boolean;
-  tier: string;
-  email: string;
+daysRemaining: number;
+totalDays: number;
+startDate: string;
+endDate: string;
+subscribed: boolean;
+tier: string;
+email: string;
 }
 
 interface DripEvent {
-  day: number;
-  title: string;
-  description: string;
-  type: 'email' | 'feature' | 'milestone';
+day: number;
+titleKey: keyof typeof COPY.en;
+descKey: keyof typeof COPY.en;
+type: DripType;
 }
 
-/* ─── Drip schedule (static timeline) ────────────── */
+function formatDate(iso: string): string {
+try { return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
+catch { return iso; }
+}
 
 const DRIP_SCHEDULE: DripEvent[] = [
-  { day: 1,  title: 'Welcome',                            description: 'Getting started guide and platform overview',     type: 'email' },
-  { day: 2,  title: 'First Strategy',                      description: 'How to browse and subscribe to a strategy',       type: 'feature' },
-  { day: 3,  title: 'Marketplace Tour',                    description: 'Detailed walkthrough of the marketplace',         type: 'email' },
-  { day: 5,  title: 'Performance Metrics',                 description: 'Understanding your dashboard metrics',            type: 'milestone' },
-  { day: 7,  title: 'Polymarket Integration',              description: 'Connecting your Polymarket account',              type: 'feature' },
-  { day: 10, title: 'Risk Management',                     description: 'Setting up risk limits and alerts',               type: 'email' },
-  { day: 14, title: 'Backtesting Deep Dive',               description: 'Using the backtesting engine effectively',       type: 'milestone' },
-  { day: 18, title: 'Advanced Settings',                   description: 'MM parameters, exchange keys, alert rules',      type: 'feature' },
-  { day: 21, title: 'Halfway Check-in',                    description: 'Tips to optimise your strategy performance',     type: 'email' },
-  { day: 25, title: 'API Access',                          description: 'Using the API for programmatic access',           type: 'feature' },
-  { day: 28, title: 'Final Week Prep',                     description: 'Preparing for post-trial decisions',             type: 'email' },
-  { day: 30, title: 'Trial Ends',                          description: 'Choose a plan to continue uninterrupted trading', type: 'milestone' },
+{ day: 1, titleKey: 'loading', descKey: 'subDesc', type: 'email' },
+{ day: 2, titleKey: 'loading', descKey: 'subDesc', type: 'feature' },
+{ day: 5, titleKey: 'loading', descKey: 'subDesc', type: 'milestone' },
+{ day: 7, titleKey: 'loading', descKey: 'subDesc', type: 'feature' },
+{ day: 10, titleKey: 'loading', descKey: 'subDesc', type: 'email' },
+{ day: 14, titleKey: 'loading', descKey: 'subDesc', type: 'milestone' },
+{ day: 18, titleKey: 'loading', descKey: 'subDesc', type: 'feature' },
+{ day: 21, titleKey: 'loading', descKey: 'subDesc', type: 'email' },
+{ day: 25, titleKey: 'loading', descKey: 'subDesc', type: 'feature' },
+{ day: 28, titleKey: 'loading', descKey: 'subDesc', type: 'email' },
+{ day: 30, titleKey: 'loading', descKey: 'subDesc', type: 'milestone' },
 ];
 
-/* ─── Default state (fallback when API unavailable) ─ */
-
-const DEFAULT_STATUS: TrialStatus = {
-  daysRemaining: 14,
-  totalDays: 30,
-  startDate: new Date(Date.now() - 16 * 86400000).toISOString(),
-  endDate: new Date(Date.now() + 14 * 86400000).toISOString(),
-  subscribed: true,
-  tier: 'free',
-  email: '',
+const DRIP_TITLES: Record<number, { en: string; vi: string }> = {
+1: { en: 'Welcome', vi: 'Chào mừng' },
+2: { en: 'First Strategy', vi: 'Chiến Lược Đầu Tiên' },
+5: { en: 'Performance Metrics', vi: 'Chỉ Số Hiệu Suất' },
+7: { en: 'Polymarket Integration', vi: 'Kết Nối Polymarket' },
+10: { en: 'Risk Management', vi: 'Quản Lý Rủi Ro' },
+14: { en: 'Backtesting Deep Dive', vi: 'Sâu Về Backtesting' },
+18: { en: 'Advanced Settings', vi: 'Cài Đặt Nâng Cao' },
+21: { en: 'Halfway Check-in', vi: 'Kiểm Tra Giữa Chừng' },
+25: { en: 'API Access', vi: 'Truy Cập API' },
+28: { en: 'Final Week Prep', vi: 'Chuẩn Bị Tuần Cuối' },
+30: { en: 'Trial Ends', vi: 'Dùng Thử Kết Thúc' },
 };
 
-/* ─── Sub-components ──────────────────────────────── */
+const DRIP_DESCS: Record<number, { en: string; vi: string }> = {
+1: { en: 'Getting started guide and platform overview', vi: 'Hướng dẫn bắt đầu và tổng quan nền tảng' },
+2: { en: 'How to browse and subscribe to a strategy', vi: 'Cách duyệt và đăng ký chiến lược' },
+5: { en: 'Understanding your dashboard metrics', vi: 'Hiểu chỉ số dashboard của bạn' },
+7: { en: 'Connecting your Polymarket account', vi: 'Kết nối tài khoản Polymarket' },
+10: { en: 'Setting up risk limits and alerts', vi: 'Thiết lập giới hạn rủi ro và cảnh báo' },
+14: { en: 'Using the backtesting engine effectively', vi: 'Sử dụng engine backtesting hiệu quả' },
+18: { en: 'MM parameters, exchange keys, alert rules', vi: 'Tham số MM, key sàn, quy tắc cảnh báo' },
+21: { en: 'Tips to optimise your strategy performance', vi: 'Mẹo tối ưu hiệu suất chiến lược' },
+25: { en: 'Using the API for programmatic access', vi: 'Sử dụng API để truy cập programmatic' },
+28: { en: 'Preparing for post-trial decisions', vi: 'Chuẩn bị cho quyết định sau dùng thử' },
+30: { en: 'Choose a plan to continue uninterrupted trading', vi: 'Chọn gói để tiếp tục giao dịch không gián đoạn' },
+};
 
-function ProgressBar({ current, max }: { current: number; max: number }) {
-  const pct = Math.max(0, Math.min(100, ((max - current) / max) * 100));
-  return (
-    <div className="w-full bg-bg-border rounded-full h-2.5 overflow-hidden">
-      <div
-        className="h-full rounded-full transition-all duration-700 ease-out"
-        style={{
-          width: `${pct}%`,
-          background: pct > 66 ? 'linear-gradient(90deg, #00E676, #F59E0B)' :
-                     pct > 33 ? 'linear-gradient(90deg, #FFB800, #F59E0B)' :
-                     'linear-gradient(90deg, #FF4466, #FFB800)',
-        }}
-      />
-    </div>
-  );
-}
-
-function Timeline({ currentDay, subscribed }: { currentDay: number; subscribed: boolean }) {
-  const visible = DRIP_SCHEDULE.filter((e) => e.day <= Math.max(currentDay + 14, 30));
-
-  return (
-    <div className="space-y-0">
-      {visible.map((event, idx) => {
-        const isPast = event.day < currentDay;
-        const isToday = event.day === currentDay;
-        const isFuture = event.day > currentDay;
-
-        return (
-          <div key={event.day} className="relative flex gap-4 pb-5 last:pb-0">
-            {/* Vertical connector */}
-            {idx < visible.length - 1 && (
-              <div
-                className={`absolute left-[11px] top-5 w-0.5 h-full ${
-                  isPast ? 'bg-accent/30' : 'bg-bg-border'
-                }`}
-              />
-            )}
-
-            {/* Dot */}
-            <div className="flex-shrink-0 relative z-10 mt-0.5">
-              {isToday ? (
-                <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent/20 border-2 border-accent">
-                  <span className="h-2 w-2 rounded-full bg-accent animate-pulse-soft" />
-                </span>
-              ) : isPast ? (
-                <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-profit/20 border border-profit/40">
-                  <svg width="10" height="10" fill="none" stroke="#00E676" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </span>
-              ) : (
-                <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-bg-surface border border-bg-border">
-                  <span className="h-2 w-2 rounded-full bg-muted/40" />
-                </span>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className={`flex-1 min-w-0 ${isFuture ? 'opacity-50' : ''}`}>
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className={`text-xs font-semibold ${
-                  isToday ? 'text-accent' : isPast ? 'text-white' : 'text-muted'
-                }`}>
-                  Day {event.day}
-                </span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                  event.type === 'email' ? 'bg-accent/10 text-accent border border-accent/20' :
-                  event.type === 'feature' ? 'bg-profit/10 text-profit border border-profit/20' :
-                  'bg-gold/10 text-gold border border-gold/20'
-                }`}>
-                  {event.type}
-                </span>
-                {isToday && (
-                  <span className="text-[10px] text-accent font-bold animate-pulse-soft">NOW</span>
-                )}
-              </div>
-              <p className="text-white text-xs">{event.title}</p>
-              <p className="text-muted text-[10px] mt-0.5 leading-relaxed">{event.description}</p>
-            </div>
-
-            {/* Email icon for email-type events when subscribed */}
-            {event.type === 'email' && subscribed && isPast && (
-              <span className="flex-shrink-0 text-profit/60" title="Email sent">
-                <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
-                </svg>
-              </span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── Page ────────────────────────────────────────── */
+const DEFAULT_STATUS: TrialStatus = {
+daysRemaining: 14, totalDays: 30,
+startDate: new Date(Date.now() - 16 * 86400000).toISOString(),
+endDate: new Date(Date.now() + 14 * 86400000).toISOString(),
+subscribed: true, tier: 'free', email: '',
+};
 
 export function TrialStatusPage() {
-  const { fetchApi } = useApiClient();
+const [lang, setLang] = useState<Lang>('en');
+const t = COPY[lang];
+const { fetchApi } = useApiClient();
 
-  const [status, setStatus] = useState<TrialStatus>(DEFAULT_STATUS);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+const [status, setStatus] = useState<TrialStatus>(DEFAULT_STATUS);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState<string | null>(null);
+const [saving, setSaving] = useState(false);
 
-  const currentDay = status.totalDays - status.daysRemaining;
+const currentDay = status.totalDays - status.daysRemaining;
 
-  /* Fetch trial status */
-  const loadStatus = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchApi<TrialStatus>('/v1/trial-drip/status');
-      if (data) {
-        setStatus(data);
-      } else {
-        // Use default when API unavailable
-        setStatus(DEFAULT_STATUS);
-      }
-    } catch {
-      setStatus(DEFAULT_STATUS);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchApi]);
+const loadStatus = useCallback(async () => {
+setLoading(true); setError(null);
+try {
+const data = await fetchApi<TrialStatus>('/v1/trial-drip/status');
+if (data) setStatus(data); else setStatus(DEFAULT_STATUS);
+} catch { setStatus(DEFAULT_STATUS); }
+finally { setLoading(false); }
+}, [fetchApi]);
 
-  useEffect(() => {
-    loadStatus();
-  }, [loadStatus]);
+useEffect(() => { loadStatus(); }, [loadStatus]);
 
-  /* Toggle email subscription */
-  async function handleToggleSubscribe() {
-    setSaving(true);
-    setError(null);
-    try {
-      const newState = !status.subscribed;
-      const result = await fetchApi<TrialStatus>('/v1/trial-drip/subscribe', {
-        method: 'POST',
-        body: JSON.stringify({ subscribed: newState }),
-      });
-      if (result) {
-        setStatus(result);
-      } else {
-        // Optimistic update if API doesn't return full status
-        setStatus((prev) => ({ ...prev, subscribed: newState }));
-      }
-    } catch {
-      setError('Failed to update subscription preference.');
-    } finally {
-      setSaving(false);
-    }
-  }
+async function handleToggleSubscribe() {
+setSaving(true); setError(null);
+try {
+const newState = !status.subscribed;
+const result = await fetchApi<TrialStatus>('/v1/trial-drip/subscribe', { method: 'POST', body: JSON.stringify({ subscribed: newState }) });
+if (result) setStatus(result); else setStatus((prev) => ({ ...prev, subscribed: newState }));
+} catch { setError(t.errorToggle); }
+finally { setSaving(false); }
+}
 
-  /* ── Render ───────────────────────────────────── */
+if (loading) {
+return (
+<div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex items-center justify-center">
+<div className="flex flex-col items-center gap-3">
+<svg className="animate-spin h-8 w-8 text-[#0070f3]" fill="none" viewBox="0 0 24 24">
+<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+</svg>
+<p className="text-[#c1c6d7] text-xs">{t.loading}</p>
+</div>
+</div>
+);
+}
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="flex flex-col items-center gap-3">
-          <svg className="animate-spin h-8 w-8 text-muted" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <p className="text-muted text-xs">Loading trial status...</p>
-        </div>
-      </div>
-    );
-  }
+const pct = Math.max(0, Math.min(100, ((status.totalDays - status.daysRemaining) / status.totalDays) * 100));
 
-  return (
-    <div className="space-y-6 max-w-2xl">
-      <h1 className="text-white text-2xl font-bold">Trial Status</h1>
+return (
+<div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+{/* Lang toggle */}
+<div className="flex justify-end px-4 sm:px-8 pt-6">
+<button
+onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
+className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+aria-label="Toggle language"
+>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+<circle cx="12" cy="12" r="10" />
+<path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
+</svg>
+{t.langToggle}
+</button>
+</div>
 
-      {/* Error banner */}
-      {error && (
-        <div className="bg-loss/10 border border-loss/30 rounded-lg p-3 flex items-center justify-between">
-          <span className="text-loss text-xs">{error}</span>
-          <button onClick={() => setError(null)} className="text-loss/60 text-xs hover:text-loss ml-3">&times;</button>
-        </div>
-      )}
+<div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 space-y-6">
+<h1 className="text-white text-2xl font-bold">{lang === 'en' ? 'Trial Status' : 'Trạng Thái Dùng Thử'}</h1>
 
-      {/* Trial progress card */}
-      <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-white text-sm font-bold">Trial Progress</h2>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-            status.daysRemaining > 20 ? 'bg-profit/10 text-profit' :
-            status.daysRemaining > 10 ? 'bg-gold/10 text-gold' :
-            'bg-loss/10 text-loss'
-          }`}>
-            {status.daysRemaining} days left
-          </span>
-        </div>
+{error && (
+<div className="bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 rounded-xl p-3 flex items-center justify-between">
+<span className="text-[#ffb4ab] text-xs">{error}</span>
+<button onClick={() => setError(null)} className="text-[#ffb4ab]/60 text-xs hover:text-[#ffb4ab] ml-3">×</button>
+</div>
+)}
 
-        <div className="space-y-2">
-          <ProgressBar current={status.daysRemaining} max={status.totalDays} />
-          <div className="flex justify-between text-[10px] text-muted">
-            <span>Started {new Date(status.startDate).toLocaleDateString()}</span>
-            <span>{status.totalDays} day trial</span>
-            <span>Ends {new Date(status.endDate).toLocaleDateString()}</span>
-          </div>
-        </div>
+{/* Progress card */}
+<section className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-6 space-y-4">
+<div className="flex items-center justify-between">
+<h2 className="text-white text-sm font-bold">{t.trialProgress}</h2>
+<span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ backgroundColor: status.daysRemaining > 20 ? `${COLORS.profit}1a` : status.daysRemaining > 10 ? `${COLORS.warning}1a` : `${COLORS.loss}1a`, color: status.daysRemaining > 20 ? COLORS.profit : status.daysRemaining > 10 ? COLORS.warning : COLORS.loss }}>
+{status.daysRemaining} {t.daysLeft}
+</span>
+</div>
 
-        <div className="bg-bg border border-bg-border rounded p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white text-xs font-semibold">Current Plan: {status.tier.toUpperCase()}</p>
-              <p className="text-muted text-[10px] mt-0.5">
-                Day {currentDay} of {status.totalDays}
-              </p>
-            </div>
-            {status.daysRemaining <= 7 && (
-              <a
-                href="/pricing"
-                className="bg-accent text-bg text-xs font-bold px-3 py-1.5 rounded hover:bg-accent/80 transition-colors min-h-touch"
-              >
-                Upgrade Now
-              </a>
-            )}
-          </div>
-        </div>
-      </section>
+<div className="space-y-2">
+<div className="w-full bg-[#121414] rounded-full h-2.5 overflow-hidden">
+<div className="h-full rounded-full transition-all duration-700 ease-out" style={{
+width: `${pct}%`, background: 'linear-gradient(90deg, #0070f3, #aec6ff)'
+}} />
+</div>
+<div className="flex justify-between text-[10px]" style={{ color: COLORS.onSurfaceVariant }}>
+<span>{lang === 'en' ? 'Started' : 'Bắt đầu'} {formatDate(status.startDate)}</span>
+<span>{status.totalDays} {t.trialDay}</span>
+<span>{lang === 'en' ? 'Ends' : 'Kết thúc'} {formatDate(status.endDate)}</span>
+</div>
+</div>
 
-      {/* Email preference toggle */}
-      <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
-        <h2 className="text-white text-sm font-bold">Email Preferences</h2>
-        <p className="text-muted text-xs">
-          Receive drip emails with tips, strategy highlights, and product updates during your trial.
-        </p>
+<div className="bg-[#0a0a0a] border border-[#414754] rounded-xl px-4 py-3 flex items-center justify-between">
+<div>
+<p className="text-white text-xs font-semibold">{t.currentPlan} {status.tier.toUpperCase()}</p>
+<p className="text-[10px] mt-0.5" style={{ color: COLORS.onSurfaceVariant }}>
+{lang === 'en' ? 'Day' : 'Ngày'} {currentDay} {lang === 'en' ? 'of' : '/ {status.totalDays}'}
+</p>
+</div>
+{status.daysRemaining <= 7 && (
+<StitchButton variant="primary" className="text-xs">{t.upgradeNow}</StitchButton>
+)}
+</div>
+</section>
 
-        <div className="flex items-center justify-between bg-bg border border-bg-border rounded px-4 py-3">
-          <div>
-            <p className="text-white text-xs font-semibold">
-              {status.subscribed ? 'Subscribed' : 'Unsubscribed'}
-            </p>
-            <p className="text-muted text-[10px] mt-0.5">
-              {status.subscribed
-                ? 'You will receive educational drip emails during the trial.'
-                : 'You will not receive any drip emails.'}
-            </p>
-          </div>
-          <button
-            onClick={handleToggleSubscribe}
-            disabled={saving}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-              status.subscribed ? 'bg-accent' : 'bg-bg-border'
-            }`}
-            role="switch"
-            aria-checked={status.subscribed}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                status.subscribed ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
+{/* Email preferences */}
+<section className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-6 space-y-4">
+<h2 className="text-white text-sm font-bold">{t.emailPref}</h2>
+<p className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>{t.subDesc}</p>
+<div className="flex items-center justify-between bg-[#0a0a0a] border border-[#414754] rounded-xl px-4 py-3">
+<div>
+<p className="text-white text-xs font-semibold">{status.subscribed ? t.subscribed : t.unsubscribed}</p>
+<p className="text-[10px] mt-0.5" style={{ color: COLORS.onSurfaceVariant }}>{status.subscribed ? t.subDesc : t.subOff}</p>
+</div>
+<button onClick={handleToggleSubscribe} disabled={saving}
+className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0"
+style={{ backgroundColor: status.subscribed ? COLORS.primaryContainer : COLORS.outline }}
+role="switch" aria-checked={status.subscribed}
+>
+<span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" style={{ transform: status.subscribed ? 'translateX(1.25rem)' : 'translateX(0.25rem)' }} />
+</button>
+</div>
+{saving && <p className="text-[10px] flex items-center gap-1" style={{ color: COLORS.onSurfaceVariant }}>{t.toggleSaving}</p>}
+</section>
 
-        {saving && (
-          <p className="text-muted text-[10px] flex items-center gap-1">
-            <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Saving...
-          </p>
-        )}
-      </section>
+{/* Drip schedule */}
+<section className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-6 space-y-4">
+<div className="flex items-center justify-between">
+<h2 className="text-white text-sm font-bold">{t.dripSchedule}</h2>
+<span className="text-[10px]" style={{ color: COLORS.onSurfaceVariant }}>{status.subscribed ? t.emailsOn : t.emailsOff}</span>
+</div>
+<p className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>{t.dripDesc}</p>
+<div className="space-y-0">
+{DRIP_SCHEDULE.map((event, idx) => {
+const isPast = event.day < currentDay;
+const isToday = event.day === currentDay;
+const title = DRIP_TITLES[event.day]?.[lang] || `Day ${event.day}`;
+const desc = DRIP_DESCS[event.day]?.[lang] || '';
+const typeLabel = t[event.type === 'email' ? 'typeEmail' : event.type === 'feature' ? 'typeFeature' : 'typeMilestone'];
+return (
+<div key={event.day} className="relative flex gap-4 pb-5 last:pb-0">
+{idx < DRIP_SCHEDULE.length - 1 && (
+<div className="absolute left-[11px] top-5 w-0.5 h-full" style={{ backgroundColor: isPast ? `${COLORS.primary}4d` : COLORS.outline }} />
+)}
+<div className="flex-shrink-0 relative z-10 mt-0.5">
+{isToday ? (
+<span className="flex h-[22px] w-[22px] items-center justify-center rounded-full" style={{ backgroundColor: `${COLORS.primary}20`, border: `2px solid ${COLORS.primary}` }}>
+<span className="h-2 w-2 rounded-full" style={{ backgroundColor: COLORS.primary }} />
+</span>
+) : isPast ? (
+<span className="flex h-[22px] w-[22px] items-center justify-center rounded-full" style={{ backgroundColor: `${COLORS.profit}20`, border: `1px solid ${COLORS.profit}40` }}>
+<svg width="10" height="10" fill="none" stroke={COLORS.profit} strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+</span>
+) : (
+<span className="flex h-[22px] w-[22px] items-center justify-center rounded-full" style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.outline}` }}>
+<span className="h-2 w-2 rounded-full" style={{ backgroundColor: `${COLORS.onSurfaceVariant}66` }} />
+</span>
+)}
+</div>
+<div className={`flex-1 min-w-0 ${event.day > currentDay ? 'opacity-50' : ''}`}>
+<div className="flex items-center gap-2 mb-0.5">
+<span className="text-xs font-semibold" style={{ color: isToday ? COLORS.primary : isPast ? '#fff' : COLORS.onSurfaceVariant }}>
+Day {event.day}
+</span>
+<span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{
+backgroundColor: event.type === 'email' ? `${COLORS.primary}15` : event.type === 'feature' ? `${COLORS.profit}15` : `${COLORS.warning}15`,
+color: event.type === 'email' ? COLORS.primary : event.type === 'feature' ? COLORS.profit : COLORS.warning,
+border: `1px solid ${event.type === 'email' ? `${COLORS.primary}30` : event.type === 'feature' ? `${COLORS.profit}30` : `${COLORS.warning}30`}`,
+}}>
+{typeLabel}
+</span>
+{isToday && <span className="text-[10px] font-bold" style={{ color: COLORS.primary }}>NOW</span>}
+</div>
+<p className="text-white text-xs">{title}</p>
+<p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: COLORS.onSurfaceVariant }}>{desc}</p>
+</div>
+</div>
+);
+})}
+</div>
+</section>
 
-      {/* Drip schedule timeline */}
-      <section className="bg-bg-surface border border-bg-border rounded-lg p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-white text-sm font-bold">Drip Schedule</h2>
-          <span className="text-muted text-[10px]">
-            {status.subscribed ? 'Emails on' : 'Emails off'}
-          </span>
-        </div>
-        <p className="text-muted text-xs">
-          Timeline of emails, feature unlocks, and milestones during your {status.totalDays}-day trial.
-        </p>
-        <Timeline currentDay={currentDay} subscribed={status.subscribed} />
-      </section>
-
-      {/* Info note */}
-      <p className="text-muted text-[10px] text-center">
-        Trial status and drip preferences are managed server-side via the trial-drip API.
-      </p>
-    </div>
-  );
+<p className="text-[10px] text-center" style={{ color: COLORS.onSurfaceVariant }}>{t.infoNote}</p>
+</div>
+</div>
+);
 }
 
 export default TrialStatusPage;

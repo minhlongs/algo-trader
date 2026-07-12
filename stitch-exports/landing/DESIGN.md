@@ -2,14 +2,22 @@
 
 Auto-generated from Google Stitch export.
 
+## Colors
+
+- `bg-opacity-90`
+
 ## Typography
 
 - `font-bold`
+- `text-3xl`
+- `text-sm`
+- `text-xs`
 
 ## Spacing
 
 - `p-0`
-- `p-3`
+- `gap-2`
+- `gap-1`
 
 ## Components
 

@@ -2,6 +2,8 @@
  * Public docs page at /docs — full page with PublicNavbar + Footer.
  * Left sticky TOC on desktop, horizontal scrollable bar on mobile.
  * Active section tracked via IntersectionObserver.
+ *
+ * Stitch redesign: dark fintech, bilingual VN+EN.
  */
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -9,18 +11,41 @@ import { PublicNavbar } from '../components/public-navbar';
 import { Footer } from '../components/footer';
 import { GuideContent } from '../components/guide-content';
 
+const COPY = {
+  en: {
+    langToggle: 'Tiếng Việt',
+    title: 'Operator Guide',
+    subtitle: 'CashClaw SOPs — everything you need to run the market-making bot profitably.',
+    onThisPage: 'On this page',
+    haveAccount: 'Have an account?',
+    viewInApp: 'View in app →',
+  },
+  vi: {
+    langToggle: 'English',
+    title: 'Hướng Dẫn Operator',
+    subtitle: 'CashClaw SOPs — mọi thứ bạn cần để vận hành bot market-making có lãi.',
+    onThisPage: 'Trang này',
+    haveAccount: 'Có tài khoản?',
+    viewInApp: 'Xem trong app →',
+  },
+};
+
 const TOC_ITEMS = [
-  { id: 'how-it-works', label: 'How It Works' },
-  { id: 'returns', label: 'Expected Returns' },
-  { id: 'quick-start', label: 'Quick Start' },
-  { id: 'daily-ops', label: 'Daily Operations' },
-  { id: 'parameters', label: 'Parameters' },
-  { id: 'troubleshooting', label: 'Troubleshooting' },
-  { id: 'emergency', label: 'Emergency Stop' },
-  { id: 'glossary', label: 'Glossary' },
+  { id: 'how-it-works', labelEn: 'How It Works', labelVi: 'Cách Hoạt Động' },
+  { id: 'returns', labelEn: 'Expected Returns', labelVi: 'Lợi Nhuận Kỳ Vọng' },
+  { id: 'quick-start', labelEn: 'Quick Start', labelVi: 'Bắt Đầu Nhanh' },
+  { id: 'daily-ops', labelEn: 'Daily Operations', labelVi: 'Vận Hành Hàng Ngày' },
+  { id: 'parameters', labelEn: 'Parameters', labelVi: 'Tham Số' },
+  { id: 'troubleshooting', labelEn: 'Troubleshooting', labelVi: 'Xử Lý Sự Cố' },
+  { id: 'emergency', labelEn: 'Emergency Stop', labelVi: 'Dừng Khẩn Cấp' },
+  { id: 'glossary', labelEn: 'Glossary', labelVi: 'Thuật Ngữ' },
 ];
 
+type Lang = 'en' | 'vi';
+
 export function DocsPage() {
+  const [lang, setLang] = useState<Lang>('en');
+  const t = COPY[lang];
   const [activeId, setActiveId] = useState('how-it-works');
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -48,57 +73,74 @@ export function DocsPage() {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  const tocLabel = (item: typeof TOC_ITEMS[0]) =>
+    lang === 'en' ? item.labelEn : item.labelVi;
+
   return (
-    <div className="min-h-screen bg-[#080B14] flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
       <PublicNavbar />
 
+      {/* Language toggle */}
+      <div className="flex justify-end px-4 sm:px-8 pt-6">
+        <button
+          onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+          aria-label="Toggle language"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
+          </svg>
+          {t.langToggle}
+        </button>
+      </div>
+
       {/* Mobile TOC — horizontal scroll bar */}
-      <div className="md:hidden sticky top-14 z-40 bg-[#080B14]/95 backdrop-blur border-b border-[#1E2640] px-4 py-2 overflow-x-auto">
+      <div className="md:hidden sticky top-14 z-40 bg-[#0a0a0a]/95 backdrop-blur border-b border-[#414754] px-4 py-2 overflow-x-auto">
         <div className="flex gap-4 whitespace-nowrap">
-          {TOC_ITEMS.map(({ id, label }) => (
+          {TOC_ITEMS.map(({ id }) => (
             <button
               key={id}
               onClick={() => scrollTo(id)}
               className={`text-xs py-1 transition-colors ${
-                activeId === id ? 'text-[#00C8E8]' : 'text-[#8892B0] hover:text-white'
+                activeId === id ? 'text-[#aec6ff]' : 'text-[#c1c6d7] hover:text-white'
               }`}
             >
-              {label}
+              {tocLabel(TOC_ITEMS.find((item) => item.id === id)!)}
             </button>
           ))}
         </div>
       </div>
 
       {/* Main layout */}
-      <div className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 pt-20 md:pt-24 pb-16 flex gap-10">
-
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 pt-20 md:pt-24 pb-16 flex gap-10">
         {/* Desktop sidebar TOC */}
         <aside className="hidden md:block w-[200px] flex-shrink-0">
           <div className="sticky top-24">
-            <p className="text-xs text-[#8892B0] uppercase tracking-widest mb-4">On this page</p>
+            <p className="text-xs text-[#c1c6d7] uppercase tracking-widest mb-4">{t.onThisPage}</p>
             <nav className="space-y-1">
-              {TOC_ITEMS.map(({ id, label }) => (
+              {TOC_ITEMS.map(({ id }) => (
                 <button
                   key={id}
                   onClick={() => scrollTo(id)}
                   className={`block w-full text-left text-xs py-1.5 px-2 rounded transition-colors ${
                     activeId === id
-                      ? 'text-[#00C8E8] bg-[#00C8E8]/10'
-                      : 'text-[#8892B0] hover:text-white'
+                      ? 'text-[#aec6ff] bg-[#aec6ff]/10'
+                      : 'text-[#c1c6d7] hover:text-white'
                   }`}
                 >
-                  {label}
+                  {tocLabel(TOC_ITEMS.find((item) => item.id === id)!)}
                 </button>
               ))}
             </nav>
 
-            <div className="mt-8 pt-6 border-t border-[#1E2640]">
-              <p className="text-xs text-[#8892B0] mb-2">Have an account?</p>
+            <div className="mt-8 pt-6 border-t border-[#414754]">
+              <p className="text-xs text-[#c1c6d7] mb-2">{t.haveAccount}</p>
               <Link
                 to="/app/guide"
-                className="text-xs text-[#00C8E8] hover:underline"
+                className="text-xs text-[#aec6ff] hover:underline"
               >
-                View in app →
+                {t.viewInApp}
               </Link>
             </div>
           </div>
@@ -107,10 +149,8 @@ export function DocsPage() {
         {/* Content */}
         <main className="flex-1 max-w-[800px]">
           <div className="mb-10">
-            <h1 className="text-2xl font-bold text-white mb-2">Operator Guide</h1>
-            <p className="text-sm text-[#8892B0]">
-              CashClaw SOPs — everything you need to run the market-making bot profitably.
-            </p>
+            <h1 className="text-2xl font-bold text-white mb-2">{t.title}</h1>
+            <p className="text-sm text-[#c1c6d7]">{t.subtitle}</p>
           </div>
           <GuideContent />
         </main>

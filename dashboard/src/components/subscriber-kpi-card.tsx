@@ -1,8 +1,10 @@
 /**
  * Subscriber KPI Card
  * Displays a single numeric KPI for the subscriber overview page.
- * Reusable for fills count, win rate, blocked-DLP count, etc.
+ * Stitch dark fintech glass-card pattern.
  */
+
+import { COLORS } from '../lib/stitch-design-tokens';
 
 interface SubscriberKpiCardProps {
   label: string;
@@ -11,12 +13,12 @@ interface SubscriberKpiCardProps {
   accent?: 'default' | 'profit' | 'loss' | 'warning' | 'muted';
 }
 
-const ACCENT_CLASS: Record<NonNullable<SubscriberKpiCardProps['accent']>, string> = {
-  default: 'text-white',
-  profit: 'text-profit',
-  loss: 'text-loss',
-  warning: 'text-warning',
-  muted: 'text-muted',
+const ACCENT_COLOR: Record<string, string> = {
+  default: COLORS.onSurface,
+  profit: COLORS.profit,
+  loss: COLORS.loss,
+  warning: COLORS.warning,
+  muted: COLORS.onSurfaceVariant,
 };
 
 export function SubscriberKpiCard({
@@ -26,11 +28,27 @@ export function SubscriberKpiCard({
   accent = 'default',
 }: SubscriberKpiCardProps) {
   return (
-    <div className="bg-surface border border-border rounded-lg p-4 flex flex-col gap-1">
-      <p className="text-muted text-[10px] uppercase tracking-widest font-mono">{label}</p>
-      <p className={`text-2xl font-bold font-mono ${ACCENT_CLASS[accent]}`}>{value}</p>
+    <div
+      className="rounded-2xl p-4 flex flex-col gap-1.5"
+      style={{
+        backgroundColor: 'rgba(18, 20, 20, 0.8)',
+        backdropFilter: 'blur(20px)',
+        border: `1px solid ${COLORS.outline}`,
+      }}
+    >
+      <p
+        className="text-[10px] uppercase tracking-widest font-mono"
+        style={{ color: COLORS.onSurfaceVariant }}
+      >
+        {label}
+      </p>
+      <p className="text-2xl font-bold font-mono" style={{ color: ACCENT_COLOR[accent] }}>
+        {value}
+      </p>
       {subLabel && (
-        <p className="text-muted text-xs font-mono">{subLabel}</p>
+        <p className="text-xs font-mono" style={{ color: COLORS.onSurfaceVariant }}>
+          {subLabel}
+        </p>
       )}
     </div>
   );

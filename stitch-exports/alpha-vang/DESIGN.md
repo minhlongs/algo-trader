@@ -2,14 +2,40 @@
 
 Auto-generated from Google Stitch export.
 
+## Colors
+
+- `border-b-2`
+- `bg-red-500`
+- `bg-yellow-500`
+- `bg-green-500`
+
 ## Typography
 
 - `font-bold`
+- `font-medium`
+- `text-lg`
+- `text-4xl`
+- `text-sm`
+- `text-xs`
+- `text-3xl`
 
 ## Spacing
 
 - `p-0`
-- `p-3`
+- `gap-8`
+- `gap-6`
+- `gap-4`
+- `p-1`
+- `gap-2`
+- `m-0`
+- `p-4`
+- `space-y-1`
+- `p-8`
+- `gap-1`
+- `gap-12`
+- `p-10`
+- `p-6`
+- `space-y-3`
 
 ## Components
 
