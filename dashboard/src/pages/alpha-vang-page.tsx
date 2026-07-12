@@ -6,12 +6,13 @@
  * Route: /alpha-vang
  */
 
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { PublicNavbar } from '../components/public-navbar';
 import { Footer } from '../components/footer';
 import { COLORS } from '../lib/stitch-design-tokens';
+import { useAuthStore } from '../stores/auth-store';
 
 type Lang = 'en' | 'vi';
 
@@ -116,13 +117,25 @@ const glassCard = (extra = '') =>
 // ---- Tier gate simulation (replace with real auth check later) ----
 // For Phase 01 A3 compliance: FREE users see locked state.
 // In production, this reads from Better Auth session + D1 tier.
-const MOCK_TIER: 'FREE' | 'BASIC' | 'PRO' = 'FREE'; // TODO: wire real tier
+type AppTier = 'free' | 'pro' | 'enterprise';
+
+function userHasAccess(tier: AppTier): boolean {
+  return tier !== 'free';
+}
 
 export function AlphaVangPage() {
- const [lang, setLang] = useState<Lang>('en');
- const t = COPY[lang];
- const hasAccess = MOCK_TIER !== 'FREE';
- const langLabel = lang === 'en' ? COPY.vi.langToggle : COPY.en.langToggle;
+  const { tier: rawTier, fetchMe } = useAuthStore();
+  const [lang, setLang] = useState<Lang>('en');
+  const [tierReady, setTierReady] = useState(false);
+  const t = COPY[lang];
+
+  const tier: AppTier = (rawTier ?? 'free').toLowerCase() as AppTier;
+  const hasAccess = tierReady && userHasAccess(tier);
+  const langLabel = lang === 'en' ? COPY.vi.langToggle : COPY.en.langToggle;
+
+  useEffect(() => {
+    fetchMe().finally(() => setTierReady(true));
+  }, [fetchMe]);
 
  return (
    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">

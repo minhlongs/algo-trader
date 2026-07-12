@@ -160,12 +160,12 @@ export function NegRiskDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       {/* Language Toggle */}
       <div className="fixed top-4 right-4 z-50">
         <button
           onClick={() => setLang((l: Lang) => (l === "en" ? "vi" : "en"))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
           aria-label="Toggle language"
         >
           <svg
@@ -186,19 +186,19 @@ export function NegRiskDashboardPage() {
       </div>
 
       {/* Top Navigation Bar */}
-      <header className="fixed top-0 left-0 z-40 flex justify-between items-center px-6 h-16 border-b border-[#414754] bg-[#0a0a0a]">
+      <header className="fixed top-0 left-0 z-40 flex justify-between items-center px-6 h-16 border-b border-[${COLORS.outline}] bg-[${COLORS.bg}]">
         <div className="flex items-center gap-6">
-          <span className="text-2xl font-bold tracking-tighter text-[#aec6ff]">
+          <span className="text-2xl font-bold tracking-tighter text-[${COLORS.primary}]">
             CashClaw
           </span>
           <nav className="hidden md:flex items-center gap-6">
-            <span className="text-xs font-bold tracking-wider border-b-2 border-[#aec6ff] pb-1 text-[#aec6ff] cursor-pointer">
+            <span className="text-xs font-bold tracking-wider border-b-2 border-[${COLORS.primary}] pb-1 text-[${COLORS.primary}] cursor-pointer">
               {t.dashboard}
             </span>
-            <span className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white text-[#c1c6d7]">
+            <span className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white text-[${COLORS.onSurfaceVariant}]">
               {t.strategies}
             </span>
-            <span className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white text-[#c1c6d7]">
+            <span className="text-xs font-bold tracking-wider cursor-pointer transition-colors hover:text-white text-[${COLORS.onSurfaceVariant}]">
               {t.settings}
             </span>
           </nav>
@@ -206,19 +206,19 @@ export function NegRiskDashboardPage() {
       </header>
 
       {/* Sidebar */}
-      <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-60 flex flex-col p-4 border-r border-[#414754] bg-[#121414]/80 z-30">
+      <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-60 flex flex-col p-4 border-r border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 z-30">
         <div className="mb-6">
-          <h2 className="text-base font-semibold text-[#aec6ff]">
+          <h2 className="text-base font-semibold text-[${COLORS.primary}]">
             {t.riskControl}
           </h2>
-          <p className="text-[12px] text-[#c1c6d7] opacity-70">{t.subtitle}</p>
+          <p className="text-[12px] text-[${COLORS.onSurfaceVariant}] opacity-70">{t.subtitle}</p>
         </div>
-        <div className="mb-6 p-3 rounded-lg border border-[#414754] bg-[#121414]/80">
+        <div className="mb-6 p-3 rounded-lg border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold tracking-wider text-[#c1c6d7]">
+            <label className="text-xs font-bold tracking-wider text-[${COLORS.onSurfaceVariant}]">
               {t.riskThreshold}
             </label>
-            <span className="text-xs font-mono font-bold text-[#aec6ff]">
+            <span className="text-xs font-mono font-bold text-[${COLORS.primary}]">
               {threshold.toFixed(2)}
             </span>
           </div>
@@ -229,9 +229,9 @@ export function NegRiskDashboardPage() {
             step={0.01}
             value={threshold}
             onChange={(e) => setThreshold(Number(e.target.value))}
-            className="w-full accent-[#aec6ff]"
+            className="w-full accent-[${COLORS.primary}]"
           />
-          <div className="flex justify-between text-[10px] mt-1 text-[#c1c6d7]">
+          <div className="flex justify-between text-[10px] mt-1 text-[${COLORS.onSurfaceVariant}]">
             <span>0.90</span>
             <span>0.99</span>
           </div>
@@ -245,7 +245,7 @@ export function NegRiskDashboardPage() {
           ].map((item) => (
             <a
               key={item.label}
-              className="flex items-center gap-3 p-2 rounded-lg transition-all cursor-pointer text-[#c1c6d7]"
+              className="flex items-center gap-3 p-2 rounded-lg transition-all cursor-pointer text-[${COLORS.onSurfaceVariant}]"
               href="#"
             >
               <span
@@ -260,11 +260,11 @@ export function NegRiskDashboardPage() {
             </a>
           ))}
         </nav>
-        <div className="mt-auto pt-4 border-t border-[#414754]">
+        <div className="mt-auto pt-4 border-t border-[${COLORS.outline}]">
           <button
             onClick={fetchData}
             disabled={loading}
-            className="w-full py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 bg-[#0070f3] text-[#002e6b]"
+            className="w-full py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 bg-[${COLORS.primary}] text-[${COLORS.onPrimary}]"
           >
             <span
               className="text-[20px]"
@@ -332,7 +332,7 @@ export function NegRiskDashboardPage() {
           {/* Market Scanner Table */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-[#e3e2e2]">
+              <h3 className="text-xl font-semibold text-[${COLORS.onSurface}]">
                 {t.marketScanner}
               </h3>
               <div className="flex items-center gap-2">
@@ -341,13 +341,13 @@ export function NegRiskDashboardPage() {
                   style={{ backgroundColor: COLORS.primary }}
                 />
                 <span
-                  className="text-[11px] font-bold tracking-wider text-[#c1c6d7]"
+                  className="text-[11px] font-bold tracking-wider text-[${COLORS.onSurfaceVariant}]"
                 >
                   {t.liveFeed}
                 </span>
               </div>
             </div>
-            <div className="rounded-xl overflow-hidden bg-[#121414]/80 backdrop-blur-xl border border-[#414754]">
+            <div className="rounded-xl overflow-hidden bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}]">
               <div
                 className="overflow-x-auto"
                 style={{
@@ -365,32 +365,32 @@ export function NegRiskDashboardPage() {
                       }}
                     >
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-[#c1c6d7]"
+                        className="p-4 text-[11px] font-bold tracking-wider text-[${COLORS.onSurfaceVariant}]"
                       >
                         {t.marketName}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[${COLORS.onSurfaceVariant}]"
                       >
                         {t.yesAsk}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[${COLORS.onSurfaceVariant}]"
                       >
                         {t.noAsk}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[${COLORS.onSurfaceVariant}]"
                       >
                         {t.sum}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[${COLORS.onSurfaceVariant}]"
                       >
                         {t.profit}
                       </th>
                       <th
-                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[#c1c6d7]"
+                        className="p-4 text-[11px] font-bold tracking-wider text-right text-[${COLORS.onSurfaceVariant}]"
                       >
                         {t.action}
                       </th>
@@ -401,7 +401,7 @@ export function NegRiskDashboardPage() {
                       <tr>
                         <td
                           colSpan={6}
-                          className="p-12 text-center text-sm text-[#c1c6d7]"
+                          className="p-12 text-center text-sm text-[${COLORS.onSurfaceVariant}]"
                         >
                           {loading ? t.scanningMarkets : t.noOpportunities}
                         </td>
@@ -422,30 +422,30 @@ export function NegRiskDashboardPage() {
                           }
                         >
                           <td
-                            className="p-4 text-sm text-[#e3e2e2]"
+                            className="p-4 text-sm text-[${COLORS.onSurface}]"
                           >
                             {opp.marketName}
                           </td>
                           <td
-                            className="p-4 text-sm text-right font-mono text-[#e3e2e2]"
+                            className="p-4 text-sm text-right font-mono text-[${COLORS.onSurface}]"
                             style={{ fontFamily: "JetBrains Mono, monospace" }}
                           >
                             {opp.yesAsk.toFixed(3)}
                           </td>
                           <td
-                            className="p-4 text-sm text-right font-mono text-[#e3e2e2]"
+                            className="p-4 text-sm text-right font-mono text-[${COLORS.onSurface}]"
                             style={{ fontFamily: "JetBrains Mono, monospace" }}
                           >
                             {opp.noAsk.toFixed(3)}
                           </td>
                           <td
-                            className="p-4 text-sm text-right font-mono text-[#aec6ff]"
+                            className="p-4 text-sm text-right font-mono text-[${COLORS.primary}]"
                             style={{ fontFamily: "JetBrains Mono, monospace" }}
                           >
                             {opp.sum.toFixed(3)}
                           </td>
                           <td
-                            className="p-4 text-sm text-right font-mono text-[#3b82f6]"
+                            className="p-4 text-sm text-right font-mono text-[${COLORS.profit}]"
                             style={{ fontFamily: "JetBrains Mono, monospace" }}
                           >
                             ${opp.lockedProfit.toFixed(2)}
@@ -453,7 +453,7 @@ export function NegRiskDashboardPage() {
                           <td className="p-4 text-right">
                             <button
                               onClick={() => handleTrade(opp)}
-                              className="px-4 py-1.5 rounded text-[10px] font-bold tracking-wider transition-all hover:opacity-90 border border-[#0070f3] text-[#0070f3]"
+                              className="px-4 py-1.5 rounded text-[10px] font-bold tracking-wider transition-all hover:opacity-90 border border-[${COLORS.primary}] text-[${COLORS.primary}]"
                               style={{
                                 backgroundColor: `${COLORS.primary}1A`,
                                 border: `1px solid ${COLORS.primary}`,
@@ -491,13 +491,13 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="rounded-xl p-4 flex flex-col gap-1 relative overflow-hidden group bg-[#121414]/80 backdrop-blur-xl border border-[#414754]">
+    <div className="rounded-xl p-4 flex flex-col gap-1 relative overflow-hidden group bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}]">
       <div
         className="absolute top-0 right-0 w-24 h-24 rounded-full -mr-12 -mt-12 transition-all group-hover:opacity-100"
         style={{ backgroundColor: `${color}0D`, opacity: 0.5 }}
       />
       <span
-        className="text-[11px] font-bold tracking-wider text-[#c1c6d7]"
+        className="text-[11px] font-bold tracking-wider text-[${COLORS.onSurfaceVariant}]"
       >
         {label}
       </span>
@@ -522,7 +522,7 @@ function StatCard({
         )}
       </div>
       {sub && (
-        <span className="text-xs mt-3 text-[#c1c6d7]">
+        <span className="text-xs mt-3 text-[${COLORS.onSurfaceVariant}]">
           {sub}
         </span>
       )}

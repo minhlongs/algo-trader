@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { useNegRiskScannerStore } from '../stores/neg-risk-scanner-store';
 
 const COPY = {
@@ -78,10 +79,10 @@ type Lang = 'en' | 'vi';
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-4 transition-all duration-200 hover:border-[#aec6ff]/30">
-      <p className="text-[#c1c6d7] text-xs font-medium uppercase tracking-wider mb-1">{label}</p>
+    <div className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-4 transition-all duration-200 hover:border-[${COLORS.primary}]/30">
+      <p className="text-[${COLORS.onSurfaceVariant}] text-xs font-medium uppercase tracking-wider mb-1">{label}</p>
       <p className="text-white font-mono font-bold text-2xl">{value}</p>
-      {sub && <p className="text-[#3b82f6] text-xs font-mono mt-1">{sub}</p>}
+      {sub && <p className="text-[${COLORS.profit}] text-xs font-mono mt-1">{sub}</p>}
     </div>
   );
 }
@@ -99,7 +100,7 @@ function ThresholdControl({
 }) {
   return (
     <div className="space-y-3">
-      <label className="text-[#c1c6d7] text-xs font-medium uppercase tracking-wider block">
+      <label className="text-[${COLORS.onSurfaceVariant}] text-xs font-medium uppercase tracking-wider block">
         {t.thresholdLabel}
       </label>
       <input
@@ -109,12 +110,12 @@ function ThresholdControl({
         step={0.01}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full h-2 bg-[#414754] rounded-lg appearance-none cursor-pointer accent-[#aec6ff]"
+        className="w-full h-2 bg-[${COLORS.outline}] rounded-lg appearance-none cursor-pointer accent-[${COLORS.primary}]"
         data-testid="threshold-slider"
       />
-      <div className="flex justify-between text-[10px] text-[#c1c6d7] font-mono">
+      <div className="flex justify-between text-[10px] text-[${COLORS.onSurfaceVariant}] font-mono">
         <span>0.90</span>
-        <span className="text-[#aec6ff] font-bold">{value.toFixed(2)}</span>
+        <span className="text-[${COLORS.primary}] font-bold">{value.toFixed(2)}</span>
         <span>0.99</span>
       </div>
     </div>
@@ -141,7 +142,7 @@ function OpportunitiesTable({
 }) {
   if (opportunities.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-[#c1c6d7]">
+      <div className="flex flex-col items-center justify-center py-12 text-[${COLORS.onSurfaceVariant}]">
         <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" className="mb-3 opacity-30">
           <circle cx="12" cy="12" r="9" />
           <path d="M8 12h8M12 8v8" />
@@ -156,7 +157,7 @@ function OpportunitiesTable({
     <div className="overflow-x-auto">
       <table className="w-full text-sm" data-testid="opportunities-table">
         <thead>
-          <tr className="border-b border-[#414754] text-[#c1c6d7] text-xs uppercase tracking-wider">
+          <tr className="border-b border-[${COLORS.outline}] text-[${COLORS.onSurfaceVariant}] text-xs uppercase tracking-wider">
             <th className="text-left py-3 px-4 font-medium">{t.colMarket}</th>
             <th className="text-right py-3 px-4 font-medium">{t.colYesAsk}</th>
             <th className="text-right py-3 px-4 font-medium">{t.colNoAsk}</th>
@@ -169,18 +170,18 @@ function OpportunitiesTable({
           {opportunities.map((opp) => (
             <tr
               key={opp.id}
-              className="border-b border-[#414754]/50 hover:bg-[#121414]/80 transition-colors"
+              className="border-b border-[${COLORS.outline}]/50 hover:bg-[${COLORS.surface}]/80 transition-colors"
               data-testid={`opportunity-row-${opp.id}`}
             >
               <td className="py-3 px-4 text-white font-mono text-xs">{opp.market}</td>
-              <td className="py-3 px-4 text-right font-mono text-[#c1c6d7]">${opp.yesAsk.toFixed(2)}</td>
-              <td className="py-3 px-4 text-right font-mono text-[#c1c6d7]">${opp.noAsk.toFixed(2)}</td>
-              <td className="py-3 px-4 text-right font-mono text-[#aec6ff]">{opp.sum.toFixed(3)}</td>
-              <td className="py-3 px-4 text-right font-mono text-[#3b82f6]">{(opp.lockedProfit * 100).toFixed(2)}%</td>
+              <td className="py-3 px-4 text-right font-mono text-[${COLORS.onSurfaceVariant}]">${opp.yesAsk.toFixed(2)}</td>
+              <td className="py-3 px-4 text-right font-mono text-[${COLORS.onSurfaceVariant}]">${opp.noAsk.toFixed(2)}</td>
+              <td className="py-3 px-4 text-right font-mono text-[${COLORS.primary}]">{opp.sum.toFixed(3)}</td>
+              <td className="py-3 px-4 text-right font-mono text-[${COLORS.profit}]">{(opp.lockedProfit * 100).toFixed(2)}%</td>
               <td className="py-3 px-4 text-center">
                 <button
                   onClick={() => onTrade(opp.id)}
-                  className="px-3 py-1.5 bg-[#aec6ff]/10 text-[#aec6ff] border border-[#aec6ff]/30 rounded text-xs font-medium hover:bg-[#aec6ff]/20 hover:border-[#aec6ff]/50 transition-all duration-150"
+                  className="px-3 py-1.5 bg-[${COLORS.primary}]/10 text-[${COLORS.primary}] border border-[${COLORS.primary}]/30 rounded text-xs font-medium hover:bg-[${COLORS.primary}]/20 hover:border-[${COLORS.primary}]/50 transition-all duration-150"
                   data-testid={`trade-btn-${opp.id}`}
                 >
                   {t.trade}
@@ -238,12 +239,12 @@ export function NegRiskScannerPage() {
     new Date(ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       {/* Lang toggle */}
       <div className="flex justify-end px-4 sm:px-6 pt-4">
         <button
           onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
           aria-label="Toggle language"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -265,19 +266,19 @@ export function NegRiskScannerPage() {
 
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#121414]/80 backdrop-blur-xl border-r border-[#414754] transform transition-transform duration-300 md:relative md:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[${COLORS.surface}]/80 backdrop-blur-xl border-r border-[${COLORS.outline}] transform transition-transform duration-300 md:relative md:translate-x-0 ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}
         >
           {/* Sidebar header */}
-          <div className="flex items-center justify-between h-14 px-4 border-b border-[#414754]">
+          <div className="flex items-center justify-between h-14 px-4 border-b border-[${COLORS.outline}]">
             <div>
-              <h1 className="text-[#aec6ff] font-bold text-base tracking-tight">CashClaw</h1>
-              <p className="text-[#c1c6d7] text-[10px] mt-0.5">{t.sidebarTitle}</p>
+              <h1 className="text-[${COLORS.primary}] font-bold text-base tracking-tight">CashClaw</h1>
+              <p className="text-[${COLORS.onSurfaceVariant}] text-[10px] mt-0.5">{t.sidebarTitle}</p>
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
-              className="md:hidden p-2 text-[#c1c6d7] hover:text-white"
+              className="md:hidden p-2 text-[${COLORS.onSurfaceVariant}] hover:text-white"
               aria-label="Close sidebar"
             >
               ✕
@@ -292,7 +293,7 @@ export function NegRiskScannerPage() {
               <button
                 onClick={handleRefresh}
                 disabled={loading}
-                className="w-full py-2.5 bg-[#aec6ff]/10 text-[#aec6ff] border border-[#aec6ff]/30 rounded-lg text-sm font-medium hover:bg-[#aec6ff]/20 hover:border-[#aec6ff]/50 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-[${COLORS.primary}]/10 text-[${COLORS.primary}] border border-[${COLORS.primary}]/30 rounded-lg text-sm font-medium hover:bg-[${COLORS.primary}]/20 hover:border-[${COLORS.primary}]/50 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 data-testid="refresh-btn"
               >
                 {loading ? (
@@ -304,27 +305,27 @@ export function NegRiskScannerPage() {
                 )}
               </button>
               {lastRefresh > 0 && (
-                <p className="text-[10px] text-[#c1c6d7] text-center">
+                <p className="text-[10px] text-[${COLORS.onSurfaceVariant}] text-center">
                   {t.lastScan}: {formatTime(lastRefresh)}
                 </p>
               )}
             </div>
 
             {/* Mini stats */}
-            <div className="space-y-2 pt-4 border-t border-[#414754]">
-              <p className="text-[#c1c6d7] text-[10px] uppercase tracking-wider">{t.sessionStats}</p>
+            <div className="space-y-2 pt-4 border-t border-[${COLORS.outline}]">
+              <p className="text-[${COLORS.onSurfaceVariant}] text-[10px] uppercase tracking-wider">{t.sessionStats}</p>
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-[#c1c6d7]">{t.scanned}</span>
+                  <span className="text-[${COLORS.onSurfaceVariant}]">{t.scanned}</span>
                   <span className="text-white font-mono">{stats.totalScanned}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-[#c1c6d7]">{t.opportunities}</span>
-                  <span className="text-[#aec6ff] font-mono">{stats.opportunitiesFound}</span>
+                  <span className="text-[${COLORS.onSurfaceVariant}]">{t.opportunities}</span>
+                  <span className="text-[${COLORS.primary}] font-mono">{stats.opportunitiesFound}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-[#c1c6d7]">{t.avgProfit}</span>
-                  <span className="text-[#3b82f6] font-mono">
+                  <span className="text-[${COLORS.onSurfaceVariant}]">{t.avgProfit}</span>
+                  <span className="text-[${COLORS.profit}] font-mono">
                     {stats.avgProfit > 0 ? `${(stats.avgProfit * 100).toFixed(2)}%` : '—'}
                   </span>
                 </div>
@@ -336,32 +337,32 @@ export function NegRiskScannerPage() {
         {/* Main content */}
         <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
           {/* Mobile header */}
-          <header className="sticky top-0 z-30 md:hidden bg-[#0a0a0a]/95 backdrop-blur border-b border-[#414754]">
+          <header className="sticky top-0 z-30 md:hidden bg-[${COLORS.bg}]/95 backdrop-blur border-b border-[${COLORS.outline}]">
             <div className="flex items-center justify-between h-14 px-4">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="p-2 -ml-2 text-[#c1c6d7] hover:text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
+                className="p-2 -ml-2 text-[${COLORS.onSurfaceVariant}] hover:text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
                 aria-label="Open menu"
               >
                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                 </svg>
               </button>
-              <span className="text-[#aec6ff] font-bold text-base">CashClaw</span>
+              <span className="text-[${COLORS.primary}] font-bold text-base">CashClaw</span>
               <div className="w-10" />
             </div>
           </header>
 
           {/* Desktop header */}
-          <header className="hidden md:flex items-center justify-between h-14 px-6 border-b border-[#414754] bg-[#0a0a0a]/80 backdrop-blur">
+          <header className="hidden md:flex items-center justify-between h-14 px-6 border-b border-[${COLORS.outline}] bg-[${COLORS.bg}]/80 backdrop-blur">
             <div>
               <h2 className="text-white font-semibold text-lg">{t.title}</h2>
-              <p className="text-[#c1c6d7] text-xs">{t.subtitle}</p>
+              <p className="text-[${COLORS.onSurfaceVariant}] text-xs">{t.subtitle}</p>
             </div>
             <nav className="flex items-center gap-6 text-sm">
-              <span className="text-[#aec6ff] cursor-pointer">{t.navScanner}</span>
-              <span className="text-[#c1c6d7] hover:text-white cursor-pointer transition-colors">{t.navStrategies}</span>
-              <span className="text-[#c1c6d7] hover:text-white cursor-pointer transition-colors">{t.navSettings}</span>
+              <span className="text-[${COLORS.primary}] cursor-pointer">{t.navScanner}</span>
+              <span className="text-[${COLORS.onSurfaceVariant}] hover:text-white cursor-pointer transition-colors">{t.navStrategies}</span>
+              <span className="text-[${COLORS.onSurfaceVariant}] hover:text-white cursor-pointer transition-colors">{t.navSettings}</span>
             </nav>
           </header>
 
@@ -379,10 +380,10 @@ export function NegRiskScannerPage() {
             </div>
 
             {/* Table */}
-            <div className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl">
-              <div className="px-4 py-3 border-b border-[#414754] flex items-center justify-between">
+            <div className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl">
+              <div className="px-4 py-3 border-b border-[${COLORS.outline}] flex items-center justify-between">
                 <h3 className="text-white font-medium text-sm">{t.arbitrageTitle}</h3>
-                <span className="text-[#c1c6d7] text-xs font-mono">
+                <span className="text-[${COLORS.onSurfaceVariant}] text-xs font-mono">
                   {opportunities.length} {t.marketsCount}
                 </span>
               </div>
