@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTM Execution Checklist — algo-trader</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --yellow: #d2991d; --red: #f85149;
+    --purple: #a371f7; --orange: #db6d28;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    padding: 2rem; max-width: 1200px; margin: 0 auto;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  h2 {
+    font-size: 1.2rem; margin-top: 2rem; margin-bottom: 0.75rem;
+    padding: 0.5rem 1rem; background: var(--surface); border-left: 4px solid var(--accent);
+    border-radius: 6px;
+  }
+  h3 { font-size: 1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--accent); }
+  table {
+    width: 100%; border-collapse: collapse; margin: 1rem 0;
+    font-size: 0.85rem;
+  }
+  th, td {
+    padding: 0.6rem 0.8rem; text-align: left; border: 1px solid var(--border);
+  }
+  th { background: var(--surface); color: var(--accent); font-weight: 600; }
+  tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+  .status-fixed { color: var(--green); font-weight: bold; }
+  .status-blocker { color: var(--red); font-weight: bold; }
+  .status-done { color: var(--green); }
+  .status-pending { color: var(--yellow); }
+  .status-concept { color: var(--purple); }
+  .status-active { color: var(--orange); }
+
+  .phase { margin-bottom: 2rem; }
+  .phase-header {
+    display: flex; align-items: center; gap: 0.8rem;
+    background: var(--surface); padding: 0.8rem 1rem;
+    border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border);
+  }
+  .phase-num {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 0.9rem; flex-shrink: 0;
+  }
+  .phase-1 .phase-num { background: var(--yellow); color: #000; }
+  .phase-2 .phase-num { background: var(--accent); color: #000; }
+  .phase-3 .phase-num { background: var(--purple); color: #fff; }
+  .phase-4 .phase-num { background: var(--green); color: #000; }
+  .phase-5 .phase-num { background: var(--orange); color: #fff; }
+  .phase-6 .phase-num { background: #f778ba; color: #000; }
+  .phase-7 .phase-num { background: var(--red); color: #fff; }
+  .phase-8 .phase-num { background: #79c0ff; color: #000; }
+  .phase-9 .phase-num { background: var(--green); color: #000; }
+  .phase-10 .phase-num { background: var(--purple); color: #fff; }
+
+  .phase-title { font-size: 1.1rem; font-weight: 600; }
+  .phase-desc { font-size: 0.8rem; color: var(--muted); }
+
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 0.5rem 0; border-bottom: 1px solid rgba(48,54,61,0.5);
+    display: flex; align-items: flex-start; gap: 0.6rem;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checkbox {
+    width: 20px; height: 20px; border: 2px solid var(--border);
+    border-radius: 4px; flex-shrink: 0; margin-top: 2px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .checkbox.checked { background: var(--green); border-color: var(--green); }
+  .checkbox.checked::after { content: '✓'; color: #000; font-weight: bold; font-size: 12px; }
+  .checklist-item { flex: 1; }
+  .checklist-item code {
+    background: rgba(88,166,255,0.1); color: var(--accent);
+    padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.8rem;
+  }
+  pre {
+    background: var(--surface); padding: 1rem; border-radius: 6px;
+    overflow-x: auto; font-size: 0.8rem; border: 1px solid var(--border);
+    margin: 0.5rem 0;
+  }
+  pre code { color: var(--text); }
+  .tag {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: 12px;
+    font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  }
+  .tag-blocker { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid var(--red); }
+  .tag-fixed { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid var(--green); }
+  .tag-pending { background: rgba(210,153,29,0.15); color: var(--yellow); border: 1px solid var(--yellow); }
+  .tag-console { background: rgba(163,113,247,0.15); color: var(--purple); border: 1px solid var(--purple); }
+  .tag-done { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid var(--green); }
+
+  .blocker-box {
+    background: rgba(248,81,73,0.08); border: 1px solid var(--red);
+    border-radius: 8px; padding: 1rem; margin: 1rem 0;
+  }
+  .blocker-box h4 { color: var(--red); margin-bottom: 0.5rem; }
+  .success-box {
+    background: rgba(63,185,80,0.08); border: 1px solid var(--green);
+    border-radius: 8px; padding: 1rem; margin: 1rem 0;
+  }
+  .success-box h4 { color: var(--green); margin-bottom: 0.5rem; }
+
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem; text-align: center;
+  }
+  .stat-value { font-size: 2rem; font-weight: bold; }
+  .stat-label { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
+
+  .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }
+  .unresolved { margin-top: 2rem; }
+  .unresolved li { padding: 0.4rem 0; color: var(--muted); }
+  .unresolved li::before { content: '? '; color: var(--accent); font-weight: bold; }
+
+  @media (max-width: 660px) {
+    body { padding: 1rem; }
+    h1 { font-size: 1.3rem; }
+    table { font-size: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>GTM Execution Checklist</h1>
+<p class="subtitle">algo-trader &bull; 2026-07-12 &bull; Goal: Go live, publish content, activate billing, onboard VIP seats</p>
+
+<!-- Summary Stats -->
+<div class="summary">
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--yellow)">7</div>
+    <div class="stat-label">BLOCKERS to resolve</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--green)">1</div>
+    <div class="stat-label">Code fix done</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--accent)">4</div>
+    <div class="stat-label">Marketing ready</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" style="color:var(--purple)">10</div>
+    <div class="stat-label">Phases total</div>
+  </div>
+</div>
+
+<!-- CRITICAL FINDINGS TABLE -->
+<h2>Critical Findings at a Glance</h2>
+<table>
+  <tr>
+    <th>#</th>
+    <th>Finding</th>
+    <th>Status</th>
+    <th>Action Required</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>NOWPayments webhook mount</td>
+    <td><span class="status-fixed">FIXED</span></td>
+    <td>Verify in production (server.ts:173)</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><code>NOWPAYMENTS_API_KEY</code> not set</td>
+    <td><span class="status-blocker">BLOCKER</span></td>
+    <td>Get from NOWPayments dashboard → put in <code>.env</code></td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>NOWPAYMENTS_IPN_SECRET</code> not set</td>
+    <td><span class="status-blocker">BLOCKER</span></td>
+    <td>Get from NOWPayments dashboard → put in <code>.env</code></td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>Invoice IDs ($99/$299/$999) not set</td>
+    <td><span class="status-blocker">BLOCKER</span></td>
+    <td>Create in NOWPayments → copy IDs to <code>.env</code></td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td><code>SENDGRID_API_KEY</code> not set</td>
+    <td><span class="status-blocker">BLOCKER</span></td>
+    <td>Create SendGrid account, verify domain</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>Telegram bot token not set</td>
+    <td><span class="status-blocker">BLOCKER</span></td>
+    <td>Get from @BotFather → put in <code>.env</code></td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>Marketing content ready</td>
+    <td><span class="status-done">DONE</span></td>
+    <td>Copy-paste from <code>docs/marketing/</code></td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td>Email campaign script ready</td>
+    <td><span class="status-done">DONE</span></td>
+    <td>Execute after SendGrid setup (<code>scripts/send-email-campaign.ts</code>)</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td><code>accounts/</code> = VIP seat</td>
+    <td><span class="status-concept">CONCEPT</span></td>
+    <td>Map: test_order → cashclaw.cc → alpha vang → energy 9</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>MWM framework</td>
+    <td><span class="status-active">ACTIVE</span></td>
+    <td>Use for competitive positioning & tier scoring</td>
+  </tr>
+</table>
+
+<!-- ==================== PHASES ==================== -->
+
+<!-- Phase 1: Pre-requisite Fixes -->
+<div class="phase phase-1">
+  <div class="phase-header">
+    <div class="phase-num">1</div>
+    <div>
+      <div class="phase-title">Pre-requisite Fixes <span class="tag tag-pending">~30 min</span></div>
+      <div class="phase-desc">Fix code bugs, set env vars, confirm services ready</div>
+    </div>
+  </div>
+
+  <h3>1.1 NOWPayments Webhook Mount — ALREADY FIXED</h3>
+  <p>The webhook router was imported but not mounted in <code>src/platform/api/server.ts</code>. This has been fixed — line 173 now includes:</p>
+  <pre><code>this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);</code></pre>
+  <div class="success-box">
+    <h4>Verify this works:</h4>
+    <pre><code># Start the API server, then:
+curl -X POST http://localhost:3000/api/webhooks/nowpayments
+# Expected: 405 Method Not Allowed (not 404 — that means it's mounted)</code></pre>
+  </div>
+
+  <h3>1.2 Environment Variables — ALL required</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>NOWPAYMENTS_API_KEY</code> — from NOWPayments dashboard</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>NOWPAYMENTS_IPN_SECRET</code> — webhook signature verification</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>NOWPAYMENTS_INVOICE_STARTER</code> — invoice for $99/mo</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>NOWPAYMENTS_INVOICE_PRO</code> — invoice for $299/mo</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>NOWPAYMENTS_INVOICE_ENTERPRISE</code> — invoice for $999/mo</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>SENDGRID_API_KEY</code> — email delivery</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>SENDGRID_FROM_EMAIL</code> — noreply@cashclaw.cc</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>TELEGRAM_BOT_TOKEN</code> — @Sophia_Bbot token from @BotFather</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>ALERT_CHAT_ID</code> — Telegram admin chat</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>TELEGRAM_CHAT_ID</code> — alert fan-out</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>TELEGRAM_CHANNEL_ID</code> — public signals channel</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>API_BASE_URL=https://api.cashclaw.cc</code></div></li>
+  </ul>
+
+  <h3>1.3 Database &amp; Services</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">PostgreSQL connected (<code>DB_HOST</code>, <code>DB_PORT</code>, <code>DB_NAME</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">D1 migrations applied (if CF Workers path)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Redis connected for pub/sub</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Sentry DSN configured for error tracking</div></li>
+  </ul>
+</div>
+
+<!-- Phase 2: Deploy Production -->
+<div class="phase phase-2">
+  <div class="phase-header">
+    <div class="phase-num">2</div>
+    <div>
+      <div class="phase-title">Deploy Production <span class="tag tag-pending">1 day</span></div>
+      <div class="phase-desc">CI/CD deploy chain, smoke tests, infra verification</div>
+    </div>
+  </div>
+
+  <h3>2.1 Deploy Chain</h3>
+  <pre><code># Step 0: Push first (deploy script rejects unpushed commits)
+git push origin main
+
+# Step 1: Build + deploy from app package
+cd /Users/macbook/algo-trader
+npm run deploy:full
+
+# Step 2: Verify SHA match
+LOCAL_SHA=$(git rev-parse HEAD | cut -c1-8)
+LIVE_SHA=$(curl -s https://api.cashclaw.cc/api/version | grep -o '"shortSha":"[^"]*"' | cut -d'"' -f4)
+echo "Local: $LOCAL_SHA | Live: $LIVE_SHA"</code></pre>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Deploy script exits 0</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>shortSha</code> in <code>/api/version</code> matches local commit</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">HTTP 200 on https://api.cashclaw.cc</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">HTTP 200 on https://cashclaw.cc</div></li>
+  </ul>
+
+  <h3>2.2 Smoke Tests (production)</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>GET /api/health</code> returns 200</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>GET /api/v1/co-pilot/ask</code> with valid token returns response</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>POST /api/webhooks/nowpayments</code> returns 405 (mounted)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Telegram bot <code>/start</code> responds</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Telegram <code>/ask</code> responds with co-pilot answer</div></li>
+  </ul>
+
+  <h3>2.3 Infrastructure</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">CF Workers routes pinned: cashclaw.cc + aliases</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">D1 database bindings active</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">KV namespace for caching</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">R2 bucket for signals storage</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Multi-region routing verified</div></li>
+  </ul>
+</div>
+
+<!-- Phase 3: Activate Payments -->
+<div class="phase phase-3">
+  <div class="phase-header">
+    <div class="phase-num">3</div>
+    <div>
+      <div class="phase-title">Activate Payments (NOWPayments) <span class="tag tag-pending">~2 hrs</span></div>
+      <div class="phase-desc">Create invoices, configure webhook, e2e test payment flow</div>
+    </div>
+  </div>
+
+  <h3>3.1 Create Invoices in NOWPayments Dashboard</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">STARTER — $99/mo → create invoice, copy ID to <code>.env</code></div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">PRO — $299/mo → create invoice, copy ID to <code>.env</code></div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">ENTERPRISE — $999/mo → create invoice, copy ID to <code>.env</code></div></li>
+  </ul>
+
+  <h3>3.2 Verify Webhook Integration</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">IPN URL in NOWPayments dashboard: <code>https://api.cashclaw.cc/api/webhooks/nowpayments</code></div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Send test webhook from NOWPayments sandbox</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Verify webhook received by server (check logs)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Verify signature validation passes</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Verify subscription activated after "payment confirmed"</div></li>
+  </ul>
+
+  <h3>3.3 End-to-End Payment Flow</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Register test account on cashclaw.cc</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Navigate to billing page</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Select STARTER tier → complete NOWPayments checkout (USDT TRC20)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Verify tier upgraded to BASIC after payment</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Verify Telegram bot notifies new subscriber</div></li>
+  </ul>
+</div>
+
+<!-- Phase 4: Publish Marketing Content -->
+<div class="phase phase-4">
+  <div class="phase-header">
+    <div class="phase-num">4</div>
+    <div>
+      <div class="phase-title">Publish Marketing Content <span class="tag tag-done">Content ready</span></div>
+      <div class="phase-desc">Twitter, Reddit, Discord, Blog — copy-paste from docs/marketing/</div>
+    </div>
+  </div>
+
+  <h3>4.1 T-24h: Teaser</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Post teaser to Twitter (<code>docs/marketing/launch-twitter-thread.md</code>)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Post teaser to Polymarket Discord (<code>docs/marketing/launch-discord-announcement.md</code>)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Schedule 7-tweet thread for T-0h launch</div></li>
+  </ul>
+
+  <h3>4.2 T-0h: Launch Day Content</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><strong>Twitter Thread</strong> (7 tweets) — hook, problem, solution, how it works, math, proof, CTA</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><strong>Reddit Posts</strong> — r/predictionmarkets, r/algotrading, r/Polygon (<code>launch-reddit-post.md</code>)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><strong>Discord Announcement</strong> — <code>@everyone</code> in relevant servers (<code>discord-announce.md</code>)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><strong>Blog Post</strong> — publish to cashclaw.cc/blog (<code>launch-blog-post.md</code>)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><strong>Twitter banner</strong> — upload <code>docs/marketing/twitter-banner.png</code></div></li>
+  </ul>
+
+  <h3>4.3 Community Engagement (first 48h)</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Respond to all comments within 2 hours</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">DM high-engagement accounts with personalized offer</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Post in CashClaw's own Telegram channel</div></li>
+  </ul>
+</div>
+
+<!-- Phase 5: Email Campaign -->
+<div class="phase phase-5">
+  <div class="phase-header">
+    <div class="phase-num">5</div>
+    <div>
+      <div class="phase-title">Email Campaign <span class="tag tag-pending">~1 hr</span></div>
+      <div class="phase-desc">STARTER + Co-pilot announcements to FREE tier users</div>
+    </div>
+  </div>
+
+  <h3>5.1 Prerequisites</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">SendGrid account created and approved</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Domain verified (SPF/DKIM/DMARC)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item"><code>SENDGRID_API_KEY</code> in <code>.env</code></div></li>
+  </ul>
+
+  <h3>5.2 Execute Campaign</h3>
+  <pre><code>cd /Users/macbook/algo-trader
+
+# Test first (sends to admin email only)
+pnpm exec tsx scripts/send-email-campaign.ts --test
+
+# Send STARTER tier announcement to FREE users
+pnpm exec tsx scripts/send-email-campaign.ts --starter
+
+# Send Co-pilot announcement to PRO users
+pnpm exec tsx scripts/send-email-campaign.ts --copilot</code></pre>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Test email received by admin (verify deliverability)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">STARTER emails sent to all FREE tier users</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Co-pilot announcement sent to PRO tier users</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Track open rates &amp; click rates in SendGrid dashboard</div></li>
+  </ul>
+</div>
+
+<!-- Phase 6: Telegram Bot -->
+<div class="phase phase-6">
+  <div class="phase-header">
+    <div class="phase-num">6</div>
+    <div>
+      <div class="phase-title">Telegram Bot (@Sophia_Bbot) <span class="tag tag-pending">~1 hr</span></div>
+      <div class="phase-desc">Configure webhook, test commands, setup channel</div>
+    </div>
+  </div>
+
+  <h3>6.1 Bot Integration</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Telegram bot token set in <code>.env</code></div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Webhook URL: <code>https://api.cashclaw.cc/api/telegram/webhook</code></div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Set webhook: <code>curl "https://api.telegram.org/bot$TOKEN/setWebhook?url=https://api.cashclaw.cc/api/telegram/webhook"</code></div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Test: <code>/start</code> responds</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Test: <code>/campaign</code> shows active campaigns</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Test: <code>/status</code> shows account tier + usage</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Test: <code>/results</code> shows recent signals performance</div></li>
+  </ul>
+
+  <h3>6.2 Channel Setup</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Create public Telegram channel for signals</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Set admin rights for bot</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Configure alert fan-out to chat IDs</div></li>
+  </ul>
+</div>
+
+<!-- Phase 7: VIP Seat Onboarding -->
+<div class="phase phase-7">
+  <div class="phase-header">
+    <div class="phase-num">7</div>
+    <div>
+      <div class="phase-title">VIP Seat Onboarding <span class="tag tag-blocker">CRITICAL</span></div>
+      <div class="phase-desc">accounts/ = VIP seat. Work from test order → cashclaw.cc → alpha vang → energy 9</div>
+    </div>
+  </div>
+
+  <div class="blocker-box">
+    <h4>Critical: accounts/ = VIP SEAT</h4>
+    <p>Each "account" in the system is a <strong>VIP seat</strong>, not a generic user. The progression is:</p>
+    <pre><code>test_order (demo/proving)
+  → cashclaw.cc (full platform)
+    → alpha vang (premium signals)
+      → energy 9 solution (enterprise/white-glove)</code></pre>
+  </div>
+
+  <h3>7.1 VIP Seat Tier Mapping</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Define "test order" tier (lowest — demo access)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Upgrade path: test_order → cashclaw.cc (full platform)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Upgrade path: cashclaw.cc → alpha vang (premium signals)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Upgrade path: alpha vang → energy 9 solution (enterprise/white-glove)</div></li>
+  </ul>
+
+  <h3>7.2 MWM: Market Warfare Methodology</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Review MWM framework for competitive positioning</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Implement MWM scoring for account tier assignment</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Map cosmic expansion strategy to tier progression</div></li>
+  </ul>
+
+  <h3>7.3 First Customers</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Onboard 1 test order user (free/demo)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Verify end-to-end: signup → email → payment → activation → Telegram</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Convert 1 cashclaw.cc paying customer (STARTER or PRO)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Track: full funnel completion → qualifies for alpha vang</div></li>
+  </ul>
+</div>
+
+<!-- Phase 8: Monitoring -->
+<div class="phase phase-8">
+  <div class="phase-header">
+    <div class="phase-num">8</div>
+    <div>
+      <div class="phase-title">Monitoring &amp; Observability <span class="tag tag-pending">~2 hrs</span></div>
+      <div class="phase-desc">Production health checks, SLA verification, alerts</div>
+    </div>
+  </div>
+
+  <h3>8.1 Production Health</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Grafana dashboards loading for 2 hours post-deploy</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">SLA: p95 &lt; 100ms, error rate &lt; 1%, memory &lt; 115MB</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Sentry capturing errors (0 unhandled exceptions)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Prometheus metrics at <code>/metrics</code> returning data</div></li>
+  </ul>
+
+  <h3>8.2 Alerts Configured</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Telegram alerts for L3/L4 escalation</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Deadman switch alert active</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Drawdown monitor freshness probe</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Queue backpressure alerts</div></li>
+  </ul>
+</div>
+
+<!-- Phase 9: Revenue Verification -->
+<div class="phase phase-9">
+  <div class="phase-header">
+    <div class="phase-num">9</div>
+    <div>
+      <div class="phase-title">Revenue Verification <span class="tag tag-pending">1 day</span></div>
+      <div class="phase-desc">Confirm first payment, tier activation, traceability</div>
+    </div>
+  </div>
+
+  <h3>9.1 Revenue Checks</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">NOWPayments dashboard shows incoming payment</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Subscriptions table has new paying user</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Tier activated automatically via webhook</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Co-pilot API callable by new subscriber</div></li>
+  </ul>
+
+  <h3>9.2 First Dollar Criteria</h3>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">At least 1 real payment received (not test)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Payment confirmed on blockchain (USDT TRC20)</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">User tier upgraded automatically via webhook</div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Payment logged in access logs (traceable)</div></li>
+  </ul>
+</div>
+
+<!-- Phase 10: Governance -->
+<div class="phase phase-10">
+  <div class="phase-header">
+    <div class="phase-num">10</div>
+    <div>
+      <div class="phase-title">Governance — MekongMind Goal Update <span class="tag tag-pending">30 min</span></div>
+      <div class="phase-desc">Update goal state, record evidence artifacts, verify gates</div>
+    </div>
+  </div>
+
+  <h3>10.1 Goal State Commands</h3>
+  <pre><code>cd /Users/macbook/algo-trader
+
+/mekong goal "GTM execution — go live, first revenue, VIP seat pipeline"
+/mekong status          # Shows active goal, gate, bottleneck
+/mekong gates           # Verify current gate has evidence
+/mekong bottlenecks     # Show next bottleneck</code></pre>
+
+  <h3>10.2 Record Evidence Artifacts</h3>
+  <pre><code>/mekong artifact mvp-live platform-operations "Production deployed"
+/mekong artifact first-revenue platform-operations "First payment from NOWPayments confirmed"
+/mmekong artifact repeatable-channel market-intelligence "Marketing published on 3+ channels"</code></pre>
+  <ul class="checklist">
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Deploy SHA verified → <code>.mekong/state/evidence/scale-ready/</code></div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">First payment confirmed → <code>.mekong/state/evidence/first-revenue/</code></div></li>
+    <li><div class="checkbox" onclick="this.classList.toggle('checked')"></div><div class="checklist-item">Marketing published → <code>.mekong/state/evidence/repeatable-channel/</code></div></li>
+  </ul>
+</div>
+
+<!-- Unresolved Questions -->
+<div class="unresolved">
+  <h2>Unresolved Questions</h2>
+  <ul>
+    <li>MWM framework: where is the full spec? Referenced but not found in the repo.</li>
+    <li><code>accounts/</code> VIP seat schema: current DB has <code>subscriptions</code> table — how does VIP seat map to it?</li>
+    <li>Test order tier: is this separate from FREE tier, or an internal demo account?</li>
+    <li>Email content source of truth: <code>docs/marketing/email-campaign-starter-tier.md</code> vs inline templates in <code>scripts/send-email-campaign.ts</code>?</li>
+    <li>Does cashclaw.cc need its own subdomain/landing page, or is it included in the main app?</li>
+  </ul>
+</div>
+
+<div class="footer">
+  <p>GTM Execution Checklist &bull; algo-trader &bull; 2026-07-12 &bull; Source: <code>plans/260704-0826-gtm-execution/plan.md</code></p>
+  <p>Related: <code>docs/marketing/</code> (4 launch files), <code>scripts/send-email-campaign.ts</code>, <code>.env.example</code></p>
+</div>
+
+<script>
+  // Persist checkbox state to localStorage
+  document.querySelectorAll('.checkbox').forEach((cb, i) => {
+    const key = 'gtm-checklist-' + i;
+    if (localStorage.getItem(key) === 'checked') cb.classList.add('checked');
+    cb.addEventListener('click', () => {
+      cb.classList.toggle('checked');
+      localStorage.setItem(key, cb.classList.contains('checked') ? 'checked' : '');
+    });
+  });
+</script>
+
+</body>
+</html>

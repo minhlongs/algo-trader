@@ -148,6 +148,7 @@ export interface MarketplaceStrategy {
   tags: string[];
   backtestSummary?: BacktestSummary;
   vettedAt?: string;
+  listingPriceUsdMonthly?: number;
   createdAt: string;
   updatedAt: string;
 }

@@ -13,4 +13,4 @@ export const TIER_PRICES = { STARTER: 49, PRO: 149, ELITE: 499 };
 
 export const TIER_MAP = { STARTER: 'free', PRO: 'pro', ELITE: 'enterprise' };
 
-export const DASHBOARD_URL = 'https://cashclaw-dashboard.pages.dev/app';
+export const DASHBOARD_URL = 'https://quant.cashclaw.cc/app';

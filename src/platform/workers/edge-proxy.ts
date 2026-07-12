@@ -9,16 +9,31 @@ import { handleSignup, handleLogin, handleMe, handleListUsers, handleSetRole, ha
 export { ShardManager, StrategyShard } from '../../durable-objects';
 
 import { getLatencyMonitor, type ProbeResult } from '../../regions/latency-monitor';
+import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import {
+  handleGetMySubscription, handleUpgrade, handleCancel, handleGetTiers,
+} from './api/subscriptions';
+import { handleNowPaymentsIPN } from './api/webhooks-nowpayments';
+import { handleValidateCoupon, handleApplyCoupon } from './api/coupons';
+import { handleVersion } from './api/version';
+import { handleEnergy9Delivery } from './api/energy-9';
+import { handleCopilotAsk } from './api/copilot';
+import { handleTelegramWebhook, handleSetTelegramWebhook } from './api/telegram-bot';
+import { handleGetRing, handleGetShardHealth, handleExecuteStrategy, handleGetStrategiesList, handleGetMarkets, handleGetShardById } from './api/markets';
 
-interface Env {
+// Internal loose type — avoid cross-file KV namespace type variance from @cloudflare/workers-types
+interface _InternalEnv {
   CACHE: KVNamespace;
   ENVIRONMENT: string;
   VPS_ORIGIN?: string;
   JWT_SECRET: string;
   ALLOWED_ORIGINS?: string;
-  // Multi-region routing
   REGION_ROUTING_ENABLED?: string;
+  SUBSCRIBERS?: D1Database;
+  NOWPAYMENTS_IPN_SECRET?: string;
 }
+// Use loose wrapper to avoid struct-assignment checks between different workers-types version instances
+export type Env = _InternalEnv & Record<string, unknown>;
 
 // Reserved: dynamic origin validation for multi-tenant CORS
 function _getCorsOrigin(env: Env, origin?: string | null): string {
@@ -232,29 +247,58 @@ export default {
     }
 
     // Auth routes — always handled locally (KV-backed)
-    if (path === '/api/auth/signup' && request.method === 'POST') return handleSignup(request, env);
-    if (path === '/api/auth/login' && request.method === 'POST') return handleLogin(request, env);
-    if (path === '/api/auth/me' && request.method === 'GET') return handleMe(request, env);
-    if (path === '/api/auth/users' && request.method === 'GET') return handleListUsers(request, env);
-    if (path === '/api/auth/role' && request.method === 'POST') return handleSetRole(request, env);
-    if (path === '/api/auth/delete' && request.method === 'POST') return handleDeleteUser(request, env);
+    if (path === '/api/auth/signup' && request.method === 'POST') return handleSignup(request, env as any);
+    if (path === '/api/auth/login' && request.method === 'POST') return handleLogin(request, env as any);
+    if (path === '/api/auth/me' && request.method === 'GET') return handleMe(request, env as any);
+    if (path === '/api/auth/users' && request.method === 'GET') return handleListUsers(request, env as any);
+    if (path === '/api/auth/role' && request.method === 'POST') return handleSetRole(request, env as any);
+    if (path === '/api/auth/delete' && request.method === 'POST') return handleDeleteUser(request, env as any);
 
-    // Markets placeholder
-    if (path === '/api/markets' && request.method === 'GET') {
-      return new Response(JSON.stringify({ markets: [] }), { headers: CORS });
-    }
+// CF-only: Subscriptions (D1-backed)
+if (path === '/api/v1/subscriptions/me' && request.method === 'GET') return handleGetMySubscription(request, env as any);
+if (path === '/api/v1/subscriptions/upgrade' && request.method === 'POST') return handleUpgrade(request, env as any);
+if (path === '/api/v1/subscriptions/cancel' && request.method === 'DELETE') return handleCancel(request, env as any);
+if (path === '/api/v1/subscriptions/tiers' && request.method === 'GET') return handleGetTiers();
 
-    // Settings save — store in KV
-    if (path.match(/^\/api\/tenants\/[^/]+\/config$/) && request.method === 'POST') {
-      try {
-        const body = await request.json();
-        const tenantId = path.split('/')[3];
-        await env.CACHE.put(`config:${tenantId}`, JSON.stringify(body));
-        return new Response(JSON.stringify({ saved: true }), { headers: CORS });
-      } catch {
-        return new Response(JSON.stringify({ error: 'Failed to save' }), { status: 500, headers: CORS });
-      }
-    }
+// CF-only: NOWPayments IPN webhook
+if (path === '/api/webhooks/nowpayments' && request.method === 'POST') return handleNowPaymentsIPN(request, env as any, env.NOWPAYMENTS_IPN_SECRET);
+
+// CF-only: Coupon service
+if (path === '/api/coupons/validate' && request.method === 'POST') return handleValidateCoupon(request, env as any);
+if (path === '/api/coupons/apply' && request.method === 'POST') return handleApplyCoupon(request, env as any);
+
+// CF-only: Version endpoint
+if (path === '/api/version' && request.method === 'GET') return handleVersion(env as any);
+// CF-only: Energy 9 delivery endpoint
+if (path === '/api/delivery/energy-9' && request.method === 'POST') return handleEnergy9Delivery(request, env as any);
+
+// ── Phase 2: Telegram + Co-pilot + Markets ──
+if (path === '/api/copilot/ask' && request.method === 'POST') return handleCopilotAsk(request, env as any);
+if (path === '/api/telegram/webhook' && request.method === 'POST') return handleTelegramWebhook(request, env as any);
+if (path === '/api/telegram/set-webhook' && request.method === 'POST') return handleSetTelegramWebhook(request, env as any);
+
+if (path === '/api/markets' && request.method === 'GET') return handleGetMarkets(request, env as any);
+
+if (path === '/api/v1/shard/ring' && request.method === 'GET') return handleGetRing(request, env as any);
+if (path.match(/^\/api\/v1\/shard\/\d+\/health$/) && request.method === 'GET') return handleGetShardById(request, env as any);
+
+// Strategy execution (auth required)
+if (path === '/api/v1/strategies/execute' && request.method === 'POST') return handleExecuteStrategy(request, env as any);
+if (path === '/api/v1/strategies/list' && request.method === 'GET') return handleGetStrategiesList(request, env as any);
+
+// Settings save — store in KV
+if (path.match(/^\/api\/tenants\/[^/]+\/config$/) && request.method === 'POST') {
+ try {
+  const body = await request.json();
+  const tenantId = path.split('/')[3];
+  await env.CACHE.put(`config:${tenantId}`, JSON.stringify(body));
+  return new Response(JSON.stringify({ saved: true }), { headers: CORS });
+ } catch {
+  return new Response(JSON.stringify({ error: 'Failed to save' }), { status: 500, headers: CORS });
+ }
+}
+
+// If VPS_ORIGIN is set, proxy remaining API requests
 
     // If VPS_ORIGIN is set, proxy remaining API requests
     if (env.VPS_ORIGIN && path.startsWith('/api/')) {

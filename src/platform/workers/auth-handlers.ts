@@ -158,5 +158,5 @@ export function corsPreflightResponse(): Response {
 }
 
 export function notImplementedResponse(path: string): Response {
-  return json({ error: `${path} — backend chưa được cấu hình`, hint: 'Set VPS_ORIGIN secret to enable full API' }, 501);
+  return json({ error: `${path} — chưa triển khai trên CF-Only`, hint: 'This endpoint has not been migrated to the CF-only Worker yet' }, 501);
 }

@@ -16,6 +16,7 @@ import { ManifestoPage } from './pages/manifesto';
 import { MethodologyPage } from './pages/methodology';
 import { EnterprisePage } from './pages/enterprise-page';
 import { PricingPage } from './pages/pricing-page';
+import { AlphaVangPage } from './pages/alpha-vang-page';
 import { LoginPage } from './pages/login-page';
 import { SignupPage } from './pages/signup-page';
 import { DocsPage } from './pages/docs-page';
@@ -27,7 +28,6 @@ import { SetupGuidePage } from './pages/setup-guide-page';
 import { TermsPage } from './pages/terms-page';
 import { PrivacyPage } from './pages/privacy-page';
 import { RiskSettingsPage } from './pages/risk-settings-page';
-import { LeaderboardPage } from './pages/leaderboard-page';
 
 /**
  * Handle uncaught errors in the app.
@@ -51,6 +51,7 @@ export function App() {
         <Route path="/manifesto" element={<ManifestoPage />} />
         <Route path="/methodology" element={<MethodologyPage />} />
         <Route path="/cashclaw" element={<LandingPage />} />
+      <Route path="/alpha-vang" element={<AlphaVangPage />} />
         <Route path="/pricing" element={<PricingPage />} />
 <Route path="/enterprise" element={<EnterprisePage />} />
         <Route path="/docs" element={<DocsPage />} />

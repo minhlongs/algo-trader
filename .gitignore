@@ -25,3 +25,4 @@ tasks/
 tests/e2e/
 scripts/*.bak-*
 scripts/*.bak
+.claude/tmp/
