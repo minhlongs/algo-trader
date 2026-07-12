@@ -11,6 +11,7 @@ import { getLatencyMonitor } from './regions/latency-monitor';
 
 import { runMigrations } from './db/migration-runner';
 import { startAugmentedSignalPipeline } from './desk/wiring/augmented-signal-pipeline';
+import { thresholdAlerts } from './platform/middleware/threshold-alerts';
 
 let server: ApiServer | null = null;
 let augmentedPipelineStop: (() => Promise<void>) | null = null;
@@ -39,6 +40,10 @@ export async function startApp(): Promise<void> {
   } else {
     logger.warn('[App] AI validation disabled (AI_VALIDATION_ENABLED=false)');
   }
+
+  // Start threshold alerts + Telegram bot (requires TELEGRAM_BOT_TOKEN env)
+  thresholdAlerts.initialize();
+  logger.info('[App] Threshold alerts + Telegram bot initialized');
 
   const port = process.env.API_PORT || '3000';
   const env = process.env.NODE_ENV || 'development';

@@ -7,6 +7,7 @@
  */
 
 import type { RedisClientType } from '../redis';
+import type { DurableObjectState, DurableObjectNamespace } from '@cloudflare/workers-types';
 import { logger } from '../shared/utils/logger';
 import {
   buildRing,
@@ -20,7 +21,7 @@ import {
 
 // Minimal Env interface for DO bindings (KV, Admin API key)
 interface Env {
-  SHARD_MANAGER?: DurableObjectNamespace;
+  SHARD_MANAGER?: any;
   [key: string]: any;
 }
 

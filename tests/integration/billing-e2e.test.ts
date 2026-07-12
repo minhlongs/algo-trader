@@ -22,7 +22,7 @@ describe('Billing E2E - Pricing Tiers', () => {
 
   it('should have PRO tier with correct pricing', () => {
     const pro = PRICING_TIERS.PRO;
-    expect(pro.price).toBe(49);
+    expect(pro.price).toBe(99);
     expect(pro.strategies).toBe(5);
     expect(pro.apiCallsPerMonth).toBe(10000);
     expect(pro.supportLevel).toBe('email');
@@ -38,7 +38,7 @@ describe('Billing E2E - Pricing Tiers', () => {
 
   it('should calculate annual price with 20% discount', () => {
     expect(annualPrice('FREE')).toBe(0);
-    expect(annualPrice('PRO')).toBeCloseTo(49 * 12 * 0.8, 0); // 470.4
+    expect(annualPrice('PRO')).toBeCloseTo(99 * 12 * 0.8, 0); // 950.4
     expect(annualPrice('ENTERPRISE')).toBeCloseTo(299 * 12 * 0.8, 0); // 2870.4
   });
 });

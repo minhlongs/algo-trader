@@ -18,10 +18,17 @@ function shouldLog(current: LogLevel): boolean {
   return LEVELS[current] >= LEVELS[_logLevel];
 }
 
-function formatMessage(level: string, msg: string, meta?: unknown): string {
+function formatMessage(level: string, msg: string, args?: unknown[]): string {
   const ts = new Date().toISOString();
   const base = `[${ts}] ${level}: ${msg}`;
-  if (meta !== undefined && meta !== null) {
+  if (args && args.length > 0) {
+    if (args.length >= 2 && typeof args[0] === 'string' && args[1] !== null && typeof args[1] === 'object') {
+      const tag = args[0] as string;
+      const meta = args[1] as Record<string, unknown>;
+      const withTag = { _tag: tag, ...meta };
+      return `${base} ${JSON.stringify(withTag)}`;
+    }
+    const meta = args[0];
     const serialized = typeof meta === 'string' ? meta : JSON.stringify(meta);
     return `${base} ${serialized}`;
   }
@@ -29,17 +36,17 @@ function formatMessage(level: string, msg: string, meta?: unknown): string {
 }
 
 export const logger = {
-  debug(msg: string, meta?: unknown) {
-    if (shouldLog('debug')) console.debug(formatMessage('DEBUG', msg, meta));
+  debug(msg: string, ...args: unknown[]) {
+    if (shouldLog('debug')) console.debug(formatMessage('DEBUG', msg, args));
   },
-  info(msg: string, meta?: unknown) {
-    if (shouldLog('info')) console.info(formatMessage('INFO', msg, meta));
+  info(msg: string, ...args: unknown[]) {
+    if (shouldLog('info')) console.info(formatMessage('INFO', msg, args));
   },
-  warn(msg: string, meta?: unknown) {
-    if (shouldLog('warn')) console.warn(formatMessage('WARN', msg, meta));
+  warn(msg: string, ...args: unknown[]) {
+    if (shouldLog('warn')) console.warn(formatMessage('WARN', msg, args));
   },
-  error(msg: string, meta?: unknown) {
-    if (shouldLog('error')) console.error(formatMessage('ERROR', msg, meta));
+  error(msg: string, ...args: unknown[]) {
+    if (shouldLog('error')) console.error(formatMessage('ERROR', msg, args));
   },
 };
 

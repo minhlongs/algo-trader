@@ -4,7 +4,7 @@
  * One instance per shard (12 total)
  */
 
-import { DurableObject, DurableObjectState, DurableObjectNamespace } from '@cloudflare/workers-types';
+import { DurableObject, type DurableObjectState, type DurableObjectNamespace } from '@cloudflare/workers-types';
 // Note: DO env bindings accessed via state.env in runtime but type definition varies.
 // Using 'any' for env access to avoid type errors with bindings.
 
@@ -16,7 +16,7 @@ import { StrategyLoader } from '../desk/strategies/loader';
 
 // Env interface for Durable Object bindings (KV, DO references)
 interface Env {
-  SHARD_MANAGER?: DurableObjectNamespace;
+  SHARD_MANAGER?: any;
   [key: string]: any;
 }
 

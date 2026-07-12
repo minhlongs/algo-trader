@@ -75,6 +75,7 @@ export class TelegramBotService {
       this.bot = new Bot<Context>(this.config.botToken);
       this.setupMiddleware(); // Session creation FIRST
       this.setupCommands();   // Command handlers SECOND (can read sessions)
+        this.initialized = true;
       logger.info('[TelegramBot] Initialized with Telegram');
       return true;
     } catch (error) {
@@ -88,7 +89,7 @@ export class TelegramBotService {
   }
 
   async start(): Promise<void> {
-    if (!this.bot || !this.initialized) {
+    if (!this.bot) {
       throw new Error('TelegramBot not initialized');
     }
 
