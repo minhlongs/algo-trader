@@ -1,7 +1,7 @@
 # Go-Live Checklist — CashClaw RaaS Platform
 
 **Updated:** 2026-06-30 18:30 ICT | **Product:** CashClaw (algo-trader RaaS)
-**Status:** GO ✅ (blockers resolved, 1 DNS action remains)
+**Status:** GO ✅ (all DNS actions complete — api.cashclaw.cc operational since 2026-07-12)
 
 > This replaces the previous dry-run checklist (algo-trader arbitrage bot).
 > Current focus: prediction market signal RaaS with AI-calibrated strategies.

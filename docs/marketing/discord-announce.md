@@ -37,7 +37,7 @@ Institutional-grade arbitrage bot for retail traders:
 
 **FREE** — Basic scanning, 10 API calls/min
 **PRO** — $49/mo — Auto-trading, triangular arb
-**ENTERPRISE** — $499/mo — Unlimited, DEX-CEX, custom strategies
+**ENTERPRISE** — $299/mo — Unlimited, DEX-CEX, custom strategies
 
 ---
 

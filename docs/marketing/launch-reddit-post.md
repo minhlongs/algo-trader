@@ -30,9 +30,9 @@ Available in the dashboard chat widget AND via Telegram (/ask command).
 
 **Pricing (Robot as a Service):**
 - FREE: Basic scanning, limited signals
-- STARTER: $19/mo -- AI Co-pilot access, strategy marketplace
+- STARTER: $49/mo -- AI Co-pilot access, strategy marketplace
 - PRO: $99/mo -- full Co-pilot, 5 intent handlers, Telegram /ask
-- ENTERPRISE: $499/mo -- custom strategies, dedicated infra
+- ENTERPRISE: $299/mo -- custom strategies, dedicated infra
 - MASTER: $999/mo -- white-label, private marketplace
 
 **Build-in-public note:** You can follow the full journey in the repo. Every strategy, every test, every mistake. This is what happens when one engineer runs at a problem for 18 months with no employees, no funding, and no bullshit.

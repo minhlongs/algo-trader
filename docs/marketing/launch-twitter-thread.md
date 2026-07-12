@@ -56,9 +56,9 @@ No mocks. No shortcuts. Real infra.
 Pricing that scales with you:
 
 FREE -- basic scanning, community access
-STARTER ($19/mo) -- unlock AI Co-pilot + marketplace
+STARTER ($49/mo) -- unlock AI Co-pilot + marketplace
 PRO ($99/mo) -- full Co-pilot, Telegram /ask, all intents
-ENTERPRISE ($499/mo) -- custom, dedicated
+ENTERPRISE ($299/mo) -- custom, dedicated
 MASTER ($999/mo) -- white-label
 
 No lock-in. Cancel anytime.

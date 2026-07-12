@@ -76,6 +76,11 @@ class_name = "StrategyShard"
 tag = "v1-sharding"
 new_classes = ["ShardManager", "StrategyShard"]
 
+# Route: api.cashclaw.cc/* through zone routing
+[[routes]]
+pattern = "api.cashclaw.cc/*"
+zone_name = "cashclaw.cc"
+
 # Build config
 [build]
 command = "npx tsc -p tsconfig.worker.json"

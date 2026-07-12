@@ -10,7 +10,7 @@
 1. **For traders:** "52 AI strategies analyzing prediction markets. You get the signals. We do the math."
 2. **For skeptics:** "Kelly-optimal position sizing. Dual-model risk calibration. Not a meme, not a signal group — a proper RaaS platform."
 3. **For Polymarket power users:** "Stop guessing your position size. CashClaw tells you how much to bet and when."
-4. **For investors/partners:** "Prediction market RaaS. $49-$499/mo. 85% margins. Production-grade at launch."
+4. **For investors/partners:** "Prediction market RaaS. $49-$999/mo. Production-grade at launch."
 
 ---
 

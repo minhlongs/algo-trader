@@ -113,7 +113,7 @@ Pricing:
 
 FREE: 10 API calls/min, basic scanning
 PRO: $49/mo — auto-trading, triangular arb
-ENTERPRISE: $499/mo — unlimited, DEX-CEX, custom strategies
+ENTERPRISE: $299/mo — unlimited, DEX-CEX, custom strategies
 
 Start free, upgrade when profitable.
 
