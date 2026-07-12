@@ -5,6 +5,7 @@
  * Stitch redesign: dark fintech, bilingual VN+EN
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 
 interface Phase2Status {
   zeroShot: { enabled: boolean; activeRules: number; messagesProcessed: number; rulesGenerated: number };
@@ -80,17 +81,17 @@ const COPY = {
 };
 
 function glassCard(extra = '') {
-  return `bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl ${extra}`.trim();
+  return `bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl ${extra}`.trim();
 }
 
 function StatusBadge({ enabled, t }: { enabled: boolean; t: Record<string, string> }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
-        enabled ? 'bg-[#3b82f6]/15 text-[#3b82f6] border border-[#3b82f6]/30' : 'bg-[#c1c6d7]/15 text-[#c1c6d7] border border-[#c1c6d7]/30'
+        enabled ? 'bg-[${COLORS.profit}]/15 text-[${COLORS.profit}] border border-[${COLORS.profit}]/30' : 'bg-[${COLORS.onSurfaceVariant}]/15 text-[${COLORS.onSurfaceVariant}] border border-[${COLORS.onSurfaceVariant}]/30'
       }`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full ${enabled ? 'bg-[#3b82f6]' : 'bg-[#c1c6d7]'}`} />
+      <span className={`w-1.5 h-1.5 rounded-full ${enabled ? 'bg-[${COLORS.profit}]' : 'bg-[${COLORS.onSurfaceVariant}]'}`} />
       {enabled ? t.active : t.disabled}
     </span>
   );
@@ -98,8 +99,8 @@ function StatusBadge({ enabled, t }: { enabled: boolean; t: Record<string, strin
 
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex justify-between items-center py-1.5 border-b border-[#414754]/50 last:border-0">
-      <span className="text-[#c1c6d7] text-xs">{label}</span>
+    <div className="flex justify-between items-center py-1.5 border-b border-[${COLORS.outline}]/50 last:border-0">
+      <span className="text-[${COLORS.onSurfaceVariant}] text-xs">{label}</span>
       <span className="text-white text-sm font-semibold">{value}</span>
     </div>
   );
@@ -146,17 +147,17 @@ export function Phase2Page() {
   }, [handleMessage]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-16">
         {/* Header with language toggle */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
-            <p className="text-[#c1c6d7] text-sm mt-1">{t.subtitle}</p>
+            <p className="text-[${COLORS.onSurfaceVariant}] text-sm mt-1">{t.subtitle}</p>
           </div>
           <button
             onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
             aria-label="Toggle language"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -214,22 +215,22 @@ export function Phase2Page() {
         <div className={glassCard('p-4')}>
           <h3 className="text-white text-sm font-bold mb-3">{t.spoofAlertsTitle}</h3>
           {alerts.length === 0 ? (
-            <p className="text-[#c1c6d7] text-xs">{t.noAlerts}</p>
+            <p className="text-[${COLORS.onSurfaceVariant}] text-xs">{t.noAlerts}</p>
           ) : (
             <div className="max-h-64 overflow-y-auto space-y-1">
               {alerts.map((a, i) => (
-                <div key={i} className="flex items-center gap-3 text-xs py-1.5 border-b border-[#414754]/50">
+                <div key={i} className="flex items-center gap-3 text-xs py-1.5 border-b border-[${COLORS.outline}]/50">
                   <span
                     className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                      a.confidence > 0.9 ? 'bg-[#ffb4ab]/20 text-[#ffb4ab]' : 'bg-[#ffb596]/20 text-[#ffb596]'
+                      a.confidence > 0.9 ? 'bg-[${COLORS.loss}]/20 text-[${COLORS.loss}]' : 'bg-[${COLORS.warning}]/20 text-[${COLORS.warning}]'
                     }`}
                   >
                     {(a.confidence * 100).toFixed(0)}%
                   </span>
                   <span className="text-white">{a.exchange}</span>
-                  <span className="text-[#c1c6d7]">{a.symbol}</span>
-                  <span className="text-[#aec6ff]">{a.signalType}</span>
-                  <span className="text-[#c1c6d7] ml-auto">{new Date(a.timestamp).toLocaleTimeString()}</span>
+                  <span className="text-[${COLORS.onSurfaceVariant}]">{a.symbol}</span>
+                  <span className="text-[${COLORS.primary}]">{a.signalType}</span>
+                  <span className="text-[${COLORS.onSurfaceVariant}] ml-auto">{new Date(a.timestamp).toLocaleTimeString()}</span>
                 </div>
               ))}
             </div>

@@ -139,15 +139,12 @@ export function useDashboardWebSocket() {
     if (!mountedRef.current) return;
 
     const wsUrl = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}/ws`;
-    const connectTime = Date.now();
 
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        const connectionLatency = Date.now() - connectTime;
-        console.log('[Dashboard WS] Connected in', connectionLatency, 'ms');
         setConnectedState(true);
         setError(null);
         setWsConnected(true);
@@ -165,7 +162,6 @@ export function useDashboardWebSocket() {
       };
 
       ws.onclose = () => {
-        console.log('[Dashboard WS] Disconnected');
         setConnectedState(false);
         setWsConnected(false);
 
@@ -177,8 +173,7 @@ export function useDashboardWebSocket() {
         reconnectTimeoutRef.current = setTimeout(connect, delay);
       };
 
-      ws.onerror = (err) => {
-        console.error('[Dashboard WS] Error:', err);
+      ws.onerror = (_err) => {
         setError('Connection error - reconnecting...');
         ws.close();
       };
@@ -294,11 +289,9 @@ export function useDashboardWebSocket() {
               break;
           }
         } catch (error) {
-          console.error('[Dashboard WS] Failed to parse message:', error);
         }
       };
     } catch (error) {
-      console.error('[Dashboard WS] Connection failed:', error);
       setConnectedState(false);
       setWsConnected(false);
       setError('Connection failed - retrying...');
@@ -306,7 +299,6 @@ export function useDashboardWebSocket() {
   }, [setWsConnected, setSignals, setMetrics, setAdminStatus, setPositions, setSpreads, setTrades, setStrategies, setBotStatus, updateLatency, queueUpdate, flushAll]);
 
   const reconnect = useCallback(() => {
-    console.log('[Dashboard WS] Manual reconnect');
     if (wsRef.current) {
       wsRef.current.close();
     }

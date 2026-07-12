@@ -3,6 +3,7 @@
  * Stitch redesign: dark fintech, bilingual VN+EN
  */
 import { useState, useEffect, useMemo } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { motion } from 'motion/react';
 import { useApiClient } from '../hooks/use-api-client';
 import type { LeaderboardEntry, LeaderboardResponse } from '../types/api';
@@ -44,7 +45,7 @@ totalPnl: 'Tổng Lãi/Lỗ',
 type Lang = 'en' | 'vi';
 
 function glassCard(extra = '') {
-return `bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl ${extra}`.trim();
+return `bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl ${extra}`.trim();
 }
 
 export function LeaderboardPage() {
@@ -85,10 +86,10 @@ const t = COPY[lang];
 
 if (loading) {
 return (
-<div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex items-center justify-center">
+<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex items-center justify-center">
 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-<p className="text-[#aec6ff] text-2xl font-bold mb-2">{t.title}</p>
-<div className="w-8 h-8 border-2 border-[#0070f3] border-t-transparent rounded-full animate-spin mx-auto" />
+<p className="text-[${COLORS.primary}] text-2xl font-bold mb-2">{t.title}</p>
+<div className="w-8 h-8 border-2 border-[${COLORS.primary}] border-t-transparent rounded-full animate-spin mx-auto" />
 </motion.div>
 </div>
 );
@@ -96,13 +97,13 @@ return (
 
 if (error) {
 return (
-<div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex items-center justify-center">
+<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex items-center justify-center">
 <div className="text-center">
-<p className="text-[#ffb4ab] text-xl font-bold mb-4">{t.title}</p>
-<p className="text-[#c1c6d7] text-sm">{error}</p>
+<p className="text-[${COLORS.loss}] text-xl font-bold mb-4">{t.title}</p>
+<p className="text-[${COLORS.onSurfaceVariant}] text-sm">{error}</p>
 <button
 onClick={() => window.location.reload()}
-className="mt-4 px-5 py-2 rounded-lg bg-[#0070f3] text-white text-sm font-semibold hover:bg-[#0060d3] transition-colors"
+className="mt-4 px-5 py-2 rounded-lg bg-[${COLORS.primary}] text-white text-sm font-semibold hover:bg-[#0060d3] transition-colors"
 >
 {t.retry}
 </button>
@@ -112,17 +113,17 @@ className="mt-4 px-5 py-2 rounded-lg bg-[#0070f3] text-white text-sm font-semibo
 }
 
 return (
-<div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
 <div className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-16">
 {/* Header */}
 <div className="flex items-center justify-between mb-8">
 <div>
 <h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
-<p className="text-[#c1c6d7] text-sm mt-1">{t.subtitle}</p>
+<p className="text-[${COLORS.onSurfaceVariant}] text-sm mt-1">{t.subtitle}</p>
 </div>
 <button
 onClick={() => setLang((l: Lang) => l === 'en' ? 'vi' : 'en')}
-className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
 aria-label="Toggle language"
 >
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -135,7 +136,7 @@ aria-label="Toggle language"
 
 {/* Search */}
 <div className="relative max-w-xs mb-6">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#c1c6d7]/50">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-[${COLORS.onSurfaceVariant}]/50">
 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
 </svg>
 <input
@@ -143,7 +144,7 @@ type="text"
 value={search}
 onChange={(e) => setSearch(e.target.value)}
 placeholder="Search strategies..."
-className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[#414754] bg-[#121414] text-white placeholder:text-[#c1c6d7]/50 focus:border-[#0070f3] focus:outline-none transition-colors"
+className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[${COLORS.outline}] bg-[${COLORS.surface}] text-white placeholder:text-[${COLORS.onSurfaceVariant}]/50 focus:border-[${COLORS.primary}] focus:outline-none transition-colors"
 aria-label="Search strategies"
 />
 </div>
@@ -156,11 +157,11 @@ aria-label="Search strategies"
 { label: t.avgWin, value: `${(data.reduce((s, e) => s + e.winRate, 0) / data.length).toFixed(1)}%` },
 { label: t.avgSharpe, value: (data.reduce((s, e) => s + e.sharpeRatio, 0) / data.length).toFixed(2) },
 { label: t.totalPnl, value: `${data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? '+' : ''}$${Math.abs(data.reduce((s, e) => s + (e.pnl || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-tone: data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-[#3b82f6]' : 'text-[#ffb4ab]',
+tone: data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-[${COLORS.profit}]' : 'text-[${COLORS.loss}]',
 },
 ].map(({ label, value, tone }) => (
 <div className={`${glassCard('p-4')}`}>
-<p className="text-[#c1c6d7] text-[10px] uppercase tracking-widest mb-1">{label}</p>
+<p className="text-[${COLORS.onSurfaceVariant}] text-[10px] uppercase tracking-widest mb-1">{label}</p>
 <p className={`font-mono text-lg font-bold ${tone ?? 'text-white'}`}>{value}</p>
 </div>
 ))}

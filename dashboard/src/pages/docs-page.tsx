@@ -77,14 +77,14 @@ export function DocsPage() {
     lang === 'en' ? item.labelEn : item.labelVi;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans">
+    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
       <PublicNavbar />
 
       {/* Language toggle */}
       <div className="flex justify-end px-4 sm:px-8 pt-6">
         <button
           onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
           aria-label="Toggle language"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -96,14 +96,14 @@ export function DocsPage() {
       </div>
 
       {/* Mobile TOC — horizontal scroll bar */}
-      <div className="md:hidden sticky top-14 z-40 bg-[#0a0a0a]/95 backdrop-blur border-b border-[#414754] px-4 py-2 overflow-x-auto">
+      <div className="md:hidden sticky top-14 z-40 bg-[${COLORS.bg}]/95 backdrop-blur border-b border-[${COLORS.outline}] px-4 py-2 overflow-x-auto">
         <div className="flex gap-4 whitespace-nowrap">
           {TOC_ITEMS.map(({ id }) => (
             <button
               key={id}
               onClick={() => scrollTo(id)}
               className={`text-xs py-1 transition-colors ${
-                activeId === id ? 'text-[#aec6ff]' : 'text-[#c1c6d7] hover:text-white'
+                activeId === id ? 'text-[${COLORS.primary}]' : 'text-[${COLORS.onSurfaceVariant}] hover:text-white'
               }`}
             >
               {tocLabel(TOC_ITEMS.find((item) => item.id === id)!)}
@@ -117,7 +117,7 @@ export function DocsPage() {
         {/* Desktop sidebar TOC */}
         <aside className="hidden md:block w-[200px] flex-shrink-0">
           <div className="sticky top-24">
-            <p className="text-xs text-[#c1c6d7] uppercase tracking-widest mb-4">{t.onThisPage}</p>
+            <p className="text-xs text-[${COLORS.onSurfaceVariant}] uppercase tracking-widest mb-4">{t.onThisPage}</p>
             <nav className="space-y-1">
               {TOC_ITEMS.map(({ id }) => (
                 <button
@@ -125,8 +125,8 @@ export function DocsPage() {
                   onClick={() => scrollTo(id)}
                   className={`block w-full text-left text-xs py-1.5 px-2 rounded transition-colors ${
                     activeId === id
-                      ? 'text-[#aec6ff] bg-[#aec6ff]/10'
-                      : 'text-[#c1c6d7] hover:text-white'
+                      ? 'text-[${COLORS.primary}] bg-[${COLORS.primary}]/10'
+                      : 'text-[${COLORS.onSurfaceVariant}] hover:text-white'
                   }`}
                 >
                   {tocLabel(TOC_ITEMS.find((item) => item.id === id)!)}
@@ -134,11 +134,11 @@ export function DocsPage() {
               ))}
             </nav>
 
-            <div className="mt-8 pt-6 border-t border-[#414754]">
-              <p className="text-xs text-[#c1c6d7] mb-2">{t.haveAccount}</p>
+            <div className="mt-8 pt-6 border-t border-[${COLORS.outline}]">
+              <p className="text-xs text-[${COLORS.onSurfaceVariant}] mb-2">{t.haveAccount}</p>
               <Link
                 to="/app/guide"
-                className="text-xs text-[#aec6ff] hover:underline"
+                className="text-xs text-[${COLORS.primary}] hover:underline"
               >
                 {t.viewInApp}
               </Link>
@@ -150,7 +150,7 @@ export function DocsPage() {
         <main className="flex-1 max-w-[800px]">
           <div className="mb-10">
             <h1 className="text-2xl font-bold text-white mb-2">{t.title}</h1>
-            <p className="text-sm text-[#c1c6d7]">{t.subtitle}</p>
+            <p className="text-sm text-[${COLORS.onSurfaceVariant}]">{t.subtitle}</p>
           </div>
           <GuideContent />
         </main>

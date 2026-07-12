@@ -122,15 +122,12 @@ export function useRealtimeUpdates(): RealtimeUpdatesState & { reconnect: () => 
     if (!mountedRef.current) return;
 
     const wsUrl = import.meta.env.VITE_WS_URL ?? `ws://${window.location.host}/ws`;
-    const connectTime = Date.now();
 
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        const connectionLatency = Date.now() - connectTime;
-        console.log('[RealtimeUpdates] Connected in', connectionLatency, 'ms');
         setConnected(true);
         setError(null);
         setWsConnected(true);
@@ -148,7 +145,6 @@ export function useRealtimeUpdates(): RealtimeUpdatesState & { reconnect: () => 
       };
 
       ws.onclose = () => {
-        console.log('[RealtimeUpdates] Disconnected');
         setConnected(false);
         setWsConnected(false);
 
@@ -162,7 +158,6 @@ export function useRealtimeUpdates(): RealtimeUpdatesState & { reconnect: () => 
       };
 
       ws.onerror = () => {
-        console.error('[RealtimeUpdates] Error');
         setError('Connection error - reconnecting...');
         ws.close();
       };
@@ -228,11 +223,9 @@ export function useRealtimeUpdates(): RealtimeUpdatesState & { reconnect: () => 
               }
           }
         } catch (parseError) {
-          console.error('[RealtimeUpdates] Failed to parse message:', parseError);
         }
       };
     } catch (connectionError) {
-      console.error('[RealtimeUpdates] Connection failed:', connectionError);
       setConnected(false);
       setWsConnected(false);
       setError('Connection failed - retrying...');
@@ -240,7 +233,6 @@ export function useRealtimeUpdates(): RealtimeUpdatesState & { reconnect: () => 
   }, [setWsConnected, setMetrics, setPositions, setSpreads, setTrades, setStrategies, setBotStatus, setSignals, setAdminStatus, updateLatency, queueUpdate]);
 
   const reconnect = useCallback(() => {
-    console.log('[RealtimeUpdates] Manual reconnect triggered');
     if (wsRef.current) {
       wsRef.current.close();
     }

@@ -64,12 +64,12 @@ if (loggedIn && !error) { navigate('/app'); }
 }
 
 return (
-<div className="min-h-screen bg-[#0a0a0a] text-[#e3e2e2] font-sans flex flex-col">
+<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex flex-col">
 {/* Lang toggle */}
 <div className="flex justify-end px-4 sm:px-8 pt-6">
 <button
 onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#414754] bg-[#121414]/80 text-[#c1c6d7] text-xs hover:border-[#aec6ff] hover:text-[#aec6ff] transition-colors"
+className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
 aria-label="Toggle language"
 >
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -82,22 +82,22 @@ aria-label="Toggle language"
 
 <div className="flex-1 flex items-center justify-center px-4 pt-16">
 <div className="w-full max-w-sm">
-<div className="bg-[#121414]/80 backdrop-blur-xl border border-[#414754] rounded-2xl p-8">
+<div className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-8">
 {/* Header */}
 <div className="mb-6">
-<p className="text-[#aec6ff] text-xs uppercase tracking-widest mb-2">{t.eyebrow}</p>
+<p className="text-[${COLORS.primary}] text-xs uppercase tracking-widest mb-2">{t.eyebrow}</p>
 <h1 className="text-white text-xl font-bold">{t.title}</h1>
 </div>
 
 {displayError && (
-<div className="mb-4 px-3 py-2 bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 rounded text-[#ffb4ab] text-xs">
+<div className="mb-4 px-3 py-2 bg-[${COLORS.loss}]/10 border border-[${COLORS.loss}]/30 rounded text-[${COLORS.loss}] text-xs">
 {displayError}
 </div>
 )}
 
 <form onSubmit={handleSubmit} className="space-y-4">
 <div>
-<label className="block text-[#c1c6d7] text-xs mb-1.5">{t.labelEmail}</label>
+<label className="block text-[${COLORS.onSurfaceVariant}] text-xs mb-1.5">{t.labelEmail}</label>
 <input
 type="email"
 value={email}
@@ -106,12 +106,12 @@ placeholder={t.placeholderEmail}
 autoComplete="email"
 data-testid="email-input"
 disabled={loading}
-className="w-full bg-[#0a0a0a] border border-[#414754] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#0070f3] placeholder:text-[#c1c6d7]/50 transition-colors disabled:opacity-50"
+className="w-full bg-[${COLORS.bg}] border border-[${COLORS.outline}] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[${COLORS.primary}] placeholder:text-[${COLORS.onSurfaceVariant}]/50 transition-colors disabled:opacity-50"
 />
 </div>
 
 <div>
-<label className="block text-[#c1c6d7] text-xs mb-1.5">{t.labelPassword}</label>
+<label className="block text-[${COLORS.onSurfaceVariant}] text-xs mb-1.5">{t.labelPassword}</label>
 <input
 type="password"
 value={password}
@@ -120,7 +120,7 @@ placeholder={t.placeholderPassword}
 autoComplete="current-password"
 data-testid="password-input"
 disabled={loading}
-className="w-full bg-[#0a0a0a] border border-[#414754] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#0070f3] placeholder:text-[#c1c6d7]/50 transition-colors disabled:opacity-50"
+className="w-full bg-[${COLORS.bg}] border border-[${COLORS.outline}] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[${COLORS.primary}] placeholder:text-[${COLORS.onSurfaceVariant}]/50 transition-colors disabled:opacity-50"
 />
 </div>
 
@@ -135,9 +135,9 @@ className="w-full mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
 </StitchButton>
 </form>
 
-<p className="text-[#c1c6d7] text-xs text-center mt-6">
+<p className="text-[${COLORS.onSurfaceVariant}] text-xs text-center mt-6">
 {t.linkNoAccount}{' '}
-<Link to="/signup" className="text-[#aec6ff] hover:underline">
+<Link to="/signup" className="text-[${COLORS.primary}] hover:underline">
 {t.linkCreate}
 </Link>
 </p>
