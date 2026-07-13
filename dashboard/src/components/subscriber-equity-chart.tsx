@@ -5,6 +5,7 @@
  */
 
 import { useMemo } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { PriceChartLightweight } from './price-chart-lightweight';
 import type { ChartDataPoint } from './price-chart-lightweight';
 
@@ -30,7 +31,7 @@ export function SubscriberEquityChart({
     [curve]
   );
 
-  const color = totalReturn >= 0 ? '#00FF41' : '#FF3366';
+  const color = totalReturn >= 0 ? `${COLORS.profit}` : `${COLORS.loss}`;
 
   if (curve.length === 0) {
     return (

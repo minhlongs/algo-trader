@@ -112,9 +112,9 @@ export function TradingKpiCard({
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke={trendColor ?? '#8892B0'}
+                  stroke={trendColor ?? COLORS.onSurfaceVariant}
                   strokeWidth={1.5}
-                  fill={trendColor ?? '#8892B0'}
+                  fill={trendColor ?? COLORS.onSurfaceVariant}
                   fillOpacity={0.15}
                   dot={false}
                   isAnimationActive={false}
