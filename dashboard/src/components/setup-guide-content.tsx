@@ -4,12 +4,13 @@
  * Based on SETUP.md, rendered as interactive UI.
  */
 import { SetupVpnCrypto } from './setup-section-vpn-crypto';
+import { COLORS as _COLORS } from '../lib/stitch-design-tokens';
 import { SetupBotInstall } from './setup-section-bot-install';
 import { InfoBanner } from './guide-shared-components';
 
 export function SetupGuideContent() {
   return (
-    <div className="space-y-16 text-[#8892B0]">
+    <div className="space-y-16 text-[${_COLORS.onSurfaceVariant}]">
 
       {/* Banner */}
       <InfoBanner color="green" label="Full Setup Guide — From Zero to Live Trading">
@@ -18,11 +19,11 @@ export function SetupGuideContent() {
           Polymarket account, bot installation, AI models, and connecting to dashboard.
         </p>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="bg-[#111627] rounded p-2">
-            <span className="text-[#00C8E8]">Phase A:</span> Accounts & Crypto (~30 min)
+          <div className="bg-[${_COLORS.surface}] rounded p-2">
+            <span className="text-[${_COLORS.primary}]">Phase A:</span> Accounts & Crypto (~30 min)
           </div>
-          <div className="bg-[#111627] rounded p-2">
-            <span className="text-[#00E676]">Phase B:</span> Bot Installation (~15 min)
+          <div className="bg-[${_COLORS.surface}] rounded p-2">
+            <span className="text-[${_COLORS.profit}]">Phase B:</span> Bot Installation (~15 min)
           </div>
         </div>
       </InfoBanner>
@@ -30,7 +31,7 @@ export function SetupGuideContent() {
       {/* Prerequisites */}
       <div className="border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-4">
         <p className="text-sm text-yellow-400 font-bold mb-2">Prerequisites</p>
-        <ul className="text-sm text-[#8892B0] space-y-1">
+        <ul className="text-sm text-[${_COLORS.onSurfaceVariant}] space-y-1">
           <li>Apple Silicon Mac (M1/M2/M3/M4) with 32GB+ RAM, <strong className="text-white">OR</strong></li>
           <li>Cloud VPS with NVIDIA GPU (RTX 4090 recommended) + 64GB RAM, <strong className="text-white">OR</strong></li>
           <li>Any Linux VPS with 2GB+ RAM (CPU-only, no local AI)</li>
@@ -39,7 +40,7 @@ export function SetupGuideContent() {
 
       {/* Table of Contents */}
       <nav aria-label="Setup guide table of contents">
-        <p className="text-xs text-[#00C8E8] uppercase tracking-widest mb-3">Setup Steps</p>
+        <p className="text-xs text-[${_COLORS.primary}] uppercase tracking-widest mb-3">Setup Steps</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           {[
             { href: '#vpn-setup', label: 'A1. VPN Setup (1.1.1.1 / ProtonVPN)' },
@@ -61,7 +62,7 @@ export function SetupGuideContent() {
             <a
               key={item.href}
               href={item.href}
-              className="text-[#8892B0] hover:text-[#00C8E8] transition-colors"
+              className="text-[${_COLORS.onSurfaceVariant}] hover:text-[${_COLORS.primary}] transition-colors"
             >
               {item.label}
             </a>
@@ -75,7 +76,7 @@ export function SetupGuideContent() {
       {/* Verification Checklist */}
       <section id="verification">
         <h2 className="text-xl font-bold text-white mb-4">Verification Checklist</h2>
-        <div className="bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm text-[#8892B0] space-y-2">
+        <div className="bg-[${_COLORS.surface}] border border-[${_COLORS.surface}] rounded-lg p-4 text-sm text-[${_COLORS.onSurfaceVariant}] space-y-2">
           {[
             { cmd: 'node --version', expect: 'v20+' },
             { cmd: 'curl http://localhost:11435/v1/models', expect: 'LLM responding (macOS)' },
@@ -84,7 +85,7 @@ export function SetupGuideContent() {
             { cmd: 'curl http://localhost:3000/api/health', expect: '{"status":"ok"}' },
           ].map(({ cmd, expect }) => (
             <div key={cmd} className="flex gap-4">
-              <code className="text-[#00E676] whitespace-nowrap">{cmd}</code>
+              <code className="text-[${_COLORS.profit}] whitespace-nowrap">{cmd}</code>
               <span>&rarr; {expect}</span>
             </div>
           ))}

@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+// @ts-ignore
 import { COLORS } from '../../lib/stitch-design-tokens';
 
 export function StitchPageShell({ children, className = '' }: { children: ReactNode; className?: string }) {

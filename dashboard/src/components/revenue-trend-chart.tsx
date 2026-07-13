@@ -5,6 +5,7 @@
  * Displays revenue growth/decline with color-coded line.
  */
 import { useEffect, useRef, useMemo } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { createChart, IChartApi, ColorType } from 'lightweight-charts';
 
 interface TrendDataPoint {
@@ -42,8 +43,8 @@ export function RevenueTrendChart({
   // Chart configuration
   const chartOptions = useMemo(() => ({
     layout: {
-      background: { type: ColorType.Solid as const, color: '#161b22' },
-      textColor: '#8b949e',
+      background: { type: ColorType.Solid as const, color: `${COLORS.surface}` },
+      textColor: `${COLORS.onSurfaceVariant}`,
     },
     grid: {
       vertLines: { color: 'rgba(48, 54, 61, 0.3)' },
@@ -75,7 +76,7 @@ export function RevenueTrendChart({
 
     // Create area series for MRR trend
     const series = chart.addAreaSeries({
-      lineColor: '#58a6ff',
+      lineColor: `${COLORS.primary}`,
       topColor: 'rgba(88, 166, 255, 0.3)',
       bottomColor: 'rgba(88, 166, 255, 0)',
       lineWidth: 2,

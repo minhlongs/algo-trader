@@ -5,6 +5,7 @@
  * Uses lightweight-charts for consistent styling with other charts.
  */
 import { useEffect, useRef, useMemo } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { createChart, IChartApi, ColorType } from 'lightweight-charts';
 
 interface TierData {
@@ -22,9 +23,9 @@ interface RevenueByTierChartProps {
 
 // Tier colors matching design system
 const TIER_COLORS: Record<string, { bar: string; light: string }> = {
-  FREE: { bar: '#484f58', light: 'rgba(72, 79, 88, 0.3)' },
-  PRO: { bar: '#58a6ff', light: 'rgba(88, 166, 255, 0.3)' },
-  ENTERPRISE: { bar: '#d29922', light: 'rgba(210, 153, 34, 0.3)' },
+  FREE: { bar: `${COLORS.outline}`, light: 'rgba(72, 79, 88, 0.3)' },
+  PRO: { bar: `${COLORS.primary}`, light: 'rgba(88, 166, 255, 0.3)' },
+  ENTERPRISE: { bar: `${COLORS.warning}`, light: 'rgba(210, 153, 34, 0.3)' },
 };
 
 export function RevenueByTierChart({
@@ -55,8 +56,8 @@ export function RevenueByTierChart({
   // Chart configuration for horizontal bars
   const chartOptions = useMemo(() => ({
     layout: {
-      background: { type: ColorType.Solid as const, color: '#161b22' },
-      textColor: '#8b949e',
+      background: { type: ColorType.Solid as const, color: `${COLORS.surface}` },
+      textColor: `${COLORS.onSurfaceVariant}`,
     },
     grid: {
       vertLines: { color: 'rgba(48, 54, 61, 0.3)' },

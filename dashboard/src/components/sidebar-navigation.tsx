@@ -3,6 +3,7 @@
  * Active state via React Router useLocation.
  */
 import { ReactNode } from 'react';
+import { COLORS as _COLORS } from '../lib/stitch-design-tokens';
 import { useLocation, Link } from 'react-router-dom';
 import { useTradingStore } from '../stores/trading-store';
 import { useAuthStore } from '../stores/auth-store';
@@ -149,9 +150,9 @@ export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
   const { email, tier, role, logout } = useAuthStore();
 
   const tierBadge: Record<string, string> = {
-    free: 'text-[#8892B0] bg-[#2D3142]',
-    pro: 'text-[#00D9FF] bg-[#00D9FF]/10',
-    enterprise: 'text-[#FFD700] bg-[#FFD700]/10',
+    free: 'text-[${_COLORS.onSurfaceVariant}] bg-[${_COLORS.outline}]',
+    pro: 'text-[${_COLORS.primary}] bg-[${_COLORS.primary}]/10',
+    enterprise: 'text-[${_COLORS.warning}] bg-[${_COLORS.warning}]/10',
   };
   const badgeClass = tierBadge[tier] ?? tierBadge['free'];
 
@@ -208,7 +209,7 @@ export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
         <div className="flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              connected ? 'bg-profit shadow-[0_0_6px_#00FF41]' : 'bg-loss'
+              connected ? 'bg-profit shadow-[0_0_6px_${_COLORS.profit}]' : 'bg-loss'
             }`}
           />
           <span className="text-xs font-mono text-muted">

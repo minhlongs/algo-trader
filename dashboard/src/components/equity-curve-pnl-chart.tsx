@@ -3,6 +3,7 @@
  * Green line when overall PnL positive, red when negative.
  */
 import { useMemo } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import type { Position } from '../stores/trading-store';
 import { PriceChartLightweight } from './price-chart-lightweight';
 
@@ -34,7 +35,7 @@ export function EquityCurveChart({ positions }: EquityCurveProps) {
     return { chartData: data, isPositive: cumulative >= 0 };
   }, [positions]);
 
-  const lineColor = isPositive ? '#00E676' : '#FF4466';
+  const lineColor = isPositive ? `${COLORS.profit}` : `${COLORS.loss}`;
   const hasClosed = chartData.length > 0;
 
   return (

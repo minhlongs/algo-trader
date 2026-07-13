@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { createChart, ColorType, LineStyle, ISeriesApi, Time } from 'lightweight-charts';
 import { useTradingStore } from '../stores/trading-store';
 
@@ -143,8 +144,8 @@ export function CandlestickChart() {
     const chart = createChart(container, {
       height: 350,
       layout: {
-        background: { type: ColorType.Solid, color: '#101426' },
-        textColor: '#8892B0',
+        background: { type: ColorType.Solid, color: `${COLORS.surfaceHigh}` },
+        textColor: `${COLORS.onSurfaceVariant}`,
         fontFamily: 'Plus Jakarta Sans, Inter, sans-serif',
       },
       grid: {
@@ -152,8 +153,8 @@ export function CandlestickChart() {
         horzLines: { color: 'rgba(255, 255, 255, 0.03)', style: LineStyle.Dotted },
       },
       crosshair: {
-        vertLine: { color: '#00FFA3', width: 1, labelVisible: true },
-        horzLine: { color: '#00FFA3', width: 1, labelVisible: true },
+        vertLine: { color: `${COLORS.profit}`, width: 1, labelVisible: true },
+        horzLine: { color: `${COLORS.profit}`, width: 1, labelVisible: true },
       },
       rightPriceScale: {
         borderColor: 'rgba(255, 255, 255, 0.05)',
@@ -167,16 +168,16 @@ export function CandlestickChart() {
     });
 
     const candleSeries = chart.addCandlestickSeries({
-      upColor: '#00FFA3',
-      downColor: '#FF2E93',
-      borderUpColor: '#00FFA3',
-      borderDownColor: '#FF2E93',
-      wickUpColor: '#00FFA3',
-      wickDownColor: '#FF2E93',
+      upColor: `${COLORS.profit}`,
+      downColor: `${COLORS.loss}`,
+      borderUpColor: `${COLORS.profit}`,
+      borderDownColor: `${COLORS.loss}`,
+      wickUpColor: `${COLORS.profit}`,
+      wickDownColor: `${COLORS.loss}`,
     });
 
     const volumeSeries = chart.addHistogramSeries({
-      color: '#00D9FF',
+      color: `${COLORS.primary}`,
       priceFormat: { type: 'volume' },
       priceScaleId: '', // overlay volume on main chart
     });

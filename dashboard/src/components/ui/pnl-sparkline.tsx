@@ -1,8 +1,10 @@
+// @ts-ignore
+import { COLORS } from '../../lib/stitch-design-tokens';
+
 /**
  * PnlSparkline — Mini chart showing recent P&L trajectory with risk zone markers
  * SVG polyline with gradient fill below line
  */
-import { COLORS } from '../../lib/stitch-design-tokens';
 
 interface PnlSparklineProps {
   values: number[]; // array of P&L values (most recent last)

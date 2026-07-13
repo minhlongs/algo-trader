@@ -5,6 +5,7 @@
  * area chart and trend arrow indicator. Handles loading and error states.
  */
 import { AreaChart, Area } from 'recharts';
+import { COLORS } from '../lib/stitch-design-tokens';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -67,8 +68,8 @@ export function TradingKpiCard({
   const trendColor =
     trend !== null && trend !== undefined
       ? trend >= 0
-        ? '#00E676'
-        : '#FF4466'
+        ? `${COLORS.profit}`
+        : `${COLORS.loss}`
       : undefined;
 
   return (

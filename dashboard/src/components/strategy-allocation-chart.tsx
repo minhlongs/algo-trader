@@ -5,6 +5,7 @@
  * Features 8 distinct colors, clickable legend, and detail panel for selected item.
  */
 import { useState } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 /* ------------------------------------------------------------------ */
@@ -26,14 +27,14 @@ interface StrategyAllocationChartProps {
 /* ------------------------------------------------------------------ */
 
 const DONUT_COLORS = [
-  '#00E676',
-  '#F59E0B',
-  '#FFB800',
-  '#FF4466',
-  '#7C3AED',
-  '#F59E0B',
-  '#3B82F6',
-  '#EC4899',
+  `${COLORS.profit}`,
+  `${COLORS.warning}`,
+  `${COLORS.warning}`,
+  `${COLORS.loss}`,
+  `${COLORS.primary}`,
+  `${COLORS.warning}`,
+  `${COLORS.profit}`,
+  `${COLORS.loss}`,
 ];
 
 /* ------------------------------------------------------------------ */

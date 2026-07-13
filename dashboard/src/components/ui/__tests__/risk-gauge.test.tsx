@@ -1,15 +1,15 @@
 /**
  * Tests for RiskGauge component
  */
+
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { RiskGauge } from '../risk-gauge';
 import { COLORS } from '../../../lib/stitch-design-tokens';
+import { RiskGauge } from '../risk-gauge';
 
 describe('RiskGauge', () => {
   it('renders with default props', () => {
     render(<RiskGauge value={0.5} threshold={0.8} />);
-    // Check that percentage text is shown
     expect(screen.getByText('50%')).toBeDefined();
   });
 

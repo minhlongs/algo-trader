@@ -73,7 +73,7 @@ export function AutoCloseForm() {
               type="checkbox"
               checked={autoCloseEnabled}
               onChange={(e) => preferences.updatePreferences({ autoCloseEnabled: e.target.checked })}
-              className="w-4 h-4 accent-[#4cd7f6]"
+              className="w-4 h-4 accent-[${COLORS.primary}]"
             />
           </div>
 

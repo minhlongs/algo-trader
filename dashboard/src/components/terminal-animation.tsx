@@ -12,13 +12,13 @@ const LINES = [
 
 export function TerminalAnimation() {
   return (
-    <div className="bg-[#0A0A14] border border-[#1E2640] rounded-lg p-4 text-xs overflow-hidden">
+    <div className="bg-[${COLORS.bg}] border border-[${COLORS.surface}] rounded-lg p-4 text-xs overflow-hidden">
       {/* Title bar */}
-      <div className="flex items-center gap-1.5 mb-3 pb-3 border-b border-[#1E2640]">
-        <span className="w-2.5 h-2.5 rounded-full bg-[#FF4466]" />
+      <div className="flex items-center gap-1.5 mb-3 pb-3 border-b border-[${COLORS.surface}]">
+        <span className="w-2.5 h-2.5 rounded-full bg-[${COLORS.loss}]" />
         <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
-        <span className="w-2.5 h-2.5 rounded-full bg-[#00E676]" />
-        <span className="text-[#8892B0] ml-2">cashclaw — market-maker</span>
+        <span className="w-2.5 h-2.5 rounded-full bg-[${COLORS.profit}]" />
+        <span className="text-[${COLORS.onSurfaceVariant}] ml-2">cashclaw — market-maker</span>
       </div>
 
       {/* Animated lines */}
@@ -30,15 +30,15 @@ export function TerminalAnimation() {
             style={{ animationDelay: `${i * 1.2}s` }}
           >
             <span className={
-              line.startsWith('[FILL]') ? 'text-[#00E676]' :
-              line.startsWith('[Safety]') ? 'text-[#00C8E8]' :
-              line.startsWith('[MM]') ? 'text-[#8892B0]' :
+              line.startsWith('[FILL]') ? 'text-[${COLORS.profit}]' :
+              line.startsWith('[Safety]') ? 'text-[${COLORS.primary}]' :
+              line.startsWith('[MM]') ? 'text-[${COLORS.onSurfaceVariant}]' :
               'text-white'
             }>
               {line}
             </span>
             {i === LINES.length - 1 && (
-              <span className="inline-block w-1.5 h-3.5 bg-[#00C8E8] ml-0.5 animate-pulse align-middle" />
+              <span className="inline-block w-1.5 h-3.5 bg-[${COLORS.primary}] ml-0.5 animate-pulse align-middle" />
             )}
           </p>
         ))}

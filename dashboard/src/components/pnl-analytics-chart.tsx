@@ -3,6 +3,7 @@
  * Supports day/week/month time range tabs
  */
 import { useState } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import {
   Line,
   XAxis,
@@ -140,16 +141,16 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <CartesianGrid strokeDasharray="3 3" stroke="${COLORS.outline}" />
             <XAxis
               dataKey="name"
-              stroke="#9CA3AF"
+              stroke="${COLORS.onSurfaceVariant}"
               tick={{ fontSize: 10 }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              stroke="#9CA3AF"
+              stroke="${COLORS.onSurfaceVariant}"
               tick={{ fontSize: 10 }}
               tickLine={false}
               axisLine={false}
@@ -157,25 +158,25 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#1F2937',
-                border: '1px solid #374151',
+                backgroundColor: `${COLORS.outline}`,
+                border: '1px solid ${COLORS.outline}',
                 borderRadius: '0.5rem',
               }}
-              labelStyle={{ color: '#F9FAFB' }}
+              labelStyle={{ color: `${COLORS.onSurface}` }}
               formatter={(value) => [`$${Number(value).toFixed(2)}`, '']}
             />
-            <Bar dataKey="trades" fill="#F59E0B" opacity={0.3} yAxisId={1} />
+            <Bar dataKey="trades" fill="${COLORS.warning}" opacity={0.3} yAxisId={1} />
             <Line
               type="monotone"
               dataKey="cumulative"
-              stroke="#10B981"
+              stroke="${COLORS.profit}"
               strokeWidth={2}
               dot={false}
             />
             <Line
               type="monotone"
               dataKey="pnl"
-              stroke="#3B82F6"
+              stroke="${COLORS.profit}"
               strokeWidth={2}
               dot={false}
             />

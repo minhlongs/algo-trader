@@ -4,12 +4,13 @@
  * CollapsibleItem: expandable FAQ/troubleshoot item.
  */
 import { useState } from 'react';
+import { COLORS as _COLORS } from '../lib/stitch-design-tokens';
 
 export function CopyBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="relative group">
-      <pre className="bg-[#111627] border border-[#1E2640] rounded-lg p-4 text-sm text-[#8892B0] overflow-x-auto">
+      <pre className="bg-[${_COLORS.surface}] border border-[${_COLORS.surface}] rounded-lg p-4 text-sm text-[${_COLORS.onSurfaceVariant}] overflow-x-auto">
         {code}
       </pre>
       <button
@@ -22,7 +23,7 @@ export function CopyBlock({ code }: { code: string }) {
           }
           setTimeout(() => setCopied(false), 2000);
         }}
-        className="absolute top-2 right-2 px-2 py-1 text-xs bg-[#1E2640] text-[#8892B0] rounded hover:text-white transition opacity-0 group-hover:opacity-100"
+        className="absolute top-2 right-2 px-2 py-1 text-xs bg-[${_COLORS.surface}] text-[${_COLORS.onSurfaceVariant}] rounded hover:text-white transition opacity-0 group-hover:opacity-100"
       >
         {copied ? 'Copied!' : 'Copy'}
       </button>
@@ -33,11 +34,11 @@ export function CopyBlock({ code }: { code: string }) {
 export function CollapsibleItem({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border border-[#1E2640] rounded-lg overflow-hidden">
+    <div className="border border-[${_COLORS.surface}] rounded-lg overflow-hidden">
       <button
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left text-sm text-[#8892B0] hover:text-white hover:bg-[#111627] transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 text-left text-sm text-[${_COLORS.onSurfaceVariant}] hover:text-white hover:bg-[${_COLORS.surface}] transition-colors"
       >
         <span>{title}</span>
         <svg
@@ -52,7 +53,7 @@ export function CollapsibleItem({ title, children }: { title: string; children: 
           <path d="M4 6l4 4 4-4" />
         </svg>
       </button>
-      {open && <div className="px-4 pb-4 pt-1 text-sm text-[#8892B0] space-y-2">{children}</div>}
+      {open && <div className="px-4 pb-4 pt-1 text-sm text-[${_COLORS.onSurfaceVariant}] space-y-2">{children}</div>}
     </div>
   );
 }
@@ -61,7 +62,7 @@ type BannerColor = 'cyan' | 'yellow' | 'red' | 'green';
 
 export function InfoBanner({ color, label, children }: { color: BannerColor; label: string; children: React.ReactNode }) {
   const colorMap: Record<string, { border: string; bg: string; text: string }> = {
-    cyan: { border: 'border-[#00C8E8]/30', bg: 'bg-[#00C8E8]/5', text: 'text-[#00C8E8]' },
+    cyan: { border: 'border-[${_COLORS.primary}]/30', bg: 'bg-[${_COLORS.primary}]/5', text: 'text-[${_COLORS.primary}]' },
     yellow: { border: 'border-yellow-500/30', bg: 'bg-yellow-500/5', text: 'text-yellow-400' },
     red: { border: 'border-red-500/30', bg: 'bg-red-500/5', text: 'text-red-400' },
     green: { border: 'border-emerald-500/30', bg: 'bg-emerald-500/5', text: 'text-emerald-400' },
@@ -70,7 +71,7 @@ export function InfoBanner({ color, label, children }: { color: BannerColor; lab
   return (
     <div className={`border ${c.border} ${c.bg} rounded-lg p-4`}>
       <p className={`text-sm ${c.text} font-bold mb-1`}>{label}</p>
-      <div className="text-sm text-[#8892B0] leading-relaxed">{children}</div>
+      <div className="text-sm text-[${_COLORS.onSurfaceVariant}] leading-relaxed">{children}</div>
     </div>
   );
 }

@@ -13,7 +13,7 @@ export function StitchCard({ children, className = '', onClick }: StitchCardProp
       onClick={onClick}
       className={[
         'rounded-xl border overflow-hidden',
-        onClick ? 'cursor-pointer transition-all hover:border-[#4cd7f6]/30' : '',
+        onClick ? 'cursor-pointer transition-all hover:border-[${COLORS.primary}]/30' : '',
         className,
       ].join(' ')}
       style={{

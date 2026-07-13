@@ -69,7 +69,7 @@ export function CircuitBreakerForm() {
               type="checkbox"
               checked={circuitBreakerEnabled}
               onChange={(e) => preferences.updatePreferences({ circuitBreakerEnabled: e.target.checked })}
-              className="w-4 h-4 accent-[#4cd7f6]"
+              className="w-4 h-4 accent-[${COLORS.primary}]"
             />
           </div>
 

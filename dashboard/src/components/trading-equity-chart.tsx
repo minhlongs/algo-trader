@@ -5,6 +5,7 @@
  * and profit/loss coloring. Handles loading, empty, and error states.
  */
 import { useState, useMemo } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import {
   AreaChart,
   Area,
@@ -56,7 +57,7 @@ export function TradingEquityChart({
     ? filteredData[filteredData.length - 1].value >= filteredData[0].value
     : true;
 
-  const lineColor = isPositive ? '#00E676' : '#FF4466';
+  const lineColor = isPositive ? `${COLORS.profit}` : `${COLORS.loss}`;
   const gradientId = 'equityGradient';
 
   /* Loading state */
@@ -153,10 +154,10 @@ export function TradingEquityChart({
                 <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1E2640" />
+            <CartesianGrid strokeDasharray="3 3" stroke="${COLORS.surface}" />
             <XAxis
               dataKey="date"
-              stroke="#8892B0"
+              stroke="${COLORS.onSurfaceVariant}"
               tick={{ fontSize: 10 }}
               tickLine={false}
               axisLine={false}
@@ -166,7 +167,7 @@ export function TradingEquityChart({
               }}
             />
             <YAxis
-              stroke="#8892B0"
+              stroke="${COLORS.onSurfaceVariant}"
               tick={{ fontSize: 10 }}
               tickLine={false}
               axisLine={false}
@@ -175,13 +176,13 @@ export function TradingEquityChart({
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#111627',
-                border: '1px solid #1E2640',
+                backgroundColor: `${COLORS.surface}`,
+                border: '1px solid ${COLORS.surface}',
                 borderRadius: '0.5rem',
                 fontSize: 12,
-                color: '#eee',
+                color: `${COLORS.onSurface}`,
               }}
-              labelStyle={{ color: '#8892B0' }}
+              labelStyle={{ color: `${COLORS.onSurfaceVariant}` }}
               formatter={(value) => {
                 const v = typeof value === 'number' ? value : 0;
                 return [`$${v.toFixed(2)}`, 'Equity'];
@@ -204,7 +205,7 @@ export function TradingEquityChart({
               strokeWidth={2}
               fill={`url(#${gradientId})`}
               dot={false}
-              activeDot={{ r: 4, fill: lineColor, stroke: '#111627', strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: lineColor, stroke: `${COLORS.surface}`, strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

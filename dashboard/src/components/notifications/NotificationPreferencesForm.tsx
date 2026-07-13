@@ -37,7 +37,7 @@ export function NotificationPreferencesForm() {
                 type="checkbox"
                 checked={preferences.toastEnabled}
                 onChange={() => handleToggle('toastEnabled')}
-                className="w-4 h-4 accent-[#4cd7f6]"
+                className="w-4 h-4 accent-[${COLORS.primary}]"
               />
             </label>
             <label className="flex items-center justify-between cursor-pointer">
@@ -46,7 +46,7 @@ export function NotificationPreferencesForm() {
                 type="checkbox"
                 checked={preferences.emailEnabled}
                 onChange={() => handleToggle('emailEnabled')}
-                className="w-4 h-4 accent-[#4cd7f6]"
+                className="w-4 h-4 accent-[${COLORS.primary}]"
               />
             </label>
             <label className="flex items-center justify-between cursor-pointer">
@@ -55,7 +55,7 @@ export function NotificationPreferencesForm() {
                 type="checkbox"
                 checked={preferences.soundEnabled}
                 onChange={() => handleToggle('soundEnabled')}
-                className="w-4 h-4 accent-[#4cd7f6]"
+                className="w-4 h-4 accent-[${COLORS.primary}]"
               />
             </label>
           </div>

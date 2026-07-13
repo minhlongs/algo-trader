@@ -1,6 +1,7 @@
 // @ts-nocheck
 /** @jsxImportSource react */
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { COLORS } from '../../lib/stitch-design-tokens';
 import { StitchCard, StitchCardHeader, StitchCardBody } from '../ui/stitch-card';
 
 export interface FeatureImportanceData {
@@ -28,7 +29,7 @@ export function FeatureImportanceChart({
   data,
   title = 'Feature Importance',
   maxFeatures = 10,
-  color = '#00FFA3',
+  color = `${COLORS.profit}`,
   height = 400,
   showDescription = false,
 }: FeatureImportanceChartProps) {
@@ -76,17 +77,17 @@ export function FeatureImportanceChart({
             layout="horizontal"
             margin={{ top: 5, right: 30, left: showDescription ? 120 : 80, bottom: 5 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--colors-outline, #3f4e5f)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--colors-outline, ${COLORS.outline})" />
             <XAxis
               type="number"
-              tick={{ fill: '#8892B0' }}
+              tick={{ fill: `${COLORS.onSurfaceVariant}` }}
               tickFormatter={(value: number | string) => value ? `${value}%` : ''}
               domain={[0, 'dataMax']}
             />
             <YAxis
               type="category"
               dataKey="name"
-              tick={{ fill: '#8892B0', fontSize: 12 }}
+              tick={{ fill: `${COLORS.onSurfaceVariant}`, fontSize: 12 }}
               width={showDescription ? 120 : 80}
             />
             <Tooltip content={<CustomTooltip />} />

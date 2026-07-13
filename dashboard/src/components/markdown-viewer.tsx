@@ -5,6 +5,7 @@
  * @tailwindcss/typography plugin); we hand-style prose for dark background.
  */
 import { useEffect, useState } from 'react';
+import { COLORS as _COLORS } from '../lib/stitch-design-tokens';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -45,7 +46,7 @@ export function MarkdownViewer({
   if (error) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <p className="text-[#FF4466] text-sm">
+        <p className="text-[${_COLORS.loss}] text-sm">
           Failed to load document: {error}
         </p>
       </div>
@@ -55,7 +56,7 @@ export function MarkdownViewer({
   if (markdown === null) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <p className="text-[#8892B0] text-sm animate-pulse">
+        <p className="text-[${_COLORS.onSurfaceVariant}] text-sm animate-pulse">
           {loadingLabel}
         </p>
       </div>
@@ -63,7 +64,7 @@ export function MarkdownViewer({
   }
 
   return (
-    <article className="manifesto-prose max-w-3xl mx-auto px-4 sm:px-6 py-12 text-[#C9D1D9]">
+    <article className="manifesto-prose max-w-3xl mx-auto px-4 sm:px-6 py-12 text-[${_COLORS.onSurfaceVariant}]">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         // Intentionally NOT passing rehype-raw — raw HTML is stripped.

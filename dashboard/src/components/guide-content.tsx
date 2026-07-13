@@ -4,6 +4,7 @@
  * Updated: 2026-03-28
  */
 import { GuideInfrastructure } from './guide-section-infrastructure';
+import { COLORS as _COLORS } from '../lib/stitch-design-tokens';
 import { GuideQuickStart } from './guide-section-m1-max-setup';
 import { GuideParameters } from './guide-section-vps-setup';
 import { GuidePricing } from './guide-section-payment-setup';
@@ -13,7 +14,7 @@ import { InfoBanner } from './guide-shared-components';
 
 export function GuideContent() {
   return (
-    <div className="space-y-16 text-[#8892B0]">
+    <div className="space-y-16 text-[${_COLORS.onSurfaceVariant}]">
 
       {/* Banner */}
       <InfoBanner color="cyan" label="CashClaw — Self-Hosted Algo Trading Bot">
@@ -22,13 +23,13 @@ export function GuideContent() {
           CashClaw provides the software + dashboard + updates.
         </p>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div className="bg-[#111627] rounded p-2">
-            <span className="text-[#00E676]">Setup:</span> ~15 minutes
+          <div className="bg-[${_COLORS.surface}] rounded p-2">
+            <span className="text-[${_COLORS.profit}]">Setup:</span> ~15 minutes
           </div>
-          <div className="bg-[#111627] rounded p-2">
-            <span className="text-[#00C8E8]">Cost:</span> VPS $5-20/mo + CashClaw tier
+          <div className="bg-[${_COLORS.surface}] rounded p-2">
+            <span className="text-[${_COLORS.primary}]">Cost:</span> VPS $5-20/mo + CashClaw tier
           </div>
-          <div className="bg-[#111627] rounded p-2">
+          <div className="bg-[${_COLORS.surface}] rounded p-2">
             <span className="text-yellow-400">Payment:</span> Crypto (USDT, BTC, ETH, 100+)
           </div>
         </div>
@@ -36,7 +37,7 @@ export function GuideContent() {
 
       {/* Table of Contents */}
       <nav aria-label="Table of contents">
-        <p className="text-xs text-[#00C8E8] uppercase tracking-widest mb-3">Contents</p>
+        <p className="text-xs text-[${_COLORS.primary}] uppercase tracking-widest mb-3">Contents</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
           {[
             { href: '#how-it-works', label: '1. How CashClaw Works' },
@@ -49,7 +50,7 @@ export function GuideContent() {
             <a
               key={item.href}
               href={item.href}
-              className="text-[#8892B0] hover:text-[#00C8E8] transition-colors"
+              className="text-[${_COLORS.onSurfaceVariant}] hover:text-[${_COLORS.primary}] transition-colors"
             >
               {item.label}
             </a>

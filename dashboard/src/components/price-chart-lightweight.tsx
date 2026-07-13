@@ -3,6 +3,7 @@
  * Auto-resizes via ResizeObserver, cleans up on unmount.
  */
 import { useEffect, useRef } from 'react';
+import { COLORS } from '../lib/stitch-design-tokens';
 import { createChart, ColorType, LineStyle, ISeriesApi } from 'lightweight-charts';
 
 export interface ChartDataPoint {
@@ -18,16 +19,16 @@ interface PriceChartProps {
 }
 
 const CHART_COLORS = {
-  background: '#080B14',
-  text: '#8892B0',
-  grid: '#1E2640',
-  crosshair: '#00C8E8',
+  background: `${COLORS.surface}`,
+  text: `${COLORS.onSurfaceVariant}`,
+  grid: `${COLORS.surface}`,
+  crosshair: `${COLORS.primary}`,
 } as const;
 
 export function PriceChartLightweight({
   data,
   height = 300,
-  color = '#00C8E8',
+  color = `${COLORS.primary}`,
   title,
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
