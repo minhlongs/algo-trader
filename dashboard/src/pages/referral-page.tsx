@@ -124,6 +124,7 @@ const handleRegenerateCode = async () => { if (confirm('Are you sure? This will 
 
 return (
 <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+<a href="#main-content" className={`sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[${COLORS.primary}] focus:text-[${COLORS.onPrimary}]`}>Skip to main content</a>
 {/* Lang toggle */}
 <div className="flex justify-end px-4 sm:px-8 pt-6">
 <button
@@ -138,7 +139,7 @@ aria-label="Toggle language"
 </button>
 </div>
 
-<div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-8 space-y-6">
+<div id="main-content" className="max-w-[1280px] mx-auto px-4 sm:px-8 py-8 space-y-6" role="main">
 <StitchSectionTitle title={t.title} eyebrow={t.eyebrow} />
 
 {error && <div className="p-4 rounded-xl" style={{ backgroundColor: `${COLORS.loss}1a`, color: COLORS.loss }}>{error}</div>}
@@ -157,7 +158,7 @@ aria-label="Toggle language"
 <code className="px-4 py-3 rounded-xl text-sm font-mono" style={{ backgroundColor: COLORS.surface, color: COLORS.primary, border: `1px solid ${COLORS.outline}` }}>
 {referralCode.code}
 </code>
-<StitchButton variant="secondary" onClick={handleCopyCode}>{t.btnCopyCode}</StitchButton>
+<StitchButton variant="secondary" onClick={handleCopyCode} aria-label={`${COPY.en.btnCopyCode}: ${referralCode?.code || ""}`}>{t.btnCopyCode}</StitchButton>
 <StitchButton variant="secondary" onClick={handleRegenerateCode} disabled={loading}>{t.btnRegenerate}</StitchButton>
 </div>
 ) : <StitchButton onClick={generateReferralCode} disabled={loading}>{t.btnGenerate}</StitchButton>}

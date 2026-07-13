@@ -135,7 +135,7 @@ aria-label="Toggle language"
 </div>
 
 {/* Search */}
-<div className="relative max-w-xs mb-6">
+<div className="relative max-w-xs mb-6" role="search">
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-[${COLORS.onSurfaceVariant}]/50">
 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
 </svg>
@@ -149,7 +149,7 @@ aria-label="Search strategies"
 />
 </div>
 
-{/* Stats */}
+{/* Stats (decorative summary) */}
 {data.length > 0 && (
 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
 {[
@@ -171,7 +171,7 @@ tone: data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-[${COLORS.profit}]
 {/* Table */}
 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
 <div className={glassCard('overflow-hidden')}>
-<LeaderboardTable entries={filtered} />
+<LeaderboardTable entries={filtered} aria-label="Strategy performance rankings table" />
 </div>
 </motion.div>
 </div>

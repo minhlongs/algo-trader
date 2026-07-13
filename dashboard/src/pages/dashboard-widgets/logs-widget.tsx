@@ -61,7 +61,7 @@ export function TerminalLogsWidget() {
         <span className="w-2.5 h-2.5 rounded-full bg-loss" />
         <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" />
         <span className="w-2.5 h-2.5 rounded-full bg-profit" />
-        <span className="ml-2">system-log-terminal</span>
+        <span className="ml-2" aria-hidden="true">system-log-terminal</span>
       </div>
       <div
         ref={logContainerRef}

@@ -189,6 +189,7 @@ const pct = Math.max(0, Math.min(100, ((status.totalDays - status.daysRemaining)
 
 return (
 <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+<a href="#main-content" className={`sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[${COLORS.primary}] focus:text-[${COLORS.onPrimary}]`}>Skip to main content</a>
 {/* Lang toggle */}
 <div className="flex justify-end px-4 sm:px-8 pt-6">
 <button
@@ -204,13 +205,13 @@ aria-label="Toggle language"
 </button>
 </div>
 
-<div className="max-w-2xl mx-auto px-4 sm:px-8 py-8 space-y-6">
+<div id="main-content" className="max-w-2xl mx-auto px-4 sm:px-8 py-8 space-y-6" role="main">
 <h1 className="text-white text-2xl font-bold">{lang === 'en' ? 'Trial Status' : 'Trạng Thái Dùng Thử'}</h1>
 
 {error && (
 <div className="bg-[${COLORS.loss}]/10 border border-[${COLORS.loss}]/30 rounded-xl p-3 flex items-center justify-between">
 <span className="text-[${COLORS.loss}] text-xs">{error}</span>
-<button onClick={() => setError(null)} className="text-[${COLORS.loss}]/60 text-xs hover:text-[${COLORS.loss}] ml-3">×</button>
+<button onClick={() => setError(null)} className="text-[${COLORS.loss}]/60 text-xs hover:text-[${COLORS.loss}] ml-3" aria-label="Dismiss error">×</button>
 </div>
 )}
 
@@ -224,7 +225,7 @@ aria-label="Toggle language"
 </div>
 
 <div className="space-y-2">
-<div className="w-full bg-[${COLORS.surface}] rounded-full h-2.5 overflow-hidden">
+<div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label="Trial progress" className="w-full bg-[${COLORS.surface}] rounded-full h-2.5 overflow-hidden">
 <div className="h-full rounded-full transition-all duration-700 ease-out" style={{
 width: `${pct}%`, background: 'linear-gradient(90deg, ${COLORS.primary}, ${COLORS.primary})'
 }} />
