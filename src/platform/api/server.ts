@@ -3,7 +3,7 @@
  * REST + WebSocket gateway for trading operations
  */
 
-import express from 'express';
+import express, { Router } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import * as Sentry from '@sentry/node';
@@ -109,8 +109,10 @@ export class ApiServer {
 // Audit logging middleware (fire-and-forget, captures all responses)
 this.app.use(auditMiddleware);
 
- // Rate limiting (Redis-backed, tier-aware)
- this.app.use(rateLimitMiddleware());
+ // Rate limiting (Redis-backed, tier-aware) — scoped to /api subtree
+ // so /health and /metrics bypass throttling.
+ const limiter = rateLimitMiddleware();
+ this.app.use('/api', limiter);
 
   }
 

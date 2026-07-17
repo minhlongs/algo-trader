@@ -124,7 +124,7 @@ describe('Platform API Contract', () => {
     });
 
     it('rate limiter middleware exists', () => {
-      const rlFile = join(SRC_ROOT, 'platform', 'middleware', 'distributed-rate-limiter.ts');
+      const rlFile = join(SRC_ROOT, 'forest', 'rate-limit', 'index.ts');
       expect(existsSync(rlFile), 'rate limiter middleware must exist').toBe(true);
     });
 

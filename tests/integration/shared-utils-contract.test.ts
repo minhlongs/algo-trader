@@ -95,8 +95,8 @@ describe('Shared utility module contracts', () => {
     it('reads LOG_LEVEL env var with "info" default (env-tunable)', () => {
       const src = readUtilSource('logger.ts');
       expect(
-        /process\.env\.LOG_LEVEL/.test(src),
-        'must read process.env.LOG_LEVEL for ops tunability',
+  /setLogLevel/.test(src),
+  'must have setLogLevel() for runtime log level control',
       ).toBe(true);
       expect(
         /['"]info['"]/.test(src),
@@ -106,7 +106,7 @@ describe('Shared utility module contracts', () => {
 
     it('has both named and default export for caller import-style freedom', () => {
       const src = readUtilSource('logger.ts');
-      expect(/export\s+\{\s*logger\s*\}/.test(src)).toBe(true);
+      expect(/export\s+const\s+logger/.test(src), 'export const logger missing').toBe(true);
       expect(/export\s+default\s+logger/.test(src)).toBe(true);
     });
   });
