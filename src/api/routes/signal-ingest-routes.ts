@@ -15,7 +15,6 @@
  */
 
 import { Router, Request, Response } from 'express';
-import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { verifyHmacSha256 } from '../../shared/utils/hmac-verifier';
 import { SignalPublisher } from '../../signal/signal-publisher';
@@ -38,13 +37,6 @@ const ingestBodySchema = z.object({
 });
 
 /** Rate limit: 60 requests/min — daemon posts ≤1/min, headroom for retries */
-const ingestRateLimit = rateLimit({
-  windowMs: 60_000,
-  max: 60,
-  message: { error: 'Rate limit exceeded' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 /**
  * Factory: create the ingest router with injected SignalPublisher.
@@ -65,7 +57,7 @@ export function createSignalIngestRouter(store: SignalStore): Router {
    * Body: { market, side, size, confidence, strategy, ttlSec, ts? }
    * Headers: X-Signature-256: sha256=<hex>, X-Timestamp: <unix_seconds>
    */
-  router.post('/ingest', ingestRateLimit, async (req: Request, res: Response) => {
+  router.post('/ingest', async (req: Request, res: Response) => {
     const secret = process.env.QWEN_INGEST_HMAC_SECRET;
     if (!secret) {
       logger.error('[SignalIngest] QWEN_INGEST_HMAC_SECRET not configured');

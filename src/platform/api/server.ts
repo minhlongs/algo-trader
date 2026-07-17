@@ -6,7 +6,6 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 import * as Sentry from '@sentry/node';
 import { Server } from 'http';
 import { logger } from '../../shared/utils/logger';
@@ -42,12 +41,12 @@ import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
 import { errorHandler } from '../middleware/error-handler';
+import { auditMiddleware } from '../../seed/security/audit-middleware';
+import { rateLimitMiddleware } from '../../forest/rate-limit';
 
 export interface ApiConfig {
   port: number;
   corsOrigin: string | string[];
-  rateLimitWindowMs: number;
-  rateLimitMax: number;
 }
 
 export class ApiServer {
@@ -68,8 +67,6 @@ export class ApiServer {
             'https://sophia.agencyos.network',
             'https://raas-landing.pages.dev',
           ],
-      rateLimitWindowMs: 60000, // 1 minute
-      rateLimitMax: 100, // 100 requests per minute
       ...config,
     };
 
@@ -109,13 +106,12 @@ export class ApiServer {
     // Prometheus metrics middleware (track all requests)
     this.app.use(metricsMiddleware);
 
-    // Rate limiting
-    const limiter = rateLimit({
-      windowMs: this.config.rateLimitWindowMs,
-      max: this.config.rateLimitMax,
-      message: { error: 'Too many requests, please try again later' },
-    });
-    this.app.use('/api', limiter);
+// Audit logging middleware (fire-and-forget, captures all responses)
+this.app.use(auditMiddleware);
+
+ // Rate limiting (Redis-backed, tier-aware)
+ this.app.use(rateLimitMiddleware());
+
   }
 
   /**

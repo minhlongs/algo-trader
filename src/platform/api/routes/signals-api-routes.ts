@@ -11,7 +11,6 @@
  */
 
 import { Router, Request, Response } from 'express';
-import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import RaasGate from '../../../desk/gate/raas-gate';
@@ -52,13 +51,6 @@ const feedQuerySchema = z.object({
 // ---------------------------------------------------------------------------
 // Rate limiters
 // ---------------------------------------------------------------------------
-const feedRateLimit = rateLimit({
-  windowMs: 60_000,
-  max: 30,
-  message: { error: 'Rate limit exceeded for signal feed' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -128,7 +120,7 @@ signalsApiRouter.post('/subscribe', requireSignalTier('SIGNALS_BASIC'), (req: Re
  * Rate-limited: 30 req/min per subscriber.
  * Results are cached, filtered by the subscriber's tier, and paginated.
  */
-signalsApiRouter.get('/feed', requireSignalTier('SIGNALS_BASIC'), feedRateLimit, async (req: Request, res: Response) => {
+signalsApiRouter.get('/feed', requireSignalTier('SIGNALS_BASIC'), async (req: Request, res: Response) => {
   try {
     const identity = resolveSubscriberId(req);
     if (!identity) {

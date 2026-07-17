@@ -6,6 +6,8 @@ export default defineConfig({
       '@shared': '/src/shared',
       '@desk': '/src/desk',
       '@platform': '/src/platform',
+    '@forest': '/src/forest',
+    '@redis': '/src/redis/index',
     },
   },
   test: {

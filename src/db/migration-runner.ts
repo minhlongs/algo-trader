@@ -14,6 +14,7 @@ import * as migration020 from './migrations/020_db_performance_optimizations';
 import * as migration025 from './migrations/025-marketplace-schema';
 import * as migration026 from './migrations/026-create-ai-audit-tables';
 import * as migration030 from './migrations/030_create_marketplace_tables';
+import * as migration038 from './migrations/038-audit-log';
 
 // Migration interface
 interface Migration {
@@ -135,6 +136,7 @@ const MIGRATIONS: Migration[] = [
  migration030,
  createSqlMigration('031_add_marketplace_subscription_payment.sql', '031_add_marketplace_subscription_payment', 'Marketplace subscription and payment tables'),
  createSqlMigration('032_add_marketplace_payout_address.sql', '032_add_marketplace_payout_address', 'Marketplace payout address support'),
+  migration038,
 ];
 
 /**

@@ -1,5 +1,5 @@
 import { query } from '../../shared/db/postgres-client';
-import { encrypt, decrypt } from '../../lib/credentials-crypto';
+import { encryptString, decryptString } from '../../seed/security/crypto';
 
 export interface TenantCredentials {
   apiKey: string;
@@ -13,10 +13,10 @@ export class TenantCredentialsRepository {
    * Save (insert or update) tenant credentials
    */
   async save(subscriberId: string, creds: TenantCredentials): Promise<void> {
-    const encryptedApiKey = encrypt(creds.apiKey);
-    const encryptedApiSecret = encrypt(creds.apiSecret);
-    const encryptedPassphrase = encrypt(creds.passphrase);
-    const encryptedPrivateKey = encrypt(creds.privateKey);
+    const encryptedApiKey = encryptString(creds.apiKey);
+    const encryptedApiSecret = encryptString(creds.apiSecret);
+    const encryptedPassphrase = encryptString(creds.passphrase);
+    const encryptedPrivateKey = encryptString(creds.privateKey);
     const now = new Date();
 
     const sql = `
@@ -66,10 +66,10 @@ export class TenantCredentialsRepository {
     }
 
     return {
-      apiKey: decrypt(row.api_key),
-      apiSecret: decrypt(row.api_secret),
-      passphrase: decrypt(row.passphrase),
-      privateKey: decrypt(row.private_key),
+      apiKey: decryptString(row.api_key),
+      apiSecret: decryptString(row.api_secret),
+      passphrase: decryptString(row.passphrase),
+      privateKey: decryptString(row.private_key),
     };
   }
 
