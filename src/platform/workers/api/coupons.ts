@@ -9,7 +9,7 @@
  *   code TEXT PK, discount_pct INTEGER, tier_lock TEXT, free_access INTEGER, expires_at TEXT, usage_count INTEGER
  */
 
-import { logger } from '../../../desk/utils/logger';
+import { logger } from '../../../shared/utils/logger';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 
 type Env = { CACHE: KVNamespace; SUBSCRIBERS?: D1Database; JWT_SECRET?: string; ALLOWED_ORIGINS?: string; NOWPAYMENTS_IPN_SECRET?: string; ENVIRONMENT?: string; VPS_ORIGIN?: string; REGION_ROUTING_ENABLED?: string; };

@@ -12,7 +12,7 @@
  */
 
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
-import { logger } from '../../../desk/utils/logger';
+import { logger } from '../../../shared/utils/logger';
 
 type Env = { CACHE: KVNamespace; SUBSCRIBERS?: D1Database; JWT_SECRET?: string; ALLOWED_ORIGINS?: string; NOWPAYMENTS_IPN_SECRET?: string; ENVIRONMENT?: string; VPS_ORIGIN?: string; REGION_ROUTING_ENABLED?: string; };
 

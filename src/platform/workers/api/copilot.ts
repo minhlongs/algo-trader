@@ -15,7 +15,7 @@
  * Handler timeout: 5s each via Promise.race.
  */
 
-import { logger } from '../../../desk/utils/logger';
+import { logger } from '../../../shared/utils/logger';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 
 type Env = {

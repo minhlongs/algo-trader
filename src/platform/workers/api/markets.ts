@@ -11,7 +11,7 @@
  * GET  /api/markets                — public market list placeholder
  */
 
-import { logger } from '../../../desk/utils/logger';
+import { logger } from '../../../shared/utils/logger';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 
 type Env = {
