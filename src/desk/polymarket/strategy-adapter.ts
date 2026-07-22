@@ -74,6 +74,7 @@ export class StrategyAdapter {
       price: req.price,
       description: `${this.strategyName}:${req.conditionId.slice(0, 12)}`,
       confidence: 0.7,
+      timestamp: Date.now(),
     };
 
     const result = await this.bridge.onSignal(signal);
@@ -122,6 +123,7 @@ export class StrategyAdapter {
       price: req.price,
       description: `${this.strategyName}:exit:${req.reason}`,
       confidence: 1.0,
+      timestamp: Date.now(),
     };
 
     const result = await this.bridge.onSignal(signal);

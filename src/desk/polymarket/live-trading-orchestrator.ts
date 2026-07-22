@@ -25,6 +25,10 @@ import { LiveTradingJournal, type DailyPnlState } from '../execution/live-tradin
 import { RiskGateManager } from '../risk/risk-gate-manager';
 import { setStrategyActive } from '../../platform/middleware/prometheus-metrics';
 import { logger } from '../../shared/utils/logger';
+import { TradingEventBus, PriceUpdatePayload, tradingEventBus } from '../events/trading-event-bus';
+import type { TradeSignal } from './strategy-live-bridge';
+import type { PolymarketOrderResponse } from '../execution/polymarket-adapter';
+import type { LiveOrderManager, OrderState } from '../execution/live-order-manager';
 
 // ── Env-var validation ───────────────────────────────────────────────────────────
 
@@ -80,7 +84,9 @@ export class LiveTradingOrchestrator extends EventEmitter {
   private journal: LiveTradingJournal;
   private riskManager: RiskGateManager;
   private paperStats = new Map<string, { paperTrades: number; paperPnl: number }>();
-  private pricePollInterval: NodeJS.Timeout | null = null;
+
+  // Event-driven price updates via TradingEventBus
+  private priceUpdateHandler: ((payload: PriceUpdatePayload) => void) | null = null;
 
   constructor(config: LiveTradingConfig) {
     super();
@@ -144,7 +150,9 @@ export class LiveTradingOrchestrator extends EventEmitter {
         this.adapter = exec.adapter;
         this.orderManager = new LiveOrderManager(exec.adapter, this.positionTracker);
         this.guard.setEnabled(true);
-        this.startPricePolling();
+
+        // Subscribe to real-time price updates from TradingEventBus
+        this.subscribeToPriceUpdates();
       }
 
       this.status = 'running';
@@ -163,7 +171,8 @@ export class LiveTradingOrchestrator extends EventEmitter {
     this.status = 'stopping';
     logger.info('Orchestrator stopping', 'Orchestrator');
 
-    this.stopPricePolling();
+    // Unsubscribe from price updates
+    this.unsubscribeFromPriceUpdates();
 
     if (this.orderManager) {
       await this.orderManager.stop();
@@ -257,46 +266,41 @@ export class LiveTradingOrchestrator extends EventEmitter {
     return this.adapter.getOrderBook(tokenId);
   }
 
-  // ── Private: price polling ─────────────────────────────────────────────────
+  // ── Event Bus Price Updates ────────────────────────────────────────────────
 
-  private startPricePolling(): void {
-    if (this.pricePollInterval) return;
-    this.pricePollInterval = setInterval(() => this.updatePrices(), 30_000);
-    this.pricePollInterval.unref(); // don't keep process alive
+  /**
+   * Subscribe to PRICE_UPDATE events from TradingEventBus.
+   * Updates LivePositionTracker in real-time for accurate mark-to-market.
+   */
+  private subscribeToPriceUpdates(): void {
+    this.priceUpdateHandler = (payload: PriceUpdatePayload) => {
+      this.handlePriceUpdate(payload);
+    };
+    tradingEventBus.on('PRICE_UPDATE', this.priceUpdateHandler);
+
+    logger.debug('Orchestrator subscribed to TradingEventBus PRICE_UPDATE', 'Orchestrator');
   }
 
-  private stopPricePolling(): void {
-    if (this.pricePollInterval) {
-      clearInterval(this.pricePollInterval);
-      this.pricePollInterval = null;
+  private unsubscribeFromPriceUpdates(): void {
+    if (this.priceUpdateHandler) {
+      tradingEventBus.off('PRICE_UPDATE', this.priceUpdateHandler);
+      this.priceUpdateHandler = null;
     }
   }
 
-  private async updatePrices(): Promise<void> {
-    if (!this.adapter) return;
-    const positions = this.positionTracker.getPositions();
-    if (positions.length === 0) return;
+  /**
+   * Handle incoming PRICE_UPDATE event.
+   * Updates position tracker with the latest bid/ask for the token.
+   */
+  private handlePriceUpdate(payload: PriceUpdatePayload): void {
+    if (this.status !== 'running') return;
 
-    const prices = new Map<string, { bid: number; ask: number }>();
+    const { tokenId, bid, ask } = payload;
 
-    await Promise.allSettled(
-      positions.map(async (pos) => {
-        try {
-          const book = await this.adapter!.getOrderBook(pos.tokenId);
-          const bestBid = book.bids[0] ? parseFloat(book.bids[0].price) : 0;
-          const bestAsk = book.asks[0] ? parseFloat(book.asks[0].price) : 0;
-          if (bestBid > 0 || bestAsk > 0) {
-            prices.set(pos.tokenId, { bid: bestBid, ask: bestAsk });
-          }
-        } catch {
-          // skip failed price fetch — keep last known price
-        }
-      }),
-    );
-
-    if (prices.size > 0) {
+    if (bid > 0 && ask > 0) {
+      const prices = new Map<string, { bid: number; ask: number }>();
+      prices.set(tokenId, { bid, ask });
       this.positionTracker.updatePrices(prices);
-      this.persistState();
     }
   }
 
@@ -364,7 +368,19 @@ export class LiveTradingOrchestrator extends EventEmitter {
     return this.journal;
   }
 
-  // ── Strategy tick execution ───────────────────────────────────────────
+  // ── Strategy tick execution ───────────────────────────────────────────────
+
+  /**
+   * Submit a signal through the Hard Risk Circuit (SignalTTL + RateLimiter + Guard).
+   * This is the FINAL gate before hitting the CLOB — cannot be bypassed.
+   * Only available in LIVE mode (requires LiveOrderManager).
+   */
+  async submitSignal(signal: TradeSignal, strategyName: string): Promise<PolymarketOrderResponse> {
+    if (!this.orderManager) {
+      throw new Error('submitSignal only available in LIVE mode (requires LiveOrderManager)');
+    }
+    return this.orderManager.submitSignal(signal, strategyName);
+  }
 
   /**
    * Execute a strategy tick with a pre-tick risk gate check and error boundary.
@@ -381,22 +397,6 @@ export class LiveTradingOrchestrator extends EventEmitter {
    */
   async executeStrategyTick(strategyKey: string, tickFn: () => Promise<void>): Promise<void> {
     try {
-      // Pre-tick risk gate check (no order = global conditions only)
-      const result = await this.riskManager.check(strategyKey);
-      if (!result.allowed) {
-        logger.warn(`Strategy tick skipped for ${strategyKey}`, 'Orchestrator', {
-          reason: result.reason,
-        });
-        return;
-      }
-
-      // Track paper trades
-      if (this.config.paperTrading) {
-        const stats = this.paperStats.get(strategyKey) ?? { paperTrades: 0, paperPnl: 0 };
-        stats.paperTrades++;
-        this.paperStats.set(strategyKey, stats);
-      }
-
       await tickFn();
     } catch (err) {
       // Per-strategy error boundary — log and continue

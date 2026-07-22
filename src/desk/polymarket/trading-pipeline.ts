@@ -18,6 +18,7 @@ import { PredictionExecutor } from'./prediction-executor';
 import { MeanReversionStrategy } from'../../strategies/polymarket/mean-reversion';
 import { logger } from '../core/logger';
 import type { StrategyConfig } from '../core/types';
+import { tradingEventBus, TradingEventBus } from '../../events/trading-event-bus';
 
 export interface PipelineConfig {
   /** Paper trading mode — defaults to true (safe) */
@@ -58,6 +59,7 @@ export class TradingPipeline extends EventEmitter {
   private meanReversion: MeanReversionStrategy | null = null;
   private orderManager!: OrderManager;
   private strategyRunner!: StrategyRunner;
+  private eventBus!: TradingEventBus;
 
   constructor(config: PipelineConfig = {}) {
     super();
@@ -123,6 +125,11 @@ export class TradingPipeline extends EventEmitter {
       logger.error('Failed to cancel orders during shutdown', 'TradingPipeline', { err: String(err) });
     }
 
+    // Cleanup event bus subscriptions
+    if ((this as any)._priceUpdateCleanup) {
+      (this as any)._priceUpdateCleanup();
+    }
+
     this.orderManager.stopStalePoll();
     this.orderbookStream.disconnect();
 
@@ -139,8 +146,11 @@ export class TradingPipeline extends EventEmitter {
   private initComponents(): void {
     const db = getDatabase(this.cfg.dbPath);
 
+    // Initialize the event bus first (singleton, but we keep a reference)
+    this.eventBus = tradingEventBus;
+
     this.clobClient      = new ClobClient(this.cfg.privateKey || 'paper-key', this.cfg.chainId);
-    this.orderbookStream = new OrderBookStream();
+    this.orderbookStream = new OrderBookStream(this.eventBus);
     this.scanner         = new MarketScanner(this.clobClient);
     this.orderManager    = new OrderManager(this.clobClient);
     this.strategyRunner  = new StrategyRunner();
@@ -307,17 +317,23 @@ private getMarketMakerInstance(): MarketMakerStrategy | null {
   }
 
   private wireOrderbookStream(): void {
-    this.orderbookStream.on('disconnected', () => {
-      logger.warn('Orderbook stream disconnected', 'TradingPipeline');
-      this.emit('stream_disconnected');
-    });
-
-    // Feed price updates to mean reversion strategy (Layer 3)
-    this.orderbookStream.on('update', (data: { tokenId: string; bestBid: number; bestAsk: number }) => {
-      if (this.meanReversion && data.bestBid > 0 && data.bestAsk > 0) {
-        this.meanReversion.onPriceUpdate(data.tokenId, (data.bestBid + data.bestAsk) / 2);
+    // Listen for connection status from OrderBookStream via event bus
+    this.eventBus.onConnectionStatus((payload) => {
+      if (payload.component === 'OrderBookStream' && payload.status === 'disconnected') {
+        logger.warn('Orderbook stream disconnected', 'TradingPipeline');
+        this.emit('stream_disconnected');
       }
     });
+
+    // Feed price updates to mean reversion strategy (Layer 3) via event bus
+    const cleanupPriceUpdates = this.eventBus.onPriceUpdate((data) => {
+      if (this.meanReversion && data.bid > 0 && data.ask > 0) {
+        this.meanReversion.onPriceUpdate(data.tokenId, (data.bid + data.ask) / 2);
+      }
+    });
+
+    // Store cleanup function for potential shutdown
+    (this as any)._priceUpdateCleanup = cleanupPriceUpdates;
 
     this.orderbookStream.connect();
     logger.info('Orderbook stream connected', 'TradingPipeline');

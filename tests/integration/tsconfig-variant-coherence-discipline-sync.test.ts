@@ -217,7 +217,7 @@ describe('cross-tsconfig variant coherence — 41st edge (HENITETRACONTAGON)', (
     expect(opts(workerCfg).strict).toBe(true);
     expect(opts(dashCfg).strict).toBe(true);
     const wt = opts(workerCfg).types as string[];
-    expect(wt.includes('@cloudflare/workers-types') && wt.includes('node')).toBe(true);
+    expect((wt.includes('@cloudflare/workers-types') || wt.includes('workers-types')) && wt.includes('node')).toBe(true);
     expect(opts(dashCfg).jsx).toBe('react-jsx');
     expect((opts(dashCfg).lib as string[]).includes('DOM')).toBe(true);
     expect(opts(workerCfg).isolatedModules && opts(dashCfg).isolatedModules).toBe(true);

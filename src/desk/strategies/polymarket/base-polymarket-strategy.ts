@@ -1,7 +1,7 @@
 /**
- * Base Polymarket Strategy
- * Extracts common patterns shared across 32 strategy implementations:
- * position management, TP/SL exits, cooldowns, event emission, tick lifecycle.
+ * Base Polymarket Strategy - Reactive Edition
+ * Extracts common patterns shared across strategy implementations:
+ * position management, TP/SL exits, cooldowns, event emission, reactive execution.
  *
  * Migration path (per-strategy, incremental):
  * 1. Extend BasePolymarketStrategy instead of hand-rolling factory
@@ -67,11 +67,22 @@ export interface TradeEvent {
   strategy: StrategyName;
 }
 
+/** Context passed to execute() when triggered by a specific price update */
+export interface ExecutionContext {
+  /** Token ID that triggered this execution (if reactive) */
+  triggeringTokenId?: string;
+  /** Whether this is a reactive execution (vs scheduled) */
+  isReactive?: boolean;
+}
+
 // ── Base class ────────────────────────────────────────────────────────────────
 
 export abstract class BasePolymarketStrategy {
   protected readonly positions: OpenPosition[] = [];
   protected readonly cooldowns = new Map<string, number>();
+
+  // Cache for latest prices from reactive updates (avoids re-fetching orderbook)
+  private readonly priceCache = new Map<string, { bid: number; ask: number; mid: number; timestamp: number }>();
 
   constructor(
     protected readonly deps: StrategyDeps,
@@ -79,15 +90,15 @@ export abstract class BasePolymarketStrategy {
     protected readonly strategyName: StrategyName,
   ) {}
 
-  // ── Abstract methods (strategy-specific) ──────────────────────────────────
+  // ── Abstract methods (strategy-specific) ────────────────────────────────────
 
-  /** Strategy-specific entry scanning. Called each tick after exit checks. */
+  /** Strategy-specific entry scanning. Called each execution after exit checks. */
   protected abstract scanEntries(markets: GammaMarket[]): Promise<void>;
 
   /**
    * Override to add strategy-specific exit conditions beyond TP/SL/maxHold.
    * @param _pos   — the open position being checked
-   * @param _currentPrice — mid price from latest orderbook fetch
+   * @param _currentPrice — mid price from latest orderbook fetch (or cached price)
    * @param _book   — the full orderbook snapshot (optional, for depth/ratio checks)
    * Return { exit: true, reason: '...' } or { exit: false }.
    * Default: never exit beyond TP/SL/maxHold.
@@ -100,7 +111,7 @@ export abstract class BasePolymarketStrategy {
     return { exit: false, reason: '' };
   }
 
-  // ── Position management ───────────────────────────────────────────────────
+  // ── Position management ────────────────────────────────────────────────────
 
   protected hasPosition(conditionId: string): boolean {
     return this.positions.some(p => p.conditionId === conditionId);
@@ -119,7 +130,64 @@ export abstract class BasePolymarketStrategy {
     this.cooldowns.set(conditionId, Date.now() + this.config.cooldownMs);
   }
 
-  // ── Price helpers ─────────────────────────────────────────────────────────
+  // ── Price cache for reactive updates ────────────────────────────────────────
+
+  /**
+   * Update cached price for a token from a reactive PRICE_UPDATE event.
+   * Called by StrategyRunner when a price update arrives via TradingEventBus.
+   * This avoids the strategy needing to re-fetch the orderbook.
+   */
+  updatePrice(tokenId: string, bid: number, ask: number): void {
+    const mid = bid > 0 && ask > 0 ? (bid + ask) / 2 : 0;
+    this.priceCache.set(tokenId, { bid, ask, mid, timestamp: Date.now() });
+  }
+
+  /**
+   * Get cached price for a token, or fetch from CLOB if not cached/stale.
+   * Stale threshold: 5 seconds.
+   */
+  protected async getCurrentPrice(tokenId: string): Promise<{ mid: number; bid: number; ask: number; fromCache: boolean }> {
+    const cached = this.priceCache.get(tokenId);
+    const now = Date.now();
+
+    if (cached && now - cached.timestamp < 5_000) {
+      return { mid: cached.mid, bid: cached.bid, ask: cached.ask, fromCache: true };
+    }
+
+    // Cache miss or stale - fetch from CLOB
+    try {
+      const book = await this.deps.clob.getOrderBook(tokenId);
+      const { bid, ask, mid } = this.bestBidAsk(book);
+      this.priceCache.set(tokenId, { bid, ask, mid, timestamp: now });
+      return { mid, bid, ask, fromCache: false };
+    } catch {
+      // Return cached even if stale rather than failing
+      if (cached) {
+        return { mid: cached.mid, bid: cached.bid, ask: cached.ask, fromCache: true };
+      }
+      return { mid: 0, bid: 0, ask: 0, fromCache: false };
+    }
+  }
+
+  /**
+   * Get cached orderbook snapshot for a token, if available.
+   * Returns undefined if not cached or stale (>5s).
+   */
+  protected getCachedOrderbook(tokenId: string): RawOrderBook | undefined {
+    const cached = this.priceCache.get(tokenId);
+    const now = Date.now();
+    if (cached && now - cached.timestamp < 5_000) {
+      // Reconstruct minimal orderbook from cached bid/ask
+      return {
+        bids: cached.bid > 0 ? [{ price: cached.bid.toString(), size: '0' }] : [],
+        asks: cached.ask > 0 ? [{ price: cached.ask.toString(), size: '0' }] : [],
+        timestamp: cached.timestamp,
+      };
+    }
+    return undefined;
+  }
+
+  // ── Price helpers ──────────────────────────────────────────────────────────
 
   protected bestBidAsk(book: RawOrderBook): { bid: number; ask: number; mid: number } {
     const bid = book.bids.length > 0 ? parseFloat(book.bids[0].price) : 0;
@@ -127,7 +195,7 @@ export abstract class BasePolymarketStrategy {
     return { bid, ask, mid: (bid + ask) / 2 };
   }
 
-  // ── Entry ─────────────────────────────────────────────────────────────────
+  // ── Entry ──────────────────────────────────────────────────────────────────
 
   protected async enterPosition(
     tokenId: string,
@@ -173,11 +241,12 @@ export abstract class BasePolymarketStrategy {
     });
   }
 
-  // ── Exit ──────────────────────────────────────────────────────────────────
+  // ── Exit ────────────────────────────────────────────────────────────────────
 
   /**
    * Check all open positions for exit conditions (TP/SL/maxHold + custom).
-   * Called at the start of every tick.
+   * Called at the start of every execution.
+   * Uses cached prices from reactive updates when available.
    */
   protected async checkExits(): Promise<void> {
     const now = Date.now();
@@ -188,13 +257,12 @@ export abstract class BasePolymarketStrategy {
       let shouldExit = false;
       let reason = '';
 
-      // Get current mid price and orderbook
-      let currentPrice: number;
-      let book: RawOrderBook | undefined;
-      try {
-        book = await this.deps.clob.getOrderBook(pos.tokenId);
-        currentPrice = this.bestBidAsk(book).mid;
-      } catch {
+      // Get current price (prefers cached from reactive updates)
+      const { mid: currentPrice, fromCache } = await this.getCurrentPrice(pos.tokenId);
+      const book = this.getCachedOrderbook(pos.tokenId);
+
+      if (currentPrice === 0) {
+        // No price available, skip exit check for this position
         continue;
       }
 
@@ -226,6 +294,12 @@ export abstract class BasePolymarketStrategy {
       if (shouldExit) {
         await this.exitPosition(pos, currentPrice, reason);
         toRemove.push(i);
+      } else if (fromCache) {
+        logger.debug('Position check (cached price)', this.strategyName, {
+          conditionId: pos.conditionId,
+          currentPrice: currentPrice.toFixed(4),
+          gain: (gain * 100).toFixed(2) + '%',
+        });
       }
     }
 
@@ -274,30 +348,33 @@ export abstract class BasePolymarketStrategy {
     }
   }
 
-  // ── Event emission ────────────────────────────────────────────────────────
+  // ── Event emission ──────────────────────────────────────────────────────────
 
   protected emitTrade(trade: TradeEvent): void {
     this.deps.eventBus.emit('trade.executed', { trade });
   }
 
-  // ── Tick lifecycle ────────────────────────────────────────────────────────
+  // ── Execution lifecycle ────────────────────────────────────────────────────
 
   /**
-   * Main tick: scan trending markets, check exits, scan entries.
-   * Strategies can override this for different tick logic.
+   * Main execution: check exits, scan trending markets, scan entries.
+   * Strategies can override this for different execution logic.
+   * Now accepts optional context for reactive executions.
    */
-  async execute(): Promise<void> {
+  async execute(context?: ExecutionContext): Promise<void> {
     try {
       await this.checkExits();
 
       const markets = await this.deps.gamma.getTrending(15);
       await this.scanEntries(markets);
 
-      logger.debug('Tick complete', this.strategyName, {
+      logger.debug('Execution complete', this.strategyName, {
         openPositions: this.positions.length,
+        reactive: context?.isReactive ?? false,
+        triggerToken: context?.triggeringTokenId,
       });
     } catch (err) {
-      logger.error('Tick failed', this.strategyName, { err: String(err) });
+      logger.error('Execution failed', this.strategyName, { err: String(err) });
     }
   }
 

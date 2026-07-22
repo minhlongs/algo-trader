@@ -48,6 +48,7 @@ export class LiveOrderManagerProxy implements OrderManager {
       size: parseFloat(String(params.size)),
       description: `${this.strategyName}:order#${this.orderCount}`,
       confidence: 0.7,
+      timestamp: Date.now(),
     };
 
     const result = await this.bridge.onSignal(signal);

@@ -30,6 +30,8 @@ import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
 import { analyticsRouter } from './routes/analytics-routes';
 import { subscriberPnlRouter } from './routes/subscriber-pnl-routes';
+import { credentialsRouter } from './routes/credentials-routes';
+import { personalizationRouter } from './routes/personalization-routes';
 import { enterpriseInquiryRouter } from './routes/enterprise-inquiry-routes';
 import { createSignalIngestRouter } from './routes/signal-ingest-routes';
 import { createAdminQwenRouter } from './routes/admin-qwen-routes';
@@ -155,7 +157,13 @@ this.app.use(auditMiddleware);
     this.app.use('/api/v1/subscriber', subscriberPnlRouter);
     this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
 
-    // Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon
+    // Personalization: tiered widget config, A/B variant split, event analytics
+this.app.use('/api/personalization', personalizationRouter);
+
+// Tenant credential CRUD — encrypted at rest, audited, rate-limited
+this.app.use('/api/v1/subscriber/credentials', credentialsRouter);
+
+// Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon
     // Phase 04: stub replaced with real D1-backed SignalStoreD1
     const signalIngestRouter = createSignalIngestRouter(signalStoreD1);
     this.app.use('/api/v1/signals/ingest', signalIngestRouter);

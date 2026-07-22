@@ -9,9 +9,16 @@
     "incremental": false,
     "noEmitOnError": false,
     "skipLibCheck": true,
-    "strict": false,
-    "typeRoots": ["./node_modules/@types", "./node_modules/@cloudflare"],
-    "types": ["node", "workers-types"]
+    "strict": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./node_modules/@cloudflare"
+    ],
+    "types": [
+      "node",
+      "workers-types"
+    ],
+    "isolatedModules": true
   },
   "include": [
     "src/platform/workers/**/*.ts",

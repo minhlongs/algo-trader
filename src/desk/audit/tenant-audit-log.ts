@@ -1,24 +1,19 @@
-/** Stub: Tenant-scoped audit log append helper. */
-export interface AuditLogEntry {
-  tenantId: string;
-  eventType: string;
-  actor: string;
-  message: string;
-  metadata?: Record<string, unknown>;
-}
-
-export async function appendTenantAuditLog(
-  tenantId: string,
-  eventType: string,
-  actor: string,
-  message: string,
-  metadata?: Record<string, unknown>,
-): Promise<void> {
-  // no-op stub — real implementation writes to persistent store
-}
-
-export class TenantAuditLog {
-  async append(entry: Omit<AuditLogEntry, 'tenantId'>, tenantId: string): Promise<void> {
-    await appendTenantAuditLog(tenantId, entry.eventType, entry.actor, entry.message, entry.metadata);
-  }
-}
+/**
+ * Re-export from the production audit module.
+ *
+ * This module previously contained a no-op stub that silently dropped all
+ * audit entries. Callers importing from this path (`../audit/tenant-audit-log`)
+ * — including the arbitrage trading loop and order executor — were writing
+ * nothing to the database.
+ *
+ * All consumers should now resolve to the real chain-hash implementation
+ * in `src/platform/audit/tenant-audit-log.ts`.
+ */
+export {
+  type TenantAuditLog,
+  type AuditLogEntry,
+  canonicalJsonStringify,
+  computeTenantAuditHash,
+  appendTenantAuditLog,
+  verifyTenantChain,
+} from '../../platform/audit/tenant-audit-log';

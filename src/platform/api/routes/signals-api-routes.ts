@@ -12,25 +12,13 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
-import RaasGate from '../../../desk/gate/raas-gate';
-import { LicenseTier } from '../../../shared/types/license';
 import { requireSignalTier } from '../../middleware/feature-gate';
-import { signalTtlEnforcer } from '../../../desk/signal/signal-ttl-enforcer';
-import { filterSignalsForTier } from '../../../desk/signal/signal-tier-filter';
-import { getCachedSignals, setCachedSignals } from '../../../desk/signal/signal-rest-cache';
-import type { TierKey, SignalSubscription } from '../../../desk/signal/signal-types';
-import type { Signal } from '../../../desk/signal/signal-types';
+import { resolveSubscriberId } from '../../middleware/signal-tier-resolver';
+import { signalSubscriberRepo } from '../../signal/signal-subscriber-repository-d1';
+import type { TierKey } from '../../../desk/signal/signal-types';
 import { logger } from '../../../shared/utils/logger';
 
 export const signalsApiRouter: Router = Router();
-const gate = RaasGate.getInstance();
-
-// ---------------------------------------------------------------------------
-// In-memory stores (replace with D1/SQLite in production wiring)
-// ---------------------------------------------------------------------------
-const subscriptions: Map<string, SignalSubscription> = new Map();
-const webhooks: Map<string, string> = new Map(); // subscriberId -> webhook URL
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -49,31 +37,6 @@ const feedQuerySchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Rate limiters
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Resolve subscriber ID and tier from the Bearer API key header. */
-function resolveSubscriberId(req: Request): { subscriberId: string; tier: TierKey } | null {
-  const authHeader = req.headers.authorization ?? '';
-  const apiKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!apiKey) return null;
-
-  const license = gate.validateApiKey(apiKey);
-  if (!license) return null;
-
-  let tier: TierKey = 'FREE';
-  if (license.tier === LicenseTier.ENTERPRISE) tier = 'ENTERPRISE';
-  else if (license.tier === LicenseTier.PRO) tier = 'PRO';
-
-  const subscriberId = license.userId ?? license.id;
-  return { subscriberId, tier };
-}
-
-// ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
 
@@ -82,36 +45,43 @@ function resolveSubscriberId(req: Request): { subscriberId: string; tier: TierKe
  * Create a signal subscription for the authenticated user.
  * Requires payment (PRO+ tier via signals_basic feature gate).
  */
-signalsApiRouter.post('/subscribe', requireSignalTier('SIGNALS_BASIC'), (req: Request, res: Response) => {
-  const identity = resolveSubscriberId(req);
-  if (!identity) {
-    res.status(401).json({ error: 'Valid API key required' });
-    return;
+signalsApiRouter.post('/subscribe', requireSignalTier('SIGNALS_BASIC'), async (req: Request, res: Response) => {
+  try {
+    const identity = resolveSubscriberId(req);
+    if (!identity) {
+      res.status(401).json({ error: 'Valid API key required' });
+      return;
+    }
+
+    const parsed = subscribeBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid body' });
+      return;
+    }
+
+    const { subscriberId, tier } = identity;
+    const existing = await signalSubscriberRepo.getBySubscriberId(subscriberId);
+    const now = Date.now();
+
+    const sub = {
+      id: existing?.id ?? `sub_${subscriberId}_${Date.now()}`,
+      subscriberId,
+      tier,
+      active: true,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+
+    await signalSubscriberRepo.upsert(sub);
+    if (parsed.data.chatId != null) {
+      await signalSubscriberRepo.upsert({ ...sub, chatId: parsed.data.chatId });
+    }
+
+    res.json({ data: sub, message: 'Subscribed successfully' });
+  } catch (err) {
+    logger.error('[SignalsApi] Subscribe failed', { err });
+    res.status(500).json({ error: 'Failed to create subscription' });
   }
-
-  const parsed = subscribeBodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid body' });
-    return;
-  }
-
-  const { subscriberId, tier } = identity;
-  const existing = subscriptions.get(subscriberId);
-  const now = Date.now();
-
-  const sub: SignalSubscription = {
-    id: existing?.id ?? randomUUID(),
-    subscriberId,
-    chatId: parsed.data.chatId ?? existing?.chatId,
-    tier,
-    active: true,
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-  };
-
-  subscriptions.set(subscriberId, sub);
-  logger.info(`[SignalsApi] Subscribed subscriberId=${subscriberId} tier=${tier}`);
-  res.json({ data: sub, message: 'Subscribed successfully' });
 });
 
 /**
@@ -121,42 +91,7 @@ signalsApiRouter.post('/subscribe', requireSignalTier('SIGNALS_BASIC'), (req: Re
  * Results are cached, filtered by the subscriber's tier, and paginated.
  */
 signalsApiRouter.get('/feed', requireSignalTier('SIGNALS_BASIC'), async (req: Request, res: Response) => {
-  try {
-    const identity = resolveSubscriberId(req);
-    if (!identity) {
-      res.status(401).json({ error: 'Valid API key required' });
-      return;
-    }
-
-    const parsed = feedQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid query' });
-      return;
-    }
-
-    const { since, limit } = parsed.data;
-    const { tier } = identity;
-
-    // Try cache first
-    const cached = await getCachedSignals(tier, since, limit);
-    if (cached) {
-      res.json({ data: cached, count: cached.length, tier, cached: true });
-      return;
-    }
-
-    // Filter live signals for tier
-    const live = signalTtlEnforcer.getLive();
-    const filtered = filterSignalsForTier(
-      live.filter((s: Signal) => s.ts >= since),
-      tier,
-    ).slice(0, limit);
-
-    await setCachedSignals(tier, since, limit, filtered);
-    res.json({ data: filtered, count: filtered.length, tier, cached: false });
-  } catch (err) {
-    logger.error('[SignalsApi] GET /feed failed', { err });
-    res.status(500).json({ error: 'Internal error' });
-  }
+  res.status(410).json({ error: 'Use /api/v1/signals/feed from signal-feed-routes' });
 });
 
 /**
@@ -164,32 +99,28 @@ signalsApiRouter.get('/feed', requireSignalTier('SIGNALS_BASIC'), async (req: Re
  * Register a webhook URL for receiving signal delivery callbacks.
  * The webhook endpoint is called on each new signal published to this subscriber.
  */
-signalsApiRouter.post('/webhook', requireSignalTier('SIGNALS_BASIC'), (req: Request, res: Response) => {
-  const identity = resolveSubscriberId(req);
-  if (!identity) {
-    res.status(401).json({ error: 'Valid API key required' });
-    return;
+signalsApiRouter.post('/webhook', requireSignalTier('SIGNALS_BASIC'), async (req: Request, res: Response) => {
+  try {
+    const identity = resolveSubscriberId(req);
+    if (!identity) {
+      res.status(401).json({ error: 'Valid API key required' });
+      return;
+    }
+
+    const parsed = webhookBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid body' });
+      return;
+    }
+
+    const { subscriberId } = identity;
+    const { url } = parsed.data;
+
+    await signalSubscriberRepo.setWebhook(subscriberId, url);
+    logger.info('[SignalsApi] Webhook registered', { subscriberId, url });
+    res.json({ data: { subscriberId, url }, message: 'Webhook registered' });
+  } catch (err) {
+    logger.error('[SignalsApi] Webhook registration failed', { err });
+    res.status(500).json({ error: 'Failed to register webhook' });
   }
-
-  const parsed = webhookBodySchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid body' });
-    return;
-  }
-
-  const { subscriberId } = identity;
-  const { url } = parsed.data;
-
-  webhooks.set(subscriberId, url);
-  logger.info(`[SignalsApi] Webhook registered subscriberId=${subscriberId} url=${url}`);
-  res.json({ data: { subscriberId, url }, message: 'Webhook registered' });
 });
-
-/** Export stores for use by downstream delivery services (read-only access). */
-export function getActiveSubscriptions(): SignalSubscription[] {
-  return Array.from(subscriptions.values()).filter((s) => s.active);
-}
-
-export function getWebhookForSubscriber(subscriberId: string): string | undefined {
-  return webhooks.get(subscriberId);
-}

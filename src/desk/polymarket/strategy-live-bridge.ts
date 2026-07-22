@@ -30,6 +30,8 @@ export interface TradeSignal {
   description?: string;
   /** Signal confidence (0-1), used for position sizing */
   confidence?: number;
+  /** Signal generation timestamp (ms since epoch). Used for TTL validation. */
+  timestamp: number;
 }
 
 export interface SignalResult {
@@ -187,6 +189,7 @@ export class StrategyLiveBridge {
               price: yes, // Always use YES price since scanner always trades YES token
               description: String(m['question'] ?? '').slice(0, 60),
               confidence: Math.abs(edge) * 100,
+              timestamp: Date.now(),
             });
           } catch { /* skip malformed entry */ }
         }

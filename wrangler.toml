@@ -94,3 +94,10 @@ command = "npx tsc -p tsconfig.worker.json"
 # Cron trigger: health self-check every 5 minutes
 [triggers]
 crons = ["*/5 * * * *"]
+
+# Staging environment — prevents staging deploys overwriting production
+[env.staging]
+name = "algo-trader-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"

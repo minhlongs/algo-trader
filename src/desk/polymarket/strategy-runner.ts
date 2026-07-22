@@ -2,8 +2,8 @@
  * Strategy Runner
  *
  * Wires a V2 Polymarket strategy to the live trading pipeline end-to-end.
- * Handles orchestrator lifecycle, Gamma market fetching, strategy tick loop,
- * and graceful shutdown.
+ * Handles orchestrator lifecycle, Gamma market fetching, strategy execution
+ * via TradingEventBus price updates, and graceful shutdown.
  *
  * Supports any strategy extending BasePolymarketStrategy — just pass the class
  * reference and config.
@@ -14,19 +14,19 @@
  *     tradingConfig: { paperTrading: true, capitalUsdc: 5000 },
  *   });
  *   await runner.start();
- *   // ... ticks run automatically ...
+ *   // ... executes reactively on PRICE_UPDATE events ...
  *   await runner.stop();
  */
 
 import type { GammaClient, GammaMarket } from '../polymarket/gamma-client';
-import type { } from '../polymarket/order-manager';
 import type { StrategyName } from '../core/types';
-import type { BasePolymarketStrategy, BaseStrategyConfig, StrategyDeps } from '../strategies/polymarket/base-polymarket-strategy';
-import type { LivePosition } from '../execution/live-position-tracker';
+import type { BasePolymarketStrategy, BaseStrategyConfig, StrategyDeps } from '@desk/strategies/polymarket/base-polymarket-strategy';
+import type { LivePosition } from '@desk/execution/live-position-tracker';
 import { StrategyLiveBridge } from './strategy-live-bridge';
 import { LiveOrderManagerProxy } from './live-order-manager-proxy';
 import { LiveTradingOrchestrator, type LiveTradingConfig } from './live-trading-orchestrator';
-import { logger } from '../../shared/utils/logger';
+import { logger } from '@shared/utils/logger';
+import { TradingEventBus, PriceUpdatePayload, tradingEventBus } from '../events/trading-event-bus';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -35,10 +35,12 @@ export interface StrategyRunnerConfig {
   strategyConfig: BaseStrategyConfig;
   /** Live trading config (orchestrator) */
   tradingConfig: LiveTradingConfig;
-  /** Tick interval in milliseconds (default: 15s) */
+  /** @deprecated Legacy polling interval - kept for backward compatibility, not used in event-driven mode */
   tickIntervalMs?: number;
-  /** Max ticks before auto-stop (0 = unlimited) */
+  /** @deprecated Legacy max ticks - kept for backward compatibility, not used in event-driven mode */
   maxTicks?: number;
+  /** Max execution frequency per strategy (ms) - prevents event storm choking */
+  minExecutionIntervalMs?: number;
   /** Auto-start endgame scanner (default: false) */
   autoScan?: boolean;
 }
@@ -47,6 +49,8 @@ export interface RunnerStatus {
   status: 'stopped' | 'running' | 'error';
   strategyName: string;
   mode: 'PAPER' | 'LIVE';
+  executionCount: number;
+  /** @deprecated Use executionCount instead */
   tickCount: number;
   positions: LivePosition[];
   bridgeStats: ReturnType<StrategyLiveBridge['getStats']>;
@@ -144,7 +148,6 @@ class GammaClientImpl implements GammaClient {
 
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
- 
 type StrategyConstructor = new (deps: StrategyDeps, config: any, name: StrategyName) => BasePolymarketStrategy;
 
 export class StrategyRunner {
@@ -155,23 +158,30 @@ export class StrategyRunner {
   private proxy: LiveOrderManagerProxy | null = null;
   private gammaClient: GammaClient;
   private strategy: BasePolymarketStrategy | null = null;
-  private tickTimer: NodeJS.Timeout | null = null;
-  private tickCount = 0;
+  private executionCount = 0;
   private status: RunnerStatus['status'] = 'stopped';
   private strategyName: string;
   private ownsOrchestrator: boolean;
 
-  constructor(strategyClass: StrategyConstructor, config: StrategyRunnerConfig, externalOrchestrator?: LiveTradingOrchestrator) {
+  // Event-driven execution
+  private eventBus: TradingEventBus;
+  private trackedTokenIds = new Set<string>();
+  private lastExecutionTime = 0;
+  private healthCheckTimer: NodeJS.Timeout | null = null;
+
+  constructor(
+    strategyClass: StrategyConstructor,
+    config: StrategyRunnerConfig,
+    externalOrchestrator?: LiveTradingOrchestrator
+  ) {
     this.strategyClass = strategyClass;
-    // Derive strategy name from class name for display
     this.strategyName = strategyClass.name
       .replace(/Strategy$/, '')
       .replace(/([A-Z])/g, '-$1')
       .toLowerCase()
       .replace(/^-/, '');
     this.config = {
-      tickIntervalMs: 15_000,
-      maxTicks: 0,
+      minExecutionIntervalMs: 50,
       autoScan: false,
       ...config,
     };
@@ -180,6 +190,9 @@ export class StrategyRunner {
     this.ownsOrchestrator = externalOrchestrator === undefined;
     this.orchestrator = externalOrchestrator ?? new LiveTradingOrchestrator(config.tradingConfig);
     this.gammaClient = new GammaClientImpl();
+
+    // Use shared TradingEventBus singleton
+    this.eventBus = tradingEventBus;
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -211,19 +224,23 @@ export class StrategyRunner {
       this.strategyName as StrategyName,
     );
 
-    // Start tick loop
-    this.scheduleTick();
+    // Subscribe to price updates for tokens this strategy tracks
+    this.subscribeToPriceUpdates();
 
-    logger.info('Strategy runner started', 'StrategyRunner', {
+    // Start health check heartbeat (safety fallback - every 60s)
+    this.startHealthCheckHeartbeat();
+
+    logger.info('Strategy runner started (event-driven)', 'StrategyRunner', {
       strategy: this.strategyName,
       mode: this.orchestrator.getMode(),
-      tickInterval: this.config.tickIntervalMs,
+      minExecutionIntervalMs: this.config.minExecutionIntervalMs,
     });
   }
 
   async stop(): Promise<void> {
     this.status = 'stopped';
-    this.stopTicking();
+    this.unsubscribeFromPriceUpdates();
+    this.stopHealthCheckHeartbeat();
 
     // Only stop orchestrator if we own it (not shared across strategies)
     if (this.ownsOrchestrator) {
@@ -231,48 +248,122 @@ export class StrategyRunner {
     }
 
     logger.info('Strategy runner stopped', 'StrategyRunner', {
-      ticks: this.tickCount,
+      executions: this.executionCount,
     });
   }
 
-  // ── Tick ─────────────────────────────────────────────────────────────────────
+  // ── Event Bus Subscription ───────────────────────────────────────────────────
 
-  private scheduleTick(): void {
-    if (this.status !== 'running') return;
-    this.tickTimer = setTimeout(() => this.runTick(), this.config.tickIntervalMs);
-    this.tickTimer?.unref();
+  /**
+   * Subscribe to PRICE_UPDATE events from TradingEventBus.
+   * Filters updates by tokenId and triggers strategy execution.
+   */
+  private subscribeToPriceUpdates(): void {
+    const handler = this.handlePriceUpdate.bind(this);
+    this.eventBus.on('PRICE_UPDATE', handler);
+    // Store reference for cleanup
+    (this as any)._priceUpdateHandler = handler;
   }
 
-  private async runTick(): Promise<void> {
-    if (this.status !== 'running') return;
+  private unsubscribeFromPriceUpdates(): void {
+    const handler = (this as any)._priceUpdateHandler;
+    if (handler) {
+      this.eventBus.off('PRICE_UPDATE', handler);
+      (this as any)._priceUpdateHandler = null;
+    }
+  }
+
+  /**
+   * Handle incoming PRICE_UPDATE event.
+   * Triggers strategy.execute() if the token matches a tracked position or entry candidate.
+   * Includes debouncing to prevent event storm choking.
+   */
+  private async handlePriceUpdate(payload: PriceUpdatePayload): Promise<void> {
+    if (this.status !== 'running' || !this.strategy) return;
+
+    // Debounce: prevent execution more than once per minExecutionIntervalMs
+    const now = Date.now();
+    if (now - this.lastExecutionTime < this.config.minExecutionIntervalMs!) {
+      return;
+    }
+
+    // Check if this token is relevant to our strategy
+    // Relevant if: we have an open position on it, or it's a trending market we might enter
+    const isRelevant = this.trackedTokenIds.has(payload.tokenId);
+
+    if (!isRelevant) {
+      // In a full implementation, we might also check if the strategy is actively
+      // scanning entries for this market. For now, only react to positions we track.
+      return;
+    }
+
+    this.lastExecutionTime = now;
 
     try {
-      this.tickCount++;
-      await this.strategy!.execute();
+      this.executionCount++;
+      await this.strategy.execute();
 
-      logger.debug('Tick complete', 'StrategyRunner', {
-        tick: this.tickCount,
-        orchestratorPositions: this.orchestrator.getPositions().length,
+      logger.debug('Reactive execution complete', 'StrategyRunner', {
+        strategy: this.strategyName,
+        execution: this.executionCount,
+        triggerToken: payload.tokenId,
+        triggerBid: payload.bid,
+        triggerAsk: payload.ask,
       });
-
-      // Auto-stop after maxTicks
-      if (this.config.maxTicks && this.config.maxTicks > 0 && this.tickCount >= this.config.maxTicks) {
-        logger.info('Max ticks reached, auto-stopping', 'StrategyRunner', { ticks: this.tickCount });
-        await this.stop();
-        return;
-      }
     } catch (err) {
-      logger.error('Tick error', 'StrategyRunner', { err: String(err), tick: this.tickCount });
+      logger.error('Reactive execution error', 'StrategyRunner', {
+        err: String(err),
+        execution: this.executionCount,
+      });
     }
-
-    this.scheduleTick();
   }
 
-  private stopTicking(): void {
-    if (this.tickTimer) {
-      clearTimeout(this.tickTimer);
-      this.tickTimer = null;
+  /**
+   * Track a token ID for reactive execution triggers.
+   * Called when a position is opened or when the strategy identifies a market of interest.
+   */
+  trackToken(tokenId: string): void {
+    this.trackedTokenIds.add(tokenId);
+  }
+
+  /**
+   * Stop tracking a token ID.
+   * Called when a position is closed and no longer relevant.
+   */
+  untrackToken(tokenId: string): void {
+    this.trackedTokenIds.delete(tokenId);
+  }
+
+  // ── Health Check Heartbeat (Safety Fallback) ────────────────────────────────
+
+  /**
+   * Start a slow-frequency heartbeat (every 60s) for health checks.
+   * Does NOT trigger primary strategy execution - only logs status and
+   * verifies the runner is still alive.
+   */
+  private startHealthCheckHeartbeat(): void {
+    this.healthCheckTimer = setInterval(() => this.healthCheck(), 60_000);
+    this.healthCheckTimer.unref();
+  }
+
+  private stopHealthCheckHeartbeat(): void {
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+      this.healthCheckTimer = null;
     }
+  }
+
+  private healthCheck(): void {
+    if (this.status !== 'running') return;
+
+    logger.debug('Strategy runner health check', 'StrategyRunner', {
+      strategy: this.strategyName,
+      status: this.status,
+      executions: this.executionCount,
+      trackedTokens: this.trackedTokenIds.size,
+      positions: this.orchestrator.getPositions().length,
+      orchestratorStatus: this.orchestrator.getStatus(),
+    });
   }
 
   // ── Queries ──────────────────────────────────────────────────────────────────
@@ -282,7 +373,8 @@ export class StrategyRunner {
       status: this.status,
       strategyName: this.strategyName,
       mode: this.orchestrator.getMode(),
-      tickCount: this.tickCount,
+      executionCount: this.executionCount,
+      tickCount: this.executionCount, // deprecated alias for backward compat
       positions: this.orchestrator.getPositions(),
       bridgeStats: this.bridge?.getStats() ?? {
         scansCompleted: 0, signalsProcessed: 0, signalsRejected: 0,
@@ -304,6 +396,10 @@ export class StrategyRunner {
 
   getBridge(): StrategyLiveBridge | null {
     return this.bridge;
+  }
+
+  getTrackedTokens(): string[] {
+    return Array.from(this.trackedTokenIds);
   }
 
   // ── Private ─────────────────────────────────────────────────────────────────

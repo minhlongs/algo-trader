@@ -7,6 +7,10 @@
  *
  * Uses REST polling (no WebSocket — Polymarket CLOB WebSocket is undocumented).
  * Orders auto-expire after maxOrderLifetimeMs (default 5 minutes).
+ *
+ * Hard Risk Circuit (Phase 03):
+ * - SignalTTL: Rejects signals older than 200ms
+ * - Token-Bucket Rate Limiter: Caps orders at 5/sec per strategy (burstable)
  */
 
 import { EventEmitter } from 'events';
@@ -14,6 +18,7 @@ import type { PolymarketAdapter, PolymarketOrderResponse } from './polymarket-ad
 import type { PolymarketOrder } from './polymarket-signer';
 import type { LivePositionTracker, FilledOrder } from './live-position-tracker';
 import { logger } from '../../shared/utils/logger';
+import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -37,6 +42,10 @@ export interface LiveOrderManagerEvents {
   canceled: (orderId: string) => void;
   expired: (orderId: string) => void;
   error: (orderId: string, error: Error) => void;
+  /** Emitted when a signal is rejected due to TTL expiry */
+  staleSignal: (signal: TradeSignal, ageMs: number) => void;
+  /** Emitted when a strategy's rate limit is exceeded */
+  rateLimited: (strategy: string) => void;
 }
 
 // ── Config ─────────────────────────────────────────────────────────────────────
@@ -44,6 +53,61 @@ export interface LiveOrderManagerEvents {
 const DEFAULT_POLL_INTERVALS = [5_000, 10_000, 20_000, 30_000]; // exponential backoff
 const DEFAULT_MAX_ORDER_LIFETIME = 5 * 60 * 1000; // 5 minutes
 const MAX_POLL_ERRORS = 5;
+
+// Hard Risk Circuit constants
+const SIGNAL_TTL_MS = 200; // Reject signals older than 200ms
+const RATE_LIMIT_ORDERS_PER_SEC = 5; // Max 5 orders/sec per strategy
+const RATE_LIMIT_BURST = 10; // Allow burst up to 10 orders
+
+// ── Token Bucket Rate Limiter ────────────────────────────────────────────────
+
+/**
+ * Token Bucket Rate Limiter
+ * Allows bursts up to 'capacity' tokens, refills at 'refillRate' tokens per second.
+ * Per-strategy isolation prevents runaway strategies from starving others.
+ */
+class TokenBucket {
+  private tokens: number;
+  private lastRefill: number;
+
+  constructor(
+    private readonly capacity: number,
+    private readonly refillRate: number, // tokens per second
+  ) {
+    this.tokens = capacity;
+    this.lastRefill = Date.now();
+  }
+
+  /** Try to consume one token. Returns true if allowed, false if rate limited. */
+  tryConsume(): boolean {
+    this.refill();
+    if (this.tokens >= 1) {
+      this.tokens -= 1;
+      return true;
+    }
+    return false;
+  }
+
+  /** Refill tokens based on elapsed time */
+  private refill(): void {
+    const now = Date.now();
+    const elapsedSec = (now - this.lastRefill) / 1000;
+    this.tokens = Math.min(this.capacity, this.tokens + elapsedSec * this.refillRate);
+    this.lastRefill = now;
+  }
+
+  /** Get current available tokens (for monitoring) */
+  getAvailableTokens(): number {
+    this.refill();
+    return this.tokens;
+  }
+
+  /** Reset bucket to full capacity */
+  reset(): void {
+    this.tokens = this.capacity;
+    this.lastRefill = Date.now();
+  }
+}
 
 // ── Manager ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +118,9 @@ export class LiveOrderManager extends EventEmitter {
   private readonly positionTracker: LivePositionTracker;
   private readonly maxOrderLifetimeMs: number;
   private stopped = false;
+
+  // Rate limiter per strategy
+  private strategyRateLimiters = new Map<string, TokenBucket>();
 
   constructor(
     adapter: PolymarketAdapter,
@@ -100,6 +167,75 @@ export class LiveOrderManager extends EventEmitter {
   /** Submit order without tracking (fire-and-forget) */
   async submitOnly(order: PolymarketOrder): Promise<PolymarketOrderResponse> {
     return this.adapter.placeOrder(order);
+  }
+
+  // ── Hard Risk Circuit: Signal Processing ─────────────────────────────────────
+
+  /**
+   * Submit a TradeSignal through Hard Risk Circuit gates.
+   * This is the FINAL gate before any order reaches the CLOB.
+   * Cannot be bypassed by strategy-level logic.
+   *
+   * Gates (in order):
+   * 1. SignalTTL - reject signals older than 200ms
+   * 2. Rate Limiter - token bucket per strategy (5 orders/sec, burst 10)
+   * 3. LiveExecutionGuard - position size, drawdown, concurrent limits, circuit breaker
+   *
+   * @param signal TradeSignal with required timestamp field
+   * @param strategyName Strategy identifier for rate limiting
+   * @returns PolymarketOrderResponse if approved, throws if rejected
+   */
+  async submitSignal(
+    signal: TradeSignal,
+    strategyName: string
+  ): Promise<PolymarketOrderResponse> {
+    // GATE 1: SignalTTL - Hard time check
+    const age = Date.now() - signal.timestamp;
+    if (age > SIGNAL_TTL_MS) {
+      logger.warn('STALE_SIGNAL rejected', 'LiveOrderManager', {
+        strategy: strategyName,
+        tokenId: signal.tokenId.slice(0, 12),
+        signalAgeMs: age,
+        ttlMs: SIGNAL_TTL_MS,
+      });
+      this.emit('staleSignal', signal, age);
+      throw new Error(`STALE_SIGNAL: Signal age ${age}ms exceeds TTL of ${SIGNAL_TTL_MS}ms`);
+    }
+
+    // GATE 2: Token-Bucket Rate Limiter
+    const rateLimiter = this.getRateLimiter(strategyName);
+    if (!rateLimiter.tryConsume()) {
+      logger.warn('RATE_LIMITED', 'LiveOrderManager', {
+        strategy: strategyName,
+        availableTokens: rateLimiter.getAvailableTokens().toFixed(2),
+      });
+      this.emit('rateLimited', strategyName);
+      throw new Error(`RATE_LIMITED: Strategy ${strategyName} exceeded ${RATE_LIMIT_ORDERS_PER_SEC} orders/sec`);
+    }
+
+    // GATE 3: Build order and let LiveExecutionGuard handle position/drawdown/circuit checks
+    const order: PolymarketOrder = {
+      tokenId: signal.tokenId,
+      side: signal.side,
+      price: signal.price,
+      size: signal.size,
+      expiration: Math.floor(Date.now() / 1000) + 300, // 5 min GTC
+      nonce: String(Date.now()),
+      feeRateBps: 0,
+      signatureType: 0,
+    };
+
+    return this.submitAndTrack(order);
+  }
+
+  /** Get or create rate limiter for a strategy */
+  private getRateLimiter(strategyName: string): TokenBucket {
+    let limiter = this.strategyRateLimiters.get(strategyName);
+    if (!limiter) {
+      limiter = new TokenBucket(RATE_LIMIT_BURST, RATE_LIMIT_ORDERS_PER_SEC);
+      this.strategyRateLimiters.set(strategyName, limiter);
+    }
+    return limiter;
   }
 
   // ── Cancel ─────────────────────────────────────────────────────────────────
