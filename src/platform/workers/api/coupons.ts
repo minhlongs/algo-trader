@@ -17,7 +17,7 @@ type Env = { CACHE: KVNamespace; SUBSCRIBERS?: D1Database; JWT_SECRET?: string; 
 export async function handleValidateCoupon(request: Request, env: any): Promise<Response> {
   const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
   try {
-    const { code, tier } = await request.json<{ code: string; tier: string }>();
+    const { code, tier } = (await request.json()) as { code: string; tier: string };
     if (!code) return badRequest('code is required');
 
     if (!sub) {
@@ -63,7 +63,7 @@ export async function handleValidateCoupon(request: Request, env: any): Promise<
 export async function handleApplyCoupon(request: Request, env: any): Promise<Response> {
   const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
   try {
-    const { code, userId } = await request.json<{ code: string; userId: string }>();
+    const { code, userId } = (await request.json()) as { code: string; userId: string };
     if (!code || !userId) return badRequest('code and userId are required');
 
     if (!sub) return new Response(JSON.stringify({ error: 'D1 not configured' }), { status: 503, headers: { 'Content-Type': 'application/json' } });

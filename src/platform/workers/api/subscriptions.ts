@@ -102,7 +102,7 @@ export async function handleUpgrade(request: Request, env: any): Promise<Respons
   if (!user) return unauthorized();
 
   try {
-    const body = await request.json<{ tier: string; force?: boolean }>();
+    const body = (await request.json()) as { tier: string; force?: boolean };
     const newTier = body.tier?.toUpperCase();
     if (!newTier || !['STARTER','PRO','ENTERPRISE','MASTER'].includes(newTier)) {
       return new Response(JSON.stringify({ error: 'Invalid tier. Allowed: STARTER, PRO, ENTERPRISE, MASTER' }), { status: 400, headers: { 'Content-Type': 'application/json' } });

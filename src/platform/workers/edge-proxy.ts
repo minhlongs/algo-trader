@@ -97,8 +97,8 @@ async function checkRegionHealth(region: RegionId): Promise<{ healthy: boolean; 
     const res = await fetch(url, {
       method: 'GET',
       // Cloudflare-specific cache bypass - works in Workers
-      cf: { cacheTtl: 0 } as any,
-    });
+      cf: { cacheTtl: 0 },
+    } as any);
     const latency = Date.now() - start;
 
     return {
@@ -174,8 +174,8 @@ async function routeToRegion(request: Request, targetRegion: RegionId, env: Env)
       headers,
       body: request.body,
       // Cloudflare-specific cache bypass
-      cf: { cacheTtl: 0 } as any,
-    });
+      cf: { cacheTtl: 0 },
+    } as any);
 
     return response;
   } catch (error) {

@@ -377,7 +377,7 @@ export async function handleCopilotAsk(request: Request, env: Env): Promise<Resp
   }
 
   try {
-    const body = await request.json<{ query?: string; context?: { tier?: string; tenantId?: string } }>();
+    const body = (await request.json()) as { query?: string; context?: { tier?: string; tenantId?: string } };
     const query = (body.query || '').trim();
     if (!query) {
       return new Response(JSON.stringify({ error: 'query is required (e.g. { query: "BTC outlook" })' }), { status: 400, headers: { 'Content-Type': 'application/json' } });

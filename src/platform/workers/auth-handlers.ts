@@ -108,7 +108,7 @@ export async function handleListUsers(request: Request, env: Env): Promise<Respo
   const adminKey = (env as any).ADMIN_API_KEY;
   if (!apiKey || !adminKey || apiKey !== adminKey) return json({ error: 'Unauthorized' }, 401);
 
-  const list = await env.CACHE.list({ prefix: 'user:' });
+  const list = await (env.CACHE as any).list({ prefix: 'user:' });
   const users = [];
   for (const key of list.keys) {
     const raw = await env.CACHE.get(key.name);

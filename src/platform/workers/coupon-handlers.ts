@@ -107,7 +107,7 @@ export async function seedCoupons(env: Env): Promise<void> {
 
 /** GET /api/coupons — list active coupons */
 export async function handleListCoupons(env: Env): Promise<Response> {
-  const list = await env.CACHE.list({ prefix: 'coupon:' });
+  const list = await (env.CACHE as any).list({ prefix: 'coupon:' });
   const coupons: Coupon[] = [];
   for (const key of list.keys) {
     const raw = await env.CACHE.get(key.name);

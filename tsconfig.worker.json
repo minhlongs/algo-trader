@@ -10,14 +10,6 @@
     "noEmitOnError": false,
     "skipLibCheck": true,
     "strict": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./node_modules/@cloudflare"
-    ],
-    "types": [
-      "node",
-      "@cloudflare/workers-types"
-    ],
     "isolatedModules": true
   },
   "include": [

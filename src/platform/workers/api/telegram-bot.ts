@@ -99,7 +99,7 @@ export async function handleTelegramWebhook(request: Request, env: Env): Promise
   }
 
   try {
-    const update = await request.json<TelegramUpdate>();
+    const update = (await request.json()) as TelegramUpdate;
     const chatId = update.message?.chat.id || update.callback_query?.message?.chat.id;
     if (!chatId) {
       return json(env, { ok: true, ignored: true });
@@ -125,7 +125,7 @@ export async function handleSetTelegramWebhook(request: Request, _env: Env): Pro
     return json(_env, { error: 'Method not allowed' }, 405);
   }
 
-  const body = await request.json<{ webhookUrl?: string }>();
+  const body = (await request.json()) as { webhookUrl?: string };
   const { webhookUrl } = body;
   if (!webhookUrl) {
     return json(_env, { error: 'webhookUrl required' }, 400);
@@ -144,7 +144,7 @@ export async function handleSetTelegramWebhook(request: Request, _env: Env): Pro
     // Cloudflare Workers runtime — cf property allowed
   } as any);
 
-  const result = await res.json<{ ok: boolean; description?: string }>();
+  const result = (await res.json()) as { ok: boolean; description?: string };
   return new Response(JSON.stringify(result), {
     status: res.ok ? 200 : 502,
     headers: { 'Content-Type': 'application/json' },
