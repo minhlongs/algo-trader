@@ -44,7 +44,7 @@ vi.mock('../../../../shared/utils/logger', () => ({
 }));
 
 import { signalsApiRouter } from '../signals-api-routes';
-import { __setGate } from '../../middleware/signal-tier-resolver';
+import { __setGate } from '../../../middleware/signal-tier-resolver';
 
 function buildApp() {
   const app = express();

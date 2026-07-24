@@ -163,7 +163,12 @@ describe('Distributed Rate Limiter Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.headers['x-ratelimit-limit']).toBe('10');
       expect(res.headers['x-ratelimit-remaining']).toBe('9');
-      expect(rateLimitMock).toHaveBeenCalledWith('ratelimit:{tenant-free}', expect.any(Number), 60000, 10);
+      expect(rateLimitMock).toHaveBeenCalledWith(
+    'ratelimit:{tenant-free}',
+    expect.any(Number),
+    60,
+    10,
+  );
     });
 
     it('should allow requests under the limit for PRO tier', async () => {
@@ -176,7 +181,12 @@ describe('Distributed Rate Limiter Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.headers['x-ratelimit-limit']).toBe('100');
       expect(res.headers['x-ratelimit-remaining']).toBe('75');
-      expect(rateLimitMock).toHaveBeenCalledWith('ratelimit:{tenant-pro}', expect.any(Number), 60000, 100);
+      expect(rateLimitMock).toHaveBeenCalledWith(
+    'ratelimit:{tenant-pro}',
+    expect.any(Number),
+    60,
+    100,
+  );
     });
 
     it('should allow requests under the limit for ENTERPRISE tier', async () => {
@@ -189,7 +199,12 @@ describe('Distributed Rate Limiter Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.headers['x-ratelimit-limit']).toBe('1000');
       expect(res.headers['x-ratelimit-remaining']).toBe('800');
-      expect(rateLimitMock).toHaveBeenCalledWith('ratelimit:{tenant-enterprise}', expect.any(Number), 60000, 1000);
+      expect(rateLimitMock).toHaveBeenCalledWith(
+    'ratelimit:{tenant-enterprise}',
+    expect.any(Number),
+    60,
+    1000,
+  );
     });
 
     it('should allow anonymous/invalid key requests under the FREE tier limit', async () => {
@@ -201,7 +216,12 @@ describe('Distributed Rate Limiter Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.headers['x-ratelimit-limit']).toBe('10');
       expect(res.headers['x-ratelimit-remaining']).toBe('8');
-      expect(rateLimitMock).toHaveBeenCalledWith(expect.stringMatching(/^ratelimit:\{.+\}$/), expect.any(Number), 60000, 10);
+      expect(rateLimitMock).toHaveBeenCalledWith(
+    expect.stringMatching(/^ratelimit:\{.+\}$/),
+    expect.any(Number),
+    60,
+    10,
+  );
     });
   });
 

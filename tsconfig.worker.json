@@ -16,7 +16,7 @@
     ],
     "types": [
       "node",
-      "workers-types"
+      "@cloudflare/workers-types"
     ],
     "isolatedModules": true
   },

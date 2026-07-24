@@ -10,7 +10,7 @@ vi.mock('../../db/postgres-client', () => {
 });
 
 // Import the database client and the module under test
-import { query, transaction } from '../../db/postgres-client';
+import { query, transaction } from '../../../db/postgres-client';
 import { appendTenantAuditLog, verifyTenantChain, computeTenantAuditHash, canonicalJsonStringify } from '../tenant-audit-log';
 
 interface MockRow {
