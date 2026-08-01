@@ -10,6 +10,8 @@
 import { getRedisClient } from '../../redis/index';
 import { logger } from '../../shared/utils/logger';
 import type { Request, Response, NextFunction } from 'express';
+import { emitRateLimitAuditEvent } from './audit-hook';
+import { validateTenantId } from '../../shared/tenant';
 
 // ─── Tier Limits ──────────────────────────────────────────────────────────────
 
@@ -74,6 +76,10 @@ export interface RateLimitResult {
   resetAt: Date;
 }
 
+export interface CheckRateLimitOptions {
+  endpoint?: string;
+}
+
 export interface RedisRateLimiterOptions {
   /**
    * Window duration in seconds. Default 60 (standard 1-minute rate limit).
@@ -117,6 +123,7 @@ export class RedisRateLimiter {
   async checkRateLimit(
     userId: string,
     tier: string,
+  options: CheckRateLimitOptions = {},
   ): Promise<RateLimitResult> {
     const limits = this.resolveLimits(tier);
  // MASTER tier = unlimited
@@ -152,9 +159,29 @@ export class RedisRateLimiter {
           limit: limits.requestsPerMin,
           windowSeconds: this.windowSeconds,
         });
-      }
+const retryAfter = Math.max(
+ 0,
+ Math.ceil((now + this.windowSeconds * 1000 - Date.now()) / 1000),
+);
+if (!validateTenantId(userId)) {
+ logger.warn(`[RateLimiter] skipping audit for invalid tenantId: ${userId}`);
+}
+try {
+ await emitRateLimitAuditEvent({
+  tenantId: validateTenantId(userId) ? (userId as TenantId) : (() => { throw new Error(`Invalid userId for audit: ${userId}`) })(),
+  tier,
+  endpoint: options.endpoint ?? '',
+  remainingMs: 0,
+  retryAfter,
+ });
+} catch (auditErr) {
+ logger.warn('[RateLimiter] audit hook failed', {
+  cause: auditErr instanceof Error ? auditErr.message : String(auditErr),
+ });
+}
 
-      return {
+  }
+return {
         allowed,
         remaining: Math.max(0, limits.requestsPerMin - count),
         resetAt: new Date(now + this.windowSeconds * 1000),
@@ -320,7 +347,7 @@ export function rateLimitMiddleware(
     let result: RateLimitResult;
 
     try {
-      result = await limiter.checkRateLimit(userId, tier);
+      result = await limiter.checkRateLimit(userId, tier, { endpoint: req.path });
 
       res.setHeader('X-RateLimit-Limit', resolveLimits(tier).requestsPerMin.toString());
       res.setHeader('X-RateLimit-Remaining', result.remaining.toString());

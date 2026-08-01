@@ -16,6 +16,8 @@ import { TieredDrawdownBreaker, type TieredDrawdownConfig } from './risk/tiered-
 import { TwapExecutor, type TwapConfig } from './execution/twap-executor';
 import { WalletManager, type WalletLabel, type WalletTrade } from './wallet/wallet-manager';
 import { ImmutableTradeAudit } from './audit/immutable-trade-audit';
+import { emitTradeAuditEvent } from '../platform/audit/audit-hooks';
+import { validateTenantId, type TenantId } from '../../shared/tenant';
 import { logger } from './utils/logger';
 
 export interface TradingPipelineConfig {
@@ -83,11 +85,16 @@ export function createTradingPipeline(
       // 2. Only record trade if drawdown allows it
       if (state.tier === 'HALT' || state.tier === 'HARD_STOP') {
         logger.warn(`[TradingPipeline] Trade blocked by drawdown breaker: tier=${state.tier} portfolio=$${newPortfolioValue.toFixed(2)}`);
-        audit.append('circuit_breaker', `Drawdown breaker halted: tier=${state.tier}`, {
-          walletLabel: trade.walletLabel,
-          marketId: trade.marketId,
-          side: trade.side,
-          metadata: { drawdownTier: state.tier, portfolioValue: newPortfolioValue, reason: `tier=${state.tier} drawdown=${state.drawdownPercent.toFixed(2)}%` },
+        await emitTradeAuditEvent({
+          eventType: 'trade_rejected',
+          tenantId: effectiveTenantId,
+          actionBy: 'system',
+          reason: `Drawdown breaker halted: tier=${state.tier}`,
+          metadata: {
+            drawdownTier: state.tier,
+            portfolioValue: newPortfolioValue,
+            drawdownPercent: state.drawdownPercent,
+          },
         });
         return;
       }
@@ -96,18 +103,18 @@ export function createTradingPipeline(
       try {
         // 2. Record trade on wallet (enforces fund isolation, mutates balance)
         await wallet.recordTrade(trade, walletLabel);
-
-        // 3. Audit the trade execution
-        audit.append('trade_executed', `${trade.side} $${trade.sizeUsd} on ${trade.marketId} → PnL $${trade.pnl.toFixed(2)}`, {
-          walletLabel: trade.walletLabel,
-          marketId: trade.marketId,
-          side: trade.side,
-          actualSize: trade.sizeUsd,
-          price: trade.price,
+        await emitTradeAuditEvent({
+          eventType: 'trade_executed',
+          tenantId: effectiveTenantId,
+          actionBy: 'system',
+          reason: `${trade.side} $${trade.sizeUsd} on ${trade.marketId} -> PnL $${trade.pnl.toFixed(2)}`,
           metadata: {
             pnl: trade.pnl,
             drawdownTier: state.tier,
             portfolioValue: newPortfolioValue,
+            marketId: trade.marketId,
+            side: trade.side,
+            sizeUsd: trade.sizeUsd,
           },
         });
 

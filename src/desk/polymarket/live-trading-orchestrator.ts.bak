@@ -27,6 +27,8 @@ import { setStrategyActive } from '../../platform/middleware/prometheus-metrics'
 import { logger } from '../../shared/utils/logger';
 import { TradingEventBus, PriceUpdatePayload, tradingEventBus } from '../events/trading-event-bus';
 import type { TradeSignal } from './strategy-live-bridge';
+import type { PolymarketOrderResponse } from '../execution/polymarket-adapter';
+import type { LiveOrderManager, OrderState } from '../execution/live-order-manager';
 
 // ── Env-var validation ───────────────────────────────────────────────────────────
 

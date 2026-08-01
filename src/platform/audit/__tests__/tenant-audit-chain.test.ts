@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryResult, PoolClient } from 'pg';
 
 // First, mock the module (hoisted) to make sure they are mock functions
-vi.mock('../../db/postgres-client', () => {
+vi.mock('../../../shared/db/postgres-client', () => {
   return {
     query: vi.fn(),
     transaction: vi.fn(),
@@ -10,7 +10,7 @@ vi.mock('../../db/postgres-client', () => {
 });
 
 // Import the database client and the module under test
-import { query, transaction } from '../../../db/postgres-client';
+import { query, transaction } from '../../../shared/db/postgres-client';
 import { appendTenantAuditLog, verifyTenantChain, computeTenantAuditHash, canonicalJsonStringify } from '../tenant-audit-log';
 
 interface MockRow {
@@ -33,7 +33,7 @@ describe('Tenant Audit Log Chain', () => {
     mockRows.length = 0;
 
     // Set dynamic mock implementations specifically for this test block
-    vi.mocked(query).mockImplementation(async (sql: string, params?: unknown[]) => {
+    (query as any).mockImplementation(async (sql: string, params?: unknown[]) => {
       console.log('DYNAMIC QUERY:', sql, params, 'ROWS:', mockRows.length);
       if (sql.includes('ORDER BY sequence_number DESC')) {
         const tenantId = params?.[0] as string;

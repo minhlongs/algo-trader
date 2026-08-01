@@ -31,6 +31,7 @@ interface _InternalEnv {
   REGION_ROUTING_ENABLED?: string;
   SUBSCRIBERS?: D1Database;
   NOWPAYMENTS_IPN_SECRET?: string;
+  METRIC_PASSWORD?: string;
 }
 // Use loose wrapper to avoid struct-assignment checks between different workers-types version instances
 export type Env = _InternalEnv & Record<string, unknown>;
@@ -195,10 +196,24 @@ export default {
     // CORS preflight
     if (request.method === 'OPTIONS') return corsPreflightResponse();
 
-    // Metrics endpoint (Cloudflare Workers Prometheus)
-    if (path === '/metrics' && request.method === 'GET') {
-      return this.metrics(env);
-    }
+ // Metrics endpoint (Cloudflare Workers Prometheus)
+ if (path === '/metrics' && request.method === 'GET') {
+   const secret = env.METRIC_PASSWORD;
+   if (secret) {
+     const url = new URL(request.url);
+     if (url.searchParams.get('token') !== secret) {
+       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+         status: 401,
+         headers: { ...CORS, 'Content-Type': 'application/json' },
+       });
+     }
+   }
+   return this.metrics(env);
+ }
+
+ if (path === '/metrics' && request.method === 'POST') {
+   return metricEntry(request, env);
+ }
 
     // Multi-region routing (only for API requests)
     const routingEnabled = env.REGION_ROUTING_ENABLED !== 'false';
@@ -373,6 +388,33 @@ if (path.match(/^\/api\/tenants\/[^/]+\/config$/) && request.method === 'POST') 
     });
   },
 };
+
+async function metricEntry(request: Request, env: Env): Promise<Response> {
+  try {
+    const body = (await request.json().catch(() => ({}))) as { entries?: Array<Record<string, unknown>> };
+    const entries = Array.isArray(body.entries) ? body.entries : [];
+    const now = new Date().toISOString();
+    const out: Array<Record<string, unknown>> = [];
+    for (const entry of entries) {
+      const record = { ...entry, receivedAt: now, region: env.ENVIRONMENT };
+      out.push(record);
+      await env.CACHE.put(
+        'metric:entry:' + Date.now() + ':' + crypto.randomUUID().split('-')[0],
+        JSON.stringify(record),
+        { expirationTtl: 600 }
+      );
+    }
+    return new Response(
+      JSON.stringify({ ok: true, count: out.length, entries: out }),
+      { status: 202, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    );
+  } catch (err) {
+    return new Response(
+      JSON.stringify({ error: 'metric ingest failed', detail: (err as Error).message }),
+      { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } }
+    );
+  }
+}
 
 async function proxyToOrigin(request: Request, env: Env): Promise<Response> {
   const origin = env.VPS_ORIGIN!;

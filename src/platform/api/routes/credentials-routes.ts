@@ -2,7 +2,10 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { TenantCredentialsRepository } from '../../db/tenant-credentials-repository';
 import { assertTenantAccess } from '../../raas/subscriber-tenant-isolator';
-import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
+import {
+  emitCredentialUpsertAuditEvent,
+  emitCredentialDeletionAuditEvent,
+} from '../../audit/audit-hooks';
 
 export const credentialsRouter: Router = Router();
 const repository = new TenantCredentialsRepository();
@@ -39,18 +42,20 @@ credentialsRouter.post('/', async (req: Request, res: Response): Promise<void> =
   }
 
   const subscriberId = tokenSubscriberId;
+  // Runtime-validate for TenantId type safety
+  if (!validateTenantId(subscriberId)) {
+    throw new Error(`Invalid tenantId for credential audit: ${subscriberId}`);
+  }
 
   try {
     assertTenantAccess(subscriberId, tokenSubscriberId, isAdmin);
 
     await repository.save(subscriberId, parsed.data);
-    await appendTenantAuditLog(
-      subscriberId,
-      'credentials.upsert',
-      tokenSubscriberId,
-      'POST /api/v1/subscriber/credentials',
-      { action: 'upsert' },
-    );
+      await emitCredentialUpsertAuditEvent({
+        tenantId: subscriberId,
+        actionBy: tokenSubscriberId,
+        endpoint: 'POST /api/v1/subscriber/credentials',
+      });
     res.status(201).json({ status: 'success', message: 'Credentials ingested successfully' });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';

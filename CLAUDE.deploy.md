@@ -92,6 +92,18 @@ Missing any line = task incomplete.
 - [ ] Memory + changelog + roadmap updated.
 - [ ] Manual follow-ups (e.g. migration on prod Postgres) explicitly listed as unresolved.
 
+## Encryption at Rest
+
+- Tenant credentials (api_key, api_secret, passphrase, private_key) use AES-256-GCM.
+- Key length: 32 bytes (256 bits).
+- IV: random 12 bytes per encrypt call.
+- Auth tag: 16 bytes.
+- Encoding: ciphertext, IV, and tag are concatenated colon-delimited and stored directly in the credential column.
+- Primary key env: `ENCRYPTION_MASTER_KEY`.
+- Fallback key env: `CREDENTIALS_ENCRYPTION_KEY`.
+- Key rotation is out of scope for this phase.
+- Encryption boundary doc: `docs/encryption-boundary.md`.
+
 ## Unresolved questions
 
 Always log at end of verification report.

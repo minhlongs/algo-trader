@@ -69,7 +69,6 @@ export async function appendTenantAuditLog(
   metadata: Record<string, unknown>,
   client?: PoolClient
 ): Promise<TenantAuditLog> {
-  console.log('DEBUG transaction fn isMock:', (transaction as unknown as { _isMockFunction?: boolean })._isMockFunction || typeof (transaction as unknown as { mock?: unknown }).mock !== 'undefined');
   const execute = async (txClient: PoolClient): Promise<TenantAuditLog> => {
     // 1. Acquire transaction advisory lock on tenantId
     await txClient.query('SELECT pg_advisory_xact_lock(hashtext($1))', [tenantId]);

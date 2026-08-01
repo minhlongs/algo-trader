@@ -3,24 +3,77 @@
  * ROIaaS Phase 6 - Complete governance system with retention, batch ops, and exports tests
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { AuditLogService } from '../audit-log-service';
-import type { AuditLogFilters } from '../audit-log-service';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+// Shared in-memory DB for test isolation
+const MOCK_DB: any[] = [];
+function resetMockDb() { MOCK_DB.length = 0; }
+
+// Mock query: keyed by SQL -> rows
+function mockQueryImpl(sql: string, params?: any[]) {
+  const s = String(sql);
+  if (s.includes("FROM audit_log")) {
+    if (s.includes("WHERE tenant_id")) {
+      const tenantId = String(params?.[0] ?? "");
+      const limit = Number(params?.[1] ?? 100);
+      const tenantRows = MOCK_DB.filter((r: any) => r.tenantId === tenantId); return { rows: tenantRows };
+    }
+    const limit = Number(params?.[0] ?? 100);
+    return { rows: MOCK_DB.slice(0, limit) };
+  }
+  if (s.includes("COUNT(*)") || s.includes('SELECT id FROM audit_log')) {
+    return { rows: [{ cnt: MOCK_DB.length }], rowCount: MOCK_DB.length };
+  }
+  if (s.includes("DELETE FROM audit_log")) {
+    const before = MOCK_DB.length;
+    MOCK_DB.length = 0;
+    return { rows: [], rowCount: before };
+  }
+  return { rows: [] };
+}
+
+// Mock logAudit — pushes to in-memory DB
+function mockLogAuditImpl(entry: any) {
+  MOCK_DB.push(entry);
+  return Promise.resolve();
+}
+
+// Mock getAuditTrail / getAuditTrailByTenant — read from in-memory DB
+function mockGetAuditTrailImpl(_resource: string, limit = 100) {
+  return Promise.resolve(MOCK_DB.slice(0, limit));
+}
+function mockGetAuditTrailByTenantImpl(tenantId: string, limit = 100) {
+  return Promise.resolve(MOCK_DB.filter((r: any) => r.tenantId === tenantId).slice(0, limit));
+}
+
+// Hoisted mocks (factories reference only locally-defined functions)
+vi.mock("../../../db/postgres-client", () => ({ query: mockQueryImpl, transaction: vi.fn(async (fn: any) => fn({ query: mockQueryImpl })) }));
+vi.mock("../../../seed/security/audit-log", () => ({
+  logAudit: mockLogAuditImpl,
+  getAuditTrail: mockGetAuditTrailImpl,
+  getAuditTrailByTenant: mockGetAuditTrailByTenantImpl,
+}));
+
+vi.mock("../../../seed/security/audit-ip-hash", () => ({
+  hashIpAddress: vi.fn(() => "hashed-ip"),
+}));
+
+import { AuditLogService } from "../audit-log-service";
+import type { AuditLogFilters } from "../audit-log-service";
 
 describe('AuditLogService', () => {
   let service: AuditLogService;
 
   beforeEach(() => {
     service = AuditLogService.getInstance();
-    (service as any).logs.clear();
-    (service as any).licenseLogs.clear();
+    resetMockDb();
   });
 
   describe('log', () => {
     it('should create audit log entry', async () => {
       const log = await service.log('lic-123', 'created');
 
-      expect(log.id).toMatch(/^audit_/);
+      expect(log.id).toMatch(/^[0-9a-f]{8}-/i);
       expect(log.licenseId).toBe('lic-123');
       expect(log.event).toBe('created');
       expect(log.createdAt).toBeDefined();
@@ -198,8 +251,8 @@ describe('AuditLogService', () => {
   });
 
   describe('getExpiredLogIds', () => {
-    it('should return empty array when no logs expired', () => {
-      const expiredIds = service.getExpiredLogIds();
+    it('should return empty array when no logs expired', async () => {
+      const expiredIds = await service.getExpiredLogIds();
       expect(expiredIds.length).toBe(0);
     });
   });

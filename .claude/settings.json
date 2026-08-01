@@ -128,5 +128,11 @@
         ]
       }
     ]
+  },
+  "apiKeyHelper": "/Users/macbook/.zunef/zunef-jwt-helper.cjs",
+  "env": {
+    "HERMES_API_KEY_HELPER": "/Users/macbook/.zunef/zunef-jwt-helper.cjs",
+    "HERMES_PROXY_URL": "https://claude.zunef.com",
+    "HERMES_ENABLED": "auto"
   }
 }

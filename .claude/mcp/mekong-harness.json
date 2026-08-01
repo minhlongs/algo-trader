@@ -2,37 +2,50 @@
   "mcpServers": {
     "mekong-model-router": {
       "command": "bash",
-      "args": ["/Users/macbook/Documents/me-deep-wrapper/lib/mcp-model-router.sh"],
+      "args": [
+        "/Users/macbook/Documents/me-deep-wrapper/lib/mcp-model-router.sh"
+      ],
       "env": {
         "HERMES_API_KEY": "${HERMES_API_KEY}",
         "HERMES_PROXY_URL": "https://claude.zunef.com",
-        "HERMES_ENABLED": "auto"
+        "HERMES_ENABLED": "auto",
+        "HERMES_API_KEY_HELPER": "/Users/macbook/.zunef/zunef-jwt-helper.cjs"
       }
     },
     "mekong-state": {
       "command": "bash",
-      "args": ["/Users/macbook/Documents/me-deep-wrapper/lib/mcp-state.sh"],
+      "args": [
+        "/Users/macbook/Documents/me-deep-wrapper/lib/mcp-state.sh"
+      ],
       "env": {
         "HERMES_API_KEY": "${HERMES_API_KEY}",
-        "HERMES_PROXY_URL": "https://claude.zunef.com"
+        "HERMES_PROXY_URL": "https://claude.zunef.com",
+        "HERMES_API_KEY_HELPER": "/Users/macbook/.zunef/zunef-jwt-helper.cjs",
+        "HERMES_ENABLED": "auto"
       }
     },
     "mekong-agents": {
       "command": "bash",
-      "args": ["/Users/macbook/Documents/me-deep-wrapper/lib/mcp-agents.sh"],
+      "args": [
+        "/Users/macbook/Documents/me-deep-wrapper/lib/mcp-agents.sh"
+      ],
       "env": {
         "HERMES_API_KEY": "${HERMES_API_KEY}",
         "HERMES_PROXY_URL": "https://claude.zunef.com",
-        "HERMES_ENABLED": "auto"
+        "HERMES_ENABLED": "auto",
+        "HERMES_API_KEY_HELPER": "/Users/macbook/.zunef/zunef-jwt-helper.cjs"
       }
     },
     "mekong-hermes": {
       "command": "bash",
-      "args": ["/Users/macbook/Documents/me-deep-wrapper/lib/mcp-hermes.sh"],
+      "args": [
+        "/Users/macbook/Documents/me-deep-wrapper/lib/mcp-hermes.sh"
+      ],
       "env": {
         "HERMES_API_KEY": "${HERMES_API_KEY}",
         "HERMES_PROXY_URL": "https://claude.zunef.com",
-        "HERMES_ENABLED": "auto"
+        "HERMES_ENABLED": "auto",
+        "HERMES_API_KEY_HELPER": "/Users/macbook/.zunef/zunef-jwt-helper.cjs"
       }
     }
   }

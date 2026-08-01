@@ -93,16 +93,16 @@ export class AuditRetentionCleanup {
   /**
    * Get cleanup statistics without running cleanup
    */
-  getCleanupPreview(): {
+  async getCleanupPreview(): Promise<{
     expiredCount: number;
     retentionDays: number;
     cutoffDate: string;
-  } {
+ }> {
     const retentionDays = this.auditService.getRetentionDays();
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-    const expiredLogIds = this.auditService.getExpiredLogIds();
+    const expiredLogIds = await this.auditService.getExpiredLogIds();
 
     return {
       expiredCount: expiredLogIds.length,
