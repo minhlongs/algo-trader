@@ -11,7 +11,7 @@ import { getRedisClient } from '../../redis/index';
 import { logger } from '../../shared/utils/logger';
 import type { Request, Response, NextFunction } from 'express';
 import { emitRateLimitAuditEvent } from './audit-hook';
-import { validateTenantId } from '../../shared/tenant';
+import { validateTenantId, type TenantId } from '../../shared/tenant';
 
 // ─── Tier Limits ──────────────────────────────────────────────────────────────
 

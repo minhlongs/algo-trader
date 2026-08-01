@@ -6,6 +6,7 @@ import {
   emitCredentialUpsertAuditEvent,
   emitCredentialDeletionAuditEvent,
 } from '../../audit/audit-hooks';
+import { validateTenantId } from '../../../shared/tenant';
 
 export const credentialsRouter: Router = Router();
 const repository = new TenantCredentialsRepository();

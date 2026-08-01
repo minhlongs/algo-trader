@@ -17,7 +17,7 @@ import { TwapExecutor, type TwapConfig } from './execution/twap-executor';
 import { WalletManager, type WalletLabel, type WalletTrade } from './wallet/wallet-manager';
 import { ImmutableTradeAudit } from './audit/immutable-trade-audit';
 import { emitTradeAuditEvent } from '../platform/audit/audit-hooks';
-import { validateTenantId, type TenantId } from '../../shared/tenant';
+import { validateTenantId, type TenantId } from '../shared/tenant';
 import { logger } from './utils/logger';
 
 export interface TradingPipelineConfig {
@@ -81,6 +81,10 @@ export function createTradingPipeline(
       // EC#8: Check drawdown BEFORE mutating wallet — order was wrong before
       // 1. Check drawdown breaker FIRST (non-mutating read)
       const state = drawdown.update(newPortfolioValue);
+
+  const effectiveTenantId: TenantId = validateTenantId(walletLabel)
+    ? (walletLabel as TenantId)
+    : (() => { throw new Error(`Invalid walletLabel for audit: ${walletLabel}`) })();
 
       // 2. Only record trade if drawdown allows it
       if (state.tier === 'HALT' || state.tier === 'HARD_STOP') {
