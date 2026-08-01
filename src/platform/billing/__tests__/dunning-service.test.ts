@@ -4,6 +4,31 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const store = new Map<string, Record<string, unknown>>();
+vi.mock('pg', () => ({
+  default: {
+    Pool: class {
+      async query(_sql: string, vals?: unknown[]) {
+        const s = typeof _sql === 'string' ? _sql.toLowerCase() : '';
+        const id = vals?.[0] as string | undefined;
+        if (s.includes('on conflict')) {
+          const row: Record<string, unknown> = {};
+          vals?.forEach((v, i) => { row[`_v${i}`] = v; });
+          store.set(id, row);
+          return { rows: [row], rowCount: 1, oid: 0, command: 'INSERT' };
+        }
+        const row = id ? store.get(id) : undefined;
+        if (!row) return { rows: [], rowCount: 0, oid: 0, command: 'SELECT' };
+        return { rows: [row], rowCount: 1, oid: 0, command: 'SELECT' };
+      }
+      async connect() { return this; }
+      async end() {}
+      on(_event: string, _handler: (...args: unknown[]) => void) { return this; }
+    },
+  },
+}));
+
 import { DunningService } from '../dunning-service';
 import { LicenseService } from '../license-service';
 import { LicenseTier, LicenseStatus } from '../../../shared/types/license';
@@ -165,7 +190,7 @@ describe('DunningService', () => {
       await service.recordPaymentFailure(license1.id, 'test1@example.com');
       await service.recordPaymentFailure(license2.id, 'test2@example.com');
 
-      const records = service.getAllDunningRecords();
+      const records = await service.getAllDunningRecords();
 
       expect(records.length).toBe(2);
     });
@@ -179,7 +204,7 @@ describe('DunningService', () => {
       });
 
       await service.recordPaymentFailure(license.id, 'test@example.com');
-      const record = service.getDunningRecordByLicense(license.id);
+      const record = await service.getDunningRecordByLicense(license.id);
 
       expect(record?.licenseId).toBe(license.id);
       expect(record?.customerEmail).toBe('test@example.com');
@@ -191,7 +216,7 @@ describe('DunningService', () => {
         tier: LicenseTier.PRO,
       });
 
-      const record = service.getDunningRecordByLicense(license.id);
+      const record = await service.getDunningRecordByLicense(license.id);
 
       expect(record).toBeUndefined();
     });

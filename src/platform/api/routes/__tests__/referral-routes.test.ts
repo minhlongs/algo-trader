@@ -35,7 +35,7 @@ const mocks = vi.hoisted(() => ({
   } as any),
 }));
 
-vi.mock('../../../referral/referral-service', () => ({
+vi.mock('../../../../platform/referral/referral-service', () => ({
   referralService: mocks.mockService,
 }));
 
@@ -43,7 +43,7 @@ vi.mock('../../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('../../../referral/referral-crud', () => ({
+vi.mock('../../../../platform/referral/referral-crud', () => ({
   createReferralCode: mocks.mockCreateReferralCode,
 }));
 
@@ -63,7 +63,14 @@ function buildApp(claims?: { sub?: string; role?: string }) {
 describe('Referral Routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.mockService.registerReferralCode.mockResolvedValue(mocks.mockReferralCode);
+    mocks.mockService.registerReferralCode.mockResolvedValue({
+    code: 'TEN-ABC12',
+    tenantId: 'tenant_001',
+    createdAt: new Date('2026-07-03T12:00:00Z'),
+    isActive: true,
+    usedCount: 0,
+    maxUses: null,
+  });
     mocks.mockService.getReferralStats.mockResolvedValue(mocks.mockStats);
     mocks.mockService.getReferralCode.mockResolvedValue(mocks.mockReferralCode);
     mocks.mockService.getReferralCodeByCode.mockResolvedValue(mocks.mockReferralCode);

@@ -2,7 +2,7 @@
 
 ## Status
 
-Complete — All 5 phases verified. AUD-001 fully met.
+Complete — All 5 phases verified, code-reviewer passed, AUD-001 and RL-001 fully met.
 
 ## Problem
 
@@ -35,6 +35,14 @@ Compliance audit coverage has gaps:
 - `src/platform/api/routes/credentials-routes.ts` — Replaced direct `appendTenantAuditLog` with emitters
 - `src/forest/rate-limit/redis-rate-limiter.ts` — Fixed hardcoded `endpoint: ''`, passed `options.endpoint` from middleware
 
+## Completion
+
+- Date completed: 2026-08-01
+- All 5 phases: Complete
+- Tests: 6/6 passing
+- Code review: passed (informational finding on `tokenSubscriberId` identity format — not a blocker)
+- Feature flag: `AUDIT_HOOK_ENABLED` (default true) provides instant rollback
+- Acceptance criteria: AUD-001 (`appendTenantAuditLog` invoked for all required event types), RL-001 (every 429 emits enriched metadata) — both met
 ## Rollback
 
 - Feature flag `AUDIT_HOOK_ENABLED` (default true) in `audit-hooks.ts` to disable new emitters

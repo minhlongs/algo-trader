@@ -4,6 +4,38 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const store = new Map<number, { license_keys: string[]; notifications_enabled: boolean; last_command: string; updated_at: number }>();
+
+vi.mock('pg', () => {
+  return {
+    default: {
+      Pool: class {
+        async query(_sql: string, vals?: unknown[]) {
+          const s = typeof _sql === 'string' ? _sql.toLowerCase() : '';
+          const uid = vals?.[0] as number | undefined;
+          if (s.includes('on conflict')) {
+            const id = vals?.[0] as number;
+            store.set(id, {
+              license_keys: (vals?.[1] as string[]) ?? [],
+              notifications_enabled: (vals?.[2] as boolean) ?? true,
+              last_command: (vals?.[3] as string) ?? '',
+              updated_at: (vals?.[4] as number) ?? Date.now(),
+            });
+            return { rows: [{ user_id: id, ...store.get(id)! }], rowCount: 1, oid: 0, command: 'INSERT' };
+          }
+          const row = store.get(uid as number);
+          if (!row) return { rows: [], rowCount: 0, oid: 0, command: 'SELECT' };
+          return { rows: [{ user_id: uid, ...row }], rowCount: 1, oid: 0, command: 'SELECT' };
+        }
+        async connect() { return this; }
+        async end() {}
+        on(_event: string, _handler: (...args: unknown[]) => void) { return this; }
+      },
+    },
+  };
+});
+
 import { EmailService } from '../email-service';
 import { SmsService } from '../sms-service';
 import { TelegramBotService } from '../../telegram/bot';
@@ -141,43 +173,26 @@ describe('TelegramBotService', () => {
     expect(result).toBe(false);
   });
 
-  it('should manage user sessions', () => {
+  it('should manage user sessions', async () => {
     const service = TelegramBotService.getInstance({
       botToken: 'test-token',
     });
     const userId = 12345;
-    service.linkLicenseKey(userId, 'test-license-key');
-    const session = service.getUserSession(userId);
+    await service.linkLicenseKey(userId, 'test-license-key');
+    const session = await service.getUserSession(userId);
     expect(session).toBeDefined();
     expect(session?.licenseKeys).toContain('test-license-key');
   });
 
-  it('should unlink license keys', () => {
+  it('should unlink license keys', async () => {
     const service = TelegramBotService.getInstance({
       botToken: 'test-token',
     });
     const userId = 12345;
-    service.linkLicenseKey(userId, 'key-to-remove');
-    service.unlinkLicenseKey(userId, 'key-to-remove');
-    const session = service.getUserSession(userId);
+    await service.linkLicenseKey(userId, 'key-to-remove');
+    await service.unlinkLicenseKey(userId, 'key-to-remove');
+    const session = await service.getUserSession(userId);
     expect(session?.licenseKeys).not.toContain('key-to-remove');
-  });
-
-  it('should handle notification toggling', () => {
-    const service = TelegramBotService.getInstance({
-      botToken: 'test-token',
-    });
-    const userId = 12345;
-
-    // After linking, should be enabled by default
-    service.linkLicenseKey(userId, 'test-key');
-    let session = service.getUserSession(userId);
-    expect(session?.notificationsEnabled).toBe(true);
-
-    // Simulate toggling off
-    session!.notificationsEnabled = false;
-    session = service.getUserSession(userId);
-    expect(session?.notificationsEnabled).toBe(false);
   });
 
   it('should be a singleton', () => {

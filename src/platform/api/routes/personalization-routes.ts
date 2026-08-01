@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 import { logger } from '../../../shared/utils/logger';
+import { validateTenantId } from '../../../shared/tenant';
 
 const DATA_DIR = join(process.cwd(), 'data', 'personalization');
 
@@ -12,8 +13,7 @@ function ensureDir(): void {
   }
 }
 
-// Regex validation for tenantId to block directory traversal attacks (LFI)
-const TENANT_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+// Tenant validation via shared module — see src/shared/tenant
 
 export const personalizationRouter: Router = Router();
 
@@ -81,7 +81,7 @@ personalizationRouter.get('/config', (req: Request, res: Response): void => {
 personalizationRouter.get('/ab-config', (req: Request, res: Response): void => {
   const tenantId = req.query.tenantId as string;
 
-  if (!tenantId || typeof tenantId !== 'string' || !TENANT_ID_REGEX.test(tenantId)) {
+  if (!tenantId || typeof tenantId !== 'string' || !validateTenantId(tenantId)) {
     res.status(400).json({ error: 'Missing or invalid tenantId' });
     return;
   }
@@ -113,7 +113,7 @@ personalizationRouter.post('/events', (req: Request, res: Response): void => {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const { tenantId, eventType, eventData } = body || {};
 
-    if (!tenantId || typeof tenantId !== 'string' || !TENANT_ID_REGEX.test(tenantId)) {
+    if (!tenantId || typeof tenantId !== 'string' || !validateTenantId(tenantId)) {
       res.status(400).json({ error: 'Missing or invalid tenantId' });
       return;
     }

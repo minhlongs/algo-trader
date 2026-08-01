@@ -15,48 +15,21 @@ import {
   commissionStatusSchema,
 } from '../schemas/referral.schemas';
 import { requireTier } from '../../middleware/feature-gate';
+import { resolveTenant } from '../../../shared/tenant';
+import { logger } from '../../../shared/utils/logger';
+
+function isTenantAdmin(ctx: { role?: string }): boolean {
+  return ctx.role === 'admin';
+}
 
 export const referralRouter: Router = Router();
-
-/**
- * Extract tenant ID from request
- * Looks for claims from JWT or API key auth
- */
-function extractTenantId(req: Request): string | null {
-  // Check JWT claims first (set by auth middleware)
-  const claims = (req as Request & { claims?: { sub?: string; role?: string } }).claims;
-  if (claims?.sub) {
-    return claims.sub;
-  }
-
-  // Check API key header (X-API-Key or X-License-Key)
-  const apiKey = req.headers['x-api-key'] as string | undefined;
-  const licenseKey = req.headers['x-license-key'] as string | undefined;
-  const key = apiKey || licenseKey;
-
-  if (key) {
-    // In a real implementation, we'd validate the API key and extract tenant ID
-    // For now, we'll rely on the auth middleware to have set req.tenantId
-    return (req as Request & { tenantId?: string }).tenantId || null;
-  }
-
-  return null;
-}
-
-/**
- * Check if user is admin
- */
-function isAdmin(req: Request): boolean {
-  const claims = (req as Request & { claims?: { role?: string } }).claims;
-  return claims?.role === 'admin';
-}
 
 /**
  * GET /api/v1/referral/stats
  * Get referral dashboard metrics for current tenant
  */
 referralRouter.get('/stats', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
+  const { tenantId } = resolveTenant(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -68,7 +41,9 @@ referralRouter.get('/stats', requireTier('ENTERPRISE'), async (req: Request, res
     }
     return res.json({ data: stats });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get stats:', error);
+    logger.error('[ReferralRoutes] Failed to get stats', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     return res.status(500).json({ error: 'Failed to fetch referral stats' });
   }
 });
@@ -78,7 +53,7 @@ referralRouter.get('/stats', requireTier('ENTERPRISE'), async (req: Request, res
  * Get current tenant's referral code
  */
 referralRouter.get('/code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
+  const { tenantId } = resolveTenant(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -93,7 +68,9 @@ referralRouter.get('/code', requireTier('ENTERPRISE'), async (req: Request, res:
     }
     return res.json({ data: code });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get referral code:', error);
+    logger.error('[ReferralRoutes] Failed to get referral code', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     return res.status(500).json({ error: 'Failed to fetch referral code' });
   }
 });
@@ -103,24 +80,26 @@ referralRouter.get('/code', requireTier('ENTERPRISE'), async (req: Request, res:
  * Generate a new referral code for current tenant (or specified tenant if admin)
  */
 referralRouter.post('/generate-code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
+  const { tenantId, role } = resolveTenant(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
   // Admin can generate for other tenants
-  const targetTenantId = isAdmin(req) && req.body?.tenantId ? req.body.tenantId : tenantId;
+  const targetTenantId = req.body?.tenantId ? req.body.tenantId : tenantId;
 
   // Verify admin privilege if generating for another tenant
-  if (req.body?.tenantId && req.body.tenantId !== tenantId && !isAdmin(req)) {
+  if (req.body?.tenantId && req.body.tenantId !== tenantId && !isTenantAdmin({ role })) {
     return res.status(403).json({ error: 'Forbidden: Can only generate for yourself' });
   }
 
   try {
     const code = await referralService.registerReferralCode(targetTenantId);
-    return res.status(201).json({ data: code });
+    return res.status(201).json(code);
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to generate code:', error);
+    logger.error('[ReferralRoutes] Failed to generate code', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     const message = error instanceof Error ? error.message : 'Failed to generate referral code';
     return res.status(400).json({ error: message });
   }
@@ -151,7 +130,9 @@ referralRouter.post('/track-click', requireTier('ENTERPRISE'), async (req: Reque
     );
     return res.status(201).json({ data: tracking });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to track click:', error);
+    logger.error('[ReferralRoutes] Failed to track click', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     const message = error instanceof Error ? error.message : 'Failed to track click';
     return res.status(400).json({ error: message });
   }
@@ -162,7 +143,7 @@ referralRouter.post('/track-click', requireTier('ENTERPRISE'), async (req: Reque
  * Get commission records for current tenant
  */
 referralRouter.get('/commissions', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
+  const { tenantId } = resolveTenant(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -192,7 +173,9 @@ referralRouter.get('/commissions', requireTier('ENTERPRISE'), async (req: Reques
       },
     });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get commissions:', error);
+    logger.error('[ReferralRoutes] Failed to get commissions', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     return res.status(500).json({ error: 'Failed to fetch commissions' });
   }
 });
@@ -203,7 +186,7 @@ referralRouter.get('/commissions', requireTier('ENTERPRISE'), async (req: Reques
  * (Currently aggregates commission periods; future: Stripe payout details)
  */
 referralRouter.get('/payouts', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
+  const { tenantId } = resolveTenant(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -249,7 +232,9 @@ referralRouter.get('/payouts', requireTier('ENTERPRISE'), async (req: Request, r
       },
     });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get payouts:', error);
+    logger.error('[ReferralRoutes] Failed to get payouts', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     return res.status(500).json({ error: 'Failed to fetch payouts' });
   }
 });
@@ -316,7 +301,9 @@ referralRouter.post('/validate', requireTier('ENTERPRISE'), async (req: Request,
       },
     });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to validate code:', error);
+    logger.error('[ReferralRoutes] Failed to validate code', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     return res.status(500).json({ error: 'Failed to validate referral code' });
   }
 });
@@ -327,7 +314,7 @@ referralRouter.post('/validate', requireTier('ENTERPRISE'), async (req: Request,
  * Also generates one if it doesn't exist
  */
 referralRouter.get('/my-code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
+  const { tenantId } = resolveTenant(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -340,7 +327,9 @@ referralRouter.get('/my-code', requireTier('ENTERPRISE'), async (req: Request, r
     }
     return res.json({ data: code });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get/generate code:', error);
+    logger.error('[ReferralRoutes] Failed to get/generate code', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     return res.status(500).json({ error: 'Failed to get referral code' });
   }
 });
@@ -350,7 +339,7 @@ referralRouter.get('/my-code', requireTier('ENTERPRISE'), async (req: Request, r
  * Get clicks for a specific referral code (for the code owner)
  */
 referralRouter.get('/clicks/:code', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-  const tenantId = extractTenantId(req);
+  const { tenantId } = resolveTenant(req);
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -385,7 +374,9 @@ referralRouter.get('/clicks/:code', requireTier('ENTERPRISE'), async (req: Reque
       },
     });
   } catch (error) {
-    console.error('[ReferralRoutes] Failed to get clicks:', error);
+    logger.error('[ReferralRoutes] Failed to get clicks', {
+  cause: error instanceof Error ? error.message : String(error),
+});
     return res.status(500).json({ error: 'Failed to fetch clicks' });
   }
 });

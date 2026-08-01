@@ -1,8 +1,9 @@
 import { appendTenantAuditLog } from './tenant-audit-log';
 import type { TenantAuditEventType } from './audit-event-types';
+import type { TenantId } from '../../shared/tenant';
 
 export interface RateLimitAuditMetadata {
-  tenantId: string;
+  tenantId: TenantId;
   tier: string;
   endpoint: string;
   remainingMs: number;
@@ -27,7 +28,7 @@ export async function emitRateLimitAuditEvent(
 }
 
 export interface CredentialDeletionAuditMetadata {
-  tenantId: string;
+  tenantId: TenantId;
   actionBy: string;
   endpoint: string;
 }
@@ -45,7 +46,7 @@ export async function emitCredentialDeletionAuditEvent(
 }
 
 export interface CredentialUpsertAuditMetadata {
-  tenantId: string;
+  tenantId: TenantId;
   actionBy: string;
   endpoint: string;
 }
@@ -74,7 +75,7 @@ export async function emitTradeAuditEvent(params: {
     TenantAuditEventType,
     'trade_executed' | 'trade_rejected'
   >;
-  tenantId: string;
+  tenantId: TenantId;
   actionBy: string;
   reason?: string;
   metadata?: Record<string, unknown>;
@@ -89,7 +90,7 @@ export async function emitTradeAuditEvent(params: {
 }
 
 export interface ConfigAuditMetadata {
-  tenantId: string;
+  tenantId: TenantId;
   actionBy: string;
   reason?: string;
   metadata?: Record<string, unknown>;
