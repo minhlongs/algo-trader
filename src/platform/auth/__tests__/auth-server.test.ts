@@ -406,7 +406,7 @@ describe('auth-server', () => {
 
   describe('logger configuration', () => {
     it('sets log level to error in production', async () => {
-      setEnv({ NODE_ENV: 'production' });
+      setEnv({ NODE_ENV: 'production', DB_PASSWORD: 'test' });
       await import('../auth-server');
 
       const config = getAuthConfig();

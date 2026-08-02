@@ -3,13 +3,15 @@
  *
  * Tests: POST / (create/upsert credentials)
  */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
 const mocks = vi.hoisted(() => ({
   mockSave: vi.fn().mockResolvedValue(undefined),
-  mockAppendAuditLog: vi.fn().mockResolvedValue(undefined),
+  mockEmitUpsert: vi.fn().mockResolvedValue(undefined),
+  mockEmitDelete: vi.fn().mockResolvedValue(undefined),
   mockAssertAccess: vi.fn(),
 }));
 
@@ -17,7 +19,7 @@ vi.mock('../../../middleware/feature-gate', () => ({
   requireTier: () => (_req: any, _res: any, next: any) => next(),
 }));
 
-vi.mock('../../../../db/tenant-credentials-repository', () => ({
+vi.mock('../../../../platform/db/tenant-credentials-repository', () => ({
   TenantCredentialsRepository: class {
     save = mocks.mockSave;
   },
@@ -27,8 +29,9 @@ vi.mock('../../../raas/subscriber-tenant-isolator', () => ({
   assertTenantAccess: (...args: any[]) => mocks.mockAssertAccess(...args),
 }));
 
-vi.mock('../../../audit/tenant-audit-log', () => ({
-  appendTenantAuditLog: (...args: any[]) => mocks.mockAppendAuditLog(...args),
+vi.mock('../../../audit/audit-hooks', () => ({
+  emitCredentialUpsertAuditEvent: (...args: any[]) => mocks.mockEmitUpsert(...args),
+  emitCredentialDeletionAuditEvent: (...args: any[]) => mocks.mockEmitDelete(...args),
 }));
 
 import { credentialsRouter } from '../credentials-routes';
@@ -51,7 +54,7 @@ describe('Credentials Routes', () => {
   });
 
   it('returns 201 when credentials are ingested successfully', async () => {
-    const app = buildApp({ sub: 'tenant_001' });
+    const app = buildApp({ sub: 'tenant-001' });
     const res = await request(app)
       .post('/api/v1/credentials')
       .send({
@@ -64,11 +67,11 @@ describe('Credentials Routes', () => {
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('success');
     expect(mocks.mockSave).toHaveBeenCalledOnce();
-    expect(mocks.mockAppendAuditLog).toHaveBeenCalledOnce();
+    expect(mocks.mockEmitUpsert).toHaveBeenCalledOnce();
   });
 
   it('returns 400 when required body fields are missing', async () => {
-    const app = buildApp({ sub: 'tenant_001' });
+    const app = buildApp({ sub: 'tenant-001' });
     const res = await request(app)
       .post('/api/v1/credentials')
       .send({ apiKey: 'test-key' });
@@ -96,7 +99,7 @@ describe('Credentials Routes', () => {
       throw new Error('cross-tenant access denied');
     });
 
-    const app = buildApp({ sub: 'tenant_001' });
+    const app = buildApp({ sub: 'tenant-001' });
     const res = await request(app)
       .post('/api/v1/credentials')
       .send({
@@ -110,7 +113,7 @@ describe('Credentials Routes', () => {
   });
 
   it('returns 400 when fields are empty strings', async () => {
-    const app = buildApp({ sub: 'tenant_001' });
+    const app = buildApp({ sub: 'tenant-001' });
     const res = await request(app)
       .post('/api/v1/credentials')
       .send({

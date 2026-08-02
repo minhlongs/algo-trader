@@ -9,6 +9,7 @@
     "incremental": false,
     "noEmitOnError": false,
     "skipLibCheck": true,
+    "types": ["@cloudflare/workers-types", "node"],
     "strict": true,
     "isolatedModules": true
   },

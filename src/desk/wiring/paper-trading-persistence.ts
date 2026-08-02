@@ -10,7 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../../shared/utils/logger';
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../db/postgres-client';
 import { reflectOnTrade } from '../intelligence/dual-level-reflection-engine';
 import type { TradeOutcome } from '../intelligence/dual-level-reflection-engine';
 import type { PaperTrade, PaperPortfolio } from './paper-trading-orchestrator';

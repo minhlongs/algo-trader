@@ -8,6 +8,8 @@
 import { Queue, Worker, type Job } from 'bullmq';
 import { revenueShareRepository } from '../repositories/revenue-share-repository';
 import { logger } from '../../../shared/utils/logger';
+import { strategyRepository } from '../repositories/strategy-repository';
+import { NowPaymentsService } from '../../billing/nowpayments-service';
 
 interface MarketplacePayoutJobData {
   revenueIds?: string[];  // specific revenue share IDs (manual trigger)
@@ -69,7 +71,7 @@ export class MarketplacePayoutScheduler {
 
         if (ids.length === 0) {
           logger.info('[MarketplacePayoutScheduler] No pending revenue shares to process');
-          return { processed: 0, ids: [] };
+          return { processed: 0, errors: [], paidIds: [] };
         }
 
         let paid = 0;
@@ -85,14 +87,29 @@ export class MarketplacePayoutScheduler {
             }
             if (record.status === 'paid') continue; // already paid, skip
 
-            await revenueShareRepository.markAsPaid(id);
-            paid++;
-            paidIds.push(id);
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'Unknown error';
-            errors.push({ id, error: message });
-            logger.error('[MarketplacePayoutScheduler] Failed to mark record as paid', { id, error: message });
-          }
+ const strategy = await strategyRepository.findById(record.strategyId);
+ if (!strategy || !strategy.payoutAddress) {
+  errors.push({ id, error: 'Creator has no payout address configured' });
+  continue;
+ }
+ const payout = await NowPaymentsService.getInstance().createPayout({
+  address: strategy.payoutAddress,
+  amount: record.creatorShareCents / 100,
+ });
+ if (!payout) {
+  errors.push({ id, error: 'Payout creation failed' });
+  logger.error("[MarketplacePayoutScheduler] Payout creation failed", { id, strategyId: record.strategyId });
+ logger.debug("[MarketplacePayoutScheduler] payout result", { payout, id });
+  continue;
+ }
+ await revenueShareRepository.markAsPaid(id, payout.payoutId);
+ paid++;
+ paidIds.push(id);
+} catch (err: any) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('[MarketplacePayoutScheduler] Caught exception', { id, error: message, stack: err?.stack, raw: err });
+    errors.push({ id, error: message });
+  }
         }
 
         logger.info('[MarketplacePayoutScheduler] Payout job complete', {

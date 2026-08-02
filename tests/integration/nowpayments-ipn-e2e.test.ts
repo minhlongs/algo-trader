@@ -5,6 +5,7 @@ import { LicenseService } from '../../src/platform/billing/license-service';
 import { AuditLogService } from '../../src/platform/audit/audit-log-service';
 import { NowPaymentsService } from '../../src/platform/billing/nowpayments-service';
 import { LicenseTier } from '../../src/shared/types/license';
+import type { AuditLog } from '../../src/platform/audit/audit-log-service';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -79,6 +80,8 @@ describe('NOWPayments IPN Revenue Activation E2E', () => {
     SubscriptionService.resetInstance();
     LicenseService.resetInstance();
     AuditLogService.resetInstance();
+    const audit = AuditLogService.getInstance();
+    vi.spyOn(audit, 'log').mockResolvedValue({ id: 'audit-e2e', event: 'created', createdAt: new Date().toISOString() } as AuditLog);
   });
 
   // Happy path - PRO tier, first payment

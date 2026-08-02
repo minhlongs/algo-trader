@@ -5,7 +5,7 @@
  */
 
 import { randomUUID, createHash } from 'crypto';
-import { query, getDbClient } from '../../shared/db/postgres-client';
+import { query, getDbClient } from '../../shared/db/postgres-client.js';
 import { logger } from '../../shared/utils/logger';
 
 const COOKIE_TTL_DAYS = 90;

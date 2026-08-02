@@ -7,7 +7,7 @@
  * Singleton: startSignalsLoop() / stopSignalsLoop() / resetSignalsLoop() for test isolation.
  */
 
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../db/postgres-client';
 import { logger } from '../../shared/utils/logger';
 import {
   qwenStrategyReviewsQueuedTotal,

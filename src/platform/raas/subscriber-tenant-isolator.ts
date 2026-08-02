@@ -5,8 +5,8 @@
  * Never bypass this — all subscriber queries MUST go through buildTenantFilter().
  */
 
-import { query } from '../../shared/db/postgres-client';
-import type { DbRow } from '../../shared/db/postgres-client';
+import { query } from '../../shared/db/postgres-client.js';
+import type { DbRow } from '../../shared/db/postgres-client.js';
 
 /** Opaque filter bundle — callers should not construct this directly. */
 export interface TenantFilter {

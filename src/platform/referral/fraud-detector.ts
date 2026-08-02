@@ -3,7 +3,7 @@
  * Detects fraudulent referral clicks using multiple signals
  */
 
-import { getDbClient } from '../../shared/db/postgres-client';
+import { getDbClient } from '../../shared/db/postgres-client.js';
 import { logger } from '../../shared/utils/logger';
 
 export interface FraudDetectionConfig {

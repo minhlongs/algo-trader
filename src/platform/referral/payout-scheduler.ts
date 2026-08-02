@@ -6,7 +6,7 @@
 import { Queue, Job, Worker } from 'bullmq';
 import { referralService } from './referral-service';
 import { logger } from '../../shared/utils/logger';
-import { getDbClient } from '../../shared/db/postgres-client';
+import { getDbClient } from '../../shared/db/postgres-client.js';
 
 interface PayoutJobData {
   tenantId?: string; // Optional: if provided, only payout for this tenant

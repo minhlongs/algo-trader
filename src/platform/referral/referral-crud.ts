@@ -3,7 +3,7 @@
  * Database create/read/update for referral codes, tracking, and commissions
  */
 
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../shared/db/postgres-client.js';
 import type { ReferralCode, ReferralClick, CommissionStatus } from './types';
 
 // ==================== Mappers ====================

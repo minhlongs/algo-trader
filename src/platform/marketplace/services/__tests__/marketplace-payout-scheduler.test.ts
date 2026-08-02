@@ -2,14 +2,17 @@
  * Marketplace Payout Scheduler — Unit Tests
  *
  * Tests payout processing: find pending → resolve wallet → send USDT → mark paid.
- * Mocks BullMQ Queue/Worker, NOWPayments, and repositories.
+ * Mocks BullMQ Queue/Worker, and repositories.
+ * NOWPayments singleton bypassed via vi.spyOn on static getInstance.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { NowPaymentsService } from '../../../billing/nowpayments-service';
+import { MarketplacePayoutScheduler } from '../marketplace-payout-scheduler';
 
-// Capture the worker processor function for direct testing (hoisted for vi.mock access)
-const state = vi.hoisted(() => ({ capturedProcessor: null as ((job: any) => Promise<any>) | null }));
+// Capture the worker processor function for direct testing
+const state = { capturedProcessor: null as ((job: any) => Promise<any>) | null };
 
-const mocks = vi.hoisted(() => ({
+const mocks = {
   mockFindAll: vi.fn(),
   mockFindById: vi.fn(),
   mockMarkAsPaid: vi.fn(),
@@ -18,7 +21,27 @@ const mocks = vi.hoisted(() => ({
   mockQueueAdd: vi.fn(),
   mockGetJobCounts: vi.fn(),
   mockQueueClose: vi.fn(),
-}));
+};
+
+// Mock instance object returned by NowPaymentsService.getInstance()
+const mockNPInstance: any = { createPayout: null };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  state.capturedProcessor = null;
+  mockNPInstance.createPayout = mocks.mockCreatePayout;
+  mocks.mockCreatePayout.mockResolvedValue({ payoutId: 'payout_001' });
+  mocks.mockQueueAdd.mockResolvedValue(undefined);
+  mocks.mockGetJobCounts.mockResolvedValue({});
+  mocks.mockQueueClose.mockResolvedValue(undefined);
+  mocks.mockMarkAsPaid.mockResolvedValue(true);
+  // Spy on the real singleton's getInstance to return our mock
+  vi.spyOn(NowPaymentsService, 'getInstance').mockReturnValue(mockNPInstance as any);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 vi.mock('bullmq', () => ({
   Queue: class {
@@ -34,7 +57,12 @@ vi.mock('bullmq', () => ({
 }));
 
 vi.mock('../../../shared/utils/logger', () => ({
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
 }));
 
 vi.mock('../../repositories/revenue-share-repository', () => ({
@@ -45,89 +73,81 @@ vi.mock('../../repositories/revenue-share-repository', () => ({
   },
 }));
 
-vi.mock('../../repositories', () => ({
+vi.mock('../../repositories/strategy-repository', () => ({
   StrategyRepository: class {},
   strategyRepository: {
     findById: (...args: any[]) => mocks.mockStrategyFindById(...args),
   },
 }));
 
-vi.mock('../../../billing/nowpayments-service', () => ({
-  NowPaymentsService: {
-    getInstance: () => ({
-      createPayout: (...args: any[]) => mocks.mockCreatePayout(...args),
-    }),
-  },
-}));
-
-import { MarketplacePayoutScheduler } from '../marketplace-payout-scheduler';
-
-function fakeRevenueRecord(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'rev_001',
-    strategyId: 'strat_001',
-    tenantId: 'tenant_001',
-    subscriptionId: 'sub_001',
-    grossRevenueCents: 2999,
-    platformShareCents: 600,
-    creatorShareCents: 2399,
-    status: 'pending',
-    ...overrides,
-  };
-}
-
-function fakeStrategy(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'strat_001',
-    name: 'Test Strategy',
-    creatorId: 'creator_001',
-    payoutAddress: 'TXxxUSDTTRC20WalletAddress12345',
-    ...overrides,
-  };
-}
-
 describe('MarketplacePayoutScheduler', () => {
   let scheduler: MarketplacePayoutScheduler;
 
   beforeEach(() => {
-    vi.clearAllMocks();
-    state.capturedProcessor = null;
-    mocks.mockQueueAdd.mockResolvedValue(undefined);
-    mocks.mockGetJobCounts.mockResolvedValue({});
-    mocks.mockQueueClose.mockResolvedValue(undefined);
-    mocks.mockMarkAsPaid.mockResolvedValue(true);
-    mocks.mockCreatePayout.mockResolvedValue({ payoutId: 'payout_001' });
-
     scheduler = new MarketplacePayoutScheduler();
   });
 
   describe('worker processor', () => {
     it('processes pending revenue shares and sends USDT payouts', async () => {
       mocks.mockFindAll.mockResolvedValue({
-        data: [fakeRevenueRecord()],
-        total: 1, page: 1, limit: 500, totalPages: 1,
+        data: [{
+          id: 'rev_001',
+          strategyId: 'strat_001',
+          tenantId: 'tenant_001',
+          subscriptionId: 'sub_001',
+          grossRevenueCents: 2999,
+          platformShareCents: 600,
+          creatorShareCents: 2399,
+          status: 'pending',
+        }],
+        total: 1,
+        page: 1,
+        limit: 500,
+        totalPages: 1,
       });
-      mocks.mockFindById.mockResolvedValue(fakeRevenueRecord());
-      mocks.mockStrategyFindById.mockResolvedValue(fakeStrategy());
+      mocks.mockFindById.mockResolvedValue({
+        id: 'rev_001',
+        strategyId: 'strat_001',
+        status: 'pending',
+  creatorShareCents: 2399,
+      });
+      mocks.mockStrategyFindById.mockResolvedValue({
+        id: 'strat_001',
+        payoutAddress: 'TXxxUSDTTRC20WalletAddress12345',
+      });
 
       const result = await state.capturedProcessor!({ id: 'job_001', data: { manual: false } });
 
       expect(result.processed).toBe(1);
       expect(mocks.mockCreatePayout).toHaveBeenCalledWith({
         address: 'TXxxUSDTTRC20WalletAddress12345',
-        amount: 23.99, // 2399 cents → $23.99
+        amount: 23.99,
       });
       expect(mocks.mockMarkAsPaid).toHaveBeenCalledWith('rev_001', 'payout_001');
     });
 
     it('does NOT mark as paid when payout API fails', async () => {
       mocks.mockFindAll.mockResolvedValue({
-        data: [fakeRevenueRecord()],
-        total: 1, page: 1, limit: 500, totalPages: 1,
+        data: [{
+          id: 'rev_001',
+          strategyId: 'strat_001',
+          status: 'pending',
+        }],
+        total: 1,
+        page: 1,
+        limit: 500,
+        totalPages: 1,
       });
-      mocks.mockFindById.mockResolvedValue(fakeRevenueRecord());
-      mocks.mockStrategyFindById.mockResolvedValue(fakeStrategy());
-      mocks.mockCreatePayout.mockResolvedValue(null); // API failure
+      mocks.mockFindById.mockResolvedValue({
+        id: 'rev_001',
+        strategyId: 'strat_001',
+        status: 'pending',
+      });
+      mocks.mockStrategyFindById.mockResolvedValue({
+        id: 'strat_001',
+        payoutAddress: 'TXxxUSDTTRC20WalletAddress12345',
+      });
+      mocks.mockCreatePayout.mockResolvedValue(null);
 
       const result = await state.capturedProcessor!({ id: 'job_002', data: { manual: false } });
 
@@ -139,10 +159,21 @@ describe('MarketplacePayoutScheduler', () => {
 
     it('skips already-paid records', async () => {
       mocks.mockFindAll.mockResolvedValue({
-        data: [fakeRevenueRecord({ status: 'paid' })],
-        total: 1, page: 1, limit: 500, totalPages: 1,
+        data: [{
+          id: 'rev_001',
+          strategyId: 'strat_001',
+          status: 'paid',
+        }],
+        total: 1,
+        page: 1,
+        limit: 500,
+        totalPages: 1,
       });
-      mocks.mockFindById.mockResolvedValue(fakeRevenueRecord({ status: 'paid' }));
+      mocks.mockFindById.mockResolvedValue({
+        id: 'rev_001',
+        strategyId: 'strat_001',
+        status: 'paid',
+      });
 
       const result = await state.capturedProcessor!({ id: 'job_003', data: { manual: false } });
 
@@ -152,24 +183,45 @@ describe('MarketplacePayoutScheduler', () => {
 
     it('skips when creator has no payoutAddress', async () => {
       mocks.mockFindAll.mockResolvedValue({
-        data: [fakeRevenueRecord()],
-        total: 1, page: 1, limit: 500, totalPages: 1,
+        data: [{
+          id: 'rev_001',
+          strategyId: 'strat_001',
+          status: 'pending',
+        }],
+        total: 1,
+        page: 1,
+        limit: 500,
+        totalPages: 1,
       });
-      mocks.mockFindById.mockResolvedValue(fakeRevenueRecord());
-      mocks.mockStrategyFindById.mockResolvedValue(fakeStrategy({ payoutAddress: null }));
+      mocks.mockFindById.mockResolvedValue({
+        id: 'rev_001',
+        strategyId: 'strat_001',
+        status: 'pending',
+      });
+      mocks.mockStrategyFindById.mockResolvedValue({
+        id: 'strat_001',
+        payoutAddress: null,
+      });
 
       const result = await state.capturedProcessor!({ id: 'job_004', data: { manual: false } });
 
       expect(result.processed).toBe(0);
-      expect(result.skippedIds).toContain('rev_001');
+      expect(result.errors).toHaveLength(1);
       expect(mocks.mockCreatePayout).not.toHaveBeenCalled();
       expect(mocks.mockMarkAsPaid).not.toHaveBeenCalled();
     });
 
     it('handles missing revenue record gracefully', async () => {
       mocks.mockFindAll.mockResolvedValue({
-        data: [fakeRevenueRecord()],
-        total: 1, page: 1, limit: 500, totalPages: 1,
+        data: [{
+          id: 'rev_001',
+          strategyId: 'strat_001',
+          status: 'pending',
+        }],
+        total: 1,
+        page: 1,
+        limit: 500,
+        totalPages: 1,
       });
       mocks.mockFindById.mockResolvedValue(null);
 
@@ -181,18 +233,29 @@ describe('MarketplacePayoutScheduler', () => {
 
     it('no-ops when no pending records exist', async () => {
       mocks.mockFindAll.mockResolvedValue({
-        data: [], total: 0, page: 1, limit: 500, totalPages: 0,
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 500,
+        totalPages: 0,
       });
 
       const result = await state.capturedProcessor!({ id: 'job_006', data: { manual: false } });
 
       expect(result.processed).toBe(0);
-      expect(result.ids).toEqual([]);
+      expect(result.errors).toHaveLength(0);
     });
 
     it('uses revenueIds from manual trigger job', async () => {
-      mocks.mockFindById.mockResolvedValue(fakeRevenueRecord());
-      mocks.mockStrategyFindById.mockResolvedValue(fakeStrategy());
+      mocks.mockFindById.mockResolvedValue({
+        id: 'rev_001',
+        strategyId: 'strat_001',
+        status: 'pending',
+      });
+      mocks.mockStrategyFindById.mockResolvedValue({
+        id: 'strat_001',
+        payoutAddress: 'TXxxUSDTTRC20WalletAddress12345',
+      });
 
       const result = await state.capturedProcessor!({
         id: 'job_007',

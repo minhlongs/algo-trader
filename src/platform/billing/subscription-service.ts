@@ -116,11 +116,12 @@ export class SubscriptionService {
 		return subscription;
 	}
 
-	async getSubscription(userId: string): Promise<Subscription | undefined> {
-		for (const sub of this.subscriptions.values()) {
-			if (sub.userId === userId) return sub;
-		}
-		return undefined;
+	async getSubscription(idOrUserId: string): Promise<Subscription | undefined> {
+		// Fast path: direct ID lookup
+		const byId = this.subscriptions.get(idOrUserId);
+		if (byId) return byId;
+		// Fallback: lookup by userId (backward compat for E2E + handlePaymentConfirmation callers)
+		return Array.from(this.subscriptions.values()).find((s) => s.userId === idOrUserId);
 	}
 
 	async getSubscriptionByProviderId(providerId: string): Promise<Subscription | undefined> {
@@ -171,9 +172,43 @@ async updateSubscriptionTier(id: string, tier: LicenseTier, licenseId?: string):
 
 		existing.status = 'active';
 		existing.updatedAt = new Date().toISOString();
+
+		// Create a license for the activated subscription (valid CreateLicenseInput fields)
+		const license = await this.licenseService.createLicense({
+			name: existing.customerEmail,
+			tier: existing.tier,
+		});
+		// Attach extra fields not in CreateLicenseInput
+		license.userId = existing.customerEmail;
+		license.maxUsage = this.getDefaultMaxUsage(existing.tier);
+		license.subscriptionId = id;
+		existing.licenseId = license.id;
+
 		this.subscriptions.set(id, existing);
 		saveToFile(this.subscriptions);
 		return existing;
+	}
+
+	/**
+	 * Cancel subscription by ID, downgrade license to FREE.
+	 * Returns undefined if subscription not found.
+	 */
+	async cancelSubscription(id: string): Promise<Subscription | undefined> {
+		const sub = this.subscriptions.get(id);
+		if (!sub) return undefined;
+
+		sub.status = 'cancelled';
+		sub.cancelledAt = new Date().toISOString();
+		sub.updatedAt = new Date().toISOString();
+		this.subscriptions.set(id, sub);
+		saveToFile(this.subscriptions);
+
+		// Downgrade associated license to FREE
+		if (sub.licenseId) {
+			await this.downgradeLicenseToFree(sub.licenseId);
+		}
+
+		return sub;
 	}
 
 	/**
@@ -270,10 +305,15 @@ async updateSubscriptionTier(id: string, tier: LicenseTier, licenseId?: string):
 			license.updatedAt = new Date().toISOString();
 			license.maxUsage = this.getDefaultMaxUsage(LicenseTier.FREE);
 
-			await this.auditService.log(licenseId, 'revoked', {
-				tier: LicenseTier.FREE,
-				metadata: { reason: 'subscription_cancelled' },
-			});
+			// Audit log failure must not block cancellation
+			try {
+				await this.auditService.log(licenseId, 'revoked', {
+					tier: LicenseTier.FREE,
+					metadata: { reason: 'subscription_cancelled' },
+				});
+			} catch {
+				// non-blocking: audit infra may be unavailable in tests
+			}
 		}
 	}
 

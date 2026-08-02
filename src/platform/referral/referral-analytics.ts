@@ -3,7 +3,7 @@
  * Aggregation queries for stats, commissions, click tracking
  */
 
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../shared/db/postgres-client.js';
 import { getReferralCodeByTenant, mapReferralClick } from './referral-crud';
 import type { ReferralClick, ReferralStats, CommissionRecord, CommissionStatus } from './types';
 

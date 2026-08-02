@@ -49,9 +49,9 @@ export class KellyPositionSizer {
       minPositionUsd: config?.minPositionUsd ?? 10,
       isManagedCapital: config?.isManagedCapital ?? false,
     };
-    if (this.config.isManagedCapital && this.originalRequestedFraction > MANAGED_CAPITAL_MAX_FRACTION) {
-      logger.info(`[KellySizer] Managed capital: fraction capped at ${MANAGED_CAPITAL_MAX_FRACTION}`);
-    }
+ if (this.config.isManagedCapital && this.config.kellyFraction > MANAGED_CAPITAL_MAX_FRACTION) {
+  this.config.kellyFraction = MANAGED_CAPITAL_MAX_FRACTION;
+ }
   }
 
   calculatePositionSize(input: KellySizingInput): KellySizingResult {

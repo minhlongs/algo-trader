@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getDbClient, query } from '../../db/postgres-client';
+import { getDbClient, query } from '../../db/postgres-client.js';
 import { LicenseService } from '@platform/billing/license-service';
 import { AuditLogService } from '@platform/audit/audit-log-service';
 import { z } from 'zod';

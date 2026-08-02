@@ -9,7 +9,7 @@
 
 import { subscriptionRepo } from './subscription-repository-d1';
 import { usageMetering } from './usage-metering-service';
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../shared/db/postgres-client.js';
 import { logger } from '../../shared/utils/logger';
 import type {
   SignalSubscription,

@@ -2,6 +2,17 @@
  * Vetting Service Tests
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+// Mock AuditLogService to prevent it from hitting the database
+vi.mock('../../audit/audit-log-service', () => ({
+  AuditLogService: class {
+    static getInstance() {
+      return new (class MockAuditLogService {
+        log = vi.fn().mockResolvedValue(undefined);
+      })();
+    }
+  },
+}));
+
 import { VettingService } from '../services/vetting.service';
 
 const { mockStrategyRepo: mockVSRepo, mockVettingRepo: mockVVRepo } = vi.hoisted(() => {

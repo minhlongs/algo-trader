@@ -15,7 +15,9 @@ import { nowpaymentsWebhookRouter } from '../../src/platform/api/routes/webhooks
 import { SubscriptionService } from '../../src/platform/billing/subscription-service';
 import { LicenseService } from '../../src/platform/billing/license-service';
 import { NowPaymentsService } from '../../src/platform/billing/nowpayments-service';
+import { AuditLogService } from '../../src/platform/audit/audit-log-service';
 import { LicenseTier } from '../../src/shared/types/license';
+import type { AuditLog } from '../../src/platform/audit/audit-log-service';
 
 // Crypto for generating test HMAC signatures
 import crypto from 'crypto';
@@ -88,6 +90,9 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
     vi.clearAllMocks();
     SubscriptionService.resetInstance();
     LicenseService.resetInstance();
+    AuditLogService.resetInstance();
+    const audit = AuditLogService.getInstance();
+    vi.spyOn(audit, 'log').mockResolvedValue({ id: 'audit-e2e', event: 'created', createdAt: new Date().toISOString() } as AuditLog);
   });
 
   // ---------------------------------------------------------------------------

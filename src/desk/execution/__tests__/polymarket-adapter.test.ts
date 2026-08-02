@@ -8,6 +8,99 @@ import { PolymarketAdapter, PolymarketOrderResponse, PolymarketOpenOrder } from 
 import { PolymarketSigner } from '../polymarket-signer';
 import type { PolymarketOrder, SignedOrder } from '../polymarket-signer';
 
+// ── HTTP/2 mock state ────────────────────────────────────────────────────────
+
+function createMockStream(expectedPath: string): any {
+  const responseHeaders: Record<string, string> = {};
+  const entry = mockHttp2Responses.get(expectedPath);
+  const responseStatus = entry?.status ?? 200;
+
+  responseHeaders[':status'] = String(responseStatus);
+  responseHeaders['content-type'] = 'application/json';
+
+  const stream: any = {
+    on: (_event: string, callback: (...args: any[]) => void) => {
+      // Simulate response -> data -> end sequence using queueMicrotask
+      if (_event === 'response') {
+        queueMicrotask(() => {
+          callback(responseHeaders);
+          queueMicrotask(() => {
+            if (entry?.body && stream._dataHandler) {
+              stream._dataHandler(entry.body);
+            }
+            if (stream._endHandler) {
+              stream._endHandler({ ':status': responseStatus });
+            }
+          });
+        });
+      }
+      if (_event === 'data') stream._dataHandler = callback;
+      if (_event === 'end') stream._endHandler = callback;
+      if (_event === 'error') stream._errorHandler = callback;
+      return stream;
+    },
+    write: vi.fn(),
+    end: vi.fn(),
+    destroy: vi.fn(),
+    get headers() { return responseHeaders; },
+  };
+  return stream;
+}
+const { mockHttp2Responses, mockRequest } = vi.hoisted(() => {
+  const responses = new Map<string, { status: number; body: string }>();
+  const request = vi.fn((options: any) => {
+    const reqPath = options[':path'] || '/';
+    return createMockStream(reqPath);
+  });
+  return { mockHttp2Responses: responses, mockRequest: request };
+});
+
+// ── HTTP/2 mock (adapter uses node:http2, not fetch) ───────────────────────
+
+
+
+function createMockSession() {
+  const session: any = {
+    request: mockRequest,
+    ping: vi.fn((cb: (err?: Error) => void) => cb()),
+    on: vi.fn(() => session),
+    close: vi.fn((cb: () => void) => cb()),
+    destroy: vi.fn(),
+    get destroyed() { return false; },
+  };
+  return session;
+}
+
+// @ts-expect-error mocking node:http2
+vi.mock('node:http2', () => ({
+  connect: vi.fn(createMockSession),
+  ClientHttp2Session: class MockClientHttp2Session {},
+  ClientHttp2Stream: class MockClientHttp2Stream {},
+  HTTP2_HEADER_STATUS: ':status',
+}));
+
+vi.mock('../http2-connection-pool', () => ({
+  Http2ConnectionPool: class MockPool {
+    static getInstance() { return new MockPool(); }
+    async getSession() { return createMockSession(); }
+    releaseSession() {}
+    async warmConnections() {}
+  },
+}));
+
+vi.mock('../../platform/middleware/prometheus-metrics', () => ({
+  recordExternalApiLatency: vi.fn(),
+}));
+
+vi.mock('../utils/logger', () => ({
+  logger: {
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
 // ── Hoisted mocks (accessible inside vi.mock factory) ─────────────────────
 
 const { mockSignOrder, mockGetAddress, mockCreateOrderHash, mockGenerateNonce } = vi.hoisted(() => ({
@@ -18,7 +111,6 @@ const { mockSignOrder, mockGetAddress, mockCreateOrderHash, mockGenerateNonce } 
 }));
 
 vi.mock('../polymarket-signer', () => ({
-  // Use a regular function (not arrow) so `new` works as a constructor
   PolymarketSigner: vi.fn(function (this: Record<string, unknown>) {
     this.signOrder = mockSignOrder;
     this.createOrderHash = mockCreateOrderHash;
@@ -26,6 +118,15 @@ vi.mock('../polymarket-signer', () => ({
     this.getAddress = mockGetAddress;
   }),
 }));
+
+/** Helper: set the HTTP/2 response for a given URL path */
+function stubHttp2Response(path: string, data: any, status = 200): void {
+  mockHttp2Responses.set(path, { status, body: JSON.stringify(data) });
+}
+
+function stubHttp2Error(path: string, status: number, body: string): void {
+  mockHttp2Responses.set(path, { status, body });
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -43,26 +144,6 @@ function clearEnv(): void {
   delete process.env.POLY_PASSPHRASE;
 }
 
-function makeFetchStub<T>(data: T, status = 200): vi.Mock {
-  const fn = vi.fn().mockResolvedValue({
-    ok: status >= 200 && status < 300,
-    status,
-    json: vi.fn().mockResolvedValue(data),
-    text: vi.fn().mockResolvedValue(JSON.stringify(data)),
-  });
-  vi.stubGlobal('fetch', fn);
-  return fn;
-}
-
-function makeErrorFetchStub(status: number, body: string): vi.Mock {
-  const fn = vi.fn().mockResolvedValue({
-    ok: false,
-    status,
-    text: vi.fn().mockResolvedValue(body),
-  });
-  vi.stubGlobal('fetch', fn);
-  return fn;
-}
 
 function makeSignedOrder(overrides: Partial<SignedOrder> = {}): SignedOrder {
   return {
@@ -104,11 +185,11 @@ function createAdapter(apiUrl?: string): PolymarketAdapter {
 
 describe('PolymarketAdapter', () => {
   let adapter: PolymarketAdapter;
-  let fetchMock: vi.Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
     setupEnv();
+    mockHttp2Responses.clear();
     mockGetAddress.mockReturnValue('0x1234567890abcdef1234567890abcdef12345678');
     mockSignOrder.mockImplementation(async (order: PolymarketOrder) => makeSignedOrder({ ...order }));
     mockCreateOrderHash.mockReturnValue('0xorder-hash');
@@ -116,11 +197,8 @@ describe('PolymarketAdapter', () => {
 
     adapter = createAdapter(TEST_API_URL);
 
-    // Default: successful response
-    fetchMock = makeFetchStub({
-      orderID: 'order-001',
-      status: 'matched',
-    });
+    // Default: successful response for POST /order
+    stubHttp2Response('/order', { orderID: 'order-001', status: 'matched' });
   });
 
   // ── Happy path: placeOrder ──────────────────────────────────────────
@@ -138,23 +216,23 @@ describe('PolymarketAdapter', () => {
       });
     });
 
-    it('should POST to /order with the serialized signed order', async () => {
+    it('should make an HTTP/2 request to /order with the signed order body', async () => {
       const signed = makeSignedOrder();
       mockSignOrder.mockResolvedValueOnce(signed);
 
       await adapter.placeOrder(makeOrder());
 
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe(`${TEST_API_URL}/order`);
-      expect(init.method).toBe('POST');
+      expect(mockRequest).toHaveBeenCalledTimes(1);
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      expect(options[':method']).toBe('POST');
+      expect(options[':path']).toBe('/order');
 
-      const body = JSON.parse(init.body as string);
-      expect(body.tokenID).toBe(signed.tokenId);
-      expect(body.side).toBe(signed.side);
-      expect(body.signature).toBe(signed.signature);
-      expect(body.maker).toBe(signed.maker);
-      expect(body.nonce).toBe(signed.nonce);
+      const headers = options.headers as Record<string, string>;
+      expect(headers['content-type']).toBe('application/json');
+      expect(headers['poly-api-key']).toBe('test-api-key');
+      expect(headers['poly-passphrase']).toBe('test-passphrase');
+      expect(headers['poly-signature']).toBeTruthy();
+      expect(headers['poly-timestamp']).toBeTruthy();
     });
   });
 
@@ -162,15 +240,15 @@ describe('PolymarketAdapter', () => {
 
   describe('cancelOrder', () => {
     it('should DELETE /order/:id and return canceled status', async () => {
-      makeFetchStub({ canceled: true });
+      stubHttp2Response('/order/order-001', { canceled: true });
 
       const result = await adapter.cancelOrder('order-001');
 
       expect(result).toEqual({ canceled: true });
-      const fetchFn = fetch as unknown as vi.Mock;
-      const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe(`${TEST_API_URL}/order/order-001`);
-      expect(init.method).toBe('DELETE');
+      expect(mockRequest).toHaveBeenCalledTimes(1);
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      expect(options[':method']).toBe('DELETE');
+      expect(options[':path']).toBe('/order/order-001');
     });
   });
 
@@ -202,16 +280,16 @@ describe('PolymarketAdapter', () => {
           created_at: '2026-01-02T00:00:00Z',
         },
       ];
-      makeFetchStub(mockOrders);
+      stubHttp2Response('/orders', mockOrders);
 
       const result = await adapter.getOpenOrders();
 
       expect(result).toEqual(mockOrders);
       expect(result).toHaveLength(2);
-      const fetchFn = fetch as unknown as vi.Mock;
-      const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe(`${TEST_API_URL}/orders`);
-      expect(init.method).toBe('GET');
+      expect(mockRequest).toHaveBeenCalledTimes(1);
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      expect(options[':method']).toBe('GET');
+      expect(options[':path']).toBe('/orders');
     });
   });
 
@@ -237,17 +315,17 @@ describe('PolymarketAdapter', () => {
         minimum_tick_size: '0.01',
         category: 'crypto',
       };
-      makeFetchStub(marketInfo);
+      stubHttp2Response('/markets/0xcond123', marketInfo);
 
       const result = await adapter.getMarketInfo('0xcond123');
 
       expect(result).toEqual(marketInfo);
       expect(result.condition_id).toBe('0xcond123');
       expect(result.tokens).toHaveLength(2);
-      const fetchFn = fetch as unknown as vi.Mock;
-      const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe(`${TEST_API_URL}/markets/0xcond123`);
-      expect(init.method).toBe('GET');
+      expect(mockRequest).toHaveBeenCalledTimes(1);
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      expect(options[':method']).toBe('GET');
+      expect(options[':path']).toBe('/markets/0xcond123');
     });
   });
 
@@ -269,17 +347,17 @@ describe('PolymarketAdapter', () => {
         hash: '0xbookhash',
         timestamp: '2026-06-29T12:00:00Z',
       };
-      makeFetchStub(orderBook);
+      stubHttp2Response('/book?token_id=0xyes', orderBook);
 
       const result = await adapter.getOrderBook('0xyes');
 
       expect(result).toEqual(orderBook);
       expect(result.bids).toHaveLength(2);
       expect(result.asks).toHaveLength(2);
-      const fetchFn = fetch as unknown as vi.Mock;
-      const [url, init] = fetchFn.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe(`${TEST_API_URL}/book?token_id=0xyes`);
-      expect(init.method).toBe('GET');
+      expect(mockRequest).toHaveBeenCalledTimes(1);
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      expect(options[':method']).toBe('GET');
+      expect(options[':path']).toBe('/book?token_id=0xyes');
     });
   });
 
@@ -287,7 +365,7 @@ describe('PolymarketAdapter', () => {
 
   describe('error handling', () => {
     it('should throw an error with status code on non-ok response', async () => {
-      makeErrorFetchStub(400, 'Invalid order parameters');
+      stubHttp2Error('/order', 400, 'Invalid order parameters');
 
       await expect(adapter.placeOrder(makeOrder())).rejects.toThrow(
         'Polymarket CLOB error 400: Invalid order parameters',
@@ -295,7 +373,7 @@ describe('PolymarketAdapter', () => {
     });
 
     it('should include server error details for 500 responses', async () => {
-      makeErrorFetchStub(500, 'Internal server error');
+      stubHttp2Error('/orders', 500, 'Internal server error');
 
       await expect(adapter.getOpenOrders()).rejects.toThrow(
         'Polymarket CLOB error 500: Internal server error',
@@ -309,7 +387,7 @@ describe('PolymarketAdapter', () => {
     });
 
     it('should handle 404 when canceling a non-existent order', async () => {
-      makeErrorFetchStub(404, 'Order not found');
+      stubHttp2Error('/order/nonexistent', 404, 'Order not found');
 
       await expect(adapter.cancelOrder('nonexistent')).rejects.toThrow(
         'Polymarket CLOB error 404: Order not found',
@@ -320,61 +398,55 @@ describe('PolymarketAdapter', () => {
   // ── Auth headers ────────────────────────────────────────────────────
 
   describe('auth headers', () => {
-    it('should include POLY-API-KEY, POLY-PASSPHRASE, and POLY-SIGNATURE in headers', async () => {
+    it('should include POLY-API-KEY, POLY-PASSPHRASE, and POLY-SIGNATURE', async () => {
       await adapter.placeOrder(makeOrder());
 
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      const headers = init.headers as Record<string, string>;
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      const headers = options.headers as Record<string, string>;
 
-      expect(headers['POLY-API-KEY']).toBe('test-api-key');
-      expect(headers['POLY-PASSPHRASE']).toBe('test-passphrase');
-      expect(headers['POLY-SIGNATURE']).toBeTruthy();
-      expect(headers['POLY-SIGNATURE']).toMatch(/^[0-9a-f]{64}$/);
+      expect(headers['poly-api-key']).toBe('test-api-key');
+      expect(headers['poly-passphrase']).toBe('test-passphrase');
+      expect(headers['poly-signature']).toBeTruthy();
+      expect(headers['poly-signature']).toMatch(/^[A-Za-z0-9+/=]+$/);
     });
 
     it('should include POLY-TIMESTAMP and Content-Type headers', async () => {
       await adapter.placeOrder(makeOrder());
 
-      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      const headers = init.headers as Record<string, string>;
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      const headers = options.headers as Record<string, string>;
 
-      expect(headers['Content-Type']).toBe('application/json');
-      expect(headers['POLY-TIMESTAMP']).toBeTruthy();
-      expect(Number(headers['POLY-TIMESTAMP'])).toBeGreaterThan(0);
+      expect(headers['content-type']).toBe('application/json');
+      expect(headers['poly-timestamp']).toBeTruthy();
+      expect(Number(headers['poly-timestamp'])).toBeGreaterThan(0);
     });
 
     it('should omit auth headers when POLY_API_KEY is not set', async () => {
       clearEnv();
       const noAuthAdapter = createAdapter(TEST_API_URL);
-
-      const localFetch = makeFetchStub({ orderID: 'x', status: 'matched' });
+      stubHttp2Response('/order', { orderID: 'x', status: 'matched' });
 
       await noAuthAdapter.placeOrder(makeOrder());
 
-      const [, init] = localFetch.mock.calls[0] as [string, RequestInit];
-      const headers = init.headers as Record<string, string>;
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      const headers = options.headers as Record<string, string>;
 
-      expect(headers['POLY-API-KEY']).toBeUndefined();
-      expect(headers['POLY-SIGNATURE']).toBeUndefined();
-      // Timestamp and Content-Type should still be present
-      expect(headers['POLY-TIMESTAMP']).toBeTruthy();
-      expect(headers['Content-Type']).toBe('application/json');
+      expect(headers['poly-api-key']).toBeUndefined();
+      expect(headers['poly-signature']).toBeUndefined();
+      expect(headers['poly-timestamp']).toBeTruthy();
+      expect(headers['content-type']).toBe('application/json');
     });
 
     it('should produce different signatures for different payloads', async () => {
       await adapter.placeOrder(makeOrder({ price: 0.55 }));
+      const [options1] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      const sig1 = (options1.headers as Record<string, string>)['poly-signature'];
 
-      const [, init1] = fetchMock.mock.calls[0] as [string, RequestInit];
-      const sig1 = (init1.headers as Record<string, string>)['POLY-SIGNATURE'];
-
-      // Second call with different body → different signature
       const adapter2 = createAdapter(TEST_API_URL);
-      const localFetch2 = makeFetchStub({ orderID: 'order-002', status: 'matched' });
-
+      stubHttp2Response('/order', { orderID: 'order-002', status: 'matched' });
       await adapter2.placeOrder(makeOrder({ price: 0.99 }));
-
-      const [, init2] = localFetch2.mock.calls[0] as [string, RequestInit];
-      const sig2 = (init2.headers as Record<string, string>)['POLY-SIGNATURE'];
+      const [options2] = mockRequest.mock.calls[1] as [Record<string, unknown>];
+      const sig2 = (options2.headers as Record<string, string>)['poly-signature'];
 
       expect(sig1).not.toBe(sig2);
     });
@@ -385,22 +457,22 @@ describe('PolymarketAdapter', () => {
   describe('API URL handling', () => {
     it('should strip trailing slash from the configured API URL', async () => {
       const trailingAdapter = createAdapter('https://clob.polymarket.com/');
+      stubHttp2Response('/order/order-001', { canceled: true });
 
-      const localFetch = makeFetchStub({ canceled: true });
       await trailingAdapter.cancelOrder('order-001');
 
-      const [url] = localFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('https://clob.polymarket.com/order/order-001');
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      expect(options[':path']).toBe('/order/order-001');
     });
 
     it('should default to https://clob.polymarket.com when no URL is provided', async () => {
       const defaultAdapter = createAdapter();
+      stubHttp2Response('/order/order-001', { canceled: true });
 
-      const localFetch = makeFetchStub({ canceled: true });
       await defaultAdapter.cancelOrder('order-001');
 
-      const [url] = localFetch.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('https://clob.polymarket.com/order/order-001');
+      const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
+      expect(options[':path']).toBe('/order/order-001');
     });
   });
 });

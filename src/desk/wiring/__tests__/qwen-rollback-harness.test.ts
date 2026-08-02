@@ -13,24 +13,24 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Mock DB to avoid real Postgres in unit tests ────────────────────────────
 const mockQueryResult = vi.fn();
-vi.mock('../../db/postgres-client.js', () => ({
+vi.mock('../../../db/postgres-client', () => ({
   query: (...args: unknown[]) => mockQueryResult(...args),
 }));
 
 // ─── Mock Telegram to avoid real HTTP calls ──────────────────────────────────
 // Note: vi.fn() inside factory — cannot reference outer variables (hoisting)
-vi.mock('../../signal/telegram-signal-pusher.js', () => ({
+vi.mock('../../signal/telegram-signal-pusher', () => ({
   telegramSignalPusher: { sendAdminAlert: vi.fn().mockResolvedValue(true) },
 }));
 
 // ─── Mock Prometheus to avoid duplicate metric registration ──────────────────
-vi.mock('../../middleware/prometheus-metrics.js', () => ({
+vi.mock('../../platform/middleware/prometheus-metrics', () => ({
   qwenPaperPnlPct: { set: vi.fn() },
   qwenSignalsTotal: { inc: vi.fn() },
 }));
 
 // ─── Mock logger ─────────────────────────────────────────────────────────────
-vi.mock('../../utils/logger.js', () => ({
+vi.mock('../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
@@ -51,7 +51,7 @@ import {
   PaperGateError,
 } from '../qwen-live-eligibility-gate.js';
 
-import { telegramSignalPusher } from '../../signal/telegram-signal-pusher.js';
+import { telegramSignalPusher } from '../../signal/telegram-signal-pusher';
 
 // Convenience accessor for the mocked sendAdminAlert (resolved after imports)
 const getMockAlert = () => vi.mocked(telegramSignalPusher.sendAdminAlert);
@@ -211,6 +211,7 @@ describe('L4 — 30-Day Paper Gate + USD Cap', () => {
     clearQwenEnv();
     resetDrawdownMonitorState();
     mockQueryResult.mockReset();
+    mockQueryResult.mockResolvedValue({ rows: [{ min_ts: null }] });
   });
 
   it('assertQwenLiveEligible throws when QWEN_LIVE_ELIGIBLE not set', async () => {
@@ -222,7 +223,7 @@ describe('L4 — 30-Day Paper Gate + USD Cap', () => {
     setEnv({ QWEN_LIVE_ELIGIBLE: 'true' });
     mockQueryResult.mockResolvedValue({ rows: [{ min_ts: null }] });
     await expect(assertQwenLiveEligible(100)).rejects.toThrow(PaperGateError);
-    await expect(assertQwenLiveEligible(100)).rejects.toThrow('No Qwen paper trades');
+    await expect(assertQwenLiveEligible(100)).rejects.toThrow('No paper trades recorded yet');
   });
 
   it('assertQwenLiveEligible throws when paper history < 30 days', async () => {

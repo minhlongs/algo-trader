@@ -12,7 +12,7 @@
  * Additionally reads QWEN_LIVE_ELIGIBLE env flag (must be 'true' AND 30d cleared).
  */
 
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../db/postgres-client';
 import { logger } from '../utils/logger';
 import { setQwenPaperGateDaysRemaining } from '../middleware/prometheus-metrics';
 
@@ -81,7 +81,7 @@ export async function assertQwenLiveEligible(sizeUsd: number): Promise<void> {
   const ageMs = await getQwenFirstTradeAgeMs();
   if (ageMs === null) {
     throw new PaperGateError(
-      'No Qwen paper trades recorded. Cannot validate 30-day paper history.'
+      'Qwen source requires 30d paper validation. No paper trades recorded yet.'
     );
   }
   if (ageMs < MIN_PAPER_MS) {

@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
   setWebhook: vi.fn(),
 }));
 
-vi.mock('../../signal/signal-subscriber-repository-d1', () => ({
+vi.mock('../../../../platform/signal/signal-subscriber-repository-d1', () => ({
   signalSubscriberRepo: {
     getBySubscriberId: mocks.getBySubscriberId,
     upsert: mocks.upsert,

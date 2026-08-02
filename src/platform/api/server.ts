@@ -102,7 +102,7 @@ export class ApiServer {
     this.app.use(cors({ origin: this.config.corsOrigin }));
 
     // Body parsing
-    this.app.use(express.json());
+    this.app.use(express.json({ strict: false }));
     this.app.use(express.urlencoded({ extended: true }));
 
     // Prometheus metrics middleware (track all requests)

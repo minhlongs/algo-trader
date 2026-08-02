@@ -7,7 +7,7 @@
  */
 
 import { config } from '../../shared/config/env';
-import { query, transaction } from '../../db/postgres-client';
+import { query, transaction } from '../../db/postgres-client.js';
 import {
   logAudit,
   getAuditTrail,

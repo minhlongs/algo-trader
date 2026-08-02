@@ -34,7 +34,7 @@ vi.mock('../../../../shared/backtesting/backtest-runner', () => ({
 }));
 
 // Mock getDbClient for persistence
-vi.mock('../../../../shared/db/postgres-client', () => ({
+vi.mock('../../../../db/postgres-client', () => ({
   getDbClient: () => ({ query: mocks.dbQuery }),
 }));
 
@@ -165,6 +165,7 @@ describe('POST /:id/backtest', () => {
 describe('GET /:id/backtests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getStrategyWithDetails.mockResolvedValue(FAKE_STRATEGY);
     mocks.dbQuery.mockResolvedValue({
       rows: [
         { id: 'bt_001', sharpe_ratio: 1.5, max_drawdown: 0.1, win_rate: 0.55,

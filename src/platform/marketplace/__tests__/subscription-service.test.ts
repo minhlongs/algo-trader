@@ -3,7 +3,14 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock postgres-client — query returns empty rows by default
+// Mock postgres-client at the path that audit-log-service.ts actually imports from (../../db/postgres-client)
+vi.mock('../../db/postgres-client', () => ({
+  query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+  getDbClient: vi.fn(),
+  transaction: vi.fn(),
+  closeDbConnection: vi.fn(),
+}));
+// Also mock the shared path that subscription repositories use
 vi.mock('../../../shared/db/postgres-client', () => ({
   query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
   getDbClient: vi.fn(),
@@ -12,6 +19,17 @@ vi.mock('../../../shared/db/postgres-client', () => ({
 }));
 
 // Mock nowpayments-service to avoid real API calls
+// Mock AuditLogService to prevent it from hitting the database
+vi.mock('../../audit/audit-log-service', () => ({
+  AuditLogService: class {
+    static getInstance() {
+      return new (class MockAuditLogService {
+        log = vi.fn().mockResolvedValue(undefined);
+      })();
+    }
+  },
+}));
+
 vi.mock('../../billing/nowpayments-service', () => ({
   NowPaymentsService: vi.fn().mockImplementation(() => ({
     createMarketplaceCheckoutUrl: vi.fn().mockResolvedValue(null),

@@ -14,7 +14,7 @@ vi.mock('../../../db/postgres-client.js', () => ({ query: vi.fn() }));
 vi.mock('../../../utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
 const { mockEvaluateAndQueue } = vi.hoisted(() => ({ mockEvaluateAndQueue: vi.fn() }));
-vi.mock('../../../wiring/qwen-signals-loop.js', () => ({ evaluateAndQueue: mockEvaluateAndQueue }));
+vi.mock('../../../../wiring/qwen-signals-loop', () => ({ evaluateAndQueue: mockEvaluateAndQueue }));
 
 import { createAdminQwenRouter } from '../admin-qwen-routes.js';
 

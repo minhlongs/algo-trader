@@ -9,7 +9,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "jsx": "react",
-    "types": ["node"],
+    "types": ["node", "@cloudflare/workers-types"],
     "isolatedModules": false,
     "typeRoots": ["./node_modules/@types"],
     "incremental": true,

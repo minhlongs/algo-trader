@@ -19,7 +19,7 @@ vi.mock('../../src/shared/utils/logger.js', () => ({
 }));
 
 const mockQuery = vi.fn();
-vi.mock('../../src/shared/db/postgres-client.js', () => ({
+vi.mock('../../src/db/postgres-client', () => ({
 	query: (...args: unknown[]) => mockQuery(...args),
 }));
 

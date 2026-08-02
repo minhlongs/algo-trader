@@ -7,7 +7,7 @@
  * Singleton: start()/stop()/reset() for test isolation.
  */
 
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../db/postgres-client';
 import { telegramSignalPusher } from '../signal/telegram-signal-pusher';
 import { logger } from '../../shared/utils/logger';
 import {

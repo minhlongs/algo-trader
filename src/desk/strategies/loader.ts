@@ -18,10 +18,27 @@ export interface StrategyRegistryEntry {
 }
 
 export class StrategyLoader {
+  // Singleton (lazy, optional — undefined until first getInstance call)
+  static instance?: StrategyLoader;
+
   private strategyCache: Map<string, IStrategy> = new Map();
+  private strategyMap: Map<string, IStrategy> = new Map();
   private cacheTimestamps: Map<string, number> = new Map();
   private readonly CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
   private redis: ReturnType<typeof import('../../redis').getRedisClient> | null = null;
+
+  /** Reset singleton for testing */
+  static reset(): void {
+    StrategyLoader.instance = undefined;
+  }
+
+  /** Lazy singleton — default-constructed on first call */
+  static getInstance(): StrategyLoader {
+    if (!StrategyLoader.instance) {
+      StrategyLoader.instance = new StrategyLoader();
+    }
+    return StrategyLoader.instance;
+  }
 
   // Strategy registry - maps strategy names to module paths
   private registry: Map<string, StrategyRegistryEntry> = new Map();
@@ -106,6 +123,21 @@ export class StrategyLoader {
     });
   }
 
+  /** Register a strategy directly (stores the object for loadStrategy retrieval) */
+  registerStrategy(strategy: IStrategy & { id: string }): void {
+    this.strategyMap.set(strategy.id, strategy);
+  }
+
+  /** Unregister a strategy by ID */
+  unloadStrategy(strategyId: string): boolean {
+    return this.strategyMap.delete(strategyId);
+  }
+
+  /** List all registered strategies */
+  listStrategies(): IStrategy[] {
+    return Array.from(this.strategyMap.values());
+  }
+
   /** Get registry entry for a strategy */
   getRegistryEntry(strategyId: string): StrategyRegistryEntry | undefined {
     return this.registry.get(strategyId);
@@ -116,8 +148,14 @@ export class StrategyLoader {
     return Array.from(this.registry.values());
   }
 
-  /** Load strategy by ID (lazy loading with simple cache) */
+  /** Load strategy by ID — checks in-memory map first, then registry/dynamic import */
   async loadStrategy(strategyId: string): Promise<IStrategy | null> {
+    // Check in-memory strategy map (populated by registerStrategy)
+    const direct = this.strategyMap.get(strategyId);
+    if (direct) {
+      return direct;
+    }
+
     // Check cache first
     const cached = this.strategyCache.get(strategyId);
     const cachedAt = this.cacheTimestamps.get(strategyId);
@@ -224,3 +262,11 @@ export class StrategyLoader {
     return this.redis.smembers(key);
   }
 }
+
+/** Helper returning the singleton instance */
+export function getStrategyLoader(): StrategyLoader {
+  return StrategyLoader.getInstance();
+}
+
+/** Module-level singleton instance */
+export const strategyLoader = StrategyLoader.getInstance();

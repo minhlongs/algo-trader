@@ -6,7 +6,7 @@
  * tractability: every execution can be replayed from journal rows alone.
  */
 
-import { query } from '../../db/postgres-client';
+import { query } from '../../db/postgres-client.js';
 import { logger } from '../../utils/logger';
 import type {
   ConsensusAction,

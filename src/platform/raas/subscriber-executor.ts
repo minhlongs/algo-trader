@@ -4,7 +4,7 @@
  * Records each execution result to trades table with subscriber_id + attestation_id.
  */
 
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../shared/db/postgres-client.js';
 import { buildTenantFilter } from './subscriber-tenant-isolator';
 import { TenantCredentialsRepository } from '../db/tenant-credentials-repository';
 

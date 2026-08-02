@@ -12,7 +12,7 @@
 
 import { betterAuth } from 'better-auth';
 import pg from 'pg';
-import { logger } from'../utils/logger';
+import { logger } from '../utils/logger';
 
 const { Pool } = pg;
 
@@ -27,9 +27,9 @@ if (!authSecret) {
 }
 
 const dbPassword = process.env.DB_PASSWORD;
-if (isProd && !dbPassword) {
+if (isProd && dbPassword === undefined) {
   throw new Error('[BetterAuth] FATAL: DB_PASSWORD must be set in production');
-}
+  }
 
 /** Create and export the Better Auth instance */
 export const auth = betterAuth({

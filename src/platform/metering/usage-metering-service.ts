@@ -5,7 +5,7 @@
 
 import { LicenseTier } from '../../shared/types/license';
 import { EventEmitter } from 'events';
-import { query } from '../../shared/db/postgres-client';
+import { query } from '../../shared/db/postgres-client.js';
 
 export interface UsageStatus {
   licenseKey: string;

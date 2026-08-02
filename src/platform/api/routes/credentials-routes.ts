@@ -43,12 +43,12 @@ credentialsRouter.post('/', async (req: Request, res: Response): Promise<void> =
   }
 
   const subscriberId = tokenSubscriberId;
-  // Runtime-validate for TenantId type safety
-  if (!validateTenantId(subscriberId)) {
-    throw new Error(`Invalid tenantId for credential audit: ${subscriberId}`);
-  }
 
   try {
+    // Runtime-validate for TenantId type safety — invalid IDs are treated as access errors
+    if (!validateTenantId(subscriberId)) {
+      throw new Error(`TenantIsolator: invalid tenantId: ${subscriberId}`);
+    }
     assertTenantAccess(subscriberId, tokenSubscriberId, isAdmin);
 
     await repository.save(subscriberId, parsed.data);

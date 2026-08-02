@@ -2,11 +2,11 @@
  * Coupon service — validate, apply, expire.
  *
  * Endpoints:
- *   POST /api/coupons/validate  — check coupon + compute discounted price
- *   POST /api/coupons/apply     — apply coupon to subscription (atomic)
+ * POST /api/coupons/validate — check coupon + compute discounted price
+ * POST /api/coupons/apply — apply coupon to subscription (atomic)
  *
  * Coupon schema (D1):
- *   code TEXT PK, discount_pct INTEGER, tier_lock TEXT, free_access INTEGER, expires_at TEXT, usage_count INTEGER
+ * code TEXT PK, discount_pct INTEGER, tier_lock TEXT, free_access INTEGER, expires_at TEXT, usage_count INTEGER
  */
 
 import { logger } from '../../../shared/utils/logger';
@@ -16,8 +16,11 @@ type Env = { CACHE: KVNamespace; SUBSCRIBERS?: D1Database; JWT_SECRET?: string; 
 
 export async function handleValidateCoupon(request: Request, env: any): Promise<Response> {
   const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
+  let code: string;
   try {
-    const { code, tier } = (await request.json()) as { code: string; tier: string };
+    const parsed = (await request.json()) as { code: string; tier: string };
+    code = parsed.code;
+    const { tier } = parsed;
     if (!code) return badRequest('code is required');
 
     if (!sub) {
@@ -56,6 +59,12 @@ export async function handleValidateCoupon(request: Request, env: any): Promise<
     }), { headers: jsonH(env, request) });
   } catch (err) {
     logger.error('[coupons] validate error', { error: String(err) });
+    // Fallback to KV on D1 failure
+    const cached = await (env as any).CACHE.get(`coupon:${code.toUpperCase()}`);
+    if (cached) {
+      const coupon = JSON.parse(cached);
+      return new Response(JSON.stringify({ valid: !!coupon, coupon }), { headers: jsonH(env, request) });
+    }
     return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }
@@ -66,12 +75,21 @@ export async function handleApplyCoupon(request: Request, env: any): Promise<Res
     const { code, userId } = (await request.json()) as { code: string; userId: string };
     if (!code || !userId) return badRequest('code and userId are required');
 
-    if (!sub) return new Response(JSON.stringify({ error: 'D1 not configured' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    if (!sub) {
+      // D1 missing — fall back to KV
+      const cached2 = await (env as any).CACHE.get(`coupon:${code.toUpperCase()}`);
+      if (!cached2) return notFound('Coupon not found');
+      const c: Record<string, unknown> = JSON.parse(cached2);
+      const n = ((c as any).currentUses ?? (c as any).usage_count ?? 0) + 1;
+      const updated = { ...c, currentUses: n };
+      await (env as any).CACHE.put(`coupon:${code.toUpperCase()}`, JSON.stringify(updated));
+      logger.info('[coupons] applied via KV', { userId, code: c.code as string });
+      return new Response(JSON.stringify({ applied: true, coupon: { code: c.code as string, discountPct: (c.discount_pct as number) ?? 0, freeAccess: !!(c.free_access as number) } }), { headers: jsonH(env, request) });
+    }
 
     // Atomically verify + increment in one transaction
     const result = await sub.prepare(
-      `UPDATE coupons SET usage_count = usage_count + 1 WHERE code = ?
-       RETURNING code, discount_pct, tier_lock, free_access, expires_at`
+      `UPDATE coupons SET usage_count = usage_count + 1 WHERE code = ? RETURNING code, discount_pct, tier_lock, free_access, expires_at`
     ).bind(code.toUpperCase()).first<{ code: string; discount_pct: number; tier_lock: string; free_access: number }>();
 
     if (!result) return new Response(JSON.stringify({ error: 'Invalid or expired coupon' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
@@ -83,6 +101,14 @@ export async function handleApplyCoupon(request: Request, env: any): Promise<Res
     }), { headers: jsonH(env, request) });
   } catch (err) {
     logger.error('[coupons] apply error', { error: String(err) });
+    // Fallback to KV on D1 failure
+    const cached2 = await (env as any).CACHE.get(`coupon:${code.toUpperCase()}`);
+    if (cached2) {
+      const c: Record<string, unknown> = JSON.parse(cached2);
+      const n = ((c as any).currentUses ?? (c as any).usage_count ?? 0) + 1;
+      await (env as any).CACHE.put(`coupon:${code.toUpperCase()}`, JSON.stringify({ ...c, currentUses: n }));
+      return new Response(JSON.stringify({ applied: true, coupon: { code: c.code as string, discountPct: (c.discount_pct as number) ?? 0, freeAccess: !!(c.free_access as number) } }), { headers: jsonH(env, request) });
+    }
     return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }

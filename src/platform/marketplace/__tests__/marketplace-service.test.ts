@@ -18,7 +18,7 @@ const { mockStrategyRepo, mockListingRepo, mockVettingRepo, mockReviewRepo, mock
   };
   const mockListingRepo = {
     findById: vi.fn(),
-    findByStrategyId: vi.fn(),
+    findByStrategyId: vi.fn().mockResolvedValue(null),
     findAll: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
@@ -28,7 +28,7 @@ const { mockStrategyRepo, mockListingRepo, mockVettingRepo, mockReviewRepo, mock
   };
   const mockVettingRepo = {
     findById: vi.fn(),
-    findByStrategyId: vi.fn(),
+    findByStrategyId: vi.fn().mockResolvedValue(null),
     create: vi.fn(),
     findAll: vi.fn(),
     count: vi.fn(),
