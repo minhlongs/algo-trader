@@ -76,6 +76,7 @@ class_name = "StrategyShard"
 binding = "SUBSCRIBERS"
 database_name = "algo-trader-db"
 database_id = "f29559f2-8e0b-461a-bd01-5665581beeee"
+migrations_dir = "migrations"
 
 # Migrations for DO deployment
 [[migrations]]

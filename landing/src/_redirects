@@ -1,5 +1,8 @@
-# Canonical domain — redirect www to apex
-https://www.cashclaw.cc/*  https://cashclaw.cc/:splat  301
+# Canonical domain - redirect www to apex
+https://www.cashclaw.cc/* https://cashclaw.cc/:splat 301
+
+# Alpha Vang product page
+/alpha-vang /alpha-vang.html 200
 
 # SPA fallback for dashboard
-/dashboard/*  /dashboard/index.html  200
+/dashboard/* /dashboard/index.html 200
