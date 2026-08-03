@@ -128,7 +128,7 @@ Giao dich thong minh hon, khong phai co gang hon.
 
 ## CTA Links
 
-- English CTA (PRO upgrade): `https://app.algotrader.cc/billing?upgrade=pro`
-- Vietnamese CTA (PRO upgrade): `https://app.algotrader.cc/vi/billing?upgrade=pro`
-- AI Co-pilot info: `https://app.algotrader.cc/features/ai-co-pilot`
+- English CTA (PRO upgrade): `https://api.cashclaw.cc/billing?upgrade=pro`
+- Vietnamese CTA (PRO upgrade): `https://api.cashclaw.cc/vi/billing?upgrade=pro`
+- AI Co-pilot info: `https://api.cashclaw.cc/features/ai-co-pilot`
 - Unsubscribe: `{{unsubscribe_url}}`

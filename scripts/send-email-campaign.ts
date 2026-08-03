@@ -74,7 +74,7 @@ What you get with STARTER:
 Annual prepay -- save 20%:
 Pay $182/year instead of $228. Same features, lower price.
 
-Upgrade now: https://app.algotrader.cc/billing?upgrade=starter
+Upgrade now: https://api.cashclaw.cc/billing?upgrade=starter
 
 To smarter trades,
 The Algo Trader Team
@@ -104,7 +104,7 @@ Unsubscribe: {{unsubscribe_url}}`,
     <p>Pay <strong>$182/year</strong> instead of $228. Same features, lower price.</p>
   </div>
   <p style="text-align:center;margin:24px 0;">
-    <a href="https://app.algotrader.cc/billing?upgrade=starter" style="display:inline-block;padding:14px 28px;background:#00D4AA;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Upgrade to STARTER &rarr;</a>
+    <a href="https://api.cashclaw.cc/billing?upgrade=starter" style="display:inline-block;padding:14px 28px;background:#00D4AA;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Upgrade to STARTER &rarr;</a>
   </p>
   <p>To smarter trades,<br><strong>The Algo Trader Team</strong></p>
   <p style="color:#888;font-size:12px;margin-top:24px;">
@@ -128,7 +128,7 @@ Ban nhan duoc gi voi STARTER:
 Thanh toan nam -- tiet kiem 20%:
 Tra $182/nam thay vi $228. Cung tinh nang, gia thap hon.
 
-Nang cap ngay: https://app.algotrader.cc/vi/billing?upgrade=starter
+Nang cap ngay: https://api.cashclaw.cc/vi/billing?upgrade=starter
 
 Chuc ban giao dich thong minh,
 Doi ngu Algo Trader
@@ -158,7 +158,7 @@ Huy dang ky: {{unsubscribe_url}}`,
     <p>Tra <strong>$182/nam</strong> thay vi $228. Cung tinh nang, gia thap hon.</p>
   </div>
   <p style="text-align:center;margin:24px 0;">
-    <a href="https://app.algotrader.cc/vi/billing?upgrade=starter" style="display:inline-block;padding:14px 28px;background:#00D4AA;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Nang Cap Len STARTER &rarr;</a>
+    <a href="https://api.cashclaw.cc/vi/billing?upgrade=starter" style="display:inline-block;padding:14px 28px;background:#00D4AA;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Nang Cap Len STARTER &rarr;</a>
   </p>
   <p>Chuc ban giao dich thong minh,<br><strong>Doi ngu Algo Trader</strong></p>
   <p style="color:#888;font-size:12px;margin-top:24px;">
@@ -192,7 +192,7 @@ AI Co-pilot is available on PRO tier and above.
 
 Upgrade to PRO to get unlimited AI queries and real-time portfolio analysis.
 
-Learn more: https://app.algotrader.cc/features/ai-co-pilot
+Learn more: https://api.cashclaw.cc/features/ai-co-pilot
 
 Trade smarter, not harder.
 The Algo Trader Team
@@ -218,7 +218,7 @@ Unsubscribe: {{unsubscribe_url}}`,
   </div>
   <p>AI Co-pilot is available on <strong>PRO tier and above</strong>.</p>
   <p style="text-align:center;margin:24px 0;">
-    <a href="https://app.algotrader.cc/billing?upgrade=pro" style="display:inline-block;padding:14px 28px;background:#00D4AA;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Upgrade to PRO &rarr;</a>
+    <a href="https://api.cashclaw.cc/billing?upgrade=pro" style="display:inline-block;padding:14px 28px;background:#00D4AA;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Upgrade to PRO &rarr;</a>
   </p>
   <p>Trade smarter, not harder.<br><strong>The Algo Trader Team</strong></p>
   <p style="color:#888;font-size:12px;margin-top:24px;">
@@ -242,7 +242,7 @@ AI Co-pilot co san tren PRO tier tro len.
 
 Nang cap len PRO de nhan truy van AI khong gioi han va phan tich danh muc thoi gian thuc.
 
-Tim hieu them: https://app.algotrader.cc/vi/features/ai-co-pilot
+Tim hieu them: https://api.cashclaw.cc/vi/features/ai-co-pilot
 
 Giao dich thong minh hon,
 Doi ngu Algo Trader
@@ -268,7 +268,7 @@ Huy dang ky: {{unsubscribe_url}}`,
   </div>
   <p>AI Co-pilot co san tren <strong>PRO tier tro len</strong>.</p>
   <p style="text-align:center;margin:24px 0;">
-    <a href="https://app.algotrader.cc/vi/billing?upgrade=pro" style="display:inline-block;padding:14px 28px;background:#00D4AA;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Nang Cap Len PRO &rarr;</a>
+    <a href="https://api.cashclaw.cc/vi/billing?upgrade=pro" style="display:inline-block;padding:14px 28px;background:#00D4AA;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">Nang Cap Len PRO &rarr;</a>
   </p>
   <p>Giao dich thong minh hon,<br><strong>Doi ngu Algo Trader</strong></p>
   <p style="color:#888;font-size:12px;margin-top:24px;">

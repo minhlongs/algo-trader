@@ -112,6 +112,6 @@ Chuc ban giao dich thong minh,
 
 ## CTA Links
 
-- English CTA: `https://app.algotrader.cc/billing?upgrade=starter`
-- Vietnamese CTA: `https://app.algotrader.cc/vi/billing?upgrade=starter`
+- English CTA: `https://api.cashclaw.cc/billing?upgrade=starter`
+- Vietnamese CTA: `https://api.cashclaw.cc/vi/billing?upgrade=starter`
 - Unsubscribe: `{{unsubscribe_url}}`
