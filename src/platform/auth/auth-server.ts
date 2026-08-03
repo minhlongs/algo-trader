@@ -13,6 +13,7 @@
 import { betterAuth } from 'better-auth';
 import pg from 'pg';
 import { logger } from '../utils/logger';
+import { TrialDripService } from '../billing/trial-drip-service';
 
 const { Pool } = pg;
 
@@ -55,6 +56,39 @@ export const auth = betterAuth({
     cookieCache: {
       enabled: true,
       maxAge: 60 * 5, // 5 min cookie cache
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // Fire-and-forget: register new signups in trial-drip campaign.
+          // Errors are caught + logged so a drip failure never breaks signup.
+          try {
+            const trialDripService = TrialDripService.getInstance();
+            const email = user.email ?? '';
+            const tier: string = 'FREE';
+            const tenantId = user.id;
+            const trialDays = 7;
+            if (email && tenantId) {
+              trialDripService.subscribe(email, tenantId, tier, trialDays);
+              logger.info('[BetterAuth][afterSignup] Trial drip registered', {
+                email,
+                tenantId,
+                tier,
+              });
+            }
+          } catch (error) {
+            logger.error(
+              '[BetterAuth][afterSignup] Trial drip registration failed',
+              {
+                error: String(error),
+                userId: user.id,
+              },
+            );
+          }
+        },
+      },
     },
   },
   trustedOrigins: [

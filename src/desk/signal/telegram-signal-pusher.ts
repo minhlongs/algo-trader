@@ -5,7 +5,7 @@
  * Reuses existing TELEGRAM_BOT_TOKEN env var; no new deps.
  */
 
-import { logger } from '../../shared/utils/logger';
+import { logger } from '../utils/logger';
 import type { Signal, SignalSubscription, TierKey } from './signal-types';
 import { TIER_SIGNAL_CONFIG } from './signal-types';
 

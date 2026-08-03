@@ -123,9 +123,32 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
     const polyDeps = { clob: clobClient, orderManager, eventBus, gamma: gammaClient };
     for (const s of POLY_STRATEGIES) {
       orc.register(
-        { id: s.id, name: s.name, type: s.id, enabled: false, params: {}, intervalMs: parseInt(env(s.envKey, s.defaultMs), 10) },
-        s.factory(polyDeps),
+        { id: 'momentum-exhaustion', name: 'Momentum Exhaustion', type: 'momentum-exhaustion', enabled: true, params: {}, intervalMs: parseInt(env('MOMENTUM_EXHAUSTION_INTERVAL_MS', '10000'), 10) },
+        createMomentumExhaustionTick(polyDeps),
       );
+      orc.register(
+        { id: 'session-vol-sniper', name: 'Session Volatility Sniper', type: 'session-vol-sniper', enabled: true, params: {}, intervalMs: parseInt(env('SESSION_VOL_SNIPER_INTERVAL_MS', '5000'), 10) },
+        createSessionVolSniperTick(polyDeps),
+      );
+      orc.register(
+        { id: 'sentiment-momentum', name: 'Sentiment Momentum', type: 'sentiment-momentum', enabled: true, params: {}, intervalMs: parseInt(env('SENTIMENT_MOMENTUM_INTERVAL_MS', '10000'), 10) },
+        createSentimentMomentumTick(polyDeps),
+      );
+      orc.register(
+        { id: 'book-imbalance-reversal', name: 'Book Imbalance Reversal', type: 'book-imbalance-reversal', enabled: true, params: {}, intervalMs: parseInt(env('BOOK_IMBALANCE_INTERVAL_MS', '15000'), 10) },
+        createBookImbalanceReversalTick(polyDeps),
+      );
+      const ENABLED_IDS = new Set([
+  'momentum-exhaustion', 'session-vol-sniper', 'sentiment-momentum', 'book-imbalance-reversal',
+  'microstructure-alpha', 'order-flow-toxicity', 'correlation-breakdown', 'pairs-stat-arb',
+  'funding-rate-arb', 'gamma-scalping', 'kalman-filter-tracker', 'liquidation-cascade',
+ ]);
+      if (!ENABLED_IDS.has(s.id)) {
+        orc.register(
+          { id: s.id, name: s.name, type: s.id, enabled: false, params: {}, intervalMs: parseInt(env(s.envKey, s.defaultMs), 10) },
+          s.factory(polyDeps),
+        );
+      }
     }
   }
 

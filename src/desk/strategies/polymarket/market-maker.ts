@@ -35,7 +35,7 @@ export interface MarketMakerConfig {
   minLiquidity: number;
 }
 
-const DEFAULT_CONFIG: MarketMakerConfig = {
+export const DEFAULT_CONFIG: MarketMakerConfig = {
   baseSpread: 0.02,
   quoteSizeUsdc: 25,
   refreshIntervalMs: 20_000,

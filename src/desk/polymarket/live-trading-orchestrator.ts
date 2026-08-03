@@ -16,6 +16,7 @@
 
 import { EventEmitter } from 'events';
 import { buildPolymarketAdapter, type PolymarketExecutionConfig } from '../execution/polymarket-execution-adapter';
+import { CircuitBreaker } from '../risk/circuit-breaker';
 import type { PolymarketAdapter, PolymarketOrderResponse, PolymarketOrderBook } from '../execution/polymarket-adapter';
 import type { PolymarketOrder } from '../execution/polymarket-signer';
 import { LivePositionTracker, type PositionSummary } from '../execution/live-position-tracker';
@@ -113,7 +114,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
     });
     this.guard.attachTracker(this.positionTracker);
     this.journal = new LiveTradingJournal();
-    this.riskManager = new RiskGateManager(this.guard);
+    this.riskManager = new RiskGateManager(this.guard, new CircuitBreaker());
 
     // Restore previous state on startup
     this.restoreState();
@@ -394,6 +395,16 @@ export class LiveTradingOrchestrator extends EventEmitter {
    * @param tickFn      — the strategy's tick function
    */
   async executeStrategyTick(strategyKey: string, tickFn: () => Promise<void>): Promise<void> {
+    // Pre-tick risk gate — check global conditions before executing
+    const gate = await this.riskManager.check(strategyKey);
+    if (!gate.allowed) {
+      logger.warn(
+        `Strategy tick skipped for ${strategyKey}: ${gate.reason}`,
+        'Orchestrator',
+      );
+      return;
+    }
+
     try {
       await tickFn();
     } catch (err) {

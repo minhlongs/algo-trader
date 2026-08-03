@@ -1,7 +1,4 @@
-/**
- * API Server
- * REST + WebSocket gateway for trading operations
- */
+/** * API Server * REST + WebSocket gateway for trading operations */
 
 import express, { Router } from 'express';
 import cors from 'cors';
@@ -25,7 +22,9 @@ import { marketplaceDisputeRouter } from './routes/marketplace-dispute-routes';
 import { marketplaceCreatorRevenueRouter } from './routes/marketplace-creator-revenue-routes';
 import { marketplaceProviderRouter } from './routes/marketplace-provider-routes';
 import { marketplaceListingBadgeRouter, marketplaceBadgeDefinitionRouter } from './routes/marketplace-badge-routes';
+import { nowpaymentsApiRouter } from './routes/nowpayments-api-routes';
 import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook';
+import { trialDripRouter } from './routes/trial-drip-routes';
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
 import { analyticsRouter } from './routes/analytics-routes';
@@ -36,11 +35,13 @@ import { enterpriseInquiryRouter } from './routes/enterprise-inquiry-routes';
 import { createSignalIngestRouter } from './routes/signal-ingest-routes';
 import { createAdminQwenRouter } from './routes/admin-qwen-routes';
 import { signalSubscriptionRouter } from './routes/signal-subscription-routes';
+import { signalFeedRouter } from './routes/signal-feed-api-routes';
 import { leaderboardRouter } from './routes/leaderboard-routes';
 import { coPilotRouter } from './routes/co-pilot-routes';
 import { signalStoreD1 } from '../../signal/signal-store-d1';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
+import { EmailService } from '../notifications/email-service';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
 import { errorHandler } from '../middleware/error-handler';
 import { auditMiddleware } from '../../seed/security/audit-middleware';
@@ -57,6 +58,15 @@ export class ApiServer {
   private server?: Server;
 
   constructor(config?: Partial<ApiConfig>) {
+    // Fail loudly in production if email provider is not configured.
+    // Fire-and-forget so a missing key never blocks server boot.
+    try {
+      EmailService.startupCheck();
+    } catch (error) {
+      logger.error('[ApiServer] Email startup check failed', { error: String(error) });
+      throw error;
+    }
+
     this.app = express();
     this.config = {
       port: parseInt(process.env.API_PORT || '3000'),
@@ -76,29 +86,28 @@ export class ApiServer {
     this.setupRoutes();
   }
 
-  /**
-   * Setup middleware
-   */
+  /** * Setup middleware */
   private setupMiddleware(): void {
     // Security — strict helmet config
     this.app.use(helmet({
-      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
-      frameguard: { action: 'deny' },
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'https:'],
-          fontSrc: ["'self'", 'data:'],
-          connectSrc: ["'self'", 'wss:', 'ws:', 'https:'],
-          frameAncestors: ["'none'"],
-          baseUri: ["'self'"],
-          formAction: ["'self'"],
+        hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+        frameguard: { action: 'deny' },
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            fontSrc: ["'self'", 'data:'],
+            connectSrc: ["'self'", 'wss:', 'ws:', 'https:'],
+            frameAncestors: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+          },
         },
-      },
-      permittedCrossDomainPolicies: false,
-    }));
+        permittedCrossDomainPolicies: false,
+      }),
+    );
     this.app.use(cors({ origin: this.config.corsOrigin }));
 
     // Body parsing
@@ -108,19 +117,16 @@ export class ApiServer {
     // Prometheus metrics middleware (track all requests)
     this.app.use(metricsMiddleware);
 
-// Audit logging middleware (fire-and-forget, captures all responses)
-this.app.use(auditMiddleware);
+    // Audit logging middleware (fire-and-forget, captures all responses)
+    this.app.use(auditMiddleware);
 
- // Rate limiting (Redis-backed, tier-aware) — scoped to /api subtree
- // so /health and /metrics bypass throttling.
- const limiter = rateLimitMiddleware();
- this.app.use('/api', limiter);
-
+    // Rate limiting (Redis-backed, tier-aware) — scoped to /api subtree
+    // so /health and /metrics bypass throttling.
+    const limiter = rateLimitMiddleware();
+    this.app.use('/api', limiter);
   }
 
-  /**
-   * Setup routes
-   */
+  /** * Setup routes */
   private setupRoutes(): void {
     // Health checks (no rate limit)
     this.app.use('/health', healthRouter);
@@ -158,22 +164,28 @@ this.app.use(auditMiddleware);
     this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
 
     // Personalization: tiered widget config, A/B variant split, event analytics
-this.app.use('/api/personalization', personalizationRouter);
+    this.app.use('/api/personalization', personalizationRouter);
 
-// Tenant credential CRUD — encrypted at rest, audited, rate-limited
-this.app.use('/api/v1/subscriber/credentials', credentialsRouter);
+    // Tenant credential CRUD — encrypted at rest, audited, rate-limited
+    this.app.use('/api/v1/subscriber/credentials', credentialsRouter);
 
-// Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon
+    // Signal ingest: HMAC-authenticated endpoint for Qwen M1 Max daemon
     // Phase 04: stub replaced with real D1-backed SignalStoreD1
     const signalIngestRouter = createSignalIngestRouter(signalStoreD1);
     this.app.use('/api/v1/signals/ingest', signalIngestRouter);
-this.app.use('/api/v1/signals', signalSubscriptionRouter);
+    this.app.use('/api/v1/signals', signalSubscriptionRouter);
 
-// Co-pilot routes: AI trading assistant (PRO+ tier gated, rate limited)
-this.app.use('/api/v1/co-pilot', coPilotRouter);
+    // Co-pilot routes: AI trading assistant (PRO+ tier gated, rate limited)
+    this.app.use('/api/v1/co-pilot', coPilotRouter);
 
     // Admin Qwen routes: kill switch + status (L1/L2 rollback layers)
     this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());
+
+    // NOWPayments API routes (invoice creation, checkout redirect)
+    this.app.use('/api/v1/nowpayments', nowpaymentsApiRouter);
+
+// Trial drip campaign routes
+this.app.use('/api/v1/trial-drip', trialDripRouter);
 
     // Webhook routes (no rate limit — external provider callbacks)
     this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);
@@ -192,9 +204,7 @@ this.app.use('/api/v1/co-pilot', coPilotRouter);
     this.app.use(errorHandler);
   }
 
-  /**
-   * Start server
-   */
+  /** * Start server */
   async start(): Promise<void> {
     return new Promise((resolve) => {
       this.server = this.app.listen(this.config.port, () => {
@@ -204,9 +214,7 @@ this.app.use('/api/v1/co-pilot', coPilotRouter);
     });
   }
 
-  /**
-   * Stop server
-   */
+  /** * Stop server */
   async stop(): Promise<void> {
     if (this.server) {
       return new Promise((resolve) => {
@@ -218,9 +226,7 @@ this.app.use('/api/v1/co-pilot', coPilotRouter);
     }
   }
 
-  /**
-   * Get Express app (for testing)
-   */
+  /** * Get Express app (for testing) */
   getApp(): express.Application {
     return this.app;
   }

@@ -39,10 +39,11 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 ### Platform (`src/platform/`) — ~25 Modules
 | Module | Key contents |
 |--------|-------------|
-| `api/` | Express REST + WebSocket gateway. 31 route files, all tier-gated via `requireTier()`. Webhooks (NOWPayments, marketplace) |
+| `api/` | Express REST + WebSocket gateway. 31 route files, all tier-gated. Webhooks (NOWPayments, marketplace, signals billing). Signals API: subscribe, feed, webhook endpoints at `/api/v1/signals/*` |
 | `auth/` | Better Auth integration (multi-tenant sessions) |
 | `billing/` | NOWPayments, subscription/license/invoice services, coupon system, dunning, overage calculator |
 | `marketplace/` | 8 repositories, 8 services (marketplace, subscription, revenue, dispute, vetting, seeder, execution bridge, payout scheduler). Vetting worker. 80/20 revenue split |
+| `signals-api/` | Signal publisher, subscription service, usage metering. Tier rate limits (FREE=2, STARTER=10, PRO=30, ENTERPRISE=120/min). D1-backed subscriber CRUD. SSE stream for ENTERPRISE |
 | `raas/` | Subscriber executor with tenant sandbox, DLP + attestation, P&L aggregator, equity curve builder |
 | `middleware/` | Tier gating, distributed rate limiter, license validation, suspension check, admin auth, Prometheus metrics |
 | `audit/` | 11 audit files: immutable trade audit, DLP hash chain, pattern matcher, batch writer, exporters, retention |
@@ -54,9 +55,9 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 
 ## Key Metrics
 - **350+ source files** (TypeScript 5.9, strict mode)
-- **2,783 tests** across 243 files (Vitest, 100% pass rate)
+- **2,941 tests** across 256 files (Vitest, 99.97% pass rate)
 - **52+ trading strategies** across 5 platforms (Polymarket, Kalshi, Limitless, PredictIt, Smarkets)
-- **31 API route files** + multiple WebSocket channels (Express + Fastify)
+- **31 API route files** + signals-api routes + multiple WebSocket channels (Express + Fastify)
 - **25+ CLI commands** (Commander.js)
 - **27 desk subdirectories** + **25 platform subdirectories** + **9 shared subdirectories**
 - **10 registered database migrations** (Prisma + SQL)

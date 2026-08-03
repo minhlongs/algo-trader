@@ -88,11 +88,14 @@ export function annualizeFundingRate(raw: number): number {
  */
 export function calcPercentile(value: number, history: number[]): number {
   if (history.length === 0) return 0.5;
-  let count = 0;
+  let min = Infinity;
+  let max = -Infinity;
   for (const v of history) {
-    if (v >= value) count++;
+    if (v < min) min = v;
+    if (v > max) max = v;
   }
-  return count / history.length;
+  if (max === min) return 0.5;
+  return Math.max(0, Math.min(1, (value - min) / (max - min)));
 }
 
 /**

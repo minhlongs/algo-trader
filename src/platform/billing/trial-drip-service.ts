@@ -1,19 +1,44 @@
 /**
  * Trial-to-Paid Email Drip Campaign Service
  * Manages automated email sequences for free trial conversion.
- *
- * Campaign schedule (7-day trial):
- *   Day 1 — Welcome + onboarding tips
- *   Day 3 — Feature spotlight (signals + Kelly sizing)
- *   Day 5 — Case study / social proof
- *   Day 7 — Trial ending + upgrade CTA
- *   Day 10 — Post-expiry: "Come back" offer
- *
- * Uses the existing EmailService for delivery.
+ * Scheduler state persisted to data/drip/scheduler.json so PM2 cron
+ * restarts (fresh process, fresh singleton) recover the day-sent ledger
+ * and resume without re-sending or dropping emails.
  */
 
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { EmailService } from '../notifications/email-service';
 import { logger } from '../../shared/utils/logger';
+
+const DRIP_DATA_DIR = join(process.cwd(), 'data', 'drip');
+const SCHEDULER_FILE = join(DRIP_DATA_DIR, 'scheduler.json');
+
+interface SchedulerState {
+  subscribers: Record<string, { email: string; tier: string;
+    subscribedAt: string; trialEndsAt: string;
+    lastEmailDay: number; isActive: boolean; }>;
+  autoRunPending: boolean;
+}
+
+function ensureDripDir(): void {
+  if (!existsSync(DRIP_DATA_DIR)) mkdirSync(DRIP_DATA_DIR, { recursive: true });
+}
+
+function loadSchedulerState(): SchedulerState {
+  ensureDripDir();
+  try {
+    const raw = readFileSync(SCHEDULER_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return { subscribers: {}, autoRunPending: false };
+  }
+}
+
+function saveSchedulerState(state: SchedulerState): void {
+  ensureDripDir();
+  writeFileSync(SCHEDULER_FILE, JSON.stringify(state, null, 2));
+}
 
 export interface DripSubscriber {
   email: string;
@@ -38,6 +63,8 @@ export class TrialDripService {
   private static instance: TrialDripService;
   private subscribers: Map<string, DripSubscriber> = new Map();
   private emailService: EmailService;
+  private schedulerState: SchedulerState = loadSchedulerState();
+  private autoRunPending = false;
 
   private readonly TEMPLATES: Record<number, EmailTemplate> = {
     1: (sub) => ({
@@ -56,7 +83,7 @@ export class TrialDripService {
       html: `<h2>Real Results</h2><p>Our paper trading track record:</p><ul><li>Sharpe ratio: <strong>1.8+</strong></li><li>Win rate: <strong>62%</strong></li><li>Total P&amp;L: <strong>+$2,251</strong></li></ul><p><a href="https://cashclaw.cc/trading-performance">View live P&amp;L</a></p>`,
     }),
     7: (sub) => ({
-      subject: 'Your Trial Ends Tomorrow — Don\'t Lose Access',
+      subject: "Your Trial Ends Tomorrow — Don't Lose Access",
       body: `Hi there,\n\nYour ${sub.tier} trial ends tomorrow. To keep your access:\n\n1. Go to https://cashclaw.cc/pricing\n2. Choose your plan (Pro from $99/mo)\n3. Complete payment with USDT\n\nUpgrade now and keep your signal history, saved settings, and API access.\n\n— The AlgoTrader Team`,
       html: `<h2>Trial Ending Tomorrow</h2><p>Your <strong>${sub.tier}</strong> trial ends soon. <a href="https://cashclaw.cc/pricing">Upgrade now</a> to keep access.</p><p>Plans start from $99/mo. Pay with USDT.</p>`,
     }),
@@ -78,9 +105,6 @@ export class TrialDripService {
     return TrialDripService.instance;
   }
 
-  /**
-   * Register a new trial subscriber for the drip campaign.
-   */
   subscribe(email: string, tenantId: string, tier: string, trialDays: number = 7): DripSubscriber {
     const now = new Date();
     const endsAt = new Date(now.getTime() + trialDays * 86400000);
@@ -98,26 +122,38 @@ export class TrialDripService {
 
     this.subscribers.set(tenantId, subscriber);
     logger.info('[TrialDrip] Subscriber registered', { email, tenantId, tier });
+    this.autoRunPending = true;
+    this.persistSchedulerState();
     return subscriber;
   }
 
-  /**
-   * Unsubscribe from the drip campaign (e.g., when user upgrades or cancels).
-   */
   unsubscribe(tenantId: string): boolean {
     const sub = this.subscribers.get(tenantId);
     if (!sub) return false;
     sub.isActive = false;
     logger.info('[TrialDrip] Subscriber unsubscribed', { tenantId });
+    this.persistSchedulerState();
     return true;
   }
 
-  /**
-   * Process all active subscribers and send any due emails.
-   * Designed to be called by a cron job or webhook trigger.
-   * Returns count of emails sent.
-   */
   async processDueEmails(): Promise<{ sent: number; skipped: number; errors: number }> {
+    // Rebuild in-memory state from persisted scheduler on fresh process
+    if (this.subscribers.size === 0 && Object.keys(this.schedulerState.subscribers).length > 0) {
+      for (const [tid, sub] of Object.entries(this.schedulerState.subscribers)) {
+        this.subscribers.set(tid, { ...sub, tenantId: tid, daysSinceTrialStart: 0 });
+      }
+      this.autoRunPending = this.schedulerState.autoRunPending;
+    }
+
+    // Auto-trigger guard: terminate if no active subscribers
+    const hasActive = Array.from(this.subscribers.values()).some((s) => s.isActive);
+    if (!hasActive) {
+      return { sent: 0, skipped: 0, errors: 0 };
+    }
+    if (!this.autoRunPending) {
+      return { sent: 0, skipped: 0, errors: 0 };
+    }
+    this.autoRunPending = false;
     let sent = 0;
     let skipped = 0;
     let errors = 0;
@@ -156,6 +192,7 @@ export class TrialDripService {
             sub.lastEmailDay = day;
             sent++;
             logger.info('[TrialDrip] Email sent', { tenantId, day, subject: email.subject });
+            this.persistSchedulerState();
           } else {
             errors++;
             logger.warn('[TrialDrip] Email send failed', { tenantId, day });
@@ -170,9 +207,6 @@ export class TrialDripService {
     return { sent, skipped, errors };
   }
 
-  /**
-   * Get the current campaign state for monitoring.
-   */
   getState(): { activeSubscribers: number; totalSubscribers: number } {
     const activeSubscribers = Array.from(this.subscribers.values()).filter((s) => s.isActive).length;
     return {
@@ -181,9 +215,26 @@ export class TrialDripService {
     };
   }
 
-  /**
-   * Get subscriber details for a given tenant.
-   */
+  private persistSchedulerState(): void {
+    if (this.subscribers.size === 0) {
+      this.schedulerState = { subscribers: {}, autoRunPending: false };
+    } else {
+      this.schedulerState.subscribers = {};
+      for (const [tid, sub] of this.subscribers) {
+        this.schedulerState.subscribers[tid] = {
+          email: sub.email,
+          tier: sub.tier,
+          subscribedAt: sub.subscribedAt,
+          trialEndsAt: sub.trialEndsAt,
+          lastEmailDay: sub.lastEmailDay,
+          isActive: sub.isActive,
+        };
+      }
+      this.schedulerState.autoRunPending = this.autoRunPending;
+    }
+    saveSchedulerState(this.schedulerState);
+  }
+
   getSubscriber(tenantId: string): DripSubscriber | undefined {
     return this.subscribers.get(tenantId);
   }

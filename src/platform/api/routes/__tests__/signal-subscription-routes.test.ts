@@ -1,19 +1,11 @@
 /**
- * Signal Subscription Routes — Regression Tests
- *
- * Full path mount: /api/v1/signals (see src/platform/api/routes/)
- * Router internal paths post-Express 5 refactor use handler functions:
- *   GET/POST /subscriptions/:id via handleGetActive/handleCreateSubscription/handleCancelSubscription
- *   GET /subscriptions/:tenantId → handleGetByTenantId
- *   GET /billing/stats → handleBillingStats
- *   GET /usage/:subscriberId → handleGetUsage
+ * Signal Subscription Routes — D1-backed Integration Tests
  */
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express, { type Request, type Response, type NextFunction } from 'express';
 import request from 'supertest';
-import type { LicenseTier } from '../../../../shared/types/license';
 
-// ── Hoisted mocks (must be defined before module import for pool: 'forks') ──
 const mocks = vi.hoisted(() => {
   const resolveSubscriberIdMock = vi.fn();
   const signalSubscriberRepoMock = {
@@ -25,78 +17,71 @@ const mocks = vi.hoisted(() => {
   const usageMeteringMock = {
     getSnapshot: vi.fn(),
   };
+  const assertTenantAccessMock = vi.fn();
+  const validateTenantIdMock = vi.fn((id: string) => /^[a-zA-Z0-9_-]+$/.test(id) && id.length <= 64);
   return {
     resolveSubscriberIdMock,
     signalSubscriberRepoMock,
     usageMeteringMock,
+    assertTenantAccessMock,
+    validateTenantIdMock,
   };
 });
 
-// ── Mock modules (3 levels up from routes/__tests__/) ────────────────────────
-// Mock paths — test file is in src/platform/api/routes/__tests__/
-// Route file is in src/platform/api/routes/ and uses ../../middleware, ../../signal, etc.
-// One extra directory deeper, so one more ../ than the route file:
-//   ../../../../middleware/feature-gate
-//   ../../../../middleware/signal-tier-resolver
-//   ../../../../signal/signal-subscriber-repository-d1
-//   ../../../../signals-api/usage-metering-service
-//   ../../../../../shared/utils/logger
-// ── Module mocks ────────────────────────────────────────────────────────────
-// Test is in src/platform/api/routes/__tests__/
-// Source is in src/platform/api/routes/ (one level up)
-// Source uses: ../../middleware/  (resolves to src/platform/middleware from routes/)
-// From __tests__/ we need one more ../:
 vi.mock('../../../middleware/feature-gate', () => {
-  const pass: NextFunction = (_req, _res, next) => next();
-  return { requireSignalTier: (_tier?: string) => pass, canAccessFeature: vi.fn(() => true), requireTier: (_tier?: string) => pass };
+  const pass: NextFunction = (_req, _res, next: NextFunction) => next();
+  return { requireSignalTier: (_tier?: string) => pass };
 });
 
 vi.mock('../../../middleware/signal-tier-resolver', () => ({
   resolveSubscriberId: mocks.resolveSubscriberIdMock,
-  requireSignalTier: (_tier?: string) => (_req, _res, next: NextFunction) => next(),
 }));
 
-vi.mock('../../../signal/signal-subscriber-repository-d1', () => ({
+vi.mock('../../../raas/subscriber-tenant-isolator', () => ({
+  assertTenantAccess: (...args: any[]) => { mocks.assertTenantAccessMock(...args); },
+}));
+
+vi.mock('../../../shared/tenant', () => ({
+  validateTenantId: (...args: any[]) => mocks.validateTenantIdMock(...args),
+}));
+
+vi.mock('../../../../platform/signal/signal-subscriber-repository-d1', () => ({
   signalSubscriberRepo: mocks.signalSubscriberRepoMock,
 }));
 
-vi.mock('../../../signals-api/usage-metering-service', () => ({
+vi.mock('../../../../platform/signals-api/usage-metering-service', () => ({
   usageMetering: mocks.usageMeteringMock,
 }));
 
-// Source uses: ../../../shared/ (resolves to src/shared from routes/)
-// From __tests__/: ../../../../shared/
-vi.mock('../../../../shared/utils/logger', () => ({
+vi.mock('../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-// Import AFTER mocks
+
+vi.mock('../../billing/nowpayments-service', () => ({
+  NOWPAYMENTS_TIERS: {
+    SIGNALS_BASIC: { name: 'Signals Basic', price: 29, currency: 'USD' },
+    SIGNALS_PRO: { name: 'Signals Pro', price: 99, currency: 'USD' },
+    SIGNALS_ENTERPRISE: { name: 'Signals Enterprise', price: 299, currency: 'USD' },
+  },
+  NowPaymentsService: {
+    getInstance: () => ({
+      verifyWebhook: vi.fn(() => Promise.resolve(true)),
+      getStatusAction: vi.fn(() => 'activate'),
+    }),
+  },
+  NowPaymentsIpnPayload: {} as any,
+}));
+
 import { signalSubscriptionRouter } from '../signal-subscription-routes';
 
-// Mount at router-level path (full path: /api/v1/signals + router/<route>)
-function buildApp() {
-  const app = express();
-  app.use(express.json());
-  // Router internal paths start with /subscriptions — mounted directly under /api/v1/signals
-  // so full URL = /api/v1/signals + /subscriptions/... = /api/v1/signals/subscriptions/...
-  // But /subscription (no s) routes are also inside the router.
-  // We use a sub-app or mount the router's routes individually for test clarity.
-  return app;
-}
-
-// Instead, let's just test via the router itself mounted at /api/v1/signals
 function createTestApp() {
   const app = express();
   app.use(express.json());
-  // Mount WITHOUT extra /subscriptions prefix because the router's routes
-  // already include /subscriptions/, /subscription, etc.
-  // The actual server mounts at /api/v1/signals then this router.
-  // For tests, mount the router at /api/v1/signals (not adding any extra segment).
   app.use('/api/v1/signals', signalSubscriptionRouter);
   return app;
 }
 
-// ── Test suite ──────────────────────────────────────────────────────────────
 describe('Signal Subscription Routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -106,9 +91,7 @@ describe('Signal Subscription Routes', () => {
     });
   });
 
-  // ── Queries ───────────────────────────────────────────────────────────────
-
-  describe('GET /api/v1/signals/subscriptions/active', () => {
+  describe('GET /subscriptions/active', () => {
     it('returns 200 with list of active subscriptions', async () => {
       mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockResolvedValue([
         { id: 'sub_001', subscriberId: 'u1', tier: 'PRO', active: true },
@@ -119,14 +102,23 @@ describe('Signal Subscription Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(2);
     });
+
+    it('returns 500 when D1 throws', async () => {
+      mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockRejectedValue(new Error('D1 down'));
+      const app = createTestApp();
+      const res = await request(app).get('/api/v1/signals/subscriptions/active');
+      expect(res.status).toBe(500);
+    });
   });
 
-  describe('GET /api/v1/signals/subscriptions/:tenantId', () => {
+  describe('GET /subscriptions/:tenantId', () => {
     it('returns 200 when subscription found by tenant', async () => {
       const sub = { id: 'sub_001', subscriberId: 'tenant_abc', tier: 'PRO', active: true };
       mocks.signalSubscriberRepoMock.getBySubscriberId.mockResolvedValue(sub);
       const app = createTestApp();
-      const res = await request(app).get('/api/v1/signals/subscriptions/tenant_abc').set('Authorization', 'Bearer test-key');
+      const res = await request(app)
+        .get('/api/v1/signals/subscriptions/tenant_abc')
+        .set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       expect(res.body.data.subscriberId).toBe('tenant_abc');
     });
@@ -134,12 +126,23 @@ describe('Signal Subscription Routes', () => {
     it('returns 404 when not found', async () => {
       mocks.signalSubscriberRepoMock.getBySubscriberId.mockResolvedValue(null);
       const app = createTestApp();
-      const res = await request(app).get('/api/v1/signals/subscriptions/unknown').set('Authorization', 'Bearer test-key');
+      const res = await request(app)
+        .get('/api/v1/signals/subscriptions/unknown')
+        .set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(404);
+    });
+
+    it('returns 500 when D1 throws', async () => {
+      mocks.signalSubscriberRepoMock.getBySubscriberId.mockRejectedValue(new Error('D1 down'));
+      const app = createTestApp();
+      const res = await request(app)
+        .get('/api/v1/signals/subscriptions/unknown')
+        .set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(500);
     });
   });
 
-  describe('GET /api/v1/signals/billing/stats', () => {
+  describe('GET /billing/stats', () => {
     it('returns 200 with tier breakdown', async () => {
       mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockResolvedValue([
         { id: 'sub_001', tier: 'PRO', active: true },
@@ -152,9 +155,16 @@ describe('Signal Subscription Routes', () => {
       expect(res.body.data.PRO).toBe(2);
       expect(res.body.data.FREE).toBe(1);
     });
+
+    it('returns 500 when D1 throws', async () => {
+      mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockRejectedValue(new Error('D1 down'));
+      const app = createTestApp();
+      const res = await request(app).get('/api/v1/signals/billing/stats');
+      expect(res.status).toBe(500);
+    });
   });
 
-  describe('GET /api/v1/signals/usage/:subscriberId', () => {
+  describe('GET /usage/:subscriberId', () => {
     it('returns 200 with usage snapshot', async () => {
       mocks.usageMeteringMock.getSnapshot.mockResolvedValue({
         subscriberId: 'user_001',
@@ -172,16 +182,34 @@ describe('Signal Subscription Routes', () => {
       expect(res.body.periodLimit).toBe(100);
     });
 
-    it('returns 400 when subscriberId missing', async () => {
+    it('returns 404 when subscriberId missing', async () => {
       const app = createTestApp();
-      const res = await request(app).get('/api/v1/signals/usage/').set('Authorization', 'Bearer test-key');
-      expect(res.status).toBe(404); // no matching route
+      const res = await request(app)
+        .get('/api/v1/signals/usage/')
+        .set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 404 when no usage data', async () => {
+      mocks.usageMeteringMock.getSnapshot.mockResolvedValue(null);
+      const app = createTestApp();
+      const res = await request(app)
+        .get('/api/v1/signals/usage/user_002')
+        .set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 500 when metering throws', async () => {
+      mocks.usageMeteringMock.getSnapshot.mockRejectedValue(new Error('metering down'));
+      const app = createTestApp();
+      const res = await request(app)
+        .get('/api/v1/signals/usage/user_001')
+        .set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(500);
     });
   });
 
-  // ── Mutations ─────────────────────────────────────────────────────────────
-
-  describe('POST /api/v1/signals/subscriptions', () => {
+  describe('POST /subscriptions', () => {
     it('returns 200 with subscription data for valid request', async () => {
       mocks.signalSubscriberRepoMock.getBySubscriberId.mockResolvedValue(null);
       mocks.signalSubscriberRepoMock.upsert.mockResolvedValue({
@@ -212,12 +240,43 @@ describe('Signal Subscription Routes', () => {
         .send({});
       expect(res.status).toBe(401);
     });
+
+    it('returns 400 on invalid body', async () => {
+      mocks.resolveSubscriberIdMock.mockReturnValue({
+        subscriberId: 'user_001',
+        tier: 'PRO',
+      });
+      const app = createTestApp();
+      const res = await request(app)
+        .post('/api/v1/signals/subscriptions')
+        .set('Authorization', 'Bearer test-key')
+        .send({ chatId: 'not-a-number' });
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 500 when D1 upsert throws', async () => {
+      mocks.signalSubscriberRepoMock.getBySubscriberId.mockResolvedValue(null);
+      mocks.signalSubscriberRepoMock.upsert.mockRejectedValue(new Error('D1 down'));
+      const app = createTestApp();
+      const res = await request(app)
+        .post('/api/v1/signals/subscriptions')
+        .set('Authorization', 'Bearer test-key')
+        .send({});
+      expect(res.status).toBe(500);
+    });
   });
 
-  describe('POST /api/v1/signals/subscriptions/subscribe', () => {
+  describe('POST /subscriptions/subscribe', () => {
     it('returns 200 (alias for POST /subscriptions)', async () => {
       mocks.signalSubscriberRepoMock.getBySubscriberId.mockResolvedValue(null);
-      mocks.signalSubscriberRepoMock.setActive.mockResolvedValue(undefined);
+      mocks.signalSubscriberRepoMock.upsert.mockResolvedValue({
+        id: 'sub_001',
+        subscriberId: 'user_001',
+        tier: 'PRO',
+        active: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
       const app = createTestApp();
       const res = await request(app)
         .post('/api/v1/signals/subscriptions/subscribe')
@@ -227,7 +286,7 @@ describe('Signal Subscription Routes', () => {
     });
   });
 
-  describe('DELETE /api/v1/signals/subscriptions/:id', () => {
+  describe('DELETE /subscriptions/:id', () => {
     it('returns 200 when subscription found', async () => {
       mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockResolvedValue([
         { id: 'sub_001', subscriberId: 'user_001', tier: 'PRO', active: true },
@@ -249,9 +308,36 @@ describe('Signal Subscription Routes', () => {
         .set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(404);
     });
+
+    it('returns 500 when D1 setActive throws', async () => {
+      mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockResolvedValue([
+        { id: 'sub_001', subscriberId: 'user_001', tier: 'PRO', active: true },
+      ]);
+      mocks.signalSubscriberRepoMock.setActive.mockRejectedValue(new Error('D1 down'));
+      const app = createTestApp();
+      const res = await request(app)
+        .delete('/api/v1/signals/subscriptions/sub_001')
+        .set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(500);
+    });
   });
 
-  describe('GET /api/v1/signals/subscription', () => {
+  describe('DELETE /subscriptions/:id/unsubscribe', () => {
+    it('returns 200 (alias for DELETE /:id)', async () => {
+      mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockResolvedValue([
+        { id: 'sub_002', subscriberId: 'user_002', tier: 'FREE', active: true },
+      ]);
+      mocks.signalSubscriberRepoMock.setActive.mockResolvedValue(undefined);
+      const app = createTestApp();
+      const res = await request(app)
+        .delete('/api/v1/signals/subscriptions/sub_002/unsubscribe')
+        .set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Subscription cancelled');
+    });
+  });
+
+  describe('GET /subscription', () => {
     it('returns 200 when user has subscription', async () => {
       const subscription = {
         id: 'sub_001',
@@ -276,5 +362,108 @@ describe('Signal Subscription Routes', () => {
       const res = await request(app).get('/api/v1/signals/subscription');
       expect(res.status).toBe(401);
     });
+
+    it('returns 404 when no subscription', async () => {
+      mocks.signalSubscriberRepoMock.getBySubscriberId.mockResolvedValue(null);
+      const app = createTestApp();
+      const res = await request(app)
+        .get('/api/v1/signals/subscription')
+        .set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 500 when D1 throws', async () => {
+      mocks.signalSubscriberRepoMock.getBySubscriberId.mockRejectedValue(new Error('D1 down'));
+      const app = createTestApp();
+      const res = await request(app)
+        .get('/api/v1/signals/subscription')
+        .set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(500);
+    });
+  });
+
+describe('GET /billing/plans', () => {
+  it('returns 200 with signals tier plans', async () => {
+    const app = createTestApp();
+    const res = await request(app)
+      .get('/api/v1/signals/billing/plans')
+      .set('Authorization', 'Bearer test-key');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(3);
+    expect(res.body.data[0]).toHaveProperty('tier');
+    expect(res.body.data[0]).toHaveProperty('priceUsd');
+  });
+
+  it('returns all 3 signals tiers with pricing', async () => {
+    const app = createTestApp();
+    const res = await request(app)
+      .get('/api/v1/signals/billing/plans')
+      .set('Authorization', 'Bearer test-key');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(3);
+    const plans = res.body.data;
+    const tiers = plans.map((p: any) => p.tier);
+    expect(tiers).toContain('SIGNALS_BASIC');
+    expect(tiers).toContain('SIGNALS_PRO');
+    expect(tiers).toContain('SIGNALS_ENTERPRISE');
+  });
+});
+
+describe('POST /billing/checkout', () => {
+  it('returns 200 with invoice for SIGNALS_BASIC', async () => {
+    mocks.resolveSubscriberIdMock.mockReturnValue({ subscriberId: 'user_001', tier: 'PRO' });
+    process.env.NOWPAYMENTS_API_KEY = 'test-api-key';
+
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any;
+    const fetchMock = vi.fn(async (_url: string, opts: any) => {
+      capturedBody = JSON.parse(opts.body);
+      return {
+        ok: true,
+        json: () => Promise.resolve({ id: 'inv_001', invoice_url: 'https://pay.nowpayments.io/payment/inv_001' }),
+      } as any;
+    });
+    const gAny = globalThis as any;
+    gAny.fetch = fetchMock;
+
+    try {
+      const app = createTestApp();
+      const res = await request(app)
+        .post('/api/v1/signals/billing/checkout')
+        .set('Authorization', 'Bearer test-key')
+        .send({ tier: 'SIGNALS_BASIC' });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('invoiceId', 'inv_001');
+      expect(res.body).toHaveProperty('checkoutUrl');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(capturedBody.price_amount).toBe(29);
+      expect(capturedBody.pay_currency).toBe('usdttrc20');
+      expect(capturedBody.order_id).toMatch(/^sig_user_001_/);
+    } finally {
+      ;(globalThis as any).fetch = originalFetch;
+    }
+  });
+  });
+
+  it('returns 400 for invalid tier', async () => {
+    const app = createTestApp();
+    const res = await request(app)
+      .post('/api/v1/signals/billing/checkout')
+      .set('Authorization', 'Bearer test-key')
+      .send({ tier: 'INVALID_TIER' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 503 when NOWPAYMENTS_API_KEY missing', async () => {
+    const original = process.env.NOWPAYMENTS_API_KEY;
+    delete process.env.NOWPAYMENTS_API_KEY;
+    const app = createTestApp();
+    const res = await request(app)
+      .post('/api/v1/signals/billing/checkout')
+      .set('Authorization', 'Bearer test-key')
+      .send({ tier: 'SIGNALS_BASIC' });
+    expect(res.status).toBe(503);
+    process.env.NOWPAYMENTS_API_KEY = original;
   });
 });

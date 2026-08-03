@@ -19,7 +19,7 @@ We just shipped the AI Co-pilot -- a natural language trading assistant that con
 
 **Available on:**
 - Dashboard chat widget (web)
-- Telegram /ask command (@Sophia_Bbot)
+- Telegram /ask command (@CashClawBot)
 
 **Built for Polymarket:**
 - 30+ V2 strategies via BasePolymarketStrategy abstract class
@@ -31,10 +31,10 @@ We just shipped the AI Co-pilot -- a natural language trading assistant that con
 2. Link your Polymarket API keys
 3. Ask your first question
 
-**No credit card required for beta.** You just need Polymarket API keys and an account at quant.cashclaw.cc.
+**No credit card required for beta.** You just need Polymarket API keys and an account at api.cashclaw.cc.
 
 **Demo video:** [link]
-**Sign up:** https://quant.cashclaw.cc
+**Sign up:** https://api.cashclaw.cc
 
 Questions? Drop them below or DM.
 

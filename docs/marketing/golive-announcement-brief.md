@@ -94,7 +94,7 @@ cashclaw.cc (all CTAs point here)
 - **52+ chiến lược AI** phân tích Polymarket, CEX, DEX
 - **Kelly-optimal sizing** — công thức toán học tối ưu hóa kích thước lệnh
 - **3 gói thuê bao:** Starter ($49), Pro ($149), Elite ($499) — thanh toán qua USDT (NOWPayments)
-- **Kênh phân phối:** Dashboard web + Telegram Bot (@Sophia_Bbot)
+- **Kênh phân phối:** Dashboard web + Telegram Bot (@CashClawBot)
 - **Đối tượng chính:** Trader Polymarket (80%), trader CEX/DEX (20%)
 
 Kế hoạch ra mắt:

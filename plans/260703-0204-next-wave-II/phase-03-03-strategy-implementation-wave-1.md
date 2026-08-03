@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Strategy Wave 2 — 8 Medium Strategies"
-status: pending
+status: completed
 priority: P1
 dependencies: [1]
 ---

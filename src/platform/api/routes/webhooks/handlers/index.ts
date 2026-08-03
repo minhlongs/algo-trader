@@ -14,3 +14,5 @@ export {
   handleMarketplaceIpnCancelled,
 } from './marketplace-payment-handler';
 
+export { handleSignalsIpnFinished, handleSignalsIpnCancelled } from './signals-payment-handler';
+

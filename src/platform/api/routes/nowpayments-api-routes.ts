@@ -53,12 +53,12 @@ nowpaymentsApiRouter.post('/invoice', async (req: Request, res: Response) => {
     }
 
     if (!NOWPAYMENTS_API_KEY) {
-      res.status(500).json({ error: 'NOWPayments API key not configured' });
+      res.status(503).json({ error: 'NOWPayments API key not configured' });
       return;
     }
 
-    const successUrl = process.env.CHECKOUT_SUCCESS_URL || 'https://cashclaw.cc/dashboard';
-    const cancelUrl = process.env.CHECKOUT_CANCEL_URL || 'https://cashclaw.cc/pricing';
+    const successUrl = (process.env.CHECKOUT_SUCCESS_URL || 'https://cashclaw.cc/dashboard') + '?payment=success';
+    const cancelUrl = (process.env.CHECKOUT_CANCEL_URL || 'https://cashclaw.cc/pricing') + '?payment=cancel';
     const orderId = `license_${tier}_${Date.now()}`;
 
     const invoiceRes = await fetch(`${NOWPAYMENTS_API_BASE}/invoice`, {

@@ -42,6 +42,8 @@ describe('DunningService', () => {
     licenseService = LicenseService.getInstance();
     (service as any).dunningRecords.clear();
     (licenseService as any).licenses.clear();
+  (service as any).dbReady = false;
+  store.clear();
   });
 
   describe('recordPaymentFailure', () => {

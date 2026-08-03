@@ -40,7 +40,7 @@ CashClaw delivers **AI-calibrated prediction market signals** via a RaaS (Robot-
 | AI Strategies | 52+ across Polymarket, CEX, DEX |
 | Risk Engine | Kelly-optimal position sizing (mathematically proven) |
 | Dual AI | One model for market analysis, one for risk calibration |
-| Delivery | Dashboard + Telegram Bot (@Sophia_Bbot) |
+| Delivery | Dashboard + Telegram Bot (@CashClawBot) |
 | Onboarding | Landing page → Subscribe → Activate → Trade |
 
 Subscribers receive Telegram alerts with:
@@ -89,7 +89,7 @@ PMF validated through production-grade operation:
 | Landing page | cashclaw.cc — deployed and verified on CF Workers |
 | Payment flow | NOWPayments USDT — live, tested, operational |
 | Paying customers | Active subscribers on tiered subscription across 4 tiers |
-| Telegram Bot | @Sophia_Bbot with /campaign, /status, /results — operational |
+| Telegram Bot | @CashClawBot with /campaign, /status, /results — operational |
 | CI Pipeline | Full lint + test + typecheck gate — green |
 
 **Platform has been in internal operation since Q2 2026.** Signal library has been backtested against live Polymarket data with consistent Kelly-optimal returns.
@@ -218,7 +218,7 @@ Solo founder (**billwill**) — full-stack engineer, AI integration specialist, 
 - **Cloudflare Workers + D1** — full-stack edge-native platform
 - **AI integration** — OpenRouter multi-model orchestration, prompt optimization
 - **Payment infrastructure** — NOWPayments USDT, webhook-driven subscription activation
-- **Telegram bot** — @Sophia_Bbot with /campaign, /status, /results live
+- **Telegram bot** — @CashClawBot with /campaign, /status, /results live
 
 **Current state:** Platform fully operational, paying subscribers, live payment rail. Ready for customer-facing growth phase.
 

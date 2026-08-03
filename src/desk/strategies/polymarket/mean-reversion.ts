@@ -36,7 +36,7 @@ export interface MeanReversionConfig {
   scanIntervalMs: number;
 }
 
-const DEFAULT_CONFIG: MeanReversionConfig = {
+export const DEFAULT_CONFIG: MeanReversionConfig = {
   sizeUsdc: 50,
   spikeThreshold: 2.0,
   exitThreshold: 0.5,

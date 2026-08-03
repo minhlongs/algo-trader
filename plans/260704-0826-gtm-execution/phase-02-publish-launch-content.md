@@ -3,13 +3,12 @@ phase: 2
 title: "Publish Launch Content"
 status: blocked
 blockers:
-  - "SendGrid env not configured (SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME)"
-manualStepsReady:
-  - blog: "docs/marketing/launch-blog-post.md"
-  - reddit: "docs/marketing/launch-reddit-post.md"
-  - twitter: "docs/marketing/launch-twitter-thread.md"
-  - discord: "docs/marketing/launch-discord-announcement.md"
-notes: "Email campaign script ready at scripts/send-email-campaign.ts — unblock by adding SendGrid env vars to .env. Domain references use api.cashclaw.cc."
+- "SendGrid env not configured (SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME) — task #63"
+manualStepsReady: true
+tasks:
+  - "task-063-sendgrid-config.md"
+  - "task-064-manual-publish.md"
+notes: "Email campaign script ready at scripts/send-email-campaign.ts — unblock by adding SendGrid env vars to .env. Manual publish (blog/reddit/twitter/discord) content ready at docs/marketing/ — task #64. Added task tracking. Domain references use api.cashclaw.cc."
 effort: "S (2 days)"
 ---
 
@@ -19,9 +18,16 @@ effort: "S (2 days)"
 
 Publish all prepared launch content. Run email campaign to FREE users.
 
+## Task Tracking
+
+| Task | Description | Status | Unblock Path |
+|------|-------------|--------|--------------|
+| #63 | Configure SendGrid env vars | 🔴 BLOCKED | Add SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME to .env |
+| #64 | Manual publish blog/reddit/twitter/discord | 🟡 READY | Execute manual steps (content already written) |
+
 ## Implementation Steps
 
-### Step 1: Run Email Campaign
+### Step 1: Run Email Campaign (task #63 — BLOCKED)
 ```bash
 cd /Users/macbook/algo-trader
 pnpm exec tsx scripts/send-email-campaign.ts
@@ -37,25 +43,25 @@ Verify:
 - Check SendGrid dashboard for delivery stats
 - Verify email received in test account
 
-### Step 2: Publish Blog Post
+### Step 2: Publish Blog Post (task #64)
 Use existing AutoMarketingDaemon or manual publish:
 1. Read `docs/marketing/launch-blog-post.md`
 2. Publish via blog endpoint or manual deploy
 3. Title: "Introducing AI Co-pilot — Your Natural Language Trading Assistant"
 
-### Step 3: Publish Reddit Post
+### Step 3: Publish Reddit Post (task #64)
 1. Read `docs/marketing/launch-reddit-post.md`
 2. Go to https://reddit.com/r/algotrading
 3. Submit new post with title and body from markdown file
 4. Include link to api.cashclaw.cc
 
-### Step 4: Publish Twitter/X Thread
+### Step 4: Publish Twitter/X Thread (task #64)
 1. Read `docs/marketing/launch-twitter-thread.md`
 2. Post 7-tweet thread on X/Twitter
 3. Include screenshots of AI Co-pilot chat widget
 4. Include pricing link to api.cashclaw.cc
 
-### Step 5: Discord Announcement
+### Step 5: Discord Announcement (task #64)
 1. Read `docs/marketing/launch-discord-announcement.md`
 2. Post in Polymarket Discord developer/trading channels
 3. Offer FREE PRO tier to first 10 beta testers
@@ -70,11 +76,11 @@ Use existing AutoMarketingDaemon or manual publish:
 - `scripts/send-email-campaign.ts`
 
 ## Success Criteria
-- [ ] Email campaign sent (check SendGrid) — **BLOCKED**
-- [ ] Blog post published at api.cashclaw.cc/blog
-- [ ] Reddit post published on r/algotrading (link to api.cashclaw.cc)
-- [ ] Twitter thread published (link to api.cashclaw.cc)
-- [ ] Discord announcement posted (link to api.cashclaw.cc)
+- [ ] Email campaign sent (check SendGrid) — **BLOCKED (task #63)**
+- [ ] Blog post published at api.cashclaw.cc/blog — pending (task #64)
+- [ ] Reddit post published on r/algotrading (link to api.cashclaw.cc) — pending (task #64)
+- [ ] Twitter thread published (link to api.cashclaw.cc) — pending (task #64)
+- [ ] Discord announcement posted (link to api.cashclaw.cc) — pending (task #64)
 - [ ] All content uses correct links to api.cashclaw.cc
 
 ## Risk Assessment

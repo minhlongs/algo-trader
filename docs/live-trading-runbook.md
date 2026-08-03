@@ -132,80 +132,134 @@ algo trade backtest --strategy=momentum-cascade --days=7 --format=json
 
 ---
 
-## 4. Paper -> Live Transition Steps
+## 4. Paper to Live Transition Procedure / Quy trình chuyển từ Paper sang Live
 
-### Checklist truoc khi chay LIVE
+### Prerequisites — Dieu kien bat buoc truoc khi chay LIVE / Mandatory Conditions Before Going Live
 
-- [ ] Da test strategy trong PAPER mode it nhat 50 ticks
-- [ ] Da backtest strategy it nhat 30 ngay
-- [ ] Sharpe ratio > 0.5
-- [ ] Win rate > 40%
-- [ ] Wallet co du USDC (toi thieu $100)
-- [ ] Tat ca 4 API keys da configured trong `.env`:
-  - `POLYMARKET_API_KEY`
-  - `POLYMARKET_API_SECRET`
-  - `POLYMARKET_PASSPHRASE`
-  - `POLYMARKET_PRIVATE_KEY`
-- [ ] Redis dang chay (circuit breaker can Redis)
-- [ ] `npm run build` passes (0 TypeScript errors)
+Tat ca cac dieu kien nay PHAI thoa MAN / All these conditions MUST be met before going live:
 
-### Buoc 1: Set PAPER_MODE=false
+| # | Dieu kien | Verification method |
+|---|-----------|---------------------|
+| 1 | **12 strategies pass paper trading** — at least 48 gio (hours) with tracked P&L | `algo trade status` — check no unhandled errors for 24+ hours |
+| 2 | **RiskGateManager thresholds confirmed** — 2% bankroll, 5% daily loss, 3 consecutive losses circuit breaker | Review Section 5 thresholds |
+| 3 | **No unhandled errors** — 24+ hours with no errors in any strategy tick | Check PM2 logs for absence of ERROR lines |
+
+### Step-by-Step Transition / Quy trình chuyen đổi từng buoc
+
+**Buoc 1 / Step 1:** Set live mode environment variable
 
 ```bash
-# Trong .env file
+# Method 1: Edit .env file (recommended)
+# Find PAPER_MODE=true and change to:
 PAPER_MODE=false
-# HOAC export truc tiep
+
+# Method 2: Export for current session only
 export PAPER_MODE=false
 ```
 
-### Buoc 2: Kiem tra LIVE env vars
+How it works: `LiveTradingOrchestrator` constructor receives `paperTrading: boolean` in `LiveTradingConfig`. When `false`, it calls `LiveExecutionGuard.setEnabled(true)` — all orders now pass through the guard checks.
+
+**Buoc 2 / Step 2:** Start with ONE strategy only
 
 ```bash
-# Verify all 4 Polymarket API vars are set
-echo "POLYMARKET_API_KEY=$POLYMARKET_API_KEY"
-echo "POLYMARKET_API_SECRET=$POLYMARKET_API_SECRET"
-echo "POLYMARKET_PASSPHRASE=$POLYMARKET_PASSPHRASE"
-echo "POLYMARKET_PRIVATE_KEY=$POLYMARKET_PRIVATE_KEY"
+# Example: momentum-exhaustion strategy (read: "mo-men-tum ex-haws-chun")
+algo trade run --strategy=momentum-exhaustion --mode=live --capital=1000 --ticks=0
+# --ticks=0 = runs indefinitely until Ctrl+C stops it
 ```
 
-All 4 env vars are validated in 3 places:
-1. `LiveTradingOrchestrator.validateLiveEnv()` (line 38)
-2. `buildPolymarketAdapter()` (line 91)
-3. `handleTradeStart()` and `handleTradeRun()` (CLI handlers)
+Effect: Strategy runs through `RiskGateManager.check(strategyKey, order)` before every order. Each order is also validated by `LiveExecutionGuard.guardOrder()` which checks: position size, daily drawdown, concurrent positions limit, and circuit breaker.
 
-Missing any one will throw an error before any order is placed.
-
-### Buoc 3: Chay LIVE (co confirm)
+**Buoc 3 / Step 3:** Verify LiveExecutionGuard activates correctly
 
 ```bash
-# Cach 1: Start orchestrator
-algo trade start --mode=live --capital=1000
+# Via CLI status command
+algo trade status
+# Look for: enabled=true in the guard output
 
-# Cach 2: Run specific strategy
-algo trade run --strategy=spread-mean-reversion --mode=live --capital=1000 --ticks=0
-# --ticks=0 = chay vo han, Ctrl+C de dung
+# Programmatically (for debugging):
+const orch = new LiveTradingOrchestrator(config)
+const status = orch.getGuardStatus()
+// Returns: { enabled: boolean, circuitTripped: boolean, dailyPnl: number, consecutiveLosses: number, ... }
 ```
 
-LIVE mode trigger 2 confirmation gates:
-1. Env var validation (throws if missing)
-2. Interactive confirmation prompt ("Confirm? (y/N)")
-   - Use `--yes` flag to skip confirm (scripting)
+Expected result: `enabled: true` — means all orders must pass through 4 guard checks (position size, drawdown, concurrent limit, circuit breaker).
 
-### Buoc 4: Giam sat khi LIVE
+**Buoc 4 / Step 4:** Monitor for 1 hour before adding second strategy
 
+- Watch P&L: `algo trade journal --type=pnl`
+- Watch fills: `algo trade journal --type=fills --limit=20`
+- Check guard state: `algo trade status` (shows circuitTripped, dailyPnl, consecutiveLosses)
+- Watch PM2 logs: `pm2 logs algo-trade` — look for any ERROR lines
+
+If all clean after 1 hour, add second strategy:
 ```bash
-# Trong terminal rieng
-watch -n 5 'algo trade status'
-
-# Kiem tra journal
-algo trade journal --type=pnl
-algo trade journal --type=fills --limit=50
-
-# Kiem tra guard status (qua orchestrator)
-# Guard shows: enabled=true, circuitTripped=boolean, dailyPnl=number
+# Stop current, restart with two strategies
+Ctrl+C
+algo trade run --strategy=momentum-exhaustion,session-vol-sniper --mode=live --capital=1000 --ticks=0
 ```
 
----
+**Rollback / Quay lai PAPER mode:** If any issue arises, IMMEDIATELY set PAPER_MODE=true and restart:
+```bash
+export PAPER_MODE=true
+algo trade run --strategy=momentum-exhaustion --mode=paper --capital=1000 --ticks=0
+```
+
+### Per-Strategy Live Toggle / Dieu khien strategy tung cai
+
+Edit `src/desk/wiring/strategy-wiring.ts` to control which strategies run live:
+
+```typescript
+// ENABLED_IDS set — only these strategies process live signals
+const ENABLED_IDS = new Set([
+  'momentum-exhaustion',    // Add/remove strategies here
+  'session-vol-sniper',
+  // ... all 12 strategies
+])
+```
+
+Each strategy tick runs through `RiskGateManager.check(strategyKey, order)` before placing any order. Strategies NOT in `ENABLED_IDS` are registered with `enabled: false`.
+
+### Circuit Breaker Halt Procedure / Quy trình dung khi Circuit Breaker kích hoat
+
+**What trips the breaker / Dieu kien kich hoat:**
+- 3 consecutive losses (LiveExecutionGuard in-memory circuit)
+- Daily drawdown >= 5% (DrawdownMonitor)
+- API latency > 1000ms (CircuitBreaker Redis-backed)
+
+When tripped: ALL trading halts immediately via `CircuitBreaker.halt(reason)`. No orders placed.
+
+**Restart / Khoi dong lai:** Requires manual restart:
+```bash
+# Via orchestrator:
+await orch.stop()    // Halt all trading
+await orch.start()   // Resume trading (also resets circuit breaker)
+
+// Or reset individual components programmatically:
+guard.resetCircuit()            // Reset LiveExecutionGuard circuit
+circuitBreaker.reset()          // Reset Redis-backed circuit breaker
+drawdownMonitor.resume()        // Resume DrawdownMonitor after halt
+```
+
+### Monitoring Checklist / Danh sach kiem tra khi LIVE
+
+| Tool | Command / Method | What to watch |
+|------|------------------|---------------|
+| LiveTradingJournal | `algo trade journal --type=fills` | Fill records — confirm orders executed correctly |
+| DrawdownMonitor | `orch.getGuardStatus().dailyPnl` | P&L vs drawdown thresholds |
+| PM2 logs (drip) | `pm2 logs welcome-drip` | Server-side events |
+| PM2 logs (trading) | `pm2 logs algo-trade` | Trading engine output |
+| Dashboard | `/app/risk-settings` | Risk gate UI (web) |
+| Circuit state | `circuitBreaker.getStatus().state` | Should say `CLOSED` (not OPEN) |
+| Guard status | `orch.getGuardStatus()` | enabled, circuitTripped, consecutiveLosses |
+
+**Red flags requiring immediate rollback:**
+- `circuitTripped: true` — consecutive loss streak detected
+- `dailyPnl` approaching 5% of capitalUsdc
+- `consecutiveLosses` >= 3
+- Any ERROR lines in PM2 trading logs
+- Unexpected order sizes or sides in fill records
+
+
 
 ## 5. Risk Gate Thresholds
 

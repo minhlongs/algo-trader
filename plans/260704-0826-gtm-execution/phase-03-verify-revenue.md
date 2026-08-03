@@ -3,6 +3,9 @@ phase: 3
 title: "Verify Revenue"
 status: pending
 effort: "S (1 day)"
+tasks:
+  - "task-065-payment-sync.md"
+notes: "Blocked on first paying subscriber. Monitors signups, verifies payment flow end-to-end, documents first revenue. D1 query documentation fixed (psql→wrangler d1 query) — production uses Cloudflare D1, no psql access."
 ---
 
 # Phase 3: Verify Revenue
@@ -11,19 +14,22 @@ effort: "S (1 day)"
 
 Track results from launch. Monitor signups, verify payment flow end-to-end, document first revenue.
 
+## Task Tracking
+
+| Task | Description | Status | Unblock Path |
+|------|-------------|--------|--------------|
+| #65 | First paying subscriber + revenue verification | 🔲 PENDING | Requires Phase 2 manual publish (#64) to drive conversions |
+
 ## Implementation Steps
 
 ### Step 1: Monitor Signups
 ```bash
-# Check new user registrations
-psql $DATABASE_URL -c "SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '24 hours'"
-
-# Check tier distribution
-psql $DATABASE_URL -c "SELECT tier, COUNT(*) FROM subscriptions GROUP BY tier"
-
-# Check referral usage
-psql $DATABASE_URL -c "SELECT code, usage_count FROM referral_codes ORDER BY usage_count DESC LIMIT 10"
+# Query via Cloudflare D1 (production DB — no psql access)
+# wrangler d1 query cashclaw-db --remote "SELECT COUNT(*) FROM users WHERE created_at > datetime('now', '-24 hours');"
+# wrangler d1 query cashclaw-db --remote "SELECT tier, COUNT(*) FROM subscriptions GROUP BY tier;"
+# wrangler d1 query cashclaw-db --remote "SELECT code, usage_count FROM referral_codes ORDER BY usage_count DESC LIMIT 10;"
 ```
+**Note:** Production runs on Cloudflare D1 (`createServerClient()`, sync, no await). There is no `psql` shell access. Use `wrangler d1 query` against the bound D1 database for ad-hoc checks, or query through the app's existing auth/payment service layer in `src/platform/`.
 
 ### Step 2: Verify Payment Flow
 Perform end-to-end test with real $1 transaction:
@@ -36,11 +42,9 @@ Perform end-to-end test with real $1 transaction:
 
 ### Step 3: Track Revenue
 ```bash
-# Check subscription revenue
-psql $DATABASE_URL -c "SELECT tier, COUNT(*), SUM(price) FROM subscriptions WHERE status = 'active' GROUP BY tier"
-
-# Check referral conversions
-psql $DATABASE_URL -c "SELECT COUNT(*) FROM referral_tracking WHERE converted_at IS NOT NULL"
+# Query via Cloudflare D1 (production DB — no psql access)
+# wrangler d1 query cashclaw-db --remote "SELECT tier, COUNT(*), SUM(price) FROM subscriptions WHERE status = 'active' GROUP BY tier;"
+# wrangler d1 query cashclaw-db --remote "SELECT COUNT(*) FROM referral_tracking WHERE converted_at IS NOT NULL;"
 ```
 
 ### Step 4: Document Learnings

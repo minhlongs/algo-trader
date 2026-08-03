@@ -149,14 +149,14 @@ User Query (Dashboard or Telegram)
 The AI Co-pilot is available now:
 
 - **FREE tier:** Basic scanning, limited signals
-- **STARTER ($49/mo):** AI Co-pilot access + strategy marketplace
+- **STARTER ($19/mo):** AI Co-pilot access + strategy marketplace
 - **PRO ($99/mo):** Full Co-pilot, Telegram /ask, all 5 intents
 - **ENTERPRISE ($299/mo):** Custom strategies, dedicated infrastructure
 - Custom-tier on request: white-label, private marketplace
 
 **No credit card needed for FREE tier.**
 
-Try it: https://quant.cashclaw.cc
+Try it: https://api.cashclaw.cc
 Ask your first question today.
 
 ---

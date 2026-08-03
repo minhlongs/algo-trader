@@ -28,6 +28,8 @@ import { SetupGuidePage } from './pages/setup-guide-page';
 import { TermsPage } from './pages/terms-page';
 import { PrivacyPage } from './pages/privacy-page';
 import { RiskSettingsPage } from './pages/risk-settings-page';
+import { ApiKeysPage } from './pages/api-keys-page';
+import { TrialStatusPage } from './pages/trial-status-page';
 
 /**
  * Handle uncaught errors in the app.
@@ -75,6 +77,8 @@ export function App() {
         <Route path="/app/terms" element={<AuthGuard><LayoutShell><TermsPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/privacy" element={<AuthGuard><LayoutShell><PrivacyPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/neg-risk" element={<AuthGuard><NegRiskDashboardPage /></AuthGuard>} />
+ <Route path="/app/api-keys" element={<AuthGuard><LayoutShell><ApiKeysPage /></LayoutShell></AuthGuard>} />
+ <Route path="/app/trial-status" element={<AuthGuard><LayoutShell><TrialStatusPage /></LayoutShell></AuthGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

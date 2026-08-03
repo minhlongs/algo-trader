@@ -66,36 +66,32 @@ describe('Signals API Routes', () => {
     } as any);
   });
 
-  it('creates a subscription', async () => {
+  it('returns 410 for deprecated POST /subscribe', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/v1/signals/subscribe')
       .set('Authorization', 'Bearer test-key')
       .send({ chatId: 12345 });
 
-    expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('data');
-    expect(res.body).toHaveProperty('message', 'Subscribed successfully');
+    expect(res.status).toBe(410);
   });
 
-  it('returns 410 from deprecated /feed alias', async () => {
+  it('returns 410 for deprecated GET /feed', async () => {
     const app = buildApp();
     const res = await request(app)
       .get('/api/v1/signals/feed')
       .set('Authorization', 'Bearer test-key');
 
     expect(res.status).toBe(410);
-    expect(res.body.error).toBe('Use /api/v1/signals/feed from signal-feed-routes');
   });
 
-  it('registers a webhook URL', async () => {
+  it('returns 410 for deprecated POST /webhook', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/v1/signals/webhook')
       .set('Authorization', 'Bearer test-key')
       .send({ url: 'https://example.com/signals/callback' });
 
-    expect(res.status).toBe(200);
-    expect(mocks.setWebhook).toHaveBeenCalled();
+    expect(res.status).toBe(410);
   });
 });

@@ -39,7 +39,7 @@ module.exports = {
     },
     {
       name: 'auto-marketing',
-      script: 'dist/jobs/auto-marketing-daemon.js',
+      script: 'dist/desk/jobs/auto-marketing-daemon.js',
       cwd: __dirname,
       exec_mode: 'fork',
       cron_restart: '0 7 * * *', // Run daily at 7 AM
@@ -52,8 +52,8 @@ module.exports = {
       merge_logs: true,
     },
     {
-      name: 'welcome-drip',
-      script: 'dist/jobs/welcome-email-drip.js',
+      name: 'trial-drip',
+      script: 'dist/platform/jobs/trial-drip-runner.js',
       cwd: __dirname,
       exec_mode: 'fork',
       cron_restart: '0 * * * *', // Run hourly

@@ -1,7 +1,7 @@
 ---
 title: "Next Wave II: Strategy Implementation + Onboarding + Live Trading + Dashboard"
 description: "Fill 21 empty strategy stubs with real logic, wire risk gates, build checkout API endpoints, add trial-drip trigger, create missing dashboard pages. ~50 files across 4 tracks."
-status: pending
+status: completed
 priority: P1
 branch: "main"
 tags: ["strategies", "onboarding", "live-trading", "dashboard", "revenue"]
@@ -27,13 +27,13 @@ This plan fills the real gaps instead of building what already exists.
 
 | Phase | Name | Status | Priority | Deps |
 |-------|------|--------|----------|------|
-| 1 | [Strategy Wave 1 — 4 Simple Strategies](./phase-01-01-live-trading-activation.md) | Pending | P1 | — |
-| 2 | [Customer Onboarding API & Triggers](./phase-02-02-customer-onboarding-flow.md) | Pending | P1 | — |
-| 3 | [Strategy Wave 2 — 8 Medium Strategies](./phase-03-03-strategy-implementation-wave-1.md) | Pending | P1 | 1 |
-| 4 | [Live Trading Wiring & Risk Gate Integration](./phase-04-04-strategy-implementation-wave-2.md) | Pending | P1 | 1 |
-| 5 | [Dashboard Missing Pages](./phase-05-05-dashboard-frontend.md) | Pending | P1 | 2 |
-| 6 | [Testing, Rollback, Risk Gate Tests](./phase-06-06-testing-and-integration.md) | Pending | P1 | 1,2,3,4,5 |
-| 7 | [Paper Trading Verification & Runbook](./phase-07-07-live-trading-verification.md) | Pending | P1 | 6 |
+| 1 | [Strategy Wave 1 — 4 Simple Strategies](./phase-01-01-live-trading-activation.md) | Completed | P1 | — |
+| 2 | [Customer Onboarding API & Triggers](./phase-02-02-customer-onboarding-flow.md) | Completed | P1 | — |
+| 3 | [Strategy Wave 2 — 8 Medium Strategies](./phase-03-03-strategy-implementation-wave-1.md) | Completed | P1 | 1 |
+| 4 | [Live Trading Wiring & Risk Gate Integration](./phase-04-04-strategy-implementation-wave-2.md) | Completed | P1 | 1 |
+| 5 | [Dashboard Missing Pages](./phase-05-05-dashboard-frontend.md) | Completed | P1 | 2 |
+| 6 | [Testing, Rollback, Risk Gate Tests](./phase-06-06-testing-and-integration.md) | Completed | P1 | 1,2,3,4,5 |
+| 7 | [Paper Trading Verification & Runbook](./phase-07-07-live-trading-verification.md) | Completed | P1 | 6 |
 
 ## Dependencies
 

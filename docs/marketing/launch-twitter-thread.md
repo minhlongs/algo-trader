@@ -56,7 +56,7 @@ No mocks. No shortcuts. Real infra.
 Pricing that scales with you:
 
 FREE -- basic scanning, community access
-STARTER ($49/mo) -- unlock AI Co-pilot + marketplace
+STARTER ($19/mo) -- unlock AI Co-pilot + marketplace
 PRO ($99/mo) -- full Co-pilot, Telegram /ask, all intents
 ENTERPRISE ($299/mo) -- custom, dedicated
 MASTER ($999/mo) -- white-label
@@ -79,7 +79,7 @@ The solo quant manifesto:
 **Tweet 7/7 (CTA):**
 Ready to level up your trading?
 
-Try it free: https://quant.cashclaw.cc
+Try it free: https://api.cashclaw.cc
 Watch the Co-pilot demo: [link]
 Join the community: [Discord]
 

@@ -92,3 +92,6 @@ export async function handleIpnRefunded(
     await subscriptionService.updateSubscriptionStatus(subscription.id, 'cancelled');
   }
 }
+
+/* ── Signals billig redirects ── */
+export { handleSignalsIpnFinished, handleSignalsIpnCancelled } from './signals-payment-handler';

@@ -64,6 +64,21 @@ node dist/index.js arb:agi -p BTC/USDT -e binance,okx,bybit --score-threshold 70
 node dist/index.js arb:auto -p BTC/USDT,ETH/USDT -e binance,okx,bybit -s 1000
 ```
 
+### Signals API Commands
+
+| Command | Method | Description |
+|---------|--------|-------------|
+| `POST /api/v1/signals/subscribe` | POST | Create/update subscription with tier (BASIC=$29, PRO=$99, ENTERPRISE=$299) |
+| `GET /api/v1/signals/subscription` | GET | Self-lookup: returns authenticated subscriber's subscription |
+| `DELETE /api/v1/signals/subscription` | DELETE | Self-cancel subscription |
+| `GET /api/v1/signals/feed?since=&limit=` | GET | Paginated signals for authenticated subscriber (tier rate-limited) |
+| `GET /api/v1/signals/feed/:id` | GET | Single signal lookup |
+| `POST /api/v1/signals/webhook` | POST | Webhook delivery URL registration (ENTERPRISE-only) |
+| `GET /api/v1/signals/stream` | GET | SSE real-time stream (ENTERPRISE-only, Bearer API key) |
+
+**Auth:** Bearer API key (issued via NOWPayments IPN webhook on payment)
+**Tier gates:** SIGNALS_BASIC (subscribe), SIGNALS_PRO (feed + webhook), SIGNALS_ENTERPRISE (feed + webhook + stream)
+
 ### Marketplace / Tenant Commands
 
 | Command | Description |

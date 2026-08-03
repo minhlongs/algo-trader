@@ -140,7 +140,7 @@ export class StrategyRouter {
       recordShardLatency(String(shardId), 'execute', latencyMs / 1000);
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorBody = await response.json().catch(() => ({ error: 'Unknown error' })) as { error?: string };
         return {
           success: false,
           shardId,

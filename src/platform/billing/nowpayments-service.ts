@@ -314,4 +314,43 @@ export class NowPaymentsService {
         return 'ignore';
     }
   }
+
+  /**
+   * Create a payout to a wallet address via NOWPayments API.
+   * Used for marketplace revenue share payouts to strategy creators.
+   */
+  async createPayout(params: { address: string; amount: number }): Promise<{ payoutId: string } | null> {
+    if (!this.apiKey) {
+      logger.error('NOWPAYMENTS_API_KEY not configured - cannot create payout');
+      return null;
+    }
+
+    try {
+      const res = await fetch(`${this.baseUrl}/payout`, {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: params.address,
+          amount: params.amount,
+          currency: 'usdttrc20',
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        logger.error('NOWPayments payout creation failed', { status: res.status, body });
+        return null;
+      }
+
+      const payout = (await res.json()) as { id?: string; payout_id?: string };
+      logger.info('Payout created', { address: params.address, amount: params.amount, payoutId: payout.id ?? payout.payout_id });
+      return { payoutId: payout.id ?? payout.payout_id ?? '' };
+    } catch (error) {
+      logger.error('Failed to create payout:', { error });
+      return null;
+    }
+  }
 }

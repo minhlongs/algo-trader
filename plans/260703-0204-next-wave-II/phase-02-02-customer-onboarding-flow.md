@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Customer Onboarding API & Triggers"
-status: pending
+status: completed
 priority: P1
 dependencies: []
 ---

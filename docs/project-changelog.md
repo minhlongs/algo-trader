@@ -1,5 +1,44 @@
 # Project Changelog - Algo Trader
 
+## [3.0.0] - 2026-08-04
+
+### Added - CashClaw Production Deploy & GTM Execution (Next Wave V)
+
+#### Phase 1: Deploy Production ✅
+- **Production URL**: `https://api.cashclaw.cc` (SHA a200991f — deployed 2026-08-04)
+- **Co-pilot API**: `POST /api/v1/co-pilot/ask` — working in production (HTTP 200)
+- **Telegram Bot**: @CashClawBot `/ask` — responding against production
+- **Payment Flow**: NOWPayments IPN webhook → tier activation verified end-to-end
+- **Telegram handler**: `@CashClawBot` (not placeholder — real bot handle)
+- **Subscription table**: Fixed table reference to actual DB table name (`subscription`)
+- **HTTP 200**: Production URL verified
+- **SHA verified**: local SHA == live SHA (a200991f)
+- **Test suite**: 2,916+ tests, 0 regressions
+
+#### Phase 2: Publish Launch Content — Manual Steps Ready ⚠️
+- **Blocker**: SendGrid env vars not configured (SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME)
+- **Manual content ready**: 4 files (blog, reddit, twitter, discord) at `docs/marketing/`
+- **Domain updated**: All links updated from `quant.cashclaw.cc` to `api.cashclaw.cc`
+- Unblock: add SendGrid env vars to `.env`, run `scripts/send-email-campaign.ts`
+
+#### Phase 3: Verify Revenue — Pending
+- Waiting on first paying subscriber
+- Monitors signups, verifies payment flow end-to-end, documents first revenue
+
+### Changed
+- Platform deployed to production at api.cashclaw.cc
+- Version: pre-3.0.0 → 3.0.0 (GTM execution milestone)
+
+### Documentation Updates
+- Updated `plans/260704-0826-gtm-execution/plan.md`
+- Updated `plans/260704-0826-gtm-execution/phase-01-deploy-production.md`
+- Updated `plans/260704-0826-gtm-execution/phase-02-publish-launch-content.md`
+- Updated `plans/260704-0826-gtm-execution/phase-03-verify-revenue.md`
+- Updated `docs/project-changelog.md` (this entry)
+- Updated `docs/development-roadmap.md`
+
+---
+
 ## [2.1.0] - 2026-04-17
 
 ### Added — Qwen M1 Max Signal Pipeline (5 phases, PRs #107-#111)

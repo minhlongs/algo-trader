@@ -16,7 +16,7 @@ type Env = { CACHE: KVNamespace; SUBSCRIBERS?: D1Database; JWT_SECRET?: string; 
 
 export async function handleValidateCoupon(request: Request, env: any): Promise<Response> {
   const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
-  let code: string;
+  let code: string = '';
   try {
     const parsed = (await request.json()) as { code: string; tier: string };
     code = parsed.code;
@@ -71,8 +71,11 @@ export async function handleValidateCoupon(request: Request, env: any): Promise<
 
 export async function handleApplyCoupon(request: Request, env: any): Promise<Response> {
   const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
+  let code = '';
   try {
-    const { code, userId } = (await request.json()) as { code: string; userId: string };
+    const parsed = (await request.json()) as { code: string; userId: string };
+    code = parsed.code;
+    const { userId } = parsed;
     if (!code || !userId) return badRequest('code and userId are required');
 
     if (!sub) {

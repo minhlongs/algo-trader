@@ -1,7 +1,11 @@
 ---
 phase: 5
 title: "Dashboard Missing Pages"
-status: pending
+status: completed
+
+## Completed — 2026-08-04
+
+Dashboard routes wired into App.tsx with API keys, trial-status, and marketplace-badge pages. Trial-drip-runner service created. PM2 cron scheduled for trial-drip email automation (ecosystem config pending PM2 reload — non-blocking, non-code deferral).
 priority: P1
 dependencies: [2]
 ---
