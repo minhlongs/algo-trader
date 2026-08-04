@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Verify Revenue"
-status: pending
+status: blocked
 effort: "S (1 day)"
 tasks:
   - "task-065-payment-sync.md"
@@ -23,13 +23,13 @@ Track results from launch. Monitor signups, verify payment flow end-to-end, docu
 ## Implementation Steps
 
 ### Step 1: Monitor Signups
+Query via Cloudflare D1 (binding: `SUBSCRIBERS` → database `algo-trader-db`).
+Use `wrangler d1 query` (read-only SELECT):
 ```bash
-# Query via Cloudflare D1 (production DB — no psql access)
-# wrangler d1 query cashclaw-db --remote "SELECT COUNT(*) FROM users WHERE created_at > datetime('now', '-24 hours');"
-# wrangler d1 query cashclaw-db --remote "SELECT tier, COUNT(*) FROM subscriptions GROUP BY tier;"
-# wrangler d1 query cashclaw-db --remote "SELECT code, usage_count FROM referral_codes ORDER BY usage_count DESC LIMIT 10;"
+# wrangler d1 query algo-trader-db --remote --command "SELECT COUNT(*) as n FROM subscriptions WHERE created_at > datetime('now', '-24 hours');"
+# wrangler d1 query algo-trader-db --remote --command "SELECT tier, COUNT(*) as cnt FROM subscriptions GROUP BY tier;"
+# wrangler d1 query algo-trader-db --remote --command "SELECT code, usage_count FROM referral_codes ORDER BY usage_count DESC LIMIT 10;"
 ```
-**Note:** Production runs on Cloudflare D1 (`createServerClient()`, sync, no await). There is no `psql` shell access. Use `wrangler d1 query` against the bound D1 database for ad-hoc checks, or query through the app's existing auth/payment service layer in `src/platform/`.
 
 ### Step 2: Verify Payment Flow
 Perform end-to-end test with real $1 transaction:
@@ -41,10 +41,10 @@ Perform end-to-end test with real $1 transaction:
 6. Verify co-pilot API now returns full responses (not fallback)
 
 ### Step 3: Track Revenue
+Query via Cloudflare D1 (binding: `SUBSCRIBERS` → database `algo-trader-db`):
 ```bash
-# Query via Cloudflare D1 (production DB — no psql access)
-# wrangler d1 query cashclaw-db --remote "SELECT tier, COUNT(*), SUM(price) FROM subscriptions WHERE status = 'active' GROUP BY tier;"
-# wrangler d1 query cashclaw-db --remote "SELECT COUNT(*) FROM referral_tracking WHERE converted_at IS NOT NULL;"
+# wrangler d1 query algo-trader-db --remote --command "SELECT tier, COUNT(*) as cnt, COALESCE(SUM(amount_cents), 0) as total FROM subscriptions WHERE status = 'active' GROUP BY tier;"
+# wrangler d1 query algo-trader-db --remote --command "SELECT COUNT(*) as n FROM subscriptions WHERE status = 'active';"
 ```
 
 ### Step 4: Document Learnings

@@ -17,6 +17,7 @@ import { handleNowPaymentsIPN } from './api/webhooks-nowpayments';
 import { handleValidateCoupon, handleApplyCoupon } from './api/coupons';
 import { handleVersion } from './api/version';
 import { handleEnergy9Delivery } from './api/energy-9';
+import { handleGetTiers } from './api/subscriptions';
 import { handleCopilotAsk } from './api/copilot';
 import { handleTelegramWebhook, handleSetTelegramWebhook } from './api/telegram-bot';
 import { handleGetRing, handleGetShardHealth, handleExecuteStrategy, handleGetStrategiesList, handleGetMarkets, handleGetShardById } from './api/markets';

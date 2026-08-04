@@ -122,7 +122,7 @@ MISSING_DOWN=()
 for file in "${MIGRATION_FILES[@]}"; do
     filename=$(basename "$file")
     down_sql=$(awk '
-        /--[[:space:]]*@down/ { 
+        /--[[:space:]]*@down/ {
             # Check if @down is in the header comment block
             if (found_up == 0) {
                 found_down = 1

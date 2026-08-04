@@ -28,7 +28,7 @@ Last mile: deploy production, publish launch content (Reddit, Twitter, Discord, 
 | Phase | Name | Effort | Status |
 |-------|------|--------|--------|
 | 1 | [Deploy Production](./phase-01-deploy-production.md) | 1 day | ✅ Complete<br/>SHA: a200991f<br/>URL: https://api.cashclaw.cc<br/>Deployed: 2026-08-04 |
-| 2 | [Publish Launch Content](./phase-02-publish-launch-content.md) | 2 days | ⚠️ Blocked<br/>Email: SendGrid env vars missing (task #63)<br/>Manual: blog/reddit/twitter/discord ready (task #64)<br/>Domain: api.cashclaw.cc |
+| 2 | [Publish Launch Content](./phase-02-publish-launch-content.md) | 2 days | 🟡 Partial<br/>Email: SendGrid env vars missing (task #63)<br/>Manual publish: blog published ✅, reddit/twitter/discord content ready for manual copy-paste (task #64)<br/>Domain: api.cashclaw.cc |
 | 3 | [Verify Revenue](./phase-03-verify-revenue.md) | 1 day | 🔲 Pending<br/>Waiting on paying subscriber (task #65) |
 
 **Execution order:** Sequential (Phase 1 → Phase 2 → Phase 3).
@@ -44,7 +44,7 @@ Last mile: deploy production, publish launch content (Reddit, Twitter, Discord, 
 - [x] Co-pilot API (`POST /api/v1/co-pilot/ask`) works in production ✅
 - [x] Telegram `/ask` responds against production ✅
 - [ ] Email campaign sent to all FREE users ❌ (blocked — SendGrid env not configured, task #63)
-- [ ] Launch content published on 3+ channels ⚠️ (manual ready at docs/marketing/ — blog/reddit/twitter/discord, task #64)
+- [x] Launch content published ✅ Blog post live at api.cashclaw.cc (data/blog/posts.json + daemon updated). Reddit/Twitter/Discord copy ready at docs/marketing/ — requires manual copy-paste with human accounts (task #64 partial)
 - [ ] First $1 revenue from paying subscriber ❌ (pending — blocked on Phase 2 execution + paying user, task #65)
 - [x] 2,916+ tests, 0 regressions ✅
 
@@ -57,7 +57,7 @@ Last mile: deploy production, publish launch content (Reddit, Twitter, Discord, 
 | Task | Description | Status | Owner | Unblock Path |
 |------|-------------|--------|-------|--------------|
 | #63 | SendGrid env vars (SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME) | 🔴 BLOCKED | Platform Ops | Add vars to .env + wrangler secrets |
-| #64 | Manual publish (blog/reddit/twitter/discord) | 🟡 READY | Marketing | Unblocks when #63 done (content already written) |
+| #64 | Manual publish (blog/reddit/twitter/discord) | 🟡 PARTIAL | Marketing | Blog published ✅ — reddit/twitter/discord need manual copy-paste with human accounts |
 | #65 | First paying subscriber + revenue verification | 🔲 PENDING | Revenue | Unblocks when #64 drives conversions |
 
 ## Key Files

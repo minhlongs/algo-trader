@@ -61,6 +61,7 @@ export async function generateLlmBlogPost(
     'performance': `Write a weekly performance report blog post for CashClaw. Context: ${context}. Include: P&L summary, win rate, strategy breakdown, notable trades. Label as "[Paper Trading]" results. Tone: honest, data-focused. Keep under 300 words. Format as markdown.`,
     'strategy-spotlight': `Write a strategy spotlight blog post about one of CashClaw's prediction market strategies. Pick from: Endgame (buy near-certain outcomes), Whale Copy-Trading, Neg-Risk Multi-Outcome, Cross-Market Arbitrage. Explain how it works, why it has edge, and how CashClaw implements it with Kelly Criterion. Keep under 300 words. Format as markdown.`,
     'market-analysis': `Write a brief prediction market analysis for CashClaw's blog. Cover: current market conditions across Polymarket/Kalshi/Limitless, liquidity trends, where opportunities exist. Context: ${context}. Keep under 300 words. Format as markdown.`,
+  'launch-announcement': `Write a launch announcement blog post for CashClaw's new AI Co-pilot feature. Cover: what it does, 5 supported query types, how it works, pricing tiers. Tone: exciting but professional. Keep under 300 words. Format as markdown.`,
   };
 
   try {

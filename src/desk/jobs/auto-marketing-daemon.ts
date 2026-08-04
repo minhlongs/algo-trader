@@ -29,7 +29,7 @@ export interface BlogPost {
   content: string;
   date: string;
   tags: string[];
-  type: 'signal-digest' | 'performance' | 'strategy-spotlight' | 'market-analysis';
+  type: 'signal-digest' | 'performance' | 'strategy-spotlight' | 'market-analysis' | 'launch-announcement';
   url: string;
   generatedAt: string;
 }

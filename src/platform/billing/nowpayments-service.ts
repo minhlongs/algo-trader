@@ -12,6 +12,13 @@
 import { logger } from '../../shared/utils/logger';
 import { LicenseTier } from '../../shared/types/license';
 
+// CashClaw pricing override (post-2026-08-04 GTM alignment)
+const CASHCLAW_PRICES: Record<string, number> = {
+  STARTER: 19,
+  PRO: 49,
+  ENTERPRISE: 149,
+};
+
 // NOWPayments IPN payload from webhook
 export interface NowPaymentsIpnPayload {
   payment_id: string;
@@ -121,19 +128,15 @@ export class NowPaymentsService {
   }
 
   /**
-   * Verify IPN webhook signature (HMAC-SHA512 over sorted JSON keys)
+   * Verify IPN webhook signature (HMAC-SHA512 over raw body bytes)
+   * NOWPayments signs the exact JSON payload as received on the wire.
    */
   async verifyWebhook(rawBody: string, signature: string): Promise<boolean> {
     if (!this.ipnSecret) {
       logger.warn('NOWPAYMENTS_IPN_SECRET not configured');
       return false;
     }
-
     try {
-      const parsed = JSON.parse(rawBody) as Record<string, unknown>;
-      const sortedKeys = Object.keys(parsed).sort();
-      const sorted = JSON.stringify(parsed, sortedKeys);
-
       const encoder = new TextEncoder();
       const key = await crypto.subtle.importKey(
         'raw',
@@ -142,12 +145,10 @@ export class NowPaymentsService {
         false,
         ['sign']
       );
-
-      const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(sorted));
+      const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
       const computed = Array.from(new Uint8Array(sig))
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
-
       return computed === signature;
     } catch (error) {
       logger.error('IPN signature verification failed:', { error });

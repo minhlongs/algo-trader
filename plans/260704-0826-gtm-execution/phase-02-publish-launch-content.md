@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Publish Launch Content"
-status: blocked
+status: partial
 blockers:
 - "SendGrid env not configured (SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME) — task #63"
 manualStepsReady: true

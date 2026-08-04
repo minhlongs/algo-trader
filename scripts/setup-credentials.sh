@@ -21,7 +21,7 @@ read -s -p "2. NOWPAYMENTS_IPN_SECRET: " np_secret && echo ""
 wrangler secret put NOWPAYMENTS_IPN_SECRET --env production <<< "$np_secret"
 
 echo ""
-read -s -p "3. NOWPAYMENTS_INVOICE_STARTER ($1 test invoice ID): " np_invoice && echo ""
+read -s -p "3. NOWPAYMENTS_INVOICE_STARTER (optional test invoice ID): " np_invoice && echo ""
 wrangler secret put NOWPAYMENTS_INVOICE_STARTER --env production <<< "$np_invoice"
 
 echo ""

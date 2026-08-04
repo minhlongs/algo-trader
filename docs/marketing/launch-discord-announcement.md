@@ -6,9 +6,28 @@
 
 **Announcement:**
 
-🚀 **AI Co-pilot is LIVE -- Polymarket traders, meet your new assistant**
+👀 Solo quant stack — AI co-pilot for trading
 
-We just shipped the AI Co-pilot -- a natural language trading assistant that connects directly to your Polymarket strategies. Ask questions, get answers. No dashboards. No SQL. No CLI.
+52 strategies | 2,855 tests | Node.js + TS
+Local inference: Nemotron-3 Nano + DeepSeek R1 on M1 Max + TPU. Zero cloud API costs.
+
+Tiers → api.cashclaw.cc
+FREE — basic scanning
+STARTER $19/mo — co-pilot + marketplace
+PRO $99/mo — 5 intent handlers + Telegram /ask
+ENTERPRISE $299/mo
+MASTER $999/mo — white-label
+
+Best value: PRO tier. The /ask command alone saves me hours a week.
+
+Questions welcome ↓
+api.cashclaw.cc
+
+---
+
+🚀 **AI Co-pilot is LIVE — Polymarket traders, meet your new assistant**
+
+We just shipped the AI Co-pilot — a natural language trading assistant that connects directly to your Polymarket strategies. Ask questions, get answers. No dashboards. No SQL. No CLI.
 
 **What you can ask:**
 - `/ask what is my risk exposure?` -- instant Kelly-based risk assessment
