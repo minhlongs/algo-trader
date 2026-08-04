@@ -2,7 +2,7 @@
 https://www.cashclaw.cc/* https://cashclaw.cc/:splat 301
 
 # Alpha Vang product page
-/alpha-vang /alpha-vang.html 200
+/alpha-vang /alpha-vang/index.html 200
 
 # SPA fallback for dashboard
 /dashboard/* /dashboard/index.html 200
