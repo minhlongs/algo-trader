@@ -285,7 +285,7 @@ if (path === '/api/coupons/apply' && request.method === 'POST') return handleApp
 // CF-only: Version endpoint
 if (path === '/api/version' && request.method === 'GET') return handleVersion(env as any);
 // CF-only: Energy 9 delivery endpoint
-if (path === '/api/delivery/energy-9' && request.method === 'POST') return handleEnergy9Delivery(request, env as any);
+if (path === '/api/delivery/energy-9' && ['GET', 'POST'].includes(request.method)) return handleEnergy9Delivery(request, env as any);
 
 // ── Phase 2: Telegram + Co-pilot + Markets ──
 if (path === '/api/copilot/ask' && request.method === 'POST') return handleCopilotAsk(request, env as any);
