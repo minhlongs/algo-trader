@@ -5,14 +5,14 @@
  * Protected by a shared secret header — no public auth flow required.
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, type NextFunction } from 'express';
 import { usageMetering } from '@platform/signals-api/usage-metering-service';
 
 export const internalBillingRouter: Router = Router();
 
 const INTERNAL_KEY = process.env.INTERNAL_BILLING_KEY;
 
-function requireInternalKey(req: Request, res: Response, next: Function): void {
+function requireInternalKey(req: Request, res: Response, next: NextFunction): void {
   const provided = req.header('X-Internal-Key');
   if (!INTERNAL_KEY || provided !== INTERNAL_KEY) {
     res.status(401).json({ error: 'Internal API key required' });

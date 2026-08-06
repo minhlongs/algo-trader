@@ -1,3 +1,4 @@
+import { LOAD_TEST_BASE_URL } from './load-test-config';
 import http from 'k6/http';
 import { sleep } from 'k6';
 import { Gauge } from 'k6/metrics';
@@ -18,7 +19,7 @@ export const options = {
 
 // Memory-intensive request (loads strategy + LLM context)
 function memoryIntensiveRequest(): void {
-  const url = 'https://algo-trader.workers.dev/api/v1/intelligence/analyze';
+  const url = `${LOAD_TEST_BASE_URL}/api/v1/intelligence/analyze`;
   const body = JSON.stringify({
     strategies: Array.from({ length: 10 }, (_, i) => `strategy-${i}`), // Load 10 strategies
     marketData: generateLargeMarketData(1000), // 1000 market data points

@@ -26,7 +26,7 @@ interface Migration {
 
 function getDialect(client: unknown): 'postgres' | 'sqlite' {
   if (client && typeof client === 'object' && 'constructor' in client) {
-    const ctor = (client as { constructor: Function }).constructor;
+    const ctor = (client as { constructor: () => unknown }).constructor;
     if (ctor && typeof ctor.name === 'string' && ctor.name.includes('Client')) {
       return 'postgres';
     }

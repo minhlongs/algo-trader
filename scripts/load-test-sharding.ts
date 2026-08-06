@@ -1,13 +1,13 @@
+import { LOAD_TEST_BASE_URL } from './load-test-config';
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend, Counter, Gauge } from 'k6/metrics';
 
-// Custom metrics
 const shardLatency = new Trend('shard_latency_ms', true);
 const shardErrors = new Counter('shard_errors_total');
 const shardRPS = new Gauge('shard_rps_current');
-const memoryUsage = new Gauge('memory_usage_mb');
 const strategyDistribution = new Counter('strategy_hits_total');
+const memoryUsage = new Trend('memory_usage_mb', true);
 
 // Configuration
 const SHARDS = 12;
@@ -55,7 +55,7 @@ export default function() {
   const shardId = getShardForStrategy(strategy);
 
   // Build URL - targeting the edge proxy which routes to appropriate shard
-  const url = `https://algo-trader.workers.dev/api/v1/strategies/${strategy}/execute`;
+  const url = `${LOAD_TEST_BASE_URL}/api/v1/strategies/${strategy}/execute`;
 
   const params = {
     headers: {
@@ -115,7 +115,7 @@ export function handleSummary(data: any) {
   const strategyHits = data.metrics.strategy_hits_total;
   console.log('\n--- Strategy Distribution ---');
   for (const [strategy, count] of Object.entries(strategyHits)) {
-    const percentage = (count / data.metrics.http_reqs) * 100;
+    const percentage = (Number(count) / data.metrics.http_reqs) * 100;
     console.log(`${strategy}: ${count} (${percentage.toFixed(1)}%)`);
   }
 
