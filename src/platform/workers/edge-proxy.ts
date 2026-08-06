@@ -14,7 +14,7 @@ import {
   handleGetMySubscription, handleUpgrade, handleCancel, handleGetTiers,
 } from './api/subscriptions';
 import { handleNowPaymentsIPN } from './api/webhooks-nowpayments';
-import { handleValidateCoupon, handleApplyCoupon } from './api/coupons';
+import { handleValidateCoupon, handleApplyCoupon, handleRedeemCoupon, handleActivateCoupon } from './coupon-handlers'; // handleListCoupon
 import { handleVersion } from './api/version';
 import { handleEnergy9Delivery } from './api/energy-9';
 import { handleCopilotAsk } from './api/copilot';
@@ -281,6 +281,8 @@ if (path === '/api/webhooks/nowpayments' && request.method === 'POST') return ha
 // CF-only: Coupon service
 if (path === '/api/coupons/validate' && request.method === 'POST') return handleValidateCoupon(request, env as any);
 if (path === '/api/coupons/apply' && request.method === 'POST') return handleApplyCoupon(request, env as any);
+if (path === '/api/coupons/redeem' && request.method === 'POST') return handleRedeemCoupon(request, env as any);
+if (path === '/api/coupons/activate' && request.method === 'POST') return handleActivateCoupon(request, env as any);
 
 // CF-only: Version endpoint
 if (path === '/api/version' && request.method === 'GET') return handleVersion(env as any);
@@ -313,31 +315,13 @@ if (path.match(/^\/api\/tenants\/[^/]+\/config$/) && request.method === 'POST') 
  }
 }
 
-// If VPS_ORIGIN is set, proxy remaining API requests
-
-    // If VPS_ORIGIN is set, proxy remaining API requests
-    if (env.VPS_ORIGIN && path.startsWith('/api/')) {
-      // Webhook routes — no caching
-      if (path.startsWith('/api/webhooks/')) return proxyToOrigin(request, env);
-
-      // GET requests — cache at edge
-      if (request.method === 'GET') {
-        const cacheKey = `cache:${path}:${url.search}`;
-        const cached = await env.CACHE.get(cacheKey);
-        if (cached) {
-          return new Response(cached, { headers: { ...CORS, 'X-Cache': 'HIT' } });
-        }
-        const response = await proxyToOrigin(request, env);
-        if (response.ok) {
-          const body = await response.text();
-          await env.CACHE.put(cacheKey, body, { expirationTtl: CACHE_TTL });
-          return new Response(body, { headers: { ...CORS, 'X-Cache': 'MISS' } });
-        }
-        return response;
-      }
-
-      return proxyToOrigin(request, env);
-    }
+// No VPS — return 501 for unmigrated API routes (CF-only mode)
+if (env.VPS_ORIGIN && path.startsWith('/api/')) {
+  return new Response(
+    JSON.stringify({ error: "Not implemented", message: "VPS backend removed — endpoint not yet migrated to CF Worker" }),
+    { status: 501, headers: { "Content-Type": "application/json", ...CORS } }
+  );
+}
 
     // No VPS — return 501 for unhandled API routes
     if (path.startsWith('/api/')) return notImplementedResponse(path);

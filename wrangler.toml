@@ -102,3 +102,6 @@ name = "algo-trader-staging"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
+NOWPAYMENTS_INVOICE_PRO = "<set via wrangler secret put>"
+NOWPAYMENTS_INVOICE_ENTERPRISE = "<set via wrangler secret put>"
+NOWPAYMENTS_IPN_URL = "https://algo-trader-staging.workers.dev/api/v1/webhooks/nowpayments"

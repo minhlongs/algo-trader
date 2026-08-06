@@ -68,6 +68,25 @@ export const PRICING_TIERS: Record<string, PricingTier> = {
 		supportLevel: 'dedicated',
 		requestsPerMin: 1000,
 	},
+  MASTER: {
+    name: 'Master',
+    price: 999,
+    strategies: 999,
+    markets: ['all'],
+    apiCallsPerMonth: 999999,
+    features: [
+      'unlimited',
+      'dedicated-support',
+      'custom-strategies',
+      'dedicated-instance',
+      'slas',
+      'on-premise-option',
+      'white-glove-onboarding',
+      'co-location-assistance',
+    ],
+    supportLevel: 'dedicated',
+    requestsPerMin: 9999,
+  }
 };
 
 /**

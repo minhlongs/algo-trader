@@ -103,11 +103,11 @@ describe('ContentAgent', () => {
       agent.onWeeklyReport(mockLicenses, mockSubscriptions);
 
       const call = (logger.info as ReturnType<typeof vi.fn>).mock.calls[0];
-      // 2 active licenses (PRO=$49, ENTERPRISE=$199) + 1 subscription ($49/mo)
-      // lic-1 is covered by sub-1, so license MRR = ENTERPRISE=$199
+      // 2 active licenses (PRO=$99, ENTERPRISE=$299) + 1 subscription ($49/mo)
+      // lic-1 is covered by sub-1, so license MRR = ENTERPRISE=$299
       // sub MRR = $49/month (within 35-day period, treated as monthly)
-      // expected mrr = 199 + 49 = 248
-      expect(call[1].metrics.mrr).toBe(248);
+      // expected mrr = 299 + 49 = 348
+      expect(call[1].metrics.mrr).toBe(348);
     });
 
     it('should not crash with empty arrays', () => {

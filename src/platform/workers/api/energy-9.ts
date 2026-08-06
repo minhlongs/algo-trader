@@ -86,7 +86,7 @@ export async function handleEnergy9Delivery(request: Request, env: Env): Promise
       code: 'TIER_GATED',
       requiredTier: 'BASIC',
       currentTier: tier,
-      upgradeUrl: 'https://cashclaw.cc/pricing',
+      upgradeUrl: 'https://api.cashclaw.cc/billing?upgrade=basic',
     }, 403, env, request);
   }
 

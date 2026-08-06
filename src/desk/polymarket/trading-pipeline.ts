@@ -217,20 +217,10 @@ export class TradingPipeline extends EventEmitter {
     }
   }
 
-/**
- * Internal extension of StrategyRunner that exposes the strategy registry map.
- * The base `StrategyRunner` (workspace package `engine`) hides `.strategies`
- * behind a private field — this typed view is the narrowest surface needed
- * by the trading pipeline to look up a running strategy instance by name.
- */
-interface StrategyRunnerWithMap extends StrategyRunner {
-  strategies: Map<string, unknown>;
-}
-
 private getMarketMakerInstance(): MarketMakerStrategy | null {
   try {
-    const runner = this.strategyRunner as StrategyRunnerWithMap;
-    const strategies = runner.strategies;
+    const runner = this.strategyRunner as StrategyRunner & { strategies: Map<string, unknown> };
+    const strategies = (runner as StrategyRunner & { strategies: Map<string, unknown> }).strategies;
     if (strategies instanceof Map) {
       return (strategies.get('market-maker') as MarketMakerStrategy | undefined) ?? null;
     }

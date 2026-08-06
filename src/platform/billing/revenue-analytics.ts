@@ -6,11 +6,13 @@
 import { License, LicenseTier, LicenseStatus } from '../../shared/types/license';
 import { Subscription } from './subscription-service';
 
+// Canonical pricing (aligned with PRICING_TIERS)
+// PRO=$99/mo, ENTERPRISE=$299/mo, MASTER=$999/mo
 const TIER_MO_PRICE: Record<LicenseTier, number> = {
   [LicenseTier.FREE]: 0,
   [LicenseTier.STARTER]: 19,
-  [LicenseTier.PRO]: 49,
-  [LicenseTier.ENTERPRISE]: 199,
+  [LicenseTier.PRO]: 99,
+  [LicenseTier.ENTERPRISE]: 299,
   [LicenseTier.MASTER]: 999,
 };
 

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { handleValidateCoupon, handleApplyCoupon } from '../api/coupons';
+import { handleRedeemCoupon as handleRedeemCouponDirect } from '../coupon-handlers';
 
 function makeEnv(kv: any, sub: any) {
   return { CACHE: kv, SUBSCRIBERS: sub } as any;

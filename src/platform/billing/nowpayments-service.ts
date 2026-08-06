@@ -12,11 +12,12 @@
 import { logger } from '../../shared/utils/logger';
 import { LicenseTier } from '../../shared/types/license';
 
-// CashClaw pricing override (post-2026-08-04 GTM alignment)
+// Canonical pricing (aligned with PRICING_TIERS)
+// PRO=$99/mo, ENTERPRISE=$299/mo, MASTER=$999/mo
 const CASHCLAW_PRICES: Record<string, number> = {
-  STARTER: 19,
-  PRO: 49,
-  ENTERPRISE: 149,
+  PRO: 99,
+  ENTERPRISE: 299,
+  MASTER: 999,
 };
 
 // NOWPayments IPN payload from webhook
