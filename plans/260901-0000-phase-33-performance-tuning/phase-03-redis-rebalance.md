@@ -19,5 +19,5 @@ Redis Cluster → consistent hashing → shard mapping
 - Shard configuration
 
 ## Todo List
-- [ ] Analyze key distribution
-- [ ] Rebalance if needed
+- [x] Analyze key distribution
+- [x] Rebalance if needed

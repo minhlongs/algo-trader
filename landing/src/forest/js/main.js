@@ -5,8 +5,9 @@ import { CHECKOUT } from './config.js';
 import { getCheckoutUrl } from './services/checkout-service.js';
 import { fetchStats } from './services/stats-service.js';
 import { showActivationModal, initModal } from './controllers/modal-controller.js';
-import { initCoupon } from './controllers/coupon-controller.js';
+import { initCoupon, showCouponError } from './controllers/coupon-controller.js';
 import { updatePrices } from './controllers/price-display.js';
+import { redeemCoupon } from './services/coupon-service.js';
 
 // ── Shared state (module-scoped, not global) ──
 let activeCoupon = null;
@@ -14,31 +15,50 @@ let activeCoupon = null;
 // ── Checkout button wiring ──
 function wireCheckoutButtons() {
   const buttons = [
+    { id: 'btn-free', tier: 'FREE' },
     { id: 'btn-starter', tier: 'STARTER' },
-    { id: 'btn-pro',     tier: 'PRO' },
-    { id: 'btn-elite',   tier: 'ELITE' }
+    { id: 'btn-pro', tier: 'PRO' },
+    { id: 'btn-elite', tier: 'ELITE' }
   ];
 
   for (const { id, tier } of buttons) {
     const btn = document.getElementById(id);
     if (!btn) continue;
+    btn.href = CHECKOUT[tier].url;
 
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener("click", async (e) => {
       e.preventDefault();
+
+      if (tier === "FREE") {
+        if (activeCoupon && activeCoupon.freeAccess) {
+          showActivationModal(tier);
+          return;
+        }
+        const target = document.getElementById("get-started-free");
+        if (target) target.scrollIntoView({ behavior: "smooth" });
+        return;
+      }
 
       if (activeCoupon && activeCoupon.freeAccess) {
         showActivationModal(tier);
         return;
       }
 
-      const url = getCheckoutUrl(tier, activeCoupon);
-      if (url) {
-        window.location.href = url;
+      if (activeCoupon && activeCoupon.code) {
+        const result = await redeemCoupon(tier, activeCoupon.code);
+        if (!result.ok) {
+          showCouponError(result.error || "Redemption failed");
+          return;
+        }
+        if (result.data && result.data.checkoutUrl) {
+          window.location.href = result.data.checkoutUrl;
+        }
+        return;
       }
-    });
 
-    // Set initial href for non-JS fallback
-    btn.href = CHECKOUT[tier].url;
+      const url = getCheckoutUrl(tier, null);
+      if (url) window.location.href = url;
+    });
   }
 }
 
@@ -66,6 +86,5 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   initModal(() => activeCoupon);
-
   loadStats();
 });

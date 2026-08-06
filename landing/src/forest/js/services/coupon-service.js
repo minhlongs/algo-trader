@@ -41,16 +41,30 @@ export function calculatePrices(coupon) {
  * Fire-and-forget — logs errors but doesn't block the user flow.
  */
 export async function activateCoupon(email, tier, couponCode) {
+ try {
+  await fetch('https://api.cashclaw.cc/api/coupons/activate', {
+   method: 'POST',
+   headers: { 'Content-Type': 'application/json' },
+   body: JSON.stringify({ email, tier, couponCode, project: 'cashclaw' })
+  });
+ } catch {
+  // Silently ignore — checkout already succeeded
+ }
+}
+
+/**
+ * Redeem a coupon before checkout — validates + records usage + returns checkout URL.
+ * Returns { ok, data } where data has checkoutUrl on success or error on failure.
+ */
+export async function redeemCoupon(tier, couponCode) {
   try {
-    const res = await fetch('https://api.cashclaw.cc/api/coupons/activate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, tier, couponCode, project: 'cashclaw' })
+    const res = await postJSON(`${API_BASE}/coupons/redeem`, {
+      code: couponCode.toUpperCase().trim(),
+      tier,
+      project: 'cashclaw'
     });
-    if (!res.ok) {
-      console.error('Coupon activation failed:', res.status);
-    }
+    return res;
   } catch (err) {
-    console.error('Coupon activation network error:', err.message);
+    return { ok: false, error: err.message || 'Redemption failed' };
   }
 }

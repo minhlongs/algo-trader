@@ -5,7 +5,7 @@ import { formatPrice } from '../utils/format.js';
 import { calculatePrices } from '../services/coupon-service.js';
 import { TIER_PRICES } from '../config.js';
 
-const PRICE_IDS = ['price-starter', 'price-pro', 'price-elite'];
+const PRICE_IDS = ['price-free', 'price-starter', 'price-pro', 'price-elite'];
 
 /**
  * Update the pricing display based on current coupon.
@@ -16,7 +16,11 @@ export function updatePrices(coupon) {
     for (const [i, tier] of Object.keys(TIER_PRICES).entries()) {
       const el = document.getElementById(PRICE_IDS[i]);
       if (el) {
-        el.innerHTML = `$${TIER_PRICES[tier]}<span>/mo</span>`;
+        if (tier === 'FREE') {
+          el.innerHTML = 'FREE';
+        } else {
+          el.innerHTML = `$${TIER_PRICES[tier]}<span>/mo</span>`;
+        }
       }
     }
     return;

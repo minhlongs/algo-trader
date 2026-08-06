@@ -15,6 +15,7 @@ import * as migration025 from './migrations/025-marketplace-schema';
 import * as migration026 from './migrations/026-create-ai-audit-tables';
 import * as migration030 from './migrations/030_create_marketplace_tables';
 import * as migration038 from './migrations/038-audit-log';
+import * as migration0002 from './migrations/002-phase33-indexes';
 
 // Migration interface
 interface Migration {
@@ -108,7 +109,11 @@ function createSqlMigration(filename: string, id: string, description: string): 
         await client.query('DROP TABLE IF EXISTS tenant_audit_logs CASCADE');
       } else if (id === '021_tenant_credentials') {
         await client.query('DROP TABLE IF EXISTS tenant_credentials CASCADE');
-      }
+      } else if (id === '0002-phase33-indexes') {  await client.query('DROP INDEX IF EXISTS idx_subscriptions_user_status');
+  await client.query('DROP INDEX IF EXISTS idx_payment_logs_created');
+  await client.query('DROP INDEX IF EXISTS idx_orders_user_created');
+  await client.query('DROP INDEX IF EXISTS idx_coupons_redeemed');
+}
     }
   };
 }
@@ -137,6 +142,7 @@ const MIGRATIONS: Migration[] = [
  createSqlMigration('031_add_marketplace_subscription_payment.sql', '031_add_marketplace_subscription_payment', 'Marketplace subscription and payment tables'),
  createSqlMigration('032_add_marketplace_payout_address.sql', '032_add_marketplace_payout_address', 'Marketplace payout address support'),
   migration038,
+  migration0002, // Phase 33 composite indexes — runs after all tables exist (025-031 create them)
 ];
 
 /**

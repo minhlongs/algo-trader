@@ -71,3 +71,9 @@ export function initCoupon(getCoupon, setCoupon, onCouponChanged) {
     }
   });
 }
+
+/** Show an error in the coupon message area (called from main.js on redeem failure). */
+export function showCouponError(message) {
+  const el = document.getElementById('coupon-message');
+  if (el) el.innerHTML = `<span style="color:var(--color-rose)">✗ ${message}</span>`;
+}

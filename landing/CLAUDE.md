@@ -92,7 +92,7 @@ landing/src/
 ## Business Logic (NON-NEGOTIABLE)
 
 These MUST survive any refactor:
-1. NOWPayments checkout URLs (3 tiers: Starter/Pro/Elite)
+1. NOWPayments checkout URLs (4 tiers: Free/Starter/Pro/Elite)
 2. Coupon validation flow (validate → apply discount → update prices)
 3. Activation modal (email + password → register → activate coupon)
 4. Live stats fetch from `/api/public/stats`
