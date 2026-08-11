@@ -5,7 +5,7 @@
  * Uses SDK-style validation + structured errors from nowpayments-utils.
  */
 
-import { assertString, isNonEmptyString, validationError, configError, apiError } from './nowpayments-utils';
+import { isNonEmptyString, validationError, configError, apiError } from './nowpayments-utils';
 import type { KVNamespace } from '@cloudflare/workers-types';
 
 export interface Env {
@@ -98,7 +98,7 @@ async function withRedeemLock(
 }
 
 function methodNotAllowed(): Response {
-  return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: { 'content-type': 'application/json', ...CORS_HEADERS } });
+  return json({ error: 'Method Not Allowed' }, 405);
 }
 
 function optionsResponse(): Response {
