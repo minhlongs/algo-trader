@@ -11,183 +11,446 @@
  * digest via {@link IAuditEntry.ipHash}, typically produced by
  * {@link hashIpAddress}.
  *
+ * ## Hash-Chain Immutability
+ *
+ * Rows are linked via a SHA-256 hash chain:
+ * - `sequence_number`: per-tenant monotonically increasing counter
+ * - `previous_hash`: hash of the previous row in the same tenant partition
+ * - `hash`: SHA-256(tenant_id | sequence_number | previous_hash | payload)
+ *
+ * Any tampering breaks the chain. Verification via {@link verifyAuditChain}.
+ *
  * ## Module Layout
  *
  * | File | Responsibility |
- * |------|---------------|
- * | `audit-log.ts` (this) | Public API — `logAudit`, `getAuditTrail`, re-exports |
- * | `audit-ip-hash.ts` | `hashIpAddress` — IP hashing |
- * | `audit-validate.ts` | `validateEntry`, `mapRowToEntry`, constants |
- * | `audit-middleware.ts` | `auditMiddleware` — Express integration |
- * | `types.ts` | `IAuditEntry`, `AuditResult` interfaces |
+ * |------|----------------|
+ * | `audit-log.ts` | Public API: `logAudit`, `getAuditTrail`, `verifyAuditChain` |
+ * | `audit-validate.ts` | Input validation + row mapping |
+ * | `audit-ip-hash.ts` | IP address hashing (SHA-256) |
+ * | `audit-middleware.ts` | Express middleware (auto-logs responses) |
+ * | `crypto.ts` | Encryption utilities (separate key domain) |
  *
- * ## Database
+ * ## Usage
  *
- * Uses the shared pg pool from `src/db/postgres-client.ts`. No ORM — raw
- * parameterised SQL prevents injection. Requires migration 038
- * (`src/db/migrations/038-audit-log.ts`).
+ * ```ts
+ * import { logAudit, hashIpAddress } from '@/seed/security/audit-log';
  *
- * ## Thread-safety
+ * await logAudit({
+ *   id: crypto.randomUUID(),
+ *   timestamp: new Date().toISOString(),
+ *   actor: 'user-42',
+ *   action: 'api_keys.create',
+ *   resource: 'ApiKey:99',
+ *   result: 'success',
+ *   metadata: { tier: 'PRO' },
+ *   ipHash: hashIpAddress(req.headers['x-forwarded-for']),
+ *   tenantId: 'tenant-abc',
+ * });
+ * ```
  *
- * `logAudit` and `getAuditTrail` are safe to call from any async context:
- * the pool serialises within its `maxConnections` cap (default 10).
+ * ## Fail-Closed Guarantee
+ *
+ * `logAudit` throws on write failure (no silent drops). Callers must handle
+ * or let the request fail — audit integrity > availability.
  */
 
+import crypto from 'crypto';
 import { query } from '../../db/postgres-client';
-
-import { METADATA_MAX_BYTES, validateEntry, mapRowToEntry } from './audit-validate';
-import { hashIpAddress } from './audit-ip-hash';
+import { logger } from '../../shared/utils/logger';
 
 import type { IAuditEntry, AuditResult } from './types';
+import { validateEntry, mapRowToEntry, METADATA_MAX_BYTES } from './audit-validate';
+import { hashIpAddress } from './audit-ip-hash';
 
-/** Default cap on rows returned by `getAuditTrail` when caller omits `limit`. */
-const DEFAULT_TRAIL_LIMIT = 100;
-/** Hard ceiling on any single `getAuditTrail` call. */
-const TRAIL_LIMIT_CEIL = 100;
+// ─── Configuration ─────────────────────────────────────────────────────────────
 
-/* ------------------------------------------------------------------ */
-/* SQL fragments                                                        */
-/* ------------------------------------------------------------------ */
+/** Maximum metadata size (enforced at validation + DB CHECK constraint). */
+export const METADATA_MAX_BYTES_EXTERNAL = METADATA_MAX_BYTES;
 
-const INSERT_SQL = /* sql */ `
-INSERT INTO audit_log (
- id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-`;
+/** HMAC key for audit chain — must be set via env AUDIT_HMAC_KEY_v1 (64 hex chars). */
+let auditHmacKey: Buffer | null = null;
+let auditHmacKeyVersion = 1;
 
-const SELECT_BY_TENANT_SQL = /* sql */ `
-SELECT
- id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id
-FROM audit_log
-WHERE tenant_id = $1
-ORDER BY "timestamp" DESC
-LIMIT $2
-`;
+/** Dead letter queue for failed audit writes (in-memory buffer). */
+interface DeadLetter {
+  entry: IAuditEntry;
+  attempts: number;
+  lastError: string;
+  createdAt: number;
+}
+const deadLetterQueue: DeadLetter[] = [];
+const MAX_DEAD_LETTER_ATTEMPTS = 3;
+const DEAD_LETTER_RETRY_BASE_MS = 1000;
 
-const SELECT_SQL = /* sql */ `
-SELECT
- id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id
-FROM audit_log
-WHERE resource = $1
-ORDER BY "timestamp" DESC
-LIMIT $2
-`;
+/** Initialize HMAC key from env — fail-fast if missing. */
+function initHmacKey(): Buffer {
+  if (auditHmacKey) return auditHmacKey;
+  const envKey = process.env.AUDIT_HMAC_KEY_v1;
+  if (!envKey) {
+    const err = new Error('AUDIT_HMAC_KEY_v1 not configured — audit logging unavailable');
+    logger.error('[AuditLog] Startup failure', { cause: err.message });
+    throw err;
+  }
+  if (!/^[0-9a-f]{64}$/i.test(envKey)) {
+    const err = new Error('AUDIT_HMAC_KEY_v1 must be 64 hex characters (32 bytes)');
+    logger.error('[AuditLog] Invalid key format', { cause: err.message });
+    throw err;
+  }
+  auditHmacKey = Buffer.from(envKey, 'hex');
+  logger.info('[AuditLog] HMAC key initialized', { version: auditHmacKeyVersion });
+  return auditHmacKey;
+}
 
-/* ------------------------------------------------------------------ */
-/* Public API                                                           */
-/* ------------------------------------------------------------------ */
+// ─── Dead Letter Queue ─────────────────────────────────────────────────────────
+
+/** Add failed write to dead letter queue. */
+function enqueueDeadLetter(entry: IAuditEntry, error: Error): void {
+  deadLetterQueue.push({
+    entry,
+    attempts: 1,
+    lastError: error.message,
+    createdAt: Date.now(),
+  });
+  logger.warn('[AuditLog] Write failed — enqueued to dead letter queue', {
+    entryId: entry.id,
+    tenantId: entry.tenantId,
+    error: error.message,
+    queueLength: deadLetterQueue.length,
+  });
+}
+
+/** Retry dead letters with exponential backoff. */
+async function flushDeadLetters(): Promise<void> {
+  if (deadLetterQueue.length === 0) return;
+
+  const key = initHmacKey();
+  const now = Date.now();
+  const toRetry = deadLetterQueue.filter(
+    (dl) => dl.attempts < MAX_DEAD_LETTER_ATTEMPTS && now - dl.createdAt > DEAD_LETTER_RETRY_BASE_MS * 2 ** (dl.attempts - 1),
+  );
+
+  for (const dl of toRetry) {
+    try {
+      await writeAuditRow(dl.entry, key);
+      // Remove from queue on success
+      const idx = deadLetterQueue.indexOf(dl);
+      if (idx >= 0) deadLetterQueue.splice(idx, 1);
+      logger.info('[AuditLog] Dead letter flushed', { entryId: dl.entry.id });
+    } catch (err) {
+      dl.attempts++;
+      dl.lastError = err instanceof Error ? err.message : String(err);
+      dl.createdAt = now;
+      logger.warn('[AuditLog] Dead letter retry failed', {
+        entryId: dl.entry.id,
+        attempt: dl.attempts,
+        error: dl.lastError,
+      });
+    }
+  }
+
+  // Alert on persistent failures
+  const stuck = deadLetterQueue.filter((dl) => dl.attempts >= MAX_DEAD_LETTER_ATTEMPTS);
+  if (stuck.length > 0) {
+    logger.error('[AuditLog] Dead letter queue — persistent failures', {
+      stuckCount: stuck.length,
+      entries: stuck.map((dl) => ({ id: dl.entry.id, error: dl.lastError })),
+    });
+  }
+}
+
+// ─── Internal: Hash Chain Computation ──────────────────────────────────────────
 
 /**
- * Insert a single audit record into PostgreSQL.
+ * Compute the hash for a new audit row.
  *
- * Validates every field before hitting the database so callers get an
- * immediate `TypeError` rather than a silent bad row.
+ * Hash = HMAC-SHA256(key, tenant_id || '|' || sequence_number || '|' || previous_hash || '|' || payload)
+ * where payload = id | action | resource | result | metadata_json
+ */
+function computeRowHash(
+  key: Buffer,
+  tenantId: string | undefined,
+  sequenceNumber: number,
+  previousHash: string,
+  entry: IAuditEntry,
+): string {
+  const tid = tenantId ?? '__system__';
+  const metaJson = JSON.stringify(entry.metadata);
+  const payload = `${entry.id}|${entry.action}|${entry.resource}|${entry.result}|${metaJson}`;
+  const data = `${tid}|${sequenceNumber}|${previousHash}|${payload}`;
+  return crypto.createHmac('sha256', key).update(data).digest('hex');
+}
+
+/**
+ * Write a single audit row with atomic sequence number allocation.
+ * Uses advisory lock per tenant to prevent sequence collisions under concurrency.
+ */
+async function writeAuditRow(entry: IAuditEntry, key: Buffer): Promise<void> {
+  const tenantId = entry.tenantId;
+
+  // Acquire advisory lock for this tenant (hash tenant_id to 64-bit int)
+  const lockKey = tenantId
+    ? crypto.createHash('sha256').update(tenantId).digest().readBigInt64BE()
+    : 0n; // system events use lock 0
+
+  await query('SELECT pg_advisory_xact_lock($1)', [lockKey.toString()]);
+
+  try {
+    // Get the next sequence number for this tenant
+    const seqResult = await query(
+      `SELECT COALESCE(MAX(sequence_number), 0) + 1 AS next_seq
+       FROM audit_log
+       WHERE tenant_id IS NOT DISTINCT FROM $1`,
+      [tenantId ?? null],
+    );
+    const sequenceNumber = Number(seqResult.rows[0]?.next_seq ?? 1);
+
+    // Get previous hash
+    const prevResult = await query(
+      `SELECT hash FROM audit_log
+       WHERE tenant_id IS NOT DISTINCT FROM $1
+       ORDER BY sequence_number DESC
+       LIMIT 1`,
+      [tenantId ?? null],
+    );
+    const previousHash = String(prevResult.rows[0]?.hash ?? '');
+
+    // Compute hash
+    const hash = computeRowHash(key, tenantId ?? undefined, sequenceNumber, previousHash, entry);
+
+    // Insert
+    await query(
+      `INSERT INTO audit_log (id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id, sequence_number, hash, previous_hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [
+        entry.id,
+        entry.timestamp,
+        entry.actor,
+        entry.action,
+        entry.resource,
+        entry.result,
+        JSON.stringify(entry.metadata),
+        entry.ipHash,
+        tenantId ?? null,
+        sequenceNumber,
+        hash,
+        previousHash,
+      ],
+    );
+  } finally {
+    // Release advisory lock
+    await query('SELECT pg_advisory_xact_unlock($1)', [lockKey.toString()]);
+  }
+}
+
+// ─── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Write an audit entry to the immutable log.
  *
- * @param entry - fully-formed {@link IAuditEntry}. Generate `id` with
- * `crypto.randomUUID()` unless you have a specific reason.
- * @returns `Promise<void>` — resolves after the INSERT commits.
- *
- * @throws {TypeError} First validation failure encountered.
- *
- * @example
- * await logAudit({
- * id: crypto.randomUUID(),
- * timestamp: new Date().toISOString(),
- * actor: 'user-abc',
- * action: 'strategy.start',
- * resource: 'Strategy:42',
- * result: 'success',
- * metadata: { mode: 'paper', qty: 100 },
- * ipHash: hashIpAddress(req.ip),
- * });
+ * @param entry - Validated audit entry (use {@link hashIpAddress} for ipHash)
+ * @throws {TypeError} If entry validation fails
+ * @throws {Error} If write fails (fail-closed — no silent drops)
  */
 export async function logAudit(entry: IAuditEntry): Promise<void> {
- validateEntry(entry);
+  // Validate before any DB interaction
+  validateEntry(entry);
 
- const params = [
- entry.id,
- entry.timestamp,
- entry.actor,
- entry.action,
- entry.resource,
- entry.result,
- entry.metadata,
- entry.ipHash,
- entry.tenantId ?? null,
- ];
+  // Initialize HMAC key (fail-fast)
+  const key = initHmacKey();
 
- await query(INSERT_SQL, params);
+  try {
+    await writeAuditRow(entry, key);
+    // Opportunistically flush dead letters after successful write
+    await flushDeadLetters();
+  } catch (err) {
+    // Fail-closed: enqueue and re-throw so caller knows write didn't persist
+    enqueueDeadLetter(entry, err instanceof Error ? err : new Error(String(err)));
+    throw err;
+  }
 }
 
 /**
- * Return the most recent audit rows for a tenant, newest first.
+ * Retrieve audit trail for a resource (or all resources for a tenant).
  *
- * Useful for compliance dashboards, incident forensics, or per-tenant
- * activity feeds.
- *
- * @param tenantId - tenant identifier
- * @param limit - max rows (clamped to 1–100, default 100)
- * @returns `Promise<IAuditEntry[]>` — may be empty
- *
- * @throws {TypeError} If `tenantId` is not a non-empty string.
- *
- * @example
- * const events = await getAuditTrailByTenant('tenant-1', 20);
- * events.forEach(e => logger.info(e.action, { result: e.result }));
- */
-export async function getAuditTrailByTenant(
- tenantId: string,
- limit = DEFAULT_TRAIL_LIMIT,
-): Promise<IAuditEntry[]> {
- if (typeof tenantId !== 'string' || tenantId.trim() === '') {
- throw new TypeError('tenantId must be a non-empty string');
- }
-
- const clamped = Math.min(
- Math.max(1, Math.trunc(Number(limit)) || DEFAULT_TRAIL_LIMIT),
- TRAIL_LIMIT_CEIL,
- );
-
- const { rows } = await query(SELECT_BY_TENANT_SQL, [tenantId, clamped]);
-
- return rows.map(mapRowToEntry);
-}
-
-/**
- * Return the most recent audit rows for `resource`, newest first.
- *
- * Useful for compliance dashboards, incident forensics, or per-resource
- * activity feeds.
- *
- * @param resource - resource key (e.g. `Strategy:42`, `ApiKey`, `Order`)
- * @param limit - max rows (clamped to 1–100, default 100)
- * @returns `Promise<IAuditEntry[]>` — may be empty
- *
- * @throws {TypeError} If `resource` is not a non-empty string.
- *
- * @example
- * const events = await getAuditTrail('Strategy:42', 20);
- * events.forEach(e => logger.info(e.action, { result: e.result }));
+ * @param resource - Resource identifier (e.g., 'ApiKey:42') or tenant-scoped query
+ * @param limit - Max rows (default 100, max 100)
+ * @param tenantId - Optional tenant filter (when resource is generic)
+ * @returns Array of audit entries, newest first
  */
 export async function getAuditTrail(
- resource: string,
- limit = DEFAULT_TRAIL_LIMIT,
- ): Promise<IAuditEntry[]> {
- if (typeof resource !== 'string' || resource.trim() === '') {
- throw new TypeError('resource must be a non-empty string');
- }
+  resource: string,
+  limit = 100,
+  tenantId?: string,
+): Promise<IAuditEntry[]> {
+  if (!resource || typeof resource !== 'string') {
+    throw new TypeError('resource must be a non-empty string');
+  }
 
- const clamped = Math.min(
- Math.max(1, Math.trunc(Number(limit)) || DEFAULT_TRAIL_LIMIT),
- TRAIL_LIMIT_CEIL,
- );
+  const clamped = Math.min(Math.max(1, Math.trunc(Number(limit)) || 100), 100);
 
- const { rows } = await query(SELECT_SQL, [resource, clamped]);
+  let sql = `
+    SELECT id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id, sequence_number, hash, previous_hash
+    FROM audit_log
+    WHERE resource = $1
+  `;
+  const params: unknown[] = [resource];
 
- return rows.map(mapRowToEntry);
+  if (tenantId) {
+    sql += ` AND tenant_id = $2`;
+    params.push(tenantId);
+  }
+
+  sql += ` ORDER BY "timestamp" DESC LIMIT $${params.length + 1}`;
+  params.push(clamped);
+
+  const { rows } = await query(sql, params);
+  return rows.map(mapRowToEntry);
 }
 
-/* Re-export types so consumers can import everything from this entry point */
+/**
+ * Verify the hash chain integrity for a tenant (or all tenants).
+ *
+ * @param tenantId - Tenant to verify, or undefined for all
+ * @returns { valid: true } or { valid: false, brokenAt, reason }
+ */
+export async function verifyAuditChain(tenantId?: string): Promise<{
+  valid: boolean;
+  brokenAt?: number;
+  reason?: string;
+}> {
+  const key = initHmacKey();
+
+  let sql = `
+    SELECT id, tenant_id, sequence_number, hash, previous_hash, action, resource, result, metadata
+    FROM audit_log
+  `;
+  const params: unknown[] = [];
+
+  if (tenantId) {
+    sql += ` WHERE tenant_id = $1`;
+    params.push(tenantId);
+  }
+
+  sql += ` ORDER BY tenant_id, sequence_number ASC`;
+
+  const { rows } = await query(sql, params);
+
+  let prevHashByTenant: Record<string, string> = {};
+  let prevSeqByTenant: Record<string, number> = {};
+
+  for (const row of rows) {
+    const rowTyped = row as Record<string, unknown>;
+    const tid = (rowTyped.tenant_id as string) ?? '__system__';
+    const seq = Number(rowTyped.sequence_number);
+
+    // Check sequence continuity
+    const expectedSeq = (prevSeqByTenant[tid] ?? 0) + 1;
+    if (seq !== expectedSeq) {
+      return {
+        valid: false,
+        brokenAt: seq,
+        reason: `Sequence gap at ${tid}:${seq} (expected ${expectedSeq})`,
+      };
+    }
+    prevSeqByTenant[tid] = seq;
+
+    // Recompute hash
+    const entry: IAuditEntry = {
+      id: rowTyped.id as string,
+      timestamp: rowTyped.timestamp as string,
+      actor: rowTyped.actor as string,
+      action: rowTyped.action as string,
+      resource: rowTyped.resource as string,
+      result: rowTyped.result as AuditResult,
+      metadata: (rowTyped.metadata as Record<string, unknown>) ?? {},
+      ipHash: rowTyped.ip_hash as string,
+      tenantId: rowTyped.tenant_id as string | undefined,
+    };
+    const expectedHash = computeRowHash(key, rowTyped.tenant_id as string | undefined, seq, prevHashByTenant[tid] ?? '', entry);
+
+    if (rowTyped.hash !== expectedHash) {
+      return {
+        valid: false,
+        brokenAt: seq,
+        reason: `Hash mismatch at ${tid}:${seq}: expected ${expectedHash}, got ${rowTyped.hash}`,
+      };
+    }
+    prevHashByTenant[tid] = rowTyped.hash as string;
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Retrieve all audit entries for a tenant (newest first).
+ *
+ * @param tenantId - Tenant to filter by
+ * @param limit - Max rows (default 100, max 100)
+ * @returns Array of audit entries, newest first
+ */
+export async function getAuditTrailByTenant(
+  tenantId: string,
+  limit = 100,
+): Promise<IAuditEntry[]> {
+  if (!tenantId || typeof tenantId !== 'string') {
+    throw new TypeError('tenantId must be a non-empty string');
+  }
+
+  const clamped = Math.min(Math.max(1, Math.trunc(Number(limit)) || 100), 100);
+
+  const { rows } = await query(
+    `SELECT id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id, sequence_number, hash, previous_hash
+     FROM audit_log
+     WHERE tenant_id = $1
+     ORDER BY "timestamp" DESC
+     LIMIT $2`,
+    [tenantId, clamped],
+  );
+
+  return rows.map((row): IAuditEntry => {
+    const rowTyped = row as Record<string, unknown>;
+    return {
+      id: rowTyped.id as string,
+      timestamp: rowTyped.timestamp as string,
+      actor: rowTyped.actor as string,
+      action: rowTyped.action as string,
+      resource: rowTyped.resource as string,
+      result: rowTyped.result as AuditResult,
+      metadata: (rowTyped.metadata as Record<string, unknown>) ?? {},
+      ipHash: rowTyped.ip_hash as string,
+      tenantId: rowTyped.tenant_id as string | undefined,
+    };
+  });
+}
+
+/**
+ * Get dead letter queue status (for monitoring/alerting).
+ */
+export function getDeadLetterStatus(): { queued: number; stuck: number; oldest?: number } {
+  const now = Date.now();
+  const stuck = deadLetterQueue.filter((dl) => dl.attempts >= MAX_DEAD_LETTER_ATTEMPTS).length;
+  const oldest = deadLetterQueue.length > 0 ? Math.min(...deadLetterQueue.map((dl) => dl.createdAt)) : undefined;
+  return { queued: deadLetterQueue.length, stuck, oldest: oldest ? now - oldest : undefined };
+}
+
+/**
+ * Manually trigger dead letter flush (for admin/ops).
+ */
+export async function flushDeadLettersNow(): Promise<void> {
+  await flushDeadLetters();
+}
+
+/**
+ * Get current HMAC key version (for readiness/health checks).
+ * Does not expose the key itself.
+ */
+export function getAuditHmacKeyVersion(): number {
+  initHmacKey(); // validates presence
+  return auditHmacKeyVersion;
+}
+
+// ─── Re-exports ────────────────────────────────────────────────────────────────
+
 export { type IAuditEntry, type AuditResult } from './types';
 export { hashIpAddress } from './audit-ip-hash';
 export { auditMiddleware } from './audit-middleware';

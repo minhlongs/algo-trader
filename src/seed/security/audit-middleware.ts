@@ -2,13 +2,15 @@
  * Express / Connect compatible middleware for API audit logging.
  *
  * Contract:
- * 1. Rejects requests missing `x-request-id` with HTTP 400.
+ * 1. Accepts `x-request-id` for correlation; when absent, a UUID is
+ *    generated so auditing never blocks or rejects a request.
  * 2. Attaches `requestId` to `res.locals` for downstream correlation.
  * 3. Intercepts `res.json` to log the response outcome (fire-and-forget).
  *
  * @module security/audit-middleware
  */
 
+import { randomUUID } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 
 import { hashIpAddress } from './audit-ip-hash';
@@ -55,15 +57,7 @@ export function auditMiddleware(
  next: NextFunction,
  ): void {
  const rawRequestId = req.headers['x-request-id'];
- const requestId = firstHeaderValue(rawRequestId);
-
- if (!requestId) {
- res.status(400).json({
- code: 'MISSING_REQUEST_ID',
- message: '`x-request-id` header is required',
- });
- return;
- }
+ const requestId = firstHeaderValue(rawRequestId) ?? randomUUID();
  res.locals.requestId = requestId;
 
  const origStatus = res.status.bind(res);

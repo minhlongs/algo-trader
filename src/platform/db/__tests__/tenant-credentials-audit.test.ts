@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TenantCredentials } from '../tenant-credentials-repository';
 
-const store = new Map<string, { encrypted: Record<string, string> }>();
+const store = new Map<string, { encrypted: Record<string, string | null>; public_key: string | null }>();
 
 function resetStore() { store.clear(); }
 
@@ -11,18 +11,29 @@ function queryImpl(_sql: string, params?: unknown[]) {
     const id = String(params?.[0] ?? '');
     const row = store.get(id);
     if (!row) return { rows: [] };
-    return { rows: [row.encrypted] };
+    return { rows: [{
+      api_key_encrypted: row.encrypted.api_key,
+      api_secret_encrypted: row.encrypted.api_secret,
+      passphrase_encrypted: row.encrypted.passphrase,
+      private_key_encrypted: row.encrypted.private_key,
+      public_key: row.public_key,
+    }] };
   }
   if (sql.includes('INSERT INTO tenant_credentials')) {
     const id = String(params?.[0] ?? '');
     store.set(id, {
       encrypted: {
-        api_key: 'enc:' + String(params?.[1] ?? ''),
-        api_secret: 'enc:' + String(params?.[2] ?? ''),
-        passphrase: 'enc:' + String(params?.[3] ?? ''),
-        private_key: 'enc:' + String(params?.[4] ?? ''),
+        api_key: params?.[1] ? String(params[1]) : null,
+        api_secret: params?.[2] ? String(params[2]) : null,
+        passphrase: params?.[3] ? String(params[3]) : null,
+        private_key: params?.[4] ? String(params[4]) : null,
       },
+      public_key: params?.[5] ? String(params[5]) : null,
     });
+  }
+  if (sql.includes('DELETE FROM tenant_credentials')) {
+    const id = String(params?.[0] ?? '');
+    store.delete(id);
   }
   return { rows: [] };
 }
@@ -44,6 +55,7 @@ describe('tenant-credentials-repository encryption', () => {
     apiSecret: 'plain-secret',
     passphrase: 'plain-pass',
     privateKey: 'plain-key',
+    publicKey: 'plain-pub',
   };
 
   beforeEach(() => {
@@ -58,10 +70,59 @@ describe('tenant-credentials-repository encryption', () => {
     expect(row.api_secret).not.toBe(sample.apiSecret);
     expect(row.passphrase).not.toBe(sample.passphrase);
     expect(row.private_key).not.toBe(sample.privateKey);
+    // Verify version prefix
+    expect(String(row.api_key).startsWith('v1:')).toBe(true);
   });
 
   it('returns null when subscriber missing', async () => {
     const result = await repo.get('missing');
     expect(result).toBeNull();
+  });
+
+  it('decrypts all fields correctly on get', async () => {
+    await repo.save('sub-1', sample);
+    const result = await repo.get('sub-1');
+    expect(result).toEqual(sample);
+  });
+
+  it('handles null/undefined credential fields', async () => {
+    const partialCreds: TenantCredentials = {
+      apiKey: 'only-api',
+      apiSecret: null,
+      passphrase: undefined as any,
+      privateKey: '',
+      publicKey: 'pub',
+    };
+    await repo.save('sub-2', partialCreds);
+    const result = await repo.get('sub-2');
+    expect(result?.apiKey).toBe('only-api');
+    expect(result?.apiSecret).toBeNull();
+    expect(result?.passphrase).toBeNull();
+    expect(result?.privateKey).toBeNull();
+    expect(result?.publicKey).toBe('pub');
+  });
+
+  it('throws generic error on decryption failure (fail-closed)', async () => {
+    // Save valid data first
+    await repo.save('sub-3', sample);
+    // Corrupt the stored ciphertext
+    const row = store.get('sub-3');
+    if (row) {
+      row.encrypted.api_key = 'v1:corrupted:data:here';
+    }
+    await expect(repo.get('sub-3')).rejects.toThrow('decryption failed');
+  });
+
+  it('throws generic error on wrong tenant decryption attempt', async () => {
+    await repo.save('sub-4', sample);
+    // Try to get with different subscriber ID (simulating tenant confusion)
+    // This should fail because DEK is derived from subscriberId
+    const repo2 = new TenantCredentialsRepository();
+    // Manually insert data for sub-4 but try to read as sub-5
+    const storeData = store.get('sub-4');
+    if (storeData) {
+      store.set('sub-5', { ...storeData, encrypted: { ...storeData.encrypted } });
+    }
+    await expect(repo2.get('sub-5')).rejects.toThrow('decryption failed');
   });
 });

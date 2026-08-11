@@ -115,11 +115,11 @@ describe('Express API-server security middleware discipline — 43rd edge (TRITE
 
   it('`rateLimit` imported AND applied to `/api` path scope', () => {
     // Accept either legacy express-rate-limit or new forest/rate-limit (Phase 35 R2).
-const hasOldImport = /from\s+['"]express-rate-limit['"]/.test(src);
-const hasNewImport = src.includes("'../../forest/rate-limit'")
-  || src.includes('"../../forest/rate-limit"');
-expect(hasOldImport || hasNewImport, 'rate-limit module not imported').toBe(true);
-    const hasRateLimit = src.includes('rateLimit') && (src.includes('rateLimitMiddleware()') || /rateLimit\s*\(/.test(src));
+    const hasOldImport = /from\s+['"]express-rate-limit['"]/.test(src);
+    const hasNewImport = src.includes("'../../forest/rate-limit/redis-rate-limiter'")
+      || src.includes('"../../forest/rate-limit/redis-rate-limiter"');
+    expect(hasOldImport || hasNewImport, 'rate-limit module not imported').toBe(true);
+    const hasRateLimit = src.includes('rateLimitMiddleware') && (src.includes('rateLimitMiddleware()') || /rateLimitMiddleware\s*\(/.test(src));
     expect(hasRateLimit, 'rateLimit() invocation missing').toBe(true);
     expect(
       /this\.app\.use\(\s*['"]\/api['"]\s*,\s*limiter\s*\)/.test(src),

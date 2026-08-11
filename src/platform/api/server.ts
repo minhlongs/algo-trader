@@ -7,6 +7,11 @@ import * as Sentry from '@sentry/node';
 import { Server } from 'http';
 import { logger } from '../../shared/utils/logger';
 
+// Security middleware (order matters: auth -> audit -> rate-limit)
+import { authMiddleware } from '../middleware/auth-middleware';
+import { auditMiddleware } from '../../seed/security/audit-middleware';
+import { rateLimitMiddleware } from '../../forest/rate-limit/redis-rate-limiter';
+
 import { tradesRouter } from './routes/trades';
 import { pnlRouter } from './routes/pnl';
 import { signalsRouter } from './routes/signals';
@@ -27,6 +32,8 @@ import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook'
 import { trialDripRouter } from './routes/trial-drip-routes';
 import { couponRouter } from './routes/coupon-routes';
 import { blogRouter } from './routes/blog-routes';
+import { blogEngagementRouter } from './routes/blog-engagement-routes';
+import { newsletterRouter } from './routes/newsletter-routes';
 import { analyticsRouter } from './routes/analytics-routes';
 import { subscriberPnlRouter } from './routes/subscriber-pnl-routes';
 import { credentialsRouter } from './routes/credentials-routes';
@@ -38,14 +45,13 @@ import { signalSubscriptionRouter } from './routes/signal-subscription-routes';
 import { signalFeedRouter } from './routes/signal-feed-api-routes';
 import { leaderboardRouter } from './routes/leaderboard-routes';
 import { coPilotRouter } from './routes/co-pilot-routes';
+import { arbitrageRoutes } from './routes/arbitrage';
 import { signalStoreD1 } from '../../signal/signal-store-d1';
 import { auth } from '../auth/auth-server';
 import { toNodeHandler } from 'better-auth/node';
 import { EmailService } from '../notifications/email-service';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
 import { errorHandler } from '../middleware/error-handler';
-import { auditMiddleware } from '../../seed/security/audit-middleware';
-import { rateLimitMiddleware } from '../../forest/rate-limit';
 
 export interface ApiConfig {
   port: number;
@@ -117,12 +123,16 @@ export class ApiServer {
     // Prometheus metrics middleware (track all requests)
     this.app.use(metricsMiddleware);
 
+    // Global identity resolution — attaches req.claims + req.user from Bearer JWT.
+    // Mounted BEFORE audit + rate-limit so they see real tier/tenant context.
+    this.app.use(authMiddleware);
+
     // Audit logging middleware (fire-and-forget, captures all responses)
     this.app.use(auditMiddleware);
 
     // Rate limiting (Redis-backed, tier-aware) — scoped to /api subtree
     // so /health and /metrics bypass throttling.
-    const limiter = rateLimitMiddleware();
+    const limiter = rateLimitMiddleware({ allowAnonymous: true });
     this.app.use('/api', limiter);
   }
 
@@ -159,6 +169,8 @@ export class ApiServer {
     this.app.use('/api/revenue', revenueRouter);
     this.app.use('/api/coupons', couponRouter);
     this.app.use('/api/blog', blogRouter);
+    this.app.use('/api/blog', blogEngagementRouter);
+    this.app.use('/api/newsletter', newsletterRouter);
     this.app.use('/api/analytics', analyticsRouter);
     this.app.use('/api/v1/subscriber', subscriberPnlRouter);
     this.app.use('/api/v1/enterprise', enterpriseInquiryRouter);
@@ -177,6 +189,9 @@ export class ApiServer {
 
     // Co-pilot routes: AI trading assistant (PRO+ tier gated, rate limited)
     this.app.use('/api/v1/co-pilot', coPilotRouter);
+
+    // Arbitrage engine routes (execution, metrics, status)
+    this.app.use('/api/arbitrage', arbitrageRoutes);
 
     // Admin Qwen routes: kill switch + status (L1/L2 rollback layers)
     this.app.use('/api/v1/admin/qwen', createAdminQwenRouter());

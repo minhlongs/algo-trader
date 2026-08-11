@@ -12,6 +12,7 @@ import { logger } from '../../shared/utils/logger';
 import type { Request, Response, NextFunction } from 'express';
 import { emitRateLimitAuditEvent } from './audit-hook';
 import { validateTenantId, type TenantId } from '../../shared/tenant';
+import type { TierLabel } from '../../seed/config/tiers';
 
 // ─── Tier Limits ──────────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ export interface TierRateLimits {
  *
  * @see ../../seed/config/tiers for the platform's canonical tier config.
  */
-export const TIER_RATE_LIMITS: Record<string, TierRateLimits> = {
+export const TIER_RATE_LIMITS: Record<TierLabel, TierRateLimits> = {
  FREE: {
   requestsPerMin: 10,
   burstPerSec: 2,
@@ -45,7 +46,7 @@ export const TIER_RATE_LIMITS: Record<string, TierRateLimits> = {
   requestsPerMin: 0,
   burstPerSec: 0,
  },
-};
+} as const;
 
 /**
  * Fallback limits for unknown or missing tiers.
@@ -250,7 +251,7 @@ return {
    * Falls back to DEFAULT_TIER_LIMITS for unrecognised tiers.
    */
   private resolveLimits(tier: string): TierRateLimits {
-    const normalized = tier.toUpperCase();
+    const normalized = tier.toUpperCase() as TierLabel;
     return TIER_RATE_LIMITS[normalized] ?? DEFAULT_TIER_LIMITS;
   }
 }
@@ -284,6 +285,13 @@ export interface RateLimitMiddlewareOptions {
    * Optional Redis key prefix override (multi-tenant isolation).
    */
   keyPrefix?: string;
+
+  /**
+   * Allow requests with no user identity (no req.user, no client IP).
+   * Default: false (rejects with 500 if no identity available).
+   * Set true for public endpoints that must remain accessible without auth.
+   */
+  allowAnonymous?: boolean;
 }
 
 /**
@@ -319,7 +327,7 @@ export function rateLimitMiddleware(
   options: RateLimitMiddlewareOptions = {},
 ): (req: Request, res: Response, next: NextFunction) => Promise<void> {
   const limiter = options.limiter ?? rateLimiter;
-  const prefix = options.keyPrefix ?? '';
+  const prefix = validateKeyPrefix(options.keyPrefix);
   const getUserId = options.getUserId ?? defaultGetUserId;
   const getTier = options.getTier ?? defaultGetTier;
 
@@ -328,13 +336,20 @@ export function rateLimitMiddleware(
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
-    const userId = getUserId(req);
+    const userId = getUserId(req) ?? getClientIp(req);
 
     if (!userId) {
-      // No user context — skip rate limiting (public endpoint).
-      // If you need to protect public endpoints, provide a getUserId that
-      // returns a stable identifier (e.g. IP address or api key fingerprint).
-      logger.warn('[RateLimiter] No userId in request — skipping', {
+      // No user context and no client IP — nothing stable to key on.
+      // Require explicit opt-in via options.allowAnonymous to avoid silent skip.
+      if (!options.allowAnonymous) {
+        logger.error('[RateLimiter] No userId or client IP — request rejected (allowAnonymous=false)', {
+          path: req.path,
+          method: req.method,
+        });
+        res.status(500).json({ error: 'RATE_LIMIT_CONFIG_ERROR', message: 'Rate limiter requires user identity or allowAnonymous=true' });
+        return;
+      }
+      logger.warn('[RateLimiter] No userId or client IP — allowing (allowAnonymous=true)', {
         path: req.path,
         method: req.method,
       });
@@ -393,7 +408,52 @@ function defaultGetTier(req: Request): string {
   return (req.user?.tier as string) ?? 'FREE';
 }
 
+/**
+ * Validate an optional Redis key prefix at middleware-construction time.
+ * A malformed prefix would silently corrupt every key; fail fast instead.
+ */
+function validateKeyPrefix(prefix: string | undefined): string {
+  if (prefix === undefined || prefix === '') return '';
+  if (!/^[a-zA-Z0-9_-]+$/.test(prefix)) {
+    throw new Error(
+      `[RateLimiter] Invalid keyPrefix "${prefix}" — use alphanumeric, hyphens or underscores only`,
+    );
+  }
+  return prefix;
+}
+
+/**
+ * Fallback identity for anonymous requests: the client IP.
+ * Uses the first `x-forwarded-for` entry (proxy-aware; Cloudflare sets it),
+ * then Express's resolved `req.ip`, then the socket address.
+ * Returns undefined when no address is available (hand-built request
+ * objects in tests) so the request is still skipped rather than mis-keyed.
+ */
+function getClientIp(req: Request): string | undefined {
+  const forwarded = req.headers['x-forwarded-for'];
+  const candidate =
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded) ??
+    safeReqIp(req) ??
+    req.socket?.remoteAddress;
+  return candidate ? `ip:${candidate}` : undefined;
+}
+
+/**
+ * Express's `req.ip` getter delegates to proxy-addr/forwarded, which reads
+ * `req.socket.remoteAddress` unconditionally. Hand-built request objects
+ * (supertest, unusual proxies) may lack `req.socket`, which makes the getter
+ * throw. Guard both so the rate limiter never 500s the request chain.
+ */
+function safeReqIp(req: Request): string | undefined {
+  if (!req.socket) return undefined;
+  try {
+    return req.ip;
+  } catch {
+    return undefined;
+  }
+}
+
 function resolveLimits(tier: string): TierRateLimits {
-  const normalized = tier.toUpperCase();
+  const normalized = tier.toUpperCase() as TierLabel;
   return TIER_RATE_LIMITS[normalized] ?? DEFAULT_TIER_LIMITS;
 }

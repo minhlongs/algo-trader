@@ -1,3 +1,15 @@
+/**
+ * Tenant Audit Log — Hash-Chained Immutable Audit Trail
+ *
+ * @deprecated Since Phase 35 security hardening (2026-08-11).
+ * Canonical audit table is now `audit_log` (migration 040 + 041 hash-chain).
+ * All new code MUST use `audit_log` via `src/seed/security/audit-log.ts` or
+ * `src/seed/security/audit-middleware.ts`.
+ *
+ * This module is retained for read-only verification of historical chains.
+ * No new writes should call `appendTenantAuditLog`.
+ */
+
 import { createHash } from 'crypto';
 import { transaction, query } from '../../shared/db/postgres-client';
 import { PoolClient } from 'pg';
@@ -42,9 +54,13 @@ export function computeTenantAuditHash(entry: {
   previous_hash: string | null;
   created_at: Date | string;
 }): string {
-  const timeStr = entry.created_at instanceof Date 
-    ? entry.created_at.toISOString() 
-    : new Date(entry.created_at).toISOString();
+  let timeStr: string;
+  if (entry.created_at instanceof Date) {
+    timeStr = entry.created_at.toISOString();
+  } else {
+    const date = new Date(entry.created_at);
+    timeStr = !isNaN(date.getTime()) ? date.toISOString() : entry.created_at;
+  }
 
   const payloadObj = {
     tenant_id: entry.tenant_id,
@@ -61,6 +77,10 @@ export function computeTenantAuditHash(entry: {
   return createHash('sha256').update(payload).digest('hex');
 }
 
+/**
+ * @deprecated Since Phase 35 security hardening (2026-08-11). Use audit_log table via src/seed/security/audit-log.ts instead.
+ * This function writes to the deprecated tenant_audit_logs table. New code must not call this.
+ */
 export async function appendTenantAuditLog(
   tenantId: string,
   eventType: string,
@@ -75,27 +95,19 @@ export async function appendTenantAuditLog(
 
     // 2. Fetch latest log for tenantId to get preceding sequence_number and hash
     const latestResult = await txClient.query(
-      `SELECT sequence_number, hash 
-       FROM tenant_audit_logs 
-       WHERE tenant_id = $1 
-       ORDER BY sequence_number DESC 
+      `SELECT sequence_number, hash
+       FROM tenant_audit_logs
+       WHERE tenant_id = $1
+       ORDER BY sequence_number DESC
        LIMIT 1`,
       [tenantId]
     );
 
-    let nextSequence = 1;
-    let previousHash: string | null = null;
+    const nextSequence = (latestResult.rows[0]?.sequence_number as number ?? 0) + 1;
+    const previousHash = latestResult.rows[0]?.hash as string | null;
 
-    if (latestResult.rows.length > 0) {
-      const lastRow = latestResult.rows[0];
-      nextSequence = parseInt(lastRow.sequence_number as string, 10) + 1;
-      previousHash = lastRow.hash as string;
-    }
-
-    const createdAt = new Date();
-
-    // 3. Compute hash
-    const hash = computeTenantAuditHash({
+    // 3. Compute hash for new entry
+    const newEntryData = {
       tenant_id: tenantId,
       sequence_number: nextSequence,
       event_type: eventType,
@@ -103,26 +115,16 @@ export async function appendTenantAuditLog(
       reason,
       metadata,
       previous_hash: previousHash,
-      created_at: createdAt,
-    });
+      created_at: new Date(),
+    };
+    const hash = computeTenantAuditHash(newEntryData);
 
-    // 4. Insert log
+    // 4. Insert with computed hash
     const insertResult = await txClient.query(
-      `INSERT INTO tenant_audit_logs (
-         tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash, created_at
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO tenant_audit_logs (tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
        RETURNING id, tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash, created_at`,
-      [
-        tenantId,
-        nextSequence,
-        eventType,
-        actionBy,
-        reason,
-        JSON.stringify(metadata),
-        hash,
-        previousHash,
-        createdAt
-      ]
+      [tenantId, nextSequence, eventType, actionBy, reason, JSON.stringify(metadata), hash, previousHash]
     );
 
     const inserted = insertResult.rows[0];
@@ -155,9 +157,9 @@ export async function verifyTenantChain(
 ): Promise<{ valid: boolean; brokenAt?: number; reason?: string }> {
   // Query all logs ordered by sequence_number
   const result = await query(
-    `SELECT id, tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash, created_at 
-     FROM tenant_audit_logs 
-     WHERE tenant_id = $1 
+    `SELECT id, tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash, created_at
+     FROM tenant_audit_logs
+     WHERE tenant_id = $1
      ORDER BY sequence_number ASC`,
     [tenantId]
   );
@@ -175,20 +177,22 @@ export async function verifyTenantChain(
       return {
         valid: false,
         brokenAt: seq,
-        reason: `Sequence gap or mismatch: expected ${i + 1}, got ${seq}`,
+        reason: `Sequence gap: expected ${i + 1}, got ${seq}`,
       };
     }
 
-    if (i === 0) {
-      if (row.previous_hash !== null && row.previous_hash !== undefined && row.previous_hash !== '') {
-        return {
-          valid: false,
-          brokenAt: seq,
-          reason: `Genesis entry previous_hash is not null: got ${row.previous_hash}`,
-        };
-      }
-    } else {
-      const prevRow = rows[i - 1];
+    // For the first log, previous_hash must be null
+    if (i === 0 && row.previous_hash !== null) {
+      return {
+        valid: false,
+        brokenAt: seq,
+        reason: `previous_hash mismatch at sequence ${seq}: expected null, got ${row.previous_hash}`,
+      };
+    }
+
+    // For subsequent logs, previous_hash must match the hash of the previous log
+    if (i > 0) {
+      const prevRow = rows[i-1];
       if (row.previous_hash !== prevRow.hash) {
         return {
           valid: false,
@@ -198,24 +202,22 @@ export async function verifyTenantChain(
       }
     }
 
-    const metadata = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata;
-
-    const recomputedHash = computeTenantAuditHash({
+    const expectedHash = computeTenantAuditHash({
       tenant_id: row.tenant_id as string,
       sequence_number: seq,
       event_type: row.event_type as string,
       action_by: row.action_by as string,
       reason: row.reason as string | null,
-      metadata: metadata as Record<string, unknown>,
+      metadata: row.metadata as unknown as Record<string, unknown>,
       previous_hash: row.previous_hash as string | null,
       created_at: row.created_at as Date | string,
     });
 
-    if (row.hash !== recomputedHash) {
+    if (row.hash !== expectedHash) {
       return {
         valid: false,
         brokenAt: seq,
-        reason: `Hash mismatch at sequence ${seq}: expected ${recomputedHash}, got ${row.hash}`,
+        reason: `Hash mismatch at sequence ${seq}: expected ${expectedHash}, got ${row.hash}`,
       };
     }
   }

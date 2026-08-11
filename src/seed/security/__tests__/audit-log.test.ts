@@ -15,10 +15,14 @@ vi.mock('../../../db/postgres-client', () => ({
   query: vi.fn(),
 }));
 
+// Set required env before importing the module
+process.env.AUDIT_HMAC_KEY_v1 = 'a'.repeat(64); // 64 hex chars = 32 bytes
+
 import { query } from '../../../db/postgres-client';
 import {
   auditMiddleware,
   getAuditTrail,
+  getAuditTrailByTenant,
   hashIpAddress,
   logAudit,
 } from '../audit-log';
@@ -56,15 +60,18 @@ describe('logAudit', () => {
     const entry = makeEntry() as Parameters<typeof logAudit>[0];
     await logAudit(entry);
 
-    expect(query).toHaveBeenCalledTimes(1);
-    const [sql, params] = (query as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(sql).toContain('INSERT INTO audit_log');
-    expect(params).toHaveLength(9);
+    // Should be called at least once (dead letter queue may cause retries)
+    expect(query).toHaveBeenCalled();
+    const calls = (query as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    const insertCall = calls.find(([sql]) => typeof sql === 'string' && sql.includes('INSERT INTO audit_log'));
+    expect(insertCall).toBeDefined();
+    const [, params] = insertCall!;
+    expect(params).toHaveLength(12); // Now includes sequence_number, hash, previous_hash
     expect(params[0]).toBe(entry.id);
     expect(params[3]).toBe(entry.action);
     expect(params[4]).toBe(entry.resource);
     expect(params[7]).toBe(entry.ipHash);
- expect(params[8]).toBe(entry.tenantId ?? null);
+    expect(params[8]).toBe(entry.tenantId ?? null);
   });
 
   it('rejects empty id', async () => {
@@ -169,6 +176,46 @@ describe('getAuditTrail', () => {
 });
 
 // ===================================================================
+// getAuditTrailByTenant
+// ===================================================================
+
+describe('getAuditTrailByTenant', () => {
+  const mockRows = [
+    { id: '1', timestamp: '2026-01-01T00:00:00Z', actor: 'u1', action: 'a', resource: 'R', result: 'success', metadata: {}, ip_hash: 'h1', tenant_id: 'tenant-1', sequence_number: 1, hash: 'h1', previous_hash: '' },
+    { id: '2', timestamp: '2026-01-02T00:00:00Z', actor: 'u2', action: 'b', resource: 'R', result: 'failure', metadata: {}, ip_hash: 'h2', tenant_id: 'tenant-1', sequence_number: 2, hash: 'h2', previous_hash: 'h1' },
+  ];
+
+  it('calls query with tenant_id and limit', async () => {
+    (query as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: mockRows });
+    await getAuditTrailByTenant('tenant-1', 5);
+    const [sql, params] = (query as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(sql).toContain('WHERE tenant_id');
+    expect(params[0]).toBe('tenant-1');
+    expect(params[1]).toBe(5);
+  });
+
+  it('defaults limit to 100', async () => {
+    (query as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: mockRows });
+    await getAuditTrailByTenant('tenant-1');
+    const [, params] = (query as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(params[1]).toBe(100);
+  });
+
+  it('maps rows to IAuditEntry objects', async () => {
+    (query as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: mockRows });
+    const results = await getAuditTrailByTenant('tenant-1', 10);
+    expect(results).toHaveLength(2);
+    expect(results[0].id).toBe('1');
+    expect(results[1].result).toBe('failure');
+  });
+
+  it('throws on non-string or empty tenantId', async () => {
+    await expect(getAuditTrailByTenant(null as unknown as string)).rejects.toThrow();
+    await expect(getAuditTrailByTenant('')).rejects.toThrow();
+  });
+});
+
+// ===================================================================
 // hashIpAddress
 // ===================================================================
 
@@ -233,7 +280,7 @@ describe('auditMiddleware', () => {
     };
   }
 
-  it('rejects 400 when x-request-id is absent', async () => {
+  it('generates a UUID requestId and calls next() when x-request-id is absent', async () => {
     const mock = buildRes();
     const req = {
       method: 'GET',
@@ -244,11 +291,12 @@ describe('auditMiddleware', () => {
 
     await auditMiddleware(req, mock.res, next);
 
-    expect(mock.lastStatus()).toBe(400);
-    expect(mock.jsonCalls.length).toBeGreaterThanOrEqual(1);
-    const first = mock.jsonCalls[0] as Record<string, unknown>;
-    expect(first.code).toBe('MISSING_REQUEST_ID');
-    expect(next).not.toHaveBeenCalled();
+    // Fallback must never block or reject the request.
+    expect(mock.locals.requestId).toBeDefined();
+    expect(mock.locals.requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    expect(next).toHaveBeenCalledTimes(1);
   });
 
   it('attaches requestId and calls next() when header present', async () => {

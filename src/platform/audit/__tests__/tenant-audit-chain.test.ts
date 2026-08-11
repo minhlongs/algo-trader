@@ -28,8 +28,12 @@ interface MockRow {
 
 describe('Tenant Audit Log Chain', () => {
   const mockRows: MockRow[] = [];
+  // Use a fixed timestamp for all test operations to ensure hash consistency
+  const fixedTimestamp = new Date('2026-08-11T12:00:00.000Z');
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedTimestamp);
     mockRows.length = 0;
 
     // Set dynamic mock implementations specifically for this test block
@@ -47,7 +51,13 @@ describe('Tenant Audit Log Chain', () => {
         const tenantId = params?.[0] as string;
         const tenantRows = mockRows.filter(r => r.tenant_id === tenantId);
         const sorted = [...tenantRows].sort((a, b) => a.sequence_number - b.sequence_number);
-        return { rows: sorted } as unknown as QueryResult<MockRow>;
+        // Parse metadata JSON string back to object for verifyTenantChain
+        return {
+          rows: sorted.map(r => ({
+            ...r,
+            metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata,
+          }))
+        } as unknown as QueryResult<MockRow>;
       }
       
       if (sql.includes('INSERT INTO tenant_audit_logs')) {
@@ -61,7 +71,7 @@ describe('Tenant Audit Log Chain', () => {
           reason: reason as string | null,
           metadata: metadata as string,
           hash: hash as string,
-          previous_hash: previous_hash as string | null,
+          previous_hash: previous_hash === undefined ? null : (previous_hash as string | null),
           created_at: created_at as Date,
         };
         mockRows.push(newRow);
@@ -84,7 +94,7 @@ describe('Tenant Audit Log Chain', () => {
             return { rows: [sorted[0]] } as unknown as QueryResult<MockRow>;
           }
           if (sql.includes('INSERT INTO tenant_audit_logs')) {
-            const [tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash, created_at] = params || [];
+            const [tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash] = params || [];
             const newRow: MockRow = {
               id: `uuid-${Date.now()}-${Math.random()}`,
               tenant_id: tenant_id as string,
@@ -94,8 +104,8 @@ describe('Tenant Audit Log Chain', () => {
               reason: reason as string | null,
               metadata: metadata as string,
               hash: hash as string,
-              previous_hash: previous_hash as string | null,
-              created_at: created_at as Date,
+              previous_hash: previous_hash === undefined ? null : (previous_hash as string | null),
+              created_at: fixedTimestamp,
             };
             mockRows.push(newRow);
             console.log('DYNAMIC TX INSERTED:', newRow, 'TOTAL ROWS:', mockRows.length);
@@ -106,6 +116,11 @@ describe('Tenant Audit Log Chain', () => {
       };
       return fn(mockClient as unknown as PoolClient);
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   describe('canonicalJsonStringify', () => {

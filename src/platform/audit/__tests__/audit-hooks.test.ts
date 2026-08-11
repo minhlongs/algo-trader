@@ -13,15 +13,14 @@ import {
 	emitCredentialUpsertAuditEvent,
 } from '../audit-hooks';
 
-const APPEND_REGEX =
-	/^appendTenantAuditLog\(audit-trail-[a-z0-9-]+,\s*rate_limit\.exceeded,/i;
-
-vi.mock('../tenant-audit-log', () => ({
-	appendTenantAuditLog: vi.fn(async () => {}),
+vi.mock('../../../seed/security/audit-log', () => ({
+	logAudit: vi.fn(async () => {}),
+	hashIpAddress: vi.fn(() => 'mocked-hash'),
 }));
 
-import { appendTenantAuditLog } from '../tenant-audit-log';
-const mockedAppend = vi.mocked(appendTenantAuditLog);
+import { logAudit, hashIpAddress } from '../../../seed/security/audit-log';
+const mockedLogAudit = vi.mocked(logAudit);
+const mockedHashIpAddress = vi.mocked(hashIpAddress);
 
 describe('audit-hooks', () => {
 	beforeEach(() => {
@@ -40,18 +39,11 @@ describe('audit-hooks', () => {
 				}),
 			).resolves.toBeUndefined();
 
-			expect(mockedAppend).toHaveBeenCalledTimes(1);
-			const [tenantId, eventType, , , metadata] =
-				mockedAppend.mock.calls[0] as [
-					string,
-					string,
-					string,
-					string,
-					Record<string, unknown>,
-				];
-			expect(tenantId).toBe('t-1');
-			expect(eventType).toBe('rate_limit.exceeded');
-			expect(metadata).toEqual(
+			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
+			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			expect(entry.tenantId).toBe('t-1');
+			expect(entry.action).toBe('rate_limit.exceeded');
+			expect(entry.metadata).toEqual(
 				expect.objectContaining({
 					endpoint: '/api/v1/trades',
 					tier: 'PRO',
@@ -72,14 +64,10 @@ describe('audit-hooks', () => {
 				}),
 			).resolves.toBeUndefined();
 
-			expect(mockedAppend).toHaveBeenCalledTimes(1);
-			const [, eventType, actionBy] = mockedAppend.mock.calls[0] as [
-				string,
-				string,
-				string,
-			];
-			expect(eventType).toBe('credentials.deleted');
-			expect(actionBy).toBe('operator');
+			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
+			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			expect(entry.action).toBe('credentials.deleted');
+			expect(entry.actor).toBe('operator');
 		});
 	});
 
@@ -93,14 +81,10 @@ describe('audit-hooks', () => {
 				}),
 			).resolves.toBeUndefined();
 
-			expect(mockedAppend).toHaveBeenCalledTimes(1);
-			const [, eventType, actionBy] = mockedAppend.mock.calls[0] as [
-				string,
-				string,
-				string,
-			];
-			expect(eventType).toBe('credentials.upsert');
-			expect(actionBy).toBe('operator');
+			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
+			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			expect(entry.action).toBe('credentials.upsert');
+			expect(entry.actor).toBe('operator');
 		});
 	});
 
@@ -114,14 +98,10 @@ describe('audit-hooks', () => {
 				}),
 			).resolves.toBeUndefined();
 
-			expect(mockedAppend).toHaveBeenCalledTimes(1);
-			const [, eventType, actionBy] = mockedAppend.mock.calls[0] as [
-				string,
-				string,
-				string,
-			];
-			expect(eventType).toBe('trade_executed');
-			expect(actionBy).toBe('trader');
+			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
+			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			expect(entry.action).toBe('trade_executed');
+			expect(entry.actor).toBe('trader');
 		});
 
 		it('emits trade_rejected', async () => {
@@ -135,19 +115,13 @@ describe('audit-hooks', () => {
 				}),
 			).resolves.toBeUndefined();
 
-			expect(mockedAppend).toHaveBeenCalledTimes(1);
-			const [, eventType, actionBy, reason, metadata] =
-				mockedAppend.mock.calls[0] as [
-					string,
-					string,
-					string,
-					string,
-					Record<string, unknown>,
-				];
-			expect(eventType).toBe('trade_rejected');
-			expect(actionBy).toBe('trader');
-			expect(reason).toBe('insufficient balance');
-			expect(metadata).toEqual({ symbol: 'GEEK', qty: 1 });
+			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
+			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			expect(entry.action).toBe('trade_rejected');
+			expect(entry.actor).toBe('trader');
+			expect(entry.metadata?.reason).toBe('insufficient balance');
+			expect(entry.metadata?.symbol).toBe('GEEK');
+			expect(entry.metadata?.qty).toBe(1);
 		});
 	});
 
@@ -162,19 +136,13 @@ describe('audit-hooks', () => {
 				}),
 			).resolves.toBeUndefined();
 
-			expect(mockedAppend).toHaveBeenCalledTimes(1);
-			const [, eventType, actionBy, reason, metadata] =
-				mockedAppend.mock.calls[0] as [
-					string,
-					string,
-					string,
-					string,
-					Record<string, unknown>,
-				];
-			expect(eventType).toBe('config_changed');
-			expect(actionBy).toBe('admin');
-			expect(reason).toBe('updated limits');
-			expect(metadata).toEqual({ key: 'max_qty', value: 999 });
+			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
+			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			expect(entry.action).toBe('config.changed');
+			expect(entry.actor).toBe('admin');
+			expect(entry.metadata?.reason).toBe('updated limits');
+			expect(entry.metadata?.key).toBe('max_qty');
+			expect(entry.metadata?.value).toBe(999);
 		});
 	});
 });
