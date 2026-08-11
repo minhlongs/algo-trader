@@ -3,7 +3,7 @@ title: Audit Fixes Wave — 6 Gaps
 description: >-
   Fix certbot script, alertmanager webhook, DEX connectors, strategy stubs,
   migration rollback, overage revenue
-status: pending
+status: complete
 priority: P1
 branch: main
 tags:

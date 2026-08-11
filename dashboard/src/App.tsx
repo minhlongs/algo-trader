@@ -30,6 +30,9 @@ import { PrivacyPage } from './pages/privacy-page';
 import { RiskSettingsPage } from './pages/risk-settings-page';
 import { ApiKeysPage } from './pages/api-keys-page';
 import { TrialStatusPage } from './pages/trial-status-page';
+import { SubscriberOverviewPage } from './pages/subscriber-overview';
+import { SubscriberEquityPage } from './pages/subscriber-equity';
+import { SubscriberTradeHistoryPage } from './pages/subscriber-trade-history';
 
 /**
  * Handle uncaught errors in the app.
@@ -79,6 +82,9 @@ export function App() {
         <Route path="/app/neg-risk" element={<AuthGuard><NegRiskDashboardPage /></AuthGuard>} />
  <Route path="/app/api-keys" element={<AuthGuard><LayoutShell><ApiKeysPage /></LayoutShell></AuthGuard>} />
  <Route path="/app/trial-status" element={<AuthGuard><LayoutShell><TrialStatusPage /></LayoutShell></AuthGuard>} />
+ <Route path="/app/subscriber/overview" element={<AuthGuard><LayoutShell><SubscriberOverviewPage /></LayoutShell></AuthGuard>} />
+ <Route path="/app/subscriber/equity" element={<AuthGuard><LayoutShell><SubscriberEquityPage /></LayoutShell></AuthGuard>} />
+ <Route path="/app/subscriber/trades" element={<AuthGuard><LayoutShell><SubscriberTradeHistoryPage /></LayoutShell></AuthGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

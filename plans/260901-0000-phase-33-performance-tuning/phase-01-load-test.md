@@ -1,22 +1,29 @@
 # Phase 01: Load Test 5000+ Concurrent
 
-**Priority:** P0 — Block all other phases
-**Status:** COMPLETE
-**Updated:** 2026-08-06
+**Priority:** P0
+**Status:** PARTIAL — scripts exist, tests never confirmed passing
+**Updated:** 2026-08-07
 
 ## Overview
 Prove system handles 5000+ concurrent users with p95<100ms, errors<1%, memory<128MB using k6.
 
-## Key Insights
-- 12 shards × 417 RPS target = 5000+ RPS
-- Consistent hashing must match production (FNV-1a)
-- Thresholds encode acceptance criteria directly
+## Verified
+- `scripts/load-test-sharding.ts` — k6 sharding test (12 shards, 52 strategies, FNV-1a hash)
+- `scripts/load-test-config.ts` — BASE_URL via `LOAD_TEST_BASE_URL` env var
+- `scripts/load-test-memory.ts` — 1000 VU memory pressure test
+- `.github/workflows/load-test.yml` — CI runs 5 k6 suites
+- Supporting scripts: `load-test-multi-region.ts`, `load-test-failover.ts`, `load-test-queue-backpressure.ts`, `generate-load-summary.js`, `validate-load-results.js`
 
-## Requirements
+## Blocked
+- k6 never confirmed to hit 5000+ VUs with p95<100ms, errors<1%
+- Profiling report shows 33.4% error rate — needs investigation
+- Memory metric shows N/A (gauge only, not measured)
+
+## Requirements (unverified)
 - k6 passes at 5000+ RPS
 - p95 latency <100ms, p99 <250ms
 - Error rate <1%
-- Memory usage reported and passes max<128MB
+- Memory usage <128MB
 
 ## Architecture
 k6 → edge proxy → shard router → strategy workers
@@ -27,52 +34,22 @@ k6 → edge proxy → shard router → strategy workers
 - `scripts/load-test-memory.ts`
 - `.github/workflows/load-test.yml`
 
-## Implementation Steps
-1. Fix gauge threshold format for memory metric
-2. Validate shard count × RPS target = 5000+
-3. Ensure handleSummary reports pass/fail per criterion
-4. Verify CI workflow runs load test on PR
-
 ## Todo List
-- [x] Fix k6 gauge threshold (Task #1)
-- [x] BASE_URL env var support (Task #2) — `load-test-config.ts` reads `LOAD_TEST_BASE_URL` with fallback to localhost
-- [x] Update CI workflow thresholds — `.github/workflows/load-test.yml` runs all 5 suites + validate script that exits non-zero if benchmarks fail
-- [x] Document run command (Task #4) — see Run Command section below
-
-## Run Command
-
-```bash
-# Set target (uses localhost by default)
-export LOAD_TEST_BASE_URL=http://localhost:3000
-
-# Single suite
-k6 run scripts/load-test-sharding.ts
-
-# All suites (CI-style)
-k6 run --out json=reports/shard-stress.json    scripts/load-test-sharding.ts
-k6 run --out json=reports/region-latency.json  scripts/load-test-multi-region.ts
-k6 run --out json=reports/memory-pressure.json --vus 1000 --duration 10m scripts/load-test-memory.ts
-k6 run --out json=reports/failover.json        scripts/load-test-failover.ts
-k6 run --out json=reports/queue-backpressure.json scripts/load-test-queue-backpressure.ts
-
-# Validate all
-node scripts/generate-load-summary.js reports/
-node scripts/validate-load-results.js reports/
-```
-
-Thresholds: p95 <100ms, p99 <250ms, error rate <1%, memory <128MB
+- [ ] Run k6 sharding test end-to-end and extract real metrics
+- [ ] Investigate 33.4% error rate in profiling report
+- [ ] Wire memory measurement into k6 output
+- [ ] Verify CI workflow passes on green run
 
 ## Success Criteria
-- `k6 run scripts/load-test-sharding.ts` passes thresholds
-- CI workflow present and configured
-- REPORT: plans/reports/phase-01-load-test-report.md
+- `k6 run scripts/load-test-sharding.ts` passes thresholds with real output
+- CI workflow runs green on main branch
 
 ## Risk Assessment
-- k6 version may not support gauge max threshold → use trend p(95) instead
-- Hot shards if strategies unevenly distributed → verify hash distribution
+- k6 version may not support gauge max threshold
+- Hot shards if strategies unevenly distributed
 
 ## Security Considerations
-- Test endpoints must return 200, not execute real trades (backtest:true)
+- Test endpoints must return 200, not execute real trades
 
 ## Next Steps
 - Phase 02 depends on baseline metrics from this phase

@@ -1,7 +1,7 @@
 ---
 title: "Phase 1 — Unify Pricing + Fix CI"
 description: "Resolve the 7 conflicting pricing schemes across the codebase and fix the 2 broken CI tests on main"
-status: pending
+status: complete
 priority: P0
 effort: M
 needsStitch: false

@@ -1,0 +1,184 @@
+[
+  {
+    "file": "src/platform/audit/tenant-audit-log.ts",
+    "finding": "Hash chain uses raw SHA-256 without HMAC — trivial tampering",
+    "severity": "Critical",
+    "evidence": "Line 203: createHash('sha256').update(canonical).digest('hex') — no secret key. Anyone with DB read access can recompute valid hashes for modified rows.",
+    "suggested_fix": "Use HMAC-SHA256 with dedicated signing key: createHmac('sha256', SIGNING_KEY).update(canonical).digest('hex'). Store signing key in HSM/KMS."
+  },
+  {
+    "file": "src/forest/rate-limit/redis-rate-limiter.ts",
+    "finding": "Rate limiter fail-open design allows complete bypass under Redis DoS",
+    "severity": "Critical",
+    "evidence": "getCurrentCount returns 0 on Redis error (lines 211-221); checkLimit allows request when Redis unavailable. Plan explicitly states 'fail-open for availability' (phase-02:34,113).",
+    "suggested_fix": "Fail-closed for authenticated endpoints. Fail-open ONLY for public health checks. Add circuit breaker with alerting."
+  },
+  {
+    "file": "src/seed/security/crypto.ts",
+    "finding": "PBKDF2 iterations = 100,000 — 10x below 2026 minimum",
+    "severity": "Critical",
+    "evidence": "Line 152: const ITERATIONS = 100_000; OWASP 2026 recommends 600,000+ for PBKDF2-SHA256.",
+    "suggested_fix": "Minimum 600,000 iterations. Better: migrate to Argon2id (memory-hard) via @noble/hashes or argon2 native."
+  },
+  {
+    "file": "src/seed/security/crypto.ts",
+    "finding": "No key rotation implementation — version prefix is vaporware",
+    "severity": "Critical",
+    "evidence": "encryptString returns ciphertext:iv:tag with no version byte (lines 271-275). decryptString splits on ':' — cannot detect version (lines 278-283). Rotating master key corrupts all existing ciphertext.",
+    "suggested_fix": "Prepend version byte: v1:ciphertext:iv:tag. Support multiple key versions in decryptString with key ID lookup."
+  },
+  {
+    "file": "src/seed/security/crypto.ts",
+    "finding": "Single master key encrypts all tenants — blast radius = entire platform",
+    "severity": "Critical",
+    "evidence": "envKey() returns single key for all encryption (line 272). No per-tenant key derivation, no key hierarchy.",
+    "suggested_fix": "Envelope encryption. Master key encrypts per-tenant DEKs. DEKs encrypt credentials. Rotate DEKs independently."
+  },
+  {
+    "file": "src/platform/audit/tenant-audit-log.ts",
+    "finding": "Sequence number race condition — concurrent writes break ordering",
+    "severity": "Critical",
+    "evidence": "getNextSequenceNumber uses MAX(sequence_number) + 1 (line 133) — classic lost-update race. Phase 01 risk table acknowledges this (row 116).",
+    "suggested_fix": "SELECT sequence_number FROM tenant_audit_logs WHERE tenant_id = $1 FOR UPDATE or PostgreSQL advisory lock pg_advisory_xact_lock(hash(tenant_id))."
+  },
+  {
+    "file": "src/forest/rate-limit/redis-rate-limiter.ts",
+    "finding": "Tenant ID resolution from untrusted headers — spoofable",
+    "severity": "Critical",
+    "evidence": "defaultGetUserId falls back to req.headers['x-user-id'] (lines 387-394) — user-controlled header.",
+    "suggested_fix": "Tenant ID MUST come from validated auth context (req.user.id set by auth middleware). Reject request if missing."
+  },
+  {
+    "file": "src/seed/security/crypto.ts",
+    "finding": "GCM without Associated Data (AAD) — ciphertext malleable across contexts",
+    "severity": "Critical",
+    "evidence": "cipher.update(plaintext, 'utf8') with no cipher.setAAD() call (lines 45-55). Ciphertext for api_key can be swapped with private_key ciphertext.",
+    "suggested_fix": "Include tenant_id + field_name as AAD: cipher.setAAD(Buffer.from(tenantId + ':' + fieldName))."
+  },
+  {
+    "file": "src/db/migrations/021_tenant_credentials.sql / 029_tenant_credentials.sql",
+    "finding": "Two conflicting migrations for same table — schema drift guaranteed",
+    "severity": "Critical",
+    "evidence": "021 has tenant_id TEXT, encrypted columns. 029 has subscriber_id TEXT PRIMARY KEY, plaintext columns. Plan says 'check actual DB schema' (phase-03:122) — not a plan.",
+    "suggested_fix": "Audit production schema NOW. Write single canonical migration 042 that reconciles both."
+  },
+  {
+    "file": "src/seed/security/audit-ip-hash.ts",
+    "finding": "IP hashing unsalted SHA-256 — enables IP enumeration",
+    "severity": "Critical",
+    "evidence": "Line 35: createHash('sha256').update(input).digest('hex') — deterministic, no salt. Attacker with DB access builds rainbow table.",
+    "suggested_fix": "Per-deployment salt in secret manager: createHmac('sha256', IP_HASH_SALT).update(input).digest('hex')."
+  },
+  {
+    "file": "src/seed/security/crypto.ts",
+    "finding": "Decryption error messages leak oracle — timing/padding oracle surface",
+    "severity": "Critical",
+    "evidence": "Line 86-87: throw new Error(`decryption failed: ${msg}`) — exposes internal error (auth tag vs padding vs encoding).",
+    "suggested_fix": "Constant-time error: always throw generic Error('decryption failed') with no detail."
+  },
+  {
+    "file": "src/db/migrations/040-audit-immutability.ts",
+    "finding": "No audit of GUC audit.cleanup_allowed changes — silent immutability bypass",
+    "severity": "Critical",
+    "evidence": "Trigger checks current_setting('audit.cleanup_allowed', true) <> 'on' (line 18). Any superuser can SET audit.cleanup_allowed = 'on'; no audit trail.",
+    "suggested_fix": "Require signed attestation for cleanup. Log GUC changes to separate immutable table. Alert on any SET audit.cleanup_allowed."
+  },
+  {
+    "file": "phase-02-redis-rate-limiter-tier-integration.md",
+    "finding": "No rate limiting on auth endpoints — brute force unchecked",
+    "severity": "High",
+    "evidence": "Plan mentions tier integration but no mention of /login, /register, /forgot-password endpoints.",
+    "suggested_fix": "Separate strict rate limiter (5 req/min/IP) on auth endpoints, independent of tier."
+  },
+  {
+    "file": "src/forest/rate-limit/redis-rate-limiter.ts",
+    "finding": "Clock skew between app and Redis — window boundary bypass",
+    "severity": "High",
+    "evidence": "Uses Date.now() for window calculation (~line 140). Phase 02 notes 'Use Redis server time via TIME command' but not implemented.",
+    "suggested_fix": "Fetch TIME from Redis once at startup, use offset for all window calculations."
+  },
+  {
+    "file": "src/forest/rate-limit/redis-rate-limiter.ts",
+    "finding": "Redis sorted set operations not atomic — check-then-act race",
+    "severity": "High",
+    "evidence": "zremrangebyscore (remove old) → zcard (count) → zadd (add new) — three separate round trips (lines 130-150).",
+    "suggested_fix": "Lua script for atomic check-and-increment. Or Redis 7.2+ ZMPOP/ZADD with GT/LT options."
+  },
+  {
+    "file": "src/forest/rate-limit/redis-rate-limiter.ts",
+    "finding": "Tier limits hardcoded in rate limiter — config drift from pricing",
+    "severity": "High",
+    "evidence": "TIER_RATE_LIMITS defines FREE: { requests: 60, windowMs: 60000 } (lines 16-25) but pricing tiers have requestsPerMin.",
+    "suggested_fix": "Single source of truth. Import tier config from canonical location (src/platform/billing/pricing-tiers.ts)."
+  },
+  {
+    "file": "src/db/migrations/021_tenant_credentials.sql",
+    "finding": "public_key column unencrypted",
+    "severity": "High",
+    "evidence": "Line 11: public_key TEXT — no _encrypted suffix, not in repository encrypt/decrypt.",
+    "suggested_fix": "Encrypt all credential fields consistently."
+  },
+  {
+    "file": "src/seed/security/crypto.ts",
+    "finding": "No key destruction in memory — keys persist in heap",
+    "severity": "High",
+    "evidence": "envKey() returns Buffer never zeroed. Heap dump / core dump / gcore reveals master key.",
+    "suggested_fix": "Use crypto.webcrypto.subtle with CryptoKey (non-extractable) or zero Buffer after use: key.fill(0)."
+  },
+  {
+    "file": "src/seed/security/audit-middleware.ts",
+    "finding": "Audit middleware sanitization incomplete — SENSITIVE_KEYS missing fields",
+    "severity": "High",
+    "evidence": "SENSITIVE_KEYS includes password, token, secret, key — misses apiSecret, passphrase, privateKey, accessToken, refreshToken (lines 138-150).",
+    "suggested_fix": "Comprehensive deny-list OR allow-list approach. Test with credential-shaped objects."
+  },
+  {
+    "file": "src/platform/audit/tenant-audit-log.ts",
+    "finding": "Hash chain verification not enforced on read — silent corruption",
+    "severity": "High",
+    "evidence": "verifyChain exists (lines 195-224) but not called in getLogs or getLogBySequence. Tampered logs returned as valid.",
+    "suggested_fix": "getLogs MUST verify chain prefix. Throw on mismatch. Add background verification job."
+  },
+  {
+    "file": "phase-01-audit-logging-unification.md",
+    "finding": "No distributed lock for hash chain backfill — migration unsafe at scale",
+    "severity": "Medium",
+    "evidence": "Plan says 'Run during maintenance window; backfill in batches if >100k rows' (row 118). Concurrent writes during backfill produce wrong previous_hash links.",
+    "suggested_fix": "Advisory lock per tenant during backfill. Or pg_try_advisory_xact_lock with retry."
+  },
+  {
+    "file": "src/forest/rate-limit/redis-rate-limiter.ts",
+    "finding": "Rate limiter key uses {tenant_id} hash tag — but no validation of format",
+    "severity": "Medium",
+    "evidence": "const key = `ratelimit:{${tenantId}}:${endpoint}` (line 140). validateTenantId only checks non-empty string.",
+    "suggested_fix": "Strict regex validation: ^[a-zA-Z0-9_-]{1,64}$."
+  },
+  {
+    "file": "phase-04-integration-e2e-tests.md",
+    "finding": "No test for cross-tenant data leakage in rate limiter",
+    "severity": "Medium",
+    "evidence": "Phase 04 has no test case for tenant isolation.",
+    "suggested_fix": "Integration test: concurrent requests from two tenants, verify independent counters."
+  },
+  {
+    "file": "src/seed/security/__tests__/crypto.test.ts",
+    "finding": "Encryption test uses fixed key — doesn't test key rotation",
+    "severity": "Medium",
+    "evidence": "FIXTURE_KEY hardcoded (lines 12-15). Version handling, key rotation, multi-key decrypt never exercised.",
+    "suggested_fix": "Tests generating random keys, encrypting with v1, rotating to v2, decrypting both."
+  },
+  {
+    "file": "src/db/migrations/038-audit-log.ts / audit-middleware.ts",
+    "finding": "Audit log ip_hash column NOT NULL but middleware allows undefined",
+    "severity": "Medium",
+    "evidence": "Migration 038: ip_hash TEXT NOT NULL (line 24). Middleware calls hashIpAddress(req.ip) where req.ip can be undefined (line 60). hashIpAddress handles undefined silently.",
+    "suggested_fix": "Make ip_hash nullable OR require explicit IP resolution upstream."
+  },
+  {
+    "file": "all migrations",
+    "finding": "No migration rollback test — down functions untested",
+    "severity": "Medium",
+    "evidence": "All migrations have down but Phase 04 doesn't test rollback.",
+    "suggested_fix": "CI job that applies migration, verifies, rolls back, verifies schema clean."
+  }
+]

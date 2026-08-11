@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Infra Hardening"
-status: pending
+status: complete
 priority: P1
 dependencies: []
 ---

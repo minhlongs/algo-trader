@@ -23,6 +23,7 @@
  * Rate limiting: 1-second delay between emails by default.
  */
 
+import 'dotenv/config';
 import { EmailService } from '../src/platform/notifications/email-service';
 import { getDbClient } from '../src/shared/db/postgres-client';
 import { logger } from '../src/shared/utils/logger';
@@ -313,7 +314,8 @@ async function sendCampaignEmail(
   campaign: 'starter' | 'copilot',
 ): Promise<boolean> {
   // Default to English (locale column not available on user table)
-  const isVietnamese = false;
+  // TODO: locale detection deferred (no preferred_language column in user table)
+const isVietnamese = false;
   const template = campaign === 'starter'
     ? buildStarterTierEmail(user.name)
     : buildCoPilotEmail(user.name);

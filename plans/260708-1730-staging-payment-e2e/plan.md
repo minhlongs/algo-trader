@@ -1,6 +1,6 @@
 ---
 title: Staging Payment E2E — NOWPayments Sandbox
-status: pending
+status: partial
 priority: P1
 effort: medium
 branch: staging-payment-e2e

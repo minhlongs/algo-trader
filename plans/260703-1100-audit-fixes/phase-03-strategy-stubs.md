@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Strategy Stubs"
-status: pending
+status: complete
 priority: P2
 dependencies: []
 ---

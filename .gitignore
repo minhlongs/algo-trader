@@ -26,3 +26,7 @@ tests/e2e/
 scripts/*.bak-*
 scripts/*.bak
 .claude/tmp/
+
+# Claude Code — local secrets (tokens)
+.claude/settings.json
+.claude/settings.local.json

@@ -131,8 +131,16 @@
   },
   "apiKeyHelper": "/Users/macbook/.zunef/zunef-jwt-helper.cjs",
   "env": {
+    "ANTHROPIC_BASE_URL": "http://omnimbp.local:20128/api",
+    "ANTHROPIC_AUTH_TOKEN": "sk-completed",
+    "ANTHROPIC_MODEL": "claude-fable-5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "claude-sonnet-5-0",
     "HERMES_API_KEY_HELPER": "/Users/macbook/.zunef/zunef-jwt-helper.cjs",
     "HERMES_PROXY_URL": "https://claude.zunef.com",
-    "HERMES_ENABLED": "auto"
+    "HERMES_ENABLED": "auto",
+    "ANTHROPIC_DEFAULT_FABLE_MODEL": "claude-fable-5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8[1m]",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-0",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-5-0"
   }
 }
