@@ -5,6 +5,8 @@
 
 import { ScannerConfig, DetectorConfig, ExecutorConfig } from './types';
 
+export type { ExecutorConfig };
+
 export const DEFAULT_SCANNER_CONFIG: ScannerConfig = {
   exchanges: ['binance', 'coinbase', 'kraken', 'uniswap'],
   symbols: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT'],

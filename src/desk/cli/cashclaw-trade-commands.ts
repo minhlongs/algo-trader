@@ -7,6 +7,7 @@
 import type { Command } from 'commander';
 import { handleTradeRun } from './cashclaw-trade-run-handler';
 import { handleTradeStart } from './cashclaw-trade-start-handler';
+import { handleDemoTrade } from './demo-trade-handler';
 
 export function registerTradeCommands(tradeCmd: Command): void {
 
@@ -93,7 +94,19 @@ export function registerTradeCommands(tradeCmd: Command): void {
       await handleTradeRun(opts);
     });
 
-  // ── trade journal ────────────────────────────────────────────────────────────
+  // ── trade demo ───────────────────────────────────────────────────────────────
+
+tradeCmd
+  .command('demo')
+  .description('Run a single demo trade through risk gate and execution engine')
+  .option('--strategy <name>', 'Strategy to resolve', 'spread-mean-reversion')
+  .option('--capital <amount>', 'Paper capital in USDC', '1000')
+  .option('--yes', 'Skip confirmation prompt')
+  .action(async (opts: { strategy: string; capital: string; yes: boolean }) => {
+    await handleDemoTrade(opts);
+  });
+
+// ── trade journal ────────────────────────────────────────────────────────────
 
   tradeCmd
     .command('journal')

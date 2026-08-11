@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 
+// Set required env before any imports
+process.env.AUDIT_HMAC_KEY_v1 = 'a'.repeat(64); // 64 hex chars = 32 bytes
+
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockRedis = {
@@ -22,6 +25,17 @@ const mockRedis = {
       'total_commands_processed:5000',
     ].join('\r\n')
   ),
+  // Sorted set operations used by rate limiter
+  pipeline: vi.fn(() => ({
+    zremrangebyscore: vi.fn().mockReturnThis(),
+    zadd: vi.fn().mockReturnThis(),
+    expire: vi.fn().mockReturnThis(),
+    exec: vi.fn().mockResolvedValue([]),
+  })),
+  zcard: vi.fn().mockResolvedValue(0),
+  zremrangebyscore: vi.fn().mockResolvedValue(0),
+  zadd: vi.fn().mockResolvedValue(1),
+  expire: vi.fn().mockResolvedValue(1),
 };
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
@@ -69,6 +83,10 @@ vi.mock('../../../shared/db/postgres-client', () => ({
 // audit-log imports { query } from ../../db/postgres-client
 vi.mock('../../../db/postgres-client', () => ({
   query: vi.fn().mockResolvedValue({ rows: [] }),
+  getDbClient: () => ({
+    query: vi.fn().mockResolvedValue({ rows: [{ 1: 1 }] }),
+    release: vi.fn(),
+  }),
 }));
 
 vi.mock('../../../db/trade-repository', () => ({
@@ -78,20 +96,40 @@ vi.mock('../../../db/trade-repository', () => ({
   },
 }));
 
+vi.mock('../../../redis', () => ({
+  getRedisClient: () => mockRedis,
+}));
+
+vi.mock('../../../desk/engine', () => ({
+  TradingEngine: class {
+    getOrders = () => [];
+  },
+}));
+
+vi.mock('../../../desk/wiring/qwen-drawdown-monitor', () => ({
+  isQwenEnabled: () => true,
+  isKillSwitchActive: () => false,
+}));
+
 vi.mock('../../seed/security/audit-middleware', () => ({
   auditMiddleware: () => (_req, _res, next) => next(),
 }));
 
+vi.mock('../middleware/auth-middleware', () => ({
+  authMiddleware: (_req, _res, next) => next(),
+}));
+
 vi.mock('../../audit/tenant-audit-log', () => ({
   appendTenantAuditLog: vi.fn().mockResolvedValue(undefined),
+  logAudit: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../../../seed/security/audit-log', () => ({
-  logAudit: () => Promise.resolve(),
+  logAudit: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../forest/rate-limit', () => ({
-  rateLimitMiddleware: () => (_req, _res, next) => next(),
+vi.mock('../../forest/rate-limit/redis-rate-limiter', () => ({
+  rateLimitMiddleware: () => (_req: any, _res: any, next: any) => next(),
   rateLimiter: { checkRateLimit: async () => ({ allowed: true, remaining: 1000, resetAt: new Date(Date.now() + 60000) }) },
   RedisRateLimiter: class { checkRateLimit = async () => ({ allowed: true, remaining: 1000, resetAt: new Date(Date.now() + 60000) }) },
   TIER_RATE_LIMITS: {},
@@ -148,18 +186,21 @@ interface MockRes {
   status(code: number): MockRes;
   json(data: unknown): void;
   setHeader(_key: string, _value: string): void;
+  removeHeader(_key: string): void;
+  getHeader(_key: string): string | undefined;
 }
 
-function createMockRes(): MockRes {
+function createMockRes(onComplete: () => void): MockRes {
   const res: MockRes = {
-    statusCode: 200 as number,
-    body: null as unknown,
+    statusCode: 200,
+    body: null,
     status(code: number) {
       res.statusCode = code;
       return res;
     },
     json(data: unknown) {
       res.body = data;
+      onComplete();
     },
     setHeader() {},
     removeHeader() {},
@@ -206,20 +247,25 @@ async function testRequest(
     body: body ?? {},
   };
 
-  // Create mock res
-  const res = createMockRes();
+  // Create mock res with completion callback
+  let resolve: (value: { status: number; body: unknown }) => void;
+  const promise = new Promise<{ status: number; body: unknown }>((res) => {
+    resolve = res;
+  });
+
+  const res = createMockRes(() => {
+    resolve({ status: res.statusCode, body: res.body });
+  });
 
   // getApp() returns the full Express app with all middleware/routes attached
   const instance = await getApp();
 
   // Invoke the application directly — Express handles all routing
-  return new Promise((resolve) => {
-      const timer = setTimeout(() => resolve({ status: res.statusCode, body: res.body }), 100);
-    instance(req as express.Request, res as express.Response, () => {
-      clearTimeout(timer);
-        resolve({ status: res.statusCode, body: res.body });
-    });
+  instance(req as express.Request, res as express.Response, () => {
+    resolve({ status: res.statusCode, body: res.body });
   });
+
+  return promise;
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

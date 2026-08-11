@@ -5,6 +5,9 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// Set required env before any imports
+process.env.AUDIT_HMAC_KEY_v1 = 'a'.repeat(64); // 64 hex chars = 32 bytes
+
 const store = new Map<string, Record<string, unknown>>();
 vi.mock('pg', () => ({
   default: {
