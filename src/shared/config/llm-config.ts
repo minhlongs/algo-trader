@@ -35,30 +35,30 @@ export function loadLlmConfig(): LlmConfig {
 
   return {
     primary: {
-      url: process.env.LLM_PRIMARY_URL || 'http://127.0.0.1:11435/v1',
-      model: process.env.LLM_PRIMARY_MODEL || 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit',
+      url: process.env.LLM_PRIMARY_URL || 'http://omnimbp.local:20128/v1',
+      model: process.env.LLM_PRIMARY_MODEL || 'deepseek-v4-flash',
       priority: 1,
       maxTokens: 2048,
       timeoutMs: 90000,
     },
     fastTriage: {
-      url: process.env.LLM_FAST_TRIAGE_URL || 'http://127.0.0.1:11436/v1',
-      model: process.env.LLM_FAST_TRIAGE_MODEL || 'mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit',
+      url: process.env.LLM_FAST_TRIAGE_URL || 'http://omnimbp.local:20128/v1',
+      model: process.env.LLM_FAST_TRIAGE_MODEL || 'deepseek-v4-flash',
       priority: 1,
       maxTokens: 512,
       timeoutMs: 10000,
     },
     fallback: {
-      url: process.env.LLM_FALLBACK_URL || 'http://127.0.0.1:11434/v1',
-      model: process.env.LLM_FALLBACK_MODEL || 'deepseek-r1:32b',
+      url: process.env.LLM_FALLBACK_URL || 'http://omnimbp.local:20128/v1',
+      model: process.env.LLM_FALLBACK_MODEL || 'deepseek-v4-flash',
       priority: 2,
       maxTokens: 2048,
       timeoutMs: 30000,
     },
     /** Qwen3-30B-A3B: long-context MoE, opt-in feature flag (default OFF) */
     qwen: qwenEnabled ? {
-      url: process.env.LLM_QWEN_URL || 'http://127.0.0.1:11437/v1',
-      model: process.env.LLM_QWEN_MODEL || 'mlx-community/Qwen3-30B-A3B-4bit',
+      url: process.env.LLM_QWEN_URL || 'http://omnimbp.local:20128/v1',
+      model: process.env.LLM_QWEN_MODEL || 'deepseek-v4-flash',
       priority: 1,
       maxTokens: 4096,
       timeoutMs: Number(process.env.LLM_QWEN_TIMEOUT_MS) || 60000,
