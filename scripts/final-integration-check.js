@@ -2,12 +2,10 @@
 const https = require('https');
 
 const REGIONS = ['us-east', 'eu-central', 'ap-southeast'];
-// Account-specific workers.dev subdomain (from Cloudflare account)
-const ACCOUNT_SUBDOMAIN = 'agencyos-openclaw';
 const REGION_WORKER_NAMES = {
-  'us-east': `algo-trader-us-east.${ACCOUNT_SUBDOMAIN}.workers.dev`,
-  'eu-central': `algo-trader-eu-central.${ACCOUNT_SUBDOMAIN}.workers.dev`,
-  'ap-southeast': `algo-trader-ap-southeast.${ACCOUNT_SUBDOMAIN}.workers.dev`,
+  'us-east': 'algo-trader.workers.dev',
+  'eu-central': 'algo-trader.workers.dev',
+  'ap-southeast': 'algo-trader.workers.dev',
 };
 const CHECKS = {
   health: '/api/health',

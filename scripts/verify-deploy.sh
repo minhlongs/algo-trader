@@ -36,8 +36,8 @@ check() {
 # ─── Worker Checks ──────────────────────────────────────────────────
 check_worker() {
   echo ""
-  echo "=== CF Worker: algo-trader.agencyos-openclaw.workers.dev ==="
-  local WORKER="https://algo-trader.agencyos-openclaw.workers.dev"
+  echo "=== CF Worker: api.cashclaw.cc ==="
+  local WORKER="https://api.cashclaw.cc"
 
   check "GET /health → 200" "curl -sf -o /dev/null -w '%{http_code}' $WORKER/health | grep -q 200"
 

@@ -48,7 +48,7 @@ echo "==> wrangler deploy"
 npx wrangler deploy --config wrangler.toml
 
 # ─── Verify SHA match (workers.dev + custom domain) ────────────────
-WORKER_URL="https://algo-trader.agencyos-openclaw.workers.dev"
+WORKER_URL="https://algo-trader.workers.dev"
 echo ""
 echo "==> Verifying deploy SHA..."
 LIVE_SHA=$(curl -sf "$WORKER_URL/api/version" | python3 -c "import json,sys; print(json.load(sys.stdin).get('shortSha',''))" 2>/dev/null || echo "")
@@ -62,12 +62,12 @@ fi
 
 # ─── Verify custom domain ───────────────────────────────────────────
 echo ""
-CUSTOM_URL="https://api.cashclaw.cc"
+CUSTOM_URL="https://cashclaw.cc"
 API_HTTP=$(curl -s -o /tmp/api_health_body -w "%{http_code}" "$CUSTOM_URL/api/health")
 if [ "$API_HTTP" = "200" ]; then
-  echo "✅ Custom domain: HTTP $API_HTTP (api.cashclaw.cc operational)"
+  echo "✅ Custom domain: HTTP $API_HTTP (cashclaw.cc operational)"
 else
-  echo "⚠️  Custom domain: HTTP $API_HTTP — check CF Dashboard CNAME for api.cashclaw.cc"
+  echo "⚠️  Custom domain: HTTP $API_HTTP — check CF Dashboard CNAME for cashclaw.cc"
 fi
 
 echo ""

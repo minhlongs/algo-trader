@@ -98,7 +98,7 @@ async function withRedeemLock(
 }
 
 function methodNotAllowed(): Response {
-  return jsonResponse({ error: 'Method Not Allowed' }, 405);
+  return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: { 'content-type': 'application/json', ...CORS_HEADERS } });
 }
 
 function optionsResponse(): Response {
