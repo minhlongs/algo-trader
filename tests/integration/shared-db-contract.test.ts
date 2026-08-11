@@ -21,6 +21,7 @@ const REPO_ROOT = resolve(__dirname, '../..');
 const CLIENT_FILE = resolve(REPO_ROOT, 'src/db/postgres-client.ts');
 const MIGRATION_RUNNER_FILE = resolve(REPO_ROOT, 'src/db/migration-runner.ts');
 const MIGRATIONS_DIR = resolve(REPO_ROOT, 'src/db/migrations');
+const SHARED_MIGRATIONS_DIR = resolve(REPO_ROOT, 'src/shared/db/migrations');
 
 function readFile(path: string): string {
   return readFileSync(path, 'utf8');
@@ -217,11 +218,15 @@ describe('Shared DB Contract', () => {
  while ((mm = sqlIdRe.exec(runnerSrc)) !== null) {
   allIds.push(mm[1]);
  }
- const importRe = /import \* as migration(\d+) from '\.\/migrations\/([^']+)'/g;
+ const importRe = /import \* as migration(\d+) from '(\.\/migrations\/|\.\.\/shared\/db\/migrations\/)([^']+)'/g;
  importRe.lastIndex = 0;
  while ((mm = importRe.exec(runnerSrc)) !== null) {
   try {
-   const tsSrc = readFileSync(MIGRATIONS_DIR + '/' + mm[2] + '.ts', 'utf8');
+   const importPath = mm[2];
+   const isShared = importPath.startsWith('../shared/');
+   const dir = isShared ? SHARED_MIGRATIONS_DIR : MIGRATIONS_DIR;
+   const filename = mm[3];
+   const tsSrc = readFileSync(dir + '/' + filename + '.ts', 'utf8');
    const idMatch = tsSrc.match(/export\s+const\s+id\s*=\s*'([^']+)'/);
    if (idMatch) allIds.push(idMatch[1]);
   } catch {}
@@ -250,11 +255,15 @@ describe('Shared DB Contract', () => {
  while ((mm = sqlIdRe.exec(runnerSrc)) !== null) {
   allIds.push(mm[1]);
  }
- const importRe = /import \* as migration(\d+) from '\.\/migrations\/([^']+)'/g;
+ const importRe = /import \* as migration(\d+) from '(\.\/migrations\/|\.\.\/shared\/db\/migrations\/)([^']+)'/g;
  importRe.lastIndex = 0;
  while ((mm = importRe.exec(runnerSrc)) !== null) {
   try {
-   const tsSrc = readFileSync(MIGRATIONS_DIR + '/' + mm[2] + '.ts', 'utf8');
+   const importPath = mm[2];
+   const isShared = importPath.startsWith('../shared/');
+   const dir = isShared ? SHARED_MIGRATIONS_DIR : MIGRATIONS_DIR;
+   const filename = mm[3];
+   const tsSrc = readFileSync(dir + '/' + filename + '.ts', 'utf8');
    const idMatch = tsSrc.match(/export\s+const\s+id\s*=\s*'([^']+)'/);
    if (idMatch) allIds.push(idMatch[1]);
   } catch {}

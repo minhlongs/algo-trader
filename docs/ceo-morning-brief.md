@@ -25,7 +25,7 @@
 | # | Task | Why | Command |
 |---|------|-----|---------|
 | 1 | **Complete go-live checklist** (`docs/go-live-status.md`) | 50% items chưa check | Open file, run through |
-| 2 | **Test payment flow end-to-end** trên staging | Chưa test → chưa có MRR | TBD |
+| 2 | **Test payment flow end-to-end** trên staging | Script ready, awaiting sandbox credentials | Run `scripts/test-payment-e2e.sh` |
 | 3 | **Enable HSTS + 2FA** trên exchange accounts | Bảo mật production | Vào exchange |
 
 ---

@@ -8,7 +8,7 @@ manualStepsReady: true
 tasks:
   - "task-063-sendgrid-config.md"
   - "task-064-manual-publish.md"
-notes: "Email campaign script ready at scripts/send-email-campaign.ts — unblock by adding SendGrid env vars to .env. Manual publish (blog/reddit/twitter/discord) content ready at docs/marketing/ — task #64. Added task tracking. Domain references use api.cashclaw.cc."
+notes: "Email campaign script ready at scripts/send-email-campaign.ts — unblock by adding SendGrid env vars to .env (task #70). Manual publish content compiled in plans/reports/task-071-publish-content-ready-report.md (task #71). Blog live at api.cashclaw.cc via CF worker proxy (/api/blog/posts → data/blog/posts.json) — no extra deploy needed. Steps 2–5 ready-to-post, blocked by human-held social accounts. Domain references use api.cashclaw.cc."
 effort: "S (2 days)"
 ---
 
@@ -23,7 +23,7 @@ Publish all prepared launch content. Run email campaign to FREE users.
 | Task | Description | Status | Unblock Path |
 |------|-------------|--------|--------------|
 | #63 | Configure SendGrid env vars | 🔴 BLOCKED | Add SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME to .env |
-| #64 | Manual publish blog/reddit/twitter/discord | 🟡 READY | Execute manual steps (content already written) |
+| #64 | Manual publish blog/reddit/twitter/discord | ✅ DONE (blog live) / 🔵 READY (social post) | Blog live; social steps ready-to-post, blocked by human-held accounts |
 
 ## Implementation Steps
 

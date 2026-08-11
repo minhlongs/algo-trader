@@ -8,7 +8,9 @@
 import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import { DrawdownMonitor } from './drawdown-monitor';
-import { appendTenantAuditLog } from '../../platform/audit/tenant-audit-log';
+import crypto from 'crypto';
+import { logAudit, hashIpAddress } from '../../seed/security/audit-log';
+import type { IAuditEntry } from '../../seed/security/audit-log';
 
 export interface CircuitBreakerConfig {
   maxLossStreak: number;
@@ -151,13 +153,22 @@ export class CircuitBreaker {
       triggeredAt: this.triggeredAt.toString(),
     });
 
-    await appendTenantAuditLog(
-      'system-tenant',
-      'circuit_breaker_tripped',
-      'system',
-      `Circuit breaker tripped: ${reason}`,
-      { details, state: 'OPEN', triggeredAt: this.triggeredAt }
-    ).catch((err) => logger.error('[CircuitBreaker] Failed to append tenant audit log:', err));
+    await logAudit({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      actor: 'system',
+      action: 'circuit_breaker_tripped',
+      resource: 'CircuitBreaker',
+      result: 'failure',
+      metadata: {
+        details,
+        state: 'OPEN',
+        triggeredAt: this.triggeredAt,
+        reason,
+      },
+      ipHash: hashIpAddress(undefined),
+      tenantId: 'system-tenant',
+    } as IAuditEntry).catch((err) => logger.error('[CircuitBreaker] Failed to append tenant audit log:', err));
 
     logger.warn(`[CircuitBreaker] TRIPPED: ${reason} - ${details}`);
   }
@@ -185,13 +196,19 @@ export class CircuitBreaker {
 
     await this.redis.del('circuit_breaker:loss_streak');
 
-    await appendTenantAuditLog(
-      'system-tenant',
-      'circuit_breaker_reset',
-      'system',
-      'Circuit breaker reset to CLOSED',
-      { state: 'CLOSED' }
-    ).catch((err) => logger.error('[CircuitBreaker] Failed to append tenant audit log:', err));
+    await logAudit({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      actor: 'system',
+      action: 'circuit_breaker_reset',
+      resource: 'CircuitBreaker',
+      result: 'success',
+      metadata: {
+        state: 'CLOSED',
+      },
+      ipHash: hashIpAddress(undefined),
+      tenantId: 'system-tenant',
+    } as IAuditEntry).catch((err) => logger.error('[CircuitBreaker] Failed to append tenant audit log:', err));
 
     logger.info('[CircuitBreaker] RESET');
   }

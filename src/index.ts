@@ -12,7 +12,7 @@ import { KronosStrategy } from './strategies/kronos-strategy';
 import { runSetupWizard } from './commands/setup-wizard';
 import { runQuickstart } from './commands/quickstart';
 import { runActivateCommand } from './commands/activate-license';
-import { runArbAuto } from './commands/arb-auto';
+import { runArbAuto } from './desk/commands/arb-auto';
 import { logger } from './utils/logger';
 
 // Initialize Sentry before anything else
@@ -28,6 +28,8 @@ export interface ArbAutoOptions {
   minSpread: string;
   dryRun: boolean;
   verbose: boolean;
+  strategy?: string;
+  maxQueue?: string;
 }
 
 export const version = '1.0.0';
@@ -74,13 +76,15 @@ if (!isTest) {
 
   program
     .command('arb:auto')
-    .description('Autonomous arbitrage trading - WS feeds, spread detection, atomic execution')
+    .description('Unified arbitrage execution engine - cross-exchange, triangular, dex-cex, binary, split-merge, cross-market')
     .option('-s, --symbols <symbols>', 'Trading pairs (comma-separated)', 'BTC/USDT,ETH/USDT,SOL/USDT')
     .option('-e, --exchanges <exchanges>', 'Exchanges (comma-separated)', 'binance,okx,bybit')
     .option('--min-spread <percent>', 'Minimum spread percentage', '0.05')
     .option('--dry-run', 'Dry run mode (no real trades)', true)
     .option('--no-dry-run', 'Live trading mode (real trades)')
     .option('-v, --verbose', 'Verbose logging', true)
+    .option('--strategy <type>', 'Strategy: cross-exchange|triangular|dex-cex|funding-rate|binary|split-merge|cross-market|all', 'all')
+    .option('--max-queue <number>', 'Max queued opportunities', '50')
     .action(async (options: ArbAutoOptions) => {
       await runArbAuto({
         symbols: options.symbols,
@@ -88,7 +92,9 @@ if (!isTest) {
         minSpread: parseFloat(options.minSpread),
         dryRun: options.dryRun,
         verbose: options.verbose,
-      });
+        strategy: options.strategy || 'all',
+        maxQueueSize: parseInt(options.maxQueue || '50'),
+      } as import('./desk/commands/arb-auto').AutoCommandOptions);
     });
 
   program

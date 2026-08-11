@@ -1,7 +1,7 @@
 ---
 title: "Go Live Week 1 — Production Deploy, Launch Content, IPN Config, Live Trading"
 description: "Transition from code-complete to revenue-generating: deploy latest code, post launch marketing, configure NOWPayments IPN, start live trading on minimal capital"
-status: in_progress (Phase 6 complete)
+status: blocked (awaiting external credentials)
 priority: P1
 branch: "main"
 tags: [go-live, deploy, launch, live-trading, ipn, marketing]

@@ -17,7 +17,7 @@
 ### Hien trang / Current State
 
 - **Default:** PAPER mode (no API keys needed).
-- **No schema validation:** There is NO `env-schema.ts` in this project. `PAPER_MODE` is read raw from `process.env` with no Zod/Joi schema. Any value (including typos) defaults to paper.
+- **Schema validation:** `PAPER_MODE` is validated via `src/platform/config/env-schema.ts` (Zod enum `'true'|'false'`, default `'true'`). `env-schema.ts` centralizes env-var parsing so callers don't read `process.env` directly.
 - **CLI override:** The `--mode` flag (`paper`/`live`) on `trade start` / `trade run` overrides `PAPER_MODE` via `paperTrading` config field.
 - **Guard behavior:** In PAPER mode, `LiveExecutionGuard.setEnabled(false)` — the guard passes all orders.
 
@@ -551,8 +551,8 @@ curl -X POST http://localhost:9093/api/v1/alerts \
 
 | Item | Finding |
 |------|---------|
-| PAPER_MODE env var | Exists, read raw from `process.env` (no schema validation). Default: `true` (paper). |
-| Env schema file | `env-schema.ts` does NOT exist in this project. |
+| PAPER_MODE env var | Exists, validated via Zod in `src/platform/config/env-schema.ts`. Default: `true` (paper). |
+| Env schema file | `env-schema.ts` exists — centralizes all env-var parsing with Zod; `validateEnv()` produces typed `EnvConfig`. |
 | LIVE env vars | 4 required: `POLYMARKET_API_KEY`, `_SECRET`, `_PASSPHRASE`, `_PRIVATE_KEY` (+ `POLY_*` fallbacks) |
 | Risk gate defaults | Position: 2%, Drawdown: 5%, Concurrent: 10, Circuit: 3 losses |
 | Guard guardEnabled | `true` in LIVE, `false` in PAPER |

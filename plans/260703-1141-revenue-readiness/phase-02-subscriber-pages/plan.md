@@ -1,7 +1,7 @@
 ---
 title: "Phase 2 — Wire Subscriber Pages"
 description: "Wire subscriber-equity, subscriber-overview, and subscriber-trade-history into App.tsx routes, add backend APIs, link from marketplace"
-status: pending
+status: complete
 priority: P0
 effort: M
 needsStitch: true

@@ -1,4 +1,4 @@
---- title: "R2: Redis Distributed Rate Limiter" description: "Replace express-rate-limit with Redis sliding window, unify tier limits, MASTER=unlimited" status: pending priority: P1 effort: 4h branch: main tags: [rate-limit, redis, middleware] created: 2026-07-17 ---
+--- title: "R2: Redis Distributed Rate Limiter" description: "Replace express-rate-limit with Redis sliding window, unify tier limits, MASTER=unlimited" status: complete priority: P1 effort: 4h branch: main tags: [rate-limit, redis, middleware] created: 2026-07-17 ---
 
 # Phase 02: R2 — Redis Distributed Rate Limiter
 

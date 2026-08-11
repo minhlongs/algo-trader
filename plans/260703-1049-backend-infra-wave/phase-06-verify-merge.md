@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Verify & Merge"
-status: pending
+status: complete
 priority: P0
 dependencies: [1, 2, 3, 4, 5]
 ---

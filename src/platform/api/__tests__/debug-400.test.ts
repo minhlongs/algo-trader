@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 
+// Set required env before any imports
+process.env.AUDIT_HMAC_KEY_v1 = 'a'.repeat(64); // 64 hex chars = 32 bytes
+
 // same mocks as api.test.ts
 vi.mock('../../middleware/feature-gate', () => ({
   requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
@@ -10,8 +13,12 @@ vi.mock('../../middleware/feature-gate', () => ({
   canAccessFeature: () => true,
   FEATURE_ACCESS: {},
 }));
-vi.mock('@platform/seed/security/audit-middleware', () => ({
-  auditMiddleware: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+// NOTE: real modules resolve by absolute path — the previous `@platform/...`
+// mock ids pointed at non-existent `src/platform/...` files and never
+// intercepted. The audit middleware in server.ts is imported via a relative
+// path, so we must mock the modules it actually uses: logAudit + pg `query`.
+vi.mock('../../../../seed/security/audit-log', () => ({
+  logAudit: () => Promise.resolve(),
 }));
 
 const mockRedis = {
@@ -25,16 +32,24 @@ const mockRedis = {
   info: vi.fn().mockResolvedValue('# Server\r\nredis_version:7.0.0\r\n'),
 };
 vi.mock('@redis', () => ({ getRedisClient: () => mockRedis }));
-vi.mock('@platform/db/postgres-client', () => ({
-  getDbClient: () => ({ query: vi.fn().mockResolvedValue({ rows: [] }) }),
+vi.mock('../../../db/postgres-client', () => ({
+  query: vi.fn().mockResolvedValue({ rows: [] }),
 }));
 vi.mock('@platform/desk/engine', () => ({
   TradingEngine: class { getOrders() { return []; } },
 }));
 
 // Bypass rate-limit middleware
-vi.mock('@platform/forest/rate-limit', () => ({
+vi.mock('../../forest/rate-limit/redis-rate-limiter', () => ({
   rateLimitMiddleware: () => (_req: any, _res: any, next: any) => next(),
+}));
+
+vi.mock('../middleware/auth-middleware', () => ({
+  authMiddleware: (_req: any, _res: any, next: any) => next(),
+}));
+
+vi.mock('../../seed/security/audit-middleware', () => ({
+  auditMiddleware: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 describe('debug 400', () => {

@@ -3,7 +3,9 @@ import { LicenseService } from '@platform/billing/license-service';
 import { AuditLogService } from '@platform/audit/audit-log-service';
 import { LicenseTier, LicenseStatus, LicenseFilters } from '@platform/types/license';
 import { z } from 'zod';
-import { appendTenantAuditLog } from '@platform/audit/tenant-audit-log';
+import crypto from 'crypto';
+import { logAudit, hashIpAddress } from '../../seed/security/audit-log';
+import type { IAuditEntry } from '../../seed/security/audit-log';
 
 export const licenseRouter: Router = Router();
 const licenseService = LicenseService.getInstance();
@@ -93,13 +95,21 @@ licenseRouter.post('/', async (req: Request, res: Response) => {
     metadata: { name },
   });
 
-  await appendTenantAuditLog(
-    license.tenantId || 'system-tenant',
-    'license_created',
-    'admin',
-    `License created: ${name}`,
-    { licenseId: license.id, tier: license.tier, name }
-  );
+  await logAudit({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    actor: 'admin',
+    action: 'license_created',
+    resource: 'License',
+    result: 'success',
+    metadata: {
+      licenseId: license.id,
+      tier: license.tier,
+      name,
+    },
+    ipHash: hashIpAddress(undefined),
+    tenantId: license.tenantId || 'system-tenant',
+  } as IAuditEntry);
 
   return res.status(201).json(license);
 });
@@ -122,13 +132,20 @@ licenseRouter.patch('/:id/revoke', async (req: Request, res: Response) => {
     tier: license.tier,
   });
 
-  await appendTenantAuditLog(
-    license.tenantId || 'system-tenant',
-    'license_revoked',
-    'admin',
-    `License revoked: ${license.id}`,
-    { licenseId: license.id, tier: license.tier }
-  );
+  await logAudit({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    actor: 'admin',
+    action: 'license_revoked',
+    resource: 'License',
+    result: 'success',
+    metadata: {
+      licenseId: license.id,
+      tier: license.tier,
+    },
+    ipHash: hashIpAddress(undefined),
+    tenantId: license.tenantId || 'system-tenant',
+  } as IAuditEntry);
 
   return res.json(license);
 });
@@ -151,13 +168,20 @@ licenseRouter.delete('/:id', async (req: Request, res: Response) => {
     tier: license.tier,
   });
 
-  await appendTenantAuditLog(
-    license.tenantId || 'system-tenant',
-    'license_deleted',
-    'admin',
-    `License deleted: ${license.id}`,
-    { licenseId: license.id, tier: license.tier }
-  );
+  await logAudit({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    actor: 'admin',
+    action: 'license_deleted',
+    resource: 'License',
+    result: 'success',
+    metadata: {
+      licenseId: license.id,
+      tier: license.tier,
+    },
+    ipHash: hashIpAddress(undefined),
+    tenantId: license.tenantId || 'system-tenant',
+  } as IAuditEntry);
 
   await licenseService.deleteLicense(licenseId);
 

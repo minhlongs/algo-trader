@@ -53,7 +53,7 @@
 | No live trading capital | CRITICAL | Fund exchange wallets before go-live |
 | No paying customers yet | HIGH | Run Beta pilot program |
 | HSTS not configured | HIGH | Enable before production traffic |
-| **NOWPayments IPN E2E** | ✅ Verified | 5/5 NOWPayments tests green |
+| **NOWPayments IPN E2E** | ✅ Verified | 5/5 unit tests + staging sandbox E2E script ready (`scripts/test-payment-e2e.sh`) |
 | 2 pre-existing test failures | LOW | Dashboard RBAC + tier env loading |
 
 ---

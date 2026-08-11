@@ -77,3 +77,51 @@ Based on data, determine next steps:
 - **Zero conversions** — No one signs up. Mitigation: debug funnel, increase outreach, try paid ads
 - **Payment flow breaks in production** — IPN callback not configured. Mitigation: verify NOWPayments dashboard settings
 - **Low email engagement** — FREE users are inactive. Mitigation: segment by last login date
+
+## Appendix: D1 Query Reference
+
+Run all queries against the `algo-trader-db` D1 database using:
+
+```bash
+wrangler d1 query algo-trader-db --remote --command "<SQL>"
+```
+
+<a name="appendix-active-by-tier"></a>
+### Query 1: Active Subscribers by Tier
+
+```bash
+wrangler d1 query algo-trader-db --remote --command \
+  "SELECT tier, COUNT(*) AS count FROM subscriptions WHERE status = 'active' GROUP BY tier;"
+```
+
+Returns: one row per tier with subscriber count.
+
+<a name="appendix-revenue-totals"></a>
+### Query 2: Revenue Totals by Tier
+
+```bash
+wrangler d1 query algo-trader-db --remote --command \
+  "SELECT tier, COUNT(*) AS count, COALESCE(SUM(amount_cents), 0) AS total_cents FROM subscriptions WHERE status = 'active' GROUP BY tier;"
+```
+
+Returns: tier, subscriber count, and total revenue in cents (divide by 100 for USD).
+
+<a name="appendix-recent-signups"></a>
+### Query 3: Recent Signups (Last 24 Hours)
+
+```bash
+wrangler d1 query algo-trader-db --remote --command \
+  "SELECT id, email, tier, status, created_at FROM subscriptions WHERE created_at > datetime('now', '-1 day') ORDER BY created_at DESC;"
+```
+
+Returns: all accounts created in the last 24 hours with tier and status.
+
+<a name="appendix-top-referrals"></a>
+### Query 4: Top 10 Referral Codes by Usage
+
+```bash
+wrangler d1 query algo-trader-db --remote --command \
+  "SELECT code, uses_count, created_at FROM referral_codes ORDER BY uses_count DESC LIMIT 10;"
+```
+
+Returns: top 10 referral codes ranked by usage count.

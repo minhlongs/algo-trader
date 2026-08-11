@@ -28,7 +28,7 @@ Last mile: deploy production, publish launch content (Reddit, Twitter, Discord, 
 | Phase | Name | Effort | Status |
 |-------|------|--------|--------|
 | 1 | [Deploy Production](./phase-01-deploy-production.md) | 1 day | ✅ Complete<br/>SHA: a200991f<br/>URL: https://api.cashclaw.cc<br/>Deployed: 2026-08-04 |
-| 2 | [Publish Launch Content](./phase-02-publish-launch-content.md) | 2 days | 🟡 Partial<br/>Email: SendGrid env vars missing (task #63)<br/>Manual publish: blog published ✅, reddit/twitter/discord content ready for manual copy-paste (task #64)<br/>Domain: api.cashclaw.cc |
+| 2 | [Publish Launch Content](./phase-02-publish-launch-content.md) | 2 days | 🟡 Ready<br/>Email: SendGrid env vars missing — BLOCKED (task #70)<br/>Manual publish: copy-paste report ready (plans/reports/task-071-publish-content-ready-report.md) — task #71 complete<br/>Blog: not deployed (no VPS/SSH)<br/>Domain: api.cashclaw.cc |
 | 3 | [Verify Revenue](./phase-03-verify-revenue.md) | 1 day | 🔲 Pending<br/>Waiting on paying subscriber (task #65) |
 
 **Execution order:** Sequential (Phase 1 → Phase 2 → Phase 3).
@@ -56,9 +56,9 @@ Last mile: deploy production, publish launch content (Reddit, Twitter, Discord, 
 ## Task Tracking
 | Task | Description | Status | Owner | Unblock Path |
 |------|-------------|--------|-------|--------------|
-| #63 | SendGrid env vars (SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME) | 🔴 BLOCKED | Platform Ops | Add vars to .env + wrangler secrets |
-| #64 | Manual publish (blog/reddit/twitter/discord) | 🟡 PARTIAL | Marketing | Blog published ✅ — reddit/twitter/discord need manual copy-paste with human accounts |
-| #65 | First paying subscriber + revenue verification | 🔲 PENDING | Revenue | Unblocks when #64 drives conversions |
+| #70 | SendGrid env vars (SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, SENDGRID_FROM_NAME) + email campaign | 🔴 BLOCKED | Operator | Provide SendGrid credentials to operator |
+| #71 | Manual publish (blog/reddit/twitter/discord) | ✅ READY | Marketing | Copy-paste from plans/reports/task-071-publish-content-ready-report.md |
+| #72 | First paying subscriber + revenue verification | 🔲 PENDING | Revenue | Unblocks when #71 drives conversions |
 
 ## Key Files
 - Brainstorm: `plans/reports/brainstorm-260704-0826-gtm-execution-report.md`

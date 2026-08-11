@@ -1,7 +1,7 @@
 ---
 title: "Backend/Infra Wave — 8 Remaining Items"
 description: "Live trading go-live, infra hardening, CEX/DEX connectors, strategy logic, telegram/marketplaces/revenue/alerts. 8 items, 3 parallel tracks."
-status: pending
+status: complete
 priority: P0
 branch: "main"
 tags: ["backend", "infra", "devops", "live-trading"]

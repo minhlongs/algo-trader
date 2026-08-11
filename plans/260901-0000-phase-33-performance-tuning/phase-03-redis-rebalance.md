@@ -1,8 +1,8 @@
 # Phase 03: Redis Cluster Rebalancing
 
 **Priority:** P1
-**Status:** COMPLETE
-**Updated:** 2026-08-06
+**Status:** NOT STARTED
+**Updated:** 2026-08-07
 
 ## Overview
 Ensure no hot shards under 5000 RPS load.
@@ -19,5 +19,12 @@ Redis Cluster → consistent hashing → shard mapping
 - Shard configuration
 
 ## Todo List
-- [x] Analyze key distribution
-- [x] Rebalance if needed
+- [ ] Analyze current Redis key distribution
+- [ ] Implement resharding if needed
+- [ ] Verify no hot shards at 5000 RPS
+
+## Risk Assessment
+- Resharding may cause temporary unavailability
+
+## Next Steps
+- Needs baseline from Phase 01 before planning resharding

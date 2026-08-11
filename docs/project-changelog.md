@@ -1,5 +1,115 @@
 # Project Changelog - Algo Trader
 
+## [3.1.2] - 2026-08-10
+
+### Added - Phase 34: Content Personalization & AI Recommendations (COMPLETE)
+
+#### Blog Engagement & Analytics
+- **Blog Comments** — `/api/blog/posts/:postId/comments` with LLM moderation (keyword fallback) at `POST` + `GET`
+- **Post Recommendations** — TF-IDF similarity engine at `/api/blog/posts/:postId/recommendations`
+- **Page-View Analytics** — `blog_page_views` table (migration 055) + `/api/blog/page-views` (POST record, GET stats)
+- **A/B Test Tracking** — `/api/blog/ab-test/{impression,click}` endpoints for CTR measurement
+
+#### Newsletter Segmentation
+- **Subscribe/Unsubscribe** — `/api/newsletter/{subscribe,unsubscribe}` with frequency/interests/topics
+- **Preferences API** — `/api/newsletter/preferences` per email
+- **Segments Admin** — `/api/newsletter/segments` grouped by frequency/topics/interests
+
+#### Infrastructure
+- Migrations 035 (blog_comments + blog_ab_tests), 037 (newsletter_preferences), 055 (blog_page_views) registered in migration-runner
+- All routes wired into platform API server: `/api/blog` (blogRouter + blogEngagementRouter) and `/api/newsletter` (newsletterRouter)
+- 23 new integration tests passing (blog-engagement: 15, newsletter: 8)
+
+#### Technical Highlights
+- TF-IDF similarity engine (zero external API, pure TypeScript)
+- Page views track viewer_id, referrer, UTM params, view_duration_ms (capped 24h)
+- Comment moderation with keyword fallback when LLM unavailable
+- A/B test impressions/clicks stored in blog_ab_tests table
+- Newsletter segmentation by frequency (daily/weekly/monthly/none), topics, and interests array
+
+### Documentation Updates
+- Updated `docs/development-roadmap.md` — Phase 34 marked COMPLETE
+- Updated `docs/project-changelog.md` — Current entry
+
+---
+
+## [3.1.1] - 2026-08-10
+
+### Added - Phase 33b: Arbitrage Execution Engine (COMPLETE)
+
+#### Unified Arbitrage Engine
+- **UnifiedExecutionEngine** — Single entry point handling all arbitrage strategy types
+- **StrategyRouter** — Routes opportunities to correct executor based on `opportunity.type`
+- **StrategyOrchestrator** — Coordinates feed aggregator, spread detector, signal scorer, and unified execution engine with backpressure queue (max 50)
+- **CLI Integration** — Extended `arb-auto` command with `--strategy` flag supporting: `cross-exchange`, `triangular`, `dex-cex`, `funding-rate`, `binary-arb`, `split-merge`, `cross-market`, `all`
+
+#### Strategy Coverage
+- Cross-exchange arbitrage (Binance, OKX, Bybit)
+- Triangular arbitrage (multi-hop on single exchange)
+- DEX-CEX arbitrage (Uniswap vs CEX)
+- Funding rate arbitrage (perpetual vs spot)
+- Binary arbitrage (Polymarket YES/NO mispricing)
+- Split-merge arbitrage (Polymarket buy YES+NO, merge for $1)
+- Cross-market ILP arbitrage (multi-market portfolio optimization)
+
+#### Quality Gates
+- All 189 arbitrage tests passing
+- Build passes with 0 TypeScript errors
+- Zero `:any` types in arbitrage modules
+- Dry-run and live mode support per strategy
+
+### Technical Highlights
+- Strategy filtering enables running single strategies or all simultaneously
+- Opportunity queue with backpressure (max 50, drops lowest-scored on overflow)
+- Metrics: scans, detected, scored, actionable, executed, p95 latencies, profit tracking
+- Graceful shutdown with queue draining
+
+### Documentation Updates
+- Updated `plans/260808-arbitrage-execution-engine/plan.md` — Phase 33b complete
+- Updated `docs/development-roadmap.md` — Phase 33b marked COMPLETE
+- Updated `docs/project-changelog.md` — Current entry
+
+---
+
+## [3.1.0] - 2026-08-06
+
+### Added - Phase 33: Performance Tuning & Stress Testing (COMPLETE)
+
+#### Load Testing Infrastructure
+- **k6 load test** — 5000+ VUs across 12 shards, 52 strategies, p95 5ms, p99 9ms
+- **5 test suites** — shard-stress, region-latency, memory-pressure, failover, queue-backpressure
+- **CI integration** — `.github/workflows/load-test.yml` runs all suites + validates against thresholds
+- **Config scripts** — `scripts/load-test-sharding.ts`, `scripts/load-test-config.ts`, `scripts/load-test-memory.ts`
+
+#### Database Optimization
+- **Migration 0002** — `migrations/0002-phase33-indexes.sql` with 4 composite indexes for hot-path queries
+- **Slow query resolution** — Identified and indexed top DB bottleneck queries
+
+#### WebSocket Compression
+- **Deflate compression** — Active on WebSocket connections for reduced bandwidth
+- **Prometheus gauge** — `compressionRatio` tracked in `src/desk/middleware/prometheus-metrics.ts`
+
+#### Redis & Profiling
+- **Redis rebalancing** — No hot shards verified under 5000 RPS load
+- **Profiling report** — `reports/phase-05-profiling-report.md` with baseline (p95 5ms, p99 9ms) and top-5 bottlenecks
+
+#### Test Results
+- **4,075 tests passing** (0 failures)
+- All acceptance criteria met: p95 <100ms, error rate <1%, memory <128MB
+
+### Technical Highlights
+- Production-grade load testing via k6 with 12-shard consistent hashing (FNV-1a)
+- 4 composite DB indexes eliminated slow-query bottlenecks
+- WebSocket deflate compression reduces bandwidth without adding latency
+- Profiling baseline established for future optimization tracking
+
+### Documentation Updates
+- Updated `plans/260901-0000-phase-33-performance-tuning/plan.md` — Phase 33 complete
+- Updated `docs/development-roadmap.md` — Phase 33 marked COMPLETE, Phase 34 next
+- Updated `docs/project-changelog.md` — Current entry
+
+---
+
 ## [3.0.0] - 2026-08-04
 
 ### Added - CashClaw Production Deploy & GTM Execution (Next Wave V)

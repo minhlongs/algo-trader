@@ -1,4 +1,4 @@
---- title: "R1: Multi-Tenant Audit Logging" description: "Add tenantId to audit_log table, upgrade audit-middleware, remove :any casts" status: pending priority: P1 effort: 5h branch: main tags: [audit, compliance, multi-tenant] created: 2026-07-17 ---
+--- title: "R1: Multi-Tenant Audit Logging" description: "Add tenantId to audit_log table, upgrade audit-middleware, remove :any casts" status: complete priority: P1 effort: 5h branch: main tags: [audit, compliance, multi-tenant] created: 2026-07-17 ---
 
 # Phase 01: R1 — Multi-Tenant Audit Logging
 

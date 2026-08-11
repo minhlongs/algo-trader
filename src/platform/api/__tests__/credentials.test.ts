@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockSave, mockGet, mockDelete, mockAppendAudit, mockQuery } = vi.hoisted(() => ({
+const { mockSave, mockGet, mockDelete, mockEmitUpsert, mockEmitDeletion, mockQuery } = vi.hoisted(() => ({
   mockSave: vi.fn(),
   mockGet: vi.fn(),
   mockDelete: vi.fn(),
-  mockAppendAudit: vi.fn().mockResolvedValue(undefined),
+  mockEmitUpsert: vi.fn().mockResolvedValue(undefined),
+  mockEmitDeletion: vi.fn().mockResolvedValue(undefined),
   mockQuery: vi.fn().mockResolvedValue({ rows: [] }),
 }));
 
@@ -25,8 +26,9 @@ vi.mock('../../db/tenant-credentials-repository', () => ({
   },
 }));
 
-vi.mock('../../audit/tenant-audit-log', () => ({
-  appendTenantAuditLog: mockAppendAudit,
+vi.mock('../../audit/audit-hooks', () => ({
+  emitCredentialUpsertAuditEvent: mockEmitUpsert,
+  emitCredentialDeletionAuditEvent: mockEmitDeletion,
 }));
 
 import express, { Request, Response, NextFunction } from 'express';
@@ -65,7 +67,13 @@ describe('Credentials Ingestion API', () => {
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('success');
     expect(res.body.message).toBe('Credentials ingested successfully');
-    expect(mockSave).toHaveBeenCalledWith('tenant-123', VALID_BODY);
+    expect(mockSave).toHaveBeenCalledWith('tenant-123', {
+      apiKey: VALID_BODY.apiKey,
+      apiSecret: VALID_BODY.apiSecret,
+      passphrase: VALID_BODY.passphrase ?? null,
+      privateKey: VALID_BODY.privateKey ?? null,
+      publicKey: null,
+    });
   });
 
   it('should return 400 when request body is missing fields', async () => {

@@ -21,9 +21,9 @@ Edge-proxy Worker currently handles auth/health but proxy-routes all /api/* to `
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Iteration1-Subscription-Billing](./phase-01-iteration1-subscription-billing.md) | Pending |
-| 2 | [Iteration2-Telegram-Copilot-CoreAPI](./phase-02-iteration2-telegram-copilot-coreapi.md) | Pending |
-| 3 | [Iteration3-Dashboard-Polish](./phase-03-iteration3-dashboard-polish.md) | Pending |
+| 1 | [Iteration1-Subscription-Billing](./phase-01-iteration1-subscription-billing.md) | Complete |
+| 2 | [Iteration2-Telegram-Copilot-CoreAPI](./phase-02-iteration2-telegram-copilot-coreapi.md) | Complete |
+| 3 | [Iteration3-Dashboard-Polish](./phase-03-iteration3-dashboard-polish.md) | Complete |
 
 ## Dependencies
 

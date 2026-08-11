@@ -17,14 +17,14 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const STRATEGIES_DIR = resolve(__dirname, '../src/strategies/polymarket');
+const STRATEGIES_DIR = resolve(__dirname, '../src/desk/strategies/polymarket');
 const INDEX_FILE = `${STRATEGIES_DIR}/index.ts`;
 
 // --- Step 1: Parse index.ts for all exports ---
 const indexSource = readFileSync(INDEX_FILE, 'utf-8');
 
-// Match value exports:  export { createFooTick } from './foo.js';
-const valueExportRegex = /^export\s*\{\s*([^}]+)\s*\}\s*from\s*'\.\/([^']+)\.js'/gm;
+// Match value exports:  export { createFooTick } from '@desk/strategies/polymarket/foo';
+const valueExportRegex = /^export\s*\{\s*([^}]+)\s*\}\s*from\s*'@desk\/strategies\/polymarket\/([^']+)'/gm;
 
 const valueExports = [];  // { name, file }
 let match;

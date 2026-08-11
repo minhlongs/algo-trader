@@ -1,7 +1,7 @@
 ---
 title: "R3: AES-256-GCM Encryption at Rest"
 description: "Centralized EncryptionService singleton, envelope encryption, batch-migrate tenant_credentials"
-status: pending
+status: complete
 priority: P1
 effort: 7h
 branch: main

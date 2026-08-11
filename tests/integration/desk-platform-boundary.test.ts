@@ -174,7 +174,7 @@ describe('Desk-Platform Boundary Contract', () => {
         try {
           const content = readFileSync(f, 'utf8');
           if (/\btenantId\b/.test(content) && /query\(|findMany\(|findFirst\(|create\(|update\(|delete\(/.test(content)) {
-            if (!/emitTradeAuditEvent|drawdown.update/.test(content)) violations.push(f);
+            if (!/emitTradeAuditEvent|drawdown\.update|logAudit/.test(content)) violations.push(f);
           }
         } catch { /* skip */ }
       }

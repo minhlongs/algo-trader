@@ -14,7 +14,7 @@ In 24 hours, that changes.
 
 CashClaw — 52 AI strategies. Kelly-optimal sizing. From $99/mo.
 
-cashclaw.cc
+api.cashclaw.cc
 ```
 
 **Polymarket Discord:**
@@ -23,7 +23,7 @@ Hey all — launching something tomorrow that might interest prediction market t
 
 CashClaw: AI-calibrated signals with Kelly Criterion position sizing. 52 strategies running across Polymarket markets. We trade our own signals.
 
-24 hours. cashclaw.cc
+24 hours. api.cashclaw.cc
 ```
 
 ---
@@ -109,7 +109,7 @@ Prediction markets reward the prepared.
 
 52 strategies. Kelly sizing. $99 to start.
 
-→ cashclaw.cc
+→ api.cashclaw.cc
 
 Try it. The math is on your side.
 
@@ -133,7 +133,7 @@ What it does:
 
 We trade our own signals. The platform is built by traders, for traders.
 
-cashclaw.cc — 7-day free trial, no card required for Pro.
+api.cashclaw.cc — 7-day free trial, no card required for Pro.
 
 Happy to answer questions here or in DMs. Not here to shill — here to build.
 ```
@@ -166,7 +166,7 @@ This is early. We have paying customers but we're transparent about what's beta 
 **Pricing:**
 $99-$999/mo. 7-day free trial. We use NOWPayments (USDT). No card required for trial.
 
-cashclaw.cc
+api.cashclaw.cc
 
 Happy to answer technical questions. Roast me.
 ```
@@ -186,7 +186,7 @@ What we're seeing:
 
 The math is working.
 
-cashclaw.cc
+api.cashclaw.cc
 ```
 
 ---
@@ -202,7 +202,7 @@ cashclaw.cc
 
 We're hanging out in [DISCORD/CHANNEL] this weekend for Q&A. Bring your hardest questions about the strategies, the sizing, or the tech.
 
-cashclaw.cc
+api.cashclaw.cc
 ```
 
 ---
@@ -222,7 +222,7 @@ cashclaw.cc
 **Before posting:**
 - [ ] Update Twitter profile/banner with CashClaw branding
 - [x] Fill T+24h post with backtest data (bollinger-squeeze 19.52 Sharpe, 30 strategies tested)
-- [ ] Ensure cashclaw.cc loads fast (test from incognito)
+- [ ] Ensure api.cashclaw.cc loads fast (test from incognito)
 - [ ] Test signup flow end-to-end
 
 **Blocked on:**

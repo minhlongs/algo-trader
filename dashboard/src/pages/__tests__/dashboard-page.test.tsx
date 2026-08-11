@@ -62,7 +62,8 @@ describe('DashboardPage', () => {
   it('renders bento grid sections and widgets', () => {
     render(<DashboardPage />);
 
-    expect(screen.getByText('Dashboard')).toBeTruthy();
+    // There are two "Dashboard" texts (h1 and h2), check the first one (main title)
+    expect(screen.getAllByText('Dashboard')[0]).toBeTruthy();
     expect(screen.getByTestId('candlestick-chart')).toBeTruthy();
     expect(screen.getByText('Strategies & Controls')).toBeTruthy();
     expect(screen.getByText('Emergency Switch')).toBeTruthy();

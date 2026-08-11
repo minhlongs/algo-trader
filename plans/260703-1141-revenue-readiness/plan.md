@@ -1,7 +1,7 @@
 ---
 title: "Revenue Readiness — Stop Building, Start Selling"
 description: "5-track parallel execution to make algo-trader revenue-ready: fix pricing chaos + broken CI, wire subscriber pages, persist billing, add i18n, consolidate landing page + launch Discord."
-status: in_progress
+status: complete
 priority: P0
 branch: main
 tags: ["revenue", "pricing", "frontend", "billing", "i18n", "infra"]

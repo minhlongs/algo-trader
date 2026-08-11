@@ -12,7 +12,9 @@
 
 import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
 import { logger } from '../utils/logger';
-import { appendTenantAuditLog } from '../audit/tenant-audit-log';
+import crypto from 'crypto';
+import { logAudit, hashIpAddress } from '../../seed/security/audit-log';
+import type { IAuditEntry } from '../../seed/security/audit-log';
 
 export interface ExecutionResult {
   id: string;
@@ -151,12 +153,14 @@ export class OrderExecutor {
         execution.status = 'PARTIAL';
       }
 
-      await appendTenantAuditLog(
-        'system-tenant',
-        'order_executed',
-        'system',
-        `Order execution completed with status ${execution.status}`,
-        {
+      await logAudit({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        actor: 'system',
+        action: 'order_executed',
+        resource: 'Order',
+        result: execution.status === 'FILLED' ? 'success' : 'failure',
+        metadata: {
           executionId: execution.id,
           opportunityId: execution.opportunityId,
           status: execution.status,
@@ -164,8 +168,10 @@ export class OrderExecutor {
           error: execution.error,
           buyOrder: execution.buyOrder,
           sellOrder: execution.sellOrder,
-        }
-      ).catch((err) => logger.error('[OrderExecutor] Failed to append tenant audit log:', err));
+        },
+        ipHash: hashIpAddress(undefined),
+        tenantId: 'system-tenant',
+      } as IAuditEntry).catch((err) => logger.error('[OrderExecutor] Failed to append tenant audit log:', err));
 
       return execution;
     } catch (error) {
@@ -174,12 +180,14 @@ export class OrderExecutor {
       }
       execution.error = error instanceof Error ? error.message : 'Unknown error';
 
-      await appendTenantAuditLog(
-        'system-tenant',
-        'order_executed',
-        'system',
-        `Order execution completed with status ${execution.status}`,
-        {
+      await logAudit({
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        actor: 'system',
+        action: 'order_executed',
+        resource: 'Order',
+        result: 'failure',
+        metadata: {
           executionId: execution.id,
           opportunityId: execution.opportunityId,
           status: execution.status,
@@ -187,8 +195,10 @@ export class OrderExecutor {
           error: execution.error,
           buyOrder: execution.buyOrder,
           sellOrder: execution.sellOrder,
-        }
-      ).catch((err) => logger.error('[OrderExecutor] Failed to append tenant audit log:', err));
+        },
+        ipHash: hashIpAddress(undefined),
+        tenantId: 'system-tenant',
+      } as IAuditEntry).catch((err) => logger.error('[OrderExecutor] Failed to append tenant audit log:', err));
 
       return execution;
     }

@@ -5,7 +5,6 @@ import { AuditLogService } from '@platform/audit/audit-log-service';
 import { z } from 'zod';
 import QueryStream from 'pg-query-stream';
 import { logger } from '@platform/utils/logger';
-import { appendTenantAuditLog } from '@platform/audit/tenant-audit-log';
 
 export const auditRouter: Router = Router();
 const auditService = AuditLogService.getInstance();
