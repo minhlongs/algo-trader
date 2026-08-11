@@ -5,7 +5,9 @@
 
 import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
-import { appendTenantAuditLog } from '../../platform/audit/tenant-audit-log';
+import crypto from 'crypto';
+import { logAudit, hashIpAddress } from '../../seed/security/audit-log';
+import type { IAuditEntry } from '../../seed/security/audit-log';
 
 export interface DrawdownConfig {
   maxDailyDrawdown: number;
@@ -202,13 +204,21 @@ export class DrawdownMonitor {
       triggeredAt: triggeredAt.toString(),
     });
 
-    await appendTenantAuditLog(
-      'system-tenant',
-      'drawdown_halt',
-      'system',
-      `Drawdown breach: ${reason}`,
-      { state: 'HALTED', triggeredAt }
-    ).catch((err) => logger.error('[DrawdownMonitor] Failed to append tenant audit log:', err));
+    await logAudit({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      actor: 'system',
+      action: 'drawdown_halt',
+      resource: 'Drawdown',
+      result: 'failure',
+      metadata: {
+        state: 'HALTED',
+        triggeredAt,
+        reason,
+      },
+      ipHash: hashIpAddress(undefined),
+      tenantId: 'system-tenant',
+    } as IAuditEntry).catch((err) => logger.error('[DrawdownMonitor] Failed to append tenant audit log:', err));
 
     logger.warn(`[DrawdownMonitor] HALTED: ${reason}`);
   }
@@ -227,13 +237,19 @@ export class DrawdownMonitor {
     const state = await this.getState();
     await this.redis.set('drawdown:daily_start', state.currentValue.toString());
 
-    await appendTenantAuditLog(
-      'system-tenant',
-      'drawdown_resume',
-      'system',
-      'Drawdown halted trading resumed',
-      { state: 'ACTIVE' }
-    ).catch((err) => logger.error('[DrawdownMonitor] Failed to append tenant audit log:', err));
+    await logAudit({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      actor: 'system',
+      action: 'drawdown_resume',
+      resource: 'Drawdown',
+      result: 'success',
+      metadata: {
+        state: 'ACTIVE',
+      },
+      ipHash: hashIpAddress(undefined),
+      tenantId: 'system-tenant',
+    } as IAuditEntry).catch((err) => logger.error('[DrawdownMonitor] Failed to append tenant audit log:', err));
 
     logger.info('[DrawdownMonitor] RESUMED');
   }

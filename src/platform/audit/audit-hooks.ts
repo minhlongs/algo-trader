@@ -1,5 +1,6 @@
-import { appendTenantAuditLog } from './tenant-audit-log';
-import type { TenantAuditEventType } from './audit-event-types';
+import crypto from 'crypto';
+import { logAudit, hashIpAddress } from '../../seed/security/audit-log';
+import type { IAuditEntry } from '../../seed/security/audit-log';
 import type { TenantId } from '../../shared/tenant';
 
 export interface RateLimitAuditMetadata {
@@ -13,18 +14,22 @@ export interface RateLimitAuditMetadata {
 export async function emitRateLimitAuditEvent(
   params: RateLimitAuditMetadata,
 ): Promise<void> {
-  await appendTenantAuditLog(
-    params.tenantId,
-    'rate_limit.exceeded',
-    'system',
-    `429 returned to ${params.endpoint}`,
-    {
-      endpoint: params.endpoint,
+  await logAudit({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    actor: params.tenantId,
+    action: 'rate_limit.exceeded',
+    resource: 'RateLimit',
+    result: 'denied',
+    metadata: {
       tier: params.tier,
+      endpoint: params.endpoint,
       remainingMs: params.remainingMs,
       retryAfter: params.retryAfter,
     },
-  );
+    ipHash: hashIpAddress(undefined), // IP not available in this context
+    tenantId: params.tenantId,
+  } as IAuditEntry);
 }
 
 export interface CredentialDeletionAuditMetadata {
@@ -36,13 +41,19 @@ export interface CredentialDeletionAuditMetadata {
 export async function emitCredentialDeletionAuditEvent(
   params: CredentialDeletionAuditMetadata,
 ): Promise<void> {
-  await appendTenantAuditLog(
-    params.tenantId,
-    'credentials.deleted',
-    params.actionBy,
-    `Credentials deleted via ${params.endpoint}`,
-    { endpoint: params.endpoint },
-  );
+  await logAudit({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    actor: params.actionBy,
+    action: 'credentials.deleted',
+    resource: 'Credentials',
+    result: 'success',
+    metadata: {
+      endpoint: params.endpoint,
+    },
+    ipHash: hashIpAddress(undefined),
+    tenantId: params.tenantId,
+  } as IAuditEntry);
 }
 
 export interface CredentialUpsertAuditMetadata {
@@ -54,13 +65,19 @@ export interface CredentialUpsertAuditMetadata {
 export async function emitCredentialUpsertAuditEvent(
   params: CredentialUpsertAuditMetadata,
 ): Promise<void> {
-  await appendTenantAuditLog(
-    params.tenantId,
-    'credentials.upsert',
-    params.actionBy,
-    `Credentials upserted via ${params.endpoint}`,
-    { endpoint: params.endpoint },
-  );
+  await logAudit({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    actor: params.actionBy,
+    action: 'credentials.upsert',
+    resource: 'Credentials',
+    result: 'success',
+    metadata: {
+      endpoint: params.endpoint,
+    },
+    ipHash: hashIpAddress(undefined),
+    tenantId: params.tenantId,
+  } as IAuditEntry);
 }
 
 export interface TradeAuditMetadata {
@@ -71,22 +88,26 @@ export interface TradeAuditMetadata {
 }
 
 export async function emitTradeAuditEvent(params: {
-  eventType: Extract<
-    TenantAuditEventType,
-    'trade_executed' | 'trade_rejected'
-  >;
+  eventType: 'trade_executed' | 'trade_rejected';
   tenantId: TenantId;
   actionBy: string;
   reason?: string;
   metadata?: Record<string, unknown>;
 }): Promise<void> {
-  await appendTenantAuditLog(
-    params.tenantId,
-    params.eventType,
-    params.actionBy,
-    params.reason ?? params.eventType,
-    params.metadata ?? {},
-  );
+  await logAudit({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    actor: params.actionBy,
+    action: params.eventType,
+    resource: 'Trade',
+    result: params.eventType === 'trade_executed' ? 'success' : 'denied',
+    metadata: {
+      reason: params.reason ?? params.eventType,
+      ...params.metadata,
+    },
+    ipHash: hashIpAddress(undefined),
+    tenantId: params.tenantId,
+  } as IAuditEntry);
 }
 
 export interface ConfigAuditMetadata {
@@ -99,11 +120,18 @@ export interface ConfigAuditMetadata {
 export async function emitConfigAuditEvent(
   params: ConfigAuditMetadata,
 ): Promise<void> {
-  await appendTenantAuditLog(
-    params.tenantId,
-    'config_changed',
-    params.actionBy,
-    params.reason ?? 'config_changed',
-    params.metadata ?? {},
-  );
+  await logAudit({
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    actor: params.actionBy,
+    action: 'config.changed',
+    resource: 'Config',
+    result: 'success',
+    metadata: {
+      reason: params.reason ?? 'config_changed',
+      ...params.metadata,
+    },
+    ipHash: hashIpAddress(undefined),
+    tenantId: params.tenantId,
+  } as IAuditEntry);
 }

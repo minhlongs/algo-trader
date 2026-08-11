@@ -10,7 +10,9 @@ import { z } from 'zod';
 import { CircuitBreaker } from '../../../desk/risk/circuit-breaker';
 import { DrawdownMonitor } from '../../../desk/risk/drawdown-monitor';
 import { requireAdminKey } from '../middleware/require-admin-key';
-import { appendTenantAuditLog } from '../../audit/tenant-audit-log';
+import crypto from 'crypto';
+import { logAudit, hashIpAddress } from '../../../seed/security/audit-log';
+import type { IAuditEntry } from '../../../seed/security/audit-log';
 
 // Zod schemas for request body validation
 const haltSchema = z.object({
@@ -35,13 +37,19 @@ adminRouter.post('/halt', async (req: Request, res: Response) => {
 
     await circuitBreaker.halt(parsed.data.reason);
 
-    await appendTenantAuditLog(
-      'system-tenant',
-      'admin_halt',
-      'admin',
-      `Admin forced halt: ${parsed.data.reason}`,
-      { reason: parsed.data.reason }
-    );
+    await logAudit({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      actor: 'admin',
+      action: 'admin_halt',
+      resource: 'Trading',
+      result: 'success',
+      metadata: {
+        reason: parsed.data.reason,
+      },
+      ipHash: hashIpAddress(undefined),
+      tenantId: 'system-tenant',
+    } as IAuditEntry);
 
     res.json({ success: true, message: `Trading halted: ${parsed.data.reason}` });
   } catch (error) {
@@ -60,13 +68,17 @@ adminRouter.post('/resume', async (req: Request, res: Response) => {
     await circuitBreaker.reset();
     await drawdownMonitor.resume();
 
-    await appendTenantAuditLog(
-      'system-tenant',
-      'admin_resume',
-      'admin',
-      'Admin forced resume',
-      {}
-    );
+    await logAudit({
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      actor: 'admin',
+      action: 'admin_resume',
+      resource: 'Trading',
+      result: 'success',
+      metadata: {},
+      ipHash: hashIpAddress(undefined),
+      tenantId: 'system-tenant',
+    } as IAuditEntry);
 
     res.json({ success: true, message: 'Trading resumed' });
   } catch (error) {

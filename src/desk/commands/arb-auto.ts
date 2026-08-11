@@ -1,14 +1,27 @@
 /**
  * ARB:AUTO Command - Autonomous Arbitrage Trading
- * Full autonomous trading loop with WS feeds, spread detection, atomic execution
+ * Unified engine orchestrating all arbitrage strategies under single CLI
+ * Supports: cross-exchange, triangular, dex-cex, funding-rate, binary-arb, split-merge, cross-market
  */
 
-import { TradingLoop } from '../arbitrage/trading-loop';
+import { createStrategyOrchestrator, OrchestratorConfig } from '../arbitrage/orchestrator';
+import { UnifiedExecutorConfig } from '../arbitrage/unified-executor';
 import { logger } from '../../shared/utils/logger';
 import { existsSync } from 'fs';
 import { join } from 'path';
 
 const ENV_PATH = join(process.cwd(), '.env');
+
+// Supported strategy types
+export type StrategyType =
+  | 'cross-exchange'
+  | 'triangular'
+  | 'dex-cex'
+  | 'funding-rate'
+  | 'binary-arb'
+  | 'settlement-arb'
+  | 'cross-market'
+  | 'all';
 
 export interface AutoCommandOptions {
   symbols?: string;
@@ -16,10 +29,12 @@ export interface AutoCommandOptions {
   minSpread?: number;
   dryRun?: boolean;
   verbose?: boolean;
+  strategy?: StrategyType;
+  maxQueueSize?: number;
 }
 
 export async function runArbAuto(options: AutoCommandOptions = {}): Promise<void> {
-  logger.info('\n⚡ ARB:AUTO — Autonomous Arbitrage Trading\n');
+  logger.info('\n⚡ ARB:AUTO — Unified Arbitrage Execution Engine\n');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   // Check configuration
@@ -45,13 +60,20 @@ export async function runArbAuto(options: AutoCommandOptions = {}): Promise<void
   const minSpread = options.minSpread || 0.05;
   const dryRun = options.dryRun ?? true;
   const verbose = options.verbose ?? true;
+  const strategy = options.strategy || 'all';
+  const maxQueueSize = options.maxQueueSize || 50;
+
+  // Strategy display name
+  const strategyLabel = strategy === 'all' ? 'ALL STRATEGIES' : strategy.toUpperCase().replace('-ARB', '-ARB').replace('SETTLEMENT-ARB', 'SPLIT-MERGE');
 
   logger.info('📋 Configuration:');
   logger.info(`  Symbols: ${symbols.join(', ')}`);
   logger.info(`  Exchanges: ${exchanges.join(', ')}`);
   logger.info(`  Min Spread: ${minSpread}%`);
   logger.info(`  Mode: ${dryRun ? 'DRY-RUN' : 'LIVE'}`);
-  logger.info(`  Verbose: ${verbose ? 'Yes' : 'No'}\n`);
+  logger.info(`  Verbose: ${verbose ? 'Yes' : 'No'}`);
+  logger.info(`  Strategy: ${strategyLabel}`);
+  logger.info(`  Max Queue: ${maxQueueSize}\n`);
 
   if (dryRun) {
     logger.info('📝 DRY-RUN MODE — No real trades will be executed\n');
@@ -66,90 +88,86 @@ export async function runArbAuto(options: AutoCommandOptions = {}): Promise<void
 
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-  // Initialize trading loop
-  const tradingLoop = new TradingLoop({
+  // Build execution config for unified engine
+  const executionConfig: UnifiedExecutorConfig = {
+    dryRun,
+    maxPositionSize: 1000,
+    slippageTolerance: 0.5,
+    minProfitThreshold: minSpread,
+    timeoutMs: 5000,
+    binary: {
+      kellyFraction: 0.25,
+      maxDrawdownPct: 20,
+      maxPositionSize: 1000,
+      dryRun,
+    },
+    splitMerge: {
+      minProfitThreshold: minSpread,
+      minVolume: 1000,
+      maxPositionSize: 1000,
+      dryRun,
+    },
+    crossMarket: {
+      budgetUsdc: 10000,
+      maxMarketExposureFraction: 0.2,
+      minEdgeThreshold: minSpread,
+      feeRate: 0.001,
+      timeoutMs: 5000,
+      dryRun,
+    },
+  };
+
+  // Initialize strategy orchestrator
+  const orchestrator = createStrategyOrchestrator({
     symbols,
     exchanges: exchanges as ('binance' | 'okx' | 'bybit')[],
     minSpreadPercent: minSpread,
-    enableDryRun: dryRun,
-    enableLogging: verbose,
+    dryRun,
+    verbose,
+    maxQueueSize,
+    executionConfig,
     checkIntervalMs: 100,
+    strategy: strategy as OrchestratorConfig['strategy'],
   });
 
-  // Setup event handlers
-  tradingLoop.on('started', (data) => {
-    logger.info(`\n✅ Trading loop started`);
+  // Setup event handlers for backward compatibility
+  orchestrator.on('started', (data) => {
+    logger.info(`\n✅ Strategy Orchestrator started`);
     logger.info(`   Symbols: ${data.symbols.length}`);
-    logger.info(`   Exchanges: ${data.exchanges.length}\n`);
-  });
-
-  tradingLoop.on('opportunity', (opp) => {
-    logger.info(`\n🎯 OPPORTUNITY DETECTED`);
-    logger.info(`   ID: ${opp.id}`);
-    logger.info(`   Symbol: ${opp.symbol}`);
-    logger.info(`   Buy: ${opp.buyExchange} @ $${opp.buyPrice}`);
-    logger.info(`   Sell: ${opp.sellExchange} @ $${opp.sellPrice}`);
-    logger.info(`   Spread: ${opp.spreadPercent.toFixed(4)}%`);
-    logger.info(`   Score: ${opp.score || 'N/A'}`);
-    logger.info(`   Confidence: ${opp.confidence || 'N/A'}\n`);
-  });
-
-  tradingLoop.on('execution', ({ opportunity, result }) => {
-    if (result.success) {
-      logger.info(`\n✅ EXECUTION SUCCESS`);
-      logger.info(`   Opportunity: ${opportunity.id}`);
-      logger.info(`   Profit: $${result.actualProfit.toFixed(2)} (${result.actualProfitPct.toFixed(4)}%)\n`);
-    } else {
-      logger.info(`\n❌ EXECUTION FAILED`);
-      logger.info(`   Opportunity: ${opportunity.id}`);
-      logger.info(`   Error: ${result.error}\n`);
-    }
-  });
-
-  tradingLoop.on('stopped', (metrics) => {
-    logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info('📊 TRADING LOOP STOPPED');
-    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info(`   Uptime: ${metrics.uptimeMs}ms`);
-    logger.info(`   Opportunities: ${metrics.opportunitiesFound}`);
-    logger.info(`   Executed: ${metrics.opportunitiesExecuted}`);
-    logger.info(`   Total Profit: $${metrics.totalProfit.toFixed(2)}`);
-    logger.info(`   Avg Latency: ${metrics.avgLatencyMs}ms`);
-    logger.info(`   P95 Latency: ${metrics.p95LatencyMs}ms`);
-    logger.info(`   Errors: ${metrics.errors}`);
-    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    logger.info(`   Exchanges: ${data.exchanges.length}`);
+    logger.info(`   Strategy: ${strategyLabel}\n`);
   });
 
   // Handle graceful shutdown
   const shutdown = async () => {
     logger.info('\n\n🛑 Shutdown requested...\n');
-    await tradingLoop.stop();
+    await orchestrator.stop();
     process.exit(0);
   };
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
-  // Start trading loop
+  // Start orchestrator
   try {
-    await tradingLoop.start();
+    await orchestrator.start();
 
     logger.info('🔍 Scanning markets for arbitrage opportunities...\n');
     logger.info('Press Ctrl+C to stop\n');
 
     // Print metrics periodically
     setInterval(() => {
-      const metrics = tradingLoop.getMetrics();
+      const metrics = orchestrator.getMetrics();
       if (metrics.isRunning) {
-        logger.info(`\n📈 METRICS: Opps=${metrics.opportunitiesFound} Exec=${metrics.opportunitiesExecuted} P95=${metrics.p95LatencyMs}ms Profit=$${metrics.totalProfit.toFixed(2)}\n`);
+        logger.info(`\n📈 METRICS: Scans=${metrics.scansPerformed} Detected=${metrics.opportunitiesDetected} Scored=${metrics.signalsScored} Actionable=${metrics.actionableSignals} Executed=${metrics.executionsSucceeded}/${metrics.executionsAttempted} P95-Det=${metrics.p95DetectionLatencyMs}ms P95-Exec=${metrics.p95ExecutionLatencyMs}ms Profit=$${metrics.totalProfit.toFixed(2)} Queue=${metrics.queueSize}/${metrics.queueDropped}\n`);
       }
     }, 60000); // Every minute
 
   } catch (error) {
-    logger.error('\n❌ TRADING LOOP ERROR\n');
+    logger.error('\n❌ ORCHESTRATOR ERROR\n');
     logger.error(error instanceof Error ? error.message : String(error));
     logger.error('\nPlease check your configuration and try again.\n');
-    await tradingLoop.stop();
+    await orchestrator.stop();
     process.exit(1);
   }
 }

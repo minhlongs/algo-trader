@@ -9,7 +9,9 @@ import { SpreadDetector, ArbitrageOpportunity as SpreadOpportunity } from './spr
 import { ExecutionEngine, ArbitrageOpportunity, ArbitrageLeg, ExchangeId } from './types';
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
-import { appendTenantAuditLog } from '../audit/tenant-audit-log';
+import crypto from 'crypto';
+import { logAudit, hashIpAddress } from '../../seed/security/audit-log';
+import type { IAuditEntry } from '../../seed/security/audit-log';
 
 export interface TradingLoopConfig {
   symbols: string[];
@@ -284,19 +286,23 @@ export class TradingLoop extends EventEmitter {
           const result = await this.executionEngine.execute(arbitrageOpp);
           this.metrics.opportunitiesExecuted++;
 
-          await appendTenantAuditLog(
-            'system-tenant',
-            'trade_decision',
-            'system',
-            `Trade decision: Arbitrage opportunity ${opp.id} selected for execution`,
-            {
+          await logAudit({
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            actor: 'system',
+            action: 'trade_decision',
+            resource: 'Trade',
+            result: 'success',
+            metadata: {
               opportunityId: opp.id,
               symbol: opp.symbol,
               spreadPercent: opp.spreadPercent,
               confidence: opp.confidence,
               score: opp.score,
-            }
-          ).catch((err) => logger.error('[TradingLoop] Failed to append tenant audit log:', err));
+            },
+            ipHash: hashIpAddress(undefined),
+            tenantId: 'system-tenant',
+          } as IAuditEntry).catch((err) => logger.error('[TradingLoop] Failed to append tenant audit log:', err));
 
           if (result.success) {
             this.metrics.totalProfit += result.actualProfit;
