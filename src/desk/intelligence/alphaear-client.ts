@@ -13,7 +13,7 @@
 
 import { logger } from '../core/logger';
 
-const SIDECAR_URL = process.env['ALPHAEAR_SIDECAR_URL'] || 'http://host.docker.internal:8100';
+const SIDECAR_URL = process.env['ALPHAEAR_SIDECAR_URL'] || '';
 const TIMEOUT_MS = 30_000;
 
 // ──── Types ────

@@ -13,8 +13,8 @@ export interface LlmConfig {
 
 export function loadLlmConfig(): LlmConfig {
   const primary: LlmProviderConfig = {
-    url: process.env.LLM_PRIMARY_URL ?? process.env.OPENROUTER_API_URL ?? 'https://openrouter.ai/api/v1',
-    model: process.env.LLM_PRIMARY_MODEL ?? process.env.OPENROUTER_MODEL ?? 'anthropic/claude-3-5-sonnet',
+    url: process.env.LLM_PRIMARY_URL ?? process.env.OPENROUTER_API_URL ?? 'https://api.deepseek.com/v1',
+    model: process.env.LLM_PRIMARY_MODEL ?? process.env.OPENROUTER_MODEL ?? 'deepseek-v4-flash-0731',
     apiKey: process.env.LLM_PRIMARY_API_KEY ?? process.env.OPENROUTER_API_KEY,
   };
 
