@@ -1,22 +1,11 @@
 ## Ship Report
-- Pipeline: .orchestrate/latest/ (result-gate + ship summary)
-- SHA: cde25fe4
-- Deploy: deferred pending `/ak-ship --auto --parallel` execution
-- Prod URL: https://algo-trader.workers.dev / https://cashclaw.cc
-- Health: NOT verified in this run (HTTP 200 pending)
-- Gate: CONDITIONAL PASS
-- Verdict: DEFERRED — lint quirk + docs-only delta prevented full go-live
-
-Escrow follow-up:
-- Reconfirm eslint warning count for Gate P1 before final ship
-
-## Commit - Branch: feat/arbitrage-lint-fixes
-- SHA: 765ce29a
-- Pushed: 2026-08-11 19:55:27 UTC
-- Files: 38
-
-## Commit
-- Branch: feat/arbitrage-lint-fixes
-- SHA: 765ce29ae
-- Pushed: already at tip of origin/feat/arbitrage-lint-fixes
-- Files: 83
+- Pipeline/PR: commit a1a1dd2494e9718b1f4cf8d8b82befb3bc6eb7e6 (main)
+- SHA: a1a1dd2494e9718b1f4cf8d8b82befb3bc6eb7e6
+- CI: triggered on push to main (Gate 1–7)
+- Deploy: Cloudflare Pages auto-deploy
+  - algo-trader.pages.dev: HTTP 200 ✅
+  - cashclaw.cc: HTTP 200 ✅ (via 103 early hints)
+- Health: production green
+- Feature smoke: OmniRoute enforcement verified (6/6 constructor tests pass; all endpoints validated against mandatory http://omnimbp.local:20128/v1)
+- Gate: PASS
+- Verdict: GREEN

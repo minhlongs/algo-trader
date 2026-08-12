@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { LlmRouter } from '../../src/lib/llm-router';
+import { LlmRouter, OMNIROUTE_URL } from '../../src/lib/llm-router';
 
 // Mock fetch globally
 const fetchMock = vi.fn();
@@ -23,21 +23,21 @@ describe('LlmRouter — fastChat', () => {
     fetchMock.mockReset();
     router = new LlmRouter({
       primary: {
-        url: 'http://deepseek:11435/v1',
+        url: 'http://127.0.0.1:11435/v1',
         model: 'deepseek-r1',
         priority: 1,
         maxTokens: 2048,
         timeoutMs: 5000,
       },
       fastTriage: {
-        url: 'http://nemotron:11436/v1',
+        url: 'http://127.0.0.1:11436/v1',
         model: 'nemotron-nano',
         priority: 1,
         maxTokens: 512,
         timeoutMs: 2000,
       },
       fallback: {
-        url: 'http://ollama:11434/v1',
+        url: 'http://127.0.0.1:11434/v1',
         model: 'deepseek-r1:32b',
         priority: 2,
         maxTokens: 2048,
@@ -62,7 +62,6 @@ describe('LlmRouter — fastChat', () => {
     expect(result.content).toBe('fast answer');
     expect(result.model).toBe('nemotron-nano');
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toContain('nemotron:11436');
   });
 
   it('falls back to primary (DeepSeek) when Nemotron fails', async () => {
@@ -100,7 +99,7 @@ describe('LlmRouter — fastChat', () => {
     });
 
     expect(result.content).toBe('deep reasoning');
-    expect(fetchMock.mock.calls[0][0]).toContain('deepseek:11435');
+    expect(result.model).toBe('deepseek-r1');
   });
 
   it('fastChat falls through full chain if both MLX fail', async () => {

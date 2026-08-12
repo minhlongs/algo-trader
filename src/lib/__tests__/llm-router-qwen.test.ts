@@ -150,6 +150,7 @@ describe('LlmRouter.qwenChat()', () => {
     expect(result.provider).toBe('mlx-qwen');
     expect(result.content).toBe('');
     expect(result.tokensUsed).toBe(10);
+  expect(result.usage).toBeUndefined();
   });
 
   it('handles concurrent qwenChat requests independently', async () => {
