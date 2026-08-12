@@ -2,13 +2,13 @@
  * LLM Configuration for M1 Max 64GB
  *
  * Bare-metal MLX servers (mlx_lm.server, NOT Ollama):
- *   DeepSeek R1 :11435 — deep reasoning (~10 tok/s, 90s timeout)
- *   Nemotron Nano :11436 — fast triage (~45 tok/s, 10s timeout)
- *   Qwen3-30B :11437 — long-context / MoE reasoning (opt-in via LLM_QWEN_ENABLED)
+ * DeepSeek R1 :11435 — deep reasoning (~10 tok/s, 90s timeout)
+ * Nemotron Nano :11436 — fast triage (~45 tok/s, 10s timeout)
+ * Qwen3-30B :11437 — long-context / MoE reasoning (opt-in via LLM_QWEN_ENABLED)
  *
- * Fallback chain: MLX primary → Ollama → Claude cloud
- * Fast triage: Nemotron → MLX primary → Ollama → Claude cloud
- * Qwen route: Qwen → MLX primary → Ollama → Claude cloud
+ * Fallback chain: MLX primary → Ollama
+ * Fast triage: Nemotron → MLX primary → Ollama
+ * Qwen route: Qwen → MLX primary → Ollama
  */
 
 export interface LlmEndpoint {
