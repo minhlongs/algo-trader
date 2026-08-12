@@ -5,7 +5,7 @@
  * Rate limit: 1 analysis/hour. Hard limits: min_edge>=1.5%, max_exposure<=30%.
  */
 
-import { loadLlmConfig } from '../../shared/config/llm-config';
+import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { getMessageBus } from '../../shared/messaging/index';
 import { logger } from '../../shared/utils/logger';
 
@@ -13,16 +13,16 @@ const ANALYSIS_THRESHOLD = 10;
 const BUFFER_MAX = 50;
 const RATE_LIMIT_MS = 3_600_000; // 1 hour
 const LLM_TIMEOUT_MS = 90_000;
-const HARD_MIN_EDGE = 0.015;     // 1.5% floor
-const HARD_MAX_EXPOSURE = 0.30;  // 30% ceiling
+const HARD_MIN_EDGE = 0.015; // 1.5% floor
+const HARD_MAX_EXPOSURE = 0.30; // 30% ceiling
 const NATS_TOPIC = 'intelligence.ilp.evolution';
 
 export interface MissedOpportunity {
   marketId: string;
   yesPrice: number;
   noPrice: number;
-  actualEdge: number;   // edge that existed when solver skipped it
-  reason: string;       // e.g. "below min_edge threshold"
+  actualEdge: number; // edge that existed when solver skipped it
+  reason: string; // e.g. "below min_edge threshold"
   timestamp: number;
 }
 
@@ -31,7 +31,7 @@ export interface ConstraintSuggestion {
   currentValue: number;
   suggestedValue: number;
   reasoning: string;
-  confidence: number;   // 0–1
+  confidence: number; // 0–1
 }
 
 export interface EvolutionResult {
@@ -42,7 +42,7 @@ export interface EvolutionResult {
 
 export interface CurrentConstraints {
   budgetUsdc: number;
-  minEdge: number;           // decimal fraction, e.g. 0.025
+  minEdge: number; // decimal fraction, e.g. 0.025
   maxMarketExposure: number; // decimal fraction, e.g. 0.20
 }
 
@@ -111,7 +111,7 @@ async function runEvolutionAnalysis(opportunities: MissedOpportunity[], current:
 }
 
 async function callDeepSeek(opportunities: MissedOpportunity[], current: CurrentConstraints): Promise<string> {
-  const { primary: endpoint } = loadLlmConfig();
+  const router = new LlmRouter();
 
   const missedSummary = opportunities
     .map(o => `marketId=${o.marketId} edge=${(o.actualEdge * 100).toFixed(2)}% reason="${o.reason}"`)
@@ -136,24 +136,18 @@ Respond ONLY with a JSON array. Each element must have:
 
 Output nothing else.`;
 
-  const body = {
-    model: endpoint.model,
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.1,
-    max_tokens: 1024,
-  };
+  const messages: ChatMessage[] = [
+    { role: 'system', content: 'You are a prediction market analyst. Suggest ILP constraint modifications to capture more arbitrage opportunities. Respond ONLY with valid JSON arrays.' },
+    { role: 'user', content: prompt },
+  ];
 
-  const resp = await fetch(`${endpoint.url}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+  const response = await router.chat({
+    messages,
+    temperature: 0.1,
+    maxTokens: 1024,
   });
 
-  if (!resp.ok) throw new Error(`LLM HTTP ${resp.status}`);
-
-  const data = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content ?? '[]';
+  return response.content;
 }
 
 function parseSuggestions(raw: string, current: CurrentConstraints): ConstraintSuggestion[] {

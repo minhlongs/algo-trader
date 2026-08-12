@@ -1,12 +1,12 @@
 /**
  * News Impact Analyzer
- * Fetches news from RSS/API sources, calls DeepSeek to assess Polymarket market impact.
+ * Fetches news from RSS/API sources, calls LLM via LlmRouter to assess Polymarket market impact.
  * Publishes impact scores via news-market-correlator.
  *
  * Env: NEWS_FEED_URLS (comma-separated RSS/JSON API URLs)
  */
 
-import { loadLlmConfig } from '../../shared/config/llm-config';
+import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { logger } from '../../shared/utils/logger';
 
 // ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ const setInCache = (key: string, result: NewsImpactResult) =>
   analysisCache.set(key, { result, expiresAt: Date.now() + CACHE_TTL_MS });
 
 // ---------------------------------------------------------------------------
-// DeepSeek API call
+// LLM call via LlmRouter
 // ---------------------------------------------------------------------------
 
 const SYSTEM_PROMPT = `You are a prediction market analyst. Given a news headline and a list of active Polymarket markets, identify which markets are affected by the news.
@@ -72,12 +72,11 @@ Respond ONLY with a JSON array. Each element must have:
 
 Only include markets with magnitude >= 0.1. Output nothing else.`;
 
-async function callDeepSeekForImpact(
+async function callLlmForImpact(
   newsItem: NewsItem,
   markets: ActiveMarket[],
 ): Promise<MarketImpact[]> {
-  const llmConfig = loadLlmConfig();
-  const { url: llmUrl, model: llmModel, timeoutMs } = llmConfig.primary;
+  const router = new LlmRouter();
 
   const marketList = markets
     .map(m => `ID: ${m.id} | Question: ${m.question}`)
@@ -90,29 +89,18 @@ ${marketList}
 
 Which of these markets are affected by this news?`;
 
-  const body = {
-    model: llmModel,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userContent },
-    ],
-    temperature: 0.1,
-    max_tokens: 1024,
-  };
+  const messages: ChatMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: userContent },
+  ];
 
-  const resp = await fetch(`${llmUrl}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
+  const response = await router.chat({
+    messages,
+    temperature: 0.1,
+    maxTokens: 1024,
   });
 
-  if (!resp.ok) {
-    throw new Error(`LLM API error: HTTP ${resp.status}`);
-  }
-
-  const data = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
-  const raw = data.choices?.[0]?.message?.content ?? '[]';
+  const raw = response.content;
 
   // Extract JSON array from response (model may wrap in markdown)
   const match = raw.match(/\[[\s\S]*\]/);
@@ -188,7 +176,7 @@ export async function fetchNewsItems(): Promise<NewsItem[]> {
 
 /**
  * Analyze a single news item against a list of active markets.
- * Results are cached for 5 minutes to avoid duplicate DeepSeek calls.
+ * Results are cached for 5 minutes to avoid duplicate LLM calls.
  */
 export async function analyzeNewsImpact(
   newsItem: NewsItem,
@@ -203,13 +191,13 @@ export async function analyzeNewsImpact(
 
   let impacts: MarketImpact[] = [];
   try {
-    impacts = await callDeepSeekForImpact(newsItem, markets);
+    impacts = await callLlmForImpact(newsItem, markets);
     logger.info('[NewsImpactAnalyzer] Impact analyzed', {
       title: newsItem.title,
       affectedMarkets: impacts.length,
     });
   } catch (err) {
-    logger.error('[NewsImpactAnalyzer] DeepSeek call failed', { err, title: newsItem.title });
+    logger.error('[NewsImpactAnalyzer] LLM call failed', { err, title: newsItem.title });
   }
 
   const result: NewsImpactResult = { newsItem, impacts, analyzedAt: Date.now() };

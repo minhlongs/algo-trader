@@ -2,10 +2,10 @@
  * Resolution Criteria Analyzer
  * Reads Polymarket market resolution criteria and flags "trick questions" or
  * ambiguous wording that could cause unexpected resolution outcomes.
- * Cache results in memory (1h TTL) to avoid repeated LLM calls per market.
+ * Cache: 1h TTL.
  */
 
-import { loadLlmConfig } from '../../shared/config/llm-config';
+import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { logger } from '../../shared/utils/logger';
 
 export interface MarketInput {
@@ -19,8 +19,8 @@ export interface ResolutionAnalysis {
   marketId: string;
   title: string;
   resolutionSource: string;
-  deadlineDate: string | null;   // ISO date extracted from criteria
-  ambiguityScore: number;        // 0=crystal clear, 1=very ambiguous
+  deadlineDate: string | null; // ISO date extracted from criteria
+  ambiguityScore: number; // 0=crystal clear, 1=very ambiguous
   risks: string[];
   recommendation: 'SAFE' | 'CAUTION' | 'AVOID';
   reasoning: string;
@@ -73,23 +73,22 @@ Flag: subjective criteria, multiple interpretations, tight deadlines, unusual or
 Respond with JSON only.`;
 }
 
-// ─── LLM Call ─────────────────────────────────────────────────────────────────
+// ─── LLM Call via LlmRouter ──────────────────────────────────────────────────
 
-async function callLlm(prompt: string, url: string, model: string): Promise<string> {
-  const resp = await fetch(`${url}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: prompt }],
-      temperature: 0.1,
-      max_tokens: 512,
-    }),
-    signal: AbortSignal.timeout(90_000),
+async function callLlm(prompt: string): Promise<string> {
+  const router = new LlmRouter();
+  const messages: ChatMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: prompt },
+  ];
+
+  const response = await router.chat({
+    messages,
+    temperature: 0.1,
+    maxTokens: 512,
   });
-  if (!resp.ok) throw new Error(`LLM API error: HTTP ${resp.status}`);
-  const data = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content ?? '';
+
+  return response.content;
 }
 
 // ─── Parse ────────────────────────────────────────────────────────────────────
@@ -131,11 +130,9 @@ export async function analyzeResolutionCriteria(market: MarketInput): Promise<Re
   const cached = getCached(market.id);
   if (cached) { logger.debug('[ResolutionAnalyzer] Cache hit', { marketId: market.id }); return cached; }
 
-  const { primary } = loadLlmConfig();
-
   try {
     logger.debug('[ResolutionAnalyzer] Analyzing', { marketId: market.id, title: market.title });
-    const raw = await callLlm(buildPrompt(market), primary.url, primary.model);
+    const raw = await callLlm(buildPrompt(market));
     const analysis = parseResponse(raw, market);
     setCache(market.id, analysis);
 

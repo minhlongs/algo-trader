@@ -7,12 +7,11 @@
  * Env: REFLECTION_ENABLED (default true), REFLECTION_USE_LLM (default true)
  */
 
-import { loadLlmConfig } from '../../shared/config/llm-config';
 import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { getMessageBus } from '../../shared/messaging/index';
 import { logger } from '../../shared/utils/logger';
 
-const llmRouter = new LlmRouter(loadLlmConfig() as any);
+const llmRouter = new LlmRouter();
 
 // ---------------------------------------------------------------------------
 // Public types

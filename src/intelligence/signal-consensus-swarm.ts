@@ -1,12 +1,13 @@
 /**
- * Signal Consensus Swarm — 3 or 4-persona debate for signal validation.
+ * Signal Consensus Swarm —
+ * 3 or 4-persona debate for signal validation.
  * Majority vote (2/3 default, 3/4 with Qwen) determines approve/reject. Reduces false positives 30-40%.
  * Fail-closed: ≥2 failed LLM calls → reject signal.
  * Env: SWARM_CONSENSUS_ENABLED (default true), SWARM_MIN_CONFIDENCE (default 0.6),
- *      SWARM_QWEN_ENABLED (default false) — enables 4th quantitative-analyst persona via Qwen.
+ * SWARM_QWEN_ENABLED (default false) — enables 4th quantitative-analyst persona via Qwen.
  */
 
-import { loadLlmConfig } from '../shared/config/llm-config';
+import { LlmRouter, ChatMessage } from '../lib/llm-router';
 import { logger } from '../shared/utils/logger';
 import type { SignalCandidate } from '../desk/intelligence/signal-validator';
 
@@ -20,149 +21,152 @@ export interface SwarmVote {
 export interface SwarmConsensus {
   approved: boolean;
   votes: SwarmVote[];
-  consensusConfidence: number; // average confidence of majority votes
-  dissent: string | null; // minority reasoning — valuable contrarian signal
+  consensusConfidence: number;
+  dissent: string | null;
 }
 
-type PersonaId = SwarmVote['persona'];
-interface Persona {
-  id: PersonaId;
+export interface PersonaConfig {
+  id: 'risk-analyst' | 'momentum-trader' | 'contrarian' | 'quantitative-analyst';
+  name: string;
   systemPrompt: string;
-  /** If true, routed to Qwen endpoint when SWARM_QWEN_ENABLED=true */
-  useQwen?: boolean;
+  model?: string;
 }
 
-const JSON_SCHEMA_HINT = 'JSON schema: { "vote": "APPROVE"|"REJECT", "confidence": number 0-1, "reasoning": string 1-2 sentences }';
-const JSON_INSTRUCTION = `Respond ONLY with valid JSON. No markdown, no code blocks.\n${JSON_SCHEMA_HINT}`;
-
-const BASE_PERSONAS: Persona[] = [
+const PERSONAS: PersonaConfig[] = [
   {
     id: 'risk-analyst',
-    systemPrompt: `You are a conservative risk analyst reviewing Polymarket arbitrage signals.
-Bias: downside protection. Focus: Is the edge real or a data artifact? Liquidity? Event risk? Slippage?
-Approve ONLY when risk/reward is clearly favorable with solid evidence.\n${JSON_INSTRUCTION}`,
+    name: 'Risk Analyst',
+    systemPrompt: 'You are a risk analyst evaluating a trading signal. Focus on downside risk, tail events, and capital preservation. Be strict and conservative.',
   },
   {
     id: 'momentum-trader',
-    systemPrompt: `You are an aggressive momentum trader reviewing Polymarket arbitrage signals.
-Bias: capturing opportunity. Focus: Volume confirmation, timing, directional momentum, edge vs costs.
-Approve when there is clear opportunity with reasonable confidence.\n${JSON_INSTRUCTION}`,
+    name: 'Momentum Trader',
+    systemPrompt: 'You are a momentum trader. Focus on price trends, volume patterns, and momentum indicators. Be aggressive when signals are strong.',
   },
   {
     id: 'contrarian',
-    systemPrompt: `You are a contrarian skeptic reviewing Polymarket arbitrage signals.
-Bias: questioning crowd wisdom. Focus: Too obvious? Are we exit liquidity? Herding risk? Info asymmetry?
-Approve only when the contrarian case FOR the trade is compelling despite crowd skepticism.\n${JSON_INSTRUCTION}`,
+    name: 'Contrarian',
+    systemPrompt: 'You are a contrarian analyst. Question assumptions, look for hidden risks, and challenge the majority view. Always play devil\'s advocate.',
   },
 ];
 
-/** 4th persona — routed to Qwen MoE when SWARM_QWEN_ENABLED=true */
-const QWEN_PERSONA: Persona = {
+const QWEN_PERSONA: PersonaConfig = {
   id: 'quantitative-analyst',
-  systemPrompt: `You are a quantitative analyst reviewing Polymarket arbitrage signals using statistical reasoning.
-Bias: mathematical rigor. Focus: Edge significance (z-score, sample size), Kelly fraction vs full Kelly,
-market microstructure friction, statistical arbitrage validity over the holding period.
-Approve only when the expected-value calculation survives realistic slippage and fees.\n${JSON_INSTRUCTION}`,
-  useQwen: true,
+  name: 'Quantitative Analyst',
+  systemPrompt: 'You are a quantitative analyst using statistical models to validate trading signals. Focus on expected value, probability distributions, and mathematical rigor.',
+  model: 'qwen',
 };
 
-/** Returns active persona list: 3 base + optional 4th Qwen persona */
-function buildPersonas(): Persona[] {
-  if (process.env.SWARM_QWEN_ENABLED === 'true') {
-    return [...BASE_PERSONAS, QWEN_PERSONA];
+const SWARM_QWEN_ENABLED = process.env.SWARM_QWEN_ENABLED === 'true';
+
+if (SWARM_QWEN_ENABLED) {
+  PERSONAS.push(QWEN_PERSONA);
+}
+
+/**
+ * Parse raw LLM response into structured vote.
+ */
+function parseSwarmVote(raw: string, persona: string): SwarmVote {
+  try {
+    // Remove markdown fences if present
+    const cleaned = raw.replace(/```(?:json)?\n?/g, '').trim();
+    const parsed = JSON.parse(cleaned) as { vote?: string; confidence?: number; reasoning?: string };
+
+    const vote = parsed.vote === 'APPROVE' || parsed.vote === 'REJECT'
+      ? parsed.vote
+      : 'REJECT';
+
+    const confidence = typeof parsed.confidence === 'number'
+      ? Math.max(0, Math.min(1, parsed.confidence))
+      : 0.5;
+
+    const reasoning = typeof parsed.reasoning === 'string'
+      ? parsed.reasoning
+      : 'Parse error — defaulting to reject';
+
+    return { persona: persona as SwarmVote['persona'], vote, confidence, reasoning };
+  } catch {
+    logger.warn(`[SwarmConsensus] Parse failed for persona ${persona}`, { raw: raw.slice(0, 200) });
+    return { persona: persona as SwarmVote['persona'], vote: 'REJECT', confidence: 0, reasoning: 'Parse error — defaulting to reject' };
   }
-  return BASE_PERSONAS;
 }
 
-/** Majority threshold: floor(N/2)+1 → N=3→2, N=4→3 */
-function majorityThreshold(n: number): number {
-  return Math.floor(n / 2) + 1;
-}
+/**
+ * Aggregate votes into consensus decision.
+ */
+function aggregateVotes(votes: SwarmVote[], minConfidence: number): SwarmConsensus {
+  if (votes.length === 0) {
+    return { approved: false, votes: [], consensusConfidence: 0, dissent: 'No votes cast' };
+  }
 
-function buildSignalSummary(signal: SignalCandidate): string {
-  const marketLines = signal.markets
-    .map(m => `  - ${m.title} (id=${m.id}) YES=${m.yesPrice.toFixed(3)} NO=${m.noPrice.toFixed(3)}`)
-    .join('\n');
-  return `Signal type: ${signal.signalType}
-Expected edge: ${(signal.expectedEdge * 100).toFixed(2)}%
-Strategy reasoning: ${signal.reasoning}
-Markets:\n${marketLines}`;
-}
+  const approveCount = votes.filter(v => v.vote === 'APPROVE').length;
+  const rejectCount = votes.length - approveCount;
+  const totalVotes = votes.length;
 
-interface LlmEndpoints {
-  primaryUrl: string;
-  primaryModel: string;
-  qwenUrl?: string;
-  qwenModel?: string;
-}
+  // Majority vote threshold: >50% for 3-persona, ≥75% for 4-persona
+  const majorityThreshold = totalVotes >= 4 ? totalVotes * 0.75 : totalVotes * 0.5;
+  const approved = approveCount >= majorityThreshold;
 
-async function callPersona(
-  persona: Persona,
-  signalSummary: string,
-  endpoints: LlmEndpoints,
-): Promise<string> {
-  // Route quantitative-analyst to Qwen if available, else fall back to primary
-  const useQwenEndpoint = persona.useQwen && endpoints.qwenUrl && endpoints.qwenModel;
-  const llmUrl = useQwenEndpoint ? endpoints.qwenUrl! : endpoints.primaryUrl;
-  const llmModel = useQwenEndpoint ? endpoints.qwenModel! : endpoints.primaryModel;
-  // Qwen may need longer timeout for MoE cold path
-  const timeoutMs = useQwenEndpoint ? 120_000 : 120_000;
+  // Average confidence across all votes
+  const totalConfidence = votes.reduce((sum, v) => sum + v.confidence, 0);
+  const consensusConfidence = totalConfidence / totalVotes;
 
-  const body = {
-    model: llmModel,
-    messages: [
-      { role: 'system', content: persona.systemPrompt },
-      { role: 'user', content: `Evaluate this signal:\n\n${signalSummary}\n\nRespond with JSON only.` },
-    ],
-    temperature: 0.2,
-    max_tokens: 256,
-  };
-
-  const resp = await fetch(`${llmUrl}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
+  // Identify dissenters (voters with low confidence or opposing votes)
+  const minorityVotes = votes.filter(v => {
+    if (!approved && v.vote === 'APPROVE') return true;
+    if (approved && v.vote === 'REJECT' && v.confidence >= 0.7) return true;
+    return v.confidence < minConfidence;
   });
 
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const data = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content ?? '';
-}
-
-function parseSwarmVote(raw: string, persona: PersonaId): SwarmVote {
-  try {
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsed = JSON.parse(cleaned) as Partial<{ vote: string; confidence: number; reasoning: string }>;
-    return {
-      persona,
-      vote: parsed.vote === 'APPROVE' ? 'APPROVE' : 'REJECT',
-      confidence: typeof parsed.confidence === 'number' ? Math.max(0, Math.min(1, parsed.confidence)) : 0,
-      reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : 'No reasoning provided',
-    };
-  } catch {
-    logger.warn(`[SwarmConsensus] Parse failed for persona ${persona}`, { raw });
-    return { persona, vote: 'REJECT', confidence: 0, reasoning: 'Parse error — defaulting to reject' };
-  }
-}
-
-function aggregateVotes(votes: SwarmVote[], minConfidence: number): SwarmConsensus {
-  const approvals = votes.filter(v => v.vote === 'APPROVE');
-  const threshold = majorityThreshold(votes.length);
-  const approved = approvals.length >= threshold;
-  const majorityVotes = approved ? approvals : votes.filter(v => v.vote === 'REJECT');
-  const minorityVotes = approved ? votes.filter(v => v.vote === 'REJECT') : approvals;
-
-  const consensusConfidence = majorityVotes.length > 0
-    ? majorityVotes.reduce((sum, v) => sum + v.confidence, 0) / majorityVotes.length
-    : 0;
+  const dissent = minorityVotes.length > 0
+    ? `${minorityVotes[0].persona}: ${minorityVotes[0].reasoning}`
+    : null;
 
   return {
     approved: approved && consensusConfidence >= minConfidence,
     votes,
     consensusConfidence,
-    dissent: minorityVotes.length > 0 ? `${minorityVotes[0].persona}: ${minorityVotes[0].reasoning}` : null,
+    dissent,
   };
+}
+
+/**
+ * Call LLM via LlmRouter for a single persona vote.
+ */
+async function callPersona(
+  persona: PersonaConfig,
+  signalSummary: string,
+  router: LlmRouter,
+): Promise<string> {
+  const messages: ChatMessage[] = [
+    { role: 'system', content: persona.systemPrompt },
+    {
+      role: 'user',
+      content: `Analyze this trading signal and vote APPROVE or REJECT with your reasoning:\n\n${signalSummary}\n\nRespond with JSON:\n{ "vote": "APPROVE"|"REJECT", "confidence": 0.0-1.0, "reasoning": "your reasoning" }`,
+    },
+  ];
+
+  const response = await router.chat({
+    messages,
+    temperature: 0.3,
+    maxTokens: 512,
+  });
+
+  return response.content;
+}
+
+/**
+ * Build a human-readable summary of the signal for LLM analysis.
+ */
+function buildSignalSummary(signal: SignalCandidate): string {
+  const marketLines = signal.markets
+    .map(m => ` - ${m.title} (id=${m.id}) YES=${m.yesPrice.toFixed(3)} NO=${m.noPrice.toFixed(3)}`)
+    .join('\n');
+  return `Signal type: ${signal.signalType}
+Expected edge: ${(signal.expectedEdge * 100).toFixed(2)}%
+Strategy reasoning: ${signal.reasoning}
+Markets:
+${marketLines}`;
 }
 
 /**
@@ -179,34 +183,45 @@ export async function runSwarmConsensus(signal: SignalCandidate): Promise<SwarmC
     return { approved: true, votes: [], consensusConfidence: 1, dissent: null };
   }
 
-  const llmConfig = loadLlmConfig();
-  const endpoints: LlmEndpoints = {
-    primaryUrl: llmConfig.primary.url,
-    primaryModel: llmConfig.primary.model,
-    qwenUrl: llmConfig.qwen?.url,
-    qwenModel: llmConfig.qwen?.model,
-  };
+  logger.info('[SwarmConsensus] Starting consensus evaluation', {
+    signalType: signal.signalType,
+    personas: PERSONAS.map(p => p.id),
+  });
+
+  const router = new LlmRouter();
   const signalSummary = buildSignalSummary(signal);
-  const personas = buildPersonas();
 
-  logger.debug(`[SwarmConsensus] Firing ${personas.length} parallel persona calls`, { signalType: signal.signalType });
-
-  const results = await Promise.allSettled(
-    personas.map(p => callPersona(p, signalSummary, endpoints)),
+  // Run all persona calls in parallel
+  const results = await Promise.all(
+    PERSONAS.map(persona =>
+      callPersona(persona, signalSummary, router)
+        .then(raw => ({ persona: persona.id, raw, status: 'fulfilled' as const }))
+        .catch(err => {
+          logger.warn(`[SwarmConsensus] Persona ${persona.id} failed`, { reason: err.message });
+          return { persona: persona.id, status: 'rejected' as const, reason: err.message };
+        }),
+    ),
   );
 
-  const failedCount = results.filter(r => r.status === 'rejected').length;
-  if (failedCount >= 2) {
-    logger.error('[SwarmConsensus] ≥2 persona calls failed — rejecting signal', { signalType: signal.signalType, failedCount });
-    return { approved: false, votes: [], consensusConfidence: 0, dissent: 'Swarm unavailable — fail-closed rejection' };
-  }
+  // Parse results
+  const votes: SwarmVote[] = results
+    .filter(r => r.status === 'fulfilled')
+    .map(r => parseSwarmVote(r.raw, r.persona));
 
-  const votes: SwarmVote[] = results.map((result, idx) => {
-    const persona = personas[idx];
-    if (result.status === 'fulfilled') return parseSwarmVote(result.value, persona.id);
-    logger.warn(`[SwarmConsensus] Persona ${persona.id} failed`, { reason: result.reason });
-    return { persona: persona.id, vote: 'REJECT' as const, confidence: 0, reasoning: 'Call failed — defaulting to reject' };
-  });
+  const failedCount = results.filter(r => r.status === 'rejected').length;
+
+  if (failedCount >= 2) {
+    logger.error('[SwarmConsensus] ≥2 persona calls failed — rejecting signal', {
+      signalType: signal.signalType,
+      failedCount,
+    });
+    return {
+      approved: false,
+      votes,
+      consensusConfidence: 0,
+      dissent: 'Swarm unavailable — fail-closed rejection',
+    };
+  }
 
   const consensus = aggregateVotes(votes, minConfidence);
 

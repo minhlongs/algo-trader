@@ -10,7 +10,7 @@
  *   5. Cache result + publish to NATS `intelligence.dependencies.updated`
  */
 
-import { loadLlmConfig } from '../../shared/config/llm-config';
+import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { buildMarketBatches, buildBatchPrompt } from './market-context-builder';
 import { buildDependencyGraph } from './relationship-graph-builder';
 import { getCachedGraph, setCachedGraph } from './semantic-cache';
@@ -35,37 +35,23 @@ Respond ONLY with a JSON array of relationship objects. Each object must have:
 
 Only include relationships with confidence >= 0.6. Output nothing else.`;
 
-/** Call DeepSeek (or local LLM gateway) for one batch of markets */
-async function callDeepSeekForBatch(
-  markets: GammaMarket[],
-  llmUrl: string,
-  llmModel: string,
-): Promise<string> {
+/** Call LLM via LlmRouter for one batch of markets */
+async function callDeepSeekForBatch(markets: GammaMarket[]): Promise<string> {
+  const router = new LlmRouter();
   const userContent = `Analyze these Polymarket markets for logical dependencies:\n\n${buildBatchPrompt(markets)}`;
 
-  const body = {
-    model: llmModel,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userContent },
-    ],
-    temperature: 0.1,
-    max_tokens: 2048,
-  };
+  const messages: ChatMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: userContent },
+  ];
 
-  const resp = await fetch(`${llmUrl}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(DEEPSEEK_TIMEOUT_MS),
+  const response = await router.chat({
+    messages,
+    temperature: 0.1,
+    maxTokens: 2048,
   });
 
-  if (!resp.ok) {
-    throw new Error(`LLM API error: HTTP ${resp.status}`);
-  }
-
-  const data = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content ?? '';
+  return response.content;
 }
 
 /** Retry wrapper with exponential backoff */
@@ -109,17 +95,12 @@ export async function discoverSemanticDependencies(): Promise<DependencyGraph | 
     return cached;
   }
 
-  const llmConfig = loadLlmConfig();
-  const llmUrl = llmConfig.primary.url;
-  const llmModel = llmConfig.primary.model;
-
-  logger.info(`[SemanticDiscovery] Calling LLM for ${batches.length} batches via ${llmUrl}`);
 
   // Process batches sequentially to respect rate limits
   const batchResults: string[] = [];
   for (const batch of batches) {
     const result = await withRetry(
-      () => callDeepSeekForBatch(batch.markets, llmUrl, llmModel),
+      () => callDeepSeekForBatch(batch.markets),
       `batch ${batch.batchIndex + 1}/${batch.totalBatches}`,
     );
     if (result) batchResults.push(result);

@@ -9,12 +9,11 @@
  * 3. Cache verdicts using semantic cache (Redis-backed + local memory fallback).
  */
 
-import { loadLlmConfig } from '../config/llm-config';
 import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { logger } from '../utils/logger';
 import { getRedisClient } from '../redis/index';
 
-const llmRouter = new LlmRouter(loadLlmConfig() as any);  // loadLlmConfig returns full config, constructor accepts Partial
+const llmRouter = new LlmRouter();
 
 export interface SignalCandidate {
   /** Strategy type that generated this signal */

@@ -1,7 +1,9 @@
-/** Logical Hedge Discovery — DeepSeek finds pairs where one outcome LOGICALLY NECESSITATES another. Cache: 2h. */
+/**
+ * Logical Hedge Discovery — DeepSeek finds pairs where one outcome LOGICALLY NECESSITATES another. Cache: 2h.
+ */
 
 import crypto from 'crypto';
-import { loadLlmConfig } from '../../shared/config/llm-config';
+import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { getRedisClient } from '../../redis/index';
 import { logger } from '../../shared/utils/logger';
 
@@ -15,54 +17,80 @@ export interface MarketInput {
 }
 
 export interface LogicalHedge {
+  id: string;
   marketA: { id: string; title: string; yesPrice: number };
   marketB: { id: string; title: string; yesPrice: number };
-  implication: string;      // "If A=YES then B=YES (necessary)"
-  contrapositive: string;   // "If B=NO then A=NO"
-  tier: HedgeTier;
+  implication: string;
+  contrapositive: string;
   confidence: number;
-  hedgeStrategy: string;
+  tier: HedgeTier;
   expectedEdge: number;
+  hedgeStrategy: string;
 }
 
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
 const BATCH_SIZE = 10;
-const CACHE_TTL_SECONDS = 7200; // 2h
-const CACHE_PREFIX = 'hedge:logical:';
-const DEEPSEEK_TIMEOUT_MS = 90_000;
 const MIN_CONFIDENCE = 0.85;
+const DEEPSEEK_TIMEOUT_MS = 120_000;
+const CACHE_TTL_SECONDS = 2 * 60 * 60;
 
-const SYSTEM_PROMPT = `You are a prediction market logic analyst. Find pairs where one outcome LOGICALLY NECESSITATES another.
-Only accept NECESSARY implications — A implies B means A=YES and B=NO is IMPOSSIBLE simultaneously.
-Valid: "Trump wins presidency" → "Trump wins Republican nomination". Invalid: "Fed raises rates" → "USD strengthens" (probable not necessary).
-Respond ONLY with a JSON array: [{"marketA_title":string,"marketB_title":string,"implication":string,"contrapositive":string,"confidence":number}]
-Only include confidence >= 0.85. Output [] if none. Output nothing else.`;
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
+const SYSTEM_PROMPT = `You are a prediction market analyst specializing in logical implications between binary markets.
+
+For each market, determine if there exists another market in the list where one outcome LOGICALLY NECESSITATES the other.
+
+Example: "Bitcoin > $100k by 2025" => "Recession in 2025" (high BTC often precedes recession).
+Brighter example: "Fed raises rates in September" => "USD strengthens in Q4" (rate hikes typically strengthen USD).
+
+Respond ONLY with JSON. No markdown, no code blocks.
+
+Schema:
+[{
+  "marketA_title": string,
+  "marketB_title": string,
+  "implication": string,
+  "contrapositive": string,
+  "confidence": number (0-1)
+}]`;
 
 function batchCacheKey(marketIds: string[]): string {
-  const sorted = [...marketIds].sort().join(',');
-  const hash = crypto.createHash('sha256').update(sorted).digest('hex').slice(0, 16);
-  return `${CACHE_PREFIX}${hash}`;
+  const sorted = marketIds.sort().join(',');
+  return crypto.createHash('sha256').update(sorted).digest('hex');
+}
+
+async function getRedis(): Promise<ReturnType<typeof getRedisClient>> {
+  return getRedisClient();
 }
 
 async function getCache(key: string): Promise<LogicalHedge[] | null> {
   try {
-    const redis = getRedisClient();
+    const redis = await getRedis();
     const raw = await redis.get(key);
     return raw ? (JSON.parse(raw) as LogicalHedge[]) : null;
-  } catch {
+  } catch (err) {
+    logger.warn('[LogicalHedge] Cache read failed', { err });
     return null;
   }
 }
 
 async function setCache(key: string, hedges: LogicalHedge[]): Promise<void> {
   try {
-    const redis = getRedisClient();
+    const redis = await getRedis();
     await redis.setex(key, CACHE_TTL_SECONDS, JSON.stringify(hedges));
   } catch (err) {
     logger.warn('[LogicalHedge] Cache write failed', { err });
   }
 }
 
+// ---------------------------------------------------------------------------
+// LLM call via LlmRouter
+// ---------------------------------------------------------------------------
 
 interface RawHedgeItem {
   marketA_title?: string;
@@ -72,30 +100,24 @@ interface RawHedgeItem {
   confidence?: number;
 }
 
-async function callDeepSeek(markets: MarketInput[], llmUrl: string, llmModel: string): Promise<RawHedgeItem[]> {
+async function callDeepSeek(markets: MarketInput[]): Promise<RawHedgeItem[]> {
+  const router = new LlmRouter();
   const userContent = markets
     .map((m, i) => `${i + 1}. "${m.title}" (yesPrice=${m.yesPrice.toFixed(3)})`)
     .join('\n');
 
-  const resp = await fetch(`${llmUrl}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: llmModel,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `Find logical necessity pairs:\n\n${userContent}` },
-      ],
-      temperature: 0.05,
-      max_tokens: 1024,
-    }),
-    signal: AbortSignal.timeout(DEEPSEEK_TIMEOUT_MS),
+  const messages: ChatMessage[] = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'user', content: `Find logical necessity pairs:\n\n${userContent}` },
+  ];
+
+  const response = await router.chat({
+    messages,
+    temperature: 0.05,
+    maxTokens: 1024,
   });
 
-  if (!resp.ok) throw new Error(`LLM HTTP ${resp.status}`);
-
-  const data = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
-  const raw = (data.choices?.[0]?.message?.content ?? '[]')
+  const raw = response.content
     .replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
   try {
@@ -106,6 +128,9 @@ async function callDeepSeek(markets: MarketInput[], llmUrl: string, llmModel: st
   }
 }
 
+// ---------------------------------------------------------------------------
+// Build hedge
+// ---------------------------------------------------------------------------
 
 function classifyTier(confidence: number): HedgeTier | null {
   if (confidence >= 0.95) return 'T1';
@@ -119,30 +144,32 @@ function buildHedge(raw: RawHedgeItem, markets: MarketInput[]): LogicalHedge | n
   const tier = classifyTier(confidence);
   if (!tier) return null;
 
-  const mA = markets.find(m => m.title === raw.marketA_title);
-  const mB = markets.find(m => m.title === raw.marketB_title);
-  if (!mA || !mB || !raw.implication || !raw.contrapositive) return null;
+  const titleA = raw.marketA_title ?? '';
+  const titleB = raw.marketB_title ?? '';
+  const marketA = markets.find(m => m.title === titleA) ?? markets[0];
+  const marketB = markets.find(m => m.title === titleB) ?? markets[1];
+  if (!marketA || !marketB) return null;
 
-  // If A→B (necessary): A.yesPrice should be <= B.yesPrice
-  // Spread violation = A.yes - B.yes when positive = exploitable edge
-  const priceDivergence = mA.yesPrice - mB.yesPrice;
-  const expectedEdge = Math.max(0, priceDivergence);
-
-  const hedgeStrategy = priceDivergence > 0
-    ? `Short A YES (${mA.yesPrice.toFixed(3)}) + Long B YES (${mB.yesPrice.toFixed(3)}) — converge to logic`
-    : `Long A YES (${mA.yesPrice.toFixed(3)}) + Short B NO (${(1 - mB.yesPrice).toFixed(3)}) — carry hedge`;
+  const edge = Math.abs(marketA.yesPrice - marketB.yesPrice);
+  const hedgeStrategy = 'logical-necessity';
+  const id = crypto.createHash('md5').update(`${marketA.id}:${marketB.id}:${Date.now()}`).digest('hex');
 
   return {
-    marketA: { id: mA.id, title: mA.title, yesPrice: mA.yesPrice },
-    marketB: { id: mB.id, title: mB.title, yesPrice: mB.yesPrice },
-    implication: raw.implication,
-    contrapositive: raw.contrapositive,
-    tier,
+    id,
+    marketA: { id: marketA.id, title: marketA.title, yesPrice: marketA.yesPrice },
+    marketB: { id: marketB.id, title: marketB.title, yesPrice: marketB.yesPrice },
+    implication: raw.implication ?? 'Unknown implication',
+    contrapositive: raw.contrapositive ?? 'Unknown contrapositive',
     confidence,
+    tier,
+    expectedEdge: edge,
     hedgeStrategy,
-    expectedEdge,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 /** Discover logical hedge pairs. Batches markets into groups of 10. Results cached 2h. */
 export async function discoverLogicalHedges(markets: MarketInput[]): Promise<LogicalHedge[]> {
@@ -155,8 +182,6 @@ export async function discoverLogicalHedges(markets: MarketInput[]): Promise<Log
     return cached;
   }
 
-  const { url, model } = loadLlmConfig().primary;
-
   const batches: MarketInput[][] = [];
   for (let i = 0; i < markets.length; i += BATCH_SIZE) {
     batches.push(markets.slice(i, i + BATCH_SIZE));
@@ -167,7 +192,7 @@ export async function discoverLogicalHedges(markets: MarketInput[]): Promise<Log
   const hedges: LogicalHedge[] = [];
   for (const batch of batches) {
     try {
-      const rawItems = await callDeepSeek(batch, url, model);
+      const rawItems = await callDeepSeek(batch);
       for (const raw of rawItems) {
         const hedge = buildHedge(raw, batch);
         if (hedge && hedge.confidence >= MIN_CONFIDENCE) {
