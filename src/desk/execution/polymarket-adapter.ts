@@ -97,9 +97,9 @@ export class PolymarketAdapter {
   ) {
     this.signer = signer;
     this.apiUrl = apiUrl.replace(/\/$/, '');
-    this.apiKey = process.env.POLY_API_KEY || '';
-    this.apiSecret = process.env.POLY_API_SECRET || '';
-    this.passphrase = process.env.POLY_PASSPHRASE || '';
+    this.apiKey = process.env.POLYMARKET_API_KEY || process.env.POLY_API_KEY || '';
+    this.apiSecret = process.env.POLYMARKET_API_SECRET || process.env.POLY_API_SECRET || '';
+    this.passphrase = process.env.POLYMARKET_PASSPHRASE || process.env.POLY_PASSPHRASE || '';
     this.http2Pool = http2Pool || Http2ConnectionPool.getInstance();
 
     // Warm connections on startup (async, don't await)

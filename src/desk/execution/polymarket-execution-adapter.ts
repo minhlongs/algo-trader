@@ -5,8 +5,13 @@
  * PAPER mode (default): returns stub — no API keys needed, safe for development.
  * LIVE mode: validates env vars, creates real signer + adapter for CLOB API.
  *
- * Env vars required for LIVE: POLYMARKET_API_KEY, POLYMARKET_API_SECRET,
- * POLYMARKET_PASSPHRASE, POLYMARKET_PRIVATE_KEY
+ * Mode selection (priority high → low):
+ *   1. config.paperTrading = false  → live
+ *   2. POLYMARKET_TRADING_MODE=live + config.paperTrading unset → live
+ *   3. default → paper
+ *
+ * Env vars required for LIVE: POLYMARKET_PRIVATE_KEY, POLYMARKET_API_KEY,
+ * POLYMARKET_API_SECRET, POLYMARKET_PASSPHRASE
  * (deprecated POLY_* equivalents still accepted with warning)
  * Optional: POLY_CLOB_HOST, POLY_CHAIN_ID
  */
@@ -18,8 +23,8 @@ import { logger } from '../../shared/utils/logger';
 // ── Config ────────────────────────────────────────────────────────────────────
 
 export interface PolymarketExecutionConfig {
-  /** PAPER (true) = safe simulation; LIVE (false) = real CLOB orders */
-  paperTrading: boolean;
+  /** PAPER (true) = safe simulation; LIVE (false) = real CLOB orders. Undefined = follow env var. */
+  paperTrading?: boolean;
   /** Polymarket chain ID (default: 137 = Polygon mainnet) */
   chainId?: number;
   /** CLOB API base URL (default: https://clob.polymarket.com) */
@@ -56,17 +61,21 @@ function resolvePrivateKey(): string | undefined {
 
 // ── Required env vars for LIVE mode ────────────────────────────────────────────
 
-const LIVE_ENV_VARS_NEW: Array<{ newName: string; oldName: string }> = [
+const LIVE_ENV_VARS: Array<{ newName: string; oldName: string }> = [
   { newName: 'POLYMARKET_API_KEY', oldName: 'POLY_API_KEY' },
   { newName: 'POLYMARKET_API_SECRET', oldName: 'POLY_API_SECRET' },
   { newName: 'POLYMARKET_PASSPHRASE', oldName: 'POLY_PASSPHRASE' },
   { newName: 'POLYMARKET_PRIVATE_KEY', oldName: 'POLY_PRIVATE_KEY' },
 ];
 
-function validateLiveEnvVars(): string[] {
-  return LIVE_ENV_VARS_NEW
+function missingLiveEnvVars(): string[] {
+  return LIVE_ENV_VARS
     .filter(({ newName, oldName }) => !process.env[newName] && !process.env[oldName])
     .map(({ newName, oldName }) => `${newName} (or ${oldName})`);
+}
+
+function hasAllCredentials(): boolean {
+  return missingLiveEnvVars().length === 0;
 }
 
 // ── Builder ────────────────────────────────────────────────────────────────────
@@ -74,39 +83,42 @@ function validateLiveEnvVars(): string[] {
 /**
  * Build the Polymarket execution adapter.
  *
- * PAPER mode (paperTrading: true):
+ * PAPER mode (default):
  *   Returns stub — no API keys needed. Safe for development and backtesting.
  *
- * LIVE mode (paperTrading: false):
+ * LIVE mode:
  *   Validates all 4 env vars, creates PolymarketSigner + PolymarketAdapter.
- *   Throws with clear guidance if any env var is missing.
+ *   If credentials missing → warns and falls back to paper (safe default).
  *
  * @example
  *   // Paper (default)
  *   const exec = buildPolymarketAdapter({ paperTrading: true });
  *
- *   // Live
+ *   // Live via config flag
  *   const exec = buildPolymarketAdapter({ paperTrading: false });
+ *
+ *   // Live via env var (POLYMARKET_TRADING_MODE=live, config.paperTrading unset)
+ *   const exec = buildPolymarketAdapter({});
  */
 export function buildPolymarketAdapter(
-  config: PolymarketExecutionConfig,
+  config: PolymarketExecutionConfig = {},
 ): PolymarketExecutionAdapter {
-  const paperTrading = config.paperTrading ?? true;
+  const envTradingMode = process.env.POLYMARKET_TRADING_MODE || 'paper';
+  const isLive = config.paperTrading === false
+    || (config.paperTrading === undefined && envTradingMode === 'live');
 
-  if (paperTrading) {
-    logger.info('[PolymarketAdapter] PAPER mode — no API keys required');
+  if (!isLive) {
+    logger.debug('[PolymarketAdapter] PAPER mode — no API keys required');
     return { adapter: null, signer: null, paperTrading: true };
   }
 
   // LIVE mode — validate all env vars
-  const missing = validateLiveEnvVars();
-  if (missing.length > 0) {
-    const msg =
-      `Cannot start LIVE trading. Missing env vars: ${missing.join(', ')}. ` +
-      'Set POLYMARKET_API_KEY, POLYMARKET_API_SECRET, POLYMARKET_PASSPHRASE, POLYMARKET_PRIVATE_KEY ' +
-      '(or the deprecated POLY_* equivalents) in your .env file, or run in PAPER mode (paperTrading: true).';
-    logger.error(msg, 'PolymarketAdapter');
-    throw new Error(msg);
+  if (!hasAllCredentials()) {
+    const missing = missingLiveEnvVars();
+    logger.warn(
+      `[PolymarketAdapter] POLYMARKET_TRADING_MODE=live but missing: ${missing.join(', ')} — falling back to PAPER`,
+    );
+    return { adapter: null, signer: null, paperTrading: true };
   }
 
   const privateKey = resolvePrivateKey()!;

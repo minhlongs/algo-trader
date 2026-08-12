@@ -12,7 +12,7 @@ import { TradeExecutor } from'../../engine/trade-executor';
 import { PaperExchange } from'../../paper-trading/paper-exchange';
 import { RiskManager } from'../core/risk-manager';
 import { getDatabase } from'../data/database';
-import { buildPolymarketAdapter } from'./polymarket-execution-adapter';
+import { buildPolymarketAdapter } from '../execution/polymarket-execution-adapter';
 import { PredictionLoop } from'./prediction-loop';
 import { PredictionExecutor } from'./prediction-executor';
 import { MeanReversionStrategy } from'../../strategies/polymarket/mean-reversion';
@@ -163,14 +163,9 @@ export class TradingPipeline extends EventEmitter {
       maxLeverage:      1,
     });
 
-    const adapter = buildPolymarketAdapter({
-      riskManager,
-      orderManager:    this.orderManager,
-      orderbookStream: this.orderbookStream,
-      paperExchange:   new PaperExchange(),
-      db,
-      capitalUsdc:   this.cfg.capitalUsdc,
-      paperTrading:  this.cfg.paperTrading,
+    const { adapter } = buildPolymarketAdapter({
+      paperTrading: this.cfg.paperTrading,
+      chainId:      this.cfg.chainId,
     });
 
     // TradeExecutor wired but strategies call ClobClient directly (adapter used for risk gate)
