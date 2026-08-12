@@ -54,7 +54,7 @@ program
 
     // Dynamic require — wiring is excluded from tsc but compiled separately
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { startPaperTrading } = require('../../wiring/paper-trading-orchestrator') as {
+    const { startPaperTrading } = require('../wiring/paper-trading-orchestrator') as {
       startPaperTrading: (cfg: { capitalUsdc: number; intervalMs: number; maxPositions: number }) => Promise<void>;
     };
 

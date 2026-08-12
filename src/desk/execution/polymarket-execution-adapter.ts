@@ -121,7 +121,10 @@ export function buildPolymarketAdapter(
     return { adapter: null, signer: null, paperTrading: true };
   }
 
-  const privateKey = resolvePrivateKey()!;
+  const privateKey = resolvePrivateKey();
+  if (!privateKey) {
+    throw new Error('Internal: LIVE mode passed credential check but private key is missing');
+  }
   const chainId = config.chainId ?? parseInt(process.env.POLY_CHAIN_ID || '137', 10);
   const apiUrl = config.apiUrl ?? (process.env.POLY_CLOB_HOST || 'https://clob.polymarket.com');
 
