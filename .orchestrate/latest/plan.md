@@ -1,45 +1,44 @@
-# Plan — Enforce OmniRoute in src/lib/llm-router.ts
+# Plan — Migrate 9 Intelligence Modules to LlmRouter
 
-(Reconstructed from the completed diff for result-gate review — no separate
-kongming plan.md was persisted to disk before execution for this task.)
+## Reframed Problem
+9 intelligence modules bypass the central `LlmRouter` and call LLM APIs via raw `fetch()`. All must route through `LlmRouter.chat()` to enforce the OmniRoute gateway at `http://omnimbp.local:20128/v1`.
 
-## Scope
-- `src/lib/llm-router.ts`
-- `src/shared/config/llm-config.ts` (endpoint URL defaults `LlmRouter` consumes)
-- Tests that construct `LlmRouter` with literal non-OmniRoute hostnames
-- `wrangler.toml` staging var wiring for `OMNIROUTE_URL`
+## Work Checklist
 
-## Steps
-1. Add `export const OMNIROUTE_URL = process.env.OMNIROUTE_URL || 'http://omnimbp.local:20128/v1'`
-   to `llm-router.ts`.
-2. Add `assertOmniRouteConfig(config)` — for every configured endpoint
-   (primary/fastTriage/fallback/qwen/cloud), require `url === OMNIROUTE_URL`
-   or `isLoopbackUrl(url)` (localhost/127.0.0.1/0.0.0.0 on any port), else
-   throw `OmniRoute violation: ...`.
-3. Call `assertOmniRouteConfig(this.config)` in the `LlmRouter` constructor,
-   after `loadLlmConfig()` merge, so it validates the final resolved config
-   (both defaults and any `Partial<LlmConfig>` override passed in).
-4. Wire `OMNIROUTE_URL` into `loadLlmConfig()` (`llm-config.ts`) as the shared
-   default for `primary`/`fastTriage`/`fallback`/`qwen` endpoint URLs, so the
-   four independent `LLM_*_URL` env vars no longer hardcode the literal
-   separately — closes the drift gap where changing `OMNIROUTE_URL` alone
-   would not update the endpoints and would trip the new constructor guard.
-5. Update existing tests that constructed `LlmRouter` with non-loopback,
-   non-OmniRoute literal hostnames (`http://deepseek:11435`,
-   `http://nemotron:11436`, `http://ollama:11434`) to use loopback
-   equivalents, since those are legacy fixtures, not real enforcement
-   targets.
-6. Add a dedicated `llm-router.test.ts` covering: OmniRoute URL passes,
-   loopback (127.0.0.1/localhost) passes, non-OmniRoute/non-loopback throws
-   with `/OmniRoute violation/`, per-endpoint-name violation message, and the
-   `OMNIROUTE_URL` constant value itself.
-7. Add `OMNIROUTE_URL` to `wrangler.toml` `[env.staging.vars]` so staging can
-   route through a Cloudflare Tunnel hostname instead of the LAN-only mDNS
-   address.
+### Step 1: Enumerate remaining raw fetch() call sites
+Run `grep -rn 'fetch(' src/desk/intelligence src/desk/feeds src/intelligence` to list all raw fetch calls targeting `/chat/completions`. Expected: ~7 modules.
 
-## Definition of Done
-- `npx tsc --noEmit` — 0 errors.
-- `npx vitest run` on the touched/added `llm-router*` test files — all green.
-- No unrelated production call site (`new LlmRouter()` with no args) starts
-  throwing, since all default endpoints now resolve to the same
-  `OMNIROUTE_URL` value.
+### Step 2: Migrate each module (7 modules)
+For each file:
+- Remove `loadLlmConfig` import (if present) and any endpoint URL construction
+- Import `LlmRouter` and `ChatMessage` from `src/lib/llm-router`
+- Replace raw `fetch()` body + call with `router.chat({ model, messages, temperature?, maxTokens? })`
+- Validate response via `response.content` (no `resp.json()` parsing)
+- Ensure module compiles: `npx tsc --noEmit`
+
+**Files to migrate:**
+1. `src/desk/feeds/news-impact-analyzer.ts`
+2. `src/desk/intelligence/logical-hedge-discovery.ts`
+3. `src/desk/intelligence/resolution-criteria-analyzer.ts`
+4. `src/desk/intelligence/semantic-dependency-discovery.ts`
+5. `src/desk/arbitrage/self-evolving-ilp-constraints.ts`
+6. `src/intelligence/signal-consensus-swarm.ts`
+
+### Step 3: Final verification
+- `grep -rn 'fetch(' src/desk/intelligence src/desk/feeds src/intelligence` — zero `/chat/completions` fetches
+- `npx tsc --noEmit` — 0 errors
+
+## Risks & Gates
+- Risk: Module uses `fetch()` for non-LLM purposes (RSS, REST APIs) → gate: grep confirms only `/chat/completions` paths removed
+- Risk: `LlmRouter` constructor throws on non-OmniRoute URLs → mitigated: all endpoints already route through OmniRoute gateway
+
+## Agents
+- Implementation: `fullstack-developer` (per module)
+- Review: `code-reviewer` (after all modules)
+- Serve as fallback if node routes fail.
+
+## Ship Plan
+1. Commit + push branch
+2. PR → CI verify
+3. Merge → deploy via CF `wrangler deploy`
+4. Smoke test: `curl https://omnimbp.local:20128/v1/health`

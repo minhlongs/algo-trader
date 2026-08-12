@@ -1,6 +1,6 @@
 ---
 name: algo-trader-ci-gate-reality
-description: algo-trader CI gates 1-4 live as jobs inside ci.yml (no per-gate workflow files); repo lint debt guarantees gate-1 failure on every PR
+description: algo-trader CI gates 1-6 live as jobs inside ci.yml (no per-gate workflow files); repo lint debt guarantees gate-1 failure on every PR
 metadata:
   type: project
 ---
@@ -8,10 +8,12 @@ metadata:
 As of 2026-08-12, any PR to `algo-trader` main **fails CI lint gates for reasons unrelated to the
 PR's payload**:
 
-- Gates 1–4 are **jobs inside `.github/workflows/ci.yml`** — there are no `gate-N-*.yml` workflow
+- Gates 1–6 are **jobs inside `.github/workflows/ci.yml`** — there are no `gate-N-*.yml` workflow
   files. Do not assert their existence without checking; two separate evaluation rounds got this wrong.
+  Full set: `gate-1-validation`, `gate-2-security`, `gate-3-quality`, `gate-4-dependency`,
+  `gate-5-deployment-smoke` (needs gates 1-4), `gate-6-paper-gate-lock`.
 - Gate 1 runs `npx eslint src/ --max-warnings 50`; `ci-cd.yml` test job runs `--max-warnings 100`.
-  Measured repo state: **285 warnings, 0 errors** -> both fail, exit 1, on `push` *and* `pull_request`.
+  Re-measured 2026-08-13: **280 warnings, 0 errors** -> both fail, exit 1, on `push` *and* `pull_request`.
 - Gate 3 (`gate-3-quality`) is the only lint that scopes to the PR: `npx eslint $CHANGED --max-warnings 0`
   over `git diff base..head -- src/**/*.ts(x)`. **Zero** warnings tolerated on touched files.
 - Four workflows carry `push: branches: [main]` (`ci.yml`, `ci-cd.yml`, `cloudflare-deploy.yml`,
