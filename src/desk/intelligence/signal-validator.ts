@@ -12,6 +12,7 @@
 import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { logger } from '../utils/logger';
 import { getRedisClient } from '../redis/index';
+import type { SwarmVote, SwarmConsensus } from '../../intelligence/signal-consensus-swarm';
 
 const llmRouter = new LlmRouter();
 
@@ -42,19 +43,7 @@ export interface ValidationResult {
   risks: string[];
 }
 
-export interface SwarmVote {
-  persona: 'risk-analyst' | 'momentum-trader' | 'contrarian' | 'quantitative-analyst';
-  vote: 'APPROVE' | 'REJECT';
-  confidence: number; // 0-1
-  reasoning: string;
-}
-
-export interface SwarmConsensus {
-  approved: boolean;
-  votes: SwarmVote[];
-  consensusConfidence: number; // average confidence of majority votes
-  dissent: string | null; // minority reasoning — valuable contrarian signal
-}
+export type { SwarmVote, SwarmConsensus } from '../../intelligence/signal-consensus-swarm';
 
 export interface UnifiedValidationResult extends ValidationResult {
   votes: SwarmVote[];
