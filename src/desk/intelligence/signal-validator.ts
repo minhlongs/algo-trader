@@ -10,8 +10,11 @@
  */
 
 import { loadLlmConfig } from '../config/llm-config';
+import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { logger } from '../utils/logger';
 import { getRedisClient } from '../redis/index';
+
+const llmRouter = new LlmRouter(loadLlmConfig() as any);  // loadLlmConfig returns full config, constructor accepts Partial
 
 export interface SignalCandidate {
   /** Strategy type that generated this signal */
@@ -148,7 +151,7 @@ JSON schema:
 /** Build the user prompt from a signal candidate */
 function buildCombinedUserPrompt(signal: SignalCandidate): string {
   const marketLines = signal.markets
-    .map(m => `  - ${m.title} (id=${m.id}) YES=${m.yesPrice.toFixed(3)} NO=${m.noPrice.toFixed(3)}`)
+    .map(m => ` - ${m.title} (id=${m.id}) YES=${m.yesPrice.toFixed(3)} NO=${m.noPrice.toFixed(3)}`)
     .join('\n');
 
   return `Evaluate this Polymarket arbitrage signal candidate:
@@ -174,7 +177,7 @@ function getSemanticCacheKey(signal: SignalCandidate): string {
 
 async function getCachedValidation(signal: SignalCandidate): Promise<UnifiedValidationResult | null> {
   const key = getSemanticCacheKey(signal);
-  
+
   // Try Redis first
   try {
     const redis = getRedisClient();
@@ -237,37 +240,17 @@ async function cacheValidation(signal: SignalCandidate, result: UnifiedValidatio
   }
 }
 
-/** Raw LLM call — OpenAI-compatible chat completions */
+/** Raw LLM call — via LlmRouter (OpenAI-compatible chat completions) */
 async function callLlm(
   systemPrompt: string,
   userPrompt: string,
-  llmUrl: string,
-  llmModel: string,
-  timeoutMs: number
 ): Promise<string> {
-  const body = {
-    model: llmModel,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.1,
-    max_tokens: 1024,
-  };
-
-  const resp = await fetch(`${llmUrl}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-
-  if (!resp.ok) {
-    throw new Error(`LLM API error: HTTP ${resp.status}`);
-  }
-
-  const data = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content ?? '';
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+  const response = await llmRouter.chat({ messages, maxTokens: 1024, temperature: 0.1 });
+  return response.content;
 }
 
 /** Robust JSON cleanup and parsing helper */
@@ -282,7 +265,7 @@ function parseCombinedResponse(raw: string): any {
       .trim();
     return JSON.parse(cleaned);
   } catch (err) {
-    logger.warn('[SignalValidator] Failed to parse combined response JSON', { raw, err });
+    logger.warn('[SignalValidator] Failed to parse combined response JSON', { err });
     return {};
   }
 }
@@ -290,7 +273,7 @@ function parseCombinedResponse(raw: string): any {
 /** Mathematical aggregation validation on votes */
 function verifyAndAggregateVotes(parsedJson: any, minConfidence: number): UnifiedValidationResult {
   const votes: SwarmVote[] = parsedJson.votes || [];
-  
+
   // Normalize and validate votes structure
   const cleanVotes: SwarmVote[] = votes.map((v: any) => {
     return {
@@ -313,7 +296,7 @@ function verifyAndAggregateVotes(parsedJson: any, minConfidence: number): Unifie
     : 0;
 
   const valid = approved && consensusConfidence >= minConfidence;
-  
+
   const dissent = minorityVotes.length > 0
     ? `${minorityVotes[0].persona}: ${minorityVotes[0].reasoning}`
     : null;
@@ -340,12 +323,8 @@ export async function getUnifiedValidation(signal: SignalCandidate): Promise<Uni
     return cached;
   }
 
-  const llmConfig = loadLlmConfig();
-		const { url: llmUrl, model: llmModel } = llmConfig.primary;
-		const timeoutMs = 10000;
   const systemPrompt = getCombinedSystemPrompt();
   const userPrompt = buildCombinedUserPrompt(signal);
-
   const minConfidence = Number(process.env.SWARM_MIN_CONFIDENCE ?? 0.6);
 
   const executeCall = async (): Promise<UnifiedValidationResult> => {
@@ -353,10 +332,10 @@ export async function getUnifiedValidation(signal: SignalCandidate): Promise<Uni
       try {
         logger.debug(`[SignalValidator] Calling LLM via GPU Mutex, attempt ${attempt}/${RETRY_LIMIT}`, {
           signalType: signal.signalType,
-          model: llmModel,
+          model: llmRouter['config'].primary.model,  // eslint-disable-line dot-notation
         });
 
-        const raw = await callLlm(systemPrompt, userPrompt, llmUrl, llmModel, timeoutMs);
+        const raw = await callLlm(systemPrompt, userPrompt);
         const parsed = parseCombinedResponse(raw);
         const result = verifyAndAggregateVotes(parsed, minConfidence);
 
@@ -408,4 +387,3 @@ export async function validateSignal(signal: SignalCandidate): Promise<Validatio
     risks: result.risks,
   };
 }
-

@@ -8,8 +8,11 @@
  */
 
 import { loadLlmConfig } from '../../shared/config/llm-config';
+import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { getMessageBus } from '../../shared/messaging/index';
 import { logger } from '../../shared/utils/logger';
+
+const llmRouter = new LlmRouter(loadLlmConfig() as any);
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -112,26 +115,12 @@ async function level2Llm(
   trade: TradeOutcome,
   l1: ReflectionResult['level1_logic'],
 ): Promise<Pick<ReflectionResult, 'level2_outcome' | 'parameterAdjustments'>> {
-  const { primary } = loadLlmConfig();
-  const resp = await fetch(`${primary.url}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: primary.model,
-      messages: [
-        { role: 'system', content: L2_SYSTEM },
-        { role: 'user', content: buildL2Prompt(trade, l1) },
-      ],
-      temperature: 0.2,
-      max_tokens: 512,
-    }),
-    signal: AbortSignal.timeout(primary.timeoutMs),
-  });
-
-  if (!resp.ok) throw new Error(`LLM HTTP ${resp.status}`);
-
-  const data = await resp.json() as { choices?: Array<{ message?: { content?: string } }> };
-  const raw = (data.choices?.[0]?.message?.content ?? '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const messages: ChatMessage[] = [
+    { role: 'system', content: L2_SYSTEM },
+    { role: 'user', content: buildL2Prompt(trade, l1) },
+  ];
+  const response = await llmRouter.chat({ messages, temperature: 0.2, maxTokens: 512 });
+  const raw = response.content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   const parsed = JSON.parse(raw) as RawL2;
   const edgeAccuracy = trade.expectedEdge !== 0 ? trade.actualEdge / trade.expectedEdge : 0;
 

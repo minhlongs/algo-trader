@@ -8,6 +8,7 @@
  */
 
 import { BinaryMarket } from '../arbitrage/types';
+import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 
 export interface CalibratorConfig {
   /** Local LLM base URL (default: http://127.0.0.1:11434) */
@@ -70,10 +71,12 @@ class Semaphore {
 export class ProbabilityCalibratorStrategy {
   private config: CalibratorConfig;
   private semaphore: Semaphore;
+  private llmRouter: LlmRouter;
 
   constructor(config: Partial<CalibratorConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.semaphore = new Semaphore(this.config.maxConcurrentRequests);
+    this.llmRouter = new LlmRouter({ primary: { url: this.config.llmBaseUrl, model: this.config.llmModel, timeoutMs: 90_000, maxTokens: 256 } } as any);
   }
 
   /**
@@ -134,26 +137,12 @@ export class ProbabilityCalibratorStrategy {
   private async callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
     await this.semaphore.acquire();
     try {
-      const response = await fetch(`${this.config.llmBaseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: this.config.llmModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          temperature: 0.1, // low temp for consistent structured output
-          max_tokens: 256,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json() as LLMResponse;
-      return data.choices?.[0]?.message?.content ?? '';
+      const messages: ChatMessage[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ];
+      const response = await this.llmRouter.chat({ messages, temperature: 0.1, maxTokens: 256 });
+      return response.content;
     } finally {
       this.semaphore.release();
     }
@@ -194,9 +183,4 @@ export class ProbabilityCalibratorStrategy {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-/** Minimal OpenAI-compatible chat completion response */
-interface LLMResponse {
-  choices?: Array<{ message?: { content?: string } }>;
 }

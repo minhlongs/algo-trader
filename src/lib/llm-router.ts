@@ -87,33 +87,59 @@ export class LlmRouter extends EventEmitter {
     super();
     this.config = { ...loadLlmConfig(), ...config };
     assertOmniRouteConfig(this.config);
+
+    // Pre-seed health entries for every configured endpoint so failures are tracked per-endpoint,
+    // not collapsed onto a single URL key. Without this, one dead gateway blacklists every route.
+    const urls: string[] = [];
+    for (const ep of [
+      this.config.primary,
+      this.config.fastTriage,
+      this.config.fallback,
+      this.config.qwen,
+      this.config.cloud,
+    ]) {
+      if (ep?.url) urls.push(ep.url);
+    }
+    for (const url of urls) {
+      if (!this.health.has(url)) {
+        this.health.set(url, { healthy: true, lastCheck: 0, consecutiveFailures: 0 });
+      }
+    }
   }
 
   /** Deep reasoning route: DeepSeek R1 → Ollama → Claude cloud */
   async chat(request: RouterRequest): Promise<RouterResponse> {
-    if (request.forceCloud && this.config.cloud) {
+    // `forceCloud` must respect budget guard — do not bypass `canSpendCloud()`.
+    if (request.forceCloud && this.config.cloud && this.canSpendCloud()) {
       return this.callEndpoint(this.config.cloud, request, 'cloud');
     }
 
-    // Try primary (DeepSeek R1 — deep reasoning, ~10 tok/s)
-    if (this.isHealthy(this.config.primary.url)) {
+    const primaryUrl = this.config.primary.url;
+    const fallbackUrl = this.config.fallback.url;
+    const primaryHealthy = this.isHealthy(primaryUrl);
+    const fallbackHealthy = this.isHealthy(fallbackUrl);
+
+    // Fast path: primary (DeepSeek R1, ~10 tok/s)
+    if (primaryHealthy) {
       try {
         return await this.callEndpoint(this.config.primary, request, 'mlx');
       } catch {
-        this.markUnhealthy(this.config.primary.url);
+        this.markUnhealthy(primaryUrl);
         this.emit('failover', { from: 'mlx', to: 'ollama' });
       }
     }
 
-    // Try fallback (Ollama)
-    try {
-      return await this.callEndpoint(this.config.fallback, request, 'ollama');
-    } catch {
-      this.markUnhealthy(this.config.fallback.url);
-      this.emit('failover', { from: 'ollama', to: 'cloud' });
+    // Fallback (Ollama) — health-gated, no longer an unconditional timeout tax
+    if (fallbackHealthy) {
+      try {
+        return await this.callEndpoint(this.config.fallback, request, 'ollama');
+      } catch {
+        this.markUnhealthy(fallbackUrl);
+        this.emit('failover', { from: 'ollama', to: 'cloud' });
+      }
     }
 
-    // Last resort: cloud
+    // Last resort: cloud (budget-checked)
     if (this.config.cloud && this.canSpendCloud()) {
       return this.callEndpoint(this.config.cloud, request, 'cloud');
     }
