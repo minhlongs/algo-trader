@@ -31,46 +31,53 @@ export interface LlmConfig {
 }
 
 export function loadLlmConfig(): LlmConfig {
+  const omniRouteUrl = process.env.OMNIROUTE_URL || 'http://omnimbp.local:20128/v1';
   const qwenEnabled = process.env.LLM_QWEN_ENABLED === 'true';
+  const qwenUrl = process.env.LLM_QWEN_URL || omniRouteUrl;
+  const qwenModel = process.env.LLM_QWEN_MODEL || 'deepseek-v4-flash';
+  const qwenTimeoutMs = Number(process.env.LLM_QWEN_TIMEOUT_MS) || 60000;
+
+  const qwen: LlmEndpoint | undefined = qwenEnabled
+    ? {
+        url: qwenUrl,
+        model: qwenModel,
+        priority: 1,
+        maxTokens: 4096,
+        timeoutMs: qwenTimeoutMs,
+      }
+    : undefined;
 
   return {
     primary: {
-      url: process.env.LLM_PRIMARY_URL || 'http://omnimbp.local:20128/v1',
+      url: process.env.LLM_PRIMARY_URL || omniRouteUrl,
       model: process.env.LLM_PRIMARY_MODEL || 'deepseek-v4-flash',
       priority: 1,
       maxTokens: 2048,
       timeoutMs: 90000,
     },
     fastTriage: {
-      url: process.env.LLM_FAST_TRIAGE_URL || 'http://omnimbp.local:20128/v1',
+      url: process.env.LLM_FAST_TRIAGE_URL || omniRouteUrl,
       model: process.env.LLM_FAST_TRIAGE_MODEL || 'deepseek-v4-flash',
       priority: 1,
       maxTokens: 512,
       timeoutMs: 10000,
     },
     fallback: {
-      url: process.env.LLM_FALLBACK_URL || 'http://omnimbp.local:20128/v1',
+      url: process.env.LLM_FALLBACK_URL || omniRouteUrl,
       model: process.env.LLM_FALLBACK_MODEL || 'deepseek-v4-flash',
       priority: 2,
       maxTokens: 2048,
       timeoutMs: 30000,
     },
-    /** Qwen3-30B-A3B: long-context MoE, opt-in feature flag (default OFF) */
-    qwen: qwenEnabled ? {
-      url: process.env.LLM_QWEN_URL || 'http://omnimbp.local:20128/v1',
-      model: process.env.LLM_QWEN_MODEL || 'deepseek-v4-flash',
-      priority: 1,
-      maxTokens: 4096,
-      timeoutMs: Number(process.env.LLM_QWEN_TIMEOUT_MS) || 60000,
-    } : undefined,
+    qwen,
     cloud: process.env.CLAUDE_API_KEY ? {
       url: process.env.LLM_CLOUD_URL || 'https://api.anthropic.com/v1',
       model: process.env.LLM_CLOUD_MODEL || 'claude-sonnet-4-20250514',
       priority: 3,
       maxTokens: 4096,
-      timeoutMs: 60000,
+      timeoutMs: 120000,
     } : undefined,
-    healthCheckIntervalMs: 30000,
+    healthCheckIntervalMs: Number(process.env.LLM_HEALTH_CHECK_INTERVAL_MS) || 30000,
     cloudDailyBudgetUsd: Number(process.env.LLM_CLOUD_DAILY_BUDGET) || 100,
   };
 }

@@ -105,3 +105,4 @@ ENVIRONMENT = "staging"
 NOWPAYMENTS_INVOICE_PRO = "<set via wrangler secret put>"
 NOWPAYMENTS_INVOICE_ENTERPRISE = "<set via wrangler secret put>"
 NOWPAYMENTS_IPN_URL = "https://algo-trader-staging.workers.dev/api/v1/webhooks/nowpayments"
+OMNIROUTE_URL = "http://omnimbp.local:20128/v1"  # Mandatory OmniRoute gateway (mDNS local)

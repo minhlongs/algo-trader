@@ -2,16 +2,23 @@
  * LLM Router — Routes requests to bare-metal MLX servers on M1 Max host.
  *
  * Three routing modes:
- *   chat()     — DeepSeek R1 (deep reasoning) → Ollama → Claude cloud
- *   fastChat() — Nemotron Nano (fast triage) → DeepSeek R1 → Ollama → Claude
- *   qwenChat() — Qwen3-30B MoE (long-context) → DeepSeek R1 → Ollama → Claude
- *               Gated by LLM_QWEN_ENABLED=true. Falls back to chat() if disabled/unhealthy.
+ * chat() — DeepSeek R1 (deep reasoning) → Ollama → Claude cloud
+ * fastChat() — Nemotron Nano (fast triage) → DeepSeek R1 → Ollama → Claude
+ * qwenChat() — Qwen3-30B MoE (long-context) → DeepSeek R1 → Ollama → Claude
+ * Gated by LLM_QWEN_ENABLED=true. Falls back to chat() if disabled/unhealthy.
  *
  * OpenAI-compatible /v1/chat/completions for all providers.
  */
 
 import { EventEmitter } from 'events';
 import { loadLlmConfig, LlmEndpoint, LlmConfig } from '../shared/config/llm-config';
+
+/**
+ * Mandatory OmniRoute gateway — all local MLX traffic must resolve through it.
+ * Override via OMNIROUTE_URL env var (e.g., Cloudflare Tunnel hostname).
+ * Default: http://omnimbp.local:20128/v1 (local M1 Max LAN)
+ */
+export const OMNIROUTE_URL = process.env.OMNIROUTE_URL || 'http://omnimbp.local:20128/v1';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -39,6 +46,37 @@ interface HealthState {
   consecutiveFailures: number;
 }
 
+function isLoopbackUrl(url: string): boolean {
+  return (
+    url === 'http://localhost:20128/v1' ||
+    url === 'http://127.0.0.1:20128/v1' ||
+    url === 'http://0.0.0.0:20128/v1' ||
+    url.startsWith('http://localhost:') ||
+    url.startsWith('http://127.0.0.1:') ||
+    url.startsWith('http://0.0.0.0:')
+  );
+}
+
+function assertOmniRouteConfig(config: LlmConfig): void {
+  const endpoints: { name: string; endpoint?: LlmEndpoint }[] = [
+    { name: 'primary', endpoint: config.primary },
+    { name: 'fastTriage', endpoint: config.fastTriage },
+    { name: 'fallback', endpoint: config.fallback },
+    { name: 'qwen', endpoint: config.qwen },
+    { name: 'cloud', endpoint: config.cloud },
+  ];
+
+  for (const { name, endpoint } of endpoints) {
+    if (!endpoint) continue;
+    if (endpoint.url === OMNIROUTE_URL) continue;
+    if (isLoopbackUrl(endpoint.url)) continue;
+    throw new Error(
+      `OmniRoute violation: ${name} endpoint URL "${endpoint.url}" is not the mandatory OmniRoute gateway (${OMNIROUTE_URL}). ` +
+      `All MLX traffic must resolve through OmniRoute.`,
+    );
+  }
+}
+
 export class LlmRouter extends EventEmitter {
   private config: LlmConfig;
   private health: Map<string, HealthState> = new Map();
@@ -48,6 +86,7 @@ export class LlmRouter extends EventEmitter {
   constructor(config?: Partial<LlmConfig>) {
     super();
     this.config = { ...loadLlmConfig(), ...config };
+    assertOmniRouteConfig(this.config);
   }
 
   /** Deep reasoning route: DeepSeek R1 → Ollama → Claude cloud */
@@ -149,7 +188,10 @@ export class LlmRouter extends EventEmitter {
 
       if (!res.ok) throw new Error(`LLM ${provider} error: ${res.status}`);
 
-      const data = await res.json() as { choices: Array<{ message: { content: string } }>; usage?: { total_tokens: number } };
+      const data = (await res.json()) as {
+        choices: Array<{ message: { content: string } }>;
+        usage?: { total_tokens: number };
+      };
       const latencyMs = Date.now() - start;
       const tokensUsed = data.usage?.total_tokens || 0;
 
