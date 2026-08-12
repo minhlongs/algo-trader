@@ -253,7 +253,18 @@ async function callLlm(
 }
 
 /** Robust JSON cleanup and parsing helper */
-function parseCombinedResponse(raw: string): any {
+interface RawSwarmJson {
+  votes?: Array<{
+    persona?: string;
+    vote?: string;
+    confidence?: number;
+    reasoning?: string;
+  }>;
+  reasoning?: string;
+  risks?: unknown[];
+}
+
+function parseCombinedResponse(raw: string): RawSwarmJson {
   try {
     const cleaned = raw
       .replace(/```json\n?/g, '')
@@ -262,7 +273,7 @@ function parseCombinedResponse(raw: string): any {
       .replace(/^[^{]*/, '')
       .replace(/[^}]*$/, '')
       .trim();
-    return JSON.parse(cleaned);
+    return JSON.parse(cleaned) as RawSwarmJson;
   } catch (err) {
     logger.warn('[SignalValidator] Failed to parse combined response JSON', { err });
     return {};
@@ -270,18 +281,16 @@ function parseCombinedResponse(raw: string): any {
 }
 
 /** Mathematical aggregation validation on votes */
-function verifyAndAggregateVotes(parsedJson: any, minConfidence: number): UnifiedValidationResult {
-  const votes: SwarmVote[] = parsedJson.votes || [];
+function verifyAndAggregateVotes(parsedJson: RawSwarmJson, minConfidence: number): UnifiedValidationResult {
+  const votes: SwarmVote[] = (parsedJson.votes ?? []) as SwarmVote[];
 
   // Normalize and validate votes structure
-  const cleanVotes: SwarmVote[] = votes.map((v: any) => {
-    return {
-      persona: v.persona,
-      vote: v.vote === 'APPROVE' ? 'APPROVE' : 'REJECT',
-      confidence: typeof v.confidence === 'number' ? Math.max(0, Math.min(1, v.confidence)) : 0.5,
-      reasoning: typeof v.reasoning === 'string' ? v.reasoning : 'No reasoning provided',
-    };
-  });
+  const cleanVotes: SwarmVote[] = votes.map(v => ({
+    persona: v.persona as SwarmVote['persona'],
+    vote: v.vote === 'APPROVE' ? 'APPROVE' : 'REJECT',
+    confidence: typeof v.confidence === 'number' ? Math.max(0, Math.min(1, v.confidence)) : 0.5,
+    reasoning: typeof v.reasoning === 'string' ? v.reasoning : 'No reasoning provided',
+  }));
 
   const approvals = cleanVotes.filter(v => v.vote === 'APPROVE');
   const threshold = Math.floor(cleanVotes.length / 2) + 1; // N=3 -> 2 approvals; N=4 -> 3 approvals
@@ -304,7 +313,7 @@ function verifyAndAggregateVotes(parsedJson: any, minConfidence: number): Unifie
     valid,
     confidence: consensusConfidence,
     reasoning: typeof parsedJson.reasoning === 'string' ? parsedJson.reasoning : 'Aggregated consensus decision',
-    risks: Array.isArray(parsedJson.risks) ? parsedJson.risks.filter((r: any) => typeof r === 'string') : [],
+    risks: Array.isArray(parsedJson.risks) ? parsedJson.risks.filter(r => typeof r === 'string') : [],
     votes: cleanVotes,
     consensusConfidence,
     dissent,

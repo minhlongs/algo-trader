@@ -146,11 +146,11 @@ function buildHedge(raw: RawHedgeItem, markets: MarketInput[]): LogicalHedge | n
 
   const titleA = raw.marketA_title ?? '';
   const titleB = raw.marketB_title ?? '';
-  const marketA = markets.find(m => m.title === titleA) ?? markets[0];
-  const marketB = markets.find(m => m.title === titleB) ?? markets[1];
+  const marketA = markets.find(m => m.title === titleA);
+  const marketB = markets.find(m => m.title === titleB);
   if (!marketA || !marketB) return null;
 
-  const edge = Math.abs(marketA.yesPrice - marketB.yesPrice);
+  const edge = Math.max(0, marketA.yesPrice - marketB.yesPrice);
   const hedgeStrategy = 'logical-necessity';
   const id = crypto.createHash('md5').update(`${marketA.id}:${marketB.id}:${Date.now()}`).digest('hex');
 

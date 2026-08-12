@@ -2,7 +2,7 @@
  * Signal Consensus Swarm —
  * 3 or 4-persona debate for signal validation.
  * Majority vote (2/3 default, 3/4 with Qwen) determines approve/reject. Reduces false positives 30-40%.
- * Fail-closed: ≥2 failed LLM calls → reject signal.
+ * Fail-closed: failed persona calls cast synthetic REJECT (confidence=0), tilting majority vote toward rejection.
  * Env: SWARM_CONSENSUS_ENABLED (default true), SWARM_MIN_CONFIDENCE (default 0.6),
  * SWARM_QWEN_ENABLED (default false) — enables 4th quantitative-analyst persona via Qwen.
  */
@@ -107,9 +107,13 @@ function aggregateVotes(votes: SwarmVote[], minConfidence: number): SwarmConsens
   const majorityThreshold = totalVotes >= 4 ? totalVotes * 0.75 : totalVotes * 0.5;
   const approved = approveCount >= majorityThreshold;
 
-  // Average confidence across all votes
-  const totalConfidence = votes.reduce((sum, v) => sum + v.confidence, 0);
-  const consensusConfidence = totalConfidence / totalVotes;
+  // Average confidence across majority-side votes only
+  const majorityVotes = votes.filter(v =>
+    approved ? v.vote === 'APPROVE' : v.vote === 'REJECT',
+  );
+  const consensusConfidence = majorityVotes.length > 0
+    ? majorityVotes.reduce((sum, v) => sum + v.confidence, 0) / majorityVotes.length
+    : 0;
 
   // Identify dissenters (voters with low confidence or opposing votes)
   const minorityVotes = votes.filter(v => {
@@ -203,25 +207,20 @@ export async function runSwarmConsensus(signal: SignalCandidate): Promise<SwarmC
     ),
   );
 
-  // Parse results
-  const votes: SwarmVote[] = results
-    .filter(r => r.status === 'fulfilled')
-    .map(r => parseSwarmVote(r.raw, r.persona));
-
-  const failedCount = results.filter(r => r.status === 'rejected').length;
-
-  if (failedCount >= 2) {
-    logger.error('[SwarmConsensus] ≥2 persona calls failed — rejecting signal', {
-      signalType: signal.signalType,
-      failedCount,
-    });
-    return {
-      approved: false,
-      votes,
-      consensusConfidence: 0,
-      dissent: 'Swarm unavailable — fail-closed rejection',
-    };
-  }
+  // Parse results — synthetic REJECT for each failed persona (fail-closed)
+  const votes: SwarmVote[] = [
+    ...results
+      .filter(r => r.status === 'fulfilled')
+      .map(r => parseSwarmVote(r.raw, r.persona)),
+    ...results
+      .filter(r => r.status === 'rejected')
+      .map(r => ({
+        persona: r.persona as SwarmVote['persona'],
+        vote: 'REJECT' as const,
+        confidence: 0,
+        reasoning: `Persona call failed: ${r.reason}`,
+      })),
+  ];
 
   const consensus = aggregateVotes(votes, minConfidence);
 
