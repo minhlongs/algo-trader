@@ -149,7 +149,13 @@ export class TradingPipeline extends EventEmitter {
     // Initialize the event bus first (singleton, but we keep a reference)
     this.eventBus = tradingEventBus;
 
-    this.clobClient      = new ClobClient(this.cfg.privateKey || 'paper-key', this.cfg.chainId);
+    // Resolve private key from config first, then env var, fallback to 'paper-key' for paper mode
+    const resolvedKey = this.cfg.privateKey
+      || process.env['POLYMARKET_PRIVATE_KEY']
+      || process.env['POLY_PRIVATE_KEY']
+      || 'paper-key';
+
+    this.clobClient      = new ClobClient(resolvedKey, this.cfg.chainId);
     this.orderbookStream = new OrderBookStream(this.eventBus);
     this.scanner         = new MarketScanner(this.clobClient);
     this.orderManager    = new OrderManager(this.clobClient);
