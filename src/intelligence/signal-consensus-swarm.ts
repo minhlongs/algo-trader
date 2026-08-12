@@ -100,7 +100,6 @@ function aggregateVotes(votes: SwarmVote[], minConfidence: number): SwarmConsens
   }
 
   const approveCount = votes.filter(v => v.vote === 'APPROVE').length;
-  const rejectCount = votes.length - approveCount;
   const totalVotes = votes.length;
 
   // Majority vote threshold: >50% for 3-persona, ≥75% for 4-persona
