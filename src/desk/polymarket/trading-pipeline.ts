@@ -1,7 +1,7 @@
 // Polymarket live trading pipeline: wires scanner → orderbook → strategies → risk → executor → DB
 // Paper trading is the DEFAULT mode (safe). Set paperTrading: false for live execution.
 import { EventEmitter } from 'events';
-import { ClobClient } from './clob-client';
+import { clobClient as clobClientSingleton, ClobClientInterface } from './clob-client';
 import { OrderBookStream } from'./orderbook-stream';
 import { MarketScanner } from'./market-scanner';
 import { OrderManager } from './order-manager';
@@ -51,7 +51,7 @@ export class TradingPipeline extends EventEmitter {
   private status: PipelineStatus = 'stopped';
   private cfg: Required<PipelineConfig>;
 
-  private clobClient!: ClobClient;
+  private clobClient!: ClobClientInterface;
   private orderbookStream!: OrderBookStream;
   private scanner!: MarketScanner;
   private predictionLoop: PredictionLoop | null = null;
@@ -155,7 +155,7 @@ export class TradingPipeline extends EventEmitter {
       || process.env['POLY_PRIVATE_KEY']
       || 'paper-key';
 
-    this.clobClient      = new ClobClient(resolvedKey, this.cfg.chainId);
+    this.clobClient      = clobClientSingleton;
     this.orderbookStream = new OrderBookStream(this.eventBus);
     this.scanner         = new MarketScanner(this.clobClient);
     this.orderManager    = new OrderManager(this.clobClient);
