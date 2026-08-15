@@ -13,6 +13,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 
+import { logger } from '../../shared/utils/logger';
+
 import { hashIpAddress } from './audit-ip-hash';
 import { logAudit } from './audit-log';
 
@@ -66,7 +68,15 @@ export function auditMiddleware(
  let lastStatusCode = res.statusCode ?? 200;
 
  const fire = (body: unknown): void => {
- void fireAudit(req, res, lastStatusCode, body);
+ // logAudit is fail-closed and rejects on write failure; the entry is already
+ // captured by the dead-letter queue at that point. Swallow here so a DB blip
+ // cannot surface as an unhandled rejection and terminate the process.
+ fireAudit(req, res, lastStatusCode, body).catch((err: unknown) => {
+ logger.error('[AuditMiddleware] Audit write failed', {
+ requestId: res.locals.requestId,
+ error: err instanceof Error ? err.message : String(err),
+ });
+ });
  };
 
  res.status = ((code: number): ReturnType<typeof origStatus> => {
