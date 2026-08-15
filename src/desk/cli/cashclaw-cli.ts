@@ -18,9 +18,10 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../../shared/utils/logger';
+import { readJson } from '../../shared/persistence/persistent-store';
 import type { BacktestTrade } from '../../shared/backtesting/backtest-runner';
 
-import { runNegRiskScan } from'../commands/neg-risk-scan';
+import { runNegRiskScan } from '../commands/neg-risk-scan';
 
 const program = new Command()
   .name('cashclaw')
@@ -69,10 +70,6 @@ program
   .description('Show current paper trading P&L and positions')
   .action(() => {
     const file = path.join(process.cwd(), 'data', 'paper-trades.json');
-    if (!fs.existsSync(file)) {
-      logger.info('No trades yet. Run: cashclaw paper');
-      return;
-    }
 
     try {
       interface Portfolio {
@@ -83,7 +80,11 @@ program
         winCount: number;
         lossCount: number;
       }
-      const d = JSON.parse(fs.readFileSync(file, 'utf-8')) as Portfolio;
+      const d = readJson<Portfolio>(file);
+      if (!d) {
+        logger.info('No trades yet. Run: cashclaw paper');
+        return;
+      }
       const total = d.winCount + d.lossCount;
       const winRate = total > 0 ? ((d.winCount / total) * 100).toFixed(1) : '0.0';
 
@@ -192,11 +193,6 @@ program
     }
 
     const filePath = path.resolve(process.cwd(), opts.file);
-    if (!fs.existsSync(filePath)) {
-      logger.error(`Error: Trade history file not found: ${filePath}`);
-      logger.error('Run paper trading first: cashclaw paper');
-      process.exit(1);
-    }
 
     try {
       interface PaperPortfolio {
@@ -205,7 +201,12 @@ program
         closedTrades: BacktestTrade[];
       }
 
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as PaperPortfolio;
+      const data = readJson<PaperPortfolio>(filePath);
+      if (!data) {
+        logger.error(`Error: Trade history file not found or invalid: ${filePath}`);
+        logger.error('Run paper trading first: cashclaw paper');
+        process.exit(1);
+      }
       const trades = data.closedTrades ?? [];
 
       if (trades.length === 0) {

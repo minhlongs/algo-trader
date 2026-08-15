@@ -4,7 +4,7 @@
  */
 
 import { writeJsonState, cashclawPath } from '../persistence/file-store';
-import * as fs from 'node:fs';
+import { readJson } from '../../shared/persistence/persistent-store';
 import { logger } from '../utils/logger';
 import type { DrawdownPersistedState, DrawdownEvent } from './tiered-drawdown-types';
 
@@ -33,9 +33,7 @@ export function scheduleDeferredWrite(dw: DeferredWrite, state: DrawdownPersiste
 export function loadPersistedState(): DrawdownPersistedState | null {
   try {
     const filePath = cashclawPath('drawdown-state.json');
-    if (!fs.existsSync(filePath)) return null;
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(raw) as DrawdownPersistedState;
+    return readJson<DrawdownPersistedState>(filePath);
   } catch (err) {
     logger.warn('[TieredDrawdown] No existing state file found or failed to parse:', err);
     return null;

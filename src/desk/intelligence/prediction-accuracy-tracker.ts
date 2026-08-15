@@ -14,6 +14,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../../shared/utils/logger';
+import { readJson } from '../../shared/persistence/persistent-store';
 import { upsertPredictionPg, updatePredictionResolutionPg } from './prediction-pg-store';
 
 export interface Prediction {
@@ -58,9 +59,7 @@ const GAMMA_API_URL = 'https://gamma-api.polymarket.com/markets?closed=true&limi
 // Load predictions array from disk; returns empty array if file missing or malformed
 function loadPredictions(): Prediction[] {
   try {
-    if (!fs.existsSync(PREDICTIONS_FILE)) return [];
-    const raw = fs.readFileSync(PREDICTIONS_FILE, 'utf-8');
-    return JSON.parse(raw) as Prediction[];
+    return readJson<Prediction[]>(PREDICTIONS_FILE) ?? [];
   } catch (err) {
     logger.warn('[AccuracyTracker] Failed to load predictions file — starting fresh', { err });
     return [];
