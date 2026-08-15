@@ -22,7 +22,6 @@ vi.mock('@sentry/opentelemetry', () => ({
   setupOpenTelemetry: vi.fn(),
 }));
 
-// same mocks as api.test.ts
 vi.mock('../../middleware/feature-gate', () => ({
   requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
@@ -30,21 +29,22 @@ vi.mock('../../middleware/feature-gate', () => ({
   canAccessFeature: () => true,
   FEATURE_ACCESS: {},
 }));
-// NOTE: real modules resolve by absolute path — the previous `@platform/...`
-// mock ids pointed at non-existent `src/platform/...` files and never
-// intercepted. The audit middleware in server.ts is imported via a relative
-// path, so we must mock the modules it actually uses: logAudit + pg `query`.
+
 vi.mock('../../../../seed/security/audit-log', () => ({
   logAudit: () => Promise.resolve(),
 }));
 
 const mockRedis = {
-  hgetall: vi.fn().mockResolvedValue({}), hset: vi.fn().mockResolvedValue(1),
-  get: vi.fn().mockResolvedValue(null), set: vi.fn().mockResolvedValue('OK'),
+  hgetall: vi.fn().mockResolvedValue({}),
+  hset: vi.fn().mockResolvedValue(1),
+  get: vi.fn().mockResolvedValue(null),
+  set: vi.fn().mockResolvedValue('OK'),
   del: vi.fn().mockResolvedValue(1),
-  keys: vi.fn().mockImplementation(async () => ['key1','key2','key3']),
+  keys: vi.fn().mockImplementation(async () => ['key1', 'key2', 'key3']),
   ping: vi.fn().mockResolvedValue('PONG'),
-  defineCommand: vi.fn().mockImplementation(function (name: string) { (this as Record<string, unknown>)[name] = vi.fn().mockResolvedValue([1,1]); }),
+  defineCommand: vi.fn().mockImplementation(function (name: string) {
+    (this as Record<string, unknown>)[name] = vi.fn().mockResolvedValue([1, 1]);
+  }),
   rateLimit: vi.fn().mockResolvedValue([1, 1]),
   info: vi.fn().mockResolvedValue('# Server\r\nredis_version:7.0.0\r\n'),
 };
@@ -56,7 +56,6 @@ vi.mock('@platform/desk/engine', () => ({
   TradingEngine: class { getOrders() { return []; } },
 }));
 
-// Bypass rate-limit middleware
 vi.mock('../../forest/rate-limit/redis-rate-limiter', () => ({
   rateLimitMiddleware: () => (_req: any, _res: any, next: any) => next(),
 }));
@@ -76,10 +75,9 @@ describe('debug 400', () => {
     const { ApiServer } = await import('../server');
     app = new ApiServer({ port: 3001 }).getApp();
   });
-  it('shows body for /health 400', async () => {
+  it('shows body for /health 200', async () => {
     const res = await request(app).get('/health');
-  console.log('DEBUG status=', res.status, 'body=', JSON.stringify(res.body));
-  console.log('DEBUG ratelimit=', res.headers['x-ratelimit-limit']);
-  console.log('DEBUG mockCalls=', JSON.stringify(mockRedis.rateLimit.mock.calls.slice(-3)));
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('status');
   });
 });

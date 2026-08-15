@@ -5,9 +5,7 @@ describe('debug timers', () => {
     vi.useFakeTimers({ now: new Date('2025-01-01') });
     const events: number[] = [];
     setInterval(() => { events.push(Date.now()); }, 1000);
-    console.log('Before advance:', events);
     await vi.advanceTimersByTimeAsync(4000);
-    console.log('After 4s advance:', events, 'count:', events.length);
     vi.useRealTimers();
     expect(events.length).toBeGreaterThan(0);
   });

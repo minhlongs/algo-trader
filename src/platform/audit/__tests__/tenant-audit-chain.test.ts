@@ -38,7 +38,6 @@ describe('Tenant Audit Log Chain', () => {
 
     // Set dynamic mock implementations specifically for this test block
     (query as any).mockImplementation(async (sql: string, params?: unknown[]) => {
-      console.log('DYNAMIC QUERY:', sql, params, 'ROWS:', mockRows.length);
       if (sql.includes('ORDER BY sequence_number DESC')) {
         const tenantId = params?.[0] as string;
         const tenantRows = mockRows.filter(r => r.tenant_id === tenantId);
@@ -84,11 +83,9 @@ describe('Tenant Audit Log Chain', () => {
     vi.mocked(transaction).mockImplementation(async (fn: (client: PoolClient) => Promise<unknown>) => {
       const mockClient = {
         query: vi.fn(async (sql: string, params?: unknown[]) => {
-          console.log('DYNAMIC TX QUERY:', sql, params, 'ROWS:', mockRows.length);
           if (sql.includes('ORDER BY sequence_number DESC')) {
             const tenantId = params?.[0] as string;
             const tenantRows = mockRows.filter(r => r.tenant_id === tenantId);
-            console.log('DYNAMIC TX SELECT MATCHED ROWS:', tenantRows);
             if (tenantRows.length === 0) return { rows: [] } as unknown as QueryResult<MockRow>;
             const sorted = [...tenantRows].sort((a, b) => b.sequence_number - a.sequence_number);
             return { rows: [sorted[0]] } as unknown as QueryResult<MockRow>;
@@ -108,7 +105,6 @@ describe('Tenant Audit Log Chain', () => {
               created_at: fixedTimestamp,
             };
             mockRows.push(newRow);
-            console.log('DYNAMIC TX INSERTED:', newRow, 'TOTAL ROWS:', mockRows.length);
             return { rows: [newRow] } as unknown as QueryResult<MockRow>;
           }
           return { rows: [] } as unknown as QueryResult<never>;

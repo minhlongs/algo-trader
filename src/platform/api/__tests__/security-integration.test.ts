@@ -372,10 +372,6 @@ describe('Security Integration: Audit + Rate Limit + Encryption', () => {
         .send(VALID_BODY)
         .set('x-request-id', 'req-8');
 
-      console.log('DEBUG REDIS FAIL - status:', res.status);
-      console.log('DEBUG REDIS FAIL - body:', res.body);
-      console.log('DEBUG REDIS FAIL - zcard calls:', mockRedis.zcard.mock.calls.length);
-      console.log('DEBUG REDIS FAIL - pipeline.exec calls:', mockRedis.pipeline.mock.calls.length);
 
       // Should fail-open and allow request
       expect(res.status).toBe(201);
@@ -395,9 +391,6 @@ describe('Security Integration: Audit + Rate Limit + Encryption', () => {
         .send(VALID_BODY)
         .set('x-request-id', 'req-9');
 
-      console.log('DEBUG UPSE 1 - status:', res.status);
-      console.log('DEBUG UPSE 1 - body:', res.body);
-      console.log('DEBUG UPSE 1 - mockEmitUpsert calls:', mockEmitUpsert.mock.calls.length);
 
       expect(res.status).toBe(201);
       expect(mockEmitUpsert).toHaveBeenCalled();

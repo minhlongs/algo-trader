@@ -42,8 +42,6 @@ describe('Debug Signals', () => {
       .post('/api/v1/signals/subscribe')
       .set('Authorization', 'Bearer test-key')
       .send({ chatId: 12345 });
-    console.log('STATUS:', res.status);
-    console.log('BODY:', JSON.stringify(res.body, null, 2));
-    console.log('MOCK upsert calls:', mocks.upsert.mock.calls);
+    expect(res.status).toBe(200);
   });
 });
