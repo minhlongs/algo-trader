@@ -3,7 +3,7 @@
  * third security-critical edge (after #193 signal-ingest HMAC + #194
  * HMAC verifier).
  *
- * `src/api/routes/admin-qwen-routes.ts` exposes the L1 kill-switch +
+ * `src/platform/api/routes/admin-qwen-routes.ts` exposes the L1 kill-switch +
  * status endpoints mounted at `/api/v1/admin/qwen`. Drift manifests as:
  *   - Auth check removed → anyone on the internet can toggle the kill
  *     switch (operator-critical)
@@ -74,8 +74,8 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const ADMIN_FILE = resolve(REPO_ROOT, 'src/api/routes/admin-qwen-routes.ts');
-const MIDDLEWARE_FILE = resolve(REPO_ROOT, 'src/api/middleware/require-admin-key.ts');
+const ADMIN_FILE = resolve(REPO_ROOT, 'src/platform/api/routes/admin-qwen-routes.ts');
+const MIDDLEWARE_FILE = resolve(REPO_ROOT, 'src/platform/api/middleware/require-admin-key.ts');
 
 function readAdmin(): string {
   return readFileSync(ADMIN_FILE, 'utf8');

@@ -41,7 +41,7 @@ vi.mock('../../src/platform/middleware/prometheus-metrics.js', () => ({
 
 // Top-level publish mock
 const mockPublish = vi.fn();
-vi.mock('../../src/signal/signal-publisher.js', () => ({
+vi.mock('../../src/desk/signal/signal-publisher.js', () => ({
 	SignalPublisher: vi.fn().mockImplementation(function (this: { publish: ReturnType<typeof vi.fn> }) {
 		this.publish = mockPublish;
 		return this;
@@ -50,7 +50,7 @@ vi.mock('../../src/signal/signal-publisher.js', () => ({
 
 // ─── Imports after mocks ──────────────────────────────────────────────────────
 
-import { createSignalIngestRouter } from '../../src/api/routes/signal-ingest-routes.js';
+import { createSignalIngestRouter } from '../../src/platform/api/routes/signal-ingest-routes.js';
 import {
 	resetDrawdownMonitorState,
 	disableQwen,
@@ -60,7 +60,9 @@ import {
 } from '../../src/desk/wiring/qwen-drawdown-monitor.js';
 import { PaperGateError } from '../../src/desk/wiring/qwen-live-eligibility-gate.js';
 import { telegramSignalPusher } from '../../src/desk/signal/telegram-signal-pusher.js';
-import type { SignalStore } from '../../src/signal/signal-publisher.js';
+import type { SignalStore } from '../../src/desk/signal/signal-publisher.js';
+import { LicenseTier, LicenseStatus } from '../../src/shared/types/license';
+import type { License } from '../../src/shared/types/license';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -105,10 +107,26 @@ function makeStore(): SignalStore & { signals: unknown[] } {
 	};
 }
 
+const TEST_LICENSE: License = {
+	id: 'license-test-pro',
+	name: 'Test PRO License',
+	key: 'test-license-key',
+	tier: LicenseTier.PRO,
+	status: LicenseStatus.ACTIVE,
+	createdAt: '2026-01-01T00:00:00.000Z',
+	usageCount: 0,
+};
+
 function buildApp(store: SignalStore, secret = TEST_SECRET) {
 	process.env.QWEN_INGEST_HMAC_SECRET = secret;
 	const app = express();
 	app.use(express.json());
+	// Live platform router tier-gates POST /ingest via requireTier('PRO'),
+	// which reads req.license (set upstream by raas-gate in production).
+	app.use((req, _res, next) => {
+		req.license = TEST_LICENSE;
+		next();
+	});
 	app.use('/api/v1/signals', createSignalIngestRouter(store));
 	return app;
 }

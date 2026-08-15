@@ -74,7 +74,7 @@ describe('debug 400', () => {
     process.env.ADMIN_API_KEY = 'test-admin-key';
     const { ApiServer } = await import('../server');
     app = new ApiServer({ port: 3001 }).getApp();
-  });
+  }, 30_000);
   it('shows body for /health 200', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);

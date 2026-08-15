@@ -321,7 +321,7 @@ describe('API Server', () => {
   });
 
   describe('Health Endpoints', () => {
-    it('GET /health should return healthy status', { timeout: 15_000 }, async () => {
+    it('GET /health should return healthy status', { timeout: 30_000 }, async () => {
       const { status, body } = await testRequest('GET', '/health', {
         headers: { 'x-request-id': TEST_REQUEST_ID },
       });

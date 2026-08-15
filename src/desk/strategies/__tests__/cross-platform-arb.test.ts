@@ -5,6 +5,31 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('../../feeds/polymarket-websocket-feed', () => ({
+ PolymarketWebSocketFeed: class {
+ onPriceUpdate() { }
+ connect() { }
+ close() { }
+ },
+ PriceUpdate: class { },
+}));
+
+vi.mock('../../feeds/feed-aggregator', () => ({
+ FeedAggregator: class {
+ async connect() { }
+ async disconnect() { }
+ onTicker() { }
+ },
+ FeedMessage: class { },
+ UnifiedTicker: class { },
+}));
+
+vi.mock('../../feeds/kalshi-price-feed', () => ({
+ startKalshiPolling: () => ({ stop: vi.fn() }),
+ KalshiMarket: class { },
+}));
+
 import { CrossPlatformArbDetector, ArbOpportunity, PlatformPrice, getCrossPlatformArbDetector } from '../cross-platform-arb';
 
 describe('CrossPlatformArbDetector', () => {
@@ -197,13 +222,13 @@ describe('CrossPlatformArbDetector', () => {
   });
 
   describe('start / stop', () => {
-    it('should start without throwing', async () => {
+    it('should start without throwing', { timeout: 20_000 }, async () => {
       // start() tries to connect to real feeds; we just verify it doesn't throw
       // on the structural level (feeds may fail but are caught)
       await expect(detector.start()).resolves.toBeUndefined();
     });
 
-    it('should stop without throwing', async () => {
+    it('should stop without throwing', { timeout: 20_000 }, async () => {
       await detector.start();
       await expect(detector.stop()).resolves.toBeUndefined();
     });

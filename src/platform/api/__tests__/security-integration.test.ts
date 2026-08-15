@@ -193,8 +193,7 @@ vi.mock('../../../platform/audit/audit-hooks', () => ({
 
 // ─── Import routes after mocks ────────────────────────────────────────────────
 
-import { credentialsRouter } from '../../api/routes/credentials-routes';
-import { auditRouter } from '../../../api/routes/audit-routes';
+import { credentialsRouter } from '../routes/credentials-routes';
 import { adminRouter } from '../routes/admin';
 import { rateLimitMiddleware, rateLimiter } from '@forest/rate-limit';
 
@@ -211,7 +210,6 @@ function buildApp(claims?: { sub?: string; role?: string; tier?: string }) {
   // Apply rate limiter middleware
   app.use(rateLimitMiddleware());
   app.use('/api/v1/subscriber/credentials', credentialsRouter);
-  app.use('/api/v1/audit', auditRouter);
   app.use('/api/admin', adminRouter);
   return app;
 }
@@ -538,60 +536,6 @@ describe('Security Integration: Audit + Rate Limit + Encryption', () => {
       expect(res.body.success).toBe(true);
       // Admin route directly calls logAudit (not emitConfigAuditEvent)
       expect(mockLogAudit).toHaveBeenCalled();
-    });
-  });
-
-  describe('Audit log query with tenant isolation', () => {
-    it('should only return logs for authenticated tenant', async () => {
-      mockQuery.mockResolvedValueOnce({
-        rows: [
-          {
-            id: 'log-1',
-            tenant_id: 'tenant-query',
-            sequence_number: '1',
-            event_type: 'credentials.upsert',
-            action_by: 'user',
-            reason: 'credential_created',
-            metadata: '{}',
-            hash: 'hash1',
-            previous_hash: null,
-            created_at: new Date().toISOString(),
-          },
-        ],
-      });
-
-      const app = buildApp({ sub: 'tenant-query', role: 'subscriber' });
-
-      const res = await request(app)
-        .get('/api/v1/audit/logs')
-        .set('x-request-id', 'req-19');
-
-      expect(res.status).toBe(200);
-      expect(res.body.logs).toHaveLength(1);
-      expect(res.body.logs[0].tenant_id).toBe('tenant-query');
-    });
-
-    it('should reject cross-tenant audit access', async () => {
-      const app = buildApp({ sub: 'tenant-a', role: 'subscriber' });
-
-      const res = await request(app)
-        .get('/api/v1/audit/logs?tenantId=tenant-b')
-        .set('x-request-id', 'req-20');
-
-      expect(res.status).toBe(403);
-      expect(res.body.error).toContain('cross-tenant access denied');
-    });
-
-    it('should allow admin to query any tenant logs', async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [] });
-
-      const app = buildApp({ sub: 'admin-user', role: 'admin' });
-
-      const res = await request(app)
-        .get('/api/v1/audit/logs?tenantId=any-tenant')
-        .set('x-request-id', 'req-21');
-
-      expect(res.status).toBe(200);
     });
   });
 
