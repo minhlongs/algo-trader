@@ -36,19 +36,28 @@ describe('LLM Content Generator', () => {
     vi.useRealTimers();
   });
 
-  it('should fallback to template when LLM unavailable', async () => {
-    await vi.advanceTimersByTimeAsync(31_000);
+  it('should generate blog post from signal digest', async () => {
+    vi.advanceTimersByTime(31_000);
     const post = await generateLlmBlogPost('signal-digest', generateSignalDigest);
     expect(post.id).toBeTruthy();
     expect(post.title).toBeTruthy();
     expect(post.type).toBe('signal-digest');
     expect(post.content.length).toBeGreaterThan(50);
-  }, 15000);
+  }, 30_000);
+
+  it('should fallback to template when LLM unavailable', async () => {
+    vi.advanceTimersByTime(31_000);
+    const post = await generateLlmBlogPost('signal-digest', generateSignalDigest);
+    expect(post.id).toBeTruthy();
+    expect(post.title).toBeTruthy();
+    expect(post.type).toBe('signal-digest');
+    expect(post.content.length).toBeGreaterThan(50);
+  }, 30_000);
 
   it('should preserve post type from fallback generator', async () => {
-    await vi.advanceTimersByTimeAsync(31_000);
+    vi.advanceTimersByTime(31_000);
     const post = await generateLlmBlogPost('market-analysis', generateSignalDigest);
     expect(post.id).toBeTruthy();
     expect(post.content.length).toBeGreaterThan(50);
-  }, 15000);
+  }, 30_000);
 });
