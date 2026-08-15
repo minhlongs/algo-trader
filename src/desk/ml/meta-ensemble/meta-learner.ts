@@ -7,9 +7,9 @@
  * with Wilson-score confidence intervals.
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../../../shared/utils/logger';
+import { readJson } from '../../../shared/persistence/persistent-store';
 import {
   DEFAULT_META_LEARNER_CONFIG,
   type MetaWeight,
@@ -73,15 +73,9 @@ function predictionsFilePath(): string {
 }
 
 function loadPredictions(): StoredPrediction[] {
-  const filePath = predictionsFilePath();
-  try {
-    if (!fs.existsSync(filePath)) return [];
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const result = readJson<StoredPrediction[]>(predictionsFilePath());
+  if (Array.isArray(result)) return result;
+  return [];
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
