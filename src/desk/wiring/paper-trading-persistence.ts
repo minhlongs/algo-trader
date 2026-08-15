@@ -7,9 +7,9 @@
  * Exports: saveTrades, loadTrades, savePaperTradeV3 (DB), portfolio reset helpers.
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../../shared/utils/logger';
+import { readJson, writeJson } from '../../shared/persistence/persistent-store';
 import { query } from '../../db/postgres-client';
 import { reflectOnTrade } from '../intelligence/dual-level-reflection-engine';
 import type { TradeOutcome } from '../intelligence/dual-level-reflection-engine';
@@ -66,16 +66,15 @@ export function resetPortfolio(): void {
 
 export function saveTrades(): void {
   try {
-    const dir = path.dirname(tradesFile);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(tradesFile, JSON.stringify(portfolio, null, 2));
+    writeJson(tradesFile, portfolio);
   } catch (err) { logger.warn('[PaperOrchestrator] Persist failed', { err }); }
 }
 
 export function loadTrades(): void {
   try {
-    if (fs.existsSync(tradesFile)) {
-      portfolio = JSON.parse(fs.readFileSync(tradesFile, 'utf-8')) as PaperPortfolio;
+    const loaded = readJson<PaperPortfolio>(tradesFile);
+    if (loaded) {
+      portfolio = loaded;
       logger.info('[PaperOrchestrator] Loaded portfolio', {
         positions: portfolio.positions.length,
         totalPnl: portfolio.totalPnl,
