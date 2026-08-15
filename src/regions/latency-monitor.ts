@@ -60,7 +60,7 @@ class LatencyMonitor {
       const res = await fetch(url, {
         method: 'GET',
         cf: { cacheTtl: 0 },
-      } as any);
+      } as RequestInit & { cf: { cacheTtl: number } });
 
       const latency = Date.now() - start;
       const success = res.status === 200;

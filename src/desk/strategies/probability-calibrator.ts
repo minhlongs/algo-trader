@@ -9,6 +9,7 @@
 
 import { BinaryMarket } from '../arbitrage/types';
 import { LlmRouter, ChatMessage } from '../../lib/llm-router';
+import { LlmEndpoint } from '../../shared/config/llm-config';
 
 export interface CalibratorConfig {
   /** Local LLM base URL (default: http://127.0.0.1:11434) */
@@ -76,7 +77,9 @@ export class ProbabilityCalibratorStrategy {
   constructor(config: Partial<CalibratorConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.semaphore = new Semaphore(this.config.maxConcurrentRequests);
-    this.llmRouter = new LlmRouter({ primary: { url: this.config.llmBaseUrl, model: this.config.llmModel, timeoutMs: 90_000, maxTokens: 256 } } as any);
+    this.llmRouter = new LlmRouter({
+      primary: { url: this.config.llmBaseUrl, model: this.config.llmModel, priority: 1, maxTokens: 256, timeoutMs: 90_000 } as LlmEndpoint,
+    });
   }
 
   /**
