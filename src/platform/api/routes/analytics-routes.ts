@@ -10,9 +10,9 @@
 
 import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '../../../shared/utils/logger';
+import { readJson, writeJson } from '../../../shared/persistence/persistent-store';
 import { requireTier } from '../../middleware/feature-gate';
 
 const DATA_DIR = join(process.cwd(), 'data', 'analytics');
@@ -27,21 +27,13 @@ interface AnalyticsEvent {
   ip?: string;
 }
 
-function ensureDir(): void {
-  if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-}
-
 function loadEvents(): AnalyticsEvent[] {
-  ensureDir();
-  if (!existsSync(EVENTS_FILE)) return [];
-  try { return JSON.parse(readFileSync(EVENTS_FILE, 'utf-8')); }
-  catch { return []; }
+  return readJson<AnalyticsEvent[]>(EVENTS_FILE) ?? [];
 }
 
 function saveEvents(events: AnalyticsEvent[]): void {
-  ensureDir();
   // Keep last 1000 events
-  writeFileSync(EVENTS_FILE, JSON.stringify(events.slice(-1000), null, 2));
+  writeJson(EVENTS_FILE, events.slice(-1000));
 }
 
 export const analyticsRouter: RouterType = Router();

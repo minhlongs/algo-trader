@@ -24,8 +24,8 @@ jobs:
         with:
           node-version: '22'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: npx tsc --noEmit
+      - run: pnpm approve-builds @prisma/client @prisma/engines prisma protobufjs msgpackr-extract esbuild ccxt bufferutil workerd && pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit
       - run: npx eslint src --max-warnings 100
       - run: npx vitest run
 
@@ -76,7 +76,7 @@ jobs:
         with:
           node-version: '22'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm approve-builds @prisma/client @prisma/engines prisma protobufjs msgpackr-extract esbuild ccxt bufferutil workerd && pnpm install --frozen-lockfile
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

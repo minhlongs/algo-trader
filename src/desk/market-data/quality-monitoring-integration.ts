@@ -291,10 +291,10 @@ export class QualityMonitoringIntegration {
 
   private parseProvider(providerName: string): MarketDataSource | null {
     try {
-      return MarketDataSource[providerName.toUpperCase() as keyof typeof MarketDataSource] ??
-             (Object.values(MarketDataSource) as string[]).includes(providerName as any)
-        ? (providerName as any as MarketDataSource)
-        : null;
+      const values = Object.values(MarketDataSource) as readonly string[];
+      if (values.includes(providerName)) return providerName as unknown as MarketDataSource;
+      const direct = MarketDataSource[providerName.toUpperCase() as keyof typeof MarketDataSource];
+      return direct ?? null;
     } catch {
       return null;
     }

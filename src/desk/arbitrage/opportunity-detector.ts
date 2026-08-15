@@ -3,7 +3,7 @@
  * Detects triangular, DEX-CEX spread, and funding rate arbitrage
  */
 
-import { PricePoint, ArbitrageOpportunity, ArbitrageLeg, DetectorConfig } from './types';
+import { PricePoint, ArbitrageOpportunity, ArbitrageLeg, DetectorConfig, ExchangeId } from './types';
 import { DEFAULT_DETECTOR_CONFIG, TRIANGULAR_PAIRS, EXCHANGE_FEE_RATES } from './config';
 
 export class OpportunityDetector {
@@ -17,7 +17,7 @@ export class OpportunityDetector {
   detectTriangularArbitrage(prices: PricePoint[]): ArbitrageOpportunity | null {
     for (const [exchange, pairs] of Object.entries(TRIANGULAR_PAIRS)) {
       for (const [pair1, pair2, pair3] of pairs) {
-        const opportunity = this.checkTriangularPath(exchange, pair1, pair2, pair3, prices);
+        const opportunity = this.checkTriangularPath(exchange as ExchangeId, pair1, pair2, pair3, prices);
         if (opportunity && opportunity.expectedProfitPct > this.config.minProfitThreshold) {
           return opportunity;
         }
@@ -27,7 +27,7 @@ export class OpportunityDetector {
   }
 
   private checkTriangularPath(
-    exchange: string,
+    exchange: ExchangeId,
     pair1: string,
     pair2: string,
     pair3: string,
@@ -50,9 +50,9 @@ export class OpportunityDetector {
     if (profitPct <= this.config.minProfitThreshold) return null;
 
     return this.createOpportunity('triangular', [
-      { exchange: exchange as any, symbol: pair1, side: 'buy', price: p1.ask, amount: startAmount, fee: this.getFee(exchange) },
-      { exchange: exchange as any, symbol: pair2, side: 'buy', price: p2.ask, amount: afterTrade1, fee: this.getFee(exchange) },
-      { exchange: exchange as any, symbol: pair3, side: 'sell', price: p3.bid, amount: afterTrade2, fee: this.getFee(exchange) },
+      { exchange, symbol: pair1, side: 'buy', price: p1.ask, amount: startAmount, fee: this.getFee(exchange) },
+      { exchange, symbol: pair2, side: 'buy', price: p2.ask, amount: afterTrade1, fee: this.getFee(exchange) },
+      { exchange, symbol: pair3, side: 'sell', price: p3.bid, amount: afterTrade2, fee: this.getFee(exchange) },
     ], profit, profitPct);
   }
 

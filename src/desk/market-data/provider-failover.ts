@@ -54,7 +54,7 @@ export class FailoverManager {
   private providerStatus: Map<MarketDataSource, ProviderHealthSnapshot>;
   private circuitState: CircuitState;
   private circuitStateTimestamp: number;
-  private healthCheckTimer!: NodeJS.Timeout; // Definite assignment assertion
+  private healthCheckTimer: NodeJS.Timeout | null = null;
   private slaTracker: SlaTracker;
   private failoverHistory: FailoverEvent[];
   private readonly MAX_HISTORY = 1000;
@@ -217,7 +217,7 @@ export class FailoverManager {
   stop(): void {
     if (this.healthCheckTimer) {
       clearInterval(this.healthCheckTimer);
-      this.healthCheckTimer = null as any; // allow null after clear
+      this.healthCheckTimer = null;
     }
   }
 
