@@ -11,6 +11,14 @@ export default defineConfig({
     },
   },
   test: {
+    // Inject harmless placeholders for production-only keys so server boot
+    // assertions in api/server.ts don't hard-fail during unit tests.
+    env: {
+      JWT_SECRET: 'test-jwt-secret',
+      EMAIL_PROVIDER_KEY: 'test-email-key',
+      NOWPAYMENTS_API_KEY: 'test-nowpayments-key',
+      AUDIT_HMAC_KEY_v1: 'a'.repeat(64),
+    },
     globals: true,
     pool: 'forks',
     include: [

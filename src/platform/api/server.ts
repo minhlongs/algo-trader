@@ -67,6 +67,13 @@ import { EmailService } from '../notifications/email-service';
 import { metricsMiddleware, getMetrics } from '../middleware/prometheus-metrics';
 import { errorHandler } from '../middleware/error-handler';
 
+function assertEnv(variables: string[]): void {
+  const missing = variables.filter((name) => !process.env[name]);
+  if (missing.length) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
 // Admin marketplace routes
 import { adminMarketplaceRouter } from './routes/admin-marketplace-routes';
 import { registerMarketplaceDisputeRoutes } from './routes/admin-marketplace-dispute-routes';
@@ -95,14 +102,17 @@ export class ApiServer {
   private server?: Server;
 
   constructor(config?: Partial<ApiConfig>) {
-    // Fail loudly in production if email provider is not configured.
-    // Fire-and-forget so a missing key never blocks server boot.
+    // Fail loudly on boot if critical env vars are missing.
+    // Keeps required set small; feature-gated integrations (Sentry, Redis,
+    // NOWPayments, etc.) keep their local guards so non-essential keys don't
+    // block environments that don't use those surfaces.
     try {
       EmailService.startupCheck();
     } catch (error) {
       logger.error('[ApiServer] Email startup check failed', { error: String(error) });
       throw error;
     }
+    assertEnv(['JWT_SECRET', 'EMAIL_PROVIDER_KEY', 'NOWPAYMENTS_API_KEY']);
 
     this.app = express();
     this.config = {
