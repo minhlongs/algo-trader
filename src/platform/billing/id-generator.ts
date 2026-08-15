@@ -7,14 +7,16 @@
  * Extracted from: dunning-service.ts, license-service.ts, subscription-service.ts
  */
 
+import { randomBytes } from 'node:crypto';
+
 export class IdGenerator {
   /**
    * Generate a random 26-character alphanumeric ID.
    *
-   * Format: two 13-character segments from Math.random() base-36,
-   * providing approximately 156 bits of entropy.
+   * Uses crypto.getRandomValues for cryptographically secure randomness.
    */
   static generate(): string {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const bytes = randomBytes(20);
+    return Buffer.from(bytes).toString('base64url').replace(/[-_]/g, '').slice(0, 26);
   }
 }

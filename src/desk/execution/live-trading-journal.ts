@@ -8,7 +8,6 @@
  * All data at ~/.cashclaw/ — survives process restarts and PM2 reloads.
  */
 
-import * as fs from 'fs';
 import {
   cashclawPath,
   appendJsonl,
@@ -16,6 +15,7 @@ import {
   readJsonState,
 } from '../../shared/persistence/file-store';
 import { logger } from '../../shared/utils/logger';
+import { writeJson } from '../../shared/persistence/persistent-store';
 import type { FilledOrder } from './live-position-tracker';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ export class LiveTradingJournal {
 
   /** Save current positions snapshot */
   savePositions(positions: unknown[]): void {
-    fs.writeFileSync(POSITIONS_FILE, JSON.stringify(positions, null, 2), 'utf8');
+    writeJson(POSITIONS_FILE, positions);
   }
 
   /** Load last saved positions snapshot */
@@ -84,7 +84,7 @@ export class LiveTradingJournal {
 
   /** Save daily P&L state */
   saveDailyPnl(state: DailyPnlState): void {
-    fs.writeFileSync(PNL_FILE, JSON.stringify(state, null, 2), 'utf8');
+    writeJson(PNL_FILE, state);
   }
 
   /** Load daily P&L state */

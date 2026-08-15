@@ -5,10 +5,10 @@
  * Falls back to template content when LLM is unavailable.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { logger } from '../../shared/utils/logger';
+import { readJson } from '../../shared/persistence/persistent-store';
 import type { BlogPost } from './auto-marketing-daemon';
 
 const PAPER_PNL_FILE = join(process.cwd(), 'data', 'paper-pnl.json');
@@ -26,13 +26,9 @@ interface PaperTrade {
 
 /** Load real paper trading data if available */
 function loadPaperData(): PaperTrade[] {
-  if (!existsSync(PAPER_PNL_FILE)) return [];
-  try {
-    const raw = JSON.parse(readFileSync(PAPER_PNL_FILE, 'utf-8'));
-    return Array.isArray(raw) ? raw : raw.trades || [];
-  } catch {
-    return [];
-  }
+  const raw = readJson<PaperTrade[] | { trades?: PaperTrade[] }>(PAPER_PNL_FILE);
+  if (!raw) return [];
+  return Array.isArray(raw) ? raw : (raw.trades ?? []);
 }
 
 /** Build trading context summary from paper data */
