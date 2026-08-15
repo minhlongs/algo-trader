@@ -40,6 +40,23 @@ const mockRedis = {
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
+// Mock @sentry/node to prevent unresolvable @opentelemetry/sdk-trace-base import chain in vitest forks
+vi.mock('@sentry/node', () => ({
+  init: vi.fn(),
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+  withScope: vi.fn((_cb, fn) => fn?.()),
+  setTag: vi.fn(),
+  setExtra: vi.fn(),
+  setContext: vi.fn(),
+  flush: vi.fn().mockResolvedValue(true),
+  close: vi.fn().mockResolvedValue(true),
+  Handlers: { requestHandler: () => (_req: unknown, _res: unknown, next: () => void) => next() },
+}));
+vi.mock('@sentry/opentelemetry', () => ({
+  setupOpenTelemetry: vi.fn(),
+}));
+
 // Mock auth-server to prevent pg.Pool creation during ApiServer initialization
 vi.mock('../auth/auth-server', () => ({
   auth: { handler: vi.fn() },

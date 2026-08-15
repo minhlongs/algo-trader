@@ -5,6 +5,23 @@ import express from 'express';
 // Set required env before any imports
 process.env.AUDIT_HMAC_KEY_v1 = 'a'.repeat(64); // 64 hex chars = 32 bytes
 
+// Mock @sentry/node to prevent unresolvable @opentelemetry/sdk-trace-base import chain in vitest forks
+vi.mock('@sentry/node', () => ({
+  init: vi.fn(),
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+  withScope: vi.fn((_cb, fn) => fn?.()),
+  setTag: vi.fn(),
+  setExtra: vi.fn(),
+  setContext: vi.fn(),
+  flush: vi.fn().mockResolvedValue(true),
+  close: vi.fn().mockResolvedValue(true),
+  Handlers: { requestHandler: () => (_req: unknown, _res: unknown, next: () => void) => next() },
+}));
+vi.mock('@sentry/opentelemetry', () => ({
+  setupOpenTelemetry: vi.fn(),
+}));
+
 // same mocks as api.test.ts
 vi.mock('../../middleware/feature-gate', () => ({
   requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
