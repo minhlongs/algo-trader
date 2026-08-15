@@ -10,10 +10,10 @@
  * Drip state stored in data/drip.json. Runs via PM2 cron (hourly check).
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { EmailService } from '../../platform/notifications/email-service';
 import { logger } from '../../shared/utils/logger';
+import { readJson, writeJson } from '../../shared/persistence/persistent-store';
 
 const DRIP_DATA_DIR = join(process.cwd(), 'data', 'drip');
 const DRIP_STATE_FILE = join(DRIP_DATA_DIR, 'state.json');
@@ -86,23 +86,12 @@ const DRIP_EMAILS = [
   },
 ];
 
-function ensureDripDir(): void {
-  if (!existsSync(DRIP_DATA_DIR)) mkdirSync(DRIP_DATA_DIR, { recursive: true });
-}
-
 function loadState(): DripState {
-  ensureDripDir();
-  if (!existsSync(DRIP_STATE_FILE)) return { recipients: [] };
-  try {
-    return JSON.parse(readFileSync(DRIP_STATE_FILE, 'utf-8'));
-  } catch {
-    return { recipients: [] };
-  }
+  return readJson<DripState>(DRIP_STATE_FILE) ?? { recipients: [] };
 }
 
 function saveState(state: DripState): void {
-  ensureDripDir();
-  writeFileSync(DRIP_STATE_FILE, JSON.stringify(state, null, 2));
+  writeJson(DRIP_STATE_FILE, state);
 }
 
 /** Register a new recipient for the drip sequence */

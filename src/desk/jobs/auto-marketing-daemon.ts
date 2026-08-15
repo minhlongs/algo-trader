@@ -13,9 +13,9 @@
  * - Market analysis (trending prediction markets)
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { logger } from '../../shared/utils/logger';
+import { readJson, writeJson } from '../../shared/persistence/persistent-store';
 import { generateLlmBlogPost } from './llm-content-generator';
 import { distributePost } from './social-auto-poster';
 
@@ -34,28 +34,14 @@ export interface BlogPost {
   generatedAt: string;
 }
 
-/** Ensure blog data directory exists */
-function ensureDataDir(): void {
-  if (!existsSync(BLOG_DATA_DIR)) {
-    mkdirSync(BLOG_DATA_DIR, { recursive: true });
-  }
-}
-
 /** Load existing blog posts */
 function loadPosts(): BlogPost[] {
-  ensureDataDir();
-  if (!existsSync(BLOG_POSTS_FILE)) return [];
-  try {
-    return JSON.parse(readFileSync(BLOG_POSTS_FILE, 'utf-8'));
-  } catch {
-    return [];
-  }
+  return readJson<BlogPost[]>(BLOG_POSTS_FILE) ?? [];
 }
 
 /** Save blog posts */
 function savePosts(posts: BlogPost[]): void {
-  ensureDataDir();
-  writeFileSync(BLOG_POSTS_FILE, JSON.stringify(posts, null, 2));
+  writeJson(BLOG_POSTS_FILE, posts);
 }
 
 /** Generate a unique post ID */
