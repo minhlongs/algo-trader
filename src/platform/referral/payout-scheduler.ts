@@ -48,12 +48,10 @@ export class PayoutScheduler {
    * Runs on the 1st of each month at 2 AM
    */
   async scheduleMonthlyPayout(): Promise<void> {
-    const job = await this.queue.add('monthly-payout', {
-      manual: false,
+    const job = await this.queue.upsertJobScheduler('monthly-payout', {
+      pattern: '0 2 1 * *', // 2 AM on the 1st of every month
     }, {
-      repeat: {
-        pattern: '0 2 1 * *', // 2 AM on the 1st of every month
-      },
+      data: { manual: false },
     });
 
     logger.info('[PayoutScheduler] Monthly payout job scheduled', { jobId: job.id });

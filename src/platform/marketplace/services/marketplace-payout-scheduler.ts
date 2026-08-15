@@ -39,8 +39,8 @@ export class MarketplacePayoutScheduler {
 
   /** Schedule weekly payout job (Sunday 2 AM) */
   async scheduleWeeklyPayout(): Promise<void> {
-    await this.queue.add('weekly-payout', { manual: false }, {
-      repeat: { pattern: '0 2 * * 0' },
+    await this.queue.upsertJobScheduler('weekly-payout', { pattern: '0 2 * * 0' }, {
+      data: { manual: false },
     });
     logger.info('[MarketplacePayoutScheduler] Weekly payout job scheduled (Sun 2AM)');
   }

@@ -19,6 +19,7 @@ const mocks = {
   mockStrategyFindById: vi.fn(),
   mockCreatePayout: vi.fn(),
   mockQueueAdd: vi.fn(),
+  mockUpsertJobScheduler: vi.fn(),
   mockGetJobCounts: vi.fn(),
   mockQueueClose: vi.fn(),
 };
@@ -46,6 +47,7 @@ afterEach(() => {
 vi.mock('bullmq', () => ({
   Queue: class {
     add = mocks.mockQueueAdd;
+    upsertJobScheduler = mocks.mockUpsertJobScheduler;
     getJobCounts = mocks.mockGetJobCounts;
     close = mocks.mockQueueClose;
   },
@@ -269,12 +271,12 @@ describe('MarketplacePayoutScheduler', () => {
   });
 
   describe('scheduleWeeklyPayout', () => {
-    it('adds a weekly repeat job', async () => {
+    it('adds a weekly repeat job via upsertJobScheduler', async () => {
       await scheduler.scheduleWeeklyPayout();
-      expect(mocks.mockQueueAdd).toHaveBeenCalledWith(
+      expect(mocks.mockUpsertJobScheduler).toHaveBeenCalledWith(
         'weekly-payout',
-        { manual: false },
-        { repeat: { pattern: '0 2 * * 0' } },
+        { pattern: '0 2 * * 0' },
+        { data: { manual: false } },
       );
     });
   });
