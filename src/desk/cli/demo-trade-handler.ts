@@ -10,6 +10,7 @@
 
 import { getPaperExecutor, resetPaperExecutor } from '../execution/paper-executor';
 import type { TradeSignal, ExecutionResult, PaperAccount } from '../execution/paper-position-tracker';
+import { logger } from '../../shared/utils/logger';
 
 export interface DemoTradeOptions {
   strategy: string;
@@ -21,7 +22,7 @@ export async function handleDemoTrade(opts: DemoTradeOptions): Promise<void> {
   const capitalUsdc = parseFloat(opts.capital);
 
   if (isNaN(capitalUsdc) || capitalUsdc <= 0) {
-    console.error('Error: --capital must be a positive number');
+    logger.error('Error: --capital must be a positive number');
     process.exit(1);
   }
 
@@ -30,8 +31,8 @@ export async function handleDemoTrade(opts: DemoTradeOptions): Promise<void> {
   const entry = getStrategy(opts.strategy);
 
   if (!entry) {
-    console.error(`Unknown strategy: ${opts.strategy}`);
-    console.error('Use "cashclaw trade list-strategies" to see available options.');
+    logger.error(`Unknown strategy: ${opts.strategy}`);
+    logger.error('Use "cashclaw trade list-strategies" to see available options.');
     process.exit(1);
   }
 
@@ -43,14 +44,14 @@ export async function handleDemoTrade(opts: DemoTradeOptions): Promise<void> {
   resetPaperExecutor();
   const executor = getPaperExecutor();
   const account = await executor.start(capitalUsdc);
-  console.log(`\nCashClaw Demo Trade`);
-  console.log('─'.repeat(50));
-  console.log(`Strategy:    ${entry.name}`);
-  console.log(`Description: ${entry.description}`);
-  console.log(`Capital:     $${capitalUsdc.toFixed(2)}`);
-  console.log(`Trade size:  $${sizeUsdc.toFixed(2)} (from strategy config)`);
-  console.log(`Symbol:      ${symbol}`);
-  console.log('');
+  logger.info(`\nCashClaw Demo Trade`);
+  logger.info('─'.repeat(50));
+  logger.info(`Strategy:    ${entry.name}`);
+  logger.info(`Description: ${entry.description}`);
+  logger.info(`Capital:     $${capitalUsdc.toFixed(2)}`);
+  logger.info(`Trade size:  $${sizeUsdc.toFixed(2)} (from strategy config)`);
+  logger.info(`Symbol:      ${symbol}`);
+  logger.info('');
 
   // Build signal — use entry.price from config if available, else fall back to mid-market
   const signal: TradeSignal = {
@@ -73,32 +74,32 @@ export async function handleDemoTrade(opts: DemoTradeOptions): Promise<void> {
 
 function printResult(result: ExecutionResult, startAccount: PaperAccount): void {
   if (!result.success) {
-    console.log(`Result: ${result.message ?? 'Order not filled (simulated market conditions)'}`);
-    console.log(`  Allowed: no`);
+    logger.info(`Result: ${result.message ?? 'Order not filled (simulated market conditions)'}`);
+    logger.info(`  Allowed: no`);
     if (result.account) {
-      console.log(`  Balance: $${result.account.balance.toFixed(2)}`);
+      logger.info(`  Balance: $${result.account.balance.toFixed(2)}`);
     }
-    console.log('');
+    logger.info('');
     return;
   }
 
   const trade = result.trade!;
   const account = result.account!;
 
-  console.log(`Trade ID:    ${trade.id}`);
-  console.log(`Side:        ${trade.side.toUpperCase()}`);
-  console.log(`Requested:   ${trade.quantity} @ $${trade.requestedPrice.toFixed(4)}`);
-  console.log(`Executed:    ${trade.quantity} @ $${trade.executedPrice.toFixed(4)}`);
-  console.log(`Fee:         $${trade.fee.toFixed(4)} | Slippage: ${(trade.slippage * 100).toFixed(2)}%`);
-  console.log(`Status:      ${trade.status}`);
-  console.log(`Time:        ${new Date(trade.timestamp).toISOString()}`);
-  console.log('');
-  console.log('─'.repeat(50));
-  console.log('Account Summary:');
-  console.log(`  Balance:      $${account.balance.toFixed(2)}`);
-  console.log(`  Equity:       $${account.equity.toFixed(2)}`);
-  console.log(`  Realized P&L: $${account.realizedPnl.toFixed(2)}`);
-  console.log(`  Total Trades: ${account.totalTrades}`);
-  console.log(`  Win/Loss:     ${account.winningTrades}W / ${account.losingTrades}L`);
-  console.log('');
+  logger.info(`Trade ID:    ${trade.id}`);
+  logger.info(`Side:        ${trade.side.toUpperCase()}`);
+  logger.info(`Requested:   ${trade.quantity} @ $${trade.requestedPrice.toFixed(4)}`);
+  logger.info(`Executed:    ${trade.quantity} @ $${trade.executedPrice.toFixed(4)}`);
+  logger.info(`Fee:         $${trade.fee.toFixed(4)} | Slippage: ${(trade.slippage * 100).toFixed(2)}%`);
+  logger.info(`Status:      ${trade.status}`);
+  logger.info(`Time:        ${new Date(trade.timestamp).toISOString()}`);
+  logger.info('');
+  logger.info('─'.repeat(50));
+  logger.info('Account Summary:');
+  logger.info(`  Balance:      $${account.balance.toFixed(2)}`);
+  logger.info(`  Equity:       $${account.equity.toFixed(2)}`);
+  logger.info(`  Realized P&L: $${account.realizedPnl.toFixed(2)}`);
+  logger.info(`  Total Trades: ${account.totalTrades}`);
+  logger.info(`  Win/Loss:     ${account.winningTrades}W / ${account.losingTrades}L`);
+  logger.info('');
 }

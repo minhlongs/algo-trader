@@ -12,10 +12,19 @@
 import { logger } from '../../../shared/utils/logger';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 
-type Env = { CACHE: KVNamespace; SUBSCRIBERS?: D1Database; JWT_SECRET?: string; ALLOWED_ORIGINS?: string; NOWPAYMENTS_IPN_SECRET?: string; ENVIRONMENT?: string; VPS_ORIGIN?: string; REGION_ROUTING_ENABLED?: string; };
+interface Env {
+  CACHE: KVNamespace;
+  SUBSCRIBERS?: D1Database;
+  JWT_SECRET?: string;
+  ALLOWED_ORIGINS?: string;
+  NOWPAYMENTS_IPN_SECRET?: string;
+  ENVIRONMENT?: string;
+  VPS_ORIGIN?: string;
+  REGION_ROUTING_ENABLED?: string;
+}
 
-export async function handleValidateCoupon(request: Request, env: any): Promise<Response> {
-  const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
+export async function handleValidateCoupon(request: Request, env: Env): Promise<Response> {
+  const sub = env.SUBSCRIBERS;
   let code: string = '';
   try {
     const parsed = (await request.json()) as { code: string; tier: string };
@@ -25,7 +34,7 @@ export async function handleValidateCoupon(request: Request, env: any): Promise<
 
     if (!sub) {
       // Fallback: check KV cache if D1 not yet available
-      const cached = await (env as any).CACHE.get(`coupon:${code.toUpperCase()}`);
+      const cached = await env.CACHE.get(`coupon:${code.toUpperCase()}`);
       if (!cached) return notFound('Coupon not found');
       const coupon = JSON.parse(cached);
       return new Response(JSON.stringify({ valid: !!coupon, coupon }), { headers: jsonH(env, request) });
@@ -60,7 +69,7 @@ export async function handleValidateCoupon(request: Request, env: any): Promise<
   } catch (err) {
     logger.error('[coupons] validate error', { error: String(err) });
     // Fallback to KV on D1 failure
-    const cached = await (env as any).CACHE.get(`coupon:${code.toUpperCase()}`);
+    const cached = await env.CACHE.get(`coupon:${code.toUpperCase()}`);
     if (cached) {
       const coupon = JSON.parse(cached);
       return new Response(JSON.stringify({ valid: !!coupon, coupon }), { headers: jsonH(env, request) });
@@ -69,8 +78,8 @@ export async function handleValidateCoupon(request: Request, env: any): Promise<
   }
 }
 
-export async function handleApplyCoupon(request: Request, env: any): Promise<Response> {
-  const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
+export async function handleApplyCoupon(request: Request, env: Env): Promise<Response> {
+  const sub = env.SUBSCRIBERS;
   let code = '';
   try {
     const parsed = (await request.json()) as { code: string; userId: string };
@@ -80,12 +89,12 @@ export async function handleApplyCoupon(request: Request, env: any): Promise<Res
 
     if (!sub) {
       // D1 missing — fall back to KV
-      const cached2 = await (env as any).CACHE.get(`coupon:${code.toUpperCase()}`);
+      const cached2 = await env.CACHE.get(`coupon:${code.toUpperCase()}`);
       if (!cached2) return notFound('Coupon not found');
       const c: Record<string, unknown> = JSON.parse(cached2);
-      const n = ((c as any).currentUses ?? (c as any).usage_count ?? 0) + 1;
+      const n = ((c as Record<string, unknown>).currentUses ?? (c as Record<string, unknown>).usage_count ?? 0) + 1;
       const updated = { ...c, currentUses: n };
-      await (env as any).CACHE.put(`coupon:${code.toUpperCase()}`, JSON.stringify(updated));
+      await env.CACHE.put(`coupon:${code.toUpperCase()}`, JSON.stringify(updated));
       logger.info('[coupons] applied via KV', { userId, code: c.code as string });
       return new Response(JSON.stringify({ applied: true, coupon: { code: c.code as string, discountPct: (c.discount_pct as number) ?? 0, freeAccess: !!(c.free_access as number) } }), { headers: jsonH(env, request) });
     }
@@ -105,11 +114,11 @@ export async function handleApplyCoupon(request: Request, env: any): Promise<Res
   } catch (err) {
     logger.error('[coupons] apply error', { error: String(err) });
     // Fallback to KV on D1 failure
-    const cached2 = await (env as any).CACHE.get(`coupon:${code.toUpperCase()}`);
+    const cached2 = await env.CACHE.get(`coupon:${code.toUpperCase()}`);
     if (cached2) {
       const c: Record<string, unknown> = JSON.parse(cached2);
-      const n = ((c as any).currentUses ?? (c as any).usage_count ?? 0) + 1;
-      await (env as any).CACHE.put(`coupon:${code.toUpperCase()}`, JSON.stringify({ ...c, currentUses: n }));
+      const n = ((c as Record<string, unknown>).currentUses ?? (c as Record<string, unknown>).usage_count ?? 0) + 1;
+      await env.CACHE.put(`coupon:${code.toUpperCase()}`, JSON.stringify({ ...c, currentUses: n }));
       return new Response(JSON.stringify({ applied: true, coupon: { code: c.code as string, discountPct: (c.discount_pct as number) ?? 0, freeAccess: !!(c.free_access as number) } }), { headers: jsonH(env, request) });
     }
     return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
@@ -124,7 +133,7 @@ function notFound(msg: string): Response {
 }
 function jsonH(env: Env, request: Request): Record<string, string> {
   const origin = request.headers.get('Origin');
-  const allowed = ((env as any).ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
+  const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
   const o = origin && allowed.includes(origin) ? origin : allowed[0];
   return { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': o };
 }

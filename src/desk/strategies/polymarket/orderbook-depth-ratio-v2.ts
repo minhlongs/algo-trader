@@ -201,8 +201,20 @@ export class OrderbookDepthRatioStrategy extends BasePolymarketStrategy {
     }
   }
 
+  /** Fetch current depth ratio for each open position so exit checks see fresh data. */
+  private async refreshDepthForOpenPositions(): Promise<void> {
+    for (const pos of this.positions) {
+      try {
+        const book = await this.deps.clob.getOrderBook(pos.tokenId);
+        const ratio = calcDepthRatio(book, this.cfg.depthLevels);
+        this.recordDepthRatio(pos.tokenId, ratio);
+      } catch { /* skip failed fetches */ }
+    }
+  }
+
   async execute(): Promise<void> {
     try {
+      await this.refreshDepthForOpenPositions();
       await this.checkExits();
       const markets = await this.deps.gamma.getTrending(this.cfg.scanLimit);
       await this.scanEntries(markets);

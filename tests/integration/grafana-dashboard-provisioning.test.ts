@@ -5,7 +5,7 @@
  *   - parses cleanly
  *   - has the expected structure (panels array, UID, schema version)
  *   - every PromQL metric reference in panel targets resolves to an actual
- *     export in src/platform/middleware/prometheus-metrics.ts
+ *     export in src/platform/middleware/prometheus-registry.ts
  *
  * Catches the same class of typo that PR #132 catches for alert rules: a
  * dashboard panel referencing `algo_trader_qwen_pnl_pct` (missing `_paper_`)
@@ -57,11 +57,11 @@ describe('Grafana dashboard — qwen-solo-platform.json', () => {
     expect(payloadPanels.length).toBeGreaterThan(0);
   });
 
-  it('every PromQL metric reference resolves to a prometheus-metrics.ts export', () => {
+  it('every PromQL metric reference resolves to a prometheus-registry.ts export', () => {
     const exportedNames = loadExportedMetricNames();
     expect(
       exportedNames.size,
-      'prometheus-metrics.ts parser found 0 names — regex stale?'
+      'prometheus-registry.ts parser found 0 names — regex stale?'
     ).toBeGreaterThan(0);
 
     const unresolved: Array<{ panel: string; ref: string }> = [];
@@ -82,7 +82,7 @@ describe('Grafana dashboard — qwen-solo-platform.json', () => {
 
     expect(
       unresolved,
-      `dashboard references ${unresolved.length} metric(s) not in prometheus-metrics.ts: ` +
+      `dashboard references ${unresolved.length} metric(s) not in prometheus-registry.ts: ` +
         JSON.stringify(unresolved)
     ).toEqual([]);
   });

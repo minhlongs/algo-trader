@@ -19,6 +19,7 @@ import type { PolymarketOrder } from './polymarket-signer';
 import type { LivePositionTracker, FilledOrder } from './live-position-tracker';
 import { logger } from '../../shared/utils/logger';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
+import type { RiskGateManager } from '../risk/risk-gate-manager';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,7 @@ export class LiveOrderManager extends EventEmitter {
     adapter: PolymarketAdapter,
     positionTracker: LivePositionTracker,
     maxOrderLifetimeMs: number = DEFAULT_MAX_ORDER_LIFETIME,
+    private readonly riskGateManager?: RiskGateManager,
   ) {
     super();
     this.adapter = adapter;
@@ -213,7 +215,7 @@ export class LiveOrderManager extends EventEmitter {
       throw new Error(`RATE_LIMITED: Strategy ${strategyName} exceeded ${RATE_LIMIT_ORDERS_PER_SEC} orders/sec`);
     }
 
-    // GATE 3: Build order and let LiveExecutionGuard handle position/drawdown/circuit checks
+    // GATE 3: LiveExecutionGuard — position size, drawdown, concurrent limits, circuit breaker
     const order: PolymarketOrder = {
       tokenId: signal.tokenId,
       side: signal.side,
@@ -224,6 +226,23 @@ export class LiveOrderManager extends EventEmitter {
       feeRateBps: 0,
       signatureType: 0,
     };
+
+    if (this.riskGateManager) {
+      const { allowed, reason } = await this.riskGateManager.check(strategyName, {
+        tokenId: order.tokenId,
+        price: order.price,
+        size: order.size,
+        side: order.side,
+      });
+      if (!allowed) {
+        logger.warn('RISK_GATE_REJECTED', 'LiveOrderManager', {
+          strategy: strategyName,
+          tokenId: signal.tokenId.slice(0, 12),
+          reason,
+        });
+        throw new Error(`RISK_GATE_REJECTED: ${reason}`);
+      }
+    }
 
     return this.submitAndTrack(order);
   }

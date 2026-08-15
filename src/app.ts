@@ -5,45 +5,58 @@
  */
 
 import 'dotenv/config';
-import { ApiServer } from './api/server';
+import { ApiServer } from './platform/api/server';
 import { logger } from './shared/utils/logger';
-import { getLatencyMonitor } from './regions/latency-monitor';
-
-import { runMigrations } from './db/migration-runner';
-import { startAugmentedSignalPipeline } from './desk/wiring/augmented-signal-pipeline';
-import { thresholdAlerts } from './platform/middleware/threshold-alerts';
 
 let server: ApiServer | null = null;
 let augmentedPipelineStop: (() => Promise<void>) | null = null;
 
 export async function startApp(): Promise<void> {
-  // Run DB migrations on startup
-  await runMigrations().catch((err) => {
-    logger.warn('[App] Migration runner skipped or failed:', { err });
-  });
-
+  // Start the API surface first, then hydrate non-critical subsystems lazily.
+  // This keeps the critical request path fast during cold start.
   server = new ApiServer();
   await server.start();
 
-  // Start multi-region latency monitoring (Phase 5)
-  if (process.env.ENABLE_LATENCY_MONITORING !== 'false') {
-    getLatencyMonitor().start();
-    logger.info('[App] Latency monitor started');
-  }
-
-  // Phase 08: Wire augmented-signal-pipeline (AI validation gate for strategy signals)
-  // DeepSeek gating; false → bypass for backtesting or when NATS is absent.
-  const aiEnabled = (process.env.AI_VALIDATION_ENABLED ?? 'true').toLowerCase() !== 'false';
-  if (aiEnabled) {
-    augmentedPipelineStop = await startAugmentedSignalPipeline();
-    logger.info('[App] Augmented signal pipeline started (AI validation enabled)');
-  } else {
-    logger.warn('[App] AI validation disabled (AI_VALIDATION_ENABLED=false)');
-  }
-
-  // Start threshold alerts + Telegram bot (requires TELEGRAM_BOT_TOKEN env)
-  thresholdAlerts.initialize();
-  logger.info('[App] Threshold alerts + Telegram bot initialized');
+  // Defer heavy subsystems so they don’t block first-response readiness.
+  await Promise.allSettled([
+    (async () => {
+      const { runMigrations } = await import('./db/migration-runner');
+      await runMigrations().catch((err) => {
+        logger.warn('[App] Migration runner skipped or failed:', { err });
+      });
+    })(),
+    (async () => {
+      if (process.env.ENABLE_LATENCY_MONITORING !== 'false') {
+        const { getLatencyMonitor } = await import('./regions/latency-monitor');
+        getLatencyMonitor().start();
+        logger.info('[App] Latency monitor started');
+      }
+    })(),
+    (async () => {
+      const aiEnabled = (process.env.AI_VALIDATION_ENABLED ?? 'true').toLowerCase() !== 'false';
+      if (aiEnabled) {
+        const { startAugmentedSignalPipeline } = await import('./desk/wiring/augmented-signal-pipeline');
+        augmentedPipelineStop = await startAugmentedSignalPipeline();
+        logger.info('[App] Augmented signal pipeline started (AI validation enabled)');
+      } else {
+        logger.warn('[App] AI validation disabled (AI_VALIDATION_ENABLED=false)');
+      }
+    })(),
+    (async () => {
+      const { thresholdAlerts } = await import('./platform/middleware/threshold-alerts');
+      thresholdAlerts.initialize();
+      logger.info('[App] Threshold alerts + Telegram bot initialized');
+    })(),
+    (async () => {
+      if (process.env.ALPHAEAR_SIDECAR_URL) {
+        const { startSidecarMonitor } = await import('./desk/intelligence/kronos-sidecar-monitor');
+        startSidecarMonitor();
+        logger.info('[App] Kronos sidecar monitor started');
+      } else {
+        logger.debug('[App] ALPHAEAR_SIDECAR_URL not set — Kronos monitor skipped');
+      }
+    })(),
+  ]);
 
   const port = process.env.API_PORT || '3000';
   const env = process.env.NODE_ENV || 'development';

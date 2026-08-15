@@ -5,7 +5,7 @@ import {
   hasMomentum,
   createResolutionFrontrunnerTick,
   type ResolutionFrontrunnerDeps,
-} from '../../src/desk/strategies/polymarket/resolution-frontrunner';
+} from '../../src/desk/strategies/polymarket/resolution-frontrunner-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 import type { GammaMarket } from '../../src/desk/polymarket/gamma-client';
 
@@ -105,34 +105,35 @@ describe('isNearResolution', () => {
 // ── detectConvergenceSignal ─────────────────────────────────────────────────
 
 describe('detectConvergenceSignal', () => {
-  const config = { highThreshold: 0.85, lowThreshold: 0.15 };
+  const highThreshold = 0.85;
+  const lowThreshold = 0.15;
 
   it('returns buy-yes when price > highThreshold', () => {
-    expect(detectConvergenceSignal(0.90, config)).toBe('buy-yes');
+    expect(detectConvergenceSignal(0.90, highThreshold, lowThreshold)).toBe('buy-yes');
   });
 
   it('returns buy-yes at boundary (just above)', () => {
-    expect(detectConvergenceSignal(0.86, config)).toBe('buy-yes');
+    expect(detectConvergenceSignal(0.86, highThreshold, lowThreshold)).toBe('buy-yes');
   });
 
   it('returns buy-no when price < lowThreshold', () => {
-    expect(detectConvergenceSignal(0.10, config)).toBe('buy-no');
+    expect(detectConvergenceSignal(0.10, highThreshold, lowThreshold)).toBe('buy-no');
   });
 
   it('returns buy-no at boundary (just below)', () => {
-    expect(detectConvergenceSignal(0.14, config)).toBe('buy-no');
+    expect(detectConvergenceSignal(0.14, highThreshold, lowThreshold)).toBe('buy-no');
   });
 
   it('returns null when price is in the middle', () => {
-    expect(detectConvergenceSignal(0.50, config)).toBeNull();
+    expect(detectConvergenceSignal(0.50, highThreshold, lowThreshold)).toBeNull();
   });
 
   it('returns null when price is at highThreshold exactly', () => {
-    expect(detectConvergenceSignal(0.85, config)).toBeNull();
+    expect(detectConvergenceSignal(0.85, highThreshold, lowThreshold)).toBeNull();
   });
 
   it('returns null when price is at lowThreshold exactly', () => {
-    expect(detectConvergenceSignal(0.15, config)).toBeNull();
+    expect(detectConvergenceSignal(0.15, highThreshold, lowThreshold)).toBeNull();
   });
 });
 
@@ -231,23 +232,26 @@ describe('createResolutionFrontrunnerTick', () => {
   });
 
   it('exits on take-profit', async () => {
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(BASE_NOW);
     const endDate = new Date(BASE_NOW + 12 * 3600_000).toISOString();
-    let callCount = 0;
+    // Exit book: mid 0.98, entry ~0.89 → gain ~10% > 3% TP
+    const exitBook = makeBook([['0.97', '100']], [['0.99', '100']]);
+    let entryCallCount = 0;
+    let phase: 'entry' | 'exit' = 'entry';
     const clob = {
       getOrderBook: vi.fn().mockImplementation(() => {
-        callCount++;
-        // First 5 ticks: rising above 0.85 to trigger entry
-        if (callCount <= 5) {
-          const p = 0.86 + callCount * 0.005;
-          return Promise.resolve(makeBook(
-            [[String((p - 0.01).toFixed(2)), '100']],
-            [[String((p + 0.01).toFixed(2)), '100']],
-          ));
-        }
-        // After entry: price jumps up 5% from ~0.91 entry → ~0.96
-        return Promise.resolve(makeBook([['0.97', '100']], [['0.99', '100']]));
+        if (phase === 'exit') return Promise.resolve(exitBook);
+        // Rising prices to build momentum
+        entryCallCount++;
+        const p = 0.86 + entryCallCount * 0.005;
+        return Promise.resolve(makeBook(
+          [[String((p - 0.01).toFixed(2)), '100']],
+          [[String((p + 0.01).toFixed(2)), '100']],
+        ));
       }),
     };
+
+    const placeOrder = vi.fn().mockResolvedValue({ id: 'order-1' });
 
     const deps = makeDeps({
       clob: clob as any,
@@ -256,36 +260,44 @@ describe('createResolutionFrontrunnerTick', () => {
           makeMarket({ endDate, volume24h: 20000 }),
         ]),
       } as any,
+      orderManager: { placeOrder } as any,
       config: { momentumTicks: 3, takeProfitPct: 0.03 },
     });
 
     const tick = createResolutionFrontrunnerTick(deps);
     // Build momentum + enter
     for (let i = 0; i < 5; i++) await tick();
-    expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
+    expect(placeOrder).toHaveBeenCalledTimes(1);
 
-    // Next tick should trigger TP exit
+    // Switch to exit phase BEFORE tick so checkExits gets exit prices
+    phase = 'exit';
+    // Advance Date.now past price cache TTL (5s) so getCurrentPrice fetches fresh
+    dateNowSpy.mockReturnValue(BASE_NOW + 6000);
     await tick();
-    expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(2);
+    expect(placeOrder).toHaveBeenCalledTimes(2);
+    dateNowSpy.mockRestore();
   });
 
   it('exits on stop-loss', async () => {
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(BASE_NOW);
     const endDate = new Date(BASE_NOW + 12 * 3600_000).toISOString();
-    let callCount = 0;
+    // Exit book: mid 0.81, entry ~0.89 → loss ~9% > 5% SL
+    const slBook = makeBook([['0.80', '100']], [['0.82', '100']]);
+    let entryCallCount = 0;
+    let phase: 'entry' | 'exit' = 'entry';
     const clob = {
       getOrderBook: vi.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount <= 5) {
-          const p = 0.86 + callCount * 0.005;
-          return Promise.resolve(makeBook(
-            [[String((p - 0.01).toFixed(2)), '100']],
-            [[String((p + 0.01).toFixed(2)), '100']],
-          ));
-        }
-        // After entry: price drops by 6% (below stop loss of 5%)
-        return Promise.resolve(makeBook([['0.80', '100']], [['0.82', '100']]));
+        if (phase === 'exit') return Promise.resolve(slBook);
+        entryCallCount++;
+        const p = 0.86 + entryCallCount * 0.005;
+        return Promise.resolve(makeBook(
+          [[String((p - 0.01).toFixed(2)), '100']],
+          [[String((p + 0.01).toFixed(2)), '100']],
+        ));
       }),
     };
+
+    const placeOrder = vi.fn().mockResolvedValue({ id: 'order-1' });
 
     const deps = makeDeps({
       clob: clob as any,
@@ -294,18 +306,23 @@ describe('createResolutionFrontrunnerTick', () => {
           makeMarket({ endDate, volume24h: 20000 }),
         ]),
       } as any,
+      orderManager: { placeOrder } as any,
       config: { momentumTicks: 3, stopLossPct: 0.05 },
     });
 
     const tick = createResolutionFrontrunnerTick(deps);
     for (let i = 0; i < 5; i++) await tick();
-    expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
+    expect(placeOrder).toHaveBeenCalledTimes(1);
 
+    phase = 'exit';
+    dateNowSpy.mockReturnValue(BASE_NOW + 6000);
     await tick();
-    expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(2);
+    expect(placeOrder).toHaveBeenCalledTimes(2);
+    dateNowSpy.mockRestore();
   });
 
   it('exits on max hold time', async () => {
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(BASE_NOW);
     const endDate = new Date(BASE_NOW + 12 * 3600_000).toISOString();
     let callCount = 0;
     let currentTime = BASE_NOW;
@@ -339,10 +356,12 @@ describe('createResolutionFrontrunnerTick', () => {
     for (let i = 0; i < 5; i++) await tick();
     expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
 
-    // Advance time past max hold
+    // Advance time past max hold + price cache TTL
+    dateNowSpy.mockReturnValue(BASE_NOW + 14_401_000);
     currentTime = BASE_NOW + 14_400_001;
     await tick();
     expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(2);
+    dateNowSpy.mockRestore();
   });
 
   it('exits on market resolution', async () => {
@@ -441,23 +460,25 @@ describe('createResolutionFrontrunnerTick', () => {
   });
 
   it('respects cooldown after exit', async () => {
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(BASE_NOW);
     const endDate = new Date(BASE_NOW + 12 * 3600_000).toISOString();
-    let callCount = 0;
     let currentTime = BASE_NOW;
+    const exitBook = makeBook([['0.97', '100']], [['0.99', '100']]);
+    let entryCallCount = 0;
+    let phase: 'entry' | 'exit' = 'entry';
     const clob = {
       getOrderBook: vi.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount <= 5) {
-          const p = 0.86 + callCount * 0.005;
-          return Promise.resolve(makeBook(
-            [[String((p - 0.01).toFixed(2)), '100']],
-            [[String((p + 0.01).toFixed(2)), '100']],
-          ));
-        }
-        // TP exit
-        return Promise.resolve(makeBook([['0.97', '100']], [['0.99', '100']]));
+        if (phase === 'exit') return Promise.resolve(exitBook);
+        entryCallCount++;
+        const p = 0.86 + entryCallCount * 0.005;
+        return Promise.resolve(makeBook(
+          [[String((p - 0.01).toFixed(2)), '100']],
+          [[String((p + 0.01).toFixed(2)), '100']],
+        ));
       }),
     };
+
+    const placeOrder = vi.fn().mockResolvedValue({ id: 'order-1' });
 
     const deps = makeDeps({
       clob: clob as any,
@@ -466,34 +487,40 @@ describe('createResolutionFrontrunnerTick', () => {
           makeMarket({ endDate, volume24h: 20000 }),
         ]),
       } as any,
+      orderManager: { placeOrder } as any,
       clock: () => currentTime,
-      config: { momentumTicks: 3, cooldownMs: 300_000 },
+      config: { momentumTicks: 3, cooldownMs: 300_000, takeProfitPct: 0.03 },
     });
 
     const tick = createResolutionFrontrunnerTick(deps);
     // Build momentum + enter
     for (let i = 0; i < 5; i++) await tick();
-    expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
+    expect(placeOrder).toHaveBeenCalledTimes(1);
 
     // Exit
+    phase = 'exit';
+    dateNowSpy.mockReturnValue(BASE_NOW + 6000);
     await tick();
-    expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(2);
+    expect(placeOrder).toHaveBeenCalledTimes(2);
 
-    // Reset clob to return entry-worthy prices
-    callCount = 0;
+    // Reset for re-entry attempt
     // Tick again immediately — should be on cooldown
     await tick();
     // Should not have placed another entry (still 2 calls total)
-    // placeOrder gets called from exit too, so just check total didn't increase for entry
-    const totalCalls = (deps.orderManager.placeOrder as any).mock.calls.length;
+    const totalCalls = placeOrder.mock.calls.length;
     expect(totalCalls).toBe(2);
 
-    // Advance past cooldown
+    // Advance past cooldown: exit happened at Date.now=BASE_NOW+6000, cooldown=300s
+    // Need Date.now > BASE_NOW + 6000 + 300_000 = BASE_NOW + 306_000
+    dateNowSpy.mockReturnValue(BASE_NOW + 307_000);
     currentTime = BASE_NOW + 300_001;
-    callCount = 0;
+    // Switch back to entry phase with rising prices
+    phase = 'entry';
+    entryCallCount = 0;
     // Rebuild momentum from fresh
     for (let i = 0; i < 5; i++) await tick();
-    expect((deps.orderManager.placeOrder as any).mock.calls.length).toBeGreaterThan(2);
+    expect(placeOrder.mock.calls.length).toBeGreaterThan(2);
+    dateNowSpy.mockRestore();
   });
 
   it('respects maxPositions', async () => {
@@ -590,21 +617,25 @@ describe('createResolutionFrontrunnerTick', () => {
   });
 
   it('emits trade.executed event on exit', async () => {
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(BASE_NOW);
     const endDate = new Date(BASE_NOW + 12 * 3600_000).toISOString();
-    let callCount = 0;
+    const exitBook = makeBook([['0.97', '100']], [['0.99', '100']]);
+    let entryCallCount = 0;
+    let phase: 'entry' | 'exit' = 'entry';
     const clob = {
       getOrderBook: vi.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount <= 5) {
-          const p = 0.86 + callCount * 0.005;
-          return Promise.resolve(makeBook(
-            [[String((p - 0.01).toFixed(2)), '100']],
-            [[String((p + 0.01).toFixed(2)), '100']],
-          ));
-        }
-        return Promise.resolve(makeBook([['0.97', '100']], [['0.99', '100']]));
+        if (phase === 'exit') return Promise.resolve(exitBook);
+        entryCallCount++;
+        const p = 0.86 + entryCallCount * 0.005;
+        return Promise.resolve(makeBook(
+          [[String((p - 0.01).toFixed(2)), '100']],
+          [[String((p + 0.01).toFixed(2)), '100']],
+        ));
       }),
     };
+
+    const placeOrder = vi.fn().mockResolvedValue({ id: 'order-1' });
+    const emit = vi.fn();
 
     const deps = makeDeps({
       clob: clob as any,
@@ -613,20 +644,26 @@ describe('createResolutionFrontrunnerTick', () => {
           makeMarket({ endDate, volume24h: 20000 }),
         ]),
       } as any,
-      config: { momentumTicks: 3 },
+      orderManager: { placeOrder } as any,
+      eventBus: { emit } as any,
+      config: { momentumTicks: 3, takeProfitPct: 0.03 },
     });
 
     const tick = createResolutionFrontrunnerTick(deps);
     for (let i = 0; i < 5; i++) await tick();
+    expect(placeOrder).toHaveBeenCalledTimes(1);
+
+    phase = 'exit';
+    dateNowSpy.mockReturnValue(BASE_NOW + 6000);
     await tick(); // exit
 
-    const emitCalls = (deps.eventBus.emit as any).mock.calls;
-    const tradeEvents = emitCalls.filter((c: any[]) => c[0] === 'trade.executed');
+    const tradeEvents = emit.mock.calls.filter((c: any[]) => c[0] === 'trade.executed');
     expect(tradeEvents.length).toBeGreaterThanOrEqual(2);
     // The exit event
     const exitEvent = tradeEvents[tradeEvents.length - 1][1].trade;
     expect(exitEvent.strategy).toBe('resolution-frontrunner');
     expect(exitEvent.side).toBe('sell');
+    dateNowSpy.mockRestore();
   });
 
   it('handles buy-no signal for low-price markets', async () => {

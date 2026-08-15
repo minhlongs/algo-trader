@@ -13,7 +13,16 @@
 import { logger } from '../../../shared/utils/logger';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 
-type Env = { CACHE: KVNamespace; SUBSCRIBERS?: D1Database; JWT_SECRET?: string; ALLOWED_ORIGINS?: string; NOWPAYMENTS_IPN_SECRET?: string; ENVIRONMENT?: string; VPS_ORIGIN?: string; REGION_ROUTING_ENABLED?: string; };
+interface Env {
+  CACHE: KVNamespace;
+  SUBSCRIBERS?: D1Database;
+  JWT_SECRET?: string;
+  ALLOWED_ORIGINS?: string;
+  NOWPAYMENTS_IPN_SECRET?: string;
+  ENVIRONMENT?: string;
+  VPS_ORIGIN?: string;
+  REGION_ROUTING_ENABLED?: string;
+}
 
 interface NowPaymentsIPN {
   payment_id: number;
@@ -35,8 +44,8 @@ interface NowPaymentsIPN {
   // HMAC signature in header: X-NOWPayments-Sig
 }
 
-export async function handleNowPaymentsIPN(request: Request, env: any, signingSecret?: string): Promise<Response> {
-  const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
+export async function handleNowPaymentsIPN(request: Request, env: Env, signingSecret?: string): Promise<Response> {
+  const sub = env.SUBSCRIBERS;
   const cache = env.CACHE;
 
   if (!signingSecret) {

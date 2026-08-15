@@ -61,6 +61,16 @@ const riskThresholdsSchema = z
     maxConsecutiveLosses: obj.MAX_CONSECUTIVE_LOSSES,
   }));
 
+// ── Security secrets (required in production) ───────────────────────────────
+
+const securitySecretsSchema = z.object({
+  BETTER_AUTH_SECRET: z.string().min(1).optional(),
+  JWT_SECRET: z.string().min(1).optional(),
+  ADMIN_API_KEY: z.string().min(8, 'ADMIN_API_KEY must be at least 8 characters').optional(),
+  NOWPAYMENTS_IPN_SECRET: z.string().min(1).optional(),
+  DB_PASSWORD: z.string().min(1).optional(),
+});
+
 // ── Top-level config ──────────────────────────────────────────────────────────
 
 export interface EnvConfig {
@@ -108,6 +118,28 @@ export function validateEnv(): EnvConfig {
   const polymarketRaw = polymarketApiConfigSchema.parse({});
 
   const riskThresholds = riskThresholdsSchema.parse({});
+
+  // Validate security secrets (warn in dev, require in production)
+  const secrets = securitySecretsSchema.parse({});
+  const isProd = process.env['NODE_ENV'] === 'production';
+  if (isProd) {
+    const missingSecrets: string[] = [];
+    if (!secrets.BETTER_AUTH_SECRET && !secrets.JWT_SECRET) missingSecrets.push('BETTER_AUTH_SECRET or JWT_SECRET');
+    if (!secrets.ADMIN_API_KEY) missingSecrets.push('ADMIN_API_KEY');
+    if (!secrets.DB_PASSWORD) missingSecrets.push('DB_PASSWORD');
+    if (missingSecrets.length > 0) {
+      throw new Error(
+        `Production requires security secrets:\n  ${missingSecrets.join('\n  ')}\n` +
+        `Set them in .env or run with NODE_ENV=development for local dev.`
+      );
+    }
+  } else {
+    const present = Object.entries(secrets).filter(([, v]) => v != null).map(([k]) => k);
+    if (present.length > 0) {
+      // eslint-disable-next-line no-console
+      console.info(`[EnvSchema] Security secrets loaded: ${present.join(', ')}`);
+    }
+  }
 
   return {
     paperMode,

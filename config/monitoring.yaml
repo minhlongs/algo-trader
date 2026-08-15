@@ -1,0 +1,125 @@
+# Production Monitoring & Alerting Configuration
+# algo-trader platform observability
+
+# Health Check Endpoints
+health_checks:
+  - name: "api-health"
+    path: "/api/health"
+    interval: 30s
+    timeout: 5s
+    expected_status: 200
+
+  - name: "shard-ring"
+    path: "/api/v1/shard/ring"
+    interval: 60s
+    timeout: 10s
+    expected_status: 200
+
+  - name: "metrics"
+    path: "/metrics"
+    interval: 60s
+    timeout: 5s
+    expected_status: 200
+
+# Alert Rules
+alert_rules:
+  # API Latency
+  - name: "api-latency-warning"
+    metric: "http_request_duration_ms"
+    condition: "p95 > 100"
+    severity: warning
+    window: 5m
+    message: "API p95 latency exceeds 100ms"
+
+  - name: "api-latency-critical"
+    metric: "http_request_duration_ms"
+    condition: "p95 > 500"
+    severity: critical
+    window: 5m
+    message: "API p95 latency exceeds 500ms"
+
+  # Error Rate
+  - name: "error-rate-warning"
+    metric: "http_errors_total / http_requests_total"
+    condition: "> 0.01"
+    severity: warning
+    window: 5m
+    message: "Error rate exceeds 1%"
+
+  - name: "error-rate-critical"
+    metric: "http_errors_total / http_requests_total"
+    condition: "> 0.05"
+    severity: critical
+    window: 5m
+    message: "Error rate exceeds 5%"
+
+  # Memory Usage
+  - name: "memory-warning"
+    metric: "process_heap_used_bytes"
+    condition: "> 120586240"  # 115MB
+    severity: warning
+    window: 5m
+    message: "Memory usage exceeds 115MB"
+
+  - name: "memory-critical"
+    metric: "process_heap_used_bytes"
+    condition: "> 146800640"  # 140MB
+    severity: critical
+    window: 5m
+    message: "Memory usage exceeds 140MB"
+
+  # Test Failures
+  - name: "test-failures"
+    metric: "test_failures_total"
+    condition: "> 0"
+    severity: warning
+    window: 1h
+    message: "Test failures detected"
+
+  # Shard Ring Health
+  - name: "shard-ring-unhealthy"
+    metric: "shard_ring_healthy"
+    condition: "== 0"
+    severity: critical
+    window: 1m
+    message: "Shard ring is unhealthy"
+
+# Sentry Configuration
+sentry:
+  # Set SENTRY_DSN env var to enable Sentry error tracking
+  # Get your DSN from: https://sentry.io → Settings → Projects → Client Keys
+  dsn: "${SENTRY_DSN}"
+  environment: "${NODE_ENV}"
+  sample_rate: 0.2
+  traces_sample_rate: 0.1
+  release: "${npm_package_version}"
+  enable_tracing: true
+  attach_stacktrace: true
+  send_default_pii: false
+
+# Logging Configuration
+logging:
+  level: "${LOG_LEVEL:-info}"
+  format: "json"
+  timestamp: true
+  correlation_id: true
+  redact_fields:
+    - "password"
+    - "api_key"
+    - "secret"
+    - "token"
+  outputs:
+    - type: "stdout"
+    - type: "file"
+      path: "/var/log/algo-trader/app.log"
+      max_size: "50m"
+      max_files: 5
+
+# Metrics Configuration
+metrics:
+  enabled: true
+  prefix: "algo_trader_"
+  default_labels:
+    service: "algo-trader"
+    environment: "${NODE_ENV}"
+  histogram_buckets: [10, 25, 50, 100, 250, 500, 1000, 2500, 5000]

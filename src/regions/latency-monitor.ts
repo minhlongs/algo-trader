@@ -34,6 +34,7 @@ class LatencyMonitor {
   private regionHealth: Map<string, RegionMetrics> = new Map();
   private alertThresholdP95: number; // ms
   private alertCallback?: (region: string, p95: number) => void;
+  private stopInterval?: () => void;
 
   constructor(
     regions: string[],
@@ -195,7 +196,12 @@ class LatencyMonitor {
   }
 
   // Start periodic probing (for Node.js environments)
+  // Lazy-safe: safe to call multiple times; only starts once.
   start(intervalMs?: number): () => void {
+    if (this.stopInterval) {
+      return this.stopInterval;
+    }
+
     const interval = setInterval(() => {
       this.runProbes().catch((err) => logger.error('[LatencyMonitor] probe error', { error: err }));
     }, intervalMs || this.probeInterval);
@@ -203,7 +209,8 @@ class LatencyMonitor {
     // Run immediately
     this.runProbes().catch((err) => logger.error('[LatencyMonitor] initial probe error', { error: err }));
 
-    return () => clearInterval(interval);
+    this.stopInterval = () => clearInterval(interval);
+    return this.stopInterval;
   }
 }
 

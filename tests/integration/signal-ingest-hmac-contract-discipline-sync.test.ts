@@ -86,7 +86,7 @@ import { resolve } from 'path';
 const REPO_ROOT = resolve(__dirname, '../..');
 const INGEST_FILE = resolve(REPO_ROOT, 'src/platform/api/routes/signal-ingest-routes.ts');
 // Phase 35 R2: central rate-limit config moved to forest/rate-limit/
-const RATE_LIMIT_FILE = resolve(REPO_ROOT, 'src/forest/rate-limit/redis-rate-limiter.ts');
+const RATE_LIMIT_FILE = resolve(REPO_ROOT, 'src/seed/config/tiers.ts');
 const MIN_REQUESTS_PER_MIN = 1;
 
 const ALLOWED_STRATEGIES_EXPECTED = ['qwen-m1max-v1', 'deepseek-m1max-v1'];

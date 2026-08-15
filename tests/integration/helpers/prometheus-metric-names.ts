@@ -1,7 +1,7 @@
 /**
  * Shared helper for Grafana provisioning validators.
  *
- * Parses `src/platform/middleware/prometheus-metrics.ts` and returns the set of
+ * Parses `src/platform/middleware/prometheus-registry.ts` and returns the set of
  * `algo_trader_*` metric names that are actually exported. Used by both:
  *
  *   - tests/integration/grafana-alert-provisioning.test.ts  (PR #132)
@@ -17,7 +17,7 @@ import { resolve } from 'path';
 /** Path to the authoritative source of truth for metric names. */
 export const METRICS_TS_PATH = resolve(
   __dirname,
-  '../../../src/platform/middleware/prometheus-metrics.ts'
+  '../../../src/platform/middleware/prometheus-registry.ts'
 );
 
 /** Built-in Prometheus metrics that are valid in PromQL but not declared in our file. */
@@ -31,14 +31,14 @@ export const PROMETHEUS_BUILTINS = new Set<string>(['up']);
 export const METRIC_REF_REGEX = /\b(algo_trader_[a-z0-9_]+|up)\b/g;
 
 /**
- * Parse the set of exported `name: '...'` values from prometheus-metrics.ts.
+ * Parse the set of exported `name: '...'` values from prometheus-registry.ts.
  * Authoritative source of truth — anything not in this set is a typo from the
  * validator's perspective.
  */
 export function loadExportedMetricNames(): Set<string> {
   const src = readFileSync(METRICS_TS_PATH, 'utf8');
   const names = new Set<string>();
-  const nameRegex = /^\s*name:\s*'(algo_trader_[a-z0-9_]+)'/gm;
+  const nameRegex = /name:\s*'(algo_trader_[a-z0-9_]+)'/g;
   let m: RegExpExecArray | null;
   while ((m = nameRegex.exec(src)) !== null) {
     names.add(m[1]);

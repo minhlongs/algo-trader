@@ -171,13 +171,19 @@ describe('DrawdownMonitorService', () => {
   // ── checkAndAlert ───────────────────────────────────────────────────
 
   it('checkAndAlert generates alerts when threshold breached', async () => {
-    const redis = makeRedis();
+    const redis = makeRedis({
+      hgetall: vi.fn().mockImplementation(async (key: string) => {
+        if (key === 'drawdown:state') return { currentValue: '94', peakValue: '100', consecutiveLosses: '0', state: 'ACTIVE', reason: '', triggeredAt: '' };
+        if (key === 'drawdown:halt') return { state: 'ACTIVE' };
+        return {};
+      }),
+    });
     mockRedis = redis;
     const today = new Date().toISOString().split('T')[0];
     await redis.set('drawdown:daily_start', '100');
     await redis.set(`drawdown:daily:${today}`, '-6');
 
-    // get() returns null for throttle key (no prior alert), then daily_start=100 / daily=-6 → 6% drawdown
+    // currentValue=94, daily_start=100 → 6% daily drawdown > 5% threshold
     const service = new DrawdownMonitorService(redis);
     const result = await service.checkAndAlert('user-1', { dailyThreshold: 0.05 });
 

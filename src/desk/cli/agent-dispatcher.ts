@@ -8,6 +8,7 @@
 import { trace } from '@opentelemetry/api';
 import { AgentQueueManager } from '../../queues/agent-queue-manager';
 import { CircuitBreaker } from '../../shared/resilience/circuit-breaker';
+import { logger } from '../../shared/utils/logger';
 import { AgentConfig, ModelTier, TIER_CONFIG, getAgentConfig } from '../../agents/agent-config';
 import { OpenClawGateway } from '../../platform/workers/openclaw-gateway/client';
 
@@ -16,9 +17,15 @@ export interface AgentExecutionContext {
   strategyId?: string;
 }
 
+/** Agent input payload */
+export type AgentInput = Record<string, unknown>;
+
+/** Agent output data */
+export type AgentOutputData = Record<string, unknown>;
+
 export interface AgentExecutionResult {
   success: boolean;
-  data?: any;
+  data?: AgentOutputData;
   error?: string;
   latencyMs: number;
   agentName: string;
@@ -42,7 +49,7 @@ export class ModelTierDispatcher {
       resetTimeoutMs: 60000,
       name: 'openclaw-gateway',
       onStateChange: (prev, next) => {
-        console.log(`[ModelTierDispatcher] CircuitBreaker: ${prev} -> ${next}`);
+        logger.debug(`[ModelTierDispatcher] CircuitBreaker: ${prev} -> ${next}`);
       },
     });
 
@@ -68,7 +75,7 @@ export class ModelTierDispatcher {
    * - Tier2 (Sonnet): async queue, returns jobId immediately
    * - Tier3 (Opus): direct sync with timeout, fallback to Tier2 on timeout/rate-limit
    */
-  async execute(agentName: string, input: any, context: AgentExecutionContext): Promise<AgentExecutionResult> {
+  async execute(agentName: string, input: AgentInput, context: AgentExecutionContext): Promise<AgentExecutionResult> {
     const config = getAgentConfig(agentName);
     if (!config) {
       return {
@@ -126,7 +133,7 @@ export class ModelTierDispatcher {
       return result;
     } catch (error) {
       const latency = Date.now() - start;
-      span.recordException(error as any);
+      span.recordException(error instanceof Error ? error : new Error(String(error)));
       span.setAttributes({
         'agent.latency_ms': latency,
         'agent.success': false,
@@ -152,7 +159,7 @@ export class ModelTierDispatcher {
    */
   private async executeDirect(
     config: AgentConfig,
-    input: any,
+    input: AgentInput,
     context: AgentExecutionContext,
     enableFallback: boolean = false
   ): Promise<AgentExecutionResult> {
@@ -167,21 +174,23 @@ export class ModelTierDispatcher {
 
   return {
    success: true,
-   data: response,
+   data: response as AgentOutputData,
    latencyMs: 0,
    agentName: config.name,
    modelTier: config.tier,
   };
- } catch (error: any) {
-  if (enableFallback && config.fallbackTier && (error.name === 'AbortError' || error.message.includes('429') || error.message.includes('rate limit'))) {
-   console.warn(`[ModelTierDispatcher] Tier3 timeout/rate-limit for ${config.name}, falling back to Tier2`);
+ } catch (error: unknown) {
+  const errorMsg = error instanceof Error ? error.message : String(error);
+  const errorName = error instanceof Error ? error.name : '';
+  if (enableFallback && config.fallbackTier && (errorName === 'AbortError' || errorMsg.includes('429') || errorMsg.includes('rate limit'))) {
+   logger.warn(`[ModelTierDispatcher] Tier3 timeout/rate-limit for ${config.name}, falling back to Tier2`);
    const result = await this.executeQueued({ ...config, tier: config.fallbackTier }, input, context);
    result.modelTier = config.fallbackTier;
    return result;
   }
   return {
    success: false,
-   error: error instanceof Error ? error.message : String(error),
+   error: errorMsg,
    latencyMs: 0,
    agentName: config.name,
    modelTier: config.tier,
@@ -196,7 +205,7 @@ export class ModelTierDispatcher {
    * Queue-based asynchronous execution for Tier2 (and Tier3 fallback).
    * Returns immediately with job ID; result delivered via worker.
    */
-  private async executeQueued(config: AgentConfig, input: any, context: AgentExecutionContext): Promise<AgentExecutionResult> {
+  private async executeQueued(config: AgentConfig, input: AgentInput, context: AgentExecutionContext): Promise<AgentExecutionResult> {
     const queue = this.tierQueues.get(config.tier);
     if (!queue) {
       throw new Error(`No queue configured for tier: ${config.tier}`);
@@ -227,9 +236,9 @@ export class ModelTierDispatcher {
    * Example: { [ModelTier.TIER2_SONNET]: async (task) => { ... } }
    */
   async startWorkers(
-    processors: Partial<Record<ModelTier, (task: any) => Promise<any>>>
+    processors: Partial<Record<ModelTier, (task: AgentInput) => Promise<AgentOutputData>>>
   ): Promise<void> {
-    for (const [tier, processor] of Object.entries(processors) as [ModelTier, (task: any) => Promise<any>][]) {
+    for (const [tier, processor] of Object.entries(processors) as [ModelTier, (task: AgentInput) => Promise<AgentOutputData>][]) {
       const queue = this.tierQueues.get(tier);
       if (queue && processor) {
         await queue.startWorker(processor);

@@ -6,6 +6,9 @@ import {
   SortOrder,
 } from '../models/types';
 
+/** PostgreSQL query parameter types */
+type SqlParam = string | number | boolean | null | string[];
+
 export class StrategyRepository {
   private readonly TABLE = 'marketplace_strategies';
 
@@ -27,7 +30,7 @@ export class StrategyRepository {
     sort?: { field: string; order: SortOrder },
   ): Promise<PaginatedResult<IMarketplaceStrategy>> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     if (filters?.tenantId) {
@@ -114,7 +117,7 @@ export class StrategyRepository {
     data: Partial<IMarketplaceStrategy>,
   ): Promise<IMarketplaceStrategy | null> {
     const fields: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     const columnMap: Record<string, string> = {
@@ -133,7 +136,7 @@ export class StrategyRepository {
     for (const [key, column] of Object.entries(columnMap)) {
       if (data[key as keyof IMarketplaceStrategy] !== undefined) {
         fields.push(`${column} = $${idx++}`);
-        params.push((data as Record<string, any>)[key]);
+        params.push((data as Record<string, unknown>)[key] as SqlParam);
       }
     }
 
@@ -159,7 +162,7 @@ export class StrategyRepository {
 
   async count(filters?: { tenantId?: string; status?: string; category?: string }): Promise<number> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     if (filters?.tenantId) {
@@ -189,7 +192,7 @@ export class StrategyRepository {
 
   async findByStatus(status: string, filters?: { category?: string; creatorId?: string; limit?: number }): Promise<IMarketplaceStrategy[]> {
     const conditions: string[] = [`status = $1`];
-    const params: any[] = [status];
+    const params: SqlParam[] = [status];
     let idx = 2;
     if (filters?.category) { conditions.push(`category = $${idx++}`); params.push(filters.category); }
     if (filters?.creatorId) { conditions.push(`creator_id = $${idx++}`); params.push(filters.creatorId); }
@@ -200,10 +203,10 @@ export class StrategyRepository {
     return result.rows as unknown as IMarketplaceStrategy[];
   }
 
-  async findLatestPerformance(strategyId: string): Promise<any> {
+  async findLatestPerformance(strategyId: string): Promise<IMarketplaceStrategy | null> {
     const sql = `SELECT * FROM marketplace_performance WHERE strategy_id = $1 AND tenant_id IS NULL ORDER BY date DESC LIMIT 1`;
     const result = await query(sql, [strategyId]);
-    return result.rows[0] || null;
+    return (result.rows[0] as unknown as IMarketplaceStrategy) || null;
   }
 }
 

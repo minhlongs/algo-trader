@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { Http2ConnectionPool } from '../../src/desk/execution/http2-connection-pool';
+import { Http2ConnectionPool, extractOrigin } from '../../src/desk/execution/http2-connection-pool';
 import * as http2 from 'node:http2';
 import { logger } from '../../src/shared/utils/logger';
 
@@ -74,25 +74,25 @@ describe('Http2ConnectionPool', () => {
   describe('Origin Extraction', () => {
     it('should extract origin from URL', () => {
       pool = Http2ConnectionPool.getInstance();
-      const origin = pool['extractOrigin']('https://clob.polymarket.com/order');
+      const origin = extractOrigin('https://clob.polymarket.com/order');
       expect(origin).toBe('https://clob.polymarket.com:443');
     });
 
     it('should default HTTPS port to 443', () => {
       pool = Http2ConnectionPool.getInstance();
-      const origin = pool['extractOrigin']('https://clob.polymarket.com');
+      const origin = extractOrigin('https://clob.polymarket.com');
       expect(origin).toBe('https://clob.polymarket.com:443');
     });
 
     it('should use explicit port if provided', () => {
       pool = Http2ConnectionPool.getInstance();
-      const origin = pool['extractOrigin']('https://example.com:8443');
+      const origin = extractOrigin('https://example.com:8443');
       expect(origin).toBe('https://example.com:8443');
     });
 
     it('should throw on invalid URL', () => {
       pool = Http2ConnectionPool.getInstance();
-      expect(() => pool['extractOrigin']('not-a-url')).toThrow('Invalid URL for HTTP/2 pool');
+      expect(() => extractOrigin('not-a-url')).toThrow('Invalid URL for HTTP/2 pool');
     });
   });
 
@@ -105,8 +105,7 @@ describe('Http2ConnectionPool', () => {
       const session = await pool.getSession('https://clob.polymarket.com/order');
       expect(session).toBeDefined();
       expect(http2.connect).toHaveBeenCalledWith(
-        'https://clob.polymarket.com:443',
-        expect.any(Object)
+        'https://clob.polymarket.com:443'
       );
     });
 
@@ -209,7 +208,7 @@ describe('Http2ConnectionPool', () => {
       await pool.shutdown();
 
       expect(pool['sessions'].size).toBe(0);
-      expect(pool['dnsCache'].size).toBe(0);
+      expect(pool['dns']['cache'].size).toBe(0);
     });
   });
 

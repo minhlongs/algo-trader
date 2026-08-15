@@ -24,11 +24,9 @@ export default defineConfig({
       // Playwright E2E tests have their own runner (npm run test:e2e).
       'tests/e2e/**',
       // Polymarket strategy tests excluded
-      'tests/strategies/**',
+      'tests/strategies/polymarket/**',
       // .claude hooks tests reference deleted fixtures
       '**/.claude/hooks/__tests__/**',
-      // Signal-publisher tests flaky with D1 singleton isolation — tracked separately
-      'src/signal/__tests__/signal-publisher.test.ts',
       // Dashboard has its own vitest config (jsdom)
       'dashboard/**',
     ],

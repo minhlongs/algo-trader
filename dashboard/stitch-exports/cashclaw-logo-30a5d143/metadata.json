@@ -1,7 +1,0 @@
-{
-  "screenId": "30a5d143ce0c4939ab4a2b4c71551ae5",
-  "title": "CashClaw Logo",
-  "projectId": "9841518857639705579",
-  "name": "dashboard-main",
-  "prompt": "Main trading dashboard for CashClaw. Dark theme (#051424 background), cyan (#06b6d4) accents. Top header with CashClaw logo. 12-column Bento Grid: candlestick chart, PnL analytics, positions table, system logs, spreads, signals, trade feed. Professional fintech. Inter + JetBrains Mono."
-}

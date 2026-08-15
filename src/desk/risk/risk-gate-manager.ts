@@ -19,6 +19,7 @@
 
 import type { LiveExecutionGuard } from '../execution/live-execution-guard';
 import type { CircuitBreaker } from './circuit-breaker';
+import type { PortfolioRebalanceGuard, PositionSnapshot } from './portfolio-rebalance-guard';
 import type { PolymarketOrder } from '../execution/polymarket-signer';
 import { logger } from '../../shared/utils/logger';
 
@@ -43,6 +44,7 @@ export class RiskGateManager {
   constructor(
     private readonly guard: LiveExecutionGuard,
     private readonly circuitBreaker?: CircuitBreaker,
+    private readonly rebalanceGuard?: PortfolioRebalanceGuard,
   ) {}
 
   /**
@@ -125,5 +127,10 @@ export class RiskGateManager {
   /** Access the underlying guard (for status queries, reset, etc.) */
   getGuard(): LiveExecutionGuard {
     return this.guard;
+  }
+
+  /** Access the rebalance guard (portfolio-level drift checks) */
+  getRebalanceGuard(): PortfolioRebalanceGuard | undefined {
+    return this.rebalanceGuard;
   }
 }

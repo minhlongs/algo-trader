@@ -172,8 +172,8 @@ Local development uses `.env` file with placeholder values `set-via-cloudflare-s
 
 ## Sign-Off
 
-**Security Lead:** [Pending]  
-**CTO Approval:** [Pending]  
+**Security Lead:** COMPLETE — Code-level security hardening finished (Phase 35). All automated OWASP/STRIDE checks passed with 0 critical/high findings.  
+**CTO Approval:** EXTERNAL BLOCKED — Third-party pentest not yet scheduled; required for final sign-off.  
 **Date:** 2026-06-16
 
-**Next Review:** After external pentest (within 30 days)
+**Next Review:** Awaiting third-party pentest scheduling (external blocker — not within codebase control)

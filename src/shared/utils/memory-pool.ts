@@ -5,6 +5,8 @@
  * Target: Reduce major GC frequency by 50%
  */
 
+import { logger } from './logger';
+
 export interface PooledObject<T extends { reset(): void }> {
   obj: T;
   lastUsed: number;
@@ -102,7 +104,7 @@ export class MemoryPool<T extends { reset(): void }> {
         try {
           obj.reset();
         } catch (error) {
-          console.error('[MemoryPool] Failed to reset object:', error);
+          logger.error('[MemoryPool] Failed to reset object', error);
         }
         return;
       }
@@ -165,8 +167,8 @@ export class MemoryPool<T extends { reset(): void }> {
 export class PooledJSONParser {
   private buffer: string = '';
 
-  parse(chunk: string): any[] {
-    const items: any[] = [];
+  parse(chunk: string): unknown[] {
+    const items: unknown[] = [];
     const parts = (this.buffer + chunk).split('\n');
 
     // Last part may be incomplete
@@ -232,6 +234,6 @@ export const bufferPool = new MemoryPool(
 
 // Strategy instance pool (for frequently used strategies)
 export const strategyPool = new MemoryPool(
-  () => ({ reset: () => {} } as any), // Placeholder - would be actual strategy
+  () => ({ reset: () => {} } as { reset(): void }), // Placeholder - would be actual strategy
   { initialSize: 5, maxSize: 25, idleTimeoutMs: 600000 } // 10 minute idle
 );

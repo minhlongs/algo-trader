@@ -10,7 +10,9 @@ import { MarketMakerStrategy } from'../../strategies/polymarket/market-maker';
 import { StrategyRunner } from'../../engine/strategy-runner';
 import { TradeExecutor } from'../../engine/trade-executor';
 import { PaperExchange } from'../../paper-trading/paper-exchange';
-import { RiskManager } from'../core/risk-manager';
+import { RiskGateManager, EquitySnapshotManager } from '../risk';
+import { LiveExecutionGuard } from '../execution/live-execution-guard';
+import type { LivePositionTracker } from '../execution/live-position-tracker';
 import { getDatabase } from'../data/database';
 import { buildPolymarketAdapter } from '../execution/polymarket-execution-adapter';
 import { PredictionLoop } from'./prediction-loop';
@@ -45,7 +47,7 @@ const DEFAULT_STRATEGIES: StrategyConfig[] = [
 
 /**
  * TradingPipeline: end-to-end orchestrator for Polymarket strategies.
- * ALL trade signals flow through RiskManager before execution.
+ * ALL trade signals flow through RiskGateManager before execution.
  */
 export class TradingPipeline extends EventEmitter {
   private status: PipelineStatus = 'stopped';
@@ -60,6 +62,9 @@ export class TradingPipeline extends EventEmitter {
   private orderManager!: OrderManager;
   private strategyRunner!: StrategyRunner;
   private eventBus!: TradingEventBus;
+  private riskGateManager!: RiskGateManager;
+  private equitySnapshotManager!: EquitySnapshotManager;
+  private liveExecutionGuard!: LiveExecutionGuard;
 
   constructor(config: PipelineConfig = {}) {
     super();
@@ -141,6 +146,9 @@ export class TradingPipeline extends EventEmitter {
   getStatus(): PipelineStatus { return this.status; }
   getStrategiesStatus() { return this.strategyRunner.getAllStatus(); }
 
+  /** Expose risk gate for strategies that need pre-tick/order checks */
+  getRiskGate(): RiskGateManager { return this.riskGateManager; }
+
   // ── Private ────────────────────────────────────────────────────────────────
 
   private initComponents(): void {
@@ -161,13 +169,12 @@ export class TradingPipeline extends EventEmitter {
     this.orderManager    = new OrderManager(this.clobClient);
     this.strategyRunner  = new StrategyRunner();
 
-    const riskManager = new RiskManager({
-      maxPositionSize:  String(parseFloat(this.cfg.capitalUsdc) * 0.2),
-      maxDrawdown:      0.15,
-      maxOpenPositions: 15,
-      stopLossPercent:  0.10,
-      maxLeverage:      1,
-    });
+    const capitalUsdc = parseFloat(this.cfg.capitalUsdc);
+
+    // Wire real risk gate: LiveExecutionGuard → RiskGateManager
+    this.liveExecutionGuard = new LiveExecutionGuard({ capitalUsdc });
+    this.riskGateManager = new RiskGateManager(this.liveExecutionGuard);
+    this.equitySnapshotManager = new EquitySnapshotManager();
 
     const { adapter } = buildPolymarketAdapter({
       paperTrading: this.cfg.paperTrading,
@@ -271,6 +278,9 @@ private getMarketMakerInstance(): MarketMakerStrategy | null {
                 }
               }
             }
+
+            // Record equity snapshot (throttled to 1/min by manager)
+            await this.recordEquitySnapshot();
           } catch (err) {
             logger.error('Prediction feed error', 'TradingPipeline', { err: String(err) });
           }
@@ -304,6 +314,27 @@ private getMarketMakerInstance(): MarketMakerStrategy | null {
       logger.info(`Layer 2 (Convergence): $${capitalForDirectional} capital, quarter-Kelly`, 'TradingPipeline');
     } catch (err) {
       logger.warn('PredictionExecutor init failed', 'TradingPipeline', { err: String(err) });
+    }
+  }
+
+  /** Record equity snapshot to PostgreSQL (throttled by manager) */
+  private async recordEquitySnapshot(): Promise<void> {
+    try {
+      const capitalUsdc = parseFloat(this.cfg.capitalUsdc);
+      const status = this.liveExecutionGuard.getStatus();
+      const unrealized = status.dailyPnl;
+      const ddPct = capitalUsdc > 0 ? Math.max(0, -unrealized / capitalUsdc) : 0;
+
+      await this.equitySnapshotManager.record({
+        totalEquity: capitalUsdc + unrealized,
+        cashBalance: capitalUsdc - Math.abs(unrealized),
+        unrealizedPnl: unrealized,
+        realizedPnlDaily: status.dailyPnl,
+        openPositions: status.openPositions,
+        drawdownPct: ddPct,
+      });
+    } catch (err) {
+      logger.debug('Equity snapshot failed (non-critical)', 'TradingPipeline', { err: String(err) });
     }
   }
 

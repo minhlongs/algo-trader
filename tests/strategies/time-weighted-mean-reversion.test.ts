@@ -9,7 +9,7 @@ import {
   DEFAULT_CONFIG,
   type TimeWeightedMeanReversionConfig,
   type TimeWeightedMeanReversionDeps,
-} from '../../src/desk/strategies/polymarket/time-weighted-mean-reversion';
+} from '../../src/desk/strategies/polymarket/time-weighted-mean-reversion-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

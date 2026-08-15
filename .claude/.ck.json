@@ -55,7 +55,9 @@
       "useGemini": true
     }
   },
-  "hooks": {},
+  "hooks": {
+    "hardRuleGuard": true
+  },
   "assertions": [],
   "kits": {
     "ClaudeKit Engineer": {

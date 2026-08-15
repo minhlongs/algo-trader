@@ -190,7 +190,7 @@ export class PolymarketAdapter {
       session = await this.http2Pool.getSession(url);
 
       // Build HTTP/2 request options
-      const reqOptions: any = {
+      const reqOptions: Record<string, string | number | Record<string, string>> = {
         ':method': method,
         ':path': path,
         // Convert headers to lowercase (HTTP/2 requirement)
@@ -201,7 +201,7 @@ export class PolymarketAdapter {
       };
 
       return await new Promise<T>((resolve, reject) => {
-        const reqStream = session!.request(reqOptions);
+        const reqStream = session!.request(reqOptions as any);
 
         let responseData = '';
 
@@ -236,8 +236,9 @@ export class PolymarketAdapter {
         });
 
         // Stream error
-        reqStream.on('error', (err: any) => {
-          reject(new Error(`HTTP/2 stream error: ${err.message}`));
+        reqStream.on('error', (err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          reject(new Error(`HTTP/2 stream error: ${msg}`));
         });
 
         // Write body if present

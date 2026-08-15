@@ -129,7 +129,7 @@ export interface CorrelatorRunResult {
 async function runWithLimit<T>(
   limit: number,
   items: unknown[],
-  fn: (item: any) => Promise<T>
+  fn: (item: unknown) => Promise<T>
 ): Promise<T[]> {
   const results: T[] = [];
   const promises: Promise<void>[] = [];
@@ -200,8 +200,9 @@ export async function runNewsMarketCorrelation(
     3,
     activeItems,
     async (entry) => {
+      const { item, candidateMarkets } = entry as ActiveItemWithCandidates;
       try {
-        const result = await analyzeNewsImpact(entry.item, entry.candidateMarkets);
+        const result = await analyzeNewsImpact(item, candidateMarkets);
         if (result.impacts.length > 0) {
           if (publish) {
             await publishImpact(result);

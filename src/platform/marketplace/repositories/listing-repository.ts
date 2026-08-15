@@ -6,6 +6,9 @@
 import { query } from '../../../shared/db/postgres-client';
 import type { IMarketplaceListing, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
+/** PostgreSQL query parameter types */
+type SqlParam = string | number | boolean | null;
+
 export class ListingRepository {
   private readonly TABLE = 'marketplace_listings';
 
@@ -27,7 +30,7 @@ export class ListingRepository {
     sort?: { field: string; order: SortOrder },
   ): Promise<PaginatedResult<IMarketplaceListing>> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }
@@ -77,7 +80,7 @@ export class ListingRepository {
 
   async update(id: string, data: Partial<IMarketplaceListing>): Promise<IMarketplaceListing | null> {
     const fields: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     const columnMap: Record<string, string> = {
@@ -91,7 +94,7 @@ export class ListingRepository {
       if ((data as Record<string, unknown>)[key] !== undefined) {
         fields.push(`${column} = $${idx++}`);
         const val = (data as Record<string, unknown>)[key];
-        params.push(key === 'riskLimits' ? JSON.stringify(val) : val);
+        params.push(key === 'riskLimits' ? JSON.stringify(val) : val as SqlParam);
       }
     }
 
@@ -115,7 +118,7 @@ export class ListingRepository {
 
   async count(filters?: { isActive?: boolean; strategyId?: string }): Promise<number> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
     if (filters?.isActive !== undefined) { conditions.push(`is_active = $${idx++}`); params.push(filters.isActive); }
     if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }

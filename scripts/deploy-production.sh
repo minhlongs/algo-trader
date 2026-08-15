@@ -131,7 +131,7 @@ if [ "$MODE" = "full" ] || [ "$MODE" = "--worker-only" ]; then
   npx wrangler deploy --config wrangler.toml
 
   # Verify SHA
-  WORKER_URL="https://algo-trader.agencyos-openclaw.workers.dev"
+  WORKER_URL="${WORKER_URL:-https://api.cashclaw.cc}"
   LIVE_SHA=$(curl -sf "$WORKER_URL/api/version" | python3 -c "import json,sys; print(json.load(sys.stdin).get('shortSha',''))" 2>/dev/null || echo "")
   if [ "$COMMIT_SHORT" = "$LIVE_SHA" ]; then
     echo -e "  ${GREEN}✓ SHA verified: $COMMIT_SHORT${NC}"

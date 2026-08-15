@@ -9,7 +9,7 @@ import {
   DEFAULT_CONFIG,
   type SpreadMeanReversionConfig,
   type SpreadMeanReversionDeps,
-} from '../../src/desk/strategies/polymarket/spread-mean-reversion';
+} from '../../src/desk/strategies/polymarket/spread-mean-reversion-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

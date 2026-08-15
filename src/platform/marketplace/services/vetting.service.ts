@@ -6,6 +6,7 @@
 import { logger } from '../../../shared/utils/logger';
 import { AuditLogService } from '../../audit/audit-log-service';
 import { StrategyRepository, VettingJobRepository } from './repositories';
+import type { VettingJobRecord } from '../repositories/vetting-job-repository';
 
 import type { StrategyStatus, BacktestSummary } from '../models/types';
 
@@ -140,7 +141,7 @@ export class VettingService {
 
   async getVettingHistory(strategyId: string): Promise<{ id: string; strategyId: string; status: string; createdAt: string; completedAt?: string; result?: { approved: boolean; score: number; feedback: string } }[]> {
     const records = await this.vettingRepo.findByStrategyId(strategyId);
-    return records.map((r: any) => ({
+    return records.map((r: VettingJobRecord) => ({
       id: String(r.id),
       strategyId: r.strategyId,
       status: r.decision,

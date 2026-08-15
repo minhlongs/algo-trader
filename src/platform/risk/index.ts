@@ -32,6 +32,12 @@ export { DrawdownMonitorService } from './drawdown-monitor-service';
 export { AtrTrailingStopService } from './atr-trailing-stop-service';
 export { KellyPositionSizerService } from './kelly-position-sizer-service';
 
+// Drawdown monitor extracted modules
+export { DrawdownAlertTier, DEFAULT_THRESHOLD_CONFIG, computeDrawdownFraction, computeDailyDrawdownFraction, buildMetricsSnapshot } from './drawdown-monitor-types';
+export type { DrawdownThresholdConfig, DrawdownThresholdEvaluation, DrawdownEvaluationResult, DrawdownStateSnapshot, DrawdownThrottleState, DrawdownAlertRecord } from './drawdown-monitor-types';
+export { evaluateDailyDrawdown, evaluateTotalDrawdown, evaluateConsecutiveLosses, evaluateAllThresholds, determineAlertTier, shouldHaltTrading, buildAlerts, formatAlertMessage, formatHaltReason, shouldThrottleAlert, isWithinHaltPeriod, clampDrawdownValue, validateMetricsIntegrity } from './drawdown-monitor-evaluators';
+export type { HaltDecision } from './drawdown-monitor-evaluators';
+
 // Re-export types
 export {
   RISK_FEATURE_FLAG,

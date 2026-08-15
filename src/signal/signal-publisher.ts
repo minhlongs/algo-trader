@@ -59,6 +59,7 @@ export class SignalPublisher {
     };
 
     // Dedup check — reject if same signal within TTL bucket
+    // isDuplicate also registers the signal as seen internally
     if (signalDedupGuard.isDuplicate(signal)) {
       logger.debug(`[SignalPublisher] Duplicate signal dropped id=${id}`);
       return null;

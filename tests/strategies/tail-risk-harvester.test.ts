@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type TailRiskHarvesterConfig,
   type TailRiskHarvesterDeps,
-} from '../../src/desk/strategies/polymarket/tail-risk-harvester';
+} from '../../src/desk/strategies/polymarket/tail-risk-harvester-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

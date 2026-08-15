@@ -1,61 +1,80 @@
-# AGENTS.md
+# algo-trader agent guide
 
-This file provides guidance to OpenCode when working with code in this repository.
+> **Single source of truth.** This file holds ALL project rules, conventions, architecture notes
+> and Hard Rules for every AI assistant working this repository. `CLAUDE.md` only adds
+> assistant-specific deltas and points back here. Change rules HERE only.
+
+## Quick Start
+
+```bash
+bun install                     # Install deps
+bun run dev                     # Dev server
+bun run build                   # Production build
+bun run test                    # Run all tests (vitest)
+bun run lint                    # ESLint (0 errors expected)
+```
 
 ## Project Overview
 
-**Name:** claudekit-engineer
-**Type:** Node.js/TypeScript
-**Description:** A comprehensive boilerplate template for building professional software projects with **CLI Coding Agents** (**Claude Code** and **Open Code**). This template provides a complete development environment with AI-powered agent orchestration, automated workflows, and intelligent project management.
+Crypto trading platform. TypeScript/Node.js. Cloudflare Workers primary deployment.
+Multi-exchange support via CCXT. RSI+SMA strategy engine with backtesting.
+Durable Objects for state. D1 for persistence. Multi-region: us-east, eu-central, ap-southeast.
 
-## Role & Responsibilities
+## 11 Hard Rules (Non-Negotiable)
 
-Your role is to analyze user requirements, delegate tasks to appropriate sub-agents, and ensure cohesive delivery of features that meet specifications and architectural standards.
+| # | Rule | Test |
+|---|------|------|
+| H1 | Never commit secrets, API keys, wallet addresses, or credentials | `git diff --cached` must not contain `.env`, keys, tokens, wallet addr |
+| H2 | Never use `eval()` / `new Function()` / implied eval | ESLint `no-eval`, `no-implied-eval`, `no-new-func` = error |
+| H3 | Never commit directly to main — always use feature branches | Branch name must not be `main` at commit time |
+| H4 | Never return raw `err.stack` or `err.message` in HTTP responses | Use `sanitizeHttpError` from `@/shared/utils/error-sanitize`; error responses sanitized |
+| H5 | Zod-validate every API input; reject bad input early | All route handlers have Zod schema; unknown fields stripped |
+| H6 | Every fix starts with a failing test (TDD) | New test committed before or with the fix |
+| H7 | Fix touch ONLY files the test proves broken | No drive-by refactors in a bug-fix commit |
+| H8 | `npm run build` → 0 TypeScript errors | CI gate must pass |
+| H9 | `npm test` → all tests pass | CI gate must pass |
+| H10 | Coverage ≥ 80% statements, 80% lines, 80% functions, 80% branches | vitest threshold enforced |
+| H11 | Zero `:any` types in production code | ESLint `@typescript-eslint/no-explicit-any` = error |
 
-## Workflows
+## Code Quality
 
-- Primary workflow: `./.claude/rules/primary-workflow.md`
-- Development rules: `./.claude/rules/development-rules.md`
-- Orchestration protocols: `./.claude/rules/orchestration-protocol.md`
-- Documentation management: `./.claude/rules/documentation-management.md`
-- And other workflows: `./.claude/rules/*`
+- **Zero** `console.log`/`console.warn`/`console.error` — use logger utility
+- try/catch with specific error types; log with context
+- Fix failing tests, never ignore or skip them to pass build
+- Error sanitization: never expose stack traces in production responses (`@/shared/utils/error-sanitize`)
+- Logger utility for all output; no raw error objects in responses
+- Deploy commands: `wrangler deploy` + region scripts
+- Rollback: kill-switch endpoints on `/api/admin/rollback/kill/`
 
-**IMPORTANT:** Analyze the skills catalog and activate the skills that are needed for the task during the process.
-**IMPORTANT:** You must follow strictly the development rules in `./.claude/rules/development-rules.md` file.
-**IMPORTANT:** Before you plan or proceed any implementation, always read the `./README.md` file first to get context.
-**IMPORTANT:** Sacrifice grammar for the sake of concision when writing reports.
-**IMPORTANT:** In reports, list any unresolved questions at the end, if any.
+## Agent Conventions
 
-## Development Principles
+- Every agent **MUST** read this file before starting work
+- Reports saved to `plans/reports/`
+- Sacrifice grammar for concision in reports
+- List unresolved questions at end of every report
+- Delegate: planner → code → tester → code-reviewer → docs-manager
 
-- **YAGNI**: You Aren't Gonna Need It - avoid over-engineering
-- **KISS**: Keep It Simple, Stupid - prefer simple solutions
-- **DRY**: Don't Repeat Yourself - eliminate code duplication
+## Protected Flows (DO NOT BREAK)
 
-## Documentation
+1. **Setup Wizard** — BYOK onboarding (API keys, exchanges)
+2. **Telegram Bot** — @Sophia_Bbot commands (`/campaign`, `/status`, `/results`)
+3. **Payment Flow** — NOWPayments IPN webhook → tier activation
 
-Keep all important docs in `./docs` folder:
+## Error Response Pattern
 
-```
-./docs
-├── project-overview-pdr.md
-├── code-standards.md
-├── codebase-summary.md
-├── design-guidelines.md
-└── system-architecture.md
-```
+```typescript
+import { sanitizeHttpError } from '@/shared/utils/error-sanitize';
 
-## External Files
-
-Reference external instruction files in `opencode.json`:
-
-```json
-{
-  "instructions": ["docs/*.md", ".opencode/agents/*.md"]
+catch (err) {
+  return NextResponse.json(sanitizeHttpError(err), { status: 500 });
 }
 ```
 
----
+## Commit Convention
 
-*Generated by ClaudeKit OpenCode Generator*
-*Date: 2026-02-25*
+- `feat:` new feature
+- `fix:` bug fix
+- `test:` adding tests
+- `refactor:` code change that neither fixes a bug nor adds a feature
+- `docs:` documentation only
+- `chore:` maintenance tasks

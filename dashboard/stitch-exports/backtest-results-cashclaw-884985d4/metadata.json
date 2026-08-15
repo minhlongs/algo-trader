@@ -1,7 +1,0 @@
-{
-  "screenId": "884985d4293e47e98c6e133018b200c2",
-  "title": "Backtest Results - CashClaw",
-  "projectId": "15601339422458933475",
-  "name": "backtests",
-  "prompt": "Backtest results page for CashClaw. Dark theme, cyan accents. Form: pair selector, timeframe, strategy, days. Results table with Sharpe, Sortino, Max DD, Return. Paginated. Professional trading UI."
-}

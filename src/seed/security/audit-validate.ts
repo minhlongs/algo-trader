@@ -47,7 +47,7 @@ export function validateEntry(entry: IAuditEntry): void {
  `IAuditEntry.metadata exceeds ${METADATA_MAX_BYTES} bytes (got ${metaBytes})`,
  );
  }
- if (typeof entry.ipHash !== 'string' || entry.ipHash.trim() === '') {
+ if (typeof entry.ipHash !== 'string' || !/^[0-9a-f]+$/i.test(entry.ipHash)) {
  throw new TypeError('IAuditEntry.ipHash must be a non-empty hex string');
  }
 }

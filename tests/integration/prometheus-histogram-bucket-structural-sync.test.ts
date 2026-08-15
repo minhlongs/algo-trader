@@ -1,7 +1,7 @@
 /**
  * Prometheus histogram bucket structural discipline 3-histogram sync — first HISTOGRAM-STRUCTURAL edge.
  *
- * `src/platform/middleware/prometheus-metrics.ts` declares 3 Prometheus histograms
+ * `src/platform/middleware/prometheus-registry.ts` declares 3 Prometheus histograms
  * tracking duration metrics:
  *   - `exchangeApiLatency` (9 buckets, exchange API latency in seconds)
  *   - `tradeExecutionTime` (7 buckets, trade execution time in seconds)
@@ -109,7 +109,7 @@ import { resolve } from 'path';
 const REPO_ROOT = resolve(__dirname, '../..');
 const METRICS_PATH = resolve(
   REPO_ROOT,
-  'src/platform/middleware/prometheus-metrics.ts',
+  'src/platform/middleware/prometheus-registry.ts',
 );
 
 /** Standard percentile boundary: every latency histogram must include the 1-second bucket (p95 SLO anchor). */

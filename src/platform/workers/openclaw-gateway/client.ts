@@ -22,7 +22,7 @@ export class OpenClawGateway {
    * @param input Agent input payload (will be JSON-stringified)
    * @param options AbortSignal for timeout cancellation
    */
-  async chat(config: AgentConfig, input: any, options: { signal?: AbortSignal } = {}): Promise<any> {
+  async chat(config: AgentConfig, input: Record<string, unknown>, options: { signal?: AbortSignal } = {}): Promise<Record<string, unknown>> {
     const tierConfig = TIER_CONFIG[config.tier];
     if (!tierConfig) {
       throw new Error(`OpenClawGateway: unknown tier ${config.tier}`);
@@ -47,7 +47,7 @@ export class OpenClawGateway {
         throw new Error(`OpenClaw error: ${response.status} - ${err}`);
       }
 
-      return response.json();
+      return response.json() as Promise<Record<string, unknown>>;
     } finally {
       if (this.recordLatency) {
         const latencySec = (Date.now() - start) / 1000;

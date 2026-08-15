@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type LiquidityMigrationConfig,
   type LiquidityMigrationDeps,
-} from '../../src/desk/strategies/polymarket/liquidity-migration';
+} from '../../src/desk/strategies/polymarket/liquidity-migration-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

@@ -149,5 +149,9 @@ export class PubSubManager {
 
     this.snapshotHandlers.clear();
     this.alertHandlers.clear();
+
+    // Quit both clients to release connections
+    try { await this.pub.quit(); } catch { /* ignore */ }
+    try { await this.sub.quit(); } catch { /* ignore */ }
   }
 }

@@ -17,6 +17,7 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../../shared/utils/logger';
 import type { BacktestTrade } from '../../shared/backtesting/backtest-runner';
 
 import { runNegRiskScan } from'../commands/neg-risk-scan';
@@ -40,17 +41,17 @@ program
     const maxPositions = parseInt(opts.maxPositions, 10);
 
     if (isNaN(capitalUsdc) || capitalUsdc <= 0) {
-      console.error('Error: --capital must be a positive number');
+      logger.error('Error: --capital must be a positive number');
       process.exit(1);
     }
     if (isNaN(intervalMs) || intervalMs < 5000) {
-      console.error('Error: --interval must be >= 5000ms');
+      logger.error('Error: --interval must be >= 5000ms');
       process.exit(1);
     }
 
-    console.log('CashClaw Paper Trading');
-    console.log(`Capital: $${capitalUsdc} | Interval: ${intervalMs}ms | Max positions: ${maxPositions}`);
-    console.log('Starting... (Ctrl+C to stop)\n');
+    logger.info('CashClaw Paper Trading');
+    logger.info(`Capital: $${capitalUsdc} | Interval: ${intervalMs}ms | Max positions: ${maxPositions}`);
+    logger.info('Starting... (Ctrl+C to stop)\n');
 
     // Dynamic require — wiring is excluded from tsc but compiled separately
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -69,7 +70,7 @@ program
   .action(() => {
     const file = path.join(process.cwd(), 'data', 'paper-trades.json');
     if (!fs.existsSync(file)) {
-      console.log('No trades yet. Run: cashclaw paper');
+      logger.info('No trades yet. Run: cashclaw paper');
       return;
     }
 
@@ -86,15 +87,15 @@ program
       const total = d.winCount + d.lossCount;
       const winRate = total > 0 ? ((d.winCount / total) * 100).toFixed(1) : '0.0';
 
-      console.log('CashClaw Status');
-      console.log('─'.repeat(40));
-      console.log(`Capital   : $${d.capital.toFixed(2)}`);
-      console.log(`Total P&L : $${d.totalPnl.toFixed(2)}`);
-      console.log(`Open      : ${d.positions.length} position(s)`);
-      console.log(`Closed    : ${d.closedTrades.length} trade(s)`);
-      console.log(`Wins      : ${d.winCount} | Losses: ${d.lossCount} | Win Rate: ${winRate}%`);
+      logger.info('CashClaw Status');
+      logger.info('─'.repeat(40));
+      logger.info(`Capital   : $${d.capital.toFixed(2)}`);
+      logger.info(`Total P&L : $${d.totalPnl.toFixed(2)}`);
+      logger.info(`Open      : ${d.positions.length} position(s)`);
+      logger.info(`Closed    : ${d.closedTrades.length} trade(s)`);
+      logger.info(`Wins      : ${d.winCount} | Losses: ${d.lossCount} | Win Rate: ${winRate}%`);
     } catch (err) {
-      console.error('Error reading trades file:', (err as Error).message);
+      logger.error('Error reading trades file:', (err as Error).message);
       process.exit(1);
     }
   });
@@ -105,7 +106,7 @@ program
   .command('scan')
   .description('One-time market scan — show opportunities without trading')
   .action(async () => {
-    console.log('Scanning Polymarket...\n');
+    logger.info('Scanning Polymarket...\n');
 
     try {
       const resp = await fetch(
@@ -114,7 +115,7 @@ program
       );
 
       if (!resp.ok) {
-        console.error(`Gamma API error: HTTP ${resp.status}`);
+        logger.error(`Gamma API error: HTTP ${resp.status}`);
         process.exit(1);
       }
 
@@ -136,15 +137,15 @@ program
             const question = String(m['question'] ?? '').substring(0, 60);
 
             if (endgameCount <= 10) {
-              console.log(`  [${side}] @${yes.toFixed(3)} edge: ${edge}%  ${question}`);
+              logger.info(`  [${side}] @${yes.toFixed(3)} edge: ${edge}%  ${question}`);
             }
           }
         } catch { /* skip malformed entry */ }
       }
 
-      console.log(`\nFound ${endgameCount} endgame opportunities in ${markets.length} markets`);
+      logger.info(`\nFound ${endgameCount} endgame opportunities in ${markets.length} markets`);
     } catch (err) {
-      console.error('Scan failed:', (err as Error).message);
+      logger.error('Scan failed:', (err as Error).message);
       process.exit(1);
     }
   });
@@ -186,14 +187,14 @@ program
   .action(async (opts: { file: string; capital: string; format: string }) => {
     const capital = parseFloat(opts.capital);
     if (isNaN(capital) || capital <= 0) {
-      console.error('Error: --capital must be a positive number');
+      logger.error('Error: --capital must be a positive number');
       process.exit(1);
     }
 
     const filePath = path.resolve(process.cwd(), opts.file);
     if (!fs.existsSync(filePath)) {
-      console.error(`Error: Trade history file not found: ${filePath}`);
-      console.error('Run paper trading first: cashclaw paper');
+      logger.error(`Error: Trade history file not found: ${filePath}`);
+      logger.error('Run paper trading first: cashclaw paper');
       process.exit(1);
     }
 
@@ -208,7 +209,7 @@ program
       const trades = data.closedTrades ?? [];
 
       if (trades.length === 0) {
-        console.log('No closed trades in file. Keep trading to build history.');
+        logger.info('No closed trades in file. Keep trading to build history.');
         return;
       }
 
@@ -224,7 +225,7 @@ program
       });
 
       if (opts.format === 'json') {
-        console.log(JSON.stringify(result, null, 2));
+        logger.info(JSON.stringify(result, null, 2));
         return;
       }
 
@@ -238,14 +239,14 @@ program
       const best = Math.max(...trades.map((t) => t.pnlUsd));
       const worst = Math.min(...trades.map((t) => t.pnlUsd));
 
-      console.log('');
-      console.log(`Strategy: paper-trading  │ Capital: $${capital}`);
-      console.log(`Sharpe: ${Number(result.sharpeRatio).toFixed(2)}  │ Max Drawdown: ${ddPct}%  │ Win Rate: ${winPct}%`);
-      console.log(`Total P&L: ${pnlSign}$${Number(result.totalPnlUsd).toFixed(2)}  │ Profit Factor: ${Number(result.profitFactor).toFixed(2)}`);
-      console.log(`Trades: ${tradesStr}  │ Best: +$${best.toFixed(2)}  │ Worst: -$${Math.abs(worst).toFixed(2)}`);
-      console.log('');
+      logger.info('');
+      logger.info(`Strategy: paper-trading  │ Capital: $${capital}`);
+      logger.info(`Sharpe: ${Number(result.sharpeRatio).toFixed(2)}  │ Max Drawdown: ${ddPct}%  │ Win Rate: ${winPct}%`);
+      logger.info(`Total P&L: ${pnlSign}$${Number(result.totalPnlUsd).toFixed(2)}  │ Profit Factor: ${Number(result.profitFactor).toFixed(2)}`);
+      logger.info(`Trades: ${tradesStr}  │ Best: +$${best.toFixed(2)}  │ Worst: -$${Math.abs(worst).toFixed(2)}`);
+      logger.info('');
     } catch (err) {
-      console.error('Backtest failed:', (err as Error).message);
+      logger.error('Backtest failed:', (err as Error).message);
       process.exit(1);
     }
   });

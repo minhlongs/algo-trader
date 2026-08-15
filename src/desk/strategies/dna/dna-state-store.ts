@@ -35,9 +35,14 @@ export class InMemoryStateStore implements DnaStateStore {
   async load(): Promise<DnaEngineState | null> { return this._state; }
 }
 
+/** Minimal query result shape matching pg.QueryResult — avoids importing pg directly. */
+interface QueryResultLike {
+  rows: Array<Record<string, unknown>>;
+}
+
 /** Postgres-backed store — uses postgres-client `query()` signature. */
 export class PostgresStateStore implements DnaStateStore {
-  constructor(private _queryFn: (sql: string, params?: any[]) => Promise<any>) {}
+  constructor(private _queryFn: (sql: string, params?: unknown[]) => Promise<QueryResultLike>) {}
 
   async save(state: DnaEngineState): Promise<void> {
     await this._queryFn(
@@ -52,9 +57,10 @@ export class PostgresStateStore implements DnaStateStore {
     const res = await this._queryFn(
       `SELECT state FROM dna_engine_state WHERE id = 'singleton' LIMIT 1`,
     );
-    if (!res.rows?.[0]?.state) return null;
+    const row = res.rows[0];
+    if (!row?.state) return null;
     try {
-      return JSON.parse(res.rows[0].state) as DnaEngineState;
+      return JSON.parse(String(row.state)) as DnaEngineState;
     } catch {
       return null;
     }

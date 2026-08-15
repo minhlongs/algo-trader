@@ -8,6 +8,7 @@ import type { Command } from 'commander';
 import { handleTradeRun } from './cashclaw-trade-run-handler';
 import { handleTradeStart } from './cashclaw-trade-start-handler';
 import { handleDemoTrade } from './demo-trade-handler';
+import { logger } from '../../shared/utils/logger';
 
 export function registerTradeCommands(tradeCmd: Command): void {
 
@@ -32,7 +33,7 @@ export function registerTradeCommands(tradeCmd: Command): void {
     .option('--json', 'Machine-readable JSON output')
     .action((opts: { json: boolean }) => {
       if (opts.json) {
-        console.log(JSON.stringify({
+        logger.info(JSON.stringify({
           mode: 'live',
           paperMode: process.env['PAPER_MODE'] ?? 'true',
           note: 'Status available when orchestrator is running. Use "trade start" first.',
@@ -42,13 +43,13 @@ export function registerTradeCommands(tradeCmd: Command): void {
       }
 
       const paperMode = process.env['PAPER_MODE'] ?? 'true';
-      console.log('CashClaw Live Trading Status');
-      console.log('─'.repeat(40));
-      console.log(`PAPER_MODE: ${paperMode === 'false' ? 'LIVE' : 'PAPER'}`);
-      console.log('No live orchestrator running.');
-      console.log('Start with: cashclaw trade start --mode=live --capital=1000');
-      console.log('');
-      console.log('Required env vars for LIVE mode:');
+      logger.info('CashClaw Live Trading Status');
+      logger.info('─'.repeat(40));
+      logger.info(`PAPER_MODE: ${paperMode === 'false' ? 'LIVE' : 'PAPER'}`);
+      logger.info('No live orchestrator running.');
+      logger.info('Start with: cashclaw trade start --mode=live --capital=1000');
+      logger.info('');
+      logger.info('Required env vars for LIVE mode:');
       const req: Array<{ newName: string; oldName: string; label: string }> = [
         { newName: 'POLYMARKET_API_KEY', oldName: 'POLY_API_KEY', label: 'API Key' },
         { newName: 'POLYMARKET_API_SECRET', oldName: 'POLY_API_SECRET', label: 'API Secret' },
@@ -57,7 +58,7 @@ export function registerTradeCommands(tradeCmd: Command): void {
       ];
       for (const v of req) {
         const set = !!(process.env[v.newName] || process.env[v.oldName]);
-        console.log(`  ${v.label}: ${set ? '✓ set' : '✗ missing'}`);
+        logger.info(`  ${v.label}: ${set ? '✓ set' : '✗ missing'}`);
       }
     });
 
@@ -70,13 +71,13 @@ export function registerTradeCommands(tradeCmd: Command): void {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { listStrategies } = require('../polymarket/strategy-registry');
       const strategies = listStrategies();
-      console.log('\nAvailable strategies for "algo trade run":\n');
+      logger.info('\nAvailable strategies for "algo trade run":\n');
       for (const s of strategies) {
-        console.log(`  ${s.name}`);
-        console.log(`    ${s.description}`);
+        logger.info(`  ${s.name}`);
+        logger.info(`    ${s.description}`);
       }
-      console.log(`\n${strategies.length} strategies registered.`);
-      console.log('Use: cashclaw trade run --strategy=<name>\n');
+      logger.info(`\n${strategies.length} strategies registered.`);
+      logger.info('Use: cashclaw trade run --strategy=<name>\n');
     });
 
   // ── trade run ────────────────────────────────────────────────────────────────
@@ -124,52 +125,52 @@ tradeCmd
       if (filter === 'all' || filter === 'fills') {
         const fills = journal.loadFills();
         const recent = fills.slice(-limit);
-        console.log(`\n📊 Fills (${fills.length} total, showing last ${recent.length}):`);
-        console.log('─'.repeat(70));
-        if (recent.length === 0) console.log('  No fills recorded yet.');
+        logger.info(`\n📊 Fills (${fills.length} total, showing last ${recent.length}):`);
+        logger.info('─'.repeat(70));
+        if (recent.length === 0) logger.info('  No fills recorded yet.');
         for (const f of recent) {
           const dt = f.filledAt ? new Date(f.filledAt).toISOString() : 'unknown';
-          console.log(`  ${dt} | ${f.side.padEnd(5)} | ${f.tokenId.slice(0, 12)} | size=${f.size} | price=$${f.price.toFixed(4)} | ${f.orderId}`);
+          logger.info(`  ${dt} | ${f.side.padEnd(5)} | ${f.tokenId.slice(0, 12)} | size=${f.size} | price=$${f.price.toFixed(4)} | ${f.orderId}`);
         }
       }
 
       if (filter === 'all' || filter === 'events') {
         const events = journal.loadEvents();
         const recent = events.slice(-limit);
-        console.log(`\n📋 Events (${events.length} total, showing last ${recent.length}):`);
-        console.log('─'.repeat(70));
-        if (recent.length === 0) console.log('  No events recorded yet.');
+        logger.info(`\n📋 Events (${events.length} total, showing last ${recent.length}):`);
+        logger.info('─'.repeat(70));
+        if (recent.length === 0) logger.info('  No events recorded yet.');
         for (const e of recent) {
           const dt = new Date(e.timestamp).toISOString();
           const data = JSON.stringify(e.data).slice(0, 60);
-          console.log(`  ${dt} | ${e.type.padEnd(15)} | ${data}`);
+          logger.info(`  ${dt} | ${e.type.padEnd(15)} | ${data}`);
         }
       }
 
       if (filter === 'all' || filter === 'pnl') {
         const pnl = journal.loadDailyPnl();
-        console.log('\n💰 Daily P&L:');
-        console.log('─'.repeat(40));
+        logger.info('\n💰 Daily P&L:');
+        logger.info('─'.repeat(40));
         if (pnl) {
-          console.log(`  Date:       ${pnl.date}`);
-          console.log(`  Realized:   $${pnl.realizedPnl.toFixed(2)}`);
-          console.log(`  Trades:     ${pnl.tradeCount}`);
-          console.log(`  Win/Loss:   ${pnl.winCount}W / ${pnl.lossCount}L`);
+          logger.info(`  Date:       ${pnl.date}`);
+          logger.info(`  Realized:   $${pnl.realizedPnl.toFixed(2)}`);
+          logger.info(`  Trades:     ${pnl.tradeCount}`);
+          logger.info(`  Win/Loss:   ${pnl.winCount}W / ${pnl.lossCount}L`);
           if (pnl.tradeCount > 0) {
             const wr = ((pnl.winCount / pnl.tradeCount) * 100).toFixed(1);
-            console.log(`  Win rate:   ${wr}%`);
+            logger.info(`  Win rate:   ${wr}%`);
           }
         } else {
-          console.log('  No P&L recorded today.');
+          logger.info('  No P&L recorded today.');
         }
       }
 
       if (filter === 'all') {
         const stats = journal.getLifetimeStats();
-        console.log(`\n📈 Lifetime: ${stats.totalTrades} trades | ${stats.totalFills} fills`);
+        logger.info(`\n📈 Lifetime: ${stats.totalTrades} trades | ${stats.totalFills} fills`);
       }
 
-      console.log('');
+      logger.info('');
     });
 
   // ── trade backtest ───────────────────────────────────────────────────────────
@@ -189,12 +190,12 @@ tradeCmd
 
       const available = listStrategies().map((s) => s.name);
       if (!available.includes(opts.strategy)) {
-        console.error(`Unknown strategy: ${opts.strategy}`);
-        console.error('Use "cashclaw trade list-strategies" to see available options.');
+        logger.error(`Unknown strategy: ${opts.strategy}`);
+        logger.error('Use "cashclaw trade list-strategies" to see available options.');
         process.exit(1);
       }
 
-      console.log(`\n⏳ Backtesting ${opts.strategy} over ${days} days with $${capital}...\n`);
+      logger.info(`\n⏳ Backtesting ${opts.strategy} over ${days} days with $${capital}...\n`);
 
       const runner = new BacktestRunner();
       try {
@@ -208,29 +209,29 @@ tradeCmd
         const m = result.metrics;
 
         if (opts.format === 'json') {
-          console.log(JSON.stringify({ strategy: result.strategy, metrics: m, tradeCount: result.trades.length, durationMs: result.durationMs, warnings: result.warnings }, null, 2));
+          logger.info(JSON.stringify({ strategy: result.strategy, metrics: m, tradeCount: result.trades.length, durationMs: result.durationMs, warnings: result.warnings }, null, 2));
         } else {
-          console.log('┌─────────────────────────────────────────────────┐');
-          console.log(`│  Strategy: ${result.strategy.padEnd(37)} │`);
-          console.log(`│  Period: ${String(days).padEnd(3)} days | Capital: $${capital.toFixed(0).padEnd(25)} │`);
-          console.log('├─────────────────────────────────────────────────┤');
-          console.log(`│  Sharpe:       ${String(m.sharpeRatio).padEnd(8)}  |  Max DD:   ${(m.maxDrawdown * 100).toFixed(1)}%`.padEnd(51) + '│');
-          console.log(`│  Win Rate:     ${(m.winRate * 100).toFixed(1)}%`.padEnd(25) + `  |  Profit Factor: ${m.profitFactor === Infinity ? '∞' : String(m.profitFactor)}`.padEnd(28) + '│');
-          console.log(`│  Total P&L:    $${String(m.totalPnl).padEnd(8)}  |  Avg/Trade: $${String(m.avgPnlPerTrade).padEnd(8)} │`);
-          console.log('├─────────────────────────────────────────────────┤');
-          console.log(`│  Trades: ${String(m.totalTrades).padEnd(5)} (${m.winningTrades}W / ${m.losingTrades}L)`.padEnd(35) + `  |  Best: $${String(m.bestTrade).padEnd(8)} │`);
-          console.log(`│  Worst: $${String(m.worstTrade).padEnd(8)}  |  Duration: ${(result.durationMs / 1000).toFixed(1)}s`.padEnd(33) + '│');
-          console.log('└─────────────────────────────────────────────────┘');
+          logger.info('┌─────────────────────────────────────────────────┐');
+          logger.info(`│  Strategy: ${result.strategy.padEnd(37)} │`);
+          logger.info(`│  Period: ${String(days).padEnd(3)} days | Capital: $${capital.toFixed(0).padEnd(25)} │`);
+          logger.info('├─────────────────────────────────────────────────┤');
+          logger.info(`│  Sharpe:       ${String(m.sharpeRatio).padEnd(8)}  |  Max DD:   ${(m.maxDrawdown * 100).toFixed(1)}%`.padEnd(51) + '│');
+          logger.info(`│  Win Rate:     ${(m.winRate * 100).toFixed(1)}%`.padEnd(25) + `  |  Profit Factor: ${m.profitFactor === Infinity ? '∞' : String(m.profitFactor)}`.padEnd(28) + '│');
+          logger.info(`│  Total P&L:    $${String(m.totalPnl).padEnd(8)}  |  Avg/Trade: $${String(m.avgPnlPerTrade).padEnd(8)} │`);
+          logger.info('├─────────────────────────────────────────────────┤');
+          logger.info(`│  Trades: ${String(m.totalTrades).padEnd(5)} (${m.winningTrades}W / ${m.losingTrades}L)`.padEnd(35) + `  |  Best: $${String(m.bestTrade).padEnd(8)} │`);
+          logger.info(`│  Worst: $${String(m.worstTrade).padEnd(8)}  |  Duration: ${(result.durationMs / 1000).toFixed(1)}s`.padEnd(33) + '│');
+          logger.info('└─────────────────────────────────────────────────┘');
           if (result.warnings.length > 0) {
-            console.log(`\n⚠ Warnings: ${result.warnings.join(', ')}`);
+            logger.info(`\n⚠ Warnings: ${result.warnings.join(', ')}`);
           }
         }
 
         runner.clearCache();
       } catch (err) {
-        console.error(`Backtest failed: ${err instanceof Error ? err.message : String(err)}`);
+        logger.error(`Backtest failed: ${err instanceof Error ? err.message : String(err)}`);
         process.exit(1);
       }
-      console.log('');
+      logger.info('');
     });
 }

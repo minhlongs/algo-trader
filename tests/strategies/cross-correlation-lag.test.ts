@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type CrossCorrelationLagConfig,
   type CrossCorrelationLagDeps,
-} from '../../src/desk/strategies/polymarket/cross-correlation-lag';
+} from '../../src/desk/strategies/polymarket/cross-correlation-lag-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

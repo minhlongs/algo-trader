@@ -151,3 +151,21 @@ jobs:
         # catches real bugs without churn.
         run: shellcheck --severity=warning scripts/*.sh
 
+  gate-8-quality-ratchet:
+    name: Gate 8 — Quality Ratchet (baseline metrics check)
+    runs-on: ubuntu-latest
+    needs: [gate-1-validation]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run quality ratchet baseline check
+        run: node scripts/check-quality-baseline.mjs --all
+

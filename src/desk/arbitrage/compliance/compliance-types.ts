@@ -25,15 +25,26 @@ export interface ComplianceContext {
   side: 'buy' | 'sell';
   jurisdiction: string;
   timestamp: number;
+  pair?: string;
+  counterpartyDailyTotal?: number;
+  recentTrades?: Array<{ action: 'buy' | 'sell'; timestamp: number }>;
+  destinationJurisdiction?: string;
 }
 
 export interface AuditEntry {
-  id: string;
-  tradeId: string;
+  id?: string;
+  tradeId?: string;
   ruleId: string;
-  result: ComplianceResult;
-  checkedAt: number;
-  checker: string;
+  result?: ComplianceResult;
+  checkedAt?: number;
+  checker?: string;
+  action?: string;
+  pair?: string;
+  side?: string;
+  amount?: number;
+  counterparty?: string;
+  reason?: string;
+  timestamp?: number;
 }
 
 export interface PositionLimits {

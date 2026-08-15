@@ -239,10 +239,14 @@ describe('UnifiedExecutionEngine', () => {
       expect(engine.validate(opp)).toBe(true);
     });
 
-    it('should return true for settlement-arb type (type-only validation)', () => {
-      const opp = createMockOpportunity('settlement-arb');
-      // SplitMergeArbitrageExecutor only validates type
+    it('should return true for valid settlement-arb with required fields', () => {
+      const opp = createSplitMergeOpportunity();
       expect(engine.validate(opp)).toBe(true);
+    });
+
+    it('should return false for settlement-arb missing required fields', () => {
+      const opp = createMockOpportunity('settlement-arb');
+      expect(engine.validate(opp)).toBe(false);
     });
 
     it('should return false for cross-market without graph', () => {

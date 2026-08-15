@@ -10,6 +10,11 @@ import type { License } from '../../shared/types/license';
 import { LicenseTier } from '../../shared/types/license';
 import type { TierKey } from '../../desk/signal/signal-types';
 
+/** Minimal gate interface — matches RaasGate's public contract for lazy loading */
+interface RaaSGateLike {
+  validateApiKey(apiKey: string): License | undefined;
+}
+
 /** Ordinal ranking for tier comparison */
 const TIER_RANK: Record<TierKey, number> = {
   ENTERPRISE: 3,
@@ -17,18 +22,19 @@ const TIER_RANK: Record<TierKey, number> = {
   FREE: 0,
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _gate: any = null;
-function getGate() {
+let _gate: RaaSGateLike | null = null;
+function getGate(): RaaSGateLike | null {
   if (!_gate) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mod = require('../gate/raas-gate') as any;
-    _gate = (mod.default ?? mod)?.getInstance?.() ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('../gate/raas-gate') as { default?: { getInstance?(): RaaSGateLike } };
+    // Resolve the singleton — module may export as default or named
+    const exporter = (mod.default ?? mod) as { getInstance?(): RaaSGateLike };
+    _gate = exporter.getInstance?.() ?? null;
   }
   return _gate;
 }
 
-export function __setGate(gate: any | null) {
+export function __setGate(gate: RaaSGateLike | null): void {
   _gate = gate;
 }
 

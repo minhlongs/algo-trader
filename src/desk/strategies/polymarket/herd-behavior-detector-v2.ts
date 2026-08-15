@@ -178,6 +178,17 @@ export interface HerdBehaviorDetectorDeps extends StrategyDeps {
   config?: Partial<HerdBehaviorDetectorConfig>;
 }
 
+// Re-export math helpers for unit tests
+export {
+  calcReturn,
+  calcAvgPairwiseCorrelation,
+  detectHerdPeak,
+  calcHerdDirection,
+} from './herd-behavior-math-helpers';
+
+// Re-export calcPearsonR separately (named export from math helpers)
+export { calcPearsonR } from './herd-behavior-math-helpers';
+
 export function createHerdBehaviorDetectorTick(
   deps: HerdBehaviorDetectorDeps,
 ): () => Promise<void> {

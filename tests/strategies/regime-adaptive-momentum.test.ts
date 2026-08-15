@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
+import { calcSMA } from '../../src/desk/strategies/polymarket/strategy-math-helpers';
 import {
-  calcSMA,
   detectRegime,
   calcPullbackDepth,
   calcOBI,
   calcTrendDirection,
   createRegimeAdaptiveMomentumTick,
   type RegimeAdaptiveMomentumDeps,
-} from '../../src/desk/strategies/polymarket/regime-adaptive-momentum';
+} from '../../src/desk/strategies/polymarket/regime-adaptive-momentum-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

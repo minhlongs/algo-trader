@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type InfoAsymmetryScannerConfig,
   type InfoAsymmetryScannerDeps,
-} from '../../src/desk/strategies/polymarket/info-asymmetry-scanner';
+} from '../../src/desk/strategies/polymarket/info-asymmetry-scanner-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // -- Helper: build a mock orderbook ------------------------------------------
@@ -166,41 +166,41 @@ describe('calcAsymmetryScore', () => {
 
 describe('isInformedFlow', () => {
   it('returns true when asymmetry and depletion exceed thresholds', () => {
-    expect(isInformedFlow(0.5, 0.05, { asymmetryThreshold: 0.3, minDepletionRate: 0.01 })).toBe(true);
+    expect(isInformedFlow(0.5, 0.05, 0.3, 0.01)).toBe(true);
   });
 
   it('returns false when asymmetry is below threshold', () => {
-    expect(isInformedFlow(0.2, 0.05, { asymmetryThreshold: 0.3, minDepletionRate: 0.01 })).toBe(false);
+    expect(isInformedFlow(0.2, 0.05, 0.3, 0.01)).toBe(false);
   });
 
   it('returns false when asymmetry equals threshold (strict >)', () => {
-    expect(isInformedFlow(0.3, 0.05, { asymmetryThreshold: 0.3, minDepletionRate: 0.01 })).toBe(false);
+    expect(isInformedFlow(0.3, 0.05, 0.3, 0.01)).toBe(false);
   });
 
   it('returns false when total depletion is below min', () => {
-    expect(isInformedFlow(0.5, 0.005, { asymmetryThreshold: 0.3, minDepletionRate: 0.01 })).toBe(false);
+    expect(isInformedFlow(0.5, 0.005, 0.3, 0.01)).toBe(false);
   });
 
   it('returns false when total depletion equals min (strict >)', () => {
-    expect(isInformedFlow(0.5, 0.01, { asymmetryThreshold: 0.3, minDepletionRate: 0.01 })).toBe(false);
+    expect(isInformedFlow(0.5, 0.01, 0.3, 0.01)).toBe(false);
   });
 
   it('returns false when both are below thresholds', () => {
-    expect(isInformedFlow(0.1, 0.005, { asymmetryThreshold: 0.3, minDepletionRate: 0.01 })).toBe(false);
+    expect(isInformedFlow(0.1, 0.005, 0.3, 0.01)).toBe(false);
   });
 
   it('returns true for negative asymmetry exceeding threshold', () => {
-    expect(isInformedFlow(-0.5, 0.05, { asymmetryThreshold: 0.3, minDepletionRate: 0.01 })).toBe(true);
+    expect(isInformedFlow(-0.5, 0.05, 0.3, 0.01)).toBe(true);
   });
 
   it('returns false when asymmetry is 0', () => {
-    expect(isInformedFlow(0, 0.05, { asymmetryThreshold: 0.3, minDepletionRate: 0.01 })).toBe(false);
+    expect(isInformedFlow(0, 0.05, 0.3, 0.01)).toBe(false);
   });
 
   it('uses default config values correctly', () => {
     const cfg = makeConfig();
-    expect(isInformedFlow(0.5, 0.05, cfg)).toBe(true);
-    expect(isInformedFlow(0.1, 0.05, cfg)).toBe(false);
+    expect(isInformedFlow(0.5, 0.05, cfg.asymmetryThreshold, cfg.minDepletionRate)).toBe(true);
+    expect(isInformedFlow(0.1, 0.05, cfg.asymmetryThreshold, cfg.minDepletionRate)).toBe(false);
   });
 });
 

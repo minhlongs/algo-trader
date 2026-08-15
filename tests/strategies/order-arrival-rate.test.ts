@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type OrderArrivalRateConfig,
   type OrderArrivalRateDeps,
-} from '../../src/desk/strategies/polymarket/order-arrival-rate';
+} from '../../src/desk/strategies/polymarket/order-arrival-rate-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
@@ -133,55 +133,55 @@ describe('calcArrivalAsymmetry', () => {
 // ── isSignalActive tests ────────────────────────────────────────────────────
 
 describe('isSignalActive', () => {
-  const cfg = { asymmetryThreshold: 0.3, minArrivalRate: 3 };
+  const threshold = 0.3;
+  const minArrival = 3;
 
   it('returns true when asymmetry exceeds threshold and rate exceeds min', () => {
-    expect(isSignalActive(0.5, 5, cfg)).toBe(true);
+    expect(isSignalActive(0.5, 5, threshold, minArrival)).toBe(true);
   });
 
   it('returns false when asymmetry is below threshold', () => {
-    expect(isSignalActive(0.2, 5, cfg)).toBe(false);
+    expect(isSignalActive(0.2, 5, threshold, minArrival)).toBe(false);
   });
 
   it('returns false when rate is below min', () => {
-    expect(isSignalActive(0.5, 2, cfg)).toBe(false);
+    expect(isSignalActive(0.5, 2, threshold, minArrival)).toBe(false);
   });
 
   it('returns false when both are below thresholds', () => {
-    expect(isSignalActive(0.1, 1, cfg)).toBe(false);
+    expect(isSignalActive(0.1, 1, threshold, minArrival)).toBe(false);
   });
 
   it('returns false when asymmetry equals threshold exactly', () => {
-    expect(isSignalActive(0.3, 5, cfg)).toBe(false);
+    expect(isSignalActive(0.3, 5, threshold, minArrival)).toBe(false);
   });
 
   it('returns false when rate equals min exactly', () => {
-    expect(isSignalActive(0.5, 3, cfg)).toBe(false);
+    expect(isSignalActive(0.5, 3, threshold, minArrival)).toBe(false);
   });
 
   it('returns true for negative asymmetry exceeding threshold', () => {
-    expect(isSignalActive(-0.5, 5, cfg)).toBe(true);
+    expect(isSignalActive(-0.5, 5, threshold, minArrival)).toBe(true);
   });
 
   it('returns false when asymmetry is 0', () => {
-    expect(isSignalActive(0, 10, cfg)).toBe(false);
+    expect(isSignalActive(0, 10, threshold, minArrival)).toBe(false);
   });
 
   it('returns false when totalNew is 0', () => {
-    expect(isSignalActive(1.0, 0, cfg)).toBe(false);
+    expect(isSignalActive(1.0, 0, threshold, minArrival)).toBe(false);
   });
 
   it('works with custom thresholds', () => {
-    const custom = { asymmetryThreshold: 0.1, minArrivalRate: 1 };
-    expect(isSignalActive(0.15, 2, custom)).toBe(true);
+    expect(isSignalActive(0.15, 2, 0.1, 1)).toBe(true);
   });
 
   it('handles edge case asymmetry of 1.0', () => {
-    expect(isSignalActive(1.0, 5, cfg)).toBe(true);
+    expect(isSignalActive(1.0, 5, threshold, minArrival)).toBe(true);
   });
 
   it('handles edge case asymmetry of -1.0', () => {
-    expect(isSignalActive(-1.0, 5, cfg)).toBe(true);
+    expect(isSignalActive(-1.0, 5, threshold, minArrival)).toBe(true);
   });
 });
 

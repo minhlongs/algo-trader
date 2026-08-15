@@ -5,8 +5,10 @@ import {
   detectMomentum,
   createOrderbookDepthRatioTick,
   type OrderbookDepthDeps,
-} from '../../src/desk/strategies/polymarket/orderbook-depth-ratio';
+} from '../../src/desk/strategies/polymarket/orderbook-depth-ratio-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
+
+const BASE_NOW = 1_000_000_000_000;
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
 
@@ -351,7 +353,7 @@ describe('createOrderbookDepthRatioTick', () => {
     await tick();
     expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
 
-    // Exit tick with TP
+    // Exit tick with TP - phase change happens BEFORE tick so both checkExits AND scanEntries see exit prices
     phase = 'exit';
     await tick();
     // Should have placed exit order (2nd call to placeOrder)
@@ -408,6 +410,7 @@ describe('createOrderbookDepthRatioTick', () => {
   });
 
   it('exits on max hold time', async () => {
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(BASE_NOW);
     const entryBook = makeBook(
       [['0.52', '500'], ['0.51', '400'], ['0.50', '300'], ['0.49', '200'], ['0.48', '100']],
       [['0.53', '50'], ['0.54', '30'], ['0.55', '20'], ['0.56', '10'], ['0.57', '5']],
@@ -448,12 +451,12 @@ describe('createOrderbookDepthRatioTick', () => {
     await tick();
     expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
 
-    // Wait to ensure maxHoldMs is exceeded
-    await new Promise(r => setTimeout(r, 5));
-
+    // Advance time past maxHoldMs so exit check triggers
+    dateNowSpy.mockReturnValue(BASE_NOW + 10);
     phase = 'exit';
     await tick();
     expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(2);
+    dateNowSpy.mockRestore();
   });
 
   it('does not enter when on cooldown', async () => {
@@ -645,7 +648,11 @@ describe('createOrderbookDepthRatioTick', () => {
     expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(1);
 
     // Reversal: depth ratio flips to heavy ask while holding YES
+    // First tick records the reversal ratio in depth history
     phase = 'reversal';
+    await tick();
+
+    // Second tick: checkExits sees the reversal ratio and triggers exit
     await tick();
     expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(2);
     const exitCall = (deps.orderManager.placeOrder as ReturnType<typeof vi.fn>).mock.calls[1][0];

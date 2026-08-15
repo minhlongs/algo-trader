@@ -202,11 +202,11 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
     }
   });
 
-  it('every PromQL metric reference exists as an export in prometheus-metrics.ts', () => {
+  it('every PromQL metric reference exists as an export in prometheus-registry.ts', () => {
     const exportedNames = loadExportedMetricNames();
     expect(
       exportedNames.size,
-      'prometheus-metrics.ts parser found 0 exported names — regex may be stale'
+      'prometheus-registry.ts parser found 0 exported names — regex may be stale'
     ).toBeGreaterThan(0);
 
     // Walk every alert rule, extract metric references from refId A expr.
@@ -218,7 +218,7 @@ describe('Grafana alert provisioning — qwen-alerts.yml', () => {
         if (PROMETHEUS_BUILTINS.has(ref)) continue;
         expect(
           exportedNames.has(ref),
-          `rule ${rule.uid} references metric "${ref}" which is NOT exported in src/platform/middleware/prometheus-metrics.ts`
+          `rule ${rule.uid} references metric "${ref}" which is NOT exported in src/platform/middleware/prometheus-registry.ts`
         ).toBe(true);
       }
     }

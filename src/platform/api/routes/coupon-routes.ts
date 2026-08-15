@@ -82,8 +82,9 @@ couponRouter.post('/', requireTier('FREE'), requireAdmin, async (req: Request, r
   try {
     const coupon = couponService.createCoupon(req.body);
     return res.json({ success: true, coupon });
-  } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return res.status(400).json({ error: message });
   }
 });
 

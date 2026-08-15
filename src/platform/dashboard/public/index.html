@@ -556,6 +556,17 @@ function applyAuthState() {
   }
 }
 
+// ── XSS Prevention ─────────────────────────────────────────────────────────
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function showAuthTab(mode) {
   authMode = mode;
   const isLogin = mode === 'login';
@@ -749,7 +760,7 @@ function renderPositions(positions) {
     return `
       <div class="position-row">
         <div>
-          <div class="pos-market">${p.marketId || '—'}</div>
+          <div class="pos-market">${escapeHtml(p.marketId || '—')}</div>
           <div class="pos-prices">Entry $${Number(p.entryPrice||0).toFixed(4)} · Size ${p.size||0}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -785,7 +796,7 @@ function renderTrades(trades) {
     const ts = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '—';
     return `<tr>
       <td>${ts}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${t.marketId||'—'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.marketId||'—')}</td>
       <td class="${sideClass}">${t.side||'—'}</td>
       <td style="font-family:monospace">${t.amount||'—'}</td>
       <td style="font-family:monospace">$${Number(t.fillPrice||0).toFixed(4)}</td>
@@ -883,7 +894,7 @@ async function fetchAiBrain() {
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid ${edgeColor}">
           <span style="color:${actionColor};font-weight:700;text-transform:uppercase;font-size:11px;width:32px">${s.action||'—'}</span>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.market||s.description||'—'}</div>
+            <div style="font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.market||s.description||'—')}</div>
             <div style="font-size:11px;color:var(--muted)">AI: ${((s.ourProb||0)*100).toFixed(0)}% | Mkt: ${((s.marketProb||0)*100).toFixed(0)}% | Conf: ${confPct}%</div>
           </div>
           <div style="text-align:right">
@@ -922,7 +933,7 @@ function prependTrade(t) {
   const row = document.createElement('tr');
   row.innerHTML = `
     <td>${ts}</td>
-    <td>${t.marketId||'—'}</td>
+    <td>${escapeHtml(t.marketId||'—')}</td>
     <td class="${sideCls}">${t.side||'—'}</td>
     <td style="font-family:monospace">${t.amount||'—'}</td>
     <td style="font-family:monospace">$${Number(t.fillPrice||0).toFixed(4)}</td>
@@ -991,18 +1002,18 @@ function renderAdminUsers(users) {
       : '<span style="color:var(--muted)">user</span>';
     const tierColor = u.tier === 'enterprise' ? 'var(--purple)' : u.tier === 'pro' ? 'var(--blue)' : 'var(--muted)';
     return `<tr>
-      <td style="font-weight:600">${u.email}</td>
+      <td style="font-weight:600">${escapeHtml(u.email)}</td>
       <td>${roleBadge}</td>
-      <td style="color:${tierColor};text-transform:uppercase;font-weight:600;font-size:11px">${u.tier}</td>
+      <td style="color:${tierColor};text-transform:uppercase;font-weight:600;font-size:11px">${escapeHtml(u.tier)}</td>
       <td style="color:var(--muted)">${date}</td>
-      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${u.apiKeyPrefix || '—'}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--muted)">${escapeHtml(u.apiKeyPrefix || '—')}</td>
       <td style="display:flex;gap:4px">
-        <select onchange="adminUpgradeTier('${u.id}',this.value)" style="font-size:11px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px">
+        <select onchange="adminUpgradeTier(this.dataset.userId,this.value)" data-user-id="${escapeHtml(u.id)}" style="font-size:11px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px">
           <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
           <option value="pro" ${u.tier==='pro'?'selected':''}>Pro</option>
           <option value="enterprise" ${u.tier==='enterprise'?'selected':''}>Enterprise</option>
         </select>
-        ${u.role !== 'admin' ? `<button class="admin-btn danger" onclick="adminBanUser('${u.id}','${u.email}')">Ban</button>` : ''}
+        ${u.role !== 'admin' ? `<button class="admin-btn danger" onclick="adminBanUser(this.dataset.userId,this.dataset.userEmail)" data-user-id="${escapeHtml(u.id)}" data-user-email="${escapeHtml(u.email)}">Ban</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -1054,10 +1065,10 @@ async function fetchAdminSystem() {
       el.innerHTML = d.components.map(c => {
         const color = c.status === 'healthy' ? 'var(--accent)' : c.status === 'not configured' ? 'var(--warning)' : 'var(--loss)';
         return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:var(--surface2);border-radius:6px">
-          <span style="font-size:12px;font-weight:600">${c.name}</span>
+          <span style="font-size:12px;font-weight:600">${escapeHtml(c.name)}</span>
           <div style="display:flex;align-items:center;gap:6px">
-            ${c.detail ? `<span style="font-size:11px;color:var(--muted)">${c.detail}</span>` : ''}
-            ${c.port ? `<span style="font-size:11px;color:var(--muted)">:${c.port}</span>` : ''}
+            ${c.detail ? `<span style="font-size:11px;color:var(--muted)">${escapeHtml(c.detail)}</span>` : ''}
+            ${c.port ? `<span style="font-size:11px;color:var(--muted)">:${escapeHtml(c.port)}</span>` : ''}
             <span style="width:8px;height:8px;border-radius:50%;background:${color}"></span>
           </div>
         </div>`;

@@ -11,7 +11,16 @@
 import { logger } from '../../../shared/utils/logger';
 import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
 
-type Env = { CACHE: KVNamespace; SUBSCRIBERS?: D1Database; JWT_SECRET?: string; ALLOWED_ORIGINS?: string; NOWPAYMENTS_IPN_SECRET?: string; ENVIRONMENT?: string; VPS_ORIGIN?: string; REGION_ROUTING_ENABLED?: string; };
+interface Env {
+  CACHE: KVNamespace;
+  SUBSCRIBERS?: D1Database;
+  JWT_SECRET?: string;
+  ALLOWED_ORIGINS?: string;
+  NOWPAYMENTS_IPN_SECRET?: string;
+  ENVIRONMENT?: string;
+  VPS_ORIGIN?: string;
+  REGION_ROUTING_ENABLED?: string;
+}
 
 export interface SubscriptionRow {
   id: string;
@@ -55,8 +64,8 @@ function assert(cond: boolean, msg: string, status = 400): Response {
   throw new Error('assertion passed');
 }
 
-export async function handleGetMySubscription(request: Request, env: any): Promise<Response> {
-  const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
+export async function handleGetMySubscription(request: Request, env: Env): Promise<Response> {
+  const sub = env.SUBSCRIBERS;
   if (!sub) {
     return new Response(JSON.stringify({
       tier: 'FREE',
@@ -94,8 +103,8 @@ export async function handleGetMySubscription(request: Request, env: any): Promi
   }
 }
 
-export async function handleUpgrade(request: Request, env: any): Promise<Response> {
-  const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
+export async function handleUpgrade(request: Request, env: Env): Promise<Response> {
+  const sub = env.SUBSCRIBERS;
   if (!sub) return new Response(JSON.stringify({ error: 'D1 not configured' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
 
   const user = resolveUserFromRequest(request, env);
@@ -129,7 +138,7 @@ export async function handleUpgrade(request: Request, env: any): Promise<Respons
     ).bind(id, user.id, newTier, 'active', price.amount_cents, 'usd', periodStart, periodEnd, now).run();
 
     // Keep tier in KV for fast auth-token reads
-    await (env as any).CACHE.put(`tier:${user.id}`, newTier, { expirationTtl: 300 });
+    await env.CACHE.put(`tier:${user.id}`, newTier, { expirationTtl: 300 });
 
     logger.info('[subscriptions] upgraded', { userId: user.id, tier: newTier, amountCents: price.amount_cents });
 
@@ -145,8 +154,8 @@ export async function handleUpgrade(request: Request, env: any): Promise<Respons
   }
 }
 
-export async function handleCancel(request: Request, env: any): Promise<Response> {
-  const sub = (env as any).SUBSCRIBERS as D1Database | undefined;
+export async function handleCancel(request: Request, env: Env): Promise<Response> {
+  const sub = env.SUBSCRIBERS;
   if (!sub) return new Response(JSON.stringify({ error: 'D1 not configured' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
 
   const user = resolveUserFromRequest(request, env);
@@ -162,7 +171,7 @@ export async function handleCancel(request: Request, env: any): Promise<Response
     await sub.prepare('UPDATE subscriptions SET status = ?, updated_at = ? WHERE id = ?')
       .bind('canceled', now, existing.id).run();
 
-    await (env as any).CACHE.put(`tier:${user.id}`, 'FREE', { expirationTtl: 300 });
+    await env.CACHE.put(`tier:${user.id}`, 'FREE', { expirationTtl: 300 });
 
     logger.info('[subscriptions] canceled', { userId: user.id, subId: existing.id });
     return new Response(JSON.stringify({ id: existing.id, status: 'canceled' }), { headers: jsonHeaders(env, request) });
@@ -214,7 +223,7 @@ function freeFallback(): Response {
 
 function jsonHeaders(env: Env, request: Request): Record<string, string> {
   const origin = request.headers.get('Origin');
-  const allowed = ((env as any).ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
+  const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
   const o = origin && allowed.includes(origin) ? origin : allowed[0];
   return { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': o };
 }

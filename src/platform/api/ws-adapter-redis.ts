@@ -1,65 +1,51 @@
 /**
- * WebSocket Adapter with Redis Cluster (adapted for Express/http.Server)
- * Handles 1000+ concurrent WebSocket connections with cluster-aware pub/sub
+ * WebSocket Adapter with Redis Cluster — orchestrator + barrel re-exports.
+ * Handles 1000+ concurrent WebSocket connections with cluster-aware pub/sub.
  *
  * Features:
  * - Redis Cluster pub/sub for horizontal scaling
- * - Multi-channel support (trades, signals, orders, market-data)
+ * - Multi-channel support (trades, signals, orders, market-data, pnl, price_update)
  * - Automatic reconnection on failover
  * - Message deduplication with idempotency
+ *
+ * Sub-modules:
+ * - ws-adapter-redis-types   – WSAdapterConfig, WSClient
+ * - ws-adapter-redis-pubsub  – RedisPubSubManager (Redis pub/sub lifecycle)
+ * - ws-adapter-redis-handlers – WebSocket event handlers (setup, message, heartbeat)
  */
 
-import { Cluster } from 'ioredis';
-import { Server as HttpServer, IncomingMessage } from 'http';
+import { Server as HttpServer } from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
-import {
-  getPubClient,
-  getSubClient,
-} from '../../redis';
 import { logger } from '../../shared/utils/logger';
 
-export interface WSAdapterConfig {
-  path: string;
-  channels: string[];
-  heartbeatIntervalMs: number;
-  maxPayloadSize: number;
-}
+import type { WSAdapterConfig, WSClient } from './ws-adapter-redis-types';
+import { DEFAULT_CONFIG } from './ws-adapter-redis-types';
+import { RedisPubSubManager } from './ws-adapter-redis-pubsub';
+import {
+  setupClientConnection,
+  startHeartbeat,
+} from './ws-adapter-redis-handlers';
 
-const DEFAULT_CONFIG: WSAdapterConfig = {
-  path: '/ws',
-  channels: ['trades', 'signals', 'orders', 'market-data', 'pnl', 'price_update'],
-  heartbeatIntervalMs: 30000,
-  maxPayloadSize: 1024 * 1024, // 1MB
-};
-
-interface WSClient {
-  ws: WebSocket;
-  channels: Set<string>;
-  lastPing: number;
-  clientId: string;
-}
+// Re-export public API for backward compatibility
+export type { WSAdapterConfig } from './ws-adapter-redis-types';
+export { RedisPubSubManager } from './ws-adapter-redis-pubsub';
 
 export class RedisWSAdapter {
   private wsServer: WebSocketServer;
   private clients: Map<string, WSClient> = new Map();
-  private channelSubscribers: Map<string, Set<WSClient>> = new Map();
-  private pubClient: Cluster | any;
-  private subClient: Cluster | any;
-  private config: WSAdapterConfig;
-  private heartbeatTimer?: NodeJS.Timeout;
   private clientIdCounter = 0;
+  private heartbeatTimer?: NodeJS.Timeout;
+  private pubsubManager: RedisPubSubManager;
+  private config: WSAdapterConfig;
 
   constructor(
     private server: HttpServer,
-    config?: Partial<WSAdapterConfig>
+    config?: Partial<WSAdapterConfig>,
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.pubsubManager = new RedisPubSubManager();
 
-    // Use separate pub/sub clients globally to prevent connection contention
-    this.pubClient = getPubClient();
-    this.subClient = getSubClient();
-
-    this.wsServer = new WebSocket.Server({
+    this.wsServer = new WebSocketServer({
       server: this.server,
       path: this.config.path,
       maxPayload: this.config.maxPayloadSize,
@@ -85,244 +71,108 @@ export class RedisWSAdapter {
     this.startHeartbeat();
   }
 
-  /**
-   * Setup WebSocket server
-   */
+  /** Bind the WebSocketServer connection listener. */
   private setupWebSocket(): void {
-    this.wsServer.on('connection', (ws: WebSocket, _req: IncomingMessage) => {
-      const clientId = `client-${Date.now()}-${++this.clientIdCounter}`;
-      const client: WSClient = {
+    // The ws parameter in this callback is correctly typed by @types/ws.
+    // We pass it directly to setupClientConnection to preserve the type.
+    this.wsServer.on('connection', (ws: WebSocket, _req: import('http').IncomingMessage) => {
+      setupClientConnection(
         ws,
-        channels: new Set(),
-        lastPing: Date.now(),
-        clientId,
-      };
+        this.clients,
+        this.config,
+        this.pubsubManager,
+        this.sendToClient,
+        this.generateClientId,
+      );
+    });
 
-      this.clients.set(clientId, client);
-
-      // Handle client messages
-      ws.on('message', (data: Buffer) => {
-        this.handleClientMessage(client, data);
-      });
-
-      // Handle close
-      ws.on('close', () => {
-        this.clients.delete(clientId);
-        for (const channel of client.channels) {
-          const subscribers = this.channelSubscribers.get(channel);
-          if (subscribers) {
-            subscribers.delete(client);
-            if (subscribers.size === 0) {
-              this.channelSubscribers.delete(channel);
-            }
-          }
-        }
-      });
-
-      // Handle errors
-      ws.on('error', (err) => {
-        logger.error(`[WebSocket] Client ${clientId} error:`, { message: err.message });
-      });
-
-      // Send welcome message
-      this.sendToClient(client, {
-        type: 'connected',
-        clientId,
-        channels: this.config.channels,
-        timestamp: Date.now(),
-      });
-
-      logger.info(`[WebSocket] Client ${clientId} connected`);
+    this.wsServer.on('error', (err) => {
+      logger.error('[RedisWS] Server error:', { err });
     });
   }
 
-  /**
-   * Setup Redis subscription for cluster pub/sub
-   */
+  /** Subscribe to Redis channels and wire the message listener. */
   private setupSubscription(): void {
-    // Subscribe to all channels
-    this.config.channels.forEach((channel) => {
-      this.subClient.subscribe(channel, (err: any) => {
-        if (err) {
-          logger.error(`[RedisWS] Subscribe to ${channel} failed:`, { err });
-        } else {
-          logger.info(`[RedisWS] Subscribed to ${channel}`);
-        }
-      });
-    });
+    this.pubsubManager.subscribeToChannels(this.config.channels);
 
-    // Listen for messages
-    this.subClient.on('message', (channel: string, message: string) => {
-      this.broadcastToChannel(channel, message);
-    });
-
-    // Handle reconnection
-    this.subClient.on('error', (err: any) => {
-      logger.error('[RedisWS] Subscription error:', { err });
-    });
+    this.pubsubManager.subscriptionClient.on(
+      'message',
+      (channel: string, message: string) => {
+        this.broadcastToChannel(channel, message);
+      },
+    );
   }
 
-  /**
-   * Start heartbeat to detect dead connections
-   */
+  /** Start the heartbeat interval for dead-connection detection. */
   private startHeartbeat(): void {
-    this.heartbeatTimer = setInterval(() => {
-      const now = Date.now();
-      for (const [clientId, client] of this.clients.entries()) {
-        if (now - client.lastPing > this.config.heartbeatIntervalMs * 2) {
-          // Connection dead, close it
-          logger.info(`[WebSocket] Closing stale client ${clientId}`);
-          client.ws.terminate();
-        } else {
-          // Send ping
-          client.ws.ping();
-          client.lastPing = now;
-        }
+    this.heartbeatTimer = startHeartbeat(this.clients, this.config);
+  }
+
+  /** Generate a simple incrementing client ID. */
+  private generateClientId = (): string =>
+    `client-${Date.now()}-${++this.clientIdCounter}`;
+
+  /** Send a JSON payload to a single connected client. */
+  private sendToClient = (
+    client: WSClient,
+    message: Record<string, unknown> | string,
+  ): void => {
+    if (client.ws.readyState === WebSocket.OPEN) {
+      try {
+        client.ws.send(typeof message === 'string' ? message : JSON.stringify(message));
+      } catch {
+        logger.error(`[WebSocket] Failed to send to ${client.clientId}`);
       }
-    }, this.config.heartbeatIntervalMs);
-  }
-
-  /**
-   * Handle incoming client messages
-   */
-  private handleClientMessage(client: WSClient, data: Buffer): void {
-    try {
-      const message = JSON.parse(data.toString());
-
-      switch (message.type) {
-        case 'subscribe':
-          if (this.config.channels.includes(message.channel)) {
-            client.channels.add(message.channel);
-            let subscribers = this.channelSubscribers.get(message.channel);
-            if (!subscribers) {
-              subscribers = new Set();
-              this.channelSubscribers.set(message.channel, subscribers);
-            }
-            subscribers.add(client);
-
-            this.sendToClient(client, {
-              type: 'subscribed',
-              channel: message.channel,
-              timestamp: Date.now(),
-            });
-          }
-          break;
-
-        case 'unsubscribe':
-          client.channels.delete(message.channel);
-          const subscribers = this.channelSubscribers.get(message.channel);
-          if (subscribers) {
-            subscribers.delete(client);
-            if (subscribers.size === 0) {
-              this.channelSubscribers.delete(message.channel);
-            }
-          }
-
-          this.sendToClient(client, {
-            type: 'unsubscribed',
-            channel: message.channel,
-            timestamp: Date.now(),
-          });
-          break;
-
-        case 'ping':
-          client.lastPing = Date.now();
-          this.sendToClient(client, {
-            type: 'pong',
-            timestamp: Date.now(),
-          });
-          break;
-      }
-    } catch (err) {
-      logger.error('[WebSocket] Invalid message:', { err });
     }
-  }
+  };
 
-  /**
-   * Broadcast message to Redis pub/sub
-   */
-  async publish(channel: string, message: any): Promise<void> {
-    const payload = JSON.stringify({
-      ...message,
-      channel,
-      timestamp: Date.now(),
-    });
-
-    try {
-      await this.pubClient.publish(channel, payload);
-      logger.info(`[RedisWS] Published to ${channel}:`, { type: message.type });
-    } catch (err) {
-      logger.error(`[RedisWS] Publish to ${channel} failed:`, { err });
-    }
-  }
-
-  /**
-   * Broadcast to all clients subscribed to channel
-   */
+  /** Forward a raw Redis message to all local subscribers of a channel. */
   private broadcastToChannel(channel: string, message: string): void {
-    const subscribers = this.channelSubscribers.get(channel);
-    if (subscribers) {
-      for (const client of subscribers) {
+    for (const [, client] of this.clients) {
+      if (client.channels.has(channel)) {
         this.sendToClient(client, message);
       }
     }
   }
 
-  /**
-   * Send message to specific client
-   */
-  private sendToClient(client: WSClient, message: any): void {
-    if (client.ws.readyState === WebSocket.OPEN) {
-      if (typeof message === 'string') {
-        client.ws.send(message);
-      } else {
-        client.ws.send(JSON.stringify(message));
-      }
-    }
+  /** Publish a message to a Redis channel (returns when Redis confirms). */
+  async publish(
+    channel: string,
+    message: Record<string, unknown>,
+  ): Promise<void> {
+    return this.pubsubManager.publish(channel, message);
   }
 
-  /**
-   * Get connected clients count
-   */
+  /** Number of currently connected WebSocket clients. */
   getClientCount(): number {
     return this.clients.size;
   }
 
-  /**
-   * Get clients per channel
-   */
+  /** Per-channel subscriber counts. */
   getChannelStats(): Record<string, number> {
-    const stats: Record<string, number> = {};
-    for (const channel of this.config.channels) {
-      stats[channel] = 0;
-    }
-    for (const client of this.clients.values()) {
-      for (const channel of client.channels) {
-        stats[channel] = (stats[channel] || 0) + 1;
-      }
-    }
-    return stats;
+    return this.pubsubManager.getChannelStats(this.config.channels);
   }
 
-  /**
-   * Graceful shutdown
-   */
+  /** Gracefully shut down all connections and Redis subscriptions. */
   async shutdown(): Promise<void> {
+    logger.info('[RedisWS] Shutting down...');
+
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
     }
 
-    // Close all client connections
-    for (const client of this.clients.values()) {
-      client.ws.close();
+    // Close every WebSocket connection
+    for (const [, client] of this.clients) {
+      try {
+        client.ws.close(1008, 'Server shutting down');
+      } catch {
+        // ignore close errors during shutdown
+      }
     }
     this.clients.clear();
-    this.channelSubscribers.clear();
 
-    // Unsubscribe from all channels
-    await Promise.all(
-      this.config.channels.map((channel) => this.subClient.unsubscribe(channel))
-    );
+    // Unsubscribe from all Redis channels
+    await this.pubsubManager.close(this.config.channels);
 
     // Close WebSocket server
     await new Promise<void>((resolve) => {
@@ -334,12 +184,11 @@ export class RedisWSAdapter {
 }
 
 /**
- * Register WebSocket adapter with Express Server
+ * Factory: create and return a configured RedisWSAdapter.
  */
 export async function registerWebSocketAdapter(
   server: HttpServer,
-  config?: Partial<WSAdapterConfig>
+  config?: Partial<WSAdapterConfig>,
 ): Promise<RedisWSAdapter> {
-  const adapter = new RedisWSAdapter(server, config);
-  return adapter;
+  return new RedisWSAdapter(server, config);
 }

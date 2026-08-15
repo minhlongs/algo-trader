@@ -83,15 +83,21 @@ export function pruneShardCache(): void {
   }
 }
 
+/** Strategy Router environment with Durable Object bindings */
+interface StrategyRouterEnv {
+  [key: string]: unknown;
+  [key: `SHARD_${number}`]: DurableObjectNamespace | undefined;
+}
+
 /**
  * Strategy Router class
  * Handles routing strategy execution to correct shard DO
  */
 export class StrategyRouter {
   private redis: RedisClientType;
-  private env: any; // Durable Object environment
+  private env: StrategyRouterEnv | undefined;
 
-  constructor(env?: any) {
+  constructor(env?: StrategyRouterEnv) {
     this.redis = getRedisClient();
     this.env = env;
   }
@@ -283,7 +289,7 @@ export class StrategyRouter {
 // Singleton instance
 let routerInstance: StrategyRouter | null = null;
 
-export function getStrategyRouter(env?: any): StrategyRouter {
+export function getStrategyRouter(env?: StrategyRouterEnv): StrategyRouter {
   if (!routerInstance) {
     routerInstance = new StrategyRouter(env);
   }

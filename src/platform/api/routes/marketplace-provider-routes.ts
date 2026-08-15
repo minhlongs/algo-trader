@@ -16,6 +16,7 @@ import { strategyVersionRepository } from '../../marketplace/repositories/strate
 import { revenueShareRepository } from '../../marketplace/repositories/revenue-share-repository';
 import { requireTier } from '../../middleware/feature-gate';
 import type { IMarketplaceRevenueShare } from '../../marketplace/models/types';
+import { logger } from '../../../shared/utils/logger';
 
 export const marketplaceProviderRouter: RouterType = Router();
 
@@ -74,7 +75,7 @@ marketplaceProviderRouter.post(
       });
       return res.status(201).json({ provider: profile });
     } catch (err) {
-      console.error('[ProviderRoutes] register failed:', err);
+      logger.error('[ProviderRoutes] register failed', err);
       return res.status(500).json({ error: 'Internal error' });
     }
   },
@@ -94,7 +95,7 @@ marketplaceProviderRouter.get(
       if (!profile) return res.status(404).json({ error: 'Provider not found' });
       return res.json({ provider: profile });
     } catch (err) {
-      console.error('[ProviderRoutes] get failed:', err);
+      logger.error('[ProviderRoutes] get failed', err);
       return res.status(500).json({ error: 'Internal error' });
     }
   },
@@ -122,7 +123,7 @@ marketplaceProviderRouter.patch(
       const updated = await providerRepository.update(existing.id, parsed.data);
       return res.json({ provider: updated });
     } catch (err) {
-      console.error('[ProviderRoutes] patch failed:', err);
+      logger.error('[ProviderRoutes] patch failed', err);
       return res.status(500).json({ error: 'Internal error' });
     }
   },
@@ -167,7 +168,7 @@ marketplaceProviderRouter.get(
       };
       return res.json({ metrics });
     } catch (err) {
-      console.error('[ProviderRoutes] dashboard failed:', err);
+      logger.error('[ProviderRoutes] dashboard failed', err);
       return res.status(500).json({ error: 'Internal error' });
     }
   },

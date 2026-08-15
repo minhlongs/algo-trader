@@ -58,13 +58,6 @@ export interface WireStrategyDeps {
   gammaClient?: GammaClient;
 }
 
-/** @deprecated Use WireStrategyDeps */
-export type PolymarketDeps = Pick<WireStrategyDeps, 'eventBus' | 'scanner' | 'orderManager'>;
-/** @deprecated Use WireStrategyDeps */
-export type CexDexDeps = Pick<WireStrategyDeps, 'eventBus' | 'cexExecutor' | 'cexClient'>;
-/** @deprecated Use WireStrategyDeps */
-export type AllStrategyDeps = WireStrategyDeps;
-
 const env = (key: string, fallback: string) => process.env[key] ?? fallback;
 
 // Data-driven Polymarket strategy definitions — eliminates DRY violation
@@ -182,10 +175,3 @@ export async function wireStrategiesWithNats(
   const eventLoop = await startNatsEventLoop();
   return { orc, eventLoop };
 }
-
-/** @deprecated Use wireStrategies() */
-export function wirePolymarketStrategies(deps: PolymarketDeps): StrategyOrchestrator { return wireStrategies(deps); }
-/** @deprecated Use wireStrategies() */
-export function wireCexDexStrategies(deps: CexDexDeps): StrategyOrchestrator { return wireStrategies(deps); }
-/** @deprecated Use wireStrategies() */
-export function wireAllStrategies(deps: AllStrategyDeps): StrategyOrchestrator { return wireStrategies(deps); }

@@ -1,1 +1,0 @@
-# Dashboard Optimization Worker Metadata

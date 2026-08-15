@@ -1,10 +1,13 @@
 name: Deploy to Production
 
 on:
+  workflow_dispatch:  # Manual trigger only — ci-cd.yml handles automatic deploys
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+    paths:
+      - 'docker/**'
+      - 'wrangler.toml'
+      - 'scripts/deploy-production.sh'
 
 env:
   REGISTRY: ghcr.io
@@ -117,6 +120,10 @@ jobs:
             set -e
             cd /opt/algo-trader
 
+            # Save current image tag for rollback
+            PREV_IMAGE=$(docker inspect --format='{{.Config.Image}}' algo-trade 2>/dev/null || echo "")
+            echo "Previous image: $PREV_IMAGE"
+
             # Pull latest code
             git pull origin main
 
@@ -144,8 +151,25 @@ jobs:
             wget -qO- http://localhost:8222/healthz && echo " NATS: OK" || echo " NATS: FAIL"
             redis-cli -h localhost ping 2>/dev/null && echo " Redis: OK" || echo " Redis: SKIP"
 
-            # Final API health (required)
-            curl -f http://localhost:3000/api/health || exit 1
+            # Final API health (required) — rollback on failure
+            if ! curl -f http://localhost:3000/api/health; then
+              echo "Health check FAILED — initiating rollback..."
+              docker compose -f docker-compose.yml -f docker/monitoring/docker-compose.monitoring.yml down || true
+
+              if [ -n "$PREV_IMAGE" ]; then
+                echo "Rolling back to previous image: $PREV_IMAGE"
+                IMAGE="$PREV_IMAGE" docker compose -f docker-compose.yml -f docker/monitoring/docker-compose.monitoring.yml up -d
+                sleep 20
+                if curl -f http://localhost:3000/api/health; then
+                  echo "Rollback SUCCESSFUL — restored $PREV_IMAGE"
+                else
+                  echo "CRITICAL: Rollback also failed — manual intervention required"
+                fi
+              else
+                echo "CRITICAL: No previous image to rollback to — manual intervention required"
+              fi
+              exit 1
+            fi
 
             # Clean up old images
             docker image prune -af

@@ -228,6 +228,13 @@ describe('PositionManager', () => {
 });
 
 describe('DrawdownMonitor', () => {
+  beforeEach(() => {
+    mockRedis.hgetall.mockReset();
+    mockRedis.hgetall.mockResolvedValue({});
+    mockRedis.get.mockReset();
+    mockRedis.get.mockResolvedValue(null);
+  });
+
   it('should be constructable with mock Redis', async () => {
     const { DrawdownMonitor } = await import('../drawdown-monitor');
     const monitor = new DrawdownMonitor(mockRedis as any);

@@ -17,6 +17,7 @@
 
 import type { SandboxInput } from './sandbox-input-encoder';
 import type { SandboxOutput } from './sandbox-output-validator';
+import { logger } from '../../shared/utils/logger';
 
 // ── Record type ───────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ export interface TraceSink {
 /** Default sink: structured JSON to stdout (works in CF Workers + Node) */
 export const consoleSink: TraceSink = {
   async write(record: InvocationRecord): Promise<void> {
-    console.log(JSON.stringify({ audit: 'sandbox_invocation', ...record }));
+    logger.info('[SandboxTracer] invocation', { audit: 'sandbox_invocation', ...record });
   },
 };
 

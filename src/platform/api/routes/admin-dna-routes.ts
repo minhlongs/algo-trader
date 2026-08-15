@@ -21,7 +21,6 @@ import type { CandleProvider } from'../../../desk/strategies/dna/orchestrator';
 import { InMemoryStateStore } from'../../../desk/strategies/dna/dna-state-store';
 import { requireAdminKey } from '../middleware/require-admin-key';
 
-// Injected at server startup (src/api/server.ts sets this before listen).
 let _provider: CandleProvider | null = null;
 let _lastConfig: DnaEngineConfig | null = null;
 

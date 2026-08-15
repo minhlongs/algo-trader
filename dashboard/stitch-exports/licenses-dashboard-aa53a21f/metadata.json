@@ -1,7 +1,0 @@
-{
-  "screenId": "aa53a21f934f486e8e30f0426edb7bfe",
-  "title": "Licenses Dashboard",
-  "projectId": "18048821789194133274",
-  "name": "licenses",
-  "prompt": "License management for CashClaw. Dark theme, cyan accents. Tabs: Licenses, Audit Logs, Analytics. License table with keys, status, dates. Create button. Audit logs with timestamps."
-}

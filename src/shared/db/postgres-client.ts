@@ -53,7 +53,7 @@ export function getDbClient(config?: Partial<DbConfig>): pg.Pool {
  */
 export async function query<T extends DbRow = DbRow>(
   text: string,
-  params?: any[]
+  params?: unknown[]
 ): Promise<pg.QueryResult<T>> {
   const client = getDbClient();
   return client.query(text, params) as Promise<pg.QueryResult<T>>;

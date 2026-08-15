@@ -16,6 +16,7 @@ import { TieredDrawdownBreaker, type TieredDrawdownConfig } from './risk/tiered-
 import { TwapExecutor, type TwapConfig } from './execution/twap-executor';
 import { WalletManager, type WalletLabel, type WalletTrade } from './wallet/wallet-manager';
 import { ImmutableTradeAudit } from './audit/immutable-trade-audit';
+import type { ClobClientInterface } from './polymarket/clob-client';
 import { emitTradeAuditEvent } from '../platform/audit/audit-hooks';
 import { validateTenantId, type TenantId } from '../shared/tenant';
 import { logger } from './utils/logger';
@@ -43,6 +44,8 @@ export interface TradingPipeline {
   audit: ImmutableTradeAudit;
   walletLabel: WalletLabel;
   twapThresholdUsd: number;
+  /** Optional CLOB client for strategies that need real order-book data */
+  clobClient?: ClobClientInterface;
   /** Record a completed trade outcome — checks drawdown BEFORE mutating wallet balance */
   recordTradeOutcome(trade: WalletTrade, newPortfolioValue: number): Promise<void>;
 }
@@ -54,7 +57,8 @@ export interface TradingPipeline {
 export function createTradingPipeline(
   config: TradingPipelineConfig,
   sharedWallet?: WalletManager,
-  sharedAudit?: ImmutableTradeAudit
+  sharedAudit?: ImmutableTradeAudit,
+  providedClobClient?: ClobClientInterface
 ): TradingPipeline {
   const { initialPortfolioValue, walletLabel } = config;
 
@@ -75,6 +79,7 @@ export function createTradingPipeline(
     audit,
     walletLabel,
     twapThresholdUsd,
+    ...(providedClobClient && { clobClient: providedClobClient }),
 
     async recordTradeOutcome(trade: WalletTrade, newPortfolioValue: number): Promise<void> {
       // EC#32: Make async (wallet.recordTrade is now async)

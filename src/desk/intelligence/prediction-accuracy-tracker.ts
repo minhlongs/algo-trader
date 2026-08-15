@@ -14,6 +14,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../../shared/utils/logger';
+import { upsertPredictionPg, updatePredictionResolutionPg } from './prediction-pg-store';
 
 export interface Prediction {
   id: string;
@@ -75,10 +76,9 @@ function savePredictions(predictions: Prediction[]): void {
   fs.renameSync(tmp, PREDICTIONS_FILE);
 }
 
-/** Append a new prediction to data/predictions.json */
+/** Append a new prediction to data/predictions.json + PostgreSQL dual-write */
 export function recordPrediction(prediction: Prediction): void {
   const predictions = loadPredictions();
-  // Overwrite if same id already exists (idempotent)
   const idx = predictions.findIndex(p => p.id === prediction.id);
   if (idx >= 0) {
     predictions[idx] = prediction;
@@ -86,6 +86,12 @@ export function recordPrediction(prediction: Prediction): void {
     predictions.push(prediction);
   }
   savePredictions(predictions);
+
+  // Dual-write to PostgreSQL (fire-and-forget — failures logged, never block)
+  upsertPredictionPg(prediction).catch((err) => {
+    logger.debug('[AccuracyTracker] PG dual-write failed', { id: prediction.id, err });
+  });
+
   logger.info('[AccuracyTracker] Prediction recorded', {
     id: prediction.id,
     market: prediction.title,
@@ -133,6 +139,10 @@ export async function checkResolutions(): Promise<number> {
         pred.correct = pred.predictedOutcome === outcome;
         resolvedCount++;
         changed = true;
+
+        // Dual-write resolution to PostgreSQL
+        updatePredictionResolutionPg(pred.id, outcome, pred.correct).catch(() => {});
+
         logger.info('[AccuracyTracker] Prediction resolved', {
           id: pred.id,
           predicted: pred.predictedOutcome,

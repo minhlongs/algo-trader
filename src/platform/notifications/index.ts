@@ -13,3 +13,19 @@ export { TelegramBotService, telegramBotService } from '../telegram/bot';
 export type { TelegramConfig, UserSession } from '../telegram/bot';
 
 export * from './alert-formatter';
+
+export {
+  notifyTradeExecuted,
+  notifyRiskAlert,
+  notifySubscriptionChange,
+  notifyPaymentReceived,
+  dispatchNotification,
+} from './trading-notifications';
+export type {
+  TradingNotificationType,
+  TradeExecutedPayload,
+  RiskAlertPayload,
+  SubscriptionChangePayload,
+  PaymentReceivedPayload,
+  NotificationPayload,
+} from './trading-notifications';

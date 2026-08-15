@@ -1,0 +1,46 @@
+{
+  "version": "1.0.1",
+  "created": "2026-08-13",
+  "description": "Quality ratchet baseline — metrics must never regress below these values. Updated after pre-commit Hard Rule enforcement PR #219 added 85 new tests.",
+  "testSuite": {
+    "totalTests": 4324,
+    "passingTests": 4301,
+    "passRate": 99.47,
+    "knownFailures": 23,
+    "knownFailureCategories": {
+      "omnirouteConstructorViolation": 17,
+      "llmTimeoutMock": 2,
+      "ciIntegrityAssertion": 1,
+      "probabilityCalibratorTimeout": 3
+    }
+  },
+  "coverage": {
+    "lines": 80,
+    "functions": 80,
+    "branches": 80,
+    "statements": 80,
+    "note": "Floor thresholds — vitest.config.ts enforces these"
+  },
+  "build": {
+    "typescriptErrors": 0,
+    "lintErrors": 0,
+    "target": "ES2022",
+    "module": "commonjs"
+  },
+  "quality": {
+    "maxAnyTypes": 0,
+    "maxConsoleCalls": 0,
+    "maxFileSizeLines": 200,
+    "bannedImports": [
+      "@/lib/auth",
+      "@/lib/subscription",
+      "@/lib/unified-tier-config",
+      "@/lib/tier-gate"
+    ]
+  },
+  "security": {
+    "maxCriticalFindings": 0,
+    "maxHighFindings": 0
+  },
+  "updatePolicy": "NEVER decrease thresholds. Only increase when genuine improvement is verified."
+}

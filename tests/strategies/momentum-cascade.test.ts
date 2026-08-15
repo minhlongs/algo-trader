@@ -9,7 +9,7 @@ import {
   DEFAULT_CONFIG,
   type MomentumCascadeConfig,
   type MomentumCascadeDeps,
-} from '../../src/desk/strategies/polymarket/momentum-cascade';
+} from '../../src/desk/strategies/polymarket/momentum-cascade-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

@@ -52,7 +52,7 @@ echo "==> wrangler deploy"
 npx wrangler deploy --config wrangler.toml
 
 # ─── Verify SHA match (workers.dev + custom domain) ────────────────
-WORKER_URL="https://algo-trader.workers.dev"
+WORKER_URL="${WORKER_URL:-https://api.cashclaw.cc}"
 echo ""
 echo "==> Verifying deploy SHA..."
 LIVE_SHA=$(curl -sf "$WORKER_URL/api/version" | python3 -c "import json,sys; print(json.load(sys.stdin).get('shortSha',''))" 2>/dev/null || echo "")

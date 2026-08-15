@@ -8,7 +8,7 @@
  *      (default query-param value + UPDATE transition)
  *   3. Signals-loop backlog query in `src/wiring/qwen-signals-loop.ts`
  *      (`WHERE status = 'pending'` — backlog gauge source of truth)
- *   4. Prometheus metric help text in `src/platform/middleware/prometheus-metrics.ts`
+ *   4. Prometheus metric help text in `src/platform/middleware/prometheus-registry.ts`
  *      (operator-facing documentation of what the counter/gauge measures)
  *
  * Operators hitting `/api/v1/admin/qwen/strategy-reviews?status=...` or
@@ -53,7 +53,7 @@ const REPO_ROOT = resolve(__dirname, '../..');
 const MIGRATION_PATH = resolve(REPO_ROOT, 'src/db/migrations/017_strategy_review_tasks.sql');
 const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/admin-qwen-routes.ts');
 const LOOP_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-registry.ts');
 
 /** Migration values reserved for future use — documented but not yet emitted. */
 const RESERVED_STATUSES = new Set<string>(['acknowledged']);
@@ -244,7 +244,7 @@ describe('strategy_review_tasks.status enum — 4-surface sync', () => {
     for (const active of ACTIVE_STATUSES) {
       expect(
         helpStatuses.has(active),
-        `prometheus-metrics.ts help blocks never mention active status '${active}' — operator help text drifted from schema`
+        `prometheus-registry.ts help blocks never mention active status '${active}' — operator help text drifted from schema`
       ).toBe(true);
     }
   });

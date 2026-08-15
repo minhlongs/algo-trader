@@ -1,0 +1,1934 @@
+openapi: 3.0.3
+info:
+  title: Algo Trader API
+  description: Algorithmic trading platform API
+  version: 3.1.9
+  license: { name: Proprietary }
+
+servers:
+  - url: http://localhost:8787
+    description: Local dev
+  - url: https://algo-trader.workers.dev
+    description: Production
+
+security: [{ BearerAuth: [] }]
+
+tags:
+  - name: Trading
+  - name: Signals
+  - name: Risk
+  - name: Revenue
+  - name: Marketplace
+  - name: Referral
+  - name: Co-pilot
+  - name: Admin
+  - name: Community
+  - name: Subscriptions
+  - name: Audit
+  - name: RUM
+  - name: Leaderboard
+  - name: KYC
+  - name: Compliance
+
+paths:
+  /api/trades:
+    get:
+      tags: [Trading]
+      summary: List trades
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: symbol, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Trades
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Trade' } }
+
+  /api/trades/{id}:
+    get:
+      tags: [Trading]
+      summary: Get trade
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          description: Trade
+          content: { application/json: { schema: { $ref: '#/components/schemas/Trade' } } }
+
+  /api/positions/{id}/close:
+    post:
+      tags: [Trading]
+      summary: Close position
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbol, exchange, exitPrice]
+              properties:
+                symbol: { type: string }
+                exchange: { type: string }
+                exitPrice: { type: number }
+      responses:
+        '200':
+          description: Closed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { success: { type: boolean }, pnl: { type: number } }
+
+  /api/pnl:
+    get:
+      tags: [Trading]
+      summary: Performance metrics
+      responses:
+        '200':
+          description: Metrics
+          content: { application/json: { schema: { $ref: '#/components/schemas/PerformanceMetrics' } } }
+
+  /api/pnl/daily:
+    get:
+      tags: [Trading]
+      summary: Daily P&L
+      parameters: [{ name: date, in: query, schema: { type: string } }]
+      responses:
+        '200':
+          description: Summary
+          content: { application/json: { schema: { $ref: '#/components/schemas/DailySummary' } } }
+
+  /api/backtest:
+    post:
+      tags: [Trading]
+      summary: Run backtest
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BacktestConfig' } } }
+      responses:
+        '200':
+          description: Result
+          content: { application/json: { schema: { $ref: '#/components/schemas/BacktestResult' } } }
+
+  /api/v1/signals:
+    get:
+      tags: [Signals]
+      summary: Get signals
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: minSpread, in: query, schema: { type: number } }
+      responses:
+        '200':
+          description: Signals
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Signal' } }
+
+  /api/v1/signals/{id}:
+    get:
+      tags: [Signals]
+      summary: Get signal
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          description: Signal
+          content: { application/json: { schema: { $ref: '#/components/schemas/Signal' } } }
+
+  /api/v1/signals/stream:
+    get:
+      tags: [Signals]
+      summary: SSE stream (ENTERPRISE)
+      responses: { '200': { description: Stream } }
+
+  /api/v1/subscriptions:
+    post:
+      tags: [Signals]
+      summary: Create subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tier]
+              properties: { tier: { type: string, enum: [FREE, PRO, ENTERPRISE] } }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Subscription' } } }
+
+  /api/v1/subscriptions/active:
+    get:
+      tags: [Signals]
+      summary: List active
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema: { type: object, properties: { data: { type: array } } }
+
+  /api/v1/subscriptions/{id}:
+    delete:
+      tags: [Signals]
+      summary: Cancel
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { '200': { description: Cancelled } }
+
+  /api/v1/risk/var:
+    post:
+      tags: [Risk]
+      summary: VaR/CVaR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [positions]
+              properties: { positions: { type: array } }
+      responses:
+        '200':
+          description: VaR
+          content: { application/json: { schema: { $ref: '#/components/schemas/VaRResult' } } }
+
+  /api/v1/risk/drawdown:
+    get:
+      tags: [Risk]
+      summary: Drawdown
+      responses:
+        '200':
+          description: Metrics
+          content: { application/json: { schema: { $ref: '#/components/schemas/DrawdownMetrics' } } }
+
+  /api/v1/risk/atr/stop:
+    post:
+      tags: [Risk]
+      summary: ATR stop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbol, exchange, entryPrice]
+              properties:
+                symbol: { type: string }
+                exchange: { type: string }
+                entryPrice: { type: number }
+      responses:
+        '200':
+          description: Stop
+          content:
+            application/json:
+              schema: { type: object, properties: { stopPrice: { type: number } } }
+
+  /api/v1/risk/kelly/size:
+    post:
+      tags: [Risk]
+      summary: Kelly sizing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [winRate, avgWin, avgLoss]
+              properties:
+                winRate: { type: number }
+                avgWin: { type: number }
+                avgLoss: { type: number }
+      responses:
+        '200':
+          description: Fraction
+          content:
+            application/json:
+              schema: { type: object, properties: { kellyFraction: { type: number } } }
+
+  /api/revenue/summary:
+    get:
+      tags: [Revenue]
+      summary: Summary
+      responses:
+        '200':
+          description: Summary
+          content: { application/json: { schema: { $ref: '#/components/schemas/RevenueSummary' } } }
+
+  /api/revenue/mrr:
+    get:
+      tags: [Revenue]
+      summary: MRR
+      responses:
+        '200':
+          description: MRR
+          content:
+            application/json:
+              schema: { type: object, properties: { mrr: { type: number } } }
+
+  /api/revenue/churn:
+    get:
+      tags: [Revenue]
+      summary: Churn
+      responses:
+        '200':
+          description: Churn
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChurnMetrics' } } }
+
+  /api/v1/marketplace/reviews:
+    post:
+      tags: [Marketplace]
+      summary: Create review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [strategyId, rating, content]
+              properties:
+                strategyId: { type: string }
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                content: { type: string }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/Review' } } }
+
+  /api/v1/marketplace/reviews/strategies/{id}:
+    get:
+      tags: [Marketplace]
+      summary: List reviews
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        '200':
+          description: Reviews
+          content:
+            application/json:
+              schema: { type: object, properties: { data: { type: array } } }
+
+  /api/v1/referral/stats:
+    get:
+      tags: [Referral]
+      summary: Stats
+      responses:
+        '200':
+          description: Stats
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReferralStats' } } }
+
+  /api/v1/referral/generate-code:
+    post:
+      tags: [Referral]
+      summary: Generate code
+      responses:
+        '201':
+          description: Code
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReferralCode' } } }
+
+  /api/v1/co-pilot/ask:
+    post:
+      tags: [Co-pilot]
+      summary: Ask question
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties: { question: { type: string } }
+      responses:
+        '200':
+          description: Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { answer: { type: string }, confidence: { type: number } }
+
+  /api/admin/halt:
+    post:
+      tags: [Admin]
+      summary: Halt trading
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties: { reason: { type: string } }
+      responses: { '200': { description: Halted } }
+
+  /api/admin/resume:
+    post:
+      tags: [Admin]
+      summary: Resume trading
+      responses: { '200': { description: Resumed } }
+
+  /api/admin/status:
+    get:
+      tags: [Admin]
+      summary: System status
+      responses:
+        '200':
+          description: Status
+          content: { application/json: { schema: { $ref: '#/components/schemas/SystemStatus' } } }
+
+  /api/kyc/init:
+    post:
+      tags: [KYC]
+      summary: Initiate KYC verification (PRO+)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [templateId]
+              properties:
+                templateId:
+                  type: string
+                  description: Persona verification template ID
+      responses:
+        '200':
+          description: KYC verification initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycVerification'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '500':
+          description: Internal server error
+
+  /api/kyc/status:
+    get:
+      tags: [KYC]
+      summary: Get current tenant KYC status (FREE+)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: KYC status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycVerification'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/kyc/status/{tenantId}:
+    get:
+      tags: [KYC]
+      summary: "Admin: get any tenant KYC status (ENTERPRISE only)"
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: KYC status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycVerification'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '500':
+          description: Internal server error
+
+  /api/kyc/webhook:
+    post:
+      tags: [KYC]
+      summary: Persona verification webhook callback (no auth)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                status:
+                  type: string
+                  enum: [approved, rejected, pending, expired]
+                id:
+                  type: string
+                  description: Persona verification ID
+      responses:
+        '200':
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+                  verificationId:
+                    type: string
+                  status:
+                    type: string
+        '401':
+          description: Invalid webhook signature
+        '500':
+          description: Internal server error
+
+  /api/compliance/validate:
+    post:
+      tags: [Compliance]
+      summary: Validate trade against compliance rules
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbol, side, quantity, price]
+              properties:
+                symbol:
+                  type: string
+                side:
+                  type: string
+                  enum: [buy, sell]
+                quantity:
+                  type: number
+                price:
+                  type: number
+                tenantId:
+                  type: string
+      responses:
+        '200':
+          description: Compliance validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceResult'
+        '400':
+          description: Bad request
+        '500':
+          description: Internal server error
+
+  /api/compliance/rules:
+    get:
+      tags: [Compliance]
+      summary: List all compliance rules
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of compliance rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ComplianceRule'
+        '500':
+          description: Internal server error
+
+  /api/compliance/rules/{id}/toggle:
+    put:
+      tags: [Compliance]
+      summary: Enable/disable a compliance rule
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Rule toggled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComplianceRule'
+        '404':
+          description: Not found
+        '500':
+          description: Internal server error
+
+  /api/compliance/audit:
+    get:
+      tags: [Compliance]
+      summary: Get last 100 compliance audit log entries
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEntry'
+        '500':
+          description: Internal server error
+
+  # ── Admin Marketplace (disputes, revenue, vetting) ──────────────────────────
+
+  /api/v1/admin/marketplace/disputes:
+    get:
+      tags: [Admin]
+      summary: List marketplace disputes
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        '200':
+          description: Dispute list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Dispute' } }
+                  total: { type: integer }
+        '403':
+          description: Admin access required
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/marketplace/revenue:
+    get:
+      tags: [Admin]
+      summary: Platform revenue overview
+      parameters:
+        - { name: startDate, in: query, schema: { type: string, format: date } }
+        - { name: endDate, in: query, schema: { type: string, format: date } }
+        - { name: creatorId, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Revenue overview
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalRevenue: { type: number }
+                  creatorPayouts: { type: number }
+                  platformFee: { type: number }
+                  period: { type: string }
+        '403':
+          description: Admin access required
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/marketplace/revenue/mark-paid:
+    post:
+      tags: [Admin]
+      summary: Batch mark revenue shares as paid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids, stripePayoutId]
+              properties:
+                ids: { type: array, items: { type: string } }
+                stripePayoutId: { type: string }
+      responses:
+        '200':
+          description: Batch result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paid: { type: integer }
+                  errors: { type: integer }
+                  results: { type: array }
+        '403':
+          description: Admin access required
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/marketplace/vetting/strategies/pending:
+    get:
+      tags: [Admin]
+      summary: List pending vetting strategies
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        '200':
+          description: Pending strategies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array }
+                  total: { type: integer }
+        '403':
+          description: Admin access required
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/marketplace/vetting/strategies/{id}/vetting/decision:
+    post:
+      tags: [Admin]
+      summary: Approve or reject strategy
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approve, reject] }
+                notes: { type: string }
+      responses:
+        '200':
+          description: Decision recorded
+        '403':
+          description: Admin access required
+        '404':
+          description: Strategy not found
+        '500':
+          description: Internal server error
+
+  # ── Admin DNA ──────────────────────────────────────────────────────────────
+
+  /api/v1/admin/dna/status:
+    get:
+      tags: [Admin]
+      summary: DNA engine status
+      responses:
+        '200':
+          description: Engine state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  running: { type: boolean }
+                  paperMode: { type: boolean }
+                  lastTick: { type: string, format: date-time }
+                  lastConsensus: { type: object }
+        '503':
+          description: DNA engine not started
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/dna/journal:
+    get:
+      tags: [Admin]
+      summary: DNA engine paper journal entries
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        '200':
+          description: Journal entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array }
+                  total: { type: integer }
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/dna-legacy/status:
+    get:
+      tags: [Admin]
+      summary: DNA engine status (legacy)
+      responses:
+        '200':
+          description: Engine state
+        '503':
+          description: DNA engine not running
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/dna-legacy/start:
+    post:
+      tags: [Admin]
+      summary: Start DNA engine
+      responses:
+        '200':
+          description: Engine started
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/dna-legacy/stop:
+    post:
+      tags: [Admin]
+      summary: Stop DNA engine
+      responses:
+        '200':
+          description: Engine stopped
+        '500':
+          description: Internal server error
+
+  /api/v1/admin/dna-legacy/config:
+    post:
+      tags: [Admin]
+      summary: Update DNA engine config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paperMode: { type: boolean }
+      responses:
+        '200':
+          description: Config updated
+        '503':
+          description: DNA engine not running
+        '500':
+          description: Internal server error
+
+  # ── Marketplace (insights, listings, management) ───────────────────────────
+
+  /api/v1/marketplace/insights/strategies/{id}/performance:
+    get:
+      tags: [Marketplace]
+      summary: Strategy performance metrics
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: days, in: query, schema: { type: integer, default: 30 } }
+      responses:
+        '200':
+          description: Performance data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sharpeRatio: { type: number }
+                  maxDrawdownPct: { type: number }
+                  totalReturnPct: { type: number }
+                  winRate: { type: number }
+                  profitFactor: { type: number }
+                  totalTrades: { type: integer }
+        '404':
+          description: Strategy not found
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/insights/strategies/{id}/reviews:
+    get:
+      tags: [Marketplace]
+      summary: Strategy reviews
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Reviews list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array }
+                  total: { type: integer }
+        '404':
+          description: Strategy not found
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/insights/strategies/{id}/backtests:
+    get:
+      tags: [Marketplace]
+      summary: Strategy backtest history
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Backtests list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array }
+                  total: { type: integer }
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/listings/strategies:
+    get:
+      tags: [Marketplace]
+      summary: List published marketplace strategies
+      parameters:
+        - { name: category, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        '200':
+          description: Strategy list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array }
+                  total: { type: integer }
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/listings/strategies/{id}:
+    get:
+      tags: [Marketplace]
+      summary: Get strategy details
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Strategy details with performance and reviews
+        '404':
+          description: Strategy not found
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/management/strategies/{id}:
+    patch:
+      tags: [Marketplace]
+      summary: Update marketplace strategy
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                priceUsdMonthly: { type: number }
+      responses:
+        '200':
+          description: Strategy updated
+        '403':
+          description: Forbidden (not strategy owner)
+        '404':
+          description: Strategy not found
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/management/strategies/{id}/vetting/request:
+    post:
+      tags: [Marketplace]
+      summary: Submit strategy for vetting
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Submitted for vetting
+        '403':
+          description: Forbidden
+        '404':
+          description: Strategy not found
+        '500':
+          description: Internal server error
+
+  # ── Community ──────────────────────────────────────────────────────────────
+
+  /api/v1/marketplace/community/strategies:
+    get:
+      tags: [Community]
+      summary: List community strategies (approved)
+      parameters:
+        - { name: language, in: query, schema: { type: string } }
+        - { name: strategyType, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        '200':
+          description: Community strategy list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/CommunityStrategy' } }
+                  total: { type: integer }
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/community/strategies/{id}:
+    get:
+      tags: [Community]
+      summary: Get community strategy detail
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Strategy detail with backtest
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  strategy: { $ref: '#/components/schemas/CommunityStrategy' }
+                  backtest: { type: object }
+        '404':
+          description: Strategy not found
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/community/strategies/{id}/backtest:
+    post:
+      tags: [Community]
+      summary: Run backtest on community strategy
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startDate: { type: string, format: date }
+                endDate: { type: string, format: date }
+                initialCapital: { type: number, default: 10000 }
+      responses:
+        '200':
+          description: Backtest result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  strategyId: { type: string }
+                  sharpeRatio: { type: number }
+                  maxDrawdownPct: { type: number }
+                  totalReturnPct: { type: number }
+                  createdAt: { type: string, format: date-time }
+        '404':
+          description: Strategy not found
+        '500':
+          description: Internal server error
+
+  # ── Subscriptions ──────────────────────────────────────────────────────────
+
+  /api/v1/subscriptions/analytics/dashboard:
+    get:
+      tags: [Subscriptions]
+      summary: Subscription health dashboard
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mrr: { type: number }
+                  activeSubscriptions: { type: integer }
+                  churnRate: { type: number }
+                  avgRevenuePerUser: { type: number }
+        '500':
+          description: Internal server error
+
+  /api/v1/subscriptions/analytics/ltv:
+    get:
+      tags: [Subscriptions]
+      summary: LTV prediction by tier
+      responses:
+        '200':
+          description: LTV data per tier
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tiers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tier: { type: string }
+                        ltv: { type: number }
+                        avgLifespanDays: { type: number }
+        '500':
+          description: Internal server error
+
+  /api/v1/subscriptions/analytics/cohorts:
+    get:
+      tags: [Subscriptions]
+      summary: Cohort retention analysis
+      responses:
+        '200':
+          description: Cohort data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cohorts: { type: array }
+        '500':
+          description: Internal server error
+
+  /api/v1/subscriptions/analytics/churn:
+    get:
+      tags: [Subscriptions]
+      summary: Churn analysis with at-risk customers
+      responses:
+        '200':
+          description: Churn data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  currentMonthChurn: { type: number }
+                  churnByTier: { type: object }
+                  avgLifespanDays: { type: number }
+                  atRiskCustomerCount: { type: integer }
+                  atRiskCustomerIds: { type: array, items: { type: string } }
+        '500':
+          description: Internal server error
+
+  # ── Risk (additional sub-routes) ───────────────────────────────────────────
+
+  /api/v1/risk/correlation:
+    post:
+      tags: [Risk]
+      summary: Correlation matrix
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbols]
+              properties:
+                symbols: { type: array, items: { type: string } }
+                period: { type: integer, default: 30 }
+      responses:
+        '200':
+          description: Correlation matrix
+        '500':
+          description: Internal server error
+
+  /api/v1/risk/drawdown/alert:
+    post:
+      tags: [Risk]
+      summary: Trigger drawdown alert check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                threshold: { type: number }
+      responses:
+        '200':
+          description: Drawdown alert result
+        '500':
+          description: Internal server error
+
+  /api/v1/risk/atr/stop/{symbol}:
+    get:
+      tags: [Risk]
+      summary: Get stored ATR state for symbol
+      parameters:
+        - { name: symbol, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: ATR state
+        '404':
+          description: No ATR state found for symbol
+        '500':
+          description: Internal server error
+    delete:
+      tags: [Risk]
+      summary: Clear ATR state (position close)
+      parameters:
+        - { name: symbol, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: ATR state cleared
+        '500':
+          description: Internal server error
+
+  /api/v1/risk/kelly/from-history:
+    post:
+      tags: [Risk]
+      summary: Kelly sizing from trade history
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trades]
+              properties:
+                trades: { type: array }
+                bankroll: { type: number }
+      responses:
+        '200':
+          description: Kelly result
+        '500':
+          description: Internal server error
+
+  /api/v1/risk/cache:
+    delete:
+      tags: [Risk]
+      summary: Invalidate user risk cache
+      responses:
+        '200':
+          description: Cache invalidated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+        '500':
+          description: Internal server error
+
+  # ── Referral (additional sub-routes) ───────────────────────────────────────
+
+  /api/v1/referral/commissions:
+    get:
+      tags: [Referral]
+      summary: List referral commissions
+      parameters:
+        - { name: status, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200':
+          description: Commissions list
+        '500':
+          description: Internal server error
+
+  /api/v1/referral/payouts:
+    get:
+      tags: [Referral]
+      summary: List referral payouts
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200':
+          description: Payouts list
+        '500':
+          description: Internal server error
+
+  /api/v1/referral/validate:
+    post:
+      tags: [Referral]
+      summary: Validate referral code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid: { type: boolean }
+                  referralCode: { type: object }
+        '400':
+          description: Invalid code
+        '500':
+          description: Internal server error
+
+  /api/v1/referral/code:
+    get:
+      tags: [Referral]
+      summary: Get or generate referral code for current user
+      responses:
+        '200':
+          description: Referral code
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/referral/clicks:
+    get:
+      tags: [Referral]
+      summary: List referral clicks
+      parameters:
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200':
+          description: Clicks list with pagination
+        '500':
+          description: Internal server error
+
+  # ── API Keys ───────────────────────────────────────────────────────────────
+
+  /api/v1/api-keys:
+    get:
+      tags: [Trading]
+      summary: List active API keys (masked)
+      responses:
+        '200':
+          description: API keys list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/ApiKey' } }
+        '500':
+          description: Internal server error
+    post:
+      tags: [Trading]
+      summary: Generate new API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                scopes: { type: array, items: { type: string } }
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  key: { type: string }
+                  name: { type: string }
+                  createdAt: { type: string, format: date-time }
+        '429':
+          description: Rate limit exceeded
+        '500':
+          description: Internal server error
+
+  /api/v1/api-keys/{id}:
+    delete:
+      tags: [Trading]
+      summary: Revoke API key
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Key revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  revoked: { type: boolean }
+                  message: { type: string }
+        '404':
+          description: Key not found
+        '500':
+          description: Internal server error
+
+  # ── Signal Feed ────────────────────────────────────────────────────────────
+
+  /api/v1/signals/feed:
+    get:
+      tags: [Signals]
+      summary: Paginated signal feed (tier-gated)
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: symbol, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Signal feed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Signal' } }
+                  total: { type: integer }
+        '401':
+          description: Valid API key required
+        '500':
+          description: Internal server error
+
+  /api/v1/signals/feed/{id}:
+    get:
+      tags: [Signals]
+      summary: Get single signal from feed
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Signal detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Signal' }
+        '401':
+          description: Valid API key required
+        '404':
+          description: Signal not found or expired
+        '500':
+          description: Internal server error
+
+  # ── AI Audit ───────────────────────────────────────────────────────────────
+
+  /api/v1/ai-audit/decisions:
+    get:
+      tags: [Audit]
+      summary: List AI decisions
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: ruleId, in: query, schema: { type: string } }
+        - { name: action, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Decisions list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/AIDecision' } }
+                  total: { type: integer }
+        '500':
+          description: Internal server error
+    post:
+      tags: [Audit]
+      summary: Record an AI decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ruleId, ruleName, action, result]
+              properties:
+                ruleId: { type: string }
+                ruleName: { type: string }
+                action: { type: string }
+                result: { type: string }
+                details: { type: object }
+      responses:
+        '201':
+          description: Decision recorded
+        '400':
+          description: Invalid request
+        '500':
+          description: Internal server error
+
+  /api/v1/ai-audit/decisions/{id}:
+    get:
+      tags: [Audit]
+      summary: Get AI decision detail
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Decision detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  decision: { $ref: '#/components/schemas/AIDecision' }
+        '404':
+          description: Decision not found
+        '500':
+          description: Internal server error
+
+  # ── Internal Billing ───────────────────────────────────────────────────────
+
+  /api/v1/billing/usage:
+    get:
+      tags: [Billing]
+      summary: Internal billing usage snapshot
+      parameters:
+        - { name: subscriberId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Usage snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscriberId: { type: string }
+                  period: { type: string }
+                  callsThisPeriod: { type: integer }
+                  periodLimit: { type: integer }
+                  overage: { type: integer }
+                  overageCost: { type: number }
+        '400':
+          description: subscriberId required
+        '401':
+          description: Internal API key required
+        '404':
+          description: No usage data for subscriber
+        '500':
+          description: Internal server error
+
+  # ── RUM ────────────────────────────────────────────────────────────────────
+
+  /api/v1/rum/ingest:
+    post:
+      tags: [RUM]
+      summary: Ingest client-side performance metrics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, timestamp, metrics]
+              properties:
+                sessionId: { type: string }
+                userId: { type: string }
+                timestamp: { type: integer }
+                metrics:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name: { type: string }
+                      value: { type: number }
+                      rating: { type: string }
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  processed: { type: integer }
+                  timeMs: { type: integer }
+        '400':
+          description: Invalid payload
+        '500':
+          description: Processing error (still returns 202)
+
+  # ── Leaderboard ────────────────────────────────────────────────────────────
+
+  /api/v1/leaderboard:
+    get:
+      tags: [Leaderboard]
+      summary: Strategy leaderboard (tier-gated)
+      description: FREE tier can view (no sort). PRO+ can sort, filter, and export CSV.
+      parameters:
+        - { name: sort, in: query, schema: { type: string, enum: [sharpe, pnl, winRate, drawdown, profitFactor] } }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+        - { name: export, in: query, schema: { type: string, enum: [csv] } }
+      responses:
+        '200':
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/LeaderboardEntry' } }
+                  count: { type: integer }
+                  total: { type: integer }
+        '500':
+          description: Internal server error
+
+  # ── Marketplace Subscription Stats ─────────────────────────────────────────
+
+  /api/v1/marketplace/subscriptions/stats:
+    get:
+      tags: [Marketplace]
+      summary: Aggregated subscriber stats (PRO+)
+      responses:
+        '200':
+          description: Subscription stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalSubscribers: { type: integer }
+                  activeSubscribers: { type: integer }
+                  totalSignalsDelivered: { type: integer }
+                  totalExecutionErrors: { type: integer }
+        '403':
+          description: PRO+ tier required
+        '500':
+          description: Internal server error
+
+  /api/v1/marketplace/subscriptions/{id}/billing-info:
+    get:
+      tags: [Marketplace]
+      summary: Billing period details for subscription
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Billing info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  autoRenew: { type: boolean }
+                  currentBillingPeriodStart: { type: string, format: date-time }
+                  currentBillingPeriodEnd: { type: string, format: date-time }
+                  nextBillingDate: { type: string, format: date-time }
+                  priceUsdMonthly: { type: number }
+                  billingCycle: { type: string }
+                  status: { type: string }
+                  allocationPercent: { type: number }
+                  currentInvestmentUsd: { type: number }
+        '404':
+          description: Subscription not found
+        '500':
+          description: Internal server error
+
+  # ── Backtest (additional sub-routes) ───────────────────────────────────────
+
+  /api/backtest/{id}:
+    get:
+      tags: [Trading]
+      summary: Get backtest result by ID
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Backtest result
+        '404':
+          description: Backtest not found
+        '500':
+          description: Internal server error
+
+  /api/backtest/history:
+    get:
+      tags: [Trading]
+      summary: List backtest history
+      responses:
+        '200':
+          description: Backtest history list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    strategyName: { type: string }
+                    pair: { type: string }
+                    timeframe: { type: string }
+                    days: { type: integer }
+                    sharpeRatio: { type: number }
+                    maxDrawdownPct: { type: number }
+                    totalReturnPct: { type: number }
+                    createdAt: { type: string, format: date-time }
+        '500':
+          description: Internal server error
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+
+  schemas:
+    Trade:
+      type: object
+      properties:
+        id: { type: string }
+        symbol: { type: string }
+        exchange: { type: string }
+        side: { type: string, enum: [BUY, SELL] }
+        entryPrice: { type: number }
+        exitPrice: { type: number }
+        quantity: { type: number }
+        pnl: { type: number }
+        status: { type: string, enum: [OPEN, CLOSED] }
+
+    Signal:
+      type: object
+      properties:
+        id: { type: string }
+        ts: { type: integer }
+        market: { type: string }
+        side: { type: string, enum: [BUY, SELL] }
+        size: { type: number }
+        confidence: { type: number }
+        strategy: { type: string }
+        ttl: { type: integer }
+
+    Subscription:
+      type: object
+      properties:
+        id: { type: string }
+        subscriberId: { type: string }
+        tier: { type: string, enum: [FREE, PRO, ENTERPRISE] }
+        active: { type: boolean }
+
+    PerformanceMetrics:
+      type: object
+      properties:
+        totalTrades: { type: integer }
+        winRate: { type: number }
+        totalPnl: { type: number }
+
+    DailySummary:
+      type: object
+      properties:
+        date: { type: string }
+        trades: { type: integer }
+        pnl: { type: number }
+
+    BacktestConfig:
+      type: object
+      properties:
+        startDate: { type: string }
+        endDate: { type: string }
+        initialCapital: { type: number }
+        exchanges: { type: array, items: { type: string } }
+
+    BacktestResult:
+      type: object
+      properties:
+        id: { type: string }
+        sharpeRatio: { type: number }
+        maxDrawdown: { type: number }
+        netProfitPct: { type: number }
+
+    VaRResult:
+      type: object
+      properties:
+        var: { type: number }
+        cvar: { type: number }
+
+    DrawdownMetrics:
+      type: object
+      properties:
+        currentDrawdown: { type: number }
+        maxDrawdown: { type: number }
+        isHalted: { type: boolean }
+
+    RevenueSummary:
+      type: object
+      properties:
+        mrr: { type: number }
+        totalCustomers: { type: integer }
+        churnRate: { type: number }
+
+    ChurnMetrics:
+      type: object
+      properties:
+        period: { type: string }
+        churnRate: { type: number }
+
+    Review:
+      type: object
+      properties:
+        id: { type: string }
+        strategyId: { type: string }
+        rating: { type: integer }
+        content: { type: string }
+
+    ReferralStats:
+      type: object
+      properties:
+        totalClicks: { type: integer }
+        totalConversions: { type: integer }
+        commissionEarned: { type: number }
+
+    ReferralCode:
+      type: object
+      properties:
+        code: { type: string }
+        tenantId: { type: string }
+
+    SystemStatus:
+      type: object
+      properties:
+        trading: { type: boolean }
+        circuitBreaker: { type: object }
+
+    KycVerification:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        status:
+          type: string
+          enum: [pending, approved, rejected, expired]
+        verificationId: { type: string, description: Persona verification ID }
+        templateId: { type: string }
+        createdAt: { type: string, format: date-time }
+        verifiedAt: { type: string, format: date-time, nullable: true }
+
+    ComplianceResult:
+      type: object
+      properties:
+        allowed: { type: boolean }
+        violations:
+          type: array
+          items:
+            type: object
+            properties:
+              ruleId: { type: string }
+              ruleName: { type: string }
+              message: { type: string }
+              severity: { type: string, enum: [warning, block] }
+
+    ComplianceRule:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        enabled: { type: boolean }
+        type: { type: string }
+        config: { type: object }
+
+    AuditEntry:
+      type: object
+      properties:
+        id: { type: string }
+        ruleId: { type: string }
+        ruleName: { type: string }
+        tenantId: { type: string }
+        action: { type: string }
+        result: { type: string }
+        details: { type: object }
+        timestamp: { type: string, format: date-time }
+
+    Dispute:
+      type: object
+      properties:
+        id: { type: string }
+        strategyId: { type: string }
+        reporterUserId: { type: string }
+        reason: { type: string }
+        status: { type: string, enum: [open, resolved, escalated] }
+        resolution: { type: string }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time }
+
+    VettingDecision:
+      type: object
+      properties:
+        decision: { type: string, enum: [approve, reject] }
+        notes: { type: string }
+
+    CommunityStrategy:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        authorUserId: { type: string }
+        language: { type: string }
+        strategyType: { type: string }
+        sourceCode: { type: string }
+        sandboxStatus: { type: string, enum: [pending, passed, failed] }
+        backtestResult: { type: object }
+        createdAt: { type: string, format: date-time }
+
+    ApiKey:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        keyPrefix: { type: string }
+        scopes: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time }
+
+    AIDecision:
+      type: object
+      properties:
+        id: { type: string }
+        ruleId: { type: string }
+        ruleName: { type: string }
+        action: { type: string }
+        result: { type: string }
+        details: { type: object }
+        createdAt: { type: string, format: date-time }
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        strategyId: { type: string }
+        strategyName: { type: string }
+        tenantId: { type: string }
+        winRate: { type: number }
+        sharpeRatio: { type: number }
+        totalReturnPct: { type: number }
+        maxDrawdownPct: { type: number }
+        profitFactor: { type: number }
+        totalTrades: { type: integer }

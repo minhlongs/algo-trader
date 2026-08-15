@@ -1,4 +1,0 @@
-import logger from "../../../shared/utils/logger";
-import type D1Database, KVNamespace from "@cloudflare/workers-types";
-
-type Env = CACHE: KVNamespace; SUBSCRIBERS?: D1Database; ...;

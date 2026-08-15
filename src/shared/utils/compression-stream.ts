@@ -5,6 +5,8 @@
  * Target: <5% compression overhead, transparent fallback for unsupported algos
  */
 
+import { logger } from './logger';
+
 // Compression algorithms supported
 export type CompressionAlgorithm = 'gzip' | 'deflate' | 'br' | 'identity';
 
@@ -54,7 +56,7 @@ export class CompressionStreamManager {
     }
 
     if (typeof CompressionStream === 'undefined') {
-      console.warn('[Compression] CompressionStream not available, falling back to identity');
+      logger.warn('[Compression] CompressionStream not available, falling back to identity');
       return this.createIdentityStream();
     }
 
@@ -75,7 +77,7 @@ export class CompressionStreamManager {
         },
       });
     } catch (error) {
-      console.error('[Compression] Failed to create compression stream:', error);
+      logger.error('[Compression] Failed to create compression stream', error);
       return this.createIdentityStream();
     }
   }
@@ -194,7 +196,7 @@ export class CompressionStreamManager {
     }
 
     if (typeof DecompressionStream === 'undefined') {
-      console.warn('[Compression] DecompressionStream not available, returning as identity');
+      logger.warn('[Compression] DecompressionStream not available, returning as identity');
       return new TextDecoder().decode(buffer);
     }
 
@@ -225,7 +227,7 @@ export class CompressionStreamManager {
 
       return new TextDecoder().decode(result);
     } catch (error) {
-      console.error('[Compression] Decompression failed:', error);
+      logger.error('[Compression] Decompression failed', error);
       throw error;
     }
   }

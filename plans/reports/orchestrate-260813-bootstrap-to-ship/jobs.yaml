@@ -1,0 +1,52 @@
+version: 1
+concurrency: 2
+jobs:
+  - id: test-suite
+    runtime: internal
+    task: test
+    cwd: /Users/macbook/algo-trader
+    prompt: "Run full test suite (npm test), analyze results, identify flaky/failing tests, and produce a summary report with pass/fail counts, failure categories, and fix recommendations. Run from /Users/macbook/algo-trader."
+    timeout: 15m
+    expected_output: "Test summary report with counts, failures, and fix recommendations."
+
+  - id: code-quality-audit
+    runtime: internal
+    task: review
+    cwd: /Users/macbook/algo-trader
+    prompt: "Audit code quality: run typecheck (npm run typecheck), lint (npm run lint), scan for :any types, console.log in production code, banned imports (@/lib/auth etc.), security patterns. Report findings with severity and file:line references. Run from /Users/macbook/algo-trader."
+    timeout: 15m
+    expected_output: "Code quality report with categorized findings."
+
+  - id: build-verify
+    runtime: internal
+    task: test
+    cwd: /Users/macbook/algo-trader
+    prompt: "Verify clean build: run npm run build, check for TypeScript errors, verify dist output integrity. Report build status with any warnings. Run from /Users/macbook/algo-trader."
+    timeout: 10m
+    expected_output: "Build verification report."
+
+  - id: security-scan
+    runtime: internal
+    task: review
+    cwd: /Users/macbook/algo-trader
+    prompt: "Security scan: check for hardcoded API keys, exposed secrets, .env files in git, banned imports from CLAUDE.md, credential patterns in source. Check package.json for known vulnerable dependencies. Report findings with severity. Run from /Users/macbook/algo-trader."
+    timeout: 10m
+    expected_output: "Security scan report."
+
+  - id: arbiter
+    runtime: internal
+    task: review
+    cwd: /Users/macbook/algo-trader
+    prompt: "Arbiter review: reconcile all incoming reports (test-suite, code-quality-audit, build-verify, security-scan), produce a unified verdict (PASS/CONDITIONAL PASS/AMEND/FAIL) with evidence. Flag contradictions, unsupported claims, and critical blockers. Run from /Users/macbook/algo-trader."
+    depends_on: [test-suite, code-quality-audit, build-verify, security-scan]
+    timeout: 10m
+    expected_output: "Unified arbiter verdict with evidence."
+
+  - id: ship
+    runtime: internal
+    task: ship
+    cwd: /Users/macbook/algo-trader
+    prompt: "Ship feature branch to main: run tests, review code, version bump, changelog, commit, push, create PR. Run from /Users/macbook/algo-trader."
+    depends_on: [arbiter]
+    timeout: 20m
+    expected_output: "Ship report with PR URL."

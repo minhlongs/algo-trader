@@ -11,7 +11,7 @@
  * The enum is declared across three surfaces that must stay in lockstep:
  *
  *   1. **Metric declaration comment** — inline TS comment on the counter's
- *      `labelNames` line in `src/platform/middleware/prometheus-metrics.ts`:
+ *      `labelNames` line in `src/platform/middleware/prometheus-registry.ts`:
  *        `labelNames: ['result'] as const, // result: accepted | rejected`
  *      This is the code-local declaration of the intended vocabulary (the
  *      help-text string itself stays short — "Total Qwen signals ingested
@@ -60,7 +60,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-registry.ts');
 const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/signal-ingest-routes.ts');
 const DOCS_PATH = resolve(REPO_ROOT, 'docs/system-architecture.md');
 

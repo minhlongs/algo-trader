@@ -26,6 +26,7 @@ import { GammaHistoricalProvider } from './gamma-historical-provider';
 import { computeMetrics } from './metrics-calculator';
 import { logger } from '../../shared/utils/logger';
 import type { BacktestConfig, BacktestResult, BacktestTrade, HistoricalSnapshot } from './types';
+import { getHistoricalData, type OhlcvCandle } from '../data/ohlcv-store';
 
 // ── Mock Order Manager ─────────────────────────────────────────────────────────
 
@@ -155,11 +156,17 @@ export class BacktestRunner {
       throw new Error(`Unknown strategy: ${config.strategy}`);
     }
 
-    // Fetch historical data
-    const snapshots = await this.historicalProvider.fetchHistoricalSnapshots(
-      config.days,
-      config.tickIntervalMs ?? 3_600_000,
-    );
+    // Fetch historical data — use OHLCV store if configured, else live Gamma API
+    const ohlcvMarket = (config as unknown as Record<string, unknown>).ohlcvMarket as string | undefined;
+    const ohlcvTimeframe = (config as unknown as Record<string, unknown>).ohlcvTimeframe as string | undefined;
+    let snapshots: HistoricalSnapshot[];
+    if (ohlcvMarket && ohlcvTimeframe) {
+      snapshots = await this.fetchFromOhlcvStore(ohlcvMarket, ohlcvTimeframe, config.days);
+    } else {
+      snapshots = await this.historicalProvider.fetchHistoricalSnapshots(
+        config.days, config.tickIntervalMs ?? 3_600_000,
+      );
+    }
 
     if (snapshots.length === 0) {
       throw new Error('No historical data available for backtest');
@@ -353,4 +360,49 @@ export class BacktestRunner {
       async getEvents(): Promise<Array<{ id: string; title: string; slug: string; markets: GammaMarket[] }>> { return []; },
     };
   }
+
+  /**
+   * Fetch historical data from the OHLCV store instead of live Gamma API.
+   * Converts stored candles into snapshot format compatible with backtest engine.
+   */
+  private async fetchFromOhlcvStore(
+    market: string,
+    timeframe: string,
+    days: number,
+  ): Promise<HistoricalSnapshot[]> {
+    const end = new Date();
+    const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+    const candles = await getHistoricalData(market, timeframe, start, end);
+
+    if (candles.length === 0) {
+      logger.warn(
+        `No OHLCV data for ${market}/${timeframe} in store, falling back to live API`,
+        'BacktestRunner',
+      );
+      return this.historicalProvider.fetchHistoricalSnapshots(days);
+    }
+
+    return candles.map((candle: OhlcvCandle) => ({
+      timestamp: candle.timestamp.toISOString(),
+      markets: [{
+        conditionId: market,
+        question: market,
+        slug: market,
+        outcomes: ['Yes', 'No'],
+        outcomePrices: [candle.close.toString(), (1 - candle.close).toString()],
+        volume: candle.volume,
+        liquidity: 0,
+        endDate: candle.timestamp.toISOString(),
+        active: false,
+        closed: true,
+        tokens: [
+          { token_id: 'yes', outcome: 'Yes', price: candle.close },
+          { token_id: 'no', outcome: 'No', price: 1 - candle.close },
+        ],
+        yesTokenId: 'yes',
+        yesPrice: candle.close,
+      } as unknown as GammaMarket],
+    }));
+  }
+
 }

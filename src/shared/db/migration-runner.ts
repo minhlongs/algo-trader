@@ -19,6 +19,8 @@ import * as migration050 from './migrations/050-add-billing-onboarding-signups';
 import * as migration051 from './migrations/051-add-usage-metering';
 import * as migration052 from './migrations/052-add-starter-tier-and-billing-interval';
 import * as migration053 from './migrations/053-add-telegram-sessions';
+import * as migration055 from './migrations/055-add-blog-page-views';
+import * as migration056 from './migrations/056-add-kyc-verifications';
 import * as migration026 from './migrations/026-create-ai-audit-tables';
 
 // Migration interface
@@ -44,6 +46,8 @@ const MIGRATIONS: Migration[] = [
   migration051,
   migration052,
   migration053,
+  migration055,
+  migration056,
   migration026,
 ];
 

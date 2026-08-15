@@ -42,7 +42,7 @@ export class AgentQueueManager {
    * @param data Job payload
    * @param options BullMQ job options (priority, delay, etc.)
    */
-  async add(name: string, data: any, options?: JobsOptions): Promise<Job> {
+  async add(name: string, data: Record<string, unknown>, options?: JobsOptions): Promise<Job> {
     return await this.queue.add(name, data, options);
   }
 
@@ -50,7 +50,7 @@ export class AgentQueueManager {
    * Start a worker to process jobs from this queue.
    * @param processor Async function that processes a job and returns result
    */
-  async startWorker(processor: (task: any) => Promise<any>): Promise<Worker> {
+  async startWorker(processor: (task: Record<string, unknown>) => Promise<unknown>): Promise<Worker> {
     return new Worker(
       this.queueName,
       async (job: Job) => {

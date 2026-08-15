@@ -2,55 +2,31 @@
  * Strategy Shard Durable Object
  * Hosts 4-5 strategies and executes them with isolated state
  * One instance per shard (12 total)
+ *
+ * Types:           strategy-shard-types.ts
+ * State/persistence: strategy-shard-state.ts
+ * Execution handlers: shard-fetch-handlers.ts
  */
 
-import { DurableObject, type DurableObjectState, type DurableObjectNamespace } from '@cloudflare/workers-types';
-// Note: DO env bindings accessed via state.env in runtime but type definition varies.
-// Using 'any' for env access to avoid type errors with bindings.
-
+import type { DurableObjectState } from '@cloudflare/workers-types';
 import type { RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
 import { ShardManager } from './shard-manager';
-import type { IStrategy } from '../strategies/types';
-import { StrategyLoader } from '../desk/strategies/loader';
+import type { IStrategy } from '../desk/strategies/types';
+import type { Env, ShardMetrics } from './strategy-shard-types';
+import { initializeShard, persistHealth, restoreMetrics, persistMetrics, getRedisClient } from './strategy-shard-state';
+import { handleHealthCheck, handleMetricsResponse, handleExecute } from './shard-fetch-handlers';
 
-// Env interface for Durable Object bindings (KV, DO references)
-interface Env {
-  SHARD_MANAGER?: any;
-  [key: string]: any;
-}
-
-export interface ShardExecutionResult {
-  success: boolean;
-  strategyId: string;
-  signal?: 'BUY' | 'SELL' | 'HOLD';
-  confidence?: number;
-  latencyMs: number;
-  error?: string;
-}
-
-export interface ShardMetrics {
-  requests: number;
-  errors: number;
-  totalLatencyMs: number;
-  queueLength: number;
-  strategiesLoaded: number;
-  lastUpdated: number;
-}
+// Re-export all types for backward compatibility
+export type { Env, ShardExecutionResult, ShardMetrics } from './strategy-shard-types';
 
 export class StrategyShard {
   private state: DurableObjectState;
   private redis: RedisClientType | null = null;
-  private redisInitPromise: Promise<RedisClientType | null> | null = null;
   private shardId: number;
-  private currentEnv?: Env; // Saved from fetch call for alarm() access
-
-  // Strategy instances (4-5 per shard)
+  private currentEnv?: Env;
   private strategies: Map<string, IStrategy> = new Map();
-  private strategyLoader: StrategyLoader;
 
-
-  // Metrics and backpressure
   private metrics: ShardMetrics = {
     requests: 0,
     errors: 0,
@@ -60,308 +36,72 @@ export class StrategyShard {
     lastUpdated: Date.now(),
   };
 
-  // Request queue for backpressure
   private readonly MAX_QUEUE_SIZE = 100;
   private readonly MAX_CONCURRENT = 10;
   private activeExecutions = 0;
 
   constructor(state: DurableObjectState, shardId?: number) {
     this.state = state;
-    // Redis lazy-loaded via getRedis() - avoids ioredis at module scope
-
- // Seed env for tests/early registration (fetch() will overwrite with full env)
- this.currentEnv = (state as any).env;
-
- // Determine shardId from state.id (consistent hashing), allow override for tests
- this.shardId = shardId !== undefined ? shardId : this.extractShardId();
-
-    this.strategyLoader = new StrategyLoader();
+    this.currentEnv = (state as unknown as { env?: Env }).env;
+    this.shardId = shardId !== undefined ? shardId : this.extractShardId();
     this.initialize().catch(error => {
       logger.error('[StrategyShard] Init failed:', error);
     });
   }
 
-  /**
-   * Extract shard ID from Durable Object state.id using consistent hash
-   * DO bindings don't expose binding name; use state.id for deterministic shard mapping
-   */
   private extractShardId(): number {
     const id = this.state.id.toString();
-    let hash = 2166136261 >>> 0; // FNV offset basis
+    let hash = 2166136261 >>> 0;
     for (let i = 0; i < id.length; i++) {
       hash ^= id.charCodeAt(i);
-      hash = ((hash << 1) + (hash >>> 31) + (hash << 4) + (hash >>> 27)) >>> 0; // FNV prime
+      hash = ((hash << 1) + (hash >>> 31) + (hash << 4) + (hash >>> 27)) >>> 0;
     }
     return hash % 12;
   }
 
-  /**
-   * Initialize shard: load assigned strategies
-   */
   private async initialize(): Promise<void> {
     try {
-      // Get this shard's assigned strategies from ShardManager or Redis
-      const assignments = await this.getStrategyAssignments();
-
-      // Load each strategy
-      for (const strategyId of assignments) {
-        try {
-          const strategy = await this.strategyLoader.loadStrategy(strategyId);
-          if (strategy) {
-            this.strategies.set(strategyId, (strategy as any as IStrategy));
-            logger.info('[StrategyShard] Loaded strategy', {
-              shardId: this.shardId,
-              strategyId,
-            });
-          }
-        } catch (error) {
-          logger.error('[StrategyShard] Failed to load strategy', {
-            shardId: this.shardId,
-            strategyId,
-            error,
-          });
-        }
-      }
-
+      await initializeShard(this.shardId, this.state.storage, this.currentEnv, this.strategies);
       this.metrics.strategiesLoaded = this.strategies.size;
-
-      // Register shard health with ShardManager
-      await this.registerHealth();
-
-      // Restore metrics from storage
-      await this.restoreMetrics();
-
-      logger.info('[StrategyShard] Initialized', {
-        shardId: this.shardId,
-        strategies: this.strategies.size,
-      });
+      this.metrics = await restoreMetrics(this.state.storage);
+      logger.info('[StrategyShard] Initialized', { shardId: this.shardId, strategies: this.strategies.size });
     } catch (error) {
       logger.error('[StrategyShard] Initialization failed:', error);
       throw error;
     }
   }
 
-  /**
-   * Get strategy assignments for this shard
-   */
-/** Lazy Redis init - avoids loading ioredis at module scope (Node.js-only) */
-private async getRedis(): Promise<RedisClientType | null> {
- if (this.redis) return this.redis;
- if (this.redisInitPromise) return this.redisInitPromise;
- this.redisInitPromise = (async (): Promise<RedisClientType | null> => {
-   try {
-     const mod = await import('../redis');
-     this.redis = mod.getRedisClient();
-     return this.redis;
-   } catch (err) {
-     logger.warn('[StrategyShard] Redis unavailable in WASM runtime', { error: String(err) });
-     return null;
-   }
- })();
- return this.redisInitPromise;
-}
-
-  private async getStrategyAssignments(): Promise<string[]> {
-    const assignmentsKey = `shard:${this.shardId}:strategies`;
- const _r = await this.getRedis();
- if (_r) {
-    const cached = await _r.smembers(assignmentsKey);
-     if (cached.length > 0) {
-        return cached;
-     }
- }
-
-    const stored = await this.state.storage.get<string[]>('assignedStrategies');
-    if (stored) {
-      return stored;
-    }
-
-    logger.warn('[StrategyShard] No strategy assignments found');
-    return [];
-  }
-
-  /**
-   * Register shard health with ShardManager (called after initialization)
-   */
-  private async registerHealth(): Promise<void> {
-    const env = this.currentEnv;
-    if (!env) return; // Env not available yet
-
-    const shardManager = (env as any).SHARD_MANAGER as ShardManager;
-    if (shardManager) {
-      await shardManager.updateShardHealth(this.shardId, {
-        shardId: this.shardId,
-        lastHeartbeat: Date.now(),
-        rps: 0,
-        avgLatencyMs: 0,
-        errorCount: 0,
-        strategyCount: this.strategies.size,
-        status: 'healthy' as const,
-      });
-    }
-  }
-
-  /**
-   * Restore metrics from storage (compressed)
-   */
-  private async restoreMetrics(): Promise<void> {
-    try {
-      const compressed = await this.state.storage.get<{ data: string; compressed: boolean }>('metrics');
-      if (compressed?.compressed && compressed.data) {
-        // Decompress if stored compressed
-        const decompressed = await this.decompress(compressed.data);
-        this.metrics = JSON.parse(decompressed) as ShardMetrics;
-      } else if (compressed?.data) {
-        this.metrics = JSON.parse(compressed.data) as ShardMetrics;
-      } else if (compressed) {
-        // Legacy format - cast carefully
-        this.metrics = (compressed as unknown) as ShardMetrics;
-      }
-    } catch (error) {
-      logger.error('[StrategyShard] Failed to restore metrics:', error);
-      // Keep default empty metrics
-    }
-  }
-
-  /**
-   * Persist metrics to storage (with compression)
-   */
-  private async persistMetrics(): Promise<void> {
-    this.metrics.lastUpdated = Date.now();
-
-    try {
-      const data = JSON.stringify(this.metrics);
-      const compressed = await this.compress(data);
-
-      await this.state.storage.put('metrics', {
-        data: compressed,
-        compressed: true,
-      });
-    } catch (error) {
-      logger.error('[StrategyShard] Failed to persist metrics:', error);
-      // Fallback: store uncompressed
-      await this.state.storage.put('metrics', this.metrics);
-    }
-  }
-
-  /**
-   * Compress string using gzip (Cloudflare Workers supported)
-   */
-  private async compress(data: string): Promise<string> {
-    // Use native CompressionStream if available (gzip only)
-    if (typeof CompressionStream !== 'undefined') {
-      try {
-        const cs = new CompressionStream('gzip');
-        const writer = cs.writable.getWriter();
-        const reader = cs.readable.getReader();
-        const encoder = new TextEncoder();
-
-        writer.write(encoder.encode(data));
-        writer.close();
-
-        const chunks: Uint8Array[] = [];
-        let done = false;
-        while (!done) {
-          const { value, done: isDone } = await reader.read();
-          if (value) chunks.push(value);
-          done = isDone;
-        }
-
-        // Convert to base64 for storage
-        const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
-        const buffer = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const chunk of chunks) {
-          buffer.set(chunk, offset);
-          offset += chunk.length;
-        }
-
-        return btoa(String.fromCharCode(...buffer));
-      } catch (error) {
-        logger.warn('[StrategyShard] Compression failed, using uncompressed:', error);
-      }
-    }
-
-    // Fallback: return as base64 without compression
-    return btoa(data);
-  }
-
-  /**
-   * Decompress string from storage (gzip)
-   */
-  private async decompress(compressedData: string): Promise<string> {
-    try {
-      const binary = atob(compressedData);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-
-      if (typeof DecompressionStream !== 'undefined') {
-        const ds = new DecompressionStream('gzip');
-        const writer = ds.writable.getWriter();
-        const reader = ds.readable.getReader();
-
-        writer.write(bytes);
-        writer.close();
-
-        const chunks: Uint8Array[] = [];
-        let done = false;
-        while (!done) {
-          const { value, done: isDone } = await reader.read();
-          if (value) chunks.push(value);
-          done = isDone;
-        }
-
-        const totalLength = chunks.reduce((sum, c) => sum + c.length, 0);
-        const buffer = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const chunk of chunks) {
-          buffer.set(chunk, offset);
-          offset += chunk.length;
-        }
-
-        return new TextDecoder().decode(buffer);
-      }
-
-      // Fallback: decode without decompression
-      return new TextDecoder().decode(bytes);
-    } catch (error) {
-      logger.error('[StrategyShard] Decompression failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Main fetch handler - DO entry point
-   * Durable Object fetch signature: (request: Request) => Promise<Response>
-   * Bindings accessed via this.state.env (cast to any for type flexibility)
-   */
   async fetch(request: Request): Promise<Response> {
-    // Save env for alarm() access (alarm doesn't receive env parameter)
-    const env = (this.state as any).env as Env;
-    this.currentEnv = env;
+    const env = (this.state as unknown as { env?: Env }).env as Env;
+    if (!this.currentEnv) this.currentEnv = env;
 
     const url = new URL(request.url);
-    const path = url.pathname;
+    const pathname = url.pathname;
 
-    // Health check endpoint
-    if (path === '/health') {
-      return this.handleHealthCheck();
+    if (pathname === '/health') {
+      return handleHealthCheck({
+        shardId: this.shardId,
+        activeExecutions: this.activeExecutions,
+        maxConcurrent: this.MAX_CONCURRENT,
+        metrics: this.metrics,
+        strategiesLoaded: this.strategies.size,
+      });
     }
-
-    // Strategy execution endpoint
-    if (path === '/execute' && request.method === 'POST') {
-      return this.handleExecute(request, env);
+    if (pathname === '/execute' && request.method === 'POST') {
+      return handleExecute(request, env, {
+        shardId: this.shardId,
+        metrics: this.metrics,
+        activeExecutions: this.activeExecutions,
+        maxConcurrent: this.MAX_CONCURRENT,
+        maxQueueSize: this.MAX_QUEUE_SIZE,
+        storage: this.state.storage,
+        strategies: this.strategies,
+      });
     }
-
-    // Metrics endpoint
-    if (path === '/metrics') {
-      return this.handleMetrics();
+    if (pathname === '/metrics') {
+      return handleMetricsResponse(this.shardId, this.metrics);
     }
-
-    // Shard info endpoint
-    if (path === '/info') {
+    if (pathname === '/info') {
       return Response.json({
         shardId: this.shardId,
         strategies: Array.from(this.strategies.keys()),
@@ -373,188 +113,45 @@ private async getRedis(): Promise<RedisClientType | null> {
     return Response.json({ error: 'Not found' }, { status: 404 });
   }
 
-  /**
-   * Handle strategy execution request
-   */
-  private async handleExecute(request: Request, env: Env): Promise<Response> {
-    // Backpressure check
-    if (this.metrics.queueLength >= this.MAX_QUEUE_SIZE) {
-      return Response.json(
-        { error: 'Shard overloaded - try again later' },
-        { status: 429 }
-      );
-    }
-
-    // Concurrency check
-    if (this.activeExecutions >= this.MAX_CONCURRENT) {
-      this.metrics.queueLength++;
-      return Response.json(
-        { error: 'All executors busy - queued' },
-        { status: 503 }
-      );
-    }
-
-    this.metrics.queueLength++;
-
-    try {
-      const body = await request.json() as {
-        strategyId: string;
-        marketData: Record<string, unknown>;
-        capitalUsdt?: number;
-      };
-      const { strategyId, marketData } = body;
-
-      // Check if strategy is assigned to this shard
-      const strategy = this.strategies.get(strategyId);
-      if (!strategy) {
-        return Response.json(
-          { error: `Strategy ${strategyId} not found on this shard` },
-          { status: 404 }
-        );
-      }
-
-      const startTime = Date.now();
-      this.activeExecutions++;
-
-      try {
-        // Execute strategy (support both sync and async)
-        const result = await this.executeStrategy(strategy, marketData);
-        const latencyMs = Date.now() - startTime;
-
-        // Update metrics
-        this.metrics.requests++;
-        this.metrics.totalLatencyMs += latencyMs;
-        this.metrics.queueLength = Math.max(0, this.metrics.queueLength - 1);
-        this.persistMetrics();
-
-        // Report to ShardManager
-        const shardManager = env.SHARD_MANAGER as unknown as ShardManager;
-        if (shardManager) {
-          shardManager.recordMetrics(this.shardId, latencyMs, true).catch(() => {});
-        }
-
-        return Response.json({
-          success: true,
-          strategyId,
-          signal: result.signal,
-          confidence: result.confidence,
-          latencyMs,
-          shardId: this.shardId,
-          metadata: result.metadata,
-        } as ShardExecutionResult);
-      } finally {
-        this.activeExecutions--;
-      }
-    } catch (error) {
-      this.metrics.errors++;
-      this.metrics.queueLength = Math.max(0, this.metrics.queueLength - 1);
-      this.persistMetrics();
-
-      logger.error('[StrategyShard] Execution error:', {
-        shardId: this.shardId,
-        error,
-      });
-
-      return Response.json(
-        { error: 'Strategy execution failed', details: String(error) },
-        { status: 500 }
-      );
-    }
-  }
-
-  /**
-   * Execute a single strategy (supports sync and async)
-   */
-  private async executeStrategy(
-    strategy: IStrategy,
-    marketData: Record<string, unknown>
-  ): Promise<{
-    signal: 'BUY' | 'SELL' | 'HOLD';
-    confidence: number;
-    metadata?: Record<string, unknown>;
-  }> {
-    // Check if strategy has execute method
-    if (typeof strategy.execute === 'function') {
-      const result = strategy.execute(marketData);
-      return result instanceof Promise ? result : Promise.resolve(result);
-    }
-
-    // Check for tick-based strategy pattern
-    if (typeof strategy.onTick === 'function') {
-      const result = strategy.onTick(marketData as any);
-      return result instanceof Promise ? result : Promise.resolve({
-        signal: result.signal,
-        confidence: result.confidence || 0.5,
-        metadata: result.metadata,
-      });
-    }
-
-    throw new Error('Strategy does not implement execute or onTick');
-  }
-
-  /**
-   * Handle health check
-   */
-  private handleHealthCheck(): Response {
-    const healthy = this.activeExecutions < this.MAX_CONCURRENT;
-    const memoryInfo = this.getMemoryInfo();
-
-    return Response.json({
+  /** Public health-check delegate for callers outside DO fetch path */
+  handleHealthCheck(): Response {
+    return handleHealthCheck({
       shardId: this.shardId,
-      status: healthy ? 'healthy' : 'degraded',
       activeExecutions: this.activeExecutions,
       maxConcurrent: this.MAX_CONCURRENT,
-      queueLength: this.metrics.queueLength,
+      metrics: this.metrics,
       strategiesLoaded: this.strategies.size,
-      memory: memoryInfo,
-      timestamp: Date.now(),
     });
   }
 
-  /**
-   * Handle metrics endpoint
-   */
-  private handleMetrics(): Response {
-    const avgLatency =
-      this.metrics.requests > 0
+  /** Public execute delegate for callers outside DO fetch path */
+  async handleExecute(request: Request): Promise<Response> {
+    const env = (this.state as unknown as { env?: Env }).env as Env;
+    return handleExecute(request, env, {
+      shardId: this.shardId,
+      metrics: this.metrics,
+      activeExecutions: this.activeExecutions,
+      maxConcurrent: this.MAX_CONCURRENT,
+      maxQueueSize: this.MAX_QUEUE_SIZE,
+      storage: this.state.storage,
+      strategies: this.strategies,
+    });
+  }
+
+  async alarm(): Promise<void> {
+    try {
+      this.metrics = await restoreMetrics(this.state.storage);
+      const avgLatency = this.metrics.requests > 0
         ? this.metrics.totalLatencyMs / this.metrics.requests
         : 0;
 
-    return Response.json({
-      shardId: this.shardId,
-      ...this.metrics,
-      avgLatencyMs: avgLatency,
-    });
-  }
-
-  /**
-   * Get memory info (Cloudflare Workers specific)
-   */
-  private getMemoryInfo(): { rss: number; heapUsed: number } {
-    if (typeof performance !== 'undefined' && 'memory' in performance) {
-      const mem = (performance as any).memory;
-      return {
-        rss: mem.rss,
-        heapUsed: mem.usedJSHeapSize,
-      };
-    }
-    return { rss: 0, heapUsed: 0 };
-  }
-
-  /**
-   * Periodic health reporting (called by alarm)
-   */
-  async alarm(): Promise<void> {
-    try {
       const status: 'healthy' | 'degraded' = this.activeExecutions < this.MAX_CONCURRENT ? 'healthy' : 'degraded';
+
       const health = {
         shardId: this.shardId,
         lastHeartbeat: Date.now(),
         rps: this.metrics.requests / 10,
-        avgLatencyMs:
-          this.metrics.requests > 0
-            ? this.metrics.totalLatencyMs / this.metrics.requests
-            : 0,
+        avgLatencyMs: avgLatency,
         errorCount: this.metrics.errors,
         strategyCount: this.strategies.size,
         status,
@@ -562,17 +159,10 @@ private async getRedis(): Promise<RedisClientType | null> {
 
       const shardManager = this.currentEnv?.SHARD_MANAGER as unknown as ShardManager;
       if (shardManager) {
-        await shardManager.updateShardHealth(this.shardId, health).catch(() => {});
+        shardManager.updateShardHealth(this.shardId, health);
       }
 
- const _r2 = await this.getRedis();
- if (_r2) {
-  await _r2.hset(
-  'shard:health',
-  this.shardId.toString(),
-  JSON.stringify(health)
-  );
- }
+      await persistHealth(this.shardId, health);
     } catch (error) {
       logger.error('[StrategyShard] Alarm failed:', error);
     }

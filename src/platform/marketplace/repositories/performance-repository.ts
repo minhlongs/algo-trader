@@ -6,6 +6,9 @@
 import { query } from '../../../shared/db/postgres-client';
 import type { IMarketplacePerformance, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
+/** PostgreSQL query parameter types */
+type SqlParam = string | number | boolean | null | Date;
+
 export interface PerformanceFilters {
   strategyId?: string;
   tenantId?: string;
@@ -38,7 +41,7 @@ export class PerformanceRepository {
     sort?: { field: string; order: SortOrder },
   ): Promise<PaginatedResult<IMarketplacePerformance>> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }
@@ -106,7 +109,7 @@ export class PerformanceRepository {
 
   async update(id: number, data: Partial<IMarketplacePerformance>): Promise<IMarketplacePerformance | null> {
     const fields: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     const columnMap: Record<string, string> = {
@@ -119,7 +122,7 @@ export class PerformanceRepository {
     for (const [key, column] of Object.entries(columnMap)) {
       if ((data as Record<string, unknown>)[key] !== undefined) {
         fields.push(`${column} = $${idx++}`);
-        params.push((data as Record<string, unknown>)[key]);
+        params.push((data as Record<string, unknown>)[key] as SqlParam);
       }
     }
 
@@ -139,7 +142,7 @@ export class PerformanceRepository {
 
   async count(filters?: { strategyId?: string; tenantId?: string }): Promise<number> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
     if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }
     if (filters?.tenantId) { conditions.push(`tenant_id = $${idx++}`); params.push(filters.tenantId); }

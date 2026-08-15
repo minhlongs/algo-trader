@@ -85,6 +85,16 @@ td{padding:8px;border-bottom:1px solid #1a1a2a}
 </div>
 
 <script>
+// Escape HTML entities to prevent XSS via innerHTML injection
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// Escape for JavaScript string literals inside HTML attributes (onclick, etc.)
+function escapeJs(str) {
+  if (str == null) return '';
+  return String(str).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'\\r');
+}
 // Admin connects to stats server API (not same-origin CF Pages)
 const API = localStorage.getItem('admin_api') || 'https://api.cashclaw.cc';
 let AUTH_TOKEN = localStorage.getItem('admin_token') || '';
@@ -131,16 +141,16 @@ async function generateKey() {
   const el = document.getElementById('genResult');
   if (data.key) {
     el.innerHTML = `
-      <div style="color:#888;margin-bottom:8px">Customer: <b>${data.userId}</b> | Tier: <b>${data.tier}</b> | Expires: <b>${data.expiresAt?.slice(0,10)}</b></div>
+      <div style="color:#888;margin-bottom:8px">Customer: <b>${escapeHtml(data.userId)}</b> | Tier: <b>${escapeHtml(data.tier)}</b> | Expires: <b>${escapeHtml(data.expiresAt?.slice(0,10))}</b></div>
       <div>License Key:</div>
-      <div class="key" id="generatedKey">${data.key}</div>
+      <div class="key" id="generatedKey">${escapeHtml(data.key)}</div>
       <button class="copy-btn" onclick="copyKey()" style="margin-top:8px;width:auto">Copy Key</button>
     `;
     el.classList.add('show');
     msg('License key generated!');
     loadLicenses();
   } else {
-    el.innerHTML = '<span style="color:#ff6060">Error: ' + (data.error || 'Unknown') + '</span>';
+    el.innerHTML = '<span style="color:#ff6060">Error: ' + escapeHtml(data.error || 'Unknown') + '</span>';
     el.classList.add('show');
   }
 }
@@ -172,12 +182,12 @@ async function loadLicenses() {
     const daysLeft = Math.floor((expires - Date.now()) / 86400000);
     const status = l.revoked ? 'revoked' : 'active';
     return `<tr>
-      <td>${l.userId}</td>
-      <td><span class="badge ${l.tier}">${l.tier}</span></td>
+      <td>${escapeHtml(l.userId)}</td>
+      <td><span class="badge ${escapeHtml(l.tier)}">${escapeHtml(l.tier)}</span></td>
       <td>${daysLeft}d left</td>
-      <td><code style="font-size:.7rem">${l.keyPreview}</code>
-        <button class="copy-btn" onclick="navigator.clipboard.writeText('${l.fullKey}');msg('Copied!')">Copy</button></td>
-      <td><button class="danger copy-btn" onclick="revokeKey('${l.fullKey}')">Revoke</button></td>
+      <td><code style="font-size:.7rem">${escapeHtml(l.keyPreview)}</code>
+        <button class="copy-btn" onclick="navigator.clipboard.writeText('${escapeJs(l.fullKey)}');msg('Copied!')">Copy</button></td>
+      <td><button class="danger copy-btn" onclick="revokeKey('${escapeJs(l.fullKey)}')">Revoke</button></td>
     </tr>`;
   }).join('');
 }
@@ -201,9 +211,9 @@ async function validateKey() {
   });
   const el = document.getElementById('valResult');
   if (data.valid) {
-    el.innerHTML = `<span style="color:#60ff60">VALID</span> — Tier: <b>${data.tier}</b> | ${data.remainingDays} days left | Expires: ${data.expiresAt?.slice(0,10)}`;
+    el.innerHTML = `<span style="color:#60ff60">VALID</span> — Tier: <b>${escapeHtml(data.tier)}</b> | ${escapeHtml(data.remainingDays)} days left | Expires: ${escapeHtml(data.expiresAt?.slice(0,10))}`;
   } else {
-    el.innerHTML = `<span style="color:#ff6060">INVALID</span> — ${data.error}`;
+    el.innerHTML = `<span style="color:#ff6060">INVALID</span> — ${escapeHtml(data.error)}`;
   }
   el.classList.add('show');
 }

@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type VolatilityTargetingConfig,
   type VolatilityTargetingDeps,
-} from '../../src/desk/strategies/polymarket/volatility-targeting';
+} from '../../src/desk/strategies/polymarket/volatility-targeting-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────
@@ -857,7 +857,7 @@ describe('createVolatilityTargetingTick', () => {
     expect(cfg.maxHoldMs).toBe(20 * 60_000);
     expect(cfg.maxPositions).toBe(4);
     expect(cfg.cooldownMs).toBe(120_000);
-    expect(cfg.basePositionSize).toBe('10');
+    expect(cfg.positionSize).toBe('10');
   });
 
   it('merges partial config with defaults', () => {

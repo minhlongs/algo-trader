@@ -38,7 +38,8 @@ export function useWebSocketPriceFeed() {
         if (!mountedRef.current) return;
         const delay = retryDelayRef.current;
         retryDelayRef.current = Math.min(delay * 2, 30_000);
-        retryRef.current = setTimeout(connect, delay);
+        const jitter = delay * Math.random() * 0.3; // 0-30% additive jitter (thundering herd prevention)
+        retryRef.current = setTimeout(connect, delay + jitter);
       };
 
       ws.onerror = () => ws.close();

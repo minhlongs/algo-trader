@@ -8,6 +8,7 @@
  */
 
 import { TrialDripService } from '../billing/trial-drip-service';
+import { logger } from '../../shared/utils/logger';
 
 async function main(): Promise<void> {
   const svc = TrialDripService.getInstance();
@@ -15,12 +16,12 @@ async function main(): Promise<void> {
     const result = await svc.processDueEmails();
     if (result.sent > 0 || result.errors > 0) {
       // eslint-disable-next-line no-console
-      console.log(`[trial-drip-runner] sent=${result.sent} skipped=${result.skipped} errors=${result.errors}`);
+      logger.info(`[trial-drip-runner] sent=${result.sent} skipped=${result.skipped} errors=${result.errors}`);
     }
     process.exit(0);
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error('[trial-drip-runner] Failed', err);
+    logger.error('[trial-drip-runner] Failed', err);
     process.exit(1);
   }
 }

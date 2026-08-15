@@ -6,6 +6,9 @@
 import { query } from '../../../shared/db/postgres-client';
 import type { IMarketplaceDispute, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
+/** PostgreSQL query parameter types */
+type SqlParam = string | number | boolean | null;
+
 export interface DisputeFilters {
   tenantId?: string;
   listingId?: string;
@@ -29,7 +32,7 @@ export class DisputeRepository {
     sort?: { field: string; order: SortOrder },
   ): Promise<PaginatedResult<IMarketplaceDispute>> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     if (filters?.tenantId) { conditions.push(`tenant_id = $${idx++}`); params.push(filters.tenantId); }
@@ -78,7 +81,7 @@ export class DisputeRepository {
 
   async update(id: string, data: Partial<IMarketplaceDispute>): Promise<IMarketplaceDispute | null> {
     const fields: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     const columnMap: Record<string, string> = {
@@ -90,7 +93,7 @@ export class DisputeRepository {
     for (const [key, column] of Object.entries(columnMap)) {
       if ((data as Record<string, unknown>)[key] !== undefined) {
         fields.push(`${column} = $${idx++}`);
-        params.push((data as Record<string, unknown>)[key]);
+        params.push((data as Record<string, unknown>)[key] as SqlParam);
       }
     }
 
@@ -109,7 +112,7 @@ export class DisputeRepository {
 
   async count(filters?: { tenantId?: string; status?: string; listingId?: string }): Promise<number> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
     if (filters?.tenantId) { conditions.push(`tenant_id = $${idx++}`); params.push(filters.tenantId); }
     if (filters?.status) { conditions.push(`status = $${idx++}`); params.push(filters.status); }

@@ -25,7 +25,7 @@ export default [
       ...tsPlugin.configs.recommended.rules,
 
       // Relax rules that hurt productivity without improving correctness
-      '@typescript-eslint/no-explicit-any': 'off',            // off — incremental cleanup via separate initiative
+      '@typescript-eslint/no-explicit-any': 'warn',            // warn — incremental cleanup, blocks new any in CI
       '@typescript-eslint/no-unused-vars': ['warn', {        // warn, allow _ prefix
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',

@@ -4,6 +4,7 @@
  */
 
 import { getLatencyMonitor } from './latency-monitor';
+import { logger } from '../shared/utils/logger';
 
 export interface RegionStatus {
   region: string;
@@ -61,11 +62,11 @@ export class RegionHealthMonitor {
 
   start(): void {
     this.monitor = setInterval(() => {
-      this.checkAllRegions().catch(console.error);
+      this.checkAllRegions().catch((err) => logger.error('Region health check failed', 'RegionHealthMonitor', { err: String(err) }));
     }, this.config.checkInterval);
 
     // Initial check
-    this.checkAllRegions().catch(console.error);
+    this.checkAllRegions().catch((err) => logger.error('Initial region health check failed', 'RegionHealthMonitor', { err: String(err) }));
   }
 
   stop(): void {
@@ -75,8 +76,14 @@ export class RegionHealthMonitor {
     }
   }
 
+  ensureStarted(): void {
+    const latencyMonitor = getLatencyMonitor();
+    latencyMonitor.start();
+  }
+
   async checkAllRegions(): Promise<void> {
     const latencyMonitor = getLatencyMonitor();
+    latencyMonitor.start();
     await latencyMonitor.runProbes();
 
     const health = latencyMonitor.getHealth();
@@ -109,14 +116,14 @@ export class RegionHealthMonitor {
   }
 
   private async triggerFailover(failedRegion: string): Promise<void> {
-    console.log(`[RegionHealthMonitor] Failover triggered: ${failedRegion} is unhealthy`);
+    logger.warn(`Failover triggered: ${failedRegion} is unhealthy`, 'RegionHealthMonitor');
 
     // Find best alternative region
     const healthyRegions = Array.from(this.regionStatus.values())
       .filter(s => s.healthy && s.region !== failedRegion);
 
     if (healthyRegions.length === 0) {
-      console.error('[RegionHealthMonitor] No healthy regions available for failover');
+      logger.error('No healthy regions available for failover', 'RegionHealthMonitor');
       return;
     }
 
@@ -127,7 +134,7 @@ export class RegionHealthMonitor {
     const oldRegion = this.activeRegion;
     this.activeRegion = newRegion;
 
-    console.log(`[RegionHealthMonitor] Failover complete: ${oldRegion} → ${newRegion}`);
+    logger.warn(`Failover complete: ${oldRegion} → ${newRegion}`, 'RegionHealthMonitor');
 
     if (this.onFailover) {
       this.onFailover(oldRegion, newRegion);
@@ -143,7 +150,7 @@ export class RegionHealthMonitor {
         const freshHealth = getLatencyMonitor().getHealth(region)[0];
         if (freshHealth?.healthy) {
           status.consecutiveFailures = 0;
-          console.log(`[RegionHealthMonitor] Region ${region} recovered`);
+          logger.info(`Region ${region} recovered`, 'RegionHealthMonitor');
         }
       }
     }
@@ -173,7 +180,7 @@ export class RegionHealthMonitor {
 
     const old = this.activeRegion;
     this.activeRegion = toRegion;
-    console.log(`[RegionHealthMonitor] Manual switch: ${old} → ${toRegion}`);
+    logger.warn(`Manual switch: ${old} → ${toRegion}`, 'RegionHealthMonitor');
 
     if (this.onFailover) {
       this.onFailover(old, toRegion);

@@ -2,7 +2,14 @@
  * Tests for Comment Moderation Service
  * Phase 34b Content Personalization
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../../lib/llm-router', () => ({
+  LlmRouter: vi.fn().mockImplementation(() => ({
+    chat: vi.fn().mockRejectedValue(new Error('LLM unavailable in test')),
+  })),
+}));
+
 import { moderateComment } from '../routes/comment-moderation-service';
 
 // Note: moderateComment uses LlmRouter which may not be available in test.

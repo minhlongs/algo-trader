@@ -28,6 +28,7 @@ function makeStore(subs: SignalSubscription[] = []): SignalStore {
   };
 }
 
+const BASE_TS = Date.now();
 const BASE_INPUT = {
   market: 'BTC-USD',
   side: 'BUY' as const,
@@ -35,7 +36,7 @@ const BASE_INPUT = {
   confidence: 0.8,
   strategy: 'momentum',
   ttlSec: 300,
-  ts: 1_700_000_000_000,
+  ts: BASE_TS,
 };
 
 describe('SignalPublisher.publish', () => {

@@ -112,7 +112,7 @@ describe('checkRateLimit', () => {
     });
   });
 
-  it('allows up to FREE=100 then blocks the 101st', async () => {
+  it('allows up to FREE=10 then blocks the 11th', async () => {
     return withRedis(async (mock) => {
       const limiter = makeLimiter();
       // Pre-seed 100 entries at distinct timestamps all inside the

@@ -7,6 +7,7 @@ import type { ConnectionOptions } from 'bullmq';
 
 import { Queue, Worker, Job, JobsOptions } from 'bullmq';
 import Redis from 'ioredis';
+import { logger } from '../shared/utils/logger';
 
 export enum AgentPriority {
   CRITICAL = 1,   // Tier 1 - bypass queue if possible, fast path
@@ -16,7 +17,7 @@ export enum AgentPriority {
 
 export interface AgentTask {
   agentName: string;
-  input: any;
+  input: Record<string, unknown>;
   context: {
     tenantId: string;
     strategyId?: string;
@@ -28,7 +29,7 @@ export interface AgentTask {
 
 export interface AgentResult {
   success: boolean;
-  result?: any;
+  result?: Record<string, unknown>;
   error?: string;
   latencyMs: number;
   agentName: string;
@@ -97,7 +98,7 @@ export class AgentCoordinator {
    */
   async submitTask(
     agentName: string,
-    input: any,
+    input: Record<string, unknown>,
     context: Omit<AgentTask['context'], 'priority' | 'timeout'> & {
       priority: AgentPriority;
       timeout?: number;
@@ -143,7 +144,7 @@ export class AgentCoordinator {
         } else if (state === 'failed') {
           return {
             success: false,
-            error: (job as any).failedReason || 'Job failed',
+            error: job.failedReason || 'Job failed',
             latencyMs: 0,
             agentName: job.data.agentName,
           };
@@ -195,7 +196,7 @@ export class AgentCoordinator {
    */
   async startWorker(
     priority: AgentPriority,
-    processor: (task: AgentTask) => Promise<any>
+    processor: (task: AgentTask) => Promise<unknown>
   ): Promise<Worker> {
     const queue = this.queues.get(priority);
     if (!queue) {
@@ -239,9 +240,9 @@ export class AgentCoordinator {
 
     worker.on('failed', (job: Job | undefined, error: Error) => {
       if (job) {
-        console.error(`[AgentCoordinator] Job ${job.id} failed:`, error.message);
+        logger.error(`[AgentCoordinator] Job ${job.id} failed`, error.message);
       } else {
-        console.error('[AgentCoordinator] Job failed:', error.message);
+        logger.error('[AgentCoordinator] Job failed', error.message);
       }
     });
 

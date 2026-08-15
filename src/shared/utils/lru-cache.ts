@@ -22,8 +22,8 @@ export interface CacheStats {
   evictionCount: number;
 }
 
-export class LRUCache<K extends string | number | symbol> {
-  private cache: Map<K, CacheEntry<any>> = new Map();
+export class LRUCache<K extends string | number | symbol, V = unknown> {
+  private cache: Map<K, CacheEntry<V>> = new Map();
   private maxSize: number; // in bytes
   private currentSize: number = 0;
   private ttl: number; // default TTL in ms
@@ -42,7 +42,7 @@ export class LRUCache<K extends string | number | symbol> {
    * Get value from cache
    * Returns null if key not found or expired
    */
-  get(key: K): any | null {
+  get(key: K): V | null {
     const entry = this.cache.get(key);
     if (!entry) {
       this.missCount++;
@@ -67,7 +67,7 @@ export class LRUCache<K extends string | number | symbol> {
   /**
    * Set value in cache with optional TTL and size
    */
-  set(key: K, value: any, ttl?: number, size?: number): void {
+  set(key: K, value: V, ttl?: number, size?: number): void {
     // Calculate approximate size if not provided
     const entrySize = size !== undefined ? size : this.estimateSize(value);
     const expiresAt = Date.now() + (ttl || this.ttl);
@@ -205,7 +205,7 @@ export class LRUCache<K extends string | number | symbol> {
    * Estimate memory size of a value
    * Uses rough approximation based on JSON serialization
    */
-  private estimateSize(value: any): number {
+  private estimateSize(value: V): number {
     try {
       // Rough estimate: JSON string length in bytes
       return Buffer.byteLength(JSON.stringify(value), 'utf8');
@@ -225,7 +225,7 @@ export class LRUCache<K extends string | number | symbol> {
   /**
    * Get values iterator (for debugging)
    */
-  values(): IterableIterator<CacheEntry<any>> {
+  values(): IterableIterator<CacheEntry<V>> {
     return this.cache.values();
   }
 
@@ -240,19 +240,19 @@ export class LRUCache<K extends string | number | symbol> {
 /**
  * Pre-configured caches for common use cases
  */
-export class StrategyCache extends LRUCache<string> {
+export class StrategyCache extends LRUCache<string, unknown> {
   constructor() {
     super({ maxSize: 20 * 1024 * 1024, ttl: 30 * 60 * 1000 }); // 20MB, 30min TTL
   }
 }
 
-export class MarketDataCache extends LRUCache<string> {
+export class MarketDataCache extends LRUCache<string, unknown> {
   constructor() {
     super({ maxSize: 10 * 1024 * 1024, ttl: 2 * 60 * 1000 }); // 10MB, 2min TTL
   }
 }
 
-export class AgentContextCache extends LRUCache<string> {
+export class AgentContextCache extends LRUCache<string, unknown> {
   constructor() {
     super({ maxSize: 15 * 1024 * 1024, ttl: 10 * 60 * 1000 }); // 15MB, 10min TTL
   }

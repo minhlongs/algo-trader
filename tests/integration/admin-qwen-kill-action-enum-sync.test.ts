@@ -7,7 +7,7 @@
  * must stay in lockstep:
  *
  *   1. **Metric declaration** — `qwenAdminKillActionsTotal` Counter in
- *      `src/platform/middleware/prometheus-metrics.ts` (labelNames: ['action'] + help
+ *      `src/platform/middleware/prometheus-registry.ts` (labelNames: ['action'] + help
  *      text documenting the `/kill|unkill` operator endpoints).
  *   2. **Route emission sites** — `qwenAdminKillActionsTotal.inc({ action: 'X' })`
  *      calls in `src/platform/api/routes/admin-qwen-routes.ts` (one per toggle
@@ -57,7 +57,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-registry.ts');
 const ROUTES_PATH = resolve(REPO_ROOT, 'src/platform/api/routes/admin-qwen-routes.ts');
 const ROUTE_TEST_PATH = resolve(
   REPO_ROOT,

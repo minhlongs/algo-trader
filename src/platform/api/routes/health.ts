@@ -71,6 +71,23 @@ healthRouter.get('/', async (req: Request, res: Response) => {
     killSwitchActive: isKillSwitchActive(),
   };
 
+  // --- Disk usage (optional — not available in all Node.js runtimes) ---
+  let diskUsage: { total: number; used: number; free: number } | undefined;
+  try {
+    const diskFn = (process as unknown as Record<string, unknown>)['diskUsage'];
+    if (typeof diskFn === 'function') {
+      diskUsage = (diskFn as () => { total: number; used: number; free: number })();
+    }
+  } catch {
+    // diskUsage not available in this runtime — skip gracefully
+  }
+
+  // --- Risk engine ---
+  const riskEngineEnabled = process.env['ENABLE_RISK_ENGINE'] === 'true';
+
+  // --- Kronos (AI Validation) ---
+  const kronosEnabled = process.env['AI_VALIDATION_ENABLED'] === 'true';
+
   // --- Memory snapshot ---
   const mem = process.memoryUsage();
   const memMb = {
@@ -79,8 +96,9 @@ healthRouter.get('/', async (req: Request, res: Response) => {
     heapTotal: +(mem.heapTotal / 1024 / 1024).toFixed(1),
   };
 
-  // Overall status: healthy only when redis is ok (postgres is optional)
-  const overallStatus = redisStatus === 'ok' ? 'healthy' : 'unhealthy';
+  // Overall status: healthy only when redis AND postgres are ok
+  // Both are required for production — PG down means writes/reads fail silently
+  const overallStatus = redisStatus === 'ok' && postgresStatus === 'ok' ? 'healthy' : 'unhealthy';
   const httpCode = overallStatus === 'healthy' ? 200 : 503;
 
   return res.status(httpCode).json({
@@ -95,6 +113,9 @@ healthRouter.get('/', async (req: Request, res: Response) => {
       ...(redisError ? { redisError } : {}),
     },
     qwen,
+    ...(diskUsage ? { disk: diskUsage } : {}),
+    riskEngine: riskEngineEnabled,
+    kronos: kronosEnabled,
     memory: memMb,
     timestamp: Date.now(),
   });

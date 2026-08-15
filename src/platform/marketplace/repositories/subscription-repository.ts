@@ -6,6 +6,9 @@
 import { query } from '../../../shared/db/postgres-client';
 import type { IMarketplaceSubscription, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
+/** PostgreSQL query parameter types */
+type SqlParam = string | number | boolean | null | Record<string, unknown>;
+
 export interface SubscriptionFilters {
   tenantId?: string;
   strategyId?: string;
@@ -34,7 +37,7 @@ export class SubscriptionRepository {
     sort?: { field: string; order: SortOrder },
   ): Promise<PaginatedResult<IMarketplaceSubscription>> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     if (filters?.tenantId) { conditions.push(`tenant_id = $${idx++}`); params.push(filters.tenantId); }
@@ -88,7 +91,7 @@ export class SubscriptionRepository {
 
   async update(id: string, data: Partial<IMarketplaceSubscription>): Promise<IMarketplaceSubscription | null> {
     const fields: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
 
     const columnMap: Record<string, string> = {
@@ -102,7 +105,7 @@ export class SubscriptionRepository {
       if ((data as Record<string, unknown>)[key] !== undefined) {
         fields.push(`${column} = $${idx++}`);
         const val = (data as Record<string, unknown>)[key];
-        params.push(key === 'customRiskLimits' ? JSON.stringify(val) : val);
+        params.push(key === 'customRiskLimits' ? JSON.stringify(val) : val as SqlParam);
       }
     }
 
@@ -124,7 +127,7 @@ export class SubscriptionRepository {
 
   async count(filters?: { tenantId?: string; strategyId?: string; status?: string }): Promise<number> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
     if (filters?.tenantId) { conditions.push(`tenant_id = $${idx++}`); params.push(filters.tenantId); }
     if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }

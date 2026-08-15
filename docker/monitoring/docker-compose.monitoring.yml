@@ -42,6 +42,57 @@ services:
     networks:
       - algo-net
 
+  # ── Backing-Service Prometheus Exporters ───────────────────────────────────────
+
+  postgres-exporter:
+    image: wrouesnel/postgres_exporter:v0.16.0
+    container_name: algo-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: postgresql://postgres:${POSTGRES_PASSWORD:-changeme}@postgres:5432/algo_trader?sslmode=disable
+    ports:
+      - '9187:9187'
+    networks:
+      - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  nats-exporter:
+    image: natsio/prometheus-nats-exporter:0.16.0
+    container_name: algo-nats-exporter
+    restart: unless-stopped
+    command:
+      - '-connz'
+      - '-routez'
+      - '-subz'
+      - '-varz'
+      - '-http_port=7777'
+    ports:
+      - '7777:7777'
+    networks:
+      - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.63.0
+    container_name: algo-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - '9121:9121'
+    networks:
+      - algo-net
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
 # Use the same network as base compose
 networks:
   algo-net:

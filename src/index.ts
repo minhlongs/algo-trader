@@ -8,7 +8,7 @@ import { Command } from 'commander';
 import { initSentry } from './utils/sentry-init';
 import { initTracing } from './utils/tracing';
 import { runMigrations } from './db/migration-runner';
-import { KronosStrategy } from './strategies/kronos-strategy';
+import { KronosStrategy } from './desk/strategies/kronos-strategy';
 import { runSetupWizard } from './commands/setup-wizard';
 import { runQuickstart } from './commands/quickstart';
 import { runActivateCommand } from './commands/activate-license';

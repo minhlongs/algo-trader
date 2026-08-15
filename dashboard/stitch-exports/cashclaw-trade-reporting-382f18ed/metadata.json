@@ -1,7 +1,0 @@
-{
-  "screenId": "382f18ed99754c94b05d719b51b6968a",
-  "title": "CashClaw Trade Reporting",
-  "projectId": "1591913176034048049",
-  "name": "reporting",
-  "prompt": "Trade reporting for CashClaw. Dark theme, cyan accents. Summary stats: Total PnL, Win Rate, Avg Size, Total Trades. Paginated trade table (date, pair, side, size, PnL). CSV export. Date filters."
-}

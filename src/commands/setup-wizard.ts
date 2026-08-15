@@ -1,3 +1,4 @@
-export function runSetupWizard(): void {
-  console.log('Setup wizard - not yet implemented');
-}
+/**
+ * Re-export: real implementation at src/desk/commands/setup-wizard.ts
+ */
+export { runSetupWizard } from '../desk/commands/setup-wizard';

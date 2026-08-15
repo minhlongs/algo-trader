@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 
 // Set required env before any imports
 process.env.AUDIT_HMAC_KEY_v1 = 'a'.repeat(64); // 64 hex chars = 32 bytes
@@ -39,6 +39,15 @@ const mockRedis = {
 };
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
+
+// Mock auth-server to prevent pg.Pool creation during ApiServer initialization
+vi.mock('../auth/auth-server', () => ({
+  auth: { handler: vi.fn() },
+}));
+
+vi.mock('better-auth/node', () => ({
+  toNodeHandler: () => (_req: unknown, _res: unknown) => {},
+}));
 
 vi.mock('../../middleware/feature-gate', () => ({
   requireTier: () => (_req, _res, next) => next(),
@@ -185,6 +194,8 @@ interface MockRes {
   body: unknown;
   status(code: number): MockRes;
   json(data: unknown): void;
+  send(data: unknown): MockRes;
+  writeHead(code: number): MockRes;
   setHeader(_key: string, _value: string): void;
   removeHeader(_key: string): void;
   getHeader(_key: string): string | undefined;
@@ -201,6 +212,15 @@ function createMockRes(onComplete: () => void): MockRes {
     json(data: unknown) {
       res.body = data;
       onComplete();
+    },
+    send(data: unknown) {
+      res.body = data;
+      onComplete();
+      return res;
+    },
+    writeHead(code: number) {
+      res.statusCode = code;
+      return res;
     },
     setHeader() {},
     removeHeader() {},
@@ -278,8 +298,13 @@ describe('API Server', () => {
     process.env.ADMIN_API_KEY = TEST_ADMIN_KEY;
   });
 
+  afterAll(() => {
+    // Reset module-level app to avoid state leaking between test files
+    app = null;
+  });
+
   describe('Health Endpoints', () => {
-    it('GET /health should return healthy status', async () => {
+    it('GET /health should return healthy status', { timeout: 15_000 }, async () => {
       const { status, body } = await testRequest('GET', '/health', {
         headers: { 'x-request-id': TEST_REQUEST_ID },
       });
@@ -296,7 +321,7 @@ describe('API Server', () => {
       expect(json.paperTrading).toBeDefined();
     });
 
-    it('GET /health exposes Qwen rollback booleans', async () => {
+    it('GET /health exposes fable-5 rollback booleans', { timeout: 15_000 }, async () => {
       const { status, body } = await testRequest('GET', '/health', {
         headers: { 'x-request-id': TEST_REQUEST_ID },
       });
@@ -308,7 +333,7 @@ describe('API Server', () => {
       expect(typeof (json.qwen as Record<string, boolean>).killSwitchActive).toBe('boolean');
     });
 
-    it('GET /health/metrics should return system metrics', async () => {
+    it('GET /health/metrics should return system metrics', { timeout: 15_000 }, async () => {
       const { status, body } = await testRequest('GET', '/health/metrics', {
         headers: { 'x-request-id': TEST_REQUEST_ID },
       });

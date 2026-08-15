@@ -129,7 +129,7 @@ describe('Platform API Contract', () => {
     });
 
     it('prometheus metrics middleware exists', () => {
-      const pmFile = join(SRC_ROOT, 'platform', 'middleware', 'prometheus-metrics.ts');
+      const pmFile = join(SRC_ROOT, 'platform', 'middleware', 'prometheus-registry.ts');
       expect(existsSync(pmFile), 'prometheus metrics middleware must exist').toBe(true);
     });
   });

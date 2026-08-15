@@ -284,7 +284,7 @@ export interface IStripeWebhookEvent {
   object: 'event';
   type: string;
   data: {
-    object: any;
+    object: Record<string, unknown>;
   };
 }
 

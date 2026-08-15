@@ -1,85 +1,67 @@
 /**
- * Marketplace Subscription Helpers
+ * Marketplace Subscription Routes — Request helpers
  *
- * Shared schemas and helper functions for marketplace subscription routes.
- * Extracted to keep route files under 200 lines.
+ * Lightweight helpers for extracting and coercing request parameters.
+ * All functions are pure (no side-effects) and safe to call with any input.
  */
-import { Request } from 'express';
-import { z } from 'zod';
+import type { Request } from 'express';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Validation Schemas
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export const subscribeSchema = z.object({
-  listingId: z.string().min(1),
-  allocationPercent: z.number().int().min(1).max(100),
-  customRiskLimits: z.object({
-    maxDailyLossPercent: z.number().optional(),
-    maxPositionSizePercent: z.number().optional(),
-    stopLossPercent: z.number().optional(),
-    maxConcurrentTrades: z.number().optional(),
-  }).optional(),
-});
-
-export const updateSubscriptionSchema = z.object({
-  action: z.enum(['pause', 'resume', 'cancel']),
-});
-
-export const subscriptionFilterSchema = z.object({
-  status: z.enum(['active', 'paused', 'cancelled', 'suspended']).optional(),
-  page: z.number().int().min(1).optional(),
-  limit: z.number().int().min(1).max(100).optional(),
-});
-
-export const executeSchema = z.object({
-  strategyId: z.string().min(1),
-  marketPayload: z.record(z.string(), z.unknown()).default({}),
-});
-
-export const executeSingleSchema = z.object({
-  marketPayload: z.record(z.string(), z.unknown()).default({}),
-});
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Helper Functions
-// ═══════════════════════════════════════════════════════════════════════════════
-
+/**
+ * Extract tenantId from the authenticated request.
+ * Tenant context is injected by auth middleware.
+ */
 export function getTenantId(req: Request): string {
-  const tenantId = (req as any).tenant?.id || (req as any).user?.tenantId;
+  const tenant = (req as any).tenant as { id: string } | undefined;
+  const tenantId = tenant?.id ?? (req as any).tenantId as string | undefined;
   if (!tenantId) throw new Error('Unauthorized: No tenant context');
-  return String(tenantId);
+  return tenantId;
 }
 
+/**
+ * Extract userId from the authenticated request.
+ * User context is injected by auth middleware.
+ */
 export function getUserId(req: Request): string {
-  const userId = (req as any).user?.id || (req as any).apiKey?.userId;
+  const user = (req as any).user as { id: string } | undefined;
+  const userId = user?.id ?? (req as any).userId as string | undefined;
   if (!userId) throw new Error('Unauthorized: No user context');
-  return String(userId);
+  return userId;
 }
 
-export function getQueryString(value: unknown, defaultValue: string = ''): string {
-  if (value === undefined || value === null) return defaultValue;
-  if (Array.isArray(value)) {
-    const first = value[0];
-    return typeof first === 'string' ? first : String(first);
+/**
+ * Safely coerce an unknown value to a trimmed string.
+ * Returns `defaultValue` when input is not a string or is empty.
+ */
+export function getQueryString(
+  value: unknown,
+  defaultValue: string = '',
+): string {
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value.trim();
   }
-  if (typeof value === 'string') return value;
-  return String(value);
-}
-
-export function getQueryNumber(value: unknown, defaultValue: number = 0): number {
-  if (value === undefined || value === null) return defaultValue;
-  if (Array.isArray(value)) {
-    const first = value[0];
-    if (typeof first === 'string') return parseInt(first, 10) || defaultValue;
-    if (typeof first === 'number') return first;
-    return defaultValue;
-  }
-  if (typeof value === 'string') return parseInt(value, 10) || defaultValue;
-  if (typeof value === 'number') return value;
   return defaultValue;
 }
 
+/**
+ * Safely coerce an unknown value to a non-negative integer.
+ * Returns `defaultValue` when coercion fails or result is negative.
+ */
+export function getQueryNumber(
+  value: unknown,
+  defaultValue: number = 0,
+): number {
+  const n = Number(value);
+  if (Number.isFinite(n) && n >= 0) return Math.floor(n);
+  return defaultValue;
+}
+
+/**
+ * Check if the current request is from an admin user.
+ * Admin status is set by auth middleware on the request object.
+ */
 export function isAdmin(req: Request): boolean {
-  return (req as any).user?.role === 'admin' || (req as any).apiKey?.isAdmin === true;
+  return (
+    (req as any).user?.role === 'admin' ||
+    (req as any).apiKey?.isAdmin === true
+  );
 }

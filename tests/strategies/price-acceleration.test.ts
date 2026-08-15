@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type PriceAccelerationConfig,
   type PriceAccelerationDeps,
-} from '../../src/desk/strategies/polymarket/price-acceleration';
+} from '../../src/desk/strategies/polymarket/price-acceleration-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

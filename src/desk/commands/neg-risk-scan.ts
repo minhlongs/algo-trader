@@ -20,7 +20,7 @@ export async function runNegRiskScan(options: {
   maxOpportunitySizeUsdc: number;
 }): Promise<void> {
   const { threshold, minVolumeUsdc } = options;
-  console.log(`Scanning for negative risk opportunities (threshold=${threshold}, minVolume=$${minVolumeUsdc})...\n`);
+  logger.info(`Scanning for negative risk opportunities (threshold=${threshold}, minVolume=$${minVolumeUsdc})...\n`);
 
   // Fetch markets from Gamma API
   const gammaUrl = 'https://gamma-api.polymarket.com/markets?closed=false&limit=200';
@@ -84,12 +84,11 @@ export async function runNegRiskScan(options: {
   // Sort by locked profit descending
   opportunities.sort((a, b) => b.lockedProfit - a.lockedProfit);
 
-  console.log(`Found ${opportunities.length} opportunities:\n`);
+  logger.info(`Found ${opportunities.length} opportunities:\n`);
   for (const opp of opportunities.slice(0, 20)) {
-    console.log(`[${opp.conditionId}] ${opp.market.substring(0, 60)}`);
-    console.log(`  YES ask: ${opp.yesAsk.toFixed(4)} | NO ask: ${opp.noAsk.toFixed(4)}`);
-    console.log(`  Total cost: ${opp.totalCost.toFixed(4)} | Locked profit: ${opp.lockedProfit.toFixed(4)}`);
-    console.log();
+    logger.info(`[${opp.conditionId}] ${opp.market.substring(0, 60)}`);
+    logger.info(`  YES ask: ${opp.yesAsk.toFixed(4)} | NO ask: ${opp.noAsk.toFixed(4)}`);
+    logger.info(`  Total cost: ${opp.totalCost.toFixed(4)} | Locked profit: ${opp.lockedProfit.toFixed(4)}`);
   }
 }
 
@@ -110,7 +109,7 @@ if (require.main === module) {
           maxOpportunitySizeUsdc: parseFloat(opts.maxSize),
         });
       } catch (err) {
-        console.error('Error:', (err as Error).message);
+        logger.error('Error:', (err as Error).message);
         process.exit(1);
       }
     });

@@ -85,110 +85,17 @@ This ensures packages installed by `install.sh` (google-genai, pypdf, etc.) are 
 - After modularization, continue with main task
 - When not to modularize: Markdown files, plain text files, bash scripts, configuration files, environment variables files, etc.
 
-## Documentation Management
-
-We keep all important docs in `./docs` folder and keep updating them, structure like below:
-
-```
-./docs
-├── project-overview-pdr.md
-├── code-standards.md
-├── codebase-summary.md
-├── design-guidelines.md
-├── deployment-guide.md
-├── system-architecture.md
-└── project-roadmap.md
-```
-
-**IMPORTANT:** *MUST READ* and *MUST COMPLY* all *INSTRUCTIONS* in project `./CLAUDE.md`, especially *WORKFLOWS* section is *CRITICALLY IMPORTANT*, this rule is *MANDATORY. NON-NEGOTIABLE. NO EXCEPTIONS. MUST REMEMBER AT ALL TIMES!!!*
-
 ## MekongMind Harness Integration
 
-algo-trader integrates with **me-deep-wrapper** (MekongMind Solo Company Orchestrator) for goal-driven development workflow.
+See `.claude/skills/mekong-harness/SKILL.md` for full documentation (commands, pre-work/post-work protocol, department routing, me-deep-wrapper paths).
 
-### Quick Reference
-
-| Command | Action |
-|---------|--------|
-| `/mekong goal <text>` | Create/show goal |
-| `/mekong status` | Goal + gate + bottleneck |
-| `/mekong step <N>` | Execute step N |
-| `/mekong solo <dept>` | Run department |
-| `/mekong route <cmd>` | Route command to dept |
-| `/mekong gates` | Verify gate artifacts |
-| `/mekong bottlenecks` | Next bottleneck |
-| `/mekong allow <cmd>` | Check command allowed |
-| `/mekong artifact <g> <d>` | Record gate evidence |
-| `/mekong revenue` | Revenue operations |
-
-### Pre-Work Protocol
-
-1. `/mekong status` — shows active goal, gate, bottleneck
-2. `/mekong gates` — ensure current gate has evidence
-3. `/mekong allow <command>` — verify command allowed at current gate
-
-### Post-Work Protocol
-
-1. `/mekong artifact <gate> <dept> "<note>"` — record evidence
-2. `/mekong gates` — verify gate passes
-
-### Department Routing
-
-| Task | Department | Claude Action |
-|------|-----------|---------------|
-| Build feature | engineering-factory | `/cook` |
-| Code review | quality-compliance | `/review` |
-| Deploy | platform-operations | `/ship` |
-| Research | market-intelligence | `/research` |
-
-### me-deep-wrapper Paths
-
-- CLI: `me` (shell function → `/Users/macbook/Documents/me-deep-wrapper/bin/me`)
-- Repo: `/Users/macbook/Documents/me-deep-wrapper/`
-- State: `state/goal-*.md`
-- SOPs: `sops/departments/`
-
-See `.claude/skills/mekong-harness/SKILL.md` for full skill documentation.
-
-## Harness: algo-trader mekong integration
-
-**Goal:** Bridge algo-trader with me-deep-wrapper (MekongMind Solo Company Orchestrator) for goal-driven development workflow. Route commands, manage goal state, and coordinate 10 domain-specific agents through department SOP gates.
-
-**Trigger:** Harness operations → use `mekong-harness` skill. Simple questions about goal status → direct `me` CLI. Agent/skill management → use `harness` skill from me-deep-wrapper.
-
-**History:**
-
-| Date | Change | Target | Reason |
-|------|--------|---------|--------|
-| 2026-06-08 | Initial harness build | All | Bootstrap --auto --parallel |
+**Trigger:** Harness operations → use `mekong-harness` skill. Goal status → direct `me` CLI.
 
 ## Production Deployment
 
-**DO NOT** deploy to production without:
-- [ ] All scaling phases complete (1-11)
-- [ ] Integration tests passing (`npx vitest run tests/integration`)
-- [ ] Load test 12k RPS validated (see `scripts/load-test-sharding.ts`)
-- [ ] ME IDEA PSF gate approved (`/mekong gates`)
-- [ ] On-call engineer notified
+**DO NOT** deploy without: scaling phases 1-11 complete, integration tests passing, load test 12k RPS validated, ME IDEA PSF gate approved (`/mekong gates`), on-call engineer notified.
 
-### Deployment Commands
-
-```bash
-# 1. Final integration check
-node scripts/final-integration-check.js
-
-# 2. Deploy regions sequentially
-./scripts/deploy-region.sh us-east
-./scripts/deploy-region.sh eu-central
-./scripts/deploy-region.sh ap-southeast
-
-# 3. Verify multi-region health
-./scripts/verify-multi-region.sh
-
-# 4. Post-deployment smoke tests
-curl https://algo-trader.workers.dev/api/health
-curl https://us-east.algo-trader.workers.dev/api/v1/shard/ring | jq
-```
+See `scripts/` for deploy commands: `deploy-region.sh`, `final-integration-check.js`, `verify-multi-region.sh`, `apply-migrations.sh`.
 
 ### Rollback (L1 Kill Switch)
 
@@ -201,17 +108,3 @@ curl -X POST https://algo-trader.workers.dev/api/admin/rollback/kill/MULTI_REGIO
 curl -X POST https://algo-trader.workers.dev/api/admin/rollback/kill/SHARDING \
   -H "Authorization: Bearer $ADMIN_TOKEN"
 ```
-
-### Post-Deployment
-
-1. Monitor Grafana dashboards for 2 hours
-2. Verify SLA: p95 <100ms, error rate <1%, memory <115MB
-3. Update goal state: `/mekong artifact scale-ready platform-operations "Production deployed"`
-4. Document any incidents in post-mortem
-
-### References
-
-- Production Rollout Plan: `docs/production-rollout-plan.md`
-- Load Test Scripts: `scripts/load-test-*.ts`
-- CI/CD Workflow: `.github/workflows/ci.yml`
-- Runbook Index: `docs/runbook-index.md`

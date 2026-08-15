@@ -90,7 +90,7 @@ const kellyHistorySchema = z.object({
 // ── Feature flag check ────────────────────────────────────────────────────────
 
 function checkEnabled(req: Request, res: Response, next: NextFunction) {
-  if (!process.env[RISK_FEATURE_FLAG]) {
+  if (process.env[RISK_FEATURE_FLAG] !== 'true') {
     return res.status(503).json({
       error: 'Risk engine disabled',
       flag: RISK_FEATURE_FLAG,

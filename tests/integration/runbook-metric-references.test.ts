@@ -4,7 +4,7 @@
  * Operator runbooks under `docs/runbooks/*.md` reference Prometheus metric
  * names (e.g. `algo_trader_qwen_drawdown_auto_disabled`) in their "What
  * happened" / PromQL / verification sections. If a metric is renamed or
- * retired in `src/platform/middleware/prometheus-metrics.ts` without updating the
+ * retired in `src/platform/middleware/prometheus-registry.ts` without updating the
  * runbook, an operator hitting Grafana at 3am chases a label that no longer
  * emits. This test asserts every runbook-referenced `algo_trader_qwen_*`
  * identifier resolves to an actual metric `name:` declared in the source.
@@ -24,7 +24,7 @@ import { readFileSync, readdirSync } from 'fs';
 import { resolve, join } from 'path';
 
 const RUNBOOK_DIR = resolve(__dirname, '../../docs/runbooks');
-const METRICS_PATH = resolve(__dirname, '../../src/platform/middleware/prometheus-metrics.ts');
+const METRICS_PATH = resolve(__dirname, '../../src/platform/middleware/prometheus-registry.ts');
 
 const METRIC_PREFIX = 'algo_trader_qwen_';
 const IDENT_RE = new RegExp(`\\b${METRIC_PREFIX}[a-z][a-z0-9_]*\\b`, 'g');
@@ -84,14 +84,14 @@ describe('runbook metric references — docs↔code sync', () => {
     ).toBeGreaterThanOrEqual(5);
   });
 
-  it('parses at least 10 declared metric names from prometheus-metrics.ts (sanity floor)', () => {
+  it('parses at least 10 declared metric names from prometheus-registry.ts (sanity floor)', () => {
     expect(
       declared.size,
-      `prometheus-metrics.ts yielded ${declared.size} declarations — name-field regex likely stale`
+      `prometheus-registry.ts yielded ${declared.size} declarations — name-field regex likely stale`
     ).toBeGreaterThanOrEqual(10);
   });
 
-  it('every runbook-referenced metric resolves to a declaration in prometheus-metrics.ts', () => {
+  it('every runbook-referenced metric resolves to a declaration in prometheus-registry.ts', () => {
     const dangling: string[] = [];
     for (const [file, refs] of refsByFile) {
       for (const r of refs) {

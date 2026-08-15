@@ -1,40 +1,24 @@
 /**
- * Augmented Signal Pipeline
- * Intercepts raw strategy signals, routes them through AI validation (DeepSeek),
- * then publishes validated signals to execution or rejected signals to audit log.
- *
- * Subscribes to:
- *   signal.simple-arb.detected
- *   signal.cross-market.candidate
- *   signal.delta-neutral.candidate
- *
- * Publishes to:
- *   signal.validated   — passed AI gate (confidence > MIN_CONFIDENCE)
- *   signal.rejected    — failed AI gate or below confidence threshold
- *
- * Env:
- *   AI_VALIDATION_ENABLED=false  → bypass AI, pass all signals through (for backtesting speed)
- *   AI_VALIDATION_MIN_CONFIDENCE → minimum confidence score (default 0.7)
+ * Augmented Signal Pipeline — fusion + AI validation gate.
+ * Flow: raw signal → adaptive fusion → AI validation → validated/rejected
+ * Env: AI_VALIDATION_ENABLED, AI_VALIDATION_MIN_CONFIDENCE
  */
 
 import { validateSignal } from '../intelligence/signal-validator';
 import type { SignalCandidate, ValidationResult } from '../intelligence/signal-validator';
+import { runAdaptiveFusion, bufferSignal, toSignalInput } from './signal-fusion-buffer';
+import { enrichWithKronos } from './kronos-enrichment';
 import { getMessageBus } from '../../shared/messaging/index';
 import { Topics } from '../../shared/messaging/topic-schema';
 import { logger } from '../../shared/utils/logger';
 import type { MessageEnvelope } from '../../shared/messaging/message-bus-interface';
 
-// Topics produced by this pipeline (not in Topics enum — added here as constants)
 const TOPIC_SIGNAL_VALIDATED = 'signal.validated';
 const TOPIC_SIGNAL_REJECTED = 'signal.rejected';
 
-/** Minimum AI confidence required to pass a signal to execution */
 const MIN_CONFIDENCE = Number(process.env.AI_VALIDATION_MIN_CONFIDENCE ?? 0.7);
-
-/** When false, all signals pass through without AI validation (for backtesting speed) */
 const AI_VALIDATION_ENABLED = process.env.AI_VALIDATION_ENABLED !== 'false';
 
-/** Shape of raw signal data arriving on NATS topics */
 interface RawSignalData {
   signalType?: string;
   markets?: Array<{
@@ -48,14 +32,12 @@ interface RawSignalData {
   [key: string]: unknown;
 }
 
-/** Envelope published to signal.validated */
 interface ValidatedSignalEnvelope {
   original: RawSignalData;
   validation: ValidationResult;
   passedAt: number;
 }
 
-/** Envelope published to signal.rejected */
 interface RejectedSignalEnvelope {
   original: RawSignalData;
   validation: ValidationResult;
@@ -79,7 +61,7 @@ function toSignalCandidate(raw: RawSignalData, topic: string): SignalCandidate {
   };
 }
 
-/** Process a single raw signal through the AI validation gate */
+/** Process a single raw signal through fusion + AI validation gate */
 async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<void> {
   const { topic, data: raw, source } = envelope;
 
@@ -105,6 +87,25 @@ async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<
   }
 
   const candidate = toSignalCandidate(raw, topic);
+
+  // Adaptive fusion — enrich signal with consensus data
+  const currentInput = toSignalInput(candidate.signalType, raw.expectedEdge ?? 0);
+  const fusionResult = runAdaptiveFusion(currentInput);
+
+  if (fusionResult) {
+    const fusionContext = [
+      `[Fusion: direction=${fusionResult.fusedDirection} confidence=${fusionResult.fusedConfidence.toFixed(2)}]`,
+      `[Consensus: ${fusionResult.fusedReasoning}]`,
+    ].join(' ');
+    candidate.reasoning = `${fusionContext} ${candidate.reasoning}`;
+  }
+
+  bufferSignal(toSignalInput(candidate.signalType, raw.expectedEdge ?? 0));
+
+  // Kronos sidecar enrichment (when available)
+  await enrichWithKronos(candidate);
+
+  // AI validation gate
   let validation: ValidationResult;
 
   try {
@@ -138,6 +139,8 @@ async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<
       signalType: candidate.signalType,
       edge: candidate.expectedEdge,
       confidence: validation.confidence,
+      fusionDirection: fusionResult?.fusedDirection,
+      fusionConfidence: fusionResult?.fusedConfidence,
     });
   } else {
     const reason: RejectedSignalEnvelope['reason'] = !validation.valid ? 'ai-rejected' : 'low-confidence';
@@ -153,6 +156,7 @@ async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<
       edge: candidate.expectedEdge,
       confidence: validation.confidence,
       reason,
+      fusionDirection: fusionResult?.fusedDirection,
       aiReasoning: validation.reasoning,
       risks: validation.risks,
     });
@@ -161,7 +165,6 @@ async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<
 
 type Unsubscriber = () => void;
 
-/** Start the augmented signal pipeline — subscribe to all signal topics */
 export async function startAugmentedSignalPipeline(): Promise<() => Promise<void>> {
   const bus = getMessageBus();
   const unsubs: Unsubscriber[] = [];
@@ -180,7 +183,6 @@ export async function startAugmentedSignalPipeline(): Promise<() => Promise<void
 
   for (const topic of signalTopics) {
     const unsub = await bus.subscribe<RawSignalData>(topic, (envelope) => {
-      // Fire-and-forget per signal — errors are caught inside processSignal
       processSignal(envelope).catch(err => {
         logger.error('[AugmentedPipeline] Unhandled error in processSignal', { topic, err });
       });
@@ -190,9 +192,8 @@ export async function startAugmentedSignalPipeline(): Promise<() => Promise<void
 
   logger.info('[AugmentedPipeline] Subscribed to all signal topics');
 
-  /** Call this to gracefully unsubscribe from all signal topics */
   return async function stopAugmentedSignalPipeline(): Promise<void> {
-    logger.info('[AugmentedPipeline] Stopping subscriptions');
+    logger.info('[AugmentedPipeline] Stopping');
     for (const unsub of unsubs) {
       try { unsub(); } catch { /* ignore */ }
     }

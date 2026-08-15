@@ -4,13 +4,23 @@
  */
 
 export {
-  RedisRateLimiter,
-  rateLimiter,
-  rateLimitMiddleware,
   TIER_RATE_LIMITS,
   DEFAULT_TIER_LIMITS,
+  resolveLimits,
   type TierRateLimits,
+} from './tier-config';
+
+export {
+  RedisRateLimiter,
+  rateLimiter,
   type RateLimitResult,
   type RedisRateLimiterOptions,
-  type RateLimitMiddlewareOptions,
+  type CheckRateLimitOptions,
 } from './redis-rate-limiter';
+
+export {
+  rateLimitMiddleware,
+  type RateLimitMiddlewareOptions,
+} from './express-middleware';
+
+export { validateKeyPrefix } from './key-validation';

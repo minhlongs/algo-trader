@@ -83,7 +83,7 @@ const WORKFLOWS_DIR = resolve(REPO_ROOT, '.github/workflows');
 const FORBIDDEN_REFS = new Set<string>(['main', 'master', 'latest']);
 
 /** Expected number of Gate jobs in ci.yml. 7-Gate doctrine from docs/ai-first-enforcement-gates.md. */
-const EXPECTED_GATE_COUNT = 7;
+const EXPECTED_GATE_COUNT = 8;
 
 /** Expected runner — ubuntu-latest for reproducibility + tool consistency. */
 const EXPECTED_RUNNER = 'ubuntu-latest';

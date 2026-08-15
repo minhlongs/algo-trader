@@ -5,11 +5,13 @@ import {
   calcAvgPairwiseCorrelation,
   detectHerdPeak,
   calcHerdDirection,
+} from '../../src/desk/strategies/polymarket/herd-behavior-math-helpers';
+import {
   createHerdBehaviorDetectorTick,
   DEFAULT_CONFIG,
   type HerdBehaviorDetectorConfig,
   type HerdBehaviorDetectorDeps,
-} from '../../src/desk/strategies/polymarket/herd-behavior-detector';
+} from '../../src/desk/strategies/polymarket/herd-behavior-detector-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

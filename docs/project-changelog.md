@@ -1,5 +1,313 @@
 # Project Changelog - Algo Trader
 
+## [3.1.12] - 2026-08-14
+
+### Fixed - Sprint 10: Type Safety & any Elimination (75% reduction)
+
+- **`any` type cleanup** — reduced production `any` types from 20 to 5 (75% reduction) across 25 source files
+- **Shared utilities** — LRU cache generic refactor (`LRUCache<K,V>` instead of `LRUCache<K>` with `any` values), memory pool `parse()` → `unknown[]`, placeholder factory typed
+- **Performance monitoring** — V8 `PerformanceMemory` interface declared, `memoryRssGauge` → `Gauge<string>` from prom-client, `gc` call properly typed
+- **Database clients** — Both `src/db/postgres-client.ts` and `src/shared/db/postgres-client.ts`: `params?: any[]` → `unknown[]`
+- **Durable objects** — `shard-manager.ts` and `strategy-shard.ts` Env interface: `any` → `unknown` with proper casts
+- **Worker layer** — `connection-pool.ts`: added `LegacyQueue` interface, type guard for `response.finished`; `openclaw-gateway/client.ts`: `input: any` → `Record<string, unknown>`
+- **Queue system** — `agent-coordinator.ts` and `agent-queue-manager.ts`: task/result types → `Record<string, unknown>`, removed unnecessary `as any` cast on `job.failedReason`
+- **Compliance** — OFAC sanctions screening: env-var driven (lazy-loaded), fail-open when empty, updated compliance-routes.test.ts for new behavior
+- **Rollback** — `tiered-rollback-controller.ts`: `envelope: any` → `MessageEnvelope` (imported from messaging interface)
+- **Marketplace** — `vetting.service.ts`: map callback typed with `VettingJobRecord`, `marketplace-payout-scheduler.ts`: type improvements
+- **Desk CLI** — `cashclaw-trade-commands.ts` and `cashclaw-trade-run-handler.ts`: type narrowing for trade execution
+- **Deferred (YAGNI)**: 3 strategy constructor contravariance `any` (registry files), 1 HTTP/2 complex structure (polymarket-adapter), 1 JSDoc comment
+- TypeScript: 0 errors; all 4470 tests passing
+
+## [3.1.11] - 2026-08-14
+
+### Fixed - Sprint 9: Risk/Compliance/Testing Quality (4 tracks)
+
+- **Dead code removal** — deleted `src/desk/core/risk-manager.ts` (21-line stub, zero imports; actual risk logic lives in `src/desk/risk/risk-gate-manager.ts`)
+- **Backup file cleanup** — removed 4 orphaned `.bak` files (`live-trading-orchestrator.ts.bak`, `clob-client.d.ts.bak`, `tenant-audit-log.ts.bak`, `prometheus-metrics.ts.bak`)
+- **Trading pipeline tests** — created `tests/unit/trading-pipeline.test.ts` with 9 integration tests covering drawdown gating (HALT/HARD_STOP), TWAP threshold routing, wallet mutation sequencing, audit event emission, error propagation, and shared instance reuse
+- **OFAC screening config-driven** — replaced hardcoded `MOCK_OFAC_LIST` (3 hardcoded addresses) in `aml-rules.ts` with `OFAC_SANCTIONS_ADDRESSES` env var (comma-separated); empty list → fail-open with explicit logger warning
+- **Type safety improvements** — reduced `any` types in 3 files: `http2-connection-pool.ts` (→ `http2.ClientHttp2Stream`), `signal-tier-resolver.ts` (→ `RaaSGateLike` interface), `ws-adapter-redis.ts` (4 any→ concrete types)
+- TypeScript: 0 errors; all new tests passing
+
+## [3.1.10] - 2026-08-14
+
+### Fixed - Sprint 7: Polymarket Real SDK Integration & Dead Code Cleanup
+
+- **Real CLOB Client** — replaced stub `clob-client.ts` with real `@polymarket/clob-client` v1 SDK calls (getOrderBook, getPrice, getMidpoint); converts SDK string prices/sizes to numbers for strategy consumers
+- **Dead code removal** — deleted `src/deck/` (16 files, exact copy of `src/desk/polymarket/`, zero imports)
+- **Orphaned adapter deleted** — removed `clob-v2-adapter.ts` (broken v2 SDK, never integrated)
+- 4476/4476 tests passing, 0 TypeScript errors
+
+## [3.1.9] - 2026-08-14
+
+### Fixed - Sprint 6: Dead Code, CLI Wiring & Health Enhancements
+
+- **Dead code removal** — deleted `src/api/server.ts` (128-line orphaned server, 0 imports after Sprint 5 fix)
+- **CLI stubs wired** — `activate-license`, `quickstart`, `setup-wizard` now delegate to real implementations in `src/desk/commands/`
+- **Health route enhanced** — added uptime, disk usage, risk engine status, Kronos (AI validation) status to `/health` response
+- Stale comment removed from `admin-dna-routes.ts`
+- 4476/4476 tests passing, 0 TypeScript errors
+
+### Fixed - Sprint 5: Server Consolidation & Code Quality (5 tracks)
+
+- **CRITICAL: Production import path fix** — `src/app.ts` changed from `./api/server` (3 routes) to `./platform/api/server` (40+ routes); previously all Sprint 4 route wiring was dead code in production
+- **Dead code cleanup** — deleted 4 orphaned `src/lib/` modules (byok-key-custody, byok-kms-wrap, license-key-crypto, license-key-lifecycle); confirmed live import chain kept in place
+- **Stale files removed** — deleted `marketplace-subscription-helpers.ts` (never imported) and `admin-dna-routes.ts.bak` (stale backup)
+- **README rewrite** — 160-line professional README covering features, architecture, quick start, API routes, and development commands
+- **OpenAPI spec update** — 57 new endpoints documented across 40 path keys, 6 new tags, 7 new schemas; 1934 lines, 83 paths total
+- **Route integration tests** — 19 new tests in `tests/integration/route-sprint4-integration.test.ts` covering risk, positions, backtest, referral, and api-keys routes
+- TypeScript compilation: 0 errors
+- 4476/4476 tests passing (19 new tests)
+
+### Added - Sprint 4: Route Wiring Complete (25 routes)
+
+- **Core trading routes**: risk, positions, backtest, referral, api-keys → `/api/v1/risk`, `/api/positions`, `/api/backtest`, `/api/v1/referral`, `/api/v1/api-keys`
+- **Admin marketplace routes**: marketplace, disputes, revenue, vetting, DNA → `/api/v1/admin/marketplace/*`, `/api/v1/admin/dna/*`
+- **Marketplace routes**: insights, listings, management, community → `/api/v1/marketplace/*`
+- **Subscription analytics**: `/api/v1/subscriptions/analytics`
+- **Signal + audit + billing**: signalFeedRouter mounted (was dead import), ai-audit, billing, RUM → `/api/v1/ai-audit`, `/api/v1/billing`, `/api/v1/rum`
+- **Leaderboard**: mounted at `/api/v1/leaderboard` (was dead import)
+- TypeScript compilation: 0 errors
+- 4457/4457 tests passing (no regressions)
+
+### Fixed - Flaky Tests (2 resolved)
+
+- Health endpoint test (`api.test.ts`): mocked `auth-server` and `better-auth/node` to prevent `pg.Pool` creation at module load in test env
+- Orchestrator test (`orchestrator.test.ts`): corrected mock paths from `'../feeds/...'` to `'../../feeds/...'` to match actual import resolution from `__tests__/` subdirectory; fixed mock defaults and timing assertions
+- Flaky rate reduced from 2 to 0; full test suite: 4443/4443 passing
+
+### Added - Rate Limiter Load Tests
+
+- 4 load scenarios: rapid request flood, window expiry reset, multi-client isolation, response header validation
+- 13 rate limiter unit tests + 4 load tests = 17 total rate limiter tests
+
+### Added - DB Migration 004 (Compliance & KYC Tables)
+
+- `kyc_submissions`, `kyc_webhook_events`, `compliance_audit_log`, `compliance_transactions` — 4 tables, 16 indexes, all `IF NOT EXISTS`
+- Follows existing conventions: UUID PKs, snake_case, timestamp defaults
+
+### Added - OpenAPI 3.0.3 Specification
+
+- Full API spec at `docs/api/openapi.yaml` — 35+ endpoints, 8 tags, 15 component schemas
+- Bearer token security scheme, request/response examples
+- Developer quick-start guide at `docs/api/README.md`
+
+### Added - Production Monitoring (Metrics Collector)
+
+- In-memory `MetricsCollector` with 5-minute sliding window, `recordRequest()` + `getMetrics()` + `getPrometheusMetrics()`
+- 22 metrics collector unit tests
+- Alert config at `config/monitoring.yaml` (latency p95, error rate, memory thresholds)
+
+### Added - E2E Integration Tests
+
+- `tests/integration/compliance-kyc-lifecycle.test.ts` — 8 tests: compliance validation, KYC init/status/webhook, rules listing, audit log
+- `tests/integration/marketplace-lifecycle.test.ts` — 5 tests: strategy publish, subscription, review, dispute, creator revenue
+
+### Security - Error Message Leakage Fixes
+
+- Removed `error.message` from catch blocks in 5 routes: `revenue.ts`, `pnl.ts`, `backtest.ts`, `co-pilot-routes.ts`, `trades.ts`
+- Removed stack trace from `error-handler.ts` response — no internal details exposed to clients
+- Added Zod validation to `co-pilot-routes.ts` POST /suggest endpoint
+
+### Changed - Version Sync
+
+- `package.json` version synced from 1.1.0 → 3.1.9 to match changelog as source of truth
+
+### Added - AML Compliance Rules
+
+- 5 AML compliance rules: transaction amount limit ($10K CTR), daily velocity ($50K/24h), suspicious pattern (rapid buy-sell cycles), OFAC sanctions screening, cross-border transfer to FATF high-risk jurisdictions
+- Compliance routes: `POST /api/compliance/validate`, `GET /api/compliance/rules`, `PUT /api/compliance/rules/:id/toggle`, `GET /api/compliance/audit`
+- 15 compliance route tests
+
+### Added - KYC Webhook Callback
+
+- `POST /api/kyc/webhook` — receives Persona verification status updates with HMAC-SHA256 signature verification
+- Timestamp window validation, DB update on valid payload
+- Expanded KYC test suite from 14 → 29 tests covering webhook, edge cases, DB errors
+
+### Added - Rate Limiter Middleware
+
+- In-memory sliding window rate limiter: `createRateLimiter({ windowMs, max })`
+- Sets standard headers (`X-RateLimit-*`), returns 429 with `Retry-After` when exceeded
+- Auto-cleanup of expired entries, custom key generator support
+- 13 unit tests
+
+---
+
+## [3.1.8] - 2026-08-14
+
+### Added - Cold Start Optimization
+
+- Parallelized subsystem hydration: migrations, latency monitor, AI pipeline, and threshold alerts now initialize via `Promise.allSettled()` with dynamic imports after server starts
+- Dynamic import of `getLatencyMonitor` in edge-proxy metrics handler — removes from Worker critical path
+- Made `latency-monitor.start()` idempotent with stop guard for safe lazy initialization
+- Estimated 30-60% cold start improvement (documented in `plans/reports/cold-start-fix-report.md`)
+
+### Added - E2E Deploy Verification Pipeline
+
+- Single-command script: `scripts/e2e-deploy-verify.mjs` — deploys, verifies SHA match, runs health check + protected flow smoke tests
+- Supports `--skip-deploy`, `--dry-run`, `PRODUCTION_URL` env var override
+- Replaces manual multi-step deploy process
+
+### Added - GTM Launch Content Pack
+
+- Bilingual EN+VN launch content for Reddit, Twitter/X, Discord, and HackerNews "Show HN"
+- Distribution checklist, SEO metadata, FAQ — all in `plans/reports/gtm-launch-content-pack.md`
+
+### Fixed - Marketplace Type Safety
+
+- 8 marketplace repositories: cast `unknown` to `SqlParam` for `params.push()` calls
+- Fixed `bench-http2.ts`: double-cast for `ClientHttp2Session`/`MockHttp2Session` mismatch
+- Fixed `strategy-repository.ts`: cast `DbRow` to `IMarketplaceStrategy`
+
+---
+
+## [3.1.7] - 2026-08-14
+
+### Fixed - Orchestrator Test Flakiness
+
+- Fixed timer leak in `orchestrator.test.ts` — tests calling `start()` without `stop()` leaked `setInterval` timers that accumulated across runs, causing event loop starvation under full regression
+- Added `afterEach` cleanup hook to stop running orchestrators before clearing mocks
+- Increased timing-sensitive waits from 150ms → 300ms with 10s explicit timeout on most fragile tests
+- Result: 32/32 orchestrator tests pass 3/3 consecutive runs with zero flakiness
+
+### Added - KYC Routes Wired + Migration 056
+
+- Mounted `kycRouter` at `/api/kyc` in platform API server (routes existed but were never registered)
+- Created migration 056: `kyc_verifications` table with status/level enums, indexed on `(tenant_id, status)`
+- Expanded KYC test suite from 5 → 14 tests covering init, conflict, status lookup, admin listing, and DB errors
+- Also registered missing migration 055 (blog page views) in migration runner
+
+### Updated - SendGrid Email in Production Runbook
+
+- Added Step 2c: SendGrid configuration (account, API key, DNS auth, CF Workers secrets)
+- Added email verification endpoint and troubleshooting row
+
+---
+
+## [3.1.6] - 2026-08-13
+
+### Added - Phase 38: Production Readiness (Smoke Tests + Runbook)
+
+- **Smoke test script** (`scripts/smoke-test-protected-flows.mjs`): Verifies Health, Setup Wizard, NOWPayments IPN, and Telegram Bot endpoints respond correctly on live deployments. Exit 0/1 for CI integration.
+- **Production readiness runbook** (`docs/production-readiness-runbook.md`): Bilingual (EN+VN) step-by-step guide for going from code-complete to accepting real payments — covers NOWPayments setup, secret configuration, deployment, smoke testing, and Telegram bot setup.
+
+---
+
+## [3.1.5] - 2026-08-13
+
+### Fixed - Test Quality Pass
+
+- **25 flaky test failures resolved** across 6 files (99.9% test pass rate)
+- `probability-calibrator.test.ts`: Fixed OmniRoute assertion failures by using loopback URLs (`http://127.0.0.1:11434`) instead of non-routable test hostnames
+- `blog-engagement-routes.test.ts`: Corrected `vi.mock` path for comment-moderation-service (relative path resolution mismatch)
+- `comment-moderation-service.test.ts`: Added `vi.mock` for LlmRouter to prevent real API hang during LLM availability check
+- `github-actions-workflow-discipline-sync.test.ts`: Updated `EXPECTED_GATE_COUNT` from 7 → 8 to match current 8 Gate jobs
+- `signal-ingest-hmac-contract-discipline-sync.test.ts`: Corrected rate-limit config path to `src/seed/config/tiers.ts`
+- `ci-script-reference-integrity-sync.test.ts`: Added `ci-gate-local.mjs` to LOCAL_ONLY exclusion list (intentionally not in GitHub Actions)
+
+#### Root Cause
+OmniRoute now enforces loopback-only assertions on LlmRouter URLs. Test mocks using `http://test:11434` (non-loopback) triggered assertion failures. Additionally, several discipline-sync tests drifted out of sync with actual project structure.
+
+---
+
+## [3.1.4] - 2026-08-13
+
+### Added - Phase 37: Advanced Risk Management (Complete) ✅
+
+#### Core Risk Modules (1,600+ lines, 167 tests)
+- **VaR/CVaR** — Parametric and historical methods, 95%/99% confidence, 1d/10d horizons (`src/desk/risk/value-at-risk.ts`)
+- **Portfolio Correlation** — Pearson r matrix, diversification scoring, high-pair detection (`src/desk/risk/portfolio-correlation.ts`)
+- **Drawdown Monitor** — Daily + total drawdown tracking with circuit breaker integration (`src/desk/risk/drawdown-monitor.ts`)
+- **ATR Trailing Stops** — Dynamic stop-loss based on ATR, long/short support, trailing tightening (`src/desk/risk/atr-trailing-stop.ts`)
+- **Kelly Position Sizer** — Quarter-Kelly with managed capital safety, 5% hard cap (`src/desk/risk/kelly-position-sizer.ts`)
+- **Risk Gate Manager** — Orchestrator-facing wrapper composing guard + circuit breaker (`src/desk/risk/risk-gate-manager.ts`)
+- **Live Execution Guard** — 4-check safety gate before CLOB execution (`src/desk/execution/live-execution-guard.ts`)
+
+#### Platform Service Layer
+- **5 service wrappers** — VaR/CVaR, correlation, drawdown, Kelly, ATR services at `src/platform/risk/`
+- **40 platform risk tests** — Service-layer integration tests
+
+#### REST API
+- **Risk API routes** — `/api/v1/risk/*` endpoints (`src/platform/api/routes/risk-routes.ts`)
+
+#### Test Results
+- 175/175 risk + wiring tests pass (desk: 115, platform: 40, execution: 12, wiring: 8)
+
+#### Risk Gate Wiring (LiveExecutionGuard Gate 3)
+- **TradingPipeline** — Replaced stub `RiskManager` with real `RiskGateManager` + `LiveExecutionGuard`
+- **LiveOrderManager.submitSignal()** — Added `RiskGateManager.check()` before CLOB submission (Gate 3)
+- Orders exceeding position size, drawdown, or concurrent limits are rejected with `RISK_GATE_REJECTED`
+- Backward compatible: no guard → orders pass through unchanged
+
+#### Equity Snapshot Persistence
+- **`equity-snapshot-manager.ts`** — Periodic equity snapshots to PostgreSQL, throttled to 1/min
+- **Migration 043** — `equity_snapshots` table with indexes for time-range and daily aggregation queries
+- **TradingPipeline integration** — Snapshot recording in prediction feed loop (every 15 min cycle, throttled by manager)
+- **12 equity snapshot tests** — CRUD, throttling, range queries, daily returns, pruning
+
+#### Portfolio Rebalance Guard
+- **`portfolio-rebalance-guard.ts`** — Portfolio-level allocation drift detection, cooldown enforcement, daily limit
+- **12 rebalance guard tests** — Drift detection, cooldown, daily limit, reset, edge cases
+
+#### Test Results
+- 139/139 risk module tests pass (8 test files: desk risk modules)
+- 154 execution tests pass (no regression from RiskGateManager changes)
+
+### Documentation Updates
+- Updated `docs/development-roadmap.md` — Phase 37 COMPLETE, all risk items delivered
+- Updated `docs/project-changelog.md` — Portfolio rebalance guard entry
+
+### Security Hardening — Phase 35
+- **OWASP Top 10 code assessment** — Full codebase audit (15,000+ LOC across 350+ files)
+  - 3 CRITICAL: orphaned routes in `src/api/routes/` (license, apiKey, audit) — NOT mounted in production, dead code
+  - 4 HIGH: timing-safe comparison duplication, no desk server rate limiting, JWT fallback, auth middleware passthrough
+  - 7 MEDIUM: console.log in prod, error message leakage, CORS localhost in prod, SSRF path typing
+  - Positive: all SQL parameterized, AES-256-GCM encryption working, helmet security headers active
+- **console.log cleanup** — `src/regions/region-health-monitor.ts` replaced with structured logger (6 instances)
+- **Encryption at rest verified** — AES-256-GCM (crypto.ts), tenant-scoped DEK, BYOK envelope encryption, key rotation support
+- **SSL/TLS verified** — helmet provides HSTS, CSP, X-Frame-Options in production server
+
+### Phase 36: Marketplace & Multi-Tenant Monetization (Complete) ✅
+- **Marketplace core** — Strategy CRUD, listing management, subscription lifecycle (`marketplace.service.ts`)
+- **Revenue sharing** — 80/20 platform split with automated payout scheduling
+- **Strategy versioning** — Version-controlled strategy updates with migration 036
+- **Deployment pipeline** — `MarketplaceExecutionBridge` connects subscriptions to `SubscriberExecutor`
+- **Rating/review system** — Verified reviews, badges, dispute resolution
+- **Backtesting harness** — Community strategy backtesting and vetting workflow
+- **API surface** — 9 routers wired into production: strategy, subscription, review, dispute, revenue, provider, badge, stats, enhancements
+- **Tests** — 135/135 marketplace tests passing (17 test files)
+
+---
+
+## [3.1.3] - 2026-08-13
+
+### Added - Phase 35: Compliance & Security Hardening (In Progress)
+
+#### Rate Limiter Modularization
+- **`tier-config.ts`** — Canonical `TIER_RATE_LIMITS` (FREE/PRO/ENTERPRISE/MASTER), `DEFAULT_TIER_LIMITS`, `resolveLimits`
+- **`express-middleware.ts`** — `rateLimitMiddleware` with X-RateLimit-* headers, IP fallback, anonymous support
+- **`key-validation.ts`** — Redis key prefix validation utility
+- **`redis-rate-limiter.ts`** — Reduced from 460 → 207 lines (class + singleton + re-exports)
+
+#### Security Fixes
+- **DEFAULT_TIER_LIMITS tightened**: 60/min → 10/min to match canonical FREE tier (was 6x more permissive)
+
+#### Audit Infrastructure
+- **Audit middleware wired** into both signal API server and platform API server
+- **Zod `auditEntrySchema`** exported as canonical schema for API input validation
+- **E2E audit trail test** (7 tests): request → middleware → DB → query roundtrip, hash chain verification, graceful degradation
+
+#### Test Results
+- 92/92 affected tests pass (rate-limit, security-integration, api, audit-log, audit-trail-e2e)
+- 4299/4324 full suite (25 pre-existing failures, zero new)
+
+### Documentation Updates
+- Updated `docs/development-roadmap.md` — Phase 35 marked IN PROGRESS
+- Updated `docs/project-changelog.md` — Current entry
+
+---
+
 ## [3.1.2] - 2026-08-10
 
 ### Added - Phase 34: Content Personalization & AI Recommendations (COMPLETE)

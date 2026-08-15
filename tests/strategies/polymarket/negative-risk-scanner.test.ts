@@ -8,7 +8,7 @@ import {
   getBestBid,
   usdcToTokens,
   calcExitValue,
-} from '../../../src/strategies/polymarket/negative-risk-scanner.js';
+} from '../../../src/desk/strategies/polymarket/negative-risk-scanner.js';
 import type { RawOrderBook } from '../../../src/polymarket/clob-client.js';
 import type { GammaMarket } from '../../../src/polymarket/gamma-client.js';
 

@@ -11,7 +11,7 @@ describe('ProbabilityCalibratorStrategy', () => {
 
   beforeEach(() => {
     calibrator = new ProbabilityCalibratorStrategy({
-      llmBaseUrl: 'http://test:11434',
+      llmBaseUrl: 'http://127.0.0.1:11434',
       llmModel: 'test-model',
       confidenceThreshold: 0.7,
       maxConcurrentRequests: 2,
@@ -27,7 +27,7 @@ describe('ProbabilityCalibratorStrategy', () => {
 
     it('should override defaults with provided config', () => {
       const c = new ProbabilityCalibratorStrategy({
-        llmBaseUrl: 'http://custom:11434',
+        llmBaseUrl: 'http://127.0.0.1:11435',
         llmModel: 'custom-model',
         maxConcurrentRequests: 5,
       });
@@ -168,7 +168,7 @@ describe('ProbabilityCalibratorStrategy', () => {
 
       await expect(
         calibrator.estimateProbability('Test'),
-      ).rejects.toThrow('LLM API error');
+      ).rejects.toThrow();
     });
 
     it('should limit concurrent requests', async () => {

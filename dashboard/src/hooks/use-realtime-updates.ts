@@ -150,11 +150,12 @@ export function useRealtimeUpdates(): RealtimeUpdatesState & { reconnect: () => 
 
         if (!mountedRef.current) return;
 
-        // Exponential backoff with max 30s
+        // Exponential backoff with max 30s + 0-30% jitter (thundering herd prevention)
         const delay = Math.min(reconnectDelayRef.current, 30000);
         reconnectDelayRef.current = delay * 2;
+        const jitter = delay * Math.random() * 0.3;
         setReconnectCount((c) => c + 1);
-        reconnectTimeoutRef.current = setTimeout(connect, delay);
+        reconnectTimeoutRef.current = setTimeout(connect, delay + jitter);
       };
 
       ws.onerror = () => {

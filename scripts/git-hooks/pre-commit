@@ -1,0 +1,160 @@
+#!/usr/bin/env node
+/**
+ * git pre-commit hook — enforce Hard Rules from AGENTS.md on staged changes.
+ *
+ * Blocking checks (exit 2):
+ *   H1  no secrets: .env-family files, private keys, known secret literal formats
+ *   H2  no eval() / new Function() in staged code files
+ *   H3  no direct commits to main/master
+ *   H6  no --no-verify bypass references in staged code files
+ *
+ * Advisory only (never block): H5 shares the H1 literal scan, H10 is enforced
+ * by CI gate-8, H11 by worktree discipline. H4/H7/H8 are review-time rules.
+ *
+ * Fail-open: any internal error warns and allows the commit. The hook must
+ * never strand work because of its own bug.
+ */
+
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const AGENTS_MD_PATH = path.join(REPO_ROOT, 'AGENTS.md');
+
+const CODE_FILE = /\.(js|mjs|cjs|jsx|ts|tsx|sh|py)$/;
+// Hook sources, test files, and .claude/ tool config contain forbidden strings
+// as fixtures/detection patterns — exempt them from hard-rule scanning.
+const EXEMPT_PATH = /^(scripts\/git-hooks\/|tests\/|\.claude\/)|__tests__\//;
+
+const SECRET_LITERALS = [
+  { re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/, label: 'private key block' },
+  { re: /sk-proj-[a-zA-Z0-9_-]{20,}|sk-[a-zA-Z0-9]{20,}/, label: 'OpenAI-style secret key' },
+  { re: /AIza[0-9A-Za-z_-]{35}/, label: 'Google API key' },
+  { re: /AKIA[0-9A-Z]{16}/, label: 'AWS access key id' },
+  { re: /xox[baprs]-[0-9A-Za-z-]{10,}/, label: 'Slack token' },
+  { re: /ghp_[0-9A-Za-z]{36}/, label: 'GitHub personal access token' },
+  { re: /github_pat_[0-9A-Za-z_]{20,}/, label: 'GitHub fine-grained token' },
+  { re: /0x[a-fA-F0-9]{64}/, label: 'hex private key (EVM format)' },
+];
+
+const SECRET_FILENAMES = [
+  /(^|\/)\.env($|\..*$)/, // .env, .env.local — but not .env.example below
+  /\.pem$/,
+  /(^|\/)id_(rsa|ed25519|ecdsa)$/,
+  /(^|\/)credentials\.json$/,
+  /(^|\/)wallet\.json$/,
+];
+
+function isExemptEnvFile(f) {
+  return /(^|\/)\.env\.example$/.test(f);
+}
+
+function git(args) {
+  // No cwd override: git runs the hook at the repo root, and worktrees
+  // resolve their own paths correctly that way.
+  return execSync(`git ${args}`, { encoding: 'utf-8' });
+}
+
+function loadRules() {
+  if (!fs.existsSync(AGENTS_MD_PATH)) return {};
+  const map = {};
+  for (const line of fs.readFileSync(AGENTS_MD_PATH, 'utf-8').split('\n')) {
+    const m = line.trim().match(/^\|\s*H(\d+)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|$/);
+    if (m) map['H' + m[1]] = { id: 'H' + m[1], name: m[2], alternative: m[3] };
+  }
+  return map;
+}
+
+function stagedFiles() {
+  return git('diff --cached --name-only --diff-filter=ACM')
+    .trim()
+    .split('\n')
+    .filter(Boolean);
+}
+
+function stagedContent(file) {
+  try {
+    return git(`show :${JSON.stringify(file).replace(/^"|"$/g, '')}`);
+  } catch {
+    try {
+      return git(`show :"${file}"`);
+    } catch {
+      return '';
+    }
+  }
+}
+
+function main() {
+  const rules = loadRules();
+  const files = stagedFiles();
+  const violations = [];
+  const block = (id, message) =>
+    violations.push({
+      id,
+      message,
+      alternative: rules[id] ? rules[id].alternative : 'See AGENTS.md Hard Rules.',
+    });
+
+  // H3: never commit directly to main/master
+  try {
+    const branch = git('rev-parse --abbrev-ref HEAD').trim();
+    if (branch === 'main' || branch === 'master') {
+      block('H3', `Committing directly to "${branch}". Use a feature branch and merge via PR.`);
+    }
+  } catch {
+    // unborn HEAD or detached state — nothing to enforce
+  }
+
+  for (const file of files) {
+    // H1: secret-bearing filenames
+    if (!isExemptEnvFile(file) && SECRET_FILENAMES.some((re) => re.test(file))) {
+      block('H1', `Staged file "${file}" matches a secret-file pattern. Never commit secrets.`);
+      continue;
+    }
+
+    if (EXEMPT_PATH.test(file) || !CODE_FILE.test(file)) continue;
+
+    const content = stagedContent(file);
+    if (!content) continue;
+
+    // H1 / H5: hardcoded secret literals
+    for (const { re, label } of SECRET_LITERALS) {
+      if (re.test(content)) {
+        block('H1', `Hardcoded secret literal (${label}) in "${file}". Use environment variables.`);
+        break;
+      }
+    }
+
+    // H2: eval / new Function
+    if (/(?<!\.)eval\s*\(|\bnew\s+Function\s*\(/.test(content)) {
+      block('H2', `eval()/new Function() detected in "${file}". Never use dynamic code execution.`);
+    }
+
+    // H6: hook bypass instructions in code
+    if (/--no-verify|--noverify/.test(content)) {
+      block('H6', `"--no-verify" referenced in "${file}". Fix the underlying issue instead of bypassing hooks.`);
+    }
+  }
+
+  if (violations.length > 0) {
+    console.error('\n=== HARD RULE VIOLATIONS (pre-commit) ===\n');
+    for (const v of violations) {
+      console.error(`[${v.id}] ${v.message}`);
+      console.error(`    Alternative: ${v.alternative}\n`);
+    }
+    console.error(`Commit blocked (${violations.length} violation${violations.length > 1 ? 's' : ''}).`);
+    console.error('Fix the staged content, or re-stage without the offending files.\n');
+    process.exit(2);
+  }
+}
+
+try {
+  main();
+} catch (err) {
+  // Fail-open: a broken hook must never block legitimate work.
+  console.error(`pre-commit hook internal error — allowing commit: ${err.message}`);
+  process.exit(0);
+}

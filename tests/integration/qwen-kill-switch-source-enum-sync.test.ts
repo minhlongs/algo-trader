@@ -10,7 +10,7 @@
  * The enum is declared across three surfaces that must stay in lockstep:
  *
  *   1. **Metric help text** — `qwenKillSwitchActive` Gauge help string in
- *      `src/platform/middleware/prometheus-metrics.ts` ends with the phrase
+ *      `src/platform/middleware/prometheus-registry.ts` ends with the phrase
  *      `Labels: source=env|kv` — the operator-facing contract.
  *   2. **Helper function TS union** — `setQwenKillSwitch(source: 'env' | 'kv',
  *      active: boolean)` in the same file — the compile-time contract.
@@ -68,7 +68,8 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
-const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
+const METRICS_PATH = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-registry.ts');
+const TS_FILE = resolve(REPO_ROOT, 'src/platform/middleware/prometheus-metrics.ts');
 const DRAWDOWN_MONITOR_PATH = resolve(
   REPO_ROOT,
   'src/desk/wiring/qwen-drawdown-monitor.ts',

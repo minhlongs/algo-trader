@@ -105,9 +105,9 @@ export class MarketplacePayoutScheduler {
  await revenueShareRepository.markAsPaid(id, payout.payoutId);
  paid++;
  paidIds.push(id);
-} catch (err: any) {
+} catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error('[MarketplacePayoutScheduler] Caught exception', { id, error: message, stack: err?.stack, raw: err });
+    logger.error('[MarketplacePayoutScheduler] Caught exception', { id, error: message, raw: err });
     errors.push({ id, error: message });
   }
         }

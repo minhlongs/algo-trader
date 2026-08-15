@@ -7,6 +7,17 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ExecutionResult, PaperAccount } from '../../src/desk/execution/paper-position-tracker';
+import { logger } from '../../src/shared/utils/logger';
+
+// Mock logger to prevent console output during tests
+vi.mock('../../src/shared/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 
 // ── Mock variables (vi.hoisted runs before vi.mock is hoisted, avoiding TDZ) ───
 const { mockResetPaperExecutor, mockPaperExecutor, mockGetPaperExecutor } = vi.hoisted(() => {
@@ -96,6 +107,9 @@ function makeCliOpts(overrides: { strategy?: string; capital?: string; yes?: boo
 describe('handleDemoTrade', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(logger.info).mockClear();
+    vi.mocked(logger.error).mockClear();
+    vi.mocked(logger.warn).mockClear();
   });
 
   describe('validation', () => {
@@ -103,43 +117,37 @@ describe('handleDemoTrade', () => {
       const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => {
         throw new Error('exit');
       }) as never);
-      const mockError = vi.spyOn(console, 'error').mockImplementation(() => {});
       await expect(
         handleDemoTrade(makeCliOpts({ capital: '-10' })),
       ).rejects.toThrow('exit');
-      expect(mockError).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         'Error: --capital must be a positive number',
       );
       mockExit.mockRestore();
-      mockError.mockRestore();
     });
 
     it('exits with code 1 on NaN capital', async () => {
       const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => {
         throw new Error('exit');
       }) as never);
-      const mockError = vi.spyOn(console, 'error').mockImplementation(() => {});
       await expect(
         handleDemoTrade(makeCliOpts({ capital: 'abc' })),
       ).rejects.toThrow('exit');
-      expect(mockError).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         'Error: --capital must be a positive number',
       );
       mockExit.mockRestore();
-      mockError.mockRestore();
     });
 
     it('exits with code 1 on unknown strategy', async () => {
       const mockExit = vi.spyOn(process, 'exit').mockImplementation((() => {
         throw new Error('exit');
       }) as never);
-      const mockError = vi.spyOn(console, 'error').mockImplementation(() => {});
       await expect(
         handleDemoTrade(makeCliOpts({ strategy: 'ghost' })),
       ).rejects.toThrow('exit');
-      expect(mockError).toHaveBeenCalledWith('Unknown strategy: ghost');
+      expect(logger.error).toHaveBeenCalledWith('Unknown strategy: ghost');
       mockExit.mockRestore();
-      mockError.mockRestore();
     });
   });
 
@@ -178,14 +186,11 @@ describe('handleDemoTrade', () => {
       mockPaperExecutor.start.mockResolvedValue(acct);
       mockPaperExecutor.executePaperTrade.mockResolvedValue(successResult(acct));
 
-      const logs: string[] = [];
-      vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
-        logs.push(args.join(' '));
-      });
-
       await handleDemoTrade(makeCliOpts({ capital: '1000' }));
 
-      const joined = logs.join('\n');
+      // Check logger.info was called with relevant output
+      const logCalls = vi.mocked(logger.info).mock.calls.map(c => String(c[0]));
+      const joined = logCalls.join('\n');
       // detector uses literal strings from printResult()
       expect(joined).toContain('Trade ID');
       expect(joined).toContain('Executed');
@@ -196,7 +201,7 @@ describe('handleDemoTrade', () => {
       expect(joined).toContain('Win/Loss');
 
       // account fields forwarded to output
-      const balLine = logs.find((l) => l.includes('Balance'));
+      const balLine = logCalls.find((l) => l.includes('Balance'));
       expect(balLine).toBeDefined();
       expect(balLine).toContain('992.00');
     });
@@ -210,14 +215,11 @@ describe('handleDemoTrade', () => {
         failureResult('not filled: market closed'),
       );
 
-      const logs: string[] = [];
-      vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
-        logs.push(args.join(' '));
-      });
-
       await handleDemoTrade(makeCliOpts({ capital: '1000' }));
 
-      const joined = logs.join('\n');
+      // Check logger.info was called with relevant output
+      const logCalls = vi.mocked(logger.info).mock.calls.map(c => String(c[0]));
+      const joined = logCalls.join('\n');
       expect(joined).toContain('not filled: market closed');
       expect(joined).toContain('Balance');
       expect(joined).not.toContain('Trade ID');
@@ -272,11 +274,6 @@ describe('handleDemoTrade', () => {
 
       mockPaperExecutor.start.mockResolvedValue(makeAccount());
       mockPaperExecutor.executePaperTrade.mockResolvedValue(successResult(makeAccount()));
-
-      const logs: string[] = [];
-      vi.spyOn(console, 'log').mockImplementation((...args: any[]) => {
-        logs.push(args.join(' '));
-      });
 
       await handleDemoTrade(makeCliOpts({ strategy: 'no-size-strategy' }));
 

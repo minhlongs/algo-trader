@@ -59,7 +59,7 @@ export interface StrategyEntry {
  /** Human-readable description */
  description: string;
  /** Constructor — strategies may accept Partial<Config> with optional extra params */
- ctor: any;
+ ctor: new (...args: any[]) => BasePolymarketStrategy;
  /** Default config (loose to accommodate non-V2 strategies) */
  defaultConfig: Record<string, unknown>;
 }

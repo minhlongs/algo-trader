@@ -169,8 +169,9 @@ export function useDashboardWebSocket() {
 
         const delay = Math.min(reconnectDelayRef.current, 30000);
         reconnectDelayRef.current = delay * 2;
+        const jitter = delay * Math.random() * 0.3; // 0-30% additive jitter (thundering herd prevention)
         setReconnectCount((c) => c + 1);
-        reconnectTimeoutRef.current = setTimeout(connect, delay);
+        reconnectTimeoutRef.current = setTimeout(connect, delay + jitter);
       };
 
       ws.onerror = (_err) => {

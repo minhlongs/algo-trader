@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RedisWSAdapter } from '../ws-adapter-redis';
+import { handleClientMessage, startHeartbeat } from '../ws-adapter-redis-handlers';
 import { getPubClient, getSubClient } from '../../../redis';
 import WebSocket from 'ws';
 import { Server as HttpServer } from 'http';
+import type { WSClient } from '../ws-adapter-redis-types';
 
 // Mock Redis functions
 vi.mock('../../../redis', () => {
@@ -26,7 +28,7 @@ vi.mock('../../../redis', () => {
 vi.mock('ws', () => {
   class MockWebSocketServer {
     on = vi.fn();
-    close = vi.fn((cb) => cb && cb());
+    close = vi.fn((cb: (() => void) | undefined) => cb?.());
   }
   return {
     default: {
@@ -52,76 +54,97 @@ describe('RedisWSAdapter', () => {
     expect(getSubClient).toHaveBeenCalled();
     expect(adapter.getClientCount()).toBe(0);
   });
+});
 
+describe('ws-adapter-redis-handlers', () => {
   it('should maintain channel subscribers map correctly', () => {
-    const adapter = new RedisWSAdapter(mockServer);
+    const adapter = new RedisWSAdapter({} as HttpServer);
 
     const wsMock = {
       readyState: 1, // WebSocket.OPEN
       send: vi.fn(),
       on: vi.fn(),
-    } as unknown as WebSocket;
+    };
 
-    // Simulate connection and message handling
-    const client = {
+    // Access internal state via adapter for integration test
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clients = adapter['clients'] as Map<string, WSClient>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pubsubManager = adapter['pubsubManager'] as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config = adapter['config'] as { channels: string[] };
+
+    const client: WSClient = {
       ws: wsMock,
       channels: new Set<string>(),
       lastPing: Date.now(),
       clientId: 'client-1',
     };
+    clients.set('client-1', client);
 
-    adapter['clients'].set('client-1', client);
+    const sendToClient = vi.fn();
 
     // 1. Subscribe to a valid channel
-    adapter['handleClientMessage'](client, Buffer.from(JSON.stringify({
-      type: 'subscribe',
-      channel: 'trades'
-    })));
+    handleClientMessage(
+      client,
+      Buffer.from(JSON.stringify({ type: 'subscribe', channel: 'trades' })),
+      config,
+      pubsubManager,
+      clients,
+      sendToClient,
+    );
 
     expect(client.channels.has('trades')).toBe(true);
-    expect(adapter['channelSubscribers'].get('trades')?.has(client)).toBe(true);
+    expect(sendToClient).toHaveBeenCalledWith(client, { type: 'subscribed', channel: 'trades' });
 
-    // 2. Broadcast message to 'trades'
-    adapter['broadcastToChannel']('trades', JSON.stringify({ type: 'trade_update', price: 100 }));
-    expect(wsMock.send).toHaveBeenCalledTimes(2); // One for subscription confirmation, one for broadcast
-
-    // 3. Unsubscribe from the channel
-    adapter['handleClientMessage'](client, Buffer.from(JSON.stringify({
-      type: 'unsubscribe',
-      channel: 'trades'
-    })));
+    // 2. Unsubscribe from the channel
+    sendToClient.mockClear();
+    handleClientMessage(
+      client,
+      Buffer.from(JSON.stringify({ type: 'unsubscribe', channel: 'trades' })),
+      config,
+      pubsubManager,
+      clients,
+      sendToClient,
+    );
 
     expect(client.channels.has('trades')).toBe(false);
-    expect(adapter['channelSubscribers'].get('trades')?.has(client)).toBeFalsy();
+    expect(sendToClient).toHaveBeenCalledWith(client, { type: 'unsubscribed', channel: 'trades' });
+  });
 
-    // 4. Close cleanup
-    // Add client back to subscription
-    client.channels.add('trades');
-    let subs = adapter['channelSubscribers'].get('trades');
-    if (!subs) {
-      subs = new Set();
-      adapter['channelSubscribers'].set('trades', subs);
-    }
-    subs.add(client);
+  it('should reject invalid channel subscriptions', () => {
+    const adapter = new RedisWSAdapter({} as HttpServer);
 
-    // Simulate close trigger
-    const wsOnCalls = (adapter['wsServer'].on as any).mock.calls;
-    const connectionCallback = wsOnCalls.find((call: any) => call[0] === 'connection')?.[1];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clients = adapter['clients'] as Map<string, WSClient>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pubsubManager = adapter['pubsubManager'] as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const config = adapter['config'] as { channels: string[] };
 
-    if (connectionCallback) {
-      const mockWsForClose = {
-        on: vi.fn(),
-        send: vi.fn(),
-      } as unknown as WebSocket;
-      
-      connectionCallback(mockWsForClose, {});
-      
-      const closeCall = (mockWsForClose.on as any).mock.calls.find((call: any) => call[0] === 'close');
-      const closeCallback = closeCall?.[1];
-      
-      if (closeCallback) {
-        closeCallback();
-      }
-    }
+    const client: WSClient = {
+      ws: { readyState: 1, send: vi.fn(), on: vi.fn() },
+      channels: new Set<string>(),
+      lastPing: Date.now(),
+      clientId: 'client-2',
+    };
+    clients.set('client-2', client);
+
+    const sendToClient = vi.fn();
+
+    handleClientMessage(
+      client,
+      Buffer.from(JSON.stringify({ type: 'subscribe', channel: 'invalid-channel' })),
+      config,
+      pubsubManager,
+      clients,
+      sendToClient,
+    );
+
+    expect(client.channels.has('invalid-channel')).toBe(false);
+    expect(sendToClient).toHaveBeenCalledWith(client, {
+      type: 'error',
+      message: 'Invalid channel: invalid-channel',
+    });
   });
 });

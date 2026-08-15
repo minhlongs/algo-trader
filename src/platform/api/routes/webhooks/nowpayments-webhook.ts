@@ -38,8 +38,8 @@ export const nowpaymentsWebhookRouter: Router = Router();
 // Capture raw body BEFORE express.json() parses it (needed for HMAC verification)
 nowpaymentsWebhookRouter.use(
   require('express').json({
-    verify: (req: any, _res: any, buf: Buffer) => {
-      req.rawBody = buf.toString('utf-8');
+    verify: (req: Request, _res: Response, buf: Buffer) => {
+      (req as Request & { rawBody?: string }).rawBody = buf.toString('utf-8');
     },
   })
 );
@@ -52,7 +52,7 @@ nowpaymentsWebhookRouter.post('/', async (req: Request, res: Response) => {
   const auditService = AuditLogService.getInstance();
 
   const signature = req.headers['x-nowpayments-sig'] as string;
-  const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+  const rawBody = (req as Request & { rawBody?: string }).rawBody || JSON.stringify(req.body);
 
   if (!signature) {
     return res.status(400).json({ error: 'Missing x-nowpayments-sig header' });

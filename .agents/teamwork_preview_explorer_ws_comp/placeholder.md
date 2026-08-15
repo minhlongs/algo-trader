@@ -1,1 +1,0 @@
-# WS Compression Explorer Metadata

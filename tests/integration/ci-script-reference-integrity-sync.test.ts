@@ -161,12 +161,14 @@ describe('CI script-file reference integrity — 33rd edge (TRITRIACONTAGON)', (
     }
   });
 
-  it('no orphan `ci-gate-*` scripts (scripts with prefix must be wired into CI)', () => {
-    // Discover all ci-gate-* files in scripts/ dir.
+  it('no orphan `ci-gate-*` scripts (scripts with prefix must be wired into CI or marked local-only)', () => {
+    // ci-gate-local.mjs is intentionally local-only (runs typecheck+lint+test+secret-scan locally)
+    const LOCAL_ONLY = new Set(['ci-gate-local.mjs']);
     const scriptFiles = readdirSync(SCRIPTS_DIR).filter((f) =>
       /^ci-gate-[\w.-]+\.(mjs|sh|js|cjs)$/.test(f),
     );
     for (const f of scriptFiles) {
+      if (LOCAL_ONLY.has(f)) continue;
       expect(
         references.has(f),
         `scripts/${f} has 'ci-gate-' prefix but is NOT referenced by ci.yml — either wire up or retract (prevents orphan gate scripts)`,

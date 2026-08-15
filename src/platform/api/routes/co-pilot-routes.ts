@@ -88,7 +88,7 @@ export const coPilotRouter: RouterType = Router();
  * POST /api/v1/co-pilot/ask
  *
  * Body: { query: string, context?: { page?: string, strategyId?: string } }
- * Response: { answer: string, actions: ActionButton[], sourceData?: any }
+ * Response: { answer: string, actions: ActionButton[], sourceData?: unknown }
  *
  * FREE users always receive the fallback message (intent listing).
  * PRO+ users get the classified intent handler response.

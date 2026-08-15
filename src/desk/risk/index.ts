@@ -12,5 +12,7 @@ export * from './portfolio-correlation';
 export * from './value-at-risk';
 export * from './atr-trailing-stop';
 export * from './risk-gate-manager';
+export * from './equity-snapshot-manager';
+export * from './portfolio-rebalance-guard';
 // Re-export persistence utility for risk consumers
 export * from '../../shared/persistence/file-store';

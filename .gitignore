@@ -1,6 +1,9 @@
 node_modules/
 dist/
 tsconfig.tsbuildinfo
+*.pyc
+*.pyo
+__pycache__/
 /data/
 .env
 *.log
@@ -27,6 +30,44 @@ scripts/*.bak-*
 scripts/*.bak
 .claude/tmp/
 
-# Claude Code — local secrets (tokens)
+# fable-5 — local secrets (tokens)
 .claude/settings.json
 .claude/settings.local.json
+.claude/settings.json.bak*
+.claude/cache/
+.claude/tmp/
+.claude/skills/.venv/
+
+# Temp workflow scripts
+workflows/scripts/*_tmp.js
+
+# Coverage and test artifacts
+.coverage
+coverage/
+test-results/
+
+# Temporary / scratch scripts
+.tmp-*.py
+.fix-*.py
+.build-*.py
+scan-plans.py
+*.bak
+*.bak-*
+
+# Generated exports
+stitch-exports/
+
+# Tool-local runtime state
+.opencode/
+.agents/
+.ak-cook/
+.orchestrate/
+.mekong/
+
+# Misc temp files
+*.txt
+!docs/**/*.txt
+README.md.bak
+backups/
+dump.rdb
+patch-vps-origin.py

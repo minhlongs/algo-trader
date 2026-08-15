@@ -6,6 +6,9 @@
 import { query } from '../../../shared/db/postgres-client';
 import type { PaginatedResult, PaginationParams, SortOrder } from '../models/types';
 
+/** PostgreSQL query parameter types */
+type SqlParam = string | number | boolean | null;
+
 export interface VettingJobRecord {
   id: number;
   strategyId: string;
@@ -42,7 +45,7 @@ export class VettingJobRepository {
     sort?: { field: string; order: SortOrder },
   ): Promise<PaginatedResult<VettingJobRecord>> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
     if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }
     if (filters?.decision) { conditions.push(`decision = $${idx++}`); params.push(filters.decision); }
@@ -68,7 +71,7 @@ export class VettingJobRepository {
 
   async count(filters?: { strategyId?: string; decision?: string }): Promise<number> {
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: SqlParam[] = [];
     let idx = 1;
     if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }
     if (filters?.decision) { conditions.push(`decision = $${idx++}`); params.push(filters.decision); }

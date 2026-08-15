@@ -8,7 +8,7 @@ import {
   DEFAULT_CONFIG,
   type EventDeadlineScalperConfig,
   type EventDeadlineScalperDeps,
-} from '../../src/desk/strategies/polymarket/event-deadline-scalper';
+} from '../../src/desk/strategies/polymarket/event-deadline-scalper-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

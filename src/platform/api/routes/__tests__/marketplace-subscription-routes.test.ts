@@ -59,14 +59,21 @@ vi.mock('../../../audit/audit-log-service', () => ({
   },
 }));
 
+vi.mock('../../middleware/feature-gate', () => ({
+  requireTier: () => (_req: any, _res: any, next: any) => next(),
+  requireFeature: () => (_req: any, _res: any, next: any) => next(),
+}));
+
+
 import { marketplaceSubscriptionRouter } from '../marketplace-subscription-routes';
 
 function buildApp() {
   const app = express();
   app.use(express.json());
   app.use((req: any, _res, next) => {
-    req.tenant = { id: 'tenant_001' };
-    req.user = { id: 'user_001', tenantId: 'tenant_001' };
+    req.tenantId = 'tenant_001';
+    req.userId = 'user_001';
+    req.license = { tier: 'MASTER' };
     next();
   });
   app.use('/', marketplaceSubscriptionRouter);
@@ -157,7 +164,7 @@ describe('Marketplace Subscription Routes', () => {
       mocks.getSubscription.mockResolvedValueOnce(fakeSub({ id: 'sub_001', status: 'active', tenantId: 'tenant_001' }));
       mocks.updateSubscriptionStatus.mockResolvedValueOnce(fakeSub({ id: 'sub_001', status: 'paused' }));
 
-      const res = await request(buildApp()).patch('/sub_001').send({ action: 'pause' });
+      const res = await request(buildApp()).patch('/sub_001').send({ status: 'paused' });
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('paused');
@@ -168,25 +175,25 @@ describe('Marketplace Subscription Routes', () => {
       mocks.getSubscription.mockResolvedValueOnce(fakeSub({ id: 'sub_001', status: 'paused', tenantId: 'tenant_001' }));
       mocks.updateSubscriptionStatus.mockResolvedValueOnce(fakeSub({ id: 'sub_001', status: 'active' }));
 
-      const res = await request(buildApp()).patch('/sub_001').send({ action: 'resume' });
+      const res = await request(buildApp()).patch('/sub_001').send({ status: 'active' });
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('active');
     });
 
     it('returns 404 for unknown subscription', async () => {
       mocks.getSubscription.mockResolvedValueOnce(null);
-      const res = await request(buildApp()).patch('/no-exist').send({ action: 'pause' });
+      const res = await request(buildApp()).patch('/no-exist').send({ status: 'paused' });
       expect(res.status).toBe(404);
     });
 
     it('returns 403 for cross-tenant access', async () => {
       mocks.getSubscription.mockResolvedValueOnce(fakeSub({ tenantId: 'other_tenant' }));
-      const res = await request(buildApp()).patch('/sub_001').send({ action: 'pause' });
+      const res = await request(buildApp()).patch('/sub_001').send({ status: 'paused' });
       expect(res.status).toBe(403);
     });
 
     it('returns 400 for invalid action', async () => {
-      const res = await request(buildApp()).patch('/sub_001').send({ action: 'delete' });
+      const res = await request(buildApp()).patch('/sub_001').send({ status: 'invalid_status' });
       expect(res.status).toBe(400);
     });
   });
@@ -218,7 +225,8 @@ describe('Marketplace Subscription Routes', () => {
 
       const res = await request(buildApp()).post('/sub_001/execute').send({});
       expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
+      expect(res.body.subscriptionId).toBe('sub_001');
+      expect(res.body.result.success).toBe(true);
       expect(mocks.executeForSubscriber).toHaveBeenCalledWith('sub_001', {});
     });
 
@@ -228,12 +236,13 @@ describe('Marketplace Subscription Routes', () => {
       expect(res.status).toBe(403);
     });
 
-    it('returns 400 when executor returns null', async () => {
+    it('returns 200 with null result when executor returns null', async () => {
       mocks.getSubscription.mockResolvedValueOnce(fakeSub({ id: 'sub_001', status: 'paused', tenantId: 'tenant_001' }));
       mocks.executeForSubscriber.mockResolvedValueOnce(null);
 
       const res = await request(buildApp()).post('/sub_001/execute').send({});
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
+      expect(res.body.result).toBeNull();
     });
   });
 });

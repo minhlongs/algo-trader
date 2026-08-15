@@ -19,6 +19,9 @@ import * as migration038 from './migrations/038-audit-log';
 import * as migration039 from './migrations/039-audit-log-tenant';
 import * as migration040 from './migrations/040-audit-immutability';
 import * as migration041 from './migrations/041-audit-hash-chain';
+import * as migration045 from './migrations/045-ohlcv-candles';
+import * as migration046 from './migrations/046-ab-test-experiments';
+import * as migration047 from './migrations/047-model-registry';
 import * as migration035 from '../shared/db/migrations/035-add-blog-engagement-tables';
 import * as migration037 from '../shared/db/migrations/037-add-newsletter-preferences';
 import * as migration055 from '../shared/db/migrations/055-add-blog-page-views';
@@ -90,6 +93,9 @@ function createSqlMigration(filename: string, id: string, description: string): 
         await client.query('DROP TABLE IF EXISTS account CASCADE');
         await client.query('DROP TABLE IF EXISTS session CASCADE');
         await client.query('DROP TABLE IF EXISTS "user" CASCADE');
+      } else if (id === '005_compliance_kyc_tables') {
+        await client.query('DROP TABLE IF EXISTS compliance_transactions CASCADE');
+        await client.query('DROP TABLE IF EXISTS kyc_submissions CASCADE');
       } else if (id === '014_signal_feed') {
         await client.query('DROP TABLE IF EXISTS signal_delivery_log CASCADE');
         await client.query('DROP TABLE IF EXISTS signal_subscriptions CASCADE');
@@ -127,7 +133,9 @@ function createSqlMigration(filename: string, id: string, description: string): 
   await client.query('DROP INDEX IF EXISTS idx_payment_logs_created');
   await client.query('DROP INDEX IF EXISTS idx_orders_user_created');
   await client.query('DROP INDEX IF EXISTS idx_coupons_redeemed');
-}
+} else if (id === '048-prediction-history') {
+        await client.query('DROP TABLE IF EXISTS prediction_history CASCADE');
+      }
     }
   };
 }
@@ -136,6 +144,7 @@ function createSqlMigration(filename: string, id: string, description: string): 
 const MIGRATIONS: Migration[] = [
   migration001,
   createSqlMigration('004_better_auth_tables.sql', '004_better_auth_tables', 'Better Auth Schema Migration'),
+  createSqlMigration('005_compliance_kyc_tables.sql', '005_compliance_kyc_tables', 'Compliance and KYC tables'),
   createSqlMigration('014_signal_feed.sql', '014_signal_feed', 'Signal feed tables'),
   createSqlMigration('015_subscriber_attribution.sql', '015_subscriber_attribution', 'Subscriber Attribution'),
   createSqlMigration('016_qwen_paper_tracking.sql', '016_qwen_paper_tracking', 'Qwen paper-trading tracking'),
@@ -160,10 +169,14 @@ const MIGRATIONS: Migration[] = [
   migration039,
   migration040,
   migration041,
+  migration045,
+  migration046,
+  migration047,
   migration035,
   migration037,
   migration055,
   migration002, // Phase 33 composite indexes — runs after all tables exist (025-031 create them)
+  createSqlMigration('048-prediction-history.sql', '048-prediction-history', 'Prediction history table (migrate from predictions.json)'),
 ];
 
 /**

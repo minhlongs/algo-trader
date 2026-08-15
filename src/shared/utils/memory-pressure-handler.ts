@@ -8,6 +8,7 @@
 
 import { getRedisClient, type RedisClientType } from '../redis';
 import { logger } from '../utils/logger';
+import { Gauge } from 'prom-client';
 import {
   setMemoryMetrics,
   recordMemoryPressureEvent,
@@ -20,6 +21,14 @@ export interface MemoryMetrics {
   heapTotal: number;
   external: number;
   limit: number; // 128MB for Cloudflare Workers
+}
+
+// Non-standard V8/Workers memory API
+interface PerformanceMemory {
+  rss: number;
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  external: number;
 }
 
 export interface MemoryPressureConfig {
@@ -41,9 +50,9 @@ export class MemoryPressureHandler {
   private readonly MAX_HISTORY_SIZE = 100;
 
   // Prometheus metrics (would be defined in prometheus-metrics.ts)
-  private memoryRssGauge?: any;
-  private memoryHeapGauge?: any;
-  private memoryUtilizationGauge?: any;
+  private memoryRssGauge?: Gauge<string>;
+  private memoryHeapGauge?: Gauge<string>;
+  private memoryUtilizationGauge?: Gauge<string>;
 
   constructor(config: Partial<MemoryPressureConfig> = {}) {
     this.config = {
@@ -141,7 +150,7 @@ export class MemoryPressureHandler {
    */
   getMemoryMetrics(): MemoryMetrics {
     if (typeof performance !== 'undefined' && 'memory' in performance) {
-      const mem = (performance as any).memory;
+      const mem = (performance as unknown as { memory: PerformanceMemory }).memory;
       return {
         rss: mem.rss || 0,
         heapUsed: mem.usedJSHeapSize || 0,
@@ -183,7 +192,7 @@ export class MemoryPressureHandler {
 
     // 2. Suggest GC (Workers may not respect this, but Node.js does)
     if (typeof gc === 'function') {
-      (gc as any)();
+      (gc as () => void)();
     }
 
     // 3. Call custom critical handler

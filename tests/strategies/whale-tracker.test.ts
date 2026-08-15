@@ -8,7 +8,7 @@ import {
   type WhaleTrackerConfig,
   type WhaleTrackerDeps,
   type WhaleEvent,
-} from '../../src/desk/strategies/polymarket/whale-tracker';
+} from '../../src/desk/strategies/polymarket/whale-tracker-v2';
 import type { RawOrderBook } from '../../src/desk/polymarket/clob-client';
 
 // ── Helper: build a mock orderbook ──────────────────────────────────────────

@@ -23,7 +23,7 @@ vi.mock('../../middleware/feature-gate', () => ({
   requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-vi.mock('./comment-moderation-service', () => ({
+vi.mock('../routes/comment-moderation-service', () => ({
   moderateComment: vi.fn().mockResolvedValue({
     approved: true,
     reason: undefined,

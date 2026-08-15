@@ -14,7 +14,7 @@ import { AdminAnalytics } from'../../admin/admin-analytics';
 import type { AiSignalGenerator } from'../../openclaw/ai-signal-generator';
 import type { TradeObserver } from'../../openclaw/trade-observer';
 import type { LeaderBoard } from'../../copy-trading/leader-board';
-import { applyCors } from './dashboard-middleware';
+import { applyCors, applySecurityHeaders } from './dashboard-middleware';
 import { sendJson, serveStatic } from './dashboard-utils';
 import {
   handleAuthRoutes,
@@ -81,6 +81,7 @@ export function createDashboardServer(
 
     // CORS with strict origin allowlist
     applyCors(req, res);
+    applySecurityHeaders(res);
     if (method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
     const ctx = { url, method, req, res, dataProvider, analytics, userStore, jwtSecret, deps: depsWithHedge };
