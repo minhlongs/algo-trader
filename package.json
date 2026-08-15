@@ -79,7 +79,7 @@
     "better-auth": "^1.6.29",
     "bullmq": "^5.81.3",
     "ccxt": "^4.5.73",
-    "commander": "^11.1.0",
+    "commander": "^15.0.0",
     "cors": "2.8.6",
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
