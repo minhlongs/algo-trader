@@ -60,55 +60,9 @@ const SIGNAL_TTL_MS = 200; // Reject signals older than 200ms
 const RATE_LIMIT_ORDERS_PER_SEC = 5; // Max 5 orders/sec per strategy
 const RATE_LIMIT_BURST = 10; // Allow burst up to 10 orders
 
-// ── Token Bucket Rate Limiter ────────────────────────────────────────────────
-
-/**
- * Token Bucket Rate Limiter
- * Allows bursts up to 'capacity' tokens, refills at 'refillRate' tokens per second.
- * Per-strategy isolation prevents runaway strategies from starving others.
- */
-class TokenBucket {
-  private tokens: number;
-  private lastRefill: number;
-
-  constructor(
-    private readonly capacity: number,
-    private readonly refillRate: number, // tokens per second
-  ) {
-    this.tokens = capacity;
-    this.lastRefill = Date.now();
-  }
-
-  /** Try to consume one token. Returns true if allowed, false if rate limited. */
-  tryConsume(): boolean {
-    this.refill();
-    if (this.tokens >= 1) {
-      this.tokens -= 1;
-      return true;
-    }
-    return false;
-  }
-
-  /** Refill tokens based on elapsed time */
-  private refill(): void {
-    const now = Date.now();
-    const elapsedSec = (now - this.lastRefill) / 1000;
-    this.tokens = Math.min(this.capacity, this.tokens + elapsedSec * this.refillRate);
-    this.lastRefill = now;
-  }
-
-  /** Get current available tokens (for monitoring) */
-  getAvailableTokens(): number {
-    this.refill();
-    return this.tokens;
-  }
-
-  /** Reset bucket to full capacity */
-  reset(): void {
-    this.tokens = this.capacity;
-    this.lastRefill = Date.now();
-  }
-}
+// Re-export extracted rate limiter for backward compatibility
+export { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
+import { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
 
 // ── Manager ────────────────────────────────────────────────────────────────────
 
@@ -121,7 +75,7 @@ export class LiveOrderManager extends EventEmitter {
   private stopped = false;
 
   // Rate limiter per strategy
-  private strategyRateLimiters = new Map<string, TokenBucket>();
+  private strategyRateLimiters = new Map<string, TokenBucketRateLimiter>();
 
   constructor(
     adapter: PolymarketAdapter,
@@ -248,10 +202,10 @@ export class LiveOrderManager extends EventEmitter {
   }
 
   /** Get or create rate limiter for a strategy */
-  private getRateLimiter(strategyName: string): TokenBucket {
+  private getRateLimiter(strategyName: string): TokenBucketRateLimiter {
     let limiter = this.strategyRateLimiters.get(strategyName);
     if (!limiter) {
-      limiter = new TokenBucket(RATE_LIMIT_BURST, RATE_LIMIT_ORDERS_PER_SEC);
+      limiter = new TokenBucketRateLimiter(RATE_LIMIT_BURST, RATE_LIMIT_ORDERS_PER_SEC);
       this.strategyRateLimiters.set(strategyName, limiter);
     }
     return limiter;
