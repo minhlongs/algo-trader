@@ -37,6 +37,7 @@ PAY_RESP=$(curl -s -X POST "$NP_API/invoice/$INVOICE_ID/payment" \
   -H "Authorization: Bearer $NP_KEY" \
   -H "Content-Type: application/json" \
   -d '{"payment_status": "finished"}')
+echo "Payment response: $PAY_RESP"
 echo "✓ Payment triggered"
 
 # 3. Wait for IPN delivery (handler processes webhook)
