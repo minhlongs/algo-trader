@@ -24,8 +24,8 @@ jobs:
         with:
           node-version: '22'
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: npx tsc --noEmit
+      - run: echo "Y" | pnpm approve-builds && pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit
       - run: npx eslint src --max-warnings 100
       - run: npx vitest run
 
