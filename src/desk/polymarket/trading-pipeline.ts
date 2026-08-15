@@ -131,8 +131,8 @@ export class TradingPipeline extends EventEmitter {
     }
 
     // Cleanup event bus subscriptions
-    if ((this as any)._priceUpdateCleanup) {
-      (this as any)._priceUpdateCleanup();
+    if (this._priceUpdateCleanup) {
+      this._priceUpdateCleanup();
     }
 
     this.orderManager.stopStalePoll();
@@ -148,6 +148,8 @@ export class TradingPipeline extends EventEmitter {
 
   /** Expose risk gate for strategies that need pre-tick/order checks */
   getRiskGate(): RiskGateManager { return this.riskGateManager; }
+
+  private _priceUpdateCleanup?: (() => void);
 
   // ── Private ────────────────────────────────────────────────────────────────
 
@@ -304,7 +306,7 @@ private getMarketMakerInstance(): MarketMakerStrategy | null {
       }
       // Minimal license payload for executor
       const capitalForDirectional = parseFloat(this.cfg.capitalUsdc) * 0.3;
-      const license = { tier: 'pro', maxTradesPerDay: -1, features: [] } as any;
+      const license = { tier: 'pro', maxTradesPerDay: -1, features: [] };
       this.predictionExecutor = new PredictionExecutor(this.clobClient, license, {
         capitalUsdc: capitalForDirectional,
         maxPositionFraction: 0.05,
@@ -355,7 +357,7 @@ private getMarketMakerInstance(): MarketMakerStrategy | null {
     });
 
     // Store cleanup function for potential shutdown
-    (this as any)._priceUpdateCleanup = cleanupPriceUpdates;
+    this._priceUpdateCleanup = cleanupPriceUpdates;
 
     this.orderbookStream.connect();
     logger.info('Orderbook stream connected', 'TradingPipeline');

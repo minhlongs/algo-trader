@@ -91,6 +91,27 @@ export default {
       }
     }
 
+    // ── Health ──
+    if (path === '/health' && request.method === 'GET') {
+      return new Response(JSON.stringify({
+        status: 'ok',
+        service: 'Cloudflare Worker Edge Proxy',
+        environment: env.ENVIRONMENT,
+        edge: 'cloudflare',
+        hasVps: !!env.VPS_ORIGIN,
+        timestamp: new Date().toISOString(),
+        checks: {
+          kv: env.CACHE ? 'configured' : 'missing',
+          d1: env.DB ? 'configured' : 'missing',
+          metrics: !!env.METRIC_PASSWORD,
+          regionRouting: routingEnabled,
+        },
+      }), {
+        status: 200,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── Root — API info ──
     if (path === '/' && request.method === 'GET') {
       return new Response(JSON.stringify({
