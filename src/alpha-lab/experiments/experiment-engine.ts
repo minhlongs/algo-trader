@@ -15,6 +15,7 @@
 import type { CandleLike } from '../regimes/regime-types';
 import type { TripleBarrierResult } from '../labeling/triple-barrier';
 import { batchLabel } from '../labeling/triple-barrier';
+import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
 import type {
   ExperimentConfig,
@@ -26,7 +27,7 @@ import { generateSplits } from './splitter';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function _buildEquityCurve(
+function buildEquityCurve(
   candles: CandleLike[],
   start: number,
   end: number,
@@ -37,27 +38,14 @@ function _buildEquityCurve(
 function buildTrades(
   candles: CandleLike[],
   labels: Array<TripleBarrierResult & { entryIdx: number }>,
-  config: { tp: number; sl: number; feeBps: number; slippageBps: number },
+  config: { tp: number; sl: number },
 ): BacktestTrade[] {
-  const feeMultiplier = config.feeBps / 10000;
-  const slipMultiplier = config.slippageBps / 10000;
-  const roundTripCost = feeMultiplier + slipMultiplier; // per side; round-trip = 2x
-
   return labels.map((l) => {
     const entryPrice = candles[l.entryIdx].close;
-    const isWin = l.label === 1;
-    const isLoss = l.label === -1;
-    const grossPnL = isWin
-      ? entryPrice * config.tp
-      : isLoss
-        ? -entryPrice * config.sl
-        : 0;
-    const cost = entryPrice * roundTripCost * 2; // round-trip: entry + exit
-    const netPnL = grossPnL - cost;
     const exitPrice =
-      isWin
+      l.label === 1
         ? entryPrice * (1 + config.tp)
-        : isLoss
+        : l.label === -1
           ? entryPrice * (1 - config.sl)
           : entryPrice;
     return {
@@ -66,17 +54,17 @@ function buildTrades(
       side: 'BUY',
       price: exitPrice,
       size: 1,
-      pnl: netPnL,
+      pnl: l.label === 1 ? entryPrice * config.tp : l.label === -1 ? -entryPrice * config.sl : 0,
     };
   });
 }
 
 function computeSplitMetrics(
   labels: Array<TripleBarrierResult & { entryIdx: number }>,
-  _trades: BacktestTrade[],
-  _candles: CandleLike[],
-  _config: ExperimentConfig,
-  _split: { startIdx: number; endIdx: number },
+  trades: BacktestTrade[],
+  candles: CandleLike[],
+  config: ExperimentConfig,
+  split: { startIdx: number; endIdx: number },
 ): SplitMetrics {
   if (labels.length === 0) {
     return {
@@ -164,7 +152,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
         trainStart,
       );
       allTrainLabels.push(...tLabels);
-      allTrainTrades.push(...buildTrades(candles, tLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
+      allTrainTrades.push(...buildTrades(candles, tLabels, config));
     }
 
     // Val split.
@@ -179,7 +167,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
         valStart,
       );
       allValLabels.push(...vLabels);
-      allValTrades.push(...buildTrades(candles, vLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
+      allValTrades.push(...buildTrades(candles, vLabels, config));
     }
 
     // Test split.
@@ -194,7 +182,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
         testStart,
       );
       allTestLabels.push(...teLabels);
-      allTestTrades.push(...buildTrades(candles, teLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
+      allTestTrades.push(...buildTrades(candles, teLabels, config));
     }
   }
 
