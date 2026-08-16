@@ -42,10 +42,19 @@ P6+ (experiments/walkforward/evaluation) <- P3+P4+P5
 ## Implementation Phases (incremental)
 - Phase 1: ARCHITECTURE (this doc)
 - Phase 2: alpha-lab/ scaffold
-- Phase 3: regime engine + tests
-- Phase 4: feature pipeline + tests
-- Phase 5: triple-barrier labeling + tests
-- Phase 6+: experiment engine, walkforward, cost model, baselines, evaluation, AI research, CLI, docs
+- Phase 3: regime engine + tests (foundation — no backtest runner coupling yet)
+- Phase 4: feature pipeline + tests (foundation — no backtest runner coupling yet)
+- Phase 5: triple-barrier labeling + tests (foundation — no backtest runner coupling yet)
+- Phase 6: experiment engine + `src/alpha-lab/experiments/alpha-backtest-adapter.ts` — FIRST integration point that reuses existing `BacktestRunner` and `computeMetrics`
+- Phase 7+: walkforward, cost model, baselines, evaluation, AI research, CLI, docs
+
+### Foundation vs Integration Contract
+Phases 3–5 produce reusable research primitives (regime tags, feature vectors, event labels) WITHOUT coupling to the backtest runner. Phase 6 (`experiments/alpha-backtest-adapter.ts`) is the integration layer that imports:
+- `getHistoricalData` from `src/desk/data/ohlcv-store.ts` (canonical candle source)
+- `BacktestRunner` from `src/desk/backtesting/backtest-runner.ts` (simulation engine)
+- `computeMetrics` from `src/desk/backtesting/metrics-calculator.ts` (evaluation metrics)
+
+This avoids duplicating the backtest engine while keeping Phase 3–5 testable in isolation.
 
 ## Files To Modify (anticipated)
 - `docs/ALPHA_DISCOVERY_ARCHITECTURE.md` (new)
