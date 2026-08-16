@@ -23,14 +23,27 @@ import type { WalkForwardResult, StepResult, WalkForwardSummary } from './walkfo
 function buildTrades(
   candles: CandleLike[],
   labels: Array<TripleBarrierResult & { entryIdx: number }>,
-  config: { tp: number; sl: number },
+  config: { tp: number; sl: number; feeBps: number; slippageBps: number },
 ): BacktestTrade[] {
+  const feeMultiplier = config.feeBps / 10000;
+  const slipMultiplier = config.slippageBps / 10000;
+  const roundTripCost = feeMultiplier + slipMultiplier; // per side; round-trip = 2x
+
   return labels.map((l) => {
     const entryPrice = candles[l.entryIdx].close;
+    const isWin = l.label === 1;
+    const isLoss = l.label === -1;
+    const grossPnL = isWin
+      ? entryPrice * config.tp
+      : isLoss
+        ? -entryPrice * config.sl
+        : 0;
+    const cost = entryPrice * roundTripCost * 2; // round-trip: entry + exit
+    const netPnL = grossPnL - cost;
     const exitPrice =
-      l.label === 1
+      isWin
         ? entryPrice * (1 + config.tp)
-        : l.label === -1
+        : isLoss
           ? entryPrice * (1 - config.sl)
           : entryPrice;
     return {
@@ -39,7 +52,7 @@ function buildTrades(
       side: 'BUY',
       price: exitPrice,
       size: 1,
-      pnl: l.label === 1 ? entryPrice * config.tp : l.label === -1 ? -entryPrice * config.sl : 0,
+      pnl: netPnL,
     };
   });
 }
@@ -63,7 +76,7 @@ function stepMetrics(
 
   const closes = candles.map((c) => ({ high: c.high, low: c.low, close: c.close }));
   const labels = batchLabel(closes, config.tp, config.sl, config.maxHolding, start);
-  const trades = buildTrades(candles, labels, config);
+  const trades = buildTrades(candles, labels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps });
   return { labels, trades };
 }
 
