@@ -76,6 +76,7 @@ jobs:
         run: pnpm build
 
       - name: Upload source maps to Sentry
+        continue-on-error: true
         run: |
           npm install -g @sentry/cli
           sentry-cli releases new "$GITHUB_SHA" --project "$SENTRY_PROJECT" --org "$SENTRY_ORG"
