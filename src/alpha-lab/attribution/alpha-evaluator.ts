@@ -11,6 +11,7 @@
  * - Sharpe > 0 (risk-adjusted return)
  */
 
+import type { BaselineRun } from '../baselines/baseline-runner';
 import { runAllBaselines } from '../baselines/baseline-runner';
 import type { CandleLike } from '../regimes/regime-types';
 

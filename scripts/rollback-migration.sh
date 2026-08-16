@@ -196,7 +196,9 @@ echo ""
 echo "=== Starting rollback ==="
 echo ""
 
-_FAILED=""
+# shellcheck disable=SC2034
+# FAILED is evaluated by calling deploy script after this script exits
+FAILED=""
 for i in "${!MIGRATION_FILES[@]}"; do
     file="${MIGRATION_FILES[$i]}"
     sql="${DOWN_SECTIONS[$i]}"

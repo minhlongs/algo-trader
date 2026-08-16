@@ -15,6 +15,7 @@
 import type { CandleLike } from '../regimes/regime-types';
 import type { TripleBarrierResult } from '../labeling/triple-barrier';
 import { batchLabel } from '../labeling/triple-barrier';
+import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
 import type {
   ExperimentConfig,
@@ -26,7 +27,7 @@ import { generateSplits } from './splitter';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function _buildEquityCurve(
+function buildEquityCurve(
   candles: CandleLike[],
   start: number,
   end: number,
@@ -73,10 +74,10 @@ function buildTrades(
 
 function computeSplitMetrics(
   labels: Array<TripleBarrierResult & { entryIdx: number }>,
-  _trades: BacktestTrade[],
-  _candles: CandleLike[],
-  _config: ExperimentConfig,
-  _split: { startIdx: number; endIdx: number },
+  trades: BacktestTrade[],
+  candles: CandleLike[],
+  config: ExperimentConfig,
+  split: { startIdx: number; endIdx: number },
 ): SplitMetrics {
   if (labels.length === 0) {
     return {

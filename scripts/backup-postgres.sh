@@ -15,7 +15,7 @@ BACKUP_FILE="${BACKUP_DIR}/algo-trader-db-${TIMESTAMP}.sql.gz"
 
 # Retention
 LOCAL_RETENTION_DAYS=7
-_REMOTE_RETENTION_DAYS=30
+: "${REMOTE_RETENTION_DAYS:=30}"
 
 # R2 config (optional — fallback to local-only if not set)
 R2_BUCKET="${R2_BACKUP_BUCKET:-algo-trader-backups}"
@@ -56,7 +56,7 @@ fi
 echo "Backup created: ${BACKUP_FILE} (${BACKUP_SIZE} bytes)"
 
 # ── Upload to R2 ────────────────────────────────────────────────────────────
-_UPLOADED=false
+UPLOADED=false
 if [ -n "${R2_ENDPOINT}" ] && [ -n "${R2_ACCESS_KEY}" ] && [ -n "${R2_SECRET_KEY}" ]; then
   if command -v aws &>/dev/null; then
     echo "Uploading to R2 bucket ${R2_BUCKET}..."
@@ -71,7 +71,7 @@ if [ -n "${R2_ENDPOINT}" ] && [ -n "${R2_ACCESS_KEY}" ] && [ -n "${R2_SECRET_KEY
       --quiet
 
     echo "Upload complete: s3://${R2_BUCKET}/postgres/algo-trader-db-${TIMESTAMP}.sql.gz"
-    _UPLOADED=true
+    : "${UPLOADED:=true}"
   else
     echo "WARNING: aws CLI not found. Skipping R2 upload. Backup kept at ${BACKUP_FILE}"
   fi

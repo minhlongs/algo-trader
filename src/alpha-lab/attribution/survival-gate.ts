@@ -12,7 +12,8 @@
  */
 
 import { runAllBaselines } from '../baselines/baseline-runner';
-import { evaluateAlpha, type AlphaVerdict, type SurvivalCriteria } from './alpha-evaluator';
+import { runExperiment } from '../experiments/experiment-engine';
+import { evaluateAlpha, type AlphaVerdict, type SurvivalCriteria, DEFAULT_CRITERIA } from './alpha-evaluator';
 import type { BaselineRun } from '../baselines/baseline-runner';
 import type { CandleLike } from '../regimes/regime-types';
 import type { CandidateResult } from './alpha-evaluator';
@@ -56,7 +57,7 @@ export function survivalGate(
   const ablation: AblationResult[] = [];
 
   // Ablation 1: without random entry baseline (most lenient).
-  const _withoutRand = baselines.filter((b: BaselineRun) => b.name !== 'random-entry');
+  const withoutRand = baselines.filter((b: BaselineRun) => b.name !== 'random-entry');
   const randPnl = baselines.find((b: BaselineRun) => b.name === 'random-entry')?.report.totalPnl ?? 0;
   ablation.push({
     removed: 'random-entry baseline',

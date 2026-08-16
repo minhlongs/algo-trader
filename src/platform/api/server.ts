@@ -11,6 +11,7 @@ import { RedisWSAdapter } from './ws-adapter-redis';
 
 // Security middleware (order matters: auth -> audit -> rate-limit)
 import { authMiddleware } from '../middleware/auth-middleware';
+import { apiKeyLicenseMiddleware } from '../middleware/api-key-license';
 import { auditMiddleware } from '../../seed/security/audit-middleware';
 import { rateLimitMiddleware } from '../../forest/rate-limit/redis-rate-limiter';
 
@@ -166,6 +167,9 @@ export class ApiServer {
     // Global identity resolution — attaches req.claims + req.user from Bearer JWT.
     // Mounted BEFORE audit + rate-limit so they see real tier/tenant context.
     this.app.use(authMiddleware);
+
+    // Bridge x-api-key header → req.license for tier-gated endpoints
+    this.app.use(apiKeyLicenseMiddleware);
 
     // Audit logging middleware (fire-and-forget, captures all responses)
     this.app.use(auditMiddleware);

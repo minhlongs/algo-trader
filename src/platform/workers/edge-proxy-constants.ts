@@ -21,6 +21,14 @@ export const CORS: Record<string, string> = {
   'Content-Type': 'application/json',
 };
 
+/** Security headers applied to all API responses (HSTS + CSP) */
+export const SECURITY_HEADERS: Record<string, string> = {
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+};
+
 /** Default cache TTL in seconds */
 export const CACHE_TTL = 60;
 

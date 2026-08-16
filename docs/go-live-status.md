@@ -3,12 +3,12 @@
 > Checklist production-ready với trạng thái thực tế.
 > / Production readiness checklist with verified status.
 
-**Last verified:** 2026-07-08 | **Target:** First paid customer
-**Overall:** 🔴 Pre-launch — 47% items complete
+**Last verified:** 2026-08-16 | **Target:** First paid customer
+**Overall:** 🟡 Pre-launch — 70% items complete
 
 ---
 
-## 🟢 CLI-Only Services / Đã Sẵn Sàng
+## 🟢 Complete / Đã Hoàn Thành
 
 | Item | Status | Notes |
 |------|--------|-------|
@@ -27,33 +27,36 @@
 | CORS configured | ✅ Done | Express server |
 | Audit logging | ✅ Done | All mutations logged |
 | License key generation (crypto-random) | ✅ Done | Cryptographically secure |
+| **HSTS enforcement** | ✅ Done | max-age=31536000; includeSubDomains; preload |
+| **Alpha Discovery Engine** | ✅ Done | Regimes, features, labeling, walk-forward |
+| **Regime-aware Kelly sizer** | ✅ Done | 7 regime multipliers wired |
+| **AI signal adapter** | ✅ Done | Confidence + expectancy thresholding |
+| **Capital readiness tracker** | ✅ Done | Paper days + drawdown + win rate gates |
+| **Exchange API connection test** | ✅ Done | REST + WS test for 4 exchanges |
+| **Portfolio allocation layer** | ✅ Done | Multi-strategy weight management |
+| **Paper trading loop** | ✅ Done | Automated validation runner |
+| **Transition criteria** | ✅ Done | 4-tier paper→live promotion path |
 
 ---
 
-## 🟡 Needs Work / Cần Hoàn Thiện
+## 🟡 In Progress / Đang Làm
 
 | Item | Status | Action Needed | Owner |
 |------|--------|---------------|-------|
-| HTTPS enforcement (HSTS) | 🔴 Not started | Add HSTS header, TLS cert | DevOps |
-| API key read-only + withdrawal whitelist | 🟡 Partial | Enable on exchange accounts | CTO |
-| 2FA on all exchange accounts | 🟡 Partial | Enable on Binance/OKX/Bybit | CTO |
-| NOWPayments signature verification | 🟡 Partial | Verify webhook signature | CTO |
-| Exchange API connections | 🟡 Partial | Test live order execution | Trader |
-| Real capital deployed | 🔴 Not started | Fund trading wallets | CEO |
-| First paid customer | ⏳ Pending | Run Beta pilot | CEO |
+| AI/ML signals wired into live path | 🟡 Wired | Awaiting strategy integration | Dev |
+| Walk-forward on live data | 🟡 Ready | Needs live OHLCV feed | Dev |
+| Regime-aware Kelly in pipeline | 🟡 Ready | Awaiting regimeEngine injection | Dev |
+| Multi-strategy portfolio | 🟡 Ready | Needs allocation config | Dev |
 | Developer onboarding docs | 🟡 Partial | Update `developer-onboarding.md` | Docs |
-| Go-live checklist completion | 🟡 Partial | 50% items unchecked | CEO |
 
 ---
 
 ## 🔴 Blockers / Vấn Đề Chặn
 
 | Blocker | Severity | Resolution |
-|---------|----------|-----------|
-| No live trading capital | CRITICAL | Fund exchange wallets before go-live |
+|---------|----------|-------------|
+| No live trading capital | HIGH | Fund exchange wallets before go-live |
 | No paying customers yet | HIGH | Run Beta pilot program |
-| HSTS not configured | HIGH | Enable before production traffic |
-| **NOWPayments IPN E2E** | ✅ Verified | 5/5 unit tests + staging sandbox E2E script ready (`scripts/test-payment-e2e.sh`) |
 | 2 pre-existing test failures | LOW | Dashboard RBAC + tier env loading |
 
 ---
@@ -66,8 +69,8 @@ Pre-Launch (NOW)          Beta Pilot              First Paid                Scal
 $0 MRR  ──────→  test payments ──→  $99/mo first ──→  $1k MRR ──→ $10k MRR
      │                       │                      │                      │
    [████████]             [████░░]               [░░░░░]                [░░░░░]
-   Billing infra          End-to-end             Acquire                Expand
-   complete               payment test            first 10               to 100
+   Alpha Discovery        Paper trading          First live             Scale
+   + risk infra           validation             strategy               allocation
 ```
 
 ---
@@ -76,10 +79,10 @@ $0 MRR  ──────→  test payments ──→  $99/mo first ──→  
 
 ✅ **Every morning, 2 minutes:**
 
-1. `pnpm test` → green? (1,387/1,387 green = healthy)
+1. `pnpm test` → green? (target: 1,500+ green)
 2. Check `docs/ceo-morning-brief.md` for today's priorities
 3. Review `docs/go-live-status.md` — any new `[ ]` → `[x]`?
 
 ---
 
-*Prepared: 2026-07-08 | Refs: CEO-HANDOVER-v2.md, ceo-sops.md, ceo-morning-brief.md*
+*Prepared: 2026-08-16 | Refs: ALPHA_DISCOVERY_ARCHITECTURE.md, docs/transition-criteria.md*

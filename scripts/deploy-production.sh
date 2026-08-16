@@ -150,6 +150,15 @@ if [ "$MODE" = "full" ] || [ "$MODE" = "--docker-only" ]; then
   bash scripts/start-production.sh --detach
 fi
 
+# ─── Backup Cron Setup ───────────────────────────────────────────────
+echo ""
+echo "== Backup Cron Setup =="
+if bash scripts/setup-backup-cron.sh; then
+  echo -e "  ${GREEN}✓ Backup cron configured${NC}"
+else
+  echo -e "  ${RED}! Backup cron setup failed (non-critical)${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}══════════════════════════════════════════════${NC}"
 echo -e "${GREEN}  Deploy complete${NC}"

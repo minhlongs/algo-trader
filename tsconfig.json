@@ -5,6 +5,7 @@
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
+    "sourceMap": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,

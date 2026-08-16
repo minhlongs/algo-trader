@@ -5,6 +5,28 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('../feeds/polymarket-websocket-feed', () => ({
+  PolymarketWebSocketFeed: class {
+    onPriceUpdate() {}
+    connect() {}
+    close() {}
+  },
+}));
+vi.mock('../feeds/kalshi-price-feed', () => ({
+  startKalshiPolling: () => ({ stop: () => Promise.resolve() }),
+  KalshiMarket: {},
+}));
+vi.mock('../feeds/feed-aggregator', () => ({
+  FeedAggregator: class {
+    async connect() {}
+    onFeed() {}
+    async disconnect() {}
+  },
+  FeedMessage: {},
+  UnifiedTicker: {},
+}));
+
 import { CrossPlatformArbDetector, ArbOpportunity, PlatformPrice, getCrossPlatformArbDetector } from '../cross-platform-arb';
 
 // Mock feed modules to avoid real WebSocket/HTTP connections in tests
