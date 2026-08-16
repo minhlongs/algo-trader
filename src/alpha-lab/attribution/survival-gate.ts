@@ -14,8 +14,9 @@
 import { runAllBaselines } from '../baselines/baseline-runner';
 import { runExperiment } from '../experiments/experiment-engine';
 import { evaluateAlpha, type AlphaVerdict, type SurvivalCriteria, DEFAULT_CRITERIA } from './alpha-evaluator';
+import type { BaselineRun } from '../baselines/baseline-runner';
 import type { CandleLike } from '../regimes/regime-types';
-import type { CandidateResult, BaselineRun } from './alpha-evaluator';
+import type { CandidateResult } from './alpha-evaluator';
 
 export interface GateResult {
   /** Overall pass/fail. */

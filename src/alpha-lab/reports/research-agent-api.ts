@@ -17,15 +17,13 @@
  * No side effects — read-only research interface.
  */
 
-import {
-  runExperiment,
-  evaluateWalkForward,
-  evaluate,
-  evaluateAlpha,
-  runAllBaselines,
-  batchLabel,
-  classifyRegime,
-} from '../attribution/alpha-evaluator';
+import { runExperiment } from '../experiments/experiment-engine';
+import { evaluateWalkForward } from '../walkforward/walkforward-evaluator';
+import { evaluate } from '../evaluation/evaluation-engine';
+import { evaluateAlpha } from '../attribution/alpha-evaluator';
+import { runAllBaselines } from '../baselines/baseline-runner';
+import { batchLabel } from '../labeling/triple-barrier';
+import { classifyRegime } from '../regimes/regime-engine';
 
 export {
   runExperiment,
@@ -37,12 +35,10 @@ export {
   classifyRegime,
 };
 
-export type {
-  CandleLike,
-  ExperimentConfig,
-  ExperimentResult,
-  WalkForwardResult,
-  EvaluationReport,
-  BaselineRun,
-  CandidateResult,
-} from '../attribution/alpha-evaluator';
+export type { CandleLike } from '../regimes/regime-types';
+export type { ExperimentConfig } from '../experiments/experiment-types';
+export type { ExperimentResult } from '../experiments/experiment-types';
+export type { WalkForwardResult } from '../walkforward/walkforward-types';
+export type { EvaluationReport } from '../evaluation/evaluation-types';
+export type { BaselineRun } from '../baselines/baseline-runner';
+export type { CandidateResult, SurvivalCriteria, AlphaVerdict } from '../attribution/alpha-evaluator';

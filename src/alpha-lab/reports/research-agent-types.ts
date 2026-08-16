@@ -7,8 +7,8 @@
 export type { ExperimentConfig } from '../experiments/experiment-types';
 export type { CandleLike } from '../regimes/regime-types';
 export type { TripleBarrierResult } from '../labeling/triple-barrier';
+export type { BaselineRun } from '../baselines/baseline-runner';
 export type {
-  BaselineRun,
   BaselineCostConfig,
   BaselineResult,
   BuyHoldConfig,
