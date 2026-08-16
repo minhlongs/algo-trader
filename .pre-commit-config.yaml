@@ -1,10 +1,13 @@
 repos:
+  # Linting — uses existing eslint config in repo
   - repo: https://github.com/pre-commit/mirrors-eslint
     rev: v9.0.0
     hooks:
       - id: eslint
         files: \.tsx?$
         args: [--max-warnings, '50']
+
+  # General hygiene hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -14,3 +17,4 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=500]
       - id: detect-private-key
+      - id: check-merge-conflict
