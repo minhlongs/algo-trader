@@ -121,7 +121,7 @@ export interface EvaluateInput {
 }
 
 export function evaluate(input: EvaluateInput): EvaluationReport {
-  const { candles, trades, labels, steps: _steps, regimesPerBar } = input;
+  const { candles, trades, labels, steps, regimesPerBar } = input;
 
   if (trades.length === 0) {
     return {

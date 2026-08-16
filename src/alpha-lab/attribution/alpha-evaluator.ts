@@ -11,8 +11,8 @@
  * - Sharpe > 0 (risk-adjusted return)
  */
 
+import type { BaselineRun } from '../baselines/baseline-runner';
 import { runAllBaselines } from '../baselines/baseline-runner';
-import type { CandleLike } from '../regimes/regime-types';
 
 export interface SurvivalCriteria {
   /** Candidate must beat buy-hold net PnL (default: true). */
@@ -25,7 +25,7 @@ export interface SurvivalCriteria {
   minSharpe: number;
 }
 
-export const DEFAULT_CRITERIA: SurvivalCriteria = {
+const DEFAULT_CRITERIA: SurvivalCriteria = {
   beatBuyHold: true,
   minWinRate: 0.5,
   beatRandom: true,
@@ -74,7 +74,7 @@ export function evaluateAlpha(
   criteria: Partial<SurvivalCriteria> = {},
 ): AlphaVerdict {
   const rules = { ...DEFAULT_CRITERIA, ...criteria };
-  const baselines = runAllBaselines(candles as CandleLike[]);
+  const baselines = runAllBaselines(candles);
 
   const comparisons: BaselineComparison[] = baselines.map((b) => ({
     baseline: b.name,

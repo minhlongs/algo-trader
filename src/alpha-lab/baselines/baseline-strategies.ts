@@ -10,6 +10,7 @@
 
 import type { BacktestTrade } from '../../desk/backtesting/types';
 import type {
+  BaselineConfig,
   BaselineCostConfig,
   BaselineResult,
   BuyHoldConfig,
