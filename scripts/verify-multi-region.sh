@@ -30,7 +30,8 @@ check_endpoint() {
   local host="${region}.algo-trader.workers.dev"
   local url="https://$host${endpoint}"
 
-  local status_code=$(curl -s -o /dev/null -w "%{http_code}" "$url" --max-time 5)
+  local status_code
+  status_code=$(curl -s -o /dev/null -w "%{http_code}" "$url" --max-time 5)
   local success=false
 
   if [[ "$status_code" == "200" ]]; then
@@ -52,10 +53,12 @@ check_shard_count() {
   local url="https://$host/api/v1/shard/health"
 
   # This endpoint may not exist yet if Phase 1 (sharding) not complete
-  local status_code=$(curl -s -o /dev/null -w "%{http_code}" "$url" --max-time 5)
+  local status_code
+  status_code=$(curl -s -o /dev/null -w "%{http_code}" "$url" --max-time 5)
 
   if [[ "$status_code" == "200" ]]; then
-    local shard_count=$(curl -s "$url" | jq -r '.shards | length' 2>/dev/null || echo "0")
+    local shard_count
+  shard_count=$(curl -s "$url" | jq -r '.shards | length' 2>/dev/null || echo "0")
     if [[ "$shard_count" -ge 4 ]]; then
       echo -e "  ${GREEN}✓${NC} Shard health: $shard_count shards active"
       return 0
@@ -89,10 +92,13 @@ check_region() {
 
   # Check latency (from health response)
   local host="${region}.algo-trader.workers.dev"
-  local health_resp=$(curl -s "https://$host/api/health/region" 2>/dev/null || echo "")
+  local health_resp
+  health_resp=$(curl -s "https://$host/api/health/region" 2>/dev/null || echo "")
   if [[ -n "$health_resp" ]]; then
-    local latency=$(echo "$health_resp" | jq -r '.latencyMs // "N/A"' 2>/dev/null)
-    local status=$(echo "$health_resp" | jq -r '.status // "unknown"' 2>/dev/null)
+    local latency
+    latency=$(echo "$health_resp" | jq -r '.latencyMs // "N/A"' 2>/dev/null)
+    local status
+    status=$(echo "$health_resp" | jq -r '.status // "unknown"' 2>/dev/null)
 
     if [[ "$status" == "healthy" ]]; then
       echo -e "  ${GREEN}✓${NC} Region status: $status (latency: ${latency}ms)"
@@ -102,7 +108,7 @@ check_region() {
     fi
   fi
 
-  return $([ "$all_ok" = true ] && echo 0 || echo 1)
+  [[ "$all_ok" = true ]] && return 0 || return 1
 }
 
 # Main
