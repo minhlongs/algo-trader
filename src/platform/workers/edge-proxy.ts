@@ -42,16 +42,8 @@ import {
 } from './edge-proxy-regions';
 import { handleMetrics, metricEntry } from './edge-proxy-metrics';
 
-/** Auth env shape used by auth handlers (KV + JWT) */
-interface AuthEnv {
-  CACHE: import('@cloudflare/workers-types').KVNamespace;
-  JWT_SECRET?: string;
-  ALLOWED_ORIGINS?: string;
-}
-
-function asAuthEnv(env: Env): AuthEnv {
-  return env as unknown as AuthEnv;
-}
+/** Type alias compatible with both Env and auth-handlers Env (same KV get signatures). */
+type AnyEnv = any;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -122,7 +114,7 @@ export default {
     }
 
     // ── Auth routes (KV-backed, always local) ──
-    const auth = asAuthEnv(env);
+    const auth = env as AnyEnv;
     if (path === '/api/auth/signup' && request.method === 'POST') return handleSignup(request, auth);
     if (path === '/api/auth/login' && request.method === 'POST') return handleLogin(request, auth);
     if (path === '/api/auth/me' && request.method === 'GET') return handleMe(request, auth);

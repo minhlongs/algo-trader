@@ -92,7 +92,7 @@ export async function handleApplyCoupon(request: Request, env: Env): Promise<Res
       const cached2 = await env.CACHE.get(`coupon:${code.toUpperCase()}`);
       if (!cached2) return notFound('Coupon not found');
       const c: Record<string, unknown> = JSON.parse(cached2);
-      const n = ((c as Record<string, unknown>).currentUses ?? (c as Record<string, unknown>).usage_count ?? 0) + 1;
+      const n = Number((c as Record<string, unknown>).currentUses ?? (c as Record<string, unknown>).usage_count ?? 0) + 1;
       const updated = { ...c, currentUses: n };
       await env.CACHE.put(`coupon:${code.toUpperCase()}`, JSON.stringify(updated));
       logger.info('[coupons] applied via KV', { userId, code: c.code as string });
@@ -117,7 +117,7 @@ export async function handleApplyCoupon(request: Request, env: Env): Promise<Res
     const cached2 = await env.CACHE.get(`coupon:${code.toUpperCase()}`);
     if (cached2) {
       const c: Record<string, unknown> = JSON.parse(cached2);
-      const n = ((c as Record<string, unknown>).currentUses ?? (c as Record<string, unknown>).usage_count ?? 0) + 1;
+      const n = Number((c as Record<string, unknown>).currentUses ?? (c as Record<string, unknown>).usage_count ?? 0) + 1;
       await env.CACHE.put(`coupon:${code.toUpperCase()}`, JSON.stringify({ ...c, currentUses: n }));
       return new Response(JSON.stringify({ applied: true, coupon: { code: c.code as string, discountPct: (c.discount_pct as number) ?? 0, freeAccess: !!(c.free_access as number) } }), { headers: jsonH(env, request) });
     }
