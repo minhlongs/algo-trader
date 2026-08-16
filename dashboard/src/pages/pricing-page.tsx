@@ -226,6 +226,22 @@ function FaqItem({ qKey, aKey, t }: { qKey: string; aKey: string; t: Record<stri
   );
 }
 
+const TRUSTED_CHECKOUT_DOMAINS = [
+  'nowpayments.io',
+  'sandbox.nowpayments.io',
+];
+
+const isTrustedCheckoutUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return TRUSTED_CHECKOUT_DOMAINS.some(
+      (d) => parsed.hostname === d || parsed.hostname.endsWith(`.${d}`)
+    );
+  } catch {
+    return false;
+  }
+};
+
 export function PricingPage() {
   const [lang, setLang] = useState<Lang>('en');
   const t = COPY[lang];
@@ -250,8 +266,11 @@ export function PricingPage() {
           navigate(plan.href);
           return;
         }
-        if (result.checkoutUrl) {
+        if (result.checkoutUrl && isTrustedCheckoutUrl(result.checkoutUrl)) {
           window.location.assign(result.checkoutUrl);
+        } else if (result.checkoutUrl) {
+          setCouponError('Invalid checkout URL');
+          navigate(plan.href);
         } else if (result.finalPrice === 0 && result.message) {
           navigate(`/signup?tier=${plan.tier}&coupon=${encodeURIComponent(couponCode)}`);
         } else {
