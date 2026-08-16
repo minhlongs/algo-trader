@@ -2,15 +2,18 @@
  * Public pricing page. Full-page, no sidebar.
  * 3-column plan table + FAQ accordion.
  * Stitch dark fintech bilingual VN+EN.
+ * Coupon redeem flow: /api/coupons/redeem -> NOWPayments checkout or free activation.
  */
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PublicNavbar } from '../components/public-navbar';
 import { Footer } from '../components/footer';
 import { COLORS } from '../lib/stitch-design-tokens';
 import { TIER_LIMITS } from '../lib/tier-config';
+import { useCoupons } from '../hooks/use-coupons';
 
 type Lang = 'en' | 'vi';
+type Plan = 'Free' | 'Pro' | 'Enterprise';
 
 const COPY: Record<Lang, Record<string, string>> = {
   en: {
@@ -45,43 +48,43 @@ const COPY: Record<Lang, Record<string, string>> = {
     faq2q: 'Is my capital at risk?',
     faq2a: 'All trading carries risk. CashClaw enforces daily loss caps and maximum position sizes to limit downside. You control your Polymarket wallet at all times — funds never leave your account.',
     faq3q: 'What markets does CashClaw trade?',
-    faq3a: 'The bot targets high-liquidity Polymarket prediction markets with measurable spreads. The selection algorithm scores markets by volume, liquidity depth, and spread width.',
-    faq4q: 'Can I cancel anytime?',
-    faq4a: 'Yes. Pro and Enterprise plans are month-to-month with no lock-in. Cancel before your next billing date and you will not be charged again.',
+    faq3a: 'Bot nhắm đến các thị trường dự đoán Polymarket có thanh khoản cao và spread đo lường được. Thuật toán chọn lọc thị trường theo khối lượng, độ sâu thanh khoản và độ rộng spread.',
+    faq4q: 'I can cancel anytime?',
+    faq4a: 'Yes. Gói Pro và Enterprise tính theo tháng, không ràng buộc. Hủy trước ngày thanh toán tiếp theo và bạn sẽ không bị tính phí thêm.',
     faq5q: 'Do I need a Polymarket account?',
-    faq5a: 'Yes. CashClaw connects to your existing Polymarket account via API key. You retain full custody of funds.',
+    faq5a: 'Yes. CashClaw connects to your existing Polymarket account via API key. You keep full capital control.',
   },
   vi: {
     langToggle: 'English',
     eyebrow: 'Bảng giá',
-    title: 'Gói dịch vụ đơn giản, minh bạch',
-    subtitle: 'Dùng thử miễn phí. Nâng cấp khi bạn sẵn sàng. Không phí ẩn. Hủy bất cứ lúc nào.',
-    planFree: 'Free',
+    title: 'Gói đơn giản, minh bạch',
+    subtitle: 'Dùng miễn phí, nâng cấp khi sẵn sàng. Không phí ẩn. Hủy bất cứ lúc nào.',
+    planFree: 'Miễn phí',
     planPro: 'Pro',
-    planEnterprise: 'Enterprise',
+    planEnterprise: 'Doanh nghiệp',
     priceFree: '$0',
     pricePro: '$49',
     priceEnterprise: '$199',
-    subFree: 'vĩnh viễn',
+    subFree: 'mãi mãi',
     subMonthly: '/ tháng',
     ctaGetStarted: 'Bắt đầu',
-    ctaStartPro: 'Dùng Pro',
+    ctaStartPro: 'Nâng cấp Pro',
     popular: 'PHỔ BIẾN',
-    featActiveStrategies: 'Chiến lược hoạt động',
-    featTradesPerDay: 'Giao dịch/ngày',
-    featDailyLossCap: 'Giới hạn lỗ/ngày',
-    featMaxPosition: 'Vị thế tối đa',
+    featActiveStrategies: 'chiến lược',
+    featTradesPerDay: 'giao dịch/ngày',
+    featDailyLossCap: 'giới hạn lỗ ngày',
+    featMaxPosition: 'vị thế tối đa',
     featScanningBasic: 'Cơ bản',
     featScanningAdvanced: 'Nâng cao',
     featScanningFull: 'Toàn diện',
-    featSafetyLimits: 'Giới hạn bảo vệ',
+    featSafetyLimits: 'Giới hạn an toàn',
     featApiAccess: 'Truy cập API',
     featPrioritySupport: 'Hỗ trợ ưu tiên',
     faqTitle: 'Câu hỏi thường gặp',
-    faq1q: 'CashClaw giúp tôi kiếm tiền như thế nào?',
-    faq1a: 'CashClaw đặt lệnh mua và bán quanh giá trung bình trên Polymarket. Khi cả hai phía được khớp, bạn kiếm được spread. Thị trường thanh khoản cao tạo ra nhiều khớp lệnh hơn.',
+    faq1q: 'CashClaw kiếm tiền như thế nào cho tôi?',
+    faq1a: 'CashClaw đặt lệnh mua/bán quanh giá trung bình giá trị hợp lý. Khi cả hai phía khớp, bạn kiếm spread. Thị trường càng thanh khoản thì khớp càng nhiều.',
     faq2q: 'Vốn của tôi có bị rủi ro không?',
-    faq2a: 'Mọi giao dịch đều có rủi ro. CashClaw áp dụng giới hạn lỗ hàng ngày và giới hạn vị thế tối đa để giảm thiểu rủi ro. Bạn kiểm soát hoàn toàn ví Polymarket — tiền không rời khỏi tài khoản của bạn.',
+    faq2a: 'Mọi hoạt động giao dịch đều có rủi ro. CashClaw áp dụng giới hạn lỗ ngày và kích thước vị thế tối đa để giảm thiểu rủi ro. Bạn quản lý chính ví Polymarket của mình — vốn không bao giờ rời khỏi tài khoản.',
     faq3q: 'CashClaw giao dịch những thị trường nào?',
     faq3a: 'Bot nhắm đến các thị trường dự đoán Polymarket có thanh khoản cao và spread đo lường được. Thuật toán chọn lọc thị trường theo khối lượng, độ sâu thanh khoản và độ rộng spread.',
     faq4q: 'Tôi có thể hủy bất cứ lúc nào không?',
@@ -91,14 +94,15 @@ const COPY: Record<Lang, Record<string, string>> = {
   },
 };
 
-const PLANS = [
+const PLANS: { name: Plan; price: string; sub: string; href: string; tier: string; apiBasePrice: number; highlight: boolean; features: { label: string; value: number | string | boolean }[] }[] = [
   {
     name: 'Free',
     price: '$0',
     sub: 'forever',
     href: '/signup?tier=free',
-    cta: 'ctaGetStarted',
+    tier: 'free',
     highlight: false,
+    apiBasePrice: 0,
     features: [
       { label: 'featActiveStrategies', value: TIER_LIMITS.free.activeStrategies },
       { label: 'featTradesPerDay', value: TIER_LIMITS.free.tradesPerDay },
@@ -115,8 +119,9 @@ const PLANS = [
     price: '$49',
     sub: '/ month',
     href: '/signup?tier=pro',
-    cta: 'ctaStartPro',
+    tier: 'pro',
     highlight: true,
+    apiBasePrice: 49,
     features: [
       { label: 'featActiveStrategies', value: TIER_LIMITS.pro.activeStrategies },
       { label: 'featTradesPerDay', value: TIER_LIMITS.pro.tradesPerDay },
@@ -133,8 +138,9 @@ const PLANS = [
     price: '$199',
     sub: '/ month',
     href: '/signup?tier=enterprise',
-    cta: 'ctaGetStarted',
+    tier: 'enterprise',
     highlight: false,
+    apiBasePrice: 199,
     features: [
       { label: 'featActiveStrategies', value: TIER_LIMITS.enterprise.activeStrategies },
       { label: 'featTradesPerDay', value: TIER_LIMITS.enterprise.tradesPerDay },
@@ -177,7 +183,7 @@ function glassCard(extra = '') {
 
 function CheckIcon() {
   return (
-    <svg width="14" height="14" fill="none" stroke={COLORS.profit} strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -185,7 +191,7 @@ function CheckIcon() {
 
 function XIcon() {
   return (
-    <svg width="14" height="14" fill="none" stroke={COLORS.onSurfaceVariant} strokeWidth="2" viewBox="0 0 24 24">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
@@ -223,6 +229,41 @@ function FaqItem({ qKey, aKey, t }: { qKey: string; aKey: string; t: Record<stri
 export function PricingPage() {
   const [lang, setLang] = useState<Lang>('en');
   const t = COPY[lang];
+  const [couponCode, setCouponCode] = useState('');
+  const [couponBusy, setCouponBusy] = useState<Plan | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { redeemCoupon } = useCoupons('');
+
+  const handleCTAClick = useCallback(
+    async (plan: typeof PLANS[number]) => {
+      if (!couponCode || plan.apiBasePrice === 0) {
+        navigate(plan.href);
+        return;
+      }
+      setCouponBusy(plan.name);
+      setCouponError(null);
+      try {
+        const result = await redeemCoupon(couponCode, plan.tier);
+        setCouponBusy(null);
+        if (!result) {
+          navigate(plan.href);
+          return;
+        }
+        if (result.checkoutUrl) {
+          window.location.assign(result.checkoutUrl);
+        } else if (result.finalPrice === 0 && result.message) {
+          navigate(`/signup?tier=${plan.tier}&coupon=${encodeURIComponent(couponCode)}`);
+        } else {
+          navigate(plan.href);
+        }
+      } catch (_err) {
+        setCouponBusy(null);
+        navigate(plan.href);
+      }
+    },
+    [couponCode, navigate, redeemCoupon]
+  );
 
   return (
     <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex flex-col">
@@ -244,6 +285,22 @@ export function PricingPage() {
       </div>
 
       <main className="flex-1 pt-12 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
+        {/* Coupon bar */}
+        <div className="max-w-md mx-auto mb-10">
+          <div className="flex items-center gap-2">
+            <input
+              id="coupon-code"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              placeholder="COUPON CODE"
+              className="flex-1 rounded border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 px-3 py-2 text-sm text-[${COLORS.onSurface}] placeholder-[${COLORS.onSurfaceVariant}] focus:outline-none focus:border-[${COLORS.primary}]"
+            />
+          </div>
+          {couponError && (
+            <p className="text-xs mt-2 text-[${COLORS.loss}]">{couponError}</p>
+          )}
+        </div>
+
         {/* Header */}
         <div className="text-center mb-12">
           <p className="text-[${COLORS.primary}] text-xs uppercase tracking-widest mb-3">{t.eyebrow}</p>
@@ -253,54 +310,58 @@ export function PricingPage() {
 
         {/* Plan cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
-          {PLANS.map(({ name, price, sub, href, cta, highlight, features }) => (
-            <div
-              key={name}
-              className={`relative p-6 flex flex-col gap-5 ${highlight ? glassCard('border-2 border-[${COLORS.primary}]') : glassCard()}`}
-            >
-              {highlight && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[${COLORS.primary}] text-white text-xs font-bold px-3 py-0.5 rounded-full">
-                  {t.popular}
-                </span>
-              )}
-
-              <div>
-                <p className="text-[${COLORS.onSurfaceVariant}] text-xs uppercase tracking-widest mb-2">{t[`plan${name}` as keyof typeof t] as string}</p>
-                <p className="text-[${COLORS.onSurface}] text-4xl font-bold">
-                  {price}
-                  <span className="text-[${COLORS.onSurfaceVariant}] text-sm font-normal ml-1">
-                    {sub === 'forever' ? t.subFree : t.subMonthly}
-                  </span>
-                </p>
-              </div>
-
-              <ul className="space-y-2.5 flex-1">
-                {features.map(({ label, value }) => (
-                  <li key={label} className="flex items-center justify-between text-xs">
-                    <span className="text-[${COLORS.onSurfaceVariant}]">{t[label as keyof typeof t] as string}</span>
-                    <span className="flex items-center gap-1">
-                      {typeof value === 'boolean' ? (
-                        value ? <CheckIcon /> : <XIcon />
-                      ) : (
-                        <span className="text-[${COLORS.onSurface}]">{value}</span>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                to={href}
-                className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
-                  highlight
-                    ? 'bg-[${COLORS.primary}] text-white hover:bg-[${COLORS.primary}]/80'
-                    : 'border border-[${COLORS.outline}] text-[${COLORS.onSurfaceVariant}] hover:text-[${COLORS.onSurface}] hover:border-[${COLORS.primary}]'
-                }`}
+          {PLANS.map((plan) => {
+            const busy = couponBusy === plan.name;
+            return (
+              <div
+                key={plan.name}
+                className={`relative p-6 flex flex-col gap-5 ${plan.highlight ? glassCard('border-2 border-[${COLORS.primary}]') : glassCard()}`}
               >
-                {t[cta as keyof typeof t] as string}
-              </Link>
-            </div>
-          ))}
+                {plan.highlight && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[${COLORS.primary}] text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                    {t.popular}
+                  </span>
+                )}
+
+                <div>
+                  <p className="text-[${COLORS.onSurfaceVariant}] text-xs uppercase tracking-widest mb-2">{t[`plan${plan.name}` as keyof typeof t] as string}</p>
+                  <p className="text-[${COLORS.onSurface}] text-4xl font-bold">
+                    {plan.price}
+                    <span className="text-[${COLORS.onSurfaceVariant}] text-sm font-normal ml-1">
+                      {plan.sub === 'forever' ? t.subFree : t.subMonthly}
+                    </span>
+                  </p>
+                </div>
+
+                <ul className="space-y-2.5 flex-1">
+                  {plan.features.map(({ label, value }) => (
+                    <li key={label} className="flex items-center justify-between text-xs">
+                      <span className="text-[${COLORS.onSurfaceVariant}]">{t[label as keyof typeof t] as string}</span>
+                      <span className="flex items-center gap-1">
+                        {typeof value === 'boolean' ? (
+                          value ? <CheckIcon /> : <XIcon />
+                        ) : (
+                          <span className="text-[${COLORS.onSurface}]">{value as string}</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => handleCTAClick(plan)}
+                  disabled={busy}
+                  className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors disabled:opacity-60 disabled:cursor-wait ${
+                    plan.highlight
+                      ? 'bg-[${COLORS.primary}] text-white hover:bg-[${COLORS.primary}]/80'
+                      : 'border border-[${COLORS.outline}] text-[${COLORS.onSurfaceVariant}] hover:text-[${COLORS.onSurface}] hover:border-[${COLORS.primary}]'
+                  }`}
+                >
+                  {busy ? 'Applying...' : t[plan.tier === 'pro' ? 'ctaStartPro' : 'ctaGetStarted' as keyof typeof t] as string}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {/* FAQ */}

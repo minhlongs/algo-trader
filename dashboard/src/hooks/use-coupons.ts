@@ -26,6 +26,15 @@ export interface CreateCouponPayload {
   applicableTiers?: string[];
 }
 
+export interface RedeemResult {
+  ok: boolean;
+  checkoutUrl: string | null;
+  finalPrice: number;
+  originalPrice: number;
+  discountPercent: number;
+  message?: string;
+}
+
 export function useCoupons(apiKey: string) {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(false);
@@ -88,9 +97,58 @@ export function useCoupons(apiKey: string) {
     }
   }, [headers, loadCoupons]);
 
+  const redeemCoupon = useCallback(
+    async (code: string, tier: string): Promise<RedeemResult | null> => {
+      setError(null);
+      const res = await fetch(`${API_BASE}/api/coupons/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, tier }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error ?? body.message ?? `HTTP ${res.status}`);
+        return null;
+      }
+      const data = (await res.json()) as RedeemResult;
+      return data;
+    },
+    []
+  );
+
+  const validateCoupon = useCallback(
+    async (code: string, tier?: string): Promise<RedeemResult | null> => {
+      setError(null);
+      const body: Record<string, unknown> = { code };
+      if (tier) body.tier = tier;
+      const res = await fetch(`${API_BASE}/api/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        setError(errBody.error ?? errBody.message ?? `HTTP ${res.status}`);
+        return null;
+      }
+      const data = (await res.json()) as RedeemResult;
+      return data;
+    },
+    []
+  );
+
   useEffect(() => {
     loadCoupons();
   }, [loadCoupons]);
 
-  return { coupons, loading, error, reload: loadCoupons, createCoupon, deactivateCoupon };
+  return {
+    coupons,
+    loading,
+    error,
+    reload: loadCoupons,
+    createCoupon,
+    deactivateCoupon,
+    redeemCoupon,
+    validateCoupon,
+  };
 }
