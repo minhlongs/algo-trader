@@ -46,7 +46,7 @@ export async function runAlphaExperiment(
 
   for (let i = config.lookback; i < candles.length; i++) {
     const window = candles.slice(i - config.lookback, i + 1);
-    const ts = window[window.length - 1]!.timestamp;
+    const _ts = window[window.length - 1]!.timestamp;
 
     regimeSnapshots.push(
       classifyRegime(
