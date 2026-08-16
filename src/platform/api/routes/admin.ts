@@ -57,6 +57,7 @@ adminRouter.post('/halt', async (req: Request, res: Response) => {
 
     res.json({ success: true, message: `Trading halted: ${parsed.data.reason}` });
   } catch (error) {
+    logger.error('[Admin] Halt trading failed', { error: String(error) });
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Failed to halt trading',
     });
@@ -86,6 +87,7 @@ adminRouter.post('/resume', async (req: Request, res: Response) => {
 
     res.json({ success: true, message: 'Trading resumed' });
   } catch (error) {
+    logger.error('[Admin] Resume trading failed', { error: String(error) });
     res.status(500).json({
       error: error instanceof Error ? error.message : 'Failed to resume trading',
     });

@@ -122,6 +122,32 @@ healthRouter.get('/', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /ready
+ * Startup readiness probe — Kubernetes / load-balancer compatible.
+ * Checks Redis + Postgres + encryption key presence only to avoid
+ * import-cycle/performance issues from Desk instantiation.
+ */
+healthRouter.get('/ready', async (_req: Request, res: Response) => {
+  try {
+    const redis = getRedisClient();
+    await redis.ping();
+
+    const db = getDbClient();
+    await db.query('SELECT 1');
+
+    const encryptionKey = process.env['ENCRYPTION_KEY'];
+    if (!encryptionKey) {
+      return res.status(503).json({ ready: false, reason: 'missing_encryption_key' });
+    }
+
+    return res.json({ ready: true });
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'readiness_check_failed';
+    return res.status(503).json({ ready: false, reason });
+  }
+});
+
+/**
  * GET /health/metrics
  * Detailed system metrics in JSON format (for dashboards / Grafana)
  */
