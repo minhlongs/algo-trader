@@ -33,13 +33,15 @@ Deploy algo-trader to production via two targets:
 3. **Backup cron missing** — Added to `scripts/deploy-production.sh` post-deploy (idempotent)
 4. **Dual-deploy race condition** — Removed `deploy-vps` from `ci-cd.yml`; `deploy.yml` is sole VPS deploy path
 5. **`/ready` probe missing** — Restored in `health.ts` with Redis/Postgres/ENCRYPTION_KEY checks
+6. **Auth-chain gap (53% load-test failures)** — `x-api-key` header never reached `req.license` because `license-validation.ts` used Fastify types. Created `api-key-license.ts` Express middleware bridging `x-api-key` → `LicenseService.getLicenseByKey()` → `req.license`. Mounted between `authMiddleware` and `auditMiddleware` in `server.ts`.
+7. **CI Sentry hard-fail** — Added `continue-on-error: true` to `sentry-cli` step in `ci-cd.yml` so missing secrets don't block the deploy pipeline.
 
 ## Remaining (Manual / Human-Action Required)
 
 | Item | Owner | Action Needed |
 |------|-------|---------------|
 | Sentry GitHub secrets | User | Add `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` in repo Settings → Secrets |
-| 12k RPS load test | User + Infra | Requires valid `TEST_API_KEY` and `LOAD_TEST_BASE_URL`; Kongming flagged 53% prior failure rate — may need VPS sizing review |
+| 12k RPS load test | User + Infra | Requires valid `TEST_API_KEY` and `LOAD_TEST_BASE_URL`; prior 53% failure rate was auth-chain gap (now fixed). Re-run to confirm. |
 | Domain TLS verification | User | `curl -sI https://api.cashclaw.cc/health` should return HTTP/2 200 |
 | Merge to `main` | User | After verification, merge `feat/bootstrap-quality-pipeline` to `main` |
 
