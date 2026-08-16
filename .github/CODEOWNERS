@@ -1,0 +1,9 @@
+# Code Owners — auto-request review on PRs touching these paths
+# Pattern: @username or @org/team-name
+
+* @longtho638-jpg
+
+# Path-specific ownership (extend as teams grow)
+# src/alpha-lab/ @alpha-research
+# src/desk/ @trading-engine
+# .github/workflows/ @devops

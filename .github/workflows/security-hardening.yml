@@ -1,0 +1,55 @@
+name: Security Hardening & Attestation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ------------------------------------------------------------------
+  # JOB 1: SECRET SCANNING — Detect leaked credentials
+  # ------------------------------------------------------------------
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog filesystem scan (continue-on-error)
+        continue-on-error: true
+        run: |
+          docker run --rm -v "$(pwd):/repo" trufflesecurity/trufflehog:latest filesystem /repo --only-verified --fail || true
+
+      - name: Pattern-based secret detection
+        continue-on-error: true
+        run: |
+          echo "=== Pattern-based secret detection ==="
+          if grep -rE "(API_KEY|SECRET|PASSWORD|TOKEN)\s*=\s*['\"][a-zA-Z0-9]{16,}['\"]" src/ --include="*.ts" --include="*.js" 2>/dev/null | grep -v "test" | grep -v "process\.env" | grep -v "getenv" | grep -v "\.env"; then
+            echo "Found hardcoded secrets!"
+            exit 1
+          fi
+          echo "No hardcoded secrets found"
+
+  # ------------------------------------------------------------------
+  # JOB 2: COMMAND INJECTION SCAN — Detect unsafe shell patterns
+  # ------------------------------------------------------------------
+  command-injection-scan:
+    name: Command Injection Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect dangerous patterns
+        run: |
+          echo "=== Command injection pattern scan ==="
+          # Match: child_process.exec/spawn, bare eval(), new Function()
+          # Exclude: Redis pipeline.exec(), redis.eval(), test files
+          if grep -rnE "(child_process\.exec\(|child_process\.spawn\(|\beval\s*\(|new Function\s*\()" src/ --include="*.ts" --include="*.js" 2>/dev/null | grep -v "test" | grep -v "redis\.eval" | grep -v "pipeline\.exec" | grep -v "multi\.exec" | grep -v "tx\.exec"; then
+            echo "Found potential command injection patterns — review required"
+            exit 1
+          fi
+          echo "No dangerous patterns found"

@@ -18,6 +18,28 @@ vi.mock('@sentry/node', () => ({
   close: vi.fn().mockResolvedValue(true),
   Handlers: { requestHandler: () => (_req: unknown, _res: unknown, next: () => void) => next() },
 }));
+
+// Mock redis to prevent real connection
+vi.mock('../../../redis', () => ({
+  getRedisClient: () => ({
+    ping: () => Promise.resolve('PONG'),
+    info: () => Promise.resolve('redis_version:7.0.0'),
+  }),
+}));
+
+// Mock postgres client
+vi.mock('../../../shared/db/postgres-client', () => ({
+  getDbClient: () => ({
+    query: () => Promise.resolve({ rows: [], rowCount: 0 }),
+    connect: () => Promise.resolve(),
+    release: () => {},
+  }),
+}));
+
+// Mock TradingEngine
+vi.mock('../../../desk/engine', () => ({
+  TradingEngine: class { static getStatus() { return 'idle'; } },
+}));
 vi.mock('@sentry/opentelemetry', () => ({
   setupOpenTelemetry: vi.fn(),
 }));

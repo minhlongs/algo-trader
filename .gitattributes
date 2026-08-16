@@ -1,0 +1,15 @@
+# Lock files — prefer the branch's version on merge
+# Prevents CI lock file conflicts from blocking merges
+package-lock.json merge=ours
+pnpm-lock.yaml merge=ours
+poetry.lock merge=ours
+
+# GitHub Actions workflow locks — auto-generated, always keep theirs
+.github/workflows/*.lock.yml linguist-generated=true merge=ours
+
+# Binary / generated files — don't attempt text merge
+*.png binary
+*.jpg binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

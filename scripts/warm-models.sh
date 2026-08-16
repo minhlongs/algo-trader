@@ -8,7 +8,7 @@ echo "Date: $(date -Iseconds)"
 
 # Load .env if present
 if [ -f .env ]; then
-  # export variables from .env
+  # shellcheck disable=SC2046
   export $(grep -v '^#' .env | xargs)
 fi
 

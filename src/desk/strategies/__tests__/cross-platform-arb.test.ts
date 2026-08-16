@@ -7,6 +7,31 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CrossPlatformArbDetector, ArbOpportunity, PlatformPrice, getCrossPlatformArbDetector } from '../cross-platform-arb';
 
+// Mock feed modules to avoid real WebSocket/HTTP connections in tests
+vi.mock('../../feeds/polymarket-websocket-feed', () => ({
+  PolymarketWebSocketFeed: class {
+    constructor() { this._handlers = {}; }
+    connect() { return Promise.resolve(); }
+    onPriceUpdate(fn) { this._handlers.price = fn; }
+    close() {}
+  },
+}));
+
+vi.mock('../../feeds/kalshi-price-feed', () => ({
+  startKalshiPolling: vi.fn().mockReturnValue({ stop: vi.fn() }),
+  KalshiMarket: {},
+}));
+
+vi.mock('../../feeds/feed-aggregator', () => ({
+  FeedAggregator: class {
+    onFeed() {}
+    disconnect() {}
+  },
+  FeedMessage: {},
+  UnifiedTicker: {},
+  getFeedAggregator: vi.fn().mockReturnValue({ onFeed: vi.fn(), disconnect: vi.fn() }),
+}));
+
 describe('CrossPlatformArbDetector', () => {
   let detector: CrossPlatformArbDetector;
 
