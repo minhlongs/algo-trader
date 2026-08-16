@@ -47,6 +47,19 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Upload source maps to Sentry
+        if: github.event_name == 'push'
+        run: |
+          npm install -g @sentry/cli
+          sentry-cli releases new "$GITHUB_SHA" --project "$SENTRY_PROJECT" --org "$SENTRY_ORG"
+          sentry-cli sourcemaps inject ./dist
+          sentry-cli sourcemaps upload ./dist --release "$GITHUB_SHA" --project "$SENTRY_PROJECT" --org "$SENTRY_ORG"
+          sentry-cli releases finalize "$GITHUB_SHA" --project "$SENTRY_PROJECT" --org "$SENTRY_ORG"
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+
   # Job 2: Docker Build & Push
   docker:
     name: Docker Build & Push
@@ -150,6 +163,10 @@ jobs:
             curl -f http://localhost:3030/api/health && echo " Grafana: OK" || echo " Grafana: SKIP"
             wget -qO- http://localhost:8222/healthz && echo " NATS: OK" || echo " NATS: FAIL"
             redis-cli -h localhost ping 2>/dev/null && echo " Redis: OK" || echo " Redis: SKIP"
+
+            # Backup cron setup (idempotent — safe to run every deploy)
+            echo "=== Backup Cron Setup ==="
+            bash scripts/setup-backup-cron.sh || echo "Cron setup skipped (non-critical)"
 
             # Final API health (required) — rollback on failure
             if ! curl -f http://localhost:3000/api/health; then

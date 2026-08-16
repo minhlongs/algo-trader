@@ -59,6 +59,34 @@ jobs:
           cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
 
+      - name: Setup Node.js for source map upload
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm for source map upload
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install dependencies for source map upload
+        run: pnpm install --frozen-lockfile
+
+      - name: Build TypeScript for source maps
+        run: pnpm build
+
+      - name: Upload source maps to Sentry
+        run: |
+          npm install -g @sentry/cli
+          sentry-cli releases new "$GITHUB_SHA" --project "$SENTRY_PROJECT" --org "$SENTRY_ORG"
+          sentry-cli sourcemaps inject ./dist
+          sentry-cli sourcemaps upload ./dist --release "$GITHUB_SHA" --project "$SENTRY_PROJECT" --org "$SENTRY_ORG"
+          sentry-cli releases finalize "$GITHUB_SHA" --project "$SENTRY_PROJECT" --org "$SENTRY_ORG"
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+
   # ── Gate 3: Deploy Cloudflare Worker ────────────────────────────────────────
   deploy-worker:
     name: Deploy CF Worker
@@ -119,4 +147,6 @@ jobs:
             docker image prune -f --filter "until=168h"
             sleep 5
             curl -sf http://localhost:3000/api/health || echo "WARN: health check failed"
+            bash scripts/setup-backup-cron.sh
+            echo "Backup cron installed or already present"
           EOF
