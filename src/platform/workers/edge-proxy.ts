@@ -41,6 +41,7 @@ import {
   selectBestRegion, routeToRegion,
 } from './edge-proxy-regions';
 import { handleMetrics, metricEntry } from './edge-proxy-metrics';
+import { SECURITY_HEADERS } from './edge-proxy-constants';
 
 /** Type alias compatible with both Env and auth-handlers Env (same KV get signatures). */
 type AnyEnv = any;
@@ -50,8 +51,16 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // CORS preflight
-    if (request.method === 'OPTIONS') return corsPreflightResponse();
+    // CORS preflight — also enforce HSTS
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          ...CORS,
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
 
     // ── Metrics (Prometheus) ──
     if (path === '/metrics' && request.method === 'GET') {
@@ -60,7 +69,7 @@ export default {
         if (url.searchParams.get('token') !== secret) {
           return new Response(JSON.stringify({ error: 'Unauthorized' }), {
             status: 401,
-            headers: { ...CORS, 'Content-Type': 'application/json' },
+            headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
           });
         }
       }
@@ -100,7 +109,7 @@ export default {
         },
       }), {
         status: 200,
-        headers: { ...CORS, 'Content-Type': 'application/json' },
+        headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
@@ -110,7 +119,9 @@ export default {
         service: 'algo-trader API', version: '1.0',
         status: 'ok', edge: 'cloudflare', environment: env.ENVIRONMENT,
         hasVps: !!env.VPS_ORIGIN, timestamp: new Date().toISOString(),
-      }), { headers: CORS });
+      }), {
+        headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+      });
     }
 
     // ── Auth routes (KV-backed, always local) ──
@@ -161,9 +172,14 @@ export default {
         const body = await request.json();
         const tenantId = path.split('/')[3];
         await env.CACHE.put(`config:${tenantId}`, JSON.stringify(body));
-        return new Response(JSON.stringify({ saved: true }), { headers: CORS });
+        return new Response(JSON.stringify({ saved: true }), {
+        headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+      });
       } catch {
-        return new Response(JSON.stringify({ error: 'Failed to save' }), { status: 500, headers: CORS });
+        return new Response(JSON.stringify({ error: 'Failed to save' }), {
+        status: 500,
+        headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+      });
       }
     }
 
@@ -171,7 +187,7 @@ export default {
     if (env.VPS_ORIGIN && path.startsWith('/api/')) {
       return new Response(
         JSON.stringify({ error: 'Not implemented', message: 'VPS backend removed — endpoint not yet migrated to CF Worker' }),
-        { status: 501, headers: { 'Content-Type': 'application/json', ...CORS } }
+        { status: 501, headers: { 'Content-Type': 'application/json', ...CORS, ...SECURITY_HEADERS } }
       );
     }
 
@@ -179,6 +195,6 @@ export default {
     if (path.startsWith('/api/')) return notImplementedResponse(path);
 
     // Non-API routes — 404
-    return new Response('Not Found', { status: 404 });
+    return new Response('Not Found', { status: 404, headers: { ...CORS, ...SECURITY_HEADERS } });
   },
 };

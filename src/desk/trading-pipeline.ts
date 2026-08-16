@@ -11,7 +11,9 @@
  * All state persists to ~/.cashclaw/ — survives PM2 restarts.
  */
 
-import { KellyPositionSizer, type KellyConfig } from './risk/kelly-position-sizer';
+import { KellyPositionSizer, type KellyConfig, type KellySizingInput, type KellySizingResult } from './risk/kelly-position-sizer';
+import { RegimeAwareKelly, type RegimeAwareKellyConfig } from './risk/regime-aware-kelly';
+import type { MarketRegime } from '../alpha-lab/regimes/regime-types';
 import { TieredDrawdownBreaker, type TieredDrawdownConfig } from './risk/tiered-drawdown-breaker';
 import { TwapExecutor, type TwapConfig } from './execution/twap-executor';
 import { WalletManager, type WalletLabel, type WalletTrade } from './wallet/wallet-manager';
@@ -34,6 +36,8 @@ export interface TradingPipelineConfig {
   twap?: Partial<TwapConfig>;
   /** USD threshold above which orders use TWAP (default $500) */
   twapThresholdUsd?: number;
+  /** Optional regime engine for regime-aware position sizing */
+  regimeEngine?: { getRegime(market: string, timeframe: string): MarketRegime };
 }
 
 export interface TradingPipeline {
@@ -46,6 +50,19 @@ export interface TradingPipeline {
   twapThresholdUsd: number;
   /** Optional CLOB client for strategies that need real order-book data */
   clobClient?: ClobClientInterface;
+  /** Optional regime engine for regime-aware position sizing */
+  regimeEngine?: { getRegime(market: string, timeframe: string): MarketRegime };
+  /**
+   * Size a position with optional regime-aware Kelly fraction.
+   *
+   * When a regimeEngine is provided, the regime for the given market/timeframe
+   * is fetched and used to adjust the Kelly fraction. Otherwise, plain Kelly
+   * sizing is used.
+   *
+   * @param input - base Kelly sizing inputs plus market and timeframe
+   * @returns KellySizingResult with (optionally) regime-adjusted values
+   */
+  sizePosition(input: { market: string; timeframe: string } & KellySizingInput): KellySizingResult;
   /** Record a completed trade outcome — checks drawdown BEFORE mutating wallet balance */
   recordTradeOutcome(trade: WalletTrade, newPortfolioValue: number): Promise<void>;
 }
@@ -62,7 +79,16 @@ export function createTradingPipeline(
 ): TradingPipeline {
   const { initialPortfolioValue, walletLabel } = config;
 
-  const kelly = new KellyPositionSizer(config.kelly);
+  const baseKellyConfig: Partial<KellyConfig> = {
+    kellyFraction: config.kelly?.kellyFraction ?? 0.25,
+    maxPositionFraction: config.kelly?.maxPositionFraction ?? 0.05,
+    minPositionUsd: config.kelly?.minPositionUsd ?? 1.0,
+    isManagedCapital: config.kelly?.isManagedCapital ?? true,
+  };
+  const plainKelly = new KellyPositionSizer(baseKellyConfig);
+  const regimeAwareKelly = new RegimeAwareKelly({
+    kelly: baseKellyConfig,
+  } as RegimeAwareKellyConfig);
   const drawdown = new TieredDrawdownBreaker(initialPortfolioValue, config.drawdown);
   const twap = new TwapExecutor(config.twap);
   const wallet = sharedWallet ?? new WalletManager();
@@ -72,7 +98,7 @@ export function createTradingPipeline(
   logger.info(`[TradingPipeline] Created for wallet="${walletLabel}" initial=$${initialPortfolioValue} twapThreshold=$${twapThresholdUsd}`);
 
   return {
-    kelly,
+    kelly: plainKelly,
     drawdown,
     twap,
     wallet,
@@ -80,6 +106,15 @@ export function createTradingPipeline(
     walletLabel,
     twapThresholdUsd,
     ...(providedClobClient && { clobClient: providedClobClient }),
+    ...(config.regimeEngine && { regimeEngine: config.regimeEngine }),
+
+    sizePosition(input: { market: string; timeframe: string } & KellySizingInput): KellySizingResult {
+      if (config.regimeEngine) {
+        const regime = config.regimeEngine.getRegime(input.market, input.timeframe);
+        return regimeAwareKelly.size(input, regime);
+      }
+      return plainKelly.calculatePositionSize(input);
+    },
 
     async recordTradeOutcome(trade: WalletTrade, newPortfolioValue: number): Promise<void> {
       // EC#32: Make async (wallet.recordTrade is now async)
@@ -87,9 +122,9 @@ export function createTradingPipeline(
       // 1. Check drawdown breaker FIRST (non-mutating read)
       const state = drawdown.update(newPortfolioValue);
 
-  const effectiveTenantId: TenantId = validateTenantId(walletLabel)
-    ? (walletLabel as TenantId)
-    : (() => { throw new Error(`Invalid walletLabel for audit: ${walletLabel}`) })();
+      const effectiveTenantId: TenantId = validateTenantId(walletLabel)
+        ? (walletLabel as TenantId)
+        : (() => { throw new Error(`Invalid walletLabel for audit: ${walletLabel}`) })();
 
       // 2. Only record trade if drawdown allows it
       if (state.tier === 'HALT' || state.tier === 'HARD_STOP') {

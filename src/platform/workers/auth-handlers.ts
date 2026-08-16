@@ -3,8 +3,9 @@
  */
 
 import { hashPassword, verifyPassword, createJwt, verifyJwt } from './crypto-utils';
+import { SECURITY_HEADERS } from './edge-proxy-constants';
 
-interface Env { CACHE: KVNamespace; JWT_SECRET: string; ALLOWED_ORIGINS?: string; }
+interface Env { CACHE: KVNamespace; JWT_SECRET: string; ALLOWED_ORIGINS?: string; ADMIN_API_KEY?: string; }
 
 const BASE_CORS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -19,7 +20,7 @@ function getCorsHeaders(env: Env, origin?: string | null): Record<string, string
 }
 
 function json(data: unknown, status = 200, env?: Env, origin?: string | null): Response {
-  const headers = env ? getCorsHeaders(env, origin) : { ...BASE_CORS, 'Access-Control-Allow-Origin': 'https://cashclaw.cc' };
+  const headers = env ? { ...getCorsHeaders(env, origin), ...SECURITY_HEADERS } : { ...BASE_CORS, 'Access-Control-Allow-Origin': 'https://cashclaw.cc', ...SECURITY_HEADERS };
   return new Response(JSON.stringify(data), { status, headers });
 }
 
@@ -105,10 +106,10 @@ export async function handleMe(request: Request, env: Env): Promise<Response> {
 /** Admin: list all users (requires admin API key) */
 export async function handleListUsers(request: Request, env: Env): Promise<Response> {
   const apiKey = request.headers.get('x-api-key');
-  const adminKey = (env as any).ADMIN_API_KEY;
+  const adminKey = env.ADMIN_API_KEY;
   if (!apiKey || !adminKey || apiKey !== adminKey) return json({ error: 'Unauthorized' }, 401);
 
-  const list = await (env.CACHE as any).list({ prefix: 'user:' });
+  const list = await env.CACHE.list({ prefix: 'user:' });
   const users = [];
   for (const key of list.keys) {
     const raw = await env.CACHE.get(key.name);
@@ -123,7 +124,7 @@ export async function handleListUsers(request: Request, env: Env): Promise<Respo
 /** Admin: set user role (requires admin API key) */
 export async function handleSetRole(request: Request, env: Env): Promise<Response> {
   const apiKey = request.headers.get('x-api-key');
-  const adminKey = (env as any).ADMIN_API_KEY;
+  const adminKey = env.ADMIN_API_KEY;
   if (!apiKey || !adminKey || apiKey !== adminKey) return json({ error: 'Unauthorized' }, 401);
 
   const body = await request.json() as { email?: string; role?: string };
@@ -143,7 +144,7 @@ export async function handleSetRole(request: Request, env: Env): Promise<Respons
 /** Admin: delete user (requires admin API key) */
 export async function handleDeleteUser(request: Request, env: Env): Promise<Response> {
   const apiKey = request.headers.get('x-api-key');
-  const adminKey = (env as any).ADMIN_API_KEY;
+  const adminKey = env.ADMIN_API_KEY;
   if (!apiKey || !adminKey || apiKey !== adminKey) return json({ error: 'Unauthorized' }, 401);
 
   const body = await request.json() as { email?: string };
