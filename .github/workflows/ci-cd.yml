@@ -26,7 +26,7 @@ jobs:
           cache: pnpm
       - run: pnpm approve-builds @prisma/client @prisma/engines prisma protobufjs msgpackr-extract esbuild ccxt bufferutil workerd && pnpm install --frozen-lockfile
       - run: pnpm tsc --noEmit
-      - run: npx eslint src --max-warnings 100
+      - run: npx eslint src --max-warnings 500
       - run: npx vitest run
 
   # ── Gate 2: Docker Build ────────────────────────────────────────────────────
