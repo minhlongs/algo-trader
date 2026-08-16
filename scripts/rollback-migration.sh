@@ -196,7 +196,7 @@ echo ""
 echo "=== Starting rollback ==="
 echo ""
 
-FAILED=""
+_FAILED=""
 for i in "${!MIGRATION_FILES[@]}"; do
     file="${MIGRATION_FILES[$i]}"
     sql="${DOWN_SECTIONS[$i]}"

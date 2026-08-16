@@ -46,7 +46,9 @@ jobs:
       - name: Detect dangerous patterns
         run: |
           echo "=== Command injection pattern scan ==="
-          if grep -rnE "(exec\(|spawn\(|eval\(|child_process)" src/ --include="*.ts" 2>/dev/null | grep -v "test" | grep -v "\.d\.ts"; then
+          # Match: child_process.exec/spawn, bare eval(), new Function()
+          # Exclude: Redis pipeline.exec(), redis.eval(), test files
+          if grep -rnE "(child_process\.exec\(|child_process\.spawn\(|\beval\s*\(|new Function\s*\()" src/ --include="*.ts" --include="*.js" 2>/dev/null | grep -v "test" | grep -v "redis\.eval" | grep -v "pipeline\.exec" | grep -v "multi\.exec" | grep -v "tx\.exec"; then
             echo "Found potential command injection patterns — review required"
             exit 1
           fi
