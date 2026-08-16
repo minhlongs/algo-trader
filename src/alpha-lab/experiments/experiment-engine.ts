@@ -38,14 +38,27 @@ function buildEquityCurve(
 function buildTrades(
   candles: CandleLike[],
   labels: Array<TripleBarrierResult & { entryIdx: number }>,
-  config: { tp: number; sl: number },
+  config: { tp: number; sl: number; feeBps: number; slippageBps: number },
 ): BacktestTrade[] {
+  const feeMultiplier = config.feeBps / 10000;
+  const slipMultiplier = config.slippageBps / 10000;
+  const roundTripCost = feeMultiplier + slipMultiplier; // per side; round-trip = 2x
+
   return labels.map((l) => {
     const entryPrice = candles[l.entryIdx].close;
+    const isWin = l.label === 1;
+    const isLoss = l.label === -1;
+    const grossPnL = isWin
+      ? entryPrice * config.tp
+      : isLoss
+        ? -entryPrice * config.sl
+        : 0;
+    const cost = entryPrice * roundTripCost * 2; // round-trip: entry + exit
+    const netPnL = grossPnL - cost;
     const exitPrice =
-      l.label === 1
+      isWin
         ? entryPrice * (1 + config.tp)
-        : l.label === -1
+        : isLoss
           ? entryPrice * (1 - config.sl)
           : entryPrice;
     return {
@@ -54,7 +67,7 @@ function buildTrades(
       side: 'BUY',
       price: exitPrice,
       size: 1,
-      pnl: l.label === 1 ? entryPrice * config.tp : l.label === -1 ? -entryPrice * config.sl : 0,
+      pnl: netPnL,
     };
   });
 }
@@ -152,7 +165,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
         trainStart,
       );
       allTrainLabels.push(...tLabels);
-      allTrainTrades.push(...buildTrades(candles, tLabels, config));
+      allTrainTrades.push(...buildTrades(candles, tLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
     }
 
     // Val split.
@@ -167,7 +180,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
         valStart,
       );
       allValLabels.push(...vLabels);
-      allValTrades.push(...buildTrades(candles, vLabels, config));
+      allValTrades.push(...buildTrades(candles, vLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
     }
 
     // Test split.
@@ -182,7 +195,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
         testStart,
       );
       allTestLabels.push(...teLabels);
-      allTestTrades.push(...buildTrades(candles, teLabels, config));
+      allTestTrades.push(...buildTrades(candles, teLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
     }
   }
 
