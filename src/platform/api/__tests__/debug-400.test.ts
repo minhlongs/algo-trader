@@ -14,9 +14,6 @@ vi.mock('@sentry/node', () => ({
   setTag: vi.fn(),
   setExtra: vi.fn(),
   setContext: vi.fn(),
-  flush: vi.fn().mockResolvedValue(true),
-  close: vi.fn().mockResolvedValue(true),
-  Handlers: { requestHandler: () => (_req: unknown, _res: unknown, next: () => void) => next() },
 }));
 
 // Mock redis to prevent real connection
@@ -70,10 +67,17 @@ const mockRedis = {
   rateLimit: vi.fn().mockResolvedValue([1, 1]),
   info: vi.fn().mockResolvedValue('# Server\r\nredis_version:7.0.0\r\n'),
 };
-vi.mock('@redis', () => ({ getRedisClient: () => mockRedis }));
-vi.mock('../../../db/postgres-client', () => ({
-  query: vi.fn().mockResolvedValue({ rows: [] }),
+
+// Mocks must use the SAME resolution path as health.ts relative imports.
+// health.ts: import { getRedisClient } from '../../../redis'
+//   → resolves from /src/platform/api/routes/health.ts to /src/redis/index.ts
+// health.ts: import { getDbClient } from '../../../shared/db/postgres-client'
+//   → resolves to /src/shared/db/postgres-client.ts
+vi.mock('../../../redis', () => ({ getRedisClient: () => mockRedis }));
+vi.mock('../../../shared/db/postgres-client', () => ({
+  getDbClient: () => ({ query: vi.fn().mockResolvedValue({ rows: [] }) }),
 }));
+
 vi.mock('@platform/desk/engine', () => ({
   TradingEngine: class { getOrders() { return []; } },
 }));

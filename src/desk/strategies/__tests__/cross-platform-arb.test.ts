@@ -10,6 +10,7 @@ vi.mock('../feeds/polymarket-websocket-feed', () => ({
   PolymarketWebSocketFeed: class {
     onPriceUpdate() {}
     connect() {}
+    close() {}
   },
 }));
 vi.mock('../feeds/kalshi-price-feed', () => ({
@@ -20,6 +21,7 @@ vi.mock('../feeds/feed-aggregator', () => ({
   FeedAggregator: class {
     async connect() {}
     onFeed() {}
+    async disconnect() {}
   },
   FeedMessage: {},
   UnifiedTicker: {},
