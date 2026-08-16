@@ -1,11 +1,12 @@
 allowBuilds:
-  '@prisma/client': set this to true or false
-  '@prisma/engines': set this to true or false
-  ccxt: set this to true or false
-  core-js: set this to true or false
-  esbuild: set this to true or false
-  msgpackr-extract: set this to true or false
-  prisma: set this to true or false
-  protobufjs: set this to true or false
-  sharp: set this to true or false
-  workerd: set this to true or false
+  '@prisma/client': true
+  '@prisma/engines': true
+  bufferutil: true
+  ccxt: true
+  core-js: false
+  esbuild: true
+  msgpackr-extract: true
+  prisma: true
+  protobufjs: true
+  sharp: false
+  workerd: true
