@@ -9,7 +9,7 @@ echo "Date: $(date -Iseconds)"
 # Load .env if present
 if [ -f .env ]; then
   # shellcheck disable=SC2046
-  export $(grep -v '^#' .env | xargs)
+  export $(grep -v '^#' .env | xargs 2>/dev/null || true)
 fi
 
 # 1. Primary LLM (DeepSeek R1 MLX :11435)

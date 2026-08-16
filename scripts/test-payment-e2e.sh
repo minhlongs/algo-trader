@@ -6,7 +6,6 @@ STAGING_URL="${STAGING_URL:-https://algo-trader-staging.workers.dev}"
 NP_API="${NP_API:-https://api-test.nowpayments.io/v1}"
 NP_KEY="${NP_KEY:?Set NP_KEY (sandbox API key)}"
 NP_IPN_SECRET="${NP_IPN_SECRET:?Set NP_IPN_SECRET (sandbox IPN secret)}"
-_ORDER_ID="e2e-$(date +%s)"
 EMAIL="e2e-test-$(date +%s)@test.local"
 TIER="PRO"
 
@@ -21,8 +20,7 @@ INVOICE_RESP=$(curl -s -X POST "$NP_API/invoice" \
   -d '{
     "price_amount": 99,
     "price_currency": "USD",
-    # shellcheck disable=SC2046
-    "order_id": "e2e-${_ORDER_ID:-$(date +%s)}",
+    "order_id": "e2e-$(date +%s)",
     "order_description": "E2E PRO tier test",
     "customer_email": "'"$EMAIL"'"
   }')
