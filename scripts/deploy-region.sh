@@ -12,7 +12,8 @@ if [[ -z "$REGION" ]]; then
 fi
 
 VALID_REGIONS=("us-east" "eu-central" "ap-southeast")
-if [[ ! " ${VALID_REGIONS[@]} " =~ " ${REGION} " ]]; then
+# shellcheck disable=SC2199,SC2076
+if [[ ! " ${VALID_REGIONS[*]} " =~ " ${REGION} " ]]; then
   echo "Invalid region: $REGION"
   echo "Valid regions: ${VALID_REGIONS[*]}"
   exit 1

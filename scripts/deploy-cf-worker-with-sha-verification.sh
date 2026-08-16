@@ -13,8 +13,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$APP_DIR"
 
-PROD_BASE="https://api.cashclaw.cc"
-CUSTOM_BASE="https://cashclaw.cc"
+_PROD_BASE="https://api.cashclaw.cc"
+_CUSTOM_BASE="https://cashclaw.cc"
 
 # ─── Dirty check ───────────────────────────────────────────────────
 if [ "${ALLOW_DIRTY_DEPLOY:-0}" != "1" ]; then
