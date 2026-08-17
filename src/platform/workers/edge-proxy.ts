@@ -43,8 +43,14 @@ import {
 import { handleMetrics, metricEntry } from './edge-proxy-metrics';
 import { SECURITY_HEADERS } from './edge-proxy-constants';
 
+// ── Paper trading (env-gated startup) ──
+import { initPaperTrading } from './paper-trading-entry';
+
 /** Type alias compatible with both Env and auth-handlers Env (same KV get signatures). */
 type AnyEnv = any;
+
+// Start paper trading loop on worker cold-start when enabled
+initPaperTrading();
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {

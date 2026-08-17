@@ -1,0 +1,26 @@
+{
+  "experimentId": "volume-breakout-eth-4h",
+  "hypothesis": "ETH/USDT breakout signals via volume z-score + relative volume + breakout state detect high-probability continuation moves in trending and high-volatility regimes.",
+  "symbol": "ETH-USDT",
+  "timeframe": "4h",
+  "features": ["volume_zscore", "relative_volume", "volume_momentum", "breakout_state"],
+  "regimes": ["TREND_UP", "TREND_DOWN", "HIGH_VOLATILITY"],
+  "tp": 0.03,
+  "sl": 0.015,
+  "maxHolding": 6,
+  "lookback": 30,
+  "split": {
+    "mode": "expanding",
+    "trainRatio": 0.6,
+    "valRatio": 0.2,
+    "testRatio": 0.2
+  },
+  "cost": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "scenario": "normal"
+  },
+  "seed": 123,
+  "gitCommit": "HEAD",
+  "createdAt": "2026-08-16T00:00:00Z"
+}
