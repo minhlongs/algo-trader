@@ -15,7 +15,10 @@ const { mockInstances, MockCtor, makeMockInstance } = vi.hoisted(() => {
     const inst = make();
     instances.push(inst);
     return inst;
-  });
+  }) as unknown as {
+    mock: { calls: Array<[{ symbols: string[] }]> };
+    new (...args: unknown[]): { start: ReturnType<typeof vi.fn> };
+  };
   return { mockInstances: instances, MockCtor: Ctor, makeMockInstance: make };
 });
 
@@ -68,15 +71,15 @@ describe('initPaperTrading', () => {
     process.env.PAPER_TRADING_ENABLED = 'true';
     process.env.PAPER_TRADING_SYMBOLS = 'SOL/USD,AVAX/USD';
     initPaperTrading();
-    const config = MockCtor.mock.calls[0][0];
-    expect(config.symbols).toEqual(['SOL/USD', 'AVAX/USD']);
+    expect(MockCtor).toHaveBeenCalledTimes(1);
+    expect(MockCtor.mock.calls[0][0].symbols).toEqual(['SOL/USD', 'AVAX/USD']);
     delete process.env.PAPER_TRADING_SYMBOLS;
   });
 
   it('falls back to default symbols when PAPER_TRADING_SYMBOLS not set', () => {
     process.env.PAPER_TRADING_ENABLED = 'true';
     initPaperTrading();
-    const config = MockCtor.mock.calls[0][0];
-    expect(config.symbols).toEqual(['BTC/USD', 'ETH/USD']);
+    expect(MockCtor).toHaveBeenCalledTimes(1);
+    expect(MockCtor.mock.calls[0][0].symbols).toEqual(['BTC/USD', 'ETH/USD']);
   });
 });
