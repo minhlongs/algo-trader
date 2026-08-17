@@ -111,7 +111,7 @@ function fireAudit(
  const result: AuditResult =
  statusCode >= 500 ? 'failure' : statusCode >= 400 ? 'denied' : 'success';
 
- const tenantId = req.user?.tenantId;
+ const tenantId = (req as Request & { user?: { tenantId?: string } }).user?.tenantId;
 
  const entry: IAuditEntry = {
  id: res.locals.requestId,
