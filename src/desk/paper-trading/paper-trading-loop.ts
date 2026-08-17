@@ -1,5 +1,3 @@
-/** Paper trading loop — simulated trades via trade-executor.ts. */
-
 import { logger } from '../core/logger';
 import { savePaperTradeV3 } from '../wiring/paper-trading-persistence';
 import type { PaperTrade } from '../wiring/paper-trading-orchestrator';
