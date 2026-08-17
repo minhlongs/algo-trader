@@ -104,6 +104,7 @@ const ALLOWED_PLATFORM_IMPORTS: RegExp[] = [
   /desk\/feeds\//,         // telegram trading alerts reference feeds
   /desk\/wiring\//,        // admin qwen routes, health, paper-trading orchestration
   /desk\/execution\//,     // trade-repository imports execution types
+  /desk\/paper-trading\//, // paper-trading-entry.ts wires loop into worker startup (Step 1.4)
 ];
 
 // ── Tests ────────────────────────────────────────────────────────────

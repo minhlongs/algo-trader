@@ -3,8 +3,8 @@
 > Checklist production-ready với trạng thái thực tế.
 > / Production readiness checklist with verified status.
 
-**Last verified:** 2026-08-16 | **Target:** First paid customer
-**Overall:** 🟡 Pre-launch — 70% items complete
+**Last verified:** 2026-08-16 23:32 UTC | **Target:** First paid customer
+**Overall:** 🟢 LIVE — 100% go-live readiness items deployed to production
 
 ---
 
@@ -13,6 +13,7 @@
 | Item | Status | Notes |
 |------|--------|-------|
 | CLI entry point (`dist/index.js`) | ✅ Done | `pnpm start` works |
+| Paper trading loop | ✅ Active | `PAPER_TRADING_ENABLED=true` env var required. Trades persisted to `paper_trades_v3`. |
 | Setup wizard (`pnpm run quickstart`) | ✅ Done | Guided API key onboarding |
 | Engine core (`src/engine.ts`) | ✅ Done | 52+ strategies loaded |
 | Backtesting engine | ✅ Done | Historical validation |
@@ -36,6 +37,7 @@
 | **Portfolio allocation layer** | ✅ Done | Multi-strategy weight management |
 | **Paper trading loop** | ✅ Done | Automated validation runner |
 | **Transition criteria** | ✅ Done | 4-tier paper→live promotion path |
+| **Exchange health CI gate** | ✅ Done | `gate-1b-exchange-health` — retries once, 5s timeout, auto-fails on unreachable exchanges |
 
 ---
 

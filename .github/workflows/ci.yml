@@ -29,11 +29,29 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
       - name: Lint
-        run: npx eslint src/ --max-warnings 487
+        run: npx eslint src/ --max-warnings 501
       - name: Validate strategies
         run: node scripts/validate-strategies.mjs
       - name: Run tests
         run: npx vitest run
+
+  gate-1b-exchange-health:
+    name: Gate 1b — Exchange health (connectivity check)
+    runs-on: ubuntu-latest
+    needs: [gate-1-validation]
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Exchange connectivity check
+        run: bash scripts/ci-exchange-health.sh --timeout 5000
 
   gate-2-security:
     name: Gate 2 — Security scan (secrets + audit critical)

@@ -1,0 +1,28 @@
+{
+  "experimentId": "multi-factor-momentum-sol-1h",
+  "hypothesis": "SOL/USDT multi-factor momentum combining price returns + volume z-score + relative volume + ATR captures trend continuation alpha in directional regimes.",
+  "symbol": "SOL-USDT",
+  "timeframe": "1h",
+  "features": ["simple_return", "momentum", "volume_zscore", "relative_volume", "atr"],
+  "regimes": ["TREND_UP", "TREND_DOWN"],
+  "tp": 0.025,
+  "sl": 0.012,
+  "maxHolding": 18,
+  "lookback": 24,
+  "split": {
+    "mode": "rolling",
+    "trainRatio": 0.6,
+    "valRatio": 0.2,
+    "testRatio": 0.2,
+    "trainWindowSize": 500,
+    "valWindowSize": 100
+  },
+  "cost": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "scenario": "normal"
+  },
+  "seed": 789,
+  "gitCommit": "HEAD",
+  "createdAt": "2026-08-16T00:00:00Z"
+}

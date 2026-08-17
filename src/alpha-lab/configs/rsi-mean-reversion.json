@@ -1,0 +1,26 @@
+{
+  "experimentId": "rsi-mean-reversion-btc-1h",
+  "hypothesis": "BTC/USDT mean-reversion signals via momentum + MA distance capture overbought/oversold reversals in range-bound regimes, generating positive alpha after costs.",
+  "symbol": "BTC-USDT",
+  "timeframe": "1h",
+  "features": ["momentum", "ma_distance", "atr"],
+  "regimes": ["RANGE"],
+  "tp": 0.015,
+  "sl": 0.008,
+  "maxHolding": 12,
+  "lookback": 20,
+  "split": {
+    "mode": "expanding",
+    "trainRatio": 0.6,
+    "valRatio": 0.2,
+    "testRatio": 0.2
+  },
+  "cost": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "scenario": "normal"
+  },
+  "seed": 42,
+  "gitCommit": "HEAD",
+  "createdAt": "2026-08-16T00:00:00Z"
+}
