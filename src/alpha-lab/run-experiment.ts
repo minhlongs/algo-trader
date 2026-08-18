@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import type { ExperimentConfig } from './experiments/experiment-types';
 import { runExperiment } from './experiments/experiment-engine';
 import { loadCandles } from './experiments/alpha-backtest-adapter';
+import { runAllBaselines } from './baselines/baseline-runner';
 import type { CandleLike } from './regimes/regime-types';
 
 // ── CLI Argument Parsing ─────────────────────────────────────────────────────
@@ -66,6 +67,14 @@ async function main(): Promise<void> {
 
   const result = runExperiment({ candles, config });
 
+  // Run baselines on the same dataset for apples-to-apples comparison.
+  const baselines = runAllBaselines(
+    candles,
+    config.cost.feeBps,
+    config.cost.slippageBps,
+    config.seed,
+  );
+
   const artifact = {
     experimentId: result.config.experimentId,
     symbol: result.config.symbol,
@@ -78,6 +87,14 @@ async function main(): Promise<void> {
       val: result.metrics.val,
       test: result.metrics.test,
     },
+    baselines: baselines.map((b) => ({
+      name: b.name,
+      totalPnl: b.report.totalPnl,
+      winRate: b.report.winRate,
+      totalTrades: b.report.totalTrades,
+      sharpe: b.report.sharpe,
+      maxDrawdown: b.report.maxDrawdown,
+    })),
   };
 
   process.stdout.write(JSON.stringify(artifact, null, 2) + '\n');
