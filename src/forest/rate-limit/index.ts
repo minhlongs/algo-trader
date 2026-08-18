@@ -24,3 +24,11 @@ export {
 } from './express-middleware';
 
 export { validateKeyPrefix } from './key-validation';
+
+export {
+  MemoryRateLimiter,
+  memoryRateLimiter,
+  MEMORY_FALLBACK_CONFIG,
+  type MemoryRateLimitResult,
+  type MemoryRateLimitOptions,
+} from '../../shared/rate-limit/memory-fallback';
