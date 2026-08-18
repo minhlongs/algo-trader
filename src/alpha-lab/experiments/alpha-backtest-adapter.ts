@@ -15,6 +15,9 @@ import { classifyRegime, defaultRules } from '../regimes/regime-engine';
 import { buildFeatureVector } from '../features/feature-registry';
 import { tripleBarrierLabel, type TripleBarrierResult } from '../labeling/triple-barrier';
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
+import { getLatestCandles } from '../../desk/data/ohlcv-store';
+import { logger } from '../../shared/utils/logger';
+import { generateMockCandles } from './mock-candles';
 import type { CandleLike } from '../regimes/regime-types';
 import type { FeatureVector } from '../features/feature-types';
 
@@ -27,6 +30,45 @@ export interface AlphaExperimentConfig {
   sl: number;
   maxHolding: number;
   regimes?: 'all' | string[];
+}
+
+/**
+ * Load candles for an experiment. Prefers real data from the OHLCV store;
+ * falls back to mock data when no real candles exist yet (e.g. before the
+ * Binance backfill has run). The fallback is clearly labelled in experiment
+ * artifacts so results are never mistaken for real out-of-sample evidence.
+ */
+export async function loadCandles(
+  market: string,
+  timeframe: string,
+  candleCount: number,
+  exchange = 'binance',
+): Promise<{ candles: CandleLike[]; source: 'real' | 'mock' }> {
+  // Try real data first (last candleCount candles from store)
+  try {
+    const latest = await getLatestCandles(market, timeframe, candleCount, exchange);
+    if (latest.length >= 10) {
+      return {
+        candles: latest.map((c) => ({
+          timestamp: c.timestamp.getTime(),
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+          volume: c.volume,
+        })),
+        source: 'real',
+      };
+    }
+  } catch (err) {
+    // Store may be unreachable in offline/local runs — fall through to mock
+    logger.warn('[AlphaAdapter] OHLCV store query failed, using mock data', {
+      market,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  return { candles: generateMockCandles(market, candleCount), source: 'mock' };
 }
 
 export interface AlphaRunResult {
