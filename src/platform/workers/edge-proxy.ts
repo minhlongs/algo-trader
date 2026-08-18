@@ -44,16 +44,25 @@ import { handleMetrics, metricEntry } from './edge-proxy-metrics';
 import { SECURITY_HEADERS } from './edge-proxy-constants';
 
 // ── Paper trading (env-gated startup) ──
-import { initPaperTrading } from './paper-trading-entry';
+import { initPaperTrading, runPaperTradingTick } from './paper-trading-entry';
+import type { PaperTradingEnv } from './paper-trading-entry';
+import { logger } from '../../shared/utils/logger';
+import type { KVStore } from '../../desk/paper-trading/paper-trading-loop';
 
 /** Type alias compatible with both Env and auth-handlers Env (same KV get signatures). */
 type AnyEnv = any;
 
-// Start paper trading loop on worker cold-start when enabled
-initPaperTrading();
+// Lazy init: KV binding is only available inside fetch/scheduled handlers.
+let paperTradingInitialized = false;
+function ensurePaperTrading(kv?: KVStore, env?: PaperTradingEnv): void {
+  if (paperTradingInitialized) return;
+  paperTradingInitialized = true;
+  initPaperTrading(kv, env);
+}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    ensurePaperTrading(env.CACHE, env);
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -145,6 +154,30 @@ export default {
     if (path === '/api/v1/subscriptions/cancel' && request.method === 'DELETE') return handleCancel(request, env);
     if (path === '/api/v1/subscriptions/tiers' && request.method === 'GET') return handleGetTiers();
 
+    // ── Paper trading manual tick (dev/test trigger) ──
+    if (path === '/api/v1/paper-trading/tick' && request.method === 'POST') {
+      try {
+        ensurePaperTrading(env.CACHE, env);
+        const result = await runPaperTradingTick(env.CACHE, env);
+        return new Response(JSON.stringify({
+          ok: true,
+          triggered: 'manual',
+          kvNamespace: env.CACHE ? 'bound' : 'UNDEFINED',
+          hasCache: !!env.CACHE,
+          result,
+        }), {
+          status: 200,
+          headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+        });
+      } catch (err) {
+        logger.error('[EdgeProxy] Paper trading tick failed', { err });
+        return new Response(JSON.stringify({ error: 'Tick failed', err: String(err) }), {
+          status: 500,
+          headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // ── Webhooks ──
     if (path === '/api/webhooks/nowpayments' && request.method === 'POST') return handleNowPaymentsIPN(request, env, env.NOWPAYMENTS_IPN_SECRET);
 
@@ -189,6 +222,47 @@ export default {
       }
     }
 
+    // ── Paper trades ledger (D1-backed, read-only) ──
+    if (path === '/api/v1/paper-trades' && request.method === 'GET') {
+      try {
+        const db = env.SUBSCRIBERS;
+        if (!db) {
+          return new Response(JSON.stringify({ error: 'D1 not configured' }), {
+            status: 500,
+            headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+          });
+        }
+        const result = await db
+          .prepare(
+            `SELECT id, market_id AS tokenId, side, size_usd AS size, entry_price AS price,
+                 pnl, strategy, source, created_at AS timestamp
+             FROM paper_trades_v3 ORDER BY created_at DESC LIMIT 1000`,
+          )
+          .all();
+        const trades = (result.results ?? []).map((r: Record<string, unknown>) => ({
+          id: String(r.id),
+          tokenId: String(r.tokenId),
+          side: r.side === 'YES' || r.side === 'NO' ? (r.side === 'YES' ? 'BUY' : 'SELL') : String(r.side),
+          price: Number(r.price),
+          size: Number(r.size),
+          pnl: r.pnl == null ? null : Number(r.pnl),
+          strategy: String(r.strategy),
+          source: String(r.source),
+          timestamp: new Date(Number(r.timestamp)).toISOString(),
+        }));
+        return new Response(JSON.stringify({ trades, count: trades.length }), {
+          status: 200,
+          headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+        });
+      } catch (err) {
+        logger.error('[EdgeProxy] paper-trades query failed', { err });
+        return new Response(JSON.stringify({ error: 'Query failed' }), {
+          status: 500,
+          headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // ── VPS fallback: 501 for unmigrated API routes (CF-only mode) ──
     if (env.VPS_ORIGIN && path.startsWith('/api/')) {
       return new Response(
@@ -202,5 +276,20 @@ export default {
 
     // Non-API routes — 404
     return new Response('Not Found', { status: 404, headers: { ...CORS, ...SECURITY_HEADERS } });
+  },
+
+  /**
+   * Cron trigger handler (CF Workers `scheduled` event).
+   * CF Workers are stateless per invocation — setInterval does not survive
+   * across cron trigger boundaries. Each scheduled tick runs one loop iteration,
+   * loading state from KV before the tick and saving after.
+   */
+  async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    try {
+      ensurePaperTrading(env.CACHE, env);
+      await runPaperTradingTick(env.CACHE, env);
+    } catch (err) {
+      logger.error('[EdgeProxy] Paper trading tick failed', { err });
+    }
   },
 };
