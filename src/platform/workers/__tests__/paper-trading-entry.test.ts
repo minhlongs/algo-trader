@@ -12,6 +12,7 @@ const { mockInstances, MockCtor, makeMockInstance } = vi.hoisted(() => {
   const instances: Array<{
     start: ReturnType<typeof vi.fn>;
     setKV: ReturnType<typeof vi.fn>;
+    setDB: ReturnType<typeof vi.fn>;
     loadState: ReturnType<typeof vi.fn>;
     runTick: ReturnType<typeof vi.fn>;
     getTrades: ReturnType<typeof vi.fn>;
@@ -19,6 +20,7 @@ const { mockInstances, MockCtor, makeMockInstance } = vi.hoisted(() => {
   const make = () => ({
     start: vi.fn(),
     setKV: vi.fn(),
+    setDB: vi.fn(),
     loadState: vi.fn(),
     runTick: vi.fn(),
     getTrades: vi.fn(() => []),
@@ -32,6 +34,7 @@ const { mockInstances, MockCtor, makeMockInstance } = vi.hoisted(() => {
     new (...args: unknown[]): {
       start: ReturnType<typeof vi.fn>;
       setKV: ReturnType<typeof vi.fn>;
+      setDB: ReturnType<typeof vi.fn>;
       loadState: ReturnType<typeof vi.fn>;
       runTick: ReturnType<typeof vi.fn>;
       getTrades: ReturnType<typeof vi.fn>;

@@ -1,7 +1,19 @@
 import { logger } from '../core/logger';
-import { savePaperTradeV3 } from '../wiring/paper-trading-persistence';
-import type { PaperTrade } from '../wiring/paper-trading-orchestrator';
 import type { TradingPipeline } from '../trading-pipeline';
+
+/** Minimal D1Database interface matching Cloudflare D1 binding shape. */
+export interface D1Database {
+  prepare(sql: string): D1PreparedStatement;
+}
+
+export interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  run(): Promise<D1Result>;
+}
+
+export interface D1Result {
+  success: boolean;
+}
 export type KVStore = {
   get(key: string, type: 'json'): Promise<unknown>;
   put(key: string, value: string): Promise<void>;
@@ -44,6 +56,7 @@ export interface PaperTradeRecord {
   closedAt?: number;
   isPaper?: boolean;
   durationMs?: number;
+  persistedToDb?: boolean;
 }
 
 export interface PaperTradingStatus {
@@ -69,20 +82,32 @@ export class PaperTradingLoop {
   private readonly config: PaperTradingConfig;
   private readonly pipeline?: TradingPipeline;
   private kv?: KVStore;
+  private db?: D1Database;
   private readonly trades: PaperTradeRecord[] = [];
   private handle: ReturnType<typeof setInterval> | undefined;
   private startTime: number | undefined;
   private tradeCounter = 0;
 
-  constructor(config: PaperTradingConfig, pipeline?: TradingPipeline, kv?: KVStore) {
+  constructor(
+    config: PaperTradingConfig,
+    pipeline?: TradingPipeline,
+    kv?: KVStore,
+    db?: D1Database,
+  ) {
     this.config = config;
     this.pipeline = pipeline;
     this.kv = kv;
+    this.db = db;
   }
 
   /** Set KV store after construction (used by the scheduled handler). */
   setKV(kv: unknown): void {
     this.kv = asKVStore(kv);
+  }
+
+  /** Set D1 database after construction (used by the scheduled handler). */
+  setDB(db: unknown): void {
+    this.db = db as D1Database | undefined;
   }
 
   /**
@@ -198,6 +223,16 @@ export class PaperTradingLoop {
         }
       }
 
+      // ── Persist any closed trades loaded from KV that were never written to D1 ──
+      // loadState() restores already-closed trades; the close loop above skips
+      // them (exitPrice !== undefined), so without this pass they'd never reach D1.
+      for (const trade of this.trades) {
+        if (trade.exitPrice !== undefined && trade.id && !trade.persistedToDb) {
+          await this.persistClosedTrade(trade);
+          trade.persistedToDb = true;
+        }
+      }
+
       // ── Open new trades up to max ──
       const openCount = this.trades.filter((t) => t.exitPrice === undefined).length;
       if (openCount < this.config.maxConcurrentTrades) {
@@ -235,22 +270,46 @@ export class PaperTradingLoop {
     }
   }
 
-  /** Persist closed trade to paper_trades_v3 table. */
+  /** Persist closed trade to paper_trades_v3 table via D1 binding. */
   private async persistClosedTrade(closed: PaperTradeRecord): Promise<void> {
-    const v3Trade: PaperTrade = {
-      id: closed.id,
-      marketId: closed.symbol,
-      side: closed.side === 'BUY' ? 'YES' : 'NO',
-      size: closed.sizeUsd,
-      entryPrice: closed.entryPrice,
-      strategy: 'paper-loop',
-      source: 'paper-loop',
-      signalConfidence: 0.5,
-      swarmApproved: false,
-      aiValidated: false,
-      timestamp: closed.openedAt,
-    };
-    await savePaperTradeV3(v3Trade);
+    if (!this.db) {
+      logger.warn('[PaperTradingLoop] persistClosedTrade skipped: no D1 binding');
+      return;
+    }
+    const side = closed.side === 'BUY' ? 'YES' : 'NO';
+    const now = Date.now();
+    try {
+      const result = await this.db
+        .prepare(
+          `INSERT INTO paper_trades_v3
+            (id, market_id, side, size_usd, entry_price, exit_price, pnl, strategy, source, confidence, status, created_at, closed_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'paper-loop', 'paper-loop', 0.5, 'closed', ?, ?)
+           ON CONFLICT (id) DO NOTHING`,
+        )
+        .bind(
+          closed.id,
+          closed.symbol,
+          side,
+          closed.sizeUsd,
+          closed.entryPrice,
+          closed.exitPrice ?? null,
+          closed.pnlUsd ?? null,
+          closed.openedAt,
+          now,
+        )
+        .run();
+      logger.info('[PaperTradingLoop] D1 persist succeeded', {
+        id: closed.id,
+        success: result.success,
+      });
+    } catch (err) {
+      // Log full error including D1 error code for diagnosis
+      logger.error('[PaperTradingLoop] D1 persist failed', {
+        id: closed.id,
+        err: String(err),
+        dbExists: !!this.db,
+      });
+    }
   }
 
   getState(): PaperTradingStatus {

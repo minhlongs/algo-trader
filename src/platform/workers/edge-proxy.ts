@@ -46,6 +46,7 @@ import { SECURITY_HEADERS } from './edge-proxy-constants';
 // ── Paper trading (env-gated startup) ──
 import { initPaperTrading, runPaperTradingTick } from './paper-trading-entry';
 import type { PaperTradingEnv } from './paper-trading-entry';
+import type { D1Database } from '../../desk/paper-trading/paper-trading-loop';
 import { logger } from '../../shared/utils/logger';
 import type { KVStore } from '../../desk/paper-trading/paper-trading-loop';
 
@@ -54,15 +55,15 @@ type AnyEnv = any;
 
 // Lazy init: KV binding is only available inside fetch/scheduled handlers.
 let paperTradingInitialized = false;
-function ensurePaperTrading(kv?: KVStore, env?: PaperTradingEnv): void {
+function ensurePaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): void {
   if (paperTradingInitialized) return;
   paperTradingInitialized = true;
-  initPaperTrading(kv, env);
+  initPaperTrading(kv, env, db);
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    ensurePaperTrading(env.CACHE, env);
+    ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -157,13 +158,15 @@ export default {
     // ── Paper trading manual tick (dev/test trigger) ──
     if (path === '/api/v1/paper-trading/tick' && request.method === 'POST') {
       try {
-        ensurePaperTrading(env.CACHE, env);
-        const result = await runPaperTradingTick(env.CACHE, env);
+        ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
+        const result = await runPaperTradingTick(env.CACHE, env, env.SUBSCRIBERS);
         return new Response(JSON.stringify({
           ok: true,
           triggered: 'manual',
           kvNamespace: env.CACHE ? 'bound' : 'UNDEFINED',
           hasCache: !!env.CACHE,
+          hasDb: !!env.SUBSCRIBERS,
+          dbType: typeof env.SUBSCRIBERS,
           result,
         }), {
           status: 200,
@@ -286,8 +289,8 @@ export default {
    */
   async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
     try {
-      ensurePaperTrading(env.CACHE, env);
-      await runPaperTradingTick(env.CACHE, env);
+      ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
+      await runPaperTradingTick(env.CACHE, env, env.SUBSCRIBERS);
     } catch (err) {
       logger.error('[EdgeProxy] Paper trading tick failed', { err });
     }

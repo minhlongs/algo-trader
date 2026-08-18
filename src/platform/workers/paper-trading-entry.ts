@@ -7,7 +7,7 @@
  * Designed to be called once during worker startup.
  */
 
-import { PaperTradingLoop } from '../../desk/paper-trading/paper-trading-loop';
+import { PaperTradingLoop, type D1Database } from '../../desk/paper-trading/paper-trading-loop';
 import { logger } from '../../shared/utils/logger';
 import type { PaperTradingConfig } from '../../desk/paper-trading/paper-trading-loop';
 import type { KVStore } from '../../desk/paper-trading/paper-trading-loop';
@@ -47,7 +47,7 @@ function buildConfig(env?: PaperTradingEnv): PaperTradingConfig {
  */
 let paperTradingLoop: PaperTradingLoop | undefined;
 
-export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv): void {
+export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): void {
   // Accept both CF Worker env bindings (preferred) and process.env (tests/Node.js)
   const enabled = String(env?.PAPER_TRADING_ENABLED ?? process.env.PAPER_TRADING_ENABLED ?? '');
   if (enabled !== 'true') {
@@ -62,7 +62,7 @@ export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv): void {
     PAPER_TRADING_MAX_CONCURRENT: env?.PAPER_TRADING_MAX_CONCURRENT ?? process.env.PAPER_TRADING_MAX_CONCURRENT,
     PAPER_TRADING_HOLD_DURATION_MS: env?.PAPER_TRADING_HOLD_DURATION_MS ?? process.env.PAPER_TRADING_HOLD_DURATION_MS,
   } as PaperTradingEnv);
-  paperTradingLoop = new PaperTradingLoop(config, undefined, kv);
+  paperTradingLoop = new PaperTradingLoop(config, undefined, kv, db);
   paperTradingLoop.start();
 
   logger.info('[PaperTrading] Initialized and started', {
@@ -81,7 +81,7 @@ export function initPaperTrading(kv?: KVStore, env?: PaperTradingEnv): void {
  *
  * Returns diagnostic info so callers can verify the tick actually ran.
  */
-export async function runPaperTradingTick(kv?: KVStore, env?: PaperTradingEnv): Promise<{
+export async function runPaperTradingTick(kv?: KVStore, env?: PaperTradingEnv, db?: D1Database): Promise<{
   ok: true;
   initialized: boolean;
   tradesBefore: number;
@@ -91,12 +91,13 @@ export async function runPaperTradingTick(kv?: KVStore, env?: PaperTradingEnv): 
   if (!paperTradingLoop) {
     // Cron triggers hit `scheduled` directly — initialize the loop on first tick
     // so the stateless worker has a live PaperTradingLoop to run against.
-    initPaperTrading(kv, env);
+    initPaperTrading(kv, env, db);
     if (!paperTradingLoop) {
       return { ok: true, initialized: false, tradesBefore: 0, tradesAfter: 0, hasKv: false };
     }
   }
   if (kv) paperTradingLoop.setKV(kv);
+  if (db) paperTradingLoop.setDB(db);
   await paperTradingLoop.loadState();
   const tradesBefore = paperTradingLoop.getTrades().length;
   await paperTradingLoop.runTick();
