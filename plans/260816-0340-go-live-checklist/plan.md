@@ -5,7 +5,7 @@ status: in-progress
 last_updated: 2026-08-19
 priority: P1
 effort: 2h
-branch: feat/bootstrap-quality-pipeline
+branch: fix/migration-026-nested-aggregate
 tags: [deployment, go-live, ci-cd, rollback, monitoring]
 created: 2026-08-16
 last_updated: 2026-08-16T18:15:00Z
