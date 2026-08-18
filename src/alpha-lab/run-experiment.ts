@@ -17,7 +17,6 @@ import type { ExperimentConfig } from './experiments/experiment-types';
 import { runExperiment } from './experiments/experiment-engine';
 import { loadCandles } from './experiments/alpha-backtest-adapter';
 import { runAllBaselines } from './baselines/baseline-runner';
-import type { CandleLike } from './regimes/regime-types';
 
 // ── CLI Argument Parsing ─────────────────────────────────────────────────────
 
@@ -92,7 +91,7 @@ async function main(): Promise<void> {
       totalPnl: b.report.totalPnl,
       winRate: b.report.winRate,
       totalTrades: b.report.totalTrades,
-      sharpe: b.report.sharpe,
+      sharpeRatio: b.report.sharpeRatio,
       maxDrawdown: b.report.maxDrawdown,
     })),
   };
