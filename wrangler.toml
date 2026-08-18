@@ -12,6 +12,13 @@ compatibility_flags = ["nodejs_compat"]
 ENVIRONMENT = "production"
 REGION_ROUTING_ENABLED = "false"
 
+# Paper trading loop — enabled via PAPER_TRADING_ENABLED=true
+PAPER_TRADING_ENABLED = "true"
+PAPER_TRADING_SYMBOLS = "BTC/USD,ETH/USD,SOL/USD,AVAX/USD"
+PAPER_TRADING_INTERVAL_MS = "300000"
+PAPER_TRADING_MAX_CONCURRENT = "5"
+PAPER_TRADING_HOLD_DURATION_MS = "3600000"
+
 # KV namespace for edge caching
 [[kv_namespaces]]
 binding = "CACHE"
@@ -76,7 +83,7 @@ class_name = "StrategyShard"
 binding = "SUBSCRIBERS"
 database_name = "algo-trader-db"
 database_id = "f29559f2-8e0b-461a-bd01-5665581beeee"
-migrations_dir = "migrations"
+migrations_dir = "src/shared/db/migrations"
 
 # Migrations for DO deployment
 [[migrations]]
