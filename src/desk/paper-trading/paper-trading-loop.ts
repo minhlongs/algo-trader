@@ -158,7 +158,7 @@ export class PaperTradingLoop {
    */
   async runTick(): Promise<void> {
     console.log(`[PaperTradingLoop] runTick start: hasKV=${!!this.kv}, trades=${this.trades.length}`);
-    this.tick();
+    await this.tick();
     console.log(`[PaperTradingLoop] runTick after tick: trades=${this.trades.length}, hasKV=${!!this.kv}`);
     if (this.kv) {
       await this.saveState();
@@ -175,7 +175,7 @@ export class PaperTradingLoop {
     logger.info('[PaperTradingLoop] Stopped', { trades: this.trades.length });
   }
 
-  private tick(): void {
+  private async tick(): Promise<void> {
     try {
       const now = Date.now();
       const holdDuration = this.config.holdDurationMs ?? 60_000;
@@ -191,9 +191,9 @@ export class PaperTradingLoop {
               symbol: closed.symbol,
               pnl: closed.pnlUsd?.toFixed(2),
             });
-            this.persistClosedTrade(closed).catch((err) => {
-              logger.warn('[PaperTradingLoop] Persist failed', { err });
-            });
+            // Await — CF Workers are stateless; a fire-and-forget D1 write is
+            // cancelled at the invocation boundary and the trade is lost.
+            await this.persistClosedTrade(closed);
           }
         }
       }
