@@ -217,22 +217,43 @@ export async function up(client: PoolClient): Promise<void> {
   `);
 
   // ==================== mv_ai_model_performance (materialized view) ====================
-  // Materialized view for quick model version comparison (refreshed periodically)
+  // Materialized view for quick model version comparison (refreshed periodically).
+  // NOTE: jsonb_object_agg cannot wrap COUNT(*) — Postgres rejects nested aggregates
+  // (code 42803). Daily counts are pre-aggregated in a CTE, then folded into JSON.
   await client.query(`
     CREATE MATERIALIZED VIEW IF NOT EXISTS mv_ai_model_performance AS
+    WITH daily_counts AS (
+      SELECT
+        model_name,
+        model_version,
+        date_trunc('day', prediction_timestamp)::date AS day,
+        COUNT(*) AS cnt
+      FROM ai_predictions
+      WHERE prediction_timestamp >= (now() - INTERVAL '90 days')
+      GROUP BY model_name, model_version, date_trunc('day', prediction_timestamp)
+    )
     SELECT
-      model_name,
-      model_version,
-      COUNT(*) as prediction_count,
-      AVG(confidence) as avg_confidence,
-      MAX(prediction_timestamp) as last_used,
-      jsonb_object_agg(
-        extract(epoch from date_trunc('day', prediction_timestamp)::date)::text,
-        COUNT(*)
-      ) as daily_usage
-    FROM ai_predictions
-    WHERE prediction_timestamp >= (now() - INTERVAL '90 days')
-    GROUP BY model_name, model_version
+      mc.model_name,
+      mc.model_version,
+      mc.prediction_count,
+      mc.avg_confidence,
+      mc.last_used,
+      jsonb_object_agg(dc.day::text, dc.cnt) AS daily_usage
+    FROM (
+      SELECT
+        model_name,
+        model_version,
+        COUNT(*) AS prediction_count,
+        AVG(confidence) AS avg_confidence,
+        MAX(prediction_timestamp) AS last_used
+      FROM ai_predictions
+      WHERE prediction_timestamp >= (now() - INTERVAL '90 days')
+      GROUP BY model_name, model_version
+    ) mc
+    JOIN daily_counts dc
+      ON dc.model_name = mc.model_name
+     AND dc.model_version = mc.model_version
+    GROUP BY mc.model_name, mc.model_version, mc.prediction_count, mc.avg_confidence, mc.last_used
     WITH DATA;
 
     CREATE INDEX IF NOT EXISTS idx_mv_ai_model_performance
