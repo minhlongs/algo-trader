@@ -2,6 +2,15 @@ import { logger } from '../core/logger';
 import { savePaperTradeV3 } from '../wiring/paper-trading-persistence';
 import type { PaperTrade } from '../wiring/paper-trading-orchestrator';
 import type { TradingPipeline } from '../trading-pipeline';
+export type KVStore = {
+  get(key: string, type: 'json'): Promise<unknown>;
+  put(key: string, value: string): Promise<void>;
+};
+
+// Cast from the worker's typed KVNamespace binding (compatible runtime shape).
+function asKVStore(kv: unknown): KVStore | undefined {
+  return kv as KVStore | undefined;
+}
 import {
   basePriceForSymbol,
   simulatePriceTick,
@@ -9,6 +18,9 @@ import {
   closePaperTrade,
   calculateOrderSize,
 } from './trade-executor';
+
+/** KV key for paper trading loop state. */
+const STATE_KEY = 'paper-trading-loop-state';
 
 // ── Public interfaces ────────────────────────────────────────────────────────
 
@@ -56,14 +68,72 @@ export interface PaperTradingStatus {
 export class PaperTradingLoop {
   private readonly config: PaperTradingConfig;
   private readonly pipeline?: TradingPipeline;
+  private kv?: KVStore;
   private readonly trades: PaperTradeRecord[] = [];
   private handle: ReturnType<typeof setInterval> | undefined;
   private startTime: number | undefined;
   private tradeCounter = 0;
 
-  constructor(config: PaperTradingConfig, pipeline?: TradingPipeline) {
+  constructor(config: PaperTradingConfig, pipeline?: TradingPipeline, kv?: KVStore) {
     this.config = config;
     this.pipeline = pipeline;
+    this.kv = kv;
+  }
+
+  /** Set KV store after construction (used by the scheduled handler). */
+  setKV(kv: unknown): void {
+    this.kv = asKVStore(kv);
+  }
+
+  /**
+   * Load state from KV before running a tick (CF Workers are stateless).
+   */
+  async loadState(): Promise<void> {
+    if (!this.kv) return;
+    try {
+      const raw = await this.kv.get(STATE_KEY, 'json');
+      if (raw && typeof raw === 'object') {
+        const state = raw as { trades?: PaperTradeRecord[]; tradeCounter?: number; startTime?: number };
+        // Replace — not append.  Without clearing, every cron invocation
+        // re-pushes the same saved trades, producing duplicates.
+        this.trades.length = 0;
+        if (Array.isArray(state.trades)) this.trades.push(...state.trades);
+        // Use max(saved, length) so the counter never produces duplicate IDs
+        // even if saved trades outlast a stale counter.
+        if (typeof state.tradeCounter === 'number') {
+          this.tradeCounter = Math.max(state.tradeCounter, this.trades.length);
+        }
+        if (typeof state.startTime === 'number') this.startTime = state.startTime;
+      }
+    } catch (err) {
+      logger.warn('[PaperTradingLoop] State load failed', { err });
+    }
+  }
+
+  /**
+   * Persist state to KV after a tick.
+   *
+   * Returns the put() promise so callers can await it before the handler
+   * returns. CF Workers are stateless — an un-awaited KV put is cancelled at
+   * the invocation boundary, so fire-and-forget persistence silently drops
+   * state across cron ticks.
+   */
+  private saveState(): Promise<void> {
+    if (!this.kv) {
+      console.log('[PaperTradingLoop] saveState skipped: no KV');
+      return Promise.resolve();
+    }
+    const payload = JSON.stringify({
+      trades: this.trades,
+      tradeCounter: this.tradeCounter,
+      startTime: this.startTime,
+    });
+    console.log(`[PaperTradingLoop] saveState writing ${payload.length} bytes, trades=${this.trades.length}, counter=${this.tradeCounter}`);
+    return this.kv.put(STATE_KEY, payload).then(() => {
+      console.log('[PaperTradingLoop] saveState KV put succeeded');
+    }).catch((err) => {
+      console.error('[PaperTradingLoop] saveState KV put FAILED', err);
+    });
   }
 
   start(): void {
@@ -74,6 +144,27 @@ export class PaperTradingLoop {
       symbols: this.config.symbols,
       intervalMs: this.config.intervalMs,
     });
+  }
+
+  /**
+   * Execute a single tick (stateless-friendly).
+   * CF Workers are stateless per invocation — cron triggers hit `scheduled`,
+   * so the loop must run one tick per invocation rather than via setInterval.
+   * Call loadState() before and saveState() after each tick.
+   *
+   * Returns the saveState promise so the caller can await it before the
+   * handler returns — otherwise the fire-and-forget KV put is cancelled by
+   * the stateless worker's invocation boundary.
+   */
+  async runTick(): Promise<void> {
+    console.log(`[PaperTradingLoop] runTick start: hasKV=${!!this.kv}, trades=${this.trades.length}`);
+    this.tick();
+    console.log(`[PaperTradingLoop] runTick after tick: trades=${this.trades.length}, hasKV=${!!this.kv}`);
+    if (this.kv) {
+      await this.saveState();
+    } else {
+      console.log('[PaperTradingLoop] runTick: no KV, skipping save');
+    }
   }
 
   stop(): void {
@@ -136,6 +227,8 @@ export class PaperTradingLoop {
           size: sizeUsd,
         });
       }
+
+      // State persistence handled by runTick() after tick() returns.
     } catch (err) {
       logger.error('[PaperTradingLoop] tick failed', { err });
       this.stop();
