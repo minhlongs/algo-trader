@@ -12,17 +12,64 @@ import type { GateEvaluatorInput } from './gates/gate-evaluator';
 import type { GateThreshold, PromotionReadiness } from './gates/gate-types';
 import { GATE_THRESHOLDS } from './gates/gate-types';
 
-// ── Mock Data Provider ─────────────────────────────────────────────────────────
-// In production, replace with real DB query for paper trades.
-// This placeholder allows CLI to run with sample data.
+// ── Paper Data Provider ────────────────────────────────────────────────────────
+// Fetches closed paper trades from the worker's D1-backed ledger.
+// Falls back to empty data when the API is unreachable (offline/local runs).
 
-function loadPaperData(): GateEvaluatorInput {
+const PAPER_API = process.env.PAPER_TRADES_API ?? 'https://api.cashclaw.cc/api/v1/paper-trades';
+
+interface PaperTradeRow {
+  id: string;
+  tokenId: string;
+  side: 'BUY' | 'SELL';
+  price: number;
+  size: number;
+  pnl: number | null;
+  timestamp: string;
+}
+
+async function fetchPaperTrades(): Promise<PaperTradeRow[]> {
+  try {
+    const res = await fetch(PAPER_API);
+    if (!res.ok) {
+      console.warn(`[check-gates] paper-trades API returned ${res.status}`);
+      return [];
+    }
+    const body = (await res.json()) as { trades?: PaperTradeRow[] };
+    return body.trades ?? [];
+  } catch (err) {
+    console.warn('[check-gates] paper-trades API unreachable', { err });
+    return [];
+  }
+}
+
+async function loadPaperData(): Promise<GateEvaluatorInput> {
+  const trades = await fetchPaperTrades();
+  const closed = trades.filter((t) => t.pnl !== null);
+  const startDate =
+    closed.length > 0
+      ? closed.reduce((min, t) => (t.timestamp < min ? t.timestamp : min), closed[0].timestamp)
+      : new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Equity curve: cumulative PnL over time from closed trades.
+  const sorted = [...closed].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  let equity = 0;
+  const equityCurve = sorted.map((t) => {
+    equity += t.pnl ?? 0;
+    return { timestamp: t.timestamp, equity };
+  });
+
   return {
-    trades: [],
-    startDate: new Date(
-      Date.now() - 15 * 24 * 60 * 60 * 1000,
-    ).toISOString(),
-    equityCurve: [],
+    trades: closed.map((t) => ({
+      timestamp: t.timestamp,
+      tokenId: t.tokenId,
+      side: t.side,
+      price: t.price,
+      size: t.size,
+      pnl: t.pnl,
+    })),
+    startDate,
+    equityCurve,
     testWinRate: undefined,
     valWinRate: undefined,
     flags: {
@@ -108,8 +155,8 @@ function formatThreshold(gate: { threshold: number | null; id: string }): string
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-function main(): never {
-  const input = loadPaperData();
+async function main(): Promise<void> {
+  const input = await loadPaperData();
   const reading = evaluateGates(input);
   const output = renderGateTable(reading);
 
@@ -118,4 +165,7 @@ function main(): never {
   process.exit(reading.allPassed ? 0 : 1);
 }
 
-main();
+main().catch((err) => {
+  console.error('[check-gates] fatal', { err });
+  process.exit(2);
+});
