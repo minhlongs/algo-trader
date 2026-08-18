@@ -24,7 +24,6 @@ import { bulkInsertCandles, type OhlcvCandle } from '../data/ohlcv-store';
 import { logger } from '../../shared/utils/logger';
 
 const BINANCE_API = 'https://api.binance.com/api/v3/klines';
-const TIMEFRAME = '1h';
 const EXCHANGE = 'binance';
 const MAX_PER_REQUEST = 500; // Binance max per klines request
 const DELAY_MS = 250; // polite delay between paginated requests
@@ -62,6 +61,21 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Map Binance interval string to milliseconds. */
+function intervalToMs(interval: string): number {
+  const unit = interval[interval.length - 1]?.toUpperCase();
+  const value = parseInt(interval, 10) || 1;
+  switch (unit) {
+    case 'M': return value * 60 * 1000;
+    case 'H': return value * 60 * 60 * 1000;
+    case 'D': return value * 24 * 60 * 60 * 1000;
+    case 'W': return value * 7 * 24 * 60 * 60 * 1000;
+    default:
+      logger.warn(`[BinanceFeed] Unrecognized interval "${interval}", defaulting to 1h`);
+      return 60 * 60 * 1000;
+  }
+}
+
 /**
  * Fetch one page of klines from Binance.
  */
@@ -70,10 +84,11 @@ async function fetchKlinesPage(
   startTime: number,
   endTime: number,
   limit: number,
+  timeframe: string,
 ): Promise<BinanceKline[]> {
   const url = new URL(BINANCE_API);
   url.searchParams.set('symbol', binanceSymbol);
-  url.searchParams.set('interval', TIMEFRAME);
+  url.searchParams.set('interval', timeframe);
   url.searchParams.set('startTime', String(startTime));
   url.searchParams.set('endTime', String(endTime));
   url.searchParams.set('limit', String(limit));
@@ -88,11 +103,11 @@ async function fetchKlinesPage(
 /**
  * Convert a Binance kline to an OhlcvCandle.
  */
-function klineToCandle(symbol: string, k: BinanceKline): OhlcvCandle {
+function klineToCandle(symbol: string, k: BinanceKline, timeframe: string): OhlcvCandle {
   return {
     market: symbol,
     exchange: EXCHANGE,
-    timeframe: TIMEFRAME,
+    timeframe,
     timestamp: new Date(k[0]),
     open: parseFloat(k[1]),
     high: parseFloat(k[2]),
@@ -114,23 +129,25 @@ export async function fetchBinanceHistory(
   symbol: string,
   days: number,
   onProgress?: (fetched: number) => void,
+  timeframe = '1h',
 ): Promise<number> {
   const binanceSymbol = requireBinanceSymbol(symbol);
   const endTime = Date.now();
   const startTime = endTime - days * 24 * 60 * 60 * 1000;
 
-  logger.info(`[BinanceFeed] Fetching ${days}d history for ${symbol} (${binanceSymbol})`);
+  logger.info(`[BinanceFeed] Fetching ${days}d history for ${symbol} (${binanceSymbol}) @ ${timeframe}`);
 
   const candles: OhlcvCandle[] = [];
   let cursor = startTime;
 
-  // Paginate: each request covers up to MAX_PER_REQUEST hours
+  // Paginate: each request covers up to MAX_PER_REQUEST intervals
+  const intervalMs = intervalToMs(timeframe);
   while (cursor < endTime) {
-    const pageEnd = Math.min(cursor + MAX_PER_REQUEST * 60 * 60 * 1000, endTime);
+    const pageEnd = Math.min(cursor + MAX_PER_REQUEST * intervalMs, endTime);
     try {
-      const klines = await fetchKlinesPage(binanceSymbol, cursor, pageEnd, MAX_PER_REQUEST);
+      const klines = await fetchKlinesPage(binanceSymbol, cursor, pageEnd, MAX_PER_REQUEST, timeframe);
       for (const k of klines) {
-        candles.push(klineToCandle(symbol, k));
+        candles.push(klineToCandle(symbol, k, timeframe));
       }
       onProgress?.(candles.length);
       logger.debug(`[BinanceFeed] Page: ${klines.length} candles, cursor ${new Date(cursor).toISOString()}`);
@@ -172,10 +189,11 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   const symbol = args[0] ?? 'BTC/USD';
   const days = parseInt(args[1] ?? '30', 10);
+  const timeframe = args[2] ?? '1h';
 
   fetchBinanceHistory(symbol, days, (n) => {
     process.stdout.write(`\r[BinanceFeed] Fetched ${n} candles...`);
-  })
+  }, timeframe)
     .then((stored) => {
       process.stdout.write('\n');
       logger.info(`[BinanceFeed] Done: ${stored} candles stored for ${symbol}`);

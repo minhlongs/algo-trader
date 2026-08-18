@@ -1,7 +1,7 @@
 {
   "experimentId": "multi-factor-momentum-sol-1h",
   "hypothesis": "SOL/USDT multi-factor momentum combining price returns + volume z-score + relative volume + ATR captures trend continuation alpha in directional regimes.",
-  "symbol": "SOL-USDT",
+  "symbol": "SOL/USD",
   "timeframe": "1h",
   "features": ["simple_return", "momentum", "volume_zscore", "relative_volume", "atr"],
   "regimes": ["TREND_UP", "TREND_DOWN"],

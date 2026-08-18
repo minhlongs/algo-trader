@@ -65,7 +65,7 @@ export interface ExperimentConfig {
   experimentId: string;
   /** Human-readable hypothesis being tested. */
   hypothesis: string;
-  /** Market identifier (e.g. "BTC-USDT", "ETH-USD"). */
+  /** Market identifier (e.g. "BTC/USD", "ETH/USD", "SOL/USD"). */
   symbol: string;
   /** Candle timeframe (e.g. "1h", "4h", "1d"). */
   timeframe: string;
