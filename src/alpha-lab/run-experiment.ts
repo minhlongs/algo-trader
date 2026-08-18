@@ -82,17 +82,50 @@ async function main(): Promise<void> {
     totalBars: result.totalBars,
     numSteps: result.numSteps,
     metrics: {
-      train: result.metrics.train,
-      val: result.metrics.val,
-      test: result.metrics.test,
+      train: {
+        numTrades: result.metrics.train.numTrades,
+        winRate: result.metrics.train.winRate,
+        lossRate: result.metrics.train.lossRate,
+        timeoutRate: result.metrics.train.timeoutRate,
+        meanLabel: result.metrics.train.meanLabel,
+        totalPnl: result.metrics.train.totalPnl,
+        sharpeRatio: result.metrics.train.sharpeRatio,
+        maxDrawdown: result.metrics.train.maxDrawdown,
+      },
+      val: {
+        numTrades: result.metrics.val.numTrades,
+        winRate: result.metrics.val.winRate,
+        lossRate: result.metrics.val.lossRate,
+        timeoutRate: result.metrics.val.timeoutRate,
+        meanLabel: result.metrics.val.meanLabel,
+        totalPnl: result.metrics.val.totalPnl,
+        sharpeRatio: result.metrics.val.sharpeRatio,
+        maxDrawdown: result.metrics.val.maxDrawdown,
+      },
+      test: {
+        numTrades: result.metrics.test.numTrades,
+        winRate: result.metrics.test.winRate,
+        lossRate: result.metrics.test.lossRate,
+        timeoutRate: result.metrics.test.timeoutRate,
+        meanLabel: result.metrics.test.meanLabel,
+        totalPnl: result.metrics.test.totalPnl,
+        sharpeRatio: result.metrics.test.sharpeRatio,
+        maxDrawdown: result.metrics.test.maxDrawdown,
+      },
     },
     baselines: baselines.map((b) => ({
       name: b.name,
       totalPnl: b.report.totalPnl,
       winRate: b.report.winRate,
+      lossRate: b.report.losingTrades / Math.max(1, b.report.totalTrades),
       totalTrades: b.report.totalTrades,
       sharpeRatio: b.report.sharpeRatio,
       maxDrawdown: b.report.maxDrawdown,
+      // Baselines produce trades, not triple-barrier labels, so timeoutRate and
+      // meanLabel are not defined for them — they are omitted rather than
+      // fabricated as zeros. regimesPresent is empty because baselines are not
+      // regime-filtered.
+      regimesPresent: [],
     })),
   };
 

@@ -7,8 +7,8 @@
  */
 
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
-import type { BacktestTrade } from '../../desk/backtesting/types';
 import type { CandleLike } from '../regimes/regime-types';
+import { buildEquityCurve } from '../shared/equity-curve';
 import { buyAndHold } from './baseline-strategies';
 import { randomEntry } from './baseline-strategies';
 import { simpleMomentum } from './baseline-strategies';
@@ -45,43 +45,11 @@ export function runAllBaselines(
   return strategies.map((result) => {
     // Build equity curve from cumulative trade PnL so Sharpe/drawdown
     // reflect strategy returns, not the raw price series.
-    const equity = buildEquityCurve(result.trades, closes);
+    const equity = buildEquityCurve(closes, result.trades);
     return {
       name: result.name,
       equityCurve: equity,
       report: computeMetrics(result.trades, equity),
     };
   });
-}
-
-/**
- * Build a cumulative equity curve from trade PnL values.
- *
- * Uses the raw close price as baseline (starting equity = first close),
- * then accumulates trade PnL on top. This gives each baseline a distinct
- * equity curve for Sharpe/maxDrawdown computation.
- */
-function buildEquityCurve(
-  trades: BacktestTrade[],
-  closes: Array<{ timestamp: string; close: number }>,
-): Array<{ timestamp: string; equity: number }> {
-  if (closes.length === 0) return [];
-  const baseline = closes.map((c) => ({ timestamp: c.timestamp, equity: c.close }));
-  if (trades.length === 0) return baseline;
-
-  // Map trade entry timestamps to their PnL, then accumulate.
-  const pnlByTimestamp = new Map<number, number>();
-  for (const t of trades) {
-    if (t.pnl === null) continue; // skip unconverted trades
-    const ts = new Date(t.timestamp).getTime();
-    pnlByTimestamp.set(ts, (pnlByTimestamp.get(ts) ?? 0) + t.pnl);
-  }
-
-  let runningPnl = 0;
-  for (const bar of baseline) {
-    const ts = new Date(bar.timestamp).getTime();
-    runningPnl += pnlByTimestamp.get(ts) ?? 0;
-    bar.equity += runningPnl;
-  }
-  return baseline;
 }

@@ -36,7 +36,20 @@ export interface BacktestTrade {
 }
 
 export interface MetricsReport {
-  /** Total P&L in USDC */
+  /**
+   * Net PnL in the units of the equity curve it was computed from.
+   *
+   * Two conventions coexist and callers must match them:
+   * - alpha-lab path (experiment-engine, baseline-runner): return-on-capital
+   *   fraction (e.g. 0.02 = +2% of entry capital). Equity curve starts at 1.0
+   *   and compounds.
+   * - polymarket path (shared/backtesting/backtest-runner): nominal USD.
+   *   Equity curve starts at initialCapitalUsd and accumulates.
+   *
+   * `computeMetrics` does not convert between them — it reports whatever the
+   * equity curve implies, so mixing conventions produces meaningless Sharpe and
+   * drawdown values.
+   */
   totalPnl: number;
   /** Annualized Sharpe ratio */
   sharpeRatio: number;

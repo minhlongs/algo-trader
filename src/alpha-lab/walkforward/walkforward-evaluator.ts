@@ -15,55 +15,12 @@ import { batchLabel } from '../labeling/triple-barrier';
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
 import type { ExperimentConfig } from '../experiments/experiment-types';
+import { buildEquityCurve } from '../shared/equity-curve';
+import { buildTrades } from '../shared/trade-builder';
 import { generateSplits } from '../experiments/splitter';
 import type { WalkForwardResult, StepResult, WalkForwardSummary } from './walkforward-types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function buildTrades(
-  candles: CandleLike[],
-  labels: Array<TripleBarrierResult & { entryIdx: number }>,
-  config: { tp: number; sl: number; feeBps: number; slippageBps: number },
-): BacktestTrade[] {
-  const feeMultiplier = config.feeBps / 10000;
-  const slipMultiplier = config.slippageBps / 10000;
-  const roundTripCost = feeMultiplier + slipMultiplier; // per side; round-trip = 2x
-
-  return labels.map((l) => {
-    const entryPrice = candles[l.entryIdx].close;
-    const isWin = l.label === 1;
-    const isLoss = l.label === -1;
-    const grossPnL = isWin
-      ? entryPrice * config.tp
-      : isLoss
-        ? -entryPrice * config.sl
-        : 0;
-    const cost = entryPrice * roundTripCost * 2; // round-trip: entry + exit
-    const netPnL = grossPnL - cost;
-    const exitPrice =
-      isWin
-        ? entryPrice * (1 + config.tp)
-        : isLoss
-          ? entryPrice * (1 - config.sl)
-          : entryPrice;
-    return {
-      timestamp: candles[l.entryIdx].timestamp,
-      tokenId: '',
-      side: 'BUY',
-      price: exitPrice,
-      size: 1,
-      pnl: netPnL,
-    };
-  });
-}
-
-function buildEquityCurve(
-  candles: CandleLike[],
-  start: number,
-  end: number,
-): Array<{ timestamp: string; equity: number }> {
-  return candles.slice(start, end).map((c) => ({ timestamp: c.timestamp, equity: c.close }));
-}
 
 function stepMetrics(
   candles: CandleLike[],
@@ -92,41 +49,66 @@ function buildStepResult(
   const { labels: vLabels, trades: vTrades } = stepMetrics(candles, config, valSplit);
   const { labels: teLabels, trades: teTrades } = stepMetrics(candles, config, testSplit);
 
-  const trainEquity = buildEquityCurve(candles, trainSplit.startIdx, trainSplit.endIdx);
-  const valEquity = buildEquityCurve(candles, valSplit.startIdx, valSplit.endIdx);
-  const testEquity = buildEquityCurve(candles, testSplit.startIdx, testSplit.endIdx);
+  const trainEquity = buildEquityCurve(candles.slice(trainSplit.startIdx, trainSplit.endIdx), tTrades);
+  const valEquity = buildEquityCurve(candles.slice(valSplit.startIdx, valSplit.endIdx), vTrades);
+  const testEquity = buildEquityCurve(candles.slice(testSplit.startIdx, testSplit.endIdx), teTrades);
 
   // Delegate to existing metrics calculator (proves reuse).
   const trainReport = computeMetrics(tTrades, trainEquity);
   const valReport = computeMetrics(vTrades, valEquity);
   const testReport = computeMetrics(teTrades, testEquity);
 
+  // Derive win/loss/timeout rates from labels, not from computeMetrics counts.
+  // computeMetrics treats timeout exits (label === 0, pnl < 0 after fees) as
+  // losing trades, which would conflate signal losses with timeouts and make
+  // lossRate disagree with experiment-engine.ts. Labels are the ground truth
+  // for what actually happened at each entry.
+  const tLosses = tLabels.filter((l) => l.label === -1).length;
+  const tTimeouts = tLabels.filter((l) => l.label === 0).length;
+  const vLosses = vLabels.filter((l) => l.label === -1).length;
+  const vTimeouts = vLabels.filter((l) => l.label === 0).length;
+  const teLosses = teLabels.filter((l) => l.label === -1).length;
+  const teTimeouts = teLabels.filter((l) => l.label === 0).length;
+
+  const trainMetrics = {
+    numTrades: tLabels.length,
+    winRate: trainReport.winRate,
+    lossRate: tLabels.length > 0 ? tLosses / tLabels.length : 0,
+    timeoutRate: tLabels.length > 0 ? tTimeouts / tLabels.length : 0,
+    meanLabel: tLabels.length > 0 ? tLabels.reduce((s, l) => s + l.label, 0) / tLabels.length : 0,
+    regimesPresent: [],
+    totalPnl: trainReport.totalPnl,
+    sharpeRatio: trainReport.sharpeRatio,
+    maxDrawdown: trainReport.maxDrawdown,
+  };
+  const valMetrics = {
+    numTrades: vLabels.length,
+    winRate: valReport.winRate,
+    lossRate: vLabels.length > 0 ? vLosses / vLabels.length : 0,
+    timeoutRate: vLabels.length > 0 ? vTimeouts / vLabels.length : 0,
+    meanLabel: vLabels.length > 0 ? vLabels.reduce((s, l) => s + l.label, 0) / vLabels.length : 0,
+    regimesPresent: [],
+    totalPnl: valReport.totalPnl,
+    sharpeRatio: valReport.sharpeRatio,
+    maxDrawdown: valReport.maxDrawdown,
+  };
+  const testMetrics = {
+    numTrades: teLabels.length,
+    winRate: testReport.winRate,
+    lossRate: teLabels.length > 0 ? teLosses / teLabels.length : 0,
+    timeoutRate: teLabels.length > 0 ? teTimeouts / teLabels.length : 0,
+    meanLabel: teLabels.length > 0 ? teLabels.reduce((s, l) => s + l.label, 0) / teLabels.length : 0,
+    regimesPresent: [],
+    totalPnl: testReport.totalPnl,
+    sharpeRatio: testReport.sharpeRatio,
+    maxDrawdown: testReport.maxDrawdown,
+  };
+
   return {
     step: stepIdx,
-    trainMetrics: {
-      numTrades: tLabels.length,
-      winRate: trainReport.winRate,
-      lossRate: trainReport.losingTrades / Math.max(1, trainReport.totalTrades),
-      timeoutRate: 0,
-      meanLabel: tLabels.length > 0 ? tLabels.reduce((s, l) => s + l.label, 0) / tLabels.length : 0,
-      regimesPresent: [],
-    },
-    valMetrics: {
-      numTrades: vLabels.length,
-      winRate: valReport.winRate,
-      lossRate: valReport.losingTrades / Math.max(1, valReport.totalTrades),
-      timeoutRate: 0,
-      meanLabel: vLabels.length > 0 ? vLabels.reduce((s, l) => s + l.label, 0) / vLabels.length : 0,
-      regimesPresent: [],
-    },
-    testMetrics: {
-      numTrades: teLabels.length,
-      winRate: testReport.winRate,
-      lossRate: testReport.losingTrades / Math.max(1, testReport.totalTrades),
-      timeoutRate: 0,
-      meanLabel: teLabels.length > 0 ? teLabels.reduce((s, l) => s + l.label, 0) / teLabels.length : 0,
-      regimesPresent: [],
-    },
+    trainMetrics,
+    valMetrics,
+    testMetrics,
   };
 }
 

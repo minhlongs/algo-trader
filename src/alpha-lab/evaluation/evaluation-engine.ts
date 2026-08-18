@@ -10,6 +10,7 @@ import type { MarketRegime } from '../regimes/regime-types';
 import type { WalkForwardStep } from '../experiments/experiment-types';
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
+import { buildEquityCurve } from '../shared/equity-curve';
 import type { CandleLike } from '../regimes/regime-types';
 import type {
   EvaluationReport,
@@ -144,7 +145,9 @@ export function evaluate(input: EvaluateInput): EvaluationReport {
   }
 
   // Overall metrics: delegate to existing computeMetrics (proves reuse).
-  const equity = candles.map((c) => ({ timestamp: c.timestamp, equity: c.close }));
+  // Build a strategy equity curve by compounding trade PnL from 1.0 so Sharpe
+  // and maxDrawdown reflect strategy returns, not the raw price series.
+  const equity = buildEquityCurve(candles, trades);
   const report = computeMetrics(trades, equity);
 
   // Pre-compute volatility bucket from overall dataset.

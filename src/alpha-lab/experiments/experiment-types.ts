@@ -108,6 +108,12 @@ export interface SplitMetrics {
   meanLabel: number;
   /** Number of distinct regimes present in this split. */
   regimesPresent: MarketRegime[];
+  /** Net PnL after fees + slippage (gross PnL − round-trip cost). */
+  totalPnl: number;
+  /** Annualized Sharpe ratio from the strategy equity curve. */
+  sharpeRatio: number;
+  /** Max drawdown (negative) from the strategy equity curve. */
+  maxDrawdown: number;
 }
 
 export interface WalkForwardStep {

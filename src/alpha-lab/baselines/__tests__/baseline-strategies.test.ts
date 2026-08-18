@@ -29,8 +29,9 @@ describe('Buy & Hold', () => {
     const candles = makeCandles(10);
     const closes = candles.map((c) => ({ timestamp: c.timestamp, close: c.close }));
     const r = buyAndHold(closes, { cost: { feeBps: 10, slippageBps: 5 }, seed: 42 });
-    // entryPrice=100, fee+slippage=15bps, round-trip cost = 100 * 0.0015 * 2 = 0.3
-    expect(r.trades[0]!.pnl).toBeCloseTo(8.7, 2);
+    // entryPrice=100, exitPrice=109, fee+slippage=15bps, round-trip cost = 0.3
+    // PnL is return-on-capital: gross=0.09, fee=0.003, net=0.087
+    expect(r.trades[0]!.pnl).toBeCloseTo(0.087, 3);
   });
 
   it('returns empty for single candle', () => {

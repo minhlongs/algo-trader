@@ -19,6 +19,16 @@ import { ExchangeConnectionTester } from '../desk/tests/exchange-connection-test
 
 const PAPER_API = process.env.PAPER_TRADES_API ?? 'https://api.cashclaw.cc/api/v1/paper-trades';
 
+/**
+ * Baseline capital for the paper-trading equity curve.
+ *
+ * Paper trades from the D1 ledger carry nominal USD PnL (not return-on-capital
+ * fractions), so the curve starts at a baseline and accumulates — mirroring
+ * `src/shared/backtesting/backtest-runner.ts`. Starting at 0 would make
+ * maxDrawdown divide by a near-zero peak and produce a bogus drawdown.
+ */
+const PAPER_INITIAL_CAPITAL_USD = 10_000;
+
 interface PaperTradeRow {
   id: string;
   tokenId: string;
@@ -70,9 +80,12 @@ async function loadPaperData(): Promise<GateEvaluatorInput> {
       ? closed.reduce((min, t) => (t.timestamp < min ? t.timestamp : min), closed[0].timestamp)
       : new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Equity curve: cumulative PnL over time from closed trades.
+  // Equity curve: baseline capital + cumulative nominal-USD PnL over time.
+  // Paper trades are nominal USD (see PAPER_INITIAL_CAPITAL_USD), so this
+  // accumulates rather than compounds — compounding is only correct for
+  // return-on-capital fractions (alpha-lab path), not raw USD PnL.
   const sorted = [...closed].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  let equity = 0;
+  let equity = PAPER_INITIAL_CAPITAL_USD;
   const equityCurve = sorted.map((t) => {
     equity += t.pnl ?? 0;
     return { timestamp: t.timestamp, equity };
