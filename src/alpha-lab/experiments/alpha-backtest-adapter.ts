@@ -55,7 +55,7 @@ export async function loadCandles(
     if (latest.length >= 10) {
       return {
         candles: latest.map((c) => ({
-          timestamp: c.timestamp.getTime(),
+          timestamp: c.timestamp.toISOString(),
           open: c.open,
           high: c.high,
           low: c.low,

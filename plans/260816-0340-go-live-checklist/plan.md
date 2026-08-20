@@ -44,7 +44,7 @@ Deploy algo-trader to production via two targets:
 | Sentry GitHub secrets | User | Add `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` in repo Settings → Secrets |
 | 12k RPS load test | User + Infra | Requires valid `TEST_API_KEY` and `LOAD_TEST_BASE_URL`; prior 53% failure rate was auth-chain gap (now fixed). Re-run to confirm. |
 | Domain TLS verification | User | `curl -sI https://api.cashclaw.cc/health` should return HTTP/2 200 |
-| Merge to `main` | User | After verification, merge `feat/bootstrap-quality-pipeline` to `main` |
+| Merge to `main` | ✅ Done | Merged `fix/migration-026-nested-aggregate` to `main` as PR #16 (mergeCommit `3b2bcc5e`, 2026-08-20T02:48:33Z) |
 
 ## Test/Build Status (Wave 5 verified)
 
