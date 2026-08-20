@@ -41,7 +41,7 @@ export function nextId(counter: number): string {
 // ── Trade closure ─────────────────────────────────────────────────────────────
 
 /** Calculate closure fee as 0.1% of USD notional (simulates CLOB taker fee). */
-function closureFee(sizeUsd: number): number {
+function closureFee(sizeUsd: number, _price: number): number {
   return sizeUsd * 0.001;
 }
 
@@ -63,7 +63,7 @@ export function closePaperTrade(
   const rawPnl = open.side === 'BUY'
     ? (exitPrice - open.entryPrice) * (open.sizeUsd / open.entryPrice)
     : (open.entryPrice - exitPrice) * (open.sizeUsd / open.entryPrice);
-  const fee = closureFee(open.sizeUsd);
+  const fee = closureFee(open.sizeUsd, exitPrice);
 
   open.exitPrice = exitPrice;
   open.pnlUsd = rawPnl - fee;

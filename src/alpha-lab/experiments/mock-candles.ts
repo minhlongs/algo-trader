@@ -50,7 +50,7 @@ export function generateMockCandles(
     const volume = 1000 + r * 5000;
 
     candles.push({
-      timestamp: new Date(Date.UTC(2025, 0, 1, i)).getTime(),
+      timestamp: new Date(Date.UTC(2025, 0, 1, i)).toISOString(),
       open: round(open),
       high: round(high),
       low: round(low),
