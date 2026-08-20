@@ -107,9 +107,12 @@ export class AISignalAdapter {
    */
   scoreStrategy(metrics: MetricsReport): number {
     const profitScore = metrics.profitFactor / (1 + metrics.profitFactor);
-    const pnlSign = Math.sign(metrics.totalPnl);
-    const pnlScore = pnlSign > 0
-      ? Math.min(Math.abs(metrics.totalPnl) / 1000, 1)
+    // totalPnl is a return-on-capital fraction (e.g. 0.02 = +2% of entry
+    // capital), so normalize by 0.05 (5% return = full score) rather than
+    // dividing by 1000, which assumed nominal USD PnL and silently scored
+    // every strategy ~0.
+    const pnlScore = metrics.totalPnl > 0
+      ? Math.min(Math.abs(metrics.totalPnl) / 0.05, 1)
       : 0;
 
     return Math.min(

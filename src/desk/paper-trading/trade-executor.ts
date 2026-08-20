@@ -40,9 +40,9 @@ export function nextId(counter: number): string {
 
 // ── Trade closure ─────────────────────────────────────────────────────────────
 
-/** Calculate closure fee as 0.1% of notional (simulates CLOB taker fee). */
-function closureFee(sizeUsd: number, price: number): number {
-  return sizeUsd * price * 0.001;
+/** Calculate closure fee as 0.1% of USD notional (simulates CLOB taker fee). */
+function closureFee(sizeUsd: number, _price: number): number {
+  return sizeUsd * 0.001;
 }
 
 /**

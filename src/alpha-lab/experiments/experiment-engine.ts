@@ -17,6 +17,8 @@ import type { TripleBarrierResult } from '../labeling/triple-barrier';
 import { batchLabel } from '../labeling/triple-barrier';
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
+import { buildEquityCurve } from '../shared/equity-curve';
+import { buildTrades } from '../shared/trade-builder';
 import type {
   ExperimentConfig,
   ExperimentResult,
@@ -26,51 +28,6 @@ import type {
 import { generateSplits } from './splitter';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function buildEquityCurve(
-  candles: CandleLike[],
-  start: number,
-  end: number,
-): Array<{ timestamp: string; equity: number }> {
-  return candles.slice(start, end).map((c) => ({ timestamp: c.timestamp, equity: c.close }));
-}
-
-function buildTrades(
-  candles: CandleLike[],
-  labels: Array<TripleBarrierResult & { entryIdx: number }>,
-  config: { tp: number; sl: number; feeBps: number; slippageBps: number },
-): BacktestTrade[] {
-  const feeMultiplier = config.feeBps / 10000;
-  const slipMultiplier = config.slippageBps / 10000;
-  const roundTripCost = feeMultiplier + slipMultiplier; // per side; round-trip = 2x
-
-  return labels.map((l) => {
-    const entryPrice = candles[l.entryIdx].close;
-    const isWin = l.label === 1;
-    const isLoss = l.label === -1;
-    const grossPnL = isWin
-      ? entryPrice * config.tp
-      : isLoss
-        ? -entryPrice * config.sl
-        : 0;
-    const cost = entryPrice * roundTripCost * 2; // round-trip: entry + exit
-    const netPnL = grossPnL - cost;
-    const exitPrice =
-      isWin
-        ? entryPrice * (1 + config.tp)
-        : isLoss
-          ? entryPrice * (1 - config.sl)
-          : entryPrice;
-    return {
-      timestamp: candles[l.entryIdx].timestamp,
-      tokenId: '',
-      side: 'BUY',
-      price: exitPrice,
-      size: 1,
-      pnl: netPnL,
-    };
-  });
-}
 
 function computeSplitMetrics(
   labels: Array<TripleBarrierResult & { entryIdx: number }>,
@@ -87,11 +44,24 @@ function computeSplitMetrics(
       timeoutRate: 1,
       meanLabel: 0,
       regimesPresent: [],
+      totalPnl: 0,
+      sharpeRatio: 0,
+      maxDrawdown: 0,
     };
   }
   const wins = labels.filter((l) => l.label === 1).length;
   const losses = labels.filter((l) => l.label === -1).length;
   const timeouts = labels.filter((l) => l.label === 0).length;
+
+  // Build a strategy equity curve over the split's candle window. Compounds
+  // trade PnL from 1.0 so Sharpe and maxDrawdown reflect strategy returns, not
+  // the raw price series.
+  const equity = buildEquityCurve(
+    candles.slice(split.startIdx, split.endIdx),
+    trades,
+  );
+  const report = computeMetrics(trades, equity);
+
   return {
     numTrades: labels.length,
     winRate: wins / labels.length,
@@ -99,6 +69,9 @@ function computeSplitMetrics(
     timeoutRate: timeouts / labels.length,
     meanLabel: labels.reduce((s, l) => s + l.label, 0) / labels.length,
     regimesPresent: [],
+    totalPnl: report.totalPnl,
+    sharpeRatio: report.sharpeRatio,
+    maxDrawdown: report.maxDrawdown,
   };
 }
 
@@ -199,10 +172,15 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
     }
   }
 
+  // Aggregate labels + trades across ALL walk-forward steps, then compute one
+  // equity curve over the full candle range. Passing steps[0] here would slice
+  // the equity window to step 0 only and silently drop every trade from later
+  // steps — Sharpe/maxDrawdown would reflect the wrong data window.
+  const fullRange = { startIdx: 0, endIdx: candles.length };
   const metrics = {
-    train: computeSplitMetrics(allTrainLabels, allTrainTrades, candles, config, steps[0]!.train),
-    val: computeSplitMetrics(allValLabels, allValTrades, candles, config, steps[0]!.val),
-    test: computeSplitMetrics(allTestLabels, allTestTrades, candles, config, steps[0]!.test),
+    train: computeSplitMetrics(allTrainLabels, allTrainTrades, candles, config, fullRange),
+    val: computeSplitMetrics(allValLabels, allValTrades, candles, config, fullRange),
+    test: computeSplitMetrics(allTestLabels, allTestTrades, candles, config, fullRange),
   };
 
   return {

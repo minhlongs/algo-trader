@@ -3,15 +3,20 @@
  *
  * Usage: pnpm tsx src/alpha-lab/run-experiment.ts --config <path>
  *
- * Loads a JSON experiment config, generates mock candle data for the
- * configured symbol/timeframe, runs the full pipeline (split -> label ->
- * evaluate), and outputs the result artifact as JSON to stdout.
+ * Loads a JSON experiment config, loads candle data (real OHLCV from the
+ * store when available, mock random-walk fallback otherwise), runs the full
+ * pipeline (split -> label -> evaluate), and outputs the result artifact as
+ * JSON to stdout.
+ *
+ * The artifact always records `dataSource` so mock results are never mistaken
+ * for real out-of-sample evidence.
  */
 
 import { readFileSync } from 'node:fs';
 import type { ExperimentConfig } from './experiments/experiment-types';
 import { runExperiment } from './experiments/experiment-engine';
-import type { CandleLike } from './regimes/regime-types';
+import { loadCandles } from './experiments/alpha-backtest-adapter';
+import { runAllBaselines } from './baselines/baseline-runner';
 
 // ── CLI Argument Parsing ─────────────────────────────────────────────────────
 
@@ -43,42 +48,9 @@ function validateConfig(config: ExperimentConfig): void {
   }
 }
 
-// ── Mock Candle Generator ────────────────────────────────────────────────────
-
-function generateMockCandles(symbol: string, count: number): CandleLike[] {
-  const basePrice = symbol.includes('BTC') ? 60000 : symbol.includes('ETH') ? 3500 : 150;
-  const candles: CandleLike[] = [];
-  let price = basePrice;
-
-  for (let i = 0; i < count; i++) {
-    const drift = (Math.random() - 0.48) * basePrice * 0.008;
-    const open = price;
-    const close = open + drift;
-    const high = Math.max(open, close) + Math.abs(drift) * 0.3;
-    const low = Math.min(open, close) - Math.abs(drift) * 0.3;
-    const volume = 1000 + Math.random() * 5000;
-
-    candles.push({
-      timestamp: new Date(Date.UTC(2025, 0, 1, i)).toISOString(),
-      open: round(open),
-      high: round(high),
-      low: round(low),
-      close: round(close),
-      volume: round(volume),
-    });
-
-    price = close;
-  }
-  return candles;
-}
-
-function round(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 // ── Main ─────────────────────────────────────────────────────────────────────
 
-function main(): void {
+async function main(): Promise<void> {
   const configPath = parseArgs(process.argv);
   const raw = readFileSync(configPath, 'utf-8');
   const config: ExperimentConfig = JSON.parse(raw) as ExperimentConfig;
@@ -89,24 +61,78 @@ function main(): void {
     1 / (1 - config.split.trainRatio - config.split.valRatio - config.split.testRatio + 0.01) * 100,
   );
   const candleCount = Math.max(500, minBars * 3);
-  const candles = generateMockCandles(config.symbol, candleCount);
+
+  const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
 
   const result = runExperiment({ candles, config });
+
+  // Run baselines on the same dataset for apples-to-apples comparison.
+  const baselines = runAllBaselines(
+    candles,
+    config.cost.feeBps,
+    config.cost.slippageBps,
+    config.seed,
+  );
 
   const artifact = {
     experimentId: result.config.experimentId,
     symbol: result.config.symbol,
     timeframe: result.config.timeframe,
+    dataSource: source, // 'real' | 'mock' — never claim real results from mock data
     totalBars: result.totalBars,
     numSteps: result.numSteps,
     metrics: {
-      train: result.metrics.train,
-      val: result.metrics.val,
-      test: result.metrics.test,
+      train: {
+        numTrades: result.metrics.train.numTrades,
+        winRate: result.metrics.train.winRate,
+        lossRate: result.metrics.train.lossRate,
+        timeoutRate: result.metrics.train.timeoutRate,
+        meanLabel: result.metrics.train.meanLabel,
+        totalPnl: result.metrics.train.totalPnl,
+        sharpeRatio: result.metrics.train.sharpeRatio,
+        maxDrawdown: result.metrics.train.maxDrawdown,
+      },
+      val: {
+        numTrades: result.metrics.val.numTrades,
+        winRate: result.metrics.val.winRate,
+        lossRate: result.metrics.val.lossRate,
+        timeoutRate: result.metrics.val.timeoutRate,
+        meanLabel: result.metrics.val.meanLabel,
+        totalPnl: result.metrics.val.totalPnl,
+        sharpeRatio: result.metrics.val.sharpeRatio,
+        maxDrawdown: result.metrics.val.maxDrawdown,
+      },
+      test: {
+        numTrades: result.metrics.test.numTrades,
+        winRate: result.metrics.test.winRate,
+        lossRate: result.metrics.test.lossRate,
+        timeoutRate: result.metrics.test.timeoutRate,
+        meanLabel: result.metrics.test.meanLabel,
+        totalPnl: result.metrics.test.totalPnl,
+        sharpeRatio: result.metrics.test.sharpeRatio,
+        maxDrawdown: result.metrics.test.maxDrawdown,
+      },
     },
+    baselines: baselines.map((b) => ({
+      name: b.name,
+      totalPnl: b.report.totalPnl,
+      winRate: b.report.winRate,
+      lossRate: b.report.losingTrades / Math.max(1, b.report.totalTrades),
+      totalTrades: b.report.totalTrades,
+      sharpeRatio: b.report.sharpeRatio,
+      maxDrawdown: b.report.maxDrawdown,
+      // Baselines produce trades, not triple-barrier labels, so timeoutRate and
+      // meanLabel are not defined for them — they are omitted rather than
+      // fabricated as zeros. regimesPresent is empty because baselines are not
+      // regime-filtered.
+      regimesPresent: [],
+    })),
   };
 
   process.stdout.write(JSON.stringify(artifact, null, 2) + '\n');
 }
 
-main();
+main().catch((err) => {
+  console.error('[run-experiment] fatal', { err });
+  process.exit(1);
+});

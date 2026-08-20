@@ -65,7 +65,7 @@ export interface ExperimentConfig {
   experimentId: string;
   /** Human-readable hypothesis being tested. */
   hypothesis: string;
-  /** Market identifier (e.g. "BTC-USDT", "ETH-USD"). */
+  /** Market identifier (e.g. "BTC/USD", "ETH/USD", "SOL/USD"). */
   symbol: string;
   /** Candle timeframe (e.g. "1h", "4h", "1d"). */
   timeframe: string;
@@ -108,6 +108,12 @@ export interface SplitMetrics {
   meanLabel: number;
   /** Number of distinct regimes present in this split. */
   regimesPresent: MarketRegime[];
+  /** Net PnL after fees + slippage (gross PnL − round-trip cost). */
+  totalPnl: number;
+  /** Annualized Sharpe ratio from the strategy equity curve. */
+  sharpeRatio: number;
+  /** Max drawdown (negative) from the strategy equity curve. */
+  maxDrawdown: number;
 }
 
 export interface WalkForwardStep {

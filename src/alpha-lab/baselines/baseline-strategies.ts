@@ -44,8 +44,10 @@ function makeTrade(
   cost: BaselineCostConfig,
   size = 1,
 ): BacktestTrade {
-  const gross = (exitPrice - entryPrice) * size;
-  const fee = roundTripCost(entryPrice, cost);
+  // PnL is a RETURN ON CAPITAL (fraction of entry price), so it compounds
+  // correctly in buildEquityCurve and is comparable across price levels.
+  const gross = (exitPrice - entryPrice) / entryPrice;
+  const fee = roundTripCost(entryPrice, cost) / entryPrice;
   return {
     timestamp,
     tokenId: '',

@@ -29,7 +29,7 @@ export function computeMetrics(
   const avgPnlPerTrade = closedTrades.length > 0 ? totalPnl / closedTrades.length : 0;
 
   return {
-    totalPnl: round2(totalPnl),
+    totalPnl: round4(totalPnl),
     sharpeRatio: round2(sharpeRatio),
     maxDrawdown: round4(maxDrawdown),
     winRate: round4(winRate),
@@ -37,9 +37,9 @@ export function computeMetrics(
     totalTrades: closedTrades.length,
     winningTrades: winningTrades.length,
     losingTrades: losingTrades.length,
-    bestTrade: round2(bestTrade),
-    worstTrade: round2(worstTrade),
-    avgPnlPerTrade: round2(avgPnlPerTrade),
+    bestTrade: round4(bestTrade),
+    worstTrade: round4(worstTrade),
+    avgPnlPerTrade: round4(avgPnlPerTrade),
   };
 }
 
