@@ -7,7 +7,6 @@
 import { logger } from '../utils/logger';
 import { getDbClient } from './postgres-client';
 import * as migration001 from './migrations/001-create-trades-table';
-import * as migration045_ohlcv from './migrations/045-ohlcv-candles';
 import * as migration042 from './migrations/042-add-dunning-state';
 import * as migration043 from './migrations/043-add-billing-subscriptions';
 import * as migration044 from './migrations/044-add-billing-payments';
@@ -34,7 +33,6 @@ interface Migration {
 
 // Ordered list of all migrations
 const MIGRATIONS: Migration[] = [
-  migration045_ohlcv,
   migration001,
   migration042,
   migration043,
