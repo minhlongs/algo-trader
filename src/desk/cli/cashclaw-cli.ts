@@ -260,6 +260,14 @@ const tradeCmd = program
   .description('Live/paper trading management');
 registerTradeCommands(tradeCmd);
 
+// ─── alpha commands ─────────────────────────────────────────────────────────────
+
+import { registerAlphaCommands } from './alpha-commands';
+const alphaCmd = program
+  .command('alpha')
+  .description('Alpha Discovery Engine — discover, backtest, and evaluate trading strategies');
+registerAlphaCommands(alphaCmd);
+
 // ─── parse ────────────────────────────────────────────────────────────────────
 
 program.parse(process.argv);
