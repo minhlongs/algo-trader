@@ -157,7 +157,7 @@ vi.mock('../../../alpha-lab/walkforward/walkforward-evaluator', () => ({
 
 import { Command } from 'commander';
 import { registerAlphaCommands } from '../alpha-commands';
-import { logger } from '@shared/utils/logger';
+import { logger } from '../../../shared/utils/logger';
 
 function createAlphaCmd(): Command {
   const cmd = new Command();

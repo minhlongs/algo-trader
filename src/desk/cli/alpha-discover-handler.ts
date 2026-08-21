@@ -10,7 +10,6 @@ interface DiscoverResult {
   experimentId: string;
   symbol: string;
   sharpe: number;
-  profitFactor: number;
   totalPnl: number;
   winRate: number;
   survivalGate: boolean;
@@ -31,7 +30,7 @@ export async function handleDiscover(
   const results: DiscoverResult[] = [];
 
   for (const config of configs) {
-    if (config.symbol !== symbol && config.timeframe !== opts.tf) continue;
+    if (config.symbol !== symbol || config.timeframe !== opts.tf) continue;
 
     try {
       const { candles, source } = await loadCandlesForConfig(config);
@@ -56,7 +55,6 @@ export async function handleDiscover(
         experimentId: config.experimentId,
         symbol: config.symbol,
         sharpe: testMetrics.sharpeRatio,
-        profitFactor: testMetrics.totalPnl > 0 ? 999 : 0,
         totalPnl: testMetrics.totalPnl,
         winRate: testMetrics.winRate,
         survivalGate,
