@@ -1,5 +1,28 @@
 # Project Changelog - Algo Trader
 
+## [3.1.13] - 2026-08-22 — CASHCLAW / ZEN ALPHA FACTORY migration (S1–S6)
+
+### Added
+- **Provenance ledger** (`src/alpha-lab/provenance/research-ledger.ts`) — append-only JSONL ledger with hash-chain integrity verification; `readLedgerRecords`, `verifyLedgerChain`, `appendLedgerRecord`.
+- **Run cards** (`src/alpha-lab/provenance/run-card.ts`) — canonical config hashing, schema version `1.0.0`, markdown rendering, `ResultClass` discriminated union (`IS | OOS | PAPER | LIVE`).
+- **Run card index** (`src/alpha-lab/provenance/run-card-index.ts`) — read-only recursive index over `data/runs`, `data/experiments`, `data/backtests`; last-write-wins on duplicate runId.
+- **Statistical validation** (`src/alpha-lab/validation/`) — deterministic mulberry32 PRNG (seed 42), Monte Carlo permutation test, bootstrap Sharpe confidence interval.
+- **Data quality gate** (`src/desk/data/data-quality-gate.ts`) — duplicate detection, timestamp monotonicity, missing-candle, OHLC consistency, volume sanity, look-ahead detection, stale-data detection. Never forward-fills a missing close.
+- **Candle contracts** (`src/desk/data/candle-contracts.ts`) — typed OHLCV contract with provenance fields (provider, symbol, timeframe, adjustmentStatus, dataVersion).
+- **Research MCP server** (`src/platform/mcp/research-mcp-server.ts`) — 4 read-only tools (`list_experiments`, `get_run_card`, `get_alpha_report`, `get_backtest_summary`), PRO minimum tier gate. Never places, cancels, or mutates any order.
+- **MIGRATION_LOG.json** — machine-readable migration log with per-phase target files, evidence, and deferred list.
+- **docs/vibe-trading-migration.md** — upstream module → repo module mapping (KEEP / PORT / ADAPT / REJECT).
+
+### Changed
+- **Execution safety** (`src/desk/execution/execution-mode.ts`) — single source of truth: `READ_ONLY | PAPER | LIVE`, gated by literal-string `LIVE_TRADING_ENABLED === 'true'`. All 4 live-submit paths (`polymarket-adapter.placeOrder`, `live-order-manager.submitAndTrack`, `cex-order-executor.execute`) now call `requireLiveEnabled` before signing or placing. Zero unguarded live-submit paths.
+- **Strategy static scanner** (`src/desk/sandbox/strategy-static-scanner.ts`) — pre-execution source scan blocking `fs`, `child_process`, `net`, `http`/`https`, `vm`, `worker_threads`, `node:crypto`, `process.env.*`, `eval(`, `new Function(`. Fail-safe: crashing scan = blocked.
+- **MCP routes** (`src/api/routes/mcp-routes.ts`) — 4 JSON-RPC 2.0 routes delegating to Research MCP handlers; `deps.research` injectable for tests.
+
+### Security
+- Live trading is opt-in only. No code path sets `LIVE_TRADING_ENABLED`; only an operator setting it explicitly in the environment can enable it. No AI agent, caller, or code path can bypass the guard.
+- Generated strategy code executes inside a controlled sandbox/process boundary (static scanner + WASM sandbox).
+- All research results carry provenance (ledger hash chain + run-card config hash). Performance claims distinguish IS / OOS / PAPER / LIVE.
+
 ## [3.1.12] - 2026-08-14
 
 ### Fixed - Sprint 10: Type Safety & any Elimination (75% reduction)
