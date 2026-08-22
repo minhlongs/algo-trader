@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { resetExecutionModeCache } from '../../src/desk/execution/execution-mode';
 import { PolymarketAdapter } from '../../src/desk/execution/polymarket-adapter';
 import { PolymarketSigner } from '../../src/desk/execution/polymarket-signer';
 import { Http2ConnectionPool } from '../../src/desk/execution/http2-connection-pool';
@@ -15,6 +16,11 @@ describe('PolymarketAdapter with HTTP/2', () => {
   let mockSigner: PolymarketSigner;
 
   beforeEach(() => {
+    // placeOrder exercises the live order-placement path directly, so it
+    // opts into LIVE mode explicitly. Production code never sets this — it is
+    // an operator env var gated by a literal-string comparison.
+    process.env.LIVE_TRADING_ENABLED = 'true';
+    resetExecutionModeCache();
     vi.clearAllMocks();
     mockSigner = {
       signOrder: vi.fn().mockResolvedValue({

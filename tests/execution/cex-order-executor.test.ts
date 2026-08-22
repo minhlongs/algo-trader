@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { resetExecutionModeCache } from '../../src/desk/execution/execution-mode';
 import { CexOrderExecutor } from '../../src/desk/execution/cex-order-executor';
 import type { BinanceSpotClient } from '../../src/desk/markets/cex/binance-spot-client';
 import type { CexOrderResponse } from '../../src/desk/markets/cex/cex-types';
@@ -52,6 +53,11 @@ describe('CexOrderExecutor', () => {
   const baseConfig = { symbol: 'BTC/USDT', orderSizeUsdt: 100 };
 
   beforeEach(() => {
+    // These tests exercise the live order-placement path directly, so they
+    // opt into LIVE mode explicitly. Production code never sets this — it is
+    // an operator env var gated by a literal-string comparison.
+    process.env.LIVE_TRADING_ENABLED = 'true';
+    resetExecutionModeCache();
     vi.clearAllMocks();
     mockClient = makeMockClient();
   });

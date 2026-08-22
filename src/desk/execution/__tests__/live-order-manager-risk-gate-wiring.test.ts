@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { resetExecutionModeCache } from '../execution-mode';
 import { LiveOrderManager } from '../live-order-manager';
 import { LiveExecutionGuard } from '../live-execution-guard';
 import { RiskGateManager } from '../../risk/risk-gate-manager';
@@ -54,6 +55,11 @@ describe('LiveOrderManager — RiskGateManager wiring', () => {
   let tracker: LivePositionTracker;
 
   beforeEach(() => {
+    // These tests exercise the live order-placement path directly, so they
+    // opt into LIVE mode explicitly. Production code never sets this — it is
+    // an operator env var gated by a literal-string comparison.
+    process.env.LIVE_TRADING_ENABLED = 'true';
+    resetExecutionModeCache();
     adapter = makeAdapter();
     tracker = makeTracker();
   });

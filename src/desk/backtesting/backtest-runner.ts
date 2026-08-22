@@ -27,6 +27,46 @@ import { computeMetrics } from './metrics-calculator';
 import { logger } from '../../shared/utils/logger';
 import type { BacktestConfig, BacktestResult, BacktestTrade, HistoricalSnapshot } from './types';
 import { getHistoricalData, type OhlcvCandle } from '../data/ohlcv-store';
+import { runDataQualityGate, timeframeToMs } from '../data/data-quality-gate';
+import { writeRunCard } from '../../alpha-lab/provenance/run-card';
+import type { ResultClassName } from '../../alpha-lab/provenance/run-card';
+
+// ── Data quality options ─────────────────────────────────────────────────────
+
+/**
+ * Data quality gate options for the OHLCV research path.
+ * Additive — existing BacktestConfig callers are unaffected.
+ */
+export interface DataQualityGateConfig {
+  /**
+   * Fail fast when the quality gate reports violations.
+   * Default true (research path must run on validated data);
+   * set false for warn-only live-feed debugging.
+   */
+  strict?: boolean;
+  /** Override expected candle interval (ms) for gap detection. */
+  timeframeMs?: number;
+  /** Price-jump threshold as a multiple of ATR (default 10). */
+  priceJumpAtrMultiple?: number;
+}
+
+/** BacktestConfig plus additive runner options. */
+export interface BacktestRunnerOptions extends BacktestConfig {
+  /** Data quality gate settings (OHLCV path only). */
+  dataQuality?: DataQualityGateConfig;
+  /**
+   * Directory to write a provenance run card into. When set, a run card is
+   * written (fail-safe) recording this backtest's config hash, result class,
+   * and metrics. Omit to skip provenance — useful for pure unit tests.
+   */
+  runCardDir?: string;
+  /**
+   * Result class for the run card. Defaults to 'PAPER' — callers running on
+   * real (live) data must pass 'LIVE' explicitly so the card cannot be
+   * mis-cited as paper evidence.
+   */
+  resultClass?: ResultClassName;
+}
 
 // ── Mock Order Manager ─────────────────────────────────────────────────────────
 
@@ -145,9 +185,10 @@ type StrategyConstructor = new (
 export class BacktestRunner {
   private historicalProvider = new GammaHistoricalProvider();
 
-  async run(config: BacktestConfig): Promise<BacktestResult> {
+  async run(config: BacktestRunnerOptions): Promise<BacktestResult> {
     const startedAt = new Date().toISOString();
     const startMs = Date.now();
+    const end = new Date(startMs + config.days * 24 * 60 * 60 * 1000);
     const warnings: string[] = [];
 
     // Look up strategy
@@ -161,7 +202,9 @@ export class BacktestRunner {
     const ohlcvTimeframe = (config as unknown as Record<string, unknown>).ohlcvTimeframe as string | undefined;
     let snapshots: HistoricalSnapshot[];
     if (ohlcvMarket && ohlcvTimeframe) {
-      snapshots = await this.fetchFromOhlcvStore(ohlcvMarket, ohlcvTimeframe, config.days);
+      snapshots = await this.fetchFromOhlcvStore(
+        ohlcvMarket, ohlcvTimeframe, config.days, config.dataQuality, warnings,
+      );
     } else {
       snapshots = await this.historicalProvider.fetchHistoricalSnapshots(
         config.days, config.tickIntervalMs ?? 3_600_000,
@@ -230,6 +273,46 @@ export class BacktestRunner {
       pnl: metrics.totalPnl,
       sharpe: metrics.sharpeRatio,
     });
+
+    // Provenance: write a run card if a directory was provided. Fire-and-forget —
+    // writeRunCard is fail-safe (never throws), so a write failure cannot lose
+    // the result. The card records the config hash + result class for auditability.
+    if (config.runCardDir) {
+      void writeRunCard(config.runCardDir, {
+        runId: `${config.strategy}-${startedAt}`,
+        resultClass: config.resultClass ?? 'PAPER',
+        strategyRef: config.strategy,
+        dataSources: ohlcvMarket && ohlcvTimeframe
+          ? [{
+              provider: 'ohlcv-store',
+              symbol: ohlcvMarket,
+              timeframe: ohlcvTimeframe,
+              start: new Date(startMs).toISOString(),
+              end: end.toISOString(),
+              retrievedAt: completedAt,
+              candleCount: snapshots.length,
+            }]
+          : [{
+              provider: 'gamma',
+              symbol: config.strategy,
+              timeframe: String(config.tickIntervalMs ?? 3_600_000),
+              start: new Date(startMs).toISOString(),
+              end: end.toISOString(),
+              retrievedAt: completedAt,
+              candleCount: snapshots.length,
+            }],
+        metrics: {
+          totalPnl: metrics.totalPnl,
+          sharpeRatio: metrics.sharpeRatio,
+          maxDrawdown: metrics.maxDrawdown,
+          winRate: metrics.winRate,
+          tradeCount: metrics.totalTrades,
+          durationMs,
+        },
+        config: config as unknown as Record<string, unknown>,
+        warnings,
+      });
+    }
 
     return {
       strategy: config.strategy as StrategyName,
@@ -364,11 +447,16 @@ export class BacktestRunner {
   /**
    * Fetch historical data from the OHLCV store instead of live Gamma API.
    * Converts stored candles into snapshot format compatible with backtest engine.
+   *
+   * Runs the data quality gate BEFORE conversion. Strict mode (default)
+   * fails fast on any violation; non-strict mode records warnings only.
    */
   private async fetchFromOhlcvStore(
     market: string,
     timeframe: string,
     days: number,
+    qualityConfig?: DataQualityGateConfig,
+    warnings: string[] = [],
   ): Promise<HistoricalSnapshot[]> {
     const end = new Date();
     const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
@@ -380,6 +468,39 @@ export class BacktestRunner {
         'BacktestRunner',
       );
       return this.historicalProvider.fetchHistoricalSnapshots(days);
+    }
+
+    // ── Data quality gate (runs before any replay) ──────────────────────────
+    const strict = qualityConfig?.strict ?? true;
+    const report = runDataQualityGate(candles, {
+      timeframeMs: qualityConfig?.timeframeMs ?? timeframeToMs(timeframe),
+      priceJumpAtrMultiple: qualityConfig?.priceJumpAtrMultiple,
+    });
+
+    for (const w of report.warnings) {
+      warnings.push(`[data-quality] ${w.code}: ${w.message}`);
+    }
+
+    if (!report.passed) {
+      const summary = report.violations
+        .slice(0, 5)
+        .map((v) => `${v.code}@${v.index}`)
+        .join(', ');
+      if (strict) {
+        throw new Error(
+          `Data quality gate failed for ${market}/${timeframe}: ` +
+          `${report.violations.length} violation(s) [${summary}] — ` +
+          `backtest aborted before replay`,
+        );
+      }
+      logger.warn(
+        `Data quality gate reported ${report.violations.length} violation(s) ` +
+        `[${summary}] but strict mode is off — continuing`,
+        'BacktestRunner',
+      );
+      warnings.push(
+        `[data-quality] gate failed with ${report.violations.length} violation(s) [${summary}] — strict mode off`,
+      );
     }
 
     return candles.map((candle: OhlcvCandle) => ({

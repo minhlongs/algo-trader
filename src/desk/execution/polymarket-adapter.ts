@@ -8,6 +8,7 @@
  */
 
 import { PolymarketSigner, PolymarketOrder, SignedOrder } from './polymarket-signer';
+import { requireLiveEnabled } from './execution-mode';
 import { createHmac } from 'crypto';
 import { recordExternalApiLatency } from '../../platform/middleware/prometheus-metrics';
 import { Http2ConnectionPool } from './http2-connection-pool';
@@ -133,6 +134,11 @@ export class PolymarketAdapter {
    * @returns Order ID and status from CLOB
    */
   async placeOrder(order: PolymarketOrder): Promise<PolymarketOrderResponse> {
+    // Hard env gate: LIVE mode requires the operator to set
+    // LIVE_TRADING_ENABLED=true explicitly. This is the last line of defense
+    // before an order reaches the exchange — no caller can bypass it.
+    requireLiveEnabled('PolymarketAdapter.placeOrder');
+
     const signed: SignedOrder = await this.signer.signOrder(order);
     const body = this.serializeSignedOrder(signed);
 

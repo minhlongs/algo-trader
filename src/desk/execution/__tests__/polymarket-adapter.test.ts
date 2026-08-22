@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { resetExecutionModeCache } from '../execution-mode';
 import { PolymarketAdapter, PolymarketOrderResponse, PolymarketOpenOrder } from '../polymarket-adapter';
 import { PolymarketSigner } from '../polymarket-signer';
 import type { PolymarketOrder, SignedOrder } from '../polymarket-signer';
@@ -136,6 +137,11 @@ function setupEnv(): void {
   process.env.POLY_API_KEY = 'test-api-key';
   process.env.POLY_API_SECRET = 'test-api-secret';
   process.env.POLY_PASSPHRASE = 'test-passphrase';
+  // These tests exercise the adapter's live order-placement path directly, so
+  // they opt into LIVE mode explicitly. Production code never sets this — it is
+  // an operator env var gated by a literal-string comparison.
+  process.env.LIVE_TRADING_ENABLED = 'true';
+  resetExecutionModeCache();
 }
 
 function clearEnv(): void {
