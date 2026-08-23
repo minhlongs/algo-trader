@@ -114,13 +114,21 @@ describe('checkSignalsLoopHealth', () => {
   });
 
   it('returns exactly at boundary (freshness == threshold) as inactive', async () => {
-    const boundaryTs = Date.now() - DEFAULT_CONFIG.signalStalenessMs;
-    const redis = makeRedis({
-      'Standard:signals:last_run_ts': String(boundaryTs),
-    });
-    const result = await checkSignalsLoopHealth(redis, DEFAULT_CONFIG);
-    // freshness > threshold is the check, so equal should be inactive
-    expect(result.active).toBe(false);
+    // Freeze Date.now() so the boundary timestamp computed in the test and the
+    // one read inside checkSignalsLoopHealth are identical — without this, a few
+    // ms of real clock drift between setup and assertion flips the boundary.
+    vi.spyOn(Date, 'now').mockReturnValue(1_724_400_000_000);
+    try {
+      const boundaryTs = 1_724_400_000_000 - DEFAULT_CONFIG.signalStalenessMs;
+      const redis = makeRedis({
+        'Standard:signals:last_run_ts': String(boundaryTs),
+      });
+      const result = await checkSignalsLoopHealth(redis, DEFAULT_CONFIG);
+      // freshness > threshold is the check, so equal should be inactive
+      expect(result.active).toBe(false);
+    } finally {
+      vi.restoreAllMocks();
+    }
   });
 });
 
