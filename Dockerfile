@@ -16,7 +16,10 @@ COPY tsconfig.json ./
 # "build" is plain tsc, and pnpm does not auto-run the npm prebuild hook.
 COPY src ./src
 
-RUN pnpm run build
+# Call tsc directly: "pnpm run build" auto-runs the prebuild hook
+# (scripts/pre-build-check.sh), which is excluded from the image context.
+# The disk check is a host pre-flight and has no meaning in a container.
+RUN pnpm exec tsc
 
 # Stage 2: Production runtime
 FROM node:22-alpine AS runner
