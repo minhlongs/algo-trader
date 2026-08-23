@@ -329,8 +329,18 @@ Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vib
 | S4 | Execution safety (single mode gate, static scanner, 0 unguarded live paths) | ✅ |
 | S5 | Research MCP server (4 read-only tools, PRO tier gate) | ✅ |
 | S6 | `MIGRATION_LOG.json` + migration docs | ✅ |
+| SHIP | Merged to main (PR #18 → `1260feca`, PR #20 → `20e1f015`), deployed to CF Pages, prod smoke green, repo back to private | ✅ |
 
-**Full suite: 7080/7081 passing** (1 pre-existing failure in `security-integration.test.ts`, confirmed on clean baseline).
+**Full suite: 7081/7081 passing.**
+
+### Ship notes (2026-08-23)
+- CI gates 1–7 green on main @ `20e1f015`; Gate 8 quality ratchet fails on pre-existing drift
+  (anyTypes 118>117, consoleCalls 57>45) — escrowed as follow-up E6.
+- Pages project is not git-connected: deploy was manual (`wrangler pages deploy`). To make
+  future merges auto-deploy, either connect the Pages project to Git or add the
+  `CLOUDFLARE_API_TOKEN` secret for the Worker workflow (escrow E7).
+- Full-history secret audit (gitleaks, 839 commits) performed before temporarily making the
+  repo public for free Actions minutes — no live secrets found.
 
 ### Deferred (next sessions)
 - Multi-asset backtest engines (A-share, forex, india, korea, options) — no product requirement

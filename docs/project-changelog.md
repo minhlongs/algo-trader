@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [3.1.14] - 2026-08-23 — Go-live: S1–S6 migration merged, deployed, verified
+
+### Shipped
+- **PR #18 merged** (`1260feca` squash) — CASHCLAW/ZEN ALPHA FACTORY S1–S6: data quality gate,
+  provenance ledger + run cards + statistical validation, execution safety mode gate,
+  strategy static scanner, research MCP server.
+- **PR #20 merged** (`20e1f015`) — deterministic trade-executor pnl test (replaced 200-tick
+  statistical test that flaked on CI).
+- **CI green on main** @ `20e1f015`: Gates 1, 1b, 2, 3, 4, 5 (deploy smoke), 6, 7 all SUCCESS.
+  Gate 8 quality ratchet fails on pre-existing drift (anyTypes 118>117, consoleCalls 57>45) —
+  confirmed via clean-tree run; tracked as escrow follow-up.
+- **Deployed to Cloudflare Pages** — manual `wrangler pages deploy` of `20e1f015` build
+  (Pages project not git-connected). Verified live on algo-trader.pages.dev, cashclaw.cc,
+  quant.cashclaw.cc — all HTTP 200 serving "CashClaw Dashboard" build (`index--htKh2_X.js`).
+
+### Operational notes
+- Repo was temporarily public during the CI window (free Actions minutes for public repos
+  after the private-repo budget cap), after a full-history gitleaks audit of all 839 commits
+  found no live secrets. Flipped back to private post go-live.
+- "Deploy to Cloudflare" workflow fails for missing `CLOUDFLARE_API_TOKEN` secret (Worker
+  deploy path, separate from Pages). Follow-up E7: connect Pages to Git or add the token.
+
 ## [3.1.13] - 2026-08-22 — CASHCLAW / ZEN ALPHA FACTORY migration (S1–S6)
 
 ### Added
