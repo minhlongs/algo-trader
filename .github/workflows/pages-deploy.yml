@@ -1,0 +1,76 @@
+# Pages auto-deploy (escrow E7) — doctrine target per CLAUDE.deploy.md.
+#
+# Deploys the dashboard build to the Cloudflare Pages project `algo-trader`
+# (direct-upload project, custom domains cashclaw.cc / quant.cashclaw.cc).
+#
+# KILL SWITCH: runs only when repo variable PAGES_AUTO_DEPLOY == 'true'.
+# Off by default so a private repo does not burn Actions minutes on every
+# docs commit. Flip it on in Settings → Secrets and variables → Actions →
+# Variables when auto-deploy is wanted.
+#
+# Required secrets:
+#   CLOUDFLARE_API_TOKEN  — Pages:Edit + User:Memberships:Read, created once
+#                           in dash.cloudflare.com → My Profile → API Tokens
+#   CLOUDFLARE_ACCOUNT_ID — f691e83094f776311a1bfe3f8b126f1c
+
+name: Deploy Pages
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard/**'
+      - '.github/workflows/pages-deploy.yml'
+
+concurrency:
+  group: pages-deploy-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & Deploy Dashboard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    if: vars.PAGES_AUTO_DEPLOY == 'true' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dashboard dependencies
+        working-directory: dashboard
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dashboard
+        working-directory: dashboard
+        run: pnpm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Run from repo root like the verified manual deploy — keeps the
+          # project static-only by not picking up any functions/ directory.
+          command: pages deploy dashboard/dist --project-name algo-trader --branch main --commit-dirty=true
+
+      - name: Production smoke
+        run: |
+          sleep 10
+          for url in https://algo-trader.pages.dev https://cashclaw.cc; do
+            STATUS=$(curl -sI "$url" | head -1 | awk '{print $2}')
+            echo "$url → HTTP $STATUS"
+            [ "$STATUS" = "200" ] || { echo "Smoke FAIL for $url"; exit 1; }
+          done
+          echo "Pages smoke PASS"

@@ -1,10 +1,11 @@
 name: Deploy to Cloudflare
 
+# Manual trigger only. The automatic push/PR triggers were removed because
+# this workflow deploys the Worker path (not the doctrine Pages target) and
+# has no CLOUDFLARE_API_TOKEN secret — every merge showed a permanent red X.
+# Pages auto-deploy lives in pages-deploy.yml (escrow E7).
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   # Job 1: Build & Test
