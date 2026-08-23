@@ -132,7 +132,13 @@ describe('Experiment From Family', () => {
     } as const;
     const a = experimentFromFamily(registry, opts);
     const b = experimentFromFamily(registry, opts);
-    expect(a).toEqual(b);
+    // createdAt is a wall-clock stamp assigned per call — compare everything
+    // else, then assert it exists so the field stays covered.
+    const { createdAt: _aCreated, ...restA } = a;
+    const { createdAt: _bCreated, ...restB } = b;
+    expect(restA).toEqual(restB);
+    expect(typeof a.createdAt).toBe('string');
+    expect(typeof b.createdAt).toBe('string');
   });
 
   it('applies feeBps and slippageBps overrides', () => {
