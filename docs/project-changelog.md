@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [3.1.16] - 2026-08-24 — Pages auto-deploy infrastructure (escrow E7)
+
+### Added
+- **`pages-deploy.yml`** — new workflow: builds `dashboard/` and deploys to the Cloudflare
+  Pages project `algo-trader` from repo root (exact mirror of the verified manual go-live
+  deploy), with production smoke on algo-trader.pages.dev + cashclaw.cc.
+  - Gated by repo variable **`PAGES_AUTO_DEPLOY`** (kill switch, default OFF — protects
+    Actions minutes on the private repo; `workflow_dispatch` always available).
+  - Triggers only on changes under `dashboard/**` or the workflow itself.
+
+### Changed
+- **`cloudflare-deploy.yml` demoted to manual-only** (`workflow_dispatch`). Its push/PR
+  triggers targeted the Worker path with no `CLOUDFLARE_API_TOKEN` secret configured,
+  producing a permanent red X on every merge. Pages is the doctrine deploy target
+  (CLAUDE.deploy.md); Worker remains a separate future surface.
+- GitHub secret `CLOUDFLARE_ACCOUNT_ID` set; bilingual setup guide added at
+  `docs/operations/pages-auto-deploy-setup.md`.
+
+### Remaining one-time step
+- User creates a `CLOUDFLARE_API_TOKEN` (Cloudflare Pages: Edit) in dash.cloudflare.com,
+  runs `gh secret set CLOUDFLARE_API_TOKEN`, then `gh variable set PAGES_AUTO_DEPLOY --body true`.
+
 ## [3.1.15] - 2026-08-23 — Quality ratchet green on main (escrow E6 resolved)
 
 ### Fixed

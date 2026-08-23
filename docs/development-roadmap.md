@@ -340,9 +340,14 @@ Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vib
   ws-adapter structural `WSRawSocket` type replacing `any`, dead debug-test converted to
   real 410-shim assertions, polymarket skip-warning deduplicated. Follow-up deflake PR #24
   removed wall-clock `createdAt` comparison in strategy-families determinism test.
-- Pages project is not git-connected: deploy was manual (`wrangler pages deploy`). To make
-  future merges auto-deploy, either connect the Pages project to Git or add the
-  `CLOUDFLARE_API_TOKEN` secret for the Worker workflow (escrow E7).
+- Pages auto-deploy infra shipped (escrow E7): `pages-deploy.yml` builds dashboard +
+  deploys to Pages project `algo-trader` from repo root (mirrors verified manual deploy),
+  gated by kill-switch variable `PAGES_AUTO_DEPLOY` (default OFF to protect Actions budget on
+  private repo). Old Worker-path workflow `cloudflare-deploy.yml` demoted to manual-only — it
+  never had secrets and showed a permanent red X per merge. Remaining one-time user step:
+  create a `CLOUDFLARE_API_TOKEN` (Pages:Edit) in dash.cloudflare.com → API Tokens and run
+  `gh secret set CLOUDFLARE_API_TOKEN`, then `gh variable set PAGES_AUTO_DEPLOY --body true`.
+  See `docs/operations/pages-auto-deploy-setup.md`.
 - Full-history secret audit (gitleaks, 839 commits) performed before temporarily making the
   repo public for free Actions minutes — no live secrets found.
 
