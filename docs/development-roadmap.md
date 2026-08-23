@@ -330,12 +330,16 @@ Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vib
 | S5 | Research MCP server (4 read-only tools, PRO tier gate) | ✅ |
 | S6 | `MIGRATION_LOG.json` + migration docs | ✅ |
 | SHIP | Merged to main (PR #18 → `1260feca`, PR #20 → `20e1f015`), deployed to CF Pages, prod smoke green, repo back to private | ✅ |
+| E6 | Quality ratchet resolved (PR #23 → `0430d298`: anyTypes 118→117, consoleCalls 57→45; PR #24 deflake) | ✅ |
 
 **Full suite: 7081/7081 passing.**
 
 ### Ship notes (2026-08-23)
-- CI gates 1–7 green on main @ `20e1f015`; Gate 8 quality ratchet fails on pre-existing drift
-  (anyTypes 118>117, consoleCalls 57>45) — escrowed as follow-up E6.
+- **All 9 CI gates green on main @ `2e7f706d`** — first time since Gate 8 was introduced.
+  E6 drift fixed by real reductions (no re-baseline): paper-trading-loop console→logger,
+  ws-adapter structural `WSRawSocket` type replacing `any`, dead debug-test converted to
+  real 410-shim assertions, polymarket skip-warning deduplicated. Follow-up deflake PR #24
+  removed wall-clock `createdAt` comparison in strategy-families determinism test.
 - Pages project is not git-connected: deploy was manual (`wrangler pages deploy`). To make
   future merges auto-deploy, either connect the Pages project to Git or add the
   `CLOUDFLARE_API_TOKEN` secret for the Worker workflow (escrow E7).

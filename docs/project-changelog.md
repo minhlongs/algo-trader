@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [3.1.15] - 2026-08-23 — Quality ratchet green on main (escrow E6 resolved)
+
+### Fixed
+- **PR #23 merged** (`0430d298`) — Gate 8 Quality Ratchet drift resolved without touching
+  baseline thresholds: anyTypes 118→117, consoleCalls 57→45.
+  - `paper-trading-loop.ts`: 7 leftover console debug calls routed through the shared logger.
+  - `ws-adapter-redis`: `ws: any` replaced by structural `WSRawSocket` interface; dropped
+    the `WSInstance = any` alias and its eslint suppression.
+  - `signals-debug.test.ts`: debug scratch test converted to real 410-shim assertions.
+  - `live-trading-integration.test.ts`: 3 duplicated Gamma skip warnings consolidated.
+- **PR #24 merged** (`2e7f706d`) — deflaked `strategy-families.test.ts` determinism test
+  (wall-clock `createdAt` stamp made two back-to-back calls differ by 1ms; now compares all
+  fields except `createdAt`). Same failure class as the trade-executor fix in PR #20.
+
+### Operational notes
+- **All 9 CI gates green on main** @ `2e7f706d` — first time since Gate 8 was introduced.
+- Repo flipped public for the CI window (budget cap), back to private after merge.
+
 ## [3.1.14] - 2026-08-23 — Go-live: S1–S6 migration merged, deployed, verified
 
 ### Shipped
