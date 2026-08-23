@@ -12,8 +12,9 @@ COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json ./
+# scripts/ is deliberately excluded by .dockerignore and not needed here:
+# "build" is plain tsc, and pnpm does not auto-run the npm prebuild hook.
 COPY src ./src
-COPY scripts ./scripts
 
 RUN pnpm run build
 

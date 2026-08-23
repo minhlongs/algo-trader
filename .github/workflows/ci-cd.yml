@@ -93,7 +93,11 @@ jobs:
     name: Deploy CF Worker
     runs-on: ubuntu-latest
     needs: [test, docker]
-    if: github.event_name == 'push'
+    # Worker is a separate deploy surface (doctrine target is Pages). Gated
+    # by the same kill-switch variable as pages-deploy.yml so it stays off
+    # until the Worker path gets its own token + opt-in; otherwise every
+    # main push goes red here after Docker turns green.
+    if: github.event_name == 'push' && vars.WORKER_AUTO_DEPLOY == 'true'
     permissions:
       contents: read
       deployments: write
