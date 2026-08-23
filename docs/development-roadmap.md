@@ -340,6 +340,10 @@ Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vib
   ws-adapter structural `WSRawSocket` type replacing `any`, dead debug-test converted to
   real 410-shim assertions, polymarket skip-warning deduplicated. Follow-up deflake PR #24
   removed wall-clock `createdAt` comparison in strategy-families determinism test.
+- CI fully green on main @ `73607624`: Gates 1–8 + Docker Build + Security Hardening —
+  first fully-green main in repo history. Docker gate repaired across PRs #27–#29
+  (Dockerfile `pnpm exec tsc` direct, GHCR `packages: write`, single build, gha cache);
+  Deploy CF Worker gated behind `WORKER_AUTO_DEPLOY=false`.
 - Pages auto-deploy infra shipped (escrow E7): `pages-deploy.yml` builds dashboard +
   deploys to Pages project `algo-trader` from repo root (mirrors verified manual deploy),
   gated by kill-switch variable `PAGES_AUTO_DEPLOY` (default OFF to protect Actions budget on

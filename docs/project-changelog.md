@@ -1,5 +1,31 @@
 # Project Changelog - Algo Trader
 
+## [3.1.17] - 2026-08-24 — CI main fully green: Docker gate repaired (PRs #26–#29)
+
+### Fixed
+- **Docker Build gate red on every main push since introduction** — three compounding
+  root causes fixed across PRs #27–#29:
+  - `Dockerfile`: `COPY scripts ./scripts` failed checksum (`.dockerignore` excludes
+    `scripts/`); and `pnpm run build` auto-runs the pnpm prebuild hook which invokes the
+    excluded `scripts/pre-build-check.sh`. Builder stage now runs `pnpm exec tsc` directly.
+  - `ci-cd.yml` docker job: missing `packages: write` permission made the first-ever GHCR
+    push denied; manual `docker build` duplicated the build-push-action build (removed);
+    `type=registry` cache hard-failed on cold cache (switched to `type=gha`).
+- **Deploy CF Worker gated** behind new repo variable `WORKER_AUTO_DEPLOY` (default false) —
+  Worker path has no API token; job previously only guarded by `if: push`, so it would have
+  gone red once Docker turned green. Health Check skips along with it.
+
+### Added
+- `pages-deploy.yml` (PR #26): dashboard build + deploy to Cloudflare Pages project
+  `algo-trader` from repo root, kill-switched by repo variable `PAGES_AUTO_DEPLOY`
+  (default OFF). Verified skipping correctly on main pushes while off.
+- Bilingual setup guide: `docs/operations/pages-auto-deploy-setup.md`.
+
+### Operational notes
+- **All CI green on main @ `73607624`**: Gates 1, 1b, 2, 3, 4, 5, 6, 7, 8 + Docker Build +
+  Security Hardening — first fully-green main in repo history.
+- Repo flipped public for CI window (budget cap), back to private after verification.
+
 ## [3.1.16] - 2026-08-24 — Pages auto-deploy infrastructure (escrow E7)
 
 ### Added
