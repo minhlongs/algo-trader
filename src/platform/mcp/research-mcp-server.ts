@@ -22,6 +22,7 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { resolveSubscriberId } from '../middleware/signal-tier-resolver';
+import type { Request } from 'express';
 import { readLedgerRecords, verifyLedgerChain } from '../../alpha-lab/provenance/research-ledger';
 import { readRunCardByRunId } from '../../alpha-lab/provenance/run-card-index';
 import { logger } from '../../shared/utils/logger';
@@ -38,8 +39,19 @@ import type { TierKey } from '../../desk/signal/signal-types';
 const TIER_RANK: Record<TierKey, number> = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
 const RESEARCH_MIN_TIER: TierKey = 'PRO';
 
+// ── Tool argument types ───────────────────────────────────────────────────────
+// MCP delivers tool arguments as a plain object; each handler re-validates its
+// own required fields at runtime. These interfaces name the expected shape so
+// the dispatch boundary below can narrow without `any` casts.
+
+type CallToolParams = Record<string, unknown> | undefined;
+type ListExperimentsArgs = { apiKey: string; limit?: number };
+type GetRunCardArgs = { apiKey: string; runId: string };
+type GetAlphaReportArgs = { apiKey: string; candidateId: string };
+type GetBacktestSummaryArgs = { apiKey: string; runId: string };
+
 function resolveIdentity(apiKey: string): { subscriberId: string; tier: TierKey } | null {
-  const mockReq = { headers: { authorization: `Bearer ${apiKey}` } } as any;
+  const mockReq = { headers: { authorization: `Bearer ${apiKey}` } } as unknown as Request;
   const identity = resolveSubscriberId(mockReq);
   if (!identity) return null;
   if (TIER_RANK[identity.tier] === undefined) return null;
@@ -262,19 +274,22 @@ export function createResearchMcpServer() {
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
-    if (name === 'list_experiments') {
-      return handleListExperiments(args as any);
+    // MCP delivers tool arguments as an untyped object; each handler re-validates
+    // its own required fields, so we narrow via a discriminated union rather than
+    // casting through `any` at the dispatch boundary.
+    const params = args as CallToolParams;
+    switch (name) {
+      case 'list_experiments':
+        return handleListExperiments(params as ListExperimentsArgs);
+      case 'get_run_card':
+        return handleGetRunCard(params as GetRunCardArgs);
+      case 'get_alpha_report':
+        return handleGetAlphaReport(params as GetAlphaReportArgs);
+      case 'get_backtest_summary':
+        return handleGetBacktestSummary(params as GetBacktestSummaryArgs);
+      default:
+        return { content: [{ type: 'text', text: `Unknown tool: ${name}` }] };
     }
-    if (name === 'get_run_card') {
-      return handleGetRunCard(args as any);
-    }
-    if (name === 'get_alpha_report') {
-      return handleGetAlphaReport(args as any);
-    }
-    if (name === 'get_backtest_summary') {
-      return handleGetBacktestSummary(args as any);
-    }
-    return { content: [{ type: 'text', text: `Unknown tool: ${name}` }] };
   });
 
   return server;

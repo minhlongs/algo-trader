@@ -195,19 +195,18 @@ export class PolymarketAdapter {
       // Acquire session from pool
       session = await this.http2Pool.getSession(url);
 
-      // Build HTTP/2 request options
-      const reqOptions: Record<string, string | number | Record<string, string>> = {
+      // Build HTTP/2 request headers
+      const reqHeaders: http2.OutgoingHttpHeaders = {
         ':method': method,
         ':path': path,
         // Convert headers to lowercase (HTTP/2 requirement)
-        headers: Object.entries(headers).reduce((acc, [key, value]) => {
-          acc[key.toLowerCase()] = value;
-          return acc;
-        }, {} as Record<string, string>),
+        ...Object.fromEntries(
+          Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]),
+        ),
       };
 
       return await new Promise<T>((resolve, reject) => {
-        const reqStream = session!.request(reqOptions as any);
+        const reqStream = session!.request(reqHeaders);
 
         let responseData = '';
 

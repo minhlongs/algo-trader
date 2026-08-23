@@ -15,7 +15,6 @@
  */
 
 import { Command } from 'commander';
-import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../../shared/utils/logger';
 import { readJson } from '../../shared/persistence/persistent-store';
