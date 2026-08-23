@@ -33,17 +33,17 @@ function buildApp() {
   return app;
 }
 
-describe('Debug Signals', () => {
+describe('Deprecated signals API shim', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.getBySubscriberId.mockResolvedValue(null); });
 
-  it('debug response', async () => {
+  it('returns 410 Gone with migration hint and persists nothing', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/v1/signals/subscribe')
       .set('Authorization', 'Bearer test-key')
       .send({ chatId: 12345 });
-    console.log('STATUS:', res.status);
-    console.log('BODY:', JSON.stringify(res.body, null, 2));
-    console.log('MOCK upsert calls:', mocks.upsert.mock.calls);
+    expect(res.status).toBe(410);
+    expect(res.body.error).toContain('/api/v1/signals/subscriptions');
+    expect(mocks.upsert).not.toHaveBeenCalled();
   });
 });

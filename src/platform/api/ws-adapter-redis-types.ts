@@ -1,12 +1,6 @@
 /**
  * Types for WebSocket Adapter with Redis Cluster.
  * Extracted for reuse across pub/sub manager and handler modules.
- *
- * Design note: WSClient.ws is typed as `any` because the @types/ws global
- * `WebSocket` and @cloudflare/workers-types global `WebSocket` merge into a
- * hybrid type that lacks the methods we need (on, ping, terminate).
- * Actual type safety is enforced at the call site where wsServer.on('connection')
- * provides the correctly-typed instance.
  */
 
 /** Configuration for the WebSocket-Redis adapter. */
@@ -26,13 +20,34 @@ export const DEFAULT_CONFIG: WSAdapterConfig = {
 };
 
 /**
+ * Structural view of the raw socket methods this adapter calls.
+ *
+ * Declared locally because @types/ws and @cloudflare/workers-types merge their
+ * global WebSocket declarations into a hybrid type that lacks ping/terminate,
+ * while the actual instance comes from the ws library's WebSocketServer and
+ * provides them. The instance passed at runtime is structurally compatible.
+ */
+export interface WSRawSocket {
+  /** Connection state constant — compare against WebSocket.OPEN. */
+  readonly readyState: number;
+  on(event: 'message', listener: (data: Buffer) => void): void;
+  on(event: 'close', listener: () => void): void;
+  on(event: 'error', listener: (err: Error) => void): void;
+  send(data: string): void;
+  close(code?: number, reason?: string): void;
+  /** Protocol-level ping frame for heartbeats. */
+  ping(): void;
+  /** Hard-close without the closing handshake (dead-connection cleanup). */
+  terminate(): void;
+}
+
+/**
  * Metadata for a connected WebSocket client.
  * The `ws` field holds the raw WebSocket instance from the ws library.
  */
 export interface WSClient {
   clientId: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ws: any;
+  ws: WSRawSocket;
   channels: Set<string>;
   lastPing: number;
 }

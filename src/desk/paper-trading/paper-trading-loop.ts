@@ -145,7 +145,7 @@ export class PaperTradingLoop {
    */
   private saveState(): Promise<void> {
     if (!this.kv) {
-      console.log('[PaperTradingLoop] saveState skipped: no KV');
+      logger.debug('[PaperTradingLoop] saveState skipped: no KV');
       return Promise.resolve();
     }
     const payload = JSON.stringify({
@@ -153,11 +153,11 @@ export class PaperTradingLoop {
       tradeCounter: this.tradeCounter,
       startTime: this.startTime,
     });
-    console.log(`[PaperTradingLoop] saveState writing ${payload.length} bytes, trades=${this.trades.length}, counter=${this.tradeCounter}`);
+    logger.debug(`[PaperTradingLoop] saveState writing ${payload.length} bytes, trades=${this.trades.length}, counter=${this.tradeCounter}`);
     return this.kv.put(STATE_KEY, payload).then(() => {
-      console.log('[PaperTradingLoop] saveState KV put succeeded');
+      logger.debug('[PaperTradingLoop] saveState KV put succeeded');
     }).catch((err) => {
-      console.error('[PaperTradingLoop] saveState KV put FAILED', err);
+      logger.error('[PaperTradingLoop] saveState KV put FAILED', { err });
     });
   }
 
@@ -182,13 +182,13 @@ export class PaperTradingLoop {
    * the stateless worker's invocation boundary.
    */
   async runTick(): Promise<void> {
-    console.log(`[PaperTradingLoop] runTick start: hasKV=${!!this.kv}, trades=${this.trades.length}`);
+    logger.debug(`[PaperTradingLoop] runTick start: hasKV=${!!this.kv}, trades=${this.trades.length}`);
     await this.tick();
-    console.log(`[PaperTradingLoop] runTick after tick: trades=${this.trades.length}, hasKV=${!!this.kv}`);
+    logger.debug(`[PaperTradingLoop] runTick after tick: trades=${this.trades.length}, hasKV=${!!this.kv}`);
     if (this.kv) {
       await this.saveState();
     } else {
-      console.log('[PaperTradingLoop] runTick: no KV, skipping save');
+      logger.debug('[PaperTradingLoop] runTick: no KV, skipping save');
     }
   }
 
