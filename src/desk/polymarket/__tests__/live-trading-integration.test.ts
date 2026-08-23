@@ -88,7 +88,11 @@ async function fetchGammaMarkets(limit = 5): Promise<GammaMarket[] | null> {
 }
 
 function skipIfGammaUnreachable(markets: GammaMarket[] | null): boolean {
-  return !markets || markets.length === 0;
+  if (!markets || markets.length === 0) {
+    console.warn('[SKIP] Gamma API unreachable — skipping test');
+    return true;
+  }
+  return false;
 }
 
 function cleanupTempDir(): void {
@@ -121,20 +125,14 @@ function makeOrder(overrides: Record<string, unknown> = {}) {
 describe('Gamma API connectivity', () => {
   it('fetches real markets with valid response shape', async () => {
     const markets = await fetchGammaMarkets(5);
-    if (skipIfGammaUnreachable(markets)) {
-      console.warn('[SKIP] Gamma API unreachable — skipping smoke test');
-      return;
-    }
+    if (skipIfGammaUnreachable(markets)) return;
     expect(Array.isArray(markets)).toBe(true);
     expect(markets!.length).toBeGreaterThan(0);
   });
 
   it('returns markets with required schema fields (conditionId, question, outcomes, yesPrice)', async () => {
     const markets = await fetchGammaMarkets(5);
-    if (skipIfGammaUnreachable(markets)) {
-      console.warn('[SKIP] Gamma API unreachable — skipping schema test');
-      return;
-    }
+    if (skipIfGammaUnreachable(markets)) return;
     const m = markets![0];
     expect(m.conditionId).toBeTruthy();
     expect(typeof m.conditionId).toBe('string');
@@ -153,10 +151,7 @@ describe('Gamma API connectivity', () => {
 describe('strategy scanning', () => {
   it('scans real Gamma markets and instantiates a V2 strategy', async () => {
     const markets = await fetchGammaMarkets(10);
-    if (skipIfGammaUnreachable(markets)) {
-      console.warn('[SKIP] Gamma API unreachable — skipping strategy scan test');
-      return;
-    }
+    if (skipIfGammaUnreachable(markets)) return;
     // Dynamically import a V2 strategy — verify it accepts real market data
     const { ResolutionFrontrunnerStrategy, DEFAULT_CONFIG } = await import(
       '../../strategies/polymarket/resolution-frontrunner-v2'

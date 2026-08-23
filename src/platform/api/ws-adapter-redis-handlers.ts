@@ -1,20 +1,15 @@
 /**
  * WebSocket connection and message handlers.
  * Pure functions / parameterized handlers — no class state.
- *
- * Design note: The `ws` parameter is typed as `any` in these handlers because
- * the `@types/ws` global `WebSocket` and `@cloudflare/workers-types` global
- * `WebSocket` merge into a hybrid type that lacks `on`, `ping`, `terminate`.
- * The actual type safety is enforced at the call site (orchestrator) where the
- * wsServer.on('connection') callback provides the correctly-typed instance.
  */
 
 import { logger } from '../../shared/utils/logger';
-import type { WSClient, WSAdapterConfig } from './ws-adapter-redis-types';
+import type {
+  WSClient,
+  WSAdapterConfig,
+  WSRawSocket,
+} from './ws-adapter-redis-types';
 import type { RedisPubSubManager } from './ws-adapter-redis-pubsub';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type WSInstance = any;
 
 export type SendToClientFn = (
   client: WSClient,
@@ -27,7 +22,7 @@ export type ClientIdGenerator = () => string;
  * Handle a new WebSocket connection — register client, wire events, auto-subscribe.
  */
 export function setupClientConnection(
-  ws: WSInstance,
+  ws: WSRawSocket,
   clients: Map<string, WSClient>,
   config: WSAdapterConfig,
   pubsubManager: RedisPubSubManager,
@@ -86,9 +81,9 @@ export function startHeartbeat(
       const elapsed = now - client.lastPing;
       if (elapsed > config.heartbeatIntervalMs * 2) {
         logger.warn(`[WebSocket] Client ${clientId} timeout — terminating`);
-        (client.ws as WSInstance).terminate();
+        client.ws.terminate();
       } else {
-        (client.ws as WSInstance).ping();
+        client.ws.ping();
         client.lastPing = now;
       }
     }
