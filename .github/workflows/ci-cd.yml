@@ -35,6 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     if: github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
     outputs:
       image: ${{ steps.build.outputs.image }}
     steps:
@@ -45,19 +48,20 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Image tag only — the actual build+push happens once below.
       - id: build
         run: |
-          IMAGE=ghcr.io/${{ github.repository }}:${{ github.sha }}
-          docker build -t $IMAGE -t ghcr.io/${{ github.repository }}:latest .
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${{ github.repository }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v5
         with:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:latest
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache,mode=max
+          # gha cache backend: tolerates a cold cache, unlike registry refs
+          # which hard-fail before any layer is built.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Setup Node.js for source map upload
         uses: actions/setup-node@v4
