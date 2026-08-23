@@ -8,6 +8,7 @@
 
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
+import type { StatisticalSignificanceInput } from '../validation/validation-types';
 import type {
   GateId,
   GateStatus,
@@ -34,6 +35,12 @@ export interface GateEvaluatorInput {
     circuitBreakerTested?: boolean;
     exchangeConnectivityGreen?: boolean;
   };
+  /**
+   * Optional precomputed statistical validation outputs (Monte Carlo p-value +
+   * bootstrap Sharpe CI). When omitted the statistical_significance gate is
+   * not evaluated — existing callers see the same 10 gates as before.
+   */
+  statisticalValidation?: StatisticalSignificanceInput;
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────────
@@ -62,6 +69,10 @@ export function evaluateGates(input: GateEvaluatorInput): PromotionReadiness {
       flags.exchangeConnectivityGreen ?? false,
     ),
   ];
+
+  if (input.statisticalValidation) {
+    gates.push(evaluateStatisticalGate(input.statisticalValidation));
+  }
 
   const passedCount = gates.filter((g) => g.passed).length;
   const allPassed = passedCount === gates.length;
@@ -136,6 +147,47 @@ function evaluateBooleanGate(id: GateId, value: boolean): GateStatus {
     threshold: null,
     passed: value,
     details: value ? `PASS: ${meta.name}` : `FAIL: ${meta.name} not confirmed`,
+  };
+}
+
+const STATISTICAL_P_VALUE_THRESHOLD = 0.05;
+
+/**
+ * Optional gate: Monte Carlo p-value < 0.05 AND bootstrap Sharpe CI lower
+ * bound > 0. Kept out of GATE_THRESHOLDS so legacy consumers still see the
+ * original 10 transition gates.
+ */
+function evaluateStatisticalGate(stats: StatisticalSignificanceInput): GateStatus {
+  const { pValueSharpe, sharpeCiLower } = stats;
+
+  if (!Number.isFinite(pValueSharpe) || !Number.isFinite(sharpeCiLower)) {
+    return {
+      id: 'statistical_significance',
+      name: 'Statistical Significance',
+      currentValue: null,
+      threshold: STATISTICAL_P_VALUE_THRESHOLD,
+      passed: false,
+      details: 'FAIL: statistical validation inputs must be finite numbers',
+    };
+  }
+
+  const pValueOk = pValueSharpe < STATISTICAL_P_VALUE_THRESHOLD;
+  const ciOk = sharpeCiLower > 0;
+  const passed = pValueOk && ciOk;
+
+  const reasons: string[] = [];
+  if (!pValueOk) reasons.push(`p-value ${pValueSharpe.toFixed(4)} >= ${STATISTICAL_P_VALUE_THRESHOLD}`);
+  if (!ciOk) reasons.push(`Sharpe CI lower bound ${sharpeCiLower.toFixed(4)} <= 0`);
+
+  return {
+    id: 'statistical_significance',
+    name: 'Statistical Significance',
+    currentValue: pValueSharpe,
+    threshold: STATISTICAL_P_VALUE_THRESHOLD,
+    passed,
+    details: passed
+      ? `PASS: p-value ${pValueSharpe.toFixed(4)} < ${STATISTICAL_P_VALUE_THRESHOLD} and Sharpe CI lower bound ${sharpeCiLower.toFixed(4)} > 0`
+      : `FAIL: ${reasons.join('; ')}`,
   };
 }
 

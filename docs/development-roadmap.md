@@ -317,6 +317,31 @@ Phase 3 revenue verification pending — D1 query reference appended to `plans/2
 
 ---
 
+## CASHCLAW / ZEN ALPHA FACTORY Migration (2026-08-22)
+
+Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vibe-trading-migration.md`. Machine-readable log: `MIGRATION_LOG.json`.
+
+| Stage | Deliverable | Status |
+|---|---|---|
+| S1 | Recon + architecture freeze; `docs/architecture/` | ✅ |
+| S2 | Data quality gate + candle contracts | ✅ |
+| S3 | Provenance ledger + run cards + statistical validation | ✅ |
+| S4 | Execution safety (single mode gate, static scanner, 0 unguarded live paths) | ✅ |
+| S5 | Research MCP server (4 read-only tools, PRO tier gate) | ✅ |
+| S6 | `MIGRATION_LOG.json` + migration docs | ✅ |
+
+**Full suite: 7080/7081 passing** (1 pre-existing failure in `security-integration.test.ts`, confirmed on clean baseline).
+
+### Deferred (next sessions)
+- Multi-asset backtest engines (A-share, forex, india, korea, options) — no product requirement
+- 40+ data loaders (akshare, tushare, eastmoney, yfinance) — adds secret surface + maintenance
+- Full 74-tool MCP suite — YAGNI; only add on real consumer
+- Full factor zoo — duplicates existing alpha-lab registry
+- Shadow account reconciliation — needs real broker-statement schema
+- MASTER COMMAND phases 5–34 — multiple sessions
+
+---
+
 ## Next Sprint (Week of 2026-08-17)
 
 1. Phase 35: Complete KYC/AML vendor integration (Persona or similar)

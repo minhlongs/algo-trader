@@ -15,7 +15,8 @@ export type GateId =
   | 'oos_consistency'
   | 'kelly_wired'
   | 'circuit_breaker'
-  | 'exchange_connectivity';
+  | 'exchange_connectivity'
+  | 'statistical_significance';
 
 export interface GateThreshold {
   /** Gate identifier */

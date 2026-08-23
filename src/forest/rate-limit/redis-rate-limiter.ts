@@ -133,7 +133,10 @@ export class RedisRateLimiter {
         Math.ceil((now + this.windowSeconds * 1000 - Date.now()) / 1000),
       );
 
-      if (validateTenantId(userId)) {
+      // Audit only when the rate limit is actually exceeded. Firing on every
+      // request would flood the audit log with noise and break the invariant
+      // that a successful request carries no rate-limit audit event.
+      if (!allowed && validateTenantId(userId)) {
         try {
           await emitRateLimitAuditEvent({
             tenantId: userId as TenantId,
@@ -147,8 +150,6 @@ export class RedisRateLimiter {
             cause: auditErr instanceof Error ? auditErr.message : String(auditErr),
           });
         }
-      } else {
-        logger.warn(`[RateLimiter] skipping audit for invalid tenantId: ${userId}`);
       }
 
       return {

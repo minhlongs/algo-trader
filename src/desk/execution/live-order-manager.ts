@@ -20,6 +20,7 @@ import type { LivePositionTracker, FilledOrder } from './live-position-tracker';
 import { logger } from '../../shared/utils/logger';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
+import { requireLiveEnabled } from './execution-mode';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,11 @@ export class LiveOrderManager extends EventEmitter {
   /** Submit a signed order to CLOB and begin polling for fill status */
   async submitAndTrack(order: PolymarketOrder): Promise<PolymarketOrderResponse> {
     if (this.stopped) throw new Error('LiveOrderManager is stopped');
+
+    // Hard env gate: LIVE mode requires the operator to set
+    // LIVE_TRADING_ENABLED=true explicitly. Without this, no order can reach
+    // the exchange regardless of how the guard was configured.
+    requireLiveEnabled('LiveOrderManager.submitAndTrack');
 
     const response = await this.adapter.placeOrder(order);
 

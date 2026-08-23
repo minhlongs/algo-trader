@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { resetExecutionModeCache } from '../execution-mode';
 import { PolymarketAdapter, PolymarketOrderResponse, PolymarketOpenOrder } from '../polymarket-adapter';
 import { PolymarketSigner } from '../polymarket-signer';
 import type { PolymarketOrder, SignedOrder } from '../polymarket-signer';
@@ -136,6 +137,11 @@ function setupEnv(): void {
   process.env.POLY_API_KEY = 'test-api-key';
   process.env.POLY_API_SECRET = 'test-api-secret';
   process.env.POLY_PASSPHRASE = 'test-passphrase';
+  // These tests exercise the adapter's live order-placement path directly, so
+  // they opt into LIVE mode explicitly. Production code never sets this — it is
+  // an operator env var gated by a literal-string comparison.
+  process.env.LIVE_TRADING_ENABLED = 'true';
+  resetExecutionModeCache();
 }
 
 function clearEnv(): void {
@@ -227,7 +233,7 @@ describe('PolymarketAdapter', () => {
       expect(options[':method']).toBe('POST');
       expect(options[':path']).toBe('/order');
 
-      const headers = options.headers as Record<string, string>;
+      const headers = options as Record<string, string>;
       expect(headers['content-type']).toBe('application/json');
       expect(headers['poly-api-key']).toBe('test-api-key');
       expect(headers['poly-passphrase']).toBe('test-passphrase');
@@ -402,7 +408,7 @@ describe('PolymarketAdapter', () => {
       await adapter.placeOrder(makeOrder());
 
       const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
-      const headers = options.headers as Record<string, string>;
+      const headers = options as Record<string, string>;
 
       expect(headers['poly-api-key']).toBe('test-api-key');
       expect(headers['poly-passphrase']).toBe('test-passphrase');
@@ -414,7 +420,7 @@ describe('PolymarketAdapter', () => {
       await adapter.placeOrder(makeOrder());
 
       const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
-      const headers = options.headers as Record<string, string>;
+      const headers = options as Record<string, string>;
 
       expect(headers['content-type']).toBe('application/json');
       expect(headers['poly-timestamp']).toBeTruthy();
@@ -429,7 +435,7 @@ describe('PolymarketAdapter', () => {
       await noAuthAdapter.placeOrder(makeOrder());
 
       const [options] = mockRequest.mock.calls[0] as [Record<string, unknown>];
-      const headers = options.headers as Record<string, string>;
+      const headers = options as Record<string, string>;
 
       expect(headers['poly-api-key']).toBeUndefined();
       expect(headers['poly-signature']).toBeUndefined();
@@ -440,13 +446,13 @@ describe('PolymarketAdapter', () => {
     it('should produce different signatures for different payloads', async () => {
       await adapter.placeOrder(makeOrder({ price: 0.55 }));
       const [options1] = mockRequest.mock.calls[0] as [Record<string, unknown>];
-      const sig1 = (options1.headers as Record<string, string>)['poly-signature'];
+      const sig1 = (options1 as Record<string, string>)['poly-signature'];
 
       const adapter2 = createAdapter(TEST_API_URL);
       stubHttp2Response('/order', { orderID: 'order-002', status: 'matched' });
       await adapter2.placeOrder(makeOrder({ price: 0.99 }));
       const [options2] = mockRequest.mock.calls[1] as [Record<string, unknown>];
-      const sig2 = (options2.headers as Record<string, string>)['poly-signature'];
+      const sig2 = (options2 as Record<string, string>)['poly-signature'];
 
       expect(sig1).not.toBe(sig2);
     });

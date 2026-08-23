@@ -26,6 +26,8 @@ import type {
   SplitMetrics,
 } from './experiment-types';
 import { generateSplits } from './splitter';
+import { writeRunCard } from '../provenance/run-card';
+import type { ResultClassName } from '../provenance/run-card';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -80,6 +82,18 @@ function computeSplitMetrics(
 export interface RunExperimentInput {
   candles: CandleLike[];
   config: ExperimentConfig;
+  /**
+   * Directory to write the provenance run card into. When set, a run card is
+   * written (fail-safe) recording this experiment's config hash, result class,
+   * and metrics. Omit to skip provenance — useful for pure unit tests.
+   */
+  runCardDir?: string;
+  /**
+   * Result class for the run card. Defaults to 'IS' (in-sample) — callers that
+   * run on an out-of-sample window must pass 'OOS' explicitly so the card
+   * cannot be mis-cited as in-sample evidence.
+   */
+  resultClass?: ResultClassName;
 }
 
 /**
@@ -183,11 +197,37 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
     test: computeSplitMetrics(allTestLabels, allTestTrades, candles, config, fullRange),
   };
 
-  return {
+  const result: ExperimentResult = {
     config,
     steps,
     metrics,
     totalBars: candles.length,
     numSteps: steps.length,
   };
+
+  // Provenance: write a run card if a directory was provided. Fire-and-forget —
+  // writeRunCard is fail-safe (never throws), so a write failure cannot lose the
+  // result. The card records the config hash + result class for auditability.
+  if (input.runCardDir) {
+    void writeRunCard(input.runCardDir, {
+      runId: config.experimentId,
+      resultClass: input.resultClass ?? 'IS',
+      strategyRef: config.features.join('+') || 'experiment',
+      hypothesis: config.hypothesis,
+      dataSources: [],
+      metrics: {
+        trainSharpe: metrics.train.sharpeRatio,
+        valSharpe: metrics.val.sharpeRatio,
+        testSharpe: metrics.test.sharpeRatio,
+        trainPnl: metrics.train.totalPnl,
+        valPnl: metrics.val.totalPnl,
+        testPnl: metrics.test.totalPnl,
+        totalBars: candles.length,
+        numSteps: steps.length,
+      },
+      config: config as unknown as Record<string, unknown>,
+    });
+  }
+
+  return result;
 }

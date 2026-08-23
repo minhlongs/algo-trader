@@ -15,7 +15,6 @@
  */
 
 import { Command } from 'commander';
-import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '../../shared/utils/logger';
 import { readJson } from '../../shared/persistence/persistent-store';
@@ -259,6 +258,14 @@ const tradeCmd = program
   .command('trade')
   .description('Live/paper trading management');
 registerTradeCommands(tradeCmd);
+
+// ─── alpha commands ─────────────────────────────────────────────────────────────
+
+import { registerAlphaCommands } from './alpha-commands';
+const alphaCmd = program
+  .command('alpha')
+  .description('Alpha Discovery Engine — discover, backtest, and evaluate trading strategies');
+registerAlphaCommands(alphaCmd);
 
 // ─── parse ────────────────────────────────────────────────────────────────────
 

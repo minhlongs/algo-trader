@@ -12,6 +12,7 @@ import { BinanceSpotClient } from '../markets/cex/binance-spot-client';
 import type { CexSpotOrderRequest, CexOrderResponse } from '../markets/cex/cex-types';
 import { loadFeatureFlags } from '../markets/cex/cex-types';
 import { logger } from '../core/logger';
+import { requireLiveEnabled } from './execution-mode';
 
 export interface CexExecutorConfig {
   /** ccxt-style symbol, e.g. "BTC/USDT" */
@@ -77,6 +78,11 @@ export class CexOrderExecutor {
       ...req,
       confidence: signal.confidence,
     });
+
+    // Hard env gate: LIVE mode requires the operator to set
+    // LIVE_TRADING_ENABLED=true explicitly. This is the last line of defense
+    // before an order reaches the exchange — no caller can bypass it.
+    requireLiveEnabled('CexOrderExecutor.execute');
 
     try {
       const response = await this.client.placeOrder(req);

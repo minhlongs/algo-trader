@@ -1,0 +1,141 @@
+{
+  "repo": "https://github.com/minhlongs/algo-trader",
+  "upstreamRef": "https://github.com/HKUDS/Vibe-Trading",
+  "project": "CASHCLAW / ZEN ALPHA FACTORY",
+  "principle": "AI proposes. Research validates. Risk disposes. Execution obeys only approved policy.",
+  "date": "2026-08-22",
+  "phases": [
+    {
+      "phase": "S1 — Recon + architecture freeze",
+      "status": "done",
+      "targetFiles": [
+        "docs/architecture/CURRENT_ARCHITECTURE.md",
+        "docs/architecture/VIBE_TRADING_ARCHITECTURE.md",
+        "docs/architecture/MODULE_MAPPING.md",
+        "docs/architecture/DATA_FLOW.md",
+        "docs/architecture/AGENT_FLOW.md",
+        "docs/architecture/SECURITY_MODEL.md",
+        "docs/architecture/DEPENDENCY_AUDIT.md",
+        "docs/architecture/MIGRATION_PLAN.md",
+        "docs/architecture/MIGRATION_STATUS.md"
+      ],
+      "evidence": {
+        "tests": "n/a (read-only recon)",
+        "prUrl": null
+      }
+    },
+    {
+      "phase": "S2 — Market data router + data quality gate",
+      "status": "done",
+      "targetFiles": [
+        "src/desk/data/data-quality-gate.ts",
+        "src/desk/data/candle-contracts.ts",
+        "src/desk/data/quality-metrics.ts",
+        "src/desk/data/data-quality-types.ts",
+        "src/desk/data/__tests__/data-quality-gate.test.ts",
+        "src/desk/data/__tests__/candle-contracts.test.ts"
+      ],
+      "evidence": {
+        "tests": "vitest data-quality-gate + candle-contracts suites",
+        "prUrl": null
+      }
+    },
+    {
+      "phase": "S3 — Provenance ledger + run cards + statistical validation",
+      "status": "done",
+      "targetFiles": [
+        "src/alpha-lab/provenance/research-ledger.ts",
+        "src/alpha-lab/provenance/run-card.ts",
+        "src/alpha-lab/provenance/run-card-index.ts",
+        "src/alpha-lab/provenance/index.ts",
+        "src/alpha-lab/provenance/__tests__/research-ledger.test.ts",
+        "src/alpha-lab/provenance/__tests__/run-card.test.ts",
+        "src/alpha-lab/provenance/__tests__/run-card-index.test.ts",
+        "src/alpha-lab/validation/monte-carlo-permutation.ts",
+        "src/alpha-lab/validation/bootstrap-sharpe.ts",
+        "src/alpha-lab/validation/validation-types.ts",
+        "src/alpha-lab/validation/index.ts"
+      ],
+      "evidence": {
+        "tests": "vitest provenance + validation suites",
+        "prUrl": null
+      }
+    },
+    {
+      "phase": "S4 — Execution safety hardening",
+      "status": "done",
+      "targetFiles": [
+        "src/desk/execution/execution-mode.ts",
+        "src/desk/execution/__tests__/execution-mode.test.ts",
+        "src/desk/sandbox/strategy-static-scanner.ts",
+        "src/desk/sandbox/__tests__/strategy-static-scanner.test.ts",
+        "src/desk/execution/polymarket-adapter.ts",
+        "src/desk/execution/live-order-manager.ts",
+        "src/desk/execution/cex-order-executor.ts",
+        "tests/execution/cex-order-executor.test.ts",
+        "tests/execution/polymarket-adapter.http2.test.ts",
+        "src/desk/execution/__tests__/live-order-manager-risk-gate-wiring.test.ts",
+        "src/desk/execution/__tests__/polymarket-adapter.test.ts"
+      ],
+      "evidence": {
+        "tests": "7044/7045 passing (1 pre-existing failure)",
+        "prUrl": null
+      }
+    },
+    {
+      "phase": "S5 — Research MCP server (read-only provenance)",
+      "status": "done",
+      "targetFiles": [
+        "src/platform/mcp/research-mcp-server.ts",
+        "src/platform/mcp/__tests__/research-mcp-server.test.ts",
+        "src/api/routes/mcp-routes.ts"
+      ],
+      "evidence": {
+        "tests": "36 new tests; full suite 7080/7081 (1 pre-existing failure)",
+        "prUrl": null
+      }
+    },
+    {
+      "phase": "S6 — Machine-readable migration log + docs",
+      "status": "done",
+      "targetFiles": [
+        "MIGRATION_LOG.json",
+        "docs/vibe-trading-migration.md"
+      ],
+      "evidence": {
+        "tests": "n/a (documentation)",
+        "prUrl": null
+      }
+    }
+  ],
+  "deferred": [
+    {
+      "item": "Multi-asset backtest engines (china A-share, forex, india, korea, options portfolio)",
+      "reason": "Repo is crypto + prediction markets only; porting = dead code. Only when a product requirement exists."
+    },
+    {
+      "item": "40+ data loaders (akshare, tushare, eastmoney, yfinance...)",
+      "reason": "Only Binance/CCXT needed; adding a loader adds secret surface + maintenance."
+    },
+    {
+      "item": "Shadow account reconciliation (upstream shadow_account/)",
+      "reason": "paper-executor + dry-run-position-tracker already cover ~80%; broker-statement reconciliation needs a real statement schema — no demand yet."
+    },
+    {
+      "item": "Full 74-tool MCP suite",
+      "reason": "S5 delivered 4 high-value read-only tools; adding tools only when a real consumer exists (YAGNI)."
+    },
+    {
+      "item": "Full factor zoo (upstream factors/zoo)",
+      "reason": "alpha-lab features + strategy-families already form the foundation; porting the zoo duplicates the registry."
+    },
+    {
+      "item": "Frontend / desktop upstream",
+      "reason": "Existing dashboard is sufficient; do not replace."
+    },
+    {
+      "item": "MASTER COMMAND phases 5–34",
+      "reason": "Needs multiple sessions; MIGRATION_LOG.json marks deferred with reason so the next session can resume."
+    }
+  ]
+}
