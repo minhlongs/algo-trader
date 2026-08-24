@@ -95,7 +95,7 @@ describe('Experiment Engine', () => {
     }
   });
 
-  it('attributes only regimes inside each split kind window', () => {
+  it('attribution regimes are valid enum members from real windows', () => {
     const candles = makeCandles(80);
     const result = runExperiment({ candles, config: baseConfig });
     const trainWindow = result.steps[0]!.train;
