@@ -14,6 +14,8 @@ import { join } from 'node:path';
 import type { ExperimentConfig, SplitMetrics } from './experiments/experiment-types';
 import { runExperiment } from './experiments/experiment-engine';
 import { loadCandles } from './experiments/alpha-backtest-adapter';
+import { computeRegimeSeries, distinctRegimes } from './regimes/regime-series';
+import type { MarketRegime } from './regimes/regime-types';
 import { runAllBaselines } from './baselines/baseline-runner';
 import { candidateResultFromExperiment, recordAlphaVerdict } from './provenance/record-alpha-verdict';
 import { hashConfig } from './provenance/run-card';
@@ -21,8 +23,6 @@ import { loadVerdictSummary, type VerdictSummary } from './provenance/verdict-su
 import { DEFAULT_LEDGER_PATH } from './provenance/research-ledger';
 import { createDefaultRegistry } from './alpha-discovery/strategy-family-registry';
 import { prioritizeFamilies, type PrioritizedFamily } from './alpha-discovery/research-informed';
-// ── CLI Argument Parsing ─────────────────────────────────────────────────────
-
 interface CliArgs {
   configPath?: string;
   record: boolean;
@@ -86,7 +86,8 @@ function pickMetrics(m: SplitMetrics) {
   };
 }
 /** Map baseline reports to artifact shape. */
-function mapBaselines(baselines: ReturnType<typeof runAllBaselines>) {
+function mapBaselines(baselines: ReturnType<typeof runAllBaselines>, regimeSeries: MarketRegime[]) {
+  const regimesPresent = distinctRegimes(regimeSeries);
   return baselines.map((b) => ({
     name: b.name,
     totalPnl: b.report.totalPnl,
@@ -95,7 +96,7 @@ function mapBaselines(baselines: ReturnType<typeof runAllBaselines>) {
     totalTrades: b.report.totalTrades,
     sharpeRatio: b.report.sharpeRatio,
     maxDrawdown: b.report.maxDrawdown,
-    regimesPresent: [],
+    regimesPresent,
   }));
 }
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -140,6 +141,11 @@ async function main(): Promise<void> {
       : {}),
   });
   const baselines = runAllBaselines(candles, config.cost.feeBps, config.cost.slippageBps, config.seed);
+  const regimeSeries = computeRegimeSeries(candles, {
+    market: config.symbol,
+    timeframe: config.timeframe,
+    lookback: config.lookback,
+  });
   const artifact = {
     experimentId: result.config.experimentId,
     symbol: result.config.symbol,
@@ -152,7 +158,7 @@ async function main(): Promise<void> {
       val: pickMetrics(result.metrics.val),
       test: pickMetrics(result.metrics.test),
     },
-    baselines: mapBaselines(baselines),
+    baselines: mapBaselines(baselines, regimeSeries),
   };
   // Provenance (--record): persist alpha verdict + ledger entry.
   if (record) {

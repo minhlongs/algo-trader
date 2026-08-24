@@ -54,6 +54,9 @@ describe('Walk-Forward Evaluator', () => {
       expect(typeof step.trainMetrics.winRate).toBe('number');
       expect(typeof step.valMetrics.winRate).toBe('number');
       expect(typeof step.testMetrics.winRate).toBe('number');
+      expect(step.trainMetrics.regimesPresent.length).toBeGreaterThan(0);
+      expect(step.valMetrics.regimesPresent.length).toBeGreaterThan(0);
+      expect(step.testMetrics.regimesPresent.length).toBeGreaterThan(0);
     }
   });
 

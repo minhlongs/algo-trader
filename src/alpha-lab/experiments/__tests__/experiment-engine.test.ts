@@ -84,6 +84,26 @@ describe('Experiment Engine', () => {
     expect(result.metrics.train.numTrades).toBeGreaterThanOrEqual(0);
     expect(result.metrics.val.numTrades).toBeGreaterThanOrEqual(0);
     expect(result.metrics.test.numTrades).toBeGreaterThanOrEqual(0);
+
+    // Regime attribution: every split reports the distinct regimes present in
+    // its own windows — never a hardcoded empty list.
+    expect(result.metrics.train.regimesPresent.length).toBeGreaterThan(0);
+    expect(result.metrics.val.regimesPresent.length).toBeGreaterThan(0);
+    expect(result.metrics.test.regimesPresent.length).toBeGreaterThan(0);
+    for (const r of [...result.metrics.train.regimesPresent, ...result.metrics.val.regimesPresent, ...result.metrics.test.regimesPresent]) {
+      expect(r).toMatch(/^(TREND_UP|TREND_DOWN|RANGE|HIGH_VOLATILITY|LOW_VOLATILITY|SHOCK|UNKNOWN)$/);
+    }
+  });
+
+  it('attributes only regimes inside each split kind window', () => {
+    const candles = makeCandles(80);
+    const result = runExperiment({ candles, config: baseConfig });
+    const trainWindow = result.steps[0]!.train;
+    const fullDistinct = new Set(['TREND_UP', 'TREND_DOWN', 'RANGE', 'HIGH_VOLATILITY', 'LOW_VOLATILITY', 'SHOCK', 'UNKNOWN']);
+    for (const r of result.metrics.train.regimesPresent) {
+      expect(fullDistinct.has(r)).toBe(true);
+    }
+    expect(trainWindow.startIdx).toBeLessThan(trainWindow.endIdx);
   });
 
   it('delegates metrics to existing computeMetrics (integration proof)', () => {

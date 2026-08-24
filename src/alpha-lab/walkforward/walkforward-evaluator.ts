@@ -9,7 +9,8 @@
  * @see docs/ALPHA_DISCOVERY_ARCHCHITECTURE.md — "Foundation vs Integration Contract"
  */
 
-import type { CandleLike } from '../regimes/regime-types';
+import type { CandleLike, MarketRegime } from '../regimes/regime-types';
+import { computeRegimeSeries, distinctRegimes } from '../regimes/regime-series';
 import type { TripleBarrierResult } from '../labeling/triple-barrier';
 import { batchLabel } from '../labeling/triple-barrier';
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
@@ -19,8 +20,37 @@ import { buildEquityCurve } from '../shared/equity-curve';
 import { buildTrades } from '../shared/trade-builder';
 import { generateSplits } from '../experiments/splitter';
 import type { WalkForwardResult, StepResult, WalkForwardSummary } from './walkforward-types';
+import type { SplitMetrics } from '../experiments/experiment-types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Combine label-derived rates with report-derived PnL/risk metrics.
+ * Win rate comes from the metrics report; loss/timeout/mean-label come from
+ * labels because computeMetrics counts timeout exits (label === 0, pnl < 0)
+ * as losing trades, conflating signal losses with timeouts.
+ */
+function splitMetricsFrom(
+  labels: Array<TripleBarrierResult & { entryIdx: number }>,
+  report: ReturnType<typeof computeMetrics>,
+  regimesPresent: MarketRegime[],
+): SplitMetrics {
+  const n = labels.length;
+  const losses = labels.filter((l) => l.label === -1).length;
+  const timeouts = labels.filter((l) => l.label === 0).length;
+  return {
+    numTrades: n,
+    winRate: report.winRate,
+    lossRate: n > 0 ? losses / n : 0,
+    timeoutRate: n > 0 ? timeouts / n : 0,
+    meanLabel: n > 0 ? labels.reduce((s, l) => s + l.label, 0) / n : 0,
+    regimesPresent,
+    totalPnl: report.totalPnl,
+    sharpeRatio: report.sharpeRatio,
+    profitFactor: report.profitFactor,
+    maxDrawdown: report.maxDrawdown,
+  };
+}
 
 function stepMetrics(
   candles: CandleLike[],
@@ -40,6 +70,7 @@ function stepMetrics(
 function buildStepResult(
   candles: CandleLike[],
   config: ExperimentConfig,
+  regimeSeries: MarketRegime[],
   stepIdx: number,
   trainSplit: { startIdx: number; endIdx: number },
   valSplit: { startIdx: number; endIdx: number },
@@ -58,60 +89,16 @@ function buildStepResult(
   const valReport = computeMetrics(vTrades, valEquity);
   const testReport = computeMetrics(teTrades, testEquity);
 
-  // Derive win/loss/timeout rates from labels, not from computeMetrics counts.
-  // computeMetrics treats timeout exits (label === 0, pnl < 0 after fees) as
-  // losing trades, which would conflate signal losses with timeouts and make
-  // lossRate disagree with experiment-engine.ts. Labels are the ground truth
-  // for what actually happened at each entry.
-  const tLosses = tLabels.filter((l) => l.label === -1).length;
-  const tTimeouts = tLabels.filter((l) => l.label === 0).length;
-  const vLosses = vLabels.filter((l) => l.label === -1).length;
-  const vTimeouts = vLabels.filter((l) => l.label === 0).length;
-  const teLosses = teLabels.filter((l) => l.label === -1).length;
-  const teTimeouts = teLabels.filter((l) => l.label === 0).length;
-
-  const trainMetrics = {
-    numTrades: tLabels.length,
-    winRate: trainReport.winRate,
-    lossRate: tLabels.length > 0 ? tLosses / tLabels.length : 0,
-    timeoutRate: tLabels.length > 0 ? tTimeouts / tLabels.length : 0,
-    meanLabel: tLabels.length > 0 ? tLabels.reduce((s, l) => s + l.label, 0) / tLabels.length : 0,
-    regimesPresent: [],
-    totalPnl: trainReport.totalPnl,
-    sharpeRatio: trainReport.sharpeRatio,
-    profitFactor: trainReport.profitFactor,
-    maxDrawdown: trainReport.maxDrawdown,
-  };
-  const valMetrics = {
-    numTrades: vLabels.length,
-    winRate: valReport.winRate,
-    lossRate: vLabels.length > 0 ? vLosses / vLabels.length : 0,
-    timeoutRate: vLabels.length > 0 ? vTimeouts / vLabels.length : 0,
-    meanLabel: vLabels.length > 0 ? vLabels.reduce((s, l) => s + l.label, 0) / vLabels.length : 0,
-    regimesPresent: [],
-    totalPnl: valReport.totalPnl,
-    sharpeRatio: valReport.sharpeRatio,
-    profitFactor: valReport.profitFactor,
-    maxDrawdown: valReport.maxDrawdown,
-  };
-  const testMetrics = {
-    numTrades: teLabels.length,
-    winRate: testReport.winRate,
-    lossRate: teLabels.length > 0 ? teLosses / teLabels.length : 0,
-    timeoutRate: teLabels.length > 0 ? teTimeouts / teLabels.length : 0,
-    meanLabel: teLabels.length > 0 ? teLabels.reduce((s, l) => s + l.label, 0) / teLabels.length : 0,
-    regimesPresent: [],
-    totalPnl: testReport.totalPnl,
-    sharpeRatio: testReport.sharpeRatio,
-    profitFactor: testReport.profitFactor,
-    maxDrawdown: testReport.maxDrawdown,
-  };
+  // Win/loss/timeout rates are derived in splitMetricsFrom — labels are the
+  // ground truth for what actually happened at each entry.
+  const splitRegimes = (split: { startIdx: number; endIdx: number }): MarketRegime[] =>
+    distinctRegimes(regimeSeries.slice(split.startIdx, split.endIdx));
 
   return {
     step: stepIdx,
-    trainMetrics,
-    valMetrics,
-    testMetrics,
+    trainMetrics: splitMetricsFrom(tLabels, trainReport, splitRegimes(trainSplit)),
+    valMetrics: splitMetricsFrom(vLabels, valReport, splitRegimes(valSplit)),
+    testMetrics: splitMetricsFrom(teLabels, testReport, splitRegimes(testSplit)),
   };
 }
 
@@ -158,9 +145,14 @@ export function evaluateWalkForward(input: EvaluateWalkForwardInput): WalkForwar
     }
   }
   const steps = Array.from(stepMap.values()).sort((a, b) => a.test.step - b.test.step);
+  const regimeSeries = computeRegimeSeries(candles, {
+    market: config.symbol,
+    timeframe: config.timeframe,
+    lookback: config.lookback,
+  });
 
   const stepResults: StepResult[] = steps.map((s, i) =>
-    buildStepResult(candles, config, i, s.train, s.val, s.test),
+    buildStepResult(candles, config, regimeSeries, i, s.train, s.val, s.test),
   );
 
   const summary = buildSummary(stepResults);
