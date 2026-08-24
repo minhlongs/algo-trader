@@ -79,6 +79,7 @@ function buildStepResult(
     regimesPresent: [],
     totalPnl: trainReport.totalPnl,
     sharpeRatio: trainReport.sharpeRatio,
+    profitFactor: trainReport.profitFactor,
     maxDrawdown: trainReport.maxDrawdown,
   };
   const valMetrics = {
@@ -90,6 +91,7 @@ function buildStepResult(
     regimesPresent: [],
     totalPnl: valReport.totalPnl,
     sharpeRatio: valReport.sharpeRatio,
+    profitFactor: valReport.profitFactor,
     maxDrawdown: valReport.maxDrawdown,
   };
   const testMetrics = {
@@ -101,6 +103,7 @@ function buildStepResult(
     regimesPresent: [],
     totalPnl: testReport.totalPnl,
     sharpeRatio: testReport.sharpeRatio,
+    profitFactor: testReport.profitFactor,
     maxDrawdown: testReport.maxDrawdown,
   };
 

@@ -126,9 +126,9 @@ vi.mock('../../../alpha-lab/experiments/experiment-engine', () => ({
     config,
     steps: [],
     metrics: {
-      train: { numTrades: 5, winRate: 0.6, lossRate: 0.2, timeoutRate: 0.2, meanLabel: 0.4, regimesPresent: [], totalPnl: 0.02, sharpeRatio: 1.2, maxDrawdown: -0.05 },
-      val: { numTrades: 3, winRate: 0.55, lossRate: 0.25, timeoutRate: 0.2, meanLabel: 0.3, regimesPresent: [], totalPnl: 0.01, sharpeRatio: 0.9, maxDrawdown: -0.04 },
-      test: { numTrades: 4, winRate: 0.52, lossRate: 0.28, timeoutRate: 0.2, meanLabel: 0.2, regimesPresent: [], totalPnl: 0.008, sharpeRatio: 0.8, maxDrawdown: -0.03 },
+      train: { numTrades: 5, winRate: 0.6, lossRate: 0.2, timeoutRate: 0.2, meanLabel: 0.4, regimesPresent: [], totalPnl: 0.02, sharpeRatio: 1.2, profitFactor: 1.5, maxDrawdown: -0.05 },
+      val: { numTrades: 3, winRate: 0.55, lossRate: 0.25, timeoutRate: 0.2, meanLabel: 0.3, regimesPresent: [], totalPnl: 0.01, sharpeRatio: 0.9, profitFactor: 1.2, maxDrawdown: -0.04 },
+      test: { numTrades: 4, winRate: 0.52, lossRate: 0.28, timeoutRate: 0.2, meanLabel: 0.2, regimesPresent: [], totalPnl: 0.008, sharpeRatio: 0.8, profitFactor: 1.1, maxDrawdown: -0.03 },
     },
     totalBars: 600,
     numSteps: 1,

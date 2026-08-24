@@ -48,6 +48,7 @@ function computeSplitMetrics(
       regimesPresent: [],
       totalPnl: 0,
       sharpeRatio: 0,
+      profitFactor: 0,
       maxDrawdown: 0,
     };
   }
@@ -73,6 +74,7 @@ function computeSplitMetrics(
     regimesPresent: [],
     totalPnl: report.totalPnl,
     sharpeRatio: report.sharpeRatio,
+    profitFactor: report.profitFactor,
     maxDrawdown: report.maxDrawdown,
   };
 }
