@@ -25,6 +25,7 @@ import { resolveSubscriberId } from '../middleware/signal-tier-resolver';
 import type { Request } from 'express';
 import { readLedgerRecords, verifyLedgerChain } from '../../alpha-lab/provenance/research-ledger';
 import { readRunCardByRunId } from '../../alpha-lab/provenance/run-card-index';
+import { readAlphaReportByCandidateId } from '../../alpha-lab/provenance/alpha-report-store';
 import { logger } from '../../shared/utils/logger';
 import type { TierKey } from '../../desk/signal/signal-types';
 
@@ -208,19 +209,24 @@ export async function handleGetAlphaReport(args: { apiKey: string; candidateId: 
   if (!identity) return unauthorized();
   if (!hasMinimumTier(identity.tier, RESEARCH_MIN_TIER)) return insufficientTier();
 
-  // Alpha reports are not yet persisted to a dedicated store. Return a clear
-  // "not found" rather than fabricating data. When an alpha-report store is
-  // added, this handler should read from it.
+  const report = await readAlphaReportByCandidateId(args.candidateId);
+  if (!report) {
+    return {
+      isError: false,
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          candidateId: args.candidateId,
+          found: false,
+          message: 'Alpha report not found for this candidateId.',
+        }),
+      }],
+    };
+  }
+
   return {
     isError: false,
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
-        candidateId: args.candidateId,
-        found: false,
-        message: 'No alpha report store is configured. Alpha reports are produced in-memory by the alpha evaluator and are not yet persisted.',
-      }),
-    }],
+    content: [{ type: 'text', text: JSON.stringify(report) }],
   };
 }
 

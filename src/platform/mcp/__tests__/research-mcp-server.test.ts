@@ -302,7 +302,7 @@ describe('handleGetAlphaReport', () => {
     }
   });
 
-  it('returns not-found shape for PRO tier (no alpha store yet)', async () => {
+  it('returns not-found shape for PRO tier when alpha report does not exist', async () => {
     __setGate(PRO_GATE);
     try {
       const result = await handleGetAlphaReport({ apiKey: 'pro', candidateId: 'c-42' });
@@ -310,7 +310,7 @@ describe('handleGetAlphaReport', () => {
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.candidateId).toBe('c-42');
       expect(parsed.found).toBe(false);
-      expect(parsed.message).toContain('No alpha report store');
+      expect(parsed.message).toContain('Alpha report not found');
     } finally {
       __setGate(null);
     }
