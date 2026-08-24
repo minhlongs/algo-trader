@@ -1,5 +1,19 @@
 # Project Changelog - Algo Trader
 
+## [3.1.20] - 2026-08-25 — Research-informed experiment prioritization (`--suggest`)
+
+### Added
+- **Verdict summary** (`src/alpha-lab/provenance/verdict-summary.ts`) — pure `summarizeVerdicts` aggregates ledger records per `strategyRef`: `totalRuns`, `passedCount`, `passRate`, `lastVerdictPassed`, `lastResultClass`, `lastRecordedAt`. Fail-safe `loadVerdictSummary` wrapper (mirrors `readLedgerRecords` signature exactly).
+- **Research-informed prioritization** (`src/alpha-lab/alpha-discovery/research-informed.ts`) — pure `prioritizeFamilies` ranks strategy families under 3 explicit policies: `explore-first`, `retest-failed`, `validated-last`. Reasons: `never-tested`, `failed-verdict`, `passed-demoted`, `no-verdict-data`. Stable tie-break.
+- **Barrel exports** — new `src/alpha-lab/alpha-discovery/index.ts`; `src/alpha-lab/provenance/index.ts` gains `verdict-summary` exports.
+- **`--suggest` CLI flag** (`run-experiment.ts`) — standalone: loads ledger + registry in parallel, prints ranked JSON to stdout, diagnostics to stderr; degrades to unranked when ledger empty. Combined with `--config`: appends `suggestedNext` top-5 family IDs to artifact.
+- **16 new tests** (8 in `verdict-summary.test.ts`, 8 in `research-informed.test.ts`) — mkdtemp tmpdir E5 pattern, zero real `data/` writes.
+
+### Quality
+- Full suite green: 7123/7123 passing (503 files); alpha-lab suite 290/290 (29 files); typecheck 0 errors; lint 0 warnings on changed files
+
+---
+
 ## [3.1.19] - 2026-08-24 — Research feedback loop closed: alpha verdict persistence
 
 ### Added

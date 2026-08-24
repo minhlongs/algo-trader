@@ -123,6 +123,22 @@
         "tests": "10 new tests; targeted 47/47; alpha-lab 274/274",
         "prUrl": null
       }
+    },
+    {
+      "phase": "S8-research-informed-prioritization",
+      "status": "done",
+      "targetFiles": [
+        "src/alpha-lab/provenance/verdict-summary.ts",
+        "src/alpha-lab/provenance/index.ts",
+        "src/alpha-lab/alpha-discovery/research-informed.ts",
+        "src/alpha-lab/alpha-discovery/index.ts",
+        "src/alpha-lab/run-experiment.ts",
+        "src/alpha-lab/provenance/__tests__/verdict-summary.test.ts",
+        "src/alpha-lab/alpha-discovery/__tests__/research-informed.test.ts"
+      ],
+      "evidence": {
+        "tests": "16 new tests; alpha-lab 290/290"
+      }
     }
   ],
   "deferred": [
