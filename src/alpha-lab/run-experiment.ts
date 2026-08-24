@@ -1,31 +1,43 @@
 /**
  * Experiment Runner CLI
  *
- * Usage: pnpm tsx src/alpha-lab/run-experiment.ts --config <path>
+ * Usage: pnpm tsx src/alpha-lab/run-experiment.ts --config <path> [--record]
  *
  * Loads a JSON experiment config, loads candle data (real OHLCV from the
  * store when available, mock random-walk fallback otherwise), runs the full
  * pipeline (split -> label -> evaluate), and outputs the result artifact as
  * JSON to stdout.
  *
+ * With --record, persists the alpha verdict to the alpha report store and
+ * research ledger (provenance path written to stderr only; stdout artifact
+ * is byte-identical to the non-record path).
+ *
  * The artifact always records `dataSource` so mock results are never mistaken
  * for real out-of-sample evidence.
  */
 
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ExperimentConfig } from './experiments/experiment-types';
 import { runExperiment } from './experiments/experiment-engine';
 import { loadCandles } from './experiments/alpha-backtest-adapter';
 import { runAllBaselines } from './baselines/baseline-runner';
+import { candidateResultFromExperiment, recordAlphaVerdict } from './provenance/record-alpha-verdict';
+import { hashConfig } from './provenance/run-card';
 
 // ── CLI Argument Parsing ─────────────────────────────────────────────────────
 
-function parseArgs(argv: string[]): string {
+function parseArgs(argv: string[]): { configPath: string; record: boolean } {
   const idx = argv.indexOf('--config');
   if (idx === -1 || !argv[idx + 1]) {
-    throw new Error('Usage: run-experiment --config <path-to-config.json>');
+    throw new Error(
+      'Usage: run-experiment --config <path-to-config.json> [--record]',
+    );
   }
-  return argv[idx + 1]!;
+  return {
+    configPath: argv[idx + 1]!,
+    record: argv.includes('--record'),
+  };
 }
 
 // ── Config Validation ────────────────────────────────────────────────────────
@@ -51,7 +63,7 @@ function validateConfig(config: ExperimentConfig): void {
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const configPath = parseArgs(process.argv);
+  const { configPath, record } = parseArgs(process.argv);
   const raw = readFileSync(configPath, 'utf-8');
   const config: ExperimentConfig = JSON.parse(raw) as ExperimentConfig;
 
@@ -64,7 +76,16 @@ async function main(): Promise<void> {
 
   const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
 
-  const result = runExperiment({ candles, config });
+  const result = runExperiment({
+    candles,
+    config,
+    ...(record
+      ? {
+          runCardDir: join('data', 'runs', config.experimentId),
+          resultClass: 'IS' as const,
+        }
+      : {}),
+  });
 
   // Run baselines on the same dataset for apples-to-apples comparison.
   const baselines = runAllBaselines(
@@ -128,6 +149,29 @@ async function main(): Promise<void> {
       regimesPresent: [],
     })),
   };
+
+  // Provenance (--record): persist alpha verdict + ledger entry. Outcome goes
+  // to STDERR only so stdout stays machine-parseable.
+  if (record) {
+    const candidate = candidateResultFromExperiment(result);
+    const outcome = await recordAlphaVerdict({
+      candidateId: config.experimentId,
+      runId: config.experimentId,
+      configHash: hashConfig(config as unknown as Record<string, unknown>),
+      strategyRef: config.features.join('+') || 'experiment',
+      candidate,
+      candles,
+      resultClass: 'IS',
+    });
+    process.stderr.write(
+      JSON.stringify({
+        recorded: outcome.ok,
+        alphaSurvival: outcome.verdict.passed,
+        candidateId: config.experimentId,
+        ledgerOk: outcome.ledger.ok,
+      }) + '\n',
+    );
+  }
 
   process.stdout.write(JSON.stringify(artifact, null, 2) + '\n');
 }

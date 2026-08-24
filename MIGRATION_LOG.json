@@ -106,6 +106,23 @@
         "tests": "n/a (documentation)",
         "prUrl": null
       }
+    },
+    {
+      "phase": "S7-research-feedback-loop",
+      "status": "done",
+      "targetFiles": [
+        "src/alpha-lab/provenance/record-alpha-verdict.ts",
+        "src/alpha-lab/provenance/__tests__/record-alpha-verdict.test.ts",
+        "src/alpha-lab/experiments/experiment-types.ts",
+        "src/alpha-lab/experiments/experiment-engine.ts",
+        "src/alpha-lab/walkforward/walkforward-evaluator.ts",
+        "src/alpha-lab/run-experiment.ts",
+        "src/desk/cli/__tests__/alpha-cli.test.ts"
+      ],
+      "evidence": {
+        "tests": "10 new tests; targeted 47/47; alpha-lab 274/274",
+        "prUrl": null
+      }
     }
   ],
   "deferred": [

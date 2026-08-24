@@ -112,6 +112,8 @@ export interface SplitMetrics {
   totalPnl: number;
   /** Annualized Sharpe ratio from the strategy equity curve. */
   sharpeRatio: number;
+  /** Profit factor (gross profit / gross loss). */
+  profitFactor: number;
   /** Max drawdown (negative) from the strategy equity curve. */
   maxDrawdown: number;
 }
