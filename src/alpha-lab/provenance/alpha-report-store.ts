@@ -8,7 +8,7 @@
  * root in production. Read-only index with last-write-wins on duplicate candidateId.
  */
 
-import { mkdir, writeFile, readFile, readdir, stat } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { logger } from '../../shared/utils/logger';
 import type { AlphaVerdict } from '../attribution/alpha-evaluator';
@@ -119,7 +119,7 @@ export async function listAlphaReports(
 ): Promise<{ candidateId: string; createdAt: string; passed: boolean }[]> {
   const index = await buildAlphaReportIndex(root);
   const reports: { candidateId: string; createdAt: string; passed: boolean }[] = [];
-  for (const [candidateId, entry] of index) {
+  for (const [, entry] of index) {
     try {
       const raw = await readFile(entry.path, 'utf8');
       const report = JSON.parse(raw) as AlphaReport;
