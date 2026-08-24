@@ -1,5 +1,20 @@
 # Project Changelog - Algo Trader
 
+## [3.1.19] - 2026-08-24 — Research feedback loop closed: alpha verdict persistence
+
+### Added
+- **Alpha verdict bridge** (`src/alpha-lab/provenance/record-alpha-verdict.ts`) — connects `evaluateAlpha` verdicts to the alpha report store + hash-chained ledger. Writes `data/alpha-reports/<candidateId>.json` via `writeAlphaReport`, appends to `data/research-ledger.jsonl` via `appendLedgerRecord` (gate `alphaSurvival`). Fail-safe: try/catch, never throws.
+- **`profitFactor` field on `SplitMetrics`** (`experiment-types.ts`) — populated in `computeSplitMetrics` (experiment-engine.ts) and 3 walkforward evaluator literals; defaults to `0` for empty labels.
+- **`--record` CLI flag** (`run-experiment.ts`) — persists run card (`data/runs/<experimentId>/`), alpha report, and ledger entry when enabled; provenance outcome JSON written to STDERR only; stdout artifact unchanged.
+- **10 unit tests** (`record-alpha-verdict.test.ts`) -- tmpdir-isolated, zero writes outside temp dirs, zero mocks for fs. Targeted suites: 47/47; alpha-lab suite: 274/274.
+
+### Quality
+- TypeScript: 0 errors
+- Lint: 0 new warnings on changed files
+- Full suite green: 7107/7107 passing (501 files); alpha-lab suite 274/274
+
+---
+
 ## [3.1.18] - 2026-08-24 — Escrow E3/E5 resolved: Alpha report store + test isolation (PR #31)
 
 ### Added
