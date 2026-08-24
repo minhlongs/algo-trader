@@ -33,3 +33,9 @@ export {
   DEFAULT_ALPHA_REPORT_ROOT,
 } from './alpha-report-store';
 export type { AlphaReport } from './alpha-report-store';
+
+export {
+  summarizeVerdicts,
+  loadVerdictSummary,
+} from './verdict-summary';
+export type { StrategyVerdictSummary, VerdictSummary } from './verdict-summary';
