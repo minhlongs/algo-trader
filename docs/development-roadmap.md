@@ -331,8 +331,9 @@ Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vib
 | S6 | `MIGRATION_LOG.json` + migration docs | ✅ |
 | SHIP | Merged to main (PR #18 → `1260feca`, PR #20 → `20e1f015`), deployed to CF Pages, prod smoke green, repo back to private | ✅ |
 | E6 | Quality ratchet resolved (PR #23 → `0430d298`: anyTypes 118→117, consoleCalls 57→45; PR #24 deflake) | ✅ |
+| E3/E5 | Alpha report store persisted + MCP `get_alpha_report` reads it; all tests isolated from real `data/` dir (PR #31 → `daffff82` + follow-up isolation commit) | ✅ |
 
-**Full suite: 7081/7081 passing.**
+**Full suite: 7097/7097 passing.**
 
 ### Ship notes (2026-08-23)
 - **All 9 CI gates green on main @ `2e7f706d`** — first time since Gate 8 was introduced.

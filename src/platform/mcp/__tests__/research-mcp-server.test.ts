@@ -5,7 +5,10 @@
  * get_backtest_summary), auth gates (missing apiKey, unauthorized, insufficient
  * tier), happy paths, empty ledger, chain integrity, not-found paths, and
  * handleListTools + createResearchMcpServer exports.
- */
+ *
+ * Isolation: the three provenance stores are mocked as pass-throughs of their
+ * real implementations with default roots redirected into a per-test tmpdir,
+ * so no test ever reads or writes the repository */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { join } from 'node:path';
@@ -23,7 +26,42 @@ import {
   createResearchMcpServer,
   RESEARCH_MCP_TOOLS,
 } from '../research-mcp-server';
-import { DEFAULT_LEDGER_PATH } from '../../alpha-lab/provenance/research-ledger';
+
+// ── Redirected provenance paths (hoisted mutable state) ──────────────────────
+
+const { paths } = vi.hoisted(() => ({
+  paths: { ledger: '', runRoots: [] as string[], alphaReports: '' },
+}));
+
+vi.mock('../../../alpha-lab/provenance/research-ledger', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../alpha-lab/provenance/research-ledger')>();
+  return {
+    ...actual,
+    readLedgerRecords: (ledgerPath?: string) =>
+      actual.readLedgerRecords(ledgerPath ?? paths.ledger),
+  };
+});
+
+vi.mock('../../../alpha-lab/provenance/run-card-index', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../alpha-lab/provenance/run-card-index')>();
+  return {
+    ...actual,
+    readRunCardByRunId: (runId: string, roots?: string[]) =>
+      actual.readRunCardByRunId(runId, roots ?? paths.runRoots),
+  };
+});
+
+vi.mock('../../../alpha-lab/provenance/alpha-report-store', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../alpha-lab/provenance/alpha-report-store')>();
+  return {
+    ...actual,
+    readAlphaReportByCandidateId: (candidateId: string, root?: string) =>
+      actual.readAlphaReportByCandidateId(candidateId, root ?? paths.alphaReports),
+  };
+});
 
 // ── Test gate ────────────────────────────────────────────────────────────────
 
@@ -33,15 +71,16 @@ function fakeLicense(tier: string, userId = 'user-1') {
 
 const FREE_GATE = { validateApiKey: (k: string) => k ? fakeLicense('FREE') : undefined };
 const PRO_GATE = { validateApiKey: (k: string) => k ? fakeLicense('PRO') : undefined };
-const ENT_GATE = { validateApiKey: (k: string) => k ? fakeLicense('ENTERPRISE') : undefined };
-const NO_GATE = { validateApiKey: () => undefined };
 
-// ── Ledger fixtures ──────────────────────────────────────────────────────────
+// ── Tmpdir fixtures ──────────────────────────────────────────────────────────
 
 let ledgerDir: string;
 
 beforeEach(async () => {
   ledgerDir = await mkdtemp(join(tmpdir(), 'research-mcp-test-'));
+  paths.ledger = join(ledgerDir, 'research-ledger.jsonl');
+  paths.runRoots = [join(ledgerDir, 'runs')];
+  paths.alphaReports = join(ledgerDir, 'alpha-reports');
 });
 
 afterEach(async () => {
@@ -60,6 +99,24 @@ function ledgerRecord(runId: string, prevHash = '') {
   });
 }
 
+function runCard(runId: string, metrics: Record<string, number>) {
+  return {
+    runId,
+    strategyRef: 'rsi-strat',
+    resultClass: 'IS',
+    configHash: 'h-' + runId,
+    createdAt: '2026-01-01T00:00:00Z',
+    metrics,
+    gateResults: [],
+    warnings: [],
+  };
+}
+
+async function seedRunCard(card: ReturnType<typeof runCard>): Promise<void> {
+  await mkdir(paths.runRoots[0], { recursive: true });
+  await writeFile(join(paths.runRoots[0], 'run_card.json'), JSON.stringify(card));
+}
+
 // ── handleListExperiments ─────────────────────────────────────────────────────
 
 describe('handleListExperiments', () => {
@@ -70,7 +127,7 @@ describe('handleListExperiments', () => {
   });
 
   it('returns unauthorized for invalid key', async () => {
-    __setGate(NO_GATE);
+    __setGate({ validateApiKey: () => undefined });
     try {
       const result = await handleListExperiments({ apiKey: 'bad' });
       expect(result.isError).toBe(true);
@@ -93,51 +150,11 @@ describe('handleListExperiments', () => {
 
   it('returns runs from the ledger for PRO tier', async () => {
     __setGate(PRO_GATE);
-    const ledgerPath = join(ledgerDir, 'research-ledger.jsonl');
-    await writeFile(
-      ledgerPath,
-      [ledgerRecord('run-1'), ledgerRecord('run-2', 'hash-1')].join('\n'),
-    );
-    // We need to write to the default path or override — research-ledger
-    // reads from DEFAULT_LEDGER_PATH. For unit tests we can use env or
-    // write to the default location. We'll write to a known location and
-    // let the handler use the default path (CWD-based).
-    // Instead: mock the ledger read. But handler calls readLedgerRecords()
-    // which reads DEFAULT_LEDGER_PATH. We'll write to a temp and mock.
-
-    // Simpler: just write to DEFAULT_LEDGER_PATH relative to CWD
-    // Since tests run from project root, data/research-ledger.jsonl should work
-    // But we don't want to touch real data. Let's spy.
-
-    vi.doMock('../../alpha-lab/provenance/research-ledger', async () => {
-      const { readLedgerRecords, verifyLedgerChain } = await vi.importActual<
-        typeof import('../../alpha-lab/provenance/research-ledger')
-      >('../../alpha-lab/provenance/research-ledger');
-      return { readLedgerRecords, verifyLedgerChain };
-    });
-
-    // The handler calls readLedgerRecords() with no args (DEFAULT_LEDGER_PATH).
-    // Since we can't easily redirect the path in an integration-style unit test
-    // without touching the real filesystem, we write a minimal ledger at the
-    // expected default location (data/) and clean up after.
-    const { mkdirSync, writeFileSync, existsSync, unlinkSync, rmdirSync } = await import('node:fs');
-    const dataDir = join(process.cwd(), 'data');
-    const realLedger = join(dataDir, 'research-ledger.jsonl');
-    const existed = existsSync(realLedger);
-
-    let cleanupNeeded = false;
     try {
-      if (!existsSync(dataDir)) {
-        mkdirSync(dataDir, { recursive: true });
-        cleanupNeeded = true;
-      }
-      // Backup if exists
-      let backup: string | undefined;
-      if (existed) {
-        backup = String(await import('node:fs').then(f => f.readFileSync(realLedger)));
-      }
-      // Write test ledger
-      writeFileSync(realLedger, [ledgerRecord('run-1'), ledgerRecord('run-2', 'hash-1')].join('\n'));
+      await writeFile(
+        paths.ledger,
+        [ledgerRecord('run-1'), ledgerRecord('run-2', 'hash-1')].join('\n'),
+      );
 
       const result = await handleListExperiments({ apiKey: 'pro-key', limit: 10 });
       expect(result.isError).toBe(false);
@@ -147,50 +164,22 @@ describe('handleListExperiments', () => {
       expect(parsed.runs[1].runId).toBe('run-1');
       expect(typeof parsed.chainIntact).toBe('boolean');
       expect(parsed.count).toBe(2);
-
-      // Restore original
-      if (backup !== undefined) {
-        writeFileSync(realLedger, backup);
-      } else {
-        unlinkSync(realLedger);
-      }
-      if (cleanupNeeded) rmdirSync(dataDir);
-    } catch (err) {
-      // Cleanup on failure
-      try {
-        if (!existed && existsSync(realLedger)) unlinkSync(realLedger);
-        if (cleanupNeeded && existsSync(dataDir)) rmdirSync(dataDir);
-      } catch { /* best-effort */ }
-      throw err;
     } finally {
       __setGate(null);
-      vi.doUnmock('../../alpha-lab/provenance/research-ledger');
     }
   });
 
-  it('returns empty runs for PRO tier with empty ledger', async () => {
+  it('returns empty runs for PRO tier when ledger does not exist', async () => {
     __setGate(PRO_GATE);
-    const { mkdirSync, existsSync, unlinkSync, rmdirSync } = await import('node:fs');
-    const dataDir = join(process.cwd(), 'data');
-    const realLedger = join(dataDir, 'research-ledger.jsonl');
-    const existed = existsSync(realLedger);
-    let cleanupNeeded = false;
     try {
-      if (!existsSync(dataDir)) { mkdirSync(dataDir, { recursive: true }); cleanupNeeded = true; }
-      if (existed) (await import('node:fs')).unlinkSync(realLedger);
-      // Empty file
-      (await import('node:fs')).writeFileSync(realLedger, '');
-
+      // paths.ledger points at a nonexistent tmp file; readLedgerRecords returns []
       const result = await handleListExperiments({ apiKey: 'pro-key' });
       expect(result.isError).toBe(false);
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.runs).toEqual([]);
       expect(parsed.total).toBe(0);
+      expect(parsed.chainIntact).toBe(true);
     } finally {
-      try {
-        if (!existed && existsSync(realLedger)) unlinkSync(realLedger);
-        if (cleanupNeeded && existsSync(dataDir)) rmdirSync(dataDir);
-      } catch { /* best-effort */ }
       __setGate(null);
     }
   });
@@ -212,7 +201,7 @@ describe('handleGetRunCard', () => {
   });
 
   it('returns unauthorized for invalid key', async () => {
-    __setGate(NO_GATE);
+    __setGate({ validateApiKey: () => undefined });
     try {
       const result = await handleGetRunCard({ apiKey: 'bad', runId: 'r1' });
       expect(result.isError).toBe(true);
@@ -246,31 +235,17 @@ describe('handleGetRunCard', () => {
 
   it('returns the run card when found', async () => {
     __setGate(PRO_GATE);
-    // Write a run card under a temp dir and add it to DEFAULT_RUN_CARD_ROOTS
-    const root = join(ledgerDir, 'runs');
-    await mkdir(root, { recursive: true });
-    const card = { runId: 'run-7', strategyRef: 'rsi-strat', resultClass: 'IS', configHash: 'h', createdAt: '2026-01-01T00:00:00Z', metrics: { sharpe: 1.0 }, gateResults: [], warnings: [] };
-    await writeFile(join(root, 'run_card.json'), JSON.stringify(card));
-
-    // readRunCardByRunId defaults to DEFAULT_RUN_CARD_ROOTS which includes 'data/runs'.
-    // We need the card to be at one of those paths. Write to data/runs as well.
-    const dataRuns = join(process.cwd(), 'data', 'runs');
-    const { mkdirSync, existsSync, unlinkSync, rmdirSync, writeFileSync } = await import('node:fs');
-    let createdDir = false;
     try {
-      if (!existsSync(dataRuns)) { mkdirSync(dataRuns, { recursive: true }); createdDir = true; }
-      writeFileSync(join(dataRuns, 'run_card.json'), JSON.stringify(card));
+      const card = runCard('run-7', { sharpe: 1.0 });
+      await seedRunCard(card);
 
       const result = await handleGetRunCard({ apiKey: 'pro', runId: 'run-7' });
       expect(result.isError).toBe(false);
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.runId).toBe('run-7');
       expect(parsed.strategyRef).toBe('rsi-strat');
+      expect(parsed.metrics.sharpe).toBe(1.0);
     } finally {
-      try {
-        if (existsSync(join(dataRuns, 'run_card.json'))) unlinkSync(join(dataRuns, 'run_card.json'));
-        if (createdDir) rmdirSync(dataRuns);
-      } catch { /* best-effort */ }
       __setGate(null);
     }
   });
@@ -292,7 +267,7 @@ describe('handleGetAlphaReport', () => {
   });
 
   it('returns unauthorized for invalid key', async () => {
-    __setGate(NO_GATE);
+    __setGate({ validateApiKey: () => undefined });
     try {
       const result = await handleGetAlphaReport({ apiKey: 'bad', candidateId: 'c1' });
       expect(result.isError).toBe(true);
@@ -315,6 +290,27 @@ describe('handleGetAlphaReport', () => {
       __setGate(null);
     }
   });
+
+  it('returns the alpha report when found in the store', async () => {
+    __setGate(PRO_GATE);
+    try {
+      const verdict = { passed: true, failedCriteria: [], comparisons: [], recommendation: 'PASS' };
+      await mkdir(paths.alphaReports, { recursive: true });
+      await writeFile(
+        join(paths.alphaReports, 'candidate-ok.json'),
+        JSON.stringify({ candidateId: 'candidate-ok', verdict, createdAt: '2026-03-01T00:00:00Z' }),
+      );
+
+      const result = await handleGetAlphaReport({ apiKey: 'pro', candidateId: 'candidate-ok' });
+      expect(result.isError).toBe(false);
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.candidateId).toBe('candidate-ok');
+      expect(parsed.verdict.passed).toBe(true);
+      expect(parsed.createdAt).toBe('2026-03-01T00:00:00Z');
+    } finally {
+      __setGate(null);
+    }
+  });
 });
 
 // ── handleGetBacktestSummary ──────────────────────────────────────────────────
@@ -333,7 +329,7 @@ describe('handleGetBacktestSummary', () => {
   });
 
   it('returns unauthorized for invalid key', async () => {
-    __setGate(NO_GATE);
+    __setGate({ validateApiKey: () => undefined });
     try {
       const result = await handleGetBacktestSummary({ apiKey: 'bad', runId: 'r1' });
       expect(result.isError).toBe(true);
@@ -356,13 +352,10 @@ describe('handleGetBacktestSummary', () => {
 
   it('returns summary with metrics when run card exists', async () => {
     __setGate(PRO_GATE);
-    const { mkdirSync, existsSync, unlinkSync, rmdirSync, writeFileSync } = await import('node:fs');
-    const dataRuns = join(process.cwd(), 'data', 'runs');
-    let createdDir = false;
-    const card = { runId: 'run-5', strategyRef: 'macd', resultClass: 'OOS', configHash: 'h5', createdAt: '2026-02-01T00:00:00Z', metrics: { sharpe: 1.5, maxDrawdown: -0.05, winRate: 0.6, tradeCount: 42 }, gateResults: [], warnings: [] };
     try {
-      if (!existsSync(dataRuns)) { mkdirSync(dataRuns, { recursive: true }); createdDir = true; }
-      writeFileSync(join(dataRuns, 'run_card.json'), JSON.stringify(card));
+      const card = runCard('run-5', { sharpe: 1.5, maxDrawdown: -0.05, winRate: 0.6, tradeCount: 42 });
+      card.resultClass = 'OOS';
+      await seedRunCard(card);
 
       const result = await handleGetBacktestSummary({ apiKey: 'pro', runId: 'run-5' });
       expect(result.isError).toBe(false);
@@ -372,10 +365,6 @@ describe('handleGetBacktestSummary', () => {
       expect(parsed.metrics.sharpe).toBe(1.5);
       expect(parsed.metrics.tradeCount).toBe(42);
     } finally {
-      try {
-        if (existsSync(join(dataRuns, 'run_card.json'))) unlinkSync(join(dataRuns, 'run_card.json'));
-        if (createdDir) rmdirSync(dataRuns);
-      } catch { /* best-effort */ }
       __setGate(null);
     }
   });

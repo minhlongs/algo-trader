@@ -1,5 +1,25 @@
 # Project Changelog - Algo Trader
 
+## [3.1.18] - 2026-08-24 — Escrow E3/E5 resolved: Alpha report store + test isolation (PR #31)
+
+### Added
+- **Alpha Report Store** (`src/alpha-lab/provenance/alpha-report-store.ts`) — persists alpha evaluation verdicts by `candidateId` so they can be retrieved via Research MCP server's `get_alpha_report` tool. Mirrors run-card-index pattern: temp dir in tests, configurable root (`DEFAULT_ALPHA_REPORT_ROOT = 'data/alpha-reports'`) in production. Exports: `writeAlphaReport`, `readAlphaReportByCandidateId`, `listAlphaReports`, `buildAlphaReportIndex`, `AlphaReport` type.
+- **14 unit tests** (`src/alpha-lab/provenance/__tests__/alpha-report-store.test.ts`) — write/read/list/index, duplicate candidateId last-write-wins, malformed JSON skipped, missing root yields empty, DEFAULT_ALPHA_REPORT_ROOT exported.
+- **Research MCP integration** — `handleGetAlphaReport` now reads from alpha report store instead of placeholder; returns `{ candidateId, found: false, message: 'Alpha report not found...' }` when not found (fixed from "No alpha report store").
+
+### Fixed
+- **E5: Test isolation — 3 test files refactored** to use temp dirs / virtual filesystem instead of `process.cwd()/data/`:
+  - `personalization-routes.test.ts`: completely rewritten with `vi.hoisted` virtual filesystem mocks (vfs Map) — no real fs writes
+  - `invoice-generator.test.ts`: already used vfs mock pattern (verified)
+  - `research-mcp-server.test.ts`: PR #31 partially isolated; follow-up commit completed it — the 3 tests that wrote real `data/research-ledger.jsonl` and `data/runs/run_card.json` (with backup/restore dances) now redirect provenance default roots to a per-test tmpdir via `vi.mock(importOriginal)` pass-throughs. Also fixed latent wrong-depth import (`'../../alpha-lab/...'` → `'../../../alpha-lab/...'`) that was masked by tsconfig excluding `**/*.test.ts`. New test: `get_alpha_report` happy path reading a seeded tmp report.
+
+### Quality
+- TypeScript: 0 errors
+- Lint: 0 warnings on changed files (removed 2 unused imports/variables in alpha-report-store.ts)
+- All 7097 tests passing locally; CI green on PR #31
+
+---
+
 ## [3.1.17] - 2026-08-24 — CI main fully green: Docker gate repaired (PRs #26–#29)
 
 ### Fixed
