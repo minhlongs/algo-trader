@@ -139,6 +139,25 @@
       "evidence": {
         "tests": "16 new tests; alpha-lab 290/290"
       }
+    },
+    {
+      "phase": "S9-regime-aware-research-artifacts",
+      "status": "done",
+      "targetFiles": [
+        "src/alpha-lab/regimes/regime-series.ts",
+        "src/alpha-lab/regimes/index.ts",
+        "src/alpha-lab/experiments/split-metrics.ts",
+        "src/alpha-lab/experiments/experiment-engine.ts",
+        "src/alpha-lab/walkforward/walkforward-evaluator.ts",
+        "src/alpha-lab/run-experiment.ts",
+        "src/desk/cli/alpha-report-handler.ts",
+        "src/alpha-lab/regimes/__tests__/regime-series.test.ts",
+        "src/alpha-lab/experiments/__tests__/experiment-engine.test.ts",
+        "src/alpha-lab/walkforward/__tests__/walkforward-evaluator.test.ts"
+      ],
+      "evidence": {
+        "tests": "7 new tests; targeted regimes+experiments+walkforward 27/27; full suite green"
+      }
     }
   ],
   "deferred": [

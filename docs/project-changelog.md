@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.21] - 2026-08-25 — Regime-aware research artifacts
+
+### Added
+- **Regime series** (`src/alpha-lab/regimes/regime-series.ts`) — `computeRegimeSeries(candles, opts)` computes one causal regime per bar (window = `[i-lookback, i]`, no future leakage); `distinctRegimes` returns deterministic sorted dedupe. Barrel re-exported via `regimes/index.ts`.
+- **Split metrics module** (`src/alpha-lab/experiments/split-metrics.ts`) — extracted from experiment-engine; accepts explicit `regimesPresent`.
+- **Regime attribution wired into all research artifacts** — experiment-engine (per split-kind union across walk-forward windows), walkforward-evaluator (per step + split kind), run-experiment baselines (full series), desk `alpha-report` CLI (replaces inline per-bar loop). All 6 previously-hardcoded `regimesPresent: []` sites now report real regimes.
+- **7 new tests** — `regime-series.test.ts` (determinism, causality, empty input, dedupe sort, custom rules passthrough, lookback window bound) + non-empty attribution assertions in experiment-engine and walkforward suites.
+
+### Changed
+- `walkforward-evaluator.ts` DRY refactor — 3 duplicated metric blocks collapsed into `splitMetricsFrom(labels, report, regimesPresent)`; semantics unchanged (win rate from metrics report; loss/timeout/mean-label from labels). File brought under 200 LOC.
+
+### Quality
+- Full suite green; typecheck 0 errors; lint 0 warnings on changed files; all changed source files ≤200 LOC; zero `:any` / new `eslint-disable` / `console.log`.
+
+---
+
 ## [3.1.20] - 2026-08-25 — Research-informed experiment prioritization (`--suggest`)
 
 ### Added

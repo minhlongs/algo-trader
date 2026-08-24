@@ -334,8 +334,9 @@ Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vib
 | E3/E5 | Alpha report store persisted + MCP `get_alpha_report` reads it; all tests isolated from real `data/` dir (PR #31 → `daffff82` + follow-up isolation commit) | ✅ |
 | RL | Research feedback loop closed — `evaluateAlpha` verdicts persisted via `record-alpha-verdict` bridge to alpha-report store + hash-chained ledger; CLI `--record` flag (PR pending) | ✅ |
 | RI | Read side closed — verdict summary from research ledger + research-informed family prioritization (3 policies); CLI `--suggest` ranks next experiments by prior verdicts (PR pending) | ✅ |
+| RA | Regime-aware artifacts — `computeRegimeSeries` (causal per-bar) + `distinctRegimes`; all 6 hardcoded `regimesPresent: []` sites replaced (experiment-engine, walkforward-evaluator, run-experiment baselines, alpha-report CLI); attribution-only, metrics unchanged | ✅ |
 
-**Full suite: 7123/7123 passing.**
+**Full suite: 7130/7130 passing.**
 
 ### Ship notes (2026-08-23)
 - **All 9 CI gates green on main @ `2e7f706d`** — first time since Gate 8 was introduced.
