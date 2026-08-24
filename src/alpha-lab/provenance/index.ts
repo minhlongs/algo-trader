@@ -25,3 +25,11 @@ export {
   DEFAULT_LEDGER_PATH,
 } from './research-ledger';
 export type { LedgerRecord, LedgerWriteResult } from './research-ledger';
+
+export {
+  writeAlphaReport,
+  readAlphaReportByCandidateId,
+  listAlphaReports,
+  DEFAULT_ALPHA_REPORT_ROOT,
+} from './alpha-report-store';
+export type { AlphaReport } from './alpha-report-store';

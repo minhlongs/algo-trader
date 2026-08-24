@@ -1,12 +1,39 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import { existsSync, readFileSync, rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import crypto from 'node:crypto';
 import { personalizationRouter } from '../personalization-routes';
 
-const DATA_DIR = join(process.cwd(), 'data', 'personalization');
+// ── Hoisted virtual filesystem ──────────────────────────────────────────────
+const {
+  vfs,
+  mockExistsSync,
+  mockMkdirSync,
+  mockWriteFileSync,
+  mockReadFileSync,
+  mockReaddirSync,
+} = vi.hoisted(() => ({
+  vfs: new Map<string, string>(),
+  mockExistsSync: vi.fn(),
+  mockMkdirSync: vi.fn(),
+  mockWriteFileSync: vi.fn(),
+  mockReadFileSync: vi.fn(),
+  mockReaddirSync: vi.fn(),
+}));
+
+// ── Module mocks (hoisted to top by Vitest) ─────────────────────────────────
+vi.mock('node:fs', () => ({
+  existsSync: mockExistsSync,
+  mkdirSync: mockMkdirSync,
+  writeFileSync: mockWriteFileSync,
+  readFileSync: mockReadFileSync,
+  readdirSync: mockReaddirSync,
+}));
+
+vi.mock('../../../shared/tenant', () => ({
+  validateTenantId: vi.fn((id: string) => /^[a-z0-9-]+$/i.test(id) && !id.includes('..')),
+}));
 
 function buildApp() {
   const app = express();
@@ -15,32 +42,49 @@ function buildApp() {
   return app;
 }
 
+function dataDirPath(): string {
+  return join(process.cwd(), 'data', 'personalization');
+}
+
+function seedVfs(filename: string, content: string) {
+  vfs.set(join(dataDirPath(), filename), content);
+}
+
+function defaultExistsSync(p: unknown): boolean {
+  const s = String(p);
+  return s.endsWith('personalization') || vfs.has(s);
+}
+
+function defaultReadFileSync(p: unknown): string {
+  const pathStr = String(p);
+  if (vfs.has(pathStr)) return vfs.get(pathStr)!;
+  throw new Error(`ENOENT: ${pathStr}`);
+}
+
+function defaultReaddirSync(p: unknown): string[] {
+  const pathStr = String(p);
+  if (pathStr.endsWith('personalization')) {
+    return [...vfs.keys()]
+      .filter((k) => k.startsWith(dataDirPath()))
+      .map((k) => k.split('/').pop()!)
+      .filter(Boolean);
+  }
+  return [];
+}
+
 describe('Personalization API Routes', () => {
   beforeEach(() => {
-    // Ensure dir exists but remove test files
-    if (!existsSync(DATA_DIR)) {
-      mkdirSync(DATA_DIR, { recursive: true });
-    }
-  });
+    vfs.clear();
+    vi.clearAllMocks();
 
-  afterEach(() => {
-    // Clean up created files
-    const testFiles = [
-      'events_test-tenant-1.json',
-      'events_test-tenant-2.json',
-      'events_traversal.json',
-      'events_evil.json'
-    ];
-    for (const file of testFiles) {
-      const filePath = join(DATA_DIR, file);
-      if (existsSync(filePath)) {
-        try {
-          rmSync(filePath);
-        } catch (err) {
-          // ignore
-        }
-      }
-    }
+    // fs: virtual filesystem defaults
+    mockExistsSync.mockImplementation(defaultExistsSync);
+    mockMkdirSync.mockImplementation(() => {});
+    mockWriteFileSync.mockImplementation((p: unknown, data: string) => {
+      vfs.set(String(p), String(data));
+    });
+    mockReadFileSync.mockImplementation(defaultReadFileSync);
+    mockReaddirSync.mockImplementation(defaultReaddirSync);
   });
 
   describe('GET /api/personalization/config', () => {
@@ -103,7 +147,6 @@ describe('Personalization API Routes', () => {
     });
 
     it('returns deterministic variant A configuration for even sha256 last digit', async () => {
-      // Find a tenantId that hashes to variant A (even last char in hex)
       let tenantId = '';
       for (let i = 0; i < 100; i++) {
         const candidate = `tenant-${i}`;
@@ -130,7 +173,6 @@ describe('Personalization API Routes', () => {
     });
 
     it('returns deterministic variant B configuration for odd sha256 last digit', async () => {
-      // Find a tenantId that hashes to variant B (odd last char in hex)
       let tenantId = '';
       for (let i = 0; i < 100; i++) {
         const candidate = `tenant-${i}`;
@@ -174,10 +216,6 @@ describe('Personalization API Routes', () => {
 
       expect(res.status).toBe(400);
       expect(res.body).toEqual({ error: 'Missing or invalid tenantId' });
-
-      // Verify the file was not created outside the boundaries
-      const evilPath = join(DATA_DIR, '..', 'events_.._evil.json');
-      expect(existsSync(evilPath)).toBe(false);
     });
 
     it('returns 400 when eventType is missing', async () => {
@@ -191,7 +229,6 @@ describe('Personalization API Routes', () => {
 
     it('successfully appends events to tenant-isolated file', async () => {
       const tenantId = 'test-tenant-1';
-      const eventFile = join(DATA_DIR, `events_${tenantId}.json`);
 
       // 1. Post first event
       const res1 = await request(buildApp())
@@ -208,9 +245,10 @@ describe('Personalization API Routes', () => {
       expect(res1.body.event.eventData).toEqual({ screen: 'main' });
       expect(res1.body.event).toHaveProperty('timestamp');
 
-      // Verify file written
-      expect(existsSync(eventFile)).toBe(true);
-      let content = JSON.parse(readFileSync(eventFile, 'utf-8'));
+      // Verify file written via vfs
+      const eventFile = join(dataDirPath(), `events_${tenantId}.json`);
+      expect(vfs.has(eventFile)).toBe(true);
+      let content = JSON.parse(vfs.get(eventFile)!);
       expect(content).toHaveLength(1);
       expect(content[0].eventType).toBe('dashboard_load');
       expect(content[0].eventData).toEqual({ screen: 'main' });
@@ -226,7 +264,7 @@ describe('Personalization API Routes', () => {
 
       expect(res2.status).toBe(201);
 
-      content = JSON.parse(readFileSync(eventFile, 'utf-8'));
+      content = JSON.parse(vfs.get(eventFile)!);
       expect(content).toHaveLength(2);
       expect(content[0].eventType).toBe('dashboard_load');
       expect(content[1].eventType).toBe('widget_click');
@@ -234,7 +272,7 @@ describe('Personalization API Routes', () => {
 
       // 3. Verify isolation: post to different tenant
       const otherTenant = 'test-tenant-2';
-      const otherFile = join(DATA_DIR, `events_${otherTenant}.json`);
+      const otherFile = join(dataDirPath(), `events_${otherTenant}.json`);
 
       const res3 = await request(buildApp())
         .post('/api/personalization/events')
@@ -244,14 +282,27 @@ describe('Personalization API Routes', () => {
         });
 
       expect(res3.status).toBe(201);
-      expect(existsSync(otherFile)).toBe(true);
-      const otherContent = JSON.parse(readFileSync(otherFile, 'utf-8'));
+      expect(vfs.has(otherFile)).toBe(true);
+      const otherContent = JSON.parse(vfs.get(otherFile)!);
       expect(otherContent).toHaveLength(1);
       expect(otherContent[0].eventType).toBe('upgrade_banner_click');
 
       // Check first tenant file size is unchanged
-      content = JSON.parse(readFileSync(eventFile, 'utf-8'));
+      content = JSON.parse(vfs.get(eventFile)!);
       expect(content).toHaveLength(2);
+    });
+
+    it('blocks directory traversal in tenantId', async () => {
+      const res = await request(buildApp())
+        .post('/api/personalization/events')
+        .send({ tenantId: '../../evil', eventType: 'test_event' });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ error: 'Missing or invalid tenantId' });
+
+      // Verify no file was created with traversal
+      const evilPath = join(dataDirPath(), '..', 'events_.._evil.json');
+      expect(vfs.has(evilPath)).toBe(false);
     });
   });
 });
