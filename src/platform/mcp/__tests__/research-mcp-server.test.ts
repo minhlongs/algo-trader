@@ -390,6 +390,14 @@ describe('handleListTools', () => {
       expect(tool.description).toContain('Read-only');
     }
   });
+
+  it('all tools declare annotations.readOnlyHint === true', () => {
+    const { tools } = handleListTools();
+    expect(tools).toHaveLength(4);
+    for (const tool of tools) {
+      expect(tool.annotations?.readOnlyHint).toBe(true);
+    }
+  });
 });
 
 // ── createResearchMcpServer ───────────────────────────────────────────────────
@@ -416,6 +424,13 @@ describe('RESEARCH_MCP_TOOLS', () => {
       expect(typeof tool.description).toBe('string');
       expect(tool.inputSchema).toBeDefined();
       expect(tool.inputSchema.properties?.apiKey).toBeDefined();
+    }
+  });
+
+  it('every tool carries the MCP readOnlyHint annotation', () => {
+    for (const tool of RESEARCH_MCP_TOOLS) {
+      expect(tool.annotations).toBeDefined();
+      expect(tool.annotations?.readOnlyHint).toBe(true);
     }
   });
 });

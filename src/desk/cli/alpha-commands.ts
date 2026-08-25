@@ -136,7 +136,7 @@ export function registerAlphaCommands(alphaCmd: Command): void {
 
   alphaCmd
     .command('robustness <experiment>')
-    .description('Run experiment under NORMAL/CONSERVATIVE/ADVERSE cost stress')
+    .description('Run experiment under NORMAL/CONSERVATIVE/ADVERSE/EXTREME cost stress')
     .option('--json', 'Machine-readable JSON output')
     .option('--output <file>', 'Write results to a JSON file')
     .action(async (experiment: string, opts: { json?: boolean; output?: string }) => {

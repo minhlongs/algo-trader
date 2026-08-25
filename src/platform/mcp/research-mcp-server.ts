@@ -81,6 +81,7 @@ export const RESEARCH_MCP_TOOLS: Tool[] = [
       'List all research runs recorded in the provenance ledger. ' +
       'Returns runId, resultClass, strategyRef, and gate outcomes for each run. ' +
       'Read-only — never mutates state.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
       properties: {
@@ -96,6 +97,7 @@ export const RESEARCH_MCP_TOOLS: Tool[] = [
       'Fetch a provenance run card by runId. Returns the full run card including ' +
       'config hash, result class, data source provenance, metrics, and gate results. ' +
       'Read-only — never mutates state.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
       properties: {
@@ -110,6 +112,7 @@ export const RESEARCH_MCP_TOOLS: Tool[] = [
     description:
       'Fetch an alpha report by candidateId. Returns the alpha verdict and ' +
       'baseline comparisons for a candidate strategy. Read-only — never mutates state.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
       properties: {
@@ -125,6 +128,7 @@ export const RESEARCH_MCP_TOOLS: Tool[] = [
       'Fetch a backtest metrics summary by runId. Returns key performance metrics ' +
       '(PnL, Sharpe, max drawdown, win rate, trade count) from the run card. ' +
       'Read-only — never mutates state.',
+    annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
       properties: {

@@ -1,7 +1,8 @@
 /**
  * Cost Stress Model
  *
- * Configurable cost stress modes for backtests: NORMAL / CONSERVATIVE / ADVERSE.
+ * Configurable cost stress modes for backtests:
+ * NORMAL / CONSERVATIVE / ADVERSE / EXTREME.
  *
  * This module is PURE and deterministic. It does not read candles, does not
  * compute PnL, and does not depend on any runtime state. All values are
@@ -14,7 +15,7 @@
  */
 
 /** Stress-mode identifier. */
-export type CostStressMode = 'NORMAL' | 'CONSERVATIVE' | 'ADVERSE';
+export type CostStressMode = 'NORMAL' | 'CONSERVATIVE' | 'ADVERSE' | 'EXTREME';
 
 /** Full cost-stress configuration for a single mode. */
 export interface CostStressConfig {
@@ -60,6 +61,18 @@ export const DEFAULT_STRESS_PRESETS: Record<CostStressMode, CostStressConfig> = 
     spreadBps: 15,
     slippageBps: 20,
     label: 'Adverse market conditions',
+  },
+  // Ported from the sibling CashClaw workstream (PR #6) where the EXTREME
+  // preset carries ~100bps total friction. Composition chosen here so the
+  // module's own round-trip formula lands on exactly 100bps:
+  //   fee 30 x2 (entry+exit) + spread 15 + slippage 25 = 100 bps.
+  // Values are configuration parameters — callers may override any field.
+  EXTREME: {
+    mode: 'EXTREME',
+    feeBps: 30,
+    spreadBps: 15,
+    slippageBps: 25,
+    label: 'Extreme cost stress (~100bps round-trip friction)',
   },
 };
 
@@ -131,5 +144,5 @@ export function applyStressToBaselineConfig(
 
 /** Return all supported stress modes in canonical order. */
 export function listStressModes(): CostStressMode[] {
-  return ['NORMAL', 'CONSERVATIVE', 'ADVERSE'];
+  return ['NORMAL', 'CONSERVATIVE', 'ADVERSE', 'EXTREME'];
 }

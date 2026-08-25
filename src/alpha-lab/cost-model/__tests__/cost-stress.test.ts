@@ -42,6 +42,16 @@ describe('DEFAULT_STRESS_PRESETS', () => {
       label: 'Adverse market conditions',
     });
   });
+
+  it('EXTREME preset carries ~100bps total round-trip friction', () => {
+    expect(DEFAULT_STRESS_PRESETS.EXTREME).toEqual({
+      mode: 'EXTREME',
+      feeBps: 30,
+      spreadBps: 15,
+      slippageBps: 25,
+      label: 'Extreme cost stress (~100bps round-trip friction)',
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -108,6 +118,11 @@ describe('totalRoundTripCostBps', () => {
     expect(adverse).toBeGreaterThan(conservative);
     expect(conservative).toBeGreaterThan(normal);
   });
+
+  it('EXTREME preset totals exactly 100bps (fee 30 x2 + spread 15 + slippage 25)', () => {
+    // Ported from the sibling CashClaw precedent (~100bps total friction).
+    expect(totalRoundTripCostBps(DEFAULT_STRESS_PRESETS.EXTREME)).toBe(100);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -142,8 +157,8 @@ describe('applyStressToBaselineConfig', () => {
 // ---------------------------------------------------------------------------
 
 describe('listStressModes', () => {
-  it('returns all three modes in canonical order', () => {
-    expect(listStressModes()).toEqual(['NORMAL', 'CONSERVATIVE', 'ADVERSE']);
+  it('returns all four modes in canonical order', () => {
+    expect(listStressModes()).toEqual(['NORMAL', 'CONSERVATIVE', 'ADVERSE', 'EXTREME']);
   });
 });
 
@@ -171,6 +186,6 @@ describe('causality: cost stress does not read future data', () => {
 
     // listStressModes: no data dependency at all
     const modes = listStressModes();
-    expect(modes).toHaveLength(3);
+    expect(modes).toHaveLength(4);
   });
 });
