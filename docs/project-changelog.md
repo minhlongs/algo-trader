@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.22] - 2026-08-26 — Alpha gap-closure (S10)
+
+### Fixed
+- **Deploy script (E7)** — `scripts/deploy-cloudflare.sh` builds the dashboard (`pnpm run build` → `dist/dashboard/`), deploys `dist/dashboard/` instead of root `dist/`, health-checks canonical URLs (`algo-trader.pages.dev` + `cashclaw.cc`) via HTTP status code with 5×10s retry and fail-loud exit; every mutating step guarded under `--dry-run`.
+- **CLI bin path** — `package.json` `bin.cashclaw` now points to the actual tsc emit path `./dist/desk/cli/cashclaw-cli.js`.
+- **Dist JSON configs** — `build`, `build:fast`, `build:clean` copy `src/alpha-lab/configs/*.json` into dist so the compiled CLI discovers all 3 experiments.
+- **WinRate metric parity (F2)** — walk-forward `splitMetricsFrom` derives winRate from triple-barrier labels (same semantics as `split-metrics.ts`); win+loss+timeout=1 for non-empty splits; before/after snapshots committed (`plans/reports/f2-*.json`); mixed-label invariant test added.
+
+### Added
+- **DoD audit doc** (`docs/ALPHA_DISCOVERY_DOD_AUDIT.md`) — maps all 12 mission Definition-of-Done questions to runnable CLI/artifacts; documents residual gaps (EXTREME cost scenario absent in alpha-lab stress modes; derivatives features deferred pending data source).
+
+### Quality
+- 7132/7132 tests (+2 new); typecheck 0 errors; eslint no regression (492 warnings, unchanged); secret scan 0; quality ratchet 8/8; paper-gate-lock PASSED; shellcheck clean; CI Gates 1–8 green on PR #38 and post-merge.
+
+---
+
 ## [3.1.21] - 2026-08-25 — Regime-aware research artifacts
 
 ### Added
