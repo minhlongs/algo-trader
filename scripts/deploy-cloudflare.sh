@@ -18,6 +18,11 @@ if ! command -v wrangler &>/dev/null; then
   exit 1
 fi
 
+if ! command -v pnpm &>/dev/null; then
+  echo "ERROR: pnpm not found. Install with: npm install -g pnpm"
+  exit 1
+fi
+
 # Verify Cloudflare login
 if ! wrangler whoami &>/dev/null; then
   echo "ERROR: Not logged in to Cloudflare. Run: wrangler login"
@@ -25,30 +30,48 @@ if ! wrangler whoami &>/dev/null; then
 fi
 
 # Build
-echo "[1/4] Building..."
+echo "Step 1/4 Building..."
+echo "  - npm run build (tsc)"
 npm run build
-
-# Deploy
-echo "[2/4] Deploying to Cloudflare Pages..."
+echo "  - (cd dashboard && pnpm run build) -> dist/dashboard/"
 if [[ $DRY_RUN -eq 1 ]]; then
-  echo "[DRY RUN] wrangler pages deploy dist/"
+  echo "[DRY RUN] Would run: (cd dashboard && pnpm run build)"
 else
-  wrangler pages deploy dist/ --project-name algo-trader
+  (cd dashboard && pnpm run build)
 fi
 
-echo "[3/4] Health check..."
-HEALTH_URL="https://algo-trader-worker.pages.dev/health"
+# Deploy
+echo "Step 2/4 Deploying to Cloudflare Pages..."
 if [[ $DRY_RUN -eq 1 ]]; then
-  echo "[DRY RUN] Would check: $HEALTH_URL"
+  echo "[DRY RUN] wrangler pages deploy dist/dashboard/ --project-name algo-trader"
 else
-  for i in 1 2 3 4 5; do
-    if curl -sf "$HEALTH_URL" >/dev/null; then
-      echo "✓ Health check passed"
-      break
+  wrangler pages deploy dist/dashboard/ --project-name algo-trader
+fi
+
+echo "Step 3/4 Health check..."
+HEALTH_URLS=("https://algo-trader.pages.dev" "https://cashclaw.cc")
+if [[ $DRY_RUN -eq 1 ]]; then
+  for url in "${HEALTH_URLS[@]}"; do
+    echo "[DRY RUN] Would check: curl -sI $url (expect HTTP/2 200)"
+  done
+else
+  for url in "${HEALTH_URLS[@]}"; do
+    ok=0
+    for i in 1 2 3 4 5; do
+      status_line="$(curl -sI "$url" | head -1 || true)"
+      if [[ "$status_line" == "HTTP/2 200"* ]]; then
+        echo "✓ Health check passed: $url ($status_line)"
+        ok=1
+        break
+      fi
+      echo "Waiting for deployment... ($i/5) $url"
+      sleep 10
+    done
+    if [[ $ok -eq 0 ]]; then
+      echo "ERROR: Health check failed for $url"
+      exit 1
     fi
-    echo "Waiting for deployment... ($i/5)"
-    sleep 10
   done
 fi
 
-echo "[4/4] Done."
+echo "Step 4/4 Done."
