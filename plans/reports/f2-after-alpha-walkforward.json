@@ -1,0 +1,28 @@
+{
+  "experimentId": "rsi-mean-reversion-btc-1h",
+  "symbol": "BTC/USD",
+  "timeframe": "1h",
+  "dataSource": "real",
+  "summary": {
+    "totalSteps": 1,
+    "trainWinRate": 0.07994186046511628,
+    "valWinRate": 0.03731343283582089,
+    "testWinRate": 0.0390625,
+    "overfitGap": 0.04087936046511628,
+    "consistencyScore": 0,
+    "avgTestTrades": 128,
+    "totalTestTrades": 128
+  },
+  "steps": [
+    {
+      "step": 0,
+      "trainSharpe": -36.99,
+      "trainWinRate": 0.07994186046511628,
+      "valSharpe": -62.07,
+      "valWinRate": 0.03731343283582089,
+      "testSharpe": -44.84,
+      "testWinRate": 0.0390625,
+      "testTrades": 128
+    }
+  ]
+}

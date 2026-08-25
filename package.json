@@ -13,7 +13,7 @@
   ],
   "bin": {
     "algo-trader": "./dist/index.js",
-    "cashclaw": "./dist/cli/cashclaw-cli.js"
+    "cashclaw": "./dist/desk/cli/cashclaw-cli.js"
   },
   "scripts": {
     "prepublishOnly": "npm run build && npm test",
@@ -23,9 +23,9 @@
     "disk:check": "pnpm exec ts-node scripts/disk-monitor.ts",
     "disk:check:sh": "sh scripts/pre-build-check.sh",
     "prebuild": "npm run disk:check:sh",
-    "build": "tsc",
-    "build:fast": "tsc --incremental",
-    "build:clean": "rm -rf dist && tsc",
+    "build": "tsc && node -e \"require('fs').cpSync('src/alpha-lab/configs','dist/alpha-lab/configs',{recursive:true})\"",
+    "build:fast": "tsc --incremental && node -e \"require('fs').cpSync('src/alpha-lab/configs','dist/alpha-lab/configs',{recursive:true})\"",
+    "build:clean": "rm -rf dist && tsc && node -e \"require('fs').cpSync('src/alpha-lab/configs','dist/alpha-lab/configs',{recursive:true})\"",
     "build:watch": "tsc --watch",
     "build:cached": "bash scripts/build-with-cache.sh",
     "cache:check": "pnpm exec ts-node src/utils/build-cache.ts check",
