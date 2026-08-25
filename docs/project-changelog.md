@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [3.1.23] - 2026-08-26 — Master command audit + gap-closure (S11)
+
+### Added
+- **9 architecture docs** (`docs/architecture/`) — CURRENT_ARCHITECTURE, VIBE_TRADING_ARCHITECTURE, MODULE_MAPPING (34-row audit table), DATA_FLOW, AGENT_FLOW, SECURITY_MODEL, DEPENDENCY_AUDIT, MIGRATION_PLAN, MIGRATION_STATUS — written from real source, every verdict cites verified paths (the S1 MIGRATION_LOG entry claiming these existed was false; corrected with `correctedBy:"S11"`, original entry preserved).
+- **System doctor** (`cashclaw doctor`, `src/desk/cli/system-doctor.ts` + defaults) — 5 labelled checks: execution mode READ_ONLY gate, Postgres OHLCV reachability (UNREACHABLE ≠ FAIL), provenance ledger, promotion gates via `gate-evaluator`, quality baseline; exit 0 only when no FAIL.
+- **MIGRATION_COMPLETE.md** — evolution framing: S1–S11 + CashClaw P1–8 reconciled against the 34-phase master command; done-with-file:line vs deferred-with-reason (DERIV funding/OI data source, 74-tool MCP YAGNI, factor zoo YAGNI); explicitly rejects literal "migration complete".
+
+### Changed
+- **MCP read-only hints** — all 4 research MCP tools declare `annotations.readOnlyHint=true` (SDK-typed).
+- **EXTREME cost stress mode** — G1 CLOSED: `listStressModes()` now NORMAL/CONSERVATIVE/ADVERSE/EXTREME with preset {feeBps:30, spreadBps:15, slippageBps:25} ≈100bps round-trip friction (sibling CashClaw precedent); robustness flows through automatically.
+- **Migration truth docs** — `docs/vibe-trading-migration.md`: 12 fictional repo paths replaced with verified equivalents + S11 rows; MIGRATION_LOG.json gains S11 phase entry with prUrl + merge commit.
+
+### Fixed
+- **verdict-summary test isolation** — test chdirs into per-test temp dir so the gitignored `data/research-ledger.jsonl` can no longer fail the default-path assertion locally.
+
+### Honest acceptance evidence
+- B4 E2E on rsi-mean-reversion-btc-1h with REAL Binance data: artifact `dataSource:"real"` (30000 bars 2023→2026), splits + regimesPresent(5) + run card configHash `5790bf44…`; ledger verdict `alphaSurvival:false` (honest rejection — negative Sharpe on real data; no profitability claim). Funding-rate mean-reversion E2E remains BLOCKED (no funding/OI data source) — DERIV DEFERRED stands.
+
+### Quality
+- 7152/7152 tests (+20 vs 7132 baseline); typecheck 0 errors; eslint no regression (492 warnings unchanged); secret scan 0; quality ratchet 8/8; paper-gate-lock PASSED; code review 9.0/10 (0 critical; MAJOR doc-symbol fixed pre-merge in `28f5aee6`); CI Gates 1–8 green on PR #40 and post-merge; CF Pages `b19e934b`, prod 200×2.
+
 ## [3.1.22] - 2026-08-26 — Alpha gap-closure (S10)
 
 ### Fixed
