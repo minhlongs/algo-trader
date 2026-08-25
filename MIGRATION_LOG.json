@@ -183,8 +183,12 @@
       "note": "Master-command audit: 34-phase gap table in docs/architecture/MODULE_MAPPING.md (Audit 2026-08-26). Closes P1 doc debt (9 architecture docs), P14 (readOnlyHint x4), P31 (cashclaw doctor, 5 checks), G1 (EXTREME stress preset). DERIV funding/OI acceptance stays BLOCKED — no funding/OI data source exists.",
       "evidence": {
         "tests": "baseline 7132 + new MCP readOnlyHint / system-doctor / cost-stress EXTREME suites (see src/platform/mcp/__tests__/research-mcp-server.test.ts, src/desk/cli/__tests__/system-doctor.test.ts, src/alpha-lab/cost-model/__tests__/cost-stress.test.ts); final count owned by tester",
-        "prUrl": null
-      }
+        "prUrl": null,
+        "fullSuite": "7152/7152 (baseline 7132 +20)",
+        "deployed": "CF Pages b19e934b, prod 200x2"
+      },
+      "prUrl": "https://github.com/minhlongs/algo-trader/pull/40",
+      "mergeCommit": "6782a26d"
     }
   ],
   "deferred": [

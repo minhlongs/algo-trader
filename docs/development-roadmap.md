@@ -336,8 +336,9 @@ Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vib
 | RI | Read side closed — verdict summary from research ledger + research-informed family prioritization (3 policies); CLI `--suggest` ranks next experiments by prior verdicts (PR pending) | ✅ |
 | RA | Regime-aware artifacts — `computeRegimeSeries` (causal per-bar) + `distinctRegimes`; all 6 hardcoded `regimesPresent: []` sites replaced (experiment-engine, walkforward-evaluator, run-experiment baselines, alpha-report CLI); attribution-only, metrics unchanged | ✅ |
 | S10 | Alpha gap-closure — deploy script fixed (E7 CLOSED: correct `dist/dashboard/` artifact + canonical health URLs + guarded dry-run); `bin.cashclaw` path corrected; dist ships JSON configs; DoD audit doc 12/12 mapped (`docs/ALPHA_DISCOVERY_DOD_AUDIT.md`); F2 winRate label-parity closed with before/after snapshots (PR #38 → `fc2eab17`) | ✅ |
+| S11 | Master-command audit + gap-closure — 34-phase command reconciled against real source: 9 `docs/architecture/*` audit docs created + S1 log entry corrected (`correctedBy:"S11"`); MCP `readOnlyHint` ×4; `cashclaw doctor` CLI (5 checks, exit 0 only no-FAIL); G1 CLOSED (EXTREME stress mode 30/15/25 bps in `listStressModes()`); honest B4 acceptance (`dataSource:"real"` 30000 bars, ledger verdict `alphaSurvival:false`, funding-rate E2E BLOCKED → DERIV DEFERRED stands); `MIGRATION_COMPLETE.md` "master command reconciled" framing (PR #40 → `6782a26d`) | ✅ |
 
-**Full suite: 7132/7132 passing.**
+**Full suite: 7152/7152 passing.**
 
 ### Ship notes (2026-08-23)
 - **All 9 CI gates green on main @ `2e7f706d`** — first time since Gate 8 was introduced.
