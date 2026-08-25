@@ -1,0 +1,74 @@
+[2026-08-25T18:04:48.576Z] INFO: {
+  "experimentId": "rsi-mean-reversion-btc-1h",
+  "symbol": "BTC/USD",
+  "timeframe": "1h",
+  "dataSource": "real",
+  "overall": {
+    "totalTrades": 688,
+    "winningTrades": 55,
+    "losingTrades": 633,
+    "winRate": 0.0799,
+    "lossRate": 0.9200581395348837,
+    "profitFactor": 0.29,
+    "avgPnlPerTrade": -0.0026,
+    "totalNetPnl": -1.8182,
+    "maxDrawdown": -0.8666,
+    "sharpeRatio": -40.14
+  },
+  "byRegime": [
+    {
+      "regime": "LOW_VOLATILITY",
+      "numTrades": 229,
+      "winRate": 0.10480349344978165,
+      "lossRate": 0.8951965065502183,
+      "meanLabel": -0.7903930131004366,
+      "netPnl": -0.5206000000000003
+    },
+    {
+      "regime": "TREND_UP",
+      "numTrades": 230,
+      "winRate": 0.07391304347826087,
+      "lossRate": 0.9260869565217391,
+      "meanLabel": -0.8521739130434782,
+      "netPnl": -0.6509999999999991
+    },
+    {
+      "regime": "UNKNOWN",
+      "numTrades": 43,
+      "winRate": 0.046511627906976744,
+      "lossRate": 0.9534883720930233,
+      "meanLabel": -0.9069767441860465,
+      "netPnl": -0.17420000000000008
+    },
+    {
+      "regime": "TREND_DOWN",
+      "numTrades": 186,
+      "winRate": 0.06451612903225806,
+      "lossRate": 0.9354838709677419,
+      "meanLabel": -0.8709677419354839,
+      "netPnl": -0.4724000000000016
+    }
+  ],
+  "byMonth": [
+    {
+      "month": "2026-07",
+      "numTrades": 273,
+      "winRate": 0.10989010989010989,
+      "netPnl": -0.8521999999999987
+    },
+    {
+      "month": "2026-08",
+      "numTrades": 415,
+      "winRate": 0.060240963855421686,
+      "netPnl": -0.9659999999999962
+    }
+  ],
+  "byVolatilityBucket": [
+    {
+      "bucket": "low",
+      "numTrades": 688,
+      "winRate": 0.07994186046511628,
+      "netPnl": -1.81820000000002
+    }
+  ]
+}

@@ -60,6 +60,21 @@ describe('Walk-Forward Evaluator', () => {
     }
   });
 
+  it('win/loss/timeout rates are label-derived and sum to 1 in every split', () => {
+    const result = evaluateWalkForward({ candles: makeCandles(100), config: baseConfig });
+    expect(result.steps.length).toBeGreaterThan(0);
+    for (const step of result.steps) {
+      for (const m of [step.trainMetrics, step.valMetrics, step.testMetrics]) {
+        expect(m.winRate).toBeGreaterThanOrEqual(0);
+        expect(m.winRate).toBeLessThanOrEqual(1);
+        if (m.numTrades > 0) {
+          // Single semantics: win = TP-first exit (label === 1), same as split-metrics.
+          expect(m.winRate + m.lossRate + m.timeoutRate).toBeCloseTo(1, 10);
+        }
+      }
+    }
+  });
+
   it('returns summary with aggregated metrics', () => {
     const result = evaluateWalkForward({ candles: makeCandles(80), config: baseConfig });
     expect(result.summary.totalSteps).toBe(result.steps.length);

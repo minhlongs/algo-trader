@@ -26,9 +26,13 @@ import type { SplitMetrics } from '../experiments/experiment-types';
 
 /**
  * Combine label-derived rates with report-derived PnL/risk metrics.
- * Win rate comes from the metrics report; loss/timeout/mean-label come from
- * labels because computeMetrics counts timeout exits (label === 0, pnl < 0)
- * as losing trades, conflating signal losses with timeouts.
+ *
+ * All three rates (win/loss/timeout) come from labels so they share one
+ * semantics with split-metrics.ts: a win is a TP-first exit (label === 1).
+ * This keeps the invariant winRate + lossRate + timeoutRate === 1 holding
+ * across both the experiment and walk-forward paths. computeMetrics counts
+ * timeout exits (label === 0, pnl < 0) as losing trades, conflating signal
+ * losses with timeouts, so its winRate is intentionally NOT used here.
  */
 function splitMetricsFrom(
   labels: Array<TripleBarrierResult & { entryIdx: number }>,
@@ -36,11 +40,12 @@ function splitMetricsFrom(
   regimesPresent: MarketRegime[],
 ): SplitMetrics {
   const n = labels.length;
+  const wins = labels.filter((l) => l.label === 1).length;
   const losses = labels.filter((l) => l.label === -1).length;
   const timeouts = labels.filter((l) => l.label === 0).length;
   return {
     numTrades: n,
-    winRate: report.winRate,
+    winRate: n > 0 ? wins / n : 0,
     lossRate: n > 0 ? losses / n : 0,
     timeoutRate: n > 0 ? timeouts / n : 0,
     meanLabel: n > 0 ? labels.reduce((s, l) => s + l.label, 0) / n : 0,
