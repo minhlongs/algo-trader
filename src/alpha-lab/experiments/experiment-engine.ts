@@ -1,83 +1,25 @@
 /**
  * Experiment Engine
  *
- * Integration layer: connects alpha-lab splits + triple-barrier labels to the
- * existing metrics calculator. This is the FIRST integration point proving that
- * alpha-lab reuses `src/desk/backtesting/metrics-calculator.ts` rather than
- * duplicating evaluation logic.
+ * Integration layer: alpha-lab splits + triple-barrier labels feed the existing
+ * metrics calculator (`src/desk/backtesting/metrics-calculator.ts`).
  *
  * Causal invariant: every label and metric uses only data within its split window
  * plus the explicit `lookback` warmup. No future-bar leakage.
- *
  * @see docs/ALPHA_DISCOVERY_ARCHITECTURE.md — "Foundation vs Integration Contract"
  */
 
-import type { CandleLike } from '../regimes/regime-types';
+import type { CandleLike, MarketRegime } from '../regimes/regime-types';
 import type { TripleBarrierResult } from '../labeling/triple-barrier';
 import { batchLabel } from '../labeling/triple-barrier';
-import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
-import { buildEquityCurve } from '../shared/equity-curve';
 import { buildTrades } from '../shared/trade-builder';
-import type {
-  ExperimentConfig,
-  ExperimentResult,
-  WalkForwardStep,
-  SplitMetrics,
-} from './experiment-types';
+import type { ExperimentConfig, ExperimentResult, WalkForwardStep } from './experiment-types';
 import { generateSplits } from './splitter';
+import { computeSplitMetrics } from './split-metrics';
+import { computeRegimeSeries, distinctRegimes } from '../regimes/regime-series';
 import { writeRunCard } from '../provenance/run-card';
 import type { ResultClassName } from '../provenance/run-card';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function computeSplitMetrics(
-  labels: Array<TripleBarrierResult & { entryIdx: number }>,
-  trades: BacktestTrade[],
-  candles: CandleLike[],
-  config: ExperimentConfig,
-  split: { startIdx: number; endIdx: number },
-): SplitMetrics {
-  if (labels.length === 0) {
-    return {
-      numTrades: 0,
-      winRate: 0,
-      lossRate: 0,
-      timeoutRate: 1,
-      meanLabel: 0,
-      regimesPresent: [],
-      totalPnl: 0,
-      sharpeRatio: 0,
-      profitFactor: 0,
-      maxDrawdown: 0,
-    };
-  }
-  const wins = labels.filter((l) => l.label === 1).length;
-  const losses = labels.filter((l) => l.label === -1).length;
-  const timeouts = labels.filter((l) => l.label === 0).length;
-
-  // Build a strategy equity curve over the split's candle window. Compounds
-  // trade PnL from 1.0 so Sharpe and maxDrawdown reflect strategy returns, not
-  // the raw price series.
-  const equity = buildEquityCurve(
-    candles.slice(split.startIdx, split.endIdx),
-    trades,
-  );
-  const report = computeMetrics(trades, equity);
-
-  return {
-    numTrades: labels.length,
-    winRate: wins / labels.length,
-    lossRate: losses / labels.length,
-    timeoutRate: timeouts / labels.length,
-    meanLabel: labels.reduce((s, l) => s + l.label, 0) / labels.length,
-    regimesPresent: [],
-    totalPnl: report.totalPnl,
-    sharpeRatio: report.sharpeRatio,
-    profitFactor: report.profitFactor,
-    maxDrawdown: report.maxDrawdown,
-  };
-}
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -133,7 +75,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
   }
   const steps = Array.from(stepMap.values()).sort((a, b) => a.step - b.step);
 
-  // Aggregate labels + metrics across all steps.
+  // Aggregate labels + trades across all steps.
   const allTrainLabels: Array<TripleBarrierResult & { entryIdx: number }> = [];
   const allValLabels: Array<TripleBarrierResult & { entryIdx: number }> = [];
   const allTestLabels: Array<TripleBarrierResult & { entryIdx: number }> = [];
@@ -189,14 +131,40 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
   }
 
   // Aggregate labels + trades across ALL walk-forward steps, then compute one
-  // equity curve over the full candle range. Passing steps[0] here would slice
-  // the equity window to step 0 only and silently drop every trade from later
-  // steps — Sharpe/maxDrawdown would reflect the wrong data window.
+  // equity curve over the full candle range. Regime attribution still reports
+  // the union of distinct regimes across each split kind's own windows.
   const fullRange = { startIdx: 0, endIdx: candles.length };
+  const regimeSeries = computeRegimeSeries(candles, {
+    market: config.symbol,
+    timeframe: config.timeframe,
+    lookback: config.lookback,
+  });
+  const regimesForKind = (kind: 'train' | 'val' | 'test'): MarketRegime[] =>
+    distinctRegimes(rawSplits
+      .filter((s) => s.kind === kind)
+      .flatMap((s) => regimeSeries.slice(s.startIdx, s.endIdx)));
   const metrics = {
-    train: computeSplitMetrics(allTrainLabels, allTrainTrades, candles, config, fullRange),
-    val: computeSplitMetrics(allValLabels, allValTrades, candles, config, fullRange),
-    test: computeSplitMetrics(allTestLabels, allTestTrades, candles, config, fullRange),
+    train: computeSplitMetrics({
+      labels: allTrainLabels,
+      trades: allTrainTrades,
+      candles,
+      regimesPresent: regimesForKind('train'),
+      split: fullRange,
+    }),
+    val: computeSplitMetrics({
+      labels: allValLabels,
+      trades: allValTrades,
+      candles,
+      regimesPresent: regimesForKind('val'),
+      split: fullRange,
+    }),
+    test: computeSplitMetrics({
+      labels: allTestLabels,
+      trades: allTestTrades,
+      candles,
+      regimesPresent: regimesForKind('test'),
+      split: fullRange,
+    }),
   };
 
   const result: ExperimentResult = {
@@ -207,9 +175,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
     numSteps: steps.length,
   };
 
-  // Provenance: write a run card if a directory was provided. Fire-and-forget —
-  // writeRunCard is fail-safe (never throws), so a write failure cannot lose the
-  // result. The card records the config hash + result class for auditability.
+  // Provenance: fail-safe run card (never throws) records config hash + result class.
   if (input.runCardDir) {
     void writeRunCard(input.runCardDir, {
       runId: config.experimentId,

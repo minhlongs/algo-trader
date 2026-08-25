@@ -17,7 +17,7 @@ export async function handleReport(
   const { buildTrades } = await import('../../alpha-lab/shared/trade-builder');
   const { batchLabel } = await import('../../alpha-lab/labeling/triple-barrier');
   const { buildEquityCurve } = await import('../../alpha-lab/shared/equity-curve');
-  const { classifyRegime, defaultRules } = await import('../../alpha-lab/regimes/regime-engine');
+  const { computeRegimeSeries } = await import('../../alpha-lab/regimes/regime-series');
   const { evaluate } = await import('../../alpha-lab/evaluation/evaluation-engine');
 
   const closes = candles.map((c) => ({ high: c.high, low: c.low, close: c.close, timestamp: c.timestamp }));
@@ -25,14 +25,10 @@ export async function handleReport(
   const trades = buildTrades(candles, labels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps });
   const _equity = buildEquityCurve(candles, trades);
 
-  const rules = defaultRules();
-  const regimesPerBar: Array<import('../../alpha-lab/regimes/regime-types').MarketRegime> = candles.map((c, i) => {
-    const window = candles.slice(Math.max(0, i - config.lookback), i + 1);
-    return classifyRegime(
-      { market: config.symbol, timeframe: config.timeframe, lookback: config.lookback },
-      window,
-      rules,
-    ).regime;
+  const regimesPerBar = computeRegimeSeries(candles, {
+    market: config.symbol,
+    timeframe: config.timeframe,
+    lookback: config.lookback,
   });
 
   const report = evaluate({
