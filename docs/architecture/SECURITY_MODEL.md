@@ -9,7 +9,7 @@
 
 - `ExecutionMode = 'READ_ONLY' | 'PAPER' | 'LIVE'` (:25).
 - LIVE requires the **literal env string** `LIVE_TRADING_ENABLED=true`; anything else — empty, `"1"`, `"yes"`, undefined — resolves to READ_ONLY (:47-49). No code path sets it.
-- Helpers: `isLiveTradingEnabled()` (:61), `isReadOnly()` (:66); live attempts in READ_ONLY throw with an explicit message (:80).
+- Helpers: `isLiveEnabled()` (:55), `isReadOnly()` (:65); live attempts in READ_ONLY throw with an explicit message (:78, :91).
 
 This is stronger than upstream's `agent/src/live/enforcement.py` + `order_guard.py` (MODULE_MAPPING row 18, verdict PORT).
 
