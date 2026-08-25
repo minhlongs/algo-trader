@@ -12,6 +12,7 @@
  *   npx cashclaw trade status             — check live trading state
  *   npx cashclaw backtest                 — run backtest on paper trading history
  *   npx cashclaw backtest --format=json   — backtest results as JSON
+ *   npx cashclaw doctor                   — environment health checks (5 checks)
  */
 
 import { Command } from 'commander';
@@ -266,6 +267,16 @@ const alphaCmd = program
   .command('alpha')
   .description('Alpha Discovery Engine — discover, backtest, and evaluate trading strategies');
 registerAlphaCommands(alphaCmd);
+
+// ─── doctor command ──────────────────────────────────────────────────────────
+
+program
+  .command('doctor')
+  .description('Run environment health checks (execution mode, DB, ledger, gates, baseline)')
+  .action(async () => {
+    const { runDoctorCli } = await import('./system-doctor-defaults');
+    await runDoctorCli();
+  });
 
 // ─── parse ────────────────────────────────────────────────────────────────────
 
