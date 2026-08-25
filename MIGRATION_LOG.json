@@ -8,6 +8,8 @@
     {
       "phase": "S1 — Recon + architecture freeze",
       "status": "done",
+      "correctedBy": "S11",
+      "correction": "The 9 docs/architecture/*.md files listed as S1 deliverables never existed until S11 (verified: absent from tree and from all git history). S1 performed recon only; the docs were aspirational. They were created as truthful audit docs in S11-master-command-audit-gap-closure.",
       "targetFiles": [
         "docs/architecture/CURRENT_ARCHITECTURE.md",
         "docs/architecture/VIBE_TRADING_ARCHITECTURE.md",
@@ -157,6 +159,31 @@
       ],
       "evidence": {
         "tests": "7 new tests; targeted regimes+experiments+walkforward 27/27; full suite green"
+      }
+    },
+    {
+      "phase": "S11-master-command-audit-gap-closure",
+      "status": "done",
+      "targetFiles": [
+        "docs/architecture/CURRENT_ARCHITECTURE.md",
+        "docs/architecture/VIBE_TRADING_ARCHITECTURE.md",
+        "docs/architecture/MODULE_MAPPING.md",
+        "docs/architecture/DATA_FLOW.md",
+        "docs/architecture/AGENT_FLOW.md",
+        "docs/architecture/SECURITY_MODEL.md",
+        "docs/architecture/DEPENDENCY_AUDIT.md",
+        "docs/architecture/MIGRATION_PLAN.md",
+        "docs/architecture/MIGRATION_STATUS.md",
+        "MIGRATION_COMPLETE.md",
+        "src/platform/mcp/research-mcp-server.ts",
+        "src/desk/cli/system-doctor.ts",
+        "src/desk/cli/system-doctor-defaults.ts",
+        "src/alpha-lab/cost-model/cost-stress.ts"
+      ],
+      "note": "Master-command audit: 34-phase gap table in docs/architecture/MODULE_MAPPING.md (Audit 2026-08-26). Closes P1 doc debt (9 architecture docs), P14 (readOnlyHint x4), P31 (cashclaw doctor, 5 checks), G1 (EXTREME stress preset). DERIV funding/OI acceptance stays BLOCKED — no funding/OI data source exists.",
+      "evidence": {
+        "tests": "baseline 7132 + new MCP readOnlyHint / system-doctor / cost-stress EXTREME suites (see src/platform/mcp/__tests__/research-mcp-server.test.ts, src/desk/cli/__tests__/system-doctor.test.ts, src/alpha-lab/cost-model/__tests__/cost-stress.test.ts); final count owned by tester",
+        "prUrl": null
       }
     }
   ],
