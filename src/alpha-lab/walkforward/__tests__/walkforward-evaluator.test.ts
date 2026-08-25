@@ -14,6 +14,26 @@ function makeCandles(n: number): CandleLike[] {
   }));
 }
 
+/**
+ * Oscillating closes (sine wave) so the triple-barrier labeler produces a
+ * genuine mix of TP-first wins (label 1), SL-first losses (label -1), and
+ * timeouts (label 0) — unlike the monotonic makeCandles fixture, which only
+ * yields wins.
+ */
+function makeOscillatingCandles(n: number, amp = 0.03, period = 40): CandleLike[] {
+  return Array.from({ length: n }, (_, i) => {
+    const close = 100 * (1 + amp * Math.sin((2 * Math.PI * i) / period));
+    return {
+      timestamp: new Date(Date.UTC(2025, 0, i + 1)).toISOString(),
+      open: close,
+      high: close * 1.002,
+      low: close * 0.998,
+      close,
+      volume: 50 + i,
+    };
+  });
+}
+
 const baseConfig: ExperimentConfig = {
   experimentId: 'wf-001',
   hypothesis: 'walkforward test',
@@ -73,6 +93,34 @@ describe('Walk-Forward Evaluator', () => {
         }
       }
     }
+  });
+
+  it('invariant holds with a genuine win/loss/timeout mix on oscillating data', () => {
+    // Oscillating closes force SL hits (label -1) and timeouts (label 0),
+    // not just the all-win path exercised by the monotonic fixture above.
+    const result = evaluateWalkForward({ candles: makeOscillatingCandles(100), config: baseConfig });
+    expect(result.steps.length).toBeGreaterThan(0);
+
+    let sawLoss = false;
+    let sawTimeout = false;
+    for (const step of result.steps) {
+      for (const m of [step.trainMetrics, step.valMetrics, step.testMetrics]) {
+        expect(m.winRate).toBeGreaterThanOrEqual(0);
+        expect(m.winRate).toBeLessThanOrEqual(1);
+        expect(m.lossRate).toBeGreaterThanOrEqual(0);
+        expect(m.lossRate).toBeLessThanOrEqual(1);
+        expect(m.timeoutRate).toBeGreaterThanOrEqual(0);
+        expect(m.timeoutRate).toBeLessThanOrEqual(1);
+        if (m.numTrades > 0) {
+          expect(m.winRate + m.lossRate + m.timeoutRate).toBeCloseTo(1, 10);
+        }
+        if (m.lossRate > 0) sawLoss = true;
+        if (m.timeoutRate > 0) sawTimeout = true;
+      }
+    }
+    // Guard against the fixture silently degenerating to the all-win path.
+    expect(sawLoss).toBe(true);
+    expect(sawTimeout).toBe(true);
   });
 
   it('returns summary with aggregated metrics', () => {

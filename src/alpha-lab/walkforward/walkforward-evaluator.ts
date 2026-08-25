@@ -29,10 +29,14 @@ import type { SplitMetrics } from '../experiments/experiment-types';
  *
  * All three rates (win/loss/timeout) come from labels so they share one
  * semantics with split-metrics.ts: a win is a TP-first exit (label === 1).
- * This keeps the invariant winRate + lossRate + timeoutRate === 1 holding
- * across both the experiment and walk-forward paths. computeMetrics counts
- * timeout exits (label === 0, pnl < 0) as losing trades, conflating signal
- * losses with timeouts, so its winRate is intentionally NOT used here.
+ * computeMetrics counts timeout exits (label === 0, pnl < 0) as losing
+ * trades, conflating signal losses with timeouts, so its winRate is
+ * intentionally NOT used here.
+ *
+ * The invariant winRate + lossRate + timeoutRate === 1 is guaranteed only
+ * when the split has at least one label (n > 0). For an empty split (n === 0)
+ * this path returns all three rates as 0, which differs from split-metrics.ts
+ * (which reports timeoutRate: 1 for an empty split).
  */
 function splitMetricsFrom(
   labels: Array<TripleBarrierResult & { entryIdx: number }>,

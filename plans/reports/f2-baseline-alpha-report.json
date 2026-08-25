@@ -1,4 +1,4 @@
-[2026-08-25T17:59:28.203Z] INFO: {
+{
   "experimentId": "rsi-mean-reversion-btc-1h",
   "symbol": "BTC/USD",
   "timeframe": "1h",

@@ -7,10 +7,16 @@
 ## How to run the CLI
 
 All `alpha` subcommands are registered in `src/desk/cli/alpha-commands.ts` under `cashclaw alpha`.
-Current working invocation (bin path not yet published — S2 fixes dist bin):
+Current working invocation (bin path fixed in this increment — the dist CLI runs):
 
 ```bash
 npx tsx src/desk/cli/cashclaw-cli.ts alpha <subcommand> [args] [--json] [--output <file>]
+```
+
+After `npm run build`, the compiled CLI works too (bin `cashclaw` → `dist/desk/cli/cashclaw-cli.js`):
+
+```bash
+node dist/desk/cli/cashclaw-cli.js alpha <subcommand> [args] [--json] [--output <file>]
 ```
 
 Subcommands: `candidates`, `discover <symbol>`, `backtest <experiment>`, `walkforward <experiment>`,
