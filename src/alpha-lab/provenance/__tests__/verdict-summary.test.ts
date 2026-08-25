@@ -17,10 +17,13 @@ import { summarizeVerdicts, loadVerdictSummary } from '../verdict-summary';
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 let tmp: string;
+let originalCwd: string;
 beforeEach(async () => {
+  originalCwd = process.cwd();
   tmp = await mkdtemp(join(tmpdir(), 'verdict-'));
 });
 afterEach(async () => {
+  process.chdir(originalCwd);
   await rm(tmp, { recursive: true, force: true });
 });
 
@@ -120,8 +123,10 @@ describe('loadVerdictSummary', () => {
   });
 
   it('uses DEFAULT_LEDGER_PATH when no path provided', async () => {
-    // Just verify it doesn't throw when called with default path (which likely
-    // doesn't exist in a test environment — fail-safe returns empty).
+    // DEFAULT_LEDGER_PATH is cwd-relative; chdir into the isolated tmp dir so
+    // the default path resolves to a nonexistent file regardless of whether
+    // the repo has a real gitignored ledger (fail-safe returns empty).
+    process.chdir(tmp);
     const summary = await loadVerdictSummary();
     expect(summary.totalRecords).toBe(0);
   });
