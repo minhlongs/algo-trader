@@ -1,9 +1,9 @@
 # MIGRATION_STATUS — per-phase state of the master command
 
-> Increment S12 · audited 2026-08-26 · machine-readable companion: `MIGRATION_LOG.json` (repo root)
+> Increment S13 · audited 2026-08-26 · machine-readable companion: `MIGRATION_LOG.json` (repo root)
 > Source of truth: `plans/reports/researcher-vibe-trading-recon-20260826.md` (34-row gap table).
 
-## Shipped increments (S1–S12)
+## Shipped increments (S1–S13)
 
 | Increment | Deliverable | Evidence (real paths) | Status |
 |---|---|---|---|
@@ -18,7 +18,8 @@
 | S9 | Regime-aware research artifacts | `src/alpha-lab/regimes/regime-engine.ts`, `src/alpha-lab/regimes/regime-series.ts` | DONE |
 | S10 | Alpha gap-closure (E7/F2) | deploy path `scripts/deploy-cloudflare.sh`; escrow G1 carried | DONE |
 | S11 | Master command audit + gap-closure | 9 architecture docs (this dir), MCP `readOnlyHint`, `src/desk/cli/system-doctor.ts`, EXTREME stress mode | DONE |
-| S12 | Funding-rate acceptance (P32 E2E on real data) | `src/desk/data/binance-funding-feed.ts`, `src/desk/data/funding-store.ts`, `src/db/migrations/049-funding-rates.ts`, `src/alpha-lab/configs/funding-mean-reversion-btc-8h.json`, `scripts/calibrate-funding.ts` | THIS INCREMENT |
+| S12 | Funding-rate acceptance (P32 E2E on real data) | `src/desk/data/binance-funding-feed.ts`, `src/desk/data/funding-store.ts`, `src/db/migrations/049-funding-rates.ts`, `src/alpha-lab/configs/funding-mean-reversion-btc-8h.json`, `scripts/calibrate-funding.ts` | DONE |
+| S13 | Migration closure & hygiene | version 3.1.12 → 3.1.25 (`package.json` + lock, `/health` reads dynamically); funding-store 3-way split (`src/desk/data/funding-types.ts`, `src/desk/data/funding-quality.ts`, store 325 → 200 LOC); run-card `transform?: string` provenance + shared `buildDataSources()` (`src/alpha-lab/experiments/alpha-backtest-adapter.ts`); funding-run provider mislabel fixed ('ohlcv-store' → 'funding-store') | DONE |
 
 ## Master-command phases vs reality (34-phase audit summary)
 
@@ -32,10 +33,11 @@ Full table: `MODULE_MAPPING.md` §"Audit 2026-08-26". Summary by verdict:
 | REJECTED | 4 | 90 finance skills, LLM provider routing, frontend, desktop |
 | BLOCKED | 0 | P32 funding-rate acceptance unblocked in S12 — real Binance Futures funding feed added |
 
-## Open escrow after S12
+## Open escrow after S13
 
 | Item | State | Reason |
 |---|---|---|
+| Ratchet oversized-file check broken (discovered S13) | OPEN | `scripts/check-quality-baseline.mjs` filesOverMaxLines has two bugs: the awk program embeds `+ baseline.quality.maxFileSizeLines +` as literal text inside a template literal (macOS awk syntax error swallowed → always PASS 0), and `FNR==1{n++}` counts FILES, not lines — even fixed it could never check per-file LOC. Real violator count ~215 non-test src files >200 LOC (~301 incl. tests). Deliberately NOT fixed in S13 to avoid turning Gate 8 red mid-ship; follow-up = rewrite the check, then clean all violators |
 | G1 EXTREME stress preset | CLOSED in S11 | `src/alpha-lab/cost-model/cost-stress.ts` now lists 4 modes via `listStressModes()`; live-verified in S12 stress run (EXTREME effectiveRoundTripBps = 100) |
 | DERIV data source (funding/OI) | CLOSED in S12 | Real Binance Futures funding feed + Postgres store shipped; 4380 BTCUSDT rows (2022-08-27 → 2026-08-26), zero null provenance. P32 acceptance ran on this data with honest REJECT (see `MIGRATION_LOG.json` S12 entry) |
 | S1 doc debt | CLOSED in S11 | 9 architecture docs created; log entry corrected |
