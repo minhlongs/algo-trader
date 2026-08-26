@@ -189,6 +189,35 @@
       },
       "prUrl": "https://github.com/minhlongs/algo-trader/pull/40",
       "mergeCommit": "6782a26d"
+    },
+    {
+      "phase": "S12-funding-rate-acceptance",
+      "status": "done",
+      "date": "2026-08-26",
+      "targetFiles": [
+        "src/desk/data/binance-funding-feed.ts",
+        "src/desk/data/funding-store.ts",
+        "src/db/migrations/049-funding-rates.ts",
+        "src/db/migration-runner.ts",
+        "src/alpha-lab/experiments/alpha-backtest-adapter.ts",
+        "src/alpha-lab/configs/funding-mean-reversion-btc-8h.json",
+        "scripts/calibrate-funding.ts",
+        "src/desk/data/__tests__/binance-funding-feed.test.ts",
+        "src/desk/data/__tests__/funding-store.test.ts",
+        "src/alpha-lab/experiments/__tests__/alpha-backtest-adapter.test.ts",
+        "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts",
+        "src/desk/cli/system-doctor-defaults.ts",
+        "src/desk/cli/alpha-robustness-handler.ts",
+        "docs/architecture/MODULE_MAPPING.md"
+      ],
+      "note": "P32 funding-rate acceptance on REAL Binance Futures data. Ingestion: paginated fapi.binance.com fundingRate feed → funding_rates table (migration 049), 4380 BTCUSDT rows 2022-08-27 → 2026-08-26, zero null provenance, transaction-scoped count-delta upsert stats (inserted vs duplicatesSkipped), mixed-symbol input throws. Calibration on transformed series (close_bps = 10_000 + rate × 10_000): lag-1 Δbps autocorrelation -0.298; tp/sl/maxHolding cited from |Δbps| percentiles (no guessed constants). Adapter loads funding series from Postgres via BTC-FUNDING- prefix, fails loudly on empty table (no mock fallback). E2E outcome: HONEST REJECT (alphaSurvival=false, ledger chained ledgerOk=true) — a SUCCESS of the validation doctrine 'AI proposes. Research validates. Risk disposes.': the triple-barrier strategy (tp=1bps/sl=0.5bps) cannot monetize the measured mean-reversion at 7bps round-trip cost, and the pipeline recorded that truth instead of forcing a pass. Run-card dataSources provenance threaded through RunExperimentInput → writeRunCard → all CLI handlers. Closes DERIV funding/OI escrow (P32 unblocked) + plan escrows G2–G5 (promotion-state-machine tests, PAPER_TRADES_API env, MODULE_MAPPING legend, robustness effective cost).",
+      "evidence": {
+        "tests": "full suite 7202 passed + 1 skipped (509 files); targeted: funding-store 10/10, binance-funding-feed 4, alpha-backtest-adapter 10, promotion-state-machine 20",
+        "prUrl": null,
+        "fullSuite": "7202/7202 (baseline 7152 +50)",
+        "outcome": "honest REJECT: verdict {recorded:true, alphaSurvival:false, candidateId:funding-mean-reversion-btc-8h, ledgerOk:true}; artifact dataSource=real totalBars=4380; stress EXTREME effectiveRoundTripBps=100; reproducibility sha256 53ff5041b951a8224181eeed137a67c2ab1701b93f40e20f8326eb6a33c592c6 identical across two independent re-runs",
+        "review": "code-reviewer 9/10; suntzu result gate PASS round 1"
+      }
     }
   ],
   "deferred": [

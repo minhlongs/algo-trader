@@ -1,5 +1,31 @@
 # Project Changelog - Algo Trader
 
+## [3.1.24] - 2026-08-26 — Funding-rate acceptance on real data (S12)
+
+### Added
+- **Funding-rate ingestion** — `src/desk/data/binance-funding-feed.ts`: paginated fetch from Binance Futures `fapi/v1/fundingRate` (limit 1000, 250ms delay, startTime cursor) with quality validation (monotonic funding_time, |rate| sanity bound, 8h-cadence coverage); CLI: `pnpm tsx src/desk/data/binance-funding-feed.ts BTCUSDT <days>`.
+- **Funding store** — `src/desk/data/funding-store.ts`: bulk upsert with conflict target (symbol, exchange, funding_time); transaction-scoped count-delta stats (`inserted` vs `duplicatesSkipped` — accurate under re-ingestion); mixed-symbol input throws before the transaction opens; range/latest/count queries + `validateFundingQuality()` (monotonicity, >1% rate anomalies, coverage gaps, duplicates).
+- **Migration 049** — `src/db/migrations/049-funding-rates.ts`: `funding_rates` table (symbol, exchange, funding_time, funding_rate NUMERIC(20,12), mark_price, rate_type, retrieved_at, source_url) with composite unique index + DESC time index; registered in `src/db/migration-runner.ts`.
+- **Empirical calibration** — `scripts/calibrate-funding.ts` computes stats on the transformed series (`close_bps = 10_000 + rate × 10_000`): lag-1 Δbps autocorrelation −0.298 (mean-reversion present), |Δbps| percentiles p50=0.20/p75=0.45/p95=0.93/p99=1.94.
+- **Experiment config** — `src/alpha-lab/configs/funding-mean-reversion-btc-8h.json`: symbol `BTC-FUNDING-BTCUSDT`, 8h, tp=0.0001 (~p90), sl=0.00005 (~p75), maxHolding=6 (48h), expanding 0.6/0.2/0.2, seed 42 — every parameter cited from calibration, no guessed constants.
+- **50 new tests** — funding-store (10: idempotency both rounds, partial overlap, mixed-symbol rejection, negative-rate round-trip, quality anomalies), binance-funding-feed parser (4, real-API fixture), alpha-backtest-adapter (10: derivation math, empty-table throws, causal open chain, negative rates stay > 0), promotion-state-machine (20: full transition chain, invalid transitions, per-criterion survival rejection, terminal states), doctor env override (2).
+
+### Changed
+- **Backtest adapter funding path** — `src/alpha-lab/experiments/alpha-backtest-adapter.ts`: `BTC-FUNDING-` symbol prefix loads the funding series from Postgres and derives CandleLike[] (close = 10_000 + rate × 10_000, open = prev close causal chain, volume = 0); throws loudly when the table is empty — no mock fallback. Non-funding path unchanged.
+- **Run-card data provenance** — `dataSources` (provider/symbol/timeframe/start/end/candleCount) threaded through `RunExperimentInput` → `writeRunCard` and constructed in `run-experiment.ts` + all 5 alpha CLI handlers; run cards now record the actual data source instead of an empty array.
+- **Robustness effective cost** — `src/desk/cli/alpha-robustness-handler.ts` builds adapted cost via `applyStressToBaselineConfig` (folds spread + market impact into fee) and reports `EffectiveRT(bps)` column + `effectiveRoundTripBps` JSON field; EXTREME live-verified at 100bps round-trip.
+- **Doctor env override** — `src/desk/cli/system-doctor-defaults.ts` honors `PAPER_TRADES_API` env with default fallback (same pattern as `check-gates.ts`).
+- **MODULE_MAPPING.md** — path-convention legend added; row 29 (P32) BLOCKED → PORT with real S12 paths.
+
+### Honest acceptance evidence (P32)
+- Backfill: 4380 BTCUSDT funding rows, 2022-08-27 → 2026-08-26 (1460 days × 3/day, gap-free), zero duplicates, zero null provenance.
+- E2E verdict: **HONEST REJECT** — `{"recorded":true,"alphaSurvival":false,"candidateId":"funding-mean-reversion-btc-8h","ledgerOk":true}`; ledger hash-chain intact. Artifact `dataSource:"real"`, totalBars 4380, train/val/test splits + 4 baselines + non-empty regimesPresent. The measured mean-reversion (lag-1 autocorr −0.298) cannot be monetized by the triple-barrier strategy at 7bps round-trip cost — REJECT is the honest, correct verdict, and a success of the validation doctrine (AI proposes, research validates, risk disposes).
+- Reproducibility: two independent re-runs produce identical artifact sha256 `53ff5041b951a8224181eeed137a67c2ab1701b93f40e20f8326eb6a33c592c6`.
+- Stress: 4 modes; edge survives 0/4 — consistent with REJECT.
+
+### Quality
+- 7202/7202 tests (+50 vs 7152 baseline; 509 files, 1 skipped); typecheck 0 errors; build clean; eslint `--max-warnings 0` clean on all changed files (suppression freeze respected: zero new `eslint-disable`, zero `:any`); code review 9/10; result gate PASS round 1.
+
 ## [3.1.23] - 2026-08-26 — Master command audit + gap-closure (S11)
 
 ### Added

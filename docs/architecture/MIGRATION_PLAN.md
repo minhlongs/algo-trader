@@ -1,21 +1,21 @@
 # MIGRATION_PLAN — remaining deltas and the no-wholesale-migration rule
 
-> Increment S11 · audited 2026-08-26 · supersedes all prior migration planning.
+> Increment S12 · audited 2026-08-26 · supersedes all prior migration planning.
 
 ## The rule
 
-**No further wholesale migration; remaining deltas = DERIV data source (blocked), 74-tool MCP (YAGNI-deferred), factor zoo (YAGNI-deferred).**
+**No further wholesale migration; remaining deltas = 74-tool MCP (YAGNI-deferred), factor zoo (YAGNI-deferred). DERIV data source delta CLOSED in S12 (P32 done-with-honest-reject).**
 
 The 34-phase master command assumed a fresh migration of `HKUDS/Vibe-Trading`. The S11 audit (recon: `plans/reports/researcher-vibe-trading-recon-20260826.md`) proved the repo already covers the master command's intent through S1–S10 + CashClaw evolution. Everything not covered is now explicitly KEEP/ADAPT/REJECT/DEFERRED in `MODULE_MAPPING.md` — documented, not built.
 
 ## Remaining deltas (exhaustive)
 
-### 1. DERIV data source — BLOCKED
+### 1. DERIV data source — CLOSED in S12 (P32 done-with-honest-reject)
 
-- Master-command P32 wants a funding-rate mean-reversion E2E.
-- Blocker: no funding/OI historical data source exists anywhere in the repo. `grep -rl fundingRate\|openInterest src/desk/data/` = empty; `src/desk/data/` holds candles + sentiment only; `funding-rate-arb.ts` infers funding from the order book.
-- Status: DERIV DEFERRED (standing escrow). Honest substitute acceptance: `rsi-mean-reversion-btc-1h` E2E with `dataSource === 'real'` (plan B4).
-- Unblocks only when a real funding/OI feed is added — that is new product work, not migration.
+- Master-command P32 wanted a funding-rate mean-reversion E2E.
+- Former blocker (no funding/OI historical data source) removed in S12: real Binance Futures funding feed (`src/desk/data/binance-funding-feed.ts`) → Postgres store (`src/desk/data/funding-store.ts`, migration `src/db/migrations/049-funding-rates.ts`); 4380 BTCUSDT rows, 2022-08-27 → 2026-08-26, zero null provenance.
+- P32 acceptance ran on this real data and recorded an HONEST REJECT (`alphaSurvival:false`, ledger chained): the triple-barrier strategy cannot monetize the measured mean-reversion (lag-1 Δbps autocorrelation −0.298) at 7bps round-trip cost. Valid completion per the validation doctrine — either sign passes the honesty bar.
+- Open-interest data remains absent; any future OI work is new product work, not migration.
 
 ### 2. 74-tool MCP suite — YAGNI-deferred
 
@@ -46,6 +46,16 @@ The 34-phase master command assumed a fresh migration of `HKUDS/Vibe-Trading`. T
 | P14 MCP readOnlyHint | annotations on all 4 tools | `src/platform/mcp/research-mcp-server.ts` |
 | P31 system doctor | `cashclaw doctor` (5 checks) | `src/desk/cli/system-doctor.ts` |
 | G1 EXTREME stress mode | 4th preset, `listStressModes()` returns 4 | `src/alpha-lab/cost-model/cost-stress.ts` |
+
+## What S12 closed (not deferred)
+
+| Gap | Closure | Evidence |
+|---|---|---|
+| P32 funding-rate acceptance (DERIV delta) | real funding feed + store + calibration + adapter wiring; E2E honest REJECT on 4380 real bars | `src/desk/data/binance-funding-feed.ts`, `src/desk/data/funding-store.ts`, `src/db/migrations/049-funding-rates.ts`, `src/alpha-lab/configs/funding-mean-reversion-btc-8h.json`, `scripts/calibrate-funding.ts` |
+| G2 promotion-state-machine tests | 20 dedicated tests | `src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts` |
+| G3 PAPER_TRADES_API env override | doctor reads env with default fallback | `src/desk/cli/system-doctor-defaults.ts` |
+| G4 MODULE_MAPPING path legend | bare = repo-relative, `agent/`/`frontend/` = upstream-relative, `file:` tolerated | `docs/architecture/MODULE_MAPPING.md` §"Path convention legend" |
+| G5 robustness effective cost | `applyStressToBaselineConfig` folds spread; `EffectiveRT(bps)` column + `effectiveRoundTripBps` JSON field; EXTREME live-verified = 100bps | `src/desk/cli/alpha-robustness-handler.ts` |
 
 ## Resumption rule for future sessions
 
