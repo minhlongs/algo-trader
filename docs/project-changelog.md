@@ -12,7 +12,7 @@
 - **CI timeout bump** — `.github/workflows/ci.yml` gate-8 `timeout-minutes` 5 → 15 (check 1 + check 2 each run the full suite).
 
 ### Quality
-- Gate 8 now reports REAL numbers for all 8 checks — no SKIP, no N/A anywhere: totalTests 7229, passRate 100%, anyTypes 117, consoleCalls 45, bannedImports 0.
+- Gate 8 now reports REAL numbers for all 8 checks — no SKIP, no N/A anywhere: totalTests 7250, passRate 100%, anyTypes 117, consoleCalls 45, bannedImports 0.
 - `quality-baseline.json` thresholds unchanged; check 2 (coverage) untouched.
 - Version 3.1.26 → 3.1.27 (package.json + package-lock.json both version keys).
 
