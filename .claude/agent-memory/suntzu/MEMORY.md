@@ -7,3 +7,4 @@
 - [S9 regime-aware artifacts verdict](project_s9_regime_aware_verdict.md) — PASS: 6/6 hardcoded sites replaced, attribution-only, 7130/7130 tests, LOC cap tight at 200.
 - [S12 funding plan verdict round 1](project_s12_funding_plan_verdict_round1.md) — plan AMEND→CP r2; result gate r1 PASS (4380 rows, honest REJECT, 7202 tests); docs+ship owed downstream.
 - [S13 closure-hygiene verdict](project_s13_closure_hygiene_verdict.md) — result gate PASS r1: version 3.1.25, funding-store 200 LOC split, transform provenance, 7200 tests; ratchet-awk escrow OPEN.
+- [S14 quality-ratchet verdicts](project_s14_quality_ratchet_plan_verdict.md) — plan PASS r1 + result PASS r1: canonical 303 violators, gate real, 7218 tests, 3.1.26; prune-refresh + json-summary escrows.
