@@ -1,0 +1,26 @@
+{
+  "experimentId": "funding-mean-reversion-btc-8h",
+  "hypothesis": "BTC funding-rate series (binance-futures BTCUSDT, 2022-08-27 -> 2026-08-26, 4380 8h bars) transformed via close_bps = 10_000 + funding_rate x 10_000 exhibits mean-reversion structure: lag-1 Delta bps autocorrelation = -0.298. |Delta bps| distribution p5=0, p25=0.03, p50=0.20, p75=0.45, p95=0.93, p99=1.94 bps. tp=0.0001 (1 bps approx p90 of |Delta|), sl=0.00005 (0.5 bps approx p75), maxHolding=6 (48h). Engine consumes CandleLike[] with open=prev close (causal chain), high=max(open,close), low=min(open,close), volume=0. Directional perp-price funding strategy deferred (needs signal-gated engine; YAGNI). Honest REJECT remains valid outcome.",
+  "symbol": "BTC-FUNDING-BTCUSDT",
+  "timeframe": "8h",
+  "features": ["momentum", "ma_distance", "atr"],
+  "regimes": "all",
+  "tp": 0.0001,
+  "sl": 0.00005,
+  "maxHolding": 6,
+  "lookback": 20,
+  "split": {
+    "mode": "expanding",
+    "trainRatio": 0.6,
+    "valRatio": 0.2,
+    "testRatio": 0.2
+  },
+  "cost": {
+    "feeBps": 5,
+    "slippageBps": 2,
+    "scenario": "normal"
+  },
+  "seed": 42,
+  "gitCommit": "HEAD",
+  "createdAt": "2026-08-26T00:00:00Z"
+}
