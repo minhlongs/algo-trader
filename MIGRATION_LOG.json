@@ -269,7 +269,8 @@
         "prUrl": null,
         "gates": "npm run build exit 0; npx tsc --noEmit exit 0; eslint --max-warnings 0 clean on changed files (zero new eslint-disable, zero :any); quality ratchet filesOverMaxLines numeric actual 303 new=0 grown=0 PASS; paper-gate-lock PASSED",
         "artifact": "enforcement proof: fixture inject -> FAIL (304 new=1) / remove -> PASS (303 new=0 grown=0)"
-      }
+      },
+      "prUrl": "https://github.com/minhlongs/algo-trader/pull/44"
     }
   ],
   "deferred": [
