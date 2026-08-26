@@ -26,6 +26,7 @@ import { logger } from '../../shared/utils/logger';
 import { generateMockCandles } from './mock-candles';
 import type { CandleLike } from '../regimes/regime-types';
 import type { FeatureVector } from '../features/feature-types';
+import type { DataSourceProvenance } from '../provenance/run-card';
 
 export interface AlphaExperimentConfig {
   market: string;
@@ -39,6 +40,56 @@ export interface AlphaExperimentConfig {
 }
 
 const FUNDING_BPS_OFFSET = 10_000;
+
+/** Market-symbol prefix that routes loadCandles() to the funding_rates table. */
+export const FUNDING_SYMBOL_PREFIX = 'BTC-FUNDING-';
+
+/**
+ * Human-readable description of the funding-rate → candle transform, recorded
+ * in run-card data provenance so funding runs are reproducible from the
+ * artifact alone. Single source of truth for both provenance build sites
+ * (run-experiment.ts and desk/cli/alpha-helpers.ts).
+ */
+export function fundingTransformDescription(symbol: string): string {
+  return (
+    `source table funding_rates (binance-futures); symbol prefix '${FUNDING_SYMBOL_PREFIX}'; ` +
+    `close_bps = ${FUNDING_BPS_OFFSET} + fundingRate * 10000; ` +
+    `open = previous close (causal chain); high/low = max/min(open, close); volume = 0; ` +
+    `underlying symbol ${symbol}`
+  );
+}
+
+/**
+ * Build the data-source provenance entry for a loaded candle series.
+ * Funding-prefixed symbols are labelled with their real provider
+ * ('funding-store') plus the transform description; everything else keeps the
+ * existing ohlcv-store/mock labelling.
+ */
+export function buildDataSources(
+  symbol: string,
+  timeframe: string,
+  candles: CandleLike[],
+  source: 'real' | 'mock',
+): DataSourceProvenance[] {
+  const now = new Date().toISOString();
+  const start = candles.length > 0 ? candles[0].timestamp : now;
+  const end = candles.length > 0 ? candles[candles.length - 1].timestamp : now;
+  const isFunding = symbol.startsWith(FUNDING_SYMBOL_PREFIX);
+  return [
+    {
+      provider: source === 'real' ? (isFunding ? 'funding-store' : 'ohlcv-store') : 'mock',
+      symbol,
+      timeframe,
+      start,
+      end,
+      retrievedAt: now,
+      candleCount: candles.length,
+      ...(isFunding && source === 'real'
+        ? { transform: fundingTransformDescription(symbol.replace(FUNDING_SYMBOL_PREFIX, '')) }
+        : {}),
+    },
+  ];
+}
 
 /**
  * Load candles for an experiment. Prefers real data from the OHLCV store;
@@ -63,15 +114,15 @@ export async function loadCandles(
   exchange = 'binance',
 ): Promise<{ candles: CandleLike[]; source: 'real' | 'mock' }> {
   // Funding-rate series: load from funding_rates table
-  if (market.startsWith('BTC-FUNDING-')) {
-    const symbol = market.replace('BTC-FUNDING-', '');
+  if (market.startsWith(FUNDING_SYMBOL_PREFIX)) {
+    const symbol = market.replace(FUNDING_SYMBOL_PREFIX, '');
     // Fetch enough funding rates; they're 8h cadence so candleCount maps directly
     const end = new Date();
     const start = new Date(end.getTime() - candleCount * 8 * 60 * 60 * 1000 - 86_400_000); // extra buffer
 
     const rates = await getFundingRates(symbol, start, end, 'binance-futures');
     if (rates.length === 0) {
-      throw new Error(`[AlphaAdapter] No funding_rates data for ${symbol} (prefix 'BTC-FUNDING-' requires real data — no mock fallback)`);
+      throw new Error(`[AlphaAdapter] No funding_rates data for ${symbol} (prefix '${FUNDING_SYMBOL_PREFIX}' requires real data — no mock fallback)`);
     }
 
     // Sort by fundingTime ascending

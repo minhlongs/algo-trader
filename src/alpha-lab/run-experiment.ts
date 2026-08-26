@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ExperimentConfig, SplitMetrics } from './experiments/experiment-types';
 import { runExperiment } from './experiments/experiment-engine';
-import { loadCandles } from './experiments/alpha-backtest-adapter';
+import { loadCandles, buildDataSources } from './experiments/alpha-backtest-adapter';
 import { computeRegimeSeries, distinctRegimes } from './regimes/regime-series';
 import type { MarketRegime } from './regimes/regime-types';
 import { runAllBaselines } from './baselines/baseline-runner';
@@ -130,21 +130,14 @@ async function main(): Promise<void> {
   const candleCount = Math.max(500, minBars * 3);
   const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
 
-  // Construct data source provenance
-  const now = new Date().toISOString();
-  const start = candles.length > 0 ? candles[0].timestamp : now;
-  const end = candles.length > 0 ? candles[candles.length - 1].timestamp : now;
-  const dataSources: DataSourceProvenance[] = [
-    {
-      provider: source === 'real' ? 'ohlcv-store' : 'mock',
-      symbol: config.symbol,
-      timeframe: config.timeframe,
-      start,
-      end,
-      retrievedAt: now,
-      candleCount: candles.length,
-    },
-  ];
+  // Construct data source provenance (funding series get their real provider
+  // label + transform description via the shared adapter helper).
+  const dataSources: DataSourceProvenance[] = buildDataSources(
+    config.symbol,
+    config.timeframe,
+    candles,
+    source,
+  );
 
   const result = runExperiment({
     candles,

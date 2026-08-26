@@ -101,24 +101,31 @@ vi.mock('../../../shared/utils/logger', () => ({
   },
 }));
 
-// Mock loadCandles to return deterministic mock data (path as in alpha-commands.ts)
-vi.mock('../../../alpha-lab/experiments/alpha-backtest-adapter', () => ({
-  loadCandles: vi.fn(async () => {
-    const candles = [];
-    for (let i = 0; i < 600; i++) {
-      const close = 100 + Math.sin(i / 10) * 2 + i * 0.01;
-      candles.push({
-        timestamp: new Date(Date.UTC(2024, 0, 1, i)).toISOString(),
-        open: close - 0.5,
-        high: close + 1,
-        low: close - 1,
-        close,
-        volume: 1000 + i,
-      });
-    }
-    return { candles, source: 'mock' as const };
-  }),
-}));
+// Mock loadCandles to return deterministic mock data (path as in alpha-commands.ts).
+// The real buildDataSources is kept — it is a pure function and the handlers
+// under test consume its output.
+vi.mock('../../../alpha-lab/experiments/alpha-backtest-adapter', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../alpha-lab/experiments/alpha-backtest-adapter')>();
+  return {
+    ...actual,
+    loadCandles: vi.fn(async () => {
+      const candles = [];
+      for (let i = 0; i < 600; i++) {
+        const close = 100 + Math.sin(i / 10) * 2 + i * 0.01;
+        candles.push({
+          timestamp: new Date(Date.UTC(2024, 0, 1, i)).toISOString(),
+          open: close - 0.5,
+          high: close + 1,
+          low: close - 1,
+          close,
+          volume: 1000 + i,
+        });
+      }
+      return { candles, source: 'mock' as const };
+    }),
+  };
+});
 
 // Mock experiment-engine
 vi.mock('../../../alpha-lab/experiments/experiment-engine', () => ({

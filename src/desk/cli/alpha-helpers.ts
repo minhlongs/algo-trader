@@ -6,7 +6,7 @@ import * as path from 'path';
 import { logger } from '../../shared/utils/logger';
 import type { ExperimentConfig } from '../../alpha-lab/experiments/experiment-types';
 import type { CandleLike } from '../../alpha-lab/regimes/regime-types';
-import { loadCandles } from '../../alpha-lab/experiments/alpha-backtest-adapter';
+import { loadCandles, buildDataSources } from '../../alpha-lab/experiments/alpha-backtest-adapter';
 import type { DataSourceProvenance } from '../../alpha-lab/provenance/run-card';
 
 const CONFIGS_DIR = path.resolve(__dirname, '../../alpha-lab/configs');
@@ -45,22 +45,14 @@ export async function loadCandlesForConfig(
   const candleCount = Math.max(500, minBars * 3);
   const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
 
-  // Construct data source provenance
-  const now = new Date().toISOString();
-  const start = candles.length > 0 ? candles[0].timestamp : now;
-  const end = candles.length > 0 ? candles[candles.length - 1].timestamp : now;
-
-  const dataSources: DataSourceProvenance[] = [
-    {
-      provider: source === 'real' ? 'ohlcv-store' : 'mock',
-      symbol: config.symbol,
-      timeframe: config.timeframe,
-      start,
-      end,
-      retrievedAt: now,
-      candleCount: candles.length,
-    },
-  ];
+  // Construct data source provenance (funding series get their real provider
+  // label + transform description via the shared adapter helper).
+  const dataSources: DataSourceProvenance[] = buildDataSources(
+    config.symbol,
+    config.timeframe,
+    candles,
+    source,
+  );
 
   return { candles, source, dataSources };
 }
