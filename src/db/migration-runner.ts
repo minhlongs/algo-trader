@@ -22,6 +22,7 @@ import * as migration041 from './migrations/041-audit-hash-chain';
 import * as migration045 from './migrations/045-ohlcv-candles';
 import * as migration046 from './migrations/046-ab-test-experiments';
 import * as migration047 from './migrations/047-model-registry';
+import * as migration049 from './migrations/049-funding-rates';
 import * as migration035 from '../shared/db/migrations/035-add-blog-engagement-tables';
 import * as migration037 from '../shared/db/migrations/037-add-newsletter-preferences';
 import * as migration055 from '../shared/db/migrations/055-add-blog-page-views';
@@ -172,6 +173,7 @@ const MIGRATIONS: Migration[] = [
   migration045,
   migration046,
   migration047,
+  migration049,
   migration035,
   migration037,
   migration055,
