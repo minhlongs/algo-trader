@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.27] - 2026-08-26 — Ratchet hardening (S15)
+
+### Fixed
+- **Check 1 (test suite) made real** — `scripts/check-quality-baseline.mjs` previously ran vitest with the `json-summary` reporter, which vitest 4.x removed; the missing file was swallowed by a catch→SKIP, so Gate 8 had been passing with the test-suite check silently skipped. Rewritten to `npx vitest run --reporter=json --outputFile=<tmp>` (the supported replacement) with a new fail-loud reader `scripts/vitest-summary-reader.mjs`: throws on missing file / bad JSON / missing fields / zero tests, and the gate exits 1 instead of recording SKIP. A non-zero vitest exit is NOT fatal by itself (vitest still writes the JSON when tests merely fail — failures surface through passRate/knownFailures). TAP fallback deleted.
+- **Checks 3a/3b/3d made real** — the `: any` / console-call / banned-import counters were grep pipelines behind catch→PASS('N/A'): grep exits 1 on zero matches, which the catch swallowed as a false PASS, and local `grep` is ugrep while CI uses GNU grep (`\b` semantics differ). Rewritten in pure Node `scripts/static-quality-checks.mjs` (`collectSourceFiles` / `countPatternLines` / `countBannedImports` — one fs walk of src/**/*.ts(x), symlinks skipped, line-based counts matching `grep|wc -l` exactly). Zero matches is now a legitimate count of 0; any IO error exits 1. Parity proof on the real tree: Node 117/45/0 vs grep 117/45/0 — identical.
+- **S14 harness test regression** — `scripts/__tests__/oversized-file-check.test.ts` gate-harness source-rewrite only replaced the oversized-file-check import; the two new S15 imports broke ESM resolution from the tmp harness location. Harness now rewrites all three relative imports to absolute paths.
+
+### Added
+- **21 new tests** — `scripts/__tests__/vitest-summary-reader.test.ts` (9: valid parse + passRate math, rounding, missing file / bad JSON / missing field / non-number field / non-object root / zero tests all throw, plus one real end-to-end `--reporter=json --outputFile` run against oversized-file-check.test.ts proving real numbers 18/18/0/100%) + `scripts/__tests__/static-quality-checks.test.ts` (12: walk/sort/.ts-only, empty src, missing src throws, symlink skipped, line-not-occurrence counting, zero-match = 0, word boundaries, per-literal banned sum, source-level regression that `json-summary` and `'N/A', true` are gone from the gate, forced-error harness proofs: src-less tree → exit 1 naming the error, zero-match tree → PASS 0 for all three counts).
+- **CI timeout bump** — `.github/workflows/ci.yml` gate-8 `timeout-minutes` 5 → 15 (check 1 + check 2 each run the full suite).
+
+### Quality
+- Gate 8 now reports REAL numbers for all 8 checks — no SKIP, no N/A anywhere: totalTests 7250, passRate 100%, anyTypes 117, consoleCalls 45, bannedImports 0.
+- `quality-baseline.json` thresholds unchanged; check 2 (coverage) untouched.
+- Version 3.1.26 → 3.1.27 (package.json + package-lock.json both version keys).
+
 ## [3.1.26] - 2026-08-26 — Quality ratchet truth (S14)
 
 ### Fixed

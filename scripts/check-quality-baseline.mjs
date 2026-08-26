@@ -9,14 +9,21 @@
  *   Default: --all
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { execSync } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { execSync, spawnSync } from 'node:child_process';
+import { resolve, dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import {
   collectFileLineCounts,
   evaluateOversizedFiles,
 } from './oversized-file-check.mjs';
+import { readVitestJsonSummary } from './vitest-summary-reader.mjs';
+import {
+  collectSourceFiles,
+  countPatternLines,
+  countBannedImports,
+} from './static-quality-checks.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -91,62 +98,60 @@ const runCoverage = runAll || flags.includes('--coverage');
 const runQuality = runAll || flags.includes('--quality');
 
 // ===========================================================================
-// 1. TEST SUITE — run vitest, parse json-summary
+// 1. TEST SUITE — run vitest with the json reporter, read the report file.
+// Fail-loud: no SKIP, no TAP fallback. A non-zero vitest exit is NOT fatal
+// by itself (vitest still writes the JSON when tests merely fail — failures
+// surface through the passRate/knownFailures records). Missing report file,
+// bad JSON, missing fields, or zero tests → exit 1.
 // ===========================================================================
 if (runTests) {
   console.log('\n--- Test Suite ---');
 
+  const tmpDir = mkdtempSync(join(tmpdir(), 'quality-ratchet-'));
+  const summaryPath = join(tmpDir, 'summary.json');
   try {
-    const testJson = execSync(
-      'npx vitest run --reporter=json-summary --reporter=default 2>&1 || true',
-      { cwd: ROOT, maxBuffer: 20 * 1024 * 1024, encoding: 'utf-8' },
+    const run = spawnSync(
+      'npx',
+      ['vitest', 'run', '--reporter=json', `--outputFile=${summaryPath}`],
+      { cwd: ROOT, stdio: 'inherit' },
     );
-
-    // Extract the json-summary portion (last JSON object in output)
-    const jsonMatch = testJson.match(/\{[\s\S]*"numTotalTests"[\s\S]*\}\s*\}/);
-    if (jsonMatch) {
-      const summary = JSON.parse(jsonMatch[0]);
-      const numTotal = summary.numTotalTests ?? 0;
-      const numPassed = summary.numPassedTests ?? 0;
-      const numFailed = summary.numFailedTests ?? 0;
-      const passRate = numTotal > 0
-        ? parseFloat(((numTotal - numFailed) / numTotal * 100).toFixed(2))
-        : 0;
-
-      record('totalTests', `>=${baseline.testSuite.totalTests}`, numTotal,
-        numTotal >= baseline.testSuite.totalTests);
-      record('passRate', `>=${baseline.testSuite.passRate}%`, `${passRate}%`,
-        passRate >= baseline.testSuite.passRate);
-
-      if (numFailed > baseline.testSuite.knownFailures) {
-        record('unknownFailures', `<=${baseline.testSuite.knownFailures}`,
-          numFailed,
-          false);
-      } else {
-        record('knownFailures', `<=${baseline.testSuite.knownFailures}`,
-          numFailed, true);
-      }
-    } else {
-      // Fallback: parse TAP-like output for pass/fail counts
-      const totalMatch = testJson.match(/Tests\s+(\d+)\s+passed/);
-      const failMatch = testJson.match(/Tests\s+\d+\s+passed,\s+(\d+)\s+failed/);
-      if (totalMatch) {
-        const passed = parseInt(totalMatch[1], 10);
-        const failed = failMatch ? parseInt(failMatch[1], 0) : 0;
-        const total = passed + failed;
-        record('totalTests', `>=${baseline.testSuite.totalTests}`, total,
-          total >= baseline.testSuite.totalTests);
-      } else {
-        console.log('  SKIP: Could not parse test results (no JSON summary found)');
-      }
+    if (run.error) {
+      console.error('ERROR: could not launch vitest —', run.error.message);
+      process.exit(1);
     }
-  } catch (err) {
-    console.log('  SKIP: vitest run failed —', err.message?.split('\n')[0]);
+
+    let summary;
+    try {
+      summary = readVitestJsonSummary(summaryPath);
+    } catch (err) {
+      console.error(
+        `ERROR: test-suite check failed to read vitest JSON report ` +
+          `(vitest exit code ${run.status ?? 'null'}${run.signal ? `, signal ${run.signal}` : ''}) —`,
+        err?.message ?? err,
+      );
+      process.exit(1);
+    }
+
+    const { numTotalTests, numFailedTests, passRate } = summary;
+    record('totalTests', `>=${baseline.testSuite.totalTests}`, numTotalTests,
+      numTotalTests >= baseline.testSuite.totalTests);
+    record('passRate', `>=${baseline.testSuite.passRate}%`, `${passRate}%`,
+      passRate >= baseline.testSuite.passRate);
+
+    if (numFailedTests > baseline.testSuite.knownFailures) {
+      record('unknownFailures', `<=${baseline.testSuite.knownFailures}`,
+        numFailedTests, false);
+    } else {
+      record('knownFailures', `<=${baseline.testSuite.knownFailures}`,
+        numFailedTests, true);
+    }
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
   }
 }
 
 // ===========================================================================
-// 2. COVERAGE — run vitest --coverage, parse json-summary report
+// 2. COVERAGE — run vitest --coverage, parse coverage-summary.json
 // ===========================================================================
 if (runCoverage) {
   console.log('\n--- Coverage ---');
@@ -188,35 +193,29 @@ if (runCoverage) {
 if (runQuality) {
   console.log('\n--- Quality ---');
 
-  // 3a. `:any` types in src/ (exclude type assertions `as any` from test fixtures)
+  // 3a/3b/3d run against ONE pure-Node fs walk of src/**/*.{ts,tsx}
+  // (scripts/static-quality-checks.mjs). Fail-loud, S14 3c pattern: any
+  // IO/unexpected error exits 1 — no catch→PASS('N/A'). Zero matches is a
+  // legitimate count of 0, never an error (the grep-exit-1-on-no-match
+  // landmine no longer exists by construction).
+  /** @type {ReturnType<typeof collectSourceFiles>} */
+  let sourceFiles;
   try {
-    const anyCount = parseInt(
-      execSync(
-        `grep -r ': any\\b' src/ --include='*.ts' --include='*.tsx' 2>/dev/null | wc -l`,
-        { cwd: ROOT, encoding: 'utf-8' },
-      ).trim(),
-      10,
-    );
-    record('anyTypes', `<=${baseline.quality.maxAnyTypes}`, anyCount,
-      anyCount <= baseline.quality.maxAnyTypes);
-  } catch {
-    record('anyTypes', `<=${baseline.quality.maxAnyTypes}`, 'N/A', true);
+    sourceFiles = collectSourceFiles(ROOT);
+  } catch (err) {
+    console.error('ERROR: static quality checks failed —', err?.message ?? err);
+    process.exit(1);
   }
 
+  // 3a. `: any` types in src/ (line-based count, grep|wc -l parity)
+  const anyCount = countPatternLines(sourceFiles, /: any\b/);
+  record('anyTypes', `<=${baseline.quality.maxAnyTypes}`, anyCount,
+    anyCount <= baseline.quality.maxAnyTypes);
+
   // 3b. console.log / console.warn / console.error in src/
-  try {
-    const consoleCount = parseInt(
-      execSync(
-        `grep -r 'console\\.\\(log\\|warn\\|error\\)' src/ --include='*.ts' --include='*.tsx' 2>/dev/null | wc -l`,
-        { cwd: ROOT, encoding: 'utf-8' },
-      ).trim(),
-      10,
-    );
-    record('consoleCalls', `<=${baseline.quality.maxConsoleCalls}`, consoleCount,
-      consoleCount <= baseline.quality.maxConsoleCalls);
-  } catch {
-    record('consoleCalls', `<=${baseline.quality.maxConsoleCalls}`, 'N/A', true);
-  }
+  const consoleCount = countPatternLines(sourceFiles, /console\.(log|warn|error)/);
+  record('consoleCalls', `<=${baseline.quality.maxConsoleCalls}`, consoleCount,
+    consoleCount <= baseline.quality.maxConsoleCalls);
 
   // 3c. Files exceeding line limit — pure Node ratchet against the frozen
   // snapshot in quality.oversizedFileBaseline. FAILS LOUD on IO/unexpected
@@ -260,20 +259,9 @@ if (runQuality) {
     }
   }
 
-  // 3d. Banned imports
-  try {
-    let bannedCount = 0;
-    for (const imp of baseline.quality.bannedImports) {
-      const hits = execSync(
-        `grep -r "${imp}" src/ --include='*.ts' --include='*.tsx' 2>/dev/null | wc -l`,
-        { cwd: ROOT, encoding: 'utf-8' },
-      ).trim();
-      bannedCount += parseInt(hits, 10) || 0;
-    }
-    record('bannedImports', 0, bannedCount, bannedCount === 0);
-  } catch {
-    record('bannedImports', 0, 'N/A', true);
-  }
+  // 3d. Banned imports (plain string literals, summed per import)
+  const bannedCount = countBannedImports(sourceFiles, baseline.quality.bannedImports);
+  record('bannedImports', 0, bannedCount, bannedCount === 0);
 }
 
 // ===========================================================================

@@ -173,7 +173,10 @@ jobs:
     name: Gate 8 — Quality Ratchet (baseline metrics check)
     runs-on: ubuntu-latest
     needs: [gate-1-validation]
-    timeout-minutes: 5
+    # Check 1 now runs the full ~7200-test suite for real (json reporter file
+    # read) plus check 2's coverage run = two full runs. Raised 5 → 15 min
+    # preemptively so the first real-metrics run cannot time out.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
