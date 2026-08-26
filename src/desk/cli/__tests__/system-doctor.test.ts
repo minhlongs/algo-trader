@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os';
 
 import { runSystemDoctor, renderDoctorReport } from '../system-doctor';
 import type { DoctorDeps } from '../system-doctor';
-import { inspectLedger, defaultDoctorDeps } from '../system-doctor-defaults';
+import { inspectLedger } from '../system-doctor-defaults';
 
 // ── Logger capture (path as resolved from this test file) ─────────────────────
 
@@ -207,7 +207,14 @@ describe('inspectLedger (real implementation)', () => {
 describe('defaultDoctorDeps (real implementations)', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.resetModules();
   });
+
+  async function getDefaultDoctorDeps() {
+    const mod = await import('../system-doctor-defaults');
+    return mod.defaultDoctorDeps();
+  }
 
   it('degrades gracefully to an empty-trade gate summary when offline', async () => {
     vi.stubGlobal(
@@ -216,7 +223,7 @@ describe('defaultDoctorDeps (real implementations)', () => {
         throw new Error('network down');
       }),
     );
-    const deps = defaultDoctorDeps();
+    const deps = await getDefaultDoctorDeps();
     const summary = await deps.loadGateSummary();
     expect(summary.hasPaperData).toBe(false);
     expect(summary.totalGates).toBe(10);
@@ -224,17 +231,62 @@ describe('defaultDoctorDeps (real implementations)', () => {
   });
 
   it('reads the repository quality baseline version', async () => {
-    const deps = defaultDoctorDeps();
+    const deps = await getDefaultDoctorDeps();
     const version = await deps.readQualityBaselineVersion();
     expect(version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  it('exposes all five dependency slots', () => {
-    const deps = defaultDoctorDeps();
+  it('exposes all five dependency slots', async () => {
+    const deps = await getDefaultDoctorDeps();
     expect(typeof deps.getExecutionMode).toBe('function');
     expect(typeof deps.countOhlcvCandles).toBe('function');
     expect(typeof deps.inspectLedger).toBe('function');
     expect(typeof deps.loadGateSummary).toBe('function');
     expect(typeof deps.readQualityBaselineVersion).toBe('function');
+  });
+});
+
+// ── PAPER_TRADES_API env override ─────────────────────────────────────────────
+// The URL is read at module load time (same pattern as check-gates.ts), so
+// each case must import the module fresh AFTER stubbing the env var.
+// The top-level `import { defaultDoctorDeps } from '../system-doctor-defaults'`
+// is already loaded; vi.resetModules() clears the cache but the binding in
+// the test module still points to the old module instance. We must NOT import
+// at top level for these tests — use dynamic import inside the test case.
+
+describe('PAPER_TRADES_API env override', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  async function captureFetchUrl(): Promise<string | undefined> {
+    let capturedUrl: string | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string | URL) => {
+        capturedUrl = String(url);
+        throw new Error('network down');
+      }),
+    );
+    // Fresh import AFTER stubEnv so the module sees the new env value
+    const mod = await import('../system-doctor-defaults');
+    const deps = mod.defaultDoctorDeps();
+    await deps.loadGateSummary();
+    return capturedUrl;
+  }
+
+  it('honors the PAPER_TRADES_API env override', async () => {
+    vi.stubEnv('PAPER_TRADES_API', 'https://example.test/paper-trades');
+    const url = await captureFetchUrl();
+    expect(url).toBe('https://example.test/paper-trades');
+  });
+
+  it('falls back to the default cashclaw URL when PAPER_TRADES_API is unset', async () => {
+    // Unset the env var completely (undefined), not empty string
+    vi.stubEnv('PAPER_TRADES_API', undefined);
+    const url = await captureFetchUrl();
+    expect(url).toBe('https://api.cashclaw.cc/api/v1/paper-trades');
   });
 });
