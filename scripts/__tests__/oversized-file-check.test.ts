@@ -153,9 +153,13 @@ describe('gate script integration (check 3c)', () => {
     // Run the gate against a copy of the repo tree with the stripped baseline,
     // so the real quality-baseline.json is never touched.
     const harness = join(tmpDir, 'gate-harness.mjs');
-    const modulePath = join(REPO_ROOT, 'scripts', 'oversized-file-check.mjs');
+    const scriptsDir = join(REPO_ROOT, 'scripts');
+    // Rewrite ALL relative module imports to absolute paths — the harness
+    // runs from tmpDir, so every sibling import must resolve explicitly.
     const gateSource = readFileSync(GATE_SCRIPT, 'utf-8')
-      .replace("from './oversized-file-check.mjs'", `from ${JSON.stringify(modulePath)}`)
+      .replace("from './oversized-file-check.mjs'", `from ${JSON.stringify(join(scriptsDir, 'oversized-file-check.mjs'))}`)
+      .replace("from './vitest-summary-reader.mjs'", `from ${JSON.stringify(join(scriptsDir, 'vitest-summary-reader.mjs'))}`)
+      .replace("from './static-quality-checks.mjs'", `from ${JSON.stringify(join(scriptsDir, 'static-quality-checks.mjs'))}`)
       .replace("const ROOT = resolve(__dirname, '..');", `const ROOT = ${JSON.stringify(REPO_ROOT)};`)
       .replace(
         "const BASELINE_PATH = resolve(ROOT, 'quality-baseline.json');",
