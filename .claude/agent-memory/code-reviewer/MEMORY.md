@@ -1,0 +1,1 @@
+- [Acceptance Artifacts Break Env Tests](project_acceptance-artifacts-break-env-tests.md) — --record writes to data/ break default-path tests; rerun full suite AFTER acceptance steps

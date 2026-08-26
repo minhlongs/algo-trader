@@ -36,6 +36,8 @@ const REPO_ROOT = process.cwd();
 const QUALITY_BASELINE_PATH = join(REPO_ROOT, 'quality-baseline.json');
 const PAPER_INITIAL_CAPITAL_USD = 10_000;
 const GATE_EVAL_TIMEOUT_MS = 15_000;
+// Same override pattern as `check-gates.ts` — env wins, default preserved.
+const PAPER_TRADES_API = process.env.PAPER_TRADES_API ?? 'https://api.cashclaw.cc/api/v1/paper-trades';
 
 interface PaperTradeRow {
   tokenId: string;
@@ -76,7 +78,7 @@ export async function inspectLedger(ledgerPath: string = DEFAULT_LEDGER_PATH): P
 /** Fetch closed paper trades; empty on any failure (offline tolerated). */
 async function fetchPaperTrades(): Promise<PaperTradeRow[]> {
   try {
-    const res = await fetch('https://api.cashclaw.cc/api/v1/paper-trades', {
+    const res = await fetch(PAPER_TRADES_API, {
       signal: AbortSignal.timeout(GATE_EVAL_TIMEOUT_MS),
     });
     if (!res.ok) return [];

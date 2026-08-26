@@ -20,10 +20,10 @@ export async function handleAblation(
   opts: { json?: boolean; output?: string },
 ): Promise<void> {
   const config = loadConfigByName(experiment);
-  const { candles, source } = await loadCandlesForConfig(config);
+  const { candles, source, dataSources } = await loadCandlesForConfig(config);
 
   // Run full experiment as baseline
-  const fullResult = runExperiment({ candles, config });
+  const fullResult = runExperiment({ candles, config, dataSources });
   const fullSharpe = fullResult.metrics.test.sharpeRatio;
   const fullPnl = fullResult.metrics.test.totalPnl;
 
@@ -50,7 +50,7 @@ export async function handleAblation(
     }
 
     try {
-      const ablatedResult = runExperiment({ candles, config: ablatedConfig });
+      const ablatedResult = runExperiment({ candles, config: ablatedConfig, dataSources });
       const testSharpe = ablatedResult.metrics.test.sharpeRatio;
       const testPnl = ablatedResult.metrics.test.totalPnl;
 

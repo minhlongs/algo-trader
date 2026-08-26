@@ -4,6 +4,12 @@
 > Upstream: `https://github.com/HKUDS/Vibe-Trading` (Python, MIT). This repo is TypeScript.
 > Verdicts: KEEP = existing equivalent sufficient · PORT = upstream pattern adopted · ADAPT = subset lives under different name · REJECT = not wanted · DEFERRED = consciously postponed.
 
+## Path convention legend
+
+- **Bare paths** (e.g. `src/desk/data/binance-feed.ts`, `docs/architecture/`) are **repo-relative** — relative to the root of this repository.
+- Paths prefixed with **`agent/`** or **`frontend/`** are **upstream-relative** — they point into the Vibe-Trading upstream repo layout, not this repo.
+- A **`file:`** prefix (e.g. `file:src/...`) is tolerated as a synonym for the bare path when tooling emits it; strip the prefix to resolve repo-relative.
+
 ## License
 
 Upstream `LICENSE` verified MIT (recon B1A, quoted in full in the recon report). Concept-level reuse only; no upstream source was copied into `src/`.
@@ -42,7 +48,7 @@ Every repo path below was re-checked on disk during recon. Rows 4, 27, 28 reflec
 | 26 | Observability | (none upstream) | `src/platform/middleware/prometheus-metrics.ts` + `src/utils/sentry-init.ts` + `src/desk/core/logger.ts` | KEEP |
 | 27 | System doctor (P31) | `agent/src/preflight.py` | `src/desk/cli/system-doctor.ts` + `src/desk/cli/system-doctor-defaults.ts` (added S11, `cashclaw doctor`) | PORT |
 | 28 | Cost stress modes | (no direct analog) | `src/alpha-lab/cost-model/cost-stress.ts` (EXTREME added S11, `listStressModes()` returns 4) | PORT |
-| 29 | Final acceptance funding-rate (P32) | multi-asset engines | none — no funding/OI source in `src/desk/data/`; substitute = rsi-mean-reversion E2E | BLOCKED |
+| 29 | Final acceptance funding-rate (P32) | multi-asset engines | `src/desk/data/binance-funding-feed.ts` + `src/desk/data/funding-store.ts` + `src/db/migrations/049-funding-rates.ts` + `src/alpha-lab/configs/funding-mean-reversion-btc-8h.json` + `scripts/calibrate-funding.ts` (added S12: funding ingest → Postgres store → 8h backtest config) | PORT |
 | 30 | Frontend | `frontend/` | `dashboard/` (existing CF Pages app) | REJECT |
 | 31 | Desktop | `desktop/` | none | REJECT |
 | 32 | Channels (messaging) | `agent/src/channels/` | existing Telegram bot flows | KEEP |

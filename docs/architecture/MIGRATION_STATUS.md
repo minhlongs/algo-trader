@@ -1,9 +1,9 @@
 # MIGRATION_STATUS — per-phase state of the master command
 
-> Increment S11 · audited 2026-08-26 · machine-readable companion: `MIGRATION_LOG.json` (repo root)
+> Increment S12 · audited 2026-08-26 · machine-readable companion: `MIGRATION_LOG.json` (repo root)
 > Source of truth: `plans/reports/researcher-vibe-trading-recon-20260826.md` (34-row gap table).
 
-## Shipped increments (S1–S11)
+## Shipped increments (S1–S12)
 
 | Increment | Deliverable | Evidence (real paths) | Status |
 |---|---|---|---|
@@ -17,7 +17,8 @@
 | S8 | Research-informed prioritization | `src/alpha-lab/alpha-discovery/research-informed.ts`, `src/alpha-lab/provenance/verdict-summary.ts` | DONE |
 | S9 | Regime-aware research artifacts | `src/alpha-lab/regimes/regime-engine.ts`, `src/alpha-lab/regimes/regime-series.ts` | DONE |
 | S10 | Alpha gap-closure (E7/F2) | deploy path `scripts/deploy-cloudflare.sh`; escrow G1 carried | DONE |
-| S11 | Master command audit + gap-closure | 9 architecture docs (this dir), MCP `readOnlyHint`, `src/desk/cli/system-doctor.ts`, EXTREME stress mode | THIS INCREMENT |
+| S11 | Master command audit + gap-closure | 9 architecture docs (this dir), MCP `readOnlyHint`, `src/desk/cli/system-doctor.ts`, EXTREME stress mode | DONE |
+| S12 | Funding-rate acceptance (P32 E2E on real data) | `src/desk/data/binance-funding-feed.ts`, `src/desk/data/funding-store.ts`, `src/db/migrations/049-funding-rates.ts`, `src/alpha-lab/configs/funding-mean-reversion-btc-8h.json`, `scripts/calibrate-funding.ts` | THIS INCREMENT |
 
 ## Master-command phases vs reality (34-phase audit summary)
 
@@ -25,19 +26,20 @@ Full table: `MODULE_MAPPING.md` §"Audit 2026-08-26". Summary by verdict:
 
 | Verdict | Count | Phases |
 |---|---|---|
-| DONE / PORT | 8 | P4, P8, P10, P12, P13, P14 (S11), P16, P31 (S11) |
+| DONE / PORT | 9 | P4, P8, P10, P12, P13, P14 (S11), P16, P31 (S11), P32 (S12) |
 | COVERED (KEEP/ADAPT) | 15 | P3, P7 (partial), P9, research pipeline, swarm, market-data, portfolio, risk, attribution, persistence, security, observability, CLI, API, channels |
 | DEFERRED (standing) | 5 | factor zoo, 74-tool MCP, multi-asset engines, 40+ loaders, shadow-account reconciliation |
 | REJECTED | 4 | 90 finance skills, LLM provider routing, frontend, desktop |
-| BLOCKED | 1 | P32 funding-rate acceptance — no funding/OI data source exists |
+| BLOCKED | 0 | P32 funding-rate acceptance unblocked in S12 — real Binance Futures funding feed added |
 
-## Open escrow after S11
+## Open escrow after S12
 
 | Item | State | Reason |
 |---|---|---|
-| G1 EXTREME stress preset | CLOSED in S11 | `src/alpha-lab/cost-model/cost-stress.ts` now lists 4 modes via `listStressModes()` |
-| DERIV data source (funding/OI) | DEFERRED | `grep -rl fundingRate\|openInterest src/desk/data/` = empty; `funding-rate-arb.ts` infers from order book only |
+| G1 EXTREME stress preset | CLOSED in S11 | `src/alpha-lab/cost-model/cost-stress.ts` now lists 4 modes via `listStressModes()`; live-verified in S12 stress run (EXTREME effectiveRoundTripBps = 100) |
+| DERIV data source (funding/OI) | CLOSED in S12 | Real Binance Futures funding feed + Postgres store shipped; 4380 BTCUSDT rows (2022-08-27 → 2026-08-26), zero null provenance. P32 acceptance ran on this data with honest REJECT (see `MIGRATION_LOG.json` S12 entry) |
 | S1 doc debt | CLOSED in S11 | 9 architecture docs created; log entry corrected |
+| S12 escrows G2–G5 (plan `.orchestrate/latest/plan.md`) | CLOSED in S12 | G2 promotion-state-machine tests (20); G3 `PAPER_TRADES_API` env override in doctor; G4 MODULE_MAPPING path-convention legend; G5 robustness effective-cost column (`applyStressToBaselineConfig` folds spread, `EffectiveRT(bps)` shown) |
 
 ## Deferred items (unchanged, from MIGRATION_LOG.json)
 

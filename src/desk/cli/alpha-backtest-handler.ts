@@ -11,8 +11,8 @@ export async function handleBacktest(
   opts: { json?: boolean; output?: string },
 ): Promise<void> {
   const config = loadConfigByName(experiment);
-  const { candles, source } = await loadCandlesForConfig(config);
-  const result = runExperiment({ candles, config });
+  const { candles, source, dataSources } = await loadCandlesForConfig(config);
+  const result = runExperiment({ candles, config, dataSources });
   const baselines = runAllBaselines(
     candles,
     config.cost.feeBps,

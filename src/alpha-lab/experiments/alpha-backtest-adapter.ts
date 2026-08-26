@@ -21,6 +21,7 @@ import { classifyRegime, defaultRules } from '../regimes/regime-engine';
 import { buildFeatureVector } from '../features/feature-registry';
 import { tripleBarrierLabel, type TripleBarrierResult } from '../labeling/triple-barrier';
 import { getLatestCandles } from '../../desk/data/ohlcv-store';
+import { getFundingRates } from '../../desk/data/funding-store';
 import { logger } from '../../shared/utils/logger';
 import { generateMockCandles } from './mock-candles';
 import type { CandleLike } from '../regimes/regime-types';
@@ -37,11 +38,23 @@ export interface AlphaExperimentConfig {
   regimes?: 'all' | string[];
 }
 
+const FUNDING_BPS_OFFSET = 10_000;
+
 /**
  * Load candles for an experiment. Prefers real data from the OHLCV store;
  * falls back to mock data when no real candles exist yet (e.g. before the
  * Binance backfill has run). The fallback is clearly labelled in experiment
  * artifacts so results are never mistaken for real out-of-sample evidence.
+ *
+ * Special handling for funding-rate series: if market starts with 'BTC-FUNDING-',
+ * loads from funding_rates table and derives CandleLike[] via the transform:
+ *   timestamp = fundingTime
+ *   open = previous close (causal chain)
+ *   close = FUNDING_BPS_OFFSET + fundingRate * 10_000
+ *   high = max(open, close)
+ *   low = min(open, close)
+ *   volume = 0
+ * Source label is 'real' when loaded from DB; THROWS if table empty for this prefix.
  */
 export async function loadCandles(
   market: string,
@@ -49,7 +62,49 @@ export async function loadCandles(
   candleCount: number,
   exchange = 'binance',
 ): Promise<{ candles: CandleLike[]; source: 'real' | 'mock' }> {
-  // Try real data first (last candleCount candles from store)
+  // Funding-rate series: load from funding_rates table
+  if (market.startsWith('BTC-FUNDING-')) {
+    const symbol = market.replace('BTC-FUNDING-', '');
+    // Fetch enough funding rates; they're 8h cadence so candleCount maps directly
+    const end = new Date();
+    const start = new Date(end.getTime() - candleCount * 8 * 60 * 60 * 1000 - 86_400_000); // extra buffer
+
+    const rates = await getFundingRates(symbol, start, end, 'binance-futures');
+    if (rates.length === 0) {
+      throw new Error(`[AlphaAdapter] No funding_rates data for ${symbol} (prefix 'BTC-FUNDING-' requires real data — no mock fallback)`);
+    }
+
+    // Sort by fundingTime ascending
+    rates.sort((a, b) => a.fundingTime.getTime() - b.fundingTime.getTime());
+
+    // Take the last candleCount rates
+    const relevant = rates.slice(-candleCount);
+
+    // Transform to CandleLike[]
+    const candles: CandleLike[] = [];
+    let prevClose: number | null = null;
+
+    for (const rate of relevant) {
+      const close = FUNDING_BPS_OFFSET + rate.fundingRate * 10_000;
+      const open = prevClose ?? close; // first bar: open = close (no prior)
+      const high = Math.max(open, close);
+      const low = Math.min(open, close);
+
+      candles.push({
+        timestamp: rate.fundingTime.toISOString(),
+        open,
+        high,
+        low,
+        close,
+        volume: 0,
+      });
+      prevClose = close;
+    }
+
+    return { candles, source: 'real' };
+  }
+
+  // Standard OHLCV path
   try {
     const latest = await getLatestCandles(market, timeframe, candleCount, exchange);
     if (latest.length >= 10) {
