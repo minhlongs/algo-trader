@@ -1,31 +1,32 @@
 ---
 name: algo-trader-ci-gate-reality
-description: algo-trader CI gates 1-6 live as jobs inside ci.yml (no per-gate workflow files); repo lint debt guarantees gate-1 failure on every PR
+description: algo-trader CI gates 1-8 live as jobs inside ci.yml; gate-1 threshold raised to 501 (492 warnings) so CI is GREEN as of 2026-08-26
 metadata:
   type: project
 ---
 
-As of 2026-08-12, any PR to `algo-trader` main **fails CI lint gates for reasons unrelated to the
-PR's payload**:
+Updated 2026-08-26 (supersedes 2026-08-12/13 snapshot that claimed gate-1 fails every PR):
 
-- Gates 1–6 are **jobs inside `.github/workflows/ci.yml`** — there are no `gate-N-*.yml` workflow
-  files. Do not assert their existence without checking; two separate evaluation rounds got this wrong.
-  Full set: `gate-1-validation`, `gate-2-security`, `gate-3-quality`, `gate-4-dependency`,
-  `gate-5-deployment-smoke` (needs gates 1-4), `gate-6-paper-gate-lock`.
-- Gate 1 runs `npx eslint src/ --max-warnings 50`; `ci-cd.yml` test job runs `--max-warnings 100`.
-  Re-measured 2026-08-13: **280 warnings, 0 errors** -> both fail, exit 1, on `push` *and* `pull_request`.
-- Gate 3 (`gate-3-quality`) is the only lint that scopes to the PR: `npx eslint $CHANGED --max-warnings 0`
-  over `git diff base..head -- src/**/*.ts(x)`. **Zero** warnings tolerated on touched files.
-- Four workflows carry `push: branches: [main]` (`ci.yml`, `ci-cd.yml`, `cloudflare-deploy.yml`,
-  `deploy.yml`) and three of them deploy. Direct push to main = unreviewed production deploy.
-- CI last ran **2026-03-28 (failure)** — dormant since.
+- Gates live as **jobs inside `.github/workflows/ci.yml`** — no per-gate workflow files.
+  Full set now: `gate-1-validation`, `gate-1b-exchange-health`, `gate-2-security`,
+  `gate-3-quality`, `gate-4-dependency`, `gate-5-deployment-smoke` (main-push only),
+  `gate-6-paper-gate-lock`, `gate-7-shell-lint`, `gate-8-quality-ratchet`.
+- Gate-1 threshold raised to `npx eslint src/ --max-warnings 501` (ci.yml:32, ci-cd.yml:29);
+  measured 2026-08-26: **492 warnings, 0 errors** → gate-1 PASSES with only 9 warnings
+  of headroom. Any PR adding >9 warnings repo-wide fails gate-1.
+- Gate-3 remains PR-scoped: `npx eslint $CHANGED --max-warnings 0` — zero tolerance on
+  touched files; still the payload-caused failure class and a genuine hard stop.
+- Gate-5 runs only on push to main (`if: github.event_name == 'push' && ref == main`),
+  so PR CI lists legitimately show gates 1,1b,2,3,4,6,7,8 — gate-5 absence is correct.
+- CI verified GREEN on main 2026-08-26 (gh run list: S12 merge runs success).
+- CI installs via **pnpm** (`pnpm install --frozen-lockfile`); pnpm-lock.yaml has no
+  package version field, so package.json version bumps do not break frozen-lockfile.
+  package-lock.json also exists but is not CI-consumed (npm ci tolerates version
+  mismatch — empirically tested).
 
-**Why:** Pre-existing lint debt far exceeds the repo-wide thresholds, but nobody has hit it because
-CI has been dormant for months. Raising the thresholds would mask the debt and silently mutate a
-user-owned setting — rejected as a fix.
+**Why:** S13 plan gate needed to know whether "all CI gates green" is achievable;
+the old memory said no, reality says yes. Threshold drift is the difference.
 
-**How to apply:** When gating a ship plan, distinguish the two failure classes. Gate-1/ci-cd lint
-failure is **pre-existing debt — document and proceed**, never a stop. Gate-3 failure is
-**payload-caused — a genuine hard stop**, and it is cheap to clear because it only covers touched
-files. Any plan whose acceptance criterion reads "all gates green" is unachievable as written.
-Feature branch + PR is mandatory, not stylistic. See [[algo-trader-tooling-landmines]].
+**How to apply:** When gating ship plans, "CI green" is now an achievable acceptance
+criterion; watch the 9-warning headroom on gate-1. Gate-3 changed-file lint remains
+the payload hard stop. See [[algo-trader-tooling-landmines]].
