@@ -7,6 +7,7 @@ import { logger } from '../../shared/utils/logger';
 import type { ExperimentConfig } from '../../alpha-lab/experiments/experiment-types';
 import type { CandleLike } from '../../alpha-lab/regimes/regime-types';
 import { loadCandles } from '../../alpha-lab/experiments/alpha-backtest-adapter';
+import type { DataSourceProvenance } from '../../alpha-lab/provenance/run-card';
 
 const CONFIGS_DIR = path.resolve(__dirname, '../../alpha-lab/configs');
 
@@ -37,12 +38,31 @@ export function loadConfigByName(name: string): ExperimentConfig {
 
 export async function loadCandlesForConfig(
   config: ExperimentConfig,
-): Promise<{ candles: CandleLike[]; source: 'real' | 'mock' }> {
+): Promise<{ candles: CandleLike[]; source: 'real' | 'mock'; dataSources: DataSourceProvenance[] }> {
   const minBars = Math.ceil(
     1 / (1 - config.split.trainRatio - config.split.valRatio - config.split.testRatio + 0.01) * 100,
   );
   const candleCount = Math.max(500, minBars * 3);
-  return loadCandles(config.symbol, config.timeframe, candleCount);
+  const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
+
+  // Construct data source provenance
+  const now = new Date().toISOString();
+  const start = candles.length > 0 ? candles[0].timestamp : now;
+  const end = candles.length > 0 ? candles[candles.length - 1].timestamp : now;
+
+  const dataSources: DataSourceProvenance[] = [
+    {
+      provider: source === 'real' ? 'ohlcv-store' : 'mock',
+      symbol: config.symbol,
+      timeframe: config.timeframe,
+      start,
+      end,
+      retrievedAt: now,
+      candleCount: candles.length,
+    },
+  ];
+
+  return { candles, source, dataSources };
 }
 
 export function writeOutput(

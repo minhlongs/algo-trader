@@ -10,8 +10,8 @@ export async function handleReport(
   opts: { json?: boolean; output?: string },
 ): Promise<void> {
   const config = loadConfigByName(experiment);
-  const { candles, source } = await loadCandlesForConfig(config);
-  const result = runExperiment({ candles, config });
+  const { candles, source, dataSources } = await loadCandlesForConfig(config);
+  const result = runExperiment({ candles, config, dataSources });
 
   // Dynamic imports for evaluation pipeline (same modules run-experiment.ts uses)
   const { buildTrades } = await import('../../alpha-lab/shared/trade-builder');

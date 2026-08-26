@@ -23,6 +23,7 @@ import { loadVerdictSummary, type VerdictSummary } from './provenance/verdict-su
 import { DEFAULT_LEDGER_PATH } from './provenance/research-ledger';
 import { createDefaultRegistry } from './alpha-discovery/strategy-family-registry';
 import { prioritizeFamilies, type PrioritizedFamily } from './alpha-discovery/research-informed';
+import type { DataSourceProvenance } from './provenance/run-card';
 interface CliArgs {
   configPath?: string;
   record: boolean;
@@ -128,9 +129,27 @@ async function main(): Promise<void> {
   );
   const candleCount = Math.max(500, minBars * 3);
   const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
+
+  // Construct data source provenance
+  const now = new Date().toISOString();
+  const start = candles.length > 0 ? candles[0].timestamp : now;
+  const end = candles.length > 0 ? candles[candles.length - 1].timestamp : now;
+  const dataSources: DataSourceProvenance[] = [
+    {
+      provider: source === 'real' ? 'ohlcv-store' : 'mock',
+      symbol: config.symbol,
+      timeframe: config.timeframe,
+      start,
+      end,
+      retrievedAt: now,
+      candleCount: candles.length,
+    },
+  ];
+
   const result = runExperiment({
     candles,
     config,
+    dataSources,
     ...(record
       ? {
           runCardDir: join('data', 'runs', config.experimentId),

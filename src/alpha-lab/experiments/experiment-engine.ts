@@ -19,13 +19,18 @@ import { generateSplits } from './splitter';
 import { computeSplitMetrics } from './split-metrics';
 import { computeRegimeSeries, distinctRegimes } from '../regimes/regime-series';
 import { writeRunCard } from '../provenance/run-card';
-import type { ResultClassName } from '../provenance/run-card';
+import type { ResultClassName, DataSourceProvenance } from '../provenance/run-card';
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export interface RunExperimentInput {
   candles: CandleLike[];
   config: ExperimentConfig;
+  /**
+   * Data source provenance for the candles used in this experiment.
+   * When provided, this is written to the run card for full provenance.
+   */
+  dataSources?: DataSourceProvenance[];
   /**
    * Directory to write the provenance run card into. When set, a run card is
    * written (fail-safe) recording this experiment's config hash, result class,
@@ -182,7 +187,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
       resultClass: input.resultClass ?? 'IS',
       strategyRef: config.features.join('+') || 'experiment',
       hypothesis: config.hypothesis,
-      dataSources: [],
+      dataSources: input.dataSources ?? [],
       metrics: {
         trainSharpe: metrics.train.sharpeRatio,
         valSharpe: metrics.val.sharpeRatio,

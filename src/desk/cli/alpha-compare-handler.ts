@@ -13,11 +13,11 @@ export async function handleCompare(
   const configA = loadConfigByName(expA);
   const configB = loadConfigByName(expB);
 
-  const { candles: candlesA, source: srcA } = await loadCandlesForConfig(configA);
-  const resultA = runExperiment({ candles: candlesA, config: configA });
+  const { candles: candlesA, source: srcA, dataSources: dataSourcesA } = await loadCandlesForConfig(configA);
+  const resultA = runExperiment({ candles: candlesA, config: configA, dataSources: dataSourcesA });
 
-  const { candles: candlesB, source: srcB } = await loadCandlesForConfig(configB);
-  const resultB = runExperiment({ candles: candlesB, config: configB });
+  const { candles: candlesB, source: srcB, dataSources: dataSourcesB } = await loadCandlesForConfig(configB);
+  const resultB = runExperiment({ candles: candlesB, config: configB, dataSources: dataSourcesB });
 
   interface MetricRow {
     metric: string;

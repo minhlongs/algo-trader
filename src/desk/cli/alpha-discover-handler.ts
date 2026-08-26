@@ -33,8 +33,8 @@ export async function handleDiscover(
     if (config.symbol !== symbol || config.timeframe !== opts.tf) continue;
 
     try {
-      const { candles, source } = await loadCandlesForConfig(config);
-      const result = runExperiment({ candles, config });
+      const { candles, source, dataSources } = await loadCandlesForConfig(config);
+      const result = runExperiment({ candles, config, dataSources });
       const baselines = runAllBaselines(
         candles,
         config.cost.feeBps,
