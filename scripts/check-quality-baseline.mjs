@@ -9,10 +9,14 @@
  *   Default: --all
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  collectFileLineCounts,
+  evaluateOversizedFiles,
+} from './oversized-file-check.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -29,6 +33,43 @@ if (!existsSync(BASELINE_PATH)) {
 const baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf-8'));
 console.log(`\n  Quality Ratchet v${baseline.version}  (${baseline.created})`);
 console.log('  ' + '='.repeat(56));
+
+// ---------------------------------------------------------------------------
+// --prune-oversized-snapshot: prune-only maintenance of the violator snapshot.
+// Rewrites quality.oversizedFileBaseline keeping ONLY entries that still
+// exceed maxFileSizeLines. Can never add entries — adding debt requires a
+// deliberate manual edit (protects updatePolicy "NEVER decrease thresholds").
+// ---------------------------------------------------------------------------
+if (process.argv.includes('--prune-oversized-snapshot')) {
+  const snapshot = baseline.quality?.oversizedFileBaseline;
+  if (!snapshot || typeof snapshot.violators !== 'object' || snapshot.violators === null) {
+    console.error('ERROR: quality.oversizedFileBaseline.violators missing from baseline');
+    process.exit(1);
+  }
+  const limit = baseline.quality.maxFileSizeLines;
+  const current = collectFileLineCounts(ROOT);
+  const currentByPath = new Map(current.map((f) => [f.path, f.lines]));
+
+  const kept = {};
+  const removed = [];
+  for (const [path, baselineLines] of Object.entries(snapshot.violators)) {
+    const currentLines = currentByPath.get(path);
+    if (currentLines !== undefined && currentLines > limit) {
+      kept[path] = currentLines;
+    } else {
+      removed.push(`${path} (baseline ${baselineLines} → now ${currentLines ?? 'deleted'})`);
+    }
+  }
+
+  snapshot.violators = kept;
+  snapshot.count = Object.keys(kept).length;
+  writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + '\n');
+
+  console.log(`\n  Pruned oversized-file snapshot: ${removed.length} removed, ${snapshot.count} kept.`);
+  for (const entry of removed) console.log(`    - ${entry}`);
+  console.log('  (prune-only: no entries were added)\n');
+  process.exit(0);
+}
 
 let exitCode = 0;
 
@@ -177,16 +218,46 @@ if (runQuality) {
     record('consoleCalls', `<=${baseline.quality.maxConsoleCalls}`, 'N/A', true);
   }
 
-  // 3c. Files exceeding line limit
-  try {
-    const longFiles = execSync(
-      `find src/ -name '*.ts' -o -name '*.tsx' | xargs awk 'FNR==1{n++} END{if(n>' + baseline.quality.maxFileSizeLines + ') print FILENAME}' | wc -l`,
-      { cwd: ROOT, encoding: 'utf-8' },
-    ).trim();
-    const longCount = parseInt(longFiles, 10) || 0;
-    record('filesOverMaxLines', `<=0`, longCount, longCount === 0);
-  } catch {
-    record('filesOverMaxLines', `<=0`, 'N/A', true);
+  // 3c. Files exceeding line limit — pure Node ratchet against the frozen
+  // snapshot in quality.oversizedFileBaseline. FAILS LOUD on IO/unexpected
+  // errors (no catch→PASS for this check): any error here exits 1.
+  {
+    const snapshot = baseline.quality?.oversizedFileBaseline;
+    if (!snapshot || typeof snapshot.violators !== 'object' || snapshot.violators === null) {
+      console.error('ERROR: quality.oversizedFileBaseline.violators missing from baseline');
+      process.exit(1);
+    }
+    try {
+      const limit = baseline.quality.maxFileSizeLines;
+      const current = collectFileLineCounts(ROOT);
+      const evaluation = evaluateOversizedFiles(current, snapshot.violators, limit);
+      const overCount = current.filter((f) => f.lines > limit).length;
+
+      if (!evaluation.pass) {
+        for (const path of evaluation.newViolators) {
+          console.error(`  NEW oversized file (>${limit} lines, not in baseline): ${path}`);
+        }
+        for (const path of evaluation.grownViolators) {
+          console.error(`  GROWN oversized file (lines increased vs baseline): ${path}`);
+        }
+      }
+      if (evaluation.prunable.length > 0) {
+        console.log(
+          `  NOTE: ${evaluation.prunable.length} baseline entr${evaluation.prunable.length === 1 ? 'y' : 'ies'} prunable` +
+            ' (fixed/deleted) — run with --prune-oversized-snapshot to shrink the snapshot.',
+        );
+      }
+
+      record(
+        'filesOverMaxLines',
+        `<=${snapshot.count} new=0 grown=0`,
+        `${overCount} new=${evaluation.newViolators.length} grown=${evaluation.grownViolators.length}`,
+        evaluation.pass,
+      );
+    } catch (err) {
+      console.error('ERROR: oversized-file check failed —', err?.message ?? err);
+      process.exit(1);
+    }
   }
 
   // 3d. Banned imports
