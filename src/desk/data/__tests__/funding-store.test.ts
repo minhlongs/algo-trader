@@ -1,8 +1,11 @@
 /**
  * Funding Store Tests
  *
- * Real DB tests following existing desk data pattern — uses real Postgres
- * connection via DATABASE_URL. Tests upsert idempotency and data integrity.
+ * Real DB tests following existing desk data pattern — targets the local
+ * Postgres defaults of src/db/postgres-client.ts (DB_HOST/DB_PORT/DB_NAME env
+ * overrides). DATABASE_URL merely gates whether the suite runs: without it
+ * the whole suite is skipped (e.g. in CI, which has no Postgres).
+ * Tests upsert idempotency and data integrity.
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
@@ -32,7 +35,7 @@ function makeRate(i: number, baseTime = Date.now() - 8 * 60 * 60 * 1000 * 100): 
   };
 }
 
-describe('funding-store (real DB)', () => {
+describe.skipIf(!process.env.DATABASE_URL)('funding-store (real DB)', () => {
   const pool = getDbClient();
 
   beforeAll(async () => {
