@@ -19,7 +19,8 @@
  *   5. Return stats
  */
 
-import { storeFundingRates, type FundingRateRow, type FundingStoreStats } from '../data/funding-store';
+import { storeFundingRates } from '../data/funding-store';
+import type { FundingRateRow, FundingStoreStats } from '../data/funding-types';
 import { logger } from '../../shared/utils/logger';
 
 const BINANCE_FUNDING_API = 'https://fapi.binance.com/fapi/v1/fundingRate';

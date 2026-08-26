@@ -14,9 +14,9 @@ import {
   getFundingRates,
   getLatestFundingRates,
   getFundingRateCount,
-  validateFundingQuality,
-  type FundingRateRow,
 } from '../funding-store';
+import { validateFundingQuality } from '../funding-quality';
+import type { FundingRateRow } from '../funding-types';
 import { getDbClient } from '../../../db/postgres-client';
 
 const TEST_SYMBOL = 'TESTBTCUSDT';
