@@ -56,6 +56,12 @@ export interface DataSourceProvenance {
   candleCount: number;
   /** Optional data-version tag (e.g. store schema version). */
   dataVersion?: string;
+  /**
+   * Optional description of any transform applied to the raw series before
+   * it became candles (e.g. funding-rate → bps price conversion). Present
+   * only when a transform was applied; additive field, schema stays 1.0.0.
+   */
+  transform?: string;
 }
 
 // ── Gate Result ───────────────────────────────────────────────────────────────
@@ -199,7 +205,8 @@ export function renderMarkdown(card: RunCard): string {
       lines.push(
         `- \`${ds.provider}\` ${ds.symbol}/${ds.timeframe} ` +
         `(${ds.candleCount} candles, ${ds.start} → ${ds.end}, retrieved ${ds.retrievedAt})` +
-        (ds.dataVersion ? `, version ${ds.dataVersion}` : ''),
+        (ds.dataVersion ? `, version ${ds.dataVersion}` : '') +
+        (ds.transform ? `\n  - transform: ${ds.transform}` : ''),
       );
     }
   }

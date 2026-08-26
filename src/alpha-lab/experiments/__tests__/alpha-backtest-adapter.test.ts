@@ -9,7 +9,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadCandles } from '../alpha-backtest-adapter';
+import {
+  loadCandles,
+  buildDataSources,
+  fundingTransformDescription,
+  FUNDING_SYMBOL_PREFIX,
+} from '../alpha-backtest-adapter';
 import type { CandleLike } from '../regimes/regime-types';
 
 // Mock the funding store
@@ -202,5 +207,63 @@ describe('alpha-backtest-adapter: funding-rate path', () => {
     // Mock path used
     expect(source).toBe('mock');
     expect(candles.length).toBeGreaterThan(0);
+  });
+});
+
+describe('alpha-backtest-adapter: funding provenance (buildDataSources)', () => {
+  const fundingCandles: CandleLike[] = [
+    { timestamp: '2024-01-01T08:00:00.000Z', open: 10001, high: 10001, low: 10001, close: 10001, volume: 0 },
+    { timestamp: '2024-01-01T16:00:00.000Z', open: 10001, high: 10002, low: 9995, close: 10002, volume: 0 },
+  ];
+
+  it('labels funding series with provider funding-store (never ohlcv-store) + transform', () => {
+    const dataSources = buildDataSources('BTC-FUNDING-BTCUSDT', '8h', fundingCandles, 'real');
+
+    expect(dataSources).toHaveLength(1);
+    const ds = dataSources[0];
+    expect(ds.provider).toBe('funding-store');
+    expect(ds.provider).not.toBe('ohlcv-store');
+    expect(ds.symbol).toBe('BTC-FUNDING-BTCUSDT');
+    expect(ds.candleCount).toBe(2);
+    expect(ds.transform).toBeDefined();
+    // Transform must record the offset, prefix, and source table for reproducibility
+    expect(ds.transform).toContain('10000');
+    expect(ds.transform).toContain(FUNDING_SYMBOL_PREFIX);
+    expect(ds.transform).toContain('funding_rates');
+  });
+
+  it('transform description documents offset, prefix, source table, and causal open', () => {
+    const description = fundingTransformDescription('BTCUSDT');
+
+    expect(description).toContain('funding_rates');
+    expect(description).toContain('binance-futures');
+    expect(description).toContain(FUNDING_SYMBOL_PREFIX);
+    expect(description).toContain('10000');
+    expect(description).toContain('previous close');
+    expect(description).toContain('BTCUSDT');
+  });
+
+  it('non-funding real series keeps provider ohlcv-store with no transform', () => {
+    const candles: CandleLike[] = [
+      { timestamp: '2024-01-01T00:00:00.000Z', open: 1, high: 2, low: 1, close: 2, volume: 10 },
+    ];
+    const dataSources = buildDataSources('BTC/USDT', '1h', candles, 'real');
+
+    expect(dataSources[0].provider).toBe('ohlcv-store');
+    expect(dataSources[0].transform).toBeUndefined();
+  });
+
+  it('mock source keeps provider mock with no transform even for funding prefix', () => {
+    const dataSources = buildDataSources('BTC-FUNDING-BTCUSDT', '8h', fundingCandles, 'mock');
+
+    expect(dataSources[0].provider).toBe('mock');
+    expect(dataSources[0].transform).toBeUndefined();
+  });
+
+  it('start/end derive from first/last candle timestamps', () => {
+    const dataSources = buildDataSources('BTC-FUNDING-BTCUSDT', '8h', fundingCandles, 'real');
+
+    expect(dataSources[0].start).toBe('2024-01-01T08:00:00.000Z');
+    expect(dataSources[0].end).toBe('2024-01-01T16:00:00.000Z');
   });
 });

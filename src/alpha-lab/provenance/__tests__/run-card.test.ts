@@ -163,3 +163,59 @@ describe('renderMarkdown', () => {
     expect(renderMarkdown(card)).toContain('## Warnings');
   });
 });
+
+// ── transform provenance (additive field, schema stays 1.0.0) ────────────────
+
+describe('DataSourceProvenance.transform', () => {
+  const TRANSFORM =
+    "source table funding_rates (binance-futures); symbol prefix 'BTC-FUNDING-'; " +
+    'close_bps = 10000 + fundingRate * 10000; open = previous close (causal chain); ' +
+    'high/low = max/min(open, close); volume = 0; underlying symbol BTCUSDT';
+
+  const FUNDING_INPUT: WriteRunCardInput = {
+    ...BASE_INPUT,
+    runId: 'run-funding-001',
+    dataSources: [
+      {
+        provider: 'funding-store',
+        symbol: 'BTC-FUNDING-BTCUSDT',
+        timeframe: '8h',
+        start: '2026-01-01T00:00:00Z',
+        end: '2026-01-02T00:00:00Z',
+        retrievedAt: '2026-01-03T00:00:00Z',
+        candleCount: 3,
+        transform: TRANSFORM,
+      },
+    ],
+  };
+
+  it('survives JSON round-trip and keeps schema version 1.0.0', async () => {
+    const card = await writeRunCard(tmp, FUNDING_INPUT);
+    expect(card.schemaVersion).toBe('1.0.0');
+    expect(RUN_CARD_SCHEMA_VERSION).toBe('1.0.0');
+
+    const json = JSON.parse(
+      await (await import('node:fs/promises')).readFile(join(tmp, 'run_card.json'), 'utf8'),
+    );
+    expect(json.dataSources[0].provider).toBe('funding-store');
+    expect(json.dataSources[0].transform).toBe(TRANSFORM);
+    expect(json.dataSources[0].transform).toContain('10000');
+  });
+
+  it('renders the transform in the markdown data-source section', async () => {
+    const card = await writeRunCard(tmp, FUNDING_INPUT);
+    const md = renderMarkdown(card);
+    expect(md).toContain('transform:');
+    expect(md).toContain('funding_rates');
+    expect(md).toContain('10000');
+  });
+
+  it('omits transform for sources without one (backward compat)', async () => {
+    const card = await writeRunCard(tmp, BASE_INPUT);
+    const json = JSON.parse(
+      await (await import('node:fs/promises')).readFile(join(tmp, 'run_card.json'), 'utf8'),
+    );
+    expect(json.dataSources[0].transform).toBeUndefined();
+    expect(renderMarkdown(card)).not.toContain('transform:');
+  });
+});
