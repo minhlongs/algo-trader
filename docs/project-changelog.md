@@ -1,5 +1,19 @@
 # Project Changelog - Algo Trader
 
+## [3.1.29] - 2026-08-27 — Oversized-file debt burn-down, tranche 2 (S16)
+
+### Changed
+- **Next 5 oversized-file violators split into ≤200-LOC modules** behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 298 → 293 (5 entries removed, none added).
+  - `src/desk/execution/bench-http2.ts` 398 → 185: extracted `bench-http2-adapter.ts` (87 LOC), `bench-http2-mock.ts` (93 LOC), `bench-http2-stats.ts` (70 LOC); entry keeps orchestration + facade re-exports.
+  - `src/desk/market-data/gap-detector.ts` 392 → 171: split into `gap-detector-types.ts` (49 LOC), `gap-detector-state.ts` (181 LOC), `gap-detector-metrics.ts` (62 LOC); facade keeps the public detection API.
+  - `src/desk/market-data/sla-tracker.ts` 394 → 197: split into `sla-tracker-types.ts` (57 LOC), `sla-tracker-state.ts` (63 LOC), `sla-tracker-scoring.ts` (109 LOC), `sla-tracker-metrics.ts` (32 LOC); facade keeps the tracker entry points.
+  - `src/desk/arbitrage/trading-loop.ts` 389 → 200: split into `trading-loop-types.ts` (76 LOC), `trading-loop-latency.ts` (31 LOC), `trading-loop-executor.ts` (111 LOC); facade keeps the loop orchestration.
+  - `src/platform/billing/usage-metering.ts` 396 → 198: split into `usage-metering-types.ts` (55 LOC), `usage-metering-keys.ts` (56 LOC), `usage-metering-sync.ts` (64 LOC), `usage-metering-tracking.ts` (132 LOC), `usage-metering-analytics.ts` (128 LOC); facade keeps the metering API.
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0; full suite 7239 passed + 11 skipped (DB-gated by design); quality ratchet `--quality` 4/4 PASS and `--all` 11/11 PASS (filesOverMaxLines 293 new=0 grown=0).
+- `--prune-oversized-snapshot` removed exactly 5 entries (298 → 293), no entries added. Baseline diff = −5 entries only.
+
 ## [3.1.28] - 2026-08-26 — Oversized-file debt burn-down, tranche 1 (S16)
 
 ### Changed

@@ -346,6 +346,49 @@
         "artifact": "baseline diff = -5 entries only (backtest-runner 529, kelly-vs-fixed.backtest 436, websocket-client 405, negative-risk-scanner 403, referral-payout 403); kelly-vs-fixed deterministic stdout diff empty before/after"
       },
       "prUrl": "https://github.com/minhlongs/algo-trader/pull/47"
+    },
+    {
+      "phase": "S16-oversized-debt-tranche2",
+      "status": "done",
+      "date": "2026-08-27",
+      "targetFiles": [
+        "src/desk/execution/bench-http2.ts",
+        "src/desk/execution/bench-http2-adapter.ts",
+        "src/desk/execution/bench-http2-mock.ts",
+        "src/desk/execution/bench-http2-stats.ts",
+        "src/desk/market-data/gap-detector.ts",
+        "src/desk/market-data/gap-detector-types.ts",
+        "src/desk/market-data/gap-detector-state.ts",
+        "src/desk/market-data/gap-detector-metrics.ts",
+        "src/desk/market-data/sla-tracker.ts",
+        "src/desk/market-data/sla-tracker-types.ts",
+        "src/desk/market-data/sla-tracker-state.ts",
+        "src/desk/market-data/sla-tracker-scoring.ts",
+        "src/desk/market-data/sla-tracker-metrics.ts",
+        "src/desk/arbitrage/trading-loop.ts",
+        "src/desk/arbitrage/trading-loop-types.ts",
+        "src/desk/arbitrage/trading-loop-latency.ts",
+        "src/desk/arbitrage/trading-loop-executor.ts",
+        "src/platform/billing/usage-metering.ts",
+        "src/platform/billing/usage-metering-types.ts",
+        "src/platform/billing/usage-metering-keys.ts",
+        "src/platform/billing/usage-metering-sync.ts",
+        "src/platform/billing/usage-metering-tracking.ts",
+        "src/platform/billing/usage-metering-analytics.ts",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md"
+      ],
+      "note": "Second tranche of the oversized-file debt burn-down: split the next 5 non-test violators into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline 298 -> 293 (5 entries removed, none added). (1) bench-http2.ts 398 -> 185: extracted bench-http2-adapter.ts (87 LOC), bench-http2-mock.ts (93 LOC), bench-http2-stats.ts (70 LOC); entry keeps orchestration + facade re-exports. (2) gap-detector.ts 392 -> 171: split into gap-detector-types.ts (49 LOC), gap-detector-state.ts (181 LOC), gap-detector-metrics.ts (62 LOC); facade keeps the public detection API. (3) sla-tracker.ts 394 -> 197: split into sla-tracker-types.ts (57 LOC), sla-tracker-state.ts (63 LOC), sla-tracker-scoring.ts (109 LOC), sla-tracker-metrics.ts (32 LOC); facade keeps the tracker entry points. (4) trading-loop.ts 389 -> 200: split into trading-loop-types.ts (76 LOC), trading-loop-latency.ts (31 LOC), trading-loop-executor.ts (111 LOC); facade keeps the loop orchestration. (5) usage-metering.ts 396 -> 198: split into usage-metering-types.ts (55 LOC), usage-metering-keys.ts (56 LOC), usage-metering-sync.ts (64 LOC), usage-metering-tracking.ts (132 LOC), usage-metering-analytics.ts (128 LOC); facade keeps the metering API. Zero behavior change across all 5; all importers compile unmodified (typecheck proves). Version 3.1.28 -> 3.1.29.",
+      "evidence": {
+        "tests": "full suite 7239 passed + 11 skipped (7250 total) — identical to pre-split baseline",
+        "prUrl": null,
+        "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS and --all 11/11 PASS (filesOverMaxLines 293 new=0 grown=0); --prune-oversized-snapshot removed exactly 5 entries (298 -> 293), no entries added",
+        "artifact": "baseline diff = -5 entries only (bench-http2 398, gap-detector 392, sla-tracker 394, trading-loop 389, usage-metering 396)"
+      },
+      "prUrl": null
     }
   ],
   "deferred": [
