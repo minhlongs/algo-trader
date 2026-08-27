@@ -1,80 +1,32 @@
 // SPDX-License-Identifier: MIT
 /**
- * SLA Tracker
- * Tracks provider Service Level Agreement metrics across multiple time windows
+ * SLA Tracker (facade)
+ * Tracks provider Service Level Agreement metrics across multiple time windows.
+ * Split modules: sla-tracker-types.ts, sla-tracker-scoring.ts,
+ * sla-tracker-state.ts, sla-tracker-metrics.ts (S16 tranche 2).
  */
 
 import type { MarketDataSource } from './types';
-import {
-  setProviderHealthScore,
-  setProviderAvailability,
-  setProviderErrorRate,
-  recordSlaCompliance,
-} from '../../platform/middleware/prometheus-metrics';
+import { setProviderHealthScore } from '../../platform/middleware/prometheus-metrics';
+import type {
+  SlaTrackerConfig,
+  WindowMetrics,
+  SlaWindowReport,
+  SlaReport,
+} from './sla-tracker-types';
+import { buildWindowReport, calculateHealthScore } from './sla-tracker-scoring';
+import { ensureProvider, getOrCreateWindow } from './sla-tracker-state';
+import { updateProviderMetrics } from './sla-tracker-metrics';
+
+export type { SlaTrackerConfig, SlaWindowReport, SlaReport } from './sla-tracker-types';
 
 /**
- * SLA configuration
- */
-export interface SlaTrackerConfig {
-  /** Target availability percentage (default: 99.9) */
-  targetAvailability: number;
-  /** Time windows to track in hours (default: [1, 24, 168, 720]) */
-  windows: number[];
-  /** Whether to record metrics */
-  enableMetrics: boolean;
-}
-
-/**
- * SLA window metrics aggregation
- */
-interface WindowMetrics {
-  windowHours: number;
-  startTime: number;
-  totalRequests: number;
-  failedRequests: number;
-  totalLatency: number;
-  latencySamples: number[];
-  expectedCandles: number;
-  receivedCandles: number;
-}
-
-/**
- * SLA window report
- */
-export interface SlaWindowReport {
-  windowHours: number;
-  availability: number;
-  errorRate: number;
-  avgLatency: number;
-  latencyPercentiles: { p50: number; p95: number; p99: number };
-  completeness: number;
-  totalRequests: number;
-  failedRequests: number;
-}
-
-/**
- * SLA report
- */
-export interface SlaReport {
-  provider: MarketDataSource;
-  windows: Record<number, SlaWindowReport>;
-  healthScore: number;
-  lastUpdate: number;
-}
-
-/**
- * SLA Tracker
- *
- * Maintains sliding windows for provider SLA tracking including:
- * - Availability (success rate)
- * - Error rate
- * - Latency percentiles
- * - Data completeness
+ * SLA Tracker — maintains sliding windows for provider SLA tracking:
+ * availability (success rate), error rate, latency percentiles, data completeness.
  */
 export class SlaTracker {
   private config: Required<SlaTrackerConfig>;
   private providerMetrics: Map<MarketDataSource, Map<number, WindowMetrics>>;
-  private readonly METRICS_UPDATE_INTERVAL = 60_000; // 1 minute
 
   constructor(config: Partial<SlaTrackerConfig> = {}) {
     this.config = {
@@ -90,16 +42,13 @@ export class SlaTracker {
    */
   recordRequest(provider: MarketDataSource, success: boolean, latencyMs: number): void {
     const now = Date.now();
-    this.ensureProvider(provider);
+    ensureProvider(this.providerMetrics, provider);
 
     for (const windowHours of this.config.windows) {
-      const windowMs = windowHours * 60 * 60 * 1000;
-      const window = this.getOrCreateWindow(provider, windowHours, now);
+      const window = getOrCreateWindow(this.providerMetrics, provider, windowHours, now);
 
       window.totalRequests++;
-      if (!success) {
-        window.failedRequests++;
-      }
+      if (!success) window.failedRequests++;
       window.totalLatency += latencyMs;
       window.latencySamples.push(latencyMs);
 
@@ -125,10 +74,10 @@ export class SlaTracker {
     // For SLA purposes, we aggregate across all symbols/timeframes
     // Individual symbol tracking would be in GapDetector
     const now = Date.now();
-    this.ensureProvider(provider);
+    ensureProvider(this.providerMetrics, provider);
 
     for (const windowHours of this.config.windows) {
-      const window = this.getOrCreateWindow(provider, windowHours, now);
+      const window = getOrCreateWindow(this.providerMetrics, provider, windowHours, now);
       window.expectedCandles += expected;
       window.receivedCandles += received;
     }
@@ -149,53 +98,10 @@ export class SlaTracker {
     const windows: Record<number, SlaWindowReport> = {};
 
     for (const [windowHours, window] of providerData) {
-      // Always report windows that have collected data, even if not fully aged
-      // This allows real-time visibility into SLA metrics
-      // const windowMs = windowHours * 60 * 60 * 1000;
-      // const age = now - window.startTime;
-      // if (age < windowMs) {
-      //   continue;
-      // }
-
-      const windowMs = windowHours * 60 * 60 * 1000;
-      const age = now - window.startTime;
-
-      const availability = window.totalRequests > 0
-        ? ((window.totalRequests - window.failedRequests) / window.totalRequests) * 100
-        : 100;
-
-      const errorRate = window.totalRequests > 0
-        ? window.failedRequests / window.totalRequests
-        : 0;
-
-      const avgLatency = window.latencySamples.length > 0
-        ? window.totalLatency / window.latencySamples.length
-        : 0;
-
-      const sortedLatency = [...window.latencySamples].sort((a, b) => a - b);
-      const latencyPercentiles = {
-        p50: this.percentile(sortedLatency, 50),
-        p95: this.percentile(sortedLatency, 95),
-        p99: this.percentile(sortedLatency, 99),
-      };
-
-      const completeness = window.expectedCandles > 0
-        ? (window.receivedCandles / window.expectedCandles) * 100
-        : 100;
-
-      windows[windowHours] = {
-        windowHours,
-        availability,
-        errorRate,
-        avgLatency,
-        latencyPercentiles,
-        completeness,
-        totalRequests: window.totalRequests,
-    failedRequests: window.failedRequests,
-      };
+      windows[windowHours] = buildWindowReport(window, windowHours, now);
     }
 
-    const healthScore = this.calculateHealthScore(provider, windows);
+    const healthScore = calculateHealthScore(windows);
     const lastUpdate = now;
 
     // Cache health score in metrics
@@ -238,7 +144,7 @@ export class SlaTracker {
     const providerData = this.providerMetrics.get(provider);
     if (providerData) {
       // Reset each window to initial state instead of deleting
-      for (const [windowHours, window] of providerData) {
+      for (const [, window] of providerData) {
         window.totalRequests = 0;
         window.failedRequests = 0;
         window.totalLatency = 0;
@@ -267,112 +173,9 @@ export class SlaTracker {
     return reports;
   }
 
-  // ============================================================================
-  // Private Helpers
-  // ============================================================================
-
-  private ensureProvider(provider: MarketDataSource): void {
-    if (!this.providerMetrics.has(provider)) {
-      this.providerMetrics.set(provider, new Map());
-    }
-  }
-
-  private getOrCreateWindow(provider: MarketDataSource, windowHours: number, now: number): WindowMetrics {
-    const providerData = this.providerMetrics.get(provider)!;
-    let window = providerData.get(windowHours);
-
-    if (!window) {
-      window = {
-        windowHours,
-        startTime: now,
-        totalRequests: 0,
-        failedRequests: 0,
-        totalLatency: 0,
-        latencySamples: [],
-        expectedCandles: 0,
-        receivedCandles: 0,
-      };
-      providerData.set(windowHours, window);
-    }
-
-    // Check if window needs to roll over
-    const windowMs = windowHours * 60 * 60 * 1000;
-    if (now - window.startTime >= windowMs) {
-      // Reset window
-      window.startTime = now;
-      window.totalRequests = 0;
-      window.failedRequests = 0;
-      window.totalLatency = 0;
-      window.latencySamples = [];
-      window.expectedCandles = 0;
-      window.receivedCandles = 0;
-    }
-
-    return window;
-  }
-
   private updateMetrics(provider: MarketDataSource): void {
     if (!this.config.enableMetrics) return;
-
-    const report = this.getSlaReport(provider);
-    if (!report) return;
-
-    // Update gauges for each window
-    for (const [windowHoursStr, window] of Object.entries(report.windows)) {
-      const windowHours = Number(windowHoursStr);
-      setProviderAvailability(provider as string, window.availability / 100);
-      setProviderErrorRate(provider as string, window.errorRate);
-      recordSlaCompliance(provider as string, window.availability >= this.config.targetAvailability);
-    }
-  }
-
-  private calculateHealthScore(provider: MarketDataSource, windows: Record<number, SlaWindowReport>): number {
-    // Weighted health score calculation
-    // Availability: 40%, Latency: 30%, Error rate: 20%, Completeness: 10%
-    let totalScore = 0;
-    let weightSum = 0;
-
-    for (const [windowHoursStr, window] of Object.entries(windows)) {
-      const windowHours = Number(windowHoursStr);
-      const weight = windowHours <= 1 ? 1.0 : windowHours <= 24 ? 0.8 : windowHours <= 168 ? 0.5 : 0.2;
-
-      // Availability score (0-100)
-      const availabilityScore = Math.min(100, window.availability);
-
-      // Latency score (inverse: lower latency = higher score)
-      // Target: <100ms p95 = 100, >1000ms = 0
-      const latencyScore = Math.max(0, 100 - (window.latencyPercentiles.p95 / 10));
-
-      // Error rate score (inverse: lower error rate = higher score)
-      const errorRateScore = Math.max(0, 100 - (window.errorRate * 10000)); // 1% error = 0 score
-
-      // Completeness score
-      const completenessScore = window.completeness;
-
-      // Weighted average
-      const windowScore =
-        availabilityScore * 0.4 +
-        latencyScore * 0.3 +
-        errorRateScore * 0.2 +
-        completenessScore * 0.1;
-
-      totalScore += windowScore * weight;
-      weightSum += weight;
-    }
-
-    return weightSum > 0 ? totalScore / weightSum : 0;
-  }
-
-  private percentile(sorted: number[], p: number): number {
-    if (sorted.length === 0) return 0;
-    const index = (p / 100) * (sorted.length - 1);
-    const lower = Math.floor(index);
-    const upper = Math.ceil(index);
-
-    if (lower === upper) {
-      return sorted[lower];
-    }
-    return sorted[lower] * (1 - (index - lower)) + sorted[upper] * (index - lower);
+    updateProviderMetrics(provider, this.config.targetAvailability, this.getSlaReport(provider));
   }
 }
 
