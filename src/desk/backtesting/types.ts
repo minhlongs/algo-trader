@@ -6,6 +6,7 @@
 
 import type { StrategyName } from '../core/types';
 import type { BaseStrategyConfig } from '../strategies/polymarket/base-polymarket-strategy';
+import type { ResultClassName } from '../../alpha-lab/provenance/run-card';
 
 // ── Configuration ──────────────────────────────────────────────────────────────
 
@@ -22,6 +23,41 @@ export interface BacktestConfig {
   days: number;
   /** Tick interval between data points in ms (default: 1h = 3_600_000) */
   tickIntervalMs?: number;
+}
+
+/**
+ * Data quality gate options for the OHLCV research path.
+ * Additive — existing BacktestConfig callers are unaffected.
+ */
+export interface DataQualityGateConfig {
+  /**
+   * Fail fast when the quality gate reports violations.
+   * Default true (research path must run on validated data);
+   * set false for warn-only live-feed debugging.
+   */
+  strict?: boolean;
+  /** Override expected candle interval (ms) for gap detection. */
+  timeframeMs?: number;
+  /** Price-jump threshold as a multiple of ATR (default 10). */
+  priceJumpAtrMultiple?: number;
+}
+
+/** BacktestConfig plus additive runner options. */
+export interface BacktestRunnerOptions extends BacktestConfig {
+  /** Data quality gate settings (OHLCV path only). */
+  dataQuality?: DataQualityGateConfig;
+  /**
+   * Directory to write a provenance run card into. When set, a run card is
+   * written (fail-safe) recording this backtest's config hash, result class,
+   * and metrics. Omit to skip provenance — useful for pure unit tests.
+   */
+  runCardDir?: string;
+  /**
+   * Result class for the run card. Defaults to 'PAPER' — callers running on
+   * real (live) data must pass 'LIVE' explicitly so the card cannot be
+   * mis-cited as paper evidence.
+   */
+  resultClass?: ResultClassName;
 }
 
 // ── Results ────────────────────────────────────────────────────────────────────

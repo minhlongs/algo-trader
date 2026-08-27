@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 303,
+      "count": 302,
       "violators": {
         "src/alpha-lab/__tests__/gate-evaluator.test.ts": 270,
         "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts": 221,
@@ -75,7 +75,6 @@
         "src/desk/arbitrage/trading-loop.ts": 389,
         "src/desk/arbitrage/types.ts": 274,
         "src/desk/arbitrage/unified-executor.ts": 220,
-        "src/desk/backtesting/backtest-runner.ts": 529,
         "src/desk/cli/__tests__/alpha-cli.test.ts": 285,
         "src/desk/cli/__tests__/system-doctor.test.ts": 292,
         "src/desk/cli/agent-dispatcher.ts": 275,

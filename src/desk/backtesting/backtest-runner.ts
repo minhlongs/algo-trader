@@ -5,6 +5,10 @@
  * and computes performance metrics. No real orders placed — trades are
  * simulated based on strategy signals.
  *
+ * Facade: orchestration lives here; order management, mock clients, data
+ * loading, and run-card provenance are split into sibling modules and
+ * re-exported below so existing importers see an identical API.
+ *
  * Usage:
  *   const runner = new BacktestRunner();
  *   const result = await runner.run({
@@ -13,169 +17,31 @@
  *     capitalUsdc: 5000,
  *     days: 30,
  *   });
- *   console.log(result.metrics);
  */
 
-import type { ClobClient, RawOrderBook } from '../polymarket/clob-client';
 import type { StrategyName } from '../core/types';
-import type { GammaClient, GammaMarket } from '../polymarket/gamma-client';
 import type { OrderManager } from '../polymarket/order-manager';
 import type { BasePolymarketStrategy, StrategyDeps } from '../strategies/polymarket/base-polymarket-strategy';
 import { getStrategy } from '../polymarket/strategy-registry';
 import { GammaHistoricalProvider } from './gamma-historical-provider';
 import { computeMetrics } from './metrics-calculator';
 import { logger } from '../../shared/utils/logger';
-import type { BacktestConfig, BacktestResult, BacktestTrade, HistoricalSnapshot } from './types';
-import { getHistoricalData, type OhlcvCandle } from '../data/ohlcv-store';
-import { runDataQualityGate, timeframeToMs } from '../data/data-quality-gate';
-import { writeRunCard } from '../../alpha-lab/provenance/run-card';
-import type { ResultClassName } from '../../alpha-lab/provenance/run-card';
+import type { BacktestResult, HistoricalSnapshot } from './types';
+import type { BacktestRunnerOptions } from './types';
+import { BacktestOrderManager } from './backtest-order-manager';
+import { createTickState, createMockClob, createHistoricalGammaClient } from './backtest-mock-factory';
+import { fetchFromOhlcvStore, type LoadedHistoricalData } from './backtest-data-loader';
+import { writeBacktestRunCard } from './backtest-run-card';
+import type { OhlcvCandle } from '../data/ohlcv-store';
 
-// ── Data quality options ─────────────────────────────────────────────────────
+// Facade re-exports — moved symbols keep their public API here.
+export type { BacktestRunnerOptions, DataQualityGateConfig } from './types';
+export { BacktestOrderManager } from './backtest-order-manager';
+export { createTickState, createMockClob, createHistoricalGammaClient } from './backtest-mock-factory';
+export type { TickState } from './backtest-mock-factory';
+export { fetchFromOhlcvStore } from './backtest-data-loader';
+export { writeBacktestRunCard } from './backtest-run-card';
 
-/**
- * Data quality gate options for the OHLCV research path.
- * Additive — existing BacktestConfig callers are unaffected.
- */
-export interface DataQualityGateConfig {
-  /**
-   * Fail fast when the quality gate reports violations.
-   * Default true (research path must run on validated data);
-   * set false for warn-only live-feed debugging.
-   */
-  strict?: boolean;
-  /** Override expected candle interval (ms) for gap detection. */
-  timeframeMs?: number;
-  /** Price-jump threshold as a multiple of ATR (default 10). */
-  priceJumpAtrMultiple?: number;
-}
-
-/** BacktestConfig plus additive runner options. */
-export interface BacktestRunnerOptions extends BacktestConfig {
-  /** Data quality gate settings (OHLCV path only). */
-  dataQuality?: DataQualityGateConfig;
-  /**
-   * Directory to write a provenance run card into. When set, a run card is
-   * written (fail-safe) recording this backtest's config hash, result class,
-   * and metrics. Omit to skip provenance — useful for pure unit tests.
-   */
-  runCardDir?: string;
-  /**
-   * Result class for the run card. Defaults to 'PAPER' — callers running on
-   * real (live) data must pass 'LIVE' explicitly so the card cannot be
-   * mis-cited as paper evidence.
-   */
-  resultClass?: ResultClassName;
-}
-
-// ── Mock Order Manager ─────────────────────────────────────────────────────────
-
-class BacktestOrderManager implements OrderManager {
-  trades: BacktestTrade[] = [];
-  equityCurve: Array<{ timestamp: string; equity: number }> = [];
-  private capital: number;
-  private currentEquity: number;
-  private positions = new Map<string, { size: number; avgPrice: number }>();
-
-  constructor(capital: number) {
-    this.capital = capital;
-    this.currentEquity = capital;
-  }
-
-  async placeOrder(params: {
-    tokenId: string;
-    side: 'buy' | 'sell';
-    price: string | number;
-    size: string | number;
-    orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
-  }): Promise<{ id: string }> {
-    const side = params.side === 'buy' ? 'BUY' : 'SELL';
-    const price = parseFloat(String(params.price));
-    const size = parseFloat(String(params.size));
-    const pnl = this.computePnl(params.tokenId, side, price, size);
-
-    const trade: BacktestTrade = {
-      timestamp: new Date().toISOString(),
-      tokenId: params.tokenId,
-      side,
-      price,
-      size,
-      pnl,
-    };
-    this.trades.push(trade);
-
-    if (pnl !== null) {
-      this.currentEquity += pnl;
-    }
-
-    return { id: `backtest-${this.trades.length}` };
-  }
-
-  async cancelOrder(_orderId: string): Promise<void> {
-    // No-op in backtesting
-  }
-
-  async cancelAllOrders(_tokenId?: string): Promise<void> {
-    // No-op in backtesting
-  }
-
-  async getOpenOrders(_tokenId?: string): Promise<Array<{ id: string; side: string; price: number; size: number }>> {
-    return [];
-  }
-
-  getTrades(): BacktestTrade[] {
-    return [...this.trades];
-  }
-
-  getEquityCurve(): Array<{ timestamp: string; equity: number }> {
-    return [...this.equityCurve];
-  }
-
-  getCurrentEquity(): number {
-    return this.currentEquity;
-  }
-
-  private computePnl(
-    tokenId: string,
-    side: 'BUY' | 'SELL',
-    price: number,
-    size: number,
-  ): number | null {
-    const existing = this.positions.get(tokenId);
-    if (side === 'BUY') {
-      // Opening or adding to position
-      if (existing) {
-        const newSize = existing.size + size;
-        const newAvgPrice =
-          (existing.avgPrice * existing.size + price * size) / newSize;
-        this.positions.set(tokenId, { size: newSize, avgPrice: newAvgPrice });
-      } else {
-        this.positions.set(tokenId, { size, avgPrice: price });
-      }
-      return null; // Unrealized until sold
-    } else {
-      // SELL — closing or reducing
-      if (!existing || existing.size <= 0) {
-        // Short entry or no position — treat as opening short
-        this.positions.set(tokenId, { size: -size, avgPrice: price });
-        return null;
-      }
-      const closeSize = Math.min(size, existing.size);
-      const pnl = closeSize * (price - existing.avgPrice);
-      const remaining = existing.size - closeSize;
-      if (remaining <= 0) {
-        this.positions.delete(tokenId);
-      } else {
-        this.positions.set(tokenId, { size: remaining, avgPrice: existing.avgPrice });
-      }
-      return pnl;
-    }
-  }
-}
-
-// ── Runner ─────────────────────────────────────────────────────────────────────
-
- 
 type StrategyConstructor = new (
   deps: StrategyDeps,
   config: Record<string, unknown>,
@@ -188,7 +54,6 @@ export class BacktestRunner {
   async run(config: BacktestRunnerOptions): Promise<BacktestResult> {
     const startedAt = new Date().toISOString();
     const startMs = Date.now();
-    const end = new Date(startMs + config.days * 24 * 60 * 60 * 1000);
     const warnings: string[] = [];
 
     // Look up strategy
@@ -201,10 +66,13 @@ export class BacktestRunner {
     const ohlcvMarket = (config as unknown as Record<string, unknown>).ohlcvMarket as string | undefined;
     const ohlcvTimeframe = (config as unknown as Record<string, unknown>).ohlcvTimeframe as string | undefined;
     let snapshots: HistoricalSnapshot[];
+    let ohlcvCandles: OhlcvCandle[] = [];
     if (ohlcvMarket && ohlcvTimeframe) {
-      snapshots = await this.fetchFromOhlcvStore(
-        ohlcvMarket, ohlcvTimeframe, config.days, config.dataQuality, warnings,
+      const loaded: LoadedHistoricalData = await fetchFromOhlcvStore(
+        this.historicalProvider, ohlcvMarket, ohlcvTimeframe, config.days, config.dataQuality, warnings,
       );
+      snapshots = loaded.snapshots;
+      ohlcvCandles = loaded.candles;
     } else {
       snapshots = await this.historicalProvider.fetchHistoricalSnapshots(
         config.days, config.tickIntervalMs ?? 3_600_000,
@@ -219,9 +87,9 @@ export class BacktestRunner {
     // GammaClient (getTrending) and ClobClient (getOrderBook) read the
     // same current-snapshot data without desynchronizing.
     const orderManager = new BacktestOrderManager(config.capitalUsdc);
-    const tickState = this.createTickState(snapshots);
-    const gammaClient = this.createHistoricalGammaClient(tickState);
-    const mockClob = this.createMockClob(tickState);
+    const tickState = createTickState(snapshots);
+    const gammaClient = createHistoricalGammaClient(tickState);
+    const mockClob = createMockClob(tickState);
 
     const deps: StrategyDeps = {
       clob: mockClob,
@@ -274,47 +142,7 @@ export class BacktestRunner {
       sharpe: metrics.sharpeRatio,
     });
 
-    // Provenance: write a run card if a directory was provided. Fire-and-forget —
-    // writeRunCard is fail-safe (never throws), so a write failure cannot lose
-    // the result. The card records the config hash + result class for auditability.
-    if (config.runCardDir) {
-      void writeRunCard(config.runCardDir, {
-        runId: `${config.strategy}-${startedAt}`,
-        resultClass: config.resultClass ?? 'PAPER',
-        strategyRef: config.strategy,
-        dataSources: ohlcvMarket && ohlcvTimeframe
-          ? [{
-              provider: 'ohlcv-store',
-              symbol: ohlcvMarket,
-              timeframe: ohlcvTimeframe,
-              start: new Date(startMs).toISOString(),
-              end: end.toISOString(),
-              retrievedAt: completedAt,
-              candleCount: snapshots.length,
-            }]
-          : [{
-              provider: 'gamma',
-              symbol: config.strategy,
-              timeframe: String(config.tickIntervalMs ?? 3_600_000),
-              start: new Date(startMs).toISOString(),
-              end: end.toISOString(),
-              retrievedAt: completedAt,
-              candleCount: snapshots.length,
-            }],
-        metrics: {
-          totalPnl: metrics.totalPnl,
-          sharpeRatio: metrics.sharpeRatio,
-          maxDrawdown: metrics.maxDrawdown,
-          winRate: metrics.winRate,
-          tradeCount: metrics.totalTrades,
-          durationMs,
-        },
-        config: config as unknown as Record<string, unknown>,
-        warnings,
-      });
-    }
-
-    return {
+    const result: BacktestResult = {
       strategy: config.strategy as StrategyName,
       config,
       metrics,
@@ -325,205 +153,14 @@ export class BacktestRunner {
       durationMs,
       warnings,
     };
+
+    // Provenance: write a run card if a directory was provided (fail-safe).
+    writeBacktestRunCard(config, result, ohlcvCandles);
+
+    return result;
   }
 
   clearCache(): void {
     this.historicalProvider.clearCache();
   }
-
-  // ── Private ─────────────────────────────────────────────────────────────────
-
-  // ── Tick State ────────────────────────────────────────────────────────────
-
-  /**
-   * Shared mutable state that advances on every tick.
-   * Both gamma client and clob client read from the same current snapshot.
-   */
-  private createTickState(snapshots: HistoricalSnapshot[]) {
-    let current: HistoricalSnapshot | null = snapshots.length > 0 ? snapshots[0] : null;
-
-    function snapshotToMarkets(snapshot: HistoricalSnapshot): GammaMarket[] {
-      return snapshot.markets.map((m) => ({
-        id: m.conditionId,
-        question: m.question,
-        conditionId: m.conditionId,
-        slug: '',
-        outcomes: ['Yes', 'No'],
-        outcomePrices: [String(m.yesPrice), String(1 - m.yesPrice)],
-        volume: m.volume,
-        liquidity: m.liquidity,
-        endDate: m.endDate,
-        active: true,
-        closed: m.closed,
-        tokens: [
-          { token_id: m.yesTokenId ?? `${m.conditionId}-yes`, outcome: 'Yes', price: m.yesPrice },
-          { token_id: m.noTokenId ?? `${m.conditionId}-no`, outcome: 'No', price: 1 - m.yesPrice },
-        ],
-        yesTokenId: m.yesTokenId ?? `${m.conditionId}-yes`,
-        noTokenId: m.noTokenId ?? `${m.conditionId}-no`,
-        yesPrice: m.yesPrice,
-      }));
-    }
-
-    return {
-      /** Return GammaMarket[] for the current tick */
-      getMarkets(): GammaMarket[] {
-        if (!current) return [];
-        return snapshotToMarkets(current);
-      },
-      /** Advance to the next snapshot */
-      setCurrent(snapshot: HistoricalSnapshot): void {
-        current = snapshot;
-      },
-    };
-  }
-
-  /**
-   * Create a mock ClobClient that builds synthetic order books from the
-   * current tick state.
-   */
-  private createMockClob(tickState: ReturnType<BacktestRunner['createTickState']>): ClobClient {
-    return {
-      async getOrderBook(tokenId: string): Promise<RawOrderBook> {
-        const markets = tickState.getMarkets();
-        const market = markets.find(
-          (m) => m.yesTokenId === tokenId || m.noTokenId === tokenId,
-        );
-        if (!market) return { bids: [], asks: [], timestamp: 0 };
-
-        const isYes = market.yesTokenId === tokenId;
-        const price = isYes ? market.yesPrice : 1 - market.yesPrice;
-        const ts = Date.now();
-
-        // Build a plausible order book around the mid price
-        const spread = 0.002; // ~0.2% spread
-        const levels = 5;
-        const bids: Array<{ price: string; size: string }> = [];
-        const asks: Array<{ price: string; size: string }> = [];
-
-        for (let i = 0; i < levels; i++) {
-          const offset = (i + 1) * spread;
-          bids.push({
-            price: Math.max(0.001, price - offset).toFixed(4),
-            size: String((Math.random() * 500 + 100).toFixed(0)),
-          });
-          asks.push({
-            price: Math.min(0.999, price + offset).toFixed(4),
-            size: String((Math.random() * 500 + 100).toFixed(0)),
-          });
-        }
-
-        return { bids, asks, timestamp: ts };
-      },
-      async getPrice(tokenId: string): Promise<number> {
-        const book = await this.getOrderBook(tokenId);
-        if (book.bids.length === 0) return 0;
-        const bestBid = parseFloat(book.bids[0].price);
-        const bestAsk = parseFloat(book.asks[0].price);
-        return (bestBid + bestAsk) / 2;
-      },
-      async getMidPrice(tokenId: string): Promise<number> {
-        return this.getPrice(tokenId);
-      },
-    };
-  }
-
-  private createHistoricalGammaClient(tickState: ReturnType<BacktestRunner['createTickState']>): GammaClient {
-    return {
-      async getMarkets(): Promise<GammaMarket[]> {
-        return tickState.getMarkets();
-      },
-      async getMarket(): Promise<GammaMarket | null> { return null; },
-      async getMarketGroup(): Promise<null> { return null; },
-      async searchMarkets(): Promise<GammaMarket[]> { return []; },
-      async getTrending(_limit?: number): Promise<GammaMarket[]> {
-        const markets = tickState.getMarkets();
-        return markets.slice(0, _limit ?? 15);
-      },
-      async getEvents(): Promise<Array<{ id: string; title: string; slug: string; markets: GammaMarket[] }>> { return []; },
-    };
-  }
-
-  /**
-   * Fetch historical data from the OHLCV store instead of live Gamma API.
-   * Converts stored candles into snapshot format compatible with backtest engine.
-   *
-   * Runs the data quality gate BEFORE conversion. Strict mode (default)
-   * fails fast on any violation; non-strict mode records warnings only.
-   */
-  private async fetchFromOhlcvStore(
-    market: string,
-    timeframe: string,
-    days: number,
-    qualityConfig?: DataQualityGateConfig,
-    warnings: string[] = [],
-  ): Promise<HistoricalSnapshot[]> {
-    const end = new Date();
-    const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
-    const candles = await getHistoricalData(market, timeframe, start, end);
-
-    if (candles.length === 0) {
-      logger.warn(
-        `No OHLCV data for ${market}/${timeframe} in store, falling back to live API`,
-        'BacktestRunner',
-      );
-      return this.historicalProvider.fetchHistoricalSnapshots(days);
-    }
-
-    // ── Data quality gate (runs before any replay) ──────────────────────────
-    const strict = qualityConfig?.strict ?? true;
-    const report = runDataQualityGate(candles, {
-      timeframeMs: qualityConfig?.timeframeMs ?? timeframeToMs(timeframe),
-      priceJumpAtrMultiple: qualityConfig?.priceJumpAtrMultiple,
-    });
-
-    for (const w of report.warnings) {
-      warnings.push(`[data-quality] ${w.code}: ${w.message}`);
-    }
-
-    if (!report.passed) {
-      const summary = report.violations
-        .slice(0, 5)
-        .map((v) => `${v.code}@${v.index}`)
-        .join(', ');
-      if (strict) {
-        throw new Error(
-          `Data quality gate failed for ${market}/${timeframe}: ` +
-          `${report.violations.length} violation(s) [${summary}] — ` +
-          `backtest aborted before replay`,
-        );
-      }
-      logger.warn(
-        `Data quality gate reported ${report.violations.length} violation(s) ` +
-        `[${summary}] but strict mode is off — continuing`,
-        'BacktestRunner',
-      );
-      warnings.push(
-        `[data-quality] gate failed with ${report.violations.length} violation(s) [${summary}] — strict mode off`,
-      );
-    }
-
-    return candles.map((candle: OhlcvCandle) => ({
-      timestamp: candle.timestamp.toISOString(),
-      markets: [{
-        conditionId: market,
-        question: market,
-        slug: market,
-        outcomes: ['Yes', 'No'],
-        outcomePrices: [candle.close.toString(), (1 - candle.close).toString()],
-        volume: candle.volume,
-        liquidity: 0,
-        endDate: candle.timestamp.toISOString(),
-        active: false,
-        closed: true,
-        tokens: [
-          { token_id: 'yes', outcome: 'Yes', price: candle.close },
-          { token_id: 'no', outcome: 'No', price: 1 - candle.close },
-        ],
-        yesTokenId: 'yes',
-        yesPrice: candle.close,
-      } as unknown as GammaMarket],
-    }));
-  }
-
 }
