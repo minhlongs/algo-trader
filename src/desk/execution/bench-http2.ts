@@ -4,243 +4,30 @@
  * Compares connection pooling vs no pooling using mocked HTTP/2 sessions.
  * Measures sequential and concurrent request latency percentiles.
  *
- * Run: npx ts-node src/execution/bench-http2.ts
+ * Run: npx ts-node src/desk/execution/bench-http2.ts
  */
 
 import { performance } from 'node:perf_hooks';
 import { promises as fs } from 'node:fs';
-import { EventEmitter } from 'node:events';
 import { Http2ConnectionPool } from './http2-connection-pool';
 import { logger } from '../../shared/utils/logger';
-
-/** Mock HTTP/2 session options */
-interface MockSessionOptions {
-  [key: string]: unknown;
-}
-
-/** Mock HTTP/2 request options */
-interface MockRequestOptions {
-  [key: string]: unknown;
-}
-
-/** Mock HTTP/2 response headers */
-interface MockResponseHeaders {
-  ':status': number;
-  [key: string]: string | number;
-}
-
-/** Benchmark statistics result */
-interface BenchmarkStats {
-  min: number;
-  max: number;
-  mean: number;
-  p50: number;
-  p95: number;
-  p99: number;
-  count: number;
-}
-
-/** Benchmark comparison result */
-interface BenchmarkComparison {
-  label: string;
-  pooled: BenchmarkStats;
-  unpooled: BenchmarkStats;
-  improvement: number;
-}
-
-// ── Mock Configuration ───────────────────────────────────────────────────────
-
-const CONNECT_DELAY_MS = 2;
-const REQUEST_LATENCY_MS = 0.5;
-const POOL_MAX_CONNECTIONS = 100;
-const WARM_CONNECTIONS = 100;
-const REQUESTS_PER_TEST = 100;
-const ITERATIONS = 3;
-const TEST_URL = 'https://localhost:34567';
-
-// ── Mock HTTP/2 Session ───────────────────────────────────────────────────────
-
-class MockHttp2Session extends EventEmitter {
-  private connectResolve!: () => void;
-  public connectPromise: Promise<void>;
-  private closed = false;
-
-  constructor(_origin: string, _options?: MockSessionOptions) {
-    super();
-    this.connectPromise = new Promise(resolve => {
-      this.connectResolve = resolve;
-    });
-    setTimeout(() => {
-      this.connectResolve();
-      this.emit('connect');
-    }, CONNECT_DELAY_MS);
-  }
-
-  request(_options: MockRequestOptions): MockHttp2Stream {
-    const stream = new EventEmitter() as MockHttp2Stream;
-    this.emit('stream', stream);
-
-    this.connectPromise.then(() => {
-      setTimeout(() => {
-        if (this.closed) {
-          stream.emit('error', new Error('Session closed'));
-          return;
-        }
-        stream.emit('response', { ':status': 200 });
-        stream.emit('data', JSON.stringify({ status: 'ok' }));
-        stream.emit('end');
-      }, REQUEST_LATENCY_MS);
-    });
-
-    stream.write = (_data: Buffer) => {};
-    stream.end = () => {};
-    return stream;
-  }
-
-  close(cb?: () => void) {
-    this.closed = true;
-    if (cb) process.nextTick(cb);
-    this.emit('close');
-  }
-
-  ping(cb: (err: Error | null) => void) {
-    this.connectPromise.then(() => {
-      if (this.closed) cb(new Error('Session closed'));
-      else process.nextTick(() => cb(null));
-    });
-  }
-}
-
-/** Mock HTTP/2 stream */
-interface MockHttp2Stream extends EventEmitter {
-  write: (data: Buffer) => void;
-  end: () => void;
-}
-
-// ── Simple HTTP/2 Adapter ─────────────────────────────────────────────────────
-
-class SimpleHttp2Adapter {
-  private readonly baseUrl: string;
-  private readonly http2Pool: Http2ConnectionPool | null;
-  private readonly usePool: boolean;
-
-  constructor(baseUrl: string, usePool: boolean, pool?: Http2ConnectionPool) {
-    this.baseUrl = baseUrl;
-    this.usePool = usePool;
-    this.http2Pool = pool || null;
-  }
-
-  async request(): Promise<void> {
-    const url = `${this.baseUrl}/test`;
-
-    if (this.usePool && this.http2Pool) {
-      const session = await this.http2Pool.getSession(url);
-      try {
-        await this.makeRequest(session as unknown as MockHttp2Session);
-      } finally {
-        this.http2Pool.releaseSession(url, session);
-      }
-    } else {
-      const session = await this.createDirectSession(url);
-      try {
-        await this.makeRequest(session);
-      } finally {
-        session.close();
-      }
-    }
-  }
-
-  private async makeRequest(session: MockHttp2Session): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const reqStream = session.request({
-        ':method': 'GET',
-        ':path': '/test',
-      });
-
-      let data = '';
-
-      reqStream.on('response', (headers: MockResponseHeaders) => {
-        const status = headers[':status'] as number;
-        if (status < 200 || status >= 300) {
-          reject(new Error(`HTTP ${status}`));
-          return;
-        }
-      });
-
-      reqStream.on('data', (chunk: Buffer) => {
-        data += chunk.toString();
-      });
-
-      reqStream.on('end', () => {
-        try {
-          JSON.parse(data);
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      });
-
-      reqStream.on('error', reject);
-      reqStream.end();
-    });
-  }
-
-  private async createDirectSession(url: string): Promise<MockHttp2Session> {
-    const origin = this.extractOrigin(url);
-    return new MockHttp2Session(origin);
-  }
-
-  private extractOrigin(url: string): string {
-    const urlObj = new URL(url);
-    const port = urlObj.port || (urlObj.protocol === 'https:' ? '443' : '80');
-    return `${urlObj.protocol}//${urlObj.hostname}:${port}`;
-  }
-}
-
-// ── Statistics ────────────────────────────────────────────────────────────────
-
-function calculatePercentiles(data: number[], p: number): number {
-  const sorted = [...data].sort((a, b) => a - b);
-  const index = (p / 100) * (sorted.length - 1);
-  const lower = Math.floor(index);
-  const upper = Math.ceil(index);
-  const weight = index - lower;
-  if (upper >= sorted.length) return sorted[lower];
-  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
-}
-
-function calculateStats(latencies: number[]): BenchmarkStats {
-  const mean = latencies.reduce((a, b) => a + b, 0) / latencies.length;
-  const min = Math.min(...latencies);
-  const max = Math.max(...latencies);
-  const p50 = calculatePercentiles(latencies, 50);
-  const p95 = calculatePercentiles(latencies, 95);
-  const p99 = calculatePercentiles(latencies, 99);
-  return { p50, p95, p99, mean, min, max, count: latencies.length };
-}
-
-function averageStats(statsArray: BenchmarkStats[]): BenchmarkStats {
-  const avg = (field: keyof BenchmarkStats) =>
-    statsArray.reduce((sum, s) => sum + (s[field] as number), 0) / statsArray.length;
-  return {
-    p50: avg('p50'),
-    p95: avg('p95'),
-    p99: avg('p99'),
-    mean: avg('mean'),
-    min: avg('min'),
-    max: avg('max'),
-    count: statsArray[0].count,
-  };
-}
-
-function calculateImprovement(baseline: BenchmarkStats, pooled: BenchmarkStats): { p50: number; p99: number; mean: number } {
-  const pct = (base: number, newVal: number) => ((base - newVal) / base) * 100;
-  return {
-    p50: pct(baseline.p50, pooled.p50),
-    p99: pct(baseline.p99, pooled.p99),
-    mean: pct(baseline.mean, pooled.mean),
-  };
-}
+import {
+  CONNECT_DELAY_MS,
+  ITERATIONS,
+  POOL_MAX_CONNECTIONS,
+  REQUEST_LATENCY_MS,
+  REQUESTS_PER_TEST,
+  TEST_URL,
+  WARM_CONNECTIONS,
+  MockHttp2Session,
+} from './bench-http2-mock';
+import {
+  BenchmarkStats,
+  averageStats,
+  calculateImprovement,
+  calculateStats,
+} from './bench-http2-stats';
+import { SimpleHttp2Adapter } from './bench-http2-adapter';
 
 // ── Benchmark Runners ─────────────────────────────────────────────────────────
 

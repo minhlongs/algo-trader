@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 298,
+      "count": 293,
       "violators": {
         "src/alpha-lab/__tests__/gate-evaluator.test.ts": 270,
         "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts": 221,
@@ -72,7 +72,6 @@
         "src/desk/arbitrage/cross-platform-arb-detector.ts": 217,
         "src/desk/arbitrage/regime-detector.ts": 232,
         "src/desk/arbitrage/spread-detector.ts": 386,
-        "src/desk/arbitrage/trading-loop.ts": 389,
         "src/desk/arbitrage/types.ts": 274,
         "src/desk/arbitrage/unified-executor.ts": 220,
         "src/desk/cli/__tests__/alpha-cli.test.ts": 285,
@@ -91,7 +90,6 @@
         "src/desk/execution/__tests__/gas-batch-optimizer.test.ts": 380,
         "src/desk/execution/__tests__/paper-executor.test.ts": 350,
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
-        "src/desk/execution/bench-http2.ts": 398,
         "src/desk/execution/distributed-nonce-manager.ts": 201,
         "src/desk/execution/dry-run-executor.ts": 249,
         "src/desk/execution/dry-run-position-tracker.ts": 232,
@@ -125,10 +123,8 @@
         "src/desk/jobs/auto-marketing-daemon.ts": 212,
         "src/desk/market-data/__tests__/gap-detector.test.ts": 222,
         "src/desk/market-data/__tests__/provider-failover.test.ts": 213,
-        "src/desk/market-data/gap-detector.ts": 392,
         "src/desk/market-data/provider-failover.ts": 353,
         "src/desk/market-data/quality-monitoring-integration.ts": 333,
-        "src/desk/market-data/sla-tracker.ts": 394,
         "src/desk/markets/dex/jupiter-price-adapter.ts": 241,
         "src/desk/markets/dex/uniswap-v3-adapter.ts": 250,
         "src/desk/ml/gru/gru-model.ts": 203,
@@ -256,7 +252,6 @@
         "src/platform/billing/payment-service.ts": 238,
         "src/platform/billing/subscription-service.ts": 342,
         "src/platform/billing/trial-drip-service.ts": 241,
-        "src/platform/billing/usage-metering.ts": 396,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
         "src/platform/db/pnl-service.ts": 239,
         "src/platform/logging/log-aggregator.ts": 351,
