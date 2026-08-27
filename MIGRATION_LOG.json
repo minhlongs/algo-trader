@@ -298,6 +298,54 @@
         "artifact": "parity proof: Node counters 117/45/0 = grep 117/45/0 on real tree (1339 files); forced-error proofs: reader missing-file throws, gate vs src-less tree exit 1 naming 'src directory not found', zero-match tree PASS 0 for all three counts"
       },
       "prUrl": null
+    },
+    {
+      "phase": "S16-oversized-debt-tranche1",
+      "status": "done",
+      "date": "2026-08-26",
+      "targetFiles": [
+        "src/desk/backtesting/backtest-runner.ts",
+        "src/desk/backtesting/backtest-order-manager.ts",
+        "src/desk/backtesting/backtest-mock-factory.ts",
+        "src/desk/backtesting/backtest-data-loader.ts",
+        "src/desk/backtesting/backtest-run-card.ts",
+        "src/desk/backtesting/types.ts",
+        "src/risk/backtests/kelly-vs-fixed.backtest.ts",
+        "src/risk/backtests/kelly-backtest-simulation.ts",
+        "src/risk/backtests/kelly-backtest-scenarios.ts",
+        "src/risk/backtests/kelly-backtest-report.ts",
+        "src/desk/feeds/websocket-client.ts",
+        "src/desk/feeds/ws-types.ts",
+        "src/desk/feeds/ws-reconnect.ts",
+        "src/desk/feeds/ws-latency-stats.ts",
+        "src/desk/feeds/ws-heartbeat.ts",
+        "src/desk/feeds/ws-force-reconnect.ts",
+        "src/desk/feeds/ws-connection.ts",
+        "src/desk/strategies/polymarket/negative-risk-scanner.ts",
+        "src/desk/strategies/polymarket/negative-risk-types.ts",
+        "src/desk/strategies/polymarket/order-book-utils.ts",
+        "src/desk/strategies/polymarket/negative-risk-exit.ts",
+        "src/desk/strategies/polymarket/negative-risk-entry.ts",
+        "src/platform/referral/referral-payout.ts",
+        "src/platform/referral/referral-payout-types.ts",
+        "src/platform/referral/payout-tables.ts",
+        "src/platform/referral/payout-calculators.ts",
+        "src/platform/referral/payout-read.ts",
+        "src/platform/referral/process-payout.ts",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md"
+      ],
+      "note": "First tranche of the oversized-file debt burn-down: split the 5 largest non-test violators into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline 303 -> 298 (5 entries removed, none added). (1) backtest-runner.ts 529 -> 166: extracted BacktestOrderManager (incl. computePnl), createTickState/createMockClob/createHistoricalGammaClient, fetchFromOhlcvStore + data-quality-gate orchestration, and run-card provenance into 4 helper modules; BacktestRunnerOptions/DataQualityGateConfig moved to ./types.ts and re-exported. (2) kelly-vs-fixed.backtest.ts 436 -> 49: split SeededRandom/Metrics/simulateTrades, scenario runs (RNG consumption preserved verbatim), and report/results-write into 3 modules; entry keeps only main() orchestration; deterministic stdout proven byte-identical before/after. (3) websocket-client.ts 405 -> 167: pure-function extraction alone left ~294 LOC, so the plan's documented escalation was invoked — stateful methods moved to 6 helper modules via circular type-only imports (import type { BaseWebSocketClient }, erased at runtime) + .call(this) delegation; virtual dispatch preserved (startHeartbeat calls this.stopHeartbeat() so okx-ws/bybit-ws overrides still run). (4) negative-risk-scanner.ts 403 -> 70: types + cooldown helpers, order-book utils, evaluateExits, scanEntries into 4 modules; facade keeps createNegativeRiskScannerTick factory building a shared ScannerRuntime closure. (5) referral-payout.ts 403 -> 152: types + PAYOUT_METHODS, ensurePayoutTables (own module, NOT pushed into the 216-LOC frozen-violator referral-payout-repository.ts), fee/id calculators, getEarnings/getPayoutHistory, and processPayout/executeTransfer into 5 modules; a structural ReferralPayoutLike interface (declared in the types module) lets helpers type their this param without a circular runtime import; pre-existing Record<string, any> casts replaced with Record<string, unknown> + explicit casts. Zero behavior change across all 5; all importers compile unmodified (typecheck proves). Version 3.1.27 -> 3.1.28.",
+      "evidence": {
+        "tests": "full suite 7239 passed + 11 skipped (7250 total), 511 files passed / 1 skipped — identical to pre-split baseline; targeted suites green (backtest-runner 7/7, negative-risk-scanner 5/5, orchestrator 32/32)",
+        "prUrl": null,
+        "gates": "npm run build exit 0; npx tsc --noEmit exit 0; quality ratchet --all 11/11 PASS (totalTests 7250, passRate 100%, anyTypes 117, consoleCalls 44, filesOverMaxLines 298 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (303 -> 298), no entries added",
+        "artifact": "baseline diff = -5 entries only (backtest-runner 529, kelly-vs-fixed.backtest 436, websocket-client 405, negative-risk-scanner 403, referral-payout 403); kelly-vs-fixed deterministic stdout diff empty before/after"
+      },
+      "prUrl": null
     }
   ],
   "deferred": [
