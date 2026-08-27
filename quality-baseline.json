@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 297,
+      "count": 296,
       "violators": {
         "src/alpha-lab/__tests__/gate-evaluator.test.ts": 270,
         "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts": 221,
@@ -124,7 +124,6 @@
         "src/desk/jobs/auto-marketing-daemon.ts": 212,
         "src/desk/market-data/__tests__/gap-detector.test.ts": 222,
         "src/desk/market-data/__tests__/provider-failover.test.ts": 213,
-        "src/desk/market-data/gap-detector.ts": 392,
         "src/desk/market-data/provider-failover.ts": 353,
         "src/desk/market-data/quality-monitoring-integration.ts": 333,
         "src/desk/market-data/sla-tracker.ts": 394,
