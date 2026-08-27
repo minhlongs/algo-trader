@@ -345,7 +345,7 @@
         "gates": "npm run build exit 0; npx tsc --noEmit exit 0; quality ratchet --all 11/11 PASS (totalTests 7250, passRate 100%, anyTypes 117, consoleCalls 44, filesOverMaxLines 298 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (303 -> 298), no entries added",
         "artifact": "baseline diff = -5 entries only (backtest-runner 529, kelly-vs-fixed.backtest 436, websocket-client 405, negative-risk-scanner 403, referral-payout 403); kelly-vs-fixed deterministic stdout diff empty before/after"
       },
-      "prUrl": null
+      "prUrl": "https://github.com/minhlongs/algo-trader/pull/47"
     }
   ],
   "deferred": [
