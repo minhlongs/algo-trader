@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 294,
+      "count": 293,
       "violators": {
         "src/alpha-lab/__tests__/gate-evaluator.test.ts": 270,
         "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts": 221,
@@ -252,7 +252,6 @@
         "src/platform/billing/payment-service.ts": 238,
         "src/platform/billing/subscription-service.ts": 342,
         "src/platform/billing/trial-drip-service.ts": 241,
-        "src/platform/billing/usage-metering.ts": 396,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
         "src/platform/db/pnl-service.ts": 239,
         "src/platform/logging/log-aggregator.ts": 351,
