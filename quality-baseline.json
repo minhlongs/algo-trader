@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 301,
+      "count": 300,
       "violators": {
         "src/alpha-lab/__tests__/gate-evaluator.test.ts": 270,
         "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts": 221,
@@ -116,7 +116,6 @@
         "src/desk/feeds/okx-ws.ts": 246,
         "src/desk/feeds/polymarket-ws-feed.ts": 218,
         "src/desk/feeds/smarkets-price-feed.ts": 238,
-        "src/desk/feeds/websocket-client.ts": 405,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
         "src/desk/intelligence/alphaear-client.ts": 234,
         "src/desk/intelligence/dual-level-reflection-engine.ts": 216,
