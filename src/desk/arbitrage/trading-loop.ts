@@ -1,62 +1,19 @@
 /**
- * Trading Loop - Core Arbitrage Engine
- * Orchestrates WebSocket feeds, spread detection, and atomic execution
- * Target latency: <500ms p95 (WS tick → detection → execution signal)
+ * Trading Loop - Core Arbitrage Engine (facade). Target latency: <500ms p95.
+ * Types: ./trading-loop-types, execution: ./trading-loop-executor,
+ * latency helpers: ./trading-loop-latency. Re-exports keep the public API stable.
  */
-
 import { FeedAggregator, UnifiedOrderBook, UnifiedTrade, UnifiedTicker } from '../feeds/feed-aggregator';
 import { SpreadDetector, ArbitrageOpportunity as SpreadOpportunity } from './spread-detector';
-import { ExecutionEngine, ArbitrageOpportunity, ArbitrageLeg, ExchangeId } from './types';
+import { ExecutionEngine } from './types';
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger';
-import crypto from 'crypto';
-import { logAudit, hashIpAddress } from '../../seed/security/audit-log';
-import type { IAuditEntry } from '../../seed/security/audit-log';
+import { executeOpportunities } from './trading-loop-executor';
+import { recordLatencySample } from './trading-loop-latency';
+import { defaultTradingLoopConfig, createInitialMetrics } from './trading-loop-types';
+import type { TradingLoopConfig, TradingLoopMetrics } from './trading-loop-types';
 
-export interface TradingLoopConfig {
-  symbols: string[];
-  exchanges: ('binance' | 'okx' | 'bybit')[];
-  minSpreadPercent: number;
-  maxLatencyMs: number;
-  enableDryRun: boolean;
-  enableLogging: boolean;
-  checkIntervalMs: number;
-  /** EC#14: Max queued opportunities before dropping (default 50) */
-  maxQueuedOpportunities?: number;
-  /** EC#15: Default arbitrage amount in USD (default 1000) */
-  defaultArbAmountUsd?: number;
-  /** EC#15: Default fee rate (default 0.001 = 0.1%) */
-  defaultFeeRate?: number;
-  /** EC#16: Arbitrage opportunity TTL in ms (default 5000) */
-  opportunityTtlMs?: number;
-}
-
-export interface TradingLoopMetrics {
-  isRunning: boolean;
-  uptimeMs: number;
-  opportunitiesFound: number;
-  opportunitiesExecuted: number;
-  totalProfit: number;
-  avgLatencyMs: number;
-  p95LatencyMs: number;
-  lastScanTime?: number;
-  errors: number;
-}
-
-export interface TradingOpportunity {
-  id: string;
-  symbol: string;
-  buyExchange: string;
-  sellExchange: string;
-  buyPrice: number;
-  sellPrice: number;
-  spread: number;
-  spreadPercent: number;
-  timestamp: number;
-  latency: number;
-  score?: number;
-  confidence?: 'high' | 'medium' | 'low';
-}
+export type { TradingLoopConfig, TradingLoopMetrics, TradingOpportunity } from './trading-loop-types';
 
 export class TradingLoop extends EventEmitter {
   private feedAggregator: FeedAggregator;
@@ -72,30 +29,12 @@ export class TradingLoop extends EventEmitter {
   private readonly MAX_QUEUED_OPPORTUNITIES = 50;
   private opportunityQueue: SpreadOpportunity[] = [];
   private startTime = 0;
-  private metrics: TradingLoopMetrics = {
-    isRunning: false,
-    uptimeMs: 0,
-    opportunitiesFound: 0,
-    opportunitiesExecuted: 0,
-    totalProfit: 0,
-    avgLatencyMs: 0,
-    p95LatencyMs: 0,
-    errors: 0,
-  };
+  private metrics: TradingLoopMetrics = createInitialMetrics();
   private latencySamples: number[] = [];
 
   constructor(config: Partial<TradingLoopConfig> = {}) {
     super();
-    this.config = {
-      symbols: config.symbols || ['BTC/USDT', 'ETH/USDT', 'SOL/USDT'],
-      exchanges: config.exchanges || ['binance', 'okx', 'bybit'],
-      minSpreadPercent: config.minSpreadPercent || 0.05,
-      maxLatencyMs: config.maxLatencyMs || 500,
-      enableDryRun: config.enableDryRun ?? true,
-      enableLogging: config.enableLogging ?? true,
-      checkIntervalMs: config.checkIntervalMs || 100,
-    };
-
+    this.config = defaultTradingLoopConfig(config);
     this.feedAggregator = new FeedAggregator();
     this.spreadDetector = new SpreadDetector({
       minSpreadPercent: this.config.minSpreadPercent,
@@ -106,7 +45,6 @@ export class TradingLoop extends EventEmitter {
     this.executionEngine = new ExecutionEngine({
       dryRun: this.config.enableDryRun,
     });
-
     this.setupFeedHandlers();
   }
 
@@ -146,33 +84,23 @@ export class TradingLoop extends EventEmitter {
     }
   }
 
-  /**
-   * Start trading loop
-   */
+  /** Start trading loop */
   async start(): Promise<void> {
     if (this.isRunning) {
       throw new Error('Trading loop already running');
     }
-
     this.log('info', 'Starting trading loop...');
     this.startTime = Date.now();
-
     try {
       // Connect to WebSocket feeds
       await this.feedAggregator.connect();
       await this.feedAggregator.subscribe(this.config.symbols);
-
       this.isRunning = true;
       this.metrics.isRunning = true;
-
       // Start spread detection scan loop
       this.startScanLoop();
-
       this.log('info', `Trading loop started: ${this.config.symbols.length} symbols, ${this.config.exchanges.length} exchanges`);
-      this.emit('started', {
-        symbols: this.config.symbols,
-        exchanges: this.config.exchanges,
-      });
+      this.emit('started', { symbols: this.config.symbols, exchanges: this.config.exchanges });
     } catch (error) {
       this.metrics.errors++;
       this.log('error', `Failed to start trading loop: ${error instanceof Error ? error.message : String(error)}`);
@@ -180,48 +108,34 @@ export class TradingLoop extends EventEmitter {
     }
   }
 
-  /**
-   * Stop trading loop
-   */
+  /** Stop trading loop */
   async stop(): Promise<void> {
     if (!this.isRunning) {
       return;
     }
-
     this.log('info', 'Stopping trading loop...');
-
     if (this.scanInterval) {
       clearInterval(this.scanInterval);
       this.scanInterval = null;
     }
-
     await this.feedAggregator.disconnect();
     this.spreadDetector.stop();
-
     this.isRunning = false;
     this.metrics.isRunning = false;
     this.metrics.uptimeMs = Date.now() - this.startTime;
-
     this.log('info', `Trading loop stopped. Uptime: ${this.metrics.uptimeMs}ms`);
     this.emit('stopped', this.getMetrics());
   }
 
-  /**
-   * Start continuous spread detection scan
-   */
+  /** Start continuous spread detection scan */
   private startScanLoop(): void {
     this.scanInterval = setInterval(async () => {
       try {
         const startTime = Date.now();
-        const opportunities = await this.spreadDetector.scan(
-          this.config.symbols,
-          this.config.exchanges
-        );
-
+        const opportunities = await this.spreadDetector.scan(this.config.symbols, this.config.exchanges);
         // Track latency
         const scanLatency = Date.now() - startTime;
         this.recordLatency(scanLatency);
-
         if (opportunities.length > 0) {
           this.metrics.opportunitiesFound += opportunities.length;
           this.handleOpportunities(opportunities);
@@ -233,133 +147,34 @@ export class TradingLoop extends EventEmitter {
     }, this.config.checkIntervalMs);
   }
 
-  /**
-   * Handle detected arbitrage opportunities
-   */
+  /** Handle detected arbitrage opportunities (delegates to trading-loop-executor) */
   private async handleOpportunities(opportunities: SpreadOpportunity[]): Promise<void> {
-    for (const opp of opportunities) {
-      this.log('opportunity', JSON.stringify({
-        id: opp.id,
-        symbol: opp.symbol,
-        spread: opp.spreadPercent.toFixed(4),
-        score: opp.score,
-        confidence: opp.confidence,
-      }));
-
-      this.emit('opportunity', opp);
-
-      // Execute if confidence is high enough
-      if (opp.confidence === 'high' || (opp.score && opp.score >= 80)) {
-        try {
-          // Convert SpreadOpportunity to ArbitrageOpportunity format
-          const legs: ArbitrageLeg[] = [
-            {
-              exchange: opp.buyExchange as ExchangeId,
-              symbol: opp.symbol,
-              side: 'buy',
-              price: opp.buyPrice,
-              amount: 1000, // Default amount
-              fee: 0.001, // Default fee
-            },
-            {
-              exchange: opp.sellExchange as ExchangeId,
-              symbol: opp.symbol,
-              side: 'sell',
-              price: opp.sellPrice,
-              amount: 1000,
-              fee: 0.001,
-            },
-          ];
-
-          const arbitrageOpp: ArbitrageOpportunity = {
-            id: opp.id,
-            type: 'cross-exchange',
-            legs,
-            expectedProfit: opp.spread,
-            expectedProfitPct: opp.spreadPercent,
-            totalFees: 0.002,
-            confidence: opp.confidence === 'high' ? 90 : opp.confidence === 'medium' ? 70 : 50,
-            detectedAt: opp.timestamp,
-            expiresAt: opp.timestamp + 5000,
-          };
-
-          const result = await this.executionEngine.execute(arbitrageOpp);
-          this.metrics.opportunitiesExecuted++;
-
-          await logAudit({
-            id: crypto.randomUUID(),
-            timestamp: new Date().toISOString(),
-            actor: 'system',
-            action: 'trade_decision',
-            resource: 'Trade',
-            result: 'success',
-            metadata: {
-              opportunityId: opp.id,
-              symbol: opp.symbol,
-              spreadPercent: opp.spreadPercent,
-              confidence: opp.confidence,
-              score: opp.score,
-            },
-            ipHash: hashIpAddress(undefined),
-            tenantId: 'system-tenant',
-          } as IAuditEntry).catch((err) => logger.error('[TradingLoop] Failed to append tenant audit log:', err));
-
-          if (result.success) {
-            this.metrics.totalProfit += result.actualProfit;
-            this.log('execution', `Executed ${opp.id}: profit $${result.actualProfit.toFixed(2)}`);
-          } else {
-            this.log('error', `Execution failed: ${result.error}`);
-          }
-
-          this.emit('execution', { opportunity: arbitrageOpp, result });
-        } catch (error) {
-          this.metrics.errors++;
-          this.log('error', `Execution error: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-    }
+    await executeOpportunities({
+      executionEngine: this.executionEngine,
+      metrics: this.metrics,
+      emit: (event, payload) => this.emit(event, payload),
+      log: (level, message) => this.log(level, message),
+    }, opportunities);
   }
 
-  /**
-   * Record latency sample for p95 calculation
-   */
+  /** Record latency sample for p95 calculation (delegates to trading-loop-latency) */
   private recordLatency(latency: number): void {
-    this.latencySamples.push(latency);
-    if (this.latencySamples.length > 1000) {
-      this.latencySamples.shift();
-    }
-
-    const avg = this.latencySamples.reduce((a, b) => a + b, 0) / this.latencySamples.length;
-    const p95 = this.medianAtPercentile(0.95);
-
+    const { avg, p95 } = recordLatencySample(this.latencySamples, latency);
     this.metrics.avgLatencyMs = avg;
     this.metrics.p95LatencyMs = p95;
   }
 
-  /** O(1) amortized running median for percentile tracking (no full sort) */
-  private medianAtPercentile(p: number): number {
-    const samples = this.latencySamples;
-    if (samples.length === 0) return 0;
-    const idx = Math.floor(samples.length * p);
-    return samples[Math.min(idx, samples.length - 1)];
-  }
-
-  /**
-   * Get current metrics
-   */
+  /** Get current metrics */
   getMetrics(): TradingLoopMetrics & { isUnderTarget: boolean; targetLatencyMs: number } {
     const spreadMetrics = this.spreadDetector.getMetrics();
     return {
-      ...this.metrics,
-      isUnderTarget: spreadMetrics.isUnderTarget,
+      ...this.metrics, isUnderTarget: spreadMetrics.isUnderTarget,
       targetLatencyMs: spreadMetrics.targetLatencyMs,
       uptimeMs: this.isRunning ? Date.now() - this.startTime : this.metrics.uptimeMs,
     };
   }
 
-  /**
-   * Log message if enabled
-   */
+  /** Log message if enabled */
   private log(level: string, message: string): void {
     if (this.config.enableLogging) {
       const timestamp = new Date().toISOString();
@@ -372,16 +187,12 @@ export class TradingLoop extends EventEmitter {
     }
   }
 
-  /**
-   * Check if loop is running
-   */
+  /** Check if loop is running */
   isLoopRunning(): boolean {
     return this.isRunning;
   }
 
-  /**
-   * Update configuration at runtime
-   */
+  /** Update configuration at runtime */
   updateConfig(config: Partial<TradingLoopConfig>): void {
     this.config = { ...this.config, ...config };
     this.log('info', `Config updated: ${Object.keys(config).join(', ')}`);
