@@ -1,5 +1,6 @@
 # Memory Index
 
+- [S16 oversized-debt tranche-1 plan](project_algo_trader_s16_oversized_tranche1_plan.md) — plan at .orchestrate/latest/plan.md; split 5 largest violators via facades, prune 303→298; anyTypes/console thresholds sit exactly at counts
 - [S12 funding-rate acceptance plan](project_algo_trader_s12_funding_plan.md) — plan at .orchestrate/latest/plan.md; fapi.binance.com fundingRate verified reachable; robustness handler spread-fold bug; derived-bps representation locked
 - [algo-trader ship pipeline toolchain gap](project_algo_trader_ship_pipeline.md) — `/mk-bootstrap`/`/ak-ship` don't exist; native PR pipeline only; check for accidental commits on local `main`; `CLAUDE.deploy.md` is canonical (not root CLAUDE.md)
 - [algo-trader LLM strategy prod gotchas](project_algo_trader_llm_strategy_prod_gotchas.md) — OmniRoute LAN-only; OMNIROUTE_URL not wired into loadLlmConfig() (crashes on custom values); deriveSource()/Gate 6/staging-D1 gaps; 5x duplicate llm-config.ts

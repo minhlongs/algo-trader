@@ -1,5 +1,19 @@
 # Project Changelog - Algo Trader
 
+## [3.1.30] - 2026-08-27 — Oversized-file debt burn-down, tranche 3 (S16)
+
+### Changed
+- **Next 5 oversized-file violators split into ≤200-LOC modules** behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 293 → 288 (5 entries removed, none added).
+  - `src/desk/arbitrage/spread-detector.ts` 386 → 200: split into `spread-detector-types.ts` (88 LOC), `spread-detector-calculations.ts` (183 LOC), `spread-detector-pricing.ts` (186 LOC), `spread-detector-persistence.ts` (63 LOC); facade keeps the `SpreadDetector` class (thin delegates) + type re-exports. One-way dependency direction (types ← calculations/pricing/persistence ← class), no cycles; `index.ts` barrel unmodified.
+  - `src/desk/intelligence/signal-validator.ts` 386 → 124: split into `signal-validator-types.ts` (53 LOC), `signal-validator-prompts.ts` (70 LOC), `signal-validator-cache.ts` (85 LOC), `signal-validator-aggregate.ts` (64 LOC), `signal-validator-gpu-mutex.ts` (36 LOC); facade keeps the public validation API. Circular import with consensus-swarm avoided via `import type` (erased at runtime).
+  - `src/desk/strategies/polymarket/base-polymarket-strategy.ts` 388 → 195: split into `base-polymarket-strategy-types.ts` (76 LOC), `base-polymarket-strategy-exits.ts` (70 LOC), `base-polymarket-strategy-price-cache.ts` (97 LOC), `base-polymarket-strategy-trades.ts` (101 LOC); facade keeps the `BasePolymarketStrategy` class with thin protected delegates + all abstract/virtual methods. Virtual dispatch preserved: `checkExits` resolves `getCustomExitCondition()` via `this` so subclass overrides (e.g. whale-tracker-v2 `recordWhaleEvents` side effect) still run; 63 importers compile unmodified.
+  - `src/desk/strategies/polymarket/inventory-skew-rebalancer.ts` 386 → 139: split into `inventory-skew-types.ts` (55 LOC), `inventory-skew-math.ts` (48 LOC), `inventory-skew-rebalance.ts` (147 LOC), `inventory-skew-concentration.ts` (79 LOC); facade keeps `createInventorySkewRebalancerTick` + re-exports pure helpers and types. Each pass captures its own `Date.now()` (concentration then rebalance) matching original inner-function semantics; loader dynamic-import path preserved.
+  - `src/desk/execution/live-order-manager.ts` 384 → 200: split into `live-order-manager-types.ts` (98 LOC), `live-order-polling.ts` (88 LOC), `live-order-manager-terminal.ts` (52 LOC), `live-order-risk-gates.ts` (90 LOC); facade keeps the order-manager orchestration. Risk-gate order in `submitSignal` preserved exactly (TTL → rate → riskGate); coupled test 8/8 pass unmodified. Structural `LiveOrderManagerCtx` interface in types module avoids a facade import cycle.
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0; full suite 7239 passed + 11 skipped (DB-gated by design); quality ratchet `--quality` 4/4 PASS (anyTypes 117/117, consoleCalls 44/45, filesOverMaxLines 288 new=0 grown=0, bannedImports 0).
+- `--prune-oversized-snapshot` removed exactly 5 entries (293 → 288), no entries added. Baseline diff = −5 entries only.
+
 ## [3.1.29] - 2026-08-27 — Oversized-file debt burn-down, tranche 2 (S16)
 
 ### Changed

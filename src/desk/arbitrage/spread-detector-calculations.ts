@@ -5,7 +5,7 @@
  * and easily unit-testable in isolation.
  */
 
-import type { ScoringModel } from './spread-detector-types';
+import type { ExchangeLatency, ScanMetrics, ScoringModel } from './spread-detector-types';
 
 // -- Fee calculation -------------------------------------------------------
 
@@ -106,6 +106,60 @@ export function computeLatencyStats(sortedSamples: number[]): {
   const p99 = sortedSamples[Math.floor(sortedSamples.length * 0.99)] ?? 0;
 
   return { avg, p95, p99 };
+}
+
+// -- Scan metrics ----------------------------------------------------------
+
+/**
+ * Update running scan metrics with a new scan duration sample.
+ * Keeps the last 1000 duration samples and recomputes percentiles.
+ */
+export function updateScanMetrics(metrics: ScanMetrics, scanDuration: number): void {
+  metrics.totalScans++;
+  metrics.scanDurations.push(scanDuration);
+
+  if (metrics.scanDurations.length > 1000) metrics.scanDurations.shift();
+
+  const sorted = [...metrics.scanDurations].sort((a, b) => a - b);
+  const stats = computeLatencyStats(sorted);
+  metrics.avgScanDurationMs = stats.avg;
+  metrics.p95ScanDurationMs = stats.p95;
+  metrics.p99ScanDurationMs = stats.p99;
+}
+
+// -- Exchange latency tracking --------------------------------------------
+
+/**
+ * Record a latency sample for an exchange and update running statistics.
+ * Keeps the last 100 samples per exchange.
+ */
+export function recordExchangeLatencySample(
+  samples: Map<string, number[]>,
+  latencies: Map<string, ExchangeLatency>,
+  exchange: string,
+  latency: number
+): void {
+  if (!samples.has(exchange)) {
+    samples.set(exchange, []);
+  }
+
+  const exchangeSamples = samples.get(exchange)!;
+  exchangeSamples.push(latency);
+
+  // Keep last 100 samples
+  if (exchangeSamples.length > 100) exchangeSamples.shift();
+
+  const sorted = [...exchangeSamples].sort((a, b) => a - b);
+  const stats = computeLatencyStats(sorted);
+
+  latencies.set(exchange, {
+    exchange,
+    avgLatency: stats.avg,
+    p95Latency: stats.p95,
+    p99Latency: stats.p99,
+    successRate: 1,
+    lastUpdate: Date.now(),
+  });
 }
 
 // -- Scoring model initializer --------------------------------------------
