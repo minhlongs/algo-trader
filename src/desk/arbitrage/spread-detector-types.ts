@@ -60,3 +60,29 @@ export interface ScoringModel {
     highConfidenceScore: number;
   };
 }
+
+/** Redis client surface used by the spread detector (ioredis Redis or Cluster). */
+export type SpreadDetectorRedis = ReturnType<typeof import('../../redis').getRedisClient>;
+
+/** Running scan metrics accumulated across spread detector scans. */
+export interface ScanMetrics {
+  totalScans: number;
+  opportunitiesFound: number;
+  avgScanDurationMs: number;
+  p95ScanDurationMs: number;
+  p99ScanDurationMs: number;
+  scanDurations: number[];
+}
+
+/** Best bid/ask result from a price fetch across exchanges. */
+export interface BestPrices {
+  bestBid: { exchange: string; price: number; latency: number } | null;
+  bestAsk: { exchange: string; price: number; latency: number } | null;
+  allPrices: Array<{ exchange: string; bid: number; ask: number; latency: number }>;
+}
+
+/** Metrics report returned by SpreadDetector.getMetrics(). */
+export interface SpreadMetricsReport extends ScanMetrics {
+  isUnderTarget: boolean;
+  targetLatencyMs: number;
+}
