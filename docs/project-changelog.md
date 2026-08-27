@@ -1,5 +1,19 @@
 # Project Changelog - Algo Trader
 
+## [3.1.28] - 2026-08-26 — Oversized-file debt burn-down, tranche 1 (S16)
+
+### Changed
+- **5 largest non-test oversized-file violators split into ≤200-LOC modules** behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 303 → 298 (5 entries removed, none added).
+  - `src/desk/backtesting/backtest-runner.ts` 529 → 166: extracted `backtest-order-manager.ts` (incl. `computePnl`), `backtest-mock-factory.ts` (`createTickState`/`createMockClob`/`createHistoricalGammaClient`), `backtest-data-loader.ts` (`fetchFromOhlcvStore` + data-quality-gate orchestration), `backtest-run-card.ts` (run-card provenance); `BacktestRunnerOptions`/`DataQualityGateConfig` moved to `./types.ts` and re-exported.
+  - `src/risk/backtests/kelly-vs-fixed.backtest.ts` 436 → 49: split into `kelly-backtest-simulation.ts` (SeededRandom/Metrics/simulateTrades), `kelly-backtest-scenarios.ts` (scenario runs, RNG consumption preserved verbatim), `kelly-backtest-report.ts` (report + results write); entry keeps only `main()` orchestration. Deterministic stdout proven byte-identical before/after.
+  - `src/desk/feeds/websocket-client.ts` 405 → 167: pure-function extraction alone left ~294 LOC, so the plan's documented escalation was invoked — stateful methods moved to 6 helper modules (`ws-types`, `ws-reconnect`, `ws-latency-stats`, `ws-heartbeat`, `ws-force-reconnect`, `ws-connection`) via circular type-only imports (`import type { BaseWebSocketClient }`, erased at runtime) + `.call(this)` delegation. Virtual dispatch preserved: `startHeartbeat` calls `this.stopHeartbeat()` so `okx-ws`/`bybit-ws` overrides still run.
+  - `src/desk/strategies/polymarket/negative-risk-scanner.ts` 403 → 70: split into `negative-risk-types.ts` (types + cooldown helpers), `order-book-utils.ts` (pure helpers), `negative-risk-exit.ts` (`evaluateExits`), `negative-risk-entry.ts` (`scanEntries`); facade keeps `createNegativeRiskScannerTick` factory building a shared `ScannerRuntime` closure.
+  - `src/platform/referral/referral-payout.ts` 403 → 152: split into `referral-payout-types.ts` (types + `PAYOUT_METHODS` + structural `ReferralPayoutLike` interface), `payout-tables.ts` (`ensurePayoutTables` — own module, NOT pushed into the 216-LOC frozen-violator `referral-payout-repository.ts`), `payout-calculators.ts` (fee/id calculators), `payout-read.ts` (`getEarnings`/`getPayoutHistory`), `process-payout.ts` (`processPayout`/`executeTransfer`). Pre-existing `Record<string, any>` casts replaced with `Record<string, unknown>` + explicit casts.
+
+### Quality gates
+- `npm run build` exit 0; `npx tsc --noEmit` exit 0; quality ratchet `--all` 11/11 PASS (totalTests 7250, passRate 100%, anyTypes 117, consoleCalls 44, filesOverMaxLines 298 new=0 grown=0, bannedImports 0).
+- `--prune-oversized-snapshot` removed exactly 5 entries (303 → 298), no entries added. Baseline diff = −5 entries only.
+
 ## [3.1.27] - 2026-08-26 — Ratchet hardening (S15)
 
 ### Fixed

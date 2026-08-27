@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 303,
+      "count": 298,
       "violators": {
         "src/alpha-lab/__tests__/gate-evaluator.test.ts": 270,
         "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts": 221,
@@ -75,7 +75,6 @@
         "src/desk/arbitrage/trading-loop.ts": 389,
         "src/desk/arbitrage/types.ts": 274,
         "src/desk/arbitrage/unified-executor.ts": 220,
-        "src/desk/backtesting/backtest-runner.ts": 529,
         "src/desk/cli/__tests__/alpha-cli.test.ts": 285,
         "src/desk/cli/__tests__/system-doctor.test.ts": 292,
         "src/desk/cli/agent-dispatcher.ts": 275,
@@ -117,7 +116,6 @@
         "src/desk/feeds/okx-ws.ts": 246,
         "src/desk/feeds/polymarket-ws-feed.ts": 218,
         "src/desk/feeds/smarkets-price-feed.ts": 238,
-        "src/desk/feeds/websocket-client.ts": 405,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
         "src/desk/intelligence/alphaear-client.ts": 234,
         "src/desk/intelligence/dual-level-reflection-engine.ts": 216,
@@ -187,7 +185,6 @@
         "src/desk/strategies/polymarket/momentum-cascade-v2.ts": 231,
         "src/desk/strategies/polymarket/momentum-exhaustion.ts": 261,
         "src/desk/strategies/polymarket/multi-leg-hedge.ts": 369,
-        "src/desk/strategies/polymarket/negative-risk-scanner.ts": 403,
         "src/desk/strategies/polymarket/orderbook-depth-ratio-v2.ts": 242,
         "src/desk/strategies/polymarket/pairs-stat-arb.ts": 253,
         "src/desk/strategies/polymarket/price-impact-estimator.ts": 315,
@@ -294,7 +291,6 @@
         "src/platform/referral/referral-analytics.ts": 234,
         "src/platform/referral/referral-crud.ts": 237,
         "src/platform/referral/referral-payout-repository.ts": 216,
-        "src/platform/referral/referral-payout.ts": 403,
         "src/platform/referral/referral-service.ts": 320,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,
@@ -319,7 +315,6 @@
         "src/redis/__tests__/pubsub.test.ts": 403,
         "src/regions/latency-monitor.ts": 235,
         "src/resilience/recovery-manager.ts": 203,
-        "src/risk/backtests/kelly-vs-fixed.backtest.ts": 436,
         "src/rollback/__tests__/rollback-evaluators.test.ts": 386,
         "src/seed/db/d1-monitoring.ts": 295,
         "src/seed/security/__tests__/audit-log.test.ts": 365,
