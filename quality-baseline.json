@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 299,
+      "count": 298,
       "violators": {
         "src/alpha-lab/__tests__/gate-evaluator.test.ts": 270,
         "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts": 221,
@@ -291,7 +291,6 @@
         "src/platform/referral/referral-analytics.ts": 234,
         "src/platform/referral/referral-crud.ts": 237,
         "src/platform/referral/referral-payout-repository.ts": 216,
-        "src/platform/referral/referral-payout.ts": 403,
         "src/platform/referral/referral-service.ts": 320,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,
