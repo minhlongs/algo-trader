@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 300,
+      "count": 299,
       "violators": {
         "src/alpha-lab/__tests__/gate-evaluator.test.ts": 270,
         "src/alpha-lab/attribution/__tests__/promotion-state-machine.test.ts": 221,
@@ -185,7 +185,6 @@
         "src/desk/strategies/polymarket/momentum-cascade-v2.ts": 231,
         "src/desk/strategies/polymarket/momentum-exhaustion.ts": 261,
         "src/desk/strategies/polymarket/multi-leg-hedge.ts": 369,
-        "src/desk/strategies/polymarket/negative-risk-scanner.ts": 403,
         "src/desk/strategies/polymarket/orderbook-depth-ratio-v2.ts": 242,
         "src/desk/strategies/polymarket/pairs-stat-arb.ts": 253,
         "src/desk/strategies/polymarket/price-impact-estimator.ts": 315,
