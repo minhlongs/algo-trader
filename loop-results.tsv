@@ -53,3 +53,6 @@ iter	timestamp	metric	delta	kept	description
 56	2026-08-29T19:28:51Z	69.48	+0.28	yes	expand order-flow-toxicity suite (91 stmts 2.19%->94.5%, 25 tests)
 57	2026-08-30T02:44:30Z	69.75	+0.27	yes	expand book-imbalance-reversal suite (87 stmts 2.29%->96.55%, 28 tests)
 58	2026-08-29T20:00:45Z	70.03	+0.28	yes	add order-executor suite (86 stmts 2.32%->98.83%, 24 tests)
+59	2026-08-30T03:35:00Z	70.27	+0.24	yes	add session-vol-sniper suite (83 stmts 2.4%->93.97%, 25 tests)
+60	2026-08-30T04:30:00Z	70.52	+0.25	yes	fix gamma-scalping assertions (symmetric->asymmetric, NO-entry->correct no-entry at mid=0.88), 27 tests
+EOF && tail -3 loop-results.tsv
