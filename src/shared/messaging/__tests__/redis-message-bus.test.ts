@@ -17,31 +17,26 @@ interface HandlerCall {
 }
 
 const { FakeRedis, instances, loggerError, loggerInfo } = vi.hoisted(() => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { EventEmitter: EE } = require('node:events');
   const instances: FakeRedis[] = [];
-  class FakeRedis {
+  class FakeRedis extends EE {
     status = 'connecting';
     url: string;
     published: Array<{ topic: string; message: string }> = [];
     subscribedChannels = new Set<string>();
     unsubscribedChannels: string[] = [];
     disconnected = false;
-    private _emitter?: EventEmitter;
 
     constructor(url?: string) {
+      super();
       this.url = url ?? '';
       this.status = 'ready';
-      const { EventEmitter } = require('node:events');
-      this._emitter = new EventEmitter();
       instances.push(this);
     }
 
-    on(event: string, listener: (...args: unknown[]) => void): this {
-      this._emitter!.on(event, listener as (...args: never[]) => void);
-      return this;
-    }
-
     emitMessage(channel: string, message: string): void {
-      this._emitter!.emit('message', channel, message);
+      this.emit('message', channel, message);
     }
 
     async publish(topic: string, message: string): Promise<number> {
