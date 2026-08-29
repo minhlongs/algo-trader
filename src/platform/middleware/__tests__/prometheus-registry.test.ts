@@ -64,6 +64,34 @@ describe('prometheus registry', () => {
   });
 });
 
+describe('setQwenKillSwitch', () => {
+  it('should set kill switch active to 1 for env source', async () => {
+    const { setQwenKillSwitch } = await import('../prometheus-registry');
+    setQwenKillSwitch('env', true);
+    const metrics = await register.getMetricsAsJSON();
+    const gauge = metrics.find((m) => m.name === 'algo_trader_qwen_kill_switch_active');
+    expect(gauge).toBeDefined();
+    const envVal = gauge!.values.find(
+      (v) => (v.labels as Record<string, string>).source === 'env',
+    );
+    expect(envVal).toBeDefined();
+    expect(envVal!.value).toBe(1);
+  });
+
+  it('should set kill switch inactive to 0 for kv source', async () => {
+    const { setQwenKillSwitch } = await import('../prometheus-registry');
+    setQwenKillSwitch('kv', false);
+    const metrics = await register.getMetricsAsJSON();
+    const gauge = metrics.find((m) => m.name === 'algo_trader_qwen_kill_switch_active');
+    expect(gauge).toBeDefined();
+    const kvVal = gauge!.values.find(
+      (v) => (v.labels as Record<string, string>).source === 'kv',
+    );
+    expect(kvVal).toBeDefined();
+    expect(kvVal!.value).toBe(0);
+  });
+});
+
 describe('qwen signal pipeline gauges', () => {
   it('qwenPaperPnlPct -- should set and get gauge value', async () => {
     qwenPaperPnlPct.set(-0.035);

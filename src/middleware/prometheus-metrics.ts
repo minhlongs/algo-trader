@@ -63,7 +63,7 @@ export {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // HTTP request counter
-const httpRequestsTotal = new client.Counter({
+export const httpRequestsTotal = new client.Counter({
  name: 'http_requests_total',
  help: 'Total HTTP requests',
  labelNames: ['method', 'path', 'status'] as const,
@@ -71,7 +71,7 @@ const httpRequestsTotal = new client.Counter({
 });
 
 // HTTP request duration histogram
-const httpRequestDuration = new client.Histogram({
+export const httpRequestDuration = new client.Histogram({
  name: 'http_request_duration_seconds',
  help: 'HTTP request duration in seconds',
  labelNames: ['method', 'path'] as const,
