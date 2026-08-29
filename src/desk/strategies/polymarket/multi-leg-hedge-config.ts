@@ -115,6 +115,13 @@ export function shouldEnterHedge(
   return deviation > 0 ? 'overpriced' : 'underpriced';
 }
 
+/** Best mid price from an order book; assumes 0 bid / 1 ask when a side is empty. */
+export function bestMid(book: { bids: { price: string }[]; asks: { price: string }[] }): number {
+  const bid = book.bids.length > 0 ? parseFloat(book.bids[0].price) : 0;
+  const ask = book.asks.length > 0 ? parseFloat(book.asks[0].price) : 1;
+  return (bid + ask) / 2;
+}
+
 // ── Dependencies ─────────────────────────────────────────────────────────────
 
 export interface MultiLegHedgeDeps {
