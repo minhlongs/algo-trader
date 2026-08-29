@@ -35,3 +35,5 @@ iter	timestamp	metric	delta	kept	description
 35	2026-08-29T19:51:52	66.22	+0.04	yes	add live-order-manager-terminal suite (14 stmts 0%->100%, 8 tests)
 36	2026-08-29T20:03:29	66.25	+0.03	yes	add performance-handler suite (14 stmts 0%->100%, 8 tests)
 37	2026-08-29T20:55:55	66.30	+0.03	yes	add regime-handler suite (14 stmts 0%->100%, 10 tests)
+38	2026-08-29T14:28:49Z	66.35	+0.03	yes	add report-handler suite (23 stmts 0%->100%, 16 tests)
+39	2026-08-29T14:28:49Z	66.39	+0.04	yes	add subscriber-activity-metrics suite (14 stmts 0%->100%, 7 tests)
