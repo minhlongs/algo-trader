@@ -43,3 +43,4 @@ iter	timestamp	metric	delta	kept	description
 46	2026-08-29T16:17:18Z	66.44	+0.00	yes	expand multi-indicator-confluence-strategy suite (113 stmts 0.9%->100%, 11 tests)
 47	2026-08-29T16:21:57Z	66.44	+0.00	yes	expand rsi-mean-reversion-strategy suite (71 stmts 1.4%->100%, 13 tests)
 48	2026-08-29T16:38:17Z	67.27	+0.19	yes	expand sma-crossover-strategy suite (61 stmts 1.6%->98.36%, 15 tests)
+49	2026-08-29T16:50:50Z	67.44	+0.17	yes	expand risk-managed-kelly-strategy suite (65 stmts 1.5%->81.53%, 15 tests)
