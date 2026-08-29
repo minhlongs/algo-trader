@@ -49,3 +49,4 @@ iter	timestamp	metric	delta	kept	description
 52	2026-08-30T00:14:40Z	68.33	+0.36	yes	expand sentiment-momentum suite (117 stmts 1.652	2026-08-29T18:15:24Z	68.33	+0.36	yes	expand sentiment-momentum suite (117 stmts 1.6%->94.87%, 32 tests)
 53	2026-08-29T18:39:15Z	68.68	+0.35	yes	expand prediction-accuracy-tracker suite (114 stmts 1.75%->~100%, 15 tests)
 54	2026-08-29T18:51:04Z	68.93	+0.25	yes	expand momentum-exhaustion suite (102 stmts 1.75%->~100%, 25 tests)
+55	2026-08-29T19:13:20Z	69.20	+0.27	yes	expand twap-accumulator suite (92 stmts 2.17%->100%, 24 tests)
