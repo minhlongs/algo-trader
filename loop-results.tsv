@@ -52,3 +52,4 @@ iter	timestamp	metric	delta	kept	description
 55	2026-08-29T19:13:20Z	69.20	+0.27	yes	expand twap-accumulator suite (92 stmts 2.17%->100%, 24 tests)
 56	2026-08-29T19:28:51Z	69.48	+0.28	yes	expand order-flow-toxicity suite (91 stmts 2.19%->94.5%, 25 tests)
 57	2026-08-30T02:44:30Z	69.75	+0.27	yes	expand book-imbalance-reversal suite (87 stmts 2.29%->96.55%, 28 tests)
+58	2026-08-29T20:00:45Z	70.03	+0.28	yes	add order-executor suite (86 stmts 2.32%->98.83%, 24 tests)
