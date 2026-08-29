@@ -13,3 +13,4 @@ iter	timestamp	metric	delta	kept	description
 13	2026-08-29T14:21:00Z	64.10	+0.15	yes	add alpha-report-handler suite (45 stmts 0%->100%, 4 tests)
 14	2026-08-29T14:32:00Z	64.24	+0.14	yes	add redis-message-bus suite (44 stmts 0%->100%, 15 tests)
 15	2026-08-29T14:52:00Z	64.39	+0.15	yes	add referral-analytics suite (43 stmts 015	2026-08-29T14:52:00Z	64.39	+0.15	yes	add referral-analytics suite (43 stmts 0%->100%, 9 tests)
+16	2026-08-29T15:05:00Z	64.51	+0.12	yes	add referral-crud suite (39 stmts 0%->100%, 20 tests)
