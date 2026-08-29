@@ -39,3 +39,4 @@ iter	timestamp	metric	delta	kept	description
 39	2026-08-29T14:28:49Z	66.39	+0.04	yes	add subscriber-activity-metrics suite (14 stmts 0%->100%, 7 tests)
 40	2026-08-29T14:32:32Z	66.44	+0.05	yes	add funding-quality suite (13 stmts 0%->100%, 4 tests)
 41	2026-08-29T14:32:32Z	66.44	+0.00	yes	add usage-metering-sync suite (13 stmts 0%->100%, 4 tests)
+42	2026-08-29T14:41:18Z	66.44	+0.00	yes	add negative-risk-scanner facade suite (9 stmts 0%->100%, 7 tests)
