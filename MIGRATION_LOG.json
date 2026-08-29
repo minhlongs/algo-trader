@@ -433,6 +433,49 @@
         "artifact": "baseline diff = -5 entries only (spread-detector 386, signal-validator 386, base-polymarket-strategy 388, inventory-skew-rebalancer 386, live-order-manager 384)"
       },
       "prUrl": "https://github.com/minhlongs/algo-trader/pull/51"
+    },
+    {
+      "phase": "S16-oversized-debt-tranche4",
+      "status": "done",
+      "date": "2026-08-29",
+      "targetFiles": [
+        "src/desk/strategies/polymarket/multi-leg-hedge.ts",
+        "src/desk/strategies/polymarket/multi-leg-hedge-entries.ts",
+        "src/desk/strategies/polymarket/multi-leg-hedge-exits.ts",
+        "src/desk/strategies/polymarket/multi-leg-hedge-config.ts",
+        "src/platform/api/routes/referral-routes.ts",
+        "src/platform/api/routes/referral-routes-admin.ts",
+        "src/platform/api/routes/referral-routes-public.ts",
+        "src/platform/api/routes/referral-routes-commissions.ts",
+        "src/platform/workers/coupon-handlers.ts",
+        "src/platform/workers/coupon-helpers.ts",
+        "src/platform/workers/coupon-validate.ts",
+        "src/platform/workers/coupon-redeem.ts",
+        "src/platform/workers/coupon-apply.ts",
+        "src/desk/polymarket/trading-pipeline.ts",
+        "src/desk/polymarket/trading-pipeline-types.ts",
+        "src/desk/polymarket/trading-pipeline-init.ts",
+        "src/desk/polymarket/trading-pipeline-prediction.ts",
+        "src/desk/polymarket/orderbook-stream.ts",
+        "src/desk/polymarket/orderbook-stream-types.ts",
+        "src/desk/polymarket/orderbook-stream-parse.ts",
+        "src/desk/polymarket/orderbook-stream-reconnect.ts",
+        "src/desk/polymarket/orderbook-stream-ws.ts",
+        "tsconfig.json",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md"
+      ],
+      "note": "Final tranche of the oversized-file debt burn-down: split the last 5 non-test violators (365-384 LOC) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline 288 -> 283 (5 entries removed, none added). (1) multi-leg-hedge.ts 369 -> 62: split into multi-leg-hedge-entries.ts (171 LOC), multi-leg-hedge-exits.ts (164 LOC); facade keeps the MultiLegHedgeStrategy class with thin delegates + re-exports. Config grew 126 -> 133 (non-frozen baseline, allowed). (2) referral-routes.ts 384 -> 30: split into referral-routes-admin.ts (94 LOC), referral-routes-public.ts (111 LOC), referral-routes-commissions.ts (184 LOC); facade keeps only thin route delegates. ReferralRoutesCtx structural interface avoids facade-leaf-facade cycle. (3) coupon-handlers.ts 381 -> 33: split into coupon-helpers.ts (160 LOC), coupon-validate.ts (48 LOC), coupon-redeem.ts (67 LOC), coupon-apply.ts (97 LOC); facade keeps only handler orchestration. coupon-redeem retains 2 pre-existing `as any` casts moved verbatim (no net increase). (4) trading-pipeline.ts 365 -> 192: split into trading-pipeline-types.ts (26 LOC), trading-pipeline-init.ts (114 LOC), trading-pipeline-prediction.ts (128 LOC); facade keeps orchestration + thin private delegates. Dead code: all new leaves + facade added to tsconfig.json exclude (same as facade) so typecheck stays clean. (5) orderbook-stream.ts 374 -> 165: split into orderbook-stream-types.ts (48 LOC), orderbook-stream-parse.ts (46 LOC), orderbook-stream-reconnect.ts (92 LOC), orderbook-stream-ws.ts (120 LOC); facade keeps OrderBookStream class with thin delegates. Two structural ctx interfaces (OrderBookStreamWsCtx, OrderBookStreamReconnectCtx) break the facade-leaf-facade import cycle; onClose uses dynamic require for handleDisconnect. Zero behavior change across all 5; all importers compile unmodified (typecheck proves). S16 oversized-file debt burn-down COMPLETE (4 tranches, 20 files split, baseline 303 -> 283). Version 3.1.30 -> 3.1.31.",
+      "evidence": {
+        "tests": "full suite 7250 passed (100% pass rate) — identical to pre-split baseline; 6 coupled test files 43 tests green (multi-leg-hedge 7, multi-leg-hedge-config 7, referral-routes 11, coupon-redeem 10, coupons-kv-fallback 5, pipeline-regime-wiring 3)",
+        "prUrl": null,
+        "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 117/117, consoleCalls 44/45, filesOverMaxLines 283 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (288 -> 283), no entries added; --all 11/11 PASS (totalTests 7250, passRate 100%, coverage all above baseline)",
+        "artifact": "baseline diff = -5 entries only (multi-leg-hedge 369, referral-routes 384, coupon-handlers 381, trading-pipeline 365, orderbook-stream 374)"
+      },
+      "prUrl": null
     }
   ],
   "deferred": [

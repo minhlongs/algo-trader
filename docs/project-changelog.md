@@ -1,5 +1,19 @@
 # Project Changelog - Algo Trader
 
+## [3.1.31] - 2026-08-29 — Oversized-file debt burn-down, tranche 4 (S16)
+
+### Changed
+- **Final 5 oversized-file violators (365-384 LOC) split into ≤200-LOC modules** behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 288 → 283 (5 entries removed, none added).
+  - `src/desk/strategies/polymarket/multi-leg-hedge.ts` 369 → 62: split into `multi-leg-hedge-entries.ts` (171 LOC), `multi-leg-hedge-exits.ts` (164 LOC); facade keeps the `MultiLegHedgeStrategy` class with thin delegates + re-exports. Config grew 126 → 133 (non-frozen baseline, allowed).
+  - `src/platform/api/routes/referral-routes.ts` 384 → 30: split into `referral-routes-admin.ts` (94 LOC), `referral-routes-public.ts` (111 LOC), `referral-routes-commissions.ts` (184 LOC); facade keeps only thin route delegates. `ReferralRoutesCtx` structural interface avoids facade→leaf→facade cycle.
+  - `src/platform/workers/coupon-handlers.ts` 381 → 33: split into `coupon-helpers.ts` (160 LOC), `coupon-validate.ts` (48 LOC), `coupon-redeem.ts` (67 LOC), `coupon-apply.ts` (97 LOC); facade keeps only handler orchestration. Coupon-redeem retains 2 pre-existing `as any` casts moved verbatim (no net increase).
+  - `src/desk/polymarket/trading-pipeline.ts` 365 → 192: split into `trading-pipeline-types.ts` (26 LOC), `trading-pipeline-init.ts` (114 LOC), `trading-pipeline-prediction.ts` (128 LOC); facade keeps orchestration + thin private delegates. Dead code: all new leaves + facade added to `tsconfig.json` exclude (same as facade) so typecheck stays clean.
+  - `src/desk/polymarket/orderbook-stream.ts` 374 → 165: split into `orderbook-stream-types.ts` (48 LOC), `orderbook-stream-parse.ts` (46 LOC), `orderbook-stream-reconnect.ts` (92 LOC), `orderbook-stream-ws.ts` (120 LOC); facade keeps `OrderBookStream` class with thin delegates. Two structural ctx interfaces (`OrderBookStreamWsCtx`, `OrderBookStreamReconnectCtx`) break the facade→leaf→facade import cycle; `onClose` uses dynamic `require` for `handleDisconnect`.
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0; full suite 7250 passed (100% pass rate); quality ratchet `--quality` 4/4 PASS (anyTypes 117/117, consoleCalls 44/45, filesOverMaxLines 283 new=0 grown=0, bannedImports 0).
+- `--prune-oversized-snapshot` removed exactly 5 entries (288 → 283), no entries added. Baseline diff = −5 entries only. S16 oversized-file debt burn-down COMPLETE (4 tranches, 20 files split, baseline 303 → 283).
+
 ## [3.1.30] - 2026-08-27 — Oversized-file debt burn-down, tranche 3 (S16)
 
 ### Changed

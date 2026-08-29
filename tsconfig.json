@@ -40,6 +40,9 @@
     "src/wiring/**/*",
     "src/desk/wiring/**/*",
     "dist",
-    "src/desk/polymarket/trading-pipeline.ts"
+    "src/desk/polymarket/trading-pipeline.ts",
+    "src/desk/polymarket/trading-pipeline-types.ts",
+    "src/desk/polymarket/trading-pipeline-init.ts",
+    "src/desk/polymarket/trading-pipeline-prediction.ts"
   ]
 }
