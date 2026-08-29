@@ -60,3 +60,4 @@ iter	timestamp	metric	delta	kept	description
 63	2026-08-29T22:25:09Z	71.26	+0.26	yes	add smart-money-divergence suite (78 stmts 2.56%-to-100%, 32 tests)
 64	2026-08-29T22:47:18Z	71.57	+0.31	yes	add qwen-signals-loop suite (22 tests, 92.52% stmts)
 65	2026-08-30T05:00:00Z	71.67	+0.10	yes	add nats-message-bus suite (13 tests, 33 stmts 3.03%->100%)
+66	2026-08-30T06:05:00Z	71.79	+0.12	yes	add trade-stream suite (14 tests, 35 stmts 2.85%->100%)
