@@ -56,3 +56,4 @@ iter	timestamp	metric	delta	kept	description
 59	2026-08-30T03:35:00Z	70.27	+0.24	yes	add session-vol-sniper suite (83 stmts 2.4%->93.97%, 25 tests)
 60	2026-08-30T04:30:00Z	70.52	+0.25	yes	fix gamma-scalping assertions (symmetric->asymmetric, NO-entry->correct no-entry at mid=0.88), 27 tests
 61	2026-08-30T04:40:16Z	70.75	+0.23	yes	liquidity-vacuum suite (22 tests, 82 stmts 2.43%->100%); verified rtk:grouped@171 is display artifact (grep absent, typecheck clean)
+62	2026-08-29T22:01:08Z	71.00	+0.25	yes	add referral-service suite (81 stmts 2.46%->~100%, 32 tests)
