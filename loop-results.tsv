@@ -50,3 +50,4 @@ iter	timestamp	metric	delta	kept	description
 53	2026-08-29T18:39:15Z	68.68	+0.35	yes	expand prediction-accuracy-tracker suite (114 stmts 1.75%->~100%, 15 tests)
 54	2026-08-29T18:51:04Z	68.93	+0.25	yes	expand momentum-exhaustion suite (102 stmts 1.75%->~100%, 25 tests)
 55	2026-08-29T19:13:20Z	69.20	+0.27	yes	expand twap-accumulator suite (92 stmts 2.17%->100%, 24 tests)
+56	2026-08-29T19:28:51Z	69.48	+0.28	yes	expand order-flow-toxicity suite (91 stmts 2.19%->94.5%, 25 tests)
