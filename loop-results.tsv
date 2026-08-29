@@ -63,3 +63,4 @@ iter	timestamp	metric	delta	kept	description
 66	2026-08-30T06:05:00Z	71.79	+0.12	yes	add trade-stream suite (14 tests, 35 stmts 2.85%->100%)
 67	2026-08-29T23:19:11Z	71.89	+0.10	yes	add strategy-runner-types suite (14 tests, 34 stmts 2.94%->97.05%)
 68	2026-08-30T06:55:00Z	71.97	+0.08	yes	add polymarket-signer suite (14 tests, 26 stmts 3.84%->96.15%)
+69	2026-08-30T06:42:54Z	72.19	+0.22	yes	add news-catalyst-fade suite (32 tests, 56 stmts 2.81%->100%)
