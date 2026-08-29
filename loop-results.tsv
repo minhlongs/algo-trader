@@ -3,3 +3,9 @@ iter	timestamp	metric	delta	kept	description
 1	2026-08-29T05:34:13Z	61.66	+0.07	yes	add tests for prometheus-registry setQwenKillSwitch + prometheus-metrics legacy wrapper
 2	2026-08-29T05:43:21Z	61.78	+0.12	yes	add ab-test-stats z-test suite + ws-reconnect delay-math tests
 3	2026-08-29T05:57:13Z	62.18	+0.40	yes	add tests for arb-handler, ws-reconnect-schedule, coupon-apply (3 zero-coverage files)
+4	2026-08-29T06:15:00Z	62.43	+0.25	yes	add data-handlers test suite (handleBalance/Positions/Pnl/Results)
+5	2026-08-29T06:25:00Z	62.68	+0.25	yes	add risk-managed-kelly-helpers suite (76 stmts 0%→100%, 30 tests)
+8	2026-08-29T06:44:47Z	63.28	+0.18	yes	add OrderbookManager method tests (55 stmts 0%->100%, 11 tests)
+9	2026-08-29T06:49:30Z	63.44	+0.16	yes	add alert-formatter suite (47 stmts 0%->100%, 30 tests)
+10	2026-08-29T06:54:34Z	63.64	+0.20	yes	add spread-detector-pricing suite (46 stmts 0%->100%, 12 tests)
+11	2026-08-29T07:01:57Z	63.80	+0.16	yes	add session-handlers suite (50 stmts 0%->100%, 14 tests)
