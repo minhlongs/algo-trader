@@ -45,3 +45,4 @@ iter	timestamp	metric	delta	kept	description
 48	2026-08-29T16:38:17Z	67.27	+0.19	yes	expand sma-crossover-strategy suite (61 stmts 1.6%->98.36%, 15 tests)
 49	2026-08-29T16:50:50Z	67.44	+0.17	yes	expand risk-managed-kelly-strategy suite (65 stmts 1.5%->81.53%, 15 tests)
 50	2026-08-29T16:58:19Z	67.61	+0.17	yes	add ab-test-manager suite (53 stmts 1.88%->~100%, 13 tests)
+51	2026-08-30T00:56:30Z	67.97	+0.36	yes	expand pairs-stat-arb suite (122 stmts 1.63%->91.8%, 28 tests)
