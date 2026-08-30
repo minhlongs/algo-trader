@@ -165,4 +165,18 @@ describe('DistributedNonceManager', () => {
     expect(onChainNonce).toHaveBeenCalledTimes(1);
     expect(redisMock.set).toHaveBeenCalledTimes(1);
   });
+
+  it('clears the init promise on failure so a retry can re-seed', async () => {
+    onChainNonce.mockRejectedValueOnce(new Error('rpc down'));
+    redisMock.get.mockResolvedValueOnce(null);
+    redisMock.get.mockResolvedValueOnce(null);
+    redisMock.incr.mockResolvedValueOnce(7);
+
+    await expect(mgr.reserveNonce(WALLET)).rejects.toThrow('rpc down');
+
+    // The failed init must not be cached — a retry re-seeds and succeeds.
+    const res = await mgr.reserveNonce(WALLET);
+    expect(onChainNonce).toHaveBeenCalledTimes(2);
+    expect(res.nonce).toBe(6);
+  });
 });
