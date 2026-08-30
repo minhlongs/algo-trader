@@ -68,3 +68,4 @@ iter	timestamp	metric	delta	kept	description
 71	2026-08-30T00:06:49Z	72.57	+0.18	yes	add fraud-detector suite (21 tests, 58 stmts 3.44%->100%)
 72	2026-08-30T07:17:00Z	72.74	+0.17	yes	add vetting-job-repository suite (23 tests, 53 stmts 3.77%->100%)
 73	2026-08-30T07:30:00Z	72.81	+0.07	yes	add signal-store-d1 suite (10 tests, 21 stmts 4.76%->100%)
+74	2026-08-30T03:09:54Z	73.08	+0.34	yes	add audit-routes suite (24 tests, stmts 34.04%→92.51%)
