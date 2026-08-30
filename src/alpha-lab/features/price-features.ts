@@ -96,7 +96,8 @@ export function computeAtr(ctx: FeatureContext): number | null {
     const tr = Math.max(h - l, Math.abs(h - prevClose), Math.abs(l - prevClose));
     trs.push(tr);
   }
-  if (trs.length === 0) return null;
+  // trs.length === window.length - 1, which is >= 1 whenever we reach here
+  // (ctx.candles.length >= 2), so the division is always well-formed.
   return trs.reduce((s, v) => s + v, 0) / trs.length;
 }
 

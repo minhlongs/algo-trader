@@ -101,3 +101,123 @@ describe('Price Features', () => {
     }
   });
 });
+// ── Guard / null branches ────────────────────────────────────────────────────
+
+const ctx = (candles: Array<{ timestamp: string; open: number; high: number; low: number; close: number; volume?: number }>) => ({
+  market: 'X',
+  timeframe: '1h',
+  candles,
+});
+
+describe('price feature guards', () => {
+  it('simple_return is null on a single candle', () => {
+    const v = computeSimpleReturn(ctx([{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }]));
+    expect(v).toBeNull();
+  });
+
+  it('simple_return is null for non-positive prices', () => {
+    const v = computeSimpleReturn(ctx([
+      { timestamp: '2025-01-01T00:00:00Z', open: 0, high: 0, low: 0, close: 0, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 0, high: 0, low: 0, close: 5, volume: 10 },
+    ]));
+    expect(v).toBeNull();
+  });
+
+  it('log_return is null for non-positive prices across two candles', () => {
+    const v = computeLogReturn(ctx([
+      { timestamp: '2025-01-01T00:00:00Z', open: 0, high: 0, low: 0, close: 0, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 0, high: 0, low: 0, close: 5, volume: 10 },
+    ]));
+    expect(v).toBeNull();
+  });
+
+  it('log_return is null on a single candle', () => {
+    const v = computeLogReturn(ctx([{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }]));
+    expect(v).toBeNull();
+  });
+
+  it('log_return is positive for monotone up closes', () => {
+    const v = computeLogReturn(ctx([
+      { timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 101, high: 102, low: 100, close: 110, volume: 10 },
+    ]));
+    expect(v).not.toBeNull();
+    expect(v!).toBeGreaterThan(0);
+    expect(v!).toBeCloseTo(Math.log(1.1), 6);
+  });
+
+  it('log_return is null when only the current close is non-positive', () => {
+    const v = computeLogReturn(ctx([
+      { timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 0, high: 0, low: 0, close: 0, volume: 10 },
+    ]));
+    expect(v).toBeNull();
+  });
+
+  it('atr is null on a single candle', () => {
+    const v = computeAtr(ctx([{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }]));
+    expect(v).toBeNull();
+  });
+
+  it('realized_volatility is null on a single candle', () => {
+    const v = computeRealizedVolatility(ctx([{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }]));
+    expect(v).toBeNull();
+  });
+
+  it('realized_volatility is null when all prices are non-positive', () => {
+    const v = computeRealizedVolatility(ctx([
+      { timestamp: '2025-01-01T00:00:00Z', open: 0, high: 0, low: 0, close: 0, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 0, high: 0, low: 0, close: 0, volume: 10 },
+    ]));
+    expect(v).toBeNull();
+  });
+
+  it('momentum is null on a single candle', () => {
+    const v = computeMomentum(ctx([{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }]));
+    expect(v).toBeNull();
+  });
+
+  it('momentum is null for non-positive prices', () => {
+    const v = computeMomentum(ctx([
+      { timestamp: '2025-01-01T00:00:00Z', open: 0, high: 0, low: 0, close: 0, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 0, high: 0, low: 0, close: 5, volume: 10 },
+    ]));
+    expect(v).toBeNull();
+  });
+
+  it('ma_distance is null on a single candle', () => {
+    const v = computeMaDistance(ctx([{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }]));
+    expect(v).toBeNull();
+  });
+
+  it('ma_distance is null for non-positive closes', () => {
+    const v = computeMaDistance(ctx([
+      { timestamp: '2025-01-01T00:00:00Z', open: 0, high: 0, low: 0, close: 0, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 0, high: 0, low: 0, close: 0, volume: 10 },
+    ]));
+    expect(v).toBeNull();
+  });
+
+  it('breakout_state is null on a single candle', () => {
+    const v = computeBreakoutState(ctx([{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }]));
+    expect(v).toBeNull();
+  });
+
+  it('breakout_state detects breakdown below prior low', () => {
+    const candles = [
+      { timestamp: '2025-01-01T00:00:00Z', open: 100, high: 102, low: 98, close: 100, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 99, high: 100, low: 97, close: 99, volume: 10 },
+      { timestamp: '2025-01-01T02:00:00Z', open: 98, high: 99, low: 95, close: 96, volume: 10 },
+    ];
+    expect(computeBreakoutState(ctx(candles))).toBe(-1);
+  });
+
+  it('breakout_state returns 0 inside the prior range', () => {
+    const candles = [
+      { timestamp: '2025-01-01T00:00:00Z', open: 100, high: 105, low: 95, close: 100, volume: 10 },
+      { timestamp: '2025-01-01T01:00:00Z', open: 101, high: 106, low: 96, close: 101, volume: 10 },
+      { timestamp: '2025-01-01T02:00:00Z', open: 102, high: 103, low: 97, close: 100, volume: 10 },
+    ];
+    expect(computeBreakoutState(ctx(candles))).toBe(0);
+  });
+});
