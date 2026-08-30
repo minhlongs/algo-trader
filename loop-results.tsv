@@ -86,3 +86,4 @@ iter	timestamp	metric	delta	kept	description
 89	2026-08-30T08:42:03Z	75.50	+0.13	yes	add gamma-historical-provider suite (15 tests, 44 stmts 6.81%->100%, fetch/timer stubs, cache + tick cap + price evolution)
 90	2026-08-30T15:58:00Z	75.64	+0.27	yes	add delta-neutral-portfolio-monitor suite (13 tests, 43 stmts 6.9890	2026-08-30T15:58:00Z	75.64	+0.27	yes	add delta-neutral-portfolio-monitor suite (13 tests, 43 stmts 6.98%->100%, start/stop/updatePrices/checkAll/paper-rebalance)
 91	2026-08-30T09:15:10Z	75.84	+0.20	yes	add cross-market-arb suite (15 tests, 67 stmts 7.46%->100%, executeTick entry paths + checkExits converged/timeout/error)
+92	2026-08-30T16:30:00Z	76.03	+0.19	yes	add shard-manager-routing suite (15 tests, 50 stmts 8.00%->100%, getShardAssignment/computeRingState/rebuildRing/collectRingMetrics/createDefaultShardHealth/fetchAllStrategyIds)
