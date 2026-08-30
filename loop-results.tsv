@@ -74,3 +74,4 @@ iter	timestamp	metric	delta	kept	description
 77	2026-08-30T04:45:21Z	73.47	+0.17	yes	add vetting-job-repository suite (24 tests, 53 stmts 3.77%->100%, mocked postgres query)
 78	2026-08-30T11:53:00Z	73.55	+0.08	yes	add subscriber-equity-curve-builder suite (13 tests, 100% stmts 3.84%->100%, mocked tenantQuery)
 79	2026-08-30T11:58:30Z	73.63	+0.08	yes	add referral-repository suite (30 tests, 100% stmts 4.00%->100%, facade delegating to crud/analytics/cookie-attribution)
+80	2026-08-30T12:10:00Z	73.69	+0.06	yes	add immutable-trade-audit suite (17 tests, 100% stmts 4.76%->100%, append-only audit log with hash verification)
