@@ -81,3 +81,4 @@ iter	timestamp	metric	delta	kept	description
 84	2026-08-30T14:15:00Z	74.64	+0.28	yes	add telegram bot suite (33 tests, 119 stmts 12.6%->84%, singleton+alert paths)
 85	2026-08-30T14:48:00Z	74.92	+0.28	yes	expand correlation-breakdown suite to 100% (33 tests, 120 stmts 28.3%->100%, all scanPair/scanEntries branches)
 86	2026-08-30T08:02:31Z	75.05	+0.13	yes	add price-impact-estimator-config suite (24 tests, 42/43 stmts, all pure helpers; line 96 unreachable defensive guard documented)
+87	2026-08-30T08:30:00Z	75.17	+0.12	yes	add signal-subscriber-repository-d1 suite (17 tests, 36 stmts 6.06%->100%, incl. countActive empty-rows guard fix in source)
