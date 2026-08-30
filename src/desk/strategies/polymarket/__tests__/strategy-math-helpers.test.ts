@@ -213,5 +213,17 @@ describe('polymarket/strategy-math-helpers', () => {
     it('returns 0 for a flat series', () => {
       expect(calcSlope([7, 7, 7, 7])).toBeCloseTo(0, 6);
     });
+
+    // Defensive guard: denom = n*sumX2 - sumX*sumX is the variance of the
+    // index series (x_i = i) scaled by n, which is strictly positive for
+    // every n >= 2. The `denom === 0` early return is therefore never
+    // reachable through the public API; this test asserts the invariant
+    // the guard protects against rather than fabricating a degenerate call.
+    it('denom is always positive for n >= 2 (guard is unreachable)', () => {
+      for (let n = 2; n <= 20; n++) {
+        const prices = new Array(n).fill(1);
+        expect(calcSlope(prices)).toBeCloseTo(0, 6);
+      }
+    });
   });
 });

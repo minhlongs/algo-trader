@@ -103,7 +103,8 @@ export function calcSlope(prices: number[]): number {
     sumXY += i * prices[i]!;
     sumX2 += i * i;
   }
+  // denom = n*sumX2 - sumX*sumX = n^2*(n-1)*(n+1)/12 > 0 for all n >= 2
+  // (variance of the index series), so the division is always well-formed.
   const denom = n * sumX2 - sumX * sumX;
-  if (denom === 0) return 0;
   return (n * sumXY - sumX * sumY) / denom;
 }
