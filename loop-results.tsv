@@ -76,3 +76,4 @@ iter	timestamp	metric	delta	kept	description
 79	2026-08-30T11:58:30Z	73.63	+0.08	yes	add referral-repository suite (30 tests, 100% stmts 4.00%->100%, facade delegating to crud/analytics/cookie-attribution)
 80	2026-08-30T12:10:00Z	73.69	+0.06	yes	add immutable-trade-audit suite (17 tests, 100% stmts 4.76%->100%, append-only audit log with hash verification)
 81	2026-08-30T12:27:00Z	73.76	+0.07	yes	add intent-classifier suite (22 tests, 100% stmts 5.26%->100%, keyword threshold classifier with fallback)
+82	2026-08-30T12:52:38Z	73.89	+0.13	yes	add cluster-config suite (16 tests, 42 stmts 4.76%->100%, mocked ioredis Cluster class)
