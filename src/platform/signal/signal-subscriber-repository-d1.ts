@@ -127,7 +127,7 @@ export class SignalSubscriberRepositoryD1 {
     const result = await query(
       'SELECT COUNT(*) AS count FROM signal_subscriptions WHERE active = TRUE',
     );
-    return parseInt((result.rows[0] as { count: string }).count, 10);
+    return parseInt((result.rows[0] as { count: string } | undefined)?.count ?? '0', 10);
   }
 
   // --- Webhooks ---
