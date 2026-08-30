@@ -72,3 +72,4 @@ iter	timestamp	metric	delta	kept	description
 75	2026-08-30T04:03:21Z	73.23	+0.15	yes	add vwap-deviation-sniper-v2 suite (37 tests, 211 stmts 6.03%->87.93%, removed 6 leftover debug test files)
 76	2026-08-30T04:22:34Z	73.3	+0.07	yes	add live-trading-persistence suite (10 tests, 100% stmts 3.84%->100%, real-fs round-trip)
 77	2026-08-30T04:45:21Z	73.47	+0.17	yes	add vetting-job-repository suite (24 tests, 53 stmts 3.77%->100%, mocked postgres query)
+78	2026-08-30T11:53:00Z	73.55	+0.08	yes	add subscriber-equity-curve-builder suite (13 tests, 100% stmts 3.84%->100%, mocked tenantQuery)
