@@ -95,3 +95,4 @@ iter	timestamp	metric	delta	kept	description
 98	2026-08-30T10:27:00Z	76.51	+0.17	yes	add strategy-math-helpers suite (39 tests, 72 stmts 29.73%->100%, dropped unreachable denom===0 guard in calcSlope) d30df130
 99	2026-08-30T17:22:30Z	76.52	+0.01	yes	add negative-risk-types suite (8 tests, 5 stmts 40%->100%, DEFAULT_CONFIG/STRATEGY_NAME/isOnCooldown/setCooldown guards) 7613e6a1
 100	2026-08-30T10:34:31Z	76.54	+0.02	yes	add record-alpha-verdict catch-path tests (12 tests, 16 stmts 68.75%->100%, mock evaluateAlpha throw since catch unreachable via real inputs) 2b15f551
+101	2026-08-30T10:41:13Z	76.59	+0.01	yes	add price-features guard branches (82 stmts 79.76%->100%, dropped unreachable trs.length===0 guard in computeAtr) 8cbcde89
