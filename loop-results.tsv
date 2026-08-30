@@ -84,3 +84,4 @@ iter	timestamp	metric	delta	kept	description
 87	2026-08-30T08:30:00Z	75.17	+0.12	yes	add signal-subscriber-repository-d1 suite (17 tests, 36 stmts 6.06%->100%, incl. countActive empty-rows guard fix in source)
 88	2026-08-30T08:34:00Z	75.37	+0.20	yes	add ai-decision-repository suite (23 tests, 66 stmts 6.06%->100%, filtered query/count builders + both mappers)
 89	2026-08-30T08:42:03Z	75.50	+0.13	yes	add gamma-historical-provider suite (15 tests, 44 stmts 6.81%->100%, fetch/timer stubs, cache + tick cap + price evolution)
+90	2026-08-30T15:58:00Z	75.64	+0.27	yes	add delta-neutral-portfolio-monitor suite (13 tests, 43 stmts 6.9890	2026-08-30T15:58:00Z	75.64	+0.27	yes	add delta-neutral-portfolio-monitor suite (13 tests, 43 stmts 6.98%->100%, start/stop/updatePrices/checkAll/paper-rebalance)
