@@ -98,3 +98,4 @@ iter	timestamp	metric	delta	kept	description
 101	2026-08-30T10:41:13Z	76.59	+0.01	yes	add price-features guard branches (82 stmts 79.76%->100%, dropped unreachable trs.length===0 guard in computeAtr) 8cbcde89
 102	2026-08-30T10:42:50Z	76.61	+0.02	yes	add volume-features guard branches (32 stmts 81.25%->100%, zero-std/non-positive-volume/decreasing-volume cases) d53a4674
 103	2026-08-30T17:52:36Z	76.65	+0.04	yes	cover signal-provider-onboarding fully (84 stmts 84.52%->100%, 20 tests; dropped mathematically-unreachable else branches in runBacktest/startPaperTrading since deterministic mock constants guarantee the pass branch always executes) 24d1b343
+104	2026-08-30T18:05:00Z	76.71	+0.06	yes	cover postgres-client.ts fully (23 stmts 8.69%->100%, 10 tests; mock pg default+named Pool, constructor via vi.fn(function), clear mock state per-describe, test error handler invocation) 96d8dd5a
