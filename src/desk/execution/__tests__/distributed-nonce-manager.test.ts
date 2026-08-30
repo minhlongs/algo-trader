@@ -1,146 +1,168 @@
 /**
  * Distributed Nonce Manager Tests
- * Tests Redis-backed atomic nonce allocation for concurrent transaction safety
+ *
+ * Covers the full nonce lifecycle: seed-from-chain, reserve, release (happy +
+ * stale + race-skip), getCurrentNonce, and resync. The real Redis client is
+ * replaced with a deterministic mock via vi.hoist so no network is touched.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Hoisted mock factory for the Redis client returned by getRedisClient.
+const { redisMock } = vi.hoisted(() => {
+  const get = vi.fn(async () => null);
+  const set = vi.fn(async () => 'OK');
+  const incr = vi.fn(async () => 1);
+  const eval_ = vi.fn(async () => null);
+  const redis = { get, set, incr, eval: eval_ };
+  return { redisMock: redis };
+});
+
+vi.mock('../../../redis/index', () => ({
+  getRedisClient: () => redisMock,
+}));
+
+import { DistributedNonceManager } from '../distributed-nonce-manager';
+
+const WALLET = '0xAbC';
+
+function makeNonceManager(getOnChainNonce = vi.fn(async () => 5)) {
+  return new DistributedNonceManager(getOnChainNonce);
+}
 
 describe('DistributedNonceManager', () => {
-  describe('interface contract', () => {
-    it('should export DistributedNonceManager class', async () => {
-      const { DistributedNonceManager } = await import('../distributed-nonce-manager');
-      expect(typeof DistributedNonceManager).toBe('function');
-    });
+  let mgr: DistributedNonceManager;
+  let onChainNonce: ReturnType<typeof vi.fn>;
 
-    it('should export NonceReservation type', async () => {
-      // Type is compile-time only, verify it exists in type definitions
-      expect(true).toBe(true);
-    });
+  beforeEach(() => {
+    onChainNonce = vi.fn(async () => 5);
+    mgr = makeNonceManager(onChainNonce);
+    redisMock.get.mockReset();
+    redisMock.set.mockReset();
+    redisMock.incr.mockReset();
+    redisMock.eval.mockReset();
+    redisMock.get.mockResolvedValue(null);
+    redisMock.set.mockResolvedValue('OK');
   });
 
-  describe('nonce manager pattern', () => {
-    it('should accept getOnChainNonce callback in constructor', async () => {
-      const { DistributedNonceManager } = await import('../distributed-nonce-manager');
-
-      // Verify constructor signature
-      const callback = async (address: string) => 42;
-      const manager = new DistributedNonceManager(callback);
-
-      expect(manager).toBeDefined();
-    });
-
-    it('should expose public methods', async () => {
-      const { DistributedNonceManager } = await import('../distributed-nonce-manager');
-
-      const callback = async (address: string) => 42;
-      const manager = new DistributedNonceManager(callback);
-
-      expect(typeof manager.reserveNonce).toBe('function');
-      expect(typeof manager.releaseNonce).toBe('function');
-    });
+  it('nonceKey lowercases the address', () => {
+    // exercise the private key builder through getCurrentNonce (only call)
+    mgr.getCurrentNonce(WALLET);
+    expect(redisMock.get).toHaveBeenCalledWith('nonce:0xabc');
   });
 
-  describe('redis integration pattern', () => {
-    it('should support Redis atomic INCR pattern', async () => {
-      // Verify module imports Redis client correctly
-      const module = await import('../distributed-nonce-manager');
-      expect(module).toBeDefined();
-    });
+  it('seeds the counter from chain on first use', async () => {
+    redisMock.get.mockResolvedValueOnce(null); // not yet seeded
+    redisMock.incr.mockResolvedValueOnce(6);
 
-    it('should use nonce: key prefix', async () => {
-      // Verify module uses standard key prefix
-      expect(true).toBe(true);
-    });
+    await mgr.reserveNonce(WALLET);
+
+    expect(onChainNonce).toHaveBeenCalledWith(WALLET);
+    expect(redisMock.set).toHaveBeenCalledWith('nonce:0xabc', 5, 'NX' as never);
+    expect(redisMock.incr).toHaveBeenCalledWith('nonce:0xabc');
   });
 
-  describe('reservation object structure', () => {
-    it('should define NonceReservation with required fields', async () => {
-      // Verify interface structure (compile-time)
-      const reservation = {
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        nonce: 42,
-        reservedAt: Date.now(),
-      };
+  it('skips seeding when the counter already exists', async () => {
+    redisMock.get.mockResolvedValueOnce('3'); // already seeded
+    redisMock.incr.mockResolvedValueOnce(4);
 
-      expect(reservation).toHaveProperty('walletAddress');
-      expect(reservation).toHaveProperty('nonce');
-      expect(reservation).toHaveProperty('reservedAt');
-    });
+    await mgr.reserveNonce(WALLET);
+
+    expect(onChainNonce).not.toHaveBeenCalled();
+    expect(redisMock.set).not.toHaveBeenCalledWith('nonce:0xabc', expect.anything(), 'NX' as never);
+    expect(redisMock.incr).toHaveBeenCalledWith('nonce:0xabc');
   });
 
-  describe('wallet address handling', () => {
-    it('should handle checksummed addresses', async () => {
-      const checksummedAddress = '0xAb5801a7D398351b8bE11C63E3aBc34e0e60E8Cd';
-      expect(typeof checksummedAddress).toBe('string');
-      expect(checksummedAddress.startsWith('0x')).toBe(true);
-    });
+  it('reserves nonce = INCR - 1', async () => {
+    redisMock.get.mockResolvedValueOnce(null);
+    redisMock.incr.mockResolvedValueOnce(9);
 
-    it('should lowercase addresses internally', () => {
-      const address = '0xABCDEF1234567890ABCDEF1234567890ABCDEF12';
-      const lowercased = address.toLowerCase();
+    const res = await mgr.reserveNonce(WALLET);
 
-      expect(lowercased).toBe('0xabcdef1234567890abcdef1234567890abcdef12');
-    });
+    expect(res.walletAddress).toBe(WALLET);
+    expect(res.nonce).toBe(8);
+    expect(res.reservedAt).toBeLessThanOrEqual(Date.now());
   });
 
-  describe('nonce flow documentation', () => {
-    it('should follow reserve-sign-broadcast-release pattern', async () => {
-      // Pattern: reserveNonce() → sign tx → broadcast → if fail: releaseNonce()
-      const pattern = ['reserve', 'sign', 'broadcast', 'release'];
+  it('returns the same reservation for a wallet that was already initialised', async () => {
+    redisMock.get.mockResolvedValueOnce(null);
+    redisMock.incr.mockResolvedValueOnce(6);
+    await mgr.reserveNonce(WALLET);
 
-      for (const step of pattern) {
-        expect(typeof step).toBe('string');
-      }
-    });
+    redisMock.get.mockReset();
+    redisMock.get.mockResolvedValueOnce('5');
+    redisMock.incr.mockResolvedValueOnce(7);
+    const res = await mgr.reserveNonce(WALLET);
+
+    expect(onChainNonce).toHaveBeenCalledTimes(1);
+    expect(res.nonce).toBe(6);
   });
 
-  describe('configuration', () => {
-    it('should define NONCE_TTL_MS constant', () => {
-      // 30_000 milliseconds = 30 seconds
-      const ttlMs = 30_000;
-      expect(ttlMs).toBe(30000);
-    });
+  it('releases a nonce by decrementing the counter', async () => {
+    redisMock.eval.mockResolvedValueOnce(5);
 
-    it('should use standard Redis key prefix', () => {
-      const keyPrefix = 'nonce:';
-      expect(typeof keyPrefix).toBe('string');
-      expect(keyPrefix).toBe('nonce:');
-    });
+    await mgr.releaseNonce({ walletAddress: WALLET, nonce: 5, reservedAt: Date.now() });
+
+    const script = redisMock.eval.mock.calls[0]![0] as string;
+    expect(script).toContain("redis.call('get', KEYS[1])");
+    expect(script).toContain("redis.call('decr', KEYS[1])");
+    expect(redisMock.eval).toHaveBeenCalledWith(expect.stringContaining('decr'), 1, 'nonce:0xabc', '6');
   });
 
-  describe('concurrency safety', () => {
-    it('should use atomic Redis INCR for race-free nonce assignment', async () => {
-      // Verify atomic operation concept
-      const atomicOp = 'INCR';
-      expect(atomicOp).toBe('INCR');
-    });
+  it('skips release when the reservation is stale', async () => {
+    const stale: NonceReservation = {
+      walletAddress: WALLET,
+      nonce: 0,
+      reservedAt: Date.now() - 60_000, // older than NONCE_TTL_MS (30s)
+    };
 
-    it('should support SET NX for initialization', () => {
-      // SET NX = set-if-not-exists, prevents race condition on first seed
-      const setOperation = 'SET NX';
-      expect(typeof setOperation).toBe('string');
-    });
+    await mgr.releaseNonce(stale);
+
+    expect(redisMock.eval).not.toHaveBeenCalled();
   });
 
-  describe('error scenarios', () => {
-    it('should handle on-chain nonce fetch errors', async () => {
-      // Module should handle getOnChainNonce callback errors
-      expect(true).toBe(true);
-    });
+  it('skips release when a newer nonce has already been reserved', async () => {
+    redisMock.eval.mockResolvedValueOnce(null); // Lua script returns nil when value != nonce+1
 
-    it('should handle Redis connection errors', async () => {
-      // Module should gracefully handle Redis failures
-      expect(true).toBe(true);
-    });
+    await mgr.releaseNonce({ walletAddress: WALLET, nonce: 5, reservedAt: Date.now() });
+
+    expect(redisMock.eval).toHaveBeenCalledTimes(1);
+    // no-op log path
   });
 
-  describe('module exports', () => {
-    it('should export class and type definitions', async () => {
-      const module = await import('../distributed-nonce-manager');
+  it('getCurrentNonce returns the parsed counter', async () => {
+    redisMock.get.mockResolvedValueOnce('12');
+    expect(await mgr.getCurrentNonce(WALLET)).toBe(12);
+  });
 
-      expect(module.DistributedNonceManager).toBeDefined();
-      // NonceReservation is a type, not a value
-      expect(module).toBeDefined();
-    });
+  it('getCurrentNonce returns null when no counter exists', async () => {
+    redisMock.get.mockResolvedValueOnce(null);
+    expect(await mgr.getCurrentNonce(WALLET)).toBeNull();
+  });
+
+  it('resyncFromChain overwrites the counter and resets init state', async () => {
+    redisMock.set.mockResolvedValueOnce('OK');
+    const n = await mgr.resyncFromChain(WALLET);
+
+    expect(onChainNonce).toHaveBeenCalledWith(WALLET);
+    expect(redisMock.set).toHaveBeenCalledWith('nonce:0xabc', 5);
+    expect(n).toBe(5);
+  });
+
+  it('ensureInitialised deduplicates concurrent in-flight init promises', async () => {
+    // Two concurrent reserveNonce calls: only one should seed the counter.
+    let releaseFirst: () => void = () => {};
+    redisMock.get.mockReturnValueOnce(new Promise<string | null>((r) => { releaseFirst = () => r(null); }));
+    redisMock.incr.mockResolvedValueOnce(6);
+
+    const first = mgr.reserveNonce(WALLET);
+    // Second call must wait on the first's init promise, not re-seed.
+    const second = mgr.reserveNonce(WALLET);
+
+    releaseFirst();
+    await Promise.all([first, second]);
+
+    expect(onChainNonce).toHaveBeenCalledTimes(1);
+    expect(redisMock.set).toHaveBeenCalledTimes(1);
   });
 });
