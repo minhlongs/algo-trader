@@ -48,3 +48,83 @@ describe('Volume Features', () => {
     }
   });
 });
+// ── Guard / null branches ────────────────────────────────────────────────────
+
+describe('Volume feature guards', () => {
+  it('volume_zscore is null on a single candle', () => {
+    const v = computeVolumeZScore({
+      market: 'X',
+      timeframe: '1h',
+      candles: [{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }],
+    });
+    expect(v).toBeNull();
+  });
+
+  it('volume_zscore is 0 when all volumes are equal (zero std)', () => {
+    const candles = Array.from({ length: 5 }, (_, i) => ({
+      timestamp: new Date(Date.UTC(2025, 0, i + 1)).toISOString(),
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100,
+      volume: 50,
+    }));
+    expect(computeVolumeZScore({ market: 'X', timeframe: '1h', candles })).toBe(0);
+  });
+
+  it('relative_volume is null on a single candle', () => {
+    const v = computeRelativeVolume({
+      market: 'X',
+      timeframe: '1h',
+      candles: [{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }],
+    });
+    expect(v).toBeNull();
+  });
+
+  it('relative_volume is null for non-positive volumes', () => {
+    const candles = Array.from({ length: 5 }, (_, i) => ({
+      timestamp: new Date(Date.UTC(2025, 0, i + 1)).toISOString(),
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100,
+      volume: 0,
+    }));
+    expect(computeRelativeVolume({ market: 'X', timeframe: '1h', candles })).toBeNull();
+  });
+
+  it('volume_momentum is null on a single candle', () => {
+    const v = computeVolumeMomentum({
+      market: 'X',
+      timeframe: '1h',
+      candles: [{ timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 10 }],
+    });
+    expect(v).toBeNull();
+  });
+
+  it('volume_momentum is null for non-positive volumes', () => {
+    const v = computeVolumeMomentum({
+      market: 'X',
+      timeframe: '1h',
+      candles: [
+        { timestamp: '2025-01-01T00:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 0 },
+        { timestamp: '2025-01-01T01:00:00Z', open: 100, high: 101, low: 99, close: 100, volume: 50 },
+      ],
+    });
+    expect(v).toBeNull();
+  });
+
+  it('volume_momentum is negative for decreasing volume', () => {
+    const candles = Array.from({ length: 20 }, (_, i) => ({
+      timestamp: new Date(Date.UTC(2025, 0, i + 1)).toISOString(),
+      open: 100,
+      high: 101,
+      low: 99,
+      close: 100,
+      volume: 50 - i,
+    }));
+    const v = computeVolumeMomentum({ market: 'X', timeframe: '1h', candles });
+    expect(v).not.toBeNull();
+    expect(v!).toBeLessThan(0);
+  });
+});
