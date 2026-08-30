@@ -65,3 +65,4 @@ iter	timestamp	metric	delta	kept	description
 68	2026-08-30T06:55:00Z	71.97	+0.08	yes	add polymarket-signer suite (14 tests, 26 stmts 3.84%->96.15%)
 69	2026-08-30T06:42:54Z	72.19	+0.22	yes	add news-catalyst-fade suite (32 tests, 56 stmts 2.81%->100%)
 70	2026-08-30T06:51:48Z	72.39	+0.20	yes	add volatility-surface-arb suite (27 tests, 66 stmts 3.03%->100%)
+71	2026-08-30T00:06:49Z	72.57	+0.18	yes	add fraud-detector suite (21 tests, 58 stmts 3.44%->100%)
