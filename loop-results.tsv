@@ -79,3 +79,4 @@ iter	timestamp	metric	delta	kept	description
 82	2026-08-30T12:52:38Z	73.89	+0.13	yes	add cluster-config suite (16 tests, 42 stmts 4.76%->100%, mocked ioredis Cluster class)
 83	2026-08-30T13:35:00Z	74.36	+7.92	yes	add prometheus-metrics-core suite (50 tests, 206 stmts 30%->100%, prom-client class-stub mocks)
 84	2026-08-30T14:15:00Z	74.64	+0.28	yes	add telegram bot suite (33 tests, 119 stmts 12.6%->84%, singleton+alert paths)
+85	2026-08-30T14:48:00Z	74.92	+0.28	yes	expand correlation-breakdown suite to 100% (33 tests, 120 stmts 28.3%->100%, all scanPair/scanEntries branches)
