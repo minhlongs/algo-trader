@@ -90,3 +90,4 @@ iter	timestamp	metric	delta	kept	description
 93	2026-08-30T16:35:00Z	76.13	+0.10	yes	add nats-connection-manager suite (14 tests, 35 stmts 8.5793	2026-08-30T16:35:00Z	76.13	+0.10	yes	add nats-connection-manager suite (14 tests, 35 stmts 8.57%->100%, connectNats/getNatsConnection/isNatsConnected/getCodec/closeNats/monitorConnection)
 94	2026-08-30T16:42:00Z	76.21	+0.08	yes	expand alpha-backtest-adapter suite (20 tests, 52 stmts 61.54%->100%, OHLCV path + runAlphaExperiment regimeSnapshots/featureVectors/labels/unknown-feature)
 95	2026-08-30T16:48:25Z	76.24	+0.03	yes	expand 01-hello-world-strategy suite (10 tests, 12 stmts 8.33%->100%, execute/wait/buy/sell signal clamps + 100-candle window)
+96	2026-08-30T10:01:53Z	76.31	+0.07	yes	add signal-rest-cache suite (10 tests, 23 stmts 8.70%->100%, set/get/invalidate branches via hoisted redis+logger mocks)
