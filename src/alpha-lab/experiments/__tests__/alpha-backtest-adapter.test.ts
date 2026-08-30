@@ -11,6 +11,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   loadCandles,
+  runAlphaExperiment,
   buildDataSources,
   fundingTransformDescription,
   FUNDING_SYMBOL_PREFIX,
@@ -265,5 +266,101 @@ describe('alpha-backtest-adapter: funding provenance (buildDataSources)', () => 
 
     expect(dataSources[0].start).toBe('2024-01-01T08:00:00.000Z');
     expect(dataSources[0].end).toBe('2024-01-01T16:00:00.000Z');
+  });
+});
+
+describe('alpha-backtest-adapter: standard OHLCV path', () => {
+  it('returns real candles when the OHLCV store has >= 10 rows', async () => {
+    const latest = Array.from({ length: 12 }, (_, i) => ({
+      timestamp: new Date(Date.UTC(2024, 0, 1, i)),
+      open: 100 + i,
+      high: 110 + i,
+      low: 90 + i,
+      close: 105 + i,
+      volume: 1000 + i,
+    }));
+    vi.mocked(getLatestCandles).mockResolvedValue(latest);
+
+    const { candles, source } = await loadCandles('BTC/USDT', '1h', 12);
+
+    expect(source).toBe('real');
+    expect(candles).toHaveLength(12);
+    expect(candles[0].open).toBe(100);
+    expect(candles[11].close).toBe(116);
+    expect(candles[0].volume).toBe(1000);
+  });
+
+  it('falls back to mock data when the OHLCV store is unreachable', async () => {
+    vi.mocked(getLatestCandles).mockRejectedValue(new Error('store down'));
+
+    const { candles, source } = await loadCandles('BTC/USDT', '1h', 50);
+
+    expect(source).toBe('mock');
+    expect(candles.length).toBeGreaterThan(0);
+  });
+});
+
+describe('alpha-backtest-adapter: runAlphaExperiment', () => {
+  function makeCandles(n: number): CandleLike[] {
+    return Array.from({ length: n }, (_, i) => ({
+      timestamp: `2024-01-01T${String(i).padStart(2, '0')}:00:00.000Z`,
+      open: 100 + i,
+      high: 110 + i,
+      low: 90 + i,
+      close: 105 + i,
+      volume: 1000 + i,
+    }));
+  }
+
+  it('produces regime snapshots, feature vectors, and labels for each window', async () => {
+    const candles = makeCandles(20);
+    const result = await runAlphaExperiment(candles, {
+      market: 'BTC/USDT',
+      timeframe: '1h',
+      lookback: 3,
+      features: ['simple_return'],
+      tp: 0.02,
+      sl: 0.01,
+      maxHolding: 6,
+    });
+
+    expect(result.regimeSnapshots).toHaveLength(17); // candles.length - lookback
+    expect(result.featureVectors).toHaveLength(17);
+    // maxEntry = 20 - 1 - 6 = 13; loop from i=3..13 -> 11 labels
+    expect(result.labels).toHaveLength(11);
+    expect(result.labels[0].entryIdx).toBe(3);
+    expect(result.labels[10].entryIdx).toBe(13);
+  });
+
+  it('emits zero labels when maxHolding exceeds available candles', async () => {
+    const candles = makeCandles(10);
+    const result = await runAlphaExperiment(candles, {
+      market: 'BTC/USDT',
+      timeframe: '1h',
+      lookback: 3,
+      features: ['simple_return'],
+      tp: 0.02,
+      sl: 0.01,
+      maxHolding: 100, // maxEntry = -1 -> labels loop never runs
+    });
+
+    expect(result.regimeSnapshots).toHaveLength(7); // 10 - 3
+    expect(result.featureVectors).toHaveLength(7);
+    expect(result.labels).toHaveLength(0);
+  });
+
+  it('propagates an unknown feature name from buildFeatureVector', async () => {
+    const candles = makeCandles(20);
+    await expect(
+      runAlphaExperiment(candles, {
+        market: 'BTC/USDT',
+        timeframe: '1h',
+        lookback: 3,
+        features: ['does_not_exist'],
+        tp: 0.02,
+        sl: 0.01,
+        maxHolding: 6,
+      }),
+    ).rejects.toThrow(/Unknown feature: does_not_exist/);
   });
 });
