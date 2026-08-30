@@ -9,7 +9,7 @@
  * No real data/ used (E5 invariant).
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -25,6 +25,20 @@ import {
 } from '../research-ledger';
 import { runExperiment } from '../../experiments/experiment-engine';
 import type { ExperimentResult } from '../../experiments/experiment-types';
+
+// evaluateAlpha is pure and never throws in practice (no `throw` anywhere in
+// the baseline chain), and writeAlphaReport / appendLedgerRecord are both
+// fail-safe. The catch block in recordAlphaVerdict is therefore a defensive
+// wrapper, not reachable through a degenerate real input. We mock evaluateAlpha
+// to throw so the fail-safe catch path is exercised honestly; the base
+// implementation stays wired so happy-path tests still use real evaluation.
+vi.mock('../../attribution/alpha-evaluator', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    evaluateAlpha: vi.fn(actual.evaluateAlpha),
+  };
+});
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -279,6 +293,77 @@ describe('recordAlphaVerdict fail-safety', () => {
         },
       ),
     ).resolves.toBeDefined();
+  });
+
+  it('catch path: evaluateAlpha throwing returns the fallback outcome', async () => {
+    const { evaluateAlpha } = await import('../../attribution/alpha-evaluator');
+    const mocked = vi.mocked(evaluateAlpha);
+    mocked.mockImplementationOnce(() => {
+      throw new Error('baseline computation exploded');
+    });
+
+    const candidate = candidateResultFromExperiment(syntheticResult());
+    const outcome = await recordAlphaVerdict(
+      {
+        candidateId: 'catch-path',
+        configHash: 'hash-catch',
+        strategyRef: 's',
+        candidate,
+        candles: CANDLES,
+      },
+      { alphaReportRoot: tmpReportRoot, ledgerPath: tmpLedger },
+    );
+
+    // Fallback outcome shape from the catch block
+    expect(outcome.ok).toBe(false);
+    expect(outcome.verdict.passed).toBe(false);
+    expect(outcome.verdict.failedCriteria).toEqual([
+      'recordAlphaVerdict: baseline computation exploded',
+    ]);
+    expect(outcome.verdict.comparisons).toEqual([]);
+    expect(outcome.verdict.recommendation).toBe('Error during alpha verdict recording');
+    expect(outcome.ledger.ok).toBe(false);
+    expect(outcome.ledger.error).toBe('baseline computation exploded');
+    // The fallback report echoes the candidateId with an empty failedCriteria
+    expect(outcome.report.candidateId).toBe('catch-path');
+    expect(outcome.report.verdict.passed).toBe(false);
+    expect(outcome.report.verdict.failedCriteria).toEqual([]);
+
+    // No report or ledger was persisted — the error aborted before either write
+    const report = await readAlphaReportByCandidateId('catch-path', tmpReportRoot);
+    expect(report).toBeNull();
+    const records = await readLedgerRecords(tmpLedger);
+    expect(records).toHaveLength(0);
+
+    mocked.mockRestore();
+  });
+
+  it('catch path: non-Error throw values are stringified into the message', async () => {
+    const { evaluateAlpha } = await import('../../attribution/alpha-evaluator');
+    const mocked = vi.mocked(evaluateAlpha);
+    mocked.mockImplementationOnce(() => {
+      // eslint-disable-next-line no-restricted-syntax -- deliberately a non-Error throw value
+      throw 'plain string failure';
+    });
+
+    const candidate = candidateResultFromExperiment(syntheticResult());
+    const outcome = await recordAlphaVerdict(
+      {
+        candidateId: 'non-error-throw',
+        configHash: 'hash-ne',
+        strategyRef: 's',
+        candidate,
+        candles: CANDLES,
+      },
+      { alphaReportRoot: tmpReportRoot, ledgerPath: tmpLedger },
+    );
+
+    // String(err) branch of the catch block
+    expect(outcome.ok).toBe(false);
+    expect(outcome.verdict.failedCriteria[0]).toBe('recordAlphaVerdict: plain string failure');
+    expect(outcome.ledger.error).toBe('plain string failure');
+
+    mocked.mockRestore();
   });
 });
 
