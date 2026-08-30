@@ -80,3 +80,4 @@ iter	timestamp	metric	delta	kept	description
 83	2026-08-30T13:35:00Z	74.36	+7.92	yes	add prometheus-metrics-core suite (50 tests, 206 stmts 30%->100%, prom-client class-stub mocks)
 84	2026-08-30T14:15:00Z	74.64	+0.28	yes	add telegram bot suite (33 tests, 119 stmts 12.6%->84%, singleton+alert paths)
 85	2026-08-30T14:48:00Z	74.92	+0.28	yes	expand correlation-breakdown suite to 100% (33 tests, 120 stmts 28.3%->100%, all scanPair/scanEntries branches)
+86	2026-08-30T08:02:31Z	75.05	+0.13	yes	add price-impact-estimator-config suite (24 tests, 42/43 stmts, all pure helpers; line 96 unreachable defensive guard documented)
