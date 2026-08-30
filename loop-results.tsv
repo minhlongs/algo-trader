@@ -93,3 +93,4 @@ iter	timestamp	metric	delta	kept	description
 96	2026-08-30T10:01:53Z	76.31	+0.07	yes	add signal-rest-cache suite (10 tests, 23 stmts 8.70%->100%, set/get/invalidate branches via hoisted redis+logger mocks)
 97	2026-08-30T17:06:00Z	76.34	+0.03	yes	add error-handler middleware suite (9 tests, 11 stmts 9.09%->100%, errorHandler/createApiError/asyncHandler)
 98	2026-08-30T10:27:00Z	76.51	+0.17	yes	add strategy-math-helpers suite (39 tests, 72 stmts 29.73%->100%, dropped unreachable denom===0 guard in calcSlope) d30df130
+99	2026-08-30T17:22:30Z	76.52	+0.01	yes	add negative-risk-types suite (8 tests, 5 stmts 40%->100%, DEFAULT_CONFIG/STRATEGY_NAME/isOnCooldown/setCooldown guards) 7613e6a1
