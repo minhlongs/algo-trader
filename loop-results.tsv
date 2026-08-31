@@ -112,3 +112,5 @@ iter	timestamp	metric	delta	kept	description
 116	2026-08-31T16:30:00Z	78.54	+0.12	yes	add signals-api/usage-metering-service suite (22 tests, 47 stmts 12.8%->100%); full suite 8948 pass (3 pre-existing flakes in integration/funding-store/audit-trail); usage-metering-service.ts 47 stmts fully covered
 117	2026-08-31T16:50:00Z	78.63	+0.09	yes	add semantic-cache suite (13 tests, 31 stmts 12.9%->100%); full suite green; redis mock + logger
 118	2026-08-31T18:00:00Z	78.72	+0.09	yes	fix isValid missing-await bug in cookie-attribution (Promise!==null always true) + add cookie-attribution suite (17 tests, 31 stmts 12.9%->100%); full suite green
+119	2026-09-01T02:22:00Z	78.86	+0.14	yes	add analytics-routes suite (16 tests, 37 stmts 13.51%->97.30%); full suite 8976 pass
+120	2026-09-01T04:54:00Z	78.95	+0.09	yes	add binance-funding-feed-history suite (8 tests, 58 stmts 13.79%->81.03%); full suite 8984 pass
