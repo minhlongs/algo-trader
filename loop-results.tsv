@@ -122,3 +122,4 @@ iter	timestamp	metric	delta	kept	description
 126	2026-08-31T21:53:39Z	79.51	+0.02	yes	add coupon-routes suite (14 tests, 62 stmts 14%->100%); full suite 8998 pass; funding-store-mock full-run flake excluded
 127	2026-08-31T21:59:18Z	79.60	+0.09	yes	add nowpayments-api-routes suite (6 tests, 33 stmts 15%->100%); full suite pass
 128	2026-09-01T06:04:25Z	79.73	+0.13	yes	add trial-drip-routes suite (14 tests, 46 stmts 15%->100%); full suite 9007 pass
+129	2026-09-01T06:09:20Z	79.80	+0.07	yes	add delta-neutral-volatility-arbitrage suite (10 tests, 26 stmts 15%->100%); full suite 9016 pass
