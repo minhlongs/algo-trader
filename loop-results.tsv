@@ -114,3 +114,9 @@ iter	timestamp	metric	delta	kept	description
 118	2026-08-31T18:00:00Z	78.72	+0.09	yes	fix isValid missing-await bug in cookie-attribution (Promise!==null always true) + add cookie-attribution suite (17 tests, 31 stmts 12.9%->100%); full suite green
 119	2026-09-01T02:22:00Z	78.86	+0.14	yes	add analytics-routes suite (16 tests, 37 stmts 13.51%->97.30%); full suite 8976 pass
 120	2026-09-01T04:54:00Z	78.95	+0.09	yes	add binance-funding-feed-history suite (8 tests, 58 stmts 13.79%->81.03%); full suite 8984 pass
+121	2026-09-01T05:17:00Z	79.07	+0.12	yes	add mean-reversion-class suite (14 tests, 76 stmts 14.47%->97.36%); full suite 8997 pass
+122	2026-09-01T05:20:00Z	79.15	+0.08	yes	add live-trading-strategy-executor suite (11 tests, 29 stmts 13.79%->100%); full suite 8991 pass
+123	2026-09-01T05:25:00Z	79.29	+0.14	yes	add integer-programming-solver suite (10 tests, 50 stmts 14.00%->98%); full suite 8973 pass
+124	2026-09-01T05:35:00Z	79.43	+0.14	yes	add admin-marketplace-dispute-routes suite (13 tests, 50 stmts 14%->100%); full suite 8975 pass
+125	2026-09-01T05:38:00Z	79.49	+0.06	yes	add ws-heartbeat suite (9 tests, 21 stmts 14.28%->100%); full suite 8984 pass
+126	2026-08-31T21:53:39Z	79.51	+0.02	yes	add coupon-routes suite (14 tests, 62 stmts 14%->100%); full suite 8998 pass; funding-store-mock full-run flake excluded
