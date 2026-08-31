@@ -69,11 +69,12 @@ describe('GammaClientImpl', () => {
   beforeEach(async () => {
     fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
-    // AbortSignal.timeout may be absent in the test runtime; stub it.
+    // AbortSignal.timeout may be absent in the test runtime; return an already
+    // aborted signal so no live timer keeps the event loop alive.
     (AbortSignal as unknown as { timeout: (ms: number) => AbortSignal }).timeout = vi.fn(
-      (ms: number) => {
+      () => {
         const controller = new AbortController();
-        setTimeout(() => controller.abort(), ms);
+        controller.abort();
         return controller.signal;
       },
     );
