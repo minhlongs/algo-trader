@@ -131,3 +131,4 @@ iter	timestamp	metric	delta	kept	description
 135	2026-09-01T04:58:21Z	80.77	+0.11	yes	add nowpayments-utils suite (54 tests, 41 stmts 17.07%->100%); full suite 9180 pass
 136	2026-09-01T06:00:00	79.31	+62.07	yes	spread-detector.ts 17.24%->79.31% statements, 23 tests, fixed vi.mock paths (../../../) + error-propagation semantics
 137	2026-09-01T14:05:00	92.68	+73.17	yes	add trading-event-bus.test.ts (26 tests, events module 19.51->92.68 stmts)
+138	2026-09-01T14:12:00	100	+77.78	yes	add postgres-client.test.ts (10 tests, db module 22.22->100 stmts)
