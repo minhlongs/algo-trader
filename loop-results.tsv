@@ -126,3 +126,4 @@ iter	timestamp	metric	delta	kept	description
 130	2026-09-01T06:20:00Z	79.93	+0.13	yes	add admin-dna suite (13 tests, 44 stmts 15130	2026-09-01T06:20:00Z	79.93	+0.13	yes	add admin-dna suite (13 tests, 44 stmts 15%->100%); full suite 9029 pass
 131	2026-09-01T10:33:00Z	80.05	+0.12	yes	add ai-audit-routes suite (16 tests, 44 stmts 16%->100%)
 132	2026-09-01T10:43:00Z	80.44	+0.39	yes	add arbitrage-routes suite (13 tests, 50 stmts 16%->100%, lazy init + validation + error paths + singleton lifecycle)
+133	133	2026-09-01T11:55:00Z	80.58	+0.14	yes	add subscriber-pnl-routes suite (14 tests, 62 stmts 16.12%->90.32%); full suite 9112 pass
