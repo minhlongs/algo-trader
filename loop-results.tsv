@@ -127,3 +127,6 @@ iter	timestamp	metric	delta	kept	description
 131	2026-09-01T10:33:00Z	80.05	+0.12	yes	add ai-audit-routes suite (16 tests, 44 stmts 16%->100%)
 132	2026-09-01T10:43:00Z	80.44	+0.39	yes	add arbitrage-routes suite (13 tests, 50 stmts 16%->100%, lazy init + validation + error paths + singleton lifecycle)
 133	133	2026-09-01T11:55:00Z	80.58	+0.14	yes	add subscriber-pnl-routes suite (14 tests, 62 stmts 16.12%->90.32%); full suite 9112 pass
+134	2026-09-01T04:50:13Z	80.66	+0.08	yes	add auth-middleware suite (14 tests, 30 stmts 16.66%->96.66%); full suite 9126 pass
+135	2026-09-01T04:58:21Z	80.77	+0.11	yes	add nowpayments-utils suite (54 tests, 41 stmts 17.07%->100%); full suite 9180 pass
+136	2026-09-01T06:00:00	79.31	+62.07	yes	spread-detector.ts 17.24%->79.31% statements, 23 tests, fixed vi.mock paths (../../../) + error-propagation semantics
