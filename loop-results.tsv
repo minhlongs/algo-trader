@@ -140,3 +140,4 @@ iter	timestamp	metric	delta	kept	description
 144	2026-09-01T15:36:00	91.66	+72.86	yes	rollback-handler.ts: 20 tests, 18.8% to 91.66% lines coverage
 145	2026-09-01T15:54:00Z	88.63	+88.63	yes	check-gates.ts 0%→88.63% stmts (18 tests); export loadPaperData/renderGateTable/formatGateValue/formatThreshold + import.meta.url CLI guard
 146	2026-09-01T16:08:00Z	97.22	+77.78	yes	usage-metering.ts 19.44%->97.22% lines (16 tests); UsageMeteringService facade - getInstance/getCurrentPeriod/getUsageStatus/calculateOverage/delegated methods
+147	2026-09-01T16:13:00Z	100.00	+100.00	yes	inventory-skew-math.ts 0%→100% stmts (22 tests); pure math helpers calcSkew/calcConcentration/shouldRebalance/unrealizedPnl
