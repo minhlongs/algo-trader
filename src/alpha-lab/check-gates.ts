@@ -72,7 +72,7 @@ async function checkExchangeHealth(): Promise<boolean> {
   }
 }
 
-async function loadPaperData(): Promise<GateEvaluatorInput> {
+export async function loadPaperData(): Promise<GateEvaluatorInput> {
   const trades = await fetchPaperTrades();
   const closed = trades.filter((t) => t.pnl !== null);
   const startDate =
@@ -124,7 +124,7 @@ async function loadPaperData(): Promise<GateEvaluatorInput> {
 
 // ── Table Renderer ─────────────────────────────────────────────────────────────
 
-function renderGateTable(reading: PromotionReadiness): string {
+export function renderGateTable(reading: PromotionReadiness): string {
   const lines: string[] = [];
   const header = [
     '#'.padStart(2),
@@ -174,7 +174,7 @@ function renderGateTable(reading: PromotionReadiness): string {
   return lines.join('\n');
 }
 
-function formatGateValue(gate: { currentValue: number | null; id: string }): string {
+export function formatGateValue(gate: { currentValue: number | null; id: string }): string {
   if (gate.currentValue === null) return 'N/A';
   if (gate.id === 'win_rate') return `${(gate.currentValue * 100).toFixed(1)}%`;
   if (gate.id === 'max_drawdown') return `${(gate.currentValue * 100).toFixed(1)}%`;
@@ -184,7 +184,7 @@ function formatGateValue(gate: { currentValue: number | null; id: string }): str
   return String(Math.round(gate.currentValue * 100) / 100);
 }
 
-function formatThreshold(gate: { threshold: number | null; id: string }): string {
+export function formatThreshold(gate: { threshold: number | null; id: string }): string {
   if (gate.threshold === null) return '-';
   const meta = GATE_THRESHOLDS.find((g: GateThreshold) => g.id === gate.id);
   if (!meta) return '-';
@@ -207,7 +207,11 @@ async function main(): Promise<void> {
   process.exit(reading.allPassed ? 0 : 1);
 }
 
-main().catch((err) => {
-  console.error('[check-gates] fatal', { err });
-  process.exit(2);
-});
+// Only run main() when executed directly as a CLI script (tsx/node).
+// Importing this module from tests or other code must NOT trigger process.exit().
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main().catch((err) => {
+    console.error('[check-gates] fatal', { err });
+    process.exit(2);
+  });
+}
