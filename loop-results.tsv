@@ -135,3 +135,6 @@ iter	timestamp	metric	delta	kept	description
 139	2026-08-31T14:17:00	100	+100	yes	polymarket-websocket-message-parser.ts: 16 tests, 0% to 100% coverage
 140	2026-08-31T14:31:00	86.9	+86.9	yes	polymarket-websocket-feed.ts: 14 tests, 0% to 86.9% lines coverage
 141	2026-09-01T14:55:00	94.87	+75.96	yes	bybit-ws.ts: 34 tests, 18.91% to 94.87% lines coverage; fixed extractSymbol 2-part topic bug + parseOrderBook flat-array normalization
+142	2026-09-01T15:15:00	100	+100	yes	internal-billing-routes.ts: 7 tests, 0% to 100% coverage (vi.hoisted env-capture fix)
+143	2026-09-01T15:18:00	97.67	+79.07	yes	shard-fetch-handlers.ts: 13 tests, 18.6% to 97.67% lines coverage
+144	2026-09-01T15:36:00	91.66	+72.86	yes	rollback-handler.ts: 20 tests, 18.8% to 91.66% lines coverage
