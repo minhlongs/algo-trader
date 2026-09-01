@@ -206,8 +206,9 @@ export class BybitWebSocketClient extends BaseWebSocketClient {
 
   private extractSymbol(topic: string): string | null {
     const parts = topic.split('.');
-    if (parts.length < 3) return null;
-    const rawSymbol = parts[2];
+    if (parts.length < 2) return null;
+    // Supported topics: orderbook.<L>.<SYMBOL>, publicTrade.<SYMBOL>, tickers.<SYMBOL>
+    const rawSymbol = parts.length >= 3 ? parts[2] : parts[1];
     // Convert BTCUSDT to BTC/USDT
     const match = rawSymbol.match(/^([A-Z]+)(USDT|USDC|USD|BTC|ETH)$/);
     if (match) {
@@ -217,10 +218,18 @@ export class BybitWebSocketClient extends BaseWebSocketClient {
   }
 
   private parseOrderBook(data: Record<string, unknown>): BybitOrderBook {
-    const bidsData = (data.b as string[][][])?.[0] || (data.b as string[][]) || [];
-    const asksData = (data.a as string[][][])?.[0] || (data.a as string[][]) || [];
-    const bids = bidsData.map((l: string[]) => [l[0], l[1]] as [string, string]);
-    const asks = asksData.map((l: string[]) => [l[0], l[1]] as [string, string]);
+    // Bybit v5 orderbook snapshot: b/a are flat [['price','size'],...] arrays.
+    // Some feeds wrap them in an extra array — normalize to flat.
+    const normalize = (raw: unknown): string[][] => {
+      if (!Array.isArray(raw)) return [];
+      if (raw.length === 0) return [];
+      if (Array.isArray(raw[0]) && Array.isArray((raw[0] as unknown[])[0])) {
+        return raw[0] as string[][];
+      }
+      return raw as string[][];
+    };
+    const bids = normalize(data.b).map((l: string[]) => [l[0], l[1]] as [string, string]);
+    const asks = normalize(data.a).map((l: string[]) => [l[0], l[1]] as [string, string]);
     return {
       seq: Number(data.seq ?? 0),
       bids,
