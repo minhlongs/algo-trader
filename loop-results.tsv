@@ -138,3 +138,4 @@ iter	timestamp	metric	delta	kept	description
 142	2026-09-01T15:15:00	100	+100	yes	internal-billing-routes.ts: 7 tests, 0% to 100% coverage (vi.hoisted env-capture fix)
 143	2026-09-01T15:18:00	97.67	+79.07	yes	shard-fetch-handlers.ts: 13 tests, 18.6% to 97.67% lines coverage
 144	2026-09-01T15:36:00	91.66	+72.86	yes	rollback-handler.ts: 20 tests, 18.8% to 91.66% lines coverage
+145	2026-09-01T15:54:00Z	88.63	+88.63	yes	check-gates.ts 0%→88.63% stmts (18 tests); export loadPaperData/renderGateTable/formatGateValue/formatThreshold + import.meta.url CLI guard
