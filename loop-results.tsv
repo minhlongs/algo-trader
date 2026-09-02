@@ -150,3 +150,8 @@ iter	timestamp	metric	delta	kept	description
 154	2026-09-02T14:53:00Z	61.56	+0.06	yes	add live-order-polling test suite (iteration 154)
 155	2026-09-02T15:08:00Z	61.64	+0.08	yes	add kelly-position-sizer test suite (iteration 155)
 156	2026-09-02T15:35:00Z	100	+100	yes	add split-clob-entry test suite (iteration 156), 27 tests, 100pct lines/stmts/funcs, 93pct branches
+157	2026-09-02T16:10:00Z	100	+100	yes	add kronos-fair-value test suite (iteration 157), 15 tests, 100pct lines/funcs
+158	2026-09-02T16:20:00Z	100	+80.82	yes	listing-arbitrage-sniper.ts 19pct->100pct stmts, 48 tests, spread NO-side/volume-fallback/cooldown gates
+159	2026-09-02T16:45:00Z	100	+82.4	yes	strategy-runner-event-handlers.ts 17pct->100pct stmts, 13 tests, status/debounce/token-relevance/max-ticks gates
+160	2026-09-02T16:50:00Z	100	+82.4	yes	create-message-bus.ts 17pct->100pct stmts, 8 tests, NATS/Redis fallback, cached singleton, close cleanup
+161	2026-09-03T01:44:00Z	100	+100	yes	binance-ws.ts 0pct->100pct stmts/funcs/branches, 32 tests, fixed normalizeSymbol greedy regex bug (BNBUSDC→BNB/USDC), ws-connection mock pattern matching bybit-ws
