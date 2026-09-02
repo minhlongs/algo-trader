@@ -143,3 +143,4 @@ iter	timestamp	metric	delta	kept	description
 147	2026-09-01T16:13:00Z	100.00	+100.00	yes	inventory-skew-math.ts 0%→100% stmts (22 tests); pure math helpers calcSkew/calcConcentration/shouldRebalance/unrealizedPnl
 148	2026-09-02T03:03:00Z	95.23	+95.23	yes	inventory-skew-concentration.ts 0%→95.23% stmts (8 tests); runConcentrationCheck trim loop with OrderManager mock + concentration math fixes
 149	2026-09-02T03:20:00Z	100	+100	yes	inventory-skew-rebalancer.ts 0149	2026-09-02T03:20:00Z	100	+100	yes	inventory-skew-rebalancer.ts 0%→100% stmts (16 tests); createInventorySkewRebalancerTick facade — eventBus listener, refreshPrices mid-price, tick flow with mock modules
+150	2026-09-02T03:24:00Z	100	+100	yes	audit-retention-cleanup.ts 0%→100% stmts (12 tests); singleton job with AuditLogService mock, start/stop scheduling, runCleanup, getCleanupPreview
