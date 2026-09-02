@@ -147,3 +147,4 @@ iter	timestamp	metric	delta	kept	description
 151	2026-09-02T04:33:30Z	100	+100	yes	dashboard-middleware 0%→100% stmts, 18 tests
 152	2026-09-02T04:45:17Z	100	+100	yes	ab-test-routes.ts 17.5%→100% stmts, 27 tests
 153	2026-09-02T05:09:03Z	100	+81	yes	log-aggregator.ts 19pct->100pct stmts, 51 tests; structured logging, batching, trace IDs, configurable backends (Stdout/File/Http), ChildLogger
+154	2026-09-02T14:53:00Z	61.56	+0.06	yes	add live-order-polling test suite (iteration 154)
