@@ -3,7 +3,7 @@
  * Manages discount codes — persisted to JSON file so coupons survive PM2 restarts.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { logger } from '../../shared/utils/logger';
 
@@ -52,8 +52,6 @@ export class CouponService {
     try {
       const dir = join(process.cwd(), 'data');
       if (!existsSync(dir)) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { mkdirSync } = require('fs');
         mkdirSync(dir, { recursive: true });
       }
       writeFileSync(DATA_FILE, JSON.stringify(this.listCoupons(), null, 2));
@@ -69,6 +67,7 @@ export class CouponService {
     maxUses?: number;
     validUntil?: string;
     applicableTiers?: string[];
+    active?: boolean;
   }): Coupon {
     const code = input.code.toUpperCase().trim();
     if (this.coupons.has(code)) throw new Error(`Coupon ${code} already exists`);
@@ -84,7 +83,7 @@ export class CouponService {
       validUntil: input.validUntil ?? null,
       applicableTiers: input.applicableTiers ?? [],
       createdAt: new Date().toISOString(),
-      active: true,
+      active: input.active ?? true,
     };
 
     this.coupons.set(code, coupon);

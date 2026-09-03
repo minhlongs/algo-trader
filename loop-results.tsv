@@ -160,3 +160,4 @@ iter	timestamp	metric	delta	kept	description
 167	2026-09-03T05:10:00Z	100	+77.78	yes	live-trading-types.ts 22.22%->100% stmts, 17 tests, validateLiveEnv all branches + interfaces
 168	2026-09-03T14:31:11Z	100	+77.28	yes	live-order-manager-proxy.ts 22.72%->100% stmts, 34 tests, all placeOrder/cancelOrder/cancelAllOrders/getOpenOrders/getStats paths + logger
 169	2026-09-03T15:01:00Z	100	+78.13	yes	audit-dead-letter.ts 21.87%->100% stmts, 14 tests, enqueue/flush/getDeadLetterStatus all branches + backoff math + persistent-failure alert
+170	2026-09-03T16:28:00Z	100	+78.13	yes	coupon-service.ts 22%->100% lines/statements/functions, 95.23% branches, 38 tests, createCoupon/applyCoupon/recordUse/listCoupons/deactivateCoupon + load/save/error paths
