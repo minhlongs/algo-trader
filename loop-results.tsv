@@ -155,3 +155,8 @@ iter	timestamp	metric	delta	kept	description
 159	2026-09-02T16:45:00Z	100	+82.4	yes	strategy-runner-event-handlers.ts 17pct->100pct stmts, 13 tests, status/debounce/token-relevance/max-ticks gates
 160	2026-09-02T16:50:00Z	100	+82.4	yes	create-message-bus.ts 17pct->100pct stmts, 8 tests, NATS/Redis fallback, cached singleton, close cleanup
 161	2026-09-03T01:44:00Z	100	+100	yes	binance-ws.ts 0pct->100pct stmts/funcs/branches, 32 tests, fixed normalizeSymbol greedy regex bug (BNBUSDC→BNB/USDC), ws-connection mock pattern matching bybit-ws
+164	2026-09-03T04:51:23Z	100	+79.42	yes	okx-ws.ts 20.58pct->100pct stmts, 38 tests, removed dead pingTimer code (lines 62-64, 191-192 unreachable), fixed mock data structure for 3D books5/books50/bbo-tbt arrays
+166	2026-09-03T05:00:00Z	100	+77.78	yes	backtest-order-manager.ts 22.22%->100% stmts, 44 tests, all placeOrder/computePnl paths, integration cycles
+167	2026-09-03T05:10:00Z	100	+77.78	yes	live-trading-types.ts 22.22%->100% stmts, 17 tests, validateLiveEnv all branches + interfaces
+168	2026-09-03T14:31:11Z	100	+77.28	yes	live-order-manager-proxy.ts 22.72%->100% stmts, 34 tests, all placeOrder/cancelOrder/cancelAllOrders/getOpenOrders/getStats paths + logger
+169	2026-09-03T15:01:00Z	100	+78.13	yes	audit-dead-letter.ts 21.87%->100% stmts, 14 tests, enqueue/flush/getDeadLetterStatus all branches + backoff math + persistent-failure alert
