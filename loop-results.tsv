@@ -161,3 +161,6 @@ iter	timestamp	metric	delta	kept	description
 168	2026-09-03T14:31:11Z	100	+77.28	yes	live-order-manager-proxy.ts 22.72%->100% stmts, 34 tests, all placeOrder/cancelOrder/cancelAllOrders/getOpenOrders/getStats paths + logger
 169	2026-09-03T15:01:00Z	100	+78.13	yes	audit-dead-letter.ts 21.87%->100% stmts, 14 tests, enqueue/flush/getDeadLetterStatus all branches + backoff math + persistent-failure alert
 170	2026-09-03T16:28:00Z	100	+78.13	yes	coupon-service.ts 22%->100% lines/statements/functions, 95.23% branches, 38 tests, createCoupon/applyCoupon/recordUse/listCoupons/deactivateCoupon + load/save/error paths
+171	2026-09-03T16:36:00Z	100	+75.00	yes	key-validation.ts 25%->100% lines/statements/functions, 100% branches, 8 tests, validateKeyPrefix all branches + error paths
+172	2026-09-03T17:03:00Z	100	+75.00	yes	ticker-cache.ts 25%->100% lines/statements/functions, 100% branches, 19 tests, getTickers/getBestBidAcrossExchanges/clear + null-reply paths
+173	2026-09-04T02:44:00Z	100	+74.00	yes	email-service.ts 26.08%->100% lines/statements/functions/branches, 30 tests, singleton/config/startupCheck/initialize/isInitialized/send/sendThresholdAlert/all rate-limit paths (Redis+fallback delay branches)
