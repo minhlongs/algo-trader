@@ -164,3 +164,6 @@ iter	timestamp	metric	delta	kept	description
 171	2026-09-03T16:36:00Z	100	+75.00	yes	key-validation.ts 25%->100% lines/statements/functions, 100% branches, 8 tests, validateKeyPrefix all branches + error paths
 172	2026-09-03T17:03:00Z	100	+75.00	yes	ticker-cache.ts 25%->100% lines/statements/functions, 100% branches, 19 tests, getTickers/getBestBidAcrossExchanges/clear + null-reply paths
 173	2026-09-04T02:44:00Z	100	+74.00	yes	email-service.ts 26.08%->100% lines/statements/functions/branches, 30 tests, singleton/config/startupCheck/initialize/isInitialized/send/sendThresholdAlert/all rate-limit paths (Redis+fallback delay branches)
+176	2026-09-04T04:28:18	100.00	+72.50	yes	add review-repository.test.ts with 43 tests achieving 100% stmts/ branches/ funcs/ lines
+177	2026-09-04T13:05:00Z	100.00	+74.25	yes	add entropy-scorer.test.ts with 56 tests achieving 100% stmts/branches/funcs/lines (25.75%->100%), pure helpers + scanEntries + getCustomExitCondition + execute + legacy factory
+178	2026-09-04T13:22:00Z	100.00	+73.02	yes	add revenue-service.test.ts with 35 tests achieving 100% stmts/branches/funcs/lines (26.98%->100%), singleton/getRevenueOverview/getAllCreatorPayouts/calculateCreatorPayout/requestPayout/getRevenueReport/lookupSubscription
