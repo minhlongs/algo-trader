@@ -215,4 +215,41 @@ describe('handleReportQuery', () => {
     expect(res.answer).toContain('Win rate: 25.0% (25/100)');
     expect(res.sourceData.winRate).toBe(0.25);
   });
+
+  // ── Sub-handler rejection — .catch(() => null) handlers (lines 25-28) ────
+
+  it('survives handleRiskQuery rejecting (catch → null, line 25)', async () => {
+    mockHandleRiskQuery.mockRejectedValue(new Error('risk boom'));
+    const res = await handleReportQuery();
+    // riskResult is null → riskScore and drawdown fall back to N/A
+    expect(res.answer).toContain('Risk score: N/A/10');
+    expect(res.answer).toContain('Drawdown: N/A');
+    expect(res.sourceData.riskScore).toBeUndefined();
+  });
+
+  it('survives handleArbQuery rejecting (catch → null, line 26)', async () => {
+    mockHandleArbQuery.mockRejectedValue(new Error('arb boom'));
+    const res = await handleReportQuery();
+    // arbResult is null → spreadsFound defaults to 0, crossMarketBasket falsy → No
+    expect(res.answer).toContain('Spreads found: 0');
+    expect(res.answer).toContain('Cross-market: No');
+    expect(res.sourceData.spreadsFound).toBeUndefined();
+  });
+
+  it('survives handlePerformanceQuery rejecting (catch → null, line 27)', async () => {
+    mockHandlePerformanceQuery.mockRejectedValue(new Error('perf boom'));
+    const res = await handleReportQuery();
+    // perfResult is null — no direct render, but the aggregation must still succeed
+    expect(res.answer).toContain('**3. Strategy Performance**');
+    expect(res.answer).toContain('Win rate');
+  });
+
+  it('survives handleRegimeQuery rejecting (catch → null, line 28)', async () => {
+    mockHandleRegimeQuery.mockRejectedValue(new Error('regime boom'));
+    const res = await handleReportQuery();
+    // regimeResult is null → regime and signalDirection fall back to N/A
+    expect(res.answer).toContain('Regime: N/A');
+    expect(res.answer).toContain('Signal direction: N/A');
+    expect(res.sourceData.regime).toBeUndefined();
+  });
 });
