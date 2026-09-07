@@ -151,4 +151,44 @@ describe('SlaTracker', () => {
       expect(reports.length).toBe(2);
     });
   });
+
+  // ── sla-tracker-state helpers — window rollover (line 51) ─────────────────
+
+  describe('sla-tracker-state window rollover', () => {
+    it('resets window counters when window age exceeds length (line 51)', async () => {
+      const { ensureProvider, getOrCreateWindow } = await import('../sla-tracker-state');
+      const { MarketDataSource } = await import('../types');
+      const providerMetrics = new Map<unknown, unknown>();
+      const provider = MarketDataSource.SANTIMENT;
+
+      // Ensure provider map exists (line 13-19)
+      ensureProvider(providerMetrics as never, provider);
+
+      // Create window at T=0
+      const t0 = Date.UTC(2026, 0, 1);
+      const w1 = getOrCreateWindow(
+        providerMetrics as never,
+        provider,
+        1,
+        t0
+      );
+      expect(w1.totalRequests).toBe(0);
+
+      // Advance 1ms past the 1h window length → triggers rollover
+      const t1 = t0 + 60 * 60 * 1000 + 1;
+      const w2 = getOrCreateWindow(
+        providerMetrics as never,
+        provider,
+        1,
+        t1
+      );
+
+      // Window rolled over: startTime reset, all counters zeroed
+      expect(w2.startTime).toBe(t1);
+      expect(w2.totalRequests).toBe(0);
+      expect(w2.failedRequests).toBe(0);
+      expect(w2.totalLatency).toBe(0);
+      expect(w2.latencySamples).toEqual([]);
+    });
+  });
 });
