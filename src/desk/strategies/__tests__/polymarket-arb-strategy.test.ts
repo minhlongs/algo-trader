@@ -251,6 +251,252 @@ describe('PolymarketArbStrategy', () => {
     });
   });
 
+  describe('scanEntries — successful arbitrage entry', () => {
+    let deps: StrategyDeps;
+    let strategy: PolymarketArbStrategy;
+
+    beforeEach(() => {
+      deps = createMockDeps();
+      strategy = new PolymarketArbStrategy(deps, { minSpread: 0.02, maxCombinedPrice: 0.98 });
+    });
+
+    it('enters YES+NO positions when spread is profitable (lines 150-177)', async () => {
+      const market = {
+        conditionId: 'c1',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        volume: 10000,
+      } as GammaMarket;
+
+      // yes mid = 0.48, no mid = 0.48 → combined = 0.96 < 0.98, spread = 0.04
+      deps.clob.getOrderBook = vi.fn()
+        .mockResolvedValueOnce({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.48', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.48', size: '100' }] });
+
+      await (strategy as any).scanEntries([market]);
+
+      // Two positions: YES and NO for the same conditionId
+      expect(strategy.getPositionCount()).toBe(2);
+      expect(deps.orderManager.placeOrder).toHaveBeenCalledTimes(2);
+      // First entry buys YES tokenId
+      expect(deps.orderManager.placeOrder.mock.calls[0][0].tokenId).toBe('yes-1');
+      // Second entry buys NO tokenId
+      expect(deps.orderManager.placeOrder.mock.calls[1][0].tokenId).toBe('no-1');
+    });
+
+    it('sets cooldown after entering (line 177)', async () => {
+      const market = {
+        conditionId: 'c1',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        volume: 10000,
+      } as GammaMarket;
+
+      deps.clob.getOrderBook = vi.fn()
+        .mockResolvedValue({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.48', size: '100' }] });
+
+      await (strategy as any).scanEntries([market]);
+
+      expect((strategy as any).cooldowns.has('c1')).toBe(true);
+    });
+  });
+
+  describe('scanEntries — continue on enterPosition error (lines 178-183)', () => {
+    it('logs debug and continues when enterPosition throws', async () => {
+      const deps = createMockDeps();
+      const strategy = new PolymarketArbStrategy(deps, { minSpread: 0.02 });
+
+      // First order succeeds, second fails — but still processes next market
+      deps.clob.getOrderBook = vi.fn()
+        .mockResolvedValueOnce({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.48', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.48', size: '100' }] });
+
+      let callCount = 0;
+      deps.orderManager.placeOrder = vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) return Promise.resolve({ id: 'ok' });
+        return Promise.reject(new Error('exchange down'));
+      });
+
+      const market = {
+        conditionId: 'c1',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        volume: 10000,
+      } as GammaMarket;
+
+      // Should not throw despite enterPosition failure
+      await expect((strategy as any).scanEntries([market])).resolves.toBeUndefined();
+    });
+  });
+
+  describe('scanEntries — filter conditions', () => {
+    let deps: StrategyDeps;
+    let strategy: PolymarketArbStrategy;
+
+    beforeEach(() => {
+      deps = createMockDeps();
+      strategy = new PolymarketArbStrategy(deps, { minSpread: 0.02 });
+    });
+
+    it('skips markets with volume below minVolume (line 111)', async () => {
+      const market = {
+        conditionId: 'c-low-vol',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        volume: 100, // below default minVolume of 2000
+      } as GammaMarket;
+
+      await (strategy as any).scanEntries([market]);
+      expect(deps.clob.getOrderBook).not.toHaveBeenCalled();
+    });
+
+    it('skips markets when volume is undefined (line 111)', async () => {
+      const market = {
+        conditionId: 'c-no-vol',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        // volume is undefined
+      } as GammaMarket;
+
+      await (strategy as any).scanEntries([market]);
+      expect(deps.clob.getOrderBook).not.toHaveBeenCalled();
+    });
+
+    it('skips markets on cooldown (line 110)', async () => {
+      const market = {
+        conditionId: 'c-cd',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        volume: 10000,
+      } as GammaMarket;
+
+      (strategy as any).cooldowns.set('c-cd', Date.now() + 60_000);
+
+      await (strategy as any).scanEntries([market]);
+      expect(deps.clob.getOrderBook).not.toHaveBeenCalled();
+    });
+
+    it('breaks when maxPositions reached mid-loop (line 107)', async () => {
+      // Pre-fill 3 positions (maxPositions = 3), leaving room for 0 more
+      (strategy as any).positions.push(
+        { conditionId: 'pre1' }, { conditionId: 'pre2' }, { conditionId: 'pre3' },
+      );
+
+      const markets = [
+        { conditionId: 'c1', yesTokenId: 'y1', noTokenId: 'n1', closed: false, resolved: false, volume: 10000 },
+        { conditionId: 'c2', yesTokenId: 'y2', noTokenId: 'n2', closed: false, resolved: false, volume: 10000 },
+      ] as GammaMarket[];
+
+      await (strategy as any).scanEntries(markets);
+      // getPositionCount() returns 3 >= maxPositions(3) at line 104 → early return
+      expect(deps.clob.getOrderBook).not.toHaveBeenCalled();
+    });
+
+    it('skips markets without noTokenId (line 108)', async () => {
+      const market = {
+        conditionId: 'c-no-token',
+        yesTokenId: 'yes-1',
+        noTokenId: undefined,
+        closed: false,
+        resolved: false,
+        volume: 10000,
+      } as GammaMarket;
+
+      await (strategy as any).scanEntries([market]);
+      expect(deps.clob.getOrderBook).not.toHaveBeenCalled();
+    });
+
+    it('skips when spread is 0 (no arb) (line 128)', async () => {
+      const market = {
+        conditionId: 'c-no-spread',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        volume: 10000,
+      } as GammaMarket;
+
+      // Both at 0.50 → combined = 1.0 → spread = 0
+      deps.clob.getOrderBook = vi.fn()
+        .mockResolvedValue({ bids: [{ price: '0.50', size: '100' }], asks: [{ price: '0.50', size: '100' }] });
+
+      await (strategy as any).scanEntries([market]);
+      expect(deps.clob.getOrderBook).toHaveBeenCalled();
+      expect(deps.orderManager.placeOrder).not.toHaveBeenCalled();
+    });
+
+    it('skips when avgSpread is below minSpread after lookback (line 138)', async () => {
+      const strategyLow = new PolymarketArbStrategy(deps, { minSpread: 0.10, spreadLookback: 2 });
+      const market = {
+        conditionId: 'c-low-spread',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        volume: 10000,
+      } as GammaMarket;
+
+      // Spread = 0.04 per entry, avg = 0.04 < 0.10
+      deps.clob.getOrderBook = vi.fn()
+        .mockResolvedValue({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.48', size: '100' }] });
+
+      // First call records the spread
+      await (strategyLow as any).scanEntries([market]);
+      // Second call records again, still avg < minSpread
+      await (strategyLow as any).scanEntries([market]);
+
+      // No positions entered because avgSpread < minSpread
+      expect(strategyLow.getPositionCount()).toBe(0);
+    });
+
+    it('skips when combined price >= maxCombinedPrice (line 142)', async () => {
+      const market = {
+        conditionId: 'c-high-combined',
+        yesTokenId: 'yes-1',
+        noTokenId: 'no-1',
+        closed: false,
+        resolved: false,
+        volume: 10000,
+      } as GammaMarket;
+
+      // Combined = 0.50 + 0.50 = 1.00 > 0.98 → skipped (but spread = 0, also filtered)
+      // Use custom thresholds to test the combined price check specifically:
+      // yes mid = 0.50, no mid = 0.50 → combined = 1.00, spread = 0
+      // That filters at spread check first. To test combined price, we need:
+      // combined < 1 (to pass spread check) but combined >= maxCombinedPrice
+      // So use maxCombinedPrice = 0.90 with combined = 0.98
+      const strategyCustom = new PolymarketArbStrategy(deps, {
+        minSpread: 0.01,
+        maxCombinedPrice: 0.90,
+      });
+
+      // Combined = 0.50 + 0.50 = 1.0 → combined >= 0.90, but spread = 0 → skipped earlier
+      // Need spread > 0 AND combined >= maxCombinedPrice
+      // yes mid = 0.45, no mid = 0.50 → combined = 0.95, spread = 0.05
+      deps.clob.getOrderBook = vi.fn()
+        .mockResolvedValueOnce({ bids: [{ price: '0.44', size: '100' }], asks: [{ price: '0.45', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.49', size: '100' }], asks: [{ price: '0.50', size: '100' }] });
+
+      await (strategyCustom as any).scanEntries([market]);
+      expect(deps.clob.getOrderBook).toHaveBeenCalled();
+      // Combined = 0.95 >= maxCombinedPrice(0.90) → skipped at line 142
+      expect(deps.orderManager.placeOrder).not.toHaveBeenCalled();
+    });
+  });
+
   describe('createPolymarketArbTick', () => {
     it('creates a tick function', async () => {
       const { createPolymarketArbTick } = await import('../polymarket-arb-strategy');
