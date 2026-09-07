@@ -244,3 +244,5 @@ iter	timestamp	metric	delta	kept	description
 248	2026-08-31T00:53:00	100/89.5	+31.1/+31.1	yes	test: admin-dna-routes coverage 68.9% → 100% stmts / 89.5% branches (16 tests, auth/500/503/TF/consensus/null-engine)
 249	2026-09-07T17:22:00Z	100.0%	+31.9pp	yes	test: tiered-rollback-controller 80% stmts → 100% (26 branches), Redis/messaging controls, evaluator mocks
 250	2026-09-08T01:50:00Z	100.0%	+30.9pp	yes	test: credentials-routes 69.1%→100% stmts (20 tests), field mapping + auth/503s/audit events
+251	2026-09-07T20:30:04Z%	signal-mcp-server.ts	resolveIdentity edge cases	+6 tests fixed	6/6 edge case tests pass (sync mock fix)
+252	2026-09-08T04:49:00Z	90.4%	+17.4pp	yes	test: cross-platform-arb 73.0%→90.4% stmts, 66.7%→89.6% branches (ingest/confidence/eviction/handler-error paths)
