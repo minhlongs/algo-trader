@@ -12,6 +12,8 @@ vi.mock('node:fs', async () => {
   return {
     ...actual,
     existsSync: vi.fn().mockReturnValue(false),
+    readFileSync: vi.fn().mockReturnValue('{}'),
+    writeFileSync: vi.fn(),
   };
 });
 
@@ -158,6 +160,123 @@ describe('TieredDrawdownBreaker', () => {
       breaker.reset(100000);
       breaker.update(80000);                               // HARD_STOP
       expect(breaker.getSizingMultiplier()).toBe(0);
+    });
+  });
+
+  // ── getPositionsToCloseFraction (lines 113-118) ──────────────────────────
+
+  describe('getPositionsToCloseFraction', () => {
+    it('returns 1.0 at HARD_STOP', () => {
+      breaker.reset(100000);
+      breaker.update(80000); // HARD_STOP
+      expect(breaker.getPositionsToCloseFraction()).toBe(1.0);
+    });
+
+    it('returns 0.5 at HALT', () => {
+      breaker.update(85000); // HALT
+      expect(breaker.getPositionsToCloseFraction()).toBe(0.5);
+    });
+
+    it('returns 0.25 at REDUCE', () => {
+      breaker.update(90000); // REDUCE
+      expect(breaker.getPositionsToCloseFraction()).toBe(0.25);
+    });
+
+    it('returns 0 at NORMAL', () => {
+      expect(breaker.getPositionsToCloseFraction()).toBe(0);
+    });
+
+    it('returns 0 at ALERT', () => {
+      breaker.update(95000); // ALERT
+      expect(breaker.getPositionsToCloseFraction()).toBe(0);
+    });
+  });
+
+  // ── update() while paused/halted (lines 53-55) ───────────────────────────
+
+  describe('update() during active DAILY_PAUSE', () => {
+    it('keeps DAILY_PAUSE tier when pause window active (line 53)', () => {
+      vi.useFakeTimers();
+      breaker.update(96900); // DAILY_PAUSE triggered
+      // Advance only 12h (within 24h pause window)
+      vi.advanceTimersByTime(12 * 60 * 60 * 1000);
+      // Update with a still-negative value — should stay DAILY_PAUSE
+      breaker.update(96900);
+      expect(breaker.getState().tier).toBe('DAILY_PAUSE');
+      vi.useRealTimers();
+    });
+  });
+
+  describe('update() during active HALT', () => {
+    it('keeps HALT tier when halt window active (line 55)', () => {
+      vi.useFakeTimers();
+      breaker.update(85000); // HALT triggered
+      // Advance only 24h (within 48h halt window)
+      vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+      breaker.update(85000); // still in halt window
+      expect(breaker.getState().tier).toBe('HALT');
+      vi.useRealTimers();
+    });
+  });
+
+  // ── highWaterMark = 0 edge cases (lines 74, 135) ────────────────────────
+
+  describe('highWaterMark = 0', () => {
+    it('computes drawdown as 0 when highWaterMark is 0 (evaluateTier)', () => {
+      const zeroBreaker = new TieredDrawdownBreaker(0);
+      // With HWM=0, dd=0, stays NORMAL
+      expect(zeroBreaker.getState().tier).toBe('NORMAL');
+    });
+
+    it('computes drawdown as 0 when highWaterMark is 0 (getState)', () => {
+      const zeroBreaker = new TieredDrawdownBreaker(0);
+      expect(zeroBreaker.getState().drawdownPercent).toBe(0);
+    });
+  });
+
+  // ── loadFromDisk with valid state (lines 146-155) ────────────────────────
+
+  describe('loadFromDisk with valid state', () => {
+    it('restores all fields from disk', () => {
+      const mockedFs = vi.mocked(fs);
+      mockedFs.existsSync.mockReturnValue(true);
+      const mockState = JSON.stringify({
+        highWaterMark: 95000,
+        currentValue: 92000,
+        tier: 'ALERT',
+        haltedUntil: null,
+        dailyPausedUntil: null,
+        dailyStartValue: 93000,
+        dailyPnl: -1000,
+        events: [{ tier: 'ALERT', drawdownPercent: 3.16, portfolioValue: 92000, highWaterMark: 95000, timestamp: Date.now(), action: 'Tier changed NORMAL → ALERT' }],
+      });
+      mockedFs.readFileSync.mockReturnValue(mockState);
+
+      const restored = new TieredDrawdownBreaker(100000);
+      const state = restored.getState();
+      expect(state.highWaterMark).toBe(95000);
+      expect(state.currentValue).toBe(92000);
+      expect(state.tier).toBe('ALERT');
+      expect(state.dailyStartValue).toBe(93000);
+      expect(state.dailyPnl).toBe(-1000);
+      expect(state.events).toHaveLength(1);
+    });
+
+    it('uses defaults when optional fields are missing (?? branches)', () => {
+      const mockedFs = vi.mocked(fs);
+      mockedFs.existsSync.mockReturnValue(true);
+      // State with only highWaterMark — all optional fields undefined → ?? kicks in
+      const partialState = JSON.stringify({ highWaterMark: 80000 });
+      mockedFs.readFileSync.mockReturnValue(partialState);
+
+      const restored = new TieredDrawdownBreaker(100000);
+      const state = restored.getState();
+      expect(state.highWaterMark).toBe(80000);
+      expect(state.currentValue).toBe(100000); // falls back to constructor arg
+      expect(state.tier).toBe('NORMAL'); // falls back to 'NORMAL'
+      expect(state.dailyStartValue).toBe(100000); // falls back to constructor arg
+      expect(state.dailyPnl).toBe(0); // falls back to 0
+      expect(state.events).toEqual([]); // falls back to []
     });
   });
 });
