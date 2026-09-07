@@ -25,6 +25,7 @@ let _provider: CandleProvider | null = null;
 let _lastConfig: DnaEngineConfig | null = null;
 
 export function setDnaProvider(provider: CandleProvider): void { _provider = provider; }
+export function resetDnaProvider(): void { _provider = null; }
 export function setDnaConfig(config: Partial<DnaEngineConfig>): void {
   _lastConfig = { ...(_lastConfig ?? {}), ...config } as DnaEngineConfig;
 }
