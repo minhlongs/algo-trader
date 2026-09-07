@@ -30,40 +30,56 @@ vi.mock('../../audit/audit-log-service', () => ({
   },
 }));
 
-vi.mock('../../billing/nowpayments-service', () => ({
-  NowPaymentsService: vi.fn().mockImplementation(() => ({
+const { mockNowPayments, mockNotificationService, mockStrategyRepo } = vi.hoisted(() => ({
+  mockNowPayments: {
     createMarketplaceCheckoutUrl: vi.fn().mockResolvedValue(null),
     isMarketplaceOrderId: vi.fn().mockReturnValue(false),
     parseMarketplaceOrderId: vi.fn().mockReturnValue(null),
     getStatusAction: vi.fn().mockReturnValue('ignore'),
     getTierByInvoiceId: vi.fn().mockReturnValue(null),
     verifyWebhook: vi.fn().mockResolvedValue(false),
-  })),
+  },
+  mockNotificationService: {
+    sendSubscriptionConfirmation: vi.fn().mockResolvedValue(undefined),
+  },
+  mockStrategyRepo: {
+    findById: vi.fn().mockResolvedValue({ id: 'strat_001', creatorId: 'creator_001', name: 'Mock Strategy' }),
+    findAll: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
+    updateStatus: vi.fn(),
+    findByStatus: vi.fn().mockResolvedValue([]),
+    findLatestPerformance: vi.fn().mockResolvedValue(null),
+  },
+}));
+
+vi.mock('../../billing/nowpayments-service', () => ({
+  NowPaymentsService: {
+    getInstance: vi.fn().mockReturnValue(mockNowPayments),
+  },
+}));
+
+vi.mock('../notifications/notification-service', () => ({
+  NotificationService: {
+    getInstance: vi.fn().mockReturnValue(mockNotificationService),
+  },
 }));
 
 // Mock strategy-repository for dynamic import in strategyRepoForListing
 vi.mock('../repositories/strategy-repository', () => ({
-  StrategyRepository: vi.fn().mockImplementation(() => ({
-    findById: vi.fn().mockResolvedValue(null),
-    findAll: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn().mockResolvedValue(0),
-    updateStatus: vi.fn(),
-    findByStatus: vi.fn().mockResolvedValue([]),
-    findLatestPerformance: vi.fn().mockResolvedValue(null),
-  })),
-  strategyRepository: {
-    findById: vi.fn().mockResolvedValue(null),
-    findAll: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn().mockResolvedValue(0),
-    updateStatus: vi.fn(),
-    findByStatus: vi.fn().mockResolvedValue([]),
-    findLatestPerformance: vi.fn().mockResolvedValue(null),
+  StrategyRepository: vi.fn().mockImplementation(() => mockStrategyRepo),
+  strategyRepository: mockStrategyRepo,
+}));
+
+// Mock logger to capture warn/info calls
+vi.mock('../../../shared/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   },
 }));
 
@@ -109,7 +125,22 @@ const { mockSubRepo, mockReviewRepo: mockSubReviewRepo, mockListingRepo } = vi.h
     count: vi.fn(),
     incrementSubscriberCount: vi.fn(),
   };
-  return { mockSubRepo, mockReviewRepo, mockListingRepo };
+  const mockStrategyRepo = {
+    findById: vi.fn().mockResolvedValue({
+      id: 'strat_001',
+      creatorId: 'creator_001',
+      name: 'Mock Strategy',
+    }),
+    findAll: vi.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20, totalPages: 0 }),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn().mockResolvedValue(0),
+    updateStatus: vi.fn(),
+    findByStatus: vi.fn().mockResolvedValue([]),
+    findLatestPerformance: vi.fn().mockResolvedValue(null),
+  };
+  return { mockSubRepo, mockReviewRepo, mockListingRepo, mockStrategyRepo };
 });
 
 vi.mock('../repositories/subscription-repository', () => ({
@@ -300,5 +331,218 @@ describe('SubscriptionService', () => {
     });
     const result = await service.flagReview('review_001');
     expect(result?.isFlagged).toBe(true);
+  });
+
+  // ── subscribe: error paths ──────────────────────────────────────────
+
+  it('throws when listing is not found', async () => {
+    mockListingRepo.findById.mockResolvedValue(null);
+    await expect(
+      service.subscribe({ tenantId: 't-1', userId: 'u-1', listingId: 'L1', allocationPercent: 25 }),
+    ).rejects.toThrow('Listing not found');
+  });
+
+  it('throws when listing is not active', async () => {
+    mockListingRepo.findById.mockResolvedValue({ ...mockListing, isActive: false });
+    await expect(
+      service.subscribe({ tenantId: 't-1', userId: 'u-1', listingId: 'L1', allocationPercent: 25 }),
+    ).rejects.toThrow('Listing is not active');
+  });
+
+  it('throws when already subscribed to this strategy', async () => {
+    mockListingRepo.findById.mockResolvedValue(mockListing);
+    mockSubRepo.hasActiveSubscription.mockResolvedValue(true);
+    await expect(
+      service.subscribe({ tenantId: 't-1', userId: 'u-1', listingId: 'L1', allocationPercent: 25 }),
+    ).rejects.toThrow('Already subscribed to this strategy');
+  });
+
+  // ── subscribe: paid path ────────────────────────────────────────────
+
+  it('creates checkout URL for paid listing', async () => {
+    const paidListing = { ...mockListing, priceUsdMonthly: 5000 };
+    mockListingRepo.findById.mockResolvedValue(paidListing);
+    mockSubRepo.hasActiveSubscription.mockResolvedValue(false);
+    mockSubRepo.create.mockResolvedValue(mockSubscription);
+    mockNowPayments.createMarketplaceCheckoutUrl.mockResolvedValue({
+      paymentId: 'pay_1',
+      checkoutUrl: 'https://nowpayments.io/checkout/pay_1',
+    });
+
+    const { subscription, checkoutUrl } = await service.subscribe({
+      tenantId: 't-1',
+      userId: 'u-1',
+      listingId: 'L1',
+      allocationPercent: 25,
+    });
+
+    expect(checkoutUrl).toBe('https://nowpayments.io/checkout/pay_1');
+    expect(subscription.id).toBe('sub_001');
+    expect(mockNowPayments.createMarketplaceCheckoutUrl).toHaveBeenCalledWith(
+      expect.objectContaining({ listingId: 'L1', priceUsd: 50 }),
+    );
+  });
+
+  it('sends confirmation notification when checkout URL and strategy are present', async () => {
+    const paidListing = { ...mockListing, priceUsdMonthly: 5000 };
+    mockListingRepo.findById.mockResolvedValue(paidListing);
+    mockSubRepo.hasActiveSubscription.mockResolvedValue(false);
+    mockSubRepo.create.mockResolvedValue(mockSubscription);
+    mockNowPayments.createMarketplaceCheckoutUrl.mockResolvedValue({
+      paymentId: 'pay_1',
+      checkoutUrl: 'https://nowpayments.io/checkout/pay_1',
+    });
+
+    await service.subscribe({
+      tenantId: 't-1',
+      userId: 'u-1',
+      listingId: 'L1',
+      allocationPercent: 25,
+    });
+
+    expect(mockNotificationService.sendSubscriptionConfirmation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionId: 'sub_001',
+        buyerId: 't-1',
+        sellerId: 'creator_001',
+        strategyName: 'Mock Strategy',
+      }),
+    );
+  });
+
+  // ── activateByPaymentId ─────────────────────────────────────────────
+
+  it('activates a pending subscription by payment_id', async () => {
+    const pendingSub = { ...mockSubscription, status: 'pending_payment', paymentStatus: 'pending' };
+    mockSubRepo.findByPaymentId.mockResolvedValue(pendingSub);
+    mockSubRepo.update.mockResolvedValue({ ...pendingSub, status: 'active', paymentStatus: 'paid' });
+
+    const result = await service.activateByPaymentId('pay_1');
+    expect(result?.status).toBe('active');
+    expect(mockSubRepo.update).toHaveBeenCalledWith('sub_001', { status: 'active', paymentStatus: 'paid' });
+    expect(mockListingRepo.incrementSubscriberCount).toHaveBeenCalledWith('listing_001', 1);
+  });
+
+  it('returns null when activateByPaymentId finds no subscription', async () => {
+    mockSubRepo.findByPaymentId.mockResolvedValue(null);
+    const result = await service.activateByPaymentId('missing');
+    expect(result).toBeNull();
+  });
+
+  it('returns existing sub when already active', async () => {
+    mockSubRepo.findByPaymentId.mockResolvedValue(mockSubscription);
+    const result = await service.activateByPaymentId('pay_1');
+    expect(result).toEqual(mockSubscription);
+    expect(mockSubRepo.update).not.toHaveBeenCalled();
+  });
+
+  // ── cancelByPaymentId ───────────────────────────────────────────────
+
+  it('cancels a subscription by payment_id', async () => {
+    const pendingSub = { ...mockSubscription, status: 'pending_payment', paymentStatus: 'pending' };
+    mockSubRepo.findByPaymentId.mockResolvedValue(pendingSub);
+    mockSubRepo.update.mockResolvedValue({ ...pendingSub, status: 'cancelled', paymentStatus: 'failed' });
+
+    const result = await service.cancelByPaymentId('pay_1');
+    expect(result?.status).toBe('cancelled');
+    expect(mockSubRepo.update).toHaveBeenCalledWith('sub_001', { status: 'cancelled', paymentStatus: 'failed' });
+  });
+
+  it('returns null when cancelByPaymentId finds no subscription', async () => {
+    mockSubRepo.findByPaymentId.mockResolvedValue(null);
+    const result = await service.cancelByPaymentId('missing');
+    expect(result).toBeNull();
+  });
+
+  it('returns existing sub when already cancelled', async () => {
+    const cancelledSub = { ...mockSubscription, status: 'cancelled' };
+    mockSubRepo.findByPaymentId.mockResolvedValue(cancelledSub);
+    const result = await service.cancelByPaymentId('pay_1');
+    expect(result).toEqual(cancelledSub);
+    expect(mockSubRepo.update).not.toHaveBeenCalled();
+  });
+
+  // ── getSubscriptionPerformance ──────────────────────────────────────
+
+  it('returns subscription performance metrics', async () => {
+    mockSubRepo.findById.mockResolvedValue(mockSubscription);
+    const result = await service.getSubscriptionPerformance('sub_001');
+    expect(result).toEqual({ totalPnlUsd: 500, winRate: 0, totalTrades: 0 });
+  });
+
+  it('returns null for nonexistent subscription performance', async () => {
+    mockSubRepo.findById.mockResolvedValue(null);
+    const result = await service.getSubscriptionPerformance('missing');
+    expect(result).toBeNull();
+  });
+
+  // ── getSubscriptionByPaymentId / getStrategyForSubscription / getListingForSubscription ──
+
+  it('looks up subscription by payment_id', async () => {
+    mockSubRepo.findByPaymentId.mockResolvedValue(mockSubscription);
+    const result = await service.getSubscriptionByPaymentId('pay_1');
+    expect(result).toEqual(mockSubscription);
+  });
+
+  it('gets listing metadata for a subscription', async () => {
+    mockListingRepo.findById.mockResolvedValue(mockListing);
+    const result = await service.getListingForSubscription('listing_001');
+    expect(result).toEqual({ priceUsdMonthly: 0, billingCycle: 'monthly' });
+  });
+
+  it('returns null when listing not found for subscription', async () => {
+    mockListingRepo.findById.mockResolvedValue(null);
+    const result = await service.getListingForSubscription('missing');
+    expect(result).toBeNull();
+  });
+
+  it('gets strategy metadata for a subscription', async () => {
+    const result = await service.getStrategyForSubscription('strat_001');
+    expect(result).toEqual({ id: 'strat_001', creatorId: 'creator_001', name: 'Mock Strategy' });
+  });
+
+  it('returns null when strategy not found for subscription', async () => {
+    mockStrategyRepo.findById.mockResolvedValue(null);
+    const result = await service.getStrategyForSubscription('missing');
+    expect(result).toBeNull();
+  });
+
+  // ── singleton ──────────────────────────────────────────────────────
+
+  it('returns the same singleton instance', () => {
+    expect(SubscriptionService.getInstance()).toBe(SubscriptionService.getInstance());
+  });
+
+  // ── updateSubscriptionStatus ────────────────────────────────────────
+
+  it('updates status to paused', async () => {
+    mockSubRepo.findById.mockResolvedValue(mockSubscription);
+    mockSubRepo.update.mockResolvedValue({ ...mockSubscription, status: 'paused' });
+    const result = await service.updateSubscriptionStatus('sub_001', 'pause', 'user_001');
+    expect(result?.status).toBe('paused');
+    expect(mockSubRepo.update).toHaveBeenCalledWith('sub_001', { status: 'paused' });
+  });
+
+  it('updates status to active (resume)', async () => {
+    mockSubRepo.findById.mockResolvedValue(mockSubscription);
+    mockSubRepo.update.mockResolvedValue({ ...mockSubscription, status: 'active' });
+    const result = await service.updateSubscriptionStatus('sub_001', 'resume', 'user_001');
+    expect(result?.status).toBe('active');
+    expect(mockSubRepo.update).toHaveBeenCalledWith('sub_001', { status: 'active' });
+  });
+
+  it('updates status to cancelled', async () => {
+    mockSubRepo.findById.mockResolvedValue(mockSubscription);
+    mockSubRepo.update.mockResolvedValue({ ...mockSubscription, status: 'cancelled' });
+    const result = await service.updateSubscriptionStatus('sub_001', 'cancel', 'user_001');
+    expect(result?.status).toBe('cancelled');
+    expect(mockSubRepo.update).toHaveBeenCalledWith('sub_001', { status: 'cancelled' });
+  });
+
+  it('returns null when update finds no matching subscription', async () => {
+    mockSubRepo.update.mockResolvedValue(null);
+    const result = await service.updateSubscriptionStatus('missing', 'pause', 'user_001');
+    expect(result).toBeNull();
+    expect(mockSubRepo.update).toHaveBeenCalledWith('missing', { status: 'paused' });
   });
 });

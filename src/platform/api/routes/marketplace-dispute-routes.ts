@@ -56,7 +56,7 @@ function getUserId(req: Request): string {
   return String(userId);
 }
 
-function getQueryString(value: unknown, defaultValue: string = ''): string {
+export function getQueryString(value: unknown, defaultValue: string = ''): string {
   if (value === undefined || value === null) return defaultValue;
   if (Array.isArray(value)) {
     const first = value[0];
@@ -66,7 +66,7 @@ function getQueryString(value: unknown, defaultValue: string = ''): string {
   return String(value);
 }
 
-function getQueryNumber(value: unknown, defaultValue: number = 0): number {
+export function getQueryNumber(value: unknown, defaultValue: number = 0): number {
   if (value === undefined || value === null) return defaultValue;
   if (Array.isArray(value)) {
     const first = value[0];
@@ -79,7 +79,7 @@ function getQueryNumber(value: unknown, defaultValue: number = 0): number {
   return defaultValue;
 }
 
-function isAdmin(req: Request): boolean {
+export function isAdmin(req: Request): boolean {
   return (req as any).user?.role === 'admin' || (req as any).apiKey?.isAdmin === true;
 }
 

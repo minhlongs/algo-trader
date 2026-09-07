@@ -17,7 +17,7 @@ const MIN_CONFIDENCE = 0.5;
 const VALID_RELATION_TYPES = new Set<string>(Object.values(RelationType));
 
 /** Parse and validate a single raw relationship object from DeepSeek output */
-function parseRelationship(raw: Record<string, unknown>): MarketRelationship | null {
+export function parseRelationship(raw: Record<string, unknown>): MarketRelationship | null {
   const { marketA, marketB, type, confidence, reasoning } = raw;
 
   if (typeof marketA !== 'string' || typeof marketB !== 'string') return null;
