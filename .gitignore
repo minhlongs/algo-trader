@@ -71,3 +71,4 @@ README.md.bak
 backups/
 dump.rdb
 patch-vps-origin.py
+.nyc_output/
