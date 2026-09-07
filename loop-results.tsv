@@ -243,3 +243,4 @@ iter	timestamp	metric	delta	kept	description
 247	2026-09-07T16:37:31Z	100.0%	+33.3pp	yes	drive report-handler to 100% coverage (reject sub-handlers)
 248	2026-08-31T00:53:00	100/89.5	+31.1/+31.1	yes	test: admin-dna-routes coverage 68.9% → 100% stmts / 89.5% branches (16 tests, auth/500/503/TF/consensus/null-engine)
 249	2026-09-07T17:22:00Z	100.0%	+31.9pp	yes	test: tiered-rollback-controller 80% stmts → 100% (26 branches), Redis/messaging controls, evaluator mocks
+250	2026-09-08T01:50:00Z	100.0%	+30.9pp	yes	test: credentials-routes 69.1%→100% stmts (20 tests), field mapping + auth/503s/audit events
