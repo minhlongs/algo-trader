@@ -1,9 +1,10 @@
 /**
- * Tests for Better Auth server instance (src/auth/auth-server.ts)
+ * Tests for Better Auth server instance (src/platform/auth/auth-server.ts)
  *
  * Verifies configuration shape, session settings, email/password config,
- * trusted origins, database pool wiring, secret fallback chain, and
- * logger configuration. Mocks better-auth, pg, and logger to isolate
+ * trusted origins, database pool wiring, secret fallback chain,
+ * logger configuration, and the TrialDripService after-hook callback.
+ * Mocks better-auth, pg, logger, and TrialDripService to isolate
  * the configuration logic from actual service instantiation.
  */
 
@@ -14,9 +15,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockBetterAuth = vi.hoisted(() => vi.fn());
 const mockLoggerInfo = vi.hoisted(() => vi.fn());
 const mockLoggerWarn = vi.hoisted(() => vi.fn());
+const mockLoggerError = vi.hoisted(() => vi.fn());
 
 /** Captured constructor arguments from every `new Pool(config)` call. */
 const poolConfigCalls = vi.hoisted(() => new Array<Record<string, unknown>>());
+
+const mockTrialDripSubscribe = vi.hoisted(() => vi.fn());
+const mockTrialDripGetInstance = vi.hoisted(() =>
+  vi.fn().mockReturnValue({ subscribe: mockTrialDripSubscribe })
+);
 
 vi.mock('better-auth', () => ({
   betterAuth: mockBetterAuth,
@@ -36,15 +43,19 @@ vi.mock('../../../shared/utils/logger', () => ({
   logger: {
     info: mockLoggerInfo,
     warn: mockLoggerWarn,
-    error: vi.fn(),
+    error: mockLoggerError,
     debug: vi.fn(),
   },
   default: {
     info: mockLoggerInfo,
     warn: mockLoggerWarn,
-    error: vi.fn(),
+    error: mockLoggerError,
     debug: vi.fn(),
   },
+}));
+
+vi.mock('../../../platform/billing/trial-drip-service', () => ({
+  TrialDripService: { getInstance: mockTrialDripGetInstance },
 }));
 
 // ── Helpers ──
@@ -88,9 +99,13 @@ describe('auth-server', () => {
     mockBetterAuth.mockReset();
     mockLoggerInfo.mockReset();
     mockLoggerWarn.mockReset();
+    mockLoggerError.mockReset();
+    mockTrialDripGetInstance.mockReset();
+    mockTrialDripSubscribe.mockReset();
     poolConfigCalls.length = 0;
 
     mockBetterAuth.mockReturnValue({ api: {}, handler: vi.fn() });
+    mockTrialDripGetInstance.mockReturnValue({ subscribe: mockTrialDripSubscribe });
 
     deleteEnvKeys();
     setEnv({
@@ -425,7 +440,104 @@ describe('auth-server', () => {
     });
   });
 
-  // ── Error paths: edge cases that must not throw ──
+  // ── 9. TrialDripService after-hook callback ──
+
+  describe('TrialDripService after-hook', () => {
+    it('registers trial drip for new user with valid email and tenantId', async () => {
+      await import('../auth-server');
+
+      const config = getAuthConfig();
+      const hooks = config!.databaseHooks as Record<string, unknown>;
+      const userHooks = hooks.user as Record<string, unknown>;
+      const createHook = userHooks.create as Record<string, unknown>;
+      const after = createHook.after as (user: Record<string, unknown>) => Promise<void>;
+
+      await after({ email: 'user@test.com', id: 'u123' });
+
+      expect(mockTrialDripGetInstance).toHaveBeenCalled();
+      expect(mockTrialDripSubscribe).toHaveBeenCalledWith(
+        'user@test.com',
+        'u123',
+        'FREE',
+        7,
+      );
+    });
+
+    it('skips drip subscription when email is empty string', async () => {
+      await import('../auth-server');
+
+      const config = getAuthConfig();
+      const hooks = config!.databaseHooks as Record<string, unknown>;
+      const userHooks = hooks.user as Record<string, unknown>;
+      const createHook = userHooks.create as Record<string, unknown>;
+      const after = createHook.after as (user: Record<string, unknown>) => Promise<void>;
+
+      await after({ email: '', id: 'u123' });
+
+      expect(mockTrialDripSubscribe).not.toHaveBeenCalled();
+    });
+
+    it('skips drip subscription when tenantId (id) is empty string', async () => {
+      await import('../auth-server');
+
+      const config = getAuthConfig();
+      const hooks = config!.databaseHooks as Record<string, unknown>;
+      const userHooks = hooks.user as Record<string, unknown>;
+      const createHook = userHooks.create as Record<string, unknown>;
+      const after = createHook.after as (user: Record<string, unknown>) => Promise<void>;
+
+      await after({ email: 'user@test.com', id: '' });
+
+      expect(mockTrialDripSubscribe).not.toHaveBeenCalled();
+    });
+
+    it('handles TrialDripService.getInstance() throwing an error gracefully', async () => {
+      mockTrialDripGetInstance.mockImplementation(() => {
+        throw new Error('Service unavailable');
+      });
+
+      await import('../auth-server');
+
+      const config = getAuthConfig();
+      const hooks = config!.databaseHooks as Record<string, unknown>;
+      const userHooks = hooks.user as Record<string, unknown>;
+      const createHook = userHooks.create as Record<string, unknown>;
+      const after = createHook.after as (user: Record<string, unknown>) => Promise<void>;
+
+      await after({ email: 'user@test.com', id: 'u123' });
+
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        expect.stringContaining('Trial drip registration failed'),
+        expect.objectContaining({ userId: 'u123' }),
+      );
+      expect(mockTrialDripSubscribe).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── 10. Production error paths ──
+
+  describe('production validation', () => {
+    it('throws when BETTER_AUTH_SECRET is missing in production', async () => {
+      delete process.env.BETTER_AUTH_SECRET;
+      delete process.env.JWT_SECRET;
+      setEnv({ NODE_ENV: 'production', DB_PASSWORD: 'test' });
+
+      await expect(import('../auth-server')).rejects.toThrow(
+        'FATAL: BETTER_AUTH_SECRET or JWT_SECRET must be set in production',
+      );
+    });
+
+    it('throws when DB_PASSWORD is undefined in production', async () => {
+      setEnv({ NODE_ENV: 'production' });
+      delete process.env.DB_PASSWORD;
+
+      await expect(import('../auth-server')).rejects.toThrow(
+        'FATAL: DB_PASSWORD must be set in production',
+      );
+    });
+  });
+
+  // ── 11. Graceful degradation (edge cases) ──
 
   describe('graceful degradation', () => {
     it('passes empty string for DB_PASSWORD when unset (does not crash)', async () => {
@@ -442,6 +554,20 @@ describe('auth-server', () => {
 
       const config = getAuthConfig();
       expect(config!.baseURL).toBe('http://localhost:3000');
+    });
+  });
+
+  // ── 12. Module initialization ──
+
+  describe('module initialization', () => {
+    it('logs auth instance creation at module load', async () => {
+      await import('../auth-server');
+
+      const creationLog = mockLoggerInfo.mock.calls.find(
+        (call: unknown[]) =>
+          typeof call[0] === 'string' && call[0].includes('Auth instance created'),
+      );
+      expect(creationLog).toBeDefined();
     });
   });
 });
