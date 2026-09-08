@@ -22,12 +22,14 @@ vi.mock('../../../src/platform/workers/openclaw-gateway/client', () => {
 });
 
 // Mock AgentQueueManager with shared mocks
+const getQueueStatsMock = vi.fn();
 vi.mock('../../../src/queues/agent-queue-manager', () => {
   return {
     AgentQueueManager: class {
       add = addMock;
       startWorker = startWorkerMock;
       close = closeMock;
+      getQueueStats = getQueueStatsMock;
       constructor() {}
     },
   };
@@ -137,5 +139,31 @@ describe('ModelTierDispatcher', () => {
   it('close closes queue managers', async () => {
     await dispatcher.close();
     expect(closeMock).toHaveBeenCalled();
+  });
+
+  it('getQueueStats returns stats for every registered tier', () => {
+    const stats = dispatcher.getQueueStats();
+    expect(stats.size).toBe(2);
+    expect(stats.has(ModelTier.TIER2_SONNET)).toBe(true);
+    expect(stats.has(ModelTier.TIER3_OPUS)).toBe(true);
+  });
+
+  it('execute returns a failed result with an error attribute when the gateway fails without fallback', async () => {
+    // Tier1 (no fallback): a gateway error surfaces as success:false with the
+    // message captured on the result — exercises the `result.error` span branch.
+    chatMock.mockRejectedValue(new Error('gateway exploded'));
+    const result = await dispatcher.execute('prediction-accuracy-tracker', {}, { tenantId: 't1' });
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('gateway exploded');
+    expect(result.modelTier).toBe('haiku');
+  });
+
+  it('executeQueued throws when the tier has no registered queue', async () => {
+    // Remove the TIER2 queue so the next TIER2 dispatch hits the no-queue guard.
+    (dispatcher as unknown as { tierQueues: Map<string, unknown> }).tierQueues.delete(ModelTier.TIER2_SONNET);
+    const result = await dispatcher.execute('signal-fusion-engine', {}, { tenantId: 't1' });
+    // The throw inside executeQueued is caught by execute's catch block.
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('No queue configured for tier: sonnet');
   });
 });
