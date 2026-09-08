@@ -246,3 +246,6 @@ iter	timestamp	metric	delta	kept	description
 250	2026-09-08T01:50:00Z	100.0%	+30.9pp	yes	test: credentials-routes 69.1%→100% stmts (20 tests), field mapping + auth/503s/audit events
 251	2026-09-07T20:30:04Z%	signal-mcp-server.ts	resolveIdentity edge cases	+6 tests fixed	6/6 edge case tests pass (sync mock fix)
 252	2026-09-08T04:49:00Z	90.4%	+17.4pp	yes	test: cross-platform-arb 73.0%→90.4% stmts, 66.7%→89.6% branches (ingest/confidence/eviction/handler-error paths)
+253	2026-09-07T20:58:23Z	98.55%	+40.58pp	yes	test: coupons.ts 57.97%→98.55% stmts, 36.95%→82.6% branches (D1 paths + error handling)
+254	2026-09-08T00:25:38Z	100%	+42.00pp	yes	test: connection-pool.ts 58.00%→100% stmts, 51.42%→97.14% branches (legacy queue API + idle/finished paths)
+255	2026-09-08T08:57:30Z	100%	+41.18pp	yes	test: binary-arbitrage-executor.ts 58.82%→100% stmts, 45.45%→100% branches (real-module core: kelly/drawdown/dryrun-live/error paths)
