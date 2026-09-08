@@ -249,3 +249,8 @@ iter	timestamp	metric	delta	kept	description
 253	2026-09-07T20:58:23Z	98.55%	+40.58pp	yes	test: coupons.ts 57.97%→98.55% stmts, 36.95%→82.6% branches (D1 paths + error handling)
 254	2026-09-08T00:25:38Z	100%	+42.00pp	yes	test: connection-pool.ts 58.00%→100% stmts, 51.42%→97.14% branches (legacy queue API + idle/finished paths)
 255	2026-09-08T08:57:30Z	100%	+41.18pp	yes	test: binary-arbitrage-executor.ts 58.82%→100% stmts, 45.45%→100% branches (real-module core: kelly/drawdown/dryrun-live/error paths)
+256	2026-09-08T01:36:54Z	96.93	+33.67	yes	paper-trading-loop: loadState/runTick/persistClosedTrade/setters/symbols, 63.26→96.93 stmts / 49.01→86.27 branches
+257	2026-09-08T10:03:30	99.14	+29.06	yes	compression-stream.ts: 70.08→99.14 stmts, 65.90→95.45 branches (isSupported false, fallback, transform/flush, streamJsonArray, decompressBuffer error, createCompressedResponse string+unsupported)
+258	2026-09-08T02:17:40	94.11	+17.64	yes	alphaear-client.ts: 76.47→94.11 stmts, 70.58→88.23 branches (extractContent, predictOhlcv, trackSignal parse-error, isHealthy staleness, explainPrediction, getFeatureImportance, generateCounterfactuals, extractStrategyRules)
+259	2026-09-08T02:33:14	94.02	+13.43	yes	agent-dispatcher.ts: 80.59→94.02 stmts, 71.42→80.95 branches (getQueueStats, executeQueued no-queue error, gateway error span branch)
+260	2026-09-08T02:54:59	97.56	+9.76	yes	user-link-store.ts: 87.80→97.56 stmts, 75.00→83.33 branches (load catch invalid JSON, save mkdir branch, save error branch)
