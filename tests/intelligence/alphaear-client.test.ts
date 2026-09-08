@@ -151,4 +151,146 @@ describe('AlphaEarClient', () => {
       expect(client.isHealthy).toBe(false);
     });
   });
+
+  describe('isHealthy staleness', () => {
+    it('returns false when the last health check is older than 300s', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        status: 'healthy', kronos_loaded: true, finbert_loaded: true,
+        news_sources: 14, polymarket_api: true,
+      }), { status: 200 }));
+      await client.checkHealth();
+      // Force the stored timestamp to exceed the 300_000 ms staleness window.
+      (client as unknown as { lastHealthCheck: number }).lastHealthCheck = Date.now() - 400_000;
+      expect(client.isHealthy).toBe(false);
+    });
+  });
+
+  describe('extractContent', () => {
+    it('returns extracted article content', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        content: 'Full article text here',
+      }), { status: 200 }));
+
+      const result = await client.extractContent('http://wsj.com/1');
+      expect(result).toBe('Full article text here');
+    });
+
+    it('returns null when sidecar is unavailable', async () => {
+      fetchMock.mockRejectedValueOnce(new Error('connection refused'));
+      const result = await client.extractContent('http://wsj.com/1');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('predictOhlcv', () => {
+    it('returns Kronos OHLCV predictions', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        predictions: [
+          { close: 0.62, high: 0.65, low: 0.59, confidence: 0.8 },
+          { close: 0.63, high: 0.66, low: 0.60, confidence: 0.75 },
+        ],
+      }), { status: 200 }));
+
+      const candles = [
+        { timestamp: 1, open: 0.5, high: 0.55, low: 0.48, close: 0.52, volume: 100 },
+      ];
+      const result = await client.predictOhlcv(candles, 2);
+      expect(result).not.toBeNull();
+      expect(result!).toHaveLength(2);
+      expect(result![0]!.confidence).toBe(0.8);
+    });
+
+    it('returns null when response has no predictions', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+      const result = await client.predictOhlcv([], 5);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('trackSignal JSON.parse error', () => {
+    it('returns null when the matched JSON fragment is malformed', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        analysis: 'Result: {invalid json fragment}',
+      }), { status: 200 }));
+
+      const result = await client.trackSignal('sig-3', 'thesis', 'info', 0.5, 0.5);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('explainPrediction', () => {
+    it('returns explanation with feature importance', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        prediction: 0.7, confidence: 0.85,
+        feature_importance: { rsi: 0.4, volume: 0.2 },
+        explanation: 'Movement driven by RSI divergence',
+      }), { status: 200 }));
+
+      const result = await client.explainPrediction({
+        model_type: 'rl',
+        features: { rsi: 0.6, volume: 0.8 },
+        prediction: 0.7,
+      });
+      expect(result).not.toBeNull();
+      expect(result!.explanation).toBe('Movement driven by RSI divergence');
+      expect(result!.feature_importance.rsi).toBe(0.4);
+    });
+  });
+
+  describe('getFeatureImportance', () => {
+    it('returns ranked features for a model', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        model_type: 'kronos',
+        features: [{ name: 'rsi', importance: 0.5 }, { name: 'macd', importance: 0.3 }],
+        generated_at: '2026-01-01T00:00:00Z',
+        metadata: { window: 60 },
+      }), { status: 200 }));
+
+      const result = await client.getFeatureImportance('kronos', 10);
+      expect(result).not.toBeNull();
+      expect(result!).toHaveProperty('model_type', 'kronos');
+      expect(result!.features[0].name).toBe('rsi');
+    });
+  });
+
+  describe('generateCounterfactuals', () => {
+    it('returns counterfactual scenarios', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        original_prediction: 0.6,
+        original_features: { rsi: 0.5 },
+        counterfactuals: [{ rsi: 0.2 }, { rsi: 0.8 }],
+        num_generated: 2,
+        constraints_applied: true,
+      }), { status: 200 }));
+
+      const result = await client.generateCounterfactuals({
+        features: { rsi: 0.5 },
+        prediction: 0.6,
+        model_type: 'rl',
+      });
+      expect(result).not.toBeNull();
+      expect(result!.num_generated).toBe(2);
+      expect(result!.constraints_applied).toBe(true);
+    });
+  });
+
+  describe('extractStrategyRules', () => {
+    it('returns parsed strategy rules', async () => {
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+        strategy_name: 'momentum',
+        rules: [{ condition: 'rsi < 30', action: 'buy', confidence: 0.9 }],
+        summary: 'Mean reversion on oversold signals',
+        num_rules: 1,
+        extraction_method: 'llm',
+      }), { status: 200 }));
+
+      const result = await client.extractStrategyRules({
+        strategy_code: 'def run(): pass',
+        strategy_name: 'momentum',
+      });
+      expect(result).not.toBeNull();
+      expect(result!.rules[0].action).toBe('buy');
+      expect(result!.extraction_method).toBe('llm');
+    });
+  });
 });
