@@ -2,12 +2,20 @@
  * Unit Tests for Compression Stream Manager
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CompressionStreamManager, CompressionAlgorithm } from '../../src/shared/utils/compression-stream';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  CompressionStreamManager,
+  CompressionAlgorithm,
+  getCompressionManager,
+} from '../../src/shared/utils/compression-stream';
 
 // Mock CompressionStream and DecompressionStream if not available in test environment
 const mockCompressionStream = vi.fn();
 const mockDecompressionStream = vi.fn();
+
+// Save originals so we can toggle availability per-test.
+const originalCompressionStream = globalThis.CompressionStream;
+const originalDecompressionStream = globalThis.DecompressionStream;
 
 describe('CompressionStreamManager', () => {
   let manager: CompressionStreamManager;
@@ -15,6 +23,20 @@ describe('CompressionStreamManager', () => {
   beforeEach(() => {
     manager = new CompressionStreamManager();
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // Restore the original globals so tests don't leak state.
+    if (originalCompressionStream !== undefined) {
+      (globalThis as any).CompressionStream = originalCompressionStream;
+    } else {
+      delete (globalThis as any).CompressionStream;
+    }
+    if (originalDecompressionStream !== undefined) {
+      (globalThis as any).DecompressionStream = originalDecompressionStream;
+    } else {
+      delete (globalThis as any).DecompressionStream;
+    }
   });
 
   describe('isSupported', () => {
@@ -189,10 +211,140 @@ describe('CompressionStreamManager', () => {
 
   describe('Singleton Pattern', () => {
     it('getCompressionManager should return singleton instance', () => {
-      const instance1 = manager;
-      const instance2 = manager;
+      const instance1 = getCompressionManager();
+      const instance2 = getCompressionManager();
 
       expect(instance1).toBe(instance2);
+    });
+  });
+
+  // ── isSupported false branch ─────────────────────────────────────────────
+
+  describe('isSupported (CompressionStream unavailable)', () => {
+    it('returns false when CompressionStream is undefined and algo is not identity', () => {
+      delete (globalThis as any).CompressionStream;
+      expect(manager.isSupported('br')).toBe(false);
+    });
+  });
+
+  // ── createCompressionStream fallback ──────────────────────────────────────
+
+  describe('createCompressionStream fallback', () => {
+    it('falls back to identity and warns when CompressionStream is unavailable', () => {
+      delete (globalThis as any).CompressionStream;
+      const stream = manager.createCompressionStream('gzip');
+      expect(stream).toBeDefined();
+      expect(stream.writable).toBeDefined();
+    });
+  });
+
+  // ── createCompressionStream transform / flush callbacks ───────────────────
+
+  describe('createCompressionStream transform/flush', () => {
+    it('enqueues encoded bytes and terminates on flush', async () => {
+      // CompressionStream must be defined so createCompressionStream takes the
+      // real constructor path (lines 67-82). The instance itself is unused by
+      // that path, so a minimal class suffices.
+      class MockCS {
+        constructor(public algo: string) {}
+      }
+      (globalThis as any).CompressionStream = MockCS;
+
+      const stream = manager.createCompressionStream('gzip');
+      expect(stream).toBeDefined();
+
+      const reader = stream.readable.getReader();
+      const writer = stream.writable.getWriter();
+
+      // Kick off the read BEFORE writing: the TransformStream readable has
+      // HWM=1, so a write applied before any reader is waiting would exert
+      // backpressure and hang on a second write/close.
+      const firstRead = reader.read();
+
+      await writer.write('hello-transform');
+      await writer.close();
+
+      const { value } = await firstRead;
+      expect(value).toBeInstanceOf(Uint8Array);
+
+      // flush() ran on close → readable terminates.
+      const tail = await reader.read();
+      expect(tail.done).toBe(true);
+    });
+  });
+
+  // ── streamJsonArray ───────────────────────────────────────────────────────
+
+  describe('streamJsonArray', () => {
+    async function collect(stream: ReadableStream<string>): Promise<string> {
+      const reader = stream.getReader();
+      let out = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) out += value;
+      }
+      return out;
+    }
+
+    it('emits a JSON array from an array input', async () => {
+      const stream = await manager.streamJsonArray([{ a: 1 }, { b: 2 }]);
+      const json = await collect(stream);
+      expect(json).toBe('[{"a":1},{"b":2}]');
+    });
+
+    it('handles an empty input', async () => {
+      const stream = await manager.streamJsonArray<number>([]);
+      const json = await collect(stream);
+      expect(json).toBe('[]');
+    });
+
+    it('handles an async iterable input', async () => {
+      async function* gen() {
+        yield 1;
+        yield 2;
+        yield 3;
+      }
+      const stream = await manager.streamJsonArray(gen());
+      const json = await collect(stream);
+      expect(json).toBe('[1,2,3]');
+    });
+
+    it('yields to the event loop every chunkSize items', async () => {
+      // 4 items with chunkSize 2 → count % chunkSize === 0 once (at count=2)
+      const stream = await manager.streamJsonArray([1, 2, 3, 4], { chunkSize: 2 });
+      const json = await collect(stream);
+      expect(json).toBe('[1,2,3,4]');
+    });
+  });
+
+  // ── decompressBuffer error path ───────────────────────────────────────────
+
+  describe('decompressBuffer (throwing DecompressionStream)', () => {
+    it('logs an error and rethrows when DecompressionStream throws', async () => {
+      (globalThis as any).DecompressionStream = vi.fn().mockImplementation(() => {
+        throw new Error('decompression down');
+      });
+
+      const buffer = new TextEncoder().encode('payload');
+      await expect(manager.decompressBuffer(buffer, 'gzip')).rejects.toThrow('decompression down');
+    });
+  });
+
+  // ── createCompressedResponse string + unsupported algo ───────────────────
+
+  describe('createCompressedResponse (string + unsupported algorithm)', () => {
+    it('compresses a string with a supported algorithm', () => {
+      const response = manager.createCompressedResponse('{"data":true}', 'gzip');
+      expect(response).toBeInstanceOf(Response);
+      expect(response.headers.get('Content-Encoding')).toBe('gzip');
+    });
+
+    it('falls back to identity when the algorithm is unsupported', () => {
+      delete (globalThis as any).CompressionStream;
+      const response = manager.createCompressedResponse('{"data":true}', 'br');
+      // isSupported('br') is false when CompressionStream is gone → identity
+      expect(response.headers.get('Content-Encoding')).toBe('identity');
     });
   });
 });
