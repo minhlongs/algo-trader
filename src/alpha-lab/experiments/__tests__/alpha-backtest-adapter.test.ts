@@ -254,6 +254,16 @@ describe('alpha-backtest-adapter: funding provenance (buildDataSources)', () => 
     expect(dataSources[0].transform).toBeUndefined();
   });
 
+  it('non-funding mock series keeps provider mock with no transform', () => {
+    const candles: CandleLike[] = [
+      { timestamp: '2024-01-01T00:00:00.000Z', open: 1, high: 2, low: 1, close: 2, volume: 10 },
+    ];
+    const dataSources = buildDataSources('BTC/USDT', '1h', candles, 'mock');
+
+    expect(dataSources[0].provider).toBe('mock');
+    expect(dataSources[0].transform).toBeUndefined();
+  });
+
   it('mock source keeps provider mock with no transform even for funding prefix', () => {
     const dataSources = buildDataSources('BTC-FUNDING-BTCUSDT', '8h', fundingCandles, 'mock');
 
@@ -266,6 +276,13 @@ describe('alpha-backtest-adapter: funding provenance (buildDataSources)', () => 
 
     expect(dataSources[0].start).toBe('2024-01-01T08:00:00.000Z');
     expect(dataSources[0].end).toBe('2024-01-01T16:00:00.000Z');
+  });
+
+  it('handles empty candles in buildDataSources with fallback timestamps', () => {
+    const dataSources = buildDataSources('BTC/USDT', '1h', [], 'mock');
+    expect(dataSources[0].candleCount).toBe(0);
+    expect(dataSources[0].start).toBeDefined();
+    expect(dataSources[0].end).toBeDefined();
   });
 });
 
@@ -292,6 +309,15 @@ describe('alpha-backtest-adapter: standard OHLCV path', () => {
 
   it('falls back to mock data when the OHLCV store is unreachable', async () => {
     vi.mocked(getLatestCandles).mockRejectedValue(new Error('store down'));
+
+    const { candles, source } = await loadCandles('BTC/USDT', '1h', 50);
+
+    expect(source).toBe('mock');
+    expect(candles.length).toBeGreaterThan(0);
+  });
+
+  it('falls back to mock data when the error is not an instance of Error', async () => {
+    vi.mocked(getLatestCandles).mockRejectedValue('network timeout string');
 
     const { candles, source } = await loadCandles('BTC/USDT', '1h', 50);
 

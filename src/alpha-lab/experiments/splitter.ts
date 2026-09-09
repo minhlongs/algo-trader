@@ -55,8 +55,6 @@ function resolveWindows(config: SplitConfig, usable: number): {
  */
 function expandingSplits(config: SplitConfig, totalBars: number, lookback: number): DataSplit[] {
   const usable = totalBars - lookback;
-  if (usable <= 0) throw new Error(`No usable bars after lookback=${lookback} from total=${totalBars}`);
-
   const { trainW: baseTrain, valW, testW } = resolveWindows(config, usable);
   const splits: DataSplit[] = [];
   let step = 0;
@@ -84,8 +82,6 @@ function expandingSplits(config: SplitConfig, totalBars: number, lookback: numbe
  */
 function rollingSplits(config: SplitConfig, totalBars: number, lookback: number): DataSplit[] {
   const usable = totalBars - lookback;
-  if (usable <= 0) throw new Error(`No usable bars after lookback=${lookback} from total=${totalBars}`);
-
   const { trainW, valW, testW } = resolveWindows(config, usable);
   if (trainW + valW + testW > usable) {
     throw new Error(

@@ -6,7 +6,6 @@
  * same data + same seed = identical results.
  */
 
-import type { CandleLike } from '../regimes/regime-types';
 import type { MarketRegime } from '../regimes/regime-types';
 
 // ── Split Strategy ────────────────────────────────────────────────────────────

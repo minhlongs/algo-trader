@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { runExperiment } from '../experiment-engine';
-import type { ExperimentConfig } from '../experiment-types';
+import { COST_PRESETS, type ExperimentConfig } from '../experiment-types';
 import type { CandleLike } from '../regimes/regime-types';
 
 function makeCandles(n = 50): CandleLike[] {
@@ -172,5 +172,80 @@ describe('Experiment Engine', () => {
     expect(result.config.experimentId).toBe(baseConfig.experimentId);
     expect(result.config.tp).toBe(0.02);
     expect(result.config.sl).toBe(0.01);
+    expect(COST_PRESETS.normal.feeBps).toBe(5);
+    expect(COST_PRESETS.conservative.feeBps).toBe(10);
+    expect(COST_PRESETS.adverse.feeBps).toBe(20);
+  });
+
+  it('throws when splits array is empty due to expanding window exceeding data length', () => {
+    const config: ExperimentConfig = {
+      ...baseConfig,
+      lookback: 5,
+      maxHolding: 5,
+      split: {
+        mode: 'expanding',
+        trainRatio: 0.5,
+        valRatio: 0.25,
+        testRatio: 0.25,
+        trainWindowSize: 40,
+        valWindowSize: 30,
+      },
+    };
+    expect(() => runExperiment({ candles: makeCandles(60), config })).toThrow(
+      'No splits generated — check config ratios vs data length',
+    );
+  });
+
+  it('writes runCard when runCardDir is provided', () => {
+    const candles = makeCandles(50);
+    const configWithoutFeatures: ExperimentConfig = {
+      ...baseConfig,
+      features: [],
+    };
+    const result = runExperiment({
+      candles,
+      config: configWithoutFeatures,
+      runCardDir: '/tmp/test-runcards',
+      resultClass: 'OOS',
+    });
+    expect(result.steps.length).toBeGreaterThan(0);
+  });
+
+  it('handles splits where maxHolding exceeds window size resulting in empty labels', () => {
+    const config: ExperimentConfig = {
+      ...baseConfig,
+      lookback: 5,
+      maxHolding: 30,
+      split: {
+        mode: 'rolling',
+        trainRatio: 0.5,
+        valRatio: 0.25,
+        testRatio: 0.25,
+      },
+    };
+    const result = runExperiment({ candles: makeCandles(60), config });
+    expect(result.numSteps).toBeGreaterThan(0);
+    expect(result.metrics.test.numTrades).toBe(0);
+  });
+
+  it('writes runCard with default IS class and dataSources', () => {
+    const candles = makeCandles(50);
+    const result = runExperiment({
+      candles,
+      config: baseConfig,
+      runCardDir: '/tmp/test-runcards',
+      dataSources: [
+        {
+          provider: 'ohlcv-store',
+          symbol: 'X',
+          timeframe: '1h',
+          start: candles[0]!.timestamp,
+          end: candles[candles.length - 1]!.timestamp,
+          retrievedAt: new Date().toISOString(),
+          candleCount: candles.length,
+        },
+      ],
+    });
+    expect(result.steps.length).toBeGreaterThan(0);
   });
 });
