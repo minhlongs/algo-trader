@@ -267,3 +267,6 @@ iter	timestamp	metric	delta	kept	description
 271	2026-09-10T01:56:10	100.00	+50.00	yes	postgres-client.ts: 100.00 stmts/lines/funcs, 50.00→100.00 branches (getPostgresClient cached-singleton else path — second call returns same instance)
 272	2026-09-10T02:00:10	100.00	+50.00	yes	immutable-trade-audit.ts: 100.00 stmts/lines/funcs, 50.00→100.00 branches (verifyIntegrity i>0 ternary true path — 3-record integrity walk)
 273	2026-09-10T02:05:30	100.00	+6.25	yes	vitest-summary-reader.mjs: 100.00 stmts/lines/funcs, 93.75→100.00 branches (err?.message ?? err fallback — JSON.parse throws non-Error value)
+274	2026-09-10T02:15:30	100.00	+50.00	yes	pricing-tiers.ts: 100.00 stmts/lines/funcs, 50.00->100.00 branches (|| PRICING_TIERS.FREE fallback on unrecognized tier + case-insensitive resolution)
+275	2026-09-10T02:15:30	100.00	+25.00	yes	equity-snapshot-queries.ts: 100.00 stmts/lines/funcs, 75.00->100.00 branches (String(err) fallback - non-Error rejection in safeQuery catch)
+276	2026-09-10T02:15:30	100.00	+16.67	yes	audit-hooks.ts: 100.00 stmts/lines/funcs, 83.33->100.00 branches (params.reason ?? 'config_changed' default when reason omitted)
