@@ -6,17 +6,13 @@
  * computeMetrics (proves reuse).
  */
 
-import type { MarketRegime } from '../regimes/regime-types';
+import type { MarketRegime, CandleLike } from '../regimes/regime-types';
 import type { WalkForwardStep } from '../experiments/experiment-types';
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
 import { buildEquityCurve } from '../shared/equity-curve';
-import type { CandleLike } from '../regimes/regime-types';
 import type {
-  EvaluationReport,
-  RegimeBreakdown,
-  MonthBreakdown,
-  VolatilityBucketBreakdown,
+  EvaluationReport, RegimeBreakdown, MonthBreakdown, VolatilityBucketBreakdown,
 } from './evaluation-types';
 
 // ── Internal Types ────────────────────────────────────────────────────────────
@@ -37,7 +33,6 @@ export function realizedVol(candles: CandleLike[]): number | null {
     if (prev <= 0 || curr <= 0) return null;
     logRet.push(Math.log(curr / prev));
   }
-  if (logRet.length === 0) return null;
   const mean = logRet.reduce((a, b) => a + b, 0) / logRet.length;
   const variance = logRet.reduce((s, r) => s + (r - mean) ** 2, 0) / logRet.length;
   return Math.sqrt(variance);
@@ -67,9 +62,9 @@ function buildRegimeBreakdown(
     out.push({
       regime,
       numTrades: n,
-      winRate: n > 0 ? wins / n : 0,
-      lossRate: n > 0 ? losses / n : 0,
-      meanLabel: n > 0 ? group.labels.reduce((a, b) => a + b, 0) / n : 0,
+      winRate: wins / n,
+      lossRate: losses / n,
+      meanLabel: group.labels.reduce((a, b) => a + b, 0) / n,
       netPnl: group.pnls.reduce((a, b) => a + b, 0),
     });
   }
@@ -86,7 +81,7 @@ function buildMonthBreakdown(
     out.push({
       month,
       numTrades: n,
-      winRate: n > 0 ? wins / n : 0,
+      winRate: wins / n,
       netPnl: group.pnls.reduce((a, b) => a + b, 0),
     });
   }
@@ -103,7 +98,7 @@ function buildVolatilityBreakdown(
     out.push({
       bucket: bucket as 'low' | 'medium' | 'high',
       numTrades: n,
-      winRate: n > 0 ? wins / n : 0,
+      winRate: wins / n,
       netPnl: group.pnls.reduce((a, b) => a + b, 0),
     });
   }
