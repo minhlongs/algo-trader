@@ -6,10 +6,12 @@
  * unreadable/malformed report is skipped, and DEFAULT_ALPHA_REPORT_ROOT is exported.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdtemp, rm, mkdir, writeFile, symlink } from 'node:fs/promises';
+import { Dirent } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { logger } from '../../../shared/utils/logger';
 
 import {
   buildAlphaReportIndex,
@@ -72,6 +74,44 @@ describe('writeAlphaReport', () => {
     expect(report2.verdict.passed).toBe(false);
     expect(report2.verdict.failedCriteria).toContain('candidate did not beat buy-and-hold net PnL');
   });
+
+  it('handles write failure with Error and logs warning without throwing', async () => {
+    const warnSpy = vi.spyOn(logger, 'warn').mockReturnValue();
+    const blocker = join(tmp, 'file-blocker');
+    await writeFile(blocker, 'x', 'utf8');
+    const badDir = join(blocker, 'sub');
+
+    const report = await writeAlphaReport(badDir, 'candidate-err', verdict(true));
+    expect(report.candidateId).toBe('candidate-err');
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[AlphaReportStore] write failed',
+      expect.objectContaining({
+        candidateId: 'candidate-err',
+        err: expect.any(String),
+      }),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('handles write failure with non-Error throw and logs String(err)', async () => {
+    const warnSpy = vi.spyOn(logger, 'warn').mockReturnValue();
+    const badVerdict: AlphaVerdict = {
+      get recommendation(): 'PASS' | 'FAIL' {
+        throw 'non-error-write-fail';
+      },
+      passed: true,
+      failedCriteria: [],
+      comparisons: [],
+    };
+
+    const report = await writeAlphaReport(tmp, 'candidate-non-err', badVerdict);
+    expect(report.candidateId).toBe('candidate-non-err');
+    expect(warnSpy).toHaveBeenCalledWith('[AlphaReportStore] write failed', {
+      candidateId: 'candidate-non-err',
+      err: 'non-error-write-fail',
+    });
+    warnSpy.mockRestore();
+  });
 });
 
 // ── readAlphaReportByCandidateId ──────────────────────────────────────────────
@@ -110,6 +150,36 @@ describe('readAlphaReportByCandidateId', () => {
     const report = await readAlphaReportByCandidateId('candidate-bad', dir);
     expect(report).toBeNull();
   });
+
+  it('uses DEFAULT_ALPHA_REPORT_ROOT when root parameter is omitted', async () => {
+    const report = await readAlphaReportByCandidateId('non-existent-default');
+    expect(report).toBeNull();
+  });
+
+  it('handles unreadable report when non-Error thrown during parsing', async () => {
+    const warnSpy = vi.spyOn(logger, 'warn').mockReturnValue();
+    const dir = join(tmp, 'reports');
+    await writeAlphaReport(dir, 'candidate-non-err-read', verdict(true));
+
+    const parseSpy = vi.spyOn(JSON, 'parse').mockImplementationOnce(() => {
+      throw 'non-error-read-fail';
+    });
+
+    try {
+      const report = await readAlphaReportByCandidateId('candidate-non-err-read', dir);
+      expect(report).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[AlphaReportStore] unreadable alpha report',
+        expect.objectContaining({
+          candidateId: 'candidate-non-err-read',
+          err: 'non-error-read-fail',
+        }),
+      );
+    } finally {
+      parseSpy.mockRestore();
+      warnSpy.mockRestore();
+    }
+  });
 });
 
 // ── listAlphaReports ──────────────────────────────────────────────────────────
@@ -118,6 +188,38 @@ describe('listAlphaReports', () => {
   it('returns empty array when root does not exist', async () => {
     const reports = await listAlphaReports(join(tmp, 'does-not-exist'));
     expect(reports).toEqual([]);
+  });
+
+  it('uses DEFAULT_ALPHA_REPORT_ROOT and default limit when parameters are omitted', async () => {
+    const reports = await listAlphaReports();
+    expect(Array.isArray(reports)).toBe(true);
+  });
+
+  it('skips unreadable reports without failing the list', async () => {
+    const dir = join(tmp, 'reports');
+    await writeAlphaReport(dir, 'valid-1', verdict(true));
+    await writeFile(join(dir, 'corrupt.json'), 'not valid json{{');
+
+    const reports = await listAlphaReports(dir);
+    expect(reports).toHaveLength(1);
+    expect(reports[0].candidateId).toBe('valid-1');
+  });
+
+  it('sorts correctly when reports have matching timestamps or reverse order', async () => {
+    const dir = join(tmp, 'reports');
+    await mkdir(dir, { recursive: true });
+    const now = new Date().toISOString();
+    await writeFile(
+      join(dir, 'rep-a.json'),
+      JSON.stringify({ candidateId: 'rep-a', verdict: verdict(true), createdAt: now }),
+    );
+    await writeFile(
+      join(dir, 'rep-b.json'),
+      JSON.stringify({ candidateId: 'rep-b', verdict: verdict(false), createdAt: now }),
+    );
+
+    const reports = await listAlphaReports(dir);
+    expect(reports).toHaveLength(2);
   });
 
   it('lists reports sorted by createdAt most recent first', async () => {
@@ -182,6 +284,48 @@ describe('buildAlphaReportIndex', () => {
     const index = await buildAlphaReportIndex(tmp);
     expect(index.size).toBe(1);
     expect(index.get('candidate-deep')).toBeDefined();
+  });
+
+  it('skips non-json files and symlink entries', async () => {
+    const dir = join(tmp, 'mixed');
+    await mkdir(dir, { recursive: true });
+    await writeAlphaReport(dir, 'valid-item', verdict(true));
+    await writeFile(join(dir, 'ignore.txt'), 'not json');
+    await symlink(join(dir, 'valid-item.json'), join(dir, 'symlink-item'));
+
+    const index = await buildAlphaReportIndex(dir);
+    expect(index.size).toBe(1);
+    expect(index.has('valid-item')).toBe(true);
+    expect(index.has('ignore')).toBe(false);
+  });
+
+  it('uses DEFAULT_ALPHA_REPORT_ROOT when root parameter is omitted', async () => {
+    const index = await buildAlphaReportIndex();
+    expect(index).toBeInstanceOf(Map);
+  });
+
+  it('handles walk failure with non-Error throw and logs warning with String(err)', async () => {
+    const warnSpy = vi.spyOn(logger, 'warn').mockReturnValue();
+    const dir = join(tmp, 'walk-throw');
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, 'dummy.json'), '{}');
+
+    const orig = Dirent.prototype.isDirectory;
+    Dirent.prototype.isDirectory = function () {
+      throw 'non-error-walk-failure';
+    };
+
+    try {
+      const index = await buildAlphaReportIndex(dir);
+      expect(index.size).toBe(0);
+      expect(warnSpy).toHaveBeenCalledWith('[AlphaReportStore] walk failed', {
+        root: dir,
+        err: 'non-error-walk-failure',
+      });
+    } finally {
+      Dirent.prototype.isDirectory = orig;
+      warnSpy.mockRestore();
+    }
   });
 });
 
