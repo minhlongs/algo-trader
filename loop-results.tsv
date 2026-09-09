@@ -270,3 +270,5 @@ iter	timestamp	metric	delta	kept	description
 274	2026-09-10T02:15:30	100.00	+50.00	yes	pricing-tiers.ts: 100.00 stmts/lines/funcs, 50.00->100.00 branches (|| PRICING_TIERS.FREE fallback on unrecognized tier + case-insensitive resolution)
 275	2026-09-10T02:15:30	100.00	+25.00	yes	equity-snapshot-queries.ts: 100.00 stmts/lines/funcs, 75.00->100.00 branches (String(err) fallback - non-Error rejection in safeQuery catch)
 276	2026-09-10T02:15:30	100.00	+16.67	yes	audit-hooks.ts: 100.00 stmts/lines/funcs, 83.33->100.00 branches (params.reason ?? 'config_changed' default when reason omitted)
+277	2026-09-09T18:39:24	100.00	+5.56	yes	kronos-fair-value.ts: 100.00 stmts/lines/funcs, 94.44->100.00 branches (lastPrice<=0 spread=1 fallback)
+278	2026-09-10T02:25:00	100.00	+14.44	yes	sla-tracker-scoring.ts: 100.00 stmts/lines/funcs, 85.56->100.00 branches (weight arms <=168 w=0.5, >168 w=0.2 on line 82 chained ternary)

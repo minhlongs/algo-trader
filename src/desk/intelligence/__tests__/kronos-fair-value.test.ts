@@ -112,6 +112,15 @@ describe('getKronosFairValue', () => {
     const result = await getKronosFairValue(prices(30));
     expect(result!.confidence).toBe(1);
   });
+
+  it('uses spread=1 (confidence=0) when last price is zero', async () => {
+    mockAlphaear.forecast.mockResolvedValue([{ close: 10, high: 12, low: 8 }]);
+    const p = prices(30);
+    p[p.length - 1] = 0;
+    const result = await getKronosFairValue(p);
+    expect(result).not.toBeNull();
+    expect(result?.confidence).toBe(0);
+  });
 });
 
 describe('getKronosOhlcvForecast', () => {

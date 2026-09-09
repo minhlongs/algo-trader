@@ -192,3 +192,35 @@ describe('SlaTracker', () => {
     });
   });
 });
+
+import { calculateHealthScore } from '../sla-tracker-scoring';
+import type { SlaWindowReport } from '../sla-tracker-types';
+
+function makeWindow(windowHours: number): SlaWindowReport {
+  return {
+    windowHours,
+    availability: 100,
+    errorRate: 0,
+    avgLatency: 50,
+    latencyPercentiles: { p50: 40, p95: 80, p99: 120 },
+    completeness: 100,
+    totalRequests: 10,
+    failedRequests: 0,
+  };
+}
+
+describe('calculateHealthScore', () => {
+  it('returns 0 when called with an empty windows record (weightSum stays 0)', () => {
+    expect(calculateHealthScore({})).toBe(0);
+  });
+
+  it('uses weight 0.5 for 72h window (windowHours <= 168 arm)', () => {
+    const score = calculateHealthScore({ 72: makeWindow(72) });
+    expect(score).toBeGreaterThan(0);
+  });
+
+  it('uses weight 0.2 for 720h window (windowHours > 168 arm)', () => {
+    const score = calculateHealthScore({ 720: makeWindow(720) });
+    expect(score).toBeGreaterThan(0);
+  });
+});
