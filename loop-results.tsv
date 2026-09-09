@@ -284,3 +284,4 @@ iter	timestamp	metric	delta	kept	description
 288	2026-09-10T04:10:00	100.00	+18.97	yes	gates: gate-evaluator.ts and gate-state.ts 100% across all 4 metrics (statistical validation, oos gap fallback, non-numeric guard, estimateDaysRemaining)
 289	2026-09-10T04:30:00	100.00	+3.85	yes	evaluation-engine.ts: 100% stmts/lines/funcs, 96.15% branches (realizedVol price guards, volBucket low/med/high thresholds, month ordering, undefined pnl fallback)
 290	2026-09-10T04:45:00	100.00	+10.00	yes	feature-registry.ts: 100% stmts/lines/funcs/branches (getFeature, listFeatures, assertCausal, and empty candles fallback)
+291	2026-09-10T05:00:00	100.00	+7.41	yes	triple-barrier.ts: 100% across all 4 metrics (invalid entry price <= 0, out of range entryIdx, parameter validations, insufficient candle length in batchLabel)
