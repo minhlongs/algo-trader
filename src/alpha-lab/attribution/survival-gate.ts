@@ -12,9 +12,7 @@
  */
 
 import { runAllBaselines } from '../baselines/baseline-runner';
-import { runExperiment } from '../experiments/experiment-engine';
-import { evaluateAlpha, type AlphaVerdict, type SurvivalCriteria, DEFAULT_CRITERIA } from './alpha-evaluator';
-import type { BaselineRun } from '../baselines/baseline-runner';
+import { evaluateAlpha, type AlphaVerdict, type SurvivalCriteria } from './alpha-evaluator';
 import type { CandleLike } from '../regimes/regime-types';
 import type { CandidateResult } from './alpha-evaluator';
 
@@ -57,8 +55,7 @@ export function survivalGate(
   const ablation: AblationResult[] = [];
 
   // Ablation 1: without random entry baseline (most lenient).
-  const withoutRand = baselines.filter((b: BaselineRun) => b.name !== 'random-entry');
-  const randPnl = baselines.find((b: BaselineRun) => b.name === 'random-entry')?.report.totalPnl ?? 0;
+  const randPnl = baselines.find((b) => b.name === 'random-entry')?.report.totalPnl ?? 0;
   ablation.push({
     removed: 'random-entry baseline',
     pnl: candidate.totalNetPnl - randPnl,
@@ -66,7 +63,7 @@ export function survivalGate(
   });
 
   // Ablation 2: without momentum baseline.
-  const momPnl = baselines.find((b: BaselineRun) => b.name === 'simple-momentum')?.report.totalPnl ?? 0;
+  const momPnl = baselines.find((b) => b.name === 'simple-momentum')?.report.totalPnl ?? 0;
   ablation.push({
     removed: 'momentum baseline',
     pnl: candidate.totalNetPnl - momPnl,

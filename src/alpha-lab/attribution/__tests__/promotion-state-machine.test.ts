@@ -218,4 +218,17 @@ describe('terminal states absorb all triggers', () => {
       expect(transition('LIVE_APPROVED', trigger, PASSING_EVIDENCE)).toBe('LIVE_APPROVED');
     }
   });
+
+  it('handles unknown current state or unmapped triggers gracefully', () => {
+    expect(transition('UNKNOWN' as StrategyState, 'evaluate', {})).toBe('UNKNOWN');
+  });
+
+  it('handles reject trigger from SURVIVAL_GATE', () => {
+    expect(transition('SURVIVAL_GATE', 'reject', {})).toBe('REJECTED');
+  });
+
+  it('rejects survival trigger when evidence is empty', () => {
+    const state = reachSurvivalGate();
+    expect(transition(state, 'survival', {})).toBe('REJECTED');
+  });
 });
