@@ -3,7 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { runRobustnessTest, dropCandles, delayCandles } from '../robustness-runner';
+import {
+  runRobustnessTest,
+  runFeeStress,
+  runDelayStress,
+  DEFAULT_SHARPE_STABILITY_THRESHOLD,
+} from '../robustness-runner';
 import type { RobustnessConfig } from '../robustness-types';
 import type { ExperimentConfig } from '../../experiments/experiment-types';
 
@@ -37,59 +42,6 @@ function robustnessConfig(overrides: Partial<RobustnessConfig> = {}): Robustness
     ...overrides,
   };
 }
-
-// ── Candle helpers ───────────────────────────────────────────────────────────
-
-describe('dropCandles', () => {
-  it('returns same array when fraction is 0', () => {
-    const candles = [{ timestamp: 'a', open: 1, high: 1, low: 1, close: 1, volume: 1 }];
-    expect(dropCandles(candles, 0, 42)).toEqual(candles);
-  });
-
-  it('reduces length when fraction > 0', () => {
-    const candles = Array.from({ length: 100 }, (_, i) => ({
-      timestamp: `t${i}`, open: 1, high: 1, low: 1, close: 1, volume: 1,
-    }));
-    const result = dropCandles(candles, 0.2, 42);
-    expect(result.length).toBeLessThan(100);
-    expect(result.length).toBeGreaterThan(50);
-  });
-
-  it('preserves order', () => {
-    const candles = Array.from({ length: 100 }, (_, i) => ({
-      timestamp: `t${i}`, open: i, high: i, low: i, close: i, volume: 1,
-    }));
-    const result = dropCandles(candles, 0.3, 42);
-    for (let i = 1; i < result.length; i++) {
-      expect(result[i].open).toBeGreaterThan(result[i - 1].open);
-    }
-  });
-
-  it('is deterministic for same seed', () => {
-    const candles = Array.from({ length: 100 }, (_, i) => ({
-      timestamp: `t${i}`, open: 1, high: 1, low: 1, close: 1, volume: 1,
-    }));
-    const a = dropCandles(candles, 0.2, 42);
-    const b = dropCandles(candles, 0.2, 42);
-    expect(a.length).toBe(b.length);
-  });
-});
-
-describe('delayCandles', () => {
-  it('removes first N candles', () => {
-    const candles = Array.from({ length: 50 }, (_, i) => ({
-      timestamp: `t${i}`, open: i, high: i, low: i, close: i, volume: 1,
-    }));
-    const result = delayCandles(candles, 5);
-    expect(result.length).toBe(45);
-    expect(result[0].open).toBe(5);
-  });
-
-  it('returns same array when delay is 0', () => {
-    const candles = [{ timestamp: 'a', open: 1, high: 1, low: 1, close: 1, volume: 1 }];
-    expect(delayCandles(candles, 0)).toEqual(candles);
-  });
-});
 
 // ── Full robustness runner ───────────────────────────────────────────────────
 
@@ -166,5 +118,53 @@ describe('runRobustnessTest', () => {
     const b = runRobustnessTest(config);
     expect(a.baselineMetrics.sharpeRatio).toBe(b.baselineMetrics.sharpeRatio);
     expect(a.overallScore).toBe(b.overallScore);
+  });
+
+  it('skips non-numeric parameters and invalid perturbations gracefully', () => {
+    const result = runRobustnessTest(robustnessConfig({
+      parameterPerturbation: {
+        enabled: true,
+        ranges: [-1.0, 0.1],
+        paramsToPerturb: ['symbol', 'tp'],
+      },
+    }));
+    expect(result.parameterPerturbation.length).toBe(1);
+    expect(result.parameterPerturbation[0]!.paramName).toBe('tp');
+    expect(result.parameterPerturbation[0]!.perturbation).toBe(0.1);
+  });
+
+  it('handles fee stress errors gracefully', () => {
+    const results = runFeeStress(baseConfig(), [], { enabled: true, multipliers: [1, 2] }, 1.0);
+    expect(results).toEqual([]);
+  });
+
+  it('handles delay stress errors when delayed bars exceed data', () => {
+    const candles = Array.from({ length: 25 }, (_, i) => ({
+      timestamp: `t${i}`, open: 100 + i, high: 101 + i, low: 99 + i, close: 100 + i, volume: 10,
+    }));
+    const results = runDelayStress(baseConfig(), candles, { enabled: true, maxDelayBars: 20 }, 1.0);
+    expect(results).toEqual([]);
+  });
+
+  it('handles missing data stress when all candles are dropped', () => {
+    const result = runRobustnessTest(robustnessConfig({
+      missingDataStress: { enabled: true, dropPercentages: [1.0], seed: 42 },
+    }));
+    expect(result.missingDataStress).toEqual([]);
+  });
+
+  it('returns overallScore 0 when baseline Sharpe is 0 and perturbations exist', () => {
+    const zeroSharpeConfig = baseConfig({ maxHolding: 190, lookback: 10 });
+    const result = runRobustnessTest({
+      experimentId: 'zero-sharpe',
+      baseConfig: zeroSharpeConfig,
+      feeStress: { enabled: true, multipliers: [1.5] },
+    });
+    expect(result.baselineMetrics.sharpeRatio).toBe(0);
+    expect(result.overallScore).toBe(0);
+  });
+
+  it('exports DEFAULT_SHARPE_STABILITY_THRESHOLD constant', () => {
+    expect(DEFAULT_SHARPE_STABILITY_THRESHOLD).toBe(0.5);
   });
 });

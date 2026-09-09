@@ -10,24 +10,25 @@
  * All runs are deterministic (seeded) and research-only.
  */
 
-import type {
-  RobustnessConfig,
-  RobustnessResult,
-  PerturbationResult,
-  FeeStressResult,
-  DelayStressResult,
-  MissingDataResult,
-  ParameterPerturbationConfig,
-  FeeStressConfig,
-  DelayStressConfig,
-  MissingDataStressConfig,
+import {
+  DEFAULT_SHARPE_STABILITY_THRESHOLD,
+  type RobustnessConfig,
+  type RobustnessResult,
+  type PerturbationResult,
+  type FeeStressResult,
+  type DelayStressResult,
+  type MissingDataResult,
+  type ParameterPerturbationConfig,
+  type FeeStressConfig,
+  type DelayStressConfig,
+  type MissingDataStressConfig,
 } from './robustness-types';
 import type { ExperimentConfig, SplitMetrics } from '../experiments/experiment-types';
 import type { CandleLike } from '../regimes/regime-types';
 import { runExperiment } from '../experiments/experiment-engine';
 import { generateMockCandles } from '../experiments/mock-candles';
 import { dropCandles, delayCandles } from './candle-perturbers';
-export { dropCandles, delayCandles };
+export { dropCandles, delayCandles, DEFAULT_SHARPE_STABILITY_THRESHOLD };
 
 // ── Metric helpers ───────────────────────────────────────────────────────────
 
@@ -141,9 +142,6 @@ export function runMissingDataStress(
 }
 
 // ── Overall runner ───────────────────────────────────────────────────────────
-
-/** Threshold: Sharpe must stay within this fraction of baseline to count as stable. */
-export const DEFAULT_SHARPE_STABILITY_THRESHOLD = 0.5;
 
 /** Count perturbations whose Sharpe stays within the stability threshold. */
 function countStable(deltas: number[], baselineSharpe: number, threshold: number): number {
