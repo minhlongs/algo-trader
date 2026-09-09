@@ -291,3 +291,4 @@ iter	timestamp	metric	delta	kept	description
 295	2026-09-10T05:55:00	100.00	+15.00	yes	walkforward-evaluator.ts and baseline-strategies.ts 100% across all 4 metrics (uncovered branches, liquidation, and edge cases)
 296	2026-09-10T06:15:00	100.00	+8.50	yes	experiments: experiment-engine, mock-candles, split-metrics, alpha-backtest-adapter, splitter, experiment-types 100% across all 4 metrics
 297	2026-09-10T06:30:00	100.00	+12.50	yes	robustness: candle-perturbers, robustness-runner, robustness-types 100% across all 4 metrics
+298	2026-09-10T06:50:00	100.00	+38.24	yes	reports: hypothesis-generator, hypothesis-rules-regime, research-agent-api 100% across all 4 metrics

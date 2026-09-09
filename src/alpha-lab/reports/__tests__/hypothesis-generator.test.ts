@@ -200,15 +200,46 @@ describe('generateHypotheses', () => {
 });
 
 describe('summarizeHypotheses', () => {
-  it('returns a non-empty string containing hypothesis names', () => {
+  it('returns placeholder message when hypotheses array is empty', () => {
+    expect(summarizeHypotheses([])).toBe('No hypotheses generated.');
+  });
+
+  it('formats hypotheses with both string and array regime filters', () => {
+    const hypotheses: Hypothesis[] = [
+      {
+        name: 'H1',
+        description: 'First hypothesis',
+        features: ['f1', 'f2'],
+        regimeFilter: 'all',
+        entryCondition: 'entry',
+        exitCondition: 'exit',
+        expectedMechanism: 'mech',
+        confidence: 0.85,
+        evidence: ['ev1'],
+      },
+      {
+        name: 'H2',
+        description: 'Second hypothesis',
+        features: ['f3'],
+        regimeFilter: ['BULL', 'BEAR'],
+        entryCondition: 'entry2',
+        exitCondition: 'exit2',
+        expectedMechanism: 'mech2',
+        confidence: 0.42,
+        evidence: ['ev2'],
+      },
+    ];
+
+    const summary = summarizeHypotheses(hypotheses);
+    expect(summary).toContain('1. [0.85] H1');
+    expect(summary).toContain('Regime: all');
+    expect(summary).toContain('2. [0.42] H2');
+    expect(summary).toContain('Regime: BULL, BEAR');
+  });
+
+  it('returns a non-empty string containing hypothesis names from report', () => {
     const report = makeReport({ profitFactor: 1.2, maxDrawdown: 0.4 });
     const hypotheses = generateHypotheses({ evaluation: report });
-    if (hypotheses.length === 0) {
-      // Edge case: no hypotheses generated — summary should still work
-      const summary = summarizeHypotheses([]);
-      expect(typeof summary).toBe('string');
-      return;
-    }
     const summary = summarizeHypotheses(hypotheses);
     expect(summary.length).toBeGreaterThan(0);
     for (const h of hypotheses) {
