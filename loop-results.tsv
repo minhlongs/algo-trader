@@ -265,3 +265,4 @@ iter	timestamp	metric	delta	kept	description
 269	2026-09-09T15:33:00	100.00	+8.70	yes	vibe-controller.ts: 95.91→100.00 stmts, 91.30→100.00 branches, 100.00 funcs/lines (removed 2 dead early-return branches at persistStateWithCAS lines 109/126; added 4 tests: stored=null rebase, null reload after EXEC abort, legacy ??0 version fallback in rebase+reload paths)
 270	2026-09-10T01:51:30	100.00	+50.00	yes	tier-config.ts: 100.00 stmts/lines/funcs, 50.00→100.00 branches (?? DEFAULT_TIER_LIMITS fallback on unrecognized tier + case-insensitive resolution)
 271	2026-09-10T01:56:10	100.00	+50.00	yes	postgres-client.ts: 100.00 stmts/lines/funcs, 50.00→100.00 branches (getPostgresClient cached-singleton else path — second call returns same instance)
+272	2026-09-10T02:00:10	100.00	+50.00	yes	immutable-trade-audit.ts: 100.00 stmts/lines/funcs, 50.00→100.00 branches (verifyIntegrity i>0 ternary true path — 3-record integrity walk)
