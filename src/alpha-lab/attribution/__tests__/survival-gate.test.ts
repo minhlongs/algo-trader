@@ -72,4 +72,15 @@ describe('survivalGate', () => {
     expect(result.ablation.some((a) => a.survives === false)).toBe(true);
     expect(result.passed).toBe(false);
   });
+
+  it('supports pre-computed baseline runs and handles missing baselines', () => {
+    const candles = makeCandles(60);
+    const candidate = makeCandidate({ totalNetPnl: 100, winRate: 0.7, sharpeRatio: 1.5 });
+    // Empty baseline runs triggers default 0 pnl fallback for random-entry and momentum
+    const result = survivalGate(candidate, candles, {}, []);
+
+    expect(result.passed).toBe(true);
+    expect(result.ablation[0]!.pnl).toBe(100);
+    expect(result.ablation[1]!.pnl).toBe(100);
+  });
 });
