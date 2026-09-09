@@ -37,7 +37,7 @@ export interface PrioritizedFamily {
  * When no verdict data exists, all families get 'no-verdict-data' and are
  * returned in stable (registry.list) order.
  */
-const REASON_PRIORITY: Record<PrioritizationPolicy, Record<string, number>> = {
+const REASON_PRIORITY: Record<PrioritizationPolicy, Record<PrioritizedFamily['reason'], number>> = {
   'explore-first': {
     'never-tested': 0,
     'failed-verdict': 1,
@@ -109,8 +109,8 @@ export function prioritizeFamilies(
   const indexed = classified.map((item, idx) => ({ ...item, idx }));
 
   indexed.sort((a, b) => {
-    const pa = priorities[a.reason] ?? 99;
-    const pb = priorities[b.reason] ?? 99;
+    const pa = priorities[a.reason];
+    const pb = priorities[b.reason];
     if (pa !== pb) return pa - pb;
     return a.idx - b.idx; // stable: preserve registry order on tie
   });

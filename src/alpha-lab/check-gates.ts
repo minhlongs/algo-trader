@@ -207,9 +207,9 @@ async function main(): Promise<void> {
   process.exit(reading.allPassed ? 0 : 1);
 }
 
-// Only run main() when executed directly as a CLI script (tsx/node).
+// Only run main() when executed directly as a CLI script.
 // Importing this module from tests or other code must NOT trigger process.exit().
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   main().catch((err) => {
     console.error('[check-gates] fatal', { err });
     process.exit(2);

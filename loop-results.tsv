@@ -280,3 +280,4 @@ iter	timestamp	metric	delta	kept	description
 284	2026-09-10T03:34:00	100.00	+22.23	yes	verdict-summary.ts: 100.00 stmts/lines/funcs, 77.77->100.00 branches (zero totalRuns and missing matching records defensive second pass branches)
 285	2026-09-10T03:37:00	100.00	+20.00	yes	equity-curve.ts: 100.00 stmts/lines/funcs, 80.00->100.00 branches (empty closes/trades, null pnl skipping, same-timestamp netting)
 286	2026-09-10T03:38:00	100.00	+75.00	yes	trade-builder.ts: 100.00 stmts/lines/funcs, 25.00->100.00 branches (take-profit, stop-loss, and timeout branches, round-trip cost derivation)
+287	2026-09-10T03:45:00	100.00	+12.50	yes	alpha-discovery: strategy-family-registry.ts and research-informed.ts 100% across all 4 metrics (unbounded params fallback & typed priority ranking)

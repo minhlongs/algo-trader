@@ -3,8 +3,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createDefaultRegistry, experimentFromFamily } from '../strategy-family-registry';
+import { createDefaultRegistry, createRegistry, experimentFromFamily } from '../strategy-family-registry';
 import { ALL_FAMILIES } from '../strategy-families';
+import type { StrategyFamily } from '../strategy-family-types';
 
 describe('Strategy Families', () => {
   it('contains all four families', () => {
@@ -151,5 +152,63 @@ describe('Experiment From Family', () => {
     });
     expect(config.cost.feeBps).toBe(15);
     expect(config.cost.slippageBps).toBe(8);
+  });
+
+  it('derives tp, sl, maxHolding, lookback, and regimes from family params and options', () => {
+    const trendConfig = experimentFromFamily(registry, {
+      familyId: 'trend-following',
+      symbol: 'SOL/USDT',
+      timeframe: '1h',
+      regimes: ['TREND_UP'],
+    });
+    expect(trendConfig.tp).toBe(0.03); // 300 bps
+    expect(trendConfig.sl).toBe(0.015); // 150 bps
+    expect(trendConfig.regimes).toEqual(['TREND_UP']);
+    expect(trendConfig.seed).toBe(42);
+
+    const mrConfig = experimentFromFamily(registry, {
+      familyId: 'mean-reversion',
+      symbol: 'BTC/USDT',
+      timeframe: '1h',
+    });
+    expect(mrConfig.maxHolding).toBe(48); // maxHoldBars
+
+    const volConfig = experimentFromFamily(registry, {
+      familyId: 'volatility-breakout',
+      symbol: 'BTC/USDT',
+      timeframe: '1h',
+    });
+    expect(volConfig.lookback).toBe(14); // atrLookback
+  });
+
+  it('falls back when family lacks specific bounds or parameter keys', () => {
+    const unconstrainedFamily: StrategyFamily = {
+      id: 'unconstrained',
+      name: 'Unconstrained Strategy',
+      description: 'Test family with missing bounds and fallback parameters',
+      category: 'momentum',
+      features: ['returns'],
+      entryRule: 'true',
+      exitRule: 'false',
+      positionSizing: 'fixed-fraction',
+      defaultParams: {
+        freeParam: 99,
+      },
+      paramBounds: {},
+    };
+
+    const customRegistry = createRegistry([unconstrainedFamily]);
+    const config = experimentFromFamily(customRegistry, {
+      familyId: 'unconstrained',
+      symbol: 'ETH/USDT',
+      timeframe: '15m',
+      paramOverrides: { freeParam: 123 },
+    });
+
+    expect(config.tp).toBe(0.02); // fallback tp
+    expect(config.sl).toBe(0.01); // fallback sl
+    expect(config.maxHolding).toBe(24); // fallback maxHolding
+    expect(config.lookback).toBe(20); // fallback lookback
+    expect(config.regimes).toBe('all');
   });
 });
