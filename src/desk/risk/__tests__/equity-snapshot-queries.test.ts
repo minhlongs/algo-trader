@@ -75,6 +75,14 @@ describe('queryRecent', () => {
     expect(snapshots).toEqual([]);
     expect(logger.error).toHaveBeenCalled();
   });
+
+  it('logs String(err) when the rejected value is not an Error', async () => {
+    // Covers the `String(err)` fallback in safeQuery's catch (err instanceof Error === false)
+    mockQuery.mockRejectedValueOnce('plain string failure');
+    const snapshots = await queryRecent(10);
+    expect(snapshots).toEqual([]);
+    expect(logger.error).toHaveBeenCalledWith('[EquitySnapshot] query failed', { cause: 'plain string failure' });
+  });
 });
 
 describe('queryRange', () => {

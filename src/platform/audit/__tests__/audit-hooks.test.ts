@@ -144,5 +144,18 @@ describe('audit-hooks', () => {
 			expect(entry.metadata?.key).toBe('max_qty');
 			expect(entry.metadata?.value).toBe(999);
 		});
+
+		it('defaults reason to "config_changed" when omitted', async () => {
+			// Covers the `params.reason ?? 'config_changed'` fallback (line 131)
+			await expect(
+				emitConfigAuditEvent({
+					tenantId: 't-1',
+					actionBy: 'admin',
+				}),
+			).resolves.toBeUndefined();
+
+			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			expect(entry.metadata?.reason).toBe('config_changed');
+		});
 	});
 });
