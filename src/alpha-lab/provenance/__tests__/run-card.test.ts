@@ -18,7 +18,7 @@ import {
   hashConfig,
   RUN_CARD_SCHEMA_VERSION,
 } from '../run-card';
-import type { WriteRunCardInput, ResultClassName } from '../run-card';
+import type { WriteRunCardInput, ResultClassName, RunCard } from '../run-card';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -143,6 +143,39 @@ describe('writeRunCard', () => {
     // @ts-expect-error — resultClass must be IS|OOS|PAPER|LIVE
     await writeRunCard(tmp, { ...BASE_INPUT, resultClass: 'BOGUS' });
   });
+
+  it('handles optional fields default fallback (gateResults and warnings omitted)', async () => {
+    const input: WriteRunCardInput = {
+      runId: 'run-defaults',
+      resultClass: 'OOS',
+      strategyRef: 'strat-defaults',
+      dataSources: [],
+      metrics: { pnl: 100 },
+      config: { x: 1 },
+    };
+    const card = await writeRunCard(tmp, input);
+    expect(card.gateResults).toEqual([]);
+    expect(card.warnings).toEqual([]);
+    expect(card.hypothesis).toBeUndefined();
+  });
+
+  it('handles non-Error throw values with String(err) in writeRunCard', async () => {
+    const badMetrics: Record<string, number | undefined> = {
+      get broken(): number {
+        throw 'non-error-write-fail';
+      },
+    };
+    const input: WriteRunCardInput = {
+      runId: 'run-non-error',
+      resultClass: 'IS',
+      strategyRef: 'strat',
+      dataSources: [],
+      metrics: badMetrics,
+      config: { key: 'val' },
+    };
+    const card = await writeRunCard(tmp, input);
+    expect(card.writeError).toBe('non-error-write-fail');
+  });
 });
 
 // ── renderMarkdown ────────────────────────────────────────────────────────────
@@ -161,6 +194,58 @@ describe('renderMarkdown', () => {
   it('renders warnings when present', async () => {
     const card = await writeRunCard(tmp, { ...BASE_INPUT, warnings: ['low coverage'] });
     expect(renderMarkdown(card)).toContain('## Warnings');
+  });
+
+  it('renders markdown with write error, empty data sources, missing hypothesis, and gate failure with detail', () => {
+    const card: RunCard = {
+      schemaVersion: '1.0.0',
+      runId: 'run-custom-001',
+      configHash: 'hash-abc',
+      createdAt: '2026-01-01T00:00:00Z',
+      resultClass: 'IS',
+      strategyRef: 'test-strategy',
+      dataSources: [],
+      metrics: { sharpe: 1.5, drawdown: undefined },
+      gateResults: [{ gateId: 'gate-1', passed: false, detail: 'failed threshold' }],
+      warnings: [],
+      writeError: 'disk quota reached',
+    };
+    const md = renderMarkdown(card);
+    expect(md).toContain('- **⚠️ Write error:** disk quota reached');
+    expect(md).toContain('_No data sources recorded._');
+    expect(md).toContain('| drawdown | n/a |');
+    expect(md).toContain('- `gate-1`: ❌ fail — failed threshold');
+    expect(md).not.toContain('- **Hypothesis:**');
+    expect(md).not.toContain('## Warnings');
+  });
+
+  it('renders data source with dataVersion in markdown', () => {
+    const card: RunCard = {
+      schemaVersion: '1.0.0',
+      runId: 'run-versioned',
+      configHash: 'hash-abc',
+      createdAt: '2026-01-01T00:00:00Z',
+      resultClass: 'IS',
+      strategyRef: 'test-strategy',
+      dataSources: [
+        {
+          provider: 'gamma',
+          symbol: 'ETH/USD',
+          timeframe: '1h',
+          start: '2026-01-01T00:00:00Z',
+          end: '2026-01-02T00:00:00Z',
+          retrievedAt: '2026-01-03T00:00:00Z',
+          candleCount: 24,
+          dataVersion: 'v2.1',
+        },
+      ],
+      metrics: {},
+      gateResults: [],
+      warnings: [],
+    };
+    const md = renderMarkdown(card);
+    expect(md).toContain(', version v2.1');
+    expect(md).not.toContain('## Gates');
   });
 });
 
