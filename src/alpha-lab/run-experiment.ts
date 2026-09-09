@@ -11,121 +11,69 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ExperimentConfig, SplitMetrics } from './experiments/experiment-types';
+import type { ExperimentConfig } from './experiments/experiment-types';
 import { runExperiment } from './experiments/experiment-engine';
 import { loadCandles, buildDataSources } from './experiments/alpha-backtest-adapter';
-import { computeRegimeSeries, distinctRegimes } from './regimes/regime-series';
-import type { MarketRegime } from './regimes/regime-types';
+import { computeRegimeSeries } from './regimes/regime-series';
 import { runAllBaselines } from './baselines/baseline-runner';
-import { candidateResultFromExperiment, recordAlphaVerdict } from './provenance/record-alpha-verdict';
+import {
+  candidateResultFromExperiment,
+  recordAlphaVerdict,
+} from './provenance/record-alpha-verdict';
 import { hashConfig } from './provenance/run-card';
-import { loadVerdictSummary, type VerdictSummary } from './provenance/verdict-summary';
 import { DEFAULT_LEDGER_PATH } from './provenance/research-ledger';
-import { createDefaultRegistry } from './alpha-discovery/strategy-family-registry';
-import { prioritizeFamilies, type PrioritizedFamily } from './alpha-discovery/research-informed';
 import type { DataSourceProvenance } from './provenance/run-card';
-interface CliArgs {
-  configPath?: string;
-  record: boolean;
-  suggest: boolean;
+import {
+  parseArgs,
+  suggestFamilies,
+  validateConfig,
+  pickMetrics,
+  mapBaselines,
+  type CliArgs,
+} from './run-experiment-helpers';
+
+export {
+  parseArgs,
+  suggestFamilies,
+  validateConfig,
+  pickMetrics,
+  mapBaselines,
+  type CliArgs,
+};
+
+export interface RunExperimentIO {
+  stdout: { write: (msg: string) => void };
+  stderr: { write: (msg: string) => void };
 }
 
-function parseArgs(argv: string[]): CliArgs {
-  const idx = argv.indexOf('--config');
-  const configPath = idx !== -1 && argv[idx + 1] ? argv[idx + 1]! : undefined;
-  const suggest = argv.includes('--suggest');
-  if (!configPath && !suggest) {
-    throw new Error(
-      'Usage: run-experiment --config <path-to-config.json> [--record] [--suggest]\n' +
-      '       run-experiment --suggest',
-    );
-  }
-  return { configPath, record: argv.includes('--record'), suggest };
-}
+export async function runExperimentCli(
+  argv: string[] = process.argv,
+  io: RunExperimentIO = { stdout: process.stdout, stderr: process.stderr },
+): Promise<number> {
+  const { configPath, record, suggest } = parseArgs(argv);
 
-// ── Suggest Mode ─────────────────────────────────────────────────────────────
-/** Rank families against the ledger. Returns data — callers own diagnostics. */
-async function suggestFamilies(
-  ledgerPath: string,
-): Promise<{ summary: VerdictSummary; suggestions: PrioritizedFamily[] }> {
-  const summary = await loadVerdictSummary(ledgerPath);
-  const registry = createDefaultRegistry();
-  const suggestions = prioritizeFamilies(registry, summary);
-  return { summary, suggestions };
-}
-// ── Config Validation ────────────────────────────────────────────────────────
-
-function validateConfig(config: ExperimentConfig): void {
-  if (!config.experimentId) throw new Error('Missing experimentId');
-  if (!config.symbol) throw new Error('Missing symbol');
-  if (!config.timeframe) throw new Error('Missing timeframe');
-  if (!Array.isArray(config.features) || config.features.length === 0) {
-    throw new Error('Features must be a non-empty array');
-  }
-  if (typeof config.tp !== 'number' || config.tp <= 0) {
-    throw new Error('tp must be a positive number');
-  }
-  if (typeof config.sl !== 'number' || config.sl <= 0) {
-    throw new Error('sl must be a positive number');
-  }
-  if (!config.split || typeof config.split.trainRatio !== 'number') {
-    throw new Error('Invalid split config');
-  }
-}
-// ── Helpers ──────────────────────────────────────────────────────────────────
-/** Pick the 8 metric fields shared across every artifact split. */
-function pickMetrics(m: SplitMetrics) {
-  return {
-    numTrades: m.numTrades,
-    winRate: m.winRate,
-    lossRate: m.lossRate,
-    timeoutRate: m.timeoutRate,
-    meanLabel: m.meanLabel,
-    totalPnl: m.totalPnl,
-    sharpeRatio: m.sharpeRatio,
-    maxDrawdown: m.maxDrawdown,
-  };
-}
-/** Map baseline reports to artifact shape. */
-function mapBaselines(baselines: ReturnType<typeof runAllBaselines>, regimeSeries: MarketRegime[]) {
-  const regimesPresent = distinctRegimes(regimeSeries);
-  return baselines.map((b) => ({
-    name: b.name,
-    totalPnl: b.report.totalPnl,
-    winRate: b.report.winRate,
-    lossRate: b.report.losingTrades / Math.max(1, b.report.totalTrades),
-    totalTrades: b.report.totalTrades,
-    sharpeRatio: b.report.sharpeRatio,
-    maxDrawdown: b.report.maxDrawdown,
-    regimesPresent,
-  }));
-}
-// ── Main ─────────────────────────────────────────────────────────────────────
-async function main(): Promise<void> {
-  const { configPath, record, suggest } = parseArgs(process.argv);
   // Standalone suggest mode: no --config required.
   if (suggest && !configPath) {
-    process.stderr.write(
+    io.stderr.write(
       `[run-experiment] suggest: loading ledger from ${DEFAULT_LEDGER_PATH}\n`,
     );
     const { summary, suggestions } = await suggestFamilies(DEFAULT_LEDGER_PATH);
-    process.stderr.write(
+    io.stderr.write(
       `[run-experiment] suggest: ${summary.totalRecords} ledger records across ` +
       `${Object.keys(summary.byStrategy).length} strategies; ` +
       `${suggestions.length} families ranked\n`,
     );
-    process.stdout.write(JSON.stringify(suggestions, null, 2) + '\n');
-    return;
+    io.stdout.write(JSON.stringify(suggestions, null, 2) + '\n');
+    return 0;
   }
 
-  if (!configPath) {
-    throw new Error('--config <path> is required when --suggest is not used');
-  }
-
-  const config: ExperimentConfig = JSON.parse(readFileSync(configPath, 'utf-8')) as ExperimentConfig;
+  const config: ExperimentConfig = JSON.parse(
+    readFileSync(configPath!, 'utf-8'),
+  ) as ExperimentConfig;
   validateConfig(config);
+
   const minBars = Math.ceil(
-    1 / (1 - config.split.trainRatio - config.split.valRatio - config.split.testRatio + 0.01) * 100,
+    (1 / (1 - config.split.trainRatio - config.split.valRatio - config.split.testRatio + 0.01)) * 100,
   );
   const candleCount = Math.max(500, minBars * 3);
   const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
@@ -152,12 +100,14 @@ async function main(): Promise<void> {
         }
       : {}),
   });
+
   const baselines = runAllBaselines(candles, config.cost.feeBps, config.cost.slippageBps, config.seed);
   const regimeSeries = computeRegimeSeries(candles, {
     market: config.symbol,
     timeframe: config.timeframe,
     lookback: config.lookback,
   });
+
   const artifact = {
     experimentId: result.config.experimentId,
     symbol: result.config.symbol,
@@ -172,6 +122,7 @@ async function main(): Promise<void> {
     },
     baselines: mapBaselines(baselines, regimeSeries),
   };
+
   // Provenance (--record): persist alpha verdict + ledger entry.
   if (record) {
     const candidate = candidateResultFromExperiment(result);
@@ -184,7 +135,7 @@ async function main(): Promise<void> {
       candles,
       resultClass: 'IS',
     });
-    process.stderr.write(
+    io.stderr.write(
       JSON.stringify({
         recorded: outcome.ok,
         alphaSurvival: outcome.verdict.passed,
@@ -203,10 +154,24 @@ async function main(): Promise<void> {
       .map((s) => s.familyId);
   }
 
-  process.stdout.write(JSON.stringify(artifact, null, 2) + '\n');
+  io.stdout.write(JSON.stringify(artifact, null, 2) + '\n');
+  return 0;
 }
 
-main().catch((err) => {
-  console.error('[run-experiment] fatal', { err });
-  process.exit(1);
-});
+export async function main(
+  runner: (argv?: string[], io?: RunExperimentIO) => Promise<number> = runExperimentCli,
+): Promise<void> {
+  const exitCode = await runner();
+  if (exitCode !== 0) {
+    process.exit(exitCode);
+  }
+}
+
+/* v8 ignore start */
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('[run-experiment] fatal', { err });
+    process.exit(1);
+  });
+}
+/* v8 ignore stop */

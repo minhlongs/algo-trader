@@ -9,9 +9,16 @@
 
 import { evaluateGates } from './gates/gate-evaluator';
 import type { GateEvaluatorInput } from './gates/gate-evaluator';
-import type { GateThreshold, PromotionReadiness } from './gates/gate-types';
-import { GATE_THRESHOLDS } from './gates/gate-types';
+import type { PromotionReadiness } from './gates/gate-types';
 import { ExchangeConnectionTester } from '../desk/tests/exchange-connection-test';
+import {
+  renderGateTable,
+  formatGateValue,
+  formatThreshold,
+} from './check-gates-table';
+
+export { renderGateTable, formatGateValue, formatThreshold };
+export type { GateEvaluatorInput };
 
 // ── Paper Data Provider ────────────────────────────────────────────────────────
 // Fetches closed paper trades from the worker's D1-backed ledger.
@@ -19,14 +26,6 @@ import { ExchangeConnectionTester } from '../desk/tests/exchange-connection-test
 
 const PAPER_API = process.env.PAPER_TRADES_API ?? 'https://api.cashclaw.cc/api/v1/paper-trades';
 
-/**
- * Baseline capital for the paper-trading equity curve.
- *
- * Paper trades from the D1 ledger carry nominal USD PnL (not return-on-capital
- * fractions), so the curve starts at a baseline and accumulates — mirroring
- * `src/shared/backtesting/backtest-runner.ts`. Starting at 0 would make
- * maxDrawdown divide by a near-zero peak and produce a bogus drawdown.
- */
 const PAPER_INITIAL_CAPITAL_USD = 10_000;
 
 interface PaperTradeRow {
@@ -80,25 +79,13 @@ export async function loadPaperData(): Promise<GateEvaluatorInput> {
       ? closed.reduce((min, t) => (t.timestamp < min ? t.timestamp : min), closed[0].timestamp)
       : new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Equity curve: baseline capital + cumulative nominal-USD PnL over time.
-  // Paper trades are nominal USD (see PAPER_INITIAL_CAPITAL_USD), so this
-  // accumulates rather than compounds — compounding is only correct for
-  // return-on-capital fractions (alpha-lab path), not raw USD PnL.
   const sorted = [...closed].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   let equity = PAPER_INITIAL_CAPITAL_USD;
   const equityCurve = sorted.map((t) => {
-    equity += t.pnl ?? 0;
+    equity += t.pnl!;
     return { timestamp: t.timestamp, equity };
   });
 
-  // Boolean gates:
-  // - Gate 8 (kelly_wired): RiskGateManager is unconditionally wired into
-  //   TradingPipeline at src/desk/polymarket/trading-pipeline.ts:176. This is a
-  //   build-time invariant, not a runtime toggle.
-  // - Gate 9 (circuit_breaker): CircuitBreaker is instantiated in
-  //   LiveTradingAdapterSetup at src/desk/polymarket/live-trading-adapter-setup.ts:71
-  //   and covered by live-order-manager-risk-gate-wiring.test.ts. Structural fact.
-  // - Gate 10 (exchange_connectivity): live check via ExchangeConnectionTester.
   const flags = {
     kellyWired: true,
     circuitBreakerTested: true,
@@ -122,96 +109,27 @@ export async function loadPaperData(): Promise<GateEvaluatorInput> {
   };
 }
 
-// ── Table Renderer ─────────────────────────────────────────────────────────────
-
-export function renderGateTable(reading: PromotionReadiness): string {
-  const lines: string[] = [];
-  const header = [
-    '#'.padStart(2),
-    'Gate'.padEnd(35),
-    'Current'.padStart(12),
-    'Threshold'.padStart(12),
-    'Status'.padStart(8),
-  ].join(' | ');
-
-  lines.push('');
-  lines.push('=== Transition Criteria Gate Status ===');
-  lines.push(`Evaluated: ${reading.evaluatedAt}`);
-  lines.push('');
-  lines.push(header);
-  lines.push('-'.repeat(header.length));
-
-  for (let i = 0; i < reading.gates.length; i++) {
-    const gate = reading.gates[i]!;
-    const num = String(i + 1).padStart(2);
-    const current = formatGateValue(gate);
-    const threshold = formatThreshold(gate);
-    const status = gate.passed ? '  PASS' : '  FAIL';
-    lines.push(
-      `${num} | ${gate.name.padEnd(35)} | ${current.padStart(12)} | ${threshold.padStart(12)} | ${status}`,
-    );
-  }
-
-  lines.push('-'.repeat(header.length));
-  lines.push(
-    `Result: ${reading.passedCount}/${reading.totalGates} gates passing`,
-  );
-
-  if (reading.allPassed) {
-    lines.push('STATUS: ALL GATES PASSING — eligible for live promotion');
-  } else {
-    lines.push(
-      `STATUS: ${reading.totalGates - reading.passedCount} gate(s) still failing`,
-    );
-    if (reading.estimatedDaysRemaining !== null && reading.estimatedDaysRemaining > 0) {
-      lines.push(
-        `Estimated days until duration gate: ${reading.estimatedDaysRemaining}`,
-      );
-    }
-  }
-  lines.push('');
-
-  return lines.join('\n');
-}
-
-export function formatGateValue(gate: { currentValue: number | null; id: string }): string {
-  if (gate.currentValue === null) return 'N/A';
-  if (gate.id === 'win_rate') return `${(gate.currentValue * 100).toFixed(1)}%`;
-  if (gate.id === 'max_drawdown') return `${(gate.currentValue * 100).toFixed(1)}%`;
-  if (gate.id === 'kelly_wired' || gate.id === 'circuit_breaker' || gate.id === 'exchange_connectivity') {
-    return gate.currentValue === 1 ? 'Yes' : 'No';
-  }
-  return String(Math.round(gate.currentValue * 100) / 100);
-}
-
-export function formatThreshold(gate: { threshold: number | null; id: string }): string {
-  if (gate.threshold === null) return '-';
-  const meta = GATE_THRESHOLDS.find((g: GateThreshold) => g.id === gate.id);
-  if (!meta) return '-';
-  const prefix = meta.direction === 'at_most' ? '<= ' : '>= ';
-  if (gate.id === 'win_rate') return `${prefix}${(gate.threshold * 100).toFixed(0)}%`;
-  if (gate.id === 'max_drawdown') return `${prefix}${(gate.threshold * 100).toFixed(0)}%`;
-  if (gate.id === 'duration') return `${prefix}${gate.threshold}d`;
-  return `${prefix}${gate.threshold}`;
-}
-
-// ── Main ───────────────────────────────────────────────────────────────────────
-
-async function main(): Promise<void> {
+export async function runCheckGates(
+  stdout: { write: (msg: string) => void } = process.stdout,
+  evaluator: (input: GateEvaluatorInput) => PromotionReadiness = evaluateGates,
+): Promise<number> {
   const input = await loadPaperData();
-  const reading = evaluateGates(input);
+  const reading = evaluator(input);
   const output = renderGateTable(reading);
-
-  process.stdout.write(output);
-
-  process.exit(reading.allPassed ? 0 : 1);
+  stdout.write(output);
+  return reading.allPassed ? 0 : 1;
 }
 
-// Only run main() when executed directly as a CLI script.
-// Importing this module from tests or other code must NOT trigger process.exit().
+export async function main(): Promise<void> {
+  const exitCode = await runCheckGates();
+  process.exit(exitCode);
+}
+
+/* v8 ignore start */
 if (require.main === module) {
   main().catch((err) => {
     console.error('[check-gates] fatal', { err });
     process.exit(2);
   });
 }
+/* v8 ignore stop */

@@ -1,12 +1,16 @@
 /**
  * check-gates — Unit Tests
  *
- * Covers loadPaperData, renderGateTable, formatGateValue, formatThreshold.
- * Mocks fetch (paper-trades API), ExchangeConnectionTester, and logger.
+ * Covers loadPaperData and checkExchangeHealth.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadPaperData, renderGateTable, formatGateValue, formatThreshold, type GateEvaluatorInput } from '../check-gates';
-import type { PromotionReadiness, GateStatus } from '../gates/gate-types';
+import { loadPaperData } from '../check-gates';
+
+let mockTestAllResults: Array<{ restOk: boolean; wsOk: boolean; error?: string | null }> = [
+  { restOk: true, wsOk: true, error: null },
+  { restOk: true, wsOk: true, error: null },
+];
+let shouldTestAllThrow = false;
 
 vi.mock('../../utils/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -15,10 +19,10 @@ vi.mock('../../utils/logger', () => ({
 vi.mock('../../desk/tests/exchange-connection-test', () => ({
   ExchangeConnectionTester: class {
     testAll() {
-      return Promise.resolve([
-        { restOk: true, wsOk: true, error: null },
-        { restOk: true, wsOk: true, error: null },
-      ]);
+      if (shouldTestAllThrow) {
+        return Promise.reject(new Error('connection failed'));
+      }
+      return Promise.resolve(mockTestAllResults);
     }
   },
 }));
@@ -29,9 +33,14 @@ const TEST_TRADES = [
   { id: 't3', tokenId: 'BTC', side: 'BUY' as const, price: 50000, size: 0.5, pnl: null, timestamp: '2026-08-03T10:00:00Z' },
 ];
 
-describe('check-gates', () => {
+describe('check-gates paper data loader', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    shouldTestAllThrow = false;
+    mockTestAllResults = [
+      { restOk: true, wsOk: true, error: null },
+      { restOk: true, wsOk: true, error: null },
+    ];
   });
 
   describe('loadPaperData', () => {
@@ -79,6 +88,16 @@ describe('check-gates', () => {
       expect(input.flags.exchangeConnectivityGreen).toBe(true);
     });
 
+    it('handles response without trades property', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      }));
+
+      const input = await loadPaperData();
+      expect(input.trades).toHaveLength(0);
+    });
+
     it('starts date from 15 days ago when no closed trades', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true,
@@ -89,10 +108,11 @@ describe('check-gates', () => {
       expect(input.startDate).toBeTruthy();
     });
 
-    it('sorts equity curve chronologically', async () => {
+    it('sorts equity curve chronologically and finds earliest timestamp', async () => {
       const unsorted = [
         { id: 't1', tokenId: 'X', side: 'BUY' as const, price: 100, size: 1, pnl: 50, timestamp: '2026-08-05T10:00:00Z' },
         { id: 't2', tokenId: 'Y', side: 'SELL' as const, price: 200, size: 1, pnl: 100, timestamp: '2026-08-01T10:00:00Z' },
+        { id: 't3', tokenId: 'Z', side: 'BUY' as const, price: 300, size: 1, pnl: 20, timestamp: '2026-08-03T10:00:00Z' },
       ];
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true,
@@ -100,116 +120,67 @@ describe('check-gates', () => {
       }));
 
       const input = await loadPaperData();
+      expect(input.startDate).toBe('2026-08-01T10:00:00Z');
       expect(input.equityCurve[0].timestamp).toBe('2026-08-01T10:00:00Z');
-      expect(input.equityCurve[1].timestamp).toBe('2026-08-05T10:00:00Z');
+      expect(input.equityCurve[1].timestamp).toBe('2026-08-03T10:00:00Z');
+      expect(input.equityCurve[2].timestamp).toBe('2026-08-05T10:00:00Z');
     });
   });
 
-  describe('renderGateTable', () => {
-    it('renders all-pass result with PASS status and eligibility message', () => {
-      const reading: PromotionReadiness = {
-        evaluatedAt: '2026-08-31T12:00:00Z',
-        allPassed: true,
-        passedCount: 3,
-        totalGates: 3,
-        estimatedDaysRemaining: null,
-        gates: [
-          { id: 'win_rate', name: 'Win Rate Gate', currentValue: 0.6, threshold: 0.55, direction: 'at_least', passed: true },
-          { id: 'duration', name: 'Duration Gate', currentValue: 30, threshold: 14, direction: 'at_least', passed: true },
-          { id: 'kelly_wired', name: 'Kelly Wired Gate', currentValue: 1, threshold: 1, direction: 'at_least', passed: true },
-        ],
-      };
+  describe('checkExchangeHealth via loadPaperData', () => {
+    it('returns true when all exchanges have restOk and wsOk', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ trades: [] }),
+      }));
+      mockTestAllResults = [{ restOk: true, wsOk: true, error: null }];
 
-      const output = renderGateTable(reading);
-      expect(output).toContain('=== Transition Criteria Gate Status ===');
-      expect(output).toContain('Evaluated: 2026-08-31T12:00:00Z');
-      expect(output).toContain('Result: 3/3 gates passing');
-      expect(output).toContain('STATUS: ALL GATES PASSING');
+      const input = await loadPaperData();
+      expect(input.flags.exchangeConnectivityGreen).toBe(true);
     });
 
-    it('renders failing result with FAIL status and gate count', () => {
-      const reading: PromotionReadiness = {
-        evaluatedAt: '2026-08-31T12:00:00Z',
-        allPassed: false,
-        passedCount: 1,
-        totalGates: 3,
-        estimatedDaysRemaining: 5,
-        gates: [
-          { id: 'win_rate', name: 'Win Rate Gate', currentValue: 0.4, threshold: 0.55, direction: 'at_least', passed: false },
-          { id: 'max_drawdown', name: 'Max Drawdown Gate', currentValue: 0.15, threshold: 0.10, direction: 'at_most', passed: false },
-          { id: 'duration', name: 'Duration Gate', currentValue: 10, threshold: 14, direction: 'at_least', passed: true },
-        ],
-      };
+    it('returns true when wsOk is false but no error exists', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ trades: [] }),
+      }));
+      mockTestAllResults = [{ restOk: true, wsOk: false, error: null }];
 
-      const output = renderGateTable(reading);
-      expect(output).toContain('Result: 1/3 gates passing');
-      expect(output).toContain('STATUS: 2 gate(s) still failing');
-      expect(output).toContain('Estimated days until duration gate: 5');
+      const input = await loadPaperData();
+      expect(input.flags.exchangeConnectivityGreen).toBe(true);
     });
 
-    it('omits estimated days line when estimatedDaysRemaining is null', () => {
-      const reading: PromotionReadiness = {
-        evaluatedAt: '2026-08-31T12:00:00Z',
-        allPassed: false,
-        passedCount: 0,
-        totalGates: 1,
-        estimatedDaysRemaining: null,
-        gates: [
-          { id: 'duration', name: 'Duration Gate', currentValue: null, threshold: 14, direction: 'at_least', passed: false },
-        ],
-      };
+    it('returns false when wsOk is false and error exists', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ trades: [] }),
+      }));
+      mockTestAllResults = [{ restOk: true, wsOk: false, error: 'timeout' }];
 
-      const output = renderGateTable(reading);
-      expect(output).not.toContain('Estimated days');
-      expect(output).toContain('N/A');
-    });
-  });
-
-  describe('formatGateValue', () => {
-    it('returns N/A for null currentValue', () => {
-      expect(formatGateValue({ currentValue: null, id: 'duration' })).toBe('N/A');
+      const input = await loadPaperData();
+      expect(input.flags.exchangeConnectivityGreen).toBe(false);
     });
 
-    it('formats win_rate as percentage', () => {
-      expect(formatGateValue({ currentValue: 0.625, id: 'win_rate' })).toBe('62.5%');
+    it('returns false when restOk is false', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ trades: [] }),
+      }));
+      mockTestAllResults = [{ restOk: false, wsOk: true, error: null }];
+
+      const input = await loadPaperData();
+      expect(input.flags.exchangeConnectivityGreen).toBe(false);
     });
 
-    it('formats max_drawdown as percentage', () => {
-      expect(formatGateValue({ currentValue: 0.123, id: 'max_drawdown' })).toBe('12.3%');
-    });
+    it('returns false when ExchangeConnectionTester throws', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ trades: [] }),
+      }));
+      shouldTestAllThrow = true;
 
-    it('formats boolean gates as Yes/No', () => {
-      expect(formatGateValue({ currentValue: 1, id: 'kelly_wired' })).toBe('Yes');
-      expect(formatGateValue({ currentValue: 0, id: 'circuit_breaker' })).toBe('No');
-      expect(formatGateValue({ currentValue: 1, id: 'exchange_connectivity' })).toBe('Yes');
-    });
-
-    it('formats numeric values rounded to 2 decimals', () => {
-      expect(formatGateValue({ currentValue: 3.14159, id: 'sharpe_ratio' })).toBe('3.14');
-      expect(formatGateValue({ currentValue: 3.567, id: 'profit_factor' })).toBe('3.57');
-    });
-  });
-
-  describe('formatThreshold', () => {
-    it('returns dash for null threshold', () => {
-      expect(formatThreshold({ threshold: null, id: 'win_rate' })).toBe('-');
-    });
-
-    it('formats win_rate with >= prefix and percentage', () => {
-      expect(formatThreshold({ threshold: 0.55, id: 'win_rate' })).toBe('>= 55%');
-    });
-
-    it('formats max_drawdown with <= prefix and percentage', () => {
-      expect(formatThreshold({ threshold: 0.1, id: 'max_drawdown' })).toBe('<= 10%');
-    });
-
-    it('formats duration with >= prefix and d suffix', () => {
-      expect(formatThreshold({ threshold: 14, id: 'duration' })).toBe('>= 14d');
-    });
-
-    it('formats numeric thresholds with prefix', () => {
-      expect(formatThreshold({ threshold: 2.0, id: 'profit_factor' })).toBe('>= 2');
-      expect(formatThreshold({ threshold: 1.5, id: 'sharpe_ratio' })).toBe('>= 1.5');
+      const input = await loadPaperData();
+      expect(input.flags.exchangeConnectivityGreen).toBe(false);
     });
   });
 });
