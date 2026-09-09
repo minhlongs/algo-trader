@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { bootstrapSharpeCi } from '../bootstrap-sharpe';
-import { mulberry32 } from '../validation-types';
+import {
+  mulberry32,
+  mean,
+  stdDev,
+  percentile,
+  annualizedSharpe,
+} from '../validation-types';
 
 // ── Fixtures (computed, not hardcoded metrics) ───────────────────────────────
 
@@ -98,5 +104,31 @@ describe('bootstrapSharpeCi', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toContain('finite');
+  });
+
+  it('returns an error for non-integer nBootstrap or non-integer seed', () => {
+    expect(bootstrapSharpeCi(positiveReturns(), { nBootstrap: 10.5 }).ok).toBe(false);
+    expect(bootstrapSharpeCi(positiveReturns(), { seed: 1.5 }).ok).toBe(false);
+    expect(bootstrapSharpeCi(positiveReturns(), { confidence: NaN }).ok).toBe(false);
+  });
+});
+
+describe('validation-types primitives', () => {
+  it('handles empty arrays in mean, stdDev, and percentile', () => {
+    expect(mean([])).toBe(0);
+    expect(stdDev([])).toBe(0);
+    expect(Number.isNaN(percentile([], 50))).toBe(true);
+  });
+
+  it('handles exact boundary index in percentile', () => {
+    expect(percentile([10, 20, 30], 0)).toBe(10);
+    expect(percentile([10, 20, 30], 100)).toBe(30);
+  });
+
+  it('computes annualizedSharpe with zero variance returns', () => {
+    const flat = [0.01, 0.01, 0.01];
+    const sharpe = annualizedSharpe(flat, 252);
+    expect(Number.isFinite(sharpe)).toBe(true);
+    expect(sharpe).toBeGreaterThan(0);
   });
 });

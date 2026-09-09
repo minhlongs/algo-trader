@@ -137,4 +137,26 @@ describe('runMonteCarloPermutation', () => {
     if (result.ok) return;
     expect(result.error).toContain('finite');
   });
+
+  it('uses default options when optional parameters are omitted', () => {
+    const result = runMonteCarloPermutation(goodPathPnls(), { initialCapital: 1000 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.nSimulations).toBe(1000);
+    expect(result.seed).toBe(42);
+  });
+
+  it('handles running equity dropping to zero in returns computation', () => {
+    const pnls = [-1000, 10, 20];
+    const result = runMonteCarloPermutation(pnls, { initialCapital: 1000, nSimulations: 10, seed: 1 });
+    expect(result.ok).toBe(true);
+  });
+
+  it('handles non-positive peak equity in drawdown computation', () => {
+    const pnls = [-1500, -50, -50];
+    const result = runMonteCarloPermutation(pnls, { initialCapital: 1000, nSimulations: 10, seed: 1 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.actualMaxDrawdown).toBeLessThanOrEqual(0);
+  });
 });

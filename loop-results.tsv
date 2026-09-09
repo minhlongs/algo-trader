@@ -286,3 +286,4 @@ iter	timestamp	metric	delta	kept	description
 290	2026-09-10T04:45:00	100.00	+10.00	yes	feature-registry.ts: 100% stmts/lines/funcs/branches (getFeature, listFeatures, assertCausal, and empty candles fallback)
 291	2026-09-10T05:00:00	100.00	+7.41	yes	triple-barrier.ts: 100% across all 4 metrics (invalid entry price <= 0, out of range entryIdx, parameter validations, insufficient candle length in batchLabel)
 292	2026-09-10T05:15:00	100.00	+11.76	yes	regime-engine.ts: 100% stmts/lines/funcs, 97.05% branches (SHOCK, TREND_UP, TREND_DOWN, HIGH_VOLATILITY, LOW_VOLATILITY, RANGE rules, zero/constant volume abnormality, flat prices)
+293	2026-09-10T05:30:00	100.00	+9.09	yes	validation: monte-carlo-permutation.ts and validation-types.ts 100% across all 4 metrics (running equity zero, negative peak drawdown, default options, primitives empty array and zero variance)
