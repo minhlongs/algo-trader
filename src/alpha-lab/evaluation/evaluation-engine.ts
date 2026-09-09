@@ -28,7 +28,7 @@ interface GroupData {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function realizedVol(candles: CandleLike[]): number | null {
+export function realizedVol(candles: CandleLike[]): number | null {
   if (candles.length < 2) return null;
   const logRet: number[] = [];
   for (let i = 1; i < candles.length; i++) {
@@ -47,7 +47,7 @@ function monthKey(ts: string): string {
   return ts.slice(0, 7); // "YYYY-MM"
 }
 
-function volBucket(vol: number | null): 'low' | 'medium' | 'high' {
+export function volBucket(vol: number | null): 'low' | 'medium' | 'high' {
   if (vol === null) return 'medium';
   if (vol < 0.01) return 'low';
   if (vol > 0.03) return 'high';
@@ -122,7 +122,7 @@ export interface EvaluateInput {
 }
 
 export function evaluate(input: EvaluateInput): EvaluationReport {
-  const { candles, trades, labels, steps, regimesPerBar } = input;
+  const { candles, trades, labels, steps: _steps, regimesPerBar } = input;
 
   if (trades.length === 0) {
     return {
