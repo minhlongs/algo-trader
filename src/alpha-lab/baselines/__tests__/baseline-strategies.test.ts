@@ -39,6 +39,13 @@ describe('Buy & Hold', () => {
     const r = buyAndHold(closes, { cost, seed: 42 });
     expect(r.trades).toHaveLength(0);
   });
+
+  it('returns empty when entryIdx is at or beyond last candle', () => {
+    const candles = makeCandles(5);
+    const closes = candles.map((c) => ({ timestamp: c.timestamp, close: c.close }));
+    const r = buyAndHold(closes, { cost, seed: 42, entryIdx: 4 });
+    expect(r.trades).toHaveLength(0);
+  });
 });
 
 describe('Random Entry', () => {
@@ -85,6 +92,47 @@ describe('Simple Mean Reversion', () => {
     const r = simpleMeanReversion(closes, { cost, seed: 42 });
     expect(r.name).toBe('simple-mean-reversion');
     expect(Array.isArray(r.trades)).toBe(true);
+  });
+
+  it('enters on sharp dip and exits when price reverts above exit threshold', () => {
+    const prices = Array(20).fill(100);
+    prices.push(80); // dip below entry threshold
+    prices.push(100); // price recovers -> zScore > -exitThresh -> exits
+    prices.push(...Array(30).fill(100));
+    const closes = prices.map((close, i) => ({ timestamp: `2025-01-${String(i + 1).padStart(2, '0')}`, close }));
+    const r = simpleMeanReversion(closes, { cost, period: 20, maxHolding: 10, entryThreshold: 1.5, exitThreshold: 0.5 });
+    expect(r.trades.length).toBe(1);
+    expect(r.trades[0]!.price).toBe(100);
+    expect(r.trades[0]!.pnl).toBeGreaterThan(0);
+  });
+
+  it('exits after maxHolding when price does not revert', () => {
+    const prices = Array(20).fill(100);
+    prices.push(80); // enters at index 20
+    prices.push(...Array(15).fill(80)); // stays at 80, exceeding maxHolding (10)
+    prices.push(...Array(30).fill(80));
+    const closes = prices.map((close, i) => ({ timestamp: `2025-01-${String(i + 1).padStart(2, '0')}`, close }));
+    const r = simpleMeanReversion(closes, { cost, period: 20, maxHolding: 10, entryThreshold: 1.5, exitThreshold: 0.5 });
+    expect(r.trades.length).toBe(1);
+    expect(r.trades[0]!.price).toBe(80);
+    expect(r.trades[0]!.pnl).toBeLessThan(0);
+  });
+
+  it('closes open position at final candle if still holding at loop end', () => {
+    const prices = Array(34).fill(100);
+    prices.push(80); // index 34: enters
+    prices.push(...Array(10).fill(80)); // total 45
+    const closes = prices.map((close, i) => ({ timestamp: `2025-01-${String(i + 1).padStart(2, '0')}`, close }));
+    const r = simpleMeanReversion(closes, { cost, period: 20, maxHolding: 10 });
+    expect(r.trades.length).toBe(1);
+    expect(r.trades[0]!.price).toBe(80);
+  });
+
+  it('handles flat prices with zero standard deviation', () => {
+    const prices = Array(50).fill(100);
+    const closes = prices.map((close, i) => ({ timestamp: `2025-01-${String(i + 1).padStart(2, '0')}`, close }));
+    const r = simpleMeanReversion(closes, { cost, period: 20, maxHolding: 10 });
+    expect(r.trades).toHaveLength(0);
   });
 
   it('returns empty when data too short', () => {

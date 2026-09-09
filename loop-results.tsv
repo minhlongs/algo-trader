@@ -288,3 +288,4 @@ iter	timestamp	metric	delta	kept	description
 292	2026-09-10T05:15:00	100.00	+11.76	yes	regime-engine.ts: 100% stmts/lines/funcs, 97.05% branches (SHOCK, TREND_UP, TREND_DOWN, HIGH_VOLATILITY, LOW_VOLATILITY, RANGE rules, zero/constant volume abnormality, flat prices)
 293	2026-09-10T05:30:00	100.00	+9.09	yes	validation: monte-carlo-permutation.ts and validation-types.ts 100% across all 4 metrics (running equity zero, negative peak drawdown, default options, primitives empty array and zero variance)
 294	2026-09-10T05:45:00	100.00	+35.00	yes	attribution: survival-gate.ts and promotion-state-machine.ts 100% stmts/lines/funcs, 95.38% branches (new survival-gate suite, random/momentum ablation, unknown state/trigger fallbacks)
+295	2026-09-10T05:55:00	100.00	+15.00	yes	walkforward-evaluator.ts and baseline-strategies.ts 100% across all 4 metrics (uncovered branches, liquidation, and edge cases)

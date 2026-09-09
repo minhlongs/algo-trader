@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateWalkForward } from '../walkforward-evaluator';
+import { evaluateWalkForward, buildSummary } from '../walkforward-evaluator';
 import type { ExperimentConfig } from '../experiments/experiment-types';
 import type { CandleLike } from '../regimes/regime-types';
 
@@ -149,9 +149,21 @@ describe('Walk-Forward Evaluator', () => {
     expect(result.steps.length).toBeGreaterThan(0);
   });
 
-  it('produces rolling mode', () => {
-    const result = evaluateWalkForward({ candles: makeCandles(100), config: baseConfig });
+  it('produces rolling mode with step results', () => {
+    const multiStepConfig: ExperimentConfig = {
+      ...baseConfig,
+      split: {
+        mode: 'rolling',
+        trainRatio: 0.5,
+        valRatio: 0.25,
+        testRatio: 0.25,
+        trainWindowSize: 20,
+        valWindowSize: 10,
+      },
+    };
+    const result = evaluateWalkForward({ candles: makeCandles(100), config: multiStepConfig });
     expect(result.steps.length).toBeGreaterThan(0);
+    expect(result.steps[0]!.step).toBe(0);
   });
 
   it('is reproducible: same candles + config → identical results', () => {
@@ -170,5 +182,45 @@ describe('Walk-Forward Evaluator', () => {
       split: { mode: 'rolling', trainRatio: 0.5, valRatio: 0.25, testRatio: 0.25, trainWindowSize: 30, valWindowSize: 20 },
     };
     expect(() => evaluateWalkForward({ candles: makeCandles(25), config: badConfig })).toThrow();
+  });
+
+  it('throws when splits array is empty due to expanding window exceeding data length', () => {
+    const config: ExperimentConfig = {
+      ...baseConfig,
+      lookback: 5,
+      maxHolding: 5,
+      split: { mode: 'expanding', trainRatio: 0.5, valRatio: 0.25, testRatio: 0.25, trainWindowSize: 40, valWindowSize: 30 },
+    };
+    expect(() => evaluateWalkForward({ candles: makeCandles(60), config })).toThrow(
+      'No splits generated — check config ratios vs data length',
+    );
+  });
+
+  it('buildSummary returns zeroed summary when steps array is empty', () => {
+    const summary = buildSummary([]);
+    expect(summary.totalSteps).toBe(0);
+    expect(summary.trainWinRate).toBe(0);
+    expect(summary.valWinRate).toBe(0);
+    expect(summary.testWinRate).toBe(0);
+    expect(summary.overfitGap).toBe(0);
+    expect(summary.consistencyScore).toBe(0);
+    expect(summary.avgTestTrades).toBe(0);
+    expect(summary.totalTestTrades).toBe(0);
+  });
+
+  it('handles splits where end < start resulting in empty labels and zero metrics', () => {
+    const config: ExperimentConfig = {
+      ...baseConfig,
+      lookback: 5,
+      maxHolding: 30,
+      split: { mode: 'rolling', trainRatio: 0.5, valRatio: 0.25, testRatio: 0.25 },
+    };
+    const result = evaluateWalkForward({ candles: makeCandles(60), config });
+    expect(result.steps.length).toBeGreaterThan(0);
+    expect(result.steps[0]!.testMetrics.numTrades).toBe(0);
+    expect(result.steps[0]!.testMetrics.winRate).toBe(0);
+    expect(result.steps[0]!.testMetrics.lossRate).toBe(0);
+    expect(result.steps[0]!.testMetrics.timeoutRate).toBe(0);
+    expect(result.steps[0]!.testMetrics.meanLabel).toBe(0);
   });
 });
