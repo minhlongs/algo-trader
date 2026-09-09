@@ -64,6 +64,17 @@ describe('filterSignalsForTier - PRO', () => {
     const result = filterSignalsForTier(sigs, 'PRO');
     expect(result).toHaveLength(1);
   });
+
+  it('PRO sorts visible signals by ts descending', () => {
+    const sigs = [
+      makeSignal({ ts: now - 10 * 60 * 1000, id: 'older' }),  // 10 min ago
+      makeSignal({ ts: now - 5 * 60 * 1000, id: 'newer' }),   // 5 min ago
+    ];
+    const result = filterSignalsForTier(sigs, 'PRO');
+    expect(result).toHaveLength(2);
+    expect(result[0].id).toBe('newer');
+    expect(result[1].id).toBe('older');
+  });
 });
 
 describe('filterSignalsForTier - FREE', () => {
@@ -77,6 +88,15 @@ describe('filterSignalsForTier - FREE', () => {
     expect(result).toHaveLength(2);
     const btcResult = result.find((s) => s.market === 'BTC-USD');
     expect(btcResult?.id).toBe('new');
+  });
+
+  it('keeps existing newer signal when older signal for same market arrives later', () => {
+    const newer = makeSignal({ ts: now, market: 'BTC-USD', id: 'newer' });
+    const older = makeSignal({ ts: now - 1000, market: 'BTC-USD', id: 'older' });
+    // newer arrives first → map has newer; older arrives → must NOT replace
+    const result = filterSignalsForTier([newer, older], 'FREE');
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('newer');
   });
 
   it('min confidence is 0.7 for FREE', () => {
