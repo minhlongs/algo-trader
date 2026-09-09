@@ -110,6 +110,15 @@ describe('verifyIntegrity', () => {
     last.hash = originalHash; // restore
     expect(verifyIntegrity()).toBe(true);
   });
+
+  it('returns true across multiple records (i > 0 iteration path)', () => {
+    // Covers the `_records[i - 1]` true branch — verifyIntegrity walks
+    // records beyond the first, where the ternary's prev lookup executes.
+    append({ eventType: 'a', payload: {} });
+    append({ eventType: 'b', payload: {} });
+    append({ eventType: 'c', payload: {} });
+    expect(verifyIntegrity()).toBe(true);
+  });
 });
 
 describe('ImmutableTradeAudit class wrapper', () => {
