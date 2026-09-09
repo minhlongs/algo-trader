@@ -51,7 +51,39 @@ describe('RegimeEngine', () => {
       ];
       const rv = realizedVolatility(c);
       expect(rv).not.toBeNull();
-      expect(rv!.sign).not.toEqual('-');
+      expect(rv).toBeGreaterThan(0);
+    });
+
+    it('returns null for realizedVolatility and returnDispersion when valid returns < 2', () => {
+      const invalidCandles = [
+        makeCandle('2025-01-01T00:00:00Z', 100, 101, 99, 50),
+        makeCandle('2025-01-01T01:00:00Z', -10, 101, 99, 50),
+      ];
+      expect(realizedVolatility(invalidCandles)).toBeNull();
+      expect(returnDispersion(invalidCandles)).toBeNull();
+    });
+
+    it('handles zero volume and constant volume in volumeAbnormality', () => {
+      const zeroVolCandles = [
+        makeCandle('2025-01-01T00:00:00Z', 100, 101, 99, 0),
+        makeCandle('2025-01-01T01:00:00Z', 101, 102, 100, 0),
+      ];
+      expect(volumeAbnormality(zeroVolCandles)).toBe(0);
+
+      const constantVolCandles = [
+        makeCandle('2025-01-01T00:00:00Z', 100, 101, 99, 100),
+        makeCandle('2025-01-01T01:00:00Z', 101, 102, 100, 100),
+      ];
+      expect(volumeAbnormality(constantVolCandles)).toBe(0);
+    });
+
+    it('handles flat prices in trendStrength and closeSlope', () => {
+      const flatCandles = [
+        makeCandle('2025-01-01T00:00:00Z', 100, 100, 100, 50),
+        makeCandle('2025-01-01T01:00:00Z', 100, 100, 100, 50),
+      ];
+      expect(trendStrength(flatCandles)).toBe(0);
+      expect(closeSlope(flatCandles)).toBe(0);
     });
   });
 
@@ -132,6 +164,170 @@ describe('RegimeEngine', () => {
       expect(regimes).toContain('HIGH_VOLATILITY');
       expect(regimes).toContain('LOW_VOLATILITY');
       expect(regimes).toContain('SHOCK');
+    });
+
+    it('matches SHOCK rule when volume abnormality > 3 and return dispersion > 0.05', () => {
+      const rules = defaultRules();
+      const shockRule = rules.find((r) => r.regime === 'SHOCK')!;
+      expect(
+        shockRule.matches({
+          realizedVol: 0.5,
+          atr: 1,
+          closeSlope: 0,
+          trendStrength: 10,
+          returnDispersion: 0.06,
+          volumeAbnormality: 3.5,
+        }),
+      ).toBe(true);
+      expect(
+        shockRule.matches({
+          realizedVol: 0.5,
+          atr: 1,
+          closeSlope: 0,
+          trendStrength: 10,
+          returnDispersion: 0.02,
+          volumeAbnormality: 3.5,
+        }),
+      ).toBe(false);
+    });
+
+    it('matches TREND_UP rule when slope > 0 and trendStrength >= 25', () => {
+      const rules = defaultRules();
+      const upRule = rules.find((r) => r.regime === 'TREND_UP')!;
+      expect(
+        upRule.matches({
+          realizedVol: 0.5,
+          atr: 1,
+          closeSlope: 0.5,
+          trendStrength: 25,
+          returnDispersion: 0.01,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(true);
+      expect(
+        upRule.matches({
+          realizedVol: 0.5,
+          atr: 1,
+          closeSlope: -0.5,
+          trendStrength: 25,
+          returnDispersion: 0.01,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(false);
+    });
+
+    it('matches TREND_DOWN rule when slope < 0 and trendStrength >= 25', () => {
+      const rules = defaultRules();
+      const downRule = rules.find((r) => r.regime === 'TREND_DOWN')!;
+      expect(
+        downRule.matches({
+          realizedVol: 0.5,
+          atr: 1,
+          closeSlope: -0.5,
+          trendStrength: 26,
+          returnDispersion: 0.01,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(true);
+      expect(
+        downRule.matches({
+          realizedVol: 0.5,
+          atr: 1,
+          closeSlope: 0.5,
+          trendStrength: 26,
+          returnDispersion: 0.01,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(false);
+    });
+
+    it('matches HIGH_VOLATILITY rule when realizedVol >= 1.0', () => {
+      const rules = defaultRules();
+      const highVolRule = rules.find((r) => r.regime === 'HIGH_VOLATILITY')!;
+      expect(
+        highVolRule.matches({
+          realizedVol: 1.2,
+          atr: 1,
+          closeSlope: 0,
+          trendStrength: 10,
+          returnDispersion: 0.01,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(true);
+      expect(
+        highVolRule.matches({
+          realizedVol: 0.8,
+          atr: 1,
+          closeSlope: 0,
+          trendStrength: 10,
+          returnDispersion: 0.01,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(false);
+    });
+
+    it('matches LOW_VOLATILITY rule when vol < 0.4, trend < 20, and dispersion < 0.01', () => {
+      const rules = defaultRules();
+      const lowVolRule = rules.find((r) => r.regime === 'LOW_VOLATILITY')!;
+      expect(
+        lowVolRule.matches({
+          realizedVol: 0.3,
+          atr: 1,
+          closeSlope: 0,
+          trendStrength: 15,
+          returnDispersion: 0.005,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(true);
+      expect(
+        lowVolRule.matches({
+          realizedVol: 0.5,
+          atr: 1,
+          closeSlope: 0,
+          trendStrength: 15,
+          returnDispersion: 0.005,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(false);
+    });
+
+    it('matches RANGE rule when trend < 20 and dispersion < 0.03', () => {
+      const rules = defaultRules();
+      const rangeRule = rules.find((r) => r.regime === 'RANGE')!;
+      expect(
+        rangeRule.matches({
+          realizedVol: 0.6,
+          atr: 1,
+          closeSlope: 0,
+          trendStrength: 12,
+          returnDispersion: 0.02,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(true);
+      expect(
+        rangeRule.matches({
+          realizedVol: 0.6,
+          atr: 1,
+          closeSlope: 0,
+          trendStrength: 25,
+          returnDispersion: 0.02,
+          volumeAbnormality: 0,
+        }),
+      ).toBe(false);
+    });
+
+    it('falls back to fallback regime when no rule matches', () => {
+      const emptyRules: any[] = [];
+      const snapshot = classifyRegime(
+        { market: 'ETH/USDT', timeframe: '1h', lookback: 10 },
+        [
+          makeCandle('2025-01-01T00:00:00Z', 100, 101, 99, 50),
+          makeCandle('2025-01-01T01:00:00Z', 101, 102, 100, 55),
+        ],
+        emptyRules,
+      );
+      expect(snapshot.regime).toBe('UNKNOWN');
+      expect(snapshot.explanation).toContain('no matching rule; default classifier');
     });
   });
 });
