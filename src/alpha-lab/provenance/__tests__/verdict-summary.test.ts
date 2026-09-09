@@ -6,7 +6,7 @@
  * (fail-safe with nonexistent path, real ledger file).
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -97,6 +97,41 @@ describe('summarizeVerdicts', () => {
     const summary = summarizeVerdicts([]);
     expect(summary.totalRecords).toBe(0);
     // No strategies exist, so passRate check is defensive.
+  });
+
+  it('handles zero totalRuns and missing matching records defensive branches in second pass', () => {
+    const records = [
+      makeRecord({ runId: 'r1', strategyRef: 'alpha', gates: { g1: true }, recordedAt: '2026-08-20T10:00:00.000Z' }),
+    ];
+
+    let valuesCallCount = 0;
+    const origValues = Object.values;
+    const valuesSpy = vi.spyOn(Object, 'values').mockImplementation((target: unknown) => {
+      valuesCallCount++;
+      if (valuesCallCount === 2) {
+        // Second call: Object.values(byStrategy) in summarizeVerdicts pass 2
+        return [
+          {
+            strategyRef: 'orphan-strategy',
+            totalRuns: 0,
+            passedCount: 0,
+            passRate: 0,
+            lastVerdictPassed: null,
+            lastResultClass: null,
+            lastRecordedAt: null,
+          },
+        ];
+      }
+      return origValues.call(Object, target as object);
+    });
+
+    try {
+      const summary = summarizeVerdicts(records);
+      expect(summary.totalRecords).toBe(1);
+      expect(summary.byStrategy['alpha']).toBeDefined();
+    } finally {
+      valuesSpy.mockRestore();
+    }
   });
 });
 

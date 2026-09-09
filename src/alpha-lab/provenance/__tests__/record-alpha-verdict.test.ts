@@ -45,14 +45,17 @@ vi.mock('../../attribution/alpha-evaluator', async (importOriginal) => {
 let tmp: string;
 let tmpReportRoot: string;
 let tmpLedger: string;
+let originalCwd: string;
 
 beforeEach(async () => {
+  originalCwd = process.cwd();
   tmp = await mkdtemp(join(tmpdir(), 'record-alpha-verdict-'));
   tmpReportRoot = join(tmp, 'alpha-reports');
   tmpLedger = join(tmp, 'research-ledger.jsonl');
 });
 
 afterEach(async () => {
+  process.chdir(originalCwd);
   await rm(tmp, { recursive: true, force: true });
 });
 
@@ -206,6 +209,78 @@ describe('recordAlphaVerdict', () => {
     const chain = verifyLedgerChain(records);
     expect(chain).toBe(-1);
   });
+
+  it('uses default paths when paths parameter is omitted', async () => {
+    process.chdir(tmp);
+    const result = syntheticResult(0.05, 0.03, 0.02);
+    const candidate = candidateResultFromExperiment(result);
+
+    const outcome = await recordAlphaVerdict({
+      candidateId: 'default-paths-candidate',
+      configHash: 'hash-default-paths',
+      strategyRef: 'default_strategy',
+      candidate,
+      candles: CANDLES,
+    });
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.report.candidateId).toBe('default-paths-candidate');
+
+    const report = await readAlphaReportByCandidateId(
+      'default-paths-candidate',
+      join(tmp, 'data', 'alpha-reports'),
+    );
+    expect(report).not.toBeNull();
+  });
+
+  it('uses explicit reportDir when provided in paths', async () => {
+    const customReportDir = join(tmp, 'custom-reports-dir');
+    const result = syntheticResult(0.05, 0.03, 0.02);
+    const candidate = candidateResultFromExperiment(result);
+
+    const outcome = await recordAlphaVerdict(
+      {
+        candidateId: 'custom-dir-candidate',
+        configHash: 'hash-custom-dir',
+        strategyRef: 'custom_strategy',
+        candidate,
+        candles: CANDLES,
+      },
+      { reportDir: customReportDir, ledgerPath: tmpLedger },
+    );
+
+    expect(outcome.ok).toBe(true);
+    const report = await readAlphaReportByCandidateId(
+      'custom-dir-candidate',
+      customReportDir,
+    );
+    expect(report).not.toBeNull();
+  });
+
+  it('uses explicit runId, resultClass, and criteria when provided', async () => {
+    const result = syntheticResult(0.05, 0.03, 0.02);
+    const candidate = candidateResultFromExperiment(result);
+
+    const outcome = await recordAlphaVerdict(
+      {
+        candidateId: 'custom-fields-candidate',
+        runId: 'custom-run-007',
+        configHash: 'hash-custom-fields',
+        strategyRef: 'custom_fields_strategy',
+        resultClass: 'OOS',
+        candidate,
+        candles: CANDLES,
+        criteria: { minWinRate: 0.1 },
+      },
+      { alphaReportRoot: tmpReportRoot, ledgerPath: tmpLedger },
+    );
+
+    expect(outcome.ok).toBe(true);
+    const records = await readLedgerRecords(tmpLedger);
+    const record = records.find((r) => r.runId === 'custom-run-007');
+    expect(record).toBeDefined();
+    expect(record?.resultClass).toBe('OOS');
+  });
 });
 
 // ── recordAlphaVerdict weak candidate ────────────────────────────────────────
@@ -342,7 +417,6 @@ describe('recordAlphaVerdict fail-safety', () => {
     const { evaluateAlpha } = await import('../../attribution/alpha-evaluator');
     const mocked = vi.mocked(evaluateAlpha);
     mocked.mockImplementationOnce(() => {
-      // eslint-disable-next-line no-restricted-syntax -- deliberately a non-Error throw value
       throw 'plain string failure';
     });
 
