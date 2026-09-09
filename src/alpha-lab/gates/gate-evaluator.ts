@@ -90,7 +90,7 @@ export function evaluateGates(input: GateEvaluatorInput): PromotionReadiness {
 
 // ── Internal Helpers ───────────────────────────────────────────────────────────
 
-function evaluateNumericGate(id: GateId, currentValue: number): GateStatus {
+export function evaluateNumericGate(id: GateId, currentValue: number): GateStatus {
   const meta = GATE_THRESHOLDS.find((g) => g.id === id)!;
   if (!meta.threshold || !meta.direction) {
     throw new Error(`Gate "${id}" is not a numeric gate`);
@@ -206,7 +206,7 @@ function computeOosGap(
   return valWinRate - testWinRate;
 }
 
-function estimateDaysRemaining(
+export function estimateDaysRemaining(
   gates: GateStatus[],
   daysSinceStart: number,
 ): number | null {
@@ -217,7 +217,7 @@ function estimateDaysRemaining(
   return remaining > 0 ? remaining : 0;
 }
 
-function formatValue(id: GateId, value: number): string {
+export function formatValue(id: GateId, value: number): string {
   if (id === 'win_rate') return `${(value * 100).toFixed(1)}%`;
   if (id === 'max_drawdown') return `${(value * 100).toFixed(1)}%`;
   if (id === 'oos_consistency') return value.toFixed(4);

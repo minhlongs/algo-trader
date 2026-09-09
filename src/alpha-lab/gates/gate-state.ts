@@ -5,7 +5,7 @@
  * Uses in-memory store by default; can be swapped for KV/D1 in production.
  */
 
-import type { GateId, GateStatus, GateTransition, PromotionReadiness } from './gate-types';
+import type { GateId, GateTransition, PromotionReadiness } from './gate-types';
 
 // ── Storage Interface ──────────────────────────────────────────────────────────
 
