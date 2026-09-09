@@ -69,6 +69,12 @@ describe('getPostgresClient — lazy singleton', () => {
     const client = getPostgresClient();
     expect(typeof client.query).toBe('function');
   });
+
+  it('returns the same cached instance on subsequent calls (covers else path)', () => {
+    const first = getPostgresClient();
+    const second = getPostgresClient();
+    expect(second).toBe(first);
+  });
 });
 
 describe('named query export', () => {
