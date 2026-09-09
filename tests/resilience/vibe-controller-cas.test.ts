@@ -282,6 +282,208 @@ describe('VibeController CAS', () => {
     expect(stored.version).toBe(8);
   });
 
+  // ─── Rebase with stored=null (line 101 false branch) ──────────────────────
+
+  it('rebalances from defaults when stored data vanishes before WATCH (stored=null path)', async () => {
+    // Init loads version 5. Then Redis data disappears (get returns null inside persistStateWithCAS).
+    // base = 5, storedVersion = 0 (from null) → 0 !== 5 → rebase path with stored=null.
+    // Line 101 false branch: stored = null → rebased = BALANCED_DEFAULTS.
+    const sharedStore = new Map<string, string>();
+    sharedStore.set('vibe:state', JSON.stringify(makeState({ mode: 'conservative', version: 5 })));
+
+    const redis = makeRedisMock();
+    let getCallCount = 0;
+    redis.get.mockImplementation(async (key: string) => {
+      getCallCount++;
+      // First call (init load) returns the saved state; subsequent calls return null (data vanished)
+      if (getCallCount === 1) return sharedStore.get(key) ?? null;
+      return null;
+    });
+    redis.set.mockImplementation(async (key: string, value: string) => { sharedStore.set(key, value); return 'OK'; });
+    vi.mocked(getRedisClient).mockReturnValue(redis as ReturnType<typeof getRedisClient>);
+
+    let handler!: (env: { data: VibeCommand }) => Promise<void>;
+    mockSubscribe.mockImplementation((_topic: string, h: typeof handler) => {
+      handler = h;
+      return Promise.resolve();
+    });
+
+    await initVibeController();
+    expect(getVibeState().version).toBe(5);
+
+    // Data vanishes — get returns null inside persistStateWithCAS
+    sharedStore.delete('vibe:state');
+
+    redis.multi.mockImplementation(() => {
+      const pipeline = {
+        set: vi.fn((key: string, value: string) => { sharedStore.set(key, value); return pipeline; }),
+        exec: vi.fn().mockResolvedValue([[null, 'OK']]),
+      };
+      return pipeline as ReturnType<typeof redis.multi>;
+    });
+
+    await handler({ data: { action: 'set-mode', payload: { mode: 'defensive' }, source: 'test' } });
+
+    // rebased = BALANCED_DEFAULTS (stored=null), defensive applied → version 1 (0+1)
+    const stored = JSON.parse(sharedStore.get('vibe:state')!) as VibeState;
+    expect(stored.mode).toBe('defensive');
+    expect(stored.version).toBe(1);
+  });
+
+  // ─── EXEC-aborted with reloadRaw=null (line 122 false branch) ──────────────
+
+  it('falls back to defaults when reload returns null after EXEC abort (reloaded defaults path)', async () => {
+    // Init loads version 3. EXEC aborts on first attempt; reload get returns null (data vanished).
+    // Line 122 false branch: reloadParsed=null → reloaded = BALANCED_DEFAULTS.
+    const sharedStore = new Map<string, string>();
+    sharedStore.set('vibe:state', JSON.stringify(makeState({ mode: 'balanced', version: 3 })));
+
+    const redis = makeRedisMock();
+    let getCallCount = 0;
+    redis.get.mockImplementation(async (key: string) => {
+      getCallCount++;
+      // Call 1: init load → returns saved. Call 2: post-watch get → returns saved (version 3, matches base).
+      // Call 3: post-EXEC-abort reload → returns null (data vanished).
+      if (getCallCount <= 2) return sharedStore.get(key) ?? null;
+      return null;
+    });
+    redis.set.mockImplementation(async (key: string, value: string) => { sharedStore.set(key, value); return 'OK'; });
+
+    // First EXEC aborts (simulating concurrent write), after that data is gone
+    let execAttempt = 0;
+    redis.multi.mockImplementation(() => {
+      const pipeline = {
+        set: vi.fn((key: string, value: string) => { sharedStore.set(key, value); return pipeline; }),
+        exec: vi.fn().mockImplementation(async () => {
+          execAttempt++;
+          if (execAttempt === 1) {
+            // Simulate concurrent write bumping version, then data vanishes
+            sharedStore.delete('vibe:state');
+            return null; // EXEC aborted
+          }
+          return [[null, 'OK']];
+        }),
+      };
+      return pipeline as ReturnType<typeof redis.multi>;
+    });
+
+    vi.mocked(getRedisClient).mockReturnValue(redis as ReturnType<typeof getRedisClient>);
+
+    let handler!: (env: { data: VibeCommand }) => Promise<void>;
+    mockSubscribe.mockImplementation((_topic: string, h: typeof handler) => {
+      handler = h;
+      return Promise.resolve();
+    });
+
+    await initVibeController();
+    expect(getVibeState().version).toBe(3);
+
+    await handler({ data: { action: 'set-mode', payload: { mode: 'aggressive' }, source: 'test' } });
+
+    // reloaded = BALANCED_DEFAULTS (reloadRaw=null), aggressive applied → version 1 (0+1)
+    const stored = JSON.parse(sharedStore.get('vibe:state')!) as VibeState;
+    expect(stored.mode).toBe('aggressive');
+    expect(stored.version).toBe(1);
+  });
+
+  // ─── Legacy version fallback in persist rebase (line 101 `?? 0`) ───────────
+
+  it('defaults version to 0 when rebased stored state lacks version field', async () => {
+    // Init loads version 5. Concurrent writer stores legacy state (no version field).
+    // Inside persistStateWithCAS: parsed.version is undefined → `?? 0` → storedVersion=0.
+    // base=5, storedVersion=0 → 0 !== 5 → rebase path with version defaulting to 0.
+    const sharedStore = new Map<string, string>();
+    sharedStore.set('vibe:state', JSON.stringify(makeState({ mode: 'conservative', version: 5 })));
+
+    const redis = makeRedisMock();
+    redis.get.mockImplementation(async (key: string) => sharedStore.get(key) ?? null);
+    redis.set.mockImplementation(async (key: string, value: string) => { sharedStore.set(key, value); return 'OK'; });
+    vi.mocked(getRedisClient).mockReturnValue(redis as ReturnType<typeof getRedisClient>);
+
+    let handler!: (env: { data: VibeCommand }) => Promise<void>;
+    mockSubscribe.mockImplementation((_topic: string, h: typeof handler) => {
+      handler = h;
+      return Promise.resolve();
+    });
+
+    await initVibeController();
+    expect(getVibeState().version).toBe(5);
+
+    // Concurrent writer stores legacy state WITHOUT version field
+    const legacyState = { mode: 'aggressive', minEdge: 1.5, maxExposure: 25, liquidityFloor: 5000, marketFilter: null, pausedMarkets: [], updatedAt: Date.now(), updatedBy: 'legacy' };
+    sharedStore.set('vibe:state', JSON.stringify(legacyState));
+
+    redis.multi.mockImplementation(() => {
+      const pipeline = {
+        set: vi.fn((key: string, value: string) => { sharedStore.set(key, value); return pipeline; }),
+        exec: vi.fn().mockResolvedValue([[null, 'OK']]),
+      };
+      return pipeline as ReturnType<typeof redis.multi>;
+    });
+
+    await handler({ data: { action: 'set-mode', payload: { mode: 'defensive' }, source: 'test' } });
+
+    // rebased version defaults to 0 (?? 0), defensive applied → version 1 (0+1)
+    const stored = JSON.parse(sharedStore.get('vibe:state')!) as VibeState;
+    expect(stored.mode).toBe('defensive');
+    expect(stored.version).toBe(1);
+  });
+
+  // ─── Legacy version fallback in EXEC-abort reload (line 122 `?? 0`) ────────
+
+  it('defaults version to 0 when reloaded state lacks version field after EXEC abort', async () => {
+    // Init loads version 3. EXEC aborts; reload finds legacy state (no version).
+    // reloadParsed.version is undefined → `?? 0` → reloaded.version=0.
+    const sharedStore = new Map<string, string>();
+    sharedStore.set('vibe:state', JSON.stringify(makeState({ mode: 'balanced', version: 3 })));
+
+    const redis = makeRedisMock();
+    let getCallCount = 0;
+    redis.get.mockImplementation(async (key: string) => {
+      getCallCount++;
+      if (getCallCount <= 2) return sharedStore.get(key) ?? null;
+      // After EXEC abort: return legacy state without version
+      return sharedStore.get(key) ?? null;
+    });
+    redis.set.mockImplementation(async (key: string, value: string) => { sharedStore.set(key, value); return 'OK'; });
+
+    let execAttempt = 0;
+    redis.multi.mockImplementation(() => {
+      const pipeline = {
+        set: vi.fn((key: string, value: string) => { sharedStore.set(key, value); return pipeline; }),
+        exec: vi.fn().mockImplementation(async () => {
+          execAttempt++;
+          if (execAttempt === 1) {
+            // Simulate concurrent writer replacing with legacy state (no version)
+            const legacyState = { mode: 'aggressive', minEdge: 1.5, maxExposure: 25, liquidityFloor: 5000, marketFilter: null, pausedMarkets: [], updatedAt: Date.now(), updatedBy: 'legacy' };
+            sharedStore.set('vibe:state', JSON.stringify(legacyState));
+            return null; // EXEC aborted
+          }
+          return [[null, 'OK']];
+        }),
+      };
+      return pipeline as ReturnType<typeof redis.multi>;
+    });
+
+    vi.mocked(getRedisClient).mockReturnValue(redis as ReturnType<typeof getRedisClient>);
+
+    let handler!: (env: { data: VibeCommand }) => Promise<void>;
+    mockSubscribe.mockImplementation((_topic: string, h: typeof handler) => {
+      handler = h;
+      return Promise.resolve();
+    });
+
+    await initVibeController();
+    expect(getVibeState().version).toBe(3);
+
+    await handler({ data: { action: 'set-mode', payload: { mode: 'defensive' }, source: 'test' } });
+
+    // reloaded version defaults to 0 (?? 0), defensive applied → version 1 (0+1)
+    const stored = JSON.parse(sharedStore.get('vibe:state')!) as VibeState;
+    expect(stored.mode).toBe('defensive');
+    expect(stored.version).toBe(1);
+  });
+
   // ─── EXEC-aborted path: re-apply differs from reloaded → retry succeeds ────
 
   it('retries after EXEC abort when re-applied state differs from reloaded state', async () => {
