@@ -16,9 +16,10 @@ const registryInstance = { metrics: mockMetrics };
 // vi.fn() mocks throw "is not a constructor".
 class RegistryStub {
   metrics = mockMetrics;
-  constructor() { registryInstanceRef = this; }
+  static instance: RegistryStub;
+  constructor() { RegistryStub.instance = this; }
 }
-let registryInstanceRef: RegistryStub;
+const getRegistryInstanceRef = () => RegistryStub.instance;
 class CounterStub { inc = counterInstance.inc; }
 class GaugeStub { set = gaugeInstance.set; }
 class HistogramStub { observe = histogramInstance.observe; }
@@ -344,6 +345,6 @@ describe('qwen strategy reviews queued + signals loop runs', () => {
 
 describe('lazy-init re-exports', () => {
   it('exports the register', () => {
-    expect(mod.register).toBe(registryInstanceRef);
+    expect(mod.register).toBe(getRegistryInstanceRef());
   });
 });

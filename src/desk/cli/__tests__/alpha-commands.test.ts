@@ -46,7 +46,7 @@ function createMockCommand(): any {
         _opts: [] as string[],
         description() { return sub; },
         option(opt: string) { sub._opts.push(opt); return sub; },
-        action(fn: Function) { sub._action = fn; return sub; },
+        action(fn: (...args: unknown[]) => unknown) { sub._action = fn; return sub; },
       };
       subcommands.push(sub);
       return sub;

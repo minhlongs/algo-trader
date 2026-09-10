@@ -301,9 +301,9 @@ describe('StrategyShard', () => {
     it('increments activeExecutions and decrements in finally', async () => {
       const shard = new StrategyShard(state, 1);
       const strategy = makeStrategy();
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.strategies.set('s1', strategy);
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.activeExecutions = 0;
 
       const req = makeRequest('http://do/execute', {
@@ -311,7 +311,7 @@ describe('StrategyShard', () => {
         body: JSON.stringify({ strategyId: 's1', marketData: {} }),
       });
       await shard.handleExecute(req);
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       expect(shard.activeExecutions).toBe(0);
     });
   });
@@ -327,11 +327,11 @@ describe('StrategyShard', () => {
 
     it('restores metrics, computes avgLatency, updates shard health, persists health', async () => {
       const shard = new StrategyShard(stateWithManager(), 8);
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.activeExecutions = 3;
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.strategies.set('s1', makeStrategy());
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.strategies.set('s2', makeStrategy());
 
       // Use persistent mock: constructor's initialize() also calls restoreMetrics
@@ -360,7 +360,7 @@ describe('StrategyShard', () => {
 
     it('sets status to degraded when at max concurrent', async () => {
       const shard = new StrategyShard(stateWithManager(), 2);
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.activeExecutions = 10; // MAX_CONCURRENT
 
       (restoreMetrics as any).mockResolvedValue({
@@ -399,7 +399,7 @@ describe('StrategyShard', () => {
 
     it('computes rps as requests / 10', async () => {
       const shard = new StrategyShard(stateWithManager(), 9);
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.activeExecutions = 1;
 
       (restoreMetrics as any).mockResolvedValue({
@@ -435,9 +435,9 @@ describe('StrategyShard', () => {
   describe('queue and concurrency management', () => {
     it('increments queueLength on /execute when at max concurrent (503 queued)', async () => {
       const shard = new StrategyShard(state, 1);
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.activeExecutions = 10;
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.metrics.queueLength = 0;
 
       const req = makeRequest('http://do/execute', {
@@ -453,7 +453,7 @@ describe('StrategyShard', () => {
 
     it('returns 429 when queue at capacity', async () => {
       const shard = new StrategyShard(state, 1);
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.metrics.queueLength = 100; // MAX_QUEUE_SIZE = 100
 
       const req = makeRequest('http://do/execute', {
@@ -468,9 +468,9 @@ describe('StrategyShard', () => {
 
     it('returns 503 when at max concurrent', async () => {
       const shard = new StrategyShard(state, 1);
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.activeExecutions = 10;
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.metrics.queueLength = 0;
 
       const req = makeRequest('http://do/execute', {
@@ -490,7 +490,7 @@ describe('StrategyShard', () => {
     it('persists metrics after successful execution', async () => {
       const shard = new StrategyShard(state, 1);
       const strategy = makeStrategy();
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.strategies.set('s1', strategy);
 
       const req = makeRequest('http://do/execute', {
@@ -509,7 +509,7 @@ describe('StrategyShard', () => {
     it('logs error on strategy execution failure', async () => {
       const shard = new StrategyShard(state, 1);
       const badStrategy = makeStrategy({ execute: vi.fn().mockRejectedValue(new Error('boom')) });
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.strategies.set('bad', badStrategy);
 
       const req = makeRequest('http://do/execute', {
@@ -529,7 +529,7 @@ describe('StrategyShard', () => {
       });
       const shard = new StrategyShard(stateWithMgr, 1);
       const badStrategy = makeStrategy({ execute: vi.fn().mockRejectedValue(new Error('fail')) });
-      // @ts-expect-error
+      // @ts-expect-error - private access for test
       shard.strategies.set('bad', badStrategy);
 
       const req = makeRequest('http://do/execute', {

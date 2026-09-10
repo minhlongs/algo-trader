@@ -636,7 +636,7 @@ describe('TrialDripService', () => {
       const call = mockEmailServiceInstance.send.mock.calls[0][0];
       // SUT uses toLocaleDateString() - format depends on locale, but will contain day/month/year
       expect(call.html).toContain('2026'); // year
-      expect(call.html).toContain('9') || call.html.toContain('13'); // month or day
+      expect(call.html.includes('9') || call.html.includes('13')).toBe(true); // month or day
       expect(call.body).toContain('2026');
     });
 

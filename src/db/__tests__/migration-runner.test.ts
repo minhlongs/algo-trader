@@ -134,7 +134,7 @@ describe('Migration Runner', () => {
     it('returns postgres when DB_HOST env is set', () => {
       process.env.DB_HOST = 'localhost';
       const client = { constructor: { name: 'Other' } };
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.getDialect(client)).toBe('postgres');
       delete process.env.DB_HOST;
     });
@@ -142,21 +142,21 @@ describe('Migration Runner', () => {
     it('returns postgres when DB_NAME env is set', () => {
       process.env.DB_NAME = 'testdb';
       const client = { constructor: { name: 'Other' } };
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.getDialect(client)).toBe('postgres');
       delete process.env.DB_NAME;
     });
 
     it('returns sqlite when no postgres indicators', () => {
       const client = { constructor: { name: 'Database' } };
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.getDialect(client)).toBe('sqlite');
     });
 
     it('returns sqlite for null/undefined client', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.getDialect(null)).toBe('sqlite');
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.getDialect(undefined)).toBe('sqlite');
     });
   });
@@ -175,7 +175,7 @@ describe('Migration Runner', () => {
     `;
 
     it('rewrites SQLite functions to Postgres equivalents', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const result = migrationRunner.parseAndRewriteSql(testSql, 'postgres');
       // Postgres dialect keeps EXTRACT(EPOCH FROM NOW()) as-is
       expect(result).toContain('EXTRACT(EPOCH FROM NOW())');
@@ -184,7 +184,7 @@ describe('Migration Runner', () => {
     });
 
     it('rewrites Postgres functions to SQLite equivalents', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const result = migrationRunner.parseAndRewriteSql(testSql, 'sqlite');
       expect(result).toContain('randomblob');
       expect(result).toContain("strftime('%s','now')");
@@ -202,7 +202,7 @@ describe('Migration Runner', () => {
 
     it('handles gen_random_uuid()::text variant', () => {
       const sql = 'gen_random_uuid()::text';
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const result = migrationRunner.parseAndRewriteSql(sql, 'sqlite');
       expect(result).toContain('randomblob');
     });
@@ -215,30 +215,30 @@ describe('Migration Runner', () => {
         'EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)',
       ];
       for (const sql of variants) {
-        // @ts-expect-error
+        // @ts-expect-error - testing private/internal member
         const result = migrationRunner.parseAndRewriteSql(sql, 'sqlite');
         expect(result).toContain('strftime');
       }
     });
 
     it('handles now() to CURRENT_TIMESTAMP', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const result = migrationRunner.parseAndRewriteSql('SELECT now()', 'sqlite');
       expect(result).toContain('CURRENT_TIMESTAMP');
     });
 
     it('handles AT TIME ZONE date conversion', () => {
       const sql = "((created_at AT TIME ZONE 'UTC')::date)";
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const result = migrationRunner.parseAndRewriteSql(sql, 'sqlite');
       expect(result).toContain('date(created_at)');
     });
 
     it('returns original SQL when no replacements needed', () => {
       const sql = 'SELECT 1';
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.parseAndRewriteSql(sql, 'postgres')).toBe('SELECT 1');
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.parseAndRewriteSql(sql, 'sqlite')).toBe('SELECT 1');
     });
   });
@@ -247,7 +247,7 @@ describe('Migration Runner', () => {
 
   describe('createSqlMigration', () => {
     it('creates migration with correct structure', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const migration = migrationRunner.createSqlMigration('test.sql', 'test-id', 'Test Description');
       expect(migration).toEqual({
         id: 'test-id',
@@ -259,7 +259,7 @@ describe('Migration Runner', () => {
 
     it('up function reads file and executes rewritten SQL', async () => {
       mockReadFileSync.mockReturnValue('CREATE TABLE test (id INT);');
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const migration = migrationRunner.createSqlMigration('test.sql', 'test-id', 'Test');
       const mockClient = { query: vi.fn().mockResolvedValue(undefined) };
       await migration.up(mockClient);
@@ -285,7 +285,7 @@ describe('Migration Runner', () => {
       for (const tc of testCases) {
         vi.clearAllMocks();
         const mockClient = { query: vi.fn().mockResolvedValue(undefined) };
-        // @ts-expect-error
+        // @ts-expect-error - testing private/internal member
         const migration = migrationRunner.createSqlMigration('test.sql', tc.id, 'Test');
         await migration.down(mockClient);
         expect(mockClient.query).toHaveBeenCalled();
@@ -294,7 +294,7 @@ describe('Migration Runner', () => {
 
     it('down function handles ALTER TABLE DROP COLUMN gracefully', async () => {
       const mockClient = { query: vi.fn().mockResolvedValue(undefined) };
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const migration = migrationRunner.createSqlMigration('test.sql', '015_subscriber_attribution', 'Test');
       await migration.down(mockClient);
       // Should attempt ALTER TABLE but catch errors
@@ -306,14 +306,14 @@ describe('Migration Runner', () => {
 
   describe('MIGRATIONS array', () => {
     it('contains expected number of migrations', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.MIGRATIONS.length).toBeGreaterThanOrEqual(30);
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       expect(migrationRunner.MIGRATIONS.length).toBeLessThanOrEqual(40);
     });
 
     it('each migration has required properties', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       for (const m of migrationRunner.MIGRATIONS) {
         expect(m).toHaveProperty('id');
         expect(m).toHaveProperty('description');
@@ -325,14 +325,14 @@ describe('Migration Runner', () => {
     });
 
     it('migration IDs are unique', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const ids = migrationRunner.MIGRATIONS.map((m: any) => m.id);
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(ids.length);
     });
 
     it('includes known key migrations', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const ids = migrationRunner.MIGRATIONS.map((m: any) => m.id);
       expect(ids).toContain('001-create-trades-table');
       expect(ids).toContain('0002-phase33-indexes');
@@ -343,7 +343,7 @@ describe('Migration Runner', () => {
     });
 
     it('migration 0002-phase33-indexes is last (after table creation)', () => {
-      // @ts-expect-error
+      // @ts-expect-error - testing private/internal member
       const ids = migrationRunner.MIGRATIONS.map((m: any) => m.id);
       const idx002 = ids.indexOf('0002-phase33-indexes');
       // 002 should be near the end, after marketplace tables are created

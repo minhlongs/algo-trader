@@ -86,11 +86,11 @@ describe('AgentCoordinator', () => {
     it('creates three queues with correct priorities', () => {
       // @ts-expect-error - access private field for test
       expect(coordinator.queues.size).toBe(3);
-      // @ts-expect-error
+      // @ts-expect-error - access private field for test
       expect(coordinator.queues.has(AgentPriority.CRITICAL)).toBe(true);
-      // @ts-expect-error
+      // @ts-expect-error - access private field for test
       expect(coordinator.queues.has(AgentPriority.NORMAL)).toBe(true);
-      // @ts-expect-error
+      // @ts-expect-error - access private field for test
       expect(coordinator.queues.has(AgentPriority.BACKGROUND)).toBe(true);
     });
 

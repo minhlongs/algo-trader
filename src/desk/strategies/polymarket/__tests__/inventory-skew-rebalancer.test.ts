@@ -52,9 +52,9 @@ function makeOrderManager() {
 }
 
 function makeEventBus() {
-  const listeners = new Map<string, Function[]>();
+  const listeners = new Map<string, Array<(...args: any[]) => void>>();
   return {
-    on: vi.fn((event: string, handler: Function) => {
+    on: vi.fn((event: string, handler: (...args: any[]) => void) => {
       if (!listeners.has(event)) listeners.set(event, []);
       listeners.get(event)!.push(handler);
     }),
