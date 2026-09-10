@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 247,
+      "count": 242,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -82,7 +82,6 @@
         "src/desk/execution/on-chain-position-reconciler.ts": 241,
         "src/desk/execution/paper-executor.ts": 243,
         "src/desk/execution/paper-position-tracker.ts": 246,
-        "src/desk/execution/polymarket-adapter.ts": 323,
         "src/desk/execution/rollback-handler.ts": 207,
         "src/desk/execution/twap-executor.ts": 297,
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
@@ -167,7 +166,6 @@
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
         "src/desk/wiring/augmented-signal-pipeline.ts": 201,
         "src/desk/wiring/paper-trading-orchestrator.ts": 224,
-        "src/desk/wiring/qwen-signals-loop.ts": 328,
         "src/desk/wiring/vibe-controller.ts": 212,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
         "src/forest/rate-limit/redis-rate-limiter.ts": 226,
@@ -223,7 +221,6 @@
         "src/platform/marketplace/services/desk-strategy-seeder.ts": 275,
         "src/platform/marketplace/services/marketplace.service.ts": 237,
         "src/platform/marketplace/services/revenue.service.ts": 220,
-        "src/platform/marketplace/services/subscription.service.ts": 323,
         "src/platform/marketplace/services/vetting.service.ts": 246,
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
         "src/platform/mcp/research-mcp-server.ts": 317,
@@ -231,7 +228,6 @@
         "src/platform/metering/usage-metering-service.ts": 212,
         "src/platform/middleware/prometheus-metrics-definitions.ts": 301,
         "src/platform/middleware/prometheus-metrics.ts": 310,
-        "src/platform/middleware/threshold-alerts.ts": 323,
         "src/platform/notifications/__tests__/email-campaign-templates.test.ts": 279,
         "src/platform/notifications/__tests__/notification-services.test.ts": 219,
         "src/platform/notifications/email-service.ts": 318,
@@ -242,7 +238,6 @@
         "src/platform/referral/referral-analytics.ts": 234,
         "src/platform/referral/referral-crud.ts": 237,
         "src/platform/referral/referral-payout-repository.ts": 216,
-        "src/platform/referral/referral-service.ts": 320,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,
         "src/platform/risk/__tests__/drawdown-monitor-types.test.ts": 260,

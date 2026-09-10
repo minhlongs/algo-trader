@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.36] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 4
+
+### Changed
+- **Oversized-file debt burn-down (S18 Tranche 4)**: 5 non-test violators (1,617 LOC total) split into ≤200-LOC modules behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 247 → 242 (5 entries removed, none added).
+  - `src/desk/wiring/qwen-signals-loop.ts` 328 → 171: split into `qwen-signals-loop-config.ts` (44 LOC), `qwen-signals-loop-timer.ts` (45 LOC); facade preserves `QualityMetrics`, `computeQualityMetrics`, `persistRunJournal`, `insertReviewTask`, `evaluateAndQueue`, and exact AST signatures required by static integration sync tests.
+  - `src/desk/execution/polymarket-adapter.ts` 323 → 162: split into `polymarket-adapter-types.ts` (60 LOC), `polymarket-adapter-transport.ts` (120 LOC); facade keeps `PolymarketAdapter` class, connection lifecycle, and backward-compatible re-exports.
+  - `src/platform/marketplace/services/subscription.service.ts` 323 → 199: split into `subscription-payment-handlers.ts` (90 LOC), `subscription-review-handlers.ts` (47 LOC); facade keeps `SubscriptionService` singleton and CRUD APIs.
+  - `src/platform/middleware/threshold-alerts.ts` 323 → 194: split into `threshold-alerts-types.ts` (41 LOC), `threshold-alerts-dispatch.ts` (128 LOC); facade keeps alert rule evaluation and middleware hooks.
+  - `src/platform/referral/referral-service.ts` 320 → 195: split into `referral-code-helpers.ts` (28 LOC), `referral-payout-job.ts` (83 LOC); facade keeps `ReferralService` singleton and referral tracking API.
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0.
+- Quality ratchet `--quality` 4/4 PASS: `anyTypes` 114/114, `consoleCalls` 45/45, `filesOverMaxLines` 242/242 (new=0, grown=0), `bannedImports` 0.
+- `--prune-oversized-snapshot` removed exactly 5 entries (247 → 242), 0 entries added.
+- All 12,483 tests pass (100% pass rate across test suite).
+
 ## [3.1.35] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 3
 
 ### Changed
