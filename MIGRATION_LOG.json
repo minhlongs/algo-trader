@@ -492,11 +492,11 @@
       "note": "Achieved 100% test coverage across all src/alpha-lab/ modules, modularized 7 alpha-lab source modules to <=200 LOC, compacted desk test files, relocated oversized test suites to tests/unit/, pruned the quality-ratchet oversized-file baseline from 283 to 262 (21 entries removed, 0 added), and tightened maxAnyTypes from 117 to 114. Version 3.1.31 -> 3.1.32.",
       "evidence": {
         "tests": "full suite 12483 passed (100% pass rate)",
-        "prUrl": null,
+        "prUrl": "https://github.com/minhlongs/algo-trader/pull/55",
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 262 new=0 grown=0, bannedImports 0); --all 11/11 PASS (totalTests 12483, passRate 100%, coverage lines 94.44%, funcs 93.05%, branches 86.49%, stmts 93.46%)",
         "artifact": "baseline diff = -21 oversizedFileBaseline entries, maxAnyTypes 117 -> 114"
       },
-      "prUrl": null
+      "prUrl": "https://github.com/minhlongs/algo-trader/pull/55"
     }
   ],
   "deferred": [
