@@ -6,49 +6,28 @@
 
 import { WebSocketMessage } from './websocket-client';
 import { logger } from '../../shared/utils/logger';
-import { BinanceWebSocketClient, BinanceOrderBook, BinanceTrade, BinanceTicker } from './binance-ws';
-import { OKXWebSocketClient, OKXOrderBook, OKXTrade, OKXTicker } from './okx-ws';
-import { BybitWebSocketClient, BybitOrderBook, BybitTrade, BybitTicker } from './bybit-ws';
+import { BinanceWebSocketClient } from './binance-ws';
+import { OKXWebSocketClient } from './okx-ws';
+import { BybitWebSocketClient } from './bybit-ws';
+import type {
+  ExchangeId,
+  UnifiedOrderBook,
+  UnifiedTrade,
+  UnifiedTicker,
+  FeedMessage,
+  FeedHandler,
+} from './feed-types';
+import { parseOrderBook, parseTrade, parseTicker } from './feed-parsers';
 
-export type ExchangeId = 'binance' | 'okx' | 'bybit';
-
-export interface UnifiedOrderBook {
-  exchange: ExchangeId;
-  symbol: string;
-  bids: { price: number; amount: number }[];
-  asks: { price: number; amount: number }[];
-  timestamp: number;
-  latency: number;
-}
-
-export interface UnifiedTrade {
-  exchange: ExchangeId;
-  symbol: string;
-  price: number;
-  amount: number;
-  side: 'buy' | 'sell';
-  timestamp: number;
-  tradeId?: string;
-}
-
-export interface UnifiedTicker {
-  exchange: ExchangeId;
-  symbol: string;
-  last: number;
-  bid: number;
-  ask: number;
-  high24h: number;
-  low24h: number;
-  volume24h: number;
-  timestamp: number;
-}
-
-export type FeedMessage =
-  | { type: 'orderbook'; data: UnifiedOrderBook }
-  | { type: 'trade'; data: UnifiedTrade }
-  | { type: 'ticker'; data: UnifiedTicker };
-
-export type FeedHandler = (msg: FeedMessage) => void;
+export type {
+  ExchangeId,
+  UnifiedOrderBook,
+  UnifiedTrade,
+  UnifiedTicker,
+  FeedMessage,
+  FeedHandler,
+};
+export { parseOrderBook, parseTrade, parseTicker };
 
 export class FeedAggregator {
   private clients: Map<ExchangeId, BinanceWebSocketClient | OKXWebSocketClient | BybitWebSocketClient> =
@@ -123,7 +102,6 @@ export class FeedAggregator {
 
     await Promise.all(subscriptions);
 
-    // Setup message handlers
     this.clients.forEach((client, exchange) => {
       client.onMessage((msg) => this.handleMessage(exchange as ExchangeId, msg));
     });
@@ -151,7 +129,6 @@ export class FeedAggregator {
     const receiveTime = Date.now();
     const latency = receiveTime - msg.timestamp;
 
-    // Track latency
     const key = `${exchange}:${msg.symbol}`;
     if (!this.latencies.has(key)) {
       this.latencies.set(key, []);
@@ -159,184 +136,44 @@ export class FeedAggregator {
     const history = this.latencies.get(key)!;
     history.push(latency);
     if (history.length > 100) {
-      history.shift(); // Keep last 100 samples
+      history.shift();
     }
 
     switch (msg.type) {
-      case 'orderbook':
+      case 'orderbook': {
         const orderBook = this.parseOrderBook(exchange, msg.data);
         if (orderBook) {
           this.notify({ type: 'orderbook', data: { ...orderBook, latency } });
         }
         break;
-
-      case 'trade':
+      }
+      case 'trade': {
         const trade = this.parseTrade(exchange, msg.data);
         if (trade) {
           this.notify({ type: 'trade', data: { ...trade, timestamp: receiveTime } });
         }
         break;
-
-      case 'ticker':
+      }
+      case 'ticker': {
         const ticker = this.parseTicker(exchange, msg.data);
         if (ticker) {
           this.notify({ type: 'ticker', data: { ...ticker, timestamp: receiveTime } });
         }
         break;
+      }
     }
   }
 
-  private parseOrderBook(
-    exchange: ExchangeId,
-    data: unknown
-  ): UnifiedOrderBook | null {
-    if (exchange === 'binance') {
-      const binanceBook = data as BinanceOrderBook;
-      return {
-        exchange,
-        symbol: '', // Symbol already in message context
-        bids: binanceBook.bids.map(([price, amount]) => ({
-          price: parseFloat(price),
-          amount: parseFloat(amount),
-        })),
-        asks: binanceBook.asks.map(([price, amount]) => ({
-          price: parseFloat(price),
-          amount: parseFloat(amount),
-        })),
-        timestamp: Date.now(),
-        latency: 0,
-      };
-    }
-
-    if (exchange === 'okx') {
-      const okxBook = data as OKXOrderBook;
-      return {
-        exchange,
-        symbol: '',
-        bids: okxBook.bids.map(([price, amount]) => ({
-          price: parseFloat(price),
-          amount: parseFloat(amount),
-        })),
-        asks: okxBook.asks.map(([price, amount]) => ({
-          price: parseFloat(price),
-          amount: parseFloat(amount),
-        })),
-        timestamp: Date.now(),
-        latency: 0,
-      };
-    }
-
-    if (exchange === 'bybit') {
-      const bybitBook = data as BybitOrderBook;
-      return {
-        exchange,
-        symbol: '',
-        bids: bybitBook.bids.map(([price, amount]) => ({
-          price: parseFloat(price),
-          amount: parseFloat(amount),
-        })),
-        asks: bybitBook.asks.map(([price, amount]) => ({
-          price: parseFloat(price),
-          amount: parseFloat(amount),
-        })),
-        timestamp: Date.now(),
-        latency: 0,
-      };
-    }
-
-    return null;
+  private parseOrderBook(exchange: ExchangeId, data: unknown): UnifiedOrderBook | null {
+    return parseOrderBook(exchange, data);
   }
 
   private parseTrade(exchange: ExchangeId, data: unknown): UnifiedTrade | null {
-    if (exchange === 'binance') {
-      const binanceTrade = data as BinanceTrade;
-      return {
-        exchange,
-        symbol: binanceTrade.s,
-        price: parseFloat(binanceTrade.p),
-        amount: parseFloat(binanceTrade.q),
-        side: binanceTrade.m ? 'sell' : 'buy',
-        timestamp: binanceTrade.T,
-        tradeId: String(binanceTrade.t),
-      };
-    }
-
-    if (exchange === 'okx') {
-      const okxTrade = data as OKXTrade;
-      return {
-        exchange,
-        symbol: okxTrade.instId.replace('-', '/'),
-        price: parseFloat(okxTrade.px),
-        amount: parseFloat(okxTrade.sz),
-        side: okxTrade.side,
-        timestamp: parseInt(okxTrade.ts),
-        tradeId: okxTrade.tradeId,
-      };
-    }
-
-    if (exchange === 'bybit') {
-      const bybitTrade = data as BybitTrade;
-      return {
-        exchange,
-        symbol: bybitTrade.symbol,
-        price: parseFloat(bybitTrade.price),
-        amount: parseFloat(bybitTrade.size),
-        side: bybitTrade.side.toLowerCase() as 'buy' | 'sell',
-        timestamp: parseInt(bybitTrade.time),
-        tradeId: bybitTrade.execId,
-      };
-    }
-
-    return null;
+    return parseTrade(exchange, data);
   }
 
   private parseTicker(exchange: ExchangeId, data: unknown): UnifiedTicker | null {
-    if (exchange === 'binance') {
-      const binanceTicker = data as BinanceTicker;
-      return {
-        exchange,
-        symbol: binanceTicker.s,
-        last: parseFloat(binanceTicker.c),
-        bid: 0,
-        ask: 0,
-        high24h: parseFloat(binanceTicker.h),
-        low24h: parseFloat(binanceTicker.l),
-        volume24h: parseFloat(binanceTicker.v),
-        timestamp: binanceTicker.E,
-      };
-    }
-
-    if (exchange === 'okx') {
-      const okxTicker = data as OKXTicker;
-      return {
-        exchange,
-        symbol: okxTicker.instId.replace('-', '/'),
-        last: parseFloat(okxTicker.last),
-        bid: parseFloat(okxTicker.bidPx),
-        ask: parseFloat(okxTicker.askPx),
-        high24h: parseFloat(okxTicker.high24h),
-        low24h: parseFloat(okxTicker.low24h),
-        volume24h: parseFloat(okxTicker.volUsd24h),
-        timestamp: parseInt(okxTicker.ts),
-      };
-    }
-
-    if (exchange === 'bybit') {
-      const bybitTicker = data as BybitTicker;
-      return {
-        exchange,
-        symbol: bybitTicker.symbol,
-        last: parseFloat(bybitTicker.lastPrice),
-        bid: 0,
-        ask: 0,
-        high24h: parseFloat(bybitTicker.highPrice24h),
-        low24h: parseFloat(bybitTicker.lowPrice24h),
-        volume24h: parseFloat(bybitTicker.volume24h),
-        timestamp: Date.now(),
-      };
-    }
-
-    return null;
+    return parseTicker(exchange, data);
   }
 
   private notify(msg: FeedMessage): void {

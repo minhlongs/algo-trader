@@ -534,9 +534,49 @@
       "note": "First tranche of S18 oversized-file debt burn-down: split 5 non-test violators (1,705 LOC total across provider-failover.ts, risk-routes.ts, log-aggregator.ts, paper-trading-loop.ts, signal-mcp-server.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 262 to 257 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.32 -> 3.1.33.",
       "evidence": {
         "tests": "full suite passed (100% pass rate); targeted suites green",
-        "prUrl": null,
+        "prUrl": "https://github.com/minhlongs/algo-trader/pull/57",
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 257 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (262 -> 257), no entries added; --all 11/11 PASS",
         "artifact": "baseline diff = -5 entries only; all 20 modules <=200 LOC"
+      },
+      "prUrl": "https://github.com/minhlongs/algo-trader/pull/57"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche2",
+      "status": "done",
+      "date": "2026-09-10",
+      "targetFiles": [
+        "src/platform/api/server.ts",
+        "src/platform/api/server-routes-core.ts",
+        "src/platform/api/server-routes-marketplace.ts",
+        "src/seed/security/crypto.ts",
+        "src/seed/security/crypto-keys.ts",
+        "src/seed/security/crypto-password.ts",
+        "src/seed/security/crypto-cipher.ts",
+        "src/desk/feeds/feed-aggregator.ts",
+        "src/desk/feeds/feed-types.ts",
+        "src/desk/feeds/feed-parsers.ts",
+        "src/platform/billing/dunning-service.ts",
+        "src/platform/billing/dunning-types.ts",
+        "src/platform/billing/dunning-storage.ts",
+        "src/platform/billing/dunning-helpers.ts",
+        "src/desk/strategies/dna/orchestrator.ts",
+        "src/desk/strategies/dna/orchestrator-types.ts",
+        "src/desk/strategies/dna/orchestrator-consensus.ts",
+        "src/desk/strategies/dna/orchestrator-lifecycle.ts",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md",
+        "loop-results.tsv",
+        "MIGRATION_LOG.json"
+      ],
+      "note": "Second tranche of S18 oversized-file debt burn-down: split 5 non-test violators (1,729 LOC total across server.ts, crypto.ts, feed-aggregator.ts, dunning-service.ts, orchestrator.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 257 to 252 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.33 -> 3.1.34.",
+      "evidence": {
+        "tests": "10 test files (209 tests) 100% green; express security + Qwen CLI + API contract verified",
+        "prUrl": null,
+        "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 252 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (257 -> 252), no entries added",
+        "artifact": "baseline diff = -5 entries only; all 18 modules <=200 LOC"
       },
       "prUrl": null
     }
