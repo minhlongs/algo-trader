@@ -8,3 +8,6 @@
 
 export * from './whale-tracker-v2-helpers';
 export * from './whale-tracker-v2-strategy';
+
+// Explicit re-export for validate-strategies.mjs text-search compatibility
+export { createWhaleTrackerTick } from './whale-tracker-v2-strategy';
