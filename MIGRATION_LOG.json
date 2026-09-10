@@ -650,11 +650,11 @@
       "note": "Fourth tranche of S18 oversized-file debt burn-down: split 5 non-test violators (1,617 LOC total across qwen-signals-loop.ts, polymarket-adapter.ts, subscription.service.ts, threshold-alerts.ts, referral-service.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 247 to 242 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.35 -> 3.1.36.",
       "evidence": {
         "tests": "All 12,483 tests pass (100% pass rate across test suite); full test suite and typecheck clean",
-        "prUrl": null,
+        "prUrl": "https://github.com/minhlongs/algo-trader/pull/60",
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 242 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (247 -> 242), no entries added",
         "artifact": "baseline diff = -5 entries only; all 15 modules <=200 LOC"
       },
-      "prUrl": null
+      "prUrl": "https://github.com/minhlongs/algo-trader/pull/60"
     }
   ],
   "deferred": [
