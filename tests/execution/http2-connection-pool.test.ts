@@ -18,6 +18,24 @@ vi.mock('../../src/shared/utils/logger', () => ({
   },
 }));
 
+// Mock dns module to prevent network lookups and runner timeouts in CI
+vi.mock('node:dns', () => {
+  const customPromisify = Symbol.for('nodejs.util.promisify.custom');
+  const mockLookup = vi.fn((_hostname: string, options: unknown, callback?: (err: Error | null, address: string, family: number) => void) => {
+    const cb = (typeof options === 'function' ? options : callback) as (err: Error | null, address: string, family: number) => void;
+    cb(null, '127.0.0.1', 4);
+  });
+  Object.defineProperty(mockLookup, customPromisify, {
+    value: vi.fn(async () => ({ address: '127.0.0.1', family: 4 })),
+  });
+
+  return {
+    lookup: mockLookup,
+    ADDRCONFIG: 1,
+    V4MAPPED: 2,
+  };
+});
+
 // Mock http2 module
 vi.mock('node:http2', () => {
   const mockSession = {

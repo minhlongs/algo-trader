@@ -126,8 +126,9 @@ vi.mock('../../../../src/db/postgres-client', () => ({
 import { getDbClient } from '../../../../src/db/postgres-client';
 
 const EXCHANGE = 'binance-futures';
+const BASE_TIME = 1_700_000_000_000;
 
-function makeRate(i: number, baseTime = Date.now()): FundingRateRow {
+function makeRate(i: number, baseTime = BASE_TIME): FundingRateRow {
   return {
     symbol: 'BTCUSDT',
     exchange: EXCHANGE,
@@ -135,7 +136,7 @@ function makeRate(i: number, baseTime = Date.now()): FundingRateRow {
     fundingRate: 0.0001 + i * 0.00001,
     markPrice: 50000 + i * 100,
     rateType: 'Regular',
-    retrievedAt: new Date(),
+    retrievedAt: new Date(baseTime),
     sourceUrl: 'https://fapi.binance.com/fapi/v1/fundingRate',
   };
 }
