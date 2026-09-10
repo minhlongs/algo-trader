@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.34] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 2
+
+### Changed
+- **Oversized-file debt burn-down (S18 Tranche 2)**: 5 non-test violators (1,729 LOC total) split into ≤200-LOC modules behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 257 → 252 (5 entries removed, none added).
+  - `src/platform/api/server.ts` 358 → 166: split into `server-routes-core.ts` (93 LOC), `server-routes-marketplace.ts` (46 LOC); facade preserves all 8 security middleware axes (`helmet`, `cors`, `rateLimitMiddleware`, `metricsMiddleware`, `errorHandler`), `/metrics` token gate, Qwen router mount, and re-exports.
+  - `src/seed/security/crypto.ts` 348 → 141: split into `crypto-keys.ts` (98 LOC), `crypto-password.ts` (51 LOC), `crypto-cipher.ts` (92 LOC); facade retains tenant DEK operations and backward-compatible re-exports.
+  - `src/desk/feeds/feed-aggregator.ts` 345 → 182: split into `feed-types.ts` (39 LOC), `feed-parsers.ts` (157 LOC); facade keeps `FeedAggregator` class and re-exports.
+  - `src/platform/billing/dunning-service.ts` 342 → 186: split into `dunning-types.ts` (30 LOC), `dunning-storage.ts` (125 LOC), `dunning-helpers.ts` (72 LOC); facade retains `DunningService` singleton with state preservation and re-exports.
+  - `src/desk/strategies/dna/orchestrator.ts` 336 → 199: split into `orchestrator-types.ts` (11 LOC), `orchestrator-consensus.ts` (116 LOC), `orchestrator-lifecycle.ts` (32 LOC); facade retains `DnaEngine` class and singleton controls.
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0.
+- Quality ratchet `--quality` 4/4 PASS: `anyTypes` 114/114, `consoleCalls` 45/45, `filesOverMaxLines` 252/252 (new=0, grown=0), `bannedImports` 0.
+- `--prune-oversized-snapshot` removed exactly 5 entries (257 → 252), 0 entries added.
+- All 10 targeted test suites (209 tests) pass.
+
 ## [3.1.33] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 1
 
 ### Changed

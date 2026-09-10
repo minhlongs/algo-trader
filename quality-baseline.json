@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 257,
+      "count": 252,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -90,7 +90,6 @@
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/feeds/binance-ws.ts": 226,
         "src/desk/feeds/bybit-ws.ts": 257,
-        "src/desk/feeds/feed-aggregator.ts": 345,
         "src/desk/feeds/kalshi-price-feed.ts": 204,
         "src/desk/feeds/news-impact-analyzer.ts": 214,
         "src/desk/feeds/news-market-correlator.ts": 256,
@@ -133,7 +132,6 @@
         "src/desk/strategies/dna/__tests__/regime-detector.test.ts": 241,
         "src/desk/strategies/dna/binance-candle-provider.ts": 210,
         "src/desk/strategies/dna/multi-tf-types.ts": 230,
-        "src/desk/strategies/dna/orchestrator.ts": 336,
         "src/desk/strategies/examples/03-rsi-mean-reversion-strategy.ts": 219,
         "src/desk/strategies/examples/04-multi-indicator-confluence-strategy.ts": 293,
         "src/desk/strategies/examples/05-risk-managed-kelly-strategy.ts": 235,
@@ -202,7 +200,6 @@
         "src/platform/api/routes/revenue.ts": 264,
         "src/platform/api/routes/signal-subscription-routes.ts": 316,
         "src/platform/api/schemas/marketplace.schemas.ts": 248,
-        "src/platform/api/server.ts": 358,
         "src/platform/audit/__tests__/audit-log-service.test.ts": 315,
         "src/platform/audit/__tests__/tenant-audit-chain.test.ts": 216,
         "src/platform/audit/ai-decision-repository.ts": 241,
@@ -214,7 +211,6 @@
         "src/platform/billing/__tests__/license-service.test.ts": 279,
         "src/platform/billing/__tests__/payment-service.test.ts": 347,
         "src/platform/billing/__tests__/subscription-service.test.ts": 255,
-        "src/platform/billing/dunning-service.ts": 342,
         "src/platform/billing/license-service.ts": 315,
         "src/platform/billing/nowpayments-service.ts": 358,
         "src/platform/billing/onboarding-service.ts": 258,
@@ -279,7 +275,6 @@
         "src/seed/security/__tests__/audit-log.test.ts": 365,
         "src/seed/security/__tests__/audit-trail-e2e.test.ts": 243,
         "src/seed/security/__tests__/crypto.test.ts": 337,
-        "src/seed/security/crypto.ts": 349,
         "src/seed/security/key-rotation.ts": 238,
         "src/shared/backtesting/backtest-runner.ts": 210,
         "src/shared/db/migrations/025-marketplace-schema.ts": 207,
