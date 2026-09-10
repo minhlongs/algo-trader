@@ -497,6 +497,48 @@
         "artifact": "baseline diff = -21 oversizedFileBaseline entries, maxAnyTypes 117 -> 114"
       },
       "prUrl": "https://github.com/minhlongs/algo-trader/pull/55"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche1",
+      "status": "done",
+      "date": "2026-09-10",
+      "targetFiles": [
+        "src/desk/market-data/provider-failover.ts",
+        "src/desk/market-data/provider-failover-types.ts",
+        "src/desk/market-data/provider-failover-events.ts",
+        "src/desk/market-data/provider-failover-health.ts",
+        "src/platform/api/routes/risk-routes.ts",
+        "src/platform/api/routes/risk-routes-schemas.ts",
+        "src/platform/api/routes/risk-routes-common.ts",
+        "src/platform/api/routes/risk-routes-portfolio.ts",
+        "src/platform/api/routes/risk-routes-trading.ts",
+        "src/platform/logging/log-aggregator.ts",
+        "src/platform/logging/log-types.ts",
+        "src/platform/logging/log-backends.ts",
+        "src/desk/paper-trading/paper-trading-loop.ts",
+        "src/desk/paper-trading/paper-trading-types.ts",
+        "src/desk/paper-trading/paper-trading-persistence.ts",
+        "src/desk/paper-trading/paper-trading-metrics.ts",
+        "src/platform/mcp/signal-mcp-server.ts",
+        "src/platform/mcp/signal-mcp-types.ts",
+        "src/platform/mcp/signal-mcp-auth.ts",
+        "src/platform/mcp/signal-mcp-tools.ts",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md",
+        "loop-results.tsv",
+        "MIGRATION_LOG.json"
+      ],
+      "note": "First tranche of S18 oversized-file debt burn-down: split 5 non-test violators (1,705 LOC total across provider-failover.ts, risk-routes.ts, log-aggregator.ts, paper-trading-loop.ts, signal-mcp-server.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 262 to 257 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.32 -> 3.1.33.",
+      "evidence": {
+        "tests": "full suite passed (100% pass rate); targeted suites green",
+        "prUrl": null,
+        "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 257 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (262 -> 257), no entries added; --all 11/11 PASS",
+        "artifact": "baseline diff = -5 entries only; all 20 modules <=200 LOC"
+      },
+      "prUrl": null
     }
   ],
   "deferred": [

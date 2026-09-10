@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.33] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 1
+
+### Changed
+- **Oversized-file debt burn-down (S18 Tranche 1)**: 5 non-test violators (1,705 LOC total) split into ≤200-LOC modules behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 262 → 257 (5 entries removed, none added).
+  - `src/desk/market-data/provider-failover.ts` 353 → 190: split into `provider-failover-types.ts` (42 LOC), `provider-failover-events.ts` (57 LOC), `provider-failover-health.ts` (100 LOC); facade keeps `FailoverManager` class with timer orchestration and re-exports.
+  - `src/platform/api/routes/risk-routes.ts` 352 → 39: split into `risk-routes-schemas.ts` (66 LOC), `risk-routes-common.ts` (30 LOC), `risk-routes-portfolio.ts` (112 LOC), `risk-routes-trading.ts` (126 LOC); facade creates router + `RiskEngine` instance, mounts sub-routes, and re-exports all schemas/helpers.
+  - `src/platform/logging/log-aggregator.ts` 351 → 196: split into `log-types.ts` (48 LOC), `log-backends.ts` (135 LOC); facade keeps `LogAggregator` and `ChildLogger` with re-exports.
+  - `src/desk/paper-trading/paper-trading-loop.ts` 350 → 196: split into `paper-trading-types.ts` (64 LOC), `paper-trading-persistence.ts` (123 LOC), `paper-trading-metrics.ts` (36 LOC); facade keeps `PaperTradingLoop` class with state persistence/metric delegates.
+  - `src/platform/mcp/signal-mcp-server.ts` 349 → 126: split into `signal-mcp-types.ts` (24 LOC), `signal-mcp-auth.ts` (86 LOC), `signal-mcp-tools.ts` (157 LOC); facade keeps `createSignalMcpServer` and `runSignalMcpServer` with handler/tool re-exports. Zero new `: any` introduced (cap 114/114 respected).
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0.
+- Quality ratchet `--quality` 4/4 PASS: `anyTypes` 114/114, `consoleCalls` 45/45, `filesOverMaxLines` 257/257 (new=0, grown=0), `bannedImports` 0.
+- Quality ratchet `--all` 11/11 PASS.
+- `--prune-oversized-snapshot` removed exactly 5 entries (262 → 257), 0 entries added.
+
 ## [3.1.32] - 2026-09-10 — Quality ratchet snapshot prune & 100% alpha-lab test coverage
 
 ### Changed
