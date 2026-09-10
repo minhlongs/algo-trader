@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 232,
+      "count": 227,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -109,7 +109,6 @@
         "src/desk/polymarket/__tests__/live-trading-integration.test.ts": 460,
         "src/desk/polymarket/__tests__/strategy-runner.test.ts": 228,
         "src/desk/polymarket/strategy-live-bridge.ts": 250,
-        "src/desk/polymarket/strategy-registry-full.ts": 303,
         "src/desk/polymarket/strategy-registry.ts": 277,
         "src/desk/risk/__tests__/atr-trailing-stop.test.ts": 214,
         "src/desk/risk/__tests__/equity-snapshot-manager.test.ts": 239,
@@ -134,7 +133,6 @@
         "src/desk/strategies/examples/risk-managed-kelly-helpers.ts": 232,
         "src/desk/strategies/GruStrategy.ts": 224,
         "src/desk/strategies/loader.ts": 272,
-        "src/desk/strategies/paper-trading/paper-pnl-tracker.ts": 306,
         "src/desk/strategies/polymarket/adverse-selection-filter.ts": 263,
         "src/desk/strategies/polymarket/book-imbalance-reversal.ts": 235,
         "src/desk/strategies/polymarket/correlation-breakdown.ts": 228,
@@ -158,7 +156,6 @@
         "src/desk/strategies/polymarket/twap-accumulator.ts": 255,
         "src/desk/strategies/polymarket/vol-compression-breakout-v2.ts": 257,
         "src/desk/strategies/polymarket/vwap-deviation-sniper-v2.ts": 210,
-        "src/desk/strategies/polymarket/whale-tracker-v2.ts": 302,
         "src/desk/strategies/router.ts": 297,
         "src/desk/wallet/wallet-manager.ts": 204,
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
@@ -219,8 +216,6 @@
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
         "src/platform/metering/usage-metering-service.test.ts": 305,
         "src/platform/metering/usage-metering-service.ts": 212,
-        "src/platform/middleware/prometheus-metrics-definitions.ts": 301,
-        "src/platform/middleware/prometheus-metrics.ts": 310,
         "src/platform/notifications/__tests__/email-campaign-templates.test.ts": 279,
         "src/platform/notifications/__tests__/notification-services.test.ts": 219,
         "src/platform/notifications/trading-notifications.ts": 290,

@@ -14,3 +14,4 @@
 - [S16 tranche2 result verdict](project_s16_tranche2_result_verdict.md) — result PASS r1: 22 files ≤200, 298→293 −5/0, 4/4 quality, importers untouched, 3.1.29; ship owed; keys.ts misattribution escrow.
 - [S16 tranche3 plan verdict](project_s16_tranche3_plan_verdict.md) — plan CP r1: 5 files 384-388 verified, baseline 293, 3 LOW importer over-counts; escrows E1 typecheck-truth, E2 base facade tight.
 - [S16 tranche3 result verdict](project_s16_tranche3_result_verdict.md) — result CP r1: facades ≤200, 293→288 −5/0, 7239 tests, 3.1.30; E3 tmp-script + E4 agent-memory hygiene escrows; ship owed.
+- [S18 Oversized-Debt Tranche 6 Shipped](project_s18_oversized_debt_tranche6_shipped.md) — 5 oversized files split, ratchet 237->232, 12,483 tests 100% pass, version 3.1.38
