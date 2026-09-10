@@ -6,14 +6,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { applyCors, applySecurityHeaders, authenticateRequest, requireAdmin } from '../../../../src/platform/dashboard/dashboard-middleware';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { verifyJwt } from '../../../../src/platform/api/auth-middleware';
+import { verifyJwt } from '../../../../src/platform/middleware/auth-middleware';
 
 const { mockVerifyJwt, mockLogger } = vi.hoisted(() => ({
   mockVerifyJwt: vi.fn(),
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('../../../../src/platform/api/auth-middleware', () => ({
+vi.mock('../../../../src/platform/middleware/auth-middleware', () => ({
   verifyJwt: mockVerifyJwt,
 }));
 
