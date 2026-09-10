@@ -579,6 +579,45 @@
         "artifact": "baseline diff = -5 entries only; all 18 modules <=200 LOC"
       },
       "prUrl": null
+    },
+    {
+      "phase": "S18-oversized-debt-tranche3",
+      "status": "done",
+      "date": "2026-09-10",
+      "targetFiles": [
+        "src/platform/billing/nowpayments-service.ts",
+        "src/platform/billing/nowpayments-types.ts",
+        "src/platform/billing/nowpayments-marketplace.ts",
+        "src/platform/billing/subscription-service.ts",
+        "src/platform/billing/subscription-types.ts",
+        "src/platform/billing/subscription-storage.ts",
+        "src/platform/billing/subscription-helpers.ts",
+        "src/desk/market-data/quality-monitoring-integration.ts",
+        "src/desk/market-data/quality-monitoring-reporting.ts",
+        "src/desk/market-data/quality-monitoring-failover-init.ts",
+        "src/api/routes/audit-routes.ts",
+        "src/api/routes/audit-routes-schemas.ts",
+        "src/api/routes/audit-routes-export.ts",
+        "src/desk/execution/order-executor.ts",
+        "src/desk/execution/order-executor-types.ts",
+        "src/desk/execution/order-executor-mock.ts",
+        "src/desk/execution/order-executor-audit.ts",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md",
+        "loop-results.tsv",
+        "MIGRATION_LOG.json"
+      ],
+      "note": "Third tranche of S18 oversized-file debt burn-down: split 5 non-test violators (1,692 LOC total across nowpayments-service.ts, subscription-service.ts, quality-monitoring-integration.ts, audit-routes.ts, order-executor.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 252 to 247 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.34 -> 3.1.35.",
+      "evidence": {
+        "tests": "4 related test suites (47 tests: nowpayments, subscriptions, order-executor, audit routes) 100% green; full test suite and typecheck clean",
+        "prUrl": null,
+        "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 247 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (252 -> 247), no entries added",
+        "artifact": "baseline diff = -5 entries only; all 17 modules <=200 LOC"
+      },
+      "prUrl": null
     }
   ],
   "deferred": [

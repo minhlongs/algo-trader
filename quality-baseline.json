@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 252,
+      "count": 247,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -43,7 +43,6 @@
         "src/alpha-lab/provenance/run-card.ts": 237,
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
         "src/api/routes/admin-qwen-routes.ts": 254,
-        "src/api/routes/audit-routes.ts": 330,
         "src/api/routes/license-routes.ts": 208,
         "src/api/routes/mcp-routes.ts": 229,
         "src/api/routes/personalization-routes.ts": 218,
@@ -81,7 +80,6 @@
         "src/desk/execution/live-execution-guard.ts": 225,
         "src/desk/execution/live-position-tracker.ts": 224,
         "src/desk/execution/on-chain-position-reconciler.ts": 241,
-        "src/desk/execution/order-executor.ts": 329,
         "src/desk/execution/paper-executor.ts": 243,
         "src/desk/execution/paper-position-tracker.ts": 246,
         "src/desk/execution/polymarket-adapter.ts": 323,
@@ -104,7 +102,6 @@
         "src/desk/jobs/auto-marketing-daemon.ts": 209,
         "src/desk/market-data/__tests__/gap-detector.test.ts": 222,
         "src/desk/market-data/__tests__/provider-failover.test.ts": 213,
-        "src/desk/market-data/quality-monitoring-integration.ts": 333,
         "src/desk/markets/dex/jupiter-price-adapter.ts": 241,
         "src/desk/markets/dex/uniswap-v3-adapter.ts": 250,
         "src/desk/ml/gru/gru-model.ts": 203,
@@ -212,10 +209,8 @@
         "src/platform/billing/__tests__/payment-service.test.ts": 347,
         "src/platform/billing/__tests__/subscription-service.test.ts": 255,
         "src/platform/billing/license-service.ts": 315,
-        "src/platform/billing/nowpayments-service.ts": 358,
         "src/platform/billing/onboarding-service.ts": 258,
         "src/platform/billing/payment-service.ts": 238,
-        "src/platform/billing/subscription-service.ts": 342,
         "src/platform/billing/trial-drip-service.ts": 241,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
         "src/platform/db/pnl-service.ts": 239,

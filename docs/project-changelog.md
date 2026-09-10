@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.35] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 3
+
+### Changed
+- **Oversized-file debt burn-down (S18 Tranche 3)**: 5 non-test violators (1,692 LOC total) split into ≤200-LOC modules behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 252 → 247 (5 entries removed, none added).
+  - `src/platform/billing/nowpayments-service.ts` 358 → 181: split into `nowpayments-types.ts` (96 LOC), `nowpayments-marketplace.ts` (153 LOC); facade retains `NowPaymentsService` singleton, HMAC verify, checkout URL logic, and re-exports.
+  - `src/platform/billing/subscription-service.ts` 342 → 175: split into `subscription-types.ts` (37 LOC), `subscription-storage.ts` (36 LOC), `subscription-helpers.ts` (121 LOC); facade retains `SubscriptionService` singleton with state preservation and re-exports.
+  - `src/desk/market-data/quality-monitoring-integration.ts` 333 → 186: split into `quality-monitoring-failover-init.ts` (78 LOC), `quality-monitoring-reporting.ts` (120 LOC); facade keeps `QualityMonitoringIntegration` orchestration class, singleton accessors, and re-exports.
+  - `src/api/routes/audit-routes.ts` 330 → 161: split into `audit-routes-schemas.ts` (32 LOC), `audit-routes-export.ts` (161 LOC); facade keeps router mount, `/logs` query keyset pagination, and re-exports.
+  - `src/desk/execution/order-executor.ts` 329 → 173: split into `order-executor-types.ts` (34 LOC), `order-executor-mock.ts` (81 LOC), `order-executor-audit.ts` (33 LOC); facade retains `OrderExecutor` class, instance mocking hooks, trade execution flow, and re-exports.
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0.
+- Quality ratchet `--quality` 4/4 PASS: `anyTypes` 114/114, `consoleCalls` 45/45, `filesOverMaxLines` 247/247 (new=0, grown=0), `bannedImports` 0.
+- `--prune-oversized-snapshot` removed exactly 5 entries (252 → 247), 0 entries added.
+- All targeted test suites pass.
+
 ## [3.1.34] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 2
 
 ### Changed
