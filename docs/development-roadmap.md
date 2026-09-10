@@ -223,6 +223,16 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Versions: 3.1.28, 3.1.29, 3.1.30, 3.1.31
 - Status: **COMPLETE** ✅
 
+### S17 Quality Ratchet — Alpha-Lab 100% Coverage & Baseline Pruning (Complete - 2026-09-10)
+- [x] 100% test coverage achieved across all `src/alpha-lab/` modules (Statements, Branches, Functions, Lines)
+- [x] Modularized 7 alpha-lab source modules to ≤200 LOC (`check-gates.ts`, `evaluation-engine.ts`, `experiment-engine.ts`, `regime-engine.ts`, `robustness-runner.ts`, `run-experiment.ts`, `walkforward-evaluator.ts`)
+- [x] Pruned 21 entries from quality-ratchet oversized file baseline (283 → 262)
+- [x] Ratcheted `maxAnyTypes` baseline down from 117 to 114
+- [x] Full suite 12,483 tests pass (100%), typecheck 0 errors, build exit 0
+- [x] `--quality` 4/4 PASS and `--all` 11/11 PASS
+- Version: 3.1.32
+- Status: **COMPLETE** ✅
+
 ### GTM Execution — Next Wave V (In Progress)
 - [x] Phase 1: Deploy production → https://api.cashclaw.cc (SHA a200991f, 2026-08-04) ✅
 - [ ] Phase 2: Publish launch content — email blocked (SendGrid), manual ready (blog/reddit/twitter/discord) ⚠️
