@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.37] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 5
+
+### Changed
+- **Oversized-file debt burn-down (S18 Tranche 5)**: 5 non-test violators (1,581 LOC total) split into ≤200-LOC modules behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 242 → 237 (5 entries removed, none added).
+  - `src/platform/notifications/email-service.ts` 318 → 161: split into `email-service-types.ts` (16 LOC), `email-service-formatters.ts` (109 LOC), `email-service-rate-limiter.ts` (48 LOC); facade preserves `EmailService` singleton, SendGrid client integration, and backward-compatible re-exports.
+  - `src/platform/mcp/research-mcp-server.ts` 317 → 95: split into `research-mcp-types.ts` (103 LOC), `research-mcp-handlers.ts` (141 LOC); facade preserves `createResearchMcpServer`, `runResearchMcpServer`, all handler exports, `RESEARCH_MCP_TOOLS`, and read-only provenance tools.
+  - `src/platform/api/routes/signal-subscription-routes.ts` 316 → 69: split into `signal-subscription-types.ts` (13 LOC), `signal-subscription-handlers.ts` (134 LOC), `signal-subscription-checkout-handlers.ts` (100 LOC); facade preserves `signalSubscriptionRouter` and all Express endpoint route definitions.
+  - `src/desk/strategies/polymarket/price-impact-estimator.ts` 315 → 79: split into `price-impact-estimator-state.ts` (48 LOC), `price-impact-estimator-exits.ts` (113 LOC), `price-impact-estimator-entries.ts` (127 LOC); facade preserves `createPriceImpactEstimatorTick` factory and all public re-exports.
+  - `src/desk/strategies/polymarket/regime-adaptive-momentum-v2.ts` 315 → 190: split into `regime-adaptive-momentum-types.ts` (51 LOC), `regime-adaptive-momentum-math.ts` (83 LOC), `regime-adaptive-momentum-evaluators.ts` (116 LOC); facade preserves `RegimeAdaptiveMomentumStrategy` class, `createRegimeAdaptiveMomentumTick`, and indicator functions.
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0.
+- Quality ratchet `--quality` 4/4 PASS: `anyTypes` 114/114, `consoleCalls` 45/45, `filesOverMaxLines` 237/237 (new=0, grown=0), `bannedImports` 0.
+- `--prune-oversized-snapshot` removed exactly 5 entries (242 → 237), 0 entries added.
+- All 12,483 tests pass (100% pass rate across test suite).
+
 ## [3.1.36] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 4
 
 ### Changed
