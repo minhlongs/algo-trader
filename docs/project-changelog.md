@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.39] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 7
+
+### Changed
+- **Oversized-file debt burn-down (S18 Tranche 7)**: 5 non-test violators (1,522 LOC total) split into ≤200-LOC modules behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 232 → 227 (5 entries removed, none added).
+  - `src/platform/middleware/prometheus-metrics-definitions.ts` 301 → 8: split into `prometheus-metrics-definitions-qwen-rollback.ts` (135 LOC) and `prometheus-metrics-definitions-trading-http-market.ts` (169 LOC); facade re-exports all Qwen pipeline, L-Tier rollback, core trading, HTTP, and market data metric definitions.
+  - `src/platform/middleware/prometheus-metrics.ts` 310 → 74: split into `prometheus-metrics-data-quality-helpers.ts` (73 LOC) and `prometheus-metrics-trading-helpers.ts` (105 LOC); facade preserves `metricsMiddleware`, `getMetrics`, and re-exports all helper functions and registry.
+  - `src/desk/strategies/paper-trading/paper-pnl-tracker.ts` 306 → 95: split into `paper-pnl-tracker-computation.ts` (139 LOC) and `paper-pnl-tracker-output.ts` (104 LOC); facade preserves `PaperPnlTracker` class, `getPaperPnlTracker` singleton, and all public types.
+  - `src/desk/polymarket/strategy-registry-full.ts` 303 → 38: split into `strategy-registry-full-entries-a-m.ts` (64 LOC, 18 strategies A–M) and `strategy-registry-full-entries-n-z.ts` (51 LOC, 18 strategies N–Z); facade preserves `listStrategies`, `getStrategy`, `getStrategyCount`, `StrategyEntry` type.
+  - `src/desk/strategies/polymarket/whale-tracker-v2.ts` 302 → 10: split into `whale-tracker-v2-helpers.ts` (129 LOC) and `whale-tracker-v2-strategy.ts` (169 LOC); facade preserves `WhaleTrackerStrategy`, `WhaleTrackerConfig`, `DEFAULT_CONFIG`, `WhaleEvent`, `calcMedianSize`, `detectWhaleOrders`, `calcWhaleImbalance`, `shouldEnter`, `WhaleTrackerDeps`, `createWhaleTrackerTick`.
+
+### Quality gates
+- `npx tsc --noEmit` 0 errors.
+- Quality ratchet `--all` 11/11 PASS: `anyTypes` 114/114, `consoleCalls` 45/45, `filesOverMaxLines` 227/227 (new=0, grown=0), `bannedImports` 0.
+- `--prune-oversized-snapshot` removed exactly 5 entries (232 → 227), 0 entries added.
+- All 12,483 tests pass (99.99% pass rate).
+
 ## [3.1.38] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 6
 
 ### Changed
