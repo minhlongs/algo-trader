@@ -12,3 +12,4 @@
 - [S16 oversized-tranche1 plan verdict](project_s16_oversized_tranche1_plan_verdict.md) — plan PASS r1: 303→298, thresholds 117/45 exact, all traps gated; obs: 88 test violators not 87.
 - [S16 tranche2 result verdict](project_s16_tranche2_result_verdict.md) — result PASS r1: 22 files ≤200, 298→293 −5/0, 4/4 quality, importers untouched, 3.1.29; ship owed; keys.ts misattribution escrow.
 - [S16 tranche3 plan verdict](project_s16_tranche3_plan_verdict.md) — plan CP r1: 5 files 384-388 verified, baseline 293, 3 LOW importer over-counts; escrows E1 typecheck-truth, E2 base facade tight.
+- [S16 tranche3 result verdict](project_s16_tranche3_result_verdict.md) — result CP r1: facades ≤200, 293→288 −5/0, 7239 tests, 3.1.30; E3 tmp-script + E4 agent-memory hygiene escrows; ship owed.

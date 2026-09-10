@@ -23,6 +23,26 @@ describe('generateSplits', () => {
   it('throws on ratio <= 0 or >= 1', () => {
     expect(() => generateSplits({ ...makeConfig(), trainRatio: 0 }, totalBars, lookback)).toThrow();
     expect(() => generateSplits({ ...makeConfig(), testRatio: 1 }, totalBars, lookback)).toThrow();
+    expect(() =>
+      generateSplits(
+        { ...makeConfig(), trainRatio: 1.2, valRatio: -0.1, testRatio: -0.1 },
+        totalBars,
+        lookback,
+      ),
+    ).toThrow(/Split ratio must be in \(0,1\)/);
+  });
+
+  it('throws when explicit rolling window sizes exceed usable bars', () => {
+    const config: SplitConfig = {
+      mode: 'rolling',
+      trainRatio: 0.5,
+      valRatio: 0.25,
+      testRatio: 0.25,
+      trainWindowSize: 60,
+      valWindowSize: 30,
+    };
+    // usable = 80 - 10 = 70; trainW(60) + valW(30) + testW(1) = 91 > 70
+    expect(() => generateSplits(config, 80, 10)).toThrow(/Windows exceed usable data/);
   });
 
   it('throws on negative lookback', () => {

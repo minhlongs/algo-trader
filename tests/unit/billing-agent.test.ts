@@ -91,6 +91,61 @@ describe('BillingAgent', () => {
         expect.objectContaining({ paymentId: 'pay-001' }),
       );
     });
+
+    it('logs error when invoice generation fails', async () => {
+      // Exercises the .catch() branch (line 38-43): when generateInvoice rejects,
+      // the handler logs the error via logger.error and does not rethrow.
+      const logger = await import('../../src/shared/utils/logger');
+      const { generateInvoice } = await import('../../src/platform/billing/invoice-generator');
+      (generateInvoice as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('invoice service down'),
+      );
+
+      agent.onPaymentCompleted(makePayment());
+
+      // Wait for the async catch handler to fire
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(logger.logger.error).toHaveBeenCalledWith(
+        '[BillingAgent] Invoice generation failed',
+        expect.objectContaining({ paymentId: 'pay-001', error: 'invoice service down' }),
+      );
+    });
+
+    it('formats non-Error rejection via String(err)', async () => {
+      // Exercises the `err instanceof Error ? err.message : String(err)` FALSE branch
+      // (line 41) by rejecting with a non-Error value (string).
+      const logger = await import('../../src/shared/utils/logger');
+      const { generateInvoice } = await import('../../src/platform/billing/invoice-generator');
+      (generateInvoice as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        'plain string rejection',
+      );
+
+      agent.onPaymentCompleted(makePayment());
+
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(logger.logger.error).toHaveBeenCalledWith(
+        '[BillingAgent] Invoice generation failed',
+        expect.objectContaining({ paymentId: 'pay-001', error: 'plain string rejection' }),
+      );
+    });
+
+    it('does not alert when payment is below threshold', async () => {
+      // Exercises the alertOperatorIfHighValue FALSE branch (amount < 299).
+      const logger = await import('../../src/shared/utils/logger');
+      agent.onPaymentCompleted(makePayment({ amount: 100, tier: 'STARTER' }));
+      expect(logger.logger.warn).not.toHaveBeenCalled();
+    });
+
+    it('ELITE tier uses 60/40 split', () => {
+      // Exercises the ELITE tier branch in generateRevenueShareBreakdown.
+      const bd = (agent as unknown as { generateRevenueShareBreakdown: (a: number, t: string) => { platform: number; provider: number; platformPct: number; providerPct: number } }).generateRevenueShareBreakdown(500, 'ELITE');
+      expect(bd.platformPct).toBe(0.6);
+      expect(bd.providerPct).toBe(0.4);
+      expect(bd.platform).toBeCloseTo(300);
+      expect(bd.provider).toBeCloseTo(200);
+    });
   });
 
   describe('generateRevenueShareBreakdown', () => {

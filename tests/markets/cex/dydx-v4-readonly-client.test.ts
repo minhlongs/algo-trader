@@ -255,4 +255,149 @@ describe('DydxV4ReadonlyClient', () => {
   it('getName returns dydx-v4-readonly', () => {
     expect(makeClient().getName()).toBe('dydx-v4-readonly');
   });
+
+  // ── Constructor: indexerUrl fallback chain ────────────────────────────────────
+
+  it('falls back to process.env.DYDX_INDEXER_URL when no indexerUrl is provided', () => {
+    // Exercises the `indexerUrl ?? process.env.DYDX_INDEXER_URL` branch (line 81).
+    // When the param is undefined and the env var is set, the env var is used.
+    process.env.DYDX_INDEXER_URL = 'https://env-indexer.dydx.trade';
+    const client = new DydxV4ReadonlyClient();
+    expect(client).toBeDefined();
+    expect(client.getName()).toBe('dydx-v4-readonly');
+    delete process.env.DYDX_INDEXER_URL;
+  });
+
+  it('falls back to DEFAULT_INDEXER_URL when neither param nor env var is set', () => {
+    // Exercises the `?? DEFAULT_INDEXER_URL` branch (line 81, third operand).
+    // With no param and no env var, the hardcoded default is used.
+    delete process.env.DYDX_INDEXER_URL;
+    const client = new DydxV4ReadonlyClient();
+    expect(client).toBeDefined();
+    expect(client.getName()).toBe('dydx-v4-readonly');
+  });
+
+  it('strips trailing slash from indexerUrl', () => {
+    // The constructor strips a trailing slash so downstream URL construction works.
+    process.env.DYDX_INDEXER_URL = 'https://trim-indexer.dydx.trade/';
+    const client = new DydxV4ReadonlyClient();
+    expect(client).toBeDefined();
+    delete process.env.DYDX_INDEXER_URL;
+  });
+
+  // ── getCandles: nullish fallback ─────────────────────────────────────────────
+
+  it('falls back to [] when indexer returns no candles field', async () => {
+    // Exercises the `data.candles ?? []` branch (line 116) when the response
+    // object is missing the candles field entirely.
+    mockResilientFetch.mockResolvedValueOnce(jsonResp({}));
+    const client = makeClient();
+    const candles = await client.getCandles('BTC-USD');
+    expect(candles).toEqual([]);
+  });
+
+  // ── getOrderBook: nullish fallbacks ──────────────────────────────────────────
+
+  it('falls back to [] when indexer returns no bids field', async () => {
+    // Exercises the `data.bids ?? []` branch (line 142).
+    mockResilientFetch.mockResolvedValueOnce(jsonResp({ asks: [{ price: '100', size: '1' }] }));
+    const client = makeClient();
+    const book = await client.getOrderBook('BTC-USD');
+    expect(book.bids).toEqual([]);
+    expect(book.asks).toHaveLength(1);
+  });
+
+  it('falls back to [] when indexer returns no asks field', async () => {
+    // Exercises the `data.asks ?? []` branch (line 143).
+    mockResilientFetch.mockResolvedValueOnce(jsonResp({ bids: [{ price: '100', size: '1' }] }));
+    const client = makeClient();
+    const book = await client.getOrderBook('BTC-USD');
+    expect(book.asks).toEqual([]);
+    expect(book.bids).toHaveLength(1);
+  });
+
+  // ── getBalances: nullish fallbacks for subaccount fields ─────────────────────
+
+  it('falls back to 0 for freeCollateral/equity when those fields are missing', async () => {
+    // Exercises the `subaccount.freeCollateral ?? '0'` and
+    // `subaccount.equity ?? '0'` branches (lines 175, 178, 180).
+    mockResilientFetch.mockResolvedValueOnce(
+      jsonResp({
+        subaccount: {
+          address: 'dydx1abc123',
+          subaccountNumber: 0,
+          assetPositions: [],
+        },
+      }),
+    );
+    const client = makeClient('dydx1abc123');
+    const balances = await client.getBalances();
+    expect(balances).toHaveLength(1);
+    expect(balances[0].asset).toBe('USDC');
+    expect(balances[0].free).toBe(0);
+    expect(balances[0].total).toBe(0);
+  });
+
+  it('falls back to [] when subaccount has no assetPositions field', async () => {
+    // Exercises the `subaccount.assetPositions ?? []` branch (line 184).
+    mockResilientFetch.mockResolvedValueOnce(
+      jsonResp({
+        subaccount: {
+          address: 'dydx1abc123',
+          subaccountNumber: 0,
+          equity: '5000.00',
+          freeCollateral: '3000.00',
+        },
+      }),
+    );
+    const client = makeClient('dydx1abc123');
+    const balances = await client.getBalances();
+    // Only USDC — no asset positions to iterate.
+    expect(balances).toHaveLength(1);
+    expect(balances[0].asset).toBe('USDC');
+  });
+
+  it('falls back to 0 for position size when that field is missing', async () => {
+    // Exercises the `pos.size ?? '0'` branch (line 185). A position with
+    // no size field parses to 0 and is skipped by the zero-size filter.
+    mockResilientFetch.mockResolvedValueOnce(
+      jsonResp({
+        subaccount: {
+          address: 'dydx1abc123',
+          subaccountNumber: 0,
+          equity: '1000.00',
+          freeCollateral: '1000.00',
+          assetPositions: [
+            { symbol: 'ETH', side: 'LONG', assetId: '2' },
+          ],
+        },
+      }),
+    );
+    const client = makeClient('dydx1abc123');
+    const balances = await client.getBalances();
+    // ETH has no size → parses to 0 → skipped; only USDC remains.
+    expect(balances).toHaveLength(1);
+    expect(balances[0].asset).toBe('USDC');
+  });
+
+  it('computes locked as 0 when equity equals freeCollateral', async () => {
+    // When equity === freeCollateral, locked = max(0, 0) = 0.
+    mockResilientFetch.mockResolvedValueOnce(
+      jsonResp({
+        subaccount: {
+          address: 'dydx1abc123',
+          subaccountNumber: 0,
+          equity: '2500.00',
+          freeCollateral: '2500.00',
+          assetPositions: [],
+        },
+      }),
+    );
+    const client = makeClient('dydx1abc123');
+    const balances = await client.getBalances();
+    expect(balances).toHaveLength(1);
+    expect(balances[0].locked).toBe(0);
+    expect(balances[0].free).toBe(2500.0);
+    expect(balances[0].total).toBe(2500.0);
+  });
 });

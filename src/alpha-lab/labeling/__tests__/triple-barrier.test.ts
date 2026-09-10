@@ -70,9 +70,25 @@ describe('TripleBarrier', () => {
     });
 
     it('throws on invalid tp/sl/maxHolding', () => {
-      expect(() => tripleBarrierLabel(candles, 0, -1, 0.01, 2)).toThrow();
-      expect(() => tripleBarrierLabel(candles, 0, 0.02, 0, 2)).toThrow();
-      expect(() => tripleBarrierLabel(candles, 0, 0.02, 0.01, 0)).toThrow();
+      expect(() => tripleBarrierLabel(candles, 0, -1, 0.01, 2)).toThrow('tp must be positive');
+      expect(() => tripleBarrierLabel(candles, 0, NaN, 0.01, 2)).toThrow('tp must be positive');
+      expect(() => tripleBarrierLabel(candles, 0, 0.02, 0, 2)).toThrow('sl must be positive');
+      expect(() => tripleBarrierLabel(candles, 0, 0.02, -0.05, 2)).toThrow('sl must be positive');
+      expect(() => tripleBarrierLabel(candles, 0, 0.02, 0.01, 0)).toThrow('maxHolding must be positive integer');
+      expect(() => tripleBarrierLabel(candles, 0, 0.02, 0.01, 2.5)).toThrow('maxHolding must be positive integer');
+    });
+
+    it('throws when entryIdx is out of range', () => {
+      expect(() => tripleBarrierLabel(candles, -1, 0.02, 0.01, 2)).toThrow('out of range');
+      expect(() => tripleBarrierLabel(candles, 100, 0.02, 0.01, 2)).toThrow('out of range');
+    });
+
+    it('throws when entry price is non-positive', () => {
+      const zeroPriceCandles = makeCandles([
+        { high: 10, low: 0, close: 0 },
+        { high: 10, low: 0, close: 5 },
+      ]);
+      expect(() => tripleBarrierLabel(zeroPriceCandles, 0, 0.02, 0.01, 1)).toThrow('Invalid entry price: 0');
     });
 
     it('uses only future bars (causal)', () => {
@@ -105,6 +121,15 @@ describe('TripleBarrier', () => {
         expect([1, -1, 0]).toContain(r.label);
         expect(typeof r.entryIdx).toBe('number');
       }
+    });
+
+    it('returns empty array when candles length is insufficient for maxHolding', () => {
+      const shortCandles = makeCandles([
+        { high: 102, low: 98, close: 100 },
+        { high: 102, low: 98, close: 100 },
+      ]);
+      const out = batchLabel(shortCandles, 0.05, 0.05, 5);
+      expect(out).toEqual([]);
     });
   });
 });

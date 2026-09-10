@@ -86,7 +86,7 @@ export function transition(
     return 'REJECTED';
   }
 
-  return map[trigger] ?? current;
+  return map[trigger]!;
 }
 
 function passesSurvival(evidence: Record<string, number | boolean | string>, policy: PromotionPolicy): boolean {

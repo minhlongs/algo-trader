@@ -11,10 +11,8 @@
  * This is the FINAL gate before a strategy can be considered for promotion.
  */
 
-import { runAllBaselines } from '../baselines/baseline-runner';
-import { runExperiment } from '../experiments/experiment-engine';
-import { evaluateAlpha, type AlphaVerdict, type SurvivalCriteria, DEFAULT_CRITERIA } from './alpha-evaluator';
-import type { BaselineRun } from '../baselines/baseline-runner';
+import { runAllBaselines, type BaselineRun } from '../baselines/baseline-runner';
+import { evaluateAlpha, type AlphaVerdict, type SurvivalCriteria } from './alpha-evaluator';
 import type { CandleLike } from '../regimes/regime-types';
 import type { CandidateResult } from './alpha-evaluator';
 
@@ -42,23 +40,24 @@ export interface AblationResult {
  * @param candidate — candidate result (from experiment)
  * @param candles — OHLCV data
  * @param criteria — optional survival criteria overrides
+ * @param baselineRuns — optional pre-computed baseline runs
  */
 export function survivalGate(
   candidate: CandidateResult,
   candles: CandleLike[],
   criteria: Partial<SurvivalCriteria> = {},
+  baselineRuns?: BaselineRun[],
 ): GateResult {
   // 1. Alpha verdict.
   const closes = candles.map((c) => ({ timestamp: c.timestamp, close: c.close }));
   const alpha = evaluateAlpha(candidate, closes, criteria);
 
   // 2. Ablation: run with same cost params on the data.
-  const baselines = runAllBaselines(candles);
+  const baselines = baselineRuns ?? runAllBaselines(candles);
   const ablation: AblationResult[] = [];
 
   // Ablation 1: without random entry baseline (most lenient).
-  const withoutRand = baselines.filter((b: BaselineRun) => b.name !== 'random-entry');
-  const randPnl = baselines.find((b: BaselineRun) => b.name === 'random-entry')?.report.totalPnl ?? 0;
+  const randPnl = baselines.find((b) => b.name === 'random-entry')?.report.totalPnl ?? 0;
   ablation.push({
     removed: 'random-entry baseline',
     pnl: candidate.totalNetPnl - randPnl,
@@ -66,7 +65,7 @@ export function survivalGate(
   });
 
   // Ablation 2: without momentum baseline.
-  const momPnl = baselines.find((b: BaselineRun) => b.name === 'simple-momentum')?.report.totalPnl ?? 0;
+  const momPnl = baselines.find((b) => b.name === 'simple-momentum')?.report.totalPnl ?? 0;
   ablation.push({
     removed: 'momentum baseline',
     pnl: candidate.totalNetPnl - momPnl,

@@ -73,7 +73,7 @@ export class CookieAttributionService {
    * Check whether a cookie hash is valid (exists and not expired).
    */
   async isValid(cookieHash: string): Promise<boolean> {
-    return this.getReferralCodeByHash(cookieHash) !== null;
+    return (await this.getReferralCodeByHash(cookieHash)) !== null;
   }
 
   /**

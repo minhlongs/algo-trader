@@ -6,17 +6,13 @@
  * computeMetrics (proves reuse).
  */
 
-import type { MarketRegime } from '../regimes/regime-types';
+import type { MarketRegime, CandleLike } from '../regimes/regime-types';
 import type { WalkForwardStep } from '../experiments/experiment-types';
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
 import { buildEquityCurve } from '../shared/equity-curve';
-import type { CandleLike } from '../regimes/regime-types';
 import type {
-  EvaluationReport,
-  RegimeBreakdown,
-  MonthBreakdown,
-  VolatilityBucketBreakdown,
+  EvaluationReport, RegimeBreakdown, MonthBreakdown, VolatilityBucketBreakdown,
 } from './evaluation-types';
 
 // ── Internal Types ────────────────────────────────────────────────────────────
@@ -28,7 +24,7 @@ interface GroupData {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function realizedVol(candles: CandleLike[]): number | null {
+export function realizedVol(candles: CandleLike[]): number | null {
   if (candles.length < 2) return null;
   const logRet: number[] = [];
   for (let i = 1; i < candles.length; i++) {
@@ -37,7 +33,6 @@ function realizedVol(candles: CandleLike[]): number | null {
     if (prev <= 0 || curr <= 0) return null;
     logRet.push(Math.log(curr / prev));
   }
-  if (logRet.length === 0) return null;
   const mean = logRet.reduce((a, b) => a + b, 0) / logRet.length;
   const variance = logRet.reduce((s, r) => s + (r - mean) ** 2, 0) / logRet.length;
   return Math.sqrt(variance);
@@ -47,7 +42,7 @@ function monthKey(ts: string): string {
   return ts.slice(0, 7); // "YYYY-MM"
 }
 
-function volBucket(vol: number | null): 'low' | 'medium' | 'high' {
+export function volBucket(vol: number | null): 'low' | 'medium' | 'high' {
   if (vol === null) return 'medium';
   if (vol < 0.01) return 'low';
   if (vol > 0.03) return 'high';
@@ -67,9 +62,9 @@ function buildRegimeBreakdown(
     out.push({
       regime,
       numTrades: n,
-      winRate: n > 0 ? wins / n : 0,
-      lossRate: n > 0 ? losses / n : 0,
-      meanLabel: n > 0 ? group.labels.reduce((a, b) => a + b, 0) / n : 0,
+      winRate: wins / n,
+      lossRate: losses / n,
+      meanLabel: group.labels.reduce((a, b) => a + b, 0) / n,
       netPnl: group.pnls.reduce((a, b) => a + b, 0),
     });
   }
@@ -86,7 +81,7 @@ function buildMonthBreakdown(
     out.push({
       month,
       numTrades: n,
-      winRate: n > 0 ? wins / n : 0,
+      winRate: wins / n,
       netPnl: group.pnls.reduce((a, b) => a + b, 0),
     });
   }
@@ -103,7 +98,7 @@ function buildVolatilityBreakdown(
     out.push({
       bucket: bucket as 'low' | 'medium' | 'high',
       numTrades: n,
-      winRate: n > 0 ? wins / n : 0,
+      winRate: wins / n,
       netPnl: group.pnls.reduce((a, b) => a + b, 0),
     });
   }
@@ -122,7 +117,7 @@ export interface EvaluateInput {
 }
 
 export function evaluate(input: EvaluateInput): EvaluationReport {
-  const { candles, trades, labels, steps, regimesPerBar } = input;
+  const { candles, trades, labels, steps: _steps, regimesPerBar } = input;
 
   if (trades.length === 0) {
     return {

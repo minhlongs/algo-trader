@@ -198,15 +198,12 @@ export function getBlogPosts(limit = 10): BlogPost[] {
 }
 
 // CLI entry point
-if (process.argv[1]?.endsWith('auto-marketing-daemon.ts') ||
-    process.argv[1]?.endsWith('auto-marketing-daemon.js')) {
+export function runCli(argv: string[] = process.argv): void {
+  const script = argv[1];
+  if (!script?.endsWith('auto-marketing-daemon.ts') && !script?.endsWith('auto-marketing-daemon.js')) return;
   runAutoMarketing()
-    .then(() => {
-      logger.info('[AutoMarketing] Daemon cycle complete');
-      process.exit(0);
-    })
-    .catch((err) => {
-      logger.error('[AutoMarketing] Daemon failed', { error: err });
-      process.exit(1);
-    });
+    .then(() => { logger.info('[AutoMarketing] Daemon cycle complete'); process.exit(0); })
+    .catch((err) => { logger.error('[AutoMarketing] Daemon failed', { error: err }); process.exit(1); });
 }
+
+if (process.argv[1]?.endsWith('auto-marketing-daemon.ts') || process.argv[1]?.endsWith('auto-marketing-daemon.js')) runCli();

@@ -1024,6 +1024,300 @@ describe('createPriceImpactEstimatorTick', () => {
     }
   });
 
+  // ── Additional branch coverage ──────────────────────────────────────────
+
+  it('exits no-side position on take-profit (covers else-PnL, exitSide=buy)', async () => {
+    // Exercises BRANCH 2 FALSE (pos.side !== 'yes'), stmt 33 (else gain block),
+    // BRANCH 5 TRUE (gain >= takeProfitPct), BRANCH 10 FALSE (exitSide='buy').
+    let callCount = 0;
+    const clob = {
+      getOrderBook: vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount <= 1) {
+          // Shallow asks + deep bids → buyImpact > sellImpact → determineSide 'no'
+          return Promise.resolve(makeBook(
+            [['0.48', '500'], ['0.47', '500'], ['0.46', '500']],
+            [['0.51', '50'], ['0.70', '50']],
+          ));
+        }
+        // Price falls → gain = (entryPrice - currentPrice)/entryPrice for 'no'
+        return Promise.resolve(makeBook(
+          [['0.44', '500']], [['0.46', '500']],
+        ));
+      }),
+    };
+
+    const deps = makeDeps({
+      clob: clob as any,
+      config: {
+        minVolume: 1,
+        hypotheticalSize: 100,
+        asymmetryThreshold: 0.01,
+        takeProfitPct: 0.03,
+        stopLossPct: 0.50,
+      },
+    });
+
+    const tick = createPriceImpactEstimatorTick(deps);
+    await tick(); // entry 'no'
+    await tick(); // exit on take-profit
+
+    const exitCalls = (deps.orderManager.placeOrder as any).mock.calls.filter(
+      (c: any) => c[0].orderType === 'IOC',
+    );
+    expect(exitCalls.length).toBeGreaterThan(0);
+    // no-side exit → exitSide = 'buy'
+    expect(exitCalls[0][0].side).toBe('buy');
+  });
+
+  it('logs warn via catch block when exit order rejects (covers line 180)', async () => {
+    // Exercises the catch block (line 179-181): when orderManager.placeOrder
+    // rejects during exit, logger.warn('Exit failed', ...) is called.
+    let callCount = 0;
+    const clob = {
+      getOrderBook: vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount <= 1) {
+          return Promise.resolve(makeBook(
+            [['0.49', '50'], ['0.30', '50'], ['0.10', '500']],
+            [['0.51', '500'], ['0.52', '500']],
+          ));
+        }
+        // TP: price rises for yes position
+        return Promise.resolve(makeBook(
+          [['0.65', '500']], [['0.67', '500']],
+        ));
+      }),
+    };
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const placeOrderMock = vi.fn()
+      .mockResolvedValueOnce({ id: 'entry-order' })   // entry succeeds
+      .mockRejectedValueOnce(new Error('slippage')); // exit fails
+
+    const deps = makeDeps({
+      clob: clob as any,
+      orderManager: { placeOrder: placeOrderMock } as any,
+      config: {
+        minVolume: 1,
+        hypotheticalSize: 100,
+        asymmetryThreshold: 0.01,
+        takeProfitPct: 0.03,
+        stopLossPct: 0.50,
+      },
+    });
+
+    const tick = createPriceImpactEstimatorTick(deps);
+    await tick(); // entry
+    await tick(); // exit attempt (rejects → catch)
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Exit failed'));
+    warnSpy.mockRestore();
+  });
+
+  it('returns early from scanEntries when positions at maxPositions (covers line 194)', async () => {
+    // Exercises BRANCH 12 TRUE: positions.length >= cfg.maxPositions at the
+    // start of scanEntries triggers an early return (no further entries).
+    const clob = {
+      getOrderBook: vi.fn().mockResolvedValue(makeBook(
+        [['0.49', '50'], ['0.30', '50'], ['0.10', '500']],
+        [['0.51', '500'], ['0.52', '500']],
+      )),
+    };
+
+    const deps = makeDeps({
+      clob: clob as any,
+      config: {
+        minVolume: 1,
+        hypotheticalSize: 100,
+        asymmetryThreshold: 0.01,
+        maxPositions: 1,
+        takeProfitPct: 0.50,
+        stopLossPct: 0.50,
+      },
+    });
+
+    const tick = createPriceImpactEstimatorTick(deps);
+    await tick(); // entry fills the single slot
+    await tick(); // no exit (TP/SL far), scanEntries early-returns
+
+    const entries = (deps.orderManager.placeOrder as any).mock.calls.filter(
+      (c: any) => c[0].orderType === 'GTC',
+    );
+    expect(entries.length).toBe(1);
+  });
+
+  it('fetches orderbook when market volume passes minVolume check (covers line 204 FALSE)', async () => {
+    // Exercises BRANCH 21 FALSE: (market.volume ?? 0) < cfg.minVolume is false,
+    // so the loop proceeds to fetch the orderbook (proves volume gate passed).
+    const getOrderBookMock = vi.fn().mockResolvedValue(makeBook(
+      [['0.49', '50'], ['0.30', '50'], ['0.10', '500']],
+      [['0.51', '500'], ['0.52', '500']],
+    ));
+    const deps = makeDeps({
+      clob: { getOrderBook: getOrderBookMock } as any,
+      config: {
+        minVolume: 1,
+        hypotheticalSize: 100,
+        asymmetryThreshold: 0.01,
+      },
+    });
+
+    const tick = createPriceImpactEstimatorTick(deps);
+    await tick();
+
+    expect(getOrderBookMock).toHaveBeenCalled();
+  });
+
+  it('exits no-side position on stop-loss (covers BRANCH 6 TRUE, BRANCH 5 FALSE)', async () => {
+    // Exercises BRANCH 6 TRUE: inside the 'no' else-PnL block,
+    // -gain >= cfg.stopLossPct (price rose, so gain is negative).
+    let callCount = 0;
+    const clob = {
+      getOrderBook: vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount <= 1) {
+          // Shallow asks + deep bids → buyImpact > sellImpact → determineSide 'no'
+          return Promise.resolve(makeBook(
+            [['0.48', '500'], ['0.47', '500'], ['0.46', '500']],
+            [['0.51', '50'], ['0.70', '50']],
+          ));
+        }
+        // Price rises → for 'no', gain = (entryPrice - currentPrice)/entryPrice < 0
+        return Promise.resolve(makeBook(
+          [['0.55', '500']], [['0.57', '500']],
+        ));
+      }),
+    };
+
+    const deps = makeDeps({
+      clob: clob as any,
+      config: {
+        minVolume: 1,
+        hypotheticalSize: 100,
+        asymmetryThreshold: 0.01,
+        takeProfitPct: 0.50,
+        stopLossPct: 0.03,
+      },
+    });
+
+    const tick = createPriceImpactEstimatorTick(deps);
+    await tick(); // entry 'no'
+    await tick(); // exit on stop-loss
+
+    const exitCalls = (deps.orderManager.placeOrder as any).mock.calls.filter(
+      (c: any) => c[0].orderType === 'IOC',
+    );
+    expect(exitCalls.length).toBeGreaterThan(0);
+    expect(exitCalls[0][0].side).toBe('buy');
+  });
+
+  it('skips market when noTokenId already has a position (covers line 200 TRUE)', async () => {
+    // Exercises BRANCH 17 TRUE: market.noTokenId && hasPosition(market.noTokenId)
+    // is true → continue. We enter a 'no' position first, then on the next tick
+    // the same market's noTokenId is already held, so it is skipped.
+    let callCount = 0;
+    const clob = {
+      getOrderBook: vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount <= 1) {
+          // Shallow asks + deep bids → determineSide 'no'
+          return Promise.resolve(makeBook(
+            [['0.48', '500'], ['0.47', '500'], ['0.46', '500']],
+            [['0.51', '50'], ['0.70', '50']],
+          ));
+        }
+        // Same book on subsequent ticks (no exit: TP/SL far)
+        return Promise.resolve(makeBook(
+          [['0.48', '500'], ['0.47', '500'], ['0.46', '500']],
+          [['0.51', '50'], ['0.70', '50']],
+        ));
+      }),
+    };
+
+    const deps = makeDeps({
+      clob: clob as any,
+      config: {
+        minVolume: 1,
+        hypotheticalSize: 100,
+        asymmetryThreshold: 0.01,
+        takeProfitPct: 0.50,
+        stopLossPct: 0.50,
+        maxPositions: 4,
+      },
+    });
+
+    const tick = createPriceImpactEstimatorTick(deps);
+    await tick(); // entry 'no' → holds no-1
+    await tick(); // no exit; scanEntries skips (noTokenId no-1 already held)
+
+    const entries = (deps.orderManager.placeOrder as any).mock.calls.filter(
+      (c: any) => c[0].orderType === 'GTC',
+    );
+    expect(entries.length).toBe(1);
+  });
+
+  it('skips entry when shares rounds to 0 (covers line 244 TRUE)', async () => {
+    // Exercises BRANCH 33 TRUE: shares <= 0 triggers continue.
+    // With a tiny positionSize and a high entryPrice, posSize/entryPrice < 0.5
+    // rounds to 0 shares.
+    const clob = {
+      getOrderBook: vi.fn().mockResolvedValue(makeBook(
+        [['0.49', '50'], ['0.30', '50'], ['0.10', '500']],
+        [['0.51', '500'], ['0.52', '500']],
+      )),
+    };
+
+    const deps = makeDeps({
+      clob: clob as any,
+      config: {
+        minVolume: 1,
+        hypotheticalSize: 100,
+        asymmetryThreshold: 0.01,
+        positionSize: '0.01',
+      },
+    });
+
+    const tick = createPriceImpactEstimatorTick(deps);
+    await tick();
+
+    const entries = (deps.orderManager.placeOrder as any).mock.calls.filter(
+      (c: any) => c[0].orderType === 'GTC',
+    );
+    expect(entries.length).toBe(0);
+  });
+
+  it('skips entry when yes-side ask >= 1 via entryPrice guard (covers line 240 TRUE)', async () => {
+    // Exercises BRANCH 31 TRUE: entryPrice >= 1 triggers continue.
+    // Construct a book where side='yes' (buyImpact < sellImpact) but the best
+    // ask (entryPrice for yes) is >= 1. Asks fill at top (1.10), bids walk
+    // deep (shallow top) so sellImpact > buyImpact → determineSide 'yes'.
+    const clob = {
+      getOrderBook: vi.fn().mockResolvedValue(makeBook(
+        [['0.40', '10'], ['0.01', '500']],
+        [['1.10', '500']],
+      )),
+    };
+
+    const deps = makeDeps({
+      clob: clob as any,
+      config: {
+        minVolume: 1,
+        hypotheticalSize: 100,
+        asymmetryThreshold: 0.01,
+      },
+    });
+
+    const tick = createPriceImpactEstimatorTick(deps);
+    await tick();
+
+    // No GTC entry placed — entryPrice guard continued the loop
+    const entries = (deps.orderManager.placeOrder as any).mock.calls.filter(
+      (c: any) => c[0].orderType === 'GTC',
+    );
+    expect(entries.length).toBe(0);
+  });
+
   it('uses default config values when no overrides', () => {
     const cfg = makeConfig();
     expect(cfg.hypotheticalSize).toBe(500);

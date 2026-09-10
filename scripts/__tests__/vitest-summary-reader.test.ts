@@ -63,6 +63,24 @@ describe('readVitestJsonSummary', () => {
     expect(() => readVitestJsonSummary(path)).toThrow(/not valid JSON/);
   });
 
+  it('reports malformed JSON without crashing when the error has no message', () => {
+    // Forces the `err?.message ?? err` fallback: override JSON.parse to throw a
+    // non-Error value (a thrown number has no .message), so the `?? err` path runs.
+    const originalParse = JSON.parse;
+    // @ts-expect-error — intentionally overriding for test
+    JSON.parse = () => {
+      // eslint-disable-next-line no-throw-literal
+      throw 42;
+    };
+    try {
+      const path = writeSummary('summary.json', '{ bogus');
+      expect(() => readVitestJsonSummary(path)).toThrow(/not valid JSON/);
+      expect(() => readVitestJsonSummary(path)).toThrow(/42/);
+    } finally {
+      JSON.parse = originalParse;
+    }
+  });
+
   it('throws when a required field is missing', () => {
     const path = writeSummary('summary.json', {
       numTotalTests: 10,

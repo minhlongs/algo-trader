@@ -173,12 +173,12 @@ export class BinanceWebSocketClient extends BaseWebSocketClient {
   }
 
   private normalizeSymbol(symbol: string): string {
-    // Convert BNBBTC to BTC/USDT format
-    const match = symbol.match(/^([A-Z]+)([A-Z]+)$/);
-    if (match) {
-      const quote = match[2];
-      const base = match[1];
-      if (['USDT', 'BTC', 'ETH', 'USD', 'BUSD'].includes(quote)) {
+    // Convert Binance-style symbols (BNBUSDT, BTCETH) to BASE/QUOTE format.
+    // Match known quote-currency suffixes, longest first so BUSD beats USD.
+    const quotes = ['USDC', 'USDT', 'BUSD', 'BTC', 'ETH', 'USD'];
+    for (const quote of quotes) {
+      if (symbol.endsWith(quote) && symbol.length > quote.length) {
+        const base = symbol.slice(0, symbol.length - quote.length);
         return `${base}/${quote}`;
       }
     }

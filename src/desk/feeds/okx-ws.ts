@@ -41,7 +41,6 @@ export interface OKXTicker {
 
 export class OKXWebSocketClient extends BaseWebSocketClient {
   private subscribedSymbols = new Set<string>();
-  private pingTimer: NodeJS.Timeout | null = null;
 
   constructor() {
     super({
@@ -59,10 +58,6 @@ export class OKXWebSocketClient extends BaseWebSocketClient {
   async disconnect(): Promise<void> {
     await this.unsubscribe(Array.from(this.subscribedSymbols));
     this.stopHeartbeat();
-    if (this.pingTimer) {
-      clearInterval(this.pingTimer);
-      this.pingTimer = null;
-    }
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -185,14 +180,7 @@ export class OKXWebSocketClient extends BaseWebSocketClient {
     }
   }
 
-  protected stopHeartbeat(): void {
-    super.stopHeartbeat();
-    if (this.pingTimer) {
-      clearInterval(this.pingTimer);
-      this.pingTimer = null;
-    }
-  }
-
+  
   protected sendHeartbeat(): void {
     this.sendMessage('ping');
   }

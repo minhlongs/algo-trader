@@ -141,19 +141,16 @@ export function evaluateWalkForward(input: EvaluateWalkForwardInput): WalkForwar
     throw new Error('No splits generated — check config ratios vs data length');
   }
 
-  // Group into steps.
-  const stepMap = new Map<number, { train: typeof rawSplits[0]; val: typeof rawSplits[0]; test: typeof rawSplits[0] }>();
+  type SplitItem = typeof rawSplits[0];
+  const stepMap = new Map<number, { train?: SplitItem; val?: SplitItem; test?: SplitItem }>();
   for (const s of rawSplits) {
-    const existing = stepMap.get(s.step);
-    if (!existing) {
-      stepMap.set(s.step, { train: s, val: s, test: s });
-    } else {
-      if (s.kind === 'train') existing.train = s;
-      else if (s.kind === 'val') existing.val = s;
-      else existing.test = s;
-    }
+    const existing = stepMap.get(s.step) ?? {};
+    if (!stepMap.has(s.step)) stepMap.set(s.step, existing);
+    if (s.kind === 'train') existing.train = s;
+    else if (s.kind === 'val') existing.val = s;
+    else existing.test = s;
   }
-  const steps = Array.from(stepMap.values()).sort((a, b) => a.test.step - b.test.step);
+  const steps = Array.from(stepMap.values()) as Array<{ train: SplitItem; val: SplitItem; test: SplitItem }>;
   const regimeSeries = computeRegimeSeries(candles, {
     market: config.symbol,
     timeframe: config.timeframe,
@@ -168,7 +165,7 @@ export function evaluateWalkForward(input: EvaluateWalkForwardInput): WalkForwar
   return { steps: stepResults, summary };
 }
 
-function buildSummary(steps: StepResult[]): WalkForwardSummary {
+export function buildSummary(steps: StepResult[]): WalkForwardSummary {
   if (steps.length === 0) {
     return {
       totalSteps: 0,

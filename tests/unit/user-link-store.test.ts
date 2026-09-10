@@ -1,8 +1,18 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, Mocked } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { UserLinkStore } from '../../src/platform/telegram/user-link-store';
+import { logger } from '../../src/shared/utils/logger';
+
+vi.mock('../../src/shared/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
 
 function makeTempPath(): string {
   return path.join(os.tmpdir(), `user-link-store-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`);
@@ -108,5 +118,43 @@ describe('UserLinkStore', () => {
 
     expect(reloaded.getByTelegramUserId(42)).toBeDefined();
     expect(reloaded.getByTelegramUserId(42)!.licenseId).toBe('lic-persist');
+  });
+
+  it('load() catch branch: starts fresh when the file contains invalid JSON', () => {
+    fs.writeFileSync(tempPath, '{ not valid json', 'utf-8');
+    UserLinkStore.resetInstance();
+    const fresh = UserLinkStore.getInstance(tempPath);
+    expect(fresh.getAll()).toHaveLength(0);
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[UserLinkStore] Failed to load, starting fresh:',
+      expect.objectContaining({ error: expect.any(Error) }),
+    );
+  });
+
+  it('save() mkdir branch: creates the directory tree when it does not exist', () => {
+    const deepDir = path.join(os.tmpdir(), `uls-deep-${Date.now()}`);
+    const deepPath = path.join(deepDir, 'sub', 'links.json');
+    UserLinkStore.resetInstance();
+    const deepStore = UserLinkStore.getInstance(deepPath);
+    deepStore.link(42, 'lic-deep');
+    expect(fs.existsSync(deepDir)).toBe(true);
+    expect(fs.existsSync(deepPath)).toBe(true);
+    fs.rmSync(deepDir, { recursive: true, force: true });
+  });
+
+  it('save() error branch: logs an error when write fails', () => {
+    // Point the store at a path whose parent is a file (not a directory) so
+    // path.dirname returns a file path and mkdirSync throws ENOTDIR.
+    const blocker = path.join(os.tmpdir(), `uls-blocker-${Date.now()}.file`);
+    fs.writeFileSync(blocker, 'blocker', 'utf-8');
+    const badPath = path.join(blocker, 'links.json');
+    UserLinkStore.resetInstance();
+    const badStore = UserLinkStore.getInstance(badPath);
+    expect(() => badStore.link(1, 'lic-bad')).not.toThrow();
+    expect(logger.error).toHaveBeenCalledWith(
+      '[UserLinkStore] Failed to save:',
+      expect.objectContaining({ error: expect.any(Error) }),
+    );
+    fs.unlinkSync(blocker);
   });
 });

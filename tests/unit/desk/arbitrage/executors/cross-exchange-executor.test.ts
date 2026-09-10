@@ -130,4 +130,25 @@ describe('CrossExchangeExecutor', () => {
     expect(metrics1).toEqual(metrics2);
     expect(metrics1).not.toBe(metrics2);
   });
+
+  it('should drop the oldest latency sample once the buffer exceeds 1000', async () => {
+    mockExecute.mockResolvedValue(successResult);
+
+    // Execute 1001 times to push latencySamples past the 1000 cap.
+    for (let i = 0; i < 1001; i++) {
+      await executor.execute(mockOpportunity);
+    }
+
+    const internal = executor as unknown as { latencySamples: number[] };
+    expect(internal.latencySamples.length).toBe(1000);
+  });
+
+  it('should coerce a non-Error throw into "Unknown error"', async () => {
+    mockExecute.mockRejectedValue('a string error');
+
+    const result = await executor.execute(mockOpportunity);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Unknown error');
+  });
 });

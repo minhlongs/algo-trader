@@ -211,6 +211,18 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Timeline: 2026-08-14
 - Status: **COMPLETE** ✅
 
+### S16 Quality Ratchet — Oversized-File Debt Burn-Down (Complete - 2026-08-29)
+- [x] Tranche 1: 5 files split (spread-detector, signal-validator, base-polymarket-strategy, inventory-skew-rebalancer, live-order-manager), baseline 303→298
+- [x] Tranche 2: 5 files split (bench-http2, usage-metering, sla-tracker, gap-detector, trading-loop), baseline 298→293
+- [x] Tranche 3: 5 files split (spread-detector 386→200, signal-validator 386→124, base-polymarket-strategy 388→195, inventory-skew-rebalancer 386→139, live-order-manager 384→200), baseline 293→288
+- [x] Tranche 4: 5 files split (multi-leg-hedge 369→62, referral-routes 384→30, coupon-handlers 381→33, trading-pipeline 365→192, orderbook-stream 374→165), baseline 288→283
+- [x] 20 oversized files total, all ≤200-LOC facades with leaf modules
+- [x] Zero importer edits, zero test edits, zero new `:any`/`console.*`
+- [x] Full suite 7250 tests pass (100%), typecheck 0 errors, build exit 0
+- [x] `--quality` 4/4 PASS (anyTypes 117/117, consoleCalls 44/45, filesOverMaxLines 283, bannedImports 0)
+- Versions: 3.1.28, 3.1.29, 3.1.30, 3.1.31
+- Status: **COMPLETE** ✅
+
 ### GTM Execution — Next Wave V (In Progress)
 - [x] Phase 1: Deploy production → https://api.cashclaw.cc (SHA a200991f, 2026-08-04) ✅
 - [ ] Phase 2: Publish launch content — email blocked (SendGrid), manual ready (blog/reddit/twitter/discord) ⚠️

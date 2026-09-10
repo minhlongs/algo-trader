@@ -206,28 +206,19 @@ export class BybitWebSocketClient extends BaseWebSocketClient {
 
   private extractSymbol(topic: string): string | null {
     const parts = topic.split('.');
-    if (parts.length < 3) return null;
-    const rawSymbol = parts[2];
-    // Convert BTCUSDT to BTC/USDT
+    if (parts.length < 2) return null;
+    const rawSymbol = parts.length >= 3 ? parts[2] : parts[1];
     const match = rawSymbol.match(/^([A-Z]+)(USDT|USDC|USD|BTC|ETH)$/);
-    if (match) {
-      return `${match[1]}/${match[2]}`;
-    }
-    return rawSymbol;
+    return match ? `${match[1]}/${match[2]}` : rawSymbol;
   }
 
   private parseOrderBook(data: Record<string, unknown>): BybitOrderBook {
-    const bidsData = (data.b as string[][][])?.[0] || (data.b as string[][]) || [];
-    const asksData = (data.a as string[][][])?.[0] || (data.a as string[][]) || [];
-    const bids = bidsData.map((l: string[]) => [l[0], l[1]] as [string, string]);
-    const asks = asksData.map((l: string[]) => [l[0], l[1]] as [string, string]);
-    return {
-      seq: Number(data.seq ?? 0),
-      bids,
-      asks,
-      ts: Number(data.ts ?? 0),
-      u: Number(data.u ?? 0),
-    };
+    const norm = (raw: unknown): string[][] => Array.isArray(raw) && raw.length > 0
+      ? (Array.isArray(raw[0]) && Array.isArray((raw[0] as unknown[])[0]) ? raw[0] as string[][] : raw as string[][])
+      : [];
+    const bids = norm(data.b).map((l: string[]) => [l[0], l[1]] as [string, string]);
+    const asks = norm(data.a).map((l: string[]) => [l[0], l[1]] as [string, string]);
+    return { seq: Number(data.seq ?? 0), bids, asks, ts: Number(data.ts ?? 0), u: Number(data.u ?? 0) };
   }
 
   private parseTrade(data: Record<string, unknown>): BybitTrade {

@@ -67,18 +67,18 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
   }
 
   // Group into steps.
-  const stepMap = new Map<number, WalkForwardStep>();
+  const stepMap = new Map<number, Partial<WalkForwardStep> & { step: number }>();
   for (const s of rawSplits) {
-    const existing = stepMap.get(s.step);
+    let existing = stepMap.get(s.step);
     if (!existing) {
-      stepMap.set(s.step, { step: s.step, train: s, val: s, test: s });
-    } else {
-      if (s.kind === 'train') existing.train = s;
-      else if (s.kind === 'val') existing.val = s;
-      else existing.test = s;
+      existing = { step: s.step };
+      stepMap.set(s.step, existing);
     }
+    if (s.kind === 'train') existing.train = s;
+    else if (s.kind === 'val') existing.val = s;
+    else existing.test = s;
   }
-  const steps = Array.from(stepMap.values()).sort((a, b) => a.step - b.step);
+  const steps = Array.from(stepMap.values()) as WalkForwardStep[];
 
   // Aggregate labels + trades across all steps.
   const allTrainLabels: Array<TripleBarrierResult & { entryIdx: number }> = [];
@@ -88,50 +88,22 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
   const allValTrades: BacktestTrade[] = [];
   const allTestTrades: BacktestTrade[] = [];
 
+  const candlePrices = candles.map((c) => ({ high: c.high, low: c.low, close: c.close }));
+  const tradeOpts = { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps };
+
   for (const step of steps) {
-    // Train split.
-    const trainStart = Math.max(step.train.startIdx, config.lookback);
-    const trainEnd = step.train.endIdx - 1 - config.maxHolding;
-    if (trainEnd >= trainStart) {
-      const tLabels = batchLabel(
-        candles.map((c) => ({ high: c.high, low: c.low, close: c.close })),
-        config.tp,
-        config.sl,
-        config.maxHolding,
-        trainStart,
-      );
-      allTrainLabels.push(...tLabels);
-      allTrainTrades.push(...buildTrades(candles, tLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
-    }
-
-    // Val split.
-    const valStart = Math.max(step.val.startIdx, config.lookback);
-    const valEnd = step.val.endIdx - 1 - config.maxHolding;
-    if (valEnd >= valStart) {
-      const vLabels = batchLabel(
-        candles.map((c) => ({ high: c.high, low: c.low, close: c.close })),
-        config.tp,
-        config.sl,
-        config.maxHolding,
-        valStart,
-      );
-      allValLabels.push(...vLabels);
-      allValTrades.push(...buildTrades(candles, vLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
-    }
-
-    // Test split.
-    const testStart = Math.max(step.test.startIdx, config.lookback);
-    const testEnd = step.test.endIdx - 1 - config.maxHolding;
-    if (testEnd >= testStart) {
-      const teLabels = batchLabel(
-        candles.map((c) => ({ high: c.high, low: c.low, close: c.close })),
-        config.tp,
-        config.sl,
-        config.maxHolding,
-        testStart,
-      );
-      allTestLabels.push(...teLabels);
-      allTestTrades.push(...buildTrades(candles, teLabels, { tp: config.tp, sl: config.sl, feeBps: config.cost.feeBps, slippageBps: config.cost.slippageBps }));
+    for (const [split, labelsArr, tradesArr] of [
+      [step.train, allTrainLabels, allTrainTrades],
+      [step.val, allValLabels, allValTrades],
+      [step.test, allTestLabels, allTestTrades],
+    ] as const) {
+      const start = Math.max(split.startIdx, config.lookback);
+      const end = split.endIdx - 1 - config.maxHolding;
+      if (end >= start) {
+        const labels = batchLabel(candlePrices, config.tp, config.sl, config.maxHolding, start);
+        labelsArr.push(...labels);
+        tradesArr.push(...buildTrades(candles, labels, tradeOpts));
+      }
     }
   }
 

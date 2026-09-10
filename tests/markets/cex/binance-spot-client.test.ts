@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BinanceSpotClient } from '../../../src/desk/markets/cex/binance-spot-client';
+import { BinanceSpotClient, createBinanceExchange } from '../../../src/desk/markets/cex/binance-spot-client';
 import type { CcxtExchangeAdapter } from '../../../src/desk/markets/cex/binance-spot-client';
 
 // ── Logger mock ───────────────────────────────────────────────────────────────
@@ -263,5 +263,73 @@ describe('BinanceSpotClient', () => {
 
   it('getName returns binance-spot', () => {
     expect(client.getName()).toBe('binance-spot');
+  });
+
+  // ── getBalances: nullish fallback ────────────────────────────────────────────
+
+  it('falls back to 0 when total balance entry is nullish', async () => {
+    // Simulate an asset whose `total` is undefined — the `total ?? 0` branch
+    // must treat it as zero and skip it (not push a NaN entry).
+    vi.mocked(mockExchange.fetchBalance).mockResolvedValueOnce({
+      total: { BTC: 0.5, DOGE: undefined },
+      free: { BTC: 0.5, DOGE: 100 },
+      used: { BTC: 0, DOGE: 0 },
+    });
+
+    const balances = await client.getBalances();
+
+    // DOGE has total=undefined → `total ?? 0` = 0 → skipped by the zero filter.
+    expect(balances).toHaveLength(1);
+    expect(balances[0].asset).toBe('BTC');
+  });
+
+  // ── createBinanceExchange ────────────────────────────────────────────────────
+
+  it('createBinanceExchange returns an adapter with the expected methods', () => {
+    // Exercises the factory function (previously 0% function coverage) and
+    // confirms the ccxt binance constructor is invoked with the right shape.
+    const adapter = createBinanceExchange();
+    expect(adapter).toBeDefined();
+    expect(typeof adapter.fetchOHLCV).toBe('function');
+    expect(typeof adapter.fetchOrderBook).toBe('function');
+    expect(typeof adapter.fetchBalance).toBe('function');
+    expect(typeof adapter.createOrder).toBe('function');
+  });
+
+  // ── constructor: flags ?? loadFeatureFlags() fallback ────────────────────────
+
+  it('falls back to loadFeatureFlags() when no flags are provided', () => {
+    // Exercises the `flags ?? loadFeatureFlags()` branch (line 97) by omitting
+    // the flags argument entirely. The client should still construct and work.
+    const fallbackClient = new BinanceSpotClient(undefined, mockExchange);
+    expect(fallbackClient.getName()).toBe('binance-spot');
+  });
+
+  it('falls back to createBinanceExchange() when no exchange is provided', () => {
+    // Exercises the `exchange ?? createBinanceExchange()` branch (line 98).
+    // The real ccxt binance ctor is invoked with empty API keys — no network
+    // call is made, so this is safe in a unit test.
+    const fallbackClient = new BinanceSpotClient({ perpEnabled: false });
+    expect(fallbackClient.getName()).toBe('binance-spot');
+    expect(typeof fallbackClient.getCandles).toBe('function');
+  });
+
+  it('falls back to {} when fetchBalance returns no total field', async () => {
+    // Exercises the `raw.total ?? {}` branch (line 141) — the for...of loop
+    // must not throw when total is undefined.
+    vi.mocked(mockExchange.fetchBalance).mockResolvedValueOnce({});
+    const balances = await client.getBalances();
+    expect(balances).toEqual([]);
+  });
+
+  it('falls back to 0 for free/used when those fields are missing', async () => {
+    // Exercises the `raw.free?.[asset] ?? 0` and `raw.used?.[asset] ?? 0`
+    // branches (lines 145-146) when free/used are absent.
+    vi.mocked(mockExchange.fetchBalance).mockResolvedValueOnce({
+      total: { BTC: 0.5 },
+    });
+    const balances = await client.getBalances();
+    expect(balances).toHaveLength(1);
+    expect(balances[0]).toEqual({ asset: 'BTC', free: 0, locked: 0, total: 0.5 });
   });
 });

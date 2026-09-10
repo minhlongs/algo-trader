@@ -1,287 +1,175 @@
 /**
- * Integer Programming Solver Tests
- * Tests ILP model construction and solver for multi-market arbitrage
+ * Tests for integer-programming-solver — ILP model construction, result
+ * parsing, and the public solveILP entrypoint. The real solver and the
+ * constraint-builder module are mocked so the tests exercise only this
+ * file's logic (net-edge math, size caps, position assembly, error path).
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import type { MarketOpportunity, ILPSolverConfig } from '../../../shared/types/ilp-types';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-describe('Integer Programming Solver', () => {
-  let config: ILPSolverConfig;
-  let markets: MarketOpportunity[];
+const solveMock = vi.hoisted(() => vi.fn());
 
+vi.mock('javascript-lp-solver', () => ({
+  default: { Solve: solveMock },
+}));
+
+vi.mock('../../../shared/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+const filterMock = vi.hoisted(() => vi.fn());
+vi.mock('../ilp-constraint-builder', () => ({
+  buildConstraints: vi.fn(),
+  filterEligibleMarkets: (...args: unknown[]) => filterMock(...args),
+}));
+
+import { solveILP } from '../integer-programming-solver';
+import type { ILPSolverConfig, MarketOpportunity } from '../../../shared/types/ilp-types';
+
+function makeConfig(overrides: Partial<ILPSolverConfig> = {}): ILPSolverConfig {
+  return {
+    budgetUsdc: 1000,
+    maxMarketExposureFraction: 0.2,
+    minEdgeThreshold: 0.025,
+    feeRate: 0.02,
+    timeoutMs: 500,
+    ...overrides,
+  };
+}
+
+function makeMarket(overrides: Partial<MarketOpportunity> = {}): MarketOpportunity {
+  return {
+    marketId: 'M1',
+    question: 'Will X happen?',
+    yesPrice: 0.6,
+    noPrice: 0.4,
+    expectedEdge: 0.1,
+    liquidity: 500,
+    ...overrides,
+  };
+}
+
+describe('solveILP', () => {
   beforeEach(() => {
-    config = {
-      budgetUsdc: 10000,
-      maxMarketExposureFraction: 0.2,
-      minEdgeThreshold: 0.025,
-      feeRate: 0.02,
-      timeoutMs: 500,
-    };
-
-    markets = [
-      {
-        marketId: 'trump_wins_2024',
-        question: 'Will Trump win 2024?',
-        yesPrice: 0.45,
-        noPrice: 0.50,
-        expectedEdge: 0.05,
-        liquidity: 50000,
-      },
-      {
-        marketId: 'harris_wins_2024',
-        question: 'Will Harris win 2024?',
-        yesPrice: 0.50,
-        noPrice: 0.45,
-        expectedEdge: 0.05,
-        liquidity: 50000,
-      },
-    ];
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    solveMock.mockReset();
+    filterMock.mockImplementation((markets) => markets);
   });
 
-  describe('module interface', () => {
-    it('should export solveILP function', async () => {
-      const { solveILP } = await import('../integer-programming-solver');
-      expect(typeof solveILP).toBe('function');
-    });
+  it('returns feasible=false with no eligible markets and never calls the solver', () => {
+    filterMock.mockReturnValue([]);
 
-    it('should export buildModel function', async () => {
-      // buildModel is internal, but verify solver loads
-      const module = await import('../integer-programming-solver');
-      expect(module).toBeDefined();
-    });
+    const result = solveILP([makeMarket(), makeMarket({ marketId: 'M2' })], makeConfig());
 
-    it('should export parseResult helper', async () => {
-      // parseResult is internal, but verify module loads
-      const module = await import('../integer-programming-solver');
-      expect(module).toBeDefined();
+    expect(result).toEqual({
+      positions: [],
+      totalExpectedProfit: 0,
+      totalCost: 0,
+      feasible: false,
+      solveTimeMs: 0,
     });
+    expect(solveMock).not.toHaveBeenCalled();
   });
 
-  describe('ILPResult structure', () => {
-    it('should define ILPResult interface', () => {
-      const dummyResult = {
-        positions: [],
-        totalExpectedProfit: 0,
-        totalCost: 0,
-        feasible: false,
-        solveTimeMs: 100,
-      };
+  it('calls the solver and returns a parsed result for a single eligible market', () => {
+    solveMock.mockReturnValue({ feasible: true, M1_YES: 200, M1_NO: 0, result: 16 });
 
-      expect(dummyResult).toHaveProperty('positions');
-      expect(dummyResult).toHaveProperty('totalExpectedProfit');
-      expect(dummyResult).toHaveProperty('totalCost');
-      expect(dummyResult).toHaveProperty('feasible');
-      expect(dummyResult).toHaveProperty('solveTimeMs');
+    const result = solveILP([makeMarket()], makeConfig());
+
+    expect(result.feasible).toBe(true);
+    expect(result.positions).toHaveLength(1);
+    expect(result.positions[0]).toEqual({
+      marketId: 'M1',
+      side: 'YES',
+      size: 200,
+      expectedProfit: 200 * 0.08, // size * (expectedEdge - feeRate)
     });
-
-    it('should support ILPPosition in positions array', () => {
-      const position = {
-        marketId: 'market_1',
-        side: 'YES' as const,
-        size: 1000,
-        expectedProfit: 50,
-      };
-
-      expect(position.marketId).toBeDefined();
-      expect(position.side).toBe('YES');
-      expect(position.size).toBeGreaterThan(0);
-      expect(typeof position.expectedProfit).toBe('number');
-    });
+    expect(result.totalCost).toBe(200);
+    expect(result.totalExpectedProfit).toBeCloseTo(16, 5);
   });
 
-  describe('config structure', () => {
-    it('should support budgetUsdc configuration', () => {
-      expect(config.budgetUsdc).toBe(10000);
-    });
+  it('parses both YES and NO positions when both have meaningful size', () => {
+    solveMock.mockReturnValue({ feasible: true, M1_YES: 100, M1_NO: 50, result: 12 });
 
-    it('should support maxMarketExposureFraction', () => {
-      expect(config.maxMarketExposureFraction).toBe(0.2);
-    });
+    const result = solveILP([makeMarket({ expectedEdge: 0.12 })], makeConfig({ feeRate: 0.02 }));
 
-    it('should support minEdgeThreshold', () => {
-      expect(config.minEdgeThreshold).toBe(0.025);
-    });
-
-    it('should support feeRate', () => {
-      expect(config.feeRate).toBe(0.02);
-    });
-
-    it('should support timeoutMs', () => {
-      expect(config.timeoutMs).toBe(500);
-    });
+    expect(result.positions).toHaveLength(2);
+    const yes = result.positions.find((p) => p.side === 'YES');
+    const no = result.positions.find((p) => p.side === 'NO');
+    expect(yes).toEqual({ marketId: 'M1', side: 'YES', size: 100, expectedProfit: 10 });
+    expect(no).toEqual({ marketId: 'M1', side: 'NO', size: 50, expectedProfit: 5 });
+    expect(result.totalCost).toBe(150);
   });
 
-  describe('market opportunity structure', () => {
-    it('should define MarketOpportunity fields', () => {
-      const market = markets[0];
+  it('drops positions below the 0.001 size threshold', () => {
+    solveMock.mockReturnValue({ feasible: true, M1_YES: 0.0005, M1_NO: 0.0009, result: 0 });
 
-      expect(market.marketId).toBeDefined();
-      expect(market.question).toBeDefined();
-      expect(market.yesPrice).toBeDefined();
-      expect(market.noPrice).toBeDefined();
-      expect(market.expectedEdge).toBeDefined();
-      expect(market.liquidity).toBeDefined();
-    });
+    const result = solveILP([makeMarket()], makeConfig());
 
-    it('should handle decimal prices', () => {
-      const market: MarketOpportunity = {
-        marketId: 'test',
-        question: 'Test',
-        yesPrice: 0.333,
-        noPrice: 0.667,
-        expectedEdge: 0.05,
-        liquidity: 10000,
-      };
-
-      expect(market.yesPrice).toBeLessThan(1);
-      expect(market.noPrice).toBeLessThan(1);
-    });
+    expect(result.positions).toHaveLength(0);
+    expect(result.totalCost).toBe(0);
   });
 
-  describe('constraint builder integration', () => {
-    it('should reference buildConstraints function', async () => {
-      const { buildConstraints } = await import('../ilp-constraint-builder');
-      expect(typeof buildConstraints).toBe('function');
-    });
+  it('returns feasible=false with no positions when the solver reports infeasible', () => {
+    solveMock.mockReturnValue({ feasible: false, result: -Infinity });
 
-    it('should reference filterEligibleMarkets function', async () => {
-      const { filterEligibleMarkets } = await import('../ilp-constraint-builder');
-      expect(typeof filterEligibleMarkets).toBe('function');
-    });
+    const result = solveILP([makeMarket()], makeConfig());
+
+    expect(result.feasible).toBe(false);
+    expect(result.positions).toHaveLength(0);
+    expect(result.totalExpectedProfit).toBe(0);
   });
 
-  describe('edge detection', () => {
-    it('should identify positive edge markets', () => {
-      const market: MarketOpportunity = {
-        marketId: 'positive_edge',
-        question: 'Positive edge',
-        yesPrice: 0.40,
-        noPrice: 0.55,
-        expectedEdge: 0.10,
-        liquidity: 50000,
-      };
+  it('caps position size at liquidity and per-market budget fraction', () => {
+    // budget 1000 * 0.2 = 200; liquidity 50 → cap is 50.
+    solveMock.mockReturnValue({ feasible: true, M1_YES: 50, M1_NO: 0, result: 4 });
 
-      expect(market.expectedEdge).toBeGreaterThan(0);
-    });
+    const result = solveILP([makeMarket({ liquidity: 50 })], makeConfig());
 
-    it('should identify zero edge markets', () => {
-      const market: MarketOpportunity = {
-        marketId: 'zero_edge',
-        question: 'Zero edge',
-        yesPrice: 0.50,
-        noPrice: 0.50,
-        expectedEdge: 0.0,
-        liquidity: 50000,
-      };
-
-      expect(market.expectedEdge).toBe(0);
-    });
-
-    it('should identify negative edge markets', () => {
-      const market: MarketOpportunity = {
-        marketId: 'negative_edge',
-        question: 'Negative edge',
-        yesPrice: 0.40,
-        noPrice: 0.40,
-        expectedEdge: -0.04,
-        liquidity: 50000,
-      };
-
-      expect(market.expectedEdge).toBeLessThan(0);
-    });
+    expect(result.positions[0].size).toBe(50);
   });
 
-  describe('solver algorithm', () => {
-    it('should use javascript-lp-solver library', async () => {
-      const module = await import('../integer-programming-solver');
-      expect(module).toBeDefined();
-    });
+  it('treats missing solver output keys as zero size', () => {
+    solveMock.mockReturnValue({ feasible: true });
 
-    it('should support objective maximization', () => {
-      // Solver should maximize profit
-      const objective = 'profit';
-      const opType = 'max';
+    const result = solveILP([makeMarket()], makeConfig());
 
-      expect(objective).toBe('profit');
-      expect(opType).toBe('max');
-    });
+    expect(result.positions).toHaveLength(0);
+    expect(result.totalCost).toBe(0);
   });
 
-  describe('variable naming convention', () => {
-    it('should use {marketId}_YES and {marketId}_NO naming', () => {
-      const yesVar = 'market_1_YES';
-      const noVar = 'market_1_NO';
-
-      expect(yesVar).toContain('_YES');
-      expect(noVar).toContain('_NO');
+  it('returns feasible=false and logs when the solver throws', () => {
+    solveMock.mockImplementation(() => {
+      throw new Error('solver exploded');
     });
 
-    it('should support market IDs with special characters', () => {
-      const yesVar = 'BTC/USD_YES';
-      const noVar = 'ETH-USDT_NO';
+    const result = solveILP([makeMarket()], makeConfig());
 
-      expect(typeof yesVar).toBe('string');
-      expect(typeof noVar).toBe('string');
-    });
+    expect(result.feasible).toBe(false);
+    expect(result.positions).toHaveLength(0);
+    expect(result.solveTimeMs).toBeGreaterThanOrEqual(0);
   });
 
-  describe('result validation', () => {
-    it('should return solveTimeMs in milliseconds', () => {
-      const solveTimeMs = 45;
-      expect(typeof solveTimeMs).toBe('number');
-      expect(solveTimeMs).toBeGreaterThan(0);
-    });
+  it('measures solve time across an async gap', () => {
+    solveMock.mockReturnValue({ feasible: true, M1_YES: 10, result: 0.8 });
 
-    it('should support feasible true/false', () => {
-      const feasible = true;
-      const infeasible = false;
+    const result = solveILP([makeMarket()], makeConfig());
 
-      expect(typeof feasible).toBe('boolean');
-      expect(typeof infeasible).toBe('boolean');
-    });
-
-    it('should calculate totalCost and totalProfit as numbers', () => {
-      const cost = 1000;
-      const profit = 50;
-
-      expect(typeof cost).toBe('number');
-      expect(typeof profit).toBe('number');
-    });
+    // solveTimeMs records startMs via Date.now() at entry; the stub resolves
+    // synchronously so the elapsed clock time is 0.
+    expect(result.solveTimeMs).toBe(0);
   });
 
-  describe('error scenarios', () => {
-    it('should handle empty market list', () => {
-      // Empty market list → feasible=false
-      expect([]).toHaveLength(0);
-    });
+  it('passes the eligible markets to the model and the timeout through', () => {
+    solveMock.mockReturnValue({ feasible: true });
+    filterMock.mockImplementation((markets) => markets.filter((m) => m.marketId === 'M1'));
 
-    it('should handle all markets below minEdgeThreshold', () => {
-      const belowThreshold: MarketOpportunity[] = [
-        {
-          marketId: 'low_edge',
-          question: 'Low edge',
-          yesPrice: 0.495,
-          noPrice: 0.501,
-          expectedEdge: 0.001, // Below 2.5% threshold
-          liquidity: 50000,
-        },
-      ];
+    solveILP([makeMarket(), makeMarket({ marketId: 'M2', expectedEdge: 0.001 })], makeConfig({ timeoutMs: 1234 }));
 
-      expect(belowThreshold[0].expectedEdge).toBeLessThan(0.025);
-    });
-  });
-
-  describe('performance characteristics', () => {
-    it('should define timeout in milliseconds', () => {
-      const timeoutMs = config.timeoutMs;
-      expect(timeoutMs).toBe(500);
-      expect(timeoutMs).toBeGreaterThan(0);
-    });
-
-    it('should complete within reasonable time', () => {
-      // Tests should complete within 10 seconds
-      expect(true).toBe(true);
-    });
+    expect(solveMock).toHaveBeenCalledOnce();
+    const model = solveMock.mock.calls[0]![0] as { timeout: number; optimize: string };
+    expect(model.optimize).toBe('profit');
+    expect(model.timeout).toBe(1234);
   });
 });

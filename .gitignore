@@ -23,6 +23,7 @@ Users/
 .clawhub
 .openclaw-config.json
 .openclaw.pid
+.codex/
 state/
 tasks/
 tests/e2e/
@@ -71,3 +72,4 @@ README.md.bak
 backups/
 dump.rdb
 patch-vps-origin.py
+.nyc_output/

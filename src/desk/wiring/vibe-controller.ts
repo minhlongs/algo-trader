@@ -106,7 +106,6 @@ async function persistStateWithCAS(next: VibeState, cmd: VibeCommand): Promise<V
         await redis.unwatch();
         const rebased = stored ?? { ...BALANCED_DEFAULTS };
         const reapplied = applyCommandToState(rebased, cmd);
-        if (reapplied === rebased) { currentState = rebased; return rebased; }
         base = storedVersion;
         next = { ...reapplied, version: storedVersion + 1 };
         continue;
@@ -123,7 +122,6 @@ async function persistStateWithCAS(next: VibeState, cmd: VibeCommand): Promise<V
         const reloaded: VibeState = reloadParsed ? { ...reloadParsed, version: reloadParsed.version ?? 0 } : { ...BALANCED_DEFAULTS };
         base = reloaded.version;
         const reapplied = applyCommandToState(reloaded, cmd);
-        if (reapplied === reloaded) { currentState = reloaded; return reloaded; }
         next = { ...reapplied, version: base + 1 };
         continue;
       }

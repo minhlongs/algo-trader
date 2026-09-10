@@ -475,7 +475,7 @@
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 117/117, consoleCalls 44/45, filesOverMaxLines 283 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (288 -> 283), no entries added; --all 11/11 PASS (totalTests 7250, passRate 100%, coverage all above baseline)",
         "artifact": "baseline diff = -5 entries only (multi-leg-hedge 369, referral-routes 384, coupon-handlers 381, trading-pipeline 365, orderbook-stream 374)"
       },
-      "prUrl": null
+      "prUrl": "https://github.com/minhlongs/algo-trader/pull/53"
     }
   ],
   "deferred": [

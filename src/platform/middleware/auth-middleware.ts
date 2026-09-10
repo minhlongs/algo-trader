@@ -49,7 +49,7 @@ function b64urlDecode(input: string): string {
 }
 
 /** Verify an HS256 JWT against a secret; returns payload or null. */
-function verifyJwt(token: string, secret: string): AuthClaims | null {
+export function verifyJwt(token: string, secret: string): AuthClaims | null {
   try {
     const [header, body, signature] = token.split('.');
     if (!header || !body || !signature) return null;

@@ -130,6 +130,28 @@ describe('fail-safe', () => {
     const records = await readLedgerRecords(join(tmp, 'missing.jsonl'));
     expect(records).toEqual([]);
   });
+
+  it('formats non-Error rejections with String(err) fallback', async () => {
+    const throwingGates: Record<string, boolean> = {
+      get statistical_significance(): boolean {
+        throw 'non-error string failure';
+      },
+    };
+    const result = await appendLedgerRecord(
+      {
+        runId: 'run-throw',
+        configHash: 'hash-throw',
+        resultClass: 'IS',
+        strategyRef: 'strat',
+        gates: throwingGates,
+      },
+      ledger,
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe('non-error string failure');
+    }
+  });
 });
 
 // ── resultClass ───────────────────────────────────────────────────────────────

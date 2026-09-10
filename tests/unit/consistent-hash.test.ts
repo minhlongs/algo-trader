@@ -121,6 +121,60 @@ describe('Consistent Hashing', () => {
     });
   });
 
+  describe('getShardForStrategy lazy sortedHashes', () => {
+    it('computes and caches sortedHashes when not precomputed', () => {
+      // Exercises the `if (!sortedHashes)` TRUE branch (line 720-722):
+      // when a ring is built without sortedHashes, the function must
+      // compute and cache them on first lookup.
+      const ring = buildRing(12, 100);
+      delete (ring as { sortedHashes?: number[] }).sortedHashes;
+
+      // Should not throw — lazy computation kicks in
+      const shardId = getShardForStrategy(ring, 'lazy-test-strategy');
+      expect(shardId).toBeGreaterThanOrEqual(0);
+      expect(shardId).toBeLessThan(12);
+
+      // After the call, sortedHashes should be cached
+      expect(ring.sortedHashes).toBeDefined();
+      expect(ring.sortedHashes!.length).toBe(1200);
+    });
+
+    it('throws when selected hash maps to undefined shard', () => {
+      // Exercises the `if (shardId === undefined)` TRUE branch (line 744-745):
+      // a corrupted ring where a hash in sortedHashes no longer exists in
+      // the ring map must throw a descriptive error.
+      const ring = buildRing(12, 100);
+      // Remove one entry from the ring map but keep it in sortedHashes
+      const firstHash = ring.sortedHashes![0];
+      ring.ring.delete(firstHash);
+
+      // A strategy that hashes to the removed entry will trigger the branch.
+      // We need to find such a strategy — brute force search.
+      let foundTrigger = false;
+      for (let i = 0; i < 100000; i++) {
+        const sid = `corrupt-test-${i}`;
+        const hash = hashString(sid);
+        // Check if this strategy would resolve to the deleted hash
+        const hashes = ring.sortedHashes!;
+        let left = 0, right = hashes.length;
+        while (left < right) {
+          const mid = Math.floor((left + right) / 2);
+          if (hashes[mid] < hash) left = mid + 1;
+          else right = mid;
+        }
+        const idx = left < hashes.length ? left : 0;
+        if (hashes[idx] === firstHash) {
+          expect(() => getShardForStrategy(ring, sid)).toThrow(
+            `Failed to find shard for strategy ${sid}`,
+          );
+          foundTrigger = true;
+          break;
+        }
+      }
+      expect(foundTrigger).toBe(true);
+    });
+  });
+
   describe('getShardIds', () => {
     it('should return unique sorted shard IDs', () => {
       const ring = buildRing(12, 100);

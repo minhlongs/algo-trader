@@ -35,7 +35,7 @@ interface Migration {
   down: (client: import('pg').PoolClient) => Promise<void>;
 }
 
-function getDialect(client: unknown): 'postgres' | 'sqlite' {
+export function getDialect(client: unknown): 'postgres' | 'sqlite' {
   if (client && typeof client === 'object' && 'constructor' in client) {
     const ctor = (client as { constructor: () => unknown }).constructor;
     if (ctor && typeof ctor.name === 'string' && ctor.name.includes('Client')) {
@@ -48,7 +48,7 @@ function getDialect(client: unknown): 'postgres' | 'sqlite' {
   return 'sqlite';
 }
 
-function parseAndRewriteSql(rawSql: string, dialect: 'postgres' | 'sqlite'): string {
+export function parseAndRewriteSql(rawSql: string, dialect: 'postgres' | 'sqlite'): string {
   let sql = rawSql;
   if (dialect === 'postgres') {
     // Replace SQLite strftime with Postgres equivalent
@@ -76,7 +76,7 @@ function parseAndRewriteSql(rawSql: string, dialect: 'postgres' | 'sqlite'): str
   return sql;
 }
 
-function createSqlMigration(filename: string, id: string, description: string): Migration {
+export function createSqlMigration(filename: string, id: string, description: string): Migration {
   return {
     id,
     description,
@@ -142,7 +142,7 @@ function createSqlMigration(filename: string, id: string, description: string): 
 }
 
 // Ordered list of all migrations
-const MIGRATIONS: Migration[] = [
+export const MIGRATIONS: Migration[] = [
   migration001,
   createSqlMigration('004_better_auth_tables.sql', '004_better_auth_tables', 'Better Auth Schema Migration'),
   createSqlMigration('005_compliance_kyc_tables.sql', '005_compliance_kyc_tables', 'Compliance and KYC tables'),
@@ -184,7 +184,7 @@ const MIGRATIONS: Migration[] = [
 /**
  * Ensure the _migrations tracking table exists
  */
-async function ensureMigrationsTable(): Promise<void> {
+export async function ensureMigrationsTable(): Promise<void> {
   const pool = getDbClient();
   try {
     await pool.query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
@@ -203,7 +203,7 @@ async function ensureMigrationsTable(): Promise<void> {
 /**
  * Get list of already-applied migration IDs
  */
-async function getAppliedMigrations(): Promise<Set<string>> {
+export async function getAppliedMigrations(): Promise<Set<string>> {
   const pool = getDbClient();
   const result = await pool.query<{ id: string }>('SELECT id FROM _migrations ORDER BY applied_at');
   return new Set(result.rows.map(r => r.id));

@@ -32,8 +32,8 @@ const createReviewSchema = z.object({
 });
 
 const reviewFilterSchema = z.object({
-  page: z.number().int().min(1).optional(),
-  limit: z.number().int().min(1).max(100).optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
 // ==================== Helper Functions ====================
@@ -50,7 +50,7 @@ function getUserId(req: Request): string {
   return String(userId);
 }
 
-function getQueryString(value: unknown, defaultValue: string = ''): string {
+export function getQueryString(value: unknown, defaultValue: string = ''): string {
   if (value === undefined || value === null) return defaultValue;
   if (Array.isArray(value)) {
     const first = value[0];
@@ -58,23 +58,6 @@ function getQueryString(value: unknown, defaultValue: string = ''): string {
   }
   if (typeof value === 'string') return value;
   return String(value);
-}
-
-function getQueryNumber(value: unknown, defaultValue: number = 0): number {
-  if (value === undefined || value === null) return defaultValue;
-  if (Array.isArray(value)) {
-    const first = value[0];
-    if (typeof first === 'string') return parseInt(first, 10) || defaultValue;
-    if (typeof first === 'number') return first;
-    return defaultValue;
-  }
-  if (typeof value === 'string') return parseInt(value, 10) || defaultValue;
-  if (typeof value === 'number') return value;
-  return defaultValue;
-}
-
-function isAdmin(req: Request): boolean {
-  return (req as any).user?.role === 'admin' || (req as any).apiKey?.isAdmin === true;
 }
 
 // ==================== Routes ====================
