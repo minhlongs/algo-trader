@@ -655,6 +655,47 @@
         "artifact": "baseline diff = -5 entries only; all 15 modules <=200 LOC"
       },
       "prUrl": "https://github.com/minhlongs/algo-trader/pull/60"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche5",
+      "status": "done",
+      "date": "2026-09-10",
+      "targetFiles": [
+        "src/platform/notifications/email-service.ts",
+        "src/platform/notifications/email-service-types.ts",
+        "src/platform/notifications/email-service-formatters.ts",
+        "src/platform/notifications/email-service-rate-limiter.ts",
+        "src/platform/mcp/research-mcp-server.ts",
+        "src/platform/mcp/research-mcp-types.ts",
+        "src/platform/mcp/research-mcp-handlers.ts",
+        "src/platform/api/routes/signal-subscription-routes.ts",
+        "src/platform/api/routes/signal-subscription-types.ts",
+        "src/platform/api/routes/signal-subscription-handlers.ts",
+        "src/platform/api/routes/signal-subscription-checkout-handlers.ts",
+        "src/desk/strategies/polymarket/price-impact-estimator.ts",
+        "src/desk/strategies/polymarket/price-impact-estimator-state.ts",
+        "src/desk/strategies/polymarket/price-impact-estimator-exits.ts",
+        "src/desk/strategies/polymarket/price-impact-estimator-entries.ts",
+        "src/desk/strategies/polymarket/regime-adaptive-momentum-v2.ts",
+        "src/desk/strategies/polymarket/regime-adaptive-momentum-types.ts",
+        "src/desk/strategies/polymarket/regime-adaptive-momentum-math.ts",
+        "src/desk/strategies/polymarket/regime-adaptive-momentum-evaluators.ts",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md",
+        "loop-results.tsv",
+        "MIGRATION_LOG.json"
+      ],
+      "note": "Fifth tranche of S18 oversized-file debt burn-down: split 5 non-test violators (1,581 LOC total across email-service.ts, research-mcp-server.ts, signal-subscription-routes.ts, price-impact-estimator.ts, regime-adaptive-momentum-v2.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 242 to 237 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.36 -> 3.1.37.",
+      "evidence": {
+        "tests": "All 12,483 tests pass (100% pass rate across test suite); full test suite and typecheck clean",
+        "prUrl": null,
+        "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 237 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (242 -> 237), no entries added",
+        "artifact": "baseline diff = -5 entries only; all 19 modules <=200 LOC"
+      },
+      "prUrl": null
     }
   ],
   "deferred": [

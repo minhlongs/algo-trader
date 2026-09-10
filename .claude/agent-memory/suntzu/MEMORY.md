@@ -1,3 +1,4 @@
+- [S18 Oversized-Debt Tranche 5 Shipped](project_s18_oversized_debt_tranche5_shipped.md) — 5 oversized files split, ratchet 242->237, maxAnyTypes 114, 12,483 tests 100% pass, version 3.1.37
 # Memory Index — Tôn Tử (suntzu)
 
 ## Project
