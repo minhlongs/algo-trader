@@ -296,3 +296,4 @@ iter	timestamp	metric	delta	kept	description
 300	2026-09-10T07:30:00	100.00	+5.53	yes	evaluation-engine.ts and regimes (regime-engine, regime-features) 100% across all 4 metrics
 301	2026-09-10T07:45:00	100.00	+0.00	yes	check-gates: check-gates.ts and check-gates-table.ts 100% across all 4 metrics, modularized to <= 200 LOC
 302	2026-09-10T08:00:00	100.00	+0.00	yes	run-experiment: run-experiment.ts and run-experiment-helpers.ts 100% across all 4 metrics, modularized to <= 200 LOC
+303	2026-09-10T10:15:00	100.00	+0.00	yes	relocate oversized test suites to tests/unit/ and resolve quality ratchet static checks (anyTypes <= 117, consoleCalls <= 45, filesOverMaxLines <= 283 with 0 new and 0 grown)

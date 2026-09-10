@@ -207,36 +207,18 @@ export class BybitWebSocketClient extends BaseWebSocketClient {
   private extractSymbol(topic: string): string | null {
     const parts = topic.split('.');
     if (parts.length < 2) return null;
-    // Supported topics: orderbook.<L>.<SYMBOL>, publicTrade.<SYMBOL>, tickers.<SYMBOL>
     const rawSymbol = parts.length >= 3 ? parts[2] : parts[1];
-    // Convert BTCUSDT to BTC/USDT
     const match = rawSymbol.match(/^([A-Z]+)(USDT|USDC|USD|BTC|ETH)$/);
-    if (match) {
-      return `${match[1]}/${match[2]}`;
-    }
-    return rawSymbol;
+    return match ? `${match[1]}/${match[2]}` : rawSymbol;
   }
 
   private parseOrderBook(data: Record<string, unknown>): BybitOrderBook {
-    // Bybit v5 orderbook snapshot: b/a are flat [['price','size'],...] arrays.
-    // Some feeds wrap them in an extra array — normalize to flat.
-    const normalize = (raw: unknown): string[][] => {
-      if (!Array.isArray(raw)) return [];
-      if (raw.length === 0) return [];
-      if (Array.isArray(raw[0]) && Array.isArray((raw[0] as unknown[])[0])) {
-        return raw[0] as string[][];
-      }
-      return raw as string[][];
-    };
-    const bids = normalize(data.b).map((l: string[]) => [l[0], l[1]] as [string, string]);
-    const asks = normalize(data.a).map((l: string[]) => [l[0], l[1]] as [string, string]);
-    return {
-      seq: Number(data.seq ?? 0),
-      bids,
-      asks,
-      ts: Number(data.ts ?? 0),
-      u: Number(data.u ?? 0),
-    };
+    const norm = (raw: unknown): string[][] => Array.isArray(raw) && raw.length > 0
+      ? (Array.isArray(raw[0]) && Array.isArray((raw[0] as unknown[])[0]) ? raw[0] as string[][] : raw as string[][])
+      : [];
+    const bids = norm(data.b).map((l: string[]) => [l[0], l[1]] as [string, string]);
+    const asks = norm(data.a).map((l: string[]) => [l[0], l[1]] as [string, string]);
+    return { seq: Number(data.seq ?? 0), bids, asks, ts: Number(data.ts ?? 0), u: Number(data.u ?? 0) };
   }
 
   private parseTrade(data: Record<string, unknown>): BybitTrade {

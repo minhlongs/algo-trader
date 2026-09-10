@@ -141,23 +141,16 @@ export function evaluateWalkForward(input: EvaluateWalkForwardInput): WalkForwar
     throw new Error('No splits generated — check config ratios vs data length');
   }
 
-  // Group into steps.
-  const stepMap = new Map<number, { train?: typeof rawSplits[0]; val?: typeof rawSplits[0]; test?: typeof rawSplits[0] }>();
+  type SplitItem = typeof rawSplits[0];
+  const stepMap = new Map<number, { train?: SplitItem; val?: SplitItem; test?: SplitItem }>();
   for (const s of rawSplits) {
-    let existing = stepMap.get(s.step);
-    if (!existing) {
-      existing = {};
-      stepMap.set(s.step, existing);
-    }
+    const existing = stepMap.get(s.step) ?? {};
+    if (!stepMap.has(s.step)) stepMap.set(s.step, existing);
     if (s.kind === 'train') existing.train = s;
     else if (s.kind === 'val') existing.val = s;
     else existing.test = s;
   }
-  const steps = Array.from(stepMap.values()) as Array<{
-    train: typeof rawSplits[0];
-    val: typeof rawSplits[0];
-    test: typeof rawSplits[0];
-  }>;
+  const steps = Array.from(stepMap.values()) as Array<{ train: SplitItem; val: SplitItem; test: SplitItem }>;
   const regimeSeries = computeRegimeSeries(candles, {
     market: config.symbol,
     timeframe: config.timeframe,

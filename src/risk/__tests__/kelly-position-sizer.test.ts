@@ -23,29 +23,26 @@ describe('calculateKelly', () => {
   });
 
   it('calculates correct kelly fraction for standard inputs', () => {
-    // winRate=0.6, avgWin=100, avgLoss=50 => b=2, p=0.6, q=0.4 => (2*0.6-0.4)/2 = 0.8/2 = 0.4
     const input: KellyInput = { winRate: 0.6, avgWin: 100, avgLoss: 50, bankroll: 1000, maxFraction: 0.25 };
     const result = calculateKelly(input);
     expect(result.kellyFraction).toBeCloseTo(0.4);
-    expect(result.cappedFraction).toBe(0.25); // capped at maxFraction
-    expect(result.recommendedSize).toBe(250); // 1000 * 0.25
+    expect(result.cappedFraction).toBe(0.25);
+    expect(result.recommendedSize).toBe(250);
   });
 
   it('does not cap when kellyFraction is below maxFraction', () => {
-    // winRate=0.55, avgWin=100, avgLoss=100 => b=1, p=0.55, q=0.45 => (1*0.55-0.45)/1 = 0.1
     const input: KellyInput = { winRate: 0.55, avgWin: 100, avgLoss: 100, bankroll: 1000, maxFraction: 0.25 };
     const result = calculateKelly(input);
     expect(result.kellyFraction).toBeCloseTo(0.1);
     expect(result.cappedFraction).toBeCloseTo(0.1);
-    expect(result.recommendedSize).toBeCloseTo(100); // 1000 * 0.1
+    expect(result.recommendedSize).toBeCloseTo(100);
   });
 
   it('returns zero cappedFraction when kellyFraction is negative (no edge)', () => {
-    // winRate=0.4, avgWin=100, avgLoss=100 => b=1, p=0.4, q=0.6 => (1*0.4-0.6)/1 = -0.2
     const input: KellyInput = { winRate: 0.4, avgWin: 100, avgLoss: 100, bankroll: 1000, maxFraction: 0.25 };
     const result = calculateKelly(input);
     expect(result.kellyFraction).toBeCloseTo(-0.2);
-    expect(result.cappedFraction).toBe(0); // Math.max(0, -0.2) = 0
+    expect(result.cappedFraction).toBe(0);
     expect(result.recommendedSize).toBe(0);
   });
 
@@ -170,38 +167,26 @@ describe('KellyPositionSizer', () => {
   it('handles small portfolio values correctly', () => {
     const input: CalculatePositionSizeInput = { winProbability: 0.55, winLossRatio: 2, portfolioValue: 50, correlation: 0 };
     const result = sizer.calculatePositionSize(input);
-    // kellyFraction = (2*0.55-0.45)/2 = 0.325, capped at 0.25
-    // recommendedSize = 50 * 0.25 = 12.5
-    // cap = 50 * 0.05 = 2.5
-    // positionSizeUsd = max(10, 2.5) = 10 (minPositionUsd floor)
     expect(result.positionSizeUsd).toBe(10);
   });
 
   it('computes fractionUsed correctly', () => {
     const input: CalculatePositionSizeInput = { winProbability: 0.6, winLossRatio: 2, portfolioValue: 10000, correlation: 0 };
     const result = sizer.calculatePositionSize(input);
-    expect(result.fractionUsed).toBe(0.25); // cappedFraction
+    expect(result.fractionUsed).toBe(0.25);
   });
 
   it('computes kellyAdjusted correctly', () => {
     const input: CalculatePositionSizeInput = { winProbability: 0.6, winLossRatio: 2, portfolioValue: 10000, correlation: 0 };
     const result = sizer.calculatePositionSize(input);
-    // kellyFraction (raw) = 0.4, kellyFraction (config) = 0.25
-    // kellyAdjusted = 0.4 * 0.25 = 0.1
     expect(result.kellyAdjusted).toBeCloseTo(0.1);
   });
 
   it('handles high correlation reducing size below cap', () => {
     const input: CalculatePositionSizeInput = { winProbability: 0.7, winLossRatio: 3, portfolioValue: 10000, correlation: 0.8 };
     const result = sizer.calculatePositionSize(input);
-    // kellyFraction = (3*0.7-0.3)/3 = 1.8/3 = 0.6, capped at 0.25
-    // recommendedSize = 2500
-    // correlationFactor = 0.2
-    // adjustedSize = 500
-    // cap = 500
-    // positionSizeUsd = max(10, 500) = 500
     expect(result.correlationAdjustedSize).toBeCloseTo(500);
     expect(result.positionSizeUsd).toBeCloseTo(500);
-    expect(result.cappedByMax).toBe(false); // 499.999... < 500 cap (floating point)
+    expect(result.cappedByMax).toBe(false);
   });
 });
