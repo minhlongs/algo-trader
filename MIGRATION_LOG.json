@@ -691,7 +691,7 @@
       "note": "Fifth tranche of S18 oversized-file debt burn-down: split 5 non-test violators (1,581 LOC total across email-service.ts, research-mcp-server.ts, signal-subscription-routes.ts, price-impact-estimator.ts, regime-adaptive-momentum-v2.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 242 to 237 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.36 -> 3.1.37.",
       "evidence": {
         "tests": "All 12,483 tests pass (100% pass rate across test suite); full test suite and typecheck clean",
-        "prUrl": null,
+        "prUrl": "https://github.com/minhlongs/algo-trader/pull/62",
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 237 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (242 -> 237), no entries added",
         "artifact": "baseline diff = -5 entries only; all 19 modules <=200 LOC"
       },
