@@ -11,6 +11,7 @@
  */
 
 import { logger } from '../utils/logger';
+import { AsyncMutex, LRUCache } from './lru-cache';
 
 // ─── Configuration ─────────────────────────────────────────────────────────────
 
@@ -47,71 +48,15 @@ export interface MemoryRateLimitOptions {
   windowMs?: number;
 }
 
-// ─── LRU Node ──────────────────────────────────────────────────────────────────
-
-interface LRUNode {
-  key: string;
-  entry: MemoryRateLimitEntry;
-  prev: LRUNode | null;
-  next: LRUNode | null;
-}
-
-// ─── Async Mutex ───────────────────────────────────────────────────────────────
-
-/**
- * Simple async mutex for serializing critical sections.
- * Ensures only one operation runs at a time with fair FIFO ordering.
- */
-class AsyncMutex {
-  private queue: Array<{
-    fn: () => Promise<unknown>;
-    resolve: (value: unknown) => void;
-    reject: (error: unknown) => void;
-  }> = [];
-  private locked = false;
-
-  async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      this.queue.push({
-        fn: fn as () => Promise<unknown>,
-        resolve: resolve as (value: unknown) => void,
-        reject,
-      });
-      this.drain();
-    });
-  }
-
-  private drain(): void {
-    if (this.locked || this.queue.length === 0) return;
-    this.locked = true;
-
-    const item = this.queue.shift()!;
-
-    void item.fn().then(
-      (result) => {
-        this.locked = false;
-        item.resolve(result);
-        this.drain();
-      },
-      (err) => {
-        this.locked = false;
-        item.reject(err);
-        this.drain();
-      },
-    );
-  }
-}
-
 // ─── Memory Rate Limiter (LRU) ────────────────────────────────────────────────
 
 export class MemoryRateLimiter {
-  private readonly cache = new Map<string, LRUNode>();
-  private head: LRUNode | null = null; // MRU end
-  private tail: LRUNode | null = null; // LRU end — eviction target
+  private readonly cache: LRUCache<MemoryRateLimitEntry>;
   private readonly mutex = new AsyncMutex();
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly maxEntries: number = MEMORY_FALLBACK_CONFIG.MAX_ENTRIES) {
+    this.cache = new LRUCache<MemoryRateLimitEntry>(maxEntries);
     this.startCleanup();
   }
 
@@ -131,12 +76,9 @@ export class MemoryRateLimiter {
       let node = this.cache.get(key);
 
       if (!node) {
-        node = this.newNode(key, now + windowMs, limit);
-        this.cache.set(key, node);
-        this.moveToHead(node);
-        this.evictIfFull();
+        node = this.cache.set(key, { timestamps: [], expiresAt: now + windowMs, limit });
       } else {
-        this.moveToHead(node);
+        this.cache.moveToHead(node);
       }
 
       const entry = node.entry;
@@ -179,13 +121,8 @@ export class MemoryRateLimiter {
   /** Reset rate limit for a user. */
   async reset(userId: string): Promise<void> {
     const key = `ratelimit:${userId}`;
-
     return this.mutex.runExclusive(async () => {
-      const node = this.cache.get(key);
-      if (node) {
-        this.detachNode(node);
-        this.cache.delete(key);
-      }
+      this.cache.delete(key);
     });
   }
 
@@ -193,8 +130,6 @@ export class MemoryRateLimiter {
   async clearAll(): Promise<void> {
     return this.mutex.runExclusive(async () => {
       this.cache.clear();
-      this.head = null;
-      this.tail = null;
     });
   }
 
@@ -214,55 +149,6 @@ export class MemoryRateLimiter {
       this.cleanupTimer = null;
     }
     this.cache.clear();
-    this.head = null;
-    this.tail = null;
-  }
-
-  // ─── Doubly-Linked List ──────────────────────────────────────────────────────
-
-  private newNode(key: string, expiresAt: number, limit: number): LRUNode {
-    return {
-      key,
-      entry: { timestamps: [], expiresAt, limit },
-      prev: null,
-      next: null,
-    };
-  }
-
-  /** Move node to head (MRU position). */
-  private moveToHead(node: LRUNode): void {
-    if (this.head === node) return;
-
-    // Detach from current position
-    if (node.prev) node.prev.next = node.next;
-    else if (this.tail === node) this.tail = node.next;
-
-    if (node.next) node.next.prev = node.prev;
-
-    // Attach at head
-    node.prev = null;
-    node.next = this.head;
-    if (this.head) this.head.prev = node;
-    this.head = node;
-    if (!this.tail) this.tail = node;
-  }
-
-  /** Detach node from linked list. */
-  private detachNode(node: LRUNode): void {
-    if (node.prev) node.prev.next = node.next;
-    else if (this.head === node) this.head = node.next;
-
-    if (node.next) node.next.prev = node.prev;
-    else if (this.tail === node) this.tail = node.prev;
-  }
-
-  /** Evict LRU entries when cache exceeds maxEntries. */
-  private evictIfFull(): void {
-    while (this.cache.size > this.maxEntries && this.tail) {
-      const victim = this.tail;
-      this.detachNode(victim);
-      this.cache.delete(victim.key);
-    }
   }
 
   private calcRetryAfter(timestamps: number[], windowMs: number): number {
@@ -284,16 +170,12 @@ export class MemoryRateLimiter {
 
     this.mutex.runExclusive(async () => {
       const expired: string[] = [];
-      for (const [key, node] of this.cache) {
+      for (const [key, node] of this.cache.entries()) {
         if (node.entry.expiresAt < now) expired.push(key);
       }
 
       for (const key of expired) {
-        const node = this.cache.get(key);
-        if (node) {
-          this.detachNode(node);
-          this.cache.delete(key);
-        }
+        this.cache.delete(key);
       }
 
       if (expired.length > 0) {

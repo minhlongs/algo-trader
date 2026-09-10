@@ -695,6 +695,45 @@
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 237 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (242 -> 237), no entries added",
         "artifact": "baseline diff = -5 entries only; all 19 modules <=200 LOC"
       },
+      "prUrl": "https://github.com/minhlongs/algo-trader/pull/62"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche6",
+      "status": "done",
+      "date": "2026-09-10",
+      "targetFiles": [
+        "src/platform/billing/license-service.ts",
+        "src/platform/billing/license-types.ts",
+        "src/platform/billing/license-store.ts",
+        "src/platform/billing/license-analytics.ts",
+        "src/platform/marketplace/models/types.ts",
+        "src/platform/marketplace/models/strategy-types.ts",
+        "src/platform/marketplace/models/subscription-types.ts",
+        "src/platform/marketplace/models/review-types.ts",
+        "src/shared/rate-limit/memory-fallback.ts",
+        "src/shared/rate-limit/lru-cache.ts",
+        "src/shared/utils/memory-pressure-handler.ts",
+        "src/shared/utils/memory-pressure-types.ts",
+        "src/shared/utils/memory-stats-provider.ts",
+        "src/platform/api/routes/marketplace-review-routes.ts",
+        "src/platform/api/routes/marketplace-review-helpers.ts",
+        "src/platform/api/routes/marketplace-review-crud-handlers.ts",
+        "src/platform/api/routes/marketplace-review-action-handlers.ts",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md",
+        "loop-results.tsv",
+        "MIGRATION_LOG.json"
+      ],
+      "note": "Sixth tranche of S18 oversized-file debt burn-down: split 5 non-test violators (1,565 LOC total across license-service.ts, types.ts (marketplace models), memory-fallback.ts, memory-pressure-handler.ts, marketplace-review-routes.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 237 to 232 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.37 -> 3.1.38.",
+      "evidence": {
+        "tests": "All 12,483 tests pass (100% pass rate across test suite); full test suite and typecheck clean",
+        "prUrl": null,
+        "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 232 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (237 -> 232), no entries added",
+        "artifact": "baseline diff = -5 entries only; all 17 modules <=200 LOC"
+      },
       "prUrl": null
     }
   ],

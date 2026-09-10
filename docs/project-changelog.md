@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.38] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 6
+
+### Changed
+- **Oversized-file debt burn-down (S18 Tranche 6)**: 5 non-test violators (1,565 LOC total) split into ≤200-LOC modules behind facade re-exports; zero behavior change, all importers compile unmodified (typecheck proves). Quality-ratchet baseline pruned 237 → 232 (5 entries removed, none added).
+  - `src/platform/billing/license-service.ts` 315 → 189: split into `license-types.ts` (77 LOC), `license-store.ts` (34 LOC), `license-analytics.ts` (77 LOC); facade preserves `LicenseService` singleton, license generation, validation, activation, usage tracking, file persistence, and backward-compatible re-exports.
+  - `src/platform/marketplace/models/types.ts` 314 → 8: split into `strategy-types.ts` (122 LOC), `subscription-types.ts` (138 LOC), `review-types.ts` (42 LOC); facade re-exports all strategy, subscription, and review domain types with zero caller churn.
+  - `src/shared/rate-limit/memory-fallback.ts` 314 → 196: split into `lru-cache.ts` (152 LOC); facade preserves `MemoryRateLimiter` class, `memoryRateLimiter` singleton, `MEMORY_FALLBACK_CONFIG`, and backward-compatible re-exports.
+  - `src/shared/utils/memory-pressure-handler.ts` 312 → 178: split into `memory-pressure-types.ts` (49 LOC), `memory-stats-provider.ts` (77 LOC); facade preserves `MemoryPressureHandler` class, singleton factory `getMemoryPressureHandler`, Redis pub/sub channels, auto-cleanup triggers, and private cleanup hooks.
+  - `src/platform/api/routes/marketplace-review-routes.ts` 310 → 60: split into `marketplace-review-helpers.ts` (51 LOC), `marketplace-review-crud-handlers.ts` (157 LOC), `marketplace-review-action-handlers.ts` (125 LOC); facade preserves `marketplaceReviewRouter`, `requireTier('FREE')` route bindings, and backward-compatible re-exports.
+
+### Quality gates
+- `npm run typecheck` 0 errors; `npm run build` exit 0.
+- Quality ratchet `--quality` 4/4 PASS: `anyTypes` 114/114, `consoleCalls` 45/45, `filesOverMaxLines` 232/232 (new=0, grown=0), `bannedImports` 0.
+- `--prune-oversized-snapshot` removed exactly 5 entries (237 → 232), 0 entries added.
+- All 12,483 tests pass (100% pass rate across test suite).
+
 ## [3.1.37] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 5
 
 ### Changed
