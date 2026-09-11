@@ -6,17 +6,10 @@
  */
 
 import { logger } from './logger';
+import { CompressionAlgorithm, CompressionStreamOptions } from './compression-stream-types';
+import { compressStringData, decompressBufferData } from './compression-stream-helpers';
 
-// Compression algorithms supported
-export type CompressionAlgorithm = 'gzip' | 'deflate' | 'br' | 'identity';
-
-export interface CompressionStreamOptions {
-  algorithm: CompressionAlgorithm;
-  chunkSize?: number;
-  flushOnFinish?: boolean;
-}
-
-import { recordCompressionRatio } from '../../shared/observability/prometheus-metrics';
+export type { CompressionAlgorithm, CompressionStreamOptions };
 
 /**
  * Compression Stream Manager
@@ -65,7 +58,7 @@ export class CompressionStreamManager {
       const encoder = new TextEncoder();
 
       return new TransformStream({
-        start(controller) {
+        start(_controller) {
           // No-op
         },
         transform(chunk: string, controller) {
@@ -103,7 +96,6 @@ export class CompressionStreamManager {
     options: { chunkSize?: number } = {}
   ): Promise<ReadableStream<string>> {
     const chunkSize = options.chunkSize || 100;
-    const encoder = new TextEncoder();
 
     return new ReadableStream({
       async start(controller) {
@@ -138,50 +130,7 @@ export class CompressionStreamManager {
    * Compress string data
    */
   async compressString(data: string, algorithm: CompressionAlgorithm = 'br'): Promise<Uint8Array> {
-    if (algorithm === 'identity') {
-      return new TextEncoder().encode(data);
-    }
-
-    if (typeof CompressionStream === 'undefined') {
-      return new TextEncoder().encode(data);
-    }
-
-    const originalSize = data.length;
-    const stream = this.createCompressionStream(algorithm);
-    const writer = stream.writable.getWriter();
-    const reader = stream.readable.getReader();
-
-    writer.write(data);
-    writer.close();
-
-    const chunks: Uint8Array[] = [];
-    let done = false;
-
-    while (!done) {
-      const { value, done: isDone } = await reader.read();
-      if (value) chunks.push(value);
-      done = isDone;
-    }
-
-    // Concatenate chunks
-    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-    const result = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of chunks) {
-      result.set(chunk, offset);
-      offset += chunk.length;
-    }
-
-    // Record compression ratio
-    if (originalSize > 0 && result.length > 0) {
-      try {
-        recordCompressionRatio(originalSize, result.length);
-      } catch {
-        // Ignore metric recording errors
-      }
-    }
-
-    return result;
+    return compressStringData(data, algorithm, (alg) => this.createCompressionStream(alg));
   }
 
   /**
@@ -191,45 +140,7 @@ export class CompressionStreamManager {
     buffer: Uint8Array,
     algorithm: CompressionAlgorithm
   ): Promise<string> {
-    if (algorithm === 'identity') {
-      return new TextDecoder().decode(buffer);
-    }
-
-    if (typeof DecompressionStream === 'undefined') {
-      logger.warn('[Compression] DecompressionStream not available, returning as identity');
-      return new TextDecoder().decode(buffer);
-    }
-
-    try {
-      const ds = new DecompressionStream(algorithm as any);
-      const writer = ds.writable.getWriter();
-      const reader = ds.readable.getReader();
-
-      writer.write(buffer as any);
-      writer.close();
-
-      const chunks: Uint8Array[] = [];
-      let done = false;
-
-      while (!done) {
-        const { value, done: isDone } = await reader.read();
-        if (value) chunks.push(value);
-        done = isDone;
-      }
-
-      const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-      const result = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        result.set(chunk, offset);
-        offset += chunk.length;
-      }
-
-      return new TextDecoder().decode(result);
-    } catch (error) {
-      logger.error('[Compression] Decompression failed', error);
-      throw error;
-    }
+    return decompressBufferData(buffer, algorithm);
   }
 
   /**

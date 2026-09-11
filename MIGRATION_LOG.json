@@ -867,6 +867,37 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 10,
+      "version": "3.1.42",
+      "date": "2026-09-11",
+      "targets": [
+        "src/lib/llm-router.ts",
+        "src/platform/workers/api/telegram-bot.ts",
+        "src/desk/cli/cashclaw-cli.ts",
+        "src/shared/utils/compression-stream.ts",
+        "src/desk/intelligence/prediction-accuracy-tracker.ts"
+      ],
+      "modules": [
+        "llm-router-types.ts",
+        "llm-router-executor.ts",
+        "telegram-bot-types.ts",
+        "telegram-bot-dispatch.ts",
+        "cashclaw-cli-scan.ts",
+        "cashclaw-cli-paper.ts",
+        "compression-stream-types.ts",
+        "compression-stream-helpers.ts",
+        "prediction-accuracy-types.ts",
+        "prediction-accuracy-reporter.ts"
+      ],
+      "ratchet": {
+        "before": 217,
+        "after": 212,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
