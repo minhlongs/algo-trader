@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.40] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 8
+
+### Changed
+- Split `cross-platform-arb.ts` (298→10 LOC) → `cross-platform-arb-types.ts` + `cross-platform-arb-detector.ts`
+- Split `edge-proxy.ts` (298→198 LOC) → `edge-proxy-inline-routes.ts` (tenant config + paper-trades ledger)
+- Split `twap-executor.ts` (297→11 LOC) → `twap-executor-types.ts` + `twap-executor-class.ts`
+- Split `router.ts` (297→13 LOC) → `router-cache.ts` + `router-class.ts`
+- Split `prometheus-metrics-core.ts` (297→42 LOC) → `prometheus-metrics-core-data.ts` + `prometheus-metrics-core-signals.ts`
+- Quality ratchet auto-pruned: `filesOverMaxLines` 227→222 (−5)
+- Version bump 3.1.39→3.1.40; 12,483 tests 100% pass
+
 ## [3.1.39] - 2026-09-10 — S18 Oversized-File Debt Burn-Down Tranche 7
 
 ### Changed
