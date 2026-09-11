@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 197,
+      "count": 192,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -81,10 +81,8 @@
         "src/desk/execution/rollback-handler.ts": 207,
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/feeds/binance-ws.ts": 226,
-        "src/desk/feeds/bybit-ws.ts": 257,
         "src/desk/feeds/kalshi-price-feed.ts": 204,
         "src/desk/feeds/news-impact-analyzer.ts": 214,
-        "src/desk/feeds/news-market-correlator.ts": 256,
         "src/desk/feeds/okx-ws.ts": 234,
         "src/desk/feeds/polymarket-ws-feed.ts": 218,
         "src/desk/feeds/smarkets-price-feed.ts": 238,
@@ -141,7 +139,6 @@
         "src/desk/strategies/polymarket/resolution-frontrunner-v2.ts": 203,
         "src/desk/strategies/polymarket/session-vol-sniper.ts": 225,
         "src/desk/strategies/polymarket/twap-accumulator.ts": 255,
-        "src/desk/strategies/polymarket/vol-compression-breakout-v2.ts": 257,
         "src/desk/strategies/polymarket/vwap-deviation-sniper-v2.ts": 210,
         "src/desk/wallet/wallet-manager.ts": 204,
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
@@ -210,7 +207,6 @@
         "src/platform/risk/drawdown-monitor-service.ts": 205,
         "src/platform/signals-api/__tests__/signal-publisher.test.ts": 246,
         "src/platform/signals-api/signal-publisher.ts": 251,
-        "src/platform/signals-api/subscription-repository-d1.ts": 257,
         "src/platform/signals-api/usage-metering-service.ts": 224,
         "src/platform/telegram/__tests__/ask-handler.test.ts": 223,
         "src/platform/telegram/__tests__/leaderboard-handler.test.ts": 225,
@@ -232,7 +228,6 @@
         "src/shared/db/migrations/026-create-ai-audit-tables.ts": 252,
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304,
         "src/shared/resilience/recovery-manager.ts": 207,
-        "src/shared/utils/consistent-hash.ts": 256,
         "src/shared/utils/memory-pool.ts": 239
       }
     }
