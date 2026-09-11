@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.43] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 11
+
+### Changed
+- Split `src/desk/polymarket/strategy-registry.ts` (277→36 LOC) → `strategy-registry-types.ts` (13 LOC) + `strategy-registry-entries-a-m.ts` (138 LOC) + `strategy-registry-entries-n-z.ts` (96 LOC)
+- Split `src/platform/marketplace/notifications/notification-service.ts` (277→174 LOC) → `notification-types.ts` (45 LOC) + `notification-helpers.ts` (138 LOC)
+- Split `src/desk/cli/agent-dispatcher.ts` (275→177 LOC) → `agent-dispatcher-types.ts` (22 LOC) + `agent-dispatcher-executor.ts` (99 LOC) + `agent-dispatcher-queues.ts` (50 LOC)
+- Split `src/platform/marketplace/services/desk-strategy-seeder.ts` (275→142 LOC) → `desk-strategy-seeder-types.ts` (40 LOC) + `desk-strategy-seeder-data.ts` (103 LOC)
+- Split `src/desk/arbitrage/types.ts` (274→37 LOC) → `types-opportunity.ts` (139 LOC) + `types-strategy.ts` (139 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 212→207 (−5)
+- Version bump 3.1.42→3.1.43; 12,483 tests 100% pass
+
 ## [3.1.42] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 10
 
 ### Changed
