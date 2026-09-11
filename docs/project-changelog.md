@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.41] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 9
+
+### Changed
+- Split `src/seed/db/d1-monitoring.ts` (295→30 LOC) → `d1-monitoring-types.ts` (92 LOC) + `d1-monitoring-queries.ts` (198 LOC)
+- Split `src/desk/strategies/examples/04-multi-indicator-confluence-strategy.ts` (293→155 LOC) → `04-multi-indicator-confluence-types.ts` (24 LOC) + `04-multi-indicator-confluence-math.ts` (46 LOC) + `04-multi-indicator-confluence-evaluator.ts` (91 LOC)
+- Split `src/platform/notifications/trading-notifications.ts` (290→125 LOC) → `trading-notification-types.ts` (60 LOC) + `trading-notification-templates.ts` (149 LOC)
+- Split `src/desk/commands/activate-license.ts` (288→164 LOC) → `activate-license-rate-limit.ts` (105 LOC) + `activate-license-storage.ts` (55 LOC)
+- Split `src/queues/agent-coordinator.ts` (288→183 LOC) → `agent-coordinator-types.ts` (37 LOC) + `agent-coordinator-config.ts` (79 LOC) + `agent-coordinator-worker.ts` (61 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 222→217 (−5)
+- Version bump 3.1.40→3.1.41; 12,483 tests 100% pass
+
 ## [3.1.40] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 8
 
 ### Changed

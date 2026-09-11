@@ -834,6 +834,39 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 9,
+      "version": "3.1.41",
+      "date": "2026-09-11",
+      "targets": [
+        "src/seed/db/d1-monitoring.ts",
+        "src/desk/strategies/examples/04-multi-indicator-confluence-strategy.ts",
+        "src/platform/notifications/trading-notifications.ts",
+        "src/desk/commands/activate-license.ts",
+        "src/queues/agent-coordinator.ts"
+      ],
+      "modules": [
+        "d1-monitoring-types.ts",
+        "d1-monitoring-queries.ts",
+        "04-multi-indicator-confluence-types.ts",
+        "04-multi-indicator-confluence-math.ts",
+        "04-multi-indicator-confluence-evaluator.ts",
+        "trading-notification-types.ts",
+        "trading-notification-templates.ts",
+        "activate-license-rate-limit.ts",
+        "activate-license-storage.ts",
+        "agent-coordinator-types.ts",
+        "agent-coordinator-config.ts",
+        "agent-coordinator-worker.ts"
+      ],
+      "ratchet": {
+        "before": 222,
+        "after": 217,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
