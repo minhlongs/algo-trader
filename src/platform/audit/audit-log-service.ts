@@ -7,51 +7,17 @@
  */
 
 import { config } from '../../shared/config/env';
-import { query, transaction } from '../../db/postgres-client.js';
-import {
-  logAudit,
-  getAuditTrail,
-  getAuditTrailByTenant,
-} from '../../seed/security/audit-log';
+import { query } from '../../db/postgres-client.js';
+import { logAudit } from '../../seed/security/audit-log';
 import type { IAuditEntry } from '../../seed/security/audit-log';
 import { hashIpAddress } from '../../seed/security/audit-ip-hash';
 import { AuditLogExporter } from './exporters';
 import { AuditLogValidators } from './validators';
 import { AuditLogBatchWriter, type BatchWriteEntry, type BatchWriteResult } from './batch-writer';
-import { logger } from '../../shared/utils/logger';
+import type { AuditLog, AuditEventType, AuditLogFilters } from './audit-log-types';
+import { executeGetExpiredLogIds, executeCleanupExpiredLogs } from './audit-log-db-cleanup';
 
-export interface AuditLog {
-  id: string;
-  licenseId: string;
-  event: AuditEventType;
-  tier?: string;
-  ip?: string;
-  metadata?: Record<string, unknown>;
-  createdAt: string;
-}
-
-export type AuditEventType =
-  | 'created'
-  | 'activated'
-  | 'revoked'
-  | 'api_call'
-  | 'ml_feature'
-  | 'rate_limit'
-  | 'deleted'
-  | 'suspension_warning'
-  | 'suspended'
-  | 'reinstated';
-
-export interface AuditLogFilters {
-  licenseId?: string;
-  eventType?: AuditEventType | 'all';
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-  skip?: number;
-}
-
-export type { BatchWriteEntry, BatchWriteResult };
+export * from './audit-log-types';
 
 const SELECT_BY_LICENSE_SQL = `
   SELECT id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id
@@ -66,15 +32,6 @@ const SELECT_ALL_SQL = `
   FROM audit_log
   ORDER BY "timestamp" DESC
   LIMIT $1
-`;
-
-const CLEANUP_SQL = `
-  DELETE FROM audit_log
-  WHERE "timestamp" < $1
-`;
-
-const COUNT_EXPIRED_SQL = `
-  SELECT COUNT(*) AS cnt FROM audit_log WHERE "timestamp" < $1
 `;
 
 export class AuditLogService {
@@ -221,26 +178,11 @@ export class AuditLogService {
   }
 
   async getExpiredLogIds(): Promise<string[]> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - this.retentionDays);
-    const cutoffISOString = cutoffDate.toISOString();
-    const result = await transaction(async (client) => {
-      await client.query("SET LOCAL audit.cleanup_allowed = 'on'");
-      return client.query('SELECT id FROM audit_log WHERE "timestamp" < $1', [cutoffISOString]);
-    });
-    return result.rows.map((r) => r.id as string);
+    return executeGetExpiredLogIds(this.retentionDays);
   }
 
   async cleanupExpiredLogs(): Promise<{ removed: number; cutoffDate: string }> {
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - this.retentionDays);
-    const cutoffISOString = cutoffDate.toISOString();
-    const result = await transaction(async (client) => {
-      await client.query("SET LOCAL audit.cleanup_allowed = 'on'");
-      return client.query(CLEANUP_SQL, [cutoffISOString]);
-    });
-    const removed = result.rowCount ?? 0;
-    return { removed, cutoffDate: cutoffISOString };
+    return executeCleanupExpiredLogs(this.retentionDays);
   }
 
   exportToCsv(logs: AuditLog[]): string {
@@ -250,5 +192,4 @@ export class AuditLogService {
   exportToJson(logs: AuditLog[]): string {
     return AuditLogExporter.toJson(logs);
   }
-
 }

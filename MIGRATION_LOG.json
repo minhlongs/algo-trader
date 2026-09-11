@@ -1035,6 +1035,39 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 15,
+      "version": "3.1.47",
+      "date": "2026-09-11",
+      "targets": [
+        "src/desk/strategies/polymarket/twap-accumulator.ts",
+        "src/api/routes/admin-qwen-routes.ts",
+        "src/db/migration-runner.ts",
+        "src/platform/audit/audit-log-service.ts",
+        "src/desk/strategies/polymarket/pairs-stat-arb.ts"
+      ],
+      "modules": [
+        "twap-accumulator-types.ts",
+        "twap-accumulator-math.ts",
+        "twap-accumulator-strategy.ts",
+        "admin-qwen-strategy-reviews.ts",
+        "admin-qwen-signals-loop.ts",
+        "migration-sql-dialect.ts",
+        "migration-down-handlers.ts",
+        "audit-log-types.ts",
+        "audit-log-db-cleanup.ts",
+        "pairs-stat-arb-types.ts",
+        "pairs-stat-arb-math.ts",
+        "pairs-stat-arb-strategy.ts"
+      ],
+      "ratchet": {
+        "before": 192,
+        "after": 187,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }

@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.47] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 15
+
+### Changed
+- Split `src/desk/strategies/polymarket/twap-accumulator.ts` (255→17 LOC) → `twap-accumulator-types.ts` (51 LOC) + `twap-accumulator-math.ts` (21 LOC) + `twap-accumulator-strategy.ts` (177 LOC)
+- Split `src/api/routes/admin-qwen-routes.ts` (254→111 LOC) → `admin-qwen-strategy-reviews.ts` (91 LOC) + `admin-qwen-signals-loop.ts` (77 LOC)
+- Split `src/db/migration-runner.ts` (254→171 LOC) → `migration-sql-dialect.ts` (44 LOC) + `migration-down-handlers.ts` (58 LOC)
+- Split `src/platform/audit/audit-log-service.ts` (254→195 LOC) → `audit-log-types.ts` (38 LOC) + `audit-log-db-cleanup.ts` (37 LOC)
+- Split `src/desk/strategies/polymarket/pairs-stat-arb.ts` (253→17 LOC) → `pairs-stat-arb-types.ts` (42 LOC) + `pairs-stat-arb-math.ts` (65 LOC) + `pairs-stat-arb-strategy.ts` (145 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 192→187 (−5)
+- Version bump 3.1.46→3.1.47; 12,483 tests 100% pass
+
 ## [3.1.46] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 14
 
 ### Changed

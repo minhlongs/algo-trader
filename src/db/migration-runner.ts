@@ -26,6 +26,11 @@ import * as migration049 from './migrations/049-funding-rates';
 import * as migration035 from '../shared/db/migrations/035-add-blog-engagement-tables';
 import * as migration037 from '../shared/db/migrations/037-add-newsletter-preferences';
 import * as migration055 from '../shared/db/migrations/055-add-blog-page-views';
+import { getDialect, parseAndRewriteSql } from './migration-sql-dialect';
+import { executeMigrationDown } from './migration-down-handlers';
+
+export { getDialect, parseAndRewriteSql } from './migration-sql-dialect';
+export { executeMigrationDown } from './migration-down-handlers';
 
 // Migration interface
 interface Migration {
@@ -33,47 +38,6 @@ interface Migration {
   description: string;
   up: (client: import('pg').PoolClient) => Promise<void>;
   down: (client: import('pg').PoolClient) => Promise<void>;
-}
-
-export function getDialect(client: unknown): 'postgres' | 'sqlite' {
-  if (client && typeof client === 'object' && 'constructor' in client) {
-    const ctor = (client as { constructor: () => unknown }).constructor;
-    if (ctor && typeof ctor.name === 'string' && ctor.name.includes('Client')) {
-      return 'postgres';
-    }
-  }
-  if (process.env.DB_HOST || process.env.DB_NAME) {
-    return 'postgres';
-  }
-  return 'sqlite';
-}
-
-export function parseAndRewriteSql(rawSql: string, dialect: 'postgres' | 'sqlite'): string {
-  let sql = rawSql;
-  if (dialect === 'postgres') {
-    // Replace SQLite strftime with Postgres equivalent
-    sql = sql.replace(/strftime\(\s*['"]%s['"]\s*,\s*['"]now['"]\s*\)\s*\*\s*1000/g, "(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::bigint");
-    sql = sql.replace(/strftime\(\s*['"]%s['"]\s*,\s*['"]now['"]\s*\)/g, "EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::bigint");
-    sql = sql.replace(/\bAUTOINCREMENT\b/gi, '');
-  } else {
-    // Replace PostgreSQL gen_random_uuid() with hex(randomblob())
-    sql = sql.replace(/gen_random_uuid\(\)::text/gi, "(lower(hex(randomblob(16))))");
-    sql = sql.replace(/gen_random_uuid\(\)/gi, "(lower(hex(randomblob(16))))");
-    // Replace EXTRACT(EPOCH FROM NOW()) with strftime('%s','now')
-    sql = sql.replace(/EXTRACT\(EPOCH FROM (?:NOW\(\)|CURRENT_TIMESTAMP)\)\s*\*\s*1000::bigint/gi, "(strftime('%s','now') * 1000)");
-    sql = sql.replace(/EXTRACT\(EPOCH FROM (?:NOW\(\)|CURRENT_TIMESTAMP)\)::bigint\s*\*\s*1000/gi, "(strftime('%s','now') * 1000)");
-    sql = sql.replace(/EXTRACT\(EPOCH FROM (?:NOW\(\)|CURRENT_TIMESTAMP)\)\s*\*\s*1000/gi, "(strftime('%s','now') * 1000)");
-    sql = sql.replace(/EXTRACT\(EPOCH FROM (?:NOW\(\)|CURRENT_TIMESTAMP)\)/gi, "strftime('%s','now')");
-    sql = sql.replace(/::bigint/gi, '');
-    sql = sql.replace(/::text/gi, '');
-    sql = sql.replace(/\bUUID\b/gi, 'TEXT');
-    sql = sql.replace(/\bTIMESTAMPTZ\b/gi, 'TIMESTAMP');
-    sql = sql.replace(/\bJSONB\b/gi, 'TEXT');
-    sql = sql.replace(/\bTEXT\[\]\b/gi, 'TEXT');
-    sql = sql.replace(/\bnow\(\)/gi, "CURRENT_TIMESTAMP");
-    sql = sql.replace(/\(\(created_at\s+AT\s+TIME\s+ZONE\s+['"]UTC['"]\)::date\)/gi, "date(created_at)");
-  }
-  return sql;
 }
 
 export function createSqlMigration(filename: string, id: string, description: string): Migration {
@@ -89,55 +53,8 @@ export function createSqlMigration(filename: string, id: string, description: st
       await client.query(rewrittenSql);
     },
     down: async (client) => {
-      if (id === '004_better_auth_tables') {
-        await client.query('DROP TABLE IF EXISTS verification CASCADE');
-        await client.query('DROP TABLE IF EXISTS account CASCADE');
-        await client.query('DROP TABLE IF EXISTS session CASCADE');
-        await client.query('DROP TABLE IF EXISTS "user" CASCADE');
-      } else if (id === '005_compliance_kyc_tables') {
-        await client.query('DROP TABLE IF EXISTS compliance_transactions CASCADE');
-        await client.query('DROP TABLE IF EXISTS kyc_submissions CASCADE');
-      } else if (id === '014_signal_feed') {
-        await client.query('DROP TABLE IF EXISTS signal_delivery_log CASCADE');
-        await client.query('DROP TABLE IF EXISTS signal_subscriptions CASCADE');
-        await client.query('DROP TABLE IF EXISTS signals CASCADE');
-      } else if (id === '015_subscriber_attribution') {
-        await client.query('DROP TABLE IF EXISTS subscriber_equity_snapshots CASCADE');
-        try {
-          await client.query('ALTER TABLE trades DROP COLUMN IF EXISTS subscriber_id');
-          await client.query('ALTER TABLE trades DROP COLUMN IF EXISTS attestation_id');
-          await client.query('ALTER TABLE signals DROP COLUMN IF EXISTS subscriber_id');
-        } catch {}
-      } else if (id === '016_qwen_paper_tracking') {
-        await client.query('DROP TABLE IF EXISTS paper_trades_v3 CASCADE');
-        try {
-          await client.query('ALTER TABLE signals DROP COLUMN IF EXISTS source');
-          await client.query('ALTER TABLE signals DROP COLUMN IF EXISTS paper_only');
-        } catch {}
-      } else if (id === '017_strategy_review_tasks') {
-        await client.query('DROP TABLE IF EXISTS strategy_review_tasks CASCADE');
-      } else if (id === '018_qwen_signals_loop_runs') {
-        await client.query('DROP TABLE IF EXISTS qwen_signals_loop_runs CASCADE');
-      } else if (id === '021_create_tenant_audit_logs') {
-        await client.query('DROP TABLE IF EXISTS tenant_audit_logs CASCADE');
-      } else if (id === '021_tenant_credentials') {
-        await client.query('DROP TABLE IF EXISTS tenant_credentials CASCADE');
-      } else if (id === '042_add_encrypted_credential_columns') {
-        await client.query('ALTER TABLE tenant_credentials DROP COLUMN IF EXISTS api_key_encrypted');
-        await client.query('ALTER TABLE tenant_credentials DROP COLUMN IF EXISTS api_secret_encrypted');
-        await client.query('ALTER TABLE tenant_credentials DROP COLUMN IF EXISTS passphrase_encrypted');
-        await client.query('ALTER TABLE tenant_credentials DROP COLUMN IF EXISTS private_key_encrypted');
-        await client.query('ALTER TABLE tenant_credentials DROP COLUMN IF EXISTS public_key');
-        await client.query('DROP INDEX IF EXISTS idx_tenant_credentials_api_key_encrypted');
-        await client.query('DROP INDEX IF EXISTS idx_tenant_credentials_api_secret_encrypted');
-      } else if (id === '0002-phase33-indexes') {
-  await client.query('DROP INDEX IF EXISTS idx_payment_logs_created');
-  await client.query('DROP INDEX IF EXISTS idx_orders_user_created');
-  await client.query('DROP INDEX IF EXISTS idx_coupons_redeemed');
-} else if (id === '048-prediction-history') {
-        await client.query('DROP TABLE IF EXISTS prediction_history CASCADE');
-      }
-    }
+      await executeMigrationDown(client, id);
+    },
   };
 }
 
