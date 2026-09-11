@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.45] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 13
+
+### Changed
+- Split `src/platform/api/routes/revenue.ts` (264→24 LOC) → `revenue-types.ts` (41 LOC) + `revenue-analytics.ts` (70 LOC) + `revenue-handlers.ts` (114 LOC)
+- Split `src/desk/strategies/polymarket/adverse-selection-filter.ts` (263→68 LOC) → `adverse-selection-types.ts` (31 LOC) + `adverse-selection-scoring.ts` (104 LOC) + `adverse-selection-filter-class.ts` (69 LOC)
+- Split `src/desk/strategies/polymarket/momentum-exhaustion.ts` (261→38 LOC) → `momentum-exhaustion-helpers.ts` (81 LOC) + `momentum-exhaustion-strategy.ts` (162 LOC)
+- Split `src/shared/utils/lru-cache.ts` (259→10 LOC) → `lru-cache-types.ts` (19 LOC) + `lru-cache-helpers.ts` (29 LOC) + `lru-cache-core.ts` (196 LOC) + `lru-cache-presets.ts` (22 LOC)
+- Split `src/platform/billing/onboarding-service.ts` (258→200 LOC) → `onboarding-types.ts` (23 LOC) + `onboarding-helpers.ts` (58 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 202→197 (−5)
+- Version bump 3.1.44→3.1.45; 12,483 tests 100% pass
+
 ## [3.1.44] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 12
 
 ### Changed
