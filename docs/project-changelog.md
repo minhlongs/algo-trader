@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.49] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 17
+
+### Changed
+- Split `src/desk/execution/dry-run-executor.ts` (249→120 LOC) → `dry-run-order-simulator.ts` (131 LOC): pure buy/sell simulation with slippage/fee/Redis persistence
+- Split `src/platform/api/routes/community-strategy-routes.ts` (248→85 LOC) → `community-strategy-types.ts` (21 LOC) + `community-strategy-read-routes.ts` (89 LOC) + `community-strategy-backtest-route.ts` (86 LOC)
+- Split `src/platform/api/schemas/marketplace.schemas.ts` (248→8 LOC barrel) → `marketplace-strategy.schemas.ts` (59 LOC) + `marketplace-engagement.schemas.ts` (59 LOC) + `marketplace-analytics.schemas.ts` (121 LOC)
+- Split `src/desk/execution/paper-position-tracker.ts` (246→47 LOC) → `paper-position-types.ts` (89 LOC) + `paper-position-math.ts` (72 LOC) + `paper-position-pnl.ts` (55 LOC)
+- Split `src/platform/marketplace/services/vetting.service.ts` (246→137 LOC) → `vetting-types.ts` (17 LOC) + `vetting-rules-engine.ts` (81 LOC): pure evaluateStrategyBacktest
+- Quality ratchet auto-pruned: `filesOverMaxLines` 182→177 (−5)
+- Version bump 3.1.48→3.1.49; 12,483 tests 100% pass
+
 ## [3.1.48] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 16
 
 ### Changed
