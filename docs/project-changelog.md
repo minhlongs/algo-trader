@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.44] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 12
+
+### Changed
+- Split `src/platform/api/routes/blog-engagement-routes.ts` (273→29 LOC) → `blog-engagement-comments.ts` (92 LOC) + `blog-engagement-recommendations.ts` (53 LOC) + `blog-engagement-analytics.ts` (135 LOC)
+- Split `src/platform/telegram/bot.ts` (273→164 LOC) → `bot-types.ts` (14 LOC) + `bot-command-registration.ts` (71 LOC) + `bot-alert-dispatcher.ts` (112 LOC)
+- Split `src/desk/strategies/loader.ts` (272→190 LOC) → `loader-types.ts` (12 LOC) + `loader-registry-data.ts` (78 LOC) + `loader-redis-persistence.ts` (32 LOC)
+- Split `src/shared/monitoring/metrics-collector.ts` (269→121 LOC) → `metrics-collector-types.ts` (37 LOC) + `metrics-collector-prometheus.ts` (43 LOC) + `metrics-collector-calculations.ts` (72 LOC)
+- Split `src/desk/strategies/polymarket/sentiment-momentum.ts` (268→9 LOC) → `sentiment-momentum-helpers.ts` (108 LOC) + `sentiment-momentum-strategy.ts` (161 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 207→202 (−5)
+- Version bump 3.1.43→3.1.44; 12,483 tests 100% pass
+
 ## [3.1.43] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 11
 
 ### Changed

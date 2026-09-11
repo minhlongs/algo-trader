@@ -931,6 +931,41 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 12,
+      "version": "3.1.44",
+      "date": "2026-09-11",
+      "targets": [
+        "src/platform/api/routes/blog-engagement-routes.ts",
+        "src/platform/telegram/bot.ts",
+        "src/desk/strategies/loader.ts",
+        "src/shared/monitoring/metrics-collector.ts",
+        "src/desk/strategies/polymarket/sentiment-momentum.ts"
+      ],
+      "modules": [
+        "blog-engagement-comments.ts",
+        "blog-engagement-recommendations.ts",
+        "blog-engagement-analytics.ts",
+        "bot-types.ts",
+        "bot-command-registration.ts",
+        "bot-alert-dispatcher.ts",
+        "loader-types.ts",
+        "loader-registry-data.ts",
+        "loader-redis-persistence.ts",
+        "metrics-collector-types.ts",
+        "metrics-collector-prometheus.ts",
+        "metrics-collector-calculations.ts",
+        "sentiment-momentum-helpers.ts",
+        "sentiment-momentum-strategy.ts"
+      ],
+      "ratchet": {
+        "before": 207,
+        "after": 202,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
