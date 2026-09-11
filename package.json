@@ -1,6 +1,6 @@
 {
   "name": "@mekong/algo-trader",
-  "version": "3.1.39",
+  "version": "3.1.40",
   "description": "Modular algorithmic trading bot with RSI+SMA strategy, backtesting, and multi-exchange support via CCXT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

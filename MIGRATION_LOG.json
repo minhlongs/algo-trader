@@ -6,7 +6,7 @@
   "date": "2026-08-22",
   "phases": [
     {
-      "phase": "S1 \u2014 Recon + architecture freeze",
+      "phase": "S1 — Recon + architecture freeze",
       "status": "done",
       "correctedBy": "S11",
       "correction": "The 9 docs/architecture/*.md files listed as S1 deliverables never existed until S11 (verified: absent from tree and from all git history). S1 performed recon only; the docs were aspirational. They were created as truthful audit docs in S11-master-command-audit-gap-closure.",
@@ -27,7 +27,7 @@
       }
     },
     {
-      "phase": "S2 \u2014 Market data router + data quality gate",
+      "phase": "S2 — Market data router + data quality gate",
       "status": "done",
       "targetFiles": [
         "src/desk/data/data-quality-gate.ts",
@@ -43,7 +43,7 @@
       }
     },
     {
-      "phase": "S3 \u2014 Provenance ledger + run cards + statistical validation",
+      "phase": "S3 — Provenance ledger + run cards + statistical validation",
       "status": "done",
       "targetFiles": [
         "src/alpha-lab/provenance/research-ledger.ts",
@@ -64,7 +64,7 @@
       }
     },
     {
-      "phase": "S4 \u2014 Execution safety hardening",
+      "phase": "S4 — Execution safety hardening",
       "status": "done",
       "targetFiles": [
         "src/desk/execution/execution-mode.ts",
@@ -85,7 +85,7 @@
       }
     },
     {
-      "phase": "S5 \u2014 Research MCP server (read-only provenance)",
+      "phase": "S5 — Research MCP server (read-only provenance)",
       "status": "done",
       "targetFiles": [
         "src/platform/mcp/research-mcp-server.ts",
@@ -98,7 +98,7 @@
       }
     },
     {
-      "phase": "S6 \u2014 Machine-readable migration log + docs",
+      "phase": "S6 — Machine-readable migration log + docs",
       "status": "done",
       "targetFiles": [
         "MIGRATION_LOG.json",
@@ -180,7 +180,7 @@
         "src/desk/cli/system-doctor-defaults.ts",
         "src/alpha-lab/cost-model/cost-stress.ts"
       ],
-      "note": "Master-command audit: 34-phase gap table in docs/architecture/MODULE_MAPPING.md (Audit 2026-08-26). Closes P1 doc debt (9 architecture docs), P14 (readOnlyHint x4), P31 (cashclaw doctor, 5 checks), G1 (EXTREME stress preset). DERIV funding/OI acceptance stays BLOCKED \u2014 no funding/OI data source exists.",
+      "note": "Master-command audit: 34-phase gap table in docs/architecture/MODULE_MAPPING.md (Audit 2026-08-26). Closes P1 doc debt (9 architecture docs), P14 (readOnlyHint x4), P31 (cashclaw doctor, 5 checks), G1 (EXTREME stress preset). DERIV funding/OI acceptance stays BLOCKED — no funding/OI data source exists.",
       "evidence": {
         "tests": "baseline 7132 + new MCP readOnlyHint / system-doctor / cost-stress EXTREME suites (see src/platform/mcp/__tests__/research-mcp-server.test.ts, src/desk/cli/__tests__/system-doctor.test.ts, src/alpha-lab/cost-model/__tests__/cost-stress.test.ts); final count owned by tester",
         "prUrl": null,
@@ -210,7 +210,7 @@
         "src/desk/cli/alpha-robustness-handler.ts",
         "docs/architecture/MODULE_MAPPING.md"
       ],
-      "note": "P32 funding-rate acceptance on REAL Binance Futures data. Ingestion: paginated fapi.binance.com fundingRate feed \u2192 funding_rates table (migration 049), 4380 BTCUSDT rows 2022-08-27 \u2192 2026-08-26, zero null provenance, transaction-scoped count-delta upsert stats (inserted vs duplicatesSkipped), mixed-symbol input throws. Calibration on transformed series (close_bps = 10_000 + rate \u00d7 10_000): lag-1 \u0394bps autocorrelation -0.298; tp/sl/maxHolding cited from |\u0394bps| percentiles (no guessed constants). Adapter loads funding series from Postgres via BTC-FUNDING- prefix, fails loudly on empty table (no mock fallback). E2E outcome: HONEST REJECT (alphaSurvival=false, ledger chained ledgerOk=true) \u2014 a SUCCESS of the validation doctrine 'AI proposes. Research validates. Risk disposes.': the triple-barrier strategy (tp=1bps/sl=0.5bps) cannot monetize the measured mean-reversion at 7bps round-trip cost, and the pipeline recorded that truth instead of forcing a pass. Run-card dataSources provenance threaded through RunExperimentInput \u2192 writeRunCard \u2192 all CLI handlers. Closes DERIV funding/OI escrow (P32 unblocked) + plan escrows G2\u2013G5 (promotion-state-machine tests, PAPER_TRADES_API env, MODULE_MAPPING legend, robustness effective cost).",
+      "note": "P32 funding-rate acceptance on REAL Binance Futures data. Ingestion: paginated fapi.binance.com fundingRate feed → funding_rates table (migration 049), 4380 BTCUSDT rows 2022-08-27 → 2026-08-26, zero null provenance, transaction-scoped count-delta upsert stats (inserted vs duplicatesSkipped), mixed-symbol input throws. Calibration on transformed series (close_bps = 10_000 + rate × 10_000): lag-1 Δbps autocorrelation -0.298; tp/sl/maxHolding cited from |Δbps| percentiles (no guessed constants). Adapter loads funding series from Postgres via BTC-FUNDING- prefix, fails loudly on empty table (no mock fallback). E2E outcome: HONEST REJECT (alphaSurvival=false, ledger chained ledgerOk=true) — a SUCCESS of the validation doctrine 'AI proposes. Research validates. Risk disposes.': the triple-barrier strategy (tp=1bps/sl=0.5bps) cannot monetize the measured mean-reversion at 7bps round-trip cost, and the pipeline recorded that truth instead of forcing a pass. Run-card dataSources provenance threaded through RunExperimentInput → writeRunCard → all CLI handlers. Closes DERIV funding/OI escrow (P32 unblocked) + plan escrows G2–G5 (promotion-state-machine tests, PAPER_TRADES_API env, MODULE_MAPPING legend, robustness effective cost).",
       "evidence": {
         "tests": "full suite 7202 passed + 1 skipped (509 files); targeted: funding-store 10/10, binance-funding-feed 4, alpha-backtest-adapter 10, promotion-state-machine 20",
         "prUrl": null,
@@ -239,13 +239,13 @@
         "src/desk/cli/alpha-helpers.ts",
         "src/desk/cli/__tests__/alpha-cli.test.ts"
       ],
-      "note": "Hygiene-only closure of S12 escrow. (1) Version alignment: package.json + package-lock.json 3.1.12 \u2192 3.1.25 (sole code consumer src/platform/api/routes/health.ts reads package.json dynamically). (2) funding-store modularization: 325 \u2192 200 LOC via move-only 3-way split \u2014 funding-types.ts (39 LOC) + funding-quality.ts (108 LOC, validateFundingQuality verbatim); types re-exported for backward compat. (3) Run-card transform provenance: optional transform?: string on DataSourceProvenance (schema stays 1.0.0) + shared buildDataSources() at both build sites (run-experiment.ts + alpha-helpers.ts). BUGFIX: funding-series runs were mislabeled provider 'ohlcv-store', now 'funding-store'; real recorded run data/runs/funding-mean-reversion-btc-8h/run_card.json carries provider funding-store + transform (offset 10000, prefix BTC-FUNDING-, source table funding_rates); honest REJECT preserved. (4) Escrow: ratchet oversized-file check (scripts/check-quality-baseline.mjs filesOverMaxLines) is broken \u2014 awk program embeds baseline expression as literal text (macOS syntax error swallowed \u2192 always PASS) AND counts files not lines; real violator count ~215 non-test src files >200 LOC (~301 incl. tests). Deliberately NOT fixed this increment to avoid turning Gate 8 red mid-ship; recorded as follow-up in docs/architecture/MIGRATION_STATUS.md open escrow.",
+      "note": "Hygiene-only closure of S12 escrow. (1) Version alignment: package.json + package-lock.json 3.1.12 → 3.1.25 (sole code consumer src/platform/api/routes/health.ts reads package.json dynamically). (2) funding-store modularization: 325 → 200 LOC via move-only 3-way split — funding-types.ts (39 LOC) + funding-quality.ts (108 LOC, validateFundingQuality verbatim); types re-exported for backward compat. (3) Run-card transform provenance: optional transform?: string on DataSourceProvenance (schema stays 1.0.0) + shared buildDataSources() at both build sites (run-experiment.ts + alpha-helpers.ts). BUGFIX: funding-series runs were mislabeled provider 'ohlcv-store', now 'funding-store'; real recorded run data/runs/funding-mean-reversion-btc-8h/run_card.json carries provider funding-store + transform (offset 10000, prefix BTC-FUNDING-, source table funding_rates); honest REJECT preserved. (4) Escrow: ratchet oversized-file check (scripts/check-quality-baseline.mjs filesOverMaxLines) is broken — awk program embeds baseline expression as literal text (macOS syntax error swallowed → always PASS) AND counts files not lines; real violator count ~215 non-test src files >200 LOC (~301 incl. tests). Deliberately NOT fixed this increment to avoid turning Gate 8 red mid-ship; recorded as follow-up in docs/architecture/MIGRATION_STATUS.md open escrow.",
       "evidence": {
         "tests": "full suite 7200 passed + 11 skipped (DB-gated by design, 508 files); targeted: alpha-backtest-adapter 15 (incl. 5 new), run-card 15 (incl. 3 new), funding-store 10/10 with DATABASE_URL",
         "prUrl": null,
         "fullSuite": "7200 passed + 11 skipped (baseline 7202)",
         "gates": "npm run build exit 0; npx tsc --noEmit exit 0; eslint --max-warnings 0 clean on 13 changed files (zero new eslint-disable, zero :any); quality ratchet 8/8; paper-gate-lock PASSED",
-        "artifact": "data/runs/funding-mean-reversion-btc-8h/run_card.json \u2014 schemaVersion 1.0.0, dataSources[0] provider funding-store + transform string (local-only, data/ gitignored)"
+        "artifact": "data/runs/funding-mean-reversion-btc-8h/run_card.json — schemaVersion 1.0.0, dataSources[0] provider funding-store + transform string (local-only, data/ gitignored)"
       }
     },
     {
@@ -263,7 +263,7 @@
         "docs/architecture/MIGRATION_STATUS.md",
         "docs/development-roadmap.md"
       ],
-      "note": "Made the quality-ratchet oversized-file check real (it had been dead since creation: awk program embedded '+ baseline.quality.maxFileSizeLines +' as literal text inside a template literal -> shell syntax error swallowed by catch->PASS; and FNR==1{n++} counted files, not lines). Rewrote check 3c in pure Node via new module scripts/oversized-file-check.mjs (countLines visual-line semantics / collectFileLineCounts recursive fs walk of src/**/*.ts(x) / evaluateOversizedFiles ratchet evaluation; no shell, no catch). This check now FAILS LOUD on IO/unexpected errors (exit 1); other checks' catch semantics untouched. quality-baseline.json bumped 1.0.2 -> 1.1.0 with quality.oversizedFileBaseline = frozen snapshot of 303 violators (src files >200 lines incl. tests; 215 excl.), generated by the same collectFileLineCounts the gate uses (single source of truth). Pass rule: no NEW violator and no line-count growth vs snapshot; shrinking allowed. Added --prune-oversized-snapshot flag (prune-only, can never add debt). Enforcement proven: injected 210-line src/__fixture__/oversized-fixture.ts -> gate FAILED naming it (304 new=1); removed -> PASS (303 new=0 grown=0). 18 new tests in scripts/__tests__/oversized-file-check.test.ts. No mass refactor of violators \u2014 burn-down deferred to future increments. Version 3.1.25 -> 3.1.26.",
+      "note": "Made the quality-ratchet oversized-file check real (it had been dead since creation: awk program embedded '+ baseline.quality.maxFileSizeLines +' as literal text inside a template literal -> shell syntax error swallowed by catch->PASS; and FNR==1{n++} counted files, not lines). Rewrote check 3c in pure Node via new module scripts/oversized-file-check.mjs (countLines visual-line semantics / collectFileLineCounts recursive fs walk of src/**/*.ts(x) / evaluateOversizedFiles ratchet evaluation; no shell, no catch). This check now FAILS LOUD on IO/unexpected errors (exit 1); other checks' catch semantics untouched. quality-baseline.json bumped 1.0.2 -> 1.1.0 with quality.oversizedFileBaseline = frozen snapshot of 303 violators (src files >200 lines incl. tests; 215 excl.), generated by the same collectFileLineCounts the gate uses (single source of truth). Pass rule: no NEW violator and no line-count growth vs snapshot; shrinking allowed. Added --prune-oversized-snapshot flag (prune-only, can never add debt). Enforcement proven: injected 210-line src/__fixture__/oversized-fixture.ts -> gate FAILED naming it (304 new=1); removed -> PASS (303 new=0 grown=0). 18 new tests in scripts/__tests__/oversized-file-check.test.ts. No mass refactor of violators — burn-down deferred to future increments. Version 3.1.25 -> 3.1.26.",
       "evidence": {
         "tests": "18 new tests (oversized-file-check.test.ts) green; full suite green",
         "prUrl": null,
@@ -290,7 +290,7 @@
         "docs/architecture/MIGRATION_STATUS.md",
         "docs/development-roadmap.md"
       ],
-      "note": "Hardened the two remaining false-compliance paths in Gate 8. (1) Check 1 (test suite): vitest 4.x removed the built-in json-summary reporter, so the gate's catch had been swallowing the missing report as SKIP \u2014 Gate 8 passed while the test-suite check was silently skipped. Rewritten to 'npx vitest run --reporter=json --outputFile=<tmp>' (the supported replacement) with new fail-loud reader scripts/vitest-summary-reader.mjs (throws on missing file / bad JSON / missing fields / zero tests -> gate exit 1; a non-zero vitest exit is NOT fatal by itself since vitest still writes the JSON when tests merely fail). TAP fallback deleted. (2) Checks 3a/3b/3d (anyTypes / consoleCalls / bannedImports): were grep pipelines behind catch->PASS('N/A') \u2014 grep exits 1 on zero matches, which the catch swallowed as a false PASS, and local grep is ugrep while CI uses GNU grep (\\b semantics differ). Rewritten in pure Node scripts/static-quality-checks.mjs (collectSourceFiles one fs walk of src/**/*.ts(x), symlinks skipped / countPatternLines line-based grep|wc -l semantics / countBannedImports per-literal sum); zero matches = legitimate 0, IO errors exit 1. Parity proof on the real tree: Node 117/45/0 = grep 117/45/0. Gate 8 now reports real numbers for all 8 checks (totalTests 7250, passRate 100%, no SKIP, no N/A). 21 new tests (9 reader incl. real end-to-end reporter run, 12 static incl. forced-error harness proofs). Fixed S14 harness-test regression: gate-harness source-rewrite now rewrites all three relative imports to absolute paths. CI gate-8 timeout 5 -> 15 min (check 1 + check 2 each run the full suite). Baseline thresholds unchanged; check 2 (coverage) untouched. Version 3.1.26 -> 3.1.27.",
+      "note": "Hardened the two remaining false-compliance paths in Gate 8. (1) Check 1 (test suite): vitest 4.x removed the built-in json-summary reporter, so the gate's catch had been swallowing the missing report as SKIP — Gate 8 passed while the test-suite check was silently skipped. Rewritten to 'npx vitest run --reporter=json --outputFile=<tmp>' (the supported replacement) with new fail-loud reader scripts/vitest-summary-reader.mjs (throws on missing file / bad JSON / missing fields / zero tests -> gate exit 1; a non-zero vitest exit is NOT fatal by itself since vitest still writes the JSON when tests merely fail). TAP fallback deleted. (2) Checks 3a/3b/3d (anyTypes / consoleCalls / bannedImports): were grep pipelines behind catch->PASS('N/A') — grep exits 1 on zero matches, which the catch swallowed as a false PASS, and local grep is ugrep while CI uses GNU grep (\\b semantics differ). Rewritten in pure Node scripts/static-quality-checks.mjs (collectSourceFiles one fs walk of src/**/*.ts(x), symlinks skipped / countPatternLines line-based grep|wc -l semantics / countBannedImports per-literal sum); zero matches = legitimate 0, IO errors exit 1. Parity proof on the real tree: Node 117/45/0 = grep 117/45/0. Gate 8 now reports real numbers for all 8 checks (totalTests 7250, passRate 100%, no SKIP, no N/A). 21 new tests (9 reader incl. real end-to-end reporter run, 12 static incl. forced-error harness proofs). Fixed S14 harness-test regression: gate-harness source-rewrite now rewrites all three relative imports to absolute paths. CI gate-8 timeout 5 -> 15 min (check 1 + check 2 each run the full suite). Baseline thresholds unchanged; check 2 (coverage) untouched. Version 3.1.26 -> 3.1.27.",
       "evidence": {
         "tests": "21 new tests green (vitest-summary-reader 9, static-quality-checks 12); scripts/__tests__ 46/46; full suite 7239 passed + 11 skipped (7250 total)",
         "prUrl": null,
@@ -338,9 +338,9 @@
         "docs/project-changelog.md",
         "docs/development-roadmap.md"
       ],
-      "note": "First tranche of the oversized-file debt burn-down: split the 5 largest non-test violators into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline 303 -> 298 (5 entries removed, none added). (1) backtest-runner.ts 529 -> 166: extracted BacktestOrderManager (incl. computePnl), createTickState/createMockClob/createHistoricalGammaClient, fetchFromOhlcvStore + data-quality-gate orchestration, and run-card provenance into 4 helper modules; BacktestRunnerOptions/DataQualityGateConfig moved to ./types.ts and re-exported. (2) kelly-vs-fixed.backtest.ts 436 -> 49: split SeededRandom/Metrics/simulateTrades, scenario runs (RNG consumption preserved verbatim), and report/results-write into 3 modules; entry keeps only main() orchestration; deterministic stdout proven byte-identical before/after. (3) websocket-client.ts 405 -> 167: pure-function extraction alone left ~294 LOC, so the plan's documented escalation was invoked \u2014 stateful methods moved to 6 helper modules via circular type-only imports (import type { BaseWebSocketClient }, erased at runtime) + .call(this) delegation; virtual dispatch preserved (startHeartbeat calls this.stopHeartbeat() so okx-ws/bybit-ws overrides still run). (4) negative-risk-scanner.ts 403 -> 70: types + cooldown helpers, order-book utils, evaluateExits, scanEntries into 4 modules; facade keeps createNegativeRiskScannerTick factory building a shared ScannerRuntime closure. (5) referral-payout.ts 403 -> 152: types + PAYOUT_METHODS, ensurePayoutTables (own module, NOT pushed into the 216-LOC frozen-violator referral-payout-repository.ts), fee/id calculators, getEarnings/getPayoutHistory, and processPayout/executeTransfer into 5 modules; a structural ReferralPayoutLike interface (declared in the types module) lets helpers type their this param without a circular runtime import; pre-existing Record<string, any> casts replaced with Record<string, unknown> + explicit casts. Zero behavior change across all 5; all importers compile unmodified (typecheck proves). Version 3.1.27 -> 3.1.28.",
+      "note": "First tranche of the oversized-file debt burn-down: split the 5 largest non-test violators into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline 303 -> 298 (5 entries removed, none added). (1) backtest-runner.ts 529 -> 166: extracted BacktestOrderManager (incl. computePnl), createTickState/createMockClob/createHistoricalGammaClient, fetchFromOhlcvStore + data-quality-gate orchestration, and run-card provenance into 4 helper modules; BacktestRunnerOptions/DataQualityGateConfig moved to ./types.ts and re-exported. (2) kelly-vs-fixed.backtest.ts 436 -> 49: split SeededRandom/Metrics/simulateTrades, scenario runs (RNG consumption preserved verbatim), and report/results-write into 3 modules; entry keeps only main() orchestration; deterministic stdout proven byte-identical before/after. (3) websocket-client.ts 405 -> 167: pure-function extraction alone left ~294 LOC, so the plan's documented escalation was invoked — stateful methods moved to 6 helper modules via circular type-only imports (import type { BaseWebSocketClient }, erased at runtime) + .call(this) delegation; virtual dispatch preserved (startHeartbeat calls this.stopHeartbeat() so okx-ws/bybit-ws overrides still run). (4) negative-risk-scanner.ts 403 -> 70: types + cooldown helpers, order-book utils, evaluateExits, scanEntries into 4 modules; facade keeps createNegativeRiskScannerTick factory building a shared ScannerRuntime closure. (5) referral-payout.ts 403 -> 152: types + PAYOUT_METHODS, ensurePayoutTables (own module, NOT pushed into the 216-LOC frozen-violator referral-payout-repository.ts), fee/id calculators, getEarnings/getPayoutHistory, and processPayout/executeTransfer into 5 modules; a structural ReferralPayoutLike interface (declared in the types module) lets helpers type their this param without a circular runtime import; pre-existing Record<string, any> casts replaced with Record<string, unknown> + explicit casts. Zero behavior change across all 5; all importers compile unmodified (typecheck proves). Version 3.1.27 -> 3.1.28.",
       "evidence": {
-        "tests": "full suite 7239 passed + 11 skipped (7250 total), 511 files passed / 1 skipped \u2014 identical to pre-split baseline; targeted suites green (backtest-runner 7/7, negative-risk-scanner 5/5, orchestrator 32/32)",
+        "tests": "full suite 7239 passed + 11 skipped (7250 total), 511 files passed / 1 skipped — identical to pre-split baseline; targeted suites green (backtest-runner 7/7, negative-risk-scanner 5/5, orchestrator 32/32)",
         "prUrl": null,
         "gates": "npm run build exit 0; npx tsc --noEmit exit 0; quality ratchet --all 11/11 PASS (totalTests 7250, passRate 100%, anyTypes 117, consoleCalls 44, filesOverMaxLines 298 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (303 -> 298), no entries added",
         "artifact": "baseline diff = -5 entries only (backtest-runner 529, kelly-vs-fixed.backtest 436, websocket-client 405, negative-risk-scanner 403, referral-payout 403); kelly-vs-fixed deterministic stdout diff empty before/after"
@@ -382,7 +382,7 @@
       ],
       "note": "Second tranche of the oversized-file debt burn-down: split the next 5 non-test violators into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline 298 -> 293 (5 entries removed, none added). (1) bench-http2.ts 398 -> 185: extracted bench-http2-adapter.ts (87 LOC), bench-http2-mock.ts (93 LOC), bench-http2-stats.ts (70 LOC); entry keeps orchestration + facade re-exports. (2) gap-detector.ts 392 -> 172: split into gap-detector-types.ts (49 LOC), gap-detector-state.ts (181 LOC), gap-detector-metrics.ts (62 LOC); facade keeps the public detection API. (3) sla-tracker.ts 394 -> 197: split into sla-tracker-types.ts (57 LOC), sla-tracker-state.ts (63 LOC), sla-tracker-scoring.ts (109 LOC), sla-tracker-metrics.ts (32 LOC); facade keeps the tracker entry points. (4) trading-loop.ts 389 -> 200: split into trading-loop-types.ts (76 LOC), trading-loop-latency.ts (31 LOC), trading-loop-executor.ts (111 LOC); facade keeps the loop orchestration. (5) usage-metering.ts 396 -> 198: split into usage-metering-types.ts (55 LOC), usage-metering-sync.ts (64 LOC), usage-metering-tracking.ts (132 LOC), usage-metering-analytics.ts (128 LOC); facade keeps the metering API. Zero behavior change across all 5; all importers compile unmodified (typecheck proves). Version 3.1.28 -> 3.1.29.",
       "evidence": {
-        "tests": "full suite 7239 passed + 11 skipped (7250 total) \u2014 identical to pre-split baseline",
+        "tests": "full suite 7239 passed + 11 skipped (7250 total) — identical to pre-split baseline",
         "prUrl": "https://github.com/minhlongs/algo-trader/pull/49",
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS and --all 11/11 PASS (filesOverMaxLines 293 new=0 grown=0); --prune-oversized-snapshot removed exactly 5 entries (298 -> 293), no entries added",
         "artifact": "baseline diff = -5 entries only (bench-http2 398, gap-detector 392, sla-tracker 394, trading-loop 389, usage-metering 396)"
@@ -427,7 +427,7 @@
       ],
       "note": "Third tranche of the oversized-file debt burn-down: split the next 5 non-test violators into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline 293 -> 288 (5 entries removed, none added). (1) spread-detector.ts 386 -> 200: split into spread-detector-types.ts (88 LOC), spread-detector-calculations.ts (183 LOC), spread-detector-pricing.ts (186 LOC), spread-detector-persistence.ts (63 LOC); facade keeps the SpreadDetector class (thin delegates) + type re-exports; one-way dependency direction, no cycles, index.ts barrel unmodified. (2) signal-validator.ts 386 -> 124: split into signal-validator-types.ts (53 LOC), signal-validator-prompts.ts (70 LOC), signal-validator-cache.ts (85 LOC), signal-validator-aggregate.ts (64 LOC), signal-validator-gpu-mutex.ts (36 LOC); facade keeps the public validation API; consensus-swarm cycle avoided via import type (erased at runtime). (3) base-polymarket-strategy.ts 388 -> 195: split into base-polymarket-strategy-types.ts (76 LOC), base-polymarket-strategy-exits.ts (70 LOC), base-polymarket-strategy-price-cache.ts (97 LOC), base-polymarket-strategy-trades.ts (101 LOC); facade keeps the BasePolymarketStrategy class with thin protected delegates; virtual dispatch preserved (checkExits resolves getCustomExitCondition() via this so subclass overrides still run); 63 importers compile unmodified. (4) inventory-skew-rebalancer.ts 386 -> 139: split into inventory-skew-types.ts (55 LOC), inventory-skew-math.ts (48 LOC), inventory-skew-rebalance.ts (147 LOC), inventory-skew-concentration.ts (79 LOC); facade keeps createInventorySkewRebalancerTick + re-exports pure helpers and types; each pass captures its own Date.now() matching original inner-function semantics; loader dynamic-import path preserved. (5) live-order-manager.ts 384 -> 200: split into live-order-manager-types.ts (98 LOC), live-order-polling.ts (88 LOC), live-order-manager-terminal.ts (52 LOC), live-order-risk-gates.ts (90 LOC); facade keeps the order-manager orchestration; risk-gate order in submitSignal preserved exactly (TTL -> rate -> riskGate); coupled test 8/8 pass unmodified; structural LiveOrderManagerCtx interface in types module avoids a facade import cycle. Zero behavior change across all 5; all importers compile unmodified (typecheck proves). Version 3.1.29 -> 3.1.30.",
       "evidence": {
-        "tests": "full suite 7239 passed + 11 skipped (7250 total) \u2014 identical to pre-split baseline",
+        "tests": "full suite 7239 passed + 11 skipped (7250 total) — identical to pre-split baseline",
         "prUrl": null,
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 117/117, consoleCalls 44/45, filesOverMaxLines 288 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (293 -> 288), no entries added",
         "artifact": "baseline diff = -5 entries only (spread-detector 386, signal-validator 386, base-polymarket-strategy 388, inventory-skew-rebalancer 386, live-order-manager 384)"
@@ -470,7 +470,7 @@
       ],
       "note": "Final tranche of the oversized-file debt burn-down: split the last 5 non-test violators (365-384 LOC) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline 288 -> 283 (5 entries removed, none added). (1) multi-leg-hedge.ts 369 -> 62: split into multi-leg-hedge-entries.ts (171 LOC), multi-leg-hedge-exits.ts (164 LOC); facade keeps the MultiLegHedgeStrategy class with thin delegates + re-exports. Config grew 126 -> 133 (non-frozen baseline, allowed). (2) referral-routes.ts 384 -> 30: split into referral-routes-admin.ts (94 LOC), referral-routes-public.ts (111 LOC), referral-routes-commissions.ts (184 LOC); facade keeps only thin route delegates. ReferralRoutesCtx structural interface avoids facade-leaf-facade cycle. (3) coupon-handlers.ts 381 -> 33: split into coupon-helpers.ts (160 LOC), coupon-validate.ts (48 LOC), coupon-redeem.ts (67 LOC), coupon-apply.ts (97 LOC); facade keeps only handler orchestration. coupon-redeem retains 2 pre-existing `as any` casts moved verbatim (no net increase). (4) trading-pipeline.ts 365 -> 192: split into trading-pipeline-types.ts (26 LOC), trading-pipeline-init.ts (114 LOC), trading-pipeline-prediction.ts (128 LOC); facade keeps orchestration + thin private delegates. Dead code: all new leaves + facade added to tsconfig.json exclude (same as facade) so typecheck stays clean. (5) orderbook-stream.ts 374 -> 165: split into orderbook-stream-types.ts (48 LOC), orderbook-stream-parse.ts (46 LOC), orderbook-stream-reconnect.ts (92 LOC), orderbook-stream-ws.ts (120 LOC); facade keeps OrderBookStream class with thin delegates. Two structural ctx interfaces (OrderBookStreamWsCtx, OrderBookStreamReconnectCtx) break the facade-leaf-facade import cycle; onClose uses dynamic require for handleDisconnect. Zero behavior change across all 5; all importers compile unmodified (typecheck proves). S16 oversized-file debt burn-down COMPLETE (4 tranches, 20 files split, baseline 303 -> 283). Version 3.1.30 -> 3.1.31.",
       "evidence": {
-        "tests": "full suite 7250 passed (100% pass rate) \u2014 identical to pre-split baseline; 6 coupled test files 43 tests green (multi-leg-hedge 7, multi-leg-hedge-config 7, referral-routes 11, coupon-redeem 10, coupons-kv-fallback 5, pipeline-regime-wiring 3)",
+        "tests": "full suite 7250 passed (100% pass rate) — identical to pre-split baseline; 6 coupled test files 43 tests green (multi-leg-hedge 7, multi-leg-hedge-config 7, referral-routes 11, coupon-redeem 10, coupons-kv-fallback 5, pipeline-regime-wiring 3)",
         "prUrl": null,
         "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 117/117, consoleCalls 44/45, filesOverMaxLines 283 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (288 -> 283), no entries added; --all 11/11 PASS (totalTests 7250, passRate 100%, coverage all above baseline)",
         "artifact": "baseline diff = -5 entries only (multi-leg-hedge 369, referral-routes 384, coupon-handlers 381, trading-pipeline 365, orderbook-stream 374)"
@@ -785,7 +785,7 @@
     },
     {
       "item": "Shadow account reconciliation (upstream shadow_account/)",
-      "reason": "paper-executor + dry-run-position-tracker already cover ~80%; broker-statement reconciliation needs a real statement schema \u2014 no demand yet."
+      "reason": "paper-executor + dry-run-position-tracker already cover ~80%; broker-statement reconciliation needs a real statement schema — no demand yet."
     },
     {
       "item": "Full 74-tool MCP suite",
@@ -800,8 +800,40 @@
       "reason": "Existing dashboard is sufficient; do not replace."
     },
     {
-      "item": "MASTER COMMAND phases 5\u201334",
+      "item": "MASTER COMMAND phases 5–34",
       "reason": "Needs multiple sessions; MIGRATION_LOG.json marks deferred with reason so the next session can resume."
+    }
+  ],
+  "tranches": [
+    {
+      "tranche": 8,
+      "version": "3.1.40",
+      "date": "2026-09-11",
+      "targets": [
+        "src/desk/strategies/cross-platform-arb.ts",
+        "src/platform/workers/edge-proxy.ts",
+        "src/desk/execution/twap-executor.ts",
+        "src/desk/strategies/router.ts",
+        "src/shared/middleware/prometheus-metrics-core.ts"
+      ],
+      "modules": [
+        "cross-platform-arb-types.ts",
+        "cross-platform-arb-detector.ts",
+        "edge-proxy-inline-routes.ts",
+        "twap-executor-types.ts",
+        "twap-executor-class.ts",
+        "router-cache.ts",
+        "router-class.ts",
+        "prometheus-metrics-core-data.ts",
+        "prometheus-metrics-core-signals.ts"
+      ],
+      "ratchet": {
+        "before": 227,
+        "after": 222,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
