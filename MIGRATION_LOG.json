@@ -1001,6 +1001,40 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 14,
+      "version": "3.1.46",
+      "date": "2026-09-11",
+      "targets": [
+        "src/desk/feeds/bybit-ws.ts",
+        "src/desk/strategies/polymarket/vol-compression-breakout-v2.ts",
+        "src/platform/signals-api/subscription-repository-d1.ts",
+        "src/desk/feeds/news-market-correlator.ts",
+        "src/shared/utils/consistent-hash.ts"
+      ],
+      "modules": [
+        "bybit-ws-types.ts",
+        "bybit-ws-parsers.ts",
+        "vol-compression-types.ts",
+        "vol-compression-math.ts",
+        "vol-compression-breakout-strategy.ts",
+        "subscription-repository-types.ts",
+        "subscription-repository-queries.ts",
+        "news-correlator-types.ts",
+        "news-correlator-filter.ts",
+        "news-correlator-publish.ts",
+        "consistent-hash-types.ts",
+        "consistent-hash-murmur.ts",
+        "consistent-hash-stats.ts"
+      ],
+      "ratchet": {
+        "before": 197,
+        "after": 192,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }

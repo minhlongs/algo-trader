@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.46] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 14
+
+### Changed
+- Split `src/desk/feeds/bybit-ws.ts` (257→154 LOC) → `bybit-ws-types.ts` (42 LOC) + `bybit-ws-parsers.ts` (66 LOC)
+- Split `src/desk/strategies/polymarket/vol-compression-breakout-v2.ts` (257→26 LOC) → `vol-compression-types.ts` (49 LOC) + `vol-compression-math.ts` (42 LOC) + `vol-compression-breakout-strategy.ts` (169 LOC)
+- Split `src/platform/signals-api/subscription-repository-d1.ts` (257→146 LOC) → `subscription-repository-types.ts` (41 LOC) + `subscription-repository-queries.ts` (53 LOC)
+- Split `src/desk/feeds/news-market-correlator.ts` (256→130 LOC) → `news-correlator-types.ts` (27 LOC) + `news-correlator-filter.ts` (71 LOC) + `news-correlator-publish.ts` (52 LOC)
+- Split `src/shared/utils/consistent-hash.ts` (256→145 LOC) → `consistent-hash-types.ts` (16 LOC) + `consistent-hash-murmur.ts` (60 LOC) + `consistent-hash-stats.ts` (51 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 197→192 (−5)
+- Version bump 3.1.45→3.1.46; 12,483 tests 100% pass
+
 ## [3.1.45] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 13
 
 ### Changed
