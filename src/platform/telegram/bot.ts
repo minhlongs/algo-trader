@@ -5,44 +5,17 @@
  */
 
 import { Bot, Context } from 'grammy';
-import { getRedisClient } from '../../redis';
 import { logger } from '../../shared/utils/logger';
-import { formatTelegramMessage } from '../notifications/alert-formatter';
-import {
-  handleStart,
-  handleHelp,
-  handleStatus,
-  handleLink,
-  handleUnlink,
-  handleNotifications,
-  handleLimits,
-  handleBalance,
-  handlePositions,
-  handlePnl,
-  handleCampaign,
-  handleResults,
-} from './bot-command-handlers';
-import {
-  handleFaq,
-  handleFaqDetail,
-  handleSupport,
-  handlePricing,
-  handleUnknownMessage,
-} from './auto-support-handlers';
-import { handleAsk } from './ask-handler';
-import { handleLeaderboard } from './leaderboard-handler';
 import { userSessionRepo } from './user-session-repository-d1';
+import type { TelegramConfig, UserSession } from './bot-types';
+import { registerBotCommands } from './bot-command-registration';
+import {
+  applyTelegramRateLimit,
+  sendTelegramThresholdAlert,
+  sendTelegramToAllLinkedUsers,
+} from './bot-alert-dispatcher';
 
-export interface TelegramConfig {
-  botToken: string;
-}
-
-export interface UserSession {
-  userId: number;
-  licenseKeys: string[];
-  notificationsEnabled: boolean;
-  lastCommand: string;
-}
+export type { TelegramConfig, UserSession };
 
 export class TelegramBotService {
   private static instance: TelegramBotService;
@@ -75,7 +48,7 @@ export class TelegramBotService {
       this.bot = new Bot<Context>(this.config.botToken);
       this.setupMiddleware(); // Session creation FIRST
       this.setupCommands();   // Command handlers SECOND (can read sessions)
-        this.initialized = true;
+      this.initialized = true;
       logger.info('[TelegramBot] Initialized with Telegram');
       return true;
     } catch (error) {
@@ -119,47 +92,7 @@ export class TelegramBotService {
 
   private setupCommands(): void {
     if (!this.bot) return;
-
-    this.bot.command('start', (ctx: Context) => handleStart(ctx));
-    this.bot.command('help', (ctx: Context) => handleHelp(ctx));
-    this.bot.command('status', (ctx: Context) => handleStatus(ctx));
-    this.bot.command('link', async (ctx: Context) => handleLink(ctx));
-    this.bot.command('unlink', async (ctx: Context) => handleUnlink(ctx));
-    this.bot.command('notifications', async (ctx: Context) => handleNotifications(ctx));
-    this.bot.command('limits', (ctx: Context) => handleLimits(ctx));
-    this.bot.command('balance', async (ctx: Context) => handleBalance(ctx));
-    this.bot.command('positions', async (ctx: Context) => handlePositions(ctx));
-    this.bot.command('pnl', async (ctx: Context) => handlePnl(ctx));
-    this.bot.command('campaign', (ctx: Context) => handleCampaign(ctx));
-    this.bot.command('results', async (ctx: Context) => handleResults(ctx));
-    this.bot.command('faq', (ctx: Context) => {
-      const text = (ctx.message as { text?: string })?.text || '';
-      return text.trim() === '/faq' ? handleFaq(ctx) : handleFaqDetail(ctx);
-    });
-    this.bot.command('support', (ctx: Context) => handleSupport(ctx));
-    this.bot.command('pricing', (ctx: Context) => handlePricing(ctx));
-    this.bot.command('leaderboard', (ctx: Context) => handleLeaderboard(ctx));
-    this.bot.command('ask', async (ctx: Context) => {
-      const text = (ctx.message as { text?: string })?.text || '';
-      const query = text.replace(/^\/ask(\s|@\w+)*/, '').trim();
-      if (!query) {
-        await ctx.reply(
-          '🤖 *AI Co-pilot*\n\nAsk me anything about your trading:\n\n' +
-          '• `/ask what is my risk exposure?`\n' +
-          '• `/ask find arbitrage opportunities`\n' +
-          '• `/ask how are my strategies performing?`\n' +
-          '• `/ask what is the market doing?`\n' +
-          '• `/ask generate a weekly report`\n\n' +
-          'Example: `/ask what is my risk exposure?`',
-          { parse_mode: 'Markdown' },
-        );
-        return;
-      }
-      await handleAsk(ctx, query);
-    });
-
-    // Catch-all: auto-match unknown text messages to FAQ
-    this.bot.on('message:text', (ctx: Context) => handleUnknownMessage(ctx));
+    registerBotCommands(this.bot);
   }
 
   private setupMiddleware(): void {
@@ -175,37 +108,19 @@ export class TelegramBotService {
     threshold: number,
     currentUsage: number,
     dailyLimit: number,
-    percentUsed: number
+    percentUsed: number,
   ): Promise<boolean> {
-    if (!this.initialized || !this.bot) {
-      logger.warn('[TelegramBot] Not initialized, skipping message');
-      return false;
-    }
-
-    await this.applyRateLimitRedis(chatId);
-
-    const session = await userSessionRepo.getByUserId(chatId);
-    if (session && !session.notificationsEnabled) {
-      logger.info(`[TelegramBot] Notifications disabled for user ${chatId}`);
-      return false;
-    }
-
-    const message = formatTelegramMessage({
+    return sendTelegramThresholdAlert(
+      this.bot,
+      this.initialized,
+      chatId,
       licenseKey,
       threshold,
       currentUsage,
       dailyLimit,
       percentUsed,
-    });
-
-    try {
-      await this.bot.api.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-      logger.info(`[TelegramBot] Alert sent to chat ${chatId}`);
-      return true;
-    } catch (error) {
-      logger.error('[TelegramBot] Send failed:', { error });
-      return false;
-    }
+      (cId) => this.applyRateLimitRedis(cId),
+    );
   }
 
   async sendToAllLinkedUsers(
@@ -213,48 +128,24 @@ export class TelegramBotService {
     threshold: number,
     currentUsage: number,
     dailyLimit: number,
-    percentUsed: number
+    percentUsed: number,
   ): Promise<number> {
-    let sentCount = 0;
-
-    const allSessions = await userSessionRepo.getAll();
-    for (const session of allSessions) {
-      if (session.licenseKeys.includes(licenseKey) && session.notificationsEnabled) {
-        const success = await this.sendThresholdAlert(
-          session.userId,
-          licenseKey,
-          threshold,
-          currentUsage,
-          dailyLimit,
-          percentUsed
-        );
-        if (success) sentCount++;
-      }
-    }
-
-    return sentCount;
+    return sendTelegramToAllLinkedUsers(
+      (userId, lk, th, cu, dl, pu) =>
+        this.sendThresholdAlert(userId, lk, th, cu, dl, pu),
+      licenseKey,
+      threshold,
+      currentUsage,
+      dailyLimit,
+      percentUsed,
+    );
   }
 
   /**
    * Redis-backed rate limiting for crash resilience
    */
   private async applyRateLimitRedis(chatId: number): Promise<void> {
-    try {
-      const redis = getRedisClient();
-      const key = `${this.redisKeyPrefix}${chatId}`;
-      const lastSend = await redis.get(key);
-
-      if (lastSend) {
-        const elapsed = Date.now() - parseInt(lastSend);
-        if (elapsed < this.rateLimitDelay) {
-          await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - elapsed));
-        }
-      }
-
-      await redis.setex(key, 3600, Date.now().toString());
-    } catch (error) {
-      logger.warn('[TelegramBot] Redis rate limiting failed:', { error });
-    }
+    await applyTelegramRateLimit(chatId, this.redisKeyPrefix, this.rateLimitDelay);
   }
 
   async getUserSession(userId: number): Promise<UserSession | undefined> {

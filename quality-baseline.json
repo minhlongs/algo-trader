@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 207,
+      "count": 202,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -123,7 +123,6 @@
         "src/desk/strategies/examples/05-risk-managed-kelly-strategy.ts": 235,
         "src/desk/strategies/examples/risk-managed-kelly-helpers.ts": 232,
         "src/desk/strategies/GruStrategy.ts": 224,
-        "src/desk/strategies/loader.ts": 272,
         "src/desk/strategies/polymarket/adverse-selection-filter.ts": 263,
         "src/desk/strategies/polymarket/book-imbalance-reversal.ts": 235,
         "src/desk/strategies/polymarket/correlation-breakdown.ts": 228,
@@ -142,7 +141,6 @@
         "src/desk/strategies/polymarket/regime-switch-detector-v2.ts": 206,
         "src/desk/strategies/polymarket/relative-strength-rotation-v2.ts": 211,
         "src/desk/strategies/polymarket/resolution-frontrunner-v2.ts": 203,
-        "src/desk/strategies/polymarket/sentiment-momentum.ts": 268,
         "src/desk/strategies/polymarket/session-vol-sniper.ts": 225,
         "src/desk/strategies/polymarket/twap-accumulator.ts": 255,
         "src/desk/strategies/polymarket/vol-compression-breakout-v2.ts": 257,
@@ -170,7 +168,6 @@
         "src/platform/api/routes/__tests__/signal-ingest-routes.test.ts": 245,
         "src/platform/api/routes/__tests__/signal-subscription-routes.test.ts": 469,
         "src/platform/api/routes/admin-qwen-routes.ts": 250,
-        "src/platform/api/routes/blog-engagement-routes.ts": 273,
         "src/platform/api/routes/community-strategy-routes.ts": 248,
         "src/platform/api/routes/health.ts": 220,
         "src/platform/api/routes/kyc-routes.ts": 251,
@@ -221,7 +218,6 @@
         "src/platform/signals-api/usage-metering-service.ts": 224,
         "src/platform/telegram/__tests__/ask-handler.test.ts": 223,
         "src/platform/telegram/__tests__/leaderboard-handler.test.ts": 225,
-        "src/platform/telegram/bot.ts": 273,
         "src/platform/websocket/message-replay.ts": 235,
         "src/platform/workers/api/markets.ts": 205,
         "src/platform/workers/api/subscriptions.ts": 229,
@@ -239,7 +235,6 @@
         "src/shared/db/migrations/025-marketplace-schema.ts": 207,
         "src/shared/db/migrations/026-create-ai-audit-tables.ts": 252,
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304,
-        "src/shared/monitoring/metrics-collector.ts": 269,
         "src/shared/resilience/recovery-manager.ts": 207,
         "src/shared/utils/consistent-hash.ts": 256,
         "src/shared/utils/lru-cache.ts": 259,
