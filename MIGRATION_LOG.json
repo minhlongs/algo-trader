@@ -898,6 +898,39 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 11,
+      "version": "3.1.43",
+      "date": "2026-09-11",
+      "targets": [
+        "src/desk/polymarket/strategy-registry.ts",
+        "src/platform/marketplace/notifications/notification-service.ts",
+        "src/desk/cli/agent-dispatcher.ts",
+        "src/platform/marketplace/services/desk-strategy-seeder.ts",
+        "src/desk/arbitrage/types.ts"
+      ],
+      "modules": [
+        "strategy-registry-types.ts",
+        "strategy-registry-entries-a-m.ts",
+        "strategy-registry-entries-n-z.ts",
+        "notification-types.ts",
+        "notification-helpers.ts",
+        "agent-dispatcher-types.ts",
+        "agent-dispatcher-executor.ts",
+        "agent-dispatcher-queues.ts",
+        "desk-strategy-seeder-types.ts",
+        "desk-strategy-seeder-data.ts",
+        "types-opportunity.ts",
+        "types-strategy.ts"
+      ],
+      "ratchet": {
+        "before": 212,
+        "after": 207,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
