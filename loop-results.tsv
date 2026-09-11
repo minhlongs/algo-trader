@@ -313,3 +313,4 @@ iter	timestamp	metric	delta	kept	description
 13	2026-09-11T05:00:00	197	-5	yes	S18 Tranche 13: split revenue/adverse-selection-filter/momentum-exhaustion/lru-cache/onboarding-service
 14	2026-09-11T06:00:00	192	-5	yes	S18 Tranche 14: split bybit-ws/vol-compression-breakout-v2/subscription-repository-d1/news-market-correlator/consistent-hash
 15	2026-09-11T07:00:00	187	-5	yes	S18 Tranche 15: split twap-accumulator/admin-qwen-routes/migration-runner/audit-log-service/pairs-stat-arb
+16	2026-09-11T08:00:00	182	-5	yes	S18 Tranche 16: split kyc-routes/signal-publisher/uniswap-v3-adapter/strategy-live-bridge/cross-event-drift-v2

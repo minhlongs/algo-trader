@@ -1068,6 +1068,41 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 16,
+      "version": "3.1.48",
+      "date": "2026-09-11",
+      "targets": [
+        "src/platform/api/routes/kyc-routes.ts",
+        "src/platform/signals-api/signal-publisher.ts",
+        "src/desk/markets/dex/uniswap-v3-adapter.ts",
+        "src/desk/polymarket/strategy-live-bridge.ts",
+        "src/desk/strategies/polymarket/cross-event-drift-v2.ts"
+      ],
+      "modules": [
+        "kyc-types.ts",
+        "kyc-status-routes.ts",
+        "kyc-webhook-route.ts",
+        "signal-publisher-types.ts",
+        "signal-delivery-limiter.ts",
+        "signal-webhook-dispatcher.ts",
+        "uniswap-v3-constants.ts",
+        "uniswap-v3-math.ts",
+        "uniswap-v3-provider.ts",
+        "strategy-live-bridge-types.ts",
+        "strategy-live-bridge-scanner.ts",
+        "cross-event-drift-types.ts",
+        "cross-event-drift-math.ts",
+        "cross-event-drift-strategy.ts"
+      ],
+      "ratchet": {
+        "before": 187,
+        "after": 182,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }

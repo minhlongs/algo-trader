@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.48] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 16
+
+### Changed
+- Split `src/platform/api/routes/kyc-routes.ts` (251→97 LOC) → `kyc-types.ts` (38 LOC) + `kyc-status-routes.ts` (83 LOC) + `kyc-webhook-route.ts` (90 LOC)
+- Split `src/platform/signals-api/signal-publisher.ts` (251→146 LOC) → `signal-publisher-types.ts` (30 LOC) + `signal-delivery-limiter.ts` (93 LOC) + `signal-webhook-dispatcher.ts` (31 LOC)
+- Split `src/desk/markets/dex/uniswap-v3-adapter.ts` (250→146 LOC) → `uniswap-v3-constants.ts` (34 LOC) + `uniswap-v3-math.ts` (29 LOC) + `uniswap-v3-provider.ts` (22 LOC)
+- Split `src/desk/polymarket/strategy-live-bridge.ts` (250→157 LOC) → `strategy-live-bridge-types.ts` (49 LOC) + `strategy-live-bridge-scanner.ts` (70 LOC)
+- Split `src/desk/strategies/polymarket/cross-event-drift-v2.ts` (249→22 LOC) → `cross-event-drift-types.ts` (41 LOC) + `cross-event-drift-math.ts` (57 LOC) + `cross-event-drift-strategy.ts` (159 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 187→182 (−5)
+- Version bump 3.1.47→3.1.48; 12,483 tests 100% pass
+
 ## [3.1.47] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 15
 
 ### Changed
