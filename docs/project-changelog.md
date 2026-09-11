@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.42] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 10
+
+### Changed
+- Split `src/lib/llm-router.ts` (287→163 LOC) → `llm-router-types.ts` (69 LOC) + `llm-router-executor.ts` (81 LOC)
+- Split `src/platform/workers/api/telegram-bot.ts` (284→107 LOC) → `telegram-bot-types.ts` (76 LOC) + `telegram-bot-dispatch.ts` (135 LOC)
+- Split `src/desk/cli/cashclaw-cli.ts` (283→57 LOC) → `cashclaw-cli-scan.ts` (83 LOC) + `cashclaw-cli-paper.ts` (150 LOC)
+- Split `src/shared/utils/compression-stream.ts` (279→190 LOC) → `compression-stream-types.ts` (12 LOC) + `compression-stream-helpers.ts` (97 LOC)
+- Split `src/desk/intelligence/prediction-accuracy-tracker.ts` (278→126 LOC) → `prediction-accuracy-types.ts` (73 LOC) + `prediction-accuracy-reporter.ts` (102 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 217→212 (−5)
+- Version bump 3.1.41→3.1.42; 12,483 tests 100% pass
+
 ## [3.1.41] - 2026-09-11 — S18 Oversized-File Debt Burn-Down Tranche 9
 
 ### Changed

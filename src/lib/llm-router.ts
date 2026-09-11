@@ -12,84 +12,29 @@
 
 import { EventEmitter } from 'events';
 import { loadLlmConfig, LlmEndpoint, LlmConfig } from '../shared/config/llm-config';
+import {
+  OMNIROUTE_URL,
+  ChatMessage,
+  RouterRequest,
+  RouterResponse,
+  HealthState,
+  assertOmniRouteConfig,
+} from './llm-router-types';
+import { LlmSpendTracker, executeLlmEndpointCall } from './llm-router-executor';
 
-/**
- * Mandatory OmniRoute gateway — all local MLX traffic must resolve through it.
- * Override via OMNIROUTE_URL env var (e.g., Cloudflare Tunnel hostname).
- * Default: http://omnimbp.local:20128/v1 (local M1 Max LAN)
- */
-export const OMNIROUTE_URL = process.env.OMNIROUTE_URL || 'http://omnimbp.local:20128/v1';
-
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
-
-export interface RouterRequest {
-  messages: ChatMessage[];
-  maxTokens?: number;
-  temperature?: number;
-  forceCloud?: boolean;
-}
-
-export interface RouterResponse {
-  content: string;
-  model: string;
-  provider: 'mlx' | 'mlx-qwen' | 'ollama' | 'cloud';
-  tokensUsed: number;
-  latencyMs: number;
-}
-
-interface HealthState {
-  healthy: boolean;
-  lastCheck: number;
-  consecutiveFailures: number;
-}
-
-function isLoopbackUrl(url: string): boolean {
-  return (
-    url === 'http://localhost:20128/v1' ||
-    url === 'http://127.0.0.1:20128/v1' ||
-    url === 'http://0.0.0.0:20128/v1' ||
-    url.startsWith('http://localhost:') ||
-    url.startsWith('http://127.0.0.1:') ||
-    url.startsWith('http://0.0.0.0:')
-  );
-}
-
-function assertOmniRouteConfig(config: LlmConfig): void {
-  const endpoints: { name: string; endpoint?: LlmEndpoint }[] = [
-    { name: 'primary', endpoint: config.primary },
-    { name: 'fastTriage', endpoint: config.fastTriage },
-    { name: 'fallback', endpoint: config.fallback },
-    { name: 'qwen', endpoint: config.qwen },
-    { name: 'cloud', endpoint: config.cloud },
-  ];
-
-  for (const { name, endpoint } of endpoints) {
-    if (!endpoint) continue;
-    if (endpoint.url === OMNIROUTE_URL) continue;
-    if (isLoopbackUrl(endpoint.url)) continue;
-    throw new Error(
-      `OmniRoute violation: ${name} endpoint URL "${endpoint.url}" is not the mandatory OmniRoute gateway (${OMNIROUTE_URL}). ` +
-      `All MLX traffic must resolve through OmniRoute.`,
-    );
-  }
-}
+export { OMNIROUTE_URL };
+export type { ChatMessage, RouterRequest, RouterResponse };
 
 export class LlmRouter extends EventEmitter {
   private config: LlmConfig;
   private health: Map<string, HealthState> = new Map();
-  private cloudSpendToday = 0;
-  private cloudSpendResetDate = new Date().toDateString();
+  private spendTracker = new LlmSpendTracker();
 
   constructor(config?: Partial<LlmConfig>) {
     super();
     this.config = { ...loadLlmConfig(), ...config };
     assertOmniRouteConfig(this.config);
 
-    // Pre-seed health entries for every configured endpoint so failures are tracked per-endpoint,
-    // not collapsed onto a single URL key. Without this, one dead gateway blacklists every route.
     const urls: string[] = [];
     for (const ep of [
       this.config.primary,
@@ -109,18 +54,14 @@ export class LlmRouter extends EventEmitter {
 
   /** Deep reasoning route: DeepSeek R1 → Ollama → Claude cloud */
   async chat(request: RouterRequest): Promise<RouterResponse> {
-    // `forceCloud` must respect budget guard — do not bypass `canSpendCloud()`.
-    if (request.forceCloud && this.config.cloud && this.canSpendCloud()) {
+    if (request.forceCloud && this.config.cloud && this.spendTracker.canSpendCloud(this.config.cloudDailyBudgetUsd)) {
       return this.callEndpoint(this.config.cloud, request, 'cloud');
     }
 
     const primaryUrl = this.config.primary.url;
     const fallbackUrl = this.config.fallback.url;
-    const primaryHealthy = this.isHealthy(primaryUrl);
-    const fallbackHealthy = this.isHealthy(fallbackUrl);
 
-    // Fast path: primary (DeepSeek R1, ~10 tok/s)
-    if (primaryHealthy) {
+    if (this.isHealthy(primaryUrl)) {
       try {
         return await this.callEndpoint(this.config.primary, request, 'mlx');
       } catch {
@@ -129,8 +70,7 @@ export class LlmRouter extends EventEmitter {
       }
     }
 
-    // Fallback (Ollama) — health-gated, no longer an unconditional timeout tax
-    if (fallbackHealthy) {
+    if (this.isHealthy(fallbackUrl)) {
       try {
         return await this.callEndpoint(this.config.fallback, request, 'ollama');
       } catch {
@@ -139,8 +79,7 @@ export class LlmRouter extends EventEmitter {
       }
     }
 
-    // Last resort: cloud (budget-checked)
-    if (this.config.cloud && this.canSpendCloud()) {
+    if (this.config.cloud && this.spendTracker.canSpendCloud(this.config.cloudDailyBudgetUsd)) {
       return this.callEndpoint(this.config.cloud, request, 'cloud');
     }
 
@@ -150,10 +89,8 @@ export class LlmRouter extends EventEmitter {
   /**
    * Qwen MoE long-context route: Qwen3-30B → DeepSeek R1 → Ollama → Claude cloud.
    * No-op (delegates to chat()) when LLM_QWEN_ENABLED is not 'true'.
-   * Best for: deep statistical reasoning, long market context, multi-step analysis.
    */
   async qwenChat(request: RouterRequest): Promise<RouterResponse> {
-    // Feature-flag: if Qwen not configured, fall straight through to chat()
     if (!this.config.qwen) {
       return this.chat(request);
     }
@@ -167,7 +104,6 @@ export class LlmRouter extends EventEmitter {
       }
     }
 
-    // Qwen unhealthy — fall through to existing chat() chain
     return this.chat(request);
   }
 
@@ -181,7 +117,6 @@ export class LlmRouter extends EventEmitter {
         this.emit('failover', { from: 'mlx-fast', to: 'mlx-primary' });
       }
     }
-    // Fall through to regular chain
     return this.chat(request);
   }
 
@@ -190,53 +125,12 @@ export class LlmRouter extends EventEmitter {
     request: RouterRequest,
     provider: 'mlx' | 'mlx-qwen' | 'ollama' | 'cloud'
   ): Promise<RouterResponse> {
-    const start = Date.now();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), endpoint.timeoutMs);
-
-    try {
-      const res = await fetch(`${endpoint.url}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(provider === 'cloud' && process.env.CLAUDE_API_KEY
-            ? { 'x-api-key': process.env.CLAUDE_API_KEY, 'anthropic-version': '2023-06-01' }
-            : {}),
-        },
-        body: JSON.stringify({
-          model: endpoint.model,
-          messages: request.messages,
-          max_tokens: request.maxTokens || endpoint.maxTokens,
-          temperature: request.temperature ?? 0.1,
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) throw new Error(`LLM ${provider} error: ${res.status}`);
-
-      const data = (await res.json()) as {
-        choices: Array<{ message: { content: string } }>;
-        usage?: { total_tokens: number };
-      };
-      const latencyMs = Date.now() - start;
-      const tokensUsed = data.usage?.total_tokens || 0;
-
-      this.markHealthy(endpoint.url);
-
-      if (provider === 'cloud') {
-        this.trackCloudSpend(tokensUsed);
-      }
-
-      return {
-        content: data.choices[0]?.message?.content || '',
-        model: endpoint.model,
-        provider,
-        tokensUsed,
-        latencyMs,
-      };
-    } finally {
-      clearTimeout(timeout);
+    const res = await executeLlmEndpointCall(endpoint, request, provider);
+    this.markHealthy(endpoint.url);
+    if (provider === 'cloud') {
+      this.spendTracker.trackCloudSpend(res.tokensUsed);
     }
+    return res;
   }
 
   private isHealthy(url: string): boolean {
@@ -259,29 +153,11 @@ export class LlmRouter extends EventEmitter {
     this.emit('unhealthy', { url, failures: state.consecutiveFailures });
   }
 
-  private canSpendCloud(): boolean {
-    const today = new Date().toDateString();
-    if (today !== this.cloudSpendResetDate) {
-      this.cloudSpendToday = 0;
-      this.cloudSpendResetDate = today;
-    }
-    return this.cloudSpendToday < this.config.cloudDailyBudgetUsd;
-  }
-
-  private trackCloudSpend(tokens: number): void {
-    const costPer1k = 0.003;
-    this.cloudSpendToday += (tokens / 1000) * costPer1k;
-  }
-
   getHealth(): Record<string, HealthState> {
     return Object.fromEntries(this.health);
   }
 
   getCloudSpend(): { spent: number; budget: number; remaining: number } {
-    return {
-      spent: this.cloudSpendToday,
-      budget: this.config.cloudDailyBudgetUsd,
-      remaining: this.config.cloudDailyBudgetUsd - this.cloudSpendToday,
-    };
+    return this.spendTracker.getCloudSpend(this.config.cloudDailyBudgetUsd);
   }
 }
