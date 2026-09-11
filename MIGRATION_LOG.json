@@ -1103,6 +1103,39 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 17,
+      "version": "3.1.49",
+      "date": "2026-09-12",
+      "targets": [
+        "src/desk/execution/dry-run-executor.ts",
+        "src/platform/api/routes/community-strategy-routes.ts",
+        "src/platform/api/schemas/marketplace.schemas.ts",
+        "src/desk/execution/paper-position-tracker.ts",
+        "src/platform/marketplace/services/vetting.service.ts"
+      ],
+      "modules": [
+        "dry-run-order-simulator.ts",
+        "community-strategy-types.ts",
+        "community-strategy-read-routes.ts",
+        "community-strategy-backtest-route.ts",
+        "marketplace-strategy.schemas.ts",
+        "marketplace-engagement.schemas.ts",
+        "marketplace-analytics.schemas.ts",
+        "paper-position-types.ts",
+        "paper-position-math.ts",
+        "paper-position-pnl.ts",
+        "vetting-types.ts",
+        "vetting-rules-engine.ts"
+      ],
+      "ratchet": {
+        "before": 182,
+        "after": 177,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
