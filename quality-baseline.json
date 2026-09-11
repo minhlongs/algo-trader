@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 202,
+      "count": 197,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -123,7 +123,6 @@
         "src/desk/strategies/examples/05-risk-managed-kelly-strategy.ts": 235,
         "src/desk/strategies/examples/risk-managed-kelly-helpers.ts": 232,
         "src/desk/strategies/GruStrategy.ts": 224,
-        "src/desk/strategies/polymarket/adverse-selection-filter.ts": 263,
         "src/desk/strategies/polymarket/book-imbalance-reversal.ts": 235,
         "src/desk/strategies/polymarket/correlation-breakdown.ts": 228,
         "src/desk/strategies/polymarket/cross-correlation-lag-v2.ts": 221,
@@ -135,7 +134,6 @@
         "src/desk/strategies/polymarket/listing-arbitrage-sniper.ts": 230,
         "src/desk/strategies/polymarket/mean-reversion.ts": 203,
         "src/desk/strategies/polymarket/momentum-cascade-v2.ts": 231,
-        "src/desk/strategies/polymarket/momentum-exhaustion.ts": 261,
         "src/desk/strategies/polymarket/orderbook-depth-ratio-v2.ts": 242,
         "src/desk/strategies/polymarket/pairs-stat-arb.ts": 253,
         "src/desk/strategies/polymarket/regime-switch-detector-v2.ts": 206,
@@ -172,7 +170,6 @@
         "src/platform/api/routes/health.ts": 220,
         "src/platform/api/routes/kyc-routes.ts": 251,
         "src/platform/api/routes/marketplace-dispute-routes.ts": 235,
-        "src/platform/api/routes/revenue.ts": 264,
         "src/platform/api/schemas/marketplace.schemas.ts": 248,
         "src/platform/audit/__tests__/audit-log-service.test.ts": 315,
         "src/platform/audit/__tests__/tenant-audit-chain.test.ts": 216,
@@ -185,7 +182,6 @@
         "src/platform/billing/__tests__/license-service.test.ts": 279,
         "src/platform/billing/__tests__/payment-service.test.ts": 347,
         "src/platform/billing/__tests__/subscription-service.test.ts": 255,
-        "src/platform/billing/onboarding-service.ts": 258,
         "src/platform/billing/payment-service.ts": 238,
         "src/platform/billing/trial-drip-service.ts": 241,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
@@ -237,7 +233,6 @@
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304,
         "src/shared/resilience/recovery-manager.ts": 207,
         "src/shared/utils/consistent-hash.ts": 256,
-        "src/shared/utils/lru-cache.ts": 259,
         "src/shared/utils/memory-pool.ts": 239
       }
     }
