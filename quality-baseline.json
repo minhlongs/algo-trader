@@ -35,10 +35,9 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 162,
+      "count": 157,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
-        "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
         "src/alpha-lab/gates/gate-evaluator.ts": 226,
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
         "src/api/routes/license-routes.ts": 208,
@@ -55,7 +54,6 @@
         "src/desk/arbitrage/unified-executor.ts": 220,
         "src/desk/cli/__tests__/alpha-cli.test.ts": 285,
         "src/desk/cli/__tests__/system-doctor.test.ts": 292,
-        "src/desk/cli/cashclaw-trade-commands.ts": 237,
         "src/desk/commands/setup-wizard.ts": 203,
         "src/desk/data/__tests__/data-quality-gate.test.ts": 238,
         "src/desk/data/binance-feed.ts": 207,
@@ -105,7 +103,6 @@
         "src/desk/strategies/dna/binance-candle-provider.ts": 210,
         "src/desk/strategies/dna/multi-tf-types.ts": 230,
         "src/desk/strategies/examples/03-rsi-mean-reversion-strategy.ts": 219,
-        "src/desk/strategies/examples/05-risk-managed-kelly-strategy.ts": 235,
         "src/desk/strategies/examples/risk-managed-kelly-helpers.ts": 232,
         "src/desk/strategies/GruStrategy.ts": 224,
         "src/desk/strategies/polymarket/book-imbalance-reversal.ts": 235,
@@ -161,7 +158,6 @@
         "src/platform/marketplace/__tests__/notification-service.test.ts": 226,
         "src/platform/marketplace/repositories/strategy-repository.ts": 213,
         "src/platform/marketplace/services/__tests__/marketplace-payout-scheduler.test.ts": 297,
-        "src/platform/marketplace/services/marketplace.service.ts": 237,
         "src/platform/marketplace/services/revenue.service.ts": 220,
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
         "src/platform/metering/usage-metering-service.test.ts": 305,
@@ -172,7 +168,6 @@
         "src/platform/referral/fraud-detector.ts": 209,
         "src/platform/referral/payout-scheduler.ts": 214,
         "src/platform/referral/referral-analytics.ts": 234,
-        "src/platform/referral/referral-crud.ts": 237,
         "src/platform/referral/referral-payout-repository.ts": 216,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,

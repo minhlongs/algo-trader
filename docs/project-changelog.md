@@ -1,5 +1,17 @@
 # Project Changelog - Algo Trader
 
+## [3.1.53] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 21
+
+### Changed
+- Split `src/alpha-lab/experiments/alpha-backtest-adapter.ts` (237→74 LOC) → `alpha-backtest-types.ts` (26 LOC) + `alpha-backtest-candles.ts` (150 LOC)
+- Split `src/desk/cli/cashclaw-trade-commands.ts` (237→136 LOC) → `cashclaw-trade-journal-handler.ts` (63 LOC) + `cashclaw-trade-backtest-handler.ts` (74 LOC)
+- Split `src/platform/marketplace/services/marketplace.service.ts` (237→148 LOC) → `marketplace-strategy-ops.ts` (128 LOC) + `marketplace-listing-ops.ts` (152 LOC)
+- Split `src/platform/referral/referral-crud.ts` (237→108 LOC) → `referral-crud-tracking.ts` (105 LOC) + `referral-crud-commission.ts` (46 LOC)
+- Split `src/desk/strategies/examples/05-risk-managed-kelly-strategy.ts` (235→155 LOC) → `risk-managed-kelly-lifecycle.ts` (109 LOC)
+- All 14 touched and created files strictly <= 160 visual lines (cap <= 200, max 155 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 162→157 (−5)
+- Version bump 3.1.52→3.1.53; 12,483 tests 100% pass & typecheck passes with 0 errors
+
 ## [3.1.52] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 20
 
 ### Changed

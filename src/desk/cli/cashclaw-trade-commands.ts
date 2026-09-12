@@ -2,16 +2,17 @@
  * CashClaw Trade Commands — CLI handlers for live/paper trading.
  *
  * Subcommands of `cashclaw trade`:
- *   start, status, list-strategies, run, journal, backtest
+ *   start, status, list-strategies, run, demo, journal, backtest
  */
 import type { Command } from 'commander';
 import { handleTradeRun } from './cashclaw-trade-run-handler';
 import { handleTradeStart } from './cashclaw-trade-start-handler';
 import { handleDemoTrade } from './demo-trade-handler';
+import { handleTradeJournal } from './cashclaw-trade-journal-handler';
+import { handleTradeBacktest } from './cashclaw-trade-backtest-handler';
 import { logger } from '../../shared/utils/logger';
 
 export function registerTradeCommands(tradeCmd: Command): void {
-
   // ── trade start ──────────────────────────────────────────────────────────────
 
   tradeCmd
@@ -33,12 +34,14 @@ export function registerTradeCommands(tradeCmd: Command): void {
     .option('--json', 'Machine-readable JSON output')
     .action((opts: { json: boolean }) => {
       if (opts.json) {
-        logger.info(JSON.stringify({
-          mode: 'live',
-          paperMode: process.env['PAPER_MODE'] ?? 'true',
-          note: 'Status available when orchestrator is running. Use "trade start" first.',
-          timestamp: new Date().toISOString(),
-        }));
+        logger.info(
+          JSON.stringify({
+            mode: 'live',
+            paperMode: process.env['PAPER_MODE'] ?? 'true',
+            note: 'Status available when orchestrator is running. Use "trade start" first.',
+            timestamp: new Date().toISOString(),
+          }),
+        );
         return;
       }
 
@@ -97,17 +100,17 @@ export function registerTradeCommands(tradeCmd: Command): void {
 
   // ── trade demo ───────────────────────────────────────────────────────────────
 
-tradeCmd
-  .command('demo')
-  .description('Run a single demo trade through risk gate and execution engine')
-  .option('--strategy <name>', 'Strategy to resolve', 'spread-mean-reversion')
-  .option('--capital <amount>', 'Paper capital in USDC', '1000')
-  .option('--yes', 'Skip confirmation prompt')
-  .action(async (opts: { strategy: string; capital: string; yes: boolean }) => {
-    await handleDemoTrade(opts);
-  });
+  tradeCmd
+    .command('demo')
+    .description('Run a single demo trade through risk gate and execution engine')
+    .option('--strategy <name>', 'Strategy to resolve', 'spread-mean-reversion')
+    .option('--capital <amount>', 'Paper capital in USDC', '1000')
+    .option('--yes', 'Skip confirmation prompt')
+    .action(async (opts: { strategy: string; capital: string; yes: boolean }) => {
+      await handleDemoTrade(opts);
+    });
 
-// ── trade journal ────────────────────────────────────────────────────────────
+  // ── trade journal ────────────────────────────────────────────────────────────
 
   tradeCmd
     .command('journal')
@@ -115,62 +118,7 @@ tradeCmd
     .option('--type <type>', 'Filter: fills, events, pnl, or all', 'all')
     .option('--limit <n>', 'Number of entries to show', '20')
     .action((opts: { type: string; limit: string }) => {
-      const limit = parseInt(opts.limit, 10);
-      const filter = opts.type;
-
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { LiveTradingJournal } = require('../execution/live-trading-journal');
-      const journal = new LiveTradingJournal();
-
-      if (filter === 'all' || filter === 'fills') {
-        const fills = journal.loadFills();
-        const recent = fills.slice(-limit);
-        logger.info(`\n📊 Fills (${fills.length} total, showing last ${recent.length}):`);
-        logger.info('─'.repeat(70));
-        if (recent.length === 0) logger.info('  No fills recorded yet.');
-        for (const f of recent) {
-          const dt = f.filledAt ? new Date(f.filledAt).toISOString() : 'unknown';
-          logger.info(`  ${dt} | ${f.side.padEnd(5)} | ${f.tokenId.slice(0, 12)} | size=${f.size} | price=$${f.price.toFixed(4)} | ${f.orderId}`);
-        }
-      }
-
-      if (filter === 'all' || filter === 'events') {
-        const events = journal.loadEvents();
-        const recent = events.slice(-limit);
-        logger.info(`\n📋 Events (${events.length} total, showing last ${recent.length}):`);
-        logger.info('─'.repeat(70));
-        if (recent.length === 0) logger.info('  No events recorded yet.');
-        for (const e of recent) {
-          const dt = new Date(e.timestamp).toISOString();
-          const data = JSON.stringify(e.data).slice(0, 60);
-          logger.info(`  ${dt} | ${e.type.padEnd(15)} | ${data}`);
-        }
-      }
-
-      if (filter === 'all' || filter === 'pnl') {
-        const pnl = journal.loadDailyPnl();
-        logger.info('\n💰 Daily P&L:');
-        logger.info('─'.repeat(40));
-        if (pnl) {
-          logger.info(`  Date:       ${pnl.date}`);
-          logger.info(`  Realized:   $${pnl.realizedPnl.toFixed(2)}`);
-          logger.info(`  Trades:     ${pnl.tradeCount}`);
-          logger.info(`  Win/Loss:   ${pnl.winCount}W / ${pnl.lossCount}L`);
-          if (pnl.tradeCount > 0) {
-            const wr = ((pnl.winCount / pnl.tradeCount) * 100).toFixed(1);
-            logger.info(`  Win rate:   ${wr}%`);
-          }
-        } else {
-          logger.info('  No P&L recorded today.');
-        }
-      }
-
-      if (filter === 'all') {
-        const stats = journal.getLifetimeStats();
-        logger.info(`\n📈 Lifetime: ${stats.totalTrades} trades | ${stats.totalFills} fills`);
-      }
-
-      logger.info('');
+      handleTradeJournal(opts);
     });
 
   // ── trade backtest ───────────────────────────────────────────────────────────
@@ -183,55 +131,6 @@ tradeCmd
     .option('--capital <amount>', 'Starting capital in USDC', '5000')
     .option('--format <fmt>', 'Output format: table or json', 'table')
     .action(async (opts: { strategy: string; days: string; capital: string; format: string }) => {
-      const days = parseInt(opts.days, 10);
-      const capital = parseFloat(opts.capital);
-      const { BacktestRunner } = await import('../backtesting/backtest-runner');
-      const { listStrategies } = await import('../polymarket/strategy-registry');
-
-      const available = listStrategies().map((s) => s.name);
-      if (!available.includes(opts.strategy)) {
-        logger.error(`Unknown strategy: ${opts.strategy}`);
-        logger.error('Use "cashclaw trade list-strategies" to see available options.');
-        process.exit(1);
-      }
-
-      logger.info(`\n⏳ Backtesting ${opts.strategy} over ${days} days with $${capital}...\n`);
-
-      const runner = new BacktestRunner();
-      try {
-        const result = await runner.run({
-          strategy: opts.strategy,
-          paperTrading: true,
-          capitalUsdc: capital,
-          days,
-        });
-
-        const m = result.metrics;
-
-        if (opts.format === 'json') {
-          logger.info(JSON.stringify({ strategy: result.strategy, metrics: m, tradeCount: result.trades.length, durationMs: result.durationMs, warnings: result.warnings }, null, 2));
-        } else {
-          logger.info('┌─────────────────────────────────────────────────┐');
-          logger.info(`│  Strategy: ${result.strategy.padEnd(37)} │`);
-          logger.info(`│  Period: ${String(days).padEnd(3)} days | Capital: $${capital.toFixed(0).padEnd(25)} │`);
-          logger.info('├─────────────────────────────────────────────────┤');
-          logger.info(`│  Sharpe:       ${String(m.sharpeRatio).padEnd(8)}  |  Max DD:   ${(m.maxDrawdown * 100).toFixed(1)}%`.padEnd(51) + '│');
-          logger.info(`│  Win Rate:     ${(m.winRate * 100).toFixed(1)}%`.padEnd(25) + `  |  Profit Factor: ${m.profitFactor === Infinity ? '∞' : String(m.profitFactor)}`.padEnd(28) + '│');
-          logger.info(`│  Total P&L:    $${String(m.totalPnl).padEnd(8)}  |  Avg/Trade: $${String(m.avgPnlPerTrade).padEnd(8)} │`);
-          logger.info('├─────────────────────────────────────────────────┤');
-          logger.info(`│  Trades: ${String(m.totalTrades).padEnd(5)} (${m.winningTrades}W / ${m.losingTrades}L)`.padEnd(35) + `  |  Best: $${String(m.bestTrade).padEnd(8)} │`);
-          logger.info(`│  Worst: $${String(m.worstTrade).padEnd(8)}  |  Duration: ${(result.durationMs / 1000).toFixed(1)}s`.padEnd(33) + '│');
-          logger.info('└─────────────────────────────────────────────────┘');
-          if (result.warnings.length > 0) {
-            logger.info(`\n⚠ Warnings: ${result.warnings.join(', ')}`);
-          }
-        }
-
-        runner.clearCache();
-      } catch (err) {
-        logger.error(`Backtest failed: ${err instanceof Error ? err.message : String(err)}`);
-        process.exit(1);
-      }
-      logger.info('');
+      await handleTradeBacktest(opts);
     });
 }
