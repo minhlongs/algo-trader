@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 172,
+      "count": 167,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -47,7 +47,6 @@
         "src/api/routes/personalization-routes.ts": 218,
         "src/db/migrations/025-marketplace-schema.ts": 207,
         "src/db/migrations/026-create-ai-audit-tables.ts": 273,
-        "src/db/pnl-service.ts": 239,
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
         "src/desk/arbitrage/__tests__/ilp-constraint-builder.test.ts": 288,
         "src/desk/arbitrage/__tests__/orchestrator.test.ts": 485,
@@ -87,7 +86,6 @@
         "src/desk/jobs/auto-marketing-daemon.ts": 209,
         "src/desk/market-data/__tests__/gap-detector.test.ts": 222,
         "src/desk/market-data/__tests__/provider-failover.test.ts": 213,
-        "src/desk/markets/dex/jupiter-price-adapter.ts": 241,
         "src/desk/ml/gru/gru-model.ts": 203,
         "src/desk/ml/meta-ensemble/__tests__/adaptive-fusion.test.ts": 227,
         "src/desk/ml/meta-ensemble/__tests__/meta-learner.test.ts": 202,
@@ -153,7 +151,6 @@
         "src/platform/api/routes/marketplace-dispute-routes.ts": 235,
         "src/platform/audit/__tests__/audit-log-service.test.ts": 315,
         "src/platform/audit/__tests__/tenant-audit-chain.test.ts": 216,
-        "src/platform/audit/ai-decision-repository.ts": 241,
         "src/platform/audit/immutable-trade-audit.ts": 222,
         "src/platform/audit/tenant-audit-log.ts": 226,
         "src/platform/billing/__tests__/enterprise-onboarding.test.ts": 280,
@@ -162,7 +159,6 @@
         "src/platform/billing/__tests__/payment-service.test.ts": 347,
         "src/platform/billing/__tests__/subscription-service.test.ts": 255,
         "src/platform/billing/payment-service.ts": 238,
-        "src/platform/billing/trial-drip-service.ts": 241,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
         "src/platform/db/pnl-service.ts": 239,
         "src/platform/marketplace/__tests__/marketplace-service.test.ts": 254,
@@ -207,8 +203,7 @@
         "src/shared/db/migrations/025-marketplace-schema.ts": 207,
         "src/shared/db/migrations/026-create-ai-audit-tables.ts": 252,
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304,
-        "src/shared/resilience/recovery-manager.ts": 207,
-        "src/shared/utils/memory-pool.ts": 239
+        "src/shared/resilience/recovery-manager.ts": 207
       }
     }
   },

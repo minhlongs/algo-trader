@@ -1174,6 +1174,72 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 18,
+      "version": "3.1.50",
+      "date": "2026-09-12",
+      "targets": [
+        "src/platform/api/routes/admin-qwen-routes.ts",
+        "src/desk/execution/paper-executor.ts",
+        "src/desk/risk/circuit-breaker.ts",
+        "src/desk/strategies/polymarket/orderbook-depth-ratio-v2.ts",
+        "src/desk/execution/on-chain-position-reconciler.ts"
+      ],
+      "modules": [
+        "admin-qwen-auth.ts",
+        "admin-qwen-runs-helper.ts",
+        "paper-executor-singleton.ts",
+        "paper-executor-session.ts",
+        "circuit-breaker-types.ts",
+        "circuit-breaker-audit.ts",
+        "orderbook-depth-ratio-types.ts",
+        "orderbook-depth-ratio-math.ts",
+        "orderbook-depth-ratio-strategy.ts",
+        "on-chain-position-reconciler-types.ts",
+        "on-chain-position-reconciler-helpers.ts"
+      ],
+      "ratchet": {
+        "before": 177,
+        "after": 172,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
+    },
+    {
+      "tranche": 19,
+      "version": "3.1.51",
+      "date": "2026-09-12",
+      "targets": [
+        "src/desk/markets/dex/jupiter-price-adapter.ts",
+        "src/platform/audit/ai-decision-repository.ts",
+        "src/platform/billing/trial-drip-service.ts",
+        "src/db/pnl-service.ts",
+        "src/shared/utils/memory-pool.ts"
+      ],
+      "modules": [
+        "jupiter-price-types.ts",
+        "jupiter-price-fetcher.ts",
+        "jupiter-price-singleton.ts",
+        "ai-decision-types.ts",
+        "ai-decision-query-builder.ts",
+        "trial-drip-types.ts",
+        "trial-drip-templates.ts",
+        "trial-drip-state.ts",
+        "pnl-types.ts",
+        "pnl-math.ts",
+        "memory-pool-types.ts",
+        "pooled-json-parser.ts",
+        "pooled-buffer.ts"
+      ],
+      "ratchet": {
+        "before": 172,
+        "after": 167,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }

@@ -1,5 +1,17 @@
 # Project Changelog - Algo Trader
 
+## [3.1.51] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 19
+
+### Changed
+- Split `src/desk/markets/dex/jupiter-price-adapter.ts` (241→125 LOC) → `jupiter-price-types.ts` (39 LOC) + `jupiter-price-fetcher.ts` (67 LOC) + `jupiter-price-singleton.ts` (18 LOC)
+- Split `src/platform/audit/ai-decision-repository.ts` (241→157 LOC) → `ai-decision-types.ts` (48 LOC) + `ai-decision-query-builder.ts` (62 LOC)
+- Split `src/platform/billing/trial-drip-service.ts` (241→148 LOC) → `trial-drip-types.ts` (34 LOC) + `trial-drip-templates.ts` (32 LOC) + `trial-drip-state.ts` (62 LOC)
+- Split `src/db/pnl-service.ts` (239→139 LOC) → `pnl-types.ts` (30 LOC) + `pnl-math.ts` (45 LOC)
+- Split `src/shared/utils/memory-pool.ts` (239→157 LOC) → `memory-pool-types.ts` (23 LOC) + `pooled-json-parser.ts` (30 LOC) + `pooled-buffer.ts` (26 LOC)
+- All 18 touched and created files strictly <= 160 visual lines (cap <= 200)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 172→167 (−5)
+- Version bump 3.1.50→3.1.51; 12,483 tests 100% pass & typecheck passes with 0 errors
+
 ## [3.1.50] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 18
 
 ### Changed
