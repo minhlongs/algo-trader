@@ -1240,6 +1240,39 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 20,
+      "version": "3.1.52",
+      "date": "2026-09-12",
+      "targets": [
+        "src/platform/db/pnl-service.ts",
+        "src/desk/feeds/smarkets-price-feed.ts",
+        "src/platform/billing/payment-service.ts",
+        "src/seed/security/key-rotation.ts",
+        "src/alpha-lab/provenance/run-card.ts"
+      ],
+      "modules": [
+        "pnl-types.ts",
+        "pnl-math.ts",
+        "smarkets-price-types.ts",
+        "smarkets-quote-fetcher.ts",
+        "payment-types.ts",
+        "payment-crypto.ts",
+        "payment-store.ts",
+        "key-rotation-types.ts",
+        "key-rotation-worker.ts",
+        "run-card-types.ts",
+        "run-card-config.ts",
+        "run-card-markdown.ts"
+      ],
+      "ratchet": {
+        "before": 167,
+        "after": 162,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
