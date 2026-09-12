@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 177,
+      "count": 172,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/experiments/alpha-backtest-adapter.ts": 237,
@@ -72,8 +72,6 @@
         "src/desk/execution/gas-batch-optimizer.ts": 220,
         "src/desk/execution/live-execution-guard.ts": 225,
         "src/desk/execution/live-position-tracker.ts": 224,
-        "src/desk/execution/on-chain-position-reconciler.ts": 241,
-        "src/desk/execution/paper-executor.ts": 243,
         "src/desk/execution/rollback-handler.ts": 207,
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/feeds/binance-ws.ts": 226,
@@ -101,7 +99,6 @@
         "src/desk/risk/__tests__/risk.test.ts": 335,
         "src/desk/risk/__tests__/tiered-drawdown-persistence.test.ts": 277,
         "src/desk/risk/__tests__/value-at-risk.test.ts": 253,
-        "src/desk/risk/circuit-breaker.ts": 242,
         "src/desk/signal/__tests__/signal-fusion-regime.test.ts": 210,
         "src/desk/strategies/__tests__/probability-calibrator.test.ts": 367,
         "src/desk/strategies/dna/__tests__/consensus-engine.test.ts": 381,
@@ -125,7 +122,6 @@
         "src/desk/strategies/polymarket/listing-arbitrage-sniper.ts": 230,
         "src/desk/strategies/polymarket/mean-reversion.ts": 203,
         "src/desk/strategies/polymarket/momentum-cascade-v2.ts": 231,
-        "src/desk/strategies/polymarket/orderbook-depth-ratio-v2.ts": 242,
         "src/desk/strategies/polymarket/regime-switch-detector-v2.ts": 206,
         "src/desk/strategies/polymarket/relative-strength-rotation-v2.ts": 211,
         "src/desk/strategies/polymarket/resolution-frontrunner-v2.ts": 203,
@@ -153,7 +149,6 @@
         "src/platform/api/routes/__tests__/personalization-routes.test.ts": 308,
         "src/platform/api/routes/__tests__/signal-ingest-routes.test.ts": 245,
         "src/platform/api/routes/__tests__/signal-subscription-routes.test.ts": 469,
-        "src/platform/api/routes/admin-qwen-routes.ts": 250,
         "src/platform/api/routes/health.ts": 220,
         "src/platform/api/routes/marketplace-dispute-routes.ts": 235,
         "src/platform/audit/__tests__/audit-log-service.test.ts": 315,

@@ -1,5 +1,16 @@
 # Project Changelog - Algo Trader
 
+## [3.1.50] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 18
+
+### Changed
+- Split `src/platform/api/routes/admin-qwen-routes.ts` (250→155 LOC) → `admin-qwen-auth.ts` (21 LOC) + `admin-qwen-runs-helper.ts` (62 LOC), keeping all route declarations and SQL statements directly in `admin-qwen-routes.ts` to satisfy static AST sync tests
+- Split `src/desk/execution/paper-executor.ts` (243→155 LOC) → `paper-executor-singleton.ts` (28 LOC) + `paper-executor-session.ts` (52 LOC)
+- Split `src/desk/risk/circuit-breaker.ts` (242→152 LOC) → `circuit-breaker-types.ts` (28 LOC) + `circuit-breaker-audit.ts` (50 LOC)
+- Split `src/desk/strategies/polymarket/orderbook-depth-ratio-v2.ts` (242→28 LOC barrel) → `orderbook-depth-ratio-types.ts` (44 LOC) + `orderbook-depth-ratio-math.ts` (37 LOC) + `orderbook-depth-ratio-strategy.ts` (155 LOC)
+- Split `src/desk/execution/on-chain-position-reconciler.ts` (241→147 LOC) → `on-chain-position-reconciler-types.ts` (43 LOC) + `on-chain-position-reconciler-helpers.ts` (96 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 177→172 (−5)
+- Version bump 3.1.49→3.1.50; tests clean & typecheck passes with 0 errors
+
 ## [3.1.49] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 17
 
 ### Changed

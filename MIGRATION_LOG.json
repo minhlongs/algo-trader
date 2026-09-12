@@ -772,6 +772,44 @@
         "artifact": "baseline diff = -5 entries only; all 15 modules <=200 LOC"
       },
       "prUrl": null
+    },
+    {
+      "phase": "S18-oversized-debt-tranche18",
+      "status": "done",
+      "date": "2026-09-12",
+      "targetFiles": [
+        "src/platform/api/routes/admin-qwen-routes.ts",
+        "src/platform/api/routes/admin-qwen-auth.ts",
+        "src/platform/api/routes/admin-qwen-runs-helper.ts",
+        "src/desk/execution/paper-executor.ts",
+        "src/desk/execution/paper-executor-singleton.ts",
+        "src/desk/execution/paper-executor-session.ts",
+        "src/desk/risk/circuit-breaker.ts",
+        "src/desk/risk/circuit-breaker-types.ts",
+        "src/desk/risk/circuit-breaker-audit.ts",
+        "src/desk/strategies/polymarket/orderbook-depth-ratio-v2.ts",
+        "src/desk/strategies/polymarket/orderbook-depth-ratio-types.ts",
+        "src/desk/strategies/polymarket/orderbook-depth-ratio-math.ts",
+        "src/desk/strategies/polymarket/orderbook-depth-ratio-strategy.ts",
+        "src/desk/execution/on-chain-position-reconciler.ts",
+        "src/desk/execution/on-chain-position-reconciler-types.ts",
+        "src/desk/execution/on-chain-position-reconciler-helpers.ts",
+        "quality-baseline.json",
+        "package.json",
+        "package-lock.json",
+        "docs/project-changelog.md",
+        "docs/development-roadmap.md",
+        "loop-results.tsv",
+        "MIGRATION_LOG.json"
+      ],
+      "note": "Eighteenth tranche of S18 oversized-file debt burn-down: split 5 non-test violators (admin-qwen-routes.ts, paper-executor.ts, circuit-breaker.ts, orderbook-depth-ratio-v2.ts, on-chain-position-reconciler.ts) into <=200-LOC modules behind facade re-exports, then pruned the frozen quality-ratchet baseline from 177 to 172 (-5 entries, 0 added). Zero importer edits, zero test edits, zero new :any (114/114), zero new console.* (45/45). Version 3.1.49 -> 3.1.50.",
+      "evidence": {
+        "tests": "All tests pass; full typecheck clean (tsc --noEmit 0 errors)",
+        "prUrl": null,
+        "gates": "npm run typecheck 0 errors; npm run build exit 0; quality ratchet --quality 4/4 PASS (anyTypes 114/114, consoleCalls 45/45, filesOverMaxLines 172 new=0 grown=0, bannedImports 0); --prune-oversized-snapshot removed exactly 5 entries (177 -> 172), no entries added",
+        "artifact": "baseline diff = -5 entries only; all 16 touched/created modules <=160 LOC"
+      },
+      "prUrl": null
     }
   ],
   "deferred": [

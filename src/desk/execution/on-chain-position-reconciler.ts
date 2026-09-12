@@ -12,31 +12,24 @@ import { getRedisClient, type RedisClientType } from '../../redis';
 import { getMessageBus } from '../../shared/messaging';
 import { Topics } from '../../shared/messaging/topic-schema';
 import { logger } from '../../shared/utils/logger';
+import {
+  CTF_CONTRACT_ADDRESS,
+  ERC1155_ABI,
+  type PositionDiscrepancy,
+  type ReconciliationResult,
+  type ReconcilerOptions,
+} from './on-chain-position-reconciler-types';
+import {
+  fetchLocalPositions,
+  fetchOnChainBalancesBatch,
+  classifyDiscrepancySeverity,
+} from './on-chain-position-reconciler-helpers';
 
-/** Polymarket CTF contract address on Polygon */
-const CTF_CONTRACT_ADDRESS = '0x4D97DCd97eC945f40cF65F87097ACe5EA0476045';
-
-const ERC1155_ABI = [
-  'function balanceOf(address account, uint256 id) view returns (uint256)',
-  'function balanceOfBatch(address[] accounts, uint256[] ids) view returns (uint256[])',
-];
-
-const CRITICAL_THRESHOLD_UNITS = 5_000_000; // $5 in 6-decimal USDC units
-
-export interface PositionDiscrepancy {
-  marketId: string;
-  tokenId: string;
-  localBalance: number;
-  onChainBalance: number;
-  difference: number;
-  severity: 'INFO' | 'WARNING' | 'CRITICAL';
-}
-
-export interface ReconciliationResult {
-  checkedAt: number;
-  positionsChecked: number;
-  discrepancies: PositionDiscrepancy[];
-}
+export type {
+  PositionDiscrepancy,
+  ReconciliationResult,
+  ReconcilerOptions,
+} from './on-chain-position-reconciler-types';
 
 export class OnChainPositionReconciler {
   private provider: ethers.JsonRpcProvider;
@@ -46,12 +39,7 @@ export class OnChainPositionReconciler {
   private loopHandle: ReturnType<typeof setInterval> | null = null;
   private readonly autoCorrect: boolean;
 
-  constructor(options: {
-    rpcUrl?: string;
-    walletAddress: string;
-    redis?: RedisClientType;
-    autoCorrect?: boolean;
-  }) {
+  constructor(options: ReconcilerOptions) {
     const rpcUrl =
       options.rpcUrl ||
       process.env.POLYGON_RPC_URL ||
@@ -65,98 +53,22 @@ export class OnChainPositionReconciler {
     this.autoCorrect = options.autoCorrect ?? false;
   }
 
-  /**
-   * Read tracked polymarket positions from Redis.
-   * Keys follow pattern: polymarket:position:{marketId}:{tokenId}
-   */
-  private async getLocalPositions(): Promise<Array<{ marketId: string; tokenId: string; balance: number }>> {
-    // Use SCAN to gather keys first, then batch retrieve them using MGET
-    const allKeys: string[] = [];
-    let cursor = '0';
-    do {
-      const [nextCursor, keys] = await this.redis.scan(
-        cursor, 'MATCH', 'polymarket:position:*', 'COUNT', '100'
-      );
-      cursor = nextCursor;
-      allKeys.push(...keys);
-    } while (cursor !== '0');
-
-    if (allKeys.length === 0) {
-      return [];
-    }
-
-    const values = await this.redis.mget(allKeys);
-    const positions: Array<{ marketId: string; tokenId: string; balance: number }> = [];
-
-    for (let i = 0; i < allKeys.length; i++) {
-      const key = allKeys[i];
-      const raw = values[i];
-      const parts = key.split(':');
-      if (parts.length < 4) continue;
-      const marketId = parts[2];
-      const tokenId = parts[3];
-      const balance = raw ? parseFloat(raw) : 0;
-      positions.push({ marketId, tokenId, balance });
-    }
-
-    return positions;
-  }
-
-  /** Query on-chain ERC1155 balance. Token IDs are uint256 strings. */
-  private async getOnChainBalance(tokenId: string): Promise<number> {
-    try {
-      const raw: bigint = await this.contract.balanceOf(this.walletAddress, BigInt(tokenId));
-      return Number(raw);
-    } catch (err) {
-      logger.warn(`[Reconciler] balanceOf failed for tokenId ${tokenId}: ${(err as Error).message}`);
-      return -1; // -1 signals RPC failure — treated as INFO discrepancy
-    }
-  }
-
-  /** Severity: CRITICAL if |diff| >= $5, WARNING if any diff, INFO otherwise. */
-  private classifySeverity(difference: number): 'INFO' | 'WARNING' | 'CRITICAL' {
-    const absDiff = Math.abs(difference);
-    if (absDiff >= CRITICAL_THRESHOLD_UNITS) return 'CRITICAL';
-    if (absDiff > 0) return 'WARNING';
-    return 'INFO';
-  }
-
-  /**
-   * Run a single reconciliation pass over all locally tracked positions.
-   */
+  /** Run a single reconciliation pass over all locally tracked positions */
   async reconcile(): Promise<ReconciliationResult> {
     const checkedAt = Date.now();
-    const localPositions = await this.getLocalPositions();
+    const localPositions = await fetchLocalPositions(this.redis);
     const discrepancies: PositionDiscrepancy[] = [];
 
     if (localPositions.length === 0) {
-      logger.info(`[Reconciler] Pass complete — checked=0 discrepancies=0`);
+      logger.info('[Reconciler] Pass complete — checked=0 discrepancies=0');
       return { checkedAt, positionsChecked: 0, discrepancies: [] };
     }
 
-    let onChainBalances: number[] = [];
-    try {
-      const CHUNK_SIZE = 100;
-      const rawBalances: bigint[] = [];
-
-      for (let i = 0; i < localPositions.length; i += CHUNK_SIZE) {
-        const chunk = localPositions.slice(i, i + CHUNK_SIZE);
-        const tokenIds = chunk.map((pos) => BigInt(pos.tokenId));
-        const accounts = Array(chunk.length).fill(this.walletAddress);
-        const chunkBalances: bigint[] = await this.contract.balanceOfBatch(accounts, tokenIds);
-        rawBalances.push(...chunkBalances);
-      }
-
-      onChainBalances = rawBalances.map((b) => Number(b));
-    } catch (err) {
-      logger.error(`[Reconciler] balanceOfBatch failed: ${(err as Error).message}. Falling back to individual queries.`);
-      // Fallback to individual getOnChainBalance if batch query fails
-      onChainBalances = [];
-      for (const pos of localPositions) {
-        const bal = await this.getOnChainBalance(pos.tokenId);
-        onChainBalances.push(bal);
-      }
-    }
+    const onChainBalances = await fetchOnChainBalancesBatch(
+      this.contract,
+      this.walletAddress,
+      localPositions
+    );
 
     for (let i = 0; i < localPositions.length; i++) {
       const pos = localPositions[i];
@@ -164,7 +76,7 @@ export class OnChainPositionReconciler {
       const difference = pos.balance - onChainBalance;
 
       if (difference !== 0 || onChainBalance === -1) {
-        const severity = onChainBalance === -1 ? 'INFO' : this.classifySeverity(difference);
+        const severity = onChainBalance === -1 ? 'INFO' : classifyDiscrepancySeverity(difference);
 
         const discrepancy: PositionDiscrepancy = {
           marketId: pos.marketId,
@@ -182,7 +94,6 @@ export class OnChainPositionReconciler {
           `local=${pos.balance} onChain=${onChainBalance} diff=${difference}`
         );
 
-        // Publish alert to NATS risk.alert topic
         try {
           const bus = getMessageBus();
           await bus.publish(Topics.RISK_ALERT, discrepancy, 'position-reconciler');
@@ -190,7 +101,6 @@ export class OnChainPositionReconciler {
           logger.error(`[Reconciler] Failed to publish alert: ${(err as Error).message}`);
         }
 
-        // Auto-correct: overwrite local cache with on-chain truth
         if (this.autoCorrect && onChainBalance >= 0) {
           const key = `polymarket:position:${pos.marketId}:${pos.tokenId}`;
           await this.redis.set(key, onChainBalance.toString());
@@ -206,10 +116,7 @@ export class OnChainPositionReconciler {
     return { checkedAt, positionsChecked: localPositions.length, discrepancies };
   }
 
-  /**
-   * Start a recurring reconciliation loop.
-   * @param intervalMs - Interval between passes (default: 60 seconds)
-   */
+  /** Start recurring reconciliation loop */
   startReconciliationLoop(intervalMs = 60_000): void {
     if (this.loopHandle) {
       logger.warn('[Reconciler] Loop already running — skipping startReconciliationLoop()');
@@ -218,7 +125,6 @@ export class OnChainPositionReconciler {
 
     logger.info(`[Reconciler] Starting reconciliation loop every ${intervalMs}ms`);
 
-    // Run immediately on start, then on interval
     this.reconcile().catch((err) =>
       logger.error(`[Reconciler] Initial pass failed: ${(err as Error).message}`)
     );
