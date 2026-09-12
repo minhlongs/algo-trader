@@ -4,57 +4,28 @@
  *
  * Uses query() from postgres-client for direct SQL execution.
  */
-
 import { query } from '../../shared/db/postgres-client';
+import {
+  type DbRow,
+  type AIDecision,
+  type AIDecisionMetadata,
+  type AIDecisionWithMetadata,
+  type RecordDecisionInput,
+  type DecisionFilters,
+} from './ai-decision-types';
+import {
+  buildDecisionFilterConditions,
+  mapDecisionRow,
+  mapMetadataRow,
+} from './ai-decision-query-builder';
 
-// Local DbRow type to avoid import issues with mocked module
-interface DbRow {
-  [key: string]: string | number | boolean | Date | null | undefined;
-}
-
-// ──── Types ────
-
-export interface AIDecision {
-  id: string;
-  model_name: string;
-  input_hash: string;
-  output: Record<string, unknown>;
-  confidence: number;
-  latency_ms: number;
-  created_at: string;
-}
-
-export interface AIDecisionMetadata {
-  id: string;
-  decision_id: string;
-  key: string;
-  value: string;
-  created_at: string;
-}
-
-export interface AIDecisionWithMetadata extends AIDecision {
-  metadata: AIDecisionMetadata[];
-}
-
-export interface RecordDecisionInput {
-  model_name: string;
-  input_hash: string;
-  output: Record<string, unknown>;
-  confidence: number;
-  latency_ms: number;
-}
-
-export interface DecisionFilters {
-  model_name?: string;
-  start_date?: string;
-  end_date?: string;
-  min_confidence?: number;
-  max_confidence?: number;
-  limit?: number;
-  offset?: number;
-}
-
-// ──── Repository ────
+export {
+  type AIDecision,
+  type AIDecisionMetadata,
+  type AIDecisionWithMetadata,
+  type RecordDecisionInput,
+  type DecisionFilters,
+} from './ai-decision-types';
 
 export class AIDecisionRepository {
   /**
@@ -101,29 +72,9 @@ export class AIDecisionRepository {
       FROM ai_decisions
       WHERE 1=1
     `;
-    const params: unknown[] = [];
-    let idx = 1;
-
-    if (filters.model_name) {
-      sql += ` AND model_name = $${idx++}`;
-      params.push(filters.model_name);
-    }
-    if (filters.start_date) {
-      sql += ` AND created_at >= $${idx++}`;
-      params.push(filters.start_date);
-    }
-    if (filters.end_date) {
-      sql += ` AND created_at <= $${idx++}`;
-      params.push(filters.end_date);
-    }
-    if (filters.min_confidence !== undefined) {
-      sql += ` AND confidence >= $${idx++}`;
-      params.push(filters.min_confidence);
-    }
-    if (filters.max_confidence !== undefined) {
-      sql += ` AND confidence <= $${idx++}`;
-      params.push(filters.max_confidence);
-    }
+    const { sqlConditions, params, nextIdx } = buildDecisionFilterConditions(filters);
+    sql += sqlConditions;
+    let idx = nextIdx;
 
     sql += ` ORDER BY created_at DESC`;
 
@@ -176,29 +127,8 @@ export class AIDecisionRepository {
    */
   async countDecisions(filters: Omit<DecisionFilters, 'limit' | 'offset'> = {}): Promise<number> {
     let sql = `SELECT COUNT(*) as total FROM ai_decisions WHERE 1=1`;
-    const params: unknown[] = [];
-    let idx = 1;
-
-    if (filters.model_name) {
-      sql += ` AND model_name = $${idx++}`;
-      params.push(filters.model_name);
-    }
-    if (filters.start_date) {
-      sql += ` AND created_at >= $${idx++}`;
-      params.push(filters.start_date);
-    }
-    if (filters.end_date) {
-      sql += ` AND created_at <= $${idx++}`;
-      params.push(filters.end_date);
-    }
-    if (filters.min_confidence !== undefined) {
-      sql += ` AND confidence >= $${idx++}`;
-      params.push(filters.min_confidence);
-    }
-    if (filters.max_confidence !== undefined) {
-      sql += ` AND confidence <= $${idx++}`;
-      params.push(filters.max_confidence);
-    }
+    const { sqlConditions, params } = buildDecisionFilterConditions(filters);
+    sql += sqlConditions;
 
     const result = await query<DbRow>(sql, params);
     const total = result.rows[0].total;
@@ -208,25 +138,11 @@ export class AIDecisionRepository {
   // ──── Mappers ────
 
   private mapDecisionRow(row: DbRow): AIDecision {
-    return {
-      id: row.id as string,
-      model_name: row.model_name as string,
-      input_hash: row.input_hash as string,
-      output: (row.output as string) ? JSON.parse(row.output as string) : {},
-      confidence: parseFloat(row.confidence as string),
-      latency_ms: parseInt(row.latency_ms as string, 10),
-      created_at: row.created_at as string,
-    };
+    return mapDecisionRow(row);
   }
 
   private mapMetadataRow(row: DbRow): AIDecisionMetadata {
-    return {
-      id: row.id as string,
-      decision_id: row.decision_id as string,
-      key: row.key as string,
-      value: row.value as string,
-      created_at: row.created_at as string,
-    };
+    return mapMetadataRow(row);
   }
 }
 
