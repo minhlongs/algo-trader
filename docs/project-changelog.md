@@ -1,5 +1,17 @@
 # Project Changelog - Algo Trader
 
+## [3.1.52] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 20
+
+### Changed
+- Split `src/platform/db/pnl-service.ts` (239→136 LOC) → `pnl-types.ts` (30 LOC) + `pnl-math.ts` (45 LOC)
+- Split `src/desk/feeds/smarkets-price-feed.ts` (238→93 LOC) → `smarkets-price-types.ts` (60 LOC) + `smarkets-quote-fetcher.ts` (111 LOC)
+- Split `src/platform/billing/payment-service.ts` (238→157 LOC) → `payment-types.ts` (45 LOC) + `payment-crypto.ts` (19 LOC) + `payment-store.ts` (27 LOC)
+- Split `src/seed/security/key-rotation.ts` (238→113 LOC) → `key-rotation-types.ts` (33 LOC) + `key-rotation-worker.ts` (114 LOC)
+- Split `src/alpha-lab/provenance/run-card.ts` (237→62 LOC) → `run-card-types.ts` (72 LOC) + `run-card-config.ts` (31 LOC) + `run-card-markdown.ts` (62 LOC)
+- All 17 touched and created files strictly <= 160 visual lines (cap <= 200)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 167→162 (−5)
+- Version bump 3.1.51→3.1.52; 12,483 tests 100% pass & typecheck passes with 0 errors
+
 ## [3.1.51] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 19
 
 ### Changed
