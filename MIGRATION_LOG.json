@@ -1273,6 +1273,36 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 21,
+      "version": "3.1.53",
+      "date": "2026-09-12",
+      "targets": [
+        "src/alpha-lab/experiments/alpha-backtest-adapter.ts",
+        "src/desk/cli/cashclaw-trade-commands.ts",
+        "src/platform/marketplace/services/marketplace.service.ts",
+        "src/platform/referral/referral-crud.ts",
+        "src/desk/strategies/examples/05-risk-managed-kelly-strategy.ts"
+      ],
+      "modules": [
+        "alpha-backtest-types.ts",
+        "alpha-backtest-candles.ts",
+        "cashclaw-trade-journal-handler.ts",
+        "cashclaw-trade-backtest-handler.ts",
+        "marketplace-strategy-ops.ts",
+        "marketplace-listing-ops.ts",
+        "referral-crud-tracking.ts",
+        "referral-crud-commission.ts",
+        "risk-managed-kelly-lifecycle.ts"
+      ],
+      "ratchet": {
+        "before": 162,
+        "after": 157,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
