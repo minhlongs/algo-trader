@@ -1,33 +1,20 @@
 /**
  * Circuit Breaker
  * Halts trading on anomalies (loss streak, latency spike, volatility, drawdown)
- *
- * Week 3-4: Risk Management - Enhanced with 5% daily drawdown trigger
  */
 
 import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import { DrawdownMonitor } from './drawdown-monitor';
-import crypto from 'crypto';
-import { logAudit, hashIpAddress } from '../../seed/security/audit-log';
-import type { IAuditEntry } from '../../seed/security/audit-log';
+import {
+  type CircuitBreakerConfig,
+  type CircuitState,
+  type CircuitStatus,
+  DEFAULT_CIRCUIT_BREAKER_CONFIG,
+} from './circuit-breaker-types';
+import { logCircuitBreakerTripped, logCircuitBreakerReset } from './circuit-breaker-audit';
 
-export interface CircuitBreakerConfig {
-  maxLossStreak: number;
-  maxLatencyMs: number;
-  maxVolatilityPercent: number;
-  cooldownMs: number;
-  maxDailyDrawdown: number; // 5% default
-}
-
-export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
-
-export interface CircuitStatus {
-  state: CircuitState;
-  reason?: string;
-  triggeredAt?: number;
-  cooldownRemaining?: number;
-}
+export { DEFAULT_CIRCUIT_BREAKER_CONFIG, type CircuitBreakerConfig, type CircuitState, type CircuitStatus } from './circuit-breaker-types';
 
 export class CircuitBreaker {
   private redis: RedisClientType;
@@ -36,26 +23,13 @@ export class CircuitBreaker {
   private triggeredAt?: number;
   private drawdownMonitor?: DrawdownMonitor;
 
-  constructor(
-    redis?: RedisClientType,
-    config?: Partial<CircuitBreakerConfig>,
-    drawdownMonitor?: DrawdownMonitor
-  ) {
+  constructor(redis?: RedisClientType, config?: Partial<CircuitBreakerConfig>, drawdownMonitor?: DrawdownMonitor) {
     this.redis = redis || getRedisClient();
-    this.config = {
-      maxLossStreak: 3,
-      maxLatencyMs: 1000,
-      maxVolatilityPercent: 5.0,
-      cooldownMs: 300000, // 5 minutes
-      maxDailyDrawdown: 0.05, // 5% daily drawdown
-      ...config,
-    };
+    this.config = { ...DEFAULT_CIRCUIT_BREAKER_CONFIG, ...config };
     this.drawdownMonitor = drawdownMonitor;
   }
 
-  /**
-   * Get circuit breaker status
-   */
+  /** Get circuit breaker status */
   async getStatus(): Promise<CircuitStatus> {
     const status = await this.redis.hgetall('circuit_breaker:status');
 
@@ -82,45 +56,35 @@ export class CircuitBreaker {
     }
 
     return {
-      state: status.state as CircuitState || 'CLOSED',
+      state: (status.state as CircuitState) || 'CLOSED',
       reason: status.reason,
       triggeredAt: status.triggeredAt ? parseInt(status.triggeredAt) : undefined,
     };
   }
 
-  /**
-   * Check if trading is allowed
-   */
+  /** Check if trading is allowed */
   async canTrade(): Promise<boolean> {
     const status = await this.getStatus();
     return status.state !== 'OPEN';
   }
 
-  /**
-   * Record loss - increment loss streak
-   */
+  /** Record loss - increment loss streak */
   async recordLoss(): Promise<void> {
     const key = 'circuit_breaker:loss_streak';
-    const current = parseInt(await this.redis.get(key) || '0');
+    const current = parseInt((await this.redis.get(key)) || '0');
     const newStreak = current + 1;
-
     await this.redis.set(key, newStreak.toString());
-
     if (newStreak >= this.config.maxLossStreak) {
       await this.trip('Loss streak', `${newStreak} consecutive losses`);
     }
   }
 
-  /**
-   * Record win - reset loss streak
-   */
+  /** Record win - reset loss streak */
   async recordWin(): Promise<void> {
     await this.redis.del('circuit_breaker:loss_streak');
   }
 
-  /**
-   * Check latency - trip if exceeds threshold
-   */
+  /** Check latency - trip if exceeds threshold */
   async checkLatency(latencyMs: number): Promise<boolean> {
     if (latencyMs > this.config.maxLatencyMs) {
       await this.trip('Latency spike', `${latencyMs}ms exceeds ${this.config.maxLatencyMs}ms`);
@@ -129,9 +93,7 @@ export class CircuitBreaker {
     return true;
   }
 
-  /**
-   * Check volatility - trip if exceeds threshold
-   */
+  /** Check volatility - trip if exceeds threshold */
   async checkVolatility(volatilityPercent: number): Promise<boolean> {
     if (volatilityPercent > this.config.maxVolatilityPercent) {
       await this.trip('High volatility', `${volatilityPercent}% exceeds ${this.config.maxVolatilityPercent}%`);
@@ -140,95 +102,43 @@ export class CircuitBreaker {
     return true;
   }
 
-  /**
-   * Trip circuit breaker
-   */
+  /** Trip circuit breaker */
   private async trip(reason: string, details?: string): Promise<void> {
     this.state = 'OPEN';
     this.triggeredAt = Date.now();
-
     await this.redis.hset('circuit_breaker:status', {
       state: 'OPEN',
       reason: `${reason}: ${details || ''}`.trim(),
       triggeredAt: this.triggeredAt.toString(),
     });
-
-    await logAudit({
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      actor: 'system',
-      action: 'circuit_breaker_tripped',
-      resource: 'CircuitBreaker',
-      result: 'failure',
-      metadata: {
-        details,
-        state: 'OPEN',
-        triggeredAt: this.triggeredAt,
-        reason,
-      },
-      ipHash: hashIpAddress(undefined),
-      tenantId: 'system-tenant',
-    } as IAuditEntry).catch((err) => logger.error('[CircuitBreaker] Failed to append tenant audit log:', err));
-
+    await logCircuitBreakerTripped(reason, details, this.triggeredAt);
     logger.warn(`[CircuitBreaker] TRIPPED: ${reason} - ${details}`);
   }
 
-  /**
-   * Set circuit to half-open (after cooldown)
-   */
+  /** Set circuit to half-open (after cooldown) */
   private async setHalfOpen(): Promise<void> {
     this.state = 'HALF_OPEN';
     await this.redis.hset('circuit_breaker:status', 'state', 'HALF_OPEN');
   }
 
-  /**
-   * Reset circuit breaker to closed
-   */
+  /** Reset circuit breaker to closed */
   async reset(): Promise<void> {
     this.state = 'CLOSED';
     this.triggeredAt = undefined;
-
-    await this.redis.hset('circuit_breaker:status', {
-      state: 'CLOSED',
-      reason: '',
-      triggeredAt: '',
-    });
-
+    await this.redis.hset('circuit_breaker:status', { state: 'CLOSED', reason: '', triggeredAt: '' });
     await this.redis.del('circuit_breaker:loss_streak');
-
-    await logAudit({
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      actor: 'system',
-      action: 'circuit_breaker_reset',
-      resource: 'CircuitBreaker',
-      result: 'success',
-      metadata: {
-        state: 'CLOSED',
-      },
-      ipHash: hashIpAddress(undefined),
-      tenantId: 'system-tenant',
-    } as IAuditEntry).catch((err) => logger.error('[CircuitBreaker] Failed to append tenant audit log:', err));
-
+    await logCircuitBreakerReset();
     logger.info('[CircuitBreaker] RESET');
   }
 
-  /**
-   * Manual halt - force open circuit
-   */
+  /** Manual halt - force open circuit */
   async halt(reason: string): Promise<void> {
     await this.trip('Manual halt', reason);
   }
 
-  /**
-   * Check daily drawdown - trip if exceeds 5%
-   * Week 3-4: Auto-pause on 5% daily drawdown
-   */
+  /** Check daily drawdown - trip if exceeds max threshold */
   async checkDailyDrawdown(): Promise<boolean> {
-    if (!this.drawdownMonitor) {
-      return true;
-    }
-
+    if (!this.drawdownMonitor) return true;
     const metrics = await this.drawdownMonitor.getMetrics();
     if (metrics.dailyDrawdown >= this.config.maxDailyDrawdown) {
       await this.trip(

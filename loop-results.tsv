@@ -315,3 +315,4 @@ iter	timestamp	metric	delta	kept	description
 15	2026-09-11T07:00:00	187	-5	yes	S18 Tranche 15: split twap-accumulator/admin-qwen-routes/migration-runner/audit-log-service/pairs-stat-arb
 16	2026-09-11T08:00:00	182	-5	yes	S18 Tranche 16: split kyc-routes/signal-publisher/uniswap-v3-adapter/strategy-live-bridge/cross-event-drift-v2
 17	2026-09-12T08:00:00	177	-5	yes	S18 Tranche 17: split dry-run-executor/community-strategy-routes/marketplace-schemas/paper-position-tracker/vetting-service
+18	2026-09-12T09:00:00	172	-5	yes	S18 Tranche 18: split admin-qwen-routes/paper-executor/circuit-breaker/orderbook-depth-ratio-v2/on-chain-position-reconciler
