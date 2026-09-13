@@ -3,135 +3,26 @@
  * 3 or 4-persona debate for signal validation.
  * Majority vote (2/3 default, 3/4 with Qwen) determines approve/reject. Reduces false positives 30-40%.
  * Fail-closed: failed persona calls cast synthetic REJECT (confidence=0), tilting majority vote toward rejection.
- * Env: SWARM_CONSENSUS_ENABLED (default true), SWARM_MIN_CONFIDENCE (default 0.6),
- * SWARM_QWEN_ENABLED (default false) — enables 4th quantitative-analyst persona via Qwen.
  */
 
 import { LlmRouter, ChatMessage } from '../lib/llm-router';
 import { logger } from '../shared/utils/logger';
 import type { SignalCandidate } from '../desk/intelligence/signal-validator';
+import {
+  type SwarmVote,
+  type SwarmConsensus,
+  type PersonaConfig,
+  getSwarmPersonas,
+} from './signal-consensus-types';
+import {
+  parseSwarmVote,
+  aggregateVotes,
+  buildSignalSummary,
+} from './signal-consensus-vote';
 
-export interface SwarmVote {
-  persona: 'risk-analyst' | 'momentum-trader' | 'contrarian' | 'quantitative-analyst';
-  vote: 'APPROVE' | 'REJECT';
-  confidence: number; // 0-1
-  reasoning: string;
-}
-
-export interface SwarmConsensus {
-  approved: boolean;
-  votes: SwarmVote[];
-  consensusConfidence: number;
-  dissent: string | null;
-}
-
-export interface PersonaConfig {
-  id: 'risk-analyst' | 'momentum-trader' | 'contrarian' | 'quantitative-analyst';
-  name: string;
-  systemPrompt: string;
-  model?: string;
-}
-
-const PERSONAS: PersonaConfig[] = [
-  {
-    id: 'risk-analyst',
-    name: 'Risk Analyst',
-    systemPrompt: 'You are a risk analyst evaluating a trading signal. Focus on downside risk, tail events, and capital preservation. Be strict and conservative.',
-  },
-  {
-    id: 'momentum-trader',
-    name: 'Momentum Trader',
-    systemPrompt: 'You are a momentum trader. Focus on price trends, volume patterns, and momentum indicators. Be aggressive when signals are strong.',
-  },
-  {
-    id: 'contrarian',
-    name: 'Contrarian',
-    systemPrompt: 'You are a contrarian analyst. Question assumptions, look for hidden risks, and challenge the majority view. Always play devil\'s advocate.',
-  },
-];
-
-const QWEN_PERSONA: PersonaConfig = {
-  id: 'quantitative-analyst',
-  name: 'Quantitative Analyst',
-  systemPrompt: 'You are a quantitative analyst using statistical models to validate trading signals. Focus on expected value, probability distributions, and mathematical rigor.',
-  model: 'qwen',
-};
-
-const SWARM_QWEN_ENABLED = process.env.SWARM_QWEN_ENABLED === 'true';
-
-if (SWARM_QWEN_ENABLED) {
-  PERSONAS.push(QWEN_PERSONA);
-}
-
-/**
- * Parse raw LLM response into structured vote.
- */
-function parseSwarmVote(raw: string, persona: string): SwarmVote {
-  try {
-    // Remove markdown fences if present
-    const cleaned = raw.replace(/```(?:json)?\n?/g, '').trim();
-    const parsed = JSON.parse(cleaned) as { vote?: string; confidence?: number; reasoning?: string };
-
-    const vote = parsed.vote === 'APPROVE' || parsed.vote === 'REJECT'
-      ? parsed.vote
-      : 'REJECT';
-
-    const confidence = typeof parsed.confidence === 'number'
-      ? Math.max(0, Math.min(1, parsed.confidence))
-      : 0.5;
-
-    const reasoning = typeof parsed.reasoning === 'string'
-      ? parsed.reasoning
-      : 'Parse error — defaulting to reject';
-
-    return { persona: persona as SwarmVote['persona'], vote, confidence, reasoning };
-  } catch {
-    logger.warn(`[SwarmConsensus] Parse failed for persona ${persona}`, { raw: raw.slice(0, 200) });
-    return { persona: persona as SwarmVote['persona'], vote: 'REJECT', confidence: 0, reasoning: 'Parse error — defaulting to reject' };
-  }
-}
-
-/**
- * Aggregate votes into consensus decision.
- */
-function aggregateVotes(votes: SwarmVote[], minConfidence: number): SwarmConsensus {
-  if (votes.length === 0) {
-    return { approved: false, votes: [], consensusConfidence: 0, dissent: 'No votes cast' };
-  }
-
-  const approveCount = votes.filter(v => v.vote === 'APPROVE').length;
-  const totalVotes = votes.length;
-
-  // Majority vote threshold: >50% for 3-persona, ≥75% for 4-persona
-  const majorityThreshold = totalVotes >= 4 ? totalVotes * 0.75 : totalVotes * 0.5;
-  const approved = approveCount >= majorityThreshold;
-
-  // Average confidence across majority-side votes only
-  const majorityVotes = votes.filter(v =>
-    approved ? v.vote === 'APPROVE' : v.vote === 'REJECT',
-  );
-  const consensusConfidence = majorityVotes.length > 0
-    ? majorityVotes.reduce((sum, v) => sum + v.confidence, 0) / majorityVotes.length
-    : 0;
-
-  // Identify dissenters (voters with low confidence or opposing votes)
-  const minorityVotes = votes.filter(v => {
-    if (!approved && v.vote === 'APPROVE') return true;
-    if (approved && v.vote === 'REJECT' && v.confidence >= 0.7) return true;
-    return v.confidence < minConfidence;
-  });
-
-  const dissent = minorityVotes.length > 0
-    ? `${minorityVotes[0].persona}: ${minorityVotes[0].reasoning}`
-    : null;
-
-  return {
-    approved: approved && consensusConfidence >= minConfidence,
-    votes,
-    consensusConfidence,
-    dissent,
-  };
-}
+export type { SwarmVote, SwarmConsensus, PersonaConfig } from './signal-consensus-types';
+export { PERSONAS } from './signal-consensus-types';
+export { parseSwarmVote, aggregateVotes, buildSignalSummary } from './signal-consensus-vote';
 
 /**
  * Call LLM via LlmRouter for a single persona vote.
@@ -159,20 +50,6 @@ async function callPersona(
 }
 
 /**
- * Build a human-readable summary of the signal for LLM analysis.
- */
-function buildSignalSummary(signal: SignalCandidate): string {
-  const marketLines = signal.markets
-    .map(m => ` - ${m.title} (id=${m.id}) YES=${m.yesPrice.toFixed(3)} NO=${m.noPrice.toFixed(3)}`)
-    .join('\n');
-  return `Signal type: ${signal.signalType}
-Expected edge: ${(signal.expectedEdge * 100).toFixed(2)}%
-Strategy reasoning: ${signal.reasoning}
-Markets:
-${marketLines}`;
-}
-
-/**
  * Run 3-persona swarm debate on a signal candidate.
  * Returns SwarmConsensus — caller checks `approved && consensusConfidence > threshold`.
  * When SWARM_CONSENSUS_ENABLED=false, returns a pass-through (single-agent fallback mode).
@@ -186,9 +63,11 @@ export async function runSwarmConsensus(signal: SignalCandidate): Promise<SwarmC
     return { approved: true, votes: [], consensusConfidence: 1, dissent: null };
   }
 
+  const activePersonas = getSwarmPersonas();
+
   logger.info('[SwarmConsensus] Starting consensus evaluation', {
     signalType: signal.signalType,
-    personas: PERSONAS.map(p => p.id),
+    personas: activePersonas.map(p => p.id),
   });
 
   const router = new LlmRouter();
@@ -196,7 +75,7 @@ export async function runSwarmConsensus(signal: SignalCandidate): Promise<SwarmC
 
   // Run all persona calls in parallel
   const results = await Promise.all(
-    PERSONAS.map(persona =>
+    activePersonas.map(persona =>
       callPersona(persona, signalSummary, router)
         .then(raw => ({ persona: persona.id, raw, status: 'fulfilled' as const }))
         .catch(err => {

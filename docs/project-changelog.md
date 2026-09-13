@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.54] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 22
+
+### Changed
+- Split `src/desk/strategies/polymarket/book-imbalance-reversal.ts` (235→138 LOC) → `book-imbalance-reversal-types.ts` (32 LOC) + `book-imbalance-reversal-math.ts` (49 LOC)
+- Split `src/intelligence/signal-consensus-swarm.ts` (235→115 LOC) → `signal-consensus-types.ts` (55 LOC) + `signal-consensus-vote.ts` (87 LOC)
+- Split `src/platform/api/routes/marketplace-dispute-routes.ts` (235→56 LOC) → `marketplace-dispute-schemas.ts` (74 LOC) + `marketplace-dispute-handlers.ts` (151 LOC)
+- Split `src/platform/websocket/message-replay.ts` (235→132 LOC) → `message-replay-types.ts` (18 LOC) + `message-replay-pruning.ts` (64 LOC)
+- Split `src/regions/latency-monitor.ts` (235→139 LOC) → `latency-monitor-types.ts` (25 LOC) + `latency-monitor-math.ts` (80 LOC)
+- All 15 touched and created files strictly <= 160 visual lines (cap <= 200, max 151 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 157→152 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.53→3.1.54; 12,483 tests 100% pass & typecheck passes with 0 errors
+
 ## [3.1.53] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 21
 
 ### Changed

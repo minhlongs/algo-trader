@@ -1303,6 +1303,37 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 22,
+      "version": "3.1.54",
+      "date": "2026-09-12",
+      "targets": [
+        "src/desk/strategies/polymarket/book-imbalance-reversal.ts",
+        "src/intelligence/signal-consensus-swarm.ts",
+        "src/platform/api/routes/marketplace-dispute-routes.ts",
+        "src/platform/websocket/message-replay.ts",
+        "src/regions/latency-monitor.ts"
+      ],
+      "modules": [
+        "book-imbalance-reversal-types.ts",
+        "book-imbalance-reversal-math.ts",
+        "signal-consensus-types.ts",
+        "signal-consensus-vote.ts",
+        "marketplace-dispute-schemas.ts",
+        "marketplace-dispute-handlers.ts",
+        "message-replay-types.ts",
+        "message-replay-pruning.ts",
+        "latency-monitor-types.ts",
+        "latency-monitor-math.ts"
+      ],
+      "ratchet": {
+        "before": 157,
+        "after": 152,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }

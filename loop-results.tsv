@@ -319,3 +319,4 @@ iter	timestamp	metric	delta	kept	description
 19	2026-09-12T10:00:00	167	-5	yes	S18 Tranche 19: split jupiter-price-adapter/ai-decision-repository/trial-drip-service/pnl-service/memory-pool
 20	2026-09-12T11:00:00	162	-5	yes	S18 Tranche 20: split pnl-service/smarkets-price-feed/payment-service/key-rotation/run-card
 21	2026-09-12T12:00:00	157	-5	yes	S18 Tranche 21: split alpha-backtest-adapter/cashclaw-trade-commands/marketplace.service/referral-crud/05-risk-managed-kelly-strategy
+22	2026-09-12T13:00:00	152	-5	yes	S18 Tranche 22: split book-imbalance-reversal/signal-consensus-swarm/marketplace-dispute-routes/message-replay/latency-monitor
