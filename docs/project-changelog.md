@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.56] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 24
+
+### Changed
+- Split `src/desk/strategies/examples/risk-managed-kelly-helpers.ts` (232→9 LOC) → `risk-managed-kelly-types.ts` (40 LOC) + `risk-managed-kelly-math.ts` (80 LOC) + `risk-managed-kelly-risk.ts` (122 LOC)
+- Split `src/desk/strategies/polymarket/momentum-cascade-v2.ts` (231→9 LOC) → `momentum-cascade-types.ts` (35 LOC) + `momentum-cascade-math.ts` (44 LOC) + `momentum-cascade-strategy.ts` (138 LOC)
+- Split `src/desk/strategies/dna/multi-tf-types.ts` (230→9 LOC) → `multi-tf-indicators-types.ts` (68 LOC) + `multi-tf-signal-types.ts` (49 LOC) + `multi-tf-journal-types.ts` (94 LOC)
+- Split `src/desk/strategies/polymarket/listing-arbitrage-sniper.ts` (230→9 LOC) → `listing-arbitrage-types.ts` (50 LOC) + `listing-arbitrage-math.ts` (15 LOC) + `listing-arbitrage-strategy.ts` (150 LOC)
+- Split `src/api/routes/mcp-routes.ts` (229→125 LOC) → `mcp-routes-types.ts` (49 LOC) + `mcp-routes-research.ts` (82 LOC)
+- All 19 touched and created files strictly <= 160 visual lines (cap <= 200, max 150 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 147→142 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.55→3.1.56; 12,483 tests 100% pass & typecheck passes with 0 errors
+
 ## [3.1.55] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 23
 
 ### Changed

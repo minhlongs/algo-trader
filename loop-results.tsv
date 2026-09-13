@@ -321,3 +321,4 @@ iter	timestamp	metric	delta	kept	description
 21	2026-09-12T12:00:00	157	-5	yes	S18 Tranche 21: split alpha-backtest-adapter/cashclaw-trade-commands/marketplace.service/referral-crud/05-risk-managed-kelly-strategy
 22	2026-09-12T13:00:00	152	-5	yes	S18 Tranche 22: split book-imbalance-reversal/signal-consensus-swarm/marketplace-dispute-routes/message-replay/latency-monitor
 23	2026-09-12T14:00:00	147	-5	yes	S18 Tranche 23: split okx-ws/alphaear-client/referral-analytics/regime-detector/dry-run-position-tracker
+24	2026-09-12T15:00:00	142	-5	yes	S18 Tranche 24: split risk-managed-kelly-helpers/momentum-cascade-v2/multi-tf-types/listing-arbitrage-sniper/mcp-routes
