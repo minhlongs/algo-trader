@@ -5,46 +5,32 @@
  */
 
 import { BaseWebSocketClient, WebSocketMessage, WebSocketConfig } from './websocket-client';
+import {
+  PolymarketMarket,
+  PolymarketPrice,
+  PolymarketOrderBook,
+  PolymarketRawMessage,
+} from './polymarket-ws-types';
+import {
+  buildPriceMessage,
+  buildTradeMessage,
+  buildBookMessage,
+  parseRawTimestamp,
+} from './polymarket-ws-parser';
 
-/** Binary outcome prediction market */
-export interface PolymarketMarket {
-  conditionId: string;
-  questionId: string;
-  question: string;
-  outcomes: ['Yes', 'No'];
-  tokens: [string, string]; // [yesTokenId, noTokenId]
-}
+export {
+  PolymarketMarket,
+  PolymarketPrice,
+  PolymarketOrderBook,
+  PolymarketRawMessage,
+} from './polymarket-ws-types';
 
-/** Single price level update for a token */
-export interface PolymarketPrice {
-  tokenId: string;
-  price: number;
-  side: 'buy' | 'sell';
-  size: number;
-  timestamp: number;
-}
-
-/** Raw CLOB WebSocket message shape */
-interface PolymarketRawMessage {
-  event_type?: string;
-  type?: string;
-  asset_id?: string;
-  market?: string;
-  price?: string;
-  side?: string;
-  size?: string;
-  timestamp?: string | number;
-  bids?: Array<{ price: string; size: string }>;
-  asks?: Array<{ price: string; size: string }>;
-}
-
-/** Orderbook snapshot for a token */
-export interface PolymarketOrderBook {
-  tokenId: string;
-  bids: Array<{ price: number; size: number }>;
-  asks: Array<{ price: number; size: number }>;
-  timestamp: number;
-}
+export {
+  buildPriceMessage,
+  buildTradeMessage,
+  buildBookMessage,
+  parseRawTimestamp,
+} from './polymarket-ws-parser';
 
 /**
  * WebSocket client for Polymarket CLOB market data.
@@ -128,19 +114,15 @@ export class PolymarketWebSocketFeed extends BaseWebSocketClient {
     }
 
     const tokenId = msg.asset_id || msg.market || '';
-    const timestamp = msg.timestamp
-      ? typeof msg.timestamp === 'number'
-        ? msg.timestamp
-        : parseInt(msg.timestamp, 10)
-      : Date.now();
+    const timestamp = parseRawTimestamp(msg.timestamp);
 
     switch (eventType) {
       case 'price_change':
-        return this.buildPriceMessage(tokenId, msg, timestamp);
+        return buildPriceMessage(tokenId, msg, timestamp);
       case 'trade':
-        return this.buildTradeMessage(tokenId, msg, timestamp);
+        return buildTradeMessage(tokenId, msg, timestamp);
       case 'book':
-        return this.buildBookMessage(tokenId, msg, timestamp);
+        return buildBookMessage(tokenId, msg, timestamp);
       default:
         return null;
     }
@@ -153,66 +135,5 @@ export class PolymarketWebSocketFeed extends BaseWebSocketClient {
 
   protected getSubscriptions(symbols: string[]): unknown {
     return symbols.map((id) => ({ asset_id: id }));
-  }
-
-  private buildPriceMessage(
-    tokenId: string,
-    msg: PolymarketRawMessage,
-    timestamp: number
-  ): WebSocketMessage {
-    const price: PolymarketPrice = {
-      tokenId,
-      price: parseFloat(msg.price || '0'),
-      side: (msg.side as 'buy' | 'sell') || 'buy',
-      size: parseFloat(msg.size || '0'),
-      timestamp,
-    };
-    return {
-      type: 'ticker',
-      exchange: 'polymarket',
-      symbol: tokenId,
-      data: price,
-      timestamp,
-    };
-  }
-
-  private buildTradeMessage(
-    tokenId: string,
-    msg: PolymarketRawMessage,
-    timestamp: number
-  ): WebSocketMessage {
-    return {
-      type: 'trade',
-      exchange: 'polymarket',
-      symbol: tokenId,
-      data: {
-        tokenId,
-        price: parseFloat(msg.price || '0'),
-        size: parseFloat(msg.size || '0'),
-        side: msg.side || 'buy',
-        timestamp,
-      },
-      timestamp,
-    };
-  }
-
-  private buildBookMessage(
-    tokenId: string,
-    msg: PolymarketRawMessage,
-    timestamp: number
-  ): WebSocketMessage {
-    const book: PolymarketOrderBook = {
-      tokenId,
-      bids: (msg.bids || []).map((b) => ({ price: parseFloat(b.price), size: parseFloat(b.size) })),
-      asks: (msg.asks || []).map((a) => ({ price: parseFloat(a.price), size: parseFloat(a.size) })),
-      timestamp,
-    };
-    return {
-      type: 'orderbook',
-      exchange: 'polymarket',
-      symbol: tokenId,
-      data: book,
-      timestamp,
-    };
   }
 }
