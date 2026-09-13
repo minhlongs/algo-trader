@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.57] - 2026-09-13 — S18 Oversized-File Debt Burn-Down Tranche 25
+
+### Changed
+- Split `src/platform/workers/api/subscriptions.ts` (229→29 LOC) → `subscriptions-types.ts` (95 LOC) + `subscriptions-handlers.ts` (141 LOC)
+- Split `src/desk/strategies/polymarket/correlation-breakdown.ts` (228→24 LOC) → `correlation-breakdown-types.ts` (38 LOC) + `correlation-breakdown-math.ts` (41 LOC) + `correlation-breakdown-strategy.ts` (154 LOC)
+- Split `src/alpha-lab/gates/gate-evaluator.ts` (226→25 LOC) → `gate-evaluator-types.ts` (31 LOC) + `gate-evaluator-rules.ts` (141 LOC) + `gate-evaluator-core.ts` (59 LOC)
+- Split `src/desk/feeds/binance-ws.ts` (226→11 LOC) → `binance-ws-types.ts` (37 LOC) + `binance-ws-parsers.ts` (59 LOC) + `binance-ws-client.ts` (143 LOC)
+- Split `src/forest/rate-limit/redis-rate-limiter.ts` (226→42 LOC) → `redis-rate-limiter-types.ts` (31 LOC) + `redis-rate-limiter-helpers.ts` (77 LOC) + `redis-rate-limiter-service.ts` (125 LOC)
+- All 19 touched and created files strictly <= 160 visual lines (cap <= 200, max 154 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 142→137 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.56→3.1.57; 12,483 tests 100% pass & typecheck passes with 0 errors
+
 ## [3.1.56] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 24
 
 ### Changed

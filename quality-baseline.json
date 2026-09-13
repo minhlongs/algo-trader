@@ -35,10 +35,9 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 142,
+      "count": 137,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
-        "src/alpha-lab/gates/gate-evaluator.ts": 226,
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
         "src/api/routes/license-routes.ts": 208,
         "src/api/routes/personalization-routes.ts": 218,
@@ -67,7 +66,6 @@
         "src/desk/execution/live-position-tracker.ts": 224,
         "src/desk/execution/rollback-handler.ts": 207,
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
-        "src/desk/feeds/binance-ws.ts": 226,
         "src/desk/feeds/kalshi-price-feed.ts": 204,
         "src/desk/feeds/news-impact-analyzer.ts": 214,
         "src/desk/feeds/polymarket-ws-feed.ts": 218,
@@ -98,7 +96,6 @@
         "src/desk/strategies/dna/binance-candle-provider.ts": 210,
         "src/desk/strategies/examples/03-rsi-mean-reversion-strategy.ts": 219,
         "src/desk/strategies/GruStrategy.ts": 224,
-        "src/desk/strategies/polymarket/correlation-breakdown.ts": 228,
         "src/desk/strategies/polymarket/cross-correlation-lag-v2.ts": 221,
         "src/desk/strategies/polymarket/funding-rate-arb.ts": 205,
         "src/desk/strategies/polymarket/gamma-scalping.ts": 207,
@@ -116,7 +113,6 @@
         "src/desk/wiring/paper-trading-orchestrator.ts": 224,
         "src/desk/wiring/vibe-controller.ts": 212,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
-        "src/forest/rate-limit/redis-rate-limiter.ts": 226,
         "src/lib/__tests__/llm-router-qwen.test.ts": 205,
         "src/platform/api/__tests__/api.test.ts": 510,
         "src/platform/api/__tests__/blog-engagement-routes.test.ts": 218,
@@ -165,7 +161,6 @@
         "src/platform/telegram/__tests__/ask-handler.test.ts": 223,
         "src/platform/telegram/__tests__/leaderboard-handler.test.ts": 225,
         "src/platform/workers/api/markets.ts": 205,
-        "src/platform/workers/api/subscriptions.ts": 229,
         "src/platform/workers/webhook-handlers.ts": 201,
         "src/raas/subscriber-executor.ts": 202,
         "src/redis/__tests__/pubsub.test.ts": 403,

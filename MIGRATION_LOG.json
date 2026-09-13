@@ -1402,6 +1402,41 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 25,
+      "version": "3.1.57",
+      "date": "2026-09-13",
+      "targets": [
+        "src/platform/workers/api/subscriptions.ts",
+        "src/desk/strategies/polymarket/correlation-breakdown.ts",
+        "src/alpha-lab/gates/gate-evaluator.ts",
+        "src/desk/feeds/binance-ws.ts",
+        "src/forest/rate-limit/redis-rate-limiter.ts"
+      ],
+      "modules": [
+        "subscriptions-types.ts",
+        "subscriptions-handlers.ts",
+        "correlation-breakdown-types.ts",
+        "correlation-breakdown-math.ts",
+        "correlation-breakdown-strategy.ts",
+        "gate-evaluator-types.ts",
+        "gate-evaluator-rules.ts",
+        "gate-evaluator-core.ts",
+        "binance-ws-types.ts",
+        "binance-ws-parsers.ts",
+        "binance-ws-client.ts",
+        "redis-rate-limiter-types.ts",
+        "redis-rate-limiter-helpers.ts",
+        "redis-rate-limiter-service.ts"
+      ],
+      "ratchet": {
+        "before": 142,
+        "after": 137,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
