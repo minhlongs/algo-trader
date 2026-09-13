@@ -1507,6 +1507,35 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 28,
+      "version": "3.1.60",
+      "date": "2026-09-13",
+      "targets": [
+        "src/desk/arbitrage/unified-executor.ts",
+        "src/desk/execution/gas-batch-optimizer.ts",
+        "src/platform/api/routes/health.ts",
+        "src/platform/marketplace/services/revenue.service.ts",
+        "src/desk/strategies/examples/03-rsi-mean-reversion-strategy.ts"
+      ],
+      "modules": [
+        "unified-executor-telemetry.ts",
+        "gas-batch-optimizer-types.ts",
+        "gas-batch-optimizer-fallback.ts",
+        "health-readiness.ts",
+        "health-metrics-collector.ts",
+        "revenue.types.ts",
+        "revenue-calculator.ts",
+        "03-rsi-indicator.ts"
+      ],
+      "ratchet": {
+        "before": 127,
+        "after": 122,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
