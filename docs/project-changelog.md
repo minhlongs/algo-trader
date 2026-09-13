@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.55] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 23
+
+### Changed
+- Split `src/desk/feeds/okx-ws.ts` (234→118 LOC) → `okx-ws-types.ts` (36 LOC) + `okx-ws-parsers.ts` (46 LOC)
+- Split `src/desk/intelligence/alphaear-client.ts` (234→117 LOC) → `alphaear-types.ts` (119 LOC) + `alphaear-http.ts` (50 LOC)
+- Split `src/platform/referral/referral-analytics.ts` (234→96 LOC) → `referral-analytics-clicks.ts` (56 LOC) + `referral-analytics-commissions.ts` (92 LOC)
+- Split `src/desk/arbitrage/regime-detector.ts` (232→133 LOC) → `regime-detector-types.ts` (26 LOC) + `regime-detector-math.ts` (23 LOC) + `regime-detector-store.ts` (53 LOC)
+- Split `src/desk/execution/dry-run-position-tracker.ts` (232→60 LOC) → `dry-run-position-types.ts` (65 LOC) + `dry-run-position-math.ts` (77 LOC) + `dry-run-position-pnl.ts` (45 LOC)
+- All 17 touched and created files strictly <= 160 visual lines (cap <= 200, max 133 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 152→147 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.54→3.1.55; 12,483 tests 100% pass & typecheck passes with 0 errors
+
 ## [3.1.54] - 2026-09-12 — S18 Oversized-File Debt Burn-Down Tranche 22
 
 ### Changed

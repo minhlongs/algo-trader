@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 152,
+      "count": 147,
       "violators": {
         "src/alpha-lab/baselines/baseline-strategies.ts": 214,
         "src/alpha-lab/gates/gate-evaluator.ts": 226,
@@ -50,7 +50,6 @@
         "src/desk/arbitrage/__tests__/orchestrator.test.ts": 485,
         "src/desk/arbitrage/__tests__/unified-executor.test.ts": 428,
         "src/desk/arbitrage/cross-platform-arb-detector.ts": 217,
-        "src/desk/arbitrage/regime-detector.ts": 232,
         "src/desk/arbitrage/unified-executor.ts": 220,
         "src/desk/cli/__tests__/alpha-cli.test.ts": 285,
         "src/desk/cli/__tests__/system-doctor.test.ts": 292,
@@ -64,7 +63,6 @@
         "src/desk/execution/__tests__/paper-executor.test.ts": 350,
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
         "src/desk/execution/distributed-nonce-manager.ts": 201,
-        "src/desk/execution/dry-run-position-tracker.ts": 232,
         "src/desk/execution/gas-batch-optimizer.ts": 220,
         "src/desk/execution/live-execution-guard.ts": 225,
         "src/desk/execution/live-position-tracker.ts": 224,
@@ -73,10 +71,8 @@
         "src/desk/feeds/binance-ws.ts": 226,
         "src/desk/feeds/kalshi-price-feed.ts": 204,
         "src/desk/feeds/news-impact-analyzer.ts": 214,
-        "src/desk/feeds/okx-ws.ts": 234,
         "src/desk/feeds/polymarket-ws-feed.ts": 218,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
-        "src/desk/intelligence/alphaear-client.ts": 234,
         "src/desk/intelligence/dual-level-reflection-engine.ts": 216,
         "src/desk/intelligence/logical-hedge-discovery.ts": 211,
         "src/desk/jobs/auto-marketing-daemon.ts": 209,
@@ -164,7 +160,6 @@
         "src/platform/raas/subscriber-executor.ts": 210,
         "src/platform/referral/fraud-detector.ts": 209,
         "src/platform/referral/payout-scheduler.ts": 214,
-        "src/platform/referral/referral-analytics.ts": 234,
         "src/platform/referral/referral-payout-repository.ts": 216,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,
