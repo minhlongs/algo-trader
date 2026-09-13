@@ -1473,6 +1473,40 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 27,
+      "version": "3.1.59",
+      "date": "2026-09-13",
+      "targets": [
+        "src/desk/wiring/paper-trading-orchestrator.ts",
+        "src/platform/signals-api/usage-metering-service.ts",
+        "src/desk/strategies/polymarket/liquidation-cascade.ts",
+        "src/platform/audit/immutable-trade-audit.ts",
+        "src/desk/strategies/polymarket/cross-correlation-lag-v2.ts"
+      ],
+      "modules": [
+        "paper-trading-orchestrator-runner.ts",
+        "usage-metering-types.ts",
+        "usage-metering-counter.ts",
+        "usage-metering-service-core.ts",
+        "liquidation-cascade-types.ts",
+        "liquidation-cascade-math.ts",
+        "liquidation-cascade-strategy.ts",
+        "immutable-trade-audit-types.ts",
+        "immutable-trade-audit-hash.ts",
+        "immutable-trade-audit-core.ts",
+        "cross-correlation-lag-types.ts",
+        "cross-correlation-lag-math.ts",
+        "cross-correlation-lag-strategy.ts"
+      ],
+      "ratchet": {
+        "before": 132,
+        "after": 127,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
