@@ -325,3 +325,4 @@ iter	timestamp	metric	delta	kept	description
 25	2026-09-13T18:00:00	137	-5	yes	S18 Tranche 25: split subscriptions/correlation-breakdown/gate-evaluator/binance-ws/redis-rate-limiter
 26	2026-09-13T21:00:00	132	-5	yes	S18 Tranche 26: split tenant-audit-log/live-execution-guard/session-vol-sniper/live-position-tracker/GruStrategy
 27	2026-09-13T22:00:00	127	-5	yes	S18 Tranche 27: split paper-trading-orchestrator/usage-metering-service/liquidation-cascade/immutable-trade-audit/cross-correlation-lag-v2
+28	2026-09-13T23:00:00	122	-5	yes	S18 Tranche 28: split unified-executor/gas-batch-optimizer/health/revenue.service/03-rsi-mean-reversion-strategy

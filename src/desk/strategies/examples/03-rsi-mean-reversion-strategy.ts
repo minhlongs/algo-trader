@@ -1,41 +1,17 @@
 /**
  * Example 3: RSI (Relative Strength Index) Mean Reversion Strategy
- *
- * This strategy demonstrates:
- * - Technical indicator implementation (RSI)
- * - Mean reversion logic
- * - Overbought/oversold detection
- * - Position sizing based on signal strength
- *
- * STRATEGY LOGIC:
- * - Buy when RSI < 30 (oversold) and starting to rise
- * - Sell when RSI > 70 (overbought) and starting to fall
- * - Use RSI divergence for stronger signals
- *
- * PARAMETERS:
- * - rsiPeriod: RSI calculation period (default: 14)
- * - oversoldThreshold: Buy threshold (default: 30)
- * - overboughtThreshold: Sell threshold (default: 70)
- * - lookback: Bars to check for RSI turning point (default: 3)
- *
- * WHY MEAN REVERSION:
- * - Assets tend to revert to mean after extreme moves
- * - RSI identifies overbought/oversold conditions
- * - Adding confirmation of RSI turning point reduces whipsaws
- *
- * RISKS:
- * - Mean reversion fails in strong trends
- * - Consider adding trend filter (e.g., 200-period SMA)
- * - High volatility can keep RSI extreme longer
- *
- * NEXT STEPS:
- * - Add Bollinger Band confirmation
- * - Implement stop-loss based on ATR
- * - Add volume spike detection
+ * Buys on oversold recovery, sells on overbought rollover.
  */
 
 import type { IStrategy, ICandle, ISignal } from '../../interfaces/IStrategy';
 import { logger } from '../../../shared/utils/logger';
+import {
+  calculateWilderRsi,
+  wasRecentlyOversold,
+  wasRecentlyOverbought,
+  calculateRsiBuyConfidence,
+  calculateRsiSellConfidence,
+} from './03-rsi-indicator';
 
 const STRATEGY_NAME = 'RsiMeanReversion';
 
@@ -76,14 +52,13 @@ export class RsiMeanReversionStrategy implements IStrategy {
     this.priceHistory.push(...candles);
     this.priceHistory = this.priceHistory.slice(-300);
 
-    const closes = this.priceHistory.map(c => c.close);
+    const closes = this.priceHistory.map((c) => c.close);
     const requiredCandles = this.rsiPeriod + 1;
 
     if (closes.length < requiredCandles) {
       return this.waitSignal(`Insufficient data: ${closes.length}/${requiredCandles}`);
     }
 
-    // Calculate RSI
     const rsi = this.calculateRsi(closes);
     this.rsiValues.push(rsi);
     this.rsiValues = this.rsiValues.slice(-200);
@@ -95,9 +70,7 @@ export class RsiMeanReversionStrategy implements IStrategy {
     const currentRsi = rsi;
     const recentRsi = this.rsiValues.slice(-this.lookback);
 
-    // Check for oversold recovery (buy signal)
     if (currentRsi > this.oversold && this.wasRecentlyOversold(recentRsi)) {
-      // RSI was oversold and now recovering
       const confidence = this.calculateBuyConfidence(currentRsi, recentRsi, closes);
       if (confidence > 0.5) {
         return this.buySignal(confidence, 'RSI oversold recovery', {
@@ -107,9 +80,7 @@ export class RsiMeanReversionStrategy implements IStrategy {
       }
     }
 
-    // Check for overbought rollover (sell signal)
     if (currentRsi < this.overbought && this.wasRecentlyOverbought(recentRsi)) {
-      // RSI was overbought and now rolling over
       const confidence = this.calculateSellConfidence(currentRsi, recentRsi, closes);
       if (confidence > 0.5) {
         return this.sellSignal(confidence, 'RSI overbought rollover', {
@@ -122,77 +93,24 @@ export class RsiMeanReversionStrategy implements IStrategy {
     return this.waitSignal('No RSI signal', { rsi: currentRsi });
   }
 
-  /**
-   * Calculate RSI using the Wilder's smoothing method
-   */
   private calculateRsi(closes: number[]): number {
-    const recent = closes.slice(-this.rsiPeriod - 1);
-    const gains: number[] = [];
-    const losses: number[] = [];
-
-    for (let i = 1; i < recent.length; i++) {
-      const change = recent[i] - recent[i - 1]!;
-      if (change > 0) {
-        gains.push(change);
-        losses.push(0);
-      } else {
-        gains.push(0);
-        losses.push(Math.abs(change));
-      }
-    }
-
-    const avgGain = gains.reduce((a, b) => a + b, 0) / this.rsiPeriod;
-    const avgLoss = losses.reduce((a, b) => a + b, 0) / this.rsiPeriod;
-
-    if (avgLoss === 0) return 100;
-
-    const rs = avgGain / avgLoss;
-    return 100 - 100 / (1 + rs);
+    return calculateWilderRsi(closes, this.rsiPeriod);
   }
 
-  /**
-   * Check if RSI was recently oversold (below threshold)
-   */
   private wasRecentlyOversold(rsiValues: number[]): boolean {
-    // Check if any value in lookback window was below oversold threshold
-    return rsiValues.slice(0, -1).some(r => r < this.oversold);
+    return wasRecentlyOversold(rsiValues, this.oversold);
   }
 
-  /**
-   * Check if RSI was recently overbought (above threshold)
-   */
   private wasRecentlyOverbought(rsiValues: number[]): boolean {
-    return rsiValues.slice(0, -1).some(r => r > this.overbought);
+    return wasRecentlyOverbought(rsiValues, this.overbought);
   }
 
-  /**
-   * Calculate buy confidence based on RSI depth and recovery strength
-   */
-  private calculateBuyConfidence(current: number, recent: number[], closes: number[]): number {
-    const minRsi = Math.min(...recent);
-    const depth = this.oversold - minRsi; // How deep into oversold
-    const baseConfidence = 0.6 + Math.min(depth / 20, 0.3);
-
-    // Add momentum component
-    const momentum = current - recent[recent.length - 2]!;
-    const momentumBoost = momentum > 0 ? 0.1 : 0;
-
-    return Math.min(baseConfidence + momentumBoost, 1.0);
+  private calculateBuyConfidence(current: number, recent: number[], _closes: number[]): number {
+    return calculateRsiBuyConfidence(current, recent, this.oversold);
   }
 
-  /**
-   * Calculate sell confidence based on RSI height and rollover strength
-   */
-  private calculateSellConfidence(current: number, recent: number[], closes: number[]): number {
-    const maxRsi = Math.max(...recent);
-    const height = maxRsi - this.overbought; // How high into overbought
-    const baseConfidence = 0.6 + Math.min(height / 20, 0.3);
-
-    // Add momentum component
-    const momentum = current - recent[recent.length - 2]!;
-    const momentumBoost = momentum < 0 ? 0.1 : 0;
-
-    return Math.min(baseConfidence + momentumBoost, 1.0);
+  private calculateSellConfidence(current: number, recent: number[], _closes: number[]): number {
+    return calculateRsiSellConfidence(current, recent, this.overbought);
   }
 
   private buySignal(confidence: number, reason: string, metadata?: Record<string, any>): ISignal {

@@ -2,7 +2,6 @@
  * Health Routes
  * GET /health - Health check with component status, version, memory
  * GET /health/metrics - Detailed system metrics (JSON)
- * GET /metrics - Prometheus-format metrics
  */
 
 import { Router, Request, Response } from 'express';
@@ -10,6 +9,8 @@ import { getRedisClient } from '../../../redis';
 import { getDbClient } from '../../../shared/db/postgres-client';
 import { TradingEngine } from '../../../desk/engine';
 import { isQwenEnabled, isKillSwitchActive } from '../../../desk/wiring/qwen-drawdown-monitor';
+import { handleReadinessCheck } from './health-readiness';
+import { collectRedisMetrics, getDiskUsageSnapshot } from './health-metrics-collector';
 
 // Resolve package version at module load time — avoids repeated disk reads
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -19,11 +20,7 @@ export const healthRouter: Router = Router();
 
 /**
  * GET /health
- *
- * Returns liveness + readiness status with:
- * - Component health (redis, postgres, trading engine)
- * - Paper trading mode flag (DRY_RUN env)
- * - App version, uptime, memory snapshot
+ * Returns liveness + readiness status
  */
 healthRouter.get('/', async (req: Request, res: Response) => {
   // --- Redis ---
@@ -48,11 +45,9 @@ healthRouter.get('/', async (req: Request, res: Response) => {
   }
 
   // --- Trading engine: lightweight in-process check ---
-  // Instantiate a throwaway engine instance to verify the class is functional
   let tradingEngineStatus: 'ok' | 'error' = 'ok';
   try {
     const engine = new TradingEngine();
-    // Verify basic functionality: an empty orders list is expected
     if (!Array.isArray(engine.getOrders())) {
       throw new Error('Unexpected engine state');
     }
@@ -64,23 +59,13 @@ healthRouter.get('/', async (req: Request, res: Response) => {
   const isPaperTrading = process.env['DRY_RUN'] === 'true';
 
   // --- Qwen rollback state (booleans only — no sensitive numbers) ---
-  // Unauthenticated readout for uptime monitors and CLI ops (`curl /health | jq .qwen`).
-  // Detailed state with P&L / days-remaining lives behind admin-key at /admin/qwen/status.
   const qwen = {
     enabled: isQwenEnabled(),
     killSwitchActive: isKillSwitchActive(),
   };
 
   // --- Disk usage (optional — not available in all Node.js runtimes) ---
-  let diskUsage: { total: number; used: number; free: number } | undefined;
-  try {
-    const diskFn = (process as unknown as Record<string, unknown>)['diskUsage'];
-    if (typeof diskFn === 'function') {
-      diskUsage = (diskFn as () => { total: number; used: number; free: number })();
-    }
-  } catch {
-    // diskUsage not available in this runtime — skip gracefully
-  }
+  const diskUsage = getDiskUsageSnapshot();
 
   // --- Risk engine ---
   const riskEngineEnabled = process.env['ENABLE_RISK_ENGINE'] === 'true';
@@ -97,7 +82,6 @@ healthRouter.get('/', async (req: Request, res: Response) => {
   };
 
   // Overall status: healthy only when redis AND postgres are ok
-  // Both are required for production — PG down means writes/reads fail silently
   const overallStatus = redisStatus === 'ok' && postgresStatus === 'ok' ? 'healthy' : 'unhealthy';
   const httpCode = overallStatus === 'healthy' ? 200 : 503;
 
@@ -124,28 +108,8 @@ healthRouter.get('/', async (req: Request, res: Response) => {
 /**
  * GET /ready
  * Startup readiness probe — Kubernetes / load-balancer compatible.
- * Checks Redis + Postgres + encryption key presence only to avoid
- * import-cycle/performance issues from Desk instantiation.
  */
-healthRouter.get('/ready', async (_req: Request, res: Response) => {
-  try {
-    const redis = getRedisClient();
-    await redis.ping();
-
-    const db = getDbClient();
-    await db.query('SELECT 1');
-
-    const encryptionKey = process.env['ENCRYPTION_KEY'];
-    if (!encryptionKey) {
-      return res.status(503).json({ ready: false, reason: 'missing_encryption_key' });
-    }
-
-    return res.json({ ready: true });
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : 'readiness_check_failed';
-    return res.status(503).json({ ready: false, reason });
-  }
-});
+healthRouter.get('/ready', handleReadinessCheck);
 
 /**
  * GET /health/metrics
@@ -153,56 +117,7 @@ healthRouter.get('/ready', async (_req: Request, res: Response) => {
  */
 healthRouter.get('/metrics', async (req: Request, res: Response) => {
   const redis = getRedisClient();
-
-  // Get Redis info
-  let redisMetrics: {
-    connected: boolean;
-    used_memory: number;
-    keys_count: number;
-    used_memory_human?: string;
-    error?: string;
-    uptime_seconds?: number;
-  } = { connected: false, used_memory: 0, keys_count: 0 };
-
-  try {
-    const info = await redis.info();
-    // Parse Redis INFO output (key:value lines)
-    const infoObj: Record<string, string> = {};
-    for (const line of info.split('\r\n')) {
-      if (!line || line.startsWith('#')) continue;
-      const colonIdx = line.indexOf(':');
-      if (colonIdx !== -1) {
-        infoObj[line.slice(0, colonIdx)] = line.slice(colonIdx + 1);
-      }
-    }
-
-    const usedMemoryBytes = parseInt(infoObj['used_memory'] ?? '0', 10);
-    const usedMemoryHuman =
-      infoObj['used_memory_human'] ?? `${(usedMemoryBytes / 1024 / 1024).toFixed(2)}M`;
-
-    let keysCount = 0;
-    try {
-      const keys = await redis.keys('*');
-      keysCount = Array.isArray(keys) ? keys.length : 0;
-    } catch {
-      keysCount = 0;
-    }
-
-    redisMetrics = {
-      connected: true,
-      used_memory: usedMemoryBytes,
-      used_memory_human: usedMemoryHuman,
-      keys_count: keysCount,
-      uptime_seconds: parseInt(infoObj['uptime_in_seconds'] ?? '0', 10),
-    };
-  } catch (error) {
-    redisMetrics = {
-      connected: false,
-      used_memory: 0,
-      keys_count: 0,
-      error: error instanceof Error ? error.message : 'Redis info failed',
-    };
-  }
+  const redisMetrics = await collectRedisMetrics(redis);
 
   res.json({
     version: APP_VERSION,

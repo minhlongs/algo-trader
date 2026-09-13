@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.60] - 2026-09-13 — S18 Oversized-File Debt Burn-Down Tranche 28
+
+### Changed
+- Split `src/desk/arbitrage/unified-executor.ts` (220→137 LOC) → `unified-executor-telemetry.ts` (79 LOC)
+- Split `src/desk/execution/gas-batch-optimizer.ts` (220→130 LOC) → `gas-batch-optimizer-types.ts` (36 LOC) + `gas-batch-optimizer-fallback.ts` (65 LOC)
+- Split `src/platform/api/routes/health.ts` (220→135 LOC) → `health-readiness.ts` (28 LOC) + `health-metrics-collector.ts` (80 LOC) (all 8 AST regex invariants preserved verbatim)
+- Split `src/platform/marketplace/services/revenue.service.ts` (220→152 LOC) → `revenue.types.ts` (40 LOC) + `revenue-calculator.ts` (82 LOC)
+- Split `src/desk/strategies/examples/03-rsi-mean-reversion-strategy.ts` (219→137 LOC) → `03-rsi-indicator.ts` (83 LOC)
+- All 13 touched and created files strictly <= 160 visual lines (cap <= 200, max 152 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 127→122 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.59→3.1.60; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.59] - 2026-09-13 — S18 Oversized-File Debt Burn-Down Tranche 27
 
 ### Changed
