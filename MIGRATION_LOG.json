@@ -1367,6 +1367,41 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 24,
+      "version": "3.1.56",
+      "date": "2026-09-12",
+      "targets": [
+        "src/desk/strategies/examples/risk-managed-kelly-helpers.ts",
+        "src/desk/strategies/polymarket/momentum-cascade-v2.ts",
+        "src/desk/strategies/dna/multi-tf-types.ts",
+        "src/desk/strategies/polymarket/listing-arbitrage-sniper.ts",
+        "src/api/routes/mcp-routes.ts"
+      ],
+      "modules": [
+        "risk-managed-kelly-types.ts",
+        "risk-managed-kelly-math.ts",
+        "risk-managed-kelly-risk.ts",
+        "momentum-cascade-types.ts",
+        "momentum-cascade-math.ts",
+        "momentum-cascade-strategy.ts",
+        "multi-tf-indicators-types.ts",
+        "multi-tf-signal-types.ts",
+        "multi-tf-journal-types.ts",
+        "listing-arbitrage-types.ts",
+        "listing-arbitrage-math.ts",
+        "listing-arbitrage-strategy.ts",
+        "mcp-routes-types.ts",
+        "mcp-routes-research.ts"
+      ],
+      "ratchet": {
+        "before": 147,
+        "after": 142,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
