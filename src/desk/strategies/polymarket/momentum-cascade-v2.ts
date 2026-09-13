@@ -7,3 +7,5 @@
 export * from './momentum-cascade-types';
 export * from './momentum-cascade-math';
 export * from './momentum-cascade-strategy';
+
+export { createMomentumCascadeTick } from "./momentum-cascade-strategy";
