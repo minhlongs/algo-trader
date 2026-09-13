@@ -322,3 +322,4 @@ iter	timestamp	metric	delta	kept	description
 22	2026-09-12T13:00:00	152	-5	yes	S18 Tranche 22: split book-imbalance-reversal/signal-consensus-swarm/marketplace-dispute-routes/message-replay/latency-monitor
 23	2026-09-12T14:00:00	147	-5	yes	S18 Tranche 23: split okx-ws/alphaear-client/referral-analytics/regime-detector/dry-run-position-tracker
 24	2026-09-12T15:00:00	142	-5	yes	S18 Tranche 24: split risk-managed-kelly-helpers/momentum-cascade-v2/multi-tf-types/listing-arbitrage-sniper/mcp-routes
+25	2026-09-13T18:00:00	137	-5	yes	S18 Tranche 25: split subscriptions/correlation-breakdown/gate-evaluator/binance-ws/redis-rate-limiter
