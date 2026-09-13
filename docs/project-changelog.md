@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.59] - 2026-09-13 — S18 Oversized-File Debt Burn-Down Tranche 27
+
+### Changed
+- Split `src/desk/wiring/paper-trading-orchestrator.ts` (224→156 LOC) → `paper-trading-orchestrator-runner.ts` (92 LOC)
+- Split `src/platform/signals-api/usage-metering-service.ts` (224→23 LOC) → `usage-metering-types.ts` (48 LOC) + `usage-metering-counter.ts` (33 LOC) + `usage-metering-service-core.ts` (152 LOC)
+- Split `src/desk/strategies/polymarket/liquidation-cascade.ts` (223→20 LOC) → `liquidation-cascade-types.ts` (41 LOC) + `liquidation-cascade-math.ts` (37 LOC) + `liquidation-cascade-strategy.ts` (151 LOC)
+- Split `src/platform/audit/immutable-trade-audit.ts` (222→15 LOC) → `immutable-trade-audit-types.ts` (42 LOC) + `immutable-trade-audit-hash.ts` (28 LOC) + `immutable-trade-audit-core.ts` (139 LOC)
+- Split `src/desk/strategies/polymarket/cross-correlation-lag-v2.ts` (221→30 LOC) → `cross-correlation-lag-types.ts` (38 LOC) + `cross-correlation-lag-math.ts` (48 LOC) + `cross-correlation-lag-strategy.ts` (134 LOC)
+- All 18 touched and created files strictly <= 160 visual lines (cap <= 200, max 156 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 132→127 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.58→3.1.59; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.58] - 2026-09-13 — S18 Oversized-File Debt Burn-Down Tranche 26
 
 ### Changed
