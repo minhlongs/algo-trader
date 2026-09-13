@@ -5,87 +5,26 @@
  */
 
 import { query } from '../../shared/db/postgres-client.js';
-import type { PayoutStatus } from './types';
-import type { PayoutMethod } from './referral-payout';
+import type { PayoutMethod } from './referral-payout-types.js';
+import { ensurePayoutTables } from './payout-tables.js';
+import {
+  ReferralEarningsRow,
+  PayoutHistoryRow,
+} from './referral-payout-row-types.js';
 
-/* ── row types ─────────────────────────────────────────── */
-
-// Using unknown for index signature to allow arrays and nested types from pg
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PgRow = Record<string, any>;
-
-interface ReferralEarningsRow extends PgRow {
-  tenant_id: string;
-  total_earned: number;
-  total_paid_out: number;
-  pending_balance: number;
-  last_payout_at: Date | null;
-  payout_method: string | null;
-  payout_address: string | null;
-  updated_at: Date;
-}
-
-interface PayoutHistoryRow extends PgRow {
-  id: string;
-  tenant_id: string;
-  amount: number;
-  currency: string;
-  method: string;
-  status: string;
-  commission_ids: string[];
-  transaction_id: string | null;
-  payout_address: string;
-  processed_at: Date | null;
-  created_at: Date;
-  error: string | null;
-}
-
-/* ── repository class ──────────────────────────────────── */
+export {
+  PgRow,
+  ReferralEarningsRow,
+  PayoutHistoryRow,
+} from './referral-payout-row-types.js';
 
 export class ReferralPayoutRepository {
-  /**
-   * Ensure payout tables exist (idempotent schema setup)
-   */
+  /** Ensure payout tables exist (idempotent schema setup) */
   async ensurePayoutTables(): Promise<void> {
-    await query(`
-      CREATE TABLE IF NOT EXISTS referral_earnings (
-        tenant_id TEXT PRIMARY KEY,
-        total_earned NUMERIC(12,2) NOT NULL DEFAULT 0,
-        total_paid_out NUMERIC(12,2) NOT NULL DEFAULT 0,
-        pending_balance NUMERIC(12,2) NOT NULL DEFAULT 0,
-        last_payout_at TIMESTAMPTZ,
-        payout_method TEXT,
-        payout_address TEXT,
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-
-    await query(`
-      CREATE TABLE IF NOT EXISTS payout_history (
-        id TEXT PRIMARY KEY,
-        tenant_id TEXT NOT NULL,
-        amount NUMERIC(12,2) NOT NULL,
-        currency TEXT NOT NULL DEFAULT 'usd',
-        method TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        commission_ids TEXT[] NOT NULL DEFAULT '{}',
-        transaction_id TEXT,
-        payout_address TEXT NOT NULL,
-        processed_at TIMESTAMPTZ,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        error TEXT
-      )
-    `);
-
-    await query(`
-      CREATE INDEX IF NOT EXISTS idx_payout_history_tenant
-      ON payout_history(tenant_id, created_at DESC)
-    `);
+    await ensurePayoutTables();
   }
 
-  /**
-   * Get earnings record for a tenant
-   */
+  /** Get earnings record for a tenant */
   async getEarningsByTenant(tenantId: string): Promise<ReferralEarningsRow | null> {
     const result = await query<ReferralEarningsRow>(
       `SELECT * FROM referral_earnings WHERE tenant_id = $1`,
@@ -94,9 +33,7 @@ export class ReferralPayoutRepository {
     return result.rows[0] || null;
   }
 
-  /**
-   * Initialize a new earnings record for a tenant
-   */
+  /** Initialize a new earnings record for a tenant */
   async createEarningsRecord(tenantId: string): Promise<ReferralEarningsRow> {
     const result = await query<ReferralEarningsRow>(
       `INSERT INTO referral_earnings (tenant_id, total_earned, pending_balance, updated_at)
@@ -107,9 +44,7 @@ export class ReferralPayoutRepository {
     return result.rows[0];
   }
 
-  /**
-   * Credit commission earnings to tenant balance (upsert)
-   */
+  /** Credit commission earnings to tenant balance (upsert) */
   async creditEarnings(tenantId: string, amount: number): Promise<void> {
     await query(
       `INSERT INTO referral_earnings (tenant_id, total_earned, pending_balance, updated_at)
@@ -122,9 +57,7 @@ export class ReferralPayoutRepository {
     );
   }
 
-  /**
-   * Set payout method and address for a tenant (upsert)
-   */
+  /** Set payout method and address for a tenant (upsert) */
   async setPayoutMethod(tenantId: string, method: PayoutMethod, address: string): Promise<void> {
     await query(
       `INSERT INTO referral_earnings (tenant_id, payout_method, payout_address, updated_at)
@@ -137,14 +70,8 @@ export class ReferralPayoutRepository {
     );
   }
 
-  /**
-   * Get payout history for a tenant
-   */
-  async getPayoutHistory(
-    tenantId: string,
-    limit: number = 50,
-    offset: number = 0,
-  ): Promise<PayoutHistoryRow[]> {
+  /** Get payout history for a tenant */
+  async getPayoutHistory(tenantId: string, limit = 50, offset = 0): Promise<PayoutHistoryRow[]> {
     const result = await query<PayoutHistoryRow>(
       `SELECT * FROM payout_history
        WHERE tenant_id = $1
@@ -155,9 +82,7 @@ export class ReferralPayoutRepository {
     return result.rows;
   }
 
-  /**
-   * Create a new payout history record
-   */
+  /** Create a new payout history record */
   async createPayoutRecord(params: {
     id: string;
     tenantId: string;
@@ -173,9 +98,7 @@ export class ReferralPayoutRepository {
     );
   }
 
-  /**
-   * Mark payout as completed with transaction ID
-   */
+  /** Mark payout as completed with transaction ID */
   async completePayout(payoutId: string, transactionId: string): Promise<void> {
     await query(
       `UPDATE payout_history
@@ -185,9 +108,7 @@ export class ReferralPayoutRepository {
     );
   }
 
-  /**
-   * Mark payout as failed with error message
-   */
+  /** Mark payout as failed with error message */
   async failPayout(payoutId: string, error: string): Promise<void> {
     await query(
       `UPDATE payout_history SET status = 'failed', error = $2 WHERE id = $1`,
@@ -195,9 +116,7 @@ export class ReferralPayoutRepository {
     );
   }
 
-  /**
-   * Update earnings balance after successful payout
-   */
+  /** Update earnings balance after successful payout */
   async deductEarningsBalance(tenantId: string, grossAmount: number): Promise<void> {
     await query(
       `UPDATE referral_earnings
@@ -210,7 +129,5 @@ export class ReferralPayoutRepository {
     );
   }
 }
-
-/* ── singleton export ──────────────────────────────────── */
 
 export const referralPayoutRepository = new ReferralPayoutRepository();

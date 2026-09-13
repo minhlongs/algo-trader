@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.61] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 29
+
+### Changed
+- Split `src/api/routes/personalization-routes.ts` (218→113 LOC) → `personalization-config.ts` (78 LOC) + `personalization-events.ts` (85 LOC)
+- Split `src/desk/feeds/polymarket-ws-feed.ts` (218→139 LOC) → `polymarket-ws-types.ts` (44 LOC) + `polymarket-ws-parser.ts` (87 LOC)
+- Split `src/desk/arbitrage/cross-platform-arb-detector.ts` (217→95 LOC) → `cross-platform-matcher.ts` (144 LOC)
+- Split `src/desk/intelligence/dual-level-reflection-engine.ts` (216→140 LOC) → `reflection-types.ts` (52 LOC) + `reflection-analyzer.ts` (96 LOC)
+- Split `src/platform/referral/referral-payout-repository.ts` (216→133 LOC) → `referral-payout-row-types.ts` (33 LOC) (delegated DDL to existing `payout-tables.ts`)
+- All 13 touched and created files strictly <= 160 visual lines (cap <= 200, max 144 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 122→117 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.60→3.1.61; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.60] - 2026-09-13 — S18 Oversized-File Debt Burn-Down Tranche 28
 
 ### Changed
