@@ -1437,6 +1437,42 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 26,
+      "version": "3.1.58",
+      "date": "2026-09-13",
+      "targets": [
+        "src/platform/audit/tenant-audit-log.ts",
+        "src/desk/execution/live-execution-guard.ts",
+        "src/desk/strategies/polymarket/session-vol-sniper.ts",
+        "src/desk/execution/live-position-tracker.ts",
+        "src/desk/strategies/GruStrategy.ts"
+      ],
+      "modules": [
+        "tenant-audit-types.ts",
+        "tenant-audit-hash.ts",
+        "tenant-audit-writer.ts",
+        "tenant-audit-verifier.ts",
+        "live-execution-guard-types.ts",
+        "live-execution-guard-evaluator.ts",
+        "live-execution-guard-core.ts",
+        "session-vol-sniper-types.ts",
+        "session-vol-sniper-math.ts",
+        "session-vol-sniper-strategy.ts",
+        "live-position-tracker-types.ts",
+        "live-position-tracker-math.ts",
+        "live-position-tracker-core.ts",
+        "gru-strategy-types.ts",
+        "gru-strategy-core.ts"
+      ],
+      "ratchet": {
+        "before": 137,
+        "after": 132,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
