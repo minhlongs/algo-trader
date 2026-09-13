@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.58] - 2026-09-13 — S18 Oversized-File Debt Burn-Down Tranche 26
+
+### Changed
+- Split `src/platform/audit/tenant-audit-log.ts` (226→25 LOC) → `tenant-audit-types.ts` (33 LOC) + `tenant-audit-hash.ts` (46 LOC) + `tenant-audit-writer.ts` (84 LOC) + `tenant-audit-verifier.ts` (80 LOC)
+- Split `src/desk/execution/live-execution-guard.ts` (225→28 LOC) → `live-execution-guard-types.ts` (49 LOC) + `live-execution-guard-evaluator.ts` (78 LOC) + `live-execution-guard-core.ts` (156 LOC)
+- Split `src/desk/strategies/polymarket/session-vol-sniper.ts` (225→31 LOC) → `session-vol-sniper-types.ts` (36 LOC) + `session-vol-sniper-math.ts` (30 LOC) + `session-vol-sniper-strategy.ts` (146 LOC)
+- Split `src/desk/execution/live-position-tracker.ts` (224→20 LOC) → `live-position-tracker-types.ts` (40 LOC) + `live-position-tracker-math.ts` (54 LOC) + `live-position-tracker-core.ts` (148 LOC)
+- Split `src/desk/strategies/GruStrategy.ts` (224→20 LOC) → `gru-strategy-types.ts` (85 LOC) + `gru-strategy-core.ts` (120 LOC)
+- All 20 touched and created files strictly <= 160 visual lines (cap <= 200, max 156 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 137→132 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.57→3.1.58; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.57] - 2026-09-13 — S18 Oversized-File Debt Burn-Down Tranche 25
 
 ### Changed
