@@ -1334,6 +1334,39 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 23,
+      "version": "3.1.55",
+      "date": "2026-09-12",
+      "targets": [
+        "src/desk/feeds/okx-ws.ts",
+        "src/desk/intelligence/alphaear-client.ts",
+        "src/platform/referral/referral-analytics.ts",
+        "src/desk/arbitrage/regime-detector.ts",
+        "src/desk/execution/dry-run-position-tracker.ts"
+      ],
+      "modules": [
+        "okx-ws-types.ts",
+        "okx-ws-parsers.ts",
+        "alphaear-types.ts",
+        "alphaear-http.ts",
+        "referral-analytics-clicks.ts",
+        "referral-analytics-commissions.ts",
+        "regime-detector-types.ts",
+        "regime-detector-math.ts",
+        "regime-detector-store.ts",
+        "dry-run-position-types.ts",
+        "dry-run-position-math.ts",
+        "dry-run-position-pnl.ts"
+      ],
+      "ratchet": {
+        "before": 152,
+        "after": 147,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
