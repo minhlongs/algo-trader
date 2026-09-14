@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 102,
+      "count": 97,
       "violators": {
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
         "src/api/routes/license-routes.ts": 208,
@@ -59,7 +59,6 @@
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/feeds/kalshi-price-feed.ts": 204,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
-        "src/desk/jobs/auto-marketing-daemon.ts": 209,
         "src/desk/market-data/__tests__/gap-detector.test.ts": 222,
         "src/desk/market-data/__tests__/provider-failover.test.ts": 213,
         "src/desk/ml/gru/gru-model.ts": 203,
@@ -85,7 +84,6 @@
         "src/desk/strategies/polymarket/mean-reversion.ts": 203,
         "src/desk/strategies/polymarket/regime-switch-detector-v2.ts": 206,
         "src/desk/strategies/polymarket/resolution-frontrunner-v2.ts": 203,
-        "src/desk/strategies/polymarket/vwap-deviation-sniper-v2.ts": 210,
         "src/desk/wallet/wallet-manager.ts": 204,
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
@@ -118,8 +116,6 @@
         "src/platform/metering/usage-metering-service.test.ts": 305,
         "src/platform/notifications/__tests__/email-campaign-templates.test.ts": 279,
         "src/platform/notifications/__tests__/notification-services.test.ts": 219,
-        "src/platform/raas/subscriber-executor.ts": 210,
-        "src/platform/referral/fraud-detector.ts": 209,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,
         "src/platform/risk/__tests__/drawdown-monitor-types.test.ts": 260,
@@ -134,7 +130,6 @@
         "src/seed/security/__tests__/audit-log.test.ts": 365,
         "src/seed/security/__tests__/audit-trail-e2e.test.ts": 243,
         "src/seed/security/__tests__/crypto.test.ts": 337,
-        "src/shared/backtesting/backtest-runner.ts": 210,
         "src/shared/db/migrations/025-marketplace-schema.ts": 207,
         "src/shared/db/migrations/026-create-ai-audit-tables.ts": 252,
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304,

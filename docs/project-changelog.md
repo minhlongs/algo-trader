@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.64] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 32
+
+### Changed
+- Split `src/desk/strategies/polymarket/vwap-deviation-sniper-v2.ts` (210→142 LOC) → `vwap-deviation-types.ts` (36 LOC) + `vwap-deviation-math.ts` (52 LOC) (preserved VWAP mean-reversion math and legacy tick factory)
+- Split `src/platform/raas/subscriber-executor.ts` (210→107 LOC) → `subscriber-executor-types.ts` (67 LOC) + `subscriber-executor-db.ts` (65 LOC) (preserved DLP blocking, attestation IDs, and tenant isolation)
+- Split `src/shared/backtesting/backtest-runner.ts` (210→60 LOC) → `backtest-runner-types.ts` (44 LOC) + `backtest-runner-engine.ts` (149 LOC) (preserved static metric helpers and equity curve simulation)
+- Split `src/desk/jobs/auto-marketing-daemon.ts` (209→105 LOC) → `auto-marketing-daemon-types.ts` (30 LOC) + `auto-marketing-daemon-core.ts` (99 LOC) (preserved CLI entry guard and JSON persistence)
+- Split `src/platform/referral/fraud-detector.ts` (209→149 LOC) → `fraud-detector-types.ts` (36 LOC) + `fraud-detector-rules.ts` (79 LOC) (preserved private `config` property for reflection compatibility)
+- All 15 touched and created files strictly <= 160 visual lines (cap <= 200, max 149 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 102→97 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.63→3.1.64; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.63] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 31
 
 ### Changed

@@ -4,31 +4,29 @@
  */
 
 import { getDbClient } from '../../shared/db/postgres-client.js';
-import { logger } from '../../shared/utils/logger';
+import {
+  type FraudDetectionConfig,
+  type FraudDetectionResult,
+  type BatchAnalyzeResult,
+  DEFAULT_FRAUD_CONFIG,
+} from './fraud-detector-types';
+import {
+  isSuspiciousUserAgent,
+  isPrivateIp,
+  checkIpClickRate,
+  checkUserAgentClickRate,
+  checkRapidClicks,
+} from './fraud-detector-rules';
 
-export interface FraudDetectionConfig {
-  maxClicksPerIpPerDay: number;
-  maxClicksPerUserAgentPerDay: number;
-  suspiciousUserAgents: string[];
-  fraudThreshold: number; // 0-100 score threshold
-}
+export * from './fraud-detector-types';
+export * from './fraud-detector-rules';
 
 export class FraudDetector {
   private config: FraudDetectionConfig;
 
   constructor(config?: Partial<FraudDetectionConfig>) {
     this.config = {
-      maxClicksPerIpPerDay: 100,
-      maxClicksPerUserAgentPerDay: 50,
-      suspiciousUserAgents: [
-        'HeadlessChrome',
-        'PhantomJS',
-        'Selenium',
-        'Puppeteer',
-        'curl',
-        'wget',
-      ],
-      fraudThreshold: 70,
+      ...DEFAULT_FRAUD_CONFIG,
       ...config,
     };
   }
@@ -36,11 +34,7 @@ export class FraudDetector {
   /**
    * Analyze a click and return fraud score and reasons
    */
-  async detectFraud(trackingId: string, ip: string, userAgent: string): Promise<{
-    score: number;
-    reasons: string[];
-    isBlocked: boolean;
-  }> {
+  async detectFraud(trackingId: string, ip: string, userAgent: string): Promise<FraudDetectionResult> {
     const reasons: string[] = [];
     let score = 0;
 
@@ -92,84 +86,30 @@ export class FraudDetector {
     };
   }
 
-  /**
-   * Check if user agent is from known bot/automation tools
-   */
   private isSuspiciousUserAgent(userAgent: string): boolean {
-    const ua = userAgent.toLowerCase();
-    return this.config.suspiciousUserAgents.some(suspicious =>
-      ua.includes(suspicious.toLowerCase())
-    );
+    return isSuspiciousUserAgent(userAgent, this.config.suspiciousUserAgents);
   }
 
-  /**
-   * Check if IP is from private/reserved range
-   */
   private isPrivateIp(ip: string): boolean {
-    // Check for localhost
-    if (ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.')) {
-      return true;
-    }
-    // Check for IPv6 local
-    if (ip.startsWith('fc00:') || ip.startsWith('fe80:')) {
-      return true;
-    }
-    return false;
+    return isPrivateIp(ip);
   }
 
-  /**
-   * Check click rate from same IP in last 24 hours
-   */
   private async checkIpClickRate(ip: string): Promise<{ isHigh: boolean; count: number }> {
-    const sql = `
-      SELECT COUNT(*) as count
-      FROM referral_tracking
-      WHERE clicked_by_ip = $1
-        AND clicked_at >= NOW() - INTERVAL '24 hours'
-    `;
-    const result = await getDbClient().query<{ count: number }>(sql, [ip]);
-    const count = result.rows[0]?.count ?? 0;
-    return { isHigh: count >= this.config.maxClicksPerIpPerDay, count };
+    return checkIpClickRate(ip, this.config.maxClicksPerIpPerDay);
   }
 
-  /**
-   * Check click rate from same user agent in last 24 hours
-   */
   private async checkUserAgentClickRate(userAgent: string): Promise<{ isHigh: boolean; count: number }> {
-    const sql = `
-      SELECT COUNT(*) as count
-      FROM referral_tracking
-      WHERE clicked_by_user_agent = $1
-        AND clicked_at >= NOW() - INTERVAL '24 hours'
-    `;
-    const result = await getDbClient().query<{ count: number }>(sql, [userAgent]);
-    const count = result.rows[0]?.count ?? 0;
-    return { isHigh: count >= this.config.maxClicksPerUserAgentPerDay, count };
+    return checkUserAgentClickRate(userAgent, this.config.maxClicksPerUserAgentPerDay);
   }
 
-  /**
-   * Check for rapid clicks (multiple clicks within 10 seconds from same IP)
-   */
   private async checkRapidClicks(ip: string): Promise<boolean> {
-    const sql = `
-      SELECT COUNT(*) as count
-      FROM referral_tracking
-      WHERE clicked_by_ip = $1
-        AND clicked_at >= NOW() - INTERVAL '1 minute'
-    `;
-    const result = await getDbClient().query<{ count: number }>(sql, [ip]);
-    const count = result.rows[0]?.count ?? 0;
-    return count >= 10; // 10+ clicks in 1 minute is suspicious
+    return checkRapidClicks(ip);
   }
 
   /**
    * Batch analyze recent clicks for fraud patterns
    */
-  async batchAnalyzeClicks(limit: number = 1000): Promise<{
-    analyzed: number;
-    flagged: number;
-    averageScore: number;
-  }> {
+  async batchAnalyzeClicks(limit: number = 1000): Promise<BatchAnalyzeResult> {
     const sql = `
       SELECT id, clicked_by_ip, clicked_by_user_agent
       FROM referral_tracking

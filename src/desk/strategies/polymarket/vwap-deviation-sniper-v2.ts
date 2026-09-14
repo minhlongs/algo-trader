@@ -7,92 +7,27 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
-import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
-  type BaseStrategyConfig,
   type OpenPosition,
   type StrategyDeps,
 } from './base-polymarket-strategy';
+import {
+  type VwapDeviationSniperConfig,
+  type VwapDeviationSniperDeps,
+  DEFAULT_CONFIG,
+  STRATEGY_NAME,
+} from './vwap-deviation-types';
+import {
+  calcVWAP,
+  calcDeviation,
+  calcZScore,
+  determineSignal,
+} from './vwap-deviation-math';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
-export interface VwapDeviationSniperConfig extends BaseStrategyConfig {
-  vwapWindow: number;
-  minPeriods: number;
-  deviationThreshold: number;
-  exitThreshold: number;
-}
-
-export const DEFAULT_CONFIG: VwapDeviationSniperConfig = {
-  vwapWindow: 20,
-  minPeriods: 10,
-  deviationThreshold: 2.0,
-  exitThreshold: 0.5,
-  minVolume: 5000,
-  takeProfitPct: 0.03,
-  stopLossPct: 0.02,
-  maxHoldMs: 20 * 60_000,
-  maxPositions: 4,
-  cooldownMs: 120_000,
-  positionSize: '12',
-};
-
-const STRATEGY_NAME = 'vwap-deviation-sniper' as StrategyName;
-
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
-export function calcVWAP(prices: number[], volumes: number[]): number {
-  if (prices.length === 0 || volumes.length === 0) return 0;
-  if (prices.length !== volumes.length) return 0;
-
-  let sumPV = 0;
-  let sumV = 0;
-
-  for (let i = 0; i < prices.length; i++) {
-    if (volumes[i] <= 0) continue;
-    sumPV += prices[i] * volumes[i];
-    sumV += volumes[i];
-  }
-
-  if (sumV === 0) return 0;
-  return sumPV / sumV;
-}
-
-export function calcDeviation(price: number, vwap: number): number {
-  if (vwap === 0) return 0;
-  return (price - vwap) / vwap;
-}
-
-export function calcStdDev(values: number[], mean: number): number {
-  if (values.length === 0) return 0;
-  let sumSq = 0;
-  for (const x of values) {
-    const diff = x - mean;
-    sumSq += diff * diff;
-  }
-  return Math.sqrt(sumSq / values.length);
-}
-
-export function calcZScore(value: number, history: number[]): number {
-  if (history.length < 2) return 0;
-  const mean = history.reduce((a, b) => a + b, 0) / history.length;
-  const stdDev = calcStdDev(history, mean);
-  if (stdDev === 0) return 0;
-  return (value - mean) / stdDev;
-}
-
-export function determineSignal(
-  zScore: number,
-  threshold: number,
-): 'yes' | 'no' | null {
-  if (zScore < -threshold) return 'yes';
-  if (zScore > threshold) return 'no';
-  return null;
-}
-
-// ── Strategy class ───────────────────────────────────────────────────────────
+export * from './vwap-deviation-types';
+export * from './vwap-deviation-math';
 
 export class VwapDeviationSniperStrategy extends BasePolymarketStrategy {
   private readonly cfg: VwapDeviationSniperConfig;
@@ -197,11 +132,8 @@ export class VwapDeviationSniperStrategy extends BasePolymarketStrategy {
   }
 }
 
-// ── Legacy factory (backward compat) ─────────────────────────────────────────
-
-export interface VwapDeviationSniperDeps extends StrategyDeps {
-  config?: Partial<VwapDeviationSniperConfig>;
-}
+export const VwapDeviationSniperStrategyV2 = VwapDeviationSniperStrategy;
+export type VwapDeviationSniperStrategyV2 = VwapDeviationSniperStrategy;
 
 export function createVwapDeviationSniperTick(deps: VwapDeviationSniperDeps): () => Promise<void> {
   const { config, ...baseDeps } = deps;
