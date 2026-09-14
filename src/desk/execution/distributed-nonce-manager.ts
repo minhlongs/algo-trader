@@ -10,31 +10,21 @@
 
 import { getRedisClient } from '../../redis/index';
 import { logger } from '../../shared/utils/logger';
+import {
+  NONCE_TTL_MS,
+  NONCE_RELEASE_SCRIPT,
+  formatNonceKey,
+  type NonceReservation,
+} from './distributed-nonce-types';
 
-/** Milliseconds before a reserved nonce is considered stale and released */
-const NONCE_TTL_MS = 30_000;
-
-/** Redis key prefix for nonce counters */
-const NONCE_KEY_PREFIX = 'nonce:';
-
-export interface NonceReservation {
-  walletAddress: string;
-  nonce: number;
-  reservedAt: number;
-}
+export type { NonceReservation } from './distributed-nonce-types';
+export { NONCE_TTL_MS, NONCE_KEY_PREFIX } from './distributed-nonce-types';
 
 /**
  * Manages transaction nonces across multiple concurrent workers via Redis.
  * Uses Redis INCR for atomic, race-condition-free nonce assignment.
  */
 export class DistributedNonceManager {
-  /**
-   * Fetch the current on-chain nonce for a wallet from an RPC provider.
-   * Called once on first use to seed the Redis counter.
-   *
-   * @param walletAddress - Checksummed wallet address
-   * @returns On-chain transaction count (next valid nonce)
-   */
   private readonly getOnChainNonce: (walletAddress: string) => Promise<number>;
   private readonly initPromises = new Map<string, Promise<void>>();
   private readonly initializedWallets = new Set<string>();
@@ -43,15 +33,10 @@ export class DistributedNonceManager {
     this.getOnChainNonce = getOnChainNonce;
   }
 
-  /** Redis key for a wallet's nonce counter */
   private nonceKey(walletAddress: string): string {
-    return `${NONCE_KEY_PREFIX}${walletAddress.toLowerCase()}`;
+    return formatNonceKey(walletAddress);
   }
 
-  /**
-   * Seed Redis nonce from blockchain if not yet initialised.
-   * Uses SET NX (set-if-not-exists) so only the first caller seeds it.
-   */
   private async ensureInitialised(walletAddress: string): Promise<void> {
     const addressKey = walletAddress.toLowerCase();
     if (this.initializedWallets.has(addressKey)) return;
@@ -63,16 +48,13 @@ export class DistributedNonceManager {
           const redis = getRedisClient();
           const key = this.nonceKey(walletAddress);
 
-          // Check if already seeded
           const existing = await redis.get(key);
           if (existing !== null) {
             this.initializedWallets.add(addressKey);
             return;
           }
 
-          // Fetch on-chain nonce and seed (NX = only set if missing to avoid race)
           const onChainNonce = await this.getOnChainNonce(walletAddress);
-          // Use SET NX — if another worker seeded between our GET and SET, that's fine
           await redis.set(key, onChainNonce, 'NX' as never);
 
           logger.info('[NonceManager] Seeded nonce from chain', {
@@ -92,20 +74,12 @@ export class DistributedNonceManager {
     await initPromise;
   }
 
-  /**
-   * Atomically reserve the next nonce for a wallet.
-   * INCR returns the value AFTER incrementing, so we subtract 1 for the reserved nonce.
-   *
-   * @param walletAddress - Checksummed wallet address
-   * @returns Reservation object containing the reserved nonce
-   */
   async reserveNonce(walletAddress: string): Promise<NonceReservation> {
     await this.ensureInitialised(walletAddress);
 
     const redis = getRedisClient();
     const key = this.nonceKey(walletAddress);
 
-    // INCR is atomic — safe for multiple concurrent callers
     const afterIncrement = await redis.incr(key);
     const reservedNonce = afterIncrement - 1;
 
@@ -121,15 +95,6 @@ export class DistributedNonceManager {
     };
   }
 
-  /**
-   * Release a nonce back by decrementing the counter.
-   * Call this ONLY when a transaction definitively failed before broadcast
-   * (i.e., signing error, not a broadcast error — broadcast may have landed).
-   *
-   * WARNING: Only safe to call if you are certain the nonce was never used on-chain.
-   *
-   * @param reservation - The reservation returned by reserveNonce()
-   */
   async releaseNonce(reservation: NonceReservation): Promise<void> {
     const ageMs = Date.now() - reservation.reservedAt;
     if (ageMs > NONCE_TTL_MS) {
@@ -143,16 +108,13 @@ export class DistributedNonceManager {
 
     const redis = getRedisClient();
     const key = this.nonceKey(reservation.walletAddress);
-    
-    // Fix unsafe decr: only decrement if Redis value is exactly reservation.nonce + 1
-    const script = `
-      if redis.call('get', KEYS[1]) == ARGV[1] then
-        return redis.call('decr', KEYS[1])
-      else
-        return nil
-      end
-    `;
-    const result = await redis.eval(script, 1, key, (reservation.nonce + 1).toString());
+
+    const result = await redis.eval(
+      NONCE_RELEASE_SCRIPT,
+      1,
+      key,
+      (reservation.nonce + 1).toString(),
+    );
 
     if (result !== null) {
       logger.info('[NonceManager] Released nonce', {
@@ -168,20 +130,12 @@ export class DistributedNonceManager {
     }
   }
 
-  /**
-   * Get the current nonce counter value without reserving.
-   * Useful for monitoring and debugging.
-   */
   async getCurrentNonce(walletAddress: string): Promise<number | null> {
     const redis = getRedisClient();
     const raw = await redis.get(this.nonceKey(walletAddress));
     return raw !== null ? parseInt(raw, 10) : null;
   }
 
-  /**
-   * Force-reset the nonce counter from the blockchain.
-   * Use after detecting nonce desync (e.g., manual transactions sent outside the bot).
-   */
   async resyncFromChain(walletAddress: string): Promise<number> {
     const onChainNonce = await this.getOnChainNonce(walletAddress);
     const redis = getRedisClient();
