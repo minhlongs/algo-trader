@@ -1565,6 +1565,35 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 30,
+      "version": "3.1.62",
+      "date": "2026-09-14",
+      "targets": [
+        "src/alpha-lab/baselines/baseline-strategies.ts",
+        "src/desk/feeds/news-impact-analyzer.ts",
+        "src/desk/strategies/polymarket/kalman-filter-tracker.ts",
+        "src/platform/referral/payout-scheduler.ts",
+        "src/platform/marketplace/repositories/strategy-repository.ts"
+      ],
+      "modules": [
+        "baseline-trade-helpers.ts",
+        "baseline-technical-strategies.ts",
+        "news-impact-types.ts",
+        "news-rss-fetcher.ts",
+        "kalman-filter-core.ts",
+        "payout-scheduler-types.ts",
+        "payout-worker-handler.ts",
+        "strategy-repository-query-builder.ts"
+      ],
+      "ratchet": {
+        "before": 117,
+        "after": 112,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }

@@ -8,37 +8,16 @@
 
 import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { logger } from '../../shared/utils/logger';
+import type {
+  NewsItem,
+  MarketImpact,
+  NewsImpactResult,
+  ActiveMarket,
+} from './news-impact-types';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export interface NewsItem {
-  title: string;
-  description?: string;
-  url?: string;
-  publishedAt: number;
-  source: string;
-}
-
-export interface MarketImpact {
-  marketId: string;
-  impactDirection: 'UP' | 'DOWN' | 'NEUTRAL';
-  magnitude: number; // 0–1
-  reasoning: string;
-}
-
-export interface NewsImpactResult {
-  newsItem: NewsItem;
-  impacts: MarketImpact[];
-  analyzedAt: number;
-}
-
-export interface ActiveMarket {
-  id: string;
-  question: string;
-  slug?: string;
-}
+// Re-export types and RSS fetching logic for 100% backward compatibility
+export type { NewsItem, MarketImpact, NewsImpactResult, ActiveMarket } from './news-impact-types';
+export { fetchNewsItems, fetchRssFeed, parseXmlField } from './news-rss-fetcher';
 
 // ---------------------------------------------------------------------------
 // In-memory cache (5-min TTL keyed by headline slug)
@@ -115,64 +94,8 @@ Which of these markets are affected by this news?`;
 }
 
 // ---------------------------------------------------------------------------
-// RSS fetch (minimal parser — no external xml2js dependency)
-// ---------------------------------------------------------------------------
-
-function parseXmlField(block: string, tag: string): string {
-  return block.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`, 'i'))?.[1]
-    ?? block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'i'))?.[1]
-    ?? '';
-}
-
-async function fetchRssFeed(url: string): Promise<NewsItem[]> {
-  const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-  if (!resp.ok) return [];
-  const xml = await resp.text();
-  const hostname = new URL(url).hostname;
-
-  return (xml.match(/<item[\s>][\s\S]*?<\/item>/gi) ?? []).slice(0, 20).flatMap(block => {
-    const title = parseXmlField(block, 'title').trim();
-    if (!title) return [];
-    const desc = parseXmlField(block, 'description').replace(/<[^>]+>/g, '').trim().slice(0, 300);
-    const pubDate = parseXmlField(block, 'pubDate');
-    return [{
-      title,
-      description: desc || undefined,
-      url: parseXmlField(block, 'link').trim() || undefined,
-      publishedAt: pubDate ? new Date(pubDate).getTime() : Date.now(),
-      source: hostname,
-    }];
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
-
-/** Fetch news items from all configured feed URLs */
-export async function fetchNewsItems(): Promise<NewsItem[]> {
-  const feedUrls = (process.env['NEWS_FEED_URLS'] ?? '').split(',').map(s => s.trim()).filter(Boolean);
-  if (feedUrls.length === 0) {
-    logger.warn('[NewsImpactAnalyzer] No NEWS_FEED_URLS configured');
-    return [];
-  }
-
-  const results = await Promise.allSettled(feedUrls.map(url => fetchRssFeed(url)));
-  const items: NewsItem[] = [];
-  for (const r of results) {
-    if (r.status === 'fulfilled') items.push(...r.value);
-    else logger.warn('[NewsImpactAnalyzer] Feed fetch failed', { reason: r.reason });
-  }
-
-  // Deduplicate by title
-  const seen = new Set<string>();
-  return items.filter(item => {
-    const key = item.title.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
 
 /**
  * Analyze a single news item against a list of active markets.
