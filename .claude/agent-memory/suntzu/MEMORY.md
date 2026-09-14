@@ -19,3 +19,4 @@
 - [S18 Oversized-Debt Tranche 25 Verdict](project_s18_oversized_debt_tranche25_verdict.md) — 5 oversized files split, ratchet 142->137, 12,483 tests 100% pass, version 3.1.57
 - [S18 Oversized-Debt Tranche 26 Verdict](project_s18_oversized_debt_tranche26_verdict.md) — 5 oversized files split, ratchet 137->132, 12,483 tests 100% pass, version 3.1.58
 - [S18 Oversized-Debt Tranche 30 Verdict](project_s18_oversized_debt_tranche30_verdict.md) — 5 oversized files split, ratchet 117->112, 12,483 tests 100% pass, version 3.1.62
+- [S18 Oversized-Debt Tranche 32 Verdict](project_s18_oversized_debt_tranche32_verdict.md) — 5 oversized files split, ratchet 102->97, 12,483 tests 100% pass, version 3.1.64
