@@ -933,6 +933,40 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche36",
+      "date": "2026-09-14",
+      "files": [
+        "src/desk/strategies/polymarket/mean-reversion.ts",
+        "src/desk/strategies/polymarket/resolution-frontrunner-v2.ts",
+        "src/resilience/recovery-manager.ts",
+        "src/db/migrations/025-marketplace-schema.ts",
+        "src/shared/db/migrations/025-marketplace-schema.ts"
+      ],
+      "created": [
+        "mean-reversion-types.ts",
+        "mean-reversion-math.ts",
+        "mean-reversion-strategy.ts",
+        "resolution-frontrunner-types.ts",
+        "resolution-frontrunner-math.ts",
+        "resolution-frontrunner-strategy.ts",
+        "recovery-manager-types.ts",
+        "recovery-manager-paths.ts",
+        "recovery-manager-io.ts",
+        "recovery-manager-service.ts",
+        "src/db/marketplace-schema-core-queries.ts",
+        "src/db/marketplace-schema-aux-queries.ts",
+        "src/shared/db/marketplace-schema-core-queries.ts",
+        "src/shared/db/marketplace-schema-aux-queries.ts"
+      ],
+      "ratchet": {
+        "before": 82,
+        "after": 77,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ],
   "deferred": [

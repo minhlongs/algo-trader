@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.68] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 36
+
+### Changed
+- Split `src/desk/strategies/polymarket/mean-reversion.ts` (203→8 LOC) → `mean-reversion-types.ts` (37 LOC) + `mean-reversion-math.ts` (23 LOC) + `mean-reversion-strategy.ts` (137 LOC) (preserved MeanReversionStrategy constructor and orderbook ticks)
+- Split `src/desk/strategies/polymarket/resolution-frontrunner-v2.ts` (203→23 LOC) → `resolution-frontrunner-types.ts` (39 LOC) + `resolution-frontrunner-math.ts` (31 LOC) + `resolution-frontrunner-strategy.ts` (131 LOC) (preserved BasePolymarketStrategy inheritance and legacy tick factory)
+- Split `src/resilience/recovery-manager.ts` (203→14 LOC) → `recovery-manager-types.ts` (16 LOC) + `recovery-manager-paths.ts` (33 LOC) + `recovery-manager-io.ts` (98 LOC) + `recovery-manager-service.ts` (104 LOC) (preserved PM2/PID instance isolation, disk snapshot format, and default recoveryManager singleton)
+- Split `src/db/migrations/025-marketplace-schema.ts` (207→23 LOC) → `src/db/marketplace-schema-core-queries.ts` (90 LOC) + `src/db/marketplace-schema-aux-queries.ts` (122 LOC) (placed outside `migrations/` to preserve migration numbering discipline and contract checks)
+- Split `src/shared/db/migrations/025-marketplace-schema.ts` (207→23 LOC) → `src/shared/db/marketplace-schema-core-queries.ts` (90 LOC) + `src/shared/db/marketplace-schema-aux-queries.ts` (122 LOC) (symmetric shared DDL helpers preserving migration runner contracts)
+- All 19 touched and created files strictly <= 160 visual lines (cap <= 200, max 137 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 82→77 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.67→3.1.68; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.67] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 35
 
 ### Changed

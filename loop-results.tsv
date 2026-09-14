@@ -333,3 +333,4 @@ iter	timestamp	metric	delta	kept	description
 33	2026-09-14T19:30:00	92	-5	yes	S18 Tranche 33: split license-routes/sentiment-feed/binance-feed/rollback-handler/gamma-scalping
 34	2026-09-14T20:30:00	87	-5	yes	S18 Tranche 34: split recovery-manager/regime-switch-detector-v2/trading-event-bus/funding-rate-arb/drawdown-monitor-service
 35	2026-09-14T21:30:00	82	-5	yes	S18 Tranche 35: split markets/binance-funding-feed/kalshi-price-feed/wallet-manager/gru-model
+36	2026-09-14T22:30:00	77	-5	yes	S18 Tranche 36: split mean-reversion/resolution-frontrunner-v2/recovery-manager/025-marketplace-schema(src+shared)

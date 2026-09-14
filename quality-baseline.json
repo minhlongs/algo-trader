@@ -35,10 +35,9 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 82,
+      "count": 77,
       "violators": {
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
-        "src/db/migrations/025-marketplace-schema.ts": 207,
         "src/db/migrations/026-create-ai-audit-tables.ts": 273,
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
         "src/desk/arbitrage/__tests__/ilp-constraint-builder.test.ts": 288,
@@ -71,8 +70,6 @@
         "src/desk/strategies/dna/__tests__/journal-writer.test.ts": 255,
         "src/desk/strategies/dna/__tests__/orchestrator.test.ts": 225,
         "src/desk/strategies/dna/__tests__/regime-detector.test.ts": 241,
-        "src/desk/strategies/polymarket/mean-reversion.ts": 203,
-        "src/desk/strategies/polymarket/resolution-frontrunner-v2.ts": 203,
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
         "src/lib/__tests__/llm-router-qwen.test.ts": 205,
@@ -111,12 +108,10 @@
         "src/platform/telegram/__tests__/ask-handler.test.ts": 223,
         "src/platform/telegram/__tests__/leaderboard-handler.test.ts": 225,
         "src/redis/__tests__/pubsub.test.ts": 403,
-        "src/resilience/recovery-manager.ts": 203,
         "src/rollback/__tests__/rollback-evaluators.test.ts": 386,
         "src/seed/security/__tests__/audit-log.test.ts": 365,
         "src/seed/security/__tests__/audit-trail-e2e.test.ts": 243,
         "src/seed/security/__tests__/crypto.test.ts": 337,
-        "src/shared/db/migrations/025-marketplace-schema.ts": 207,
         "src/shared/db/migrations/026-create-ai-audit-tables.ts": 252,
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304
       }
