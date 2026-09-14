@@ -900,6 +900,39 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche35",
+      "date": "2026-09-14",
+      "files": [
+        "src/platform/workers/api/markets.ts",
+        "src/desk/data/binance-funding-feed.ts",
+        "src/desk/feeds/kalshi-price-feed.ts",
+        "src/desk/wallet/wallet-manager.ts",
+        "src/desk/ml/gru/gru-model.ts"
+      ],
+      "created": [
+        "markets-types.ts",
+        "markets-shards.ts",
+        "binance-funding-types.ts",
+        "binance-funding-parser.ts",
+        "binance-funding-history.ts",
+        "kalshi-price-types.ts",
+        "kalshi-price-client.ts",
+        "kalshi-price-poller.ts",
+        "wallet-types.ts",
+        "wallet-persistence.ts",
+        "wallet-isolation.ts",
+        "gru-types.ts",
+        "gru-architecture.ts"
+      ],
+      "ratchet": {
+        "before": 87,
+        "after": 82,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ],
   "deferred": [
