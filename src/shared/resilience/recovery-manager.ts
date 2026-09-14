@@ -1,63 +1,20 @@
 // State persistence & crash recovery - saves snapshots to disk for restart recovery
-import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
-import { dirname, basename, join } from 'node:path';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { logger } from '../utils/logger';
-/** Minimal type mirrors for recovery snapshots — avoids shared→desk dependency. */
-interface StrategyConfig {
-  name: string;
-  enabled: boolean;
-  capitalAllocation: string;
-  params: Record<string, unknown>;
-}
+import {
+  RECOVERY_FILE_DEFAULT,
+  MAX_SNAPSHOT_AGE_MS,
+  type RecoveryState,
+} from './recovery-manager-types';
+import {
+  resolveInstanceId,
+  instanceFilePath,
+  discoverInstanceFiles,
+} from './recovery-manager-paths';
 
-interface Position {
-  marketId: string;
-  side: 'long' | 'short';
-  entryPrice: string;
-  size: string;
-  unrealizedPnl: string;
-  openedAt: number;
-}
-
-const RECOVERY_FILE_DEFAULT = 'data/recovery-state.json';
-/** Maximum age (ms) of a recovery snapshot to be considered valid */
-const MAX_SNAPSHOT_AGE_MS = 60 * 60 * 1000; // 1 hour
-
-export interface RecoveryState {
-  strategies: StrategyConfig[];
-  positions: Position[];
-  lastEquity: string;
-  timestamp: number;
-}
-
-/**
- * Resolve the instance identifier: PM2_INSTANCE_ID env var, then process.pid.
- */
-function resolveInstanceId(): string {
-  return process.env['PM2_INSTANCE_ID'] ?? String(process.pid);
-}
-
-/**
- * Given a base file path, return the instance-specific file path.
- * e.g. /tmp/x/recovery-state.json -> /tmp/x/recovery-state-3.json
- */
-function instanceFilePath(basePath: string, instanceId: string): string {
-  const dir = dirname(basePath);
-  const stem = basename(basePath, '.json');
-  return join(dir, `${stem}-${instanceId}.json`);
-}
-
-/**
- * Return all instance file paths matching the base pattern in the same directory.
- */
-function discoverInstanceFiles(basePath: string): string[] {
-  const dir = dirname(basePath);
-  const stem = basename(basePath, '.json');
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((f) => f.startsWith(`${stem}-`) && f.endsWith('.json'))
-    .map((f) => join(dir, f));
-}
+export * from './recovery-manager-types';
+export * from './recovery-manager-paths';
 
 export class RecoveryManager {
   private autoSaveTimer: ReturnType<typeof setInterval> | null = null;
@@ -93,10 +50,7 @@ export class RecoveryManager {
     }
   }
 
-  /**
-   * Load the most recent valid snapshot across all instance files.
-   * Returns null if no valid files exist.
-   */
+  /** Load the most recent valid snapshot across all instance files. */
   loadState(): RecoveryState | null {
     const files = discoverInstanceFiles(this.filePath);
     if (files.length === 0) return null;
@@ -126,11 +80,7 @@ export class RecoveryManager {
     return best;
   }
 
-  /**
-   * Start periodic auto-save.
-   * @param intervalMs - Save interval in milliseconds
-   * @param stateProvider - Callback that returns current state to snapshot
-   */
+  /** Start periodic auto-save. */
   startAutoSave(intervalMs: number, stateProvider: () => RecoveryState): void {
     if (this.autoSaveTimer !== null) {
       logger.warn('Auto-save already running, stopping previous timer', 'RecoveryManager');
@@ -138,8 +88,7 @@ export class RecoveryManager {
     }
     this.autoSaveTimer = setInterval(() => {
       try {
-        const state = stateProvider();
-        this.saveState(state);
+        this.saveState(stateProvider());
       } catch (err) {
         logger.error('Auto-save state provider threw', 'RecoveryManager', { error: String(err) });
       }
@@ -156,10 +105,7 @@ export class RecoveryManager {
     }
   }
 
-  /**
-   * Returns true if a valid, recent recovery snapshot exists.
-   * "Recent" = saved within the last hour.
-   */
+  /** Returns true if a valid, recent recovery snapshot exists (< 1 hour). */
   shouldRecover(): boolean {
     const state = this.loadState();
     if (!state) return false;

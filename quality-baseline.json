@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 92,
+      "count": 87,
       "violators": {
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
         "src/db/migrations/025-marketplace-schema.ts": 207,
@@ -49,7 +49,6 @@
         "src/desk/commands/setup-wizard.ts": 203,
         "src/desk/data/__tests__/data-quality-gate.test.ts": 238,
         "src/desk/data/binance-funding-feed.ts": 204,
-        "src/desk/events/trading-event-bus.ts": 205,
         "src/desk/execution/__tests__/paper-executor.test.ts": 350,
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
@@ -75,9 +74,7 @@
         "src/desk/strategies/dna/__tests__/journal-writer.test.ts": 255,
         "src/desk/strategies/dna/__tests__/orchestrator.test.ts": 225,
         "src/desk/strategies/dna/__tests__/regime-detector.test.ts": 241,
-        "src/desk/strategies/polymarket/funding-rate-arb.ts": 205,
         "src/desk/strategies/polymarket/mean-reversion.ts": 203,
-        "src/desk/strategies/polymarket/regime-switch-detector-v2.ts": 206,
         "src/desk/strategies/polymarket/resolution-frontrunner-v2.ts": 203,
         "src/desk/wallet/wallet-manager.ts": 204,
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
@@ -114,7 +111,6 @@
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,
         "src/platform/risk/__tests__/drawdown-monitor-types.test.ts": 260,
-        "src/platform/risk/drawdown-monitor-service.ts": 205,
         "src/platform/signals-api/__tests__/signal-publisher.test.ts": 246,
         "src/platform/telegram/__tests__/ask-handler.test.ts": 223,
         "src/platform/telegram/__tests__/leaderboard-handler.test.ts": 225,
@@ -127,8 +123,7 @@
         "src/seed/security/__tests__/crypto.test.ts": 337,
         "src/shared/db/migrations/025-marketplace-schema.ts": 207,
         "src/shared/db/migrations/026-create-ai-audit-tables.ts": 252,
-        "src/shared/middleware/__tests__/rate-limiter.test.ts": 304,
-        "src/shared/resilience/recovery-manager.ts": 207
+        "src/shared/middleware/__tests__/rate-limiter.test.ts": 304
       }
     }
   },

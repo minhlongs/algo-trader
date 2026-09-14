@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.66] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 34
+
+### Changed
+- Split `src/shared/resilience/recovery-manager.ts` (207→153 LOC) → `recovery-manager-types.ts` (27 LOC) + `recovery-manager-paths.ts` (31 LOC) (preserved PM2/PID instance isolation, disk snapshot format, and default recoveryManager singleton)
+- Split `src/desk/strategies/polymarket/regime-switch-detector-v2.ts` (206→149 LOC) → `regime-switch-detector-types.ts` (31 LOC) + `regime-switch-detector-math.ts` (50 LOC) (preserved variance ratio math helpers and legacy tick factory)
+- Split `src/desk/events/trading-event-bus.ts` (205→120 LOC) → `trading-event-bus-types.ts` (70 LOC) + `trading-event-bus-guards.ts` (28 LOC) (preserved singleton instance, type guards, cached connection statuses, and TradingEventBus type export)
+- Split `src/desk/strategies/polymarket/funding-rate-arb.ts` (205→128 LOC) → `funding-rate-arb-types.ts` (31 LOC) + `funding-rate-arb-math.ts` (60 LOC) (preserved implied funding estimation, z-score, percentile ranking, and legacy tick factory)
+- Split `src/platform/risk/drawdown-monitor-service.ts` (205→157 LOC) → `drawdown-monitor-alerts.ts` (75 LOC) (preserved Redis alert throttling, Telegram notification dispatch, and private forwarding methods)
+- All 14 touched and created files strictly <= 160 visual lines (cap <= 200, max 157 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 92→87 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.65→3.1.66; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.65] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 33
 
 ### Changed

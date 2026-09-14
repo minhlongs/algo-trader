@@ -5,103 +5,18 @@
  * Extends Node.js EventEmitter for maximum compatibility.
  */
 import { EventEmitter } from 'events';
+import type {
+  TradingEventMap,
+  PriceUpdatePayload,
+  SignalGeneratedPayload,
+  OrderStatusChangePayload,
+  SystemAlertPayload,
+  ConnectionStatusPayload,
+} from './trading-event-bus-types';
 
-// ─── Event Type Definitions ────────────────────────────────────────────────────
-export type TradingEventType =
-  | 'PRICE_UPDATE'
-  | 'SIGNAL_GENERATED'
-  | 'ORDER_STATUS_CHANGE'
-  | 'SYSTEM_ALERT'
-  | 'CONNECTION_STATUS';
+export * from './trading-event-bus-types';
+export * from './trading-event-bus-guards';
 
-export interface PriceUpdatePayload {
-  tokenId: string;
-  bid: number;
-  ask: number;
-  timestamp: number;
-  spread?: number;
-  spreadBps?: number;
-}
-
-export interface SignalGeneratedPayload {
-  signalId: string;
-  strategyName: string;
-  tokenId: string;
-  side: 'BUY' | 'SELL';
-  price: number;
-  size: number;
-  confidence: number;
-  timestamp: number;
-  metadata?: Record<string, unknown>;
-}
-
-export interface OrderStatusChangePayload {
-  orderId: string;
-  tokenId: string;
-  side: 'BUY' | 'SELL';
-  price: number;
-  size: number;
-  oldStatus: string;
-  newStatus: string;
-  timestamp: number;
-}
-
-export interface SystemAlertPayload {
-  level: 'info' | 'warn' | 'error' | 'critical';
-  component: string;
-  message: string;
-  timestamp: number;
-  metadata?: Record<string, unknown>;
-}
-
-export interface ConnectionStatusPayload {
-  component: string;
-  status: 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error';
-  timestamp: number;
-  error?: string;
-  retryAttempt?: number;
-  nextRetryMs?: number;
-}
-
-export type TradingEventPayload =
-  | PriceUpdatePayload
-  | SignalGeneratedPayload
-  | OrderStatusChangePayload
-  | SystemAlertPayload
-  | ConnectionStatusPayload;
-
-// ─── Type Guards for Event Payloads ──────────────────────────────────────────
-export function isPriceUpdate(payload: TradingEventPayload): payload is PriceUpdatePayload {
-  return 'bid' in payload && 'ask' in payload && 'tokenId' in payload;
-}
-
-export function isSignalGenerated(payload: TradingEventPayload): payload is SignalGeneratedPayload {
-  return 'signalId' in payload && 'strategyName' in payload;
-}
-
-export function isOrderStatusChange(payload: TradingEventPayload): payload is OrderStatusChangePayload {
-  return 'orderId' in payload && 'oldStatus' in payload && 'newStatus' in payload;
-}
-
-export function isSystemAlert(payload: TradingEventPayload): payload is SystemAlertPayload {
-  return 'level' in payload && 'component' in payload && 'message' in payload;
-}
-
-export function isConnectionStatus(payload: TradingEventPayload): payload is ConnectionStatusPayload {
-  return 'component' in payload && 'status' in payload && 'error' in payload;
-}
-
-// ─── Event Map for Type-Safe Emission ─────────────────────────────────────────
-// Node.js EventEmitter expects EventMap values to be arrays of arguments
-export interface TradingEventMap {
-  PRICE_UPDATE: [PriceUpdatePayload];
-  SIGNAL_GENERATED: [SignalGeneratedPayload];
-  ORDER_STATUS_CHANGE: [OrderStatusChangePayload];
-  SYSTEM_ALERT: [SystemAlertPayload];
-  CONNECTION_STATUS: [ConnectionStatusPayload];
-}
-
-// ─── TradingEventBus Class ───────────────────────────────────────────────────
 class TradingEventBus extends EventEmitter<TradingEventMap> {
   private static instance: TradingEventBus | null = null;
   private connectionStatusCache = new Map<string, ConnectionStatusPayload>();

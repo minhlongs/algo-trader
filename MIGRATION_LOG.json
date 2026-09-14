@@ -871,6 +871,35 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche34",
+      "date": "2026-09-14",
+      "files": [
+        "src/shared/resilience/recovery-manager.ts",
+        "src/desk/strategies/polymarket/regime-switch-detector-v2.ts",
+        "src/desk/events/trading-event-bus.ts",
+        "src/desk/strategies/polymarket/funding-rate-arb.ts",
+        "src/platform/risk/drawdown-monitor-service.ts"
+      ],
+      "created": [
+        "recovery-manager-types.ts",
+        "recovery-manager-paths.ts",
+        "regime-switch-detector-types.ts",
+        "regime-switch-detector-math.ts",
+        "trading-event-bus-types.ts",
+        "trading-event-bus-guards.ts",
+        "funding-rate-arb-types.ts",
+        "funding-rate-arb-math.ts",
+        "drawdown-monitor-alerts.ts"
+      ],
+      "ratchet": {
+        "before": 92,
+        "after": 87,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ],
   "deferred": [
