@@ -233,18 +233,20 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Version: 3.1.32
 - Status: **COMPLETE** ✅
 
-### S18 Quality Ratchet — Oversized-File Debt Burn-Down Tranches 1–35 (Complete - 2026-09-14)
+### S18 Quality Ratchet — Oversized-File Debt Burn-Down Tranches 1–37 (Complete - 2026-09-14)
 - [x] Tranches 1–29: 145 oversized files split into ≤200-LOC modules behind facade re-exports, baseline 262 → 117
 - [x] Tranche 30: 5 oversized files split into ≤160-LOC modules (`baseline-strategies.ts` 214→75, `news-impact-analyzer.ts` 214→137, `kalman-filter-tracker.ts` 214→131, `payout-scheduler.ts` 214→144, `strategy-repository.ts` 213→116), baseline pruned 117 → 112 (-5 entries, 0 added)
 - [x] Tranche 31: 10 oversized files split into ≤160-LOC modules (`vibe-controller.ts` 212→66, `usage-metering-service.ts` 212→149, `logical-hedge-discovery.ts` 211→134, `relative-strength-rotation-v2.ts` 211→152, `binance-candle-provider.ts` 210→109, `funding-store.ts` 201→118, `distributed-nonce-manager.ts` 201→155, `augmented-signal-pipeline.ts` 201→172, `webhook-handlers.ts` 201→119, `subscriber-executor.ts` 202→154), baseline pruned 112 → 102 (-10 entries, 0 added)
 - [x] Tranche 32: 5 oversized files split into ≤160-LOC modules (`vwap-deviation-sniper-v2.ts` 210→142, `subscriber-executor.ts` 210→107, `backtest-runner.ts` 210→60, `auto-marketing-daemon.ts` 209→105, `fraud-detector.ts` 209→149), baseline pruned 102 → 97 (-5 entries, 0 added)
 - [x] Tranche 33: 5 oversized files split into ≤160-LOC modules (`license-routes.ts` 208→97, `sentiment-feed.ts` 208→64, `binance-feed.ts` 207→79, `rollback-handler.ts` 207→99, `gamma-scalping.ts` 207→105), baseline pruned 97 → 92 (-5 entries, 0 added)
 - [x] Tranche 34: 5 oversized files split into ≤160-LOC modules (`recovery-manager.ts` 207→153, `regime-switch-detector-v2.ts` 206→149, `trading-event-bus.ts` 205→120, `funding-rate-arb.ts` 205→128, `drawdown-monitor-service.ts` 205→157), baseline pruned 92 → 87 (-5 entries, 0 added)
-- [x] Tranche 35: 5 oversized files split into ≤160-LOC modules (`markets.ts` 205→78, `binance-funding-feed.ts` 204→51, `kalshi-price-feed.ts` 204→8, `wallet-manager.ts` 204→137, `gru-model.ts` 203→149), baseline pruned 87 → 82 (-5 entries, 0 added, 82 remaining)
-- [x] Zero importer edits, zero test edits, zero new `:any` (114/114), zero new `console.*` (45/45)
+- [x] Tranche 35: 5 oversized files split into ≤160-LOC modules (`markets.ts` 205→78, `binance-funding-feed.ts` 204→51, `kalshi-price-feed.ts` 204→8, `wallet-manager.ts` 204→137, `gru-model.ts` 203→149), baseline pruned 87 → 82 (-5 entries, 0 added)
+- [x] Tranche 36: 5 oversized files split into ≤160-LOC modules (`mean-reversion.ts` 203→8, `resolution-frontrunner-v2.ts` 203→23, `recovery-manager.ts` 203→14, `025-marketplace-schema.ts` 207→23, `shared/.../025-marketplace-schema.ts` 207→23), baseline pruned 82 → 77 (-5 entries, 0 added)
+- [x] Tranche 37: 5 oversized files split into ≤160-LOC modules (`026-create-ai-audit-tables.ts` 273→22, `shared/.../026-create-ai-audit-tables.ts` 252→22, `setup-wizard.ts` 203→124, `usage-metering-service.test.ts` 305→deleted/split 156+145, `llm-router-qwen.test.ts` 205→154), baseline pruned 77 → 72 (-5 entries, 0 added, 72 remaining)
+- [x] Zero importer edits, zero test regressions, zero new `:any` (114/114), zero new `console.*` (45/45)
 - [x] Full suite 12,483 tests pass (100%), typecheck 0 errors, build exit 0
 - [x] `--quality` 4/4 PASS
-- Version: 3.1.67
+- Version: 3.1.69
 - Status: **COMPLETE** ✅
 
 ### GTM Execution — Next Wave V (In Progress)

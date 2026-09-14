@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.69] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 37
+
+### Changed
+- Split `src/db/migrations/026-create-ai-audit-tables.ts` (273→22 LOC) → `src/db/ai-audit-core-queries.ts` (97 LOC) + `src/db/ai-audit-governance-queries.ts` (120 LOC) + `src/db/ai-audit-views-queries.ts` (63 LOC) (DDL helpers placed in `src/db/` outside `migrations/` to preserve migration numbering discipline and runner contracts)
+- Split `src/shared/db/migrations/026-create-ai-audit-tables.ts` (252→22 LOC) → `src/shared/db/ai-audit-core-queries.ts` (97 LOC) + `src/shared/db/ai-audit-governance-queries.ts` (120 LOC) + `src/shared/db/ai-audit-views-queries.ts` (42 LOC) (symmetric shared DDL helpers preserving migration runner contracts)
+- Split `src/desk/commands/setup-wizard.ts` (203→124 LOC) → `setup-wizard-types.ts` (24 LOC) + `setup-wizard-prompt.ts` (20 LOC) + `setup-wizard-env.ts` (72 LOC) (preserved 100% backward compatibility: re-exporting SetupConfig, RISK_PRESETS, ENV paths, prompt and saveConfiguration helpers)
+- Split `src/platform/metering/usage-metering-service.test.ts` (305 LOC) → `usage-metering-core.test.ts` (156 LOC, 11 tests) + `usage-metering-limits.test.ts` (145 LOC, 7 tests) (deleted 305 LOC monolithic test, preserving all 18 assertions across 7 suites)
+- Split `src/lib/__tests__/llm-router-qwen.test.ts` (205→154 LOC) → `llm-router-qwen-fixtures.ts` (57 LOC) (extracted test fixtures and mock generators, preserving all 9 test suites and assertions)
+- All 16 touched and created files strictly <= 160 visual lines (cap <= 200, max 156 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 77→72 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.68→3.1.69; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.68] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 36
 
 ### Changed
