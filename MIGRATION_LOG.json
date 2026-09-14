@@ -999,6 +999,35 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche38",
+      "date": "2026-09-15",
+      "files": [
+        "src/desk/ml/meta-ensemble/__tests__/meta-learner.test.ts",
+        "src/desk/strategies/dna/__tests__/indicators-microstructure.test.ts",
+        "src/desk/signal/__tests__/signal-fusion-regime.test.ts",
+        "src/desk/market-data/__tests__/provider-failover.test.ts",
+        "src/desk/risk/__tests__/atr-trailing-stop.test.ts"
+      ],
+      "created": [
+        "src/desk/ml/meta-ensemble/__tests__/meta-learner-fixtures.ts",
+        "src/desk/strategies/dna/__tests__/indicators-microstructure-fixtures.ts",
+        "src/desk/strategies/dna/__tests__/indicators-components.test.ts",
+        "src/desk/signal/__tests__/signal-fusion-regime-fixtures.ts",
+        "src/desk/signal/__tests__/signal-fusion-weights.test.ts",
+        "src/desk/market-data/__tests__/provider-failover-fixtures.ts",
+        "src/desk/market-data/__tests__/provider-failover-health.test.ts",
+        "src/desk/risk/__tests__/atr-trailing-stop-fixtures.ts",
+        "src/desk/risk/__tests__/atr-trailing-stop-stops.test.ts"
+      ],
+      "ratchet": {
+        "before": 72,
+        "after": 67,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ],
   "deferred": [

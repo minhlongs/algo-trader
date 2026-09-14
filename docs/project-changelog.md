@@ -1,6 +1,17 @@
 # Project Changelog - Algo Trader
 
-## [3.1.69] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 37
+## [3.1.70] - 2026-09-15 — S18 Oversized-File Debt Burn-Down Tranche 38
+
+### Changed
+- Split `src/desk/ml/meta-ensemble/__tests__/meta-learner.test.ts` (202→150 LOC, 7 tests) → `meta-learner-fixtures.ts` (62 LOC) (extracted prediction fixtures, typed generator helpers, and JSON mock builder with zero explicit any types)
+- Split `src/desk/strategies/dna/__tests__/indicators-microstructure.test.ts` (208→83 LOC, 10 tests) → `indicators-microstructure-fixtures.ts` (22 LOC) + `indicators-components.test.ts` (95 LOC, 16 tests) (isolated OBI, VWAP, and DeltaCandle component indicator tests from timeframe gating and orchestrator tests, preserving all 26 assertions)
+- Split `src/desk/signal/__tests__/signal-fusion-regime.test.ts` (210→55 LOC, 4 tests) → `signal-fusion-regime-fixtures.ts` (14 LOC) + `signal-fusion-weights.test.ts` (142 LOC, 13 tests) (isolated regime-adaptive weight adjustment tests from integration scenario tests, preserving all 17 assertions)
+- Split `src/desk/market-data/__tests__/provider-failover.test.ts` (213→128 LOC, 10 tests) → `provider-failover-fixtures.ts` (25 LOC) + `provider-failover-health.test.ts` (111 LOC, 7 tests) (isolated provider health tracking, failure counters, and audit history from core lifecycle and circuit breaker tests, preserving all 17 assertions)
+- Split `src/desk/risk/__tests__/atr-trailing-stop.test.ts` (214→119 LOC, 11 tests) → `atr-trailing-stop-fixtures.ts` (24 LOC) + `atr-trailing-stop-stops.test.ts` (79 LOC, 4 tests) (isolated ATR trailing stop levels from trueRange math and state evaluation, preserving all 15 assertions)
+- All 14 touched and created files strictly <= 160 visual lines (cap <= 200, max 150 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 72→67 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.69→3.1.70; typecheck passes with 0 errors & zero test churn (82/82 target tests, 12,483/12,483 full suite)
 
 ### Changed
 - Split `src/db/migrations/026-create-ai-audit-tables.ts` (273→22 LOC) → `src/db/ai-audit-core-queries.ts` (97 LOC) + `src/db/ai-audit-governance-queries.ts` (120 LOC) + `src/db/ai-audit-views-queries.ts` (63 LOC) (DDL helpers placed in `src/db/` outside `migrations/` to preserve migration numbering discipline and runner contracts)
