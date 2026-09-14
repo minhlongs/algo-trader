@@ -35,17 +35,15 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 77,
+      "count": 72,
       "violators": {
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
-        "src/db/migrations/026-create-ai-audit-tables.ts": 273,
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
         "src/desk/arbitrage/__tests__/ilp-constraint-builder.test.ts": 288,
         "src/desk/arbitrage/__tests__/orchestrator.test.ts": 485,
         "src/desk/arbitrage/__tests__/unified-executor.test.ts": 428,
         "src/desk/cli/__tests__/alpha-cli.test.ts": 285,
         "src/desk/cli/__tests__/system-doctor.test.ts": 292,
-        "src/desk/commands/setup-wizard.ts": 203,
         "src/desk/data/__tests__/data-quality-gate.test.ts": 238,
         "src/desk/execution/__tests__/paper-executor.test.ts": 350,
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
@@ -72,7 +70,6 @@
         "src/desk/strategies/dna/__tests__/regime-detector.test.ts": 241,
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
-        "src/lib/__tests__/llm-router-qwen.test.ts": 205,
         "src/platform/api/__tests__/api.test.ts": 510,
         "src/platform/api/__tests__/blog-engagement-routes.test.ts": 218,
         "src/platform/api/__tests__/compliance-routes.test.ts": 264,
@@ -98,7 +95,6 @@
         "src/platform/marketplace/__tests__/notification-service.test.ts": 226,
         "src/platform/marketplace/services/__tests__/marketplace-payout-scheduler.test.ts": 297,
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
-        "src/platform/metering/usage-metering-service.test.ts": 305,
         "src/platform/notifications/__tests__/email-campaign-templates.test.ts": 279,
         "src/platform/notifications/__tests__/notification-services.test.ts": 219,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
@@ -112,7 +108,6 @@
         "src/seed/security/__tests__/audit-log.test.ts": 365,
         "src/seed/security/__tests__/audit-trail-e2e.test.ts": 243,
         "src/seed/security/__tests__/crypto.test.ts": 337,
-        "src/shared/db/migrations/026-create-ai-audit-tables.ts": 252,
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304
       }
     }

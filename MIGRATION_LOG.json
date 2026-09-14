@@ -967,6 +967,38 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche37",
+      "date": "2026-09-14",
+      "files": [
+        "src/db/migrations/026-create-ai-audit-tables.ts",
+        "src/shared/db/migrations/026-create-ai-audit-tables.ts",
+        "src/desk/commands/setup-wizard.ts",
+        "src/platform/metering/usage-metering-service.test.ts",
+        "src/lib/__tests__/llm-router-qwen.test.ts"
+      ],
+      "created": [
+        "src/db/ai-audit-core-queries.ts",
+        "src/db/ai-audit-governance-queries.ts",
+        "src/db/ai-audit-views-queries.ts",
+        "src/shared/db/ai-audit-core-queries.ts",
+        "src/shared/db/ai-audit-governance-queries.ts",
+        "src/shared/db/ai-audit-views-queries.ts",
+        "src/desk/commands/setup-wizard-types.ts",
+        "src/desk/commands/setup-wizard-prompt.ts",
+        "src/desk/commands/setup-wizard-env.ts",
+        "src/platform/metering/usage-metering-core.test.ts",
+        "src/platform/metering/usage-metering-limits.test.ts",
+        "src/lib/__tests__/llm-router-qwen-fixtures.ts"
+      ],
+      "ratchet": {
+        "before": 77,
+        "after": 72,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ],
   "deferred": [

@@ -6,64 +6,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { LlmRouter, RouterRequest } from '../llm-router';
-
-// --- helpers ---
-
-const makeRequest = (overrides: Partial<RouterRequest> = {}): RouterRequest => ({
-  messages: [{ role: 'user', content: 'Evaluate signal' }],
-  maxTokens: 256,
-  temperature: 0.1,
-  ...overrides,
-});
-
-const makeOkResponse = (content: string, model = 'mlx-community/Qwen3-30B-A3B-4bit') =>
-  new Response(
-    JSON.stringify({
-      choices: [{ message: { content } }],
-      usage: { total_tokens: 100 },
-      model,
-    }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } },
-  );
-
-const makeErrorResponse = (status: number) =>
-  new Response(null, { status });
-
-// Qwen config for tests
-const qwenEndpoint = {
-  url: 'http://127.0.0.1:11437/v1',
-  model: 'mlx-community/Qwen3-30B-A3B-4bit',
-  priority: 1,
-  maxTokens: 4096,
-  timeoutMs: 5000,
-};
-
-const primaryEndpoint = {
-  url: 'http://127.0.0.1:11435/v1',
-  model: 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit',
-  priority: 1,
-  maxTokens: 2048,
-  timeoutMs: 5000,
-};
-
-const fallbackEndpoint = {
-  url: 'http://127.0.0.1:11434/v1',
-  model: 'deepseek-r1:32b',
-  priority: 2,
-  maxTokens: 2048,
-  timeoutMs: 5000,
-};
-
-const baseConfig = {
-  primary: primaryEndpoint,
-  fastTriage: { url: 'http://127.0.0.1:11436/v1', model: 'nemotron', priority: 1, maxTokens: 512, timeoutMs: 5000 },
-  fallback: fallbackEndpoint,
-  healthCheckIntervalMs: 30000,
-  cloudDailyBudgetUsd: 100,
-};
-
-// --- tests ---
+import { LlmRouter } from '../llm-router';
+import {
+  makeRequest,
+  makeOkResponse,
+  makeErrorResponse,
+  qwenEndpoint,
+  primaryEndpoint,
+  baseConfig,
+} from './llm-router-qwen-fixtures';
 
 describe('LlmRouter.qwenChat()', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
@@ -91,21 +42,19 @@ describe('LlmRouter.qwenChat()', () => {
   });
 
   it('falls back to chat() when Qwen disabled (no qwen in config)', async () => {
-    // Primary (DeepSeek) responds OK
     fetchMock.mockResolvedValueOnce(makeOkResponse('ok', primaryEndpoint.model));
 
-    const router = new LlmRouter({ ...baseConfig }); // no qwen field
+    const router = new LlmRouter({ ...baseConfig });
     const result = await router.qwenChat(makeRequest());
 
-    // Should have used chat() → primary
     expect(result.provider).toBe('mlx');
     expect(result.model).toBe(primaryEndpoint.model);
   });
 
   it('falls back to chat() (DeepSeek primary) when Qwen returns HTTP 500', async () => {
     fetchMock
-      .mockResolvedValueOnce(makeErrorResponse(500))           // Qwen fails
-      .mockResolvedValueOnce(makeOkResponse('ok', primaryEndpoint.model)); // primary succeeds
+      .mockResolvedValueOnce(makeErrorResponse(500))
+      .mockResolvedValueOnce(makeOkResponse('ok', primaryEndpoint.model));
 
     const router = new LlmRouter({ ...baseConfig, qwen: qwenEndpoint });
     const result = await router.qwenChat(makeRequest());
@@ -150,7 +99,7 @@ describe('LlmRouter.qwenChat()', () => {
     expect(result.provider).toBe('mlx-qwen');
     expect(result.content).toBe('');
     expect(result.tokensUsed).toBe(10);
-  expect(result.usage).toBeUndefined();
+    expect(result.usage).toBeUndefined();
   });
 
   it('handles concurrent qwenChat requests independently', async () => {
@@ -171,21 +120,21 @@ describe('LlmRouter.qwenChat()', () => {
 
   it('marks Qwen unhealthy after failure and uses fallback on next call', async () => {
     fetchMock
-      .mockResolvedValueOnce(makeErrorResponse(503))          // Qwen fails → router marks unhealthy
-      .mockResolvedValueOnce(makeOkResponse('ok', primaryEndpoint.model)) // fallback primary
-      .mockResolvedValueOnce(makeOkResponse('ok2', primaryEndpoint.model)); // 2nd qwenChat also via primary (qwen still unhealthy)
+      .mockResolvedValueOnce(makeErrorResponse(503))
+      .mockResolvedValueOnce(makeOkResponse('ok', primaryEndpoint.model))
+      .mockResolvedValueOnce(makeOkResponse('ok2', primaryEndpoint.model));
 
     const router = new LlmRouter({
       ...baseConfig,
       qwen: qwenEndpoint,
-      healthCheckIntervalMs: 999_999, // keep unhealthy state for test duration
+      healthCheckIntervalMs: 999_999,
     });
 
     const first = await router.qwenChat(makeRequest());
-    expect(first.provider).toBe('mlx'); // fell back
+    expect(first.provider).toBe('mlx');
 
     const second = await router.qwenChat(makeRequest());
-    expect(second.provider).toBe('mlx'); // still unhealthy — skips Qwen
+    expect(second.provider).toBe('mlx');
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
