@@ -1594,6 +1594,46 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 31,
+      "version": "3.1.63",
+      "date": "2026-09-14",
+      "targets": [
+        "src/desk/wiring/vibe-controller.ts",
+        "src/platform/metering/usage-metering-service.ts",
+        "src/desk/intelligence/logical-hedge-discovery.ts",
+        "src/desk/strategies/polymarket/relative-strength-rotation-v2.ts",
+        "src/desk/strategies/dna/binance-candle-provider.ts",
+        "src/desk/data/funding-store.ts",
+        "src/desk/execution/distributed-nonce-manager.ts",
+        "src/desk/wiring/augmented-signal-pipeline.ts",
+        "src/platform/workers/webhook-handlers.ts",
+        "src/raas/subscriber-executor.ts"
+      ],
+      "modules": [
+        "vibe-controller-types.ts",
+        "vibe-controller-cas.ts",
+        "usage-metering-types.ts",
+        "usage-metering-persistence.ts",
+        "logical-hedge-types.ts",
+        "logical-hedge-classifier.ts",
+        "relative-strength-rotation-types.ts",
+        "relative-strength-rotation-helpers.ts",
+        "binance-candle-fetcher.ts",
+        "funding-store-queries.ts",
+        "distributed-nonce-types.ts",
+        "augmented-signal-types.ts",
+        "webhook-ipn-helpers.ts",
+        "subscriber-executor-types.ts"
+      ],
+      "ratchet": {
+        "before": 112,
+        "after": 102,
+        "delta": -10
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }

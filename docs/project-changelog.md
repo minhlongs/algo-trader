@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.63] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 31
+
+### Changed
+- Split `src/desk/wiring/vibe-controller.ts` (212→66 LOC) → `vibe-controller-types.ts` (49 LOC) + `vibe-controller-cas.ts` (114 LOC) (preserved Redis CAS optimistic concurrency and module singleton)
+- Split `src/platform/metering/usage-metering-service.ts` (212→149 LOC) → `usage-metering-types.ts` (46 LOC) + `usage-metering-persistence.ts` (26 LOC) (preserved private `dailyUsage` & `alertedThresholds` test reflection)
+- Split `src/desk/intelligence/logical-hedge-discovery.ts` (211→134 LOC) → `logical-hedge-types.ts` (37 LOC) + `logical-hedge-classifier.ts` (41 LOC) (preserved DeepSeek prompt and Redis caching)
+- Split `src/desk/strategies/polymarket/relative-strength-rotation-v2.ts` (211→152 LOC) → `relative-strength-rotation-types.ts` (32 LOC) + `relative-strength-rotation-helpers.ts` (40 LOC)
+- Split `src/desk/strategies/dna/binance-candle-provider.ts` (210→109 LOC) → `binance-candle-fetcher.ts` (92 LOC) (preserved chronological oldest-first candle invariant)
+- All 14 touched and created files strictly <= 160 visual lines (cap <= 200, max 152 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 112→102 (−10 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.62→3.1.63; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.62] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 30
 
 ### Changed
