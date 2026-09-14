@@ -13,6 +13,12 @@ import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import { DrawdownMonitor, type DrawdownMetrics, type DrawdownAlert, type DrawdownConfig } from '@desk/risk';
 import type { DrawdownRequest, DrawdownResponse } from './types';
+import {
+  persistDrawdownAlert,
+  dispatchTelegramDrawdownAlerts,
+} from './drawdown-monitor-alerts';
+
+export * from './drawdown-monitor-alerts';
 
 const ALERT_THROTTLE_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -138,19 +144,7 @@ export class DrawdownMonitorService {
    * Persist alert to D1 (or Redis fallback).
    */
   private async persistAlert(userId: string, alert: DrawdownAlert): Promise<void> {
-    try {
-      const key = `risk:alerts:${userId}`;
-      const record = {
-        ...alert,
-        userId,
-        persistedAt: Date.now(),
-      };
-      await this.redis.lpush(key, JSON.stringify(record));
-      await this.redis.ltrim(key, 0, 199); // keep last 200
-      await this.redis.expire(key, 86400 * 30); // 30 days
-    } catch (err) {
-      logger.warn('[DrawdownMonitorService] Persist alert failed', { error: String(err) });
-    }
+    return persistDrawdownAlert(this.redis, userId, alert);
   }
 
   /**
@@ -158,48 +152,6 @@ export class DrawdownMonitorService {
    * Looks up user's linked Telegram chat ID and sends formatted alerts.
    */
   private async dispatchTelegramAlerts(userId: string, alerts: DrawdownAlert[]): Promise<void> {
-    // Telegram dispatch is best-effort — failure doesn't block the API response
-    try {
-      const chatId = await this.getTelegramChatId(userId);
-      if (!chatId) return;
-
-      for (const alert of alerts) {
-        const text = [
-          '⚠️ *Drawdown Alert*',
-          '',
-          alert.message,
-          `Threshold: ${(alert.threshold * 100).toFixed(2)}%`,
-          `Current: ${(alert.current * 100).toFixed(2)}%`,
-          `Time: ${new Date(alert.triggeredAt).toISOString()}`,
-        ].join('\n');
-
-        await this.sendTelegramMessage(chatId, text);
-      }
-    } catch {
-      // swallow — Telegram is non-critical
-    }
-  }
-
-  private async getTelegramChatId(userId: string): Promise<string | null> {
-    try {
-      const val = await this.redis.get(`telegram:chat:${userId}`);
-      return val ?? null;
-    } catch {
-      return null;
-    }
-  }
-
-  private async sendTelegramMessage(chatId: string, text: string): Promise<void> {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    if (!token) return;
-
-    const url = `https://api.telegram.org/bot${token}/sendMessage`;
-    const body = JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' });
-
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
+    return dispatchTelegramDrawdownAlerts(this.redis, userId, alerts);
   }
 }

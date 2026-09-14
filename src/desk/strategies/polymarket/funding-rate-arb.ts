@@ -8,108 +8,25 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
-import type { RawOrderBook } from '../../polymarket/clob-client';
-import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
-  type BaseStrategyConfig,
   type StrategyDeps,
 } from './base-polymarket-strategy';
-import { calcSMA, calcStdDev } from './strategy-math-helpers';
+import {
+  type FundingRateArbConfig,
+  DEFAULT_CONFIG,
+  STRATEGY_NAME,
+} from './funding-rate-arb-types';
+import {
+  estimateImpliedFundingRate,
+  annualizeFundingRate,
+  calcPercentile,
+  calcFundingRateZScore,
+} from './funding-rate-arb-math';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
-export interface FundingRateArbConfig extends BaseStrategyConfig {
-  /** Rolling window for funding rate statistics */
-  windowSize: number;
-  /** Percentile threshold to signal extreme funding (0-1, e.g. 0.9 = top 10%) */
-  extremePercentile: number;
-  /** Minimum market volume */
-  minVolume: number;
-  /** Base position size */
-  baseSizeUsdc: number;
-  /** Number of markets to scan */
-  scanLimit: number;
-}
-
-export const DEFAULT_CONFIG: FundingRateArbConfig = {
-  windowSize: 24,
-  extremePercentile: 0.9,
-  minVolume: 1000,
-  baseSizeUsdc: 25,
-  scanLimit: 15,
-  takeProfitPct: 0.025,
-  stopLossPct: 0.015,
-  maxHoldMs: 6 * 60_000,
-  maxPositions: 2,
-  cooldownMs: 90_000,
-  positionSize: '25',
-};
-
-const STRATEGY_NAME: StrategyName = 'funding-rate-arb';
-
-// ── Pure helpers ─────────────────────────────────────────────────────────────
-
-/**
- * Estimate implied funding rate from order book.
- *
- * For binary options, funding is proxied by the bid-ask skew:
- * if the ask side is much deeper, "going long" is cheap (negative funding).
- * if the bid side is much deeper, "going long" is expensive (positive funding).
- *
- * Returns a signed value where > 0 = positive funding (longs pay shorts).
- */
-export function estimateImpliedFundingRate(book: RawOrderBook): number {
-  const bids = book.bids.slice(0, 5);
-  const asks = book.asks.slice(0, 5);
-
-  const bidDepth = bids.reduce((s, l) => s + parseFloat(l.price) * parseFloat(l.size), 0);
-  const askDepth = asks.reduce((s, l) => s + parseFloat(l.price) * parseFloat(l.size), 0);
-
-  const total = bidDepth + askDepth;
-  if (total <= 0) return 0;
-
-  // Normalized to [-1, 1]: positive = bid-heavy = long bias (positive implied funding)
-  return (bidDepth - askDepth) / total;
-}
-
-/**
- * Compute implied funding annualized from order book pressure.
- * Scales the [-1, 1] raw value to an annualized percentage.
- */
-export function annualizeFundingRate(raw: number): number {
-  // Scale factor converts raw imbalance to annualized rate estimate
-  return raw * 0.15; // Max ~15% annualized when book is fully skewed
-}
-
-/**
- * Calculate which percentile rank the current rate occupies.
- */
-export function calcPercentile(value: number, history: number[]): number {
-  if (history.length === 0) return 0.5;
-  let min = Infinity;
-  let max = -Infinity;
-  for (const v of history) {
-    if (v < min) min = v;
-    if (v > max) max = v;
-  }
-  if (max === min) return 0.5;
-  return Math.max(0, Math.min(1, (value - min) / (max - min)));
-}
-
-/**
- * Z-score of current implied rate relative to its history.
- */
-export function calcFundingRateZScore(current: number, history: number[]): number {
-  if (history.length < 3) return 0;
-  const mean = calcSMA(history);
-  const std = calcStdDev(history);
-  if (std <= 0) return 0;
-  return Math.abs(current - mean) / std;
-}
-
-// ── Strategy class ───────────────────────────────────────────────────────────
+export * from './funding-rate-arb-types';
+export * from './funding-rate-arb-math';
 
 export class FundingRateArbStrategy extends BasePolymarketStrategy {
   private readonly cfg: FundingRateArbConfig;
@@ -141,7 +58,10 @@ export class FundingRateArbStrategy extends BasePolymarketStrategy {
         const annualized = annualizeFundingRate(rawRate);
 
         let hist = this.fundingHistory.get(market.yesTokenId);
-        if (!hist) { hist = []; this.fundingHistory.set(market.yesTokenId, hist); }
+        if (!hist) {
+          hist = [];
+          this.fundingHistory.set(market.yesTokenId, hist);
+        }
         hist.push(annualized);
         if (hist.length > this.cfg.windowSize * 3) {
           hist.splice(0, hist.length - this.cfg.windowSize * 3);
@@ -172,12 +92,17 @@ export class FundingRateArbStrategy extends BasePolymarketStrategy {
         await this.enterPosition(tokenId, market.conditionId, side, entryPrice, this.cfg.baseSizeUsdc);
 
         logger.debug('Funding rate arb entry', STRATEGY_NAME, {
-          conditionId: market.conditionId, side,
+          conditionId: market.conditionId,
+          side,
           annualizedRate: (annualized * 100).toFixed(2),
-          zScore: zScore.toFixed(2), percentile: (percentile * 100).toFixed(0),
+          zScore: zScore.toFixed(2),
+          percentile: (percentile * 100).toFixed(0),
         });
       } catch (err) {
-        logger.debug('Scan error', STRATEGY_NAME, { market: market.conditionId, err: String(err) });
+        logger.debug('Scan error', STRATEGY_NAME, {
+          market: market.conditionId,
+          err: String(err),
+        });
       }
     }
   }
@@ -196,8 +121,6 @@ export class FundingRateArbStrategy extends BasePolymarketStrategy {
     }
   }
 }
-
-// ── Legacy factory ───────────────────────────────────────────────────────────
 
 export function createFundingRateArbTick(deps: StrategyDeps): () => Promise<void> {
   const strategy = new FundingRateArbStrategy(deps);
