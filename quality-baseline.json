@@ -35,10 +35,9 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 97,
+      "count": 92,
       "violators": {
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
-        "src/api/routes/license-routes.ts": 208,
         "src/db/migrations/025-marketplace-schema.ts": 207,
         "src/db/migrations/026-create-ai-audit-tables.ts": 273,
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
@@ -49,13 +48,10 @@
         "src/desk/cli/__tests__/system-doctor.test.ts": 292,
         "src/desk/commands/setup-wizard.ts": 203,
         "src/desk/data/__tests__/data-quality-gate.test.ts": 238,
-        "src/desk/data/binance-feed.ts": 207,
         "src/desk/data/binance-funding-feed.ts": 204,
-        "src/desk/data/sentiment-feed.ts": 208,
         "src/desk/events/trading-event-bus.ts": 205,
         "src/desk/execution/__tests__/paper-executor.test.ts": 350,
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
-        "src/desk/execution/rollback-handler.ts": 207,
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/feeds/kalshi-price-feed.ts": 204,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
@@ -80,7 +76,6 @@
         "src/desk/strategies/dna/__tests__/orchestrator.test.ts": 225,
         "src/desk/strategies/dna/__tests__/regime-detector.test.ts": 241,
         "src/desk/strategies/polymarket/funding-rate-arb.ts": 205,
-        "src/desk/strategies/polymarket/gamma-scalping.ts": 207,
         "src/desk/strategies/polymarket/mean-reversion.ts": 203,
         "src/desk/strategies/polymarket/regime-switch-detector-v2.ts": 206,
         "src/desk/strategies/polymarket/resolution-frontrunner-v2.ts": 203,

@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.65] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 33
+
+### Changed
+- Split `src/api/routes/license-routes.ts` (208→97 LOC) → `license-routes-schemas.ts` (17 LOC) + `license-routes-audit.ts` (41 LOC) (preserved Zod schemas and audit tracking)
+- Split `src/desk/data/sentiment-feed.ts` (208→64 LOC) → `sentiment-feed-types.ts` (19 LOC) + `sentiment-feed-sources.ts` (117 LOC) (preserved all API logic, classifier, and FinBERT sidecar)
+- Split `src/desk/data/binance-feed.ts` (207→79 LOC) → `binance-feed-types.ts` (28 LOC) + `binance-feed-helpers.ts` (53 LOC) (preserved CLI entry guard and toBinanceSymbol mapping)
+- Split `src/desk/execution/rollback-handler.ts` (207→99 LOC) → `rollback-types.ts` (24 LOC) + `rollback-helpers.ts` (54 LOC) (preserved private config property and rollbackHistory state)
+- Split `src/desk/strategies/polymarket/gamma-scalping.ts` (207→105 LOC) → `gamma-scalping-types.ts` (26 LOC) + `gamma-scalping-math.ts` (35 LOC) (preserved cfg, priceHistory, scanEntries for reflection)
+- All 15 touched and created files strictly <= 160 visual lines (cap <= 200, max 117 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 97→92 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.64→3.1.65; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.64] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 32
 
 ### Changed

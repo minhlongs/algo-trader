@@ -841,6 +841,36 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "phase": "S18-oversized-debt-tranche33",
+      "date": "2026-09-14",
+      "files": [
+        "src/api/routes/license-routes.ts",
+        "src/desk/data/sentiment-feed.ts",
+        "src/desk/data/binance-feed.ts",
+        "src/desk/execution/rollback-handler.ts",
+        "src/desk/strategies/polymarket/gamma-scalping.ts"
+      ],
+      "created": [
+        "license-routes-schemas.ts",
+        "license-routes-audit.ts",
+        "sentiment-feed-types.ts",
+        "sentiment-feed-sources.ts",
+        "binance-feed-types.ts",
+        "binance-feed-helpers.ts",
+        "rollback-types.ts",
+        "rollback-helpers.ts",
+        "gamma-scalping-types.ts",
+        "gamma-scalping-math.ts"
+      ],
+      "ratchet": {
+        "before": 97,
+        "after": 92,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ],
   "deferred": [
