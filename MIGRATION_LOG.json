@@ -810,6 +810,37 @@
         "artifact": "baseline diff = -5 entries only; all 16 touched/created modules <=160 LOC"
       },
       "prUrl": null
+    },
+    {
+      "tranche": 32,
+      "version": "3.1.64",
+      "date": "2026-09-14",
+      "targets": [
+        "src/desk/strategies/polymarket/vwap-deviation-sniper-v2.ts",
+        "src/platform/raas/subscriber-executor.ts",
+        "src/shared/backtesting/backtest-runner.ts",
+        "src/desk/jobs/auto-marketing-daemon.ts",
+        "src/platform/referral/fraud-detector.ts"
+      ],
+      "modules": [
+        "vwap-deviation-types.ts",
+        "vwap-deviation-math.ts",
+        "subscriber-executor-types.ts",
+        "subscriber-executor-db.ts",
+        "backtest-runner-types.ts",
+        "backtest-runner-engine.ts",
+        "auto-marketing-daemon-types.ts",
+        "auto-marketing-daemon-core.ts",
+        "fraud-detector-types.ts",
+        "fraud-detector-rules.ts"
+      ],
+      "ratchet": {
+        "before": 102,
+        "after": 97,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ],
   "deferred": [
