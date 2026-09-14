@@ -3,20 +3,18 @@
  * BullMQ job for scheduled monthly commission payouts
  */
 
-import { Queue, Job, Worker } from 'bullmq';
-import { referralService } from './referral-service';
+import { Queue, type Job, type Worker } from 'bullmq';
 import { logger } from '../../shared/utils/logger';
 import { getDbClient } from '../../shared/db/postgres-client.js';
+import type { PayoutJobData, PayoutQueueStats } from './payout-scheduler-types';
+import { createPayoutWorker } from './payout-worker-handler';
 
-interface PayoutJobData {
-  tenantId?: string; // Optional: if provided, only payout for this tenant
-  periodStart?: string;
-  periodEnd?: string;
-  manual: boolean;
-}
+// Re-export types for 100% backward compatibility
+export type { PayoutJobData, PayoutQueueStats } from './payout-scheduler-types';
 
 export class PayoutScheduler {
   private queue: Queue<PayoutJobData>;
+  private worker: Worker<PayoutJobData>;
 
   constructor() {
     const connection = getDbClient() as any;
@@ -40,7 +38,7 @@ export class PayoutScheduler {
       },
     });
 
-    this.startWorker();
+    this.worker = createPayoutWorker();
   }
 
   /**
@@ -82,78 +80,9 @@ export class PayoutScheduler {
   }
 
   /**
-   * Start the worker to process payout jobs
-   */
-  private startWorker(): void {
-    const worker = new Worker<PayoutJobData>(
-      'referral-payouts',
-      async (job: Job<PayoutJobData>) => {
-        logger.info('[PayoutScheduler] Processing payout job', {
-          jobId: job.id,
-          type: job.name,
-          tenantId: job.data.tenantId,
-        });
-
-        try {
-          const result = await referralService.runMonthlyPayout();
-
-          logger.info('[PayoutScheduler] Payout job completed', {
-            jobId: job.id,
-            processed: result.processed,
-            totalAmount: result.totalAmount,
-            errorCount: result.errors.length,
-          });
-
-          if (result.errors.length > 0) {
-            // Log errors but don't fail the job (partial success is acceptable)
-            for (const error of result.errors) {
-              logger.error('[PayoutScheduler] Payout error', {
-                tenantId: error.tenantId,
-                error: error.error,
-              });
-            }
-          }
-
-          return result;
-        } catch (error) {
-          logger.error('[PayoutScheduler] Payout job failed', {
-            jobId: job.id,
-            error,
-          });
-          throw error;
-        }
-      },
-      { connection: getDbClient() as any }
-    );
-
-    worker.on('completed', (job: Job) => {
-      logger.info('[PayoutScheduler] Job completed successfully', { jobId: job.id });
-    });
-
-    worker.on('failed', (job: Job | undefined, error: Error) => {
-      logger.error('[PayoutScheduler] Job failed', {
-        jobId: job?.id,
-        error: error.message,
-      });
-    });
-
-    worker.on('error', (error: Error) => {
-      logger.error('[PayoutScheduler] Worker error', { error: error.message });
-    });
-
-    logger.info('[PayoutScheduler] Worker started for referral-payouts queue');
-  }
-
-  /**
    * Get queue statistics
    */
-  async getStats(): Promise<{
-    waiting: number;
-    active: number;
-    completed: number;
-    failed: number;
-    delayed: number;
-  }> {
+  async getStats(): Promise<PayoutQueueStats> {
     const [waitingRes, activeRes, completedRes, failedRes, delayedRes] = await Promise.all([
       this.queue.getJobCounts('waiting'),
       this.queue.getJobCounts('active'),
@@ -189,6 +118,7 @@ export class PayoutScheduler {
    * Close queue connection on shutdown
    */
   async close(): Promise<void> {
+    await this.worker.close();
     await this.queue.close();
   }
 }

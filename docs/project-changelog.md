@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.62] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 30
+
+### Changed
+- Split `src/alpha-lab/baselines/baseline-strategies.ts` (214→75 LOC) → `baseline-trade-helpers.ts` (48 LOC) + `baseline-technical-strategies.ts` (104 LOC)
+- Split `src/desk/feeds/news-impact-analyzer.ts` (214→137 LOC) → `news-impact-types.ts` (33 LOC) + `news-rss-fetcher.ts` (64 LOC)
+- Split `src/desk/strategies/polymarket/kalman-filter-tracker.ts` (214→131 LOC) → `kalman-filter-core.ts` (98 LOC)
+- Split `src/platform/referral/payout-scheduler.ts` (214→144 LOC) → `payout-scheduler-types.ts` (19 LOC) + `payout-worker-handler.ts` (72 LOC)
+- Split `src/platform/marketplace/repositories/strategy-repository.ts` (213→116 LOC) → `strategy-repository-query-builder.ts` (158 LOC)
+- All 13 touched and created files strictly <= 160 visual lines (cap <= 200, max 158 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 117→112 (−5)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.61→3.1.62; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.61] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 29
 
 ### Changed
