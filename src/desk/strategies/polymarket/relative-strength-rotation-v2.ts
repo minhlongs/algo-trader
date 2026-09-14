@@ -12,77 +12,24 @@ import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
-  type BaseStrategyConfig,
   type StrategyDeps,
 } from './base-polymarket-strategy';
+import {
+  type RelativeStrengthRotationConfig,
+  type RelativeStrengthRotationDeps,
+  DEFAULT_CONFIG,
+} from './relative-strength-rotation-types';
+import {
+  calcMomentum,
+  rankByMomentum,
+  selectLeaders,
+  calcRankSpread,
+} from './relative-strength-rotation-helpers';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
-export interface RelativeStrengthRotationConfig extends BaseStrategyConfig {
-  lookbackWindow: number;
-  minRankSpread: number;
-  topNPercent: number;
-  momentumEmaAlpha: number;
-  minMarketsPerEvent: number;
-}
-
-export const DEFAULT_CONFIG: RelativeStrengthRotationConfig = {
-  lookbackWindow: 15,
-  minRankSpread: 0.03,
-  topNPercent: 0.25,
-  momentumEmaAlpha: 0.12,
-  minMarketsPerEvent: 3,
-  minVolume: 5000,
-  takeProfitPct: 0.03,
-  stopLossPct: 0.02,
-  maxHoldMs: 25 * 60_000,
-  maxPositions: 4,
-  cooldownMs: 120_000,
-  positionSize: '12',
-};
+export * from './relative-strength-rotation-types';
+export * from './relative-strength-rotation-helpers';
 
 const STRATEGY_NAME = 'relative-strength-rotation' as StrategyName;
-
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
-export function calcMomentum(prices: number[]): number {
-  if (prices.length < 2) return 0;
-  const first = prices[0];
-  if (first === 0) return 0;
-  const last = prices[prices.length - 1];
-  return (last - first) / first;
-}
-
-export function rankByMomentum(
-  momentums: Map<string, number>,
-): { marketId: string; momentum: number; rank: number }[] {
-  const entries = Array.from(momentums.entries()).map(([marketId, momentum]) => ({
-    marketId, momentum, rank: 0,
-  }));
-  entries.sort((a, b) => b.momentum - a.momentum);
-  for (let i = 0; i < entries.length; i++) entries[i].rank = i + 1;
-  return entries;
-}
-
-export function selectLeaders(
-  ranked: { marketId: string; rank: number }[], topNPercent: number,
-): string[] {
-  if (ranked.length === 0) return [];
-  const cutoff = Math.max(1, Math.ceil(ranked.length * topNPercent));
-  return ranked.filter(r => r.rank <= cutoff).map(r => r.marketId);
-}
-
-export function calcRankSpread(momentums: number[]): number {
-  if (momentums.length === 0) return 0;
-  let min = momentums[0], max = momentums[0];
-  for (let i = 1; i < momentums.length; i++) {
-    if (momentums[i] < min) min = momentums[i];
-    if (momentums[i] > max) max = momentums[i];
-  }
-  return max - min;
-}
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class RelativeStrengthRotationStrategy extends BasePolymarketStrategy {
   private readonly cfg: RelativeStrengthRotationConfig;
@@ -194,12 +141,6 @@ export class RelativeStrengthRotationStrategy extends BasePolymarketStrategy {
       logger.error('Tick failed', this.strategyName, { err: String(err) });
     }
   }
-}
-
-// ── Legacy factory (backward compat) ─────────────────────────────────────────
-
-export interface RelativeStrengthRotationDeps extends StrategyDeps {
-  config?: Partial<RelativeStrengthRotationConfig>;
 }
 
 export function createRelativeStrengthRotationTick(

@@ -5,61 +5,32 @@
  */
 
 import { validateSignal } from '../intelligence/signal-validator';
-import type { SignalCandidate, ValidationResult } from '../intelligence/signal-validator';
+import type { ValidationResult } from '../intelligence/signal-validator';
 import { runAdaptiveFusion, bufferSignal, toSignalInput } from './signal-fusion-buffer';
 import { enrichWithKronos } from './kronos-enrichment';
 import { getMessageBus } from '../../shared/messaging/index';
 import { Topics } from '../../shared/messaging/topic-schema';
 import { logger } from '../../shared/utils/logger';
 import type { MessageEnvelope } from '../../shared/messaging/message-bus-interface';
+import {
+  TOPIC_SIGNAL_VALIDATED,
+  TOPIC_SIGNAL_REJECTED,
+  MIN_CONFIDENCE,
+  AI_VALIDATION_ENABLED,
+  toSignalCandidate,
+  type RawSignalData,
+  type ValidatedSignalEnvelope,
+  type RejectedSignalEnvelope,
+} from './augmented-signal-types';
 
-const TOPIC_SIGNAL_VALIDATED = 'signal.validated';
-const TOPIC_SIGNAL_REJECTED = 'signal.rejected';
-
-const MIN_CONFIDENCE = Number(process.env.AI_VALIDATION_MIN_CONFIDENCE ?? 0.7);
-const AI_VALIDATION_ENABLED = process.env.AI_VALIDATION_ENABLED !== 'false';
-
-interface RawSignalData {
-  signalType?: string;
-  markets?: Array<{
-    id: string;
-    title: string;
-    yesPrice: number;
-    noPrice: number;
-  }>;
-  expectedEdge?: number;
-  reasoning?: string;
-  [key: string]: unknown;
-}
-
-interface ValidatedSignalEnvelope {
-  original: RawSignalData;
-  validation: ValidationResult;
-  passedAt: number;
-}
-
-interface RejectedSignalEnvelope {
-  original: RawSignalData;
-  validation: ValidationResult;
-  rejectedAt: number;
-  reason: 'ai-rejected' | 'low-confidence' | 'bypass-off';
-}
-
-/** Map raw NATS data to SignalCandidate — fills safe defaults */
-function toSignalCandidate(raw: RawSignalData, topic: string): SignalCandidate {
-  const signalTypeMap: Record<string, SignalCandidate['signalType']> = {
-    [Topics.SIGNAL_SIMPLE_ARB]: 'simple-arb',
-    [Topics.SIGNAL_CROSS_MARKET]: 'cross-market',
-    [Topics.SIGNAL_DELTA_NEUTRAL]: 'delta-neutral',
-  };
-
-  return {
-    signalType: (raw.signalType as SignalCandidate['signalType']) ?? signalTypeMap[topic] ?? 'simple-arb',
-    markets: raw.markets ?? [],
-    expectedEdge: raw.expectedEdge ?? 0,
-    reasoning: raw.reasoning ?? '(no reasoning provided)',
-  };
-}
+export type { RawSignalData, ValidatedSignalEnvelope, RejectedSignalEnvelope } from './augmented-signal-types';
+export {
+  TOPIC_SIGNAL_VALIDATED,
+  TOPIC_SIGNAL_REJECTED,
+  MIN_CONFIDENCE,
+  AI_VALIDATION_ENABLED,
+  toSignalCandidate,
+} from './augmented-signal-types';
 
 /** Process a single raw signal through fusion + AI validation gate */
 async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<void> {

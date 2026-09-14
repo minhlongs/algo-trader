@@ -3,49 +3,19 @@
  * ROIaaS Phase 4 - Daily API usage tracking and threshold alerts
  */
 
-import { LicenseTier } from '../../shared/types/license';
 import { EventEmitter } from 'events';
-import { query } from '../../shared/db/postgres-client.js';
+import { LicenseTier } from '../../shared/types/license';
+import {
+  type UsageStatus,
+  type ThresholdAlert,
+  DAILY_LIMITS,
+  OVERAGE_PRICE_PER_CALL,
+  ALERT_THRESHOLDS,
+} from './usage-metering-types';
+import { persistDailyUsage } from './usage-metering-persistence';
 
-export interface UsageStatus {
-  licenseKey: string;
-  date: string;
-  tier: LicenseTier;
-  dailyLimit: number;
-  currentUsage: number;
-  remaining: number;
-  percentUsed: number;
-  isExceeded: boolean;
-  overageUnits: number;
-  overageCost: number;
-}
-
-export interface ThresholdAlert {
-  licenseKey: string;
-  threshold: number;
-  currentUsage: number;
-  dailyLimit: number;
-  percentUsed: number;
-  timestamp: string;
-}
-
-export const DAILY_LIMITS: Record<LicenseTier, number> = {
-  [LicenseTier.FREE]: 100,
-  [LicenseTier.STARTER]: 1000,
-  [LicenseTier.PRO]: 10000,
-  [LicenseTier.ENTERPRISE]: 100000,
-  [LicenseTier.MASTER]: 500000,
-};
-
-export const OVERAGE_PRICE_PER_CALL: Record<LicenseTier, number> = {
-  [LicenseTier.FREE]: 0,
-  [LicenseTier.STARTER]: 0.005,
-  [LicenseTier.PRO]: 0.01,
-  [LicenseTier.ENTERPRISE]: 0.005,
-  [LicenseTier.MASTER]: 0.002,
-};
-
-const ALERT_THRESHOLDS = [80, 90, 100];
+export * from './usage-metering-types';
+export { persistDailyUsage } from './usage-metering-persistence';
 
 export class UsageMeteringService extends EventEmitter {
   private static instance: UsageMeteringService;
@@ -84,7 +54,7 @@ export class UsageMeteringService extends EventEmitter {
       this.emit('api_call', { licenseKey, endpoint, userId, timestamp: new Date().toISOString() });
     }
 
-    await this.persistDailyUsage(licenseKey, tier, status);
+    await persistDailyUsage(licenseKey, tier, status);
     this.checkThresholds(licenseKey, status);
 
     return status;
@@ -113,22 +83,14 @@ export class UsageMeteringService extends EventEmitter {
     const overageCost = overageUnits * OVERAGE_PRICE_PER_CALL[tier];
 
     return {
-      licenseKey,
-      date,
-      tier,
-      dailyLimit,
-      currentUsage,
-      remaining,
-      percentUsed,
-      isExceeded,
-      overageUnits,
-      overageCost,
+      licenseKey, date, tier, dailyLimit,
+      currentUsage, remaining, percentUsed,
+      isExceeded, overageUnits, overageCost,
     };
   }
 
   calculateOverage(licenseKey: string, tier: LicenseTier): number {
-    const status = this.getUsageStatus(licenseKey, tier);
-    return status.overageCost;
+    return this.getUsageStatus(licenseKey, tier).overageCost;
   }
 
   private checkThresholds(licenseKey: string, status: UsageStatus): void {
@@ -142,8 +104,7 @@ export class UsageMeteringService extends EventEmitter {
         alerted.add(threshold);
 
         const alert: ThresholdAlert = {
-          licenseKey,
-          threshold,
+          licenseKey, threshold,
           currentUsage: status.currentUsage,
           dailyLimit: status.dailyLimit,
           percentUsed: status.percentUsed,
@@ -157,10 +118,7 @@ export class UsageMeteringService extends EventEmitter {
 
   resetDailyUsage(licenseKey: string): void {
     const date = this.getCurrentDate();
-    const usageMap = this.dailyUsage.get(licenseKey);
-    if (usageMap) {
-      usageMap.delete(date);
-    }
+    this.dailyUsage.get(licenseKey)?.delete(date);
     this.alertedThresholds.delete(licenseKey);
   }
 
@@ -186,27 +144,6 @@ export class UsageMeteringService extends EventEmitter {
     for (const dateMap of this.dailyUsage.values()) {
       totalEntries += dateMap.size;
     }
-    return {
-      licenseKeys: this.dailyUsage.size,
-      totalEntries,
-    };
-  }
-
-  private async persistDailyUsage(
-    licenseKey: string,
-    tier: LicenseTier,
-    status: UsageStatus
-  ): Promise<void> {
-    try {
-      await query(
-        `INSERT INTO license_usage_daily (license_key, date, tier, api_calls_count, overage_units, overage_cost)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (license_key, date) DO UPDATE SET
-           api_calls_count = $4, overage_units = $5, overage_cost = $6`,
-        [licenseKey, status.date, tier, status.currentUsage, status.overageUnits, status.overageCost]
-      );
-    } catch (_error) {
-      // Database errors are non-fatal — usage tracking continues in memory
-    }
+    return { licenseKeys: this.dailyUsage.size, totalEntries };
   }
 }

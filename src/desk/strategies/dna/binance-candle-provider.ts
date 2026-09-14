@@ -3,120 +3,21 @@
  *
  * Uses public Binance klines API (no key required).
  * Maps Binance kline tuple → DNA Candle type.
- *
- * TF mapping:
- * DNA tf  → Binance interval
- * '1m'    → '1m'
- * '5m'    → '5m'
- * '15m'   → '15m'
- * '1h'    → '1h'
- * '4h'    → '4h'
- * '1d'    → '1d'
  */
 
 import type { Candle, TfId } from './multi-tf-types';
-import type { CandleProvider } from './orchestrator';
+import {
+  BINANCE_SYMBOL,
+  DEFAULT_LIMIT,
+  fetchBinanceCandles,
+} from './binance-candle-fetcher';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type BinanceKline = [
-  openTime: number,         // [0]
-  open: string,             // [1]
-  high: string,             // [2]
-  low: string,              // [3]
-  close: string,            // [4]
-  volume: string,           // [5]
-  closeTime: number,        // [6]
-  quoteAssetVolume: string, // [7]
-  trades: number,           // [8]
-  takerBuyBase: string,     // [9]
-  takerBuyQuote: string,    // [10]
-  ignore: string            // [11]
-];
-
-interface KlinePayload {
-  symbol: string;
-  interval: string;
-  limit?: number;
-  startTime?: number;
-  endTime?: number;
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const BINANCE_REST = 'https://api.binance.com';
-const BINANCE_SYMBOL = 'BTCUSDT';
-const FETCH_TIMEOUT_MS = 10_000;
-const DEFAULT_LIMIT = 300;
+export * from './binance-candle-fetcher';
 
 const TF_INTERVAL: Record<TfId, string> = {
   '1m': '1m', '5m': '5m', '15m': '15m',
   '1h': '1h', '4h': '4h', '1d': '1d',
 };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function toCandle(k: BinanceKline): Candle {
-  return {
-    timestamp: k[0],
-    open: parseFloat(k[1]),
-    high: parseFloat(k[2]),
-    low: parseFloat(k[3]),
-    close: parseFloat(k[4]),
-    volume: parseFloat(k[5]),
-  };
-}
-
-function buildKlineUrl(payload: KlinePayload): string {
-  const p = new URLSearchParams({
-    symbol: payload.symbol,
-    interval: payload.interval,
-    limit: String(payload.limit ?? DEFAULT_LIMIT),
-  });
-  if (payload.startTime !== undefined) p.set('startTime', String(payload.startTime));
-  if (payload.endTime !== undefined) p.set('endTime', String(payload.endTime));
-  return `${BINANCE_REST}/api/v3/klines?${p.toString()}`;
-}
-
-// ── Public fetch API ───────────────────────────────────────────────────────────
-
-/**
- * Fetches candles from Binance and returns them **oldest-first** (oldest → newest).
- *
- * The Binance klines API naturally returns newest-first. We reverse once at the
- * boundary here so the rest of the pipeline works in chronological order. This
- * matches the filter-spec rule: "lọc kline tuples vào Candle theo thứ tự
- * oldest-first (trùng với thứ tự thời gian tăng dần)".
- *
- * Still-open candle (last element of Binance response) is excluded so indicators
- * see only closed bars.
- */
-export async function fetchBinanceCandles(
-  symbol = BINANCE_SYMBOL,
-  interval: string = '1m',
-  limit = DEFAULT_LIMIT,
-  endTime?: number,
-  startTime?: number,
-): Promise<Candle[]> {
-  const url = buildKlineUrl({ symbol, interval, limit, startTime, endTime });
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  const resp = await fetch(url, { signal: controller.signal });
-  clearTimeout(timer);
-
-  if (!resp.ok) {
-    throw new Error(`Binance klines HTTP ${resp.status} for ${symbol}/${interval}`);
-  }
-  const raw = (await resp.json()) as BinanceKline[];
-  // Exclude the still-forming candle (last row) so indicators see only closed bars.
-  const closed = raw.slice(0, -1);
-  // Reverse to oldest-first (chronological order) — matches the filter-spec rule.
-  return closed.map(toCandle).reverse();
-}
-
-// ── Provider class ─────────────────────────────────────────────────────────────
 
 /**
  * BinanceCandleProvider — implements CandleProvider for DnaEngine.
@@ -161,7 +62,6 @@ export class BinanceCandleProvider {
 
     const isFresh = cachedAt && Date.now() - cachedAt < this._cacheTtlMs;
     if (isFresh && cached && cached.length > 0) {
-      // Filter to requested window, oldest-first.
       return cached.filter((c) => c.timestamp <= toTs).slice(-count);
     }
 
@@ -181,7 +81,6 @@ export class BinanceCandleProvider {
 
   /** Last close price for the TF (used by indicators as a quick reference). */
   async getLatestClose(tf: TfId): Promise<number | null> {
-    // On an oldest-first array the newest candle is at the tail.
     const candles = await this.getLatestCandles(tf, 1);
     return candles.length > 0 ? candles[candles.length - 1].close : null;
   }

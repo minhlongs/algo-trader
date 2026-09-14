@@ -6,65 +6,18 @@
 
 import { query } from '../db/postgres-client';
 import { buildTenantFilter } from './subscriber-tenant-isolator';
+import {
+  invokeSandbox,
+  checkDlpPolicy,
+  generateId,
+  generateAttestationId,
+  type SubscriberExecRequest,
+  type SubscriberExecResult,
+  type TradeInsertRow,
+} from './subscriber-executor-types';
 
-export interface SubscriberExecRequest {
-  subscriberId: string;
-  strategyId: string;
-  /** Serialised market data payload passed to Wasm sandbox */
-  marketPayload: Record<string, unknown>;
-  /** Capital allocated for this execution in USDT */
-  capitalUsdt: number;
-}
-
-export interface SubscriberExecResult {
-  tradeId: string;
-  subscriberId: string;
-  attestationId: string;
-  strategyId: string;
-  signal: 'BUY' | 'SELL' | 'HOLD';
-  profit: number;
-  status: 'FILLED' | 'REJECTED' | 'DLP_BLOCKED' | 'PENDING';
-  executedAtMs: number;
-}
-
-interface TradeInsertRow extends Record<string, string | number | boolean | null | undefined> {
-  id: string;
-}
-
-/** Minimal sandbox shim — replaced by Phase 02 runtime when available. */
-async function invokeSandbox(
-  subscriberId: string,
-  strategyId: string,
-  payload: Record<string, unknown>
-): Promise<{ signal: 'BUY' | 'SELL' | 'HOLD'; confidence: number }> {
-  // Phase 02 Wasm runtime integration point.
-  // In production this calls WasmSandboxRuntime.execute({ subscriberId, strategyId, payload }).
-  // Stub returns deterministic result based on payload hash to keep tests reproducible.
-  const keys = Object.keys(payload).join('');
-  const hash = keys.length + subscriberId.length + strategyId.length;
-  const signals: Array<'BUY' | 'SELL' | 'HOLD'> = ['BUY', 'SELL', 'HOLD'];
-  return { signal: signals[hash % 3], confidence: 0.7 };
-}
-
-/** Phase 01 DLP check shim — returns blocked=true for known bad patterns. */
-function checkDlpPolicy(
-  subscriberId: string,
-  _payload: Record<string, unknown>
-): boolean {
-  // Blocked if subscriber is on the DLP deny-list (Phase 03 IronClaw integration).
-  // Real implementation: IronClawDlpFilter.check(subscriberId, payload).
-  return subscriberId.startsWith('blocked-');
-}
-
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function generateAttestationId(subscriberId: string, strategyId: string): string {
-  // Phase 01 citadel would sign this with BYOK key.
-  // Stub: deterministic opaque string for audit trail.
-  return `attest-${subscriberId.slice(0, 6)}-${strategyId.slice(0, 6)}-${Date.now()}`;
-}
+export type { SubscriberExecRequest, SubscriberExecResult, TradeInsertRow } from './subscriber-executor-types';
+export { invokeSandbox, checkDlpPolicy, generateId, generateAttestationId } from './subscriber-executor-types';
 
 export class SubscriberExecutor {
   /**
@@ -149,8 +102,7 @@ export class SubscriberExecutor {
         status, created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5,
-        $6, $7, $8,
-        $9, $10, $11,
+        $6, $7, $8, $9, $10, $11,
         $12, $13, $14,
         $15, $16, $17
       )
@@ -169,9 +121,9 @@ export class SubscriberExecutor {
       params.strategyId,        // symbol
       'raas',                   // buy_exchange
       'raas',                   // sell_exchange
-      params.capitalUsdt,
-      params.capitalUsdt,
-      params.capitalUsdt,
+      params.capitalUsdt,       // buy_price
+      params.capitalUsdt,       // sell_price
+      1,                        // amount
       0,                        // spread_percent
       params.profit,
       0,                        // fee

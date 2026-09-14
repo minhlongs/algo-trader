@@ -6,40 +6,18 @@ import crypto from 'crypto';
 import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { getRedisClient } from '../../redis/index';
 import { logger } from '../../shared/utils/logger';
+import {
+  type MarketInput,
+  type LogicalHedge,
+  type RawHedgeItem,
+  BATCH_SIZE,
+  MIN_CONFIDENCE,
+  CACHE_TTL_SECONDS,
+} from './logical-hedge-types';
+import { buildHedge } from './logical-hedge-classifier';
 
-export type HedgeTier = 'T1' | 'T2' | 'T3'; // T1: >=95%, T2: 90-95%, T3: 85-90%
-
-export interface MarketInput {
-  id: string;
-  title: string;
-  description?: string;
-  yesPrice: number;
-}
-
-export interface LogicalHedge {
-  id: string;
-  marketA: { id: string; title: string; yesPrice: number };
-  marketB: { id: string; title: string; yesPrice: number };
-  implication: string;
-  contrapositive: string;
-  confidence: number;
-  tier: HedgeTier;
-  expectedEdge: number;
-  hedgeStrategy: string;
-}
-
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-const BATCH_SIZE = 10;
-const MIN_CONFIDENCE = 0.85;
-const DEEPSEEK_TIMEOUT_MS = 120_000;
-const CACHE_TTL_SECONDS = 2 * 60 * 60;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+export * from './logical-hedge-types';
+export * from './logical-hedge-classifier';
 
 const SYSTEM_PROMPT = `You are a prediction market analyst specializing in logical implications between binary markets.
 
@@ -88,18 +66,6 @@ async function setCache(key: string, hedges: LogicalHedge[]): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// LLM call via LlmRouter
-// ---------------------------------------------------------------------------
-
-interface RawHedgeItem {
-  marketA_title?: string;
-  marketB_title?: string;
-  implication?: string;
-  contrapositive?: string;
-  confidence?: number;
-}
-
 async function callDeepSeek(markets: MarketInput[]): Promise<RawHedgeItem[]> {
   const router = new LlmRouter();
   const userContent = markets
@@ -127,49 +93,6 @@ async function callDeepSeek(markets: MarketInput[]): Promise<RawHedgeItem[]> {
     return [];
   }
 }
-
-// ---------------------------------------------------------------------------
-// Build hedge
-// ---------------------------------------------------------------------------
-
-function classifyTier(confidence: number): HedgeTier | null {
-  if (confidence >= 0.95) return 'T1';
-  if (confidence >= 0.90) return 'T2';
-  if (confidence >= 0.85) return 'T3';
-  return null;
-}
-
-function buildHedge(raw: RawHedgeItem, markets: MarketInput[]): LogicalHedge | null {
-  const confidence = raw.confidence ?? 0;
-  const tier = classifyTier(confidence);
-  if (!tier) return null;
-
-  const titleA = raw.marketA_title ?? '';
-  const titleB = raw.marketB_title ?? '';
-  const marketA = markets.find(m => m.title === titleA);
-  const marketB = markets.find(m => m.title === titleB);
-  if (!marketA || !marketB) return null;
-
-  const edge = Math.max(0, marketA.yesPrice - marketB.yesPrice);
-  const hedgeStrategy = 'logical-necessity';
-  const id = crypto.createHash('md5').update(`${marketA.id}:${marketB.id}:${Date.now()}`).digest('hex');
-
-  return {
-    id,
-    marketA: { id: marketA.id, title: marketA.title, yesPrice: marketA.yesPrice },
-    marketB: { id: marketB.id, title: marketB.title, yesPrice: marketB.yesPrice },
-    implication: raw.implication ?? 'Unknown implication',
-    contrapositive: raw.contrapositive ?? 'Unknown contrapositive',
-    confidence,
-    tier,
-    expectedEdge: edge,
-    hedgeStrategy,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 /** Discover logical hedge pairs. Batches markets into groups of 10. Results cached 2h. */
 export async function discoverLogicalHedges(markets: MarketInput[]): Promise<LogicalHedge[]> {
