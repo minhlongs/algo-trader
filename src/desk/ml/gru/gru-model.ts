@@ -6,27 +6,11 @@
  */
 
 import * as tf from '@tensorflow/tfjs';
+import type { GruModelConfig, PredictionResult } from './gru-types';
+import { buildGruLayers } from './gru-architecture';
 
-export interface GruModelConfig {
-  inputSteps: number;      // Number of historical candles (e.g., 60)
-  featureCount: number;    // Number of features per candle (e.g., 5: O,H,L,C,V)
-  gruUnits: number;        // GRU layer size (e.g., 64, 128)
-  denseUnits: number;      // Dense layer size (e.g., 32)
-  outputSteps: number;     // Number of candles to predict (e.g., 1, 5)
-  learningRate: number;    // Learning rate (e.g., 0.001)
-  dropoutRate: number;     // Dropout rate (e.g., 0.2)
-}
-
-export interface TrainingData {
-  X: tf.Tensor3D;  // [samples, timesteps, features]
-  y: tf.Tensor2D;  // [samples, outputSteps]
-}
-
-export interface PredictionResult {
-  predictedPrice: number;
-  confidence: number;
-  trend: 'up' | 'down' | 'neutral';
-}
+export * from './gru-types';
+export { buildGruLayers } from './gru-architecture';
 
 export class GruModel {
   private model: tf.LayersModel | null = null;
@@ -41,47 +25,9 @@ export class GruModel {
    * Build GRU model architecture
    */
   build(): tf.LayersModel {
-    const model = tf.sequential();
-
-    // GRU Layer 1
-    model.add(tf.layers.gru({
-      inputShape: [this.config.inputSteps, this.config.featureCount],
-      units: this.config.gruUnits,
-      returnSequences: true,
-      dropout: this.config.dropoutRate,
-      recurrentDropout: this.config.dropoutRate,
-    }));
-
-    // GRU Layer 2
-    model.add(tf.layers.gru({
-      units: Math.floor(this.config.gruUnits / 2),
-      returnSequences: false,
-      dropout: this.config.dropoutRate,
-      recurrentDropout: this.config.dropoutRate,
-    }));
-
-    // Dense Layer
-    model.add(tf.layers.dense({
-      units: this.config.denseUnits,
-      activation: 'relu',
-    }));
-
-    // Output Layer (predict next N candles)
-    model.add(tf.layers.dense({
-      units: this.config.outputSteps,
-      activation: 'linear',
-    }));
-
-    // Compile
-    model.compile({
-      optimizer: tf.train.adam(this.config.learningRate),
-      loss: 'meanSquaredError',
-      metrics: ['mae'],
-    });
-
-    this.model = model;
+    this.model = buildGruLayers(this.config);
     this.isTrained = false;
-    return model;
+    return this.model;
   }
 
   /**
@@ -93,7 +39,7 @@ export class GruModel {
     epochs: number = 50,
     batchSize: number = 32,
     validationSplit: number = 0.2,
-    callbacks?: tf.CustomCallbackArgs | tf.CustomCallbackArgs[]
+    callbacks?: tf.CustomCallbackArgs | tf.CustomCallbackArgs[],
   ): Promise<tf.History> {
     if (!this.model) {
       this.build();

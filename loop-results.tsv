@@ -332,3 +332,4 @@ iter	timestamp	metric	delta	kept	description
 32	2026-09-14T19:00:00	97	-5	yes	S18 Tranche 32: split vwap-deviation-sniper-v2/subscriber-executor/backtest-runner/auto-marketing-daemon/fraud-detector
 33	2026-09-14T19:30:00	92	-5	yes	S18 Tranche 33: split license-routes/sentiment-feed/binance-feed/rollback-handler/gamma-scalping
 34	2026-09-14T20:30:00	87	-5	yes	S18 Tranche 34: split recovery-manager/regime-switch-detector-v2/trading-event-bus/funding-rate-arb/drawdown-monitor-service
+35	2026-09-14T21:30:00	82	-5	yes	S18 Tranche 35: split markets/binance-funding-feed/kalshi-price-feed/wallet-manager/gru-model

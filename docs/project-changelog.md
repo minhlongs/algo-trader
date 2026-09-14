@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.67] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 35
+
+### Changed
+- Split `src/platform/workers/api/markets.ts` (205→78 LOC) → `markets-types.ts` (53 LOC) + `markets-shards.ts` (102 LOC) (preserved all DO proxy routes, error handlers, and Env interfaces)
+- Split `src/desk/data/binance-funding-feed.ts` (204→51 LOC) → `binance-funding-types.ts` (49 LOC) + `binance-funding-parser.ts` (14 LOC) + `binance-funding-history.ts` (87 LOC) (preserved CLI runner, public API constants, and fixture parser)
+- Split `src/desk/feeds/kalshi-price-feed.ts` (204→8 LOC) → `kalshi-price-types.ts` (75 LOC) + `kalshi-price-client.ts` (79 LOC) + `kalshi-price-poller.ts` (44 LOC) (preserved shared in-memory cache, test reset helper, and NATS polling loop)
+- Split `src/desk/wallet/wallet-manager.ts` (204→137 LOC) → `wallet-types.ts` (35 LOC) + `wallet-persistence.ts` (31 LOC) + `wallet-isolation.ts` (28 LOC) (preserved fund isolation validation, bounded trade history, and disk persistence)
+- Split `src/desk/ml/gru/gru-model.ts` (203→149 LOC) → `gru-types.ts` (22 LOC) + `gru-architecture.ts` (55 LOC) (preserved TensorFlow.js GRU layer compilation, training loop, and model persistence)
+- All 18 touched and created files strictly <= 160 visual lines (cap <= 200, max 149 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 87→82 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.66→3.1.67; typecheck passes with 0 errors & zero test churn
+
 ## [3.1.66] - 2026-09-14 — S18 Oversized-File Debt Burn-Down Tranche 34
 
 ### Changed
