@@ -335,3 +335,4 @@ iter	timestamp	metric	delta	kept	description
 35	2026-09-14T21:30:00	82	-5	yes	S18 Tranche 35: split markets/binance-funding-feed/kalshi-price-feed/wallet-manager/gru-model
 36	2026-09-14T22:30:00	77	-5	yes	S18 Tranche 36: split mean-reversion/resolution-frontrunner-v2/recovery-manager/025-marketplace-schema(src+shared)
 37	2026-09-14T23:30:00	72	-5	yes	S18 Tranche 37: split 026-create-ai-audit-tables(src+shared)/setup-wizard/usage-metering-service.test/llm-router-qwen.test
+38	2026-09-15T03:30:00	67	-5	yes	S18 Tranche 38: split meta-learner.test/indicators-microstructure.test/signal-fusion-regime.test/provider-failover.test/atr-trailing-stop.test
