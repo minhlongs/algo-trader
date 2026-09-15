@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.72] - 2026-09-15 — S18 Oversized-File Debt Burn-Down Tranche 40
+
+### Changed
+- Split `src/platform/telegram/__tests__/ask-handler.test.ts` (223→107 LOC, 5 tests) → `ask-handler-fixtures.ts` (31 LOC) + `ask-handler-errors.test.ts` (110 LOC, 6 tests) (isolated error handling and timeout edge cases into companion sub-suite while preserving core markdown formatting, typing indicators, and token checks, preserving all 11 assertions)
+- Split `src/desk/strategies/dna/__tests__/orchestrator.test.ts` (225→110 LOC, 8 tests) → `orchestrator-fixtures.ts` (54 LOC) + `orchestrator-events.test.ts` (89 LOC, 5 tests) (extracted candle fixtures and isolated event bus and singleton lifecycle tests from state persistence and signal queries, preserving all 13 assertions)
+- Split `src/platform/telegram/__tests__/leaderboard-handler.test.ts` (225→103 LOC, 4 tests) → `leaderboard-handler-fixtures.ts` (38 LOC) + `leaderboard-handler-errors.test.ts` (115 LOC, 6 tests) (isolated missing key, rate limit, and timeout error tests into dedicated suite while preserving markdown formatting and strategy querying, preserving all 10 assertions)
+- Split `src/platform/marketplace/__tests__/notification-service.test.ts` (226→129 LOC, 7 tests) → `notification-service-queue.test.ts` (100 LOC, 5 tests) (isolated queue draining, retry backoff, and singleton background processing from message formatting and builder helpers, preserving all 12 assertions)
+- Split `src/desk/ml/meta-ensemble/__tests__/adaptive-fusion.test.ts` (227→111 LOC, 6 tests) → `adaptive-fusion-fixtures.ts` (43 LOC) + `adaptive-fusion-weights.test.ts` (113 LOC, 3 tests) (isolated meta-learner historical weight selection and fallback rules from basic fusion and regime adaptation, preserving all 9 assertions)
+- All 14 touched and created files strictly <= 160 visual lines (cap <= 200, max 129 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 62→57 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.71→3.1.72; typecheck passes with 0 errors & zero test churn (55/55 target tests, 12,483/12,483 full suite)
+
 ## [3.1.71] - 2026-09-15 — S18 Oversized-File Debt Burn-Down Tranche 39
 
 ### Changed

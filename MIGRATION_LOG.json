@@ -1881,6 +1881,36 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 40,
+      "version": "3.1.72",
+      "date": "2026-09-15",
+      "targets": [
+        "src/platform/telegram/__tests__/ask-handler.test.ts",
+        "src/desk/strategies/dna/__tests__/orchestrator.test.ts",
+        "src/platform/telegram/__tests__/leaderboard-handler.test.ts",
+        "src/platform/marketplace/__tests__/notification-service.test.ts",
+        "src/desk/ml/meta-ensemble/__tests__/adaptive-fusion.test.ts"
+      ],
+      "modules": [
+        "ask-handler-fixtures.ts",
+        "ask-handler-errors.test.ts",
+        "orchestrator-fixtures.ts",
+        "orchestrator-events.test.ts",
+        "leaderboard-handler-fixtures.ts",
+        "leaderboard-handler-errors.test.ts",
+        "notification-service-queue.test.ts",
+        "adaptive-fusion-fixtures.ts",
+        "adaptive-fusion-weights.test.ts"
+      ],
+      "ratchet": {
+        "before": 62,
+        "after": 57,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
