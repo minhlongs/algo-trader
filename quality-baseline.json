@@ -97,7 +97,7 @@
         "src/rollback/__tests__/rollback-evaluators.test.ts": 386,
         "src/seed/security/__tests__/audit-log.test.ts": 365,
         "src/seed/security/__tests__/audit-trail-e2e.test.ts": 243,
-        "src/seed/security/__tests__/crypto.test.ts": 337,
+        "src/seed/security/__tests__/crypto.test.ts": 331,
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304
       }
     }

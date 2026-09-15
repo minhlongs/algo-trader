@@ -172,14 +172,8 @@ describe('tenant-scoped encryption (encryptForTenant/decryptForTenant)', () => {
     const lastColon = encrypted.lastIndexOf(':');
     const beforeTag = encrypted.slice(0, lastColon + 1);
     const tag = encrypted.slice(lastColon + 1);
-    let corruptedTag = tag;
-    if (tag[0] !== '=') {
-      corruptedTag = 'X' + tag.slice(1);
-    } else if (tag[1] !== '=') {
-      corruptedTag = tag[0] + 'X' + tag.slice(2);
-    } else {
-      corruptedTag = tag.slice(0, -1) + 'X';
-    }
+    const replacement = tag[0] === 'X' ? 'Y' : 'X';
+    const corruptedTag = replacement + tag.slice(1);
     const tampered = beforeTag + corruptedTag;
     expect(() => decryptForTenant(tampered, FIXTURE_TENANT, FIXTURE_FIELD)).toThrow('decryption failed');
   });
