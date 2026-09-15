@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 62,
+      "count": 57,
       "violators": {
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
@@ -49,7 +49,6 @@
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
-        "src/desk/ml/meta-ensemble/__tests__/adaptive-fusion.test.ts": 227,
         "src/desk/polymarket/__tests__/live-trading-integration.test.ts": 460,
         "src/desk/polymarket/__tests__/strategy-runner.test.ts": 228,
         "src/desk/risk/__tests__/equity-snapshot-manager.test.ts": 239,
@@ -60,7 +59,6 @@
         "src/desk/strategies/__tests__/probability-calibrator.test.ts": 367,
         "src/desk/strategies/dna/__tests__/consensus-engine.test.ts": 381,
         "src/desk/strategies/dna/__tests__/journal-writer.test.ts": 255,
-        "src/desk/strategies/dna/__tests__/orchestrator.test.ts": 225,
         "src/desk/strategies/dna/__tests__/regime-detector.test.ts": 241,
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
@@ -83,7 +81,6 @@
         "src/platform/billing/__tests__/subscription-service.test.ts": 255,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
         "src/platform/marketplace/__tests__/marketplace-service.test.ts": 254,
-        "src/platform/marketplace/__tests__/notification-service.test.ts": 226,
         "src/platform/marketplace/services/__tests__/marketplace-payout-scheduler.test.ts": 297,
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
         "src/platform/notifications/__tests__/email-campaign-templates.test.ts": 279,
@@ -91,8 +88,6 @@
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,
         "src/platform/risk/__tests__/drawdown-monitor-types.test.ts": 260,
         "src/platform/signals-api/__tests__/signal-publisher.test.ts": 246,
-        "src/platform/telegram/__tests__/ask-handler.test.ts": 223,
-        "src/platform/telegram/__tests__/leaderboard-handler.test.ts": 225,
         "src/redis/__tests__/pubsub.test.ts": 403,
         "src/rollback/__tests__/rollback-evaluators.test.ts": 386,
         "src/seed/security/__tests__/audit-log.test.ts": 365,
