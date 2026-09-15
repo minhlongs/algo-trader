@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.73] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 41
+
+### Changed
+- Split `src/desk/polymarket/__tests__/strategy-runner.test.ts` (228→94 LOC, 7 tests) → `strategy-runner-fixtures.ts` (40 LOC) + `strategy-runner-lifecycle.test.ts` (113 LOC, 6 tests) (isolated tick execution, auto-stop, proxy wiring, and strategy constructor 3-arg guards from lifecycle, persistence, and double-start safety, preserving all 13 assertions)
+- Split `src/api/routes/__tests__/signal-ingest-routes.test.ts` (237→107 LOC, 6 tests) → `signal-ingest-routes-fixtures.ts` (41 LOC) + `signal-ingest-routes-validation.test.ts` (110 LOC, 6 tests) (isolated payload validation and publisher behavior from HMAC authentication tests, preserving all 12 assertions)
+- Split `src/desk/data/__tests__/data-quality-gate.test.ts` (238→139 LOC, 15 tests) → `data-quality-gate-fixtures.ts` (46 LOC) + `data-quality-gate-backtest.test.ts` (53 LOC, 4 tests) (isolated BacktestRunner integration and OHLCV config fixtures from timeframe and data quality gate core tests, preserving all 19 assertions)
+- Split `src/platform/risk/__tests__/drawdown-monitor-service.test.ts` (238→90 LOC, 8 tests) → `drawdown-monitor-service-fixtures.ts` (97 LOC) + `drawdown-monitor-service-alerts.test.ts` (45 LOC, 2 tests) (isolated alert generation and throttling from state management and halt lifecycle, preserving all 10 assertions)
+- Split `src/desk/risk/__tests__/equity-snapshot-manager.test.ts` (239→131 LOC, 8 tests) → `equity-snapshot-manager-fixtures.ts` (54 LOC) + `equity-snapshot-manager-queries.test.ts` (71 LOC, 4 tests) (isolated getDailyReturns and prune from snapshot CRUD and maintenance lifecycle, preserving all 12 assertions)
+- All 15 touched and created files strictly <= 160 visual lines (cap <= 200, max 139 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 57→52 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.72→3.1.73; typecheck passes with 0 errors & zero test churn (66/66 target tests, 12,483/12,483 full suite)
+
 ## [3.1.72] - 2026-09-15 — S18 Oversized-File Debt Burn-Down Tranche 40
 
 ### Changed

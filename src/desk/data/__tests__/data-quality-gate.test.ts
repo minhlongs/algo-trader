@@ -1,59 +1,15 @@
 /**
- * Data Quality Gate Tests
- *
- * Deterministic fixtures — no mocks, no fake data. Each test builds a real
- * OhlcvCandle[] series and asserts the gate's verdict.
+ * Data Quality Gate Tests — timeframeToMs + runDataQualityGate
+ * Validates candle-series quality detection: gaps, duplicates, OHLC invariant, price jumps, warnings.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { getHistoricalData, type OhlcvCandle } from '../ohlcv-store';
 import { runDataQualityGate, timeframeToMs } from '../data-quality-gate';
-import { BacktestRunner, type BacktestRunnerOptions } from '../../backtesting/backtest-runner';
+import { HOUR, BASE, makeCleanCandles } from './data-quality-gate-fixtures';
+import type { OhlcvCandle } from '../ohlcv-store';
 
-// Stub only the DB boundary — the gate and runner logic under test are real.
 vi.mock('../ohlcv-store', () => ({
   getHistoricalData: vi.fn(),
 }));
-
-type OhlcvBacktestConfig = BacktestRunnerOptions & {
-  ohlcvMarket: string;
-  ohlcvTimeframe: string;
-};
-
-function makeOhlcvConfig(overrides: Partial<BacktestRunnerOptions> = {}): OhlcvBacktestConfig {
-  return {
-    strategy: 'spread-mean-reversion',
-    paperTrading: true,
-    capitalUsdc: 1000,
-    days: 7,
-    ohlcvMarket: 'BTC/USD',
-    ohlcvTimeframe: '1h',
-    ...overrides,
-  };
-}
-
-const HOUR = 3_600_000;
-const BASE = Date.UTC(2026, 0, 1, 0, 0, 0);
-
-/** Build a clean, strictly-monotonic 1h candle series. */
-function makeCleanCandles(count: number): OhlcvCandle[] {
-  const candles: OhlcvCandle[] = [];
-  for (let i = 0; i < count; i++) {
-    const open = 100 + Math.sin(i) * 2;
-    const close = 100 + Math.sin(i + 1) * 2;
-    candles.push({
-      market: 'BTC/USD',
-      exchange: 'binance',
-      timeframe: '1h',
-      timestamp: new Date(BASE + i * HOUR),
-      open,
-      high: Math.max(open, close) + 0.5,
-      low: Math.min(open, close) - 0.5,
-      close,
-      volume: 1000 + i,
-    });
-  }
-  return candles;
-}
 
 describe('timeframeToMs', () => {
   it('maps known timeframes and returns undefined for unknown', () => {
@@ -81,7 +37,7 @@ describe('runDataQualityGate', () => {
 
   it('detects a gap (> 1 timeframe interval)', () => {
     const candles = makeCleanCandles(10);
-    candles.splice(4, 3); // 4-interval gap
+    candles.splice(4, 3);
     const report = runDataQualityGate(candles);
     expect(report.passed).toBe(false);
     expect(report.violations.some((v) => v.code === 'gap')).toBe(true);
@@ -123,29 +79,18 @@ describe('runDataQualityGate', () => {
   });
 
   it('detects a price jump exceeding N x ATR', () => {
-    // Flat series so ATR is tiny, then a huge jump.
     const candles: OhlcvCandle[] = [];
     for (let i = 0; i < 30; i++) {
       candles.push({
-        market: 'BTC/USD',
-        exchange: 'binance',
-        timeframe: '1h',
+        market: 'BTC/USD', exchange: 'binance', timeframe: '1h',
         timestamp: new Date(BASE + i * HOUR),
-        open: 100,
-        high: 100.1,
-        low: 99.9,
-        close: 100,
-        volume: 1000,
+        open: 100, high: 100.1, low: 99.9, close: 100, volume: 1000,
       });
     }
     const last = candles[candles.length - 1];
     candles.push({
-      ...last,
-      timestamp: new Date(last.timestamp.getTime() + HOUR),
-      open: 100,
-      high: 150,
-      low: 100,
-      close: 150, // 50-point jump vs ATR ~0.2
+      ...last, timestamp: new Date(last.timestamp.getTime() + HOUR),
+      open: 100, high: 150, low: 100, close: 150,
     });
     const report = runDataQualityGate(candles, { priceJumpAtrMultiple: 10 });
     expect(report.passed).toBe(false);
@@ -190,49 +135,5 @@ describe('runDataQualityGate', () => {
   it('is deterministic for identical input', () => {
     const candles = makeCleanCandles(30);
     expect(runDataQualityGate(candles)).toEqual(runDataQualityGate(candles));
-  });
-});
-
-describe('BacktestRunner data quality integration', () => {
-  // Only the DB fetch boundary is stubbed; the gate + runner logic are real.
-  // Candle fixtures are deterministic real data, not mocked values.
-
-  it('rejects a gapped dataset in strict mode (default) before replay', async () => {
-    const gapped = makeCleanCandles(20);
-    gapped.splice(8, 5); // inject a 6-interval gap
-    vi.mocked(getHistoricalData).mockResolvedValue(gapped);
-
-    const runner = new BacktestRunner();
-    await expect(runner.run(makeOhlcvConfig())).rejects.toThrow(/Data quality gate failed/);
-  });
-
-  it('rejects a gapped dataset when strict is explicitly true', async () => {
-    const gapped = makeCleanCandles(20);
-    gapped.splice(8, 5);
-    vi.mocked(getHistoricalData).mockResolvedValue(gapped);
-
-    const runner = new BacktestRunner();
-    await expect(
-      runner.run(makeOhlcvConfig({ dataQuality: { strict: true } })),
-    ).rejects.toThrow(/Data quality gate failed/);
-  });
-
-  it('continues with warnings when strict is false', async () => {
-    const gapped = makeCleanCandles(20);
-    gapped.splice(8, 5);
-    vi.mocked(getHistoricalData).mockResolvedValue(gapped);
-
-    const runner = new BacktestRunner();
-    const result = await runner.run(makeOhlcvConfig({ dataQuality: { strict: false } }));
-    expect(result.warnings.some((w) => w.includes('[data-quality]'))).toBe(true);
-  });
-
-  it('runs a clean dataset through strict mode without error', async () => {
-    vi.mocked(getHistoricalData).mockResolvedValue(makeCleanCandles(30));
-
-    const runner = new BacktestRunner();
-    const result = await runner.run(makeOhlcvConfig());
-    expect(result.metrics).toBeDefined();
-    expect(result.equityCurve.length).toBe(30);
   });
 });
