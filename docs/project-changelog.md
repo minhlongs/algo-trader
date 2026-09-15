@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.75] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 43
+
+### Changed
+- Split `src/desk/risk/__tests__/portfolio-correlation.test.ts` (253→83 LOC, 5 tests) → `portfolio-correlation-fixtures.ts` (8 LOC) + `portfolio-correlation-matrix.test.ts` (121 LOC, 4 tests) + `portfolio-correlation-diversification.test.ts` (54 LOC, 3 tests) (isolated correlation matrix construction and eigenvalue symmetry from diversification and concentration metrics, preserving all 12 assertions)
+- Split `src/desk/risk/__tests__/value-at-risk.test.ts` (253→105 LOC, 9 tests) → `value-at-risk-fixtures.ts` (26 LOC) + `value-at-risk-historical.test.ts` (122 LOC, 6 tests) (isolated historical VaR percentile, sqrt(t) scaling, CVaR/Expected Shortfall, and calculateVaR integration from parametric VaR, edge cases, time-horizon scaling, and method='both', preserving all 15 assertions)
+- Split `src/desk/strategies/dna/__tests__/journal-writer.test.ts` (255→96 LOC, 4 tests) → `journal-writer-fixtures.ts` (46 LOC) + `journal-writer-derive.test.ts` (42 LOC, 5 tests) (isolated TF-signal derivation, window bucketing, and confidence decay from journal CRUD and persistence, preserving all 9 assertions)
+- Split `src/platform/api/routes/__tests__/marketplace-strategy-insights-routes.test.ts` (255→142 LOC, 7 tests) → `marketplace-strategy-insights-routes-fixtures.ts` (75 LOC) (extracted synthetic request/response fixtures and auth mocking, preserving all 7 assertions)
+- Split `src/platform/marketplace/__tests__/marketplace-service.test.ts` (254→159 LOC, 12 tests) → `marketplace-service-fixtures.ts` (118 LOC) (extracted listing, payout, and service tier fixtures, preserving all 12 assertions)
+- All 14 touched and created files strictly <= 160 visual lines (cap <= 200, max 159 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 47→42 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (112/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.74→3.1.75; typecheck passes with 0 errors & zero test churn (78/78 target tests, 12,483/12,483 full suite)
+
 ## [3.1.74] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 42
 
 ### Changed

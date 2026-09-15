@@ -1973,6 +1973,36 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 43,
+      "version": "3.1.75",
+      "date": "2026-09-16",
+      "targets": [
+        "src/desk/risk/__tests__/portfolio-correlation.test.ts",
+        "src/desk/risk/__tests__/value-at-risk.test.ts",
+        "src/desk/strategies/dna/__tests__/journal-writer.test.ts",
+        "src/platform/api/routes/__tests__/marketplace-strategy-insights-routes.test.ts",
+        "src/platform/marketplace/__tests__/marketplace-service.test.ts"
+      ],
+      "modules": [
+        "portfolio-correlation-fixtures.ts",
+        "portfolio-correlation-matrix.test.ts",
+        "portfolio-correlation-diversification.test.ts",
+        "value-at-risk-fixtures.ts",
+        "value-at-risk-historical.test.ts",
+        "journal-writer-fixtures.ts",
+        "journal-writer-derive.test.ts",
+        "marketplace-strategy-insights-routes-fixtures.ts",
+        "marketplace-service-fixtures.ts"
+      ],
+      "ratchet": {
+        "before": 47,
+        "after": 42,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
