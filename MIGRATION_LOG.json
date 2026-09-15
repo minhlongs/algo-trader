@@ -1942,6 +1942,37 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 42,
+      "version": "3.1.74",
+      "date": "2026-09-16",
+      "targets": [
+        "src/desk/strategies/dna/__tests__/regime-detector.test.ts",
+        "src/seed/security/__tests__/audit-trail-e2e.test.ts",
+        "src/platform/api/routes/__tests__/signal-ingest-routes.test.ts",
+        "src/platform/signals-api/__tests__/signal-publisher.test.ts",
+        "src/platform/api/routes/__tests__/marketplace-subscription-routes.test.ts"
+      ],
+      "modules": [
+        "regime-detector-fixtures.ts",
+        "regime-detector-freshness.test.ts",
+        "audit-trail-fixtures.ts",
+        "audit-trail-e2e-hashchain.test.ts",
+        "signal-ingest-routes-fixtures.ts",
+        "signal-ingest-routes-validation.test.ts",
+        "signal-publisher-fixtures.ts",
+        "signal-publisher-lifecycle.test.ts",
+        "marketplace-subscription-fixtures.ts",
+        "marketplace-subscription-queries.test.ts"
+      ],
+      "ratchet": {
+        "before": 52,
+        "after": 47,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
