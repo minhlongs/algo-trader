@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.74] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 42
+
+### Changed
+- Split `src/desk/strategies/dna/__tests__/regime-detector.test.ts` (241→122 LOC, 9 tests) → `regime-detector-fixtures.ts` (72 LOC) + `regime-detector-freshness.test.ts` (61 LOC, 4 tests) (isolated isRegimeFresh boundary conditions and expiry checks from multi-TF trend/confidence calculation tests, preserving all 13 assertions)
+- Split `src/seed/security/__tests__/audit-trail-e2e.test.ts` (243→131 LOC, 4 tests) → `audit-trail-fixtures.ts` (42 LOC) + `audit-trail-e2e-hashchain.test.ts` (108 LOC, 3 tests) (isolated hash-chain fields, UUID request ID generation, and failure resilience from HTTP status/result mapping tests, preserving all 7 assertions)
+- Split `src/platform/api/routes/__tests__/signal-ingest-routes.test.ts` (245→127 LOC, 6 tests) → `signal-ingest-routes-fixtures.ts` (48 LOC) + `signal-ingest-routes-validation.test.ts` (131 LOC, 6 tests) (isolated payload validation and publisher integration behavior from HMAC authentication tests, preserving all 12 assertions)
+- Split `src/platform/signals-api/__tests__/signal-publisher.test.ts` (246→142 LOC, 8 tests) → `signal-publisher-fixtures.ts` (39 LOC) + `signal-publisher-lifecycle.test.ts` (105 LOC, 5 tests) (isolated tier rate limiting and webhook registration lifecycle from publish and getFeed queries, preserving all 13 assertions)
+- Split `src/platform/api/routes/__tests__/marketplace-subscription-routes.test.ts` (248→156 LOC, 9 tests) → `marketplace-subscription-fixtures.ts` (23 LOC) + `marketplace-subscription-queries.test.ts` (157 LOC, 8 tests) (isolated subscription list, get by ID, and on-demand execution queries from POST/PATCH mutation integration tests, preserving all 17 assertions)
+- All 15 touched and created files strictly <= 160 visual lines (cap <= 200, max 157 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 52→47 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.73→3.1.74; typecheck passes with 0 errors & zero test churn (62/62 target tests, 12,483/12,483 full suite)
+
 ## [3.1.73] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 41
 
 ### Changed
