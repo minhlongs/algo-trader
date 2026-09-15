@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 47,
+      "count": 42,
       "violators": {
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
         "src/desk/arbitrage/__tests__/ilp-constraint-builder.test.ts": 288,
@@ -48,13 +48,10 @@
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
         "src/desk/polymarket/__tests__/live-trading-integration.test.ts": 460,
-        "src/desk/risk/__tests__/portfolio-correlation.test.ts": 253,
         "src/desk/risk/__tests__/risk.test.ts": 335,
         "src/desk/risk/__tests__/tiered-drawdown-persistence.test.ts": 277,
-        "src/desk/risk/__tests__/value-at-risk.test.ts": 253,
         "src/desk/strategies/__tests__/probability-calibrator.test.ts": 367,
         "src/desk/strategies/dna/__tests__/consensus-engine.test.ts": 381,
-        "src/desk/strategies/dna/__tests__/journal-writer.test.ts": 255,
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
         "src/platform/api/__tests__/api.test.ts": 510,
@@ -62,7 +59,6 @@
         "src/platform/api/__tests__/kyc-routes.test.ts": 358,
         "src/platform/api/__tests__/security-integration.test.ts": 617,
         "src/platform/api/routes/__tests__/co-pilot-routes.test.ts": 465,
-        "src/platform/api/routes/__tests__/marketplace-strategy-insights-routes.test.ts": 255,
         "src/platform/api/routes/__tests__/newsletter-routes.test.ts": 501,
         "src/platform/api/routes/__tests__/personalization-routes.test.ts": 308,
         "src/platform/api/routes/__tests__/signal-subscription-routes.test.ts": 469,
@@ -73,7 +69,6 @@
         "src/platform/billing/__tests__/payment-service.test.ts": 347,
         "src/platform/billing/__tests__/subscription-service.test.ts": 255,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
-        "src/platform/marketplace/__tests__/marketplace-service.test.ts": 254,
         "src/platform/marketplace/services/__tests__/marketplace-payout-scheduler.test.ts": 297,
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
         "src/platform/notifications/__tests__/email-campaign-templates.test.ts": 279,

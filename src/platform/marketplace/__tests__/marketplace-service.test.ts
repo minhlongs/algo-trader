@@ -2,93 +2,15 @@
  * Marketplace Service Tests
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MarketplaceService } from '../services/marketplace.service';
-
-const { mockStrategyRepo, mockListingRepo, mockVettingRepo, mockReviewRepo, mockPerfRepo } = vi.hoisted(() => {
-  const mockStrategyRepo = {
-    findById: vi.fn(),
-    findAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    updateStatus: vi.fn(),
-    findByStatus: vi.fn(),
-    findLatestPerformance: vi.fn(),
-    count: vi.fn(),
-    delete: vi.fn(),
-  };
-  const mockListingRepo = {
-    findById: vi.fn(),
-    findByStrategyId: vi.fn().mockResolvedValue(null),
-    findAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    incrementSubscriberCount: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn(),
-  };
-  const mockVettingRepo = {
-    findById: vi.fn(),
-    findByStrategyId: vi.fn().mockResolvedValue(null),
-    create: vi.fn(),
-    findAll: vi.fn(),
-    count: vi.fn(),
-    complete: vi.fn(),
-  };
-  const mockReviewRepo = {
-    findById: vi.fn(),
-    findAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    incrementHelpful: vi.fn(),
-    incrementReported: vi.fn(),
-    findBySubscriptionId: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn(),
-    getAverageRating: vi.fn(),
-  };
-  const mockPerfRepo = {
-    findById: vi.fn(),
-    findByStrategyAndDate: vi.fn(),
-    findAll: vi.fn(),
-    create: vi.fn(),
-    upsert: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    count: vi.fn(),
-    getLatestByStrategy: vi.fn(),
-  };
-  return { mockStrategyRepo, mockListingRepo, mockVettingRepo, mockReviewRepo, mockPerfRepo };
-});
-
-vi.mock('../repositories/strategy-repository', () => {
-  const MockStrategyRepo = function () { return mockStrategyRepo; };
-  MockStrategyRepo.prototype = mockStrategyRepo;
-  return { StrategyRepository: MockStrategyRepo, strategyRepository: mockStrategyRepo };
-});
-
-vi.mock('../repositories/listing-repository', () => {
-  const MockListingRepo = function () { return mockListingRepo; };
-  MockListingRepo.prototype = mockListingRepo;
-  return { ListingRepository: MockListingRepo, listingRepository: mockListingRepo };
-});
-
-vi.mock('../repositories/vetting-job-repository', () => {
-  const MockVettingRepo = function () { return mockVettingRepo; };
-  MockVettingRepo.prototype = mockVettingRepo;
-  return { VettingJobRepository: MockVettingRepo, vettingJobRepository: mockVettingRepo };
-});
-
-vi.mock('../repositories/review-repository', () => {
-  const MockReviewRepo = function () { return mockReviewRepo; };
-  MockReviewRepo.prototype = mockReviewRepo;
-  return { ReviewRepository: MockReviewRepo, reviewRepository: mockReviewRepo };
-});
-
-vi.mock('../repositories/performance-repository', () => {
-  const MockPerfRepo = function () { return mockPerfRepo; };
-  MockPerfRepo.prototype = mockPerfRepo;
-  return { PerformanceRepository: MockPerfRepo, performanceRepository: mockPerfRepo };
-});
+import {
+  mockStrategyRepo,
+  mockListingRepo,
+  mockVettingRepo,
+  mockReviewRepo,
+  mockPerfRepo,
+  mockStrategy,
+} from './marketplace-service-fixtures.js';
+import { MarketplaceService } from '../services/marketplace.service.js';
 
 describe('MarketplaceService', () => {
   let service: MarketplaceService;
@@ -97,23 +19,6 @@ describe('MarketplaceService', () => {
     vi.clearAllMocks();
     service = new MarketplaceService();
   });
-
-  const mockStrategy = {
-    id: 'strat_001',
-    tenantId: 'tenant_001',
-    creatorId: 'creator_001',
-    name: 'Test Strategy',
-    description: 'A test strategy',
-    category: 'momentum' as const,
-    status: 'draft',
-    riskLevel: 5,
-    minAllocationUsd: 1000,
-    maxAllocationUsd: 50000,
-    supportedExchanges: ['binance'],
-    tags: ['momentum'],
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01'),
-  };
 
   it('should create a strategy', async () => {
     mockStrategyRepo.create.mockResolvedValue(mockStrategy);
