@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.71] - 2026-09-15 — S18 Oversized-File Debt Burn-Down Tranche 39
+
+### Changed
+- Split `src/platform/audit/__tests__/tenant-audit-chain.test.ts` (216→129 LOC, 7 tests) → `tenant-audit-chain-fixtures.ts` (94 LOC) (extracted dynamic query/transaction mock handlers, MockRow interface, and JSON metadata parsing, preserving all 7 assertions)
+- Split `src/platform/api/__tests__/blog-engagement-routes.test.ts` (218→115 LOC, 8 tests) → `blog-engagement-fixtures.ts` (8 LOC) + `blog-engagement-content.test.ts` (119 LOC, 5 tests) (isolated comments submission/listing and post similarity recommendations into focused companion suite, preserving all 13 assertions)
+- Split `src/platform/notifications/__tests__/notification-services.test.ts` (219→136 LOC, 8 tests) → `notification-services-fixtures.ts` (30 LOC) + `notification-telegram.test.ts` (76 LOC, 4 tests) (isolated TelegramBotService session linking and unlinking tests into dedicated suite while preserving EmailService, SmsService, and singleton integration tests, preserving all 12 assertions)
+- Split `src/desk/market-data/__tests__/gap-detector.test.ts` (222→85 LOC, 6 tests) → `gap-detector-fixtures.ts` (36 LOC) + `gap-detector-gaps.test.ts` (88 LOC, 5 tests) (isolated gap detection algorithms, threshold tests, and consecutive missing resets into companion suite while preserving tracking initialization, stale data, and stats, preserving all 11 assertions)
+- Split `src/platform/api/routes/__tests__/admin-qwen-strategy-reviews.test.ts` (223→134 LOC, 8 tests) → `admin-qwen-strategy-reviews-fixtures.ts` (21 LOC) + `admin-qwen-strategy-reviews-resolve.test.ts` (101 LOC, 4 tests) (isolated POST /resolve route tests into dedicated suite while preserving GET strategy review query filtering, limits, and auth tests, preserving all 12 assertions)
+- All 14 touched and created files strictly <= 160 visual lines (cap <= 200, max 136 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 67→62 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (114/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.70→3.1.71; typecheck passes with 0 errors & zero test churn (55/55 target tests, 12,483/12,483 full suite)
+
 ## [3.1.70] - 2026-09-15 — S18 Oversized-File Debt Burn-Down Tranche 38
 
 ### Changed
