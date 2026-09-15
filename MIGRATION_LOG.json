@@ -1911,6 +1911,37 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 41,
+      "version": "3.1.73",
+      "date": "2026-09-16",
+      "targets": [
+        "src/desk/polymarket/__tests__/strategy-runner.test.ts",
+        "src/api/routes/__tests__/signal-ingest-routes.test.ts",
+        "src/desk/data/__tests__/data-quality-gate.test.ts",
+        "src/platform/risk/__tests__/drawdown-monitor-service.test.ts",
+        "src/desk/risk/__tests__/equity-snapshot-manager.test.ts"
+      ],
+      "modules": [
+        "strategy-runner-fixtures.ts",
+        "strategy-runner-lifecycle.test.ts",
+        "signal-ingest-routes-fixtures.ts",
+        "signal-ingest-routes-validation.test.ts",
+        "data-quality-gate-fixtures.ts",
+        "data-quality-gate-backtest.test.ts",
+        "drawdown-monitor-service-fixtures.ts",
+        "drawdown-monitor-service-alerts.test.ts",
+        "equity-snapshot-manager-fixtures.ts",
+        "equity-snapshot-manager-queries.test.ts"
+      ],
+      "ratchet": {
+        "before": 57,
+        "after": 52,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
