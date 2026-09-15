@@ -35,7 +35,7 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 67,
+      "count": 62,
       "violators": {
         "src/api/routes/__tests__/signal-ingest-routes.test.ts": 237,
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
@@ -49,7 +49,6 @@
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
         "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
-        "src/desk/market-data/__tests__/gap-detector.test.ts": 222,
         "src/desk/ml/meta-ensemble/__tests__/adaptive-fusion.test.ts": 227,
         "src/desk/polymarket/__tests__/live-trading-integration.test.ts": 460,
         "src/desk/polymarket/__tests__/strategy-runner.test.ts": 228,
@@ -66,11 +65,9 @@
         "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts": 266,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
         "src/platform/api/__tests__/api.test.ts": 510,
-        "src/platform/api/__tests__/blog-engagement-routes.test.ts": 218,
         "src/platform/api/__tests__/compliance-routes.test.ts": 264,
         "src/platform/api/__tests__/kyc-routes.test.ts": 358,
         "src/platform/api/__tests__/security-integration.test.ts": 617,
-        "src/platform/api/routes/__tests__/admin-qwen-strategy-reviews.test.ts": 223,
         "src/platform/api/routes/__tests__/co-pilot-routes.test.ts": 465,
         "src/platform/api/routes/__tests__/marketplace-strategy-insights-routes.test.ts": 255,
         "src/platform/api/routes/__tests__/marketplace-subscription-routes.test.ts": 248,
@@ -79,7 +76,6 @@
         "src/platform/api/routes/__tests__/signal-ingest-routes.test.ts": 245,
         "src/platform/api/routes/__tests__/signal-subscription-routes.test.ts": 469,
         "src/platform/audit/__tests__/audit-log-service.test.ts": 315,
-        "src/platform/audit/__tests__/tenant-audit-chain.test.ts": 216,
         "src/platform/billing/__tests__/enterprise-onboarding.test.ts": 280,
         "src/platform/billing/__tests__/invoice-generator.test.ts": 275,
         "src/platform/billing/__tests__/license-service.test.ts": 279,
@@ -91,7 +87,6 @@
         "src/platform/marketplace/services/__tests__/marketplace-payout-scheduler.test.ts": 297,
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
         "src/platform/notifications/__tests__/email-campaign-templates.test.ts": 279,
-        "src/platform/notifications/__tests__/notification-services.test.ts": 219,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/platform/risk/__tests__/drawdown-monitor-service.test.ts": 238,
         "src/platform/risk/__tests__/drawdown-monitor-types.test.ts": 260,
@@ -102,7 +97,7 @@
         "src/rollback/__tests__/rollback-evaluators.test.ts": 386,
         "src/seed/security/__tests__/audit-log.test.ts": 365,
         "src/seed/security/__tests__/audit-trail-e2e.test.ts": 243,
-        "src/seed/security/__tests__/crypto.test.ts": 337,
+        "src/seed/security/__tests__/crypto.test.ts": 331,
         "src/shared/middleware/__tests__/rate-limiter.test.ts": 304
       }
     }

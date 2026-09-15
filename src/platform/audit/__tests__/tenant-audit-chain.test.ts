@@ -1,34 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { QueryResult, PoolClient } from 'pg';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // First, mock the module (hoisted) to make sure they are mock functions
-vi.mock('../../../shared/db/postgres-client', () => {
-  return {
-    query: vi.fn(),
-    transaction: vi.fn(),
-  };
-});
+vi.mock('../../../shared/db/postgres-client', () => ({
+  query: vi.fn(),
+  transaction: vi.fn(),
+}));
 
-// Import the database client and the module under test
 import { query, transaction } from '../../../shared/db/postgres-client';
-import { appendTenantAuditLog, verifyTenantChain, computeTenantAuditHash, canonicalJsonStringify } from '../tenant-audit-log';
-
-interface MockRow {
-  id: string;
-  tenant_id: string;
-  sequence_number: number;
-  event_type: string;
-  action_by: string;
-  reason: string | null;
-  metadata: string;
-  hash: string;
-  previous_hash: string | null;
-  created_at: Date;
-}
+import { appendTenantAuditLog, verifyTenantChain, canonicalJsonStringify } from '../tenant-audit-log';
+import {
+  MockRow,
+  createMockQueryHandler,
+  createMockTransactionHandler,
+} from './tenant-audit-chain-fixtures';
 
 describe('Tenant Audit Log Chain', () => {
   const mockRows: MockRow[] = [];
-  // Use a fixed timestamp for all test operations to ensure hash consistency
   const fixedTimestamp = new Date('2026-08-11T12:00:00.000Z');
 
   beforeEach(() => {
@@ -36,82 +23,8 @@ describe('Tenant Audit Log Chain', () => {
     vi.setSystemTime(fixedTimestamp);
     mockRows.length = 0;
 
-    // Set dynamic mock implementations specifically for this test block
-    (query as any).mockImplementation(async (sql: string, params?: unknown[]) => {
-      if (sql.includes('ORDER BY sequence_number DESC')) {
-        const tenantId = params?.[0] as string;
-        const tenantRows = mockRows.filter(r => r.tenant_id === tenantId);
-        if (tenantRows.length === 0) return { rows: [] } as unknown as QueryResult<MockRow>;
-        const sorted = [...tenantRows].sort((a, b) => b.sequence_number - a.sequence_number);
-        return { rows: [sorted[0]] } as unknown as QueryResult<MockRow>;
-      }
-      
-      if (sql.includes('ORDER BY sequence_number ASC')) {
-        const tenantId = params?.[0] as string;
-        const tenantRows = mockRows.filter(r => r.tenant_id === tenantId);
-        const sorted = [...tenantRows].sort((a, b) => a.sequence_number - b.sequence_number);
-        // Parse metadata JSON string back to object for verifyTenantChain
-        return {
-          rows: sorted.map(r => ({
-            ...r,
-            metadata: typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata,
-          }))
-        } as unknown as QueryResult<MockRow>;
-      }
-      
-      if (sql.includes('INSERT INTO tenant_audit_logs')) {
-        const [tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash, created_at] = params || [];
-        const newRow: MockRow = {
-          id: `uuid-${Date.now()}-${Math.random()}`,
-          tenant_id: tenant_id as string,
-          sequence_number: Number(sequence_number),
-          event_type: event_type as string,
-          action_by: action_by as string,
-          reason: reason as string | null,
-          metadata: metadata as string,
-          hash: hash as string,
-          previous_hash: previous_hash === undefined ? null : (previous_hash as string | null),
-          created_at: created_at as Date,
-        };
-        mockRows.push(newRow);
-        return { rows: [newRow] } as unknown as QueryResult<MockRow>;
-      }
-      
-      return { rows: [] } as unknown as QueryResult<never>;
-    });
-
-    vi.mocked(transaction).mockImplementation(async (fn: (client: PoolClient) => Promise<unknown>) => {
-      const mockClient = {
-        query: vi.fn(async (sql: string, params?: unknown[]) => {
-          if (sql.includes('ORDER BY sequence_number DESC')) {
-            const tenantId = params?.[0] as string;
-            const tenantRows = mockRows.filter(r => r.tenant_id === tenantId);
-            if (tenantRows.length === 0) return { rows: [] } as unknown as QueryResult<MockRow>;
-            const sorted = [...tenantRows].sort((a, b) => b.sequence_number - a.sequence_number);
-            return { rows: [sorted[0]] } as unknown as QueryResult<MockRow>;
-          }
-          if (sql.includes('INSERT INTO tenant_audit_logs')) {
-            const [tenant_id, sequence_number, event_type, action_by, reason, metadata, hash, previous_hash] = params || [];
-            const newRow: MockRow = {
-              id: `uuid-${Date.now()}-${Math.random()}`,
-              tenant_id: tenant_id as string,
-              sequence_number: Number(sequence_number),
-              event_type: event_type as string,
-              action_by: action_by as string,
-              reason: reason as string | null,
-              metadata: metadata as string,
-              hash: hash as string,
-              previous_hash: previous_hash === undefined ? null : (previous_hash as string | null),
-              created_at: fixedTimestamp,
-            };
-            mockRows.push(newRow);
-            return { rows: [newRow] } as unknown as QueryResult<MockRow>;
-          }
-          return { rows: [] } as unknown as QueryResult<never>;
-        })
-      };
-      return fn(mockClient as unknown as PoolClient);
-    });
+    vi.mocked(query).mockImplementation(createMockQueryHandler(mockRows) as never);
+    vi.mocked(transaction).mockImplementation(createMockTransactionHandler(mockRows, fixedTimestamp));
   });
 
   afterEach(() => {
