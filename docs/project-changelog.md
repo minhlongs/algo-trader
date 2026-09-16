@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.77] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 45
+
+### Changed
+- Split `src/desk/cli/__tests__/alpha-cli.test.ts` (285→33 LOC, 7 tests) → `alpha-cli-fixtures.ts` (158 LOC) + `alpha-cli-backtest.test.ts` (82 LOC) (extracted commander/fs/logger mocks and createAlphaCmd/runCommand helpers into fixtures, split candidate tests from backtest and comparison, preserving all 7 assertions)
+- Split `src/desk/risk/__tests__/tiered-drawdown-persistence.test.ts` (277→82 LOC, 14 tests) → `tiered-drawdown-load-deferred.test.ts` (160 LOC) (isolated buildPersistedState from loadPersistedState, scheduleDeferredWrite, and shared sampleEvent/sampleState helpers, preserving all 14 assertions)
+- Split `src/platform/billing/__tests__/license-service.test.ts` (279→157 LOC, 27 tests) → `license-key-generation.test.ts` (40 LOC) + `license-service-crud.test.ts` (157 LOC) + `license-service-analytics.test.ts` (42 LOC) (extracted key generation and analytics from CRUD, preserving singleton `(service as any).licenses.clear()` reset in all three, preserving all 27 assertions)
+- Split `src/platform/notifications/__tests__/email-campaign-templates.test.ts` (279→128 LOC, 21 tests) → `email-campaign-starter-tier.test.ts` (128 LOC) + `email-campaign-co-pilot.test.ts` (142 LOC) (isolated starter tier HTML builders from AI Co-pilot templates, preserving all 21 assertions)
+- Split `src/platform/billing/__tests__/enterprise-onboarding.test.ts` (280→129 LOC, 19 tests) → `enterprise-inquiry-store.test.ts` (150 LOC) (extracted store CRUD, ACV constants, TAM notifier, and paper demo provisioner from EnterpriseOnboardingService orchestration, preserving all 19 assertions)
+- All 11 touched and created test files strictly <= 160 visual lines (cap <= 200, max 160 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 37→32 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (113/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.76→3.1.77; typecheck passes with 0 errors & zero test churn (97/97 target tests, 12,484/12,484 full suite)
+
 ## [3.1.76] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 44
 
 ### Changed

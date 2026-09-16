@@ -250,10 +250,11 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] Tranche 42: 5 oversized test files split into ≤160-LOC modules (`regime-detector.test.ts` 241→122, `audit-trail-e2e.test.ts` 243→131, `signal-ingest-routes.test.ts` 245→127, `signal-publisher.test.ts` 246→142, `marketplace-subscription-routes.test.ts` 248→156), baseline pruned 52 → 47 (-5 entries, 0 added, 47 remaining)
 - [x] Tranche 43: 5 oversized test files split into ≤160-LOC modules (`portfolio-correlation.test.ts` 253→83, `value-at-risk.test.ts` 253→105, `journal-writer.test.ts` 255→96, `marketplace-strategy-insights-routes.test.ts` 255→142, `marketplace-service.test.ts` 254→159), baseline pruned 47 → 42 (-5 entries, 0 added, 42 remaining)
 - [x] Tranche 44: 5 oversized test files split into ≤160-LOC modules (`subscription-service.test.ts` 255→146, `drawdown-monitor-types.test.ts` 260→123, `compliance-routes.test.ts` 264→159, `qwen-rollback-harness.test.ts` 266→106, `invoice-generator.test.ts` 275→116), baseline pruned 42 → 37 (-5 entries, 0 added, 37 remaining)
+- [x] Tranche 45: 5 oversized test files split into ≤160-LOC modules (`alpha-cli.test.ts` 285→33+82+158, `tiered-drawdown-persistence.test.ts` 277→82+160, `license-service.test.ts` 279→40+157+42, `email-campaign-templates.test.ts` 279→128+142, `enterprise-onboarding.test.ts` 280→129+150), baseline pruned 37 → 32 (-5 entries, 0 added, 32 remaining)
 - [x] Zero importer edits, zero test regressions, zero new `:any` (113/114), zero new `console.*` (45/45)
-- [x] Full suite 12,483 tests pass (100%), typecheck 0 errors, build exit 0
-- [x] `--quality` 4/4 PASS
-- Version: 3.1.76
+- [x] Full suite 12,484 tests pass (100%), typecheck 0 errors, build exit 0
+- [x] `--quality` 11/11 PASS
+- Version: 3.1.77
 - Status: **COMPLETE** ✅
 
 ### GTM Execution — Next Wave V (In Progress)
