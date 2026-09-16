@@ -1,5 +1,5 @@
 /**
- * Marketplace Payout Scheduler Tests — Core Processing & Triggers
+ * Marketplace Payout Scheduler Tests — Edge Cases & Manual Processing
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -47,7 +47,7 @@ vi.mock('../../repositories/strategy-repository', () => ({
   strategyRepository: { findById: (...args: unknown[]) => mocks.mockStrategyFindById(...args) },
 }));
 
-describe('MarketplacePayoutScheduler — Core Processing & Triggers', () => {
+describe('MarketplacePayoutScheduler — Edge Cases & Manual Processing', () => {
   let scheduler: MarketplacePayoutScheduler;
 
   beforeEach(() => {
@@ -64,59 +64,51 @@ describe('MarketplacePayoutScheduler — Core Processing & Triggers', () => {
   });
   afterEach(() => { vi.restoreAllMocks(); });
 
-  describe('worker processor', () => {
-    it('processes pending revenue shares and sends USDT payouts', async () => {
-      mocks.mockFindAll.mockResolvedValue({
-        data: [mockPendingShare], total: 1, page: 1, limit: 500, totalPages: 1,
-      });
-      mocks.mockFindById.mockResolvedValue(mockPendingShareDetail);
-      mocks.mockStrategyFindById.mockResolvedValue(mockStrategy);
+  describe('worker processor - filters & manual trigger', () => {
+    it('skips already-paid records', async () => {
+      mocks.mockFindAll.mockResolvedValue({ data: [{ id: 'rev_001', strategyId: 'strat_001', status: 'paid' }], total: 1, page: 1, limit: 500, totalPages: 1 });
+      mocks.mockFindById.mockResolvedValue({ id: 'rev_001', strategyId: 'strat_001', status: 'paid' });
 
-      const result = await state.capturedProcessor!({ id: 'job_001', data: { manual: false } });
-
-      expect(result.processed).toBe(1);
-      expect(mocks.mockCreatePayout).toHaveBeenCalledWith({ address: 'TXxxUSDTTRC20WalletAddress12345', amount: 23.99 });
-      expect(mocks.mockMarkAsPaid).toHaveBeenCalledWith('rev_001', 'payout_001');
-    });
-
-    it('does NOT mark as paid when payout API fails', async () => {
-      mocks.mockFindAll.mockResolvedValue({ data: [{ id: 'rev_001', strategyId: 'strat_001', status: 'pending' }], total: 1, page: 1, limit: 500, totalPages: 1 });
-      mocks.mockFindById.mockResolvedValue({ id: 'rev_001', strategyId: 'strat_001', status: 'pending' });
-      mocks.mockStrategyFindById.mockResolvedValue(mockStrategy);
-      mocks.mockCreatePayout.mockResolvedValue(null);
-
-      const result = await state.capturedProcessor!({ id: 'job_002', data: { manual: false } });
+      const result = await state.capturedProcessor!({ id: 'job_003', data: { manual: false } });
 
       expect(result.processed).toBe(0);
-      expect(result.errors).toHaveLength(1);
-      expect(mocks.mockCreatePayout).toHaveBeenCalled();
       expect(mocks.mockMarkAsPaid).not.toHaveBeenCalled();
     });
 
-    it('handles missing revenue record gracefully', async () => {
-      mocks.mockFindAll.mockResolvedValue({ data: [{ id: 'rev_001', strategyId: 'strat_001', status: 'pending' }], total: 1, page: 1, limit: 500, totalPages: 1 });
-      mocks.mockFindById.mockResolvedValue(null);
+    it('skips when creator has no payoutAddress', async () => {
+      mocks.mockFindAll.mockResolvedValue({ data: [mockPendingShare], total: 1, page: 1, limit: 500, totalPages: 1 });
+      mocks.mockFindById.mockResolvedValue(mockPendingShareDetail);
+      mocks.mockStrategyFindById.mockResolvedValue({ id: 'strat_001', payoutAddress: null });
 
-      const result = await state.capturedProcessor!({ id: 'job_005', data: { manual: false } });
+      const result = await state.capturedProcessor!({ id: 'job_004', data: { manual: false } });
 
-      expect(result.errors).toHaveLength(1);
       expect(result.processed).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(mocks.mockCreatePayout).not.toHaveBeenCalled();
+      expect(mocks.mockMarkAsPaid).not.toHaveBeenCalled();
     });
-  });
 
-  describe('scheduleWeeklyPayout', () => {
-    it('adds a weekly repeat job via upsertJobScheduler', async () => {
-      await scheduler.scheduleWeeklyPayout();
-      expect(mocks.mockUpsertJobScheduler).toHaveBeenCalledWith('weekly-payout', { pattern: '0 2 * * 0' }, { data: { manual: false } });
+    it('no-ops when no pending records exist', async () => {
+      mocks.mockFindAll.mockResolvedValue({ data: [], total: 0, page: 1, limit: 500, totalPages: 0 });
+
+      const result = await state.capturedProcessor!({ id: 'job_006', data: { manual: false } });
+
+      expect(result.processed).toBe(0);
+      expect(result.errors).toHaveLength(0);
     });
-  });
 
-  describe('triggerManualPayout', () => {
-    it('adds a manual payout job with revenue IDs', async () => {
-      mocks.mockQueueAdd.mockResolvedValue({ id: 'job_manual' });
-      const job = await scheduler.triggerManualPayout(['rev_001', 'rev_002']);
-      expect(job.id).toBe('job_manual');
-      expect(mocks.mockQueueAdd).toHaveBeenCalledWith('manual-payout', { revenueIds: ['rev_001', 'rev_002'], manual: true });
+    it('uses revenueIds from manual trigger job', async () => {
+      mocks.mockFindById.mockResolvedValue(mockPendingShareDetail);
+      mocks.mockStrategyFindById.mockResolvedValue(mockStrategy);
+
+      const result = await state.capturedProcessor!({
+        id: 'job_007',
+        data: { manual: true, revenueIds: ['rev_001', 'rev_002'] },
+      });
+
+      expect(result.processed).toBe(2);
+      expect(mocks.mockFindAll).not.toHaveBeenCalled();
+      expect(mocks.mockFindById).toHaveBeenCalledTimes(2);
     });
   });
 });

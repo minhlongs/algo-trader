@@ -1,22 +1,15 @@
 /**
- * System Doctor Tests
+ * System Doctor Tests — Check Engine & Report
  *
- * Covers the injected check engine (`runSystemDoctor`) with fake dependencies,
- * report rendering, and the real default dependency implementations
- * (`inspectLedger`, `loadGateSummary`, `readQualityBaselineVersion`) against a
- * per-test tmpdir / stubbed network so no test touches production state.
+ * Covers the injected check engine (`runSystemDoctor`) with fake dependencies
+ * and report rendering (`renderDoctorReport`).
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { join } from 'node:path';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-
+import { describe, it, expect, vi } from 'vitest';
 import { runSystemDoctor, renderDoctorReport } from '../system-doctor';
 import type { DoctorDeps } from '../system-doctor';
-import { inspectLedger } from '../system-doctor-defaults';
 
-// ── Logger capture (path as resolved from this test file) ─────────────────────
+// ── Logger capture ────────────────────────────────────────────────────────────
 
 vi.mock('../../../shared/utils/logger', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -162,131 +155,5 @@ describe('renderDoctorReport', () => {
     expect(output).toContain('Result:');
     expect(output).toContain('1 check(s) FAILED');
     expect(output).toContain('1 unreachable (tolerated)');
-  });
-});
-
-// ── Real default implementations ──────────────────────────────────────────────
-
-describe('inspectLedger (real implementation)', () => {
-  let ledgerPath: string;
-  let ledgerDir: string;
-
-  beforeEach(async () => {
-    ledgerDir = await mkdtemp(join(tmpdir(), 'system-doctor-test-'));
-    ledgerPath = join(ledgerDir, 'research-ledger.jsonl');
-  });
-
-  afterEach(async () => {
-    await rm(ledgerDir, { recursive: true, force: true });
-  });
-
-  it('returns missing when no ledger file exists', async () => {
-    await expect(inspectLedger(ledgerPath)).resolves.toEqual({ state: 'missing', count: 0 });
-  });
-
-  it('returns the record count when the ledger is readable', async () => {
-    const line = JSON.stringify({
-      runId: 'run-1',
-      configHash: 'cfg',
-      resultClass: 'IS',
-      strategyRef: 'rsi',
-      recordedAt: '2026-01-01T00:00:00Z',
-      gates: {},
-      prevHash: '',
-    });
-    await writeFile(ledgerPath, `${line}\n${line}\n`);
-    await expect(inspectLedger(ledgerPath)).resolves.toEqual({ state: 'ok', count: 2 });
-  });
-
-  it('returns corrupt when the file exists but records do not parse', async () => {
-    await writeFile(ledgerPath, '{not-json-at-all\n');
-    await expect(inspectLedger(ledgerPath)).resolves.toEqual({ state: 'corrupt', count: 0 });
-  });
-});
-
-describe('defaultDoctorDeps (real implementations)', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.unstubAllEnvs();
-    vi.resetModules();
-  });
-
-  async function getDefaultDoctorDeps() {
-    const mod = await import('../system-doctor-defaults');
-    return mod.defaultDoctorDeps();
-  }
-
-  it('degrades gracefully to an empty-trade gate summary when offline', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new Error('network down');
-      }),
-    );
-    const deps = await getDefaultDoctorDeps();
-    const summary = await deps.loadGateSummary();
-    expect(summary.hasPaperData).toBe(false);
-    expect(summary.totalGates).toBe(10);
-    expect(summary.passedCount).toBeLessThan(summary.totalGates);
-  });
-
-  it('reads the repository quality baseline version', async () => {
-    const deps = await getDefaultDoctorDeps();
-    const version = await deps.readQualityBaselineVersion();
-    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
-  });
-
-  it('exposes all five dependency slots', async () => {
-    const deps = await getDefaultDoctorDeps();
-    expect(typeof deps.getExecutionMode).toBe('function');
-    expect(typeof deps.countOhlcvCandles).toBe('function');
-    expect(typeof deps.inspectLedger).toBe('function');
-    expect(typeof deps.loadGateSummary).toBe('function');
-    expect(typeof deps.readQualityBaselineVersion).toBe('function');
-  });
-});
-
-// ── PAPER_TRADES_API env override ─────────────────────────────────────────────
-// The URL is read at module load time (same pattern as check-gates.ts), so
-// each case must import the module fresh AFTER stubbing the env var.
-// The top-level `import { defaultDoctorDeps } from '../system-doctor-defaults'`
-// is already loaded; vi.resetModules() clears the cache but the binding in
-// the test module still points to the old module instance. We must NOT import
-// at top level for these tests — use dynamic import inside the test case.
-
-describe('PAPER_TRADES_API env override', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.unstubAllGlobals();
-    vi.resetModules();
-  });
-
-  async function captureFetchUrl(): Promise<string | undefined> {
-    let capturedUrl: string | undefined;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (url: string | URL) => {
-        capturedUrl = String(url);
-        throw new Error('network down');
-      }),
-    );
-    // Fresh import AFTER stubEnv so the module sees the new env value
-    const mod = await import('../system-doctor-defaults');
-    const deps = mod.defaultDoctorDeps();
-    await deps.loadGateSummary();
-    return capturedUrl;
-  }
-
-  it('honors the PAPER_TRADES_API env override', async () => {
-    vi.stubEnv('PAPER_TRADES_API', 'https://example.test/paper-trades');
-    const url = await captureFetchUrl();
-    expect(url).toBe('https://example.test/paper-trades');
-  });
-
-  it('falls back to the default cashclaw URL when PAPER_TRADES_API is unset', async () => {
-    // Unset the env var completely (undefined), not empty string
-    vi.stubEnv('PAPER_TRADES_API', undefined);
-    const url = await captureFetchUrl();
-    expect(url).toBe('https://api.cashclaw.cc/api/v1/paper-trades');
   });
 });

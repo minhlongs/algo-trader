@@ -2034,6 +2034,68 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 45,
+      "date": "2026-09-16",
+      "version": "3.1.77",
+      "action": "S18 Oversized-File Debt Burn-Down Tranche 45",
+      "targets": [
+        "src/desk/arbitrage/__tests__/ilp-constraint-builder.test.ts",
+        "src/desk/cli/__tests__/system-doctor.test.ts",
+        "src/platform/marketplace/services/__tests__/marketplace-payout-scheduler.test.ts",
+        "src/shared/middleware/__tests__/rate-limiter.test.ts",
+        "src/platform/api/routes/__tests__/personalization-routes.test.ts"
+      ],
+      "modules": [
+        "ilp-constraint-builder-fixtures.ts",
+        "ilp-constraint-builder-exposure.test.ts",
+        "system-doctor-defaults.test.ts",
+        "marketplace-payout-scheduler.fixtures.ts",
+        "marketplace-payout-scheduler-edge-cases.test.ts",
+        "rate-limiter.fixtures.ts",
+        "rate-limiter-features.test.ts",
+        "personalization-routes.fixtures.ts",
+        "personalization-events.test.ts"
+      ],
+      "ratchet": {
+        "before": 37,
+        "after": 32,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
+    },
+    {
+      "tranche": 46,
+      "date": "2026-09-16",
+      "version": "3.1.78",
+      "action": "S18 Oversized-File Debt Burn-Down Tranche 46",
+      "targets": [
+        "src/desk/arbitrage/__tests__/ilp-constraint-builder.test.ts",
+        "src/desk/cli/__tests__/system-doctor.test.ts",
+        "src/platform/marketplace/services/__tests__/marketplace-payout-scheduler.test.ts",
+        "src/shared/middleware/__tests__/rate-limiter.test.ts",
+        "src/platform/api/routes/__tests__/personalization-routes.test.ts"
+      ],
+      "modules": [
+        "ilp-constraint-builder-fixtures.ts",
+        "ilp-constraint-builder-exposure.test.ts",
+        "system-doctor-defaults.test.ts",
+        "marketplace-payout-scheduler.fixtures.ts",
+        "marketplace-payout-scheduler-edge-cases.test.ts",
+        "rate-limiter.fixtures.ts",
+        "rate-limiter-features.test.ts",
+        "personalization-routes.fixtures.ts",
+        "personalization-events.test.ts"
+      ],
+      "ratchet": {
+        "before": 32,
+        "after": 27,
+        "delta": -5
+      },
+      "tests": 12473,
+      "passRate": "100%"
     }
   ]
 }
