@@ -2003,6 +2003,37 @@
       },
       "tests": 12483,
       "passRate": "100%"
+    },
+    {
+      "tranche": 44,
+      "date": "2026-09-16",
+      "version": "3.1.76",
+      "action": "S18 Oversized-File Debt Burn-Down Tranche 44",
+      "targets": [
+        "src/platform/billing/__tests__/subscription-service.test.ts",
+        "src/platform/risk/__tests__/drawdown-monitor-types.test.ts",
+        "src/platform/api/__tests__/compliance-routes.test.ts",
+        "src/desk/wiring/__tests__/qwen-rollback-harness.test.ts",
+        "src/platform/billing/__tests__/invoice-generator.test.ts"
+      ],
+      "modules": [
+        "subscription-service-fixtures.ts",
+        "subscription-service-lifecycle.test.ts",
+        "drawdown-monitor-metrics.test.ts",
+        "compliance-routes-fixtures.ts",
+        "compliance-routes-admin.test.ts",
+        "qwen-rollback-harness-fixtures.ts",
+        "qwen-rollback-harness-gates.test.ts",
+        "invoice-generator-fixtures.ts",
+        "invoice-generator-formatting.test.ts"
+      ],
+      "ratchet": {
+        "before": 42,
+        "after": 37,
+        "delta": -5
+      },
+      "tests": 12483,
+      "passRate": "100%"
     }
   ]
 }
