@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.76] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 44
+
+### Changed
+- Split `src/platform/billing/__tests__/subscription-service.test.ts` (255→146 LOC, 7 tests) → `subscription-service-fixtures.ts` (14 LOC) + `subscription-service-lifecycle.test.ts` (120 LOC, 7 tests) (isolated singleton reset helpers and split lifecycle, cancellation, and tier updates from creation and query operations, preserving all 14 assertions)
+- Split `src/platform/risk/__tests__/drawdown-monitor-types.test.ts` (260→123 LOC, 21 tests) → `drawdown-monitor-metrics.test.ts` (134 LOC, 12 tests) (isolated snapshot builders and type contracts from thresholds and fraction edge cases, preserving all 33 assertions)
+- Split `src/platform/api/__tests__/compliance-routes.test.ts` (264→159 LOC, 8 tests) → `compliance-routes-fixtures.ts` (19 LOC) + `compliance-routes-admin.test.ts` (111 LOC, 7 tests) (extracted `buildApp` and logger mock fixtures into a shared file, isolated admin rules and audit inspection from validation endpoints, preserving all 15 assertions)
+- Split `src/desk/wiring/__tests__/qwen-rollback-harness.test.ts` (266→106 LOC, 9 tests) → `qwen-rollback-harness-fixtures.ts` (18 LOC) + `qwen-rollback-harness-gates.test.ts` (139 LOC, 14 tests) (hoisted Prometheus metrics, Telegram alerts, Postgres, and Logger mocks into fixtures, split L3/L4 drawdown auto-disable and 30-day paper gate from L1/L2 kill switch, preserving all 23 assertions)
+- Split `src/platform/billing/__tests__/invoice-generator.test.ts` (275→116 LOC, 5 tests) → `invoice-generator-fixtures.ts` (21 LOC) + `invoice-generator-formatting.test.ts` (121 LOC, 3 tests) (extracted in-memory virtual filesystem and email service mocks into fixtures, split email filtering, XSS/HTML escaping, and currency casing from invoice creation, listing, ID generation, and error fallback, preserving all 8 assertions)
+- All 14 touched and created files strictly <= 160 visual lines (cap <= 200, max 159 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 42→37 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (113/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.75→3.1.76; typecheck passes with 0 errors & zero test churn (93/93 target tests, 12,483/12,483 full suite)
+
 ## [3.1.75] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 43
 
 ### Changed

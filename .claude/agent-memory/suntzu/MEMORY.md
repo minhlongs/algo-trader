@@ -1,4 +1,3 @@
-- [S18 Oversized-Debt Tranche 5 Shipped](project_s18_oversized_debt_tranche5_shipped.md) — 5 oversized files split, ratchet 242->237, maxAnyTypes 114, 12,483 tests 100% pass, version 3.1.37
 # Memory Index — Tôn Tử (suntzu)
 
 ## Project
@@ -14,9 +13,11 @@
 - [S16 tranche2 result verdict](project_s16_tranche2_result_verdict.md) — result PASS r1: 22 files ≤200, 298→293 −5/0, 4/4 quality, importers untouched, 3.1.29; ship owed; keys.ts misattribution escrow.
 - [S16 tranche3 plan verdict](project_s16_tranche3_plan_verdict.md) — plan CP r1: 5 files 384-388 verified, baseline 293, 3 LOW importer over-counts; escrows E1 typecheck-truth, E2 base facade tight.
 - [S16 tranche3 result verdict](project_s16_tranche3_result_verdict.md) — result CP r1: facades ≤200, 293→288 −5/0, 7239 tests, 3.1.30; E3 tmp-script + E4 agent-memory hygiene escrows; ship owed.
+- [S18 Oversized-Debt Tranche 5 Shipped](project_s18_oversized_debt_tranche5_shipped.md) — 5 oversized files split, ratchet 242->237, maxAnyTypes 114, 12,483 tests 100% pass, version 3.1.37
 - [S18 Oversized-Debt Tranche 6 Shipped](project_s18_oversized_debt_tranche6_shipped.md) — 5 oversized files split, ratchet 237->232, 12,483 tests 100% pass, version 3.1.38
 - [S18 Oversized-Debt Tranche 24 Verdict](project_s18_oversized_debt_tranche24_verdict.md) — 5 oversized files split, ratchet 147->142, 12,483 tests 100% pass, version 3.1.56
 - [S18 Oversized-Debt Tranche 25 Verdict](project_s18_oversized_debt_tranche25_verdict.md) — 5 oversized files split, ratchet 142->137, 12,483 tests 100% pass, version 3.1.57
 - [S18 Oversized-Debt Tranche 26 Verdict](project_s18_oversized_debt_tranche26_verdict.md) — 5 oversized files split, ratchet 137->132, 12,483 tests 100% pass, version 3.1.58
 - [S18 Oversized-Debt Tranche 30 Verdict](project_s18_oversized_debt_tranche30_verdict.md) — 5 oversized files split, ratchet 117->112, 12,483 tests 100% pass, version 3.1.62
 - [S18 Oversized-Debt Tranche 32 Verdict](project_s18_oversized_debt_tranche32_verdict.md) — 5 oversized files split, ratchet 102->97, 12,483 tests 100% pass, version 3.1.64
+- [S18 Oversized-Debt Tranche 44 Verdict](project_s18_oversized_debt_tranche44_verdict.md) — 5 oversized files split, ratchet 42->37, 93/93 tests pass, version 3.1.76
