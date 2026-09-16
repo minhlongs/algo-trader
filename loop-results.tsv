@@ -343,3 +343,5 @@ iter	timestamp	metric	delta	kept	description
 43	2026-09-16T00:00:00	42	-5	yes	S18 Tranche 43: split portfolio-correlation.test/value-at-risk.test/journal-writer.test/marketplace-strategy-insights-routes.test/marketplace-service.test
 44	2026-09-16T00:00:00	37	-5	yes	S18 Tranche 44: split subscription-service.test/drawdown-monitor-types.test/compliance-routes.test/qwen-rollback-harness.test/invoice-generator.test
 S18 Tranche 45 pushed — 5 oversized test suites decomposed to <= 160 LOC (37->32 violators)
+45	2026-09-16T00:00:00	32	-5	yes	S18 Tranche 45: split ilp-constraint-builder.test/system-doctor.test/marketplace-payout-scheduler.test/rate-limiter.test/personalization-routes.test
+46	2026-09-16T00:00:00	27	-5	yes	S18 Tranche 46: split ilp-constraint-builder.test/system-doctor.test/marketplace-payout-scheduler.test/rate-limiter.test/personalization-routes.test (strict typing, anyTypes 123->102)

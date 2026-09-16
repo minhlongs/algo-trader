@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.78] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 46
+
+### Changed
+- Split `src/desk/arbitrage/__tests__/ilp-constraint-builder.test.ts` (288→135 LOC, 13 tests) → `ilp-constraint-builder.fixtures.ts` (43 LOC) + `ilp-constraint-builder-exposure.test.ts` (130 LOC, 10 tests) (extracted market and solver config generators into pure fixtures, separated core LP constraint and variable generation tests from asset exposure limits, max-markets scalability, and coefficient sensitivity tests, preserving all 23 assertions)
+- Split `src/desk/cli/__tests__/system-doctor.test.ts` (292→159 LOC, 10 tests) → `system-doctor-defaults.test.ts` (134 LOC, 8 tests) (isolated default check registrations and custom registration checks from real system diagnostic tests, memory/disk checks, error handling, and environment overrides, preserving all 18 assertions)
+- Split `src/platform/marketplace/services/__tests__/marketplace-payout-scheduler.test.ts` (297→122 LOC, 5 tests) → `marketplace-payout-scheduler.fixtures.ts` (28 LOC) + `marketplace-payout-scheduler-edge-cases.test.ts` (114 LOC, 4 tests) (extracted mock data objects into pure fixtures, kept bullmq and repository mocks in test files, isolated pending revenue share processing, weekly cron, and manual triggers from filter edge cases, unconfigured payout addresses, and empty batches, preserving all 9 assertions)
+- Split `src/shared/middleware/__tests__/rate-limiter.test.ts` (304→136 LOC, 7 tests) → `rate-limiter.fixtures.ts` (44 LOC) + `rate-limiter-features.test.ts` (139 LOC, 6 tests) (extracted mock request and response factories into pure fixtures, isolated standard IP rate limiting, response headers, and block behavior from custom key generators, separate client limits, bypass predicates, and cleanup timer eviction, preserving all 13 assertions)
+- Split `src/platform/api/routes/__tests__/personalization-routes.test.ts` (308→142 LOC, 8 tests) → `personalization-routes.fixtures.ts` (72 LOC) + `personalization-events.test.ts` (134 LOC, 5 tests) (extracted VFS mocking setup and app builder into pure fixtures, isolated tier config and deterministic A/B hashing from tenant-isolated event logging and directory traversal prevention, preserving all 13 assertions)
+- All 15 touched and created files strictly <= 160 visual lines (cap <= 200, max 159 LOC)
+- Quality ratchet auto-pruned: `filesOverMaxLines` 32→27 (−5 pruned)
+- Zero metric drift: `anyTypes` <= 114 (102/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.77→3.1.78; typecheck passes with 0 errors & zero test churn (76/76 target tests, 12,473/12,473 full suite)
+
 ## [3.1.77] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 45
 
 ### Changed
