@@ -3,26 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   decrypt,
   encrypt,
-  decryptForTenant,
-  encryptForTenant,
   generateKey,
   hashPassword,
   verifyPassword,
-  validateEncryptionConfig,
-  getKeyVersionInfo,
-  generateMasterKey,
   encryptWithKey,
   decryptWithKey,
 } from '../crypto';
-
-// 64-char hex string = 32 bytes
-const FIXTURE_KEY = Buffer.from(
-  '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-  'hex',
-);
-
-const FIXTURE_TENANT = 'tenant-123';
-const FIXTURE_FIELD = 'apiKey';
+import { FIXTURE_KEY } from './crypto.fixtures';
 
 describe('crypto primitives', () => {
   describe('encrypt/decrypt', () => {
@@ -111,177 +98,6 @@ describe('crypto primitives', () => {
     it('throws TypeError on invalid hash format', () => {
       expect(() => verifyPassword('pw', 'invalid-format')).toThrow(TypeError);
     });
-  });
-});
-
-describe('tenant-scoped encryption (encryptForTenant/decryptForTenant)', () => {
-  const originalEnv = { ...process.env };
-
-  beforeEach(() => {
-    vi.resetModules();
-    process.env = { ...originalEnv };
-    process.env.CREDENTIALS_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-  });
-
-  it('round-trips with tenant scoping', () => {
-    const plaintext = 'tenant-scoped-secret';
-    const encrypted = encryptForTenant(plaintext, FIXTURE_TENANT, FIXTURE_FIELD);
-    const decrypted = decryptForTenant(encrypted, FIXTURE_TENANT, FIXTURE_FIELD);
-    expect(decrypted).toBe(plaintext);
-  });
-
-  it('produces version-prefixed payload', () => {
-    const plaintext = 'version-test';
-    const encrypted = encryptForTenant(plaintext, FIXTURE_TENANT, FIXTURE_FIELD);
-    expect(encrypted.startsWith('v1:')).toBe(true);
-    const parts = encrypted.slice(3).split(':');
-    expect(parts).toHaveLength(3); // ciphertext, iv, tag
-  });
-
-  it('different tenants produce different ciphertext for same plaintext', () => {
-    const plaintext = 'same-secret';
-    const enc1 = encryptForTenant(plaintext, 'tenant-a', FIXTURE_FIELD);
-    const enc2 = encryptForTenant(plaintext, 'tenant-b', FIXTURE_FIELD);
-    expect(enc1).not.toBe(enc2);
-  });
-
-  it('different fields produce different ciphertext for same tenant', () => {
-    const plaintext = 'same-secret';
-    const enc1 = encryptForTenant(plaintext, FIXTURE_TENANT, 'apiKey');
-    const enc2 = encryptForTenant(plaintext, FIXTURE_TENANT, 'apiSecret');
-    expect(enc1).not.toBe(enc2);
-  });
-
-  it('decryptForTenant throws generic error on wrong tenant', () => {
-    const plaintext = 'secret';
-    const encrypted = encryptForTenant(plaintext, FIXTURE_TENANT, FIXTURE_FIELD);
-    expect(() => decryptForTenant(encrypted, 'wrong-tenant', FIXTURE_FIELD)).toThrow('decryption failed');
-  });
-
-  it('decryptForTenant throws generic error on wrong field', () => {
-    const plaintext = 'secret';
-    const encrypted = encryptForTenant(plaintext, FIXTURE_TENANT, 'apiKey');
-    expect(() => decryptForTenant(encrypted, FIXTURE_TENANT, 'apiSecret')).toThrow('decryption failed');
-  });
-
-  it('decryptForTenant throws generic error on tampered ciphertext', () => {
-    const plaintext = 'secret';
-    const encrypted = encryptForTenant(plaintext, FIXTURE_TENANT, FIXTURE_FIELD);
-    // Corrupt a character in the tag portion that actually affects base64 decoding
-    // Change first non-padding char of tag to 'X'
-    const lastColon = encrypted.lastIndexOf(':');
-    const beforeTag = encrypted.slice(0, lastColon + 1);
-    const tag = encrypted.slice(lastColon + 1);
-    const replacement = tag[0] === 'X' ? 'Y' : 'X';
-    const corruptedTag = replacement + tag.slice(1);
-    const tampered = beforeTag + corruptedTag;
-    expect(() => decryptForTenant(tampered, FIXTURE_TENANT, FIXTURE_FIELD)).toThrow('decryption failed');
-  });
-
-  it('decryptForTenant throws generic error on missing version prefix', () => {
-    expect(() => decryptForTenant('no-prefix:data', FIXTURE_TENANT, FIXTURE_FIELD)).toThrow('decryption failed');
-  });
-
-  it('decryptForTenant throws generic error on malformed payload', () => {
-    expect(() => decryptForTenant('v1:only-one-part', FIXTURE_TENANT, FIXTURE_FIELD)).toThrow('decryption failed');
-  });
-
-  it('throws TypeError on invalid inputs', () => {
-    expect(() => encryptForTenant(123 as unknown as string, FIXTURE_TENANT, FIXTURE_FIELD)).toThrow(TypeError);
-    expect(() => encryptForTenant('test', 123 as unknown as string, FIXTURE_FIELD)).toThrow(TypeError);
-    expect(() => encryptForTenant('test', FIXTURE_TENANT, 123 as unknown as string)).toThrow(TypeError);
-    expect(() => decryptForTenant(123 as unknown as string, FIXTURE_TENANT, FIXTURE_FIELD)).toThrow(TypeError);
-  });
-});
-
-describe('key rotation support (dual-key read)', () => {
-  const originalEnv = { ...process.env };
-  const PREV_KEY = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
-  const CURRENT_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
-
-  beforeEach(() => {
-    vi.resetModules();
-    process.env = { ...originalEnv };
-  });
-
-  it('decrypts with previous key when current key fails', async () => {
-    // Step 1: Encrypt with the OLD key as current master key
-    process.env.CREDENTIALS_ENCRYPTION_KEY = PREV_KEY;
-    const { encryptForTenant: encryptOld } = await import('../crypto');
-    const encrypted = encryptOld('old-secret', FIXTURE_TENANT, FIXTURE_FIELD);
-
-    // Step 2: Set up env with NEW key as current, OLD key as previous
-    process.env.CREDENTIALS_ENCRYPTION_KEY = CURRENT_KEY;
-    process.env.CREDENTIALS_ENCRYPTION_KEY_PREVIOUS = PREV_KEY;
-
-    // Re-import to pick up new env
-    const { decryptForTenant: decryptFn } = await import('../crypto');
-
-    // Should decrypt successfully using previous key fallback
-    const decrypted = decryptFn(encrypted, FIXTURE_TENANT, FIXTURE_FIELD);
-    expect(decrypted).toBe('old-secret');
-  });
-
-  it('fails with generic error when neither key works', async () => {
-    process.env.CREDENTIALS_ENCRYPTION_KEY = CURRENT_KEY;
-    // No previous key set
-
-    const { decryptForTenant: decryptFn } = await import('../crypto');
-
-    // Encrypt with a completely different key (not current or previous)
-    const otherKey = crypto.randomBytes(32);
-    const { ciphertext, iv, tag } = encrypt('other-secret', otherKey);
-    const payload = `v1:${ciphertext}:${iv}:${tag}`;
-
-    expect(() => decryptFn(payload, FIXTURE_TENANT, FIXTURE_FIELD)).toThrow('decryption failed');
-  });
-
-  it('validateEncryptionConfig passes with valid key', async () => {
-    process.env.CREDENTIALS_ENCRYPTION_KEY = CURRENT_KEY;
-    const { validateEncryptionConfig: validateFn } = await import('../crypto');
-    const result = validateFn();
-    expect(result.currentKeyVersion).toBe(1);
-    expect(result.hasPreviousKey).toBe(false);
-  });
-
-  it('validateEncryptionConfig detects previous key', async () => {
-    process.env.CREDENTIALS_ENCRYPTION_KEY = CURRENT_KEY;
-    process.env.CREDENTIALS_ENCRYPTION_KEY_PREVIOUS = PREV_KEY;
-    const { validateEncryptionConfig: validateFn } = await import('../crypto');
-    const result = validateFn();
-    expect(result.currentKeyVersion).toBe(2);
-    expect(result.hasPreviousKey).toBe(true);
-  });
-
-  it('validateEncryptionConfig throws on missing key', async () => {
-    delete process.env.CREDENTIALS_ENCRYPTION_KEY;
-    delete process.env.ENCRYPTION_MASTER_KEY;
-    const { validateEncryptionConfig: validateFn } = await import('../crypto');
-    expect(() => validateFn()).toThrow('Encryption config invalid');
-  });
-
-  it('validateEncryptionConfig throws on malformed key', async () => {
-    process.env.CREDENTIALS_ENCRYPTION_KEY = 'short';
-    const { validateEncryptionConfig: validateFn } = await import('../crypto');
-    expect(() => validateFn()).toThrow('Encryption config invalid');
-  });
-
-  it('getKeyVersionInfo returns version metadata without secrets', async () => {
-    process.env.CREDENTIALS_ENCRYPTION_KEY = CURRENT_KEY;
-    process.env.CREDENTIALS_ENCRYPTION_KEY_PREVIOUS = PREV_KEY;
-    const { getKeyVersionInfo: infoFn } = await import('../crypto');
-    const info = infoFn();
-    expect(info.current).toBe(1);
-    expect(info.previous).toBe(2);
-    expect(info).not.toHaveProperty('key');
-    expect(info).not.toHaveProperty('secret');
-  });
-
-  it('generateMasterKey produces valid 32-byte hex', async () => {
-    const { generateMasterKey: genFn } = await import('../crypto');
-    const key = genFn();
-    expect(key).toHaveLength(64);
-    expect(/^[0-9a-f]+$/.test(key)).toBe(true);
   });
 });
 

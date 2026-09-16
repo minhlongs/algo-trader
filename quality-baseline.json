@@ -35,17 +35,15 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 27,
+      "count": 22,
       "violators": {
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
         "src/desk/arbitrage/__tests__/orchestrator.test.ts": 485,
         "src/desk/arbitrage/__tests__/unified-executor.test.ts": 428,
         "src/desk/execution/__tests__/paper-executor.test.ts": 350,
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
-        "src/desk/feeds/__tests__/kalshi-price-feed.test.ts": 348,
         "src/desk/gate/__tests__/raas-gate.test.ts": 375,
         "src/desk/polymarket/__tests__/live-trading-integration.test.ts": 460,
-        "src/desk/risk/__tests__/risk.test.ts": 335,
         "src/desk/strategies/__tests__/probability-calibrator.test.ts": 367,
         "src/desk/strategies/dna/__tests__/consensus-engine.test.ts": 381,
         "src/forest/rate-limit/__tests__/redis-rate-limiter.test.ts": 366,
@@ -55,15 +53,12 @@
         "src/platform/api/routes/__tests__/co-pilot-routes.test.ts": 465,
         "src/platform/api/routes/__tests__/newsletter-routes.test.ts": 501,
         "src/platform/api/routes/__tests__/signal-subscription-routes.test.ts": 469,
-        "src/platform/audit/__tests__/audit-log-service.test.ts": 315,
-        "src/platform/billing/__tests__/payment-service.test.ts": 347,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
         "src/redis/__tests__/pubsub.test.ts": 403,
         "src/rollback/__tests__/rollback-evaluators.test.ts": 386,
-        "src/seed/security/__tests__/audit-log.test.ts": 365,
-        "src/seed/security/__tests__/crypto.test.ts": 331
+        "src/seed/security/__tests__/audit-log.test.ts": 365
       }
     }
   },
