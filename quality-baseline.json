@@ -35,15 +35,12 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 17,
+      "count": 12,
       "violators": {
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
         "src/desk/arbitrage/__tests__/orchestrator.test.ts": 485,
-        "src/desk/arbitrage/__tests__/unified-executor.test.ts": 428,
         "src/desk/execution/__tests__/polymarket-adapter.test.ts": 484,
-        "src/desk/gate/__tests__/raas-gate.test.ts": 375,
         "src/desk/polymarket/__tests__/live-trading-integration.test.ts": 460,
-        "src/desk/strategies/dna/__tests__/consensus-engine.test.ts": 381,
         "src/platform/api/__tests__/api.test.ts": 510,
         "src/platform/api/__tests__/security-integration.test.ts": 617,
         "src/platform/api/routes/__tests__/co-pilot-routes.test.ts": 465,
@@ -51,9 +48,7 @@
         "src/platform/api/routes/__tests__/signal-subscription-routes.test.ts": 469,
         "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
         "src/platform/mcp/__tests__/research-mcp-server.test.ts": 436,
-        "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637,
-        "src/redis/__tests__/pubsub.test.ts": 403,
-        "src/rollback/__tests__/rollback-evaluators.test.ts": 386
+        "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637
       }
     }
   },
