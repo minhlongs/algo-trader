@@ -1,5 +1,26 @@
 # Project Changelog - Algo Trader
 
+## [3.1.84] - 2026-09-18 — S18 Oversized-File Debt Burn-Down Tranche 52 (Zero Oversized Debt Milestone)
+
+### Changed
+- Decomposed `src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts` (843 LOC, 44 tests) → `cross-platform-arb-fixtures.ts` (49 LOC), `cross-platform-arb-matching-utils.test.ts` (144 LOC, 15 tests), `cross-platform-arb-build-match.test.ts` (123 LOC, 10 tests), `cross-platform-arb-scan-filter.test.ts` (127 LOC, 9 tests), `cross-platform-arb-scan-nats-logging.test.ts` (146 LOC, 10 tests)
+- Decomposed `src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts` (637 LOC, 83 tests) → `drawdown-monitor-evaluators-fixtures.ts` (32 LOC), `drawdown-monitor-eval-thresholds.test.ts` (130 LOC, 16 tests), `drawdown-monitor-eval-tier-halt.test.ts` (119 LOC, 14 tests), `drawdown-monitor-eval-alerts.test.ts` (145 LOC, 19 tests), `drawdown-monitor-eval-sanitization.test.ts` (127 LOC, 26 tests), `drawdown-monitor-eval-pipeline.test.ts` (71 LOC, 7 tests)
+- All 11 created files strictly <= 146 visual LOC (hard cap <= 200 LOC per development rules)
+- Quality ratchet baseline pruned: `filesOverMaxLines` count 2 → 0 (`count: 0, violators: {}`), achieving 0 oversized files repo-wide
+- Zero metric drift: `anyTypes` <= 114 (81/114), `consoleCalls` <= 45 (45/45), `bannedImports` = 0
+- Version bump 3.1.83 → 3.1.84; 100% test preservation (127/127 target tests, 12,483/12,483 full suite)
+
+## [3.1.83] - 2026-09-18 — S18 Oversized-File Debt Burn-Down Tranche 51
+
+### Changed
+- Decomposed `src/desk/arbitrage/__tests__/orchestrator.test.ts` (485 LOC, 32 tests) → `orchestrator-lifecycle.test.ts` (147 LOC), `orchestrator-metrics-latency.test.ts` (140 LOC), `orchestrator-queue-strategy.test.ts` (132 LOC), `orchestrator-errors-factory.test.ts` (138 LOC)
+- Decomposed `src/platform/api/routes/__tests__/newsletter-routes.test.ts` (501 LOC, 36 tests) → `newsletter-subscribe.test.ts` (149 LOC), `newsletter-unsubscribe.test.ts` (84 LOC), `newsletter-preferences.test.ts` (110 LOC), `newsletter-segments.test.ts` (91 LOC)
+- Decomposed `src/platform/api/__tests__/api.test.ts` (510 LOC, 14 tests) → `api-test-helpers.ts` (130 LOC), `api-health.test.ts` (65 LOC), `api-trades-pnl.test.ts` (59 LOC), `api-signals-admin.test.ts` (89 LOC)
+- Decomposed `src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts` (588 LOC, 31 tests) → `paper-trading-pnl-helpers.ts` (57 LOC), `paper-trading-daily-drawdown.test.ts` (132 LOC), `paper-trading-sharpe-snapshot.test.ts` (127 LOC), `paper-trading-metrics.test.ts` (92 LOC)
+- Decomposed `src/platform/api/__tests__/security-integration.test.ts` (617 LOC, 20 tests) → `security-integration-helpers.ts` (130 LOC), `security-audit-ratelimit.test.ts` (89 LOC), `security-encryption-credentials.test.ts` (62 LOC), `security-cross-feature-query.test.ts` (112 LOC)
+- Quality ratchet baseline pruned: `filesOverMaxLines` count 7 → 2 (−5 pruned)
+- Version bump 3.1.82 → 3.1.83; 100% test preservation (133/133 target tests, 12,483/12,483 full suite)
+
 ## [3.1.78] - 2026-09-16 — S18 Oversized-File Debt Burn-Down Tranche 46
 
 ### Changed
