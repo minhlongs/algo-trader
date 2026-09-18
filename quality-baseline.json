@@ -35,14 +35,9 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 7,
+      "count": 2,
       "violators": {
         "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
-        "src/desk/arbitrage/__tests__/orchestrator.test.ts": 485,
-        "src/platform/api/__tests__/api.test.ts": 510,
-        "src/platform/api/__tests__/security-integration.test.ts": 617,
-        "src/platform/api/routes/__tests__/newsletter-routes.test.ts": 501,
-        "src/platform/dashboard/__tests__/paper-trading-pnl-tracker.test.ts": 588,
         "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637
       }
     }
