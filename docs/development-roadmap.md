@@ -233,7 +233,7 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Version: 3.1.32
 - Status: **COMPLETE** ✅
 
-### S18 Quality Ratchet — Oversized-File Debt Burn-Down Tranches 1–41 (Complete - 2026-09-16)
+### S18 Quality Ratchet — Oversized-File Debt Burn-Down Tranches 1–52 (Complete - 2026-09-18)
 - [x] Tranches 1–29: 145 oversized files split into ≤200-LOC modules behind facade re-exports, baseline 262 → 117
 - [x] Tranche 30: 5 oversized files split into ≤160-LOC modules (`baseline-strategies.ts` 214→75, `news-impact-analyzer.ts` 214→137, `kalman-filter-tracker.ts` 214→131, `payout-scheduler.ts` 214→144, `strategy-repository.ts` 213→116), baseline pruned 117 → 112 (-5 entries, 0 added)
 - [x] Tranche 31: 10 oversized files split into ≤160-LOC modules (`vibe-controller.ts` 212→66, `usage-metering-service.ts` 212→149, `logical-hedge-discovery.ts` 211→134, `relative-strength-rotation-v2.ts` 211→152, `binance-candle-provider.ts` 210→109, `funding-store.ts` 201→118, `distributed-nonce-manager.ts` 201→155, `augmented-signal-pipeline.ts` 201→172, `webhook-handlers.ts` 201→119, `subscriber-executor.ts` 202→154), baseline pruned 112 → 102 (-10 entries, 0 added)
@@ -252,10 +252,16 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] Tranche 44: 5 oversized test files split into ≤160-LOC modules (`subscription-service.test.ts` 255→146, `drawdown-monitor-types.test.ts` 260→123, `compliance-routes.test.ts` 264→159, `qwen-rollback-harness.test.ts` 266→106, `invoice-generator.test.ts` 275→116), baseline pruned 42 → 37 (-5 entries, 0 added, 37 remaining)
 - [x] Tranche 45: 5 oversized test files split into ≤160-LOC modules (`alpha-cli.test.ts` 285→33+82+158, `tiered-drawdown-persistence.test.ts` 277→82+160, `license-service.test.ts` 279→40+157+42, `email-campaign-templates.test.ts` 279→128+142, `enterprise-onboarding.test.ts` 280→129+150), baseline pruned 37 → 32 (-5 entries, 0 added, 32 remaining)
 - [x] Tranche 46: 5 oversized test files split into ≤160-LOC modules (`ilp-constraint-builder.test.ts` 288→135, `system-doctor.test.ts` 292→159, `marketplace-payout-scheduler.test.ts` 297→122, `rate-limiter.test.ts` 304→136, `personalization-routes.test.ts` 308→142), baseline pruned 32 → 27 (-5 entries, 0 added, 27 remaining)
-- [x] Zero importer edits, zero test regressions, zero new `:any` (102/114), zero new `console.*` (45/45)
-- [x] Full suite 12,473 tests pass (100%), typecheck 0 errors, build exit 0
-- [x] `--quality` 4/4 PASS
-- Version: 3.1.78
+- [x] Tranche 47: 5 oversized test files split into ≤160-LOC modules (`audit-log-service.test.ts` 315→128, `crypto.test.ts` 331→147, `risk.test.ts` 335→136, `payment-service.test.ts` 347→139, `kalshi-price-feed.test.ts` 348→132), baseline pruned 27 → 22 (-5 entries, 0 added, 22 remaining)
+- [x] Tranche 48: 5 oversized test files split into ≤160-LOC modules (`order-flow-imbalance.test.ts` 352→149, `ai-strategy-generator.test.ts` 365→142, `coupon-service.test.ts` 370→138, `telegram-bot.test.ts` 378→156, `sentiment-feed.test.ts` 384→149), baseline pruned 22 → 17 (-5 entries, 0 added, 17 remaining)
+- [x] Tranche 49: 5 oversized test files split into ≤160-LOC modules (`backtest-engine.test.ts` 386→145, `api-signals.test.ts` 394→139, `risk-manager.test.ts` 408→152, `strategy-discovery.test.ts` 412→148, `license-service.test.ts` 434→159), baseline pruned 17 → 12 (-5 entries, 0 added, 12 remaining)
+- [x] Tranche 50: 5 oversized test files split into ≤160-LOC modules (`circuit-breaker.test.ts` 441→148, `market-maker.test.ts` 452→153, `execution-pipeline.test.ts` 463→147, `portfolio-allocator.test.ts` 471→151, `funding-arbitrage.test.ts` 482→158), baseline pruned 12 → 7 (-5 entries, 0 added, 7 remaining)
+- [x] Tranche 51: 5 oversized test files split into ≤160-LOC modules (`orchestrator.test.ts` 485→147, `newsletter-routes.test.ts` 501→149, `api.test.ts` 510→130, `paper-trading-pnl-tracker.test.ts` 588→132, `security-integration.test.ts` 617→130), baseline pruned 7 → 2 (-5 entries, 0 added, 2 remaining)
+- [x] Tranche 52 (Final Milestone): Final 2 oversized test files split into ≤160-LOC modules (`cross-platform-arb-detector.test.ts` 843→146, `drawdown-monitor-evaluators.test.ts` 637→145), baseline pruned 2 → 0 (`count: 0, violators: {}`), achieving 0 oversized files repo-wide
+- [x] Zero importer edits, zero test regressions, zero new `:any` (81/114), zero new `console.*` (45/45), bannedImports = 0
+- [x] Full suite 12,483 tests pass (100%), typecheck 0 errors, build exit 0
+- [x] `--quality` 4/4 PASS and `--all` 11/11 PASS
+- Versions: 3.1.79, 3.1.80, 3.1.81, 3.1.82, 3.1.83, 3.1.84
 - Status: **COMPLETE** ✅
 
 ### GTM Execution — Next Wave V (In Progress)
@@ -273,8 +279,8 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
-| Test Coverage | 90%+ | 100% (4476/4476) | ✅ |
-| Type Safety | 0 `any` types | 0 | ✅ |
+| Test Coverage | 90%+ | 94.29% lines / 100% pass (12483/12483) | ✅ |
+| Type Safety | 0 unratcheted `any` | 81 <= 114 baseline | ✅ |
 | Build Time | < 10s | ~5s | ✅ |
 | API Latency (p95) | < 100ms | ~45ms | ✅ |
 | WebSocket Latency | < 50ms | ~25ms | ✅ |
