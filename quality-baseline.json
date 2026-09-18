@@ -35,11 +35,8 @@
       "@/lib/tier-gate"
     ],
     "oversizedFileBaseline": {
-      "count": 2,
-      "violators": {
-        "src/desk/arbitrage/__tests__/cross-platform-arb-detector.test.ts": 843,
-        "src/platform/risk/__tests__/drawdown-monitor-evaluators.test.ts": 637
-      }
+      "count": 0,
+      "violators": {}
     }
   },
   "security": {
