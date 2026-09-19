@@ -17,9 +17,8 @@ export interface OutcomeRow {
   pnl: string | null;
 }
 
-// Using unknown for index signature to allow arrays and nested types from pg
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PgRow = Record<string, any>;
+// Using DbRow-conformant index signature for pg row shape (DbRow constraint)
+type PgRow = Record<string, string | number | boolean | Date | null | undefined>;
 
 /* ── SQL constants ─────────────────────────────────────── */
 

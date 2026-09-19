@@ -5,6 +5,7 @@
 
 import { existsSync } from 'fs';
 import { join } from 'path';
+import readline from 'node:readline';
 import { runSetupWizard } from './setup-wizard';
 import { logger } from '../../shared/utils/logger';
 
@@ -146,15 +147,14 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function promptConfirmation(): Promise<boolean> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const readline = require('readline').createInterface({
+  const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
   return new Promise((resolve) => {
-    readline.question('Confirm live trading? (y/N): ', (answer: string) => {
-      readline.close();
+    rl.question('Confirm live trading? (y/N): ', (answer: string) => {
+      rl.close();
       resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
     });
   });

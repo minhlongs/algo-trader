@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '../../shared/utils/logger';
 
 // ── PAPER_MODE ─────────────────────────────────────────────────────────────────
 
@@ -136,8 +137,7 @@ export function validateEnv(): EnvConfig {
   } else {
     const present = Object.entries(secrets).filter(([, v]) => v != null).map(([k]) => k);
     if (present.length > 0) {
-      // eslint-disable-next-line no-console
-      console.info(`[EnvSchema] Security secrets loaded: ${present.join(', ')}`);
+      logger.info(`[EnvSchema] Security secrets loaded: ${present.join(', ')}`);
     }
   }
 

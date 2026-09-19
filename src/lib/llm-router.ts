@@ -153,6 +153,11 @@ export class LlmRouter extends EventEmitter {
     this.emit('unhealthy', { url, failures: state.consecutiveFailures });
   }
 
+  /** Read-only access to the resolved LLM config (for diagnostics/metadata). */
+  getConfig(): LlmConfig {
+    return this.config;
+  }
+
   getHealth(): Record<string, HealthState> {
     return Object.fromEntries(this.health);
   }

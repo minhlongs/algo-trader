@@ -3,10 +3,9 @@
  * Typed interfaces for referral_earnings and payout_history tables
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type PgRow = Record<string, any>;
+import type { DbRow } from '../../shared/db/postgres-client';
 
-export interface ReferralEarningsRow extends PgRow {
+export interface ReferralEarningsRow extends DbRow {
   tenant_id: string;
   total_earned: number;
   total_paid_out: number;
@@ -17,7 +16,7 @@ export interface ReferralEarningsRow extends PgRow {
   updated_at: Date;
 }
 
-export interface PayoutHistoryRow extends PgRow {
+export interface PayoutHistoryRow extends DbRow {
   id: string;
   tenant_id: string;
   amount: number;

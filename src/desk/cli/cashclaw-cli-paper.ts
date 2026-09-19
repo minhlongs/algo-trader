@@ -4,6 +4,7 @@
 
 import { Command } from 'commander';
 import * as path from 'path';
+import { startPaperTrading } from '../wiring/paper-trading-orchestrator';
 import { logger } from '../../shared/utils/logger';
 import { readJson } from '../../shared/persistence/persistent-store';
 import type { BacktestTrade } from '../../shared/backtesting/backtest-runner';
@@ -47,11 +48,6 @@ export function registerPaperAndBacktestCommands(program: Command): void {
       logger.info('CashClaw Paper Trading');
       logger.info(`Capital: $${capitalUsdc} | Interval: ${intervalMs}ms | Max positions: ${maxPositions}`);
       logger.info('Starting... (Ctrl+C to stop)\n');
-
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { startPaperTrading } = require('../wiring/paper-trading-orchestrator') as {
-        startPaperTrading: (cfg: { capitalUsdc: number; intervalMs: number; maxPositions: number }) => Promise<void>;
-      };
 
       await startPaperTrading({ capitalUsdc, intervalMs, maxPositions });
     });
@@ -113,10 +109,7 @@ export function registerPaperAndBacktestCommands(program: Command): void {
           return;
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { BacktestRunner } = require('../../shared/backtesting/backtest-runner') as {
-          BacktestRunner: { run: (trades: BacktestTrade[], config: Record<string, number>) => Record<string, unknown> };
-        };
+        const { BacktestRunner } = await import('../../shared/backtesting/backtest-runner');
 
         const result = BacktestRunner.run(trades, {
           initialCapitalUsd: capital,
