@@ -47,11 +47,11 @@ const { marketplaceCreatorRevenueRouter } = await import('../marketplace-creator
 function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use((req: Record<string, unknown>, _res, next) => {
+  app.use(((req: Record<string, unknown>, _res: unknown, next: () => void) => {
     req.tenant = { id: 'creator_001' };
     req.user = { id: 'user_001', tenantId: 'creator_001' };
     next();
-  });
+  }) as unknown as import('express').RequestHandler);
   app.use('/', marketplaceCreatorRevenueRouter);
   return app;
 }

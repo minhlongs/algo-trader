@@ -68,12 +68,12 @@ import { marketplaceSubscriptionRouter } from '../marketplace-subscription-route
 function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use((req: Record<string, unknown>, _res, next) => {
+  app.use(((req: Record<string, unknown>, _res: unknown, next: () => void) => {
     req.tenantId = 'tenant_001';
     req.userId = 'user_001';
     req.license = { tier: 'MASTER' };
     next();
-  });
+  }) as unknown as express.RequestHandler);
   app.use('/', marketplaceSubscriptionRouter);
   return app;
 }

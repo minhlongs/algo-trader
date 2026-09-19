@@ -54,11 +54,11 @@ import { marketplaceStrategyListingsRouter } from '../marketplace-strategy-listi
 function buildApp(user?: { tier?: string }) {
   const app = express();
   app.use(express.json());
-  app.use((req: Record<string, unknown>, _res: unknown, next: () => void) => {
+  app.use(((req: Record<string, unknown>, _res: unknown, next: () => void) => {
     req.user = { id: 'user_001', ...user };
     req.tenant = { id: 'tenant_001', ...user };
     next();
-  });
+  }) as unknown as import('express').RequestHandler);
   app.use('/', marketplaceStrategyListingsRouter);
   return app;
 }

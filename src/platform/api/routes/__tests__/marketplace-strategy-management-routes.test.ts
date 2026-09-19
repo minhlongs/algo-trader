@@ -47,11 +47,11 @@ import { marketplaceStrategyManagementRouter } from '../marketplace-strategy-man
 function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use((req: Record<string, unknown>, _res: unknown, next: () => void) => {
+  app.use(((req: Record<string, unknown>, _res: unknown, next: () => void) => {
     req.user = { id: 'user_001', tenantId: 'tenant_001', tier: 'PRO' };
     req.tenant = { id: 'tenant_001', tier: 'PRO' };
     next();
-  });
+  }) as unknown as import('express').RequestHandler);
   app.use('/', marketplaceStrategyManagementRouter);
   return app;
 }

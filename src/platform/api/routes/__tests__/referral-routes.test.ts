@@ -52,10 +52,10 @@ import { referralRouter } from '../referral-routes';
 function buildApp(claims?: { sub?: string; role?: string }) {
   const app = express();
   app.use(express.json());
-  app.use((req: Record<string, unknown>, _res: unknown, next: () => void) => {
+  app.use(((req: Record<string, unknown>, _res: unknown, next: () => void) => {
     if (claims) req.claims = claims;
     next();
-  });
+  }) as unknown as import('express').RequestHandler);
   app.use('/api/v1/referral', referralRouter);
   return app;
 }
