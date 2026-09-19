@@ -101,7 +101,7 @@ describe('handleNowPaymentsIPN', () => {
     const body = makeBody({ payment_id: 7, payment_status: 'confirmed', order_id: 'ord-7', price_amount: 99 });
     const sig = await makeSig(body, 'test-secret');
 
-    const prepares: any[] = [];
+    const prepares: string[] = [];
     const env = makeEnv({
       CACHE: {
         get: async () => JSON.stringify({ userId: 'u1', tier: 'PRO' }),
@@ -110,7 +110,7 @@ describe('handleNowPaymentsIPN', () => {
       SUBSCRIBERS: {
         prepare: (sql: string) => {
           const step = {
-            bind: (...args: any[]) => {
+            bind: (..._args: unknown[]) => {
               if (sql.includes('SELECT')) {
                 return {
                   first: async () => null,

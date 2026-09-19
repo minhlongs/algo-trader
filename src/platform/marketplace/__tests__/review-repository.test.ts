@@ -8,7 +8,7 @@ import type { IMarketplaceReview } from '../models/types';
 const mockQuery = vi.fn();
 
 vi.mock('../../../shared/db/postgres-client', () => ({
-  query: (...args: any[]) => mockQuery(...args),
+  query: (...args: unknown[]) => mockQuery(...args),
 }));
 
 describe('ReviewRepository', () => {

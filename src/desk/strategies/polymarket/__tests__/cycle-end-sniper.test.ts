@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { scanCycleEndOpportunities, isInEntryWindow } from '../cycle-end-sniper';
 
 describe('cycle-end-sniper::scanCycleEndOpportunities', () => {
-  const mkMarket = (overrides: any = {}): any => ({
+  const mkMarket = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
     conditionId: 'c1',
     question: 'Test market?',
     outcomePrices: '["0.96"]',

@@ -9,8 +9,8 @@ import express from 'express';
 import request from 'supertest';
 
 vi.mock('../../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
-  requireFeature: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -47,7 +47,7 @@ import { marketplaceStrategyManagementRouter } from '../marketplace-strategy-man
 function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use((req: any, _res: any, next: any) => {
+  app.use((req: Record<string, unknown>, _res: unknown, next: () => void) => {
     req.user = { id: 'user_001', tenantId: 'tenant_001', tier: 'PRO' };
     req.tenant = { id: 'tenant_001', tier: 'PRO' };
     next();

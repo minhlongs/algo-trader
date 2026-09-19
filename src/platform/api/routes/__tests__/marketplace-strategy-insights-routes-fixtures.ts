@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 vi.mock('../../../../shared/utils/logger', () => ({
@@ -23,9 +23,9 @@ vi.mock('crypto', () => ({
   randomUUID: () => mocks.randomUUID(),
 }));
 
-const mockBacktestRun: Mock<(...args: any[]) => unknown> = vi.fn();
+const mockBacktestRun: Mock<(...args: unknown[]) => unknown> = vi.fn();
 vi.mock('../../../../shared/backtesting/backtest-runner', () => ({
-  BacktestRunner: { run: (...args: any[]) => mockBacktestRun(...args) },
+  BacktestRunner: { run: (...args: unknown[]) => mockBacktestRun(...args) },
 }));
 
 vi.mock('../../../../db/postgres-client', () => ({
@@ -45,7 +45,7 @@ import { marketplaceStrategyInsightsRouter } from '../marketplace-strategy-insig
 function buildApp(): express.Express {
   const app = express();
   app.use(express.json());
-  app.use((req: any, _res, next) => {
+  app.use((req: Record<string, unknown>, _res, next) => {
     req.tenant = { id: 'tenant_001' };
     req.user = { id: 'user_001', tenantId: 'tenant_001' };
     next();

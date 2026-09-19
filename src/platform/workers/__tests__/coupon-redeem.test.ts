@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import type { KVNamespace } from '@cloudflare/workers-types';
 import { handleRedeemCoupon, type Env } from '../coupon-handlers';
 
-function makeEnv(kv: any, apiKey?: string): Env {
+function makeEnv(kv: KVNamespace, apiKey?: string): Env {
   return {
     CACHE: kv,
     NOWPAYMENTS_API_KEY: apiKey,
@@ -24,7 +25,7 @@ const BASE_COUPON = {
 };
 
 describe('coupon redeem endpoint', () => {
-  let kv: any;
+  let kv: KVNamespace;
 
   beforeEach(async () => {
     kv = {

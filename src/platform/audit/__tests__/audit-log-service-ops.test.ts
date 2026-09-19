@@ -13,7 +13,7 @@ import {
 
 vi.mock("../../../db/postgres-client", () => ({
   query: mockQueryImpl,
-  transaction: vi.fn(async (fn: any) => fn({ query: mockQueryImpl })),
+  transaction: vi.fn(async (fn: (client: { query: typeof mockQueryImpl }) => unknown) => fn({ query: mockQueryImpl })),
 }));
 vi.mock("../../../seed/security/audit-log", () => ({
   logAudit: mockLogAuditImpl,

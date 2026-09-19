@@ -83,15 +83,15 @@ vi.mock('@platform/desk/engine', () => ({
 }));
 
 vi.mock('../../forest/rate-limit/redis-rate-limiter', () => ({
-  rateLimitMiddleware: () => (_req: any, _res: any, next: any) => next(),
+  rateLimitMiddleware: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 vi.mock('../middleware/auth-middleware', () => ({
-  authMiddleware: (_req: any, _res: any, next: any) => next(),
+  authMiddleware: (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 vi.mock('../../seed/security/audit-middleware', () => ({
-  auditMiddleware: () => (_req: any, _res: any, next: any) => next(),
+  auditMiddleware: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 describe('debug 400', () => {

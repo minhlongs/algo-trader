@@ -33,7 +33,7 @@ describe('paper-executor', () => {
   });
 
   it('returns null and emits nothing when signal is null', () => {
-    const emitted: any[] = [];
+    const emitted: unknown[] = [];
     const unsub = onDnaEvent((e) => emitted.push(e));
     const out = executePaperConsensus(null);
     expect(out).toBeNull();
@@ -43,7 +43,7 @@ describe('paper-executor', () => {
 
   it('returns null and emits nothing when action is hold', () => {
     const holdSignal = mockSignal({ action: 'hold' });
-    const emitted: any[] = [];
+    const emitted: unknown[] = [];
     const unsub = onDnaEvent((e) => emitted.push(e));
     const out = executePaperConsensus(holdSignal);
     expect(out).toBeNull();
@@ -53,7 +53,7 @@ describe('paper-executor', () => {
   });
 
   it('returns a PaperJournalEntry and emits paper_executed on enter_long', () => {
-    const emitted: any[] = [];
+    const emitted: unknown[] = [];
     const unsub = onDnaEvent((e) => emitted.push(e));
     const sig = mockSignal({ action: 'enter_long' });
     const out = executePaperConsensus(sig, { getFillPrice: () => 65_432 });
@@ -73,7 +73,7 @@ describe('paper-executor', () => {
     expect(journal).toHaveLength(1);
     expect(journal[0].id).toBe(out!.id);
 
-    const evts = emitted.filter((e) => e.type === 'paper_executed');
+    const evts = (emitted as Array<{ type: string; entry: { id: string } }>).filter((e) => e.type === 'paper_executed');
     expect(evts).toHaveLength(1);
     expect(evts[0].entry.id).toBe(out!.id);
     unsub();

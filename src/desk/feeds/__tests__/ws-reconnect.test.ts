@@ -77,7 +77,7 @@ describe('computeReconnectDelay (with jitter)', () => {
  * scheduleReconnect is a free function bound via `this`, so we pass a mock object.
  */
 function createMockClient(overrides?: Partial<BaseWebSocketClient>): BaseWebSocketClient {
-  const listeners: Record<string, ((...args: any[]) => void)[]> = {};
+  const listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
   return {
     reconnectTimer: null,
     state: 'disconnected',
@@ -94,12 +94,12 @@ function createMockClient(overrides?: Partial<BaseWebSocketClient>): BaseWebSock
       latencySamples: [],
       uptime: 0,
     },
-    emit: vi.fn((event: string, ...args: any[]) => {
+    emit: vi.fn((event: string, ...args: unknown[]) => {
       (listeners[event] || []).forEach((fn) => fn(...args));
       return true;
     }),
     connect: vi.fn().mockResolvedValue(undefined),
-    on: vi.fn((event: string, fn: (...args: any[]) => void) => {
+    on: vi.fn((event: string, fn: (...args: unknown[]) => void) => {
       if (!listeners[event]) listeners[event] = [];
       listeners[event].push(fn);
       return undefined as any;

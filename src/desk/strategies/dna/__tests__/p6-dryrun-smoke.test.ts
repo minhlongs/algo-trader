@@ -43,7 +43,7 @@ describe('P6 Dry-Run Smoke — DNA engine end-to-end (paper-only, in-memory)', (
     const eng = startDnaEngine(makeProvider(), undefined, new InMemoryStateStore());
     expect(eng.paperMode).toBe(true);
 
-    const ticks: any[] = [];
+    const ticks: unknown[] = [];
     const unsub = onDnaEvent((e) => { if (e.type === 'tick') ticks.push(e); });
     await vi.advanceTimersByTimeAsync(10);
     await vi.advanceTimersByTimeAsync(20_000);
@@ -81,8 +81,8 @@ describe('P6 Dry-Run Smoke — DNA engine end-to-end (paper-only, in-memory)', (
 
   it('D. full lifecycle (start → tick → stop) completes in paper mode', async () => {
     vi.setSystemTime(new Date());
-    const events: any[] = [];
-    const unsub = onDnaEvent((e) => events.push(e));
+    const events: Array<{ type: string }> = [];
+    const unsub = onDnaEvent((e) => events.push(e as { type: string }));
     startDnaEngine(makeProvider(), { minTfAgreement: 1 }, new InMemoryStateStore());
     await vi.advanceTimersByTimeAsync(10_000); // clear 1m initial delay
     await vi.advanceTimersByTimeAsync(20_000);

@@ -21,8 +21,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
-  requireFeature: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   canAccessFeature: () => true,
   FEATURE_ACCESS: {},
 }));
@@ -59,8 +59,8 @@ vi.mock('../../../audit/audit-log-service', () => ({
 }));
 
 vi.mock('../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
-  requireFeature: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireFeature: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 import { marketplaceSubscriptionRouter } from '../marketplace-subscription-routes';
@@ -68,7 +68,7 @@ import { marketplaceSubscriptionRouter } from '../marketplace-subscription-route
 function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use((req: any, _res, next) => {
+  app.use((req: Record<string, unknown>, _res, next) => {
     req.tenantId = 'tenant_001';
     req.userId = 'user_001';
     req.license = { tier: 'MASTER' };

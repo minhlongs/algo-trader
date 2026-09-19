@@ -17,7 +17,7 @@ vi.mock('../../signal/signal-subscriber-repository-d1', () => ({
 }));
 
 vi.mock('../../middleware/feature-gate', () => ({
-  requireSignalTier: () => (_req: any, _res: any, next: any) => next(),
+  requireSignalTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 vi.mock('../../middleware/signal-tier-resolver', () => ({

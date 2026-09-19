@@ -8,7 +8,7 @@ import express from 'express';
 import request from 'supertest';
 
 vi.mock('../../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 vi.mock('../../../../shared/utils/logger', () => ({

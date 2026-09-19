@@ -13,7 +13,7 @@ import express from 'express';
 import request from 'supertest';
 
 vi.mock('../../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 vi.mock('../../../../shared/utils/logger', () => ({
@@ -47,7 +47,7 @@ const { marketplaceCreatorRevenueRouter } = await import('../marketplace-creator
 function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use((req: any, _res, next) => {
+  app.use((req: Record<string, unknown>, _res, next) => {
     req.tenant = { id: 'creator_001' };
     req.user = { id: 'user_001', tenantId: 'creator_001' };
     next();

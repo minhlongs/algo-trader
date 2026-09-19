@@ -41,7 +41,11 @@ function makeInquiry(overrides: Partial<EnterpriseInquiry> = {}): EnterpriseInqu
 }
 
 describe('Enterprise TAM Notifier', () => {
-  let fakeEmailSvc: any;
+  let fakeEmailSvc: {
+    isInitialized: typeof mockIsInitialized;
+    initialize: typeof mockInitialize;
+    send: typeof mockSend;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();

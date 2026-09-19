@@ -29,12 +29,12 @@ import { apiKeyLicenseMiddleware } from '../api-key-license';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeReq(headers: Record<string, unknown> = {}): any {
+function makeReq(headers: Record<string, unknown> = {}): Record<string, unknown> & { headers: Record<string, unknown> } {
   return { headers };
 }
 
-function makeRes(): any {
-  return {} as any;
+function makeRes(): Record<string, unknown> {
+  return {};
 }
 
 beforeEach(() => {
