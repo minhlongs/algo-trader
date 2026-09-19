@@ -13,7 +13,6 @@ import {
 } from './referral-payout-row-types.js';
 
 export {
-  PgRow,
   ReferralEarningsRow,
   PayoutHistoryRow,
 } from './referral-payout-row-types.js';

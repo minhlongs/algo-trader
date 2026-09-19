@@ -67,7 +67,7 @@ export async function getUnifiedValidation(signal: SignalCandidate): Promise<Uni
       try {
         logger.debug(`[SignalValidator] Calling LLM via GPU Mutex, attempt ${attempt}/${RETRY_LIMIT}`, {
           signalType: signal.signalType,
-          model: llmRouter['config'].primary.model,  // eslint-disable-line dot-notation
+          model: llmRouter.getConfig().primary.model,
         });
 
         const raw = await callLlm(systemPrompt, userPrompt);

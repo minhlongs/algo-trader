@@ -21,8 +21,7 @@ export * from './prometheus-metrics-trading-helpers';
 
 function getRegionFromRequest(req: Request): string {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const headers = req.headers as any;
+    const headers = req.headers as unknown as { get?: (k: string) => string | undefined };
     return headers.get?.('cf-colo') || 'unknown';
   } catch {
     return 'unknown';

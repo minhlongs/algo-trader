@@ -15,13 +15,11 @@ async function main(): Promise<void> {
   try {
     const result = await svc.processDueEmails();
     if (result.sent > 0 || result.errors > 0) {
-      // eslint-disable-next-line no-console
       logger.info(`[trial-drip-runner] sent=${result.sent} skipped=${result.skipped} errors=${result.errors}`);
     }
     process.exit(0);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    logger.error('[trial-drip-runner] Failed', err);
+    logger.error('[trial-drip-runner] Failed', { err });
     process.exit(1);
   }
 }

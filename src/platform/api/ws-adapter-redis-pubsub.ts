@@ -80,8 +80,11 @@ export class RedisPubSubManager {
   subscribeToChannels(channels: string[]): void {
     // ioredis subscribe is dynamically generated via Commander, so we cast
     // to access the callback overload. Original code used `Cluster | any`.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sub = this.subClient as any;
+    interface SubCapable {
+      subscribe(channel: string, cb: (err: Error | null) => void): void;
+      unsubscribe(channel: string): Promise<number>;
+    }
+    const sub = this.subClient as unknown as SubCapable;
     for (const channel of channels) {
       sub.subscribe(channel, (err: Error | null) => {
         if (err) {
@@ -119,8 +122,10 @@ export class RedisPubSubManager {
    * Unsubscribe from all channels and clear local bookkeeping.
    */
   async close(channels: string[]): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const sub = this.subClient as any;
+    interface UnsubCapable {
+      unsubscribe(channel: string): Promise<number>;
+    }
+    const sub = this.subClient as unknown as UnsubCapable;
     await Promise.all(
       channels.map((channel) => sub.unsubscribe(channel)),
     );
