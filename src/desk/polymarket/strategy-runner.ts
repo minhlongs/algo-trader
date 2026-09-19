@@ -27,8 +27,8 @@ import { createEventBusSubscription, type EventHandlerContext } from './strategy
 // Re-export for backward compatibility
 export type { StrategyRunnerConfig, RunnerStatus, StrategyConstructor } from './strategy-runner-types';
 export { DEFAULT_RUNNER_CONFIG, GammaClientImpl } from './strategy-runner-types';
-
-type StrategyConstructor = new (deps: StrategyDeps, config: BaseStrategyConfig, name: StrategyName) => BasePolymarketStrategy;
+import type { StrategyConstructor } from './strategy-runner-types';
+import type { StrategyEntryConstructor } from './strategy-registry-types';
 
 export class StrategyRunner {
   private strategyClass: StrategyConstructor;
@@ -49,11 +49,11 @@ export class StrategyRunner {
   private trackedTokens = new Set<string>();
 
   constructor(
-    strategyClass: StrategyConstructor,
+    strategyClass: StrategyConstructor | StrategyEntryConstructor,
     config: StrategyRunnerConfig,
     externalOrchestrator?: LiveTradingOrchestrator
   ) {
-    this.strategyClass = strategyClass;
+    this.strategyClass = strategyClass as unknown as StrategyConstructor;
     this.strategyName = strategyClass.name
       .replace(/Strategy$/, '')
       .replace(/([A-Z])/g, '-$1')

@@ -98,7 +98,7 @@ export class BacktestRunner {
       gamma: gammaClient,
     };
 
-    const strategy = new (entry.ctor as StrategyConstructor)(
+    const strategy = new (entry.ctor as unknown as StrategyConstructor)(
       deps,
       config.strategyConfig ?? entry.defaultConfig,
       config.strategy as StrategyName,
