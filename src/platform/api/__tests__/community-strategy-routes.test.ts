@@ -25,7 +25,7 @@ describe('Community Strategy Routes', () => {
   });
 
   it('rejects upload without tenantId', () => {
-    const body = { name: 'My Strategy', sourceCode: 'console.log("test")' };
+    const body = { name: 'My Strategy', sourceCode: 'export function run() {}' };
     expect(body.tenantId).toBeUndefined();
   });
 

@@ -24,11 +24,11 @@ export function getSdkExamples() {
   return { examples: [
     { title: 'Install & Setup', lang: 'bash', code: 'npm install @cashclaw/sdk\n# or\npnpm add @cashclaw/sdk' },
     { title: 'Initialize Client', lang: 'typescript', code: `import { AlgoTradeClient } from '@cashclaw/sdk';\n\nconst client = new AlgoTradeClient({\n  baseUrl: 'https://api.cashclaw.cc',\n  apiKey: 'your_api_key_here',\n});` },
-    { title: 'Health Check', lang: 'typescript', code: `const health = await client.getHealth();\nconsole.log(health.status); // "ok"` },
-    { title: 'Start a Strategy', lang: 'typescript', code: `await client.startStrategy('polymarket-arb');\nconsole.log('Strategy started!');` },
-    { title: 'Get Trades', lang: 'typescript', code: `const { trades } = await client.getTrades();\nfor (const t of trades) {\n  console.log(t.side, t.fillPrice, t.strategy);\n}` },
-    { title: 'Run Backtest', lang: 'typescript', code: `const result = await client.request('POST', '/api/backtest', {\n  strategy: 'momentum-scalper',\n  market: 'BTC-USD',\n  startDate: '2025-01-01',\n  endDate: '2025-12-31',\n  config: { initialCapital: 10000 },\n});\nconsole.log('Return:', result.totalReturn);` },
-    { title: 'Follow a Trader', lang: 'typescript', code: `await client.request('POST', '/api/copy-trading/follow', {\n  leaderId: 'demo-alpha-whale',\n  maxCapital: 5000,\n});\nconsole.log('Following AlphaWhale!');` },
+    { title: 'Health Check', lang: 'typescript', code: `const health = await client.getHealth();\nclient.logger.info(health.status); // "ok"` },
+    { title: 'Start a Strategy', lang: 'typescript', code: `await client.startStrategy('polymarket-arb');\nclient.logger.info('Strategy started!');` },
+    { title: 'Get Trades', lang: 'typescript', code: `const { trades } = await client.getTrades();\nfor (const t of trades) {\n  client.logger.info(t.side, t.fillPrice, t.strategy);\n}` },
+    { title: 'Run Backtest', lang: 'typescript', code: `const result = await client.request('POST', '/api/backtest', {\n  strategy: 'momentum-scalper',\n  market: 'BTC-USD',\n  startDate: '2025-01-01',\n  endDate: '2025-12-31',\n  config: { initialCapital: 10000 },\n});\nclient.logger.info('Return:', result.totalReturn);` },
+    { title: 'Follow a Trader', lang: 'typescript', code: `await client.request('POST', '/api/copy-trading/follow', {\n  leaderId: 'demo-alpha-whale',\n  maxCapital: 5000,\n});\nclient.logger.info('Following AlphaWhale!');` },
     { title: 'Webhook (TradingView)', lang: 'typescript', code: `// POST to /api/webhooks/tradingview\n// with your webhook secret in Authorization header\n{\n  "action": "buy",\n  "symbol": "POLY_YES_TOKEN",\n  "size": "100",\n  "strategy": "tv-signals"\n}` },
   ]};
 }
