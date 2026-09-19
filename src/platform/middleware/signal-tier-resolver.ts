@@ -9,6 +9,7 @@ import type { Request, Response, NextFunction } from 'express';
 import type { License } from '../../shared/types/license';
 import { LicenseTier } from '../../shared/types/license';
 import type { TierKey } from '../../desk/signal/signal-types';
+import RaasGate from '../../desk/gate/raas-gate';
 
 /** Minimal gate interface — matches RaasGate's public contract for lazy loading */
 interface RaaSGateLike {
@@ -25,11 +26,7 @@ const TIER_RANK: Record<TierKey, number> = {
 let _gate: RaaSGateLike | null = null;
 function getGate(): RaaSGateLike | null {
   if (!_gate) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('../gate/raas-gate') as { default?: { getInstance?(): RaaSGateLike } };
-    // Resolve the singleton — module may export as default or named
-    const exporter = (mod.default ?? mod) as { getInstance?(): RaaSGateLike };
-    _gate = exporter.getInstance?.() ?? null;
+    _gate = RaasGate.getInstance();
   }
   return _gate;
 }

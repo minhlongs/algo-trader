@@ -3,16 +3,15 @@
  */
 import { logger } from '../../shared/utils/logger';
 
-export function handleTradeJournal(opts: { type: string; limit: string }): void {
+export async function handleTradeJournal(opts: { type: string; limit: string }): Promise<void> {
   const limit = parseInt(opts.limit, 10);
   const filter = opts.type;
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { LiveTradingJournal } = require('../execution/live-trading-journal');
+  const { LiveTradingJournal } = await import('../execution/live-trading-journal');
   const journal = new LiveTradingJournal();
 
   if (filter === 'all' || filter === 'fills') {
-    const fills = journal.loadFills();
+    const fills = await journal.loadFills();
     const recent = fills.slice(-limit);
     logger.info(`\n📊 Fills (${fills.length} total, showing last ${recent.length}):`);
     logger.info('─'.repeat(70));
@@ -24,7 +23,7 @@ export function handleTradeJournal(opts: { type: string; limit: string }): void 
   }
 
   if (filter === 'all' || filter === 'events') {
-    const events = journal.loadEvents();
+    const events = await journal.loadEvents();
     const recent = events.slice(-limit);
     logger.info(`\n📋 Events (${events.length} total, showing last ${recent.length}):`);
     logger.info('─'.repeat(70));
@@ -55,7 +54,7 @@ export function handleTradeJournal(opts: { type: string; limit: string }): void 
   }
 
   if (filter === 'all') {
-    const stats = journal.getLifetimeStats();
+    const stats = await journal.getLifetimeStats();
     logger.info(`\n📈 Lifetime: ${stats.totalTrades} trades | ${stats.totalFills} fills`);
   }
 

@@ -5,6 +5,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import pkg from '../../../../package.json';
 import { getRedisClient } from '../../../redis';
 import { getDbClient } from '../../../shared/db/postgres-client';
 import { TradingEngine } from '../../../desk/engine';
@@ -13,8 +14,7 @@ import { handleReadinessCheck } from './health-readiness';
 import { collectRedisMetrics, getDiskUsageSnapshot } from './health-metrics-collector';
 
 // Resolve package version at module load time — avoids repeated disk reads
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { version: APP_VERSION } = require('../../../../package.json') as { version: string };
+const APP_VERSION: string = pkg.version;
 
 export const healthRouter: Router = Router();
 
