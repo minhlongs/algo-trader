@@ -5,11 +5,8 @@
  * Re-exported via strategy-registry-full.ts facade.
  */
 
-import type { BasePolymarketStrategy } from '../strategies/polymarket/base-polymarket-strategy';
-
-/** Strategy entry descriptor: name, description, constructor, default config */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface StrategyEntry { name: string; description: string; ctor: new (...args: any[]) => BasePolymarketStrategy; defaultConfig: Record<string, unknown>; }
+import type { StrategyEntry, StrategyEntryConstructor } from './strategy-registry-types';
+export type { StrategyEntry, StrategyEntryConstructor } from './strategy-registry-types';
 
 // V2 strategies
 import { SpreadMeanReversionStrategy, DEFAULT_CONFIG as SpreadMR } from '../strategies/polymarket/spread-mean-reversion-v2';
@@ -33,26 +30,25 @@ import { MeanVarianceOptimizerStrategy, DEFAULT_CONFIG as MeanVar } from '../str
 import { OrderArrivalRateStrategy, DEFAULT_CONFIG as OrderArrival } from '../strategies/polymarket/order-arrival-rate-v2';
 import { RecencyBiasExploiterStrategy, DEFAULT_CONFIG as RecencyBias } from '../strategies/polymarket/recency-bias-exploiter-v2';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const REGISTRY_A_N: Record<string, StrategyEntry> = {
-  'spread-mean-reversion': { name: 'spread-mean-reversion', description: 'Trades yes/no spread deviations back toward equilibrium (1.0)', ctor: SpreadMeanReversionStrategy, defaultConfig: SpreadMR as any },
-  'bollinger-squeeze': { name: 'bollinger-squeeze', description: 'Enters when Bollinger Bands tighten — signals imminent breakout', ctor: BollingerSqueezeStrategy, defaultConfig: Bollinger as any },
-  'vwap-deviation-sniper': { name: 'vwap-deviation-sniper', description: 'Enters when price deviates significantly from VWAP, reversion play', ctor: VwapDeviationSniperStrategy, defaultConfig: VwapDev as any },
-  'momentum-cascade': { name: 'momentum-cascade', description: 'Rides strong directional moves with cascading position entries', ctor: MomentumCascadeStrategy, defaultConfig: MomCasc as any },
-  'cross-event-drift': { name: 'cross-event-drift', description: 'Exploits price divergence between related event markets', ctor: CrossEventDriftStrategy, defaultConfig: CrossEv as any },
-  'decay-rate-momentum': { name: 'decay-rate-momentum', description: 'Trades accelerating price decay toward resolution', ctor: DecayRateMomentumStrategy, defaultConfig: Decay as any },
-  'event-deadline-scalper': { name: 'event-deadline-scalper', description: 'Scalps markets approaching event deadlines with thin spreads', ctor: EventDeadlineScalperStrategy, defaultConfig: EvtDead as any },
-  'gap-fill-reversion': { name: 'gap-fill-reversion', description: 'Mean-reverts after sudden price gaps in binary markets', ctor: GapFillReversionStrategy, defaultConfig: GapFill as any },
-  'liquidity-migration': { name: 'liquidity-migration', description: 'Tracks liquidity flowing between related tokens', ctor: LiquidityMigrationStrategy, defaultConfig: LiqMig as any },
-  'orderbook-depth-ratio': { name: 'orderbook-depth-ratio', description: 'Signals on bid/ask depth imbalances in the CLOB', ctor: OrderbookDepthRatioStrategy, defaultConfig: OBDepth as any },
-  'pivot-point-bounce': { name: 'pivot-point-bounce', description: 'Bounces off calculated pivot support/resistance levels', ctor: PivotPointBounceStrategy, defaultConfig: Pivot as any },
-  'regime-switch-detector': { name: 'regime-switch-detector', description: 'Detects market regime changes and adapts strategy accordingly', ctor: RegimeSwitchDetectorStrategy, defaultConfig: Regime as any },
-  'cluster-breakout': { name: 'cluster-breakout', description: 'Enters on volume cluster breakouts above threshold with momentum confirmation', ctor: ClusterBreakoutStrategy, defaultConfig: ClusterBreakout as any },
-  'cross-correlation-lag': { name: 'cross-correlation-lag', description: 'Trades lagged cross-correlation signals between related Polymarket tokens', ctor: CrossCorrelationLagStrategy, defaultConfig: CrossCorrLag as any },
-  'herd-behavior-detector': { name: 'herd-behavior-detector', description: 'Detects and fades herd behavior — buys when crowd sells, sells when crowd buys', ctor: HerdBehaviorDetectorStrategy, defaultConfig: HerdBehavior as any },
-  'info-asymmetry-scanner': { name: 'info-asymmetry-scanner', description: 'Scans for information asymmetry patterns in order flow and market data', ctor: InfoAsymmetryScannerStrategy, defaultConfig: InfoAsym as any },
-  'markov-chain-predictor': { name: 'markov-chain-predictor', description: 'Uses Markov chain state transitions to predict next price moves', ctor: MarkovChainPredictorStrategy, defaultConfig: MarkovChain as any },
-  'mean-variance-optimizer': { name: 'mean-variance-optimizer', description: 'Optimizes portfolio allocation using mean-variance framework across markets', ctor: MeanVarianceOptimizerStrategy, defaultConfig: MeanVar as any },
-  'order-arrival-rate': { name: 'order-arrival-rate', description: 'Signals on abnormal order arrival rate — detects informed trading flow', ctor: OrderArrivalRateStrategy, defaultConfig: OrderArrival as any },
-  'recency-bias-exploiter': { name: 'recency-bias-exploiter', description: 'Exploits traders over-weighting recent events — fades recency-driven mispricing', ctor: RecencyBiasExploiterStrategy, defaultConfig: RecencyBias as any },
+  'spread-mean-reversion': { name: 'spread-mean-reversion', description: 'Trades yes/no spread deviations back toward equilibrium (1.0)', ctor: SpreadMeanReversionStrategy, defaultConfig: SpreadMR },
+  'bollinger-squeeze': { name: 'bollinger-squeeze', description: 'Enters when Bollinger Bands tighten — signals imminent breakout', ctor: BollingerSqueezeStrategy, defaultConfig: Bollinger },
+  'vwap-deviation-sniper': { name: 'vwap-deviation-sniper', description: 'Enters when price deviates significantly from VWAP, reversion play', ctor: VwapDeviationSniperStrategy, defaultConfig: VwapDev },
+  'momentum-cascade': { name: 'momentum-cascade', description: 'Rides strong directional moves with cascading position entries', ctor: MomentumCascadeStrategy, defaultConfig: MomCasc },
+  'cross-event-drift': { name: 'cross-event-drift', description: 'Exploits price divergence between related event markets', ctor: CrossEventDriftStrategy, defaultConfig: CrossEv },
+  'decay-rate-momentum': { name: 'decay-rate-momentum', description: 'Trades accelerating price decay toward resolution', ctor: DecayRateMomentumStrategy, defaultConfig: Decay },
+  'event-deadline-scalper': { name: 'event-deadline-scalper', description: 'Scalps markets approaching event deadlines with thin spreads', ctor: EventDeadlineScalperStrategy, defaultConfig: EvtDead },
+  'gap-fill-reversion': { name: 'gap-fill-reversion', description: 'Mean-reverts after sudden price gaps in binary markets', ctor: GapFillReversionStrategy, defaultConfig: GapFill },
+  'liquidity-migration': { name: 'liquidity-migration', description: 'Tracks liquidity flowing between related tokens', ctor: LiquidityMigrationStrategy, defaultConfig: LiqMig },
+  'orderbook-depth-ratio': { name: 'orderbook-depth-ratio', description: 'Signals on bid/ask depth imbalances in the CLOB', ctor: OrderbookDepthRatioStrategy, defaultConfig: OBDepth },
+  'pivot-point-bounce': { name: 'pivot-point-bounce', description: 'Bounces off calculated pivot support/resistance levels', ctor: PivotPointBounceStrategy, defaultConfig: Pivot },
+  'regime-switch-detector': { name: 'regime-switch-detector', description: 'Detects market regime changes and adapts strategy accordingly', ctor: RegimeSwitchDetectorStrategy, defaultConfig: Regime },
+  'cluster-breakout': { name: 'cluster-breakout', description: 'Enters on volume cluster breakouts above threshold with momentum confirmation', ctor: ClusterBreakoutStrategy, defaultConfig: ClusterBreakout },
+  'cross-correlation-lag': { name: 'cross-correlation-lag', description: 'Trades lagged cross-correlation signals between related Polymarket tokens', ctor: CrossCorrelationLagStrategy, defaultConfig: CrossCorrLag },
+  'herd-behavior-detector': { name: 'herd-behavior-detector', description: 'Detects and fades herd behavior — buys when crowd sells, sells when crowd buys', ctor: HerdBehaviorDetectorStrategy, defaultConfig: HerdBehavior },
+  'info-asymmetry-scanner': { name: 'info-asymmetry-scanner', description: 'Scans for information asymmetry patterns in order flow and market data', ctor: InfoAsymmetryScannerStrategy, defaultConfig: InfoAsym },
+  'markov-chain-predictor': { name: 'markov-chain-predictor', description: 'Uses Markov chain state transitions to predict next price moves', ctor: MarkovChainPredictorStrategy, defaultConfig: MarkovChain },
+  'mean-variance-optimizer': { name: 'mean-variance-optimizer', description: 'Optimizes portfolio allocation using mean-variance framework across markets', ctor: MeanVarianceOptimizerStrategy, defaultConfig: MeanVar },
+  'order-arrival-rate': { name: 'order-arrival-rate', description: 'Signals on abnormal order arrival rate — detects informed trading flow', ctor: OrderArrivalRateStrategy, defaultConfig: OrderArrival },
+  'recency-bias-exploiter': { name: 'recency-bias-exploiter', description: 'Exploits traders over-weighting recent events — fades recency-driven mispricing', ctor: RecencyBiasExploiterStrategy, defaultConfig: RecencyBias },
 };

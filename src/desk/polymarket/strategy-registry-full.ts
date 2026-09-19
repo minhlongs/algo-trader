@@ -13,10 +13,11 @@
  * 2. Add an entry to either REGISTRY_A_N or REGISTRY_O_Z
  */
 
-export type { StrategyEntry } from './strategy-registry-full-entries-a-n';
+import type { StrategyEntry, StrategyEntryConstructor } from './strategy-registry-types';
+export type { StrategyEntry, StrategyEntryConstructor } from './strategy-registry-types';
+
 import { REGISTRY_A_N } from './strategy-registry-full-entries-a-n';
 import { REGISTRY_O_Z } from './strategy-registry-full-entries-o-z';
-import type { StrategyEntry } from './strategy-registry-full-entries-a-n';
 
 const REGISTRY: Record<string, StrategyEntry> = { ...REGISTRY_A_N, ...REGISTRY_O_Z };
 

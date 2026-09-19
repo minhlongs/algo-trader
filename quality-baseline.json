@@ -25,7 +25,7 @@
     "module": "commonjs"
   },
   "quality": {
-    "maxAnyTypes": 114,
+    "maxAnyTypes": 79,
     "maxConsoleCalls": 45,
     "maxFileSizeLines": 200,
     "bannedImports": [
