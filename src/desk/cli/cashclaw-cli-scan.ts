@@ -76,8 +76,7 @@ export function registerScanCommands(program: Command): void {
     .description('Show REAL Polymarket trades for any wallet (public data)')
     .option('--limit <n>', 'Number of trades', '50')
     .action(async (wallet: string, _opts: { limit: string }) => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { showRealLedger } = require('../polymarket');
+      const { showRealLedger } = await import('../polymarket/real-trade-ledger');
       await showRealLedger(wallet);
     });
 }

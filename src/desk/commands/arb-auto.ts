@@ -9,6 +9,7 @@ import { UnifiedExecutorConfig } from '../arbitrage/unified-executor';
 import { logger } from '../../shared/utils/logger';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { createInterface } from 'readline';
 
 const ENV_PATH = join(process.cwd(), '.env');
 
@@ -173,15 +174,14 @@ export async function runArbAuto(options: AutoCommandOptions = {}): Promise<void
 }
 
 async function promptConfirmation(): Promise<boolean> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const readline = require('readline').createInterface({
+  const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
   return new Promise((resolve) => {
-    readline.question('Confirm live trading with real money? (y/N): ', (answer: string) => {
-      readline.close();
+    rl.question('Confirm live trading with real money? (y/N): ', (answer: string) => {
+      rl.close();
       resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
     });
   });

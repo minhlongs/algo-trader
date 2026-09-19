@@ -70,9 +70,8 @@ export function registerTradeCommands(tradeCmd: Command): void {
   tradeCmd
     .command('list-strategies')
     .description('List available V2 strategies for live trading')
-    .action(() => {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { listStrategies } = require('../polymarket/strategy-registry');
+    .action(async () => {
+      const { listStrategies } = await import('../polymarket/strategy-registry');
       const strategies = listStrategies();
       logger.info('\nAvailable strategies for "algo trade run":\n');
       for (const s of strategies) {

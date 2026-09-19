@@ -5,19 +5,19 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { createInterface } from 'readline';
 
 export const ENV_PATH = join(process.cwd(), '.env');
 
 export async function promptLicenseKey(): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const readline = require('readline').createInterface({
+  const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
   return new Promise((resolve) => {
-    readline.question('Enter your license key: ', (answer: string) => {
-      readline.close();
+    rl.question('Enter your license key: ', (answer: string) => {
+      rl.close();
       resolve(answer.trim());
     });
   });

@@ -186,9 +186,13 @@ describe('Health endpoint response-contract discipline — 44th edge (TETRATETRA
       /APP_VERSION/.test(src),
       'APP_VERSION constant missing — version field would become uninitialized',
     ).toBe(true);
+    const importedFromJson =
+      /require\(\s*['"]\.\.\/\.\.\/\.\.\/\.\.\/package\.json['"]/.test(src) ||
+      /import\s+pkg\s+from\s+['"]\.\.\/\.\.\/\.\.\/\.\.\/package\.json['"]/.test(src) ||
+      /from\s+['"]\.\.\/\.\.\/\.\.\/\.\.\/package\.json['"]/.test(src);
     expect(
-      /require\(\s*['"]\.\.\/\.\.\/\.\.\/\.\.\/package\.json['"]/.test(src),
-      'package.json require path missing — version resolution broken',
+      importedFromJson,
+      'package.json import missing — version resolution broken',
     ).toBe(true);
   });
 
