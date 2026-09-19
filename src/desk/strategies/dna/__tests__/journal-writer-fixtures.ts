@@ -24,8 +24,8 @@ export function consensus(overrides: {
   regime?: string;
   emittedAt?: number;
   reason?: string;
-  tfSignals?: any[];
-} = {}): any {
+  tfSignals?: unknown[];
+} = {}): Record<string, unknown> {
   return {
     action: overrides.action ?? 'enter_long',
     confidence: overrides.confidence ?? 0.8,

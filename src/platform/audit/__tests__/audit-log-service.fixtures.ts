@@ -3,18 +3,29 @@
  */
 import { vi } from "vitest";
 
-export const MOCK_DB: any[] = [];
+export interface MockAuditRow {
+  id?: string;
+  licenseId?: string;
+  event?: string;
+  tier?: string;
+  ip?: string;
+  metadata?: Record<string, unknown>;
+  tenantId?: string;
+  createdAt?: string;
+}
+
+export const MOCK_DB: MockAuditRow[] = [];
 
 export function resetMockDb() {
   MOCK_DB.length = 0;
 }
 
-export function mockQueryImpl(sql: string, params?: any[]) {
+export function mockQueryImpl(sql: string, params?: string[]) {
   const s = String(sql);
   if (s.includes("FROM audit_log")) {
     if (s.includes("WHERE tenant_id")) {
       const tenantId = String(params?.[0] ?? "");
-      const tenantRows = MOCK_DB.filter((r: any) => r.tenantId === tenantId);
+      const tenantRows = MOCK_DB.filter((r) => r.tenantId === tenantId);
       return { rows: tenantRows };
     }
     const limit = Number(params?.[0] ?? 100);
@@ -31,7 +42,7 @@ export function mockQueryImpl(sql: string, params?: any[]) {
   return { rows: [] };
 }
 
-export function mockLogAuditImpl(entry: any) {
+export function mockLogAuditImpl(entry: MockAuditRow) {
   MOCK_DB.push(entry);
   return Promise.resolve();
 }
@@ -41,5 +52,5 @@ export function mockGetAuditTrailImpl(_resource: string, limit = 100) {
 }
 
 export function mockGetAuditTrailByTenantImpl(tenantId: string, limit = 100) {
-  return Promise.resolve(MOCK_DB.filter((r: any) => r.tenantId === tenantId).slice(0, limit));
+  return Promise.resolve(MOCK_DB.filter((r) => r.tenantId === tenantId).slice(0, limit));
 }

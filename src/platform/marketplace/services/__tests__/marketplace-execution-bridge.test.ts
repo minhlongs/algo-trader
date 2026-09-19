@@ -26,16 +26,16 @@ vi.mock('../../../raas/subscriber-executor', () => ({
 vi.mock('../../repositories/subscription-repository', () => ({
   SubscriptionRepository: vi.fn(),
   subscriptionRepository: {
-    findById: (...args: any[]) => mocks.mockFindById(...args),
-    findActiveByStrategy: (...args: any[]) => mocks.mockFindActiveByStrategy(...args),
-    update: (...args: any[]) => mocks.mockSubUpdate(...args),
+    findById: (...args: unknown[]) => mocks.mockFindById(...args),
+    findActiveByStrategy: (...args: unknown[]) => mocks.mockFindActiveByStrategy(...args),
+    update: (...args: unknown[]) => mocks.mockSubUpdate(...args),
   },
 }));
 
 vi.mock('../../repositories/performance-repository', () => ({
   PerformanceRepository: vi.fn(),
   performanceRepository: {
-    upsert: (...args: any[]) => mocks.mockPerfUpsert(...args),
+    upsert: (...args: unknown[]) => mocks.mockPerfUpsert(...args),
   },
 }));
 

@@ -10,7 +10,7 @@ import { Router } from 'express';
 import request from 'supertest';
 
 vi.mock('../../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -58,11 +58,11 @@ function buildApp(isAdminUser = true) {
   const app = express();
   app.use(express.json());
   const router = Router();
-  app.use((req: any, _res: any, next: any) => {
+  app.use(((req: Record<string, unknown>, _res: unknown, next: () => void) => {
     req.user = { id: 'user_001', tenantId: 'admin_tenant', role: isAdminUser ? 'admin' : 'user' };
     req.tenant = { id: 'admin_tenant' };
     next();
-  });
+  }) as unknown as import('express').RequestHandler);
   registerMarketplaceVettingRoutes(router);
   app.use('/api/admin/marketplace', router);
   return app;

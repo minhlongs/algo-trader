@@ -65,7 +65,7 @@ describe('UsageMeteringService - Limits & Call Tracking', () => {
       const eightyPercent = 80;
 
       const alertPromise = new Promise<void>((resolve) => {
-        service.once('threshold_alert', (alert: any) => {
+        service.once('threshold_alert', (alert: { licenseKey: string; threshold: number; currentUsage: number }) => {
           expect(alert.licenseKey).toBe(licenseKey);
           expect(alert.threshold).toBe(80);
           expect(alert.currentUsage).toBe(eightyPercent);

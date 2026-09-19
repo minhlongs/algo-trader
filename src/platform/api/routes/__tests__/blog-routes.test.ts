@@ -27,13 +27,20 @@ function invokeGetPosts(query: Record<string, string> = {}): {
 } {
   const json = vi.fn();
   const status = vi.fn().mockReturnValue({ json });
-  const res: any = { status, json };
-  const req: any = { query };
+  const res = { status, json } as unknown as import('express').Response;
+  const req = { query } as unknown as import('express').Request;
   const next = vi.fn();
 
-  const handlers = (blogRouter as any).stack
-    .filter((l: any) => l.route && l.route.path === '/posts')
-    .map((l: any) => l.route.stack[0].handle);
+  interface Layer {
+    route?: {
+      path: string;
+      stack: Array<{ handle: (req: unknown, res: unknown, next: unknown) => void }>;
+    };
+  }
+
+  const handlers = (blogRouter as unknown as { stack: Layer[] }).stack
+    .filter((l) => l.route && l.route.path === '/posts')
+    .map((l) => l.route!.stack[0].handle);
 
   expect(handlers.length).toBe(1);
   handlers[0](req, res, next);

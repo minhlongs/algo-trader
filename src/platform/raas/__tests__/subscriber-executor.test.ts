@@ -15,7 +15,7 @@ const { mockQuery } = vi.hoisted(() => ({
 vi.mock('../../../shared/db/postgres-client', () => ({
   query: mockQuery,
   getDbClient: () => ({}),
-  transaction: vi.fn().mockImplementation(async (fn: any) =>
+  transaction: vi.fn().mockImplementation(async (fn: (client: { query: typeof mockQuery }) => unknown) =>
     fn({ query: vi.fn().mockResolvedValue({ rows: [] }) }),
   ),
   closeDbConnection: vi.fn(),

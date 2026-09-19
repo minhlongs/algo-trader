@@ -23,7 +23,7 @@ const RESULT: RiskCalculationResult = {
   algorithm: 'var',
 };
 
-function makeRepo(overrides: Partial<{ get: any; setex: any; ttl?: number }> = {}) {
+function makeRepo(overrides: Partial<{ get: unknown; setex: unknown; ttl?: number }> = {}) {
   const get = overrides.get ?? vi.fn();
   const setex = overrides.setex ?? vi.fn();
   const redis = { get, setex };

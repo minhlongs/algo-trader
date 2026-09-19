@@ -58,7 +58,7 @@ async function fetchPaperTrades(): Promise<PaperTradeRow[]> {
  *
  * Runs ExchangeConnectionTester against the configured exchanges.
  * Returns true only if every exchange reports REST + (optional) WebSocket OK.
- * Conservative fallback: any failure (network, timeout, parse) returns false
+ * Conservative fallback: a transient failure (network, timeout, parse) returns false
  * rather than crashing the gate check.
  */
 async function checkExchangeHealth(): Promise<boolean> {

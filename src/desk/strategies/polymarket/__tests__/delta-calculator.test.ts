@@ -13,7 +13,7 @@ function hp(overrides: Partial<{
   currentPrice: number;
   entryPrice: number;
   size: number;
-}> = {}): any {
+}> = {}): Record<string, unknown> {
   return {
     marketId: overrides.marketId ?? 'm1',
     side: (overrides.side ?? 'YES') as 'YES' | 'NO',

@@ -4,7 +4,7 @@ import {
   calcUnrealizedPnl, checkPositionExits,
 } from '../strategy-position-manager';
 
-function pos(o: Partial<{ side: 'yes'|'no'; entryPrice: number; sizeUsdc: number; openedAt: number; tokenId: string }> = {}): any {
+function pos(o: Partial<{ side: 'yes'|'no'; entryPrice: number; sizeUsdc: number; openedAt: number; tokenId: string }> = {}): Record<string, unknown> {
   return { tokenId: o.tokenId ?? 't1', conditionId: 'c1', side: o.side ?? 'yes', entryPrice: o.entryPrice ?? 0.5, sizeUsdc: o.sizeUsdc ?? 100, orderId: 'o1', openedAt: o.openedAt ?? Date.now() };
 }
 
@@ -77,7 +77,7 @@ describe('strategy-position-manager::checkPositionExits', () => {
       pos({ side: 'yes', entryPrice: 0.5, openedAt: Date.now() - 3600000, tokenId: 't2' }),
     ];
     const priceMap = new Map([['t1', 0.6], ['t2', 0.6]]);
-    const result = checkPositionExits(positions, (p: any) => priceMap.get(p.tokenId) ?? 0.5, {
+    const result = checkPositionExits(positions, (p: Record<string, unknown>) => priceMap.get(p.tokenId as string) ?? 0.5, {
       tpPct: 0.05, slPct: 0.05, maxHoldMs: 7200000, strategyName: 'test',
     });
     expect(result.toClose.length + result.toKeep.length).toBe(2);

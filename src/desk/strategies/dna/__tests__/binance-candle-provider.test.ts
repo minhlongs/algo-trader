@@ -49,20 +49,20 @@ function mkKlines(toTs: number, count = 5) {
   return Array.from({ length: count }, (_, i) => mkKline(toTs - i * interval, 100 + i), );
 }
 
-function mockSuccess(klines: any[], status = 200) {
+function mockSuccess(klines: readonly (readonly unknown[])[], status = 200) {
   globalThis.fetch = vi.fn().mockImplementation((url: string) => {
     const u = new URL(url);
     const endTime = u.searchParams.get('endTime');
     let filtered = klines;
     if (endTime) {
       const cut = Number(endTime);
-      filtered = klines.filter((k: any) => k[0] <= cut);
+      filtered = klines.filter((k) => (k[0] as number) <= cut);
     }
     return Promise.resolve({
       ok: status < 400,
       status,
       json: async () => filtered,
-    } as any);
+    } as unknown as Response);
   });
 }
 
@@ -119,7 +119,7 @@ describe('fetchBinanceCandles', () => {
 
   it('rejects with AbortError when AbortController is aborted', async () => {
   vi.useFakeTimers();
-  globalThis.fetch = vi.fn().mockImplementation((_url: string, opts: any) => {
+  globalThis.fetch = vi.fn().mockImplementation((_url: string, opts: { signal?: { addEventListener: (ev: string, cb: () => void) => void } }) => {
     return new Promise((_resolve, reject) => {
       opts?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
     });

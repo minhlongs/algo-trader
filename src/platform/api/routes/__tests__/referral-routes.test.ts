@@ -8,7 +8,7 @@ import express from 'express';
 import request from 'supertest';
 
 vi.mock('../../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -52,10 +52,10 @@ import { referralRouter } from '../referral-routes';
 function buildApp(claims?: { sub?: string; role?: string }) {
   const app = express();
   app.use(express.json());
-  app.use((req: any, _res: any, next: any) => {
+  app.use(((req: Record<string, unknown>, _res: unknown, next: () => void) => {
     if (claims) req.claims = claims;
     next();
-  });
+  }) as unknown as import('express').RequestHandler);
   app.use('/api/v1/referral', referralRouter);
   return app;
 }

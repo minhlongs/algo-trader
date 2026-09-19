@@ -9,7 +9,7 @@ import request from 'supertest';
 
 // Mock tier gate — let all requests through by default
 vi.mock('../../../middleware/feature-gate', () => ({
-  requireTier: () => (_req: any, _res: any, next: any) => next(),
+  requireTier: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
 vi.mock('../../../../shared/utils/logger', () => ({
@@ -93,7 +93,7 @@ describe('Leaderboard Routes', () => {
         .set('Authorization', 'Bearer test-key');
 
       expect(res.status).toBe(200);
-      const names = res.body.data.map((e: any) => e.strategyName);
+      const names = (res.body.data as Array<{ strategyName: string }>).map((e) => e.strategyName);
       expect(names).toContain('vwap-deviation-sniper');
     });
 
