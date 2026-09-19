@@ -12,6 +12,7 @@
  * - kelly-backtest-report.ts: comparison tables + results file write
  */
 
+import { logger } from '../../shared/utils/logger';
 import { runScenarios, type BacktestParams } from './kelly-backtest-scenarios';
 import { printReportAndSaveResults } from './kelly-backtest-report';
 
@@ -32,7 +33,7 @@ async function main() {
     randomSeed: 12345, // For reproducibility
   };
 
-  console.log('Running Kelly vs Fixed Position Sizer Backtest...\n');
+  logger.info('Running Kelly vs Fixed Position Sizer Backtest...');
 
   const results = runScenarios(params);
 
@@ -44,6 +45,6 @@ async function main() {
 
 // Run main function
 main().catch((error) => {
-  console.error('Backtest failed:', error);
+  logger.error('Backtest failed:', { err: error });
   process.exit(1);
 });

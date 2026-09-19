@@ -7,6 +7,7 @@
  * Usage: pnpm tsx src/alpha-lab/check-gates.ts
  */
 
+import { logger } from '../shared/utils/logger';
 import { evaluateGates } from './gates/gate-evaluator';
 import type { GateEvaluatorInput } from './gates/gate-evaluator';
 import type { PromotionReadiness } from './gates/gate-types';
@@ -42,13 +43,13 @@ async function fetchPaperTrades(): Promise<PaperTradeRow[]> {
   try {
     const res = await fetch(PAPER_API);
     if (!res.ok) {
-      console.warn(`[check-gates] paper-trades API returned ${res.status}`);
+      logger.warn(`[check-gates] paper-trades API returned ${res.status}`);
       return [];
     }
     const body = (await res.json()) as { trades?: PaperTradeRow[] };
     return body.trades ?? [];
   } catch (err) {
-    console.warn('[check-gates] paper-trades API unreachable', { err });
+    logger.warn('[check-gates] paper-trades API unreachable', { err });
     return [];
   }
 }
@@ -128,7 +129,7 @@ export async function main(): Promise<void> {
 /* v8 ignore start */
 if (require.main === module) {
   main().catch((err) => {
-    console.error('[check-gates] fatal', { err });
+    logger.error('[check-gates] fatal', { err });
     process.exit(2);
   });
 }

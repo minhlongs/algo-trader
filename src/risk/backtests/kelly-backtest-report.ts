@@ -8,6 +8,7 @@
 
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { logger } from '../../shared/utils/logger';
 import type { ScenarioResult } from './kelly-backtest-simulation';
 import type { BacktestParams } from './kelly-backtest-scenarios';
 
@@ -33,16 +34,16 @@ export async function printReportAndSaveResults(
   const baseMetrics = results[0].metrics;
 
   // Console output: comparison table
-  console.log('Scenario Comparison:');
-  console.log('='.repeat(80));
-  console.log(
+  logger.info('Scenario Comparison:');
+  logger.info('='.repeat(80));
+  logger.info(
     `${'Scenario'.padEnd(25)}${'Final Wealth'.padEnd(18)}${'CAGR'.padEnd(12)}${'Max DD'.padEnd(12)}${'Sharpe'}`
   );
-  console.log('-'.repeat(80));
+  logger.info('-'.repeat(80));
 
   for (const scenario of results) {
     const { finalWealth, cagr, maxDrawdown, sharpe } = scenario.metrics;
-    console.log(
+    logger.info(
       `${scenario.name.padEnd(25)}` +
       `$${Math.round(finalWealth).toLocaleString()}`.padEnd(18) +
       `${(cagr * 100).toFixed(2)}%`.padEnd(12) +
@@ -51,16 +52,16 @@ export async function printReportAndSaveResults(
     );
   }
 
-  console.log('='.repeat(80));
-  console.log('');
+  logger.info('='.repeat(80));
+  logger.info('');
 
   // Improvement table
-  console.log('Improvement vs Fixed 2%:');
-  console.log('='.repeat(80));
-  console.log(
+  logger.info('Improvement vs Fixed 2%:');
+  logger.info('='.repeat(80));
+  logger.info(
     `${'Scenario'.padEnd(25)}${'CAGR Δ'.padEnd(12)}${'Max DD Δ'.padEnd(12)}${'Sharpe Δ'}`
   );
-  console.log('-'.repeat(80));
+  logger.info('-'.repeat(80));
 
   for (let i = 1; i < results.length; i++) {
     const s = results[i];
@@ -71,7 +72,7 @@ export async function printReportAndSaveResults(
 
     const sharpeDeltaFormatted = baseMetrics.sharpe === 0 ? 'N/A' : `${sharpeDelta.toFixed(1)}%`;
 
-    console.log(
+    logger.info(
       `${s.name.padEnd(25)}` +
       `${cagrDelta >= 0 ? '+' : ''}${cagrDelta.toFixed(1)}%`.padEnd(12) +
       `${ddDelta >= 0 ? '+' : ''}${ddDelta.toFixed(1)}%`.padEnd(12) +
@@ -79,8 +80,8 @@ export async function printReportAndSaveResults(
     );
   }
 
-  console.log('='.repeat(80));
-  console.log('');
+  logger.info('='.repeat(80));
+  logger.info('');
 
   // Summary
   const bestSharpeScenario = results
@@ -90,18 +91,18 @@ export async function printReportAndSaveResults(
     ((bestSharpeScenario.metrics.sharpe - baseMetrics.sharpe) / Math.abs(baseMetrics.sharpe)) *
     100;
 
-  console.log('SUMMARY:');
-  console.log(`- Initial bankroll: $${initialBankroll.toLocaleString()}`);
-  console.log(`- Trades simulated: ${numTrades}`);
-  console.log(`- Win probability: ${(winProbability * 100).toFixed(1)}%`);
-  console.log(`- Win/loss ratio: ${winLossRatio}:1`);
-  console.log(`- Kelly fraction: ${kellyFraction} (quarter-Kelly)`);
-  console.log(`- Max position cap: ${maxPositionFraction * 100}%`);
-  console.log('');
-  console.log(`Target: Sharpe improvement ≥20%`);
-  console.log(`Achieved: ${sharpeImprovement.toFixed(1)}% improvement with ${bestSharpeScenario.name}`);
-  console.log(`Status: ${sharpeImprovement >= 20 ? '✓ PASS' : '✗ FAIL'}`);
-  console.log('');
+  logger.info('SUMMARY:');
+  logger.info(`- Initial bankroll: $${initialBankroll.toLocaleString()}`);
+  logger.info(`- Trades simulated: ${numTrades}`);
+  logger.info(`- Win probability: ${(winProbability * 100).toFixed(1)}%`);
+  logger.info(`- Win/loss ratio: ${winLossRatio}:1`);
+  logger.info(`- Kelly fraction: ${kellyFraction} (quarter-Kelly)`);
+  logger.info(`- Max position cap: ${maxPositionFraction * 100}%`);
+  logger.info('');
+  logger.info(`Target: Sharpe improvement ≥20%`);
+  logger.info(`Achieved: ${sharpeImprovement.toFixed(1)}% improvement with ${bestSharpeScenario.name}`);
+  logger.info(`Status: ${sharpeImprovement >= 20 ? '✓ PASS' : '✗ FAIL'}`);
+  logger.info('');
 
   // ==========================================================================
   // Save detailed results to file
@@ -191,8 +192,8 @@ ${sharpeImprovement >= 20
   await mkdir(outputDir, { recursive: true });
   await writeFile(outputPath, outputContent);
 
-  console.log(`Detailed results saved to: ${outputPath}`);
-  console.log('');
+  logger.info(`Detailed results saved to: ${outputPath}`);
+  logger.info('');
 
   return outputPath;
 }
