@@ -26,7 +26,7 @@
   },
   "quality": {
     "maxAnyTypes": 0,
-    "maxConsoleCalls": 45,
+    "maxConsoleCalls": 15,
     "maxFileSizeLines": 200,
     "bannedImports": [
       "@/lib/auth",

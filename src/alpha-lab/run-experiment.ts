@@ -9,6 +9,7 @@
  * --suggest ranks strategy families against the research ledger.
  */
 
+import { logger } from '../shared/utils/logger';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ExperimentConfig } from './experiments/experiment-types';
@@ -170,7 +171,7 @@ export async function main(
 /* v8 ignore start */
 if (require.main === module) {
   main().catch((err) => {
-    console.error('[run-experiment] fatal', { err });
+    logger.error('[run-experiment] fatal', { err });
     process.exit(1);
   });
 }
