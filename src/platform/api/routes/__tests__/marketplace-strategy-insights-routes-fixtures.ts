@@ -45,7 +45,7 @@ import { marketplaceStrategyInsightsRouter } from '../marketplace-strategy-insig
 function buildApp(): express.Express {
   const app = express();
   app.use(express.json());
-  app.use((req: Record<string, unknown>, _res, next) => {
+  app.use((req: Record<string, unknown>, _res, next: () => void) => {
     req.tenant = { id: 'tenant_001' };
     req.user = { id: 'user_001', tenantId: 'tenant_001' };
     next();
