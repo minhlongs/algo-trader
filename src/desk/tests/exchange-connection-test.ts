@@ -55,7 +55,7 @@ const DEFAULT_EXCHANGES: ExchangeEndpoint[] = [
  * @example
  * const tester = new ExchangeConnectionTester({ timeoutMs: 5000 });
  * const results = await tester.testAll();
- * console.log(tester.report(results));
+ * logger.info(tester.report(results));
  */
 export class ExchangeConnectionTester {
   private readonly config: ExchangeConnectionTesterConfig;

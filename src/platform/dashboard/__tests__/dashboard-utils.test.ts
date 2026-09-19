@@ -86,7 +86,7 @@ describe('dashboard-utils — serveStatic', () => {
   });
 
   it('serves .js as application/javascript', async () => {
-    mockReadFile.mockResolvedValueOnce(Buffer.from('console.log(1)'));
+    mockReadFile.mockResolvedValueOnce(Buffer.from('var x = 1;'));
     const res = createMockRes();
 
     await serveStatic(res, '/public/app.js');

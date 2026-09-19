@@ -40,7 +40,7 @@ async function fetchGammaMarkets(limit = 5): Promise<GammaMarket[] | null> {
 }
 
 function skipIfGamma(m: GammaMarket[] | null): boolean {
-  if (!m || m.length === 0) { console.warn('[SKIP] Gamma unreachable'); return true; }
+  if (!m || m.length === 0) { process.stderr.write('[SKIP] Gamma unreachable\n'); return true; }
   return false;
 }
 
