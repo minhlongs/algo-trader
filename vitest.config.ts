@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     globals: true,
     pool: 'forks',
+    setupFiles: ['tests/setup-proxy-bypass.ts'],
     include: [
       'tests/**/*.{test,spec}.{ts,js,mts,mjs,cts,cjs}',
       'src/**/__tests__/**/*.{test,spec}.{ts,js,mts,mjs,cts,cjs}',
@@ -34,6 +35,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],
+      reportOnFailure: true,
       thresholds: {
         lines: 75,
         functions: 75,
