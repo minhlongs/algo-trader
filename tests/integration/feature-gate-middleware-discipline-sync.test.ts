@@ -134,10 +134,10 @@ describe('Feature-gate tier-access discipline — 67th edge (HEPTAHEXACONTAGON)'
 
   it('Express.Request augmentation exposes license?: License', () => {
     expect(
-      /declare\s+global\s*\{[\s\S]*?namespace\s+Express\s*\{[\s\S]*?interface\s+Request\s*\{[\s\S]*?license\?\s*:\s*License/.test(
+      /declare\s+module\s+['"]express['"][\s\S]*?interface\s+Request\s*\{[\s\S]*?license\?\s*:\s*License/.test(
         src,
       ),
-      'global Express.Request augmentation with optional license required for upstream raas-gate',
+      'module Express.Request augmentation with optional license required for upstream raas-gate',
     ).toBe(true);
   });
 
@@ -253,7 +253,7 @@ describe('Feature-gate tier-access discipline — 67th edge (HEPTAHEXACONTAGON)'
         src,
       ),
     ).toBe(true);
-    expect(/namespace\s+Express\s*\{[\s\S]*?interface\s+Request[\s\S]*?license\?\s*:\s*License/.test(src)).toBe(true);
+    expect(/declare\s+module\s+['"]express['"][\s\S]*?interface\s+Request[\s\S]*?license\?\s*:\s*License/.test(src)).toBe(true);
     const f = parseInt((src.match(/FREE\s*:\s*([0-9]+)/) || ['', '-1'])[1], 10);
     const p = parseInt((src.match(/PRO\s*:\s*([0-9]+)/) || ['', '-1'])[1], 10);
     const e = parseInt((src.match(/ENTERPRISE\s*:\s*([0-9]+)/) || ['', '-1'])[1], 10);
