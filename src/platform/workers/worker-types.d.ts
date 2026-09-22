@@ -1,5 +1,4 @@
 /** Cloudflare KV + Fetch types for Workers build (Wrangler v3 runtime provides these at deploy time). */
-/* eslint-disable @typescript-eslint/no-empty-interface */
 
 interface KVNamespace {
  get(key: string): Promise<string | null>;

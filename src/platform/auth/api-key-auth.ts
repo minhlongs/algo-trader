@@ -24,12 +24,9 @@ export interface ApiKeyAuthOptions {
   required?: boolean;
 }
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      apiKeyAuth?: ApiKeyAuthResult;
-    }
+declare module 'express' {
+  interface Request {
+    apiKeyAuth?: ApiKeyAuthResult;
   }
 }
 

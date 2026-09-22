@@ -262,6 +262,14 @@ if (runQuality) {
   // 3d. Banned imports (plain string literals, summed per import)
   const bannedCount = countBannedImports(sourceFiles, baseline.quality.bannedImports);
   record('bannedImports', 0, bannedCount, bannedCount === 0);
+
+  // 3e. eslint-disable comments in src/ — counted via line match against
+  // the `eslint-disable` literal. The ESLint suppression freeze forbids new
+  // suppressions; this check enforces the ratchet in CI.
+  const eslintDisableCount = countPatternLines(sourceFiles, /\beslint-disable\b/);
+  const maxEslintDisables = baseline.quality?.maxEslintDisables ?? 0;
+  record('eslintDisables', `<=${maxEslintDisables}`, eslintDisableCount,
+    eslintDisableCount <= maxEslintDisables);
 }
 
 // ===========================================================================

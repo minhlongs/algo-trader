@@ -27,18 +27,15 @@ export interface AuthClaims {
   tier?: string;
 }
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      claims?: AuthClaims;
-      user?: {
-        id: string;
-        tenantId?: string;
-        tier?: string;
-        role?: string;
-      };
-    }
+declare module 'express' {
+  interface Request {
+    claims?: AuthClaims;
+    user?: {
+      id: string;
+      tenantId?: string;
+      tier?: string;
+      role?: string;
+    };
   }
 }
 

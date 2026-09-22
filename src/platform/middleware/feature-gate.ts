@@ -14,12 +14,9 @@ import type { Request, Response, NextFunction } from 'express';
 import type { License } from '../../shared/types/license';
 
 // Augment Express Request to expose the license set by upstream auth middleware
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      license?: License;
-    }
+declare module 'express' {
+  interface Request {
+    license?: License;
   }
 }
 
