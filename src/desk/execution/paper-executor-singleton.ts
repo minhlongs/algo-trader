@@ -3,9 +3,9 @@
  */
 
 import { unlinkSync } from 'fs';
-import { homedir } from 'os';
 import type { PaperExecutor } from './paper-executor';
 import type { PaperExecutorConfig } from './paper-position-tracker';
+import { cashclawPath } from '../../shared/persistence/file-store';
 
 let instance: PaperExecutor | null = null;
 
@@ -21,8 +21,7 @@ export function getPaperExecutorSingleton(
 
 export function resetPaperExecutor(): void {
   instance = null;
-  const home = homedir();
-  try { unlinkSync(`${home}/.cashclaw/paper-account.json`); } catch {}
-  try { unlinkSync(`${home}/.cashclaw/paper-positions.json`); } catch {}
-  try { unlinkSync(`${home}/.cashclaw/paper-trades.jsonl`); } catch {}
+  try { unlinkSync(cashclawPath('paper-account.json')); } catch {}
+  try { unlinkSync(cashclawPath('paper-positions.json')); } catch {}
+  try { unlinkSync(cashclawPath('paper-trades.jsonl')); } catch {}
 }
