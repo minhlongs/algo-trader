@@ -11,13 +11,16 @@ import * as path from 'path';
 import * as os from 'os';
 import { createInterface } from 'readline';
 
-/** Resolve a path under ~/.cashclaw/, creating the dir if needed */
+/** Resolve a path under ~/.cashclaw/ (or per-worker temp dir for tests), creating the dir if needed */
 export function cashclawPath(filename: string): string {
-  const dir = path.join(os.homedir(), '.cashclaw');
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  const isTestWorker = process.env.VITEST_POOL_ID !== undefined;
+  const baseDir = isTestWorker
+    ? path.join(os.tmpdir(), `cashclaw-test-${process.env.VITEST_POOL_ID}`)
+    : path.join(os.homedir(), '.cashclaw');
+  if (!fs.existsSync(baseDir)) {
+    fs.mkdirSync(baseDir, { recursive: true });
   }
-  return path.join(dir, filename);
+  return path.join(baseDir, filename);
 }
 
 /**

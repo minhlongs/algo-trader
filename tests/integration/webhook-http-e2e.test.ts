@@ -11,6 +11,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import express from 'express';
+import request from 'supertest';
 import { nowpaymentsWebhookRouter } from '../../src/platform/api/routes/webhooks/nowpayments-webhook';
 import { SubscriptionService } from '../../src/platform/billing/subscription-service';
 import { LicenseService } from '../../src/platform/billing/license-service';
@@ -102,70 +103,27 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
   it('should return 400 when x-nowpayments-sig header is missing', async () => {
     const app = createTestApp();
     const ipn = makeFinishedIpn();
-    const payload = JSON.stringify(ipn);
 
-    let serverRes: { status: number; body: unknown } | null = null;
+    const res = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .send(ipn);
 
-    await new Promise<void>((resolve) => {
-      const server = app.listen(0, async () => {
-        const port = (server.address() as any).port;
-        try {
-          const r = await fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: payload,
-            // no x-nowpayments-sig header
-          });
-          serverRes = { status: r.status, body: await r.json() };
-        } catch (e) {
-          serverRes = { status: 0, body: (e as Error).message };
-        } finally {
-          server.close();
-          resolve();
-        }
-      });
-    });
-
-    expect(serverRes).not.toBeNull();
-    expect(serverRes!.status).toBe(400);
+    expect(res.status).toBe(400);
   });
 
   it('should return 401 for invalid signature', async () => {
     const app = createTestApp();
     const ipn = makeFinishedIpn();
-    const payload = JSON.stringify(ipn);
 
-    // Don't mock verifyWebhook — let it try real HMAC (will fail with wrong secret)
-    // Or: mock it to return false
     const nowpaymentsService = NowPaymentsService.getInstance();
     vi.spyOn(nowpaymentsService, 'verifyWebhook').mockResolvedValue(false);
 
-    let serverRes: { status: number; body: unknown } | null = null;
+    const res = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .set('x-nowpayments-sig', 'invalidsig')
+      .send(ipn);
 
-    await new Promise<void>((resolve) => {
-      const server = app.listen(0, async () => {
-        const port = (server.address() as any).port;
-        try {
-          const r = await fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-nowpayments-sig': 'invalidsig',
-            },
-            body: payload,
-          });
-          serverRes = { status: r.status, body: await r.json() };
-        } catch (e) {
-          serverRes = { status: 0, body: (e as Error).message };
-        } finally {
-          server.close();
-          resolve();
-        }
-      });
-    });
-
-    expect(serverRes).not.toBeNull();
-    expect(serverRes!.status).toBe(401);
+    expect(res.status).toBe(401);
   });
 
   // ---------------------------------------------------------------------------
@@ -181,34 +139,14 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
     const secret = process.env.NOWPAYMENTS_IPN_SECRET || 'test-secret';
     const signature = signPayload(payload, secret);
 
-    let serverRes: { status: number; body: unknown } | null = null;
-
-    await new Promise<void>((resolve) => {
-      const server = app.listen(0, async () => {
-        const port = (server.address() as any).port;
-        try {
-          const r = await fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-nowpayments-sig': signature,
-            },
-            body: payload,
-          });
-          serverRes = { status: r.status, body: await r.json() };
-        } catch (e) {
-          serverRes = { status: 0, body: (e as Error).message };
-        } finally {
-          server.close();
-          resolve();
-        }
-      });
-    });
+    const res = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .set('x-nowpayments-sig', signature)
+      .send(ipn);
 
     // --- Verify HTTP response ---
-    expect(serverRes).not.toBeNull();
-    expect(serverRes!.status).toBe(200);
-    expect(serverRes!.body).toEqual({ received: true });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ received: true });
 
     // --- Verify subscription created in service store ---
     const subService = SubscriptionService.getInstance();
@@ -248,31 +186,12 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
     const payload = JSON.stringify(ipn);
     const signature = signPayload(payload, process.env.NOWPAYMENTS_IPN_SECRET || 'test-secret');
 
-    let serverRes: { status: number; body: unknown } | null = null;
+    const res = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .set('x-nowpayments-sig', signature)
+      .send(ipn);
 
-    await new Promise<void>((resolve) => {
-      const server = app.listen(0, async () => {
-        const port = (server.address() as any).port;
-        try {
-          const r = await fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-nowpayments-sig': signature,
-            },
-            body: payload,
-          });
-          serverRes = { status: r.status, body: await r.json() };
-        } catch (e) {
-          serverRes = { status: 0, body: (e as Error).message };
-        } finally {
-          server.close();
-          resolve();
-        }
-      });
-    });
-
-    expect(serverRes!.status).toBe(200);
+    expect(res.status).toBe(200);
 
     const subService = SubscriptionService.getInstance();
     const sub = await subService.getSubscriptionByProviderId(ipn.payment_id as string);
@@ -294,34 +213,19 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
     const payload = JSON.stringify(ipn);
     const signature = signPayload(payload, process.env.NOWPAYMENTS_IPN_SECRET || 'test-secret');
 
-    let results: { status: number; body: unknown }[] = [];
+    // Send same IPN twice
+    const r1 = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .set('x-nowpayments-sig', signature)
+      .send(ipn);
 
-    await new Promise<void>((resolve) => {
-      const server = app.listen(0, async () => {
-        const port = (server.address() as any).port;
-        const opts: RequestInit = {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-nowpayments-sig': signature,
-          },
-          body: payload,
-        };
+    const r2 = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .set('x-nowpayments-sig', signature)
+      .send(ipn);
 
-        // Send same IPN twice
-        const r1 = await fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, opts);
-        results.push({ status: r1.status, body: await r1.json() });
-
-        const r2 = await fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, opts);
-        results.push({ status: r2.status, body: await r2.json() });
-
-        server.close();
-        resolve();
-      });
-    });
-
-    // Both should return 200
-    results.forEach((r) => expect(r.status).toBe(200));
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
 
     // Only one subscription for this payment_id
     const subService = SubscriptionService.getInstance();
@@ -336,7 +240,6 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
 
   it('should default to PRO tier when invoice_id is missing', async () => {
     const app = createTestApp();
-    // getTierByInvoiceId is only called when invoice_id is truthy — spy to track calls
     const nowpaymentsService = NowPaymentsService.getInstance();
     const tierSpy = vi.spyOn(nowpaymentsService, 'getTierByInvoiceId');
 
@@ -344,31 +247,12 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
     const payload = JSON.stringify(ipn);
     const signature = signPayload(payload, process.env.NOWPAYMENTS_IPN_SECRET || 'test-secret');
 
-    let serverRes: { status: number; body: unknown } | null = null;
+    const res = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .set('x-nowpayments-sig', signature)
+      .send(ipn);
 
-    await new Promise<void>((resolve) => {
-      const server = app.listen(0, async () => {
-        const port = (server.address() as any).port;
-        try {
-          const r = await fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-nowpayments-sig': signature,
-            },
-            body: payload,
-          });
-          serverRes = { status: r.status, body: await r.json() };
-        } catch (e) {
-          serverRes = { status: 0, body: (e as Error).message };
-        } finally {
-          server.close();
-          resolve();
-        }
-      });
-    });
-
-    expect(serverRes!.status).toBe(200);
+    expect(res.status).toBe(200);
     expect(tierSpy).not.toHaveBeenCalled();
 
     const subService = SubscriptionService.getInstance();
@@ -393,19 +277,12 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
 
     const subService = SubscriptionService.getInstance();
 
-    await new Promise<void>((resolve) => {
-      const server = app.listen(0, async () => {
-        const port = (server.address() as any).port;
-        fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-nowpayments-sig': finishedSig },
-          body: finishedPayload,
-        }).then(() => {
-          server.close();
-          resolve();
-        });
-      });
-    });
+    const res1 = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .set('x-nowpayments-sig', finishedSig)
+      .send(finishedIpn);
+
+    expect(res1.status).toBe(200);
 
     // Verify active
     const activeSub = await subService.getSubscriptionByProviderId(paymentId);
@@ -424,28 +301,12 @@ describe('NOWPayments IPN Webhook HTTP E2E', () => {
     const refundPayload = JSON.stringify(refundIpn);
     const refundSig = signPayload(refundPayload, process.env.NOWPAYMENTS_IPN_SECRET || 'test-secret');
 
-    let serverRes: { status: number; body: unknown } | null = null;
+    const res2 = await request(app)
+      .post('/api/webhooks/nowpayments')
+      .set('x-nowpayments-sig', refundSig)
+      .send(refundIpn);
 
-    await new Promise<void>((resolve) => {
-      const server = app.listen(0, async () => {
-        const port = (server.address() as any).port;
-        fetch(`http://127.0.0.1:${port}/api/webhooks/nowpayments`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-nowpayments-sig': refundSig },
-          body: refundPayload,
-        })
-          .then((r) => r.json())
-          .then((body) => {
-            serverRes = { status: 200, body };
-          })
-          .finally(() => {
-            server.close();
-            resolve();
-          });
-      });
-    });
-
-    expect(serverRes!.status).toBe(200);
+    expect(res2.status).toBe(200);
 
     // Verify cancelled
     const refundedSub = await subService.getSubscriptionByProviderId(paymentId);
