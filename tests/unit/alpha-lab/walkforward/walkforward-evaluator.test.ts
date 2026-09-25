@@ -131,6 +131,14 @@ describe('Walk-Forward Evaluator', () => {
     expect(result.summary.overfitGap).toBeGreaterThanOrEqual(-1);
     expect(result.summary.consistencyScore).toBeGreaterThanOrEqual(0);
     expect(result.summary.consistencyScore).toBeLessThanOrEqual(1);
+    expect(typeof result.summary.testSharpe).toBe('number');
+    expect(typeof result.summary.testMaxDrawdown).toBe('number');
+    expect(typeof result.summary.regimeConsistencyScore).toBe('number');
+    expect(result.summary.regimeConsistencyScore).toBeGreaterThanOrEqual(0);
+    expect(result.summary.regimeConsistencyScore).toBeLessThanOrEqual(1);
+    expect(typeof result.summary.testProfitFactor).toBe('number');
+    expect(typeof result.summary.testTotalPnl).toBe('number');
+    expect(Array.isArray(result.summary.cumulativeEquity)).toBe(true);
   });
 
   it('testWinRate reflects out-of-sample performance, not train', () => {

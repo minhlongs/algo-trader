@@ -21,6 +21,7 @@ import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { logger } from '../../shared/utils/logger';
 import type { ResultClassName } from './run-card';
+import type { AlphaLifecycleState } from '../attribution/alpha-lifecycle-state-machine';
 
 // ── Ledger Record ─────────────────────────────────────────────────────────────
 
@@ -29,13 +30,17 @@ export interface LedgerRecord {
   configHash: string;
   resultClass: ResultClassName;
   strategyRef: string;
+  lifecycleState?: AlphaLifecycleState;
   /** ISO-8601 UTC timestamp of the ledger entry. */
   recordedAt: string;
   /** Gate outcomes: gateId -> passed. */
   gates: Record<string, boolean>;
   /** SHA-256 of the previous record's canonical JSON (empty string for the first). */
   prevHash: string;
+  entryHash?: string;
 }
+
+export type ResearchLedgerEntry = LedgerRecord;
 
 export type LedgerWriteResult =
   | { ok: true; record: LedgerRecord }
@@ -48,18 +53,22 @@ export const DEFAULT_LEDGER_PATH = join('data', 'research-ledger.jsonl');
 
 // ── Hashing ───────────────────────────────────────────────────────────────────
 
-function canonicalRecord(record: Omit<LedgerRecord, 'prevHash'>): string {
-  return JSON.stringify({
+export function canonicalRecord(record: Omit<LedgerRecord, 'prevHash' | 'entryHash'>): string {
+  const payload: Record<string, unknown> = {
     runId: record.runId,
     configHash: record.configHash,
     resultClass: record.resultClass,
     strategyRef: record.strategyRef,
     recordedAt: record.recordedAt,
     gates: record.gates,
-  });
+  };
+  if (record.lifecycleState !== undefined) {
+    payload.lifecycleState = record.lifecycleState;
+  }
+  return JSON.stringify(payload);
 }
 
-function hashRecord(record: Omit<LedgerRecord, 'prevHash'>): string {
+export function computeRecordHash(record: Omit<LedgerRecord, 'prevHash' | 'entryHash'>): string {
   return createHash('sha256').update(canonicalRecord(record)).digest('hex');
 }
 
@@ -70,20 +79,33 @@ function hashRecord(record: Omit<LedgerRecord, 'prevHash'>): string {
  * then appends one JSON line. Fail-safe: never throws.
  */
 export async function appendLedgerRecord(
-  input: Omit<LedgerRecord, 'prevHash' | 'recordedAt'>,
+  input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>,
   ledgerPath: string = DEFAULT_LEDGER_PATH,
 ): Promise<LedgerWriteResult> {
   try {
     await mkdir(dirname(ledgerPath), { recursive: true });
     const prevHash = await readLastHash(ledgerPath);
+    const recordedAt = new Date().toISOString();
+    const entryHash = computeRecordHash({
+      runId: input.runId,
+      configHash: input.configHash,
+      resultClass: input.resultClass,
+      strategyRef: input.strategyRef,
+      recordedAt,
+      gates: input.gates,
+      ...(input.lifecycleState !== undefined ? { lifecycleState: input.lifecycleState } : {}),
+    });
+
     const record: LedgerRecord = {
       runId: input.runId,
       configHash: input.configHash,
       resultClass: input.resultClass,
       strategyRef: input.strategyRef,
-      recordedAt: new Date().toISOString(),
+      recordedAt,
       gates: input.gates,
       prevHash,
+      entryHash,
+      ...(input.lifecycleState !== undefined ? { lifecycleState: input.lifecycleState } : {}),
     };
     await appendFile(ledgerPath, JSON.stringify(record) + '\n', 'utf8');
     return { ok: true, record };
@@ -120,9 +142,15 @@ export async function readLedgerRecords(
 export function verifyLedgerChain(records: LedgerRecord[]): number {
   let expectedPrev = '';
   for (let i = 0; i < records.length; i++) {
-    const record = records[i];
+    const record = records[i]!;
     if (record.prevHash !== expectedPrev) return i;
-    expectedPrev = hashRecord(record);
+    if (record.entryHash !== undefined) {
+      const calculatedSelf = computeRecordHash(record);
+      if (record.entryHash !== calculatedSelf) {
+        return i + 1 < records.length ? i + 1 : i;
+      }
+    }
+    expectedPrev = computeRecordHash(record);
   }
   return -1;
 }
@@ -132,5 +160,5 @@ export function verifyLedgerChain(records: LedgerRecord[]): number {
 async function readLastHash(ledgerPath: string): Promise<string> {
   const records = await readLedgerRecords(ledgerPath);
   if (records.length === 0) return '';
-  return hashRecord(records[records.length - 1]);
+  return computeRecordHash(records[records.length - 1]!);
 }

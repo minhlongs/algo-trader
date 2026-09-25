@@ -41,6 +41,11 @@ export class TieredDrawdownBreaker {
 
   /** Record a portfolio value change and evaluate tier transitions */
   update(newValue: number): TieredDrawdownState {
+    if (!Number.isFinite(newValue) || newValue < 0) {
+      logger.warn(`[TieredDrawdown] Invalid portfolio value received: ${newValue}, ignoring`);
+      return this.getState();
+    }
+
     this.currentValue = newValue;
     if (newValue > this.highWaterMark) this.highWaterMark = newValue;
     this.dailyPnl = newValue - this.dailyStartValue;
@@ -48,11 +53,32 @@ export class TieredDrawdownBreaker {
     const prevTier = this.tier;
     const wasPaused = this.tier === 'DAILY_PAUSE' || this.tier === 'HALT';
     const now = Date.now();
-    
-    // Check daily pause
-    if (this.dailyPausedUntil && now < this.dailyPausedUntil) {
-      this.tier = 'DAILY_PAUSE';
+    const dd = this.highWaterMark > 0 ? (this.highWaterMark - this.currentValue) / this.highWaterMark : 0;
+
+    // HARD_STOP is terminal: requires manual restart via reset()
+    if (this.tier === 'HARD_STOP') {
+      this.saveToDisk();
+      return this.getState();
+    }
+
+    // Catastrophic drawdown: HARD_STOP takes absolute precedence over any active halt/pause
+    if (dd >= this.config.hardStopThreshold) {
+      this.haltedUntil = null;
+      this.dailyPausedUntil = null;
+      this.evaluateTier(prevTier);
+    } else if (this.dailyPausedUntil && now < this.dailyPausedUntil) {
+      // While in DAILY_PAUSE window, escalate if total drawdown breaches HALT or REDUCE thresholds
+      if (dd >= this.config.haltThreshold) {
+        this.dailyPausedUntil = null;
+        this.evaluateTier(prevTier);
+      } else if (dd >= this.config.reduceThreshold) {
+        this.dailyPausedUntil = null;
+        this.evaluateTier(prevTier);
+      } else {
+        this.tier = 'DAILY_PAUSE';
+      }
     } else if (this.haltedUntil && now < this.haltedUntil) {
+      // While in HALT window, maintain HALT (unless already escalated to HARD_STOP above)
       this.tier = 'HALT';
     } else if (wasPaused) {
       // Pause/halt window expired — clear timers and re-evaluate at a lower tier

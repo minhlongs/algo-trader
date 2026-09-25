@@ -9,3 +9,5 @@ export * from './rollback-handler';
 export * from './polymarket-signer';
 export * from './polymarket-adapter';
 export * from './twap-executor';
+export * from './live-execution-guard';
+export * from './live-guard-handoff';

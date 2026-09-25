@@ -26,3 +26,4 @@ export type {
 } from './strategy-family-types';
 
 export { ALL_FAMILIES } from './strategy-families';
+export * from './discovery-pipeline';

@@ -81,6 +81,12 @@ export class PaperExecutor {
       return { success: false, message: 'Paper trading not started. Call start() first.' };
     }
     const price = signal.price ?? marketPrice;
+    if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+      return { success: false, message: `Invalid execution price: ${price}` };
+    }
+    if (typeof signal.quantity !== 'number' || !Number.isFinite(signal.quantity) || signal.quantity <= 0) {
+      return { success: false, message: `Invalid trade quantity: ${signal.quantity}` };
+    }
     return signal.side === 'buy'
       ? this._executeBuy(signal.symbol, signal.quantity, price)
       : this._executeSell(signal.symbol, signal.quantity, price);
@@ -100,10 +106,15 @@ export class PaperExecutor {
 
   updatePrices(prices: Map<string, number>): PaperPosition[] {
     this.positions = updatePositionsPrices(this.positions, prices);
-    this.account.unrealizedPnl = this.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
-    this.account.equity = this.account.balance + this.account.unrealizedPnl;
+    this._updateAccountEquity();
     this._persist();
     return this.getPositions();
+  }
+
+  private _updateAccountEquity(): void {
+    this.account.unrealizedPnl = this.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
+    const positionValue = this.positions.reduce((s, p) => s + p.quantity * p.currentPrice, 0);
+    this.account.equity = this.account.balance + positionValue;
   }
 
   private async _executeBuy(symbol: string, quantity: number, price: number): Promise<ExecutionResult> {
@@ -117,6 +128,7 @@ export class PaperExecutor {
     const result = executeBuy(symbol, quantity, price, this.account, this.positions, this.config);
     this.account.balance = result.newBalance;
     this.positions = result.newPositions;
+    this._updateAccountEquity();
     this.tradeHistory.push(result.trade);
     this._persist();
     logger.info(`[PaperExecutor] BUY ${quantity} ${symbol} @ $${result.trade.executedPrice.toFixed(2)}`);
@@ -138,6 +150,7 @@ export class PaperExecutor {
     this.account.winningTrades += result.winningTradesDelta;
     this.account.losingTrades += result.losingTradesDelta;
     this.positions = result.newPositions;
+    this._updateAccountEquity();
     this.tradeHistory.push(result.trade);
     this._persist();
     logger.info(`[PaperExecutor] SELL ${quantity} ${symbol} @ $${result.trade.executedPrice.toFixed(2)} | P&L: $${result.trade.pnl!.toFixed(2)}`);

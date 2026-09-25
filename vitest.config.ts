@@ -24,7 +24,8 @@ export default defineConfig({
       '.claude/**',
       '.opencode/**',
       // Playwright E2E tests have their own runner (npm run test:e2e).
-      'tests/e2e/**',
+      'tests/e2e/*.spec.ts',
+      'tests/e2e/smoke.test.ts',
       // Polymarket strategy tests excluded
       'tests/strategies/polymarket/**',
       // .claude hooks tests reference deleted fixtures

@@ -32,8 +32,13 @@ import type { ExperimentResult } from '../../../../src/alpha-lab/experiments/exp
 // wrapper, not reachable through a degenerate real input. We mock evaluateAlpha
 // to throw so the fail-safe catch path is exercised honestly; the base
 // implementation stays wired so happy-path tests still use real evaluation.
+import * as originalEvaluator from '../../../../src/alpha-lab/attribution/alpha-evaluator';
+
 vi.mock('../../../../src/alpha-lab/attribution/alpha-evaluator', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual =
+    typeof importOriginal === 'function'
+      ? await importOriginal<typeof import('../../../../src/alpha-lab/attribution/alpha-evaluator')>()
+      : originalEvaluator;
   return {
     ...actual,
     evaluateAlpha: vi.fn(actual.evaluateAlpha),
@@ -372,7 +377,8 @@ describe('recordAlphaVerdict fail-safety', () => {
 
   it('catch path: evaluateAlpha throwing returns the fallback outcome', async () => {
     const { evaluateAlpha } = await import('../../../../src/alpha-lab/attribution/alpha-evaluator');
-    const mocked = vi.mocked(evaluateAlpha);
+    const getMocked = (fn: unknown) => (typeof vi.mocked === 'function' ? vi.mocked(fn as (...args: unknown[]) => unknown) : (fn as { mockImplementationOnce: (f: () => never) => void; mockRestore: () => void }));
+    const mocked = getMocked(evaluateAlpha);
     mocked.mockImplementationOnce(() => {
       throw new Error('baseline computation exploded');
     });
@@ -415,7 +421,8 @@ describe('recordAlphaVerdict fail-safety', () => {
 
   it('catch path: non-Error throw values are stringified into the message', async () => {
     const { evaluateAlpha } = await import('../../../../src/alpha-lab/attribution/alpha-evaluator');
-    const mocked = vi.mocked(evaluateAlpha);
+    const getMocked = (fn: unknown) => (typeof vi.mocked === 'function' ? vi.mocked(fn as (...args: unknown[]) => unknown) : (fn as { mockImplementationOnce: (f: () => never) => void; mockRestore: () => void }));
+    const mocked = getMocked(evaluateAlpha);
     mocked.mockImplementationOnce(() => {
       throw 'plain string failure';
     });
