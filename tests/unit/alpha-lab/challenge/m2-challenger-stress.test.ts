@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { tmpdir } from 'node:os';
+import { rmSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Set pool ID for test persistence isolation
+const TEST_POOL_ID = `m2-stress-${process.pid}-${Date.now()}`;
+process.env.VITEST_POOL_ID = TEST_POOL_ID;
+
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import {
   sizeSignalToTradeSignal,
   RegimeAwareKelly,
@@ -11,10 +19,20 @@ import { AISignalAdapter } from '../../../../src/desk/strategies/ai-signal-adapt
 import { AISignalPaperRouter } from '../../../../src/desk/strategies/ai-signal-paper-router';
 import { PaperExecutor } from '../../../../src/desk/execution/paper-executor';
 
-// Set pool ID for test persistence isolation
-process.env.VITEST_POOL_ID = '1';
-
 describe('Milestone 2 Challenger Empirical Stress Suite', () => {
+  beforeEach(() => {
+    const cashclawDir = join(tmpdir(), `cashclaw-test-${TEST_POOL_ID}`);
+    if (existsSync(cashclawDir)) {
+      rmSync(cashclawDir, { recursive: true, force: true });
+    }
+  });
+
+  afterAll(() => {
+    const cashclawDir = join(tmpdir(), `cashclaw-test-${TEST_POOL_ID}`);
+    if (existsSync(cashclawDir)) {
+      rmSync(cashclawDir, { recursive: true, force: true });
+    }
+  });
   const createBaseSignal = (overrides: Partial<AISignal> = {}): AISignal => ({
     strategyId: 'challenger-test-strat',
     signalId: 'sig-test-001',

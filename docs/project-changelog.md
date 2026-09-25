@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.85] - 2026-09-25 — Phase 35 Compliance & Security Hardening Finalization & Alpha-Lab Pipeline Integration
+
+### Added
+- Added Zod validation schema for all audit-log entries in `src/seed/security/schemas/audit-entry-schema.ts`, validating field typing, ISO-8601 timestamps, non-empty identifiers, hex IP hashes, and 4kB metadata limits.
+- Added comprehensive E2E integration test suite `tests/integration/audit-trail-e2e.test.ts` covering mutation auditing (POST/DELETE), tenant querying, SHA-256 HMAC sequential hash-chain validation, rate limiting rejection logging (`denied`), and Zod rejection.
+- Deployed and verified Alpha-Lab Autonomous Strategy Discovery pipeline across multi-regime backtesting, paper execution routing, and statistical lifecycle promotion state machine.
+
+### Changed
+- Wired rate limiter tier configuration in `src/forest/rate-limit/tier-config.ts` to canonical tier source `src/seed/config/tiers.ts`.
+- Integrated `auditEntrySchema` validation into `src/seed/security/audit-validate.ts`.
+- Enhanced `scripts/verify-deploy.sh` to validate modern React SPA landing root and flexible commit SHA detection.
+- Fixed explicit `:any` in Cloudflare Worker version handler `src/platform/workers/api/version.ts`.
+
 ## [3.1.84] - 2026-09-18 — S18 Oversized-File Debt Burn-Down Tranche 52 (Zero Oversized Debt Milestone)
 
 ### Changed

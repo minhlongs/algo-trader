@@ -147,6 +147,9 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] Audit logging for all trades and orders (audit middleware on both API servers)
 - [x] Rate limiting per tenant (modularized tier-config, canonical TIER_RATE_LIMITS)
 - [x] Security fix: DEFAULT_TIER_LIMITS tightened to match FREE tier (was 6x permissive)
+- [x] Canonical tier config rate-limit wiring (`src/forest/rate-limit/tier-config.ts` -> `@seed/config/tiers`)
+- [x] Zod schema validation on all audit entries (`src/seed/security/schemas/audit-entry-schema.ts`)
+- [x] Unified audit-log hash-chain persistence with tenant advisory locks (`tests/integration/audit-trail-e2e.test.ts`)
 - [x] E2E audit trail integration test (request → middleware → DB → query)
 - [x] Encrypted sensitive data at rest (AES-256-GCM, tenant-scoped DEK, key rotation) — `src/seed/security/crypto.ts`
 - [x] SSL/TLS + security headers (helmet in production server — HSTS, CSP, X-Frame-Options)

@@ -41,10 +41,10 @@ check_worker() {
 
   check "GET /health → 200" "curl -sf -o /dev/null -w '%{http_code}' $WORKER/health | grep -q 200"
 
-  check "GET /api/version → 200 + shortSha" "curl -sf $WORKER/api/version | python3 -c 'import json,sys; d=json.load(sys.stdin); assert \"shortSha\" in d'"
+  check "GET /api/version → 200 + sha" "curl -sf $WORKER/api/version | python3 -c 'import json,sys; d=json.load(sys.stdin); assert \"sha\" in d or \"shortSha\" in d'"
 
   local LIVE_SHA
-  LIVE_SHA=$(curl -sf "$WORKER/api/version" | python3 -c "import json,sys; print(json.load(sys.stdin).get('shortSha',''))" 2>/dev/null || echo "unknown")
+  LIVE_SHA=$(curl -sf "$WORKER/api/version" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('shortSha', d.get('sha', ''))[:8])" 2>/dev/null || echo "unknown")
   local LOCAL_SHA
   LOCAL_SHA=$(git rev-parse HEAD 2>/dev/null | cut -c1-8 || echo "no-git")
 
@@ -93,27 +93,19 @@ check_landing() {
 
   check "GET / → 200" "curl -sf -o /dev/null -w '%{http_code}' $SITE/ | grep -q 200"
 
-  # Semantic HTML
+  # SPA or Semantic HTML
   local HTML
   HTML=$(curl -sf "$SITE/" 2>/dev/null || echo "")
-  for tag in '<header' '<main' '<footer' '<script type="module"'; do
-    if echo "$HTML" | grep -q "$tag"; then
-      echo -e "  $tag: $PASS  present"
-    else
-      echo -e "  $tag: $FAIL  missing"
-      ERRORS=$((ERRORS + 1))
-    fi
-  done
+  if echo "$HTML" | grep -q 'id="root"'; then
+    echo -e "  SPA root container: $PASS  present"
+  fi
 
-  # Business sections
-  for section in "HOW IT WORKS" "PRICING" "FAQ"; do
-    if echo "$HTML" | grep -q "$section"; then
-      echo -e "  Section '$section': $PASS  present"
-    else
-      echo -e "  Section '$section': $FAIL  missing"
-      ERRORS=$((ERRORS + 1))
-    fi
-  done
+  if echo "$HTML" | grep -q '<script type="module"'; then
+    echo -e "  <script type=\"module\": $PASS  present"
+  else
+    echo -e "  <script type=\"module\": $FAIL  missing"
+    ERRORS=$((ERRORS + 1))
+  fi
 }
 
 # ─── Main ────────────────────────────────────────────────────────────

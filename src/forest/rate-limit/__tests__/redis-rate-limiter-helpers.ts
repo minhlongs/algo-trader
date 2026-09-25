@@ -47,9 +47,10 @@ export function withTierOverride(
   fn: () => void | Promise<void>,
 ): void {
   const key = tierName.toUpperCase() as keyof typeof TIER_RATE_LIMITS;
-  const saved = TIER_RATE_LIMITS[key];
-  TIER_RATE_LIMITS[key] = limits;
-  try { void fn(); } finally { TIER_RATE_LIMITS[key] = saved; }
+  const target = TIER_RATE_LIMITS as Record<string, TierRateLimits>;
+  const saved = target[key];
+  target[key] = limits;
+  try { void fn(); } finally { target[key] = saved; }
 }
 
 export async function withRedis<T>(

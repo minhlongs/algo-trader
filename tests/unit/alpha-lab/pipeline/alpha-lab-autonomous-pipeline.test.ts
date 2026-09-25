@@ -11,11 +11,15 @@
  * Group 7: Provenance Ledger Integrity & Autonomous Cycle
  */
 
-process.env.VITEST_POOL_ID = '1';
-
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { tmpdir } from 'node:os';
+import { rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
+
+const TEST_POOL_ID = `pipeline-unit-${process.pid}-${Date.now()}`;
+process.env.VITEST_POOL_ID = TEST_POOL_ID;
+
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import {
   AlphaLabAutonomousPipeline,
   type AlphaLabAutonomousPipelineConfig,
@@ -60,10 +64,21 @@ describe('AlphaLabAutonomousPipeline Unit Tests', () => {
     tempDirObj = await createTempDir('alpha-pipeline-test-');
     ledgerPath = join(tempDirObj.path, 'research-ledger.jsonl');
     runCardDir = join(tempDirObj.path, 'run-cards');
+    const cashclawDir = join(tmpdir(), `cashclaw-test-${TEST_POOL_ID}`);
+    if (existsSync(cashclawDir)) {
+      rmSync(cashclawDir, { recursive: true, force: true });
+    }
   });
 
   afterEach(async () => {
     await tempDirObj.cleanup();
+  });
+
+  afterAll(() => {
+    const cashclawDir = join(tmpdir(), `cashclaw-test-${TEST_POOL_ID}`);
+    if (existsSync(cashclawDir)) {
+      rmSync(cashclawDir, { recursive: true, force: true });
+    }
   });
 
   function createPipeline(
