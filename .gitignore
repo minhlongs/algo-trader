@@ -26,7 +26,8 @@ Users/
 .codex/
 state/
 tasks/
-tests/e2e/
+tests/e2e/*
+!tests/e2e/arbitrage
 scripts/*.bak-*
 scripts/*.bak
 .claude/tmp/
