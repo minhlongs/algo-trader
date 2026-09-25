@@ -46,11 +46,11 @@ import type { PolymarketOrder } from '../../../../src/desk/execution/polymarket-
 import {
   makeTrendUpCandles,
   makeMultiRegimeCandles,
-} from '../../../e2e/alpha-lab/fixtures/market-data-fixtures';
+} from '../../../../tests/fixtures/market-data-fixtures';
 import {
   createTempDir,
   makeGateEvaluatorInput,
-} from '../../../e2e/alpha-lab/fixtures/test-helpers';
+} from '../../../../tests/fixtures/test-helpers';
 
 describe('AlphaLabAutonomousPipeline Empirical Stress Tests (Challenger M4-2)', () => {
   let tempDirObj: { path: string; cleanup: () => Promise<void> };
