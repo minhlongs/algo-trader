@@ -15,6 +15,7 @@ export type {
   ResultClass,
   ResultClassName,
   DataSourceProvenance,
+  DataSourceEntry,
   GateResult,
 } from './run-card';
 
@@ -22,9 +23,11 @@ export {
   appendLedgerRecord,
   readLedgerRecords,
   verifyLedgerChain,
+  canonicalRecord,
+  computeRecordHash,
   DEFAULT_LEDGER_PATH,
 } from './research-ledger';
-export type { LedgerRecord, LedgerWriteResult } from './research-ledger';
+export type { LedgerRecord, LedgerWriteResult, ResearchLedgerEntry } from './research-ledger';
 
 export {
   writeAlphaReport,
@@ -39,3 +42,5 @@ export {
   loadVerdictSummary,
 } from './verdict-summary';
 export type { StrategyVerdictSummary, VerdictSummary } from './verdict-summary';
+
+export * from './run-card-store';

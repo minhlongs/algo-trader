@@ -2,7 +2,11 @@
  * Run Card Markdown Formatter
  */
 
-import { type RunCard } from './run-card-types';
+import { type RunCard, type DataSourceEntry, type DataSourceProvenance } from './run-card-types';
+
+function isDataSourceProvenance(ds: DataSourceEntry): ds is DataSourceProvenance {
+  return typeof ds === 'object' && ds !== null && 'provider' in ds;
+}
 
 /** Render a run card as a human-readable markdown report. */
 export function renderMarkdown(card: RunCard): string {
@@ -27,12 +31,16 @@ export function renderMarkdown(card: RunCard): string {
     lines.push('_No data sources recorded._');
   } else {
     for (const ds of card.dataSources) {
-      lines.push(
-        `- \`${ds.provider}\` ${ds.symbol}/${ds.timeframe} ` +
-        `(${ds.candleCount} candles, ${ds.start} → ${ds.end}, retrieved ${ds.retrievedAt})` +
-        (ds.dataVersion ? `, version ${ds.dataVersion}` : '') +
-        (ds.transform ? `\n  - transform: ${ds.transform}` : ''),
-      );
+      if (typeof ds === 'string') {
+        lines.push(`- \`${ds}\``);
+      } else if (isDataSourceProvenance(ds)) {
+        lines.push(
+          `- \`${ds.provider}\` ${ds.symbol}/${ds.timeframe} ` +
+          `(${ds.candleCount} candles, ${ds.start} → ${ds.end}, retrieved ${ds.retrievedAt})` +
+          (ds.dataVersion ? `, version ${ds.dataVersion}` : '') +
+          (ds.transform ? `\n  - transform: ${ds.transform}` : ''),
+        );
+      }
     }
   }
   lines.push('');

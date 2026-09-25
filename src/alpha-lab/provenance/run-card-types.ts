@@ -6,7 +6,15 @@ export type ResultClass =
   | { kind: 'IS' }
   | { kind: 'OOS' }
   | { kind: 'PAPER' }
-  | { kind: 'LIVE' };
+  | { kind: 'LIVE' }
+  | { kind: 'SURVIVED' }
+  | { kind: 'DISCOVERED' }
+  | { kind: 'PAPER_QUALIFIED' }
+  | { kind: 'PAPER_APPROVED' }
+  | { kind: 'LIVE_PROMOTED' }
+  | { kind: 'LIVE_APPROVED' }
+  | { kind: 'REJECTED' }
+  | { kind: 'RETIRED' };
 
 export type ResultClassName = ResultClass['kind'];
 
@@ -31,6 +39,8 @@ export interface DataSourceProvenance {
   transform?: string;
 }
 
+export type DataSourceEntry = DataSourceProvenance | string;
+
 export interface GateResult {
   gateId: string;
   passed: boolean;
@@ -50,7 +60,7 @@ export interface RunCard {
   resultClass: ResultClassName;
   strategyRef: string;
   hypothesis?: string;
-  dataSources: DataSourceProvenance[];
+  dataSources: DataSourceEntry[];
   metrics: Record<string, number | undefined>;
   gateResults: GateResult[];
   warnings: string[];
@@ -63,7 +73,7 @@ export interface WriteRunCardInput {
   resultClass: ResultClassName;
   strategyRef: string;
   hypothesis?: string;
-  dataSources: DataSourceProvenance[];
+  dataSources: DataSourceEntry[];
   metrics: Record<string, number | undefined>;
   gateResults?: GateResult[];
   warnings?: string[];
