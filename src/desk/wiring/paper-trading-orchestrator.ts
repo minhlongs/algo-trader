@@ -21,6 +21,7 @@ import { runPaperTradingLoop } from './paper-trading-orchestrator-runner';
 
 // Re-export persistence functions for consumers
 export {
+  getPortfolio,
   saveTrades,
   loadTrades,
   savePaperTradeV3,
@@ -139,6 +140,45 @@ export async function processCandidate(candidate: SignalCandidate, maxPositions:
   });
 
   logger.info('[PaperOrchestrator] Trade OPEN', { id: trade.id, side: trade.side, size, entryPrice: trade.entryPrice });
+}
+
+/** Ingest a MARL market maker fill into the paper portfolio. */
+export function recordMarlPaperFill(
+  marketId: string,
+  side: 'buy' | 'sell',
+  amount: number,
+  price: number,
+  strategy = 'marl-avellaneda-stoikov'
+): PaperTrade {
+  const portfolio = getPortfolio();
+  const notional = amount * price;
+  const paperSide: 'YES' | 'NO' = side === 'buy' ? 'YES' : 'NO';
+  const trade: PaperTrade = {
+    id: `marl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    marketId,
+    side: paperSide,
+    size: notional,
+    entryPrice: price,
+    strategy,
+    source: deriveSource(strategy),
+    signalConfidence: 0.95,
+    swarmApproved: true,
+    aiValidated: true,
+    timestamp: Date.now(),
+  };
+
+  portfolio.capital -= notional;
+  portfolio.positions.push(trade);
+  saveTrades();
+  void savePaperTradeV3(trade);
+  logger.info('[PaperOrchestrator] MARL Maker Fill recorded', {
+    id: trade.id,
+    marketId,
+    side: trade.side,
+    size: notional,
+    price,
+  });
+  return trade;
 }
 
 // ─── Position settlement — delegated to paper-trading-persistence ─────────────

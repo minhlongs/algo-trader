@@ -98,6 +98,38 @@ if (!isTest) {
     });
 
   program
+    .command('marl:auto')
+    .description('Autonomous MARL Market-Making & Delta-Neutral Liquidity Engine')
+    .option('-s, --symbol <symbol>', 'Trading pair or market identifier', 'BTC/USDT')
+    .option('--dry-run', 'Dry run mode (no real orders)', true)
+    .option('--no-dry-run', 'Live market-making mode')
+    .option('-c, --capital <number>', 'Portfolio capital in USD', '100000')
+    .option('-g, --gamma <number>', 'Risk aversion parameter', '0.1')
+    .option('--sigma <number>', 'Asset volatility parameter', '0.3')
+    .option('--quote-size <number>', 'Quote size per order', '10')
+    .option('-d, --duration <seconds>', 'Execution duration in seconds (0 = single pass)', '0')
+    .action(async (options: {
+      symbol: string;
+      dryRun: boolean;
+      capital: string;
+      gamma: string;
+      sigma: string;
+      quoteSize: string;
+      duration: string;
+    }) => {
+      const { runMarlAuto } = await import('./desk/commands/marl-auto');
+      await runMarlAuto({
+        symbol: options.symbol,
+        dryRun: options.dryRun,
+        capital: parseFloat(options.capital),
+        gamma: parseFloat(options.gamma),
+        sigma: parseFloat(options.sigma),
+        quoteSize: parseFloat(options.quoteSize),
+        durationSeconds: parseInt(options.duration, 10),
+      });
+    });
+
+  program
     .command('kronos')
     .description('Run Kronos Foundation Model trading strategy (requires AlphaEar sidecar)')
     .option('-s, --symbol <symbol>', 'Trading pair', 'BTC/USDT')
