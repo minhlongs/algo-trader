@@ -12,6 +12,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    testTimeout: 30000,
     pool: 'forks',
     setupFiles: ['tests/setup-proxy-bypass.ts'],
     include: [

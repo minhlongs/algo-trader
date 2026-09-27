@@ -28,6 +28,7 @@ state/
 tasks/
 tests/e2e/*
 !tests/e2e/arbitrage
+!tests/e2e/marl
 scripts/*.bak-*
 scripts/*.bak
 .claude/tmp/
