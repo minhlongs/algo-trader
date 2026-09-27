@@ -9,42 +9,21 @@ import { SpreadDetector } from './spread-detector';
 import type { ArbitrageOpportunity } from './spread-detector-types';
 import {
   NetProfitabilityCalculator,
-  HURDLE_EPSILON_BPS,
   type NetProfitabilityAnalysis,
 } from './net-profitability-calculator';
 import { logger } from '../../shared/utils/logger';
+import {
+  type IngestionPipelineConfig,
+  type IngestionMetrics,
+  type IngestionPipelineDeps,
+  type OpportunityEvaluationResult,
+} from './ingestion/ingestion-types';
+import { evaluateOpportunity } from './ingestion/ingestion-evaluator';
+import { processOpportunityWorker } from './ingestion/ingestion-worker';
 
-export interface IngestionPipelineConfig {
-  symbols: string[];
-  venues: string[];
-  minHurdleBps: number; // Default: 10 (0.10%)
-  baseNotionalUsd: number; // Default: 1000.00
-  maxQueueSize: number; // Default: 50
-  maxConcurrency: number; // Default: 3
-  dedupTtlMs: number; // Default: 200ms
-  dryRun: boolean; // Default: true
-}
-
-export type ArbitrageEngineConfig = IngestionPipelineConfig;
-
-export interface IngestionMetrics {
-  scannedCount: number;
-  dedupDroppedCount: number;
-  queueDroppedCount: number;
-  admittedCount: number;
-  rejectedCount: number;
-}
-
-export interface IngestionPipelineDeps {
-  spreadDetector?: SpreadDetector;
-  calculator?: NetProfitabilityCalculator;
-  onAdmitted?: (opp: ArbitrageOpportunity, analysis: NetProfitabilityAnalysis) => Promise<void> | void;
-  onRejected?: (
-    opp: ArbitrageOpportunity,
-    reason: string,
-    analysis?: NetProfitabilityAnalysis
-  ) => void;
-}
+export * from './ingestion/ingestion-types';
+export * from './ingestion/ingestion-evaluator';
+export * from './ingestion/ingestion-worker';
 
 export class OpportunityIngestionPipeline {
   readonly config: IngestionPipelineConfig;
@@ -54,7 +33,6 @@ export class OpportunityIngestionPipeline {
   private readonly dedupCache = new Map<string, number>();
   private activeWorkers = 0;
   private isRunning = false;
-
   private onAdmittedCallback?: (
     opp: ArbitrageOpportunity,
     analysis: NetProfitabilityAnalysis
@@ -96,9 +74,6 @@ export class OpportunityIngestionPipeline {
     this.onRejectedCallback = deps?.onRejected;
   }
 
-  /**
-   * Start continuous spread detection wired into this ingestion pipeline.
-   */
   start(): void {
     if (this.isRunning) {
       logger.warn('[OpportunityIngestionPipeline] Already running');
@@ -121,9 +96,6 @@ export class OpportunityIngestionPipeline {
     );
   }
 
-  /**
-   * Graceful stop: terminates scanner loop and drains queue.
-   */
   stop(): void {
     this.isRunning = false;
     this.spreadDetector.stop();
@@ -132,11 +104,6 @@ export class OpportunityIngestionPipeline {
     logger.info('[OpportunityIngestionPipeline] Stopped');
   }
 
-  /**
-   * Synchronous hook handler passed to spreadDetector.start().
-   * Safely bridges synchronous scanner callback to async queue processing.
-   * Guarantees NO unhandled rejection can crash the caller's setInterval loop.
-   */
   handleOpportunities(opps: ArbitrageOpportunity[]): void {
     try {
       if (!opps || opps.length === 0) return;
@@ -146,8 +113,6 @@ export class OpportunityIngestionPipeline {
 
       for (const opp of opps) {
         this.metrics.scannedCount++;
-
-        // Deduplication filter
         const dedupKey = `${opp.symbol}:${opp.buyExchange}:${opp.sellExchange}`;
         const lastSeen = this.dedupCache.get(dedupKey);
 
@@ -159,9 +124,8 @@ export class OpportunityIngestionPipeline {
 
         this.dedupCache.set(dedupKey, now);
 
-        // Bounded FIFO queue with backpressure shedding
         if (this.queue.length >= this.config.maxQueueSize) {
-          this.queue.shift(); // Drop oldest
+          this.queue.shift();
           this.metrics.queueDroppedCount++;
           logger.warn('[OpportunityIngestionPipeline] Queue overflow, oldest opportunity dropped', {
             queueSize: this.queue.length,
@@ -172,67 +136,22 @@ export class OpportunityIngestionPipeline {
         this.queue.push(opp);
       }
 
-      // Kick queue processing asynchronously (floating promise shielded)
       void this.processQueue().catch((err: unknown) => {
         logger.error('[OpportunityIngestionPipeline] Unexpected worker error', {
           error: err instanceof Error ? err.message : String(err),
         });
       });
     } catch (err: unknown) {
-      // Async boundary containment
       logger.error('[OpportunityIngestionPipeline] Error in handleOpportunities synchronous wrapper', {
         error: err instanceof Error ? err.message : String(err),
       });
     }
   }
 
-  /**
-   * Evaluate a single opportunity against the net profitability engine and hurdle gate.
-   */
-  async evaluateOpportunity(opp: ArbitrageOpportunity): Promise<{
-    passed: boolean;
-    analysis: NetProfitabilityAnalysis;
-    rejectionReason?: string;
-  }> {
-    const tradeAmount =
-      opp.buyPrice > 0 ? this.config.baseNotionalUsd / opp.buyPrice : 1.0;
-
-    const analysis = this.calculator.fromSpreadOpportunity(
-      {
-        buyExchange: opp.buyExchange,
-        sellExchange: opp.sellExchange,
-        symbol: opp.symbol,
-        buyPrice: opp.buyPrice,
-        sellPrice: opp.sellPrice,
-        amount: tradeAmount,
-        id: opp.id,
-      },
-      {
-        minHurdleBps: this.config.minHurdleBps,
-      }
-    );
-
-    const passed =
-      analysis.isProfitable === true &&
-      analysis.netProfitBps >= this.config.minHurdleBps - HURDLE_EPSILON_BPS &&
-      analysis.netProfitUsd > 0 &&
-      !analysis.breakdown?.insufficientLiquidity &&
-      analysis.grossSpreadUsd > 0;
-
-    const rejectionReason = passed
-      ? undefined
-      : analysis.rejectionReason ?? 'BELOW_HURDLE';
-
-    return {
-      passed,
-      analysis,
-      rejectionReason,
-    };
+  async evaluateOpportunity(opp: ArbitrageOpportunity): Promise<OpportunityEvaluationResult> {
+    return evaluateOpportunity(opp, this.calculator, this.config);
   }
 
-  /**
-   * Internal queue processor respecting maxConcurrency semaphore.
-   */
   private async processQueue(): Promise<void> {
     while (this.queue.length > 0 && this.activeWorkers < this.config.maxConcurrency) {
       const opp = this.queue.shift();
@@ -240,106 +159,24 @@ export class OpportunityIngestionPipeline {
 
       this.activeWorkers++;
 
-      (async () => {
-        let isAdmitted = false;
-        let isRejected = false;
-        let evalResult:
-          | {
-              passed: boolean;
-              analysis: NetProfitabilityAnalysis;
-              rejectionReason?: string;
-            }
-          | undefined;
-
-        try {
-          evalResult = await this.evaluateOpportunity(opp);
-
-          if (evalResult.passed) {
-            isAdmitted = true;
-            this.metrics.admittedCount++;
-            logger.info('[OpportunityIngestionPipeline] Opportunity admitted', {
-              id: opp.id,
-              symbol: opp.symbol,
-              buyVenue: opp.buyExchange,
-              sellVenue: opp.sellExchange,
-              netProfitBps: evalResult.analysis.netProfitBps.toFixed(2),
-              netProfitUsd: evalResult.analysis.netProfitUsd.toFixed(2),
-            });
-          } else {
-            isRejected = true;
-            this.metrics.rejectedCount++;
-            const reason = evalResult.rejectionReason ?? 'BELOW_HURDLE';
-            logger.debug('[OpportunityIngestionPipeline] Opportunity rejected', {
-              id: opp.id,
-              symbol: opp.symbol,
-              reason,
-              netProfitBps: evalResult.analysis.netProfitBps.toFixed(2),
-            });
-          }
-        } catch (err: unknown) {
-          if (!isAdmitted && !isRejected) {
-            isRejected = true;
-            this.metrics.rejectedCount++;
-          }
-          const errorMsg = err instanceof Error ? err.message : String(err);
-          logger.error('[OpportunityIngestionPipeline] Opportunity evaluation failed', {
-            id: opp.id,
-            symbol: opp.symbol,
-            error: errorMsg,
+      processOpportunityWorker({
+        opp,
+        metrics: this.metrics,
+        evaluateFn: (o) => this.evaluateOpportunity(o),
+        onAdmittedCallback: this.onAdmittedCallback,
+        onRejectedCallback: this.onRejectedCallback,
+      })
+        .catch((err: unknown) => {
+          logger.error('[OpportunityIngestionPipeline] Task uncaught rejection', {
+            error: err instanceof Error ? err.message : String(err),
           });
-
-          if (this.onRejectedCallback) {
-            try {
-              this.onRejectedCallback(opp, 'EVALUATION_ERROR');
-            } catch (cbErr: unknown) {
-              logger.error('[OpportunityIngestionPipeline] onRejected callback threw', {
-                error: cbErr instanceof Error ? cbErr.message : String(cbErr),
-              });
-            }
+        })
+        .finally(() => {
+          this.activeWorkers--;
+          if (this.queue.length > 0) {
+            void this.processQueue();
           }
-          return;
-        }
-
-        // Post-evaluation callbacks: isolated from terminal metric counting
-        if (isAdmitted && evalResult?.passed) {
-          if (this.onAdmittedCallback) {
-            try {
-              await this.onAdmittedCallback(opp, evalResult.analysis);
-            } catch (err: unknown) {
-              const errorMsg = err instanceof Error ? err.message : String(err);
-              logger.error('[OpportunityIngestionPipeline] onAdmitted callback execution failed', {
-                id: opp.id,
-                symbol: opp.symbol,
-                error: errorMsg,
-              });
-            }
-          }
-        } else if (isRejected && evalResult && !evalResult.passed) {
-          if (this.onRejectedCallback) {
-            try {
-              const reason = evalResult.rejectionReason ?? 'BELOW_HURDLE';
-              this.onRejectedCallback(opp, reason, evalResult.analysis);
-            } catch (err: unknown) {
-              const errorMsg = err instanceof Error ? err.message : String(err);
-              logger.error('[OpportunityIngestionPipeline] onRejected callback execution failed', {
-                id: opp.id,
-                symbol: opp.symbol,
-                error: errorMsg,
-              });
-            }
-          }
-        }
-      })().catch((err: unknown) => {
-        logger.error('[OpportunityIngestionPipeline] Task uncaught rejection', {
-          error: err instanceof Error ? err.message : String(err),
         });
-      }).finally(() => {
-        this.activeWorkers--;
-        // Trigger next in queue if available
-        if (this.queue.length > 0) {
-          void this.processQueue();
-        }
-      });
     }
   }
 
@@ -354,8 +191,4 @@ export class OpportunityIngestionPipeline {
   }
 }
 
-/**
- * Alias ArbitrageEngine pointing to OpportunityIngestionPipeline
- * for seamless compatibility with multi-milestone orchestrator naming.
- */
 export class ArbitrageEngine extends OpportunityIngestionPipeline {}

@@ -2,196 +2,195 @@
  * Pre-trade risk guard for multi-exchange arbitrage execution.
  *
  * Enforces Quarter-Kelly position sizing (5% hard cap), notional and venue/symbol
- * exposure ceilings, 15% daily drawdown circuit breaker, venue latency thresholds,
- * and live-trading credential validation.
+ * open position caps, 15% daily drawdown circuit breakers, venue latency breakers,
+ * and fail-closed paper vs live mode credential and balance validation.
  *
  * @module desk/arbitrage/risk/arbitrage-risk-guard
  */
 
-import { logger } from '../../../shared/utils/logger';
 import {
   type ArbitrageRiskConfig,
-  type ArbitrageRiskCheckParams,
+  type MultiLegArbitrageBasket,
   type ArbitrageRiskCheckResult,
+  type ArbitrageRiskContext,
+  type ArbitrageRiskCheckParams,
   DEFAULT_ARBITRAGE_RISK_CONFIG,
 } from './arbitrage-risk-types';
+import { KellyPositionSizer } from '../../risk/kelly-position-sizer';
+import { RiskGateManager } from '../../risk/risk-gate-manager';
+import { LiveExecutionGuard } from '../../execution/live-execution-guard-core';
+import type { TieredDrawdownBreaker } from '../../risk/tiered-drawdown-breaker';
+import type { DrawdownMonitor } from '../../risk/drawdown-monitor';
+import type { CircuitBreaker } from '../../risk/circuit-breaker';
+import type { SpreadDetector } from '../spread-detector';
+import { ExposureTracker } from './arbitrage-risk-guard-exposure';
+import { runGatePipeline, adaptPreTradeParamsToBasket } from './arbitrage-risk-guard-pipeline';
+import { computeQuarterKellySizingFormula } from './arbitrage-risk-guard-sizing';
+
+export * from './arbitrage-risk-types';
+export * from './arbitrage-risk-guard-drawdown';
+export * from './arbitrage-risk-guard-latency-credentials';
+export * from './arbitrage-risk-guard-balance';
+export * from './arbitrage-risk-guard-sizing';
+export * from './arbitrage-risk-guard-exposure';
+export * from './arbitrage-risk-guard-pipeline';
+
+export interface ArbitrageRiskGuardDependencies {
+  riskGateManager?: RiskGateManager;
+  liveExecutionGuard?: LiveExecutionGuard;
+  kellyPositionSizer?: KellyPositionSizer;
+  tieredDrawdownBreaker?: TieredDrawdownBreaker;
+  drawdownMonitor?: DrawdownMonitor;
+  circuitBreaker?: CircuitBreaker;
+  spreadDetector?: SpreadDetector;
+}
 
 export class ArbitrageRiskGuard {
-  private readonly config: ArbitrageRiskConfig;
-  private readonly symbolExposures = new Map<string, number>();
-  private readonly venueExposures = new Map<string, number>();
+  private config: ArbitrageRiskConfig;
+  private readonly liveExecutionGuard: LiveExecutionGuard;
+  private readonly riskGateManager: RiskGateManager;
+  private readonly kellyPositionSizer: KellyPositionSizer;
+  private readonly tieredDrawdownBreaker?: TieredDrawdownBreaker;
+  private readonly drawdownMonitor?: DrawdownMonitor;
+  private readonly circuitBreaker?: CircuitBreaker;
+  private readonly spreadDetector?: SpreadDetector;
+  private readonly exposureTracker = new ExposureTracker();
 
-  constructor(config?: Partial<ArbitrageRiskConfig>) {
+  constructor(config?: Partial<ArbitrageRiskConfig>, deps?: ArbitrageRiskGuardDependencies) {
     this.config = { ...DEFAULT_ARBITRAGE_RISK_CONFIG, ...config };
+    this.circuitBreaker = deps?.circuitBreaker;
+    this.tieredDrawdownBreaker = deps?.tieredDrawdownBreaker;
+    this.drawdownMonitor = deps?.drawdownMonitor;
+    this.spreadDetector = deps?.spreadDetector;
+
+    this.liveExecutionGuard =
+      deps?.liveExecutionGuard ??
+      new LiveExecutionGuard({
+        capitalUsdc: this.config.capitalUsdc,
+        maxDailyDrawdown: this.config.maxDailyDrawdownFraction,
+        maxPositionFraction: this.config.maxKellyPositionFraction,
+        enabled: true,
+      });
+
+    this.riskGateManager =
+      deps?.riskGateManager ?? new RiskGateManager(this.liveExecutionGuard, this.circuitBreaker);
+
+    this.kellyPositionSizer =
+      deps?.kellyPositionSizer ??
+      new KellyPositionSizer({
+        kellyFraction: this.config.kellyFraction,
+        maxPositionFraction: this.config.maxKellyPositionFraction,
+        minPositionUsd: 10,
+      });
   }
 
-  /**
-   * Evaluate all pre-trade risk gates before submitting an arbitrage order.
-   */
-  async checkPreTrade(params: ArbitrageRiskCheckParams): Promise<ArbitrageRiskCheckResult> {
-    const {
-      symbol,
-      buyVenue,
-      sellVenue,
-      tradeNotionalUsd,
-      bankrollUsd,
-      netProfitBps,
-      currentDrawdown = 0,
-      venueLatencies = {},
-      venueBalances = {},
-      winProbability = 0.95,
-      winLossRatio = 1.0,
-    } = params;
-
-    // Gate 1: Cumulative Daily Drawdown Circuit Breaker (15% limit)
-    if (currentDrawdown >= this.config.maxDailyDrawdown) {
-      logger.warn('[ArbitrageRiskGuard] Drawdown limit breached', {
-        currentDrawdown,
-        maxDailyDrawdown: this.config.maxDailyDrawdown,
-      });
-      return { allowed: false, adjustedNotionalUsd: 0, rejectionReason: 'DAILY_DRAWDOWN_EXCEEDED' };
-    }
-
-    // Gate 2: Net Profitability Hurdle (min 10 bps)
-    if (netProfitBps < this.config.minHurdleBps) {
-      return {
-        allowed: false,
-        adjustedNotionalUsd: 0,
-        rejectionReason: 'BELOW_PROFIT_HURDLE',
-        details: { netProfitBps, hurdleBps: this.config.minHurdleBps },
-      };
-    }
-
-    // Gate 3: Venue Latency Breakers
-    const buyLatency = venueLatencies[buyVenue] ?? 0;
-    const sellLatency = venueLatencies[sellVenue] ?? 0;
-    if (buyLatency > this.config.maxVenueLatencyMs || sellLatency > this.config.maxVenueLatencyMs) {
-      logger.warn('[ArbitrageRiskGuard] Venue latency threshold exceeded', {
-        buyVenue,
-        buyLatency,
-        sellVenue,
-        sellLatency,
-        maxLatencyMs: this.config.maxVenueLatencyMs,
-      });
-      return {
-        allowed: false,
-        adjustedNotionalUsd: 0,
-        rejectionReason: 'VENUE_LATENCY_BREACH',
-        details: { buyLatency, sellLatency },
-      };
-    }
-
-    // Gate 4: Quarter-Kelly Sizing Calculation
-    const adjustedNotional = this.computeQuarterKellySizing(
-      tradeNotionalUsd,
-      bankrollUsd,
-      winProbability,
-      winLossRatio,
-    );
-
-    if (adjustedNotional <= 0) {
-      return { allowed: false, adjustedNotionalUsd: 0, rejectionReason: 'MAX_TRADE_NOTIONAL_EXCEEDED' };
-    }
-
-    // Gate 5: Venue Balance Checks
-    const buyBalance = venueBalances[buyVenue];
-    const sellBalance = venueBalances[sellVenue];
-    if (
-      (buyBalance !== undefined && buyBalance < adjustedNotional) ||
-      (sellBalance !== undefined && sellBalance < adjustedNotional)
-    ) {
-      return {
-        allowed: false,
-        adjustedNotionalUsd: 0,
-        rejectionReason: 'INSUFFICIENT_VENUE_BALANCE',
-        details: { buyBalance, sellBalance, required: adjustedNotional },
-      };
-    }
-
-    // Gate 6: Open Exposure Limits (Symbol & Venue)
-    const currentSymbolExp = this.symbolExposures.get(symbol) ?? 0;
-    if (currentSymbolExp + adjustedNotional > this.config.maxSymbolExposureUsd) {
-      return {
-        allowed: false,
-        adjustedNotionalUsd: 0,
-        rejectionReason: 'MAX_SYMBOL_EXPOSURE_EXCEEDED',
-        details: { currentSymbolExp, maxSymbolExposure: this.config.maxSymbolExposureUsd },
-      };
-    }
-
-    const currentBuyExp = this.venueExposures.get(buyVenue) ?? 0;
-    const currentSellExp = this.venueExposures.get(sellVenue) ?? 0;
-    if (
-      currentBuyExp + adjustedNotional > this.config.maxVenueExposureUsd ||
-      currentSellExp + adjustedNotional > this.config.maxVenueExposureUsd
-    ) {
-      return {
-        allowed: false,
-        adjustedNotionalUsd: 0,
-        rejectionReason: 'MAX_VENUE_EXPOSURE_EXCEEDED',
-        details: { currentBuyExp, currentSellExp, maxVenueExposure: this.config.maxVenueExposureUsd },
-      };
-    }
-
-    // Gate 7: Live Mode Credentials Check
-    if (this.config.mode === 'live') {
-      const liveAllowed = this.validateLiveCredentials();
-      if (!liveAllowed) {
-        return { allowed: false, adjustedNotionalUsd: 0, rejectionReason: 'LIVE_CREDENTIALS_INVALID' };
-      }
-    }
-
-    return { allowed: true, adjustedNotionalUsd: adjustedNotional };
+  async checkBasket(
+    basket: MultiLegArbitrageBasket,
+    context?: ArbitrageRiskContext,
+  ): Promise<ArbitrageRiskCheckResult> {
+    return runGatePipeline(basket, context, {
+      config: this.config,
+      liveExecutionGuard: this.liveExecutionGuard,
+      riskGateManager: this.riskGateManager,
+      kellyPositionSizer: this.kellyPositionSizer,
+      tieredDrawdownBreaker: this.tieredDrawdownBreaker,
+      drawdownMonitor: this.drawdownMonitor,
+      circuitBreaker: this.circuitBreaker,
+      spreadDetector: this.spreadDetector,
+      exposureTracker: this.exposureTracker,
+    });
   }
 
-  /**
-   * Compute position size via Quarter-Kelly with hard caps.
-   */
+  async checkPreTrade(
+    basketOrParams: MultiLegArbitrageBasket | ArbitrageRiskCheckParams,
+    context?: ArbitrageRiskContext,
+  ): Promise<ArbitrageRiskCheckResult> {
+    if ('legs' in basketOrParams) {
+      return this.checkBasket(basketOrParams, context);
+    }
+    const { basket, mergedContext } = adaptPreTradeParamsToBasket(basketOrParams, context);
+    return this.checkBasket(basket, mergedContext);
+  }
+
+  recordTradeOpened(basket: MultiLegArbitrageBasket): void;
+  recordTradeOpened(symbol: string, buyVenue: string, sellVenue: string, notional: number): void;
+  recordTradeOpened(
+    basketOrSymbol: MultiLegArbitrageBasket | string,
+    buyVenue?: string,
+    sellVenue?: string,
+    notional?: number,
+  ): void {
+    this.exposureTracker.recordTradeOpened(basketOrSymbol, buyVenue, sellVenue, notional);
+  }
+
+  recordTradeClosed(basket: MultiLegArbitrageBasket): void;
+  recordTradeClosed(symbol: string, buyVenue: string, sellVenue: string, notional: number): void;
+  recordTradeClosed(
+    basketOrSymbol: MultiLegArbitrageBasket | string,
+    buyVenue?: string,
+    sellVenue?: string,
+    notional?: number,
+  ): void {
+    this.exposureTracker.recordTradeClosed(basketOrSymbol, buyVenue, sellVenue, notional);
+  }
+
+  getExposures(): { venues: Record<string, number>; symbols: Record<string, number> } {
+    return this.exposureTracker.getExposures();
+  }
+
+  resetExposures(): void {
+    this.exposureTracker.resetExposures();
+  }
+
   computeQuarterKellySizing(
     requestedNotional: number,
     bankroll: number,
     p: number,
     b: number,
   ): number {
-    if (bankroll <= 0 || requestedNotional <= 0 || p <= 0 || b <= 0) return 0;
-    const q = 1 - p;
-    const fullKelly = (b * p - q) / b;
-    if (fullKelly <= 0) return 0;
-
-    // Quarter-Kelly fraction clamped to maxKellyFraction (0.05 default)
-    const quarterKellyFraction = Math.min(fullKelly * 0.25, this.config.maxKellyFraction);
-    const kellyNotional = bankroll * quarterKellyFraction;
-
-    return Math.min(requestedNotional, kellyNotional, this.config.maxTradeNotionalUsd);
+    return computeQuarterKellySizingFormula(
+      requestedNotional,
+      bankroll,
+      p,
+      b,
+      this.config.maxKellyPositionFraction,
+      this.config.maxPerTradeNotionalUsd,
+    );
   }
 
-  recordTradeOpened(symbol: string, buyVenue: string, sellVenue: string, notional: number): void {
-    this.symbolExposures.set(symbol, (this.symbolExposures.get(symbol) ?? 0) + notional);
-    this.venueExposures.set(buyVenue, (this.venueExposures.get(buyVenue) ?? 0) + notional);
-    this.venueExposures.set(sellVenue, (this.venueExposures.get(sellVenue) ?? 0) + notional);
+  getConfig(): Readonly<ArbitrageRiskConfig> {
+    return this.config;
   }
 
-  recordTradeClosed(symbol: string, buyVenue: string, sellVenue: string, notional: number): void {
-    this.symbolExposures.set(symbol, Math.max(0, (this.symbolExposures.get(symbol) ?? 0) - notional));
-    this.venueExposures.set(buyVenue, Math.max(0, (this.venueExposures.get(buyVenue) ?? 0) - notional));
-    this.venueExposures.set(sellVenue, Math.max(0, (this.venueExposures.get(sellVenue) ?? 0) - notional));
+  updateConfig(patch: Partial<ArbitrageRiskConfig>): void {
+    this.config = { ...this.config, ...patch };
   }
 
-  getExposures(): { symbols: Record<string, number>; venues: Record<string, number> } {
-    return {
-      symbols: Object.fromEntries(this.symbolExposures.entries()),
-      venues: Object.fromEntries(this.venueExposures.entries()),
-    };
+  getLiveExecutionGuard(): LiveExecutionGuard {
+    return this.liveExecutionGuard;
   }
 
-  resetExposures(): void {
-    this.symbolExposures.clear();
-    this.venueExposures.clear();
+  getRiskGateManager(): RiskGateManager {
+    return this.riskGateManager;
   }
 
-  private validateLiveCredentials(): boolean {
-    const isLiveEnabled = process.env.LIVE_TRADING_ENABLED === 'true';
-    const hasPolyKey = !!process.env.POLYMARKET_API_KEY || !!process.env.POLYMARKET_PRIVATE_KEY;
-    return isLiveEnabled && hasPolyKey;
+  getKellyPositionSizer(): KellyPositionSizer {
+    return this.kellyPositionSizer;
+  }
+
+  getTieredDrawdownBreaker(): TieredDrawdownBreaker | undefined {
+    return this.tieredDrawdownBreaker;
+  }
+
+  getDrawdownMonitor(): DrawdownMonitor | undefined {
+    return this.drawdownMonitor;
+  }
+
+  getCircuitBreaker(): CircuitBreaker | undefined {
+    return this.circuitBreaker;
+  }
+
+  getSpreadDetector(): SpreadDetector | undefined {
+    return this.spreadDetector;
   }
 }

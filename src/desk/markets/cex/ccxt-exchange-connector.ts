@@ -11,12 +11,8 @@ import {
   type ExchangeBalance,
   ExchangeOrderParamsSchema,
   ExchangeConnectorError,
-  OrderPlacementError,
   OrderCancellationError,
   OrderNotFoundError,
-  InsufficientBalanceError,
-  ExchangeRateLimitError,
-  ExchangeNetworkError,
 } from '../../arbitrage/connectors/types';
 import { logger } from '../../../shared/utils/logger';
 import {
@@ -28,11 +24,12 @@ import { createCcxtExchange } from './ccxt-connector-factory';
 import {
   mapCcxtOrder,
   mapCcxtStatus,
+  handleCcxtError,
 } from './ccxt-connector-mappers';
 
 export * from './ccxt-connector-types';
 export * from './ccxt-connector-factory';
-export { mapCcxtStatus, mapCcxtOrder };
+export { mapCcxtStatus, mapCcxtOrder, handleCcxtError };
 
 export class CcxtExchangeConnector implements IExchangeConnector {
   readonly exchangeId: SupportedCexExchange;
@@ -183,148 +180,3 @@ export class CcxtExchangeConnector implements IExchangeConnector {
     }
   }
 }
-
-export function handleCcxtError(
-  exchangeId: SupportedCexExchange,
-  err: unknown,
-  action: string,
-  context?: Record<string, unknown>
-): never {
-  const errorMsg = err instanceof Error ? err.message : String(err);
-  const errName = err instanceof Error ? (err.name || err.constructor.name) : 'UnknownError';
-  const lower = errorMsg.toLowerCase();
-
-  const errCode =
-    typeof err === 'object' && err !== null && 'code' in err && typeof (err as { code: unknown }).code === 'string'
-      ? (err as { code: string }).code.toUpperCase()
-      : '';
-
-  const cause =
-    typeof err === 'object' && err !== null && 'cause' in err ? (err as { cause: unknown }).cause : undefined;
-
-  const causeCode =
-    typeof cause === 'object' &&
-    cause !== null &&
-    'code' in cause &&
-    typeof (cause as { code: unknown }).code === 'string'
-      ? (cause as { code: string }).code.toUpperCase()
-      : '';
-
-  const causeMsg =
-    cause instanceof Error
-      ? cause.message.toLowerCase()
-      : typeof cause === 'object' &&
-        cause !== null &&
-        'message' in cause &&
-        typeof (cause as { message: unknown }).message === 'string'
-      ? (cause as { message: string }).message.toLowerCase()
-      : '';
-
-  logger.error(`[${exchangeId}] ${action} failed: ${errorMsg}`, {
-    exchange: exchangeId,
-    action,
-    errorName: errName,
-    errorCode: errCode || causeCode || undefined,
-    ...context,
-  });
-
-  if (
-    errName === 'InsufficientFunds' ||
-    lower.includes('insufficient') ||
-    lower.includes('balance') ||
-    lower.includes('not enough')
-  ) {
-    throw new InsufficientBalanceError(errorMsg, exchangeId);
-  }
-
-  if (
-    errName === 'OrderNotFound' ||
-    lower.includes('order not found') ||
-    lower.includes('unknown order') ||
-    lower.includes('order does not exist')
-  ) {
-    throw new OrderNotFoundError(String(context?.orderId ?? 'unknown'), exchangeId);
-  }
-
-  if (
-    errName === 'RateLimitExceeded' ||
-    errName === 'DDoSProtection' ||
-    lower.includes('rate limit') ||
-    lower.includes('too many requests')
-  ) {
-    throw new ExchangeRateLimitError(errorMsg, exchangeId);
-  }
-
-  const combinedMsg = `${lower} ${causeMsg}`;
-  const isNetworkCode =
-    errCode === 'ETIMEDOUT' ||
-    errCode === 'ECONNRESET' ||
-    errCode === 'ECONNREFUSED' ||
-    errCode === 'ECONNABORTED' ||
-    errCode === 'ENOTFOUND' ||
-    errCode === 'EAI_AGAIN' ||
-    errCode === 'EHOSTUNREACH' ||
-    errCode === 'ENETUNREACH' ||
-    errCode === 'EPIPE' ||
-    errCode === 'ESOCKETTIMEDOUT' ||
-    errCode.startsWith('UND_ERR_') ||
-    causeCode === 'ETIMEDOUT' ||
-    causeCode === 'ECONNRESET' ||
-    causeCode === 'ECONNREFUSED' ||
-    causeCode === 'ECONNABORTED' ||
-    causeCode === 'ENOTFOUND' ||
-    causeCode === 'EAI_AGAIN' ||
-    causeCode === 'EHOSTUNREACH' ||
-    causeCode === 'ENETUNREACH' ||
-    causeCode === 'EPIPE' ||
-    causeCode === 'ESOCKETTIMEDOUT' ||
-    causeCode.startsWith('UND_ERR_');
-
-  const isNetworkName =
-    errName === 'NetworkError' ||
-    errName === 'RequestTimeout' ||
-    errName === 'ExchangeNotAvailable' ||
-    errName === 'OnMaintenance' ||
-    errName === 'ConnectTimeout' ||
-    errName === 'TimeoutError' ||
-    errName === 'AbortError' ||
-    errName === 'FetchError';
-
-  const isNetworkMessage =
-    combinedMsg.includes('network') ||
-    combinedMsg.includes('timeout') ||
-    combinedMsg.includes('timed out') ||
-    combinedMsg.includes('etimedout') ||
-    combinedMsg.includes('econnreset') ||
-    combinedMsg.includes('connection reset') ||
-    combinedMsg.includes('econnrefused') ||
-    combinedMsg.includes('connection refused') ||
-    combinedMsg.includes('socket hang up') ||
-    combinedMsg.includes('enotfound') ||
-    combinedMsg.includes('eai_again') ||
-    combinedMsg.includes('ehostunreach') ||
-    combinedMsg.includes('enetunreach') ||
-    combinedMsg.includes('econnaborted') ||
-    combinedMsg.includes('epipe') ||
-    combinedMsg.includes('broken pipe') ||
-    combinedMsg.includes('fetch failed') ||
-    combinedMsg.includes('connection closed') ||
-    combinedMsg.includes('closed connection') ||
-    combinedMsg.includes('socket closed') ||
-    combinedMsg.includes('tls handshake') ||
-    combinedMsg.includes('ssl handshake');
-
-  if (isNetworkCode || isNetworkName || isNetworkMessage) {
-    throw new ExchangeNetworkError(errorMsg, exchangeId);
-  }
-
-  if (action === 'placeOrder') {
-    throw new OrderPlacementError(errorMsg, exchangeId);
-  }
-  if (action === 'cancelOrder') {
-    throw new OrderCancellationError(errorMsg, exchangeId);
-  }
-
-  throw new ExchangeConnectorError(errorMsg, exchangeId);
-}
-

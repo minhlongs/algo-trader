@@ -88,3 +88,21 @@ export const shardLatency = new client.Histogram({ name: 'shard_latency_seconds'
 
 export const queueWaitTime = new client.Histogram({ name: 'queue_wait_seconds', help: 'Agent queue wait time before processing', labelNames: ['priority', 'agent', 'tier'] as const, buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5], registers: [register], });
 
+// ─── Automated Arbitrage Telemetry Metrics (Milestone 4 / R4) ────────────────
+import {
+  arbOrdersTotal,
+  arbExecutionLatencyMs,
+  arbSlippageBps,
+  arbPnlUsd,
+} from '../../desk/arbitrage/arbitrage-metrics';
+
+try {
+  if (!register.getSingleMetric('arb_orders_total')) register.registerMetric(arbOrdersTotal);
+  if (!register.getSingleMetric('arb_execution_latency_ms')) register.registerMetric(arbExecutionLatencyMs);
+  if (!register.getSingleMetric('arb_slippage_bps')) register.registerMetric(arbSlippageBps);
+  if (!register.getSingleMetric('arb_pnl_usd')) register.registerMetric(arbPnlUsd);
+} catch {
+  // Ignore if already registered
+}
+
+
