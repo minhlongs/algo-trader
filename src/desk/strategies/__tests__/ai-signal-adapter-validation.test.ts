@@ -136,6 +136,10 @@ describe('AISignalAdapter Validation & Candidate Mapping', () => {
       expect(signal.action).toBe('BUY');
       expect(signal.symbol).toBe('ETH/USDT');
       expect(signal.confidence).toBe(0.62);
+      expect(signal.calibratedConfidence).toBeDefined();
+      expect(signal.calibratedConfidence).toBeGreaterThan(0);
+      expect(signal.calibratedConfidence).toBeLessThanOrEqual(1);
+      expect(signal.expectedHoldingPeriod).toBe(20);
       expect(signal.expectancy).toBeCloseTo(0.04, 4); // (0.035 + 0.045) / 2
       expect(signal.regime).toBe('TREND_UP');
       expect(signal.timestamp).toBeGreaterThan(0);

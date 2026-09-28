@@ -12,16 +12,40 @@ import type {
 } from './ai-signal-paper-router-types';
 import type { PaperEquityTracker } from './ai-signal-paper-router-tracker';
 import { mapExecutionToFillRecord } from '../execution/paper-position-types';
+import type { AlphaLifecycleStateMachine } from '../../alpha-lab/attribution/alpha-lifecycle-state-machine';
 
 export async function dispatchSignalOrder(
   signal: AISignal,
   marketPrice: number,
   config: AISignalPaperRouterConfig,
   tracker: PaperEquityTracker,
+  stateMachineOverride?: AlphaLifecycleStateMachine,
 ): Promise<SignalRoutingOutcome> {
   const symbol = signal.symbol ?? config.defaultSymbol ?? 'BTC/USDT';
   const timestamp = Date.now();
   const isBuy = signal.direction === 'BUY' || signal.action === 'BUY';
+
+  // Strategy Lifecycle State Inspection: Block signals if strategy is QUARANTINED or RETIRED
+  const sm = stateMachineOverride ??
+    (signal.strategyId ? config.stateMachines?.get(signal.strategyId) : undefined) ??
+    config.stateMachine;
+  const state = sm ? sm.getState() : (signal.strategyId ? config.getState?.(signal.strategyId) : undefined);
+
+  if (state === 'QUARANTINED' || state === 'RETIRED') {
+    const reason = state === 'QUARANTINED'
+      ? 'Strategy is quarantined by drawdown circuit breaker'
+      : 'Strategy is in RETIRED state: Strategy is quarantined by drawdown circuit breaker';
+    logger.warn(`[AISignalPaperRouter] Signal blocked for ${signal.strategyId ?? 'unknown'}: ${reason}`);
+    return {
+      status: 'REJECTED',
+      signal,
+      symbol,
+      marketPrice,
+      validation: { valid: false, signal, rejectionReasons: [reason] },
+      reason,
+      timestamp,
+    };
+  }
 
   const validation = config.adapter.validateSignal(signal);
   if (!validation.valid) {

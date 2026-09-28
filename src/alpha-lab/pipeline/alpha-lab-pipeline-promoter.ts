@@ -69,7 +69,10 @@ export async function routeCandidateSignals(
   for (const signal of signals) {
     const sm = signal.strategyId ? stateMachines.get(signal.strategyId) : undefined;
     const symbol = signal.symbol ?? defaultSymbol;
-    if (sm && sm.isRetired()) {
+    if (sm && (sm.isRetired() || sm.isQuarantined())) {
+      const reason = sm.isQuarantined()
+        ? 'Strategy is quarantined by drawdown circuit breaker'
+        : 'Strategy is in RETIRED state: Strategy is quarantined by drawdown circuit breaker';
       outcomes.push({
         status: 'REJECTED',
         signal,
@@ -78,15 +81,15 @@ export async function routeCandidateSignals(
         validation: {
           valid: false,
           signal,
-          rejectionReasons: ['Strategy is in RETIRED state'],
+          rejectionReasons: [reason],
         },
-        reason: 'Strategy is in RETIRED state',
+        reason,
         timestamp: Date.now(),
       });
       continue;
     }
 
-    const outcome = await paperRouter.routeSignal(signal, marketPrice);
+    const outcome = await paperRouter.routeSignal(signal, marketPrice, sm);
     outcomes.push(outcome);
   }
 

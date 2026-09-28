@@ -101,6 +101,65 @@ export function computeProfitFactor(trades: Array<{ pnl: number | null }>): numb
   return grossProfit / grossLoss;
 }
 
+/**
+ * Compute annualized Sortino ratio from returns or equity curve.
+ * Downside deviation measures variance of negative excess returns below target.
+ */
+export function computeSortinoRatio(
+  returnsOrEquity: number[] | Array<{ equity: number }>,
+  targetReturn = 0,
+  ticksPerYear = 8760,
+): number {
+  if (!returnsOrEquity || returnsOrEquity.length < 2) return 0;
+
+  let returns: number[];
+  if (typeof returnsOrEquity[0] === 'number') {
+    returns = returnsOrEquity as number[];
+  } else {
+    const curve = returnsOrEquity as Array<{ equity: number }>;
+    returns = [];
+    for (let i = 1; i < curve.length; i++) {
+      const prev = curve[i - 1].equity;
+      if (prev === 0) continue;
+      returns.push((curve[i].equity - prev) / prev);
+    }
+  }
+
+  if (returns.length < 2) return 0;
+
+  const n = returns.length;
+  const mean = returns.reduce((s, r) => s + r, 0) / n;
+  const targetPerTick = targetReturn / ticksPerYear;
+
+  const downsideSquaredSum = returns.reduce((sum, r) => {
+    const diff = r - targetPerTick;
+    return diff < 0 ? sum + diff * diff : sum;
+  }, 0);
+
+  const downsideDeviation = Math.sqrt(downsideSquaredSum / n);
+  if (downsideDeviation === 0) {
+    return mean > targetPerTick ? Infinity : 0;
+  }
+
+  return ((mean - targetPerTick) / downsideDeviation) * Math.sqrt(ticksPerYear);
+}
+
+/**
+ * Compute Calmar ratio from annualized return and max drawdown.
+ * Formula: annualizedReturn / |maxDrawdown|
+ */
+export function computeCalmarRatio(
+  annualizedReturn: number,
+  maxDrawdown: number,
+): number {
+  if (isNaN(annualizedReturn) || isNaN(maxDrawdown)) return 0;
+  const absDd = Math.abs(maxDrawdown);
+  if (absDd === 0) {
+    return annualizedReturn > 0 ? Infinity : 0;
+  }
+  return annualizedReturn / absDd;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function round2(n: number): number {

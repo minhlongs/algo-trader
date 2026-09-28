@@ -2,6 +2,8 @@
  * Run Card Types & Schema Definitions
  */
 
+import type { AlphaLifecycleState } from '../attribution/alpha-lifecycle-state-types';
+
 export type ResultClass =
   | { kind: 'IS' }
   | { kind: 'OOS' }
@@ -59,7 +61,11 @@ export interface RunCard {
   createdAt: string;
   resultClass: ResultClassName;
   strategyRef: string;
+  hypothesisId?: string;
   hypothesis?: string;
+  lifecycleState?: AlphaLifecycleState;
+  parameters?: Record<string, unknown>;
+  foldMetrics?: Record<string, number | undefined>;
   dataSources: DataSourceEntry[];
   metrics: Record<string, number | undefined>;
   gateResults: GateResult[];
@@ -72,7 +78,11 @@ export interface WriteRunCardInput {
   runId: string;
   resultClass: ResultClassName;
   strategyRef: string;
+  hypothesisId?: string;
   hypothesis?: string;
+  lifecycleState?: AlphaLifecycleState;
+  parameters?: Record<string, unknown>;
+  foldMetrics?: Record<string, number | undefined>;
   dataSources: DataSourceEntry[];
   metrics: Record<string, number | undefined>;
   gateResults?: GateResult[];
@@ -80,3 +90,4 @@ export interface WriteRunCardInput {
   /** Arbitrary frozen config object to hash for the reproducibility anchor. */
   config: Record<string, unknown>;
 }
+

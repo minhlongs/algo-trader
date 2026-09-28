@@ -83,6 +83,7 @@ function extractImports(filePath: string): string[] {
  */
 const ALLOWED_DESK_IMPORTS: RegExp[] = [
   /prometheus-metrics/,
+  /prometheus-registry/,
   /platform\/persistence\/file-store/,   // moved to shared/ in batch 2
   /platform\/billing\/license-service/,  // RaaS gate license check
   /platform\/audit\//,                   // DLP + audit logging

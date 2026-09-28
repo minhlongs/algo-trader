@@ -30,6 +30,7 @@ tests/e2e/*
 !tests/e2e/arbitrage
 !tests/e2e/marl
 !tests/e2e/amm
+!tests/e2e/alpha-lab
 scripts/*.bak-*
 scripts/*.bak
 .claude/tmp/

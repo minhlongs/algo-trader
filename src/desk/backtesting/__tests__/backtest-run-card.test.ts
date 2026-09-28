@@ -5,21 +5,20 @@
  * resultClass fallback, data source shape, metrics passthrough.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
-const { mockWriteRunCard } = vi.hoisted(() => ({
-  mockWriteRunCard: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock('../../../alpha-lab/provenance/run-card', () => ({
-  writeRunCard: mockWriteRunCard,
+  writeRunCard: vi.fn().mockResolvedValue(undefined),
 }));
 
+import { writeRunCard } from '../../../alpha-lab/provenance/run-card';
 import { writeBacktestRunCard } from '../backtest-run-card';
 import type { BacktestResult, BacktestRunnerOptions } from '../types';
 import type { OhlcvCandle } from '../../data/ohlcv-store';
+
+const mockWriteRunCard = writeRunCard as unknown as ReturnType<typeof vi.fn>;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

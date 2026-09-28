@@ -26,8 +26,10 @@ export async function capturePipelineStatus(
   const lifecycleStates: Record<string, AlphaLifecycleState> = {};
   const stateDistribution: Record<AlphaLifecycleState, number> = {
     DISCOVERED: 0,
+    VALIDATED: 0,
     PAPER_ACTIVE: 0,
     PROMOTED_LIVE_ELIGIBLE: 0,
+    QUARANTINED: 0,
     RETIRED: 0,
   };
 

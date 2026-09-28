@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateSplits } from '../splitter';
+import { generateSplits, generateRollingSplits, Splitter } from '../splitter';
 import type { SplitConfig } from '../experiment-types';
 
 function makeConfig(overrides: Partial<SplitConfig> = {}): SplitConfig {
@@ -93,9 +93,7 @@ describe('generateSplits', () => {
 
   it('produces expanding mode with growing train window', () => {
     const splits = generateSplits(makeConfig({ mode: 'expanding' }), 200, 20);
-    const testSplits = splits.filter((s) => s.kind === 'test');
     const trainSplits = splits.filter((s) => s.kind === 'train');
-    // Train windows grow by valSize each step.
     for (let i = 1; i < trainSplits.length; i++) {
       const prev = trainSplits[i - 1]!.endIdx - trainSplits[i - 1]!.startIdx;
       const curr = trainSplits[i]!.endIdx - trainSplits[i]!.startIdx;
@@ -130,5 +128,39 @@ describe('generateSplits', () => {
     };
     const splits = generateSplits(config, 200, 20);
     expect(splits.length).toBeGreaterThan(0);
+  });
+
+  it('throws on numFolds < 1', () => {
+    expect(() => generateSplits(makeConfig({ numFolds: 0 }), totalBars, lookback)).toThrow(/numFolds must be >= 1/);
+  });
+
+  it('generates >= 5 rolling folds with numFolds: 5 without lookahead leakage', () => {
+    const splits = generateSplits(makeConfig({ mode: 'rolling', numFolds: 5 }), 200, 20);
+    const testSplits = splits.filter((s) => s.kind === 'test');
+    expect(testSplits.length).toBeGreaterThanOrEqual(5);
+
+    // Verify zero overlap in test periods and contiguous sequence
+    for (let i = 1; i < testSplits.length; i++) {
+      expect(testSplits[i]!.startIdx).toBe(testSplits[i - 1]!.endIdx);
+    }
+
+    // Verify causal boundary & no lookahead leakage within each step
+    const steps = Math.max(...splits.map((s) => s.step)) + 1;
+    for (let step = 0; step < steps; step++) {
+      const train = splits.find((s) => s.step === step && s.kind === 'train')!;
+      const val = splits.find((s) => s.step === step && s.kind === 'val')!;
+      const test = splits.find((s) => s.step === step && s.kind === 'test')!;
+      expect(train.startIdx).toBeGreaterThanOrEqual(20);
+      expect(val.startIdx).toBe(train.endIdx);
+      expect(test.startIdx).toBe(val.endIdx);
+      expect(test.endIdx).toBeLessThanOrEqual(200);
+    }
+  });
+
+  it('generateRollingSplits defaults to 5 folds and works via Splitter namespace', () => {
+    const splits = generateRollingSplits(makeConfig(), 200, 20);
+    const testSplits = splits.filter((s) => s.kind === 'test');
+    expect(testSplits.length).toBeGreaterThanOrEqual(5);
+    expect(Splitter.generateRollingSplits).toBe(generateRollingSplits);
   });
 });

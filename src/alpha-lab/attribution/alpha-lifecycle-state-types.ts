@@ -7,9 +7,25 @@ import type { StrategyState } from './promotion-state-machine';
 
 export type AlphaLifecycleState =
   | 'DISCOVERED'
+  | 'VALIDATED'
   | 'PAPER_ACTIVE'
   | 'PROMOTED_LIVE_ELIGIBLE'
+  | 'QUARANTINED'
   | 'RETIRED';
+
+export interface PromotionCriteria {
+  minTradeCount: number;
+  minCumulativeSharpe: number;
+  maxDrawdown: number;
+}
+
+export const DEFAULT_PROMOTION_CRITERIA: PromotionCriteria = {
+  minTradeCount: 50,
+  minCumulativeSharpe: 1.5,
+  maxDrawdown: 0.10,
+};
+
+export const CIRCUIT_BREAKER_MAX_DRAWDOWN = 0.10;
 
 export interface GateEvaluationMetrics {
   totalTrades: number;
@@ -23,6 +39,7 @@ export interface GateEvaluationMetrics {
   oosConsistency?: number | null;
   totalNetPnl: number;
   totalPnl?: number;
+  cumulativeSharpe?: number;
 }
 
 export interface PromotionStateTransition {
@@ -32,7 +49,7 @@ export interface PromotionStateTransition {
   timestamp: number;
   reason: string;
   metricsSnapshot: GateEvaluationMetrics;
-  gateVerdict: PromotionReadiness;
+  gateVerdict?: PromotionReadiness;
 }
 
 /**
@@ -83,3 +100,27 @@ export function createEmptyVerdict(timestamp: number): PromotionReadiness {
     estimatedDaysRemaining: null,
   };
 }
+
+export function createTransition(
+  strategyId: string,
+  fromState: AlphaLifecycleState,
+  toState: AlphaLifecycleState,
+  reason: string,
+  metrics?: Partial<GateEvaluationMetrics>,
+  verdict?: PromotionReadiness,
+): PromotionStateTransition {
+  const timestamp = Date.now();
+  return {
+    strategyId,
+    fromState,
+    toState,
+    timestamp,
+    reason,
+    metricsSnapshot: {
+      ...createEmptyMetrics(),
+      ...metrics,
+    },
+    gateVerdict: verdict ?? createEmptyVerdict(timestamp),
+  };
+}
+

@@ -71,10 +71,13 @@ describe('Candidate Rejection Diagnostics', () => {
     expect(sharpeDiag!.reason).toContain('Large losing trades drag down');
     expect(sharpeDiag!.details?.recommendedParamChanges?.stopLossBps).toBe(75);
   });
-
   it('generates Drawdown Reduction diagnostic when max drawdown exceeds 15%', () => {
     const summary = createMockSummary({ testMaxDrawdown: 0.25 });
-    const gateResult = evaluateAlphaSurvivalGate({ summary, trades: [] });
+    const gateResult = evaluateAlphaSurvivalGate({
+      summary,
+      trades: [],
+      criteria: { maxDrawdown: 0.15 },
+    });
     const diagnostics = generateCandidateRejectionDiagnostics(gateResult, summary, mockConfig);
 
     const ddDiag = diagnostics.find((d) => d.metric === 'max_drawdown');

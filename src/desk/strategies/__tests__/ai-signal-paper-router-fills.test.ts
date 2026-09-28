@@ -3,6 +3,7 @@ import { AISignalPaperRouter } from '../ai-signal-paper-router';
 import { AISignalAdapter, type AISignal } from '../ai-signal-adapter';
 import { RegimeAwareKelly } from '../../risk/regime-aware-kelly';
 import { PaperExecutor } from '../../execution/paper-executor';
+import { AlphaLifecycleStateMachine } from '../../../alpha-lab/attribution/alpha-lifecycle-state-machine';
 
 // Set VITEST_POOL_ID to ensure temporary persistence files are isolated in tmpdir
 process.env.VITEST_POOL_ID = '1';
@@ -153,5 +154,55 @@ describe('AISignalPaperRouter Order Execution & Fill Mapping', () => {
     expect(outcome.status).toBe('UNFILLED');
     expect(outcome.reason).toContain('not filled');
     await illiquidExecutor.stop();
+  });
+
+  describe('Strategy Lifecycle Quarantine Circuit Breaker Blocking', () => {
+    it('blocks signal execution when strategy is in QUARANTINED state', async () => {
+      const sm = new AlphaLifecycleStateMachine('strat-quarantine-test', 'PAPER_ACTIVE');
+      sm.checkDrawdownQuarantine(0.10); // Transitions to QUARANTINED
+      router.registerStateMachine('strat-quarantine-test', sm);
+
+      const signal = createSignal({
+        strategyId: 'strat-quarantine-test',
+        regime: 'TREND_UP',
+      });
+      const outcome = await router.routeSignal(signal, 50_000);
+
+      expect(outcome.status).toBe('REJECTED');
+      expect(outcome.reason).toBe('Strategy is quarantined by drawdown circuit breaker');
+      expect(outcome.validation.valid).toBe(false);
+      expect(outcome.validation.rejectionReasons).toContain(
+        'Strategy is quarantined by drawdown circuit breaker',
+      );
+      expect(router.getFillRecords()).toHaveLength(0);
+    });
+
+    it('blocks signal execution when stateMachineOverride is QUARANTINED', async () => {
+      const sm = new AlphaLifecycleStateMachine('strat-override', 'QUARANTINED');
+      const signal = createSignal({
+        strategyId: 'strat-override',
+        regime: 'TREND_UP',
+      });
+      const outcome = await router.routeSignal(signal, 50_000, sm);
+
+      expect(outcome.status).toBe('REJECTED');
+      expect(outcome.reason).toBe('Strategy is quarantined by drawdown circuit breaker');
+      expect(router.getFillRecords()).toHaveLength(0);
+    });
+
+    it('blocks signal execution when strategy is in RETIRED state', async () => {
+      const sm = new AlphaLifecycleStateMachine('strat-retired-test', 'RETIRED');
+      router.registerStateMachine('strat-retired-test', sm);
+
+      const signal = createSignal({
+        strategyId: 'strat-retired-test',
+        regime: 'TREND_UP',
+      });
+      const outcome = await router.routeSignal(signal, 50_000);
+
+      expect(outcome.status).toBe('REJECTED');
+      expect(outcome.reason).toContain('Strategy is in RETIRED state');
+      expect(router.getFillRecords()).toHaveLength(0);
+    });
   });
 });
