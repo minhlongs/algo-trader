@@ -8,3 +8,4 @@ export * from './vwap-executor';
 export * from './iceberg-executor';
 export * from './price-improvement';
 export * from './sor-router';
+export * from './sor-execution-bridge';
