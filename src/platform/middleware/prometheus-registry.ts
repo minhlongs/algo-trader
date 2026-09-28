@@ -105,4 +105,26 @@ try {
   // Ignore if already registered
 }
 
+// ─── Cross-Engine Portfolio Telemetry Metrics (M4) ───────────────────────────
+import {
+  portfolioEquityUsd,
+  portfolioMtmPnlUsd,
+  portfolioCashBufferRatio,
+  portfolioRoceRatio,
+  portfolioGrossLeverage,
+  portfolioDriftUsd,
+} from '../../desk/telemetry/portfolio-metrics';
+
+try {
+  if (!register.getSingleMetric('portfolio_equity_usd')) register.registerMetric(portfolioEquityUsd);
+  if (!register.getSingleMetric('portfolio_mtm_pnl_usd')) register.registerMetric(portfolioMtmPnlUsd);
+  if (!register.getSingleMetric('portfolio_cash_buffer_ratio')) register.registerMetric(portfolioCashBufferRatio);
+  if (!register.getSingleMetric('portfolio_roce_ratio')) register.registerMetric(portfolioRoceRatio);
+  if (!register.getSingleMetric('portfolio_gross_leverage')) register.registerMetric(portfolioGrossLeverage);
+  if (!register.getSingleMetric('portfolio_drift_usd')) register.registerMetric(portfolioDriftUsd);
+} catch {
+  // Ignore if already registered
+}
+
+
 

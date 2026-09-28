@@ -126,3 +126,53 @@ Implement automated negative-risk and basket arbitrage across multi-outcome mark
 ## Follow-up — 2026-09-24T18:04:11Z
 
 The parent received a network timeout notification. Resume execution and continue coordinating the teamwork project from current progress in .agents/teamwork/PROJECT.md.
+
+## 2026-09-28T17:22:41Z
+
+Build and integrate the production-ready Unified Multi-Strategy Portfolio Allocator, Global Risk Guard & Smart Order Router (SOR) into algo-trader (`src/desk/portfolio/`, `src/desk/risk/`, `src/desk/sor/`, `src/desk/telemetry/`).
+
+Working directory: /Users/macbook/algo-trader
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Dynamic Multi-Strategy Capital Allocator & Risk Parity Engine
+Implement an institutional capital allocation framework across all 4 trading engines (Arbitrage, MARL Market Making, Prediction Market AMM Liquidity, Alpha-Lab Quantitative Strategies):
+1. **Risk Parity & Equal Risk Contribution (ERC)**: Dynamically weights capital allocations using rolling covariance matrices and volatility estimates to ensure no single strategy family dominates portfolio risk.
+2. **Performance-Weighted Tilts**: Dynamically tilts allocations toward strategies with higher rolling Sharpe/Sortino ratios and positive regime alignment.
+3. **Capital Lock & Minimum Buffer Guard**: Guarantees working capital reserves (minimum 20% liquid unallocated cash buffer) and prevents starvation of active high-expectancy positions during rebalancing.
+
+### R2. Global Cross-Engine Portfolio Risk & Correlation Guard
+Enforce unified portfolio-wide risk governance across all strategies and venues:
+1. **Value at Risk (VaR & CVaR / Expected Shortfall)**: Computes real-time Parametric and Historical VaR (95% and 99% confidence horizons) and conditional Value at Risk across all open positions.
+2. **Leverage & Exposure Constraints**: Enforces portfolio-level gross leverage ($\le 3.0\text{x}$) and net exposure limits across centralized exchanges (CCXT/Binance) and decentralized prediction markets (Polymarket CLOB and AMM).
+3. **Multi-Tier Global Circuit Breaker**: Synchronizes a 4-tier circuit breaker (`NORMAL` $\to$ `ALERT` $\to$ `REDUCE` $\to$ `HALT` $\to$ `HARD_STOP`) across all engines simultaneously upon aggregate portfolio drawdown breaches (5% ALERT, 10% REDUCE, 15% HALT, 20% HARD_STOP) or sudden correlation spikes.
+
+### R3. Smart Order Router (SOR) & Multi-Venue Liquidity Aggregator
+Intelligently route and execute orders across heterogeneous liquidity pools:
+1. **Cross-Venue Order Routing**: Ingests real-time order books and AMM price impact curves across Binance/Bybit, Polymarket CLOB, and AMMs, selecting optimal routing paths to maximize net realized proceeds.
+2. **Order Splitting & Execution Strategies**: Implements TWAP, VWAP, and Iceberg execution for parent orders exceeding liquidity thresholds, distributing order slices across venues to minimize market impact and slippage.
+3. **Execution Cost & Fee Minimization**: Factor in taker/maker fee differentials and gas costs across execution venues to ensure net price improvement.
+
+### R4. Unified Cross-Engine Telemetry & Real-Time PnL Attribution Hub
+Provide institutional real-time observability and performance reporting:
+1. **Unified MTM PnL & Margin Attribution**: Consolidates mark-to-market PnL, realized cash flow, margin utilization, and return on capital employed (ROCE) across all 4 strategy engines in real time.
+2. **Real-Time Telemetry & Event Streaming**: Emits standardized portfolio events, risk metric snapshots, and execution logs via NATS / internal bus for downstream monitoring dashboards.
+3. **Automated End-of-Day (EOD) Risk Ledger**: Persists daily immutable snapshots of risk allocations, strategy performance, drawdown events, and execution efficiency in the research provenance store.
+
+## Acceptance Criteria
+
+### Execution & Mathematical Verification
+- [ ] Risk Parity (ERC) allocator converges iteratively to equal risk contribution within $10^{-4}$ tolerance across non-zero covariance matrices.
+- [ ] Parametric and Historical VaR / CVaR calculations accurately reflect joint portfolio tail risk under multi-asset scenarios.
+- [ ] Multi-tier global circuit breaker triggers systematic de-risking and halts execution across all 4 engines simultaneously upon simulated drawdown breach.
+- [ ] Smart Order Router (SOR) achieves provable price improvement over naive single-venue routing on multi-venue orders.
+- [ ] Unified PnL attribution accurately sums individual engine equity curves to match consolidated portfolio balance without accounting drift.
+- [ ] Comprehensive 5-Tier test suite (Tier 1: Feature Coverage, Tier 2: Boundary Conditions, Tier 3: Cross-Feature Interactions, Tier 4: Real-World Workloads, Tier 5: Adversarial Hardening) passes 100%.
+
+### Quality & Safety Guardrails
+- [ ] `bun run build` and `bun run tsc --noEmit` exit 0 with 0 TypeScript compilation errors.
+- [ ] Zero new `:any` types in production code (strict TypeScript typing maintained).
+- [ ] Zero `console.log` / `console.error` calls introduced (use structured logger utility).
+- [ ] 100% test pass rate across all new and existing test suites.
+- [ ] All new source files modularized ($\le 200$ visual LOC) and strictly compliant with repo standards.
