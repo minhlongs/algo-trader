@@ -130,6 +130,35 @@ if (!isTest) {
     });
 
   program
+    .command('amm:auto')
+    .description('Prediction Market AMM Liquidity Engine & Combinatorial Arbitrage')
+    .option('-m, --market <marketId>', 'Prediction market identifier', 'polymarket-election-2026')
+    .option('--dry-run', 'Dry run mode (no live trades)', true)
+    .option('--no-dry-run', 'Live trading mode')
+    .option('-c, --capital <number>', 'Portfolio capital in USD', '100000')
+    .option('-b, --liquidity-b <number>', 'LMSR liquidity parameter b', '1000')
+    .option('-f, --fee-bps <number>', 'Pool fee in basis points', '20')
+    .option('-d, --duration <seconds>', 'Execution duration in seconds (0 = single pass)', '0')
+    .action(async (options: {
+      market: string;
+      dryRun: boolean;
+      capital: string;
+      liquidityB: string;
+      feeBps: string;
+      duration: string;
+    }) => {
+      const { runAmmAuto } = await import('./desk/commands/amm-auto');
+      await runAmmAuto({
+        marketId: options.market,
+        dryRun: options.dryRun,
+        capital: parseFloat(options.capital),
+        b: parseFloat(options.liquidityB),
+        feeBps: parseFloat(options.feeBps),
+        durationSeconds: parseInt(options.duration, 10),
+      });
+    });
+
+  program
     .command('kronos')
     .description('Run Kronos Foundation Model trading strategy (requires AlphaEar sidecar)')
     .option('-s, --symbol <symbol>', 'Trading pair', 'BTC/USDT')

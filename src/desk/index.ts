@@ -50,3 +50,26 @@ export * from './sandbox/index';
 
 // MARL Market-Making & Delta-Neutral Liquidity Engine
 export * from './marl/index';
+
+// Prediction Market AMM & Negative-Risk Arbitrage Engine
+export * as Amm from './amm/index';
+export {
+  LmsrPricing,
+  CpmmPricing,
+  DynamicBAdapter,
+  VirtualReserveTracker,
+  MultiTokenPool,
+  HybridOrderRouter,
+  CombinatorialScanner,
+  BasketPricer,
+  AtomicBasketCoordinator,
+  TwoSidedQuoter,
+  InventoryDeltaRebalancer,
+  AmmRiskGuard,
+  DrawdownBreaker,
+  AmmMetricsRecorder,
+  AmmAuditLogger,
+  AmmEngine,
+  MasterAmmEngine,
+} from './amm/index';
+

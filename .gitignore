@@ -29,6 +29,7 @@ tasks/
 tests/e2e/*
 !tests/e2e/arbitrage
 !tests/e2e/marl
+!tests/e2e/amm
 scripts/*.bak-*
 scripts/*.bak
 .claude/tmp/

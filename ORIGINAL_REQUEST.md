@@ -68,6 +68,61 @@ Record all experiment configurations, walkforward evaluation metrics, paper exec
 - [ ] All new and existing test suites pass with 100% pass rate.
 - [ ] Existing coverage floors (94% lines, 92% statements, 86% branches, 93% functions) maintained or exceeded.
 
+## 2026-09-28T02:46:44Z
+
+Build and integrate the production-ready Prediction Market Automated Market Maker (AMM / CPMM / LMSR) Liquidity Engine & Combinatorial Negative-Risk Arbitrage Engine into algo-trader (`src/desk/amm/`).
+
+Working directory: /Users/macbook/algo-trader
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Prediction Market AMM Pricing & Constant Product / LMSR Liquidity Engine
+Implement mathematical pricing models for binary and multi-outcome prediction markets:
+1. Logarithmic Market Scoring Rule (LMSR):
+   - Cost function: $C(\vec{q}) = b \ln \left( \sum_{i=1}^n e^{q_i / b} \right)$
+   - Marginal spot prices: $p_i(\vec{q}) = \frac{e^{q_i / b}}{\sum_{j=1}^n e^{q_j / b}}$ with $\sum_{i=1}^n p_i = 1$
+   - Trade cost computation: $\Delta C = C(\vec{q} + \Delta\vec{q}) - C(\vec{q})$
+   - Dynamic liquidity parameter $b$ adaptation based on pool depth and volume.
+2. Constant Product Market Maker (CPMM) variant for binary outcome tokens ($k = x \cdot y$).
+3. Multi-token pool state manager with orderbook and virtual AMM reserves.
+
+### R2. Combinatorial Negative-Risk & Mutually Exclusive Outcome Arbitrage
+Implement automated negative-risk and basket arbitrage across multi-outcome market sets:
+1. Combinatorial mispricing detection:
+   - Overpriced basket condition: $\sum_{i=1}^n P_i > 1.00 + \text{fee}$ (mint complete set for 1.00 USDC, sell all outcomes).
+   - Underpriced basket condition: $\sum_{i=1}^n P_i < 1.00 - \text{fee}$ (buy all outcomes, merge into 1.00 USDC).
+2. Atomic multi-leg execution coordinator with gas-cost, fee-structure, and slippage netting.
+3. Fallback compensatory unwinds if any leg fails or experiences partial fills.
+
+### R3. Dynamic Liquidity Provision & Cross-Market Rebalancing
+1. Adaptive 2-sided liquidity quoting agent operating on AMM pools and Polymarket CLOB books.
+2. Cross-market inventory delta rebalancer: continuously hedging directional exposure against external CEX/DEX reference price feeds.
+3. Adverse selection and toxic sweep mitigation on AMM pools (dynamic fee adjustment and liquidity pull tripwires).
+
+### R4. Pre-Trade Risk Gates, Telemetry & Hash-Chained Audit Logging
+1. Pre-trade risk enforcement: 5% Quarter-Kelly position cap, max pool exposure limits, 15% daily drawdown circuit breaker, and venue latency filters.
+2. Low-latency Prometheus metrics (`amm_liquidity_depth_usd`, `amm_trade_volume_usd`, `amm_arbitrage_pnl_usd`, `amm_pool_reserves`, `amm_vpin_toxicity`).
+3. SHA-256 HMAC hash-chained `AmmAuditLogger` recording all pool transactions, arbitrage executions, liquidity provisions, and risk rejections.
+
+## Acceptance Criteria
+
+### Execution & Mathematical Verification
+- [ ] LMSR cost function and spot price equations are mathematically exact and numerically stable against extreme log-sum-exp overflows across $n \ge 10$ outcomes.
+- [ ] CPMM binary curve maintains invariant $k = x \cdot y$ under buy, sell, and add/remove liquidity operations.
+- [ ] Combinatorial negative-risk scanner detects mispricings ($\sum P_i \ne 1.00$) and generates net-profitable atomic execution plans.
+- [ ] Atomic multi-leg coordinator executes bundles with compensatory unwind protection on partial fills.
+- [ ] Pre-trade risk gates block trades exceeding Quarter-Kelly or daily drawdown limits.
+- [ ] Comprehensive 5-Tier test suite (Tier 1: Feature Coverage, Tier 2: Boundary Conditions, Tier 3: Cross-Feature Interactions, Tier 4: Real-World Workloads, Tier 5: Adversarial Hardening) passes 100%.
+
+### Quality & Safety Guardrails
+- [ ] `npm run build` exits 0 with 0 TypeScript compilation errors.
+- [ ] Zero new `:any` types in production code (strict TypeScript typing maintained).
+- [ ] Zero `console.log` / `console.error` calls introduced (use structured logger utility).
+- [ ] 100% test pass rate across all new and existing test suites.
+- [ ] All new source files modularized ($\le 200$ visual LOC) and strictly compliant with repo standards.
+
+
 ## Follow-up — 2026-09-24T18:04:11Z
 
 The parent received a network timeout notification. Resume execution and continue coordinating the teamwork project from current progress in .agents/teamwork/PROJECT.md.
