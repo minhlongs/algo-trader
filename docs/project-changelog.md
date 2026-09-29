@@ -1,5 +1,17 @@
 # Project Changelog - Algo Trader
 
+## [3.1.86] - 2026-09-29 — Unified Portfolio Risk, Smart Order Routing Engine & Quality Ratchet Certification
+
+### Added
+- Multi-engine autonomous desk runner & live execution daemon (`desk:auto`) with dual-level intelligence reflection.
+- Comprehensive unit test suites and E2E adversarial tests for unified portfolio risk, Polymarket terminal cache, VWAP deviation sniper v2, and SOR engine.
+- Adversarial market regime shock hardening and deterministic paper executor fill verification.
+
+### Changed
+- Ratcheted quality baseline to 15,600 total tests floor and coverage floors to 95% lines / 93% functions / 86% branches / 94% statements.
+- Certified 12/12 quality ratchet gates (15,619 passing tests, 0 failures, 0 `:any` types, 0 oversized files).
+- Deployed via PR #128 merged to `main` (commit `14b15fa1`).
+
 ## [3.1.85] - 2026-09-25 — Phase 35 Compliance & Security Hardening Finalization & Alpha-Lab Pipeline Integration
 
 ### Added
