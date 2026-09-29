@@ -155,7 +155,7 @@ describe('Tier 5: Adversarial Coverage Hardening Suite (R1-R4)', () => {
       expect(shockRes.fractionUsed).toBe(0.0);
 
       // Ensure paper executor processes signal without NaN or negative balance
-      const executor = new PaperExecutor({ initialBalance: 100000 });
+      const executor = new PaperExecutor({ initialBalance: 100000, simulateFillRate: 1.0 });
       await executor.start(100000, true);
       const signal: TradeSignal = {
         signalId: 'crash-sig-01',
@@ -220,6 +220,7 @@ describe('Tier 5: Adversarial Coverage Hardening Suite (R1-R4)', () => {
         initialBalance: 10000,
         feePercent: 0.001,
         slippagePercent: 0.001,
+        simulateFillRate: 1.0,
       });
       await executor.start(10000, true);
 
