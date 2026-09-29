@@ -729,7 +729,9 @@ describe('Tier 5: Adversarial Coverage Hardening Suite (R1-R4)', () => {
     });
 
     it('ADV-6.2: fail-safe run card write on unwritable directory — captures writeError without throwing', async () => {
-      const unwritableDir = '/proc/sys/impossible-dir';
+      const blockingFile = join(tempDirObj.path, 'blocking-file-adv');
+      await writeFile(blockingFile, 'x');
+      const unwritableDir = join(blockingFile, 'impossible-dir');
       const card = await writeRunCard(unwritableDir, {
         runId: 'adv-fail-run',
         resultClass: 'REJECTED',

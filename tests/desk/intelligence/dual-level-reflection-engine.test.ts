@@ -22,6 +22,12 @@ vi.mock('../../../src/shared/messaging/index', () => ({
   }),
 }));
 
+vi.mock('../../../src/lib/llm-router', () => ({
+  LlmRouter: class MockLlmRouter {
+    chat = vi.fn().mockRejectedValue(new Error('LLM service unavailable in test'));
+  },
+}));
+
 describe('Dual-Level Reflection Engine & Analyzers', () => {
   const originalEnv = process.env;
 

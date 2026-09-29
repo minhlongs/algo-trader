@@ -99,7 +99,9 @@ export function registerTier2ProvenanceTests(): void {
     });
 
     it('B17.5: records writeError gracefully when destination cannot be written', async () => {
-      const card = await writeRunCard('/proc/read-only-forbidden/card', {
+      const blockingFile = join(tempDirObj.path, 'blocking-file');
+      await writeFile(blockingFile, 'x');
+      const card = await writeRunCard(join(blockingFile, 'card'), {
         runId: 'ro-run', resultClass: 'IS', strategyRef: 'strat', dataSources: [], metrics: {}, config: {},
       });
       expect(card.writeError).toBeDefined();
