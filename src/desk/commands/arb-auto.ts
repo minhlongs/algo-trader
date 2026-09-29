@@ -47,6 +47,7 @@ export async function runArbAuto(options: AutoCommandOptions = {}): Promise<void
     logger.info('  REDIS_URL=redis://localhost:6379');
     logger.info('  DATABASE_URL=postgresql://...\n');
     process.exit(1);
+    return;
   }
 
   // Parse options
@@ -84,6 +85,7 @@ export async function runArbAuto(options: AutoCommandOptions = {}): Promise<void
     if (!confirm) {
       logger.info('\n⚠️  Live trading cancelled. Exiting.\n');
       process.exit(0);
+      return;
     }
   }
 

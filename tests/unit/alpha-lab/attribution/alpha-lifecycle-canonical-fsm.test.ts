@@ -3,8 +3,8 @@ import {
   AlphaLifecycleStateMachine,
   type AlphaLifecycleState,
   DEFAULT_PROMOTION_CRITERIA,
-} from '../alpha-lifecycle-state-machine';
-import type { AlphaSurvivalGateEvaluation } from '../alpha-survival-gate-types';
+} from '../../../../src/alpha-lab/attribution/alpha-lifecycle-state-machine';
+import type { AlphaSurvivalGateEvaluation } from '../../../../src/alpha-lab/attribution/alpha-survival-gate-types';
 import {
   serializeStateMachine,
   deserializeStateMachine,
@@ -14,7 +14,7 @@ import {
   deserializeStateMachines,
   saveStateMachineToFile,
   loadStateMachineFromFile,
-} from '../alpha-lifecycle-persistence';
+} from '../../../../src/alpha-lab/attribution/alpha-lifecycle-persistence';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { promises as fs } from 'node:fs';

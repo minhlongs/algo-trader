@@ -275,4 +275,153 @@ describe('MomentumExhaustionStrategy', () => {
     const tick = createMomentumExhaustionTick(makeDeps());
     expect(typeof tick).toBe('function');
   });
+
+  describe('recordTick trimming', () => {
+    it('trims price and volume arrays when exceeding maxLen', async () => {
+      const strat = new MomentumExhaustionStrategy(makeDeps(), {
+        velocityWindow: 2,
+        atrPeriod: 2,
+      });
+      // maxLen = Math.max(2, 2) * 4 = 8
+      const m = makeMarket({ volume: 3000 });
+      for (let i = 0; i < 15; i++) {
+        // @ts-expect-error - call protected method for test
+        await strat.scanEntries([m]);
+      }
+      // @ts-expect-error - reach into private field
+      const prices = strat.priceHistory.get('yes-1');
+      // @ts-expect-error - reach into private field
+      const vols = strat.volumeHistory.get('yes-1');
+      expect(prices?.length).toBe(8);
+      expect(vols?.length).toBe(8);
+    });
+  });
+
+  describe('getCustomExitCondition', () => {
+    it('returns no exit when no price history exists', () => {
+      const strat = new MomentumExhaustionStrategy(makeDeps());
+      const pos = { tokenId: 'yes-1', conditionId: 'c-1', side: 'yes' as const, entryPrice: 0.5, sizeUsdc: 20, orderId: 'o', openedAt: Date.now() };
+      // @ts-expect-error - call protected method
+      const res = strat.getCustomExitCondition(pos, 0.5);
+      expect(res).toEqual({ exit: false, reason: '' });
+    });
+
+    it('returns no exit when volume history is missing or price length is insufficient', () => {
+      const strat = new MomentumExhaustionStrategy(makeDeps(), { velocityWindow: 5 });
+      const pos = { tokenId: 'yes-1', conditionId: 'c-1', side: 'yes' as const, entryPrice: 0.5, sizeUsdc: 20, orderId: 'o', openedAt: Date.now() };
+      // @ts-expect-error - access private
+      strat.priceHistory.set('yes-1', [0.5, 0.51, 0.52]);
+      // vols missing
+      // @ts-expect-error - call protected method
+      expect(strat.getCustomExitCondition(pos, 0.5)).toEqual({ exit: false, reason: '' });
+
+      // vols present but prices too short (< velocityWindow + 1 = 6)
+      // @ts-expect-error - access private
+      strat.volumeHistory.set('yes-1', [100, 200, 300]);
+      // @ts-expect-error - call protected method
+      expect(strat.getCustomExitCondition(pos, 0.5)).toEqual({ exit: false, reason: '' });
+    });
+
+    it('triggers ATR stop loss exit when price move exceeds atr * atrStopMultiplier', () => {
+      const strat = new MomentumExhaustionStrategy(makeDeps(), {
+        velocityWindow: 2,
+        atrPeriod: 2,
+        atrStopMultiplier: 2.0,
+      });
+      const pos = { tokenId: 'yes-1', conditionId: 'c-1', side: 'yes' as const, entryPrice: 0.50, sizeUsdc: 20, orderId: 'o', openedAt: Date.now() };
+      // ATR with period 2 on [0.50, 0.52, 0.54]: (|0.52-0.50| + |0.54-0.52|) / 2 = 0.02
+      // ATR stop distance = 0.02 * 2.0 = 0.04
+      // @ts-expect-error - access private
+      strat.priceHistory.set('yes-1', [0.50, 0.52, 0.54]);
+      // @ts-expect-error - access private
+      strat.volumeHistory.set('yes-1', [1000, 1000, 1000]);
+
+      // Price move: |0.45 - 0.50| = 0.05 > 0.04 -> triggers ATR stop
+      // @ts-expect-error - call protected method
+      const res = strat.getCustomExitCondition(pos, 0.45);
+      expect(res.exit).toBe(true);
+      expect(res.reason).toContain('atr-stop');
+    });
+
+    it('triggers opposite exhaustion exit when detectExhaustion returns opposite side', () => {
+      const strat = new MomentumExhaustionStrategy(makeDeps(), {
+        velocityWindow: 2,
+        atrPeriod: 2,
+        atrStopMultiplier: 10.0, // High so ATR stop doesn't trigger
+      });
+      // Position is 'yes'. We want an exhaustion signal of 'no' (uptrend exhaustion)
+      const pos = { tokenId: 'yes-1', conditionId: 'c-1', side: 'yes' as const, entryPrice: 0.50, sizeUsdc: 20, orderId: 'o', openedAt: Date.now() };
+      // priceVel = (0.55 - 0.50) / 2 = 0.025 > 0
+      // prevVel = 0.05 > priceVel (decelerating uptrend)
+      // volumeRate = (3000 - 1000) / 2 = 1000 > 0
+      // -> signal is 'no' (opposite of pos.side 'yes')
+      // @ts-expect-error - access private
+      strat.priceHistory.set('yes-1', [0.50, 0.53, 0.55]);
+      // @ts-expect-error - access private
+      strat.volumeHistory.set('yes-1', [1000, 2000, 3000]);
+      // @ts-expect-error - access private
+      strat.prevVelocity.set('yes-1', 0.05);
+
+      // @ts-expect-error - call protected method
+      const res = strat.getCustomExitCondition(pos, 0.55);
+      expect(res.exit).toBe(true);
+      expect(res.reason).toBe('opposite-exhaustion (signal=no)');
+    });
+
+    it('falls back to priceVel when prevVelocity is not yet cached and returns no exit if no exhaustion', () => {
+      const strat = new MomentumExhaustionStrategy(makeDeps(), {
+        velocityWindow: 2,
+        atrPeriod: 2,
+        atrStopMultiplier: 10.0,
+      });
+      const pos = { tokenId: 'yes-1', conditionId: 'c-1', side: 'yes' as const, entryPrice: 0.50, sizeUsdc: 20, orderId: 'o', openedAt: Date.now() };
+      // Flat prices -> priceVel = 0 -> detectExhaustion returns null
+      // @ts-expect-error - access private
+      strat.priceHistory.set('yes-1', [0.50, 0.50, 0.50]);
+      // @ts-expect-error - access private
+      strat.volumeHistory.set('yes-1', [1000, 1000, 1000]);
+
+      // @ts-expect-error - call protected method
+      const res = strat.getCustomExitCondition(pos, 0.50);
+      expect(res).toEqual({ exit: false, reason: '' });
+    });
+  });
+
+  describe('scanEntries additional guards', () => {
+    it('skips entry when mid price is out of bounds', async () => {
+      const strat = new MomentumExhaustionStrategy(makeDeps(() => 0));
+      // @ts-expect-error - call protected method
+      await strat.scanEntries([makeMarket({ volume: 5000 })]);
+      // @ts-expect-error - access private
+      expect(strat.positions.length).toBe(0);
+    });
+
+    it('falls back to yesTokenId when noTokenId is not present in market on "no" side', async () => {
+      // Up-trend exhaustion -> signal 'no' (buys noTokenId, or falls back to yesTokenId if noTokenId missing)
+      const strat = new MomentumExhaustionStrategy(makeDeps((_t, i) => 0.50 + 0.01 * i - Math.max(0, i - 5) * 0.009));
+      const marketAt = (i: number) => makeMarket({ volume: 2000 + 100 * i, noTokenId: undefined });
+      for (let i = 0; i < 8; i++) {
+        // @ts-expect-error - call protected method
+        await strat.scanEntries([marketAt(i)]);
+      }
+      // @ts-expect-error - access private
+      expect(strat.positions.length).toBe(1);
+      // @ts-expect-error - access private
+      expect(strat.positions[0]!.tokenId).toBe('yes-1');
+      // @ts-expect-error - access private
+      expect(strat.positions[0]!.side).toBe('no');
+    });
+
+    it('breaks market loop when max positions is reached during iteration', async () => {
+      const strat = new MomentumExhaustionStrategy(makeDeps(), { maxPositions: 1 });
+      // Pre-fill 1 position
+      // @ts-expect-error - access private
+      strat.positions.push({ tokenId: 'yes-1', conditionId: 'c-1', side: 'yes', entryPrice: 0.5, sizeUsdc: 15, orderId: 'o', openedAt: Date.now() });
+      const m1 = makeMarket({ conditionId: 'c-2', volume: 5000 });
+      const m2 = makeMarket({ conditionId: 'c-3', volume: 5000 });
+      // @ts-expect-error - call protected method
+      await strat.scanEntries([m1, m2]);
+      expect(strat.deps.clob.getOrderBook).not.toHaveBeenCalled();
+    });
+  });
 });
