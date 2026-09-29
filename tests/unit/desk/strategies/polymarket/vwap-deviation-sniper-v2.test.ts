@@ -228,6 +228,7 @@ describe('VwapDeviationSniperStrategy', () => {
   describe('getCustomExitCondition', () => {
     it('returns no exit when no price history', () => {
       const pos = { tokenId: 'token-1', conditionId: 'cond-1', side: 'yes' as const, size: 10, entryPrice: 0.5 };
+      // @ts-expect-error - call protected method
       const result = strategy.getCustomExitCondition(pos, 0.5);
       expect(result.exit).toBe(false);
       expect(result.reason).toBe('');
@@ -235,16 +236,76 @@ describe('VwapDeviationSniperStrategy', () => {
 
     it('returns no exit when VWAP is 0', () => {
       const pos = { tokenId: 'token-1', conditionId: 'cond-1', side: 'yes' as const, size: 10, entryPrice: 0.5 };
-      // Price history with zero volume -> VWAP = 0
-      // Can't easily inject, but we test the logic
+      // Price history exists but with zero volume -> calcVWAP returns 0
+      // @ts-expect-error - access private
+      strategy.priceHistory.set('token-1', [0.5, 0.5]);
+      // @ts-expect-error - access private
+      strategy.volumeHistory.set('token-1', [0, 0]);
+
+      // @ts-expect-error - call protected method
       const result = strategy.getCustomExitCondition(pos, 0.5);
       expect(result.exit).toBe(false);
+      expect(result.reason).toBe('');
     });
 
     it('returns exit when price reverts within exitThreshold', () => {
-      // This test verifies the logic via public method if exposed,
-      // but getCustomExitCondition is protected. We test via integration below.
-      expect(true).toBe(true); // placeholder - integration test covers this
+      const pos = { tokenId: 'token-1', conditionId: 'cond-1', side: 'yes' as const, size: 10, entryPrice: 0.5 };
+      // Set history so VWAP = 0.50
+      // @ts-expect-error - access private
+      strategy.priceHistory.set('token-1', [0.50, 0.50]);
+      // @ts-expect-error - access private
+      strategy.volumeHistory.set('token-1', [1000, 1000]);
+
+      // currentPrice 0.51 -> deviation = (0.51 - 0.50)/0.50 = 0.02 < exitThreshold 0.5
+      // @ts-expect-error - call protected method
+      const result = strategy.getCustomExitCondition(pos, 0.51);
+      expect(result.exit).toBe(true);
+      expect(result.reason).toContain('mean reversion');
+    });
+
+    it('returns no exit when price deviation remains above exitThreshold', () => {
+      const pos = { tokenId: 'token-1', conditionId: 'cond-1', side: 'yes' as const, size: 10, entryPrice: 0.5 };
+      // Set history so VWAP = 0.50
+      // @ts-expect-error - access private
+      strategy.priceHistory.set('token-1', [0.50, 0.50]);
+      // @ts-expect-error - access private
+      strategy.volumeHistory.set('token-1', [1000, 1000]);
+
+      // currentPrice 0.80 -> deviation = (0.80 - 0.50)/0.50 = 0.60 >= exitThreshold 0.5
+      // @ts-expect-error - call protected method
+      const result = strategy.getCustomExitCondition(pos, 0.80);
+      expect(result.exit).toBe(false);
+      expect(result.reason).toBe('');
+    });
+  });
+
+  describe('estimateDepthVolume & recordPriceVolume trimming', () => {
+    it('estimates depth volume correctly with custom or default levels', () => {
+      const book = {
+        bids: [{ size: '10' }, { size: '20' }],
+        asks: [{ size: '15' }, { size: '25' }],
+      };
+      // @ts-expect-error - call private method
+      const volDefault = strategy.estimateDepthVolume(book);
+      expect(volDefault).toBe(10 + 15 + 20 + 25);
+
+      // @ts-expect-error - call private method with level limit 1
+      const vol1 = strategy.estimateDepthVolume(book, 1);
+      expect(vol1).toBe(10 + 15);
+    });
+
+    it('trims price and volume history when exceeding vwapWindow', () => {
+      // vwapWindow is 6
+      for (let i = 0; i < 10; i++) {
+        // @ts-expect-error - call private method
+        strategy.recordPriceVolume('token-test', 0.5 + i * 0.01, 100);
+      }
+      // @ts-expect-error - access private
+      const prices = strategy.priceHistory.get('token-test');
+      // @ts-expect-error - access private
+      const volumes = strategy.volumeHistory.get('token-test');
+      expect(prices?.length).toBe(6);
+      expect(volumes?.length).toBe(6);
     });
   });
 
@@ -324,20 +385,106 @@ describe('VwapDeviationSniperStrategy', () => {
     });
 
     it('uses correct tokenId for side (yes/no)', async () => {
-      // Test the logic of token selection
-      const markets = [makeMockMarket({ conditionId: 'cond-1', volume: 10000 })];
-      deps.clob.getOrderBook.mockResolvedValue({
-        bids: [{ price: '0.39', size: '100' }],
-        asks: [{ price: '0.41', size: '100' }],
-      });
+      // Test the logic of token selection for overbought (BUY NO)
+      const markets = [makeMockMarket({ conditionId: 'cond-1', volume: 10000, noTokenId: 'no-custom-1' })];
+      deps.clob.getOrderBook
+        .mockResolvedValueOnce({ bids: [{ price: '0.48', size: '100' }], asks: [{ price: '0.52', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.49', size: '100' }], asks: [{ price: '0.51', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.53', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.49', size: '100' }], asks: [{ price: '0.51', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.51', size: '100' }], asks: [{ price: '0.49', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.98', size: '100' }], asks: [{ price: '0.99', size: '100' }] }); // Overbought
 
-      // Need to build history first
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 6; i++) {
         await strategy.scanEntries(markets);
       }
 
-      // Verify placeOrder called with correct tokenId
-      // Yes side uses yesTokenId, No side uses noTokenId
+      expect(deps.orderManager.placeOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenId: 'no-custom-1',
+        })
+      );
+    });
+
+    it('falls back to yesTokenId when buying NO if noTokenId is missing', async () => {
+      const markets = [makeMockMarket({ conditionId: 'cond-1', volume: 10000, noTokenId: undefined })];
+      deps.clob.getOrderBook
+        .mockResolvedValueOnce({ bids: [{ price: '0.48', size: '100' }], asks: [{ price: '0.52', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.49', size: '100' }], asks: [{ price: '0.51', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.53', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.49', size: '100' }], asks: [{ price: '0.51', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.51', size: '100' }], asks: [{ price: '0.49', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.98', size: '100' }], asks: [{ price: '0.99', size: '100' }] }); // Overbought
+
+      for (let i = 0; i < 6; i++) {
+        await strategy.scanEntries(markets);
+      }
+
+      expect(deps.orderManager.placeOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenId: 'yes-1',
+        })
+      );
+    });
+
+    it('skips entry when market already has open position or is on cooldown', async () => {
+      const market = makeMockMarket({ conditionId: 'cond-active', volume: 10000 });
+      // @ts-expect-error - access private
+      strategy.positions.push({
+        tokenId: 'yes-1',
+        conditionId: 'cond-active',
+        side: 'yes',
+        entryPrice: 0.5,
+        sizeUsdc: 10,
+        orderId: 'o-1',
+        openedAt: Date.now(),
+      });
+
+      await strategy.scanEntries([market]);
+      expect(deps.clob.getOrderBook).not.toHaveBeenCalled();
+
+      // Cooldown test
+      const m2 = makeMockMarket({ conditionId: 'cond-cooldown', volume: 10000 });
+      // @ts-expect-error - access private
+      strategy.cooldowns.set('cond-cooldown', Date.now() + 60000);
+      await strategy.scanEntries([m2]);
+      expect(deps.clob.getOrderBook).not.toHaveBeenCalled();
+    });
+
+    it('breaks loop when position count reaches maxPositions during scan', async () => {
+      const stratMax1 = new VwapDeviationSniperStrategy(deps, { maxPositions: 1 });
+      // @ts-expect-error - access private
+      stratMax1.positions.push({
+        tokenId: 'yes-1',
+        conditionId: 'cond-1',
+        side: 'yes',
+        entryPrice: 0.5,
+        sizeUsdc: 10,
+        orderId: 'o-1',
+        openedAt: Date.now(),
+      });
+
+      const m1 = makeMockMarket({ conditionId: 'cond-2', volume: 10000 });
+      const m2 = makeMockMarket({ conditionId: 'cond-3', volume: 10000 });
+      await stratMax1.scanEntries([m1, m2]);
+      expect(deps.clob.getOrderBook).not.toHaveBeenCalled();
+    });
+
+    it('skips when calculated entryPrice is invalid (<=0 or >=1)', async () => {
+      const markets = [makeMockMarket({ conditionId: 'cond-1', volume: 10000 })];
+      deps.clob.getOrderBook
+        .mockResolvedValueOnce({ bids: [{ price: '0.48', size: '100' }], asks: [{ price: '0.52', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.49', size: '100' }], asks: [{ price: '0.51', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.47', size: '100' }], asks: [{ price: '0.53', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.49', size: '100' }], asks: [{ price: '0.51', size: '100' }] })
+        .mockResolvedValueOnce({ bids: [{ price: '0.51', size: '100' }], asks: [{ price: '0.49', size: '100' }] })
+        // Overbought signal ('no'), bid = 1.0, ask = 0.98 -> mid = 0.99 < 1, entryPrice = 1 - 1.0 = 0 <= 0
+        .mockResolvedValueOnce({ bids: [{ price: '1.0', size: '100' }], asks: [{ price: '0.98', size: '100' }] });
+
+      for (let i = 0; i < 6; i++) {
+        await strategy.scanEntries(markets);
+      }
+      expect(deps.orderManager.placeOrder).not.toHaveBeenCalled();
     });
 
     it('handles getOrderBook error gracefully', async () => {

@@ -119,12 +119,12 @@ describe('AlphaLifecycleStateMachine', () => {
 
     it('throws when starting paper trading from PAPER_ACTIVE state', () => {
       const sm = new AlphaLifecycleStateMachine('strat-1', 'PAPER_ACTIVE');
-      expect(() => sm.startPaperTrading()).toThrow(/expected DISCOVERED/i);
+      expect(() => sm.startPaperTrading()).toThrow(/Cannot start paper trading/i);
     });
 
     it('throws when starting paper trading from PROMOTED_LIVE_ELIGIBLE state', () => {
       const sm = new AlphaLifecycleStateMachine('strat-1', 'PROMOTED_LIVE_ELIGIBLE');
-      expect(() => sm.startPaperTrading()).toThrow(/expected DISCOVERED/i);
+      expect(() => sm.startPaperTrading()).toThrow(/Cannot start paper trading/i);
     });
   });
 

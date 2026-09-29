@@ -83,6 +83,7 @@ function extractImports(filePath: string): string[] {
  */
 const ALLOWED_DESK_IMPORTS: RegExp[] = [
   /prometheus-metrics/,
+  /prometheus-registry/,
   /platform\/persistence\/file-store/,   // moved to shared/ in batch 2
   /platform\/billing\/license-service/,  // RaaS gate license check
   /platform\/audit\//,                   // DLP + audit logging
@@ -105,6 +106,7 @@ const ALLOWED_PLATFORM_IMPORTS: RegExp[] = [
   /desk\/wiring\//,        // admin qwen routes, health, paper-trading orchestration
   /desk\/execution\//,     // trade-repository imports execution types
   /desk\/paper-trading\//, // paper-trading-entry.ts wires loop into worker startup (Step 1.4)
+  /desk\/telemetry\//,     // prometheus-registry registers desk telemetry & portfolio metrics
 ];
 
 // ── Tests ────────────────────────────────────────────────────────────

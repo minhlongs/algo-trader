@@ -51,5 +51,7 @@ export function computePnlSummary(
     winningTrades: account.winningTrades, losingTrades: account.losingTrades,
     profitFactor, sharpeRatio: sharpe, maxDrawdown: maxDd,
     balance: account.balance, equity: account.equity,
+    cashReserves: account.cashReserves ?? account.balance,
+    marginUsed: account.marginUsed ?? 0,
   };
 }

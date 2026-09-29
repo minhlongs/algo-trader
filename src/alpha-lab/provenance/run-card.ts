@@ -39,6 +39,10 @@ export async function writeRunCard(
     resultClass: input.resultClass,
     strategyRef: input.strategyRef,
     hypothesis: input.hypothesis,
+    hypothesisId: input.hypothesisId,
+    lifecycleState: input.lifecycleState,
+    parameters: input.parameters,
+    foldMetrics: input.foldMetrics,
     dataSources: input.dataSources,
     metrics: input.metrics,
     gateResults: input.gateResults ?? [],
@@ -58,5 +62,6 @@ export async function writeRunCard(
     });
   }
 
-  return card;
+  return Object.freeze(card);
 }
+

@@ -16,10 +16,12 @@ import type {
 } from './ai-signal-paper-router-types';
 import { PaperEquityTracker } from './ai-signal-paper-router-tracker';
 import { dispatchSignalOrder } from './ai-signal-paper-router-dispatcher';
+import type { AlphaLifecycleStateMachine } from '../../alpha-lab/attribution/alpha-lifecycle-state-machine';
 
 export class AISignalPaperRouter {
   private readonly config: AISignalPaperRouterConfig;
   private readonly tracker: PaperEquityTracker;
+  private readonly stateMachines = new Map<string, AlphaLifecycleStateMachine>();
 
   constructor(config: AISignalPaperRouterConfig) {
     this.config = {
@@ -30,6 +32,15 @@ export class AISignalPaperRouter {
       ...config,
     };
     this.tracker = new PaperEquityTracker(this.config.paperExecutor);
+
+    if (config.stateMachines) {
+      for (const [id, sm] of config.stateMachines.entries()) {
+        this.stateMachines.set(id, sm);
+      }
+    }
+    if (config.stateMachine) {
+      this.stateMachines.set(config.stateMachine.getStrategyId(), config.stateMachine);
+    }
   }
 
   async start(initialBalance?: number, forceReset = false): Promise<PaperAccount> {
@@ -50,8 +61,22 @@ export class AISignalPaperRouter {
     return account;
   }
 
-  async routeSignal(signal: AISignal, marketPrice: number): Promise<SignalRoutingOutcome> {
-    return dispatchSignalOrder(signal, marketPrice, this.config, this.tracker);
+  registerStateMachine(strategyId: string, stateMachine: AlphaLifecycleStateMachine): void {
+    this.stateMachines.set(strategyId, stateMachine);
+  }
+
+  getStateMachine(strategyId?: string): AlphaLifecycleStateMachine | undefined {
+    if (!strategyId) return this.config.stateMachine;
+    return this.stateMachines.get(strategyId) ?? this.config.stateMachine;
+  }
+
+  async routeSignal(
+    signal: AISignal,
+    marketPrice: number,
+    stateMachineOverride?: AlphaLifecycleStateMachine,
+  ): Promise<SignalRoutingOutcome> {
+    const sm = stateMachineOverride ?? (signal.strategyId ? this.stateMachines.get(signal.strategyId) : undefined);
+    return dispatchSignalOrder(signal, marketPrice, this.config, this.tracker, sm);
   }
 
   markToMarket(prices: Map<string, number>): PaperPosition[] {

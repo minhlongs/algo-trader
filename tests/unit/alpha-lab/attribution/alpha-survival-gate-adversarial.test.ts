@@ -2,9 +2,9 @@
  * Adversarial Empirical Stress Tests for Milestone 1 Survival Gates & Diagnostics
  *
  * Verifies:
- * 1. Boundary conditions:
- *    - Sharpe = 0.999 (rejected) vs 1.000 (passed) vs 1.001 (passed)
- *    - Max Drawdown = 0.151 / -0.151 (rejected) vs 0.150 / -0.150 (passed) vs 0.149 / -0.149 (passed)
+ * 1. Boundary conditions (against DEFAULT_ALPHA_SURVIVAL_CRITERIA: Sharpe 1.5, MaxDD 12%):
+ *    - Sharpe = 1.499 (rejected) vs 1.500 (passed) vs 1.501 (passed)
+ *    - Max Drawdown = 0.121 / -0.121 (rejected) vs 0.120 / -0.120 (passed) vs 0.119 / -0.119 (passed)
  *    - Cost stress with negative expectancy under 20 bps (conservative) and 50 bps (adverse)
  * 2. Mathematical discrepancies and accuracy of rejectionDiagnostics:
  *    - Exact metric names, values, thresholds, reasons, and hypotheses
@@ -89,80 +89,80 @@ const mockConfig: ExperimentConfig = {
 };
 
 describe('Milestone 1 Empirical Challenger: Boundary Conditions', () => {
-  it('Sharpe boundary: rejects 0.999, passes 1.000, passes 1.001', () => {
+  it('Sharpe boundary: rejects 1.499, passes 1.500, passes 1.501', () => {
     const trades = createProfitableTrades(20, 60);
 
-    // 1. Sharpe = 0.999 (sub-hurdle)
-    const summaryFail = createRobustSummary({ testSharpe: 0.999 });
+    // 1. Sharpe = 1.499 (sub-hurdle)
+    const summaryFail = createRobustSummary({ testSharpe: 1.499 });
     const resultFail = evaluateAlphaSurvivalGate({ summary: summaryFail, trades });
     expect(resultFail.passed).toBe(false);
     expect(resultFail.checks.sharpePassed).toBe(false);
-    expect(resultFail.sharpeRatio).toBe(0.999);
-    expect(resultFail.failures.some((f) => f.includes('OOS Sharpe ratio of 1.00 is below hurdle rate 1.00'))).toBe(true);
+    expect(resultFail.sharpeRatio).toBe(1.499);
+    expect(resultFail.failures.some((f) => f.includes('OOS Sharpe ratio of 1.50 is below hurdle rate 1.50'))).toBe(true);
 
     const diagnostics = generateCandidateRejectionDiagnostics(resultFail, summaryFail, mockConfig);
     expect(diagnostics).toHaveLength(1);
     expect(diagnostics[0].metric).toBe('oos_sharpe_ratio');
-    expect(diagnostics[0].value).toBe(0.999);
-    expect(diagnostics[0].threshold).toBe(1.0);
+    expect(diagnostics[0].value).toBe(1.499);
+    expect(diagnostics[0].threshold).toBe(1.5);
     expect(Math.abs(diagnostics[0].value - diagnostics[0].threshold)).toBeCloseTo(0.001, 6);
 
-    // 2. Sharpe = 1.000 (exact hurdle)
-    const summaryExact = createRobustSummary({ testSharpe: 1.000 });
+    // 2. Sharpe = 1.500 (exact hurdle)
+    const summaryExact = createRobustSummary({ testSharpe: 1.500 });
     const resultExact = evaluateAlphaSurvivalGate({ summary: summaryExact, trades });
     expect(resultExact.checks.sharpePassed).toBe(true);
     expect(resultExact.passed).toBe(true);
 
-    // 3. Sharpe = 1.001 (above hurdle)
-    const summaryPass = createRobustSummary({ testSharpe: 1.001 });
+    // 3. Sharpe = 1.501 (above hurdle)
+    const summaryPass = createRobustSummary({ testSharpe: 1.501 });
     const resultPass = evaluateAlphaSurvivalGate({ summary: summaryPass, trades });
     expect(resultPass.checks.sharpePassed).toBe(true);
     expect(resultPass.passed).toBe(true);
   });
 
-  it('Max Drawdown boundary: rejects 0.151, passes 0.150, passes 0.149 (positive and negative sign)', () => {
+  it('Max Drawdown boundary: rejects 0.121, passes 0.120, passes 0.119 (positive and negative sign)', () => {
     const trades = createProfitableTrades(20, 60);
 
-    // 1. Positive 0.151 (breach)
-    const summaryFailPos = createRobustSummary({ testMaxDrawdown: 0.151 });
+    // 1. Positive 0.121 (breach)
+    const summaryFailPos = createRobustSummary({ testMaxDrawdown: 0.121 });
     const resultFailPos = evaluateAlphaSurvivalGate({ summary: summaryFailPos, trades });
     expect(resultFailPos.passed).toBe(false);
     expect(resultFailPos.checks.drawdownPassed).toBe(false);
-    expect(resultFailPos.maxDrawdown).toBe(0.151);
+    expect(resultFailPos.maxDrawdown).toBe(0.121);
 
     const diagPos = generateCandidateRejectionDiagnostics(resultFailPos, summaryFailPos, mockConfig);
     expect(diagPos).toHaveLength(1);
     expect(diagPos[0].metric).toBe('max_drawdown');
-    expect(diagPos[0].value).toBe(0.151);
-    expect(diagPos[0].threshold).toBe(0.15);
+    expect(diagPos[0].value).toBe(0.121);
+    expect(diagPos[0].threshold).toBe(0.12);
     expect(Math.abs(diagPos[0].value - diagPos[0].threshold)).toBeCloseTo(0.001, 6);
     expect(diagPos[0].refinementHypothesis).toBe('Drawdown Reduction');
 
-    // 2. Negative -0.151 (breach under negative convention)
-    const summaryFailNeg = createRobustSummary({ testMaxDrawdown: -0.151 });
+    // 2. Negative -0.121 (breach under negative convention)
+    const summaryFailNeg = createRobustSummary({ testMaxDrawdown: -0.121 });
     const resultFailNeg = evaluateAlphaSurvivalGate({ summary: summaryFailNeg, trades });
     expect(resultFailNeg.passed).toBe(false);
     expect(resultFailNeg.checks.drawdownPassed).toBe(false);
-    expect(resultFailNeg.maxDrawdown).toBe(0.151);
+    expect(resultFailNeg.maxDrawdown).toBe(0.121);
 
-    // 3. Exactly 0.150 (exact ceiling)
-    const summaryExactPos = createRobustSummary({ testMaxDrawdown: 0.150 });
+    // 3. Exactly 0.120 (exact ceiling)
+    const summaryExactPos = createRobustSummary({ testMaxDrawdown: 0.120 });
     const resultExactPos = evaluateAlphaSurvivalGate({ summary: summaryExactPos, trades });
     expect(resultExactPos.checks.drawdownPassed).toBe(true);
     expect(resultExactPos.passed).toBe(true);
 
-    const summaryExactNeg = createRobustSummary({ testMaxDrawdown: -0.150 });
+    const summaryExactNeg = createRobustSummary({ testMaxDrawdown: -0.120 });
     const resultExactNeg = evaluateAlphaSurvivalGate({ summary: summaryExactNeg, trades });
     expect(resultExactNeg.checks.drawdownPassed).toBe(true);
     expect(resultExactNeg.passed).toBe(true);
 
-    // 4. Positive and negative 0.149 (within ceiling)
-    const summaryPassPos = createRobustSummary({ testMaxDrawdown: 0.149 });
+    // 4. Positive and negative 0.119 (within ceiling)
+    const summaryPassPos = createRobustSummary({ testMaxDrawdown: 0.119 });
     const resultPassPos = evaluateAlphaSurvivalGate({ summary: summaryPassPos, trades });
     expect(resultPassPos.checks.drawdownPassed).toBe(true);
     expect(resultPassPos.passed).toBe(true);
 
-    const summaryPassNeg = createRobustSummary({ testMaxDrawdown: -0.149 });
+    const summaryPassNeg = createRobustSummary({ testMaxDrawdown: -0.119 });
     const resultPassNeg = evaluateAlphaSurvivalGate({ summary: summaryPassNeg, trades });
     expect(resultPassNeg.checks.drawdownPassed).toBe(true);
     expect(resultPassNeg.passed).toBe(true);
@@ -295,19 +295,19 @@ describe('Milestone 1 Empirical Challenger: Diagnostic Discrepancies & Precision
 
     const sharpeDiag = diagnostics.find((d) => d.metric === 'oos_sharpe_ratio')!;
     expect(sharpeDiag.value).toBe(0.45);
-    expect(sharpeDiag.threshold).toBe(1.0);
-    expect(sharpeDiag.threshold - sharpeDiag.value).toBeCloseTo(0.55, 6);
+    expect(sharpeDiag.threshold).toBe(1.5);
+    expect(sharpeDiag.threshold - sharpeDiag.value).toBeCloseTo(1.05, 6);
     expect(sharpeDiag.refinementHypothesis).toBe('Profit Factor Improvement'); // winRate < 0.5 & profitFactor < 1.3
 
     const ddDiag = diagnostics.find((d) => d.metric === 'max_drawdown')!;
     expect(ddDiag.value).toBe(0.28);
-    expect(ddDiag.threshold).toBe(0.15);
-    expect(ddDiag.value - ddDiag.threshold).toBeCloseTo(0.13, 6);
+    expect(ddDiag.threshold).toBe(0.12);
+    expect(ddDiag.value - ddDiag.threshold).toBeCloseTo(0.16, 6);
 
     const regimeDiag = diagnostics.find((d) => d.metric === 'regime_consistency_score')!;
     expect(regimeDiag.value).toBe(0.35);
-    expect(regimeDiag.threshold).toBe(0.50);
-    expect(regimeDiag.threshold - regimeDiag.value).toBeCloseTo(0.15, 6);
+    expect(regimeDiag.threshold).toBe(0.70);
+    expect(regimeDiag.threshold - regimeDiag.value).toBeCloseTo(0.35, 6);
   });
 
   it('returns empty diagnostics when candidate passes all gates', () => {
@@ -353,7 +353,7 @@ describe('Milestone 1 Empirical Challenger: Edge Cases (0 trades, 1 trade, 0% WR
     const summary = createRobustSummary({
       totalTestTrades: 1,
       testTotalPnl: 0.05,
-      testSharpe: 1.2,
+      testSharpe: 1.6,
       testMaxDrawdown: 0.02,
       regimeConsistencyScore: 1.0,
       testWinRate: 1.0,
@@ -371,7 +371,11 @@ describe('Milestone 1 Empirical Challenger: Edge Cases (0 trades, 1 trade, 0% WR
       },
     ];
 
-    const gateResult = evaluateAlphaSurvivalGate({ summary, trades: singleWinningTrade });
+    const gateResult = evaluateAlphaSurvivalGate({
+      summary,
+      trades: singleWinningTrade,
+      criteria: { minDsr: 0.5 }, // Single trade yields DSR ~0.855; override DSR threshold to test remaining single-trade behavior
+    });
     // Cost stress with 1 trade: gross = 0.05 + 0.0014 = 0.0514.
     // Under 20 bps: 0.0514 - 0.0020 = 0.0494 > 0.
     // Under 50 bps: 0.0514 - 0.0050 = 0.0464 > 0.

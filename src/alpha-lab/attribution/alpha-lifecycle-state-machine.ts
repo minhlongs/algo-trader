@@ -1,37 +1,20 @@
 /**
  * Alpha Lifecycle State Machine
  *
- * Implements the 4-stage lifecycle state machine:
- *   DISCOVERED -> PAPER_ACTIVE -> PROMOTED_LIVE_ELIGIBLE -> RETIRED
- *
- * Requirements:
- * - Feature 10: Alpha Promotion State Machine
- * - Feature 11: Statistical Promotion Gate Evaluation (10+1 canonical criteria)
- * - Feature 12: Retirement Transition Triggering
+ * Implements the canonical 6-stage lifecycle state machine:
+ *   DISCOVERED -> VALIDATED -> PAPER_ACTIVE -> PROMOTED_LIVE_ELIGIBLE -> QUARANTINED / RETIRED
  */
 
 import type { GateEvaluatorInput } from '../gates/gate-evaluator-types';
 import type { PromotionReadiness } from '../gates/gate-types';
-import { evaluateGates } from '../gates/gate-evaluator-core';
+import type { AlphaSurvivalGateEvaluation } from './alpha-survival-gate-types';
 import {
-  type AlphaLifecycleState,
-  type GateEvaluationMetrics,
-  type PromotionStateTransition,
-  createEmptyMetrics,
-  createEmptyVerdict,
-  mapStrategyStateToLifecycleState,
+  type AlphaLifecycleState, type GateEvaluationMetrics, type PromotionCriteria,
+  type PromotionStateTransition, CIRCUIT_BREAKER_MAX_DRAWDOWN, DEFAULT_PROMOTION_CRITERIA, createTransition,
 } from './alpha-lifecycle-state-types';
-import { extractGateMetrics } from './alpha-lifecycle-metrics';
+import { evaluateLifecycleGates } from './alpha-lifecycle-metrics';
 
-export {
-  type AlphaLifecycleState,
-  type GateEvaluationMetrics,
-  type PromotionStateTransition,
-  mapStrategyStateToLifecycleState,
-  createEmptyMetrics,
-  createEmptyVerdict,
-} from './alpha-lifecycle-state-types';
-
+export * from './alpha-lifecycle-state-types';
 export { extractGateMetrics } from './alpha-lifecycle-metrics';
 
 export class AlphaLifecycleStateMachine {
@@ -41,155 +24,171 @@ export class AlphaLifecycleStateMachine {
   constructor(
     private readonly strategyId: string,
     initialState: AlphaLifecycleState = 'DISCOVERED',
+    initialHistory: PromotionStateTransition[] = [],
   ) {
     this.state = initialState;
+    this.history = [...initialHistory];
   }
 
-  public getState(): AlphaLifecycleState {
-    return this.state;
-  }
+  public getState(): AlphaLifecycleState { return this.state; }
+  public getStrategyId(): string { return this.strategyId; }
+  public isValidated(): boolean { return this.state === 'VALIDATED'; }
+  public isPaperActive(): boolean { return this.state === 'PAPER_ACTIVE'; }
+  public isQuarantined(): boolean { return this.state === 'QUARANTINED'; }
+  public isPromoted(): boolean { return this.state === 'PROMOTED_LIVE_ELIGIBLE'; }
+  public isLiveEligible(): boolean { return this.state === 'PROMOTED_LIVE_ELIGIBLE'; }
+  public isRetired(): boolean { return this.state === 'RETIRED'; }
+  public getHistory(): PromotionStateTransition[] { return [...this.history]; }
 
-  public getStrategyId(): string {
-    return this.strategyId;
-  }
-
-  public isLiveEligible(): boolean {
-    return this.state === 'PROMOTED_LIVE_ELIGIBLE';
-  }
-
-  public isRetired(): boolean {
-    return this.state === 'RETIRED';
-  }
-
-  public getHistory(): PromotionStateTransition[] {
-    return [...this.history];
-  }
-
-  /**
-   * Transition from DISCOVERED to PAPER_ACTIVE upon deployment to paper trading.
-   */
-  public startPaperTrading(reason?: string): PromotionStateTransition {
-    if (this.state === 'RETIRED') {
-      throw new Error('Cannot start paper trading: strategy is in RETIRED state (absorbing state)');
-    }
+  public validateCandidate(evalResult: AlphaSurvivalGateEvaluation, reason?: string): PromotionStateTransition {
+    if (this.state === 'RETIRED') throw new Error('Cannot validate candidate: strategy is in RETIRED state');
     if (this.state !== 'DISCOVERED') {
-      throw new Error(`Cannot start paper trading: strategy is in ${this.state} state (expected DISCOVERED)`);
+      throw new Error(`Cannot validate candidate: strategy is in ${this.state} state (expected DISCOVERED)`);
     }
 
-    const timestamp = Date.now();
-    const transition: PromotionStateTransition = {
-      strategyId: this.strategyId,
-      fromState: this.state,
-      toState: 'PAPER_ACTIVE',
-      timestamp,
-      reason: reason ?? 'Strategy ingested into paper trading execution loop',
-      metricsSnapshot: createEmptyMetrics(),
-      gateVerdict: createEmptyVerdict(timestamp),
-    };
+    const targetState: AlphaLifecycleState = evalResult.passed ? 'VALIDATED' : 'RETIRED';
+    const defaultReason = evalResult.passed
+      ? 'Candidate passed statistical survival gates'
+      : (evalResult.diagnostics?.join('; ') || 'Candidate failed survival gates');
 
+    const transition = createTransition(
+      this.strategyId, this.state, targetState, reason ?? defaultReason,
+      evalResult.metrics ? {
+        sharpeRatio: evalResult.metrics.oosSharpeRatio,
+        maxDrawdown: evalResult.metrics.maxDrawdown,
+        profitFactor: evalResult.metrics.profitFactor,
+        tradeCount: evalResult.metrics.totalTestTrades,
+        winRate: evalResult.metrics.testWinRate,
+      } : undefined,
+    );
+    this.state = targetState;
+    this.history.push(transition);
+    return transition;
+  }
+
+  public startPaperTrading(reason?: string): PromotionStateTransition {
+    if (this.state === 'RETIRED') throw new Error('Cannot start paper trading: strategy is in RETIRED state (absorbing state)');
+    if (this.state === 'QUARANTINED') throw new Error('Cannot start paper trading: strategy is in QUARANTINED state');
+    if (this.state !== 'VALIDATED' && this.state !== 'DISCOVERED') {
+      throw new Error(`Cannot start paper trading: strategy is in ${this.state} state (expected VALIDATED)`);
+    }
+
+    const transition = createTransition(
+      this.strategyId, this.state, 'PAPER_ACTIVE',
+      reason ?? 'Strategy ingested into paper trading execution loop',
+    );
     this.state = 'PAPER_ACTIVE';
     this.history.push(transition);
     return transition;
   }
 
-  /**
-   * Evaluate paper trading performance against the 10+1 canonical criteria.
-   * Checks retirement criteria first; if triggered -> transitions to RETIRED.
-   * If in PAPER_ACTIVE and all gates pass -> transitions to PROMOTED_LIVE_ELIGIBLE.
-   */
+  public checkPromotion(
+    metrics: { tradeCount: number; cumulativeSharpe?: number; sharpeRatio?: number; maxDrawdown: number; winRate?: number; totalNetPnl?: number },
+    criteria?: Partial<PromotionCriteria>,
+  ): PromotionStateTransition | null {
+    if (this.state !== 'PAPER_ACTIVE') return null;
+
+    const minTrades = criteria?.minTradeCount ?? DEFAULT_PROMOTION_CRITERIA.minTradeCount;
+    const minSharpe = criteria?.minCumulativeSharpe ?? DEFAULT_PROMOTION_CRITERIA.minCumulativeSharpe;
+    const maxDd = criteria?.maxDrawdown ?? DEFAULT_PROMOTION_CRITERIA.maxDrawdown;
+    const sharpe = metrics.cumulativeSharpe ?? metrics.sharpeRatio ?? 0;
+    const dd = Math.abs(metrics.maxDrawdown);
+
+    if (metrics.tradeCount >= minTrades && sharpe >= minSharpe && dd <= maxDd) {
+      const transition = createTransition(
+        this.strategyId, this.state, 'PROMOTED_LIVE_ELIGIBLE',
+        `Strategy passed paper promotion hurdles: ${metrics.tradeCount} trades, Sharpe ${sharpe.toFixed(2)}, DD ${(dd * 100).toFixed(1)}%`,
+        { tradeCount: metrics.tradeCount, totalTrades: metrics.tradeCount, sharpeRatio: sharpe, cumulativeSharpe: sharpe, maxDrawdown: dd, winRate: metrics.winRate ?? 0, totalNetPnl: metrics.totalNetPnl ?? 0 },
+      );
+      this.state = 'PROMOTED_LIVE_ELIGIBLE';
+      this.history.push(transition);
+      return transition;
+    }
+    return null;
+  }
+
+  public checkDrawdownQuarantine(currentDrawdown: number, reason?: string): boolean {
+    const dd = Math.abs(currentDrawdown);
+    if (dd >= CIRCUIT_BREAKER_MAX_DRAWDOWN) {
+      if (this.state === 'PAPER_ACTIVE' || this.state === 'PROMOTED_LIVE_ELIGIBLE') {
+        const transition = createTransition(
+          this.strategyId, this.state, 'QUARANTINED',
+          reason ?? `Strategy quarantined by drawdown circuit breaker: ${(dd * 100).toFixed(2)}% >= ${(CIRCUIT_BREAKER_MAX_DRAWDOWN * 100).toFixed(2)}%`,
+          { maxDrawdown: dd },
+        );
+        this.state = 'QUARANTINED';
+        this.history.push(transition);
+        return true;
+      }
+      return this.state === 'QUARANTINED';
+    }
+    return false;
+  }
+
+  public recordDrawdown(dd: number, reason?: string): PromotionStateTransition | null {
+    const absDd = Math.abs(dd);
+    if (absDd >= CIRCUIT_BREAKER_MAX_DRAWDOWN && (this.state === 'PAPER_ACTIVE' || this.state === 'PROMOTED_LIVE_ELIGIBLE')) {
+      const transition = createTransition(
+        this.strategyId, this.state, 'QUARANTINED',
+        reason ?? `Strategy quarantined by drawdown circuit breaker: ${(absDd * 100).toFixed(2)}% >= ${(CIRCUIT_BREAKER_MAX_DRAWDOWN * 100).toFixed(2)}%`,
+        { maxDrawdown: absDd },
+      );
+      this.state = 'QUARANTINED';
+      this.history.push(transition);
+      return transition;
+    }
+    return null;
+  }
+
+  public clearQuarantine(reason?: string): PromotionStateTransition {
+    if (this.state !== 'QUARANTINED') {
+      throw new Error(`Cannot clear quarantine: strategy is in ${this.state} state (expected QUARANTINED)`);
+    }
+    const transition = createTransition(this.strategyId, 'QUARANTINED', 'PAPER_ACTIVE', reason ?? 'Operator cleared drawdown quarantine');
+    this.state = 'PAPER_ACTIVE';
+    this.history.push(transition);
+    return transition;
+  }
+
+  public decommission(reason?: string): PromotionStateTransition {
+    if (this.state === 'RETIRED') throw new Error('Strategy is already RETIRED');
+    const transition = createTransition(this.strategyId, this.state, 'RETIRED', reason ?? 'Permanent decommission of strategy');
+    this.state = 'RETIRED';
+    this.history.push(transition);
+    return transition;
+  }
+
+  public retire(reason: string, metrics?: GateEvaluationMetrics): PromotionStateTransition {
+    if (this.state === 'RETIRED') throw new Error('Strategy is already RETIRED');
+    const transition = createTransition(this.strategyId, this.state, 'RETIRED', reason, metrics);
+    this.state = 'RETIRED';
+    this.history.push(transition);
+    return transition;
+  }
+
   public evaluate(gateInput: GateEvaluatorInput): {
     transition?: PromotionStateTransition;
     verdict: PromotionReadiness;
     state: AlphaLifecycleState;
   } {
-    const verdict = evaluateGates(gateInput);
-    const metrics = extractGateMetrics(gateInput);
-
-    // RETIRED is an absorbing state with no transitions out
-    if (this.state === 'RETIRED') {
-      return { verdict, state: 'RETIRED' };
+    const outcome = evaluateLifecycleGates(gateInput, this.state);
+    if (outcome.action === 'RETIRE' && this.state !== 'RETIRED') {
+      const transition = this.retire(outcome.reason, outcome.metrics);
+      transition.gateVerdict = outcome.verdict;
+      return { transition, verdict: outcome.verdict, state: 'RETIRED' };
     }
-
-    // 1. Retirement check (Feature 12)
-    // - Math.abs(metrics.maxDrawdown) > 0.15 (drawdown > 15%)
-    // - totalNetPnl < 0 AND winRate < 0.45 when tradeCount >= 15
-    // - oosConsistency divergence > 0.10
-    const isDrawdownBreach = Math.abs(metrics.maxDrawdown) > 0.15;
-    const isExpectancyBreach =
-      metrics.tradeCount >= 15 &&
-      metrics.totalNetPnl < 0 &&
-      metrics.winRate < 0.45;
-    const oosDivergence = metrics.oosGap ?? metrics.oosConsistency ?? null;
-    const isOosBreach = oosDivergence !== null && oosDivergence > 0.10;
-
-    if (isDrawdownBreach || isExpectancyBreach || isOosBreach) {
-      let reason: string;
-      if (isDrawdownBreach) {
-        reason = `Drawdown breach: ${(Math.abs(metrics.maxDrawdown) * 100).toFixed(2)}% > 15.00% threshold`;
-      } else if (isExpectancyBreach) {
-        reason = `Persistent negative expectancy: PnL $${metrics.totalNetPnl.toFixed(2)}, win rate ${(metrics.winRate * 100).toFixed(1)}% < 45.0% after ${metrics.tradeCount} trades`;
-      } else {
-        reason = `OOS consistency divergence: gap ${oosDivergence?.toFixed(4)} > 0.10 threshold`;
-      }
-
-      const fromState = this.state;
-      this.state = 'RETIRED';
-      const transition: PromotionStateTransition = {
-        strategyId: this.strategyId,
-        fromState,
-        toState: 'RETIRED',
-        timestamp: Date.now(),
-        reason,
-        metricsSnapshot: metrics,
-        gateVerdict: verdict,
-      };
+    if (outcome.action === 'QUARANTINE' && (this.state === 'PAPER_ACTIVE' || this.state === 'PROMOTED_LIVE_ELIGIBLE')) {
+      const transition = createTransition(this.strategyId, this.state, 'QUARANTINED', outcome.reason, outcome.metrics, outcome.verdict);
+      this.state = 'QUARANTINED';
       this.history.push(transition);
-      return { transition, verdict, state: 'RETIRED' };
+      return { transition, verdict: outcome.verdict, state: 'QUARANTINED' };
     }
-
-    // 2. Promotion check (Feature 10 & 11)
-    // When state === 'PAPER_ACTIVE' and verdict.allPassed === true -> transitions to 'PROMOTED_LIVE_ELIGIBLE'
-    if (this.state === 'PAPER_ACTIVE' && verdict.allPassed) {
-      const fromState = this.state;
+    if (outcome.action === 'PROMOTE' && this.state === 'PAPER_ACTIVE') {
+      const transition = createTransition(this.strategyId, this.state, 'PROMOTED_LIVE_ELIGIBLE', outcome.reason, outcome.metrics, outcome.verdict);
       this.state = 'PROMOTED_LIVE_ELIGIBLE';
-      const reason = `All ${verdict.totalGates} canonical gates passed: eligible for live handoff`;
-      const transition: PromotionStateTransition = {
-        strategyId: this.strategyId,
-        fromState,
-        toState: 'PROMOTED_LIVE_ELIGIBLE',
-        timestamp: Date.now(),
-        reason,
-        metricsSnapshot: metrics,
-        gateVerdict: verdict,
-      };
       this.history.push(transition);
-      return { transition, verdict, state: 'PROMOTED_LIVE_ELIGIBLE' };
+      return { transition, verdict: outcome.verdict, state: 'PROMOTED_LIVE_ELIGIBLE' };
     }
-
-    return { verdict, state: this.state };
-  }
-
-  /**
-   * Retire a strategy (manual or external operator action).
-   */
-  public retire(reason: string, metrics?: GateEvaluationMetrics): PromotionStateTransition {
-    if (this.state === 'RETIRED') {
-      throw new Error('Strategy is already RETIRED');
-    }
-
-    const timestamp = Date.now();
-    const fromState = this.state;
-    this.state = 'RETIRED';
-    const transition: PromotionStateTransition = {
-      strategyId: this.strategyId,
-      fromState,
-      toState: 'RETIRED',
-      timestamp,
-      reason,
-      metricsSnapshot: metrics ?? createEmptyMetrics(),
-      gateVerdict: createEmptyVerdict(timestamp),
-    };
-    this.history.push(transition);
-    return transition;
+    return { verdict: outcome.verdict, state: this.state };
   }
 }

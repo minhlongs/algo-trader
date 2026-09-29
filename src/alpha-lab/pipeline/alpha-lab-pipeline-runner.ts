@@ -3,7 +3,7 @@
  */
 
 import { classifyRegime } from '../regimes/regime-engine';
-import type { CandleLike, MarketRegime } from '../regimes/regime-types';
+import type { MarketRegime } from '../regimes/regime-types';
 import type { ContinuousDiscoveryPipeline, DiscoveredAlphaCandidate } from '../alpha-discovery/continuous-discovery-pipeline';
 import { candidateToAISignal, type AISignal } from '../../desk/strategies/ai-signal-adapter';
 import type { AISignalPaperRouter } from '../../desk/strategies/ai-signal-paper-router';

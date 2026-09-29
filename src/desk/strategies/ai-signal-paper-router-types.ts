@@ -15,6 +15,10 @@ import type {
   ExecutionResult,
 } from '../execution/paper-position-types';
 import type { PaperExecutor } from '../execution/paper-executor';
+import type {
+  AlphaLifecycleState,
+  AlphaLifecycleStateMachine,
+} from '../../alpha-lab/attribution/alpha-lifecycle-state-machine';
 
 export interface EquityPoint {
   timestamp: number;
@@ -57,4 +61,8 @@ export interface AISignalPaperRouterConfig {
   defaultWinLossRatio?: number;
   strictMaxCap?: boolean;
   minPositionUsd?: number;
+  stateMachine?: AlphaLifecycleStateMachine;
+  stateMachines?: Map<string, AlphaLifecycleStateMachine>;
+  getState?: (strategyId?: string) => AlphaLifecycleState | undefined;
 }
+

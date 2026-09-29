@@ -45,6 +45,10 @@ export interface WalkForwardSummary {
   totalTestTrades: number;
   /** Out-of-sample annualized Sharpe ratio computed from stitched equity curve. */
   testSharpe: number;
+  /** Out-of-sample annualized Sortino ratio computed from stitched equity curve. */
+  testSortino?: number;
+  /** Out-of-sample Calmar ratio computed from stitched equity curve. */
+  testCalmar?: number;
   /** Out-of-sample maximum drawdown (e.g. 0.12 for 12%). */
   testMaxDrawdown: number;
   /** Out-of-sample profit factor across all test trades. */

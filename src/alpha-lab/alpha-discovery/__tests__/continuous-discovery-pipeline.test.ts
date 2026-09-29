@@ -111,4 +111,41 @@ describe('Continuous Discovery Pipeline', () => {
     expect(result.allCandidates[0]!.survivalGateResult.passed).toBe(true);
     expect(result.allCandidates[0]!.rejectionDiagnostics).toBeUndefined();
   });
+
+  it('evaluates all 4 families with complete metrics across >= 5 rolling folds', async () => {
+    const pipeline = new ContinuousDiscoveryPipeline({
+      candles,
+      symbol: 'BTC/USDT',
+      timeframe: '1h',
+      sweep: { mode: 'defaults' },
+    });
+
+    const result = await pipeline.runCycle();
+    expect(result.allCandidates).toHaveLength(4);
+
+    const familyIds = result.allCandidates.map((c) => c.familyId);
+    expect(familyIds).toContain('momentum-breakout');
+    expect(familyIds).toContain('trend-following');
+    expect(familyIds).toContain('mean-reversion');
+    expect(familyIds).toContain('volatility-breakout');
+
+    for (const cand of result.allCandidates) {
+      expect(cand.walkforwardResult).toBeDefined();
+      expect(cand.walkforwardResult!.steps.length).toBeGreaterThanOrEqual(5);
+      expect(cand.walkforwardSummary.totalSteps).toBeGreaterThanOrEqual(5);
+
+      expect(typeof cand.walkforwardSummary.testSharpe).toBe('number');
+      expect(typeof cand.walkforwardSummary.testSortino).toBe('number');
+      expect(typeof cand.walkforwardSummary.testCalmar).toBe('number');
+      expect(typeof cand.walkforwardSummary.testWinRate).toBe('number');
+      expect(typeof cand.walkforwardSummary.testProfitFactor).toBe('number');
+      expect(typeof cand.walkforwardSummary.testMaxDrawdown).toBe('number');
+
+      for (const step of cand.walkforwardResult!.steps) {
+        expect(step.trainMetrics).toBeDefined();
+        expect(step.valMetrics).toBeDefined();
+        expect(step.testMetrics).toBeDefined();
+      }
+    }
+  });
 });

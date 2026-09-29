@@ -1,8 +1,17 @@
 /**
- * Risk Module
- * Circuit breaker, position manager, drawdown monitor, Kelly sizer, tiered drawdown
+ * Desk Risk Module
+ * Cross-engine risk guard, VaR/CVaR, leverage controls, circuit breakers, and engine synchronization.
  */
 
+// Core Cross-Engine Risk Guard (M2)
+export * from './portfolio-risk-types';
+export * from './cross-engine-var-cvar';
+export * from './tail-divergence';
+export * from './leverage-exposure-guard';
+export * from './global-circuit-breaker';
+export * from './engine-synchronizer';
+
+// Legacy and Engine-Specific Risk Utilities
 export * from './circuit-breaker';
 export * from './position-manager';
 export * from './drawdown-monitor';
@@ -14,5 +23,4 @@ export * from './atr-trailing-stop';
 export * from './risk-gate-manager';
 export * from './equity-snapshot-manager';
 export * from './portfolio-rebalance-guard';
-// Re-export persistence utility for risk consumers
 export * from '../../shared/persistence/file-store';

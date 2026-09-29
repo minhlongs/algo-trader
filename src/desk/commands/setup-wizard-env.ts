@@ -8,6 +8,7 @@ import { SetupConfig, ENV_PATH, ENV_EXAMPLE_PATH } from './setup-wizard-types';
 
 export function generateEnvContent(config: Partial<SetupConfig>): string {
   const timestamp = new Date().toISOString();
+  const tradingMode = config.tradingMode || 'dry-run';
   return `# Algo Trader Configuration
 # Generated: ${timestamp}
 # WARNING: Never commit this file to version control
@@ -17,8 +18,8 @@ EXCHANGE_API_KEY=${config.exchangeApiKey || 'your-api-key-here'}
 EXCHANGE_SECRET=${config.exchangeSecret || 'your-secret-here'}
 
 # Trading Mode
-TRADING_MODE=${config.tradingMode || 'dry-run'}
-DRY_RUN=${config.tradingMode === 'dry-run' ? 'true' : 'false'}
+TRADING_MODE=${tradingMode}
+DRY_RUN=${tradingMode === 'dry-run' ? 'true' : 'false'}
 
 # Risk Management
 RISK_PER_TRADE=${config.riskPerTrade || 1}
@@ -30,19 +31,20 @@ TELEGRAM_CHAT_ID=${config.telegramChatId || ''}
 
 # Bot Configuration
 ENABLE_BACKTESTING=true
-ENABLE_LIVE_TRADING=${config.tradingMode === 'live'}
+ENABLE_LIVE_TRADING=${tradingMode === 'live'}
 LOG_LEVEL=info
 `;
 }
 
 export function mergeWithExample(example: string, config: Partial<SetupConfig>): string {
   let updated = example;
+  const tradingMode = config.tradingMode || 'dry-run';
 
   const replacements: Record<string, string> = {
     'EXCHANGE_API_KEY=.*': `EXCHANGE_API_KEY=${config.exchangeApiKey || 'your-api-key-here'}`,
     'EXCHANGE_SECRET=.*': `EXCHANGE_SECRET=${config.exchangeSecret || 'your-secret-here'}`,
-    'TRADING_MODE=.*': `TRADING_MODE=${config.tradingMode || 'dry-run'}`,
-    'DRY_RUN=.*': `DRY_RUN=${config.tradingMode === 'dry-run' ? 'true' : 'false'}`,
+    'TRADING_MODE=.*': `TRADING_MODE=${tradingMode}`,
+    'DRY_RUN=.*': `DRY_RUN=${tradingMode === 'dry-run' ? 'true' : 'false'}`,
     'RISK_PER_TRADE=.*': `RISK_PER_TRADE=${config.riskPerTrade || 1}`,
     'MAX_DAILY_LOSS=.*': `MAX_DAILY_LOSS=${config.maxDailyLoss || 5}`,
   };

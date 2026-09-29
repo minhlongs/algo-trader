@@ -9,13 +9,15 @@
  * @see docs/ALPHA_DISCOVERY_ARCHCHITECTURE.md — "Foundation vs Integration Contract"
  */
 
-import type { CandleLike, MarketRegime } from '../regimes/regime-types';
+import type { CandleLike } from '../regimes/regime-types';
 import { computeRegimeSeries } from '../regimes/regime-series';
 import type { ExperimentConfig } from '../experiments/experiment-types';
 import { generateSplits } from '../experiments/splitter';
-import type { WalkForwardResult, StepResult } from './walkforward-types';
+import type { WalkForwardResult, StepResult, WalkForwardSummary } from './walkforward-types';
 import { buildStepResult } from './walkforward-step';
-import { buildSummary } from './walkforward-summary';
+import { buildSummary as baseBuildSummary } from './walkforward-summary';
+import { computeSortinoRatio, computeCalmarRatio } from '../../desk/backtesting/metrics-calculator';
+import type { BacktestTrade } from '../../desk/backtesting/types';
 
 export {
   splitMetricsFrom,
@@ -23,7 +25,45 @@ export {
   buildStepResult,
 } from './walkforward-step';
 
-export { buildSummary } from './walkforward-summary';
+/**
+ * Builds aggregated walk-forward summary with out-of-sample Sharpe, Sortino, and Calmar ratios.
+ */
+export function buildSummary(
+  steps: StepResult[],
+  allTestTradesInput?: BacktestTrade[],
+  testCandles?: CandleLike[],
+): WalkForwardSummary {
+  const summary = baseBuildSummary(steps, allTestTradesInput, testCandles);
+
+  if (summary.cumulativeEquity && summary.cumulativeEquity.length >= 2) {
+    const returns: number[] = [];
+    for (let i = 1; i < summary.cumulativeEquity.length; i++) {
+      const prev = summary.cumulativeEquity[i - 1].equity;
+      if (prev !== 0) {
+        returns.push((summary.cumulativeEquity[i].equity - prev) / prev);
+      }
+    }
+
+    if (returns.length >= 2) {
+      const sortino = computeSortinoRatio(returns);
+      summary.testSortino = isFinite(sortino) ? Math.round(sortino * 100) / 100 : sortino;
+
+      const ticksPerYear = 8760;
+      const mean = returns.reduce((s, r) => s + r, 0) / returns.length;
+      const annualizedReturn = mean * ticksPerYear;
+      const calmar = computeCalmarRatio(annualizedReturn, summary.testMaxDrawdown);
+      summary.testCalmar = isFinite(calmar) ? Math.round(calmar * 100) / 100 : calmar;
+    } else {
+      summary.testSortino = 0;
+      summary.testCalmar = 0;
+    }
+  } else {
+    summary.testSortino = 0;
+    summary.testCalmar = 0;
+  }
+
+  return summary;
+}
 
 export interface EvaluateWalkForwardInput {
   candles: CandleLike[];

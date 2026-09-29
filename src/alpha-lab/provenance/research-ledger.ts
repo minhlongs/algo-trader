@@ -20,8 +20,9 @@ import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { logger } from '../../shared/utils/logger';
-import type { ResultClassName } from './run-card';
-import type { AlphaLifecycleState } from '../attribution/alpha-lifecycle-state-machine';
+import type { ResultClassName } from './run-card-types';
+import type { AlphaLifecycleState } from '../attribution/alpha-lifecycle-state-types';
+import { sortDeep } from './run-card-config';
 
 // ── Ledger Record ─────────────────────────────────────────────────────────────
 
@@ -31,6 +32,11 @@ export interface LedgerRecord {
   resultClass: ResultClassName;
   strategyRef: string;
   lifecycleState?: AlphaLifecycleState;
+  hypothesisId?: string;
+  hypothesis?: string;
+  parameters?: Record<string, unknown>;
+  foldMetrics?: Record<string, number | undefined>;
+  gateVerdict?: Record<string, boolean>;
   /** ISO-8601 UTC timestamp of the ledger entry. */
   recordedAt: string;
   /** Gate outcomes: gateId -> passed. */
@@ -46,6 +52,13 @@ export type LedgerWriteResult =
   | { ok: true; record: LedgerRecord }
   | { ok: false; error: string };
 
+export interface LedgerQueryFilter {
+  hypothesisId?: string;
+  strategyRef?: string;
+  resultClass?: ResultClassName;
+  lifecycleState?: AlphaLifecycleState;
+}
+
 // ── Default path ──────────────────────────────────────────────────────────────
 
 /** Default ledger location relative to the repo root. */
@@ -60,11 +73,14 @@ export function canonicalRecord(record: Omit<LedgerRecord, 'prevHash' | 'entryHa
     resultClass: record.resultClass,
     strategyRef: record.strategyRef,
     recordedAt: record.recordedAt,
-    gates: record.gates,
+    gates: record.gates ?? record.gateVerdict ?? {},
   };
-  if (record.lifecycleState !== undefined) {
-    payload.lifecycleState = record.lifecycleState;
-  }
+  if (record.lifecycleState !== undefined) payload.lifecycleState = record.lifecycleState;
+  if (record.hypothesisId !== undefined) payload.hypothesisId = record.hypothesisId;
+  if (record.hypothesis !== undefined) payload.hypothesis = record.hypothesis;
+  if (record.parameters !== undefined) payload.parameters = sortDeep(record.parameters);
+  if (record.foldMetrics !== undefined) payload.foldMetrics = sortDeep(record.foldMetrics);
+  if (record.gateVerdict !== undefined) payload.gateVerdict = sortDeep(record.gateVerdict);
   return JSON.stringify(payload);
 }
 
@@ -79,34 +95,32 @@ export function computeRecordHash(record: Omit<LedgerRecord, 'prevHash' | 'entry
  * then appends one JSON line. Fail-safe: never throws.
  */
 export async function appendLedgerRecord(
-  input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>,
+  input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash' | 'gates'> & {
+    gates?: Record<string, boolean>;
+  },
   ledgerPath: string = DEFAULT_LEDGER_PATH,
 ): Promise<LedgerWriteResult> {
   try {
     await mkdir(dirname(ledgerPath), { recursive: true });
     const prevHash = await readLastHash(ledgerPath);
     const recordedAt = new Date().toISOString();
-    const entryHash = computeRecordHash({
+    const candidate: Omit<LedgerRecord, 'prevHash' | 'entryHash'> = {
       runId: input.runId,
       configHash: input.configHash,
       resultClass: input.resultClass,
       strategyRef: input.strategyRef,
       recordedAt,
-      gates: input.gates,
-      ...(input.lifecycleState !== undefined ? { lifecycleState: input.lifecycleState } : {}),
-    });
-
-    const record: LedgerRecord = {
-      runId: input.runId,
-      configHash: input.configHash,
-      resultClass: input.resultClass,
-      strategyRef: input.strategyRef,
-      recordedAt,
-      gates: input.gates,
-      prevHash,
-      entryHash,
-      ...(input.lifecycleState !== undefined ? { lifecycleState: input.lifecycleState } : {}),
+      gates: input.gates ?? input.gateVerdict ?? {},
     };
+    if (input.lifecycleState !== undefined) candidate.lifecycleState = input.lifecycleState;
+    if (input.hypothesisId !== undefined) candidate.hypothesisId = input.hypothesisId;
+    if (input.hypothesis !== undefined) candidate.hypothesis = input.hypothesis;
+    if (input.parameters !== undefined) candidate.parameters = input.parameters;
+    if (input.foldMetrics !== undefined) candidate.foldMetrics = input.foldMetrics;
+    if (input.gateVerdict !== undefined) candidate.gateVerdict = input.gateVerdict;
+    const entryHash = computeRecordHash(candidate);
+
+    const record: LedgerRecord = { ...candidate, prevHash, entryHash };
     await appendFile(ledgerPath, JSON.stringify(record) + '\n', 'utf8');
     return { ok: true, record };
   } catch (err) {
@@ -153,6 +167,24 @@ export function verifyLedgerChain(records: LedgerRecord[]): number {
     expectedPrev = computeRecordHash(record);
   }
   return -1;
+}
+
+export function filterLedgerRecords(records: LedgerRecord[], filter: LedgerQueryFilter): LedgerRecord[] {
+  return records.filter((rec) => {
+    if (filter.hypothesisId !== undefined && rec.hypothesisId !== filter.hypothesisId) return false;
+    if (filter.strategyRef !== undefined && rec.strategyRef !== filter.strategyRef) return false;
+    if (filter.resultClass !== undefined && rec.resultClass !== filter.resultClass) return false;
+    if (filter.lifecycleState !== undefined && rec.lifecycleState !== filter.lifecycleState) return false;
+    return true;
+  });
+}
+
+export async function queryLedgerRecords(
+  filter: LedgerQueryFilter,
+  ledgerPath: string = DEFAULT_LEDGER_PATH,
+): Promise<LedgerRecord[]> {
+  const records = await readLedgerRecords(ledgerPath);
+  return filterLedgerRecords(records, filter);
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────

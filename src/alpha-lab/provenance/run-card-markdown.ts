@@ -8,6 +8,13 @@ function isDataSourceProvenance(ds: DataSourceEntry): ds is DataSourceProvenance
   return typeof ds === 'object' && ds !== null && 'provider' in ds;
 }
 
+function formatValue(value: unknown): string {
+  if (value === undefined) return 'n/a';
+  if (value === null) return 'null';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
 /** Render a run card as a human-readable markdown report. */
 export function renderMarkdown(card: RunCard): string {
   const lines: string[] = [];
@@ -18,6 +25,12 @@ export function renderMarkdown(card: RunCard): string {
   lines.push(`- **Result class:** \`${card.resultClass}\``);
   lines.push(`- **Strategy:** ${card.strategyRef}`);
   lines.push(`- **Config hash:** \`${card.configHash}\``);
+  if (card.lifecycleState) {
+    lines.push(`- **Lifecycle state:** \`${card.lifecycleState}\``);
+  }
+  if (card.hypothesisId) {
+    lines.push(`- **Hypothesis ID:** ${card.hypothesisId}`);
+  }
   if (card.hypothesis) {
     lines.push(`- **Hypothesis:** ${card.hypothesis}`);
   }
@@ -44,6 +57,16 @@ export function renderMarkdown(card: RunCard): string {
     }
   }
   lines.push('');
+  if (card.parameters && Object.keys(card.parameters).length > 0) {
+    lines.push('## Parameters');
+    lines.push('');
+    lines.push('| Parameter | Value |');
+    lines.push('|---|---|');
+    for (const [key, value] of Object.entries(card.parameters)) {
+      lines.push(`| ${key} | ${formatValue(value)} |`);
+    }
+    lines.push('');
+  }
   lines.push('## Metrics');
   lines.push('');
   lines.push('| Metric | Value |');
@@ -52,6 +75,16 @@ export function renderMarkdown(card: RunCard): string {
     lines.push(`| ${key} | ${value === undefined ? 'n/a' : value} |`);
   }
   lines.push('');
+  if (card.foldMetrics && Object.keys(card.foldMetrics).length > 0) {
+    lines.push('## Fold Metrics');
+    lines.push('');
+    lines.push('| Fold / Metric | Value |');
+    lines.push('|---|---|');
+    for (const [key, value] of Object.entries(card.foldMetrics)) {
+      lines.push(`| ${key} | ${value === undefined ? 'n/a' : value} |`);
+    }
+    lines.push('');
+  }
   if (card.gateResults.length > 0) {
     lines.push('## Gates');
     lines.push('');

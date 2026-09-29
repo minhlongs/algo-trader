@@ -187,7 +187,7 @@ describe('AlphaLabAutonomousPipeline Empirical Stress Tests (Challenger M4-2)', 
   // ============================================================================
   describe('Challenge 1: Zero-Candidate Edge Case & Gate Failure Handling', () => {
     it('executes smoothly without throwing when 100% of candidates fail survival gates', async () => {
-      const candles = makeMultiRegimeCandles();
+      const { candles } = makeMultiRegimeCandles();
       // Configure impossibly high survival hurdles to force 100% rejection rate
       const pipeline = createPipeline({
         discoveryConfig: {
@@ -466,18 +466,24 @@ describe('AlphaLabAutonomousPipeline Empirical Stress Tests (Challenger M4-2)', 
     });
 
     it('runCycle with explicit SHOCK regime override produces zero order fills', async () => {
-      const candles = makeMultiRegimeCandles();
+      const { candles } = makeMultiRegimeCandles();
       const pipeline = createPipeline({
         adapterConfig: {
-          confidenceThreshold: 0.2,
-          minExpectancy: 0.0,
+          confidenceThreshold: 0.0,
+          minExpectancy: -1.0,
         },
         discoveryConfig: {
           candles,
           survivalGates: {
-            minOosSharpeRatio: 0.1, // Lenient gates to allow candidates to pass
-            maxDrawdown: 0.50,
-            minRegimeConsistencyScore: 0.1,
+            minOosSharpeRatio: -10.0, // Lenient gates to allow candidates to pass
+            maxDrawdown: 1.0,
+            minRegimeConsistencyScore: 0.0,
+            minDsr: 0.0,
+            minProfitFactor: 0.0,
+            conservativeFrictionBps: 0,
+            adverseFrictionBps: 0,
+            baseFrictionBps: 0,
+            costStressMultiplier: 1.0,
           },
           sweep: { mode: 'defaults', maxCandidatesPerFamily: 1 },
         },

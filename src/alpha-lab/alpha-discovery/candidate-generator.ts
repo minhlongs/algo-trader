@@ -11,7 +11,6 @@ import type { ExperimentConfig } from '../experiments/experiment-types';
 import { experimentFromFamily } from './strategy-family-registry';
 import { prioritizeFamilies } from './research-informed';
 import type {
-  ParamSweepOptions,
   CandidateAlphaConfig,
   GenerateCandidatesOptions,
 } from './candidate-generator-types';

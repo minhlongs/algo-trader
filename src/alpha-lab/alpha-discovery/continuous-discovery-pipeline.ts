@@ -19,6 +19,7 @@ import { evaluateAlphaSurvivalGate } from '../attribution/alpha-survival-gate';
 import { generateCandidateRejectionDiagnostics } from '../reports/candidate-rejection-diagnostics';
 import { logger } from '../../shared/utils/logger';
 import type { CandleLike } from '../regimes/regime-types';
+import type { ExperimentConfig, SplitConfig } from '../experiments/experiment-types';
 import type {
   ContinuousDiscoveryPipelineConfig,
   ContinuousDiscoveryResult,
@@ -28,6 +29,13 @@ import type {
 
 export * from './continuous-discovery-types';
 
+const DEFAULT_SPLIT_CONFIG: SplitConfig = {
+  mode: 'rolling',
+  trainRatio: 0.3,
+  valRatio: 0.2,
+  testRatio: 0.5,
+  numFolds: 5,
+};
 
 export class ContinuousDiscoveryPipeline {
   private config: ContinuousDiscoveryPipelineConfig;
@@ -50,6 +58,7 @@ export class ContinuousDiscoveryPipeline {
       dataSource: config?.dataSource,
       verdictSummary: config?.verdictSummary,
       familyIds: config?.familyIds,
+      split: { ...DEFAULT_SPLIT_CONFIG, ...config?.split },
     };
   }
 
@@ -149,31 +158,33 @@ export class ContinuousDiscoveryPipeline {
     cand: CandidateAlphaConfig,
     candles: CandleLike[],
   ): Promise<DiscoveredAlphaCandidate> {
-    // 1. Walkforward evaluation across rolling/expanding splits
-    const wfResult = evaluateWalkForward({
-      candles,
-      config: cand.experimentConfig,
-    });
+    const split: SplitConfig = {
+      ...DEFAULT_SPLIT_CONFIG,
+      ...this.config.split,
+      ...(cand.experimentConfig.split?.numFolds !== undefined ? cand.experimentConfig.split : {}),
+      numFolds: cand.experimentConfig.split?.numFolds ?? this.config.split?.numFolds ?? 5,
+      mode: 'rolling',
+    };
+    const expConfig: ExperimentConfig = { ...cand.experimentConfig, split };
+    const wfResult = evaluateWalkForward({ candles, config: expConfig });
 
-    // 2. Quantitative Survival Gate evaluation
     const gateResult = evaluateAlphaSurvivalGate({
       summary: wfResult.summary,
       trades: wfResult.allTestTrades,
       criteria: this.config.survivalGates,
-      baselineFeeBps: cand.experimentConfig.cost.feeBps,
-      baselineSlippageBps: cand.experimentConfig.cost.slippageBps,
+      baselineFeeBps: expConfig.cost.feeBps,
+      baselineSlippageBps: expConfig.cost.slippageBps,
     });
 
-    // 3. Diagnostic rejection generation if candidate failed
     const diagnostics = gateResult.passed
       ? undefined
-      : generateCandidateRejectionDiagnostics(gateResult, wfResult.summary, cand.experimentConfig);
+      : generateCandidateRejectionDiagnostics(gateResult, wfResult.summary, expConfig);
 
     return {
       strategyId: cand.candidateId,
       familyId: cand.familyId,
       params: cand.params,
-      config: cand.experimentConfig,
+      config: expConfig,
       walkforwardResult: wfResult,
       walkforwardSummary: wfResult.summary,
       survivalGateResult: gateResult,

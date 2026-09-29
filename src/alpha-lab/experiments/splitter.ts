@@ -24,6 +24,9 @@ function assertValidRatios(config: SplitConfig): void {
   for (const r of [trainRatio, valRatio, testRatio]) {
     if (r <= 0 || r >= 1) throw new Error(`Split ratio must be in (0,1): got ${r}`);
   }
+  if (config.numFolds !== undefined && config.numFolds < 1) {
+    throw new Error(`numFolds must be >= 1: got ${config.numFolds}`);
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -41,9 +44,33 @@ function resolveWindows(config: SplitConfig, usable: number): {
   valW: number;
   testW: number;
 } {
-  const trainW = config.trainWindowSize ?? Math.floor(usable * config.trainRatio);
-  const valW = config.valWindowSize ?? Math.floor(usable * config.valRatio);
-  const testW = Math.max(1, usable - trainW - valW);
+  const numFolds = config.numFolds;
+  const isMultiFold = (numFolds !== undefined && numFolds >= 2) || config.testWindowSize !== undefined;
+
+  let trainW: number;
+  let valW: number;
+  let testW: number;
+
+  if (isMultiFold) {
+    const folds = Math.max(1, numFolds ?? 5);
+    valW = config.valWindowSize ?? Math.max(1, Math.floor(usable * config.valRatio));
+    if (config.testWindowSize !== undefined) {
+      testW = config.testWindowSize;
+      trainW = config.trainWindowSize ?? Math.max(1, usable - valW - folds * testW);
+    } else if (config.trainWindowSize !== undefined) {
+      trainW = config.trainWindowSize;
+      const remaining = Math.max(folds, usable - trainW - valW);
+      testW = Math.max(1, Math.floor(remaining / folds));
+    } else {
+      testW = Math.max(1, Math.floor((usable * config.testRatio) / folds));
+      trainW = Math.max(1, usable - valW - folds * testW);
+    }
+  } else {
+    trainW = config.trainWindowSize ?? Math.floor(usable * config.trainRatio);
+    valW = config.valWindowSize ?? Math.floor(usable * config.valRatio);
+    testW = Math.max(1, usable - trainW - valW);
+  }
+
   return { trainW, valW, testW };
 }
 
@@ -91,8 +118,9 @@ function rollingSplits(config: SplitConfig, totalBars: number, lookback: number)
 
   const splits: DataSplit[] = [];
   let step = 0;
+  const maxSteps = config.numFolds !== undefined ? config.numFolds : 10_000;
 
-  while (step < 10_000) {
+  while (step < maxSteps) {
     const offset = step * testW;
     const trainStart = lookback + offset;
     const valStart = trainStart + trainW;
@@ -134,3 +162,28 @@ export function generateSplits(config: SplitConfig, totalBars: number, lookback:
   if (config.mode === 'expanding') return expandingSplits(config, totalBars, lookback);
   return rollingSplits(config, totalBars, lookback);
 }
+
+/**
+ * Generate rolling walk-forward train/val/test splits.
+ * Defaults to numFolds: 5 if not specified.
+ */
+export function generateRollingSplits(
+  configOrCandles: SplitConfig | Array<{ timestamp: string; [key: string]: unknown }>,
+  totalBarsOrConfig?: number | SplitConfig,
+  lookback = 0,
+): DataSplit[] {
+  const isCandles = Array.isArray(configOrCandles);
+  const cfg = (isCandles ? totalBarsOrConfig : configOrCandles) as SplitConfig;
+  const bars = isCandles ? configOrCandles.length : ((totalBarsOrConfig as number) ?? 0);
+  const rollingConfig: SplitConfig = {
+    ...cfg,
+    mode: 'rolling',
+    numFolds: cfg?.numFolds ?? 5,
+  };
+  return generateSplits(rollingConfig, bars, lookback);
+}
+
+export const Splitter = {
+  generateSplits,
+  generateRollingSplits,
+};

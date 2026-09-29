@@ -43,6 +43,36 @@ export function candidateToAISignal(
 
   const expectancy = Number.isFinite(rawExpectancy) ? rawExpectancy : 0;
 
+  // Calibrated confidence: Bayesian Laplace smoothing based on sample size and regime consistency
+  const totalTrades = candidate.walkforwardSummary?.totalTestTrades ?? 0;
+  const wins = Math.round(confidence * totalTrades);
+  const bayesianConfidence = totalTrades > 0
+    ? (wins + 2) / (totalTrades + 4)
+    : confidence;
+  const gateMetrics = candidate.survivalGateResult as { metrics?: { regimeConsistencyScore?: number } } | undefined;
+  const regimeScore = gateMetrics?.metrics?.regimeConsistencyScore;
+  const calibratedConfidence = typeof regimeScore === 'number' && Number.isFinite(regimeScore)
+    ? Math.min(1, Math.max(0, bayesianConfidence * (0.8 + 0.2 * regimeScore)))
+    : bayesianConfidence;
+
+  // Expected holding period in bars/hours
+  const candidateConfig = candidate.config as unknown as Record<string, unknown> | undefined;
+  const configParams = (candidateConfig?.parameters ?? {}) as Record<string, unknown>;
+  const rawHoldingPeriod =
+    candidateConfig?.maxHolding ??
+    candidate.params?.maxHolding ??
+    configParams?.maxHolding ??
+    candidate.params?.holdingPeriod ??
+    configParams?.holdingPeriod ??
+    candidateConfig?.lookback ??
+    configParams?.lookback ??
+    candidate.params?.lookback ??
+    24;
+  const expectedHoldingPeriod =
+    typeof rawHoldingPeriod === 'number' && Number.isFinite(rawHoldingPeriod) && rawHoldingPeriod > 0
+      ? rawHoldingPeriod
+      : 24;
+
   const now = Date.now();
 
   return {
@@ -52,6 +82,8 @@ export function candidateToAISignal(
     action: direction,
     symbol: resolvedSymbol,
     confidence,
+    calibratedConfidence,
+    expectedHoldingPeriod,
     expectancy,
     regime,
     timestamp: now,

@@ -25,6 +25,10 @@ export interface SplitConfig {
   trainWindowSize?: number;
   /** Only for rolling mode: number of bars in each val window. Ignored in rolling mode. */
   valWindowSize?: number;
+  /** Only for rolling mode: explicit test window size. */
+  testWindowSize?: number;
+  /** Number of rolling walk-forward folds (default 5, min 1). */
+  numFolds?: number;
 }
 
 export interface DataSplit {

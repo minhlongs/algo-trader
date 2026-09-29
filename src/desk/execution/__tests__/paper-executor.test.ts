@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PaperExecutor, resetPaperExecutor } from '../paper-executor';
+import { PaperExecutor, resetPaperExecutor, type OrderbookSnapshot } from '../paper-executor';
 
 describe('PaperExecutor', () => {
   let executor: PaperExecutor;
@@ -144,6 +144,51 @@ describe('PaperExecutor', () => {
       expect(account.equity).toBe(5_000);
       expect(executor.getPositions()).toHaveLength(0);
       expect(executor.getTradeHistory()).toHaveLength(0);
+    });
+  });
+
+  describe('orderbook execution & margin tracking', () => {
+    it('should track cash reserves, margin used, and margin utilization', async () => {
+      const account = await executor.start(10_000);
+      expect(account.cashReserves).toBe(10_000);
+      expect(account.marginUsed).toBe(0);
+      expect(account.marginUtilization).toBe(0);
+
+      const res = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000);
+      expect(res.success).toBe(true);
+      expect(res.account!.marginUsed).toBeGreaterThan(0);
+      expect(res.account!.cashReserves).toBe(res.account!.balance);
+      expect(res.account!.marginUtilization).toBeGreaterThan(0);
+
+      const summary = executor.getPnlSummary();
+      expect(summary.cashReserves).toBe(res.account!.cashReserves);
+      expect(summary.marginUsed).toBe(res.account!.marginUsed);
+    });
+
+    it('should execute buy against orderbook depth and support partial fills', async () => {
+      await executor.start(10_000);
+      const book: OrderbookSnapshot = {
+        symbol: 'BTC/USDT',
+        bids: [{ price: 49_900, size: 1.0 }],
+        asks: [
+          { price: 50_000, size: 0.05 },
+          { price: 50_200, size: 0.05 },
+        ],
+      };
+      const fullRes = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000, book);
+      expect(fullRes.success).toBe(true);
+      expect(fullRes.trade!.status).toBe('filled');
+      expect(fullRes.trade!.executedPrice).toBeCloseTo(50_100, 0);
+
+      const partialBook: OrderbookSnapshot = {
+        symbol: 'ETH/USDT',
+        bids: [],
+        asks: [{ price: 3_000, size: 0.5 }],
+      };
+      const partRes = await executor.executePaperTrade({ symbol: 'ETH/USDT', side: 'buy', quantity: 1.0 }, 3_000, partialBook);
+      expect(partRes.success).toBe(true);
+      expect(partRes.trade!.status).toBe('partial');
+      expect(partRes.trade!.quantity).toBe(0.5);
     });
   });
 });

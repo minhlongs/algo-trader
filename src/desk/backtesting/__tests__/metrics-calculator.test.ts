@@ -7,6 +7,8 @@ import {
   computeMaxDrawdown,
   computeSharpeRatio,
   computeProfitFactor,
+  computeSortinoRatio,
+  computeCalmarRatio,
 } from '../metrics-calculator';
 import type { BacktestTrade } from '../types';
 
@@ -135,5 +137,56 @@ describe('computeMetrics', () => {
     expect(result.totalTrades).toBe(0);
     expect(result.totalPnl).toBe(0);
     expect(result.winRate).toBe(0);
+  });
+});
+
+describe('computeSortinoRatio', () => {
+  it('returns 0 for empty or single return', () => {
+    expect(computeSortinoRatio([])).toBe(0);
+    expect(computeSortinoRatio([0.01])).toBe(0);
+  });
+
+  it('returns Infinity when all returns are positive (zero downside deviation)', () => {
+    expect(computeSortinoRatio([0.01, 0.02, 0.03])).toBe(Infinity);
+  });
+
+  it('returns 0 when downside deviation is zero and returns are zero or negative', () => {
+    expect(computeSortinoRatio([0, 0])).toBe(0);
+  });
+
+  it('computes positive Sortino for mixed returns with net gain', () => {
+    const returns = [0.05, -0.01, 0.04, -0.02, 0.03];
+    const sortino = computeSortinoRatio(returns);
+    expect(sortino).toBeGreaterThan(0);
+    expect(Number.isFinite(sortino)).toBe(true);
+  });
+
+  it('supports equity curve input', () => {
+    const curve = [{ equity: 100 }, { equity: 105 }, { equity: 102 }, { equity: 110 }];
+    const sortino = computeSortinoRatio(curve);
+    expect(sortino).toBeGreaterThan(0);
+  });
+});
+
+describe('computeCalmarRatio', () => {
+  it('handles zero or NaN inputs cleanly', () => {
+    expect(computeCalmarRatio(NaN, 0.1)).toBe(0);
+    expect(computeCalmarRatio(0.2, NaN)).toBe(0);
+    expect(computeCalmarRatio(0, 0.1)).toBe(0);
+  });
+
+  it('returns Infinity when maxDrawdown is 0 and return > 0', () => {
+    expect(computeCalmarRatio(0.25, 0)).toBe(Infinity);
+  });
+
+  it('returns 0 when maxDrawdown is 0 and return <= 0', () => {
+    expect(computeCalmarRatio(0, 0)).toBe(0);
+    expect(computeCalmarRatio(-0.1, 0)).toBe(0);
+  });
+
+  it('computes Calmar ratio correctly for positive and negative drawdowns', () => {
+    expect(computeCalmarRatio(0.3, 0.15)).toBeCloseTo(2.0, 4);
+    expect(computeCalmarRatio(0.3, -0.15)).toBeCloseTo(2.0, 4);
+    expect(computeCalmarRatio(-0.15, 0.1)).toBeCloseTo(-1.5, 4);
   });
 });

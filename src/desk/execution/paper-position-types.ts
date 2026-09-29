@@ -6,6 +6,18 @@
 
 // ─── Core Interfaces ──────────────────────────────────────────────────────────
 
+export interface OrderbookLevel {
+  price: number;
+  size: number;
+}
+
+export interface OrderbookSnapshot {
+  symbol: string;
+  bids: OrderbookLevel[];
+  asks: OrderbookLevel[];
+  timestamp?: number;
+}
+
 export interface PaperTrade {
   id: string;
   symbol: string;
@@ -15,7 +27,7 @@ export interface PaperTrade {
   executedPrice: number;
   fee: number;
   slippage: number;
-  status: 'filled' | 'rejected' | 'pending';
+  status: 'filled' | 'rejected' | 'pending' | 'partial';
   timestamp: number;
   pnl?: number;
 }
@@ -33,6 +45,9 @@ export interface PaperPosition {
 export interface PaperAccount {
   balance: number;
   equity: number;
+  cashReserves: number;
+  marginUsed: number;
+  marginUtilization?: number;
   unrealizedPnl: number;
   realizedPnl: number;
   totalTrades: number;
@@ -72,6 +87,8 @@ export interface PnlSummary {
   maxDrawdown: number;
   balance: number;
   equity: number;
+  cashReserves: number;
+  marginUsed: number;
 }
 
 export interface PaperTradeFillRecord {
@@ -117,9 +134,13 @@ export function mapExecutionToFillRecord(
 // ─── Default Account Factory ──────────────────────────────────────────────────
 
 export function createDefaultAccount(config: PaperExecutorConfig, initialBalance?: number): PaperAccount {
+  const balance = initialBalance ?? config.initialBalance;
   return {
-    balance: initialBalance ?? config.initialBalance,
-    equity: initialBalance ?? config.initialBalance,
+    balance,
+    equity: balance,
+    cashReserves: balance,
+    marginUsed: 0,
+    marginUtilization: 0,
     unrealizedPnl: 0,
     realizedPnl: 0,
     totalTrades: 0,

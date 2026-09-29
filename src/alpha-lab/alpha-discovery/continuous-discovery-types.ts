@@ -7,7 +7,7 @@
  * Conforms 100% to the contract defined in PROJECT.md.
  */
 
-import type { ExperimentConfig } from '../experiments/experiment-types';
+import type { ExperimentConfig, SplitConfig } from '../experiments/experiment-types';
 import type { WalkForwardSummary, WalkForwardResult } from '../walkforward/walkforward-types';
 import type { CandleLike } from '../regimes/regime-types';
 import type { StrategyFamilyRegistry } from './strategy-family-types';
@@ -71,6 +71,8 @@ export interface ContinuousDiscoveryPipelineConfig {
   sweep?: ParamSweepOptions;
   /** Survival gate criteria overrides. */
   survivalGates?: Partial<AlphaSurvivalGateCriteria>;
+  /** Optional walk-forward split config overrides (defaults to 5 rolling folds). */
+  split?: Partial<SplitConfig>;
 }
 
 /**

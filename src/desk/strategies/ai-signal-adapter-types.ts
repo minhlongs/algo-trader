@@ -17,6 +17,8 @@ export interface AISignal {
   action?: 'BUY' | 'SELL';
   symbol?: string;
   confidence: number;
+  calibratedConfidence?: number;
+  expectedHoldingPeriod?: number;
   expectancy: number;
   regime: MarketRegime;
   timestamp: number;
