@@ -514,8 +514,8 @@ describe('createCrossEventDriftTick', () => {
     expect(entryCallCount).toBeGreaterThan(0);
 
     entryDone = true;
-    // Wait just a tiny bit so maxHoldMs of 1ms expires
-    await new Promise(r => setTimeout(r, 5));
+    // Wait for maxHoldMs (1ms) to expire reliably
+    await new Promise(r => setTimeout(r, 50));
     await tick();
 
     expect(orderManager.placeOrder.mock.calls.length).toBeGreaterThan(entryCallCount);
