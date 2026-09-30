@@ -1,5 +1,12 @@
 # Project Changelog - Algo Trader
 
+## [3.1.87] - 2026-09-30 — Production Live Verification & Continuous Trading Risk Health Certification
+
+### Verified & Certified
+- Verified production live edge deployment across Cloudflare Pages (`https://cashclaw.cc`, `https://algo-trader.pages.dev`) returning HTTP/2 200 OK.
+- Full quality ratchet verification across 15,619 test points with 0 assertion failures, 0 new `:any` types, and 0 oversized files.
+- Verified RiskEngine (VaR/CVaR, Kelly sizing, TieredDrawdownBreaker), LiveGuard handoff coordinator, Polymarket CLOB terminal cache, and SOR routing.
+
 ## [3.1.86] - 2026-09-29 — Unified Portfolio Risk, Smart Order Routing Engine & Quality Ratchet Certification
 
 ### Added
