@@ -62,7 +62,8 @@ marketplaceStrategyListingsRouter.post('/publish', requireTier('FREE'), async (r
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
 
-    const tenantTier = (req as any).tenant?.tier || (req as any).user?.tier;
+    const reqWithTier = req as Request & { tenant?: { tier?: string }; user?: { tier?: string } };
+    const tenantTier = reqWithTier.tenant?.tier || reqWithTier.user?.tier;
     if (tenantTier !== 'PRO' && tenantTier !== 'ENTERPRISE') {
       return res.status(403).json({
         error: 'Insufficient permissions',
@@ -106,7 +107,7 @@ marketplaceStrategyListingsRouter.post('/publish', requireTier('FREE'), async (r
       maxAllocationUsd: strategyData.maxAllocationUsd,
       supportedExchanges: strategyData.supportedExchanges || [],
       tags: strategyData.tags || [],
-      backtestSummary: backtestSummary as any,
+      backtestSummary: backtestSummary as unknown as Parameters<typeof marketplaceService.createStrategy>[0]['backtestSummary'],
     });
 
     const listing = await marketplaceService.createListing({
@@ -119,7 +120,7 @@ marketplaceStrategyListingsRouter.post('/publish', requireTier('FREE'), async (r
     });
 
     await auditService.log(tenantId, 'api_call' as AuditEventType, {
-      tier: (req as any).user?.tier,
+      tier: (req as Request & { user?: { tier?: string } }).user?.tier,
       metadata: {
         action: 'strategy_published', userId, resourceId: strategy.id,
         strategyName: strategy.name, category: strategy.category,

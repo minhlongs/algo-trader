@@ -1,12 +1,23 @@
 import { Router, Request, Response } from 'express';
 import { Backtester } from '../../../desk/arbitrage/backtester';
-import { PricePoint, ExchangeId } from '../../../desk/arbitrage/types';
+import { PricePoint, BacktestConfig, BacktestResult } from '../../../desk/arbitrage/types';
 import { z } from 'zod';
 
 export const backtestRouter: Router = Router();
 
+interface StoredBacktestResult {
+  id: string;
+  pair: string;
+  timeframe: string;
+  strategyName: string;
+  days: number;
+  config: BacktestConfig;
+  result: BacktestResult;
+  timestamp: number;
+}
+
 // In-memory store for backtest results
-const backtestResults = new Map<string, any>();
+const backtestResults = new Map<string, StoredBacktestResult>();
 
 const backtestConfigSchema = z.object({
   startDate: z.string().transform((val) => new Date(val)).optional(),
@@ -24,7 +35,7 @@ const submitBodySchema = z.object({
   strategyName: z.string().default('arb-spread-v1'),
   days: z.number().default(30),
   config: backtestConfigSchema.optional(),
-  historicalData: z.array(z.array(z.any())).optional(),
+  historicalData: z.array(z.array(z.unknown())).optional(),
 });
 
 // Helper to generate realistic historical data for backtesting if none is provided
@@ -93,7 +104,7 @@ backtestRouter.post('/submit', async (req: Request, res: Response) => {
       maxPositionSize: parsed.data.config?.maxPositionSize ?? 1000,
     };
 
-    const historicalData = parsed.data.historicalData || generateMockHistoricalData();
+    const historicalData = (parsed.data.historicalData as unknown as PricePoint[][]) || generateMockHistoricalData();
 
     const backtester = new Backtester(config);
     const result = await backtester.run(historicalData);

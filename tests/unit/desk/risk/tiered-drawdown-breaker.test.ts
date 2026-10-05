@@ -252,7 +252,7 @@ describe('TieredDrawdownBreaker', () => {
       });
       mockedFs.readFileSync.mockReturnValue(mockState);
 
-      const restored = new TieredDrawdownBreaker(100000);
+      const restored = new TieredDrawdownBreaker(100000, { persistState: true });
       const state = restored.getState();
       expect(state.highWaterMark).toBe(95000);
       expect(state.currentValue).toBe(92000);
@@ -269,7 +269,7 @@ describe('TieredDrawdownBreaker', () => {
       const partialState = JSON.stringify({ highWaterMark: 80000 });
       mockedFs.readFileSync.mockReturnValue(partialState);
 
-      const restored = new TieredDrawdownBreaker(100000);
+      const restored = new TieredDrawdownBreaker(100000, { persistState: true });
       const state = restored.getState();
       expect(state.highWaterMark).toBe(80000);
       expect(state.currentValue).toBe(100000); // falls back to constructor arg

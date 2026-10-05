@@ -3,7 +3,6 @@
  * Extracted from orchestrator.ts for single-responsibility compliance
  */
 
-import type { ExecutionResult, ExchangeId } from './types';
 import type { SignalScore, SignalScorer } from './signal-scorer';
 import type { ArbitrageOpportunity } from './types';
 import type { SpreadDetector } from './spread-detector';

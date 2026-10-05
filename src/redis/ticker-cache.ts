@@ -90,7 +90,7 @@ export class TickerCache {
 
     for (let i = 0; i < symbols.length; i++) {
       const symbol = symbols[i];
-      const [err, data] = replies[i] as [Error | null, any];
+      const [err, data] = replies[i] as [Error | null, Record<string, string> | null];
 
       if (!err && data && Object.keys(data).length > 0) {
         results.set(symbol, {
@@ -133,7 +133,7 @@ export class TickerCache {
 
     for (let i = 0; i < keysOrder.length; i++) {
       const { symbol, exchange } = keysOrder[i];
-      const [err, data] = replies[i] as [Error | null, any];
+      const [err, data] = replies[i] as [Error | null, Record<string, string> | null];
 
       if (!err && data && Object.keys(data).length > 0) {
         const bid = parseFloat(data.bid) || 0;

@@ -141,6 +141,18 @@ if (runTests) {
     if (numFailedTests > baseline.testSuite.knownFailures) {
       record('unknownFailures', `<=${baseline.testSuite.knownFailures}`,
         numFailedTests, false);
+      try {
+        const fullReport = JSON.parse(readFileSync(summaryPath, 'utf-8'));
+        for (const testFile of fullReport.testResults || []) {
+          for (const assertion of testFile.assertionResults || []) {
+            if (assertion.status === 'failed') {
+              console.error(`\n[FAILED TEST] File: ${testFile.name}`);
+              console.error(`              Title: ${assertion.title}`);
+              console.error(`              Message: ${assertion.failureMessages?.join('\n')}\n`);
+            }
+          }
+        }
+      } catch {}
     } else {
       record('knownFailures', `<=${baseline.testSuite.knownFailures}`,
         numFailedTests, true);

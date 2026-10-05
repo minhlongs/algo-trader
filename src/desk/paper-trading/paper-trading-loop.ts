@@ -9,8 +9,6 @@ import {
 } from './trade-executor';
 import {
   type D1Database,
-  type D1PreparedStatement,
-  type D1Result,
   type KVStore,
   asKVStore,
   type PaperTradingConfig,

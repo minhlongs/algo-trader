@@ -34,16 +34,17 @@ const noopTracer: Tracer = {
 
 let _tracer: Tracer = noopTracer;
 let _initPromise: Promise<void> | null = null;
+let _otelApi: typeof import('@opentelemetry/api') | null = null;
 
 /**
  * Get current region from Cloudflare headers or environment
  */
 function getCurrentRegion(): string {
   // In Cloudflare Workers, use cf-colo or cf-region
-  const globalRequest = (globalThis as any).request as Request | undefined;
-  if (globalRequest) {
-    const headers = globalRequest.headers as any;
-    const colo = headers.get?.('cf-colo') as string | undefined;
+  const globalWithReq = globalThis as typeof globalThis & { request?: Request };
+  const globalRequest = globalWithReq.request;
+  if (globalRequest?.headers) {
+    const colo = globalRequest.headers.get('cf-colo');
     if (colo) return colo;
   }
   return process.env.REGION || 'unknown';
@@ -67,10 +68,7 @@ export function withRegionAttributes<T>(fn: () => Promise<T>): Promise<T> {
  * Set region on currently active span (if any)
  */
 export function setRegionOnActiveSpan(): void {
-  const span = _tracer.startSpan('region-context') as any;
-  // Actually we need to get the active span, not start a new one
-  // The interface doesn't have getActiveSpan; let's modify approach
-  // We'll rely on manual attribute setting in middleware
+  // Manual attribute setting in middleware via annotateActiveSpanWithRegion
 }
 
 export function getTracer(_name = 'algo-trader'): Tracer {
@@ -87,6 +85,7 @@ async function runInit(): Promise<void> {
       import('@opentelemetry/sdk-trace-node'),
       import('@opentelemetry/exporter-trace-otlp-http'),
     ]);
+    _otelApi = otelApi;
 
     const exporter = new otelExporter.OTLPTraceExporter({ url: endpoint });
     const provider = new otelSdk.NodeTracerProvider({
@@ -128,6 +127,7 @@ export function initTracing(): Promise<void> {
 export function resetTracingForTests(): void {
   _tracer = noopTracer;
   _initPromise = null;
+  _otelApi = null;
 }
 
 /**
@@ -135,12 +135,19 @@ export function resetTracingForTests(): void {
  * Returns null if no active span or tracing disabled.
  */
 export function getActiveSpan(): Span | null {
-  // Try to get from global OTel API if available
   try {
-     
-    const otelApi = require('@opentelemetry/api');
-    const active = otelApi.trace.getActiveSpan();
-    return active ? (active as unknown as Span) : null;
+    if (_otelApi?.trace) {
+      const active = _otelApi.trace.getActiveSpan();
+      return active ? (active as unknown as Span) : null;
+    }
+    const globalOtel = (globalThis as unknown as Record<symbol, typeof import('@opentelemetry/api')>)[
+      Symbol.for('opentelemetry.js.api.1')
+    ];
+    if (globalOtel?.trace) {
+      const active = globalOtel.trace.getActiveSpan();
+      return active ? (active as unknown as Span) : null;
+    }
+    return null;
   } catch {
     return null;
   }

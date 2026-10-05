@@ -145,7 +145,7 @@ export async function initializeShard(
       try {
         const strategy = await loader.loadStrategy(strategyId);
         if (strategy) {
-          strategies.set(strategyId, (strategy as any as IStrategy));
+          strategies.set(strategyId, (strategy as unknown as IStrategy));
           logger.info('[StrategyShard] Loaded strategy', { shardId, strategyId });
         }
       } catch (error) {

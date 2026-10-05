@@ -1,4 +1,4 @@
-import { Order, OrderSide, OrderStatus } from '@desk/core/types';
+import { Order } from '@desk/core/types';
 const MAX_PRICE = 1_000_000;
 const MAX_SIZE = 1_000_000;
 

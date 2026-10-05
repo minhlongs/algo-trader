@@ -162,12 +162,19 @@ export class TieredDrawdownBreaker {
     return { highWaterMark: this.highWaterMark, currentValue: this.currentValue, drawdownPercent: dd * 100, tier: this.tier, sizingMultiplier: this.getSizingMultiplier(), haltedUntil: this.haltedUntil, dailyPausedUntil: this.dailyPausedUntil, dailyStartValue: this.dailyStartValue, dailyPnl: this.dailyPnl, events: [...this.events] };
   }
 
+  private shouldPersist(): boolean {
+    if (this.config.persistState !== undefined) return this.config.persistState;
+    return !process.env.VITEST;
+  }
+
   private saveToDisk(): void {
+    if (!this.shouldPersist()) return;
     this.writeQueue.data = buildPersistedState(this.highWaterMark, this.currentValue, this.tier, this.haltedUntil, this.dailyPausedUntil, this.dailyStartValue, this.dailyPnl, this.events);
     scheduleDeferredWrite(this.writeQueue, this.writeQueue.data);
   }
 
   private loadFromDisk(): void {
+    if (!this.shouldPersist()) return;
     const state = loadPersistedState();
     if (!state) return;
     this.highWaterMark = state.highWaterMark;

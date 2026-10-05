@@ -7,7 +7,7 @@ import pg from 'pg';
 import { logger } from '../shared/utils/logger';
 
 const { Pool } = pg;
-const DEFAULT_MAX_CONNECTIONS = 10;
+const _DEFAULT_MAX_CONNECTIONS = 10;
 
 export interface DbConfig {
   host: string;
@@ -34,7 +34,7 @@ export function getDbClient(config?: Partial<DbConfig>): pg.Pool {
 	? parseInt(process.env.DB_MAX_CONNECTIONS)
 	: 10;
 
-	const dbConfig: Record<string, unknown> = {
+	const _dbConfig: Record<string, unknown> = {
 		host: process.env.DB_HOST || 'localhost',
 		port: parseInt(process.env.DB_PORT || '5432'),
 		database: process.env.DB_NAME || 'algo_trader',

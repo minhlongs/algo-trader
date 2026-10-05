@@ -35,9 +35,10 @@ export class MultiExchangeScanner {
       kraken: { apiKey: process.env.KRAKEN_API_KEY || '', secret: process.env.KRAKEN_SECRET || '' },
     };
 
+    const ccxtRecord = ccxt as unknown as Record<string, new (cfg: unknown) => CcxtExchange>;
     (Object.keys(exchangeConfigs) as ExchangeId[]).forEach((id) => {
       if (this.config.exchanges.includes(id)) {
-        const exchange = new (ccxt as any)[id](exchangeConfigs[id]) as CcxtExchange;
+        const exchange = new ccxtRecord[id]!(exchangeConfigs[id]);
         this.exchanges.set(id, exchange);
       }
     });

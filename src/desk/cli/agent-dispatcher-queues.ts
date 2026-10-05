@@ -35,8 +35,8 @@ export async function startWorkerQueues(
   }
 }
 
-export function collectQueueStats(tierQueues: Map<ModelTier, AgentQueueManager>): Map<ModelTier, any> {
-  const stats = new Map<ModelTier, any>();
+export function collectQueueStats(tierQueues: Map<ModelTier, AgentQueueManager>): Map<ModelTier, ReturnType<AgentQueueManager['getQueueStats']>> {
+  const stats = new Map<ModelTier, ReturnType<AgentQueueManager['getQueueStats']>>();
   for (const [tier, qm] of tierQueues.entries()) {
     stats.set(tier, qm.getQueueStats());
   }

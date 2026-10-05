@@ -7,7 +7,7 @@
  * - PATCH /disputes/:id/escalate — Escalate dispute
  */
 
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
 import { z } from 'zod';
 import { DisputeService } from '../../marketplace/services/dispute.service';
@@ -15,7 +15,6 @@ import { AuditLogService, type AuditEventType } from '../../audit/audit-log-serv
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
 import {
-  getTenantId,
   getUserId,
   isAdmin,
   getQueryString,
@@ -118,7 +117,7 @@ export function registerMarketplaceDisputeRoutes(router: RouterType): void {
         dispute.tenantId,
         'api_call' as AuditEventType,
         {
-          tier: (req as any).user?.tier,
+          tier: (req as Request & { user?: { tier?: string } }).user?.tier,
           metadata: {
             action: 'dispute_resolved',
             adminUserId,
@@ -172,7 +171,7 @@ export function registerMarketplaceDisputeRoutes(router: RouterType): void {
         dispute.tenantId,
         'api_call' as AuditEventType,
         {
-          tier: (req as any).user?.tier,
+          tier: (req as Request & { user?: { tier?: string } }).user?.tier,
           metadata: {
             action: 'dispute_escalated',
             adminUserId,

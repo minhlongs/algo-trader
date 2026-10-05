@@ -163,7 +163,7 @@ export class ModelTierDispatcher {
     return startWorkerQueues(this.tierQueues, processors);
   }
 
-  getQueueStats(): Map<ModelTier, any> {
+  getQueueStats(): ReturnType<typeof collectQueueStats> {
     return collectQueueStats(this.tierQueues);
   }
 

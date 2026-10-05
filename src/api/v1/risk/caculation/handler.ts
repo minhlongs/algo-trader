@@ -8,7 +8,8 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 import type { Router, Request, Response } from 'express';
-import type { RiskCalculationController } from './controller';
+import { RiskCalculationController } from './controller';
+import { RiskCalculationService } from './service';
 import type { RiskCalculationRepository } from './repository';
 import type { LimitEnforcerService } from './limit-enforcer';
 import { RightsGuard } from './middleware/rightsGuard';
@@ -44,11 +45,6 @@ export interface WireUpOptions {
 }
 
 export function wireUpRiskCalculation(opts: WireUpOptions): void {
-  // Lazy import to keep this module tree-shakeable
-  const { RiskCalculationController } = require('./controller');
-  const { RiskCalculationService } = require('./service');
-  const { RiskCalculationRepository } = require('./repository');
-
   const service = new RiskCalculationService({ repository: opts.repository });
   const controller = new RiskCalculationController({ service, repository: opts.repository });
 

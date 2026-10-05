@@ -47,7 +47,7 @@ export class ShardManager {
 
   constructor(state: DurableObjectState) {
     this.state = state;
-    this.currentEnv = (state as any).env;
+    this.currentEnv = (state as unknown as { env?: Env }).env;
     this.redisInitPromise = null;
     this.initializeRing().catch(error => logger.error('[ShardManager] Init failed:', error));
   }
@@ -94,7 +94,7 @@ export class ShardManager {
   }
 
   async fetch(request: Request): Promise<Response> {
-    this.currentEnv = (this.state as any).env as Env;
+    this.currentEnv = (this.state as unknown as { env?: Env }).env;
     const url = new URL(request.url);
     const path = url.pathname;
 

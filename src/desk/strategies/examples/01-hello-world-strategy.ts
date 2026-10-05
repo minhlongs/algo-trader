@@ -53,7 +53,7 @@ export class HelloWorldStrategy implements IStrategy {
   /**
    * Helper: Create a buy signal
    */
-  private buySignal(confidence: number, reason: string, metadata?: Record<string, any>): ISignal {
+  private buySignal(confidence: number, reason: string, metadata?: Record<string, unknown>): ISignal {
     return {
       action: 'buy',
       confidence: Math.min(Math.max(confidence, 0), 1), // Clamp 0-1
@@ -65,7 +65,7 @@ export class HelloWorldStrategy implements IStrategy {
   /**
    * Helper: Create a sell signal
    */
-  private sellSignal(confidence: number, reason: string, metadata?: Record<string, any>): ISignal {
+  private sellSignal(confidence: number, reason: string, metadata?: Record<string, unknown>): ISignal {
     return {
       action: 'sell',
       confidence: Math.min(Math.max(confidence, 0), 1),
@@ -77,7 +77,7 @@ export class HelloWorldStrategy implements IStrategy {
   /**
    * Helper: Create a wait signal
    */
-  private waitSignal(reason: string, metadata?: Record<string, any>): ISignal {
+  private waitSignal(reason: string, metadata?: Record<string, unknown>): ISignal {
     return {
       action: 'wait',
       confidence: 0,
@@ -89,7 +89,7 @@ export class HelloWorldStrategy implements IStrategy {
   /**
    * Optional: Get strategy status for monitoring
    */
-  getStatus?(): Record<string, any> {
+  getStatus?(): Record<string, unknown> {
     return {
       name: STRATEGY_NAME,
       candlesProcessed: this.priceHistory.length,

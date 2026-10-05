@@ -15,8 +15,6 @@ import { logger } from '../../../shared/utils/logger';
 import { auth } from '../../auth/auth-server';
 import {
   getAIDecisionRepository,
-  type AIDecisionWithMetadata,
-  type RecordDecisionInput,
   type DecisionFilters,
 } from '../../audit/ai-decision-repository';
 import { requireTier } from '../../middleware/feature-gate';
@@ -53,11 +51,11 @@ const decisionFiltersSchema = z.object({
  */
 async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
-    const session = await auth.api.getSession({ headers: req.headers as any });
+    const session = await auth.api.getSession({ headers: req.headers as unknown as Headers });
     if (!session) {
       return res.status(401).json({ error: 'Unauthorized', message: 'Valid session required' });
     }
-    (req as any).user = session.user;
+    (req as Request & { user?: unknown }).user = session.user;
     next();
   } catch {
     return res.status(401).json({ error: 'Unauthorized', message: 'Authentication failed' });

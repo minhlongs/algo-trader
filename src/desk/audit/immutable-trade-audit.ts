@@ -33,7 +33,7 @@ export function query(_filters?: { eventType?: string; from?: number; to?: numbe
 
 export function verifyIntegrity(): boolean {
   return _records.every((r, i) => {
-    const prev = i > 0 ? _records[i - 1] : null;
+    const _prev = i > 0 ? _records[i - 1] : null;
     return r.hash === computeHash({ ...r, hash: '' });
   });
 }
@@ -54,7 +54,7 @@ export class ImmutableTradeAudit {
   }
   logTradeDecision(
     marketId: string, side: 'buy' | 'sell', signal: string,
-    kellySize: number, actualSize: number, walletLabel: string, reason: string
+    kellySize: number, actualSize: number, walletLabel: string, _reason: string
   ): AuditRecord {
     return append({
       eventType: 'trade_decision',

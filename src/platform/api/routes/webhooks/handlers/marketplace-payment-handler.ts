@@ -12,6 +12,7 @@
 import { SubscriptionService } from '../../../../marketplace/services/subscription.service';
 import { RevenueService } from '../../../../marketplace/services/revenue.service';
 import { AuditLogService } from '../../../../audit/audit-log-service';
+import type { AuditEventType } from '../../../../audit/audit-log-types';
 import { NowPaymentsService, NowPaymentsIpnPayload } from '../../../../billing/nowpayments-service';
 import { logger } from '../../../../../shared/utils/logger';
 
@@ -63,7 +64,7 @@ export async function handleMarketplaceIpnFinished(
       });
     }
 
-    await auditService.log(activated.tenantId, 'api_call' as any, {
+    await auditService.log(activated.tenantId, 'api_call' as AuditEventType, {
       tier: undefined,
       metadata: {
         eventType: 'marketplace_payment_finished',
@@ -93,7 +94,7 @@ export async function handleMarketplaceIpnCancelled(
   const cancelled = await subscriptionService.cancelByPaymentId(ipn.payment_id);
 
   if (cancelled) {
-    await auditService.log(cancelled.tenantId, 'api_call' as any, {
+    await auditService.log(cancelled.tenantId, 'api_call' as AuditEventType, {
       tier: undefined,
       metadata: {
         eventType: 'marketplace_payment_cancelled',

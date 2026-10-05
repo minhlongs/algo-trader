@@ -5,7 +5,8 @@
 import { hashPassword, verifyPassword, createJwt, verifyJwt } from './crypto-utils';
 import { SECURITY_HEADERS } from './edge-proxy-constants';
 
-interface Env { CACHE: KVNamespace; JWT_SECRET: string; ALLOWED_ORIGINS?: string; ADMIN_API_KEY?: string; }
+export interface AuthEnv { CACHE: KVNamespace; JWT_SECRET?: string; ALLOWED_ORIGINS?: string; ADMIN_API_KEY?: string; }
+type Env = AuthEnv;
 
 const BASE_CORS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',

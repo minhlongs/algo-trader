@@ -22,7 +22,7 @@ const EMA_FAST = 20;
 const EMA_MID = 50;
 const EMA_SLOW = 200;
 const ADX_PERIOD = 14;
-const ADX_TRENDING_THRESHOLD = 25;  // above = trending
+const _ADX_TRENDING_THRESHOLD = 25;  // above = trending
 const ADX_WEAK_THRESHOLD = 20;     // below = weak/no trend
 
 // ─── EMA (single-pass, Wilder-correct approximation for EMA200) ───────────────
@@ -39,7 +39,7 @@ function computeEMA(values: number[], period: number): number | null {
 
 // ─── ADX (Wilder smoothing) ───────────────────────────────────────────────────
 
-interface TrComponents {
+interface _TrComponents {
   plusDM: number;
   minusDM: number;
   tr: number;

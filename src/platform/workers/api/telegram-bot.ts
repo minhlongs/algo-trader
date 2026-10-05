@@ -97,7 +97,7 @@ export async function handleSetTelegramWebhook(request: Request, _env: Env): Pro
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url: webhookUrl }),
-  } as any);
+  });
 
   const result = (await res.json()) as { ok: boolean; description?: string };
   return new Response(JSON.stringify(result), {

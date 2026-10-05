@@ -8,14 +8,13 @@
  * GET    /api/v1/marketplace/providers/:tenantId/dashboard
  */
 
-import { Router, Request, Response, response } from 'express';
+import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
 import { z } from 'zod';
 import { providerRepository } from '../../marketplace/repositories/provider-repository';
 import { strategyVersionRepository } from '../../marketplace/repositories/strategy-version-repository';
 import { revenueShareRepository } from '../../marketplace/repositories/revenue-share-repository';
 import { requireTier } from '../../middleware/feature-gate';
-import type { IMarketplaceRevenueShare } from '../../marketplace/models/types';
 import { logger } from '../../../shared/utils/logger';
 
 export const marketplaceProviderRouter: RouterType = Router();
@@ -38,7 +37,7 @@ const updateProfileSchema = z.object({
  * Authenticate tenant — parent route should have already resolved req.tenant / req.user.
  * For this initial implementation we rely on getTenantId helper logic.
  */
-function getTenantIdFromReq(req: Request): string {
+function _getTenantIdFromReq(req: Request): string {
   const tenantId =
     (req.body as Record<string, string> | undefined)?.tenantId ??
     (req.query as Record<string, string>).tenantId ??

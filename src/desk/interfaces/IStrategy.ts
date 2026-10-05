@@ -8,7 +8,7 @@ export interface ISignal {
   action: 'buy' | 'sell' | 'wait';
   confidence: number;
   reason: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ICandle {
@@ -44,7 +44,7 @@ export interface IStrategy {
   /**
    * Get strategy status
    */
-  getStatus?(): Record<string, any>;
+  getStatus?(): Record<string, unknown>;
 
   /**
    * Cleanup resources

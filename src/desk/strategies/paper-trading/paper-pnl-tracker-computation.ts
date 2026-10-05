@@ -26,9 +26,9 @@ export interface PnlPeriod {
   equity: number;
 }
 
-export interface DailyPnl extends PnlPeriod {}
-export interface WeeklyPnl extends PnlPeriod {}
-export interface MonthlyPnl extends PnlPeriod {}
+export type DailyPnl = PnlPeriod;
+export type WeeklyPnl = PnlPeriod;
+export type MonthlyPnl = PnlPeriod;
 
 export interface PnlSummary {
   daily: DailyPnl[];

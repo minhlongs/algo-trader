@@ -40,13 +40,13 @@ export interface TradingPipelineCtx {
 }
 
 export function initComponentsFor(ctx: TradingPipelineCtx): void {
-  const db = getDatabase(ctx.cfg.dbPath);
+  const _db = getDatabase(ctx.cfg.dbPath);
 
   // Initialize the event bus first (singleton, but we keep a reference)
   ctx.eventBus = tradingEventBus;
 
   // Resolve private key from config first, then env var, fallback to 'paper-key' for paper mode
-  const resolvedKey = ctx.cfg.privateKey
+  const _resolvedKey = ctx.cfg.privateKey
     || process.env['POLYMARKET_PRIVATE_KEY']
     || process.env['POLY_PRIVATE_KEY']
     || 'paper-key';

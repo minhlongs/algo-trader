@@ -15,6 +15,7 @@ import { logger } from '../../../shared/utils/logger';
 import {
   type Env,
   type EnvAny,
+  type Fetchable,
   corsHeaders,
   jsonH,
   unauthorized,
@@ -44,7 +45,7 @@ export async function handleExecuteStrategy(request: Request, env: Env): Promise
     if (!sm) return new Response(JSON.stringify({ error: 'ShardManager not bound' }), { status: 503, headers: jsonH(env) });
 
     // Ask ShardManager which shard owns this strategy
-    const routeRes = await (sm as any).fetch(`https://algo-trader.workers.dev/admin/shard/ring?strategyId=${encodeURIComponent(body.strategyId)}`);
+    const routeRes = await (sm as unknown as Fetchable).fetch(`https://algo-trader.workers.dev/admin/shard/ring?strategyId=${encodeURIComponent(body.strategyId)}`);
     if (!routeRes.ok) return new Response(JSON.stringify({ error: 'Strategy routing failed' }), { status: 502, headers: jsonH(env) });
     const routeData = (await routeRes.json()) as { shardId: number };
     const shardId = routeData.shardId;
@@ -53,11 +54,11 @@ export async function handleExecuteStrategy(request: Request, env: Env): Promise
     if (!doId) return new Response(JSON.stringify({ error: `SHARD_${shardId} not bound` }), { status: 503, headers: jsonH(env) });
 
     // Forward execution request to shard DO
-    const execRes = await (doId as any).fetch('https://algo-trader.workers.dev/execute', {
+    const execRes = await (doId as unknown as Fetchable).fetch('https://algo-trader.workers.dev/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    } as any);
+    });
     const execResult = (await execRes.json()) as { success: boolean; strategyId: string; signal?: string; confidence?: number; latencyMs?: number; error?: string };
     return new Response(JSON.stringify(execResult), { status: execRes.status || 200, headers: jsonH(env) });
   } catch (err) {

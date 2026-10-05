@@ -1,7 +1,7 @@
 import { logger } from '../../../shared/utils/logger';
-import type { TenantRepository, TenantRow } from '../repositories/tenant-repository';
-import type { ProviderRepository, ProviderRow } from '../repositories/provider-repository';
-import type { StrategyVersionRepository } from '../repositories/strategy-version-repository';
+import { TenantRepository, type TenantRow } from '../repositories/tenant-repository';
+import { ProviderRepository, type ProviderRow } from '../repositories/provider-repository';
+import { StrategyVersionRepository } from '../repositories/strategy-version-repository';
 
 export interface CreateTenantInput {
  id: string;
@@ -37,11 +37,11 @@ export class ProviderService {
  private readonly providers: ProviderRepository;
  private readonly versions: StrategyVersionRepository;
 
- private constructor() {
- this.tenants = new (require('../repositories/tenant-repository').TenantRepository)();
- this.providers = new (require('../repositories/provider-repository').ProviderRepository)();
- this.versions = new (require('../repositories/strategy-version-repository').StrategyVersionRepository)();
- }
+  private constructor() {
+    this.tenants = new TenantRepository();
+    this.providers = new ProviderRepository();
+    this.versions = new StrategyVersionRepository();
+  }
 
  static getInstance(): ProviderService {
  if (!ProviderService.instance) {

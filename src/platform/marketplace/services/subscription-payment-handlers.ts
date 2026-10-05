@@ -26,14 +26,14 @@ export async function activateByPaymentId(
   }
 
   const updated = await subRepo.update(sub.id, {
-    status: 'active' as any,
+    status: 'active',
     paymentStatus: 'paid',
   });
 
   if (updated) {
     await listingRepo.incrementSubscriberCount(sub.listingId, 1);
 
-    await auditService.log(sub.tenantId, 'api_call' as any, {
+    await auditService.log(sub.tenantId, 'api_call', {
       tier: undefined,
       metadata: {
         action: 'subscription_activated',
@@ -71,12 +71,12 @@ export async function cancelByPaymentId(
   if (sub.status === 'cancelled') return sub;
 
   const updated = await subRepo.update(sub.id, {
-    status: 'cancelled' as any,
+    status: 'cancelled',
     paymentStatus: 'failed',
   });
 
   if (updated) {
-    await auditService.log(sub.tenantId, 'api_call' as any, {
+    await auditService.log(sub.tenantId, 'api_call', {
       tier: undefined,
       metadata: {
         action: 'subscription_payment_failed',

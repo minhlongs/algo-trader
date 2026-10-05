@@ -1,6 +1,12 @@
 import { AuditLogService } from '../../audit/audit-log-service';
 import { DisputeRepository, disputeRepository, SubscriptionRepository, subscriptionRepository } from './repositories';
-import type { IMarketplaceDispute } from '../models/types';
+import type {
+  IMarketplaceDispute,
+  IMarketplaceSubscription,
+  DisputeReason,
+  DisputeStatus,
+  CompensationType,
+} from '../models/types';
 
 export class DisputeService {
   private static instance: DisputeService;
@@ -35,7 +41,7 @@ export class DisputeService {
       tenantId: data.tenantId,
       listingId: data.listingId,
       subscriptionId: data.subscriptionId,
-      reason: data.reason as any,
+      reason: data.reason as DisputeReason,
       description: data.description,
       evidenceUrls: data.evidenceUrls,
     });
@@ -82,7 +88,7 @@ export class DisputeService {
     };
   }
 
-  async getSubscriptionForDispute(subscriptionId: string): Promise<any | null> {
+  async getSubscriptionForDispute(subscriptionId: string): Promise<IMarketplaceSubscription | null> {
     return this.subRepo.findById(subscriptionId);
   }
 
@@ -97,9 +103,9 @@ export class DisputeService {
     },
   ): Promise<IMarketplaceDispute | null> {
     return this.disputeRepo.update(id, {
-      status: 'resolved_subscriber' as any,
+      status: 'resolved_subscriber' as DisputeStatus,
       resolution: data.resolution,
-      compensationType: data.compensationType as any,
+      compensationType: data.compensationType as CompensationType,
       compensationAmountCents: data.compensationAmountCents,
       resolvedBy: data.resolvedBy,
       resolvedAt: new Date(),
@@ -107,7 +113,7 @@ export class DisputeService {
     });
   }
 
-  async escalateDispute(id: string, adminId: string): Promise<IMarketplaceDispute | null> {
-    return this.disputeRepo.update(id, { status: 'escalated' as any });
+  async escalateDispute(id: string, _adminId?: string): Promise<IMarketplaceDispute | null> {
+    return this.disputeRepo.update(id, { status: 'escalated' as DisputeStatus });
   }
 }

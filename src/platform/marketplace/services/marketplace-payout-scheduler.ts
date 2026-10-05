@@ -5,7 +5,7 @@
  * Uses getDbClient() connection pool (same as referral PayoutScheduler).
  * Runs weekly on Sunday at 2 AM. Also supports manual trigger for specific IDs.
  */
-import { Queue, Worker, type Job } from 'bullmq';
+import { Queue, Worker, type Job, type ConnectionOptions } from 'bullmq';
 import { revenueShareRepository } from '../repositories/revenue-share-repository';
 import { logger } from '../../../shared/utils/logger';
 import { strategyRepository } from '../repositories/strategy-repository';
@@ -22,7 +22,7 @@ export class MarketplacePayoutScheduler {
 
   constructor() {
     // BullMQ uses IORedis — same connection as referral scheduler
-    const connection = { host: process.env.REDIS_HOST || '127.0.0.1', port: Number(process.env.REDIS_PORT) || 6379 } as any;
+    const connection = { host: process.env.REDIS_HOST || '127.0.0.1', port: Number(process.env.REDIS_PORT) || 6379 } as unknown as ConnectionOptions;
 
     this.queue = new Queue<MarketplacePayoutJobData>('marketplace-payouts', {
       connection,
@@ -118,26 +118,20 @@ export class MarketplacePayoutScheduler {
 
         return { processed: paid, errors, paidIds };
       },
-      { connection: { host: process.env.REDIS_HOST || '127.0.0.1', port: Number(process.env.REDIS_PORT) || 6379 } as any }
+      { connection: { host: process.env.REDIS_HOST || '127.0.0.1', port: Number(process.env.REDIS_PORT) || 6379 } as unknown as ConnectionOptions }
     );
 
     logger.info('[MarketplacePayoutScheduler] Worker started for marketplace-payouts queue');
   }
 
   async getStats() {
-    const [waiting, active, completed, failed, delayed] = await Promise.all([
-      this.queue.getJobCounts('waiting'),
-      this.queue.getJobCounts('active'),
-      this.queue.getJobCounts('completed'),
-      this.queue.getJobCounts('failed'),
-      this.queue.getJobCounts('delayed'),
-    ]);
+    const counts = await this.queue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed');
     return {
-      waiting: (waiting as any).waiting ?? 0,
-      active: (active as any).active ?? 0,
-      completed: (completed as any).completed ?? 0,
-      failed: (failed as any).failed ?? 0,
-      delayed: (delayed as any).delayed ?? 0,
+      waiting: counts.waiting ?? 0,
+      active: counts.active ?? 0,
+      completed: counts.completed ?? 0,
+      failed: counts.failed ?? 0,
+      delayed: counts.delayed ?? 0,
     };
   }
 

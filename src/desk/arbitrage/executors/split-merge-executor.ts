@@ -13,7 +13,6 @@ import {
   executePaperSplitMerge,
   type SplitMergeOpportunity,
 } from '../split-merge-arb-executor';
-import { logger } from '../../../shared/utils/logger';
 
 const POLY_FEE = 0.02;
 
@@ -102,7 +101,7 @@ export class SplitMergeArbitrageExecutor implements StrategyExecutor {
         profitPercent: ((1.0 - POLY_FEE - totalCost) / totalCost) * 100,
       };
 
-      const trade = await executePaperSplitMerge(
+      const _trade = await executePaperSplitMerge(
         splitMergeOpp,
         this.config.maxPositionSize,
       );

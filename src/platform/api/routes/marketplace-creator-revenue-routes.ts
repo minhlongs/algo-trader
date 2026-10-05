@@ -31,7 +31,8 @@ const earningsQuerySchema = z.object({
 // ==================== Helpers ====================
 
 function getTenantId(req: Request): string {
-  const tenantId = (req as any).tenant?.id || (req as any).user?.tenantId;
+  const reqWithTenant = req as Request & { tenant?: { id?: string }; user?: { tenantId?: string } };
+  const tenantId = reqWithTenant.tenant?.id || reqWithTenant.user?.tenantId;
   if (!tenantId) throw new Error('Unauthorized: No tenant context');
   return String(tenantId);
 }

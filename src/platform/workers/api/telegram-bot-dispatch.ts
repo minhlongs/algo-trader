@@ -26,7 +26,7 @@ export async function sendTelegramMessage(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    } as any);
+    });
     if (!res.ok) {
       const errText = await res.text();
       logger.warn('[telegram] sendMessage failed', { status: res.status, error: errText });
@@ -53,7 +53,7 @@ export async function resolveTelegramUser(update: TelegramUpdate, env: Env): Pro
 
   const user: TelegramUser = {
     telegramId,
-    firstName: (from as any).first_name || undefined,
+    firstName: from.first_name || undefined,
     username: from.username || undefined,
     tier: 'free',
     tenantId: '',

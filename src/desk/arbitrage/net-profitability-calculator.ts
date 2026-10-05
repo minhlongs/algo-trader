@@ -15,9 +15,8 @@ import {
   GasConfigSchema,
   SlippageModelConfigSchema,
 } from './profitability/profitability-types';
-import { calculateLegFee, calculatePolymarketFee } from './profitability/fee-calculator';
-import { calculateLegGas } from './profitability/gas-calculator';
-import { calculateParametricSlippage, calculateVwapSlippage } from './profitability/slippage-calculator';
+import { calculatePolymarketFee } from './profitability/fee-calculator';
+import { calculateVwapSlippage } from './profitability/slippage-calculator';
 import { evaluateNetProfitabilityCore } from './profitability/profitability-evaluator';
 import type { PolymarketCategory } from '../polymarket/polymarket-fee-calculator';
 

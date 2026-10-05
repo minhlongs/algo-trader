@@ -15,6 +15,7 @@ export interface TieredDrawdownConfig {
   dailyPauseDurationMs: number;
   alertSizingReduction: number;
   reduceSizingReduction: number;
+  persistState?: boolean;
 }
 
 export interface TieredDrawdownState {
