@@ -6,20 +6,48 @@
  * Format a number as USD currency.
  * formatUsd(123.456) → "$123.46"
  * formatUsd(-50) → "-$50.00"
+ * formatUsd(null | undefined | NaN) → "—"
  */
 export function formatUsd(value) {
-  const abs = Math.abs(value);
-  const formatted = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return value < 0 ? `-$${formatted}` : `$${formatted}`;
+  if (value === null || value === undefined) return '—';
+  let num;
+  try {
+    num = typeof value === 'number' ? value : Number(value);
+  } catch {
+    return '—';
+  }
+  if (Number.isNaN(num)) return '—';
+
+  const abs = Math.abs(num);
+  const formatted = abs.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  if (formatted === '0.00') return '$0.00';
+  return num < 0 ? `-$${formatted}` : `$${formatted}`;
 }
+
+export const formatCurrency = formatUsd;
 
 /**
  * Format a decimal as a percentage.
  * formatPct(0.1234) → "12.34%"
+ * formatPct(null | undefined | NaN) → "—"
  */
 export function formatPct(value) {
-  return `${(value * 100).toFixed(2)}%`;
+  if (value === null || value === undefined) return '—';
+  let num;
+  try {
+    num = typeof value === 'number' ? value : Number(value);
+  } catch {
+    return '—';
+  }
+  if (Number.isNaN(num)) return '—';
+
+  return `${(num * 100).toFixed(2)}%`;
 }
+
+export const formatPercent = formatPct;
 
 /**
  * Format P&L with sign and color class name.
@@ -28,11 +56,28 @@ export function formatPct(value) {
  * formatPnl(-12.30) → { text: "-$12.30", className: "cc-pnl--negative" }
  */
 export function formatPnl(value) {
-  if (value > 0) {
-    return { text: `+${formatUsd(value)}`, className: 'cc-pnl--positive' };
+  if (value === null || value === undefined) {
+    return { text: '—', className: 'cc-pnl--zero' };
   }
-  if (value < 0) {
-    return { text: formatUsd(value), className: 'cc-pnl--negative' };
+  let num;
+  try {
+    num = typeof value === 'number' ? value : Number(value);
+  } catch {
+    return { text: '—', className: 'cc-pnl--zero' };
+  }
+  if (Number.isNaN(num)) {
+    return { text: '—', className: 'cc-pnl--zero' };
+  }
+
+  const usd = formatUsd(num);
+  if (usd === '$0.00') {
+    return { text: '$0.00', className: 'cc-pnl--zero' };
+  }
+  if (num > 0) {
+    return { text: `+${usd}`, className: 'cc-pnl--positive' };
+  }
+  if (num < 0) {
+    return { text: usd, className: 'cc-pnl--negative' };
   }
   return { text: '$0.00', className: 'cc-pnl--zero' };
 }
@@ -40,9 +85,18 @@ export function formatPnl(value) {
 /**
  * Format a Brier score to 3 decimal places.
  * formatBrier(0.182) → "0.182"
+ * formatBrier(null | undefined | NaN) → "—"
  */
 export function formatBrier(value) {
-  return value.toFixed(3);
+  if (value === null || value === undefined) return '—';
+  let num;
+  try {
+    num = typeof value === 'number' ? value : Number(value);
+  } catch {
+    return '—';
+  }
+  if (Number.isNaN(num)) return '—';
+  return num.toFixed(3);
 }
 
 /**
@@ -50,7 +104,17 @@ export function formatBrier(value) {
  * timeAgo(Date.now() - 120000) → "2m ago"
  */
 export function timeAgo(timestamp) {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (!timestamp) return '—';
+  let ts;
+  try {
+    ts = typeof timestamp === 'number' ? timestamp : Number(timestamp);
+  } catch {
+    return '—';
+  }
+  if (Number.isNaN(ts) || ts <= 0) return '—';
+
+  const seconds = Math.floor((Date.now() - ts) / 1000);
+  if (seconds < 0) return 'just now';
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;

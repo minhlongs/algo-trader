@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   LiveGuardHandoffCoordinator,
   type LiveOrderHandoffRequest,
@@ -22,14 +22,14 @@ function createOrder(price = 0.50, size = 1000): PolymarketOrder {
   };
 }
 
-function createSignal(ageMs = 50): TradeSignal {
+function createSignal(ageMs = 50, base = Date.now()): TradeSignal {
   return {
     tokenId: '0x-token-alpha',
     side: 'BUY',
     size: 1000,
     price: 0.50,
     confidence: 0.85,
-    timestamp: Date.now() - ageMs,
+    timestamp: base - ageMs,
   };
 }
 
@@ -57,7 +57,7 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
         strategyId: `strat-${state.toLowerCase()}`,
         lifecycleState: state,
         signal: createSignal(20),
-        order: createOrder(0.50, 1000),
+        order: createOrder(),
       };
 
       const verdict = coordinator.evaluateLiveOrder(request);
@@ -72,7 +72,7 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
         strategyId: 'strat-promoted',
         lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
         signal: createSignal(20),
-        order: createOrder(0.50, 1000),
+        order: createOrder(),
       };
 
       const verdict = coordinator.evaluateLiveOrder(request);
@@ -101,7 +101,7 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
         strategyId: 'strat-adversarial',
         lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
         signal: createSignal(20),
-        order: createOrder(0.50, 1000),
+        order: createOrder(),
       };
 
       for (let i = 0; i < 10; i++) {
@@ -113,18 +113,11 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
 
   describe('Area 2: Signal TTL Boundary', () => {
     it('approves signal with age 199ms (within 200ms TTL)', () => {
-      const now = Date.now();
       const request: LiveOrderHandoffRequest = {
         strategyId: 'strat-ttl',
         lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-        signal: {
-          tokenId: '0x-token-alpha',
-          side: 'BUY',
-          size: 1000,
-          price: 0.50,
-          timestamp: now - 199,
-        },
-        order: createOrder(0.50, 1000),
+        signal: createSignal(199),
+        order: createOrder(),
       };
 
       const verdict = coordinator.evaluateLiveOrder(request);
@@ -134,60 +127,52 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
     });
 
     it('rejects signal with age 201ms (exceeds 200ms TTL) with STALE / TTL expired reason', () => {
-      const now = Date.now();
-      const request: LiveOrderHandoffRequest = {
-        strategyId: 'strat-ttl',
-        lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-        signal: {
-          tokenId: '0x-token-alpha',
-          side: 'BUY',
-          size: 1000,
-          price: 0.50,
-          timestamp: now - 201,
-        },
-        order: createOrder(0.50, 1000),
-      };
+      const fixedNow = 1_700_000_000_000;
+      vi.spyOn(Date, 'now').mockReturnValue(fixedNow);
+      try {
+        const request: LiveOrderHandoffRequest = {
+          strategyId: 'strat-ttl',
+          lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
+          signal: createSignal(201, fixedNow),
+          order: createOrder(),
+        };
 
-      const verdict = coordinator.evaluateLiveOrder(request);
+        const verdict = coordinator.evaluateLiveOrder(request);
 
-      expect(verdict.approved).toBe(false);
-      expect(verdict.checks.signalTtlOk).toBe(false);
-      expect(verdict.reason).toMatch(/STALE_SIGNAL.*exceeds TTL of 200ms/i);
+        expect(verdict.approved).toBe(false);
+        expect(verdict.checks.signalTtlOk).toBe(false);
+        expect(verdict.reason).toMatch(/STALE_SIGNAL.*exceeds TTL of 200ms/i);
+      } finally {
+        vi.restoreAllMocks();
+      }
     });
 
     it('approves signal on exact boundary age 200ms (inclusive limit: age <= 200ms)', () => {
-      const now = Date.now();
-      const request: LiveOrderHandoffRequest = {
-        strategyId: 'strat-ttl',
-        lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-        signal: {
-          tokenId: '0x-token-alpha',
-          side: 'BUY',
-          size: 1000,
-          price: 0.50,
-          timestamp: now - 200,
-        },
-        order: createOrder(0.50, 1000),
-      };
+      const fixedNow = 1_700_000_000_000;
+      vi.spyOn(Date, 'now').mockReturnValue(fixedNow);
+      try {
+        const request: LiveOrderHandoffRequest = {
+          strategyId: 'strat-ttl',
+          lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
+          signal: createSignal(200, fixedNow),
+          order: createOrder(),
+        };
 
-      const verdict = coordinator.evaluateLiveOrder(request);
+        const verdict = coordinator.evaluateLiveOrder(request);
 
-      expect(verdict.approved).toBe(true);
-      expect(verdict.checks.signalTtlOk).toBe(true);
+        expect(verdict.approved).toBe(true);
+        expect(verdict.checks.signalTtlOk).toBe(true);
+      } finally {
+        vi.restoreAllMocks();
+      }
     });
 
     it('rejects missing or zero timestamp signal as stale', () => {
       const request: LiveOrderHandoffRequest = {
         strategyId: 'strat-ttl',
         lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-        signal: {
-          tokenId: '0x-token-alpha',
-          side: 'BUY',
-          size: 1000,
-          price: 0.50,
-          timestamp: 0,
-        },
-        order: createOrder(0.50, 1000),
+        signal: { ...createSignal(50), timestamp: 0 },
+        order: createOrder(),
       };
 
       const verdict = coordinator.evaluateLiveOrder(request);

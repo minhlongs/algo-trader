@@ -114,9 +114,14 @@
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
     }
-    .sys-item { background: var(--accent); border-radius: 6px; padding: 14px; }
+    .sys-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px;
+    }
     .sys-item .sys-label { font-size: 0.75rem; color: var(--text-dim); }
-    .sys-item .sys-value { font-size: 1.2rem; font-weight: 600; margin-top: 4px; }
+    .sys-item .sys-value { font-size: 1.2rem; font-weight: 600; margin-top: 4px; color: var(--text); }
 
     /* Footer */
     footer {
@@ -131,14 +136,17 @@
     .refresh-info { font-size: 0.8rem; color: var(--text-dim); }
     #refreshBtn {
       background: var(--accent);
-      color: var(--text);
-      border: 1px solid var(--border);
+      color: #000;
+      border: 1px solid var(--accent);
       padding: 6px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.2s, opacity 0.2s;
     }
-    #refreshBtn:hover { background: var(--success); color: #000; }
+    #refreshBtn:hover { background: #00b894; color: #000; }
+    #refreshBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* Connection lost banner */
     .conn-lost {
@@ -298,8 +306,13 @@
     }
 
     function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     function badgeClass(status) {
@@ -336,13 +349,14 @@
 
     // ── Fetch & Render ────────────────────────────────────────
     async function fetchStrategyHealth() {
-      var data = await safeFetch('/api/strategies/health');
+      var data = await safeFetch('/dashboard/api/strategy-status');
+      if (!data) data = await safeFetch('/dashboard/api/strategies');
       if (!data) return;
 
       // Summary cards
-      var strategies = data.strategies || [];
-      var active = strategies.filter(function(s) { return s.status === 'running'; }).length;
-      var errors = strategies.filter(function(s) { return s.status === 'error'; }).length;
+      var strategies = Array.isArray(data) ? data : (data.strategies || []);
+      var active = strategies.filter(function(s) { return s.status === 'running' || s.running === true; }).length;
+      var errors = strategies.filter(function(s) { return s.status === 'error' || s.state === 'error'; }).length;
       document.getElementById('totalStrategies').textContent = strategies.length;
       document.getElementById('activeStrategies').textContent = active;
       document.getElementById('errorStrategies').textContent = errors;
@@ -350,7 +364,7 @@
       // Overall health
       var dot = document.getElementById('healthDot');
       var txt = document.getElementById('healthText');
-      if (data.overall) {
+      if (data.overall != null ? data.overall : (errors === 0)) {
         dot.className = 'health-dot ok';
         txt.textContent = 'Healthy';
       } else if (errors > 0) {
@@ -373,23 +387,28 @@
         return;
       }
       tbody.innerHTML = strategies.map(function(s) {
+        var sName = s.name || s.strategyId || 'Strategy';
+        var isRunning = s.status === 'running' || s.running === true;
+        var sStatus = isRunning ? 'running' : (s.status || s.state || 'stopped');
+        var stratId = s.strategyId || s.id || s.name || '';
         return '<tr>' +
-          '<td>' + escapeHtml(s.name) + '</td>' +
-          '<td><span class="badge ' + badgeClass(s.status) + '">' + escapeHtml(s.status) + '</span></td>' +
-          '<td class="mono">' + s.tickCount + '</td>' +
-          '<td class="mono">' + s.errorCount + '</td>' +
+          '<td>' + escapeHtml(sName) + '</td>' +
+          '<td><span class="badge ' + badgeClass(sStatus) + '">' + escapeHtml(sStatus) + '</span></td>' +
+          '<td class="mono">' + (s.tickCount != null ? s.tickCount : '--') + '</td>' +
+          '<td class="mono">' + (s.errorCount != null ? s.errorCount : 0) + '</td>' +
           '<td>' + relativeTime(s.lastTick) + '</td>' +
-          '<td><button onclick="toggleStrategy(\'' + escapeHtml(s.strategyId) + '\',\'' + s.status + '\')" class="badge ' + (s.status === 'running' ? 'badge-error' : 'badge-running') + '" style="cursor:pointer;border:none;">' + (s.status === 'running' ? 'Stop' : 'Start') + '</button></td>' +
+          '<td><button onclick="toggleStrategy(\'' + escapeHtml(stratId) + '\',\'' + sStatus + '\', this)" class="badge ' + (isRunning ? 'badge-error' : 'badge-running') + '" style="cursor:pointer;border:none;">' + (isRunning ? 'Stop' : 'Start') + '</button></td>' +
           '</tr>';
       }).join('');
     }
 
     async function fetchTrades() {
-      var data = await safeFetch('/api/trades');
+      var data = await safeFetch('/dashboard/api/trades');
       if (!data) return;
 
-      var trades = (data.trades || []).slice(-20).reverse();
-      document.getElementById('totalTrades').textContent = data.count || 0;
+      var rawTrades = Array.isArray(data) ? data : (data.trades || []);
+      var trades = rawTrades.slice(-20).reverse();
+      document.getElementById('totalTrades').textContent = data.count || rawTrades.length || 0;
 
       var tbody = document.getElementById('tradesTableBody');
       if (trades.length === 0) {
@@ -399,22 +418,27 @@
       tbody.innerHTML = trades.map(function(t) {
         return '<tr>' +
           '<td>' + relativeTime(t.timestamp || t.time) + '</td>' +
-          '<td>' + escapeHtml(t.strategy) + '</td>' +
+          '<td>' + escapeHtml(t.strategy || t.marketId || '--') + '</td>' +
           '<td>' + escapeHtml(t.side || '--') + '</td>' +
-          '<td class="mono">' + (t.fillSize || t.size || '--') + '</td>' +
+          '<td class="mono">' + (t.fillSize || t.size || t.amount || '--') + '</td>' +
           '<td class="mono">' + (t.fillPrice || t.price || '--') + '</td>' +
-          '<td class="mono">' + (t.fees || '--') + '</td>' +
+          '<td class="mono">' + (t.fees != null ? t.fees : (t.pnl != null ? t.pnl : '--')) + '</td>' +
           '</tr>';
       }).join('');
     }
 
     async function fetchPnl() {
-      var data = await safeFetch('/api/pnl');
+      var data = await safeFetch('/dashboard/api/portfolio');
+      if (!data) data = await safeFetch('/dashboard/api/summary');
       if (!data) return;
 
       var html = '<div style="padding: 12px 0;">';
       html += '<div class="sys-grid">';
-      html += '<div class="sys-item"><div class="sys-label">Total Fees</div><div class="sys-value mono">' + (data.totalFees || '0') + '</div></div>';
+      var realized = data.totalRealizedPnl != null ? data.totalRealizedPnl : (data.realizedPnl || 0);
+      var unrealized = data.unrealizedPnl != null ? data.unrealizedPnl : 0;
+      var totalPnl = realized + unrealized;
+      var pnlSign = totalPnl >= 0 ? '+$' : '-$';
+      html += '<div class="sys-item"><div class="sys-label">Net P&amp;L</div><div class="sys-value mono" style="color:' + (totalPnl >= 0 ? 'var(--success)' : 'var(--error)') + '">' + pnlSign + Math.abs(totalPnl).toFixed(2) + '</div></div>';
       html += '<div class="sys-item"><div class="sys-label">Trade Count</div><div class="sys-value mono">' + (data.tradeCount || 0) + '</div></div>';
       html += '</div>';
 
@@ -432,35 +456,50 @@
     }
 
     async function fetchStatus() {
-      var data = await safeFetch('/api/status');
+      var data = await safeFetch('/dashboard/api/system-health');
       if (!data) return;
 
-      document.getElementById('pipelineStatus').textContent = data.running ? 'Running' : 'Stopped';
-      document.getElementById('pipelineStatus').style.color = data.running ? 'var(--success)' : 'var(--text-dim)';
-      if (data.uptime) {
-        document.getElementById('uptime').textContent = formatUptime(data.uptime);
+      document.getElementById('pipelineStatus').textContent = 'Running';
+      document.getElementById('pipelineStatus').style.color = 'var(--success)';
+      if (data.uptimeFormatted) {
+        document.getElementById('uptime').textContent = data.uptimeFormatted;
+      } else if (data.uptime) {
+        document.getElementById('uptime').textContent = formatUptime(data.uptime * 1000);
       }
 
-      // Also fetch enriched health for db/ws/version
-      var health = await safeFetch('/api/health');
-      if (health) {
-        document.getElementById('dbStatus').textContent = health.db || '--';
-        document.getElementById('dbStatus').style.color = health.db === 'ok' ? 'var(--success)' : 'var(--error)';
-        document.getElementById('wsClients').textContent = health.wsClients != null ? health.wsClients : '--';
-        document.getElementById('appVersion').textContent = health.version || '--';
-      }
+      var dbComp = (data.components || []).find(function(c) { return c.name === 'Database'; });
+      var dbHealthy = dbComp ? dbComp.status === 'healthy' : true;
+      document.getElementById('dbStatus').textContent = dbHealthy ? 'ok' : 'error';
+      document.getElementById('dbStatus').style.color = dbHealthy ? 'var(--success)' : 'var(--error)';
+      document.getElementById('wsClients').textContent = '--';
+      document.getElementById('appVersion').textContent = data.node || '1.0.0';
     }
 
-    async function toggleStrategy(id, currentStatus) {
-      var endpoint = currentStatus === 'running' ? '/api/strategy/stop' : '/api/strategy/start';
+    async function toggleStrategy(id, currentStatus, btn) {
+      var isRunning = currentStatus === 'running';
+      var endpoint = isRunning ? '/dashboard/api/strategy/stop' : '/dashboard/api/strategy/start';
+      var origText = btn ? btn.textContent : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = isRunning ? 'Stopping…' : 'Starting…';
+        btn.style.opacity = '0.6';
+      }
       try {
         await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ strategyId: id })
+          body: JSON.stringify({ strategyId: id, action: isRunning ? 'stop' : 'start' })
         });
         await fetchStrategyHealth();
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        await fetchStrategyHealth();
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = origText;
+          btn.style.opacity = '1';
+        }
+      }
     }
 
     // ── Auto-refresh ──────────────────────────────────────────
@@ -469,15 +508,27 @@
     var refreshTimer = null;
 
     async function refreshAll() {
+      var btn = document.getElementById('refreshBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Refreshing…';
+      }
       countdown = REFRESH_INTERVAL;
       document.getElementById('refreshCountdown').textContent = countdown;
-      await Promise.all([
-        fetchStrategyHealth(),
-        fetchTrades(),
-        fetchPnl(),
-        fetchStatus()
-      ]);
-      document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+      try {
+        await Promise.all([
+          fetchStrategyHealth(),
+          fetchTrades(),
+          fetchPnl(),
+          fetchStatus()
+        ]);
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Refresh Now';
+        }
+      }
     }
 
     function tick() {

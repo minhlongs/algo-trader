@@ -26,6 +26,12 @@
       --surface2: #1A2030;
     }
 
+    html, body {
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+    }
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -48,6 +54,8 @@
       position: sticky;
       top: 0;
       z-index: 100;
+      width: 100%;
+      box-sizing: border-box;
     }
     .topbar-left { display: flex; align-items: center; gap: 12px; }
     .logo {
@@ -66,12 +74,28 @@
       letter-spacing: 0.5px;
       text-transform: uppercase;
     }
-    .topbar-right { display: flex; align-items: center; gap: 16px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
     .ws-indicator { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
     .ws-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background 0.3s; }
     .ws-dot.live { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
     .ws-dot.error { background: var(--loss); }
     #last-updated { font-size: 11px; color: var(--muted); }
+    .btn-topbar-refresh {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .btn-topbar-refresh:hover { color: var(--accent); border-color: var(--accent); }
+    .btn-topbar-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-logout {
       font-size: 12px;
       padding: 6px 14px;
@@ -242,17 +266,175 @@
     .admin-stat .stat-val { font-size: 24px; font-weight: 700; margin-top: 4px; }
     .admin-stat .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
+    /* ── Interactive & Feedback Controls ── */
+    .chart-filter-group { display: flex; gap: 4px; align-items: center; }
+    .chart-filter-btn {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chart-filter-btn:hover { color: var(--text); border-color: var(--text); }
+    .chart-filter-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    .strat-btn {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      min-width: 62px;
+      text-align: center;
+      border: 1px solid var(--border);
+      background: transparent;
+      transition: all 0.2s;
+    }
+    .strat-btn.start {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .strat-btn.start:hover {
+      background: rgba(0, 212, 170, 0.1);
+    }
+    .strat-btn.stop {
+      border-color: var(--loss);
+      color: var(--loss);
+    }
+    .strat-btn.stop:hover {
+      background: rgba(255, 71, 87, 0.1);
+    }
+    .strat-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .system-health-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      padding: 12px 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      align-items: center;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .sys-version-tag {
+      margin-left: auto;
+    }
+
+    #toast-notification {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--card);
+      border: 1px solid var(--loss);
+      color: var(--text);
+      padding: 10px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      font-size: 12px;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    #toast-notification.success {
+      border-color: var(--accent);
+    }
+
     /* ── Responsive ── */
     @media (max-width: 1100px) {
       .two-col { grid-template-columns: 1fr; }
       .summary-grid { grid-template-columns: repeat(2, 1fr); }
     }
+    @media (max-width: 768px) {
+      .admin-stat-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+      .tier-breakdown-grid {
+        flex-wrap: wrap !important;
+      }
+    }
     @media (max-width: 600px) {
-      main { padding: 16px; gap: 16px; }
-      .topbar { padding: 0 16px; }
-      .summary-grid { grid-template-columns: 1fr 1fr; }
-      .card-value { font-size: 22px; }
-      .btn-logout span { display: none; }
+      main { padding: 12px; gap: 16px; }
+      .topbar { padding: 0 12px; gap: 8px; }
+      .topbar-left { gap: 8px; }
+      .topbar-right { gap: 8px; }
+      #user-email,
+      #last-updated,
+      #ws-status {
+        display: none !important;
+      }
+      .btn-logout {
+        padding: 4px 8px;
+      }
+      .btn-logout span {
+        display: none;
+      }
+      .btn-logout::after {
+        content: '⎋';
+        font-size: 14px;
+      }
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+      .summary-card {
+        padding: 14px;
+      }
+      .card-value {
+        font-size: 20px;
+      }
+      .card-sub {
+        font-size: 11px;
+        word-break: break-word;
+      }
+      .system-health-bar {
+        padding: 10px 14px;
+        gap: 8px;
+      }
+      .sys-version-tag {
+        margin-left: 0;
+        width: 100%;
+      }
+    }
+    @media (max-width: 480px) {
+      .admin-stat-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+    }
+    @media (max-width: 440px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .summary-card {
+        padding: 12px;
+      }
+      .card-value {
+        font-size: 22px;
+      }
+      .card-sub {
+        font-size: 11px;
+      }
+      .panel {
+        padding: 14px;
+      }
     }
   </style>
 </head>
@@ -307,6 +489,10 @@
     </div>
     <span id="last-updated"></span>
     <span id="user-email" style="font-size:12px;color:var(--muted)"></span>
+    <button class="btn-topbar-refresh" id="btn-global-refresh" onclick="handleGlobalRefresh()" title="Refresh Dashboard">
+      <span id="global-refresh-icon">↻</span>
+      <span id="global-refresh-text">Refresh</span>
+    </button>
     <button onclick="showSettings()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px" title="Backend URL Settings">&#9881;</button>
     <!-- Admin/User nav toggle (hidden until role known) -->
     <div id="nav-tabs" style="display:none;gap:4px">
@@ -318,7 +504,7 @@
 </header>
 
 <!-- Backend URL Settings Modal -->
-<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:none;align-items:center;justify-content:center">
+<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center">
   <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:420px;max-width:90vw">
     <h3 style="font-size:14px;margin-bottom:16px">Backend Connection</h3>
     <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Enter your bot's backend URL. Leave empty if dashboard is served by the bot itself.</p>
@@ -366,9 +552,17 @@
   <!-- P&L Chart + 4-Layer Strategy -->
   <div class="two-col">
     <div class="panel">
-      <div class="panel-title">
-        <span>P&amp;L Over Time</span>
-        <span id="chart-range" style="font-size:11px;font-weight:400;color:var(--muted)"></span>
+      <div class="panel-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span>P&amp;L Over Time</span>
+          <span id="chart-range" style="font-size:11px;font-weight:400;color:var(--muted)"></span>
+        </div>
+        <div class="chart-filter-group" id="chart-filters">
+          <button class="chart-filter-btn" data-range="1D" onclick="setChartFilter('1D')">1D</button>
+          <button class="chart-filter-btn" data-range="1W" onclick="setChartFilter('1W')">1W</button>
+          <button class="chart-filter-btn" data-range="1M" onclick="setChartFilter('1M')">1M</button>
+          <button class="chart-filter-btn active" data-range="ALL" onclick="setChartFilter('ALL')">ALL</button>
+        </div>
       </div>
       <svg id="pnl-chart-svg" viewBox="0 0 800 180" preserveAspectRatio="none"></svg>
       <div class="chart-empty" id="chart-empty" style="display:none">No equity data yet</div>
@@ -415,7 +609,7 @@
   <div class="panel">
     <div class="panel-title">
       <span>AI Brain — DeepSeek R1 Predictions</span>
-      <button onclick="fetchAiBrain()" style="font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer">Refresh</button>
+      <button id="ai-refresh-btn" onclick="fetchAiBrain()" style="font-size:11px;padding:4px 10px;border-radius:4px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;transition:all 0.2s">Refresh</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:16px">
       <div style="flex:1;background:var(--surface2);border-radius:6px;padding:8px 12px;text-align:center">
@@ -438,11 +632,11 @@
   </div>
 
   <!-- System Health -->
-  <div style="display:flex;gap:16px;padding:12px 20px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted);align-items:center">
+  <div class="system-health-bar">
     <span>⏱ Uptime: <span id="sys-uptime" style="color:var(--text)">—</span></span>
     <span>💾 Memory: <span id="sys-mem" style="color:var(--text)">—</span></span>
     <span>📡 Node: <span id="sys-node" style="color:var(--text)">—</span></span>
-    <span style="margin-left:auto">CashClaw v1.0 — ÂM DƯƠNG Engine</span>
+    <span class="sys-version-tag">CashClaw v1.0 — ÂM DƯƠNG Engine</span>
   </div>
 
 </div><!-- end #trading-view -->
@@ -473,16 +667,16 @@
   <!-- Tier breakdown -->
   <div class="panel">
     <div class="panel-title"><span>Tier Breakdown</span></div>
-    <div style="display:flex;gap:16px">
-      <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
+    <div class="tier-breakdown-grid" style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1 1 120px;min-width:120px;text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
         <div style="font-size:11px;color:var(--muted)">FREE</div>
         <div style="font-size:20px;font-weight:700" id="admin-tier-free">0</div>
       </div>
-      <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
+      <div style="flex:1 1 120px;min-width:120px;text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
         <div style="font-size:11px;color:var(--muted)">PRO ($29/mo)</div>
         <div style="font-size:20px;font-weight:700;color:var(--blue)" id="admin-tier-pro">0</div>
       </div>
-      <div style="flex:1;text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
+      <div style="flex:1 1 120px;min-width:120px;text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
         <div style="font-size:11px;color:var(--muted)">ENTERPRISE ($199/mo)</div>
         <div style="font-size:20px;font-weight:700;color:var(--purple)" id="admin-tier-enterprise">0</div>
       </div>
@@ -523,6 +717,7 @@
 
 </div><!-- end #admin-view -->
 
+<div id="toast-notification"></div>
 </main>
 
 <script>
@@ -556,6 +751,52 @@ function applyAuthState() {
   }
 }
 
+// ── Safe numerical & currency formatting ──────────────────────────────────
+function formatMoney(val) {
+  if (val == null) return '—';
+  const num = typeof val === 'number' ? val : Number(val);
+  if (Number.isNaN(num)) return '—';
+  return Math.abs(num).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatCurrency(val, withPlusSign = false) {
+  if (val == null) return '—';
+  const num = typeof val === 'number' ? val : Number(val);
+  if (Number.isNaN(num)) return '—';
+  const formatted = Math.abs(num).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  if (num === 0 || formatted === '0.00') return '$0.00';
+  if (num < 0) return `-$${formatted}`;
+  return withPlusSign ? `+$${formatted}` : `$${formatted}`;
+}
+
+function formatPnl(val) {
+  return formatCurrency(val, true);
+}
+
+function formatPercent(val, decimals = 1) {
+  if (val == null) return '—';
+  const num = typeof val === 'number' ? val : Number(val);
+  if (Number.isNaN(num)) return '—';
+  return (num * 100).toFixed(decimals) + '%';
+}
+
+function showToast(message, isSuccess = false) {
+  const toast = document.getElementById('toast-notification');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.className = isSuccess ? 'success' : '';
+  toast.style.display = 'flex';
+  setTimeout(() => {
+    if (toast) toast.style.display = 'none';
+  }, 4000);
+}
+
 // ── XSS Prevention ─────────────────────────────────────────────────────────
 function escapeHtml(str) {
   if (str == null) return '';
@@ -581,10 +822,17 @@ function showAuthTab(mode) {
 
 async function handleAuth(e) {
   e.preventDefault();
-  const email    = document.getElementById('auth-email').value;
-  const password = document.getElementById('auth-password').value;
-  const errEl    = document.getElementById('auth-error');
+  const email     = document.getElementById('auth-email').value;
+  const password  = document.getElementById('auth-password').value;
+  const errEl     = document.getElementById('auth-error');
+  const submitBtn = document.getElementById('auth-submit');
+  const origText  = submitBtn ? submitBtn.textContent : '';
   errEl.style.display = 'none';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = authMode === 'login' ? 'Logging in…' : 'Registering…';
+    submitBtn.style.opacity = '0.6';
+  }
   try {
     const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/register';
     const res = await fetch(apiUrl(endpoint), {
@@ -603,6 +851,36 @@ async function handleAuth(e) {
   } catch (err) {
     errEl.textContent = err.message;
     errEl.style.display = 'block';
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = origText;
+      submitBtn.style.opacity = '1';
+    }
+  }
+}
+
+async function handleGlobalRefresh() {
+  const btn = document.getElementById('btn-global-refresh');
+  const icon = document.getElementById('global-refresh-icon');
+  const text = document.getElementById('global-refresh-text');
+  if (btn) {
+    btn.disabled = true;
+    if (text) text.textContent = 'Refreshing…';
+  }
+  try {
+    await Promise.allSettled([
+      fetchAll(),
+      fetchAiBrain(),
+      fetchHealth(),
+      (currentView === 'admin' ? fetchAdminData() : Promise.resolve())
+    ]);
+    showToast('Dashboard updated', true);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      if (text) text.textContent = 'Refresh';
+    }
   }
 }
 
@@ -674,33 +952,98 @@ async function fetchPortfolio() {
 }
 
 function applyPortfolio(d) {
-  const pnl = (d.totalRealizedPnl || 0) + (d.unrealizedPnl || 0);
+  if (!d) return;
+  const realized = (d.totalRealizedPnl != null && !Number.isNaN(Number(d.totalRealizedPnl)))
+    ? Number(d.totalRealizedPnl)
+    : 0;
+  const unrealized = (d.unrealizedPnl != null && !Number.isNaN(Number(d.unrealizedPnl)))
+    ? Number(d.unrealizedPnl)
+    : 0;
+  const pnl = realized + unrealized;
   const pnlEl = document.getElementById('card-pnl');
-  pnlEl.textContent = '$' + pnl.toFixed(2);
+  pnlEl.textContent = formatPnl(pnl);
   pnlEl.className   = 'card-value ' + (pnl >= 0 ? 'positive' : 'negative');
-  document.getElementById('card-pnl-sub').textContent =
-    `$${(d.totalRealizedPnl||0).toFixed(2)} realized / $${(d.unrealizedPnl||0).toFixed(2)} unrealized`;
 
-  const wr = d.winRate != null ? (d.winRate * 100).toFixed(1) + '%' : '—';
-  document.getElementById('card-winrate').textContent   = wr;
-  document.getElementById('card-trades-sub').textContent = (d.tradeCount || 0) + ' trades';
-  document.getElementById('card-balance').textContent   = d.accountBalance != null ? '$' + Number(d.accountBalance).toFixed(2) : '—';
-  document.getElementById('card-drawdown-sub').textContent = d.drawdown != null ? 'drawdown ' + (d.drawdown * 100).toFixed(1) + '%' : 'drawdown —';
+  const realStr = formatCurrency(realized, true);
+  const unrealStr = formatCurrency(unrealized, true);
+  document.getElementById('card-pnl-sub').textContent = `${realStr} realized / ${unrealStr} unrealized`;
+
+  const wr = (d.winRate != null && !Number.isNaN(Number(d.winRate)))
+    ? formatPercent(d.winRate, 1)
+    : '—';
+  document.getElementById('card-winrate').textContent = wr;
+
+  const tradeCount = (d.tradeCount != null && !Number.isNaN(Number(d.tradeCount)))
+    ? Number(d.tradeCount).toLocaleString('en-US')
+    : '0';
+  document.getElementById('card-trades-sub').textContent = `${tradeCount} trades`;
+
+  const balance = (d.accountBalance != null && !Number.isNaN(Number(d.accountBalance)))
+    ? formatCurrency(d.accountBalance, false)
+    : '—';
+  document.getElementById('card-balance').textContent = balance;
+
+  const dd = (d.drawdown != null && !Number.isNaN(Number(d.drawdown)))
+    ? formatPercent(d.drawdown, 1)
+    : null;
+  document.getElementById('card-drawdown-sub').textContent = dd ? `drawdown ${dd}` : 'drawdown —';
 }
+
+let rawEquityPoints = [];
+let currentChartRange = 'ALL';
 
 async function fetchEquityCurve() {
   try {
     const res = await fetch(apiUrl('/dashboard/api/equity-curve'), { headers: authHeaders() });
     if (!res.ok) return;
     const pts = await res.json();
-    renderEquityCurve(pts);
+    rawEquityPoints = Array.isArray(pts) ? pts : [];
+    applyChartFilter();
   } catch (_) {}
+}
+
+function setChartFilter(range) {
+  currentChartRange = range;
+  const btns = document.querySelectorAll('.chart-filter-btn');
+  btns.forEach(b => {
+    if (b.dataset.range === range) b.classList.add('active');
+    else b.classList.remove('active');
+  });
+  applyChartFilter();
+}
+
+function applyChartFilter() {
+  if (!rawEquityPoints || rawEquityPoints.length === 0) {
+    renderEquityCurve([]);
+    return;
+  }
+  const now = Date.now();
+  let filtered = rawEquityPoints.filter(p => p && p.equity != null && !Number.isNaN(Number(p.equity)));
+
+  if (currentChartRange === '1D') {
+    const cutoff = now - 86400000;
+    filtered = filtered.filter(p => !p.timestamp || new Date(p.timestamp).getTime() >= cutoff);
+  } else if (currentChartRange === '1W') {
+    const cutoff = now - 7 * 86400000;
+    filtered = filtered.filter(p => !p.timestamp || new Date(p.timestamp).getTime() >= cutoff);
+  } else if (currentChartRange === '1M') {
+    const cutoff = now - 30 * 86400000;
+    filtered = filtered.filter(p => !p.timestamp || new Date(p.timestamp).getTime() >= cutoff);
+  }
+
+  // If filter narrowed to fewer than 2 points, fallback to all valid points
+  if (filtered.length < 2 && rawEquityPoints.length >= 2) {
+    filtered = rawEquityPoints.filter(p => p && p.equity != null && !Number.isNaN(Number(p.equity)));
+  }
+
+  renderEquityCurve(filtered);
 }
 
 function renderEquityCurve(pts) {
   const svg   = document.getElementById('pnl-chart-svg');
   const empty = document.getElementById('chart-empty');
-  if (!pts || pts.length < 2) {
+  const validPts = (pts || []).filter(p => p && p.equity != null && !Number.isNaN(Number(p.equity)));
+  if (validPts.length < 2) {
     svg.style.display   = 'none';
     empty.style.display = 'flex';
     return;
@@ -709,16 +1052,16 @@ function renderEquityCurve(pts) {
   empty.style.display = 'none';
 
   const W = 800, H = 180, pad = 10;
-  const equities = pts.map(p => p.equity);
+  const equities = validPts.map(p => Number(p.equity));
   const minE = Math.min(...equities);
   const maxE = Math.max(...equities);
   const range = maxE - minE || 1;
 
-  const toX = i  => pad + (i / (pts.length - 1)) * (W - pad * 2);
+  const toX = i  => pad + (i / (validPts.length - 1)) * (W - pad * 2);
   const toY = eq => H - pad - ((eq - minE) / range) * (H - pad * 2);
 
-  const coords = pts.map((p, i) => `${toX(i)},${toY(p.equity)}`).join(' ');
-  const fillCoords = `${toX(0)},${H} ` + coords + ` ${toX(pts.length - 1)},${H}`;
+  const coords = validPts.map((p, i) => `${toX(i)},${toY(Number(p.equity))}`).join(' ');
+  const fillCoords = `${toX(0)},${H} ` + coords + ` ${toX(validPts.length - 1)},${H}`;
 
   const accent = '#00d4aa';
   svg.innerHTML = `
@@ -732,8 +1075,8 @@ function renderEquityCurve(pts) {
     <polyline points="${coords}" fill="none" stroke="${accent}" stroke-width="1.5"/>`;
 
   // range label
-  const first = new Date(pts[0].timestamp).toLocaleDateString();
-  const last  = new Date(pts[pts.length-1].timestamp).toLocaleDateString();
+  const first = validPts[0].timestamp ? new Date(validPts[0].timestamp).toLocaleDateString() : 'Start';
+  const last  = validPts[validPts.length-1].timestamp ? new Date(validPts[validPts.length-1].timestamp).toLocaleDateString() : 'Now';
   document.getElementById('chart-range').textContent = `${first} → ${last}`;
 }
 
@@ -754,18 +1097,20 @@ function renderPositions(positions) {
     return;
   }
   list.innerHTML = positions.map(p => {
-    const pnl      = p.unrealizedPnl || 0;
+    const pnl      = (p.unrealizedPnl != null && !Number.isNaN(Number(p.unrealizedPnl))) ? Number(p.unrealizedPnl) : 0;
     const pnlClass = pnl >= 0 ? 'positive' : 'negative';
     const sideClass= (p.side || '').toLowerCase() === 'long' ? 'long' : 'short';
+    const entryPrice = p.entryPrice != null ? Number(p.entryPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '0.00';
+    const size = p.size != null ? Number(p.size).toLocaleString('en-US', { maximumFractionDigits: 4 }) : '0';
     return `
       <div class="position-row">
         <div>
           <div class="pos-market">${escapeHtml(p.marketId || '—')}</div>
-          <div class="pos-prices">Entry $${Number(p.entryPrice||0).toFixed(4)} · Size ${p.size||0}</div>
+          <div class="pos-prices">Entry $${entryPrice} · Size ${size}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="pos-side ${sideClass}">${p.side||'—'}</span>
-          <div class="pos-pnl ${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</div>
+          <span class="pos-side ${sideClass}">${escapeHtml(p.side || '—')}</span>
+          <div class="pos-pnl ${pnlClass}">${formatPnl(pnl)}</div>
         </div>
       </div>`;
   }).join('');
@@ -790,18 +1135,21 @@ function renderTrades(trades) {
   }
   empty.style.display = 'none';
   tbody.innerHTML = trades.map(t => {
-    const pnl     = t.pnl != null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl).toFixed(2) : '—';
-    const pnlCls  = t.pnl != null ? (t.pnl >= 0 ? 'positive' : 'negative') : '';
+    const pnlNum = t.pnl != null && !Number.isNaN(Number(t.pnl)) ? Number(t.pnl) : null;
+    const pnlStr = pnlNum != null ? formatPnl(pnlNum) : '—';
+    const pnlCls = pnlNum != null ? (pnlNum >= 0 ? 'positive' : 'negative') : '';
     const sideClass = (t.side||'').toLowerCase() === 'buy' ? 'side-buy' : 'side-sell';
     const ts = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '—';
+    const fillPrice = t.fillPrice != null ? '$' + Number(t.fillPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—';
+    const amount = t.amount != null ? Number(t.amount).toLocaleString('en-US', { maximumFractionDigits: 4 }) : '—';
     return `<tr>
       <td>${ts}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.marketId||'—')}</td>
-      <td class="${sideClass}">${t.side||'—'}</td>
-      <td style="font-family:monospace">${t.amount||'—'}</td>
-      <td style="font-family:monospace">$${Number(t.fillPrice||0).toFixed(4)}</td>
-      <td class="${pnlCls}" style="font-family:monospace">${pnl}</td>
-      <td style="color:var(--muted)">${t.strategy||'—'}</td>
+      <td class="${sideClass}">${escapeHtml(t.side||'—')}</td>
+      <td style="font-family:monospace">${amount}</td>
+      <td style="font-family:monospace">${fillPrice}</td>
+      <td class="${pnlCls}" style="font-family:monospace">${pnlStr}</td>
+      <td style="color:var(--muted)">${escapeHtml(t.strategy||'—')}</td>
     </tr>`;
   }).join('');
 }
@@ -829,7 +1177,7 @@ function applyLayers(strategies) {
   for (const layer of allLayers) {
     const strat   = (strategies || []).find(s => s.name === layer.key || (s.name||'').includes(layer.key));
     const running = strat?.running ?? false;
-    const state   = strat?.state ?? 'stopped';
+    const state   = running ? 'running' : (strat?.state ?? 'stopped');
 
     const div = document.createElement('div');
     div.className = 'strategy-row';
@@ -842,8 +1190,13 @@ function applyLayers(strategies) {
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:${running ? 'var(--accent)' : 'var(--muted)'}">${state}</span>
+        <span style="font-size:11px;color:${running ? 'var(--accent)' : 'var(--muted)'}">${escapeHtml(state)}</span>
         <div style="width:8px;height:8px;border-radius:50%;background:${running ? 'var(--accent)' : 'var(--muted)'}"></div>
+        <button class="strat-btn ${running ? 'stop' : 'start'}"
+          data-strategy="${layer.key}"
+          onclick="toggleStrategyLayer(this, '${layer.key}', ${running})">
+          ${running ? 'Stop' : 'Start'}
+        </button>
       </div>`;
     list.appendChild(div);
   }
@@ -862,8 +1215,41 @@ function applyLayers(strategies) {
   }
 }
 
+async function toggleStrategyLayer(btn, strategyKey, currentlyRunning) {
+  const origText = btn.textContent.trim();
+  btn.disabled = true;
+  btn.textContent = currentlyRunning ? 'Stopping…' : 'Starting…';
+  btn.style.opacity = '0.6';
+
+  try {
+    const action = currentlyRunning ? 'stop' : 'start';
+    const res = await fetch(apiUrl('/dashboard/api/strategy/' + action), {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strategy: strategyKey, action })
+    });
+    if (!res.ok) {
+      throw new Error(`Server returned ${res.status}`);
+    }
+    showToast(`Layer ${strategyKey} ${action}ed successfully`, true);
+    await fetchStrategyStatus();
+  } catch (err) {
+    showToast(`Failed to ${currentlyRunning ? 'stop' : 'start'} ${strategyKey}: ${err.message || 'Error'}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+    btn.style.opacity = '1';
+  }
+}
+
 // ── AI Brain ─────────────────────────────────────────────────────────────
 async function fetchAiBrain() {
+  const btn = document.getElementById('ai-refresh-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing…';
+    btn.style.opacity = '0.6';
+  }
   try {
     const res = await fetch(apiUrl('/dashboard/api/ai-insights'), { headers: authHeaders() });
     if (!res.ok) return;
@@ -892,7 +1278,7 @@ async function fetchAiBrain() {
       const confPct   = ((s.confidence || 0) * 100).toFixed(0);
       return `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid ${edgeColor}">
-          <span style="color:${actionColor};font-weight:700;text-transform:uppercase;font-size:11px;width:32px">${s.action||'—'}</span>
+          <span style="color:${actionColor};font-weight:700;text-transform:uppercase;font-size:11px;width:32px">${escapeHtml(s.action||'—')}</span>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.market||s.description||'—')}</div>
             <div style="font-size:11px;color:var(--muted)">AI: ${((s.ourProb||0)*100).toFixed(0)}% | Mkt: ${((s.marketProb||0)*100).toFixed(0)}% | Conf: ${confPct}%</div>
@@ -903,8 +1289,19 @@ async function fetchAiBrain() {
           </div>
         </div>`;
     }).join('');
-  } catch (err) {
-    console.warn('AI brain fetch error:', err);
+  } catch (_err) {
+    // Silent recovery with UI health status update — zero console.warn (Rule H4)
+    const healthEl = document.getElementById('ai-health');
+    if (healthEl) {
+      healthEl.textContent = 'degraded';
+      healthEl.style.color = 'var(--warning)';
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Refresh';
+      btn.style.opacity = '1';
+    }
   }
 }
 
@@ -925,20 +1322,23 @@ async function fetchHealth() {
 function prependTrade(t) {
   const tbody = document.getElementById('trades-tbody');
   const empty = document.getElementById('trades-empty');
-  empty.style.display = 'none';
-  const pnl    = t.pnl != null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl).toFixed(2) : '—';
-  const pnlCls = t.pnl != null ? (t.pnl >= 0 ? 'positive' : 'negative') : '';
+  if (empty) empty.style.display = 'none';
+  const pnlNum = t.pnl != null && !Number.isNaN(Number(t.pnl)) ? Number(t.pnl) : null;
+  const pnlStr = pnlNum != null ? formatPnl(pnlNum) : '—';
+  const pnlCls = pnlNum != null ? (pnlNum >= 0 ? 'positive' : 'negative') : '';
   const sideCls = (t.side||'').toLowerCase() === 'buy' ? 'side-buy' : 'side-sell';
   const ts     = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '—';
+  const fillPrice = t.fillPrice != null ? '$' + Number(t.fillPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—';
+  const amount = t.amount != null ? Number(t.amount).toLocaleString('en-US', { maximumFractionDigits: 4 }) : '—';
   const row = document.createElement('tr');
   row.innerHTML = `
     <td>${ts}</td>
     <td>${escapeHtml(t.marketId||'—')}</td>
-    <td class="${sideCls}">${t.side||'—'}</td>
-    <td style="font-family:monospace">${t.amount||'—'}</td>
-    <td style="font-family:monospace">$${Number(t.fillPrice||0).toFixed(4)}</td>
-    <td class="${pnlCls}" style="font-family:monospace">${pnl}</td>
-    <td style="color:var(--muted)">${t.strategy||'—'}</td>`;
+    <td class="${sideCls}">${escapeHtml(t.side||'—')}</td>
+    <td style="font-family:monospace">${amount}</td>
+    <td style="font-family:monospace">${fillPrice}</td>
+    <td class="${pnlCls}" style="font-family:monospace">${pnlStr}</td>
+    <td style="color:var(--muted)">${escapeHtml(t.strategy||'—')}</td>`;
   tbody.prepend(row);
   // trim to 30 rows
   while (tbody.rows.length > 30) tbody.deleteRow(tbody.rows.length - 1);
@@ -1008,35 +1408,58 @@ function renderAdminUsers(users) {
       <td style="color:var(--muted)">${date}</td>
       <td style="font-family:monospace;font-size:11px;color:var(--muted)">${escapeHtml(u.apiKeyPrefix || '—')}</td>
       <td style="display:flex;gap:4px">
-        <select onchange="adminUpgradeTier(this.dataset.userId,this.value)" data-user-id="${escapeHtml(u.id)}" style="font-size:11px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px">
+        <select onchange="adminUpgradeTier(this.dataset.userId, this.value, this)" data-user-id="${escapeHtml(u.id)}" style="font-size:11px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px">
           <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
           <option value="pro" ${u.tier==='pro'?'selected':''}>Pro</option>
           <option value="enterprise" ${u.tier==='enterprise'?'selected':''}>Enterprise</option>
         </select>
-        ${u.role !== 'admin' ? `<button class="admin-btn danger" onclick="adminBanUser(this.dataset.userId,this.dataset.userEmail)" data-user-id="${escapeHtml(u.id)}" data-user-email="${escapeHtml(u.email)}">Ban</button>` : ''}
+        ${u.role !== 'admin' ? `<button class="admin-btn danger" onclick="adminBanUser(this.dataset.userId, this.dataset.userEmail, this)" data-user-id="${escapeHtml(u.id)}" data-user-email="${escapeHtml(u.email)}">Ban</button>` : ''}
       </td>
     </tr>`;
   }).join('');
 }
 
-async function adminUpgradeTier(userId, tier) {
+async function adminUpgradeTier(userId, tier, selectEl) {
+  if (selectEl) selectEl.disabled = true;
   try {
-    await fetch(apiUrl('/dashboard/api/admin/users/' + userId + '/upgrade'), {
+    const res = await fetch(apiUrl('/dashboard/api/admin/users/' + userId + '/upgrade'), {
       method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ tier })
     });
-    fetchAdminUsers();
-  } catch (_) {}
+    if (!res.ok) throw new Error('Upgrade failed');
+    showToast(`User upgraded to ${tier}`, true);
+    await fetchAdminUsers();
+  } catch (err) {
+    showToast(err.message || 'Upgrade failed');
+  } finally {
+    if (selectEl) selectEl.disabled = false;
+  }
 }
 
-async function adminBanUser(userId, email) {
+async function adminBanUser(userId, email, btnEl) {
   if (!confirm('Ban user ' + email + '? This will deactivate their account.')) return;
+  const origText = btnEl ? btnEl.textContent : '';
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = 'Banning…';
+    btnEl.style.opacity = '0.6';
+  }
   try {
-    await fetch(apiUrl('/dashboard/api/admin/users/' + userId + '/ban'), {
+    const res = await fetch(apiUrl('/dashboard/api/admin/users/' + userId + '/ban'), {
       method: 'POST', headers: authHeaders()
     });
-    fetchAdminUsers();
-  } catch (_) {}
+    if (!res.ok) throw new Error('Ban failed');
+    showToast(`User ${email} banned`, true);
+    await fetchAdminUsers();
+  } catch (err) {
+    showToast(err.message || 'Ban failed');
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = origText;
+      btnEl.style.opacity = '1';
+    }
+  }
 }
 
 async function fetchAdminRevenue() {

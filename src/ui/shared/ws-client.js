@@ -1,9 +1,11 @@
-/* CashClaw — WebSocket client with auto-reconnect, exponential backoff, and message replay
- * Updates all .cc-ws-dot elements automatically based on connection state.
- * Supports sequence-based message replay on reconnect.
- */
+/* CashClaw — WebSocket client with auto-reconnect, backoff, and message replay */
 
-import { logger } from '../../shared/utils/logger';
+/** Browser-safe logger interface with fallback */
+const logger = {
+  error: (...args) => { if (typeof console !== 'undefined' && console.error) console.error(...args); },
+  warn: (...args) => { if (typeof console !== 'undefined' && console.warn) console.warn(...args); },
+  info: (...args) => { if (typeof console !== 'undefined' && console.info) console.info(...args); },
+};
 
 const STATUS_CLASSES = {
   connected: 'cc-ws-dot--live',
@@ -18,20 +20,15 @@ let reconnectAttempts = 0;
 let reconnectTimer = null;
 let staleTimer = null;
 const handlers = {};
-
-/** Per-channel last received sequence number */
 const lastSeqs = {};
-
-/** Dedup set: "channel:seq" -> true, prevents processing same message twice */
 const seenSeqs = new Set();
 const SEEN_SEQ_MAX = 5000;
-
 const MAX_RECONNECT_DELAY = 30000;
 const STALE_TIMEOUT = 60000;
 const WS_URL_KEY = 'cc-ws-url';
 
-/** Update all .cc-ws-dot elements to reflect current status */
 function updateDots() {
+  if (typeof document === 'undefined') return;
   const dots = document.querySelectorAll('.cc-ws-dot');
   dots.forEach((dot) => {
     Object.values(STATUS_CLASSES).forEach((cls) => dot.classList.remove(cls));
@@ -39,7 +36,6 @@ function updateDots() {
   });
 }
 
-/** Reset the stale timer — called on every message received */
 function resetStaleTimer() {
   clearTimeout(staleTimer);
   staleTimer = setTimeout(() => {
@@ -48,7 +44,6 @@ function resetStaleTimer() {
   }, STALE_TIMEOUT);
 }
 
-/** Emit event to registered handlers */
 function emit(event, data) {
   const list = handlers[event];
   if (!list) return;
@@ -57,53 +52,35 @@ function emit(event, data) {
   }
 }
 
-/** Track lastSeq for a channel from an incoming message */
 function trackSeq(data) {
   if (data && data.channel && typeof data.seq === 'number') {
     lastSeqs[data.channel] = data.seq;
-    // Evict old dedup entries to prevent memory leak
-    const key = `${data.channel}:${data.seq}`;
-    seenSeqs.add(key);
+    seenSeqs.add(`${data.channel}:${data.seq}`);
     if (seenSeqs.size > SEEN_SEQ_MAX) {
       const iter = seenSeqs.values();
-      for (let i = 0; i < 1000; i++) {
-        seenSeqs.delete(iter.next().value);
-      }
+      for (let i = 0; i < 1000; i++) seenSeqs.delete(iter.next().value);
     }
   }
 }
 
-/** Check if a message was already seen (dedup) */
 function isDuplicate(data) {
   if (data && data.channel && typeof data.seq === 'number') {
-    const key = `${data.channel}:${data.seq}`;
-    if (seenSeqs.has(key)) return true;
+    return seenSeqs.has(`${data.channel}:${data.seq}`);
   }
   return false;
 }
 
-/** Send reconnect message with lastSeqs to server */
 function sendReconnect() {
   if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({
-      type: 'reconnect',
-      lastSeqs: { ...lastSeqs },
-    }));
+    ws.send(JSON.stringify({ type: 'reconnect', lastSeqs: { ...lastSeqs } }));
   }
 }
 
-/**
- * Connect to a WebSocket URL.
- * Automatically reconnects on disconnect with exponential backoff.
- * On reconnect, sends lastSeqs for message replay.
- */
 export function connect(url) {
   if (ws) {
     ws.close();
     ws = null;
   }
-
-  // Persist URL for reconnect
   if (url) {
     try { sessionStorage.setItem(WS_URL_KEY, url); } catch { /* ignore */ }
   } else {
@@ -115,7 +92,7 @@ export function connect(url) {
 
   try {
     ws = new WebSocket(url);
-  } catch (e) {
+  } catch {
     status = 'error';
     updateDots();
     scheduleReconnect(url);
@@ -128,33 +105,22 @@ export function connect(url) {
     updateDots();
     resetStaleTimer();
     emit('open', null);
-
-    // Send replay request if we have previous sequence numbers
-    if (Object.keys(lastSeqs).length > 0) {
-      sendReconnect();
-    }
+    if (Object.keys(lastSeqs).length > 0) sendReconnect();
   };
 
   ws.onmessage = (event) => {
     resetStaleTimer();
     try {
       const data = JSON.parse(event.data);
-      const type = data.type || 'message';
-
-      // Handle replay protocol messages
+      const type = data.type;
       if (type === 'replay_start' || type === 'replay_end' || type === 'snapshot_required') {
         emit(type, data);
         emit('message', data);
         return;
       }
-
-      // Deduplicate: skip already-seen messages
       if (isDuplicate(data)) return;
-
-      // Track sequence number
       trackSeq(data);
-
-      emit(type, data);
+      if (type && type !== 'message') emit(type, data);
       emit('message', data);
     } catch {
       emit('message', event.data);
@@ -175,37 +141,27 @@ export function connect(url) {
   };
 }
 
-/** Schedule a reconnect with exponential backoff + jitter */
 function scheduleReconnect(url) {
   clearTimeout(reconnectTimer);
   const base = Math.min(1000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
   const jitter = base * 0.2 * Math.random();
-  const delay = base + jitter;
   reconnectAttempts++;
-  reconnectTimer = setTimeout(() => connect(url), delay);
+  reconnectTimer = setTimeout(() => connect(url), base + jitter);
 }
 
-/**
- * Register a handler for an event type.
- * Built-in events: 'open', 'close', 'message', 'replay_start', 'replay_end', 'snapshot_required'
- * Custom events: matched by parsed JSON `type` field
- */
 export function on(event, handler) {
   if (!handlers[event]) handlers[event] = [];
   handlers[event].push(handler);
 }
 
-/** Get current connection status */
 export function getStatus() {
   return status;
 }
 
-/** Get last received sequence number for a channel */
 export function getLastSeq(channel) {
   return lastSeqs[channel] || 0;
 }
 
-/** Force a full reconnect (clears lastSeqs, triggers snapshot_required on server) */
 export function forceReconnect() {
   Object.keys(lastSeqs).forEach((ch) => { delete lastSeqs[ch]; });
   seenSeqs.clear();
