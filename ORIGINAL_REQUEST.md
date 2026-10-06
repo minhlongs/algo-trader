@@ -176,3 +176,74 @@ Provide institutional real-time observability and performance reporting:
 - [ ] Zero `console.log` / `console.error` calls introduced (use structured logger utility).
 - [ ] 100% test pass rate across all new and existing test suites.
 - [ ] All new source files modularized ($\le 200$ visual LOC) and strictly compliant with repo standards.
+
+
+## 2026-10-06T15:14:39Z
+
+Execute a deep, end-to-end UI/UX overhaul across the entire algo-trader platform, elevating the Web Trading Dashboard (React 19 SPA & HTML views), Public Marketing/Landing pages, and Terminal/CLI TUI into a cohesive, high-performance, and accessible institutional trading experience.
+
+Working directory: /Users/macbook/algo-trader
+Integrity mode: development
+
+## Requirements
+
+### R1. Web Trading Dashboard & Route Polish
+- Audit and refine all primary dashboard pages (`DashboardPage`, `MarketplacePage`, `BacktestsPage`, `ReportingPage`, `SettingsPage`, `SubscriberOverviewPage`):
+  - Ensure zero horizontal page overflow on viewports from 375px mobile to ultra-wide displays.
+  - Implement comprehensive loading, disabled, error, and success feedback states on all interactive controls (strategy toggles, API keys submission, date filters).
+  - Format all financial metrics (PnL, Equity, Drawdown, Win Rate, Volume) with locale-aware thousand commas, explicit currency symbols (`$`), and standardized color badges (+green/-red).
+  - Ensure Lightweight Charts and Recharts containers resize dynamically without overflowing flex/grid bounds.
+
+### R2. Public Landing & Onboarding Experience
+- Elevate the public-facing pages (`LandingSoloQuant`, `ManifestoPage`, `MethodologyPage`, `PricingPage`, `EnterprisePage`, `LoginPage`):
+  - Align visual hierarchy with institutional quant aesthetics (typography contrast, subtle borders, glow effects, clean spacing).
+  - Polish the BYOK (Bring Your Own Key) setup wizard and tier activation flow with clear validation feedback and inline assistance.
+
+### R3. Terminal / CLI TUI Usability & Diagnostics
+- Modernize the desk terminal interface (`src/desk/cli`, `src/desk/commands/quickstart.ts`, `setup-wizard.ts`, `desk-status.ts`):
+  - Standardize ANSI color palettes, box-drawing characters, alignment grids, and status icons across command outputs.
+  - Sanitize all error paths with user-friendly diagnostics and remediation hints, eliminating raw unhandled traces (Rule H4).
+
+### R4. Design System Tokens & WCAG AA Compliance
+- Harmonize shared design tokens (`src/ui/design-system/tokens.css`, `components.css`, `dashboard/src/index.css`):
+  - Unify CSS variables for primary/secondary surfaces, accent colors, text contrast, spacing scales, and border radiuses.
+  - Verify WCAG AA contrast ratio compliance (>= 4.5:1) for all text and interactive states in both dark and light modes.
+  - Ensure keyboard navigability (focus-visible rings) and smooth state transitions on all reusable buttons, cards, inputs, and modals.
+
+### R5. Repository Quality Ratchet & Hard Rules Compliance
+- Strictly adhere to non-negotiable repository hard rules (H1–H11):
+  - Zero `:any` types in production code (Rule H11).
+  - `bun run typecheck` passes with 0 errors.
+  - `bun run build` passes with 0 errors.
+  - `bun run lint` passes with 0 errors and <= 100 warnings.
+  - `node scripts/check-quality-baseline.mjs --quality` reports 100% PASS.
+  - Full test suite passes without regressions (`bun test`).
+
+## Acceptance Criteria
+
+### Web Dashboard & Visual Polish
+- [ ] All views render cleanly with zero horizontal scrollbars on viewports >= 375px.
+- [ ] Financial metrics format cleanly with thousand separators and zero `NaN`, `undefined`, or unstyled raw values.
+- [ ] Every interactive button, filter, or form input displays distinct loading and disabled states when actions are in-flight.
+- [ ] Responsive chart containers automatically resize without clipping or overflowing their grid boundaries.
+
+### Public Landing & Onboarding
+- [ ] Hero, feature grid, and pricing cards render consistently across mobile, tablet, and desktop viewports.
+- [ ] Public navigation and mobile hamburger menu open, close, and transition smoothly with keyboard and touch support.
+
+### CLI / TUI Aesthetics
+- [ ] Desk status and quickstart commands display structured tabular/box outputs with high-contrast ANSI colors.
+- [ ] Setup wizard guides operators step-by-step with interactive validation and clear recovery prompts upon invalid input.
+- [ ] All CLI commands complete cleanly with sanitized error summaries and zero uncaught exception traces.
+
+### Design System & Accessibility
+- [ ] All primary text and interactive elements satisfy WCAG AA contrast ratio (>= 4.5:1).
+- [ ] Design token variables in `tokens.css` are used consistently without conflicting hardcoded hex values.
+- [ ] Focus rings and active states are clearly visible for keyboard navigation.
+
+### Quality Ratchet & Gates
+- [ ] `bun run build` passes with exit code 0.
+- [ ] `bun run typecheck` passes with 0 errors.
+- [ ] `bun run lint` passes with 0 errors and <= 100 warnings.
+- [ ] `node scripts/check-quality-baseline.mjs --quality` reports 100% PASS (0 `:any` types).
+- [ ] Full test suite passes (`bun test`).
