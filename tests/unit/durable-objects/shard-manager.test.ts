@@ -84,6 +84,7 @@ function makeState(overrides: Record<string, unknown> = {}): any {
       delete: vi.fn(async (key: string) => { storage.delete(key); }),
       list: vi.fn(async () => Array.from(storage.keys())),
     },
+    blockConcurrencyWhile: vi.fn(async (cb: () => Promise<void>) => cb()),
     ...overrides,
   };
 }
@@ -133,9 +134,10 @@ describe('ShardManager', () => {
       expect(mockLogger.info).toHaveBeenCalledWith('[ShardManager] Ring loaded', expect.anything());
     });
 
-    it('creates a new ring when no stored ring exists', async () => {
+    it('creates a new ring when no stored ring exists and blocks concurrency while initializing', async () => {
       const { ShardManager } = await import('../../../src/durable-objects/shard-manager');
       const mgr = new ShardManager(state);
+      expect(state.blockConcurrencyWhile).toHaveBeenCalled();
       await new Promise(r => setTimeout(r, 10));
       expect(mockBuildRing).toHaveBeenCalled();
       expect(mockLogger.info).toHaveBeenCalledWith('[ShardManager] New ring created', expect.anything());

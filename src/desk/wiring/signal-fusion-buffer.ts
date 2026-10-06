@@ -24,6 +24,9 @@ export interface FusionMetadata {
   weightSource: Record<string, 'meta' | 'static'>;
 }
 
+/** Maximum signals in buffer before drop-oldest eviction */
+export const MAX_BUFFER_SIZE = 1000;
+
 /** Ring buffer of recent signals within the fusion window */
 const _signalBuffer: BufferedSignal[] = [];
 
@@ -86,6 +89,9 @@ export function runAdaptiveFusion(
 
 /** Add a signal to the buffer for future fusion with concurrent signals */
 export function bufferSignal(input: SignalInput): void {
+  while (_signalBuffer.length >= MAX_BUFFER_SIZE) {
+    _signalBuffer.shift();
+  }
   _signalBuffer.push({ input, receivedAt: Date.now() });
 }
 

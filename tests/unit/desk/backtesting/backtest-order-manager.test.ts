@@ -136,6 +136,19 @@ describe('BacktestOrderManager', () => {
       expect(trade.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     });
 
+    it('records trade with historical candle timestamp when provided', async () => {
+      const historicalTs = '2024-03-15T12:00:00.000Z';
+      await manager.placeOrder({
+        tokenId: 'token-hist',
+        side: 'buy',
+        price: '0.5',
+        size: '100',
+        timestamp: historicalTs,
+      });
+      const trade = manager.getTrades()[0];
+      expect(trade.timestamp).toBe(historicalTs);
+    });
+
     it('sets position on BUY (long entry)', async () => {
       await manager.placeOrder({ tokenId: 'token-pos', side: 'buy', price: '0.50', size: '100' });
       const positions = (manager as any).positions;

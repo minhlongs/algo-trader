@@ -127,6 +127,19 @@ describe('volatility-surface-arb::computeVolRatio', () => {
   it('returns 1 when both IVs are equal', () => {
     expect(computeVolRatio(3, 3)).toBe(1);
   });
+
+  it('returns 1 when Math.min(ivA, ivB) <= 1e-6 (epsilon guard)', () => {
+    expect(computeVolRatio(0.0000001, 1.5)).toBe(1.0);
+    expect(computeVolRatio(1.5, 1e-7)).toBe(1.0);
+    expect(computeVolRatio(1e-6, 2.0)).toBe(1.0);
+    expect(computeVolRatio(0, 0)).toBe(1.0);
+  });
+
+  it('returns 1 for NaN or non-finite inputs', () => {
+    expect(computeVolRatio(NaN, 1.5)).toBe(1.0);
+    expect(computeVolRatio(1.5, NaN)).toBe(1.0);
+    expect(computeVolRatio(Infinity, 1.5)).toBe(1.0);
+  });
 });
 
 describe('volatility-surface-arb::getVolArbDirection', () => {

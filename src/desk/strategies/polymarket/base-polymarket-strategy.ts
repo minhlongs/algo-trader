@@ -77,12 +77,12 @@ export abstract class BasePolymarketStrategy {
     return this.positions.length;
   }
 
-  protected isOnCooldown(conditionId: string): boolean {
-    return Date.now() < (this.cooldowns.get(conditionId) ?? 0);
+  protected isOnCooldown(conditionId: string, now = Date.now()): boolean {
+    return now < (this.cooldowns.get(conditionId) ?? 0);
   }
 
-  protected setCooldown(conditionId: string): void {
-    this.cooldowns.set(conditionId, Date.now() + this.config.cooldownMs);
+  protected setCooldown(conditionId: string, now = Date.now()): void {
+    this.cooldowns.set(conditionId, now + this.config.cooldownMs);
   }
 
   /** Update cached price from a reactive PRICE_UPDATE event (called by StrategyRunner). */
@@ -121,8 +121,7 @@ export abstract class BasePolymarketStrategy {
    * TP/SL/maxHold math lives in evaluateExitCondition (pure); the custom verdict
    * is resolved HERE via virtual dispatch so subclass overrides keep working.
    */
-  protected async checkExits(): Promise<void> {
-    const now = Date.now();
+  protected async checkExits(now = Date.now()): Promise<void> {
     const toRemove: number[] = [];
 
     for (let i = 0; i < this.positions.length; i++) {

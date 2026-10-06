@@ -11,6 +11,45 @@ import type { LiveOrderManagerCtx, OrderState } from './live-order-manager-types
 import { DEFAULT_POLL_INTERVALS, MAX_POLL_ERRORS } from './live-order-manager-types';
 import { handleFillFor, handleExpiredFor } from './live-order-manager-terminal';
 
+async function checkFillAndReconcile(
+  ctx: LiveOrderManagerCtx,
+  orderId: string,
+  state: OrderState
+): Promise<boolean> {
+  try {
+    const adapter = ctx.adapter as unknown as {
+      getOrder?: (id: string) => Promise<{
+        status?: string;
+        size_matched?: string | number;
+        filled?: number;
+      } | null>;
+    };
+    if (typeof adapter.getOrder === 'function') {
+      const orderInfo = await adapter.getOrder(orderId);
+      if (orderInfo) {
+        const status = orderInfo.status?.toLowerCase();
+        const matched = typeof orderInfo.size_matched === 'number'
+          ? orderInfo.size_matched
+          : typeof orderInfo.size_matched === 'string'
+            ? parseFloat(orderInfo.size_matched)
+            : (orderInfo.filled ?? 0);
+
+        if (status === 'matched' || status === 'filled' || (!isNaN(matched) && matched > 0)) {
+          if (!isNaN(matched) && matched > 0) {
+            state.size = matched;
+          }
+          state.status = 'matched';
+          handleFillFor(ctx, state);
+          return true;
+        }
+      }
+    }
+  } catch (err) {
+    logger.warn(`Failed to interrogate fill status for ${orderId}: ${String(err)}`, 'LiveOrderManager');
+  }
+  return false;
+}
+
 /**
  * Schedule a poll for an order with exponential backoff.
  * If the order has exceeded max lifetime, handle expiration.
@@ -21,7 +60,17 @@ export function schedulePollFor(ctx: LiveOrderManagerCtx, orderId: string): void
 
   const age = Date.now() - state.submittedAt;
   if (age > ctx.maxOrderLifetimeMs) {
-    handleExpiredFor(ctx, orderId);
+    const adapter = ctx.adapter as unknown as { getOrder?: unknown };
+    if (typeof adapter?.getOrder === 'function') {
+      void (async () => {
+        const reconciled = await checkFillAndReconcile(ctx, orderId, state);
+        if (!reconciled && ctx.activeOrders.has(orderId) && !ctx.stopped) {
+          handleExpiredFor(ctx, orderId);
+        }
+      })();
+    } else {
+      handleExpiredFor(ctx, orderId);
+    }
     return;
   }
 
@@ -54,7 +103,10 @@ export async function pollOrderFor(ctx: LiveOrderManagerCtx, orderId: string): P
       // Check age to determine
       const age = Date.now() - state.submittedAt;
       if (age > ctx.maxOrderLifetimeMs) {
-        handleExpiredFor(ctx, orderId);
+        const reconciled = await checkFillAndReconcile(ctx, orderId, state);
+        if (!reconciled) {
+          handleExpiredFor(ctx, orderId);
+        }
       } else {
         // Still polling — might be a CLOB delay
         schedulePollFor(ctx, orderId);

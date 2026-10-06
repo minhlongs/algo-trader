@@ -74,7 +74,7 @@ export function PriceChartLightweight({
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (entry) {
+      if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
         chart.applyOptions({ width: entry.contentRect.width });
       }
     });

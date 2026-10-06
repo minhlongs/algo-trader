@@ -44,9 +44,17 @@ export class StrategyShard {
     this.state = state;
     this.currentEnv = (state as unknown as { env?: Env }).env;
     this.shardId = shardId !== undefined ? shardId : this.extractShardId();
-    this.initialize().catch(error => {
-      logger.error('[StrategyShard] Init failed:', error);
-    });
+    if (typeof this.state.blockConcurrencyWhile === 'function') {
+      this.state.blockConcurrencyWhile(async () => {
+        await this.initialize();
+      }).catch((error: unknown) => {
+        logger.error('[StrategyShard] Init failed:', error);
+      });
+    } else {
+      this.initialize().catch((error: unknown) => {
+        logger.error('[StrategyShard] Init failed:', error);
+      });
+    }
   }
 
   private extractShardId(): number {

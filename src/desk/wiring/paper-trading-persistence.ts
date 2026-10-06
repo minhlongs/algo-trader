@@ -14,6 +14,7 @@ import { query } from '../../db/postgres-client';
 import { reflectOnTrade } from '../intelligence/dual-level-reflection-engine';
 import type { TradeOutcome } from '../intelligence/dual-level-reflection-engine';
 import type { PaperTrade, PaperPortfolio } from './paper-trading-orchestrator';
+import { resetCapitalReservations } from './paper-capital-reservation';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -55,11 +56,13 @@ export function setTradesFile(filePath: string): void {
 /** Reset portfolio to defaults — for test isolation only. */
 export function __resetPortfolioForTests(): void {
   portfolio = createDefaultPortfolio();
+  resetCapitalReservations();
 }
 
 /** Reset portfolio to initial state (for test isolation). */
 export function resetPortfolio(): void {
   portfolio = createDefaultPortfolio();
+  resetCapitalReservations();
 }
 
 // ─── File Persistence ────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import {
 
 export const DEFAULT_TERMINAL_CACHE_CAPACITY = 1000;
 export const DEFAULT_TERMINAL_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+export const DEFAULT_MAX_SLIPPAGE_BPS = 500; // 500 bps = 5%
 
 export interface TerminalCacheEntry {
   readonly order: ExchangeOrderResult;
@@ -35,4 +36,6 @@ export interface PolymarketConnectorOptions {
   terminalCacheCapacity?: number;
   /** TTL of entries in terminal order cache in milliseconds (default: 3_600_000, i.e. 1 hour) */
   terminalCacheTtlMs?: number;
+  /** Max slippage in basis points for market orders without explicit limit price (default: 500 = 5%) */
+  maxSlippageBps?: number;
 }

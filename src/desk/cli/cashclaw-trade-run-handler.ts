@@ -69,11 +69,7 @@ async function runSingleStrategy(opts: {
     const s = runner.getStatus();
     if (s.status !== 'running') { clearInterval(statusInterval); return; }
     type SummaryGetter = { getPositionSummary?: () => { positionCount: number; totalExposure: number; totalRealizedPnl: number } };
-    const summary = (runner as unknown as SummaryGetter).getPositionSummary?.() ?? {
-      positionCount: 0,
-      totalExposure: 0,
-      totalRealizedPnl: 0,
-    };
+    const summary = (runner as unknown as SummaryGetter).getPositionSummary?.() ?? { positionCount: 0, totalExposure: 0, totalRealizedPnl: 0 };
     logger.info(
       `[${new Date().toISOString().slice(11, 19)}] ` +
       `Tick#${s.tickCount} | Orders: ${s.proxyStats.ordersPlaced} | ` +
@@ -106,9 +102,7 @@ async function runMultiStrategy(opts: {
     await multi.stop();
     const status = multi.getStatus();
     logger.info(`\nFinal: ${status.summary.totalTicks} ticks, ${status.summary.totalOrders} orders across ${status.runnerCount} strategies`);
-    for (const r of status.runners) {
-      logger.info(`  ${r.strategy}: ${r.ticks}t / ${r.orders}o`);
-    }
+    for (const r of status.runners) { logger.info(`  ${r.strategy}: ${r.ticks}t / ${r.orders}o`); }
     process.exit(0);
   };
   process.on('SIGINT', shutdown);
@@ -149,6 +143,10 @@ export async function handleTradeRun(opts: {
 
   if (isNaN(capitalUsdc) || capitalUsdc <= 0) {
     logger.error('Error: --capital must be a positive number');
+    process.exit(1);
+  }
+  if (isNaN(tickIntervalMs) || tickIntervalMs < 1000) {
+    logger.error('Error: --interval must be >= 1000ms');
     process.exit(1);
   }
 

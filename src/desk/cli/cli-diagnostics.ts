@@ -3,7 +3,7 @@
  *
  * Catches ZodError, network timeouts, and daemon connectivity failures,
  * producing actionable user-friendly terminal diagnostics without raw stack traces (Rule H4).
- * Also provides standardized currency PnL formatting (-$X.XX vs $-X.XX).
+ * Standardizes currency PnL notation (-$X.XX vs $-X.XX) and masks sensitive credentials (EC-3.1).
  */
 
 import { ZodError } from 'zod';
@@ -12,6 +12,23 @@ import { logger } from '../../shared/utils/logger';
 export interface CliDiagnosticResult {
   title: string;
   messages: string[];
+}
+
+/**
+ * Sanitize error messages to prevent credential leakage (EC-3.1).
+ * Masks hex private keys, Bearer tokens, API keys, and URI credentials.
+ */
+export function sanitizeErrorMessage(msg: string): string {
+  if (!msg || typeof msg !== 'string') return '';
+  return msg
+    // Hex private keys: 0x[a-fA-F0-9]{64} -> 0x1234...cdef
+    .replace(/(?<![a-fA-F0-9])0x[a-fA-F0-9]{64}(?![a-fA-F0-9])/g, (m) => `${m.slice(0, 6)}...${m.slice(-4)}`)
+    // Bearer / JWT tokens: Bearer followed by token string -> Bearer ***
+    .replace(/\bBearer\s+[A-Za-z0-9\-_.]+/gi, 'Bearer ***')
+    // API keys: (sk|pk|ak)_[alphanumeric]{16,} -> sk_1234...cdef
+    .replace(/\b(sk|pk|ak)_[A-Za-z0-9_]{16,}\b/gi, (m) => `${m.slice(0, 7)}...${m.slice(-4)}`)
+    // URI credentials with passwords: scheme://user:password@host -> scheme://user:***@host
+    .replace(/(:\/\/[^:\s@]*):[^@\s]+(@)/g, '$1:***$2');
 }
 
 /**
@@ -32,37 +49,41 @@ export function formatCliDiagnostic(err: unknown): CliDiagnosticResult {
     const zodErr = err as ZodError;
     const messages = zodErr.issues.map((issue) => {
       const field = issue.path.length > 0 ? issue.path.join('.') : 'option';
-      return `  ✖ Invalid --${field}: ${issue.message}`;
+      return sanitizeErrorMessage(`  ✖ Invalid --${field}: ${issue.message}`);
     });
 
-    logger.error('Invalid CLI options provided:');
+    const title = sanitizeErrorMessage('Invalid CLI options');
+    logger.error(sanitizeErrorMessage('Invalid CLI options provided:'));
     for (const msg of messages) {
       logger.error(msg);
     }
-    return { title: 'Invalid CLI options', messages };
+    return { title, messages };
   }
 
   const rawMessage = err instanceof Error ? err.message : String(err ?? 'Unknown error');
+  const safeMessage = sanitizeErrorMessage(rawMessage);
 
   if (rawMessage.includes('ECONNREFUSED')) {
     const messages = [
-      '  ✖ Could not connect to desk daemon (connection refused).',
-      '  → Ensure the desk daemon is active: run `algo-trader desk:auto`',
+      sanitizeErrorMessage('  ✖ Could not connect to desk daemon (connection refused).'),
+      sanitizeErrorMessage('  → Ensure the desk daemon is active: run `algo-trader desk:auto`'),
     ];
+    const title = sanitizeErrorMessage('Desk Daemon Connection Error');
     logger.error('Desk Daemon Connection Error:');
     for (const msg of messages) {
       logger.error(msg);
     }
-    return { title: 'Desk Daemon Connection Error', messages };
+    return { title, messages };
   }
 
-  const messages = [`  ✖ ${rawMessage}`];
-  logger.error(`Command failed: ${rawMessage}`);
-  return { title: 'Command Error', messages };
+  const messages = [`  ✖ ${safeMessage}`];
+  logger.error(sanitizeErrorMessage(`Command failed: ${safeMessage}`));
+  return { title: sanitizeErrorMessage('Command Error'), messages };
 }
 
 export function wrapCliAction<T extends unknown[]>(
   fn: (...args: T) => unknown | Promise<unknown>,
+  cleanup?: () => unknown | Promise<unknown>,
 ): (...args: T) => Promise<void> {
   return async (...args: T) => {
     try {
@@ -70,6 +91,14 @@ export function wrapCliAction<T extends unknown[]>(
     } catch (err) {
       formatCliDiagnostic(err);
       process.exitCode = 1;
+    } finally {
+      if (cleanup) {
+        try {
+          await cleanup();
+        } catch {
+          // Ignore cleanup errors during shutdown drain
+        }
+      }
     }
   };
 }

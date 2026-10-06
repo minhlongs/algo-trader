@@ -267,6 +267,57 @@ describe('Paper Trading Orchestration & Submodules', () => {
 
       expect(getPortfolio().positions).toHaveLength(0);
     });
+
+    it('manages atomic capital reservation across concurrent signals', async () => {
+      // Setup portfolio with $100
+      setPortfolio(createDefaultPortfolio(100));
+
+      let resolveSwarm1: (val: any) => void;
+      const swarmPromise1 = new Promise((resolve) => {
+        resolveSwarm1 = resolve;
+      });
+
+      const swarmSpy = vi.spyOn(signalConsensusSwarm, 'runSwarmConsensus');
+      swarmSpy.mockImplementationOnce(() => swarmPromise1 as any);
+      swarmSpy.mockResolvedValue({ approved: true, confidence: 0.9, votes: [] } as any);
+
+      vi.spyOn(signalValidator, 'validateSignal').mockResolvedValue({
+        valid: true,
+        confidence: 0.85,
+        reasoning: 'Valid',
+      } as any);
+
+      // Launch candidate 1 (hangs in swarm consensus)
+      const p1 = processCandidate(
+        {
+          signalType: 'cross-market-arb',
+          markets: [{ id: 'm-concurrent-1', title: 'Market 1', yesPrice: 0.45, noPrice: 0.55 }],
+          expectedEdge: 0.08,
+          reasoning: 'Signal 1',
+        },
+        1, // maxPositions: 1
+      );
+
+      // Launch candidate 2 immediately while candidate 1 is still running
+      // Candidate 2 should be rejected because reservation count reaches maxPositions (1)
+      await processCandidate(
+        {
+          signalType: 'cross-market-arb',
+          markets: [{ id: 'm-concurrent-2', title: 'Market 2', yesPrice: 0.45, noPrice: 0.55 }],
+          expectedEdge: 0.08,
+          reasoning: 'Signal 2',
+        },
+        1,
+      );
+
+      // Resolve candidate 1
+      resolveSwarm1!({ approved: true, confidence: 0.9, votes: [] });
+      await p1;
+
+      // Only candidate 1 was entered, candidate 2 was blocked by reservation slot
+      expect(getPortfolio().positions).toHaveLength(1);
+      expect(getPortfolio().positions[0].marketId).toBe('m-concurrent-1');
+    });
   });
 
   describe('paper-trading-market-scanner', () => {

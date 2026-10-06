@@ -56,6 +56,19 @@ describe('cashclaw-trade-run-handler', () => {
     expect(logger.error).toHaveBeenCalledWith('Error: --capital must be a positive number');
   });
 
+  it('rejects invalid interval when NaN or < 1000ms with error and exits with code 1 (EC-3.2)', async () => {
+    await expect(
+      handleTradeRun({ strategy: 'strat-a', mode: 'paper', capital: '500', ticks: '5', interval: 'invalid', yes: true }),
+    ).rejects.toThrow('process.exit(1)');
+    expect(logger.error).toHaveBeenCalledWith('Error: --interval must be >= 1000ms');
+
+    vi.clearAllMocks();
+    await expect(
+      handleTradeRun({ strategy: 'strat-a', mode: 'paper', capital: '500', ticks: '5', interval: '500', yes: true }),
+    ).rejects.toThrow('process.exit(1)');
+    expect(logger.error).toHaveBeenCalledWith('Error: --interval must be >= 1000ms');
+  });
+
   it('rejects unknown strategy with error and exits with code 1', async () => {
     await expect(
       handleTradeRun({ strategy: 'unknown', mode: 'paper', capital: '1000', ticks: '5', interval: '1000', yes: true }),

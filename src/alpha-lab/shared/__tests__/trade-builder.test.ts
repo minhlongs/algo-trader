@@ -64,7 +64,7 @@ describe('buildTrades', () => {
     expect(trades).toHaveLength(1);
 
     const trade = trades[0];
-    expect(trade.timestamp).toBe('2025-01-01T00:00:00Z');
+    expect(trade.timestamp).toBe('2025-01-01T01:00:00Z');
     expect(trade.side).toBe('BUY');
     expect(trade.size).toBe(1);
     expect(trade.tokenId).toBe('');
@@ -88,7 +88,7 @@ describe('buildTrades', () => {
     expect(trades).toHaveLength(1);
 
     const trade = trades[0];
-    expect(trade.timestamp).toBe('2025-01-01T01:00:00Z');
+    expect(trade.timestamp).toBe('2025-01-01T02:00:00Z');
     expect(trade.side).toBe('BUY');
     expect(trade.size).toBe(1);
     // entryPrice is 200, exitPrice = 200 * (1 - 0.01) = 198

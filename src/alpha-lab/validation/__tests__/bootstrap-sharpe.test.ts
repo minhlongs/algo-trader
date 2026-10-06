@@ -125,10 +125,9 @@ describe('validation-types primitives', () => {
     expect(percentile([10, 20, 30], 100)).toBe(30);
   });
 
-  it('computes annualizedSharpe with zero variance returns', () => {
+  it('returns 0 for annualizedSharpe with zero/near-zero variance returns (phantom Sharpe guard)', () => {
     const flat = [0.01, 0.01, 0.01];
     const sharpe = annualizedSharpe(flat, 252);
-    expect(Number.isFinite(sharpe)).toBe(true);
-    expect(sharpe).toBeGreaterThan(0);
+    expect(sharpe).toBe(0);
   });
 });

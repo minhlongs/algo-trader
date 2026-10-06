@@ -74,8 +74,12 @@ export function estimateIV(book: RawOrderBook, levels: number): number {
 
 /** Compute volatility ratio between two markets (>= 1). */
 export function computeVolRatio(ivA: number, ivB: number): number {
-  if (ivB <= 0) return 1;
-  return Math.max(ivA, ivB) / Math.min(ivA, ivB);
+  if (isNaN(ivA) || isNaN(ivB)) return 1.0;
+  const min = Math.min(ivA, ivB);
+  if (min <= 1e-6) return 1.0;
+  const max = Math.max(ivA, ivB);
+  const ratio = max / min;
+  return Number.isFinite(ratio) ? ratio : 1.0;
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   formatCliDiagnostic,
   formatCurrencyPnl,
   wrapCliAction,
+  sanitizeErrorMessage,
 } from '../../../../src/desk/cli/cli-diagnostics';
 import { logger } from '../../../../src/shared/utils/logger';
 
@@ -140,5 +141,53 @@ describe('wrapCliAction', () => {
     await wrapped();
     expect(errorSpy).toHaveBeenCalledWith('Command failed: Sync throw');
     expect(process.exitCode).toBe(1);
+  });
+
+  it('invokes cleanup handler after execution (EC-3.3)', async () => {
+    const cleanup = vi.fn().mockResolvedValue(undefined);
+    const action = vi.fn().mockResolvedValue('ok');
+    const wrapped = wrapCliAction(action, cleanup);
+
+    await wrapped();
+    expect(action).toHaveBeenCalled();
+    expect(cleanup).toHaveBeenCalled();
+  });
+});
+
+describe('sanitizeErrorMessage', () => {
+  it('masks hex private keys with prefix and suffix (EC-3.1)', () => {
+    const raw = 'Wallet error: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef failed to sign';
+    expect(sanitizeErrorMessage(raw)).toBe('Wallet error: 0x1234...cdef failed to sign');
+  });
+
+  it('masks Bearer tokens with asterisks (EC-3.1)', () => {
+    const raw = 'Auth error: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xyz returned 401';
+    expect(sanitizeErrorMessage(raw)).toBe('Auth error: Bearer *** returned 401');
+  });
+
+  it('masks API keys with sk, pk, and ak prefixes (EC-3.1)', () => {
+    const raw = 'Failed keys: sk_live_123456789012345678, pk_test_abcdef1234567890, ak_prod_987654321012345678';
+    const clean = sanitizeErrorMessage(raw);
+    expect(clean).toBe('Failed keys: sk_live...5678, pk_test...7890, ak_prod...5678');
+    expect(clean).not.toContain('123456789012345678');
+  });
+
+  it('masks URI credentials with passwords (EC-3.1)', () => {
+    const raw = 'Connection failed: postgres://admin:superSecretPass123@db.internal:5432/core';
+    expect(sanitizeErrorMessage(raw)).toBe('Connection failed: postgres://admin:***@db.internal:5432/core');
+  });
+
+  it('masks credentials when formatting CLI diagnostics (EC-3.1)', () => {
+    const errorSpy = vi.spyOn(logger, 'error');
+    const secretErr = new Error('Secret leakage: Bearer secret-tok-12345678 for 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef');
+    const result = formatCliDiagnostic(secretErr);
+
+    expect(result.messages[0]).toBe('  ✖ Secret leakage: Bearer *** for 0x1234...cdef');
+    expect(errorSpy).toHaveBeenCalledWith('Command failed: Secret leakage: Bearer *** for 0x1234...cdef');
+  });
+
+  it('handles empty or non-string errors safely', () => {
+    expect(sanitizeErrorMessage('')).toBe('');
+    expect(sanitizeErrorMessage(null as unknown as string)).toBe('');
   });
 });

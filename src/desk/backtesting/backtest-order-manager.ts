@@ -26,6 +26,7 @@ export class BacktestOrderManager implements OrderManager {
     price: string | number;
     size: string | number;
     orderType?: 'GTC' | 'GTD' | 'FOK' | 'IOC';
+    timestamp?: string;
   }): Promise<{ id: string }> {
     const side = params.side === 'buy' ? 'BUY' : 'SELL';
     const price = parseFloat(String(params.price));
@@ -33,7 +34,7 @@ export class BacktestOrderManager implements OrderManager {
     const pnl = this.computePnl(params.tokenId, side, price, size);
 
     const trade: BacktestTrade = {
-      timestamp: new Date().toISOString(),
+      timestamp: params.timestamp ?? new Date().toISOString(),
       tokenId: params.tokenId,
       side,
       price,

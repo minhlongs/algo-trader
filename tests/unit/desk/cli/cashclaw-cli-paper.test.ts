@@ -65,6 +65,16 @@ describe('cashclaw-cli-paper', () => {
     await program.parseAsync(['node', 'test', 'paper', '--interval', '2000']);
     expect(logger.error).toHaveBeenCalledWith('Error: --interval must be >= 5000ms');
     expect(exitSpy).toHaveBeenCalledWith(1);
+
+    vi.clearAllMocks();
+    await program.parseAsync(['node', 'test', 'paper', '--max-positions', '-1']);
+    expect(logger.error).toHaveBeenCalledWith('Error: --max-positions must be a positive number');
+    expect(exitSpy).toHaveBeenCalledWith(1);
+
+    vi.clearAllMocks();
+    await program.parseAsync(['node', 'test', 'paper', '--max-positions', 'invalid']);
+    expect(logger.error).toHaveBeenCalledWith('Error: --max-positions must be a positive number');
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 
   it('status prints empty message when no portfolio file exists', async () => {

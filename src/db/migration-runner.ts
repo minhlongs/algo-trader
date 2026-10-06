@@ -28,9 +28,14 @@ import * as migration037 from '../shared/db/migrations/037-add-newsletter-prefer
 import * as migration055 from '../shared/db/migrations/055-add-blog-page-views';
 import { getDialect, parseAndRewriteSql } from './migration-sql-dialect';
 import { executeMigrationDown } from './migration-down-handlers';
+import {
+  rollbackMigration as executeRollbackMigration,
+  rollbackLastMigration as executeRollbackLastMigration,
+} from './migration-rollback';
 
 export { getDialect, parseAndRewriteSql } from './migration-sql-dialect';
 export { executeMigrationDown } from './migration-down-handlers';
+export { executeRollbackMigration, executeRollbackLastMigration };
 
 // Migration interface
 interface Migration {
@@ -71,7 +76,6 @@ export const MIGRATIONS: Migration[] = [
   migration019,
   migration020,
   createSqlMigration('021_create_tenant_audit_logs.sql', '021_create_tenant_audit_logs', 'Create Tenant Audit Logs Table'),
-  createSqlMigration('021_tenant_credentials.sql', '021_tenant_credentials', 'Tenant Credentials Table'),
   createSqlMigration('022_dna_journal.sql', '022_dna_journal', 'DNA engine multi-TF consensus journal'),
   createSqlMigration('023_dna_engine_state.sql', '023_dna_engine_state', 'DNA engine state persistence'),
   createSqlMigration('024_create_referral_tables.sql', '024_create_referral_tables', 'Referral tables'),
@@ -168,4 +172,18 @@ export async function runMigrations(): Promise<void> {
     logger.error('[Migrations] Migration runner error:', { error: err });
     throw err;
   }
+}
+
+/**
+ * Roll back a specific applied migration by ID.
+ */
+export async function rollbackMigration(id: string): Promise<void> {
+  return executeRollbackMigration(id, MIGRATIONS);
+}
+
+/**
+ * Roll back the most recently applied migration.
+ */
+export async function rollbackLastMigration(): Promise<string | null> {
+  return executeRollbackLastMigration(MIGRATIONS);
 }
