@@ -343,6 +343,65 @@ describe('qwen strategy reviews queued + signals loop runs', () => {
   });
 });
 
+describe('lazy-init reuse branches', () => {
+  it('exercises already initialized branch for all metrics by calling them a second time', () => {
+    for (let i = 0; i < 2; i++) {
+      mod.recordDataGap('binance', 'BTCUSDT', 5);
+      mod.recordGapDetectionDuration('binance', 'BTCUSDT', 0.5);
+      mod.setExpectedCandles('p', 'BTCUSDT', '1m', 100);
+      mod.setReceivedCandles('p', 'BTCUSDT', '1h', 50);
+      mod.recordOutlierEvent('BTCUSDT', 'zscore', 'high');
+      mod.recordOutlierZScore('BTCUSDT', 't', 3.5);
+      mod.recordFailoverEvent('binance', 'okx', 'timeout');
+      mod.setCircuitBreakerState('binance', true);
+      mod.setCircuitBreakerStateProvider('okx', true);
+      mod.recordSlaCompliance('binance', 'premium', true);
+      mod.setProviderHealthScore('binance', 0.9, 0.85);
+      mod.setProviderAvailability('binance', 0, true);
+      mod.setProviderErrorRate('binance', 0, 0.02);
+      mod.recordQueueWaitTime('main', 'high', 2.5);
+      mod.setJobsActive('main', 'low', 3);
+      mod.recordJobCompleted('main', 'success');
+      mod.recordApiRequest('GET', '/api/health', '200');
+      mod.recordApiError('POST', '/api/trade');
+      mod.recordApiRequestDuration('GET', '/api/health', 5000);
+      mod.recordTrade('BTC-USD', 'binance', 'buy', 100);
+      mod.recordTrade('ETH-USD', 'okx', 'sell', -50);
+      mod.setDailyPnlUsd(1000);
+      mod.setWinRatePercent(75);
+      mod.recordExternalApiLatency('openrouter', '/api/chat', 'us-east-1', 1.5);
+
+      mod.setQwenKillSwitch(true);
+      mod.setQwenDrawdownAutoDisabled(true);
+      mod.recordQwenSignal('price', 'matched');
+      mod.recordQwenStrategyReview('approved');
+      mod.recordQwenAdminKillAction('manual_disable');
+      mod.setQwenPaperPnlPct(-5.2);
+      mod.setQwenPaperGateDaysRemaining(30);
+      mod.setQwenSignalsLoopLastRunTs(1700000000);
+      mod.recordQwenSignalsLoopJournalWriteError();
+      mod.setQwenStrategyReviewBacklogSize(5);
+      mod.setQwenStrategyReviewOldestPendingAgeSec(3600);
+      mod.setMemoryRssBytes(500000000);
+      mod.setMemoryHeapBytes(200000000);
+      mod.setMemoryMetrics(100, 50);
+      mod.recordMemoryPressureEvent('high');
+      mod.recordCacheEviction('orderbook');
+      mod.setCompressionRatio(2.5);
+      mod.recordShardLatency('shard-1', 'order_place', 0.3);
+      mod.setCandleCompleteness('BTCUSDT', 'p', '1m', 95);
+      mod.recordDataGapsTotal('BTCUSDT', 'binance');
+      mod.setStrategyActive('momentum', true);
+      mod.recordCompressionRatio('gzip', 1000, 500);
+      mod.recordCompressionRatio('gzip', 1000, 0);
+      mod.recordQwenStrategyReviewsQueued('manual_review');
+      mod.recordQwenSignalsLoopRun('proceed');
+    }
+
+    expect(counterInstance.inc).toHaveBeenCalled();
+  });
+});
+
 describe('lazy-init re-exports', () => {
   it('exports the register', () => {
     expect(mod.register).toBe(getRegistryInstanceRef());

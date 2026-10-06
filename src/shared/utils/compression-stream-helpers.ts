@@ -65,11 +65,11 @@ export async function decompressBufferData(
   }
 
   try {
-    const ds = new DecompressionStream(algorithm as any);
+    const ds = new DecompressionStream(algorithm as 'gzip' | 'deflate');
     const writer = ds.writable.getWriter();
     const reader = ds.readable.getReader();
 
-    writer.write(buffer as any);
+    writer.write(buffer as unknown as BufferSource);
     writer.close();
 
     const chunks: Uint8Array[] = [];

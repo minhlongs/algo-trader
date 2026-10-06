@@ -53,7 +53,7 @@ marketplaceStrategyManagementRouter.patch('/:id', requireTier('FREE'), async (re
     const updated = await marketplaceService.updateStrategy(id, parsed.data);
 
     await auditService.log(tenantId, 'api_call' as AuditEventType, {
-      tier: (req as any).user?.tier,
+      tier: (req as Request & { user?: { tier?: string } }).user?.tier,
       metadata: { action: 'strategy_updated', userId, resourceId: id, updates: parsed.data },
     });
 
@@ -103,7 +103,7 @@ marketplaceStrategyManagementRouter.post('/:id/vetting/request', requireTier('FR
     await marketplaceService.queueVettingJob(id);
 
     await auditService.log(tenantId, 'api_call' as AuditEventType, {
-      tier: (req as any).user?.tier,
+      tier: (req as Request & { user?: { tier?: string } }).user?.tier,
       metadata: { action: 'strategy_vetting_requested', userId, resourceId: id },
     });
 

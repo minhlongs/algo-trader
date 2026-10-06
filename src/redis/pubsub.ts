@@ -135,7 +135,7 @@ export class PubSubManager {
    */
   async close(): Promise<void> {
     // Unsubscribe from all channels to clean up subscription state on shared client
-    const promises: Promise<any>[] = [];
+    const promises: Promise<unknown>[] = [];
     for (const channel of this.snapshotHandlers.keys()) {
       promises.push(this.sub.unsubscribe(channel));
     }
@@ -143,7 +143,7 @@ export class PubSubManager {
     
     try {
       await Promise.all(promises);
-    } catch (err) {
+    } catch {
       // Ignore errors during cleanup
     }
 

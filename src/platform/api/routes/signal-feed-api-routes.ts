@@ -10,8 +10,6 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { assertTenantAccess } from '@platform/raas/subscriber-tenant-isolator';
-import { validateTenantId } from '@shared/tenant';
 import { resolveSubscriberId } from '@platform/middleware/signal-tier-resolver';
 import { requireSignalTier } from '@platform/middleware/feature-gate';
 import { getCachedSignals, setCachedSignals } from '@desk/signal/signal-rest-cache';

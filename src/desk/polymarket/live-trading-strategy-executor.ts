@@ -7,8 +7,6 @@
 
 import type { RiskGateManager } from '../risk/risk-gate-manager';
 import type { PaperTradeStats } from './live-trading-types';
-import { DEFAULT_RISK_LIMITS } from './live-trading-types';
-import type { RiskLimits } from './live-trading-types';
 
 // ---------------------------------------------------------------------------
 // Types

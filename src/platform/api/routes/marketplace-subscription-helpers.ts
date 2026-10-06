@@ -6,13 +6,21 @@
  */
 import type { Request } from 'express';
 
+interface AuthenticatedRequest {
+  tenant?: { id?: string };
+  tenantId?: string;
+  user?: { id?: string; role?: string };
+  userId?: string;
+  apiKey?: { isAdmin?: boolean };
+}
+
 /**
  * Extract tenantId from the authenticated request.
  * Tenant context is injected by auth middleware.
  */
 export function getTenantId(req: Request): string {
-  const tenant = (req as any).tenant as { id: string } | undefined;
-  const tenantId = tenant?.id ?? (req as any).tenantId as string | undefined;
+  const r = req as unknown as AuthenticatedRequest;
+  const tenantId = r.tenant?.id ?? r.tenantId;
   if (!tenantId) throw new Error('Unauthorized: No tenant context');
   return tenantId;
 }
@@ -22,8 +30,8 @@ export function getTenantId(req: Request): string {
  * User context is injected by auth middleware.
  */
 export function getUserId(req: Request): string {
-  const user = (req as any).user as { id: string } | undefined;
-  const userId = user?.id ?? (req as any).userId as string | undefined;
+  const r = req as unknown as AuthenticatedRequest;
+  const userId = r.user?.id ?? r.userId;
   if (!userId) throw new Error('Unauthorized: No user context');
   return userId;
 }
@@ -60,8 +68,6 @@ export function getQueryNumber(
  * Admin status is set by auth middleware on the request object.
  */
 export function isAdmin(req: Request): boolean {
-  return (
-    (req as any).user?.role === 'admin' ||
-    (req as any).apiKey?.isAdmin === true
-  );
+  const r = req as AuthenticatedRequest;
+  return r.user?.role === 'admin' || r.apiKey?.isAdmin === true;
 }

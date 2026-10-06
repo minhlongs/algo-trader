@@ -3,7 +3,7 @@
  * BullMQ job for scheduled monthly commission payouts
  */
 
-import { Queue, type Job, type Worker } from 'bullmq';
+import { Queue, type Job, type Worker, type ConnectionOptions } from 'bullmq';
 import { logger } from '../../shared/utils/logger';
 import { getDbClient } from '../../shared/db/postgres-client.js';
 import type { PayoutJobData, PayoutQueueStats } from './payout-scheduler-types';
@@ -17,7 +17,7 @@ export class PayoutScheduler {
   private worker: Worker<PayoutJobData>;
 
   constructor() {
-    const connection = getDbClient() as any;
+    const connection = getDbClient() as unknown as ConnectionOptions;
 
     this.queue = new Queue<PayoutJobData>('referral-payouts', {
       connection,

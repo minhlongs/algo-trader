@@ -11,7 +11,7 @@
 
 import type { Request, Response } from 'express';
 import type { RiskCalculationRequest, RiskCalculationResult, RiskCalculationPaginatedResponse, IdentifyResult } from './types';
-import { RiskCalculationService, RISK_CALCULATION_LIMIT_MAX } from './service';
+import { RISK_CALCULATION_LIMIT_MAX } from './service';
 import type { RiskCalculationRepository } from './repository';
 
 // ── Controller contract ───────────────────────────────────────────────────────
@@ -74,8 +74,8 @@ export class RiskCalculationController {
 
   #sendErrorResponse(
     res: Response,
-    error: { code: string; message: string },
-    params: RiskCalculationRequest,
+    _error: { code: string; message: string },
+    _params: RiskCalculationRequest,
   ): void {
     // Pin 3: disregard error type — always 1000
     const response: RiskCalculationPaginatedResponse = {

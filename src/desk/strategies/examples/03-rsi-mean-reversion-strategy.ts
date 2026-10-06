@@ -113,19 +113,19 @@ export class RsiMeanReversionStrategy implements IStrategy {
     return calculateRsiSellConfidence(current, recent, this.overbought);
   }
 
-  private buySignal(confidence: number, reason: string, metadata?: Record<string, any>): ISignal {
+  private buySignal(confidence: number, reason: string, metadata?: Record<string, unknown>): ISignal {
     return { action: 'buy', confidence, reason, metadata };
   }
 
-  private sellSignal(confidence: number, reason: string, metadata?: Record<string, any>): ISignal {
+  private sellSignal(confidence: number, reason: string, metadata?: Record<string, unknown>): ISignal {
     return { action: 'sell', confidence, reason, metadata };
   }
 
-  private waitSignal(reason: string, metadata?: Record<string, any>): ISignal {
+  private waitSignal(reason: string, metadata?: Record<string, unknown>): ISignal {
     return { action: 'wait', confidence: 0, reason, metadata };
   }
 
-  getStatus?(): Record<string, any> {
+  getStatus?(): Record<string, unknown> {
     return {
       name: STRATEGY_NAME,
       candles: this.priceHistory.length,

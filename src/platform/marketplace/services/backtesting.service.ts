@@ -6,7 +6,7 @@
  */
 
 import { BacktestRunner, BacktestTrade, BacktestResult } from '../../../shared/backtesting/backtest-runner';
-import type { BacktestRepository, BacktestCreateInput } from '../repositories/backtest-repository';
+import { backtestRepository, type BacktestRepository, type BacktestCreateInput } from '../repositories/backtest-repository';
 import type { IMarketplaceStrategy } from '../models/types';
 import { logger } from '../../../shared/utils/logger';
 
@@ -15,8 +15,7 @@ export class BacktestingService {
   private readonly backtestRepo: BacktestRepository;
 
   private constructor() {
-    const mod = require('../repositories/backtest-repository');
-    this.backtestRepo = mod.backtestRepository;
+    this.backtestRepo = backtestRepository;
   }
 
   static getInstance(): BacktestingService {

@@ -6,10 +6,7 @@
 
 import { BaseWebSocketClient, WebSocketMessage, WebSocketConfig } from './websocket-client';
 import {
-  PolymarketMarket,
-  PolymarketPrice,
-  PolymarketOrderBook,
-  PolymarketRawMessage,
+  type PolymarketRawMessage,
 } from './polymarket-ws-types';
 import {
   buildPriceMessage,

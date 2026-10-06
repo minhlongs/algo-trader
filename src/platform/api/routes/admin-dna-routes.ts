@@ -14,9 +14,8 @@ import {
   stopDnaEngine,
   getDnaEngine,
   resetDnaEngine,
-  DnaEngine,
 } from'../../../desk/strategies/dna/orchestrator';
-import { DnaEngineConfig, DnaLifecycleEvent } from '@desk/strategies/dna/multi-tf-types';
+import { DnaEngineConfig } from '@desk/strategies/dna/multi-tf-types';
 import type { CandleProvider } from'../../../desk/strategies/dna/orchestrator';
 import { InMemoryStateStore } from'../../../desk/strategies/dna/dna-state-store';
 import { requireAdminKey } from '../middleware/require-admin-key';
@@ -42,8 +41,9 @@ export function createAdminDnaRouter(): Router {
     try {
       const engine = getDnaEngine();
       const consensus = engine?.getLastConsensus() ?? null;
-      const tfs = (engine as any)?._lastTfSignals
-        ? Array.from((engine as any)._lastTfSignals as Iterable<[string, { action: string; confidence: number }]>).map(([tf, sig]) => ({ tf, action: sig.action, confidence: sig.confidence }))
+      const engineWithSignals = engine as unknown as { _lastTfSignals?: Iterable<[string, { action: string; confidence: number }]> };
+      const tfs = engineWithSignals?._lastTfSignals
+        ? Array.from(engineWithSignals._lastTfSignals).map(([tf, sig]) => ({ tf, action: sig.action, confidence: sig.confidence }))
         : [];
       res.json({
         running: engine?.isRunning ?? false,
@@ -81,7 +81,7 @@ export function createAdminDnaRouter(): Router {
       if (!_provider) {
         return res.status(503).json({ error: 'DnaProvider not configured — call setDnaProvider at startup' });
       }
-      const stateStore = new InMemoryStateStore();
+      const _stateStore = new InMemoryStateStore();
       const engine = startDnaEngine(_provider, {
         paperMode: paperMode ?? true,
         ...(config ?? {}),

@@ -62,7 +62,7 @@ const BASIC_TIERS: TierKey[] = ['STARTER', 'PRO', 'ENTERPRISE', 'MASTER'];
 
 function jsonResponse(body: unknown, status = 200, env: Env, request: Request): Response {
   const origin = request.headers.get('Origin');
-  const allowed = ((env as any).ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
+  const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
   const o = origin && allowed.includes(origin) ? origin : allowed[0];
   return new Response(JSON.stringify(body), {
     status,

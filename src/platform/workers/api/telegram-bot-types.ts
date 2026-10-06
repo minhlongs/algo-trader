@@ -28,7 +28,7 @@ export interface TelegramUpdate {
   };
   callback_query?: {
     id: string;
-    from: { id: number; username?: string };
+    from: { id: number; username?: string; first_name?: string };
     message?: { chat: { id: number }; text?: string };
     data?: string;
   };

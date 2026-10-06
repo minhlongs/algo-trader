@@ -15,6 +15,10 @@ export type Env = {
 // Loose DO access — envoy pattern avoids cross-module struct TS errors
 export type EnvAny = Env & Record<string, unknown>;
 
+export interface Fetchable {
+  fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+}
+
 export function corsHeaders(env: Env): Record<string, string> {
   const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
   return {

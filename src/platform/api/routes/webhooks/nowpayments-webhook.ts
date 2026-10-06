@@ -14,7 +14,7 @@
  * - waiting/confirming/confirmed/sending → ignore (intermediate)
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, json } from 'express';
 import { NowPaymentsService, NowPaymentsIpnPayload } from '../../../billing/nowpayments-service';
 import { SubscriptionService } from '../../../billing/subscription-service';
 import { PaymentService } from '../../../billing/payment-service';
@@ -37,7 +37,7 @@ export const nowpaymentsWebhookRouter: Router = Router();
 
 // Capture raw body BEFORE express.json() parses it (needed for HMAC verification)
 nowpaymentsWebhookRouter.use(
-  require('express').json({
+  json({
     verify: (req: Request, _res: Response, buf: Buffer) => {
       (req as Request & { rawBody?: string }).rawBody = buf.toString('utf-8');
     },

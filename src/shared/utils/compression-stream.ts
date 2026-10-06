@@ -54,7 +54,6 @@ export class CompressionStreamManager {
     }
 
     try {
-      const compressionStream = new CompressionStream(algorithm as any);
       const encoder = new TextEncoder();
 
       return new TransformStream({
@@ -171,7 +170,6 @@ export class CompressionStreamManager {
     // Otherwise compress
     const compressed = this.createCompressionStream(effectiveAlgorithm);
     const writer = compressed.writable.getWriter();
-    const encoder = new TextEncoder();
     writer.write(data);
     writer.close();
 

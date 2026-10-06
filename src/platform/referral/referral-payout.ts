@@ -26,11 +26,10 @@ export { getEarnings, getPayoutHistory } from './payout-read';
 export { processPayout, executeTransfer } from './process-payout';
 
 // ── Internal imports for class methods ───────────────────────────────────────
-import { referralRepository } from './referral-repository';
 import { query } from '../../shared/db/postgres-client.js';
 import { logger } from '../../shared/utils/logger';
 import { PAYOUT_METHODS } from './referral-payout-types';
-import type { PayoutMethod, PayoutMethodConfig, ReferralEarnings, PayoutHistoryRecord, ProcessPayoutResult, PayoutStatus } from './referral-payout-types';
+import type { PayoutMethod, PayoutMethodConfig, ReferralEarnings, PayoutHistoryRecord, ProcessPayoutResult } from './referral-payout-types';
 import { ensurePayoutTables } from './payout-tables';
 import { calculatePayoutFee } from './payout-calculators';
 import { getEarnings, getPayoutHistory } from './payout-read';

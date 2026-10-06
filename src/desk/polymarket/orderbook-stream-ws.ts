@@ -88,8 +88,6 @@ export function onError(ctx: OrderBookStreamWsCtx, err: Error): void {
 
 /** Handle WebSocket close: stop heartbeat, emit status, schedule reconnect. */
 export function onClose(ctx: OrderBookStreamWsCtx, code: number, reason: Buffer): void {
-  // Import handleDisconnect dynamically to avoid circular import
-  const { handleDisconnect } = require('./orderbook-stream-reconnect');
   handleDisconnect(ctx as unknown as OrderBookStreamReconnectCtx, code, reason);
 }
 
@@ -98,7 +96,7 @@ export function processPriceEvent(
   ctx: OrderBookStreamWsCtx,
   event: { tokenId: string; bestBid: number; bestAsk: number; lastTradePrice?: number; volume24h?: number }
 ): void {
-  const { tokenId, bestBid, bestAsk, lastTradePrice, volume24h } = event;
+  const { tokenId, bestBid, bestAsk } = event;
 
   // Merge with last known state for complete picture
   const existing = ctx.lastPrices.get(tokenId) ?? { bestBid: 0, bestAsk: 0 };

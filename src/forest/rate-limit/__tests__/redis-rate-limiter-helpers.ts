@@ -24,15 +24,15 @@ declare class IoredisMock {
   exists(key: string): Promise<number>;
   del(key: string): Promise<number>;
 }
-// require() the JS implementation to avoid ESM default-import mismatch
-// (ioredis-mock ships CJS only). Suppress is unnecessary — the rule is
-// `warn` in eslint.config.js, not `error`.
-const IoredisMockImpl = require('ioredis-mock') as new () => IoredisMock;
+// @ts-expect-error -- ioredis-mock declaration file omitted by tsconfig types allowlist
+import IoredisMockModule from 'ioredis-mock';
 import {
   RedisRateLimiter,
   TIER_RATE_LIMITS,
   type TierRateLimits,
 } from '../redis-rate-limiter';
+
+const IoredisMockImpl = (IoredisMockModule as unknown as { default?: new () => IoredisMock }).default ?? (IoredisMockModule as unknown as new () => IoredisMock);
 
 export function makeLimiter(
   windowSeconds = 60,

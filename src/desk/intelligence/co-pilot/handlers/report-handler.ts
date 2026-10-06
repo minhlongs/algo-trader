@@ -21,7 +21,7 @@ export async function handleReportQuery(
   context?: { page?: string; strategyId?: string },
 ): Promise<CopilotResponse> {
   // Gather data from all sources in parallel
-  const [riskResult, arbResult, perfResult, regimeResult, metrics, circuitStatus, positions] = await Promise.all([
+  const [riskResult, arbResult, _perfResult, regimeResult, _metrics, circuitStatus, positions] = await Promise.all([
     handleRiskQuery(context).catch(() => null),
     handleArbQuery(context).catch(() => null),
     handlePerformanceQuery(context).catch(() => null),

@@ -2,7 +2,7 @@ import { AuditLogService } from '../../audit/audit-log-service';
 import { SubscriptionRepository, subscriptionRepository, ReviewRepository, reviewRepository, ListingRepository, listingRepository } from './repositories';
 import { NotificationService } from '../notifications/notification-service';
 import { NowPaymentsService } from '../../billing/nowpayments-service';
-import type { IMarketplaceSubscription, IMarketplaceReview, CustomRiskLimits } from '../models/types';
+import type { IMarketplaceSubscription, IMarketplaceReview, CustomRiskLimits, SubscriptionStatus } from '../models/types';
 import { activateByPaymentId as _activateByPaymentId, cancelByPaymentId as _cancelByPaymentId } from './subscription-payment-handlers';
 import { createReview as _createReview, getReview as _getReview, markReviewHelpful as _markReviewHelpful, flagReview as _flagReview } from './subscription-review-handlers';
 
@@ -93,7 +93,7 @@ export class SubscriptionService {
       });
     }
 
-    await this.auditService.log(data.tenantId, 'api_call' as any, {
+    await this.auditService.log(data.tenantId, 'api_call', {
       tier: undefined,
       metadata: {
         action: 'subscription_created',
@@ -134,10 +134,10 @@ export class SubscriptionService {
   }
 
   async updateSubscriptionStatus(id: string, action: string, userId: string): Promise<IMarketplaceSubscription | null> {
-    const statusMap: Record<string, string> = { pause: 'paused', resume: 'active', cancel: 'cancelled' };
-    const updated = await this.subRepo.update(id, { status: statusMap[action] as any });
+    const statusMap: Record<string, SubscriptionStatus> = { pause: 'paused', resume: 'active', cancel: 'cancelled' };
+    const updated = await this.subRepo.update(id, { status: statusMap[action] });
     if (updated) {
-      await this.auditService.log(updated.tenantId, 'api_call' as any, {
+      await this.auditService.log(updated.tenantId, 'api_call', {
         tier: undefined,
         metadata: { action: `subscription_${action}`, userId, resourceId: id },
       });
@@ -190,8 +190,7 @@ export class SubscriptionService {
 
   // ── Private helpers ───────────────────────────────────────────────
   private async strategyRepoForListing(strategyId: string): Promise<{ id: string; creatorId: string; name: string } | null> {
-    const { StrategyRepository, strategyRepository } = await import('./repositories');
-    const repo = strategyRepository as InstanceType<typeof StrategyRepository>;
+    const { strategyRepository: repo } = await import('./repositories');
     const strategy = await repo.findById(strategyId);
     if (!strategy) return null;
     return { id: strategy.id, creatorId: strategy.creatorId, name: strategy.name };

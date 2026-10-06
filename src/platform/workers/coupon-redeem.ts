@@ -34,9 +34,10 @@ export async function handleRedeemCoupon(request: Request, env: Env): Promise<Re
  return { error: e.message, status: 400 as const };
  });
 
- coupon = (result as any).coupon ?? null;
- if ((result as any).error) return json({ ok: false, error: (result as any).error }, (result as any).status ?? 400);
- if (!coupon) return json({ ok: false, error: 'Coupon not found' }, 404);
+  const outcome = result as { coupon?: Coupon; error?: string; status?: number };
+  if (outcome.error) return json({ ok: false, error: outcome.error }, outcome.status ?? 400);
+  coupon = outcome.coupon ?? null;
+  if (!coupon) return json({ ok: false, error: 'Coupon not found' }, 404);
 
  const discountPercent = coupon.discountPercent;
  const finalPrice = Math.round(originalPrice * (1 - discountPercent / 100) * 100) / 100;
@@ -61,7 +62,7 @@ export async function handleRedeemCoupon(request: Request, env: Env): Promise<Re
  finalPrice,
  checkoutUrl,
  });
- } catch (err) {
+ } catch (_err) {
  return json({ ok: false, error: 'Redemption failed' }, 500);
  }
 }

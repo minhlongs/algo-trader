@@ -65,9 +65,16 @@ async function runSingleStrategy(opts: {
   logger.info(`Runner active. Ticks every ${(opts.tickIntervalMs / 1000).toFixed(0)}s.\n`);
 
   const statusInterval = setInterval(() => {
-    if (runner.getStatus().status !== 'running') { clearInterval(statusInterval); return; }
     const s = runner.getStatus();
-    const summary = (runner as any).getPositionSummary?.() ?? { total: 0, open: 0, closed: 0 };
+    if (s.status !== 'running') { clearInterval(statusInterval); return; }
+    const runnerWithSummary = runner as unknown as {
+      getPositionSummary?: () => { positionCount: number; totalExposure: number; totalRealizedPnl: number };
+    };
+    const summary = runnerWithSummary.getPositionSummary?.() ?? {
+      positionCount: 0,
+      totalExposure: 0,
+      totalRealizedPnl: 0,
+    };
     logger.info(
       `[${new Date().toISOString().slice(11, 19)}] ` +
       `Tick#${s.tickCount} | Orders: ${s.proxyStats.ordersPlaced} | ` +

@@ -25,6 +25,7 @@ import {
   AlphaLabAutonomousPipeline,
   type AlphaLabAutonomousPipelineConfig,
 } from '../../../../src/alpha-lab/pipeline';
+import { PaperExecutor } from '../../../../src/desk/execution/paper-executor';
 import {
   ContinuousDiscoveryPipeline,
   type DiscoveredAlphaCandidate,
@@ -101,6 +102,7 @@ describe('AlphaLabAutonomousPipeline Empirical Stress Tests (Challenger M4-2)', 
       ledgerPath,
       runCardDir,
       strictLedgerVerification: true,
+      paperExecutor: new PaperExecutor({ initialBalance: 50_000, simulateFillRate: 1.0 }),
       ...overrides,
     });
   }

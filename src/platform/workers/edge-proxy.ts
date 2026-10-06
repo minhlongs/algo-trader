@@ -16,7 +16,7 @@ export { ShardManager, StrategyShard } from '../../durable-objects';
 import {
   handleSignup, handleLogin, handleMe,
   handleListUsers, handleSetRole, handleDeleteUser,
-  corsPreflightResponse, notImplementedResponse,
+  notImplementedResponse, type AuthEnv,
 } from './auth-handlers';
 
 // ── API handlers ──
@@ -30,7 +30,7 @@ import { handleEnergy9Delivery } from './api/energy-9';
 import { handleCopilotAsk } from './api/copilot';
 import { handleTelegramWebhook, handleSetTelegramWebhook } from './api/telegram-bot';
 import {
-  handleGetRing, handleGetShardHealth, handleExecuteStrategy,
+  handleGetRing, handleExecuteStrategy,
   handleGetStrategiesList, handleGetMarkets, handleGetShardById,
 } from './api/markets';
 
@@ -52,7 +52,7 @@ import { logger } from '../../shared/utils/logger';
 import type { KVStore } from '../../desk/paper-trading/paper-trading-loop';
 
 /** Type alias compatible with both Env and auth-handlers Env (same KV get signatures). */
-type AnyEnv = any;
+type AnyEnv = AuthEnv;
 
 // Lazy init: KV binding is only available inside fetch/scheduled handlers.
 let paperTradingInitialized = false;

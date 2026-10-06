@@ -19,10 +19,10 @@ export interface PostgresClient {
 
 export function createPostgresClient(): PostgresClient {
   return {
-    async query<T = Record<string, unknown>>(sql: string, values?: unknown[]): Promise<QueryResult<T>> {
+    async query<T = Record<string, unknown>>(_sql: string, _values?: unknown[]): Promise<QueryResult<T>> {
       return { rows: [], rowCount: 0 };
     },
-    async execute(sql: string, values?: unknown[]): Promise<QueryResult> {
+    async execute(_sql: string, _values?: unknown[]): Promise<QueryResult> {
       return { rows: [], rowCount: 0 };
     },
     async beginTransaction(): Promise<void> {},
@@ -42,6 +42,6 @@ export function getPostgresClient(): PostgresClient {
 }
 
 /** Named function export for consumers that destructure `{ query }` */
-export async function query<T = Record<string, unknown>>(sql: string, values?: unknown[]): Promise<QueryResult<T>> {
+export async function query<T = Record<string, unknown>>(_sql: string, _values?: unknown[]): Promise<QueryResult<T>> {
   return { rows: [] as T[], rowCount: 0 };
 }

@@ -58,7 +58,17 @@ export async function runQuickstart(): Promise<void> {
   }
 }
 
-function loadConfiguration(): Record<string, any> {
+interface QuickstartConfig {
+  tradingMode: 'dry-run' | 'live';
+  riskPerTrade: number;
+  maxDailyLoss: number;
+  enableBacktesting: boolean;
+  enableLiveTrading: boolean;
+  apiKeyConfigured: boolean;
+  telegramConfigured: boolean;
+}
+
+function loadConfiguration(): QuickstartConfig {
   // Load environment variables
   const env = process.env;
 
@@ -73,7 +83,7 @@ function loadConfiguration(): Record<string, any> {
   };
 }
 
-function validateConfiguration(config: Record<string, any>): void {
+function validateConfiguration(config: QuickstartConfig): void {
   const errors: string[] = [];
   const warnings: string[] = [];
 

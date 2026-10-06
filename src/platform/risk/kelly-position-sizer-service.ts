@@ -13,7 +13,6 @@ import { logger } from '../../shared/utils/logger';
 import {
   KellyPositionSizer,
   type KellySizingInput,
-  type KellySizingResult,
 } from '@desk/risk';
 import type { KellySizingRequest, KellySizingResponse } from './types';
 
@@ -34,7 +33,7 @@ export class KellyPositionSizerService {
     const startMs = performance.now();
 
     // Merge with user-stored config if available
-    const mergedConfig = userId ? this.getStoredConfig(userId) : undefined;
+    const _mergedConfig = userId ? this.getStoredConfig(userId) : undefined;
     const kellyFraction = request.kellyFraction ?? 0.25;
 
     const sizer = new KellyPositionSizer({

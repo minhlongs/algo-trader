@@ -7,20 +7,29 @@
 
 import { Request } from 'express';
 
+interface AuthenticatedRequest {
+  tenant?: { id?: string };
+  user?: { id?: string; tenantId?: string; role?: string };
+  apiKey?: { userId?: string; isAdmin?: boolean };
+}
+
 export function getTenantId(req: Request): string {
-  const tenantId = (req as any).tenant?.id || (req as any).user?.tenantId;
+  const r = req as unknown as AuthenticatedRequest;
+  const tenantId = r.tenant?.id || r.user?.tenantId;
   if (!tenantId) throw new Error('Unauthorized: No tenant context');
   return String(tenantId);
 }
 
 export function getUserId(req: Request): string {
-  const userId = (req as any).user?.id || (req as any).apiKey?.userId;
+  const r = req as unknown as AuthenticatedRequest;
+  const userId = r.user?.id || r.apiKey?.userId;
   if (!userId) throw new Error('Unauthorized: No user context');
   return String(userId);
 }
 
 export function isAdmin(req: Request): boolean {
-  return (req as any).user?.role === 'admin' || (req as any).apiKey?.isAdmin === true;
+  const r = req as unknown as AuthenticatedRequest;
+  return r.user?.role === 'admin' || r.apiKey?.isAdmin === true;
 }
 
 export function getQueryString(value: unknown, defaultValue: string = ''): string {

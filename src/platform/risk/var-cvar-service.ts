@@ -12,11 +12,10 @@ import { getRedisClient, type RedisClientType } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import {
   calculateVaR,
-  ValueAtRiskCalculator,
   type VaRConfig,
   type PositionPnlInput,
 } from '@desk/risk';
-import type { VarRequest, VarResponse, RiskPosition } from './types';
+import type { VarRequest, VarResponse } from './types';
 
 const CACHE_TTL = 300; // 5 minutes
 

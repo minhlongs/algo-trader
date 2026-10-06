@@ -48,7 +48,8 @@ export class TradeStream {
       'tradeId', trade.tradeId || '',
     ];
 
-    const result = await (this.redis as any).xadd(key, ...args);
+    const redisWithXadd = this.redis as unknown as { xadd: (k: string, ...a: string[]) => Promise<string> };
+    const result = await redisWithXadd.xadd(key, ...args);
     return result || '';
   }
 

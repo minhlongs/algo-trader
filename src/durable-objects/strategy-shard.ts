@@ -14,7 +14,7 @@ import { logger } from '../utils/logger';
 import { ShardManager } from './shard-manager';
 import type { IStrategy } from '../desk/strategies/types';
 import type { Env, ShardMetrics } from './strategy-shard-types';
-import { initializeShard, persistHealth, restoreMetrics, persistMetrics, getRedisClient } from './strategy-shard-state';
+import { initializeShard, persistHealth, restoreMetrics } from './strategy-shard-state';
 import { handleHealthCheck, handleMetricsResponse, handleExecute } from './shard-fetch-handlers';
 
 // Re-export all types for backward compatibility

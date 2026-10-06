@@ -60,8 +60,8 @@ export function runScenarios(params: BacktestParams): ScenarioResult[] {
   const fixedSizer: PositionSizerFn = (portfolio) => portfolio * 0.02;
 
   // Kelly sizers with different correlations
-  const kellySizers: PositionSizerFn[] = correlationScenarios.map((correlation) => {
-    return (portfolio: number, tradeIndex: number): number => {
+  const _kellySizers: PositionSizerFn[] = correlationScenarios.map((correlation) => {
+    return (portfolio: number, _tradeIndex: number): number => {
       const result = kellySizer.calculatePositionSize({
         winProbability,
         winLossRatio,
@@ -78,7 +78,7 @@ export function runScenarios(params: BacktestParams): ScenarioResult[] {
 
   // Fixed 2% scenario (base case)
   const rngFixed = new SeededRandom(randomSeed);
-  const fixedMetrics = simulateTrades(
+  const _fixedMetrics = simulateTrades(
     initialBankroll,
     numTrades,
     winProbability,
@@ -91,7 +91,7 @@ export function runScenarios(params: BacktestParams): ScenarioResult[] {
   for (let i = 0; i < correlationScenarios.length; i++) {
     const correlation = correlationScenarios[i];
     // Create a sizer function that captures this correlation value
-    const sizer: PositionSizerFn = (portfolio: number, tradeIndex: number) => {
+    const sizer: PositionSizerFn = (portfolio: number, _tradeIndex: number) => {
       const result = kellySizer.calculatePositionSize({
         winProbability,
         winLossRatio,
@@ -137,7 +137,7 @@ export function runScenarios(params: BacktestParams): ScenarioResult[] {
   // Run Kelly scenarios
   for (let i = 0; i < correlationScenarios.length; i++) {
     const correlation = correlationScenarios[i];
-    const sizer: PositionSizerFn = (portfolio: number, tradeIndex: number) => {
+    const sizer: PositionSizerFn = (portfolio: number, _tradeIndex: number) => {
       const result = kellySizer.calculatePositionSize({
         winProbability,
         winLossRatio,

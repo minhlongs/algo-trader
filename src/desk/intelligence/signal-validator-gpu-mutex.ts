@@ -5,7 +5,7 @@
  */
 
 export class GpuMutex {
-  private queue: (() => Promise<any>)[] = [];
+  private queue: (() => Promise<unknown>)[] = [];
   private running = false;
 
   async run<T>(task: () => Promise<T>): Promise<T> {

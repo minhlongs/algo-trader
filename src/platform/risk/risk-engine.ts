@@ -10,7 +10,6 @@
  */
 
 import { getRedisClient, type RedisClientType } from '../../redis';
-import { logger } from '../../shared/utils/logger';
 import {
   VaRService,
   CorrelationMatrixService,
@@ -19,8 +18,6 @@ import {
   KellyPositionSizerService,
 } from './index';
 import { RISK_FEATURE_FLAG } from './types';
-
-const NOOP_REDIS = null as unknown as RedisClientType;
 
 export class RiskEngine {
   private redis: RedisClientType;

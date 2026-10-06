@@ -31,7 +31,7 @@ rumRouter.post('/ingest', async (req: Request, res: Response) => {
   const start = Date.now();
 
   try {
-    const { sessionId, userId, metrics, timestamp, userAgent, sampleRate } = req.body;
+    const { sessionId, userId, metrics, timestamp } = req.body;
 
     // Basic validation
     if (!sessionId || !Array.isArray(metrics) || metrics.length === 0) {
@@ -45,7 +45,7 @@ rumRouter.post('/ingest', async (req: Request, res: Response) => {
     for (const metric of metrics) {
       // Record as external API latency with service='rum', endpoint=metric.name
       const durationSec = metric.duration / 1000; // ms to sec
-      const region = (req as any).cf?.colo || 'unknown';
+      const region = (req as Request & { cf?: { colo?: string } }).cf?.colo || 'unknown';
       externalApiLatency.observe(
         { service: 'rum', endpoint: metric.name, region },
         durationSec

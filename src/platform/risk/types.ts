@@ -6,19 +6,11 @@
  */
 
 import type {
-  VaRConfig,
-  VaRResult,
-  PositionPnlInput,
-  CorrelationMatrix,
   CorrelationPair,
-  AtrConfig,
   AtrResult,
   AtrCandle,
-  DrawdownConfig,
   DrawdownMetrics,
   DrawdownAlert,
-  KellyConfig,
-  KellySizingInput,
   KellySizingResult,
 } from '@desk/risk';
 

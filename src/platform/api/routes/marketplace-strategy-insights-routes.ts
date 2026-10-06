@@ -13,7 +13,7 @@ import {
   getQueryNumber,
 } from './marketplace-strategy-helpers';
 import { getDbClient } from '../../../db/postgres-client';
-import { BacktestRunner } from '../../../shared/backtesting/backtest-runner';
+import { BacktestRunner, type BacktestTrade, type BacktestConfig } from '../../../shared/backtesting/backtest-runner';
 import { randomUUID } from 'crypto';
 
 export const marketplaceStrategyInsightsRouter: RouterType = Router();
@@ -106,7 +106,7 @@ marketplaceStrategyInsightsRouter.post('/:id/backtest', requireTier('FREE'), asy
     }
 
     // Run backtest
-    const result = BacktestRunner.run(trades as any[], config as any);
+    const result = BacktestRunner.run(trades as unknown as BacktestTrade[], config as unknown as BacktestConfig);
 
     // Persist to database
     const dbClient = getDbClient();
@@ -122,13 +122,13 @@ marketplaceStrategyInsightsRouter.post('/:id/backtest', requireTier('FREE'), asy
         result.maxDrawdown ?? null,
         result.winRate ?? null,
         result.totalPnlUsd,
-        (result as any).profitFactor ?? null,
+        (result as unknown as { profitFactor?: number }).profitFactor ?? null,
         result.totalTrades,
         result.winningTrades,
         result.losingTrades,
-        (result as any).volatilityAnnual ?? null,
+        (result as unknown as { volatilityAnnual?: number }).volatilityAnnual ?? null,
         result.totalReturn ?? null,
-        (config as any)?.initialCapitalUsd ?? 10000,
+        (config as unknown as { initialCapitalUsd?: number } | undefined)?.initialCapitalUsd ?? 10000,
         JSON.stringify(config ?? {}),
       ]
     );
@@ -159,7 +159,7 @@ marketplaceStrategyInsightsRouter.get('/:id/backtests', requireTier('FREE'), asy
     );
 
     // Map snake_case to camelCase
-    const backtests = (result.rows as any[]).map((row) => ({
+    const backtests = (result.rows as Record<string, unknown>[]).map((row) => ({
       id: row.id,
       sharpeRatio: row.sharpe_ratio,
       maxDrawdown: row.max_drawdown,

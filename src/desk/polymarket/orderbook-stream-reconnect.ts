@@ -8,11 +8,9 @@ import WebSocket from 'ws';
 import { logger } from '../../shared/utils/logger';
 import { type TradingEventBus } from '../events/trading-event-bus';
 import {
-  HEARTBEAT_INTERVAL_MS,
   MAX_RECONNECT_ATTEMPTS,
   RECONNECT_BASE_MS,
   RECONNECT_MAX_MS,
-  WS_URL,
 } from './orderbook-stream-types';
 
 /** Structural view of the OrderBookStream facade that reconnect/disconnect leaves need. */

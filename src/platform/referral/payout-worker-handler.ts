@@ -4,7 +4,7 @@
  * BullMQ worker creation and error handling for referral commission payout processing.
  */
 
-import { Worker, type Job } from 'bullmq';
+import { Worker, type Job, type ConnectionOptions } from 'bullmq';
 import { referralService } from './referral-service';
 import { logger } from '../../shared/utils/logger';
 import { getDbClient } from '../../shared/db/postgres-client.js';
@@ -49,7 +49,7 @@ export function createPayoutWorker(): Worker<PayoutJobData> {
         throw error;
       }
     },
-    { connection: getDbClient() as any }
+    { connection: getDbClient() as unknown as ConnectionOptions }
   );
 
   worker.on('completed', (job: Job) => {

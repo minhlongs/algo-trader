@@ -48,7 +48,7 @@ export interface ExecuteContext {
   activeExecutions: number;
   maxConcurrent: number;
   maxQueueSize: number;
-  storage: { put: (key: string, value: unknown) => Promise<void> };
+  storage: Parameters<typeof persistMetrics>[0];
   strategies: Map<string, IStrategy>;
 }
 
@@ -97,7 +97,7 @@ export async function handleExecute(
     ctx.metrics.requests++;
     ctx.metrics.totalLatencyMs += latencyMs;
     ctx.metrics.lastUpdated = Date.now();
-    await persistMetrics(ctx.storage as any, ctx.metrics);
+    await persistMetrics(ctx.storage, ctx.metrics);
 
     return Response.json(execResult);
   } catch (error) {

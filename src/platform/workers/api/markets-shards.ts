@@ -2,6 +2,7 @@ import { logger } from '../../../shared/utils/logger';
 import {
   type Env,
   type EnvAny,
+  type Fetchable,
   corsHeaders,
   isAdmin,
   jsonH,
@@ -18,7 +19,7 @@ export async function handleGetRing(request: Request, env: Env): Promise<Respons
   if (!sm) return new Response(JSON.stringify({ error: 'ShardManager not bound' }), { status: 503, headers: jsonH(env) });
 
   try {
-    const res = await (sm as any).fetch('https://algo-trader.workers.dev/admin/shard/ring');
+    const res = await (sm as unknown as Fetchable).fetch('https://algo-trader.workers.dev/admin/shard/ring');
     const ringData = await res.json();
     const ring = ringData as { totalShards: number; virtualNodesPerShard: number; distribution: Record<string, number>; balanced: boolean };
     return new Response(JSON.stringify(ring), { headers: jsonH(env) });
@@ -41,7 +42,7 @@ export async function handleGetShardHealth(request: Request, env: Env): Promise<
   }
 
   try {
-    const res = await (sm as any).fetch('https://algo-trader.workers.dev/admin/shard/health');
+    const res = await (sm as unknown as Fetchable).fetch('https://algo-trader.workers.dev/admin/shard/health');
     const healthArr = await res.json();
     const shards = healthArr as Array<{ shardId: number; lastHeartbeat: number; rps: number; avgLatencyMs: number; status: string }>;
     return new Response(JSON.stringify({ shards }), { headers: jsonH(env) });
@@ -69,7 +70,7 @@ export async function handleGetShardById(request: Request, env: Env): Promise<Re
   }
 
   try {
-    const res = await (doId as any).fetch('https://algo-trader.workers.dev/info');
+    const res = await (doId as unknown as Fetchable).fetch('https://algo-trader.workers.dev/info');
     const info = (await res.json()) as { shardId: number; strategies: string[]; strategiesLoaded: number; metrics: Record<string, unknown> };
     return new Response(JSON.stringify(info), { headers: jsonH(env) });
   } catch (err) {
@@ -91,7 +92,7 @@ export async function handleGetStrategiesList(request: Request, env: Env): Promi
   }
 
   try {
-    const res = await (sm as any).fetch('https://algo-trader.workers.dev/admin/shard/metrics');
+    const res = await (sm as unknown as Fetchable).fetch('https://algo-trader.workers.dev/admin/shard/metrics');
     const metricsArr = await res.json();
     const shardMetrics = metricsArr as Array<{ shardId: number; strategyCount: number }>;
     const strategies = shardMetrics.map((m) => ({ shardId: m.shardId, count: m.strategyCount }));

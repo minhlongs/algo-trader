@@ -14,10 +14,9 @@
 import { EventEmitter } from 'events';
 import WebSocket from 'ws';
 import { logger } from '../../shared/utils/logger';
-import { tradingEventBus, type TradingEventBus, type PriceUpdatePayload } from '../events/trading-event-bus';
-import { parseWsMessage } from './orderbook-stream-parse';
-import { handleDisconnect, scheduleReconnect } from './orderbook-stream-reconnect';
-import { setupWebSocketHandlers, onOpen, onMessage, onError, onClose, processPriceEvent, sendSubscribe, startHeartbeat, stopHeartbeat, type OrderBookStreamWsCtx } from './orderbook-stream-ws';
+import { tradingEventBus, type TradingEventBus } from '../events/trading-event-bus';
+import { scheduleReconnect } from './orderbook-stream-reconnect';
+import { setupWebSocketHandlers, onOpen, onMessage, onError, onClose, processPriceEvent, sendSubscribe, startHeartbeat, stopHeartbeat } from './orderbook-stream-ws';
 import type { OrderBookStreamReconnectCtx } from './orderbook-stream-reconnect';
 
 // ─── OrderBookStream Class ───────────────────────────────────────────────────

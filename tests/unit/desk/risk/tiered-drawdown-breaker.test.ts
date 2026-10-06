@@ -205,6 +205,38 @@ describe('TieredDrawdownBreaker', () => {
       expect(breaker.getState().tier).toBe('DAILY_PAUSE');
       vi.useRealTimers();
     });
+
+    it('escalates to HALT while in active DAILY_PAUSE when dd >= haltThreshold', () => {
+      vi.useFakeTimers();
+      breaker.update(96900); // DAILY_PAUSE
+      expect(breaker.getState().tier).toBe('DAILY_PAUSE');
+      // Drop to 15% drawdown (85,000)
+      breaker.update(85000);
+      expect(breaker.getState().tier).toBe('HALT');
+      vi.useRealTimers();
+    });
+
+    it('escalates to REDUCE while in active DAILY_PAUSE when dd >= reduceThreshold', () => {
+      vi.useFakeTimers();
+      breaker.update(96900); // DAILY_PAUSE
+      expect(breaker.getState().tier).toBe('DAILY_PAUSE');
+      // Drop to 10% drawdown (90,000)
+      breaker.update(90000);
+      expect(breaker.getState().tier).toBe('REDUCE');
+      vi.useRealTimers();
+    });
+  });
+
+  describe('invalid portfolio value handling', () => {
+    it('ignores negative or non-finite numbers', () => {
+      const state1 = breaker.getState();
+      const state2 = breaker.update(-500);
+      expect(state2.currentValue).toBe(state1.currentValue);
+      const state3 = breaker.update(NaN);
+      expect(state3.currentValue).toBe(state1.currentValue);
+      const state4 = breaker.update(Infinity);
+      expect(state4.currentValue).toBe(state1.currentValue);
+    });
   });
 
   describe('update() during active HALT', () => {
@@ -252,7 +284,7 @@ describe('TieredDrawdownBreaker', () => {
       });
       mockedFs.readFileSync.mockReturnValue(mockState);
 
-      const restored = new TieredDrawdownBreaker(100000);
+      const restored = new TieredDrawdownBreaker(100000, { persistState: true });
       const state = restored.getState();
       expect(state.highWaterMark).toBe(95000);
       expect(state.currentValue).toBe(92000);
@@ -269,7 +301,7 @@ describe('TieredDrawdownBreaker', () => {
       const partialState = JSON.stringify({ highWaterMark: 80000 });
       mockedFs.readFileSync.mockReturnValue(partialState);
 
-      const restored = new TieredDrawdownBreaker(100000);
+      const restored = new TieredDrawdownBreaker(100000, { persistState: true });
       const state = restored.getState();
       expect(state.highWaterMark).toBe(80000);
       expect(state.currentValue).toBe(100000); // falls back to constructor arg

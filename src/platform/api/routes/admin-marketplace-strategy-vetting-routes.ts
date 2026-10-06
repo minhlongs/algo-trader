@@ -7,7 +7,7 @@
  * - GET /strategies/:id/history — Vetting audit trail
  */
 
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
 import { z } from 'zod';
 import { MarketplaceService } from '../../marketplace/services/marketplace.service';
@@ -16,7 +16,6 @@ import { AuditLogService, type AuditEventType } from '../../audit/audit-log-serv
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
 import {
-  getTenantId,
   getUserId,
   isAdmin,
   getQueryString,
@@ -112,7 +111,7 @@ export function registerMarketplaceVettingRoutes(router: RouterType): void {
         strategy.tenantId,
         'api_call' as AuditEventType,
         {
-          tier: (req as any).user?.tier,
+          tier: (req as Request & { user?: { tier?: string } }).user?.tier,
           metadata: {
             action: `vetting_${parsed.data.decision}d`,
             adminUserId,

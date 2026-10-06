@@ -41,7 +41,7 @@ export async function suspensionCheckPlugin(fastify: FastifyInstance) {
     }
 
     // Get license ID from request (set by license-validation middleware)
-    const licenseId = (request as any).licenseAuth?.licenseId;
+    const licenseId = (request as typeof request & { licenseAuth?: { licenseId?: string } }).licenseAuth?.licenseId;
     if (!licenseId) {
       // License validation already handled this
       return;
@@ -104,7 +104,7 @@ export function suspensionCheckMiddleware(
 
   // Check suspension status
   dunningService.getSuspensionStatus(license.id).then((status) => {
-    (request as any).suspensionCheck = status;
+    (request as typeof request & { suspensionCheck?: typeof status }).suspensionCheck = status;
 
     if (status.isSuspended) {
       return reply.code(402).send({
