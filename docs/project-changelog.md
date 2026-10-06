@@ -1,5 +1,31 @@
 # Project Changelog - Algo Trader
 
+## [3.1.95] - 2026-10-07 — 12 Verified Edge Cases Remediation & Zero-Debt Institutional Hardening
+
+### Added
+- Added `PaperCapitalReservation` helper in `src/desk/wiring/paper-capital-reservation.ts` providing atomic, synchronous reservation tokens for paper capital and position slots before entering consensus, eliminating overdraft races.
+- Added `evaluateAggregateExposureCheck` (Check 5) in `src/desk/execution/live-execution-guard-evaluator.ts` and integrated into `live-execution-guard-core.ts` to enforce aggregate portfolio exposure limits alongside individual order caps.
+- Added `migration-rollback.ts` with transactional `rollbackMigration` and `rollbackLastMigration` methods to `src/db/migration-runner.ts`.
+- Added `sanitizeErrorMessage` in `src/desk/cli/cli-diagnostics.ts` masking private keys, Bearer tokens, API keys, and connection credentials prior to logging.
+- Added DOMPurify HTML sanitization in `dashboard/src/components/markdown-viewer.tsx`.
+
+### Fixed
+- Fixed default market order slippage clamping to 0.99 buy / 0.01 sell in `src/desk/execution/polymarket-order-executor.ts` by bounding execution price to `maxSlippageBps` of reference price and rejecting orders when reference price is unavailable.
+- Fixed `src/desk/execution/live-order-polling.ts` to reconcile fill statuses via `adapter.getOrder(orderId)` before marking missing orders as expired.
+- Fixed Durable Object race conditions in `src/durable-objects/strategy-shard.ts` and `shard-manager.ts` using `this.state.blockConcurrencyWhile`.
+- Fixed zero-variance division in `src/desk/strategies/polymarket/volatility-surface-arb.ts` (`computeVolRatio`), capped Sortino/Calmar/Profit Factor in `src/desk/backtesting/metrics-calculator.ts`, and guarded phantom Sharpe calculation in `src/alpha-lab/validation/validation-types.ts`.
+- Fixed triple-barrier lookahead bias in `src/alpha-lab/labeling/triple-barrier.ts` via optional `endIdx`, passed simulation candle timestamps in `src/desk/backtesting/backtest-order-manager.ts` and `src/desk/strategies/polymarket/base-polymarket-strategy.ts`, and stamped trade exit timestamps in `src/alpha-lab/shared/trade-builder.ts`.
+- Fixed timer heap exhaustion in `src/signal/signal-ttl-enforcer.ts` via periodic unreferenced sweep interval with bounded FIFO capacity, and bounded queues in `telegram-signal-pusher.ts` and `signal-fusion-buffer.ts`.
+- Fixed CLI numerical parameter validation in `src/desk/cli/cashclaw-trade-run-handler.ts` (`--interval`) and `cashclaw-cli-paper.ts` (`--max-positions`), and unreferenced connection pool DNS timer in `src/desk/execution/http2-connection-pool.ts`.
+- Fixed ResizeObserver zero-width layout thrashing and eliminated `:any` casts in `dashboard/src/components/price-chart-lightweight.tsx` and `revenue-trend-chart.tsx`.
+- Fixed SQLite D1 syntax in `src/db/migrations/027-usage-metering-schema.sql` (`DEFAULT CURRENT_DATE`), and deleted redundant duplicate migration `021_tenant_credentials.sql`.
+
+### Verified & Certified
+- Root TypeScript check (`npm run typecheck`) and dashboard production build (`cd dashboard && pnpm run build`) pass cleanly with 0 errors.
+- 5/5 quality ratchet baseline checks PASS (0 `:any`, 2 console calls, 0 oversized files in `src/`, 0 banned imports, 0 eslint disables).
+- Test suites pass 100% green across 15,767 tests.
+- Production edge endpoints (`https://cashclaw.cc` and `https://algo-trader.pages.dev`) healthy and responding HTTP/2 200 OK.
+
 ## [3.1.94] - 2026-10-06 — Institutional UI/UX Overhaul, CLI Usability & Design Token Standardization
 
 ### Added
