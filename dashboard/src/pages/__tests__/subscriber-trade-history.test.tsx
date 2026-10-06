@@ -15,6 +15,7 @@ vi.mock('../../hooks/use-subscriber-pnl', () => ({
   useSubscriberPnl: vi.fn(),
 }));
 
+import { useAuthStore } from '../../stores/auth-store';
 import { useSubscriberPnl } from '../../hooks/use-subscriber-pnl';
 import { SubscriberTradeHistoryPage } from '../subscriber-trade-history';
 
@@ -57,6 +58,10 @@ function hookResult(overrides = {}) {
 describe('SubscriberTradeHistoryPage', () => {
   beforeEach(() => {
     mockHook.mockReset();
+    vi.mocked(useAuthStore).mockImplementation(
+      (selector: (s: { tenantId: string | null }) => unknown) =>
+        selector({ tenantId: 'sub-history-001' })
+    );
   });
 
   it('renders Trade History heading', () => {
@@ -91,8 +96,7 @@ describe('SubscriberTradeHistoryPage', () => {
     expect(screen.getByText('Fetch failed')).toBeTruthy();
   });
 
-  it('shows no-identity message when tenantId is null', async () => {
-    const { useAuthStore } = await import('../../stores/auth-store');
+  it('shows no-identity message when tenantId is null', () => {
     vi.mocked(useAuthStore).mockImplementation(
       (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
     );

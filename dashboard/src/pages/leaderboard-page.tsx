@@ -14,7 +14,7 @@ langToggle: 'Tiếng Việt',
 title: 'Strategy Leaderboard',
 subtitle: 'Performance rankings across all active strategies',
 loading: 'Loading leaderboard data...',
-error: 'Failed to load data',
+error: 'Failed to load data.',
 retry: 'Retry',
 noData: 'No strategies match your search',
 noStrategies: 'No leaderboard data available',
@@ -78,34 +78,47 @@ return () => { cancelled = true; };
 const filtered = useMemo(() => {
 if (!search.trim()) return data;
 const q = search.toLowerCase();
-return data.filter((e) => e.strategyName.toLowerCase().includes(q));
+return data.filter((e) => {
+  const name = e.strategyName ?? (e as unknown as { strategy?: string }).strategy ?? '';
+  return name.toLowerCase().includes(q);
+});
 }, [data, search]);
 
 const t = COPY[lang];
 
 if (loading) {
 return (
-<div className="min-h-screen bg-bg text-onSurface font-sans flex items-center justify-center">
-<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-<p className="text-primary text-2xl font-bold mb-2">{t.title}</p>
-<div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-</motion.div>
+<div className="min-h-screen bg-bg text-onSurface font-sans">
+<div className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-16 space-y-4">
+<h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
+<div className="bg-surface/80 border border-outline rounded-2xl p-8">
+<div className="animate-pulse space-y-3">
+<div className="h-4 bg-outline/50 rounded w-1/3" />
+<div className="h-8 bg-outline/50 rounded" />
+<div className="h-8 bg-outline/50 rounded" />
+<div className="h-8 bg-outline/50 rounded" />
+<div className="h-8 bg-outline/50 rounded" />
+</div>
+</div>
+</div>
 </div>
 );
 }
 
 if (error) {
 return (
-<div className="min-h-screen bg-bg text-onSurface font-sans flex items-center justify-center">
-<div className="text-center">
-<p className="text-loss text-xl font-bold mb-4">{t.title}</p>
-<p className="text-onSurfaceVariant text-sm">{error}</p>
+<div className="min-h-screen bg-bg text-onSurface font-sans">
+<div className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-16 space-y-4">
+<h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
+<div className="bg-surface/80 border border-loss/30 rounded-2xl p-8 text-center">
+<p className="text-loss text-sm font-semibold mb-2">{error}</p>
 <button
 onClick={() => window.location.reload()}
 className="mt-4 px-5 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-[#0060d3] transition-colors"
 >
 {t.retry}
 </button>
+</div>
 </div>
 </div>
 );
@@ -118,7 +131,10 @@ return (
 <div className="flex items-center justify-between mb-8">
 <div>
 <h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
-<p className="text-onSurfaceVariant text-sm mt-1">{t.subtitle}</p>
+<p className="text-onSurfaceVariant text-sm mt-1">
+{t.subtitle}
+{(total > 0 || data.length > 0) && ` · ${total || data.length} strategies`}
+</p>
 </div>
 <button
 onClick={() => setLang((l: Lang) => l === 'en' ? 'vi' : 'en')}
@@ -153,8 +169,8 @@ aria-label="Search strategies"
 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
 {[
 { label: t.total, value: total || data.length },
-{ label: t.avgWin, value: `${(data.reduce((s, e) => s + e.winRate, 0) / data.length).toFixed(1)}%` },
-{ label: t.avgSharpe, value: (data.reduce((s, e) => s + e.sharpeRatio, 0) / data.length).toFixed(2) },
+{ label: t.avgWin, value: `${(data.reduce((s, e) => s + (e.winRate ?? 0), 0) / data.length).toFixed(1)}%` },
+{ label: t.avgSharpe, value: (data.reduce((s, e) => s + (e.sharpeRatio ?? (e as unknown as { sharpe?: number }).sharpe ?? 0), 0) / data.length).toFixed(2) },
 { label: t.totalPnl, value: `${data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? '+' : ''}$${Math.abs(data.reduce((s, e) => s + (e.pnl || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
 tone: data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-profit' : 'text-loss',
 },
@@ -170,7 +186,29 @@ tone: data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-profit' : 'text-lo
 {/* Table */}
 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
 <div className={glassCard('overflow-hidden')}>
-<LeaderboardTable entries={filtered} aria-label="Strategy performance rankings table" />
+{filtered.length > 0 ? (
+  <LeaderboardTable entries={filtered} aria-label="Strategy performance rankings table" />
+) : (
+  <div className="flex flex-col items-center justify-center py-12 text-muted">
+    <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" className="mb-3 opacity-30">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="3" y1="15" x2="21" y2="15" />
+      <line x1="9" y1="9" x2="9" y2="21" />
+    </svg>
+    <p className="text-sm">
+      {search ? t.noData : t.noStrategies}
+    </p>
+    {search && (
+      <button
+        onClick={() => setSearch('')}
+        className="mt-2 text-xs text-primary hover:underline"
+      >
+        {t.clearFilter}
+      </button>
+    )}
+  </div>
+)}
 </div>
 </motion.div>
 </div>

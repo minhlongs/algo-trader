@@ -229,16 +229,16 @@ function EquityCurveChart({ strategy, allStrategies }: EquityCurveChartProps) {
     <div className="w-full h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="${COLORS.surfaceHigh}" />
-          <XAxis dataKey="name" tick={{ fill: '${COLORS.onSurfaceVariant}', fontSize: 11 }} />
-          <YAxis tick={{ fill: '${COLORS.onSurfaceVariant}', fontSize: 11 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={COLORS.surfaceHigh} />
+          <XAxis dataKey="name" tick={{ fill: COLORS.onSurfaceVariant, fontSize: 11 }} />
+          <YAxis tick={{ fill: COLORS.onSurfaceVariant, fontSize: 11 }} />
           <Tooltip
             contentStyle={{
               backgroundColor: COLORS.surfaceHigh,
-              border: '1px solid ${COLORS.outline}',
+              border: `1px solid ${COLORS.outline}`,
               borderRadius: 6,
               fontSize: 12,
-              color: '${COLORS.onSurface}',
+              color: COLORS.onSurface,
             }}
           />
           <Bar dataKey={strategy.strategy} radius={[3, 3, 0, 0]}>

@@ -55,7 +55,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     stopBot: 'Stop Bot',
     /* Status */
     stale: 'stale',
-    refreshing: 'Refreshing…',
+    refreshing: 'Refreshing...',
     syncing: 'syncing…',
     synced: 'synced',
     connected: 'Connected',

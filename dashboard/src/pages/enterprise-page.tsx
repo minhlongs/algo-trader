@@ -25,7 +25,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     tabContact: 'Contact',
     tabSuccess: 'Success',
     badge: 'Enterprise',
-    titlePricing: 'Built for traders ready to scale',
+    titlePricing: 'Built for institutional desks',
     subtitlePricing:
       'Monthly contracts, dedicated support, and custom integrations. Pricing is invoice-based — our team works with you on terms.',
     selfServeQ: 'Looking for self-serve?',
@@ -56,7 +56,8 @@ const COPY: Record<Lang, Record<string, string>> = {
     namePlaceholder: 'Your full name',
     companyPlaceholder: 'Acme Capital',
     submitting: 'Sending...',
-    requestAccess: '{cta}',
+    requestAccess: 'Request enterprise access',
+    contactSales: 'Contact sales',
     noPaymentNote: 'No payment required. Invoice-based close only.',
     successHeadline: 'Inquiry received',
     successSub: 'Our team will reach out within 24 hours to schedule a walkthrough and discuss contract terms.',
@@ -110,6 +111,7 @@ const COPY: Record<Lang, Record<string, string>> = {
     companyPlaceholder: 'Công ty ABC',
     submitting: 'Đang gửi...',
     requestAccess: 'Yêu cầu truy cập doanh nghiệp',
+    contactSales: 'Liên hệ kinh doanh',
     noPaymentNote: 'Không cần thanh toán. Chỉ kết thúc theo hóa đơn.',
     successHeadline: 'Đã nhận yêu cầu',
     successSub: 'Đội ngũ sẽ liên hệ trong 24 giờ để lên lịch giới thiệu và thảo luận điều khoản hợp đồng.',
@@ -195,7 +197,7 @@ function PlanCard({
 
       <div>
         <p className="text-xs uppercase tracking-widest mb-2" style={{ color: COLORS.onSurfaceVariant }}>
-          {plan.name}
+          {plan.name.toUpperCase()}
         </p>
         <p className="text-white text-3xl font-bold mb-1">{plan.price}</p>
         <p className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>
@@ -261,7 +263,7 @@ const faqs = [
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
           {(Object.entries(ENTERPRISE_PLANS) as [EnterprisePlanKey, (typeof ENTERPRISE_PLANS)[EnterprisePlanKey]][]).map(
             ([key, plan]) => (
-              <PlanCard key={key} planKey={key} plan={plan} highlight={key === 'enterprise'} onSelect={onSelectTier} mostPopular={t.mostPopular} cta={t.requestAccess} />
+              <PlanCard key={key} planKey={key} plan={plan} highlight={key === 'enterprise'} onSelect={onSelectTier} mostPopular={t.mostPopular} cta={t.contactSales} />
             )
           )}
         </div>
@@ -414,7 +416,7 @@ function ContactTab({ t, defaultTier, onSuccess }: { t: Record<string, string>; 
                     }
                   >
                     <p className="font-bold text-sm mb-0.5">{plan.price}</p>
-                    <p className="text-[10px] opacity-70">{plan.name}</p>
+                    <p className="text-[10px] opacity-70">{plan.name.toUpperCase()}</p>
                   </button>
                 )
               )}
@@ -645,7 +647,7 @@ export function EnterprisePage() {
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className="px-6 py-2 text-sm font-semibold rounded-md transition-colors"
+                className={`px-6 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === key ? 'bg-[#F59E0B] text-black' : ''}`}
                 style={
                   activeTab === key
                     ? { backgroundColor: COLORS.warning, color: COLORS.bg }

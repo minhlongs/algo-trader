@@ -35,28 +35,46 @@ function SortIcon({ dir }: { dir: SortDir | null }) {
  </svg>
  );
 }
+function getEntryValue(entry: LeaderboardEntry, key: SortKey): unknown {
+  switch (key) {
+    case 'strategyName':
+      return entry.strategyName ?? (entry as unknown as { strategy?: string }).strategy ?? '';
+    case 'sharpeRatio':
+      return entry.sharpeRatio ?? (entry as unknown as { sharpe?: number }).sharpe ?? 0;
+    case 'maxDrawdown':
+      return entry.maxDrawdown ?? (entry as unknown as { drawdown?: number }).drawdown ?? 0;
+    case 'totalTrades':
+      return entry.totalTrades ?? (entry as unknown as { trades?: number }).trades ?? 0;
+    case 'winRate':
+      return entry.winRate ?? 0;
+    case 'pnl':
+      return entry.pnl ?? 0;
+    default:
+      return (entry as unknown as Record<string, unknown>)[key] ?? '';
+  }
+}
 
 export function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
- const [sortKey, setSortKey] = useState<SortKey>('sharpeRatio');
- const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [sortKey, setSortKey] = useState<SortKey>('sharpeRatio');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
 
- function handleSort(key: SortKey) {
- if (sortKey === key) {
- setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
- } else {
- setSortKey(key);
- setSortDir('desc');
- }
- }
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'strategyName' ? 'asc' : 'desc');
+    }
+  }
 
- const sorted = useMemo(() => {
- return [...entries].sort((a, b) => {
- const av = a[sortKey];
- const bv = b[sortKey];
- const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
- return sortDir === 'asc' ? cmp : -cmp;
- });
- }, [entries, sortKey, sortDir]);
+  const sorted = useMemo(() => {
+    return [...entries].sort((a, b) => {
+      const av = getEntryValue(a, sortKey);
+      const bv = getEntryValue(b, sortKey);
+      const cmp = typeof av === 'number' && typeof bv === 'number' ? (av as number) - (bv as number) : String(av).localeCompare(String(bv));
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }, [entries, sortKey, sortDir]);
 
  if (entries.length === 0) {
  return (
@@ -76,7 +94,7 @@ export function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
  <table className="w-full min-w-[750px] text-xs border-collapse">
  <thead>
  <tr className="border-b border-bg-border">
- <th className="px-3 py-2 w-10 text-[10px] uppercase tracking-widest text-muted text-left">#</th>
+ <th className="px-3 py-2 w-10 text-[10px] uppercase tracking-widest text-muted text-left">Rank</th>
  {COLUMNS.map(({ key, label, align }) => (
  <th key={key} onClick={() => handleSort(key)} className={`px-3 py-2 text-muted cursor-pointer select-none hover:text-white transition-colors whitespace-nowrap text-[10px] uppercase tracking-widest ${align === 'right' ? 'text-right' : 'text-left'}`}>
  <span className="inline-flex items-center gap-1">{label}<SortIcon dir={sortKey === key ? sortDir : null} /></span>
@@ -87,7 +105,7 @@ export function LeaderboardTable({ entries }: { entries: LeaderboardEntry[] }) {
  </thead>
  <tbody>
  {sorted.map((entry, idx) => (
- <LeaderboardRow key={entry.strategyName} entry={entry} rank={idx + 1} />
+ <LeaderboardRow key={entry.strategyName ?? (entry as unknown as { strategy?: string }).strategy ?? idx} entry={entry} rank={idx + 1} />
  ))}
  </tbody>
  </table>

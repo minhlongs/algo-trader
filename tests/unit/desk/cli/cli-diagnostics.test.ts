@@ -11,6 +11,15 @@ import {
 } from '../../../../src/desk/cli/cli-diagnostics';
 import { logger } from '../../../../src/shared/utils/logger';
 
+vi.mock('../../../../src/shared/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 describe('formatCliDiagnostic', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,6 +45,16 @@ describe('formatCliDiagnostic', () => {
     }
   });
 
+  it('handles duck-typed ZodError with empty issue path', () => {
+    const mockZod = {
+      name: 'ZodError',
+      issues: [{ path: [], message: 'Global option invalid' }],
+    };
+    const result = formatCliDiagnostic(mockZod);
+    expect(result.title).toBe('Invalid CLI options');
+    expect(result.messages[0]).toContain('--option');
+  });
+
   it('formats ECONNREFUSED network errors with remediation guidance', () => {
     const errorSpy = vi.spyOn(logger, 'error');
     const networkErr = new Error('connect ECONNREFUSED 127.0.0.1:9100');
@@ -55,6 +74,14 @@ describe('formatCliDiagnostic', () => {
     expect(result.messages[0]).toBe('  ✖ Database file corrupted');
     expect(errorSpy).toHaveBeenCalledWith('Command failed: Database file corrupted');
   });
+
+  it('formats non-Error primitives and null gracefully', () => {
+    const resString = formatCliDiagnostic('Direct string failure');
+    expect(resString.messages[0]).toBe('  ✖ Direct string failure');
+
+    const resNull = formatCliDiagnostic(null);
+    expect(resNull.messages[0]).toBe('  ✖ Unknown error');
+  });
 });
 
 describe('formatCurrencyPnl', () => {
@@ -73,6 +100,7 @@ describe('formatCurrencyPnl', () => {
     expect(formatCurrencyPnl(-0.001)).toBe('$0.00');
     expect(formatCurrencyPnl(0.001)).toBe('$0.00');
     expect(formatCurrencyPnl(NaN)).toBe('$0.00');
+    expect(formatCurrencyPnl('invalid-number')).toBe('$0.00');
   });
 });
 
