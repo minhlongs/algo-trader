@@ -271,4 +271,46 @@ describe('pollOrderFor', () => {
     await pollOrderFor(ctx, 'ord-delayed');
     expect(ctx.pollTimers.has('ord-delayed')).toBe(true);
   });
+
+  it('reconciles fill via getOrder before expiration when order not in open orders', async () => {
+    const getOrder = vi.fn().mockResolvedValue({ status: 'matched', size_matched: '10' });
+    const ctx = makeCtx({
+      maxOrderLifetimeMs: 1000,
+      adapter: {
+        getOpenOrders: vi.fn().mockResolvedValue([]),
+        cancelOrder: vi.fn().mockResolvedValue(undefined),
+        getOrder,
+      } as any,
+    });
+    const state = makeState({ orderId: 'ord-reconcile-fill', submittedAt: Date.now() - 2000, size: 10 });
+    ctx.activeOrders.set('ord-reconcile-fill', state);
+
+    await pollOrderFor(ctx, 'ord-reconcile-fill');
+
+    expect(getOrder).toHaveBeenCalledWith('ord-reconcile-fill');
+    expect(state.status).toBe('matched');
+    expect(ctx.activeOrders.has('ord-reconcile-fill')).toBe(false);
+    expect(ctx.emit).toHaveBeenCalledWith('filled', expect.objectContaining({ orderId: 'ord-reconcile-fill', status: 'matched' }));
+    expect(ctx.emit).not.toHaveBeenCalledWith('expired', 'ord-reconcile-fill');
+  });
+
+  it('expires order when not in open orders and getOrder returns no fills', async () => {
+    const getOrder = vi.fn().mockResolvedValue({ status: 'unmatched', size_matched: 0 });
+    const ctx = makeCtx({
+      maxOrderLifetimeMs: 1000,
+      adapter: {
+        getOpenOrders: vi.fn().mockResolvedValue([]),
+        cancelOrder: vi.fn().mockResolvedValue(undefined),
+        getOrder,
+      } as any,
+    });
+    const state = makeState({ orderId: 'ord-reconcile-expired', submittedAt: Date.now() - 2000, size: 10 });
+    ctx.activeOrders.set('ord-reconcile-expired', state);
+
+    await pollOrderFor(ctx, 'ord-reconcile-expired');
+
+    expect(getOrder).toHaveBeenCalledWith('ord-reconcile-expired');
+    expect(ctx.activeOrders.has('ord-reconcile-expired')).toBe(false);
+    expect(ctx.emit).toHaveBeenCalledWith('expired', 'ord-reconcile-expired');
+  });
 });

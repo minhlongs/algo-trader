@@ -76,3 +76,23 @@ export function evaluateConcurrentPositionsCheck(
   }
   return { ok: true };
 }
+
+/**
+ * Check 5: Aggregate exposure check
+ */
+export function evaluateAggregateExposureCheck(
+  currentTotalExposureUsd: number,
+  orderSizeUsd: number,
+  capitalUsdc: number,
+  maxAggregateExposureFraction: number
+): CheckEvaluationResult {
+  const maxAggregateExposureUsd = capitalUsdc * maxAggregateExposureFraction;
+  const projectedExposureUsd = currentTotalExposureUsd + orderSizeUsd;
+  if (projectedExposureUsd > maxAggregateExposureUsd) {
+    return {
+      ok: false,
+      reason: `Projected aggregate exposure $${projectedExposureUsd.toFixed(2)} exceeds max allowable $${maxAggregateExposureUsd.toFixed(2)} (${(maxAggregateExposureFraction * 100).toFixed(0)}% of capital)`,
+    };
+  }
+  return { ok: true };
+}

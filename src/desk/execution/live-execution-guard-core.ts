@@ -18,6 +18,7 @@ import {
   evaluatePositionSizeCheck,
   evaluateDailyDrawdownCheck,
   evaluateConcurrentPositionsCheck,
+  evaluateAggregateExposureCheck,
 } from './live-execution-guard-evaluator';
 
 export class LiveExecutionGuard {
@@ -51,6 +52,7 @@ export class LiveExecutionGuard {
       dailyDrawdownOk: true,
       concurrentLimitOk: true,
       circuitBreakerOk: true,
+      aggregateExposureOk: true,
     };
 
     if (!this.config.enabled) {
@@ -86,6 +88,21 @@ export class LiveExecutionGuard {
       if (!cpCheck.ok) {
         checks.concurrentLimitOk = false;
         return { approved: false, reason: cpCheck.reason, checks };
+      }
+
+      // 5. Aggregate exposure check
+      if (this.config.maxAggregateExposureFraction !== undefined) {
+        const currentExposureUsd = this.positionTracker.getSummary().totalExposure;
+        const aggCheck = evaluateAggregateExposureCheck(
+          currentExposureUsd,
+          orderSizeUsd,
+          this.config.capitalUsdc,
+          this.config.maxAggregateExposureFraction
+        );
+        if (!aggCheck.ok) {
+          checks.aggregateExposureOk = false;
+          return { approved: false, reason: aggCheck.reason, checks };
+        }
       }
     }
 

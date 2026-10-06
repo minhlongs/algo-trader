@@ -49,7 +49,13 @@ export class ShardManager {
     this.state = state;
     this.currentEnv = (state as unknown as { env?: Env }).env;
     this.redisInitPromise = null;
-    this.initializeRing().catch(error => logger.error('[ShardManager] Init failed:', error));
+    if (typeof this.state.blockConcurrencyWhile === 'function') {
+      this.state.blockConcurrencyWhile(async () => {
+        await this.initializeRing();
+      }).catch((error: unknown) => logger.error('[ShardManager] Init failed:', error));
+    } else {
+      this.initializeRing().catch((error: unknown) => logger.error('[ShardManager] Init failed:', error));
+    }
   }
 
   private async getRedis(): Promise<RedisClientType | null> {

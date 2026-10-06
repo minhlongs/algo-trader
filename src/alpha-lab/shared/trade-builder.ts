@@ -55,8 +55,9 @@ export function buildTrades(
         : isLoss
           ? entryPrice * (1 - config.sl)
           : entryPrice;
+    const exitTimestamp = candles[l.triggeredAt]?.timestamp ?? candles[l.entryIdx].timestamp;
     return {
-      timestamp: candles[l.entryIdx].timestamp,
+      timestamp: exitTimestamp,
       tokenId: '',
       side: 'BUY',
       price: exitPrice,

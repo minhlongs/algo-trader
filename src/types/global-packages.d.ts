@@ -98,6 +98,7 @@ declare module '@cloudflare/workers-types' {
     };
     id: { toString(): string };
     waitUntil(promise: Promise<unknown>): void;
+    blockConcurrencyWhile<T = void>(callback: () => Promise<T>): Promise<T>;
     acceptWebSocket(ws: WebSocket, tags?: Record<string, string>): void;
     getWebSockets(): WebSocket[];
     env: Record<string, unknown>;

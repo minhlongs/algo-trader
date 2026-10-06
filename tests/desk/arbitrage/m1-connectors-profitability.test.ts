@@ -118,7 +118,11 @@ function createMockPolymarketAdapter(overrides: Partial<PolymarketAdapter> = {})
     placeOrder: vi.fn(async (order: PolymarketOrder): Promise<PolymarketOrderResponse> => {
       seq++;
       const orderID = `0xpoly-${seq}`;
-      const isMatched = order.price >= 0.90; // aggressive marketable orders match
+      const isMatched = order.side === 'BUY'
+        ? order.price >= 0.52
+        : order.side === 'SELL'
+          ? order.price <= 0.48
+          : order.price >= 0.90; // crossing marketable orders match
       if (!isMatched) {
         openOrders.push({
           id: orderID,
@@ -554,7 +558,7 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
       );
     });
 
-    it('2.3: emulates market buy by setting aggressive limit price 0.99', async () => {
+    it('2.3: emulates market buy by setting bounded limit price with max slippage', async () => {
       const adapter = createMockPolymarketAdapter();
       const connector = new PolymarketConnectorAdapter(adapter, undefined, { dryRun: true });
 
@@ -565,19 +569,19 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
         amount: 50,
       });
 
-      expect(res.price).toBe(0.99);
+      expect(res.price).toBe(0.546);
       expect(adapter.placeOrder).toHaveBeenCalledWith(
         expect.objectContaining({
-          price: 0.99,
+          price: 0.546,
           side: 'BUY',
         })
       );
-      // Because mock adapter matches orders with price >= 0.90
+      // Because mock adapter matches orders that cross the book (>= 0.52)
       expect(res.status).toBe('closed');
       expect(res.filled).toBe(50);
     });
 
-    it('2.4: emulates market sell by setting aggressive limit price 0.01', async () => {
+    it('2.4: emulates market sell by setting bounded limit price with max slippage', async () => {
       const adapter = createMockPolymarketAdapter();
       const connector = new PolymarketConnectorAdapter(adapter, undefined, { dryRun: true });
 
@@ -590,7 +594,7 @@ describe('M1: Exchange Connectors & Net Profitability Suite', () => {
 
       expect(adapter.placeOrder).toHaveBeenCalledWith(
         expect.objectContaining({
-          price: 0.01,
+          price: 0.456,
           side: 'SELL',
         })
       );

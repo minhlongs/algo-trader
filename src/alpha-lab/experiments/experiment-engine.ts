@@ -100,7 +100,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
       const start = Math.max(split.startIdx, config.lookback);
       const end = split.endIdx - 1 - config.maxHolding;
       if (end >= start) {
-        const labels = batchLabel(candlePrices, config.tp, config.sl, config.maxHolding, start);
+        const labels = batchLabel(candlePrices, config.tp, config.sl, config.maxHolding, start, end);
         labelsArr.push(...labels);
         tradesArr.push(...buildTrades(candles, labels, tradeOpts));
       }

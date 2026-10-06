@@ -157,10 +157,10 @@ describe('StrategyShard', () => {
       expect(shard).toBeInstanceOf(StrategyShard);
     });
 
-    it('initializes strategies map and metrics', () => {
+    it('initializes strategies map and metrics with blockConcurrencyWhile', () => {
       const shard = new StrategyShard(state);
-      // private fields initialized, no errors thrown
       expect(shard).toBeInstanceOf(StrategyShard);
+      expect(state.blockConcurrencyWhile).toHaveBeenCalled();
     });
   });
 

@@ -11,6 +11,8 @@ export interface GuardConfig {
   maxConcurrentPositions: number;
   /** Consecutive losses that trip the circuit breaker (default: 3) */
   maxConsecutiveLosses: number;
+  /** Max total exposure across all positions as fraction of capital (default: 0.50 = 50%) */
+  maxAggregateExposureFraction?: number;
   /** Total capital for position size calculation */
   capitalUsdc: number;
   /** Set to false to disable the guard (PAPER mode) */
@@ -22,6 +24,7 @@ export interface GuardChecks {
   dailyDrawdownOk: boolean;
   concurrentLimitOk: boolean;
   circuitBreakerOk: boolean;
+  aggregateExposureOk?: boolean;
 }
 
 export interface GuardResult {
@@ -45,5 +48,6 @@ export const DEFAULT_CONFIG: Omit<GuardConfig, 'capitalUsdc'> = {
   maxDailyDrawdown: 0.05,
   maxConcurrentPositions: 10,
   maxConsecutiveLosses: 3,
+  maxAggregateExposureFraction: 0.50,
   enabled: false, // DISABLED by default — operator must opt into live trading
 };

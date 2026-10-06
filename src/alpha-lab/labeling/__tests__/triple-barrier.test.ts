@@ -131,5 +131,33 @@ describe('TripleBarrier', () => {
       const out = batchLabel(shortCandles, 0.05, 0.05, 5);
       expect(out).toEqual([]);
     });
+
+    it('constrains labeling to endIdx when provided', () => {
+      const candles = makeCandles([
+        { high: 102, low: 98, close: 100 },
+        { high: 103, low: 99, close: 101 },
+        { high: 104, low: 100, close: 102 },
+        { high: 105, low: 101, close: 103 },
+        { high: 106, low: 102, close: 104 },
+        { high: 107, low: 103, close: 105 },
+      ]);
+      const out = batchLabel(candles, 0.05, 0.05, 2, 0, 1);
+      expect(out).toHaveLength(2);
+      expect(out.map((r) => r.entryIdx)).toEqual([0, 1]);
+    });
+
+    it('falls back to candles.length - 1 - maxHolding when endIdx is omitted', () => {
+      const candles = makeCandles([
+        { high: 102, low: 98, close: 100 },
+        { high: 103, low: 99, close: 101 },
+        { high: 104, low: 100, close: 102 },
+        { high: 105, low: 101, close: 103 },
+        { high: 106, low: 102, close: 104 },
+        { high: 107, low: 103, close: 105 },
+      ]);
+      const out = batchLabel(candles, 0.05, 0.05, 2, 0);
+      expect(out).toHaveLength(4);
+      expect(out.map((r) => r.entryIdx)).toEqual([0, 1, 2, 3]);
+    });
   });
 });

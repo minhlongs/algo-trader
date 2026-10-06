@@ -16,6 +16,8 @@ const THROTTLE_MS: Record<TierKey, number> = {
   ENTERPRISE: 5_000,           // max 1 per 5s (Telegram API limit guard)
 };
 
+export const MAX_QUEUE_SIZE = 5000;
+
 export class TelegramSignalPusher {
   private botToken: string;
   /** chatId → last push ts */
@@ -23,9 +25,14 @@ export class TelegramSignalPusher {
   /** Simple in-memory queue: [chatId, text][] */
   private queue: Array<[number, string]> = [];
   private flushing = false;
+  private droppedCount = 0;
 
   constructor(botToken?: string) {
     this.botToken = botToken ?? process.env.TELEGRAM_BOT_TOKEN ?? '';
+  }
+
+  get droppedMessages(): number {
+    return this.droppedCount;
   }
 
   /** Format signal into readable Telegram message */
@@ -55,6 +62,14 @@ export class TelegramSignalPusher {
     if (Date.now() - last < throttle) return;
 
     this.lastPush.set(sub.chatId, Date.now());
+    if (this.queue.length >= MAX_QUEUE_SIZE) {
+      this.queue.shift();
+      this.droppedCount++;
+      logger.warn('[TelegramPusher] Queue full, dropped oldest message', {
+        maxQueueSize: MAX_QUEUE_SIZE,
+        droppedCount: this.droppedCount,
+      });
+    }
     this.queue.push([sub.chatId, this.formatSignal(signal)]);
     void this.flushQueue();
   }

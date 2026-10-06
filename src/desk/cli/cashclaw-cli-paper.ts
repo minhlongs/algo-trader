@@ -45,6 +45,10 @@ export function registerPaperAndBacktestCommands(program: Command): void {
         logger.error('Error: --interval must be >= 5000ms');
         process.exit(1);
       }
+      if (isNaN(maxPositions) || maxPositions <= 0) {
+        logger.error('Error: --max-positions must be a positive number');
+        process.exit(1);
+      }
 
       logger.info('CashClaw Paper Trading');
       logger.info(`Capital: $${capitalUsdc} | Interval: ${intervalMs}ms | Max positions: ${maxPositions}`);

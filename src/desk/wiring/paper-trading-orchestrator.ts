@@ -1,6 +1,4 @@
 /** Paper Trading Orchestrator — end-to-end pipeline glue.
- * market data → NATS → swarm consensus → AI validation → paper order → P&L → reflection
- * No real CLOB orders. Trades logged to data/paper-trades.json + NATS system.metrics.
  * Phase 04: Qwen signals routed to paper_trades_v3 (source='qwen'), never to live. */
 
 import { getVibeState } from './vibe-controller';
@@ -10,24 +8,13 @@ import type { SignalCandidate } from '../intelligence/signal-validator';
 import { recordPrediction } from '../intelligence/prediction-accuracy-tracker';
 import { logger } from '../../shared/utils/logger';
 import { isQwenEnabled } from './qwen-drawdown-monitor';
-import {
-  getPortfolio,
-  saveTrades,
-  savePaperTradeV3,
-  POSITION_SIZE_PCT,
-  MIN_AI_CONFIDENCE,
-} from './paper-trading-persistence';
+import { getPortfolio, saveTrades, savePaperTradeV3, POSITION_SIZE_PCT, MIN_AI_CONFIDENCE } from './paper-trading-persistence';
 import { runPaperTradingLoop } from './paper-trading-orchestrator-runner';
+import { tryReservePaperCapital } from './paper-capital-reservation';
 
 // Re-export persistence functions for consumers
-export {
-  getPortfolio,
-  saveTrades,
-  loadTrades,
-  savePaperTradeV3,
-  __resetPortfolioForTests,
-  resetPortfolio,
-} from './paper-trading-persistence';
+export { getPortfolio, saveTrades, loadTrades, savePaperTradeV3, __resetPortfolioForTests, resetPortfolio } from './paper-trading-persistence';
+export { resetCapitalReservations } from './paper-capital-reservation';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface PaperTrade {
@@ -80,66 +67,81 @@ export async function processCandidate(candidate: SignalCandidate, maxPositions:
   // Endgame signals are mathematical — use lower threshold (0.5% min)
   const isEndgame = candidate.reasoning.includes('Endgame') || candidate.reasoning.includes('near-certain');
   const minEdge = isEndgame ? 0.005 : Math.max(0.01, vibe.minEdge / 100);
-  if (portfolio.positions.length >= maxPositions || candidate.expectedEdge < minEdge || portfolio.capital <= 0) return;
-  if (!isEndgame) {
-    // Non-endgame: run swarm consensus + AI validation
-    const swarm = await runSwarmConsensus(candidate);
-    if (!swarm.approved) { logger.info('[PaperOrchestrator] Swarm REJECT', { type: candidate.signalType }); return; }
+  if (candidate.expectedEdge < minEdge) return;
 
-    const validation = await validateSignal(candidate);
-    if (!validation.valid || validation.confidence < MIN_AI_CONFIDENCE) {
-      logger.info('[PaperOrchestrator] AI REJECT', { type: candidate.signalType, conf: validation.confidence });
+  const reservation = tryReservePaperCapital({
+    currentCapital: portfolio.capital,
+    currentPositionsCount: portfolio.positions.length,
+    maxPositions,
+    maxExposure: vibe.maxExposure,
+    positionSizePct: POSITION_SIZE_PCT,
+  });
+  if (!reservation) return;
+
+  try {
+    if (!isEndgame) {
+      const swarm = await runSwarmConsensus(candidate);
+      if (!swarm.approved) {
+        logger.info('[PaperOrchestrator] Swarm REJECT', { type: candidate.signalType });
+        reservation.release();
+        return;
+      }
+
+      const validation = await validateSignal(candidate);
+      if (!validation.valid || validation.confidence < MIN_AI_CONFIDENCE) {
+        logger.info('[PaperOrchestrator] AI REJECT', { type: candidate.signalType, conf: validation.confidence });
+        reservation.release();
+        return;
+      }
+    } else {
+      logger.info('[PaperOrchestrator] Endgame — skip AI (mathematical)', { edge: candidate.expectedEdge });
+    }
+
+    const market = candidate.markets[0];
+    if (!market) {
+      reservation.release();
       return;
     }
-  } else {
-    logger.info('[PaperOrchestrator] Endgame — skip AI (mathematical)', { edge: candidate.expectedEdge });
+
+    const size = Math.min(reservation.size, vibe.maxExposure);
+    const side: 'YES' | 'NO' = isEndgame
+      ? (market.yesPrice < 0.5 ? 'NO' : 'YES')
+      : (market.yesPrice < 0.5 ? 'YES' : 'NO');
+    const entryPrice = side === 'YES' ? market.yesPrice : market.noPrice;
+    const trade: PaperTrade = {
+      id: `paper-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      marketId: market.id,
+      side,
+      size,
+      entryPrice,
+      strategy: candidate.signalType,
+      source,
+      signalConfidence: isEndgame ? candidate.expectedEdge : 0.8,
+      swarmApproved: !isEndgame,
+      aiValidated: !isEndgame,
+      timestamp: Date.now(),
+    };
+
+    portfolio.capital -= size;
+    portfolio.positions.push(trade);
+    reservation.commit();
+    saveTrades();
+
+    // Persist to source-tagged paper_trades_v3 for Qwen A/B P&L tracking
+    void savePaperTradeV3(trade);
+
+    recordPrediction({
+      id: trade.id, marketId: trade.marketId, title: market.title,
+      predictedOutcome: trade.side, confidence: trade.signalConfidence,
+      predictedAt: Date.now(), marketYesPrice: market.yesPrice,
+      strategy: candidate.signalType, actualOutcome: null, resolvedAt: null, correct: null,
+    });
+
+    logger.info('[PaperOrchestrator] Trade OPEN', { id: trade.id, side: trade.side, size, entryPrice: trade.entryPrice });
+  } catch (err) {
+    reservation.release();
+    throw err;
   }
-
-  const market = candidate.markets[0];
-  if (!market) return;
-
-  const size = Math.min(portfolio.capital * POSITION_SIZE_PCT, vibe.maxExposure);
-  const side: 'YES' | 'NO' = isEndgame
-    ? (market.yesPrice < 0.5 ? 'NO' : 'YES')
-    : (market.yesPrice < 0.5 ? 'YES' : 'NO');
-  const entryPrice = side === 'YES' ? market.yesPrice : market.noPrice;
-  const trade: PaperTrade = {
-    id: `paper-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    marketId: market.id,
-    side,
-    size,
-    entryPrice,
-    strategy: candidate.signalType,
-    source,
-    signalConfidence: isEndgame ? candidate.expectedEdge : 0.8,
-    swarmApproved: !isEndgame,
-    aiValidated: !isEndgame,
-    timestamp: Date.now(),
-  };
-
-  portfolio.capital -= size;
-  portfolio.positions.push(trade);
-  saveTrades();
-
-  // Persist to source-tagged paper_trades_v3 for Qwen A/B P&L tracking
-  void savePaperTradeV3(trade);
-
-  // Record prediction for accuracy tracking (no money needed)
-  recordPrediction({
-    id: trade.id,
-    marketId: trade.marketId,
-    title: market.title,
-    predictedOutcome: trade.side,
-    confidence: trade.signalConfidence,
-    predictedAt: Date.now(),
-    marketYesPrice: market.yesPrice,
-    strategy: candidate.signalType,
-    actualOutcome: null,
-    resolvedAt: null,
-    correct: null,
-  });
-
-  logger.info('[PaperOrchestrator] Trade OPEN', { id: trade.id, side: trade.side, size, entryPrice: trade.entryPrice });
 }
 
 /** Ingest a MARL market maker fill into the paper portfolio. */
@@ -172,11 +174,7 @@ export function recordMarlPaperFill(
   saveTrades();
   void savePaperTradeV3(trade);
   logger.info('[PaperOrchestrator] MARL Maker Fill recorded', {
-    id: trade.id,
-    marketId,
-    side: trade.side,
-    size: notional,
-    price,
+    id: trade.id, marketId, side: trade.side, size: notional, price,
   });
   return trade;
 }

@@ -4,10 +4,11 @@
  * Styling: Tailwind typography classes applied manually (dashboard has no
  * @tailwindcss/typography plugin); we hand-style prose for dark background.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { COLORS as _COLORS } from '../lib/stitch-design-tokens';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import DOMPurify from 'dompurify';
 
 export interface MarkdownViewerProps {
   /** Absolute path under /public — e.g. "/manifesto.md". */
@@ -43,6 +44,12 @@ export function MarkdownViewer({
     };
   }, [src]);
 
+  // Sanitize markdown content via DOMPurify to strip XSS vectors before rendering
+  const sanitizedMarkdown = useMemo(() => {
+    if (markdown === null) return null;
+    return DOMPurify.sanitize(markdown);
+  }, [markdown]);
+
   if (error) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
@@ -53,7 +60,7 @@ export function MarkdownViewer({
     );
   }
 
-  if (markdown === null) {
+  if (sanitizedMarkdown === null) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
         <p className="text-onSurfaceVariant text-sm animate-pulse">
@@ -69,7 +76,7 @@ export function MarkdownViewer({
         remarkPlugins={[remarkGfm]}
         // Intentionally NOT passing rehype-raw — raw HTML is stripped.
       >
-        {markdown}
+        {sanitizedMarkdown}
       </ReactMarkdown>
     </article>
   );

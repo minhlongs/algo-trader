@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useMemo } from 'react';
 import { COLORS } from '../lib/stitch-design-tokens';
-import { createChart, IChartApi, ColorType } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, BusinessDay, ColorType } from 'lightweight-charts';
 
 interface TrendDataPoint {
   month: string;
@@ -27,6 +27,7 @@ export function RevenueTrendChart({
 }: RevenueTrendChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
 
   // Format dates for lightweight-charts
   const chartData = useMemo(() => {
@@ -34,7 +35,7 @@ export function RevenueTrendChart({
       // Convert YYYY-MM to BusinessDay format
       const [year, month] = point.month.split('-').map(Number);
       return {
-        time: { year, month } as any,
+        time: { year, month, day: 1 } as BusinessDay,
         value: point.totalMRR,
       };
     });
@@ -63,12 +64,15 @@ export function RevenueTrendChart({
   }), []);
 
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    const initialWidth = container.clientWidth > 0 ? container.clientWidth : undefined;
 
     // Create chart
-    const chart = createChart(chartContainerRef.current, {
+    const chart = createChart(container, {
       ...chartOptions,
-      width: chartContainerRef.current.clientWidth,
+      width: initialWidth,
       height,
     });
 
@@ -84,40 +88,57 @@ export function RevenueTrendChart({
       pointMarkersRadius: 4,
     });
 
-    series.setData(chartData);
+    seriesRef.current = series;
 
-    // Fit content
-    chart.timeScale().fitContent();
+    if (chartData.length > 0) {
+      series.setData(chartData);
+      if (container.clientWidth > 0 && container.clientHeight > 0) {
+        chart.timeScale().fitContent();
+      }
+    }
 
     // Cleanup
     return () => {
       chart.remove();
       chartRef.current = null;
+      seriesRef.current = null;
     };
-  }, [chartOptions, height, chartData]);
+  }, [chartOptions, height]);
 
   // Update data when it changes
   useEffect(() => {
-    if (chartRef.current && chartData.length > 0) {
-      const series = (chartRef.current as any).series();
-      if (series && series.setData) {
-        series.setData(chartData);
+    const series = seriesRef.current;
+    const chart = chartRef.current;
+    const container = chartContainerRef.current;
+    if (!series || !chart) return;
+
+    if (chartData.length > 0) {
+      series.setData(chartData);
+      if (container && container.clientWidth > 0 && container.clientHeight > 0) {
+        chart.timeScale().fitContent();
       }
+    } else {
+      series.setData([]);
     }
   }, [chartData]);
 
-  // Handle resize
+  // Handle resize with zero-dimension guards
   useEffect(() => {
-    const handleResize = () => {
-      if (chartRef.current && chartContainerRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
+    const container = chartContainerRef.current;
+    const chart = chartRef.current;
+    if (!container || !chart) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+        chart.applyOptions({
+          width: entry.contentRect.width,
         });
       }
-    };
+    });
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    observer.observe(container);
+    return () => observer.disconnect();
   }, []);
 
   return (

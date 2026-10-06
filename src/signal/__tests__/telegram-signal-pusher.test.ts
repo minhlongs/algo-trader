@@ -104,4 +104,17 @@ describe('TelegramSignalPusher', () => {
     await new Promise((r) => setTimeout(r, 100));
     expect(fetchMock).toHaveBeenCalled();
   });
+
+  it('bounds queue to MAX_QUEUE_SIZE and drops oldest when full', () => {
+    // Prevent flushing by setting flushing = true
+    (pusher as any).flushing = true;
+    for (let i = 0; i < 5005; i++) {
+      const sig = makeSignal({ id: `sig-${i}`, confidence: 0.9 });
+      const sub = makeSub({ chatId: 1000 + i, tier: 'ENTERPRISE' });
+      pusher.enqueue(sig, sub);
+    }
+
+    expect(pusher.queueLength).toBe(5000);
+    expect(pusher.droppedMessages).toBe(5);
+  });
 });

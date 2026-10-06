@@ -45,14 +45,15 @@ export function percentile(values: readonly number[], p: number): number {
   return sorted[lower]! * (1 - frac) + sorted[upper]! * frac;
 }
 
-/** Annualised Sharpe from per-bar returns (epsilon guards zero std). */
+/** Annualised Sharpe from per-bar returns (guards zero/near-zero std to prevent phantom Sharpe). */
 export function annualizedSharpe(
   returns: readonly number[],
   barsPerYear: number,
 ): number {
-  const m = mean(returns);
   const s = stdDev(returns);
-  return (m / (s + 1e-10)) * Math.sqrt(barsPerYear);
+  if (s <= 1e-8) return 0;
+  const m = mean(returns);
+  return (m / s) * Math.sqrt(barsPerYear);
 }
 
 export const DEFAULT_SIMULATION_SEED = 42;

@@ -44,6 +44,31 @@ describe('SignalFusionBuffer', () => {
       bufferSignal(toSignalInput('delta-neutral', 0.3));
       // No error = success
     });
+
+    it('should enforce MAX_BUFFER_SIZE with drop-oldest eviction', () => {
+      for (let i = 0; i < 1005; i++) {
+        bufferSignal(toSignalInput(`signal-${i}`, 0.1));
+      }
+
+      vi.mocked(adaptiveFuse).mockReturnValue({
+        direction: 'UP',
+        confidence: 0.8,
+        weightedScore: 0.1,
+        signals: [],
+        reasoning: 'consensus',
+      });
+
+      runAdaptiveFusion(toSignalInput('current', 0.2));
+      const callArgs = vi.mocked(adaptiveFuse).mock.calls[0];
+      const inputs = callArgs[0];
+      // 1000 buffered signals + 1 current = 1001 unique inputs
+      expect(inputs.length).toBe(1001);
+      // signal-0 through signal-4 should have been evicted
+      expect(inputs.some((s) => s.name === 'signal-0')).toBe(false);
+      expect(inputs.some((s) => s.name === 'signal-4')).toBe(false);
+      expect(inputs.some((s) => s.name === 'signal-5')).toBe(true);
+      expect(inputs.some((s) => s.name === 'signal-1004')).toBe(true);
+    });
   });
 
   describe('runAdaptiveFusion', () => {

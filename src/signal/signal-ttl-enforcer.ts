@@ -7,46 +7,42 @@
 import type { Signal } from './signal-types';
 import { logger } from '../shared/utils/logger';
 
+export const MAX_SIGNALS = 10_000;
+export const SWEEP_INTERVAL_MS = 1_000;
+
 export class SignalTtlEnforcer {
   private signals: Map<string, Signal> = new Map();
-  private timers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  private sweepInterval: ReturnType<typeof setInterval> | null = null;
+
+  constructor(sweepIntervalMs: number = SWEEP_INTERVAL_MS) {
+    this.sweepInterval = setInterval(() => {
+      this.sweepExpired();
+    }, sweepIntervalMs);
+    if (this.sweepInterval && typeof this.sweepInterval.unref === 'function') {
+      this.sweepInterval.unref();
+    }
+  }
 
   /**
    * Register a signal for TTL enforcement.
-   * Automatically removes from store when expired.
+   * Enforces FIFO bounded capacity (10,000 signals max).
    */
   register(signal: Signal): void {
-    this.signals.set(signal.id, signal);
-
-    const delay = signal.expiresAt - Date.now();
-    if (delay <= 0) {
-      // Already expired — schedule async (zero-delay) eviction so the signal
-      // is visible for dedup checks in the same synchronous tick, then removed
-      // when the event loop advances and the timer fires under fake timers.
-      const timer = setTimeout(() => this.evict(signal.id), 0);
-      this.timers.set(signal.id, timer);
-      return;
+    if (this.signals.size >= MAX_SIGNALS && !this.signals.has(signal.id)) {
+      const oldestKey = this.signals.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.signals.delete(oldestKey);
+      }
     }
-
-    // Cancel any existing timer for this id
-    const existing = this.timers.get(signal.id);
-    if (existing) clearTimeout(existing);
-
-    const timer = setTimeout(() => this.evict(signal.id), delay);
-    this.timers.set(signal.id, timer);
+    this.signals.set(signal.id, signal);
   }
 
-  /** Remove a signal by ID and cancel its timer */
+  /** Remove a signal by ID */
   evict(id: string): void {
     const sig = this.signals.get(id);
     if (sig) {
       this.signals.delete(id);
       logger.debug(`[SignalTTL] Evicted signal ${id} (market=${sig.market})`);
-    }
-    const timer = this.timers.get(id);
-    if (timer) {
-      clearTimeout(timer);
-      this.timers.delete(id);
     }
   }
 
@@ -74,11 +70,17 @@ export class SignalTtlEnforcer {
     return this.signals.size;
   }
 
+  /** Stop background sweep interval */
+  stop(): void {
+    if (this.sweepInterval) {
+      clearInterval(this.sweepInterval);
+      this.sweepInterval = null;
+    }
+  }
+
   /** Clear all state (used in tests / shutdown) */
   clear(): void {
-    for (const timer of this.timers.values()) clearTimeout(timer);
     this.signals.clear();
-    this.timers.clear();
   }
 }
 

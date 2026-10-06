@@ -38,8 +38,12 @@ export async function executeMigrationDown(client: MigrationClient, id: string):
     await client.query('DROP TABLE IF EXISTS qwen_signals_loop_runs CASCADE');
   } else if (id === '021_create_tenant_audit_logs') {
     await client.query('DROP TABLE IF EXISTS tenant_audit_logs CASCADE');
-  } else if (id === '021_tenant_credentials') {
+  } else if (id === '029_tenant_credentials' || id === '021_tenant_credentials') {
     await client.query('DROP TABLE IF EXISTS tenant_credentials CASCADE');
+  } else if (id === '027-usage-metering-schema') {
+    await client.query('DROP TABLE IF EXISTS overage_invoices CASCADE');
+    await client.query('DROP TABLE IF EXISTS usage_events CASCADE');
+    await client.query('DROP TABLE IF EXISTS license_usage_daily CASCADE');
   } else if (id === '042_add_encrypted_credential_columns') {
     await client.query('ALTER TABLE tenant_credentials DROP COLUMN IF EXISTS api_key_encrypted');
     await client.query('ALTER TABLE tenant_credentials DROP COLUMN IF EXISTS api_secret_encrypted');

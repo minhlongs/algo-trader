@@ -276,7 +276,8 @@ describe('Migration Runner', () => {
         { id: '017_strategy_review_tasks', tables: ['strategy_review_tasks'] },
         { id: '018_qwen_signals_loop_runs', tables: ['qwen_signals_loop_runs'] },
         { id: '021_create_tenant_audit_logs', tables: ['tenant_audit_logs'] },
-        { id: '021_tenant_credentials', tables: ['tenant_credentials'] },
+        { id: '029_tenant_credentials', tables: ['tenant_credentials'] },
+        { id: '027-usage-metering-schema', tables: ['overage_invoices', 'usage_events', 'license_usage_daily'] },
         { id: '042_add_encrypted_credential_columns', tables: ['tenant_credentials'] },
         { id: '0002-phase33-indexes', tables: ['idx_payment_logs_created', 'idx_orders_user_created', 'idx_coupons_redeemed'] },
         { id: '048-prediction-history', tables: ['prediction_history'] },
@@ -426,7 +427,9 @@ describe('Migration Runner', () => {
         'INSERT INTO _migrations (id, description) VALUES ($1, $2)',
         [pending.id, pending.description]
       );
-      expect(mockLogger.info).toHaveBeenCalledWith('[Migrations] Running 35 pending migration(s)...');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringMatching(/\[Migrations\] Running \d+ pending migration\(s\)\.\.\./)
+      );
       expect(mockLogger.info).toHaveBeenCalledWith(`[Migrations] Applied: ${pending.id}`);
       expect(mockLogger.info).toHaveBeenCalledWith('[Migrations] All pending migrations applied');
     });
@@ -483,6 +486,77 @@ describe('Migration Runner', () => {
 
       await expect(migrationRunner.runMigrations()).rejects.toThrow('connection failed');
       expect(mockLogger.error).toHaveBeenCalledWith('[Migrations] Migration runner error:', expect.any(Object));
+    });
+  });
+
+  // ── rollbackMigration & rollbackLastMigration ───────────────────────────────
+
+  describe('rollbackMigration', () => {
+    it('executes down handler and removes migration from _migrations within transaction', async () => {
+      const mockClient = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      mockPoolConnect.mockResolvedValue(mockClient);
+      mockGetDbClient.mockReturnValue({ query: mockPoolQuery, connect: mockPoolConnect });
+
+      await migrationRunner.rollbackMigration('029_tenant_credentials');
+
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith(
+        'DELETE FROM _migrations WHERE id = $1',
+        ['029_tenant_credentials']
+      );
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining('Successfully rolled back: 029_tenant_credentials')
+      );
+    });
+
+    it('rolls back transaction on down handler failure', async () => {
+      const mockClient = {
+        query: vi.fn().mockImplementation((sql: string) => {
+          if (sql === 'BEGIN') return Promise.resolve({ rows: [] });
+          return Promise.reject(new Error('down handler failed'));
+        }),
+        release: vi.fn(),
+      };
+      mockPoolConnect.mockResolvedValue(mockClient);
+      mockGetDbClient.mockReturnValue({ query: mockPoolQuery, connect: mockPoolConnect });
+
+      await expect(migrationRunner.rollbackMigration('unknown_migration')).rejects.toThrow('down handler failed');
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('rollbackLastMigration', () => {
+    it('returns null when no applied migrations exist', async () => {
+      mockPoolQuery.mockResolvedValue({ rows: [] });
+      mockGetDbClient.mockReturnValue({ query: mockPoolQuery, connect: mockPoolConnect });
+
+      const rolledBack = await migrationRunner.rollbackLastMigration();
+
+      expect(rolledBack).toBeNull();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        '[Migrations] No applied migrations to roll back'
+      );
+    });
+
+    it('rolls back the latest applied migration', async () => {
+      const mockClient = { query: vi.fn().mockResolvedValue({ rows: [] }), release: vi.fn() };
+      mockPoolConnect.mockResolvedValue(mockClient);
+      mockPoolQuery.mockResolvedValue({ rows: [{ id: '029_tenant_credentials' }] });
+      mockGetDbClient.mockReturnValue({ query: mockPoolQuery, connect: mockPoolConnect });
+
+      const rolledBack = await migrationRunner.rollbackLastMigration();
+
+      expect(rolledBack).toBe('029_tenant_credentials');
+      expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).toHaveBeenCalledWith(
+        'DELETE FROM _migrations WHERE id = $1',
+        ['029_tenant_credentials']
+      );
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.release).toHaveBeenCalled();
     });
   });
 });

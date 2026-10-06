@@ -34,6 +34,7 @@ export class Http2ConnectionPool {
   private config: Required<PoolConfig>;
   private sessions: Map<string, SessionInfo[]>; // origin -> sessions
   private dns: DnsResolver;
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   private constructor() {
     this.config = {
@@ -47,8 +48,9 @@ export class Http2ConnectionPool {
 
     initMetrics();
 
-    // Periodic DNS cache cleanup
-    setInterval(() => this.dns.cleanup(), 60 * 1000);
+    // Periodic DNS cache cleanup (unref'd to prevent keeping Node event loop alive, EC-3.3)
+    this.cleanupTimer = setInterval(() => this.dns.cleanup(), 60 * 1000);
+    this.cleanupTimer.unref();
   }
 
   /**
@@ -136,6 +138,11 @@ export class Http2ConnectionPool {
   public async shutdown(): Promise<void> {
     logger.info('Shutting down HTTP/2 connection pool');
 
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+
     for (const [, sessions] of this.sessions.entries()) {
       await Promise.allSettled(
         sessions.map(s =>
@@ -148,7 +155,24 @@ export class Http2ConnectionPool {
 
     this.sessions.clear();
     this.dns.clear();
+    Http2ConnectionPool.instance = null;
   }
+
+  /**
+   * Shutdown singleton instance if active (EC-3.3)
+   */
+  public static async shutdownInstance(): Promise<void> {
+    if (Http2ConnectionPool.instance) {
+      await Http2ConnectionPool.instance.shutdown();
+    }
+  }
+}
+
+/**
+ * Gracefully teardown HTTP/2 connection pool singleton (EC-3.3)
+ */
+export async function shutdownHttp2Pool(): Promise<void> {
+  await Http2ConnectionPool.shutdownInstance();
 }
 
 // ── Pure Utility ──────────────────────────────────────────────────────────────

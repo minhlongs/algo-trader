@@ -97,8 +97,8 @@ export function computeProfitFactor(trades: Array<{ pnl: number | null }>): numb
     closed.filter((t) => t.pnl! < 0).reduce((sum, t) => sum + t.pnl!, 0),
   );
 
-  if (grossLoss === 0) return grossProfit > 0 ? Infinity : 0;
-  return grossProfit / grossLoss;
+  if (grossLoss === 0) return grossProfit > 0 ? 100.0 : 0;
+  return Math.min(grossProfit / grossLoss, 100.0);
 }
 
 /**
@@ -138,10 +138,11 @@ export function computeSortinoRatio(
 
   const downsideDeviation = Math.sqrt(downsideSquaredSum / n);
   if (downsideDeviation === 0) {
-    return mean > targetPerTick ? Infinity : 0;
+    return mean > targetPerTick ? 50.0 : 0;
   }
 
-  return ((mean - targetPerTick) / downsideDeviation) * Math.sqrt(ticksPerYear);
+  const rawSortino = ((mean - targetPerTick) / downsideDeviation) * Math.sqrt(ticksPerYear);
+  return Math.min(rawSortino, 50.0);
 }
 
 /**
@@ -155,9 +156,10 @@ export function computeCalmarRatio(
   if (isNaN(annualizedReturn) || isNaN(maxDrawdown)) return 0;
   const absDd = Math.abs(maxDrawdown);
   if (absDd === 0) {
-    return annualizedReturn > 0 ? Infinity : 0;
+    return annualizedReturn > 0 ? 50.0 : 0;
   }
-  return annualizedReturn / absDd;
+  const rawCalmar = annualizedReturn / absDd;
+  return Math.min(rawCalmar, 50.0);
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

@@ -76,7 +76,8 @@ export function tripleBarrierLabel(
 
 /**
  * Label every valid entry bar in a causal window.
- * Skips bars where labeling would exceed maxHolding beyond available data.
+ * Skips bars where labeling would exceed maxHolding beyond available data,
+ * and constrains loop to endIdx to prevent lookahead bias into future splits.
  */
 export function batchLabel(
   candles: { high: number; low: number; close: number }[],
@@ -84,12 +85,14 @@ export function batchLabel(
   sl = 0.01,
   maxHolding = 6,
   startIdx = 0,
+  endIdx?: number,
 ): Array<TripleBarrierResult & { entryIdx: number }> {
   const results: Array<TripleBarrierResult & { entryIdx: number }> = [];
   // Need at least entryIdx + maxHolding bars remaining to label.
   const maxEntry = candles.length - 1 - maxHolding;
-  if (maxEntry < startIdx) return results;
-  for (let i = startIdx; i <= maxEntry; i++) {
+  const effectiveEnd = Math.min(endIdx ?? maxEntry, maxEntry);
+  if (effectiveEnd < startIdx) return results;
+  for (let i = startIdx; i <= effectiveEnd; i++) {
     const r = tripleBarrierLabel(candles, i, tp, sl, maxHolding);
     results.push({ ...r, entryIdx: i });
   }

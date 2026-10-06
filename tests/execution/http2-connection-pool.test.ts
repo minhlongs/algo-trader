@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { Http2ConnectionPool, extractOrigin } from '../../src/desk/execution/http2-connection-pool';
+import { Http2ConnectionPool, extractOrigin, shutdownHttp2Pool } from '../../src/desk/execution/http2-connection-pool';
 import * as http2 from 'node:http2';
 import { logger } from '../../src/shared/utils/logger';
 
@@ -227,6 +227,13 @@ describe('Http2ConnectionPool', () => {
 
       expect(pool['sessions'].size).toBe(0);
       expect(pool['dns']['cache'].size).toBe(0);
+    });
+
+    it('should cleanly unref cleanup timer and shut down via shutdownHttp2Pool (EC-3.3)', async () => {
+      pool = Http2ConnectionPool.getInstance();
+      expect(pool['cleanupTimer']).toBeDefined();
+      await shutdownHttp2Pool();
+      expect(pool['cleanupTimer']).toBeNull();
     });
   });
 

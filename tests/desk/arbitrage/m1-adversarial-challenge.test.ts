@@ -95,7 +95,11 @@ function createMockPolymarketAdapter(overrides: Partial<PolymarketAdapter> = {})
     placeOrder: vi.fn(async (order: PolymarketOrder): Promise<PolymarketOrderResponse> => {
       seq++;
       const orderID = `0xpoly-order-${seq}`;
-      const isMatched = order.price >= 0.90;
+      const isMatched = order.side === 'BUY'
+        ? order.price >= 0.51
+        : order.side === 'SELL'
+          ? order.price <= 0.49
+          : order.price >= 0.90;
       if (!isMatched) {
         openOrders.push({
           id: orderID,
@@ -311,7 +315,7 @@ describe('Adversarial Challenges: Milestone 1', () => {
   // 2. Polymarket Market Order Fill & Terminal Cache Lifecycle
   // ───────────────────────────────────────────────────────────────────────────
   describe('2. Polymarket Market Order Fill & Terminal Cache Lifecycle', () => {
-    it('2.1: Aggressive market order fill (buy @ 0.99) is immediately placed into terminal cache', async () => {
+    it('2.1: Bounded market order fill with slippage is immediately placed into terminal cache', async () => {
       const adapter = createMockPolymarketAdapter();
       const connector = new PolymarketConnectorAdapter(adapter, undefined, { dryRun: true });
 
@@ -324,7 +328,7 @@ describe('Adversarial Challenges: Milestone 1', () => {
 
       expect(placed.status).toBe('closed');
       expect(placed.filled).toBe(100);
-      expect(placed.price).toBe(0.99);
+      expect(placed.price).toBe(0.5355);
 
       // Verify immediate retrieval from Tier 3 terminal cache
       const fetched = await connector.fetchOrder(placed.orderId, 'tok-aggressive-buy');
@@ -334,7 +338,7 @@ describe('Adversarial Challenges: Milestone 1', () => {
       expect(fetched.remaining).toBe(0);
     });
 
-    it('2.2: Aggressive market sell sets price to 0.01', async () => {
+    it('2.2: Bounded market sell sets price with slippage to 0.4655', async () => {
       const adapter = createMockPolymarketAdapter();
       const connector = new PolymarketConnectorAdapter(adapter, undefined, { dryRun: true });
 
@@ -345,10 +349,10 @@ describe('Adversarial Challenges: Milestone 1', () => {
         amount: 50,
       });
 
-      expect(placed.price).toBe(0.01);
+      expect(placed.price).toBe(0.4655);
       expect(adapter.placeOrder).toHaveBeenCalledWith(
         expect.objectContaining({
-          price: 0.01,
+          price: 0.4655,
           side: 'SELL',
         })
       );
