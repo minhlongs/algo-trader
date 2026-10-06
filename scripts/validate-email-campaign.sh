@@ -102,12 +102,13 @@ echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 echo ""
 
-# Also check the test file exists
-if [ -f "$BASE/src/platform/notifications/__tests__/email-campaign-templates.test.ts" ]; then
-  echo "PASS: Template unit test file exists"
+# Also check modularized test files exist
+if [ -f "$BASE/src/platform/notifications/__tests__/email-campaign-starter-tier.test.ts" ] && \
+   [ -f "$BASE/src/platform/notifications/__tests__/email-campaign-co-pilot.test.ts" ]; then
+  echo "PASS: Modularized template unit test files exist (starter-tier and co-pilot)"
   PASS=$((PASS + 1))
 else
-  echo "FAIL: Template unit test file not found"
+  echo "FAIL: Modularized template unit test files not found"
   FAIL=$((FAIL + 1))
 fi
 

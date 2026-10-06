@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.89] - 2026-10-06 — GTM Email Campaign Validation Repair & Security Hardening
+
+### Fixed
+- Repaired `scripts/validate-email-campaign.sh` to check for modularized template unit test suites (`email-campaign-starter-tier.test.ts` and `email-campaign-co-pilot.test.ts`) instead of obsolete monolithic test file, achieving 16/16 clean checks.
+
+### Verified & Certified
+- Verified email notification templates, bilingual $19/mo Starter pricing, and `api.cashclaw.cc` links across all 37 notification unit tests (25/25 email campaign tests).
+- Gate 2 static secret scan verified clean with 0 matches across tracked source files.
+- Critical dependency audit via `pnpm audit --audit-level=critical` verified clean with 0 critical vulnerabilities.
+- Verified SHA-256 HMAC audit log hash-chain integrity across 41 E2E integration and adversarial tamper tests.
+- Re-certified full quality ratchet (0 `:any` types, maxConsoleCalls <= 2, 0 oversized files >200 LOC, 0 banned imports, 0 eslint disables).
+- Typecheck (tsc), lint, and build all 100% clean with exit code 0.
+
 ## [3.1.88] - 2026-10-06 — Production Live Verification & Zero-Debt Quality Ratchet Certification
 
 ### Verified & Certified
