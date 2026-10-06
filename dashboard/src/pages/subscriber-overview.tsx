@@ -1,56 +1,29 @@
 /**
- * Subscriber Overview Page
- * KPI cards: total P&L, win rate, fills, blocked-DLP count, active signals.
- * Entry point for the multi-tenant subscriber lens.
- * Stitch dark fintech bilingual VN+EN pattern.
+ * Subscriber overview: tenant-specific performance analytics.
+ * Bilingual EN/VI dark fintech pattern.
  */
-
 import { useState } from 'react';
 import { useAuthStore } from '../stores/auth-store';
 import { useSubscriberPnl } from '../hooks/use-subscriber-pnl';
-import { SubscriberKpiCard } from '../components/subscriber-kpi-card';
+import { COLORS } from '../lib/stitch-design-tokens';
 
 type Lang = 'en' | 'vi';
 
-const COPY: Record<Lang, {
-  langToggle: string;
-  title: string;
-  tenantLabel: string;
-  refresh: string;
-  refreshing: string;
-  retry: string;
-  pnlSummary: string;
-  totalRealizedPnl: string;
-  winRate: string;
-  totalTrades: string;
-  lifetimeFills: string;
-  profitFactor: string;
-  activity: string;
-  activeSignals: string;
-  totalFills: string;
-  pendingOrders: string;
-  blockedByDlp: string;
-  ironClawPhase: string;
-  tradeExtremes: string;
-  bestTrade: string;
-  worstTrade: string;
-  noIdentity: string;
-  noIdentityHint: string;
-  loading: string;
-}> = {
+const COPY: Record<Lang, Record<string, string>> = {
   en: {
     langToggle: 'Tiếng Việt',
     title: 'Subscriber Overview',
-    tenantLabel: 'Tenant',
+    subtitle: 'Institutional tenant performance & risk telemetry',
+    tenantLabel: 'Subscriber ID',
     refresh: 'Refresh',
-    refreshing: 'Refreshing...',
+    refreshing: 'Refreshing…',
     retry: 'Retry',
     pnlSummary: 'P&L Summary',
     totalRealizedPnl: 'Total Realized P&L',
     winRate: 'Win Rate',
     totalTrades: 'Total Trades',
-    lifetimeFills: 'lifetime fills',
     profitFactor: 'Profit Factor',
+    lifetimeFills: 'Lifetime Fills',
     activity: 'Activity',
     activeSignals: 'Active Signals',
     totalFills: 'Total Fills',
@@ -62,21 +35,22 @@ const COPY: Record<Lang, {
     worstTrade: 'Worst Trade',
     noIdentity: 'No subscriber identity found. Please log in with a valid license key.',
     noIdentityHint: 'Please log in with a valid license key.',
-    loading: 'Loading subscriber metrics...',
+    loading: 'Loading subscriber telemetry...',
   },
   vi: {
     langToggle: 'English',
     title: 'Tổng Quan Người Đăng Ký',
-    tenantLabel: 'Đối tác',
-    refresh: 'Làm mới',
-    refreshing: 'Đang làm mới...',
+    subtitle: 'Chỉ số hiệu suất và rủi ro dành cho thuê bao',
+    tenantLabel: 'Mã Người Đăng Ký',
+    refresh: 'Làm Mới',
+    refreshing: 'Đang làm mới…',
     retry: 'Thử lại',
-    pnlSummary: 'Tóm Tắt P&L',
-    totalRealizedPnl: 'Tổng P&L Thực Hiện',
+    pnlSummary: 'Tổng Quan P&L',
+    totalRealizedPnl: 'P&L Đã Chốt',
     winRate: 'Tỷ Lệ Thắng',
     totalTrades: 'Tổng Giao Dịch',
-    lifetimeFills: 'lần khớp lệnh',
     profitFactor: 'Hệ Số Lợi Nhuận',
+    lifetimeFills: 'Khớp Lệnh Trọn Đời',
     activity: 'Hoạt Động',
     activeSignals: 'Tín Hiệu Hoạt Động',
     totalFills: 'Tổng Lệnh Khớp',
@@ -92,12 +66,14 @@ const COPY: Record<Lang, {
   },
 };
 
-function fmt(n: number, dec = 2): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+function fmt(n: number | null | undefined, dec = 2): string {
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return '—';
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
-function pctFmt(n: number): string {
-  return `${fmt(n * 100, 1)}%`;
+function pctFmt(n: number | null | undefined): string {
+  if (n === null || n === undefined || Number.isNaN(Number(n))) return '—';
+  return `${(Number(n) * 100).toFixed(1)}%`;
 }
 
 interface ErrorBannerProps {
@@ -119,6 +95,33 @@ function ErrorBanner({ message, retryLabel, onRetry }: ErrorBannerProps) {
   );
 }
 
+interface SubscriberKpiCardProps {
+  label: string;
+  value: string | number;
+  subLabel?: string;
+  accent?: 'profit' | 'loss' | 'warning' | 'muted' | 'default';
+}
+
+function SubscriberKpiCard({ label, value, subLabel, accent = 'default' }: SubscriberKpiCardProps) {
+  const accentColorMap = {
+    profit: 'text-profit',
+    loss: 'text-loss',
+    warning: 'text-warning',
+    muted: 'text-muted',
+    default: 'text-white',
+  };
+
+  return (
+    <div className="p-4 rounded-xl border border-outline/30 bg-surface/60 backdrop-blur">
+      <p className="text-[10px] text-muted uppercase tracking-wider font-mono">{label}</p>
+      <p className={`text-lg font-bold font-mono mt-1 ${accentColorMap[accent]}`}>
+        {value}
+      </p>
+      {subLabel && <p className="text-[10px] text-muted font-mono mt-0.5">{subLabel}</p>}
+    </div>
+  );
+}
+
 export function SubscriberOverviewPage() {
   const [lang, setLang] = useState<Lang>('en');
   const t = COPY[lang];
@@ -128,12 +131,12 @@ export function SubscriberOverviewPage() {
 
   if (!tenantId) {
     return (
-      <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+      <div className="min-h-screen bg-bg text-onSurface font-sans" style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}>
         {/* Language Toggle — globe icon, top right */}
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] text-[${COLORS.onSurface}] hover:text-[${COLORS.primary}] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface/80 backdrop-blur-xl border border-outline text-onSurface hover:text-primary transition-colors"
             aria-label={`Switch to ${t.langToggle}`}
           >
             <svg
@@ -161,12 +164,12 @@ export function SubscriberOverviewPage() {
 
   if (loading && !summary) {
     return (
-      <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+      <div className="min-h-screen bg-bg text-onSurface font-sans" style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}>
         {/* Language Toggle — globe icon, top right */}
         <div className="fixed top-4 right-4 z-50">
           <button
             onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] text-[${COLORS.onSurface}] hover:text-[${COLORS.primary}] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface/80 backdrop-blur-xl border border-outline text-onSurface hover:text-primary transition-colors"
             aria-label={`Switch to ${t.langToggle}`}
           >
             <svg
@@ -195,12 +198,12 @@ export function SubscriberOverviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div className="min-h-screen bg-bg text-onSurface font-sans" style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}>
       {/* Language Toggle — globe icon, top right */}
       <div className="fixed top-4 right-4 z-50">
         <button
           onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] text-[${COLORS.onSurface}] hover:text-[${COLORS.primary}] transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface/80 backdrop-blur-xl border border-outline text-onSurface hover:text-primary transition-colors"
           aria-label={`Switch to ${t.langToggle}`}
         >
           <svg
@@ -234,7 +237,7 @@ export function SubscriberOverviewPage() {
           <button
             onClick={refresh}
             disabled={loading}
-            className="px-3 py-1.5 bg-surface border border-border rounded text-xs font-mono text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
+            className="px-3 py-1.5 bg-surface border border-outline rounded text-xs font-mono text-muted hover:text-white hover:border-accent transition-colors disabled:opacity-40"
           >
             {loading ? t.refreshing : t.refresh}
           </button>
@@ -331,3 +334,5 @@ export function SubscriberOverviewPage() {
     </div>
   );
 }
+
+export default SubscriberOverviewPage;

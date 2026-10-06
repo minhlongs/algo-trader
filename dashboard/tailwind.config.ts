@@ -6,7 +6,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: { DEFAULT: '#060814', card: '#101426', border: 'rgba(255, 255, 255, 0.05)' },
+        bg: { DEFAULT: '#051424', card: '#101426', border: 'rgba(255, 255, 255, 0.05)' },
         obsidian: {
           bg: '#060814',
           card: '#101426',
@@ -18,9 +18,29 @@ export default {
           cyan: '#00D9FF',
           pink: '#FF2E93',
         },
-        profit: '#00FFA3',
-        loss: '#FF2E93',
+        profit: '#22c55e',
+        loss: '#FF5C6C',
         muted: '#8892B0',
+        surface: {
+          DEFAULT: '#0d1c2d',
+          high: '#1c2b3c',
+          container: '#122131',
+        },
+        surfaceHigh: '#1c2b3c',
+        surfaceContainer: '#122131',
+        outline: '#3f4e5f',
+        primary: {
+          DEFAULT: '#4cd7f6',
+          container: '#06b6d4',
+        },
+        primaryContainer: '#06b6d4',
+        onSurface: {
+          DEFAULT: '#e2e8f0',
+          variant: '#94a3b8',
+        },
+        onSurfaceVariant: '#94a3b8',
+        onPrimary: '#003640',
+        warning: '#f59e0b',
       },
       fontFamily: {
         sans: ['Inter', 'Plus Jakarta Sans', 'system-ui', 'sans-serif'],

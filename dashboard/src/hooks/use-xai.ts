@@ -1,10 +1,18 @@
 import { useCallback } from 'react';
 import { useXAIStore } from '../stores/xai-store';
-import { xaiClient, ExplainPredictionRequest, StrategyRulesRequest } from '../services/xai-client';
+import {
+  xaiClient,
+  ExplainPredictionRequest,
+  ExplainPredictionResponse,
+  StrategyRulesRequest,
+} from '../services/xai-client';
 import { StrategyRules } from '../stores/xai-store';
 
+type BackendExplanation = ExplainPredictionResponse['explanation'];
+type BackendCounterfactual = NonNullable<BackendExplanation['counterfactuals']>[number];
+
 // Transform backend snake_case to frontend camelCase
-function transformExplanation(backendExp: any) {
+function transformExplanation(backendExp: BackendExplanation) {
   return {
     id: backendExp.trade_id,
     tradeId: backendExp.trade_id,
@@ -14,7 +22,7 @@ function transformExplanation(backendExp: any) {
     rationale: backendExp.rationale,
     confidence: backendExp.confidence,
     timestamp: backendExp.generated_at,
-    counterfactuals: backendExp.counterfactuals?.map((cf: any) => ({
+    counterfactuals: backendExp.counterfactuals?.map((cf: BackendCounterfactual) => ({
       feature: cf.feature,
       currentValue: cf.current_value,
       counterfactualValue: cf.counterfactual_value,

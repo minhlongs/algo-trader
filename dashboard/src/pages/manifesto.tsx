@@ -9,14 +9,14 @@ type Lang = 'en' | 'vi';
 
 const COPY: Record<Lang, Record<string, string>> = {
   en: {
-    langToggle: 'Tieng Viet',
+    langToggle: 'Tiếng Việt',
     loading: 'Loading manifesto…',
     loadingError: 'Failed to load manifest',
   },
   vi: {
     langToggle: 'English',
-    loading: 'Dang tai manifesto…',
-    loadingError: 'Khong tai duoc manifest',
+    loading: 'Đang tải manifesto…',
+    loadingError: 'Không tải được manifest',
   },
 };
 
@@ -25,12 +25,15 @@ export function ManifestoPage() {
   const t = COPY[lang];
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex flex-col">
+    <div
+      className="min-h-screen font-sans flex flex-col"
+      style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
+    >
       {/* Globe language toggle */}
       <div className="p-4 flex justify-end">
         <button
           onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2"
           style={{
             backgroundColor: COLORS.surface,
             border: `1px solid ${COLORS.outline}`,
@@ -50,12 +53,18 @@ export function ManifestoPage() {
             <circle cx="12" cy="12" r="10" />
             <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10A15.3 15.3 0 0112 2z" />
           </svg>
-          {lang === 'en' ? 'Tieng Viet' : 'English'}
+          {lang === 'en' ? 'Tiếng Việt' : 'English'}
         </button>
       </div>
 
       <main className="flex-1 pt-4">
-        <div className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl mx-4">
+        <div
+          className="backdrop-blur-xl border rounded-2xl mx-4"
+          style={{
+            backgroundColor: `${COLORS.surface}CC`,
+            borderColor: COLORS.outline,
+          }}
+        >
           <MarkdownViewer
             src="/manifesto.md"
             loadingLabel={t.loading}

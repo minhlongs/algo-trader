@@ -133,7 +133,7 @@ const COPY: Record<Lang, Record<string, string>> = {
 const TEAM_SIZE_OPTIONS = ['1-10', '11-50', '51-200', '201-500', '500+'];
 
 function glassCard(extra = ''): string {
-  return `bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl ${extra}`.trim();
+  return `glass-card backdrop-blur-xl border border-white/10 rounded-2xl ${extra}`.trim();
 }
 
 function FadeIn({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -177,12 +177,18 @@ function PlanCard({
 }) {
   return (
     <div
-      className={`relative rounded-2xl p-6 flex flex-col gap-5 ${
-        highlight ? 'border-2 border-[${COLORS.warning}]' : 'border border-[${COLORS.outline}]'
-      } ${glassCard()}`}
+      className={`relative rounded-2xl p-6 flex flex-col gap-5 ${glassCard()}`}
+      style={
+        highlight
+          ? { border: `2px solid ${COLORS.warning}` }
+          : { border: `1px solid ${COLORS.outline}` }
+      }
     >
       {highlight && (
-        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[${COLORS.warning}] text-black text-xs font-bold px-3 py-0.5 rounded-full">
+        <span
+          className="absolute -top-3 left-1/2 -translate-x-1/2 text-black text-xs font-bold px-3 py-0.5 rounded-full"
+          style={{ backgroundColor: COLORS.warning }}
+        >
           {mostPopular}
         </span>
       )}
@@ -210,10 +216,16 @@ function PlanCard({
 
       <button
         onClick={() => onSelect(planKey)}
-        className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors ${
-          highlight ? 'bg-[${COLORS.warning}] text-black hover:bg-[${COLORS.warning}]/80' : 'border border-[${COLORS.outline}] hover:border-[${COLORS.warning}]/50'
-        }`}
-        style={!highlight ? { color: COLORS.onSurfaceVariant } : undefined}
+        className="text-center text-sm font-bold px-4 py-2.5 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        style={
+          highlight
+            ? { backgroundColor: COLORS.warning, color: '#000000' }
+            : {
+                border: `1px solid ${COLORS.outline}`,
+                color: COLORS.onSurfaceVariant,
+                backgroundColor: 'transparent',
+              }
+        }
       >
         {cta}
       </button>
@@ -265,8 +277,8 @@ const faqs = [
           </p>
           <a
             href="/pricing"
-            className="inline-block text-sm border border-[${COLORS.outline}] px-5 py-2 rounded transition-colors"
-            style={{ color: COLORS.onSurfaceVariant }}
+            className="inline-block text-sm px-5 py-2 rounded transition-colors"
+            style={{ border: `1px solid ${COLORS.outline}`, color: COLORS.onSurfaceVariant }}
           >
             {t.viewStandardPricing}
           </a>
@@ -296,7 +308,7 @@ const faqs = [
 }
 
 const inputCls =
-  'w-full bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] text-white text-sm rounded px-3 py-2.5 outline-none focus:border-[${COLORS.warning}]/60 transition-colors placeholder-[${COLORS.onSurfaceVariant}]/50';
+  'w-full glass-card border border-white/10 text-white text-sm rounded px-3 py-2.5 outline-none focus:ring-2 focus:ring-accent transition-colors placeholder-white/40';
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
   return (
@@ -387,12 +399,19 @@ function ContactTab({ t, defaultTier, onSuccess }: { t: Record<string, string>; 
                     key={key}
                     type="button"
                     onClick={() => set('tier', key)}
-                    className={`p-3 rounded border text-xs text-left transition-colors min-h-touch ${
+                    className="p-3 rounded border text-xs text-left transition-colors min-h-touch"
+                    style={
                       fields.tier === key
-                        ? 'border-[${COLORS.warning}] bg-[${COLORS.warning}]/10 text-white'
-                        : 'border-[${COLORS.outline}] hover:border-[${COLORS.warning}]/40'
-                    }`}
-                    style={fields.tier !== key ? { color: COLORS.onSurfaceVariant } : undefined}
+                        ? {
+                            borderColor: COLORS.warning,
+                            backgroundColor: `${COLORS.warning}1A`,
+                            color: '#FFFFFF',
+                          }
+                        : {
+                            borderColor: COLORS.outline,
+                            color: COLORS.onSurfaceVariant,
+                          }
+                    }
                   >
                     <p className="font-bold text-sm mb-0.5">{plan.price}</p>
                     <p className="text-[10px] opacity-70">{plan.name}</p>
@@ -475,7 +494,8 @@ function ContactTab({ t, defaultTier, onSuccess }: { t: Record<string, string>; 
           <button
             type="submit"
             disabled={formState === 'submitting'}
-            className="w-full bg-[${COLORS.warning}] text-black font-bold py-3 rounded hover:bg-[${COLORS.warning}]/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-touch"
+            className="w-full font-bold py-3 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-touch focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            style={{ backgroundColor: COLORS.warning, color: '#000000' }}
           >
             {formState === 'submitting' ? t.submitting : t.requestAccess}
           </button>
@@ -504,7 +524,7 @@ function SuccessTab({ t }: { t: Record<string, string> }) {
             className="inline-flex items-center justify-center w-16 h-16 rounded-full border mb-6"
             style={{ backgroundColor: `${COLORS.profit}1a`, borderColor: `${COLORS.profit}4d` }}
           >
-            <svg width="28" height="28" fill="none" stroke="${COLORS.profit}" strokeWidth="2" viewBox="0 0 24 24">
+            <svg width="28" height="28" fill="none" stroke={COLORS.profit} strokeWidth="2" viewBox="0 0 24 24">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
@@ -557,14 +577,15 @@ function SuccessTab({ t }: { t: Record<string, string> }) {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
             href="/docs"
-            className="text-center text-sm border border-[${COLORS.outline}] px-5 py-2.5 rounded transition-colors"
-            style={{ color: COLORS.onSurfaceVariant }}
+            className="text-center text-sm px-5 py-2.5 rounded transition-colors"
+            style={{ border: `1px solid ${COLORS.outline}`, color: COLORS.onSurfaceVariant }}
           >
             {t.readDocs}
           </a>
           <a
             href="/"
-            className="text-center text-sm bg-[${COLORS.warning}] text-black font-bold px-5 py-2.5 rounded hover:bg-[${COLORS.warning}]/80 transition-colors"
+            className="text-center text-sm font-bold px-5 py-2.5 rounded transition-opacity hover:opacity-90"
+            style={{ backgroundColor: COLORS.warning, color: '#000000' }}
           >
             {t.backToHome}
           </a>
@@ -591,7 +612,10 @@ export function EnterprisePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div
+      className="min-h-screen font-sans"
+      style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
+    >
       <PublicNavbar />
 
       <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">

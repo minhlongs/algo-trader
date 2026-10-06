@@ -46,7 +46,7 @@ export function MarkdownViewer({
   if (error) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <p className="text-[${_COLORS.loss}] text-sm">
+        <p className="text-loss text-sm">
           Failed to load document: {error}
         </p>
       </div>
@@ -56,7 +56,7 @@ export function MarkdownViewer({
   if (markdown === null) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <p className="text-[${_COLORS.onSurfaceVariant}] text-sm animate-pulse">
+        <p className="text-onSurfaceVariant text-sm animate-pulse">
           {loadingLabel}
         </p>
       </div>
@@ -64,7 +64,7 @@ export function MarkdownViewer({
   }
 
   return (
-    <article className="manifesto-prose max-w-3xl mx-auto px-4 sm:px-6 py-12 text-[${_COLORS.onSurfaceVariant}]">
+    <article className="manifesto-prose max-w-3xl mx-auto px-4 sm:px-6 py-12 text-onSurfaceVariant">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         // Intentionally NOT passing rehype-raw — raw HTML is stripped.

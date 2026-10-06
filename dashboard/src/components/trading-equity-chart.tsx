@@ -154,10 +154,10 @@ export function TradingEquityChart({
                 <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="${COLORS.surface}" />
+            <CartesianGrid strokeDasharray="3 3" stroke={COLORS.outline} />
             <XAxis
               dataKey="date"
-              stroke="${COLORS.onSurfaceVariant}"
+              stroke={COLORS.onSurfaceVariant}
               tick={{ fontSize: 10 }}
               tickLine={false}
               axisLine={false}
@@ -167,7 +167,7 @@ export function TradingEquityChart({
               }}
             />
             <YAxis
-              stroke="${COLORS.onSurfaceVariant}"
+              stroke={COLORS.onSurfaceVariant}
               tick={{ fontSize: 10 }}
               tickLine={false}
               axisLine={false}
@@ -176,13 +176,13 @@ export function TradingEquityChart({
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: `${COLORS.surface}`,
-                border: '1px solid ${COLORS.surface}',
+                backgroundColor: COLORS.surface,
+                border: `1px solid ${COLORS.outline}`,
                 borderRadius: '0.5rem',
                 fontSize: 12,
-                color: `${COLORS.onSurface}`,
+                color: COLORS.onSurface,
               }}
-              labelStyle={{ color: `${COLORS.onSurfaceVariant}` }}
+              labelStyle={{ color: COLORS.onSurfaceVariant }}
               formatter={(value) => {
                 const v = typeof value === 'number' ? value : 0;
                 return [`$${v.toFixed(2)}`, 'Equity'];
@@ -205,7 +205,7 @@ export function TradingEquityChart({
               strokeWidth={2}
               fill={`url(#${gradientId})`}
               dot={false}
-              activeDot={{ r: 4, fill: lineColor, stroke: `${COLORS.surface}`, strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: lineColor, stroke: COLORS.surface, strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

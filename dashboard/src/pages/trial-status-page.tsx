@@ -173,13 +173,13 @@ finally { setSaving(false); }
 
 if (loading) {
 return (
-<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex items-center justify-center">
+<div className="min-h-screen bg-bg text-onSurface font-sans flex items-center justify-center">
 <div className="flex flex-col items-center gap-3">
-<svg className="animate-spin h-8 w-8 text-[${COLORS.primary}]" fill="none" viewBox="0 0 24 24">
+<svg className="animate-spin h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24">
 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
 </svg>
-<p className="text-[${COLORS.onSurfaceVariant}] text-xs">{t.loading}</p>
+<p className="text-onSurfaceVariant text-xs">{t.loading}</p>
 </div>
 </div>
 );
@@ -188,13 +188,13 @@ return (
 const pct = Math.max(0, Math.min(100, ((status.totalDays - status.daysRemaining) / status.totalDays) * 100));
 
 return (
-<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
-<a href="#main-content" className={`sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[${COLORS.primary}] focus:text-[${COLORS.onPrimary}]`}>Skip to main content</a>
+<div className="min-h-screen bg-bg text-onSurface font-sans">
+<a href="#main-content" className={`sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-primary focus:text-onPrimary`}>Skip to main content</a>
 {/* Lang toggle */}
 <div className="flex justify-end px-4 sm:px-8 pt-6">
 <button
 onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
 aria-label="Toggle language"
 >
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -209,14 +209,14 @@ aria-label="Toggle language"
 <h1 className="text-white text-2xl font-bold">{lang === 'en' ? 'Trial Status' : 'Trạng Thái Dùng Thử'}</h1>
 
 {error && (
-<div className="bg-[${COLORS.loss}]/10 border border-[${COLORS.loss}]/30 rounded-xl p-3 flex items-center justify-between">
-<span className="text-[${COLORS.loss}] text-xs">{error}</span>
-<button onClick={() => setError(null)} className="text-[${COLORS.loss}]/60 text-xs hover:text-[${COLORS.loss}] ml-3" aria-label="Dismiss error">×</button>
+<div className="bg-loss/10 border border-loss/30 rounded-xl p-3 flex items-center justify-between">
+<span className="text-loss text-xs">{error}</span>
+<button onClick={() => setError(null)} className="text-loss/60 text-xs hover:text-loss ml-3" aria-label="Dismiss error">×</button>
 </div>
 )}
 
 {/* Progress card */}
-<section className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-6 space-y-4">
+<section className="bg-surface/80 backdrop-blur-xl border border-outline rounded-2xl p-6 space-y-4">
 <div className="flex items-center justify-between">
 <h2 className="text-white text-sm font-bold">{t.trialProgress}</h2>
 <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ backgroundColor: status.daysRemaining > 20 ? `${COLORS.profit}1a` : status.daysRemaining > 10 ? `${COLORS.warning}1a` : `${COLORS.loss}1a`, color: status.daysRemaining > 20 ? COLORS.profit : status.daysRemaining > 10 ? COLORS.warning : COLORS.loss }}>
@@ -225,7 +225,7 @@ aria-label="Toggle language"
 </div>
 
 <div className="space-y-2">
-<div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label="Trial progress" className="w-full bg-[${COLORS.surface}] rounded-full h-2.5 overflow-hidden">
+<div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)} aria-label="Trial progress" className="w-full bg-surface rounded-full h-2.5 overflow-hidden">
 <div className="h-full rounded-full transition-all duration-700 ease-out" style={{
 width: `${pct}%`, background: 'linear-gradient(90deg, ${COLORS.primary}, ${COLORS.primary})'
 }} />
@@ -237,7 +237,7 @@ width: `${pct}%`, background: 'linear-gradient(90deg, ${COLORS.primary}, ${COLOR
 </div>
 </div>
 
-<div className="bg-[${COLORS.bg}] border border-[${COLORS.outline}] rounded-xl px-4 py-3 flex items-center justify-between">
+<div className="bg-bg border border-outline rounded-xl px-4 py-3 flex items-center justify-between">
 <div>
 <p className="text-white text-xs font-semibold">{t.currentPlan} {status.tier.toUpperCase()}</p>
 <p className="text-[10px] mt-0.5" style={{ color: COLORS.onSurfaceVariant }}>
@@ -251,10 +251,10 @@ width: `${pct}%`, background: 'linear-gradient(90deg, ${COLORS.primary}, ${COLOR
 </section>
 
 {/* Email preferences */}
-<section className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-6 space-y-4">
+<section className="bg-surface/80 backdrop-blur-xl border border-outline rounded-2xl p-6 space-y-4">
 <h2 className="text-white text-sm font-bold">{t.emailPref}</h2>
 <p className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>{t.subDesc}</p>
-<div className="flex items-center justify-between bg-[${COLORS.bg}] border border-[${COLORS.outline}] rounded-xl px-4 py-3">
+<div className="flex items-center justify-between bg-bg border border-outline rounded-xl px-4 py-3">
 <div>
 <p className="text-white text-xs font-semibold">{status.subscribed ? t.subscribed : t.unsubscribed}</p>
 <p className="text-[10px] mt-0.5" style={{ color: COLORS.onSurfaceVariant }}>{status.subscribed ? t.subDesc : t.subOff}</p>
@@ -271,7 +271,7 @@ role="switch" aria-checked={status.subscribed}
 </section>
 
 {/* Drip schedule */}
-<section className="bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl p-6 space-y-4">
+<section className="bg-surface/80 backdrop-blur-xl border border-outline rounded-2xl p-6 space-y-4">
 <div className="flex items-center justify-between">
 <h2 className="text-white text-sm font-bold">{t.dripSchedule}</h2>
 <span className="text-[10px]" style={{ color: COLORS.onSurfaceVariant }}>{status.subscribed ? t.emailsOn : t.emailsOff}</span>

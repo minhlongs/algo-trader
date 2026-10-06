@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { COLORS } from '../lib/stitch-design-tokens';
+import { formatUsd } from '../lib/format';
 import {
   Line,
   XAxis,
@@ -61,17 +62,8 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
 
   if (error) {
     return (
-      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
-        <p className="text-loss text-sm">{error}</p>
-      </div>
-    );
-  }
-
-  if (!metrics) {
-    return (
-      <div className="bg-bg-surface border border-bg-border rounded-lg p-8 text-center">
-        <p className="text-muted text-sm">Chưa có dữ liệu P&L.</p>
-        <p className="text-muted text-xs mt-1">Dữ liệu sẽ xuất hiện sau khi bot thực hiện giao dịch đầu tiên.</p>
+      <div className="bg-bg-surface border border-loss/20 rounded-lg p-8 text-center">
+        <p className="text-loss text-sm font-mono">{error}</p>
       </div>
     );
   }
@@ -141,16 +133,16 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
       <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="${COLORS.outline}" />
+            <CartesianGrid strokeDasharray="3 3" stroke={COLORS.outline} />
             <XAxis
               dataKey="name"
-              stroke="${COLORS.onSurfaceVariant}"
+              stroke={COLORS.onSurfaceVariant}
               tick={{ fontSize: 10 }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              stroke="${COLORS.onSurfaceVariant}"
+              stroke={COLORS.onSurfaceVariant}
               tick={{ fontSize: 10 }}
               tickLine={false}
               axisLine={false}
@@ -158,25 +150,25 @@ export function PnLAnalyticsChart({ metrics, loading, error }: PnLAnalyticsChart
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: `${COLORS.outline}`,
-                border: '1px solid ${COLORS.outline}',
+                backgroundColor: COLORS.surfaceHigh,
+                border: `1px solid ${COLORS.outline}`,
                 borderRadius: '0.5rem',
               }}
-              labelStyle={{ color: `${COLORS.onSurface}` }}
+              labelStyle={{ color: COLORS.onSurface }}
               formatter={(value) => [`$${Number(value).toFixed(2)}`, '']}
             />
-            <Bar dataKey="trades" fill="${COLORS.warning}" opacity={0.3} yAxisId={1} />
+            <Bar dataKey="trades" fill={COLORS.warning} opacity={0.3} yAxisId={1} />
             <Line
               type="monotone"
               dataKey="cumulative"
-              stroke="${COLORS.profit}"
+              stroke={COLORS.profit}
               strokeWidth={2}
               dot={false}
             />
             <Line
               type="monotone"
               dataKey="pnl"
-              stroke="${COLORS.profit}"
+              stroke={COLORS.primary}
               strokeWidth={2}
               dot={false}
             />
@@ -210,10 +202,4 @@ function MetricCard({ label, value }: { label: string; value: string }) {
       <p className="text-sm font-semibold text-white mt-0.5 font-mono tabular-nums">{value}</p>
     </div>
   );
-}
-
-function formatUsd(n: number): string {
-  const abs = Math.abs(n);
-  const sign = n < 0 ? '-' : '';
-  return `${sign}$${abs.toFixed(2)}`;
 }

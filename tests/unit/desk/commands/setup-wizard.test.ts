@@ -26,9 +26,12 @@ describe('Setup Wizard Command (runSetupWizard)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     closeMock = vi.fn();
+    promptMock = vi.fn();
     vi.spyOn(promptModule, 'createPrompt').mockReturnValue({
       close: closeMock,
     } as unknown as ReturnType<typeof promptModule.createPrompt>);
+    vi.spyOn(promptModule, 'prompt').mockImplementation((...args) => promptMock(...args));
+    vi.spyOn(promptModule, 'promptSecret').mockImplementation((...args) => promptMock(...args));
   });
 
   afterEach(() => {

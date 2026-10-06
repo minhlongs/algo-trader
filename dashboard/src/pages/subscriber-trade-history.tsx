@@ -56,11 +56,11 @@ export function SubscriberTradeHistoryPage() {
 
   if (!tenantId) {
     return (
-      <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+      <div className="min-h-screen bg-bg text-onSurface font-sans">
         <div className="flex justify-end px-4 sm:px-8 pt-6">
           <button
             onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
             aria-label="Toggle language"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -70,7 +70,7 @@ export function SubscriberTradeHistoryPage() {
             {t.langToggle}
           </button>
         </div>
-        <div className="p-6 text-[${COLORS.onSurfaceVariant}] text-sm font-mono">
+        <div className="p-6 text-onSurfaceVariant text-sm font-mono">
           {t.noIdentity}
         </div>
       </div>
@@ -78,12 +78,12 @@ export function SubscriberTradeHistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div className="min-h-screen bg-bg text-onSurface font-sans">
       {/* Lang toggle */}
       <div className="flex justify-end px-4 sm:px-8 pt-6">
         <button
           onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
           aria-label="Toggle language"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -99,31 +99,31 @@ export function SubscriberTradeHistoryPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-white font-mono">{t.title}</h1>
-            <p className="text-[${COLORS.onSurfaceVariant}] text-xs font-mono mt-0.5">
-              {t.tenantLabel}: <span className="text-[${COLORS.primary}]">{tenantId}</span>
+            <p className="text-onSurfaceVariant text-xs font-mono mt-0.5">
+              {t.tenantLabel}: <span className="text-primary">{tenantId}</span>
               {summary && (
-                <span className="ml-3 text-[${COLORS.onSurfaceVariant}]">
+                <span className="ml-3 text-onSurfaceVariant">
                   · {summary.tradeCount} {t.lifetimeFills}
                 </span>
               )}
             </p>
-            <p className="text-[${COLORS.onSurfaceVariant}] text-[10px] font-mono mt-0.5">{t.subtitle}</p>
+            <p className="text-onSurfaceVariant text-[10px] font-mono mt-0.5">{t.subtitle}</p>
           </div>
           <button
             onClick={refresh}
             disabled={loading}
-            className="px-3 py-1.5 bg-[${COLORS.surface}]/80 border border-[${COLORS.outline}] rounded-lg text-xs font-mono text-[${COLORS.onSurfaceVariant}] hover:text-white hover:border-[${COLORS.primary}] transition-colors disabled:opacity-40"
+            className="px-3 py-1.5 bg-surface/80 border border-outline rounded-lg text-xs font-mono text-onSurfaceVariant hover:text-white hover:border-primary transition-colors disabled:opacity-40"
           >
             {loading ? t.loading : t.refresh}
           </button>
         </div>
 
         {error && (
-          <div className="p-4 bg-[${COLORS.surface}]/80 border border-[${COLORS.loss}]/40 rounded-2xl text-[${COLORS.loss}] text-sm font-mono flex items-center justify-between">
+          <div className="p-4 bg-surface/80 border border-loss/40 rounded-2xl text-loss text-sm font-mono flex items-center justify-between">
             <span>{error}</span>
             <button
               onClick={refresh}
-              className="ml-4 px-3 py-1 bg-[${COLORS.loss}]/20 hover:bg-[${COLORS.loss}]/30 rounded-lg text-xs transition-colors"
+              className="ml-4 px-3 py-1 bg-loss/20 hover:bg-loss/30 rounded-lg text-xs transition-colors"
             >
               {t.retry}
             </button>
@@ -137,7 +137,7 @@ export function SubscriberTradeHistoryPage() {
 
         {/* Period note */}
         {!loading && dailyBreakdown.length > 0 && (
-          <p className="text-[${COLORS.onSurfaceVariant}] text-[10px] font-mono text-right">
+          <p className="text-onSurfaceVariant text-[10px] font-mono text-right">
             {periodNoteText}
           </p>
         )}

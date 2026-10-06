@@ -7,19 +7,21 @@ import { AdminControls } from '../../components/admin-controls';
 import {
   AdminControlsSkeleton,
 } from '../../components/skeleton-loaders';
+import type { StrategyStatus, BotStatus } from '../../stores/trading-store';
+import type { AdminStatus } from '../../types/api';
 
 interface StrategyControlsWidgetProps {
   colSpan: number;
-  strategies: any[];
-  botStatus: any;
-  adminStatus: any;
+  strategies: StrategyStatus[];
+  botStatus: BotStatus | null;
+  adminStatus: AdminStatus | null;
   adminLoading: boolean;
-  adminError: any;
+  adminError: string | null;
   refreshAdmin: () => void;
-  halt: (reason: string) => Promise<any>;
-  resume: () => Promise<any>;
+  halt: (reason: string) => Promise<boolean>;
+  resume: () => Promise<boolean>;
   onClickCapture?: () => void;
-  trackEvent: (event: string, props?: any) => void;
+  trackEvent: (event: string, props?: Record<string, unknown>) => void;
 }
 
 export function StrategyControlsWidget({

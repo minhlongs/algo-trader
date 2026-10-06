@@ -10,7 +10,7 @@ import {
   ENV_PATH,
   ENV_EXAMPLE_PATH,
 } from './setup-wizard-types';
-import { createPrompt, prompt } from './setup-wizard-prompt';
+import { createPrompt, prompt, promptSecret } from './setup-wizard-prompt';
 import {
   generateEnvContent,
   mergeWithExample,
@@ -24,6 +24,7 @@ export {
   ENV_EXAMPLE_PATH,
   createPrompt,
   prompt,
+  promptSecret,
   generateEnvContent,
   mergeWithExample,
   saveConfiguration,
@@ -44,7 +45,7 @@ export async function runSetupWizard(): Promise<void> {
     logger.info('Leave blank to skip (required for live trading).\n');
 
     config.exchangeApiKey = (await prompt(rl, 'Exchange API Key:'))?.trim() || '';
-    config.exchangeSecret = (await prompt(rl, 'Exchange API Secret:'))?.trim() || '';
+    config.exchangeSecret = (await promptSecret(rl, 'Exchange API Secret:'))?.trim() || '';
 
     if (config.exchangeApiKey && config.exchangeSecret) {
       logger.info('✅ API keys saved\n');
@@ -100,7 +101,7 @@ export async function runSetupWizard(): Promise<void> {
 
     const setupTelegram = ((await prompt(rl, 'Setup Telegram? (y/N):')) || '').trim().toLowerCase();
     if (setupTelegram === 'y' || setupTelegram === 'yes') {
-      config.telegramBotToken = (await prompt(rl, 'Telegram Bot Token:'))?.trim() || '';
+      config.telegramBotToken = (await promptSecret(rl, 'Telegram Bot Token:'))?.trim() || '';
       config.telegramChatId = (await prompt(rl, 'Telegram Chat ID:'))?.trim() || '';
 
       if (config.telegramBotToken && config.telegramChatId) {

@@ -66,7 +66,7 @@ export interface BotStatus {
   dailyPnl: number;
 }
 
-interface TradingState {
+export interface TradingState {
   prices: Record<string, PriceTick>;
   positions: Position[];
   spreads: SpreadOpportunity[];

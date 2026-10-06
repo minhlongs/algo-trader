@@ -1,12 +1,17 @@
 /**
  * Sticky public navbar — Quant Elite design.
  * Phosphor icons. Blurs on scroll. Mobile hamburger menu.
+ * Integrates optional rightSlot (e.g. language toggle) to prevent mobile collisions.
  */
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { X, List } from '@phosphor-icons/react';
 
-export function PublicNavbar() {
+export interface PublicNavbarProps {
+  rightSlot?: React.ReactNode;
+}
+
+export function PublicNavbar({ rightSlot }: PublicNavbarProps = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -28,20 +33,28 @@ export function PublicNavbar() {
           CashClaw
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          <Link to="/pricing" className={linkClass}>Pricing</Link>
-          <Link to="/docs" className={linkClass}>Docs</Link>
-          <Link to="/login" className={linkClass}>Login</Link>
-          <Link to="/signup" className={ctaClass}>Get Started</Link>
-        </nav>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <nav className="hidden md:flex items-center gap-6">
+            <Link to="/pricing" className={linkClass}>Pricing</Link>
+            <Link to="/docs" className={linkClass}>Docs</Link>
+            <Link to="/login" className={linkClass}>Login</Link>
+            <Link to="/signup" className={ctaClass}>Get Started</Link>
+          </nav>
 
-        <button
-          className="md:hidden text-muted hover:text-white p-1 min-h-touch min-w-touch flex items-center justify-center"
-          onClick={() => setMenuOpen((v) => !v)}
-          aria-label="Toggle menu"
-        >
-          {menuOpen ? <X weight="bold" className="w-6 h-6" /> : <List weight="bold" className="w-6 h-6" />}
-        </button>
+          {rightSlot && (
+            <div className="flex items-center">
+              {rightSlot}
+            </div>
+          )}
+
+          <button
+            className="md:hidden text-muted hover:text-white p-1 min-h-touch min-w-touch flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? <X weight="bold" className="w-6 h-6" /> : <List weight="bold" className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {menuOpen && (

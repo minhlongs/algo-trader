@@ -2,7 +2,8 @@
  * CLI Diagnostics Formatter
  *
  * Catches ZodError, network timeouts, and daemon connectivity failures,
- * producing actionable user-friendly terminal diagnostics without raw stack traces.
+ * producing actionable user-friendly terminal diagnostics without raw stack traces (Rule H4).
+ * Also provides standardized currency PnL formatting (-$X.XX vs $-X.XX).
  */
 
 import { ZodError } from 'zod';
@@ -11,6 +12,19 @@ import { logger } from '../../shared/utils/logger';
 export interface CliDiagnosticResult {
   title: string;
   messages: string[];
+}
+
+/**
+ * Format financial profit & loss with standardized negative notation:
+ * -$X.XX for losses, $X.XX for profits (avoiding inverted $-X.XX).
+ */
+export function formatCurrencyPnl(amount: number | string): string {
+  const num = typeof amount === 'number' ? amount : parseFloat(String(amount));
+  if (isNaN(num) || Math.abs(num) < 0.005) {
+    return '$0.00';
+  }
+  const formatted = Math.abs(num).toFixed(2);
+  return num < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
 export function formatCliDiagnostic(err: unknown): CliDiagnosticResult {
@@ -48,7 +62,7 @@ export function formatCliDiagnostic(err: unknown): CliDiagnosticResult {
 }
 
 export function wrapCliAction<T extends unknown[]>(
-  fn: (...args: T) => Promise<unknown>,
+  fn: (...args: T) => unknown | Promise<unknown>,
 ): (...args: T) => Promise<void> {
   return async (...args: T) => {
     try {
@@ -59,4 +73,3 @@ export function wrapCliAction<T extends unknown[]>(
     }
   };
 }
-

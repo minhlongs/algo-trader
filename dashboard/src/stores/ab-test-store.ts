@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import { apiClient } from '../lib/api-client';
 import { useAuthStore } from './auth-store';
 
@@ -24,7 +24,7 @@ export interface PersonalizationFeatures {
 export interface AnalyticsEvent {
   tenantId: string;
   eventType: string;
-  eventData: Record<string, any>;
+  eventData: Record<string, unknown>;
   timestamp?: string;
 }
 
@@ -40,7 +40,7 @@ export interface AbTestStore {
   // Actions
   fetchAbConfig: (tenantId: string) => Promise<void>;
   fetchPersonalizationConfig: (tier: string) => Promise<void>;
-  trackEvent: (eventType: string, eventData?: Record<string, any>) => Promise<void>;
+  trackEvent: (eventType: string, eventData?: Record<string, unknown>) => Promise<void>;
   flushEvents: () => Promise<void>;
   reset: () => void;
 }
@@ -63,24 +63,23 @@ export const useAbTestStore = create<AbTestStore>()(
       loading: false,
       error: null,
 
-      // Fetch A/B variant assignment
+      // Fetch dynamic A/B test variant
       fetchAbConfig: async (tenantId: string) => {
         set({ loading: true, error: null });
         try {
           const res = await apiClient.get<{
-            tenantId: string;
             variant: 'A' | 'B';
             config: AbConfig;
-          }>(`/personalization/ab-config?tenantId=${tenantId}`);
+          }>(`/ab/config?tenantId=${tenantId}`);
           
           set({
             variant: res.variant,
             config: res.config,
             loading: false,
           });
-        } catch (err: any) {
+        } catch (err) {
           set({
-            error: err.message || 'Failed to fetch A/B configuration',
+            error: err instanceof Error ? err.message : 'Failed to fetch A/B configuration',
             loading: false,
           });
         }
@@ -100,16 +99,16 @@ export const useAbTestStore = create<AbTestStore>()(
             features: res.features,
             loading: false,
           });
-        } catch (err: any) {
+        } catch (err) {
           set({
-            error: err.message || 'Failed to fetch personalization config',
+            error: err instanceof Error ? err.message : 'Failed to fetch personalization config',
             loading: false,
           });
         }
       },
 
       // Buffers/sends tracking event
-      trackEvent: async (eventType: string, eventData: Record<string, any> = {}) => {
+      trackEvent: async (eventType: string, eventData: Record<string, unknown> = {}) => {
         const tenantId = useAuthStore.getState().tenantId || 'anonymous';
         const variant = get().variant || 'UNKNOWN';
 
@@ -169,14 +168,15 @@ export const useAbTestStore = create<AbTestStore>()(
           if (typeof window !== 'undefined' && window.localStorage) {
             return window.localStorage;
           }
-        } catch (e) {
+        } catch {
           // ignore
         }
-        return {
+        const fallbackStorage: StateStorage = {
           getItem: () => null,
           setItem: () => {},
           removeItem: () => {},
-        } as any;
+        };
+        return fallbackStorage;
       }),
       partialize: (state) => ({
         variant: state.variant,
@@ -184,7 +184,7 @@ export const useAbTestStore = create<AbTestStore>()(
         widgets: state.widgets,
         features: state.features,
         eventQueue: state.eventQueue,
-      }) as any,
+      }),
     }
   )
 );

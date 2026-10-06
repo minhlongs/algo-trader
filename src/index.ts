@@ -15,7 +15,6 @@ import { runArbAuto } from './desk/commands/arb-auto';
 import { wrapCliAction } from './desk/cli/cli-diagnostics';
 import { logger } from './shared/utils/logger';
 
-
 // Initialize Sentry before anything else
 initSentry();
 
@@ -58,14 +57,13 @@ export function buildCliProgram(): Command {
     .description('Zero-config start - instant trading with defaults')
     .action(wrapCliAction(async () => { await runQuickstart(); }));
 
-
   program
     .command('activate [key]')
     .description('Activate beta invite license key')
-    .action(async (key?: string) => {
+    .action(wrapCliAction(async (key?: string) => {
       const { runActivateCommand } = await import('./commands/activate-license');
       await runActivateCommand(key);
-    });
+    }));
 
   program
     .command('arb:auto')
@@ -78,7 +76,7 @@ export function buildCliProgram(): Command {
     .option('-v, --verbose', 'Verbose logging', true)
     .option('--strategy <type>', 'Strategy: cross-exchange|triangular|dex-cex|funding-rate|binary|split-merge|cross-market|all', 'all')
     .option('--max-queue <number>', 'Max queued opportunities', '50')
-    .action(async (options: ArbAutoOptions) => {
+    .action(wrapCliAction(async (options: ArbAutoOptions) => {
       await runArbAuto({
         symbols: options.symbols,
         exchanges: options.exchanges,
@@ -88,7 +86,7 @@ export function buildCliProgram(): Command {
         strategy: options.strategy || 'all',
         maxQueueSize: parseInt(options.maxQueue || '50'),
       } as import('./desk/commands/arb-auto').AutoCommandOptions);
-    });
+    }));
 
   program
     .command('marl:auto')
@@ -101,7 +99,7 @@ export function buildCliProgram(): Command {
     .option('--sigma <number>', 'Asset volatility parameter', '0.3')
     .option('--quote-size <number>', 'Quote size per order', '10')
     .option('-d, --duration <seconds>', 'Execution duration in seconds (0 = single pass)', '0')
-    .action(async (options: { symbol: string; dryRun: boolean; capital: string; gamma: string; sigma: string; quoteSize: string; duration: string }) => {
+    .action(wrapCliAction(async (options: { symbol: string; dryRun: boolean; capital: string; gamma: string; sigma: string; quoteSize: string; duration: string }) => {
       const { runMarlAuto } = await import('./desk/commands/marl-auto');
       await runMarlAuto({
         symbol: options.symbol,
@@ -112,7 +110,7 @@ export function buildCliProgram(): Command {
         quoteSize: parseFloat(options.quoteSize),
         durationSeconds: parseInt(options.duration, 10),
       });
-    });
+    }));
 
   program
     .command('amm:auto')
@@ -124,7 +122,7 @@ export function buildCliProgram(): Command {
     .option('-b, --liquidity-b <number>', 'LMSR liquidity parameter b', '1000')
     .option('-f, --fee-bps <number>', 'Pool fee in basis points', '20')
     .option('-d, --duration <seconds>', 'Execution duration in seconds (0 = single pass)', '0')
-    .action(async (options: { market: string; dryRun: boolean; capital: string; liquidityB: string; feeBps: string; duration: string }) => {
+    .action(wrapCliAction(async (options: { market: string; dryRun: boolean; capital: string; liquidityB: string; feeBps: string; duration: string }) => {
       const { runAmmAuto } = await import('./desk/commands/amm-auto');
       await runAmmAuto({
         marketId: options.market,
@@ -134,7 +132,7 @@ export function buildCliProgram(): Command {
         feeBps: parseFloat(options.feeBps),
         durationSeconds: parseInt(options.duration, 10),
       });
-    });
+    }));
 
   program
     .command('kronos')
@@ -142,7 +140,7 @@ export function buildCliProgram(): Command {
     .option('-s, --symbol <symbol>', 'Trading pair', 'BTC/USDT')
     .option('-t, --threshold <number>', 'Confidence threshold (0-1)', '0.6')
     .option('-l, --lookback <number>', 'Lookback candles', '60')
-    .action(async (options: { symbol: string; threshold: string; lookback: string }) => {
+    .action(wrapCliAction(async (options: { symbol: string; threshold: string; lookback: string }) => {
       const strategy = new KronosStrategy({
         confidenceThreshold: parseFloat(options.threshold),
         lookback: parseInt(options.lookback),
@@ -151,7 +149,7 @@ export function buildCliProgram(): Command {
       await strategy.initialize();
       const status = strategy.getStatus();
       logger.info('[Kronos] Strategy ready', status);
-    });
+    }));
 
   program
     .command('desk:auto')

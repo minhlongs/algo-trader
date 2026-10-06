@@ -40,13 +40,13 @@ export function TermsPage() {
   const t = COPY[lang];
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div className="min-h-screen bg-bg text-onSurface font-sans">
       <PublicNavbar />
 
       {/* Language toggle — globe SVG pinned to top-right */}
       <button
         onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-        className="fixed top-4 right-4 z-50 p-2 rounded-full bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] hover:border-[${COLORS.primary}] transition-colors"
+        className="fixed top-4 right-4 z-50 p-2 rounded-full bg-surface/80 backdrop-blur-xl border border-outline hover:border-primary transition-colors"
         aria-label={t.langToggle}
       >
         <svg
@@ -66,25 +66,25 @@ export function TermsPage() {
       </button>
 
       <main className="flex-1 max-w-3xl mx-auto px-4 sm:px-6 py-20">
-        <h1 className="text-2xl font-bold text-[${COLORS.onSurface}] mb-2">
+        <h1 className="text-2xl font-bold text-onSurface mb-2">
           {t.title}
         </h1>
-        <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed mb-6">
+        <p className="text-onSurfaceVariant text-sm leading-relaxed mb-6">
           {t.subtitle}
         </p>
 
         <div className="glass-card p-6 space-y-4">
-          <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed">
+          <p className="text-onSurfaceVariant text-sm leading-relaxed">
             {t.p1}
           </p>
-          <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed">
+          <p className="text-onSurfaceVariant text-sm leading-relaxed">
             {t.p2}
           </p>
-          <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed">
+          <p className="text-onSurfaceVariant text-sm leading-relaxed">
             {t.p3}{' '}
             <a
               href={`mailto:${t.email}`}
-              className="text-[${COLORS.primary}] hover:underline"
+              className="text-primary hover:underline"
             >
               {t.email}
             </a>
@@ -94,7 +94,7 @@ export function TermsPage() {
 
         <Link
           to="/"
-          className="inline-block mt-8 text-[${COLORS.primary}] text-sm hover:underline"
+          className="inline-block mt-8 text-primary text-sm hover:underline"
         >
           {t.backToHome}
         </Link>

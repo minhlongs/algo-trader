@@ -4,10 +4,11 @@
 import { Card } from '../../components/ui/card';
 import { PositionsTableSortable } from '../../components/positions-table-sortable';
 import { PositionsTableSkeleton } from '../../components/skeleton-loaders';
+import type { Position } from '../../stores/trading-store';
 
 interface PositionsWidgetProps {
   colSpan: number;
-  positions: any[];
+  positions: Position[];
   loading: boolean;
   onClickCapture?: () => void;
 }

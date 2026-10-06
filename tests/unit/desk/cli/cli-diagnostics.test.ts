@@ -2,9 +2,13 @@
  * CLI Diagnostics Unit Test Suite
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
-import { formatCliDiagnostic } from '../../../../src/desk/cli/cli-diagnostics';
+import {
+  formatCliDiagnostic,
+  formatCurrencyPnl,
+  wrapCliAction,
+} from '../../../../src/desk/cli/cli-diagnostics';
 import { logger } from '../../../../src/shared/utils/logger';
 
 describe('formatCliDiagnostic', () => {
@@ -50,5 +54,63 @@ describe('formatCliDiagnostic', () => {
     expect(result.title).toBe('Command Error');
     expect(result.messages[0]).toBe('  ✖ Database file corrupted');
     expect(errorSpy).toHaveBeenCalledWith('Command failed: Database file corrupted');
+  });
+});
+
+describe('formatCurrencyPnl', () => {
+  it('formats positive PnL as $X.XX', () => {
+    expect(formatCurrencyPnl(123.45)).toBe('$123.45');
+    expect(formatCurrencyPnl('50.5')).toBe('$50.50');
+  });
+
+  it('formats negative PnL as -$X.XX (not inverted $-X.XX)', () => {
+    expect(formatCurrencyPnl(-15.2)).toBe('-$15.20');
+    expect(formatCurrencyPnl('-100.05')).toBe('-$100.05');
+  });
+
+  it('formats zero and near-zero values as $0.00 without negative sign', () => {
+    expect(formatCurrencyPnl(0)).toBe('$0.00');
+    expect(formatCurrencyPnl(-0.001)).toBe('$0.00');
+    expect(formatCurrencyPnl(0.001)).toBe('$0.00');
+    expect(formatCurrencyPnl(NaN)).toBe('$0.00');
+  });
+});
+
+describe('wrapCliAction', () => {
+  const origExitCode = process.exitCode;
+
+  afterEach(() => {
+    process.exitCode = origExitCode;
+  });
+
+  it('executes successful action without error', async () => {
+    const actionFn = vi.fn().mockResolvedValue('ok');
+    const wrapped = wrapCliAction(actionFn);
+
+    await wrapped('arg1');
+    expect(actionFn).toHaveBeenCalledWith('arg1');
+    expect(process.exitCode).toBe(origExitCode);
+  });
+
+  it('catches asynchronous rejection, formats diagnostic, and sets exitCode to 1 (Rule H4)', async () => {
+    const errorSpy = vi.spyOn(logger, 'error');
+    const actionFn = vi.fn().mockRejectedValue(new Error('Unexpected network failure'));
+    const wrapped = wrapCliAction(actionFn);
+
+    await wrapped();
+    expect(errorSpy).toHaveBeenCalledWith('Command failed: Unexpected network failure');
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('catches synchronous exception and formats diagnostic', async () => {
+    const errorSpy = vi.spyOn(logger, 'error');
+    const actionFn = vi.fn().mockImplementation(() => {
+      throw new Error('Sync throw');
+    });
+    const wrapped = wrapCliAction(actionFn);
+
+    await wrapped();
+    expect(errorSpy).toHaveBeenCalledWith('Command failed: Sync throw');
+    expect(process.exitCode).toBe(1);
   });
 });

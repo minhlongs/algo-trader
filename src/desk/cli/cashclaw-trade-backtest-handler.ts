@@ -2,6 +2,7 @@
  * CashClaw Trade Backtest Handler — CLI handler for running backtests against Gamma historical data.
  */
 import { logger } from '../../shared/utils/logger';
+import { formatCurrencyPnl } from './cli-diagnostics';
 
 export async function handleTradeBacktest(opts: {
   strategy: string;
@@ -48,6 +49,7 @@ export async function handleTradeBacktest(opts: {
           2,
         ),
       );
+    } else {
       const boxWidth = 49;
       const padRow = (text: string) => `│ ${text.padEnd(boxWidth - 2)} │`;
       logger.info(`┌${'─'.repeat(boxWidth)}┐`);
@@ -56,10 +58,10 @@ export async function handleTradeBacktest(opts: {
       logger.info(`├${'─'.repeat(boxWidth)}┤`);
       logger.info(padRow(`Sharpe: ${String(m.sharpeRatio)} | Max DD: ${(m.maxDrawdown * 100).toFixed(1)}%`));
       logger.info(padRow(`Win Rate: ${(m.winRate * 100).toFixed(1)}% | Profit Factor: ${m.profitFactor === Infinity ? '∞' : String(m.profitFactor)}`));
-      logger.info(padRow(`Total P&L: $${String(m.totalPnl)} | Avg/Trade: $${String(m.avgPnlPerTrade)}`));
+      logger.info(padRow(`Total P&L: ${formatCurrencyPnl(m.totalPnl)} | Avg/Trade: ${formatCurrencyPnl(m.avgPnlPerTrade)}`));
       logger.info(`├${'─'.repeat(boxWidth)}┤`);
-      logger.info(padRow(`Trades: ${String(m.totalTrades)} (${m.winningTrades}W / ${m.losingTrades}L) | Best: $${String(m.bestTrade)}`));
-      logger.info(padRow(`Worst: $${String(m.worstTrade)} | Duration: ${(result.durationMs / 1000).toFixed(1)}s`));
+      logger.info(padRow(`Trades: ${String(m.totalTrades)} (${m.winningTrades}W / ${m.losingTrades}L) | Best: ${formatCurrencyPnl(m.bestTrade)}`));
+      logger.info(padRow(`Worst: ${formatCurrencyPnl(m.worstTrade)} | Duration: ${(result.durationMs / 1000).toFixed(1)}s`));
       logger.info(`└${'─'.repeat(boxWidth)}┘`);
       if (result.warnings.length > 0) {
         logger.info(`\n⚠ Warnings: ${result.warnings.join(', ')}`);
