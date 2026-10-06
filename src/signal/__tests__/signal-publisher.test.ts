@@ -61,9 +61,10 @@ describe('SignalPublisher.publish', () => {
   it('returns null for duplicate signal in same TTL bucket', async () => {
     const store = makeStore();
     const publisher = new SignalPublisher(store);
+    const safeBaseTs = Math.floor(Date.now() / 300_000) * 300_000 + 10_000;
 
-    await publisher.publish(BASE_INPUT);
-    const dup = await publisher.publish({ ...BASE_INPUT, ts: BASE_INPUT.ts! + 1000 });
+    await publisher.publish({ ...BASE_INPUT, ts: safeBaseTs });
+    const dup = await publisher.publish({ ...BASE_INPUT, ts: safeBaseTs + 1000 });
 
     expect(dup).toBeNull();
     expect(store.saveSignal).toHaveBeenCalledOnce(); // only first persisted

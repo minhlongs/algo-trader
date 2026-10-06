@@ -12,23 +12,30 @@
   --bg-surface: #141820;
   --bg-elevated: #1A2030;
   --bg-hover: #1E2838;
+  --bg-overlay: rgba(0, 0, 0, 0.75);
 
   /* ── Borders ── */
   --border-subtle: #1E2530;
   --border-default: #2A3340;
   --border-focus: #00D4AA;
 
-  /* ── Text ── */
+  /* ── Text (WCAG AA >= 4.5:1 against dark backgrounds) ── */
   --text-primary: #E8EAED;
   --text-secondary: #8B95A5;
-  --text-tertiary: #5A6577;
+  --text-tertiary: #8492A6;
+  --text-inverse: #0B0E11;
 
   /* ── Semantic colors ── */
   --color-profit: #00D4AA;
-  --color-loss: #FF4757;
+  --color-profit-dim: rgba(0, 212, 170, 0.12);
+  --color-loss: #FF5C6C;
+  --color-loss-dim: rgba(255, 92, 108, 0.12);
   --color-warning: #FFB020;
+  --color-warning-dim: rgba(255, 176, 32, 0.12);
   --color-ai: #A78BFA;
+  --color-ai-dim: rgba(167, 139, 250, 0.12);
   --color-accent: #00D4AA;
+  --color-accent-hover: #00E8BB;
   --color-accent-dim: rgba(0, 212, 170, 0.12);
 
   /* ── Typography ── */
@@ -62,6 +69,7 @@
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
   --space-12: 48px;
@@ -72,6 +80,7 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-full: 9999px;
 
   /* ── Shadows ── */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -83,4 +92,40 @@
   --transition-fast: 150ms ease;
   --transition-base: 200ms ease;
   --transition-slow: 300ms ease;
+}
+
+/* ── Light Mode Palette (WCAG AA >= 4.5:1 compliant) ── */
+[data-theme="light"],
+:root[data-theme="light"] {
+  --bg-primary: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F1F5F9;
+  --bg-hover: #E2E8F0;
+  --bg-overlay: rgba(15, 23, 42, 0.6);
+
+  --border-subtle: #E2E8F0;
+  --border-default: #CBD5E1;
+  --border-focus: #0F766E;
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-tertiary: #64748B;
+  --text-inverse: #FFFFFF;
+
+  --color-profit: #047857;
+  --color-profit-dim: rgba(4, 120, 87, 0.12);
+  --color-loss: #DC2626;
+  --color-loss-dim: rgba(220, 38, 38, 0.12);
+  --color-warning: #B45309;
+  --color-warning-dim: rgba(180, 83, 9, 0.12);
+  --color-ai: #6D28D9;
+  --color-ai-dim: rgba(109, 40, 217, 0.12);
+  --color-accent: #0F766E;
+  --color-accent-hover: #115E59;
+  --color-accent-dim: rgba(15, 118, 110, 0.12);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-accent: 0 0 20px rgba(15, 118, 110, 0.15);
 }

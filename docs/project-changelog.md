@@ -1,5 +1,25 @@
 # Project Changelog - Algo Trader
 
+## [3.1.90] - 2026-10-06 — UI Design System Hardening, WebSocket Client Decoupling & Quality Ratchet Re-Certification
+
+### Added
+- Added comprehensive client-side UI unit test suites in `tests/unit/ui/` (`ws-client.test.ts`, `tokens-contrast.test.ts`, `format.test.ts`, `components-css.test.ts`) covering WebSocket lifecycle, SSR safety, WCAG AA contrast ratio compliance, and edge-case currency/number/relative-time formatting.
+
+### Fixed
+- Fixed browser compatibility in `src/ui/shared/ws-client.js` by decoupling backend Node.js logger imports and implementing a browser-safe console fallback interface.
+- Resolved duplicate event emission in `ws-client.js` message handler when handling standard JSON messages.
+- Streamlined `src/desk/execution/__tests__/live-guard-handoff-challenge-gating.test.ts` helper methods (185 visual LOC) to strictly adhere to the 200 LOC ceiling.
+- Resolved epoch bucket deduplication boundary race condition in `src/signal/__tests__/signal-publisher.test.ts` by pinning timestamp within the bucket.
+
+### Enhanced
+- Hardened dashboard UI (`src/platform/dashboard/dashboard.html` and `public/index.html`) with XSS escaping, safe data mapping, refresh button state handling, and card border styles.
+- Enhanced design system tokens and component styles (`src/ui/design-system/tokens.css`, `components.css`) ensuring WCAG AA contrast compliance in dark and light modes.
+
+### Verified & Certified
+- Full quality ratchet verification across 15,657 passing tests (100% pass rate, 0 failures).
+- Maintained 12/12 quality ratchet gates green (lines 95.14%, functions 93.18%, branches 86.11%, statements 94.21%, 0 `:any` types, maxConsoleCalls <= 2, 0 oversized files >200 LOC).
+- Typecheck (`tsc`) and build (`npm run build`) 100% clean with exit code 0.
+
 ## [3.1.89] - 2026-10-06 — GTM Email Campaign Validation Repair & Security Hardening
 
 ### Fixed

@@ -118,29 +118,29 @@ body {
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
-  border-radius: 999px;
+  border-radius: var(--radius-full);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   letter-spacing: 0.3px;
 }
 
 .cc-badge--profit {
-  background: rgba(0, 212, 170, 0.12);
+  background: var(--color-profit-dim);
   color: var(--color-profit);
 }
 
 .cc-badge--loss {
-  background: rgba(255, 71, 87, 0.12);
+  background: var(--color-loss-dim);
   color: var(--color-loss);
 }
 
 .cc-badge--warning {
-  background: rgba(255, 176, 32, 0.12);
+  background: var(--color-warning-dim);
   color: var(--color-warning);
 }
 
 .cc-badge--ai {
-  background: rgba(167, 139, 250, 0.12);
+  background: var(--color-ai-dim);
   color: var(--color-ai);
 }
 
@@ -214,15 +214,64 @@ body {
   line-height: 1;
 }
 
+.cc-button:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.cc-button:active {
+  transform: scale(0.98);
+}
+
+.cc-button:disabled,
+.cc-button[disabled],
+.cc-button--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.cc-button--loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.cc-button--loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-top: -8px;
+  margin-left: -8px;
+  border: 2px solid var(--text-primary);
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  animation: cc-spin 0.6s linear infinite;
+}
+
+.cc-button--primary.cc-button--loading::after {
+  border-color: var(--text-inverse);
+  border-right-color: transparent;
+}
+
+@keyframes cc-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .cc-button--primary {
   background: var(--color-accent);
-  color: #0B0E11;
+  color: var(--text-inverse);
   border-color: var(--color-accent);
 }
 
 .cc-button--primary:hover {
-  background: #00E8BB;
-  border-color: #00E8BB;
+  background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
 }
 
 .cc-button--secondary {
@@ -263,7 +312,7 @@ body {
   color: var(--text-primary);
   font-family: var(--font-ui);
   font-size: var(--text-sm);
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   outline: none;
 }
 
@@ -271,9 +320,31 @@ body {
   color: var(--text-tertiary);
 }
 
-.cc-input:focus {
+.cc-input:focus,
+.cc-input:focus-visible {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px var(--color-accent-dim);
+  outline: none;
+}
+
+.cc-input:disabled,
+.cc-input[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-surface);
+}
+
+.cc-input--error,
+.cc-input[aria-invalid="true"] {
+  border-color: var(--color-loss);
+}
+
+.cc-input--error:focus,
+.cc-input--error:focus-visible,
+.cc-input[aria-invalid="true"]:focus,
+.cc-input[aria-invalid="true"]:focus-visible {
+  border-color: var(--color-loss);
+  box-shadow: 0 0 0 3px var(--color-loss-dim);
 }
 
 .cc-input-label {
@@ -282,6 +353,111 @@ body {
   font-weight: var(--weight-medium);
   color: var(--text-secondary);
   margin-bottom: var(--space-2);
+}
+
+/* ── Modal ── */
+.cc-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--transition-base), visibility var(--transition-base);
+}
+
+.cc-modal[hidden],
+.cc-modal--hidden {
+  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.cc-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.cc-modal-dialog {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  margin: var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 40px);
+}
+
+.cc-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.cc-modal-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cc-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.cc-modal-close:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.cc-modal-close:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.cc-modal-body {
+  padding: var(--space-6);
+  overflow-y: auto;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.cc-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
 }
 
 /* ── Skeleton loading ── */
@@ -398,7 +574,7 @@ body {
 .cc-probability-bar-fill {
   height: 100%;
   border-radius: 3px;
-  background: linear-gradient(90deg, var(--color-accent), #00E8BB);
+  background: linear-gradient(90deg, var(--color-accent), var(--color-accent-hover));
   transition: width var(--transition-slow);
 }
 
@@ -493,5 +669,13 @@ body {
     --text-hero: 36px;
     --text-3xl: 28px;
     --text-2xl: 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-button--loading::after,
+  .cc-skeleton,
+  .cc-ws-dot--connecting {
+    animation: none !important;
   }
 }
