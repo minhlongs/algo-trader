@@ -1097,18 +1097,20 @@ function renderPositions(positions) {
     return;
   }
   list.innerHTML = positions.map(p => {
-    const pnl      = p.unrealizedPnl || 0;
+    const pnl      = (p.unrealizedPnl != null && !Number.isNaN(Number(p.unrealizedPnl))) ? Number(p.unrealizedPnl) : 0;
     const pnlClass = pnl >= 0 ? 'positive' : 'negative';
     const sideClass= (p.side || '').toLowerCase() === 'long' ? 'long' : 'short';
+    const entryPrice = p.entryPrice != null ? Number(p.entryPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '0.00';
+    const size = p.size != null ? Number(p.size).toLocaleString('en-US', { maximumFractionDigits: 4 }) : '0';
     return `
       <div class="position-row">
         <div>
           <div class="pos-market">${escapeHtml(p.marketId || '—')}</div>
-          <div class="pos-prices">Entry $${Number(p.entryPrice||0).toFixed(4)} · Size ${p.size||0}</div>
+          <div class="pos-prices">Entry $${entryPrice} · Size ${size}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="pos-side ${sideClass}">${p.side||'—'}</span>
-          <div class="pos-pnl ${pnlClass}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</div>
+          <span class="pos-side ${sideClass}">${escapeHtml(p.side || '—')}</span>
+          <div class="pos-pnl ${pnlClass}">${formatPnl(pnl)}</div>
         </div>
       </div>`;
   }).join('');
@@ -1133,18 +1135,21 @@ function renderTrades(trades) {
   }
   empty.style.display = 'none';
   tbody.innerHTML = trades.map(t => {
-    const pnl     = t.pnl != null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl).toFixed(2) : '—';
-    const pnlCls  = t.pnl != null ? (t.pnl >= 0 ? 'positive' : 'negative') : '';
+    const pnlNum = t.pnl != null && !Number.isNaN(Number(t.pnl)) ? Number(t.pnl) : null;
+    const pnlStr = pnlNum != null ? formatPnl(pnlNum) : '—';
+    const pnlCls = pnlNum != null ? (pnlNum >= 0 ? 'positive' : 'negative') : '';
     const sideClass = (t.side||'').toLowerCase() === 'buy' ? 'side-buy' : 'side-sell';
     const ts = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '—';
+    const fillPrice = t.fillPrice != null ? '$' + Number(t.fillPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—';
+    const amount = t.amount != null ? Number(t.amount).toLocaleString('en-US', { maximumFractionDigits: 4 }) : '—';
     return `<tr>
       <td>${ts}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${escapeHtml(t.marketId||'—')}</td>
-      <td class="${sideClass}">${t.side||'—'}</td>
-      <td style="font-family:monospace">${t.amount||'—'}</td>
-      <td style="font-family:monospace">$${Number(t.fillPrice||0).toFixed(4)}</td>
-      <td class="${pnlCls}" style="font-family:monospace">${pnl}</td>
-      <td style="color:var(--muted)">${t.strategy||'—'}</td>
+      <td class="${sideClass}">${escapeHtml(t.side||'—')}</td>
+      <td style="font-family:monospace">${amount}</td>
+      <td style="font-family:monospace">${fillPrice}</td>
+      <td class="${pnlCls}" style="font-family:monospace">${pnlStr}</td>
+      <td style="color:var(--muted)">${escapeHtml(t.strategy||'—')}</td>
     </tr>`;
   }).join('');
 }
@@ -1172,7 +1177,7 @@ function applyLayers(strategies) {
   for (const layer of allLayers) {
     const strat   = (strategies || []).find(s => s.name === layer.key || (s.name||'').includes(layer.key));
     const running = strat?.running ?? false;
-    const state   = strat?.state ?? 'stopped';
+    const state   = running ? 'running' : (strat?.state ?? 'stopped');
 
     const div = document.createElement('div');
     div.className = 'strategy-row';
@@ -1185,8 +1190,13 @@ function applyLayers(strategies) {
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:11px;color:${running ? 'var(--accent)' : 'var(--muted)'}">${state}</span>
+        <span style="font-size:11px;color:${running ? 'var(--accent)' : 'var(--muted)'}">${escapeHtml(state)}</span>
         <div style="width:8px;height:8px;border-radius:50%;background:${running ? 'var(--accent)' : 'var(--muted)'}"></div>
+        <button class="strat-btn ${running ? 'stop' : 'start'}"
+          data-strategy="${layer.key}"
+          onclick="toggleStrategyLayer(this, '${layer.key}', ${running})">
+          ${running ? 'Stop' : 'Start'}
+        </button>
       </div>`;
     list.appendChild(div);
   }
@@ -1205,8 +1215,41 @@ function applyLayers(strategies) {
   }
 }
 
+async function toggleStrategyLayer(btn, strategyKey, currentlyRunning) {
+  const origText = btn.textContent.trim();
+  btn.disabled = true;
+  btn.textContent = currentlyRunning ? 'Stopping…' : 'Starting…';
+  btn.style.opacity = '0.6';
+
+  try {
+    const action = currentlyRunning ? 'stop' : 'start';
+    const res = await fetch(apiUrl('/dashboard/api/strategy/' + action), {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strategy: strategyKey, action })
+    });
+    if (!res.ok) {
+      throw new Error(`Server returned ${res.status}`);
+    }
+    showToast(`Layer ${strategyKey} ${action}ed successfully`, true);
+    await fetchStrategyStatus();
+  } catch (err) {
+    showToast(`Failed to ${currentlyRunning ? 'stop' : 'start'} ${strategyKey}: ${err.message || 'Error'}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+    btn.style.opacity = '1';
+  }
+}
+
 // ── AI Brain ─────────────────────────────────────────────────────────────
 async function fetchAiBrain() {
+  const btn = document.getElementById('ai-refresh-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing…';
+    btn.style.opacity = '0.6';
+  }
   try {
     const res = await fetch(apiUrl('/dashboard/api/ai-insights'), { headers: authHeaders() });
     if (!res.ok) return;
@@ -1235,7 +1278,7 @@ async function fetchAiBrain() {
       const confPct   = ((s.confidence || 0) * 100).toFixed(0);
       return `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid ${edgeColor}">
-          <span style="color:${actionColor};font-weight:700;text-transform:uppercase;font-size:11px;width:32px">${s.action||'—'}</span>
+          <span style="color:${actionColor};font-weight:700;text-transform:uppercase;font-size:11px;width:32px">${escapeHtml(s.action||'—')}</span>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(s.market||s.description||'—')}</div>
             <div style="font-size:11px;color:var(--muted)">AI: ${((s.ourProb||0)*100).toFixed(0)}% | Mkt: ${((s.marketProb||0)*100).toFixed(0)}% | Conf: ${confPct}%</div>
@@ -1246,8 +1289,19 @@ async function fetchAiBrain() {
           </div>
         </div>`;
     }).join('');
-  } catch (err) {
-    console.warn('AI brain fetch error:', err);
+  } catch (_err) {
+    // Silent recovery with UI health status update — zero console.warn (Rule H4)
+    const healthEl = document.getElementById('ai-health');
+    if (healthEl) {
+      healthEl.textContent = 'degraded';
+      healthEl.style.color = 'var(--warning)';
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Refresh';
+      btn.style.opacity = '1';
+    }
   }
 }
 
@@ -1268,20 +1322,23 @@ async function fetchHealth() {
 function prependTrade(t) {
   const tbody = document.getElementById('trades-tbody');
   const empty = document.getElementById('trades-empty');
-  empty.style.display = 'none';
-  const pnl    = t.pnl != null ? (t.pnl >= 0 ? '+$' : '-$') + Math.abs(t.pnl).toFixed(2) : '—';
-  const pnlCls = t.pnl != null ? (t.pnl >= 0 ? 'positive' : 'negative') : '';
+  if (empty) empty.style.display = 'none';
+  const pnlNum = t.pnl != null && !Number.isNaN(Number(t.pnl)) ? Number(t.pnl) : null;
+  const pnlStr = pnlNum != null ? formatPnl(pnlNum) : '—';
+  const pnlCls = pnlNum != null ? (pnlNum >= 0 ? 'positive' : 'negative') : '';
   const sideCls = (t.side||'').toLowerCase() === 'buy' ? 'side-buy' : 'side-sell';
   const ts     = t.timestamp ? new Date(t.timestamp).toLocaleTimeString() : '—';
+  const fillPrice = t.fillPrice != null ? '$' + Number(t.fillPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—';
+  const amount = t.amount != null ? Number(t.amount).toLocaleString('en-US', { maximumFractionDigits: 4 }) : '—';
   const row = document.createElement('tr');
   row.innerHTML = `
     <td>${ts}</td>
     <td>${escapeHtml(t.marketId||'—')}</td>
-    <td class="${sideCls}">${t.side||'—'}</td>
-    <td style="font-family:monospace">${t.amount||'—'}</td>
-    <td style="font-family:monospace">$${Number(t.fillPrice||0).toFixed(4)}</td>
-    <td class="${pnlCls}" style="font-family:monospace">${pnl}</td>
-    <td style="color:var(--muted)">${t.strategy||'—'}</td>`;
+    <td class="${sideCls}">${escapeHtml(t.side||'—')}</td>
+    <td style="font-family:monospace">${amount}</td>
+    <td style="font-family:monospace">${fillPrice}</td>
+    <td class="${pnlCls}" style="font-family:monospace">${pnlStr}</td>
+    <td style="color:var(--muted)">${escapeHtml(t.strategy||'—')}</td>`;
   tbody.prepend(row);
   // trim to 30 rows
   while (tbody.rows.length > 30) tbody.deleteRow(tbody.rows.length - 1);
@@ -1351,35 +1408,58 @@ function renderAdminUsers(users) {
       <td style="color:var(--muted)">${date}</td>
       <td style="font-family:monospace;font-size:11px;color:var(--muted)">${escapeHtml(u.apiKeyPrefix || '—')}</td>
       <td style="display:flex;gap:4px">
-        <select onchange="adminUpgradeTier(this.dataset.userId,this.value)" data-user-id="${escapeHtml(u.id)}" style="font-size:11px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px">
+        <select onchange="adminUpgradeTier(this.dataset.userId, this.value, this)" data-user-id="${escapeHtml(u.id)}" style="font-size:11px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px">
           <option value="free" ${u.tier==='free'?'selected':''}>Free</option>
           <option value="pro" ${u.tier==='pro'?'selected':''}>Pro</option>
           <option value="enterprise" ${u.tier==='enterprise'?'selected':''}>Enterprise</option>
         </select>
-        ${u.role !== 'admin' ? `<button class="admin-btn danger" onclick="adminBanUser(this.dataset.userId,this.dataset.userEmail)" data-user-id="${escapeHtml(u.id)}" data-user-email="${escapeHtml(u.email)}">Ban</button>` : ''}
+        ${u.role !== 'admin' ? `<button class="admin-btn danger" onclick="adminBanUser(this.dataset.userId, this.dataset.userEmail, this)" data-user-id="${escapeHtml(u.id)}" data-user-email="${escapeHtml(u.email)}">Ban</button>` : ''}
       </td>
     </tr>`;
   }).join('');
 }
 
-async function adminUpgradeTier(userId, tier) {
+async function adminUpgradeTier(userId, tier, selectEl) {
+  if (selectEl) selectEl.disabled = true;
   try {
-    await fetch(apiUrl('/dashboard/api/admin/users/' + userId + '/upgrade'), {
+    const res = await fetch(apiUrl('/dashboard/api/admin/users/' + userId + '/upgrade'), {
       method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ tier })
     });
-    fetchAdminUsers();
-  } catch (_) {}
+    if (!res.ok) throw new Error('Upgrade failed');
+    showToast(`User upgraded to ${tier}`, true);
+    await fetchAdminUsers();
+  } catch (err) {
+    showToast(err.message || 'Upgrade failed');
+  } finally {
+    if (selectEl) selectEl.disabled = false;
+  }
 }
 
-async function adminBanUser(userId, email) {
+async function adminBanUser(userId, email, btnEl) {
   if (!confirm('Ban user ' + email + '? This will deactivate their account.')) return;
+  const origText = btnEl ? btnEl.textContent : '';
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = 'Banning…';
+    btnEl.style.opacity = '0.6';
+  }
   try {
-    await fetch(apiUrl('/dashboard/api/admin/users/' + userId + '/ban'), {
+    const res = await fetch(apiUrl('/dashboard/api/admin/users/' + userId + '/ban'), {
       method: 'POST', headers: authHeaders()
     });
-    fetchAdminUsers();
-  } catch (_) {}
+    if (!res.ok) throw new Error('Ban failed');
+    showToast(`User ${email} banned`, true);
+    await fetchAdminUsers();
+  } catch (err) {
+    showToast(err.message || 'Ban failed');
+  } finally {
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = origText;
+      btnEl.style.opacity = '1';
+    }
+  }
 }
 
 async function fetchAdminRevenue() {
