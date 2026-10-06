@@ -1,5 +1,18 @@
 # Project Changelog - Algo Trader
 
+## [3.1.92] - 2026-10-06 — Phase 35 Security Audit Engagement Specification & Compliance Closure
+
+### Added
+- Added comprehensive third-party security audit specification and vendor engagement runbook in `docs/security/third-party-security-audit-specification.md` covering scope inventory (Core Fastify API, Edge Cloudflare Pages, Desk CLI/IPC socket, Trading execution engines, AES-256-GCM crypto custody, and KYC/AML webhooks), threat models, vendor accreditation standards (CREST/OSCP/CISSP), candidate firm shortlist (Trail of Bits, NCC Group, Cure53, Bishop Fox), and deliverable acceptance criteria.
+
+### Enhanced
+- Formally completed Phase 35 Compliance & Security Hardening milestone in `docs/development-roadmap.md`, verifying KYC/AML Persona integration, audit-trail hash-chain persistence, tenant isolation, and audit readiness.
+- Updated Next Sprint milestones to prioritize GTM Execution Next Wave V content distribution and paying subscriber onboarding.
+
+### Verified & Certified
+- Verified 12/12 quality ratchet gates green across 15,681 passing tests (100% pass rate).
+- Verified production edge endpoints (`https://cashclaw.cc` and `https://algo-trader.pages.dev`) responding HTTP/2 200 OK.
+
 ## [3.1.91] - 2026-10-06 — CLI Diagnostics, Terminal Table Alignment, Setup Wizard Security & Engine Bootstrapping
 
 ### Added

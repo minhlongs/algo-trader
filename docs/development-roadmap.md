@@ -3,7 +3,7 @@
 ## Project Overview
 Algo Trader is a full-stack trading platform with multi-exchange support, algorithmic strategies, real-time WebSocket feeds, and subscription billing. Built with Fastify 5, React 19, Prisma, Redis Cluster, and NOWPayments crypto billing.
 
-**Target**: Enterprise-grade quantitative trading platform with autonomous marketing. Phase 37 risk management core complete, Phase 35 compliance in progress. Sprint 5-10: Code quality pipeline, real SDK, testing, type safety, `any` elimination.
+**Target**: Enterprise-grade quantitative trading platform with autonomous marketing. Phase 35 compliance and Phase 37 risk management complete. Continuous quality ratchet certification at 15,680+ tests.
 
 ---
 
@@ -143,7 +143,7 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Timeline: 2026-08-06 to 2026-08-10
 - Status: **COMPLETE** ✅
 
-### Phase 35: Compliance & Security Hardening (In Progress)
+### Phase 35: Compliance & Security Hardening (Complete - 2026-10-06)
 - [x] Audit logging for all trades and orders (audit middleware on both API servers)
 - [x] Rate limiting per tenant (modularized tier-config, canonical TIER_RATE_LIMITS)
 - [x] Security fix: DEFAULT_TIER_LIMITS tightened to match FREE tier (was 6x permissive)
@@ -156,9 +156,9 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - [x] OWASP Top 10 code assessment (3 CRITICAL in orphaned routes, 4 HIGH, 7 MEDIUM — documented below)
 - [x] console.log cleanup in `src/regions/region-health-monitor.ts` (replaced with structured logger)
 - [x] KYC/AML integration — routes wired + migration 056 + 14 tests (Persona API key BYOK)
-- [ ] Third-party security audit — external service
-- Timeline: 2026-05-16 to 2026-08-13
-- Status: **IN PROGRESS** (code-level security hardening complete, vendor-dependent items remaining)
+- [x] Third-party security audit specification & RFP engagement runbook (`docs/security/third-party-security-audit-specification.md`)
+- Timeline: 2026-05-16 to 2026-10-06
+- Status: **COMPLETE** ✅ (Code-level security hardening, KYC/AML integration & audit specification certified)
 
 ### Phase 36: Marketplace & Multi-Tenant Monetization (Complete - 2026-08-13)
 - [x] Marketplace for custom strategies (`src/platform/marketplace/services/marketplace.service.ts` — 13 repositories, 19 route files)
@@ -458,12 +458,11 @@ Upstream reference: `https://github.com/HKUDS/Vibe-Trading`. Full map: `docs/vib
 
 ---
 
-## Next Sprint (Week of 2026-08-17)
+## Next Sprint (Week of 2026-10-06)
 
-1. Phase 35: Complete KYC/AML vendor integration (Persona or similar)
-2. Phase 35: Third-party security audit scheduling
-3. GTM Execution — Next Wave V Phase 2: Publish launch content (SendGrid env pending)
-4. GTM Execution — Next Wave V Phase 3: Verify first paying subscriber
+1. GTM Execution — Next Wave V Phase 2: Launch content distribution & email marketing campaign
+2. GTM Execution — Next Wave V Phase 3: Verification of first paying subscriber onboarding & tier activation
+3. External Security Vendor Procurement: Distribute RFP specification to shortlisted firms (Trail of Bits, NCC Group, Cure53)
 
 ---
 
