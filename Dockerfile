@@ -7,7 +7,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 WORKDIR /app
 
 # Copy manifests first for layer caching
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
 
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
@@ -31,7 +31,7 @@ WORKDIR /app
 # Non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
 
 # Production deps only (ignore scripts — no build tools in runner)
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
