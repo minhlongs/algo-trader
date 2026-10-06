@@ -95,31 +95,31 @@ const [lang, setLang] = useState<Lang>('en');
 const t = COPY[lang];
 
 return (
-<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
-{/* Lang toggle */}
-<div className="flex justify-end px-4 sm:px-8 pt-6">
-<button
-onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
-aria-label="Toggle language"
->
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-<circle cx="12" cy="12" r="10" />
-<path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
-</svg>
-{t.langToggle}
-</button>
-</div>
-<div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-8 space-y-6">
-<div>
-<h1 className="text-2xl font-bold tracking-tight text-white">{t.title}</h1>
-<p className="text-xs mt-1 text-[${COLORS.onSurfaceVariant}]">{t.subtitle}</p>
-</div>
+    <div className="min-h-screen bg-bg text-onSurface font-sans" style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}>
+      {/* Lang toggle */}
+      <div className="flex justify-end px-4 sm:px-8 pt-6">
+        <button
+          onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
+          aria-label="Toggle language"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
+          </svg>
+          {t.langToggle}
+        </button>
+      </div>
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-8 py-8 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">{t.title}</h1>
+          <p className="text-xs mt-1 text-onSurfaceVariant">{t.subtitle}</p>
+        </div>
 
-<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-{STRATEGIES.map((s) => (
-<StitchCard key={s.id} className="p-5 flex flex-col gap-4" onClick={() => {}}>
-<div className="flex items-start justify-between gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {STRATEGIES.map((s) => (
+            <StitchCard key={s.id} className="p-5 flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-3">
 <h2 className="text-sm font-semibold leading-snug" style={{ color: COLORS.onSurface }}>{t[s.nameKey]}</h2>
 <StatusBadge status={s.status} lang={lang} />
 </div>

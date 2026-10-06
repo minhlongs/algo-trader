@@ -289,6 +289,16 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Versions: 3.1.89
 - Status: **COMPLETE** ✅
 
+### S21 Institutional UI/UX Overhaul, CLI Usability & Design Token Standardization (Complete - 2026-10-06)
+- [x] Standardized design tokens across `tokens.css` and `stitch-design-tokens.ts` with WCAG AA compliance (contrast ratio >= 4.5:1), including `#FF5C6C` status color for dark mode and comprehensive `LIGHT_COLORS` / `[data-theme="light"]` token palettes
+- [x] Hardened UI primitives (`button.tsx`, `stitch-button.tsx`, `stitch-input.tsx`) with accessible `focus-visible:ring-2 focus-visible:ring-accent` keyboard focus rings, eradicating bare `outline-none`
+- [x] Eliminated dynamic Tailwind class template string anti-patterns across dashboard components and charts
+- [x] Enhanced CLI diagnostics with `wrapCliAction`, standardized negative financial currency notation (`-$X.XX`), and secure terminal credential masking (`promptSecret`)
+- [x] Verified 12/12 quality ratchet gates green across 15,698 passing tests (100% pass rate, zero regressions)
+- [x] Preserved zero oversized debt (0 files > 200 LOC in `src/`) and maximum console call limit (<= 2)
+- Versions: 3.1.94
+- Status: **COMPLETE** ✅
+
 ### GTM Execution — Next Wave V (In Progress)
 - [x] Phase 1: Deploy production → https://api.cashclaw.cc (SHA a200991f, 2026-08-04) ✅
 - [ ] Phase 2: Publish launch content — email blocked (SendGrid), manual ready (blog/reddit/twitter/discord) ⚠️

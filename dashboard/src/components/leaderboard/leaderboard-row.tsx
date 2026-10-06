@@ -9,7 +9,9 @@ import { LeaderboardBadge } from './leaderboard-badge';
 
 interface LeaderboardRowProps {
   entry: LeaderboardEntry;
-  rank: number;
+  rank?: number;
+  isTop3?: boolean;
+  rankClass?: string;
 }
 
 function fmtUsd(n: number): string {
@@ -35,15 +37,22 @@ const RANK_MEDAL: Record<number, string> = {
 };
 
 export function LeaderboardRow({ entry, rank }: LeaderboardRowProps) {
-  const { strategyName: strategy, winRate, sharpeRatio: sharpe, pnl = 0, maxDrawdown: drawdown, totalTrades: trades, badge } = entry;
-  const medalColor = RANK_MEDAL[rank] ?? 'text-muted';
+  const displayRank = rank ?? (entry as unknown as { rank?: number }).rank ?? 1;
+  const strategy = entry.strategyName ?? (entry as unknown as { strategy?: string }).strategy ?? '';
+  const winRate = entry.winRate ?? 0;
+  const sharpe = entry.sharpeRatio ?? (entry as unknown as { sharpe?: number }).sharpe ?? 0;
+  const pnl = entry.pnl ?? 0;
+  const drawdown = entry.maxDrawdown ?? (entry as unknown as { drawdown?: number }).drawdown ?? 0;
+  const trades = entry.totalTrades ?? (entry as unknown as { trades?: number }).trades ?? 0;
+  const badge = entry.badge;
+  const medalColor = RANK_MEDAL[displayRank] ?? 'text-muted';
 
   return (
-    <tr className={`border-b border-bg-border/50 hover:bg-bg-surface/60 transition-colors ${rank <= 3 ? 'bg-bg-surface/40' : ''}`}>
+    <tr className={`border-b border-bg-border/50 hover:bg-bg-surface/60 transition-colors ${displayRank <= 3 ? 'bg-bg-surface/40' : ''}`}>
       {/* Rank */}
       <td className="px-3 py-2.5">
-        <span className={`font-mono text-sm font-bold ${rank <= 3 ? medalColor : 'text-muted'}`}>
-          {rank}
+        <span className={`font-mono text-sm font-bold ${displayRank <= 3 ? medalColor : 'text-muted'}`}>
+          {displayRank}
         </span>
       </td>
 

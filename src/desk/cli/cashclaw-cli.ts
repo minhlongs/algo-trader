@@ -20,6 +20,7 @@ import { registerScanCommands } from './cashclaw-cli-scan';
 import { registerPaperAndBacktestCommands } from './cashclaw-cli-paper';
 import { registerTradeCommands } from './cashclaw-trade-commands';
 import { registerAlphaCommands } from './alpha-commands';
+import { wrapCliAction } from './cli-diagnostics';
 
 export function createCashclawProgram(): Command {
   const program = new Command()
@@ -43,10 +44,10 @@ export function createCashclawProgram(): Command {
   program
     .command('doctor')
     .description('Run environment health checks (execution mode, DB, ledger, gates, baseline)')
-    .action(async () => {
+    .action(wrapCliAction(async () => {
       const { runDoctorCli } = await import('./system-doctor-defaults');
       await runDoctorCli();
-    });
+    }));
 
   return program;
 }

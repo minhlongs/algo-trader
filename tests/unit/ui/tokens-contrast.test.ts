@@ -114,3 +114,86 @@ describe('Design Tokens & Contrast Ratios (src/ui/design-system/tokens.css)', ()
     expect(getContrast(textInverse, colorAccentHover!)).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+import { COLORS, LIGHT_COLORS } from '../../../dashboard/src/lib/stitch-design-tokens';
+
+const buttonPath = resolve(__dirname, '../../../dashboard/src/components/ui/button.tsx');
+const stitchButtonPath = resolve(__dirname, '../../../dashboard/src/components/ui/stitch-button.tsx');
+const stitchInputPath = resolve(__dirname, '../../../dashboard/src/components/ui/stitch-input.tsx');
+const sidebarNavPath = resolve(__dirname, '../../../dashboard/src/components/sidebar-navigation.tsx');
+const indexCssPath = resolve(__dirname, '../../../dashboard/src/index.css');
+
+describe('Stitch Design Tokens & UI Accessibility Remediation (M1)', () => {
+  it('guarantees stitch COLORS loss (#FF5C6C) achieves WCAG AA >= 4.5:1 on dark surfaces', () => {
+    expect(COLORS.loss).toBe('#FF5C6C');
+
+    // Contrast on surfaceHigh (#1c2b3c)
+    const ratioSurfaceHigh = getContrast(COLORS.loss, COLORS.surfaceHigh);
+    expect(ratioSurfaceHigh).toBeGreaterThanOrEqual(4.5);
+
+    // Contrast on surface (#0d1c2d)
+    const ratioSurface = getContrast(COLORS.loss, COLORS.surface);
+    expect(ratioSurface).toBeGreaterThanOrEqual(4.5);
+
+    // Contrast on bg (#051424)
+    const ratioBg = getContrast(COLORS.loss, COLORS.bg);
+    expect(ratioBg).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('guarantees dark mode semantic text and status colors meet >= 4.5:1 against surfaces', () => {
+    expect(getContrast(COLORS.profit, COLORS.surfaceHigh)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrast(COLORS.warning, COLORS.surfaceHigh)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrast(COLORS.primary, COLORS.surfaceHigh)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrast(COLORS.onSurface, COLORS.surfaceHigh)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrast(COLORS.onSurfaceVariant, COLORS.surfaceHigh)).toBeGreaterThanOrEqual(4.5);
+    expect(getContrast(COLORS.onPrimary, COLORS.primary)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('defines light mode LIGHT_COLORS palette with full WCAG AA compliance (>= 4.5:1)', () => {
+    expect(LIGHT_COLORS).toBeDefined();
+    const surfaces = [LIGHT_COLORS.surface, LIGHT_COLORS.surfaceHigh];
+    const textAndAccents = [
+      LIGHT_COLORS.onSurface,
+      LIGHT_COLORS.onSurfaceVariant,
+      LIGHT_COLORS.primary,
+      LIGHT_COLORS.profit,
+      LIGHT_COLORS.loss,
+      LIGHT_COLORS.warning,
+    ];
+    for (const surface of surfaces) {
+      for (const color of textAndAccents) {
+        expect(getContrast(color, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+    expect(getContrast(LIGHT_COLORS.onPrimary, LIGHT_COLORS.primary)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('guarantees keyboard focus rings and eliminates bare outline-none in button and input primitives', () => {
+    const buttonSrc = readFileSync(buttonPath, 'utf-8');
+    const stitchButtonSrc = readFileSync(stitchButtonPath, 'utf-8');
+    const stitchInputSrc = readFileSync(stitchInputPath, 'utf-8');
+
+    // Button: visible keyboard focus ring
+    expect(buttonSrc).toContain('focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2');
+    expect(buttonSrc).not.toContain('focus:outline-none');
+
+    // StitchButton: visible keyboard focus ring
+    expect(stitchButtonSrc).toContain('focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2');
+
+    // StitchInput: visible keyboard focus ring without bare outline-none or broken class
+    expect(stitchInputSrc).toContain('focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2');
+    expect(stitchInputSrc).not.toMatch(/(?<!focus-visible:)outline-none/);
+    expect(stitchInputSrc).not.toContain('focus:border-[${COLORS.primary}]/70');
+  });
+
+  it('guarantees sidebar-navigation.tsx eliminates broken class string shadow-[0_0_6px_${_COLORS.profit}]', () => {
+    const sidebarSrc = readFileSync(sidebarNavPath, 'utf-8');
+    expect(sidebarSrc).not.toContain('shadow-[0_0_6px_${_COLORS.profit}]');
+    expect(sidebarSrc).not.toContain('shadow-[0_0_6px_');
+  });
+
+  it('guarantees dashboard/src/index.css bridges tokens.css variables', () => {
+    const indexCss = readFileSync(indexCssPath, 'utf-8');
+    expect(indexCss).toMatch(/tokens\.css/);
+  });
+});

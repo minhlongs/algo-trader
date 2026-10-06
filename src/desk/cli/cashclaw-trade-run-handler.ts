@@ -6,6 +6,7 @@
  */
 import * as readline from 'readline';
 import { logger } from '../../shared/utils/logger';
+import { formatCurrencyPnl } from './cli-diagnostics';
 
 const REQUIRED_VARS: Array<{ newName: string; oldName: string }> = [
   { newName: 'POLYMARKET_API_KEY', oldName: 'POLY_API_KEY' },
@@ -67,10 +68,8 @@ async function runSingleStrategy(opts: {
   const statusInterval = setInterval(() => {
     const s = runner.getStatus();
     if (s.status !== 'running') { clearInterval(statusInterval); return; }
-    const runnerWithSummary = runner as unknown as {
-      getPositionSummary?: () => { positionCount: number; totalExposure: number; totalRealizedPnl: number };
-    };
-    const summary = runnerWithSummary.getPositionSummary?.() ?? {
+    type SummaryGetter = { getPositionSummary?: () => { positionCount: number; totalExposure: number; totalRealizedPnl: number } };
+    const summary = (runner as unknown as SummaryGetter).getPositionSummary?.() ?? {
       positionCount: 0,
       totalExposure: 0,
       totalRealizedPnl: 0,
@@ -79,7 +78,7 @@ async function runSingleStrategy(opts: {
       `[${new Date().toISOString().slice(11, 19)}] ` +
       `Tick#${s.tickCount} | Orders: ${s.proxyStats.ordersPlaced} | ` +
       `Positions: ${summary.positionCount} | Exposure: $${summary.totalExposure.toFixed(2)} | ` +
-      `PnL: $${summary.totalRealizedPnl.toFixed(2)}`,
+      `PnL: ${formatCurrencyPnl(summary.totalRealizedPnl)}`,
     );
   }, opts.tickIntervalMs);
 
@@ -127,7 +126,7 @@ async function runMultiStrategy(opts: {
       `[${new Date().toISOString().slice(11, 19)}] ` +
       `Ticks: ${s.summary.totalTicks} | Orders: ${s.summary.totalOrders} | ` +
       `Positions: ${summary.positionCount} | Exposure: $${summary.totalExposure.toFixed(2)} | ` +
-      `PnL: $${summary.totalRealizedPnl.toFixed(2)}`,
+      `PnL: ${formatCurrencyPnl(summary.totalRealizedPnl)}`,
     );
   }, opts.tickIntervalMs);
 

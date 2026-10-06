@@ -178,7 +178,7 @@ const FAQS = [
 ];
 
 function glassCard(extra = '') {
-  return `bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl ${extra}`.trim();
+  return `glass-card backdrop-blur-xl border border-white/10 rounded-2xl ${extra}`.trim();
 }
 
 function CheckIcon() {
@@ -201,10 +201,11 @@ function XIcon() {
 function FaqItem({ qKey, aKey, t }: { qKey: string; aKey: string; t: Record<string, string> }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-[${COLORS.outline}]">
+    <div className="border-b" style={{ borderColor: COLORS.outline }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between py-4 text-left text-sm text-[${COLORS.onSurface}] hover:text-[${COLORS.primary}] transition-colors"
+        className="w-full flex items-center justify-between py-4 text-left text-sm hover:opacity-80 transition-opacity"
+        style={{ color: COLORS.onSurface }}
       >
         <span>{t[qKey]}</span>
         <svg
@@ -220,7 +221,7 @@ function FaqItem({ qKey, aKey, t }: { qKey: string; aKey: string; t: Record<stri
         </svg>
       </button>
       {open && (
-        <p className="text-[${COLORS.onSurfaceVariant}] text-sm leading-relaxed pb-4">{t[aKey]}</p>
+        <p className="text-sm leading-relaxed pb-4" style={{ color: COLORS.onSurfaceVariant }}>{t[aKey]}</p>
       )}
     </div>
   );
@@ -285,17 +286,25 @@ export function PricingPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex flex-col">
+    <div
+      className="min-h-screen font-sans flex flex-col"
+      style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
+    >
       <PublicNavbar />
 
       {/* Language toggle */}
       <div className="flex justify-end px-4 sm:px-6 pt-4 max-w-6xl mx-auto w-full">
         <button
           onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs transition-colors focus-visible:outline-none focus-visible:ring-2"
+          style={{
+            backgroundColor: `${COLORS.surface}CC`,
+            borderColor: COLORS.outline,
+            color: COLORS.onSurfaceVariant,
+          }}
           aria-label="Toggle language"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
           </svg>
@@ -304,27 +313,37 @@ export function PricingPage() {
       </div>
 
       <main className="flex-1 pt-12 pb-16 px-4 sm:px-6 max-w-6xl mx-auto w-full">
-        {/* Coupon bar */}
+        {/* Coupon bar with WCAG 2.1 AA accessible label and aria-label */}
         <div className="max-w-md mx-auto mb-10">
           <div className="flex items-center gap-2">
+            <label htmlFor="coupon-code" className="sr-only">
+              Coupon code
+            </label>
             <input
               id="coupon-code"
+              name="coupon-code"
+              aria-label="Coupon code"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               placeholder="COUPON CODE"
-              className="flex-1 rounded border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 px-3 py-2 text-sm text-[${COLORS.onSurface}] placeholder-[${COLORS.onSurfaceVariant}] focus:outline-none focus:border-[${COLORS.primary}]"
+              className="flex-1 rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
+              style={{
+                borderColor: COLORS.outline,
+                backgroundColor: `${COLORS.surface}CC`,
+                color: COLORS.onSurface,
+              }}
             />
           </div>
           {couponError && (
-            <p className="text-xs mt-2 text-[${COLORS.loss}]">{couponError}</p>
+            <p className="text-xs mt-2" style={{ color: COLORS.loss }}>{couponError}</p>
           )}
         </div>
 
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-[${COLORS.primary}] text-xs uppercase tracking-widest mb-3">{t.eyebrow}</p>
-          <h1 className="text-3xl sm:text-4xl font-bold text-[${COLORS.onSurface}] mb-4">{t.title}</h1>
-          <p className="text-[${COLORS.onSurfaceVariant}] text-sm max-w-md mx-auto">{t.subtitle}</p>
+          <p className="text-xs uppercase tracking-widest mb-3" style={{ color: COLORS.primary }}>{t.eyebrow}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: COLORS.onSurface }}>{t.title}</h1>
+          <p className="text-sm max-w-md mx-auto" style={{ color: COLORS.onSurfaceVariant }}>{t.subtitle}</p>
         </div>
 
         {/* Plan cards */}
@@ -334,19 +353,22 @@ export function PricingPage() {
             return (
               <div
                 key={plan.name}
-                className={`relative p-6 flex flex-col gap-5 ${plan.highlight ? glassCard('border-2 border-[${COLORS.primary}]') : glassCard()}`}
+                className={`relative p-6 flex flex-col gap-5 ${plan.highlight ? glassCard('border-2 border-accent') : glassCard()}`}
               >
                 {plan.highlight && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[${COLORS.primary}] text-white text-xs font-bold px-3 py-0.5 rounded-full">
+                  <span
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 text-black text-xs font-bold px-3 py-0.5 rounded-full"
+                    style={{ backgroundColor: COLORS.primary }}
+                  >
                     {t.popular}
                   </span>
                 )}
 
                 <div>
-                  <p className="text-[${COLORS.onSurfaceVariant}] text-xs uppercase tracking-widest mb-2">{t[`plan${plan.name}` as keyof typeof t] as string}</p>
-                  <p className="text-[${COLORS.onSurface}] text-4xl font-bold">
+                  <p className="text-xs uppercase tracking-widest mb-2" style={{ color: COLORS.onSurfaceVariant }}>{t[`plan${plan.name}` as keyof typeof t] as string}</p>
+                  <p className="text-4xl font-bold" style={{ color: COLORS.onSurface }}>
                     {plan.price}
-                    <span className="text-[${COLORS.onSurfaceVariant}] text-sm font-normal ml-1">
+                    <span className="text-sm font-normal ml-1" style={{ color: COLORS.onSurfaceVariant }}>
                       {plan.sub === 'forever' ? t.subFree : t.subMonthly}
                     </span>
                   </p>
@@ -355,12 +377,12 @@ export function PricingPage() {
                 <ul className="space-y-2.5 flex-1">
                   {plan.features.map(({ label, value }) => (
                     <li key={label} className="flex items-center justify-between text-xs">
-                      <span className="text-[${COLORS.onSurfaceVariant}]">{t[label as keyof typeof t] as string}</span>
+                      <span style={{ color: COLORS.onSurfaceVariant }}>{t[label as keyof typeof t] as string}</span>
                       <span className="flex items-center gap-1">
                         {typeof value === 'boolean' ? (
                           value ? <CheckIcon /> : <XIcon />
                         ) : (
-                          <span className="text-[${COLORS.onSurface}]">{value as string}</span>
+                          <span style={{ color: COLORS.onSurface }}>{value as string}</span>
                         )}
                       </span>
                     </li>
@@ -370,11 +392,16 @@ export function PricingPage() {
                 <button
                   onClick={() => handleCTAClick(plan)}
                   disabled={busy}
-                  className={`text-center text-sm font-bold px-4 py-2.5 rounded transition-colors disabled:opacity-60 disabled:cursor-wait ${
+                  className="text-center text-sm font-bold px-4 py-2.5 rounded transition-colors disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  style={
                     plan.highlight
-                      ? 'bg-[${COLORS.primary}] text-white hover:bg-[${COLORS.primary}]/80'
-                      : 'border border-[${COLORS.outline}] text-[${COLORS.onSurfaceVariant}] hover:text-[${COLORS.onSurface}] hover:border-[${COLORS.primary}]'
-                  }`}
+                      ? { backgroundColor: COLORS.primary, color: '#000000' }
+                      : {
+                          border: `1px solid ${COLORS.outline}`,
+                          color: COLORS.onSurfaceVariant,
+                          backgroundColor: 'transparent',
+                        }
+                  }
                 >
                   {busy ? 'Applying...' : t[plan.tier === 'pro' ? 'ctaStartPro' : 'ctaGetStarted' as keyof typeof t] as string}
                 </button>
@@ -385,7 +412,7 @@ export function PricingPage() {
 
         {/* FAQ */}
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-xl font-bold text-[${COLORS.onSurface}] mb-6 text-center">{t.faqTitle}</h2>
+          <h2 className="text-xl font-bold mb-6 text-center" style={{ color: COLORS.onSurface }}>{t.faqTitle}</h2>
           <div className={glassCard('p-6')}>
             {FAQS.map(({ q, a }) => (
               <FaqItem key={q} qKey={q} aKey={a} t={t} />

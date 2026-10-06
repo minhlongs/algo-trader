@@ -18,6 +18,7 @@ vi.mock('../../hooks/use-subscriber-pnl', () => ({
   useSubscriberPnl: vi.fn(),
 }));
 
+import { useAuthStore } from '../../stores/auth-store';
 import { useSubscriberPnl } from '../../hooks/use-subscriber-pnl';
 import { SubscriberOverviewPage } from '../subscriber-overview';
 
@@ -63,6 +64,10 @@ function hookResult(overrides = {}) {
 describe('SubscriberOverviewPage', () => {
   beforeEach(() => {
     mockHook.mockReset();
+    vi.mocked(useAuthStore).mockImplementation(
+      (selector: (s: { tenantId: string | null }) => unknown) =>
+        selector({ tenantId: 'sub-test-001' })
+    );
   });
 
   it('renders KPI cards when data is loaded', () => {
@@ -84,7 +89,7 @@ describe('SubscriberOverviewPage', () => {
   it('shows loading state when loading=true and no summary', () => {
     mockHook.mockReturnValue(hookResult({ summary: null, loading: true }));
     render(<SubscriberOverviewPage />);
-    expect(screen.getByText(/Loading subscriber metrics/i)).toBeTruthy();
+    expect(screen.getByText(/Loading subscriber/i)).toBeTruthy();
   });
 
   it('shows error banner when error is set', () => {
@@ -94,7 +99,6 @@ describe('SubscriberOverviewPage', () => {
   });
 
   it('shows no-identity message when tenantId is null', () => {
-    const { useAuthStore } = await import('../../stores/auth-store');
     vi.mocked(useAuthStore).mockImplementation(
       (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
     );

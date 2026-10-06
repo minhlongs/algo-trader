@@ -123,24 +123,41 @@ export function LandingSoloQuant() {
   const [lang, setLang] = useState<Lang>('en');
   const t = COPY[lang];
 
-  return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
-      {/* Language toggle — top-right, unsticks from content flow */}
-      <div className="fixed top-4 right-4 z-50">
-        <button
-          onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
-          aria-label="Toggle language"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
-          </svg>
-          {t.langToggle}
-        </button>
-      </div>
+  const langToggleNode = (
+    <button
+      onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
+      className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2"
+      style={{
+        backgroundColor: `${COLORS.surface}CC`,
+        borderColor: COLORS.outline,
+        color: COLORS.onSurfaceVariant,
+      }}
+      aria-label="Toggle language"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <path d="M2 12h20M12 2a15 15 0 0 1 4 10 15 15 0 0 1-4 10" />
+      </svg>
+      <span>{t.langToggle}</span>
+    </button>
+  );
 
-      <PublicNavbar />
+  return (
+    <div
+      className="min-h-screen font-sans"
+      style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
+    >
+      <PublicNavbar rightSlot={langToggleNode} />
 
       <HeroSoloQuant />
 

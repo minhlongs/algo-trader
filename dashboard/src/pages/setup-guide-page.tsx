@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SetupGuideContent } from '../components/setup-guide-content';
 import { StitchPageShell } from '../components/ui/stitch-page-shell';
 import { StitchSectionTitle } from '../components/ui/stitch-section-title';
+import { COLORS } from '../lib/stitch-design-tokens';
 
 type Lang = 'en' | 'vi';
 
@@ -36,12 +37,20 @@ export function SetupGuidePage() {
   const t = COPY[lang];
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div
+      className="min-h-screen font-sans"
+      style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}
+    >
       {/* Language Toggle — globe icon, top right */}
       <div className="fixed top-4 right-4 z-50">
         <button
           onClick={() => setLang(lang === 'en' ? 'vi' : 'en')}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] text-[${COLORS.onSurface}] hover:text-[${COLORS.primary}] transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl backdrop-blur-xl border transition-colors focus-visible:outline-none focus-visible:ring-2"
+          style={{
+            backgroundColor: `${COLORS.surface}CC`,
+            borderColor: COLORS.outline,
+            color: COLORS.onSurface,
+          }}
           aria-label={`Switch to ${t.langToggle}`}
         >
           <svg
@@ -54,6 +63,7 @@ export function SetupGuidePage() {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden="true"
           >
             <circle cx="12" cy="12" r="10" />
             <line x1="2" y1="12" x2="22" y2="12" />

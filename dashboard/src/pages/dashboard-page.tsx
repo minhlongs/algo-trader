@@ -4,7 +4,7 @@
  * Dark fintech bilingual VN+EN pattern.
  */
 import { useEffect, useState } from 'react';
-import { useTradingStore } from '../stores/trading-store';
+import { useTradingStore, type TradeRecord } from '../stores/trading-store';
 import { useDashboardStore } from '../stores/dashboard-store';
 import { useAdminControls } from '../hooks/use-admin-controls';
 import { useHealthStatus } from '../hooks/use-health-status';
@@ -12,6 +12,7 @@ import { useAuthStore } from '../stores/auth-store';
 import { useAbTestStore } from '../stores/ab-test-store';
 import { StitchButton, StitchCard, StitchStatCard } from '../components/ui/stitch-components';
 import { COLORS } from '../lib/stitch-design-tokens';
+import { formatUsd } from '../lib/format';
 
 import {
   DashboardSkeleton,
@@ -76,15 +77,6 @@ const COPY: Record<Lang, Record<string, string>> = {
   },
 };
 
-function formatUsd(n: number): string {
-  const abs = Math.abs(n);
-  const s =
-    abs >= 1000
-      ? abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : abs.toFixed(2);
-  return (n < 0 ? '-' : '') + '$' + s;
-}
-
 export function DashboardPage() {
   const { tier, tenantId } = useAuthStore();
   const { config, widgets, fetchAbConfig, fetchPersonalizationConfig, trackEvent } = useAbTestStore();
@@ -100,10 +92,10 @@ export function DashboardPage() {
   const { loading: adminLoading } = useAdminControls();
   useHealthStatus();
 
-  const positions = useTradingStore((s: any) => s.positions);
-  const spreads = useTradingStore((s: any) => s.spreads);
-  const strategies = useTradingStore((s: any) => s.strategies);
-  const trades = useTradingStore((s: any) => s.trades);
+  const positions = useTradingStore((s) => s.positions);
+  const spreads = useTradingStore((s) => s.spreads);
+  const strategies = useTradingStore((s) => s.strategies);
+  const trades = useTradingStore((s) => s.trades);
 
   useEffect(() => {
     if (tenantId) fetchAbConfig(tenantId);
@@ -120,8 +112,8 @@ export function DashboardPage() {
   const t = COPY[lang];
 
   const isInitialLoading = pnlLoading || signalsLoading || adminLoading;
-  const openCount = positions.filter((p: any) => p.status === 'open').length;
-  const activeStrategies = strategies?.filter((s: any) => s.enabled).length ?? 0;
+  const openCount = positions.filter((p) => p.status === 'open').length;
+  const activeStrategies = strategies?.filter((s) => s.enabled).length ?? 0;
   const pnlValue = metrics?.dailyPnl ?? 0;
   const pnlTone: 'profit' | 'loss' | 'primary' = pnlValue >= 0 ? 'profit' : 'loss';
 
@@ -130,7 +122,7 @@ export function DashboardPage() {
   const langLabel = lang === 'en' ? COPY.vi.langToggle : COPY.en.langToggle;
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div className="min-h-screen bg-bg text-onSurface font-sans" style={{ backgroundColor: COLORS.bg, color: COLORS.onSurface }}>
       <div className="space-y-6 p-6">
         {/* Header + language toggle */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -149,7 +141,7 @@ export function DashboardPage() {
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <circle cx="12" cy="12" r="10" />
-              <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+              <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10" />
             </svg>
             {langLabel}
           </button>
@@ -183,7 +175,7 @@ export function DashboardPage() {
             </div>
           ) : (
             <>
-              <StitchStatCard label={t.totalEquity} value={metrics?.totalPnl ? formatUsd(metrics.totalPnl) : '—'} />
+              <StitchStatCard label={t.totalEquity} value={metrics?.totalPnl !== undefined ? formatUsd(metrics.totalPnl) : '—'} />
               <StitchStatCard label={t.openPositions} value={String(openCount)} />
               <StitchStatCard label={t.todayPnl} value={formatUsd(pnlValue)} tone={pnlTone} />
               <StitchStatCard label={t.activeStrategies} value={String(activeStrategies)} tone="primary" />
@@ -277,7 +269,7 @@ export function DashboardPage() {
             <StitchCard className="p-4">
               <div className="mb-2 text-xs" style={{ color: COLORS.onSurfaceVariant }}>{t.exposureHeatmap}</div>
               <ExposureHeatmap
-                data={positions.map((p: any) => ({
+                data={positions.map((p) => ({
                   marketId: p.id,
                   marketName: p.symbol,
                   exposure: p.pnl,
@@ -290,8 +282,8 @@ export function DashboardPage() {
               <PnlSparkline
                 values={trades
                   .slice()
-                  .sort((a: any, b: any) => a.timestamp - b.timestamp)
-                  .reduce((acc: number[], t: any) => {
+                  .sort((a, b) => a.timestamp - b.timestamp)
+                  .reduce((acc: number[], t: TradeRecord) => {
                     const prev = acc.length > 0 ? acc[acc.length - 1] : 0;
                     acc.push(prev + t.pnl);
                     return acc;

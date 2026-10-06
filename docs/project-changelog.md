@@ -1,5 +1,25 @@
 # Project Changelog - Algo Trader
 
+## [3.1.94] - 2026-10-06 — Institutional UI/UX Overhaul, CLI Usability & Design Token Standardization
+
+### Added
+- Standardized design token architecture in `src/ui/design-system/tokens.css` with semantic token extensions (`--bg-overlay`, `--text-inverse`, `--color-accent-hover`, `--color-profit-dim`, `--color-loss-dim`, `--color-warning-dim`, `--color-ai-dim`, `--space-5`, `--radius-full`).
+- Calibrated status colors to meet WCAG 2.1 AA standards (contrast ratio >= 4.5:1), including `#FF5C6C` for loss on dark surfaces and comprehensive `LIGHT_COLORS` / `[data-theme="light"]` token palettes.
+- Hardened UI primitives (`button.tsx`, `stitch-button.tsx`, `stitch-input.tsx`) with accessible `focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2` keyboard focus rings, eliminating bare `outline-none`.
+- Added `formatCurrencyPnl` in `src/desk/cli/cli-diagnostics.ts` and `dashboard/src/lib/format.ts` ensuring institutional financial notation (`-$X.XX` for negative balances).
+- Added `promptSecret` in `src/desk/commands/setup-wizard-prompt.ts` with masked terminal credential entry.
+- Added comprehensive unit tests in `tests/unit/ui/tokens-contrast.test.ts`, `tests/unit/desk/cli/cli-diagnostics.test.ts`, and `tests/unit/desk/commands/setup-wizard-prompt.test.ts`.
+
+### Fixed
+- Fixed runtime dynamic class string interpolation anti-patterns in Tailwind components (`shadow-[...${...}]` and `border-[${...}]`) across navigation and chart surfaces.
+- Wrapped CLI action entrypoints with `wrapCliAction` in `src/index.ts` and `cashclaw-trade-commands.ts` to intercept `ZodError` and daemon connectivity timeouts into user-friendly diagnostic cards without leaking raw stack traces.
+
+### Verified & Certified
+- Verified root TypeScript check (`npm run typecheck`) and dashboard production build (`cd dashboard && pnpm run build`) pass cleanly with 0 errors.
+- Verified 12/12 quality ratchet gates green across 15,698 passing tests (100% pass rate, zero regressions).
+- Preserved strict zero oversized file policy (0 files > 200 LOC in `src/`) and maximum console call limit (<= 2).
+
+
 ## [3.1.93] - 2026-10-06 — Dashboard SPA Asset Path Rewrites, Cloudflare Pages Redirects & Build Restoration
 
 ### Added

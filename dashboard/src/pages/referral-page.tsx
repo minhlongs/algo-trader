@@ -123,13 +123,13 @@ const handleCopyCode = () => { if (referralCode?.code) navigator.clipboard.write
 const handleRegenerateCode = async () => { if (confirm('Are you sure? This will invalidate your previous code.')) await generateReferralCode(); };
 
 return (
-<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
-<a href="#main-content" className={`sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[${COLORS.primary}] focus:text-[${COLORS.onPrimary}]`}>Skip to main content</a>
+<div className="min-h-screen bg-bg text-onSurface font-sans">
+<a href="#main-content" className={`sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-primary focus:text-onPrimary`}>Skip to main content</a>
 {/* Lang toggle */}
 <div className="flex justify-end px-4 sm:px-8 pt-6">
 <button
 onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
 aria-label="Toggle language"
 >
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

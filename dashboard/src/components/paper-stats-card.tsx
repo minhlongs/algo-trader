@@ -71,12 +71,12 @@ export function PaperStatsCard() {
 
   return (
     <section className="px-4 sm:px-6 max-w-5xl mx-auto pb-4">
-      <div className="bg-[${_COLORS.surface}] border border-[${_COLORS.surface}] rounded-lg p-6">
+      <div className="bg-surface border border-surface rounded-lg p-6">
         <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-          <p className="text-[${_COLORS.primary}] text-xs uppercase tracking-[0.2em]">
+          <p className="text-primary text-xs uppercase tracking-[0.2em]">
             Paper Run · Snapshot
           </p>
-          <p className="text-[${_COLORS.onSurfaceVariant}] text-xs">
+          <p className="text-onSurfaceVariant text-xs">
             as of {stats.last_updated}
           </p>
         </div>
@@ -86,17 +86,17 @@ export function PaperStatsCard() {
               <p className="text-white text-2xl sm:text-3xl font-bold">
                 {value}
               </p>
-              <p className="text-[${_COLORS.onSurfaceVariant}] text-xs leading-snug mt-1">{label}</p>
+              <p className="text-onSurfaceVariant text-xs leading-snug mt-1">{label}</p>
             </div>
           ))}
         </div>
         {stats.note && (
-          <p className="text-[${_COLORS.onSurfaceVariant}]/70 text-xs mt-4 italic">
+          <p className="text-onSurfaceVariant/70 text-xs mt-4 italic">
             Note: {stats.note}. Accuracy claims pending live resolution.
           </p>
         )}
         {error && (
-          <p className="text-[${_COLORS.loss}] text-xs mt-3">
+          <p className="text-loss text-xs mt-3">
             Stats unavailable ({error}) — showing placeholder.
           </p>
         )}

@@ -146,13 +146,13 @@ interface SidebarNavigationProps {
 
 export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
   const { pathname } = useLocation();
-  const connected = useTradingStore((s: any) => s.connected);
+  const connected = useTradingStore((s) => s.connected);
   const { email, tier, role, logout } = useAuthStore();
 
   const tierBadge: Record<string, string> = {
-    free: 'text-[${_COLORS.onSurfaceVariant}] bg-[${_COLORS.outline}]',
-    pro: 'text-[${_COLORS.primary}] bg-[${_COLORS.primary}]/10',
-    enterprise: 'text-[${_COLORS.warning}] bg-[${_COLORS.warning}]/10',
+    free: 'text-onSurfaceVariant bg-outline/20',
+    pro: 'text-primary bg-primary/10',
+    enterprise: 'text-warning bg-warning/10',
   };
   const badgeClass = tierBadge[tier] ?? tierBadge['free'];
 
@@ -209,8 +209,9 @@ export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
         <div className="flex items-center gap-2">
           <span
             className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              connected ? 'bg-profit shadow-[0_0_6px_${_COLORS.profit}]' : 'bg-loss'
+              connected ? 'bg-profit' : 'bg-loss'
             }`}
+            style={connected ? { boxShadow: `0 0 6px ${_COLORS.profit}` } : undefined}
           />
           <span className="text-xs font-mono text-muted">
             {connected ? 'Connected' : 'Disconnected'}

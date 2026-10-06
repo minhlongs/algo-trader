@@ -8,13 +8,16 @@ import {
   PnlChartSkeleton,
   EquityCurveSkeleton,
 } from '../../components/skeleton-loaders';
+import type { PerformanceMetrics } from '../../types/api';
+import type { Position } from '../../stores/trading-store';
+import { COLORS } from '../../lib/stitch-design-tokens';
 
 interface PnLAnalyticsWidgetProps {
   colSpan: number;
-  metrics: any;
-  positions: any[];
+  metrics: PerformanceMetrics | null;
+  positions: Position[];
   loading: boolean;
-  error: any;
+  error: string | null;
   onClickCapture?: () => void;
 }
 
@@ -60,7 +63,8 @@ export function PnLAnalyticsWidget({
           <h3 className="text-white text-sm font-semibold">Equity Curve</h3>
         </div>
         <div
-          className="bg-[${COLORS.surfaceHigh}] border border-white/5 rounded-xl p-4 flex-grow flex items-center justify-center"
+          className="border border-white/5 rounded-xl p-4 flex-grow flex items-center justify-center"
+          style={{ backgroundColor: COLORS.surfaceHigh }}
         >
           {loading ? <EquityCurveSkeleton /> : <EquityCurveChart positions={positions} />}
         </div>

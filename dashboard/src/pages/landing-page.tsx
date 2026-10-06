@@ -60,12 +60,27 @@ const COPY: Record<Lang, Record<string, string>> = {
     freePrice: '$0',
     freeSub: 'forever',
     proName: 'Pro',
-    proPrice: '$49',
+    proPrice: '$99',
     proSub: '/month',
+    proCta: 'Start Pro',
     enterpriseName: 'Enterprise',
-    enterprisePrice: '$199',
+    enterprisePrice: '$299',
     enterpriseSub: '/month',
     enterpriseCta: 'Contact Us',
+    masterName: 'Master',
+    masterPrice: '$999',
+    masterSub: '/month',
+    masterCta: 'Go Master',
+    trustStrategies: 'Strategies',
+    trustPlatforms: 'Platforms',
+    trustTests: 'Tests Passed',
+    trustMakerFees: 'Maker Fees',
+    marketDataEyebrow: 'Market Data',
+    marketDataTitle: 'Real-time prices from the ecosystem',
+    communityEyebrow: 'Community',
+    communityTitle: 'Join Our Community',
+    communityDesc: 'Connect with fellow algorithmic traders. Share strategies, discuss market opportunities, and get early access to new features before anyone else.',
+    joinDiscord: 'Join Discord',
   },
   vi: {
     langToggle: 'English',
@@ -102,12 +117,27 @@ const COPY: Record<Lang, Record<string, string>> = {
     freePrice: '$0',
     freeSub: 'mãi mãi',
     proName: 'Pro',
-    proPrice: '$49',
+    proPrice: '$99',
     proSub: '/tháng',
+    proCta: 'Bắt đầu Pro',
     enterpriseName: 'Doanh nghiệp',
-    enterprisePrice: '$199',
+    enterprisePrice: '$299',
     enterpriseSub: '/tháng',
     enterpriseCta: 'Liên hệ chúng tôi',
+    masterName: 'Master',
+    masterPrice: '$999',
+    masterSub: '/tháng',
+    masterCta: 'Nâng cấp Master',
+    trustStrategies: 'Chiến lược',
+    trustPlatforms: 'Nền tảng',
+    trustTests: 'Kiểm thử vượt qua',
+    trustMakerFees: 'Phí Maker',
+    marketDataEyebrow: 'Dữ Liệu Thị Trường',
+    marketDataTitle: 'Giá trực tiếp từ hệ sinh thái',
+    communityEyebrow: 'Cộng Đồng',
+    communityTitle: 'Tham Gia Cộng Đồng',
+    communityDesc: 'Kết nối cùng các nhà giao dịch thuật toán. Chia sẻ chiến lược, cơ hội thị trường và nhận quyền truy cập sớm tính năng mới.',
+    joinDiscord: 'Tham gia Discord',
   },
 };
 
@@ -155,6 +185,35 @@ const STATS = [
   { value: '< 2s', labelKey: 'statLabel4', icon: Lightning },
 ];
 
+const TRUST_STATS = [
+  { value: '52+', labelKey: 'trustStrategies', icon: ChartLine },
+  { value: '8', labelKey: 'trustPlatforms', icon: Star },
+  { value: '2798+', labelKey: 'trustTests', icon: CheckCircle },
+  { value: '$0', labelKey: 'trustMakerFees', icon: CurrencyDollar },
+];
+
+const TICKER_ITEMS = [
+  { label: 'Ironclaw', value: '+12.4%', up: true },
+  { label: 'Citadel', value: '+8.7%', up: true },
+  { label: 'Dark-Edge', value: '-2.1%', up: false },
+  { label: 'Poly-Gamma', value: '+15.3%', up: true },
+  { label: 'CEX-Arb', value: '+5.8%', up: true },
+  { label: 'DEX-LP', value: '-0.9%', up: false },
+  { label: 'Poly-Delta', value: '+22.1%', up: true },
+  { label: 'Momentum', value: '+3.2%', up: true },
+];
+
+const MARKET_TICKERS = [
+  { symbol: 'BTC/USD', price: '67,421.50', change: '+2.34%', up: true },
+  { symbol: 'ETH/USD', price: '3,421.80', change: '+1.15%', up: true },
+  { symbol: 'SOL/USD', price: '142.35', change: '-0.78%', up: false },
+  { symbol: 'LINK/USD', price: '14.82', change: '+4.21%', up: true },
+  { symbol: 'AVAX/USD', price: '28.44', change: '-1.33%', up: false },
+  { symbol: 'DOGE/USD', price: '0.1245', change: '+6.72%', up: true },
+  { symbol: 'DOT/USD', price: '5.88', change: '+0.42%', up: true },
+  { symbol: 'MATIC/USD', price: '0.62', change: '-2.15%', up: false },
+];
+
 const PRICING_CARDS = [
   {
     nameKey: 'freeName',
@@ -164,24 +223,24 @@ const PRICING_CARDS = [
     href: '/signup?tier=free',
     highlight: false,
     features: [
-      `${TIER_LIMITS.free.activeStrategies} ${COPY.en.featureStrategies}`,
-      `${TIER_LIMITS.free.tradesPerDay} ${COPY.en.featureTrades}`,
-      `${TIER_LIMITS.free.dailyLossCap} ${COPY.en.featureLossCap}`,
-      `${TIER_LIMITS.free.maxPosition} ${COPY.en.featureMaxPos}`,
+      `${TIER_LIMITS.free.activeStrategies} active strategy`,
+      `${TIER_LIMITS.free.tradesPerDay} trades/day`,
+      `${TIER_LIMITS.free.dailyLossCap} daily loss cap`,
+      `${TIER_LIMITS.free.maxPosition} max position`,
     ],
   },
   {
     nameKey: 'proName',
     priceKey: 'proPrice',
     subKey: 'proSub',
-    ctaKey: 'cta',
+    ctaKey: 'proCta',
     href: '/signup?tier=pro',
     highlight: true,
     features: [
-      `${TIER_LIMITS.pro.activeStrategies} ${COPY.en.featureStrategies}`,
-      `${TIER_LIMITS.pro.tradesPerDay} ${COPY.en.featureTrades}`,
-      `${TIER_LIMITS.pro.dailyLossCap} ${COPY.en.featureLossCap}`,
-      `${TIER_LIMITS.pro.maxPosition} ${COPY.en.featureMaxPos}`,
+      `${TIER_LIMITS.pro.activeStrategies} active strategies`,
+      `${TIER_LIMITS.pro.tradesPerDay} trades/day`,
+      `${TIER_LIMITS.pro.dailyLossCap} daily loss cap`,
+      `${TIER_LIMITS.pro.maxPosition} max position`,
     ],
   },
   {
@@ -192,10 +251,24 @@ const PRICING_CARDS = [
     href: '/signup?tier=enterprise',
     highlight: false,
     features: [
-      `${TIER_LIMITS.enterprise.activeStrategies} ${COPY.en.featureStrategies}`,
-      `${TIER_LIMITS.enterprise.tradesPerDay} ${COPY.en.featureTrades}`,
-      `${TIER_LIMITS.enterprise.dailyLossCap} ${COPY.en.featureLossCap}`,
-      `${TIER_LIMITS.enterprise.maxPosition} ${COPY.en.featureMaxPos}`,
+      `${TIER_LIMITS.enterprise.activeStrategies} strategies`,
+      `${TIER_LIMITS.enterprise.tradesPerDay} trades/day`,
+      `${TIER_LIMITS.enterprise.dailyLossCap} daily loss cap`,
+      `${TIER_LIMITS.enterprise.maxPosition} max position`,
+    ],
+  },
+  {
+    nameKey: 'masterName',
+    priceKey: 'masterPrice',
+    subKey: 'masterSub',
+    ctaKey: 'masterCta',
+    href: '/signup?tier=master',
+    highlight: false,
+    features: [
+      'All strategies included',
+      'Unlimited trades',
+      'Custom loss cap',
+      'Unlimited position',
     ],
   },
 ];
@@ -289,7 +362,7 @@ export function LandingPage() {
                   className="font-semibold px-6 py-3 rounded-lg transition-colors text-sm inline-flex items-center gap-2 group"
                   style={{
                     backgroundColor: COLORS.primaryContainer,
-                    color: COLORS.primaryContainer,
+                    color: '#000000',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
                   onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
@@ -375,6 +448,69 @@ export function LandingPage() {
         </section>
       </FadeIn>
 
+      {/* ── Trust Bar ── */}
+      <FadeIn>
+        <section
+          className="py-8 px-4 sm:px-6"
+          style={{
+            borderBottom: `1px solid ${COLORS.outline}`,
+            backgroundColor: `${COLORS.surface}40`,
+          }}
+        >
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8">
+              {TRUST_STATS.map(({ value, labelKey, icon: Icon }) => (
+                <div key={labelKey} className="flex flex-col items-center gap-1.5 text-center">
+                  <div className="flex items-center gap-2">
+                    <Icon weight="bold" className="w-5 h-5" style={{ color: COLORS.primary }} />
+                    <span className="text-2xl sm:text-3xl font-bold tabular-nums" style={{ color: COLORS.primary }}>{value}</span>
+                  </div>
+                  <span className="text-xs" style={{ color: COLORS.onSurfaceVariant }}>{t[labelKey as keyof typeof t]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </FadeIn>
+
+      {/* ── P&L Ticker Marquee ── */}
+      <section
+        className="relative overflow-hidden py-5"
+        style={{
+          borderBottom: `1px solid ${COLORS.outline}`,
+          backgroundColor: `${COLORS.surface}30`,
+        }}
+      >
+        <div className="flex whitespace-nowrap gap-0 ticker-track">
+          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+            <span key={i} className="inline-flex items-center gap-2 mx-4">
+              <span className="text-xs font-mono uppercase tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>
+                {item.label}
+              </span>
+              <span
+                className="text-sm font-bold tabular-nums font-mono"
+                style={{ color: item.up ? COLORS.profit : COLORS.loss }}
+              >
+                {item.value}
+              </span>
+            </span>
+          ))}
+        </div>
+        <style>{`
+          .ticker-track {
+            animation: ticker 30s linear infinite;
+            width: max-content;
+          }
+          @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .ticker-track { animation: none; }
+          }
+        `}</style>
+      </section>
+
       {/* ── How It Works ── */}
       <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto">
         <div className="text-center mb-14">
@@ -421,6 +557,49 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ── Market Prices ── */}
+      <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto">
+        <div className="text-center mb-14">
+          <FadeIn>
+            <SectionEyebrow lang={lang}>{t.marketDataEyebrow}</SectionEyebrow>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <h2
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-[-0.01em]"
+              style={{ color: COLORS.onSurface }}
+            >
+              {t.marketDataTitle}
+            </h2>
+          </FadeIn>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {MARKET_TICKERS.map(({ symbol, price, change, up }, i) => (
+            <FadeIn key={symbol} delay={i * 0.05}>
+              <div
+                className="rounded-lg p-4 flex flex-col gap-1.5 transition-colors"
+                style={{
+                  backgroundColor: COLORS.surface,
+                  border: `1px solid ${COLORS.outline}`,
+                }}
+              >
+                <p className="text-[10px] font-mono uppercase tracking-wider" style={{ color: COLORS.onSurfaceVariant }}>
+                  {symbol}
+                </p>
+                <p className="text-base font-bold tabular-nums font-mono" style={{ color: COLORS.onSurface }}>
+                  ${price}
+                </p>
+                <p
+                  className="text-xs font-semibold tabular-nums font-mono"
+                  style={{ color: up ? COLORS.profit : COLORS.loss }}
+                >
+                  {change}
+                </p>
+              </div>
+            </FadeIn>
+          ))}
+        </div>
+      </section>
+
       {/* ── Pricing ── */}
       <section className="py-20 sm:py-28 px-4 sm:px-6 max-w-6xl mx-auto">
         <div className="text-center mb-14">
@@ -436,7 +615,7 @@ export function LandingPage() {
             </h2>
           </FadeIn>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
           {PRICING_CARDS.map(({ nameKey, priceKey, subKey, ctaKey, href, highlight, features }, i) => (
             <FadeIn key={nameKey} delay={i * 0.1}>
               <div
@@ -452,7 +631,7 @@ export function LandingPage() {
                 {highlight && (
                   <span
                     className="absolute -top-3 left-1/2 -translate-x-1/2 text-[11px] font-bold px-3 py-0.5 rounded-full tracking-wide"
-                    style={{ backgroundColor: COLORS.primaryContainer, color: COLORS.primaryContainer }}
+                    style={{ backgroundColor: COLORS.primaryContainer, color: '#000000' }}
                   >
                     {t.popular}
                   </span>
@@ -493,7 +672,7 @@ export function LandingPage() {
                     highlight
                       ? {
                           backgroundColor: COLORS.primaryContainer,
-                          color: COLORS.primaryContainer,
+                          color: '#000000',
                           boxShadow: `0 4px 20px ${COLORS.primaryContainer}40`,
                         }
                       : {
@@ -534,6 +713,52 @@ export function LandingPage() {
             </Link>
           </p>
         </FadeIn>
+      </section>
+
+      {/* ── Discord Community ── */}
+      <section
+        className="py-20 sm:py-28 px-4 sm:px-6"
+        style={{
+          borderTop: `1px solid ${COLORS.outline}`,
+          backgroundColor: `${COLORS.surface}33`,
+        }}
+      >
+        <div className="max-w-3xl mx-auto text-center">
+          <FadeIn>
+            <SectionEyebrow lang={lang}>{t.communityEyebrow}</SectionEyebrow>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <h2
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-[-0.01em] mb-4"
+              style={{ color: COLORS.onSurface }}
+            >
+              {t.communityTitle}
+            </h2>
+          </FadeIn>
+          <FadeIn delay={0.2}>
+            <p
+              className="text-base sm:text-lg leading-relaxed max-w-lg mx-auto mb-8 text-balance"
+              style={{ color: COLORS.onSurfaceVariant }}
+            >
+              {t.communityDesc}
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.3}>
+            <a
+              href="https://discord.gg/cashclaw"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-semibold px-6 py-3 rounded-lg transition-colors text-sm group"
+              style={{
+                backgroundColor: COLORS.primaryContainer,
+                color: '#000000',
+              }}
+            >
+              {t.joinDiscord}
+              <ArrowRight weight="bold" className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            </a>
+          </FadeIn>
+        </div>
       </section>
 
       <Footer />

@@ -22,6 +22,7 @@ vi.mock('../../components/price-chart-lightweight', () => ({
   ),
 }));
 
+import { useAuthStore } from '../../stores/auth-store';
 import { useSubscriberPnl } from '../../hooks/use-subscriber-pnl';
 import { SubscriberEquityPage } from '../subscriber-equity';
 
@@ -55,6 +56,10 @@ function hookResult(overrides = {}) {
 describe('SubscriberEquityPage', () => {
   beforeEach(() => {
     mockHook.mockReset();
+    vi.mocked(useAuthStore).mockImplementation(
+      (selector: (s: { tenantId: string | null }) => unknown) =>
+        selector({ tenantId: 'sub-equity-001' })
+    );
   });
 
   it('renders KPI cards with equity data', () => {
@@ -85,8 +90,7 @@ describe('SubscriberEquityPage', () => {
     expect(screen.getByText('Connection timeout')).toBeTruthy();
   });
 
-  it('shows no-identity message when tenantId is null', async () => {
-    const { useAuthStore } = await import('../../stores/auth-store');
+  it('shows no-identity message when tenantId is null', () => {
     vi.mocked(useAuthStore).mockImplementation(
       (selector: (s: { tenantId: string | null }) => unknown) => selector({ tenantId: null })
     );

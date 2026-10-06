@@ -229,16 +229,16 @@ function EquityCurveChart({ strategy, allStrategies }: EquityCurveChartProps) {
     <div className="w-full h-[220px]">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="${COLORS.surfaceHigh}" />
-          <XAxis dataKey="name" tick={{ fill: '${COLORS.onSurfaceVariant}', fontSize: 11 }} />
-          <YAxis tick={{ fill: '${COLORS.onSurfaceVariant}', fontSize: 11 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={COLORS.surfaceHigh} />
+          <XAxis dataKey="name" tick={{ fill: COLORS.onSurfaceVariant, fontSize: 11 }} />
+          <YAxis tick={{ fill: COLORS.onSurfaceVariant, fontSize: 11 }} />
           <Tooltip
             contentStyle={{
               backgroundColor: COLORS.surfaceHigh,
-              border: '1px solid ${COLORS.outline}',
+              border: `1px solid ${COLORS.outline}`,
               borderRadius: 6,
               fontSize: 12,
-              color: '${COLORS.onSurface}',
+              color: COLORS.onSurface,
             }}
           />
           <Bar dataKey={strategy.strategy} radius={[3, 3, 0, 0]}>
@@ -403,12 +403,12 @@ export function StrategyPerformancePage() {
   /* ── Loading state ── */
   if (loading) {
     return (
-      <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans space-y-4">
+      <div className="min-h-screen bg-bg text-onSurface font-sans space-y-4">
         {/* Lang toggle */}
         <div className="flex justify-end px-4 sm:px-8 pt-6">
           <button
             onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
             aria-label="Toggle language"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -434,11 +434,11 @@ export function StrategyPerformancePage() {
   /* ── Error state ── */
   if (error) {
     return (
-      <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans space-y-4">
+      <div className="min-h-screen bg-bg text-onSurface font-sans space-y-4">
         <div className="flex justify-end px-4 sm:px-8 pt-6">
           <button
             onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
             aria-label="Toggle language"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -467,11 +467,11 @@ export function StrategyPerformancePage() {
   /* ── Empty state ── */
   if (tradedStrategies.length === 0) {
     return (
-      <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans space-y-4">
+      <div className="min-h-screen bg-bg text-onSurface font-sans space-y-4">
         <div className="flex justify-end px-4 sm:px-8 pt-6">
           <button
             onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
             aria-label="Toggle language"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -491,12 +491,12 @@ export function StrategyPerformancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div className="min-h-screen bg-bg text-onSurface font-sans">
       {/* Lang toggle */}
       <div className="flex justify-end px-4 sm:px-8 pt-6">
         <button
           onClick={() => setLang((l: Lang) => (l === 'en' ? 'vi' : 'en'))}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
           aria-label="Toggle language"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -516,7 +516,7 @@ export function StrategyPerformancePage() {
           </div>
           {!isProOrAbove && (
             <span
-              className="text-xs border border-[${COLORS.outline}] rounded px-2 py-1"
+              className="text-xs border border-outline rounded px-2 py-1"
               style={{ color: COLORS.onSurfaceVariant }}
             >
               {t.freeBadge}

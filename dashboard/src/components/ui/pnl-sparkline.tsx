@@ -1,9 +1,9 @@
-// @ts-ignore
 import { COLORS } from '../../lib/stitch-design-tokens';
 
 /**
  * PnlSparkline — Mini chart showing recent P&L trajectory with risk zone markers
- * SVG polyline with gradient fill below line
+ * Responsive SVG polyline with gradient fill below line.
+ * Scales cleanly across 375px mobile to widescreen with zero overflow.
  */
 
 interface PnlSparklineProps {
@@ -38,18 +38,21 @@ export function PnlSparkline({
   const max = Math.max(...values);
   const range = max - min || 1;
 
-  // Scale point to SVG coordinates
+  // Scale point to SVG coordinates (guard against division by zero when length <= 1)
   const getPoint = (index: number, value: number) => {
-    const x = padding + (index / (values.length - 1)) * chartWidth;
+    const divisor = values.length > 1 ? values.length - 1 : 1;
+    const x = values.length <= 1 ? padding + chartWidth / 2 : padding + (index / divisor) * chartWidth;
     const y = padding + chartHeight - ((value - min) / range) * chartHeight;
     return { x, y };
   };
 
   // Build polyline points
-  const points = values.map((v, i) => getPoint(i, v)).map(p => `${p.x},${p.y}`).join(' ');
+  const points = values.map((v, i) => getPoint(i, v)).map((p) => `${p.x},${p.y}`).join(' ');
 
   // Gradient fill polygon (close to bottom)
-  const fillPoints = `${padding},${height - padding} ${points} ${width - padding},${height - padding}`;
+  const fillPoints = values.length <= 1
+    ? `${padding},${height - padding} ${padding + chartWidth / 2},${getPoint(0, values[0]).y} ${width - padding},${height - padding}`
+    : `${padding},${height - padding} ${points} ${width - padding},${height - padding}`;
 
   // Determine color of line based on latest value
   const lastValue = values[values.length - 1];
@@ -59,7 +62,14 @@ export function PnlSparkline({
   const thresholdY = maxLossPerTrade !== undefined ? padding + chartHeight - ((maxLossPerTrade - min) / range) * chartHeight : null;
 
   return (
-    <svg width={width} height={height} style={{ display: 'block' }}>
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width={width}
+      height={height}
+      preserveAspectRatio="none"
+      className="w-full max-w-full overflow-hidden block"
+      style={{ display: 'block' }}
+    >
       {/* Gradient fill definition */}
       <defs>
         <linearGradient id="pnlSparklineGradient" x1="0" y1="0" x2="0" y2="1">
@@ -73,21 +83,24 @@ export function PnlSparkline({
       <polyline points={points} fill="none" stroke={lineColor} strokeWidth={2} strokeLinejoin="round" />
       {/* Threshold line */}
       {thresholdY !== null && (
-        <>
-          <line
-            x1={padding}
-            y1={thresholdY}
-            x2={width - padding}
-            y2={thresholdY}
-            stroke={COLORS.warning}
-            strokeWidth={1}
-            strokeDasharray="2 2"
-          />
-        </>
+        <line
+          x1={padding}
+          y1={thresholdY}
+          x2={width - padding}
+          y2={thresholdY}
+          stroke={COLORS.warning}
+          strokeWidth={1}
+          strokeDasharray="2 2"
+        />
       )}
       {/* Current point */}
       {showCurrent && (
-        <circle cx={width - padding} cy={getPoint(values.length - 1, lastValue).y} r={3} fill={lineColor} />
+        <circle
+          cx={values.length <= 1 ? padding + chartWidth / 2 : width - padding}
+          cy={getPoint(values.length - 1, lastValue).y}
+          r={3}
+          fill={lineColor}
+        />
       )}
     </svg>
   );

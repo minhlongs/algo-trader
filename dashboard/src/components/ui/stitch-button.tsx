@@ -31,7 +31,7 @@ export function StitchButton({
   title,
   style: customStyle,
 }: StitchButtonProps) {
-  const base = 'font-bold text-sm px-4 py-2 rounded-lg transition-all active:scale-[0.98] disabled:opacity-50';
+  const base = 'font-bold text-sm px-4 py-2 rounded-lg transition-all active:scale-[0.98] disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2';
   const styles: Record<string, React.CSSProperties> = {
     primary: { backgroundColor: COLORS.primary, color: COLORS.onPrimary },
     secondary: { backgroundColor: `${COLORS.primary}1a`, color: COLORS.primary, border: `1px solid ${COLORS.primary}4d` },

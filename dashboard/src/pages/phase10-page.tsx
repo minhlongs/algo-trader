@@ -66,9 +66,9 @@ interface MetricCard {
 
 function StatusBadge({ status }: { status: MetricCard['status'] }) {
   const colors: Record<string, string> = {
-    active: `bg-[${COLORS.profit}]/20 text-[${COLORS.profit}]`,
-    inactive: `bg-[${COLORS.surfaceHigh}]/20 text-[${COLORS.onSurfaceVariant}]`,
-    warning: `bg-[${COLORS.warning}]/20 text-[${COLORS.warning}]`,
+    active: `bg-profit/20 text-profit`,
+    inactive: `bg-surfaceHigh/20 text-onSurfaceVariant`,
+    warning: `bg-warning/20 text-warning`,
   };
   return (
     <span className={`px-2 py-0.5 rounded text-xs ${colors[status]}`}>
@@ -122,7 +122,7 @@ export function Phase10Page() {
   ];
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div className="min-h-screen bg-bg text-onSurface font-sans">
       <div className="relative">
         <div className="flex justify-end p-4">
           <button

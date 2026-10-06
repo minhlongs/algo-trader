@@ -90,7 +90,7 @@ export function RiskSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+    <div className="min-h-screen bg-bg text-onSurface font-sans">
       <div className="pt-24 pb-8 px-6">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">

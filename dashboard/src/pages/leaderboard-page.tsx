@@ -3,7 +3,6 @@
  * Stitch redesign: dark fintech, bilingual VN+EN
  */
 import { useState, useEffect, useMemo } from 'react';
-import { COLORS } from '../lib/stitch-design-tokens';
 import { motion } from 'motion/react';
 import { useApiClient } from '../hooks/use-api-client';
 import type { LeaderboardEntry, LeaderboardResponse } from '../types/api';
@@ -15,7 +14,7 @@ langToggle: 'Tiếng Việt',
 title: 'Strategy Leaderboard',
 subtitle: 'Performance rankings across all active strategies',
 loading: 'Loading leaderboard data...',
-error: 'Failed to load data',
+error: 'Failed to load data.',
 retry: 'Retry',
 noData: 'No strategies match your search',
 noStrategies: 'No leaderboard data available',
@@ -45,7 +44,7 @@ totalPnl: 'Tổng Lãi/Lỗ',
 type Lang = 'en' | 'vi';
 
 function glassCard(extra = '') {
-return `bg-[${COLORS.surface}]/80 backdrop-blur-xl border border-[${COLORS.outline}] rounded-2xl ${extra}`.trim();
+return `bg-surface/80 backdrop-blur-xl border border-outline rounded-2xl ${extra}`.trim();
 }
 
 export function LeaderboardPage() {
@@ -79,51 +78,67 @@ return () => { cancelled = true; };
 const filtered = useMemo(() => {
 if (!search.trim()) return data;
 const q = search.toLowerCase();
-return data.filter((e) => e.strategyName.toLowerCase().includes(q));
+return data.filter((e) => {
+  const name = e.strategyName ?? (e as unknown as { strategy?: string }).strategy ?? '';
+  return name.toLowerCase().includes(q);
+});
 }, [data, search]);
 
 const t = COPY[lang];
 
 if (loading) {
 return (
-<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex items-center justify-center">
-<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
-<p className="text-[${COLORS.primary}] text-2xl font-bold mb-2">{t.title}</p>
-<div className="w-8 h-8 border-2 border-[${COLORS.primary}] border-t-transparent rounded-full animate-spin mx-auto" />
-</motion.div>
+<div className="min-h-screen bg-bg text-onSurface font-sans">
+<div className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-16 space-y-4">
+<h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
+<div className="bg-surface/80 border border-outline rounded-2xl p-8">
+<div className="animate-pulse space-y-3">
+<div className="h-4 bg-outline/50 rounded w-1/3" />
+<div className="h-8 bg-outline/50 rounded" />
+<div className="h-8 bg-outline/50 rounded" />
+<div className="h-8 bg-outline/50 rounded" />
+<div className="h-8 bg-outline/50 rounded" />
+</div>
+</div>
+</div>
 </div>
 );
 }
 
 if (error) {
 return (
-<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans flex items-center justify-center">
-<div className="text-center">
-<p className="text-[${COLORS.loss}] text-xl font-bold mb-4">{t.title}</p>
-<p className="text-[${COLORS.onSurfaceVariant}] text-sm">{error}</p>
+<div className="min-h-screen bg-bg text-onSurface font-sans">
+<div className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-16 space-y-4">
+<h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
+<div className="bg-surface/80 border border-loss/30 rounded-2xl p-8 text-center">
+<p className="text-loss text-sm font-semibold mb-2">{error}</p>
 <button
 onClick={() => window.location.reload()}
-className="mt-4 px-5 py-2 rounded-lg bg-[${COLORS.primary}] text-white text-sm font-semibold hover:bg-[#0060d3] transition-colors"
+className="mt-4 px-5 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-[#0060d3] transition-colors"
 >
 {t.retry}
 </button>
+</div>
 </div>
 </div>
 );
 }
 
 return (
-<div className="min-h-screen bg-[${COLORS.bg}] text-[${COLORS.onSurface}] font-sans">
+<div className="min-h-screen bg-bg text-onSurface font-sans">
 <div className="max-w-[1280px] mx-auto px-4 sm:px-8 pt-8 pb-16">
 {/* Header */}
 <div className="flex items-center justify-between mb-8">
 <div>
 <h1 className="text-2xl font-bold text-white tracking-tight">{t.title}</h1>
-<p className="text-[${COLORS.onSurfaceVariant}] text-sm mt-1">{t.subtitle}</p>
+<p className="text-onSurfaceVariant text-sm mt-1">
+{t.subtitle}
+{(total > 0 || data.length > 0) && ` · ${total || data.length} strategies`}
+</p>
 </div>
 <button
 onClick={() => setLang((l: Lang) => l === 'en' ? 'vi' : 'en')}
-className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[${COLORS.outline}] bg-[${COLORS.surface}]/80 text-[${COLORS.onSurfaceVariant}] text-xs hover:border-[${COLORS.primary}] hover:text-[${COLORS.primary}] transition-colors"
+className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline bg-surface/80 text-onSurfaceVariant text-xs hover:border-primary hover:text-primary transition-colors"
 aria-label="Toggle language"
 >
 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -136,7 +151,7 @@ aria-label="Toggle language"
 
 {/* Search */}
 <div className="relative max-w-xs mb-6" role="search">
-<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-[${COLORS.onSurfaceVariant}]/50">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-onSurfaceVariant/50">
 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
 </svg>
 <input
@@ -144,7 +159,7 @@ type="text"
 value={search}
 onChange={(e) => setSearch(e.target.value)}
 placeholder="Search strategies..."
-className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-[${COLORS.outline}] bg-[${COLORS.surface}] text-white placeholder:text-[${COLORS.onSurfaceVariant}]/50 focus:border-[${COLORS.primary}] focus:outline-none transition-colors"
+className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-outline bg-surface text-white placeholder:text-onSurfaceVariant/50 focus:border-primary focus:outline-none transition-colors"
 aria-label="Search strategies"
 />
 </div>
@@ -154,14 +169,14 @@ aria-label="Search strategies"
 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
 {[
 { label: t.total, value: total || data.length },
-{ label: t.avgWin, value: `${(data.reduce((s, e) => s + e.winRate, 0) / data.length).toFixed(1)}%` },
-{ label: t.avgSharpe, value: (data.reduce((s, e) => s + e.sharpeRatio, 0) / data.length).toFixed(2) },
+{ label: t.avgWin, value: `${(data.reduce((s, e) => s + (e.winRate ?? 0), 0) / data.length).toFixed(1)}%` },
+{ label: t.avgSharpe, value: (data.reduce((s, e) => s + (e.sharpeRatio ?? (e as unknown as { sharpe?: number }).sharpe ?? 0), 0) / data.length).toFixed(2) },
 { label: t.totalPnl, value: `${data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? '+' : ''}$${Math.abs(data.reduce((s, e) => s + (e.pnl || 0), 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-tone: data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-[${COLORS.profit}]' : 'text-[${COLORS.loss}]',
+tone: data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-profit' : 'text-loss',
 },
 ].map(({ label, value, tone }) => (
 <div className={`${glassCard('p-4')}`}>
-<p className="text-[${COLORS.onSurfaceVariant}] text-[10px] uppercase tracking-widest mb-1">{label}</p>
+<p className="text-onSurfaceVariant text-[10px] uppercase tracking-widest mb-1">{label}</p>
 <p className={`font-mono text-lg font-bold ${tone ?? 'text-white'}`}>{value}</p>
 </div>
 ))}
@@ -171,7 +186,29 @@ tone: data.reduce((s, e) => s + (e.pnl || 0), 0) >= 0 ? 'text-[${COLORS.profit}]
 {/* Table */}
 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
 <div className={glassCard('overflow-hidden')}>
-<LeaderboardTable entries={filtered} aria-label="Strategy performance rankings table" />
+{filtered.length > 0 ? (
+  <LeaderboardTable entries={filtered} aria-label="Strategy performance rankings table" />
+) : (
+  <div className="flex flex-col items-center justify-center py-12 text-muted">
+    <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1" viewBox="0 0 24 24" className="mb-3 opacity-30">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="3" y1="15" x2="21" y2="15" />
+      <line x1="9" y1="9" x2="9" y2="21" />
+    </svg>
+    <p className="text-sm">
+      {search ? t.noData : t.noStrategies}
+    </p>
+    {search && (
+      <button
+        onClick={() => setSearch('')}
+        className="mt-2 text-xs text-primary hover:underline"
+      >
+        {t.clearFilter}
+      </button>
+    )}
+  </div>
+)}
 </div>
 </motion.div>
 </div>

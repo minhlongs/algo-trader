@@ -10,6 +10,7 @@ import { handleTradeStart } from './cashclaw-trade-start-handler';
 import { handleDemoTrade } from './demo-trade-handler';
 import { handleTradeJournal } from './cashclaw-trade-journal-handler';
 import { handleTradeBacktest } from './cashclaw-trade-backtest-handler';
+import { wrapCliAction } from './cli-diagnostics';
 import { logger } from '../../shared/utils/logger';
 
 export function registerTradeCommands(tradeCmd: Command): void {
@@ -22,9 +23,9 @@ export function registerTradeCommands(tradeCmd: Command): void {
     .option('--capital <amount>', 'Capital in USDC', '1000')
     .option('--strategy <name>', 'Strategy to run', 'endgame-v2')
     .option('--yes', 'Skip confirmation prompt (for scripting)')
-    .action(async (opts: { mode: string; capital: string; strategy: string; yes: boolean }) => {
+    .action(wrapCliAction(async (opts: { mode: string; capital: string; strategy: string; yes: boolean }) => {
       await handleTradeStart(opts);
-    });
+    }));
 
   // ── trade status ─────────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ export function registerTradeCommands(tradeCmd: Command): void {
     .command('status')
     .description('Show live trading positions, P&L, and guard state')
     .option('--json', 'Machine-readable JSON output')
-    .action((opts: { json: boolean }) => {
+    .action(wrapCliAction((opts: { json: boolean }) => {
       if (opts.json) {
         logger.info(
           JSON.stringify({
@@ -63,14 +64,14 @@ export function registerTradeCommands(tradeCmd: Command): void {
         const set = !!(process.env[v.newName] || process.env[v.oldName]);
         logger.info(`  ${v.label}: ${set ? '✓ set' : '✗ missing'}`);
       }
-    });
+    }));
 
   // ── trade list-strategies ────────────────────────────────────────────────────
 
   tradeCmd
     .command('list-strategies')
     .description('List available V2 strategies for live trading')
-    .action(async () => {
+    .action(wrapCliAction(async () => {
       const { listStrategies } = await import('../polymarket/strategy-registry');
       const strategies = listStrategies();
       logger.info('\nAvailable strategies for "algo trade run":\n');
@@ -80,7 +81,7 @@ export function registerTradeCommands(tradeCmd: Command): void {
       }
       logger.info(`\n${strategies.length} strategies registered.`);
       logger.info('Use: cashclaw trade run --strategy=<name>\n');
-    });
+    }));
 
   // ── trade run ────────────────────────────────────────────────────────────────
 
@@ -93,9 +94,9 @@ export function registerTradeCommands(tradeCmd: Command): void {
     .option('--ticks <n>', 'Number of ticks before auto-stop (0=unlimited)', '10')
     .option('--interval <ms>', 'Tick interval in milliseconds', '15000')
     .option('--yes', 'Skip confirmation prompt (for scripting)')
-    .action(async (opts: { strategy: string; mode: string; capital: string; ticks: string; interval: string; yes: boolean }) => {
+    .action(wrapCliAction(async (opts: { strategy: string; mode: string; capital: string; ticks: string; interval: string; yes: boolean }) => {
       await handleTradeRun(opts);
-    });
+    }));
 
   // ── trade demo ───────────────────────────────────────────────────────────────
 
@@ -105,9 +106,9 @@ export function registerTradeCommands(tradeCmd: Command): void {
     .option('--strategy <name>', 'Strategy to resolve', 'spread-mean-reversion')
     .option('--capital <amount>', 'Paper capital in USDC', '1000')
     .option('--yes', 'Skip confirmation prompt')
-    .action(async (opts: { strategy: string; capital: string; yes: boolean }) => {
+    .action(wrapCliAction(async (opts: { strategy: string; capital: string; yes: boolean }) => {
       await handleDemoTrade(opts);
-    });
+    }));
 
   // ── trade journal ────────────────────────────────────────────────────────────
 
@@ -116,9 +117,9 @@ export function registerTradeCommands(tradeCmd: Command): void {
     .description('View live trading journal: fills, events, daily P&L')
     .option('--type <type>', 'Filter: fills, events, pnl, or all', 'all')
     .option('--limit <n>', 'Number of entries to show', '20')
-    .action((opts: { type: string; limit: string }) => {
+    .action(wrapCliAction((opts: { type: string; limit: string }) => {
       handleTradeJournal(opts);
-    });
+    }));
 
   // ── trade backtest ───────────────────────────────────────────────────────────
 
@@ -129,7 +130,7 @@ export function registerTradeCommands(tradeCmd: Command): void {
     .option('--days <n>', 'Number of days of historical data', '30')
     .option('--capital <amount>', 'Starting capital in USDC', '5000')
     .option('--format <fmt>', 'Output format: table or json', 'table')
-    .action(async (opts: { strategy: string; days: string; capital: string; format: string }) => {
+    .action(wrapCliAction(async (opts: { strategy: string; days: string; capital: string; format: string }) => {
       await handleTradeBacktest(opts);
-    });
+    }));
 }
