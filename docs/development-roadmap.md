@@ -299,6 +299,14 @@ Algo Trader is a full-stack trading platform with multi-exchange support, algori
 - Versions: 3.1.94
 - Status: **COMPLETE** ✅
 
+### S22 12 Verified Edge Cases Remediation & Zero-Debt Institutional Hardening (Complete - 2026-10-07)
+- [x] Resolved all 12 edge cases across Trading Desk (slippage bounding, paper capital concurrency reservation, Durable Object race conditions), Alpha Lab (zero-variance division, lookahead bias prevention, timer heap and queue bounding), CLI Diagnostics (credential redaction, options validation, connection pool timer unreferencing), and Dashboard/Storage (DOMPurify XSS sanitization, ResizeObserver zero-width layout thrashing prevention, D1 migration syntax correction, duplicate migration cleanup, transactional rollback runner)
+- [x] Extracted modular helpers `paper-capital-reservation.ts` (99 LOC) and `migration-rollback.ts` (74 LOC) to keep all touched files strictly <= 200 LOC
+- [x] Verified 5/5 quality ratchet gates green (0 `:any`, 2 console calls, 0 oversized files in `src/`, 0 banned imports, 0 eslint disables)
+- [x] All 8 CI gates pass on GitHub Actions and live production smoke verified (HTTP/2 200 OK on `https://cashclaw.cc` and `https://algo-trader.pages.dev`)
+- Versions: 3.1.95
+- Status: **COMPLETE** ✅
+
 ### GTM Execution — Next Wave V (In Progress)
 - [x] Phase 1: Deploy production → https://api.cashclaw.cc (SHA a200991f, 2026-08-04) ✅
 - [ ] Phase 2: Publish launch content — email blocked (SendGrid), manual ready (blog/reddit/twitter/discord) ⚠️
