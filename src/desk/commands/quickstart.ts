@@ -8,10 +8,11 @@ import { join } from 'path';
 import readline from 'node:readline';
 import { runSetupWizard } from './setup-wizard';
 import { logger } from '../../shared/utils/logger';
+import { UnifiedTradingLoop } from '../orchestrator/unified-trading-loop';
 
 const ENV_PATH = join(process.cwd(), '.env');
 
-export async function runQuickstart(): Promise<void> {
+export async function runQuickstart(): Promise<UnifiedTradingLoop | void> {
   logger.info('Algo Trader Quickstart');
 
   // Step 1: Check if .env exists, if not run setup wizard
@@ -44,16 +45,16 @@ export async function runQuickstart(): Promise<void> {
 
   if (config.tradingMode === 'dry-run' || !config.apiKeyConfigured) {
     logger.info('Starting in DRY-RUN mode (paper trading) - no real trades will be executed');
-    await startDryRunEngine();
+    return await startDryRunEngine(config);
   } else {
     logger.warn('Starting in LIVE mode - real money at risk!');
 
     const confirm = await promptConfirmation();
     if (confirm) {
-      await startLiveEngine();
+      return await startLiveEngine(config);
     } else {
       logger.warn('Live trading cancelled. Starting in dry-run mode...');
-      await startDryRunEngine();
+      return await startDryRunEngine(config);
     }
   }
 }
@@ -69,9 +70,7 @@ interface QuickstartConfig {
 }
 
 function loadConfiguration(): QuickstartConfig {
-  // Load environment variables
   const env = process.env;
-
   return {
     tradingMode: env.DRY_RUN === 'true' ? 'dry-run' : 'live',
     riskPerTrade: parseFloat(env.RISK_PER_TRADE || '1'),
@@ -87,7 +86,6 @@ function validateConfiguration(config: QuickstartConfig): void {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Validate risk parameters
   if (config.riskPerTrade <= 0 || config.riskPerTrade > 10) {
     errors.push('RISK_PER_TRADE must be between 0 and 10');
   }
@@ -100,17 +98,14 @@ function validateConfiguration(config: QuickstartConfig): void {
     warnings.push('RISK_PER_TRADE is higher than MAX_DAILY_LOSS');
   }
 
-  // Warn about live trading without API keys
   if (config.tradingMode === 'live' && !config.apiKeyConfigured) {
     warnings.push('Live trading mode but no API keys configured');
   }
 
-  // Print warnings
   if (warnings.length > 0) {
     warnings.forEach((w) => logger.warn(`Configuration warning: ${w}`));
   }
 
-  // Throw errors
   if (errors.length > 0) {
     errors.forEach((e) => logger.error(`Configuration error: ${e}`));
     logger.error('Please run `npm run setup` to reconfigure.');
@@ -120,40 +115,71 @@ function validateConfiguration(config: QuickstartConfig): void {
   logger.info('Configuration valid');
 }
 
-async function startDryRunEngine(): Promise<void> {
+export async function startDryRunEngine(config?: Partial<QuickstartConfig>): Promise<UnifiedTradingLoop> {
   logger.info('Connecting to exchange (read-only)...');
-  await sleep(1000);
   logger.info('Connected to exchange');
 
   logger.info('Loading market data...');
-  await sleep(800);
   logger.info('Market data loaded');
 
   logger.info('Starting strategy engine...');
-  await sleep(500);
+  const initialNav = 100000;
+  const liquidCash = 30000;
+  const loop = new UnifiedTradingLoop('PAPER', initialNav, liquidCash);
+  const alloc = (initialNav - liquidCash) / 4;
+  loop.riskGate.setEngineBudgets({
+    arbitrage: alloc,
+    marl: alloc,
+    amm: alloc,
+    'alpha-lab': alloc,
+  });
+
+  // Execute initial signal pulse to bootstrap loop
+  loop.step({
+    intentId: `init-${Date.now()}`,
+    engineId: 'arbitrage',
+    symbol: 'BTC/USDT',
+    venue: 'binance',
+    side: 'BUY',
+    quantity: 0.01,
+    price: 50000,
+    urgency: 'MEDIUM',
+    expectedEdgeBps: 15,
+    expectedSharpe: 1.8,
+    timeToExpiryMs: 60000,
+    expiresAt: Date.now() + 60000,
+    orderType: 'LIMIT',
+    isRiskReducing: false,
+  }, 50000);
+
   logger.info('DRY-RUN ENGINE STARTED - waiting for trading signals');
+  return loop;
 }
 
-async function startLiveEngine(): Promise<void> {
+export async function startLiveEngine(config?: Partial<QuickstartConfig>): Promise<UnifiedTradingLoop> {
   logger.info('Connecting to exchange...');
-  await sleep(1000);
   logger.info('Connected to exchange');
 
   logger.info('Loading market data...');
-  await sleep(800);
   logger.info('Market data loaded');
 
   logger.info('Verifying API permissions...');
-  await sleep(500);
   logger.info('API permissions verified');
 
   logger.info('Starting strategy engine...');
-  await sleep(500);
-  logger.warn('LIVE ENGINE STARTED - REAL MONEY AT RISK - monitoring markets');
-}
+  const initialNav = 100000;
+  const liquidCash = 30000;
+  const loop = new UnifiedTradingLoop('LIVE', initialNav, liquidCash);
+  const alloc = (initialNav - liquidCash) / 4;
+  loop.riskGate.setEngineBudgets({
+    arbitrage: alloc,
+    marl: alloc,
+    amm: alloc,
+    'alpha-lab': alloc,
+  });
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  logger.warn('LIVE ENGINE STARTED - REAL MONEY AT RISK - monitoring markets');
+  return loop;
 }
 
 async function promptConfirmation(): Promise<boolean> {

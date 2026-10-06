@@ -102,7 +102,7 @@ describe('Setup Wizard Env Generation & Persistence', () => {
   });
 
   describe('saveConfiguration', () => {
-    it('writes .env and updates .env.example when it exists', () => {
+    it('writes .env and strictly never writes credentials to .env.example (Rule H1)', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue('EXCHANGE_API_KEY=sample\n');
 
@@ -111,15 +111,18 @@ describe('Setup Wizard Env Generation & Persistence', () => {
         tradingMode: 'dry-run',
       });
 
-      expect(fs.writeFileSync).toHaveBeenCalledTimes(2);
-      expect(fs.writeFileSync).toHaveBeenNthCalledWith(
-        1,
+      expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
         expect.stringContaining('.env'),
-        expect.stringContaining('EXCHANGE_API_KEY=persisted-key')
+        expect.stringContaining('EXCHANGE_API_KEY=persisted-key'),
+      );
+      expect(fs.writeFileSync).not.toHaveBeenCalledWith(
+        expect.stringContaining('.env.example'),
+        expect.anything(),
       );
     });
 
-    it('writes .env without updating .env.example when .env.example does not exist', () => {
+    it('writes .env when .env.example does not exist', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
       saveConfiguration({
@@ -127,6 +130,11 @@ describe('Setup Wizard Env Generation & Persistence', () => {
       });
 
       expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        expect.stringContaining('.env'),
+        expect.stringContaining('EXCHANGE_API_KEY=persisted-key-2'),
+      );
     });
   });
 });
+

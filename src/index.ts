@@ -12,7 +12,9 @@ import { KronosStrategy } from './desk/strategies/kronos-strategy';
 import { runSetupWizard } from './commands/setup-wizard';
 import { runQuickstart } from './commands/quickstart';
 import { runArbAuto } from './desk/commands/arb-auto';
+import { wrapCliAction } from './desk/cli/cli-diagnostics';
 import { logger } from './shared/utils/logger';
+
 
 // Initialize Sentry before anything else
 initSentry();
@@ -49,12 +51,13 @@ export function buildCliProgram(): Command {
   program
     .command('setup')
     .description('Interactive setup wizard - configure API keys, risk preferences, trading mode')
-    .action(async () => { await runSetupWizard(); });
+    .action(wrapCliAction(async () => { await runSetupWizard(); }));
 
   program
     .command('quickstart')
     .description('Zero-config start - instant trading with defaults')
-    .action(async () => { await runQuickstart(); });
+    .action(wrapCliAction(async () => { await runQuickstart(); }));
+
 
   program
     .command('activate [key]')
@@ -162,23 +165,23 @@ export function buildCliProgram(): Command {
     .option('-p, --poll-interval <ms>', 'Main tick poll interval in milliseconds', '1000')
     .option('--metrics-port <number>', 'Prometheus metrics and HTTP status port', '9100')
     .option('-d, --duration <seconds>', 'Execution duration in seconds (0 = indefinite)', '0')
-    .action(async (options: Record<string, unknown>) => {
+    .action(wrapCliAction(async (options: Record<string, unknown>) => {
       const { runDeskAuto } = await import('./desk/commands/desk-auto');
       await runDeskAuto(options);
-    });
+    }));
 
   program
     .command('desk:status')
     .description('Inspect real-time autonomous desk execution status and telemetry')
     .option('-p, --port <number>', 'Metrics & status server port', '9100')
     .option('--json', 'Output raw JSON status', false)
-    .action(async (options: { port?: string; json?: boolean }) => {
+    .action(wrapCliAction(async (options: { port?: string; json?: boolean }) => {
       const { runDeskStatus } = await import('./desk/commands/desk-status');
       await runDeskStatus({
         port: options.port ? parseInt(options.port, 10) : undefined,
         json: options.json,
       });
-    });
+    }));
 
   return program;
 }

@@ -1,5 +1,27 @@
 # Project Changelog - Algo Trader
 
+## [3.1.91] - 2026-10-06 — CLI Diagnostics, Terminal Table Alignment, Setup Wizard Security & Engine Bootstrapping
+
+### Added
+- Added `src/desk/cli/cli-diagnostics.ts` and unit test suite `tests/unit/desk/cli/cli-diagnostics.test.ts` for clean terminal diagnostics on `ZodError` option failures, daemon connectivity (`ECONNREFUSED`), and command error wrapping without stack trace leaks.
+- Added `tests/unit/desk/cli/terminal-drawing.test.ts` verifying Unicode box-drawing character joints (┬, ┼, ┴) and column padding preservation with ANSI escape sequences.
+- Added comprehensive unit tests in `tests/unit/desk/commands/quickstart.test.ts` verifying real `UnifiedTradingLoop` bootstrapping for dry-run and live execution modes.
+
+### Fixed
+- Fixed setup wizard environment persistence in `src/desk/commands/setup-wizard-env.ts` to strictly prevent writing sensitive API keys or exchange secrets into `.env.example`.
+- Fixed input handling and validation in `src/desk/commands/setup-wizard.ts` with whitespace trimming on user input and bounded risk percentage limits (riskPerTrade <= 10%, maxDailyLoss <= 50%).
+- Fixed terminal table rendering in `src/desk/cli/alpha-helpers.ts` and `src/desk/cli/cashclaw-trade-backtest-handler.ts` by using complete Unicode border joints and ANSI-aware width calculation.
+- Relocated dashboard polish verification suite from `src/platform/dashboard/__tests__/` to `tests/unit/ui/dashboard-ui-polish.test.ts` to ensure source tree zero-console compliance.
+
+### Enhanced
+- Integrated CLI action wrapper `wrapCliAction` across all commands in `src/index.ts` to handle errors gracefully with standardized exit codes.
+- Enhanced `src/shared/utils/logger.ts` to format raw JSON payload strings cleanly on INFO level.
+- Wired `runQuickstart` in `src/desk/commands/quickstart.ts` to instantiate and bootstrap genuine `UnifiedTradingLoop` with 4-way risk budget allocation (arbitrage, marl, amm, alpha-lab).
+
+### Verified & Certified
+- Verified 12/12 quality ratchet gates green across 15,681 tests (100% pass rate, 0 failures).
+- Zero TypeScript errors (`tsc --noEmit`), build clean (`npm run build`), zero oversized files > 200 LOC, zero `:any` types.
+
 ## [3.1.90] - 2026-10-06 — UI Design System Hardening, WebSocket Client Decoupling & Quality Ratchet Re-Certification
 
 ### Added

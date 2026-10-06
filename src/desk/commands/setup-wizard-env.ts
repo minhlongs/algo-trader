@@ -63,12 +63,5 @@ export function saveConfiguration(config: Partial<SetupConfig>): void {
   const envContent = generateEnvContent(config);
   writeFileSync(ENV_PATH, envContent);
   logger.info(`✅ Configuration saved to: ${ENV_PATH}`);
-
-  // Also update .env.example if it exists
-  if (existsSync(ENV_EXAMPLE_PATH)) {
-    const exampleContent = readFileSync(ENV_EXAMPLE_PATH, 'utf-8');
-    const updatedExample = mergeWithExample(exampleContent, config);
-    writeFileSync(ENV_EXAMPLE_PATH, updatedExample);
-    logger.info(`✅ Updated: ${ENV_EXAMPLE_PATH}`);
-  }
 }
+
