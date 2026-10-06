@@ -17,10 +17,14 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const indexPath = resolve(__dirname, '../../../src/platform/dashboard/public/index.html');
 const dashPath = resolve(__dirname, '../../../src/platform/dashboard/dashboard.html');
+const redirectsPath = resolve(__dirname, '../../../dashboard/public/_redirects');
+const viteConfigPath = resolve(__dirname, '../../../dashboard/vite.config.ts');
 
 describe('Dashboard UI/UX Polish (M2)', () => {
   const indexHtml = readFileSync(indexPath, 'utf-8');
   const dashHtml = readFileSync(dashPath, 'utf-8');
+  const redirects = readFileSync(redirectsPath, 'utf-8');
+  const viteConfig = readFileSync(viteConfigPath, 'utf-8');
 
   describe('1. Mobile Responsive Layout (>= 375px)', () => {
     it('prevents horizontal page overflow on viewport root', () => {
@@ -131,4 +135,24 @@ describe('Dashboard UI/UX Polish (M2)', () => {
       expect(dashHtml).toContain('btn.disabled = true;');
     });
   });
+
+  describe('5. SPA Asset Routing & Cloudflare Pages Redirects', () => {
+    it('rewrites /dashboard/assets/* to /assets/:splat to avoid MIME mismatch', () => {
+      expect(redirects).toContain('/dashboard/assets/* /assets/:splat 200');
+    });
+
+    it('rewrites /dashboard/favicon.svg to /favicon.svg', () => {
+      expect(redirects).toContain('/dashboard/favicon.svg /favicon.svg 200');
+    });
+
+    it('provides SPA fallback routing for /dashboard/* and /*', () => {
+      expect(redirects).toContain('/dashboard/* /index.html 200');
+      expect(redirects).toContain('/* /index.html 200');
+    });
+
+    it('sets base: "/" in vite.config.ts for Cloudflare Pages root asset resolution', () => {
+      expect(viteConfig).toMatch(/base:\s*['"]\/['"]/);
+    });
+  });
 });
+

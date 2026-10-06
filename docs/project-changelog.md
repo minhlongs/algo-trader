@@ -1,5 +1,20 @@
 # Project Changelog - Algo Trader
 
+## [3.1.93] - 2026-10-06 — Dashboard SPA Asset Path Rewrites, Cloudflare Pages Redirects & Build Restoration
+
+### Added
+- Added Cloudflare Pages SPA rewrite rules in `dashboard/public/_redirects` (`/dashboard/assets/* -> /assets/:splat`, `/dashboard/favicon.svg -> /favicon.svg`, `/dashboard/* -> /index.html`, and `/* -> /index.html`) to eliminate asset 404s and MIME type errors on direct deep-link navigation.
+- Added test coverage in `tests/unit/ui/dashboard-ui-polish.test.ts` asserting exact Cloudflare Pages asset rewrites and Vite root base configuration.
+
+### Fixed
+- Fixed Vite root base URL in `dashboard/vite.config.ts` from conditional `/dashboard/` to root `/` for uniform Cloudflare Pages asset resolution.
+- Restored missing dependencies in `dashboard/package.json` and lockfile (`@phosphor-icons/react`, `dompurify`, `motion`, testing libraries, and `pnpm-workspace.yaml` with `esbuild` build permissions) to ensure clean headless dashboard builds.
+
+### Verified & Certified
+- Verified dashboard bundle builds cleanly (`pnpm run build` in `dashboard/` completes with 0 errors).
+- Verified 12/12 quality ratchet gates green across 15,685 passing tests (100% pass rate, zero regressions).
+- Production edge endpoints (`https://cashclaw.cc` and `https://algo-trader.pages.dev`) healthy and responding HTTP/2 200 OK.
+
 ## [3.1.92] - 2026-10-06 — Phase 35 Security Audit Engagement Specification & Compliance Closure
 
 ### Added

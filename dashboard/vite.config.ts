@@ -5,7 +5,7 @@ const isCloudDeploy = process.env.CF_PAGES === '1';
 
 export default defineConfig({
   plugins: [react()],
-  base: isCloudDeploy ? '/' : '/dashboard/',
+  base: '/',
   build: {
     outDir: isCloudDeploy ? 'dist' : '../dist/dashboard',
     emptyOutDir: true,
