@@ -26,6 +26,15 @@ import {
 import { GpuMutex } from '../../../src/desk/intelligence/signal-validator-gpu-mutex';
 import * as redisModule from '../../../src/desk/redis/index';
 
+vi.mock('../../../src/lib/llm-router', () => ({
+  LlmRouter: class MockLlmRouter {
+    chat = vi.fn().mockRejectedValue(new Error('LLM service unavailable in test'));
+    fastChat = vi.fn().mockRejectedValue(new Error('LLM service unavailable in test'));
+    qwenChat = vi.fn().mockRejectedValue(new Error('LLM service unavailable in test'));
+    getConfig = vi.fn().mockReturnValue({ primary: { model: 'mock-model' } });
+  },
+}));
+
 const sampleSignal: SignalCandidate = {
   signalType: 'cross-market-arbitrage',
   expectedEdge: 0.08,
@@ -284,6 +293,33 @@ trailing notes`;
       const res = await getCachedValidation(sampleSignal);
       expect(res).toBeNull();
       expect(localMemoryCache.has(key)).toBe(false);
+    });
+
+    it('prunes local memory cache when size exceeds 1000 items', async () => {
+      const mockRedis = {
+        get: vi.fn().mockResolvedValue(null),
+        setex: vi.fn().mockResolvedValue('OK'),
+      };
+      vi.spyOn(redisModule, 'getRedisClient').mockReturnValue(mockRedis as any);
+
+      // Populate localMemoryCache with 1001 items
+      for (let i = 0; i < 1002; i++) {
+        const testSignal: SignalCandidate = {
+          ...sampleSignal,
+          signalType: `sig-${i}`,
+        };
+        await cacheValidation(testSignal, {
+          valid: true,
+          confidence: 0.8,
+          reasoning: `r-${i}`,
+          risks: [],
+          votes: [],
+          consensusConfidence: 0.8,
+          dissent: null,
+        });
+      }
+
+      expect(localMemoryCache.size).toBeLessThanOrEqual(1001);
     });
   });
 
