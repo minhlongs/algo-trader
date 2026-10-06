@@ -43,8 +43,8 @@ export async function runSetupWizard(): Promise<void> {
     logger.info('Enter your exchange API credentials.');
     logger.info('Leave blank to skip (required for live trading).\n');
 
-    config.exchangeApiKey = (await prompt(rl, 'Exchange API Key:')) || '';
-    config.exchangeSecret = (await prompt(rl, 'Exchange API Secret:')) || '';
+    config.exchangeApiKey = (await prompt(rl, 'Exchange API Key:'))?.trim() || '';
+    config.exchangeSecret = (await prompt(rl, 'Exchange API Secret:'))?.trim() || '';
 
     if (config.exchangeApiKey && config.exchangeSecret) {
       logger.info('✅ API keys saved\n');
@@ -55,10 +55,10 @@ export async function runSetupWizard(): Promise<void> {
     // Step 2: Trading Mode
     logger.info('━━━ Step 2: Trading Mode ━━━\n');
     logger.info('Select your trading mode:');
-    logger.info('  1) dry-run - Paper trading, no real money');
+    logger.info('  1) dry-run - Paper trading, no real money [default]');
     logger.info('  2) live - Real trading with real money\n');
 
-    const modeChoice = (await prompt(rl, 'Enter choice (1 or 2):')) || '1';
+    const modeChoice = (await prompt(rl, 'Enter choice (1 or 2):'))?.trim() || '1';
     config.tradingMode = modeChoice === '2' ? 'live' : 'dry-run';
     logger.info(`✅ Trading mode: ${config.tradingMode}\n`);
 
@@ -66,17 +66,19 @@ export async function runSetupWizard(): Promise<void> {
     logger.info('━━━ Step 3: Risk Preferences ━━━\n');
     logger.info('Choose your risk profile:');
     logger.info('  1) Conservative - 0.5% per trade, 2% daily max');
-    logger.info('  2) Moderate - 1% per trade, 5% daily max (recommended)');
+    logger.info('  2) Moderate - 1% per trade, 5% daily max (recommended) [default]');
     logger.info('  3) Aggressive - 2% per trade, 10% daily max');
     logger.info('  4) Custom - Enter your own values\n');
 
-    const riskChoice = (await prompt(rl, 'Enter choice (1-4):')) || '2';
+    const riskChoice = (await prompt(rl, 'Enter choice (1-4):'))?.trim() || '2';
 
     if (riskChoice === '4') {
-      const riskPerTrade = parseFloat((await prompt(rl, 'Risk per trade (%)?')) || '1');
-      const maxDailyLoss = parseFloat((await prompt(rl, 'Max daily loss (%)?')) || '5');
+      const rawRisk = parseFloat((await prompt(rl, 'Risk per trade (%)?')) || '1');
+      const rawMax = parseFloat((await prompt(rl, 'Max daily loss (%)?')) || '5');
+      const riskPerTrade = Number.isNaN(rawRisk) || rawRisk <= 0 || rawRisk > 10 ? 1 : rawRisk;
+      const maxDailyLoss = Number.isNaN(rawMax) || rawMax <= 0 || rawMax > 50 ? 5 : rawMax;
       config.riskPerTrade = riskPerTrade;
-      config.maxDailyLoss = maxDailyLoss;
+      config.maxDailyLoss = Math.max(maxDailyLoss, riskPerTrade);
     } else {
       const presetKeys = Object.keys(RISK_PRESETS);
       const presetIndex = parseInt(riskChoice) - 1;
@@ -96,10 +98,11 @@ export async function runSetupWizard(): Promise<void> {
     logger.info('Get trade notifications on Telegram.');
     logger.info('Leave blank to skip.\n');
 
-    const setupTelegram = (await prompt(rl, 'Setup Telegram? (y/N):')).trim().toLowerCase();
+    const setupTelegram = ((await prompt(rl, 'Setup Telegram? (y/N):')) || '').trim().toLowerCase();
     if (setupTelegram === 'y' || setupTelegram === 'yes') {
-      config.telegramBotToken = (await prompt(rl, 'Telegram Bot Token:')) || '';
-      config.telegramChatId = (await prompt(rl, 'Telegram Chat ID:')) || '';
+      config.telegramBotToken = (await prompt(rl, 'Telegram Bot Token:'))?.trim() || '';
+      config.telegramChatId = (await prompt(rl, 'Telegram Chat ID:'))?.trim() || '';
+
       if (config.telegramBotToken && config.telegramChatId) {
         logger.info('✅ Telegram configured\n');
       } else {

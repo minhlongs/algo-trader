@@ -155,4 +155,27 @@ describe('Quickstart Command (runQuickstart)', () => {
     );
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
+
+  it('instantiates genuine UnifiedTradingLoop with active state in startDryRunEngine', async () => {
+    const { startDryRunEngine } = await import('../../../../src/desk/commands/quickstart');
+    const promise = startDryRunEngine({ riskPerTrade: 1, maxDailyLoss: 5 });
+    await vi.runAllTimersAsync();
+    const loop = await promise;
+
+    expect(loop).toBeDefined();
+    expect(loop.getState()).toBe('RUNNING');
+    expect(loop.dispatcher.mode).toBe('PAPER');
+  });
+
+  it('instantiates genuine UnifiedTradingLoop with active state in startLiveEngine', async () => {
+    const { startLiveEngine } = await import('../../../../src/desk/commands/quickstart');
+    const promise = startLiveEngine({ riskPerTrade: 2, maxDailyLoss: 8 });
+    await vi.runAllTimersAsync();
+    const loop = await promise;
+
+    expect(loop).toBeDefined();
+    expect(loop.getState()).toBe('RUNNING');
+    expect(loop.dispatcher.mode).toBe('LIVE');
+  });
 });
+

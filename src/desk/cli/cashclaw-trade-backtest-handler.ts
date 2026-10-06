@@ -48,18 +48,19 @@ export async function handleTradeBacktest(opts: {
           2,
         ),
       );
-    } else {
-      logger.info('┌─────────────────────────────────────────────────┐');
-      logger.info(`│  Strategy: ${result.strategy.padEnd(37)} │`);
-      logger.info(`│  Period: ${String(days).padEnd(3)} days | Capital: $${capital.toFixed(0).padEnd(25)} │`);
-      logger.info('├─────────────────────────────────────────────────┤');
-      logger.info(`│  Sharpe:       ${String(m.sharpeRatio).padEnd(8)}  |  Max DD:   ${(m.maxDrawdown * 100).toFixed(1)}%`.padEnd(51) + '│');
-      logger.info(`│  Win Rate:     ${(m.winRate * 100).toFixed(1)}%`.padEnd(25) + `  |  Profit Factor: ${m.profitFactor === Infinity ? '∞' : String(m.profitFactor)}`.padEnd(28) + '│');
-      logger.info(`│  Total P&L:    $${String(m.totalPnl).padEnd(8)}  |  Avg/Trade: $${String(m.avgPnlPerTrade).padEnd(8)} │`);
-      logger.info('├─────────────────────────────────────────────────┤');
-      logger.info(`│  Trades: ${String(m.totalTrades).padEnd(5)} (${m.winningTrades}W / ${m.losingTrades}L)`.padEnd(35) + `  |  Best: $${String(m.bestTrade).padEnd(8)} │`);
-      logger.info(`│  Worst: $${String(m.worstTrade).padEnd(8)}  |  Duration: ${(result.durationMs / 1000).toFixed(1)}s`.padEnd(33) + '│');
-      logger.info('└─────────────────────────────────────────────────┘');
+      const boxWidth = 49;
+      const padRow = (text: string) => `│ ${text.padEnd(boxWidth - 2)} │`;
+      logger.info(`┌${'─'.repeat(boxWidth)}┐`);
+      logger.info(padRow(`Strategy: ${result.strategy}`));
+      logger.info(padRow(`Period: ${days} days | Capital: $${capital.toFixed(0)}`));
+      logger.info(`├${'─'.repeat(boxWidth)}┤`);
+      logger.info(padRow(`Sharpe: ${String(m.sharpeRatio)} | Max DD: ${(m.maxDrawdown * 100).toFixed(1)}%`));
+      logger.info(padRow(`Win Rate: ${(m.winRate * 100).toFixed(1)}% | Profit Factor: ${m.profitFactor === Infinity ? '∞' : String(m.profitFactor)}`));
+      logger.info(padRow(`Total P&L: $${String(m.totalPnl)} | Avg/Trade: $${String(m.avgPnlPerTrade)}`));
+      logger.info(`├${'─'.repeat(boxWidth)}┤`);
+      logger.info(padRow(`Trades: ${String(m.totalTrades)} (${m.winningTrades}W / ${m.losingTrades}L) | Best: $${String(m.bestTrade)}`));
+      logger.info(padRow(`Worst: $${String(m.worstTrade)} | Duration: ${(result.durationMs / 1000).toFixed(1)}s`));
+      logger.info(`└${'─'.repeat(boxWidth)}┘`);
       if (result.warnings.length > 0) {
         logger.info(`\n⚠ Warnings: ${result.warnings.join(', ')}`);
       }

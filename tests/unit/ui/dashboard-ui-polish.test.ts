@@ -15,8 +15,8 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const indexPath = resolve(__dirname, '../public/index.html');
-const dashPath = resolve(__dirname, '../dashboard.html');
+const indexPath = resolve(__dirname, '../../../src/platform/dashboard/public/index.html');
+const dashPath = resolve(__dirname, '../../../src/platform/dashboard/dashboard.html');
 
 describe('Dashboard UI/UX Polish (M2)', () => {
   const indexHtml = readFileSync(indexPath, 'utf-8');
@@ -64,7 +64,7 @@ describe('Dashboard UI/UX Polish (M2)', () => {
       expect(indexHtml).toContain("if (num === 0 || formatted === '0.00') return '$0.00';");
     });
 
-    it('safely handles null/undefined/NaN with "—" fallback for percent and drawdown', () => {
+    it('safely handles null/undefined/NaN with \"—\" fallback for percent and drawdown', () => {
       expect(indexHtml).toContain("if (Number.isNaN(num)) return '—';");
       expect(indexHtml).toContain("document.getElementById('card-drawdown-sub').textContent = dd ? `drawdown ${dd}` : 'drawdown —';");
     });
@@ -74,7 +74,7 @@ describe('Dashboard UI/UX Polish (M2)', () => {
       expect(indexHtml).toContain("Number(d.tradeCount).toLocaleString('en-US')");
     });
 
-    it('strictly satisfies Rule H4: zero console.warn or console.log in client code', () => {
+    it('strictly satisfies Rule H4: zero console calls in client code', () => {
       const scriptMatches = indexHtml.match(/<script>([\s\S]*?)<\/script>/g) || [];
       for (const script of scriptMatches) {
         expect(script).not.toMatch(/console\.(warn|log|error)\(/);

@@ -73,22 +73,32 @@ export function writeOutput(
   }
 }
 
+function stripAnsiLength(str: string): number {
+  return str.replace(/\x1b\[[0-9;]*m/g, '').length;
+}
+
+function padCell(str: string, width: number): string {
+  const vis = stripAnsiLength(str);
+  const pad = Math.max(0, width - vis);
+  return str + ' '.repeat(pad);
+}
+
 export function printTable(headers: string[], rows: string[][]): void {
   const colWidths = headers.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => (r[i] ?? '').length)),
+    Math.max(stripAnsiLength(h), ...rows.map((r) => stripAnsiLength(r[i] ?? ''))),
   );
-  const sep = colWidths.map((w) => '─'.repeat(w + 2)).join('┤');
-  const headerRow = headers
-    .map((h, i) => ` ${h.padEnd(colWidths[i]!)}`)
-    .join(' │');
-  logger.info(`┌${'─'.repeat(sep.length)}┐`);
-  logger.info(`│${headerRow} │`);
-  logger.info(`├${sep}┤`);
+  const topBorder = `┌${colWidths.map((w) => '─'.repeat(w + 2)).join('┬')}┐`;
+  const headerRow = `│${headers.map((h, i) => ` ${padCell(h, colWidths[i]!)} `).join('│')}│`;
+  const midBorder = `├${colWidths.map((w) => '─'.repeat(w + 2)).join('┼')}┤`;
+  const bottomBorder = `└${colWidths.map((w) => '─'.repeat(w + 2)).join('┴')}┘`;
+
+  logger.info(topBorder);
+  logger.info(headerRow);
+  logger.info(midBorder);
   for (const row of rows) {
-    const cells = row
-      .map((c, i) => ` ${(c ?? '').padEnd(colWidths[i]!)}`)
-      .join(' │');
-    logger.info(`│${cells} │`);
+    const cells = `│${row.map((c, i) => ` ${padCell(c ?? '', colWidths[i]!)} `).join('│')}│`;
+    logger.info(cells);
   }
-  logger.info(`└${'─'.repeat(sep.length)}┘`);
+  logger.info(bottomBorder);
 }
+

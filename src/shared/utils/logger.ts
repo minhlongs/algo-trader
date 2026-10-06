@@ -29,7 +29,24 @@ function shouldLog(current: LogLevel): boolean {
   return LEVELS[current] >= LEVELS[_logLevel];
 }
 
+function isJsonString(str: string): boolean {
+  if (typeof str !== 'string') return false;
+  const trimmed = str.trim();
+  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    try {
+      JSON.parse(trimmed);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 function formatMessage(level: string, msg: string, args?: unknown[]): string {
+  if (level === 'INFO' && (!args || args.length === 0) && isJsonString(msg)) {
+    return msg;
+  }
   const ts = new Date().toISOString();
   const base = `[${ts}] ${level}: ${msg}`;
   if (args && args.length > 0) {
