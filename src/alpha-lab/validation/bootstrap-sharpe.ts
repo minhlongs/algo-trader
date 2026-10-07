@@ -19,7 +19,7 @@ export function calculateDSR(
     nTrials: number,
     nBacktests: number
 ): number {
-    if (sigma <= 0 || nTrials <= 0) return sharpe;
+    if (sigma <= 0 || nTrials <= 0 || nBacktests <= 1) return sharpe;
 
     // Simplified DSR adjustment based on Bailey & de Prado
     // Correction for multiple testing (selection bias)
