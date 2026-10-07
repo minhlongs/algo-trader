@@ -125,8 +125,9 @@ describe('LiveTradingPipelineOrchestrator', () => {
     );
 
     for (let i = 0; i < 40; i++) {
-      orchestrator.recordTelemetry({ latencyMs: 5 + Math.random(), slippageBps: 0.5, isError: false, timestamp: Date.now() }, true);
-      orchestrator.recordTelemetry({ latencyMs: 5 + Math.random(), slippageBps: 0.5, isError: false, timestamp: Date.now() }, false);
+      const lat = 5 + (i % 5);
+      orchestrator.recordTelemetry({ latencyMs: lat, slippageBps: 0.5, isError: false, timestamp: Date.now() }, true);
+      orchestrator.recordTelemetry({ latencyMs: lat, slippageBps: 0.5, isError: false, timestamp: Date.now() }, false);
     }
 
     const verdict = await orchestrator.verifyCanaryStage(0);
