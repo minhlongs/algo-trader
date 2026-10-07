@@ -13,6 +13,7 @@ import type {
   MarketMakingContext,
   TwoSidedQuote,
 } from './dynamic-lp-types';
+import { DEFAULT_DYNAMIC_LP_CONFIG } from './dynamic-lp-types';
 
 export class DynamicLpEngine {
   private readonly targetSpreadPct: number;
@@ -21,12 +22,12 @@ export class DynamicLpEngine {
   private readonly orderSizeShares: number;
   private readonly minSpreadPct: number;
 
-  constructor(config: DynamicLpConfig) {
-    this.targetSpreadPct = config.targetSpreadPct;
-    this.maxInventoryAbs = Math.max(1, config.maxInventoryAbs);
-    this.inventoryRiskAversion = config.inventoryRiskAversion ?? 0.5;
-    this.orderSizeShares = config.orderSizeShares;
-    this.minSpreadPct = config.minSpreadPct ?? 0.01;
+  constructor(config: DynamicLpConfig = {}) {
+    this.targetSpreadPct = config.targetSpreadPct ?? DEFAULT_DYNAMIC_LP_CONFIG.targetSpreadPct;
+    this.maxInventoryAbs = Math.max(1, config.maxInventoryAbs ?? DEFAULT_DYNAMIC_LP_CONFIG.maxInventoryAbs);
+    this.inventoryRiskAversion = config.inventoryRiskAversion ?? DEFAULT_DYNAMIC_LP_CONFIG.inventoryRiskAversion;
+    this.orderSizeShares = config.orderSizeShares ?? DEFAULT_DYNAMIC_LP_CONFIG.orderSizeShares;
+    this.minSpreadPct = config.minSpreadPct ?? DEFAULT_DYNAMIC_LP_CONFIG.minSpreadPct;
   }
 
   public generateQuote(context: MarketMakingContext, timestamp: number = Date.now()): TwoSidedQuote {
