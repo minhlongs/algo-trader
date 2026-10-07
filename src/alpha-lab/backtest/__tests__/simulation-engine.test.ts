@@ -22,7 +22,6 @@ describe('BacktestEngine', () => {
             { id: '1', price: 100, timestamp: 100 }
         ];
         const engine = new BacktestEngine(ticks, { dailyVolume: 1000 });
-        // @ts-ignore - access private property for verification
-        expect(engine.ticks[0].id).toBe('1');
+        expect((engine as unknown as { ticks: Tick[] }).ticks[0].id).toBe('1');
     });
 });

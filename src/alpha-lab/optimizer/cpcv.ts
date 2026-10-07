@@ -26,7 +26,7 @@ export function getPurgedIndices(
   trainSplit: TimeSplit,
   testSplit: TimeSplit,
   config: PurgeConfig,
-  totalBars: number,
+  _totalBars: number,
 ): { startIdx: number; endIdx: number }[] {
   const { purgeWindow, embargoWindow } = config;
 
