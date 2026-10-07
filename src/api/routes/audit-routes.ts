@@ -5,7 +5,6 @@ import { AuditLogService } from '@platform/audit/audit-log-service';
 import { logger } from '@platform/utils/logger';
 import {
   auditLogQuerySchema,
-  auditExportQuerySchema,
   extractTokenClaims,
 } from './audit-routes-schemas';
 import { handleAuditExport } from './audit-routes-export';

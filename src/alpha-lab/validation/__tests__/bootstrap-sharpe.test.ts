@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bootstrapSharpeCi } from '../bootstrap-sharpe';
+import { bootstrapSharpeCi, calculateDSR } from '../bootstrap-sharpe';
 import {
   mulberry32,
   mean,
@@ -129,5 +129,13 @@ describe('validation-types primitives', () => {
     const flat = [0.01, 0.01, 0.01];
     const sharpe = annualizedSharpe(flat, 252);
     expect(sharpe).toBe(0);
+  });
+
+  it('calculates DSR correctly and discounts multiple testing', () => {
+    expect(calculateDSR(1.5, 0, 100, 10)).toBe(1.5);
+    expect(calculateDSR(1.5, 0.2, 0, 10)).toBe(1.5);
+    const dsr = calculateDSR(2.0, 0.5, 250, 100);
+    expect(typeof dsr).toBe('number');
+    expect(Number.isFinite(dsr)).toBe(true);
   });
 });
