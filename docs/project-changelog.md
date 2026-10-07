@@ -1,5 +1,35 @@
 # Project Changelog - Algo Trader
 
+## [3.1.96] - 2026-10-07 — Automated Multi-Agent Parallel Scaffolding & Orchestration Pipeline (Next Wave V)
+
+### Added
+- **Lane 1: Autonomy Execution & Agent Swarm Pipeline**:
+  - Added `SwarmDispatcher` and `SwarmLifecycle` in `src/agentic/swarm-dispatcher.ts` and `src/agentic/swarm-lifecycle.ts` with tier degradation (`TIER3_OPUS` -> `TIER2_SONNET` -> `TIER1_HAIKU`) and unreferenced timer lifecycle management.
+  - Added `AlphaAutonomyScheduler` and `AlphaAutonomyRunner` in `src/alpha-lab/orchestration/alpha-autonomy-scheduler.ts` and `src/alpha-lab/orchestration/alpha-autonomy-runner.ts` providing mutex-guarded walkforward validation, triple-barrier labeling, and challenger selection.
+  - Added `ConsensusBridge` in `src/signal/consensus-bridge.ts` providing quorum evaluation, timeout fallback, and signal validation.
+  - Added 30 unit tests across `tests/unit/agentic/swarm-dispatcher.test.ts`, `tests/unit/alpha-lab/orchestration/alpha-autonomy-runner.test.ts`, and `tests/unit/signal/consensus-bridge.test.ts`.
+- **Lane 2: GTM Distribution, Marketing Automation & Telegram Bot Scaffolding**:
+  - Added `CampaignDispatcher` and `CampaignRunner` in `src/agentic/campaign-dispatcher.ts` and `src/agentic/campaign-runner.ts` providing tier-aware drip dispatching and rate-limited email delivery with secret masking.
+  - Added `ContentDistributionDaemon` in `src/platform/marketing/content-distribution-daemon.ts` supporting multi-channel distribution queues across Twitter, LinkedIn, Telegram, and Discord.
+  - Added `Wave5CommandHandler` and modular route definitions in `src/platform/telegram/wave5-command-handler.ts` and `src/platform/telegram/handlers/wave5-routes.ts`.
+  - Added 26 unit tests across `tests/unit/agentic/campaign-dispatcher.test.ts`, `tests/unit/platform/marketing/content-distribution-daemon.test.ts`, and `tests/unit/platform/telegram/wave5-command-handler.test.ts`.
+- **Lane 3: Platform Operations, Billing, D1 Sync & Shard Storage Scaffolding**:
+  - Added `TierActivationGateway` in `src/billing/tier-activation-gateway.ts` with HMAC-SHA512 NOWPayments IPN verification, tier entitlement provisioning, and duplicate event deduplication.
+  - Added `D1PostgresMeteringSync` in `src/db/d1-postgres-metering-sync.ts` reconciling Cloudflare D1 edge usage metering into central PostgreSQL with transactional checkpoint tracking and parameterized queries.
+  - Added `ShardCoordinator` in `src/durable-objects/shard-coordinator.ts` implementing consistent hashing topology and node health failover.
+  - Added 21 unit tests across `tests/unit/billing/tier-activation-gateway.test.ts`, `tests/unit/db/d1-postgres-metering-sync.test.ts`, and `tests/unit/durable-objects/shard-coordinator.test.ts`.
+- **Lane 4: Automated CI/CD & Multi-Worker Test Isolation Infrastructure**:
+  - Added `worker-temp-fs.ts` and `worker-isolated-test-context.ts` in `tests/harness/` providing deterministic per-worker filesystem and state isolation keyed on `VITEST_POOL_ID`.
+  - Added `scripts/verify-parallel-lanes.mjs` verifying file boundaries, LOC budgets (<= 200 LOC in `src/`), and banned imports.
+  - Added `scripts/orchestrate-parallel-wave.mjs` running automated pre-flight checks and spawning concurrent Vitest lane workers with duration telemetry.
+  - Added 6 unit tests in `tests/unit/harness/worker-isolated-test-context.test.ts`.
+
+### Verified & Certified
+- Root TypeScript check (`npm run typecheck`), build (`npm run build`), and dashboard build (`cd dashboard && pnpm run build`) pass cleanly with 0 errors.
+- 5/5 quality ratchet baseline checks PASS (0 `:any`, <=2 console calls, 0 oversized files in `src/`, 0 banned imports, 0 eslint disables).
+- All 4 parallel lanes pass concurrently in `scripts/orchestrate-parallel-wave.mjs` (83 targeted tests 100% green).
+- Full Vitest test suite executes cleanly with worker isolation.
+
 ## [3.1.95] - 2026-10-07 — 12 Verified Edge Cases Remediation & Zero-Debt Institutional Hardening
 
 ### Added

@@ -1,0 +1,138 @@
+/**
+ * Content Distribution Daemon & Multi-Channel Publisher Unit Tests
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { ContentDistributionDaemon } from '../../../../src/platform/marketing/content-distribution-daemon';
+import type { PostMetadata } from '../../../../src/platform/marketing/distribution-types';
+import { readJsonl } from '../../../../src/shared/persistence/file-store';
+
+describe('ContentDistributionDaemon', () => {
+  let tmpDir: string;
+  let auditLogFile: string;
+  let daemon: ContentDistributionDaemon;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'marketing-test-'));
+    auditLogFile = path.join(tmpDir, 'test-distribution-audit.jsonl');
+
+    // Create sample marketing markdown files
+    fs.writeFileSync(
+      path.join(tmpDir, 'launch-twitter-alpha.md'),
+      '# Super Alpha Signals Ready\n\nFull speed ahead on Polymarket and Kalshi prediction markets.'
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, 'blog-arbitrage.md'),
+      '# Negative-Risk Multi-Outcome Arbitrage\n\nDeep dive into negative risk calculation.'
+    );
+
+    daemon = new ContentDistributionDaemon({
+      marketingDir: tmpDir,
+      auditLogPath: auditLogFile,
+    });
+  });
+
+  afterEach(() => {
+    daemon.stopDaemon();
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup error
+    }
+  });
+
+  it('syncs marketing templates from directory without modifying files', () => {
+    const discovered = daemon.syncFromDirectory();
+    expect(discovered).toHaveLength(2);
+
+    const twitterPost = discovered.find((p) => p.slug === 'launch-twitter-alpha');
+    expect(twitterPost).toBeDefined();
+    expect(twitterPost?.title).toBe('Super Alpha Signals Ready');
+    expect(twitterPost?.targetChannels).toContain('TWITTER');
+
+    const blogPost = discovered.find((p) => p.slug === 'blog-arbitrage');
+    expect(blogPost).toBeDefined();
+    expect(blogPost?.title).toBe('Negative-Risk Multi-Outcome Arbitrage');
+    expect(blogPost?.targetChannels).toContain('BLOG');
+  });
+
+  it('queues post and validates schema', () => {
+    const post: PostMetadata = {
+      id: 'custom-post-1',
+      title: 'Breaking Milestone',
+      slug: 'breaking-milestone',
+      content: 'Milestone reached: 15,000 green tests',
+      tags: ['release', 'testing'],
+      targetChannels: ['TELEGRAM', 'BLOG'],
+      author: 'Tester',
+      locale: 'bilingual',
+      status: 'QUEUED',
+    };
+
+    daemon.queuePost(post);
+    expect(daemon.getQueue()).toHaveLength(1);
+    expect(daemon.getQueue()[0].id).toBe('custom-post-1');
+  });
+
+  it('dispatches queued posts and generates syndication records', async () => {
+    daemon.syncFromDirectory();
+    const records = await daemon.dispatchQueued();
+
+    expect(records.length).toBeGreaterThan(0);
+    expect(records.every((r) => r.status === 'SUCCESS')).toBe(true);
+
+    const history = daemon.getHistory();
+    expect(history.length).toBe(records.length);
+
+    // Audit logs should be written to auditLogFile
+    expect(fs.existsSync(auditLogFile)).toBe(true);
+    const auditEntries = await readJsonl<{ event: string; payload: Record<string, unknown> }>(auditLogFile);
+    expect(auditEntries.length).toBeGreaterThan(0);
+    expect(auditEntries.some((e) => e.event === 'SYNC_COMPLETED')).toBe(true);
+    expect(auditEntries.some((e) => e.event === 'DISPATCH_SUCCESS')).toBe(true);
+  });
+
+  it('handles publisher failure gracefully and logs failure in audit', async () => {
+    const failingDaemon = new ContentDistributionDaemon({
+      marketingDir: tmpDir,
+      auditLogPath: auditLogFile,
+      publisher: async () => {
+        throw new Error('API Rate Limited (429)');
+      },
+    });
+
+    failingDaemon.queuePost({
+      id: 'fail-post',
+      title: 'Will Fail',
+      slug: 'will-fail',
+      content: 'Failed attempt',
+      tags: ['fail'],
+      targetChannels: ['TWITTER'],
+      author: 'Tester',
+      locale: 'bilingual',
+      status: 'QUEUED',
+    });
+
+    const records = await failingDaemon.dispatchQueued();
+    expect(records).toHaveLength(1);
+    expect(records[0].status).toBe('FAILED');
+    expect(records[0].error).toContain('API Rate Limited');
+
+    const auditEntries = await readJsonl<{ event: string }>(auditLogFile);
+    expect(auditEntries.some((e) => e.event === 'DISPATCH_FAILED')).toBe(true);
+  });
+
+  it('starts and stops daemon background interval safely', () => {
+    daemon.startDaemon(5000);
+    // Double start should be idempotent
+    daemon.startDaemon(5000);
+    daemon.stopDaemon();
+    // Double stop should be idempotent
+    daemon.stopDaemon();
+
+    expect(fs.existsSync(auditLogFile)).toBe(true);
+  });
+});
