@@ -22,6 +22,8 @@ export interface RelayerSignedOrder extends RelayerOrderRequest {
   expiration: number;
   feeRateBps: number;
   signatureType: SignatureType;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
 }
 
 export interface RelayerOrderResponse {

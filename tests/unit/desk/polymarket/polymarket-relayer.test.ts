@@ -45,10 +45,10 @@ describe('Polymarket Relayer & Settlement Engine', () => {
       });
 
       const synced = await relayer.syncNonce();
-      expect(synced).toBe(42);
+      expect(synced).toBe(43);
 
-      const nextNonce = relayer.getNextNonce();
-      expect(nextNonce).toContain('43');
+      const nextNonce = await relayer.getNextNonce();
+      expect(nextNonce).toContain('44');
     });
 
     it('executes gasless order submission with latency measurement', async () => {

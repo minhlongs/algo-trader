@@ -1,77 +1,87 @@
 /**
- * Bootstrap Sharpe Confidence Interval
- *
- * Resamples per-bar returns with replacement to estimate the sampling
- * distribution of the annualised Sharpe ratio, producing a confidence
- * interval and the probability that Sharpe is positive. Deterministic via
- * seeded PRNG — same seed, same result.
+ * Deflated Sharpe Ratio (DSR) implementation.
+ * Accounts for strategy selection bias.
  */
-
 import {
-  annualizedSharpe,
-  DEFAULT_BARS_PER_YEAR,
-  DEFAULT_N_SIMULATIONS,
-  DEFAULT_SIMULATION_SEED,
-  mulberry32,
-  percentile,
+    BootstrapOptions,
+    BootstrapResult,
+    mulberry32,
+    annualizedSharpe,
+    percentile,
+    DEFAULT_N_SIMULATIONS,
+    DEFAULT_SIMULATION_SEED,
+    DEFAULT_BARS_PER_YEAR
 } from './validation-types';
-import type { BootstrapOptions, BootstrapResult } from './validation-types';
 
-const MIN_RETURNS = 5;
+export function calculateDSR(
+    sharpe: number,
+    sigma: number,
+    nTrials: number,
+    nBacktests: number
+): number {
+    if (sigma <= 0 || nTrials <= 0) return sharpe;
 
-/**
- * Bootstrap the Sharpe ratio from a return series.
- * Returns an error object (never throws) when inputs are insufficient.
- */
+    // Simplified DSR adjustment based on Bailey & de Prado
+    // Correction for multiple testing (selection bias)
+    const expectation = 0.5772156649; // Euler-Mascheroni constant
+    const zScore = sharpe / (sigma / Math.sqrt(nTrials));
+    const adjustmentFactor = Math.sqrt(2 * Math.log(nBacktests)) -
+                             (Math.log(Math.log(nBacktests)) + Math.log(4 * Math.PI)) / (2 * Math.sqrt(2 * Math.log(nBacktests)));
+
+    return (zScore - expectation * adjustmentFactor) / (1 - expectation * adjustmentFactor);
+}
+
 export function bootstrapSharpeCi(
-  returns: readonly number[],
-  options: BootstrapOptions = {},
+    returns: readonly number[],
+    options?: BootstrapOptions
 ): BootstrapResult {
-  const nBootstrap = options.nBootstrap ?? DEFAULT_N_SIMULATIONS;
-  const confidence = options.confidence ?? 0.95;
-  const seed = options.seed ?? DEFAULT_SIMULATION_SEED;
-  const barsPerYear = options.barsPerYear ?? DEFAULT_BARS_PER_YEAR;
+    const nBootstrap = options?.nBootstrap ?? DEFAULT_N_SIMULATIONS;
+    const confidence = options?.confidence ?? 0.95;
+    const seed = options?.seed ?? DEFAULT_SIMULATION_SEED;
+    const barsPerYear = options?.barsPerYear ?? DEFAULT_BARS_PER_YEAR;
 
-  if (!Number.isInteger(nBootstrap) || nBootstrap < 1) {
-    return { ok: false, error: `nBootstrap must be an integer >= 1, got ${nBootstrap}` };
-  }
-  if (!Number.isFinite(confidence) || confidence <= 0 || confidence >= 1) {
-    return { ok: false, error: `confidence must be in (0, 1), got ${confidence}` };
-  }
-  if (!Number.isInteger(seed) || seed < 0) {
-    return { ok: false, error: `seed must be an integer >= 0, got ${seed}` };
-  }
-  if (returns.length < MIN_RETURNS) {
-    return { ok: false, error: `need at least ${MIN_RETURNS} return observations, got ${returns.length}` };
-  }
-  if (returns.some((r) => !Number.isFinite(r))) {
-    return { ok: false, error: 'all return values must be finite numbers' };
-  }
+    if (returns.length < 5) return { ok: false, error: 'need at least 5 observations' };
+    if (!Number.isInteger(nBootstrap) || nBootstrap <= 0) return { ok: false, error: 'nBootstrap must be integer >= 1' };
+    if (!Number.isFinite(confidence) || confidence <= 0 || confidence >= 1) return { ok: false, error: 'confidence must be in (0, 1)' };
+    if (!Number.isInteger(seed) || seed < 0) return { ok: false, error: 'seed must be integer >= 0' };
 
-  const observedSharpe = annualizedSharpe(returns, barsPerYear);
-  const rng = mulberry32(seed);
-  const bootSharpes: number[] = [];
-  const sample = new Array<number>(returns.length);
-
-  for (let i = 0; i < nBootstrap; i++) {
-    for (let j = 0; j < returns.length; j++) {
-      sample[j] = returns[Math.floor(rng() * returns.length)]!;
+    for (let i = 0; i < returns.length; i++) {
+        if (!Number.isFinite(returns[i])) {
+            return { ok: false, error: 'All returns must be finite' };
+        }
     }
-    bootSharpes.push(annualizedSharpe(sample, barsPerYear));
-  }
 
-  const alpha = (1 - confidence) / 2;
-  const positiveCount = bootSharpes.filter((s) => s > 0).length;
+    const observedSharpe = annualizedSharpe(returns, barsPerYear);
+    const rng = mulberry32(seed);
 
-  return {
-    ok: true,
-    observedSharpe,
-    ciLower: percentile(bootSharpes, alpha * 100),
-    ciUpper: percentile(bootSharpes, (1 - alpha) * 100),
-    medianSharpe: percentile(bootSharpes, 50),
-    probPositive: positiveCount / nBootstrap,
-    confidence,
-    nBootstrap,
-    seed,
-  };
+    const bootstrapSharpes: number[] = new Array(nBootstrap);
+    let positiveCount = 0;
+
+    for (let b = 0; b < nBootstrap; b++) {
+        const resampled = new Array(returns.length);
+        for (let i = 0; i < returns.length; i++) {
+            const idx = Math.floor(rng() * returns.length);
+            resampled[i] = returns[idx];
+        }
+        const s = annualizedSharpe(resampled, barsPerYear);
+        bootstrapSharpes[b] = s;
+        if (s > 0) positiveCount++;
+    }
+
+    const alpha = (1 - confidence) / 2;
+    const ciLower = percentile(bootstrapSharpes, alpha * 100);
+    const ciUpper = percentile(bootstrapSharpes, (1 - alpha) * 100);
+    const medianSharpe = percentile(bootstrapSharpes, 50);
+
+    return {
+        ok: true,
+        observedSharpe,
+        ciLower,
+        ciUpper,
+        medianSharpe,
+        probPositive: positiveCount / nBootstrap,
+        confidence,
+        nBootstrap,
+        seed
+    };
 }

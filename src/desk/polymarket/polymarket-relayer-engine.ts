@@ -5,7 +5,10 @@
  */
 
 import { ethers } from 'ethers';
+import { z } from 'zod';
 import { logger } from '../../shared/utils/logger';
+import { RelayerNonceManager } from './relayer-nonce-manager';
+import { GasStationClient } from './gas-station-client';
 import {
   DEFAULT_RELAYER_URL,
   CTF_EXCHANGE_ADDRESS,
@@ -24,7 +27,8 @@ export class PolymarketRelayerEngine {
   private readonly chainId: number;
   private readonly verifyingContract: string;
   private readonly fetchFn: typeof fetch;
-  private currentNonce = 0;
+  private readonly nonceManager: RelayerNonceManager;
+  private readonly gasStation: GasStationClient;
 
   constructor(privateKey: string, config: RelayerConfig = {}) {
     if (!privateKey) throw new Error('privateKey is required for PolymarketRelayerEngine');
@@ -34,6 +38,8 @@ export class PolymarketRelayerEngine {
     this.chainId = config.chainId ?? 137;
     this.verifyingContract = config.verifyingContract ?? CTF_EXCHANGE_ADDRESS;
     this.fetchFn = config.fetchFn ?? globalThis.fetch;
+    this.nonceManager = new RelayerNonceManager(this.wallet.address);
+    this.gasStation = new GasStationClient();
   }
 
   public getAddress(): string {
@@ -43,27 +49,30 @@ export class PolymarketRelayerEngine {
   public async syncNonce(): Promise<number> {
     try {
       const res = await this.fetchFn(`${this.relayerUrl}/nonce?address=${this.wallet.address}`);
-      if (res.ok) {
-        const data = (await res.json()) as { nonce?: number | string };
-        const parsed = Number(data?.nonce ?? 0);
-        this.currentNonce = Math.max(this.currentNonce, parsed);
-      }
+      if (!res.ok) throw new Error(`Nonce sync failed: ${res.status}`);
+      const data = (await res.json()) as { nonce?: number | string };
+      const parsed = Number(data?.nonce ?? 0);
+      this.nonceManager.setNonce(parsed);
     } catch (err) {
-      logger.warn('[PolymarketRelayer] Nonce sync failed, using local counter', { err });
+      logger.error('[PolymarketRelayer] Nonce sync critical requirement failed', { err });
+      throw err; // Propagate failure for strict viable validation
     }
-    return this.currentNonce;
+    return this.nonceManager.getNext();
   }
 
-  public getNextNonce(): string {
-    this.currentNonce++;
-    return `${Date.now()}${this.currentNonce}`;
+  public async getNextNonce(): Promise<string> {
+    const nonce = await this.nonceManager.getNext();
+    return `${Date.now()}${nonce}`;
   }
 
   public async buildAndSignOrder(req: RelayerOrderRequest): Promise<RelayerSignedOrder> {
-    const nonce = req.nonce ?? this.getNextNonce();
+    const nonce = req.nonce ?? (await this.getNextNonce());
     const expiration = req.expiration ?? Math.floor(Date.now() / 1000) + 3600;
     const feeRateBps = req.feeRateBps ?? 0;
     const signatureType: SignatureType = req.signatureType ?? 0;
+
+    // Fetch gas dynamics
+    const gas = await this.gasStation.getRecommendedGas();
 
     const domain = {
       name: 'Polymarket CTF Exchange',
@@ -82,6 +91,8 @@ export class PolymarketRelayerEngine {
         { name: 'feeRateBps', type: 'uint256' },
         { name: 'side', type: 'uint8' },
         { name: 'signatureType', type: 'uint8' },
+        { name: 'maxFeePerGas', type: 'uint256' },
+        { name: 'maxPriorityFeePerGas', type: 'uint256' },
       ],
     };
 
@@ -97,6 +108,8 @@ export class PolymarketRelayerEngine {
       feeRateBps: feeRateBps.toString(),
       side: req.side === 'BUY' ? 0 : 1,
       signatureType,
+      maxFeePerGas: gas.maxFeePerGas.toString(),
+      maxPriorityFeePerGas: gas.maxPriorityFeePerGas.toString(),
     };
 
     const signature = await this.wallet.signTypedData(domain, types, message);
@@ -105,10 +118,12 @@ export class PolymarketRelayerEngine {
       ...req,
       signature,
       maker: this.wallet.address,
-      nonce,
+      nonce: nonce.toString(),
       expiration,
       feeRateBps,
       signatureType,
+      maxFeePerGas: gas.maxFeePerGas.toString(),
+      maxPriorityFeePerGas: gas.maxPriorityFeePerGas.toString(),
     };
   }
 
@@ -127,6 +142,8 @@ export class PolymarketRelayerEngine {
           feeRateBps: order.feeRateBps,
           signatureType: order.signatureType,
           signature: order.signature,
+          maxFeePerGas: order.maxFeePerGas,
+          maxPriorityFeePerGas: order.maxPriorityFeePerGas,
         },
       };
 
@@ -143,10 +160,16 @@ export class PolymarketRelayerEngine {
       }
 
       const data = (await res.json()) as { orderId?: string; status?: string; transactionHash?: string };
+      const parsedData = z.object({
+        orderId: z.string().optional(),
+        status: z.string().optional(),
+        transactionHash: z.string().optional(),
+      }).parse(data);
+
       return {
-        orderId: data.orderId ?? `relayer-${Date.now()}`,
-        status: (data.status as RelayerOrderResponse['status']) ?? 'PENDING',
-        transactionHash: data.transactionHash,
+        orderId: parsedData.orderId ?? `relayer-${Date.now()}`,
+        status: (parsedData.status as RelayerOrderResponse['status']) ?? 'PENDING',
+        transactionHash: parsedData.transactionHash,
         latencyMs,
       };
     } catch (err) {

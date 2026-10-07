@@ -104,6 +104,11 @@ command = "npx tsc -p tsconfig.worker.json"
 crons = ["*/5 * * * *"]
 
 # Add environment-specific configurations for multi-region workers
+[env.staging]
+name = "algo-trader-staging"
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
 [env.us-east]
 name = "algo-trader-us-east"
 [env.us-east.vars]
