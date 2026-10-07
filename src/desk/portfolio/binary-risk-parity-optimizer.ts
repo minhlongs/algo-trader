@@ -41,16 +41,40 @@ export class BinaryRiskParityOptimizer {
     const sumInvVol = invVols.reduce((sum, v) => sum + v, 0);
     let rawWeights = invVols.map((v) => v / sumInvVol);
 
-    // 2. Enforce maxSingleAssetWeight cap
+    // 2. Enforce asset weight caps via iterative water-filling redistribution
     const cap = Math.min(1.0, constraints.maxSingleAssetWeight);
-    rawWeights = rawWeights.map((w, i) => {
-      const assetCap = assets[i]!.maxWeightLimit ?? cap;
-      return Math.min(w, assetCap);
-    });
+    const caps = assets.map((a) => Math.min(1.0, a.maxWeightLimit ?? cap));
+    const finalWeights = [...rawWeights];
+    const cappedIndices = new Set<number>();
 
-    // Re-normalize to simplex
-    const sumClamped = rawWeights.reduce((s, w) => s + w, 0);
-    const finalWeights = rawWeights.map((w) => (sumClamped > 0 ? w / sumClamped : 1 / n));
+    // Iteratively clamp and redistribute excess weight to uncapped assets
+    for (let iter = 0; iter < n; iter++) {
+      let excessWeight = 0;
+      let uncappedWeightSum = 0;
+
+      for (let i = 0; i < n; i++) {
+        if (finalWeights[i]! > caps[i]! && !cappedIndices.has(i)) {
+          cappedIndices.add(i);
+        }
+        if (cappedIndices.has(i)) {
+          excessWeight += finalWeights[i]! - caps[i]!;
+          finalWeights[i] = caps[i]!;
+        } else {
+          uncappedWeightSum += finalWeights[i]!;
+        }
+      }
+
+      if (excessWeight <= 0.000001 || uncappedWeightSum <= 0.000001) {
+        break;
+      }
+
+      // Redistribute excess proportionally among uncapped assets
+      for (let i = 0; i < n; i++) {
+        if (!cappedIndices.has(i)) {
+          finalWeights[i] += (finalWeights[i]! / uncappedWeightSum) * excessWeight;
+        }
+      }
+    }
 
     // 3. Compute portfolio expected return and variance
     let expectedReturnBps = 0;

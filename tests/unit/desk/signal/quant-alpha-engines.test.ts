@@ -86,5 +86,29 @@ describe('Quantitative Alpha Trilogy', () => {
       expect(allocation.cvar95Usd).toBeGreaterThanOrEqual(allocation.parametricVaR95Usd);
       expect(allocation.diversificationRatio).toBeGreaterThan(1.0);
     });
+
+    it('enforces strict asset weight caps without inflating already capped assets', () => {
+      const assets = [
+        { symbol: 'low-vol', currentPrice: 0.50, expectedReturnBps: 100, estimatedVolatility: 0.05, maxWeightLimit: 0.40 },
+        { symbol: 'mid-vol', currentPrice: 0.50, expectedReturnBps: 100, estimatedVolatility: 0.20 },
+        { symbol: 'high-vol', currentPrice: 0.50, expectedReturnBps: 100, estimatedVolatility: 0.50 },
+      ];
+      const cov = [
+        [0.0025, 0, 0],
+        [0, 0.04, 0],
+        [0, 0, 0.25],
+      ];
+
+      const allocation = optimizer.optimizeAllocation(assets, cov, 100000, {
+        maxPortfolioVolatility: 0.20,
+        cvarConfidenceLevel: 0.95,
+        maxSingleAssetWeight: 0.50,
+      });
+
+      // low-vol initial weight would be >0.70 due to low volatility, but must be capped strictly at 0.40
+      expect(allocation.weights['low-vol']).toBeLessThanOrEqual(0.4001);
+      const totalWeight = Object.values(allocation.weights).reduce((s, w) => s + w, 0);
+      expect(totalWeight).toBeCloseTo(1.0, 2);
+    });
   });
 });
