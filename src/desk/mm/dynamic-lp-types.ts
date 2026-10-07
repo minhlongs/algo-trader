@@ -8,12 +8,20 @@
  */
 
 export interface DynamicLpConfig {
-  readonly targetSpreadPct: number; // base full spread, e.g. 0.04 (4%)
-  readonly maxInventoryAbs: number; // max inventory shares before 100% asymmetric shading
-  readonly inventoryRiskAversion: number; // gamma factor for inventory skew (default: 0.5)
-  readonly orderSizeShares: number; // standard quoting size per level
+  readonly targetSpreadPct?: number; // base full spread, e.g. 0.04 (4%)
+  readonly maxInventoryAbs?: number; // max inventory shares before 100% asymmetric shading
+  readonly inventoryRiskAversion?: number; // gamma factor for inventory skew (default: 0.5)
+  readonly orderSizeShares?: number; // standard quoting size per level
   readonly minSpreadPct?: number; // minimum half-spread or floor (default: 0.01)
 }
+
+export const DEFAULT_DYNAMIC_LP_CONFIG: Required<DynamicLpConfig> = {
+  targetSpreadPct: 0.04,
+  maxInventoryAbs: 500,
+  inventoryRiskAversion: 0.5,
+  orderSizeShares: 50,
+  minSpreadPct: 0.01,
+};
 
 export interface MarketMakingContext {
   readonly marketId: string;
