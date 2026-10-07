@@ -304,6 +304,18 @@
 
 **Status:** Wave 6 COMPLETE ✅. Billing gateway reliability, edge deliverability, and automated activation certified.
 
+## Institutional Trading Desk: Microstructure, Harmonizer & Clearing (Completed ✅ 2026-10-07)
+- [x] **L3 Discrete Event Order Book Simulation Suite**: ITCH/OUCH replay engine, $O(1)$ priority preservation, Kyle's Lambda OLS permanent/temporary impact, Box-Muller LogNormal jitter queue fill simulator.
+- [x] **Desk Harmonizer Pipeline**: Hayashi-Yoshida cross-correlation drift, VPIN toxicity mitigation, Avellaneda-Stoikov quoting modulation, AMM LVR delta hedging.
+- [x] **Institutional Clearing & Margin Suite**: Atomic DvP swap relayer with timeout rollback, SPAN binary portfolio scenario margining, counterparty credit PFE & wrong-way risk haircut sentinel.
+- [x] **Merged in PR #157** (commit `7d46a204`).
+
+## Institutional Trading Desk: Edge HFT, Continuous RL & MEV Shield (Completed ✅ 2026-10-07)
+- [x] **Edge HFT Gateway & Multiplexer Suite**: Multi-region colocation router (`EdgeOrderRouter`), sequence gap tracking & circular backpressure buffer (`WsStreamMultiplexer`), L0-L4 tiered kill-switch (`MicrosecondCircuitBreaker`).
+- [x] **Continuous RL & Dynamic Volatility Surface Suite**: Continuous state-action policy agent (`ContinuousPolicyAgent`), Hagan SABR volatility smile model (`SabrVolSurfaceCalibrator`), Markov jump-diffusion filter (`RegimeJumpDiffusionFilter`).
+- [x] **Institutional MEV Shield & JIT Liquidity Suite**: Private mempool bundle relayer (`PrivateMempoolBundleRelayer`), JIT concentrated liquidity optimizer (`JitLiquidityProvisioner`), toxic LVR arbitrage interceptor (`ToxicLvrInterceptor`).
+- [x] **Merged in PR #158** (commit `b8c18271`). 162/162 test suites passing (2,676 unit tests green), 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
