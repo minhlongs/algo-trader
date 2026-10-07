@@ -13,7 +13,13 @@ export {
   LiveTradingStrategyExecutor,
   type StrategyTickFn,
   type TickContext,
+  type StrategyTradingTier,
+  type StrategyPaperProfile,
+  type PaperToLiveEvaluationResult,
+  type GatingCriteriaConfig,
 } from './live-trading-strategy-executor';
+export { evaluatePaperToLiveGating } from './live-trading-gating-evaluator';
+export { DEFAULT_GATING_CONFIG } from './live-trading-gating-types';
 
 export {
   LiveTradingEventHandler,

@@ -103,13 +103,18 @@ command = "npx tsc -p tsconfig.worker.json"
 [triggers]
 crons = ["*/5 * * * *"]
 
-# Staging environment — prevents staging deploys overwriting production
-[env.staging]
-name = "algo-trader-staging"
+# Add environment-specific configurations for multi-region workers
+[env.us-east]
+name = "algo-trader-us-east"
+[env.us-east.vars]
+ENVIRONMENT = "us-east"
 
-[env.staging.vars]
-ENVIRONMENT = "staging"
-NOWPAYMENTS_INVOICE_PRO = "<set via wrangler secret put>"
-NOWPAYMENTS_INVOICE_ENTERPRISE = "<set via wrangler secret put>"
-NOWPAYMENTS_IPN_URL = "https://algo-trader-staging.workers.dev/api/v1/webhooks/nowpayments"
-OMNIROUTE_URL = "http://omnimbp.local:20128/v1"  # Mandatory OmniRoute gateway (mDNS local)
+[env.eu-central]
+name = "algo-trader-eu-central"
+[env.eu-central.vars]
+ENVIRONMENT = "eu-central"
+
+[env.ap-southeast]
+name = "algo-trader-ap-southeast"
+[env.ap-southeast.vars]
+ENVIRONMENT = "ap-southeast"

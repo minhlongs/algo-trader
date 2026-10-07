@@ -50,9 +50,7 @@ export async function dispatchSignalOrder(
   const validation = config.adapter.validateSignal(signal);
   if (!validation.valid) {
     const identifier = signal.strategyId ?? signal.signalId ?? 'unknown';
-    logger.info(
-      `[AISignalPaperRouter] Signal validation rejected for ${identifier}: ${validation.rejectionReasons.join('; ')}`,
-    );
+    logger.info(`[AISignalPaperRouter] Signal validation rejected for ${identifier}: ${validation.rejectionReasons.join('; ')}`);
     return {
       status: 'REJECTED',
       signal,
@@ -91,13 +89,29 @@ export async function dispatchSignalOrder(
     };
   }
 
+  if (config.circuitBreaker && isBuy) {
+    const canTrade = await config.circuitBreaker.canTrade();
+    if (!canTrade) {
+      const status = await config.circuitBreaker.getStatus();
+      logger.warn(`[AISignalPaperRouter] Signal blocked by risk circuit breaker (${status.reason ?? status.state})`);
+      return {
+        status: 'REJECTED',
+        signal,
+        symbol,
+        marketPrice,
+        validation,
+        reason: `Risk circuit breaker active: ${status.reason ?? status.state}`,
+        timestamp,
+      };
+    }
+  }
+
   let tradeSignal: TradeSignal;
   if (isBuy) {
     const pnlSummary = config.paperExecutor.getPnlSummary();
     const positions = config.paperExecutor.getPositions();
     const positionValue = positions.reduce((sum, p) => sum + p.quantity * p.currentPrice, 0);
-    const currentEquity = pnlSummary.balance + positionValue;
-    const sizingEquity = currentEquity > 0 ? currentEquity : 10_000;
+    const sizingEquity = (pnlSummary.balance + positionValue) > 0 ? (pnlSummary.balance + positionValue) : 10_000;
 
     tradeSignal = sizeSignalToTradeSignal(signal, {
       portfolioEquity: sizingEquity,
@@ -111,9 +125,7 @@ export async function dispatchSignalOrder(
     });
 
     if (tradeSignal.quantity <= 0) {
-      logger.info(
-        `[AISignalPaperRouter] Zero position size allocated for ${symbol} in regime ${signal.regime}`,
-      );
+      logger.info(`[AISignalPaperRouter] Zero position size allocated for ${symbol} in regime ${signal.regime}`);
       return {
         status: 'ZERO_SIZE',
         signal,
@@ -121,10 +133,7 @@ export async function dispatchSignalOrder(
         marketPrice,
         validation,
         tradeSignal,
-        reason:
-          signal.regime === 'SHOCK'
-            ? 'Regime is SHOCK: zero allocation enforced'
-            : 'Position sizing returned 0 quantity',
+        reason: signal.regime === 'SHOCK' ? 'Regime is SHOCK: zero allocation enforced' : 'Position sizing returned 0 quantity',
         timestamp,
       };
     }
@@ -142,12 +151,7 @@ export async function dispatchSignalOrder(
         timestamp,
       };
     }
-    tradeSignal = {
-      symbol,
-      side: 'sell',
-      quantity: currentPos.quantity,
-      price: marketPrice,
-    };
+    tradeSignal = { symbol, side: 'sell', quantity: currentPos.quantity, price: marketPrice };
   }
 
   const execResult = await config.paperExecutor.executePaperTrade(tradeSignal, marketPrice);
@@ -174,9 +178,12 @@ export async function dispatchSignalOrder(
   tracker.addFillRecord(fillRecord);
   tracker.recordSnapshot();
 
-  logger.info(
-    `[AISignalPaperRouter] Order ${trade.side.toUpperCase()} ${trade.quantity} ${symbol} filled @ $${trade.executedPrice.toFixed(2)} (fee: $${trade.fee.toFixed(2)}, slippage: ${fillRecord.slippageBps} bps)`,
-  );
+  if (config.circuitBreaker && trade.pnl !== undefined && trade.pnl !== 0) {
+    if (trade.pnl > 0) void config.circuitBreaker.recordWin();
+    else if (trade.pnl < 0) void config.circuitBreaker.recordLoss();
+  }
+
+  logger.info(`[AISignalPaperRouter] Order ${trade.side.toUpperCase()} ${trade.quantity} ${symbol} filled @ $${trade.executedPrice.toFixed(2)}`);
 
   return {
     status: 'FILLED',

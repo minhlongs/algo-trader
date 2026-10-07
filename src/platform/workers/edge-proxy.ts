@@ -1,46 +1,25 @@
 /**
  * Cloudflare Workers Edge Proxy + Standalone Auth
- * When VPS_ORIGIN is set: proxies to backend
- * When not set: handles auth + basic data locally via KV
- *
- * This is the thin orchestrator — routing table + re-exports.
- * Types, constants, regions, and metrics live in sub-modules.
- * Inline D1/KV handlers extracted to edge-proxy-inline-routes.ts.
+ * Routing table + re-exports. Submodules contain types, constants, regions, metrics.
  */
 
 // ── Backward-compatible re-exports ──
 export type { Env } from './edge-proxy-types';
 export { ShardManager, StrategyShard } from '../../durable-objects';
 
-// ── Auth handlers (KV-backed, always local) ──
-import {
-  handleSignup, handleLogin, handleMe,
-  handleListUsers, handleSetRole, handleDeleteUser,
-  notImplementedResponse, type AuthEnv,
-} from './auth-handlers';
-
-// ── API handlers ──
-import {
-  handleGetMySubscription, handleUpgrade, handleCancel, handleGetTiers,
-} from './api/subscriptions';
+// ── Route & Submodule Handlers ──
+import { handleSignup, handleLogin, handleMe, handleListUsers, handleSetRole, handleDeleteUser, notImplementedResponse, type AuthEnv } from './auth-handlers';
+import { handleGetMySubscription, handleUpgrade, handleCancel, handleGetTiers } from './api/subscriptions';
 import { handleNowPaymentsIPN } from './api/webhooks-nowpayments';
 import { handleValidateCoupon, handleApplyCoupon, handleRedeemCoupon, handleActivateCoupon } from './coupon-handlers';
 import { handleVersion } from './api/version';
 import { handleEnergy9Delivery } from './api/energy-9';
 import { handleCopilotAsk } from './api/copilot';
 import { handleTelegramWebhook, handleSetTelegramWebhook } from './api/telegram-bot';
-import {
-  handleGetRing, handleExecuteStrategy,
-  handleGetStrategiesList, handleGetMarkets, handleGetShardById,
-} from './api/markets';
-
-// ── Internal sub-modules ──
+import { handleGetRing, handleExecuteStrategy, handleGetStrategiesList, handleGetMarkets, handleGetShardById } from './api/markets';
 import type { Env, CloudflareCf } from './edge-proxy-types';
 import { CORS, SECURITY_HEADERS } from './edge-proxy-constants';
-import {
-  getClientRegion, getRegionHealth,
-  selectBestRegion, routeToRegion,
-} from './edge-proxy-regions';
+import { getClientRegion, getCachedRegionHealth, selectBestRegion, routeToRegion, updateRegionHealthCache } from './edge-proxy-regions';
 import { handleMetrics, metricEntry } from './edge-proxy-metrics';
 import { handleTenantConfigSave, handlePaperTradesLedger } from './edge-proxy-inline-routes';
 
@@ -85,12 +64,12 @@ export default {
     }
     if (path === '/metrics' && request.method === 'POST') return metricEntry(request, env);
 
-    // ── Multi-region routing ──
+    // ── Multi-region routing (uses sub-ms KV-cached health probes) ──
     const routingEnabled = env.REGION_ROUTING_ENABLED !== 'false';
     if (routingEnabled && path.startsWith('/api/') && env.VPS_ORIGIN) {
       const cf = (request as unknown as { cf?: CloudflareCf }).cf;
       const clientRegion = getClientRegion(cf);
-      const health = await getRegionHealth(env);
+      const health = await getCachedRegionHealth(env);
       const bestRegion = selectBestRegion(health, clientRegion);
       if (bestRegion !== env.ENVIRONMENT) return await routeToRegion(request, bestRegion, env);
     }
@@ -184,10 +163,14 @@ export default {
 
   /**
    * Cron trigger handler (CF Workers `scheduled` event).
-   * CF Workers are stateless per invocation — each scheduled tick runs one loop iteration,
-   * loading state from KV before the tick and saving after.
+   * Runs async region health probes into KV + paper trading loop iteration.
    */
   async scheduled(_event: ScheduledEvent, env: Env): Promise<void> {
+    try {
+      await updateRegionHealthCache(env);
+    } catch (err) {
+      logger.error('[EdgeProxy] Region health cache update failed', { err });
+    }
     try {
       ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
       await runPaperTradingTick(env.CACHE, env, env.SUBSCRIBERS);

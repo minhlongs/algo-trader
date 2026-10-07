@@ -7,6 +7,7 @@ import { AISignalAdapter } from '../../desk/strategies/ai-signal-adapter';
 import { AISignalPaperRouter } from '../../desk/strategies/ai-signal-paper-router';
 import { PaperExecutor } from '../../desk/execution/paper-executor';
 import { RegimeAwareKelly } from '../../desk/risk/regime-aware-kelly';
+import { CircuitBreaker } from '../../desk/risk/circuit-breaker';
 import { LiveGuardHandoffCoordinator } from '../../desk/execution/live-guard-handoff';
 import { LiveExecutionGuard } from '../../desk/execution/live-execution-guard-core';
 import type { AlphaLabAutonomousPipelineConfig } from './alpha-lab-pipeline-types';
@@ -16,6 +17,7 @@ export interface PipelineSubsystems {
   signalAdapter: AISignalAdapter;
   paperExecutor: PaperExecutor;
   regimeKelly: RegimeAwareKelly;
+  circuitBreaker: CircuitBreaker;
   paperRouter: AISignalPaperRouter;
   liveGuard: LiveExecutionGuard;
   liveCoordinator: LiveGuardHandoffCoordinator;
@@ -70,6 +72,8 @@ export function createPipelineSubsystems(
       unknownRegimeMultiplier: 0.75,
     });
 
+  const circuitBreaker = config?.circuitBreaker ?? new CircuitBreaker();
+
   const paperRouter =
     config?.paperRouter ??
     new AISignalPaperRouter({
@@ -77,6 +81,7 @@ export function createPipelineSubsystems(
       paperExecutor,
       regimeKelly,
       drawdownBreaker: config?.drawdownBreaker,
+      circuitBreaker,
       defaultSymbol: symbol,
     });
 
@@ -90,6 +95,7 @@ export function createPipelineSubsystems(
       guard: liveGuard,
       capitalUsdc: liveCapitalUsdc,
       drawdownBreaker: config?.drawdownBreaker,
+      circuitBreaker,
     });
 
   return {
@@ -97,6 +103,7 @@ export function createPipelineSubsystems(
     signalAdapter,
     paperExecutor,
     regimeKelly,
+    circuitBreaker,
     paperRouter,
     liveGuard,
     liveCoordinator,

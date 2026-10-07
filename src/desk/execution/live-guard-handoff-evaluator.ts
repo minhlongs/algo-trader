@@ -5,6 +5,7 @@
 import type { LiveExecutionGuard } from './live-execution-guard-core';
 import type { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
 import type { TieredDrawdownBreaker } from '../risk/tiered-drawdown-breaker';
+import type { CircuitBreaker } from '../risk/circuit-breaker';
 import type { AlphaLifecycleState } from '../../alpha-lab/attribution/alpha-lifecycle-state-machine';
 import type {
   LiveOrderHandoffRequest,
@@ -16,6 +17,7 @@ export interface EvaluatorContext {
   signalTtlMs: number;
   rateLimitOrdersPerSec: number;
   drawdownBreaker?: TieredDrawdownBreaker;
+  circuitBreaker?: CircuitBreaker;
   guard: LiveExecutionGuard;
   getOrCreateRateLimiter: (strategyId: string) => TokenBucketRateLimiter;
   isPromotionEligible: (state: AlphaLifecycleState) => boolean;
@@ -87,6 +89,21 @@ export function evaluateHandoffOrder(
       order: request.order,
       evaluatedAt: now,
     };
+  }
+
+  // 4b. Risk CircuitBreaker
+  if (ctx.circuitBreaker) {
+    const breakerStatus = ctx.circuitBreaker.getSyncStatus();
+    if (breakerStatus.state === 'OPEN') {
+      checks.circuitBreakerOk = false;
+      return {
+        approved: false,
+        reason: `CIRCUIT_BREAKER: Trading halted by circuit breaker (${breakerStatus.reason ?? 'OPEN'})`,
+        checks,
+        order: request.order,
+        evaluatedAt: now,
+      };
+    }
   }
 
   // 5. LiveExecutionGuard.guardOrder()

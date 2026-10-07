@@ -9,6 +9,7 @@ import type {
 } from './ai-signal-adapter';
 import type { RegimeAwareKelly } from '../risk/regime-aware-kelly';
 import type { TieredDrawdownBreaker } from '../risk/tiered-drawdown-breaker';
+import type { CircuitBreaker } from '../risk/circuit-breaker';
 import type {
   PaperTradeFillRecord,
   TradeSignal,
@@ -57,6 +58,7 @@ export interface AISignalPaperRouterConfig {
   paperExecutor: PaperExecutor;
   regimeKelly?: RegimeAwareKelly;
   drawdownBreaker?: TieredDrawdownBreaker;
+  circuitBreaker?: CircuitBreaker;
   defaultSymbol?: string;
   defaultWinLossRatio?: number;
   strictMaxCap?: boolean;
