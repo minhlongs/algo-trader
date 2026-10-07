@@ -20,33 +20,23 @@ describe('ContentDistributionDaemon', () => {
     auditLogFile = path.join(tmpDir, 'test-distribution-audit.jsonl');
 
     // Create sample marketing markdown files
-    fs.writeFileSync(
-      path.join(tmpDir, 'launch-twitter-alpha.md'),
-      '# Super Alpha Signals Ready\n\nFull speed ahead on Polymarket and Kalshi prediction markets.'
-    );
-    fs.writeFileSync(
-      path.join(tmpDir, 'blog-arbitrage.md'),
-      '# Negative-Risk Multi-Outcome Arbitrage\n\nDeep dive into negative risk calculation.'
-    );
+    fs.writeFileSync(path.join(tmpDir, 'launch-twitter-alpha.md'), '# Super Alpha Signals Ready\n\nFull speed.');
+    fs.writeFileSync(path.join(tmpDir, 'blog-arbitrage.md'), '# Negative-Risk Multi-Outcome Arbitrage\n\nDeep dive.');
+    fs.writeFileSync(path.join(tmpDir, 'announcement-discord-community.md'), 'Discord announcement without heading');
+    fs.writeFileSync(path.join(tmpDir, 'reddit-discussion.md'), '# Reddit Alpha Discussion\n\nDiscussion content');
+    fs.writeFileSync(path.join(tmpDir, 'weekly-email-digest.md'), '# Weekly Newsletter Digest\n\nDigest content');
 
-    daemon = new ContentDistributionDaemon({
-      marketingDir: tmpDir,
-      auditLogPath: auditLogFile,
-    });
+    daemon = new ContentDistributionDaemon({ marketingDir: tmpDir, auditLogPath: auditLogFile });
   });
 
   afterEach(() => {
     daemon.stopDaemon();
-    try {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup error
-    }
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* Ignore */ }
   });
 
   it('syncs marketing templates from directory without modifying files', () => {
     const discovered = daemon.syncFromDirectory();
-    expect(discovered).toHaveLength(2);
+    expect(discovered).toHaveLength(5);
 
     const twitterPost = discovered.find((p) => p.slug === 'launch-twitter-alpha');
     expect(twitterPost).toBeDefined();
@@ -57,6 +47,22 @@ describe('ContentDistributionDaemon', () => {
     expect(blogPost).toBeDefined();
     expect(blogPost?.title).toBe('Negative-Risk Multi-Outcome Arbitrage');
     expect(blogPost?.targetChannels).toContain('BLOG');
+
+    const discordPost = discovered.find((p) => p.slug === 'announcement-discord-community');
+    expect(discordPost).toBeDefined();
+    expect(discordPost?.title).toBe('announcement-discord-community');
+    expect(discordPost?.targetChannels).toContain('DISCORD');
+
+    const redditPost = discovered.find((p) => p.slug === 'reddit-discussion');
+    expect(redditPost?.targetChannels).toContain('REDDIT');
+
+    const emailPost = discovered.find((p) => p.slug === 'weekly-email-digest');
+    expect(emailPost?.targetChannels).toContain('NEWSLETTER');
+  });
+
+  it('returns empty array when marketing directory does not exist', () => {
+    const missing = daemon.syncFromDirectory(path.join(tmpDir, 'nonexistent-sub-dir'));
+    expect(missing).toEqual([]);
   });
 
   it('queues post and validates schema', () => {
@@ -125,14 +131,49 @@ describe('ContentDistributionDaemon', () => {
     expect(auditEntries.some((e) => e.event === 'DISPATCH_FAILED')).toBe(true);
   });
 
+  it('handles non-Error publisher rejection safely', async () => {
+    const rawErrorDaemon = new ContentDistributionDaemon({
+      marketingDir: tmpDir,
+      auditLogPath: auditLogFile,
+      publisher: async () => {
+        return Promise.reject('String error message');
+      },
+    });
+
+    rawErrorDaemon.queuePost({
+      id: 'string-fail-post',
+      title: 'String Error',
+      slug: 'string-error',
+      content: 'Failed attempt',
+      tags: ['fail'],
+      targetChannels: ['TWITTER'],
+      author: 'Tester',
+      locale: 'bilingual',
+      status: 'QUEUED',
+    });
+
+    const records = await rawErrorDaemon.dispatchQueued();
+    expect(records).toHaveLength(1);
+    expect(records[0].status).toBe('FAILED');
+    expect(records[0].error).toBe('String error message');
+  });
+
   it('starts and stops daemon background interval safely', () => {
-    daemon.startDaemon(5000);
+    vi.useFakeTimers();
+    expect(daemon.getAuditLogPath()).toBe(auditLogFile);
+
+    daemon.startDaemon(1000);
     // Double start should be idempotent
-    daemon.startDaemon(5000);
+    daemon.startDaemon(1000);
+
+    // Fast-forward interval timer
+    vi.advanceTimersByTime(1050);
+
     daemon.stopDaemon();
     // Double stop should be idempotent
     daemon.stopDaemon();
 
+    vi.useRealTimers();
     expect(fs.existsSync(auditLogFile)).toBe(true);
   });
 });
