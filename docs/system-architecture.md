@@ -483,3 +483,37 @@ CREATE TABLE IF NOT EXISTS qwen_signals_loop_runs (
 **HMAC Secret rotation:** Quarterly. Rotate `QWEN_INGEST_HMAC_SECRET` in CF Secrets + M1 Max `~/.zshrc`. Both sides must be updated simultaneously.
 
 ---
+
+### Phase 20: Wave 6 Billing Gateway Hardening, Edge Email & Onboarding State Machine
+
+```mermaid
+graph TD
+    Client[Web Subscriber / API Client] -->|Signup Request| OS[OnboardingService]
+    OS -->|6-Digit OTP| Resend[Resend Edge Email Adapter]
+    Resend -->|Verification Email| Client
+    Client -->|Verify Code| OS
+    OS -->|Verified State| NP[NOWPayments Crypto Checkout]
+    NP -->|IPN Webhook| TAG[TierActivationGateway / NowPaymentsService]
+    TAG -->|Deep Sorted HMAC-SHA512 ksort| TS[timingSafeEqual / constantTimeEqual]
+    TS -->|Confirmed| Store[(SubscriptionStore / Postgres)]
+    TS -->|Refunded / Failed| Evict[createKvTierInvalidator]
+    Evict -->|Immediate DEL tier:tenantId| KV[(Cloudflare KV)]
+    OS -->|Activate License| Lic[LicenseService]
+    Lic -->|Drip Sequence| Drip[Welcome Email Drip]
+```
+
+**Key Pillars:**
+1. **NOWPayments IPN Canonical Verification**:
+   - Deep recursive key sorting (`ksort`) alphabetical ordering prior to HMAC-SHA512 computation.
+   - Dual-path validation: canonical sorted verification with fallback to raw payload.
+   - Constant-time verification (`crypto.timingSafeEqual` in Node.js, `constantTimeEqual` in Workers).
+2. **Resend Edge Email Delivery**:
+   - Native `fetch` HTTP implementation (`src/platform/notifications/resend-email-provider.ts`).
+   - Zero Node.js-only dependencies; full compatibility with Cloudflare Workers.
+   - Secret redaction for keys (`re_*`) and Bearer tokens.
+3. **Onboarding State Machine & Immediate Cache Invalidation**:
+   - 3-stage flow: `signup` -> `verify` -> `activate`.
+   - On downgrade/refund, immediate Cloudflare KV eviction (`tier:${tenantId}`), eliminating stale 300s authorization windows.
+
+---
+

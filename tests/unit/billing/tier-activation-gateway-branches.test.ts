@@ -141,4 +141,116 @@ describe('TierActivationGateway Branch Coverage', () => {
       process.env.NOWPAYMENTS_IPN_SECRET = prevSecret;
     }
   });
+
+  it('successfully verifies unsorted JSON payload via alphabetical key sorting (ksort)', () => {
+    const secret = 'ksort-secret';
+    const gateway = new TierActivationGateway({ ipnSecret: secret });
+    const rawPayload = '{"z_status":"finished","a_amount":100,"m_order":"tenant-1:PRO"}';
+    const sortedPayload = '{"a_amount":100,"m_order":"tenant-1:PRO","z_status":"finished"}';
+    const validSignature = crypto.createHmac('sha512', secret).update(sortedPayload).digest('hex');
+
+    expect(gateway.verifySignature(rawPayload, validSignature)).toBe(true);
+  });
+
+  it('triggers onTierInvalidation and marks record CANCELLED when status is refunded', async () => {
+    const store = new InMemorySubscriptionStore();
+    await store.saveTenant({
+      tenantId: 'tenant-refund-me',
+      tier: 'PREMIUM',
+      strategyQuota: 20,
+      paymentId: 'pay-orig',
+      activatedAt: '2026-10-01T00:00:00Z',
+      status: 'ACTIVE',
+      processedPayments: ['pay-orig'],
+    });
+
+    const mockInvalidator = vi.fn();
+    const gateway = new TierActivationGateway({ store, onTierInvalidation: mockInvalidator });
+
+    const result = await gateway.processPayload({
+      payment_id: 'pay-refund',
+      payment_status: 'refunded',
+      price_amount: 99,
+      price_currency: 'USD',
+      order_id: 'tenant-refund-me:PREMIUM',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Payment status 'refunded' is not confirmed");
+
+    const updated = await store.getTenant('tenant-refund-me');
+    expect(updated?.status).toBe('CANCELLED');
+
+    expect(mockInvalidator).toHaveBeenCalledTimes(1);
+    expect(mockInvalidator).toHaveBeenCalledWith('tenant-refund-me', {
+      status: 'refunded',
+      paymentId: 'pay-refund',
+      previousTier: 'PREMIUM',
+    });
+
+    const entitlements = await gateway.getTenantEntitlements('tenant-refund-me');
+    expect(entitlements).toBeNull();
+  });
+
+  it('marks record EXPIRED when payment status is expired', async () => {
+    const store = new InMemorySubscriptionStore();
+    await store.saveTenant({
+      tenantId: 'tenant-expire-me',
+      tier: 'ENTERPRISE',
+      strategyQuota: 100,
+      paymentId: 'pay-exp-1',
+      activatedAt: '2026-10-01T00:00:00Z',
+      status: 'ACTIVE',
+      processedPayments: ['pay-exp-1'],
+    });
+
+    const mockInvalidator = vi.fn();
+    const gateway = new TierActivationGateway({ store, onTierInvalidation: mockInvalidator });
+
+    const result = await gateway.processPayload({
+      payment_id: 'pay-exp-2',
+      payment_status: 'expired',
+      price_amount: 199,
+      price_currency: 'USD',
+      order_id: 'tenant-expire-me:ENTERPRISE',
+    });
+
+    expect(result.success).toBe(false);
+    const updated = await store.getTenant('tenant-expire-me');
+    expect(updated?.status).toBe('EXPIRED');
+    expect(mockInvalidator).toHaveBeenCalledWith('tenant-expire-me', {
+      status: 'expired',
+      paymentId: 'pay-exp-2',
+      previousTier: 'ENTERPRISE',
+    });
+  });
+
+  it('handles onTierInvalidation callback errors gracefully without throwing', async () => {
+    const store = new InMemorySubscriptionStore();
+    await store.saveTenant({
+      tenantId: 'tenant-fail-cb',
+      tier: 'BASIC',
+      strategyQuota: 5,
+      paymentId: 'pay-1',
+      activatedAt: '2026-10-01T00:00:00Z',
+      status: 'ACTIVE',
+      processedPayments: ['pay-1'],
+    });
+
+    const failingInvalidator = vi.fn().mockRejectedValue(new Error('KV connection timed out'));
+    const gateway = new TierActivationGateway({ store, onTierInvalidation: failingInvalidator });
+
+    const result = await gateway.processPayload({
+      payment_id: 'pay-failed-status',
+      payment_status: 'failed',
+      price_amount: 29,
+      price_currency: 'USD',
+      order_id: 'tenant-fail-cb:BASIC',
+    });
+
+    expect(result.success).toBe(false);
+    const updated = await store.getTenant('tenant-fail-cb');
+    expect(updated?.status).toBe('CANCELLED');
+    expect(failingInvalidator).toHaveBeenCalledTimes(1);
+  });
 });

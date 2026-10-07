@@ -5,6 +5,8 @@
 
 export { EmailService, emailService } from './email-service';
 export type { EmailConfig, EmailNotification } from './email-service';
+export { createResendSender, sanitizeResendSecret } from './resend-email-provider';
+export type { ResendSenderOptions } from './resend-email-provider';
 
 export { SmsService, smsService } from './sms-service';
 export type { SmsConfig, SmsNotification } from './sms-service';

@@ -1,7 +1,5 @@
 /**
- * Onboarding Service
- * RaaS Phase 16 - Customer signup, email verification, license activation
- *
+ * Onboarding Service — Customer signup, email verification, license activation
  * Flow: signup -> verify (6-digit code) -> activate (creates license)
  * Storage: PostgreSQL onboarding_signups table (migration 044)
  */
@@ -39,8 +37,7 @@ export class OnboardingService {
 
   /**
    * Step 1: Begin signup flow.
-   * Validates email, rejects duplicates, generates 6-digit code,
-   * persists to onboarding_signups table.
+   * Validates email, rejects duplicates, generates 6-digit code, persists to onboarding_signups.
    */
   async signup(req: SignupRequest): Promise<SignupResult> {
     const email = req.email.trim().toLowerCase();
@@ -50,7 +47,6 @@ export class OnboardingService {
 
     const client = await getDbClient().connect();
     try {
-      // Check for existing active license
       const licResult = await client.query(
         `SELECT id FROM licenses WHERE name = $1 AND status = 'active' LIMIT 1`,
         [email],
@@ -59,7 +55,6 @@ export class OnboardingService {
         throw new Error('Email already has an active license');
       }
 
-      // Check for non-expired pending signup
       const pendingResult = await client.query(
         `SELECT id FROM onboarding_signups
          WHERE email = $1 AND status = 'pending' AND expires_at > NOW()`,
@@ -69,7 +64,6 @@ export class OnboardingService {
         throw new Error('Signup already pending. Check your verification code.');
       }
 
-      // Expire old pending rows for this email
       await client.query(
         `UPDATE onboarding_signups SET status = 'expired'
          WHERE email = $1 AND status = 'pending' AND expires_at <= NOW()`,
@@ -88,9 +82,7 @@ export class OnboardingService {
 
       const emailSent = await sendVerificationEmail(email, verificationToken);
       if (!emailSent) {
-        logger.info(
-          `[Onboarding] DEV ONLY -- code for ${email}: ${verificationToken} (expires in 15 min)`,
-        );
+        logger.info(`[Onboarding] DEV ONLY -- code for ${email}: ${verificationToken} (expires in 15 min)`);
       }
 
       const expiresAt = Date.now() + PENDING_TTL_MS;
@@ -182,9 +174,7 @@ export class OnboardingService {
         [license.key, row.id],
       );
 
-      logger.info(
-        `[Onboarding] License activated for ${normalizedEmail}: ${license.key} (${tier})`,
-      );
+      logger.info(`[Onboarding] License activated for ${normalizedEmail}: ${license.key} (${tier})`);
 
       registerDripRecipient(normalizedEmail, tier);
       const apiInstructions = buildApiInstructions(license.key, tier);

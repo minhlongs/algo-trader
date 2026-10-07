@@ -94,3 +94,21 @@ export interface ActivationResult {
   activatedAt: string;
   error?: string;
 }
+
+export interface TierInvalidationEvent {
+  status: string;
+  paymentId: string;
+  previousTier?: Tier;
+}
+
+export type TierInvalidationCallback = (
+  tenantId: string,
+  event: TierInvalidationEvent
+) => Promise<void> | void;
+
+export interface TierActivationGatewayConfig {
+  ipnSecret?: string;
+  store?: SubscriptionStore;
+  onTierInvalidation?: TierInvalidationCallback;
+}
+
