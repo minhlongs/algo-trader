@@ -25,7 +25,6 @@ export interface RegionCheckResult {
   healthy: boolean;
   statusCode: number;
   latencyMs: number;
-  details?: Record<string, unknown>;
 }
 
 export interface DoConsensusResult {
@@ -62,25 +61,11 @@ export async function verifyRegionHealth(
   timeoutMs = 5000,
 ): Promise<RegionCheckResult> {
   const start = Date.now();
-  const url = `https://${region.host}/api/health`;
   try {
-    const res = await fetchFn(url, { signal: AbortSignal.timeout(timeoutMs) });
-    const latencyMs = Date.now() - start;
-    return {
-      region: region.id,
-      endpoint: '/api/health',
-      healthy: res.status === 200,
-      statusCode: res.status,
-      latencyMs,
-    };
+    const res = await fetchFn(`https://${region.host}/api/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    return { region: region.id, endpoint: '/api/health', healthy: res.status === 200, statusCode: res.status, latencyMs: Date.now() - start };
   } catch {
-    return {
-      region: region.id,
-      endpoint: '/api/health',
-      healthy: false,
-      statusCode: 0,
-      latencyMs: Date.now() - start,
-    };
+    return { region: region.id, endpoint: '/api/health', healthy: false, statusCode: 0, latencyMs: Date.now() - start };
   }
 }
 
@@ -90,19 +75,12 @@ export async function verifyDoConsensus(
   timeoutMs = 5000,
 ): Promise<DoConsensusResult> {
   const start = Date.now();
-  const url = `https://${region.host}/api/consensus/status`;
   try {
-    const res = await fetchFn(url, { signal: AbortSignal.timeout(timeoutMs) });
+    const res = await fetchFn(`https://${region.host}/api/consensus/status`, { signal: AbortSignal.timeout(timeoutMs) });
     const latencyMs = Date.now() - start;
     if (res.status === 200) {
       const data = (await res.json()) as { term?: number; leader?: boolean; quorum?: boolean };
-      return {
-        region: region.id,
-        leaderReachable: Boolean(data.leader ?? true),
-        term: data.term ?? 1,
-        quorumSatisfied: Boolean(data.quorum ?? true),
-        latencyMs,
-      };
+      return { region: region.id, leaderReachable: Boolean(data.leader ?? true), term: data.term ?? 1, quorumSatisfied: Boolean(data.quorum ?? true), latencyMs };
     }
     return { region: region.id, leaderReachable: false, term: 0, quorumSatisfied: false, latencyMs };
   } catch {
@@ -118,30 +96,14 @@ export async function verifyShardRouting(
 ): Promise<ShardRoutingVerification> {
   const sampleStrategies = ['alpha-rsi-1', 'polymarket-arb-2', 'funding-rate-3', 'volatility-surface-4'];
   const ring = buildRing(totalShards, 100);
-  const sampleRoutes = sampleStrategies.map((id) => ({
-    strategyId: id,
-    shardId: getShardForStrategy(ring, id),
-  }));
+  const sampleRoutes = sampleStrategies.map((id) => ({ strategyId: id, shardId: getShardForStrategy(ring, id) }));
+  const accurate = sampleRoutes.every((r) => r.shardId >= 0 && r.shardId < totalShards);
 
-  const url = `https://${region.host}/api/v1/shard/health`;
   try {
-    const res = await fetchFn(url, { signal: AbortSignal.timeout(timeoutMs) });
-    const isOk = res.status === 200;
-    return {
-      region: region.id,
-      totalShards,
-      healthyShards: isOk ? totalShards : 0,
-      routingAccurate: sampleRoutes.every((r) => r.shardId >= 0 && r.shardId < totalShards),
-      sampleStrategyRoutes: sampleRoutes,
-    };
+    const res = await fetchFn(`https://${region.host}/api/v1/shard/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    return { region: region.id, totalShards, healthyShards: res.status === 200 ? totalShards : 0, routingAccurate: accurate, sampleStrategyRoutes: sampleRoutes };
   } catch {
-    return {
-      region: region.id,
-      totalShards,
-      healthyShards: 0,
-      routingAccurate: sampleRoutes.every((r) => r.shardId >= 0 && r.shardId < totalShards),
-      sampleStrategyRoutes: sampleRoutes,
-    };
+    return { region: region.id, totalShards, healthyShards: 0, routingAccurate: accurate, sampleStrategyRoutes: sampleRoutes };
   }
 }
 
@@ -165,24 +127,16 @@ export async function runMultiRegionVerification(
     if (!isRegionOk) allHealthy = false;
 
     regionsObj[key] = { health, consensus, shardRouting };
-    logger.info(`[EdgeMultiRegion] Verified region ${target.name}`, {
-      status: isRegionOk ? 'PASS' : 'FAIL',
-      healthStatus: health.statusCode,
-      latency: health.latencyMs,
-    });
+    logger.info(`[EdgeMultiRegion] Verified region ${target.name}`, { status: isRegionOk ? 'PASS' : 'FAIL', healthStatus: health.statusCode, latency: health.latencyMs });
   }
 
-  return {
-    timestamp: Date.now(),
-    allHealthy,
-    regions: regionsObj as MultiRegionVerificationSummary['regions'],
-  };
+  return { timestamp: Date.now(), allHealthy, regions: regionsObj as MultiRegionVerificationSummary['regions'] };
 }
 
 if (typeof require !== 'undefined' && require.main === module) {
   runMultiRegionVerification()
     .then((summary) => {
-      logger.info(`[EdgeMultiRegion] Verification finished. Result: ${summary.allHealthy ? 'PASSED' : 'FAILED'}`);
+      logger.info(`[EdgeMultiRegion] Verification finished: ${summary.allHealthy ? 'PASSED' : 'FAILED'}`);
       process.exit(summary.allHealthy ? 0 : 1);
     })
     .catch((err) => {
