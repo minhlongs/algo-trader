@@ -1,140 +1,60 @@
-# Tech Stack — AGI RaaS Platform
+# Tech Stack — AGI RaaS & Trading Platform
 
-## Current Stack (Retained)
+## 1. Core Platform & Runtime
 
-| Layer | Technology | Status |
-|-------|-----------|--------|
-| Language | TypeScript 5.9 | ✅ Production |
-| Runtime | Node.js 20 | ✅ Production |
-| Exchange | CCXT 4.5 | ✅ 100+ exchanges |
-| CLI | Commander 11 | ✅ 25+ commands |
-| Validation | Zod 4.3 | ✅ All schemas |
-| Logging | Winston 3.19 | ✅ Structured |
-| WebSocket | ws 8.19 | ✅ tick/signal/health |
-| Testing | Vitest | ✅ 2,783+ tests |
-| Indicators | technicalindicators 3.1 | ✅ RSI, SMA, EMA |
+| Layer | Technology | Rationale & Specifications |
+|---|---|---|
+| Runtime | Node.js 20 LTS & TypeScript 5.9 | Strict mode, zero `:any`, ESM modules |
+| Edge / Serverless | Cloudflare Workers & Pages | Global low-latency PoPs, edge proxy, SPA static assets |
+| Edge Persistence | Cloudflare D1 & KV | SQLite-compatible edge metering buffer, 300s tier cache |
+| Coordination | Cloudflare Durable Objects | ShardCoordinator with virtual FNV-1a hash ring |
+| Exchanges | CCXT 4.5+ & Polymarket CLOB | 100+ CEX connectors, binary prediction markets |
+| Validation | Zod 4.3 | Strict runtime schema validation, zero-trust inputs |
+| Testing | Vitest 3+ | High-throughput multi-worker isolation, 100% green |
 
-## New Stack (AGI RaaS Layer)
+## 2. Infrastructure & Data Plane
 
 | Layer | Technology | Rationale |
-|-------|-----------|-----------|
-| API | Express (platform) + Fastify 5 (desk) | Express for 31 route files with tier-gating; Fastify for desk/internal Zod validation |
-| Job Queue | BullMQ 5 | Backtest jobs, scheduled scans |
-| Message Bus | NATS JetStream (primary) + Redis (fallback) | Event-driven architecture with replay support |
-| Cache/Events | Redis | Rate limiting, Pub/Sub, BullMQ backend |
-| TSDB | TimescaleDB | Tick/candle storage, continuous aggregates |
-| OLTP | PostgreSQL 16 | Tenants, strategies, trades (RLS) |
-| Auth | JWT + API Keys | Multi-tenant isolation |
-| Containers | Docker + PM2 | Cluster mode, health checks |
-| Monitoring | Prometheus + Grafana | Trading metrics dashboards |
-| Billing | NOWPayments USDT TRC20 | Subscription tiers (Polar.sh REJECTED) |
+|---|---|---|
+| OLTP Database | PostgreSQL 16 | Multi-tenant isolation via RLS, central ledger |
+| Time-Series DB | TimescaleDB | Continuous tick/candle aggregates, equity curves |
+| Cache & Pub/Sub | Redis 7+ & NATS JetStream | Low-latency state, BullMQ worker queues, event bus |
+| Edge-to-Core Sync | D1PostgresMeteringSync | High-water mark checkpoint reconciler, idempotent upsert |
+| Process Supervisor | Docker Compose & PM2 | Multi-worker process pooling, zero-downtime reloads |
+| Observability | OpenTelemetry & Prometheus | Honeycomb distributed tracing, Grafana metrics |
 
-## Bounded Context Architecture (Post-2026-06-30 Separation)
+## 3. Billing, License & Communication
+
+| Component | Technology | Security & Implementation Policy |
+|---|---|---|
+| Gateway | NOWPayments (USDT-TRC20) | Alphabetical key-sorted (`ksort`) HMAC-SHA512 verification |
+| License Tokens | HMAC-SHA256 Token Engine | `ALGO-<tier>-<time>-<rand>-<chk>` format, AES-256-GCM storage |
+| Transactional Email | Resend (Edge Fetch API) | Edge-native fetch without Node deps, crypto-compliant AUP |
+| Email Fallback | AWS SES | High deliverability secondary provider |
+| Community & Alerts | Telegram Bot API | Webhook signal broadcast, bilingual alerts, `/link` onboarding |
+
+## 4. Frontend Dashboard (UI/UX Pro Max)
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Framework & Build | React 18+ & Vite | Ultra-fast client routing, HMR, optimized production build |
+| Styling & Theme | Tailwind CSS & Radix UI | Obsidian Cyber-Glass design system, WCAG 2.1 AA accessible |
+| State Management | Zustand 5 | Minimal footprint reactive stores for signals and balances |
+| Charts & Analytics | TradingView Lightweight Charts | High-FPS canvas candlestick rendering, P&L equity curves |
+
+## 5. Architectural Decision Records (ADRs)
+
+- **ADR-1: Bounded Contexts**: `shared/` (foundational, zero inward deps), `desk/` (autonomous trading, tenant-unaware), and `platform/` (subscriber-facing, tier-gated).
+- **ADR-2: Edge-Ingest & Central Ledger**: Cloudflare D1 absorbs high-throughput webhooks and telemetry at edge; reconciler batches records into central PostgreSQL.
+- **ADR-3: Sorted HMAC Verification**: NOWPayments IPN payloads sorted recursively by keys alphabetically before computing HMAC-SHA512, eliminating false 401 rejections.
+- **ADR-4: Tamper-Evident Licenses**: Standardized on cryptographically signed tokens with SHA-256 checksums and AES-256-GCM encryption at rest.
+
+## 6. Directory Boundaries
 
 ```
 src/
-├── shared/           # 9 modules: types, db, config, utils, persistence,
-│                     #   resilience, messaging, backtesting, redis
-│                     # (ZERO business logic, importable by ALL)
-│
-├── desk/             # 27 modules: strategies, execution, risk, intelligence,
-│                     #   signal, market-data, feeds, arbitrage, cli, gate,
-│                     #   wiring, sandbox, wallet, core, jobs, ml, cex, etc.
-│                     # (Operator-only trading, imports shared/ only)
-│
-└── platform/         # 25 modules: api (31 route files), auth, billing,
-                      #   marketplace, raas, metering, middleware, audit,
-                      #   referral, workers, telegram, notifications,
-                      #   dashboard, db, landing
-                      # (Subscriber-facing, imports shared/ + desk via IStrategy)
+├── shared/           # Types, db client, tier configs, crypto utils, resilience
+├── desk/             # Strategies, execution, risk, alpha lab, market data, CLI
+├── platform/         # Express/Fastify APIs, billing, auth, metering, workers
+└── durable-objects/  # ShardCoordinator, state management, distributed locks
 ```
-
-## Frontend Dashboard Stack (UI/UX Pro Max)
-
-| Layer | Technology | Rationale |
-|-------|-----------|-----------|
-| Framework | React 18+ & Vite | Fast HMR development, optimal bundle size |
-| Language | TypeScript 5 | Strict typing, robust editor autocomplete |
-| Styling | Tailwind CSS | Utility-first styling, glassmorphism, responsive bento grids |
-| Navigation | React Router DOM v7 | Dynamic client-side routing, protected auth layouts |
-| State | Zustand 5 | Low-overhead global store, seamless React binding |
-| Charts | TradingView Lightweight Charts | High-performance canvas rendering for candlestick data |
-| Charts | Recharts | SVG chart components for metrics & historical P&L curves |
-| Animations | Framer Motion | Smooth layout transitions, slide-ins, micro-animations |
-| Icons | Lucide React | Clean, scalable vector icon primitives |
-| UI Primitives | Shadcn UI (Radix UI) | Accessible, unstyled primitives styled with Tailwind CSS |
-
-## Architecture Decision Records
-
-### ADR-1: Bounded Context Separation
-Three contexts with strict import rules:
-- `shared/` ← foundational (no inward deps)
-- `desk/` ← solo trading, tenant-unaware (imports shared only)
-- `platform/` ← multi-tenant, tier-gated (imports shared + desk via IStrategy)
-
-### ADR-2: Dual Database Strategy
-- TimescaleDB for time-series (ticks, candles, equity curves)
-- PostgreSQL for transactional (tenants, orders, API keys, marketplace)
-- Both accessible via same connection (TimescaleDB extends PG)
-
-### ADR-3: Redis as Infrastructure Backbone
-Single Redis instance serves: BullMQ queues, rate limiting counters, Pub/Sub events, session cache. Reduces operational complexity.
-
-### ADR-4: Multi-Tenant via RLS + JWT
-PostgreSQL Row-Level Security enforces tenant isolation at DB level. JWT middleware extracts tenantId. API keys for programmatic access.
-
-## Module Map (Current)
-
-```
-src/
-├── shared/              # Shared kernel (foundational)
-│   ├── types/           # License, Tier, IStrategy, Signal, shared enums
-│   ├── db/              # PostgreSQL client factory, migration runner
-│   ├── config/          # Tier configs, environment schema, Zod validators
-│   ├── utils/           # Logger, encryption, Sentry, HMAC verifier
-│   ├── resilience/      # Circuit breakers, rate limiter, recovery manager
-│   ├── persistence/     # JSONL file store, key-value store
-│   ├── messaging/       # NATS JetStream client, pub/sub abstractions
-│   ├── backtesting/     # BacktestRunner (Sharpe, maxDrawdown, etc.)
-│   └── redis/           # Redis client singleton, pub/sub helpers
-│
-├── desk/                # Operator-only trading
-│   ├── strategies/      # 52+ strategies (Polymarket V2, CEX, DEX, DNA, examples)
-│   ├── execution/       # Polymarket CLOB, live/paper/dry-run executors
-│   ├── risk/            # Kelly, drawdown breaker, VaR, position manager
-│   ├── intelligence/    # AlphaEar, signal fusion, consensus swarm, Kronos
-│   ├── signal/          # Signal pipeline: publish, dedup, TTL, SSE, Telegram
-│   ├── market-data/     # Provider failover, gap detection, SLA tracker
-│   ├── feeds/           # Polymarket WS, Binance/Bybit/OKX WS, Kalshi REST
-│   ├── arbitrage/       # Cross-market ILP solver, binary/split-merge arb
-│   ├── cli/             # Commander.js CLI (25+ commands)
-│   ├── gate/            # RaaS gate validators, tier config
-│   ├── wiring/          # Paper trading orchestrator, NATS event loop
-│   ├── backtesting/     # GammaHistoricalProvider, strategy simulation
-│   └── ...              # sandbox, wallet, core, jobs, markets, ml
-│
-└── platform/            # Subscriber-facing
-    ├── api/             # Express REST + WS (31 route files, tier-gated)
-    ├── auth/            # Better Auth (multi-tenant sessions)
-    ├── billing/         # NOWPayments, subscription, license, invoice
-    ├── marketplace/     # Listings, subscriptions, revenue, disputes, vetting
-    ├── raas/            # RaaS executor, tenant sandbox, DLP, P&L aggregator
-    ├── metering/        # Usage metering with threshold alerts
-    ├── middleware/      # Tier gating, rate limiter, license, Prometheus
-    ├── audit/           # Immutable trade audit, DLP hash chain (11 files)
-    ├── referral/        # Referral program management
-    ├── workers/         # CF Workers / edge proxy
-    ├── telegram/        # Telegram bot, commands, auto-support, alerts
-    ├── notifications/   # Email, SMS, alert formatter
-    ├── dashboard/       # Subscriber dashboard (Vite build)
-    ├── db/              # Business DAOs (trade, credentials, P&L)
-    └── landing/         # Public landing page (cashclaw.cc)
-```
-
-## Deployment Targets
-
-| Environment | Infrastructure |
-|-------------|---------------|
-| Local Dev | Docker Compose (PG + Redis + TimescaleDB) |
-| Staging | Docker on VPS (Hetzner/AWS) |
-| Production | Docker + PM2 cluster

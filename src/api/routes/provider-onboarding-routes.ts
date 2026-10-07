@@ -19,10 +19,6 @@ const applySchema = z.object({
   strategyId: z.string().min(1, 'strategyId is required'),
 });
 
-const approveSchema = z.object({
-  applicationId: z.string().min(1, 'applicationId is required'),
-});
-
 const idParamSchema = z.object({
   id: z.string().min(1),
 });

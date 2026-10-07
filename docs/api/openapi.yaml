@@ -29,6 +29,7 @@ tags:
   - name: Leaderboard
   - name: KYC
   - name: Compliance
+  - name: Relayer
 
 paths:
   /api/trades:
@@ -1238,6 +1239,64 @@ paths:
         '500':
           description: Internal server error
 
+  /api/v1/risk/cockpit:
+    get:
+      tags: [Risk]
+      summary: Real-time risk cockpit status and metrics
+      description: Returns Cornish-Fisher VaR, Expected Shortfall, L0-L4 circuit breaker states, and portfolio risk parameters.
+      parameters:
+        - { name: confidence, in: query, schema: { type: number, enum: [0.95, 0.99], default: 0.95 } }
+        - { name: horizon, in: query, schema: { type: integer, default: 1 } }
+      responses:
+        '200':
+          description: Real-time Risk Cockpit summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskCockpitStatus'
+        '500':
+          description: Internal server error
+
+  # ── Relayer Endpoints ───────────────────────────────────────────────────────
+
+  /api/v1/relayer/status:
+    get:
+      tags: [Relayer]
+      summary: Get Polymarket relayer engine and gas status
+      description: Returns current gas price recommendations, active nonce manager state, and relayer connection health.
+      responses:
+        '200':
+          description: Relayer engine and gas status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelayerStatus'
+        '500':
+          description: Internal server error
+
+  /api/v1/relayer/nonce:
+    get:
+      tags: [Relayer]
+      summary: Synchronize and fetch relayer account nonce
+      description: Fetches current on-chain and queued nonce state for specified address.
+      parameters:
+        - { name: address, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Nonce status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address: { type: string }
+                  nonce: { type: integer }
+                  nextNonce: { type: string }
+        '400':
+          description: Address parameter missing
+        '500':
+          description: Nonce synchronization error
+
   # ── Referral (additional sub-routes) ───────────────────────────────────────
 
   /api/v1/referral/commissions:
@@ -1932,3 +1991,35 @@ components:
         maxDrawdownPct: { type: number }
         profitFactor: { type: number }
         totalTrades: { type: integer }
+
+    RiskCockpitStatus:
+      type: object
+      properties:
+        cornishFisherVaR: { type: number }
+        expectedShortfall: { type: number }
+        confidence: { type: number }
+        horizon: { type: integer }
+        killswitchState:
+          type: string
+          enum: [NORMAL, ALERT, REDUCE, HALT, HARD_STOP]
+        currentDrawdownPct: { type: number }
+        portfolioValue: { type: number }
+        skewness: { type: number }
+        kurtosis: { type: number }
+        timestamp: { type: string, format: date-time }
+
+    RelayerStatus:
+      type: object
+      properties:
+        relayerUrl: { type: string }
+        chainId: { type: integer }
+        verifyingContract: { type: string }
+        gasPrices:
+          type: object
+          properties:
+            maxFeePerGasGwei: { type: number }
+            maxPriorityFeePerGasGwei: { type: number }
+        queueLength: { type: integer }
+        isProcessing: { type: boolean }
+        lastSyncTimestamp: { type: string, format: date-time }
+

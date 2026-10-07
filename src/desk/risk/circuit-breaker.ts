@@ -21,6 +21,8 @@ export class CircuitBreaker {
   private config: CircuitBreakerConfig;
   private state: CircuitState = 'CLOSED';
   private triggeredAt?: number;
+  private reason?: string;
+  private localLossStreak = 0;
   private drawdownMonitor?: DrawdownMonitor;
 
   constructor(redis?: RedisClientType, config?: Partial<CircuitBreakerConfig>, drawdownMonitor?: DrawdownMonitor) {
@@ -31,35 +33,31 @@ export class CircuitBreaker {
 
   /** Get circuit breaker status */
   async getStatus(): Promise<CircuitStatus> {
-    const status = await this.redis.hgetall('circuit_breaker:status');
-
-    if (status.state === 'OPEN' && status.triggeredAt) {
-      const elapsed = Date.now() - parseInt(status.triggeredAt);
-      const remaining = Math.max(0, this.config.cooldownMs - elapsed);
-
-      if (remaining <= 0) {
-        await this.setHalfOpen();
-        return {
-          state: 'HALF_OPEN',
-          reason: status.reason,
-          triggeredAt: parseInt(status.triggeredAt),
-          cooldownRemaining: 0,
-        };
+    try {
+      const status = await this.redis.hgetall('circuit_breaker:status');
+      if (status?.state) {
+        this.state = status.state as CircuitState;
+        this.reason = status.reason;
+        this.triggeredAt = status.triggeredAt ? parseInt(status.triggeredAt) : undefined;
       }
-
-      return {
-        state: 'OPEN',
-        reason: status.reason,
-        triggeredAt: parseInt(status.triggeredAt),
-        cooldownRemaining: remaining,
-      };
+    } catch {
+      // Fall back to in-memory state
     }
+    return this.getSyncStatus();
+  }
 
-    return {
-      state: (status.state as CircuitState) || 'CLOSED',
-      reason: status.reason,
-      triggeredAt: status.triggeredAt ? parseInt(status.triggeredAt) : undefined,
-    };
+  /** Get synchronous in-memory snapshot */
+  getSyncStatus(): CircuitStatus {
+    if (this.state === 'OPEN' && this.triggeredAt) {
+      const elapsed = Date.now() - this.triggeredAt;
+      const remaining = Math.max(0, this.config.cooldownMs - elapsed);
+      if (remaining <= 0) {
+        this.state = 'HALF_OPEN';
+        return { state: 'HALF_OPEN', reason: this.reason, triggeredAt: this.triggeredAt, cooldownRemaining: 0 };
+      }
+      return { state: 'OPEN', reason: this.reason, triggeredAt: this.triggeredAt, cooldownRemaining: remaining };
+    }
+    return { state: this.state, reason: this.reason, triggeredAt: this.triggeredAt };
   }
 
   /** Check if trading is allowed */
@@ -70,10 +68,18 @@ export class CircuitBreaker {
 
   /** Record loss - increment loss streak */
   async recordLoss(): Promise<void> {
-    const key = 'circuit_breaker:loss_streak';
-    const current = parseInt((await this.redis.get(key)) || '0');
-    const newStreak = current + 1;
-    await this.redis.set(key, newStreak.toString());
+    this.localLossStreak += 1;
+    let newStreak = this.localLossStreak;
+    try {
+      const key = 'circuit_breaker:loss_streak';
+      const current = parseInt((await this.redis.get(key)) || '0');
+      newStreak = current + 1;
+      this.localLossStreak = newStreak;
+      await this.redis.set(key, newStreak.toString());
+    } catch {
+      // In-memory fallback
+    }
+
     if (newStreak >= this.config.maxLossStreak) {
       await this.trip('Loss streak', `${newStreak} consecutive losses`);
     }
@@ -81,7 +87,12 @@ export class CircuitBreaker {
 
   /** Record win - reset loss streak */
   async recordWin(): Promise<void> {
-    await this.redis.del('circuit_breaker:loss_streak');
+    this.localLossStreak = 0;
+    try {
+      await this.redis.del('circuit_breaker:loss_streak');
+    } catch {
+      // In-memory fallback
+    }
   }
 
   /** Check latency - trip if exceeds threshold */
@@ -105,12 +116,17 @@ export class CircuitBreaker {
   /** Trip circuit breaker */
   private async trip(reason: string, details?: string): Promise<void> {
     this.state = 'OPEN';
+    this.reason = `${reason}: ${details || ''}`.trim();
     this.triggeredAt = Date.now();
-    await this.redis.hset('circuit_breaker:status', {
-      state: 'OPEN',
-      reason: `${reason}: ${details || ''}`.trim(),
-      triggeredAt: this.triggeredAt.toString(),
-    });
+    try {
+      await this.redis.hset('circuit_breaker:status', {
+        state: 'OPEN',
+        reason: this.reason,
+        triggeredAt: this.triggeredAt.toString(),
+      });
+    } catch (err) {
+      logger.warn('[CircuitBreaker] Failed to update status in Redis:', { err });
+    }
     await logCircuitBreakerTripped(reason, details, this.triggeredAt);
     logger.warn(`[CircuitBreaker] TRIPPED: ${reason} - ${details}`);
   }
@@ -118,15 +134,25 @@ export class CircuitBreaker {
   /** Set circuit to half-open (after cooldown) */
   private async setHalfOpen(): Promise<void> {
     this.state = 'HALF_OPEN';
-    await this.redis.hset('circuit_breaker:status', 'state', 'HALF_OPEN');
+    try {
+      await this.redis.hset('circuit_breaker:status', 'state', 'HALF_OPEN');
+    } catch {
+      // In-memory fallback
+    }
   }
 
   /** Reset circuit breaker to closed */
   async reset(): Promise<void> {
     this.state = 'CLOSED';
     this.triggeredAt = undefined;
-    await this.redis.hset('circuit_breaker:status', { state: 'CLOSED', reason: '', triggeredAt: '' });
-    await this.redis.del('circuit_breaker:loss_streak');
+    this.reason = undefined;
+    this.localLossStreak = 0;
+    try {
+      await this.redis.hset('circuit_breaker:status', { state: 'CLOSED', reason: '', triggeredAt: '' });
+      await this.redis.del('circuit_breaker:loss_streak');
+    } catch (err) {
+      logger.warn('[CircuitBreaker] Failed to reset state in Redis:', { err });
+    }
     await logCircuitBreakerReset();
     logger.info('[CircuitBreaker] RESET');
   }

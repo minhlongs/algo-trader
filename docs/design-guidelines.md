@@ -80,3 +80,16 @@ Khi giá trị thay đổi thông qua WebSocket:
 *   **PnL & Equity Curve Chart (Recharts)**:
     *   Line color: `#00FFA3` (PnL dương) hoặc `#8B5CF6` (Tổng tài sản).
     *   Area Fill: LinearGradient chuyển dần từ `--profit-glow` hoặc `--accent-secondary` sang hoàn toàn trong suốt (`opacity: 0`).
+
+---
+
+## 6. Dashboard Cockpit & Shard Ring Monitor (Cyber-Glass)
+*   **Cockpit Bento Layout**:
+    *   Desktop: 12-column grid (`lg:col-span-8` cho Candlestick Chart, `lg:col-span-4` cho Shard Ring Monitor).
+    *   Header: Status telemetry strip với glassmorphism backdrop (`backdrop-blur-xl`, `border-white/5`), ping indicator pulse, DO cluster status.
+*   **Shard Ring Topology**:
+    *   12 Durable Object Shard Nodes bố trí vòng tròn (Circular Ring Geometry) biểu diễn consistent hash ring.
+    *   Status Indicator colors: Healthy (`#00FFA3`), Degraded (`#f59e0b`), Offline (`#FF2E93`).
+    *   Active node glow: `box-shadow: 0 0 8px #00FFA3`.
+    *   Embedded TradingView Telemetry Spark-Area: Hiển thị cluster throughput (RPS) và latency theo thời gian thực sử dụng `lightweight-charts`.
+

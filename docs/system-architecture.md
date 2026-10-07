@@ -483,3 +483,263 @@ CREATE TABLE IF NOT EXISTS qwen_signals_loop_runs (
 **HMAC Secret rotation:** Quarterly. Rotate `QWEN_INGEST_HMAC_SECRET` in CF Secrets + M1 Max `~/.zshrc`. Both sides must be updated simultaneously.
 
 ---
+
+### Phase 20: Wave 6 Billing Gateway Hardening, Edge Email & Onboarding State Machine
+
+```mermaid
+graph TD
+    Client[Web Subscriber / API Client] -->|Signup Request| OS[OnboardingService]
+    OS -->|6-Digit OTP| Resend[Resend Edge Email Adapter]
+    Resend -->|Verification Email| Client
+    Client -->|Verify Code| OS
+    OS -->|Verified State| NP[NOWPayments Crypto Checkout]
+    NP -->|IPN Webhook| TAG[TierActivationGateway / NowPaymentsService]
+    TAG -->|Deep Sorted HMAC-SHA512 ksort| TS[timingSafeEqual / constantTimeEqual]
+    TS -->|Confirmed| Store[(SubscriptionStore / Postgres)]
+    TS -->|Refunded / Failed| Evict[createKvTierInvalidator]
+    Evict -->|Immediate DEL tier:tenantId| KV[(Cloudflare KV)]
+    OS -->|Activate License| Lic[LicenseService]
+    Lic -->|Drip Sequence| Drip[Welcome Email Drip]
+```
+
+**Key Pillars:**
+1. **NOWPayments IPN Canonical Verification**:
+   - Deep recursive key sorting (`ksort`) alphabetical ordering prior to HMAC-SHA512 computation.
+   - Dual-path validation: canonical sorted verification with fallback to raw payload.
+   - Constant-time verification (`crypto.timingSafeEqual` in Node.js, `constantTimeEqual` in Workers).
+2. **Resend Edge Email Delivery**:
+   - Native `fetch` HTTP implementation (`src/platform/notifications/resend-email-provider.ts`).
+   - Zero Node.js-only dependencies; full compatibility with Cloudflare Workers.
+   - Secret redaction for keys (`re_*`) and Bearer tokens.
+3. **Onboarding State Machine & Immediate Cache Invalidation**:
+   - 3-stage flow: `signup` -> `verify` -> `activate`.
+   - On downgrade/refund, immediate Cloudflare KV eviction (`tier:${tenantId}`), eliminating stale 300s authorization windows.
+
+---
+
+### Multi-Venue Market Streamer & Polymarket Relayer Engine
+
+```mermaid
+graph LR
+    subgraph Market Feeds
+        BN[Binance WS] --> MVMS[MultiVenueMarketStreamer]
+        HL[Hyperliquid WS] --> MVMS
+        PM[Polymarket CLOB WS] --> MVMS
+    end
+
+    subgraph Normalization & Routing
+        MVMS -->|UnifiedOrderBook| UOB[OrderBook Event Stream]
+        MVMS -->|UnifiedTrade| UT[Trade Event Stream]
+        UOB --> SignalEngines[Signal & Arb Engines]
+        UT --> SignalEngines
+    end
+
+    subgraph Polymarket Execution
+        SignalEngines --> PRE[PolymarketRelayerEngine]
+        PRE -->|EIP-712 Sign| EOA[EOA / Proxy / Safe]
+        PRE -->|Monotonic Nonce| Sync[Nonce Synchronizer]
+        PRE -->|Gasless Relayer POST| CTF[CTF Exchange Contract]
+    end
+```
+
+**Multi-Venue Market Streamer** (`src/desk/data/multi-venue-market-streamer.ts`, `multi-venue-streamer-parsers.ts`, `multi-venue-streamer-types.ts`):
+- **Multiplexed WS Ingestion**: Single unified stream manager connecting concurrently to Binance (`wss://stream.binance.com:9443/ws`), Hyperliquid (`wss://api.hyperliquid.xyz/ws`), and Polymarket CLOB (`wss://ws-subscriptions-clob.polymarket.com/ws/market`).
+- **Normalized Schema**: Parses disparate exchange messages into uniform `UnifiedOrderBook` (bids, asks, timestamp, venue, symbol) and `UnifiedTrade` data structures.
+- **Resilience & Backoff**: Exponential backoff reconnect strategy (`reconnectBaseMs: 1000`, `reconnectMaxMs: 30000`, `maxReconnectAttempts: 10`), automatic heartbeat monitoring, and active subscription recovery.
+- **Hierarchical Event Emission**: Dispatches granular events (`orderbook`, `orderbook:${venue}`, `orderbook:${venue}:${symbol}`, `trade`, `trade:${venue}`).
+
+**Polymarket Relayer Engine** (`src/desk/polymarket/polymarket-relayer-engine.ts`, `relayer-nonce-manager.ts`, `gas-station-client.ts`, `ctf-event-listener.ts`, `polymarket-relayer-types.ts`):
+- **EIP-712 Gasless Execution**: Constructs and signs typed structured data for the Polymarket CTF Exchange contract (`0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E`, Polygon chainId `137`).
+- **Multi-Account Signature Support**: Supports EOA (type `0`), Polymarket Proxy (type `1`), and Gnosis Safe (type `2`) signatures.
+- **Atomic Nonce Management (`RelayerNonceManager`)**: Concurrent task-locking queue (`acquire()` / `release()`) and monotonic sequence synchronization with `/nonce?address=...` fallback to eliminate on-chain nonce collisions during concurrent order dispatch bursts.
+- **Dynamic EIP-1559 Pricing (`GasStationClient`)**: Automatically queries gas station APIs (`https://gasstation.polymarket.com`) for dynamic `maxFeePerGas` and `maxPriorityFeePerGas` computation, falling back to conservative limits (50 Gwei base / 2 Gwei priority) during network congestion or oracle degradation.
+- **Sub-100ms Relayer Submission**: Direct HTTP POST order dispatch to gasless relayer endpoints (`/submit`) with latency profiling and comprehensive error classification (`RELAYER_REJECTED`, `NONCE_ERROR`, `INSUFFICIENT_BALANCE`).
+- **On-Chain Settlement Listening (`CtfEventListener`)**: Ethers-based listener tracking `Resolution(bytes32 questionId, uint256 nonce, uint256 timestamp)` events for automated market settlement and position closeouts.
+
+---
+
+### Edge Multi-Region DO Consensus (`nrt`, `sin`, `fra`) with Raft-Lite & Vector Clocks
+
+```mermaid
+graph TD
+    subgraph Edge Multi-Region Mesh
+        NRT[Tokyo DO Node: nrt] <-->|Raft Heartbeat / Vector Clock| SIN[Singapore DO Node: sin]
+        SIN <-->|Raft Heartbeat / Vector Clock| FRA[Frankfurt DO Node: fra]
+        FRA <-->|Raft Heartbeat / Vector Clock| NRT
+    end
+
+    subgraph Consensus & Lease
+        Leader[Active Region Leader] -->|5000ms Leader Lease| LeaseCheck[Lease Guard: isLeaseValid]
+        LeaseCheck -->|Valid| Propose[Propose Key/Value Mutation]
+        Propose -->|Replicate| Commits[Two-Phase Commit Log]
+        Commits -->|Quorum >= 2| Apply[Apply to Local Store]
+    end
+```
+
+**Edge Raft-Lite Engine** (`src/edge/consensus/edge-raft-lite-engine.ts`, `edge-raft-lite-types.ts`):
+- **Multi-Region Quorum Mesh**: Coordinates Cloudflare Durable Objects across three edge hubs: Tokyo (`nrt`), Singapore (`sin`), and Frankfurt (`fra`) with strict quorum (`quorumSize = 2`).
+- **Vector Clocks (`{ nrt, sin, fra }`)**: Causal consistency tracking across distributed nodes; monotonically increments on local state mutation and performs pairwise merging (`mergeClocks`) across peer messages without global monotonic lock contention.
+- **Leader Lease Management**: Time-bounded leader leases (`LeaseInfo`, default `leaseDurationMs: 5000`) grant write authority only while active (`isLeaseValid()`), preventing split-brain execution under network partitions.
+- **State Replication Lifecycle**:
+  - `startElection()`: Increments term, transitions to `candidate`, gathers votes from peer edge regions.
+  - `createHeartbeat()` / `handleHeartbeat()`: Renews leader lease and synchronizes vector clocks across followers.
+  - `propose()` & `handleCommit()`: Two-phase state replication enforcing leader verification and clock ordering before applying updates to the local state store.
+
+---
+
+### Polymarket Statistical Arbitrage & Predictive Market Making
+
+```mermaid
+graph TD
+    subgraph Market Data & Signals
+        Stream[Unified OrderBook & Trades] --> PreFilter[Adverse Selection Filter]
+        PreFilter --> PairsEngine[Pairs Stat Arb Engine]
+        PreFilter --> MM[Predictive Market Maker]
+    end
+
+    subgraph Strategy Execution
+        PairsEngine -->|Z-Score Deviation| CointExec[Cointegration / Mean-Reversion Orders]
+        MM -->|Fair Value +/- Spread| SpreadCalc[Dynamic Spread & Skew Calculator]
+        SpreadCalc -->|Inventory Skew Penalty| QuoteQuotes[Two-Sided Limit Quotes]
+        QuoteQuotes --> Relayer[Polymarket Relayer Engine]
+        CointExec --> Relayer
+    end
+```
+
+**Pairs Statistical Arbitrage** (`src/desk/strategies/polymarket/pairs-stat-arb-strategy.ts`, `pairs-stat-arb-math.ts`):
+- **Cointegration & Correlation Analysis**: Monitors price spreads and ratio deviations across correlated prediction markets and mutually exclusive event outcomes.
+- **Z-Score Mean Reversion**: Computes rolling spread z-scores; triggers atomic long/short entries when $|z| > \text{threshold}_{\text{entry}}$ and exits on mean reversion ($|z| < \text{threshold}_{\text{exit}}$) or stop-loss trigger.
+
+**Predictive Market Making** (`src/desk/strategies/polymarket/market-maker.ts`, `adverse-selection-filter.ts`):
+- **Two-Sided Predictive Liquidity**: Quotes bid and ask limit orders centered around fair value estimates (`fairValue \pm \text{halfSpread}`).
+- **Dynamic Inventory Skew**: Adjusts quotes dynamically based on inventory exposure (`maxInventorySkew: 3`, `skewSpreadMultiplier: 2.0`), widening quotes on the overweight side to incentivize inventory rebalancing.
+- **Adverse Selection & Toxicity Guard**: Incorporates `AdverseSelectionFilter` and `InfoAsymmetryScanner` to detect toxic informed order flow and cancel stale quotes prior to adverse fills.
+- **Continuous Quote Refresh**: High-frequency order cancellation and re-posting (`refreshIntervalMs: 20000`) ensuring quotes reflect latest order book microstructure.
+
+---
+
+### Live Trading Pipeline Orchestration & 5-Gate Edge Deployment Verification
+
+```mermaid
+graph TD
+    subgraph 5-Module Trading Pipeline
+        Signal[Trade Intent / Signal] --> RegKelly[Regime-Aware Kelly Sizer]
+        RegKelly --> DDBreaker[Tiered Drawdown Breaker Check]
+        DDBreaker -->|Allowed| TWAP[TWAP Executor > $500 Threshold]
+        TWAP --> Wallet[WalletManager: Fund Isolation]
+        Wallet --> Audit[Immutable Trade Audit: ~/.cashclaw/]
+    end
+
+    subgraph 5-Gate Edge Deployment Verification
+        Code[AI Commit / Edge Build] --> G1[Gate 1: Validation tsc/eslint/vitest]
+        G1 --> G2[Gate 2: Security & Secret Scan]
+        G2 --> G3[Gate 3: Quality & LOC Thresholds]
+        G3 --> G4[Gate 4: Dependency & Lockfile Hygiene]
+        G4 --> G5[Gate 5: Deploy Smoke & Multi-Region Health]
+        G5 --> EdgeProd[Edge Production: nrt / sin / fra]
+    end
+```
+
+**Trading Pipeline Orchestrator** (`src/desk/trading-pipeline.ts`):
+- **5-Module Unified Composition**:
+  1. **Regime-Aware Kelly** (`RegimeAwareKelly` / `KellyPositionSizer`): Sizes positions dynamically based on current market regime (trending, ranging, high volatility).
+  2. **Tiered Drawdown Breaker** (`TieredDrawdownBreaker`): Non-mutating pre-trade health check enforcing multi-tier safety (`NORMAL`, `ALERT`, `REDUCE`, `HALT`, `HARD_STOP`).
+  3. **TWAP Execution** (`TwapExecutor`): Splits large trade orders exceeding `$500` threshold into time-sliced chunks to minimize market impact.
+  4. **Multi-Tenant Wallet Manager** (`WalletManager`): Enforces strict balance checks and fund isolation per wallet label.
+  5. **Immutable Trade Audit** (`ImmutableTradeAudit`): Appends every execution decision, order status, and P&L outcome to an immutable disk journal (`~/.cashclaw/`) that survives process and PM2 restarts.
+
+**5-Gate Edge Deployment Verification** (`docs/ai-first-enforcement-gates.md`, `src/alpha-lab/check-gates.ts`, `scripts/verify-multi-region.sh`, `scripts/final-integration-check.js`):
+- **Deterministic Deployment Gates**:
+  - **Gate 1 (Validation)**: Executes `tsc --noEmit`, ESLint rules, and complete Vitest/Jest unit & integration test suites.
+  - **Gate 2 (Security & Secret Scan)**: Scans for credentials/keys (PEM, AWS, OpenAI, Anthropic, private keys) and verifies zero critical CVEs via `pnpm audit`.
+  - **Gate 3 (Code Quality & Complexity)**: Enforces zero new ESLint suppressions, strict typing (zero `:any`), and monitors file LOC limits.
+  - **Gate 4 (Dependency Hygiene)**: Validates lockfile reproducibility and deterministic dependency resolution.
+  - **Gate 5 (Deployment Smoke & Multi-Region Health)**: Validates edge worker deployment across all regions (`us-east`, `eu-central`, `ap-southeast` / `nrt`, `sin`, `fra`), probing `/api/health`, `/api/health/region`, and `/api/v1/shard/health` to confirm consensus and response latencies meet SLA targets (<100ms p95).
+- **Rollback Hierarchy Alignment**: Deeply wired into L0-L4 multi-tier rollback stack:
+  - **L0 Static/Dynamic**: Enforcement Gates & Qwen Signals Loop Journal.
+  - **L1 Emergency Halt**: Kill switch (`QWEN_KILL=1`, multi-region / sharding kill endpoints).
+  - **L2 Swarm Gate**: Swarm disablement toggle (`isQwenEnabled()`).
+  - **L3 Drawdown Protection**: Automated disablement on 24h rolling P&L drawdown > 5%.
+  - **L4 Paper Qualification**: Strict 30-day paper-trading gate before live capital routing.
+
+---
+
+### Four Pillars Core Scaffolding (Risk Cockpit, Alpha Backtester, Polymarket Relayer, Strategy Optimizer)
+
+```mermaid
+graph TD
+    subgraph Pillar 1: Risk Cockpit
+        Ret[Asset Returns] --> CF[Cornish-Fisher VaR: calculateCornishFisherVaR]
+        Ret --> ES[Expected Shortfall: calculateExpectedShortfall]
+        CF --> RK[Real-Time Risk Cockpit API / Metrics]
+        ES --> RK
+    end
+
+    subgraph Pillar 2: Alpha Lab Backtester
+        Ticks[Tick Feed / Orderbook Data] --> BE[BacktestEngine: run]
+        BE --> AC[Almgren-Chriss Slippage Model]
+        BE --> DSR[Deflated Sharpe Ratio: calculateDSR]
+        BE --> SimRes[SimulationResult: pnl, sharpe, dsr]
+    end
+
+    subgraph Pillar 3: Polymarket Relayer
+        OrderReq[RelayerOrderRequest] --> PREngine[PolymarketRelayerEngine]
+        NM[RelayerNonceManager] -->|Atomic Queue Lock| PREngine
+        GS[GasStationClient] -->|EIP-1559 Dynamic Gas| PREngine
+        PREngine -->|EIP-712 Signed Payload| RelayerAPI[Polymarket Relayer POST /submit]
+        CTFEvents[CtfEventListener] -->|Resolution Event| Settle[On-Chain Settlement]
+    end
+
+    subgraph Pillar 4: Strategy Optimizer
+        Trials[Parameter Space] --> TPE[TPEOptimizer: Bayesian Sampling]
+        TPE --> CPCV[Purged & Embargoed Cross-Validation: getPurgedIndices]
+        CPCV --> WFV[Walk-Forward Summary]
+        WFV --> MinBTL[MinBTL Gating: validateMinBTL]
+    end
+```
+
+**1. Real-Time Risk Cockpit (Cornish-Fisher VaR & Expected Shortfall)**:
+- **Cornish-Fisher Value-at-Risk** (`src/desk/risk/cornish-fisher.ts`):
+  - Corrects Gaussian VaR for empirical skewness ($S$) and excess kurtosis ($K$) via polynomial expansion ($z_{CF}$):
+    $$z_{CF} = z + \frac{1}{6}(z^2 - 1)S + \frac{1}{24}(z^3 - 3z)K - \frac{1}{36}(2z^3 - 5z)S^2$$
+  - Closed-form semi-parametric risk assessment: $\text{VaR} = |PV \cdot z_{CF} \cdot \sigma \cdot \sqrt{h}|$, accounting for fat-tailed crypto and prediction market distributions.
+- **Expected Shortfall / Conditional VaR** (`src/desk/risk/expected-shortfall.ts`):
+  - Computes coherent tail risk ($ES_\alpha$): sorts empirical returns, isolates the lower $(1-\alpha)$ tail slice, and calculates the expected loss magnitude beyond the VaR threshold.
+  - Implements subadditive risk bounds for portfolio margin gating and tiered circuit breakers.
+
+**2. High-Throughput Alpha Lab Backtesting Engine**:
+- **Microsecond Simulation Loop** (`src/alpha-lab/backtest/simulation-engine.ts`):
+  - Processes ordered `Tick` vectors (`price`, `volume`, `timestamp`) with sub-millisecond strategy evaluation.
+  - Generates comprehensive `SimulationResult` (`pnl`, `sharpe`, `dsr`, `ticksProcessed`).
+- **Almgren-Chriss Micro-Slippage Model** (`src/alpha-lab/backtest/slippage-model.ts`):
+  - Incorporates non-linear market impact model combining permanent and temporary market friction:
+    $$\text{Impact} = \gamma \cdot \left(\frac{v}{V}\right) + \eta \cdot \sqrt{\frac{v}{V}}$$
+  - Prevents unrealistically optimistic backtest fills on illiquid token or outcome markets.
+- **Deflated Sharpe Ratio (DSR)** (`src/alpha-lab/validation/bootstrap-sharpe.ts`):
+  - Adjusts observed Sharpe ratio for multiple testing selection bias and track record length:
+    $$Z = \frac{\widehat{SR}}{\sigma / \sqrt{N}}, \quad \text{Adjusted for } \sqrt{2 \ln K}$$
+  - Enforces rejection of overfitted strategies with high trial counts.
+
+**3. Polymarket Relayer Engine**:
+- **EIP-712 Gasless Signing & Relayer Submission** (`src/desk/polymarket/polymarket-relayer-engine.ts`):
+  - Typed structured signing supporting EOA, Polymarket Proxy, and Gnosis Safe accounts targeting CTF Exchange (`0x4bFb...`).
+- **Atomic Nonce Locks** (`src/desk/polymarket/relayer-nonce-manager.ts`):
+  - Concurrency-safe queue lock (`acquire()` / `processQueue()` / `release()`) eliminating sequence conflicts during concurrent order bursts.
+- **Dynamic EIP-1559 Fees** (`src/desk/polymarket/gas-station-client.ts`):
+  - Real-time Polygon gas station polling for `maxFeePerGas` and `maxPriorityFeePerGas`.
+- **On-Chain Settlement Verification** (`src/desk/polymarket/ctf-event-listener.ts`):
+  - Listens for `Resolution` logs to trigger auto-redemption and P&L finalization.
+
+**4. Strategy Optimization Grid & Walk-Forward Optimizer**:
+- **Combinatorial Purged & Embargoed Cross-Validation (CPCV)** (`src/alpha-lab/optimizer/cpcv.ts`):
+  - `getPurgedIndices(trainSplit, testSplit, config, totalBars)`:
+  - Purging: Drops training observations overlapping with test labels ($[t_{test, start} - \text{purgeWindow}, t_{test, end}]$).
+  - Embargoing: Discards training samples immediately following test periods ($[t_{test, end}, t_{test, end} + \text{embargoWindow}]$) to remove autoregressive serial correlation leak.
+- **Tree-Structured Parzen Estimator (TPE)** (`src/alpha-lab/optimizer/tpe-optimizer.ts`):
+  - Bayesian hyperparameter optimization searching continuous and discrete parameter spaces, maintaining trial score history to guide candidate suggestions towards promising basins.
+- **Minimum Backtest Length Gating (MinBTL)** (`src/alpha-lab/optimizer/min-btl.ts`):
+  - Evaluates `WalkForwardSummary` against statistical significance thresholds (`minBars`, `minTrades`) to prevent underpowered strategy graduation into production.
+
+---
+
+

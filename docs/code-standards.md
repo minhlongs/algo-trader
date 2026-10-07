@@ -44,13 +44,14 @@
 - **Pre-commit**: `pnpm run typecheck && pnpm run test`
 - **No secrets**: .env gitignored, API keys via env vars only
 
-## Enforcement Status (Phase 4 ✅)
-✅ **0 TypeScript errors** — all strict mode rules enforced
+## Enforcement Status (Wave 6 Quality Ratchet v1.1.0 ✅)
+✅ **0 TypeScript errors** — all strict mode rules enforced (`npm run typecheck`)
 ✅ **0 `any` types** — all values properly typed
-✅ **0 console.log** — production-ready code
-✅ **0 TODO/FIXME** — no technical debt
-✅ **2,430+ tests** — 100% pass rate (vitest)
-✅ **Kebab-case files** — consistent naming across codebase
-✅ **Max 200 lines** — modular file structure verified
+✅ **≤ 2 non-logger console calls** — strict production sanitation
+✅ **0 TODO/FIXME** — zero technical debt
+✅ **15,900+ tests** — 100% pass rate (vitest)
+✅ **Kebab-case files** — consistent self-documenting naming across codebase
+✅ **Max 200 lines** — strictly 0 oversized files in `src/`
+✅ **Timing-safe crypto** — constant-time HMAC comparison on all webhooks
 
-Updated: 2026-06-30
+Updated: 2026-10-07

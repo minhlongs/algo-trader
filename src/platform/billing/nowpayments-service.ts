@@ -10,6 +10,7 @@
  */
 
 import { logger } from '../../shared/utils/logger';
+import { sortObjectDeep, constantTimeEqual } from '../workers/nowpayments-utils';
 import {
   NOWPAYMENTS_TIERS,
   type NowPaymentsIpnPayload,
@@ -53,8 +54,7 @@ export class NowPaymentsService {
   }
 
   /**
-   * Verify IPN webhook signature (HMAC-SHA512 over raw body bytes)
-   * NOWPayments signs the exact JSON payload as received on the wire.
+   * Verify IPN webhook signature (HMAC-SHA512 over sorted JSON keys with raw fallback)
    */
   async verifyWebhook(rawBody: string, signature: string): Promise<boolean> {
     if (!this.ipnSecret) {
@@ -70,11 +70,20 @@ export class NowPaymentsService {
         false,
         ['sign']
       );
-      const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
-      const computed = Array.from(new Uint8Array(sig))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
-      return computed === signature;
+      const signHmac = async (data: string): Promise<string> => {
+        const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
+        return Array.from(new Uint8Array(sig))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+      };
+      try {
+        const sorted = sortObjectDeep(JSON.parse(rawBody));
+        const sortedSig = await signHmac(JSON.stringify(sorted));
+        if (constantTimeEqual(sortedSig, signature)) return true;
+      } catch {
+        // Fallback for non-JSON or raw payload
+      }
+      return constantTimeEqual(await signHmac(rawBody), signature);
     } catch (error) {
       logger.error('IPN signature verification failed:', { error });
       return false;

@@ -27,3 +27,6 @@ export type {
 
 export { ALL_FAMILIES } from './strategy-families';
 export * from './discovery-pipeline';
+export * from './genetic-evolution-types';
+export * from './genetic-evolution-engine';
+export * from './genetic-evolution-math';

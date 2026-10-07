@@ -14,8 +14,8 @@ export interface RegionHealth {
   latencyMs: number;
 }
 
-/** Probe all regions for health and latency */
-export async function getRegionHealth(env: Env): Promise<RegionHealth[]> {
+/** Probe all regions for health and latency - Used by background cron */
+export async function probeAllRegions(env: Env): Promise<RegionHealth[]> {
   const regions = Object.keys(REGIONS) as RegionId[];
   const results: RegionHealth[] = [];
 
@@ -39,6 +39,27 @@ export async function getRegionHealth(env: Env): Promise<RegionHealth[]> {
   }
 
   return results;
+}
+
+const HEALTH_KEY = 'region:health:status';
+
+/** Get health from KV cache */
+export async function getCachedRegionHealth(env: Env): Promise<RegionHealth[]> {
+  const cached = await env.CACHE.get<RegionHealth[]>(HEALTH_KEY, 'json');
+  if (cached) return cached;
+
+  // Default to healthy if cold
+  return (Object.keys(REGIONS) as RegionId[]).map(region => ({
+    region,
+    healthy: true,
+    latencyMs: 0,
+  }));
+}
+
+/** Probe all regions and update KV cache */
+export async function updateRegionHealthCache(env: Env): Promise<void> {
+  const health = await probeAllRegions(env);
+  await env.CACHE.put(HEALTH_KEY, JSON.stringify(health), { expirationTtl: 300 }); // 5m cache
 }
 
 /** Map Cloudflare IP country code to nearest region */

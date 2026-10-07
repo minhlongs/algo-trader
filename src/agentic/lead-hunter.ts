@@ -1,6 +1,6 @@
 import type { Context } from 'grammy';
 import type { ChurnSignal, LeadHunterState } from './types/lead-hunter-types';
-import { UserLinkStore, UserLink } from '../platform/telegram/user-link-store';
+import { UserLinkStore } from '../platform/telegram/user-link-store';
 import { logger } from '../shared/utils/logger';
 
 const WELCOME_MESSAGE = `🎣 *Welcome to Algo Trader!*

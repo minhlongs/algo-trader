@@ -6,6 +6,7 @@ import { LiveExecutionGuard } from './live-execution-guard-core';
 import type { LivePositionTracker } from './live-position-tracker';
 import { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
 import type { TieredDrawdownBreaker } from '../risk/tiered-drawdown-breaker';
+import type { CircuitBreaker } from '../risk/circuit-breaker';
 import type { AlphaLifecycleState } from '../../alpha-lab/attribution/alpha-lifecycle-state-machine';
 import { evaluateHandoffOrder } from './live-guard-handoff-evaluator';
 import type {
@@ -27,6 +28,7 @@ export class LiveGuardHandoffCoordinator {
     rateLimitOrdersPerSec: number;
     rateLimitBurst: number;
     drawdownBreaker?: TieredDrawdownBreaker;
+    circuitBreaker?: CircuitBreaker;
     positionTracker?: LivePositionTracker;
   };
   private readonly rateLimiters = new Map<string, TokenBucketRateLimiter>();
@@ -46,6 +48,7 @@ export class LiveGuardHandoffCoordinator {
       rateLimitOrdersPerSec: config.rateLimitOrdersPerSec ?? 5,
       rateLimitBurst: config.rateLimitBurst ?? 10,
       drawdownBreaker: config.drawdownBreaker,
+      circuitBreaker: config.circuitBreaker,
       positionTracker: config.positionTracker,
     };
 
@@ -76,6 +79,7 @@ export class LiveGuardHandoffCoordinator {
       signalTtlMs: this.config.signalTtlMs,
       rateLimitOrdersPerSec: this.config.rateLimitOrdersPerSec,
       drawdownBreaker: this.config.drawdownBreaker,
+      circuitBreaker: this.config.circuitBreaker,
       guard: this.guard,
       getOrCreateRateLimiter: (stratId) => this.getOrCreateRateLimiter(stratId),
       isPromotionEligible: (state) => this.isPromotionEligible(state),
@@ -85,8 +89,10 @@ export class LiveGuardHandoffCoordinator {
   public recordFillOutcome(strategyId: string, realizedPnl: number, currentEquity?: number): void {
     if (realizedPnl >= 0) {
       this.guard.recordWin(realizedPnl);
+      if (this.config.circuitBreaker) void this.config.circuitBreaker.recordWin();
     } else {
       this.guard.recordLoss(realizedPnl);
+      if (this.config.circuitBreaker) void this.config.circuitBreaker.recordLoss();
     }
 
     if (this.config.drawdownBreaker) {
@@ -99,6 +105,7 @@ export class LiveGuardHandoffCoordinator {
 
   public resetCircuit(): void {
     this.guard.resetCircuit();
+    if (this.config.circuitBreaker) void this.config.circuitBreaker.reset();
   }
 
   public resetDaily(): void {

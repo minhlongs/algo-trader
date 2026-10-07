@@ -1,14 +1,5 @@
 /**
  * Alpha-Lab Autonomous Pipeline Orchestrator
- *
- * Master orchestrator connecting:
- * 1. Continuous hypothesis discovery & walkforward evaluation (R1)
- * 2. AISignalAdapter validation & RegimeAwareKelly paper execution (R2)
- * 3. 10+1 statistical promotion state machine & retirement monitoring (R3)
- * 4. Pre-trade LiveExecutionGuard risk handoff (R3)
- * 5. SHA-256 chained research ledger and run card provenance audit trails (R4)
- *
- * Location: src/alpha-lab/pipeline/alpha-lab-autonomous-pipeline.ts
  */
 
 import type { ContinuousDiscoveryPipeline, ContinuousDiscoveryResult, DiscoveredAlphaCandidate } from '../alpha-discovery/continuous-discovery-pipeline';
@@ -16,6 +7,8 @@ import type { AISignal, AISignalAdapter } from '../../desk/strategies/ai-signal-
 import type { AISignalPaperRouter, SignalRoutingOutcome } from '../../desk/strategies/ai-signal-paper-router';
 import type { AlphaLifecycleStateMachine, PromotionStateTransition } from '../attribution/alpha-lifecycle-state-machine';
 import type { LiveGuardHandoffCoordinator, LiveOrderHandoffVerdict } from '../../desk/execution/live-guard-handoff';
+import type { RegimeAwareKelly } from '../../desk/risk/regime-aware-kelly';
+import type { CircuitBreaker } from '../../desk/risk/circuit-breaker';
 import type { LedgerRecord, LedgerWriteResult } from '../provenance/research-ledger';
 import type { CandleLike } from '../regimes/regime-types';
 import type { PolymarketOrder } from '../../desk/execution/polymarket-signer';
@@ -88,15 +81,7 @@ export class AlphaLabAutonomousPipeline {
   }
 
   public async discoverAndEvaluate(candles?: CandleLike[]): Promise<ContinuousDiscoveryResult> {
-    return executeDiscovery(
-      this.ctx.subsystems,
-      this.ctx.state,
-      this.ctx.symbol,
-      this.ctx.timeframe,
-      this.ctx.runCardDir,
-      this.persistLedgerRecord.bind(this),
-      candles,
-    );
+    return executeDiscovery(this.ctx.subsystems, this.ctx.state, this.ctx.symbol, this.ctx.timeframe, this.ctx.runCardDir, this.persistLedgerRecord.bind(this), candles);
   }
 
   public ingestCandidateToPaper(
@@ -191,6 +176,14 @@ export class AlphaLabAutonomousPipeline {
 
   public getDiscoveryPipeline(): ContinuousDiscoveryPipeline {
     return this.ctx.subsystems.discoveryPipeline;
+  }
+
+  public getRegimeKelly(): RegimeAwareKelly {
+    return this.ctx.subsystems.regimeKelly;
+  }
+
+  public getCircuitBreaker(): CircuitBreaker {
+    return this.ctx.subsystems.circuitBreaker;
   }
 
   public getTrackedStrategyIds(): string[] {

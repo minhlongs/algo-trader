@@ -5,6 +5,7 @@
 
 import crypto from 'node:crypto';
 import { logger } from '../shared/utils/logger';
+import { sortObjectDeep } from '../platform/workers/nowpayments-utils';
 import {
   NowPaymentsIpnSchema,
   TIER_ENTITLEMENTS,
@@ -14,7 +15,9 @@ import {
   type SubscriptionStore,
   type TenantSubscriptionRecord,
   type Tier,
+  type TierActivationGatewayConfig,
   type TierEntitlements,
+  type TierInvalidationCallback,
 } from './tier-activation-types';
 
 export class InMemorySubscriptionStore implements SubscriptionStore {
@@ -38,19 +41,29 @@ export class InMemorySubscriptionStore implements SubscriptionStore {
 export class TierActivationGateway {
   private ipnSecret?: string;
   private store: SubscriptionStore;
+  private onTierInvalidation?: TierInvalidationCallback;
 
-  constructor(config?: { ipnSecret?: string; store?: SubscriptionStore }) {
+  constructor(config?: TierActivationGatewayConfig) {
     this.ipnSecret = config?.ipnSecret ?? process.env.NOWPAYMENTS_IPN_SECRET;
     this.store = config?.store ?? new InMemorySubscriptionStore();
+    this.onTierInvalidation = config?.onTierInvalidation;
   }
 
   verifySignature(rawBody: string, signature: string): boolean {
     if (!this.ipnSecret) return false;
     try {
-      const computed = crypto.createHmac('sha512', this.ipnSecret).update(rawBody).digest('hex');
-      const compBuf = Buffer.from(computed, 'utf8');
-      const sigBuf = Buffer.from(signature, 'utf8');
-      return compBuf.length === sigBuf.length && crypto.timingSafeEqual(compBuf, sigBuf);
+      const sigBuf = Buffer.from(signature.trim(), 'utf8');
+      try {
+        const sorted = sortObjectDeep(JSON.parse(rawBody));
+        const sortedHmac = crypto.createHmac('sha512', this.ipnSecret).update(JSON.stringify(sorted)).digest('hex');
+        const sortedBuf = Buffer.from(sortedHmac, 'utf8');
+        if (sortedBuf.length === sigBuf.length && crypto.timingSafeEqual(sortedBuf, sigBuf)) return true;
+      } catch {
+        // Fallback to raw verification if sorting fails
+      }
+      const rawHmac = crypto.createHmac('sha512', this.ipnSecret).update(rawBody).digest('hex');
+      const rawBuf = Buffer.from(rawHmac, 'utf8');
+      return rawBuf.length === sigBuf.length && crypto.timingSafeEqual(rawBuf, sigBuf);
     } catch (err) {
       logger.error('[TierActivationGateway] Signature check error:', { err });
       return false;
@@ -80,14 +93,11 @@ export class TierActivationGateway {
     if (this.ipnSecret && (!signature || !this.verifySignature(rawBody, signature))) {
       return this.failureResult('unknown', 'BASIC', '', 'Invalid or missing webhook signature');
     }
-
-    let parsedJson: unknown;
     try {
-      parsedJson = JSON.parse(rawBody);
+      return await this.processPayload(JSON.parse(rawBody));
     } catch {
       return this.failureResult('unknown', 'BASIC', '', 'Malformed JSON webhook payload');
     }
-    return this.processPayload(parsedJson);
   }
 
   async processPayload(input: unknown): Promise<ActivationResult> {
@@ -99,8 +109,28 @@ export class TierActivationGateway {
     const payload = parseResult.data;
     const { tenantId, tier } = this.resolveTenantAndTier(payload);
     const validStatuses = ['confirmed', 'finished'];
+    const currentStatus = payload.payment_status.toLowerCase();
 
-    if (!validStatuses.includes(payload.payment_status.toLowerCase())) {
+    if (!validStatuses.includes(currentStatus)) {
+      const downgradeStatuses = ['refunded', 'failed', 'expired'];
+      if (downgradeStatuses.includes(currentStatus)) {
+        try {
+          const existing = await this.store.getTenant(tenantId);
+          if (existing && existing.status === 'ACTIVE') {
+            existing.status = currentStatus === 'expired' ? 'EXPIRED' : 'CANCELLED';
+            await this.store.saveTenant(existing);
+          }
+          if (this.onTierInvalidation) {
+            await this.onTierInvalidation(tenantId, {
+              status: currentStatus,
+              paymentId: payload.payment_id,
+              previousTier: existing?.tier,
+            });
+          }
+        } catch (err) {
+          logger.error('[TierActivationGateway] Downgrade invalidation error:', { err });
+        }
+      }
       return this.failureResult(tenantId, tier, payload.payment_id, `Payment status '${payload.payment_status}' is not confirmed`);
     }
 

@@ -104,6 +104,12 @@ export interface HealthStatus {
   postgres: 'ok' | 'error' | 'disconnected';
   timestamp: number;
   uptime: number;
+  shards?: Array<{
+    shardId: number;
+    status: 'healthy' | 'degraded' | 'offline';
+    rps?: number;
+    avgLatencyMs?: number;
+  }>;
 }
 
 export interface MetricsStatus {

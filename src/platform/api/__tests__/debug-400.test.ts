@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import request from 'supertest';
-import express from 'express';
+import type express from 'express';
 
 // Set required env before any imports
 process.env.AUDIT_HMAC_KEY_v1 = 'a'.repeat(64); // 64 hex chars = 32 bytes
@@ -15,6 +15,10 @@ vi.mock('@sentry/node', () => ({
   setExtra: vi.fn(),
   setContext: vi.fn(),
 }));
+
+// Mock better-auth & auth-server to prevent hang during ApiServer init
+vi.mock('../auth/auth-server', () => ({ auth: { handler: vi.fn() } }));
+vi.mock('better-auth/node', () => ({ toNodeHandler: () => (_req: unknown, _res: unknown) => {} }));
 
 // Mock redis to prevent real connection
 vi.mock('../../../redis', () => ({
@@ -68,11 +72,6 @@ const mockRedis = {
   info: vi.fn().mockResolvedValue('# Server\r\nredis_version:7.0.0\r\n'),
 };
 
-// Mocks must use the SAME resolution path as health.ts relative imports.
-// health.ts: import { getRedisClient } from '../../../redis'
-//   → resolves from /src/platform/api/routes/health.ts to /src/redis/index.ts
-// health.ts: import { getDbClient } from '../../../shared/db/postgres-client'
-//   → resolves to /src/shared/db/postgres-client.ts
 vi.mock('../../../redis', () => ({ getRedisClient: () => mockRedis }));
 vi.mock('../../../shared/db/postgres-client', () => ({
   getDbClient: () => ({ query: vi.fn().mockResolvedValue({ rows: [] }) }),

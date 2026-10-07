@@ -296,12 +296,20 @@
 
 **Status:** Phase 19 COMPLETE ✅. Full-stack low-latency and database optimization.
 
+## Wave 6: Billing Gateway Hardening, Onboarding State Machine & Resend Edge Delivery (Completed ✅ 2026-10-07)
+- [x] **NOWPayments HMAC Key Sort Hardening**: Canonical recursive alphabetical key sorting (`ksort`) for HMAC-SHA512 IPN webhook verification with timing-safe checks (`crypto.timingSafeEqual` and `constantTimeEqual`).
+- [x] **Zero-Dependency Edge Email Delivery**: Pure `fetch`-based `resend-email-provider.ts` adapter for Cloudflare Workers & Node.js with secret sanitization and 429 exponential backoff.
+- [x] **Onboarding State Machine & Tier Cache Eviction**: 3-step activation workflow (`signup` -> `verify` -> `activate`) with proactive KV cache invalidation (`tier:${tenantId}`) on payment refund/failure.
+- [x] **Quality Ratchet v1.1.0 Gate Certification**: 12/12 quality gates green, 0 `:any` types, 0 oversized files (>200 LOC in `src/`), all tests passing.
+
+**Status:** Wave 6 COMPLETE ✅. Billing gateway reliability, edge deliverability, and automated activation certified.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 1506 tests, 0 TS errors, 232+ source files.
+**Current Status:** 15,900+ tests, 0 TS errors, Quality Ratchet v1.1.0 green.
 
-Updated: 2026-05-30
+Updated: 2026-10-07

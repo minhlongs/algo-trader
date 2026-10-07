@@ -8,6 +8,7 @@ import type { AISignalPaperRouter, SignalRoutingOutcome } from '../../desk/strat
 import type { PaperExecutor } from '../../desk/execution/paper-executor';
 import type { RegimeAwareKelly } from '../../desk/risk/regime-aware-kelly';
 import type { TieredDrawdownBreaker } from '../../desk/risk/tiered-drawdown-breaker';
+import type { CircuitBreaker } from '../../desk/risk/circuit-breaker';
 import type { AlphaLifecycleState, PromotionStateTransition } from '../attribution/alpha-lifecycle-state-machine';
 import type { LiveGuardHandoffCoordinator, LiveHandoffStatus } from '../../desk/execution/live-guard-handoff';
 import type { LiveExecutionGuard } from '../../desk/execution/live-execution-guard-core';
@@ -45,6 +46,8 @@ export interface AlphaLabAutonomousPipelineConfig {
   regimeKelly?: RegimeAwareKelly;
   /** Pre-configured or custom TieredDrawdownBreaker. */
   drawdownBreaker?: TieredDrawdownBreaker;
+  /** Pre-configured or custom CircuitBreaker. */
+  circuitBreaker?: CircuitBreaker;
   /** Pre-configured or custom LiveGuardHandoffCoordinator. */
   liveCoordinator?: LiveGuardHandoffCoordinator;
   /** Pre-configured or custom LiveExecutionGuard. */

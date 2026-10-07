@@ -4,4 +4,4 @@
 
 export * from './validation-types';
 export { runMonteCarloPermutation } from './monte-carlo-permutation';
-export { bootstrapSharpeCi } from './bootstrap-sharpe';
+export { calculateDSR, bootstrapSharpeCi } from './bootstrap-sharpe';

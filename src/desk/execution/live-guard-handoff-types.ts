@@ -3,6 +3,7 @@ import type { GuardStatus } from './live-execution-guard-types';
 import type { LivePositionTracker } from './live-position-tracker';
 import type { PolymarketOrder } from './polymarket-signer';
 import type { TieredDrawdownBreaker } from '../risk/tiered-drawdown-breaker';
+import type { CircuitBreaker } from '../risk/circuit-breaker';
 import type { AISignal } from '../strategies/ai-signal-adapter';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge-types';
 import type { AlphaLifecycleState } from '../../alpha-lab/attribution/alpha-lifecycle-state-machine';
@@ -20,6 +21,7 @@ export interface LiveGuardHandoffConfig {
   rateLimitOrdersPerSec?: number;   // default: 5
   rateLimitBurst?: number;          // default: 10
   drawdownBreaker?: TieredDrawdownBreaker;
+  circuitBreaker?: CircuitBreaker;
   positionTracker?: LivePositionTracker;
 }
 
