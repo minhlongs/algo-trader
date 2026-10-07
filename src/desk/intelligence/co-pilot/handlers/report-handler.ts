@@ -10,7 +10,7 @@ import { handlePerformanceQuery } from './performance-handler';
 import { handleRegimeQuery } from './regime-handler';
 import { DrawdownMonitor } from '../../../risk/drawdown-monitor';
 import { CircuitBreaker } from '../../../risk/circuit-breaker';
-import { PositionManager } from '../../../risk/position-manager';
+import { PositionManager, type Position } from '../../../risk/position-manager';
 import { getAccuracyReport } from '../../../intelligence/prediction-accuracy-tracker';
 
 /**
@@ -58,7 +58,7 @@ export async function handleReportQuery(
     '',
     '**5. Portfolio**',
     `- Open positions: ${positions.length}`,
-    `- Unrealized P&L: $${positions.reduce((sum, p) => sum + p.unrealizedPnl, 0).toFixed(2)}`,
+    `- Unrealized P&L: $${(positions as Position[]).reduce((sum: number, p: Position) => sum + p.unrealizedPnl, 0).toFixed(2)}`,
   ].join('\n');
 
   return {
