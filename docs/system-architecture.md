@@ -517,3 +517,148 @@ graph TD
 
 ---
 
+### Multi-Venue Market Streamer & Polymarket Relayer Engine
+
+```mermaid
+graph LR
+    subgraph Market Feeds
+        BN[Binance WS] --> MVMS[MultiVenueMarketStreamer]
+        HL[Hyperliquid WS] --> MVMS
+        PM[Polymarket CLOB WS] --> MVMS
+    end
+
+    subgraph Normalization & Routing
+        MVMS -->|UnifiedOrderBook| UOB[OrderBook Event Stream]
+        MVMS -->|UnifiedTrade| UT[Trade Event Stream]
+        UOB --> SignalEngines[Signal & Arb Engines]
+        UT --> SignalEngines
+    end
+
+    subgraph Polymarket Execution
+        SignalEngines --> PRE[PolymarketRelayerEngine]
+        PRE -->|EIP-712 Sign| EOA[EOA / Proxy / Safe]
+        PRE -->|Monotonic Nonce| Sync[Nonce Synchronizer]
+        PRE -->|Gasless Relayer POST| CTF[CTF Exchange Contract]
+    end
+```
+
+**Multi-Venue Market Streamer** (`src/desk/data/multi-venue-market-streamer.ts`, `multi-venue-streamer-parsers.ts`, `multi-venue-streamer-types.ts`):
+- **Multiplexed WS Ingestion**: Single unified stream manager connecting concurrently to Binance (`wss://stream.binance.com:9443/ws`), Hyperliquid (`wss://api.hyperliquid.xyz/ws`), and Polymarket CLOB (`wss://ws-subscriptions-clob.polymarket.com/ws/market`).
+- **Normalized Schema**: Parses disparate exchange messages into uniform `UnifiedOrderBook` (bids, asks, timestamp, venue, symbol) and `UnifiedTrade` data structures.
+- **Resilience & Backoff**: Exponential backoff reconnect strategy (`reconnectBaseMs: 1000`, `reconnectMaxMs: 30000`, `maxReconnectAttempts: 10`), automatic heartbeat monitoring, and active subscription recovery.
+- **Hierarchical Event Emission**: Dispatches granular events (`orderbook`, `orderbook:${venue}`, `orderbook:${venue}:${symbol}`, `trade`, `trade:${venue}`).
+
+**Polymarket Relayer Engine** (`src/desk/polymarket/polymarket-relayer-engine.ts`, `polymarket-relayer-types.ts`):
+- **EIP-712 Gasless Execution**: Constructs and signs typed structured data for the Polymarket CTF Exchange contract (`0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E`, Polygon chainId `137`).
+- **Multi-Account Signature Support**: Supports EOA (type `0`), Polymarket Proxy (type `1`), and Gnosis Safe (type `2`) signatures.
+- **Nonce Synchronization**: Synchronizes nonces against `/nonce?address=...` with monotonic timestamp fallback counter (`${Date.now()}${counter}`) to prevent nonce collisions during high-frequency execution bursts.
+- **Sub-100ms Relayer Submission**: Direct HTTP POST order dispatch to gasless relayer endpoints with comprehensive error classification (`RELAYER_REJECTED`, `NONCE_ERROR`, `INSUFFICIENT_BALANCE`).
+
+---
+
+### Edge Multi-Region DO Consensus (`nrt`, `sin`, `fra`) with Raft-Lite & Vector Clocks
+
+```mermaid
+graph TD
+    subgraph Edge Multi-Region Mesh
+        NRT[Tokyo DO Node: nrt] <-->|Raft Heartbeat / Vector Clock| SIN[Singapore DO Node: sin]
+        SIN <-->|Raft Heartbeat / Vector Clock| FRA[Frankfurt DO Node: fra]
+        FRA <-->|Raft Heartbeat / Vector Clock| NRT
+    end
+
+    subgraph Consensus & Lease
+        Leader[Active Region Leader] -->|5000ms Leader Lease| LeaseCheck[Lease Guard: isLeaseValid]
+        LeaseCheck -->|Valid| Propose[Propose Key/Value Mutation]
+        Propose -->|Replicate| Commits[Two-Phase Commit Log]
+        Commits -->|Quorum >= 2| Apply[Apply to Local Store]
+    end
+```
+
+**Edge Raft-Lite Engine** (`src/edge/consensus/edge-raft-lite-engine.ts`, `edge-raft-lite-types.ts`):
+- **Multi-Region Quorum Mesh**: Coordinates Cloudflare Durable Objects across three edge hubs: Tokyo (`nrt`), Singapore (`sin`), and Frankfurt (`fra`) with strict quorum (`quorumSize = 2`).
+- **Vector Clocks (`{ nrt, sin, fra }`)**: Causal consistency tracking across distributed nodes; monotonically increments on local state mutation and performs pairwise merging (`mergeClocks`) across peer messages without global monotonic lock contention.
+- **Leader Lease Management**: Time-bounded leader leases (`LeaseInfo`, default `leaseDurationMs: 5000`) grant write authority only while active (`isLeaseValid()`), preventing split-brain execution under network partitions.
+- **State Replication Lifecycle**:
+  - `startElection()`: Increments term, transitions to `candidate`, gathers votes from peer edge regions.
+  - `createHeartbeat()` / `handleHeartbeat()`: Renews leader lease and synchronizes vector clocks across followers.
+  - `propose()` & `handleCommit()`: Two-phase state replication enforcing leader verification and clock ordering before applying updates to the local state store.
+
+---
+
+### Polymarket Statistical Arbitrage & Predictive Market Making
+
+```mermaid
+graph TD
+    subgraph Market Data & Signals
+        Stream[Unified OrderBook & Trades] --> PreFilter[Adverse Selection Filter]
+        PreFilter --> PairsEngine[Pairs Stat Arb Engine]
+        PreFilter --> MM[Predictive Market Maker]
+    end
+
+    subgraph Strategy Execution
+        PairsEngine -->|Z-Score Deviation| CointExec[Cointegration / Mean-Reversion Orders]
+        MM -->|Fair Value +/- Spread| SpreadCalc[Dynamic Spread & Skew Calculator]
+        SpreadCalc -->|Inventory Skew Penalty| QuoteQuotes[Two-Sided Limit Quotes]
+        QuoteQuotes --> Relayer[Polymarket Relayer Engine]
+        CointExec --> Relayer
+    end
+```
+
+**Pairs Statistical Arbitrage** (`src/desk/strategies/polymarket/pairs-stat-arb-strategy.ts`, `pairs-stat-arb-math.ts`):
+- **Cointegration & Correlation Analysis**: Monitors price spreads and ratio deviations across correlated prediction markets and mutually exclusive event outcomes.
+- **Z-Score Mean Reversion**: Computes rolling spread z-scores; triggers atomic long/short entries when $|z| > \text{threshold}_{\text{entry}}$ and exits on mean reversion ($|z| < \text{threshold}_{\text{exit}}$) or stop-loss trigger.
+
+**Predictive Market Making** (`src/desk/strategies/polymarket/market-maker.ts`, `adverse-selection-filter.ts`):
+- **Two-Sided Predictive Liquidity**: Quotes bid and ask limit orders centered around fair value estimates (`fairValue \pm \text{halfSpread}`).
+- **Dynamic Inventory Skew**: Adjusts quotes dynamically based on inventory exposure (`maxInventorySkew: 3`, `skewSpreadMultiplier: 2.0`), widening quotes on the overweight side to incentivize inventory rebalancing.
+- **Adverse Selection & Toxicity Guard**: Incorporates `AdverseSelectionFilter` and `InfoAsymmetryScanner` to detect toxic informed order flow and cancel stale quotes prior to adverse fills.
+- **Continuous Quote Refresh**: High-frequency order cancellation and re-posting (`refreshIntervalMs: 20000`) ensuring quotes reflect latest order book microstructure.
+
+---
+
+### Live Trading Pipeline Orchestration & 5-Gate Edge Deployment Verification
+
+```mermaid
+graph TD
+    subgraph 5-Module Trading Pipeline
+        Signal[Trade Intent / Signal] --> RegKelly[Regime-Aware Kelly Sizer]
+        RegKelly --> DDBreaker[Tiered Drawdown Breaker Check]
+        DDBreaker -->|Allowed| TWAP[TWAP Executor > $500 Threshold]
+        TWAP --> Wallet[WalletManager: Fund Isolation]
+        Wallet --> Audit[Immutable Trade Audit: ~/.cashclaw/]
+    end
+
+    subgraph 5-Gate Edge Deployment Verification
+        Code[AI Commit / Edge Build] --> G1[Gate 1: Validation tsc/eslint/vitest]
+        G1 --> G2[Gate 2: Security & Secret Scan]
+        G2 --> G3[Gate 3: Quality & LOC Thresholds]
+        G3 --> G4[Gate 4: Dependency & Lockfile Hygiene]
+        G4 --> G5[Gate 5: Deploy Smoke & Multi-Region Health]
+        G5 --> EdgeProd[Edge Production: nrt / sin / fra]
+    end
+```
+
+**Trading Pipeline Orchestrator** (`src/desk/trading-pipeline.ts`):
+- **5-Module Unified Composition**:
+  1. **Regime-Aware Kelly** (`RegimeAwareKelly` / `KellyPositionSizer`): Sizes positions dynamically based on current market regime (trending, ranging, high volatility).
+  2. **Tiered Drawdown Breaker** (`TieredDrawdownBreaker`): Non-mutating pre-trade health check enforcing multi-tier safety (`NORMAL`, `ALERT`, `REDUCE`, `HALT`, `HARD_STOP`).
+  3. **TWAP Execution** (`TwapExecutor`): Splits large trade orders exceeding `$500` threshold into time-sliced chunks to minimize market impact.
+  4. **Multi-Tenant Wallet Manager** (`WalletManager`): Enforces strict balance checks and fund isolation per wallet label.
+  5. **Immutable Trade Audit** (`ImmutableTradeAudit`): Appends every execution decision, order status, and P&L outcome to an immutable disk journal (`~/.cashclaw/`) that survives process and PM2 restarts.
+
+**5-Gate Edge Deployment Verification** (`docs/ai-first-enforcement-gates.md`, `src/alpha-lab/check-gates.ts`, `scripts/verify-multi-region.sh`, `scripts/final-integration-check.js`):
+- **Deterministic Deployment Gates**:
+  - **Gate 1 (Validation)**: Executes `tsc --noEmit`, ESLint rules, and complete Vitest/Jest unit & integration test suites.
+  - **Gate 2 (Security & Secret Scan)**: Scans for credentials/keys (PEM, AWS, OpenAI, Anthropic, private keys) and verifies zero critical CVEs via `pnpm audit`.
+  - **Gate 3 (Code Quality & Complexity)**: Enforces zero new ESLint suppressions, strict typing (zero `:any`), and monitors file LOC limits.
+  - **Gate 4 (Dependency Hygiene)**: Validates lockfile reproducibility and deterministic dependency resolution.
+  - **Gate 5 (Deployment Smoke & Multi-Region Health)**: Validates edge worker deployment across all regions (`us-east`, `eu-central`, `ap-southeast` / `nrt`, `sin`, `fra`), probing `/api/health`, `/api/health/region`, and `/api/v1/shard/health` to confirm consensus and response latencies meet SLA targets (<100ms p95).
+- **Rollback Hierarchy Alignment**: Deeply wired into L0-L4 multi-tier rollback stack:
+  - **L0 Static/Dynamic**: Enforcement Gates & Qwen Signals Loop Journal.
+  - **L1 Emergency Halt**: Kill switch (`QWEN_KILL=1`, multi-region / sharding kill endpoints).
+  - **L2 Swarm Gate**: Swarm disablement toggle (`isQwenEnabled()`).
+  - **L3 Drawdown Protection**: Automated disablement on 24h rolling P&L drawdown > 5%.
+  - **L4 Paper Qualification**: Strict 30-day paper-trading gate before live capital routing.
+
+---
+
