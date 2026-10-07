@@ -92,5 +92,6 @@ describe('WebSocketFeedSequencer', () => {
       channel: 'orderbook:DOGE',
       reason: 'BUFFER_OVERFLOW',
     }));
+    expect(sequencer.getState().bufferedPacketCount).toBe(2);
   });
 });

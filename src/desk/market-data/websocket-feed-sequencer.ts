@@ -37,6 +37,16 @@ export class WebSocketFeedSequencer<T = unknown> extends EventEmitter {
     }
 
     if (packet.sequence > this.expectedSequence) {
+      if (this.buffer.size >= this.maxBufferSize) {
+        this.emit('snapshotResyncRequired', {
+          channel: this.channel,
+          reason: 'BUFFER_OVERFLOW',
+          bufferSize: this.buffer.size,
+          expectedSequence: this.expectedSequence,
+        });
+        return [];
+      }
+
       this.buffer.set(packet.sequence, packet);
       const gap: SequenceGapAlert = {
         channel: this.channel,
@@ -46,15 +56,6 @@ export class WebSocketFeedSequencer<T = unknown> extends EventEmitter {
         timestamp: Date.now(),
       };
       this.emit('gapDetected', gap);
-
-      if (this.buffer.size > this.maxBufferSize) {
-        this.emit('snapshotResyncRequired', {
-          channel: this.channel,
-          reason: 'BUFFER_OVERFLOW',
-          bufferSize: this.buffer.size,
-          expectedSequence: this.expectedSequence,
-        });
-      }
       return [];
     }
 
