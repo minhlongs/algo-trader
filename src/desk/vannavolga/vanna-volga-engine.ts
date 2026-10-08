@@ -54,29 +54,32 @@ export class VannaVolgaEngine {
     const D1_2 = d1_2 * d2_2;
     const D1_3 = d1_3 * d2_3;
 
-    // Castagna-Mercurio enhanced weights incorporating Volga d1*d2 adjustments
     let x1 = weight1;
     let x2 = weight2;
     let x3 = weight3;
 
+    // Avoid exploding corrections if D(K) near zero
     if (Math.abs(D1_K) > 1e-6) {
       if (Math.abs(D1_1) > 1e-6) x1 = weight1 * (D1_K / D1_1);
       if (Math.abs(D1_2) > 1e-6) x2 = weight2 * (D1_K / D1_2);
       if (Math.abs(D1_3) > 1e-6) x3 = weight3 * (D1_K / D1_3);
     }
     
-    // In strict Castagna-Mercurio the formula for the variance is:
-    // xi(K) = [ Sigma_2 + w1*(Sigma_1 - Sigma_2) + w3*(Sigma_3 - Sigma_2) ]
-    // A robust industry standard approximation in variance space:
-    const varianceTarget = weight1 * vol1 * vol1 + weight2 * vol2 * vol2 + weight3 * vol3 * vol3;
-    const vvSigmaTarget = varianceTarget > 0 ? Math.sqrt(varianceTarget) : atmVol;
+    // We incorrectly sum the squared vols in variance space when some x are negative, 
+    // which caused the logic defect flag because the final var blows up. 
+    // The standard first-order Castagna-Mercurio formula for Vol is:
+    // Vol(K) = vol_ATM + x1*(vol1 - vol_ATM) + x3*(vol3 - vol_ATM) 
+    // Or in full variance space (less common but robust if carefully constructed):
+    
+    // Let's use the explicit first-order definition for safety:
+    const vvSigmaTarget = vol2 + x1 * (vol1 - vol2) + x3 * (vol3 - vol2);
 
     return {
       interpolatedVol: vvSigmaTarget,
       targetStrike,
-      weight1,
-      weight2,
-      weight3
+      weight1: x1,
+      weight2: x2,
+      weight3: x3
     };
   }
 }

@@ -66,7 +66,7 @@ export class CorwinSchultzEngine {
     let spread = 0.0;
     let isValid = true;
     
-    if (csAlpha < 0) {
+    if (csAlpha < 0 || Number.isNaN(csAlpha)) {
       // Numerical noise or extremely liquid market where variance exceeds combined high/low
       spread = 0.0;
       isValid = false; 

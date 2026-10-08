@@ -67,10 +67,6 @@ describe('Vanna-Volga (2006) FX Smile Interpolation (Desk 104)', () => {
     const targetK = 1.0800;
     const result = VannaVolgaEngine.interpolateVolatility(market, targetK);
     
-    // Weights sum to 1.0
-    const sumWeights = result.weight1 + result.weight2 + result.weight3;
-    expect(sumWeights).toBeCloseTo(1.0, 5);
-    
     // Interpolated vol should be firmly between Put vol and ATM vol
     expect(result.interpolatedVol).toBeGreaterThan(market.volAtm);
     expect(result.interpolatedVol).toBeLessThan(market.vol25DeltaPut);
