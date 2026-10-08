@@ -21,6 +21,10 @@ export class IcebergDiscretionaryRouter {
   >();
 
   public createIcebergOrder(config: IcebergOrderConfig): IcebergChildSlice {
+    if (config.totalQuantity <= 0 || config.displayQuantity <= 0) {
+      throw new Error('Iceberg totalQuantity and displayQuantity must be strictly positive');
+    }
+
     const remainingReserve = config.totalQuantity;
     this.activeOrders.set(config.orderId, {
       config,
@@ -58,9 +62,15 @@ export class IcebergDiscretionaryRouter {
     const { config, remainingReserve } = record;
     record.sliceCount += 1;
 
-    // Pseudo-random deterministic jitter based on slice count within displayVariancePct
-    const jitterFactor = 1 + (((record.sliceCount * 17) % 21) - 10) * 0.01 * config.displayVariancePct;
-    let targetSlice = Number((config.displayQuantity * jitterFactor).toFixed(4));
+    // Clamp displayVariancePct between 0.0 and 1.0 (0% to 100%)
+    const clampedVariancePct = Math.max(0, Math.min(1.0, config.displayVariancePct));
+
+    // Pseudo-random deterministic jitter within [-clampedVariancePct * 0.1, +clampedVariancePct * 0.1]
+    const jitterFactor = Math.max(
+      0.1,
+      1 + (((record.sliceCount * 17) % 21) - 10) * 0.01 * clampedVariancePct
+    );
+    let targetSlice = Number(Math.max(0.0001, config.displayQuantity * jitterFactor).toFixed(4));
 
     if (targetSlice > remainingReserve) {
       targetSlice = remainingReserve;
