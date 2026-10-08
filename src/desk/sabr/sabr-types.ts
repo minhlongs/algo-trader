@@ -1,21 +1,18 @@
-export interface SabrParameters {
-  readonly alpha: number; // Initial volatility
-  readonly beta: number;  // Elasticity parameter (CEV exponent in [0, 1])
-  readonly rho: number;   // Correlation between asset and volatility Brownian motions in [-1, 1]
-  readonly nu: number;    // Volatility of volatility (vol-of-vol >= 0)
+export interface SabrParams {
+  forward: number;     // Forward price (F)
+  strike: number;      // Strike price (K)
+  timeToExpiry: number; // Time to expiration (T)
+  
+  // Model parameters
+  alpha: number;       // Initial volatility (vol of vol roughly)
+  beta: number;        // CEV exponent (0 = Normal, 1 = Lognormal)
+  rho: number;         // Correlation between asset and volatility Brownian motions
+  nu: number;          // Volatility of volatility (vov)
 }
 
-export interface SabrEvaluationRequest {
-  readonly forwardPrice: number;
-  readonly strikePrice: number;
-  readonly timeToExpiryYears: number;
-  readonly parameters: SabrParameters;
-}
-
-export interface SabrImpliedVolResult {
-  readonly forwardPrice: number;
-  readonly strikePrice: number;
-  readonly timeToExpiryYears: number;
-  readonly impliedVolPct: number;
-  readonly isAtm: boolean;
+export interface SabrResult {
+  impliedVolatility: number;
+  z: number;
+  xz: number;
+  isValid: boolean;
 }
