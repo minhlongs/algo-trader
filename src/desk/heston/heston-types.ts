@@ -19,3 +19,29 @@ export interface ComplexNumber {
   re: number;
   im: number;
 }
+
+// Legacy aliases to preserve backward compatibility
+export interface HestonModelParameters {
+  spotPrice: number;
+  initialVariance: number;
+  kappa: number;
+  theta: number;
+  sigmaVolOfVol: number;
+  rho: number;
+  riskFreeRatePct: number;
+  dividendYieldPct: number;
+}
+
+export interface OptionTerms {
+  strikePrice: number;
+  timeToExpiryYears: number;
+}
+
+export interface HestonOptionPriceResult {
+  callPriceUsd: number;
+  putPriceUsd: number;
+  probabilityP1: number;
+  probabilityP2: number;
+  fellerConditionRatio: number;
+  fellerSatisfied: boolean;
+}
