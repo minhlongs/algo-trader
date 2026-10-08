@@ -89,6 +89,22 @@ describe('Concentrated Liquidity & AMM Mathematics Suite', () => {
 
       expect(() => router.executeSwap(0n, true)).toThrow('strictly positive');
     });
+
+    it('rejects tick crossings that cause liquidity underflow below zero', () => {
+      const router = new ConcentratedPoolRouter({
+        symbol: 'ETH/USDC',
+        sqrtPriceX96: TickMathQ64Engine.Q96,
+        currentTick: 0,
+        liquidity: 100n, // very low initial liquidity
+        feeBps: 30,
+        tickSpacing: 60,
+      });
+
+      // Net change of 500n when crossing tick -60 downwards will underflow (100n - 500n < 0n)
+      router.initializeTick(-60, 500n, 500n);
+
+      expect(() => router.executeSwap(10_000n * 10n ** 18n, true)).toThrow('Liquidity underflow');
+    });
   });
 
   describe('LvrHedgingEstimator', () => {
