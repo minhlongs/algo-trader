@@ -83,6 +83,9 @@ export class ConcentratedPoolRouter {
           } else {
             currentLiquidity += crossedTick.liquidityNet;
           }
+          if (currentLiquidity < 0n) {
+            throw new Error(`Liquidity underflow on crossing tick ${nextTickIndex}: negative liquidity is forbidden`);
+          }
           ticksCrossed += 1;
           currentTick = zeroForOne ? nextTickIndex - 1 : nextTickIndex;
         } else {
