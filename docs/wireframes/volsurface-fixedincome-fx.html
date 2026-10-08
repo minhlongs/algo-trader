@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Institutional Trading Desks: VolSurface, FixedIncome, FX Triangulation</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+    h2 { color: #58a6ff; font-size: 18px; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+    .metric { display: flex; justify-content: space-between; margin: 12px 0; font-size: 14px; }
+    .val { font-weight: bold; color: #7ee787; }
+    .badge { background: #238636; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Institutional Quantitative Expansion Cockpit</h1>
+  <div class="grid">
+    <div class="card">
+      <h2>Vol Surface & SVI Desk</h2>
+      <div class="metric"><span>Underlying:</span><span class="val">SPX 1M Slice</span></div>
+      <div class="metric"><span>ATM Implied Vol:</span><span class="val">16.42%</span></div>
+      <div class="metric"><span>SVI Skew (b &times; &rho;):</span><span class="val">-0.042</span></div>
+      <div class="metric"><span>Durrleman Condition:</span><span class="val">g(k) &ge; 0 (Clean)</span></div>
+      <span class="badge">NO-ARBITRAGE VERIFIED</span>
+    </div>
+    <div class="card">
+      <h2>Fixed Income & Curve Desk</h2>
+      <div class="metric"><span>Contract:</span><span class="val">10Y US Treasury Fut (ZN)</span></div>
+      <div class="metric"><span>CTD Bond:</span><span class="val">UST 4.125% 2034</span></div>
+      <div class="metric"><span>Implied Repo Rate (IRR):</span><span class="val">4.89%</span></div>
+      <div class="metric"><span>Net Basis:</span><span class="val">+2.4 ticks</span></div>
+      <span class="badge">NSS ZERO-CURVE FIT</span>
+    </div>
+    <div class="card">
+      <h2>FX Triangular Arbitrage</h2>
+      <div class="metric"><span>Detected Cycle:</span><span class="val">USD &rarr; EUR &rarr; JPY &rarr; USD</span></div>
+      <div class="metric"><span>Net Synthetic Multiplier:</span><span class="val">1.00042</span></div>
+      <div class="metric"><span>Arbitrage Profit:</span><span class="val">+4.2 bps</span></div>
+      <div class="metric"><span>CIP Basis (3M):</span><span class="val">-12.8 bps</span></div>
+      <span class="badge">BELLMAN-FORD LOCKED</span>
+    </div>
+  </div>
+</body>
+</html>
