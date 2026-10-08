@@ -21,7 +21,12 @@ export class IcebergDiscretionaryRouter {
   >();
 
   public createIcebergOrder(config: IcebergOrderConfig): IcebergChildSlice {
-    if (config.totalQuantity <= 0 || config.displayQuantity <= 0) {
+    if (
+      !Number.isFinite(config.totalQuantity) ||
+      !Number.isFinite(config.displayQuantity) ||
+      !(config.totalQuantity > 0) ||
+      !(config.displayQuantity > 0)
+    ) {
       throw new Error('Iceberg totalQuantity and displayQuantity must be strictly positive');
     }
 
@@ -62,8 +67,9 @@ export class IcebergDiscretionaryRouter {
     const { config, remainingReserve } = record;
     record.sliceCount += 1;
 
-    // Clamp displayVariancePct between 0.0 and 1.0 (0% to 100%)
-    const clampedVariancePct = Math.max(0, Math.min(1.0, config.displayVariancePct));
+    // Explicitly coalesce missing/NaN values to a safe default before clamping
+    const rawVariancePct = Number.isFinite(config.displayVariancePct) ? config.displayVariancePct : 0;
+    const clampedVariancePct = Math.max(0, Math.min(1.0, rawVariancePct));
 
     // Pseudo-random deterministic jitter within [-clampedVariancePct * 0.1, +clampedVariancePct * 0.1]
     const jitterFactor = Math.max(
