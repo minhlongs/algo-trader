@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Institutional Trading Desks Wireframe: XVA, StatArb, Liquidity</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+    h2 { color: #58a6ff; font-size: 18px; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+    .metric { display: flex; justify-content: space-between; margin: 12px 0; font-size: 14px; }
+    .val { font-weight: bold; color: #7ee787; }
+    .badge { background: #238636; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Institutional Trading Desk Architecture Cockpit</h1>
+  <div class="grid">
+    <div class="card">
+      <h2>XVA Counterparty Desk</h2>
+      <div class="metric"><span>Netting Set MTM:</span><span class="val">$45,200,000</span></div>
+      <div class="metric"><span>CVA Charge:</span><span class="val">$142,500</span></div>
+      <div class="metric"><span>DVA Benefit:</span><span class="val">$68,100</span></div>
+      <div class="metric"><span>FVA Funding Cost:</span><span class="val">$84,300</span></div>
+      <div class="metric"><span>Hazard Rate (5Y):</span><span class="val">180 bps</span></div>
+      <span class="badge">ISDA CSA ACTIVE</span>
+    </div>
+    <div class="card">
+      <h2>StatArb Graph Desk</h2>
+      <div class="metric"><span>Primary Pair:</span><span class="val">GOOGL / MSFT</span></div>
+      <div class="metric"><span>OU Mean Reversion Speed (&theta;):</span><span class="val">4.82</span></div>
+      <div class="metric"><span>Spread Half-Life:</span><span class="val">52.4 Days</span></div>
+      <div class="metric"><span>Current Z-Score:</span><span class="val">+2.41 &sigma;</span></div>
+      <div class="metric"><span>Signal State:</span><span class="val">SHORT SPREAD</span></div>
+      <span class="badge">COINTEGRATED</span>
+    </div>
+    <div class="card">
+      <h2>Dark Pool & ATS Liquidity Sweeper</h2>
+      <div class="metric"><span>Target Size:</span><span class="val">25,000 Shs</span></div>
+      <div class="metric"><span>Dark Pool Allocation:</span><span class="val">68% ($17,000)</span></div>
+      <div class="metric"><span>Lit Venue Sweep:</span><span class="val">32% ($8,000)</span></div>
+      <div class="metric"><span>Price Improvement:</span><span class="val">+1.8 bps</span></div>
+      <div class="metric"><span>Information Leakage Score:</span><span class="val">0.08 (Low)</span></div>
+      <span class="badge">ANTI-GAMING ENGAGED</span>
+    </div>
+  </div>
+</body>
+</html>
