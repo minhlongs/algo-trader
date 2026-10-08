@@ -340,6 +340,12 @@
 - [x] **Volatility Surface & Derivatives Structuring Suite**: Realized variance swap pricer (`VarianceSwapPricer`), CBOE VIX model-free replicator (`VolIndexReplicator`), simultaneous 3x3 Delta-Gamma-Vega risk neutralization optimizer (`GreekNeutralOptimizer`).
 - [x] **1,115 test files passing (16,316 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: FX Options, Structural Credit & Lit/Dark Execution (Wave 120-122) (Completed ✅ 2026-10-08)
+- [x] **Desk 120: Garman-Kohlhagen (1983) FX Options Engine**: Dual-currency European option pricing, 7 analytical Greeks, Put-Call parity verification, and Newton-Raphson FX implied volatility solver (`GarmanKohlhagenEngine`).
+- [x] **Desk 121: CreditGrades (2002) Structural Credit Risk Engine**: Joint RiskMetrics structural credit framework with stochastic recovery, asset volatility scaling, Merton short-spread puzzle resolution, and 64-step Simpson numerical integration for par CDS spreads (`CreditGradesEngine`).
+- [x] **Desk 122: Lehalle-Moallemi (2018) Multi-Venue Lit/Dark Execution Engine**: Microstructure multi-venue router with exponential dark fill rate decay, adverse selection vs price improvement balance, and delayed liquidation penalty on unfilled volume (`LehalleMoallemiEngine`).
+- [x] **1,118 test files passing (16,334 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
