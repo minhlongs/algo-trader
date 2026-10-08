@@ -106,5 +106,61 @@ describe('Algorithmic Execution & Optimal Scheduling Suite', () => {
       expect(exhausted).toBeNull();
       expect(router.getRemainingReserve('ice-parent-1')).toBe(0);
     });
+
+    it('rejects non-positive quantities and clamps extreme variance percentages', () => {
+      const router = new IcebergDiscretionaryRouter();
+
+      expect(() =>
+        router.createIcebergOrder({
+          orderId: 'bad-1',
+          symbol: 'BTC/USD',
+          side: 'BUY',
+          totalQuantity: 0,
+          displayQuantity: 10,
+          displayVariancePct: 0.1,
+          limitPrice: 65000,
+          discretionOffset: 1,
+        })
+      ).toThrow('strictly positive');
+
+      expect(() =>
+        router.createIcebergOrder({
+          orderId: 'bad-2',
+          symbol: 'BTC/USD',
+          side: 'BUY',
+          totalQuantity: 100,
+          displayQuantity: -5,
+          displayVariancePct: 0.1,
+          limitPrice: 65000,
+          discretionOffset: 1,
+        })
+      ).toThrow('strictly positive');
+
+      // Extreme negative variance and extreme oversized variance
+      const sliceNegativeVar = router.createIcebergOrder({
+        orderId: 'extreme-neg',
+        symbol: 'BTC/USD',
+        side: 'BUY',
+        totalQuantity: 100,
+        displayQuantity: 10,
+        displayVariancePct: -10.0, // should clamp to 0
+        limitPrice: 65000,
+        discretionOffset: 1,
+      });
+      expect(sliceNegativeVar.displayQuantity).toBe(10); // 0% variance applied
+
+      const sliceOversizedVar = router.createIcebergOrder({
+        orderId: 'extreme-pos',
+        symbol: 'BTC/USD',
+        side: 'BUY',
+        totalQuantity: 100,
+        displayQuantity: 10,
+        displayVariancePct: 500.0, // should clamp to 1.0 (100%)
+        limitPrice: 65000,
+        discretionOffset: 1,
+      });
+      expect(sliceOversizedVar.displayQuantity).toBeGreaterThan(0);
+      expect(sliceOversizedVar.displayQuantity).toBeLessThanOrEqual(100);
+    });
   });
 });
