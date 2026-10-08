@@ -39,4 +39,9 @@ describe('Key Rate Duration & Curve Immunization Desk Suite', () => {
     // Net DV01 residual should be effectively 0
     expect(Math.abs(hedge.netDv01ResidualUsd)).toBeLessThan(1e-2);
   });
+
+  it('throws descriptive error if shiftBps is zero', () => {
+    const engine = new KeyRateDurationEngine();
+    expect(() => engine.computeKrd(bondCashFlows, 5.0, undefined, 0)).toThrow('shiftBps must be non-zero');
+  });
 });

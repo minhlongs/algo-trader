@@ -45,4 +45,17 @@ describe('CPPI & Dynamic Floor Portfolio Insurance Desk Suite', () => {
     expect(sim.finalPortfolioValueUsd).toBeGreaterThan(params.initialPortfolioValueUsd * 1.10);
     expect(sim.minimumObservedCushionUsd).toBeGreaterThan(0);
   });
+
+  it('rejects simulation paths exceeding max steps resource bound', () => {
+    const engine = new CppiSimulationEngine();
+    const params: CppiParameters = {
+      initialPortfolioValueUsd: 1000000,
+      floorGuaranteeFraction: 0.85,
+      multiplierM: 4.0,
+      riskFreeRatePct: 3.0,
+      timeHorizonYears: 1.0,
+    };
+    const oversizedPath = new Array(10001).fill(0.001);
+    expect(() => engine.simulateStrategy(params, oversizedPath)).toThrow('exceeds maximum allowable steps');
+  });
 });

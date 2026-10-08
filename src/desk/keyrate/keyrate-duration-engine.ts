@@ -14,6 +14,10 @@ export class KeyRateDurationEngine {
     keyTenors: BenchmarkMaturity[] = KeyRateDurationEngine.DEFAULT_KEY_TENORS,
     shiftBps = 1.0
   ): KeyRateDurationResult[] {
+    if (Math.abs(shiftBps) < 1e-4) {
+      throw new Error('shiftBps must be non-zero and at least 0.0001 bps');
+    }
+
     const y0 = yieldPct / 100.0;
     const dy = shiftBps / 10000.0;
     const pv0 = this.discountCashFlows(cashFlows, y0);

@@ -6,6 +6,10 @@ export class CppiSimulationEngine {
     riskyAssetReturnPath: number[],
     dtYears = 0.04 // ~bi-weekly rebalancing
   ): CppiSimulationSummary {
+    if (riskyAssetReturnPath.length > 10000) {
+      throw new Error('riskyAssetReturnPath length exceeds maximum allowable steps (10,000)');
+    }
+
     const {
       initialPortfolioValueUsd,
       floorGuaranteeFraction,
