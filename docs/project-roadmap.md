@@ -328,12 +328,18 @@
 - [x] **Microstructure Signal Synthesizer Suite**: Roll serial covariance effective spread (`RollSpreadEstimator`), Hasbrouck price discovery information share (`HasbrouckInformationShareCalculator`), multi-level volume-weighted micro-price (`MultiLevelMicroPriceEstimator`).
 - [x] **1,110 test files passing (16,289 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Prime Brokerage, HFT Market Making & Algorithmic Execution (Completed ✅ 2026-10-08)
+- [x] **Prime Brokerage & Synthetic Financing Suite**: Lendable inventory & non-linear borrow fee curve (`SecuritiesLendingEngine`), dual-leg synthetic equity TRS pricer with benchmark spreads (`TotalReturnSwapPricer`), Rule 15c3-3 / CASS collateral segregation guard (`RehypothecationGuard`).
+- [x] **HFT Market Making & Hawkes Toxicity Suite**: Bivariate jump self/cross-excitation intensity tracker (`HawkesIntensityEstimator`), Guéant-Tapia-Manzi inventory skew quoter (`InventorySkewQuoteEngine`), short-horizon price markout toxicity detector (`AdverseSelectionPredictor`).
+- [x] **Algorithmic Execution & Optimal Scheduling Suite**: Adaptive intraday U-curve TWAP/VWAP scheduler (`TwapVwapScheduler`), closed-form Almgren-Chriss liquidation trajectory solver (`AlmgrenChrissExecutor`), randomized display slice iceberg router with discretion pegs (`IcebergDiscretionaryRouter`).
+- [x] **1,112 test files passing (16,301 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 16,289 tests, 0 TS errors, Quality Ratchet v1.1.0 green.
+**Current Status:** 16,301 tests, 0 TS errors, Quality Ratchet v1.1.0 green.
 
 Updated: 2026-10-08
