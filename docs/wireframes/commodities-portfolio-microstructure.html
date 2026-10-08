@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Institutional Desks: Commodities, Multi-Factor Portfolio, L2 Microstructure</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+    h2 { color: #58a6ff; font-size: 18px; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+    .metric { display: flex; justify-content: space-between; margin: 12px 0; font-size: 14px; }
+    .val { font-weight: bold; color: #7ee787; }
+    .badge { background: #238636; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Institutional Quantitative Expansion Cockpit (Waves 39-41)</h1>
+  <div class="grid">
+    <div class="card">
+      <h2>Commodities Basis & Spreads Desk</h2>
+      <div class="metric"><span>Commodity:</span><span class="val">Brent Crude (CL)</span></div>
+      <div class="metric"><span>Curve Regime:</span><span class="val">Backwardation (y &gt; r+u)</span></div>
+      <div class="metric"><span>Implied Convenience Yield:</span><span class="val">8.42%</span></div>
+      <div class="metric"><span>M1-M2 Roll Yield:</span><span class="val">+128 bps/month</span></div>
+      <span class="badge">SAMUELSON EFFECT LOCKED</span>
+    </div>
+    <div class="card">
+      <h2>Equity Multi-Factor Portfolio Desk</h2>
+      <div class="metric"><span>Optimization Target:</span><span class="val">Equal Risk Contribution (ERC)</span></div>
+      <div class="metric"><span>Covariance Model:</span><span class="val">Ledoit-Wolf Shrinkage</span></div>
+      <div class="metric"><span>Optimal Shrinkage &delta;:</span><span class="val">0.248</span></div>
+      <div class="metric"><span>Max Risk Contribution Disparity:</span><span class="val">&le; 0.05%</span></div>
+      <span class="badge">RISK PARITY BALANCED</span>
+    </div>
+    <div class="card">
+      <h2>L2 Microstructure Flow Desk</h2>
+      <div class="metric"><span>Ticker:</span><span class="val">SPY / QQQ Book Flow</span></div>
+      <div class="metric"><span>VPIN Toxicity Metric:</span><span class="val">0.342 (Moderate)</span></div>
+      <div class="metric"><span>Multi-Level OFI Signal:</span><span class="val">+1,420 contracts</span></div>
+      <div class="metric"><span>Adverse Selection Alert:</span><span class="val">CLEAN</span></div>
+      <span class="badge">L2 DEPTH SENTINEL ACTIVE</span>
+    </div>
+  </div>
+</body>
+</html>
