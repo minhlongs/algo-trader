@@ -22,6 +22,7 @@ export class JarrowTurnbullEngine {
     if (params.couponRate && params.paymentFrequency && params.couponRate > 0) {
       const coupon = (F * params.couponRate) / params.paymentFrequency;
       const numPayments = Math.floor(T * params.paymentFrequency);
+      if (numPayments > 100000) throw new Error('Exceeded max cashflows limit');
       const dt = 1.0 / params.paymentFrequency;
 
       for (let i = 1; i <= numPayments; i++) {
