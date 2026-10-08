@@ -45,10 +45,10 @@ export class AntiGamingGuard {
 
     if (!act) {
       if (this.activity.size >= this.maxTrackedParticipants) {
-        // Eviction uses trusted server clock, never client-supplied timestamps
+        // Eviction uses trusted server clock, never client-supplied timestamps.
+        // Only participants inactive beyond inactivityWindowMs are evictable.
         let evictedKey: string | undefined;
 
-        // Tier 1: Evict participants inactive on trusted server clock
         for (const [id, record] of this.activity.entries()) {
           if (serverNow - record.lastSeenServerMs > this.inactivityWindowMs) {
             evictedKey = id;
@@ -56,28 +56,13 @@ export class AntiGamingGuard {
           }
         }
 
-        // Tier 2: If all recently active, evict least suspicious LRU entry (never fail closed for flow)
-        if (evictedKey === undefined) {
-          let oldestCleanKey: string | undefined;
-          let oldestCleanTime = Infinity;
-          let trueOldestKey: string | undefined;
-          let trueOldestTime = Infinity;
-
-          for (const [id, record] of this.activity.entries()) {
-            if (record.lastSeenServerMs < trueOldestTime) {
-              trueOldestTime = record.lastSeenServerMs;
-              trueOldestKey = id;
-            }
-            if (record.suspiciousPings === 0 && record.lastSeenServerMs < oldestCleanTime) {
-              oldestCleanTime = record.lastSeenServerMs;
-              oldestCleanKey = id;
-            }
-          }
-          evictedKey = oldestCleanKey ?? trueOldestKey;
-        }
-
         if (evictedKey !== undefined) {
           this.activity.delete(evictedKey);
+        } else {
+          // Strictly fail-closed: do not evict active participant state to prevent
+          // intentional state-flush attacks where attackers generate new participant IDs
+          // to erase active rate-limit or suspicious ping tracking.
+          return { isAllowed: false, reason: 'Participant tracking capacity saturated' };
         }
       }
 
