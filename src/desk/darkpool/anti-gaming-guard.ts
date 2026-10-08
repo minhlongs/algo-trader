@@ -11,6 +11,7 @@ interface ParticipantActivity {
   orderSubmissions: number;
   cancellations: number;
   lastOrderTimestampMs: number;
+  lastSeenServerMs: number;
   suspiciousPings: number;
 }
 
@@ -18,9 +19,15 @@ export class AntiGamingGuard {
   private readonly activity = new Map<string, ParticipantActivity>();
   private readonly config: AntiGamingConfig;
   private readonly maxTrackedParticipants: number;
-  private readonly inactivityWindowMs: number = 60_000;
+  private readonly inactivityWindowMs: number;
+  private readonly clock: () => number;
 
-  public constructor(config?: Partial<AntiGamingConfig>, maxTrackedParticipants: number = 5000) {
+  public constructor(
+    config?: Partial<AntiGamingConfig>,
+    maxTrackedParticipants: number = 5000,
+    inactivityWindowMs: number = 60_000,
+    clock: () => number = () => Date.now()
+  ) {
     this.config = {
       maxOrderRatePerSec: config?.maxOrderRatePerSec ?? 20,
       minRestingTimeMs: config?.minRestingTimeMs ?? 50,
@@ -28,30 +35,63 @@ export class AntiGamingGuard {
       smallOrderSniffingThreshold: config?.smallOrderSniffingThreshold ?? 10,
     };
     this.maxTrackedParticipants = maxTrackedParticipants;
+    this.inactivityWindowMs = inactivityWindowMs;
+    this.clock = clock;
   }
 
   public validateOrder(order: DarkOrder): { isAllowed: boolean; reason?: string } {
+    const serverNow = this.clock();
     let act = this.activity.get(order.participantId);
+
     if (!act) {
       if (this.activity.size >= this.maxTrackedParticipants) {
-        // Evict only truly inactive participants to prevent cache-flushing state-reset attacks
+        // Eviction uses trusted server clock, never client-supplied timestamps
         let evictedKey: string | undefined;
+
+        // Tier 1: Evict participants inactive on trusted server clock
         for (const [id, record] of this.activity.entries()) {
-          if (record.lastOrderTimestampMs > 0 && order.timestampMs - record.lastOrderTimestampMs > this.inactivityWindowMs) {
+          if (serverNow - record.lastSeenServerMs > this.inactivityWindowMs) {
             evictedKey = id;
             break;
           }
         }
+
+        // Tier 2: If all recently active, evict least suspicious LRU entry (never fail closed for flow)
+        if (evictedKey === undefined) {
+          let oldestCleanKey: string | undefined;
+          let oldestCleanTime = Infinity;
+          let trueOldestKey: string | undefined;
+          let trueOldestTime = Infinity;
+
+          for (const [id, record] of this.activity.entries()) {
+            if (record.lastSeenServerMs < trueOldestTime) {
+              trueOldestTime = record.lastSeenServerMs;
+              trueOldestKey = id;
+            }
+            if (record.suspiciousPings === 0 && record.lastSeenServerMs < oldestCleanTime) {
+              oldestCleanTime = record.lastSeenServerMs;
+              oldestCleanKey = id;
+            }
+          }
+          evictedKey = oldestCleanKey ?? trueOldestKey;
+        }
+
         if (evictedKey !== undefined) {
           this.activity.delete(evictedKey);
-        } else {
-          return { isAllowed: false, reason: 'Participant tracking capacity saturated' };
         }
       }
-      act = { orderSubmissions: 0, cancellations: 0, lastOrderTimestampMs: 0, suspiciousPings: 0 };
+
+      act = {
+        orderSubmissions: 0,
+        cancellations: 0,
+        lastOrderTimestampMs: 0,
+        lastSeenServerMs: serverNow,
+        suspiciousPings: 0,
+      };
       this.activity.set(order.participantId, act);
     } else {
-      // Re-insert to keep LRU order
+      act.lastSeenServerMs = serverNow;
+      // Re-insert to refresh LRU order
       this.activity.delete(order.participantId);
       this.activity.set(order.participantId, act);
     }

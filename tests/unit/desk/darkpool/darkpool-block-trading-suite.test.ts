@@ -152,9 +152,10 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
       expect(backwards.reason).toContain('non-monotonic');
     });
 
-    it('handles participant tracking capacity and evicts only inactive participants', () => {
-      // Guard with capacity of 2 participants
-      const guard = new AntiGamingGuard(undefined, 2);
+    it('handles participant tracking capacity via trusted server clock and non-blocking LRU eviction', () => {
+      let mockServerTime = 100_000;
+      // Guard with capacity of 2 participants, 60s inactivity window, injected clock
+      const guard = new AntiGamingGuard(undefined, 2, 60_000, () => mockServerTime);
 
       expect(
         guard.validateOrder({
@@ -168,6 +169,7 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
         }).isAllowed
       ).toBe(true);
 
+      mockServerTime += 1000;
       expect(
         guard.validateOrder({
           orderId: 'p2-1',
@@ -180,8 +182,9 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
         }).isAllowed
       ).toBe(true);
 
-      // Third participant arrives while p1 and p2 are active (< 60s ago)
-      const saturated = guard.validateOrder({
+      // Third participant arrives - never fails closed for legitimate flow, evicts cleanest LRU (p1)
+      mockServerTime += 1000;
+      const thirdAllowed = guard.validateOrder({
         orderId: 'p3-1',
         participantId: 'p3',
         symbol: 'BTC/USD',
@@ -190,20 +193,20 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
         pegType: 'MIDPOINT',
         timestampMs: 5000,
       });
-      expect(saturated.isAllowed).toBe(false);
-      expect(saturated.reason).toContain('capacity saturated');
+      expect(thirdAllowed.isAllowed).toBe(true);
 
-      // Now p3 arrives after inactivity window (> 60s past p1/p2 timestamp)
-      const allowedAfterInactivity = guard.validateOrder({
-        orderId: 'p3-2',
-        participantId: 'p3',
+      // Advance clock past inactivity window (> 60s)
+      mockServerTime += 70_000;
+      const fourthAllowed = guard.validateOrder({
+        orderId: 'p4-1',
+        participantId: 'p4',
         symbol: 'BTC/USD',
         side: 'BUY',
         quantity: 20,
         pegType: 'MIDPOINT',
         timestampMs: 70_000,
       });
-      expect(allowedAfterInactivity.isAllowed).toBe(true);
+      expect(fourthAllowed.isAllowed).toBe(true);
     });
   });
 
