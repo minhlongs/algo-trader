@@ -10,13 +10,22 @@ import { CrossingMatch, DarkOrder } from './darkpool-types';
 export class CrossingEngine {
   private readonly buyOrders: DarkOrder[] = [];
   private readonly sellOrders: DarkOrder[] = [];
+  private readonly maxActiveOrders: number;
 
-  public submitOrder(order: DarkOrder): void {
+  public constructor(maxActiveOrders: number = 10000) {
+    this.maxActiveOrders = maxActiveOrders;
+  }
+
+  public submitOrder(order: DarkOrder): boolean {
+    if (this.buyOrders.length + this.sellOrders.length >= this.maxActiveOrders) {
+      return false;
+    }
     if (order.side === 'BUY') {
       this.buyOrders.push(order);
     } else {
       this.sellOrders.push(order);
     }
+    return true;
   }
 
   public executeCross(symbol: string, nbboBid: number, nbboAsk: number, currentTimestampMs: number): CrossingMatch[] {
@@ -58,6 +67,30 @@ export class CrossingEngine {
       }
     }
 
+    // Prune fully filled orders from storage
+    this.pruneFilledOrders();
+
     return matches;
+  }
+
+  private pruneFilledOrders(): void {
+    let bIdx = this.buyOrders.length;
+    while (bIdx--) {
+      const buy = this.buyOrders[bIdx];
+      if (buy && buy.quantity <= 0) {
+        this.buyOrders.splice(bIdx, 1);
+      }
+    }
+    let sIdx = this.sellOrders.length;
+    while (sIdx--) {
+      const sell = this.sellOrders[sIdx];
+      if (sell && sell.quantity <= 0) {
+        this.sellOrders.splice(sIdx, 1);
+      }
+    }
+  }
+
+  public getActiveOrderCount(): number {
+    return this.buyOrders.length + this.sellOrders.length;
   }
 }

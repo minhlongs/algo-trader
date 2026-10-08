@@ -49,6 +49,47 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
       expect(secondCross.length).toBe(1);
       expect(secondCross[0]?.executionPrice).toBe(65005);
       expect(secondCross[0]?.matchedQuantity).toBe(8);
+
+      // Verify that filled sell order was pruned and remaining buy order (2 BTC) is kept
+      expect(engine.getActiveOrderCount()).toBe(2); // buy-1 (2 remaining), sell-small (2 remaining)
+    });
+
+    it('enforces maximum order capacity', () => {
+      const engine = new CrossingEngine(2);
+      expect(
+        engine.submitOrder({
+          orderId: 'b1',
+          participantId: 'p1',
+          symbol: 'BTC/USD',
+          side: 'BUY',
+          quantity: 1,
+          pegType: 'MIDPOINT',
+          timestampMs: 1000,
+        })
+      ).toBe(true);
+      expect(
+        engine.submitOrder({
+          orderId: 'b2',
+          participantId: 'p2',
+          symbol: 'BTC/USD',
+          side: 'BUY',
+          quantity: 1,
+          pegType: 'MIDPOINT',
+          timestampMs: 1001,
+        })
+      ).toBe(true);
+      // Exceeds capacity
+      expect(
+        engine.submitOrder({
+          orderId: 'b3',
+          participantId: 'p3',
+          symbol: 'BTC/USD',
+          side: 'BUY',
+          quantity: 1,
+          pegType: 'MIDPOINT',
+          timestampMs: 1002,
+        })
+      ).toBe(false);
     });
   });
 
@@ -83,6 +124,32 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
       });
       expect(blockedPing.isAllowed).toBe(false);
       expect(blockedPing.reason).toContain('sniffing');
+    });
+
+    it('rejects orders with non-monotonic timestamps', () => {
+      const guard = new AntiGamingGuard();
+      const first = guard.validateOrder({
+        orderId: 'o1',
+        participantId: 'trader1',
+        symbol: 'BTC/USD',
+        side: 'BUY',
+        quantity: 20,
+        pegType: 'MIDPOINT',
+        timestampMs: 5000,
+      });
+      expect(first.isAllowed).toBe(true);
+
+      const backwards = guard.validateOrder({
+        orderId: 'o2',
+        participantId: 'trader1',
+        symbol: 'BTC/USD',
+        side: 'BUY',
+        quantity: 20,
+        pegType: 'MIDPOINT',
+        timestampMs: 4000,
+      });
+      expect(backwards.isAllowed).toBe(false);
+      expect(backwards.reason).toContain('non-monotonic');
     });
   });
 

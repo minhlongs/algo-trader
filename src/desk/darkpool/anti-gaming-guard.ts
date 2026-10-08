@@ -17,6 +17,7 @@ interface ParticipantActivity {
 export class AntiGamingGuard {
   private readonly activity = new Map<string, ParticipantActivity>();
   private readonly config: AntiGamingConfig;
+  private readonly maxTrackedParticipants: number = 5000;
 
   public constructor(config?: Partial<AntiGamingConfig>) {
     this.config = {
@@ -30,6 +31,12 @@ export class AntiGamingGuard {
   public validateOrder(order: DarkOrder): { isAllowed: boolean; reason?: string } {
     let act = this.activity.get(order.participantId);
     if (!act) {
+      if (this.activity.size >= this.maxTrackedParticipants) {
+        const oldestKey = this.activity.keys().next().value;
+        if (oldestKey !== undefined) {
+          this.activity.delete(oldestKey);
+        }
+      }
       act = { orderSubmissions: 0, cancellations: 0, lastOrderTimestampMs: 0, suspiciousPings: 0 };
       this.activity.set(order.participantId, act);
     }
@@ -41,9 +48,14 @@ export class AntiGamingGuard {
       }
     }
 
-    const timeDiff = order.timestampMs - act.lastOrderTimestampMs;
-    if (timeDiff < this.config.minRestingTimeMs && timeDiff >= 0 && act.orderSubmissions > 5) {
-      return { isAllowed: false, reason: 'Excessive high-frequency order rate' };
+    if (act.lastOrderTimestampMs > 0) {
+      const timeDiff = order.timestampMs - act.lastOrderTimestampMs;
+      if (timeDiff < 0) {
+        return { isAllowed: false, reason: 'Invalid non-monotonic order timestamp' };
+      }
+      if (timeDiff < this.config.minRestingTimeMs && act.orderSubmissions > 5) {
+        return { isAllowed: false, reason: 'Excessive high-frequency order rate' };
+      }
     }
 
     act.orderSubmissions += 1;
