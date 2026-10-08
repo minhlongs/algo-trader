@@ -1,71 +1,49 @@
 import { describe, expect, it } from 'vitest';
-import { VarianceGammaCharFn } from '../../../../src/desk/variancegamma/variance-gamma-char-fn';
 import { VarianceGammaEngine } from '../../../../src/desk/variancegamma/variance-gamma-engine';
-import {
-  VgModelParameters,
-  VgOptionSpec,
-} from '../../../../src/desk/variancegamma/variance-gamma-types';
+import { VarianceGammaParams } from '../../../../src/desk/variancegamma/variance-gamma-types';
 
-describe('Variance Gamma Engine Suite (Desk 92)', () => {
-  const engine = new VarianceGammaEngine();
-
-  const standardParams: VgModelParameters = {
-    sigma: 0.2, // 20% annual volatility
-    nu: 0.15,   // positive gamma variance
-    theta: -0.1, // negative drift (negative skew typical for equities)
-  };
-
-  const standardSpec: VgOptionSpec = {
-    spotPrice: 100.0,
-    strikePrice: 100.0,
-    timeToExpiryYears: 1.0,
-    riskFreeRatePct: 5.0,
-    dividendYieldPct: 2.0,
+describe('Variance Gamma Option Pricing Suite (Desk 112)', () => {
+  const baseParams: VarianceGammaParams = {
+    spotPrice: 100,
+    strikePrice: 100,
+    timeToMaturity: 1.0,
+    riskFreeRate: 0.05,
+    dividendYield: 0.0,
+    sigma: 0.20,         // 20% diffusion vol
+    nu: 0.20,            // Kurtosis / variance rate
+    theta: -0.10,        // Negative skewness drift
     isCall: true,
   };
 
-  it('should compute valid drift corrector and statistical moments with excess kurtosis', () => {
-    const omega = VarianceGammaCharFn.calculateDriftCorrector(standardParams);
-    expect(omega).toBeGreaterThan(0.0);
+  it('should price European Call with positive value', () => {
+    const result = VarianceGammaEngine.calculate(baseParams);
 
-    const moments = VarianceGammaCharFn.calculateMoments(standardParams, 1.0);
-    expect(moments.variance).toBeGreaterThan(0.0);
-    expect(moments.skewness).toBeLessThan(0.0); // negative theta produces negative skew
-    expect(moments.excessKurtosis).toBeGreaterThan(0.0); // fat tails (leptokurtic)
+    expect(result.price).toBeGreaterThan(0.0);
+    expect(result.price).toBeGreaterThan(8.0);
+    expect(result.price).toBeLessThan(15.0);
+    expect(result.impliedBlackScholesVolEstimate).toBeGreaterThan(0.15);
+    expect(result.skewnessCharacteristic).toBeLessThan(0.0); // Negative theta induces negative skew
+    expect(result.excessKurtosisEstimate).toBeGreaterThan(0.0);
   });
 
-  it('should price European call and put options conforming to Put-Call Parity', () => {
-    const callRes = engine.priceOption(standardParams, standardSpec);
-    const putRes = engine.priceOption(standardParams, { ...standardSpec, isCall: false });
+  it('should satisfy Put-Call parity in Variance Gamma model', () => {
+    const callResult = VarianceGammaEngine.calculate(baseParams);
+    const putResult = VarianceGammaEngine.calculate({ ...baseParams, isCall: false });
 
-    expect(callRes.optionPrice).toBeGreaterThan(0.0);
-    expect(putRes.optionPrice).toBeGreaterThan(0.0);
-    expect(callRes.optionPrice).toBeGreaterThanOrEqual(callRes.intrinsicValue);
-    expect(putRes.optionPrice).toBeGreaterThanOrEqual(putRes.intrinsicValue);
+    // C - P = S * exp(-q*T) - K * exp(-r*T)
+    const expectedDiff = baseParams.spotPrice - baseParams.strikePrice * Math.exp(-baseParams.riskFreeRate * baseParams.timeToMaturity);
+    const actualDiff = callResult.price - putResult.price;
 
-    // Put-Call Parity check: C - P = S*exp(-q*T) - K*exp(-r*T)
-    const S = standardSpec.spotPrice;
-    const K = standardSpec.strikePrice;
-    const T = standardSpec.timeToExpiryYears;
-    const r = standardSpec.riskFreeRatePct / 100.0;
-    const q = (standardSpec.dividendYieldPct || 0.0) / 100.0;
-    const expectedDiff = S * Math.exp(-q * T) - K * Math.exp(-r * T);
-
-    const actualDiff = callRes.optionPrice - putRes.optionPrice;
     expect(actualDiff).toBeCloseTo(expectedDiff, 2);
   });
 
-  it('should throw when martingale condition is violated or invalid inputs provided', () => {
-    expect(() =>
-      VarianceGammaCharFn.calculateDriftCorrector({
-        sigma: 2.0,
-        nu: 2.0,
-        theta: 1.0,
-      })
-    ).toThrow('Martingale condition violated');
+  it('should throw error when martingale condition is violated', () => {
+    const invalidParams: VarianceGammaParams = {
+      ...baseParams,
+      theta: 2.0,
+      nu: 1.0, // 1 - 2 - 0.5 * 0.04 * 1 < 0
+    };
 
-    expect(() =>
-      engine.priceOption(standardParams, { ...standardSpec, spotPrice: -100 })
-    ).toThrow('Spot and strike prices must be positive');
+    expect(() => VarianceGammaEngine.calculate(invalidParams)).toThrow(/martingale condition violated/i);
   });
 });
