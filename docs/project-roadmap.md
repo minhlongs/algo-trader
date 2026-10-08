@@ -322,12 +322,18 @@
 - [x] **Neural Time-Series & Feature Pipeline Suite**: Structured State Space (SSM) recurrent predictor (`StateSpacePredictor`), causal multi-head self-attention regime classifier (`RegimeTransformerFilter`), streaming online feature normalization (`RealTimeFeatureStore`).
 - [x] **Merged in PR #160** (commit `145d4977`). 1,106 test files passing (16,280 unit tests green), 0 TS errors.
 
+## Institutional Trading Desk: Dark Pool, Factor Risk & Microstructure Signals (Completed ✅ 2026-10-08)
+- [x] **Dark Pool & Block Trading Gateway**: Midpoint peg crossing network (`CrossingEngine`), predatory small-order sniffing guard (`AntiGamingGuard`), anonymous tiered IOI relayer (`IoiDistributionRelayer`).
+- [x] **Factor Risk & Statistical Arbitrage Model**: Barra-style multi-factor attribution (`BarraFactorAttribution`), systematic vs idiosyncratic variance decomposition (`IdiosyncraticRiskDecomposer`), dollar-neutral/beta-neutral optimizer (`MarketNeutralOptimizer`).
+- [x] **Microstructure Signal Synthesizer Suite**: Roll serial covariance effective spread (`RollSpreadEstimator`), Hasbrouck price discovery information share (`HasbrouckInformationShareCalculator`), multi-level volume-weighted micro-price (`MultiLevelMicroPriceEstimator`).
+- [x] **1,110 test files passing (16,289 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 16,280 tests, 0 TS errors, Quality Ratchet v1.1.0 green.
+**Current Status:** 16,289 tests, 0 TS errors, Quality Ratchet v1.1.0 green.
 
 Updated: 2026-10-08
