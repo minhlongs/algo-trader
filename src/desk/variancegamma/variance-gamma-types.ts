@@ -1,29 +1,37 @@
-export interface VgModelParameters {
-  readonly sigma: number; // Volatility of Brownian motion (sigma > 0)
-  readonly nu: number;    // Variance of the gamma time change / subordinator (nu > 0)
-  readonly theta: number; // Drift of Brownian motion (skewness control)
+export interface ComplexNumber {
+  re: number;
+  im: number;
 }
 
-export interface VgOptionSpec {
-  readonly spotPrice: number;
-  readonly strikePrice: number;
-  readonly timeToExpiryYears: number;
-  readonly riskFreeRatePct: number;
-  readonly dividendYieldPct?: number;
-  readonly isCall: boolean;
+export interface VarianceGammaParams {
+  spotPrice: number;       // S0
+  strikePrice: number;     // K
+  timeToMaturity: number;  // T
+  riskFreeRate: number;    // r
+  dividendYield: number;   // q
+  sigma: number;           // Volatility of subordinated Brownian motion
+  nu: number;              // Variance of the Gamma subordinator (kurtosis control)
+  theta: number;           // Drift of subordinated Brownian motion (skewness control)
+  isCall: boolean;
+}
+
+export interface VarianceGammaResult {
+  price: number;
+  impliedBlackScholesVolEstimate: number;
+  skewnessCharacteristic: number;
+  excessKurtosisEstimate: number;
+}
+
+// Backward compatibility types for VarianceGammaCharFn
+export interface VgModelParameters {
+  sigma: number;
+  nu: number;
+  theta: number;
 }
 
 export interface VgMomentsResult {
-  readonly mean: number;
-  readonly variance: number;
-  readonly skewness: number;
-  readonly excessKurtosis: number;
-}
-
-export interface VgOptionResult {
-  readonly optionPrice: number;
-  readonly intrinsicValue: number;
-  readonly isCall: boolean;
-  readonly moments: VgMomentsResult;
-  readonly characteristicPsi: number; // Risk-neutral drift corrector omega
+  mean: number;
+  variance: number;
+  skewness: number;
+  excessKurtosis: number;
 }
