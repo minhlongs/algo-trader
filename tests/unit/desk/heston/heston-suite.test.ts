@@ -1,69 +1,46 @@
 import { describe, expect, it } from 'vitest';
-import { HestonPricingEngine } from '../../../../src/desk/heston/heston-pricing-engine';
-import { HestonModelParameters, OptionTerms } from '../../../../src/desk/heston/heston-types';
+import { HestonEngine } from '../../../../src/desk/heston/heston-engine';
 
-describe('HestonPricingEngine Suite (Desk 77)', () => {
-  const engine = new HestonPricingEngine();
+describe('Heston (1993) Stochastic Volatility (Desk 105)', () => {
+  it('should compute valid call and put prices via numerical integration of CF', () => {
+    // Standard European Call test case
+    const model = {
+      S0: 100,
+      v0: 0.04,  // 20% volatility
+      kappa: 2.0,
+      theta: 0.04,
+      sigma: 0.1, // vol of vol
+      rho: -0.7,  // leverage effect
+      r: 0.03,
+      q: 0.0
+    };
 
-  // Benchmark parameters: S0 = 100, K = 100, tau = 1 yr, r = 3%, q = 0%
-  // v0 = 0.04 (initial vol = 20%), kappa = 1.5, theta = 0.04, sigma = 0.3, rho = -0.7
-  // Feller: 2 * kappa * theta = 2 * 1.5 * 0.04 = 0.12 > sigma^2 = 0.09 (Satisfied)
-  const standardParams: HestonModelParameters = {
-    spotPrice: 100.0,
-    initialVariance: 0.04,
-    kappa: 1.5,
-    theta: 0.04,
-    sigmaVolOfVol: 0.3,
-    rho: -0.7,
-    riskFreeRatePct: 3.0,
-    dividendYieldPct: 0.0,
-  };
+    const callOption = { strike: 100, timeToMaturity: 1.0, isCall: true };
+    const putOption = { ...callOption, isCall: false };
 
-  const atmTerms: OptionTerms = {
-    strikePrice: 100.0,
-    timeToExpiryYears: 1.0,
-  };
+    const callPrice = HestonEngine.calculateEuropeanOption(model, callOption);
+    const putPrice = HestonEngine.calculateEuropeanOption(model, putOption);
 
-  it('should price ATM European call and put options and verify put-call parity', () => {
-    const result = engine.priceOption(standardParams, atmTerms);
-
-    expect(result.callPriceUsd).toBeGreaterThan(5.0);
-    expect(result.callPriceUsd).toBeLessThan(15.0);
-    expect(result.putPriceUsd).toBeGreaterThan(2.0);
-    expect(result.putPriceUsd).toBeLessThan(12.0);
-    expect(result.probabilityP1).toBeGreaterThan(0.0);
-    expect(result.probabilityP1).toBeLessThan(1.0);
-    expect(result.probabilityP2).toBeGreaterThan(0.0);
-    expect(result.probabilityP2).toBeLessThan(1.0);
-    expect(result.fellerSatisfied).toBe(true);
-
-    // Put-Call Parity check: C - P = S0 * e^(-q*tau) - K * e^(-r*tau)
-    const forwardDiff =
-      standardParams.spotPrice * Math.exp(-0.0 * 1.0) -
-      atmTerms.strikePrice * Math.exp(-0.03 * 1.0);
-    const priceDiff = result.callPriceUsd - result.putPriceUsd;
-
-    expect(Math.abs(priceDiff - forwardDiff)).toBeLessThan(0.01);
+    expect(callPrice).toBeGreaterThan(0);
+    expect(putPrice).toBeGreaterThan(0);
+    
+    // Put-Call Parity check: C - P = S*e^{-qT} - K*e^{-rT}
+    const parity = callPrice - putPrice;
+    const expectedParity = model.S0 * Math.exp(-model.q * 1.0) - callOption.strike * Math.exp(-model.r * 1.0);
+    expect(parity).toBeCloseTo(expectedParity, 5);
   });
 
-  it('should price ITM call higher than OTM call', () => {
-    const itmTerms: OptionTerms = { strikePrice: 90.0, timeToExpiryYears: 1.0 };
-    const otmTerms: OptionTerms = { strikePrice: 110.0, timeToExpiryYears: 1.0 };
+  it('should generate higher OTM put prices for higher vol-of-vol driven by negative skew', () => {
+    const model1 = { S0: 100, v0: 0.04, kappa: 1.0, theta: 0.04, sigma: 0.1, rho: -0.5, r: 0.05, q: 0.0 };
+    const model2 = { ...model1, sigma: 0.8 }; // Much higher vol-of-vol
 
-    const itmResult = engine.priceOption(standardParams, itmTerms);
-    const otmResult = engine.priceOption(standardParams, otmTerms);
+    // Use Out-of-The-Money (OTM) Put to clearly test fat-left-tail (skew) premium
+    const option = { strike: 80, timeToMaturity: 1.0, isCall: false };
 
-    expect(itmResult.callPriceUsd).toBeGreaterThan(otmResult.callPriceUsd);
-    expect(otmResult.putPriceUsd).toBeGreaterThan(itmResult.putPriceUsd);
-  });
+    const price1 = HestonEngine.calculateEuropeanOption(model1, option);
+    const price2 = HestonEngine.calculateEuropeanOption(model2, option);
 
-  it('should throw error on invalid inputs', () => {
-    expect(() =>
-      engine.priceOption({ ...standardParams, spotPrice: -10 }, atmTerms)
-    ).toThrow('Prices and expiry must be positive');
-
-    expect(() =>
-      engine.priceOption(standardParams, { ...atmTerms, timeToExpiryYears: 0 })
-    ).toThrow('Prices and expiry must be positive');
+    // Fat left tails (due to negative rho combined with high vol-of-vol) lead to higher prices for OTM Puts
+    expect(price2).toBeGreaterThan(price1);
   });
 });
