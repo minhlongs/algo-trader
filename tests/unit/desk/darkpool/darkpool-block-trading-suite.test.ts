@@ -152,7 +152,7 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
       expect(backwards.reason).toContain('non-monotonic');
     });
 
-    it('handles participant tracking capacity via trusted server clock and non-blocking LRU eviction', () => {
+    it('handles participant tracking capacity via trusted server clock and fail-closed state protection', () => {
       let mockServerTime = 100_000;
       // Guard with capacity of 2 participants, 60s inactivity window, injected clock
       const guard = new AntiGamingGuard(undefined, 2, 60_000, () => mockServerTime);
@@ -182,9 +182,10 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
         }).isAllowed
       ).toBe(true);
 
-      // Third participant arrives - never fails closed for legitimate flow, evicts cleanest LRU (p1)
+      // Third participant arrives while p1 and p2 are active (< 60s on server clock)
+      // Must fail closed to protect active participant tracking state from being flushed
       mockServerTime += 1000;
-      const thirdAllowed = guard.validateOrder({
+      const thirdResult = guard.validateOrder({
         orderId: 'p3-1',
         participantId: 'p3',
         symbol: 'BTC/USD',
@@ -193,9 +194,10 @@ describe('Dark Pool & Block Trading Gateway Suite', () => {
         pegType: 'MIDPOINT',
         timestampMs: 5000,
       });
-      expect(thirdAllowed.isAllowed).toBe(true);
+      expect(thirdResult.isAllowed).toBe(false);
+      expect(thirdResult.reason).toContain('capacity saturated');
 
-      // Advance clock past inactivity window (> 60s)
+      // Advance server clock past inactivity window (> 60s)
       mockServerTime += 70_000;
       const fourthAllowed = guard.validateOrder({
         orderId: 'p4-1',
