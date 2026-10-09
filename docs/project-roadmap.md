@@ -436,6 +436,12 @@
 - [x] **Desk 167: Lin-Sanger-Booth (1995) Spread Decomposition Engine**: Empirical market microstructure econometric engine estimating adverse selection $\lambda$ via quote revisions and order persistence $\delta$ via trade flow, decomposing spreads into adverse selection, order processing, and inventory holding components (`LsbEngine`).
 - [x] **1,164 test files passing (16,562 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Rubinstein (1983), Ho-Lee (1986) & Madhavan-Smidt (1991) (Wave 168-170) (Completed ✅ 2026-10-09)
+- [x] **Desk 168: Rubinstein (1983) Displaced Diffusion Option Engine**: Displaced diffusion European option pricing model parameterizing firm debt/operating leverage through displacement $\alpha \in (0, 1]$, effective strike transformation, and full analytical Greeks (`Rubinstein83Engine`).
+- [x] **Desk 169: Ho-Lee (1986) Arbitrage-Free Term Structure Engine**: Continuous Gaussian arbitrage-free term structure engine with analytical zero-coupon bond pricing, instantaneous forward curves, and zero-coupon bond option valuation (`HoLeeEngine`).
+- [x] **Desk 170: Madhavan-Smidt (1991) Specialist Inventory & Microstructure Engine**: Structural inventory control and Bayesian learning microstructure engine estimating adverse selection from signed order volume and price shading from inventory deviations (`MadhavanSmidtEngine`).
+- [x] **1,167 test files passing (16,571 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning

@@ -90,6 +90,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/kirkspread/`: Kirk (1995) two-asset spread option engine with modified forward volatility, analytical calls/puts, full Greeks, and Margrabe boundary verification.
   - `src/desk/chenrate/`: Chen (1996) three-factor stochastic volatility short rate engine with central tendency and volatility mean-reversions, expectation trajectories, and term structure bond pricing.
   - `src/desk/lsb/`: Lin-Sanger-Booth (1995) spread decomposition engine with empirical quote revision regressions and three-way decomposition into adverse selection, order processing, and inventory holding shares.
+- **Wave 168-170 Quantitative Desks**:
+  - `src/desk/rubinstein83/`: Rubinstein (1983) displaced diffusion option pricing engine with asset debt-displacement parameter $\alpha$, effective strike transformation, and analytical Greeks.
+  - `src/desk/holee/`: Ho-Lee (1986) arbitrage-free Gaussian term structure engine with analytical zero-coupon bond pricing and bond option valuation.
+  - `src/desk/madhavansmidt/`: Madhavan-Smidt (1991) specialist inventory and Bayesian learning microstructure engine with signed volume price updates and inventory quote shading.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).

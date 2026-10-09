@@ -1,16 +1,14 @@
 /**
  * AML Compliance Rules
- *
  * Anti-Money Laundering rules for regulatory compliance.
- * US FinCEN thresholds and FATF high-risk jurisdictions.
  */
 
 import type { ComplianceRule, ComplianceContext, ComplianceResult } from './compliance-types';
 import { logger } from '../../../shared/utils/logger';
+import { AML_CROSS_BORDER, HIGH_RISK_JURISDICTIONS } from './aml-cross-border-rule';
 
-// ---------------------------------------------------------------------------
-// AML-001: Transaction Amount Limit (US $10,000 CTR threshold)
-// ---------------------------------------------------------------------------
+export { AML_CROSS_BORDER, HIGH_RISK_JURISDICTIONS };
+
 export const AML_TRANSACTION_LIMIT: ComplianceRule = {
   id: 'AML-001',
   name: 'Transaction Amount Limit',
@@ -20,7 +18,6 @@ export const AML_TRANSACTION_LIMIT: ComplianceRule = {
   validate: (context: ComplianceContext): ComplianceResult => {
     const tradeValue = context.amount * context.price;
     const THRESHOLD = 10_000;
-
     if (tradeValue > THRESHOLD) {
       return {
         passed: false,
@@ -40,9 +37,6 @@ export const AML_TRANSACTION_LIMIT: ComplianceRule = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// AML-002: Daily Volume Velocity — same counterparty > $50,000 in 24h
-// ---------------------------------------------------------------------------
 export const AML_DAILY_VELOCITY: ComplianceRule = {
   id: 'AML-002',
   name: 'Daily Volume Velocity',
@@ -52,7 +46,6 @@ export const AML_DAILY_VELOCITY: ComplianceRule = {
   validate: (context: ComplianceContext): ComplianceResult => {
     const DAILY_LIMIT = 50_000;
     const counterpartyTotal = context.counterpartyDailyTotal;
-
     if (counterpartyTotal !== undefined && counterpartyTotal + (context.amount * context.price) > DAILY_LIMIT) {
       return {
         passed: false,
@@ -72,9 +65,6 @@ export const AML_DAILY_VELOCITY: ComplianceRule = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// AML-003: Suspicious Pattern — rapid buy-sell-sell-buy cycles (< 60s)
-// ---------------------------------------------------------------------------
 const RAPID_CYCLE_WINDOW_MS = 60_000;
 
 export const AML_SUSPICIOUS_PATTERN: ComplianceRule = {
@@ -85,7 +75,6 @@ export const AML_SUSPICIOUS_PATTERN: ComplianceRule = {
   severity: 'high',
   validate: (context: ComplianceContext): ComplianceResult => {
     const recentTrades = context.recentTrades;
-
     if (recentTrades && recentTrades.length >= 3) {
       const now = context.timestamp;
       const recent = recentTrades.filter(t => now - t.timestamp < RAPID_CYCLE_WINDOW_MS);
@@ -111,9 +100,6 @@ export const AML_SUSPICIOUS_PATTERN: ComplianceRule = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// AML-004: OFAC Sanctions Screening (config-driven, lazy-loaded)
-// ---------------------------------------------------------------------------
 function parseOfacSanctionsList(): Set<string> {
   return new Set(
     (process.env.OFAC_SANCTIONS_ADDRESSES ?? '')
@@ -126,14 +112,13 @@ function parseOfacSanctionsList(): Set<string> {
 export const AML_OFAC_SANCTIONS: ComplianceRule = {
   id: 'AML-004',
   name: 'OFAC Sanctions Screening',
-  description: 'Checks counterparty against OFAC SDN list (config-driven via OFAC_SANCTIONS_ADDRESSES env var)',
+  description: 'Checks counterparty against OFAC SDN list',
   enabled: true,
   severity: 'critical',
   validate: (context: ComplianceContext): ComplianceResult => {
     const sanctionsList = parseOfacSanctionsList();
-
     if (sanctionsList.size === 0) {
-      logger.warn('OFAC sanctions list is empty — screening disabled (fail-open). Set OFAC_SANCTIONS_ADDRESSES env var to enable.');
+      logger.warn('OFAC sanctions list is empty — screening disabled (fail-open).');
       return {
         passed: true,
         ruleId: 'AML-004',
@@ -142,7 +127,6 @@ export const AML_OFAC_SANCTIONS: ComplianceRule = {
         timestamp: Date.now(),
       };
     }
-
     if (sanctionsList.has(context.counterparty.toLowerCase())) {
       return {
         passed: false,
@@ -157,43 +141,6 @@ export const AML_OFAC_SANCTIONS: ComplianceRule = {
       ruleId: 'AML-004',
       message: 'OFAC sanctions screening passed',
       severity: 'critical',
-      timestamp: Date.now(),
-    };
-  },
-};
-
-// ---------------------------------------------------------------------------
-// AML-005: Cross-Border Transfer to High-Risk Jurisdictions
-// ---------------------------------------------------------------------------
-const HIGH_RISK_JURISDICTIONS = new Set([
-  'AF', 'MM', 'KH', 'CD', 'HT',
-  'IR', 'IQ', 'LB', 'LY', 'SO',
-  'SS', 'SD', 'SY', 'VE', 'YE',
-]);
-
-export const AML_CROSS_BORDER: ComplianceRule = {
-  id: 'AML-005',
-  name: 'Cross-Border Transfer Flag',
-  description: 'Flags transfers to FATF high-risk jurisdictions',
-  enabled: true,
-  severity: 'high',
-  validate: (context: ComplianceContext): ComplianceResult => {
-    const destination = context.destinationJurisdiction;
-
-    if (destination && HIGH_RISK_JURISDICTIONS.has(destination.toUpperCase())) {
-      return {
-        passed: false,
-        ruleId: 'AML-005',
-        message: `Transfer to high-risk jurisdiction ${destination.toUpperCase()} flagged`,
-        severity: 'high',
-        timestamp: Date.now(),
-      };
-    }
-    return {
-      passed: true,
-      ruleId: 'AML-005',
-      message: 'Cross-border check passed',
-      severity: 'high',
       timestamp: Date.now(),
     };
   },
