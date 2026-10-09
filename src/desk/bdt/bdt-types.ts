@@ -1,35 +1,39 @@
-export interface BdtYieldPoint {
-  readonly maturityYears: number;
-  readonly discountFactor: number; // P(0, T)
-  readonly rateVolatility: number; // Annualized local volatility sigma
+/**
+ * Black-Derman-Toy (1990) Log-Normal Short-Rate Lattice Model Types
+ */
+
+export interface BDTModelParams {
+  /** Yield curve zero coupon yields (or annualized forward rates) at integer steps */
+  yieldCurve: number[];
+  /** Short-rate volatility at each time step (annualized, e.g. 0.15 = 15%) */
+  volatilities: number[];
+  /** Time step size in years (dt, e.g. 1.0 or 0.25) */
+  timeStep?: number;
 }
 
-export interface BdtTreeParameters {
-  readonly steps: number;
-  readonly timeHorizonYears: number;
+export interface BDTRateNode {
+  step: number;
+  state: number; // 0 (lowest) to step (highest)
+  rate: number;
 }
 
-export interface BdtCalibrationResult {
-  readonly steps: number;
-  readonly dt: number;
-  readonly baselineRates: number[]; // u_i
-  readonly volatilities: number[];   // sigma_i
-  readonly discountFactorsTarget: number[];
-  readonly discountFactorsFitted: number[];
+export interface BDTTetherLattice {
+  steps: number;
+  rates: number[][]; // rates[step][state]
+  discountFactors: number[];
 }
 
-export interface BdtBondOptionSpec {
-  readonly strikePriceUsd: number;
-  readonly optionExpiryYears: number;
-  readonly bondMaturityYears: number;
-  readonly faceValueUsd?: number;
-  readonly isCall: boolean;
-  readonly isBermudan?: boolean;
+export interface EuropeanBDTBondOptionParams {
+  optionMaturityStep: number;
+  bondMaturityStep: number;
+  strikePrice: number;
+  isCall: boolean;
 }
 
-export interface BdtOptionResult {
-  readonly optionPriceUsd: number;
-  readonly underlyingBondPriceUsd: number;
-  readonly forwardBondPriceUsd: number;
-  readonly intrinsicValueUsd: number;
+export interface BDTBondOptionResult {
+  optionPrice: number;
+  underlyingBondPrice: number;
+  latticeDepth: number;
+  intrinsicValue: number;
+  putCallParityDeviation?: number;
 }

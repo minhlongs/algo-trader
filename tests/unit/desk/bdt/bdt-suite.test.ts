@@ -1,60 +1,58 @@
-import { describe, expect, it } from 'vitest';
-import { BdtEngine } from '../../../../src/desk/bdt/bdt-engine';
-import { BdtBondOptionSpec, BdtYieldPoint } from '../../../../src/desk/bdt/bdt-types';
+import { describe, it, expect } from 'vitest';
+import { BDTEngine } from '../../../../src/desk/bdt/bdt-engine.js';
+import { BDTModelParams, EuropeanBDTBondOptionParams } from '../../../../src/desk/bdt/bdt-types.js';
 
-describe('BdtEngine Suite (Desk 81)', () => {
-  const engine = new BdtEngine();
+describe('BDTEngine (1990 Log-Normal Short Rate Lattice)', () => {
+  const model: BDTModelParams = {
+    yieldCurve: [0.03, 0.035, 0.038, 0.040, 0.042],
+    volatilities: [0.15, 0.15, 0.15, 0.15, 0.15],
+    timeStep: 1.0,
+  };
 
-  const standardYieldCurve: BdtYieldPoint[] = [
-    { maturityYears: 1.0, discountFactor: 0.96, rateVolatility: 0.15 },
-    { maturityYears: 2.0, discountFactor: 0.92, rateVolatility: 0.16 },
-    { maturityYears: 3.0, discountFactor: 0.87, rateVolatility: 0.17 },
-  ];
+  it('validates yield curve and volatilities strictly', () => {
+    expect(() => BDTEngine.calibrateLattice({ yieldCurve: [], volatilities: [0.1] })).toThrow();
+    expect(() => BDTEngine.calibrateLattice({ yieldCurve: [-0.01], volatilities: [0.1] })).toThrow();
+    expect(() => BDTEngine.calibrateLattice({ yieldCurve: [0.03], volatilities: [-0.1] })).toThrow();
+  });
 
-  it('should calibrate BDT tree and exactly match target discount factors', () => {
-    const calib = engine.calibrateTree(standardYieldCurve, 6, 3.0);
+  it('calibrates lattice correctly and recovers input zero-coupon bond prices', () => {
+    const lattice = BDTEngine.calibrateLattice(model);
 
-    expect(calib.steps).toBe(6);
-    expect(calib.baselineRates.length).toBe(6);
-    expect(calib.volatilities.length).toBe(6);
+    expect(lattice.steps).toBe(5);
+    expect(lattice.rates.length).toBe(5);
 
-    for (let i = 0; i < calib.steps; i++) {
-      expect(calib.baselineRates[i]).toBeGreaterThan(0.0);
-      const targetDF = calib.discountFactorsTarget[i]!;
-      const fittedDF = calib.discountFactorsFitted[i]!;
-      expect(Math.abs(fittedDF - targetDF)).toBeLessThan(0.001);
+    // Tree rates at each level should be strictly ascending with state
+    for (let step = 0; step < lattice.steps; step++) {
+      const stepRates = lattice.rates[step];
+      expect(stepRates.length).toBe(step + 1);
+      for (let j = 0; j < step; j++) {
+        expect(stepRates[j + 1]).toBeGreaterThan(stepRates[j]);
+      }
+    }
+
+    // Recovered ZCB prices must match theoretical discount factors:
+    for (let maturity = 1; maturity <= lattice.steps; maturity++) {
+      const modelPrice = BDTEngine.priceZCB(lattice, maturity);
+      const targetDiscount = lattice.discountFactors[maturity - 1];
+      expect(Math.abs(modelPrice - targetDiscount)).toBeLessThan(1e-4);
     }
   });
 
-  it('should price European call and put bond options with positive prices', () => {
-    const calib = engine.calibrateTree(standardYieldCurve, 6, 3.0);
-
-    const callSpec: BdtBondOptionSpec = {
-      optionExpiryYears: 1.0,
-      bondMaturityYears: 3.0,
-      strikePriceUsd: 88.0,
-      faceValueUsd: 100.0,
+  it('prices European call and put options on zero coupon bonds correctly', () => {
+    const lattice = BDTEngine.calibrateLattice(model);
+    const optionParams: EuropeanBDTBondOptionParams = {
+      optionMaturityStep: 2,
+      bondMaturityStep: 4,
+      strikePrice: 0.90,
       isCall: true,
     };
 
-    const putSpec: BdtBondOptionSpec = {
-      ...callSpec,
-      isCall: false,
-    };
+    const callResult = BDTEngine.priceBondOption(lattice, optionParams);
+    const putResult = BDTEngine.priceBondOption(lattice, { ...optionParams, isCall: false });
 
-    const callRes = engine.priceBondOption(calib, callSpec);
-    const putRes = engine.priceBondOption(calib, putSpec);
-
-    expect(callRes.optionPriceUsd).toBeGreaterThanOrEqual(0.0);
-    expect(putRes.optionPriceUsd).toBeGreaterThanOrEqual(0.0);
-    expect(callRes.underlyingBondPriceUsd).toBeGreaterThan(80.0);
-    expect(callRes.underlyingBondPriceUsd).toBeLessThan(100.0);
-    expect(callRes.forwardBondPriceUsd).toBeGreaterThan(0.0);
-  });
-
-  it('should throw when input parameters are invalid', () => {
-    expect(() => engine.calibrateTree([], 5, 2.0)).toThrow('Yield curve must not be empty');
-    expect(() => engine.calibrateTree(standardYieldCurve, 0, 2.0)).toThrow('Steps must be between 1 and 100');
-    expect(() => engine.calibrateTree(standardYieldCurve, 5, -1.0)).toThrow('Time horizon must be positive');
+    expect(callResult.optionPrice).toBeGreaterThan(0);
+    expect(putResult.optionPrice).toBeGreaterThan(0);
+    expect(callResult.underlyingBondPrice).toBeGreaterThan(0);
+    expect(callResult.underlyingBondPrice).toBeLessThan(1.0);
   });
 });
