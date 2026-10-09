@@ -37,13 +37,48 @@ export class Rubinstein83Engine {
     const costOfCarryDiscount = Math.exp(-dividendYield * T);
     const sqrtT = Math.sqrt(T);
 
-    // Rubinstein displaced diffusion transformation:
-    // S* = S, K* = K + ((1 - a) / a) * S * Math.exp(-b * T) is the adjusted benchmark
-    // S_eff = S / a
-    // K_eff = K + ((1 - a) / a) * S * Math.exp(b * T) ... standard formulation:
-    // Call = a * BS(S/a, K + (1-a)/a * S * e^{-bT}, a * sigma)
-    const effS = S / a;
-    const effK = K + ((1.0 - a) / a) * S * Math.exp(-b * T);
+    // Rubinstein (1983) Displaced Diffusion:
+    // Underlying S decomposes into risky asset S' = S / a and non-stochastic borrow -(1-a)/a * S * e^{-bT}
+    // Payoff at T: max(S_T - K, 0) = max(a * S'_T - (K - (1-a)*S*e^{-bT}), 0)
+    // = a * max(S'_T - [K/a + ((a-1)/a)*S*e^{-bT}/a...], 0)
+    // Standard formula:
+    // C = S * e^{-qT} * Phi(d1) - (a * K + (1-a) * S * e^{bT} ... )
+    // Specifically, let S_eff = S / a, K_eff = K + ((1 - a) / a) * S * e^{-b T}, sigma_eff = a * sigma
+    // Then C = a * [ S_eff * e^{(b-r)T} * Phi(d1) - K_eff * e^{-rT} * Phi(d2) ]
+    // Check C - P:
+    // C - P = a * [ S_eff * e^{(b-r)T} - K_eff * e^{-rT} ]
+    // = a * [ (S / a) * e^{-q T} - (K + (1-a)/a * S * e^{-(r-q)T}) * e^{-r T} ]
+    // Notice: S * e^{-q T} - a * K * e^{-r T} - (1-a) * S * e^{-(2r-q)T} -> not quite S*e^{-qT} - K*e^{-rT}
+    // Why? Because the standard Rubinstein (1983) formula uses:
+    // Effective strike: K' = K - (1 - a) * S * e^{(r - q)T} or terminal forward displacement:
+    // Let forward F = S * e^{bT}. Displaced forward F' = (F - (1-a)F) / a = F.
+    // The displaced diffusion S_t + (1-a)/a * S_0 * e^{bt} has lognormal part with forward F/a.
+    // In Mark Rubinstein (1983) "Displaced Diffusion Option Pricing":
+    // S* = S / a
+    // K* = K + ((1 - a) / a) * S * Math.exp(b * T)   <--- Note the compounding e^{bT}, not discounting e^{-bT}!
+    // With K* = K + ((1 - a) / a) * S * Math.exp(b * T), discounted strike in BS is:
+    // a * K* * e^{-rT} = a * K * e^{-rT} + (1 - a) * S * e^{(b-r)T} = a * K * e^{-rT} + (1 - a) * S * e^{-qT}
+    // Then: a * [ S* * e^{(b-r)T} - K* * e^{-rT} ] = S * e^{-qT} - [ a*K*e^{-rT} + (1-a)*S*e^{-qT} ]
+    // = a * S * e^{-qT} - a * K * e^{-rT}
+    // And for option on S: C = a * BS_Call(S/a, K + (1-a)/a * S * e^{bT}, a * sigma) + (if forward displacement).
+    // Or equivalently, Black-Scholes formula with:
+    // S_eff = S
+    // K_eff = K - (1 - a) * S * exp(b * T) or similar.
+    // In Mark Rubinstein (1983), the stock price is S = a * y + (1 - a) * S_0 * e^{bt}, where y follows geometric Brownian motion with y_0 = S_0.
+    // Therefore at maturity T: S_T = a * y_T + (1 - a) * S_0 * e^{bT}.
+    // S_T - K = a * [ y_T - (K - (1 - a) * S_0 * e^{bT}) / a ].
+    // Let K' = (K - (1 - a) * S_0 * e^{bT}) / a.
+    // Then C = e^{-rT} E[ max(S_T - K, 0) ] = a * e^{-rT} E[ max(y_T - K', 0) ] = a * BS(S, K', a * sigma, r, b, T).
+    // And Put: P = e^{-rT} E[ max(K - S_T, 0) ] = a * e^{-rT} E[ max(K' - y_T, 0) ] = a * BS_Put(S, K', a * sigma, r, b, T).
+    // Then C - P = a * [ S * e^{-qT} - K' * e^{-rT} ]
+    // = a * S * e^{-qT} - a * [ (K - (1 - a) * S * e^{bT}) / a ] * e^{-rT}
+    // = a * S * e^{-qT} - K * e^{-rT} + (1 - a) * S * e^{(b-r)T}
+    // Since b = r - q, e^{(b-r)T} = e^{-qT}!
+    // = a * S * e^{-qT} - K * e^{-rT} + (1 - a) * S * e^{-qT}
+    // = S * e^{-qT} - K * e^{-rT} !!!
+    // Put-Call Parity is EXACTLY S * e^{-qT} - K * e^{-rT}!
+    const effS = S;
+    const effK = (K - (1.0 - a) * S * Math.exp(b * T)) / a;
     const effSigma = a * sigma;
 
     if (effK <= 0) {
