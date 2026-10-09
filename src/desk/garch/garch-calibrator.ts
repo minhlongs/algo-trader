@@ -77,16 +77,26 @@ export function calibrateGarch(
 
     for (const { key, delta } of scales) {
       for (const direction of [-1, 1]) {
-        const val = (bestParams as Record<string, number>)[key] + direction * delta;
-        if (val < 0.005) continue;
+        let trialAlpha = bestParams.alpha;
+        let trialBeta = bestParams.beta;
+        let trialGamma = bestParams.gamma;
+
+        if (key === 'alpha') trialAlpha += direction * delta;
+        if (key === 'beta') trialBeta += direction * delta;
+        if (key === 'gamma') trialGamma += direction * delta;
+
+        if (trialAlpha < 0.005 || trialBeta < 0.005 || trialGamma < 0) continue;
+
+        const persist = isGjr ? trialAlpha + trialBeta + 0.5 * trialGamma : trialAlpha + trialBeta;
+        if (persist >= 0.995) continue;
+        const trialOmega = sampleVar * (1.0 - persist);
 
         const trial: GjrGarchParams = {
-          ...bestParams,
-          [key]: val,
+          omega: trialOmega,
+          alpha: trialAlpha,
+          beta: trialBeta,
+          gamma: trialGamma,
         };
-        const persist = calculatePersistence(trial);
-        if (persist >= 0.995) continue;
-        trial.omega = sampleVar * (1.0 - persist);
 
         const ll = calculateLogLikelihood(returns, trial);
         if (ll > bestLL) {
