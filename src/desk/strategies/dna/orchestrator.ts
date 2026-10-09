@@ -19,12 +19,23 @@ import { runDnaConsensusStep } from './orchestrator-consensus';
 import { emitDnaLifecycleEvent, onDnaEvent, emitDnaEvent } from './orchestrator-lifecycle';
 import type { CandleProvider } from './orchestrator-types';
 import { logger } from '../../utils/logger';
+import {
+  startDnaEngine,
+  stopDnaEngine,
+  resetDnaEngine,
+  getDnaEngine,
+} from './dna-singleton';
 
 export type { CandleProvider };
 export type { DnaLifecycleEvent, DnaLifecycleListener };
-export { onDnaEvent, emitDnaEvent };
-
-let _engine: DnaEngine | null = null;
+export {
+  onDnaEvent,
+  emitDnaEvent,
+  startDnaEngine,
+  stopDnaEngine,
+  resetDnaEngine,
+  getDnaEngine,
+};
 
 export class DnaEngine {
   private _timers = new Map<TfId, NodeJS.Timeout>();
@@ -170,30 +181,4 @@ export class DnaEngine {
   getLastConsensus(): ConsensusSignal | null { return this._lastConsensus; }
   getLastTfSignal(tf: TfId): TfSignal | undefined { return this._lastTfSignals.get(tf); }
   get isRunning() { return this._running; }
-}
-
-export function startDnaEngine(
-  provider?: CandleProvider,
-  config?: Partial<DnaEngineConfig>,
-  stateStore?: DnaStateStore,
-): DnaEngine {
-  if (_engine) _engine.stop();
-  _engine = new DnaEngine(provider as CandleProvider, config, stateStore);
-  _engine.start();
-  return _engine;
-}
-
-export function stopDnaEngine(): void {
-  if (_engine) {
-    _engine.stop();
-    _engine = null;
-  }
-}
-
-export function resetDnaEngine(): void {
-  stopDnaEngine();
-}
-
-export function getDnaEngine(): DnaEngine | null {
-  return _engine;
 }
