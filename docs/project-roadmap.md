@@ -418,6 +418,12 @@
 - [x] **Desk 158: Kyle (1985) Continuous Auction Microstructure Engine**: Adverse selection batch and multi-period equilibrium model with price impact $\lambda$, informed trader aggressiveness $\beta$, Bayesian variance reduction, and multi-stage sequential trading dynamics (`KyleAuctionEngine`).
 - [x] **1,155 test files passing (16,520 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Bjerksund-Stensland (1993), Vasicek (1977) & Huang-Stoll (1997) (Wave 159-161) (Completed ✅ 2026-10-09)
+- [x] **Desk 159: Bjerksund-Stensland (1993) American Option Engine**: Analytical closed-form approximation for American call and put options with continuous dividend yields, endogenous exercise trigger price boundary $I(T)$, auxiliary bivariate integral $\phi$, and early exercise premium decomposition (`Bjerksund93Engine`).
+- [x] **Desk 160: Vasicek (1977) Gaussian Short-Rate Engine**: Ornstein-Uhlenbeck Gaussian mean-reverting term structure model, analytical affine zero-coupon bond pricing $P(0, T) = A(T) e^{-B(T) r_0}$, instantaneous forward rate curves, and asymptotic long-term yield calculations (`VasicekEngine`).
+- [x] **Desk 161: Huang-Stoll (1997) Spread Decomposition Engine**: Bivariate OLS econometric spread decomposition of quote midpoint revisions, trade persistence Markov transition probability, and exact three-way decomposition into adverse selection share $\alpha$, order processing share $\gamma$, and inventory holding share $\beta$ (`HuangStollEngine`).
+- [x] **1,158 test files passing (16,535 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
