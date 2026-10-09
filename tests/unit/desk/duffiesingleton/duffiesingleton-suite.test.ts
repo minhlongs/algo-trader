@@ -10,11 +10,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  DuffieSingletonMath,
-  DuffieSingletonEngine,
-  type DuffieSingletonConfig,
-} from '../../../../src/desk/duffiesingleton';
+import { DuffieSingletonMath } from '../../../../src/desk/duffiesingleton/duffiesingleton-math';
+import { DuffieSingletonEngine } from '../../../../src/desk/duffiesingleton/duffiesingleton-engine';
+import type { DuffieSingletonConfig } from '../../../../src/desk/duffiesingleton/duffiesingleton-types';
 
 describe('DuffieSingleton (1999) Suite', () => {
   const baseConfig: DuffieSingletonConfig = {
