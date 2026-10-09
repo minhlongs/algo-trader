@@ -14,7 +14,7 @@
  */
 
 import type { StrategyName } from '../core/types';
-import type { BasePolymarketStrategy, BaseStrategyConfig, StrategyDeps } from '@desk/strategies/polymarket/base-polymarket-strategy';
+import type { BasePolymarketStrategy, StrategyDeps } from '@desk/strategies/polymarket/base-polymarket-strategy';
 import { StrategyLiveBridge } from './strategy-live-bridge';
 import { LiveOrderManagerProxy } from './live-order-manager-proxy';
 import { LiveTradingOrchestrator } from './live-trading-orchestrator';
@@ -23,6 +23,7 @@ import { tradingEventBus, type PriceUpdatePayload } from '../events/trading-even
 import type { StrategyRunnerConfig } from './strategy-runner-types';
 import { createTickTimer, type TickTimerContext } from './strategy-runner-tick-timer';
 import { createEventBusSubscription, type EventHandlerContext } from './strategy-runner-event-handlers';
+import { buildRunnerStatusSnapshot } from './strategy-runner-status-builder';
 
 // Re-export for backward compatibility
 export type { StrategyRunnerConfig, RunnerStatus, StrategyConstructor } from './strategy-runner-types';
@@ -171,21 +172,14 @@ export class StrategyRunner {
   }
 
   getStatus() {
-    return {
+    return buildRunnerStatusSnapshot({
       status: this.status,
       strategyName: this.strategyName,
       executionCount: this.executionCount,
       trackedTokens: this.getTrackedTokens(),
-      tickCount: this.executionCount,
-      mode: this.orchestrator.getMode(),
-      positions: this.orchestrator.getPositions(),
-      bridgeStats: this.proxy?.getStats().bridgeStats ?? { scansCompleted: 0, signalsProcessed: 0, signalsRejected: 0, isScanning: false, scannerActive: false },
-      proxyStats: {
-        ordersPlaced: this.executionCount,
-        strategy: this.strategyName,
-        ...this.proxy?.getStats(),
-      },
-    };
+      orchestrator: this.orchestrator,
+      proxy: this.proxy,
+    });
   }
 
   getOrchestrator(): LiveTradingOrchestrator {

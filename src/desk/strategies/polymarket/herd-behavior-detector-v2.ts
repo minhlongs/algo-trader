@@ -24,6 +24,10 @@ import {
   calcHerdDirection,
   updateEma,
 } from './herd-behavior-math-helpers';
+import {
+  HerdPriceHistoryTracker,
+  type ValidMarketPrices,
+} from './herd-behavior-series-tracker';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -54,7 +58,7 @@ const STRATEGY_NAME = 'herd-behavior-detector' as StrategyName;
 
 export class HerdBehaviorDetectorStrategy extends BasePolymarketStrategy {
   private readonly cfg: HerdBehaviorDetectorConfig;
-  private readonly priceHistory = new Map<string, number[]>();
+  private readonly tracker = new HerdPriceHistoryTracker();
 
   /** Global herd state — shared across all markets */
   private prevHerdEma: number | null = null;
@@ -67,23 +71,18 @@ export class HerdBehaviorDetectorStrategy extends BasePolymarketStrategy {
   }
 
   private recordPrice(tokenId: string, price: number): void {
-    let history = this.priceHistory.get(tokenId);
-    if (!history) { history = []; this.priceHistory.set(tokenId, history); }
-    history.push(price);
-    if (history.length > this.cfg.returnWindow + 1) {
-      history.splice(0, history.length - (this.cfg.returnWindow + 1));
-    }
+    this.tracker.recordPrice(tokenId, price, this.cfg.returnWindow);
   }
 
   private getPrices(tokenId: string): number[] {
-    return this.priceHistory.get(tokenId) ?? [];
+    return this.tracker.getPrices(tokenId);
   }
 
   protected async scanEntries(markets: GammaMarket[]): Promise<void> {
     if (this.getPositionCount() >= this.cfg.maxPositions) return;
 
     // 1. Collect prices for all valid markets
-    const validMarkets: { market: GammaMarket; prices: number[] }[] = [];
+    const validMarkets: ValidMarketPrices[] = [];
 
     for (const market of markets) {
       if (!market.yesTokenId || market.closed || market.resolved) continue;
@@ -109,19 +108,7 @@ export class HerdBehaviorDetectorStrategy extends BasePolymarketStrategy {
     if (validMarkets.length < this.cfg.minMarkets) return;
 
     // 2. Build return series for each market
-    const returnSeries: number[][] = [];
-    const marketReturns: { market: GammaMarket; ret: number }[] = [];
-
-    for (const { market, prices } of validMarkets) {
-      const returns: number[] = [];
-      for (let i = 1; i < prices.length; i++) {
-        returns.push(prices[i - 1] === 0 ? 0 : (prices[i] - prices[i - 1]) / prices[i - 1]);
-      }
-      if (returns.length > 0) {
-        returnSeries.push(returns);
-        marketReturns.push({ market, ret: calcReturn(prices) });
-      }
-    }
+    const { returnSeries, marketReturns } = this.tracker.buildReturnSeries(validMarkets);
 
     // 3. Calculate avg pairwise correlation and update herd EMA
     const avgCorr = calcAvgPairwiseCorrelation(returnSeries);
@@ -178,16 +165,13 @@ export interface HerdBehaviorDetectorDeps extends StrategyDeps {
   config?: Partial<HerdBehaviorDetectorConfig>;
 }
 
-// Re-export math helpers for unit tests
 export {
   calcReturn,
   calcAvgPairwiseCorrelation,
   detectHerdPeak,
   calcHerdDirection,
+  calcPearsonR,
 } from './herd-behavior-math-helpers';
-
-// Re-export calcPearsonR separately (named export from math helpers)
-export { calcPearsonR } from './herd-behavior-math-helpers';
 
 export function createHerdBehaviorDetectorTick(
   deps: HerdBehaviorDetectorDeps,
