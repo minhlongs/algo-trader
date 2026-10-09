@@ -364,6 +364,12 @@
 - [x] **Desk 131: Alfonsi-Fruth-Schied (2010) Non-Linear LOB Execution Engine**: Microstructure limit order book optimal liquidation with power-law shape function $D(x) = \alpha x^\delta$, exponential resilience recovery $e^{-\rho \Delta t}$, U-shaped optimal schedule generation, and cost advantage vs naive TWAP benchmark (`AlfonsiEngine`).
 - [x] **1,128 test files passing (16,378 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Exchange Options, Counterparty Contagion & Transient Impact (Wave 132-134) (Completed ✅ 2026-10-09)
+- [x] **Desk 132: Margrabe (1978) Dual-Asset Exchange Option Engine**: European exchange option engine with composite volatility $\hat{\sigma} = \sqrt{\sigma_1^2 + \sigma_2^2 - 2\rho\sigma_1\sigma_2}$, analytical dual Greeks ($\Delta_1, \Delta_2, \Gamma_1, \Gamma_2, \Gamma_{12}, \text{Vega}_1, \text{Vega}_2, \Theta$), and exchange Put-Call symmetry verification (`MargrabeEngine`).
+- [x] **Desk 133: Jarrow-Yu (2001) Counterparty Risk & Asymmetric Contagion Engine**: Primary-secondary firm asymmetric default contagion with autonomous hazard $a_0$, baseline hazard $b_0$, jump intensity $a_1 \mathbf{1}_{\{\tau_A \le t\}}$, joint survival curves, and vulnerable CDS spread pricing (`JarrowYuEngine`).
+- [x] **Desk 134: Gatheral (2010) No-Dynamic-Arbitrage Transient Impact Engine**: Transient price impact engine supporting exponential and power-law decay kernels, instantaneous power-law impact $f(v) = \lambda |v|^\delta$, round-trip price manipulation testing, and verification of the no-dynamic-arbitrage theorem (`GatheralEngine`).
+- [x] **1,131 test files passing (16,393 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
