@@ -46,6 +46,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/margrabe/`: Margrabe (1978) dual-asset exchange option engine with composite volatility, analytical dual Greeks, and exchange Put-Call symmetry verification.
   - `src/desk/jarrowyu/`: Jarrow-Yu (2001) counterparty risk and asymmetric default contagion engine with primary-secondary jump intensity and vulnerable CDS spread pricing.
   - `src/desk/gatheral/`: Gatheral (2010) no-dynamic-arbitrage transient price impact engine with exponential/power-law decay kernels and round-trip price manipulation testing.
+- **Wave 135-137 Quantitative Desks**:
+  - `src/desk/goldmansosin/`: Goldman-Sosin-Gatto (1979) path-dependent lookback option engine with floating/fixed strike analytical pricing, continuous cost-of-carry singularity handling ($b \to 0$), and running extrema sensitivities.
+  - `src/desk/collindufresne/`: Collin-Dufresne & Goldstein (2001) stationary leverage structural credit engine with mean-reverting debt dynamics, stationary variance floors, and non-zero short-term spread curves.
+  - `src/desk/bouchaud/`: Bouchaud-Gefen-Potters-Wyart (2004) empirical power-law order flow impact engine with long-memory sign autocorrelation, bare propagator decay, and market efficiency cancellation verification ($\beta = \frac{1 - \gamma}{2}$).
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).

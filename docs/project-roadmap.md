@@ -370,6 +370,12 @@
 - [x] **Desk 134: Gatheral (2010) No-Dynamic-Arbitrage Transient Impact Engine**: Transient price impact engine supporting exponential and power-law decay kernels, instantaneous power-law impact $f(v) = \lambda |v|^\delta$, round-trip price manipulation testing, and verification of the no-dynamic-arbitrage theorem (`GatheralEngine`).
 - [x] **1,131 test files passing (16,393 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Lookback Options, Stationary Credit & Power-Law Impact (Wave 135-137) (Completed ✅ 2026-10-09)
+- [x] **Desk 135: Goldman-Sosin-Gatto (1979) Lookback Option Engine**: Path-dependent running extrema options with floating/fixed strike closed-form pricing, continuous limit handling for $b \to 0$ cost-of-carry singularity, and analytical running minimum/maximum sensitivities (`GoldmanSosinEngine`).
+- [x] **Desk 136: Collin-Dufresne & Goldstein (2001) Stationary Leverage Engine**: Structural credit risk engine with mean-reverting debt-to-asset target leverage $d y_t = \lambda (\bar{y} - y_t) dt - \sigma_V dW_t^V$, stationary variance preservation, and multi-maturity term structure of credit spreads (`CollinDufresneEngine`).
+- [x] **Desk 137: Bouchaud-Gefen-Potters-Wyart (2004) Microstructure Engine**: Long-memory order flow impact engine with bare propagator kernel decay, dressed response function convolution, and Bouchaud market efficiency cancellation verification $\beta = \frac{1 - \gamma}{2}$ (`BouchaudEngine`).
+- [x] **1,134 test files passing (16,408 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
