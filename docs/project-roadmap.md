@@ -346,6 +346,12 @@
 - [x] **Desk 122: Lehalle-Moallemi (2018) Multi-Venue Lit/Dark Execution Engine**: Microstructure multi-venue router with exponential dark fill rate decay, adverse selection vs price improvement balance, and delayed liquidation penalty on unfilled volume (`LehalleMoallemiEngine`).
 - [x] **1,118 test files passing (16,334 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Implied Binomial Tree, Rating Transitions & Transient Impact (Wave 123-125) (Completed ✅ 2026-10-09)
+- [x] **Desk 123: Rubinstein (1994) Implied Binomial Tree Engine**: Non-parametric terminal state probability calibration to market option smile/skew, Bregman iterative projection guaranteeing no-arbitrage bounds ($0 \le P_j \le 1$) and forward martingale consistency $\sum P_j S_j = F$ (`RubinsteinEngine`).
+- [x] **Desk 124: Lando (1998) Continuous-Time Markov Rating Transition Engine**: Continuous-time rating migration model across 8 credit tiers (AAA through absorbing Default D), computed via matrix exponential $\exp(\mathbf{Q}t)$ with scaling and squaring, deriving default probability curves, survival curves, and par credit spread term structure (`LandoEngine`).
+- [x] **Desk 125: Obizhaeva-Wang (2013) Optimal Execution with Transient Impact Engine**: Transient limit order book execution with exponential resilience decay $G(\Delta t) = e^{-\rho \Delta t}$, discrete boundary jump blocks $x_0, x_N$ and intermediate uniform pacing minimizing execution shortfall vs naive TWAP (`ObizhaevaWangEngine`).
+- [x] **1,121 test files passing (16,349 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning

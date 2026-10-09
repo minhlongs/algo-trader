@@ -30,6 +30,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/garmankohlhagen/`: Garman-Kohlhagen (1983) dual-currency FX options engine with analytical Greeks and Newton-Raphson IV solver.
   - `src/desk/creditgrades/`: CreditGrades (2002) structural credit risk model with stochastic recovery and Simpson numerical CDS annuity integration.
   - `src/desk/lehallemoallemi/`: Lehalle-Moallemi (2018) lit/dark execution router with fill probability decay and liquidation penalty optimization.
+- **Wave 123-125 Quantitative Desks**:
+  - `src/desk/rubinstein/`: Rubinstein (1994) implied binomial tree calibration with no-arbitrage martingale projection.
+  - `src/desk/lando/`: Lando (1998) continuous-time Markov rating transition engine with matrix exponential and par spread curve.
+  - `src/desk/obizhaevawang/`: Obizhaeva-Wang (2013) optimal execution with transient impact and exponential resilience.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).
