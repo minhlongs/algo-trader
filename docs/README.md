@@ -58,6 +58,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/mertonjump/`: Merton (1976) Poisson jump-diffusion option pricing engine with analytical series expansion, Put-Call parity consistency, and finite-difference Greeks.
   - `src/desk/longstaffschwartz/`: Longstaff-Schwartz (1995) two-factor interest rate & credit risk engine with Vasicek short rate coupling, bivariate first-passage default barrier, and credit spread term structures.
   - `src/desk/glostenmilgrom/`: Glosten-Milgrom (1985) sequential trade microstructure engine with informed trader adverse selection fraction, Bayesian belief recursion, and dynamic Bid/Ask quote spread paths.
+- **Wave 144-146 Quantitative Desks**:
+  - `src/desk/quadraticamerican/`: Barone-Adesi & Whaley (1987) quadratic approximation American option engine with Newton-Raphson smooth pasting critical boundary solver and Greeks.
+  - `src/desk/duffiekan/`: Duffie-Kan (1996) multi-factor affine term structure rate & default intensity credit spread engine with matrix Riccati ODE solutions.
+  - `src/desk/ekop/`: Easley-Kiefer-O'Hara-Paperman (1996) structural microstructure engine with Poisson mixture order flow likelihood, analytical PIN calculation, and Bayesian event classification.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).

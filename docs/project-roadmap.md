@@ -388,12 +388,18 @@
 - [x] **Desk 143: Glosten-Milgrom (1985) Information Asymmetry Microstructure Engine**: Sequential trade microstructure engine with informed trader fraction $\alpha$, noise trader flow $\gamma$, Bayesian posterior belief updates, and dynamic Bid/Ask quote spread paths (`GlostenMilgromEngine`).
 - [x] **1,140 test files passing (16,438 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Quadratic American, Affine Term Structure & EKOP PIN (Wave 144-146) (Completed ✅ 2026-10-09)
+- [x] **Desk 144: Barone-Adesi & Whaley (1987) Quadratic American Option Engine**: Analytical quadratic approximation American option pricer on dividend-paying assets with Newton-Raphson smooth pasting critical boundary solver and finite-difference Greeks (`BawEngine`).
+- [x] **Desk 145: Duffie-Kan (1996) Affine Term Structure Rate & Credit Engine**: Multi-factor canonical affine diffusion model with matrix Riccati ODE solutions, zero-coupon bond pricing, default intensity discounting, and credit spread term structure generation (`DuffieKanEngine`).
+- [x] **Desk 146: Easley-Kiefer-O'Hara-Paperman (1996) Structural Microstructure Engine (EKOP)**: Microstructure Poisson mixture likelihood estimation, analytical PIN calculation, Bayesian daily event classification (No Event, Good News, Bad News), and adverse selection spread decomposition (`EkopEngine`).
+- [x] **1,143 test files passing (16,455 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 16,438 tests (3,137 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
+**Current Status:** 16,455 tests (3,154 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
 
 Updated: 2026-10-09
