@@ -376,12 +376,18 @@
 - [x] **Desk 137: Bouchaud-Gefen-Potters-Wyart (2004) Microstructure Engine**: Long-memory order flow impact engine with bare propagator kernel decay, dressed response function convolution, and Bouchaud market efficiency cancellation verification $\beta = \frac{1 - \gamma}{2}$ (`BouchaudEngine`).
 - [x] **1,134 test files passing (16,408 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Asian Options, Endogenous Credit & MRR Microstructure (Wave 138-140) (Completed ✅ 2026-10-09)
+- [x] **Desk 138: Kemna-Vorst (1990) & Turnbull-Wakeman (1991) Asian Options Engine**: Geometric and arithmetic Asian option engine with continuous moment matching, AM-GM convexity verification, and dual Greeks (`AsianEngine`).
+- [x] **Desk 139: Leland-Toft (1996) Optimal Capital Structure Credit Engine**: Structural credit engine with endogenous bankruptcy boundary ($V_B$), tax shields, bankruptcy friction, and smooth pasting equity valuation (`LelandToftEngine`).
+- [x] **Desk 140: Madhavan-Richardson-Roomans (1997) Microstructure Engine**: Econometric price formation engine with trade flow autocorrelation, OLS structural regression, and spread decomposition into adverse selection vs order processing components (`MadhavanEngine`).
+- [x] **1,137 test files passing (16,423 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 16,316 tests, 0 TS errors, Quality Ratchet v1.1.0 green.
+**Current Status:** 16,423 tests (3,122 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
 
-Updated: 2026-10-08
+Updated: 2026-10-09

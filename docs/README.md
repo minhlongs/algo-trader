@@ -50,6 +50,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/goldmansosin/`: Goldman-Sosin-Gatto (1979) path-dependent lookback option engine with floating/fixed strike analytical pricing, continuous cost-of-carry singularity handling ($b \to 0$), and running extrema sensitivities.
   - `src/desk/collindufresne/`: Collin-Dufresne & Goldstein (2001) stationary leverage structural credit engine with mean-reverting debt dynamics, stationary variance floors, and non-zero short-term spread curves.
   - `src/desk/bouchaud/`: Bouchaud-Gefen-Potters-Wyart (2004) empirical power-law order flow impact engine with long-memory sign autocorrelation, bare propagator decay, and market efficiency cancellation verification ($\beta = \frac{1 - \gamma}{2}$).
+- **Wave 138-140 Quantitative Desks**:
+  - `src/desk/asian/`: Kemna-Vorst (1990) & Turnbull-Wakeman (1991) geometric and arithmetic Asian option engine with moment matching, AM-GM convexity verification, and dual Greeks.
+  - `src/desk/lelandtoft/`: Leland-Toft (1996) optimal capital structure credit engine with endogenous bankruptcy boundary ($V_B$), tax shields, bankruptcy friction, and smooth pasting equity valuation.
+  - `src/desk/madhavan/`: Madhavan-Richardson-Roomans (1997) econometric microstructure engine with trade flow autocorrelation, OLS structural regression, and spread decomposition into adverse selection vs order processing components.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).
