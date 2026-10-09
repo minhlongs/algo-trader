@@ -78,6 +78,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/mertondividend/`: Merton (1973) continuous dividend Black-Scholes option pricing engine with closed-form European calls/puts, analytical Greeks, and Put-Call parity verification.
   - `src/desk/distance2default/`: Merton (1974) structural credit risk and distance-to-default engine with nonlinear bivariate iterative solver recovering unobservable asset value $V$ and asset volatility $\sigma_V$, physical default probability, and structural CDS spreads.
   - `src/desk/kyleauction/`: Kyle (1985) continuous auction microstructure engine with equilibrium price impact $\lambda$, informed aggressiveness $\beta$, Bayesian variance revelation, and multi-stage sequential trading dynamics.
+- **Wave 159-161 Quantitative Desks**:
+  - `src/desk/bjerksund93/`: Bjerksund-Stensland (1993) American option pricing engine with analytical closed-form approximation, endogenous exercise trigger boundaries, and Put-Call symmetry transformation.
+  - `src/desk/vasicekrate/`: Vasicek (1977) Gaussian short-rate term structure engine with Ornstein-Uhlenbeck mean-reverting dynamics, affine zero-coupon bond pricing, instantaneous forward rates, and asymptotic yield calculations.
+  - `src/desk/huangstoll/`: Huang-Stoll (1997) microstructure spread decomposition engine with bivariate OLS econometric regression, trade persistence Markov modeling, and decomposition into adverse selection, order processing, and inventory holding components.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).
