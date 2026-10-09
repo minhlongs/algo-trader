@@ -400,12 +400,18 @@
 - [x] **Desk 149: Hasbrouck (1991) Vector Autoregressive (VAR) Microstructure Engine**: Empirical bivariate VAR estimation for quote revisions and trade flow, impulse response accumulation, permanent price impact $\Psi(1)$, and information share variance decomposition (`HasbrouckEngine`).
 - [x] **1,146 test files passing (16,470 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Finite Difference American, Nelson-Siegel-Svensson & Roll Spread (Wave 150-152) (Completed ✅ 2026-10-09)
+- [x] **Desk 150: Crank-Nicolson (1947) Finite Difference American Option Engine**: Finite difference implicit-explicit PDE pricer with Thomas tridiagonal algorithm, Brennan-Schwartz projected early-exercise dynamic programming, and finite difference Greeks (`CrankEngine`).
+- [x] **Desk 151: Nelson-Siegel-Svensson Extended Credit & Yield Curve Engine**: Continuous zero rate and instantaneous forward rate term structure engine with Svensson dual humps, discount factors, credit hazard rate derivation, and survival curves (`NelsonEngine`).
+- [x] **Desk 152: Roll (1984) Effective Bid-Ask Spread Microstructure Engine**: Microstructure effective spread estimation from first-order serial autocovariance of trade price changes, bid-ask bounce variance decomposition, and positive covariance handling (`RollEngine`).
+- [x] **1,149 test files passing (16,485 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 16,455 tests (3,154 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
+**Current Status:** 16,485 tests (3,169 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
 
 Updated: 2026-10-09

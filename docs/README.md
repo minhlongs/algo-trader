@@ -66,6 +66,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/hestonchf/`: Heston (1993) semi-analytical characteristic function stochastic volatility engine with Albrecher Little-Trap formulation, numerical quadrature, and Put-Call parity.
   - `src/desk/circredit/`: Cox-Ingersoll-Ross (1985) multi-factor square-root diffusion term structure & credit engine with analytical bond coefficients and survival probability.
   - `src/desk/hasbrouckvar/`: Hasbrouck (1991) Vector Autoregressive (VAR) microstructure engine with empirical impulse response, permanent price impact, and information share variance decomposition.
+- **Wave 150-152 Quantitative Desks**:
+  - `src/desk/cranknicolson/`: Crank-Nicolson (1947) finite difference American option pricing engine with Brennan-Schwartz projected early exercise dynamic programming and finite difference Greeks.
+  - `src/desk/nelsoncurve/`: Nelson-Siegel-Svensson continuous credit & yield curve engine with zero rates, instantaneous forwards, discount factors, and credit hazard spread curves.
+  - `src/desk/rollspread/`: Roll (1984) effective bid-ask spread microstructure engine with first-order serial autocovariance estimation and bid-ask bounce variance decomposition.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).
