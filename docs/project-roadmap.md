@@ -430,6 +430,12 @@
 - [x] **Desk 164: George-Kaul-Nimalendran (1991) Spread Decomposition Engine**: Market microstructure spread decomposition engine purging bid-ask bounce via quote midpoint revisions and estimating adverse selection and order processing fractions using serial autocovariance of transaction returns (`GknEngine`).
 - [x] **1,161 test files passing (16,550 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Kirk (1995), Chen (1996) & Lin-Sanger-Booth (1995) (Wave 165-167) (Completed ✅ 2026-10-09)
+- [x] **Desk 165: Kirk (1995) Two-Asset Spread Option Engine**: Analytical closed-form approximation for European call and put options on the spread between two correlated assets/futures, modified volatility calculation $\sigma^*$, full Greeks ($\Delta_1, \Delta_2, \Gamma, \mathcal{V}, \Theta, \rho$), and Margrabe exchange option boundary verification (`KirkSpreadEngine`).
+- [x] **Desk 166: Chen (1996) Three-Factor Stochastic Volatility Short Rate Engine**: Multi-factor term structure model capturing central tendency $\theta_t$ and stochastic variance $\sigma_t$, closed-form expectation trajectories, zero-coupon bond pricing, and asymptotic yield calculations (`ChenRateEngine`).
+- [x] **Desk 167: Lin-Sanger-Booth (1995) Spread Decomposition Engine**: Empirical market microstructure econometric engine estimating adverse selection $\lambda$ via quote revisions and order persistence $\delta$ via trade flow, decomposing spreads into adverse selection, order processing, and inventory holding components (`LsbEngine`).
+- [x] **1,164 test files passing (16,562 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
