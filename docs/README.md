@@ -34,6 +34,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/rubinstein/`: Rubinstein (1994) implied binomial tree calibration with no-arbitrage martingale projection.
   - `src/desk/lando/`: Lando (1998) continuous-time Markov rating transition engine with matrix exponential and par spread curve.
   - `src/desk/obizhaevawang/`: Obizhaeva-Wang (2013) optimal execution with transient impact and exponential resilience.
+- **Wave 126-128 Quantitative Desks**:
+  - `src/desk/carrmadan/`: Carr-Madan (1998) FFT and characteristic function option pricing engine with complex arithmetic and Simpson quadrature integration.
+  - `src/desk/schonbucher/`: Schönbucher (2000) factor credit default model with log-normal intensity and tranche loss waterfall (Equity, Mezzanine, Senior).
+  - `src/desk/hubermanstanzl/`: Huberman-Stanzl (2004) price manipulation and non-linear liquidity engine with quasi-arbitrage detection and optimal liquidation scheduling.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).

@@ -352,6 +352,12 @@
 - [x] **Desk 125: Obizhaeva-Wang (2013) Optimal Execution with Transient Impact Engine**: Transient limit order book execution with exponential resilience decay $G(\Delta t) = e^{-\rho \Delta t}$, discrete boundary jump blocks $x_0, x_N$ and intermediate uniform pacing minimizing execution shortfall vs naive TWAP (`ObizhaevaWangEngine`).
 - [x] **1,121 test files passing (16,349 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Characteristic Functions, Factor Credit & Price Manipulation (Wave 126-128) (Completed ✅ 2026-10-09)
+- [x] **Desk 126: Carr-Madan (1998) FFT Option Pricing Engine**: Non-parametric European option pricing via Fourier inversion of dampened call transform $\psi_T(v)$ across characteristic functions $\phi_T(u)$ using custom complex arithmetic and composite Simpson quadrature integration (`CarrMadanEngine`).
+- [x] **Desk 127: Schönbucher (2000) Factor Credit Default Model Engine**: Multi-obligor correlated basket default model driven by systemic Gaussian factor $X \sim \mathcal{N}(0, 1)$ with log-normal affine intensity $\lambda_i(X) = \lambda_{0, i} \exp(\beta_i X - \frac{1}{2}\beta_i^2)$ and tranche loss waterfalls for Equity, Mezzanine, and Senior CDX tranches (`SchonbucherEngine`).
+- [x] **Desk 128: Huberman-Stanzl (2004) Price Manipulation & Liquidity Engine**: Microstructure model establishing absence of price manipulation and quasi-arbitrage under linear permanent impact $g(v) = \gamma v$, positive semi-definite cross-impact matrices, round-trip cost testing, and TWAP optimal liquidation trajectories (`HubermanStanzlEngine`).
+- [x] **1,125 test files passing (16,365 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
