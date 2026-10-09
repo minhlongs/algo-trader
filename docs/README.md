@@ -54,6 +54,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/asian/`: Kemna-Vorst (1990) & Turnbull-Wakeman (1991) geometric and arithmetic Asian option engine with moment matching, AM-GM convexity verification, and dual Greeks.
   - `src/desk/lelandtoft/`: Leland-Toft (1996) optimal capital structure credit engine with endogenous bankruptcy boundary ($V_B$), tax shields, bankruptcy friction, and smooth pasting equity valuation.
   - `src/desk/madhavan/`: Madhavan-Richardson-Roomans (1997) econometric microstructure engine with trade flow autocorrelation, OLS structural regression, and spread decomposition into adverse selection vs order processing components.
+- **Wave 141-143 Quantitative Desks**:
+  - `src/desk/mertonjump/`: Merton (1976) Poisson jump-diffusion option pricing engine with analytical series expansion, Put-Call parity consistency, and finite-difference Greeks.
+  - `src/desk/longstaffschwartz/`: Longstaff-Schwartz (1995) two-factor interest rate & credit risk engine with Vasicek short rate coupling, bivariate first-passage default barrier, and credit spread term structures.
+  - `src/desk/glostenmilgrom/`: Glosten-Milgrom (1985) sequential trade microstructure engine with informed trader adverse selection fraction, Bayesian belief recursion, and dynamic Bid/Ask quote spread paths.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).

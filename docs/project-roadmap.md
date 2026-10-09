@@ -382,12 +382,18 @@
 - [x] **Desk 140: Madhavan-Richardson-Roomans (1997) Microstructure Engine**: Econometric price formation engine with trade flow autocorrelation, OLS structural regression, and spread decomposition into adverse selection vs order processing components (`MadhavanEngine`).
 - [x] **1,137 test files passing (16,423 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Jump-Diffusion, Two-Factor Credit & Glosten-Milgrom (Wave 141-143) (Completed ✅ 2026-10-09)
+- [x] **Desk 141: Merton (1976) Jump-Diffusion Option Pricing Engine**: Compound Poisson jump-diffusion option pricing engine with log-normal jump distribution, adaptive Poisson series expansion, Put-Call parity consistency, and finite-difference Greeks (`MertonJumpEngine`).
+- [x] **Desk 142: Longstaff-Schwartz (1995) Two-Factor Defaultable Bond Credit Engine**: Coupled two-factor structural credit engine with Vasicek short rates, asset diffusion with correlation $\rho$, bivariate first-passage default discounting, and credit spread term structure generation (`LongstaffSchwartzEngine`).
+- [x] **Desk 143: Glosten-Milgrom (1985) Information Asymmetry Microstructure Engine**: Sequential trade microstructure engine with informed trader fraction $\alpha$, noise trader flow $\gamma$, Bayesian posterior belief updates, and dynamic Bid/Ask quote spread paths (`GlostenMilgromEngine`).
+- [x] **1,140 test files passing (16,438 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 16,423 tests (3,122 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
+**Current Status:** 16,438 tests (3,137 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
 
 Updated: 2026-10-09
