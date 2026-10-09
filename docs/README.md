@@ -70,6 +70,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/cranknicolson/`: Crank-Nicolson (1947) finite difference American option pricing engine with Brennan-Schwartz projected early exercise dynamic programming and finite difference Greeks.
   - `src/desk/nelsoncurve/`: Nelson-Siegel-Svensson continuous credit & yield curve engine with zero rates, instantaneous forwards, discount factors, and credit hazard spread curves.
   - `src/desk/rollspread/`: Roll (1984) effective bid-ask spread microstructure engine with first-order serial autocovariance estimation and bid-ask bounce variance decomposition.
+- **Wave 153-155 Quantitative Desks**:
+  - `src/desk/cev/`: Cox (1975) Constant Elasticity of Variance (CEV) option engine with Poisson-gamma mixture / Sankaran non-central chi-square CDF expansion, Black-Scholes boundary convergence, and finite difference Greeks.
+  - `src/desk/jltcredit/`: Jarrow-Lando-Turnbull (1997) Markov rating transition credit engine with risk-neutral default generator scaling, defaultable bond valuation, and multi-tier credit spread curves.
+  - `src/desk/pastorstambaugh/`: Pástor-Stambaugh (2003) liquidity risk engine with signed dollar volume reversal regressions, AR(1) systematic liquidity innovation extraction, and asset liquidity beta estimation.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).

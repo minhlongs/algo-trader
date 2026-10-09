@@ -406,12 +406,18 @@
 - [x] **Desk 152: Roll (1984) Effective Bid-Ask Spread Microstructure Engine**: Microstructure effective spread estimation from first-order serial autocovariance of trade price changes, bid-ask bounce variance decomposition, and positive covariance handling (`RollEngine`).
 - [x] **1,149 test files passing (16,485 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Constant Elasticity of Variance, Markov Rating Credit & Pástor-Stambaugh Liquidity (Wave 153-155) (Completed ✅ 2026-10-09)
+- [x] **Desk 153: Cox (1975) Constant Elasticity of Variance (CEV) Option Engine**: Non-central chi-square CDF option engine via Poisson-gamma mixture and Sankaran (1963) transformation, Put-Call parity, Black-Scholes limit convergence ($\beta \to 2$), and finite difference Greeks (`CevEngine`).
+- [x] **Desk 154: Jarrow-Lando-Turnbull (1997) Markov Rating Transition Credit Engine**: Credit rating migration engine with empirical transition matrix, physical-to-risk-neutral scaling via default risk premia, defaultable zero-coupon bond pricing, and term structures of credit spreads (`JltEngine`).
+- [x] **Desk 155: Pástor-Stambaugh (2003) Liquidity Risk & Systematic Reversal Engine**: Cross-sectional return reversal regressions against signed dollar volume, AR(1) systematic market liquidity shock filtering, and multi-factor liquidity beta estimation (`PsEngine`).
+- [x] **1,152 test files passing (16,506 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 16,485 tests (3,169 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
+**Current Status:** 16,506 tests (3,190 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
 
 Updated: 2026-10-09
