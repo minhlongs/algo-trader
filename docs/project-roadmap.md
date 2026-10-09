@@ -394,6 +394,12 @@
 - [x] **Desk 146: Easley-Kiefer-O'Hara-Paperman (1996) Structural Microstructure Engine (EKOP)**: Microstructure Poisson mixture likelihood estimation, analytical PIN calculation, Bayesian daily event classification (No Event, Good News, Bad News), and adverse selection spread decomposition (`EkopEngine`).
 - [x] **1,143 test files passing (16,455 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Stochastic Volatility CHF, CIR Credit & Hasbrouck VAR (Wave 147-149) (Completed ✅ 2026-10-09)
+- [x] **Desk 147: Heston (1993) Characteristic Function Inversion Option Engine**: Semi-analytical European option pricing via Fourier inversion of Little-Trap stable characteristic functions, numerical Simpson quadrature, Put-Call parity, and standard Greeks (`HestonEngine`).
+- [x] **Desk 148: Cox-Ingersoll-Ross (1985) Square-Root Diffusion Term Structure & Credit Engine**: Multi-factor non-negative CIR affine rates and default intensities, analytical bond coefficients $A(\tau)$ and $B(\tau)$, fractional recovery of market value, and credit spread curves (`CirEngine`).
+- [x] **Desk 149: Hasbrouck (1991) Vector Autoregressive (VAR) Microstructure Engine**: Empirical bivariate VAR estimation for quote revisions and trade flow, impulse response accumulation, permanent price impact $\Psi(1)$, and information share variance decomposition (`HasbrouckEngine`).
+- [x] **1,146 test files passing (16,470 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
