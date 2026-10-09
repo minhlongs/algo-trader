@@ -38,6 +38,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/carrmadan/`: Carr-Madan (1998) FFT and characteristic function option pricing engine with complex arithmetic and Simpson quadrature integration.
   - `src/desk/schonbucher/`: Schönbucher (2000) factor credit default model with log-normal intensity and tranche loss waterfall (Equity, Mezzanine, Senior).
   - `src/desk/hubermanstanzl/`: Huberman-Stanzl (2004) price manipulation and non-linear liquidity engine with quasi-arbitrage detection and optimal liquidation scheduling.
+- **Wave 129-131 Quantitative Desks**:
+  - `src/desk/hestonnandi/`: Heston-Nandi (2000) discrete-time GARCH option pricing engine with closed-form characteristic function inversion and Put-Call parity consistency.
+  - `src/desk/davislo/`: Davis-Lo (2001) contagion credit default engine with continuous-time Markov infection cascade and tranche loss waterfalls.
+  - `src/desk/alfonsi/`: Alfonsi-Fruth-Schied (2010) non-linear limit order book execution engine with power-law book shape, exponential resilience decay, and U-shaped optimal execution scheduling.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).

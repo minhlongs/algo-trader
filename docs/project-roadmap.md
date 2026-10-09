@@ -358,6 +358,12 @@
 - [x] **Desk 128: Huberman-Stanzl (2004) Price Manipulation & Liquidity Engine**: Microstructure model establishing absence of price manipulation and quasi-arbitrage under linear permanent impact $g(v) = \gamma v$, positive semi-definite cross-impact matrices, round-trip cost testing, and TWAP optimal liquidation trajectories (`HubermanStanzlEngine`).
 - [x] **1,125 test files passing (16,365 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: GARCH Options, Contagion Credit & Non-Linear LOB (Wave 129-131) (Completed ✅ 2026-10-09)
+- [x] **Desk 129: Heston-Nandi (2000) GARCH Option Pricing Engine**: Discrete-time affine GARCH(1,1) European option pricer with closed-form recursive characteristic function inversion, strict stationary variance constraint $\beta + \alpha \gamma^2 < 1$, and Put-Call parity consistency (`HestonNandiEngine`).
+- [x] **Desk 130: Davis-Lo (2001) Contagion Credit Default Engine**: Continuous-time Markov default infection process with autonomous jump rate $\lambda_0$ and contagion hazard $\mu$, forward Kolmogorov RK4 solver, and multi-tranche protection/annuity spread waterfalls (`DavisLoEngine`).
+- [x] **Desk 131: Alfonsi-Fruth-Schied (2010) Non-Linear LOB Execution Engine**: Microstructure limit order book optimal liquidation with power-law shape function $D(x) = \alpha x^\delta$, exponential resilience recovery $e^{-\rho \Delta t}$, U-shaped optimal schedule generation, and cost advantage vs naive TWAP benchmark (`AlfonsiEngine`).
+- [x] **1,128 test files passing (16,378 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
