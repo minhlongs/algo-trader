@@ -424,6 +424,12 @@
 - [x] **Desk 161: Huang-Stoll (1997) Spread Decomposition Engine**: Bivariate OLS econometric spread decomposition of quote midpoint revisions, trade persistence Markov transition probability, and exact three-way decomposition into adverse selection share $\alpha$, order processing share $\gamma$, and inventory holding share $\beta$ (`HuangStollEngine`).
 - [x] **1,158 test files passing (16,535 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Black (1976), Jamshidian (1989) & George-Kaul-Nimalendran (1991) (Wave 162-164) (Completed ✅ 2026-10-09)
+- [x] **Desk 162: Black (1976) Futures Option Engine**: Analytical lognormal diffusion option pricing on futures and forward contracts with zero drift cost-of-carry ($b = 0$), closed-form European calls/puts, full analytical Greeks ($\Delta, \Gamma, \mathcal{V}, \Theta, \rho$), and futures Put-Call parity consistency (`Black76Engine`).
+- [x] **Desk 163: Jamshidian (1989) Swaption & Coupon Bond Option Engine**: Analytical decomposition of European options on coupon-bearing bonds and European swaptions into a portfolio of zero-coupon bond options under one-factor Vasicek term structure, with monotonic bisection solver for critical short rate $r^*$ (`JamshidianEngine`).
+- [x] **Desk 164: George-Kaul-Nimalendran (1991) Spread Decomposition Engine**: Market microstructure spread decomposition engine purging bid-ask bounce via quote midpoint revisions and estimating adverse selection and order processing fractions using serial autocovariance of transaction returns (`GknEngine`).
+- [x] **1,161 test files passing (16,550 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning

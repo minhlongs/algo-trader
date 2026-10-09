@@ -82,6 +82,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/bjerksund93/`: Bjerksund-Stensland (1993) American option pricing engine with analytical closed-form approximation, endogenous exercise trigger boundaries, and Put-Call symmetry transformation.
   - `src/desk/vasicekrate/`: Vasicek (1977) Gaussian short-rate term structure engine with Ornstein-Uhlenbeck mean-reverting dynamics, affine zero-coupon bond pricing, instantaneous forward rates, and asymptotic yield calculations.
   - `src/desk/huangstoll/`: Huang-Stoll (1997) microstructure spread decomposition engine with bivariate OLS econometric regression, trade persistence Markov modeling, and decomposition into adverse selection, order processing, and inventory holding components.
+- **Wave 162-164 Quantitative Desks**:
+  - `src/desk/black76/`: Black (1976) European futures and forward option engine with zero-drift cost-of-carry lognormal diffusion, closed-form calls/puts, full analytical Greeks, and futures Put-Call parity.
+  - `src/desk/jamshidian/`: Jamshidian (1989) swaption and coupon bond option engine with exact decomposition into a portfolio of zero-coupon bond options, one-factor Vasicek short-rate term structure, and numerical critical rate ($r^*$) bisection solver.
+  - `src/desk/gkn/`: George-Kaul-Nimalendran (1991) market microstructure spread decomposition engine purging bid-ask bounce via quote midpoint revisions and estimating adverse selection and order processing shares.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).
