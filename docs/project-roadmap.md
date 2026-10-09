@@ -412,6 +412,12 @@
 - [x] **Desk 155: Pástor-Stambaugh (2003) Liquidity Risk & Systematic Reversal Engine**: Cross-sectional return reversal regressions against signed dollar volume, AR(1) systematic market liquidity shock filtering, and multi-factor liquidity beta estimation (`PsEngine`).
 - [x] **1,152 test files passing (16,506 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: Merton Continuous Dividend, Distance-to-Default & Kyle Continuous Auction (Wave 156-158) (Completed ✅ 2026-10-09)
+- [x] **Desk 156: Merton (1973) Continuous Dividend Option Engine**: Closed-form European option pricer on continuous dividend yielding assets, analytical Greeks ($\Delta, \Gamma, \mathcal{V}, \Theta, \rho, \Psi$), and Put-Call parity verification (`MertonDividendEngine`).
+- [x] **Desk 157: Merton (1974) Distance-to-Default & Structural CDS Engine**: Bivariate iterative system inversion solver recovering unobservable asset value $V$ and asset volatility $\sigma_V$ from equity capitalization and equity volatility, physical default probability $N(-DD)$, and structural CDS spreads (`DistanceToDefaultEngine`).
+- [x] **Desk 158: Kyle (1985) Continuous Auction Microstructure Engine**: Adverse selection batch and multi-period equilibrium model with price impact $\lambda$, informed trader aggressiveness $\beta$, Bayesian variance reduction, and multi-stage sequential trading dynamics (`KyleAuctionEngine`).
+- [x] **1,155 test files passing (16,520 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning

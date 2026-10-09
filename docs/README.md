@@ -74,6 +74,10 @@ Algo Trader is an enterprise algorithmic trading platform supporting 52+ automat
   - `src/desk/cev/`: Cox (1975) Constant Elasticity of Variance (CEV) option engine with Poisson-gamma mixture / Sankaran non-central chi-square CDF expansion, Black-Scholes boundary convergence, and finite difference Greeks.
   - `src/desk/jltcredit/`: Jarrow-Lando-Turnbull (1997) Markov rating transition credit engine with risk-neutral default generator scaling, defaultable bond valuation, and multi-tier credit spread curves.
   - `src/desk/pastorstambaugh/`: Pástor-Stambaugh (2003) liquidity risk engine with signed dollar volume reversal regressions, AR(1) systematic liquidity innovation extraction, and asset liquidity beta estimation.
+- **Wave 156-158 Quantitative Desks**:
+  - `src/desk/mertondividend/`: Merton (1973) continuous dividend Black-Scholes option pricing engine with closed-form European calls/puts, analytical Greeks, and Put-Call parity verification.
+  - `src/desk/distance2default/`: Merton (1974) structural credit risk and distance-to-default engine with nonlinear bivariate iterative solver recovering unobservable asset value $V$ and asset volatility $\sigma_V$, physical default probability, and structural CDS spreads.
+  - `src/desk/kyleauction/`: Kyle (1985) continuous auction microstructure engine with equilibrium price impact $\lambda$, informed aggressiveness $\beta$, Bayesian variance revelation, and multi-stage sequential trading dynamics.
 
 ### 2. Billing & Subscription Gateway (`src/billing/`, `src/platform/billing/`)
 - **NOWPayments Webhook Verification**: Recursive key sorting (`ksort`) for HMAC-SHA512 validation with timing-safe comparison (`crypto.timingSafeEqual` and `constantTimeEqual`).
