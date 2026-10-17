@@ -6,63 +6,31 @@
 
 import { logger } from '../../shared/utils/logger';
 import { getMessageBus } from '../../shared/messaging/index';
+import {
+  type PredictItMarket,
+  type PredictItFeed,
+  type PredictItRawContract,
+  type PredictItRawMarket,
+  type PredictItApiResponse,
+  centsToProb,
+  normalizeMarket,
+  parsePredictItApiResponse,
+} from './predictit-price-parsers';
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-export interface PredictItMarket {
-  id: string;
-  title: string;
-  yesPrice: number;   // normalized 0–1
-  noPrice: number;    // normalized 0–1
-  volume: number;
-  platform: 'predictit';
-  lastUpdated: number;
-}
-
-export interface PredictItFeed {
-  markets: PredictItMarket[];
-  fetchedAt: number;
-}
-
-// ---------------------------------------------------------------------------
-// Constants & raw API shapes
-// ---------------------------------------------------------------------------
+export type {
+  PredictItMarket,
+  PredictItFeed,
+  PredictItRawContract,
+  PredictItRawMarket,
+  PredictItApiResponse,
+};
+export { centsToProb, normalizeMarket, parsePredictItApiResponse };
 
 const API_URL = 'https://www.predictit.org/api/marketdata/all/';
 const NATS_TOPIC = 'market.predictit.update';
 const DEFAULT_POLL_MS = 60_000;
 const CACHE_TTL_MS = 60_000;
 const FETCH_TIMEOUT_MS = 10_000;
-
-interface PredictItRawContract {
-  id?: number;
-  name?: string;
-  shortName?: string;
-  lastTradePrice?: number | null;   // cents 0–99
-  bestBuyYesCost?: number | null;   // cents 0–99
-  bestBuyNoCost?: number | null;    // cents 0–99
-  bestSellYesCost?: number | null;
-  bestSellNoCost?: number | null;
-  status?: string;
-}
-
-interface PredictItRawMarket {
-  id?: number;
-  name?: string;
-  shortName?: string;
-  status?: string;
-  contracts?: PredictItRawContract[];
-}
-
-interface PredictItApiResponse {
-  markets?: PredictItRawMarket[];
-}
-
-// ---------------------------------------------------------------------------
-// In-memory cache
-// ---------------------------------------------------------------------------
 
 let cache: { data: Map<string, PredictItMarket>; expiresAt: number } | null = null;
 
@@ -72,46 +40,6 @@ function setCache(markets: PredictItMarket[]): void {
   const data = new Map<string, PredictItMarket>(markets.map((m) => [m.id, m]));
   cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Convert PredictIt cents (0–99) to probability (0.00–0.99). */
-function centsToProb(cents: number | null | undefined): number {
-  if (cents === null || cents === undefined || isNaN(cents)) return 0;
-  return Math.min(0.99, Math.max(0, cents));
-}
-
-/**
- * Normalize a PredictIt market. Binary (2-contract) markets map to yes/no.
- * Multi-contract markets are flattened: each contract becomes its own entry
- * keyed as `{marketId}-{contractId}`.
- */
-function normalizeMarket(raw: PredictItRawMarket): PredictItMarket[] {
-  const contracts = raw.contracts ?? [];
-  const active = contracts.filter((c) => c.status !== 'Closed');
-  if (active.length === 0) return [];
-
-  return active.map((c): PredictItMarket => {
-    const yesPrice = centsToProb(c.bestBuyYesCost ?? c.lastTradePrice);
-    // PredictIt: bestBuyNoCost represents cost to buy NO shares
-    const noPrice = centsToProb(c.bestBuyNoCost ?? (yesPrice > 0 ? 1 - yesPrice : 0));
-    return {
-      id: `${raw.id ?? 0}-${c.id ?? 0}`,
-      title: raw.name ? `${raw.name} — ${c.shortName ?? c.name ?? ''}` : (c.name ?? ''),
-      yesPrice,
-      noPrice,
-      volume: 0, // PredictIt API does not expose volume at contract level
-      platform: 'predictit',
-      lastUpdated: Date.now(),
-    };
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 /** Fetch all active PredictIt markets. Returns cached data within TTL. */
 export async function fetchPredictItMarkets(): Promise<PredictItFeed> {
@@ -126,11 +54,9 @@ export async function fetchPredictItMarkets(): Promise<PredictItFeed> {
     headers: { Accept: 'application/json' },
   });
   if (!res.ok) throw new Error(`[PredictItFeed] HTTP ${res.status}`);
-  const data = await res.json() as PredictItApiResponse;
+  const data = (await res.json()) as PredictItApiResponse;
 
-  const markets = (data.markets ?? [])
-    .filter((m) => m.status !== 'Closed')
-    .flatMap(normalizeMarket);
+  const markets = parsePredictItApiResponse(data);
 
   setCache(markets);
   logger.info('[PredictItFeed] Markets fetched', { count: markets.length });

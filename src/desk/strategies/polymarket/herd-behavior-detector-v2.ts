@@ -10,11 +10,9 @@
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
-import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
-  type BaseStrategyConfig,
   type StrategyDeps,
 } from './base-polymarket-strategy';
 import {
@@ -22,45 +20,32 @@ import {
   calcAvgPairwiseCorrelation,
   detectHerdPeak,
   calcHerdDirection,
+  calcPearsonR,
   updateEma,
 } from './herd-behavior-math-helpers';
 import {
+  DEFAULT_CONFIG,
+  STRATEGY_NAME,
   HerdPriceHistoryTracker,
+  evaluateHerdFadeSignal,
+  resolveHerdFadeEntryParams,
+  type HerdBehaviorDetectorConfig,
   type ValidMarketPrices,
 } from './herd-behavior-series-tracker';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
-export interface HerdBehaviorDetectorConfig extends BaseStrategyConfig {
-  herdThreshold: number;
-  returnWindow: number;
-  herdEmaAlpha: number;
-  minMarkets: number;
-}
-
-export const DEFAULT_CONFIG: HerdBehaviorDetectorConfig = {
-  herdThreshold: 0.6,
-  returnWindow: 10,
-  herdEmaAlpha: 0.15,
-  minMarkets: 5,
-  minVolume: 5000,
-  takeProfitPct: 0.025,
-  stopLossPct: 0.02,
-  maxHoldMs: 15 * 60_000,
-  maxPositions: 4,
-  cooldownMs: 120_000,
-  positionSize: '10',
+export type { HerdBehaviorDetectorConfig };
+export {
+  DEFAULT_CONFIG,
+  calcReturn,
+  calcAvgPairwiseCorrelation,
+  detectHerdPeak,
+  calcHerdDirection,
+  calcPearsonR,
 };
-
-const STRATEGY_NAME = 'herd-behavior-detector' as StrategyName;
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class HerdBehaviorDetectorStrategy extends BasePolymarketStrategy {
   private readonly cfg: HerdBehaviorDetectorConfig;
   private readonly tracker = new HerdPriceHistoryTracker();
-
-  /** Global herd state — shared across all markets */
   private prevHerdEma: number | null = null;
   private currentHerdEma: number | null = null;
 
@@ -81,7 +66,6 @@ export class HerdBehaviorDetectorStrategy extends BasePolymarketStrategy {
   protected async scanEntries(markets: GammaMarket[]): Promise<void> {
     if (this.getPositionCount() >= this.cfg.maxPositions) return;
 
-    // 1. Collect prices for all valid markets
     const validMarkets: ValidMarketPrices[] = [];
 
     for (const market of markets) {
@@ -107,48 +91,47 @@ export class HerdBehaviorDetectorStrategy extends BasePolymarketStrategy {
 
     if (validMarkets.length < this.cfg.minMarkets) return;
 
-    // 2. Build return series for each market
     const { returnSeries, marketReturns } = this.tracker.buildReturnSeries(validMarkets);
-
-    // 3. Calculate avg pairwise correlation and update herd EMA
     const avgCorr = calcAvgPairwiseCorrelation(returnSeries);
     this.prevHerdEma = this.currentHerdEma;
     this.currentHerdEma = updateEma(this.currentHerdEma, avgCorr, this.cfg.herdEmaAlpha);
 
-    if (this.prevHerdEma === null || this.currentHerdEma === null) return;
-    if (!detectHerdPeak(this.prevHerdEma, this.currentHerdEma, this.cfg.herdThreshold)) return;
+    const signal = evaluateHerdFadeSignal(
+      returnSeries,
+      marketReturns,
+      this.prevHerdEma,
+      this.currentHerdEma,
+      this.cfg.herdThreshold
+    );
+    if (!signal) return;
 
-    // 4. Determine herd direction and fade it
-    const direction = calcHerdDirection(marketReturns.map(mr => mr.ret));
-    if (direction === 'flat') return;
-
-    const fadeSide: 'yes' | 'no' = direction === 'up' ? 'no' : 'yes';
-
-    // 5. Enter positions on extreme movers
     for (const { market } of marketReturns) {
       if (this.getPositionCount() >= this.cfg.maxPositions) break;
       if (!market.yesTokenId) continue;
-      if (this.hasPosition(market.conditionId)) continue;
-      if (this.isOnCooldown(market.conditionId)) continue;
+      if (this.hasPosition(market.conditionId) || this.isOnCooldown(market.conditionId)) continue;
 
-      const prices = this.getPrices(market.yesTokenId);
-      if (prices.length === 0) continue;
-      const currentMid = prices[prices.length - 1];
-      const tokenId = fadeSide === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
-      const entryPrice = fadeSide === 'yes' ? currentMid : (1 - currentMid);
-
-      if (entryPrice <= 0 || entryPrice >= 1) continue;
+      const entryParams = resolveHerdFadeEntryParams(
+        market,
+        this.getPrices(market.yesTokenId),
+        signal.fadeSide
+      );
+      if (!entryParams) continue;
 
       try {
-        await this.enterPosition(tokenId, market.conditionId, fadeSide, entryPrice,
-          parseFloat(this.cfg.positionSize));
+        await this.enterPosition(
+          entryParams.tokenId,
+          market.conditionId,
+          signal.fadeSide,
+          entryParams.entryPrice,
+          parseFloat(this.cfg.positionSize)
+        );
 
         logger.debug('Herd fade entry', this.strategyName, {
-          conditionId: market.conditionId, side: fadeSide,
-          entryPrice: entryPrice.toFixed(4),
-          avgCorrelation: avgCorr.toFixed(4),
-          herdEma: this.currentHerdEma.toFixed(4),
-          direction,
+          conditionId: market.conditionId, side: signal.fadeSide,
+          entryPrice: entryParams.entryPrice.toFixed(4),
+          avgCorrelation: signal.avgCorr.toFixed(4),
+          herdEma: this.currentHerdEma!.toFixed(4),
+          direction: signal.direction,
         });
       } catch (err) {
         logger.debug('Entry error', this.strategyName, {
@@ -159,19 +142,9 @@ export class HerdBehaviorDetectorStrategy extends BasePolymarketStrategy {
   }
 }
 
-// ── Legacy factory (backward compat) ─────────────────────────────────────────
-
 export interface HerdBehaviorDetectorDeps extends StrategyDeps {
   config?: Partial<HerdBehaviorDetectorConfig>;
 }
-
-export {
-  calcReturn,
-  calcAvgPairwiseCorrelation,
-  detectHerdPeak,
-  calcHerdDirection,
-  calcPearsonR,
-} from './herd-behavior-math-helpers';
 
 export function createHerdBehaviorDetectorTick(
   deps: HerdBehaviorDetectorDeps,

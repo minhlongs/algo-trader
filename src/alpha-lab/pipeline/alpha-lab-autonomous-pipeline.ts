@@ -9,7 +9,6 @@ import type { AlphaLifecycleStateMachine, PromotionStateTransition } from '../at
 import type { LiveGuardHandoffCoordinator, LiveOrderHandoffVerdict } from '../../desk/execution/live-guard-handoff';
 import type { RegimeAwareKelly } from '../../desk/risk/regime-aware-kelly';
 import type { CircuitBreaker } from '../../desk/risk/circuit-breaker';
-import type { LedgerRecord, LedgerWriteResult } from '../provenance/research-ledger';
 import type { CandleLike } from '../regimes/regime-types';
 import type { PolymarketOrder } from '../../desk/execution/polymarket-signer';
 import type { GateEvaluatorInput } from '../gates/gate-evaluator-types';
@@ -20,16 +19,8 @@ import type {
   AutonomousCycleResult,
   AlphaLabPipelineStatus,
 } from './alpha-lab-pipeline-types';
-import {
-  initPipelineCoreContext,
-  type PipelineCoreContext,
-} from './alpha-lab-pipeline-context';
-import {
-  startPipeline,
-  stopPipeline,
-  resetPipeline,
-  appendPipelineLedger,
-} from './alpha-lab-pipeline-actions';
+import { initPipelineCoreContext, type PipelineCoreContext } from './alpha-lab-pipeline-context';
+import { startPipeline, stopPipeline, resetPipeline } from './alpha-lab-pipeline-actions';
 import {
   runDiscovery,
   runCandidateIngestion,
@@ -49,6 +40,7 @@ import {
   getCircuitBreaker,
   getTrackedStrategyIds,
 } from './alpha-lab-pipeline-accessors';
+import { createLedgerRecordPersister } from './alpha-lab-pipeline-stage-helpers';
 
 export type {
   AlphaLabAutonomousPipelineConfig,
@@ -56,29 +48,16 @@ export type {
   AutonomousCycleResult,
   AlphaLabPipelineStatus,
 } from './alpha-lab-pipeline-types';
-export {
-  getLifecycleStateMachine,
-  getPaperRouter,
-  getSignalAdapter,
-  getLiveCoordinator,
-  getDiscoveryPipeline,
-  getRegimeKelly,
-  getCircuitBreaker,
-  getTrackedStrategyIds,
-  runDiscovery,
-  runCandidateIngestion,
-  runSignalProcessing,
-  runPromotionEvaluation,
-  runLiveRiskEvaluation,
-  runCycleExecution,
-  runStatusCapture,
-};
+export * from './alpha-lab-pipeline-accessors';
+export * from './alpha-lab-pipeline-executor';
 
 export class AlphaLabAutonomousPipeline {
   private readonly ctx: PipelineCoreContext;
+  private readonly persistLedgerRecord: ReturnType<typeof createLedgerRecordPersister>;
 
   constructor(config?: AlphaLabAutonomousPipelineConfig) {
     this.ctx = initPipelineCoreContext(config);
+    this.persistLedgerRecord = createLedgerRecordPersister(this.ctx);
   }
 
   public async start(initialBalance?: number, forceReset = false): Promise<void> {
@@ -101,21 +80,15 @@ export class AlphaLabAutonomousPipeline {
     return resetPipeline(this.ctx.state, this.ctx.subsystems, this.ctx.initialBalanceUsd, initialBalance);
   }
 
-  private async persistLedgerRecord(
-    input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>,
-  ): Promise<LedgerWriteResult> {
-    return appendPipelineLedger(this.ctx.state, this.ctx.ledgerPath, this.ctx.strictLedgerVerification, input);
-  }
-
   public async discoverAndEvaluate(candles?: CandleLike[]): Promise<ContinuousDiscoveryResult> {
-    return runDiscovery(this.ctx, this.persistLedgerRecord.bind(this), candles);
+    return runDiscovery(this.ctx, this.persistLedgerRecord, candles);
   }
 
   public ingestCandidateToPaper(
     candidate: DiscoveredAlphaCandidate,
     reason?: string,
   ): PromotionStateTransition {
-    return runCandidateIngestion(this.ctx, candidate, this.persistLedgerRecord.bind(this), reason);
+    return runCandidateIngestion(this.ctx, candidate, this.persistLedgerRecord, reason);
   }
 
   public async processSignals(
@@ -128,7 +101,7 @@ export class AlphaLabAutonomousPipeline {
   public async evaluatePromotions(
     gateInputs?: Map<string, GateEvaluatorInput>,
   ): Promise<PromotionStateTransition[]> {
-    return runPromotionEvaluation(this.ctx, this.persistLedgerRecord.bind(this), gateInputs);
+    return runPromotionEvaluation(this.ctx, this.persistLedgerRecord, gateInputs);
   }
 
   public evaluateLiveOrder(request: {
@@ -140,7 +113,7 @@ export class AlphaLabAutonomousPipeline {
   }
 
   public async runCycle(options?: AutonomousCycleOptions): Promise<AutonomousCycleResult> {
-    return runCycleExecution(this.ctx, this.persistLedgerRecord.bind(this), options);
+    return runCycleExecution(this.ctx, this.persistLedgerRecord, options);
   }
 
   public async getStatus(): Promise<AlphaLabPipelineStatus> {

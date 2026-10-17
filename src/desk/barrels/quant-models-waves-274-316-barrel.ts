@@ -54,3 +54,6 @@ export * as Cont2011OrderBookQueuing from '../cont2011orderbookqueuing/index';
 export * as AlmgrenChriss2001Risk from '../almgrenchriss2001risk/index';
 export * as Cartea2018SignalDecay from '../cartea2018signaldecay/index';
 export * as Bouchaud2018TradesBook from '../bouchaud2018tradesbook/index';
+export * as ContKukanov2017MultiExchange from '../contkukanov2017multiexchange/index';
+export * as LaruelleLehalle2013DarkPoolSplit from '../laruellelehalle2013darkpool/index';
+export * as FoucaultKadanKandel2005MakeTake from '../foucault2005maketake/index';

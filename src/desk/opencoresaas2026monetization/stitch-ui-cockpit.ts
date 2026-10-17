@@ -9,6 +9,10 @@ import { ComplianceAuditLogger, type ChainedAuditRecord } from '../security/audi
 import { StrategyMarketplaceManager } from '../strategies/marketplace';
 import { BillingMeter, TIER_ENTITLEMENTS } from './billing-meter';
 import type { TierLevel } from './catalog';
+import {
+  buildSorMeshConsoleSnapshot,
+  type SorSplitterAlgorithm,
+} from './stitch-sor-mesh-telemetry';
 
 export type StitchThemeId =
   | 'OBSIDIAN_QUANTUM'
@@ -122,4 +126,13 @@ export class StitchUiCockpitEngine {
   public getMarketplace(): StrategyMarketplaceManager {
     return this.marketplace;
   }
+
+  public getSorMeshSnapshot(
+    algorithm: SorSplitterAlgorithm = 'ALMGREN_CHRISS_OPTIMAL',
+    parentOrderNotionalUsd = 2500000,
+  ) {
+    return buildSorMeshConsoleSnapshot(algorithm, parentOrderNotionalUsd);
+  }
 }
+
+export * from './stitch-sor-mesh-telemetry';

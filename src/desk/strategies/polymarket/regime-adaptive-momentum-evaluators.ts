@@ -3,6 +3,7 @@
  */
 
 import type { RawOrderBook } from '../../polymarket/clob-client';
+import type { GammaMarket } from '../../polymarket/gamma-client';
 import type { OpenPosition } from './base-polymarket-strategy';
 import { calcSMA, calcATR } from './strategy-math-helpers';
 import type {
@@ -113,4 +114,32 @@ export function evaluateRegimeEntrySignal(
     side,
     sizeMultiplier: getRegimeSizeMultiplier(regime),
   };
+}
+
+export function resolveRegimeEntryOrderParams(
+  market: GammaMarket,
+  ba: { bid: number; ask: number; mid: number },
+  signal: RegimeEntrySignal,
+  baseSizeUsdc: number
+): { tokenId: string; entryPrice: number; posSize: number } | null {
+  if (signal.side === 'no' && !market.noTokenId) return null;
+  if (!market.yesTokenId) return null;
+  const tokenId = signal.side === 'yes' ? market.yesTokenId : market.noTokenId!;
+  const entryPrice = signal.side === 'yes' ? ba.ask : 1 - ba.bid;
+  const posSize = baseSizeUsdc * signal.sizeMultiplier;
+  return { tokenId, entryPrice, posSize };
+}
+
+export function cleanupExitedRegimePositions(
+  toRemove: number[],
+  positions: OpenPosition[],
+  entryRegimes: Map<string, Regime>,
+  entryTrendDirs: Map<string, 'up' | 'down'>
+): void {
+  for (let i = toRemove.length - 1; i >= 0; i--) {
+    const conditionId = positions[toRemove[i]].conditionId;
+    entryRegimes.delete(conditionId);
+    entryTrendDirs.delete(conditionId);
+    positions.splice(toRemove[i], 1);
+  }
 }

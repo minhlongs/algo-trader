@@ -5,6 +5,14 @@
  * Strict Visual LOC Budget: <= 200 lines. Conforms to AGENTS.md Hard Rules.
  */
 import { z } from 'zod';
+import {
+  type InternalPositionState,
+  computeUpdatedPositionState,
+  buildPortfolioDeltaSnapshot,
+} from './inventory-delta-math';
+
+export type { InternalPositionState };
+export { computeUpdatedPositionState, buildPortfolioDeltaSnapshot };
 
 export type SupportedHedgingVenue = 'polymarket' | 'binance' | 'bybit' | 'kucoin';
 
@@ -42,18 +50,6 @@ export interface PortfolioDeltaSnapshot {
   timestamp: number;
   toleranceThreshold: number;
   rebalanceRequired: boolean;
-}
-
-interface InternalPositionState {
-  venue: string;
-  symbol: string;
-  quantity: number;
-  avgEntryPrice: number;
-  currentPrice: number;
-  unitDelta: number;
-  netDelta: number;
-  notionalUsd: number;
-  marginUsed: number;
 }
 
 export class InventoryDeltaTracker {
@@ -94,19 +90,19 @@ export class InventoryDeltaTracker {
   ): void {
     const key = this.getKey(venue, symbol);
     const existing = this.positions.get(key);
-    let avgEntryPrice = price;
-    if (existing && existing.quantity !== 0 && Math.sign(existing.quantity) === Math.sign(quantity)) {
-      const existingNotional = Math.abs(existing.quantity) * existing.avgEntryPrice;
-      const additionalNotional = Math.abs(quantity - existing.quantity) * price;
-      const totalQty = Math.abs(quantity);
-      avgEntryPrice = totalQty > 0 ? (existingNotional + additionalNotional) / totalQty : price;
-    }
-    const netDelta = Number((quantity * unitDelta).toFixed(this.config.roundingDecimals));
-    const notionalUsd = Math.abs(quantity * price);
-    const marginUsed = leverage > 0 ? notionalUsd / leverage : notionalUsd;
-    this.positions.set(key, {
-      venue, symbol, quantity, avgEntryPrice, currentPrice: price, unitDelta, netDelta, notionalUsd, marginUsed,
-    });
+    this.positions.set(
+      key,
+      computeUpdatedPositionState(
+        existing,
+        venue,
+        symbol,
+        quantity,
+        price,
+        unitDelta,
+        leverage,
+        this.config.roundingDecimals,
+      ),
+    );
   }
 
   public getNetDelta(): number {
@@ -116,55 +112,7 @@ export class InventoryDeltaTracker {
   }
 
   public getSnapshot(toleranceOverride?: number): PortfolioDeltaSnapshot {
-    const tolerance = toleranceOverride ?? this.config.deltaThreshold;
-    let polyDelta = 0;
-    let cexDelta = 0;
-    let grossNotionalUsd = 0;
-    let totalMarginUsed = 0;
-    const positionsList: VenuePositionDelta[] = [];
-    const venueSummaries: Record<string, VenueInventorySummary> = {};
-
-    for (const pos of this.positions.values()) {
-      if (pos.venue.toLowerCase() === 'polymarket') polyDelta += pos.netDelta;
-      else cexDelta += pos.netDelta;
-      grossNotionalUsd += pos.notionalUsd;
-      totalMarginUsed += pos.marginUsed;
-
-      positionsList.push({
-        venue: pos.venue, symbol: pos.symbol, contracts: pos.quantity,
-        unitDelta: pos.unitDelta, netDelta: pos.netDelta, notionalUsd: pos.notionalUsd,
-        entryPrice: pos.avgEntryPrice, marginUsed: pos.marginUsed,
-      });
-
-      const vKey = pos.venue.toLowerCase();
-      if (!venueSummaries[vKey]) {
-        venueSummaries[vKey] = { venue: pos.venue, totalPositions: 0, netDelta: 0, grossNotionalUsd: 0, marginUsedUsd: 0 };
-      }
-      venueSummaries[vKey].totalPositions += 1;
-      venueSummaries[vKey].netDelta = Number((venueSummaries[vKey].netDelta + pos.netDelta).toFixed(this.config.roundingDecimals));
-      venueSummaries[vKey].grossNotionalUsd += pos.notionalUsd;
-      venueSummaries[vKey].marginUsedUsd += pos.marginUsed;
-    }
-
-    const netDelta = Number((polyDelta + cexDelta).toFixed(this.config.roundingDecimals));
-    const rebalanceRequired = Math.abs(netDelta) > tolerance;
-    const marginUtilization = this.config.totalEquityUsd > 0
-      ? Math.min(1.0, totalMarginUsed / this.config.totalEquityUsd)
-      : 0;
-
-    return {
-      netDelta,
-      polyDelta: Number(polyDelta.toFixed(this.config.roundingDecimals)),
-      polymarketDelta: Number(polyDelta.toFixed(this.config.roundingDecimals)),
-      cexDelta: Number(cexDelta.toFixed(this.config.roundingDecimals)),
-      grossNotionalUsd: Number(grossNotionalUsd.toFixed(2)),
-      positions: positionsList,
-      venueSummaries,
-      marginUtilization: Number(marginUtilization.toFixed(4)),
-      timestamp: Date.now(),
-      toleranceThreshold: tolerance,
-      rebalanceRequired,
-    };
+    return buildPortfolioDeltaSnapshot(this.positions.values(), this.config, toleranceOverride);
   }
 
   public computeNetDelta(toleranceThreshold?: number): PortfolioDeltaSnapshot {

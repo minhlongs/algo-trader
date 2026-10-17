@@ -79,3 +79,36 @@ stitchCockpitRouter.post('/kill-switch', (req: Request, res: Response) => {
     res.status(500).json(sanitizeHttpError(err));
   }
 });
+
+const sorMeshQuerySchema = z.object({
+  algorithm: z
+    .enum([
+      'ALMGREN_CHRISS_OPTIMAL',
+      'VOLUME_IN_LINE_VIL',
+      'IMPLEMENTATION_SHORTFALL',
+      'DARK_POOL_ICEBERG',
+    ])
+    .default('ALMGREN_CHRISS_OPTIMAL'),
+  parentOrderNotionalUsd: z.coerce.number().positive().default(2500000),
+});
+
+stitchCockpitRouter.get('/sor-mesh', (req: Request, res: Response) => {
+  try {
+    const parsed = sorMeshQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({
+        ok: false,
+        reason: 'Invalid SOR mesh query parameters',
+        issues: parsed.error.issues,
+      });
+      return;
+    }
+    const sorMesh = cockpitEngine.getSorMeshSnapshot(
+      parsed.data.algorithm,
+      parsed.data.parentOrderNotionalUsd,
+    );
+    res.status(200).json({ ok: true, sorMesh });
+  } catch (err) {
+    res.status(500).json(sanitizeHttpError(err));
+  }
+});

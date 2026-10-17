@@ -11,15 +11,15 @@ import {
   type LedgerRecord,
   type LedgerWriteResult,
 } from '../provenance/research-ledger';
-import {
-  writeRunCard,
-  hashConfig,
-  type RunCard,
-  type GateResult,
-  type ResultClassName,
-} from '../provenance/run-card';
+import { writeRunCard, type RunCard } from '../provenance/run-card';
 import type { DiscoveredAlphaCandidate } from '../alpha-discovery/continuous-discovery-pipeline';
 import type { PromotionStateTransition } from '../attribution/alpha-lifecycle-state-machine';
+import {
+  buildCandidateRunCardPayload,
+  buildPromotionProvenancePayloads,
+} from './alpha-lab-pipeline-stage-helpers';
+
+export { buildCandidateRunCardPayload, buildPromotionProvenancePayloads };
 
 /**
  * Validates cryptographic ledger chain integrity.
@@ -81,37 +81,9 @@ export async function recordCandidateProvenance(
   runCardDir: string,
   persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
 ): Promise<RunCard> {
-  const resultClass: ResultClassName = candidate.status === 'PASSED' ? 'SURVIVED' : 'REJECTED';
   const runDir = join(runCardDir, candidate.strategyId);
-
-  const gateResults: GateResult[] = [];
-  if (candidate.survivalGateResult) {
-    for (const [k, v] of Object.entries(candidate.survivalGateResult.checks ?? {})) {
-      gateResults.push({ gateId: k, passed: Boolean(v) });
-    }
-  }
-  const warnings: string[] = [];
-  if (candidate.rejectionDiagnostics) {
-    for (const diag of candidate.rejectionDiagnostics) {
-      warnings.push(`${diag.metric}: ${diag.reason}`);
-    }
-  }
-
-  const card = await writeRunCard(runDir, {
-    runId: candidate.strategyId,
-    resultClass,
-    strategyRef: candidate.familyId,
-    hypothesis: `Alpha hypothesis for ${candidate.familyId} on ${symbol}`,
-    dataSources: [`ccxt:${symbol}:${timeframe}`],
-    metrics: {
-      sharpeRatio: candidate.walkforwardSummary?.testSharpe,
-      winRate: candidate.walkforwardSummary?.testWinRate,
-      maxDrawdown: candidate.walkforwardSummary?.testMaxDrawdown,
-    },
-    gateResults,
-    warnings,
-    config: candidate.config as unknown as Record<string, unknown>,
-  });
+  const { resultClass, input } = buildCandidateRunCardPayload(candidate, symbol, timeframe);
+  const card = await writeRunCard(runDir, input);
 
   await persistLedger({
     runId: candidate.strategyId,
@@ -137,46 +109,13 @@ export async function recordPromotionProvenance(
   runCardDir: string,
   persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
 ): Promise<RunCard> {
-  const configHash = hashConfig(config);
-  const resultClass: ResultClassName =
-    transition.toState === 'PROMOTED_LIVE_ELIGIBLE' ? 'LIVE_PROMOTED' : 'RETIRED';
-
-  const gatesRecord: Record<string, boolean> = {};
-  for (const g of transition.gateVerdict?.gates ?? []) {
-    gatesRecord[g.id] = g.passed;
-  }
-
-  await persistLedger({
-    runId: `promo-${strategyId}-${transition.timestamp}`,
-    configHash,
-    resultClass,
-    strategyRef: strategyId,
-    lifecycleState: transition.toState,
-    gates: gatesRecord,
-  });
-
-  const runDir = join(runCardDir, strategyId);
-  const gateResults: GateResult[] = (transition.gateVerdict?.gates ?? []).map((g) => ({
-    gateId: g.id,
-    passed: g.passed,
-    detail: g.details,
-  }));
-
-  return writeRunCard(runDir, {
-    runId: strategyId,
-    resultClass,
-    strategyRef: strategyId,
-    hypothesis: `Promotion evaluation: ${transition.toState} (${transition.reason})`,
-    dataSources: [`ccxt:${symbol}:${timeframe}`],
-    metrics: {
-      sharpeRatio: transition.metricsSnapshot.sharpeRatio,
-      winRate: transition.metricsSnapshot.winRate,
-      maxDrawdown: transition.metricsSnapshot.maxDrawdown,
-      profitFactor: transition.metricsSnapshot.profitFactor,
-      totalTrades: transition.metricsSnapshot.totalTrades,
-    },
-    gateResults,
-    warnings: transition.gateVerdict?.allPassed ? [] : [transition.reason],
+  const { ledgerInput, runCardInput } = buildPromotionProvenancePayloads(
+    transition,
+    strategyId,
     config,
-  });
+    symbol,
+    timeframe,
+  );
+  await persistLedger(ledgerInput);
+  return writeRunCard(join(runCardDir, strategyId), runCardInput);
 }

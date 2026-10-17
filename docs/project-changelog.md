@@ -1,5 +1,23 @@
 # Project Changelog - Algo Trader
 
+## [3.3.04] - 2026-10-17 — Quantitative Desk Waves 327–329 (Multi-Venue SOR), Stitch Screen #13 (`order-routing-mesh`) & Deep 180-LOC Refactor (`--deep`)
+
+### Added
+- **Wave 327: Cont & Kukanov (2017) Multi-Exchange Optimal Order Placement** (`src/desk/contkukanov2017multiexchange/`):
+  - Implemented `ContKukanov2017MultiExchange` optimizing limit order allocations across heterogeneous fee/rebate venues and queue depths.
+- **Wave 328: Laruelle, Lehalle & Pagès (2013) Optimal Dark/Lit Pool Split** (`src/desk/laruellelehalle2013darkpool/`):
+  - Implemented `LaruelleLehalle2013DarkPoolSplit` balancing censored dark pool execution against guaranteed lit exchange market impact.
+- **Wave 329: Foucault, Kadan & Kandel (2005) Limit Order Book Make/Take Equilibrium** (`src/desk/foucault2005maketake/`):
+  - Implemented `FoucaultKadanKandel2005MakeTake` computing cutoff spread $S^*$, expected waiting cost, and make-vs-take action.
+- **Stitch Screen #13 (`order-routing-mesh.html`) & SOR Mesh Telemetry API**:
+  - Delivered `site/public/order-routing-mesh.html` and `queue/order-routing-mesh.html` in Obsidian Quantum (`#08090C`), registered in `SITE.md` & `stitch.json`.
+  - Added `src/desk/opencoresaas2026monetization/stitch-sor-mesh-telemetry.ts` and `GET /sor-mesh` route in `src/platform/api/routes/stitch-cockpit-routes.ts`.
+  - Added `tests/unit/desk/waves_327_329_sor_mesh_suite.test.ts` (4/4 passed).
+
+### Changed
+- **Deep 180-LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed all 33 remaining 181–183 LOC files in `src/` into cohesive single-responsibility submodules (`<= 165 LOC` each) so that **zero `.ts` files in `src/` exceed 180 LOC**.
+
 ## [3.3.03] - 2026-10-17 — Quantitative Desk Waves 323–325, Stitch 8-Screen UI Cockpit (`Wave 326` E2E) & Deep 183-LOC Refactor (`--deep`)
 
 ### Added

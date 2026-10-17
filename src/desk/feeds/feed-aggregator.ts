@@ -18,6 +18,11 @@ import type {
   FeedHandler,
 } from './feed-types';
 import { parseOrderBook, parseTrade, parseTicker } from './feed-parsers';
+import {
+  recordExchangeLatency,
+  computeAverageLatency,
+  buildUnifiedFeedMessage,
+} from './feed-aggregator-helpers';
 
 export type {
   ExchangeId,
@@ -27,14 +32,24 @@ export type {
   FeedMessage,
   FeedHandler,
 };
-export { parseOrderBook, parseTrade, parseTicker };
+export {
+  parseOrderBook,
+  parseTrade,
+  parseTicker,
+  recordExchangeLatency,
+  computeAverageLatency,
+  buildUnifiedFeedMessage,
+};
 
 export class FeedAggregator {
   private clients: Map<ExchangeId, BinanceWebSocketClient | OKXWebSocketClient | BybitWebSocketClient> =
     new Map();
   private handlers: Set<FeedHandler> = new Set();
   private connected = false;
-  private latencies: Map<string, number[]> = new Map(); // exchange:symbol -> latency history
+  private latencies: Map<string, number[]> = new Map();
+  private parseOrderBook = parseOrderBook;
+  private parseTrade = parseTrade;
+  private parseTicker = parseTicker;
 
   constructor() {
     this.initClients();
@@ -119,61 +134,18 @@ export class FeedAggregator {
   }
 
   public getAverageLatency(exchange: ExchangeId, symbol: string): number {
-    const key = `${exchange}:${symbol}`;
-    const latencies = this.latencies.get(key);
-    if (!latencies || latencies.length === 0) return 0;
-    return latencies.reduce((a, b) => a + b, 0) / latencies.length;
+    return computeAverageLatency(this.latencies, exchange, symbol);
   }
 
   private handleMessage(exchange: ExchangeId, msg: WebSocketMessage): void {
     const receiveTime = Date.now();
     const latency = receiveTime - msg.timestamp;
+    recordExchangeLatency(this.latencies, exchange, msg.symbol, latency);
 
-    const key = `${exchange}:${msg.symbol}`;
-    if (!this.latencies.has(key)) {
-      this.latencies.set(key, []);
+    const feedMsg = buildUnifiedFeedMessage(exchange, msg, receiveTime, latency);
+    if (feedMsg) {
+      this.notify(feedMsg);
     }
-    const history = this.latencies.get(key)!;
-    history.push(latency);
-    if (history.length > 100) {
-      history.shift();
-    }
-
-    switch (msg.type) {
-      case 'orderbook': {
-        const orderBook = this.parseOrderBook(exchange, msg.data);
-        if (orderBook) {
-          this.notify({ type: 'orderbook', data: { ...orderBook, latency } });
-        }
-        break;
-      }
-      case 'trade': {
-        const trade = this.parseTrade(exchange, msg.data);
-        if (trade) {
-          this.notify({ type: 'trade', data: { ...trade, timestamp: receiveTime } });
-        }
-        break;
-      }
-      case 'ticker': {
-        const ticker = this.parseTicker(exchange, msg.data);
-        if (ticker) {
-          this.notify({ type: 'ticker', data: { ...ticker, timestamp: receiveTime } });
-        }
-        break;
-      }
-    }
-  }
-
-  private parseOrderBook(exchange: ExchangeId, data: unknown): UnifiedOrderBook | null {
-    return parseOrderBook(exchange, data);
-  }
-
-  private parseTrade(exchange: ExchangeId, data: unknown): UnifiedTrade | null {
-    return parseTrade(exchange, data);
-  }
-
-  private parseTicker(exchange: ExchangeId, data: unknown): UnifiedTicker | null {
-    return parseTicker(exchange, data);
   }
 
   private notify(msg: FeedMessage): void {

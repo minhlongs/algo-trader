@@ -19,10 +19,16 @@ import {
   getDefaultJobOptions,
 } from './agent-coordinator-config';
 import { createAgentWorker } from './agent-coordinator-worker';
+import {
+  buildAgentTaskPayload,
+  findTaskResultAcrossQueues,
+  collectAllQueueStats,
+} from './agent-coordinator-dispatch-helpers';
 
-// Re-export types
+// Re-export types and helpers
 export { AgentPriority };
 export type { AgentTask, AgentResult, QueueStats };
+export { buildAgentTaskPayload, findTaskResultAcrossQueues, collectAllQueueStats };
 
 export class AgentCoordinator {
   private queues: Map<AgentPriority, Queue>;
@@ -61,22 +67,13 @@ export class AgentCoordinator {
       throw new Error(`No queue configured for priority: ${context.priority}`);
     }
 
-    const task: AgentTask = {
+    const task = buildAgentTaskPayload(
       agentName,
       input,
-      context: {
-        tenantId: context.tenantId,
-        strategyId: context.strategyId,
-        priority: context.priority,
-        timeout: context.timeout || this.getDefaultTimeout(context.priority),
-        callbackUrl: context.callbackUrl,
-      },
-    };
-
-    const jobOptions: JobsOptions = {
-      priority: context.priority,
-    };
-
+      context,
+      this.getDefaultTimeout(context.priority),
+    );
+    const jobOptions: JobsOptions = { priority: context.priority };
     const job = await queue.add(agentName, task, jobOptions);
     return job.id!;
   }
@@ -85,27 +82,7 @@ export class AgentCoordinator {
    * Get task result by job ID (searches all queues)
    */
   async getTaskResult(jobId: string): Promise<AgentResult | null> {
-    for (const queue of this.queues.values()) {
-      const job = await queue.getJob(jobId);
-      if (job) {
-        const state = await job.getState();
-        if (state === 'completed') {
-          const result = (await job.returnvalue) as AgentResult;
-          return result;
-        } else if (state === 'failed') {
-          return {
-            success: false,
-            error: job.failedReason || 'Job failed',
-            latencyMs: 0,
-            agentName: job.data.agentName,
-          };
-        } else {
-          // Still processing
-          return null;
-        }
-      }
-    }
-    return null;
+    return findTaskResultAcrossQueues(this.queues.values(), jobId);
   }
 
   /**
@@ -129,17 +106,7 @@ export class AgentCoordinator {
    * Get queue statistics (async in BullMQ v5)
    */
   async getQueueStats(): Promise<Map<AgentPriority, QueueStats>> {
-    const stats = new Map<AgentPriority, QueueStats>();
-    for (const [priority, queue] of this.queues.entries()) {
-      const [waiting, active, completed, failed] = await Promise.all([
-        queue.getWaitingCount(),
-        queue.getActiveCount(),
-        queue.getCompletedCount(),
-        queue.getFailedCount(),
-      ]);
-      stats.set(priority, { waiting, active, completed, failed });
-    }
-    return stats;
+    return collectAllQueueStats(this.queues);
   }
 
   /**

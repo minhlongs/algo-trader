@@ -113,3 +113,50 @@ export async function handleAdminRequest(
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+/**
+ * Route a strategy lookup request to the appropriate shard binding.
+ */
+export function handleStrategyRouting(url: URL, getShard: (strategyId: string) => number): Response {
+  const strategyId = url.searchParams.get('strategyId');
+  if (!strategyId) return Response.json({ error: 'strategyId query parameter required' }, { status: 400 });
+  try {
+    const shardId = getShard(strategyId);
+    return Response.json({ shardId, shardBinding: `SHARD_${shardId}`, strategyId, message: 'Route to appropriate StrategyShard DO' });
+  } catch (error) {
+    logger.error('[ShardManager] Routing error:', { error, strategyId });
+    return Response.json({ error: 'Failed to route strategy' }, { status: 500 });
+  }
+}
+
+/** Record a single request metric observation for a shard. */
+export function applyMetricUpdate(
+  shardMetrics: Map<number, ShardMetrics>,
+  shardId: number,
+  latencyMs: number,
+  success: boolean,
+): void {
+  let m = shardMetrics.get(shardId);
+  if (!m) {
+    m = { requests: 0, errors: 0, totalLatencyMs: 0, lastUpdated: Date.now() };
+    shardMetrics.set(shardId, m);
+  }
+  m.requests++;
+  m.totalLatencyMs += latencyMs;
+  if (!success) m.errors++;
+  m.lastUpdated = Date.now();
+}
+
+/** Roll up accumulated shard metrics into health records and reset counters. */
+export function flushMetricsToHealth(
+  shardMetrics: Map<number, ShardMetrics>,
+  updateShardHealth: (shardId: number, health: Partial<ShardHealth>) => void,
+): void {
+  for (const [shardId, metrics] of shardMetrics.entries()) {
+    const avgLatency = metrics.requests > 0 ? metrics.totalLatencyMs / metrics.requests : 0;
+    updateShardHealth(shardId, { rps: metrics.requests / 10, avgLatencyMs: avgLatency });
+    metrics.requests = 0;
+    metrics.errors = 0;
+    metrics.totalLatencyMs = 0;
+  }
+}

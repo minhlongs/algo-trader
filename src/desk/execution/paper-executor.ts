@@ -16,7 +16,6 @@ import {
   type PnlSummary,
   createDefaultAccount,
   updatePositionsPrices,
-  computePnlSummary,
 } from './paper-position-tracker';
 import { dispatchPaperBuy, dispatchPaperSell } from './paper-order-dispatcher';
 import { initPaperSession, savePaperSession } from './paper-executor-session';
@@ -26,18 +25,17 @@ import {
   validateTradeSignal,
   applyDispatchResult,
 } from './paper-equity-tracker';
+import {
+  buildExecutorConfig,
+  buildPnlSummaryWithReserves,
+} from './paper-executor-state-helpers';
 
 export type {
-  PaperTrade,
-  PaperPosition,
-  PaperAccount,
-  ExecutionResult,
-  PaperExecutorConfig,
-  TradeSignal,
-  OrderbookSnapshot,
-  PnlSummary,
+  PaperTrade, PaperPosition, PaperAccount, ExecutionResult,
+  PaperExecutorConfig, TradeSignal, OrderbookSnapshot, PnlSummary,
 } from './paper-position-tracker';
 export { resetPaperExecutor } from './paper-executor-singleton';
+export { buildExecutorConfig, buildPnlSummaryWithReserves };
 
 export class PaperExecutor {
   private config: PaperExecutorConfig;
@@ -51,25 +49,15 @@ export class PaperExecutor {
   private readonly TRADES_FILE = cashclawPath('paper-trades.jsonl');
 
   constructor(config?: Partial<PaperExecutorConfig>) {
-    this.config = {
-      initialBalance: 10_000,
-      slippagePercent: 0.001,
-      feePercent: 0.001,
-      simulateFillRate: 0.95,
-      ...config,
-    };
+    this.config = buildExecutorConfig(config);
     this.account = createDefaultAccount(this.config);
   }
 
   async start(initialBalance?: number, forceReset = false): Promise<PaperAccount> {
     this.running = true;
     const session = await initPaperSession(
-      this.ACCOUNT_FILE,
-      this.POSITIONS_FILE,
-      this.TRADES_FILE,
-      this.config,
-      initialBalance,
-      forceReset,
+      this.ACCOUNT_FILE, this.POSITIONS_FILE, this.TRADES_FILE,
+      this.config, initialBalance, forceReset,
     );
     this.account = session.account;
     this.positions = session.positions;
@@ -115,12 +103,7 @@ export class PaperExecutor {
   }
 
   getPnlSummary(): PnlSummary {
-    const summary = computePnlSummary(this.account, this.tradeHistory, this.config.initialBalance);
-    return {
-      ...summary,
-      cashReserves: this.account.cashReserves ?? this.account.balance,
-      marginUsed: this.account.marginUsed ?? 0,
-    };
+    return buildPnlSummaryWithReserves(this.account, this.tradeHistory, this.config.initialBalance);
   }
 
   updatePrices(prices: Map<string, number>): PaperPosition[] {
@@ -135,14 +118,10 @@ export class PaperExecutor {
   }
 
   private async _executeBuy(
-    symbol: string,
-    quantity: number,
-    price: number,
-    orderbook?: OrderbookSnapshot,
+    symbol: string, quantity: number, price: number, orderbook?: OrderbookSnapshot,
   ): Promise<ExecutionResult> {
     const dispatch = dispatchPaperBuy(symbol, quantity, price, this.account, this.positions, this.config, orderbook);
     if (!dispatch.result.success) return dispatch.result;
-
     const newPos = applyDispatchResult(dispatch, this.tradeHistory);
     if (newPos) this.positions = newPos;
     this._updateAccountEquity();
@@ -151,14 +130,10 @@ export class PaperExecutor {
   }
 
   private async _executeSell(
-    symbol: string,
-    quantity: number,
-    price: number,
-    orderbook?: OrderbookSnapshot,
+    symbol: string, quantity: number, price: number, orderbook?: OrderbookSnapshot,
   ): Promise<ExecutionResult> {
     const dispatch = dispatchPaperSell(symbol, quantity, price, this.account, this.positions, this.config, orderbook);
     if (!dispatch.result.success) return dispatch.result;
-
     const newPos = applyDispatchResult(dispatch, this.tradeHistory);
     if (newPos) this.positions = newPos;
     this._updateAccountEquity();
@@ -168,12 +143,8 @@ export class PaperExecutor {
 
   private _persist(): void {
     this.tradeHistory = savePaperSession(
-      this.ACCOUNT_FILE,
-      this.POSITIONS_FILE,
-      this.TRADES_FILE,
-      this.account,
-      this.positions,
-      this.tradeHistory,
+      this.ACCOUNT_FILE, this.POSITIONS_FILE, this.TRADES_FILE,
+      this.account, this.positions, this.tradeHistory,
     );
   }
 }

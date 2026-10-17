@@ -8,13 +8,23 @@ import type { Router as RouterType } from 'express';
 import { MarketplaceService } from '../../marketplace/services/marketplace.service';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
-import {
-  getQueryString,
-  getQueryNumber,
-} from './marketplace-strategy-helpers';
+import { getQueryNumber } from './marketplace-strategy-helpers';
 import { getDbClient } from '../../../db/postgres-client';
-import { BacktestRunner, type BacktestTrade, type BacktestConfig } from '../../../shared/backtesting/backtest-runner';
+import { BacktestRunner, type BacktestConfig } from '../../../shared/backtesting/backtest-runner';
 import { randomUUID } from 'crypto';
+import {
+  paginateStrategyReviews,
+  validateBacktestTrades,
+  buildBacktestInsertValues,
+  mapMarketplaceBacktestRow,
+} from './marketplace-strategy-insights-helpers';
+
+export {
+  paginateStrategyReviews,
+  validateBacktestTrades,
+  buildBacktestInsertValues,
+  mapMarketplaceBacktestRow,
+};
 
 export const marketplaceStrategyInsightsRouter: RouterType = Router();
 
@@ -55,23 +65,12 @@ marketplaceStrategyInsightsRouter.get('/:id/reviews', requireTier('FREE'), async
       return res.status(404).json({ error: 'Not found', message: `Strategy ${id} not found` });
     }
 
-    const allReviews = details.reviews || [];
-    const start = (page - 1) * limit;
-    const reviews = allReviews.slice(start, start + limit);
-
-    return res.json({
-      data: reviews,
-      total: allReviews.length,
-      page,
-      limit,
-      totalPages: Math.ceil(allReviews.length / limit),
-    });
+    return res.json(paginateStrategyReviews(details.reviews || [], page, limit));
   } catch (error) {
     logger.error('[Marketplace] Error getting reviews', { error, strategyId: req.params.id });
     return res.status(500).json({ error: 'Internal server error', message: 'Failed to get reviews' });
   }
 });
-
 
 /**
  * POST /:id/backtest - Run backtest for a strategy
@@ -80,57 +79,29 @@ marketplaceStrategyInsightsRouter.post('/:id/backtest', requireTier('FREE'), asy
   try {
     const id = req.params.id as string;
 
-    // Validate strategy exists
     const details = await marketplaceService.getStrategyWithDetails(id);
     if (!details || !details.strategy) {
       return res.status(404).json({ error: 'Not found', message: `Strategy ${id} not found` });
     }
 
-    // Validate request body
     const { trades, config } = req.body as {
-      trades?: Array<{ entryTimestamp: number; exitTimestamp: number; pnlUsd: number; entryPrice: number; exitPrice: number; size: number; side: string }>;
+      trades?: unknown;
       config?: Record<string, unknown>;
     };
 
-    if (!trades || !Array.isArray(trades) || trades.length === 0) {
-      return res.status(400).json({ error: 'Validation error', message: 'trades array is required and must not be empty' });
+    const validation = validateBacktestTrades(trades);
+    if (!validation.valid) {
+      return res.status(400).json({ error: 'Validation error', message: validation.message });
     }
 
-    // Validate required numeric fields
-    for (const t of trades) {
-      if (typeof t.entryTimestamp !== 'number' || typeof t.exitTimestamp !== 'number' ||
-          typeof t.pnlUsd !== 'number' || typeof t.entryPrice !== 'number' ||
-          typeof t.exitPrice !== 'number' || typeof t.size !== 'number') {
-        return res.status(400).json({ error: 'Validation error', message: 'Each trade must have entryTimestamp, exitTimestamp, pnlUsd, entryPrice, exitPrice, size as numbers' });
-      }
-    }
-
-    // Run backtest
-    const result = BacktestRunner.run(trades as unknown as BacktestTrade[], config as unknown as BacktestConfig);
-
-    // Persist to database
+    const result = BacktestRunner.run(validation.trades, config as unknown as BacktestConfig);
     const dbClient = getDbClient();
     const backtestId = randomUUID();
+
     await dbClient.query(
       `INSERT INTO marketplace_backtests (id, strategy_id, tenant_id, sharpe_ratio, max_drawdown, win_rate, total_pnl_usd, profit_factor, total_trades, winning_trades, losing_trades, volatility, total_return, initial_capital_usd, config, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())`,
-      [
-        backtestId,
-        id,
-        details.strategy.tenantId,
-        result.sharpeRatio ?? null,
-        result.maxDrawdown ?? null,
-        result.winRate ?? null,
-        result.totalPnlUsd,
-        (result as unknown as { profitFactor?: number }).profitFactor ?? null,
-        result.totalTrades,
-        result.winningTrades,
-        result.losingTrades,
-        (result as unknown as { volatilityAnnual?: number }).volatilityAnnual ?? null,
-        result.totalReturn ?? null,
-        (config as unknown as { initialCapitalUsd?: number } | undefined)?.initialCapitalUsd ?? 10000,
-        JSON.stringify(config ?? {}),
-      ]
+      buildBacktestInsertValues(backtestId, id, details.strategy.tenantId, result, config)
     );
 
     return res.status(201).json({ id: backtestId, ...result });
@@ -158,22 +129,7 @@ marketplaceStrategyInsightsRouter.get('/:id/backtests', requireTier('FREE'), asy
       [id, Math.min(limit, 100)]
     );
 
-    // Map snake_case to camelCase
-    const backtests = (result.rows as Record<string, unknown>[]).map((row) => ({
-      id: row.id,
-      sharpeRatio: row.sharpe_ratio,
-      maxDrawdown: row.max_drawdown,
-      winRate: row.win_rate,
-      totalPnlUsd: row.total_pnl_usd,
-      profitFactor: row.profit_factor,
-      totalTrades: row.total_trades,
-      winningTrades: row.winning_trades,
-      losingTrades: row.losing_trades,
-      volatility: row.volatility,
-      totalReturn: row.total_return,
-      createdAt: row.created_at,
-    }));
-
+    const backtests = (result.rows as Record<string, unknown>[]).map(mapMarketplaceBacktestRow);
     return res.json({ data: backtests, total: backtests.length });
   } catch (error) {
     logger.error('[Marketplace] Error listing backtests', { error, strategyId: req.params.id });

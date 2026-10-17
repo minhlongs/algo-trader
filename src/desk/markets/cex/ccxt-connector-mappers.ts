@@ -7,6 +7,7 @@ import {
   type ExchangeOrderParams,
   type ExchangeOrderResult,
   type ExchangeOrderStatus,
+  type ExchangeBalance,
   ExchangeConnectorError,
   OrderPlacementError,
   OrderCancellationError,
@@ -18,6 +19,7 @@ import {
 import {
   type SupportedCexExchange,
   type CcxtRawOrder,
+  type CcxtRawBalance,
 } from './ccxt-connector-types';
 import { logger } from '../../../shared/utils/logger';
 
@@ -58,6 +60,36 @@ export function mapCcxtOrder(
         : undefined,
     timestamp: raw.timestamp ?? Date.now(),
   };
+}
+
+export function mapCcxtBalance(raw: CcxtRawBalance): ExchangeBalance {
+  const balance: ExchangeBalance = {};
+  const assets = new Set<string>([
+    ...Object.keys(raw.total ?? {}),
+    ...Object.keys(raw.free ?? {}),
+    ...Object.keys(raw.used ?? {}),
+  ]);
+
+  for (const asset of assets) {
+    const free = raw.free?.[asset] ?? 0;
+    const used = raw.used?.[asset] ?? 0;
+    const total = raw.total?.[asset] ?? free + used;
+    if (total > 0 || free > 0 || used > 0) {
+      balance[asset] = { free, used, total };
+    }
+  }
+  return balance;
+}
+
+export function isBenignCancelError(err: unknown): boolean {
+  const errMsg = err instanceof Error ? err.message : String(err);
+  const lower = errMsg.toLowerCase();
+  return (
+    lower.includes('order not found') ||
+    lower.includes('unknown order') ||
+    lower.includes('order does not exist') ||
+    lower.includes('already closed')
+  );
 }
 
 export function handleCcxtError(

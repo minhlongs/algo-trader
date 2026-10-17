@@ -14,10 +14,18 @@ import {
   type PaperAccount,
   type PaperExecutorConfig,
   type OrderbookSnapshot,
-  type OrderbookLevel,
   upsertPosition,
   reducePosition,
 } from './paper-position-tracker';
+import {
+  type ConsumedDepth,
+  buildPaperTradeId,
+  consumeDepth,
+  createEmptyTrade,
+} from './paper-executor-state-helpers';
+
+export type { ConsumedDepth };
+export { buildPaperTradeId, consumeDepth, createEmptyTrade };
 
 export interface BuyResult {
   trade: PaperTrade;
@@ -32,60 +40,6 @@ export interface SellResult {
   winningTradesDelta: number;
   losingTradesDelta: number;
   newPositions: PaperPosition[];
-}
-
-interface ConsumedDepth {
-  filledQty: number;
-  totalNotional: number;
-  executedPrice: number;
-  fee: number;
-  slippage: number;
-  status: 'filled' | 'partial';
-  actualQty: number;
-}
-
-function consumeDepth(
-  levels: OrderbookLevel[],
-  quantity: number,
-  price: number,
-  side: 'buy' | 'sell',
-  feePercent: number,
-): ConsumedDepth | null {
-  const sorted = [...levels]
-    .filter((l) => l.price > 0 && l.size > 0)
-    .sort((a, b) => (side === 'buy' ? a.price - b.price : b.price - a.price));
-  if (sorted.length === 0) return null;
-
-  let remaining = quantity;
-  let filledQty = 0;
-  let totalNotional = 0;
-  for (const level of sorted) {
-    if (remaining <= 0) break;
-    const fill = Math.min(remaining, level.size);
-    totalNotional += fill * level.price;
-    filledQty += fill;
-    remaining -= fill;
-  }
-  if (filledQty <= 0) return null;
-
-  const executedPrice = totalNotional / filledQty;
-  const fee = totalNotional * feePercent;
-  const refPrice = price > 0 ? price : sorted[0]!.price;
-  const slippage = side === 'buy' ? executedPrice - refPrice : refPrice - executedPrice;
-  const isFull = filledQty >= quantity - 1e-9;
-  return {
-    filledQty, totalNotional, executedPrice, fee, slippage,
-    status: isFull ? 'filled' : 'partial',
-    actualQty: isFull ? quantity : filledQty,
-  };
-}
-
-function createEmptyTrade(symbol: string, side: 'buy' | 'sell', price: number): PaperTrade {
-  return {
-    id: `paper-${side}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    symbol, side, quantity: 0, requestedPrice: price, executedPrice: price,
-    fee: 0, slippage: 0, status: 'rejected', timestamp: Date.now(), pnl: 0,
-  };
 }
 
 export function executeBuy(
@@ -103,7 +57,7 @@ export function executeBuy(
       return { trade: createEmptyTrade(symbol, 'buy', price), newBalance: account.balance, newPositions: positions };
     }
     const trade: PaperTrade = {
-      id: `paper-buy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: buildPaperTradeId('buy'),
       symbol, side: 'buy', quantity: depth.actualQty, requestedPrice: price, executedPrice: depth.executedPrice,
       fee: depth.fee, slippage: depth.slippage, status: depth.status, timestamp: Date.now(),
     };
@@ -117,7 +71,7 @@ export function executeBuy(
   const executedPrice = price + price * config.slippagePercent;
   const fee = quantity * executedPrice * config.feePercent;
   const trade: PaperTrade = {
-    id: `paper-buy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: buildPaperTradeId('buy'),
     symbol, side: 'buy', quantity, requestedPrice: price, executedPrice,
     fee, slippage: price * config.slippagePercent, status: 'filled', timestamp: Date.now(),
   };
@@ -151,7 +105,7 @@ export function executeSell(
     }
     const pnl = (depth.executedPrice - position.entryPrice) * depth.actualQty - depth.fee;
     const trade: PaperTrade = {
-      id: `paper-sell-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: buildPaperTradeId('sell'),
       symbol, side: 'sell', quantity: depth.actualQty, requestedPrice: price, executedPrice: depth.executedPrice,
       fee: depth.fee, slippage: depth.slippage, status: depth.status, timestamp: Date.now(), pnl,
     };
@@ -168,7 +122,7 @@ export function executeSell(
   const revenue = quantity * executedPrice - fee;
   const pnl = (executedPrice - position.entryPrice) * quantity - fee;
   const trade: PaperTrade = {
-    id: `paper-sell-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: buildPaperTradeId('sell'),
     symbol, side: 'sell', quantity, requestedPrice: price, executedPrice,
     fee, slippage: price * config.slippagePercent, status: 'filled', timestamp: Date.now(), pnl,
   };

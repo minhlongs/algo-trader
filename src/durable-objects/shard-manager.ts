@@ -19,6 +19,7 @@ import {
 } from './shard-manager-routing';
 import {
   handleAdminRequest, handleHealthCheck, handleMetrics, isAdminAuth,
+  handleStrategyRouting, applyMetricUpdate, flushMetricsToHealth,
 } from './shard-manager-handlers';
 
 // Re-export all public symbols for backward compatibility.
@@ -30,6 +31,7 @@ export {
 } from './shard-manager-routing';
 export {
   handleAdminRequest, handleHealthCheck, handleMetrics, isAdminAuth,
+  handleStrategyRouting, applyMetricUpdate, flushMetricsToHealth,
 } from './shard-manager-handlers';
 
 /**
@@ -49,13 +51,11 @@ export class ShardManager {
     this.state = state;
     this.currentEnv = (state as unknown as { env?: Env }).env;
     this.redisInitPromise = null;
-    if (typeof this.state.blockConcurrencyWhile === 'function') {
-      this.state.blockConcurrencyWhile(async () => {
-        await this.initializeRing();
-      }).catch((error: unknown) => logger.error('[ShardManager] Init failed:', error));
-    } else {
-      this.initializeRing().catch((error: unknown) => logger.error('[ShardManager] Init failed:', error));
-    }
+    const init = () => this.initializeRing();
+    const p = typeof this.state.blockConcurrencyWhile === 'function'
+      ? this.state.blockConcurrencyWhile(init)
+      : init();
+    p.catch((error: unknown) => logger.error('[ShardManager] Init failed:', error));
   }
 
   private async getRedis(): Promise<RedisClientType | null> {
@@ -108,31 +108,16 @@ export class ShardManager {
       if (!isAdminAuth(request, this.currentEnv as { ADMIN_API_KEY?: string })) {
         return Response.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      return handleAdminRequest(request, {
-        storage: this.state.storage,
-        shardHealth: this.shardHealths,
-        shardMetrics: this.shardMetrics,
-      }, {
+      const ctx = { storage: this.state.storage, shardHealth: this.shardHealths, shardMetrics: this.shardMetrics };
+      return handleAdminRequest(request, ctx, {
         getRingState: () => this.getRingState(),
         rebalance: () => this.rebalance(),
-        updateShardHealth: (id: number, h: Partial<ShardHealth>) => {
-          this.updateShardHealth(id, h);
-          return Promise.resolve();
-        },
+        updateShardHealth: (id: number, h: Partial<ShardHealth>) => { this.updateShardHealth(id, h); },
       });
     }
     if (path === '/health') return handleHealthCheck(this.getRingState(), this.shardHealths);
     if (path === '/shard/metrics') return handleMetrics(this.shardMetrics);
-
-    const strategyId = url.searchParams.get('strategyId');
-    if (!strategyId) return Response.json({ error: 'strategyId query parameter required' }, { status: 400 });
-    try {
-      const shardId = this.getShardForStrategy(strategyId);
-      return Response.json({ shardId, shardBinding: `SHARD_${shardId}`, strategyId, message: 'Route to appropriate StrategyShard DO' });
-    } catch (error) {
-      logger.error('[ShardManager] Routing error:', { error, strategyId });
-      return Response.json({ error: 'Failed to route strategy' }, { status: 500 });
-    }
+    return handleStrategyRouting(url, (id) => this.getShardForStrategy(id));
   }
 
   getShardForStrategy(strategyId: string): number {
@@ -163,18 +148,12 @@ export class ShardManager {
   getShardHealths(): ShardHealth[] { return Array.from(this.shardHealths.values()); }
 
   recordMetrics(shardId: number, latencyMs: number, success: boolean): void {
-    let m = this.shardMetrics.get(shardId);
-    if (!m) { m = { requests: 0, errors: 0, totalLatencyMs: 0, lastUpdated: Date.now() }; this.shardMetrics.set(shardId, m); }
-    m.requests++; m.totalLatencyMs += latencyMs; if (!success) m.errors++; m.lastUpdated = Date.now();
+    applyMetricUpdate(this.shardMetrics, shardId, latencyMs, success);
   }
 
   async alarm(): Promise<void> {
     try {
-      for (const [shardId, metrics] of this.shardMetrics.entries()) {
-        const avgLatency = metrics.requests > 0 ? metrics.totalLatencyMs / metrics.requests : 0;
-        this.updateShardHealth(shardId, { rps: metrics.requests / 10, avgLatencyMs: avgLatency });
-        metrics.requests = 0; metrics.errors = 0; metrics.totalLatencyMs = 0;
-      }
+      flushMetricsToHealth(this.shardMetrics, (id, h) => this.updateShardHealth(id, h));
       await this.state.storage.put('shardHealths', this.shardHealths);
       await this.state.storage.put('shardMetrics', this.shardMetrics);
     } catch (error) { logger.error('[ShardManager] Alarm failed:', error); }
