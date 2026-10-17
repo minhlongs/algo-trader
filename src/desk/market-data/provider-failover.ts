@@ -14,17 +14,13 @@ import {
   ProviderHealthSnapshot,
 } from './provider-failover-types';
 import {
-  createFailoverEvent,
-  recordFailoverMetric,
-  appendFailoverEvent,
-} from './provider-failover-events';
-import {
   calculateHealthStatus,
   updateProviderStatus,
   switchActiveProvider,
   initializeProviderStatus,
   checkHalfOpenTransition,
 } from './provider-failover-health';
+import { executeFailoverTransition, executeFailbackTransition, executeForceFailover } from './provider-failover-actions';
 import { SlaTracker } from './sla-tracker';
 import { setCircuitBreakerState } from '../../platform/middleware/prometheus-metrics';
 
@@ -98,30 +94,38 @@ export class FailoverManager {
 
   async forceFailover(reason: string): Promise<boolean> {
     if (this.getActiveProvider() === this.config.secondary) return false;
-    const success = switchActiveProvider(this.providerStatus, this.config.secondary);
-    updateProviderStatus(this.providerStatus, this.config.secondary, ProviderHealthStatus.DEGRADED);
-    if (success) {
-      this.circuitState = CircuitState.OPEN;
-      this.circuitStateTimestamp = Date.now();
-      this.recordFailoverEvent(this.config.primary, this.config.secondary, reason, 'manual');
+    const res = executeForceFailover({
+      providerStatus: this.providerStatus,
+      primary: this.config.primary,
+      secondary: this.config.secondary,
+      reason,
+      maxHistory: this.MAX_HISTORY,
+      currentHistory: this.failoverHistory,
+    });
+    if (res.success && res.newCircuitState !== undefined) {
+      this.circuitState = res.newCircuitState;
+      this.circuitStateTimestamp = res.newTimestamp!;
+      this.failoverHistory = res.updatedHistory!;
     }
-    return success;
+    return res.success;
   }
 
   async forceFailback(reason: string): Promise<boolean> {
     if (this.getActiveProvider() === this.config.primary) return false;
-    const secondary = this.providerStatus.get(this.config.secondary);
-    if (!secondary || secondary.status === ProviderHealthStatus.UNHEALTHY) {
-      logger.warn('Failback blocked: secondary unhealthy', { provider: this.config.secondary, status: secondary?.status });
-      return false;
+    const res = executeFailbackTransition({
+      providerStatus: this.providerStatus,
+      primary: this.config.primary,
+      secondary: this.config.secondary,
+      reason,
+      maxHistory: this.MAX_HISTORY,
+      currentHistory: this.failoverHistory,
+    });
+    if (res.success && res.newCircuitState !== undefined) {
+      this.circuitState = res.newCircuitState;
+      this.circuitStateTimestamp = res.newTimestamp!;
+      this.failoverHistory = res.updatedHistory!;
     }
-    const success = switchActiveProvider(this.providerStatus, this.config.primary);
-    if (success) {
-      this.circuitState = CircuitState.CLOSED;
-      this.circuitStateTimestamp = Date.now();
-      this.recordFailoverEvent(this.config.secondary, this.config.primary, reason, 'manual');
-    }
-    return success;
+    return res.success;
   }
 
   getFailoverHistory(): FailoverEvent[] {
@@ -165,26 +169,18 @@ export class FailoverManager {
   }
 
   private triggerFailover(reason: string): void {
-    logger.error('FailoverManager: Triggering automatic failover', {
-      fromProvider: this.config.primary,
-      toProvider: this.config.secondary,
+    const res = executeFailoverTransition({
+      providerStatus: this.providerStatus,
+      primary: this.config.primary,
+      secondary: this.config.secondary,
       reason,
+      triggeredBy: 'automatic',
+      maxHistory: this.MAX_HISTORY,
+      currentHistory: this.failoverHistory,
     });
-    switchActiveProvider(this.providerStatus, this.config.secondary);
-    updateProviderStatus(this.providerStatus, this.config.secondary, ProviderHealthStatus.DEGRADED);
-    this.circuitState = CircuitState.OPEN;
-    this.circuitStateTimestamp = Date.now();
-    this.recordFailoverEvent(this.config.primary, this.config.secondary, reason, 'automatic');
-  }
-
-  private recordFailoverEvent(
-    fromProvider: MarketDataSource,
-    toProvider: MarketDataSource,
-    reason: string,
-    triggeredBy: 'automatic' | 'manual'
-  ): void {
-    const event = createFailoverEvent(fromProvider, toProvider, reason, triggeredBy);
-    this.failoverHistory = appendFailoverEvent(this.failoverHistory, event, this.MAX_HISTORY);
-    recordFailoverMetric(fromProvider, this.config.primary, reason, triggeredBy);
+    this.circuitState = res.newCircuitState;
+    this.circuitStateTimestamp = res.newTimestamp;
+    this.failoverHistory = res.updatedHistory;
   }
 }
+

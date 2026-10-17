@@ -27,6 +27,7 @@ import {
   evaluateRegimeExit,
   evaluateRegimeEntrySignal,
 } from './regime-adaptive-momentum-evaluators';
+import { createRegimeAdaptiveMomentumTick } from './regime-adaptive-momentum-factory';
 
 export type {
   RegimeAdaptiveMomentumConfig,
@@ -40,6 +41,7 @@ export {
   calcPullbackDepth,
   calcOBI,
   calcTrendDirection,
+  createRegimeAdaptiveMomentumTick,
 };
 
 // ── Strategy class ───────────────────────────────────────────────────────────
@@ -177,14 +179,4 @@ export class RegimeAdaptiveMomentumStrategy extends BasePolymarketStrategy {
       logger.error('Tick failed', this.strategyName, { err: String(err) });
     }
   }
-}
-
-// ── Legacy factory (backward compat) ─────────────────────────────────────────
-
-export function createRegimeAdaptiveMomentumTick(
-  deps: RegimeAdaptiveMomentumDeps,
-): () => Promise<void> {
-  const { config, ...baseDeps } = deps;
-  const strategy = new RegimeAdaptiveMomentumStrategy(baseDeps, config);
-  return strategy.toTickFn();
 }

@@ -17,6 +17,7 @@ import {
   persistStrategyAssignments,
   getShardStrategyAssignments,
 } from './loader-redis-persistence';
+import { StrategyRegistryManager } from './loader-registry';
 
 export type { StrategyRegistryEntry };
 
@@ -25,10 +26,10 @@ export class StrategyLoader {
   static instance?: StrategyLoader;
 
   private strategyCache: Map<string, IStrategy> = new Map();
-  private strategyMap: Map<string, IStrategy> = new Map();
   private cacheTimestamps: Map<string, number> = new Map();
   private readonly CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
   private redis: ReturnType<typeof import('../../redis').getRedisClient> | null = null;
+  private registryManager: StrategyRegistryManager;
 
   /** Reset singleton for testing */
   static reset(): void {
@@ -43,11 +44,8 @@ export class StrategyLoader {
     return StrategyLoader.instance;
   }
 
-  // Strategy registry - maps strategy names to module paths
-  private registry: Map<string, StrategyRegistryEntry> = new Map();
-
   constructor() {
-    this.initializeRegistry();
+    this.registryManager = new StrategyRegistryManager();
   }
 
   /** Lazy Redis init — called only when Redis is actually needed */
@@ -61,47 +59,34 @@ export class StrategyLoader {
     }
   }
 
-  /** Initialize strategy registry from known strategies */
-  private initializeRegistry(): void {
-    for (const strategy of getInitialStrategies()) {
-      this.registry.set(strategy.name, strategy);
-    }
-
-    logger.info('[StrategyLoader] Registry initialized', {
-      total: this.registry.size,
-      polymarket: POLYMARKET_STRATEGIES.length,
-      dna: DNA_STRATEGIES.length,
-    });
-  }
-
   /** Register a strategy directly (stores the object for loadStrategy retrieval) */
   registerStrategy(strategy: IStrategy & { id: string }): void {
-    this.strategyMap.set(strategy.id, strategy);
+    this.registryManager.registerStrategy(strategy);
   }
 
   /** Unregister a strategy by ID */
   unloadStrategy(strategyId: string): boolean {
-    return this.strategyMap.delete(strategyId);
+    return this.registryManager.unloadStrategy(strategyId);
   }
 
   /** List all registered strategies */
   listStrategies(): IStrategy[] {
-    return Array.from(this.strategyMap.values());
+    return this.registryManager.listStrategies();
   }
 
   /** Get registry entry for a strategy */
   getRegistryEntry(strategyId: string): StrategyRegistryEntry | undefined {
-    return this.registry.get(strategyId);
+    return this.registryManager.getRegistryEntry(strategyId);
   }
 
   /** Get all registered strategies */
   getAllRegistered(): StrategyRegistryEntry[] {
-    return Array.from(this.registry.values());
+    return this.registryManager.getAllRegistered();
   }
 
   /** Load strategy by ID — checks in-memory map first, then registry/dynamic import */
   async loadStrategy(strategyId: string): Promise<IStrategy | null> {
-    const direct = this.strategyMap.get(strategyId);
+    const direct = this.registryManager.getDirectStrategy(strategyId);
     if (direct) {
       return direct;
     }
@@ -113,7 +98,7 @@ export class StrategyLoader {
       return cached;
     }
 
-    const entry = this.registry.get(strategyId);
+    const entry = this.registryManager.getRegistryEntry(strategyId);
     if (!entry) {
       logger.warn('[StrategyLoader] Unknown strategy', { strategyId });
       return null;

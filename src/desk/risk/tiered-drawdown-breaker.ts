@@ -13,9 +13,11 @@ import { logger } from '../utils/logger';
 import type { TieredDrawdownConfig, TieredDrawdownState, DrawdownTier, DrawdownEvent } from './tiered-drawdown-types';
 import { DEFAULT_CONFIG } from './tiered-drawdown-types';
 import { buildPersistedState, scheduleDeferredWrite, loadPersistedState } from './tiered-drawdown-persistence';
+import { evaluateDrawdownTier } from './tiered-drawdown-evaluator';
 
 // Re-export types for backward compatibility
 export type { TieredDrawdownConfig, TieredDrawdownState, DrawdownTier, DrawdownEvent } from './tiered-drawdown-types';
+export { evaluateDrawdownTier };
 
 interface DeferredWrite { data: ReturnType<typeof buildPersistedState>; timer: ReturnType<typeof setTimeout> | null; }
 
@@ -97,31 +99,19 @@ export class TieredDrawdownBreaker {
   }
 
   private evaluateTier(prevTier: DrawdownTier, resuming = false): void {
-    const dd = this.highWaterMark > 0 ? (this.highWaterMark - this.currentValue) / this.highWaterMark : 0;
-    const now = Date.now();
-    // When resuming from a pause, use strict > for HALT to avoid immediate re-entry
-    // at the same threshold — step down to REDUCE instead
-    const haltCmp = resuming ? dd > this.config.haltThreshold : dd >= this.config.haltThreshold;
-    if (dd >= this.config.hardStopThreshold) this.tier = 'HARD_STOP';
-    else if (haltCmp) { this.tier = 'HALT'; this.haltedUntil = now + this.config.haltDurationMs; }
-    else if (dd >= this.config.reduceThreshold) this.tier = 'REDUCE';
-    else if (dd >= this.config.alertThreshold) this.tier = 'ALERT';
-    else this.tier = 'NORMAL';
+    const result = evaluateDrawdownTier({
+      highWaterMark: this.highWaterMark,
+      currentValue: this.currentValue,
+      dailyStartValue: this.dailyStartValue,
+      config: this.config,
+      prevTier,
+      resuming,
+    });
 
-    // Daily loss check
-    if (this.tier === 'NORMAL' && this.highWaterMark > 0) {
-      const dailyDd = (this.dailyStartValue - this.currentValue) / this.dailyStartValue;
-      if (dailyDd >= this.config.dailyLossThreshold) {
-        this.tier = 'DAILY_PAUSE';
-        this.dailyPausedUntil = Date.now() + this.config.dailyPauseDurationMs;
-      }
-    }
-
-    if (prevTier !== this.tier) {
-      const event: DrawdownEvent = { tier: this.tier, drawdownPercent: dd * 100, portfolioValue: this.currentValue, highWaterMark: this.highWaterMark, timestamp: Date.now(), action: `Tier changed ${prevTier} → ${this.tier}` };
-      this.events.push(event);
-      logger.warn(`[TieredDrawdown] ${event.action} (${dd.toFixed(2)}%)`);
-    }
+    this.tier = result.tier;
+    if (result.haltedUntil !== null) this.haltedUntil = result.haltedUntil;
+    if (result.dailyPausedUntil !== null) this.dailyPausedUntil = result.dailyPausedUntil;
+    if (result.event) this.events.push(result.event);
   }
 
   /** Check if new trades are allowed */

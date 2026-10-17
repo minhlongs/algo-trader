@@ -9,7 +9,9 @@ import { UnifiedExecutorConfig } from '../arbitrage/unified-executor';
 import { logger } from '../../shared/utils/logger';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { createInterface } from 'readline';
+import { promptConfirmation, buildExecutionConfig } from './arb-auto-config';
+
+export { promptConfirmation, buildExecutionConfig };
 
 const ENV_PATH = join(process.cwd(), '.env');
 
@@ -92,33 +94,7 @@ export async function runArbAuto(options: AutoCommandOptions = {}): Promise<void
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   // Build execution config for unified engine
-  const executionConfig: UnifiedExecutorConfig = {
-    dryRun,
-    maxPositionSize: 1000,
-    slippageTolerance: 0.5,
-    minProfitThreshold: minSpread,
-    timeoutMs: 5000,
-    binary: {
-      kellyFraction: 0.25,
-      maxDrawdownPct: 20,
-      maxPositionSize: 1000,
-      dryRun,
-    },
-    splitMerge: {
-      minProfitThreshold: minSpread,
-      minVolume: 1000,
-      maxPositionSize: 1000,
-      dryRun,
-    },
-    crossMarket: {
-      budgetUsdc: 10000,
-      maxMarketExposureFraction: 0.2,
-      minEdgeThreshold: minSpread,
-      feeRate: 0.001,
-      timeoutMs: 5000,
-      dryRun,
-    },
-  };
+  const executionConfig: UnifiedExecutorConfig = buildExecutionConfig(dryRun, minSpread);
 
   // Initialize strategy orchestrator
   const orchestrator = createStrategyOrchestrator({
@@ -173,18 +149,4 @@ export async function runArbAuto(options: AutoCommandOptions = {}): Promise<void
     await orchestrator.stop();
     process.exit(1);
   }
-}
-
-async function promptConfirmation(): Promise<boolean> {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question('Confirm live trading with real money? (y/N): ', (answer: string) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
-    });
-  });
 }
