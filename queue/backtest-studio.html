@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AlgoTrade OS // Walk-Forward &amp; CPCV Backtest Studio</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-low": "#1b1b1f",
+            "on-tertiary-fixed": "#410001",
+            "surface": "#121316",
+            "surface-dim": "#121316",
+            "on-primary-fixed-variant": "#004f53",
+            "secondary-fixed": "#4dffb2",
+            "surface-container-lowest": "#0d0e11",
+            "surface-bright": "#38393d",
+            "on-primary-fixed": "#002022",
+            "error": "#ffb4ab",
+            "surface-variant": "#343538",
+            "tertiary-fixed": "#ffdad5",
+            "surface-tint": "#00dce6",
+            "on-background": "#e3e2e6",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "on-secondary-fixed-variant": "#005234",
+            "tertiary-container": "#ffd0ca",
+            "on-tertiary": "#690003",
+            "on-primary": "#00373a",
+            "on-primary-container": "#006a70",
+            "inverse-primary": "#00696f",
+            "primary": "#e0fdff",
+            "error-container": "#93000a",
+            "on-tertiary-fixed-variant": "#930005",
+            "on-error": "#690005",
+            "surface-container-high": "#292a2d",
+            "secondary-fixed-dim": "#00e297",
+            "inverse-surface": "#e3e2e6",
+            "secondary": "#70ffba",
+            "primary-fixed": "#6ff6ff",
+            "inverse-on-surface": "#2f3034",
+            "on-secondary-fixed": "#002112",
+            "surface-container": "#1f1f23",
+            "primary-container": "#00f2fe",
+            "on-secondary": "#003822",
+            "outline": "#849495",
+            "primary-fixed-dim": "#00dce6",
+            "on-surface-variant": "#b9cacb",
+            "on-error-container": "#ffdad6",
+            "on-secondary-container": "#00613e",
+            "tertiary": "#fff5f4",
+            "background": "#121316",
+            "on-tertiary-container": "#c3000a",
+            "secondary-container": "#01e599",
+            "outline-variant": "#3a494b",
+            "on-surface": "#e3e2e6",
+            "surface-container-highest": "#343538"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-md": "0.5rem",
+            "space-sm": "0.25rem",
+            "margin": "0.75rem",
+            "margin-mobile": "0.5rem",
+            "space-xs": "0.125rem",
+            "space-xl": "1rem",
+            "gutter-desktop": "0.5rem",
+            "gutter": "0.5rem",
+            "margin-desktop": "0.75rem",
+            "gutter-mobile": "0.25rem",
+            "space-lg": "0.75rem"
+          },
+          "fontFamily": {
+            "headline-xl-mobile": ["Space Grotesk"],
+            "headline-lg": ["Space Grotesk"],
+            "label-caps": ["JetBrains Mono"],
+            "headline-md": ["Space Grotesk"],
+            "body-md": ["Inter"],
+            "headline-xl": ["Space Grotesk"],
+            "data-mono-sm": ["JetBrains Mono"],
+            "data-mono-md": ["JetBrains Mono"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "body-lg": ["Inter"],
+            "body-sm": ["Inter"]
+          },
+          "fontSize": {
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Custom scanline and micro grid aesthetic */
+    .bg-grid-subtle {
+      background-size: 24px 24px;
+      background-image: 
+        linear-gradient(to right, rgba(58, 73, 75, 0.15) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(58, 73, 75, 0.15) 1px, transparent 1px);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0d0e11;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #3a494b;
+      border-radius: 2px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #00f2fe;
+    }
+    .hatch-pattern {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(58, 73, 75, 0.3),
+        rgba(58, 73, 75, 0.3) 4px,
+        transparent 4px,
+        transparent 8px
+      );
+    }
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .live-pulse {
+      animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="bg-[#08090C] text-on-surface antialiased font-body-sm text-body-sm h-screen w-screen flex flex-col overflow-hidden selection:bg-primary-container selection:text-surface-container-lowest">
+<!-- ================= TOP NAVIGATION BAR (Shared Component Anchor) ================= -->
+<header class="flex justify-between items-center w-full px-space-md py-space-xs h-11 border-b border-outline-variant bg-surface-container-lowest select-none z-50 shrink-0">
+<!-- Brand Anchor & Search -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">terminal</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">AlgoTrade OS</span>
+</div>
+<span class="text-outline text-data-mono-sm font-data-mono-sm">//</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary-container font-semibold px-1.5 py-0.5 bg-surface-container border border-outline-variant rounded">DESK-ALPHA-01</span>
+<!-- Monospace Search -->
+<div class="relative ml-2 flex items-center">
+<span class="material-symbols-outlined absolute left-2 text-on-surface-variant text-[14px]">search</span>
+<input class="bg-[#0B0E14] border border-outline-variant pl-7 pr-3 py-1 font-data-mono-sm text-data-mono-sm text-primary rounded focus:outline-none focus:border-primary-container w-64 h-7 tracking-tight" placeholder="Grep strategies, symbols, seeds..." type="text" value="CPCV:BTCUSDT_L3_OFI"/>
+</div>
+</div>
+<!-- Center Navigation Links (Shared Component Anchor) -->
+<nav class="hidden md:flex items-center gap-4">
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Strategies</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Execution</a>
+<!-- ACTIVE TAB: Telemetry / Backtest Studio mapped explicitly -->
+<a class="text-primary-container border-b-2 border-primary-container pb-0.5 font-bold font-data-mono-sm text-data-mono-sm" href="#">Telemetry</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Ledger</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Shards</a>
+</nav>
+<!-- Trailing Actions & Kill Switch -->
+<div class="flex items-center gap-space-sm">
+<button class="flex items-center gap-1.5 px-2.5 py-1 bg-surface-container border border-outline-variant text-primary-container font-data-mono-sm text-data-mono-sm hover:bg-surface-container-high transition-colors rounded">
+<span class="material-symbols-outlined text-[15px]">file_download</span>
+<span>Audit Export</span>
+</button>
+<div class="h-4 w-[1px] bg-outline-variant mx-1"></div>
+<!-- Emergency Kill Switch (Shared Component Anchor Action) -->
+<button class="flex items-center gap-1 px-3 py-1 bg-error-container text-on-error font-data-mono-sm text-data-mono-sm font-bold tracking-wider rounded border border-[#FF3B30] hover:bg-red-700 transition-all shadow-[0_0_8px_rgba(255,59,48,0.35)] active:scale-95">
+<span class="material-symbols-outlined text-[14px]">dangerous</span>
+<span>Emergency Kill-Switch</span>
+</button>
+<!-- Trailing Icon Actions -->
+<div class="flex items-center gap-1 ml-1 text-on-surface-variant">
+<button class="p-1 hover:text-primary hover:bg-surface-container rounded" title="Hub Telemetry">
+<span class="material-symbols-outlined text-[18px]">hub</span>
+</button>
+<button class="p-1 hover:text-primary hover:bg-surface-container rounded" title="Kernel Terminal">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+</button>
+<button class="p-1 hover:text-primary hover:bg-surface-container rounded relative" title="Notifications">
+<span class="material-symbols-outlined text-[18px]">notifications</span>
+<span class="absolute top-1 right-1 w-1.5 h-1.5 bg-secondary-container rounded-full"></span>
+</button>
+</div>
+<!-- Avatar Badge -->
+<div class="w-6 h-6 rounded bg-surface-container-high border border-outline-variant flex items-center justify-center font-data-mono-sm text-[10px] text-primary-container font-bold ml-1" title="Quant Desk Admin Avatar">
+        QD
+      </div>
+</div>
+</header>
+<!-- ================= SUB-HEADER SYSTEM RUNTIME & INTEGRITY TELEMETRY BAR ================= -->
+<div class="bg-[#08090C] border-b border-outline-variant px-space-md py-1 flex items-center justify-between text-data-mono-sm font-data-mono-sm select-none shrink-0">
+<div class="flex items-center gap-3 overflow-x-auto custom-scrollbar whitespace-nowrap">
+<div class="flex items-center gap-1.5 text-on-surface">
+<span class="w-2 h-2 rounded-full bg-secondary-container live-pulse"></span>
+<span class="font-headline-md text-[13px] text-primary font-bold">Walk-Forward &amp; CPCV Backtest Studio v4.2</span>
+</div>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">Protocol: <span class="text-primary-container">Marcos López de Prado Compliant</span></span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">Merkle Root: <span class="text-outline">0x8f2a...7c9b4e11</span></span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">DPDK Affinity: <span class="text-secondary-container font-semibold">#04-#12 [ISOLATED]</span></span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">P99 Jitter: <span class="text-secondary-container">3.8ms</span></span>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">Feeds: <span class="text-primary-container font-semibold">L3 OFI Microstructure [LIVE]</span></span>
+</div>
+<!-- Quick Enclave Actions -->
+<div class="flex items-center gap-2 shrink-0">
+<button class="px-2 py-0.5 bg-secondary-container/10 border border-secondary-container text-secondary-container font-label-caps text-label-caps hover:bg-secondary-container hover:text-surface-container-lowest transition-all rounded">
+        Export Verified Strategy
+      </button>
+<button class="px-2 py-0.5 bg-primary-container text-surface-container-lowest font-label-caps text-label-caps font-bold hover:shadow-[0_0_10px_rgba(0,242,254,0.4)] transition-all rounded">
+        Run 16-Fold CPCV
+      </button>
+</div>
+</div>
+<!-- ================= APP WORKSPACE: SIDEBAR + MAIN COCKPIT VIEWPORT ================= -->
+<div class="flex flex-1 overflow-hidden relative">
+<!-- ================= DENSE COCKPIT SIDEBAR (Shared Component Anchor) ================= -->
+<aside class="flex flex-col justify-between w-56 p-space-xs bg-surface-container-lowest border-r border-outline-variant select-none shrink-0 z-40">
+<div>
+<!-- Desk Identity Header -->
+<div class="p-2 border border-outline-variant bg-[#0F1218] rounded mb-2">
+<div class="flex items-center justify-between">
+<span class="font-headline-md text-headline-md font-bold text-primary">DESK-ALPHA-01</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary-container mt-0.5">ONLINE // P99: 4.2ms</div>
+<div class="text-[9px] text-outline font-data-mono-sm mt-0.5">SHARD: US-EAST-EQUINIX-NY4</div>
+</div>
+<!-- Cockpit Primary Navigation Tabs -->
+<nav class="space-y-0.5">
+<!-- Item 1: Cockpit -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[16px]">query_stats</span>
+<span>Cockpit</span>
+</a>
+<!-- Item 2: Order Books -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[16px]">table_chart</span>
+<span>Order Books</span>
+</a>
+<!-- Item 3: Shard Health -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[16px]">dns</span>
+<span>Shard Health</span>
+</a>
+<!-- Item 4: Algorithms (ACTIVE TAB for Backtest Studio) -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 bg-surface-container text-primary-container border-l-2 border-primary-container font-data-mono-sm text-data-mono-sm font-semibold rounded-r" href="#">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">memory</span>
+<span>Algorithms</span>
+</a>
+<!-- Item 5: Risk Engine -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[16px]">shield</span>
+<span>Risk Engine</span>
+</a>
+<!-- Item 6: Audit Log -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[16px]">enhanced_encryption</span>
+<span>Audit Log</span>
+</a>
+</nav>
+<!-- CTA deploy action button -->
+<div class="mt-4 px-1">
+<button class="w-full py-1.5 bg-[#00F2FE] hover:shadow-[0_0_12px_rgba(0,242,254,0.35)] text-[#08090C] font-headline-md text-[12px] font-bold tracking-wide rounded transition-all flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-[14px]">rocket_launch</span>
+<span>Deploy Algo</span>
+</button>
+</div>
+</div>
+<!-- Drawer Footer Telemetry & Settings -->
+<div class="border-t border-outline-variant pt-2 space-y-0.5">
+<a class="flex items-center justify-between px-space-sm py-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[15px]">speed</span>
+<span>Latency Stats</span>
+</div>
+<span class="text-secondary-container">0.82μs</span>
+</a>
+<a class="flex items-center gap-2 px-space-sm py-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[15px]">tune</span>
+<span>Settings</span>
+</a>
+<div class="px-2 py-1 bg-[#08090C] rounded border border-outline-variant text-[9px] font-data-mono-sm text-outline flex justify-between items-center mt-2">
+<span>SHA-256 ENCLAVE</span>
+<span class="text-primary-container">VERIFIED</span>
+</div>
+</div>
+</aside>
+<!-- ================= MAIN MULTI-PANEL COCKPIT CANVAS ================= -->
+<main class="flex-1 overflow-y-auto custom-scrollbar p-space-sm flex flex-col gap-space-sm bg-[#08090C] bg-grid-subtle">
+<!-- ================= 2. TOP OVERFITTING & DEFLATED SHARPE KPI BANNER ================= -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-space-sm shrink-0">
+<!-- KPI 1: Deflated Sharpe Ratio (DSR) -->
+<div class="bg-[#0F1218] border border-outline-variant p-space-md rounded flex flex-col justify-between relative overflow-hidden">
+<div class="absolute top-0 right-0 w-16 h-1 bg-primary-container shadow-[0_0_8px_rgba(0,242,254,0.5)]"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">DEFLATED SHARPE (DSR)</span>
+<span class="text-[9px] font-data-mono-sm px-1 py-0.2 bg-secondary-container/10 border border-secondary-container text-secondary-container font-semibold rounded">p-val &lt; 0.001</span>
+</div>
+<div class="flex items-baseline gap-2 my-1">
+<span class="font-headline-xl text-headline-xl text-primary font-bold">2.91</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">vs 1.45 Null Benchmark</span>
+</div>
+<div class="flex items-center justify-between text-data-mono-sm font-data-mono-sm border-t border-outline-variant/60 pt-1">
+<span class="text-on-surface-variant">Overfit Adjusted</span>
+<span class="text-secondary-container font-bold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">verified</span> PASS
+            </span>
+</div>
+</div>
+<!-- KPI 2: Probability of Backtest Overfit (PBO) -->
+<div class="bg-[#0F1218] border border-outline-variant p-space-md rounded flex flex-col justify-between relative">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">PBO (LÓPEZ DE PRADO)</span>
+<span class="text-[9px] font-data-mono-sm px-1.5 py-0.2 bg-secondary-container/10 text-secondary-container border border-secondary-container rounded font-bold">4.2% PASS</span>
+</div>
+<div class="my-1">
+<div class="flex items-baseline justify-between mb-1">
+<span class="font-headline-xl text-headline-xl text-secondary-container font-bold">0.042</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">Ultra-Low Overfit</span>
+</div>
+<!-- Linear Risk Bar Indicator -->
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden flex border border-outline-variant">
+<div class="bg-secondary-container h-full" style="width: 4.2%"></div>
+<div class="bg-primary-container/40 h-full" style="width: 15%"></div>
+<div class="bg-red-500/40 h-full flex-1"></div>
+</div>
+</div>
+<div class="flex items-center justify-between text-data-mono-sm font-data-mono-sm border-t border-outline-variant/60 pt-1 text-outline">
+<span>Threshold: &lt; 0.150</span>
+<span class="text-secondary-container">1,820 Fold Path Matrix</span>
+</div>
+</div>
+<!-- KPI 3: Haircut Sharpe Ratio -->
+<div class="bg-[#0F1218] border border-outline-variant p-space-md rounded flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">HAIRCUT SHARPE RATIO</span>
+<span class="text-[9px] font-data-mono-sm text-outline border border-outline-variant px-1 rounded">-0.57 DECAY</span>
+</div>
+<div class="flex items-baseline gap-2 my-1">
+<span class="font-headline-xl text-headline-xl text-primary font-bold">2.34</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Raw: 2.91</span>
+</div>
+<div class="flex items-center justify-between text-data-mono-sm font-data-mono-sm border-t border-outline-variant/60 pt-1 text-on-surface-variant">
+<span>Fee Drag: 200 bps</span>
+<span class="text-primary-container">Floor: 5ms Latency</span>
+</div>
+</div>
+<!-- KPI 4: Walk-Forward Efficiency (WFE) -->
+<div class="bg-[#0F1218] border border-outline-variant p-space-md rounded flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">WALK-FORWARD EFFICIENCY</span>
+<span class="text-[9px] font-data-mono-sm text-secondary-container bg-surface-container px-1 rounded font-bold">OOS/IS RATIO</span>
+</div>
+<div class="flex items-baseline gap-2 my-1">
+<span class="font-headline-xl text-headline-xl text-primary-container font-bold">88.6%</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary-container">Consistent</span>
+</div>
+<div class="flex items-center justify-between text-data-mono-sm font-data-mono-sm border-t border-outline-variant/60 pt-1 text-outline">
+<span>Generalization: High</span>
+<span class="text-primary font-semibold">9/10 Epochs Valid</span>
+</div>
+</div>
+<!-- KPI 5: CPCV Engine Configuration Parameters -->
+<div class="bg-[#0F1218] border border-outline-variant p-space-md rounded flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">CPCV KERNEL TOPOLOGY</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+</div>
+<div class="grid grid-cols-2 gap-1 my-1 font-data-mono-sm text-data-mono-sm">
+<div>
+<div class="text-outline text-[9px]">FOLDS (N, k)</div>
+<div class="text-primary font-bold">N=16, k=4</div>
+</div>
+<div>
+<div class="text-outline text-[9px]">PATHS</div>
+<div class="text-secondary-container font-bold">1,820 Combos</div>
+</div>
+<div>
+<div class="text-outline text-[9px]">PURGED SPLITS</div>
+<div class="text-on-surface">4 Groups</div>
+</div>
+<div>
+<div class="text-outline text-[9px]">EMBARGO</div>
+<div class="text-primary-container font-bold">20 Ticks</div>
+</div>
+</div>
+<div class="text-[9px] font-data-mono-sm text-outline border-t border-outline-variant/60 pt-1 flex justify-between">
+<span>Monte Carlo: 1,000x</span>
+<span class="text-secondary-container">AVX-512 ACTIVE</span>
+</div>
+</div>
+</section>
+<!-- ================= 3. SPLIT IDE PANEL & HYPERSPACE PARAMETER MATRIX ================= -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-space-sm shrink-0">
+<!-- Left: Strategy Execution Kernel (execution_kernel_cpcv.pyx) - 7 Cols -->
+<div class="lg:col-span-7 bg-[#0F1218] border border-outline-variant rounded flex flex-col overflow-hidden">
+<!-- IDE Header Ribbon -->
+<div class="flex justify-between items-center px-space-md py-1.5 bg-surface-container-lowest border-b border-outline-variant select-none">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[15px] text-primary-container">code</span>
+<span class="font-headline-md text-[13px] text-primary font-semibold">execution_kernel_cpcv.pyx</span>
+<span class="px-1.5 py-0.2 bg-surface-container border border-outline-variant text-[9px] font-data-mono-sm text-outline rounded">Cython 3.0.11 / LLVM</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="flex items-center gap-1 text-[10px] font-data-mono-sm text-secondary-container">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> AVX-512 Vectorized
+              </span>
+<span class="text-outline">|</span>
+<button class="text-outline hover:text-primary transition-colors text-xs" title="Diff Changes">
+<span class="material-symbols-outlined text-[14px]">difference</span>
+</button>
+<button class="text-outline hover:text-primary transition-colors text-xs" title="Expand View">
+<span class="material-symbols-outlined text-[14px]">open_in_full</span>
+</button>
+</div>
+</div>
+<!-- Code Editor Body -->
+<div class="p-3 bg-[#08090C] font-data-mono-sm text-data-mono-sm overflow-x-auto custom-scrollbar leading-5">
+<div class="text-outline select-none pb-1"># High-Performance Almgren-Chriss Liquidity &amp; OFI Execution Kernel</div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">01</span><span class="text-primary-container font-semibold">cimport</span><span class="text-on-surface ml-1">cython</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">02</span><span class="text-primary-container font-semibold">from</span><span class="text-on-surface ml-1">libc.math</span><span class="text-primary-container font-semibold ml-1">cimport</span><span class="text-on-surface ml-1">sqrt, exp, fabs</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">03</span><span class="text-primary-container font-semibold">cdef inline double</span><span class="text-secondary ml-1">calc_almgren_chriss_impact</span><span class="text-on-surface">(</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">04</span><span class="text-on-surface-variant pl-4">double order_qty, double mkt_vol_sec, double eta, double gamma, double sigma</span><span class="text-on-surface">) nogil:</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">05</span><span class="text-outline pl-8"># Permanent Impact: g(v) = gamma * v; Temporary Impact: h(v) = eta * v</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">06</span><span class="text-primary-container font-semibold pl-8">cdef double</span><span class="text-on-surface ml-1">trade_velocity = order_qty / 60.0</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">07</span><span class="text-primary-container font-semibold pl-8">cdef double</span><span class="text-on-surface ml-1">perm_impact = gamma * order_qty * (sigma / sqrt(mkt_vol_sec))</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">08</span><span class="text-primary-container font-semibold pl-8">cdef double</span><span class="text-on-surface ml-1">temp_impact = eta * (trade_velocity / mkt_vol_sec)</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">09</span><span class="text-primary-container font-semibold pl-8">return</span><span class="text-secondary ml-1">perm_impact + temp_impact</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">10</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">11</span><span class="text-primary-container font-semibold">cpdef double</span><span class="text-secondary ml-1">compute_order_flow_imbalance</span><span class="text-on-surface">(</span><span class="text-on-surface-variant">L3Tick* book, int lookback_ticks</span><span class="text-on-surface">) nogil:</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">12</span><span class="text-outline pl-8"># OFI = Sum(delta_bid_qty * I(p_b &gt;= p_b_prev) - delta_ask_qty * I(p_a &lt;= p_a_prev))</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">13</span><span class="text-primary-container font-semibold pl-8">cdef double</span><span class="text-on-surface ml-1">ofi_signal = 0.0</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">14</span><span class="text-primary-container font-semibold pl-8">for</span><span class="text-on-surface ml-1">i in range(lookback_ticks):</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">15</span><span class="text-on-surface pl-12">ofi_signal += (book[i].bid_sz - book[i-1].bid_sz) - (book[i].ask_sz - book[i-1].ask_sz)</span></div>
+<div class="flex"><span class="w-8 select-none text-outline/50 text-right pr-3">16</span><span class="text-primary-container font-semibold pl-8">return</span><span class="text-secondary ml-1">ofi_signal / sqrt(&lt;double&gt;lookback_ticks)</span></div>
+</div>
+<!-- IDE Footer Telemetry Status -->
+<div class="px-space-md py-1 bg-surface-container-lowest border-t border-outline-variant flex justify-between items-center text-[10px] font-data-mono-sm text-outline">
+<div class="flex items-center gap-3">
+<span>Lines: 128</span>
+<span>Memory: 4.8MB Pin-Locked</span>
+<span class="text-secondary-container">Zero GIL JIT Compiled</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+<span class="text-on-surface">Target: x86_64-linux-gnu</span>
+</div>
+</div>
+</div>
+<!-- Right: Interactive Parameter Hyperspace Matrix - 5 Cols -->
+<div class="lg:col-span-5 bg-[#0F1218] border border-outline-variant rounded flex flex-col justify-between">
+<div>
+<!-- Header Ribbon -->
+<div class="flex justify-between items-center px-space-md py-1.5 bg-surface-container-lowest border-b border-outline-variant select-none">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-primary-container">tune</span>
+<span class="font-headline-md text-[13px] text-primary font-semibold">Parameter Hyperspace Matrix</span>
+</div>
+<span class="text-[9px] font-data-mono-sm text-secondary-container bg-surface-container px-1 py-0.2 rounded border border-outline-variant">LÓPEZ-DE-PRADO CALIBRATED</span>
+</div>
+<!-- Parameters Grid Controls -->
+<div class="p-space-md space-y-3">
+<!-- Param 1: OFI Lookback Window -->
+<div class="space-y-1">
+<div class="flex justify-between items-center font-data-mono-sm text-data-mono-sm">
+<span class="text-on-surface font-medium">OFI Lookback Window</span>
+<div class="flex items-center gap-1">
+<span class="text-primary font-bold">120</span>
+<span class="text-outline text-[10px]">ms</span>
+</div>
+</div>
+<input class="w-full h-1 bg-[#1E2430] rounded-none appearance-none cursor-pointer accent-[#00F2FE]" max="1000" min="10" type="range" value="120"/>
+<div class="flex justify-between text-[9px] font-data-mono-sm text-outline">
+<span>10ms (High Frequency)</span>
+<span class="text-secondary-container">Regime Sensitive</span>
+<span>1,000ms (Macro Depth)</span>
+</div>
+</div>
+<!-- Param 2: Almgren-Chriss Risk-Aversion (λ) -->
+<div class="space-y-1">
+<div class="flex justify-between items-center font-data-mono-sm text-data-mono-sm">
+<span class="text-on-surface font-medium">Risk-Aversion (λ) Almgren-Chriss</span>
+<div class="flex items-center gap-1">
+<span class="text-primary-container font-bold">1.8e-06</span>
+</div>
+</div>
+<input class="w-full h-1 bg-[#1E2430] rounded-none appearance-none cursor-pointer accent-[#00F2FE]" max="100" min="1" type="range" value="18"/>
+<div class="flex justify-between text-[9px] font-data-mono-sm text-outline">
+<span>Aggressive (Zero Slippage)</span>
+<span>Optimal Liquidity Curve</span>
+<span>Passive Float</span>
+</div>
+</div>
+<!-- Param 3: Half-Kelly Capital Allocation Fraction -->
+<div class="space-y-1">
+<div class="flex justify-between items-center font-data-mono-sm text-data-mono-sm">
+<span class="text-on-surface font-medium">Half-Kelly Capital Allocation (f*)</span>
+<div class="flex items-center gap-1">
+<span class="text-secondary-container font-bold">0.42</span>
+<span class="text-outline text-[10px]">fraction</span>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-1">
+<div class="p-1 bg-[#08090C] border border-outline-variant text-center rounded">
+<span class="text-[9px] text-outline block">LEVERAGE</span>
+<span class="font-data-mono-sm text-primary font-bold">1.68x</span>
+</div>
+<div class="p-1 bg-[#08090C] border border-outline-variant text-center rounded">
+<span class="text-[9px] text-outline block">MAX CLIP</span>
+<span class="font-data-mono-sm text-secondary-container font-bold">$250,000</span>
+</div>
+<div class="p-1 bg-[#08090C] border border-outline-variant text-center rounded">
+<span class="text-[9px] text-outline block">RUIN PROB</span>
+<span class="font-data-mono-sm text-on-surface font-bold">&lt; 0.0001%</span>
+</div>
+</div>
+</div>
+<!-- Param 4: Purge Window (Lag Horizon) -->
+<div class="space-y-1">
+<div class="flex justify-between items-center font-data-mono-sm text-data-mono-sm">
+<span class="text-on-surface font-medium">Purge Window (Embargo Horizon)</span>
+<div class="flex items-center gap-1">
+<span class="text-primary font-bold">50</span>
+<span class="text-outline text-[10px]">Ticks</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-data-mono-sm text-outline">20</span>
+<input class="w-full h-1 bg-[#1E2430] rounded-none appearance-none cursor-pointer accent-[#00F2FE]" max="200" min="20" type="range" value="50"/>
+<span class="text-data-mono-sm text-outline">200</span>
+</div>
+<div class="text-[9px] font-data-mono-sm text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[11px] text-secondary-container">shield_with_heart</span>
+<span>Guarantees zero information leakage across train/test splits.</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Run Execution Action Button -->
+<div class="p-space-md border-t border-outline-variant bg-surface-container-lowest">
+<button class="w-full py-2 bg-[#00F2FE] hover:shadow-[0_0_15px_rgba(0,242,254,0.4)] text-[#08090C] font-headline-md text-[13px] font-bold tracking-wide rounded transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[16px]">play_circle</span>
+<span>RUN 16-FOLD CPCV MATRIX [Monte Carlo 1,000x]</span>
+</button>
+<div class="flex justify-between text-[9px] font-data-mono-sm text-outline mt-1.5">
+<span>Estimated Compute: ~1.42s</span>
+<span class="text-secondary-container">Cluster: 64 Core Ray Node</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ================= 4. WALK-FORWARD COMBINATORIAL FOLD HEATMAP & EQUITY TRAJECTORY ================= -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-space-sm shrink-0">
+<!-- Left: Combinatorial Fold Heatmap (2021 - 2026) - 5 Cols -->
+<div class="lg:col-span-5 bg-[#0F1218] border border-outline-variant rounded flex flex-col justify-between">
+<div>
+<!-- Header Ribbon -->
+<div class="flex justify-between items-center px-space-md py-1.5 bg-surface-container-lowest border-b border-outline-variant select-none">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-primary-container">grid_view</span>
+<span class="font-headline-md text-[13px] text-primary font-semibold">Combinatorial Fold Partition Matrix</span>
+</div>
+<span class="text-[9px] font-data-mono-sm text-outline">2021 — 2026</span>
+</div>
+<!-- Legend -->
+<div class="px-space-md py-1.5 bg-[#0B0E14] border-b border-outline-variant flex items-center gap-4 text-data-mono-sm font-data-mono-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 bg-primary-container/80 rounded-sm"></span>
+<span class="text-on-surface text-[10px]">IS Train</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 hatch-pattern border border-outline-variant rounded-sm"></span>
+<span class="text-outline text-[10px]">Purged Embargo</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 bg-secondary-container rounded-sm"></span>
+<span class="text-secondary-container text-[10px] font-semibold">OOS Test</span>
+</div>
+</div>
+<!-- Fold Matrix Rows -->
+<div class="p-space-md space-y-2 font-data-mono-sm text-data-mono-sm">
+<!-- Fold 01 -->
+<div>
+<div class="flex justify-between text-[10px] text-outline mb-0.5">
+<span class="text-primary font-bold">Fold #01</span>
+<span class="text-secondary-container">OOS Sharpe: 2.84 // Trending Expansion</span>
+</div>
+<div class="h-5 w-full flex rounded overflow-hidden border border-outline-variant">
+<div class="bg-primary-container/80 h-full w-[55%]" title="Train (IS)"></div>
+<div class="hatch-pattern h-full w-[8%]" title="Purged Embargo (50 Ticks)"></div>
+<div class="bg-secondary-container h-full w-[37%]" title="Test (OOS)"></div>
+</div>
+</div>
+<!-- Fold 02 -->
+<div>
+<div class="flex justify-between text-[10px] text-outline mb-0.5">
+<span class="text-primary font-bold">Fold #02</span>
+<span class="text-secondary-container">OOS Sharpe: 2.12 // Low Vol Compression</span>
+</div>
+<div class="h-5 w-full flex rounded overflow-hidden border border-outline-variant">
+<div class="bg-primary-container/80 h-full w-[40%]" title="Train (IS)"></div>
+<div class="hatch-pattern h-full w-[8%]" title="Purged Embargo"></div>
+<div class="bg-secondary-container h-full w-[25%]" title="Test (OOS)"></div>
+<div class="hatch-pattern h-full w-[5%]" title="Purged Embargo"></div>
+<div class="bg-primary-container/80 h-full w-[22%]" title="Train (IS)"></div>
+</div>
+</div>
+<!-- Fold 03 -->
+<div>
+<div class="flex justify-between text-[10px] text-outline mb-0.5">
+<span class="text-primary font-bold">Fold #03</span>
+<span class="text-secondary-container">OOS Sharpe: 3.01 // High Vol Liquidity Shock</span>
+</div>
+<div class="h-5 w-full flex rounded overflow-hidden border border-outline-variant">
+<div class="bg-secondary-container h-full w-[30%]" title="Test (OOS)"></div>
+<div class="hatch-pattern h-full w-[8%]" title="Purged Embargo"></div>
+<div class="bg-primary-container/80 h-full w-[62%]" title="Train (IS)"></div>
+</div>
+</div>
+<!-- Fold 04 -->
+<div>
+<div class="flex justify-between text-[10px] text-outline mb-0.5">
+<span class="text-primary font-bold">Fold #04</span>
+<span class="text-secondary-container">OOS Sharpe: 2.65 // Flash Freeze &amp; De-peg</span>
+</div>
+<div class="h-5 w-full flex rounded overflow-hidden border border-outline-variant">
+<div class="bg-primary-container/80 h-full w-[32%]" title="Train (IS)"></div>
+<div class="hatch-pattern h-full w-[6%]" title="Purged Embargo"></div>
+<div class="bg-primary-container/80 h-full w-[28%]" title="Train (IS)"></div>
+<div class="hatch-pattern h-full w-[6%]" title="Purged Embargo"></div>
+<div class="bg-secondary-container h-full w-[28%]" title="Test (OOS)"></div>
+</div>
+</div>
+<!-- Fold 05 -->
+<div>
+<div class="flex justify-between text-[10px] text-outline mb-0.5">
+<span class="text-primary font-bold">Fold #05</span>
+<span class="text-secondary-container">OOS Sharpe: 2.44 // Mean Reverting Churn</span>
+</div>
+<div class="h-5 w-full flex rounded overflow-hidden border border-outline-variant">
+<div class="bg-primary-container/80 h-full w-[50%]" title="Train (IS)"></div>
+<div class="hatch-pattern h-full w-[8%]" title="Purged Embargo"></div>
+<div class="bg-secondary-container h-full w-[42%]" title="Test (OOS)"></div>
+</div>
+</div>
+<!-- Fold 06 -->
+<div>
+<div class="flex justify-between text-[10px] text-outline mb-0.5">
+<span class="text-primary font-bold">Fold #06</span>
+<span class="text-secondary-container">OOS Sharpe: 2.92 // Microstructure Momentum</span>
+</div>
+<div class="h-5 w-full flex rounded overflow-hidden border border-outline-variant">
+<div class="bg-secondary-container h-full w-[22%]" title="Test (OOS)"></div>
+<div class="hatch-pattern h-full w-[6%]" title="Purged Embargo"></div>
+<div class="bg-primary-container/80 h-full w-[48%]" title="Train (IS)"></div>
+<div class="hatch-pattern h-full w-[6%]" title="Purged Embargo"></div>
+<div class="bg-secondary-container h-full w-[18%]" title="Test (OOS)"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Summary Status -->
+<div class="px-space-md py-1.5 bg-surface-container-lowest border-t border-outline-variant text-[10px] font-data-mono-sm text-outline flex justify-between items-center">
+<span>Paths Verified: 1,820 / 1,820</span>
+<span class="text-secondary-container font-semibold">Zero Information Leakage</span>
+</div>
+</div>
+<!-- Right: Equity Trajectory & 95% Confidence Cone - 7 Cols -->
+<div class="lg:col-span-7 bg-[#0F1218] border border-outline-variant rounded flex flex-col justify-between">
+<div>
+<!-- Header Ribbon -->
+<div class="flex justify-between items-center px-space-md py-1.5 bg-surface-container-lowest border-b border-outline-variant select-none">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[15px] text-primary-container">show_chart</span>
+<span class="font-headline-md text-[13px] text-primary font-semibold">Equity Trajectory &amp; 95% Confidence Cone</span>
+</div>
+<div class="flex items-center gap-3 text-data-mono-sm font-data-mono-sm">
+<div class="flex items-center gap-1">
+<span class="w-2 h-0.5 bg-primary-container"></span>
+<span class="text-primary-container text-[10px]">IS Theoretical (+184.2%)</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="w-2 h-0.5 bg-secondary-container"></span>
+<span class="text-secondary-container text-[10px] font-bold">Purged OOS Realized (+152.6%)</span>
+</div>
+</div>
+</div>
+<!-- Monospace Statistics Summary Bar -->
+<div class="px-space-md py-1 bg-[#08090C] border-b border-outline-variant grid grid-cols-4 gap-2 font-data-mono-sm text-data-mono-sm">
+<div>
+<span class="text-[9px] text-outline block">SORTINO RATIO</span>
+<span class="text-primary font-bold">4.12</span>
+</div>
+<div>
+<span class="text-[9px] text-outline block">CALMAR RATIO</span>
+<span class="text-secondary-container font-bold">6.84</span>
+</div>
+<div>
+<span class="text-[9px] text-outline block">KURTOSIS</span>
+<span class="text-on-surface font-semibold">3.12 (Platykurtic)</span>
+</div>
+<div>
+<span class="text-[9px] text-outline block">MAX UNDERWATER DD</span>
+<span class="text-[#FF3B30] font-bold">-3.8%</span>
+</div>
+</div>
+<!-- SVG Chart Canvas Area -->
+<div class="p-3 bg-[#08090C] relative">
+<svg class="w-full h-44 overflow-visible" viewbox="0 0 700 180">
+<!-- Grid Lines -->
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="700" y1="30" y2="30"></line>
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="700" y1="70" y2="70"></line>
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="700" y1="110" y2="110"></line>
+<line stroke="#1E2430" stroke-width="1" x1="0" x2="700" y1="150" y2="150"></line>
+<!-- Vertical Year Separators -->
+<line stroke="#1E2430" stroke-width="1" x1="140" x2="140" y1="0" y2="150"></line>
+<line stroke="#1E2430" stroke-width="1" x1="280" x2="280" y1="0" y2="150"></line>
+<line stroke="#1E2430" stroke-width="1" x1="420" x2="420" y1="0" y2="150"></line>
+<line stroke="#1E2430" stroke-width="1" x1="560" x2="560" y1="0" y2="150"></line>
+<!-- 95% Confidence Interval Area (Monte Carlo Cone) -->
+<polygon fill="rgba(0, 242, 254, 0.08)" points="0,140 140,115 280,85 420,60 560,40 700,20 700,65 560,75 420,95 280,120 140,135 0,140"></polygon>
+<!-- IS Theoretical Curve (Cyan) -->
+<path d="M0,140 Q140,118 280,90 T560,48 T700,25" fill="none" stroke="#00F2FE" stroke-dasharray="4 2" stroke-width="1.8"></path>
+<!-- Purged OOS Realized Curve (Mint Green - Solid Hero Curve) -->
+<path d="M0,140 Q70,132 140,124 T280,102 T420,78 T560,58 T700,38" fill="none" stroke="#00E599" stroke-width="2.2"></path>
+<!-- Underwater Drawdown Area -->
+<path d="M0,175 L140,173 L200,165 L240,174 L380,170 L420,162 L480,175 L620,173 L700,175" fill="none" stroke="#FF3B30" stroke-width="1.2"></path>
+<!-- Axis Labels -->
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="5" y="25">+180%</text>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="5" y="65">+120%</text>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="5" y="105">+60%</text>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="5" y="145">0% (BASE)</text>
+<text fill="#FF3B30" font-family="JetBrains Mono" font-size="8" x="5" y="172">DD PROFILE</text>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="142" y="148">2022</text>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="282" y="148">2023</text>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="422" y="148">2024</text>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="562" y="148">2025</text>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="9" x="660" y="148">2026</text>
+</svg>
+</div>
+</div>
+<!-- Bottom Crosshair Tracker & Status -->
+<div class="px-space-md py-1 bg-surface-container-lowest border-t border-outline-variant flex justify-between items-center text-[10px] font-data-mono-sm text-outline">
+<div class="flex items-center gap-2">
+<span class="text-on-surface">Crosshair [T+1820]:</span>
+<span class="text-secondary-container">Realized OOS: +152.6%</span>
+<span class="text-outline">Theoretical IS: +184.2%</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-on-surface">Max Drawdown Duration: 14.2 Hours</span>
+<span class="text-primary-container">Confidence: 95.0%</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ================= 5. ORDER-LEVEL SLIPPAGE & NON-LINEAR FILL PROBABILITY SIMULATOR ================= -->
+<section class="bg-[#0F1218] border border-outline-variant rounded flex flex-col shrink-0">
+<!-- Header Ribbon -->
+<div class="flex justify-between items-center px-space-md py-1.5 bg-surface-container-lowest border-b border-outline-variant select-none">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[15px] text-primary-container">layers</span>
+<span class="font-headline-md text-[13px] text-primary font-semibold">Microstructure Order Slippage &amp; Non-Linear Fill Probability Simulator</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[9px] font-data-mono-sm text-secondary-container bg-surface-container px-1.5 py-0.2 rounded border border-outline-variant">ALMGREN-CHRISS LAW: I ~ σ · √(Q/V)</span>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-[10px] font-data-mono-sm text-on-surface hover:text-primary rounded">
+              Calibrate L3 Book
+            </button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-sm p-space-md">
+<!-- Curve 1: Square-Root Market Impact Curve (4 Cols) -->
+<div class="lg:col-span-4 bg-[#08090C] border border-outline-variant p-2 rounded flex flex-col justify-between">
+<div class="flex justify-between items-center font-data-mono-sm text-[10px] mb-1">
+<span class="text-primary font-bold">Square-Root Market Impact (bps)</span>
+<span class="text-outline">Binance L3 Depth</span>
+</div>
+<div class="h-28 w-full relative">
+<svg class="w-full h-full" viewbox="0 0 300 100">
+<!-- Grid Lines -->
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="300" y1="25" y2="25"></line>
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="300" y1="50" y2="50"></line>
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="300" y1="75" y2="75"></line>
+<!-- Impact Curve (Non-linear square-root growth) -->
+<path d="M0,95 Q40,65 100,45 T200,25 T300,12" fill="none" stroke="#FF3B30" stroke-width="2"></path>
+<!-- Linear naive comparison -->
+<line stroke="#64748B" stroke-dasharray="3 3" stroke-width="1" x1="0" x2="300" y1="95" y2="40"></line>
+<text fill="#64748B" font-family="JetBrains Mono" font-size="8" x="5" y="90">0 bps</text>
+<text fill="#FF3B30" font-family="JetBrains Mono" font-size="8" x="5" y="20">18.4 bps (50 BTC)</text>
+</svg>
+</div>
+<div class="flex justify-between text-[9px] font-data-mono-sm text-outline border-t border-outline-variant pt-1 mt-1">
+<span>Order Size: 1 BTC → 50 BTC</span>
+<span class="text-secondary-container">Square-Root Law Validated</span>
+</div>
+</div>
+<!-- Curve 2: Fill Probability Curve by Venue Latency (4 Cols) -->
+<div class="lg:col-span-4 bg-[#08090C] border border-outline-variant p-2 rounded flex flex-col justify-between">
+<div class="flex justify-between items-center font-data-mono-sm text-[10px] mb-1">
+<span class="text-primary font-bold">Fill Probability by Venue Latency</span>
+<span class="text-secondary-container">Cross-Venue P99</span>
+</div>
+<div class="h-28 w-full relative">
+<svg class="w-full h-full" viewbox="0 0 300 100">
+<!-- Grid Lines -->
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="300" y1="25" y2="25"></line>
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="300" y1="50" y2="50"></line>
+<line stroke="#1E2430" stroke-dasharray="2 2" stroke-width="1" x1="0" x2="300" y1="75" y2="75"></line>
+<!-- Venue 1: Binance L3 (Cyan) -->
+<path d="M0,15 Q80,20 150,45 T300,90" fill="none" stroke="#00F2FE" stroke-width="2"></path>
+<!-- Venue 2: Coinbase Prime (Mint) -->
+<path d="M0,25 Q80,35 150,60 T300,94" fill="none" stroke="#00E599" stroke-width="1.8"></path>
+<!-- Venue 3: OKX-V5 (Slate) -->
+<path d="M0,40 Q80,55 150,75 T300,98" fill="none" stroke="#849495" stroke-dasharray="2 2" stroke-width="1.5"></path>
+<text fill="#00F2FE" font-family="JetBrains Mono" font-size="8" x="5" y="15">Binance L3 (98.2%)</text>
+<text fill="#00E599" font-family="JetBrains Mono" font-size="8" x="5" y="32">Coinbase Prime (94.1%)</text>
+<text fill="#849495" font-family="JetBrains Mono" font-size="8" x="5" y="48">OKX-V5 (86.4%)</text>
+</svg>
+</div>
+<div class="flex justify-between text-[9px] font-data-mono-sm text-outline border-t border-outline-variant pt-1 mt-1">
+<span>Latency Sweep: 0.5ms → 25ms</span>
+<span class="text-primary-container">Sub-5ms Guaranteed</span>
+</div>
+</div>
+<!-- Table 3: Order Depth Simulator Matrix Table (4 Cols) -->
+<div class="lg:col-span-4 bg-[#08090C] border border-outline-variant p-2 rounded flex flex-col justify-between">
+<div class="flex justify-between items-center font-data-mono-sm text-[10px] mb-1">
+<span class="text-primary font-bold">L3 Microstructure Execution Depth</span>
+<span class="text-outline">BTC/USDT</span>
+</div>
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left font-data-mono-sm text-[10px]">
+<thead>
+<tr class="text-outline border-b border-outline-variant">
+<th class="py-1">Size</th>
+<th class="py-1">Queue</th>
+<th class="py-1">Slippage</th>
+<th class="py-1">Fill %</th>
+<th class="py-1">Adverse Risk</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/40">
+<tr class="hover:bg-surface-container">
+<td class="py-1 text-primary font-semibold">2.5 BTC</td>
+<td class="py-1 text-on-surface">Tier 1 (#2)</td>
+<td class="py-1 text-secondary-container">0.12 bps</td>
+<td class="py-1 text-secondary-container font-bold">99.8%</td>
+<td class="py-1 text-secondary-container">Low (0.02)</td>
+</tr>
+<tr class="hover:bg-surface-container">
+<td class="py-1 text-primary font-semibold">10.0 BTC</td>
+<td class="py-1 text-on-surface">Tier 2 (#5)</td>
+<td class="py-1 text-secondary-container">0.84 bps</td>
+<td class="py-1 text-secondary-container font-bold">98.4%</td>
+<td class="py-1 text-secondary-container">Low (0.08)</td>
+</tr>
+<tr class="hover:bg-surface-container">
+<td class="py-1 text-primary font-semibold">25.0 BTC</td>
+<td class="py-1 text-on-surface">Tier 3 (#12)</td>
+<td class="py-1 text-primary-container">3.45 bps</td>
+<td class="py-1 text-primary-container font-bold">94.6%</td>
+<td class="py-1 text-primary-container">Med (0.24)</td>
+</tr>
+<tr class="hover:bg-surface-container">
+<td class="py-1 text-primary font-semibold">50.0 BTC</td>
+<td class="py-1 text-on-surface">Tier 4 (#28)</td>
+<td class="py-1 text-[#FF3B30]">11.82 bps</td>
+<td class="py-1 text-on-surface font-bold">88.2%</td>
+<td class="py-1 text-[#FF3B30] font-bold">High (0.68)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Attestation Footer Action -->
+<div class="mt-2 pt-1 border-t border-outline-variant flex items-center justify-between">
+<span class="text-[9px] font-data-mono-sm text-outline">SHA-256 Attestation Ready</span>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant hover:border-primary text-primary font-data-mono-sm text-[9px] rounded">
+                Attest Cryptographic Proof
+              </button>
+</div>
+</div>
+</div>
+<!-- Direct CTA Bar: 1-Click Export Verified Strategy to Marketplace & Creator Hub -->
+<div class="p-space-md border-t border-outline-variant bg-surface-container-lowest flex flex-col md:flex-row items-center justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-secondary-container/10 border border-secondary-container flex items-center justify-center text-secondary-container">
+<span class="material-symbols-outlined text-[18px]">workspace_premium</span>
+</div>
+<div>
+<div class="font-headline-md text-[13px] text-primary font-bold flex items-center gap-2">
+<span>Verified Strategy Ready for Institutional Deployment &amp; Monetization</span>
+<span class="px-1.5 py-0.2 bg-secondary-container/20 text-secondary-container text-[9px] font-data-mono-sm rounded border border-secondary-container">TIER 1 ALPHA CERTIFIED</span>
+</div>
+<div class="text-[11px] text-outline font-body-sm">
+                Strategy passed 1,820-path CPCV, PBO 4.2%, and Deflated Sharpe 2.91 with full Almgren-Chriss market impact validation.
+              </div>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<button class="px-3 py-1.5 bg-surface-container border border-outline-variant text-on-surface font-data-mono-sm text-data-mono-sm hover:text-primary transition-colors rounded">
+              Download Full Quant Report (.PDF)
+            </button>
+<button class="px-4 py-1.5 bg-secondary-container hover:shadow-[0_0_15px_rgba(1,229,153,0.4)] text-[#08090C] font-headline-md text-[12px] font-bold tracking-wide rounded transition-all flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">storefront</span>
+<span>1-Click Export Verified Strategy to Marketplace &amp; Creator Hub</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>

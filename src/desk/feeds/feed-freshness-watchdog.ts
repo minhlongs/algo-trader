@@ -14,6 +14,10 @@ import type {
   WatchdogTargetMultiplexer,
   WatchdogTripEvent,
 } from './feed-freshness-watchdog-types';
+import { scanFeedFreshness, type FreshnessScanResult, type FreshnessScanInput } from './feed-freshness-inspector';
+
+export { scanFeedFreshness };
+export type { FreshnessScanResult, FreshnessScanInput };
 
 export class FeedFreshnessWatchdog extends EventEmitter {
   private readonly maxStalenessMs: number;
@@ -94,30 +98,13 @@ export class FeedFreshnessWatchdog extends EventEmitter {
   }
 
   public checkFreshness(now = Date.now()): FreshnessStatus {
-    const staleFeeds: StaleFeedRecord[] = [];
-    let hasWarning = false;
-    let worstLatencyMs = 0;
-
-    for (const [key, lastTick] of this.lastTickTimes.entries()) {
-      const elapsed = Math.max(0, now - lastTick);
-      if (elapsed > worstLatencyMs) worstLatencyMs = elapsed;
-      const [venueId, symbol] = key.split(':');
-      if (elapsed > this.maxStalenessMs) {
-        staleFeeds.push({ venueId, symbol, elapsedMs: elapsed });
-      } else if (elapsed > this.warningThresholdMs) {
-        hasWarning = true;
-      }
-    }
-
-    for (const [venueId, lastHb] of this.lastHeartbeatTimes.entries()) {
-      const elapsed = Math.max(0, now - lastHb);
-      if (elapsed > worstLatencyMs) worstLatencyMs = elapsed;
-      if (elapsed > this.maxStalenessMs && !staleFeeds.some((f) => f.venueId === venueId)) {
-        staleFeeds.push({ venueId, symbol: '*', elapsedMs: elapsed });
-      } else if (elapsed > this.warningThresholdMs) {
-        hasWarning = true;
-      }
-    }
+    const { staleFeeds, hasWarning, worstLatencyMs } = scanFeedFreshness({
+      lastTickTimes: this.lastTickTimes,
+      lastHeartbeatTimes: this.lastHeartbeatTimes,
+      maxStalenessMs: this.maxStalenessMs,
+      warningThresholdMs: this.warningThresholdMs,
+      now,
+    });
 
     if (staleFeeds.length > 0) {
       const worst = staleFeeds.reduce((max, cur) => (cur.elapsedMs > max.elapsedMs ? cur : max));

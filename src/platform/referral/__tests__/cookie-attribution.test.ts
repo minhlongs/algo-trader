@@ -17,11 +17,7 @@ vi.mock('../../../shared/utils/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import {
-  generateCookieHash,
-  resolveExpiry,
-  CookieAttributionService,
-} from '../cookie-attribution';
+import { generateCookieHash, resolveExpiry, CookieAttributionService } from '../cookie-attribution';
 
 describe('cookie-attribution', () => {
   let service: CookieAttributionService;
@@ -37,14 +33,11 @@ describe('cookie-attribution', () => {
 
   describe('generateCookieHash', () => {
     it('produces a 32-char hex string', () => {
-      const hash = generateCookieHash('secret');
-      expect(hash).toMatch(/^[0-9a-f]{32}$/);
+      expect(generateCookieHash('secret')).toMatch(/^[0-9a-f]{32}$/);
     });
 
     it('produces unique hashes across calls', () => {
-      const h1 = generateCookieHash('secret');
-      const h2 = generateCookieHash('secret');
-      expect(h1).not.toBe(h2);
+      expect(generateCookieHash('secret')).not.toBe(generateCookieHash('secret'));
     });
   });
 
@@ -53,7 +46,6 @@ describe('cookie-attribution', () => {
       const before = Date.now();
       const expiresAt = resolveExpiry().getTime();
       const expected = before + 90 * 24 * 60 * 60 * 1000;
-      // Allow small clock skew within the same tick.
       expect(Math.abs(expiresAt - expected)).toBeLessThan(50);
     });
   });
@@ -73,9 +65,7 @@ describe('cookie-attribution', () => {
     it('falls back to a default when neither is set', () => {
       vi.stubEnv('AFFILIATE_COOKIE_SECRET', '');
       const s = new CookieAttributionService();
-      expect((s as unknown as { cookieSecret: string }).cookieSecret).toBe(
-        'default-cookie-secret-change-me',
-      );
+      expect((s as unknown as { cookieSecret: string }).cookieSecret).toBe('default-cookie-secret-change-me');
     });
   });
 
@@ -98,9 +88,7 @@ describe('cookie-attribution', () => {
 
   describe('getReferralCodeByHash', () => {
     it('returns the code for a valid unexpired row', async () => {
-      queryMock.mockResolvedValue({
-        rows: [{ referral_code: 'REF123', expires_at: new Date(Date.now() + 1000) }],
-      });
+      queryMock.mockResolvedValue({ rows: [{ referral_code: 'REF123', expires_at: new Date(Date.now() + 1000) }] });
       expect(await service.getReferralCodeByHash('abc')).toBe('REF123');
     });
 
@@ -110,18 +98,14 @@ describe('cookie-attribution', () => {
     });
 
     it('returns null for an expired row', async () => {
-      queryMock.mockResolvedValue({
-        rows: [{ referral_code: 'REF123', expires_at: new Date(Date.now() - 1000) }],
-      });
+      queryMock.mockResolvedValue({ rows: [{ referral_code: 'REF123', expires_at: new Date(Date.now() - 1000) }] });
       expect(await service.getReferralCodeByHash('expired')).toBeNull();
     });
   });
 
   describe('isValid', () => {
     it('is true when the code resolves', async () => {
-      queryMock.mockResolvedValue({
-        rows: [{ referral_code: 'REF123', expires_at: new Date(Date.now() + 1000) }],
-      });
+      queryMock.mockResolvedValue({ rows: [{ referral_code: 'REF123', expires_at: new Date(Date.now() + 1000) }] });
       expect(await service.isValid('abc')).toBe(true);
     });
 

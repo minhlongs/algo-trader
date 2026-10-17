@@ -11,9 +11,10 @@ import type { DynamicMidPriceProvider } from '../feeds/dynamic-mid-price-provide
 import { EngineSupervisor } from './engine-supervisor';
 import type { IEngineSupervisor } from './engine-supervisor-types';
 import { DeskStatusServer } from './desk-status-server';
-import type { DeskStatusEngineEntry, DeskStatusResponse, DeskAllocationsResponse } from './desk-status-server-types';
+import type { DeskStatusResponse, DeskAllocationsResponse } from './desk-status-server-types';
 import { DeskMetricsRegistry } from '../telemetry/desk-metrics-registry';
 import { type DeskDaemonOptions, type DriftVerificationResult, prioritizeTradeIntents, verifyZeroDrift } from './desk-daemon-types';
+import { DeskDaemonStatusBuilder } from './desk-daemon-status-builder';
 
 export class DeskDaemon implements IDeskDaemon {
   public readonly config: DeskAutoConfig;
@@ -87,9 +88,7 @@ export class DeskDaemon implements IDeskDaemon {
   public isRunning(): boolean { return this.running; }
   public getCycleCount(): number { return this.cycleCount; }
   public getProcessedOrders(): number { return this.processedOrders; }
-  public getUptimeSeconds(): number {
-    return this.running ? Math.floor((Date.now() - this.startedAt) / 1000) : 0;
-  }
+  public getUptimeSeconds(): number { return this.running ? Math.floor((Date.now() - this.startedAt) / 1000) : 0; }
 
   public async tick(): Promise<StepExecutionResult[]> {
     if (!this.running || this.loop.getState() !== 'RUNNING') return [];
@@ -125,19 +124,11 @@ export class DeskDaemon implements IDeskDaemon {
   }
 
   public getAllocationsPayload(): DeskAllocationsResponse {
-    const nav = this.loop.riskGate.getNav(), alloc = this.loop.riskGate.getEngineBudgets(), cash = this.loop.riskGate.getCash();
-    const drift = verifyZeroDrift(nav, alloc, cash);
-    return {
-      totalNavUsd: nav, unallocatedCashUsd: cash, cashBufferRatio: nav > 0 ? cash / nav : 0,
-      allocations: alloc, allocatedCapitalUsd: alloc, driftUsd: drift.driftUsd, isZeroDrift: drift.valid,
-    };
+    return DeskDaemonStatusBuilder.buildAllocationsPayload(this.loop);
   }
 
   public verifyAccountingDrift(): DriftVerificationResult {
-    const nav = this.loop.riskGate.getNav(), allocated = this.loop.riskGate.getEngineBudgets(), cash = this.loop.riskGate.getCash();
-    const result = verifyZeroDrift(nav, allocated, cash);
-    if (!result.valid) logger.error(`[DeskDaemon] Zero Accounting Drift violated: ${result.driftUsd.toFixed(6)} USD`);
-    return result;
+    return DeskDaemonStatusBuilder.verifyDrift(this.loop);
   }
 
   public async triggerEmergencyHalt(reason = 'Critical emergency halt'): Promise<number> {
@@ -160,23 +151,15 @@ export class DeskDaemon implements IDeskDaemon {
   }
 
   public getStatus(): Record<string, unknown> {
-    const nav = this.loop.riskGate.getNav(), allocated = this.loop.riskGate.getEngineBudgets() as Record<string, number>, cash = this.loop.riskGate.getCash();
-    const drift = verifyZeroDrift(nav, allocated, cash), supEngines = this.supervisor.getEngineStatuses();
-    const engines: Record<string, DeskStatusEngineEntry> = {};
-    for (const [id, s] of Object.entries(supEngines)) {
-      engines[id] = { status: s.status, allocatedCapitalUsd: allocated[id] ?? 0, lastSignalTime: s.lastSignalTime, error: s.error };
-    }
-    if (!engines['alpha-lab']) {
-      engines['alpha-lab'] = { status: this.running ? 'RUNNING' : 'STOPPED', allocatedCapitalUsd: allocated['alpha-lab'] ?? 0 };
-    }
-    return {
-      status: this.running ? this.loop.getState() : 'STOPPED', mode: this.config.mode, capitalUsd: this.config.capitalUsd,
-      dryRun: this.config.dryRun, circuitBreakerTier: this.loop.riskGate.getTier(), navUsd: nav, driftUsd: drift.driftUsd,
-      uptimeSeconds: this.getUptimeSeconds(), cycleCount: this.cycleCount, exchanges: [...this.config.exchanges],
-      symbols: [...this.config.symbols], engines, isDriftValid: drift.valid,
-      queueDepth: this.loop.queue.size(), processedOrders: this.processedOrders, allocatedCapitalUsd: allocated, unallocatedCashUsd: cash,
-      allocations: { allocatedCapitalUsd: allocated, unallocatedCashUsd: cash, driftUsd: drift.driftUsd },
-    };
+    return DeskDaemonStatusBuilder.buildStatus({
+      loop: this.loop,
+      supervisor: this.supervisor,
+      config: this.config,
+      running: this.running,
+      uptimeSeconds: this.getUptimeSeconds(),
+      cycleCount: this.cycleCount,
+      processedOrders: this.processedOrders,
+    });
   }
 
   private bindSignalHandlers(): void {

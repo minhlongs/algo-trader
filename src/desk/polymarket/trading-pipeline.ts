@@ -30,9 +30,11 @@ import {
   recordEquitySnapshotFor,
   getMarketMakerInstanceFor,
 } from './trading-pipeline-prediction';
+import { wireOrderbookStreamFor } from './trading-pipeline-wiring';
 
 // ── Facade re-exports (importers compile UNMODIFIED) ───────────────────────────
 export type { PipelineConfig, PipelineStatus } from './trading-pipeline-types';
+export { wireOrderbookStreamFor };
 
 /**
  * TradingPipeline: end-to-end orchestrator for Polymarket strategies.
@@ -142,26 +144,7 @@ export class TradingPipeline extends EventEmitter {
   getRiskGate(): RiskGateManager { return this.riskGateManager; }
 
   private wireOrderbookStream(): void {
-    // Listen for connection status from OrderBookStream via event bus
-    this.eventBus.onConnectionStatus((payload) => {
-      if (payload.component === 'OrderBookStream' && payload.status === 'disconnected') {
-        logger.warn('Orderbook stream disconnected', 'TradingPipeline');
-        this.emit('stream_disconnected');
-      }
-    });
-
-    // Feed price updates to mean reversion strategy (Layer 3) via event bus
-    const cleanupPriceUpdates = this.eventBus.onPriceUpdate((data) => {
-      if (this.meanReversion && data.bid > 0 && data.ask > 0) {
-        this.meanReversion.onPriceUpdate(data.tokenId, (data.bid + data.ask) / 2);
-      }
-    });
-
-    // Store cleanup function for potential shutdown
-    this._priceUpdateCleanup = cleanupPriceUpdates;
-
-    this.orderbookStream.connect();
-    logger.info('Orderbook stream connected', 'TradingPipeline');
+    wireOrderbookStreamFor(this);
   }
 
   // ── Private: thin delegates to leaf modules ─────────────────────────────────

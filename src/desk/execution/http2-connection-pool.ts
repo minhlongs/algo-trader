@@ -11,10 +11,12 @@ import { initMetrics } from './http2-pool-metrics';
 import { warmUpConnections } from './http2-pool-session';
 import { DnsResolver } from './http2-pool-dns';
 import { acquireSession, createSession } from './http2-pool-factory';
+import { extractOrigin } from './http2-pool-origin';
 
 // Re-export all public symbols for backward compatibility
 export type { DnsCacheEntry, PoolConfig, SessionInfo } from './http2-pool-types';
 export { initMetrics } from './http2-pool-metrics';
+export { extractOrigin };
 
 // ── Http2ConnectionPool ───────────────────────────────────────────────────────
 
@@ -175,17 +177,3 @@ export async function shutdownHttp2Pool(): Promise<void> {
   await Http2ConnectionPool.shutdownInstance();
 }
 
-// ── Pure Utility ──────────────────────────────────────────────────────────────
-
-/**
- * Extract origin (scheme://host:port) from URL
- */
-export function extractOrigin(url: string): string {
-  try {
-    const urlObj = new URL(url);
-    const port = urlObj.port || (urlObj.protocol === 'https:' ? '443' : '80');
-    return `${urlObj.protocol}//${urlObj.hostname}:${port}`;
-  } catch {
-    throw new Error(`Invalid URL for HTTP/2 pool: ${url}`);
-  }
-}

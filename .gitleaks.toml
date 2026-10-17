@@ -1,0 +1,44 @@
+# Gitleaks Secret Detection Ruleset — @mekong/algo-trader
+title = "Algo-Trader Open-Core Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for public test fixtures, documentation placeholders, and example templates"
+paths = [
+  '''\.env\.example$''',
+  '''tests/''',
+  '''__tests__/''',
+  '''docs/''',
+  '''plans/''',
+]
+regexes = [
+  '''your_.*_here''',
+  '''test-secret-.*''',
+  '''placeholder_.*''',
+]
+
+[[rules]]
+id = "aws-access-key-id"
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["key", "aws"]
+
+[[rules]]
+id = "github-pat"
+description = "GitHub Personal Access Token"
+regex = '''(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{60,})'''
+tags = ["key", "github"]
+
+[[rules]]
+id = "exchange-private-key"
+description = "PEM Private Key Block"
+regex = '''-----BEGIN (RSA|EC|OPENSSH|DSA) PRIVATE KEY-----'''
+tags = ["key", "pem", "crypto"]
+
+[[rules]]
+id = "ai-provider-api-key"
+description = "Anthropic or OpenAI API Key"
+regex = '''(sk-ant-[A-Za-z0-9-]{20,}|sk-[A-Za-z0-9]{48})'''
+tags = ["key", "ai"]

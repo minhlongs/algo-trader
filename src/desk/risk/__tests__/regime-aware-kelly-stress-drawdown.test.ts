@@ -3,29 +3,18 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  sizeSignalToTradeSignal,
-  DEFAULT_MULTIPLIERS,
-} from '../regime-aware-kelly';
+import { sizeSignalToTradeSignal, DEFAULT_MULTIPLIERS } from '../regime-aware-kelly';
 import { TieredDrawdownBreaker } from '../tiered-drawdown-breaker';
 import type { AISignal } from '../../strategies/ai-signal-adapter';
 import type { MarketRegime } from '../../../alpha-lab/regimes/regime-types';
 
 describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
   const makeSignal = (overrides: Partial<AISignal> = {}): AISignal => ({
-    strategyId: 'challenger-test-strat',
-    direction: 'BUY',
-    confidence: 0.70,
-    expectancy: 0.04,
-    regime: 'RANGE',
-    timestamp: 1700000000000,
-    symbol: 'BTC/USDT',
+    strategyId: 'challenger-test-strat', direction: 'BUY', confidence: 0.70,
+    expectancy: 0.04, regime: 'RANGE', timestamp: 1700000000000, symbol: 'BTC/USDT',
     ...overrides,
   });
 
-  // ==========================================================================
-  // 1. 7-State Regime Multipliers & Strictly Flat SHOCK
-  // ==========================================================================
   describe('7-State Regime Multipliers & Flat SHOCK enforcement', () => {
     it('verifies exact DEFAULT_MULTIPLIERS specification', () => {
       expect(DEFAULT_MULTIPLIERS.TREND_UP).toBe(1.25);
@@ -38,16 +27,9 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
     });
 
     it('strictly enforces 0 allocation in SHOCK regime regardless of parameters', () => {
-      const highConvictionShock = makeSignal({
-        confidence: 0.99,
-        expectancy: 1.0,
-        regime: 'SHOCK',
-      });
-
+      const highConvictionShock = makeSignal({ confidence: 0.99, expectancy: 1.0, regime: 'SHOCK' });
       const trade = sizeSignalToTradeSignal(highConvictionShock, {
-        portfolioEquity: 10_000_000,
-        currentPrice: 50_000,
-        strictMaxCap: false,
+        portfolioEquity: 10_000_000, currentPrice: 50_000, strictMaxCap: false,
       });
 
       expect(trade.quantity).toBe(0);
@@ -60,24 +42,14 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
       const baseQty = rangeRes.quantity;
 
       const expectedMultipliers: Record<MarketRegime, number> = {
-        TREND_UP: 1.25,
-        TREND_DOWN: 0.50,
-        RANGE: 1.00,
-        HIGH_VOLATILITY: 0.50,
-        LOW_VOLATILITY: 1.10,
-        SHOCK: 0.00,
-        UNKNOWN: 0.75,
+        TREND_UP: 1.25, TREND_DOWN: 0.50, RANGE: 1.00,
+        HIGH_VOLATILITY: 0.50, LOW_VOLATILITY: 1.10, SHOCK: 0.00, UNKNOWN: 0.75,
       };
 
       for (const [regime, mult] of Object.entries(expectedMultipliers) as [MarketRegime, number][]) {
         const sig = makeSignal({ confidence: 0.60, expectancy: 0.02, regime });
         const res = sizeSignalToTradeSignal(sig, { portfolioEquity: 100_000, currentPrice: 100 });
-
-        if (regime === 'SHOCK') {
-          expect(res.quantity).toBe(0);
-        } else {
-          expect(res.quantity).toBeCloseTo(baseQty * mult, 4);
-        }
+        expect(res.quantity).toBeCloseTo(regime === 'SHOCK' ? 0 : baseQty * mult, 4);
       }
     });
   });

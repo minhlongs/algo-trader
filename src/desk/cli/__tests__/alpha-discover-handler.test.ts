@@ -8,13 +8,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const {
-  mockLogger,
-  mockLoadAllConfigs,
-  mockLoadCandles,
-  mockWriteOutput,
-  mockPrintTable,
-  mockRunExperiment,
-  mockRunAllBaselines,
+  mockLogger, mockLoadAllConfigs, mockLoadCandles,
+  mockWriteOutput, mockPrintTable, mockRunExperiment, mockRunAllBaselines,
 } = vi.hoisted(() => ({
   mockLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   mockLoadAllConfigs: vi.fn(),
@@ -39,19 +34,13 @@ import { handleDiscover } from '../alpha-discover-handler';
 
 function makeConfig(overrides: Record<string, unknown> = {}) {
   return {
-    experimentId: 'exp-1',
-    symbol: 'BTC/USDT',
-    timeframe: '1h',
-    cost: { feeBps: 5, slippageBps: 2 },
-    seed: 42,
-    ...overrides,
+    experimentId: 'exp-1', symbol: 'BTC/USDT', timeframe: '1h',
+    cost: { feeBps: 5, slippageBps: 2 }, seed: 42, ...overrides,
   };
 }
 
 function stubRun(sharpe = 1.5, winRate = 0.6, totalPnl = 12.5) {
-  mockRunExperiment.mockReturnValue({
-    metrics: { test: { sharpeRatio: sharpe, winRate, totalPnl } },
-  });
+  mockRunExperiment.mockReturnValue({ metrics: { test: { sharpeRatio: sharpe, winRate, totalPnl } } });
   mockRunAllBaselines.mockReturnValue([
     { name: 'buy-hold', report: { sharpeRatio: 0.5 } },
     { name: 'random', report: { sharpeRatio: 0.2 } },
@@ -62,9 +51,7 @@ describe('handleDiscover', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockLoadCandles.mockResolvedValue({
-      candles: [{ timestamp: '2026-01-01', close: 1 }],
-      source: 'mock',
-      dataSources: [],
+      candles: [{ timestamp: '2026-01-01', close: 1 }], source: 'mock', dataSources: [],
     });
     stubRun();
   });
@@ -154,17 +141,10 @@ describe('handleDiscover', () => {
     await handleDiscover('BTC/USDT', { tf: '1h', json: true });
 
     expect(mockWriteOutput).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          experimentId: 'exp-1',
-          symbol: 'BTC/USDT',
-          sharpe: 1.5,
-          winRate: 0.6,
-          totalPnl: 12.5,
-          survivalGate: true,
-          dataSource: 'mock',
-        }),
-      ],
+      [expect.objectContaining({
+        experimentId: 'exp-1', symbol: 'BTC/USDT', sharpe: 1.5,
+        winRate: 0.6, totalPnl: 12.5, survivalGate: true, dataSource: 'mock',
+      })],
       undefined,
       true,
     );
@@ -175,11 +155,7 @@ describe('handleDiscover', () => {
     mockLoadAllConfigs.mockReturnValue([makeConfig()]);
     await handleDiscover('BTC/USDT', { tf: '1h', output: 'out/results.json' });
 
-    expect(mockWriteOutput).toHaveBeenCalledWith(
-      expect.anything(),
-      'out/results.json',
-      undefined,
-    );
+    expect(mockWriteOutput).toHaveBeenCalledWith(expect.anything(), 'out/results.json', undefined);
     expect(mockPrintTable).not.toHaveBeenCalled();
   });
 });

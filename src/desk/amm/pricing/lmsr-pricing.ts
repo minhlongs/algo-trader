@@ -5,73 +5,29 @@
  */
 
 import { LmsrTradeQuote } from '../types/lmsr-types';
+import { validateLmsrInputs, computeShiftedExponentials } from './lmsr-pricing-math';
 
 export class LmsrPricing {
   /**
    * Log-Sum-Exp numerically stable cost function:
    * C(q) = b * [ m + ln( sum_{i=1}^n exp(q_i / b - m) ) ]
-   * where m = max_j(q_j / b)
    */
   public static calculateCost(liabilities: number[], b: number): number {
-    if (b <= 0) {
-      throw new Error(`LMSR liquidity parameter b must be positive, got ${b}`);
-    }
-    if (!liabilities || liabilities.length === 0) {
-      throw new Error('Liabilities vector cannot be empty');
-    }
-
-    const n = liabilities.length;
-    let maxScaled = liabilities[0] / b;
-    for (let i = 1; i < n; i++) {
-      const scaled = liabilities[i] / b;
-      if (scaled > maxScaled) {
-        maxScaled = scaled;
-      }
-    }
-
-    let sumExp = 0;
-    for (let i = 0; i < n; i++) {
-      sumExp += Math.exp(liabilities[i] / b - maxScaled);
-    }
-
+    validateLmsrInputs(liabilities, b);
+    const { maxScaled, sumExp } = computeShiftedExponentials(liabilities, b);
     return b * (maxScaled + Math.log(sumExp));
   }
 
   /**
-   * Marginal spot prices:
-   * p_i(q) = exp(q_i / b - m) / sum_j exp(q_j / b - m)
-   * Guaranteed to sum strictly to 1.0000000000000000.
+   * Marginal spot prices: p_i(q) = exp(q_i / b - m) / sum_j exp(q_j / b - m)
    */
   public static calculateSpotPrices(liabilities: number[], b: number): number[] {
-    if (b <= 0) {
-      throw new Error(`LMSR liquidity parameter b must be positive, got ${b}`);
-    }
-    if (!liabilities || liabilities.length === 0) {
-      throw new Error('Liabilities vector cannot be empty');
-    }
-
-    const n = liabilities.length;
-    let maxScaled = liabilities[0] / b;
-    for (let i = 1; i < n; i++) {
-      const scaled = liabilities[i] / b;
-      if (scaled > maxScaled) {
-        maxScaled = scaled;
-      }
-    }
-
-    const expShifted = new Float64Array(n);
-    let sumExp = 0;
-    for (let i = 0; i < n; i++) {
-      const val = Math.exp(liabilities[i] / b - maxScaled);
-      expShifted[i] = val;
-      sumExp += val;
-    }
-
-    const prices: number[] = new Array(n);
-    for (let i = 0; i < n; i++) {
+    validateLmsrInputs(liabilities, b);
+    const { expShifted, sumExp } = computeShiftedExponentials(liabilities, b);
+    const prices: number[] = new Array(liabilities.length);
+    for (let i = 0; i < liabilities.length; i++) {
       prices[i] = expShifted[i] / sumExp;
     }
-
     return prices;
   }
 
@@ -92,7 +48,6 @@ export class LmsrPricing {
       throw new Error('Liabilities and deltaShares length mismatch');
     }
 
-    // Check if this is a single-outcome trade
     let nonZeroCount = 0;
     let singleIndex = -1;
     for (let i = 0; i < deltaShares.length; i++) {
@@ -107,21 +62,15 @@ export class LmsrPricing {
     if (nonZeroCount === 1) {
       const pk = this.calculateSpotPrices(currentLiabilities, b)[singleIndex];
       const deltaQ = deltaShares[singleIndex];
-      // Algebraically exact: Delta C = b * log1p(pk * expm1(deltaQ / b))
       return b * Math.log1p(pk * Math.expm1(deltaQ / b));
     }
 
-    // Multi-outcome trade: evaluate stabilized cost difference
     const newLiabilities = currentLiabilities.map((q, i) => q + deltaShares[i]);
-    const costAfter = this.calculateCost(newLiabilities, b);
-    const costBefore = this.calculateCost(currentLiabilities, b);
-    return costAfter - costBefore;
+    return this.calculateCost(newLiabilities, b) - this.calculateCost(currentLiabilities, b);
   }
 
   /**
-   * Closed-form budget inversion:
-   * Given budget B USDC, how many shares delta_q_k of outcome k are acquired:
-   * delta_q_k = b * log1p( expm1(B / b) / p_k )
+   * Closed-form budget inversion: delta_q_k = b * log1p( expm1(B / b) / p_k )
    */
   public static calculateSharesForBudget(
     currentLiabilities: number[],
@@ -135,8 +84,7 @@ export class LmsrPricing {
       throw new Error(`Invalid outcome index ${outcomeIndex}`);
     }
 
-    const spotPrices = this.calculateSpotPrices(currentLiabilities, b);
-    const pk = spotPrices[outcomeIndex];
+    const pk = this.calculateSpotPrices(currentLiabilities, b)[outcomeIndex];
     if (pk <= 0) throw new Error('Outcome spot price must be positive');
 
     return b * Math.log1p(Math.expm1(budgetUsdc / b) / pk);
@@ -172,8 +120,7 @@ export class LmsrPricing {
     const updatedLiabilities = liabilities.map((q, i) => q + deltaVector[i]);
     const spotAfter = this.calculateSpotPrices(updatedLiabilities, b);
 
-    const feeRate = feeBps / 10000;
-    const feeUsdc = Math.abs(costUsdc) * feeRate;
+    const feeUsdc = Math.abs(costUsdc) * (feeBps / 10000);
     const averagePrice = deltaShares !== 0 ? Math.abs(costUsdc / deltaShares) : spotBefore[outcomeIndex];
 
     return {

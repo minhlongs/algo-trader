@@ -36,20 +36,13 @@ const FAKE_ENV = {
 
 describe('buildPolymarketAdapter', () => {
   beforeEach(() => {
-    for (const [k, v] of Object.entries(FAKE_ENV)) {
-      process.env[k] = v;
-    }
+    for (const [k, v] of Object.entries(FAKE_ENV)) process.env[k] = v;
   });
 
   afterEach(() => {
-    for (const k of Object.keys(FAKE_ENV)) {
+    for (const k of [...Object.keys(FAKE_ENV), 'POLY_API_KEY', 'POLY_API_SECRET', 'POLY_PASSPHRASE', 'POLY_PRIVATE_KEY']) {
       delete process.env[k];
     }
-    // Cleanup deprecated names too
-    for (const k of ['POLY_API_KEY', 'POLY_API_SECRET', 'POLY_PASSPHRASE', 'POLY_PRIVATE_KEY']) {
-      delete process.env[k];
-    }
-    // Ensure POLYMARKET_TRADING_MODE doesn't leak between tests
     delete process.env.POLYMARKET_TRADING_MODE;
   });
 
@@ -98,9 +91,7 @@ describe('buildPolymarketAdapter', () => {
   });
 
   it('does not check env vars in PAPER mode', () => {
-    for (const k of Object.keys(FAKE_ENV)) {
-      delete process.env[k];
-    }
+    for (const k of Object.keys(FAKE_ENV)) delete process.env[k];
     const result = buildPolymarketAdapter({ paperTrading: true });
     expect(result.adapter).toBeNull();
     expect(result.paperTrading).toBe(true);
@@ -109,7 +100,6 @@ describe('buildPolymarketAdapter', () => {
   it('uses env var POLYMARKET_TRADING_MODE=live when config.paperTrading is omitted', () => {
     process.env.POLYMARKET_TRADING_MODE = 'live';
     const result = buildPolymarketAdapter({});
-    // With all FAKE_ENV set → should create live adapter
     expect(result.adapter).not.toBeNull();
     expect(result.paperTrading).toBe(false);
   });
@@ -133,17 +123,12 @@ describe('buildPolymarketAdapter', () => {
     const mod = await import('../polymarket-signer');
     const prevCalls = (mod.PolymarketSigner as ReturnType<typeof vi.fn>).mock.calls.length;
     buildPolymarketAdapter({ paperTrading: false, chainId: 80001 });
-    // Should have been called with the chainId
     expect((mod.PolymarketSigner as ReturnType<typeof vi.fn>)).toHaveBeenCalled();
-    // New call count > previous
     expect((mod.PolymarketSigner as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(prevCalls);
   });
 
   it('accepts deprecated POLY_* env vars as fallback', () => {
-    // Remove new-style vars, set old-style
-    for (const k of Object.keys(FAKE_ENV)) {
-      delete process.env[k];
-    }
+    for (const k of Object.keys(FAKE_ENV)) delete process.env[k];
     process.env.POLY_API_KEY = 'old-key';
     process.env.POLY_API_SECRET = 'old-secret';
     process.env.POLY_PASSPHRASE = 'old-passphrase';
@@ -153,39 +138,25 @@ describe('buildPolymarketAdapter', () => {
     expect(result.adapter).not.toBeNull();
     expect(result.signer).not.toBeNull();
     expect(result.paperTrading).toBe(false);
-
-    // Cleanup
-    delete process.env.POLY_API_KEY;
-    delete process.env.POLY_API_SECRET;
-    delete process.env.POLY_PASSPHRASE;
-    delete process.env.POLY_PRIVATE_KEY;
   });
 
   it('reads POLY_CLOB_HOST env var for API URL', async () => {
     process.env.POLY_CLOB_HOST = 'https://clob.staging.polymarket.com';
     const mod = await import('../polymarket-adapter');
-    const prevCalls = (mod.PolymarketAdapter as ReturnType<typeof vi.fn>).mock.calls.length;
-
     buildPolymarketAdapter({ paperTrading: false });
 
     const calls = (mod.PolymarketAdapter as ReturnType<typeof vi.fn>).mock.calls;
-    const lastCall = calls[calls.length - 1];
-    expect(lastCall[1]).toBe('https://clob.staging.polymarket.com');
-
+    expect(calls[calls.length - 1]![1]).toBe('https://clob.staging.polymarket.com');
     delete process.env.POLY_CLOB_HOST;
   });
 
   it('reads POLY_CHAIN_ID env var for chain ID', async () => {
     process.env.POLY_CHAIN_ID = '80001';
     const mod = await import('../polymarket-signer');
-
     buildPolymarketAdapter({ paperTrading: false });
 
     const calls = (mod.PolymarketSigner as ReturnType<typeof vi.fn>).mock.calls;
-    const lastCall = calls[calls.length - 1];
-    // chainId is second argument to PolymarketSigner constructor
-    expect(lastCall[1]).toBe(80001);
-
+    expect(calls[calls.length - 1]![1]).toBe(80001);
     delete process.env.POLY_CHAIN_ID;
   });
 });

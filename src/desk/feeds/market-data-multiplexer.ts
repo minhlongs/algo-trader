@@ -13,6 +13,7 @@ import type {
   MultiplexerConfig,
   VenueTick,
 } from './market-data-multiplexer-types';
+import { MarketDataMultiplexerAmm } from './market-data-multiplexer-amm';
 
 export class MarketDataMultiplexer extends EventEmitter {
   private readonly config: MultiplexerConfig;
@@ -108,33 +109,7 @@ export class MarketDataMultiplexer extends EventEmitter {
   }
 
   public updateCpmmPool(params: CpmmPoolParams): void {
-    const slices = params.slices ?? 10;
-    const maxDepth = params.baseReserve * (params.maxDepthRatio ?? 0.2);
-    const sliceQty = maxDepth / slices;
-    const k = params.baseReserve * params.quoteReserve;
-    const asks: OrderBookLevel[] = [];
-    const bids: OrderBookLevel[] = [];
-
-    let curB = params.baseReserve;
-    let curQ = params.quoteReserve;
-    for (let i = 0; i < slices; i++) {
-      const nextB = curB - sliceQty;
-      if (nextB <= 0) break;
-      const nextQ = k / nextB;
-      asks.push([(nextQ - curQ) / sliceQty, sliceQty]);
-      curB = nextB;
-      curQ = nextQ;
-    }
-
-    curB = params.baseReserve;
-    curQ = params.quoteReserve;
-    for (let i = 0; i < slices; i++) {
-      const nextB = curB + sliceQty;
-      const nextQ = k / nextB;
-      bids.push([(curQ - nextQ) / sliceQty, sliceQty]);
-      curB = nextB;
-      curQ = nextQ;
-    }
+    const { bids, asks } = MarketDataMultiplexerAmm.generateCpmmSlices(params);
 
     if (this.sorAggregator) {
       this.sorAggregator.registerCpmmCurve({ ...params, venueId: 'amm_cpmm' });
@@ -143,29 +118,7 @@ export class MarketDataMultiplexer extends EventEmitter {
   }
 
   public updateLmsrPool(params: LmsrPoolParams): void {
-    const slices = params.slices ?? 10;
-    const sliceQty = (params.maxDepthShares ?? 100) / slices;
-    const b = params.b;
-    const cost = (q: readonly number[]) => {
-      const max = Math.max(...q);
-      return b * (Math.log(q.reduce((acc, v) => acc + Math.exp((v - max) / b), 0)) + max / b);
-    };
-
-    const asks: OrderBookLevel[] = [];
-    const bids: OrderBookLevel[] = [];
-    for (let i = 1; i <= slices; i++) {
-      const buyQ = [...params.liabilities];
-      buyQ[params.outcomeIndex] += i * sliceQty;
-      const prevBuy = [...params.liabilities];
-      prevBuy[params.outcomeIndex] += (i - 1) * sliceQty;
-      asks.push([(cost(buyQ) - cost(prevBuy)) / sliceQty, sliceQty]);
-
-      const sellQ = [...params.liabilities];
-      sellQ[params.outcomeIndex] -= i * sliceQty;
-      const prevSell = [...params.liabilities];
-      prevSell[params.outcomeIndex] -= (i - 1) * sliceQty;
-      bids.push([(cost(prevSell) - cost(sellQ)) / sliceQty, sliceQty]);
-    }
+    const { bids, asks } = MarketDataMultiplexerAmm.generateLmsrSlices(params);
 
     if (this.sorAggregator) {
       this.sorAggregator.registerLmsrCurve({ ...params, liabilities: [...params.liabilities], venueId: 'amm_lmsr' });

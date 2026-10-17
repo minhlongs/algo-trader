@@ -14,19 +14,13 @@ vi.mock('../../intelligence/kronos-fair-value', () => ({
 import { getKronosOhlcvForecast } from '../../intelligence/kronos-fair-value';
 
 function makeCandles(count: number, baseClose = 100): ICandle[] {
-  const candles: ICandle[] = [];
-  for (let i = 0; i < count; i++) {
+  return Array.from({ length: count }, (_, i) => {
     const close = baseClose + i * 0.5;
-    candles.push({
+    return {
       timestamp: Date.now() + i * 60_000,
-      open: close - 0.2,
-      high: close + 0.3,
-      low: close - 0.4,
-      close,
-      volume: 1000 + i * 10,
-    });
-  }
-  return candles;
+      open: close - 0.2, high: close + 0.3, low: close - 0.4, close, volume: 1000 + i * 10,
+    };
+  });
 }
 
 describe('KronosStrategy', () => {
@@ -36,16 +30,12 @@ describe('KronosStrategy', () => {
 
   describe('constructor', () => {
     it('should use default options', () => {
-      const strategy = new KronosStrategy();
-      expect(strategy.getName()).toBe('KronosFoundation');
+      expect(new KronosStrategy().getName()).toBe('KronosFoundation');
     });
 
     it('should accept custom options', () => {
       const strategy = new KronosStrategy({
-        lookback: 30,
-        predLen: 3,
-        confidenceThreshold: 0.8,
-        sidecarUrl: 'http://custom:8200',
+        lookback: 30, predLen: 3, confidenceThreshold: 0.8, sidecarUrl: 'http://custom:8200',
       });
       expect(strategy.getName()).toBe('KronosFoundation');
     });
@@ -53,8 +43,7 @@ describe('KronosStrategy', () => {
     it('should derive sidecarUrl from env vars when not provided', () => {
       const prev = process.env['ALPHAEAR_URL'];
       process.env['ALPHAEAR_URL'] = 'http://env-url:8100';
-      const strategy = new KronosStrategy();
-      expect(strategy.getName()).toBe('KronosFoundation');
+      expect(new KronosStrategy().getName()).toBe('KronosFoundation');
       process.env['ALPHAEAR_URL'] = prev;
     });
   });
@@ -62,11 +51,8 @@ describe('KronosStrategy', () => {
   describe('getStatus', () => {
     it('should return initial status', () => {
       const strategy = new KronosStrategy({ lookback: 60 });
-      const status = strategy.getStatus();
-      expect(status).toMatchObject({
-        name: 'KronosFoundation',
-        historyCandleCount: 0,
-        lookback: 60,
+      expect(strategy.getStatus()).toMatchObject({
+        name: 'KronosFoundation', historyCandleCount: 0, lookback: 60,
       });
     });
 
@@ -76,8 +62,7 @@ describe('KronosStrategy', () => {
       ]);
       const strategy = new KronosStrategy({ lookback: 5, confidenceThreshold: 0.5 });
       await strategy.execute(makeCandles(10));
-      const status = strategy.getStatus();
-      expect(status.historyCandleCount).toBe(10);
+      expect(strategy.getStatus().historyCandleCount).toBe(10);
     });
   });
 

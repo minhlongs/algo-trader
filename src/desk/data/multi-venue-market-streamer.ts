@@ -7,6 +7,7 @@
 import { EventEmitter } from 'events';
 import { logger } from '../../shared/utils/logger';
 import { parseVenueOrderBook, parseVenueTrade } from './multi-venue-streamer-parsers';
+import { VENUE_URLS, sendVenueSubscription } from './multi-venue-streamer-protocol';
 import type {
   SupportedVenue,
   UnifiedOrderBook,
@@ -19,12 +20,7 @@ import type {
 
 export * from './multi-venue-streamer-types';
 export * from './multi-venue-streamer-parsers';
-
-const VENUE_URLS: Record<SupportedVenue, string> = {
-  binance: 'wss://stream.binance.com:9443/ws',
-  hyperliquid: 'wss://api.hyperliquid.xyz/ws',
-  polymarket: 'wss://ws-subscriptions-clob.polymarket.com/ws/market',
-};
+export * from './multi-venue-streamer-protocol';
 
 export class MultiVenueMarketStreamer extends EventEmitter {
   private readonly venues: Set<SupportedVenue>;
@@ -80,7 +76,7 @@ export class MultiVenueMarketStreamer extends EventEmitter {
     if (!subs) return;
     subs.add(symbol);
     const ws = this.connections.get(venue);
-    if (ws && this.states.get(venue)?.connected) this.sendSubscription(venue, ws, symbol);
+    if (ws && this.states.get(venue)?.connected) sendVenueSubscription(venue, ws, symbol);
   }
 
   public unsubscribe(venue: SupportedVenue, symbol: string): void {
@@ -127,7 +123,7 @@ export class MultiVenueMarketStreamer extends EventEmitter {
       state.lastHeartbeat = Date.now();
     }
     const subs = this.activeSubscriptions.get(venue);
-    if (subs) for (const sym of subs) this.sendSubscription(venue, ws, sym);
+    if (subs) for (const sym of subs) sendVenueSubscription(venue, ws, sym);
     this.emit('connected', venue);
   }
 
@@ -178,20 +174,6 @@ export class MultiVenueMarketStreamer extends EventEmitter {
     if (timer) {
       clearTimeout(timer);
       this.reconnectTimers.set(venue, null);
-    }
-  }
-
-  private sendSubscription(venue: SupportedVenue, ws: WebSocketLike, symbol: string): void {
-    try {
-      if (venue === 'binance') {
-        ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: [`${symbol.toLowerCase()}@depth@100ms`, `${symbol.toLowerCase()}@trade`], id: Date.now() }));
-      } else if (venue === 'hyperliquid') {
-        ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'l2Book', coin: symbol } }));
-      } else if (venue === 'polymarket') {
-        ws.send(JSON.stringify({ type: 'subscribe', assets_ids: [symbol] }));
-      }
-    } catch (err) {
-      logger.warn(`[MultiVenueStreamer] Send sub error ${venue}:${symbol}`, { err });
     }
   }
 }

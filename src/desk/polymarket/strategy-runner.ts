@@ -1,35 +1,32 @@
 /**
- * Strategy Runner
- *
- * Wires a V2 Polymarket strategy to the live trading pipeline end-to-end.
+ * Strategy Runner — Wires a V2 Polymarket strategy to the live trading pipeline end-to-end.
  * Supports any strategy extending BasePolymarketStrategy.
- *
- * Usage:
- * const runner = new StrategyRunner(SpreadMeanReversionStrategy, {
- *   strategyConfig: DEFAULT_CONFIG,
- *   tradingConfig: { paperTrading: true, capitalUsdc: 5000 },
- * });
- * await runner.start();
- * await runner.stop();
  */
 
 import type { StrategyName } from '../core/types';
-import type { BasePolymarketStrategy, StrategyDeps } from '@desk/strategies/polymarket/base-polymarket-strategy';
+import type { BasePolymarketStrategy } from '@desk/strategies/polymarket/base-polymarket-strategy';
 import { StrategyLiveBridge } from './strategy-live-bridge';
 import { LiveOrderManagerProxy } from './live-order-manager-proxy';
 import { LiveTradingOrchestrator } from './live-trading-orchestrator';
 import { logger } from '@shared/utils/logger';
 import { tradingEventBus, type PriceUpdatePayload } from '../events/trading-event-bus';
-import type { StrategyRunnerConfig } from './strategy-runner-types';
+import type { StrategyRunnerConfig, RunnerStatus, StrategyConstructor } from './strategy-runner-types';
 import { createTickTimer, type TickTimerContext } from './strategy-runner-tick-timer';
 import { createEventBusSubscription, type EventHandlerContext } from './strategy-runner-event-handlers';
 import { buildRunnerStatusSnapshot } from './strategy-runner-status-builder';
+import {
+  processPriceUpdate,
+  deriveStrategyName,
+  createRunnerStrategyDeps,
+  type StrategyExecutionContext,
+} from './strategy-runner-executor';
+import type { StrategyEntryConstructor } from './strategy-registry-types';
 
 // Re-export for backward compatibility
 export type { StrategyRunnerConfig, RunnerStatus, StrategyConstructor } from './strategy-runner-types';
 export { DEFAULT_RUNNER_CONFIG, GammaClientImpl } from './strategy-runner-types';
-import type { StrategyConstructor } from './strategy-runner-types';
-import type { StrategyEntryConstructor } from './strategy-registry-types';
+export { processPriceUpdate, deriveStrategyName, createRunnerStrategyDeps };
+export type { StrategyExecutionContext };
 
 export class StrategyRunner {
   private strategyClass: StrategyConstructor;
@@ -52,18 +49,20 @@ export class StrategyRunner {
   constructor(
     strategyClass: StrategyConstructor | StrategyEntryConstructor,
     config: StrategyRunnerConfig,
-    externalOrchestrator?: LiveTradingOrchestrator
+    externalOrchestrator?: LiveTradingOrchestrator,
   ) {
     this.strategyClass = strategyClass as unknown as StrategyConstructor;
-    this.strategyName = strategyClass.name
-      .replace(/Strategy$/, '')
-      .replace(/([A-Z])/g, '-$1')
-      .toLowerCase()
-      .replace(/^-/, '');
+    this.strategyName = deriveStrategyName(strategyClass);
     this.config = { minExecutionIntervalMs: 50, autoScan: false, ...config };
     this.ownsOrchestrator = externalOrchestrator === undefined;
     this.orchestrator = externalOrchestrator ?? new LiveTradingOrchestrator(config.tradingConfig);
   }
+
+  trackToken(tokenId: string): void { this.trackedTokens.add(tokenId); }
+  untrackToken(tokenId: string): void { this.trackedTokens.delete(tokenId); }
+  getTrackedTokens(): string[] { return Array.from(this.trackedTokens); }
+  getOrchestrator(): LiveTradingOrchestrator { return this.orchestrator; }
+  getBridge(): StrategyLiveBridge | null { return this.bridge; }
 
   async start(): Promise<void> {
     if (this.status === 'running') return;
@@ -76,12 +75,7 @@ export class StrategyRunner {
     this.bridge = new StrategyLiveBridge(this.orchestrator);
     this.proxy = new LiveOrderManagerProxy(this.bridge, this.strategyName);
 
-    const deps: StrategyDeps = {
-      clob: null as unknown as StrategyDeps['clob'],
-      orderManager: this.proxy,
-      eventBus: { emit: () => {}, on: () => {}, off: () => {} },
-      gamma: null as unknown as StrategyDeps['gamma'],
-    };
+    const deps = createRunnerStrategyDeps(this.proxy);
     this.strategy = new this.strategyClass(deps, this.config.strategyConfig, this.strategyName as StrategyName);
 
     this.setupEventBus();
@@ -109,11 +103,10 @@ export class StrategyRunner {
     logger.info('Strategy runner stopped', 'StrategyRunner', { executions: this.executionCount });
   }
 
-  private setupEventBus(): void {
-    const ctx: EventHandlerContext = {
+  private buildExecutionBase() {
+    return {
       status: this.status,
       strategy: this.strategy,
-      config: this.config,
       strategyName: this.strategyName,
       executionCount: this.executionCount,
       lastExecutionTime: this.lastExecutionTime,
@@ -122,14 +115,14 @@ export class StrategyRunner {
       incrementExecutionCount: () => { this.executionCount++; },
       stop: () => this.stop(),
     };
+  }
+
+  private setupEventBus(): void {
+    const ctx: EventHandlerContext = { ...this.buildExecutionBase(), config: this.config };
     const sub = createEventBusSubscription(this.eventBus, ctx);
     sub.subscribe();
     this.unsubscribeFromEvents = () => sub.unsubscribe();
   }
-
-  trackToken(tokenId: string): void { this.trackedTokens.add(tokenId); }
-  untrackToken(tokenId: string): void { this.trackedTokens.delete(tokenId); }
-  getTrackedTokens(): string[] { return Array.from(this.trackedTokens); }
 
   private createTickTimer(): NodeJS.Timeout {
     const ctx: TickTimerContext = {
@@ -146,24 +139,12 @@ export class StrategyRunner {
   }
 
   private async handlePriceUpdate(payload: PriceUpdatePayload): Promise<void> {
-    if (this.status !== 'running' || !this.strategy) return;
-    const now = Date.now();
-    if (now - this.lastExecutionTime < this.config.minExecutionIntervalMs) return;
-    const isRelevant = this.trackedTokens.size === 0 || this.trackedTokens.has(payload.tokenId);
-    if (!isRelevant) return;
-
-    this.lastExecutionTime = now;
-    try {
-      this.executionCount++;
-      await this.strategy.execute();
-      if (this.config.maxTicks && this.executionCount >= this.config.maxTicks) {
-        logger.info('Max ticks reached', 'StrategyRunner', { strategy: this.strategyName });
-        await this.stop();
-      }
-      logger.debug('Execution complete', 'StrategyRunner', { execution: this.executionCount });
-    } catch (err) {
-      logger.error('Execution error', 'StrategyRunner', { err: String(err) });
-    }
+    const ctx: StrategyExecutionContext = {
+      ...this.buildExecutionBase(),
+      minExecutionIntervalMs: this.config.minExecutionIntervalMs,
+      maxTicks: this.config.maxTicks,
+    };
+    return processPriceUpdate(ctx, payload);
   }
 
   private healthCheck(): void {
@@ -180,13 +161,5 @@ export class StrategyRunner {
       orchestrator: this.orchestrator,
       proxy: this.proxy,
     });
-  }
-
-  getOrchestrator(): LiveTradingOrchestrator {
-    return this.orchestrator;
-  }
-
-  getBridge(): StrategyLiveBridge | null {
-    return this.bridge;
   }
 }

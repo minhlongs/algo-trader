@@ -7,32 +7,21 @@
  */
 
 import { config } from '../../shared/config/env';
-import { query } from '../../db/postgres-client.js';
 import { logAudit } from '../../seed/security/audit-log';
-import type { IAuditEntry } from '../../seed/security/audit-log';
 import { hashIpAddress } from '../../seed/security/audit-ip-hash';
 import { AuditLogExporter } from './exporters';
-import { AuditLogValidators } from './validators';
 import { AuditLogBatchWriter, type BatchWriteEntry, type BatchWriteResult } from './batch-writer';
 import type { AuditLog, AuditEventType, AuditLogFilters } from './audit-log-types';
 import { executeGetExpiredLogIds, executeCleanupExpiredLogs } from './audit-log-db-cleanup';
+import {
+  fetchLogsByLicense,
+  fetchAllLogs,
+  fetchRecentActivity,
+  mapRowToAuditLog,
+} from './audit-log-query';
 
 export * from './audit-log-types';
-
-const SELECT_BY_LICENSE_SQL = `
-  SELECT id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id
-  FROM audit_log
-  WHERE tenant_id = $1
-  ORDER BY "timestamp" DESC
-  LIMIT $2
-`;
-
-const SELECT_ALL_SQL = `
-  SELECT id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id
-  FROM audit_log
-  ORDER BY "timestamp" DESC
-  LIMIT $1
-`;
+export * from './audit-log-query';
 
 export class AuditLogService {
   private static instance: AuditLogService | null = null;
@@ -100,33 +89,20 @@ export class AuditLogService {
     return log;
   }
 
-  private mapRowToAuditLog(entry: IAuditEntry): AuditLog {
-    const metadata = (entry.metadata ?? {}) as Record<string, unknown>;
-    return {
-      id: entry.id,
-      licenseId: entry.tenantId ?? entry.actor,
-      event: entry.action as AuditEventType,
-      createdAt: entry.timestamp,
-      metadata,
-      tier: metadata.tier as string | undefined,
-    };
+  private mapRowToAuditLog(entry: Parameters<typeof mapRowToAuditLog>[0]): AuditLog {
+    return mapRowToAuditLog(entry);
   }
 
   async getLogsByLicense(licenseId: string, filters: AuditLogFilters = {}): Promise<AuditLog[]> {
-    const limit = filters.limit ?? this.batchSize;
-    const { rows } = await query(SELECT_BY_LICENSE_SQL, [licenseId, limit]);
-    return AuditLogValidators.filterLogs(rows.map((r) => this.mapRowToAuditLog(r as unknown as IAuditEntry)), { ...filters, licenseId });
+    return fetchLogsByLicense(licenseId, filters, this.batchSize);
   }
 
   async getAllLogs(filters: AuditLogFilters = {}): Promise<AuditLog[]> {
-    const limit = filters.limit ?? this.batchSize;
-    const { rows } = await query(SELECT_ALL_SQL, [limit]);
-    return AuditLogValidators.filterLogs(rows.map((r) => this.mapRowToAuditLog(r as unknown as IAuditEntry)), filters);
+    return fetchAllLogs(filters, this.batchSize);
   }
 
   async getRecentActivity(limit = 10): Promise<AuditLog[]> {
-    const { rows } = await query(SELECT_ALL_SQL, [limit]);
-    return AuditLogValidators.getRecentActivity(rows.map((r) => this.mapRowToAuditLog(r as unknown as IAuditEntry)), limit);
+    return fetchRecentActivity(limit);
   }
 
   async logApiCall(

@@ -9,14 +9,9 @@ import type { PolymarketOrder } from '../polymarket-signer';
 
 function makeOrder(overrides: Partial<PolymarketOrder> = {}): PolymarketOrder {
   return {
-    tokenId: '0xabc123',
-    price: 0.55,
-    size: 10,
-    side: 'BUY',
+    tokenId: '0xabc123', price: 0.55, size: 10, side: 'BUY',
     expiration: Math.floor(Date.now() / 1000) + 3600,
-    nonce: '1',
-    feeRateBps: 0,
-    signatureType: 0,
+    nonce: '1', feeRateBps: 0, signatureType: 0,
     ...overrides,
   };
 }
@@ -29,8 +24,6 @@ describe('LiveExecutionGuard', () => {
     guard = new LiveExecutionGuard(baseConfig);
   });
 
-  // ── Disabled by default ─────────────────────────────────────────────────
-
   it('approves all orders when guard is disabled (default)', () => {
     const order = makeOrder({ size: 1000, price: 1.0 }); // huge order
     const result = guard.guardOrder(order);
@@ -38,15 +31,11 @@ describe('LiveExecutionGuard', () => {
     expect(result.reason).toBeUndefined();
   });
 
-  // ── Position size check ─────────────────────────────────────────────────
-
   it('rejects order exceeding max position fraction', () => {
     guard.setEnabled(true);
-    // 2% of $1000 = $20 max. Order is 10 * 0.55 = $5.50 → should pass
     const smallOrder = makeOrder({ size: 10, price: 0.55 });
     expect(guard.guardOrder(smallOrder).approved).toBe(true);
 
-    // Order is 100 * 0.55 = $55 → exceeds $20 → should fail
     const bigOrder = makeOrder({ size: 100, price: 0.55 });
     const result = guard.guardOrder(bigOrder);
     expect(result.approved).toBe(false);
@@ -55,21 +44,13 @@ describe('LiveExecutionGuard', () => {
   });
 
   it('position size check respects custom maxPositionFraction', () => {
-    const custom = new LiveExecutionGuard({
-      capitalUsdc: 1000,
-      maxPositionFraction: 0.10, // 10% = $100
-    });
+    const custom = new LiveExecutionGuard({ capitalUsdc: 1000, maxPositionFraction: 0.10 });
     custom.setEnabled(true);
-
-    const order = makeOrder({ size: 100, price: 0.55 }); // $55
-    expect(custom.guardOrder(order).approved).toBe(true);
+    expect(custom.guardOrder(makeOrder({ size: 100, price: 0.55 })).approved).toBe(true);
   });
-
-  // ── Daily drawdown check ────────────────────────────────────────────────
 
   it('rejects orders when daily drawdown exceeds limit', () => {
     guard.setEnabled(true);
-    // Simulate losing $60 on $1000 capital → 6% drawdown > 5% limit
     guard.recordLoss(-60);
     const result = guard.guardOrder(makeOrder());
     expect(result.approved).toBe(false);
@@ -79,23 +60,16 @@ describe('LiveExecutionGuard', () => {
 
   it('does not trip on small drawdown', () => {
     guard.setEnabled(true);
-    guard.recordLoss(-30); // 3% drawdown < 5%
+    guard.recordLoss(-30);
     expect(guard.guardOrder(makeOrder()).approved).toBe(true);
   });
 
-  // ── Concurrent positions check ──────────────────────────────────────────
-
   it('rejects orders when at max concurrent positions', () => {
     const tracker = new LivePositionTracker(1000);
-    // Fill 10 positions
     for (let i = 0; i < 10; i++) {
       tracker.recordFill({
-        tokenId: `0x${i.toString(16).padStart(8, '0')}`,
-        side: 'BUY',
-        size: 1,
-        price: 0.5,
-        filledAt: Date.now(),
-        orderId: `order-${i}`,
+        tokenId: `0x${i.toString(16).padStart(8, '0')}`, side: 'BUY', size: 1,
+        price: 0.5, filledAt: Date.now(), orderId: `order-${i}`,
       });
     }
 

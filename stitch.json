@@ -1,0 +1,67 @@
+{
+  "projectId": "1566829715937419119",
+  "name": "AlgoTrade - Obsidian Quantum (Institutional Cyber-Quant)",
+  "mcpUrl": "https://stitch.googleapis.com/mcp",
+  "generatedScreens": [
+    {
+      "title": "Master Cloud RaaS Dashboard",
+      "file": "site/public/dashboard.html",
+      "screenId": "projects/1566829715937419119/screens/f7b80ba432684fa09a7587991cb9ce86"
+    },
+    {
+      "title": "Institutional Quant Cockpit & Execution Terminal",
+      "file": "site/public/quant-terminal.html",
+      "screenId": "projects/1566829715937419119/screens/32ddde8ef42e470dba9bc6fa5d53e0f2"
+    },
+    {
+      "title": "Strategy Marketplace & Creator Hub",
+      "file": "site/public/marketplace.html",
+      "screenId": "projects/1566829715937419119/screens/8e37c0fcf4d74dc4938e857fbc7a0dc3"
+    },
+    {
+      "title": "Bilingual Backtest & Alpha Leaderboard",
+      "file": "site/public/leaderboard.html",
+      "screenId": "projects/1566829715937419119/screens/16f9c4ea6cca4960afe2ed34b4de7f39"
+    },
+    {
+      "title": "Multi-Tenant Billing & SHA-256 Audit Chain Ledger",
+      "file": "site/public/billing.html",
+      "screenId": "projects/1566829715937419119/screens/3736acdb37e041c6958730fe71f167dd"
+    },
+    {
+      "title": "Zero-Knowledge BYOK Onboarding Wizard",
+      "file": "site/public/byok-wizard.html",
+      "screenId": "projects/1566829715937419119/screens/7fd2f5c813e74bada72055a3b0762711"
+    },
+    {
+      "title": "Mobile Companion & Risk Sentry",
+      "file": "site/public/mobile-sentry.html",
+      "screenId": "projects/1566829715937419119/screens/a95b42f7444d436eac011624b24118c6"
+    },
+    {
+      "title": "Universal Component Design System & Style Guide",
+      "file": "site/public/styleguide.html",
+      "screenId": "projects/1566829715937419119/screens/a5fda1b4faca453596d13c6f856c0a0e"
+    },
+    {
+      "title": "Cloudflare Shard Telemetry & Real-Time HFT Execution Mesh",
+      "file": "site/public/telemetry.html",
+      "screenId": "projects/1566829715937419119/screens/d45e9f3ac1484590aafba7ba19451f66"
+    },
+    {
+      "title": "Real-Time WebSocket Trade Feed Simulator & Microstructure Latency Analyzer",
+      "file": "site/public/latency-simulator.html",
+      "screenId": "projects/1566829715937419119/screens/ed0ac0f909224104ac7d9f9b88621dee"
+    },
+    {
+      "title": "Algorithmic Stress Testing Lab & Extreme Tail-Risk VaR Simulation Cockpit",
+      "file": "site/public/stress-lab.html",
+      "screenId": "projects/1566829715937419119/screens/0f63427907ec4fce9adf1a318f4486a6"
+    },
+    {
+      "title": "Walk-Forward & CPCV Backtest Studio",
+      "file": "site/public/backtest-studio.html",
+      "screenId": "projects/1566829715937419119/screens/19bb5a93f4934de4be3ec023b9374357"
+    }
+  ]
+}

@@ -7,12 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { executeBuy, executeSell } from '../paper-execution-helpers';
-import type {
-  PaperAccount,
-  PaperPosition,
-  PaperExecutorConfig,
-  OrderbookSnapshot,
-} from '../paper-position-types';
+import type { PaperAccount, PaperPosition, PaperExecutorConfig, OrderbookSnapshot } from '../paper-position-types';
 
 describe('paper-execution-helpers', () => {
   const config: PaperExecutorConfig = {
@@ -23,16 +18,8 @@ describe('paper-execution-helpers', () => {
   };
 
   const createAccount = (balance = 10_000): PaperAccount => ({
-    balance,
-    equity: balance,
-    cashReserves: balance,
-    marginUsed: 0,
-    marginUtilization: 0,
-    unrealizedPnl: 0,
-    realizedPnl: 0,
-    totalTrades: 0,
-    winningTrades: 0,
-    losingTrades: 0,
+    balance, equity: balance, cashReserves: balance, marginUsed: 0, marginUtilization: 0,
+    unrealizedPnl: 0, realizedPnl: 0, totalTrades: 0, winningTrades: 0, losingTrades: 0,
   });
 
   describe('executeBuy', () => {
@@ -74,11 +61,7 @@ describe('paper-execution-helpers', () => {
 
     it('handles partial fills when asks depth is insufficient', () => {
       const account = createAccount(10_000);
-      const orderbook: OrderbookSnapshot = {
-        symbol: 'ETH/USDT',
-        bids: [],
-        asks: [{ price: 3_000, size: 0.75 }],
-      };
+      const orderbook: OrderbookSnapshot = { symbol: 'ETH/USDT', bids: [], asks: [{ price: 3_000, size: 0.75 }] };
 
       // Request 1.0, only 0.75 available
       const res = executeBuy('ETH/USDT', 1.0, 3_000, account, [], config, orderbook);
@@ -91,11 +74,7 @@ describe('paper-execution-helpers', () => {
 
     it('rejects order cleanly when book has zero liquidity', () => {
       const account = createAccount(10_000);
-      const orderbook: OrderbookSnapshot = {
-        symbol: 'SOL/USDT',
-        bids: [],
-        asks: [],
-      };
+      const orderbook: OrderbookSnapshot = { symbol: 'SOL/USDT', bids: [], asks: [] };
 
       const res = executeBuy('SOL/USDT', 1.0, 100, account, [], config, orderbook);
 
@@ -107,23 +86,14 @@ describe('paper-execution-helpers', () => {
   });
 
   describe('executeSell', () => {
-    const createPositions = (qty = 0.5): PaperPosition[] => [
-      {
-        symbol: 'BTC/USDT',
-        side: 'long',
-        quantity: qty,
-        entryPrice: 48_000,
-        currentPrice: 50_000,
-        unrealizedPnl: 1000,
-        openedAt: Date.now() - 1000,
-      },
-    ];
+    const createPositions = (qty = 0.5): PaperPosition[] => [{
+      symbol: 'BTC/USDT', side: 'long', quantity: qty, entryPrice: 48_000,
+      currentPrice: 50_000, unrealizedPnl: 1000, openedAt: Date.now() - 1000,
+    }];
 
     it('throws when selling non-existent position', () => {
       const account = createAccount(10_000);
-      expect(() => executeSell('ETH/USDT', 1, 3000, account, createPositions(), config)).toThrow(
-        /No position found/,
-      );
+      expect(() => executeSell('ETH/USDT', 1, 3000, account, createPositions(), config)).toThrow(/No position found/);
     });
 
     it('falls back to flat slippage when no orderbook is supplied', () => {
@@ -166,11 +136,7 @@ describe('paper-execution-helpers', () => {
 
     it('supports partial sell fills when bids are partially exhausted', () => {
       const account = createAccount(10_000);
-      const orderbook: OrderbookSnapshot = {
-        symbol: 'BTC/USDT',
-        bids: [{ price: 51_000, size: 0.1 }],
-        asks: [],
-      };
+      const orderbook: OrderbookSnapshot = { symbol: 'BTC/USDT', bids: [{ price: 51_000, size: 0.1 }], asks: [] };
 
       // Request sell 0.3, only 0.1 available in book
       const res = executeSell('BTC/USDT', 0.3, 51_000, account, createPositions(), config, orderbook);

@@ -1,62 +1,35 @@
 import { describe, it, expect } from 'vitest';
 import {
-  DEFAULT_STRESS_PRESETS,
-  resolveCostConfig,
-  totalRoundTripCostBps,
-  applyStressToBaselineConfig,
-  listStressModes,
+  DEFAULT_STRESS_PRESETS, resolveCostConfig, totalRoundTripCostBps,
+  applyStressToBaselineConfig, listStressModes, type CostStressMode,
 } from '../cost-stress';
-import type { CostStressMode, CostStressConfig } from '../cost-stress';
-
-// ---------------------------------------------------------------------------
-// Preset values
-// ---------------------------------------------------------------------------
 
 describe('DEFAULT_STRESS_PRESETS', () => {
   it('NORMAL preset matches spec values', () => {
     expect(DEFAULT_STRESS_PRESETS.NORMAL).toEqual({
-      mode: 'NORMAL',
-      feeBps: 5,
-      spreadBps: 2,
-      slippageBps: 3,
-      label: 'Normal market conditions',
+      mode: 'NORMAL', feeBps: 5, spreadBps: 2, slippageBps: 3, label: 'Normal market conditions',
     });
   });
 
   it('CONSERVATIVE preset matches spec values', () => {
     expect(DEFAULT_STRESS_PRESETS.CONSERVATIVE).toEqual({
-      mode: 'CONSERVATIVE',
-      feeBps: 10,
-      spreadBps: 5,
-      slippageBps: 8,
-      label: 'Conservative cost estimate',
+      mode: 'CONSERVATIVE', feeBps: 10, spreadBps: 5, slippageBps: 8, label: 'Conservative cost estimate',
     });
   });
 
   it('ADVERSE preset matches spec values', () => {
     expect(DEFAULT_STRESS_PRESETS.ADVERSE).toEqual({
-      mode: 'ADVERSE',
-      feeBps: 20,
-      spreadBps: 15,
-      slippageBps: 20,
-      label: 'Adverse market conditions',
+      mode: 'ADVERSE', feeBps: 20, spreadBps: 15, slippageBps: 20, label: 'Adverse market conditions',
     });
   });
 
   it('EXTREME preset carries ~100bps total round-trip friction', () => {
     expect(DEFAULT_STRESS_PRESETS.EXTREME).toEqual({
-      mode: 'EXTREME',
-      feeBps: 30,
-      spreadBps: 15,
-      slippageBps: 25,
+      mode: 'EXTREME', feeBps: 30, spreadBps: 15, slippageBps: 25,
       label: 'Extreme cost stress (~100bps round-trip friction)',
     });
   });
 });
-
-// ---------------------------------------------------------------------------
-// resolveCostConfig
-// ---------------------------------------------------------------------------
 
 describe('resolveCostConfig', () => {
   it('returns preset values when no overrides', () => {

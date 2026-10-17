@@ -1,25 +1,26 @@
 /**
  * VaR/CVaR Service Tests
+ * Strictly < 140 LOC, DRY, zero :any
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { VaRService } from '../var-cvar-service';
 
-describe('VaRService', () => {
-  let mockRedis: ReturnType<typeof vi.fn>;
+function createMockRedis(cachedData: string | null = null) {
+  return {
+    get: vi.fn().mockResolvedValue(cachedData),
+    setex: vi.fn().mockResolvedValue('OK'),
+    del: vi.fn().mockResolvedValue(1),
+  } as unknown as VaRService['redis'];
+}
 
+describe('VaRService', () => {
   beforeEach(() => {
-    mockRedis = vi.fn();
     vi.clearAllMocks();
   });
 
   it('computes parametric VaR from position returns', async () => {
-    const redis = {
-      get: vi.fn().mockResolvedValue(null),
-      setex: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1),
-    } as unknown as VaRService['redis'];
-
+    const redis = createMockRedis();
     const service = new VaRService(redis);
     const result = await service.compute(
       {
@@ -42,12 +43,7 @@ describe('VaRService', () => {
   });
 
   it('computes both parametric and historical VaR', async () => {
-    const redis = {
-      get: vi.fn().mockResolvedValue(null),
-      setex: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1),
-    } as unknown as VaRService['redis'];
-
+    const redis = createMockRedis();
     const service = new VaRService(redis);
     const result = await service.compute(
       {
@@ -68,18 +64,11 @@ describe('VaRService', () => {
   });
 
   it('flags data quality warning when sample < 100', async () => {
-    const redis = {
-      get: vi.fn().mockResolvedValue(null),
-      setex: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1),
-    } as unknown as VaRService['redis'];
-
+    const redis = createMockRedis();
     const service = new VaRService(redis);
     const result = await service.compute(
       {
-        positions: [
-          { symbol: 'BTC', currentValue: 10000, side: 'long', returns: [0.01, -0.02, 0.01] },
-        ],
+        positions: [{ symbol: 'BTC', currentValue: 10000, side: 'long', returns: [0.01, -0.02, 0.01] }],
         confidence: 0.95,
         method: 'historical',
       },
@@ -91,20 +80,12 @@ describe('VaRService', () => {
   });
 
   it('returns warning === null when sample >= 100', async () => {
-    const redis = {
-      get: vi.fn().mockResolvedValue(null),
-      setex: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1),
-    } as unknown as VaRService['redis'];
-
+    const redis = createMockRedis();
     const service = new VaRService(redis);
-    // Use varied returns to ensure parametric VaR is computed (non-zero variance)
     const variedReturns = Array.from({ length: 100 }, () => (Math.random() - 0.5) * 0.1);
     const result = await service.compute(
       {
-        positions: [
-          { symbol: 'BTC', currentValue: 10000, side: 'long', returns: variedReturns },
-        ],
+        positions: [{ symbol: 'BTC', currentValue: 10000, side: 'long', returns: variedReturns }],
         confidence: 0.95,
         method: 'historical',
       },
@@ -115,12 +96,7 @@ describe('VaRService', () => {
   });
 
   it('returns zero VaR for empty portfolio', async () => {
-    const redis = {
-      get: vi.fn().mockResolvedValue(null),
-      setex: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1),
-    } as unknown as VaRService['redis'];
-
+    const redis = createMockRedis();
     const service = new VaRService(redis);
     const result = await service.compute(
       { positions: [], confidence: 0.95, method: 'parametric' },
@@ -146,12 +122,7 @@ describe('VaRService', () => {
       },
     };
 
-    const redis = {
-      get: vi.fn().mockResolvedValue(JSON.stringify(cachedData)),
-      setex: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1),
-    } as unknown as VaRService['redis'];
-
+    const redis = createMockRedis(JSON.stringify(cachedData));
     const service = new VaRService(redis);
     const result = await service.compute(
       { positions: [{ symbol: 'X', currentValue: 50000, side: 'long', returns: [0.01] }], confidence: 0.95 },
@@ -163,14 +134,8 @@ describe('VaRService', () => {
   });
 
   it('detects VaR breach against threshold', async () => {
-    const redis = {
-      get: vi.fn().mockResolvedValue(null),
-      setex: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1),
-    } as unknown as VaRService['redis'];
-
+    const redis = createMockRedis();
     const service = new VaRService(redis);
-    // Generate varied returns so parametric VaR is non-zero (high variance)
     const volatileReturns = Array.from({ length: 50 }, () => (Math.random() - 0.3) * 0.15);
     const result = await service.compute(
       {
@@ -187,12 +152,7 @@ describe('VaRService', () => {
   });
 
   it('invalidates cache for user', async () => {
-    const redis = {
-      get: vi.fn().mockResolvedValue(null),
-      setex: vi.fn().mockResolvedValue('OK'),
-      del: vi.fn().mockResolvedValue(1),
-    } as unknown as VaRService['redis'];
-
+    const redis = createMockRedis();
     const service = new VaRService(redis);
     await service.invalidate('user-invalidate');
     expect(redis.del).toHaveBeenCalledWith('risk:var:user-invalidate');

@@ -3,9 +3,7 @@
  * Verifies NOWPayments IPN webhooks, provisions subscriber tiers, and enforces idempotency.
  */
 
-import crypto from 'node:crypto';
 import { logger } from '../shared/utils/logger';
-import { sortObjectDeep } from '../platform/workers/nowpayments-utils';
 import {
   NowPaymentsIpnSchema,
   TIER_ENTITLEMENTS,
@@ -13,30 +11,16 @@ import {
   type ActivationResult,
   type NowPaymentsIpnInput,
   type SubscriptionStore,
-  type TenantSubscriptionRecord,
   type Tier,
   type TierActivationGatewayConfig,
   type TierEntitlements,
   type TierInvalidationCallback,
 } from './tier-activation-types';
+import { InMemorySubscriptionStore } from './tier-activation-store';
+import { verifyIpnSignature } from './tier-activation-signature';
 
-export class InMemorySubscriptionStore implements SubscriptionStore {
-  private tenants = new Map<string, TenantSubscriptionRecord>();
-  private processed = new Set<string>();
-
-  async getTenant(tenantId: string): Promise<TenantSubscriptionRecord | null> {
-    return this.tenants.get(tenantId) ?? null;
-  }
-
-  async saveTenant(record: TenantSubscriptionRecord): Promise<void> {
-    this.tenants.set(record.tenantId, { ...record });
-    record.processedPayments.forEach((p) => this.processed.add(p));
-  }
-
-  async isPaymentProcessed(paymentId: string): Promise<boolean> {
-    return this.processed.has(paymentId);
-  }
-}
+export { InMemorySubscriptionStore };
+export { verifyIpnSignature };
 
 export class TierActivationGateway {
   private ipnSecret?: string;
@@ -50,24 +34,7 @@ export class TierActivationGateway {
   }
 
   verifySignature(rawBody: string, signature: string): boolean {
-    if (!this.ipnSecret) return false;
-    try {
-      const sigBuf = Buffer.from(signature.trim(), 'utf8');
-      try {
-        const sorted = sortObjectDeep(JSON.parse(rawBody));
-        const sortedHmac = crypto.createHmac('sha512', this.ipnSecret).update(JSON.stringify(sorted)).digest('hex');
-        const sortedBuf = Buffer.from(sortedHmac, 'utf8');
-        if (sortedBuf.length === sigBuf.length && crypto.timingSafeEqual(sortedBuf, sigBuf)) return true;
-      } catch {
-        // Fallback to raw verification if sorting fails
-      }
-      const rawHmac = crypto.createHmac('sha512', this.ipnSecret).update(rawBody).digest('hex');
-      const rawBuf = Buffer.from(rawHmac, 'utf8');
-      return rawBuf.length === sigBuf.length && crypto.timingSafeEqual(rawBuf, sigBuf);
-    } catch (err) {
-      logger.error('[TierActivationGateway] Signature check error:', { err });
-      return false;
-    }
+    return verifyIpnSignature(rawBody, signature, this.ipnSecret);
   }
 
   resolveTenantAndTier(payload: NowPaymentsIpnInput): { tenantId: string; tier: Tier } {

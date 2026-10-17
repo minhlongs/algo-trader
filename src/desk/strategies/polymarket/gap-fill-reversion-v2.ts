@@ -13,81 +13,28 @@ import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
-  type BaseStrategyConfig,
   type StrategyDeps,
 } from './base-polymarket-strategy';
+import {
+  type GapFillReversionConfig,
+  type GapRecord,
+  DEFAULT_CONFIG,
+  detectGap,
+  isGapConfirmed,
+  isGapStale,
+  calcFillTarget,
+} from './gap-fill-reversion-types';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
-export interface GapFillReversionConfig extends BaseStrategyConfig {
-  gapThreshold: number;
-  confirmTicks: number;
-  gapDecayMs: number;
-}
-
-export const DEFAULT_CONFIG: GapFillReversionConfig = {
-  gapThreshold: 0.03,
-  confirmTicks: 2,
-  gapDecayMs: 300_000,
-  minVolume: 5000,
-  takeProfitPct: 0.025,
-  stopLossPct: 0.02,
-  maxHoldMs: 20 * 60_000,
-  maxPositions: 4,
-  cooldownMs: 120_000,
-  positionSize: '10',
-};
+export type { GapFillReversionConfig, GapRecord } from './gap-fill-reversion-types';
+export {
+  DEFAULT_CONFIG,
+  detectGap,
+  isGapConfirmed,
+  isGapStale,
+  calcFillTarget,
+} from './gap-fill-reversion-types';
 
 const STRATEGY_NAME = 'gap-fill-reversion' as StrategyName;
-
-// ── Internal types ───────────────────────────────────────────────────────────
-
-export interface GapRecord {
-  direction: 'up' | 'down';
-  size: number;
-  preGapPrice: number;
-  gapPrice: number;
-  timestamp: number;
-  confirmCount: number;
-}
-
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
-export function detectGap(
-  prevPrice: number,
-  currentPrice: number,
-  threshold: number,
-): { isGap: boolean; direction: 'up' | 'down'; size: number } {
-  const size = Math.abs(currentPrice - prevPrice);
-  const direction: 'up' | 'down' = currentPrice > prevPrice ? 'up' : 'down';
-  return { isGap: size > threshold, direction, size };
-}
-
-export function isGapConfirmed(
-  gapDirection: 'up' | 'down',
-  gapPrice: number,
-  currentPrice: number,
-  confirmCount: number,
-  requiredConfirms: number,
-): boolean {
-  if (confirmCount < requiredConfirms) return false;
-  if (gapDirection === 'up') return currentPrice >= gapPrice;
-  return currentPrice <= gapPrice;
-}
-
-export function isGapStale(gapTimestamp: number, now: number, decayMs: number): boolean {
-  return now - gapTimestamp > decayMs;
-}
-
-export function calcFillTarget(
-  preGapPrice: number,
-  gapPrice: number,
-  fillPct: number = 0.5,
-): number {
-  return preGapPrice + fillPct * (gapPrice - preGapPrice);
-}
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class GapFillReversionStrategy extends BasePolymarketStrategy {
   private readonly cfg: GapFillReversionConfig;
@@ -137,17 +84,23 @@ export class GapFillReversionStrategy extends BasePolymarketStrategy {
             continue;
           }
 
-          if (!isGapConfirmed(existingGap.direction, existingGap.gapPrice, ba.mid,
-            existingGap.confirmCount, this.cfg.confirmTicks)) {
+          if (
+            !isGapConfirmed(
+              existingGap.direction,
+              existingGap.gapPrice,
+              ba.mid,
+              existingGap.confirmCount,
+              this.cfg.confirmTicks,
+            )
+          ) {
             continue;
           }
 
           const side: 'yes' | 'no' = existingGap.direction === 'down' ? 'yes' : 'no';
           const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
-          const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
+          const entryPrice = side === 'yes' ? ba.ask : 1 - ba.bid;
 
-          await this.enterPosition(tokenId, market.conditionId, side, entryPrice,
-            parseFloat(this.cfg.positionSize));
+          await this.enterPosition(tokenId, market.conditionId, side, entryPrice, parseFloat(this.cfg.positionSize));
 
           logger.debug('Gap fill entry', this.strategyName, {
             gapDirection: existingGap.direction,
@@ -179,8 +132,6 @@ export class GapFillReversionStrategy extends BasePolymarketStrategy {
     }
   }
 }
-
-// ── Legacy factory (backward compat) ─────────────────────────────────────────
 
 export interface GapFillReversionDeps extends StrategyDeps {
   config?: Partial<GapFillReversionConfig>;

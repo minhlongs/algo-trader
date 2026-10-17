@@ -8,9 +8,44 @@ import { logger } from '../../shared/utils/logger';
 import {
   ProviderHealthStatus,
   MarketDataSource,
+  ProviderFailoverConfig,
   ProviderHealthSnapshot,
   CircuitState,
 } from './provider-failover-types';
+
+export function resolveFailoverConfig(config: ProviderFailoverConfig): Required<ProviderFailoverConfig> {
+  return {
+    ...config,
+    failureThreshold: config.failureThreshold ?? 3,
+    failbackCooldownMs: config.failbackCooldownMs ?? 5 * 60 * 1000,
+    recoveryTimeMs: config.recoveryTimeMs ?? 60 * 1000,
+    enableAutoFailback: config.enableAutoFailback ?? true,
+    healthCheckIntervalMs: config.healthCheckIntervalMs ?? 10_000,
+  };
+}
+
+export function applyRequestResultSnapshot(
+  providerStatus: Map<MarketDataSource, ProviderHealthSnapshot>,
+  activeProvider: MarketDataSource,
+  success: boolean,
+  latencyMs: number,
+  failureThreshold: number
+): ProviderHealthSnapshot | undefined {
+  const snapshot = providerStatus.get(activeProvider);
+  if (!snapshot) return undefined;
+
+  snapshot.requestCount++;
+  if (success) {
+    snapshot.lastSuccess = Date.now();
+    snapshot.avgLatency = snapshot.avgLatency * 0.7 + latencyMs * 0.3;
+    snapshot.consecutiveFailures = 0;
+  } else {
+    snapshot.lastFailure = Date.now();
+    snapshot.consecutiveFailures++;
+  }
+  updateProviderStatus(providerStatus, activeProvider, calculateHealthStatus(snapshot, failureThreshold));
+  return snapshot;
+}
 
 export function calculateHealthStatus(
   snapshot: ProviderHealthSnapshot,

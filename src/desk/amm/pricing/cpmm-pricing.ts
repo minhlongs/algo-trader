@@ -12,6 +12,9 @@ import {
   CpmmSpotPrices,
   CpmmSwapResult,
 } from '../types/cpmm-types';
+import { calculateAddLiquidity, calculateRemoveLiquidity } from './cpmm-liquidity';
+
+export { calculateAddLiquidity, calculateRemoveLiquidity };
 
 export class CpmmPricing {
   public static calculateSpotPrices(reserves: CpmmReserves): CpmmSpotPrices {
@@ -153,20 +156,7 @@ export class CpmmPricing {
     reserves: CpmmReserves,
     totalLpShares: number
   ): CpmmLiquidityResult {
-    if (deltaYes <= 0 || deltaNo <= 0) throw new Error('Deltas must be positive');
-    const lpSharesDelta = totalLpShares === 0
-      ? Math.sqrt(deltaYes * deltaNo)
-      : totalLpShares * Math.min(deltaYes / reserves.yesReserve, deltaNo / reserves.noReserve);
-
-    const newRx = reserves.yesReserve + deltaYes;
-    const newRy = reserves.noReserve + deltaNo;
-    return {
-      lpSharesDelta,
-      totalLpShares: totalLpShares + lpSharesDelta,
-      deltaYes,
-      deltaNo,
-      newReserves: { yesReserve: newRx, noReserve: newRy, k: newRx * newRy },
-    };
+    return calculateAddLiquidity(deltaYes, deltaNo, reserves, totalLpShares);
   }
 
   public static calculateRemoveLiquidity(
@@ -174,18 +164,6 @@ export class CpmmPricing {
     reserves: CpmmReserves,
     totalLpShares: number
   ): CpmmLiquidityResult {
-    if (lpSharesToBurn <= 0 || lpSharesToBurn > totalLpShares) throw new Error('Invalid LP shares to burn');
-    const shareRatio = lpSharesToBurn / totalLpShares;
-    const deltaYes = reserves.yesReserve * shareRatio;
-    const deltaNo = reserves.noReserve * shareRatio;
-    const newRx = reserves.yesReserve - deltaYes;
-    const newRy = reserves.noReserve - deltaNo;
-    return {
-      lpSharesDelta: -lpSharesToBurn,
-      totalLpShares: totalLpShares - lpSharesToBurn,
-      deltaYes,
-      deltaNo,
-      newReserves: { yesReserve: newRx, noReserve: newRy, k: newRx * newRy },
-    };
+    return calculateRemoveLiquidity(lpSharesToBurn, reserves, totalLpShares);
   }
 }

@@ -29,8 +29,6 @@ import {
 } from './bench-http2-stats';
 import { SimpleHttp2Adapter } from './bench-http2-adapter';
 
-// ── Benchmark Runners ─────────────────────────────────────────────────────────
-
 async function runSequentialBenchmark(
   adapter: SimpleHttp2Adapter,
   iterations: number = REQUESTS_PER_TEST
@@ -54,11 +52,12 @@ async function runConcurrentBenchmark(
     await adapter.request();
     return performance.now() - startTimes[idx];
   });
-  const latencies = await Promise.all(promises);
-  return calculateStats(latencies);
+  return calculateStats(await Promise.all(promises));
 }
 
-// ── Main Runner ───────────────────────────────────────────────────────────────
+function formatStat(s: BenchmarkStats): string {
+  return `p50=${s.p50.toFixed(2)}ms, p99=${s.p99.toFixed(2)}ms, mean=${s.mean.toFixed(2)}ms`;
+}
 
 async function runBenchmarks(): Promise<void> {
   logger.info('Starting HTTP/2 Connection Pool Latency Benchmark\n');
@@ -66,21 +65,11 @@ async function runBenchmarks(): Promise<void> {
   const resultsDir = '/Users/macbook/algo-trader/plans/20260617-1430-differentiation-quick-wins';
   const resultsFile = `${resultsDir}/benchmark-http2-results.txt`;
   await fs.mkdir(resultsDir, { recursive: true });
-
   process.env.POLY_MAX_CONNECTIONS = String(POOL_MAX_CONNECTIONS);
 
-  // Get singleton pool
   const pool = Http2ConnectionPool.getInstance();
-
-  // Patch pool's createSession to use MockHttp2Session instead of real http2.connect
   const patchedCreateSession = async function (this: Http2ConnectionPool, origin: string, _ip: string) {
-    const session = new MockHttp2Session(origin);
-    const info = {
-      session,
-      origin,
-      inUse: 1,
-      lastUsed: Date.now(),
-    };
+    const info = { session: new MockHttp2Session(origin), origin, inUse: 1, lastUsed: Date.now() };
     const sessions = (this as unknown as { sessions: Map<string, typeof info[]> }).sessions.get(origin) || [];
     sessions.push(info);
     (this as unknown as { sessions: Map<string, typeof info[]> }).sessions.set(origin, sessions);
@@ -101,30 +90,19 @@ async function runBenchmarks(): Promise<void> {
   }
 
   const aggregatedResults: BenchmarkIteration[] = [];
-
   logger.info(`Running ${ITERATIONS} iterations...\n`);
 
   for (let i = 0; i < ITERATIONS; i++) {
     logger.info(`Iteration ${i + 1}/${ITERATIONS}:`);
-
-    logger.info('  Baseline (no pool) - Sequential...');
     const baselineSeq = await runSequentialBenchmark(baselineAdapter);
-
-    logger.info('  Baseline (no pool) - Concurrent...');
     const baselineConc = await runConcurrentBenchmark(baselineAdapter);
-
-    logger.info('  HTTP/2 Pool - Sequential...');
     const pooledSeq = await runSequentialBenchmark(pooledAdapter);
-
-    logger.info('  HTTP/2 Pool - Concurrent...');
     const pooledConc = await runConcurrentBenchmark(pooledAdapter);
-
     aggregatedResults.push({
       baseline: { sequential: baselineSeq, concurrent: baselineConc },
       pooled: { sequential: pooledSeq, concurrent: pooledConc },
     });
-
-    logger.info(`  Complete.\n`);
+    logger.info('  Complete.\n');
   }
 
   const avgBaselineSeq = averageStats(aggregatedResults.map(r => r.baseline.sequential));
@@ -135,14 +113,11 @@ async function runBenchmarks(): Promise<void> {
   const seqImp = calculateImprovement(avgBaselineSeq, avgPooledSeq);
   const concImp = calculateImprovement(avgBaselineConc, avgPooledConc);
 
-  const formatStat = (s: BenchmarkStats) =>
-    `p50=${s.p50.toFixed(2)}ms, p99=${s.p99.toFixed(2)}ms, mean=${s.mean.toFixed(2)}ms`;
-
-  const lines: string[] = [
+  const output = [
     'HTTP/2 Connection Pool Latency Benchmark',
     '=======================================',
     '',
-    `Configuration:`,
+    'Configuration:',
     `  Requests per test: ${REQUESTS_PER_TEST}`,
     `  Iterations: ${ITERATIONS}`,
     `  Connect delay: ${CONNECT_DELAY_MS}ms`,
@@ -166,17 +141,13 @@ async function runBenchmarks(): Promise<void> {
     '',
     'Conclusion:',
     `  ${seqImp.p50 >= 30 ? '✓' : '✗'} p50 sequential improvement ${seqImp.p50.toFixed(1)}% ${seqImp.p50 >= 30 ? 'meets' : 'below'} 30% target`,
-  ];
+  ].join('\n');
 
-  const output = lines.join('\n');
   logger.info('\n' + output);
   await fs.writeFile(resultsFile, output, 'utf-8');
   logger.info(`\nResults saved to: ${resultsFile}`);
-
   await pool.shutdown();
 }
-
-// ── Entry Point ───────────────────────────────────────────────────────────────
 
 process.env.POLY_MAX_CONNECTIONS = String(POOL_MAX_CONNECTIONS);
 runBenchmarks().catch(err => {

@@ -11,20 +11,15 @@ import { isQwenEnabled } from './qwen-drawdown-monitor';
 import { getPortfolio, saveTrades, savePaperTradeV3, POSITION_SIZE_PCT, MIN_AI_CONFIDENCE } from './paper-trading-persistence';
 import { runPaperTradingLoop } from './paper-trading-orchestrator-runner';
 import { tryReservePaperCapital } from './paper-capital-reservation';
+export { type PaperPortfolio } from './paper-trading-types';
 
-// Re-export persistence functions for consumers
-export { getPortfolio, saveTrades, loadTrades, savePaperTradeV3, __resetPortfolioForTests, resetPortfolio } from './paper-trading-persistence';
-export { resetCapitalReservations } from './paper-capital-reservation';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
 export interface PaperTrade {
   id: string;
   marketId: string;
   side: 'YES' | 'NO';
-  size: number; // USDC
+  size: number;
   entryPrice: number;
   strategy: string;
-  /** Source tag for A/B P&L ledger: 'qwen' | 'deepseek' | 'swarm' | 'legacy' */
   source: string;
   signalConfidence: number;
   swarmApproved: boolean;
@@ -32,7 +27,6 @@ export interface PaperTrade {
   timestamp: number;
 }
 
-/** Derive source tag from strategy name prefix */
 export function deriveSource(strategy: string): string {
   if (strategy.startsWith('qwen')) return 'qwen';
   if (strategy.startsWith('deepseek')) return 'deepseek';
@@ -40,22 +34,13 @@ export function deriveSource(strategy: string): string {
   return 'legacy';
 }
 
-export interface PaperPortfolio {
-  capital: number;
-  positions: PaperTrade[];
-  closedTrades: Array<PaperTrade & { exitPrice: number; pnl: number }>;
-  totalPnl: number;
-  winCount: number;
-  lossCount: number;
-}
-
-// ─── Signal processing ────────────────────────────────────────────────────────
+export { getPortfolio, saveTrades, loadTrades, savePaperTradeV3, __resetPortfolioForTests, resetPortfolio } from './paper-trading-persistence';
+export { resetCapitalReservations } from './paper-capital-reservation';
 
 export async function processCandidate(candidate: SignalCandidate, maxPositions: number): Promise<void> {
   const vibe = getVibeState();
   const portfolio = getPortfolio();
 
-  // L1+L2: check Qwen kill switch and swarm-enabled flag before processing
   const source = deriveSource(candidate.signalType ?? '');
   if (source === 'qwen' && !isQwenEnabled()) {
     logger.info('[PaperOrchestrator] Qwen signal BLOCKED — kill switch or drawdown disable', {
@@ -64,7 +49,6 @@ export async function processCandidate(candidate: SignalCandidate, maxPositions:
     return;
   }
 
-  // Endgame signals are mathematical — use lower threshold (0.5% min)
   const isEndgame = candidate.reasoning.includes('Endgame') || candidate.reasoning.includes('near-certain');
   const minEdge = isEndgame ? 0.005 : Math.max(0.01, vibe.minEdge / 100);
   if (candidate.expectedEdge < minEdge) return;
@@ -127,7 +111,6 @@ export async function processCandidate(candidate: SignalCandidate, maxPositions:
     reservation.commit();
     saveTrades();
 
-    // Persist to source-tagged paper_trades_v3 for Qwen A/B P&L tracking
     void savePaperTradeV3(trade);
 
     recordPrediction({
@@ -144,7 +127,6 @@ export async function processCandidate(candidate: SignalCandidate, maxPositions:
   }
 }
 
-/** Ingest a MARL market maker fill into the paper portfolio. */
 export function recordMarlPaperFill(
   marketId: string,
   side: 'buy' | 'sell',
@@ -179,11 +161,7 @@ export function recordMarlPaperFill(
   return trade;
 }
 
-// ─── Position settlement — delegated to paper-trading-persistence ─────────────
-
 export { settleStalePositions as checkPositions } from './paper-trading-persistence';
-
-// ─── Entry point ──────────────────────────────────────────────────────────────
 
 export async function startPaperTrading(config?: {
   capitalUsdc?: number;

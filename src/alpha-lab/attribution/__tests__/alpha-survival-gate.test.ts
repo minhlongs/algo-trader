@@ -1,26 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import {
-  evaluateAlphaSurvivalGate,
-  DEFAULT_ALPHA_SURVIVAL_CRITERIA,
-} from '../alpha-survival-gate';
+import { evaluateAlphaSurvivalGate, DEFAULT_ALPHA_SURVIVAL_CRITERIA } from '../alpha-survival-gate';
 import type { WalkForwardSummary } from '../../walkforward/walkforward-types';
 import type { BacktestTrade } from '../../../desk/backtesting/types';
 
 function createMockSummary(overrides?: Partial<WalkForwardSummary>): WalkForwardSummary {
   return {
-    totalSteps: 5,
-    trainWinRate: 0.65,
-    valWinRate: 0.60,
-    testWinRate: 0.58,
-    overfitGap: 0.07,
-    consistencyScore: 0.75,
-    regimeConsistencyScore: 0.80,
-    avgTestTrades: 10,
-    totalTestTrades: 40,
-    testSharpe: 1.8,
-    testMaxDrawdown: 0.08,
-    testProfitFactor: 1.8,
-    testTotalPnl: 0.25,
+    totalSteps: 5, trainWinRate: 0.65, valWinRate: 0.60, testWinRate: 0.58,
+    overfitGap: 0.07, consistencyScore: 0.75, regimeConsistencyScore: 0.80,
+    avgTestTrades: 10, totalTestTrades: 40, testSharpe: 1.8,
+    testMaxDrawdown: 0.08, testProfitFactor: 1.8, testTotalPnl: 0.25,
     cumulativeEquity: [
       { timestamp: '2025-01-01T00:00:00Z', equity: 1.0 },
       { timestamp: '2025-01-02T00:00:00Z', equity: 1.1 },
@@ -37,10 +25,7 @@ function createMockTrades(count = 30, winRate = 0.7, tp = 0.03, sl = 0.01): Back
     return {
       timestamp: new Date(1700000000000 + i * 3600000).toISOString(),
       tokenId: i % 2 === 0 ? 'TREND_UP' : 'RANGE',
-      side: 'BUY',
-      price: 100,
-      size: 1,
-      pnl,
+      side: 'BUY', price: 100, size: 1, pnl,
     };
   });
 }

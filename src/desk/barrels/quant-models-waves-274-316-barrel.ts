@@ -1,0 +1,56 @@
+/**
+ * Barrel cluster 4: Quantitative Desk Models (Waves 274 - 315) and Open-Core SaaS (Wave 316).
+ * Rule: strictly < 85 LOC.
+ */
+export * as GatheralJaisson2018Rough from '../gatheraljaisson2018rough/index';
+export * as CarteaDonnelly2018Signals from '../carteadonnelly2018signals/index';
+export * as ContStoikov2010Book from '../contstoikov2010book/index';
+export * as GatheralSchied2013Predatory from '../gatheralschied2013predatory/index';
+export * as GueantLehalle2013Mm from '../gueantlehalle2013mm/index';
+export * as BouchaudFarmerLillo2009Digest from '../bouchaudfarmerlillo2009digest/index';
+export * as Almgren2012StochasticLiq from '../almgren2012stochasticliq/index';
+export * as CarteaJaimungal2016OrderFlow from '../carteajaimungal2016orderflow/index';
+export * as Gatheral2010NoDarb from '../gatheral2010nodarb/index';
+export * as AlfonsiFruthSchied2010Shape from '../alfonsifruthschied2010shape/index';
+export * as CarteaJaimungal2015StatArb from '../carteajaimungal2015statarb/index';
+export * as ContKukanovStoikov2014Ofi from '../contkukanovstoikov2014ofi/index';
+export * as ObizhaevaWang2013Supply from '../obizhaevawang2013supply/index';
+export * as CarteaJaimungal2016Learning from '../carteajaimungal2016learning/index';
+export * as GatheralSchied2012Fredholm from '../gatheralschied2012fredholm/index';
+export * as GatheralSchied2011Gbm from '../gatheralschied2011gbm/index';
+export * as CarteaDonnellyJaimungal2017Uncertainty from '../carteadonnellyjaimungal2017uncertainty/index';
+export * as AlfonsiSchiedSlynko2012Positive from '../alfonsischiedslynko2012positive/index';
+export * as Gueant2017OptimalMm from '../gueant2017optimalmm/index';
+export * as CarteaJaimungal2015Hybrid from '../carteajaimungal2015hybrid/index';
+export * as GatheralJaisson2018Heston from '../gatheraljaisson2018heston/index';
+export * as GatheralSchied2013Dynamical from '../gatheralschied2013dynamical/index';
+export * as CarteaJaimungal2016FxTriplet from '../carteajaimungal2016fxtriplet/index';
+export * as Bouchaud2004Propagator from '../bouchaud2004propagator/index';
+export * as GueantLehalle2012LimitLiq from '../gueantlehalle2012limitliq/index';
+export * as CarteaJaimungal2016Incorporating from '../carteajaimungal2016incorporating/index';
+export * as GatheralKellerRessel2019Affine from '../gatheralkellerressel2019affine/index';
+export * as AlmgrenChriss2000Drift from '../almgrenchriss2000drift/index';
+export * as CarteaJaimungal2015Adverse from '../carteajaimungal2015adverse/index';
+export * as GatheralJacquier2014Svi from '../gatheraljacquier2014svi/index';
+export * as ContKukanovStoikov2014DeepOfi from '../contkukanovstoikov2014deepofi/index';
+export * as GueantLehalle2015TargetPov from '../gueantlehalle2015targetpov/index';
+export * as GatheralJaisson2018Hawkes from '../gatheraljaisson2018hawkes/index';
+export * as CarteaJaimungal2016Permanent from '../carteajaimungal2016permanent/index';
+export * as Gueant2016BlockTrade from '../gueant2016blocktrade/index';
+export * as Gatheral2010ZeroIntelligence from '../gatheral2010zerointelligence/index';
+export * as Almgren2005Direct from '../almgren2005direct/index';
+export * as CarteaJaimungal2016Cointegrated from '../carteajaimungal2016cointegrated/index';
+export * as Bouchaud2006Molasses from '../bouchaud2006molasses/index';
+export * as GatheralSchied2013Exponential from '../gatheralschied2013exponential/index';
+export * as GueantLehalleTapia2012Portfolio from '../gueantlehalle2012portfolio/index';
+export * as WyartBouchaud2008SpreadImpact from '../wyartbouchaud2008spreadimpact/index';
+export * as OpenCoreSaas2026Monetization from '../opencoresaas2026monetization/index';
+export * as Cartea2017Tikhonov from '../cartea2017tikhonov/index';
+export * as Lehalle2019AdverseSelection from '../lehalle2019adverseselection/index';
+export * as Bouchaud2009ImpactDecay from '../bouchaud2009impactdecay/index';
+export * as Gueant2015MultiAssetLiq from '../gueant2015multiassetliq/index';
+export * as Gatheral2014VolatilityRough from '../gatheral2014volatilityrough/index';
+export * as Cont2011OrderBookQueuing from '../cont2011orderbookqueuing/index';
+export * as AlmgrenChriss2001Risk from '../almgrenchriss2001risk/index';
+export * as Cartea2018SignalDecay from '../cartea2018signaldecay/index';
+export * as Bouchaud2018TradesBook from '../bouchaud2018tradesbook/index';

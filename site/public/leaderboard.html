@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AlgoTrade OS - Bilingual Backtest &amp; Alpha Leaderboard</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-lowest": "#0d0e11",
+            "surface-bright": "#38393d",
+            "on-primary": "#00373a",
+            "inverse-on-surface": "#2f3034",
+            "secondary": "#70ffba",
+            "on-primary-container": "#006a70",
+            "primary-fixed": "#6ff6ff",
+            "on-tertiary-container": "#c3000a",
+            "on-error": "#690005",
+            "surface-dim": "#121316",
+            "on-surface": "#e3e2e6",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "on-tertiary-fixed-variant": "#930005",
+            "on-background": "#e3e2e6",
+            "on-primary-fixed": "#002022",
+            "inverse-primary": "#00696f",
+            "surface-container-low": "#1b1b1f",
+            "on-error-container": "#ffdad6",
+            "on-tertiary-fixed": "#410001",
+            "on-secondary": "#003822",
+            "surface-tint": "#00dce6",
+            "tertiary-fixed": "#ffdad5",
+            "surface-container": "#1f1f23",
+            "on-tertiary": "#690003",
+            "background": "#121316",
+            "outline": "#849495",
+            "on-surface-variant": "#b9cacb",
+            "surface-variant": "#343538",
+            "on-secondary-container": "#00613e",
+            "on-secondary-fixed-variant": "#005234",
+            "secondary-container": "#01e599",
+            "primary": "#e0fdff",
+            "tertiary-container": "#ffd0ca",
+            "primary-fixed-dim": "#00dce6",
+            "outline-variant": "#3a494b",
+            "on-primary-fixed-variant": "#004f53",
+            "error": "#ffb4ab",
+            "surface-container-high": "#292a2d",
+            "primary-container": "#00f2fe",
+            "surface": "#121316",
+            "secondary-fixed": "#4dffb2",
+            "surface-container-highest": "#343538",
+            "secondary-fixed-dim": "#00e297",
+            "on-secondary-fixed": "#002112",
+            "inverse-surface": "#e3e2e6",
+            "error-container": "#93000a",
+            "tertiary": "#fff5f4"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-xs": "0.125rem",
+            "gutter-desktop": "0.5rem",
+            "space-md": "0.5rem",
+            "margin-desktop": "0.75rem",
+            "space-sm": "0.25rem",
+            "margin": "0.75rem",
+            "gutter-mobile": "0.25rem",
+            "space-lg": "0.75rem",
+            "gutter": "0.5rem",
+            "space-xl": "1rem",
+            "margin-mobile": "0.5rem"
+          },
+          "fontFamily": {
+            "headline-xl-mobile": ["Space Grotesk"],
+            "body-sm": ["Inter"],
+            "label-caps": ["JetBrains Mono"],
+            "data-mono-sm": ["JetBrains Mono"],
+            "headline-xl": ["Space Grotesk"],
+            "body-lg": ["Inter"],
+            "data-mono-md": ["JetBrains Mono"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "headline-lg": ["Space Grotesk"],
+            "body-md": ["Inter"],
+            "headline-md": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 15px;
+      line-height: 1;
+    }
+    .material-symbols-outlined.filled {
+      font-variation-settings: 'FILL' 1;
+    }
+    .neon-cyan-glow {
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.35);
+    }
+    .neon-red-glow {
+      box-shadow: 0 0 10px rgba(255, 59, 48, 0.4);
+    }
+    /* Micro scrollbars */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d0e11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3a494b;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00f2fe;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-x-hidden selection:bg-primary-container selection:text-surface-container-lowest">
+<!-- TOP NAVIGATION BAR (Immutable Source of Truth) -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest flex justify-between items-center w-full px-space-md py-space-xs h-11 border-b border-outline-variant select-none">
+<!-- Left: Brand + Quick Search / Enclave Badge -->
+<div class="flex items-center gap-space-lg">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" style="font-size: 20px;">query_stats</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">AlgoTrade OS</span>
+</div>
+<div class="hidden xl:flex items-center gap-1.5 px-2 py-0.5 bg-surface-container-low border border-outline-variant text-on-surface-variant font-data-mono-sm text-data-mono-sm rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="text-primary font-semibold">v4.9.2-ALPHA</span>
+<span class="text-outline">::</span>
+<span>LEADERBOARD &amp; BACKTEST ENCLAVE</span>
+</div>
+<!-- Quick Search Bar (search_bar: on_left) -->
+<div class="hidden md:flex items-center bg-surface-container px-2 py-1 rounded border border-outline-variant text-on-surface-variant focus-within:border-primary-container">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none text-on-surface placeholder:text-outline text-data-mono-sm font-data-mono-sm focus:ring-0 p-0 ml-1.5 w-48 lg:w-64 outline-none" placeholder="Search strategy hash / ticker / author..." type="text"/>
+<span class="text-data-mono-sm text-outline border border-outline-variant px-1 rounded">⌘K</span>
+</div>
+</div>
+<!-- Center: Navigation Links with Active Leaderboard Tab -->
+<nav class="hidden lg:flex items-center gap-space-md">
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Strategies</a>
+<a class="text-primary-container border-b-2 border-primary-container pb-0.5 font-bold font-data-mono-sm text-data-mono-sm" href="#">Leaderboard</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Execution</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Telemetry</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Ledger</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Shards</a>
+</nav>
+<!-- Right: Bilingual Toggle + Actions + Kill-Switch -->
+<div class="flex items-center gap-space-md">
+<!-- BILINGUAL TOGGLE -->
+<div class="flex items-center bg-surface-container-high border border-outline-variant rounded p-0.5" title="Chuyển đổi ngôn ngữ / Switch Language">
+<button class="px-1.5 py-0.5 text-data-mono-sm font-data-mono-sm font-semibold rounded bg-primary-container text-surface-container-lowest transition-all" id="lang-btn-vi">VI</button>
+<span class="text-outline text-[9px] px-0.5">/</span>
+<button class="px-1.5 py-0.5 text-data-mono-sm font-data-mono-sm text-on-surface-variant hover:text-on-surface transition-all" id="lang-btn-en">EN</button>
+</div>
+<div class="hidden sm:flex items-center gap-1">
+<button class="p-1 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded transition-colors" title="Cluster Mesh">
+<span class="material-symbols-outlined">hub</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded transition-colors" title="Quant Terminal">
+<span class="material-symbols-outlined">terminal</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded transition-colors relative" title="Alerts">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-container rounded-full"></span>
+</button>
+</div>
+<!-- Secondary Action: Audit Export -->
+<button class="hidden md:flex items-center gap-1 px-2 py-1 bg-surface-container hover:bg-surface-variant border border-outline-variant text-on-surface font-data-mono-sm text-data-mono-sm rounded transition-colors">
+<span class="material-symbols-outlined text-[13px]">file_download</span>
+<span>Audit Export</span>
+</button>
+<!-- Trailing Primary Action: Emergency Kill-Switch -->
+<button class="flex items-center gap-1.5 px-2.5 py-1 bg-error-container hover:bg-on-tertiary-fixed-variant text-on-error-container border border-error/50 font-data-mono-sm text-data-mono-sm font-bold rounded neon-red-glow transition-all active:scale-95">
+<span class="w-2 h-2 rounded-full bg-error animate-ping"></span>
+<span class="tracking-tight uppercase">Kill-Switch</span>
+</button>
+<!-- Avatar Profile Alt -->
+<div class="w-6 h-6 rounded bg-surface-variant border border-outline-variant flex items-center justify-center text-primary-container text-data-mono-sm font-bold" title="Quant Desk Admin Avatar">
+        QA
+      </div>
+</div>
+</header>
+<!-- SECONDARY GLOBAL TELEMETRY BAR -->
+<div class="fixed top-11 left-0 right-0 z-40 bg-surface-container-low h-7 border-b border-outline-variant px-space-md flex items-center justify-between font-data-mono-sm text-data-mono-sm text-on-surface-variant select-none">
+<div class="flex items-center gap-space-lg overflow-x-auto no-scrollbar">
+<div class="flex items-center gap-1.5 whitespace-nowrap">
+<span class="text-outline">PORTFOLIO NAV:</span>
+<span class="text-primary font-bold">$14,295,482.10</span>
+<span class="text-secondary-container font-semibold">(+4.82% 24H)</span>
+</div>
+<div class="h-3 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1.5 whitespace-nowrap">
+<span class="text-outline">P99 LATENCY:</span>
+<span class="text-secondary font-bold">4.1ms</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+</div>
+<div class="h-3 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-2 whitespace-nowrap">
+<span class="text-outline">BENCHMARKS:</span>
+<span class="text-on-surface">BTC: <span class="text-primary-container font-semibold">+18.4% α</span></span>
+<span class="text-outline">|</span>
+<span class="text-on-surface">ETH: <span class="text-secondary font-semibold">+12.1%</span></span>
+<span class="text-outline">|</span>
+<span class="text-on-surface">SOL: <span class="text-secondary font-semibold">+22.7%</span></span>
+<span class="text-outline">|</span>
+<span class="text-on-surface">S&amp;P 500: <span class="text-on-surface-variant font-medium">+1.4%</span></span>
+</div>
+</div>
+<div class="hidden md:flex items-center gap-3 text-[10px]">
+<span class="text-outline flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px] text-primary-container">verified</span>
+<span>Song ngữ Việt - Anh (Active / Hoạt động)</span>
+</span>
+<span class="px-1.5 py-0.2 bg-surface-container rounded text-outline border border-outline-variant">SHARD-NY4-L3</span>
+</div>
+</div>
+<div class="flex pt-[4.5rem]">
+<!-- SIDE NAVIGATION BAR (Docked dense cockpit drawer) -->
+<aside class="fixed top-11 left-0 h-[calc(100vh-2.75rem)] w-56 p-space-xs border-r border-outline-variant bg-surface-container-lowest select-none flex flex-col justify-between z-30 pt-7">
+<!-- Upper Section: Desk ID + Deploy CTA + Main Tabs -->
+<div class="space-y-2">
+<!-- Desk Identity Badge -->
+<div class="p-2 bg-surface-container-low border border-outline-variant rounded">
+<div class="flex items-center justify-between mb-1">
+<span class="font-label-caps text-label-caps text-primary tracking-wider">DESK-ALPHA-01</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="font-data-mono-sm text-[9px] text-outline flex items-center justify-between">
+<span>ONLINE // P99: 4.1ms</span>
+<span class="text-primary-container">NY4-COLOC</span>
+</div>
+</div>
+<!-- CTA: Deploy Algo Button -->
+<button class="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-primary-container text-surface-container-lowest font-headline-md text-headline-md font-bold rounded neon-cyan-glow hover:opacity-90 active:scale-[0.99] transition-all">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span class="tracking-tight text-xs uppercase">Deploy Algo</span>
+</button>
+<!-- Navigation Tabs List -->
+<nav class="space-y-0.5 pt-1">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-outline">query_stats</span>
+<span>Cockpit</span>
+</a>
+<!-- Active Tab: Leaderboard / Bảng Xếp Hạng -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 bg-surface-container text-primary-container border-l-2 border-primary-container font-data-mono-sm text-data-mono-sm font-semibold rounded-r transition-colors" href="#">
+<span class="material-symbols-outlined text-primary-container filled">table_chart</span>
+<span class="flex-1">Alpha Leaderboard</span>
+<span class="text-[9px] px-1 py-0.2 bg-primary-container/20 text-primary-container rounded">LIVE</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-outline">memory</span>
+<span>Backtest Engine</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-outline">dns</span>
+<span>Shard Health</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-outline">shield</span>
+<span>Risk Engine</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-outline">enhanced_encryption</span>
+<span>Audit Log</span>
+</a>
+</nav>
+</div>
+<!-- Lower Section: Shard Telemetry & Settings -->
+<div class="border-t border-outline-variant pt-2 space-y-1">
+<div class="px-2 py-1 bg-surface-container-low rounded border border-outline-variant">
+<div class="flex items-center justify-between text-data-mono-sm text-[10px] text-outline mb-1">
+<span>MEM POOL LOAD</span>
+<span class="text-secondary font-semibold">28.4%</span>
+</div>
+<div class="w-full bg-surface-container h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full" style="width: 28.4%;"></div>
+</div>
+</div>
+<a class="flex items-center gap-space-sm px-space-sm py-1 text-on-surface-variant hover:text-on-surface font-data-mono-sm text-data-mono-sm rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-outline">speed</span>
+<span>Latency Stats</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1 text-on-surface-variant hover:text-on-surface font-data-mono-sm text-data-mono-sm rounded transition-colors" href="#">
+<span class="material-symbols-outlined text-outline">tune</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- MAIN WORKSPACE CONTENT CANVAS -->
+<main class="ml-0 md:ml-56 flex-1 min-h-[calc(100vh-4.5rem)] p-space-md lg:p-4 bg-background">
+<!-- BILINGUAL HERO BANNER / SUB-HEADER -->
+<div class="mb-3 bg-surface-container-lowest border border-outline-variant p-3 lg:p-4 rounded flex flex-col xl:flex-row xl:items-center justify-between gap-3 relative overflow-hidden">
+<div class="absolute -right-8 -bottom-8 w-44 h-44 bg-primary-container/5 rounded-full blur-2xl pointer-events-none"></div>
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="px-1.5 py-0.5 bg-primary-container/10 border border-primary-container/30 text-primary-container font-data-mono-sm text-[10px] font-bold rounded">
+              ATTESTED ENCLAVE 04
+            </span>
+<span class="text-outline font-data-mono-sm text-[11px]">|</span>
+<span class="text-secondary font-data-mono-sm text-[11px] flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              99.98% Backtest-to-Live Fidelity
+            </span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-primary flex items-baseline gap-2">
+<span>Alpha Leaderboard</span>
+<span class="text-outline font-normal text-sm lg:text-base">/ Bảng Xếp Hạng Alpha</span>
+</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+            Institutional Backtest Attestation &amp; Real-Time Performance / Kiểm định Định lượng Thể chế &amp; Hiệu suất Thời gian thực
+          </p>
+</div>
+<!-- Quick Summary Metrics Bento -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 border-t xl:border-t-0 xl:border-l border-outline-variant pt-2 xl:pt-0 xl:pl-4 font-data-mono-sm">
+<div class="bg-surface-container-low p-2 rounded border border-outline-variant">
+<div class="text-outline text-[10px]">TOTAL TESTED PnL</div>
+<div class="text-secondary-container font-data-mono-md text-data-mono-md font-bold">+$48.62M</div>
+<div class="text-[9px] text-outline">Across 320 Algos</div>
+</div>
+<div class="bg-surface-container-low p-2 rounded border border-outline-variant">
+<div class="text-outline text-[10px]">TOP SHARPE (90D)</div>
+<div class="text-primary-container font-data-mono-md text-data-mono-md font-bold">3.62 <span class="text-outline text-[9px] font-normal">(Ann.)</span></div>
+<div class="text-[9px] text-outline">HFT Microstructure</div>
+</div>
+<div class="bg-surface-container-low p-2 rounded border border-outline-variant">
+<div class="text-outline text-[10px]">MAX DRAWDOWN (AVG)</div>
+<div class="text-error font-data-mono-md text-data-mono-md font-bold">-2.68%</div>
+<div class="text-[9px] text-outline">95% Conf. Interval</div>
+</div>
+<div class="bg-surface-container-low p-2 rounded border border-outline-variant">
+<div class="text-outline text-[10px]">SHA-256 PROOFS</div>
+<div class="text-on-surface font-data-mono-md text-data-mono-md font-bold">1,482 HASHES</div>
+<div class="text-[9px] text-secondary">Zero Lookahead Bias</div>
+</div>
+</div>
+</div>
+<!-- FILTER TABS & TIMEFRAME BAR -->
+<div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 mb-3 bg-surface-container-low p-1.5 border border-outline-variant rounded select-none">
+<!-- Asset Class Filter Tabs -->
+<div class="flex items-center gap-1 overflow-x-auto no-scrollbar font-data-mono-sm text-data-mono-sm">
+<button class="px-2.5 py-1 bg-primary-container text-surface-container-lowest font-bold rounded">
+            All Assets / Tất cả
+          </button>
+<button class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface rounded border border-outline-variant transition-colors whitespace-nowrap">
+            BTC Pairs
+          </button>
+<button class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface rounded border border-outline-variant transition-colors whitespace-nowrap">
+            ETH Perps
+          </button>
+<button class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface rounded border border-outline-variant transition-colors whitespace-nowrap">
+            SOL Liquid
+          </button>
+<button class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface rounded border border-outline-variant transition-colors whitespace-nowrap">
+            S&amp;P 500 Equities / Macro
+          </button>
+</div>
+<!-- Backtest Timeframe & Walk-Forward Filter -->
+<div class="flex items-center gap-1 font-data-mono-sm text-[11px] self-end md:self-auto">
+<span class="text-outline text-[10px] hidden sm:inline mr-1">BACKTEST WINDOW:</span>
+<button class="px-2 py-0.5 bg-surface-container text-primary-container border border-primary-container/40 rounded font-semibold">
+            90D Live / Trực tiếp
+          </button>
+<button class="px-2 py-0.5 bg-surface-container hover:bg-surface-container-high text-on-surface-variant border border-outline-variant rounded">
+            180D Walk-Forward
+          </button>
+<button class="px-2 py-0.5 bg-surface-container hover:bg-surface-container-high text-on-surface-variant border border-outline-variant rounded">
+            3Y Monte Carlo Stress
+          </button>
+<button class="px-2 py-0.5 bg-surface-container hover:bg-surface-container-high text-on-surface-variant border border-outline-variant rounded">
+            Full Backtest
+          </button>
+</div>
+</div>
+<!-- PRIMARY ALPHA LEADERBOARD TABLE -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded overflow-hidden mb-4 shadow-2xl">
+<div class="p-2.5 bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">query_stats</span>
+<span class="font-headline-md text-headline-md font-semibold text-primary">Quantitative Ranking Enclave</span>
+<span class="text-outline text-data-mono-sm font-data-mono-sm">(Sorted by Annualized Sharpe &amp; Alpha vs BTC)</span>
+</div>
+<div class="flex items-center gap-2 text-data-mono-sm text-outline">
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+              Live Sync (Tick Interval: 250ms)
+            </span>
+</div>
+</div>
+<!-- Tabular Grid View -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse font-data-mono-sm text-data-mono-sm">
+<thead>
+<tr class="border-b border-outline-variant bg-surface-container text-on-surface-variant text-[10px] uppercase tracking-wider font-semibold select-none">
+<th class="py-2 px-3 text-center w-12">Rank</th>
+<th class="py-2 px-3">Strategy / Tác Giả &amp; Venue</th>
+<th class="py-2 px-2 text-right cursor-pointer hover:text-primary">Sharpe ↕</th>
+<th class="py-2 px-2 text-right cursor-pointer hover:text-primary">Sortino</th>
+<th class="py-2 px-2 text-right cursor-pointer hover:text-primary">Calmar</th>
+<th class="py-2 px-2 text-right">Profit Factor</th>
+<th class="py-2 px-2 text-right">MDD</th>
+<th class="py-2 px-3 text-right text-primary-container">Alpha vs BTC</th>
+<th class="py-2 px-3 text-right">Win Rate / Trades</th>
+<th class="py-2 px-3 text-center">Quick Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/60 font-medium">
+<!-- ROW #1: Avellaneda-Stoikov HFT v2.4 (Rank 1 Highlighted) -->
+<tr class="bg-surface-container/40 hover:bg-surface-container transition-colors group border-l-2 border-l-primary-container">
+<td class="py-2.5 px-3 text-center">
+<div class="inline-flex items-center justify-center w-6 h-6 rounded bg-primary-container text-surface-container-lowest font-bold text-xs neon-cyan-glow">
+                    #1
+                  </div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex items-center gap-1.5">
+<span class="text-primary font-bold text-data-mono-md">Avellaneda-Stoikov HFT v2.4</span>
+<span class="px-1 py-0.2 bg-secondary-container/20 text-secondary text-[9px] rounded font-semibold border border-secondary/30">Verified SHA-256</span>
+</div>
+<div class="text-[10px] text-on-surface-variant flex items-center gap-2 mt-0.5">
+<span class="text-outline">by</span>
+<span class="text-primary-container">@CitadelEx-Lead</span>
+<span class="text-outline">•</span>
+<span class="px-1 bg-surface-container-high rounded text-on-surface">BTC-USDT Binance L3</span>
+<span class="text-outline">•</span>
+<span class="text-secondary font-mono">820ns tick-to-trade</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-right font-bold text-primary-container text-data-mono-md">3.62</td>
+<td class="py-2.5 px-2 text-right text-on-surface">5.12</td>
+<td class="py-2.5 px-2 text-right text-on-surface">4.80</td>
+<td class="py-2.5 px-2 text-right text-secondary-container font-semibold">2.45</td>
+<td class="py-2.5 px-2 text-right text-error font-semibold">-1.8%</td>
+<td class="py-2.5 px-3 text-right">
+<span class="inline-block px-1.5 py-0.5 rounded bg-primary-container/15 text-primary-container font-bold text-data-mono-md border border-primary-container/40 neon-cyan-glow">
+                    +18.4%
+                  </span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<div class="text-secondary font-bold">84.2%</div>
+<div class="text-[9px] text-outline">14,280 trades</div>
+</td>
+<td class="py-2.5 px-3 text-center">
+<div class="flex items-center justify-center gap-1.5">
+<button class="px-2 py-1 bg-surface-container-high hover:bg-surface-bright text-primary border border-outline-variant text-[11px] rounded transition-colors" title="Kiểm tra Backtest">
+                      Inspect
+                    </button>
+<button class="px-2 py-1 bg-primary-container hover:opacity-90 text-surface-container-lowest font-bold text-[11px] rounded transition-all neon-cyan-glow">
+                      Deploy
+                    </button>
+</div>
+</td>
+</tr>
+<!-- ROW #2: Statistical Arbitrage OU-Pairs -->
+<tr class="hover:bg-surface-container/60 transition-colors group">
+<td class="py-2.5 px-3 text-center">
+<div class="inline-flex items-center justify-center w-6 h-6 rounded bg-surface-container-high text-on-surface font-bold text-xs border border-outline-variant">
+                    #2
+                  </div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface font-bold text-data-mono-md">Statistical Arbitrage OU-Pairs</span>
+<span class="px-1 py-0.2 bg-surface-variant text-on-surface-variant text-[9px] rounded font-semibold border border-outline-variant">Attested Enclave</span>
+</div>
+<div class="text-[10px] text-on-surface-variant flex items-center gap-2 mt-0.5">
+<span class="text-outline">by</span>
+<span class="text-primary-container">@DeepAlphaQuant</span>
+<span class="text-outline">•</span>
+<span class="px-1 bg-surface-container-high rounded text-on-surface">ETH/SOL Cross-DEX</span>
+<span class="text-outline">•</span>
+<span class="text-secondary font-mono">1.2ms co-loc</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-right font-bold text-on-surface text-data-mono-md">3.24</td>
+<td class="py-2.5 px-2 text-right text-on-surface">4.48</td>
+<td class="py-2.5 px-2 text-right text-on-surface">4.10</td>
+<td class="py-2.5 px-2 text-right text-secondary-container font-semibold">2.18</td>
+<td class="py-2.5 px-2 text-right text-error font-semibold">-2.6%</td>
+<td class="py-2.5 px-3 text-right">
+<span class="text-secondary-container font-bold text-data-mono-md">+14.2%</span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<div class="text-secondary font-bold">78.6%</div>
+<div class="text-[9px] text-outline">8,940 trades</div>
+</td>
+<td class="py-2.5 px-3 text-center">
+<div class="flex items-center justify-center gap-1.5">
+<button class="px-2 py-1 bg-surface-container-high hover:bg-surface-bright text-on-surface border border-outline-variant text-[11px] rounded transition-colors">
+                      Inspect
+                    </button>
+<button class="px-2 py-1 bg-surface-variant hover:bg-outline-variant text-primary text-[11px] rounded border border-outline-variant transition-all">
+                      Fork
+                    </button>
+</div>
+</td>
+</tr>
+<!-- ROW #3: Almgren-Chriss Optimal TWAP/VWAP -->
+<tr class="hover:bg-surface-container/60 transition-colors group">
+<td class="py-2.5 px-3 text-center">
+<div class="inline-flex items-center justify-center w-6 h-6 rounded bg-surface-container-high text-on-surface font-bold text-xs border border-outline-variant">
+                    #3
+                  </div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface font-bold text-data-mono-md">Almgren-Chriss Optimal TWAP/VWAP</span>
+<span class="px-1 py-0.2 bg-surface-variant text-on-surface-variant text-[9px] rounded font-semibold border border-outline-variant">Optimal Execution</span>
+</div>
+<div class="text-[10px] text-on-surface-variant flex items-center gap-2 mt-0.5">
+<span class="text-outline">by</span>
+<span class="text-primary-container">@OxfordQuantLab</span>
+<span class="text-outline">•</span>
+<span class="px-1 bg-surface-container-high rounded text-on-surface">ES / S&amp;P 500 CME Direct</span>
+<span class="text-outline">•</span>
+<span class="text-outline font-mono">Zero Slippage α</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-right font-bold text-on-surface text-data-mono-md">3.14</td>
+<td class="py-2.5 px-2 text-right text-on-surface">4.28</td>
+<td class="py-2.5 px-2 text-right text-on-surface">3.92</td>
+<td class="py-2.5 px-2 text-right text-secondary-container font-semibold">1.95</td>
+<td class="py-2.5 px-2 text-right text-error font-semibold">-3.1%</td>
+<td class="py-2.5 px-3 text-right">
+<span class="text-secondary-container font-bold text-data-mono-md">+11.8%</span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<div class="text-secondary font-bold">74.9%</div>
+<div class="text-[9px] text-outline">4,120 orders</div>
+</td>
+<td class="py-2.5 px-3 text-center">
+<div class="flex items-center justify-center gap-1.5">
+<button class="px-2 py-1 bg-surface-container-high hover:bg-surface-bright text-on-surface border border-outline-variant text-[11px] rounded transition-colors">
+                      Inspect
+                    </button>
+<button class="px-2 py-1 bg-surface-variant hover:bg-outline-variant text-primary text-[11px] rounded border border-outline-variant transition-all">
+                      Fork
+                    </button>
+</div>
+</td>
+</tr>
+<!-- ROW #4: Cross-DEX Atomic Flash -->
+<tr class="hover:bg-surface-container/60 transition-colors group">
+<td class="py-2.5 px-3 text-center">
+<div class="inline-flex items-center justify-center w-6 h-6 rounded bg-surface-container-high text-on-surface font-bold text-xs border border-outline-variant">
+                    #4
+                  </div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface font-bold text-data-mono-md">Cross-DEX Atomic Flash</span>
+<span class="px-1 py-0.2 bg-secondary-container/10 text-secondary text-[9px] rounded font-semibold border border-secondary/20">MEV-Protected</span>
+</div>
+<div class="text-[10px] text-on-surface-variant flex items-center gap-2 mt-0.5">
+<span class="text-outline">by</span>
+<span class="text-primary-container">@ZeroKnowledgeAlpha</span>
+<span class="text-outline">•</span>
+<span class="px-1 bg-surface-container-high rounded text-on-surface">SOL-USDT Drift+Bybit</span>
+<span class="text-outline">•</span>
+<span class="text-secondary font-mono">Bundled Jito</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-right font-bold text-on-surface text-data-mono-md">2.95</td>
+<td class="py-2.5 px-2 text-right text-on-surface">3.84</td>
+<td class="py-2.5 px-2 text-right text-on-surface">3.45</td>
+<td class="py-2.5 px-2 text-right text-secondary-container font-semibold">1.88</td>
+<td class="py-2.5 px-2 text-right text-error font-semibold">-3.8%</td>
+<td class="py-2.5 px-3 text-right">
+<span class="text-secondary-container font-bold text-data-mono-md">+9.5%</span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<div class="text-secondary font-bold">71.2%</div>
+<div class="text-[9px] text-outline">19,820 txs</div>
+</td>
+<td class="py-2.5 px-3 text-center">
+<div class="flex items-center justify-center gap-1.5">
+<button class="px-2 py-1 bg-surface-container-high hover:bg-surface-bright text-on-surface border border-outline-variant text-[11px] rounded transition-colors">
+                      Inspect
+                    </button>
+<button class="px-2 py-1 bg-surface-variant hover:bg-outline-variant text-primary text-[11px] rounded border border-outline-variant transition-all">
+                      Fork
+                    </button>
+</div>
+</td>
+</tr>
+<!-- ROW #5: Microstructure OFI Imbalance -->
+<tr class="hover:bg-surface-container/60 transition-colors group">
+<td class="py-2.5 px-3 text-center">
+<div class="inline-flex items-center justify-center w-6 h-6 rounded bg-surface-container-high text-on-surface font-bold text-xs border border-outline-variant">
+                    #5
+                  </div>
+</td>
+<td class="py-2.5 px-3">
+<div class="flex items-center gap-1.5">
+<span class="text-on-surface font-bold text-data-mono-md">Microstructure OFI Imbalance</span>
+<span class="px-1 py-0.2 bg-surface-variant text-on-surface-variant text-[9px] rounded font-semibold border border-outline-variant">Order Flow Q</span>
+</div>
+<div class="text-[10px] text-on-surface-variant flex items-center gap-2 mt-0.5">
+<span class="text-outline">by</span>
+<span class="text-primary-container">@KxSystemsAlum</span>
+<span class="text-outline">•</span>
+<span class="px-1 bg-surface-container-high rounded text-on-surface">BTC / ETH Multi-Venue</span>
+<span class="text-outline">•</span>
+<span class="text-outline font-mono">kdb+ / q Engine</span>
+</div>
+</td>
+<td class="py-2.5 px-2 text-right font-bold text-on-surface text-data-mono-md">2.81</td>
+<td class="py-2.5 px-2 text-right text-on-surface">3.65</td>
+<td class="py-2.5 px-2 text-right text-on-surface">3.20</td>
+<td class="py-2.5 px-2 text-right text-secondary-container font-semibold">1.82</td>
+<td class="py-2.5 px-2 text-right text-error font-semibold">-4.1%</td>
+<td class="py-2.5 px-3 text-right">
+<span class="text-secondary-container font-bold text-data-mono-md">+8.2%</span>
+</td>
+<td class="py-2.5 px-3 text-right">
+<div class="text-secondary font-bold">69.4%</div>
+<div class="text-[9px] text-outline">11,400 trades</div>
+</td>
+<td class="py-2.5 px-3 text-center">
+<div class="flex items-center justify-center gap-1.5">
+<button class="px-2 py-1 bg-surface-container-high hover:bg-surface-bright text-on-surface border border-outline-variant text-[11px] rounded transition-colors">
+                      Inspect
+                    </button>
+<button class="px-2 py-1 bg-surface-variant hover:bg-outline-variant text-primary text-[11px] rounded border border-outline-variant transition-all">
+                      Fork
+                    </button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Attestation Enclave Bar -->
+<div class="p-2 bg-surface-container-low border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between text-data-mono-sm text-[11px] text-outline gap-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-secondary">lock</span>
+<span>All statistical metrics are attested against NYSE/Nasdaq/Binance L3 raw PCAP captures without lookahead or survivor bias.</span>
+</div>
+<div class="flex items-center gap-3">
+<span>Showing Top 5 of 320 Verified Algos</span>
+<div class="flex items-center gap-1">
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant rounded hover:text-on-surface">Prev</button>
+<button class="px-2 py-0.5 bg-primary-container text-surface-container-lowest font-bold rounded">1</button>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant rounded hover:text-on-surface">2</button>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant rounded hover:text-on-surface">Next</button>
+</div>
+</div>
+</div>
+</div>
+<!-- DETAILED BACKTEST DEEP-DIVE INSPECTION DOCK (For #1 Avellaneda-Stoikov HFT) -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded mb-4 overflow-hidden">
+<!-- Dock Header Ribbon -->
+<div class="px-3 py-2 bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">monitoring</span>
+<span class="font-headline-md text-headline-md font-bold text-primary">Backtest Deep-Dive Inspection</span>
+<span class="text-outline text-data-mono-sm font-data-mono-sm">/ Phân Tích Kiểm Định Chuyên Sâu (#1 Avellaneda-Stoikov HFT v2.4)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-primary-container/10 border border-primary-container/40 text-primary-container text-[10px] font-data-mono-sm rounded font-bold">
+              MONTE CARLO 500-PATH ATTRIBUTED
+            </span>
+<button class="text-outline hover:text-on-surface">
+<span class="material-symbols-outlined text-[16px]">open_in_full</span>
+</button>
+</div>
+</div>
+<div class="p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+<!-- Left 8 Cols: Monte Carlo Equity Curve Chart -->
+<div class="lg:col-span-8 flex flex-col justify-between">
+<div class="flex items-center justify-between mb-2">
+<div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold flex items-center gap-2">
+<span>500-Path Equity Curve &amp; PnL Fan Chart</span>
+<span class="text-secondary font-data-mono-sm text-data-mono-sm font-bold">+184.2% Return</span>
+</div>
+<div class="text-[11px] text-outline font-data-mono-sm">
+                  180-Day In-Sample + 90-Day Walk-Forward Out-Of-Sample // Confidence Bands: 5th, 50th, 95th Percentiles
+                </div>
+</div>
+<div class="flex items-center gap-2 font-data-mono-sm text-[10px]">
+<span class="flex items-center gap-1 text-primary-container">
+<span class="w-2.5 h-0.5 bg-primary-container inline-block"></span> 95th Pctl
+                </span>
+<span class="flex items-center gap-1 text-secondary">
+<span class="w-2.5 h-0.5 bg-secondary inline-block"></span> Median Path
+                </span>
+<span class="flex items-center gap-1 text-error">
+<span class="w-2.5 h-0.5 bg-error inline-block"></span> 5th Pctl (Worst)
+                </span>
+</div>
+</div>
+<!-- Stylized SVG PnL Fan Chart Canvas -->
+<div class="w-full h-56 bg-surface-container-low border border-outline-variant rounded relative p-2 overflow-hidden flex flex-col justify-between">
+<!-- Grid Background Lines -->
+<div class="absolute inset-0 flex flex-col justify-between p-3 pointer-events-none opacity-20">
+<div class="border-b border-outline border-dashed w-full h-0"></div>
+<div class="border-b border-outline border-dashed w-full h-0"></div>
+<div class="border-b border-outline border-dashed w-full h-0"></div>
+<div class="border-b border-outline border-dashed w-full h-0"></div>
+</div>
+<!-- Live Coordinate Crosshair indicator -->
+<div class="absolute left-2/3 top-0 bottom-0 w-px bg-primary-container/40 border-r border-primary-container/30 border-dashed pointer-events-none"></div>
+<div class="absolute left-2/3 top-8 bg-surface-container-high border border-primary-container px-1.5 py-0.5 text-[9px] font-data-mono-sm text-primary-container rounded shadow">
+                Day 184: PnL +$1,245,100 (Max-Sharpe Cluster)
+              </div>
+<!-- SVG Fan Lines and Curves -->
+<svg class="w-full h-44 overflow-visible" preserveaspectratio="none" viewbox="0 0 800 200">
+<defs>
+<lineargradient id="cyanFan" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#00f2fe" stop-opacity="0.25"></stop>
+<stop offset="60%" stop-color="#01e599" stop-opacity="0.10"></stop>
+<stop offset="100%" stop-color="#121316" stop-opacity="0.0"></stop>
+</lineargradient>
+</defs>
+<!-- Fan Shaded Area -->
+<polygon fill="url(#cyanFan)" points="
+                  0,180 
+                  100,165 200,150 300,135 400,110 500,85 600,60 700,35 800,15 
+                  800,115 700,130 600,145 500,158 400,165 300,172 200,178 100,182 0,185
+                "></polygon>
+<!-- 5th percentile line (worst) -->
+<path d="M 0,185 Q 200,180 400,165 T 800,115" fill="none" stroke="#ffb4ab" stroke-dasharray="3,3" stroke-width="1.5"></path>
+<!-- Median trajectory -->
+<path d="M 0,180 Q 200,160 400,135 T 800,55" fill="none" stroke="#70ffba" stroke-width="2"></path>
+<!-- 95th percentile top envelope -->
+<path d="M 0,180 Q 200,140 400,95 T 800,15" fill="none" stroke="#00f2fe" stroke-width="2.5"></path>
+<!-- Individual Monte Carlo Sample Strands -->
+<path d="M 0,180 Q 250,155 500,120 T 800,45" fill="none" opacity="0.3" stroke="#00f2fe" stroke-width="0.8"></path>
+<path d="M 0,180 Q 180,162 420,140 T 800,75" fill="none" opacity="0.3" stroke="#70ffba" stroke-width="0.8"></path>
+<path d="M 0,180 Q 220,170 520,130 T 800,35" fill="none" opacity="0.3" stroke="#00dce6" stroke-width="0.8"></path>
+<path d="M 0,180 Q 300,150 600,105 T 800,25" fill="none" opacity="0.4" stroke="#6ff6ff" stroke-width="0.8"></path>
+</svg>
+<!-- Time axis markers -->
+<div class="flex justify-between font-data-mono-sm text-[9px] text-outline pt-1 border-t border-outline-variant">
+<span>T-270D (In-Sample Start)</span>
+<span>T-180D (Regime Shift)</span>
+<span>T-90D (Walk-Forward OOS)</span>
+<span class="text-primary-container font-semibold">Live Real-Time (Day 270)</span>
+</div>
+</div>
+</div>
+<!-- Right 4 Cols: Parameter Metrics + Attestation Certificate -->
+<div class="lg:col-span-4 flex flex-col justify-between gap-2.5">
+<div>
+<div class="text-data-mono-sm font-label-caps text-label-caps text-outline uppercase mb-2">
+                Calibrated Micro-Parameters / Tham Số Định Lượng
+              </div>
+<div class="space-y-1.5 font-data-mono-sm">
+<!-- Param 1 -->
+<div class="p-2 bg-surface-container rounded border border-outline-variant flex items-center justify-between">
+<div>
+<div class="text-on-surface font-semibold text-xs">Inventory Skew / Độ lệch kho bãi (q)</div>
+<div class="text-[9px] text-outline">Dynamic dampening: κ = 1.45</div>
+</div>
+<div class="text-right">
+<span class="text-primary-container font-bold">0.082 BTC</span>
+</div>
+</div>
+<!-- Param 2 -->
+<div class="p-2 bg-surface-container rounded border border-outline-variant flex items-center justify-between">
+<div>
+<div class="text-on-surface font-semibold text-xs">Risk Aversion γ / Hệ số né tránh rủi ro</div>
+<div class="text-[9px] text-outline">Utility curve: CARA model</div>
+</div>
+<div class="text-right">
+<span class="text-secondary font-bold">0.00042</span>
+</div>
+</div>
+<!-- Param 3 -->
+<div class="p-2 bg-surface-container rounded border border-outline-variant flex items-center justify-between">
+<div>
+<div class="text-on-surface font-semibold text-xs">Tick-to-Trade Latency / Độ trễ khớp</div>
+<div class="text-[9px] text-outline">Solarflare DPDK bypass</div>
+</div>
+<div class="text-right">
+<span class="text-secondary-container font-bold">820 ns</span>
+</div>
+</div>
+<!-- Param 4 -->
+<div class="p-2 bg-surface-container rounded border border-outline-variant flex items-center justify-between">
+<div>
+<div class="text-on-surface font-semibold text-xs">Fill Probability / Xác suất khớp lệnh</div>
+<div class="text-[9px] text-outline">Limit order fill intensity λ</div>
+</div>
+<div class="text-right">
+<span class="text-primary font-bold">94.8%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Attestation Certificate Banner -->
+<div class="p-2.5 bg-surface-container-high border border-outline-variant rounded relative">
+<div class="flex items-center gap-1.5 text-secondary font-data-mono-sm text-[10px] font-bold mb-1">
+<span class="material-symbols-outlined text-[14px]">verified_user</span>
+<span>Cryptographically Verified Attestation</span>
+</div>
+<p class="font-data-mono-sm text-[10px] text-outline leading-tight mb-2">
+                Executed inside ED25519 Shard NY4 Enclave. Output seed root matches deterministic backtest record.
+              </p>
+<div class="bg-surface-container-lowest p-1.5 rounded border border-outline-variant font-data-mono-sm text-[9px] text-primary-container truncate flex items-center justify-between">
+<span>SHA-256: e8b9420f...c148da39b</span>
+<span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary text-[12px]">content_copy</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- FULL-WIDTH PLG CONVERSION CTA BANNER -->
+<section class="bg-gradient-to-r from-surface-container-lowest via-surface-container to-surface-container-low border border-primary-container/40 rounded p-4 relative overflow-hidden shadow-2xl neon-cyan-glow">
+<div class="absolute -right-12 -top-12 w-64 h-64 bg-primary-container/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="flex flex-col lg:flex-row items-center justify-between gap-4 relative z-10">
+<!-- Text Content -->
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 bg-primary-container text-surface-container-lowest font-headline-md text-[10px] font-bold rounded uppercase">
+                Instant Quant Deployment / Triển khai tức thì
+              </span>
+<span class="text-secondary font-data-mono-sm text-xs font-semibold">Sub-millisecond Colocated Shards</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-primary font-bold">
+              Love this strategy? Deploy in 60s via CLI or 1-Click Cloud RaaS
+            </h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Thích chiến lược này? Triển khai trong 60 giây qua giao diện CLI hoặc Cloud RaaS 1-chạm không cần cấu hình hạ tầng.
+            </p>
+</div>
+<!-- Action Cluster: CLI Snippet Box + 1-Click Deploy Button -->
+<div class="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+<!-- CLI Command snippet box with copy button -->
+<div class="flex items-center bg-surface-container-lowest border border-outline-variant rounded px-3 py-2 font-data-mono-sm text-xs w-full sm:w-auto">
+<span class="text-primary-container mr-2 font-bold">$</span>
+<code class="text-on-surface mr-3 select-all truncate max-w-[280px] sm:max-w-xs font-mono">
+                algos deploy strat-hft-avellaneda-v2 --shard=ny4-dpdk --live
+              </code>
+<button class="text-outline hover:text-primary transition-colors p-1" onclick="navigator.clipboard.writeText('algos deploy strat-hft-avellaneda-v2 --shard=ny4-dpdk --live')" title="Copy CLI Command">
+<span class="material-symbols-outlined text-[15px]">content_copy</span>
+</button>
+</div>
+<!-- 1-Click Cloud RaaS Deploy CTA -->
+<button class="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-container hover:opacity-90 text-surface-container-lowest font-headline-md text-headline-md font-bold rounded neon-cyan-glow transition-all whitespace-nowrap active:scale-95">
+<span class="material-symbols-outlined text-[18px] animate-spin">rocket_launch</span>
+<span>1-Click Cloud RaaS Deploy (Triển khai RaaS 1-chạm)</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- Inline Bilingual Micro-Interaction Script -->
+<script>
+    const btnVi = document.getElementById('lang-btn-vi');
+    const btnEn = document.getElementById('lang-btn-en');
+    
+    if (btnVi && btnEn) {
+      btnVi.addEventListener('click', () => {
+        btnVi.classList.remove('text-on-surface-variant');
+        btnVi.classList.add('bg-primary-container', 'text-surface-container-lowest', 'font-semibold');
+        btnEn.classList.remove('bg-primary-container', 'text-surface-container-lowest', 'font-semibold');
+        btnEn.classList.add('text-on-surface-variant');
+      });
+
+      btnEn.addEventListener('click', () => {
+        btnEn.classList.remove('text-on-surface-variant');
+        btnEn.classList.add('bg-primary-container', 'text-surface-container-lowest', 'font-semibold');
+        btnVi.classList.remove('bg-primary-container', 'text-surface-container-lowest', 'font-semibold');
+        btnVi.classList.add('text-on-surface-variant');
+      });
+    }
+  </script>
+
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-wrap: wrap; gap: 6px; background: rgba(15, 18, 24, 0.95); backdrop-filter: blur(12px); border: 1px solid #1E2430; padding: 6px 12px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 11px;">
+  <a href="dashboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">DASHBOARD</a>
+  <a href="quant-terminal.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">TERMINAL</a>
+  <a href="marketplace.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">MARKETPLACE</a>
+  <a href="leaderboard.html" style="color: #00F2FE; font-weight: bold; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); text-decoration: none; padding: 4px 8px; border-radius: 4px;">⚡ LEADERBOARD</a>
+  <a href="billing.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BILLING</a>
+  <a href="byok-wizard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BYOK</a>
+  <a href="mobile-sentry.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">SENTRY</a>
+  <a href="telemetry.html" style="color: #00F2FE; text-decoration: none; padding: 4px 8px;">TELEMETRY</a>
+  <a href="latency-simulator.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">FEED SIMULATOR</a>
+  <a href="styleguide.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">STYLEGUIDE</a>
+</div>
+
+
+
+<!-- ALGOTRADE UNIVERSAL DOCK NAVIGATION -->
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; align-items: center; gap: 8px; background: rgba(15, 18, 24, 0.92); border: 1px solid #1E2430; backdrop-filter: blur(16px); padding: 6px 14px; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(0, 242, 254, 0.15); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-width: 95vw; overflow-x: auto;">
+  <div style="display: flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid #1E2430;">
+    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #00E599; box-shadow: 0 0 8px #00E599;"></span>
+    <span style="color: #00F2FE; font-weight: 700; letter-spacing: 0.5px;">ALGOTRADE</span>
+  </div>
+  <nav style="display: flex; align-items: center; gap: 4px;">
+    <a href="dashboard.html" class="nav-item-dashboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">DASHBOARD</a>
+    <a href="quant-terminal.html" class="nav-item-quant-terminal" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">QUANT TERMINAL</a>
+    <a href="marketplace.html" class="nav-item-marketplace" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MARKETPLACE</a>
+    <a href="leaderboard.html" class="nav-item-leaderboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LEADERBOARD</a>
+    <a href="backtest-studio.html" class="nav-item-backtest-studio" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BACKTEST STUDIO</a>
+    <a href="stress-lab.html" class="nav-item-stress-lab" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STRESS LAB</a>
+    <a href="telemetry.html" class="nav-item-telemetry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">TELEMETRY</a>
+    <a href="latency-simulator.html" class="nav-item-latency-simulator" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LATENCY SIM</a>
+    <a href="billing.html" class="nav-item-billing" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BILLING</a>
+    <a href="byok-wizard.html" class="nav-item-byok-wizard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BYOK WIZARD</a>
+    <a href="mobile-sentry.html" class="nav-item-mobile-sentry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MOBILE SENTRY</a>
+    <a href="styleguide.html" class="nav-item-styleguide" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STYLE GUIDE</a>
+  </nav>
+</div>
+<script>
+  (function() {
+    var cur = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (cur === 'index.html') cur = 'dashboard.html';
+    var key = cur.split('.')[0];
+    var activeLink = document.querySelector('.nav-item-' + key);
+    if (activeLink) {
+      activeLink.style.color = '#00F2FE';
+      activeLink.style.background = 'rgba(0, 242, 254, 0.12)';
+      activeLink.style.border = '1px solid rgba(0, 242, 254, 0.3)';
+      activeLink.style.fontWeight = '600';
+    }
+  })();
+</script>
+
+</body></html>

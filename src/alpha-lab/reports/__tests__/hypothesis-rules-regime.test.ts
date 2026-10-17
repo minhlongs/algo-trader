@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  detectRegimeFilter,
-  detectSeasonality,
-  detectVolatilityDegradation,
-  detectOverfit,
-} from '../hypothesis-rules-regime';
+import { detectRegimeFilter, detectSeasonality, detectVolatilityDegradation, detectOverfit } from '../hypothesis-rules-regime';
 import type { EvaluationReport } from '../../evaluation/evaluation-types';
 import type { CandidateResult } from '../../attribution/alpha-evaluator';
 import type { BaselineRun } from '../../baselines/baseline-runner';
@@ -12,13 +7,10 @@ import type { BaselineRun } from '../../baselines/baseline-runner';
 function emptyReport(): EvaluationReport {
   return {
     overall: {
-      totalTrades: 100, winningTrades: 50, losingTrades: 50,
-      winRate: 0.5, lossRate: 0.5, profitFactor: 1.5,
-      avgPnlPerTrade: 0.001, totalNetPnl: 0.1, maxDrawdown: 0.1, sharpeRatio: 1.0,
+      totalTrades: 100, winningTrades: 50, losingTrades: 50, winRate: 0.5, lossRate: 0.5,
+      profitFactor: 1.5, avgPnlPerTrade: 0.001, totalNetPnl: 0.1, maxDrawdown: 0.1, sharpeRatio: 1.0,
     },
-    byRegime: [],
-    byMonth: [],
-    byVolatilityBucket: [],
+    byRegime: [], byMonth: [], byVolatilityBucket: [],
   };
 }
 
@@ -92,9 +84,7 @@ describe('detectSeasonality', () => {
     const report = emptyReport();
     report.byMonth = [
       { month: '2024-01', numTrades: 10, winRate: 0.9, netPnl: 1000 },
-      ...Array.from({ length: 19 }, (_, i) => ({
-        month: `2024-${String(i + 2).padStart(2, '0')}`, numTrades: 10, winRate: 0.5, netPnl: 0.001,
-      })),
+      ...Array.from({ length: 19 }, (_, i) => ({ month: `2024-${String(i + 2).padStart(2, '0')}`, numTrades: 10, winRate: 0.5, netPnl: 0.001 })),
     ];
     const res = detectSeasonality(report);
     expect(res).toHaveLength(1);
@@ -107,9 +97,7 @@ describe('detectSeasonality', () => {
     const report = emptyReport();
     report.byMonth = [
       { month: '2024-01', numTrades: 10, winRate: 0.1, netPnl: -1000 },
-      ...Array.from({ length: 19 }, (_, i) => ({
-        month: `2024-${String(i + 2).padStart(2, '0')}`, numTrades: 10, winRate: 0.5, netPnl: -0.001,
-      })),
+      ...Array.from({ length: 19 }, (_, i) => ({ month: `2024-${String(i + 2).padStart(2, '0')}`, numTrades: 10, winRate: 0.5, netPnl: -0.001 })),
     ];
     const res = detectSeasonality(report);
     expect(res).toHaveLength(1);
@@ -165,8 +153,7 @@ describe('detectVolatilityDegradation', () => {
 
 describe('detectOverfit', () => {
   const candidate: CandidateResult = {
-    name: 'test', totalNetPnl: 50, winRate: 0.55, sharpeRatio: 1.0,
-    totalTrades: 100, profitFactor: 1.5, maxDrawdown: 0.1,
+    name: 'test', totalNetPnl: 50, winRate: 0.55, sharpeRatio: 1.0, totalTrades: 100, profitFactor: 1.5, maxDrawdown: 0.1,
   };
 
   const makeBaseline = (name: string, totalPnl: number): BaselineRun => ({
@@ -183,12 +170,10 @@ describe('detectOverfit', () => {
   });
 
   it('returns empty when candidate does not beat buy-and-hold', () => {
-    const baselines = [makeBaseline('buy-and-hold', 60), makeBaseline('random-entry', 80)];
-    expect(detectOverfit(candidate, baselines)).toEqual([]);
+    expect(detectOverfit(candidate, [makeBaseline('buy-and-hold', 60), makeBaseline('random-entry', 80)])).toEqual([]);
   });
 
   it('returns empty when candidate beats random-entry', () => {
-    const baselines = [makeBaseline('buy-and-hold', 20), makeBaseline('random-entry', 40)];
-    expect(detectOverfit(candidate, baselines)).toEqual([]);
+    expect(detectOverfit(candidate, [makeBaseline('buy-and-hold', 20), makeBaseline('random-entry', 40)])).toEqual([]);
   });
 });

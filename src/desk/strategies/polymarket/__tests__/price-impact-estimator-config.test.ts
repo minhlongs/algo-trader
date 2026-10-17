@@ -7,17 +7,9 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  DEFAULT_CONFIG,
-  STRATEGY_NAME,
-  type OpenPosition,
-  simulatePriceImpact,
-  calcImpactAsymmetry,
-  determineSide,
-  updateImpactEma,
-  bestBidAsk,
+  DEFAULT_CONFIG, STRATEGY_NAME, type OpenPosition,
+  simulatePriceImpact, calcImpactAsymmetry, determineSide, updateImpactEma, bestBidAsk,
 } from '../price-impact-estimator-config';
-
-// ─── Suite ───────────────────────────────────────────────────────────────────
 
 describe('DEFAULT_CONFIG', () => {
   it('has expected defaults', () => {
@@ -48,13 +40,8 @@ describe('STRATEGY_NAME', () => {
 describe('OpenPosition', () => {
   it('is a usable type annotation', () => {
     const pos: OpenPosition = {
-      tokenId: 't1',
-      conditionId: 'c1',
-      side: 'yes',
-      entryPrice: 0.5,
-      sizeUsdc: 10,
-      orderId: 'o1',
-      openedAt: 0,
+      tokenId: 't1', conditionId: 'c1', side: 'yes',
+      entryPrice: 0.5, sizeUsdc: 10, orderId: 'o1', openedAt: 0,
     };
     expect(pos.orderId).toBe('o1');
   });
@@ -71,42 +58,24 @@ describe('simulatePriceImpact', () => {
   });
 
   it('returns 0 when there is insufficient liquidity', () => {
-    // Only 50 shares available, order is 100 → remaining > 0
     expect(simulatePriceImpact([{ price: '0.5', size: '50' }], 100)).toBe(0);
   });
 
   it('fills from the cheapest levels first', () => {
-    const out = simulatePriceImpact(
-      [
-        { price: '0.5', size: '30' },
-        { price: '0.6', size: '70' },
-      ],
-      50,
-    );
-    // 30 @ 0.5 + 20 @ 0.6 = 15 + 12 = 27 / 50
+    const out = simulatePriceImpact([{ price: '0.5', size: '30' }, { price: '0.6', size: '70' }], 50);
     expect(out).toBeCloseTo(27 / 50, 6);
   });
 
   it('skips invalid levels (size<=0 or price<=0)', () => {
     const out = simulatePriceImpact(
-      [
-        { price: '0', size: '100' },
-        { price: '-1', size: '50' },
-        { price: '0.4', size: '60' },
-      ],
+      [{ price: '0', size: '100' }, { price: '-1', size: '50' }, { price: '0.4', size: '60' }],
       50,
     );
     expect(out).toBe(0.4);
   });
 
   it('stops filling once order is complete', () => {
-    const out = simulatePriceImpact(
-      [
-        { price: '0.4', size: '100' },
-        { price: '0.5', size: '1000' },
-      ],
-      50,
-    );
+    const out = simulatePriceImpact([{ price: '0.4', size: '100' }, { price: '0.5', size: '1000' }], 50);
     expect(out).toBe(0.4);
   });
 });
@@ -154,18 +123,13 @@ describe('updateImpactEma', () => {
   });
 
   it('computes alpha-weighted EMA', () => {
-    // 0.1 * 10 + 0.9 * 2 = 1 + 1.8 = 2.8
     expect(updateImpactEma(2, 10, 0.1)).toBeCloseTo(2.8, 6);
   });
 });
 
 describe('bestBidAsk', () => {
   it('extracts bid/ask/mid from a populated book', () => {
-    const book = {
-      bids: [{ price: '0.4', size: '100' }],
-      asks: [{ price: '0.6', size: '100' }],
-      timestamp: 0,
-    };
+    const book = { bids: [{ price: '0.4', size: '100' }], asks: [{ price: '0.6', size: '100' }], timestamp: 0 };
     expect(bestBidAsk(book)).toEqual({ bid: 0.4, ask: 0.6, mid: 0.5 });
   });
 
@@ -181,14 +145,8 @@ describe('bestBidAsk', () => {
 
   it('uses the first level only', () => {
     const book = {
-      bids: [
-        { price: '0.3', size: '10' },
-        { price: '0.2', size: '10' },
-      ],
-      asks: [
-        { price: '0.5', size: '10' },
-        { price: '0.7', size: '10' },
-      ],
+      bids: [{ price: '0.3', size: '10' }, { price: '0.2', size: '10' }],
+      asks: [{ price: '0.5', size: '10' }, { price: '0.7', size: '10' }],
       timestamp: 0,
     };
     expect(bestBidAsk(book)).toEqual({ bid: 0.3, ask: 0.5, mid: 0.4 });

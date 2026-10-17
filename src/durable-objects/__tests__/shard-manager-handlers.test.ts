@@ -4,7 +4,7 @@
  *
  * All functions are pure (Response.json/URL only), so no mocks are needed.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { ShardHealth, ShardMetrics, RingStateResponse } from '../shard-manager-types';
 
 const { loggerError } = vi.hoisted(() => ({ loggerError: vi.fn() }));
@@ -14,24 +14,12 @@ vi.mock('../../shared/utils/logger', () => ({
 }));
 
 import {
-  isAdminAuth,
-  handleHealthCheck,
-  handleMetrics,
-  handleAdminRequest,
-  type HandlerContext,
-  type HandlerCallbacks,
+  isAdminAuth, handleHealthCheck, handleMetrics, handleAdminRequest,
+  type HandlerContext, type HandlerCallbacks,
 } from '../shard-manager-handlers';
 
 function makeHealth(shardId: number): ShardHealth {
-  return {
-    shardId,
-    lastHeartbeat: 1000,
-    rps: 12.5,
-    avgLatencyMs: 40,
-    errorCount: 1,
-    strategyCount: 5,
-    status: 'healthy',
-  };
+  return { shardId, lastHeartbeat: 1000, rps: 12.5, avgLatencyMs: 40, errorCount: 1, strategyCount: 5, status: 'healthy' };
 }
 
 function makeMetrics(): ShardMetrics {
@@ -39,16 +27,20 @@ function makeMetrics(): ShardMetrics {
 }
 
 function makeRingState(): RingStateResponse {
-  return {
-    totalShards: 12,
-    virtualNodesPerShard: 100,
-    distribution: new Map([[1, 10], [2, 20]]),
-    balanced: true,
-  };
+  return { totalShards: 12, virtualNodesPerShard: 100, distribution: new Map([[1, 10], [2, 20]]), balanced: true };
 }
 
 function makeCtx(health: Map<number, ShardHealth>, metrics: Map<number, ShardMetrics>): HandlerContext {
   return { storage: {}, shardHealth: health, shardMetrics: metrics };
+}
+
+function makeCallbacks(overrides: Partial<HandlerCallbacks> = {}): HandlerCallbacks {
+  return {
+    getRingState: () => makeRingState(),
+    rebalance: vi.fn(async () => ({ previous: new Map(), updated: new Map() })),
+    updateShardHealth: vi.fn(),
+    ...overrides,
+  };
 }
 
 function makeRequest(path: string, method = 'GET', auth?: string): Request {
@@ -98,27 +90,19 @@ describe('handleMetrics', () => {
   it('flattens the per-shard metrics map to errorCount/lastUpdated', async () => {
     const res = handleMetrics(new Map([[3, makeMetrics()]]));
     const body = await res.json();
-    expect(body["3"]).toEqual({ errorCount: 2, lastUpdated: 1234 });
+    expect(body['3']).toEqual({ errorCount: 2, lastUpdated: 1234 });
   });
 });
 
 describe('handleAdminRequest', () => {
   it('returns 404 for unknown admin endpoints', async () => {
-    const res = await handleAdminRequest(
-      makeRequest('/admin/nope'),
-      makeCtx(new Map(), new Map()),
-      { getRingState: () => makeRingState(), rebalance: vi.fn(async () => ({ previous: new Map(), updated: new Map() })), updateShardHealth: vi.fn() },
-    );
+    const res = await handleAdminRequest(makeRequest('/admin/nope'), makeCtx(new Map(), new Map()), makeCallbacks());
     const body = await res.json();
     expect(body).toEqual({ error: 'Unknown admin endpoint' });
   });
 
   it('returns ring state for GET /admin/ring', async () => {
-    const res = await handleAdminRequest(
-      makeRequest('/admin/ring'),
-      makeCtx(new Map(), new Map()),
-      { getRingState: () => makeRingState(), rebalance: vi.fn(async () => ({ previous: new Map(), updated: new Map() })), updateShardHealth: vi.fn() },
-    );
+    const res = await handleAdminRequest(makeRequest('/admin/ring'), makeCtx(new Map(), new Map()), makeCallbacks());
     const body = await res.json();
     expect(body.totalShards).toBe(12);
     expect(body.balanced).toBe(true);
@@ -129,7 +113,7 @@ describe('handleAdminRequest', () => {
     const res = await handleAdminRequest(
       makeRequest('/admin/ring/rebalance', 'POST'),
       makeCtx(new Map(), new Map()),
-      { getRingState: () => makeRingState(), rebalance, updateShardHealth: vi.fn() },
+      makeCallbacks({ rebalance }),
     );
     const body = await res.json();
     expect(body.rebalanced).toBe(true);
@@ -139,11 +123,7 @@ describe('handleAdminRequest', () => {
   });
 
   it('returns 404 for a shard health that does not exist', async () => {
-    const res = await handleAdminRequest(
-      makeRequest('/admin/shard/99/health'),
-      makeCtx(new Map(), new Map()),
-      { getRingState: () => makeRingState(), rebalance: vi.fn(async () => ({ previous: new Map(), updated: new Map() })), updateShardHealth: vi.fn() },
-    );
+    const res = await handleAdminRequest(makeRequest('/admin/shard/99/health'), makeCtx(new Map(), new Map()), makeCallbacks());
     const body = await res.json();
     expect(body).toEqual({ error: 'Shard not found' });
   });
@@ -152,7 +132,7 @@ describe('handleAdminRequest', () => {
     const res = await handleAdminRequest(
       makeRequest('/admin/shard/5/health'),
       makeCtx(new Map([[5, makeHealth(5)]]), new Map()),
-      { getRingState: () => makeRingState(), rebalance: vi.fn(async () => ({ previous: new Map(), updated: new Map() })), updateShardHealth: vi.fn() },
+      makeCallbacks(),
     );
     const body = await res.json();
     expect(body.shardId).toBe(5);
@@ -160,11 +140,7 @@ describe('handleAdminRequest', () => {
   });
 
   it('returns 404 for a shard metrics that does not exist', async () => {
-    const res = await handleAdminRequest(
-      makeRequest('/admin/shard/7/metrics'),
-      makeCtx(new Map(), new Map()),
-      { getRingState: () => makeRingState(), rebalance: vi.fn(async () => ({ previous: new Map(), updated: new Map() })), updateShardHealth: vi.fn() },
-    );
+    const res = await handleAdminRequest(makeRequest('/admin/shard/7/metrics'), makeCtx(new Map(), new Map()), makeCallbacks());
     const body = await res.json();
     expect(body).toEqual({ error: 'Metrics not found' });
   });
@@ -173,7 +149,7 @@ describe('handleAdminRequest', () => {
     const res = await handleAdminRequest(
       makeRequest('/admin/shard/8/metrics'),
       makeCtx(new Map(), new Map([[8, makeMetrics()]])),
-      { getRingState: () => makeRingState(), rebalance: vi.fn(async () => ({ previous: new Map(), updated: new Map() })), updateShardHealth: vi.fn() },
+      makeCallbacks(),
     );
     const body = await res.json();
     expect(body.shardId).toBe(8);
@@ -185,11 +161,7 @@ describe('handleAdminRequest', () => {
     const res = await handleAdminRequest(
       makeRequest('/admin/ring/rebalance', 'POST'),
       makeCtx(new Map(), new Map()),
-      {
-        getRingState: () => makeRingState(),
-        rebalance: vi.fn(async () => { throw new Error('boom'); }),
-        updateShardHealth: vi.fn(),
-      },
+      makeCallbacks({ rebalance: vi.fn(async () => { throw new Error('boom'); }) }),
     );
     const body = await res.json();
     expect(body).toEqual({ error: 'Internal server error' });

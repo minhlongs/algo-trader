@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AlgoTrade OS // Obsidian Quantum Design System &amp; Style Guide</title>
+<!-- Google Fonts: Space Grotesk, JetBrains Mono, Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@300;400;500;600;700&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration verbatim as mandated -->
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "tertiary-fixed": "#ffdad5",
+            "tertiary-container": "#ffd0ca",
+            "on-tertiary-fixed-variant": "#930005",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "surface-variant": "#343538",
+            "surface-container-highest": "#343538",
+            "outline-variant": "#3a494b",
+            "secondary": "#70ffba",
+            "on-secondary": "#003822",
+            "surface-bright": "#38393d",
+            "surface-tint": "#00dce6",
+            "on-secondary-fixed": "#002112",
+            "on-error": "#690005",
+            "secondary-fixed": "#4dffb2",
+            "on-primary-fixed-variant": "#004f53",
+            "on-primary": "#00373a",
+            "primary-fixed-dim": "#00dce6",
+            "on-primary-fixed": "#002022",
+            "primary": "#e0fdff",
+            "background": "#121316",
+            "inverse-surface": "#e3e2e6",
+            "surface-container-lowest": "#0d0e11",
+            "primary-container": "#00f2fe",
+            "on-secondary-container": "#00613e",
+            "surface-dim": "#121316",
+            "on-background": "#e3e2e6",
+            "error": "#ffb4ab",
+            "on-tertiary": "#690003",
+            "outline": "#849495",
+            "on-error-container": "#ffdad6",
+            "on-surface-variant": "#b9cacb",
+            "secondary-fixed-dim": "#00e297",
+            "inverse-on-surface": "#2f3034",
+            "secondary-container": "#01e599",
+            "on-tertiary-fixed": "#410001",
+            "on-tertiary-container": "#c3000a",
+            "tertiary": "#fff5f4",
+            "surface": "#121316",
+            "surface-container-low": "#1b1b1f",
+            "primary-fixed": "#6ff6ff",
+            "error-container": "#93000a",
+            "on-secondary-fixed-variant": "#005234",
+            "on-surface": "#e3e2e6",
+            "on-primary-container": "#006a70",
+            "inverse-primary": "#00696f",
+            "surface-container": "#1f1f23",
+            "surface-container-high": "#292a2d"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "gutter-mobile": "0.25rem",
+            "gutter-desktop": "0.5rem",
+            "space-md": "0.5rem",
+            "margin": "0.75rem",
+            "space-xs": "0.125rem",
+            "margin-mobile": "0.5rem",
+            "space-lg": "0.75rem",
+            "margin-desktop": "0.75rem",
+            "gutter": "0.5rem",
+            "space-sm": "0.25rem",
+            "space-xl": "1rem"
+          },
+          "fontFamily": {
+            "headline-xl-mobile": ["Space Grotesk"],
+            "headline-lg": ["Space Grotesk"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "body-sm": ["Inter"],
+            "label-caps": ["JetBrains Mono"],
+            "data-mono-sm": ["JetBrains Mono"],
+            "body-md": ["Inter"],
+            "headline-xl": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "data-mono-md": ["JetBrains Mono"],
+            "body-lg": ["Inter"]
+          },
+          "fontSize": {
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Obsidian Micro-scroller and terminal utility */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d0e11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3a494b;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00f2fe;
+    }
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 16px;
+      line-height: 1;
+      display: inline-block;
+      text-transform: none;
+      letter-spacing: normal;
+      word-wrap: normal;
+      white-space: nowrap;
+      direction: ltr;
+    }
+    .hazard-stripe {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(0, 0, 0, 0.25),
+        rgba(0, 0, 0, 0.25) 4px,
+        rgba(255, 255, 255, 0.15) 4px,
+        rgba(255, 255, 255, 0.15) 8px
+      );
+    }
+  </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body-sm text-body-sm antialiased min-h-screen overflow-x-hidden selection:bg-primary-container selection:text-surface-container-lowest">
+<!-- ========================================================================= -->
+<!-- TOP APP BAR (Shared Component: TopNavBar with exact JSON properties)     -->
+<!-- ========================================================================= -->
+<header class="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center px-space-md py-space-xs h-11 select-none">
+<!-- Left: Brand Logo & Terminal Identifier & Fast Search -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary-container" data-icon="memory">memory</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">AlgoTrade OS</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant bg-surface-container-high px-1 py-0.5 rounded border border-outline-variant ml-1">v2.4-PROD</span>
+</div>
+<!-- Search Bar (on_left as specified in JSON) -->
+<div class="relative flex items-center ml-2">
+<span class="material-symbols-outlined text-outline absolute left-2 text-sm pointer-events-none" data-icon="search">search</span>
+<input class="bg-surface-container-low text-on-surface text-body-sm pl-7 pr-3 py-1 w-64 border border-outline-variant focus:border-primary-container focus:ring-0 focus:outline-none rounded transition-colors" placeholder="Search tokens, symbols, specs (Ctrl+K)..." type="text"/>
+</div>
+</div>
+<!-- Center: Global Navigation Links from JSON (Strategies, Execution, Telemetry, Ledger, Shards) -->
+<nav class="hidden md:flex items-center gap-space-lg h-full">
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#strategies">Strategies</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#execution">Execution</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#telemetry">Telemetry</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#ledger">Ledger</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#shards">Shards</a>
+<!-- Active Specimen Indicator for Design System Page -->
+<span class="text-primary-container border-b-2 border-primary-container pb-0.5 font-bold font-data-mono-sm text-data-mono-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+        Style Guide
+      </span>
+</nav>
+<!-- Right: Trailing Actions, Icon Controls, Avatar from JSON -->
+<div class="flex items-center gap-space-sm">
+<!-- Latency live telemetry pill -->
+<div class="flex items-center gap-1 px-2 py-0.5 bg-surface-container-low border border-outline-variant rounded font-data-mono-sm text-data-mono-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+<span class="text-on-surface-variant">P99:</span>
+<span class="text-secondary font-semibold">4.2ms</span>
+</div>
+<!-- Icon actions from JSON: hub, terminal, notifications -->
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors rounded" title="Shard Hub">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors rounded" title="Terminal Output">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors rounded relative" title="Notifications">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-container rounded-full"></span>
+</button>
+<!-- Secondary Trailing Action: Audit Export -->
+<button class="px-2 py-1 bg-surface-container-low border border-outline-variant text-on-surface hover:border-primary-container hover:text-primary transition-colors font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="file_download">file_download</span>
+        Audit Export
+      </button>
+<!-- Primary Trailing Action: Emergency Kill-Switch -->
+<button class="px-2.5 py-1 bg-error-container text-on-error-container border border-error hover:bg-opacity-90 font-label-caps text-label-caps rounded flex items-center gap-1.5 shadow-[0_0_8px_rgba(255,59,48,0.3)] transition-all">
+<span class="material-symbols-outlined text-xs animate-ping" data-icon="warning">warning</span>
+        Emergency Kill-Switch
+      </button>
+<!-- Avatar Badge from JSON -->
+<div class="flex items-center gap-1.5 pl-1 border-l border-outline-variant">
+<div class="w-7 h-7 rounded border border-primary-container overflow-hidden bg-surface-container flex items-center justify-center font-data-mono-sm text-primary-container">
+<img class="w-full h-full object-cover" data-alt="A portrait badge of a quantitative desk administrator dressed in high-tech carbon black operator attire against a dark multi-screen financial terminal background illuminated with subtle neon cyan accents and algorithmic telemetry." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_8USwHgBpAORplfU-Cvok2oEl4RGGCsxjPLoh7V8xTjtJoKLeFrsuKtUvUL4dTtbhCIzgFVz_THFH_6eqFLWEMk-t0EUXHhEk0V3Q-DhAOCU6svZ9HI1qSpRxq-rnwq3yQOozHcudkXlc1mMso4psyxtNRY_6K5x5RVq2je4FM6z5IokbSTmNsIqLnC2XdR68ZgkzgCw7rcA33W39UZgQn5zS6VBeujyjJOghsMwt6A9D-ygOQb5jRAz72f9iioJl6GCTmHyoHB4"/>
+</div>
+</div>
+</div>
+</header>
+<!-- ========================================================================= -->
+<!-- SIDE NAV BAR (Shared Component: SideNavBar dense_cockpit_drawer)          -->
+<!-- ========================================================================= -->
+<aside class="fixed top-11 left-0 h-[calc(100vh-2.75rem)] w-56 p-space-xs border-r border-outline-variant select-none bg-surface-container-lowest flex flex-col justify-between z-40">
+<!-- Top Desk Header -->
+<div>
+<div class="p-2 mb-2 bg-surface-container-low border border-outline-variant rounded">
+<div class="flex items-center justify-between mb-1">
+<span class="font-headline-md text-headline-md font-bold text-primary">DESK-ALPHA-01</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container animate-pulse"></span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">ONLINE // P99: 4.2ms</div>
+</div>
+<!-- Navigation Tabs from JSON (6 Tabs) -->
+<nav class="flex flex-col gap-0.5">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#cockpit">
+<span class="material-symbols-outlined text-sm" data-icon="query_stats">query_stats</span>
+<span>Cockpit</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#order-books">
+<span class="material-symbols-outlined text-sm" data-icon="table_chart">table_chart</span>
+<span>Order Books</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#shard-health">
+<span class="material-symbols-outlined text-sm" data-icon="dns">dns</span>
+<span>Shard Health</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#algorithms">
+<span class="material-symbols-outlined text-sm" data-icon="memory">memory</span>
+<span>Algorithms</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#risk-engine">
+<span class="material-symbols-outlined text-sm" data-icon="shield">shield</span>
+<span>Risk Engine</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#audit-log">
+<span class="material-symbols-outlined text-sm" data-icon="enhanced_encryption">enhanced_encryption</span>
+<span>Audit Log</span>
+</a>
+<!-- Active Tab for this screen: Design System Specimen -->
+<div class="flex items-center gap-space-sm px-space-sm py-1.5 bg-surface-container text-primary-container border-l-2 border-primary-container font-data-mono-sm text-data-mono-sm font-semibold rounded-r mt-2">
+<span class="material-symbols-outlined text-sm text-primary-container" data-icon="token">token</span>
+<span>Design System</span>
+</div>
+</nav>
+<!-- CTA from JSON: Deploy Algo -->
+<div class="mt-3 px-1">
+<button class="w-full py-1.5 bg-primary-container text-surface-container-lowest font-headline-md text-headline-md font-bold text-center rounded shadow-[0_0_8px_rgba(0,242,254,0.25)] hover:shadow-[0_0_12px_rgba(0,242,254,0.45)] transition-all flex items-center justify-center gap-1.5">
+<span class="material-symbols-outlined text-sm" data-icon="rocket_launch">rocket_launch</span>
+          Deploy Algo
+        </button>
+</div>
+</div>
+<!-- Bottom Footer Links from JSON: Latency Stats, Settings -->
+<div class="pt-2 border-t border-outline-variant flex flex-col gap-0.5">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#latency-stats">
+<span class="material-symbols-outlined text-sm" data-icon="speed">speed</span>
+<span>Latency Stats</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#settings">
+<span class="material-symbols-outlined text-sm" data-icon="tune">tune</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- ========================================================================= -->
+<!-- MAIN WORKSPACE: OBSIDIAN QUANTUM DESIGN SYSTEM SPECIMEN CANVAS            -->
+<!-- ========================================================================= -->
+<main class="ml-56 mt-11 p-4 md:p-6 space-y-6 max-w-[1720px]">
+<!-- 1. Executive Header & Design Tokens Bar -->
+<section class="bg-surface-container-low border border-outline-variant p-4 rounded relative overflow-hidden">
+<!-- Glow ambient trace -->
+<div class="absolute -top-24 -right-24 w-72 h-72 bg-primary-container/10 blur-[80px] pointer-events-none"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-outline-variant pb-4 mb-4">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="px-2 py-0.5 bg-surface-container border border-primary-container text-primary-container font-label-caps text-label-caps rounded">
+              STANDARD SPECIFICATION 2025.1
+            </span>
+<span class="text-on-surface-variant font-data-mono-sm text-data-mono-sm">COMMIT // 9f4a13d · SECURE_EXECUTION</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl font-bold tracking-tight text-on-surface">
+            OBSIDIAN QUANTUM <span class="text-primary-container font-light">v2.4</span> // COMPONENT SPECIFICATION
+          </h1>
+<p class="text-on-surface-variant font-body-md text-body-md mt-1 max-w-3xl">
+            Universal component contract and high-frequency UI token architecture. Built on an 8px base rhythm with 1px hairline shared borders, calibrated for sub-millisecond visual hierarchy and zero-drift algorithmic terminal density.
+          </p>
+</div>
+<!-- Telemetry Status Card & Quorum Metrics -->
+<div class="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant p-3 rounded shrink-0">
+<div class="text-right">
+<div class="font-label-caps text-label-caps text-on-surface-variant">ACTIVE QUORUM</div>
+<div class="font-data-mono-md text-data-mono-md font-bold text-secondary-container">100% STRICT TYPECHECK</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline">MERKLE: 0x8F9...A3E2</div>
+</div>
+<div class="h-8 w-px bg-outline-variant"></div>
+<div class="text-left">
+<div class="font-label-caps text-label-caps text-on-surface-variant">GRID DISCIPLINE</div>
+<div class="font-data-mono-md text-data-mono-md font-semibold text-primary">8PX / 1PX HAIRLINE</div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary">ZERO RUNTIME DRIFT</div>
+</div>
+</div>
+</div>
+<!-- Quick Jump Navigation Chips -->
+<div class="flex flex-wrap items-center gap-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant mr-1">QUICK ANCHORS:</span>
+<a class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:border-primary-container hover:text-primary transition-colors font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1" href="#section-colors">
+<span class="w-1.5 h-1.5 bg-primary-container rounded-full"></span> [Tokens &amp; Swatches]
+        </a>
+<a class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:border-primary-container hover:text-primary transition-colors font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1" href="#section-typography">
+<span class="w-1.5 h-1.5 bg-secondary-container rounded-full"></span> [Typography Scale]
+        </a>
+<a class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:border-primary-container hover:text-primary transition-colors font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1" href="#section-buttons">
+<span class="w-1.5 h-1.5 bg-tertiary-container rounded-full"></span> [Interactive Buttons Matrix]
+        </a>
+<a class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:border-primary-container hover:text-primary transition-colors font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1" href="#section-forms">
+<span class="w-1.5 h-1.5 bg-primary-fixed rounded-full"></span> [Form Elements &amp; Controls]
+        </a>
+<a class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:border-primary-container hover:text-primary transition-colors font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1" href="#section-chips">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full"></span> [Badges &amp; Status Chips]
+        </a>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- SECTION 1: COLOR SWATCHES & TOKENS SYSTEM                                -->
+<!-- ========================================================================= -->
+<section class="bg-surface-container-low border border-outline-variant rounded p-4" id="section-colors">
+<div class="flex items-center justify-between border-b border-outline-variant pb-3 mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="palette">palette</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">01 // Color Tokens &amp; Chromatic Palette</h2>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">CONTRAST COMPLIANCE: WCAG AAA TABULAR TEST</div>
+</div>
+<!-- Color Swatch Bento Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
+<!-- Swatch: Base Canvas -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded flex flex-col justify-between h-32 hover:border-primary-container transition-colors">
+<div>
+<div class="w-full h-8 bg-[#08090C] border border-outline-variant rounded mb-2 flex items-center justify-end px-1.5">
+<span class="font-data-mono-sm text-data-mono-sm text-outline">BASE</span>
+</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold text-xs">Canvas Void</div>
+<div class="font-data-mono-sm text-data-mono-sm text-primary-container">#08090C</div>
+</div>
+<div class="pt-1 border-t border-outline-variant flex justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>--color-canvas</span>
+<span>1:1 ROOT</span>
+</div>
+</div>
+<!-- Swatch: Card Surface -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded flex flex-col justify-between h-32 hover:border-primary-container transition-colors">
+<div>
+<div class="w-full h-8 bg-surface-container-low border border-outline-variant rounded mb-2 flex items-center justify-end px-1.5">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">SURF</span>
+</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold text-xs">Surface Container</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface">#0F1218</div>
+</div>
+<div class="pt-1 border-t border-outline-variant flex justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>--color-surface</span>
+<span>1.2:1 DEPTH</span>
+</div>
+</div>
+<!-- Swatch: Hairline Structural -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded flex flex-col justify-between h-32 hover:border-primary-container transition-colors">
+<div>
+<div class="w-full h-8 bg-outline-variant border border-outline-variant rounded mb-2 flex items-center justify-end px-1.5">
+<span class="font-data-mono-sm text-data-mono-sm text-primary">LINE</span>
+</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold text-xs">Hairline Border</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface">#1E2430</div>
+</div>
+<div class="pt-1 border-t border-outline-variant flex justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>--color-border</span>
+<span>1PX GRID</span>
+</div>
+</div>
+<!-- Swatch: Primary Cyan Electric -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded flex flex-col justify-between h-32 hover:border-primary-container transition-colors">
+<div>
+<div class="w-full h-8 bg-primary-container border border-primary-container rounded mb-2 flex items-center justify-end px-1.5 shadow-[0_0_8px_rgba(0,242,254,0.3)]">
+<span class="font-data-mono-sm text-data-mono-sm font-bold text-surface-container-lowest">ACTION</span>
+</div>
+<div class="font-headline-md text-headline-md text-primary font-semibold text-xs">Cyan Primary</div>
+<div class="font-data-mono-sm text-data-mono-sm text-primary-container font-bold">#00F2FE</div>
+</div>
+<div class="pt-1 border-t border-outline-variant flex justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>--color-primary</span>
+<span class="text-secondary font-bold">14.8:1 AAA</span>
+</div>
+</div>
+<!-- Swatch: Mint Alpha (PnL / Safe) -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded flex flex-col justify-between h-32 hover:border-primary-container transition-colors">
+<div>
+<div class="w-full h-8 bg-secondary-container border border-secondary-container rounded mb-2 flex items-center justify-end px-1.5 shadow-[0_0_8px_rgba(1,229,153,0.3)]">
+<span class="font-data-mono-sm text-data-mono-sm font-bold text-surface-container-lowest">ALPHA</span>
+</div>
+<div class="font-headline-md text-headline-md text-secondary font-semibold text-xs">Mint Green / Long</div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary font-bold">#00E599</div>
+</div>
+<div class="pt-1 border-t border-outline-variant flex justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>--color-mint</span>
+<span class="text-secondary font-bold">13.6:1 AAA</span>
+</div>
+</div>
+<!-- Swatch: Danger / Kill Alert -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded flex flex-col justify-between h-32 hover:border-primary-container transition-colors">
+<div>
+<div class="w-full h-8 bg-error-container border border-error rounded mb-2 flex items-center justify-end px-1.5 shadow-[0_0_8px_rgba(255,59,48,0.3)]">
+<span class="font-data-mono-sm text-data-mono-sm font-bold text-on-error-container">HALT</span>
+</div>
+<div class="font-headline-md text-headline-md text-error font-semibold text-xs">Danger Red / Kill</div>
+<div class="font-data-mono-sm text-data-mono-sm text-error font-bold">#FF3B30</div>
+</div>
+<div class="pt-1 border-t border-outline-variant flex justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>--color-danger</span>
+<span class="text-on-error font-bold">8.1:1 AAA</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- SECTION 2: TYPOGRAPHY SCALE & FONT PAIRING HIERARCHY                    -->
+<!-- ========================================================================= -->
+<section class="bg-surface-container-low border border-outline-variant rounded p-4" id="section-typography">
+<div class="flex items-center justify-between border-b border-outline-variant pb-3 mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="format_size">format_size</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">02 // Typography Engine &amp; Numerical Specimen</h2>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">PAIRED: Space Grotesk + JetBrains Mono + Inter</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+<!-- Left: Hierarchical Scale Matrix (7 cols) -->
+<div class="lg:col-span-7 space-y-3">
+<!-- H1 Specimen -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded">
+<div class="flex justify-between items-center text-outline font-data-mono-sm text-data-mono-sm mb-1">
+<span>LEVEL: HEADLINE-XL (H1)</span>
+<span>Space Grotesk · 32px / 38px · Bold 700</span>
+</div>
+<div class="font-headline-xl text-headline-xl text-on-surface">
+              QUANTUM COCKPIT // CLUSTER-09
+            </div>
+</div>
+<!-- H2 Specimen -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded">
+<div class="flex justify-between items-center text-outline font-data-mono-sm text-data-mono-sm mb-1">
+<span>LEVEL: HEADLINE-LG (H2)</span>
+<span>Space Grotesk · 22px / 28px · SemiBold 600</span>
+</div>
+<div class="font-headline-lg text-headline-lg text-primary">
+              Arbitrage Pipeline Execution Matrix
+            </div>
+</div>
+<!-- H3 / Monospace Data Specimen -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded">
+<div class="flex justify-between items-center text-outline font-data-mono-sm text-data-mono-sm mb-1">
+<span>LEVEL: DATA-MONO-LG &amp; BODY-MD</span>
+<span>JetBrains Mono · 18px / 22px · Tabular Figures</span>
+</div>
+<div class="flex items-baseline justify-between font-data-mono-lg text-data-mono-lg">
+<span class="text-secondary font-bold">+$18,420.50</span>
+<span class="text-on-surface font-normal text-sm">PnL ACCUMULATED (4.2ms)</span>
+<span class="text-primary-container font-mono text-sm">99.982% FILL</span>
+</div>
+</div>
+<!-- Code & Merkle Telemetry Line -->
+<div class="p-2.5 bg-surface-container-lowest border border-outline-variant rounded font-data-mono-sm text-data-mono-sm text-on-surface-variant flex items-center justify-between">
+<span class="text-outline">MERKLE_ROOT:</span>
+<code class="text-primary-container bg-surface-container px-2 py-0.5 rounded font-mono">0x48e1a89f92c10b78d234a9b5f12e87c0a5d4e3f2</code>
+<span class="text-secondary">SHA256_VALIDATED</span>
+</div>
+</div>
+<!-- Right: Glyphs & Numeral Alignment Board (5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest border border-outline-variant p-3.5 rounded flex flex-col justify-between">
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant pb-1.5 mb-2 flex justify-between">
+<span>TABULAR NUMERAL CALIBRATION</span>
+<span>SLICED ZERO &amp; MONO PITCH</span>
+</div>
+<div class="font-data-mono-lg text-data-mono-lg tracking-wider text-on-surface mb-3">
+              0123456789 +-=$#%
+            </div>
+<div class="space-y-1.5 font-data-mono-sm text-data-mono-sm text-on-surface-variant border-t border-outline-variant pt-2">
+<div class="flex justify-between">
+<span>BITCOIN TICK:</span>
+<span class="text-on-surface font-mono">$96,420.25</span>
+</div>
+<div class="flex justify-between">
+<span>P99 DISPERSION:</span>
+<span class="text-secondary font-mono">0.000428 SEC</span>
+</div>
+<div class="flex justify-between">
+<span>VOLATILITY RATIO:</span>
+<span class="text-primary-container font-mono">σ 0.42891</span>
+</div>
+<div class="flex justify-between">
+<span>SLIPPAGE DELTA:</span>
+<span class="text-error font-mono">-0.0012 BPS</span>
+</div>
+</div>
+</div>
+<div class="bg-surface-container p-2 rounded border border-outline-variant mt-3">
+<span class="font-label-caps text-label-caps text-outline block mb-1">FONT ANATOMY SPEC</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+              Space Grotesk provides mathematical geometry in titles, Inter offers neutral legibility for descriptive body copy, and JetBrains Mono guarantees jitter-free tabular alignment across all millisecond ticks.
+            </p>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- SECTION 3: COMPONENT CATALOG - BUTTONS MATRIX                            -->
+<!-- ========================================================================= -->
+<section class="bg-surface-container-low border border-outline-variant rounded p-4" id="section-buttons">
+<div class="flex items-center justify-between border-b border-outline-variant pb-3 mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="smart_button">smart_button</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">03 // Interactive Buttons &amp; Trigger Matrix</h2>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">MICRO-INTERACTION AUDIT: 100ms SCALE / GLOW HOVER</div>
+</div>
+<!-- State Matrix Grid Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse border border-outline-variant">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant font-label-caps text-label-caps text-on-surface-variant">
+<th class="p-2.5 border-r border-outline-variant">VARIANT</th>
+<th class="p-2.5 border-r border-outline-variant">DEFAULT STATE</th>
+<th class="p-2.5 border-r border-outline-variant">HOVER / FOCUSED</th>
+<th class="p-2.5 border-r border-outline-variant">ACTIVE / PRESSED</th>
+<th class="p-2.5 border-r border-outline-variant">DISABLED</th>
+<th class="p-2.5">EXECUTING / LOADING</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant font-data-mono-sm text-data-mono-sm">
+<!-- Row 1: Primary Trigger Button -->
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-2.5 border-r border-outline-variant font-semibold text-primary">
+                Primary Trigger
+                <div class="text-[9px] text-outline font-normal font-mono">#00F2FE · Sharp 2px</div>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-primary-container text-surface-container-lowest font-headline-md text-headline-md font-bold rounded shadow-[0_0_8px_rgba(0,242,254,0.25)] hover:shadow-[0_0_12px_rgba(0,242,254,0.45)] transition-all">
+                  Deploy Algo
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-primary text-surface-container-lowest font-headline-md text-headline-md font-bold rounded shadow-[0_0_16px_rgba(0,242,254,0.7)] ring-1 ring-primary-container">
+                  Deploy Algo
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-primary-container text-surface-container-lowest font-headline-md text-headline-md font-bold rounded scale-[0.98] opacity-90">
+                  Deploy Algo
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-surface-container-high text-outline font-headline-md text-headline-md font-normal rounded cursor-not-allowed opacity-60" disabled="">
+                  Deploy Algo
+                </button>
+</td>
+<td class="p-2.5">
+<button class="px-3 py-1.5 bg-primary-container text-surface-container-lowest font-headline-md text-headline-md font-bold rounded flex items-center gap-1.5">
+<span class="w-3 h-3 border-2 border-surface-container-lowest border-t-transparent rounded-full animate-spin"></span>
+                  Executing
+                </button>
+</td>
+</tr>
+<!-- Row 2: Secondary / Container Button -->
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-2.5 border-r border-outline-variant font-semibold text-on-surface">
+                Secondary Ghost
+                <div class="text-[9px] text-outline font-normal font-mono">Surface Low · 1px Hairline</div>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant text-on-surface rounded hover:border-primary-container hover:text-primary transition-all">
+                  Audit Export
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-surface-container border border-primary-container text-primary-container rounded shadow-[0_0_8px_rgba(0,242,254,0.2)]">
+                  Audit Export
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-surface-container border border-outline text-on-surface rounded scale-[0.98]">
+                  Audit Export
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant text-outline rounded opacity-50 cursor-not-allowed" disabled="">
+                  Audit Export
+                </button>
+</td>
+<td class="p-2.5">
+<button class="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant text-on-surface-variant rounded flex items-center gap-1.5">
+<span class="w-2.5 h-2.5 bg-secondary-container rounded-full animate-ping"></span>
+                  Exporting
+                </button>
+</td>
+</tr>
+<!-- Row 3: Emergency Kill-Switch Breaker -->
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-2.5 border-r border-outline-variant font-semibold text-error">
+                Kill-Switch Breaker
+                <div class="text-[9px] text-outline font-normal font-mono">Hazard High-Contrast</div>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-error-container text-on-error-container border border-error rounded flex items-center gap-1 font-label-caps text-label-caps shadow-[0_0_10px_rgba(255,59,48,0.3)]">
+<span class="material-symbols-outlined text-xs" data-icon="dangerous">dangerous</span>
+                  HALT COCKPIT
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-error text-on-error rounded flex items-center gap-1 font-label-caps text-label-caps shadow-[0_0_18px_rgba(255,59,48,0.7)]">
+<span class="material-symbols-outlined text-xs animate-bounce" data-icon="dangerous">dangerous</span>
+                  HALT COCKPIT
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-on-error-container text-white rounded flex items-center gap-1 font-label-caps text-label-caps scale-95">
+<span class="material-symbols-outlined text-xs" data-icon="lock">lock</span>
+                  LOCKED HALT
+                </button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="px-3 py-1.5 bg-surface-container border border-outline-variant text-outline rounded opacity-40 cursor-not-allowed font-label-caps text-label-caps" disabled="">
+                  HALT COCKPIT
+                </button>
+</td>
+<td class="p-2.5">
+<button class="px-3 py-1.5 bg-error-container text-on-error-container border border-error rounded flex items-center gap-1.5 hazard-stripe font-label-caps text-label-caps">
+<span class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                  PURGING...
+                </button>
+</td>
+</tr>
+<!-- Row 4: Icon Action Controllers -->
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="p-2.5 border-r border-outline-variant font-semibold text-on-surface-variant">
+                Micro Icon Cluster
+                <div class="text-[9px] text-outline font-normal font-mono">Square 32px · Terminal Docks</div>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<div class="flex items-center gap-1">
+<button class="p-1.5 bg-surface-container border border-outline-variant text-on-surface-variant hover:text-primary-container rounded">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+<button class="p-1.5 bg-surface-container border border-outline-variant text-on-surface-variant hover:text-primary-container rounded">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+</button>
+</div>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<div class="flex items-center gap-1">
+<button class="p-1.5 bg-surface-container-high border border-primary-container text-primary-container rounded shadow-[0_0_8px_rgba(0,242,254,0.3)]">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</div>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="p-1.5 bg-surface-container border border-outline text-primary-container rounded scale-95">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</td>
+<td class="p-2.5 border-r border-outline-variant">
+<button class="p-1.5 bg-surface-container-lowest border border-outline-variant text-outline rounded opacity-40" disabled="">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+</button>
+</td>
+<td class="p-2.5">
+<button class="p-1.5 bg-surface-container border border-outline-variant text-primary-container rounded">
+<span class="material-symbols-outlined animate-spin" data-icon="sync">sync</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- SECTION 4: FORM INPUTS, SLIDERS, TOGGLE SWITCHES & CONTROLS             -->
+<!-- ========================================================================= -->
+<section class="bg-surface-container-low border border-outline-variant rounded p-4" id="section-forms">
+<div class="flex items-center justify-between border-b border-outline-variant pb-3 mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="tune">tune</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">04 // Algorithmic Inputs, Sliders &amp; Toggles</h2>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">NUMERIC DISCIPLINE: ZERO-LATENCY INPUTS</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+<!-- Input 1: Quant Ticker Pair Selector -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-label-caps text-on-surface-variant">INSTRUMENT TICKER</label>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary">TIER-1 LIQUIDITY</span>
+</div>
+<div class="relative">
+<span class="absolute left-2.5 top-2 font-data-mono-md text-data-mono-md text-primary-container font-bold">$</span>
+<input class="w-full bg-surface-container-low text-on-surface font-data-mono-md text-data-mono-md pl-7 pr-20 py-1.5 border border-outline-variant focus:border-primary-container focus:ring-0 rounded" type="text" value="BTC-USDT.P"/>
+<span class="absolute right-2 top-2 px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-on-surface-variant font-data-mono-sm text-data-mono-sm rounded">PERPETUAL</span>
+</div>
+<div class="flex justify-between text-[10px] text-outline font-data-mono-sm">
+<span>INDEX: BINANCE_FUT</span>
+<span>SPREAD: 0.01 USDT</span>
+</div>
+</div>
+<!-- Input 2: KMS Masked API Key Injection Input -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-label-caps text-on-surface-variant">NITRO KMS API SECRET</label>
+<span class="font-data-mono-sm text-data-mono-sm text-primary-container flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="lock">lock</span> HARDWARE ENCRYPTED
+            </span>
+</div>
+<div class="relative flex items-center">
+<input class="w-full bg-surface-container-low text-on-surface font-data-mono-md text-data-mono-md pl-3 pr-16 py-1.5 border border-outline-variant focus:border-primary-container focus:ring-0 rounded" type="password" value="ed25519_sk_94819a8f27be0192e"/>
+<button class="absolute right-1 px-2 py-0.5 bg-surface-container border border-outline-variant hover:border-primary-container text-on-surface-variant hover:text-primary transition-colors font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="content_copy">content_copy</span>
+              Copy
+            </button>
+</div>
+<div class="flex items-center gap-1.5 text-secondary font-data-mono-sm text-data-mono-sm">
+<span class="material-symbols-outlined text-xs" data-icon="verified_user">verified_user</span>
+<span>SHA-512 Validated Signature</span>
+</div>
+</div>
+<!-- Input 3: Steppers & Half-Kelly Slider Control -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-label-caps text-on-surface-variant">HALF-KELLY SIZING FACTOR</label>
+<span class="font-data-mono-sm text-data-mono-sm text-primary-container font-bold">0.42 KELLY</span>
+</div>
+<div class="space-y-1">
+<input class="w-full h-1.5 bg-surface-container rounded-lg appearance-none cursor-pointer accent-primary-container" max="100" min="0" type="range" value="42"/>
+<div class="flex justify-between font-data-mono-sm text-data-mono-sm text-outline">
+<span>0.1 (Conservative)</span>
+<span class="text-on-surface">Max Clip: $125,000</span>
+<span>1.0 (Full Kelly)</span>
+</div>
+</div>
+<div class="pt-1 flex gap-1">
+<button class="flex-1 py-1 bg-surface-container-low border border-outline-variant hover:border-primary-container text-on-surface-variant hover:text-primary font-data-mono-sm text-data-mono-sm rounded">25% Clip</button>
+<button class="flex-1 py-1 bg-surface-container border border-primary-container text-primary-container font-data-mono-sm text-data-mono-sm rounded font-bold">50% Clip</button>
+<button class="flex-1 py-1 bg-surface-container-low border border-outline-variant hover:border-primary-container text-on-surface-variant hover:text-primary font-data-mono-sm text-data-mono-sm rounded">75% Clip</button>
+</div>
+</div>
+<!-- Control 4: Precision Hardware Toggle Switches -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-3">
+<div class="font-label-caps text-label-caps text-on-surface-variant">HARDWARE BREAKER TOGGLES</div>
+<div class="space-y-2">
+<!-- Toggle ON -->
+<div class="flex items-center justify-between">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface">Auto-Hedging Engine</span>
+<button class="w-10 h-5 bg-surface-container-high border border-primary-container rounded-full p-0.5 flex items-center justify-end transition-colors shadow-[0_0_8px_rgba(0,242,254,0.3)]">
+<span class="w-3.5 h-3.5 bg-primary-container rounded-full"></span>
+</button>
+</div>
+<!-- Toggle MINT ON -->
+<div class="flex items-center justify-between">
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface">Cross-Shard Fast Arb</span>
+<button class="w-10 h-5 bg-surface-container-high border border-secondary-container rounded-full p-0.5 flex items-center justify-end transition-colors shadow-[0_0_8px_rgba(1,229,153,0.3)]">
+<span class="w-3.5 h-3.5 bg-secondary-container rounded-full"></span>
+</button>
+</div>
+<!-- Toggle OFF -->
+<div class="flex items-center justify-between">
+<span class="font-data-mono-sm text-data-mono-sm text-outline">Dark Pool Synthetic Routing</span>
+<button class="w-10 h-5 bg-surface-container-lowest border border-outline-variant rounded-full p-0.5 flex items-center justify-start transition-colors">
+<span class="w-3.5 h-3.5 bg-outline rounded-full"></span>
+</button>
+</div>
+</div>
+</div>
+<!-- Control 5: Segmented Routing Picker (Data-center Nodes) -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant block">CO-LOCATION NODE ROUTE</label>
+<div class="grid grid-cols-3 p-0.5 bg-surface-container border border-outline-variant rounded text-center font-data-mono-sm text-data-mono-sm">
+<button class="py-1.5 bg-primary-container text-surface-container-lowest font-bold rounded shadow-[0_0_8px_rgba(0,242,254,0.2)]">NY4 Direct</button>
+<button class="py-1.5 text-on-surface-variant hover:text-on-surface">Tokyo TY3</button>
+<button class="py-1.5 text-on-surface-variant hover:text-on-surface">London LD4</button>
+</div>
+<div class="flex justify-between font-data-mono-sm text-data-mono-sm text-outline pt-1">
+<span>JITTER: ±0.02ms</span>
+<span class="text-secondary">CROSS-CONNECT: FIBER</span>
+</div>
+</div>
+<!-- Control 6: Margin Mode Segmented Control -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant block">MARGIN ACCOUNT ALLOCATION</label>
+<div class="grid grid-cols-3 p-0.5 bg-surface-container border border-outline-variant rounded text-center font-data-mono-sm text-data-mono-sm">
+<button class="py-1.5 text-on-surface-variant hover:text-on-surface">Cross Margin</button>
+<button class="py-1.5 bg-surface-container-high text-primary-container border border-primary-container font-semibold rounded">Isolated</button>
+<button class="py-1.5 text-on-surface-variant hover:text-on-surface">Paper Sandbox</button>
+</div>
+<div class="flex justify-between font-data-mono-sm text-data-mono-sm text-outline pt-1">
+<span>LEVERAGE: 5.0x FIXED</span>
+<span class="text-on-surface">MMR: 2.1%</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- SECTION 5: BADGE PILLS, MODE INDICATORS & TELEMETRY CHIPS               -->
+<!-- ========================================================================= -->
+<section class="bg-surface-container-low border border-outline-variant rounded p-4" id="section-chips">
+<div class="flex items-center justify-between border-b border-outline-variant pb-3 mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="badge">badge</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">05 // Status Badges, Shard Health &amp; Telemetry Chips</h2>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">PIXEL-DENSE TELEMETRY STANDARDS</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Pillar 1: Trading Execution Modes -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2.5">
+<span class="font-label-caps text-label-caps text-on-surface-variant block border-b border-outline-variant pb-1">EXECUTION STATE MODES</span>
+<div class="flex flex-wrap gap-1.5">
+<!-- LIVE: Mint Pulse -->
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-container border border-secondary-container text-secondary font-data-mono-sm text-data-mono-sm font-bold rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-pulse"></span>
+              LIVE EXECUTION
+            </span>
+<!-- SHADOW: Cyan Outline -->
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-container border border-primary-container text-primary-container font-data-mono-sm text-data-mono-sm font-semibold rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+              SHADOW DESK
+            </span>
+<!-- PAPER: Amber Caution -->
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-container border border-outline-variant text-[#FFB800] font-data-mono-sm text-data-mono-sm rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-[#FFB800]"></span>
+              PAPER SANDBOX
+            </span>
+<!-- HALTED: Red Alert -->
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-error-container border border-error text-on-error-container font-data-mono-sm text-data-mono-sm font-bold rounded">
+<span class="material-symbols-outlined text-xs" data-icon="block">block</span>
+              CIRCUIT HALTED
+            </span>
+</div>
+</div>
+<!-- Pillar 2: Shard Health Chips -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2.5">
+<span class="font-label-caps text-label-caps text-on-surface-variant block border-b border-outline-variant pb-1">SHARD HEALTH SPECIMEN</span>
+<div class="flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 bg-surface-container-high border border-outline-variant text-on-surface font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1">
+<span class="text-secondary font-bold">NY4:</span> 0.82ms IN-SYNC
+            </span>
+<span class="px-2 py-0.5 bg-surface-container-high border border-primary-container text-primary-container font-data-mono-sm text-data-mono-sm rounded">
+              VERIFIED_NITRO
+            </span>
+<span class="px-2 py-0.5 bg-surface-container-high border border-outline-variant text-on-surface-variant font-data-mono-sm text-data-mono-sm rounded">
+              ED25519 SIGNED
+            </span>
+<span class="px-2 py-0.5 bg-surface-container-high border border-secondary-container text-secondary font-data-mono-sm text-data-mono-sm rounded font-bold">
+              P99: 4.1ms
+            </span>
+</div>
+</div>
+<!-- Pillar 3: Micro Status Gauges & Buffers -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2.5">
+<span class="font-label-caps text-label-caps text-on-surface-variant block border-b border-outline-variant pb-1">RING BUFFER OCCUPANCY</span>
+<!-- Memory bar indicator -->
+<div>
+<div class="flex justify-between font-data-mono-sm text-data-mono-sm mb-1">
+<span class="text-outline">RING_BUFFER_L1:</span>
+<span class="text-primary-container font-mono">64.2% (1024MB)</span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded overflow-hidden flex">
+<div class="bg-primary-container h-full w-[64.2%] shadow-[0_0_8px_rgba(0,242,254,0.5)]"></div>
+</div>
+</div>
+<!-- Websocket Heartbeat Ping -->
+<div class="pt-1 flex items-center justify-between font-data-mono-sm text-data-mono-sm">
+<span class="text-outline">WS HEARTBEAT:</span>
+<div class="flex items-center gap-1 text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-ping"></span>
+<span>120Hz FIXED</span>
+</div>
+</div>
+</div>
+<!-- Pillar 4: Risk Threshold Indicator -->
+<div class="p-3 bg-surface-container-lowest border border-outline-variant rounded space-y-2.5">
+<span class="font-label-caps text-label-caps text-on-surface-variant block border-b border-outline-variant pb-1">RISK TOLERANCE THRESHOLDS</span>
+<div class="space-y-1.5 font-data-mono-sm text-data-mono-sm">
+<div class="flex items-center justify-between p-1 bg-surface-container-low rounded border border-outline-variant">
+<span class="text-on-surface-variant">MAX DRAWDOWN:</span>
+<span class="text-secondary font-bold">0.82% / 2.50%</span>
+</div>
+<div class="flex items-center justify-between p-1 bg-surface-container-low rounded border border-outline-variant">
+<span class="text-on-surface-variant">GAMMA SENSITIVITY:</span>
+<span class="text-primary-container font-bold">Δ +0.041</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom Architectural Attribution Footer -->
+<footer class="pt-4 border-t border-outline-variant flex flex-col md:flex-row items-center justify-between gap-2 text-outline font-data-mono-sm text-data-mono-sm">
+<div>
+<span>AlgoTrade OS // OBSIDIAN QUANTUM DESIGN SYSTEM SPECIFICATION v2.4</span>
+</div>
+<div class="flex items-center gap-4">
+<span>MERKLE: 0x8F94...A3E2</span>
+<span>LATENCY: 4.2ms</span>
+<span class="text-primary-container">ZERO RUNTIME DRIFT CONFIRMED</span>
+</div>
+</footer>
+</main>
+
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-wrap: wrap; gap: 6px; background: rgba(15, 18, 24, 0.95); backdrop-filter: blur(12px); border: 1px solid #1E2430; padding: 6px 12px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 11px;">
+  <a href="dashboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">DASHBOARD</a>
+  <a href="quant-terminal.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">TERMINAL</a>
+  <a href="marketplace.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">MARKETPLACE</a>
+  <a href="leaderboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">LEADERBOARD</a>
+  <a href="billing.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BILLING</a>
+  <a href="byok-wizard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BYOK</a>
+  <a href="mobile-sentry.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">SENTRY</a>
+  <a href="telemetry.html" style="color: #00F2FE; text-decoration: none; padding: 4px 8px;">TELEMETRY</a>
+  <a href="latency-simulator.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">FEED SIMULATOR</a>
+  <a href="styleguide.html" style="color: #00F2FE; font-weight: bold; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); text-decoration: none; padding: 4px 8px; border-radius: 4px;">⚡ STYLEGUIDE</a>
+</div>
+
+
+
+<!-- ALGOTRADE UNIVERSAL DOCK NAVIGATION -->
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; align-items: center; gap: 8px; background: rgba(15, 18, 24, 0.92); border: 1px solid #1E2430; backdrop-filter: blur(16px); padding: 6px 14px; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(0, 242, 254, 0.15); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-width: 95vw; overflow-x: auto;">
+  <div style="display: flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid #1E2430;">
+    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #00E599; box-shadow: 0 0 8px #00E599;"></span>
+    <span style="color: #00F2FE; font-weight: 700; letter-spacing: 0.5px;">ALGOTRADE</span>
+  </div>
+  <nav style="display: flex; align-items: center; gap: 4px;">
+    <a href="dashboard.html" class="nav-item-dashboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">DASHBOARD</a>
+    <a href="quant-terminal.html" class="nav-item-quant-terminal" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">QUANT TERMINAL</a>
+    <a href="marketplace.html" class="nav-item-marketplace" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MARKETPLACE</a>
+    <a href="leaderboard.html" class="nav-item-leaderboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LEADERBOARD</a>
+    <a href="backtest-studio.html" class="nav-item-backtest-studio" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BACKTEST STUDIO</a>
+    <a href="stress-lab.html" class="nav-item-stress-lab" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STRESS LAB</a>
+    <a href="telemetry.html" class="nav-item-telemetry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">TELEMETRY</a>
+    <a href="latency-simulator.html" class="nav-item-latency-simulator" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LATENCY SIM</a>
+    <a href="billing.html" class="nav-item-billing" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BILLING</a>
+    <a href="byok-wizard.html" class="nav-item-byok-wizard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BYOK WIZARD</a>
+    <a href="mobile-sentry.html" class="nav-item-mobile-sentry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MOBILE SENTRY</a>
+    <a href="styleguide.html" class="nav-item-styleguide" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STYLE GUIDE</a>
+  </nav>
+</div>
+<script>
+  (function() {
+    var cur = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (cur === 'index.html') cur = 'dashboard.html';
+    var key = cur.split('.')[0];
+    var activeLink = document.querySelector('.nav-item-' + key);
+    if (activeLink) {
+      activeLink.style.color = '#00F2FE';
+      activeLink.style.background = 'rgba(0, 242, 254, 0.12)';
+      activeLink.style.border = '1px solid rgba(0, 242, 254, 0.3)';
+      activeLink.style.fontWeight = '600';
+    }
+  })();
+</script>
+
+</body></html>

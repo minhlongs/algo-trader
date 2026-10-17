@@ -12,15 +12,11 @@ const { mockLogger, mockQuery } = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../shared/utils/logger', () => ({ logger: mockLogger }));
-vi.mock('../../../db/postgres-client', () => ({
-  getDbClient: () => ({ query: mockQuery }),
-}));
+vi.mock('../../../db/postgres-client', () => ({ getDbClient: () => ({ query: mockQuery }) }));
 
 import {
-  createExperiment, startExperiment, assignGroup, recordOutcome,
-  getResults, listExperiments,
+  createExperiment, startExperiment, assignGroup, recordOutcome, getResults, listExperiments, type Experiment,
 } from '../ab-test-manager';
-import type { Experiment } from '../ab-test-manager';
 
 function experimentRow(overrides: Partial<Experiment> = {}): Record<string, unknown> {
   return {
@@ -37,9 +33,7 @@ describe('createExperiment', () => {
   it('inserts the experiment and returns the created row', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 7 }], rowCount: 1 });
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 7, name: 'my-exp' })], rowCount: 1 });
-    const exp = await createExperiment({
-      name: 'my-exp', controlName: 'control', treatmentName: 'treatment',
-    });
+    const exp = await createExperiment({ name: 'my-exp', controlName: 'control', treatmentName: 'treatment' });
     expect(mockQuery).toHaveBeenCalledTimes(2);
     const [insertSql] = mockQuery.mock.calls[0]!;
     expect(insertSql).toContain('INSERT INTO ab_test_experiments');
@@ -84,11 +78,8 @@ describe('assignGroup', () => {
   });
 
   it('hashes and inserts a new assignment', async () => {
-    // No existing assignment
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
-    // getExperiment
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 9, trafficPct: 40 })], rowCount: 1 });
-    // INSERT
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
     const res = await assignGroup(9, 'sig-9');
     expect(res.alreadyAssigned).toBe(false);
@@ -151,18 +142,13 @@ describe('getResults', () => {
     ], rowCount: 4 });
     const res = await getResults(1);
     expect(res.experiment.id).toBe(1);
-    expect(res.control.total).toBe(2);
-    expect(res.control.correct).toBe(1);
-    expect(res.control.accuracy).toBe(0.5);
-    expect(res.treatment.total).toBe(2);
-    expect(res.treatment.correct).toBe(2);
-    expect(res.treatment.accuracy).toBe(1);
+    expect(res.control).toMatchObject({ total: 2, correct: 1, accuracy: 0.5 });
+    expect(res.treatment).toMatchObject({ total: 2, correct: 2, accuracy: 1 });
     expect(typeof res.pValue).toBe('number');
     expect(typeof res.recommendation).toBe('string');
   });
 
   it('reports no winner when significance is not reached', async () => {
-    // Both groups identical → pooled proportion 0.5, z = 0 → not significant
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 1, confidenceLevel: 0.95, minSamples: 30 })], rowCount: 1 });
     mockQuery.mockResolvedValueOnce({ rows: [
       { group_name: 'control', correct: false, confidence: '0.5', pnl: '0' },
@@ -189,7 +175,6 @@ describe('listExperiments', () => {
 
   it('returns an empty list when no experiments exist', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
-    const list = await listExperiments();
-    expect(list).toEqual([]);
+    expect(await listExperiments()).toEqual([]);
   });
 });

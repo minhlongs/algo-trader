@@ -8,27 +8,16 @@ import WebSocket from 'ws';
 import { logger } from '../../shared/utils/logger';
 import { getMessageBus } from '../../shared/messaging/index';
 import { parseWsMessage } from './polymarket-websocket-message-parser';
+import {
+  type PriceUpdate,
+  WS_URL,
+  NATS_TOPIC_TEMPLATE,
+  HEARTBEAT_MS,
+  RECONNECT_BASE_MS,
+  RECONNECT_MAX_MS,
+} from './polymarket-websocket-feed-types';
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-export interface PriceUpdate {
-  tokenId: string;
-  yesPrice: number;
-  noPrice: number;
-  bestBid: number;
-  bestAsk: number;
-  lastTradePrice: number;
-  volume24h: number;
-  timestamp: number;
-}
-
-const WS_URL = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
-const NATS_TOPIC_TEMPLATE = 'market.TOKEN.update';
-const HEARTBEAT_MS = 30_000;
-const RECONNECT_BASE_MS = 1_000;
-const RECONNECT_MAX_MS = 30_000;
+export * from './polymarket-websocket-feed-types';
 
 export class PolymarketWebSocketFeed {
   private ws: WebSocket | null = null;
@@ -170,26 +159,5 @@ this.ws = null;
   }
 }
 
-/**
- * Start Polymarket WebSocket feed for given token IDs.
- * Auto-reconnects with exponential backoff (1s → 30s).
- * Publishes each PriceUpdate to NATS topic `market.<tokenId>.update`.
- */
-export function startPolymarketWebSocket(
-  tokenIds: string[],
-): { feed: PolymarketWebSocketFeed; stop: () => void } {
-  const feed = new PolymarketWebSocketFeed();
-  feed.connect();
-  feed.subscribe(tokenIds);
+export { startPolymarketWebSocket } from './polymarket-websocket-launcher';
 
-  const onSigterm = () => feed.close();
-  process.once('SIGTERM', onSigterm);
-
-  return {
-    feed,
-    stop(): void {
-      process.removeListener('SIGTERM', onSigterm);
-      feed.close();
-    },
-  };
-}

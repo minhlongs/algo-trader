@@ -10,11 +10,18 @@ import type { PromotionReadiness } from '../gates/gate-types';
 import type { AlphaSurvivalGateEvaluation } from './alpha-survival-gate-types';
 import {
   type AlphaLifecycleState, type GateEvaluationMetrics, type PromotionCriteria,
-  type PromotionStateTransition, CIRCUIT_BREAKER_MAX_DRAWDOWN, DEFAULT_PROMOTION_CRITERIA, createTransition,
+  type PromotionStateTransition, CIRCUIT_BREAKER_MAX_DRAWDOWN, createTransition,
 } from './alpha-lifecycle-state-types';
 import { evaluateLifecycleGates } from './alpha-lifecycle-metrics';
+import {
+  buildValidateCandidateTransition,
+  buildStartPaperTradingTransition,
+  buildPromotionTransition,
+  buildDrawdownQuarantineTransition,
+} from './alpha-lifecycle-transitions';
 
 export * from './alpha-lifecycle-state-types';
+export * from './alpha-lifecycle-transitions';
 export { extractGateMetrics } from './alpha-lifecycle-metrics';
 
 export class AlphaLifecycleStateMachine {
@@ -41,25 +48,8 @@ export class AlphaLifecycleStateMachine {
   public getHistory(): PromotionStateTransition[] { return [...this.history]; }
 
   public validateCandidate(evalResult: AlphaSurvivalGateEvaluation, reason?: string): PromotionStateTransition {
-    if (this.state === 'RETIRED') throw new Error('Cannot validate candidate: strategy is in RETIRED state');
-    if (this.state !== 'DISCOVERED') {
-      throw new Error(`Cannot validate candidate: strategy is in ${this.state} state (expected DISCOVERED)`);
-    }
-
-    const targetState: AlphaLifecycleState = evalResult.passed ? 'VALIDATED' : 'RETIRED';
-    const defaultReason = evalResult.passed
-      ? 'Candidate passed statistical survival gates'
-      : (evalResult.diagnostics?.join('; ') || 'Candidate failed survival gates');
-
-    const transition = createTransition(
-      this.strategyId, this.state, targetState, reason ?? defaultReason,
-      evalResult.metrics ? {
-        sharpeRatio: evalResult.metrics.oosSharpeRatio,
-        maxDrawdown: evalResult.metrics.maxDrawdown,
-        profitFactor: evalResult.metrics.profitFactor,
-        tradeCount: evalResult.metrics.totalTestTrades,
-        winRate: evalResult.metrics.testWinRate,
-      } : undefined,
+    const { targetState, transition } = buildValidateCandidateTransition(
+      this.strategyId, this.state, evalResult, reason,
     );
     this.state = targetState;
     this.history.push(transition);
@@ -67,16 +57,7 @@ export class AlphaLifecycleStateMachine {
   }
 
   public startPaperTrading(reason?: string): PromotionStateTransition {
-    if (this.state === 'RETIRED') throw new Error('Cannot start paper trading: strategy is in RETIRED state (absorbing state)');
-    if (this.state === 'QUARANTINED') throw new Error('Cannot start paper trading: strategy is in QUARANTINED state');
-    if (this.state !== 'VALIDATED' && this.state !== 'DISCOVERED') {
-      throw new Error(`Cannot start paper trading: strategy is in ${this.state} state (expected VALIDATED)`);
-    }
-
-    const transition = createTransition(
-      this.strategyId, this.state, 'PAPER_ACTIVE',
-      reason ?? 'Strategy ingested into paper trading execution loop',
-    );
+    const transition = buildStartPaperTradingTransition(this.strategyId, this.state, reason);
     this.state = 'PAPER_ACTIVE';
     this.history.push(transition);
     return transition;
@@ -86,20 +67,8 @@ export class AlphaLifecycleStateMachine {
     metrics: { tradeCount: number; cumulativeSharpe?: number; sharpeRatio?: number; maxDrawdown: number; winRate?: number; totalNetPnl?: number },
     criteria?: Partial<PromotionCriteria>,
   ): PromotionStateTransition | null {
-    if (this.state !== 'PAPER_ACTIVE') return null;
-
-    const minTrades = criteria?.minTradeCount ?? DEFAULT_PROMOTION_CRITERIA.minTradeCount;
-    const minSharpe = criteria?.minCumulativeSharpe ?? DEFAULT_PROMOTION_CRITERIA.minCumulativeSharpe;
-    const maxDd = criteria?.maxDrawdown ?? DEFAULT_PROMOTION_CRITERIA.maxDrawdown;
-    const sharpe = metrics.cumulativeSharpe ?? metrics.sharpeRatio ?? 0;
-    const dd = Math.abs(metrics.maxDrawdown);
-
-    if (metrics.tradeCount >= minTrades && sharpe >= minSharpe && dd <= maxDd) {
-      const transition = createTransition(
-        this.strategyId, this.state, 'PROMOTED_LIVE_ELIGIBLE',
-        `Strategy passed paper promotion hurdles: ${metrics.tradeCount} trades, Sharpe ${sharpe.toFixed(2)}, DD ${(dd * 100).toFixed(1)}%`,
-        { tradeCount: metrics.tradeCount, totalTrades: metrics.tradeCount, sharpeRatio: sharpe, cumulativeSharpe: sharpe, maxDrawdown: dd, winRate: metrics.winRate ?? 0, totalNetPnl: metrics.totalNetPnl ?? 0 },
-      );
+    const transition = buildPromotionTransition(this.strategyId, this.state, metrics, criteria);
+    if (transition) {
       this.state = 'PROMOTED_LIVE_ELIGIBLE';
       this.history.push(transition);
       return transition;
@@ -111,13 +80,11 @@ export class AlphaLifecycleStateMachine {
     const dd = Math.abs(currentDrawdown);
     if (dd >= CIRCUIT_BREAKER_MAX_DRAWDOWN) {
       if (this.state === 'PAPER_ACTIVE' || this.state === 'PROMOTED_LIVE_ELIGIBLE') {
-        const transition = createTransition(
-          this.strategyId, this.state, 'QUARANTINED',
-          reason ?? `Strategy quarantined by drawdown circuit breaker: ${(dd * 100).toFixed(2)}% >= ${(CIRCUIT_BREAKER_MAX_DRAWDOWN * 100).toFixed(2)}%`,
-          { maxDrawdown: dd },
-        );
-        this.state = 'QUARANTINED';
-        this.history.push(transition);
+        const transition = buildDrawdownQuarantineTransition(this.strategyId, this.state, currentDrawdown, reason);
+        if (transition) {
+          this.state = 'QUARANTINED';
+          this.history.push(transition);
+        }
         return true;
       }
       return this.state === 'QUARANTINED';
@@ -126,13 +93,8 @@ export class AlphaLifecycleStateMachine {
   }
 
   public recordDrawdown(dd: number, reason?: string): PromotionStateTransition | null {
-    const absDd = Math.abs(dd);
-    if (absDd >= CIRCUIT_BREAKER_MAX_DRAWDOWN && (this.state === 'PAPER_ACTIVE' || this.state === 'PROMOTED_LIVE_ELIGIBLE')) {
-      const transition = createTransition(
-        this.strategyId, this.state, 'QUARANTINED',
-        reason ?? `Strategy quarantined by drawdown circuit breaker: ${(absDd * 100).toFixed(2)}% >= ${(CIRCUIT_BREAKER_MAX_DRAWDOWN * 100).toFixed(2)}%`,
-        { maxDrawdown: absDd },
-      );
+    const transition = buildDrawdownQuarantineTransition(this.strategyId, this.state, dd, reason);
+    if (transition) {
       this.state = 'QUARANTINED';
       this.history.push(transition);
       return transition;

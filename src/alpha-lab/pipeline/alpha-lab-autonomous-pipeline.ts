@@ -31,14 +31,24 @@ import {
   appendPipelineLedger,
 } from './alpha-lab-pipeline-actions';
 import {
-  executeDiscovery,
-  executeCandidateIngestion,
-  executeSignalProcessing,
-  executePromotionEvaluation,
-  executeLiveRiskEvaluation,
-  executePipelineCycle,
-  executeStatusCapture,
-} from './alpha-lab-pipeline-delegator';
+  runDiscovery,
+  runCandidateIngestion,
+  runSignalProcessing,
+  runPromotionEvaluation,
+  runLiveRiskEvaluation,
+  runCycleExecution,
+  runStatusCapture,
+} from './alpha-lab-pipeline-executor';
+import {
+  getLifecycleStateMachine,
+  getPaperRouter,
+  getSignalAdapter,
+  getLiveCoordinator,
+  getDiscoveryPipeline,
+  getRegimeKelly,
+  getCircuitBreaker,
+  getTrackedStrategyIds,
+} from './alpha-lab-pipeline-accessors';
 
 export type {
   AlphaLabAutonomousPipelineConfig,
@@ -46,6 +56,23 @@ export type {
   AutonomousCycleResult,
   AlphaLabPipelineStatus,
 } from './alpha-lab-pipeline-types';
+export {
+  getLifecycleStateMachine,
+  getPaperRouter,
+  getSignalAdapter,
+  getLiveCoordinator,
+  getDiscoveryPipeline,
+  getRegimeKelly,
+  getCircuitBreaker,
+  getTrackedStrategyIds,
+  runDiscovery,
+  runCandidateIngestion,
+  runSignalProcessing,
+  runPromotionEvaluation,
+  runLiveRiskEvaluation,
+  runCycleExecution,
+  runStatusCapture,
+};
 
 export class AlphaLabAutonomousPipeline {
   private readonly ctx: PipelineCoreContext;
@@ -81,45 +108,27 @@ export class AlphaLabAutonomousPipeline {
   }
 
   public async discoverAndEvaluate(candles?: CandleLike[]): Promise<ContinuousDiscoveryResult> {
-    return executeDiscovery(this.ctx.subsystems, this.ctx.state, this.ctx.symbol, this.ctx.timeframe, this.ctx.runCardDir, this.persistLedgerRecord.bind(this), candles);
+    return runDiscovery(this.ctx, this.persistLedgerRecord.bind(this), candles);
   }
 
   public ingestCandidateToPaper(
     candidate: DiscoveredAlphaCandidate,
     reason?: string,
   ): PromotionStateTransition {
-    return executeCandidateIngestion(
-      candidate,
-      this.ctx.state,
-      this.persistLedgerRecord.bind(this),
-      reason,
-    );
+    return runCandidateIngestion(this.ctx, candidate, this.persistLedgerRecord.bind(this), reason);
   }
 
   public async processSignals(
     signals: AISignal[],
     marketPrice: number,
   ): Promise<SignalRoutingOutcome[]> {
-    return executeSignalProcessing(
-      this.ctx.subsystems,
-      this.ctx.state,
-      signals,
-      marketPrice,
-      this.ctx.symbol,
-    );
+    return runSignalProcessing(this.ctx, signals, marketPrice);
   }
 
   public async evaluatePromotions(
     gateInputs?: Map<string, GateEvaluatorInput>,
   ): Promise<PromotionStateTransition[]> {
-    return executePromotionEvaluation(
-      this.ctx.state,
-      this.ctx.symbol,
-      this.ctx.timeframe,
-      this.ctx.runCardDir,
-      this.persistLedgerRecord.bind(this),
-      gateInputs,
-    );
+    return runPromotionEvaluation(this.ctx, this.persistLedgerRecord.bind(this), gateInputs);
   }
 
   public evaluateLiveOrder(request: {
@@ -127,66 +136,46 @@ export class AlphaLabAutonomousPipeline {
     order: PolymarketOrder;
     signal?: TradeSignal | AISignal;
   }): LiveOrderHandoffVerdict {
-    return executeLiveRiskEvaluation(
-      this.ctx.subsystems,
-      this.ctx.state,
-      this.ctx.symbol,
-      request,
-    );
+    return runLiveRiskEvaluation(this.ctx, request);
   }
 
   public async runCycle(options?: AutonomousCycleOptions): Promise<AutonomousCycleResult> {
-    return executePipelineCycle(
-      this.ctx.subsystems,
-      this.ctx.state,
-      this.ctx.symbol,
-      this.ctx.timeframe,
-      this.ctx.initialBalanceUsd,
-      this.ctx.ledgerPath,
-      this.ctx.runCardDir,
-      this.persistLedgerRecord.bind(this),
-      options,
-    );
+    return runCycleExecution(this.ctx, this.persistLedgerRecord.bind(this), options);
   }
 
   public async getStatus(): Promise<AlphaLabPipelineStatus> {
-    return executeStatusCapture(
-      this.ctx.subsystems,
-      this.ctx.state,
-      this.ctx.ledgerPath,
-      this.ctx.initialBalanceUsd,
-    );
+    return runStatusCapture(this.ctx);
   }
 
   public getLifecycleStateMachine(strategyId: string): AlphaLifecycleStateMachine | undefined {
-    return this.ctx.state.stateMachines.get(strategyId);
+    return getLifecycleStateMachine(this.ctx, strategyId);
   }
 
   public getPaperRouter(): AISignalPaperRouter {
-    return this.ctx.subsystems.paperRouter;
+    return getPaperRouter(this.ctx);
   }
 
   public getSignalAdapter(): AISignalAdapter {
-    return this.ctx.subsystems.signalAdapter;
+    return getSignalAdapter(this.ctx);
   }
 
   public getLiveCoordinator(): LiveGuardHandoffCoordinator {
-    return this.ctx.subsystems.liveCoordinator;
+    return getLiveCoordinator(this.ctx);
   }
 
   public getDiscoveryPipeline(): ContinuousDiscoveryPipeline {
-    return this.ctx.subsystems.discoveryPipeline;
+    return getDiscoveryPipeline(this.ctx);
   }
 
   public getRegimeKelly(): RegimeAwareKelly {
-    return this.ctx.subsystems.regimeKelly;
+    return getRegimeKelly(this.ctx);
   }
 
   public getCircuitBreaker(): CircuitBreaker {
-    return this.ctx.subsystems.circuitBreaker;
+    return getCircuitBreaker(this.ctx);
   }
 
   public getTrackedStrategyIds(): string[] {
-    return Array.from(this.ctx.state.stateMachines.keys());
+    return getTrackedStrategyIds(this.ctx);
   }
 }

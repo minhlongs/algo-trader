@@ -12,12 +12,27 @@
 
 import type { RiskCalculationRequest, RiskCalculationResult, AppError, IdentifyResult } from './types';
 import type { RiskCalculationRepository } from './repository';
+import {
+  RISK_CALCULATION_LIMIT_MIN,
+  RISK_CALCULATION_LIMIT_DEFAULT,
+  RISK_CALCULATION_LIMIT_MAX,
+  clampLimit,
+  computeRisk,
+  extractAppError,
+  levelFromScore,
+  psuedoRandomScore,
+} from './compute';
 
-// ── Constants (Granada-defined contract) ─────────────────────────────────────
-
-export const RISK_CALCULATION_LIMIT_MIN = 100;
-export const RISK_CALCULATION_LIMIT_DEFAULT = 1000;
-export const RISK_CALCULATION_LIMIT_MAX = 1000; // mirror: used by controller
+export {
+  RISK_CALCULATION_LIMIT_MIN,
+  RISK_CALCULATION_LIMIT_DEFAULT,
+  RISK_CALCULATION_LIMIT_MAX,
+  clampLimit,
+  computeRisk,
+  extractAppError,
+  levelFromScore,
+  psuedoRandomScore,
+};
 
 // ── Service Options ───────────────────────────────────────────────────────────
 
@@ -132,67 +147,4 @@ export class RiskCalculationService {
       riskLevel: request.riskLevel,
     });
   }
-}
-
-// ── Pure validation helpers ───────────────────────────────────────────────────
-// Standalone (not class methods) so they're pure functions — easily testable.
-
-function clampLimit(raw: number): number | AppError {
-  if (!Number.isFinite(raw) || raw < RISK_CALCULATION_LIMIT_MIN) {
-    return {
-      code: 'INVALID_REQUEST',
-      message: `limit must be >= ${RISK_CALCULATION_LIMIT_MIN}`,
-      cause: { received: raw },
-    };
-  }
-  if (raw > RISK_CALCULATION_LIMIT_MAX) {
-    return {
-      code: 'INVALID_REQUEST',
-      message: `limit must be <= ${RISK_CALCULATION_LIMIT_MAX}`,
-      cause: { received: raw },
-    };
-  }
-  return Math.round(raw);
-}
-
-/** Type guard: narrow number | AppError → AppError | undefined */
-function extractAppError(value: number | AppError): AppError | undefined {
-  return typeof value === 'object' && value !== null && 'code' in value
-    ? (value as AppError)
-    : undefined;
-}
-
-// ── Domain computation (smallest unit — 40-70% module) ──────────────────────
-// Granularity 1: Risk calculation logic isolated here.
-// Extend via: add new branch in computeRisk(), or extract to strategy classes
-// if the function grows beyond ~80 LOC.
-
-function computeRisk(req: RiskCalculationRequest): RiskCalculationResult[] {
-  // Stub — deterministic pseudo-random results for contract validation.
-  // Production: swap with actual risk engine integration.
-  const now = new Date().toISOString();
-  const seed = req.limit + (req.sort === 'asc' ? 0 : 999);
-  return Array.from({ length: req.limit }, (_, i) => ({
-    id: `risk-${seed + i}`,
-    riskScore: psuedoRandomScore(seed + i),
-    level: levelFromScore(psuedoRandomScore(seed + i)),
-    symbol: 'BTC/USDT', // placeholder
-    calculatedAt: now,
-    confidence: 0.85 + (i % 10) / 100,
-    factors: ['market_volatility', 'correlation_exposure'],
-    triggeredBy: 'system',
-    algorithm: 'granada-standard-v1',
-  }));
-}
-
-function psuedoRandomScore(seed: number): number {
-  // Simple seeded noise — enough for contract testing.
-  const x = Math.sin(seed * 9301 + 49297) * 233280;
-  return Math.round(((x - Math.floor(x)) * 100) % 101);
-}
-
-function levelFromScore(score: number): 'low' | 'medium' | 'high' {
-  if (score < 40) return 'low';
-  if (score < 75) return 'medium';
-  return 'high';
 }

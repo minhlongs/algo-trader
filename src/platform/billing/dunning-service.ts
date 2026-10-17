@@ -25,7 +25,8 @@ import {
 import {
   calculateSuspensionStatus,
   processGracePeriods,
-  logSuspensionWarning,
+  processExistingFailure,
+  processExistingPaymentSuccess,
   type SuspensionStatusResult,
 } from './dunning-helpers';
 
@@ -71,20 +72,13 @@ export class DunningService {
 
   private async seedFromDb(): Promise<void> {
     const res = await seedDunningFromDb();
-    if (res.ready) {
-      this.dunningRecords = res.records;
-      this.dbReady = true;
-    } else {
-      this.dbReady = false;
-    }
+    if (res.ready) this.dunningRecords = res.records;
+    this.dbReady = res.ready;
   }
 
   private async upsertRecord(record: DunningRecord): Promise<void> {
     this.dunningRecords.set(record.licenseId, record);
-    if (this.dbReady) {
-      const ok = await upsertDunningToDb(record);
-      if (ok) return;
-    }
+    if (this.dbReady && (await upsertDunningToDb(record))) return;
     saveToFile(this.dunningRecords);
   }
 
@@ -95,66 +89,27 @@ export class DunningService {
     return Promise.resolve();
   }
 
-  async recordPaymentFailure(
-    licenseId: string,
-    customerEmail: string,
-    subscriptionId?: string,
-  ): Promise<DunningRecord> {
+  async recordPaymentFailure(licenseId: string, customerEmail: string, subscriptionId?: string): Promise<DunningRecord> {
     const existing = this.getDunningRecordByLicense(licenseId);
-
     if (existing) {
-      existing.retryCount += 1;
-      existing.lastAttemptDate = new Date().toISOString();
-      existing.updatedAt = new Date().toISOString();
-
-      const { shouldSuspend, daysSinceFirstFailure } = DunningWorkflow.shouldSuspend(
-        existing.retryCount,
-        existing.firstFailureDate,
-        this.config,
-      );
-
-      if (shouldSuspend) {
-        await DunningWorkflow.suspendLicense(licenseId, existing, this.licenseService, this.auditService, this.saveDunningRecord.bind(this));
-      } else {
-        existing.status = 'warning';
-        await logSuspensionWarning(this.auditService, licenseId, existing.retryCount, this.config, daysSinceFirstFailure);
-      }
-
+      await processExistingFailure(existing, this.config, this.licenseService, this.auditService, this.saveDunningRecord.bind(this));
       await this.upsertRecord(existing);
       return existing;
     }
-
     return this.createDunningRecord(licenseId, customerEmail, subscriptionId);
   }
 
-  async createDunningRecord(
-    licenseId: string,
-    customerEmail: string,
-    subscriptionId?: string,
-  ): Promise<DunningRecord> {
+  async createDunningRecord(licenseId: string, customerEmail: string, subscriptionId?: string): Promise<DunningRecord> {
     const record = buildNewDunningRecord(licenseId, customerEmail, subscriptionId);
     this.dunningRecords.set(record.licenseId, record);
     await this.upsertRecord(record);
     return record;
   }
 
-  async recordPaymentSuccess(
-    licenseId: string,
-    _customerEmail: string,
-    _subscriptionId?: string,
-  ): Promise<DunningRecord | undefined> {
+  async recordPaymentSuccess(licenseId: string, _customerEmail: string, _subscriptionId?: string): Promise<DunningRecord | undefined> {
     const existing = this.getDunningRecordByLicense(licenseId);
     if (!existing) return undefined;
-
-    if (existing.status === 'suspended') {
-      await DunningWorkflow.reinstateLicense(licenseId, existing, this.licenseService, this.auditService, this.saveDunningRecord.bind(this));
-    }
-
-    existing.reinstatementDate = new Date().toISOString();
-    existing.status = 'reinstated';
-    existing.updatedAt = new Date().toISOString();
-    existing.retryCount = 0;
-
+    await processExistingPaymentSuccess(existing, this.licenseService, this.auditService, this.saveDunningRecord.bind(this));
     await this.upsertRecord(existing);
     return existing;
   }

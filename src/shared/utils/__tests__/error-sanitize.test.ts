@@ -1,30 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  sanitizeError,
-  sanitizeHttpError,
-} from '../error-sanitize';
+import { sanitizeError, sanitizeHttpError } from '../error-sanitize';
 
 // Mock logger to avoid noise in test output
-vi.mock('../logger', () => ({
-  logger: {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-  },
-}));
+vi.mock('../logger', () => ({ logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() } }));
 
 describe('error-sanitize', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => { vi.clearAllMocks(); });
 
   describe('sanitizeHttpError', () => {
     it('strips stack traces from Error objects', () => {
       const err = new Error('database connection failed');
       err.stack = 'Error: database connection failed\n    at connect (src/db/client.ts:42:15)\n    at Pool.query (src/db/pool.ts:88:20)';
-
       const body = sanitizeHttpError(err);
-
       // Stack trace must never appear in output
       expect(JSON.stringify(body)).not.toContain('src/db/client.ts');
       expect(JSON.stringify(body)).not.toContain('at connect');
@@ -33,9 +20,7 @@ describe('error-sanitize', () => {
 
     it('preserves error message for client handling', () => {
       const err = new TypeError('invalid argument');
-
       const body = sanitizeHttpError(err);
-
       expect(body.error.message).toBe('Invalid input');
       expect(body.error.code).toBe('INVALID_INPUT');
       expect(body.error.statusCode).toBe(400);
@@ -43,9 +28,7 @@ describe('error-sanitize', () => {
 
     it('maps unknown errors to safe generic message', () => {
       const err = new Error('something broke internally');
-
       const body = sanitizeHttpError(err);
-
       // Generic message — never the raw internal text
       expect(body.error.message).not.toBe('something broke internally');
       expect(body.error.statusCode).toBe(500);
@@ -53,7 +36,6 @@ describe('error-sanitize', () => {
 
     it('handles string errors safely — strips connection strings', () => {
       const body = sanitizeHttpError('postgres://admin:secret@db.internal:5432/prod');
-
       expect(JSON.stringify(body)).not.toContain('postgres://');
       expect(JSON.stringify(body)).not.toContain('secret');
       expect(body.error.message).toBeDefined();
@@ -68,10 +50,8 @@ describe('error-sanitize', () => {
     it('never exposes internal file paths', () => {
       const err = new Error('fail');
       err.stack = 'Error: fail\n    at /home/deploy/src/internal/secret.ts:99\n    at processRequest (src/handlers/private.ts:12)';
-
       const body = sanitizeHttpError(err);
       const json = JSON.stringify(body);
-
       expect(json).not.toContain('/home/deploy/');
       expect(json).not.toContain('secret.ts');
       expect(json).not.toContain('private.ts');
@@ -81,7 +61,6 @@ describe('error-sanitize', () => {
   describe('sanitizeError', () => {
     it('returns SanitizedError with message, code, statusCode', () => {
       const result = sanitizeError(new RangeError('out of bounds'));
-
       expect(result).toHaveProperty('message');
       expect(result).toHaveProperty('code');
       expect(result).toHaveProperty('statusCode');

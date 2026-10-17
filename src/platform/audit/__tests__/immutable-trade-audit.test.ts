@@ -88,9 +88,7 @@ describe('ImmutableTradeAudit', () => {
       audit.append('trade_decision', 'Trade 1');
       audit.append('trade_executed', 'Trade 2');
       audit.append('circuit_breaker', 'Event 3');
-
-      const result = audit.verifyChainIntegrity();
-      expect(result.valid).toBe(true);
+      expect(audit.verifyChainIntegrity().valid).toBe(true);
     });
 
     it('should protect internal state from external tampering', () => {
@@ -100,11 +98,9 @@ describe('ImmutableTradeAudit', () => {
 
       // getAuditTrail returns copies — external mutation doesn't affect internal state
       const entries = audit.getAuditTrail();
-      (entries[0] as any).reason = 'TAMPERED';
+      (entries[0] as unknown as Record<string, unknown>).reason = 'TAMPERED';
 
-      // Internal chain remains intact
-      const result = audit.verifyChainIntegrity();
-      expect(result.valid).toBe(true);
+      expect(audit.verifyChainIntegrity().valid).toBe(true);
     });
 
     it('should return valid for empty log', () => {
@@ -129,32 +125,21 @@ describe('ImmutableTradeAudit', () => {
       audit.append('trade_decision', 'Decision');
       audit.append('circuit_breaker', 'Breaker');
       audit.append('trade_decision', 'Decision 2');
-
-      const decisions = audit.getAuditTrail({ eventType: 'trade_decision' });
-      expect(decisions.length).toBe(2);
+      expect(audit.getAuditTrail({ eventType: 'trade_decision' }).length).toBe(2);
     });
 
     it('should filter by date range', () => {
       const audit = new ImmutableTradeAudit(tmpLogPath());
       audit.append('trade_decision', 'Entry 1');
       audit.append('trade_decision', 'Entry 2');
-
-      const all = audit.getAuditTrail();
-      expect(all.length).toBe(2);
-
-      // Filter with future start date should return empty
-      const future = audit.getAuditTrail({ startDate: '2099-01-01T00:00:00Z' });
-      expect(future.length).toBe(0);
+      expect(audit.getAuditTrail().length).toBe(2);
+      expect(audit.getAuditTrail({ startDate: '2099-01-01T00:00:00Z' }).length).toBe(0);
     });
 
     it('should respect limit', () => {
       const audit = new ImmutableTradeAudit(tmpLogPath());
-      for (let i = 0; i < 10; i++) {
-        audit.append('trade_decision', `Entry ${i}`);
-      }
-
-      const limited = audit.getAuditTrail({ limit: 3 });
-      expect(limited.length).toBe(3);
+      for (let i = 0; i < 10; i++) audit.append('trade_decision', `Entry ${i}`);
+      expect(audit.getAuditTrail({ limit: 3 }).length).toBe(3);
     });
   });
 

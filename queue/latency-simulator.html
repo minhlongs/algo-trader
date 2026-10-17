@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Real-Time WebSocket Trade Feed Simulator &amp; Microstructure Latency Analyzer</title>
+<!-- Google Fonts: Space Grotesk, Inter, JetBrains Mono -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "secondary-fixed": "#4dffb2",
+            "on-tertiary": "#690003",
+            "on-primary-container": "#006a70",
+            "primary-container": "#00f2fe",
+            "surface-container-lowest": "#0d0e11",
+            "surface-bright": "#38393d",
+            "secondary-fixed-dim": "#00e297",
+            "on-error-container": "#ffdad6",
+            "inverse-surface": "#e3e2e6",
+            "error-container": "#93000a",
+            "on-primary-fixed": "#002022",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "tertiary": "#fff5f4",
+            "surface-container-high": "#292a2d",
+            "on-secondary": "#003822",
+            "surface-container": "#1f1f23",
+            "secondary-container": "#01e599",
+            "outline-variant": "#3a494b",
+            "primary-fixed-dim": "#00dce6",
+            "background": "#121316",
+            "on-secondary-container": "#00613e",
+            "inverse-on-surface": "#2f3034",
+            "surface-variant": "#343538",
+            "error": "#ffb4ab",
+            "surface-container-highest": "#343538",
+            "tertiary-fixed": "#ffdad5",
+            "secondary": "#70ffba",
+            "on-secondary-fixed": "#002112",
+            "inverse-primary": "#00696f",
+            "surface-container-low": "#1b1b1f",
+            "on-tertiary-fixed": "#410001",
+            "surface": "#121316",
+            "on-primary-fixed-variant": "#004f53",
+            "on-secondary-fixed-variant": "#005234",
+            "primary": "#e0fdff",
+            "primary-fixed": "#6ff6ff",
+            "on-primary": "#00373a",
+            "on-error": "#690005",
+            "on-surface-variant": "#b9cacb"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-md": "0.5rem",
+            "space-xs": "0.125rem",
+            "margin-desktop": "0.75rem",
+            "space-sm": "0.25rem",
+            "gutter-desktop": "0.5rem",
+            "gutter": "0.5rem",
+            "space-lg": "0.75rem",
+            "margin-mobile": "0.5rem",
+            "margin": "0.75rem",
+            "space-xl": "1rem",
+            "gutter-mobile": "0.25rem"
+          },
+          "fontFamily": {
+            "headline-lg": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "body-sm": ["Inter"],
+            "data-mono-sm": ["JetBrains Mono"],
+            "headline-xl": ["Space Grotesk"],
+            "label-caps": ["JetBrains Mono"],
+            "body-lg": ["Inter"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "data-mono-md": ["JetBrains Mono"],
+            "body-md": ["Inter"]
+          },
+          "fontSize": {
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Institutional Terminal Custom Tweaks */
+    body {
+      background-color: #08090C;
+      color: #e3e2e6;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0d0e11;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #3a494b;
+      border-radius: 2px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #00f2fe;
+    }
+    @keyframes pulse-cyan {
+      0%, 100% { box-shadow: 0 0 4px rgba(0, 242, 254, 0.4); }
+      50% { box-shadow: 0 0 12px rgba(0, 242, 254, 0.9); }
+    }
+    .glow-cyan {
+      animation: pulse-cyan 2s infinite ease-in-out;
+    }
+    @keyframes row-flash-buy {
+      0% { background-color: rgba(1, 229, 153, 0.25); }
+      100% { background-color: transparent; }
+    }
+    @keyframes row-flash-sell {
+      0% { background-color: rgba(255, 59, 48, 0.25); }
+      100% { background-color: transparent; }
+    }
+    .flash-buy {
+      animation: row-flash-buy 0.75s ease-out;
+    }
+    .flash-sell {
+      animation: row-flash-sell 0.75s ease-out;
+    }
+  </style>
+</head>
+<body class="bg-[#08090C] text-on-surface antialiased overflow-hidden h-screen flex flex-col font-body-sm text-body-sm">
+<!-- ========================================================================= -->
+<!-- 1. TOP NAVBAR (Shared Component: TopNavBar)                               -->
+<!-- ========================================================================= -->
+<header class="flex justify-between items-center w-full px-space-md py-space-xs h-11 border-b border-outline-variant bg-surface-container-lowest z-50 shrink-0">
+<!-- Brand Anchor & Search Field -->
+<div class="flex items-center gap-space-lg">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[18px]">terminal</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">AlgoTrade OS</span>
+<span class="bg-surface-container-high text-primary-container px-1.5 py-0.5 rounded text-[9px] font-label-caps border border-outline-variant tracking-widest">PRO-DESK-v4.19</span>
+</div>
+<!-- Quick Ticker Search Bar -->
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-2 text-on-surface-variant text-[14px]">search</span>
+<input class="bg-surface-container-low border border-outline-variant rounded pl-7 pr-3 py-1 font-data-mono-sm text-data-mono-sm text-on-surface focus:outline-none focus:border-primary-container w-64" spellcheck="false" type="text" value="FEED://BTCUSDT.PERP@L3-RAW"/>
+<span class="absolute right-2 text-[9px] font-label-caps text-outline border border-outline-variant px-1 rounded">⌘K</span>
+</div>
+</div>
+<!-- Navigation Links Cluster (Exact labels from JSON) -->
+<nav class="hidden md:flex items-center gap-space-md">
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#strategies">Strategies</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#execution">Execution</a>
+<!-- Active Link matching destination: Telemetry -->
+<a class="text-primary-container border-b-2 border-primary-container pb-0.5 font-bold font-data-mono-sm text-data-mono-sm" href="#telemetry">Telemetry</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#ledger">Ledger</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#shards">Shards</a>
+</nav>
+<!-- Telemetry Inline Snapshot + Trailing Actions -->
+<div class="flex items-center gap-space-md">
+<!-- Latency Cluster -->
+<div class="hidden xl:flex items-center gap-3 bg-surface-container-low px-2 py-1 rounded border border-outline-variant font-data-mono-sm text-data-mono-sm">
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-ping"></span>
+<span class="text-on-surface-variant">P50:</span>
+<span class="text-secondary font-semibold">1.8ms</span>
+</div>
+<span class="text-outline-variant">|</span>
+<div class="flex items-center gap-1">
+<span class="text-on-surface-variant">P95:</span>
+<span class="text-primary-container font-semibold">4.2ms</span>
+</div>
+<span class="text-outline-variant">|</span>
+<div class="flex items-center gap-1">
+<span class="text-on-surface-variant">P99.9:</span>
+<span class="text-error font-semibold">11.4ms</span>
+</div>
+</div>
+<!-- Buffer Health Chip -->
+<div class="flex items-center gap-1.5 bg-surface-container px-2 py-1 rounded border border-outline-variant">
+<span class="material-symbols-outlined text-secondary text-[14px]">format_image_left</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface">RING: 100% OK</span>
+</div>
+<!-- Merkle Proof Anchor -->
+<div class="hidden lg:flex items-center gap-1 bg-surface-container-lowest px-2 py-1 rounded border border-outline-variant text-[10px] font-data-mono-sm text-on-surface-variant">
+<span class="text-outline">MERKLE:</span>
+<span class="text-primary-container font-mono">0x9F4E..C18</span>
+</div>
+<!-- Icon Actions (hub, terminal, notifications) -->
+<div class="flex items-center gap-1">
+<button class="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors" title="Hub Mesh">
+<span class="material-symbols-outlined text-[16px]">hub</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors" title="CLI Engine">
+<span class="material-symbols-outlined text-[16px]">terminal</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors relative" title="Notifications">
+<span class="material-symbols-outlined text-[16px]">notifications</span>
+<span class="absolute top-1 right-1 w-1.5 h-1.5 bg-secondary rounded-full"></span>
+</button>
+</div>
+<!-- Secondary Trailing Action: Audit Export -->
+<button class="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded border border-outline-variant bg-surface-container-low hover:bg-surface-container text-on-surface font-data-mono-sm text-data-mono-sm transition-colors">
+<span class="material-symbols-outlined text-[13px]">file_download</span>
+        Audit Export
+      </button>
+<!-- Primary Action: Emergency Kill-Switch -->
+<button class="flex items-center gap-1.5 bg-[#FF3B30] hover:bg-error-container text-white px-2.5 py-1 rounded font-label-caps text-label-caps tracking-wider transition-all duration-100 shadow-[0_0_8px_rgba(255,59,48,0.35)] active:opacity-80">
+<span class="material-symbols-outlined text-[14px]">power_settings_new</span>
+        Emergency Kill-Switch
+      </button>
+<!-- User Badge Avatar -->
+<div class="w-6 h-6 rounded bg-primary-container/20 border border-primary-container flex items-center justify-center font-data-mono-sm text-primary-container font-bold text-[11px]" title="Quant Desk Admin Avatar">
+        QD
+      </div>
+</div>
+</header>
+<!-- ========================================================================= -->
+<!-- MAIN WORKSPACE: SideNavBar + High-Density Bento Grid Workspace           -->
+<!-- ========================================================================= -->
+<div class="flex flex-1 overflow-hidden">
+<!-- ========================================================================= -->
+<!-- 2. SIDE NAVBAR (Shared Component: SideNavBar)                             -->
+<!-- ========================================================================= -->
+<aside class="flex flex-col justify-between h-[calc(100vh-2.75rem)] w-56 p-space-xs border-r border-outline-variant bg-surface-container-lowest select-none shrink-0">
+<!-- Top Desk Identity Badge -->
+<div>
+<div class="p-2 mb-2 bg-surface-container-low rounded border border-outline-variant">
+<div class="flex items-center justify-between">
+<span class="font-headline-md text-headline-md font-bold text-primary">DESK-ALPHA-01</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary-container mt-0.5 tracking-tight">ONLINE // P99: 4.2ms</div>
+<div class="text-[9px] font-label-caps text-on-surface-variant mt-1">SHARD HOST: us-east-dc2.aws</div>
+</div>
+<!-- Primary Navigation Links (6 Tabs from JSON) -->
+<nav class="space-y-0.5">
+<!-- Cockpit -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#cockpit">
+<span class="material-symbols-outlined text-[16px]">query_stats</span>
+<span>Cockpit</span>
+</a>
+<!-- Order Books -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#order-books">
+<span class="material-symbols-outlined text-[16px]">table_chart</span>
+<span>Order Books</span>
+</a>
+<!-- Shard Health -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#shard-health">
+<span class="material-symbols-outlined text-[16px]">dns</span>
+<span>Shard Health</span>
+</a>
+<!-- Algorithms (Active for Telemetry/Sim Desk context) -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 bg-surface-container text-primary-container border-l-2 border-primary-container font-data-mono-sm text-data-mono-sm font-semibold rounded-r" href="#algorithms">
+<span class="material-symbols-outlined text-[16px]">memory</span>
+<span>Algorithms</span>
+<span class="ml-auto text-[8px] bg-primary-container/20 text-primary-container px-1 rounded font-label-caps">LIVE</span>
+</a>
+<!-- Risk Engine -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#risk-engine">
+<span class="material-symbols-outlined text-[16px]">shield</span>
+<span>Risk Engine</span>
+</a>
+<!-- Audit Log -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#audit-log">
+<span class="material-symbols-outlined text-[16px]">enhanced_encryption</span>
+<span>Audit Log</span>
+</a>
+</nav>
+<!-- CTA from JSON: Deploy Algo -->
+<div class="mt-4 px-1">
+<button class="w-full flex items-center justify-center gap-1.5 bg-primary-container text-on-primary-fixed py-1.5 px-2 rounded font-label-caps text-label-caps tracking-wider font-bold transition-all hover:bg-primary-fixed-dim hover:shadow-[0_0_10px_rgba(0,242,254,0.3)] active:scale-[0.99]">
+<span class="material-symbols-outlined text-[15px]">add_circle</span>
+            Deploy Algo
+          </button>
+</div>
+<!-- Real-Time Ingress Velocity Meter -->
+<div class="mt-4 p-2 bg-surface-container-lowest border border-outline-variant rounded">
+<div class="flex justify-between items-center text-[10px] font-label-caps text-on-surface-variant mb-1">
+<span>INGRESS VELOCITY</span>
+<span class="text-secondary font-mono">148.5K m/s</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-[78%]"></div>
+</div>
+<div class="flex justify-between items-center text-[9px] font-data-mono-sm text-outline mt-1.5">
+<span>DPDK BYPASS: <span class="text-secondary">ACTIVE</span></span>
+<span>RING: 4096/4096</span>
+</div>
+</div>
+</div>
+<!-- Footer Tabs from JSON (Latency Stats, Settings) -->
+<div class="pt-2 border-t border-outline-variant space-y-0.5">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#latency-stats">
+<span class="material-symbols-outlined text-[16px]">speed</span>
+<span>Latency Stats</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#settings">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+<span>Settings</span>
+</a>
+<!-- System Clock Synced UTC Precision -->
+<div class="px-2 pt-2 text-[9px] font-data-mono-sm text-outline flex items-center justify-between">
+<span>PTP CLOCK SYNC</span>
+<span class="text-primary-container" id="ptp-clock">14:28:49.004921 UTC</span>
+</div>
+</div>
+</aside>
+<!-- ========================================================================= -->
+<!-- 3. CENTRAL DOCK WORKSPACE (Bento Grid Architecture)                       -->
+<!-- ========================================================================= -->
+<main class="flex-1 flex flex-col min-w-0 bg-[#08090C] overflow-y-auto custom-scrollbar p-space-sm gap-space-sm">
+<!-- ======================================================================= -->
+<!-- MODULE A: Top Microsecond Status Bar + Order Flow Imbalance (OFI) Pulse -->
+<!-- ======================================================================= -->
+<section class="bg-[#0F1218] border border-[#1E2430] rounded p-space-sm flex flex-col lg:flex-row gap-3 items-stretch justify-between">
+<!-- Multi-Asset Quick Tick Strip -->
+<div class="flex items-center gap-2 flex-wrap xl:flex-nowrap">
+<!-- BTC Asset Tile -->
+<div class="flex items-center gap-2 bg-[#141923] px-2.5 py-1.5 rounded border border-[#1E2430]">
+<span class="font-headline-md text-headline-md font-bold text-primary">BTC/USDT</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary font-bold">$64,285.40</span>
+<span class="text-[9px] font-data-mono-sm bg-secondary-container/20 text-secondary px-1 py-0.5 rounded">+2.41%</span>
+<span class="text-[9px] text-on-surface-variant font-mono">VWAP: 64,281.12</span>
+</div>
+<!-- ETH Asset Tile -->
+<div class="flex items-center gap-2 bg-[#141923] px-2.5 py-1.5 rounded border border-[#1E2430]">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">ETH/USDT</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary font-bold">$3,492.15</span>
+<span class="text-[9px] font-data-mono-sm bg-secondary-container/20 text-secondary px-1 py-0.5 rounded">+1.18%</span>
+<span class="text-[9px] text-on-surface-variant font-mono">VWAP: 3,489.90</span>
+</div>
+<!-- SOL Asset Tile -->
+<div class="flex items-center gap-2 bg-[#141923] px-2.5 py-1.5 rounded border border-[#1E2430]">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">SOL/USDT</span>
+<span class="font-data-mono-md text-data-mono-md text-error font-bold">$152.80</span>
+<span class="text-[9px] font-data-mono-sm bg-error-container/20 text-error px-1 py-0.5 rounded">-0.72%</span>
+<span class="text-[9px] text-on-surface-variant font-mono">VWAP: 153.22</span>
+</div>
+</div>
+<!-- Center: Order Flow Imbalance (OFI) Interactive Pulse -->
+<div class="flex-1 bg-[#141923] border border-[#1E2430] rounded p-2 flex flex-col justify-between min-w-[320px]">
+<div class="flex justify-between items-center text-[10px] font-label-caps">
+<span class="text-on-surface-variant flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+              MICROSECOND ORDER FLOW IMBALANCE (OFI)
+            </span>
+<div class="flex items-center gap-2">
+<span class="text-secondary font-mono font-bold">+0.64 SKEW (BULLISH DOMINANCE)</span>
+<span class="text-[9px] text-outline font-data-mono-sm">T_DELTA: 250μs</span>
+</div>
+</div>
+<!-- Chromatic Gradient Gauge -->
+<div class="relative w-full h-3 bg-surface-container-high rounded overflow-hidden mt-1.5 border border-[#1E2430]">
+<!-- Gauge track: Sell taker on left (Red) -> Buy taker on right (Mint/Cyan) -->
+<div class="absolute inset-0 flex">
+<div class="w-[18%] bg-error-container opacity-80" title="Sell Limit Pressure"></div>
+<div class="w-[18%] bg-[#FF3B30] opacity-90" title="Sell Taker Aggression"></div>
+<div class="w-[64%] bg-gradient-to-r from-secondary-container to-primary-container" title="Buy Taker Dominance (64%)"></div>
+</div>
+<!-- Zero Center Marker -->
+<div class="absolute left-1/2 top-0 bottom-0 w-[2px] bg-white/70 transform -translate-x-1/2 z-10"></div>
+</div>
+<div class="flex justify-between items-center text-[9px] font-data-mono-sm text-outline mt-1">
+<span>ASK PRESS: 36% [VOL: 412.8 BTC]</span>
+<span class="text-primary-container font-mono">NET SKEW: +214.2 BTC DELTA</span>
+<span>BID PRESS: 64% [VOL: 627.0 BTC]</span>
+</div>
+</div>
+<!-- Socket Controller Status Toggle -->
+<div class="flex items-center gap-2 bg-[#141923] px-3 py-1.5 rounded border border-[#1E2430] shrink-0">
+<div class="flex flex-col text-right">
+<span class="text-[9px] font-label-caps text-on-surface-variant">WS STREAM ENGINE</span>
+<span class="text-secondary font-data-mono-sm text-data-mono-sm flex items-center gap-1 justify-end font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 0.00ms JITTER
+            </span>
+</div>
+<button class="px-2.5 py-1 bg-surface-container hover:bg-surface-container-high border border-outline-variant rounded font-data-mono-sm text-data-mono-sm text-primary-container hover:text-primary transition-all" id="stream-toggle" onclick="toggleStream()">
+            PAUSE
+          </button>
+</div>
+</section>
+<!-- ======================================================================= -->
+<!-- MIDDLE BENTO SECTION: Live L3 Tape (Left) & Latency Histogram (Right)   -->
+<!-- ======================================================================= -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-sm flex-1 min-h-[380px]">
+<!-- ===================================================================== -->
+<!-- MODULE B: Live Streaming Trade Tape / Level 3 Match Feed (Col 7/12)   -->
+<!-- ===================================================================== -->
+<section class="lg:col-span-7 bg-[#0F1218] border border-[#1E2430] rounded flex flex-col min-h-0">
+<!-- Panel Header Ribbon -->
+<div class="flex items-center justify-between px-3 py-2 border-b border-[#1E2430] bg-[#141923]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[16px]">stream</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">L3 Live Trade Execution Tape</span>
+<span class="bg-surface-container text-secondary text-[9px] font-data-mono-sm px-1.5 py-0.2 rounded border border-outline-variant">TICK-BY-TICK FEED</span>
+</div>
+<div class="flex items-center gap-2 font-data-mono-sm text-data-mono-sm text-outline">
+<span class="text-on-surface-variant">STREAM: <span class="text-primary-container font-mono">BTC-USDT-SWAP</span></span>
+<span>|</span>
+<span>FILTER: ALL AGGRESSORS</span>
+<button class="hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[14px]">filter_list</span>
+</button>
+</div>
+</div>
+<!-- Table Column Headers -->
+<div class="grid grid-cols-12 px-3 py-1.5 bg-surface-container-lowest border-b border-[#1E2430] font-label-caps text-label-caps text-on-surface-variant tracking-wider text-[9px]">
+<div class="col-span-2">TIMESTAMP (UTC)</div>
+<div class="col-span-2">SYMBOL / SEQ</div>
+<div class="col-span-2 text-right">PRICE (USDT)</div>
+<div class="col-span-2 text-right">SIZE (BTC)</div>
+<div class="col-span-2 text-center">AGGRESSOR</div>
+<div class="col-span-2 text-right">VENUE / CVD</div>
+</div>
+<!-- Live Scrolling Execution Rows (Microsecond Timestamps) -->
+<div class="flex-1 overflow-y-auto custom-scrollbar font-data-mono-sm text-data-mono-sm divide-y divide-[#1E2430]" id="trade-feed-rows">
+<!-- Row 1 (Recent BUY) -->
+<div class="grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors flash-buy">
+<div class="col-span-2 text-outline font-mono">14:28:49.891042</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-on-surface font-semibold">BTC/USDT</span>
+<span class="text-[8px] text-outline">#SEQ-84920412</span>
+</div>
+<div class="col-span-2 text-right font-bold text-secondary">64,285.80</div>
+<div class="col-span-2 text-right font-mono text-on-surface">1.4820</div>
+<div class="col-span-2 text-center">
+<span class="bg-[#01e599]/10 text-secondary border border-secondary/30 px-1 py-0.5 rounded text-[8px] font-bold">BUY_TAKER</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="text-on-surface font-mono text-[9px]">Binance-L3</span>
+<span class="text-secondary text-[8px]">+142.8 CVD</span>
+</div>
+</div>
+<!-- Row 2 (SELL) -->
+<div class="grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors">
+<div class="col-span-2 text-outline font-mono">14:28:49.889410</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-on-surface font-semibold">BTC/USDT</span>
+<span class="text-[8px] text-outline">#SEQ-84920411</span>
+</div>
+<div class="col-span-2 text-right font-bold text-error">64,285.40</div>
+<div class="col-span-2 text-right font-mono text-on-surface">0.2541</div>
+<div class="col-span-2 text-center">
+<span class="bg-[#93000a]/20 text-error border border-error/30 px-1 py-0.5 rounded text-[8px] font-bold">SELL_TAKER</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="text-on-surface font-mono text-[9px]">Coinbase-P</span>
+<span class="text-secondary text-[8px]">+141.3 CVD</span>
+</div>
+</div>
+<!-- Row 3 (BUY) -->
+<div class="grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors">
+<div class="col-span-2 text-outline font-mono">14:28:49.886321</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-on-surface font-semibold">BTC/USDT</span>
+<span class="text-[8px] text-outline">#SEQ-84920410</span>
+</div>
+<div class="col-span-2 text-right font-bold text-secondary">64,285.80</div>
+<div class="col-span-2 text-right font-mono text-on-surface">3.8100</div>
+<div class="col-span-2 text-center">
+<span class="bg-[#01e599]/10 text-secondary border border-secondary/30 px-1 py-0.5 rounded text-[8px] font-bold">BUY_TAKER</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="text-on-surface font-mono text-[9px]">OKX-V5</span>
+<span class="text-secondary text-[8px]">+145.1 CVD</span>
+</div>
+</div>
+<!-- Row 4 (SELL) -->
+<div class="grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors">
+<div class="col-span-2 text-outline font-mono">14:28:49.882190</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-on-surface font-semibold">BTC/USDT</span>
+<span class="text-[8px] text-outline">#SEQ-84920409</span>
+</div>
+<div class="col-span-2 text-right font-bold text-error">64,285.20</div>
+<div class="col-span-2 text-right font-mono text-on-surface">0.0520</div>
+<div class="col-span-2 text-center">
+<span class="bg-[#93000a]/20 text-error border border-error/30 px-1 py-0.5 rounded text-[8px] font-bold">SELL_TAKER</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="text-on-surface font-mono text-[9px]">Binance-L3</span>
+<span class="text-secondary text-[8px]">+141.3 CVD</span>
+</div>
+</div>
+<!-- Row 5 (BUY Block) -->
+<div class="grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors bg-[#01e599]/[0.03]">
+<div class="col-span-2 text-outline font-mono">14:28:49.880012</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-on-surface font-semibold">BTC/USDT</span>
+<span class="text-[8px] text-outline">#SEQ-84920408</span>
+</div>
+<div class="col-span-2 text-right font-bold text-secondary">64,285.80</div>
+<div class="col-span-2 text-right font-mono text-secondary-fixed font-bold">8.4200</div>
+<div class="col-span-2 text-center">
+<span class="bg-[#01e599]/20 text-secondary-fixed border border-secondary px-1 py-0.5 rounded text-[8px] font-bold">WHALE_BUY</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="text-on-surface font-mono text-[9px]">Coinbase-P</span>
+<span class="text-secondary text-[8px]">+149.7 CVD</span>
+</div>
+</div>
+<!-- Row 6 (BUY) -->
+<div class="grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors">
+<div class="col-span-2 text-outline font-mono">14:28:49.877401</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-on-surface font-semibold">BTC/USDT</span>
+<span class="text-[8px] text-outline">#SEQ-84920407</span>
+</div>
+<div class="col-span-2 text-right font-bold text-secondary">64,285.60</div>
+<div class="col-span-2 text-right font-mono text-on-surface">0.6120</div>
+<div class="col-span-2 text-center">
+<span class="bg-[#01e599]/10 text-secondary border border-secondary/30 px-1 py-0.5 rounded text-[8px] font-bold">BUY_TAKER</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="text-on-surface font-mono text-[9px]">OKX-V5</span>
+<span class="text-secondary text-[8px]">+141.3 CVD</span>
+</div>
+</div>
+<!-- Row 7 (SELL) -->
+<div class="grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors">
+<div class="col-span-2 text-outline font-mono">14:28:49.873299</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-on-surface font-semibold">BTC/USDT</span>
+<span class="text-[8px] text-outline">#SEQ-84920406</span>
+</div>
+<div class="col-span-2 text-right font-bold text-error">64,285.00</div>
+<div class="col-span-2 text-right font-mono text-on-surface">1.1904</div>
+<div class="col-span-2 text-center">
+<span class="bg-[#93000a]/20 text-error border border-error/30 px-1 py-0.5 rounded text-[8px] font-bold">SELL_TAKER</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="text-on-surface font-mono text-[9px]">Binance-L3</span>
+<span class="text-secondary text-[8px]">+140.7 CVD</span>
+</div>
+</div>
+<!-- Row 8 (SELL) -->
+<div class="grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors">
+<div class="col-span-2 text-outline font-mono">14:28:49.869811</div>
+<div class="col-span-2 flex flex-col">
+<span class="text-on-surface font-semibold">BTC/USDT</span>
+<span class="text-[8px] text-outline">#SEQ-84920405</span>
+</div>
+<div class="col-span-2 text-right font-bold text-error">64,285.00</div>
+<div class="col-span-2 text-right font-mono text-on-surface">0.0890</div>
+<div class="col-span-2 text-center">
+<span class="bg-[#93000a]/20 text-error border border-error/30 px-1 py-0.5 rounded text-[8px] font-bold">SELL_TAKER</span>
+</div>
+<div class="col-span-2 text-right flex flex-col">
+<span class="text-on-surface font-mono text-[9px]">Coinbase-P</span>
+<span class="text-secondary text-[8px]">+141.9 CVD</span>
+</div>
+</div>
+</div>
+<!-- Bottom Micro-Bar Execution Metrics Footer -->
+<div class="px-3 py-1.5 border-t border-[#1E2430] bg-[#141923] flex items-center justify-between text-[9px] font-data-mono-sm text-outline">
+<div class="flex items-center gap-3">
+<span>ACTIVE BUFFER: <span class="text-on-surface">12,490 EVENTS</span></span>
+<span>L3 MATCH RATE: <span class="text-secondary">4,812 ticks/sec</span></span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="text-on-surface">DIRECT FIBER CROSS-CONNECT</span>
+</div>
+</div>
+</section>
+<!-- ===================================================================== -->
+<!-- MODULE C: Multi-Region Interconnect & Kernel Density Latency Histogram-->
+<!-- ===================================================================== -->
+<section class="lg:col-span-5 bg-[#0F1218] border border-[#1E2430] rounded flex flex-col min-h-0">
+<!-- Header Ribbon -->
+<div class="flex items-center justify-between px-3 py-2 border-b border-[#1E2430] bg-[#141923]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[16px]">speed</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Microstructure Latency &amp; Jitter</span>
+</div>
+<div class="flex items-center gap-1 font-label-caps text-[9px]">
+<span class="px-1.5 py-0.5 rounded bg-surface-container text-primary-container border border-outline-variant">PTP-V2 HARDWARE</span>
+</div>
+</div>
+<div class="p-3 flex flex-col gap-3 flex-1 overflow-y-auto custom-scrollbar">
+<!-- Multi-Region Interconnect Matrix -->
+<div class="grid grid-cols-3 gap-2">
+<!-- Ashburn Equinix DC2 (Primary) -->
+<div class="bg-surface-container-lowest p-2 rounded border border-primary-container/40 relative">
+<div class="flex items-center justify-between text-[9px] font-label-caps text-outline">
+<span>ASHBURN DC2</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+</div>
+<div class="mt-1 flex items-baseline gap-1">
+<span class="font-data-mono-lg text-data-mono-lg font-bold text-primary-container">1.8</span>
+<span class="text-[10px] font-mono text-outline">ms RTT</span>
+</div>
+<div class="text-[9px] font-data-mono-sm text-secondary mt-0.5">Jitter: ±0.01ms</div>
+<div class="text-[8px] text-outline mt-0.5 font-mono">DIRECT CROSS-CONNECT</div>
+</div>
+<!-- Tokyo Equinix TY3 -->
+<div class="bg-surface-container-lowest p-2 rounded border border-[#1E2430]">
+<div class="flex items-center justify-between text-[9px] font-label-caps text-outline">
+<span>TOKYO TY3</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+</div>
+<div class="mt-1 flex items-baseline gap-1">
+<span class="font-data-mono-lg text-data-mono-lg font-bold text-on-surface">8.4</span>
+<span class="text-[10px] font-mono text-outline">ms RTT</span>
+</div>
+<div class="text-[9px] font-data-mono-sm text-secondary mt-0.5">Jitter: ±0.02ms</div>
+<div class="text-[8px] text-outline mt-0.5 font-mono">TRANSPAC SUBSEA</div>
+</div>
+<!-- Frankfurt Equinix FR2 -->
+<div class="bg-surface-container-lowest p-2 rounded border border-[#1E2430]">
+<div class="flex items-center justify-between text-[9px] font-label-caps text-outline">
+<span>FRANKFURT FR2</span>
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+</div>
+<div class="mt-1 flex items-baseline gap-1">
+<span class="font-data-mono-lg text-data-mono-lg font-bold text-on-surface">68.2</span>
+<span class="text-[10px] font-mono text-outline">ms RTT</span>
+</div>
+<div class="text-[9px] font-data-mono-sm text-on-surface-variant mt-0.5">Jitter: ±0.05ms</div>
+<div class="text-[8px] text-outline mt-0.5 font-mono">ATLANTIC BACKBONE</div>
+</div>
+</div>
+<!-- Kernel Density Latency Histogram Canvas / SVG Visualizer -->
+<div class="bg-surface-container-lowest p-2.5 rounded border border-[#1E2430] flex flex-col flex-1">
+<div class="flex justify-between items-center text-[10px] font-label-caps text-outline mb-1">
+<span>PACKET TRANSIT DISTRIBUTION (KDE &amp; HISTOGRAM)</span>
+<span class="text-primary-container font-mono">SAMPLE: N=500,000</span>
+</div>
+<!-- Vector Latency Distribution Graphic -->
+<div class="relative w-full h-36 bg-[#08090C] rounded border border-[#1E2430] overflow-hidden flex items-end px-2 pt-2 pb-5">
+<!-- Background Gridlines -->
+<div class="absolute inset-0 flex flex-col justify-between p-2 pointer-events-none opacity-20">
+<div class="border-b border-[#3a494b] w-full"></div>
+<div class="border-b border-[#3a494b] w-full"></div>
+<div class="border-b border-[#3a494b] w-full"></div>
+<div class="border-b border-[#3a494b] w-full"></div>
+</div>
+<!-- Histogram Bars (Dense Synthetic Frequency Bins) -->
+<div class="relative w-full h-full flex items-end gap-1 z-0">
+<!-- Low latency bins (0 - 1.5ms) -->
+<div class="w-[4%] h-[12%] bg-surface-container-high rounded-t"></div>
+<div class="w-[4%] h-[28%] bg-surface-container-highest rounded-t"></div>
+<div class="w-[4%] h-[65%] bg-primary-container/40 rounded-t"></div>
+<!-- Mode Peak (1.8ms) -->
+<div class="w-[5%] h-[95%] bg-primary-container rounded-t glow-cyan" title="P50: 1.8ms (Peak Frequency)"></div>
+<div class="w-[4%] h-[82%] bg-primary-container/70 rounded-t"></div>
+<div class="w-[4%] h-[60%] bg-primary-container/50 rounded-t"></div>
+<div class="w-[4%] h-[45%] bg-surface-container-highest rounded-t"></div>
+<!-- Mid latency bins (2.5 - 4.2ms) -->
+<div class="w-[4%] h-[32%] bg-surface-container-high rounded-t"></div>
+<div class="w-[4%] h-[25%] bg-surface-container-high rounded-t"></div>
+<div class="w-[4%] h-[38%] bg-secondary-container/60 rounded-t" title="P95: 4.2ms"></div>
+<div class="w-[4%] h-[28%] bg-surface-container-high rounded-t"></div>
+<div class="w-[4%] h-[20%] bg-surface-container-high rounded-t"></div>
+<div class="w-[4%] h-[15%] bg-surface-container-high rounded-t"></div>
+<!-- Tail latency bins (6.0 - 11.4ms) -->
+<div class="w-[4%] h-[12%] bg-surface-container rounded-t"></div>
+<div class="w-[4%] h-[9%] bg-surface-container rounded-t"></div>
+<div class="w-[4%] h-[7%] bg-surface-container rounded-t"></div>
+<div class="w-[4%] h-[14%] bg-error-container/70 rounded-t" title="P99: 8.5ms"></div>
+<div class="w-[4%] h-[6%] bg-surface-container rounded-t"></div>
+<!-- Extreme Tail (>11.4ms) -->
+<div class="w-[4%] h-[18%] bg-[#FF3B30] rounded-t shadow-[0_0_6px_rgba(255,59,48,0.5)]" title="P99.9 Tail Outlier"></div>
+<div class="w-[4%] h-[4%] bg-[#FF3B30]/50 rounded-t"></div>
+</div>
+<!-- Continuous KDE Curve (SVG Overlay) -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-10" preserveaspectratio="none" viewbox="0 0 100 100">
+<path d="M 0,98 Q 10,95 14,35 T 22,8 T 32,50 T 48,75 T 70,88 T 88,82 T 100,99" fill="none" stroke="#00f2fe" stroke-dasharray="2 1" stroke-width="1.5"></path>
+</svg>
+<!-- Threshold Markers -->
+<!-- P50 Marker -->
+<div class="absolute left-[22%] top-1 bottom-4 border-l border-dashed border-primary-container flex flex-col items-start pl-1 pointer-events-none z-20">
+<span class="text-[8px] font-bold text-primary-container bg-surface-container-lowest px-1 rounded border border-primary-container/40">P50: 1.8ms</span>
+</div>
+<!-- P95 Marker -->
+<div class="absolute left-[48%] top-3 bottom-4 border-l border-dashed border-secondary-container flex flex-col items-start pl-1 pointer-events-none z-20">
+<span class="text-[8px] font-bold text-secondary bg-surface-container-lowest px-1 rounded border border-secondary/40">P95: 4.2ms</span>
+</div>
+<!-- P99.9 Marker -->
+<div class="absolute left-[86%] top-1 bottom-4 border-l border-dashed border-error flex flex-col items-start pl-1 pointer-events-none z-20">
+<span class="text-[8px] font-bold text-error bg-surface-container-lowest px-1 rounded border border-error/40">P99.9: 11.4ms</span>
+</div>
+<!-- X-Axis Scale Labels -->
+<div class="absolute bottom-1 left-2 right-2 flex justify-between text-[8px] font-data-mono-sm text-outline border-t border-[#1E2430] pt-0.5">
+<span>0.5ms</span>
+<span>2.0ms</span>
+<span>4.0ms</span>
+<span>8.0ms</span>
+<span>12.0ms</span>
+<span>16.0ms+</span>
+</div>
+</div>
+<!-- Tail Risk Metrics Badges -->
+<div class="grid grid-cols-4 gap-1.5 mt-2 text-center">
+<div class="bg-surface-container p-1 rounded border border-[#1E2430]">
+<div class="text-[8px] font-label-caps text-outline">MEAN</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface font-semibold">2.04ms</div>
+</div>
+<div class="bg-surface-container p-1 rounded border border-[#1E2430]">
+<div class="text-[8px] font-label-caps text-outline">MEDIAN (P50)</div>
+<div class="font-data-mono-sm text-data-mono-sm text-primary-container font-semibold">1.82ms</div>
+</div>
+<div class="bg-surface-container p-1 rounded border border-[#1E2430]">
+<div class="text-[8px] font-label-caps text-outline">99TH %ILE</div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary font-semibold">4.20ms</div>
+</div>
+<div class="bg-surface-container p-1 rounded border border-[#1E2430]">
+<div class="text-[8px] font-label-caps text-outline">MAX SPIKE</div>
+<div class="font-data-mono-sm text-data-mono-sm text-error font-semibold">14.19ms</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- ======================================================================= -->
+<!-- MODULE D: Feed Drop & Reconnect Stress Simulator Sandbox (Bottom Dock)  -->
+<!-- ======================================================================= -->
+<section class="bg-[#0F1218] border border-[#1E2430] rounded p-space-sm flex flex-col gap-2 shrink-0">
+<!-- Module Header with Chaos Status -->
+<div class="flex items-center justify-between pb-1.5 border-b border-[#1E2430]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[16px]">bug_report</span>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Feed Disruption &amp; Deterministic Sequence Gap Auto-Recovery Sandbox</span>
+<span class="bg-surface-container text-outline text-[9px] font-data-mono-sm px-1.5 py-0.2 rounded border border-outline-variant">FAULT INJECTION ENGINE</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-data-mono-sm text-outline">STATE:</span>
+<span class="px-2 py-0.5 rounded text-[9px] font-label-caps font-bold bg-[#01e599]/10 text-secondary border border-secondary/30" id="chaos-state-badge">
+              NOMINAL // 0 SEQ GAPS
+            </span>
+</div>
+</div>
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-3 items-center">
+<!-- Chaos Injection Controls (Col 5) -->
+<div class="xl:col-span-5 bg-surface-container-lowest p-2.5 rounded border border-[#1E2430] flex flex-col gap-2">
+<div class="text-[9px] font-label-caps text-on-surface-variant flex items-center justify-between">
+<span>SYNTHETIC PROTOCOL CHAOS PARAMETERS</span>
+<span class="text-primary-container">SIMULATION ACTIVE</span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<!-- Packet Loss Slider -->
+<div class="bg-surface-container-low p-2 rounded border border-[#1E2430]">
+<div class="flex justify-between items-center text-[9px] font-data-mono-sm text-outline">
+<span>PACKET LOSS INJECTION</span>
+<span class="text-secondary font-mono" id="loss-val">0.25%</span>
+</div>
+<input class="w-full h-1 bg-surface-container-high rounded appearance-none cursor-pointer accent-[#00f2fe] mt-2" max="5.00" min="0.01" oninput="document.getElementById('loss-val').innerText = this.value + '%'" step="0.01" type="range" value="0.25"/>
+<div class="flex justify-between text-[8px] text-outline mt-1 font-mono">
+<span>0.01% (LOW)</span>
+<span>5.00% (STRESS)</span>
+</div>
+</div>
+<!-- Clock Drift Inducer -->
+<div class="bg-surface-container-low p-2 rounded border border-[#1E2430]">
+<div class="flex justify-between items-center text-[9px] font-data-mono-sm text-outline">
+<span>CLOCK DRIFT INDUCER</span>
+<span class="text-primary-container font-mono" id="drift-val">+15μs PTP</span>
+</div>
+<div class="flex items-center gap-2 mt-2">
+<button class="flex-1 py-0.5 bg-surface-container border border-outline-variant hover:border-primary-container text-on-surface font-mono text-[9px] rounded" onclick="adjustDrift(-15)">-15μs</button>
+<button class="flex-1 py-0.5 bg-surface-container border border-outline-variant hover:border-primary-container text-on-surface font-mono text-[9px] rounded" onclick="adjustDrift(+15)">+15μs</button>
+<button class="px-1.5 py-0.5 bg-surface-container border border-outline-variant text-outline hover:text-on-surface font-mono text-[8px] rounded" onclick="adjustDrift(0)">0</button>
+</div>
+<div class="text-[8px] text-outline mt-1 font-mono">NANOSECOND DRIFT BIAS</div>
+</div>
+</div>
+<!-- Heavy Action: Trigger 500ms Feed Drop -->
+<button class="w-full py-1.5 bg-[#FF3B30]/20 hover:bg-[#FF3B30]/30 border border-[#FF3B30] text-[#FF3B30] hover:text-white rounded font-label-caps text-label-caps tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]" id="drop-trigger-btn" onclick="triggerFeedDrop()">
+<span class="material-symbols-outlined text-[15px]">wifi_off</span>
+              TRIGGER 500ms FEED DROP (SIMULATE TCP HEAD-OF-LINE BLOCKING)
+            </button>
+</div>
+<!-- Deterministic Sequence Recovery State Machine Pipeline (Col 7) -->
+<div class="xl:col-span-7 bg-surface-container-lowest p-2.5 rounded border border-[#1E2430] flex flex-col justify-between h-full">
+<div class="flex justify-between items-center text-[9px] font-label-caps text-on-surface-variant">
+<span>AUTOMATIC MERKLE SNAPSHOT RESYNC PIPELINE</span>
+<span class="text-secondary font-mono">BENCHMARK: 340μs RECOVERY</span>
+</div>
+<!-- State Machine Interactive Node Train -->
+<div class="grid grid-cols-5 gap-1.5 my-2">
+<!-- Node 1 -->
+<div class="bg-[#141923] border border-[#1E2430] p-1.5 rounded flex flex-col items-center text-center transition-all" id="sm-step-1">
+<span class="material-symbols-outlined text-outline text-[14px]">search_off</span>
+<span class="text-[8px] font-label-caps text-outline mt-0.5">STEP 1</span>
+<span class="text-[9px] font-data-mono-sm font-semibold text-on-surface">DETECT GAP</span>
+</div>
+<!-- Node 2 -->
+<div class="bg-[#141923] border border-[#1E2430] p-1.5 rounded flex flex-col items-center text-center transition-all" id="sm-step-2">
+<span class="material-symbols-outlined text-outline text-[14px]">view_agenda</span>
+<span class="text-[8px] font-label-caps text-outline mt-0.5">STEP 2</span>
+<span class="text-[9px] font-data-mono-sm font-semibold text-on-surface">L3 QUEUE HOLD</span>
+</div>
+<!-- Node 3 -->
+<div class="bg-[#141923] border border-[#1E2430] p-1.5 rounded flex flex-col items-center text-center transition-all" id="sm-step-3">
+<span class="material-symbols-outlined text-outline text-[14px]">cloud_sync</span>
+<span class="text-[8px] font-label-caps text-outline mt-0.5">STEP 3</span>
+<span class="text-[9px] font-data-mono-sm font-semibold text-on-surface">REST SNAPSHOT</span>
+</div>
+<!-- Node 4 -->
+<div class="bg-[#141923] border border-[#1E2430] p-1.5 rounded flex flex-col items-center text-center transition-all" id="sm-step-4">
+<span class="material-symbols-outlined text-outline text-[14px]">integration_instructions</span>
+<span class="text-[8px] font-label-caps text-outline mt-0.5">STEP 4</span>
+<span class="text-[9px] font-data-mono-sm font-semibold text-on-surface">MERKLE APPLY</span>
+</div>
+<!-- Node 5 -->
+<div class="bg-[#01e599]/10 border border-secondary/40 p-1.5 rounded flex flex-col items-center text-center transition-all" id="sm-step-5">
+<span class="material-symbols-outlined text-secondary text-[14px]">verified</span>
+<span class="text-[8px] font-label-caps text-secondary mt-0.5">STEP 5</span>
+<span class="text-[9px] font-data-mono-sm font-semibold text-secondary">0 PACKET LOSS</span>
+</div>
+</div>
+<!-- Ledger Audit Discrepancy Stream -->
+<div class="bg-[#08090C] px-2 py-1.5 rounded border border-[#1E2430] flex items-center justify-between text-[9px] font-data-mono-sm text-outline font-mono">
+<div class="flex items-center gap-2 truncate">
+<span class="text-secondary">[RESYNC LOG]</span>
+<span id="resync-log-text">LAST RECOVERED: SEQ# 84,919,201 TO 84,919,340 (139 FRAMES) VIA ASHBURN DC2 IN 340μs</span>
+</div>
+<span class="text-primary-container shrink-0">ATTESTATION #A94-F1</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- Inline Script for Micro-Interactions, Chaos Simulation & Live Ticks -->
+<script>
+    // System Clock UTC Nanosecond Simulator
+    function updateClock() {
+      const now = new Date();
+      const hours = String(now.getUTCHours()).padStart(2, '0');
+      const minutes = String(now.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(now.getUTCSeconds()).padStart(2, '0');
+      const ms = String(now.getUTCMilliseconds()).padStart(3, '0');
+      const randMicros = Math.floor(Math.random() * 900 + 100);
+      const clockEl = document.getElementById('ptp-clock');
+      if (clockEl) {
+        clockEl.innerText = `${hours}:${minutes}:${seconds}.${ms}${randMicros} UTC`;
+      }
+    }
+    setInterval(updateClock, 100);
+
+    // Stream Toggle
+    let isStreaming = true;
+    let streamTimer = null;
+
+    function toggleStream() {
+      isStreaming = !isStreaming;
+      const btn = document.getElementById('stream-toggle');
+      if (isStreaming) {
+        btn.innerText = 'PAUSE';
+        btn.classList.remove('text-error');
+        btn.classList.add('text-primary-container');
+        startFeedStream();
+      } else {
+        btn.innerText = 'RESUME';
+        btn.classList.remove('text-primary-container');
+        btn.classList.add('text-error');
+        clearInterval(streamTimer);
+      }
+    }
+
+    // Dynamic Live Trade Generator
+    let seqCounter = 84920413;
+    let cvdCounter = 143.2;
+
+    function generateTrade() {
+      if (!isStreaming) return;
+      const feedContainer = document.getElementById('trade-feed-rows');
+      if (!feedContainer) return;
+
+      seqCounter++;
+      const isBuy = Math.random() > 0.42; // Bullish OFI skew
+      const deltaPrice = (Math.random() * 0.8 - 0.35).toFixed(2);
+      const price = (64285.00 + parseFloat(deltaPrice)).toFixed(2);
+      const size = (Math.random() * 2.8 + 0.05).toFixed(4);
+      const venues = ['Binance-L3', 'Coinbase-P', 'OKX-V5'];
+      const venue = venues[Math.floor(Math.random() * venues.length)];
+
+      if (isBuy) {
+        cvdCounter += parseFloat(size);
+      } else {
+        cvdCounter -= parseFloat(size);
+      }
+
+      const now = new Date();
+      const timeStr = `${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}:${String(now.getUTCSeconds()).padStart(2,'0')}.${String(now.getUTCMilliseconds()).padStart(3,'0')}${Math.floor(Math.random()*900+100)}`;
+
+      const row = document.createElement('div');
+      row.className = `grid grid-cols-12 px-3 py-1 items-center hover:bg-surface-container/60 transition-colors ${isBuy ? 'flash-buy' : 'flash-sell'}`;
+      
+      row.innerHTML = `
+        <div class="col-span-2 text-outline font-mono">${timeStr}</div>
+        <div class="col-span-2 flex flex-col">
+          <span class="text-on-surface font-semibold">BTC/USDT</span>
+          <span class="text-[8px] text-outline">#SEQ-${seqCounter}</span>
+        </div>
+        <div class="col-span-2 text-right font-bold ${isBuy ? 'text-secondary' : 'text-error'}">${price}</div>
+        <div class="col-span-2 text-right font-mono text-on-surface">${size}</div>
+        <div class="col-span-2 text-center">
+          <span class="${isBuy ? 'bg-[#01e599]/10 text-secondary border-secondary/30' : 'bg-[#93000a]/20 text-error border-error/30'} border px-1 py-0.5 rounded text-[8px] font-bold">
+            ${isBuy ? 'BUY_TAKER' : 'SELL_TAKER'}
+          </span>
+        </div>
+        <div class="col-span-2 text-right flex flex-col">
+          <span class="text-on-surface font-mono text-[9px]">${venue}</span>
+          <span class="text-secondary text-[8px]">${cvdCounter >= 0 ? '+' : ''}${cvdCounter.toFixed(1)} CVD</span>
+        </div>
+      `;
+
+      feedContainer.insertBefore(row, feedContainer.firstChild);
+
+      // Keep rows bounded to avoid DOM bloat
+      if (feedContainer.children.length > 28) {
+        feedContainer.removeChild(feedContainer.lastChild);
+      }
+    }
+
+    function startFeedStream() {
+      if (streamTimer) clearInterval(streamTimer);
+      streamTimer = setInterval(generateTrade, 480);
+    }
+    startFeedStream();
+
+    // Clock Drift Controls
+    let driftBias = 15;
+    function adjustDrift(amount) {
+      if (amount === 0) driftBias = 0;
+      else driftBias += amount;
+      const el = document.getElementById('drift-val');
+      if (el) {
+        el.innerText = `${driftBias >= 0 ? '+' : ''}${driftBias}μs PTP`;
+      }
+    }
+
+    // Trigger 500ms Feed Drop Simulation State Machine
+    function triggerFeedDrop() {
+      const dropBtn = document.getElementById('drop-trigger-btn');
+      const badge = document.getElementById('chaos-state-badge');
+      const logText = document.getElementById('resync-log-text');
+      
+      const s1 = document.getElementById('sm-step-1');
+      const s2 = document.getElementById('sm-step-2');
+      const s3 = document.getElementById('sm-step-3');
+      const s4 = document.getElementById('sm-step-4');
+      const s5 = document.getElementById('sm-step-5');
+
+      // State 1: Drop Occurs
+      dropBtn.disabled = true;
+      dropBtn.classList.add('opacity-50');
+      badge.className = "px-2 py-0.5 rounded text-[9px] font-label-caps font-bold bg-[#FF3B30]/20 text-[#FF3B30] border border-[#FF3B30]";
+      badge.innerText = "PACKET LOSS DETECTED // GAP: 142 PACKETS";
+      
+      // Animate Step 1: Detect Gap
+      s1.className = "bg-[#FF3B30]/20 border border-[#FF3B30] p-1.5 rounded flex flex-col items-center text-center transition-all";
+      s1.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-[#FF3B30] text-[14px]";
+
+      setTimeout(() => {
+        // Step 2: Buffer Queue Hold
+        s2.className = "bg-primary-container/20 border border-primary-container p-1.5 rounded flex flex-col items-center text-center transition-all";
+        s2.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-primary-container text-[14px]";
+        badge.innerText = "L3 BUFFER QUEUED // HOLDING INGRESS";
+      }, 150);
+
+      setTimeout(() => {
+        // Step 3: Snapshot Request
+        s3.className = "bg-primary-container/20 border border-primary-container p-1.5 rounded flex flex-col items-center text-center transition-all";
+        s3.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-primary-container text-[14px]";
+        badge.innerText = "REST SNAPSHOT SYNCHRONIZED";
+      }, 300);
+
+      setTimeout(() => {
+        // Step 4: Merkle Reapply
+        s4.className = "bg-secondary-container/20 border border-secondary p-1.5 rounded flex flex-col items-center text-center transition-all";
+        s4.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-secondary text-[14px]";
+        badge.innerText = "RE-APPLYING MERKLE ATTESTATION";
+      }, 420);
+
+      setTimeout(() => {
+        // Step 5: Full recovery complete in 500ms
+        s5.className = "bg-[#01e599]/20 border border-secondary p-1.5 rounded flex flex-col items-center text-center transition-all shadow-[0_0_8px_rgba(1,229,153,0.3)]";
+        badge.className = "px-2 py-0.5 rounded text-[9px] font-label-caps font-bold bg-[#01e599]/10 text-secondary border border-secondary/30";
+        badge.innerText = "NOMINAL // RECOVERED IN 312μs";
+        
+        const now = new Date();
+        logText.innerText = `LAST RECOVERED: SEQ# ${seqCounter - 142} TO ${seqCounter} (142 FRAMES) VIA ASHBURN DC2 IN 312μs [ZERO LOSS VERIFIED]`;
+
+        // Reset step colors after brief inspection
+        setTimeout(() => {
+          s1.className = "bg-[#141923] border border-[#1E2430] p-1.5 rounded flex flex-col items-center text-center transition-all";
+          s1.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-outline text-[14px]";
+          
+          s2.className = "bg-[#141923] border border-[#1E2430] p-1.5 rounded flex flex-col items-center text-center transition-all";
+          s2.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-outline text-[14px]";
+
+          s3.className = "bg-[#141923] border border-[#1E2430] p-1.5 rounded flex flex-col items-center text-center transition-all";
+          s3.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-outline text-[14px]";
+
+          s4.className = "bg-[#141923] border border-[#1E2430] p-1.5 rounded flex flex-col items-center text-center transition-all";
+          s4.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-outline text-[14px]";
+
+          dropBtn.disabled = false;
+          dropBtn.classList.remove('opacity-50');
+        }, 1200);
+
+      }, 500);
+    }
+  </script>
+</body></html>

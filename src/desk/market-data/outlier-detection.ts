@@ -5,13 +5,8 @@
  * Barrel re-exports preserve backward compatibility.
  */
 
-import { logger } from '../../shared/utils/logger';
 import { MarketDataSource } from './types';
 import type { Candle } from './types';
-import {
-  recordOutlierEvent,
-  recordOutlierZScore,
-} from '../../platform/middleware/prometheus-metrics';
 import type {
   OutlierSeverity,
   OutlierEvent,
@@ -22,13 +17,19 @@ import type {
 import {
   createSymbolStats,
   updateSymbolStats,
-  computeStatsFromWindow,
 } from './outlier-statistical-helpers';
 import {
   detectPriceOutliers,
   detectVolumeOutliers,
   detectPriceGap as detectPriceGapAlgorithm,
 } from './outlier-detection-algorithms';
+import {
+  DEFAULT_CONFIG,
+  SEVERITY_ORDER,
+  computeMedianValue,
+  resolveOutlierStatsAndWindow,
+  dispatchOutlierEvent,
+} from './outlier-detection-config';
 
 // Re-exports for backward compatibility
 export type {
@@ -41,20 +42,13 @@ export type {
 } from './outlier-detection-types';
 export { calculateSeverity } from './outlier-statistical-helpers';
 export { detectPriceOutliers, detectVolumeOutliers } from './outlier-detection-algorithms';
-
-const DEFAULT_CONFIG: OutlierDetectorConfig = {
-  zScoreThreshold: 3.0,
-  iqrMultiplier: 1.5,
-  minSamples: 30,
-  priceGapThreshold: 0.05,
-  volumeSpikeThreshold: 3.0,
-  windowSize: 100,
-  callbackThreshold: 'medium',
-};
-
-const SEVERITY_ORDER: Record<OutlierSeverity, number> = {
-  low: 0, medium: 1, high: 2, critical: 3,
-};
+export {
+  DEFAULT_CONFIG,
+  SEVERITY_ORDER,
+  computeMedianValue,
+  resolveOutlierStatsAndWindow,
+  dispatchOutlierEvent,
+} from './outlier-detection-config';
 
 export class OutlierDetector {
   private config: OutlierDetectorConfig;
@@ -98,22 +92,14 @@ export class OutlierDetector {
   }
 
   detectPriceOutlier(symbol: string, price: number, input: SymbolStats | StatsWindow): OutlierEvent | null {
-    const isStats = 'sampleCount' in input;
-    const stats = isStats ? input as SymbolStats : computeStatsFromWindow((input as StatsWindow).prices);
-    const window: StatsWindow = isStats
-      ? { prices: [price], volumes: [], timestamps: [] }
-      : input as StatsWindow;
+    const { stats, window } = resolveOutlierStatsAndWindow(input, price, 'price');
     const events = detectPriceOutliers(symbol, stats, window, this.config, MarketDataSource.SANTIMENT, price);
     events.forEach((e) => this.processEvent(e));
     return events.length > 0 ? events[0] : null;
   }
 
   detectVolumeOutlier(symbol: string, volume: number, input: SymbolStats | StatsWindow): OutlierEvent | null {
-    const isStats = 'sampleCount' in input;
-    const stats = isStats ? input as SymbolStats : computeStatsFromWindow((input as StatsWindow).volumes);
-    const window: StatsWindow = isStats
-      ? { prices: [], volumes: [volume], timestamps: [] }
-      : input as StatsWindow;
+    const { stats, window } = resolveOutlierStatsAndWindow(input, volume, 'volume');
     const events = detectVolumeOutliers(symbol, stats, window, this.config, MarketDataSource.SANTIMENT, volume);
     return events.length > 0 ? events[0] : null;
   }
@@ -154,27 +140,11 @@ export class OutlierDetector {
   private computeMedian(symbol: string, prices: number[]): void {
     const stats = this.stats.get(symbol);
     if (!stats || prices.length === 0) return;
-    const sorted = [...prices].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    stats.priceMedian = sorted.length % 2 !== 0
-      ? sorted[mid]
-      : (sorted[mid - 1] + sorted[mid]) / 2;
+    stats.priceMedian = computeMedianValue(prices);
   }
 
   private processEvent(event: OutlierEvent): void {
-    try {
-      recordOutlierEvent(event.provider, event.symbol, event.outlierType);
-      if (event.zScore !== undefined) {
-        recordOutlierZScore(event.provider, event.symbol, event.outlierType, event.zScore);
-      }
-    } catch (error) {
-      logger.error('OutlierDetector: Metrics recording failed', { error });
-    }
-    if (SEVERITY_ORDER[event.severity] >= SEVERITY_ORDER[this.config.callbackThreshold]) {
-      for (const cb of this.callbacks) {
-        try { cb(event); } catch (error) { logger.error('OutlierDetector: Callback error', { error }); }
-      }
-    }
+    dispatchOutlierEvent(event, this.config.callbackThreshold, this.callbacks);
   }
 }
 

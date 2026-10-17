@@ -4,48 +4,27 @@
  * classification, rolling order imbalance, and statistical CDF normalization.
  * Strict Visual LOC Budget: <= 200 lines. Conforms to AGENTS.md Hard Rules.
  */
-import { z } from 'zod';
+import {
+  VpinConfigSchema,
+  type VpinConfig,
+  type TradeInput,
+  type VolumeBucket,
+  type VpinMetrics,
+  classifyTradeTick,
+  computeRawVpinFromBuckets,
+  computeVpinToxicityMetrics,
+} from './vpin-calculator-math';
 
-export const VpinConfigSchema = z.object({
-  bucketVolume: z.number().positive('Bucket volume must be positive').default(10_000),
-  windowBuckets: z.number().int().positive('Window buckets must be positive integer').default(50),
-  historicalMean: z.number().min(0).max(1).default(0.25),
-  historicalStd: z.number().positive('Historical standard deviation must be positive').default(0.15),
-  rollingStatsWindow: z.number().int().positive().default(500),
-  minBucketsForMetrics: z.number().int().nonnegative().default(1),
-  defaultVpin: z.number().min(0).max(1).default(0.0),
-});
-
-export type VpinConfig = z.infer<typeof VpinConfigSchema>;
-
-export interface TradeInput {
-  price: number;
-  quantity?: number;
-  volume?: number;
-  timestamp: number;
-  side?: 'buy' | 'sell';
-  midpoint?: number;
-  bidPrice?: number;
-  askPrice?: number;
-  tradeId?: string;
-}
-
-export interface VolumeBucket {
-  bucketIndex: number;
-  buyVolume: number;
-  sellVolume: number;
-  totalVolume: number;
-  imbalance: number;
-  isComplete: boolean;
-  completedAt?: number;
-}
-
-export interface VpinMetrics {
-  vpin: number;
-  zScore: number;
-  cdf: number;
-  completedBuckets: number;
-}
+export {
+  VpinConfigSchema,
+  type VpinConfig,
+  type TradeInput,
+  type VolumeBucket,
+  type VpinMetrics,
+  classifyTradeTick,
+  computeRawVpinFromBuckets,
+  computeVpinToxicityMetrics,
+};
 
 export class VpinCalculator {
   private readonly config: VpinConfig;
@@ -69,27 +48,10 @@ export class VpinCalculator {
   }
 
   public classifyTrade(trade: TradeInput): 'buy' | 'sell' {
-    if (trade.side === 'buy' || trade.side === 'sell') {
-      this.lastSign = trade.side;
-      this.lastTradePrice = trade.price;
-      return trade.side;
-    }
-    let midpoint = trade.midpoint;
-    if (midpoint === undefined && trade.bidPrice !== undefined && trade.askPrice !== undefined) {
-      if (trade.bidPrice > 0 && trade.askPrice > 0 && trade.bidPrice <= trade.askPrice) {
-        midpoint = (trade.bidPrice + trade.askPrice) / 2;
-      }
-    }
-    if (midpoint !== undefined && Number.isFinite(midpoint) && midpoint > 0) {
-      if (trade.price > midpoint) { this.lastSign = 'buy'; this.lastTradePrice = trade.price; return 'buy'; }
-      if (trade.price < midpoint) { this.lastSign = 'sell'; this.lastTradePrice = trade.price; return 'sell'; }
-    }
-    if (this.lastTradePrice > 0) {
-      if (trade.price > this.lastTradePrice) { this.lastSign = 'buy'; this.lastTradePrice = trade.price; return 'buy'; }
-      if (trade.price < this.lastTradePrice) { this.lastSign = 'sell'; this.lastTradePrice = trade.price; return 'sell'; }
-    }
-    this.lastTradePrice = trade.price;
-    return this.lastSign;
+    const result = classifyTradeTick(trade, this.lastTradePrice, this.lastSign);
+    this.lastTradePrice = result.lastTradePrice;
+    this.lastSign = result.lastSign;
+    return result.side;
   }
 
   public addTrade(trade: TradeInput): void {
@@ -140,38 +102,20 @@ export class VpinCalculator {
   }
 
   private computeRawVpin(): number {
-    if (this.completedBuckets.length === 0) return this.config.defaultVpin;
-    let totalImbalance = 0, totalVolume = 0;
-    for (const b of this.completedBuckets) {
-      totalImbalance += b.imbalance;
-      totalVolume += b.totalVolume;
-    }
-    if (totalVolume <= 0) return this.config.defaultVpin;
-    const vpin = totalImbalance / totalVolume;
-    return Math.max(0, Math.min(1, vpin === 0 ? 0 : vpin));
+    return computeRawVpinFromBuckets(this.completedBuckets, this.config.defaultVpin);
   }
 
   public getVpin(): number { return this.computeRawVpin(); }
   public calculateVpin(): number { return this.getVpin(); }
 
   public getMetrics(): VpinMetrics {
-    const vpin = this.getVpin();
-    let mean = this.config.historicalMean, std = this.config.historicalStd;
-    if (this.vpinHistory.length >= 30) {
-      const sum = this.vpinHistory.reduce((a, b) => a + b, 0);
-      const m = sum / this.vpinHistory.length;
-      const variance = this.vpinHistory.reduce((a, b) => a + (b - m) ** 2, 0) / this.vpinHistory.length;
-      const s = Math.sqrt(variance);
-      if (s > 1e-6) { mean = m; std = s; }
-    }
-    const zScore = std > 0 ? (vpin - mean) / std : 0;
-    const cdf = Math.max(0, Math.min(1, 0.5 * (1 + Math.tanh(zScore * 0.797885))));
-    return {
-      vpin,
-      zScore: Object.is(zScore, -0) ? 0 : zScore,
-      cdf: Object.is(cdf, -0) ? 0 : cdf,
-      completedBuckets: this.completedBuckets.length,
-    };
+    return computeVpinToxicityMetrics(
+      this.getVpin(),
+      this.vpinHistory,
+      this.completedBuckets.length,
+      this.config.historicalMean,
+      this.config.historicalStd
+    );
   }
 
   public getCdf(): number { return this.getMetrics().cdf; }

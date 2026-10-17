@@ -86,44 +86,23 @@ describe('AISignalAdapter Validation & Candidate Mapping', () => {
   });
 
   describe('candidateToAISignal', () => {
+    const mockSummary = {
+      trainSharpeMean: 1.8, testSharpeMean: 1.4, testWinRate: 0.62,
+      totalTestTrades: 45, testTotalPnl: 0.18, overfitGap: 0.4,
+      consistencyScore: 0.8, sharpeDecay: 0.22,
+    };
     const mockCandidate: DiscoveredAlphaCandidate = {
       strategyId: 'alpha-wf-breakout-42',
       familyId: 'momentumBreakout',
-      config: {
-        id: 'cfg-42',
-        symbol: 'ETH/USDT',
-        timeframe: '1h',
-        parameters: { lookback: 20 },
-      },
-      walkforwardSummary: {
-        trainSharpeMean: 1.8,
-        testSharpeMean: 1.4,
-        testWinRate: 0.62,
-        totalTestTrades: 45,
-        testTotalPnl: 0.18,
-        overfitGap: 0.4,
-        consistencyScore: 0.8,
-        sharpeDecay: 0.22,
-      },
-      survivalGateResult: {
-        passed: true,
-        verdicts: [],
-      },
+      config: { id: 'cfg-42', symbol: 'ETH/USDT', timeframe: '1h', parameters: { lookback: 20 } },
+      walkforwardSummary: mockSummary,
+      survivalGateResult: { passed: true, verdicts: [] },
       walkforwardResult: {
         steps: [
           { stepIndex: 0, trainMetrics: {} as never, testMetrics: { meanLabel: 0.035 } as never },
           { stepIndex: 1, trainMetrics: {} as never, testMetrics: { meanLabel: 0.045 } as never },
         ],
-        summary: {
-          trainSharpeMean: 1.8,
-          testSharpeMean: 1.4,
-          testWinRate: 0.62,
-          totalTestTrades: 45,
-          testTotalPnl: 0.18,
-          overfitGap: 0.4,
-          consistencyScore: 0.8,
-          sharpeDecay: 0.22,
-        },
+        summary: mockSummary,
       },
     };
 

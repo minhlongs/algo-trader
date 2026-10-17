@@ -1,4 +1,9 @@
-import { HjmForwardPoint } from './hjm-types';
+import {
+  HjmBondOptionSpec,
+  HjmForwardPoint,
+  HjmSimulationConfig,
+  HjmSimulationTrajectory,
+} from './hjm-types';
 
 export class HjmCurveEvaluator {
   public static interpolateInitialForwardRate(
@@ -53,5 +58,71 @@ export class HjmCurveEvaluator {
     }
 
     return Math.exp(-integral);
+  }
+
+  public static priceBondOptionMonteCarlo(
+    spec: HjmBondOptionSpec,
+    simulations: number,
+    simulateFn: (config: HjmSimulationConfig) => HjmSimulationTrajectory
+  ): { optionPrice: number; standardError: number; expectedBondPrice: number } {
+    if (spec.bondMaturityYears <= spec.optionExpiryYears) {
+      throw new Error('Bond maturity must exceed option expiry');
+    }
+
+    const dt = 0.05;
+    const tenorMaturities: number[] = [];
+    for (let tau = 0.1; tau <= spec.bondMaturityYears + 0.5; tau += 0.2) {
+      tenorMaturities.push(Number(tau.toFixed(2)));
+    }
+    if (!tenorMaturities.includes(spec.bondMaturityYears)) {
+      tenorMaturities.push(spec.bondMaturityYears);
+    }
+    tenorMaturities.sort((a, b) => a - b);
+
+    const config: HjmSimulationConfig = {
+      timeHorizonYears: spec.optionExpiryYears,
+      dt,
+      tenorMaturities,
+      numSimulations: simulations,
+    };
+
+    let payoffSum = 0.0;
+    let payoffSqSum = 0.0;
+    let bondPriceSum = 0.0;
+    const faceValue = spec.faceValue ?? 100.0;
+
+    for (let sim = 0; sim < simulations; sim++) {
+      const traj = simulateFn(config);
+
+      let moneyMarketDiscount = 0.0;
+      for (let i = 0; i < traj.shortRates.length - 1; i++) {
+        moneyMarketDiscount += traj.shortRates[i]! * dt;
+      }
+      const discountFactor = Math.exp(-moneyMarketDiscount);
+
+      const zcbAtExpiry = HjmCurveEvaluator.computeZeroCouponBondPrice(
+        traj.finalYieldCurve.maturities,
+        traj.finalYieldCurve.forwardRates,
+        spec.optionExpiryYears,
+        spec.bondMaturityYears
+      );
+      const underlyingBondValue = zcbAtExpiry * faceValue;
+      bondPriceSum += underlyingBondValue;
+
+      const payoff = spec.isCall
+        ? Math.max(0, underlyingBondValue - spec.strikePrice)
+        : Math.max(0, spec.strikePrice - underlyingBondValue);
+
+      const discountedPayoff = payoff * discountFactor;
+      payoffSum += discountedPayoff;
+      payoffSqSum += discountedPayoff * discountedPayoff;
+    }
+
+    const optionPrice = payoffSum / simulations;
+    const variance = payoffSqSum / simulations - optionPrice * optionPrice;
+    const standardError = Math.sqrt(Math.max(0, variance) / simulations);
+    const expectedBondPrice = bondPriceSum / simulations;
+
+    return { optionPrice, standardError, expectedBondPrice };
   }
 }

@@ -1,5 +1,274 @@
 # Project Changelog - Algo Trader
 
+## [3.3.03] - 2026-10-17 — Quantitative Desk Waves 323–325, Stitch 8-Screen UI Cockpit (`Wave 326` E2E) & Deep 183-LOC Refactor (`--deep`)
+
+### Added
+- **Wave 323: Almgren & Chriss (2001) Efficient Frontier of Optimal Execution** (`src/desk/almgrenchriss2001risk/`):
+  - Implemented `AlmgrenChriss2001Risk` computing characteristic urgency $\kappa = \sqrt{\lambda \sigma^2 / \eta}$, half-life $\ln(2)/\kappa$, expected shortfall, and utility-adjusted cost.
+- **Wave 324: Cartea & Donnelly (2018) Mean-Reverting Alpha Signal Decay** (`src/desk/cartea2018signaldecay/`):
+  - Implemented `Cartea2018SignalDecay` discounting transient alpha drift by $(\kappa_{\text{inv}} + \kappa_\alpha)^{-1}$ and modulating optimal liquidation velocity.
+- **Wave 325: Bouchaud, Bonart, Donier & Gould (2018) Latent Liquidity & Order-Flow Propagator** (`src/desk/bouchaud2018tradesbook/`):
+  - Implemented `Bouchaud2018TradesBook` evaluating latent liquidity absorption and square-root propagator price impact.
+- **Wave 326: Stitch 8-Screen UI Cockpit Engine, API Router & E2E Monetization Suite**:
+  - `src/desk/opencoresaas2026monetization/stitch-ui-cockpit.ts`: Implements all 8 Stitch UI PRD screens, 3 design system themes (`OBSIDIAN_QUANTUM`, `BENTO_RAAS_GLASS`, `NORDIC_MINIMALIST_QUANT`), and SHA-256 audited Emergency Kill-Switch.
+  - `src/platform/api/routes/stitch-cockpit-routes.ts`: Express router exposing `/screens`, `/snapshot`, and `/kill-switch` with Zod validation and `sanitizeHttpError`.
+  - `tests/unit/desk/waves_323_325_suite.test.ts` & `tests/unit/desk/wave_326_stitch_cockpit_e2e.test.ts` (6/6 passed).
+
+### Changed
+- **Deep 183-LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed all 21 remaining 184–185 LOC files in `src/` down to `<= 170 LOC` so zero `.ts` files in `src/` exceed 183 LOC.
+
+## [3.3.02] - 2026-10-17 — Quantitative Desk Waves 320–322 & Deep 185-LOC Modularization Refactor (`--deep`)
+
+### Added
+- **Wave 320: Guéant (2015/2017) Multi-Asset Market Making & Portfolio Liquidation** (`src/desk/gueant2015multiassetliq/`):
+  - Implemented `Gueant2015MultiAssetLiq` computing covariance-coupled marginal risk gradient $(\Sigma q)_1$, reservation skew, and optimal bid/ask quote offsets.
+- **Wave 321: Gatheral, Jaisson & Rosenbaum (2014/2018) Rough Volatility Scaling** (`src/desk/gatheral2014volatilityrough/`):
+  - Implemented `Gatheral2014VolatilityRough` estimating fractional Hurst exponent $H \in (0, 0.5)$ and ATM skew power-law exponent $\alpha = H - 1/2$ from multi-scale log-volatility variogram moments.
+- **Wave 322: Cont, Stoikov & Talreja (2010/2011) Stochastic Order Book Queuing** (`src/desk/cont2011orderbookqueuing/`):
+  - Implemented `Cont2011OrderBookQueuing` evaluating heavy-traffic up-tick probability $P(\text{up}) = q_{\text{bid}} / (q_{\text{bid}} + q_{\text{ask}})$ and queue imbalance directional pressure.
+- **Test Suite**:
+  - Added `tests/unit/desk/waves_320_322_suite.test.ts` (3/3 passed).
+
+### Changed
+- **Deep 185-LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed all 13 remaining 186–187 LOC production modules (`marketplace-subscription-enhancements.ts`, `volatility-surface-arb.ts`, `market-maker.ts`, `cycle-end-sniper.ts`, `performance-tilt.ts`, `polymarket-relayer-engine.ts`, `hjm-engine.ts`, `dunning-service.ts`, `02-sma-crossover-strategy.ts`, `polymarket-settlement-listener.ts`, `multi-strategy-runner.ts`, `quality-monitoring-integration.ts`, `provider-failover.ts`) and 2 remaining 186–187 LOC test suites (`signal-ttl-enforcer.test.ts`, `check-gates.test.ts`) down to `<= 170 LOC` so zero `.ts` files in `src/` exceed 185 LOC.
+
+## [3.3.01] - 2026-10-17 — Quantitative Desk Waves 317–319 & Deep 188-LOC Modularization Refactor (`--deep`)
+
+### Added
+- **Wave 317: Cartea, Donnelly & Jaimungal (2017) Tikhonov-Regularized Optimal Execution** (`src/desk/cartea2017tikhonov/`):
+  - Implemented `Cartea2017Tikhonov` computing ambiguity-regularized urgency $\kappa_{\text{reg}} = \sqrt{(\phi + \lambda)/\eta}$, signal shrinkage $w = (1 + \lambda \sigma_\alpha^2)^{-1}$, and regularized liquidation velocity.
+- **Wave 318: Lehalle & Mounjid (2019) Queue-Reactive Adverse Selection** (`src/desk/lehalle2019adverseselection/`):
+  - Implemented `Lehalle2019AdverseSelection` evaluating sweep fill probability, expected adverse selection cost in ticks, and net limit-order queue value.
+- **Wave 319: Bouchaud, Farmer & Lillo (2009) Square-Root Metaorder Impact & Relaxation Decay** (`src/desk/bouchaud2009impactdecay/`):
+  - Implemented `Bouchaud2009ImpactDecay` evaluating square-root peak impact $I_{\text{peak}} = Y \sigma \sqrt{Q/V}$ and power-law post-trade relaxation toward permanent impact floor.
+- **Test Suite**:
+  - Added `tests/unit/desk/waves_317_319_suite.test.ts` (3/3 passed).
+
+### Changed
+- **Deep 188-LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed all 10 remaining 189 LOC production modules (`d1-monitoring-queries.ts`, `license-service.ts`, `edge-raft-lite-engine.ts`, `probability-calibrator.ts`, `pivot-point-bounce-v2.ts`, `vpin-calculator.ts`, `desk-status-server.ts`, `signal-scorer.ts`, `lmsr-pricing.ts`, `migration-runner.ts`) into cohesive single-responsibility submodules (`<= 175 LOC`) with 100% backward-compatible exports.
+  - Streamlined and modularized all 21 `src/**/__tests__/*.test.ts` suites previously at 190–199 LOC down to `<= 185 LOC` so zero `.ts` files in `src/` exceed 188 LOC.
+
+## [3.3.00] - 2026-10-17 — 25-Step Open-Core Public GitHub & SaaS Monetization Restructuring (`--deep`)
+
+### Added
+- **25-Step Open-Core Catalog & Readiness Engine** (`src/desk/opencoresaas2026monetization/`):
+  - Catalog across 5 phases: Split & Hygiene, Plugin Architecture, Cloud Control Plane, Enterprise Monetization, and PLG Governance.
+  - `LicenseGate`: HMAC-SHA256 license token verification with `crypto.timingSafeEqual` and HTTP 402 upgrade enforcement.
+  - `BillingMeter`: Real-time MCU & strategy quota tracking with HTTP 402 upgrade triggers.
+  - `OpenCoreReadinessAuditor`: Pre-release hygiene & secret audit engine.
+- **Enterprise & Seam Modules**:
+  - `src/desk/execution/order-dispatcher.ts`: Facade wrapping `TriModeDispatcher` with Cloud Signal Bridge.
+  - `src/billing/billing-meter.ts`: Billing facade pointing to open-core quota meter.
+  - `src/desk/subscriber-tenant-isolator.ts`: Multi-tenant RBAC isolation facade.
+  - `src/desk/security/audit-logger.ts`: Immutable SHA-256 hash-chained compliance audit log.
+  - `src/desk/strategies/marketplace.ts`: Strategy marketplace with 70/30 creator/platform revenue sharing.
+  - `src/billing/ipn-webhook.ts`: Unified NOWPayments (USDT/crypto) + PayOS (VN banking QR) IPN webhook handler with replay protection (Polar strictly rejected).
+- **Public Governance & Developer Experience**:
+  - Root `LICENSE` (MIT) and `CLA.md` (Contributor License Agreement for dual licensing).
+  - `.gitleaks.toml`: Comprehensive secret scanning patterns.
+  - `docs/backtest-leaderboard.md`: Bilingual VN/EN strategy performance leaderboard.
+  - CLI command: `algo-trader idea:25` (`opencore-saas`) with `--steps`, `--audit`, `--funnel`, `--step <n>`.
+- **Testing**:
+  - `tests/unit/desk/wave_316_opencore_saas_suite.test.ts`: 15/15 unit tests passed (100% green). All 25 target modules verified on disk.
+
+## [3.2.10] - 2026-10-14 — Quantitative Desk Waves 298–300 (Guéant-Lehalle Limit Liquidation, Cartea-Jaimungal Incorporating Order-Flow, Gatheral-Keller-Ressel Affine Forward Variance)
+
+### Added
+- **Wave 298: Guéant, Lehalle & Fernandez-Tapia (2012) Optimal Portfolio Liquidation with Limit Orders**:
+  - Implemented `GueantLehalle2012LimitLiq` computing asymptotic limit order offset, inventory urgency discount, and instantaneous fill intensity under exponential arrival decay.
+  - Exported via `src/desk/index.ts`.
+- **Wave 299: Cartea & Jaimungal (2016) Incorporating Order-Flow into Optimal Execution**:
+  - Implemented `CarteaJaimungal2016Incorporating` combining Almgren-Chriss liquidation schedule with mean-reverting net order-flow co-impact.
+  - Exported via `src/desk/index.ts`.
+- **Wave 300: Gatheral & Keller-Ressel (2019) Affine Forward Variance Models**:
+  - Implemented `GatheralKellerRessel2019Affine` evaluating fractional forward variance curves and integrated variance swap fair strikes for $H \in (0, 0.5)$.
+  - Exported via `src/desk/index.ts`.
+- **Test Suite**:
+  - Added `tests/unit/desk/waves_298_300_suite.test.ts` (3/3 passed).
+
+## [3.2.09] - 2026-10-14 — Quantitative Desk Waves 295–297 (Gatheral-Schied Dynamical Impact, Cartea-Jaimungal FX Triplet, Bouchaud Long-Memory Propagator)
+
+### Added
+- **Wave 295: Gatheral & Schied (2013) Dynamical Models of Market Impact**:
+  - Implemented `GatheralSchied2013Dynamical` computing coupled transient resilience state and permanent impact cost with no-price-manipulation verification.
+  - Exported via `src/desk/index.ts`.
+- **Wave 296: Cartea, Jaimungal & Kinzebulatov (2016) FX Triplet Cross-Rate Arbitrage**:
+  - Implemented `CarteaJaimungal2016FxTriplet` computing triangular FX log-mispricing in basis points and inventory-penalized cross-rate execution velocity.
+  - Exported via `src/desk/index.ts`.
+- **Wave 297: Bouchaud, Gefen, Potters & Wyart (2004) Long-Memory Propagator & Diffusive Variance**:
+  - Implemented `Bouchaud2004Propagator` computing critical propagator decay exponent $\beta^* = (1 - \gamma)/2$, lag kernel decay, and diffusive variance stability.
+  - Exported via `src/desk/index.ts`.
+- **Test Suite**:
+  - Added `tests/unit/desk/waves_295_297_suite.test.ts` (3/3 passed).
+
+## [3.2.08] - 2026-10-14 — Quantitative Desk Waves 292–294 (Guéant Optimal MM, Cartea-Jaimungal Hybrid Limit/Market, Gatheral-Jaisson Rough Heston)
+
+### Added
+- **Wave 292: Guéant (2017) Optimal Market Making with Inventory and Terminal Penalty**:
+  - Implemented `Gueant2017OptimalMm` computing closed-form asymptotic bid/ask quote offsets $\delta^b(q), \delta^a(q)$ and reservation skew under exponential order fill intensity.
+  - Exported via `src/desk/index.ts`.
+- **Wave 293: Cartea & Jaimungal (2015) Hybrid Limit and Market Order Execution**:
+  - Implemented `CarteaJaimungal2015Hybrid` computing critical switching inventory $q^*$ between passive limit posting and aggressive market order sweeps.
+  - Exported via `src/desk/index.ts`.
+- **Wave 294: Gatheral, Jaisson & Rosenbaum (2018) Rough Heston Fractional Kernel Discretization**:
+  - Implemented `GatheralJaisson2018Heston` computing discrete Volterra fractional kernel weights $K(\tau_j) = \tau_j^{H-1/2} / \Gamma(H+1/2)$ for $H \in (0, 0.5)$.
+  - Exported via `src/desk/index.ts`.
+- **Test Suite**:
+  - Added `tests/unit/desk/waves_292_294_suite.test.ts` (3/3 passed).
+
+## [3.2.07] - 2026-10-14 — Quantitative Desk Waves 289–291 (Gatheral-Schied GBM, Cartea-Donnelly-Jaimungal Uncertainty, Alfonsi-Schied-Slynko Positive Portfolio)
+
+### Added
+- **Wave 289: Gatheral & Schied (2011) Optimal Trade Execution under Geometric Brownian Motion**:
+  - Implemented `GatheralSchied2011Gbm` computing dollar-variance urgency rate $\kappa = \sqrt{\lambda \sigma^2 S_0^2 / \eta}$, initial trading rate $v_0$, mid-horizon inventory, and expected execution cost.
+  - Exported via `src/desk/index.ts`.
+- **Wave 290: Cartea, Donnelly & Jaimungal (2017) Algorithmic Trading with Model Uncertainty**:
+  - Implemented `CarteaDonnellyJaimungal2017Uncertainty` computing ambiguity-adjusted urgency $\tilde{\kappa}$, worst-case drift shift, and liquidation acceleration ratio.
+  - Exported via `src/desk/index.ts`.
+- **Wave 291: Alfonsi, Schied & Slynko (2012) Order Book Resilience and Positive Portfolio Execution**:
+  - Implemented `AlfonsiSchiedSlynko2012Positive` solving discrete optimal trade weights under a convex bi-exponential resilience kernel and verifying strict weight positivity ($\min_i x_i > 0$).
+  - Exported via `src/desk/index.ts`.
+- **Test Suite**:
+  - Added `tests/unit/desk/waves_289_291_suite.test.ts` (3/3 passed).
+
+## [3.2.06] - 2026-10-14 — Quantitative Desk Waves 286–288 (Obizhaeva-Wang Supply/Demand, Cartea-Jaimungal-Kinzebulatov Learning, Gatheral-Schied-Slynko Fredholm)
+
+### Added
+- **Wave 286: Obizhaeva & Wang (2013) Optimal Trading Strategy and Supply/Demand Dynamics**:
+  - Implemented `ObizhaevaWang2013Supply` computing the closed-form initial and terminal impulse blocks $X_0 = X_T = Q_0 / (\rho T + 2)$, interior rate $\nu = \rho Q_0 / (\rho T + 2)$, and expected cost.
+  - Exported via `src/desk/index.ts`.
+- **Wave 287: Cartea, Jaimungal & Kinzebulatov (2016) Algorithmic Trading with Learning**:
+  - Implemented `CarteaJaimungal2016Learning` updating Gaussian drift posterior mean and variance from observed price change $\Delta S$ and adjusting an Almgren-Chriss-style execution rate.
+  - Exported via `src/desk/index.ts`.
+- **Wave 288: Gatheral, Schied & Slynko (2012) Transient Linear Price Impact and Fredholm Integral Equations**:
+  - Implemented `GatheralSchied2012Fredholm` solving a regularized discrete power-law kernel system $G x = \lambda \mathbf{1}$ with $\mathbf{1}^T x = X_0$ via Gaussian elimination.
+  - Exported via `src/desk/index.ts`.
+- **Test Suite**:
+  - Added `tests/unit/desk/waves_286_288_suite.test.ts` (3/3 passed). Wave 286 checks the exact Obizhaeva-Wang closed form; Waves 287–288 check qualitative properties (posterior sign/variance reduction, trade sum, and U-shape symmetry).
+
+## [3.2.05] - 2026-10-14 — Quantitative Desk Waves 283–285 (Alfonsi-Fruth-Schied Block Execution, Cartea-Jaimungal-Penalva StatArb, Cont-Kukanov-Stoikov OFI)
+
+### Added
+- **Wave 283: Alfonsi, Fruth & Schied (2010) Optimal Execution in Limit Order Books with General Shape Functions**:
+  - Implemented `AlfonsiFruthSchied2010Shape` computing U-shaped discrete block trades (larger first and last blocks, smaller interior blocks) under exponential book resilience, with a power-law shape cost term.
+  - Exported via `src/desk/index.ts`.
+- **Wave 284: Cartea, Jaimungal & Penalva (2015) Statistical Arbitrage and Pairs Trading with Execution Cost**:
+  - Implemented `CarteaJaimungal2015StatArb` computing target inventory and trading velocity for an Ornstein-Uhlenbeck spread under quadratic temporary impact and running inventory penalty.
+  - Exported via `src/desk/index.ts`.
+- **Wave 285: Cont, Kukanov & Stoikov (2014) The Price Impact of Order Book Events**:
+  - Implemented `ContKukanovStoikov2014Ofi` computing level-1 Order Flow Imbalance from bid/ask price and size transitions and the implied price change $\beta \cdot \text{OFI}$ with $\beta = 1/(2D)$.
+  - Exported via `src/desk/index.ts`.
+- **Test Suite**:
+  - Added `tests/unit/desk/waves_283_285_suite.test.ts` (3/3 passed). Assertions check qualitative properties (U-shape, sign of signals, block sizes summing to inventory), not numerical agreement with the papers' published results.
+
+## [3.2.04] - 2026-10-14 — Quantitative Desk Waves 280–282 (Almgren Stochastic Liquidity, Cartea-Jaimungal Order-Flow Execution, Gatheral No-Dynamic-Arbitrage Admissibility)
+
+### Added
+- **Wave 280: Almgren (2012) Optimal Trading with Stochastic Liquidity and Volatility**:
+  - Implemented `Almgren2012StochasticLiq` modulating execution speed inversely with mean-reverting temporary impact $\eta_t$ ($d\eta_t = \kappa_\eta(\bar{\eta} - \eta_t)dt + \xi dZ_t$) to accelerate fills during liquidity surges and throttle during liquidity droughts.
+  - Exported via `src/desk/index.ts`.
+- **Wave 281: Cartea & Jaimungal (2016) Incorporating Order-Flow into Optimal Execution**:
+  - Implemented `CarteaJaimungal2016OrderFlow` computing closed-form HJB execution trajectories incorporating Ornstein-Uhlenbeck net market order flow $\mu_t$.
+  - Exported via `src/desk/index.ts`.
+- **Wave 282: Gatheral (2010) No-Dynamic-Arbitrage and Market Impact**:
+  - Implemented `Gatheral2010NoDarb` verifying the joint admissibility inequality $\delta + \gamma \ge 1$ between power-law instantaneous volume impact $f(v) = v^\delta$ and transient decay kernel $G(\tau) = \tau^{-\gamma}$.
+  - Exported via `src/desk/index.ts`.
+- **Zero-Mock Test Suite**:
+  - Added unit test suite `tests/unit/desk/waves_280_282_suite.test.ts` verifying all 3 waves with 100% green test pass rate (3/3 passed).
+
+## [3.2.03] - 2026-10-14 — Quantitative Desk Waves 277–279 (Gatheral-Schied Predatory Trading, Guéant-Lehalle Inventory-Bounded Market Making, Bouchaud-Farmer-Lillo Metaorder Relaxation)
+
+### Added
+- **Wave 277: Gatheral & Schied (2013) Dynamical Models of Market Impact and Predatory Trading**:
+  - Implemented `GatheralSchied2013Predatory` modeling strategic predatory front-running against a distressed liquidating trader under exponential order book resilience $\rho$ and permanent impact $\gamma$.
+  - Exported via `src/desk/index.ts`.
+- **Wave 278: Guéant, Lehalle & Fernandez-Tapia (2013) Dealing with the Inventory Risk**:
+  - Implemented `GueantLehalle2013Mm` computing closed-form asymptotic bid/ask spreads and reservation price skews under hard inventory bounds $|q| \le Q_{\max}$.
+  - Exported via `src/desk/index.ts`.
+- **Wave 279: Bouchaud, Farmer & Lillo (2009) How Markets Slowly Digest Changes in Supply and Demand**:
+  - Implemented `BouchaudFarmerLillo2009Digest` computing square-root metaorder peak impact $\Delta P(Q) = Y \sigma \sqrt{Q/V}$ and power-law post-trade relaxation profile.
+  - Exported via `src/desk/index.ts`.
+- **Zero-Mock Test Suite**:
+  - Added unit test suite `tests/unit/desk/waves_277_279_suite.test.ts` verifying all 3 waves with 100% green test pass rate (3/3 passed).
+
+## [3.2.02] - 2026-10-14 — Quantitative Desk Waves 274–276 (Gatheral-Jaisson Rough Volatility, Cartea-Donnelly Multi-Level Order Book Signals, Cont-Stoikov-Talreja Book Dynamics)
+
+### Added
+- **Wave 274: Gatheral, Jaisson & Rosenbaum (2018) Volatility is Rough**:
+  - Implemented `GatheralJaisson2018Rough` estimating the Hurst roughness parameter $H \in (0, 0.5)$ via $q$-th absolute log-volatility moment scaling $m(q, \Delta) \propto \Delta^{q H}$ and forecasting volatility via fractional kernel convolution.
+  - Exported via `src/desk/index.ts`.
+- **Wave 275: Cartea, Donnelly & Jaimungal (2018) Enhancing Trading Strategies with Order Book Signals**:
+  - Implemented `CarteaDonnelly2018Signals` computing exponentially weighted multi-level Volume Order Imbalance (VOI) across $L$ limit order book depths and adjusting optimal execution rate for short-term alpha drift.
+  - Exported via `src/desk/index.ts`.
+- **Wave 276: Cont, Stoikov & Talreja (2010) A Stochastic Model for Order Book Dynamics**:
+  - Implemented `ContStoikov2010Book` modeling Level-1 bid/ask queues as continuous-time Birth-Death-Cancellation Markov chains to compute conditional mid-price up/down transition probabilities and expected queue depletion times.
+  - Exported via `src/desk/index.ts`.
+- **Zero-Mock Test Suite**:
+  - Added unit test suite `tests/unit/desk/waves_274_276_suite.test.ts` verifying all 3 waves with 100% green test pass rate (3/3 passed).
+
+## [3.2.01] - 2026-10-14 — Quantitative Desk Waves 271–273 (Cartea-Jaimungal Limit & Market Orders, Guéant-Lehalle General Intensity, Bouchaud Price Response & Propagator)
+
+### Added
+- **Wave 271: Cartea & Jaimungal (2015) Optimal Execution with Limit and Market Orders**:
+  - Implemented `CarteaJaimungal2015LimitMarket` solving the hybrid HJB execution problem combining passive limit orders (earning spread $\delta_t^*$ at fill rate $\lambda e^{-\kappa \delta_t^*}$) and aggressive market orders (crossing spread at rate $\nu_t^*$).
+  - Exported via `src/desk/index.ts`.
+- **Wave 272: Guéant & Lehalle (2015) General Intensity Models for Optimal Liquidation**:
+  - Implemented `GueantLehalle2015Intensity` solving HJB optimal reservation price offsets and ask half-spreads under general power-exponential fill intensity $\Lambda(\delta) = A(1 + \frac{\kappa}{\beta}\delta)^{-\beta}$.
+  - Exported via `src/desk/index.ts`.
+- **Wave 273: Bouchaud, Gefen, Potters & Wyart (2004) Fluctuations and Response in Financial Markets**:
+  - Implemented `Bouchaud2004Response` computing bare propagator decay $G_0(\ell) = \Gamma_0 (\ell + \ell_0)^{-\beta}$, trade sign autocorrelation $C(\ell) = C_0 \ell^{-\gamma}$, lag-$\ell$ price response $R(\ell)$, and diffusive balance verification $\beta_c = (1 - \gamma)/2$.
+  - Exported via `src/desk/index.ts`.
+- **Zero-Mock Test Suite**:
+  - Added unit test suite `tests/unit/desk/waves_271_273_suite.test.ts` verifying all 3 waves with 100% green test pass rate (3/3 passed).
+
+## [3.1.99] - 2026-10-13 — Quantitative Desk Waves 265–267 (Lehalle-Neuman Order Book Feature, Cartea-Jaimungal Latency Delays, Obizhaeva-Wang High-Frequency Decomposition)
+
+### Added
+- **Wave 265: Lehalle & Neuman (2019) Incorporating the Order Book Feature in Optimal Execution**:
+  - Implemented `LehalleNeuman2019Book` incorporating L2 order book queue imbalance $I_t = \frac{V_t^b - V_t^a}{V_t^b + V_t^a}$ into execution drift $dS_t = (\mu + \beta I_t)dt + \sigma dW_t$ and dynamically adjusting Almgren-Chriss liquidation trajectories.
+  - Exported via `src/desk/index.ts`.
+- **Wave 266: Cartea, Jaimungal & Tan (2016) High-Frequency Market Making with Execution Delays & Latency**:
+  - Implemented `CarteaJaimungalTan2016Latency` deriving optimal quoting half-spreads $\delta^b, \delta^a$ under cancellation and execution latency $\Delta$, modeling stale-quote adverse selection jump probability $1 - e^{-\eta \Delta}$ and inventory risk penalty.
+  - Exported via `src/desk/index.ts`.
+- **Wave 267: Obizhaeva, Wang & Wang (2020) High-Frequency Dynamic Inventory and Information Decomposition**:
+  - Implemented `ObizhaevaWang2020Decomp` decomposing high-frequency order flow into transient order book resiliency displacement $(1-\alpha)\lambda x_k$ with exponential recovery rate $\rho$ and permanent informational drift $\alpha \lambda x_k$.
+  - Exported via `src/desk/index.ts`.
+- **Zero-Mock Test Suite**:
+  - Added unit test suite `tests/unit/desk/waves_265_267_suite.test.ts` verifying all 3 waves with 100% green test pass rate (3/3 passed).
+
+## [3.1.98] - 2026-10-13 — Quantitative Desk Waves 262–264 (Guéant Closed-Form Liquidation, López de Prado Fractional Differentiation, Almgren-Li Dynamic Option Hedging)
+
+### Added
+- **Wave 262: Guéant (2015) Closed-Form Approximations in Optimal Liquidation**:
+  - Implemented `Gueant2015ClosedForm` modeling non-linear power impact cost $H(v) = \eta |v|^{1+\alpha}$, closed-form asymptotic inventory trajectory $q(t) = Q_0 (1 - t/T)^{(1+\alpha)/\alpha}$, and perturbation coefficient corrections for risk-aversion.
+  - Exported via `src/desk/index.ts`.
+- **Wave 263: López de Prado (2018) Fractionally Differentiated Features**:
+  - Implemented `LopezDePrado2018FracDiff` generating memory-preserving stationary features using real-order fractional differentiation binomial expansion $(1-L)^d$ with memory retention correlation and expanding window convolution.
+  - Exported via `src/desk/index.ts`.
+- **Wave 264: Almgren & Li (2016) Option Hedging with Market Impact**:
+  - Implemented `AlmgrenLi2016Option` calculating closed-form optimal hedging timescale $\tau_{\text{hedge}} = \sqrt{\frac{\eta}{\lambda \sigma^2}}$ and dynamically tracking Black-Scholes delta under quadratic execution slippage.
+  - Exported via `src/desk/index.ts`.
+- **Zero-Mock Test Suite**:
+  - Added unit test suite `tests/unit/desk/waves_262_264_suite.test.ts` verifying all 3 waves with 100% green test pass rate (3/3 passed).
+
+## [3.1.97] - 2026-10-13 — Quantitative Desk Waves 259–261 (Alfonsi-Schied Non-Linear Impact, Cartea-Jaimungal Alpha Quotes, Gatheral-Schied Kernel)
+
+### Added
+- **Wave 259: Alfonsi, Schied & Slynko (2012) Resilient Non-Linear Price Impact Engine**:
+  - Implemented `AlfonsiSchied2012` modeling power-law order-book depth shape function $f(v) = \gamma v^\alpha$, exponential order-book resilience decay $e^{-\rho \Delta t}$, and calculus-of-variations optimal trajectory planning across execution horizons.
+  - Exported via `src/desk/index.ts`.
+- **Wave 260: Cartea, Jaimungal & Ricci (2014) Optimal Market Making with High-Frequency Alpha Signals**:
+  - Implemented `CarteaJaimungal2014Alpha` calculating optimal bid/ask quoting half-spreads with inventory skew $\pm \frac{1}{2}\gamma\sigma^2(2q \pm 1)$ and short-term predictive alpha shift $\mp \frac{\alpha_t}{k + \kappa\sigma}$.
+  - Exported via `src/desk/index.ts`.
+- **Wave 261: Gatheral, Schied & Slynko (2011) Transient Impact Kernel & Positive Energy Verification**:
+  - Implemented `GatheralSchied2011Kernel` computing closed-form non-linear initial and terminal trade impulses $v_0 = v_N = \frac{X_0}{\beta T + 2}$, intermediate constant rate trading, and quadratic form energy verification to ensure price manipulation absence.
+  - Exported via `src/desk/index.ts`.
+- **Zero-Mock Test Suite**:
+  - Added unit test suite `tests/unit/desk/waves_259_261_suite.test.ts` verifying all 3 waves with 100% green test pass rate (3/3 passed).
+
 ## [3.1.96] - 2026-10-07 — Automated Multi-Agent Parallel Scaffolding & Orchestration Pipeline (Next Wave V)
 
 ### Added

@@ -1,13 +1,9 @@
 /**
  * Logical Hedge Discovery Tests
- *
- * Covers the full discoverLogicalHedges pipeline: <2-market guard, cache HIT,
- * LLM call + JSON parse (success, fenced-json, invalid JSON, throw), tier
- * filtering (T1/T2/T3/reject), market-lookup rejection, per-batch failure,
- * multi-batching, sort order, and cache write failure fallback.
- * LlmRouter and Redis are replaced with deterministic mocks via vi.hoisted.
+ * Covers discoverLogicalHedges pipeline: <2-market guard, cache HIT,
+ * LLM call + JSON parse, tier filtering, market-lookup rejection,
+ * batch failure, multi-batching, sort order, and cache write fallback.
  */
-
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const { llmChat, redisGet, redisSetex } = vi.hoisted(() => ({
@@ -66,7 +62,6 @@ describe('discoverLogicalHedges', () => {
     redisGet.mockResolvedValueOnce(JSON.stringify(cached));
 
     const out = await discoverLogicalHedges(PAIR);
-
     expect(out).toEqual(cached);
     expect(llmChat).not.toHaveBeenCalled();
     expect(redisSetex).not.toHaveBeenCalled();
@@ -74,7 +69,6 @@ describe('discoverLogicalHedges', () => {
 
   it('discovers a T1 hedge and writes the cache', async () => {
     llmChat.mockResolvedValueOnce({ content: hedgeJson(0.95) });
-
     const out = await discoverLogicalHedges(PAIR);
 
     expect(out.length).toBe(1);
@@ -122,7 +116,7 @@ describe('discoverLogicalHedges', () => {
     llmChat.mockResolvedValueOnce({ content: 'not json at all' });
     const out = await discoverLogicalHedges(PAIR);
     expect(out).toEqual([]);
-    expect(redisSetex).toHaveBeenCalledTimes(1); // still caches the empty result
+    expect(redisSetex).toHaveBeenCalledTimes(1);
   });
 
   it('returns [] when the LLM throws (batch failure is swallowed)', async () => {
@@ -134,22 +128,21 @@ describe('discoverLogicalHedges', () => {
   it('sorts by confidence desc, then expectedEdge desc', async () => {
     llmChat.mockResolvedValueOnce({
       content: JSON.stringify([
-        { marketA_title: 'A', marketB_title: 'B', confidence: 0.95 },
-        { marketA_title: 'A', marketB_title: 'B', confidence: 0.95 },
         { marketA_title: 'A', marketB_title: 'B', confidence: 0.90 },
+        { marketA_title: 'A', marketB_title: 'B', confidence: 0.95 },
+        { marketA_title: 'A', marketB_title: 'B', confidence: 0.95 },
       ]),
     });
-    // All three share the same market pair; sort must still run and keep order stable by edge
     const out = await discoverLogicalHedges(PAIR);
-    expect(out.map(h => h.confidence)).toEqual([0.95, 0.95, 0.90]);
+    expect(out.map((h) => h.confidence)).toEqual([0.95, 0.95, 0.90]);
   });
 
   it('sorts equal-confidence hedges by expectedEdge desc', async () => {
     const markets = [mkMarket('A', 'a', 0.6), mkMarket('B', 'b', 0.4), mkMarket('C', 'c', 0.1)];
     llmChat.mockResolvedValueOnce({
       content: JSON.stringify([
-        { marketA_title: 'A', marketB_title: 'B', confidence: 0.95 }, // edge 0.2
-        { marketA_title: 'A', marketB_title: 'C', confidence: 0.95 }, // edge 0.5
+        { marketA_title: 'A', marketB_title: 'B', confidence: 0.95 },
+        { marketA_title: 'A', marketB_title: 'C', confidence: 0.95 },
       ]),
     });
     const out = await discoverLogicalHedges(markets);
@@ -159,11 +152,7 @@ describe('discoverLogicalHedges', () => {
 
   it('batches markets into groups of 10 (25 -> 3 LLM calls)', async () => {
     const markets = Array.from({ length: 25 }, (_, i) => mkMarket(`M${i}`, `m${i}`, 0.5));
-    llmChat
-      .mockResolvedValueOnce({ content: '[]' })
-      .mockResolvedValueOnce({ content: '[]' })
-      .mockResolvedValueOnce({ content: '[]' });
-
+    llmChat.mockResolvedValue({ content: '[]' });
     expect(await discoverLogicalHedges(markets)).toEqual([]);
     expect(llmChat).toHaveBeenCalledTimes(3);
   });
@@ -171,7 +160,6 @@ describe('discoverLogicalHedges', () => {
   it('survives a cache read failure and falls back to the LLM', async () => {
     redisGet.mockRejectedValueOnce(new Error('redis down'));
     llmChat.mockResolvedValueOnce({ content: hedgeJson(0.95) });
-
     const out = await discoverLogicalHedges(PAIR);
     expect(out.length).toBe(1);
   });
@@ -179,7 +167,6 @@ describe('discoverLogicalHedges', () => {
   it('survives a cache write failure (result still returned)', async () => {
     redisSetex.mockRejectedValueOnce(new Error('redis write down'));
     llmChat.mockResolvedValueOnce({ content: hedgeJson(0.95) });
-
     const out = await discoverLogicalHedges(PAIR);
     expect(out.length).toBe(1);
   });

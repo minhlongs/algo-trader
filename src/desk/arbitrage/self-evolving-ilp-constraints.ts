@@ -8,30 +8,30 @@
 import { LlmRouter, ChatMessage } from '../../lib/llm-router';
 import { getMessageBus } from '../../shared/messaging/index';
 import { logger } from '../../shared/utils/logger';
+import { buildDeepSeekPrompt, estimateImpact } from './self-evolving-ilp-prompt';
 
 const ANALYSIS_THRESHOLD = 10;
 const BUFFER_MAX = 50;
-const RATE_LIMIT_MS = 3_600_000; // 1 hour
-const LLM_TIMEOUT_MS = 90_000;
-const HARD_MIN_EDGE = 0.015; // 1.5% floor
-const HARD_MAX_EXPOSURE = 0.30; // 30% ceiling
+const RATE_LIMIT_MS = 3_600_000;
+const HARD_MIN_EDGE = 0.015;
+const HARD_MAX_EXPOSURE = 0.30;
 const NATS_TOPIC = 'intelligence.ilp.evolution';
 
 export interface MissedOpportunity {
   marketId: string;
   yesPrice: number;
   noPrice: number;
-  actualEdge: number; // edge that existed when solver skipped it
-  reason: string; // e.g. "below min_edge threshold"
+  actualEdge: number;
+  reason: string;
   timestamp: number;
 }
 
 export interface ConstraintSuggestion {
-  constraintName: string; // "min_edge" | "max_market_exposure"
+  constraintName: string;
   currentValue: number;
   suggestedValue: number;
   reasoning: string;
-  confidence: number; // 0–1
+  confidence: number;
 }
 
 export interface EvolutionResult {
@@ -42,33 +42,24 @@ export interface EvolutionResult {
 
 export interface CurrentConstraints {
   budgetUsdc: number;
-  minEdge: number; // decimal fraction, e.g. 0.025
-  maxMarketExposure: number; // decimal fraction, e.g. 0.20
+  minEdge: number;
+  maxMarketExposure: number;
 }
 
 const missedBuffer: MissedOpportunity[] = [];
 let lastAnalysisAt = 0;
 
-/** Append a missed opportunity to the in-memory buffer (ring-buffer of 50). */
 export function recordMissedOpportunity(opp: MissedOpportunity): void {
   missedBuffer.push(opp);
   if (missedBuffer.length > BUFFER_MAX) missedBuffer.shift();
   logger.debug('[SelfEvolvingILP] recorded missed', { buffered: missedBuffer.length, marketId: opp.marketId });
 }
 
-/** Current buffer depth — callers can use this to decide when to trigger analysis. */
 export function getMissedBufferSize(): number {
   return missedBuffer.length;
 }
 
-/**
- * Analyze buffered missed opportunities and return constraint suggestions.
- * Returns empty suggestions if below threshold, rate-limited, or LLM fails.
- * Suggestions are ADVISORY — caller must approve before applying.
- */
-export async function analyzeConstraints(
-  current: CurrentConstraints,
-): Promise<EvolutionResult> {
+export async function analyzeConstraints(current: CurrentConstraints): Promise<EvolutionResult> {
   const empty: EvolutionResult = { suggestions: [], missedOpportunitiesAnalyzed: 0, estimatedImpact: 'no analysis' };
 
   if (missedBuffer.length < ANALYSIS_THRESHOLD) {
@@ -84,11 +75,10 @@ export async function analyzeConstraints(
 
   lastAnalysisAt = now;
   const snapshot = missedBuffer.slice();
-  missedBuffer.length = 0; // drain buffer after snapshot
+  missedBuffer.length = 0;
 
   const result = await runEvolutionAnalysis(snapshot, current);
 
-  // Publish to NATS (fire-and-forget)
   try {
     await getMessageBus().publish(NATS_TOPIC, result);
   } catch (err) {
@@ -112,29 +102,7 @@ async function runEvolutionAnalysis(opportunities: MissedOpportunity[], current:
 
 async function callDeepSeek(opportunities: MissedOpportunity[], current: CurrentConstraints): Promise<string> {
   const router = new LlmRouter();
-
-  const missedSummary = opportunities
-    .map(o => `marketId=${o.marketId} edge=${(o.actualEdge * 100).toFixed(2)}% reason="${o.reason}"`)
-    .join('\n');
-
-  const prompt = `Given these missed arbitrage opportunities and current ILP constraints, suggest constraint modifications to capture more opportunities without increasing risk.
-
-Current constraints:
-- budget: ${current.budgetUsdc} USDC
-- min_edge: ${(current.minEdge * 100).toFixed(2)}%
-- max_market_exposure: ${(current.maxMarketExposure * 100).toFixed(1)}%
-
-Missed opportunities (${opportunities.length}):
-${missedSummary}
-
-Respond ONLY with a JSON array. Each element must have:
-- constraintName: string ("min_edge" or "max_market_exposure")
-- currentValue: number (decimal fraction)
-- suggestedValue: number (decimal fraction)
-- reasoning: string (max 2 sentences)
-- confidence: number (0.0–1.0)
-
-Output nothing else.`;
+  const prompt = buildDeepSeekPrompt(opportunities, current);
 
   const messages: ChatMessage[] = [
     { role: 'system', content: 'You are a prediction market analyst. Suggest ILP constraint modifications to capture more arbitrage opportunities. Respond ONLY with valid JSON arrays.' },
@@ -151,7 +119,6 @@ Output nothing else.`;
 }
 
 function parseSuggestions(raw: string, current: CurrentConstraints): ConstraintSuggestion[] {
-  // Extract JSON array from response (LLM sometimes wraps in markdown fences)
   const match = raw.match(/\[[\s\S]*\]/);
   if (!match) return [];
 
@@ -165,31 +132,19 @@ function parseSuggestions(raw: string, current: CurrentConstraints): ConstraintS
   return (parsed as ConstraintSuggestion[])
     .filter(s => s && typeof s.constraintName === 'string' && typeof s.suggestedValue === 'number')
     .map(s => applySafetyLimits(s, current))
-    .filter(s => s.suggestedValue !== s.currentValue); // drop no-op suggestions
+    .filter(s => s.suggestedValue !== s.currentValue);
 }
 
 function applySafetyLimits(s: ConstraintSuggestion, current: CurrentConstraints): ConstraintSuggestion {
   let safeValue = s.suggestedValue;
 
   if (s.constraintName === 'min_edge') {
-    safeValue = Math.max(safeValue, HARD_MIN_EDGE); // floor 1.5%
+    safeValue = Math.max(safeValue, HARD_MIN_EDGE);
     s.currentValue = current.minEdge;
   } else if (s.constraintName === 'max_market_exposure') {
-    safeValue = Math.min(safeValue, HARD_MAX_EXPOSURE); // ceiling 30%
+    safeValue = Math.min(safeValue, HARD_MAX_EXPOSURE);
     s.currentValue = current.maxMarketExposure;
   }
 
   return { ...s, suggestedValue: safeValue };
-}
-
-function estimateImpact(suggestions: ConstraintSuggestion[]): string {
-  if (suggestions.length === 0) return 'no changes suggested';
-
-  const edgeSuggestion = suggestions.find(s => s.constraintName === 'min_edge');
-  if (edgeSuggestion && edgeSuggestion.suggestedValue < edgeSuggestion.currentValue) {
-    const pct = ((edgeSuggestion.currentValue - edgeSuggestion.suggestedValue) / edgeSuggestion.currentValue * 100).toFixed(0);
-    return `+${pct}% more opportunities captured (lower min_edge)`;
-  }
-
-  return `${suggestions.length} constraint(s) tuned`;
 }

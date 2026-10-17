@@ -24,14 +24,16 @@ import type {
   StrategyDeps,
   TradeEvent,
 } from './base-polymarket-strategy-types';
-import { computePositionGain, evaluateExitCondition } from './base-polymarket-strategy-exits';
 import { StrategyPriceCache } from './base-polymarket-strategy-price-cache';
 import { performEntry, performExit } from './base-polymarket-strategy-trades';
 import type { TradeLifecycleContext } from './base-polymarket-strategy-trades';
+import { processPositionExits, type ExitCheckContext } from './base-polymarket-strategy-exit-runner';
 import { logger } from '../../core/logger';
 
 // Facade re-exports: every existing importer keeps compiling unmodified.
 export type { BaseStrategyConfig, OpenPosition, StrategyDeps, TradeEvent, ExecutionContext } from './base-polymarket-strategy-types';
+export { processPositionExits };
+export type { ExitCheckContext };
 
 export abstract class BasePolymarketStrategy {
   protected readonly positions: OpenPosition[] = [];
@@ -122,41 +124,16 @@ export abstract class BasePolymarketStrategy {
    * is resolved HERE via virtual dispatch so subclass overrides keep working.
    */
   protected async checkExits(now = Date.now()): Promise<void> {
-    const toRemove: number[] = [];
-
-    for (let i = 0; i < this.positions.length; i++) {
-      const pos = this.positions[i];
-      const { mid: currentPrice, fromCache } = await this.getCurrentPrice(pos.tokenId);
-      const book = this.getCachedOrderbook(pos.tokenId);
-
-      if (currentPrice === 0) continue; // No price available, skip exit check
-
-      // TP/SL/maxHold first (pure math). Custom verdict resolved via virtual
-      // dispatch ONLY when none fired — some overrides have side effects, so
-      // they must not run on TP/SL exits.
-      let { shouldExit, reason } = evaluateExitCondition(pos, currentPrice, this.config, undefined, now);
-      if (!shouldExit) {
-        const custom = this.getCustomExitCondition(pos, currentPrice, book);
-        ({ shouldExit, reason } = evaluateExitCondition(pos, currentPrice, this.config, custom, now));
-      }
-
-      if (shouldExit) {
-        await this.exitPosition(pos, currentPrice, reason);
-        toRemove.push(i);
-      } else if (fromCache) {
-        const gain = computePositionGain(pos, currentPrice);
-        logger.debug('Position check (cached price)', this.strategyName, {
-          conditionId: pos.conditionId,
-          currentPrice: currentPrice.toFixed(4),
-          gain: (gain * 100).toFixed(2) + '%',
-        });
-      }
-    }
-
-    // Remove closed positions in reverse order
-    for (let i = toRemove.length - 1; i >= 0; i--) {
-      this.positions.splice(toRemove[i], 1);
-    }
+    const ctx: ExitCheckContext = {
+      positions: this.positions,
+      config: this.config,
+      strategyName: this.strategyName,
+      getCurrentPrice: this.getCurrentPrice.bind(this),
+      getCachedOrderbook: this.getCachedOrderbook.bind(this),
+      getCustomExitCondition: this.getCustomExitCondition.bind(this),
+      exitPosition: this.exitPosition.bind(this),
+    };
+    await processPositionExits(ctx, now);
   }
 
   /** Place an IOC exit order, log pnl, emit the trade, set cooldown. Swallows errors (logged). */

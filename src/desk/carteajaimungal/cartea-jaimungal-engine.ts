@@ -1,4 +1,5 @@
 import { CarteaJaimungalParams, CarteaJaimungalQuotes } from './cartea-jaimungal-types';
+import { calculateRiccatiCoefficient } from './cartea-jaimungal-math';
 
 export class CarteaJaimungalEngine {
   public static calculateQuotes(params: CarteaJaimungalParams): CarteaJaimungalQuotes {
@@ -7,7 +8,6 @@ export class CarteaJaimungalEngine {
       currentInventory: q,
       timeHorizon: T,
       currentTime: t,
-      volatility: sigma,
       runningInventoryPenalty: phi,
       terminalLiquidationPenalty: alphaTerm,
       orderArrivalIntensity: A,
@@ -26,17 +26,7 @@ export class CarteaJaimungalEngine {
     const remainingTime = Math.max(0.0001, T - t);
     const netInventory = q - qTarget;
 
-    // Riccati solution for inventory penalty coefficient h(tau)
-    // h(tau) = sqrt(phi) * [alphaTerm * cosh(sqrt(phi)*tau) + sqrt(phi) * sinh(sqrt(phi)*tau)] /
-    //                      [sqrt(phi) * cosh(sqrt(phi)*tau) + alphaTerm * sinh(sqrt(phi)*tau)]
-    const sqrtPhi = Math.sqrt(Math.max(1e-8, phi));
-    const arg = sqrtPhi * remainingTime;
-    const coshArg = Math.cosh(Math.min(20.0, arg));
-    const sinhArg = Math.sinh(Math.min(20.0, arg));
-
-    const num = alphaTerm * coshArg + sqrtPhi * sinhArg;
-    const den = sqrtPhi * coshArg + alphaTerm * sinhArg;
-    const hTau = sqrtPhi * (num / Math.max(1e-8, den));
+    const hTau = calculateRiccatiCoefficient(phi, alphaTerm, remainingTime);
 
     // Inventory penalty shift and alpha tilt
     const inventoryPenalty = (2.0 * netInventory) * (hTau / k);
@@ -49,6 +39,9 @@ export class CarteaJaimungalEngine {
     const baseHalfSpread = (1.0 / k) * Math.log(1.0 + k / A) + 0.5 / k;
 
     // Optimal quoting distances from mid-price
+    // Long inventory (netInventory > 0 -> inventoryPenalty > 0): skews reservation price down,
+    // narrows ask spread (liquidate faster) and widens bid spread
+    // Bullish alpha drift (alphaTilt > 0): tilts reservation price up, widens ask spread and narrows bid spread
     let askSpread = baseHalfSpread - inventoryPenalty + alphaTilt;
     let bidSpread = baseHalfSpread + inventoryPenalty - alphaTilt;
 

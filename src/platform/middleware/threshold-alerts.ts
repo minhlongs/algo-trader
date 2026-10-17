@@ -18,6 +18,7 @@ import {
   generateSmsBody,
   dispatchAlert as dispatchAlertFn,
 } from './threshold-alerts-dispatch';
+import { createThresholdNotification } from './threshold-alerts-notification';
 import type {
   AlertHandler,
   AlertNotification,
@@ -27,6 +28,7 @@ import type {
 
 // Re-export types so existing callers keep their imports working
 export type { AlertHandler, AlertNotification, AlertRecipient, AlertChannelConfig };
+export * from './threshold-alerts-notification';
 
 export class ThresholdAlerts extends EventEmitter {
   private static instance: ThresholdAlerts;
@@ -114,24 +116,7 @@ export class ThresholdAlerts extends EventEmitter {
   }
 
   createNotification(alert: ThresholdAlert): AlertNotification {
-    const notification: AlertNotification = {
-      licenseKey: alert.licenseKey,
-      threshold: alert.threshold,
-      currentUsage: alert.currentUsage,
-      dailyLimit: alert.dailyLimit,
-      percentUsed: alert.percentUsed,
-      timestamp: alert.timestamp,
-    };
-
-    if (alert.threshold === 80) {
-      notification.action = 'warn';
-    } else if (alert.threshold === 90) {
-      notification.action = 'urgent';
-    } else if (alert.threshold === 100) {
-      notification.action = 'critical';
-    }
-
-    return notification;
+    return createThresholdNotification(alert);
   }
 
   async sendEmailNotification(

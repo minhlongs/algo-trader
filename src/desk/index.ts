@@ -8,68 +8,10 @@
  * Communication with platform happens only through shared/ types.
  *
  * Path alias: `@desk/*` → `src/desk/*`
- *
- * Key modules:
- *   strategies/    52+ strategies (polymarket V2, CEX, DEX, DNA/GRU, dark-edge)
- *   execution/     Polymarket CLOB adapter, order management
- *   risk/          Kelly criterion, drawdown protection, circuit breaker
- *   signal/        Signal pipeline: fusion, TTL, dedup, publishing
- *   intelligence/  Alpha-ear client, LLM router, market intelligence
- *   market-data/   Provider failover, gap detection, SLA tracking
- *   wiring/        Strategy orchestration, paper trading, NATS event loop
- *   feeds/         Price feeds (Kalshi, Polymarket, CEX)
- *   cli/           Commander.js CLI — algo scan, status, risk
- *   arbitrage/     Split-merge arb, cross-platform basis
- *   gate/          RaaS gate validators, tier config (desk-side enforcement)
- *   sandbox/       Tenant isolation for paper trading simulation
+ * Modularized into focused sub-barrels (each strictly < 85 LOC).
  */
 
-// Strategy barrel (most cross-referenced module)
-export * from './strategies/polymarket/index';
-
-// Execution
-export * from './execution/index';
-
-// Risk
-export * from './risk/index';
-
-// Signal pipeline
-export * from './signal/index';
-
-// Market data feeds — NB: not re-exported due to PolymarketOrderBook ambiguity with execution/
-// Use `import { ... } from '@desk/feeds'` directly
-
-// Arbitrage
-export * from './arbitrage/index';
-
-// RaaS gate config
-export * from './gate/config/index';
-
-// Sandbox
-export * from './sandbox/index';
-
-// MARL Market-Making & Delta-Neutral Liquidity Engine
-export * from './marl/index';
-
-// Prediction Market AMM & Negative-Risk Arbitrage Engine
-export * as Amm from './amm/index';
-export {
-  LmsrPricing,
-  CpmmPricing,
-  DynamicBAdapter,
-  VirtualReserveTracker,
-  MultiTokenPool,
-  HybridOrderRouter,
-  CombinatorialScanner,
-  BasketPricer,
-  AtomicBasketCoordinator,
-  TwoSidedQuoter,
-  InventoryDeltaRebalancer,
-  AmmRiskGuard,
-  DrawdownBreaker,
-  AmmMetricsRecorder,
-  AmmAuditLogger,
-  AmmEngine,
-  MasterAmmEngine,
-} from './amm/index';
-
+export * from './barrels/core-execution-barrel';
+export * from './barrels/quant-models-waves-187-231-barrel';
+export * from './barrels/quant-models-waves-232-273-barrel';
+export * from './barrels/quant-models-waves-274-316-barrel';

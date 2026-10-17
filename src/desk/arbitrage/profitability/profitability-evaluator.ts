@@ -8,13 +8,17 @@ import {
   type NetProfitabilityAnalysis,
   type NetProfitabilityInput,
   type SlippageModelConfig,
-  type VwapSlippageResult,
   NetProfitabilityInputSchema,
 } from './profitability-types';
 import { calculateLegFee } from './fee-calculator';
 import { calculateLegGas } from './gas-calculator';
-import { calculateParametricSlippage, calculateVwapSlippage } from './slippage-calculator';
 import { buildInvalidResponse, classifyRejection } from './profitability-decision-engine';
+import {
+  buildNegativeSpreadResponse,
+  evaluateDualLegSlippage,
+} from './profitability-evaluator-helpers';
+
+export * from './profitability-evaluator-helpers';
 
 export function evaluateNetProfitabilityCore(
   rawInput: NetProfitabilityInput,
@@ -51,31 +55,13 @@ export function evaluateNetProfitabilityCore(
   const grossSpreadBps = buyPrice > 0 ? ((sellPrice - buyPrice) / buyPrice) * 10_000 : 0;
 
   if (grossSpreadUsd <= 0) {
-    return {
-      isProfitable: false,
+    return buildNegativeSpreadResponse(
       grossSpreadUsd,
       grossSpreadBps,
-      estimatedBuyFeeUsd: 0,
-      estimatedSellFeeUsd: 0,
-      estimatedGasUsd: 0,
-      estimatedBuySlippageUsd: 0,
-      estimatedSellSlippageUsd: 0,
-      totalCostUsd: 0,
-      netProfitUsd: grossSpreadUsd,
-      netProfitBps: grossSpreadBps,
-      rejectionReason: 'NEGATIVE_GROSS_SPREAD',
-      breakdown: {
-        effectiveTradeAmount,
-        buyNotionalUsd,
-        sellNotionalUsd,
-        buyFeeRate: 0,
-        sellFeeRate: 0,
-        buySlippageBps: 0,
-        sellSlippageBps: 0,
-        hasZeroDepth: false,
-        insufficientLiquidity: false,
-      },
-    };
+      effectiveTradeAmount,
+      buyNotionalUsd,
+      sellNotionalUsd,
+    );
   }
 
   const buyFeeCalc = calculateLegFee(input.buyLeg, buyNotionalUsd, input.feeOverrides?.buyFeeRate);
@@ -92,43 +78,15 @@ export function evaluateNetProfitabilityCore(
   const slippageConfig = { ...defaultSlippageConfig, ...input.slippageConfig };
   const slippageMode = input.slippageModel ?? 'auto';
 
-  let buySlippageResult: VwapSlippageResult;
-  let sellSlippageResult: VwapSlippageResult;
-  let hasZeroDepth = false;
-
-  if ((slippageMode === 'vwap_orderbook' || slippageMode === 'auto') && input.buyLeg.orderBook) {
-    if (!input.buyLeg.orderBook.asks || input.buyLeg.orderBook.asks.length === 0) {
-      hasZeroDepth = true;
-      buySlippageResult = {
-        vwap: 0,
-        slippageUsd: 0,
-        slippageBps: 0,
-        filledAmount: 0,
-        insufficientLiquidity: true,
-      };
-    } else {
-      buySlippageResult = calculateVwapSlippage(input.buyLeg.orderBook, 'buy', effectiveTradeAmount);
-    }
-  } else {
-    buySlippageResult = calculateParametricSlippage(input.buyLeg.venue, buyNotionalUsd, slippageConfig);
-  }
-
-  if ((slippageMode === 'vwap_orderbook' || slippageMode === 'auto') && input.sellLeg.orderBook) {
-    if (!input.sellLeg.orderBook.bids || input.sellLeg.orderBook.bids.length === 0) {
-      hasZeroDepth = true;
-      sellSlippageResult = {
-        vwap: 0,
-        slippageUsd: 0,
-        slippageBps: 0,
-        filledAmount: 0,
-        insufficientLiquidity: true,
-      };
-    } else {
-      sellSlippageResult = calculateVwapSlippage(input.sellLeg.orderBook, 'sell', effectiveTradeAmount);
-    }
-  } else {
-    sellSlippageResult = calculateParametricSlippage(input.sellLeg.venue, sellNotionalUsd, slippageConfig);
-  }
+  const { buySlippageResult, sellSlippageResult, hasZeroDepth } = evaluateDualLegSlippage(
+    input.buyLeg,
+    input.sellLeg,
+    effectiveTradeAmount,
+    buyNotionalUsd,
+    sellNotionalUsd,
+    slippageMode,
+    slippageConfig,
+  );
 
   const estimatedBuySlippageUsd = buySlippageResult.slippageUsd;
   const estimatedSellSlippageUsd = sellSlippageResult.slippageUsd;

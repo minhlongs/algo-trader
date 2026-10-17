@@ -166,31 +166,11 @@ export class ArbitrageRiskGuard {
     this.config = { ...this.config, ...patch };
   }
 
-  getLiveExecutionGuard(): LiveExecutionGuard {
-    return this.liveExecutionGuard;
-  }
-
-  getRiskGateManager(): RiskGateManager {
-    return this.riskGateManager;
-  }
-
-  getKellyPositionSizer(): KellyPositionSizer {
-    return this.kellyPositionSizer;
-  }
-
-  getTieredDrawdownBreaker(): TieredDrawdownBreaker | undefined {
-    return this.tieredDrawdownBreaker;
-  }
-
-  getDrawdownMonitor(): DrawdownMonitor | undefined {
-    return this.drawdownMonitor;
-  }
-
-  getCircuitBreaker(): CircuitBreaker | undefined {
-    return this.circuitBreaker;
-  }
-
-  getSpreadDetector(): SpreadDetector | undefined {
-    return this.spreadDetector;
-  }
+  getLiveExecutionGuard(): LiveExecutionGuard { return this.liveExecutionGuard; }
+  getRiskGateManager(): RiskGateManager { return this.riskGateManager; }
+  getKellyPositionSizer(): KellyPositionSizer { return this.kellyPositionSizer; }
+  getTieredDrawdownBreaker(): TieredDrawdownBreaker | undefined { return this.tieredDrawdownBreaker; }
+  getDrawdownMonitor(): DrawdownMonitor | undefined { return this.drawdownMonitor; }
+  getCircuitBreaker(): CircuitBreaker | undefined { return this.circuitBreaker; }
+  getSpreadDetector(): SpreadDetector | undefined { return this.spreadDetector; }
 }

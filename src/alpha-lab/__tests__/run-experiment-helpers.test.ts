@@ -2,21 +2,12 @@
  * run-experiment-helpers — Unit Tests
  */
 import { describe, it, expect, vi } from 'vitest';
-import {
-  parseArgs,
-  suggestFamilies,
-  validateConfig,
-  pickMetrics,
-  mapBaselines,
-} from '../run-experiment-helpers';
+import { parseArgs, suggestFamilies, validateConfig, pickMetrics, mapBaselines } from '../run-experiment-helpers';
 import type { ExperimentConfig, SplitMetrics } from '../experiments/experiment-types';
 import type { MarketRegime } from '../regimes/regime-types';
 
 vi.mock('../provenance/verdict-summary', () => ({
-  loadVerdictSummary: vi.fn().mockResolvedValue({
-    totalRecords: 10,
-    byStrategy: { s1: 5 },
-  }),
+  loadVerdictSummary: vi.fn().mockResolvedValue({ totalRecords: 10, byStrategy: { s1: 5 } }),
 }));
 
 vi.mock('../alpha-discovery/strategy-family-registry', () => ({
@@ -24,26 +15,13 @@ vi.mock('../alpha-discovery/strategy-family-registry', () => ({
 }));
 
 vi.mock('../alpha-discovery/research-informed', () => ({
-  prioritizeFamilies: vi.fn().mockReturnValue([
-    { familyId: 'fam-1', score: 0.9, reason: 'untested' },
-  ]),
+  prioritizeFamilies: vi.fn().mockReturnValue([{ familyId: 'fam-1', score: 0.9, reason: 'untested' }]),
 }));
 
 const VALID_CONFIG: ExperimentConfig = {
-  experimentId: 'exp-1',
-  symbol: 'BTC/USDT',
-  timeframe: '1h',
-  features: ['rsi_14'],
-  tp: 0.02,
-  sl: 0.01,
-  split: {
-    trainRatio: 0.7,
-    valRatio: 0.15,
-    testRatio: 0.15,
-  },
-  cost: { feeBps: 5, slippageBps: 2 },
-  seed: 42,
-  lookback: 20,
+  experimentId: 'exp-1', symbol: 'BTC/USDT', timeframe: '1h', features: ['rsi_14'],
+  tp: 0.02, sl: 0.01, split: { trainRatio: 0.7, valRatio: 0.15, testRatio: 0.15 },
+  cost: { feeBps: 5, slippageBps: 2 }, seed: 42, lookback: 20,
 };
 
 describe('run-experiment-helpers', () => {

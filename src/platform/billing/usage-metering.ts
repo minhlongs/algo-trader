@@ -4,7 +4,7 @@
  *
  * Facade: types/constants in usage-metering-types.ts, analytics queries in
  * usage-metering-analytics.ts, payment-provider sync in usage-metering-sync.ts,
- * trade tracking in usage-metering-tracking.ts.
+ * trade tracking in usage-metering-tracking.ts, status in usage-metering-status.ts.
  * All public symbols are re-exported here so importers stay unchanged.
  */
 
@@ -29,9 +29,14 @@ import {
   resetForNewPeriod as resetForNewPeriodWrite,
   trackTrade as trackTradeWrite,
 } from './usage-metering-tracking';
+import {
+  calculateOverageCharge,
+  calculateUsageStatus,
+} from './usage-metering-status';
 
 export type { UsageStatus, UsageMetrics, OverageCharge };
 export { MONTHLY_LIMITS, OVERAGE_PRICE_PER_TRADE };
+export { calculateUsageStatus, calculateOverageCharge };
 
 export class UsageMeteringService extends EventEmitter {
   private static instance: UsageMeteringService;
@@ -92,34 +97,16 @@ export class UsageMeteringService extends EventEmitter {
     tier: LicenseTier,
     cachedUsage?: number
   ): UsageStatus {
-    const period = this.getCurrentPeriod();
-    const monthlyLimit = MONTHLY_LIMITS[tier];
-    const currentUsage = cachedUsage !== undefined
-      ? cachedUsage
-      : this.getUsageFromCache(licenseKey, period);
-
-    const remaining = Math.max(0, monthlyLimit - currentUsage);
-    const percentUsed = (currentUsage / monthlyLimit) * 100;
-    const isExceeded = currentUsage > monthlyLimit;
-    const overageUnits = isExceeded ? currentUsage - monthlyLimit : 0;
-    const overageCost = overageUnits * OVERAGE_PRICE_PER_TRADE[tier];
-
-    return {
+    return calculateUsageStatus(
       licenseKey,
-      period,
       tier,
-      monthlyLimit,
-      currentUsage,
-      remaining,
-      percentUsed,
-      isExceeded,
-      overageUnits,
-      overageCost,
-    };
+      this.getCurrentPeriod(),
+      cachedUsage,
+      (key, period) => this.getUsageFromCache(key, period)
+    );
   }
 
   private getUsageFromCache(_licenseKey: string, _period: string): number {
-    // This would normally fetch from Redis, but we use cached value from trackTrade
     return 0;
   }
 
@@ -129,15 +116,7 @@ export class UsageMeteringService extends EventEmitter {
   async calculateOverage(licenseKey: string, tier: LicenseTier): Promise<OverageCharge> {
     const period = this.getCurrentPeriod();
     const status = this.getUsageStatus(licenseKey, tier);
-
-    return {
-      licenseKey,
-      period,
-      units: status.overageUnits,
-      pricePerUnit: OVERAGE_PRICE_PER_TRADE[tier],
-      totalCost: status.overageCost,
-      status: status.overageUnits > 0 ? 'pending' : 'billed',
-    };
+    return calculateOverageCharge(licenseKey, tier, period, status);
   }
 
   /**

@@ -8,34 +8,11 @@
 
 import { getDbClient } from '../../db/postgres-client';
 import { logger } from '../../shared/utils/logger';
+import { type OhlcvCandle, type DbRow, parseOhlcvRow } from './ohlcv-types';
 
-export interface OhlcvCandle {
-  market: string;
-  exchange: string;
-  timeframe: string;
-  timestamp: Date;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
+export { type OhlcvCandle } from './ohlcv-types';
 
-interface DbRow {
-  market: string;
-  exchange: string;
-  timeframe: string;
-  timestamp: Date;
-  open: string;
-  high: string;
-  low: string;
-  close: string;
-  volume: string;
-}
-
-/**
- * Store a single candle — upserts on conflict
- */
+/** Store a single candle — upserts on conflict */
 export async function storeCandle(candle: OhlcvCandle): Promise<void> {
   const pool = getDbClient();
   await pool.query(
@@ -62,9 +39,7 @@ export async function storeCandle(candle: OhlcvCandle): Promise<void> {
   );
 }
 
-/**
- * Bulk insert candles — upserts on conflict. Uses batched values for efficiency.
- */
+/** Bulk insert candles — upserts on conflict. Uses batched values for efficiency. */
 export async function bulkInsertCandles(candles: OhlcvCandle[]): Promise<number> {
   if (candles.length === 0) return 0;
 
@@ -81,7 +56,7 @@ export async function bulkInsertCandles(candles: OhlcvCandle[]): Promise<number>
       const offset = idx * 9;
       placeholders.push(
         `($${offset + 1},$${offset + 2},$${offset + 3},$${offset + 4},` +
-        `$${offset + 5},$${offset + 6},$${offset + 7},$${offset + 8},$${offset + 9})`,
+          `$${offset + 5},$${offset + 6},$${offset + 7},$${offset + 8},$${offset + 9})`,
       );
       values.push(
         candle.market,
@@ -116,9 +91,7 @@ export async function bulkInsertCandles(candles: OhlcvCandle[]): Promise<number>
   return inserted;
 }
 
-/**
- * Get historical candle data for a market+timeframe within a date range
- */
+/** Get historical candle data for a market+timeframe within a date range */
 export async function getHistoricalData(
   market: string,
   timeframe: string,
@@ -136,12 +109,10 @@ export async function getHistoricalData(
     [market, timeframe, exchange, start, end],
   );
 
-  return result.rows.map(parseRow);
+  return result.rows.map(parseOhlcvRow);
 }
 
-/**
- * Get the latest N candles for a market+timeframe
- */
+/** Get the latest N candles for a market+timeframe */
 export async function getLatestCandles(
   market: string,
   timeframe: string,
@@ -158,12 +129,10 @@ export async function getLatestCandles(
     [market, timeframe, exchange, limit],
   );
 
-  return result.rows.map(parseRow).reverse();
+  return result.rows.map(parseOhlcvRow).reverse();
 }
 
-/**
- * Get count of stored candles for a market+timeframe
- */
+/** Get count of stored candles for a market+timeframe */
 export async function getCandleCount(
   market: string,
   timeframe: string,
@@ -177,18 +146,4 @@ export async function getCandleCount(
     [market, timeframe, exchange],
   );
   return parseInt(result.rows[0]?.cnt ?? '0', 10);
-}
-
-function parseRow(row: DbRow): OhlcvCandle {
-  return {
-    market: row.market,
-    exchange: row.exchange,
-    timeframe: row.timeframe,
-    timestamp: row.timestamp,
-    open: parseFloat(row.open),
-    high: parseFloat(row.high),
-    low: parseFloat(row.low),
-    close: parseFloat(row.close),
-    volume: parseFloat(row.volume),
-  };
 }

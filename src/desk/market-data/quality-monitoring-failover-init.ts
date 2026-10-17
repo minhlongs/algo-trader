@@ -4,8 +4,11 @@
  */
 
 import { logger } from '../../shared/utils/logger';
-import { MarketDataSource, ProviderQualityConfig } from './types';
+import { MarketDataSource, ProviderQualityConfig, Candle } from './types';
 import { FailoverManager } from './provider-failover';
+import type { SlaTracker } from './sla-tracker';
+import type { GapDetector } from './gap-detector';
+import type { OutlierDetector } from './outlier-detection';
 
 export function parseProvider(providerName: string): MarketDataSource | null {
   try {
@@ -75,4 +78,50 @@ export function getActiveProvider(
 
   const firstConfig = providerConfigs.values().next().value;
   return firstConfig?.provider ?? null;
+}
+
+export function recordProviderRequestResult(
+  providerName: string,
+  success: boolean,
+  latencyMs: number,
+  slaTracker: SlaTracker,
+  failoverManagers: Map<string, FailoverManager>,
+  failureContext?: { symbol: string; operation: string; error?: Error }
+): void {
+  const provider = parseProvider(providerName);
+  if (!provider) return;
+
+  slaTracker.recordRequest(provider, success, latencyMs);
+
+  const failoverKey = getFailoverKey(failoverManagers, provider);
+  if (failoverKey) {
+    const manager = failoverManagers.get(failoverKey);
+    manager?.recordRequestResult(success, latencyMs);
+  }
+
+  if (!success && failureContext) {
+    logger.warn('QualityMonitoring: Request failed', {
+      provider,
+      symbol: failureContext.symbol,
+      operation: failureContext.operation,
+      error: failureContext.error?.message,
+    });
+  }
+}
+
+export function recordProviderCandle(
+  providerName: string,
+  symbol: string,
+  timeframe: string,
+  candle: Candle,
+  gapDetector: GapDetector,
+  outlierDetector: OutlierDetector,
+  slaTracker: SlaTracker
+): void {
+  const provider = parseProvider(providerName);
+  if (!provider) return;
+
+  gapDetector.recordCandle(provider as string, symbol, timeframe, candle);
+  outlierDetector.addCandle(candle, provider);
+  slaTracker.recordCandleCompleteness(provider, symbol, timeframe, 1, 1);
 }

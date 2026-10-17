@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AlgoTrade OS - Master Cloud RaaS Dashboard</title>
+<!-- Google Fonts: Space Grotesk, JetBrains Mono, Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS with CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-container": "#006a70",
+            "surface-container-high": "#292a2d",
+            "on-secondary-container": "#00613e",
+            "outline-variant": "#3a494b",
+            "surface-dim": "#121316",
+            "primary-container": "#00f2fe",
+            "background": "#121316",
+            "on-secondary-fixed": "#002112",
+            "inverse-on-surface": "#2f3034",
+            "on-error-container": "#ffdad6",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "surface-bright": "#38393d",
+            "on-tertiary": "#690003",
+            "on-background": "#e3e2e6",
+            "on-tertiary-fixed-variant": "#930005",
+            "error-container": "#93000a",
+            "outline": "#849495",
+            "surface-variant": "#343538",
+            "on-tertiary-container": "#c3000a",
+            "surface-tint": "#00dce6",
+            "surface-container-low": "#1b1b1f",
+            "primary-fixed-dim": "#00dce6",
+            "primary": "#e0fdff",
+            "on-secondary-fixed-variant": "#005234",
+            "surface-container-highest": "#343538",
+            "on-surface": "#e3e2e6",
+            "on-primary-fixed-variant": "#004f53",
+            "surface-container-lowest": "#0d0e11",
+            "secondary-fixed-dim": "#00e297",
+            "inverse-surface": "#e3e2e6",
+            "on-tertiary-fixed": "#410001",
+            "error": "#ffb4ab",
+            "surface-container": "#1f1f23",
+            "tertiary": "#fff5f4",
+            "on-secondary": "#003822",
+            "on-primary": "#00373a",
+            "inverse-primary": "#00696f",
+            "on-surface-variant": "#b9cacb",
+            "on-error": "#690005",
+            "on-primary-fixed": "#002022",
+            "tertiary-fixed": "#ffdad5",
+            "secondary-fixed": "#4dffb2",
+            "secondary-container": "#01e599",
+            "tertiary-container": "#ffd0ca",
+            "surface": "#121316",
+            "secondary": "#70ffba",
+            "primary-fixed": "#6ff6ff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-lg": "0.75rem",
+            "margin-desktop": "0.75rem",
+            "margin": "0.75rem",
+            "margin-mobile": "0.5rem",
+            "space-md": "0.5rem",
+            "space-xl": "1rem",
+            "space-sm": "0.25rem",
+            "gutter-mobile": "0.25rem",
+            "gutter": "0.5rem",
+            "space-xs": "0.125rem",
+            "gutter-desktop": "0.5rem"
+          },
+          "fontFamily": {
+            "headline-lg": ["Space Grotesk"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "headline-xl": ["Space Grotesk"],
+            "data-mono-md": ["JetBrains Mono"],
+            "label-caps": ["JetBrains Mono"],
+            "data-mono-sm": ["JetBrains Mono"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "headline-md": ["Space Grotesk"],
+            "body-sm": ["Inter"],
+            "body-lg": ["Inter"],
+            "body-md": ["Inter"]
+          },
+          "fontSize": {
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }],
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Technical scanlines & custom glow utility */
+    body {
+      background-color: #08090c;
+      color: #e3e2e6;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    .technical-grid {
+      background-size: 24px 24px;
+      background-image: 
+        linear-gradient(to right, rgba(58, 73, 75, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(58, 73, 75, 0.12) 1px, transparent 1px);
+    }
+    .neon-pulse-cyan {
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.35);
+    }
+    .neon-pulse-danger {
+      box-shadow: 0 0 12px rgba(255, 59, 48, 0.45);
+      animation: pulse-danger 1.8s infinite;
+    }
+    @keyframes pulse-danger {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.88; transform: scale(0.99); }
+    }
+    .scroll-clean::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .scroll-clean::-webkit-scrollbar-track {
+      background: #0d0e11;
+    }
+    .scroll-clean::-webkit-scrollbar-thumb {
+      background: #3a494b;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="bg-[#08090C] min-h-screen overflow-x-hidden technical-grid selection:bg-primary-container selection:text-on-primary">
+<!-- ========================================================================= -->
+<!-- TOPBAR / GLOBAL TELEMETRY HEADER (Shared Component Anchor)                -->
+<!-- ========================================================================= -->
+<header class="bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center w-full px-space-md py-space-xs h-11 sticky top-0 z-50 select-none">
+<!-- Left: Brand Logo, Desk Identifier & Quick Link Cluster -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-sm pr-space-md border-r border-outline-variant">
+<span class="material-symbols-outlined text-primary-container text-base animate-pulse">terminal</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">AlgoTrade OS</span>
+<span class="font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-secondary border border-secondary-container/30">
+          v4.9.2-NY4
+        </span>
+</div>
+<div class="hidden xl:flex items-center gap-1.5 font-data-mono-sm text-data-mono-sm text-on-surface-variant pr-space-md border-r border-outline-variant">
+<span class="text-outline">DESK:</span>
+<span class="text-primary-container font-semibold">DESK-ALPHA-01 // NY4 CROSS-CONNECT</span>
+</div>
+<!-- Navigation Links from Shared Components JSON + Intent Mapping (Strategies Active) -->
+<nav class="hidden lg:flex items-center gap-space-md">
+<a class="text-primary-container border-b-2 border-primary-container pb-0.5 font-bold font-data-mono-sm text-data-mono-sm" href="#strategies">Strategies</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#execution">Execution</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#telemetry">Telemetry</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#ledger">Ledger</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#shards">Shards</a>
+</nav>
+</div>
+<!-- Center/Right Live Stats: Portfolio Value & Latency -->
+<div class="flex items-center gap-space-md">
+<!-- Portfolio Value Pill -->
+<div class="hidden sm:flex items-center gap-2 bg-surface-container-low px-2.5 py-1 rounded-DEFAULT border border-outline-variant">
+<span class="font-label-caps text-label-caps text-outline">PORTFOLIO:</span>
+<span class="font-data-mono-md text-data-mono-md font-bold text-primary">$1,248,500.00</span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary flex items-center">
+<span class="material-symbols-outlined text-xs">arrow_drop_up</span>+3.42% (+$41,280)
+        </span>
+</div>
+<!-- Live WebSocket Telemetry Latency -->
+<div class="flex items-center gap-1.5 px-2 py-1 rounded-DEFAULT bg-surface-container-lowest border border-outline-variant">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary-container opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-secondary-container"></span>
+</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">WS: <strong class="text-secondary">11.4ms</strong></span>
+<span class="text-outline text-xs">|</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">P99: <strong class="text-primary-container">4.2ms</strong></span>
+</div>
+<!-- Action Cluster -->
+<div class="flex items-center gap-1.5">
+<button class="p-1 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors duration-150" title="Cluster Mesh Hub">
+<span class="material-symbols-outlined text-base">hub</span>
+</button>
+<button class="p-1 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors duration-150" title="Interactive Terminal">
+<span class="material-symbols-outlined text-base">terminal</span>
+</button>
+<button class="relative p-1 rounded-DEFAULT text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors duration-150" title="Incident Notifications">
+<span class="material-symbols-outlined text-base">notifications</span>
+<span class="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-error-container rounded-full"></span>
+</button>
+<!-- Secondary Action from JSON -->
+<button class="hidden md:flex items-center gap-1 px-2 py-1 text-on-surface font-data-mono-sm text-data-mono-sm border border-outline-variant rounded-DEFAULT hover:border-primary-container hover:text-primary transition-colors duration-150">
+<span class="material-symbols-outlined text-xs">file_download</span>
+<span>Audit Export</span>
+</button>
+<!-- Trailing Primary Action: Emergency Kill-Switch with Safety Lock -->
+<button class="flex items-center gap-1.5 px-2.5 py-1 bg-[#FF3B30] text-white font-data-mono-sm text-data-mono-sm font-bold rounded-DEFAULT neon-pulse-danger active:scale-95 transition-all" id="killSwitchTrigger">
+<span class="material-symbols-outlined text-sm animate-spin" style="animation-duration: 4s;">dangerous</span>
+<span>Emergency Kill-Switch</span>
+</button>
+</div>
+</div>
+</header>
+<!-- ========================================================================= -->
+<!-- MAIN WORKSPACE LAYOUT (SideNav + Dense Bento Grid Canvas)                 -->
+<!-- ========================================================================= -->
+<div class="flex w-full min-h-[calc(100vh-2.75rem)]">
+<!-- COCKPIT DRAWER / SIDE NAV BAR (Shared Component Anchor) -->
+<aside class="hidden lg:flex flex-col justify-between h-[calc(100vh-2.75rem)] w-56 p-space-xs border-r border-outline-variant bg-surface-container-lowest select-none sticky top-11 shrink-0 z-40">
+<!-- Top Section: Desk Header + Navigation Tabs -->
+<div class="flex flex-col gap-space-xs">
+<!-- Desk Avatar / Identity Badge -->
+<div class="flex items-center gap-space-sm p-space-sm mb-1 bg-surface-container-low rounded-DEFAULT border border-outline-variant">
+<div class="w-7 h-7 bg-surface-container-high rounded-DEFAULT border border-primary-container/40 flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-sm">memory</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono-sm text-data-mono-sm font-bold text-primary">DESK-ALPHA-01</span>
+<span class="font-data-mono-sm text-[9px] text-secondary">ONLINE // P99: 4.2ms</span>
+</div>
+</div>
+<!-- Tab Items -->
+<nav class="flex flex-col gap-0.5">
+<!-- Active Tab: Cockpit -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 bg-surface-container text-primary-container border-l-2 border-primary-container font-data-mono-sm text-data-mono-sm font-semibold transition-colors" href="#cockpit">
+<span class="material-symbols-outlined text-sm">query_stats</span>
+<span>Cockpit</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#order-books">
+<span class="material-symbols-outlined text-sm">table_chart</span>
+<span>Order Books</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#shard-health">
+<span class="material-symbols-outlined text-sm">dns</span>
+<span>Shard Health</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#algorithms">
+<span class="material-symbols-outlined text-sm">memory</span>
+<span>Algorithms</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#risk-engine">
+<span class="material-symbols-outlined text-sm">shield</span>
+<span>Risk Engine</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#audit-log">
+<span class="material-symbols-outlined text-sm">enhanced_encryption</span>
+<span>Audit Log</span>
+</a>
+</nav>
+<!-- CTA Button -->
+<div class="mt-2 px-1">
+<button class="w-full flex items-center justify-center gap-1.5 py-1.5 px-space-sm bg-primary-container text-on-primary-fixed font-data-mono-sm text-data-mono-sm font-bold rounded-DEFAULT hover:opacity-90 transition-all neon-pulse-cyan">
+<span class="material-symbols-outlined text-xs">add_circle</span>
+<span>Deploy Algo</span>
+</button>
+</div>
+</div>
+<!-- Bottom / Footer Tab Items -->
+<div class="flex flex-col gap-0.5 border-t border-outline-variant pt-space-xs">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#latency-stats">
+<span class="material-symbols-outlined text-sm">speed</span>
+<span>Latency Stats</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#settings">
+<span class="material-symbols-outlined text-sm">tune</span>
+<span>Settings</span>
+</a>
+<div class="mt-2 p-1.5 rounded-DEFAULT bg-[#0B0E14] border border-outline-variant">
+<div class="flex justify-between items-center text-[9px] font-data-mono-sm text-outline mb-1">
+<span>MEM POOL</span>
+<span class="text-secondary">4.2 / 32 GB</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-secondary-container h-full w-[14%]"></div>
+</div>
+</div>
+</div>
+</aside>
+<!-- CONTENT CANVAS -->
+<main class="flex-1 p-space-md lg:p-space-lg flex flex-col gap-space-md overflow-y-auto max-w-[1920px]">
+<!-- ========================================================================= -->
+<!-- TOP TELEMETRY BENTO ROW (4 Cards)                                         -->
+<!-- ========================================================================= -->
+<section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md">
+<!-- CARD A: Portfolio Performance & Sharpe -->
+<div class="bg-[#0F1218] border border-[#1E2430] hover:border-primary-container/40 p-3 rounded-DEFAULT transition-colors flex flex-col justify-between relative overflow-hidden">
+<div class="flex items-center justify-between border-b border-[#1E2430] pb-2 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary-container text-sm">finance_mode</span>
+<h2 class="font-headline-md text-headline-md text-primary font-bold">Sharpe &amp; Alpha</h2>
+</div>
+<span class="font-label-caps text-label-caps px-1 bg-surface-container-high text-secondary border border-secondary-container/20">LIVE METRICS</span>
+</div>
+<div class="grid grid-cols-2 gap-2 my-1">
+<div class="bg-[#0B0E14] p-2 border border-[#1E2430] rounded-DEFAULT">
+<div class="font-label-caps text-label-caps text-outline">SHARPE RATIO</div>
+<div class="font-data-mono-lg text-data-mono-lg text-primary-container font-bold">3.14</div>
+<div class="font-data-mono-sm text-[9px] text-secondary">Sortino: 4.28</div>
+</div>
+<div class="bg-[#0B0E14] p-2 border border-[#1E2430] rounded-DEFAULT">
+<div class="font-label-caps text-label-caps text-outline">ALPHA VS BTC</div>
+<div class="font-data-mono-lg text-data-mono-lg text-secondary font-bold">+18.4%</div>
+<div class="font-data-mono-sm text-[9px] text-outline">Benchmark: 2.1%</div>
+</div>
+</div>
+<div class="flex justify-between items-center text-xs font-data-mono-sm pt-1 border-t border-[#1E2430]">
+<span class="text-outline">Max Drawdown (30d):</span>
+<span class="text-error font-semibold">-4.2%</span>
+</div>
+</div>
+<!-- CARD B: MCU Compute Resource Usage -->
+<div class="bg-[#0F1218] border border-[#1E2430] hover:border-primary-container/40 p-3 rounded-DEFAULT transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between border-b border-[#1E2430] pb-2 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary-container text-sm">memory</span>
+<h2 class="font-headline-md text-headline-md text-primary font-bold">MCU Compute Load</h2>
+</div>
+<span class="font-label-caps text-label-caps px-1 bg-surface-container-high text-primary-container">CYCLE #82</span>
+</div>
+<div class="my-1">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-data-mono-md text-data-mono-md text-on-surface font-bold">18,400 / 25,000 MCU</span>
+<span class="font-data-mono-sm text-data-mono-sm text-primary-container font-bold">73.6%</span>
+</div>
+<div class="w-full bg-[#0B0E14] h-2 border border-[#1E2430] rounded-full overflow-hidden p-0.5">
+<div class="bg-gradient-to-r from-primary-container to-secondary h-full rounded-full" style="width: 73.6%;"></div>
+</div>
+<p class="font-data-mono-sm text-[10px] text-outline mt-1.5">Rate: 142 MCU/min (~4.6 hrs headroom)</p>
+</div>
+<div class="pt-2 border-t border-[#1E2430] flex justify-between items-center">
+<span class="font-data-mono-sm text-[10px] text-outline">Autoscale Cap: 40k</span>
+<button class="px-2 py-0.5 bg-surface-container-high border border-primary-container/40 hover:bg-primary-container hover:text-[#08090C] text-primary-container font-data-mono-sm text-[10px] font-bold rounded-DEFAULT transition-colors">
+              +10k MCU Top-Up
+            </button>
+</div>
+</div>
+<!-- CARD C: Active Shards & Cloud Plane -->
+<div class="bg-[#0F1218] border border-[#1E2430] hover:border-primary-container/40 p-3 rounded-DEFAULT transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between border-b border-[#1E2430] pb-2 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-secondary text-sm">dns</span>
+<h2 class="font-headline-md text-headline-md text-primary font-bold">Cloud Shard Plane</h2>
+</div>
+<span class="font-label-caps text-label-caps px-1 bg-secondary-container/10 text-secondary border border-secondary-container/20">3/3 SYNCED</span>
+</div>
+<div class="flex flex-col gap-1.5 font-data-mono-sm text-data-mono-sm">
+<div class="flex justify-between items-center bg-[#0B0E14] px-2 py-1 border border-[#1E2430] rounded-DEFAULT">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+<span class="text-on-surface">shard-us-east</span>
+<span class="text-outline text-[9px]">(NY4)</span>
+</div>
+<span class="text-secondary font-bold">1.2ms</span>
+</div>
+<div class="flex justify-between items-center bg-[#0B0E14] px-2 py-1 border border-[#1E2430] rounded-DEFAULT">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+<span class="text-on-surface">shard-asia-1</span>
+<span class="text-outline text-[9px]">(Tokyo)</span>
+</div>
+<span class="text-secondary font-bold">3.8ms</span>
+</div>
+<div class="flex justify-between items-center bg-[#0B0E14] px-2 py-1 border border-[#1E2430] rounded-DEFAULT">
+<div class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+<span class="text-on-surface">shard-eu-west</span>
+<span class="text-outline text-[9px]">(LD4)</span>
+</div>
+<span class="text-secondary font-bold">8.4ms</span>
+</div>
+</div>
+<div class="flex justify-between items-center text-[10px] font-data-mono-sm text-outline pt-1 border-t border-[#1E2430] mt-1">
+<span>Kernel: eBPF Bypass</span>
+<span class="text-primary-container">Jitter: &lt;0.04ms</span>
+</div>
+</div>
+<!-- CARD D: Risk Engine & Margin -->
+<div class="bg-[#0F1218] border border-[#1E2430] hover:border-primary-container/40 p-3 rounded-DEFAULT transition-colors flex flex-col justify-between">
+<div class="flex items-center justify-between border-b border-[#1E2430] pb-2 mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary-container text-sm">shield</span>
+<h2 class="font-headline-md text-headline-md text-primary font-bold">Risk &amp; Margin Guard</h2>
+</div>
+<span class="font-label-caps text-label-caps px-1 bg-surface-container text-primary-container border border-primary-container/30">NOMINAL</span>
+</div>
+<div class="grid grid-cols-2 gap-2 my-1">
+<div class="bg-[#0B0E14] p-2 border border-[#1E2430] rounded-DEFAULT">
+<span class="font-label-caps text-label-caps text-outline">NET EXPOSURE</span>
+<div class="font-data-mono-lg text-data-mono-lg text-primary font-bold">42.8%</div>
+<div class="font-data-mono-sm text-[9px] text-outline">Limit: 75.0%</div>
+</div>
+<div class="bg-[#0B0E14] p-2 border border-[#1E2430] rounded-DEFAULT">
+<span class="font-label-caps text-label-caps text-outline">MARGIN HEALTH</span>
+<div class="font-data-mono-lg text-data-mono-lg text-secondary font-bold">88.5%</div>
+<div class="font-data-mono-sm text-[9px] text-secondary">Buffer: High</div>
+</div>
+</div>
+<div class="flex justify-between items-center text-xs font-data-mono-sm pt-1 border-t border-[#1E2430]">
+<span class="text-outline">VaR (99% 1d):</span>
+<span class="text-on-surface font-bold font-data-mono-md">$14,200</span>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- CORE WORKSPACE: BENTO GRID - QUANT BOTS & LIVE EVENT INCIDENT LOG          -->
+<!-- ========================================================================= -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md flex-1">
+<!-- LEFT 8 COLS: ACTIVE QUANTITATIVE BOTS -->
+<section class="lg:col-span-8 flex flex-col gap-space-sm">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<h2 class="font-headline-lg text-headline-lg text-primary font-bold">Active Quantitative Algorithms</h2>
+<span class="font-data-mono-sm text-data-mono-sm bg-surface-container-high text-primary-container px-2 py-0.5 rounded-DEFAULT border border-outline-variant">
+                4 Deployed // 3 Live // 1 Shadow
+              </span>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-2 py-1 bg-surface-container border border-outline-variant text-on-surface-variant hover:text-primary font-data-mono-sm text-data-mono-sm rounded-DEFAULT flex items-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-xs">tune</span> Filter Pairs
+              </button>
+</div>
+</div>
+<!-- Algorithm Bento Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-space-md">
+<!-- BOT 1: Almgren-Chriss Optimal Execution -->
+<div class="bg-[#0F1218] border border-[#1E2430] hover:border-primary-container/60 transition-all p-3.5 rounded-DEFAULT relative flex flex-col justify-between group">
+<div>
+<div class="flex items-start justify-between mb-2">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+<span class="font-headline-md text-headline-md font-bold text-primary">Almgren-Chriss Exec</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">PAIR: BTC-USDT Perp // BINANCE-L2</span>
+</div>
+<!-- Switch Toggle ON -->
+<div class="flex items-center gap-1.5">
+<span class="font-label-caps text-label-caps text-secondary">LIVE</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#08090C] after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3.5 after:transition-all peer-checked:bg-secondary-container"></div>
+</label>
+</div>
+</div>
+<!-- Bot Metrics Ribbon -->
+<div class="grid grid-cols-3 gap-1.5 bg-[#0B0E14] p-2 rounded-DEFAULT border border-[#1E2430] my-2">
+<div>
+<div class="font-label-caps text-label-caps text-outline">WIN RATE</div>
+<div class="font-data-mono-md text-data-mono-md text-primary font-bold">76.4%</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline">24H VOLUME</div>
+<div class="font-data-mono-md text-data-mono-md text-on-surface font-semibold">$4.8M</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline">ORDERS</div>
+<div class="font-data-mono-md text-data-mono-md text-primary-container font-semibold">14 Active</div>
+</div>
+</div>
+<!-- Live Depth Micro-Bar preview -->
+<div class="space-y-1 my-2">
+<div class="flex justify-between font-data-mono-sm text-[10px] text-outline">
+<span>Spread Delta: 0.005 bps</span>
+<span>Fill Ratio: 99.4%</span>
+</div>
+<div class="w-full bg-[#1b1b1f] h-1.5 rounded-DEFAULT overflow-hidden flex">
+<div class="bg-secondary-container h-full w-[64%]"></div>
+<div class="bg-[#FF3B30] h-full w-[36%]"></div>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#1E2430] flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-outline">24H REALIZED PnL</span>
+<span class="font-data-mono-lg text-data-mono-lg text-secondary font-bold">+$18,420</span>
+</div>
+</div>
+<!-- BOT 2: Cross-DEX Arbitrage Engine -->
+<div class="bg-[#0F1218] border border-[#1E2430] hover:border-primary-container/60 transition-all p-3.5 rounded-DEFAULT relative flex flex-col justify-between group">
+<div>
+<div class="flex items-start justify-between mb-2">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+<span class="font-headline-md text-headline-md font-bold text-primary">Cross-DEX Arbitrage</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">SHARDS: ETH / SOL DOCKS</span>
+</div>
+<!-- Switch Toggle ON -->
+<div class="flex items-center gap-1.5">
+<span class="font-label-caps text-label-caps text-secondary">LIVE</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#08090C] after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3.5 after:transition-all peer-checked:bg-secondary-container"></div>
+</label>
+</div>
+</div>
+<!-- Bot Metrics Ribbon -->
+<div class="grid grid-cols-3 gap-1.5 bg-[#0B0E14] p-2 rounded-DEFAULT border border-[#1E2430] my-2">
+<div>
+<div class="font-label-caps text-label-caps text-outline">WIN RATE</div>
+<div class="font-data-mono-md text-data-mono-md text-primary font-bold">91.2%</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline">LATENCY</div>
+<div class="font-data-mono-md text-data-mono-md text-secondary font-semibold">8.2ms</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline">ORDERS</div>
+<div class="font-data-mono-md text-data-mono-md text-primary-container font-semibold">8 Active</div>
+</div>
+</div>
+<!-- Micro stat progress -->
+<div class="space-y-1 my-2">
+<div class="flex justify-between font-data-mono-sm text-[10px] text-outline">
+<span>Triangular Loop: Uniwap v3 // Raydium</span>
+<span>MEV Guard: Active</span>
+</div>
+<div class="w-full bg-[#1b1b1f] h-1.5 rounded-DEFAULT overflow-hidden">
+<div class="bg-primary-container h-full w-[88%]"></div>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#1E2430] flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-outline">24H REALIZED PnL</span>
+<span class="font-data-mono-lg text-data-mono-lg text-secondary font-bold">+$14,930</span>
+</div>
+</div>
+<!-- BOT 3: Statistical Mean-Reversion Alpha -->
+<div class="bg-[#0F1218] border border-[#1E2430] hover:border-primary-container/60 transition-all p-3.5 rounded-DEFAULT relative flex flex-col justify-between group">
+<div>
+<div class="flex items-start justify-between mb-2">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+<span class="font-headline-md text-headline-md font-bold text-primary">Stat Mean-Reversion</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">PAIR: SOL-USDT // DRIFT + BYBIT</span>
+</div>
+<!-- Switch Toggle ON -->
+<div class="flex items-center gap-1.5">
+<span class="font-label-caps text-label-caps text-secondary">LIVE</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#08090C] after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3.5 after:transition-all peer-checked:bg-secondary-container"></div>
+</label>
+</div>
+</div>
+<!-- Bot Metrics Ribbon -->
+<div class="grid grid-cols-3 gap-1.5 bg-[#0B0E14] p-2 rounded-DEFAULT border border-[#1E2430] my-2">
+<div>
+<div class="font-label-caps text-label-caps text-outline">WIN RATE</div>
+<div class="font-data-mono-md text-data-mono-md text-primary font-bold">68.5%</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline">HURST EXP</div>
+<div class="font-data-mono-md text-data-mono-md text-on-surface font-semibold">0.32</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline">Z-SCORE</div>
+<div class="font-data-mono-md text-data-mono-md text-primary-container font-semibold">+2.18σ</div>
+</div>
+</div>
+<div class="space-y-1 my-2">
+<div class="flex justify-between font-data-mono-sm text-[10px] text-outline">
+<span>OU Half-Life: 4.8 min</span>
+<span>Sigma Band: 2.2</span>
+</div>
+<div class="w-full bg-[#1b1b1f] h-1.5 rounded-DEFAULT overflow-hidden">
+<div class="bg-secondary-container h-full w-[54%]"></div>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#1E2430] flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-outline">24H REALIZED PnL</span>
+<span class="font-data-mono-lg text-data-mono-lg text-secondary font-bold">+$7,930</span>
+</div>
+</div>
+<!-- BOT 4: High-Frequency Order Flow Imbalance (OFI) -->
+<div class="bg-[#0F1218] border border-[#1E2430] hover:border-primary-container/60 transition-all p-3.5 rounded-DEFAULT relative flex flex-col justify-between group">
+<div>
+<div class="flex items-start justify-between mb-2">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+<span class="font-headline-md text-headline-md font-bold text-primary">HFT OFI Alpha</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">PAIR: BTC-USD // COINBASE-PRIME</span>
+</div>
+<!-- Switch Toggle ON (Shadow Mode) -->
+<div class="flex items-center gap-1.5">
+<span class="font-label-caps text-label-caps text-primary-container">SHADOW</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#08090C] after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3.5 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+</div>
+<!-- Bot Metrics Ribbon -->
+<div class="grid grid-cols-3 gap-1.5 bg-[#0B0E14] p-2 rounded-DEFAULT border border-[#1E2430] my-2">
+<div>
+<div class="font-label-caps text-label-caps text-outline">MICRO-OFI</div>
+<div class="font-data-mono-md text-data-mono-md text-primary font-bold">+0.84</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline">SLIPPAGE</div>
+<div class="font-data-mono-md text-data-mono-md text-secondary font-semibold">0.008%</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-outline">SIM ORDERS</div>
+<div class="font-data-mono-md text-data-mono-md text-primary-container font-semibold">32 Active</div>
+</div>
+</div>
+<div class="space-y-1 my-2">
+<div class="flex justify-between font-data-mono-sm text-[10px] text-outline">
+<span>Shadow Pipeline: 120k msgs/s</span>
+<span class="text-primary-container">Sim Live Sync</span>
+</div>
+<div class="w-full bg-[#1b1b1f] h-1.5 rounded-DEFAULT overflow-hidden">
+<div class="bg-primary-container h-full w-[72%]"></div>
+</div>
+</div>
+</div>
+<div class="pt-2 border-t border-[#1E2430] flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-outline">SIMULATED PnL (24H)</span>
+<span class="font-data-mono-lg text-data-mono-lg text-primary-container font-bold">+$2,100</span>
+</div>
+</div>
+</div>
+<!-- Quick Terminal Footnote -->
+<div class="bg-[#0B0E14] border border-[#1E2430] p-2 rounded-DEFAULT flex items-center justify-between text-xs font-data-mono-sm">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm text-secondary">memory_alt</span>
+<span>Total Active Computational Orders Across Shards: <strong class="text-primary">54 Limit / 2 Iceberg</strong></span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-outline">Total 24h Algorithmic Net PnL:</span>
+<span class="text-secondary font-bold font-data-mono-md">+$41,280.00 USD</span>
+</div>
+</div>
+</section>
+<!-- RIGHT 4 COLS: REAL-TIME RISK ALERT PANEL & INCIDENT LOG -->
+<section class="lg:col-span-4 flex flex-col gap-space-sm">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-base">emergency_home</span>
+<h2 class="font-headline-lg text-headline-lg text-primary font-bold">Telemetry Incident Feed</h2>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary bg-surface-container px-1.5 py-0.5 rounded-DEFAULT border border-secondary-container/30 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-ping"></span> LIVE
+            </span>
+</div>
+<div class="bg-[#0F1218] border border-[#1E2430] rounded-DEFAULT flex-1 flex flex-col justify-between overflow-hidden">
+<!-- Filter Bar for Log -->
+<div class="p-2 border-b border-[#1E2430] bg-[#0B0E14] flex items-center justify-between text-xs font-data-mono-sm">
+<div class="flex items-center gap-1.5">
+<span class="text-outline text-[10px]">FILTER:</span>
+<button class="px-1.5 py-0.5 rounded-DEFAULT bg-surface-container text-primary-container text-[10px]">ALL (48)</button>
+<button class="px-1.5 py-0.5 rounded-DEFAULT hover:bg-surface-container text-outline text-[10px]">WARNS (0)</button>
+<button class="px-1.5 py-0.5 rounded-DEFAULT hover:bg-surface-container text-outline text-[10px]">EXEC (42)</button>
+</div>
+<span class="text-[10px] text-outline">AUTO-SCROLL: ON</span>
+</div>
+<!-- Monospaced Event Feed -->
+<div class="p-2.5 flex-1 overflow-y-auto space-y-2 font-data-mono-sm text-data-mono-sm scroll-clean max-h-[380px]">
+<div class="p-1.5 rounded-DEFAULT bg-[#0B0E14] border-l-2 border-secondary-container border border-[#1E2430]/60">
+<div class="flex items-center justify-between text-[10px] text-outline mb-0.5">
+<span class="text-secondary">[14:28:09.112 UTC]</span>
+<span>SHARD-US-EAST</span>
+</div>
+<div class="text-on-surface">Slippage tolerance respected (<strong class="text-secondary">0.012%</strong> on 12.5 BTC clip).</div>
+</div>
+<div class="p-1.5 rounded-DEFAULT bg-[#0B0E14] border-l-2 border-primary-container border border-[#1E2430]/60">
+<div class="flex items-center justify-between text-[10px] text-outline mb-0.5">
+<span class="text-primary-container">[14:27:44.890 UTC]</span>
+<span>HEARTBEAT</span>
+</div>
+<div class="text-on-surface">Shard-us-east heartbeat acknowledged. Roundtrip latency <span class="text-primary">1.18ms</span>.</div>
+</div>
+<div class="p-1.5 rounded-DEFAULT bg-[#0B0E14] border-l-2 border-secondary-container border border-[#1E2430]/60">
+<div class="flex items-center justify-between text-[10px] text-outline mb-0.5">
+<span class="text-secondary">[14:26:12.441 UTC]</span>
+<span>CROSS-DEX ARB</span>
+</div>
+<div class="text-on-surface">Triangular arb loop filled: +$142.80 net of gas/slippage.</div>
+</div>
+<div class="p-1.5 rounded-DEFAULT bg-[#0B0E14] border-l-2 border-outline-variant border border-[#1E2430]/60">
+<div class="flex items-center justify-between text-[10px] text-outline mb-0.5">
+<span class="text-outline">[14:24:50.003 UTC]</span>
+<span>MCU ENGINE</span>
+</div>
+<div class="text-on-surface">Allocated +200 MCU threads to OFI shadow pipeline.</div>
+</div>
+<div class="p-1.5 rounded-DEFAULT bg-[#0B0E14] border-l-2 border-secondary-container border border-[#1E2430]/60">
+<div class="flex items-center justify-between text-[10px] text-outline mb-0.5">
+<span class="text-secondary">[14:22:18.924 UTC]</span>
+<span>RISK GUARD</span>
+</div>
+<div class="text-on-surface">Daily VaR 99% recalculation complete: $14,200 (Risk Limit: $50,000).</div>
+</div>
+<div class="p-1.5 rounded-DEFAULT bg-[#0B0E14] border-l-2 border-primary-container border border-[#1E2430]/60">
+<div class="flex items-center justify-between text-[10px] text-outline mb-0.5">
+<span class="text-primary-container">[14:20:01.091 UTC]</span>
+<span>SHARD-ASIA-1</span>
+</div>
+<div class="text-on-surface">Tokyo cross-connect re-route stabilized. Jitter <span class="text-primary">0.03ms</span>.</div>
+</div>
+</div>
+<!-- Panel Footer / Fast Circuit Breaker Trigger Trigger Preview -->
+<div class="p-3 bg-[#0B0E14] border-t border-[#1E2430]">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-caps text-label-caps text-outline">KILL-SWITCH SAFETY ARM</span>
+<span class="font-data-mono-sm text-[10px] text-secondary flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">lock</span> 2FA ARMED
+                </span>
+</div>
+<button class="w-full py-2 bg-error-container/20 border border-[#FF3B30] text-error hover:bg-[#FF3B30] hover:text-white font-data-mono-sm text-data-mono-sm font-bold rounded-DEFAULT transition-all flex items-center justify-center gap-2" onclick="document.getElementById('killModal').classList.remove('hidden')">
+<span class="material-symbols-outlined text-sm">power_settings_new</span>
+<span>HALT ALL EXECUTIONS (EMERGENCY)</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- ========================================================================= -->
+<!-- TWO-STEP EMERGENCY KILL-SWITCH CONFIRMATION MODAL                         -->
+<!-- ========================================================================= -->
+<div class="hidden fixed inset-0 z-50 bg-[#08090C]/85 backdrop-blur-sm flex items-center justify-center p-4" id="killModal">
+<div class="bg-[#141923] border border-[#FF3B30] w-full max-w-lg p-5 rounded-DEFAULT shadow-2xl relative select-none">
+<!-- Modal Header -->
+<div class="flex items-center justify-between border-b border-[#2D3748] pb-3 mb-4">
+<div class="flex items-center gap-2 text-error">
+<span class="material-symbols-outlined text-xl animate-bounce">warning</span>
+<h2 class="font-headline-lg text-headline-lg text-primary font-bold">TWO-STEP EMERGENCY CIRCUIT BREAKER</h2>
+</div>
+<button class="text-outline hover:text-on-surface" onclick="document.getElementById('killModal').classList.add('hidden')">
+<span class="material-symbols-outlined text-lg">close</span>
+</button>
+</div>
+<!-- Warning description -->
+<div class="space-y-3 font-body-md text-body-md text-on-surface mb-4">
+<p class="font-data-mono-sm text-data-mono-sm text-error bg-error-container/20 p-2.5 rounded-DEFAULT border border-error-container">
+          CRITICAL: Initiating this breaker will send a P0 hard cancel packet across all shards (NY4, Tokyo, LD4), zero all 54 active resting limit orders, and detach algorithmic execution loops immediately.
+        </p>
+<div class="bg-[#0B0E14] p-3 border border-[#2D3748] rounded-DEFAULT space-y-2">
+<div class="flex justify-between text-xs font-data-mono-sm">
+<span class="text-outline">Active Positions:</span>
+<span class="text-primary font-bold">BTC ($640k), ETH ($380k), SOL ($228k)</span>
+</div>
+<div class="flex justify-between text-xs font-data-mono-sm">
+<span class="text-outline">Pending Resting Fills:</span>
+<span class="text-error font-bold">54 Orders / $1.12M Value</span>
+</div>
+<div class="flex justify-between text-xs font-data-mono-sm">
+<span class="text-outline">Action:</span>
+<span class="text-primary-container font-bold">MASS CANCEL &amp; FLAT REVERSION</span>
+</div>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-outline mb-1">ENTER AUTHORIZATION PIN TO CONFIRM</label>
+<div class="flex items-center gap-2">
+<input class="w-full bg-[#0B0E14] border border-[#3A494B] px-3 py-2 font-data-mono-md text-data-mono-md text-primary tracking-widest text-center rounded-DEFAULT focus:outline-none focus:border-[#FF3B30]" readonly="" type="password" value="9482"/>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary bg-surface-container px-2 py-2 border border-outline-variant rounded-DEFAULT">VALID</span>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="grid grid-cols-2 gap-3 pt-3 border-t border-[#2D3748]">
+<button class="py-2 bg-surface-container border border-outline-variant hover:border-outline text-on-surface font-data-mono-sm text-data-mono-sm rounded-DEFAULT transition-all" onclick="document.getElementById('killModal').classList.add('hidden')">
+          ABORT / RETURN
+        </button>
+<button class="py-2 bg-[#FF3B30] text-white font-data-mono-sm text-data-mono-sm font-bold rounded-DEFAULT hover:opacity-90 neon-pulse-danger transition-all" onclick="triggerKillSequence()">
+          HALT ALL EXECUTIONS NOW
+        </button>
+</div>
+</div>
+</div>
+<!-- Inline Script for Interactivity -->
+<script>
+    // Emergency Modal Triggers
+    const killBtn = document.getElementById('killSwitchTrigger');
+    const killModal = document.getElementById('killModal');
+    if (killBtn && killModal) {
+      killBtn.addEventListener('click', () => {
+        killModal.classList.remove('hidden');
+      });
+    }
+
+    function triggerKillSequence() {
+      alert("EMERGENCY KILL-SWITCH EXECUTED: All algo loops suspended. 54 cancel order packets routed across NY4, Tokyo, LD4.");
+      killModal.classList.add('hidden');
+    }
+
+    // Dynamic latency simulated micro-fluctuation
+    setInterval(() => {
+      const pingEls = document.querySelectorAll('strong.text-secondary');
+      if (pingEls.length > 0) {
+        const jitter = (11.0 + Math.random() * 0.8).toFixed(1);
+        pingEls[0].innerText = jitter + 'ms';
+      }
+    }, 2400);
+  </script>
+
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-wrap: wrap; gap: 6px; background: rgba(15, 18, 24, 0.95); backdrop-filter: blur(12px); border: 1px solid #1E2430; padding: 6px 12px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 11px;">
+  <a href="dashboard.html" style="color: #00F2FE; font-weight: bold; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); text-decoration: none; padding: 4px 8px; border-radius: 4px;">⚡ DASHBOARD</a>
+  <a href="quant-terminal.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">TERMINAL</a>
+  <a href="marketplace.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">MARKETPLACE</a>
+  <a href="leaderboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">LEADERBOARD</a>
+  <a href="billing.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BILLING</a>
+  <a href="byok-wizard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BYOK</a>
+  <a href="mobile-sentry.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">SENTRY</a>
+  <a href="telemetry.html" style="color: #00F2FE; text-decoration: none; padding: 4px 8px;">TELEMETRY</a>
+  <a href="latency-simulator.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">FEED SIMULATOR</a>
+  <a href="styleguide.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">STYLEGUIDE</a>
+</div>
+
+
+
+<!-- ALGOTRADE UNIVERSAL DOCK NAVIGATION -->
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; align-items: center; gap: 8px; background: rgba(15, 18, 24, 0.92); border: 1px solid #1E2430; backdrop-filter: blur(16px); padding: 6px 14px; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(0, 242, 254, 0.15); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-width: 95vw; overflow-x: auto;">
+  <div style="display: flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid #1E2430;">
+    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #00E599; box-shadow: 0 0 8px #00E599;"></span>
+    <span style="color: #00F2FE; font-weight: 700; letter-spacing: 0.5px;">ALGOTRADE</span>
+  </div>
+  <nav style="display: flex; align-items: center; gap: 4px;">
+    <a href="dashboard.html" class="nav-item-dashboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">DASHBOARD</a>
+    <a href="quant-terminal.html" class="nav-item-quant-terminal" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">QUANT TERMINAL</a>
+    <a href="marketplace.html" class="nav-item-marketplace" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MARKETPLACE</a>
+    <a href="leaderboard.html" class="nav-item-leaderboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LEADERBOARD</a>
+    <a href="backtest-studio.html" class="nav-item-backtest-studio" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BACKTEST STUDIO</a>
+    <a href="stress-lab.html" class="nav-item-stress-lab" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STRESS LAB</a>
+    <a href="telemetry.html" class="nav-item-telemetry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">TELEMETRY</a>
+    <a href="latency-simulator.html" class="nav-item-latency-simulator" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LATENCY SIM</a>
+    <a href="billing.html" class="nav-item-billing" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BILLING</a>
+    <a href="byok-wizard.html" class="nav-item-byok-wizard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BYOK WIZARD</a>
+    <a href="mobile-sentry.html" class="nav-item-mobile-sentry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MOBILE SENTRY</a>
+    <a href="styleguide.html" class="nav-item-styleguide" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STYLE GUIDE</a>
+  </nav>
+</div>
+<script>
+  (function() {
+    var cur = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (cur === 'index.html') cur = 'dashboard.html';
+    var key = cur.split('.')[0];
+    var activeLink = document.querySelector('.nav-item-' + key);
+    if (activeLink) {
+      activeLink.style.color = '#00F2FE';
+      activeLink.style.background = 'rgba(0, 242, 254, 0.12)';
+      activeLink.style.border = '1px solid rgba(0, 242, 254, 0.3)';
+      activeLink.style.fontWeight = '600';
+    }
+  })();
+</script>
+
+</body></html>

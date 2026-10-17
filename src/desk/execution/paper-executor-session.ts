@@ -1,5 +1,5 @@
 /**
- * Paper Executor Session Lifecycle — disk loading, fresh initialization, resets
+ * Paper Executor Session Lifecycle — disk loading, fresh initialization, resets, persistence
  */
 
 import { logger } from '../../shared/utils/logger';
@@ -10,6 +10,7 @@ import {
   type PaperAccount,
   type PaperExecutorConfig,
   createDefaultAccount,
+  persistPaperState,
 } from './paper-position-tracker';
 
 export interface PaperSessionState {
@@ -24,7 +25,7 @@ export async function initPaperSession(
   tradesFile: string,
   config: PaperExecutorConfig,
   initialBalance?: number,
-  forceReset = false
+  forceReset = false,
 ): Promise<PaperSessionState> {
   if (forceReset) {
     const account = createDefaultAccount(config, initialBalance);
@@ -49,4 +50,16 @@ export async function initPaperSession(
     balance: account.balance,
   });
   return { account, positions: [], tradeHistory: [] };
+}
+
+export function savePaperSession(
+  accountFile: string,
+  positionsFile: string,
+  tradesFile: string,
+  account: PaperAccount,
+  positions: PaperPosition[],
+  tradeHistory: PaperTrade[],
+): PaperTrade[] {
+  persistPaperState(accountFile, positionsFile, tradesFile, account, positions, tradeHistory);
+  return tradeHistory.length > 1000 ? tradeHistory.slice(-1000) : tradeHistory;
 }

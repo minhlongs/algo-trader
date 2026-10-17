@@ -3,38 +3,24 @@
  */
 
 import {
-  TfId,
-  TF_RESOLUTIONS,
-  TfSignal,
-  RegimeSnapshot,
-  ConsensusSignal,
-  DnaLifecycleEvent,
-  DnaLifecycleListener,
-  DnaEngineConfig,
-  DEFAULT_DNA_CONFIG,
+  TfId, TfSignal, RegimeSnapshot, ConsensusSignal,
+  DnaLifecycleEvent, DnaLifecycleListener, DnaEngineConfig, DEFAULT_DNA_CONFIG,
 } from './multi-tf-types';
 import { buildTfSignal } from './tf-signal-builder';
 import { DnaStateStore, DnaEngineState, InMemoryStateStore } from './dna-state-store';
 import { runDnaConsensusStep } from './orchestrator-consensus';
-import { emitDnaLifecycleEvent, onDnaEvent, emitDnaEvent } from './orchestrator-lifecycle';
+import {
+  emitDnaLifecycleEvent, onDnaEvent, emitDnaEvent,
+  hydrateEngineState, buildEngineStateSnapshot, scheduleTfTimers, clearTfTimers,
+} from './orchestrator-lifecycle';
 import type { CandleProvider } from './orchestrator-types';
 import { logger } from '../../utils/logger';
-import {
-  startDnaEngine,
-  stopDnaEngine,
-  resetDnaEngine,
-  getDnaEngine,
-} from './dna-singleton';
+import { startDnaEngine, stopDnaEngine, resetDnaEngine, getDnaEngine } from './dna-singleton';
 
-export type { CandleProvider };
-export type { DnaLifecycleEvent, DnaLifecycleListener };
+export type { CandleProvider, DnaLifecycleEvent, DnaLifecycleListener };
 export {
-  onDnaEvent,
-  emitDnaEvent,
-  startDnaEngine,
-  stopDnaEngine,
-  resetDnaEngine,
-  getDnaEngine,
+  onDnaEvent, emitDnaEvent, startDnaEngine, stopDnaEngine, resetDnaEngine, getDnaEngine,
+  hydrateEngineState, buildEngineStateSnapshot, scheduleTfTimers, clearTfTimers,
 };
 
 export class DnaEngine {
@@ -50,14 +36,10 @@ export class DnaEngine {
   private _traceCounter = 0;
 
   private _hydrate(state: DnaEngineState): void {
-    this._traceCounter = state.schemaVersion ? state.traceCounter : 0;
-    if (state.lastTfSignals) {
-      for (const [tf, sig] of state.lastTfSignals as [TfId, TfSignal][]) {
-        this._lastTfSignals.set(tf, sig);
-      }
-    }
-    if (state.lastRegime) this._lastRegime = state.lastRegime;
-    if (state.lastConsensus) this._lastConsensus = state.lastConsensus;
+    const hydrated = hydrateEngineState(state, this._lastTfSignals);
+    this._traceCounter = hydrated.traceCounter;
+    if (hydrated.lastRegime) this._lastRegime = hydrated.lastRegime;
+    if (hydrated.lastConsensus) this._lastConsensus = hydrated.lastConsensus;
   }
 
   constructor(
@@ -137,42 +119,18 @@ export class DnaEngine {
       logger.warn('[DNA] state load failed, starting fresh', { err });
     });
     this._running = true;
-    for (const tf of this._config.tfOrder) {
-      const intervalMs = TF_RESOLUTIONS[tf];
-      const now = Date.now();
-      const boundaryMs = intervalMs - (now % intervalMs);
-      const initialDelay = tf === '1m' ? Math.min(boundaryMs, 5_000) : boundaryMs;
-      const timer = setTimeout(() => {
-        const recurring = setInterval(() => this.onTfTick(tf), intervalMs);
-        this._timers.set(tf, recurring);
-        this.onTfTick(tf);
-      }, initialDelay);
-      this._timers.set(tf, timer);
-    }
+    scheduleTfTimers(this._config.tfOrder, this._timers, (tf) => { void this.onTfTick(tf); });
     logger.info('[DNA] engine started', { tfs: this._config.tfOrder, paperMode: this._paperMode });
   }
 
   stop() {
     if (!this._running) return;
     this._running = false;
-    const tfArr: [TfId, TfSignal][] = [];
-    for (const [k, v] of this._lastTfSignals) tfArr.push([k, v]);
-    const state: DnaEngineState = {
-      schemaVersion: '2026-06-01-v1',
-      savedAt: Date.now(),
-      traceCounter: this._traceCounter,
-      lastTfSignals: tfArr,
-      lastRegime: this._lastRegime,
-      lastConsensus: this._lastConsensus,
-    };
-    this._stateStore.save(state).catch((err) => {
-      logger.error('[DNA] state save failed', { err });
-    });
-    for (const [, timer] of this._timers) {
-      clearTimeout(timer);
-      clearInterval(timer);
-    }
-    this._timers.clear();
+    const state = buildEngineStateSnapshot(
+      this._traceCounter, this._lastTfSignals, this._lastRegime, this._lastConsensus,
+    );
+    this._stateStore.save(state).catch((err) => { logger.error('[DNA] state save failed', { err }); });
+    clearTfTimers(this._timers);
     this._lastTfSignals.clear();
     this._lastConsensus = null;
     logger.info('[DNA] engine stopped');

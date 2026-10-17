@@ -8,34 +8,25 @@ import { logger } from '../../../shared/utils/logger';
 import { getMessageBus } from '../../../shared/messaging/index';
 import { startWhaleActivityFeed } from '../../feeds/whale-activity-feed';
 import type { WhaleActivity } from '../../feeds/whale-activity-feed';
+import {
+  type WhaleStats,
+  type CopySignal,
+  DEFAULT_COPY_RATIO,
+  MAX_COPY_PCT_OF_PORTFOLIO,
+  PAPER_PORTFOLIO_USDC,
+  NATS_SIGNAL_TOPIC,
+  calculateWhaleAccuracy,
+  buildWhaleCopySignal,
+} from './whale-copy-trader-types';
 
-// ── Public types ────────────────────────────────────────────────────────────
-export interface WhaleStats {
-  walletAddress: string;
-  totalTrades: number;
-  wins: number;
-  losses: number;
-  /** Accuracy 0–1; neutral 0.5 when insufficient data */
-  accuracy: number;
-  totalVolumeUsdc: number;
-}
+export {
+  type WhaleStats,
+  type CopySignal,
+  DEFAULT_COPY_RATIO,
+  MAX_COPY_PCT_OF_PORTFOLIO,
+  PAPER_PORTFOLIO_USDC,
+} from './whale-copy-trader-types';
 
-export interface CopySignal {
-  whale: WhaleActivity;
-  copySize: number;       // USDC to deploy in paper trade
-  copyRatio: number;      // fraction of whale size (0.01 = 1%)
-  confidence: number;     // 0–1, derived from whale accuracy + position size
-}
-
-// ── Config ──────────────────────────────────────────────────────────────────
-const DEFAULT_COPY_RATIO = 0.01;        // 1% of whale size
-const MAX_COPY_PCT_OF_PORTFOLIO = 0.05; // cap at 5% of portfolio
-const PAPER_PORTFOLIO_USDC = 1_000;     // matches orchestrator default
-const MIN_CONFIDENCE = 0.35;
-const MIN_TRADES_FOR_ACCURACY = 5;
-const NATS_SIGNAL_TOPIC = 'signal.validated';
-
-// ── WhaleCopyTrader ──────────────────────────────────────────────────────────
 export class WhaleCopyTrader {
   private whaleStats: Map<string, WhaleStats> = new Map();
   private running = false;
@@ -66,11 +57,10 @@ export class WhaleCopyTrader {
   recordOutcome(walletAddress: string, won: boolean): void {
     const addr = walletAddress.toLowerCase();
     const stats = this.getOrCreateStats(addr);
-    if (won) stats.wins++; else stats.losses++;
+    if (won) stats.wins++;
+    else stats.losses++;
     stats.totalTrades = stats.wins + stats.losses;
-    stats.accuracy = stats.totalTrades >= MIN_TRADES_FOR_ACCURACY
-      ? stats.wins / stats.totalTrades
-      : 0.5; // neutral prior when insufficient data
+    stats.accuracy = calculateWhaleAccuracy(stats.wins, stats.totalTrades);
     logger.debug('[WhaleCopyTrader] Outcome recorded', { addr, accuracy: stats.accuracy });
   }
 
@@ -79,14 +69,11 @@ export class WhaleCopyTrader {
     return new Map(this.whaleStats);
   }
 
-  // ─── Internal ────────────────────────────────────────────────────────────
-
   private handleWhaleActivity(activity: WhaleActivity): void {
-    // Update observed volume for this wallet
     const stats = this.getOrCreateStats(activity.walletAddress);
     stats.totalVolumeUsdc += activity.size;
 
-    const signal = this.buildSignal(activity, stats);
+    const signal = buildWhaleCopySignal(activity, stats, this.copyRatio, this.maxCopyUsdc);
     if (!signal) return;
 
     logger.info('[WhaleCopyTrader] Copy signal generated', {
@@ -101,37 +88,7 @@ export class WhaleCopyTrader {
     this.publishSignal(signal);
   }
 
-  private buildSignal(
-    activity: WhaleActivity,
-    stats: WhaleStats,
-  ): CopySignal | null {
-    // Confidence: blend whale accuracy + log-scaled volume heuristic
-    const volumeBonus = Math.min(0.15, Math.log10(activity.size / 1_000) * 0.05);
-    const confidence = stats.accuracy * 0.85 + volumeBonus;
-
-    if (confidence < MIN_CONFIDENCE) {
-      logger.debug('[WhaleCopyTrader] Signal skipped — low confidence', {
-        wallet: activity.walletAddress.slice(0, 8),
-        confidence,
-      });
-      return null;
-    }
-
-    const rawCopy = activity.size * this.copyRatio;
-    const copySize = Math.min(rawCopy, this.maxCopyUsdc);
-    if (copySize < 1) return null; // too small to bother
-
-    return {
-      whale: activity,
-      copySize,
-      copyRatio: this.copyRatio,
-      confidence,
-    };
-  }
-
   private publishSignal(signal: CopySignal): void {
-    // Paper-trading-orchestrator consumes 'signal.validated' envelopes with
-    // `{ original: SignalCandidate }`. We map CopySignal → SignalCandidate shape.
     const envelope = {
       original: {
         signalType: 'whale-copy',
@@ -143,7 +100,7 @@ export class WhaleCopyTrader {
             noPrice: signal.whale.side === 'NO' ? signal.whale.price : 1 - signal.whale.price,
           },
         ],
-        expectedEdge: signal.confidence * 0.10, // ~10% of confidence as edge estimate
+        expectedEdge: signal.confidence * 0.1,
         reasoning: `Whale copy: ${signal.whale.walletAddress.slice(0, 10)} opened ${signal.whale.side} $${signal.whale.size.toFixed(0)} @ ${signal.whale.price.toFixed(3)}. Confidence=${signal.confidence.toFixed(3)}`,
       },
     };
@@ -173,10 +130,6 @@ export class WhaleCopyTrader {
     return this.whaleStats.get(walletAddress)!;
   }
 }
-
-// ---------------------------------------------------------------------------
-// Singleton factory
-// ---------------------------------------------------------------------------
 
 let traderInstance: WhaleCopyTrader | null = null;
 

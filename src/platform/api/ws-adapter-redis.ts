@@ -25,10 +25,16 @@ import {
   setupClientConnection,
   startHeartbeat,
 } from './ws-adapter-redis-handlers';
+import {
+  createWebSocketServer,
+  sendToClient,
+  broadcastToChannel,
+} from './ws-adapter-redis-server';
 
 // Re-export public API for backward compatibility
 export type { WSAdapterConfig } from './ws-adapter-redis-types';
 export { RedisPubSubManager } from './ws-adapter-redis-pubsub';
+export * from './ws-adapter-redis-server';
 
 export class RedisWSAdapter {
   private wsServer: WebSocketServer;
@@ -44,27 +50,7 @@ export class RedisWSAdapter {
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.pubsubManager = new RedisPubSubManager();
-
-    this.wsServer = new WebSocketServer({
-      server: this.server,
-      path: this.config.path,
-      maxPayload: this.config.maxPayloadSize,
-      perMessageDeflate: {
-        zlibDeflateOptions: {
-          level: 3,
-          memLevel: 8,
-          windowBits: 12,
-        },
-        zlibInflateOptions: {
-          chunkSize: 10 * 1024,
-        },
-        clientNoContextTakeover: true,
-        serverNoContextTakeover: true,
-        serverMaxWindowBits: 12,
-        concurrencyLimit: 20,
-        threshold: 1024,
-      },
-    });
+    this.wsServer = createWebSocketServer(this.server, this.config);
 
     this.setupWebSocket();
     this.setupSubscription();
@@ -81,7 +67,7 @@ export class RedisWSAdapter {
         this.clients,
         this.config,
         this.pubsubManager,
-        this.sendToClient,
+        (client, message) => sendToClient(client, message),
         this.generateClientId,
       );
     });
@@ -98,7 +84,7 @@ export class RedisWSAdapter {
     this.pubsubManager.subscriptionClient.on(
       'message',
       (channel: string, message: string) => {
-        this.broadcastToChannel(channel, message);
+        broadcastToChannel(this.clients, channel, message);
       },
     );
   }
@@ -111,29 +97,6 @@ export class RedisWSAdapter {
   /** Generate a simple incrementing client ID. */
   private generateClientId = (): string =>
     `client-${Date.now()}-${++this.clientIdCounter}`;
-
-  /** Send a JSON payload to a single connected client. */
-  private sendToClient = (
-    client: WSClient,
-    message: Record<string, unknown> | string,
-  ): void => {
-    if (client.ws.readyState === WebSocket.OPEN) {
-      try {
-        client.ws.send(typeof message === 'string' ? message : JSON.stringify(message));
-      } catch {
-        logger.error(`[WebSocket] Failed to send to ${client.clientId}`);
-      }
-    }
-  };
-
-  /** Forward a raw Redis message to all local subscribers of a channel. */
-  private broadcastToChannel(channel: string, message: string): void {
-    for (const [, client] of this.clients) {
-      if (client.channels.has(channel)) {
-        this.sendToClient(client, message);
-      }
-    }
-  }
 
   /** Publish a message to a Redis channel (returns when Redis confirms). */
   async publish(
@@ -182,6 +145,7 @@ export class RedisWSAdapter {
     logger.info('[RedisWS] Shutdown complete');
   }
 }
+
 
 /**
  * Factory: create and return a configured RedisWSAdapter.

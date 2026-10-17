@@ -9,6 +9,7 @@ import { fraudDetector, FraudDetector, FraudDetectionConfig } from './fraud-dete
 import { logger } from '../../shared/utils/logger';
 import { runMonthlyPayout } from './referral-payout-job';
 import { generateUniqueCode, isValidCodeFormat } from './referral-code-helpers';
+import { processReferralCommission } from './commission-processor';
 import type {
   ReferralCode,
   ReferralClick,
@@ -20,6 +21,7 @@ import type {
 // Re-export submodules for full backward compatibility
 export * from './referral-payout-job';
 export * from './referral-code-helpers';
+export * from './commission-processor';
 
 export class ReferralService {
   private fraudDetector: FraudDetector;
@@ -58,8 +60,9 @@ export class ReferralService {
 
     const trackingId = await referralRepository.trackClick(code, ip, userAgent, metadata);
 
-    this.fraudDetector.detectFraud(trackingId, ip, userAgent)
+    Promise.resolve(this.fraudDetector.detectFraud(trackingId, ip, userAgent))
       .then(result => {
+        if (!result) return;
         logger.info('[Referral] Fraud analysis complete', {
           trackingId,
           score: result.score,
@@ -111,40 +114,7 @@ export class ReferralService {
 
   /** Process monthly commissions for a referrer */
   async processCommission(trackingId: string, revenueAmount: number): Promise<CommissionRecord> {
-    const tracking = await referralRepository.getTrackingById(trackingId);
-    if (!tracking) throw new Error('Tracking record not found');
-    if (!tracking.convertedTenantId) throw new Error('No conversion recorded for this tracking ID');
-
-    const commissionAmount = commissionCalculator.calculateCommission(revenueAmount);
-    const period = commissionCalculator.getPreviousMonthPeriod();
-
-    const code = await referralRepository.getReferralCodeByCode(tracking.code);
-    if (!code) throw new Error('Referral code not found');
-
-    const commissionId = await referralRepository.createCommission(
-      code.tenantId,
-      trackingId,
-      commissionAmount,
-      commissionCalculator.calculateCommissionWithRate(1, 0.10),
-      period.start,
-      period.end,
-      'pending'
-    );
-
-    await referralRepository.updateTrackingRevenue(trackingId, revenueAmount, commissionAmount);
-
-    const commissionsResult = await referralRepository.getCommissions(code.tenantId);
-    const commission = commissionsResult.commissions.find(c => c.id === commissionId);
-    if (!commission) throw new Error('Commission record not found after creation');
-
-    logger.info('[Referral] Commission processed', {
-      commissionId,
-      trackingId,
-      amount: commissionAmount,
-      tenantId: code.tenantId,
-    });
-
-    return commission;
+    return processReferralCommission(trackingId, revenueAmount);
   }
 
   /** Run monthly payout job */

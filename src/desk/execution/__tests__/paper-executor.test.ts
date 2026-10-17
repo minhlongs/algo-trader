@@ -40,20 +40,14 @@ describe('PaperExecutor', () => {
 
   describe('executePaperTrade', () => {
     it('should reject trades when not started', async () => {
-      const result = await executor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'buy', quantity: 1 },
-        50_000,
-      );
+      const result = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 1 }, 50_000);
       expect(result.success).toBe(false);
       expect(result.message).toMatch(/not started/);
     });
 
     it('should execute a buy trade', async () => {
       await executor.start();
-      const result = await executor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 },
-        50_000,
-      );
+      const result = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000);
       expect(result.success).toBe(true);
       expect(result.trade).toBeDefined();
       expect(result.trade!.side).toBe('buy');
@@ -67,36 +61,24 @@ describe('PaperExecutor', () => {
 
     it('should reject buy when insufficient balance', async () => {
       await executor.start(1_000);
-      const result = await executor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'buy', quantity: 1 },
-        50_000,
-      );
+      const result = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 1 }, 50_000);
       expect(result.success).toBe(false);
       expect(result.message).toMatch(/Insufficient balance/);
     });
 
     it('should reject sell when no position', async () => {
       await executor.start();
-      const result = await executor.executePaperTrade(
-        { symbol: 'ETH/USDT', side: 'sell', quantity: 1 },
-        3_000,
-      );
+      const result = await executor.executePaperTrade({ symbol: 'ETH/USDT', side: 'sell', quantity: 1 }, 3_000);
       expect(result.success).toBe(false);
       expect(result.message).toMatch(/Insufficient position/);
     });
 
     it('should execute a full round-trip trade', async () => {
       await executor.start(10_000);
-      const buy = await executor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 },
-        50_000,
-      );
+      const buy = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000);
       expect(buy.success).toBe(true);
 
-      const sell = await executor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'sell', quantity: 0.1 },
-        55_000,
-      );
+      const sell = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'sell', quantity: 0.1 }, 55_000);
       expect(sell.success).toBe(true);
       expect(sell.trade!.pnl).toBeGreaterThan(0);
       expect(sell.account!.realizedPnl).toBeGreaterThan(0);
@@ -106,28 +88,16 @@ describe('PaperExecutor', () => {
 
     it('should track losing trade', async () => {
       await executor.start(10_000);
-      await executor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 },
-        50_000,
-      );
-      const sell = await executor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'sell', quantity: 0.1 },
-        45_000,
-      );
+      await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000);
+      const sell = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'sell', quantity: 0.1 }, 45_000);
       expect(sell.trade!.pnl).toBeLessThan(0);
       expect(sell.account!.losingTrades).toBe(1);
     });
 
     it('should reject when fill rate is 0', async () => {
-      const noFillExecutor = new PaperExecutor({
-        initialBalance: 10_000,
-        simulateFillRate: 0,
-      });
+      const noFillExecutor = new PaperExecutor({ initialBalance: 10_000, simulateFillRate: 0 });
       await noFillExecutor.start();
-      const result = await noFillExecutor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 },
-        50_000,
-      );
+      const result = await noFillExecutor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000);
       expect(result.success).toBe(false);
       expect(result.message).toMatch(/not filled/);
     });
@@ -136,9 +106,7 @@ describe('PaperExecutor', () => {
   describe('reset', () => {
     it('should reset account to initial balance', async () => {
       await executor.start(10_000);
-      await executor.executePaperTrade(
-        { symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000,
-      );
+      await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000);
       const account = await executor.reset(5_000);
       expect(account.balance).toBe(5_000);
       expect(account.equity).toBe(5_000);
@@ -156,13 +124,14 @@ describe('PaperExecutor', () => {
 
       const res = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000);
       expect(res.success).toBe(true);
-      expect(res.account!.marginUsed).toBeGreaterThan(0);
-      expect(res.account!.cashReserves).toBe(res.account!.balance);
-      expect(res.account!.marginUtilization).toBeGreaterThan(0);
+      const updated = (executor as unknown as { account: typeof account }).account;
+      expect(updated.marginUsed).toBeGreaterThan(0);
+      expect(updated.cashReserves).toBe(res.account!.balance);
+      expect(updated.marginUtilization).toBeGreaterThan(0);
 
       const summary = executor.getPnlSummary();
-      expect(summary.cashReserves).toBe(res.account!.cashReserves);
-      expect(summary.marginUsed).toBe(res.account!.marginUsed);
+      expect(summary.cashReserves).toBe(updated.cashReserves);
+      expect(summary.marginUsed).toBe(updated.marginUsed);
     });
 
     it('should execute buy against orderbook depth and support partial fills', async () => {
@@ -170,21 +139,14 @@ describe('PaperExecutor', () => {
       const book: OrderbookSnapshot = {
         symbol: 'BTC/USDT',
         bids: [{ price: 49_900, size: 1.0 }],
-        asks: [
-          { price: 50_000, size: 0.05 },
-          { price: 50_200, size: 0.05 },
-        ],
+        asks: [{ price: 50_000, size: 0.05 }, { price: 50_200, size: 0.05 }],
       };
       const fullRes = await executor.executePaperTrade({ symbol: 'BTC/USDT', side: 'buy', quantity: 0.1 }, 50_000, book);
       expect(fullRes.success).toBe(true);
       expect(fullRes.trade!.status).toBe('filled');
       expect(fullRes.trade!.executedPrice).toBeCloseTo(50_100, 0);
 
-      const partialBook: OrderbookSnapshot = {
-        symbol: 'ETH/USDT',
-        bids: [],
-        asks: [{ price: 3_000, size: 0.5 }],
-      };
+      const partialBook: OrderbookSnapshot = { symbol: 'ETH/USDT', bids: [], asks: [{ price: 3_000, size: 0.5 }] };
       const partRes = await executor.executePaperTrade({ symbol: 'ETH/USDT', side: 'buy', quantity: 1.0 }, 3_000, partialBook);
       expect(partRes.success).toBe(true);
       expect(partRes.trade!.status).toBe('partial');

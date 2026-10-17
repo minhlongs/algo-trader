@@ -9,7 +9,6 @@
  */
 
 import { logger } from '../../../shared/utils/logger';
-import { calculateOptimalQuotes } from '../models/avellaneda-stoikov';
 import { InventoryDeltaTracker } from '../hedging/inventory-delta-tracker';
 import { DeltaNeutralCoordinator } from '../hedging/delta-neutral-coordinator';
 import { AdverseSelectionGuard } from '../microstructure/adverse-selection-guard';
@@ -22,6 +21,7 @@ import {
   type MarlQuoteOutput,
   MarlEngineConfigSchema,
 } from './marl-engine-types';
+import { generateMarlQuote } from './marl-engine-quoter';
 
 export class MarlEngine {
   public readonly config: MarlEngineConfig;
@@ -81,72 +81,22 @@ export class MarlEngine {
     tauSec = 86_400,
     venueLatencyMs = 25,
   ): MarlQuoteOutput | null {
-    if (!this.isRunning) return null;
-
-    const toxicity = this.adverseSelectionGuard.evaluate(midPrice);
-    if (toxicity.isTripwireActive) {
-      this.auditLogger.logAction('marl.tripwire.activated', {
-        reason: toxicity.activeReason,
-        vpin: toxicity.vpin,
-      });
-      this.metrics.recordQuote('canceled', 'both', this.config.symbol);
-      return null;
-    }
-
-    const quoteSize = this.config.asConfig.quoteSize ?? 100;
-    const quoteNotionalUsd = quoteSize * midPrice;
-    const currentInventoryNotional = Math.abs(inventory * midPrice);
-
-    const riskEval = this.riskGuard.evaluateRisk({
-      quoteNotionalUsd,
-      portfolioCapital: this.portfolioCapital,
-      currentDailyDrawdown: this.currentDailyDrawdown,
-      venueLatencyMs,
-      currentInventoryNotional,
-    });
-
-    if (!riskEval.approved) {
-      this.auditLogger.logAction('marl.risk.rejected', {
-        reason: riskEval.rejectionReason,
-        quoteNotionalUsd,
-      });
-      this.metrics.recordQuote('rejected', 'both', this.config.symbol);
-      return null;
-    }
-
-    const multiplier = toxicity.wideningMultiplier;
-    const minSpread = (this.config.asConfig.minSpread ?? 0.02) * multiplier;
-
-    const baseQuote = calculateOptimalQuotes({
+    return generateMarlQuote(
+      {
+        config: this.config,
+        isRunning: this.isRunning,
+        adverseSelectionGuard: this.adverseSelectionGuard,
+        riskGuard: this.riskGuard,
+        metrics: this.metrics,
+        auditLogger: this.auditLogger,
+        portfolioCapital: this.portfolioCapital,
+        currentDailyDrawdown: this.currentDailyDrawdown,
+      },
       midPrice,
       inventory,
-      gamma: this.config.asConfig.gamma,
-      sigma: this.config.asConfig.sigma,
-      timeToHorizon: tauSec,
-      kappa: this.config.asConfig.kappa,
-      tickSize: this.config.asConfig.tickSize,
-      minSpread,
-      maxSpread: this.config.asConfig.maxSpread,
-    });
-
-    this.auditLogger.logAction('marl.quote.posted', {
-      bidPrice: baseQuote.bidPrice,
-      askPrice: baseQuote.askPrice,
-      spread: baseQuote.totalSpread,
-      multiplier,
-    });
-    this.metrics.recordQuote('posted', 'both', this.config.symbol);
-
-    return {
-      reservationPrice: baseQuote.reservationPrice,
-      bidPrice: baseQuote.bidPrice,
-      askPrice: baseQuote.askPrice,
-      bidSpread: baseQuote.bidSpread,
-      askSpread: baseQuote.askSpread,
-      totalSpread: baseQuote.totalSpread,
-      wideningMultiplier: multiplier,
-      clamped: baseQuote.clamped,
-    };
+      tauSec,
+      venueLatencyMs,
+    );
   }
 
   public onMakerFill(side: 'buy' | 'sell', amount: number, price: number): void {

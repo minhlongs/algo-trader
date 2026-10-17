@@ -11,10 +11,10 @@ import { OutlierDetector, getOutlierDetector } from './outlier-detection';
 import { SlaTracker, getSlaTracker } from './sla-tracker';
 import { FailoverManager } from './provider-failover';
 import {
-  parseProvider,
-  getFailoverKey,
   setupFailover,
   getActiveProvider,
+  recordProviderRequestResult,
+  recordProviderCandle,
 } from './quality-monitoring-failover-init';
 import {
   getQualityReport,
@@ -58,7 +58,6 @@ export class QualityMonitoringIntegration {
 
     for (const [, config] of Object.entries(configs)) {
       this.providerConfigs.set(config.provider, config);
-
       if (config.failoverTarget) {
         setupFailover(this.failoverManagers, config);
       }
@@ -72,86 +71,28 @@ export class QualityMonitoringIntegration {
     return getActiveProvider(this.failoverManagers, this.providerConfigs, dataType);
   }
 
-  recordRequestSuccess(
-    providerName: string,
-    _symbol: string,
-    _operation: string,
-    latencyMs: number
-  ): void {
-    const provider = parseProvider(providerName);
-    if (!provider) return;
-
-    this.slaTracker.recordRequest(provider, true, latencyMs);
-
-    const failoverKey = getFailoverKey(this.failoverManagers, provider);
-    if (failoverKey) {
-      const manager = this.failoverManagers.get(failoverKey);
-      manager?.recordRequestResult(true, latencyMs);
-    }
+  recordRequestSuccess(providerName: string, _symbol: string, _operation: string, latencyMs: number): void {
+    recordProviderRequestResult(providerName, true, latencyMs, this.slaTracker, this.failoverManagers);
   }
 
-  recordRequestFailure(
-    providerName: string,
-    symbol: string,
-    operation: string,
-    error?: Error
-  ): void {
-    const provider = parseProvider(providerName);
-    if (!provider) return;
-
-    this.slaTracker.recordRequest(provider, false, 0);
-
-    const failoverKey = getFailoverKey(this.failoverManagers, provider);
-    if (failoverKey) {
-      const manager = this.failoverManagers.get(failoverKey);
-      manager?.recordRequestResult(false, 0);
-    }
-
-    logger.warn('QualityMonitoring: Request failed', { provider, symbol, operation, error: error?.message });
+  recordRequestFailure(providerName: string, symbol: string, operation: string, error?: Error): void {
+    recordProviderRequestResult(providerName, false, 0, this.slaTracker, this.failoverManagers, { symbol, operation, error });
   }
 
-  recordCandle(
-    providerName: string,
-    symbol: string,
-    timeframe: string,
-    candle: Candle,
-    _receivedAt?: number
-  ): void {
-    const provider = parseProvider(providerName);
-    if (!provider) return;
-
-    this.gapDetector.recordCandle(provider as string, symbol, timeframe, candle);
-    this.outlierDetector.addCandle(candle, provider);
-    this.slaTracker.recordCandleCompleteness(provider, symbol, timeframe, 1, 1);
+  recordCandle(providerName: string, symbol: string, timeframe: string, candle: Candle, _receivedAt?: number): void {
+    recordProviderCandle(providerName, symbol, timeframe, candle, this.gapDetector, this.outlierDetector, this.slaTracker);
   }
 
   getQualityReport(providerName: string): QualityReport | null {
-    return getQualityReport(
-      providerName,
-      this.providerConfigs,
-      this.slaTracker,
-      this.gapDetector,
-      this.failoverManagers
-    );
+    return getQualityReport(providerName, this.providerConfigs, this.slaTracker, this.gapDetector, this.failoverManagers);
   }
 
   getAllReports(): QualityReport[] {
-    return getAllReports(
-      this.providerConfigs,
-      this.slaTracker,
-      this.gapDetector,
-      this.failoverManagers
-    );
+    return getAllReports(this.providerConfigs, this.slaTracker, this.gapDetector, this.failoverManagers);
   }
 
   meetsQualityThreshold(providerName: string): boolean {
-    return meetsQualityThreshold(
-      providerName,
-      this.providerConfigs,
-      this.slaTracker,
-      this.gapDetector,
-      this.failoverManagers
-    );
+    return meetsQualityThreshold(providerName, this.providerConfigs, this.slaTracker, this.gapDetector, this.failoverManagers);
   }
 
   shutdown(): void {

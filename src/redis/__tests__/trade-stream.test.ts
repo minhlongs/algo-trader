@@ -10,12 +10,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const { fakeRedis } = vi.hoisted(() => ({
-  fakeRedis: {
-    xadd: vi.fn(),
-    xrange: vi.fn(),
-    xtrim: vi.fn(),
-    del: vi.fn(),
-  },
+  fakeRedis: { xadd: vi.fn(), xrange: vi.fn(), xtrim: vi.fn(), del: vi.fn() },
 }));
 
 vi.mock('../index', () => ({ getRedisClient: () => fakeRedis }));
@@ -32,14 +27,7 @@ function rawEntry(id: string, fields: Record<string, string>): [string, string[]
 }
 
 function sampleTrade(): Trade {
-  return {
-    id: 't-1',
-    price: 123.45,
-    amount: 0.5,
-    side: 'buy',
-    timestamp: 1750000000000,
-    tradeId: 'trade-abc',
-  };
+  return { id: 't-1', price: 123.45, amount: 0.5, side: 'buy', timestamp: 1750000000000, tradeId: 'trade-abc' };
 }
 
 describe('TradeStream', () => {
@@ -56,14 +44,9 @@ describe('TradeStream', () => {
     fakeRedis.xadd.mockResolvedValue('1750000000000-0');
     const result = await stream.addTrade('binance', 'BTC/USDT', sampleTrade());
     expect(fakeRedis.xadd).toHaveBeenCalledWith(
-      'trades:binance:BTC/USDT',
-      'MAXLEN', '~', '10000', '*',
-      'id', 't-1',
-      'price', '123.45',
-      'amount', '0.5',
-      'side', 'buy',
-      'timestamp', '1750000000000',
-      'tradeId', 'trade-abc',
+      'trades:binance:BTC/USDT', 'MAXLEN', '~', '10000', '*',
+      'id', 't-1', 'price', '123.45', 'amount', '0.5',
+      'side', 'buy', 'timestamp', '1750000000000', 'tradeId', 'trade-abc',
     );
     expect(result).toBe('1750000000000-0');
   });

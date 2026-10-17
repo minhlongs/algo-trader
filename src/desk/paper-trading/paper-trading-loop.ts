@@ -1,13 +1,6 @@
 import { logger } from '../core/logger';
 import type { TradingPipeline } from '../trading-pipeline';
 import {
-  basePriceForSymbol,
-  simulatePriceTick,
-  nextId,
-  closePaperTrade,
-  calculateOrderSize,
-} from './trade-executor';
-import {
   type D1Database,
   type KVStore,
   asKVStore,
@@ -21,6 +14,13 @@ import {
   persistClosedTradeToD1,
 } from './paper-trading-persistence';
 import { buildLoopStatus } from './paper-trading-metrics';
+import {
+  basePriceForSymbol,
+  simulatePriceTick,
+  nextId,
+  closePaperTrade,
+  calculateOrderSize,
+} from './trade-executor';
 
 // Re-export public types and interfaces for backward compatibility
 export type {
@@ -49,35 +49,21 @@ export class PaperTradingLoop {
   private startTime: number | undefined;
   private tradeCounter = 0;
 
-  constructor(
-    config: PaperTradingConfig,
-    pipeline?: TradingPipeline,
-    kv?: KVStore,
-    db?: D1Database,
-  ) {
+  constructor(config: PaperTradingConfig, pipeline?: TradingPipeline, kv?: KVStore, db?: D1Database) {
     this.config = config;
     this.pipeline = pipeline;
     this.kv = kv;
     this.db = db;
   }
 
-  setKV(kv: unknown): void {
-    this.kv = asKVStore(kv);
-  }
-
-  setDB(db: unknown): void {
-    this.db = db as D1Database | undefined;
-  }
+  setKV(kv: unknown): void { this.kv = asKVStore(kv); }
+  setDB(db: unknown): void { this.db = db as D1Database | undefined; }
 
   async loadState(): Promise<void> {
     const loaded = await loadLoopState(this.kv, this.trades);
     if (loaded) {
-      if (typeof loaded.tradeCounter === 'number') {
-        this.tradeCounter = loaded.tradeCounter;
-      }
-      if (typeof loaded.startTime === 'number') {
-        this.startTime = loaded.startTime;
-      }
+      if (typeof loaded.tradeCounter === 'number') this.tradeCounter = loaded.tradeCounter;
+      if (typeof loaded.startTime === 'number') this.startTime = loaded.startTime;
     }
   }
 
@@ -114,12 +100,28 @@ export class PaperTradingLoop {
     logger.info('[PaperTradingLoop] Stopped', { trades: this.trades.length });
   }
 
+  getState(): PaperTradingStatus {
+    return buildLoopStatus(this.handle !== undefined, this.trades, this.startTime);
+  }
+
+  getTrades(): PaperTradeRecord[] {
+    return [...this.trades];
+  }
+
+  private async persistClosedTrade(closed: PaperTradeRecord): Promise<void> {
+    await persistClosedTradeToD1(this.db, closed);
+  }
+
+  private randomSymbol(): string {
+    const { symbols } = this.config;
+    return symbols[Math.floor(Math.random() * symbols.length)];
+  }
+
   private async tick(): Promise<void> {
     try {
-      const now = Date.now();
       const holdDuration = this.config.holdDurationMs ?? 60_000;
+      const now = Date.now();
 
-      // Close matured trades
       for (const trade of this.trades) {
         if (trade.exitPrice !== undefined) continue;
         if (now - trade.openedAt >= holdDuration) {
@@ -135,7 +137,6 @@ export class PaperTradingLoop {
         }
       }
 
-      // Persist any closed trades loaded from KV that were never written to D1
       for (const trade of this.trades) {
         if (trade.exitPrice !== undefined && trade.id && !trade.persistedToDb) {
           await this.persistClosedTrade(trade);
@@ -143,14 +144,12 @@ export class PaperTradingLoop {
         }
       }
 
-      // Open new trades up to max
       const openCount = this.trades.filter((t) => t.exitPrice === undefined).length;
       if (openCount < this.config.maxConcurrentTrades) {
         const symbol = this.randomSymbol();
         const basePrice = basePriceForSymbol(symbol);
         const entryPrice = simulatePriceTick(basePrice);
         const sizeUsd = calculateOrderSize(this.pipeline, this.config.maxConcurrentTrades);
-
         const trade: PaperTradeRecord = {
           id: nextId(++this.tradeCounter),
           symbol,
@@ -173,22 +172,5 @@ export class PaperTradingLoop {
       logger.error('[PaperTradingLoop] tick failed', { err });
       this.stop();
     }
-  }
-
-  private async persistClosedTrade(closed: PaperTradeRecord): Promise<void> {
-    await persistClosedTradeToD1(this.db, closed);
-  }
-
-  getState(): PaperTradingStatus {
-    return buildLoopStatus(this.handle !== undefined, this.trades, this.startTime);
-  }
-
-  getTrades(): PaperTradeRecord[] {
-    return [...this.trades];
-  }
-
-  private randomSymbol(): string {
-    const { symbols } = this.config;
-    return symbols[Math.floor(Math.random() * symbols.length)];
   }
 }

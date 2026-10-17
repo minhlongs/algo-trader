@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Multi-Tenant Billing &amp; SHA-256 Audit Chain Ledger - AlgoTrade OS</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "primary-fixed": "#6ff6ff",
+            "on-primary-container": "#006a70",
+            "surface-container": "#1f1f23",
+            "surface-bright": "#38393d",
+            "on-secondary-fixed": "#002112",
+            "on-primary": "#00373a",
+            "tertiary-fixed": "#ffdad5",
+            "secondary": "#70ffba",
+            "tertiary-container": "#ffd0ca",
+            "on-tertiary-container": "#c3000a",
+            "background": "#121316",
+            "surface-dim": "#121316",
+            "on-surface-variant": "#b9cacb",
+            "secondary-container": "#01e599",
+            "surface-container-highest": "#343538",
+            "error-container": "#93000a",
+            "surface-variant": "#343538",
+            "on-primary-fixed": "#002022",
+            "primary-container": "#00f2fe",
+            "on-background": "#e3e2e6",
+            "on-secondary-fixed-variant": "#005234",
+            "on-primary-fixed-variant": "#004f53",
+            "surface-container-lowest": "#0d0e11",
+            "on-secondary": "#003822",
+            "surface-container-high": "#292a2d",
+            "on-secondary-container": "#00613e",
+            "inverse-surface": "#e3e2e6",
+            "error": "#ffb4ab",
+            "tertiary": "#fff5f4",
+            "surface": "#121316",
+            "outline-variant": "#3a494b",
+            "on-error": "#690005",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "surface-tint": "#00dce6",
+            "on-tertiary-fixed": "#410001",
+            "inverse-on-surface": "#2f3034",
+            "secondary-fixed": "#4dffb2",
+            "primary-fixed-dim": "#00dce6",
+            "primary": "#e0fdff",
+            "secondary-fixed-dim": "#00e297",
+            "surface-container-low": "#1b1b1f",
+            "outline": "#849495",
+            "on-tertiary": "#690003",
+            "on-error-container": "#ffdad6",
+            "inverse-primary": "#00696f",
+            "on-surface": "#e3e2e6",
+            "on-tertiary-fixed-variant": "#930005"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-lg": "0.75rem",
+            "gutter-mobile": "0.25rem",
+            "margin": "0.75rem",
+            "gutter-desktop": "0.5rem",
+            "gutter": "0.5rem",
+            "space-sm": "0.25rem",
+            "margin-mobile": "0.5rem",
+            "space-xs": "0.125rem",
+            "space-md": "0.5rem",
+            "margin-desktop": "0.75rem",
+            "space-xl": "1rem"
+          },
+          "fontFamily": {
+            "body-lg": ["Inter"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "body-md": ["Inter"],
+            "headline-lg": ["Space Grotesk"],
+            "data-mono-md": ["JetBrains Mono"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "label-caps": ["JetBrains Mono"],
+            "headline-md": ["Space Grotesk"],
+            "data-mono-sm": ["JetBrains Mono"],
+            "body-sm": ["Inter"],
+            "headline-xl": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-family: 'Material Symbols Outlined';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 16px;
+      line-height: 1;
+      letter-spacing: normal;
+      text-transform: none;
+      display: inline-block;
+      white-space: nowrap;
+      word-wrap: normal;
+      direction: ltr;
+      -webkit-font-feature-settings: 'liga';
+      -webkit-font-smoothing: antialiased;
+    }
+    .neon-cyan-glow {
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.28);
+    }
+    .neon-red-glow {
+      box-shadow: 0 0 10px rgba(255, 59, 48, 0.35);
+    }
+    .neon-emerald-glow {
+      box-shadow: 0 0 10px rgba(1, 229, 153, 0.25);
+    }
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d0e11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3a494b;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased select-none min-h-screen overflow-x-hidden">
+<!-- ================= TOP APP BAR ================= -->
+<header class="flex justify-between items-center w-full px-space-md py-space-xs h-11 border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-50">
+<!-- Left: Brand Logo & Navigation Links -->
+<div class="flex items-center gap-space-lg">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container" data-icon="terminal">terminal</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">AlgoTrade OS</span>
+<span class="font-label-caps text-label-caps px-1 py-0.5 bg-surface-container border border-outline-variant text-primary-container rounded">QUANT-NODE</span>
+</div>
+<nav class="hidden lg:flex items-center gap-space-md ml-space-md">
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Strategies</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Execution</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Telemetry</a>
+<a class="text-primary-container border-b-2 border-primary-container pb-0.5 font-bold font-data-mono-sm text-data-mono-sm" href="#">Ledger</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Shards</a>
+</nav>
+</div>
+<!-- Center/Right: Live Telemetry Badges -->
+<div class="hidden xl:flex items-center gap-space-md font-data-mono-sm text-data-mono-sm">
+<div class="flex items-center gap-1.5 px-2 py-1 bg-surface-container-low border border-outline-variant">
+<span class="text-outline">PORTFOLIO NAV:</span>
+<span class="text-secondary font-bold">$14,295,482.10</span>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 bg-surface-container-low border border-outline-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="text-outline">P99:</span>
+<span class="text-primary-container">4.1ms</span>
+</div>
+<div class="flex items-center gap-1.5 px-2 py-1 bg-surface-container-low border border-outline-variant">
+<span class="material-symbols-outlined text-secondary text-[12px]" data-icon="shield">shield</span>
+<span class="text-outline">LEDGER:</span>
+<span class="text-secondary font-semibold">SHA-256 SYNC ATTESTED</span>
+</div>
+</div>
+<!-- Far Right: Actions & Desk Avatar -->
+<div class="flex items-center gap-space-sm">
+<!-- VI / EN Toggle -->
+<div class="flex items-center bg-surface-container border border-outline-variant p-0.5 font-data-mono-sm text-data-mono-sm">
+<button class="px-1.5 py-0.5 bg-primary-container text-on-primary font-bold">EN</button>
+<button class="px-1.5 py-0.5 text-on-surface-variant hover:text-on-surface">VI</button>
+</div>
+<!-- Icon Actions -->
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors" title="Hub Node">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors" title="Terminal REPL">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors relative" title="Notifications">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-1.5 h-1.5 bg-primary-container rounded-full"></span>
+</button>
+<!-- Audit Export Secondary CTA -->
+<button class="hidden sm:flex items-center gap-1 px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:border-primary-container font-data-mono-sm text-data-mono-sm transition-colors">
+<span class="material-symbols-outlined text-[13px]" data-icon="ios_share">ios_share</span>
+<span>Audit Export</span>
+</button>
+<!-- Emergency Kill-Switch CTA -->
+<button class="flex items-center gap-1 px-2.5 py-1 bg-error-container text-white border border-error hover:bg-on-tertiary-container font-data-mono-sm text-data-mono-sm font-bold neon-red-glow transition-all active:scale-95">
+<span class="material-symbols-outlined text-[14px]" data-icon="power_settings_new">power_settings_new</span>
+<span>Emergency Kill-Switch</span>
+</button>
+<!-- Desk Badge Avatar -->
+<div class="flex items-center gap-1.5 pl-2 border-l border-outline-variant">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center font-data-mono-sm font-bold text-primary-container">
+          QA
+        </div>
+</div>
+</div>
+</header>
+<div class="flex w-full min-h-[calc(100vh-2.75rem)]">
+<!-- ================= SIDE NAV BAR ================= -->
+<aside class="w-56 shrink-0 bg-surface-container-lowest border-r border-outline-variant p-space-xs flex flex-col justify-between select-none hidden md:flex">
+<!-- Desk Identity & Main Nav Tabs -->
+<div class="flex flex-col gap-1">
+<!-- Desk ID Header -->
+<div class="p-space-sm border-b border-outline-variant mb-1">
+<div class="flex items-center justify-between">
+<span class="font-data-mono-sm text-data-mono-sm text-outline">DESK ENCLAVE</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="font-headline-md text-headline-md font-bold text-primary tracking-tight">DESK-ALPHA-01</div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary">ONLINE // P99: 4.2ms</div>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex flex-col gap-0.5">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+<span>Cockpit</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="table_chart">table_chart</span>
+<span>Order Books</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dns">dns</span>
+<span>Shard Health</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="memory">memory</span>
+<span>Algorithms</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="shield">shield</span>
+<span>Risk Engine</span>
+</a>
+<!-- Active Tab: Audit Log / Ledger -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 bg-surface-container text-primary-container border-l-2 border-primary-container font-data-mono-sm text-data-mono-sm font-semibold" href="#">
+<span class="material-symbols-outlined" data-icon="enhanced_encryption">enhanced_encryption</span>
+<span>Audit Log</span>
+</a>
+</nav>
+<!-- Deploy Algo CTA -->
+<div class="mt-4 px-space-sm">
+<button class="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-primary-container text-on-primary-fixed font-data-mono-sm text-data-mono-sm font-bold border border-primary hover:neon-cyan-glow transition-all active:scale-[0.99]">
+<span class="material-symbols-outlined text-[14px]" data-icon="rocket_launch">rocket_launch</span>
+<span>Deploy Algo</span>
+</button>
+</div>
+</div>
+<!-- Footer Telemetry & Settings -->
+<div class="border-t border-outline-variant pt-2 flex flex-col gap-0.5">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="speed">speed</span>
+<span>Latency Stats</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+<span>Settings</span>
+</a>
+<div class="px-space-sm py-2 mt-1 bg-surface-container-low border border-outline-variant text-[9px] font-data-mono-sm text-outline">
+<div>KERNEL: DPDK-BYPASS 24.03</div>
+<div>ENCLAVE: SECURE-SEV-SNP</div>
+</div>
+</div>
+</aside>
+<!-- ================= MAIN CONTENT WORKSPACE ================= -->
+<main class="flex-1 bg-surface-dim p-space-md flex flex-col gap-space-md overflow-y-auto">
+<!-- 1. HEADER / STATUS STRIP -->
+<section class="border border-outline-variant bg-surface-container-lowest p-space-md flex flex-col xl:flex-row xl:items-center justify-between gap-space-md">
+<div>
+<div class="flex items-center gap-2 flex-wrap">
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary tracking-tight">
+              Multi-Tenant Billing &amp; Cryptographic Ledger Enclave
+            </h1>
+<span class="font-data-mono-sm text-data-mono-sm px-2 py-0.5 bg-surface-container border border-outline text-secondary font-semibold">
+              Hệ Thống Thanh Toán Đa Khách Thuê &amp; Sổ Cái Kiểm Toán Bất Biến
+            </span>
+</div>
+<div class="flex items-center gap-3 mt-1.5 font-data-mono-sm text-data-mono-sm flex-wrap">
+<span class="text-primary-container font-semibold">TENANT-INSTITUTIONAL-88942 // Level 4 Quorum Node</span>
+<span class="text-outline">|</span>
+<span class="text-on-surface-variant">Cluster: ap-southeast-1a (Singapore Direct Cross-Connect)</span>
+<span class="text-outline">|</span>
+<span class="text-secondary flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Zero-Knowledge Attestation Validated
+            </span>
+</div>
+</div>
+<!-- Ledger Root Hash Strip -->
+<div class="bg-surface-container-low border border-outline-variant p-space-sm font-data-mono-sm text-data-mono-sm flex flex-col gap-1 max-w-xl">
+<div class="flex items-center justify-between gap-4">
+<span class="text-outline font-label-caps text-label-caps">IMMUTABLE ROOT HASH</span>
+<span class="text-primary-container font-bold">0x9a7f84c1209e51b147321e04a9d04e</span>
+</div>
+<div class="flex items-center justify-between gap-4 text-body-sm text-on-surface-variant">
+<span>Merkle Block: <strong class="text-on-surface font-data-mono-sm">#284,910,214</strong></span>
+<span>Standard: <strong class="text-on-surface font-data-mono-sm">ED25519 + HMAC-SHA512</strong></span>
+<span class="text-secondary font-semibold">100% Intact</span>
+</div>
+</div>
+</section>
+<!-- 2. SUBSCRIPTION & QUOTA MATRIX (4 TIERS) -->
+<section>
+<div class="flex items-center justify-between mb-space-xs">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="layers">layers</span>
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Multi-Tenant Quota Tiers &amp; Hardware Shards</h2>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+            AUTO-SETTLEMENT CYCLE: <span class="text-secondary font-bold">14 DAYS REMAINING</span> (USDT / VND)
+          </div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-space-md">
+<!-- TIER 1: BASIC -->
+<div class="bg-surface-container-lowest border border-outline-variant p-space-md flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-caps text-label-caps text-outline">TIER 01</span>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">BASIC</h3>
+</div>
+<span class="font-label-caps text-label-caps px-1.5 py-0.5 bg-surface-container text-on-surface-variant border border-outline-variant">COMMUNITY</span>
+</div>
+<div class="mt-3">
+<span class="font-data-mono-lg text-data-mono-lg text-on-surface">$0</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">/ Free Forever</span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline mb-3">0 VND / Tháng</div>
+<ul class="border-t border-outline-variant pt-2 space-y-1.5 font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+<li class="flex items-center gap-1.5"><span class="text-outline">▪</span> 1 Shard node container</li>
+<li class="flex items-center gap-1.5"><span class="text-outline">▪</span> 250ms polling data feed</li>
+<li class="flex items-center gap-1.5"><span class="text-outline">▪</span> 2 Algos concurrent max</li>
+<li class="flex items-center gap-1.5"><span class="text-outline">▪</span> Shared L1 public execution</li>
+<li class="flex items-center gap-1.5"><span class="text-outline">▪</span> Discord Community Support</li>
+</ul>
+</div>
+<button class="mt-4 w-full py-1.5 border border-outline-variant text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:border-outline transition-colors" disabled="">
+              Standard Free Node
+            </button>
+</div>
+<!-- TIER 2: PREMIUM -->
+<div class="bg-surface-container-lowest border border-outline-variant p-space-md flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-caps text-label-caps text-outline">TIER 02</span>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">PREMIUM</h3>
+</div>
+<span class="font-label-caps text-label-caps px-1.5 py-0.5 bg-surface-container text-primary-container border border-outline-variant">PRO QUANT</span>
+</div>
+<div class="mt-3">
+<span class="font-data-mono-lg text-data-mono-lg text-on-surface">$49</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">/ month</span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline mb-3">~1,225,000 VND / Tháng</div>
+<ul class="border-t border-outline-variant pt-2 space-y-1.5 font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+<li class="flex items-center gap-1.5"><span class="text-primary-container">▪</span> 4 Shard dedicated nodes</li>
+<li class="flex items-center gap-1.5"><span class="text-primary-container">▪</span> 10ms tick latency WebSocket</li>
+<li class="flex items-center gap-1.5"><span class="text-primary-container">▪</span> 10 Active algorithms</li>
+<li class="flex items-center gap-1.5"><span class="text-primary-container">▪</span> Webhook incident triggers</li>
+<li class="flex items-center gap-1.5"><span class="text-primary-container">▪</span> Standard API &amp; Telegram alerts</li>
+</ul>
+</div>
+<button class="mt-4 w-full py-1.5 bg-surface-container border border-outline-variant text-on-surface hover:border-primary-container font-data-mono-sm text-data-mono-sm transition-colors">
+              Downgrade to Pro
+            </button>
+</div>
+<!-- TIER 3: ENTERPRISE (CURRENT ACTIVE) -->
+<div class="bg-surface-container-low border-2 border-primary-container p-space-md flex flex-col justify-between neon-cyan-glow relative">
+<div class="absolute -top-2.5 right-3 bg-primary-container text-on-primary-fixed px-2 py-0.5 font-label-caps text-label-caps font-bold">
+              CURRENT ACTIVE PLAN
+            </div>
+<div>
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-caps text-label-caps text-primary-container">TIER 03 // INSTITUTIONAL</span>
+<h3 class="font-headline-md text-headline-md font-bold text-primary">ENTERPRISE</h3>
+</div>
+</div>
+<div class="mt-3">
+<span class="font-data-mono-lg text-data-mono-lg text-primary-container font-bold">$199</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">/ month</span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary font-semibold mb-3">~4,975,000 VND / Tháng</div>
+<ul class="border-t border-outline-variant pt-2 space-y-1.5 font-data-mono-sm text-data-mono-sm text-on-surface">
+<li class="flex items-center gap-1.5"><span class="text-secondary font-bold">✓</span> 16 Distributed Shards</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary font-bold">✓</span> Sub-millisecond DPDK bypass</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary font-bold">✓</span> Unlimited algorithm threads</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary font-bold">✓</span> Dedicated L3 Order Book feeds</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary font-bold">✓</span> 99.99% Execution SLA guarantee</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary font-bold">✓</span> Merkle Proof immutable audit chain</li>
+</ul>
+</div>
+<div class="mt-4 flex items-center justify-between border-t border-outline-variant pt-2">
+<span class="font-data-mono-sm text-data-mono-sm text-secondary">● Active Subscription</span>
+<button class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface font-data-mono-sm text-data-mono-sm hover:border-primary-container">
+                Manage Quota
+              </button>
+</div>
+</div>
+<!-- TIER 4: MASTER -->
+<div class="bg-surface-container-lowest border border-outline-variant p-space-md flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-caps text-label-caps text-secondary">TIER 04 // BARE METAL</span>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">MASTER NODE</h3>
+</div>
+<span class="font-label-caps text-label-caps px-1.5 py-0.5 bg-surface-container text-secondary border border-secondary-container">FPGA HW</span>
+</div>
+<div class="mt-3">
+<span class="font-data-mono-lg text-data-mono-lg text-on-surface">$499</span>
+<span class="font-data-mono-sm text-data-mono-sm text-outline">/ month</span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline mb-3">~12,475,000 VND / Tháng</div>
+<ul class="border-t border-outline-variant pt-2 space-y-1.5 font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+<li class="flex items-center gap-1.5"><span class="text-secondary">▪</span> 64 Bare-metal FPGA Shards</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary">▪</span> 820ns kernel bypass execution</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary">▪</span> Custom C++ / Rust algo compilation</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary">▪</span> Institutional custody co-signers</li>
+<li class="flex items-center gap-1.5"><span class="text-secondary">▪</span> Dedicated Quant Engineer SLA</li>
+</ul>
+</div>
+<button class="mt-4 w-full py-1.5 bg-primary-container text-on-primary-fixed border border-primary font-data-mono-sm text-data-mono-sm font-bold hover:neon-cyan-glow transition-all active:scale-[0.99]">
+              Upgrade to Master Node
+            </button>
+</div>
+</div>
+</section>
+<!-- 3. MIDDLE SECTION: DUAL-RAIL REAL-TIME SETTLEMENT GATEWAY -->
+<section class="border border-outline-variant bg-surface-container-lowest p-space-md">
+<div class="flex flex-col md:flex-row md:items-center justify-between pb-space-sm border-b border-outline-variant gap-2 mb-space-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="account_balance_wallet">account_balance_wallet</span>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Dual-Rail Real-Time Institutional Settlement Gateway</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Instantaneous fiat &amp; crypto top-up with cryptographic webhook confirmation</p>
+</div>
+</div>
+<div class="flex items-center gap-2 font-data-mono-sm text-data-mono-sm">
+<span class="px-2 py-0.5 bg-surface-container border border-outline-variant text-outline">GATEWAY LATENCY: 1.2ms</span>
+<span class="px-2 py-0.5 bg-surface-container border border-outline-variant text-secondary">SSL ENCRYPTED // TLS 1.3</span>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
+<!-- RAIL 1: VIETQR DYNAMIC INSTANT TRANSFER (PayOS Integration) -->
+<div class="border border-outline-variant bg-surface-container-low p-space-md flex flex-col justify-between">
+<div>
+<!-- Header -->
+<div class="flex items-center justify-between pb-2 border-b border-outline-variant">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps px-2 py-0.5 bg-surface-container text-secondary border border-secondary font-bold">RAIL 01</span>
+<span class="font-headline-md text-headline-md font-semibold text-on-surface">VietQR Dynamic Transfer (PayOS)</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm px-2 py-0.5 bg-secondary-container text-on-secondary font-bold">
+                  INSTANT 24/7
+                </span>
+</div>
+<!-- Main QR Content & Account Details -->
+<div class="mt-space-md flex flex-col sm:flex-row gap-space-md items-center">
+<!-- QR Box -->
+<div class="p-2 bg-surface-container-lowest border border-outline-variant flex flex-col items-center shrink-0">
+<div class="w-40 h-40 bg-surface-dim border border-outline relative flex items-center justify-center p-1">
+<!-- SVG Styled Tactical QR Code Placeholder -->
+<svg class="w-36 h-36 text-primary-container" fill="currentColor" viewbox="0 0 100 100">
+<path d="M0 0h30v30H0zM10 10h10v10H10zM70 0h30v30H70zM80 10h10v10H80zM0 70h30v30H0zM10 80h10v10H10zM40 10h10v10H40zM50 20h10v10H50zM10 40h10v10H10zM30 40h20v10H30zM20 50h10v20H20zM60 40h10v20H60zM40 60h20v10H40zM70 50h10v10H70zM80 40h20v20H80zM40 80h10v20H40zM60 70h20v10H60zM80 70h10v10H80zM60 90h10v10H60zM80 90h20v10H80z"></path>
+</svg>
+<!-- Center Logo Overlay -->
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-8 h-8 bg-surface-container-lowest border border-primary-container flex items-center justify-center text-[10px] font-bold text-secondary">
+                        NAPAS
+                      </div>
+</div>
+</div>
+<div class="mt-1 font-data-mono-sm text-data-mono-sm text-outline flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> Vietcombank / MBBank
+                  </div>
+</div>
+<!-- Settlement Details Strip -->
+<div class="w-full flex flex-col gap-2 font-data-mono-sm text-data-mono-sm">
+<div class="p-1.5 bg-surface-container-lowest border border-outline-variant flex justify-between items-center">
+<span class="text-outline">AMOUNT DUE:</span>
+<span class="text-secondary font-bold font-data-mono-md text-data-mono-md">4,975,000 VND</span>
+</div>
+<div class="p-1.5 bg-surface-container-lowest border border-outline-variant flex justify-between items-center">
+<span class="text-outline">USD EQUIVALENT:</span>
+<span class="text-on-surface">$199.00 USD</span>
+</div>
+<div class="p-1.5 bg-surface-container-lowest border border-outline-variant flex justify-between items-center">
+<span class="text-outline">ACCOUNT BENEFICIARY:</span>
+<span class="text-on-surface font-semibold">ALGOTRADE OS PTE LTD</span>
+</div>
+<div class="p-1.5 bg-surface-container-lowest border border-outline-variant flex justify-between items-center">
+<span class="text-outline">TRANSFER MEMO:</span>
+<div class="flex items-center gap-1">
+<span class="text-primary-container font-bold">ALGO-TENANT-88942-TOPUP</span>
+<button class="text-outline hover:text-primary-container" title="Copy Memo">
+<span class="material-symbols-outlined text-[13px]" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- PayOS Webhook Telemetry Monitor -->
+<div class="mt-4 pt-2 border-t border-outline-variant flex items-center justify-between font-data-mono-sm text-data-mono-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+<span class="text-on-surface-variant">Awaiting PayOS webhook confirmation... [Polling 1.2s]</span>
+</div>
+<div class="flex items-center gap-1 text-primary-container font-semibold">
+<span class="material-symbols-outlined text-[14px]" data-icon="timer">timer</span>
+<span>Session: 14:59s</span>
+</div>
+</div>
+</div>
+<!-- RAIL 2: USDT CRYPTO SETTLEMENT (NOWPayments API / HMAC-SHA512) -->
+<div class="border border-outline-variant bg-surface-container-low p-space-md flex flex-col justify-between">
+<div>
+<!-- Header with Multi-Network Tabs -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-outline-variant gap-2">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps px-2 py-0.5 bg-surface-container text-primary-container border border-primary-container font-bold">RAIL 02</span>
+<span class="font-headline-md text-headline-md font-semibold text-on-surface">USDT Crypto Settlement</span>
+</div>
+<!-- Network Tabs -->
+<div class="flex items-center gap-1 font-data-mono-sm text-data-mono-sm">
+<button class="px-2 py-0.5 bg-primary-container text-on-primary-fixed font-bold border border-primary-container">TRC20</button>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-on-surface-variant hover:text-on-surface">BEP20</button>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-on-surface-variant hover:text-on-surface">ERC20</button>
+</div>
+</div>
+<!-- Main Crypto Address & QR -->
+<div class="mt-space-md flex flex-col sm:flex-row gap-space-md items-center">
+<!-- QR Box -->
+<div class="p-2 bg-surface-container-lowest border border-outline-variant flex flex-col items-center shrink-0">
+<div class="w-40 h-40 bg-surface-dim border border-outline relative flex items-center justify-center p-1">
+<!-- SVG Styled Crypto QR Pattern -->
+<svg class="w-36 h-36 text-secondary" fill="currentColor" viewbox="0 0 100 100">
+<path d="M0 0h28v28H0zM8 8h12v12H8zM72 0h28v28H72zM80 8h12v12H80zM0 72h28v28H0zM8 80h12v12H8zM36 8h12v12H36zM52 16h12v12H52zM16 36h12v12H16zM36 36h28v12H36zM24 52h12v20H24zM68 36h12v20H68zM44 68h20v12H44zM76 56h12v12H76zM84 36h16v20H84zM36 84h12v16H36zM68 76h20v12H68zM84 76h12v12H84zM68 92h12v8H68zM84 92h16v8H84z"></path>
+</svg>
+<!-- Center USDT Logo Badge -->
+<div class="absolute inset-0 flex items-center justify-center">
+<div class="w-8 h-8 rounded-full bg-surface-container-lowest border border-secondary flex items-center justify-center text-[10px] font-bold text-secondary">
+                        ₮
+                      </div>
+</div>
+</div>
+<div class="mt-1 font-data-mono-sm text-data-mono-sm text-outline flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span> NOWPayments Bridge
+                  </div>
+</div>
+<!-- Crypto Input & Payload Specs -->
+<div class="w-full flex flex-col gap-2 font-data-mono-sm text-data-mono-sm">
+<div class="p-1.5 bg-surface-container-lowest border border-outline-variant flex justify-between items-center">
+<span class="text-outline">SETTLEMENT AMOUNT:</span>
+<span class="text-primary-container font-bold font-data-mono-md text-data-mono-md">199.00 USDT</span>
+</div>
+<div>
+<span class="text-outline text-[10px]">DEPOSIT ADDRESS (TRON / TRC20):</span>
+<div class="mt-0.5 flex items-center bg-surface-container-lowest border border-outline-variant p-1.5 justify-between">
+<span class="text-on-surface font-semibold truncate text-[11px] pr-2">TRX88942QxLedgerQuantEnclaveNode77bX9</span>
+<button class="px-2 py-0.5 bg-surface-container border border-outline text-primary-container hover:bg-surface-container-high flex items-center gap-1 shrink-0">
+<span class="material-symbols-outlined text-[12px]" data-icon="content_copy">content_copy</span>
+<span>Copy</span>
+</button>
+</div>
+</div>
+<div class="p-1.5 bg-surface-container-lowest border border-outline-variant flex justify-between items-center">
+<span class="text-outline">HMAC SIGNATURE:</span>
+<span class="text-secondary font-mono text-[10px]">d4f2...98ae (VALID)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Confirmation Progress -->
+<div class="mt-4 pt-2 border-t border-outline-variant flex items-center justify-between font-data-mono-sm text-data-mono-sm">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="text-on-surface-variant">0/12 Network Confirmations (TRC20 Block ~3s)</span>
+</div>
+<span class="font-label-caps text-label-caps px-1.5 py-0.5 bg-surface-container text-outline border border-outline-variant">
+                HMAC-SHA512 KEY: VERIFIED
+              </span>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. BOTTOM SECTION: IMMUTABLE CRYPTOGRAPHIC AUDIT CHAIN LEDGER -->
+<section class="border border-outline-variant bg-surface-container-lowest p-space-md">
+<!-- Section Header & Filter Toolbar -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md pb-space-md border-b border-outline-variant">
+<div>
+<div class="flex items-center gap-2 flex-wrap">
+<span class="material-symbols-outlined text-secondary" data-icon="enhanced_encryption">enhanced_encryption</span>
+<h2 class="font-headline-md text-headline-md font-bold text-primary">SHA-256 Merkle Chain Audit Trail</h2>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">/ Sổ Cái Kiểm Toán Chuỗi Khối SHA-256</span>
+</div>
+<p class="font-body-sm text-body-sm text-outline mt-0.5">High-frequency deterministic state log. Cryptographically chained via continuous SHA-256 Merkle hashing.</p>
+</div>
+<!-- Filters & Verification CTA -->
+<div class="flex items-center gap-2 flex-wrap font-data-mono-sm text-data-mono-sm">
+<!-- Search Input -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1.5 text-outline text-[14px]" data-icon="search">search</span>
+<input class="bg-surface-container-low border border-outline-variant pl-7 pr-2 py-1 text-on-surface font-data-mono-sm text-data-mono-sm placeholder-outline focus:border-primary-container focus:outline-none w-52" placeholder="Search Hash / Seq / Actor..." type="text"/>
+</div>
+<!-- Event Type Filter -->
+<select class="bg-surface-container-low border border-outline-variant px-2 py-1 text-on-surface font-data-mono-sm text-data-mono-sm focus:border-primary-container focus:outline-none">
+<option>All Event Types</option>
+<option>TRADE_FILL</option>
+<option>CONFIG_UPDATE</option>
+<option>SHARD_REALLOC</option>
+<option>SETTLEMENT</option>
+</select>
+<!-- Verify All Signatures Button -->
+<button class="flex items-center gap-1.5 px-3 py-1 bg-surface-container border border-secondary text-secondary hover:bg-surface-container-high font-data-mono-sm text-data-mono-sm font-semibold neon-emerald-glow transition-all">
+<span class="material-symbols-outlined text-[14px]" data-icon="verified">verified</span>
+<span>Verify All Signatures</span>
+</button>
+</div>
+</div>
+<!-- High-Density Cryptographic Log Table -->
+<div class="overflow-x-auto mt-space-sm">
+<table class="w-full text-left border-collapse font-data-mono-sm text-data-mono-sm">
+<thead>
+<tr class="border-b border-outline-variant bg-surface-container-low text-outline text-[10px] tracking-wider uppercase">
+<th class="py-2 px-2">SEQ / BLOCK #</th>
+<th class="py-2 px-2">TIMESTAMP (UTC)</th>
+<th class="py-2 px-2">EVENT TYPE &amp; ACTOR</th>
+<th class="py-2 px-2">PREV HASH (SHA-256)</th>
+<th class="py-2 px-2">CURRENT HASH (SHA-256)</th>
+<th class="py-2 px-2">SIGNATURE (ED25519)</th>
+<th class="py-2 px-2">INTEGRITY</th>
+<th class="py-2 px-2 text-right">ACTION</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant text-on-surface">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-2 px-2 font-bold text-primary-container">#892,108</td>
+<td class="py-2 px-2 text-on-surface-variant">14:02:18.491024</td>
+<td class="py-2 px-2">
+<div class="flex items-center gap-1.5">
+<span class="px-1 py-0.5 bg-surface-container border border-outline-variant text-secondary font-bold text-[9px]">SETTLE</span>
+<span class="font-semibold">SETTLEMENT // PAYOS-VND</span>
+</div>
+</td>
+<td class="py-2 px-2 text-outline">0x8a3f4e19...91bc</td>
+<td class="py-2 px-2 text-primary-container font-mono">0x7b2e98a1...55c1</td>
+<td class="py-2 px-2 text-on-surface-variant font-mono">ed25519:7e994a...</td>
+<td class="py-2 px-2">
+<span class="inline-flex items-center gap-1 text-secondary font-semibold text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> VERIFIED
+                  </span>
+</td>
+<td class="py-2 px-2 text-right">
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-primary-container hover:border-primary-container transition-colors">
+                    Verify Proof
+                  </button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-2 px-2 font-bold text-primary-container">#892,107</td>
+<td class="py-2 px-2 text-on-surface-variant">14:02:17.810932</td>
+<td class="py-2 px-2">
+<div class="flex items-center gap-1.5">
+<span class="px-1 py-0.5 bg-surface-container border border-outline-variant text-primary-container font-bold text-[9px]">TRADE</span>
+<span class="font-semibold">TRADE_FILL // AC-OPT-094</span>
+</div>
+</td>
+<td class="py-2 px-2 text-outline">0x6c1d02bf...78e4</td>
+<td class="py-2 px-2 text-primary-container font-mono">0x8a3f4e19...91bc</td>
+<td class="py-2 px-2 text-on-surface-variant font-mono">ed25519:3b08e2...</td>
+<td class="py-2 px-2">
+<span class="inline-flex items-center gap-1 text-secondary font-semibold text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> CHAIN INTACT
+                  </span>
+</td>
+<td class="py-2 px-2 text-right">
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-primary-container hover:border-primary-container transition-colors">
+                    Verify Proof
+                  </button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-2 px-2 font-bold text-primary-container">#892,106</td>
+<td class="py-2 px-2 text-on-surface-variant">14:01:55.109844</td>
+<td class="py-2 px-2">
+<div class="flex items-center gap-1.5">
+<span class="px-1 py-0.5 bg-surface-container border border-outline-variant text-outline font-bold text-[9px]">CONFIG</span>
+<span class="font-semibold">CONFIG_UPDATE // DESK-ALPHA-01</span>
+</div>
+</td>
+<td class="py-2 px-2 text-outline">0x44fa191b...e4a7</td>
+<td class="py-2 px-2 text-primary-container font-mono">0x6c1d02bf...78e4</td>
+<td class="py-2 px-2 text-on-surface-variant font-mono">ed25519:f911ac...</td>
+<td class="py-2 px-2">
+<span class="inline-flex items-center gap-1 text-secondary font-semibold text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> VERIFIED
+                  </span>
+</td>
+<td class="py-2 px-2 text-right">
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-primary-container hover:border-primary-container transition-colors">
+                    Verify Proof
+                  </button>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-2 px-2 font-bold text-primary-container">#892,105</td>
+<td class="py-2 px-2 text-on-surface-variant">14:00:03.001928</td>
+<td class="py-2 px-2">
+<div class="flex items-center gap-1.5">
+<span class="px-1 py-0.5 bg-surface-container border border-outline-variant text-secondary font-bold text-[9px]">SHARD</span>
+<span class="font-semibold">SHARD_REALLOC // NODE-SHARD-14</span>
+</div>
+</td>
+<td class="py-2 px-2 text-outline">0x110e53a2...ff01</td>
+<td class="py-2 px-2 text-primary-container font-mono">0x44fa191b...e4a7</td>
+<td class="py-2 px-2 text-on-surface-variant font-mono">ed25519:6c88ea...</td>
+<td class="py-2 px-2">
+<span class="inline-flex items-center gap-1 text-secondary font-semibold text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> VERIFIED
+                  </span>
+</td>
+<td class="py-2 px-2 text-right">
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-primary-container hover:border-primary-container transition-colors">
+                    Verify Proof
+                  </button>
+</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-2 px-2 font-bold text-primary-container">#892,104</td>
+<td class="py-2 px-2 text-on-surface-variant">13:58:49.674201</td>
+<td class="py-2 px-2">
+<div class="flex items-center gap-1.5">
+<span class="px-1 py-0.5 bg-surface-container border border-outline-variant text-primary-container font-bold text-[9px]">CRYPTO</span>
+<span class="font-semibold">SETTLEMENT // USDT-TRC20-TOPUP</span>
+</div>
+</td>
+<td class="py-2 px-2 text-outline">0x992b8d41...cc42</td>
+<td class="py-2 px-2 text-primary-container font-mono">0x110e53a2...ff01</td>
+<td class="py-2 px-2 text-on-surface-variant font-mono">hmac:99b1ef7...</td>
+<td class="py-2 px-2">
+<span class="inline-flex items-center gap-1 text-secondary font-semibold text-[10px]">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span> VERIFIED
+                  </span>
+</td>
+<td class="py-2 px-2 text-right">
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-primary-container hover:border-primary-container transition-colors">
+                    Verify Proof
+                  </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination & Merkle Tree Footnote -->
+<div class="mt-space-md pt-space-xs border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between text-body-sm text-outline font-data-mono-sm gap-2">
+<div class="flex items-center gap-2">
+<span>Displaying 5 of 284,910,214 audited blocks</span>
+<span>•</span>
+<span class="text-secondary">Merkle Root Verified Zero-Drift</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-outline hover:text-on-surface">Prev</button>
+<span class="px-2 py-0.5 bg-surface-container-high text-primary-container font-bold border border-outline-variant">1</span>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-outline hover:text-on-surface">2</button>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-outline hover:text-on-surface">3</button>
+<span>...</span>
+<button class="px-2 py-0.5 bg-surface-container border border-outline-variant text-outline hover:text-on-surface">Next</button>
+</div>
+</div>
+</section>
+</main>
+</div>
+
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-wrap: wrap; gap: 6px; background: rgba(15, 18, 24, 0.95); backdrop-filter: blur(12px); border: 1px solid #1E2430; padding: 6px 12px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 11px;">
+  <a href="dashboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">DASHBOARD</a>
+  <a href="quant-terminal.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">TERMINAL</a>
+  <a href="marketplace.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">MARKETPLACE</a>
+  <a href="leaderboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">LEADERBOARD</a>
+  <a href="billing.html" style="color: #00F2FE; font-weight: bold; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); text-decoration: none; padding: 4px 8px; border-radius: 4px;">⚡ BILLING</a>
+  <a href="byok-wizard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BYOK</a>
+  <a href="mobile-sentry.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">SENTRY</a>
+  <a href="telemetry.html" style="color: #00F2FE; text-decoration: none; padding: 4px 8px;">TELEMETRY</a>
+  <a href="latency-simulator.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">FEED SIMULATOR</a>
+  <a href="styleguide.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">STYLEGUIDE</a>
+</div>
+
+
+
+<!-- ALGOTRADE UNIVERSAL DOCK NAVIGATION -->
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; align-items: center; gap: 8px; background: rgba(15, 18, 24, 0.92); border: 1px solid #1E2430; backdrop-filter: blur(16px); padding: 6px 14px; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(0, 242, 254, 0.15); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-width: 95vw; overflow-x: auto;">
+  <div style="display: flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid #1E2430;">
+    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #00E599; box-shadow: 0 0 8px #00E599;"></span>
+    <span style="color: #00F2FE; font-weight: 700; letter-spacing: 0.5px;">ALGOTRADE</span>
+  </div>
+  <nav style="display: flex; align-items: center; gap: 4px;">
+    <a href="dashboard.html" class="nav-item-dashboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">DASHBOARD</a>
+    <a href="quant-terminal.html" class="nav-item-quant-terminal" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">QUANT TERMINAL</a>
+    <a href="marketplace.html" class="nav-item-marketplace" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MARKETPLACE</a>
+    <a href="leaderboard.html" class="nav-item-leaderboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LEADERBOARD</a>
+    <a href="backtest-studio.html" class="nav-item-backtest-studio" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BACKTEST STUDIO</a>
+    <a href="stress-lab.html" class="nav-item-stress-lab" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STRESS LAB</a>
+    <a href="telemetry.html" class="nav-item-telemetry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">TELEMETRY</a>
+    <a href="latency-simulator.html" class="nav-item-latency-simulator" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LATENCY SIM</a>
+    <a href="billing.html" class="nav-item-billing" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BILLING</a>
+    <a href="byok-wizard.html" class="nav-item-byok-wizard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BYOK WIZARD</a>
+    <a href="mobile-sentry.html" class="nav-item-mobile-sentry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MOBILE SENTRY</a>
+    <a href="styleguide.html" class="nav-item-styleguide" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STYLE GUIDE</a>
+  </nav>
+</div>
+<script>
+  (function() {
+    var cur = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (cur === 'index.html') cur = 'dashboard.html';
+    var key = cur.split('.')[0];
+    var activeLink = document.querySelector('.nav-item-' + key);
+    if (activeLink) {
+      activeLink.style.color = '#00F2FE';
+      activeLink.style.background = 'rgba(0, 242, 254, 0.12)';
+      activeLink.style.border = '1px solid rgba(0, 242, 254, 0.3)';
+      activeLink.style.fontWeight = '600';
+    }
+  })();
+</script>
+
+</body></html>

@@ -13,9 +13,34 @@ import {
   LegExecutionStatusSchema,
   ExecutionStateSchema,
 } from './execution-types-lifecycle';
+import {
+  type UnwindLegTarget,
+  type CompensatoryUnwindRequest,
+  type UnwindResult,
+  type ExecutionStateTransition,
+  type UnwindReport,
+  UnwindLegTargetSchema,
+  CompensatoryUnwindRequestSchema,
+  UnwindResultSchema,
+  ExecutionStateTransitionSchema,
+} from './execution-types-unwind';
 
 export type { LegSide, LegExecutionStatus, ExecutionState };
 export { LegSideSchema, LegExecutionStatusSchema, ExecutionStateSchema };
+
+export type {
+  UnwindLegTarget,
+  CompensatoryUnwindRequest,
+  UnwindResult,
+  ExecutionStateTransition,
+  UnwindReport,
+};
+export {
+  UnwindLegTargetSchema,
+  CompensatoryUnwindRequestSchema,
+  UnwindResultSchema,
+  ExecutionStateTransitionSchema,
+};
 
 // ── Leg Execution Report ─────────────────────────────────────────────────────
 
@@ -55,88 +80,6 @@ export const LegExecutionReportSchema = z.object({
   error: z.string().optional(),
 });
 
-// ── Compensatory Unwind Request & Target ─────────────────────────────────────
-
-export interface UnwindLegTarget {
-  legId: string;
-  venue: string;
-  symbol: string;
-  side: LegSide;
-  filledAmount: number;
-  entryPrice: number;
-  orderId?: string;
-}
-
-export const UnwindLegTargetSchema = z.object({
-  legId: z.string().min(1),
-  venue: z.string().min(1),
-  symbol: z.string().min(1),
-  side: LegSideSchema,
-  filledAmount: z.number().positive(),
-  entryPrice: z.number().positive(),
-  orderId: z.string().optional(),
-});
-
-export interface CompensatoryUnwindRequest {
-  unwindId?: string;
-  executionId: string;
-  legsToUnwind: UnwindLegTarget[];
-  reason: string;
-  maxRetries?: number;
-  timeoutMs?: number;
-}
-
-export const CompensatoryUnwindRequestSchema = z.object({
-  unwindId: z.string().optional(),
-  executionId: z.string().min(1),
-  legsToUnwind: z.array(UnwindLegTargetSchema),
-  reason: z.string().min(1),
-  maxRetries: z.number().int().nonnegative().optional(),
-  timeoutMs: z.number().positive().optional(),
-});
-
-// ── Unwind Result ────────────────────────────────────────────────────────────
-
-export interface UnwindResult {
-  unwindId: string;
-  success: boolean;
-  unwoundLegs: LegExecutionReport[];
-  unhedgedResidualDelta: number;
-  totalRealizedLossUsd: number;
-  unwindCostUsd?: number;
-  attempts: number;
-  error?: string;
-  timestamp: number;
-}
-
-export const UnwindResultSchema = z.object({
-  unwindId: z.string().min(1),
-  success: z.boolean(),
-  unwoundLegs: z.array(LegExecutionReportSchema),
-  unhedgedResidualDelta: z.number().nonnegative(),
-  totalRealizedLossUsd: z.number().nonnegative(),
-  unwindCostUsd: z.number().nonnegative().optional(),
-  attempts: z.number().int().nonnegative(),
-  error: z.string().optional(),
-  timestamp: z.number().int().positive(),
-});
-
-// ── State Transition History ────────────────────────────────────────────────
-
-export interface ExecutionStateTransition {
-  from: ExecutionState;
-  to: ExecutionState;
-  timestamp: number;
-  reason?: string;
-}
-
-export const ExecutionStateTransitionSchema = z.object({
-  from: ExecutionStateSchema,
-  to: ExecutionStateSchema,
-  timestamp: z.number().int().positive(),
-  reason: z.string().optional(),
-});
-
 // ── Multi-Leg Execution Report ───────────────────────────────────────────────
 
 export interface MultiLegExecutionReport {
@@ -168,7 +111,6 @@ export const MultiLegExecutionReportSchema = z.object({
 });
 
 export type LegExecutionRecord = LegExecutionReport;
-export type UnwindReport = UnwindResult;
 
 // ── PnL Calculation Helper ──────────────────────────────────────────────────
 

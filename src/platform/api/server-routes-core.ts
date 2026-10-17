@@ -38,6 +38,7 @@ import { apiKeysRouter } from './routes/api-keys';
 import { trialDripRouter } from './routes/trial-drip-routes';
 import { abTestRoutes } from '../ab-testing/ab-test-routes';
 import { nowpaymentsWebhookRouter } from './routes/webhooks/nowpayments-webhook';
+import { openCoreRouter } from './routes/open-core-routes';
 
 export function registerCoreRoutes(app: Application): void {
   // Trading & market data
@@ -86,8 +87,9 @@ export function registerCoreRoutes(app: Application): void {
   app.use('/api/v1/referral', referralRouter);
   app.use('/api/v1/api-keys', apiKeysRouter);
 
-  // Drip campaign, A/B testing & webhooks
+  // Drip campaign, A/B testing, Open-Core SaaS control plane & webhooks
   app.use('/api/v1/trial-drip', trialDripRouter);
   app.use('/api/v1/ab-test', abTestRoutes);
+  app.use('/api/v1/open-core', openCoreRouter);
   app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);
 }

@@ -4,7 +4,6 @@
  * Automatic failover with circuit breaker pattern
  */
 
-import { logger } from '../../shared/utils/logger';
 import {
   ProviderHealthStatus,
   MarketDataSource,
@@ -14,9 +13,8 @@ import {
   ProviderHealthSnapshot,
 } from './provider-failover-types';
 import {
-  calculateHealthStatus,
-  updateProviderStatus,
-  switchActiveProvider,
+  resolveFailoverConfig,
+  applyRequestResultSnapshot,
   initializeProviderStatus,
   checkHalfOpenTransition,
 } from './provider-failover-health';
@@ -44,15 +42,7 @@ export class FailoverManager {
   private readonly MAX_HISTORY = 1000;
 
   constructor(config: ProviderFailoverConfig) {
-    this.config = {
-      ...config,
-      failureThreshold: config.failureThreshold ?? 3,
-      failbackCooldownMs: config.failbackCooldownMs ?? 5 * 60 * 1000,
-      recoveryTimeMs: config.recoveryTimeMs ?? 60 * 1000,
-      enableAutoFailback: config.enableAutoFailback ?? true,
-      healthCheckIntervalMs: config.healthCheckIntervalMs ?? 10_000,
-    };
-
+    this.config = resolveFailoverConfig(config);
     this.providerStatus = initializeProviderStatus(this.config.primary, this.config.secondary);
     this.failoverHistory = [];
     this.circuitState = CircuitState.CLOSED;
@@ -71,23 +61,14 @@ export class FailoverManager {
 
   recordRequestResult(success: boolean, latencyMs: number): void {
     const activeProvider = this.getActiveProvider();
-    const snapshot = this.providerStatus.get(activeProvider);
-    if (!snapshot) return;
+    if (!this.providerStatus.has(activeProvider)) return;
 
     this.slaTracker.recordRequest(activeProvider, success, latencyMs);
-    snapshot.requestCount++;
+    const snapshot = applyRequestResultSnapshot(
+      this.providerStatus, activeProvider, success, latencyMs, this.config.failureThreshold
+    );
 
-    if (success) {
-      snapshot.lastSuccess = Date.now();
-      snapshot.avgLatency = snapshot.avgLatency * 0.7 + latencyMs * 0.3;
-      snapshot.consecutiveFailures = 0;
-    } else {
-      snapshot.lastFailure = Date.now();
-      snapshot.consecutiveFailures++;
-    }
-    updateProviderStatus(this.providerStatus, activeProvider, calculateHealthStatus(snapshot, this.config.failureThreshold));
-
-    if (!success && this.circuitState === CircuitState.CLOSED && snapshot.consecutiveFailures >= this.config.failureThreshold) {
+    if (snapshot && !success && this.circuitState === CircuitState.CLOSED && snapshot.consecutiveFailures >= this.config.failureThreshold) {
       this.triggerFailover(`Consecutive failures: ${snapshot.consecutiveFailures}`);
     }
   }
@@ -95,12 +76,8 @@ export class FailoverManager {
   async forceFailover(reason: string): Promise<boolean> {
     if (this.getActiveProvider() === this.config.secondary) return false;
     const res = executeForceFailover({
-      providerStatus: this.providerStatus,
-      primary: this.config.primary,
-      secondary: this.config.secondary,
-      reason,
-      maxHistory: this.MAX_HISTORY,
-      currentHistory: this.failoverHistory,
+      providerStatus: this.providerStatus, primary: this.config.primary, secondary: this.config.secondary,
+      reason, maxHistory: this.MAX_HISTORY, currentHistory: this.failoverHistory,
     });
     if (res.success && res.newCircuitState !== undefined) {
       this.circuitState = res.newCircuitState;
@@ -113,12 +90,8 @@ export class FailoverManager {
   async forceFailback(reason: string): Promise<boolean> {
     if (this.getActiveProvider() === this.config.primary) return false;
     const res = executeFailbackTransition({
-      providerStatus: this.providerStatus,
-      primary: this.config.primary,
-      secondary: this.config.secondary,
-      reason,
-      maxHistory: this.MAX_HISTORY,
-      currentHistory: this.failoverHistory,
+      providerStatus: this.providerStatus, primary: this.config.primary, secondary: this.config.secondary,
+      reason, maxHistory: this.MAX_HISTORY, currentHistory: this.failoverHistory,
     });
     if (res.success && res.newCircuitState !== undefined) {
       this.circuitState = res.newCircuitState;
@@ -155,10 +128,7 @@ export class FailoverManager {
     if (!this.providerStatus.get(active) || !this.providerStatus.get(inactive)) return;
 
     const transition = checkHalfOpenTransition(
-      this.circuitState,
-      this.circuitStateTimestamp,
-      this.config.failbackCooldownMs,
-      this.providerStatus.get(this.config.primary)
+      this.circuitState, this.circuitStateTimestamp, this.config.failbackCooldownMs, this.providerStatus.get(this.config.primary)
     );
     if (transition.shouldTransition) {
       this.circuitState = CircuitState.HALF_OPEN;
@@ -170,17 +140,11 @@ export class FailoverManager {
 
   private triggerFailover(reason: string): void {
     const res = executeFailoverTransition({
-      providerStatus: this.providerStatus,
-      primary: this.config.primary,
-      secondary: this.config.secondary,
-      reason,
-      triggeredBy: 'automatic',
-      maxHistory: this.MAX_HISTORY,
-      currentHistory: this.failoverHistory,
+      providerStatus: this.providerStatus, primary: this.config.primary, secondary: this.config.secondary,
+      reason, triggeredBy: 'automatic', maxHistory: this.MAX_HISTORY, currentHistory: this.failoverHistory,
     });
     this.circuitState = res.newCircuitState;
     this.circuitStateTimestamp = res.newTimestamp;
     this.failoverHistory = res.updatedHistory;
   }
 }
-

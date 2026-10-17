@@ -1,0 +1,46 @@
+# AlgoTrade — Site Vision & Stitch UI Roadmap
+
+Bilingual (Vietnamese & English) Multi-Tenant Quantitative Engine & Cloud RaaS Control Plane. High-frequency execution terminal, strategy marketplace with 70/30 creator revenue split, zero-knowledge BYOK onboarding, and PayOS (VietQR) + NOWPayments (Crypto USDT) instant billing.
+
+## Stitch Project
+
+- **Project ID (numeric):** `1566829715937419119`
+- **Design System:** Obsidian Quantum (`assets/6c3c1d2b4c04449c9f3274b73a5b69ec`)
+- **Stitch-Kit MCP URL:** `https://stitch.googleapis.com/mcp`
+- **Transport:** HTTP JSON-RPC 2.0 with `X-Goog-Api-Key`
+
+## Sitemap
+
+- [x] `index.html` — Master Cloud RaaS Dashboard (Alias of dashboard.html)
+- [x] `dashboard.html` — Master Cloud RaaS Dashboard & MCU Meter
+- [x] `quant-terminal.html` — Institutional Quant Cockpit & Execution Terminal (Almgren-Chriss + OFI)
+- [x] `marketplace.html` — Strategy Marketplace & Creator Hub (70/30 split)
+- [x] `leaderboard.html` — Bilingual Backtest & Alpha Leaderboard
+- [x] `billing.html` — Multi-Tenant Billing & SHA-256 Audit Chain Ledger
+- [x] `byok-wizard.html` — Zero-Knowledge BYOK Onboarding Wizard
+- [x] `mobile-sentry.html` — Mobile Companion & Risk Sentry
+- [x] `styleguide.html` — Universal Component Design System & Style Guide
+- [x] `telemetry.html` — Cloudflare Shard Telemetry & Real-Time HFT Execution Mesh
+- [x] `latency-simulator.html` — Real-Time WebSocket Trade Feed Simulator & Microstructure Latency Analyzer
+- [x] `stress-lab.html` — Algorithmic Stress Testing Lab & Extreme Tail-Risk VaR Simulation Cockpit
+- [x] `backtest-studio.html` — Walk-Forward & CPCV Backtest Studio
+
+## Roadmap & Delivered Screens
+
+1. `index.html` / `dashboard.html` — Portfolio metrics ($1,248,500), running bots, MCU quota meter (18,400 / 25,000), kill-switch.
+2. `quant-terminal.html` — Order flow imbalance (OFI Delta +0.48), dual orderbook, execution modes [PAPER | SHADOW | LIVE], Almgren-Chriss TWAP/VWAP.
+3. `marketplace.html` — Verified quantitative strategies, Monte Carlo fan charts, transparent 70/30 creator split, 1-click rent.
+4. `leaderboard.html` — Bilingual public alpha leaderboard with Sharpe (2.85), Sortino, Calmar ratios.
+5. `billing.html` — 4 tiers (BASIC $0, PREMIUM $49/mo, ENTERPRISE $199/mo, MASTER $499/mo), VietQR (PayOS) + NOWPayments USDT (TRC20/BEP20), SHA-256 audit ledger.
+6. `byok-wizard.html` — 4-step wizard for AES-256-GCM envelope-encrypted exchange API keys at Cloudflare Edge.
+7. `mobile-sentry.html` — Mobile phone viewport with giant slide-to-confirm Emergency Kill-Switch and Telegram alert status.
+8. `styleguide.html` — Universal component design token catalog, buttons (all states), form controls, and badge pills.
+9. `telemetry.html` — Multi-region Cloudflare Durable Objects shard topology (`shard-asia-1`, `shard-us-east`, `shard-eu-west`), Raft consensus quorum, SQLite DO storage & failover simulation.
+10. `latency-simulator.html` — Live Level 3 trade tape, microsecond latency histogram KDE (Tokyo TY3, Ashburn DC2, Frankfurt FR2), artificial packet loss & reconnect stress testing.
+11. `stress-lab.html` — Historical crisis replay presets (2010 Flash Crash, May 2021, FTX 2022), 99% CVaR/Expected Shortfall (-$84,200), GARCH(1,1) volatility smile, auto-deleveraging circuit breaker.
+12. `backtest-studio.html` — Walk-forward efficiency matrix (2021-2026 rolling folds), Marcos López de Prado PBO (4.2%) & Deflated Sharpe (2.91), Python/Cython parameter hyperspace sliders, non-linear slippage impact curve.
+
+## Creative Freedom
+
+- [x] Cloudflare Durable Objects live shard telemetry map (`shard-asia-1`, `shard-us-east`, `shard-eu-west`).
+- [x] Real-time WebSockets trade feed simulator with simulated latency jitter (< 12ms live green pulse).

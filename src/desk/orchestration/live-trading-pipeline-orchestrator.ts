@@ -11,19 +11,12 @@ import { CrossVenueArbDetector, type CrossVenueArbOpportunity, type VenueQuote }
 import { PolymarketRelayerEngine, type RelayerOrderResponse } from '../polymarket/polymarket-relayer-engine';
 import { GeneticEvolutionEngine } from '../../alpha-lab/alpha-discovery/genetic-evolution-engine';
 import type { EvolutionSummary, FitnessEvaluator } from '../../alpha-lab/alpha-discovery/genetic-evolution-types';
-import {
-  EdgeCanaryDeploymentVerifier,
-  type CanaryStage,
-  type CanaryTelemetrySample,
-  type CanaryVerificationVerdict,
-} from '../execution/edge-canary-deployment-verifier';
-import {
-  DEFAULT_PIPELINE_GENETIC_CONFIG,
-  type LiveTradingPipelineConfig,
-  type PipelineMetrics,
-  type PipelineEventHooks,
-} from './live-trading-pipeline-types';
+import { EdgeCanaryDeploymentVerifier, type CanaryStage, type CanaryTelemetrySample, type CanaryVerificationVerdict } from '../execution/edge-canary-deployment-verifier';
+import { DEFAULT_PIPELINE_GENETIC_CONFIG, type LiveTradingPipelineConfig, type PipelineMetrics, type PipelineEventHooks } from './live-trading-pipeline-types';
 import { LiveTradingPipelineState } from './live-trading-pipeline-state';
+import { shouldAutoExecutePolymarketArb, submitPolymarketArbOrder, subscribeTrackedVenues, toPipelineError } from './live-trading-pipeline-helpers';
+
+export * from './live-trading-pipeline-helpers';
 
 export class LiveTradingPipelineOrchestrator extends EventEmitter {
   public readonly streamer: MultiVenueMarketStreamer;
@@ -49,10 +42,7 @@ export class LiveTradingPipelineOrchestrator extends EventEmitter {
     }
     this.evolutionEngine = new GeneticEvolutionEngine(config.evolutionConfig ?? DEFAULT_PIPELINE_GENETIC_CONFIG);
     this.canaryVerifier = new EdgeCanaryDeploymentVerifier(config.canaryCriteria, config.canaryRollbackHook);
-
-    this.streamer.on('orderbook', (book: UnifiedOrderBook) => {
-      this.emit('orderbook', book);
-    });
+    this.streamer.on('orderbook', (book: UnifiedOrderBook) => this.emit('orderbook', book));
   }
 
   public async start(): Promise<void> {
@@ -61,16 +51,10 @@ export class LiveTradingPipelineOrchestrator extends EventEmitter {
       this.state.status = 'running';
       this.state.startedAt = Date.now();
       await this.streamer.start();
-      if (this.config.trackedVenues && this.config.trackedSymbols) {
-        for (const venue of this.config.trackedVenues) {
-          for (const symbol of this.config.trackedSymbols) {
-            this.streamer.subscribe(venue, symbol);
-          }
-        }
-      }
+      subscribeTrackedVenues(this.streamer, this.config);
       logger.info('[LiveTradingPipeline] Orchestrator started successfully');
     } catch (err) {
-      this.handleError(err instanceof Error ? err : new Error(String(err)), 'start');
+      this.handleError(toPipelineError(err), 'start');
       throw err;
     }
   }
@@ -103,14 +87,13 @@ export class LiveTradingPipelineOrchestrator extends EventEmitter {
         this.state.opportunitiesDetected++;
         this.emit('opportunity', opp);
         this.hooks.onOpportunity?.(opp);
-
-        if (opp.isViable && this.config.autoExecuteArb && this.relayer && (opp.buyVenue === 'polymarket' || opp.sellVenue === 'polymarket')) {
+        if (shouldAutoExecutePolymarketArb(opp, this.config, this.relayer)) {
           await this.executeRelayerOrderForArb(opp);
         }
       }
       return opps;
     } catch (err) {
-      this.handleError(err instanceof Error ? err : new Error(String(err)), 'evaluateAndExecuteArb');
+      this.handleError(toPipelineError(err), 'evaluateAndExecuteArb');
       return [];
     }
   }
@@ -119,23 +102,13 @@ export class LiveTradingPipelineOrchestrator extends EventEmitter {
     if (!this.relayer) return null;
     this.state.ordersRelayed++;
     try {
-      const side = opp.buyVenue === 'polymarket' ? 'BUY' : 'SELL';
-      const price = opp.buyVenue === 'polymarket' ? opp.buyPrice : opp.sellPrice;
-      const signed = await this.relayer.buildAndSignOrder({
-        tokenId: opp.symbol,
-        price,
-        size: opp.maxVolume,
-        side,
-      });
-      const res = await this.relayer.submitRelayerOrder(signed);
-      if (res.status !== 'FAILED') this.state.successfulOrders++;
-      else this.state.failedOrders++;
+      const res = await submitPolymarketArbOrder(this.relayer, opp, this.state);
       this.emit('orderSubmitted', res);
       this.hooks.onOrderSubmitted?.(res);
       return res;
     } catch (err) {
       this.state.failedOrders++;
-      this.handleError(err instanceof Error ? err : new Error(String(err)), 'executeRelayerOrderForArb');
+      this.handleError(toPipelineError(err), 'executeRelayerOrderForArb');
       return null;
     }
   }
@@ -154,7 +127,7 @@ export class LiveTradingPipelineOrchestrator extends EventEmitter {
       this.hooks.onCanaryVerdict?.(verdict);
       return verdict;
     } catch (err) {
-      this.handleError(err instanceof Error ? err : new Error(String(err)), 'verifyCanaryStage');
+      this.handleError(toPipelineError(err), 'verifyCanaryStage');
       throw err;
     }
   }
@@ -167,7 +140,7 @@ export class LiveTradingPipelineOrchestrator extends EventEmitter {
       this.hooks.onEvolutionCycle?.(summary);
       return summary;
     } catch (err) {
-      this.handleError(err instanceof Error ? err : new Error(String(err)), 'runEvolutionCycle');
+      this.handleError(toPipelineError(err), 'runEvolutionCycle');
       throw err;
     }
   }

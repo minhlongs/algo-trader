@@ -11,6 +11,15 @@
 import { logger } from '../../shared/utils/logger';
 import type { PaperTrade, PaperPortfolio } from '../../desk/wiring/paper-trading-orchestrator';
 import type { WhaleActivity } from '../../desk/feeds/whale-activity-feed';
+import {
+  truncate,
+  sign,
+  formatTradeAlert,
+  formatPnlSummary,
+  formatWhaleAlert,
+} from './trading-alert-formatters';
+
+export * from './trading-alert-formatters';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -67,16 +76,6 @@ async function sendMessage(text: string): Promise<boolean> {
   }
 }
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
-
-function truncate(text: string, maxLen = 40): string {
-  return text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
-}
-
-function sign(n: number): string {
-  return n >= 0 ? '+' : '';
-}
-
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -84,16 +83,7 @@ function sign(n: number): string {
  * Example: "🟢 OPEN: YES @0.96 on 'Will X happen?' | edge: 2.4% | size: $50"
  */
 export async function sendTradeAlert(trade: PaperTrade): Promise<boolean> {
-  const side = trade.side === 'YES' ? '🟢' : '🔴';
-  const stratLabel = trade.strategy ? ` | _${trade.strategy}_` : '';
-  const edge = (trade.signalConfidence * 100).toFixed(1);
-
-  const text = [
-    `${side} *OPEN: ${trade.side}* @${trade.entryPrice.toFixed(3)}`,
-    `📌 _${truncate(trade.marketId, 32)}_`,
-    `Edge: ${edge}% | Size: $${trade.size.toFixed(0)}${stratLabel}`,
-  ].join('\n');
-
+  const text = formatTradeAlert(trade);
   logger.info('[TradingAlerts] Sending trade alert', { tradeId: trade.id, side: trade.side });
   return sendMessage(text);
 }
@@ -103,20 +93,7 @@ export async function sendTradeAlert(trade: PaperTrade): Promise<boolean> {
  * Example: "📊 P&L: +$2,251 | Win: 66.7% | Open: 3 | Capital: $12,500"
  */
 export async function sendPnlSummary(portfolio: PaperPortfolio): Promise<boolean> {
-  const totalTrades = portfolio.winCount + portfolio.lossCount;
-  const winRate = totalTrades > 0
-    ? ((portfolio.winCount / totalTrades) * 100).toFixed(1)
-    : '0.0';
-
-  const pnlSign = sign(portfolio.totalPnl);
-  const text = [
-    `📊 *Paper P&L Report*`,
-    `Total P&L: *${pnlSign}$${Math.abs(portfolio.totalPnl).toFixed(2)}*`,
-    `Win rate: ${winRate}% (${portfolio.winCount}W / ${portfolio.lossCount}L)`,
-    `Open positions: ${portfolio.positions.length}`,
-    `Capital: $${portfolio.capital.toFixed(2)}`,
-  ].join('\n');
-
+  const text = formatPnlSummary(portfolio);
   logger.info('[TradingAlerts] Sending P&L summary', {
     totalPnl: portfolio.totalPnl,
     openPositions: portfolio.positions.length,
@@ -129,18 +106,7 @@ export async function sendPnlSummary(portfolio: PaperPortfolio): Promise<boolean
  * Example: "🐋 Whale: $5,000 YES @0.72 on market ABC123 | wallet: 0x1234…"
  */
 export async function sendWhaleAlert(whale: WhaleActivity): Promise<boolean> {
-  const side = whale.side === 'YES' ? '🟢' : '🔴';
-  const shortWallet = whale.walletAddress.length > 10
-    ? whale.walletAddress.slice(0, 6) + '…' + whale.walletAddress.slice(-4)
-    : whale.walletAddress;
-
-  const text = [
-    `🐋 *Whale Alert* ${side} ${whale.side}`,
-    `Size: *$${whale.size.toLocaleString()}* @${whale.price.toFixed(3)}`,
-    `Market: \`${truncate(whale.marketId, 32)}\``,
-    `Wallet: \`${shortWallet}\``,
-  ].join('\n');
-
+  const text = formatWhaleAlert(whale);
   logger.info('[TradingAlerts] Sending whale alert', {
     marketId: whale.marketId,
     size: whale.size,
