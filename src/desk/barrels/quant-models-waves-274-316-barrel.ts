@@ -63,3 +63,7 @@ export * as EasleyLopezDePrado2012VpinToxicity from '../easleylopezdeprado2012vp
 export * as Thorp2006KellyCriterion from '../thorp2006kellycriterion/index';
 export * as BacryMuzy2014Hawkes from '../bacrymuzy2014hawkes/index';
 export * as ElEuchRosenbaum2019RoughHeston from '../eluchalanrosenbaum2019roughheston/index';
+export * as AvellanedaStoikov2008Reservation from '../avellanedastoikov2008/index';
+export * as GlostenMilgrom1985SequentialTrade from '../glostenmilgrom1985/index';
+export * as Kyle1985ContinuousAuction from '../kyle1985auction/index';
+

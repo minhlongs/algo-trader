@@ -17,7 +17,25 @@
  * wiring lives in `system-doctor-defaults.ts`.
  */
 
-import { logger } from '../../shared/utils/logger';
+import {
+  errorMessage,
+  fail,
+  formatExecutionModeCheck,
+  formatGatesCheck,
+  formatLedgerCheck,
+  pass,
+  renderDoctorReport,
+} from './system-doctor-helpers';
+
+export {
+  errorMessage,
+  fail,
+  formatExecutionModeCheck,
+  formatGatesCheck,
+  formatLedgerCheck,
+  pass,
+  renderDoctorReport,
+} from './system-doctor-helpers';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -66,28 +84,11 @@ export interface DoctorDeps {
 
 // ── Runner ────────────────────────────────────────────────────────────────────
 
-function fail(id: string, label: string, detail: string): CheckResult {
-  return { id, label, status: 'FAIL', detail };
-}
-
-function pass(id: string, label: string, detail: string): CheckResult {
-  return { id, label, status: 'PASS', detail };
-}
-
 export async function runSystemDoctor(deps: DoctorDeps): Promise<DoctorReport> {
   const checks: CheckResult[] = [];
 
   // 1. Execution mode — READ_ONLY is the safe default; LIVE/PAPER is loud FAIL.
-  const mode = deps.getExecutionMode();
-  checks.push(
-    mode === 'READ_ONLY'
-      ? pass('execution-mode', 'Execution mode', 'READ_ONLY (safe default — no orders can flow)')
-      : fail(
-          'execution-mode',
-          'Execution mode',
-          `expected READ_ONLY, got ${mode} — DO NOT proceed with trading ops`,
-        ),
-  );
+  checks.push(formatExecutionModeCheck(deps.getExecutionMode()));
 
   // 2. Postgres OHLCV store — UNREACHABLE tolerated offline.
   try {
@@ -106,26 +107,14 @@ export async function runSystemDoctor(deps: DoctorDeps): Promise<DoctorReport> {
 
   // 3. Provenance ledger — missing file is a valid fresh-install state.
   try {
-    const ledger = await deps.inspectLedger();
-    if (ledger.state === 'corrupt') {
-      checks.push(fail('provenance-ledger', 'Provenance ledger', 'ledger exists but contains malformed record(s)'));
-    } else {
-      const note = ledger.state === 'missing' ? 'no ledger file yet (fresh install state)' : 'readable';
-      checks.push(pass('provenance-ledger', 'Provenance ledger', `${note} — ${ledger.count} record(s)`));
-    }
+    checks.push(formatLedgerCheck(await deps.inspectLedger()));
   } catch (err) {
     checks.push(fail('provenance-ledger', 'Provenance ledger', `inspection failed: ${errorMessage(err)}`));
   }
 
   // 4. Promotion gates — informational summary; honest about empty data.
   try {
-    const gates = await deps.loadGateSummary();
-    const dataNote = gates.hasPaperData
-      ? 'paper data present'
-      : 'no paper data yet — summary reflects empty trade history';
-    checks.push(
-      pass('promotion-gates', 'Promotion gates', `evaluated ${gates.totalGates} gate(s), ${gates.passedCount} passing (${dataNote})`),
-    );
+    checks.push(formatGatesCheck(await deps.loadGateSummary()));
   } catch (err) {
     checks.push(fail('promotion-gates', 'Promotion gates', `gate evaluation failed: ${errorMessage(err)}`));
   }
@@ -140,25 +129,4 @@ export async function runSystemDoctor(deps: DoctorDeps): Promise<DoctorReport> {
 
   const failed = checks.some((c) => c.status === 'FAIL');
   return { checks, ok: !failed };
-}
-
-export function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-// ── Rendering + CLI entry ─────────────────────────────────────────────────────
-
-/** Print the report via the shared logger (no raw console calls). */
-export function renderDoctorReport(report: DoctorReport): void {
-  logger.info('CashClaw System Doctor');
-  logger.info('─'.repeat(60));
-  for (const check of report.checks) {
-    logger.info(`[${check.status}] ${check.label}: ${check.detail}`);
-  }
-  logger.info('─'.repeat(60));
-  const failed = report.checks.filter((c) => c.status === 'FAIL').length;
-  const unreachable = report.checks.filter((c) => c.status === 'UNREACHABLE').length;
-  const summary = failed > 0 ? `${failed} check(s) FAILED` : 'all checks passed';
-  const suffix = unreachable > 0 ? `, ${unreachable} unreachable (tolerated)` : '';
-  logger.info(`Result: ${summary}${suffix} — exit ${report.ok ? 0 : 1}`);
 }

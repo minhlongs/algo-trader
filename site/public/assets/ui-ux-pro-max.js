@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
  * AlgoTrade OS — UI/UX Pro Max Interactive Command Palette, Theme Switcher & Kill-Switch Runtime
- * Attaches WCAG AAA keyboard navigation, Cmd+K 13-Screen Launcher, 3-Theme Switcher,
+ * Attaches WCAG AAA keyboard navigation, Cmd+K 15-Screen Launcher, 3-Theme Switcher,
  * Bilingual VI/EN toggle, Pause-Pulse accessibility toggle, and <50ms Emergency Kill-Switch Modal.
  */
 (function () {
@@ -20,20 +20,26 @@
     { id: '12', titleEn: 'Walk-Forward & CPCV Backtest Studio', titleVi: 'Xưởng Kiểm Định Walk-Forward & CPCV', href: 'backtest-studio.html' },
     { id: '13', titleEn: 'Smart Order Routing (SOR) Liquidity Mesh', titleVi: 'Mạng Lưới Định Tuyến Lệnh Thông Minh SOR', href: 'order-routing-mesh.html' },
     { id: '14', titleEn: 'Multi-Regime Kelly, SVI & VPIN Cockpit', titleVi: 'Buồng Lái Kelly Đa Chế Độ, SVI & VPIN', href: 'regime-kelly-matrix.html' },
+    { id: '15', titleEn: 'Hawkes Order-Flow, Avellaneda & Kyle Radar', titleVi: 'Radar Dòng Lệnh Hawkes, Avellaneda & Kyle', href: 'hawkes-orderflow-radar.html' },
   ];
 
   const THEMES = ['OBSIDIAN_QUANTUM', 'BENTO_RAAS_GLASS', 'NORDIC_MINIMALIST_QUANT'];
 
+  function applyLanguage(lang) {
+    document.documentElement.setAttribute('data-stitch-lang', lang);
+    document.querySelectorAll('[data-en][data-vi]').forEach(function (el) {
+      el.textContent = lang === 'VI' ? el.getAttribute('data-vi') : el.getAttribute('data-en');
+    });
+  }
+
   function initUiUxProMax() {
     if (!document.body) return;
 
-    // 1. Ensure main landmark has id="main-content" for Skip Link accessibility
     const mainEl = document.querySelector('main') || document.body.firstElementChild;
     if (mainEl && !mainEl.id) {
       mainEl.id = 'main-content';
     }
 
-    // 2. Inject Skip-to-Main-Content link
     if (!document.querySelector('.pro-max-skip-link')) {
       const skip = document.createElement('a');
       skip.href = '#main-content';
@@ -42,23 +48,23 @@
       document.body.prepend(skip);
     }
 
-    // 3. Ensure icon-only buttons have aria-label
     document.querySelectorAll('button').forEach((btn, idx) => {
       if (!btn.getAttribute('aria-label') && !(btn.textContent || '').trim()) {
         btn.setAttribute('aria-label', 'Interactive control ' + (idx + 1));
       }
     });
 
-    // 4. Restore persisted theme & language
     const savedTheme = localStorage.getItem('stitch_theme') || 'OBSIDIAN_QUANTUM';
+    const savedLang = localStorage.getItem('stitch_lang') || 'EN';
     document.documentElement.setAttribute('data-stitch-theme', savedTheme);
+    applyLanguage(savedLang);
 
-    // 5. Inject Pro Max Floating Dock & Command Palette Modal
     const dock = document.createElement('aside');
     dock.className = 'pro-max-dock';
     dock.setAttribute('aria-label', 'UI/UX Pro Max Quick Controls');
     dock.innerHTML = [
-      '<button type="button" id="pro-max-cmd-btn" aria-label="Open 13-Screen Command Palette (Cmd+K)" style="padding:4px 8px;background:#161B24;color:#00F2FE;border:1px solid #1E2430;border-radius:4px;">&#8984;K SCREENS (13)</button>',
+      '<button type="button" id="pro-max-cmd-btn" aria-label="Open 15-Screen Command Palette (Cmd+K)" style="padding:4px 8px;background:#161B24;color:#00F2FE;border:1px solid #1E2430;border-radius:4px;">&#8984;K SCREENS (15)</button>',
+      '<button type="button" id="pro-max-lang-btn" aria-label="Toggle Bilingual Language EN/VI" style="padding:4px 8px;background:#161B24;color:#F59E0B;border:1px solid #1E2430;border-radius:4px;">LANG: ' + savedLang + '</button>',
       '<button type="button" id="pro-max-theme-btn" aria-label="Cycle Design Theme" style="padding:4px 8px;background:#161B24;color:#E3E2E6;border:1px solid #1E2430;border-radius:4px;">THEME: ' + savedTheme.split('_')[0] + '</button>',
       '<button type="button" id="pro-max-motion-btn" aria-label="Toggle Live Pulse Animation" style="padding:4px 8px;background:#161B24;color:#00E599;border:1px solid #1E2430;border-radius:4px;">PULSE: ON</button>',
       '<button type="button" id="pro-max-kill-btn" aria-label="Trigger Emergency Kill-Switch" style="padding:4px 8px;background:rgba(255,59,48,0.18);color:#FF3B30;border:1px solid #FF3B30;border-radius:4px;font-weight:700;">KILL-SWITCH</button>',
@@ -70,7 +76,7 @@
     modal.id = 'pro-max-cmd-modal';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
-    modal.setAttribute('aria-label', 'AlgoTrade OS 13-Screen Command Palette');
+    modal.setAttribute('aria-label', 'AlgoTrade OS 15-Screen Command Palette');
     const linksHtml = SCREENS.map(function (s) {
       return (
         '<a href="' + s.href + '" style="display:flex;justify-content:space-between;padding:8px 10px;border:1px solid #1E2430;border-radius:4px;background:#141821;color:#F8FAFC;text-decoration:none;font-size:12px;">' +
@@ -83,14 +89,13 @@
     modal.innerHTML =
       '<div style="width:100%;max-width:680px;background:#0F1218;border:1px solid #00F2FE;border-radius:4px;padding:16px;font-family:JetBrains Mono,monospace;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-      '<span style="color:#00F2FE;font-weight:700;font-size:13px;">ALGOTRADE OS // 13-SCREEN STITCH COMMAND PALETTE (UI/UX PRO MAX)</span>' +
+      '<span style="color:#00F2FE;font-weight:700;font-size:13px;">ALGOTRADE OS // 15-SCREEN STITCH COMMAND PALETTE (UI/UX PRO MAX v4)</span>' +
       '<button type="button" id="pro-max-close-modal" aria-label="Close Command Palette" style="padding:2px 8px;background:#161B24;color:#94A3B8;border:1px solid #1E2430;border-radius:4px;">ESC</button>' +
       '</div>' +
       '<div style="display:grid;gap:6px;max-height:68vh;overflow-y:auto;">' + linksHtml + '</div>' +
       '</div>';
     document.body.appendChild(modal);
 
-    // Event bindings
     document.getElementById('pro-max-cmd-btn')?.addEventListener('click', function () {
       modal.classList.add('open');
     });
@@ -107,6 +112,14 @@
       } else if (e.key === 'Escape') {
         modal.classList.remove('open');
       }
+    });
+
+    document.getElementById('pro-max-lang-btn')?.addEventListener('click', function (e) {
+      const curr = document.documentElement.getAttribute('data-stitch-lang') || 'EN';
+      const next = curr === 'EN' ? 'VI' : 'EN';
+      localStorage.setItem('stitch_lang', next);
+      applyLanguage(next);
+      e.currentTarget.textContent = 'LANG: ' + next;
     });
 
     document.getElementById('pro-max-theme-btn')?.addEventListener('click', function (e) {

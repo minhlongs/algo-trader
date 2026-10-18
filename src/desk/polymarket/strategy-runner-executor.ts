@@ -40,6 +40,31 @@ export function createRunnerStrategyDeps(proxy: LiveOrderManagerProxy): Strategy
   };
 }
 
+export function createTickTriggerPayload(): PriceUpdatePayload {
+  return { tokenId: 'tick-trigger', bid: 0, ask: 0, timestamp: Date.now() };
+}
+
+export function startHealthCheckTimer(
+  isRunning: () => boolean,
+  strategyName: string,
+  getExecutions: () => number,
+): NodeJS.Timeout {
+  const timer = setInterval(() => {
+    if (!isRunning()) return;
+    logger.debug('Health check', 'StrategyRunner', { strategy: strategyName, executions: getExecutions() });
+  }, 60_000);
+  timer.unref();
+  return timer;
+}
+
+export function clearRunnerTimers(
+  healthCheckTimer: NodeJS.Timeout | null,
+  tickTimer: NodeJS.Timeout | null,
+): void {
+  if (healthCheckTimer) clearInterval(healthCheckTimer);
+  if (tickTimer) clearInterval(tickTimer);
+}
+
 export async function processPriceUpdate(
   ctx: StrategyExecutionContext,
   payload: PriceUpdatePayload,

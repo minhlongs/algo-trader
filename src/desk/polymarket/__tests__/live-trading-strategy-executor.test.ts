@@ -15,12 +15,7 @@ function makeRiskManager(): RiskGateManager {
 }
 
 function makeTickData(riskManager: RiskGateManager): TickContext {
-  return {
-    capitalUsdc: 1000,
-    allocatedUsdc: 500,
-    positions: new Map(),
-    riskManager,
-  };
+  return { capitalUsdc: 1000, allocatedUsdc: 500, positions: new Map(), riskManager };
 }
 
 describe('LiveTradingStrategyExecutor', () => {
@@ -39,9 +34,7 @@ describe('LiveTradingStrategyExecutor', () => {
   describe('executeStrategyTick', () => {
     it('executes the tick and returns success when the risk gate allows', async () => {
       const tickFn = vi.fn().mockResolvedValue(undefined);
-
       const result = await executor.executeStrategyTick('strat-1', tickFn, tickData);
-
       expect(result).toEqual({ success: true });
       expect(tickFn).toHaveBeenCalledOnce();
       expect(tickFn).toHaveBeenCalledWith(tickData);
@@ -49,14 +42,9 @@ describe('LiveTradingStrategyExecutor', () => {
     });
 
     it('skips the tick and logs when the risk gate blocks', async () => {
-      (riskManager.check as ReturnType<typeof vi.fn>).mockResolvedValue({
-        allowed: false,
-        reason: 'halt mode active',
-      });
+      (riskManager.check as ReturnType<typeof vi.fn>).mockResolvedValue({ allowed: false, reason: 'halt mode active' });
       const tickFn = vi.fn();
-
       const result = await executor.executeStrategyTick('strat-1', tickFn, tickData);
-
       expect(result).toEqual({ success: false, error: 'halt mode active' });
       expect(tickFn).not.toHaveBeenCalled();
       expect(log).toHaveBeenCalledWith(
@@ -68,9 +56,7 @@ describe('LiveTradingStrategyExecutor', () => {
 
     it('catches a throwing tick, returns the error, and tracks the error count', async () => {
       const tickFn = vi.fn().mockRejectedValue(new Error('boom'));
-
       const result = await executor.executeStrategyTick('strat-1', tickFn, tickData);
-
       expect(result).toEqual({ success: false, error: 'boom' });
       expect(log).toHaveBeenCalledWith(
         'Strategy tick failed for strat-1',
@@ -83,14 +69,9 @@ describe('LiveTradingStrategyExecutor', () => {
 
     it('stringifies non-Error throwables', async () => {
       const tickFn = vi.fn().mockRejectedValue('plain failure');
-
       const result = await executor.executeStrategyTick('strat-1', tickFn, tickData);
-
       expect(result).toEqual({ success: false, error: 'plain failure' });
-      expect(executor.getStrategyErrors().get('strat-1')).toEqual({
-        count: 1,
-        lastError: 'plain failure',
-      });
+      expect(executor.getStrategyErrors().get('strat-1')).toEqual({ count: 1, lastError: 'plain failure' });
     });
 
     it('accumulates error counts across consecutive failures', async () => {
@@ -98,7 +79,6 @@ describe('LiveTradingStrategyExecutor', () => {
       await executor.executeStrategyTick('s', tickFn, tickData);
       await executor.executeStrategyTick('s', tickFn, tickData);
       await executor.executeStrategyTick('s', tickFn, tickData);
-
       expect(executor.getStrategyErrors().get('s')).toEqual({ count: 3, lastError: 'a' });
     });
 
@@ -106,10 +86,8 @@ describe('LiveTradingStrategyExecutor', () => {
       const failing = vi.fn().mockRejectedValue(new Error('a'));
       await executor.executeStrategyTick('s', failing, tickData);
       await executor.executeStrategyTick('s', failing, tickData);
-
       const ok = vi.fn().mockResolvedValue(undefined);
       await executor.executeStrategyTick('s', ok, tickData);
-
       expect(executor.getStrategyErrors().has('s')).toBe(false);
     });
   });
@@ -122,7 +100,6 @@ describe('LiveTradingStrategyExecutor', () => {
       executor.recordPaperTrade('s');
       executor.recordPaperTrade('s');
       executor.recordPaperTrade('other');
-
       const stats = executor.getPaperStats();
       expect(stats.get('s')).toEqual({ paperTrades: 2, paperPnl: 7 });
       expect(stats.get('other')).toEqual({ paperTrades: 1, paperPnl: 5 });
@@ -130,11 +107,7 @@ describe('LiveTradingStrategyExecutor', () => {
 
     it('restorePaperStats replaces the stats map wholesale', () => {
       executor.updatePaperPnl('s', 100);
-      executor.restorePaperStats([
-        ['a', { paperTrades: 1, paperPnl: 2 }],
-        ['b', { paperTrades: 3, paperPnl: -4 }],
-      ]);
-
+      executor.restorePaperStats([['a', { paperTrades: 1, paperPnl: 2 }], ['b', { paperTrades: 3, paperPnl: -4 }]]);
       const stats = executor.getPaperStats();
       expect(stats.size).toBe(2);
       expect(stats.has('s')).toBe(false);
@@ -149,7 +122,6 @@ describe('LiveTradingStrategyExecutor', () => {
       await executor.executeStrategyTick('s', failing, tickData);
       expect(executor.getPaperStats().size).toBe(1);
       expect(executor.getStrategyErrors().size).toBe(1);
-
       executor.clearStats();
       expect(executor.getPaperStats().size).toBe(0);
       expect(executor.getStrategyErrors().size).toBe(0);

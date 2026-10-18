@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlgoTrade OS | Screen #15 — Hawkes Order-Flow Criticality, Avellaneda-Stoikov &amp; Kyle Lambda Radar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css" />
+  <style>
+    :root {
+      --bg-void: #08090C;
+      --bg-card: #12151C;
+      --bg-elevated: #1A1F2B;
+      --border-hairline: #1E2430;
+      --cyan: #00F2FE;
+      --emerald: #00E599;
+      --amber: #FFB800;
+      --crimson: #FF3B30;
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-void);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: #0D1017;
+      border-bottom: 1px solid var(--border-hairline);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+    .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 4px 8px;
+      border: 1px solid var(--border-hairline);
+      border-radius: 4px;
+    }
+    .nav-links a.active {
+      color: var(--cyan);
+      border-color: var(--cyan);
+      background: rgba(0, 242, 254, 0.08);
+    }
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+      padding: 16px 20px 72px;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-hairline);
+      border-radius: 4px;
+      padding: 16px;
+    }
+    .col-12 { grid-column: span 12; }
+    .col-8 { grid-column: span 8; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-3 { grid-column: span 3; }
+    @media (max-width: 1024px) {
+      .col-8, .col-6, .col-4, .col-3 { grid-column: span 12; }
+    }
+    h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+    .kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    th, td {
+      padding: 9px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-hairline);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    th { color: var(--text-secondary); font-weight: 600; text-transform: uppercase; font-size: 11px; }
+    .pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .pill-emerald { background: rgba(0, 229, 153, 0.14); color: var(--emerald); border: 1px solid rgba(0, 229, 153, 0.4); }
+    .pill-cyan { background: rgba(0, 242, 254, 0.14); color: var(--cyan); border: 1px solid rgba(0, 242, 254, 0.4); }
+    .pill-amber { background: rgba(255, 184, 0, 0.14); color: var(--amber); border: 1px solid rgba(255, 184, 0, 0.4); }
+    .pill-crimson { background: rgba(255, 59, 48, 0.14); color: var(--crimson); border: 1px solid rgba(255, 59, 48, 0.4); }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+  <header class="topbar" role="banner">
+    <div>
+      <strong style="color:var(--cyan);">ALGOTRADE OS // SCREEN #15</strong>
+      <span style="color:var(--text-secondary);margin-left:10px;" data-en="HAWKES ORDER-FLOW CRITICALITY, AVELLANEDA-STOIKOV &amp; KYLE LAMBDA RADAR" data-vi="RADAR DÒNG LỆNH TỰ KÍCH THÍCH HAWKES, AVELLANEDA-STOIKOV &amp; KYLE LAMBDA">HAWKES ORDER-FLOW CRITICALITY, AVELLANEDA-STOIKOV &amp; KYLE LAMBDA RADAR</span>
+    </div>
+    <nav class="nav-links" aria-label="Stitch Suite Navigation">
+      <a href="dashboard.html">01 Dashboard</a>
+      <a href="quant-terminal.html">02 Quant</a>
+      <a href="order-routing-mesh.html">13 SOR Mesh</a>
+      <a href="regime-kelly-matrix.html">14 Regime Kelly</a>
+      <a href="hawkes-orderflow-radar.html" class="active">15 Hawkes Radar</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="bento-grid" role="main" aria-live="polite">
+    <!-- Top KPI Strip -->
+    <section class="card col-3" aria-label="Hawkes Branching Ratio">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="HAWKES BRANCHING RATIO n* (BACRY-MUZY 2014)" data-vi="TỶ SỐ PHÂN NHÁNH HAWKES n* (BACRY-MUZY 2014)">HAWKES BRANCHING RATIO n* (BACRY-MUZY 2014)</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">0.7125 <span class="pill pill-emerald">SUB-CRITICAL</span></div>
+      <div class="kpi-sub mono">Endogenous Flow Share: 71.25% | Stationarity: n* &lt; 1.0</div>
+    </section>
+
+    <section class="card col-3" aria-label="Avellaneda-Stoikov Reservation Price">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="AVELLANEDA-STOIKOV RESERVATION r(s,q,t)" data-vi="GIÁ DỰ TRỮ AVELLANEDA-STOIKOV r(s,q,t)">AVELLANEDA-STOIKOV RESERVATION r(s,q,t)</div>
+      <div class="kpi-value mono" style="color:var(--cyan);">$94,249.31 <span class="pill pill-cyan">q = +4.5 BTC</span></div>
+      <div class="kpi-sub mono">Mid: $94,250.00 | Optimal Spread: 1.48 bps</div>
+    </section>
+
+    <section class="card col-3" aria-label="Glosten-Milgrom Informed Belief">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="GLOSTEN-MILGROM POSTERIOR BELIEF (1985)" data-vi="XÁC SUẤT HẬU NGHIỆM GLOSTEN-MILGROM (1985)">GLOSTEN-MILGROM POSTERIOR BELIEF (1985)</div>
+      <div class="kpi-value mono" style="color:var(--amber);">0.5920 <span class="pill pill-amber">INFORMED SKEW</span></div>
+      <div class="kpi-sub mono">Adverse Selection Half-Spread: +0.64 bps</div>
+    </section>
+
+    <section class="card col-3" aria-label="Kyle Lambda Market Depth">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="KYLE (1985) CONTINUOUS AUCTION LAMBDA" data-vi="HỆ SỐ TÁC ĐỘNG GIÁ KYLE LAMBDA (1985)">KYLE (1985) CONTINUOUS AUCTION LAMBDA</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">1.42 bps/$1M <span class="pill pill-emerald">DEEP LIQUIDITY</span></div>
+      <div class="kpi-sub mono">Noise-to-Signal Depth (1/λ): $704.2M per 1%</div>
+    </section>
+
+    <!-- Multi-Venue Hawkes Self-Exciting Intensity Matrix -->
+    <section class="card col-8" aria-label="Multi-Venue Hawkes Order-Flow Matrix">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;" data-en="Multi-Venue Hawkes Mutually-Exciting Intensity &amp; Microstructure Matrix" data-vi="Ma Trận Cường Độ Tự Kích Thích Đa Sàn Hawkes &amp; Vi Cấu Trúc">Multi-Venue Hawkes Mutually-Exciting Intensity &amp; Microstructure Matrix</h2>
+        <span class="pill pill-cyan mono">WAVES 334–338 LIVE</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Venue Node</th>
+            <th>Baseline μ (Hz)</th>
+            <th>Branching Ratio n*</th>
+            <th>Live Intensity λ(t)</th>
+            <th>Kyle λ (bps/$1M)</th>
+            <th>G-M Belief μ_t</th>
+            <th>Criticality Gate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Binance Perp (TY3)</td>
+            <td>42.5 Hz</td>
+            <td>0.6800</td>
+            <td style="color:var(--emerald);">132.8 Hz</td>
+            <td>1.42 bps</td>
+            <td>0.5600</td>
+            <td><span class="pill pill-emerald">SUB_CRITICAL</span></td>
+          </tr>
+          <tr>
+            <td>OKX Perp (HKG)</td>
+            <td>28.0 Hz</td>
+            <td>0.7400</td>
+            <td style="color:var(--amber);">107.7 Hz</td>
+            <td>1.85 bps</td>
+            <td>0.6100</td>
+            <td><span class="pill pill-amber">NEAR_CRITICAL</span></td>
+          </tr>
+          <tr>
+            <td>Bybit Linear (SIN)</td>
+            <td>24.2 Hz</td>
+            <td>0.6400</td>
+            <td style="color:var(--emerald);">67.2 Hz</td>
+            <td>2.10 bps</td>
+            <td>0.5300</td>
+            <td><span class="pill pill-emerald">SUB_CRITICAL</span></td>
+          </tr>
+          <tr>
+            <td>Hyperliquid L1</td>
+            <td>19.8 Hz</td>
+            <td>0.7900</td>
+            <td style="color:var(--amber);">94.3 Hz</td>
+            <td>2.35 bps</td>
+            <td>0.6600</td>
+            <td><span class="pill pill-amber">NEAR_CRITICAL</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Avellaneda-Stoikov Reservation Skew & Quote Ladder SVG -->
+    <section class="card col-4" aria-label="Avellaneda-Stoikov Inventory Skew Curve">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h2 style="font-size:15px;" data-en="Avellaneda-Stoikov (2008) Quote Skew" data-vi="Độ Lệch Báo Giá Tồn Kho Avellaneda-Stoikov">Avellaneda-Stoikov (2008) Quote Skew</h2>
+        <span class="pill pill-emerald mono">γ = 0.15</span>
+      </div>
+      <svg viewBox="0 0 360 175" width="100%" height="175" role="img" aria-label="Avellaneda-Stoikov Optimal Bid and Ask Reservation Skew">
+        <rect width="360" height="175" fill="#0B0E14" rx="4" />
+        <line x1="30" y1="88" x2="340" y2="88" stroke="#1E2430" stroke-dasharray="3 3" />
+        <!-- Optimal Ask Curve -->
+        <path d="M 30 42 Q 180 58 330 82" fill="none" stroke="#FF3B30" stroke-width="2.2" />
+        <!-- Reservation Price r(s,q,t) -->
+        <path d="M 30 68 Q 180 86 330 112" fill="none" stroke="#00F2FE" stroke-width="2.2" stroke-dasharray="4 2" />
+        <!-- Optimal Bid Curve -->
+        <path d="M 30 96 Q 180 114 330 142" fill="none" stroke="#00E599" stroke-width="2.2" />
+        <circle cx="215" cy="92" r="4.5" fill="#00F2FE" />
+        <text x="36" y="24" fill="#94A3B8" font-family="JetBrains Mono" font-size="10">Ask r + δa: $94,256.28 | Bid r - δb: $94,242.34</text>
+        <text x="36" y="164" fill="#00E599" font-family="JetBrains Mono" font-size="10">Inventory q ∈ [-10, +10] BTC → Skew -0.69 USD</text>
+      </svg>
+    </section>
+  </main>
+
+  <script src="assets/ui-ux-pro-max.js" defer></script>
+</body>
+</html>

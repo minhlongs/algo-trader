@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 /**
- * Stitch UI Cockpit Engine & Design System Facade (2026.3-PRO-MAX)
- * Re-exports themes, SOR Mesh (#13), Regime-Kelly Matrix (#14), and UI/UX Pro Max Auditor.
+ * Stitch UI Cockpit Engine & Design System Facade (2026.4-PRO-MAX)
+ * Re-exports themes, SOR Mesh (#13), Regime-Kelly Matrix (#14), Hawkes Radar (#15), and Auditor.
  */
 
 import { ComplianceAuditLogger, type ChainedAuditRecord } from '../security/audit-logger';
 import { StrategyMarketplaceManager } from '../strategies/marketplace';
 import { BillingMeter, TIER_ENTITLEMENTS } from './billing-meter';
 import type { TierLevel } from './catalog';
+import { buildHawkesOrderFlowRadarSnapshot } from './stitch-hawkes-radar-telemetry';
 import {
   buildRegimeKellyCockpitSnapshot,
   type MarketRegimeState,
@@ -25,6 +26,7 @@ import {
 export * from './stitch-ui-themes';
 export * from './stitch-sor-mesh-telemetry';
 export * from './stitch-regime-kelly-telemetry';
+export * from './stitch-hawkes-radar-telemetry';
 export * from './ui-ux-pro-max-auditor';
 
 export class StitchUiCockpitEngine {
@@ -75,5 +77,9 @@ export class StitchUiCockpitEngine {
     portfolioEquityUsd = 1248500,
   ) {
     return buildRegimeKellyCockpitSnapshot(activeRegime, portfolioEquityUsd);
+  }
+
+  public getHawkesRadarSnapshot(inventoryUnits = 4.5, riskAversionGamma = 0.15) {
+    return buildHawkesOrderFlowRadarSnapshot(inventoryUnits, riskAversionGamma);
   }
 }

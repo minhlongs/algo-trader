@@ -4,11 +4,15 @@
  */
 
 import { referralRepository } from './referral-repository';
-import { commissionCalculator } from './commission-calculator';
 import { fraudDetector, FraudDetector, FraudDetectionConfig } from './fraud-detector';
 import { logger } from '../../shared/utils/logger';
 import { runMonthlyPayout } from './referral-payout-job';
-import { generateUniqueCode, isValidCodeFormat } from './referral-code-helpers';
+import {
+  generateUniqueCode,
+  isValidCodeFormat,
+  resolveAndValidateCode,
+  triggerAsyncFraudAnalysis,
+} from './referral-code-helpers';
 import { processReferralCommission } from './commission-processor';
 import type {
   ReferralCode,
@@ -31,16 +35,12 @@ export class ReferralService {
   }
 
   /** Register a referral code for a tenant */
-  async registerReferralCode(
-    tenantId: string,
-    customCode?: string,
-    maxUses?: number
-  ): Promise<ReferralCode> {
-    const code = customCode || this.generateUniqueCode();
-
-    if (!this.isValidCodeFormat(code)) {
-      throw new Error('Invalid referral code format. Must be 8 alphanumeric characters.');
-    }
+  async registerReferralCode(tenantId: string, customCode?: string, maxUses?: number): Promise<ReferralCode> {
+    const code = resolveAndValidateCode(
+      customCode,
+      () => this.generateUniqueCode(),
+      (c) => this.isValidCodeFormat(c),
+    );
 
     await referralRepository.createReferralCode(code, tenantId, true, maxUses);
     const createdCode = await referralRepository.getReferralCodeByTenant(tenantId);
@@ -50,29 +50,13 @@ export class ReferralService {
 
   /** Track a referral click with fraud detection */
   async trackReferralClick(
-    code: string,
-    ip: string,
-    userAgent: string,
-    metadata: Record<string, unknown> = {}
+    code: string, ip: string, userAgent: string, metadata: Record<string, unknown> = {},
   ): Promise<ReferralClick> {
     const isValid = await referralRepository.isReferralCodeValid(code);
     if (!isValid) throw new Error('Invalid or inactive referral code');
 
     const trackingId = await referralRepository.trackClick(code, ip, userAgent, metadata);
-
-    Promise.resolve(this.fraudDetector.detectFraud(trackingId, ip, userAgent))
-      .then(result => {
-        if (!result) return;
-        logger.info('[Referral] Fraud analysis complete', {
-          trackingId,
-          score: result.score,
-          isBlocked: result.isBlocked,
-          reasons: result.reasons,
-        });
-      })
-      .catch(err => {
-        logger.error('[Referral] Fraud detection error', { error: err, trackingId });
-      });
+    triggerAsyncFraudAnalysis(this.fraudDetector, trackingId, ip, userAgent);
 
     const tracking = await referralRepository.getTrackingById(trackingId);
     if (!tracking) throw new Error('Failed to retrieve tracking record');
@@ -80,20 +64,14 @@ export class ReferralService {
   }
 
   /** Mark a conversion (tenant signed up) */
-  async recordConversion(
-    trackingId: string,
-    convertedTenantId: string,
-    convertedUserId: string
-  ): Promise<void> {
+  async recordConversion(trackingId: string, convertedTenantId: string, convertedUserId: string): Promise<void> {
     await referralRepository.markConversion(trackingId, convertedTenantId, convertedUserId);
 
     const tracking = await referralRepository.getTrackingById(trackingId);
     if (!tracking) throw new Error('Tracking record not found');
 
     logger.info('[Referral] Conversion recorded', {
-      trackingId,
-      convertedTenantId,
-      referredBy: tracking.code,
+      trackingId, convertedTenantId, referredBy: tracking.code,
     });
   }
 
@@ -104,10 +82,7 @@ export class ReferralService {
 
   /** Get commission records for a tenant */
   async getCommissions(
-    tenantId: string,
-    status?: CommissionStatus,
-    limit: number = 50,
-    offset: number = 0
+    tenantId: string, status?: CommissionStatus, limit: number = 50, offset: number = 0,
   ): Promise<{ commissions: CommissionRecord[]; total: number }> {
     return referralRepository.getCommissions(tenantId, status, limit, offset);
   }
@@ -119,9 +94,7 @@ export class ReferralService {
 
   /** Run monthly payout job */
   async runMonthlyPayout(): Promise<{
-    processed: number;
-    totalAmount: number;
-    errors: Array<{ tenantId: string; error: string }>;
+    processed: number; totalAmount: number; errors: Array<{ tenantId: string; error: string }>;
   }> {
     return runMonthlyPayout();
   }
@@ -154,9 +127,7 @@ export class ReferralService {
 
   /** Run fraud detection batch job */
   async runFraudDetection(limit: number = 1000): Promise<{
-    analyzed: number;
-    flagged: number;
-    averageScore: number;
+    analyzed: number; flagged: number; averageScore: number;
   }> {
     return fraudDetector.batchAnalyzeClicks(limit);
   }

@@ -15,18 +15,15 @@ import { createTickTimer, type TickTimerContext } from './strategy-runner-tick-t
 import { createEventBusSubscription, type EventHandlerContext } from './strategy-runner-event-handlers';
 import { buildRunnerStatusSnapshot } from './strategy-runner-status-builder';
 import {
-  processPriceUpdate,
-  deriveStrategyName,
-  createRunnerStrategyDeps,
+  processPriceUpdate, deriveStrategyName, createRunnerStrategyDeps,
+  createTickTriggerPayload, startHealthCheckTimer, clearRunnerTimers,
   type StrategyExecutionContext,
 } from './strategy-runner-executor';
 import type { StrategyEntryConstructor } from './strategy-registry-types';
 
-// Re-export for backward compatibility
 export type { StrategyRunnerConfig, RunnerStatus, StrategyConstructor } from './strategy-runner-types';
 export { DEFAULT_RUNNER_CONFIG, GammaClientImpl } from './strategy-runner-types';
-export { processPriceUpdate, deriveStrategyName, createRunnerStrategyDeps };
-export type { StrategyExecutionContext };
+export * from './strategy-runner-executor';
 
 export class StrategyRunner {
   private strategyClass: StrategyConstructor;
@@ -67,29 +64,22 @@ export class StrategyRunner {
   async start(): Promise<void> {
     if (this.status === 'running') return;
     this.status = 'running';
-
-    if (this.orchestrator.getStatus() !== 'running') {
-      await this.orchestrator.start();
-    }
+    if (this.orchestrator.getStatus() !== 'running') await this.orchestrator.start();
 
     this.bridge = new StrategyLiveBridge(this.orchestrator);
     this.proxy = new LiveOrderManagerProxy(this.bridge, this.strategyName);
-
     const deps = createRunnerStrategyDeps(this.proxy);
     this.strategy = new this.strategyClass(deps, this.config.strategyConfig, this.strategyName as StrategyName);
 
     this.setupEventBus();
-
     if (this.config.tickIntervalMs && this.config.tickIntervalMs > 0) {
       this.tickTimer = this.createTickTimer();
     }
-
-    this.healthCheckTimer = setInterval(() => this.healthCheck(), 60_000);
-    this.healthCheckTimer.unref();
-
+    this.healthCheckTimer = startHealthCheckTimer(
+      () => this.status === 'running', this.strategyName, () => this.executionCount,
+    );
     logger.info('Strategy runner started', 'StrategyRunner', {
-      strategy: this.strategyName,
-      mode: this.orchestrator.getMode(),
+      strategy: this.strategyName, mode: this.orchestrator.getMode(),
     });
   }
 
@@ -97,19 +87,17 @@ export class StrategyRunner {
     this.status = 'stopped';
     this.unsubscribeFromEvents?.();
     this.unsubscribeFromEvents = null;
-    if (this.healthCheckTimer) { clearInterval(this.healthCheckTimer); this.healthCheckTimer = null; }
-    if (this.tickTimer) { clearInterval(this.tickTimer); this.tickTimer = null; }
-    if (this.ownsOrchestrator) { await this.orchestrator.stop(); }
+    clearRunnerTimers(this.healthCheckTimer, this.tickTimer);
+    this.healthCheckTimer = null;
+    this.tickTimer = null;
+    if (this.ownsOrchestrator) await this.orchestrator.stop();
     logger.info('Strategy runner stopped', 'StrategyRunner', { executions: this.executionCount });
   }
 
   private buildExecutionBase() {
     return {
-      status: this.status,
-      strategy: this.strategy,
-      strategyName: this.strategyName,
-      executionCount: this.executionCount,
-      lastExecutionTime: this.lastExecutionTime,
+      status: this.status, strategy: this.strategy, strategyName: this.strategyName,
+      executionCount: this.executionCount, lastExecutionTime: this.lastExecutionTime,
       trackedTokens: this.trackedTokens,
       updateLastExecutionTime: (time: number) => { this.lastExecutionTime = time; },
       incrementExecutionCount: () => { this.executionCount++; },
@@ -126,40 +114,28 @@ export class StrategyRunner {
 
   private createTickTimer(): NodeJS.Timeout {
     const ctx: TickTimerContext = {
-      status: this.status,
-      strategyName: this.strategyName,
-      tickIntervalMs: this.config.tickIntervalMs!,
-      trackedTokens: this.trackedTokens,
+      status: this.status, strategyName: this.strategyName,
+      tickIntervalMs: this.config.tickIntervalMs!, trackedTokens: this.trackedTokens,
       execute: async () => {
-        if (this.trackedTokens.size === 0) { this.trackedTokens.add('tick-trigger'); }
-        await this.handlePriceUpdate({ tokenId: 'tick-trigger', bid: 0, ask: 0, timestamp: Date.now() });
+        if (this.trackedTokens.size === 0) this.trackedTokens.add('tick-trigger');
+        await this.handlePriceUpdate(createTickTriggerPayload());
       },
     };
     return createTickTimer(ctx).start();
   }
 
   private async handlePriceUpdate(payload: PriceUpdatePayload): Promise<void> {
-    const ctx: StrategyExecutionContext = {
+    return processPriceUpdate({
       ...this.buildExecutionBase(),
       minExecutionIntervalMs: this.config.minExecutionIntervalMs,
       maxTicks: this.config.maxTicks,
-    };
-    return processPriceUpdate(ctx, payload);
-  }
-
-  private healthCheck(): void {
-    if (this.status !== 'running') return;
-    logger.debug('Health check', 'StrategyRunner', { strategy: this.strategyName, executions: this.executionCount });
+    }, payload);
   }
 
   getStatus() {
     return buildRunnerStatusSnapshot({
-      status: this.status,
-      strategyName: this.strategyName,
-      executionCount: this.executionCount,
-      trackedTokens: this.getTrackedTokens(),
-      orchestrator: this.orchestrator,
-      proxy: this.proxy,
+      status: this.status, strategyName: this.strategyName, executionCount: this.executionCount,
+      trackedTokens: this.getTrackedTokens(), orchestrator: this.orchestrator, proxy: this.proxy,
     });
   }
 }

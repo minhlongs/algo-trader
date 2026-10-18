@@ -7,31 +7,18 @@
  *   const cluster = getRedisClusterClient();
  */
 
-import { Cluster, ClusterNode, ClusterOptions } from 'ioredis';
+import { Cluster } from 'ioredis';
 import { logger } from '../shared/utils/logger';
+import {
+  DEFAULT_CLUSTER_CONFIG,
+  buildClusterOptions,
+  parseClusterInfoOutput,
+  type RedisClusterConfig,
+  type ClusterHealthStatus,
+} from './cluster-config-helpers';
 
-export interface RedisClusterConfig {
-  nodes: ClusterNode[];
-  password?: string;
-  maxRetriesPerRequest: number;
-  retryDelayOnFailover: number;
-  clusterRetryDelayOnFailover: number;
-}
-
-const DEFAULT_CLUSTER_CONFIG: RedisClusterConfig = {
-  nodes: [
-    { host: process.env.REDIS_CLUSTER_HOST || '127.0.0.1', port: 7000 },
-    { host: process.env.REDIS_CLUSTER_HOST || '127.0.0.1', port: 7001 },
-    { host: process.env.REDIS_CLUSTER_HOST || '127.0.0.1', port: 7002 },
-    { host: process.env.REDIS_CLUSTER_HOST || '127.0.0.1', port: 7003 },
-    { host: process.env.REDIS_CLUSTER_HOST || '127.0.0.1', port: 7004 },
-    { host: process.env.REDIS_CLUSTER_HOST || '127.0.0.1', port: 7005 },
-  ],
-  password: process.env.REDIS_CLUSTER_PASSWORD,
-  maxRetriesPerRequest: 10,
-  retryDelayOnFailover: 500,
-  clusterRetryDelayOnFailover: 2000,
-};
+export type { RedisClusterConfig, ClusterHealthStatus };
+export { DEFAULT_CLUSTER_CONFIG, buildClusterOptions, parseClusterInfoOutput };
 
 // Cluster client instance
 let clusterClient: Cluster | null = null;
@@ -41,29 +28,7 @@ let clusterClient: Cluster | null = null;
  */
 export function createRedisClusterClient(): Cluster {
   const config = DEFAULT_CLUSTER_CONFIG;
-
-  const options: ClusterOptions = {
-    clusterRetryStrategy: (times: number) => {
-      // Exponential backoff: 100ms, 200ms, 400ms, 800ms, max 2000ms
-      const delay = Math.min(100 * Math.pow(2, times), 2000);
-      logger.debug(`[RedisCluster] Retry attempt ${times}, delay: ${delay}ms`);
-      return delay;
-    },
-    retryDelayOnFailover: config.retryDelayOnFailover,
-    slotsRefreshInterval: 300000,
-    slotsRefreshTimeout: 2000,
-    redisOptions: {
-      password: config.password,
-      connectTimeout: 5000,
-      commandTimeout: 2000,
-      maxRetriesPerRequest: config.maxRetriesPerRequest,
-      keepAlive: 10000,
-      noDelay: true,
-    },
-    // Enable reading from replicas for better read performance
-    scaleReads: 'slave', // Options: 'all', 'master', 'slave'
-  };
-
+  const options = buildClusterOptions(config);
   const client = new Cluster(config.nodes, options);
 
   client.on('error', (err) => {
@@ -105,39 +70,12 @@ export function getRedisClusterClient(): Cluster {
  * Check cluster health
  * Returns cluster info including slot coverage and node status
  */
-export async function getClusterHealth(): Promise<{
-  healthy: boolean;
-  slotsOk: number;
-  slotsTotal: number;
-  knownNodes: number;
-  state: string;
-}> {
+export async function getClusterHealth(): Promise<ClusterHealthStatus> {
   const cluster = getRedisClusterClient();
 
   try {
     const clusterInfo = await cluster.cluster('INFO');
-    const lines = clusterInfo.split('\n');
-
-    const result = {
-      healthy: false,
-      slotsOk: 0,
-      slotsTotal: 16384,
-      knownNodes: 0,
-      state: 'unknown',
-    };
-
-    for (const line of lines) {
-      if (line.startsWith('cluster_state:')) {
-        result.state = line.split(':')[1].trim();
-        result.healthy = result.state === 'ok';
-      } else if (line.startsWith('cluster_slots_ok:')) {
-        result.slotsOk = parseInt(line.split(':')[1].trim());
-      } else if (line.startsWith('cluster_known_nodes:')) {
-        result.knownNodes = parseInt(line.split(':')[1].trim());
-      }
-    }
-
-    return result;
+    return parseClusterInfoOutput(clusterInfo);
   } catch (error) {
     logger.error('[RedisCluster] Health check failed:', { error });
     return {
@@ -162,3 +100,4 @@ export async function closeRedisClusterClient(): Promise<void> {
 }
 
 export { Cluster };
+

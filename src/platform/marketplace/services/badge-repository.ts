@@ -6,6 +6,23 @@
 import { getDbClient } from '../../../shared/db/postgres-client';
 import { logger } from '../../../shared/utils/logger';
 import type { BadgeKey, BadgeDefinition } from './badge-service';
+import {
+  daysSince,
+  computeSharpePercentileFromRows,
+  mapListingForBadgingRow,
+  mapStrategyDataRows,
+  mapBadgeDefinitionRow,
+  type StrategyDataForBadging,
+} from './badge-repository-helpers';
+
+export {
+  daysSince,
+  computeSharpePercentileFromRows,
+  mapListingForBadgingRow,
+  mapStrategyDataRows,
+  mapBadgeDefinitionRow,
+  type StrategyDataForBadging,
+};
 
 /**
  * Get the percentile rank of a strategy's Sharpe ratio among all approved strategies.
@@ -30,10 +47,10 @@ export async function getSharpePercentile(
       `SELECT COUNT(*) as cnt FROM marketplace_strategies WHERE status = 'approved'`,
     );
 
-    const higher = Number((higherResult.rows[0] as Record<string, unknown>).cnt ?? 0);
-    const total = Number((totalResult.rows[0] as Record<string, unknown>).cnt ?? 1);
-
-    return total > 0 ? (total - higher) / total : 0;
+    return computeSharpePercentileFromRows(
+      higherResult.rows[0] as Record<string, unknown> | undefined,
+      totalResult.rows[0] as Record<string, unknown> | undefined,
+    );
   } catch (error) {
     logger.warn('[BadgeRepo] Failed to compute sharpe percentile', { error, strategyId });
     return 0;
@@ -68,23 +85,13 @@ export async function fetchAllListingsForBadging(): Promise<
      INNER JOIN marketplace_strategies s ON l.strategy_id = s.id
      WHERE s.status IN ('approved', 'draft', 'pending_vetting')`,
   );
-  return result.rows.map((r: Record<string, unknown>) => ({
-    listingId: r.listing_id as string,
-    strategyId: r.strategy_id as string,
-  }));
+  return result.rows.map((r: Record<string, unknown>) => mapListingForBadgingRow(r));
 }
 
 /**
  * Fetch strategy and performance data needed for badge computation.
  */
-export async function fetchStrategyData(
-  strategyId: string,
-): Promise<{
-  createdAge: number;
-  isApproved: boolean;
-  hasVettedAt: boolean;
-  perfs: Array<{ sharpeRatio: number; maxDrawdown: number; totalPnlUsd: number; totalTrades: number }>;
-}> {
+export async function fetchStrategyData(strategyId: string): Promise<StrategyDataForBadging> {
   const db = getDbClient();
 
   const [strategyResult, perfResult] = await Promise.all([
@@ -99,26 +106,10 @@ export async function fetchStrategyData(
     ),
   ]);
 
-  const strategy = strategyResult.rows[0] as Record<string, unknown> | undefined;
-  if (!strategy) {
-    return { createdAge: 0, isApproved: false, hasVettedAt: false, perfs: [] };
-  }
-
-  const createdAge = strategy.created_at
-    ? daysSince(strategy.created_at as Date)
-    : 0;
-
-  return {
-    createdAge,
-    isApproved: strategy.status === 'approved',
-    hasVettedAt: strategy.vetted_at != null,
-    perfs: perfResult.rows.map((r: Record<string, unknown>) => ({
-      sharpeRatio: Number(r.sharpe_ratio ?? 0),
-      maxDrawdown: Number(r.max_drawdown ?? 100),
-      totalPnlUsd: Number(r.total_pnl_usd ?? 0),
-      totalTrades: Number(r.total_trades ?? 0),
-    })),
-  };
+  return mapStrategyDataRows(
+    strategyResult.rows[0] as Record<string, unknown> | undefined,
+    perfResult.rows as Array<Record<string, unknown>>,
+  );
 }
 
 /**
@@ -131,14 +122,7 @@ export async function fetchBadgeDefinitions(): Promise<BadgeDefinition[]> {
      FROM listing_badge_definitions ORDER BY sort_order ASC`,
   );
 
-  return result.rows.map((r: Record<string, unknown>) => ({
-    key: r.key as BadgeKey,
-    displayName: r.display_name as string,
-    description: r.description as string,
-    icon: r.icon as string,
-    color: r.color as string,
-    sortOrder: r.sort_order as number,
-  }));
+  return result.rows.map((r: Record<string, unknown>) => mapBadgeDefinitionRow(r));
 }
 
 /**
@@ -155,10 +139,3 @@ export async function fetchListingBadgeKeys(listingId: string): Promise<BadgeKey
   return (keys ?? []) as BadgeKey[];
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────
-
-function daysSince(date: Date): number {
-  const now = new Date();
-  const diffMs = now.getTime() - new Date(date).getTime();
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-}

@@ -67,97 +67,80 @@ describe('error-sanitize', () => {
       expect(result.code).toBe('OUT_OF_RANGE');
       expect(result.statusCode).toBe(400);
     });
-
     it('classifies ReferenceError as INTERNAL_ERROR (500)', () => {
       const result = sanitizeError(new ReferenceError('x is not defined'));
       expect(result.code).toBe('INTERNAL_ERROR');
       expect(result.statusCode).toBe(500);
     });
-
     it('classifies SyntaxError as INVALID_INPUT (400)', () => {
       const result = sanitizeError(new SyntaxError('unexpected token'));
       expect(result.code).toBe('INVALID_INPUT');
       expect(result.statusCode).toBe(400);
     });
-
     it('classifies ENOTFOUND as SERVICE_UNAVAIL (503)', () => {
       const result = sanitizeError(new Error('getaddrinfo ENOTFOUND db.internal'));
       expect(result.code).toBe('SERVICE_UNAVAIL');
       expect(result.statusCode).toBe(503);
     });
-
     it('classifies ECONNREFUSED as SERVICE_UNAVAIL (503)', () => {
       const result = sanitizeError(new Error('connect ECONNREFUSED 127.0.0.1:5432'));
       expect(result.code).toBe('SERVICE_UNAVAIL');
       expect(result.statusCode).toBe(503);
     });
-
     it('classifies ETIMEOUT as TIMEOUT (504)', () => {
       const result = sanitizeError(new Error('connect ETIMEOUT 10.0.0.1:443'));
       expect(result.code).toBe('TIMEOUT');
       expect(result.statusCode).toBe(504);
     });
-
     it('classifies ECONNRESET as CONNECTION_RESET (502)', () => {
       const result = sanitizeError(new Error('read ECONNRESET'));
       expect(result.code).toBe('CONNECTION_RESET');
       expect(result.statusCode).toBe(502);
     });
-
     it('classifies validation errors as VALIDATION_ERROR (400)', () => {
       const result = sanitizeError(new Error('validation failed for field email'));
       expect(result.code).toBe('VALIDATION_ERROR');
       expect(result.statusCode).toBe(400);
     });
-
     it('classifies unauthorized errors as UNAUTHORIZED (401)', () => {
       const result = sanitizeError(new Error('unauthorized access attempt'));
       expect(result.code).toBe('UNAUTHORIZED');
       expect(result.statusCode).toBe(401);
     });
-
     it('classifies forbidden errors as FORBIDDEN (403)', () => {
       const result = sanitizeError(new Error('forbidden resource'));
       expect(result.code).toBe('FORBIDDEN');
       expect(result.statusCode).toBe(403);
     });
-
     it('classifies not found errors as NOT_FOUND (404)', () => {
       const result = sanitizeError(new Error('resource not found'));
       expect(result.code).toBe('NOT_FOUND');
       expect(result.statusCode).toBe(404);
     });
-
     it('uses error.name fallback when Error message is empty', () => {
-      const err = new Error('');
-      err.name = 'CustomError';
+      const err = Object.assign(new Error(''), { name: 'CustomError' });
       const result = sanitizeError(err);
       expect(result.code).toBe('INTERNAL_ERROR');
       expect(result.statusCode).toBe(500);
     });
-
     it('classifies plain object with message property (no name) as SERVICE_UNAVAIL', () => {
       const result = sanitizeError({ message: 'ECONNREFUSED on port' });
       expect(result.code).toBe('SERVICE_UNAVAIL');
       expect(result.statusCode).toBe(503);
     });
-
     it('classifies plain object with name and message', () => {
       const result = sanitizeError({ message: 'ECONNREFUSED on port', name: 'SocketError' });
       expect(result.code).toBe('SERVICE_UNAVAIL');
       expect(result.statusCode).toBe(503);
     });
-
     it('returns UNKNOWN_ERROR for null/undefined/primitive values', () => {
       expect(sanitizeError(null).code).toBe('UNKNOWN_ERROR');
       expect(sanitizeError(undefined).code).toBe('UNKNOWN_ERROR');
       expect(sanitizeError(42).code).toBe('UNKNOWN_ERROR');
       expect(sanitizeError({ other: 'field' }).code).toBe('UNKNOWN_ERROR');
     });
-
     it('passes context label to internal logger', () => {
       sanitizeError(new Error('fail'), 'PaymentService.charge');
-      // Logger called (mock asserted at module level) — context is internal
       expect(true).toBe(true);
     });
   });

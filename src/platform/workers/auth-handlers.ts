@@ -3,69 +3,41 @@
  */
 
 import { hashPassword, verifyPassword, createJwt, verifyJwt } from './crypto-utils';
-import { SECURITY_HEADERS } from './edge-proxy-constants';
+import {
+  json,
+  getSecret,
+  validateSignupInput,
+  isAdminRequest,
+  corsPreflightResponse,
+  notImplementedResponse,
+  type AuthEnv,
+  type StoredUser,
+} from './auth-handler-helpers';
 
-export interface AuthEnv { CACHE: KVNamespace; JWT_SECRET?: string; ALLOWED_ORIGINS?: string; ADMIN_API_KEY?: string; }
+export { corsPreflightResponse, notImplementedResponse, type AuthEnv, type StoredUser };
 type Env = AuthEnv;
-
-const BASE_CORS = {
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Content-Type': 'application/json',
-};
-
-function getCorsHeaders(env: Env, origin?: string | null): Record<string, string> {
-  const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map(s => s.trim());
-  const match = origin && allowed.includes(origin) ? origin : allowed[0];
-  return { ...BASE_CORS, 'Access-Control-Allow-Origin': match };
-}
-
-function json(data: unknown, status = 200, env?: Env, origin?: string | null): Response {
-  const headers = env ? { ...getCorsHeaders(env, origin), ...SECURITY_HEADERS } : { ...BASE_CORS, 'Access-Control-Allow-Origin': 'https://cashclaw.cc', ...SECURITY_HEADERS };
-  return new Response(JSON.stringify(data), { status, headers });
-}
-
-function getSecret(env: Env): string {
-  if (!env.JWT_SECRET) throw new Error('JWT_SECRET env var is required — refusing to use insecure fallback');
-  return env.JWT_SECRET;
-}
-
-interface StoredUser {
-  id: string;
-  email: string;
-  hash: string;
-  salt: string;
-  tier: string;
-  role: 'admin' | 'user';
-  tenantId: string;
-  apiKey: string;
-  createdAt: string;
-}
 
 export async function handleSignup(request: Request, env: Env): Promise<Response> {
   try {
     const body = await request.json() as { email?: string; password?: string; tier?: string };
     const { email, password, tier = 'free' } = body;
 
-    if (!email || !password) return json({ error: 'Email and password required' }, 400);
-    if (password.length < 12) return json({ error: 'Password must be at least 12 characters' }, 400);
-    if (!/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
-      return json({ error: 'Password must contain uppercase, number, and special character' }, 400);
-    }
+    const validationError = validateSignupInput(email, password);
+    if (validationError) return validationError;
 
     const existing = await env.CACHE.get(`user:${email}`);
     if (existing) return json({ error: 'Email already registered' }, 409);
 
-    const { hash, salt } = await hashPassword(password);
+    const { hash, salt } = await hashPassword(password!);
     const tenantId = `t_${crypto.randomUUID().split('-')[0]}`;
     const apiKey = `ck_${crypto.randomUUID().replace(/-/g, '')}`;
     const id = crypto.randomUUID();
 
     const role = 'user' as const;
-    const user: StoredUser = { id, email, hash, salt, tier, role, tenantId, apiKey, createdAt: new Date().toISOString() };
+    const user: StoredUser = { id, email: email!, hash, salt, tier, role, tenantId, apiKey, createdAt: new Date().toISOString() };
     await env.CACHE.put(`user:${email}`, JSON.stringify(user));
 
-    const token = await createJwt({ sub: email, tenantId, tier, role }, getSecret(env));
+    const token = await createJwt({ sub: email!, tenantId, tier, role }, getSecret(env));
     return json({ token, tenantId, email, tier, role, apiKey }, 201);
   } catch (e) {
     return json({ error: (e as Error).message || 'Signup failed' }, 500);
@@ -106,9 +78,7 @@ export async function handleMe(request: Request, env: Env): Promise<Response> {
 
 /** Admin: list all users (requires admin API key) */
 export async function handleListUsers(request: Request, env: Env): Promise<Response> {
-  const apiKey = request.headers.get('x-api-key');
-  const adminKey = env.ADMIN_API_KEY;
-  if (!apiKey || !adminKey || apiKey !== adminKey) return json({ error: 'Unauthorized' }, 401);
+  if (!isAdminRequest(request, env)) return json({ error: 'Unauthorized' }, 401);
 
   const list = await env.CACHE.list({ prefix: 'user:' });
   const users = [];
@@ -124,9 +94,7 @@ export async function handleListUsers(request: Request, env: Env): Promise<Respo
 
 /** Admin: set user role (requires admin API key) */
 export async function handleSetRole(request: Request, env: Env): Promise<Response> {
-  const apiKey = request.headers.get('x-api-key');
-  const adminKey = env.ADMIN_API_KEY;
-  if (!apiKey || !adminKey || apiKey !== adminKey) return json({ error: 'Unauthorized' }, 401);
+  if (!isAdminRequest(request, env)) return json({ error: 'Unauthorized' }, 401);
 
   const body = await request.json() as { email?: string; role?: string };
   if (!body.email || !body.role) return json({ error: 'email and role required' }, 400);
@@ -144,9 +112,7 @@ export async function handleSetRole(request: Request, env: Env): Promise<Respons
 
 /** Admin: delete user (requires admin API key) */
 export async function handleDeleteUser(request: Request, env: Env): Promise<Response> {
-  const apiKey = request.headers.get('x-api-key');
-  const adminKey = env.ADMIN_API_KEY;
-  if (!apiKey || !adminKey || apiKey !== adminKey) return json({ error: 'Unauthorized' }, 401);
+  if (!isAdminRequest(request, env)) return json({ error: 'Unauthorized' }, 401);
 
   const body = await request.json() as { email?: string };
   if (!body.email) return json({ error: 'email required' }, 400);
@@ -155,10 +121,3 @@ export async function handleDeleteUser(request: Request, env: Env): Promise<Resp
   return json({ success: true, deleted: body.email });
 }
 
-export function corsPreflightResponse(): Response {
-  return new Response(null, { status: 204, headers: { ...BASE_CORS, 'Access-Control-Allow-Origin': 'https://cashclaw.cc' } });
-}
-
-export function notImplementedResponse(path: string): Response {
-  return json({ error: `${path} — chưa triển khai trên CF-Only`, hint: 'This endpoint has not been migrated to the CF-only Worker yet' }, 501);
-}

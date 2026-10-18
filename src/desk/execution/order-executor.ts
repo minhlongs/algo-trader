@@ -5,8 +5,17 @@ import { ArbitrageOpportunity } from '../arbitrage/spread-detector';
 import { logger } from '../utils/logger';
 import { type ExecutionResult, type OrderResult, type ExecutionConfig } from './order-executor-types';
 import { logOrderAudit } from './order-executor-audit';
+import {
+  createPendingExecution,
+  buildFilledOrderResult,
+  calculateArbitrageProfit,
+  applyFillOutcome,
+  handleFailedLegs,
+  isExpiredTerminalExecution,
+} from './order-executor-helpers';
 
 export * from './order-executor-types';
+export * from './order-executor-helpers';
 
 export class OrderExecutor {
   private config: ExecutionConfig;
@@ -26,12 +35,7 @@ export class OrderExecutor {
   async execute(opportunity: ArbitrageOpportunity, amount?: number): Promise<ExecutionResult> {
     this.cleanup();
     const execAmount = amount || this.config.defaultAmount;
-    const execution: ExecutionResult = {
-      id: `exec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      opportunityId: opportunity.id,
-      status: 'PENDING',
-      timestamp: Date.now(),
-    };
+    const execution = createPendingExecution(opportunity.id);
     this.pendingExecutions.set(execution.id, execution);
 
     try {
@@ -52,37 +56,8 @@ export class OrderExecutor {
       if (sellRes.status === 'fulfilled') { sellOrder = sellRes.value; execution.sellOrder = sellOrder; }
       else { sellError = sellRes.reason instanceof Error ? sellRes.reason : new Error(String(sellRes.reason)); }
 
-      const buyFailed = buyError || (buyOrder && buyOrder.status === 'rejected');
-      const sellFailed = sellError || (sellOrder && sellOrder.status === 'rejected');
-
-      if (buyFailed || sellFailed) {
-        if (!buyFailed && buyOrder) {
-          await this.rollbackOrder(buyOrder);
-          execution.status = 'ROLLBACK';
-          const errMsg = sellError ? sellError.message : `Sell order rejected: ${sellOrder?.orderId}`;
-          throw new Error(`Sell side failed (${errMsg}). Buy order rolled back.`);
-        } else if (!sellFailed && sellOrder) {
-          await this.rollbackOrder(sellOrder);
-          execution.status = 'ROLLBACK';
-          const errMsg = buyError ? buyError.message : `Buy order rejected: ${buyOrder?.orderId}`;
-          throw new Error(`Buy side failed (${errMsg}). Sell order rolled back.`);
-        } else {
-          const buyMsg = buyError ? buyError.message : 'Buy order rejected';
-          const sellMsg = sellError ? sellError.message : 'Sell order rejected';
-          throw new Error(`Both sides failed. Buy: ${buyMsg}, Sell: ${sellMsg}`);
-        }
-      }
-
-      const buyFilled = buyOrder!.filled / buyOrder!.amount;
-      const sellFilled = sellOrder!.filled / sellOrder!.amount;
-
-      if (buyFilled >= 0.99 && sellFilled >= 0.99) {
-        execution.status = 'FILLED';
-        execution.profit = this.calculateProfit(opportunity, execAmount);
-      } else if (buyFilled > 0 || sellFilled > 0) {
-        execution.status = 'PARTIAL';
-      }
-
+      await handleFailedLegs(execution, buyOrder, sellOrder, buyError, sellError, (o) => this.rollbackOrder(o));
+      applyFillOutcome(execution, buyOrder!, sellOrder!, opportunity, execAmount);
       await logOrderAudit(execution);
       return execution;
     } catch (error) {
@@ -120,18 +95,11 @@ export class OrderExecutor {
   }
 
   private async placeOrder(params: { exchange: string; symbol: string; side: 'buy' | 'sell'; price: number; amount: number }): Promise<OrderResult> {
-    const orderId = `${params.exchange}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    return {
-      orderId, exchange: params.exchange, symbol: params.symbol, side: params.side,
-      price: params.price, amount: params.amount, filled: params.amount,
-      remaining: 0, status: 'closed', fee: params.amount * params.price * 0.001,
-    };
+    return buildFilledOrderResult(params);
   }
 
   private calculateProfit(opportunity: ArbitrageOpportunity, amount: number): number {
-    const buyCost = opportunity.buyPrice * amount;
-    const sellRevenue = opportunity.sellPrice * amount;
-    return sellRevenue - buyCost - (buyCost + sellRevenue) * 0.001;
+    return calculateArbitrageProfit(opportunity, amount);
   }
 
   getExecution(id: string): ExecutionResult | undefined {
@@ -154,10 +122,7 @@ export class OrderExecutor {
   cleanup(ttlMs = 3600000): void {
     const now = Date.now();
     for (const [id, execution] of this.pendingExecutions.entries()) {
-      if (
-        ['FILLED', 'FAILED', 'ROLLBACK', 'CANCELED', 'PARTIAL'].includes(execution.status) &&
-        now - execution.timestamp > ttlMs
-      ) {
+      if (isExpiredTerminalExecution(execution, now, ttlMs)) {
         this.pendingExecutions.delete(id);
       }
     }

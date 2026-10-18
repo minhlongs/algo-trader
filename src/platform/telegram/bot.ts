@@ -8,7 +8,11 @@ import { Bot, Context } from 'grammy';
 import { logger } from '../../shared/utils/logger';
 import { userSessionRepo } from './user-session-repository-d1';
 import type { TelegramConfig, UserSession } from './bot-types';
-import { registerBotCommands } from './bot-command-registration';
+import {
+  registerBotCommands,
+  registerBotMiddleware,
+  launchBotPolling,
+} from './bot-command-registration';
 import {
   applyTelegramRateLimit,
   sendTelegramThresholdAlert,
@@ -26,9 +30,7 @@ export class TelegramBotService {
   private redisKeyPrefix: string = 'algo:rate_limit:telegram:';
 
   private constructor(config?: TelegramConfig) {
-    this.config = config || {
-      botToken: process.env.TELEGRAM_BOT_TOKEN || '',
-    };
+    this.config = config || { botToken: process.env.TELEGRAM_BOT_TOKEN || '' };
   }
 
   static getInstance(config?: TelegramConfig): TelegramBotService {
@@ -68,17 +70,11 @@ export class TelegramBotService {
 
     // Ensure D1 table exists before handling any commands
     await userSessionRepo.ensureTable();
-
-    this.bot.start({
-      onStart: (info) => {
-        logger.info(`[TelegramBot] Running as @${info.username}`);
-      },
-    });
-
-    this.bot.catch((error) => {
-      logger.error('[TelegramBot] Error:', { error });
-    });
-
+    launchBotPolling(
+      this.bot,
+      (msg) => logger.info(msg),
+      (msg, meta) => logger.error(msg, meta),
+    );
     this.initialized = true;
   }
 
@@ -97,9 +93,7 @@ export class TelegramBotService {
 
   private setupMiddleware(): void {
     if (!this.bot) return;
-
-    // Sessions are persisted in D1 — no auto-creation needed.
-    this.bot.use(async (_ctx: Context, next: () => Promise<void>) => next());
+    registerBotMiddleware(this.bot);
   }
 
   async sendThresholdAlert(
@@ -111,14 +105,8 @@ export class TelegramBotService {
     percentUsed: number,
   ): Promise<boolean> {
     return sendTelegramThresholdAlert(
-      this.bot,
-      this.initialized,
-      chatId,
-      licenseKey,
-      threshold,
-      currentUsage,
-      dailyLimit,
-      percentUsed,
+      this.bot, this.initialized, chatId, licenseKey,
+      threshold, currentUsage, dailyLimit, percentUsed,
       (cId) => this.applyRateLimitRedis(cId),
     );
   }
@@ -131,13 +119,8 @@ export class TelegramBotService {
     percentUsed: number,
   ): Promise<number> {
     return sendTelegramToAllLinkedUsers(
-      (userId, lk, th, cu, dl, pu) =>
-        this.sendThresholdAlert(userId, lk, th, cu, dl, pu),
-      licenseKey,
-      threshold,
-      currentUsage,
-      dailyLimit,
-      percentUsed,
+      (userId, lk, th, cu, dl, pu) => this.sendThresholdAlert(userId, lk, th, cu, dl, pu),
+      licenseKey, threshold, currentUsage, dailyLimit, percentUsed,
     );
   }
 
@@ -162,3 +145,4 @@ export class TelegramBotService {
 }
 
 export const telegramBotService = TelegramBotService.getInstance();
+

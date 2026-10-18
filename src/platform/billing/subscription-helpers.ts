@@ -5,8 +5,37 @@
 import type { LicenseService } from './license-service';
 import type { AuditLogService } from '../audit/audit-log-service';
 import { LicenseTier, LicenseStatus } from '../../shared/types/license';
-import type { Subscription } from './subscription-types';
+import type {
+  Subscription,
+  SubscriptionStatus,
+  CreateSubscriptionInput,
+} from './subscription-types';
 import { saveToFile } from './subscription-storage';
+
+export function buildNewSubscription(id: string, input: CreateSubscriptionInput): Subscription {
+  const now = new Date().toISOString();
+  return {
+    id,
+    providerPaymentId: input.providerPaymentId,
+    customerEmail: input.customerEmail,
+    productId: input.productId,
+    status: input.status,
+    tier: input.tier,
+    currentPeriodStart: input.currentPeriodStart,
+    currentPeriodEnd: input.currentPeriodEnd,
+    amount: input.amount,
+    currency: input.currency,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function applyStatusChange(sub: Subscription, status: SubscriptionStatus): Subscription {
+  sub.status = status;
+  sub.updatedAt = new Date().toISOString();
+  if (status === 'cancelled') sub.cancelledAt = new Date().toISOString();
+  return sub;
+}
 
 export function getDefaultMaxUsage(tier: LicenseTier): number {
   const limits: Record<LicenseTier, number> = {
@@ -88,19 +117,10 @@ export function handleUserPaymentConfirmation(
 
   const id = `sub_${generateId()}`;
   const subscription: Subscription = {
-    id,
-    userId: input.userId,
-    providerPaymentId: input.paymentId || `pay_${id}`,
-    customerEmail: `${input.userId}@test.local`,
-    productId: 'default-product',
-    status: 'active',
-    tier,
-    currentPeriodStart: now,
-    currentPeriodEnd: periodEnd,
-    amount: input.amount,
-    currency: input.currency,
-    createdAt: now,
-    updatedAt: now,
+    id, userId: input.userId, providerPaymentId: input.paymentId || `pay_${id}`,
+    customerEmail: `${input.userId}@test.local`, productId: 'default-product',
+    status: 'active', tier, currentPeriodStart: now, currentPeriodEnd: periodEnd,
+    amount: input.amount, currency: input.currency, createdAt: now, updatedAt: now,
   };
   subscriptions.set(id, subscription);
   saveToFile(subscriptions);
@@ -113,9 +133,7 @@ export function handleUserCancellation(
 ): void {
   const sub = Array.from(subscriptions.values()).find((s) => s.userId === userId);
   if (!sub) return;
-  sub.status = 'cancelled';
-  sub.cancelledAt = new Date().toISOString();
-  sub.updatedAt = new Date().toISOString();
+  applyStatusChange(sub, 'cancelled');
   subscriptions.set(sub.id, sub);
   saveToFile(subscriptions);
 }

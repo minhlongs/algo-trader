@@ -1,8 +1,5 @@
 /**
  * Tests for ws-reconnect — reconnect-delay math + schedule orchestration.
- *
- * Covers: exponential backoff, jitter bounds, clamping, scheduleReconnect.
- * Strictly < 180 LOC, zero mocks, zero :any.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -10,13 +7,8 @@ import { computeReconnectDelay, scheduleReconnect } from '../ws-reconnect';
 import type { BaseWebSocketClient } from '../websocket-client';
 
 const baseConfig = {
-  url: 'wss://example.test/ws',
-  reconnectDelay: 1000,
-  maxReconnectDelay: 10000,
-  reconnectMultiplier: 2,
-  maxReconnectAttempts: 5,
-  enableJitter: false,
-  latencyTracking: false,
+  url: 'wss://example.test/ws', reconnectDelay: 1000, maxReconnectDelay: 10000,
+  reconnectMultiplier: 2, maxReconnectAttempts: 5, enableJitter: false, latencyTracking: false,
 };
 
 describe('computeReconnectDelay (no jitter)', () => {
@@ -71,20 +63,10 @@ describe('computeReconnectDelay (with jitter)', () => {
 function createMockClient(overrides: Partial<Record<string, unknown>> = {}): BaseWebSocketClient {
   const listeners: Record<string, ((...args: unknown[]) => void)[]> = {};
   return {
-    reconnectTimer: null,
-    state: 'disconnected',
-    reconnectAttempts: 0,
-    config: { ...baseConfig },
+    reconnectTimer: null, state: 'disconnected', reconnectAttempts: 0, config: { ...baseConfig },
     stats: {
-      reconnectCount: 0,
-      messageCount: 0,
-      heartbeatCount: 0,
-      avgLatency: 0,
-      minLatency: 0,
-      maxLatency: 0,
-      p95Latency: 0,
-      latencySamples: [],
-      uptime: 0,
+      reconnectCount: 0, messageCount: 0, heartbeatCount: 0,
+      avgLatency: 0, minLatency: 0, maxLatency: 0, p95Latency: 0, latencySamples: [], uptime: 0,
     },
     emit: vi.fn((event: string, ...args: unknown[]) => {
       (listeners[event] || []).forEach((fn) => fn(...args));
@@ -101,14 +83,8 @@ function createMockClient(overrides: Partial<Record<string, unknown>> = {}): Bas
 }
 
 describe('scheduleReconnect', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.restoreAllMocks();
-  });
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
   it('clears existing reconnectTimer before scheduling (line 40)', () => {
     const mockClear = vi.fn();
@@ -137,9 +113,7 @@ describe('scheduleReconnect', () => {
     const client = createMockClient();
     scheduleReconnect.call(client);
     expect(client.emit).toHaveBeenCalledWith('reconnecting', {
-      attempt: 1,
-      maxAttempts: 5,
-      delay: 1000,
+      attempt: 1, maxAttempts: 5, delay: 1000,
     });
   });
 
@@ -154,9 +128,7 @@ describe('scheduleReconnect', () => {
   });
 
   it('logs error when connect rejects', async () => {
-    const client = createMockClient({
-      connect: vi.fn().mockRejectedValue(new Error('boom')),
-    });
+    const client = createMockClient({ connect: vi.fn().mockRejectedValue(new Error('boom')) });
     scheduleReconnect.call(client);
     vi.advanceTimersByTime(1000);
     await vi.advanceTimersByTimeAsync(0);

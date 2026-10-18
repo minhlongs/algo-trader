@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.3.07] - 2026-10-18 — Quantitative Desk Waves 336–338, UI/UX Pro Max v4 Stitch Screen #15 (`hawkes-orderflow-radar`) & Deep 163-LOC Refactor (`--deep`)
+
+### Added
+- **Stitch Screen #15 (`site/public/hawkes-orderflow-radar.html`) & UI/UX Pro Max v4 (`2026.4-PRO-MAX`)**:
+  - Delivered `site/public/hawkes-orderflow-radar.html` registered in `SITE.md`, `stitch.json`, and `site/public/assets/ui-ux-pro-max.js` (15-Screen Command Palette + Live Bilingual `LANG: EN / VI` toggle).
+  - Extracted `src/platform/api/routes/stitch-cockpit-schemas.ts`, `src/desk/opencoresaas2026monetization/ui-ux-pro-max-rules.ts`, and `src/desk/opencoresaas2026monetization/stitch-hawkes-radar-telemetry.ts`, and exposed `GET /hawkes-radar` on `stitchCockpitRouter`.
+- **Wave 336: Avellaneda & Stoikov (2008) High-Frequency Market Making Reservation Price & Optimal Spread** (`src/desk/avellanedastoikov2008/`).
+- **Wave 337: Glosten & Milgrom (1985) Sequential Trade Bayesian Belief & Regret Spread** (`src/desk/glostenmilgrom1985/`).
+- **Wave 338: Kyle (1985) Continuous Insider Auction Lambda & Market Depth Equilibrium** (`src/desk/kyle1985auction/`).
+- **Test Suite**:
+  - Added `tests/unit/desk/wave_336_338_ui_ux_pro_max_v4_suite.test.ts` (4/4 passed).
+
+### Changed
+- **Deep 163-LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed all 40 remaining 164–165 LOC files in `src/` into cohesive single-responsibility submodules (`<= 150 LOC` each) so that **zero `.ts` files in `src/` exceed 163 LOC**.
+
 ## [3.3.06] - 2026-10-18 — Quantitative Desk Waves 333–335, Stitch Screen #14 (`regime-kelly-matrix`) & Deep 165-LOC Refactor (`--deep`)
 
 ### Added

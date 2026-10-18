@@ -1,10 +1,4 @@
-/**
- * PostgreSQL Client Tests
- *
- * Covers getDbClient singleton + config merge, query passthrough,
- * transaction commit/rollback/release, and closeDbConnection.
- */
-
+// PostgreSQL Client Tests
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 const { mockPool, mockConnect, poolCtor } = vi.hoisted(() => {
@@ -14,34 +8,23 @@ const { mockPool, mockConnect, poolCtor } = vi.hoisted(() => {
   const end = vi.fn();
   const on = vi.fn();
   const pool = { query, on, end, connect };
-  const poolCtor = vi.fn(function PoolMock(_config: unknown) {
-    return pool;
-  });
+  const poolCtor = vi.fn(function PoolMock(_config: unknown) { return pool; });
   return { mockPool: pool, mockConnect: connect, poolCtor };
 });
 
 vi.mock('pg', async (importOriginal) => {
   const actual = await importOriginal();
-  return {
-    ...actual,
-    default: { ...actual, Pool: poolCtor },
-    Pool: poolCtor,
-  };
+  return { ...actual, default: { ...actual, Pool: poolCtor }, Pool: poolCtor };
 });
 
 import { getDbClient, query, transaction, closeDbConnection } from '../postgres-client';
 
 describe('getDbClient', () => {
   beforeEach(() => {
-    mockPool.on.mockClear();
-    mockConnect.mockClear();
-    mockPool.end.mockClear();
-    poolCtor.mockClear();
+    mockPool.on.mockClear(); mockConnect.mockClear(); mockPool.end.mockClear(); poolCtor.mockClear();
   });
 
-  afterEach(async () => {
-    await closeDbConnection();
-  });
+  afterEach(async () => { await closeDbConnection(); });
 
   it('returns the same singleton pool on repeated calls', () => {
     const a = getDbClient();
@@ -59,11 +42,7 @@ describe('getDbClient', () => {
 
   it('falls back to defaults when env vars are unset', () => {
     const saved = { ...process.env };
-    delete process.env.DB_HOST;
-    delete process.env.DB_PORT;
-    delete process.env.DB_NAME;
-    delete process.env.DB_USER;
-    delete process.env.DB_PASSWORD;
+    for (const k of ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD']) delete process.env[k];
     try {
       getDbClient();
       const poolArg = poolCtor.mock.calls[0]![0];
@@ -94,10 +73,7 @@ describe('getDbClient', () => {
 });
 
 describe('query', () => {
-  beforeEach(async () => {
-    await closeDbConnection();
-    mockPool.query.mockClear();
-  });
+  beforeEach(async () => { await closeDbConnection(); mockPool.query.mockClear(); });
 
   it('forwards text and params to the pool', async () => {
     mockPool.query.mockResolvedValueOnce({ rows: [{ a: 1 }], rowCount: 1 } as never);
@@ -144,9 +120,7 @@ describe('transaction', () => {
 
 describe('closeDbConnection', () => {
   beforeEach(async () => {
-    await closeDbConnection();
-    mockPool.end.mockClear();
-    poolCtor.mockClear();
+    await closeDbConnection(); mockPool.end.mockClear(); poolCtor.mockClear();
   });
 
   it('no-ops when no pool exists', async () => {

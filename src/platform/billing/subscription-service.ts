@@ -14,6 +14,8 @@ import {
 } from './subscription-types';
 import { saveToFile, clearStoreFile, loadFromFile } from './subscription-storage';
 import {
+  buildNewSubscription,
+  applyStatusChange,
   getDefaultMaxUsage,
   syncLicenseTier,
   downgradeLicenseToFree,
@@ -53,21 +55,7 @@ export class SubscriptionService {
 
   async createSubscription(input: CreateSubscriptionInput): Promise<Subscription> {
     const id = `sub_${this.generateId()}`;
-    const now = new Date().toISOString();
-    const subscription: Subscription = {
-      id,
-      providerPaymentId: input.providerPaymentId,
-      customerEmail: input.customerEmail,
-      productId: input.productId,
-      status: input.status,
-      tier: input.tier,
-      currentPeriodStart: input.currentPeriodStart,
-      currentPeriodEnd: input.currentPeriodEnd,
-      amount: input.amount,
-      currency: input.currency,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const subscription = buildNewSubscription(id, input);
     this.subscriptions.set(id, subscription);
     saveToFile(this.subscriptions);
     return subscription;
@@ -90,10 +78,7 @@ export class SubscriptionService {
     const sub = this.subscriptions.get(id);
     if (!sub) return undefined;
 
-    sub.status = status;
-    sub.updatedAt = new Date().toISOString();
-    if (status === 'cancelled') sub.cancelledAt = new Date().toISOString();
-
+    applyStatusChange(sub, status);
     this.subscriptions.set(id, sub);
     saveToFile(this.subscriptions);
     return sub;
@@ -117,8 +102,7 @@ export class SubscriptionService {
     const existing = this.subscriptions.get(id);
     if (!existing) return undefined;
 
-    existing.status = 'active';
-    existing.updatedAt = new Date().toISOString();
+    applyStatusChange(existing, 'active');
 
     const license = await this.licenseService.createLicense({ name: existing.customerEmail, tier: existing.tier });
     license.userId = existing.customerEmail;
@@ -135,9 +119,7 @@ export class SubscriptionService {
     const sub = this.subscriptions.get(id);
     if (!sub) return undefined;
 
-    sub.status = 'cancelled';
-    sub.cancelledAt = new Date().toISOString();
-    sub.updatedAt = new Date().toISOString();
+    applyStatusChange(sub, 'cancelled');
     this.subscriptions.set(id, sub);
     saveToFile(this.subscriptions);
 

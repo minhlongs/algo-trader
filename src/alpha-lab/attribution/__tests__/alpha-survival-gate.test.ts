@@ -33,19 +33,11 @@ function createMockTrades(count = 30, winRate = 0.7, tp = 0.03, sl = 0.01): Back
 
 describe('Alpha Survival Gate (M2 Institutional Gates & Overfitting Filters)', () => {
   it('passes a robust candidate meeting all 6 criteria', () => {
-    const result = evaluateAlphaSurvivalGate({
-      summary: createMockSummary(),
-      trades: createMockTrades(30, 0.7, 0.03, 0.01),
-    });
-
+    const result = evaluateAlphaSurvivalGate({ summary: createMockSummary(), trades: createMockTrades(30, 0.7, 0.03, 0.01) });
     expect(result.passed).toBe(true);
     expect(result.checks).toMatchObject({
-      sharpePassed: true,
-      drawdownPassed: true,
-      profitFactorPassed: true,
-      dsrPassed: true,
-      costStressPassed: true,
-      regimeConsistencyPassed: true,
+      sharpePassed: true, drawdownPassed: true, profitFactorPassed: true,
+      dsrPassed: true, costStressPassed: true, regimeConsistencyPassed: true,
     });
     expect(result.diagnostics).toHaveLength(0);
   });
@@ -58,9 +50,7 @@ describe('Alpha Survival Gate (M2 Institutional Gates & Overfitting Filters)', (
     expect(resultDefault.diagnostics[0]).toContain('Sharpe ratio of 1.30 is below hurdle rate 1.50');
 
     const resultCustom = evaluateAlphaSurvivalGate({
-      summary: createMockSummary({ testSharpe: 0.75 }),
-      trades,
-      criteria: { minOosSharpeRatio: 1.0 },
+      summary: createMockSummary({ testSharpe: 0.75 }), trades, criteria: { minOosSharpeRatio: 1.0 },
     });
     expect(resultCustom.checks.sharpePassed).toBe(false);
     expect(resultCustom.diagnostics[0]).toContain('Sharpe ratio of 0.75 is below hurdle rate 1.00');
@@ -69,27 +59,20 @@ describe('Alpha Survival Gate (M2 Institutional Gates & Overfitting Filters)', (
   it('rejects candidate with Max Drawdown > 12% by default and normalizes sign', () => {
     const trades = createMockTrades();
     const result = evaluateAlphaSurvivalGate({ summary: createMockSummary({ testMaxDrawdown: -0.14 }), trades });
-
     expect(result.passed).toBe(false);
     expect(result.checks.drawdownPassed).toBe(false);
     expect(result.maxDrawdown).toBe(0.14);
     expect(result.diagnostics[0]).toContain('14.0% exceeds allowable ceiling of 12.0%');
 
     const customResult = evaluateAlphaSurvivalGate({
-      summary: createMockSummary({ testMaxDrawdown: 0.22 }),
-      trades,
-      criteria: { maxDrawdown: 0.15 },
+      summary: createMockSummary({ testMaxDrawdown: 0.22 }), trades, criteria: { maxDrawdown: 0.15 },
     });
     expect(customResult.checks.drawdownPassed).toBe(false);
     expect(customResult.diagnostics[0]).toContain('22.0% exceeds allowable ceiling of 15.0%');
   });
 
   it('rejects candidate with Profit Factor < 1.25', () => {
-    const result = evaluateAlphaSurvivalGate({
-      summary: createMockSummary({ testProfitFactor: 1.15 }),
-      trades: createMockTrades(),
-    });
-
+    const result = evaluateAlphaSurvivalGate({ summary: createMockSummary({ testProfitFactor: 1.15 }), trades: createMockTrades() });
     expect(result.passed).toBe(false);
     expect(result.checks.profitFactorPassed).toBe(false);
     expect(result.diagnostics.some((d) => d.includes('Profit Factor of 1.15 is below minimum hurdle 1.25'))).toBe(true);
@@ -99,10 +82,8 @@ describe('Alpha Survival Gate (M2 Institutional Gates & Overfitting Filters)', (
     const result = evaluateAlphaSurvivalGate({
       summary: createMockSummary({ testSharpe: 1.55 }),
       trades: createMockTrades(30, 0.65, 0.02, 0.01),
-      nTrials: 200,
-      trialsVariance: 0.25,
+      nTrials: 200, trialsVariance: 0.25,
     });
-
     expect(result.passed).toBe(false);
     expect(result.checks.dsrPassed).toBe(false);
     expect(result.dsr).toBeLessThan(0.95);
@@ -115,7 +96,6 @@ describe('Alpha Survival Gate (M2 Institutional Gates & Overfitting Filters)', (
       periodicReturns: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, -0.09],
       nTrials: 5,
     });
-
     expect(result.metrics.skewness).toBeLessThan(-1.0);
     expect(result.checks.dsrPassed).toBe(false);
     expect(result.passed).toBe(false);
@@ -126,7 +106,6 @@ describe('Alpha Survival Gate (M2 Institutional Gates & Overfitting Filters)', (
       timestamp: new Date(1700000000000 + i * 3600000).toISOString(),
       tokenId: 'RANGE', side: 'BUY', price: 100, size: 1, pnl: 0.0008,
     }));
-
     const result = evaluateAlphaSurvivalGate({ summary: createMockSummary(), trades });
     expect(result.passed).toBe(false);
     expect(result.checks.costStressPassed).toBe(false);
@@ -136,15 +115,12 @@ describe('Alpha Survival Gate (M2 Institutional Gates & Overfitting Filters)', (
   it('rejects candidate with Regime Consistency < 0.70 by default and supports custom criteria', () => {
     const trades = createMockTrades();
     const result = evaluateAlphaSurvivalGate({ summary: createMockSummary({ regimeConsistencyScore: 0.65 }), trades });
-
     expect(result.passed).toBe(false);
     expect(result.checks.regimeConsistencyPassed).toBe(false);
     expect(result.diagnostics[0]).toContain('Regime consistency score of 0.65 is below minimum 0.70');
 
     const customResult = evaluateAlphaSurvivalGate({
-      summary: createMockSummary({ regimeConsistencyScore: 0.33 }),
-      trades,
-      criteria: { minRegimeConsistencyScore: 0.50 },
+      summary: createMockSummary({ regimeConsistencyScore: 0.33 }), trades, criteria: { minRegimeConsistencyScore: 0.50 },
     });
     expect(customResult.checks.regimeConsistencyPassed).toBe(false);
     expect(customResult.diagnostics[0]).toContain('Regime consistency score of 0.33 is below minimum 0.50');
@@ -155,7 +131,6 @@ describe('Alpha Survival Gate (M2 Institutional Gates & Overfitting Filters)', (
       testSharpe: 0.8, testMaxDrawdown: 0.20, testProfitFactor: 0.9, regimeConsistencyScore: 0.4,
     });
     const result = evaluateAlphaSurvivalGate({ summary, trades: [] });
-
     expect(result.passed).toBe(false);
     expect(result.diagnostics.length).toBeGreaterThanOrEqual(4);
     expect(result.failures).toEqual(result.diagnostics);

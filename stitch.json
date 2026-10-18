@@ -72,6 +72,11 @@
       "title": "Multi-Regime Fractional Kelly, SVI Surface & VPIN Toxicity Cockpit",
       "file": "site/public/regime-kelly-matrix.html",
       "screenId": "projects/1566829715937419119/screens/e9d2b741a60c4f88b3149e7205c3f229"
+    },
+    {
+      "title": "Hawkes Order-Flow Criticality, Avellaneda-Stoikov & Kyle Lambda Radar",
+      "file": "site/public/hawkes-orderflow-radar.html",
+      "screenId": "projects/1566829715937419119/screens/f1a4c839e2054b719d824a63109e4c52"
     }
   ]
 }
