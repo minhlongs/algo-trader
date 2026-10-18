@@ -108,20 +108,14 @@ export class MemoryPressureHandler {
     logger.error('[MemoryPressure] CRITICAL: Triggering aggressive cleanup');
     await this.triggerCleanup();
 
-    if (typeof gc === 'function') {
-      (gc as () => void)();
-    }
-
-    if (this.config.onCritical) {
-      await this.config.onCritical();
-    }
+    if (typeof gc === 'function') (gc as () => void)();
+    if (this.config.onCritical) await this.config.onCritical();
 
     await this.redis.publish('memory-pressure', JSON.stringify({
       level: 'critical',
       rss: this.getMemoryMetrics().rss,
       timestamp: Date.now(),
     }));
-
     logger.error('[MemoryPressure] Aggressive cleanup complete');
   }
 
@@ -155,11 +149,7 @@ export class MemoryPressureHandler {
     return this.pressureLevel;
   }
 
-  getMemorySummary(): {
-    metrics: MemoryMetrics;
-    level: PressureLevel;
-    historySize: number;
-  } {
+  getMemorySummary(): { metrics: MemoryMetrics; level: PressureLevel; historySize: number } {
     return {
       metrics: this.getMemoryMetrics(),
       level: this.pressureLevel,

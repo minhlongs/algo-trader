@@ -21,6 +21,8 @@ import {
   detectWhaleOrders,
   calcWhaleImbalance,
   shouldEnter,
+  appendAndPruneWhaleEvents,
+  evaluateWhaleReversalExit,
 } from './whale-tracker-v2-helpers';
 
 const STRATEGY_NAME: StrategyName = 'whale-tracker';
@@ -40,21 +42,7 @@ export class WhaleTrackerStrategy extends BasePolymarketStrategy {
   // ── Whale event state management ──────────────────────────────────────────
 
   private recordWhaleEvents(tokenId: string, events: WhaleEvent[]): void {
-    let history = this.whaleHistory.get(tokenId);
-    if (!history) {
-      history = [];
-      this.whaleHistory.set(tokenId, history);
-    }
-    history.push(...events);
-
-    // Prune events outside the window
-    const cutoff = Date.now() - this.cfg.whaleWindowMs;
-    const firstValid = history.findIndex(e => e.timestamp >= cutoff);
-    if (firstValid > 0) {
-      history.splice(0, firstValid);
-    } else if (firstValid === -1) {
-      history.length = 0;
-    }
+    appendAndPruneWhaleEvents(this.whaleHistory, tokenId, events, this.cfg.whaleWindowMs);
   }
 
   private getRecentWhaleEvents(tokenId: string): WhaleEvent[] {
@@ -79,26 +67,7 @@ export class WhaleTrackerStrategy extends BasePolymarketStrategy {
     }
 
     const recentEvents = this.getRecentWhaleEvents(pos.tokenId);
-    if (recentEvents.length < this.cfg.minWhaleEvents) {
-      return { exit: false, reason: '' };
-    }
-
-    const imbalance = calcWhaleImbalance(recentEvents);
-
-    if (pos.side === 'yes' && imbalance.askVolume > imbalance.bidVolume * this.cfg.imbalanceRatio) {
-      return {
-        exit: true,
-        reason: `whale-reversal (ask dominance ratio=${(imbalance.askVolume / Math.max(imbalance.bidVolume, 0.01)).toFixed(2)})`,
-      };
-    }
-    if (pos.side === 'no' && imbalance.bidVolume > imbalance.askVolume * this.cfg.imbalanceRatio) {
-      return {
-        exit: true,
-        reason: `whale-reversal (bid dominance ratio=${(imbalance.bidVolume / Math.max(imbalance.askVolume, 0.01)).toFixed(2)})`,
-      };
-    }
-
-    return { exit: false, reason: '' };
+    return evaluateWhaleReversalExit(pos.side, recentEvents, this.cfg);
   }
 
   // ── Entry logic ──────────────────────────────────────────────────────────

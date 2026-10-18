@@ -10,8 +10,6 @@
 
 import type { Request, Response, NextFunction } from 'express';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
 export interface RateLimiterOptions {
   /** Time window in milliseconds */
   windowMs?: number;
@@ -26,21 +24,15 @@ export interface RateLimiterOptions {
 }
 
 interface WindowEntry {
-  /** Timestamp of the start of the current window */
   windowStart: number;
-  /** Number of requests in the current window */
   count: number;
 }
-
-// ─── Internal State ──────────────────────────────────────────────────────────
 
 /** Stores window data per key: key → { windowStart, count } */
 const store = new Map<string, WindowEntry>();
 
 /** Tracks cleanup interval IDs per limiter instance for cleanup on removal */
 let globalCleanupTimer: ReturnType<typeof setInterval> | null = null;
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getDefaultKeyGenerator(req: Request): string {
   const forwarded = req.headers['x-forwarded-for'];
@@ -62,7 +54,6 @@ function cleanupExpiredEntries(windowMs: number): void {
 function startCleanupTimer(windowMs: number): void {
   if (globalCleanupTimer) return;
   globalCleanupTimer = setInterval(() => cleanupExpiredEntries(windowMs), windowMs);
-  // Allow the process to exit without waiting for the timer
   if (globalCleanupTimer.unref) {
     globalCleanupTimer.unref();
   }
@@ -75,23 +66,8 @@ function stopCleanupTimer(): void {
   }
 }
 
-// ─── Factory ─────────────────────────────────────────────────────────────────
-
 /**
  * Create an in-memory sliding window rate limiter middleware.
- *
- * @example
- * ```ts
- * const limiter = createRateLimiter({ windowMs: 60_000, max: 100 });
- * app.use('/api/', limiter);
- *
- * // Stricter limit for auth routes
- * app.use('/api/auth/login', createRateLimiter({
- *   windowMs: 60_000,
- *   max: 5,
- *   message: 'Too many login attempts',
- * }));
- * ```
  */
 export function createRateLimiter(options: RateLimiterOptions = {}) {
   const {
@@ -118,11 +94,9 @@ export function createRateLimiter(options: RateLimiterOptions = {}) {
     let count: number;
 
     if (!entry || now - entry.windowStart >= windowMs) {
-      // New window (or previous window expired)
       windowStart = now;
       count = 1;
     } else {
-      // Still within current window
       windowStart = entry.windowStart;
       count = entry.count + 1;
     }
@@ -132,7 +106,6 @@ export function createRateLimiter(options: RateLimiterOptions = {}) {
     const remaining = Math.max(0, max - count);
     const resetAt = windowStart + windowMs;
 
-    // Set standard rate limit headers
     res.setHeader('X-RateLimit-Limit', max);
     res.setHeader('X-RateLimit-Remaining', remaining);
     res.setHeader('X-RateLimit-Reset', Math.ceil(resetAt / 1000));
@@ -151,28 +124,17 @@ export function createRateLimiter(options: RateLimiterOptions = {}) {
   };
 }
 
-// ─── Exports for Testing ─────────────────────────────────────────────────────
-
-/**
- * Clear all rate limit entries. Useful for testing.
- * @internal
- */
+/** Clear all rate limit entries. Useful for testing. */
 export function _clearStoreForTesting(): void {
   store.clear();
 }
 
-/**
- * Stop the global cleanup timer. Useful for testing.
- * @internal
- */
+/** Stop the global cleanup timer. Useful for testing. */
 export function _stopCleanupForTesting(): void {
   stopCleanupTimer();
 }
 
-/**
- * Get current store size. Useful for testing.
- * @internal
- */
+/** Get current store size. Useful for testing. */
 export function _getStoreSizeForTesting(): number {
   return store.size;
 }

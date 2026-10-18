@@ -131,16 +131,6 @@ export class CircuitBreaker {
     logger.warn(`[CircuitBreaker] TRIPPED: ${reason} - ${details}`);
   }
 
-  /** Set circuit to half-open (after cooldown) */
-  private async setHalfOpen(): Promise<void> {
-    this.state = 'HALF_OPEN';
-    try {
-      await this.redis.hset('circuit_breaker:status', 'state', 'HALF_OPEN');
-    } catch {
-      // In-memory fallback
-    }
-  }
-
   /** Reset circuit breaker to closed */
   async reset(): Promise<void> {
     this.state = 'CLOSED';

@@ -1,15 +1,9 @@
 /**
  * Tests for coupon-validate.handleValidateCoupon.
- *
- * Drives the validation pipeline through the empty-code, missing-coupon,
- * expired/invalid, valid-discount, free-access (no invoice), no-API-key
- * (discountPercent fallback), per-tier invoice creation with unknown-tier
- * skipping, partial-URL response, and the outer try/catch 500 branch.
- *
- * coupon-helpers is mocked; isNonEmptyString and json run for real.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { KVNamespace } from '@cloudflare/workers-types';
 
 const {
   mockLoadCoupon,
@@ -50,7 +44,7 @@ function makeCoupon(overrides: Partial<Coupon> = {}): Coupon {
 }
 
 function makeEnv(opts: { apiKey?: string | null } = {}) {
-  return { CACHE: {} as any, NOWPAYMENTS_API_KEY: opts.apiKey ?? null };
+  return { CACHE: {} as unknown as KVNamespace, NOWPAYMENTS_API_KEY: opts.apiKey ?? null };
 }
 
 function req(body: unknown) {
@@ -98,8 +92,7 @@ describe('handleValidateCoupon', () => {
     mockValidateCoupon.mockReturnValue(null);
     const res = await handleValidateCoupon(req({ code: 'FREE' }), makeEnv({ apiKey: 'key' }));
     expect(res.status).toBe(200);
-    const out = await bodyOf(res);
-    expect(out).toEqual({ valid: true, discountPercent: 100, freeAccess: true });
+    expect(await bodyOf(res)).toEqual({ valid: true, discountPercent: 100, freeAccess: true });
     expect(mockCreateInvoice).not.toHaveBeenCalled();
   });
 
@@ -132,14 +125,11 @@ describe('handleValidateCoupon', () => {
       expect.stringContaining('CashClaw STARTER (10% off with SAVE10)'),
       expect.any(Number),
     );
-    // 10% off STARTER (49) -> 44.1
     expect(mockCreateInvoice).toHaveBeenNthCalledWith(1, 'key', expect.any(String), expect.any(String), 44.1);
   });
 
   it('skips tiers that have no known price', async () => {
-    mockLoadCoupon.mockResolvedValue(
-      makeCoupon({ discountPercent: 50, applicableTiers: ['STARTER', 'UNKNOWN'] }),
-    );
+    mockLoadCoupon.mockResolvedValue(makeCoupon({ discountPercent: 50, applicableTiers: ['STARTER', 'UNKNOWN'] }));
     mockValidateCoupon.mockReturnValue(null);
     const res = await handleValidateCoupon(req({ code: 'SAVE10' }), makeEnv({ apiKey: 'key' }));
     expect(res.status).toBe(200);
@@ -160,10 +150,7 @@ describe('handleValidateCoupon', () => {
   });
 
   it('returns 500 when the request body cannot be parsed', async () => {
-    const bad = new Request('https://example.com/api/coupons/validate', {
-      method: 'POST',
-      body: 'not json',
-    });
+    const bad = new Request('https://example.com/api/coupons/validate', { method: 'POST', body: 'not json' });
     const res = await handleValidateCoupon(bad, makeEnv());
     expect(res.status).toBe(500);
     expect(await bodyOf(res)).toEqual({ valid: false, reason: 'Validation failed' });

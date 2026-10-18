@@ -15,14 +15,9 @@ import { RevenueService } from '../../marketplace/services/revenue.service';
 import { revenueShareRepository } from '../../marketplace/repositories/revenue-share-repository';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
-import {
-  isAdmin,
-  getQueryString,
-} from './admin-marketplace-helpers';
+import { isAdmin, getQueryString } from './admin-marketplace-helpers';
 
 const revenueService = RevenueService.getInstance();
-
-// ==================== Validation Schema ====================
 
 export const revenueFilterSchema = z.object({
   periodStart: z.string().datetime().optional(),
@@ -34,13 +29,7 @@ const markPaidSchema = z.object({
   stripePayoutId: z.string().optional(),
 });
 
-// ==================== Route Registration ====================
-
 export function registerMarketplaceRevenueRoutes(router: RouterType): void {
-  /**
-   * GET /api/admin/marketplace/revenue
-   * Platform revenue overview
-   */
   router.get('/revenue', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
     try {
       if (!isAdmin(req)) {
@@ -70,10 +59,6 @@ export function registerMarketplaceRevenueRoutes(router: RouterType): void {
     }
   });
 
-  /**
-   * GET /api/admin/marketplace/revenue/creators
-   * All creator payouts
-   */
   router.get('/revenue/creators', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
     try {
       if (!isAdmin(req)) {
@@ -91,10 +76,6 @@ export function registerMarketplaceRevenueRoutes(router: RouterType): void {
     }
   });
 
-  /**
-   * POST /api/admin/marketplace/revenue/mark-paid
-   * Batch mark revenue shares as paid (admin only)
-   */
   router.post('/revenue/mark-paid', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
     try {
       if (!isAdmin(req)) {
@@ -140,10 +121,6 @@ export function registerMarketplaceRevenueRoutes(router: RouterType): void {
     }
   });
 
-  /**
-   * POST /api/admin/marketplace/revenue/mark-paid/:id
-   * Mark single revenue share as paid (admin only)
-   */
   router.post('/revenue/mark-paid/:id', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
     try {
       if (!isAdmin(req)) {

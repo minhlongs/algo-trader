@@ -9,8 +9,6 @@
 import type { MetricsReport, BacktestTrade } from './types';
 import { BacktestRunner } from '../../shared/backtesting/backtest-runner';
 
-// ── Public API ─────────────────────────────────────────────────────────────────
-
 export function computeMetrics(
   trades: BacktestTrade[],
   equityCurve: Array<{ timestamp: string; equity: number }>,
@@ -43,59 +41,43 @@ export function computeMetrics(
   };
 }
 
-// ── Individual Metrics (exported for testing) ──────────────────────────────────
-
 /**
  * Compute maximum drawdown from equity curve.
- * Delegates to shared BacktestRunner for consistent formula across modules.
  * Returns negative values (e.g., -0.25 = -25%) per desk convention.
  */
 export function computeMaxDrawdown(equityCurve: Array<{ equity: number }>): number {
   if (equityCurve.length < 2) return 0;
-  const equityValues = equityCurve.map((p) => p.equity);
-  // Shared runner returns positive (0.25 = 25%), desk convention is negative
-  const raw = BacktestRunner.computeMaxDrawdown(equityValues);
-  // Avoid negative zero from -0; normalize to 0
+  const raw = BacktestRunner.computeMaxDrawdown(equityCurve.map((p) => p.equity));
   return raw === 0 ? 0 : -raw;
 }
 
 export function computeSharpeRatio(
   equityCurve: Array<{ equity: number }>,
   riskFreeRate = 0,
-  ticksPerYear = 8760, // Default: hourly ticks (365 × 24)
+  ticksPerYear = 8760,
 ): number {
   if (equityCurve.length < 2) return 0;
 
-  // Per-tick returns from equity curve
   const returns: number[] = [];
   for (let i = 1; i < equityCurve.length; i++) {
     const prev = equityCurve[i - 1].equity;
-    if (prev === 0) continue;
-    returns.push((equityCurve[i].equity - prev) / prev);
+    if (prev !== 0) returns.push((equityCurve[i].equity - prev) / prev);
   }
-
   if (returns.length < 2) return 0;
 
-  // Compute Sharpe directly with correct annualization factor
-  // Annualized = (mean(r) - rf) / std(r) × sqrt(ticksPerYear)
   const n = returns.length;
   const mean = returns.reduce((s, r) => s + r, 0) / n;
   const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / (n - 1);
   const std = Math.sqrt(variance);
   if (std === 0) return 0;
 
-  const riskFreePerTick = riskFreeRate / ticksPerYear;
-  return ((mean - riskFreePerTick) / std) * Math.sqrt(ticksPerYear);
+  return ((mean - riskFreeRate / ticksPerYear) / std) * Math.sqrt(ticksPerYear);
 }
 
 export function computeProfitFactor(trades: Array<{ pnl: number | null }>): number {
   const closed = trades.filter((t) => t.pnl !== null);
-  const grossProfit = closed
-    .filter((t) => t.pnl! > 0)
-    .reduce((sum, t) => sum + t.pnl!, 0);
-  const grossLoss = Math.abs(
-    closed.filter((t) => t.pnl! < 0).reduce((sum, t) => sum + t.pnl!, 0),
-  );
+  const grossProfit = closed.filter((t) => t.pnl! > 0).reduce((sum, t) => sum + t.pnl!, 0);
+  const grossLoss = Math.abs(closed.filter((t) => t.pnl! < 0).reduce((sum, t) => sum + t.pnl!, 0));
 
   if (grossLoss === 0) return grossProfit > 0 ? 100.0 : 0;
   return Math.min(grossProfit / grossLoss, 100.0);
@@ -103,7 +85,6 @@ export function computeProfitFactor(trades: Array<{ pnl: number | null }>): numb
 
 /**
  * Compute annualized Sortino ratio from returns or equity curve.
- * Downside deviation measures variance of negative excess returns below target.
  */
 export function computeSortinoRatio(
   returnsOrEquity: number[] | Array<{ equity: number }>,
@@ -120,11 +101,9 @@ export function computeSortinoRatio(
     returns = [];
     for (let i = 1; i < curve.length; i++) {
       const prev = curve[i - 1].equity;
-      if (prev === 0) continue;
-      returns.push((curve[i].equity - prev) / prev);
+      if (prev !== 0) returns.push((curve[i].equity - prev) / prev);
     }
   }
-
   if (returns.length < 2) return 0;
 
   const n = returns.length;
@@ -137,32 +116,20 @@ export function computeSortinoRatio(
   }, 0);
 
   const downsideDeviation = Math.sqrt(downsideSquaredSum / n);
-  if (downsideDeviation === 0) {
-    return mean > targetPerTick ? 50.0 : 0;
-  }
+  if (downsideDeviation === 0) return mean > targetPerTick ? 50.0 : 0;
 
-  const rawSortino = ((mean - targetPerTick) / downsideDeviation) * Math.sqrt(ticksPerYear);
-  return Math.min(rawSortino, 50.0);
+  return Math.min(((mean - targetPerTick) / downsideDeviation) * Math.sqrt(ticksPerYear), 50.0);
 }
 
 /**
  * Compute Calmar ratio from annualized return and max drawdown.
- * Formula: annualizedReturn / |maxDrawdown|
  */
-export function computeCalmarRatio(
-  annualizedReturn: number,
-  maxDrawdown: number,
-): number {
+export function computeCalmarRatio(annualizedReturn: number, maxDrawdown: number): number {
   if (isNaN(annualizedReturn) || isNaN(maxDrawdown)) return 0;
   const absDd = Math.abs(maxDrawdown);
-  if (absDd === 0) {
-    return annualizedReturn > 0 ? 50.0 : 0;
-  }
-  const rawCalmar = annualizedReturn / absDd;
-  return Math.min(rawCalmar, 50.0);
+  if (absDd === 0) return annualizedReturn > 0 ? 50.0 : 0;
+  return Math.min(annualizedReturn / absDd, 50.0);
 }
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;

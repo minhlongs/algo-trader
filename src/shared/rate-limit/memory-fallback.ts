@@ -4,9 +4,6 @@
  * Used when Redis is unreachable. Provides bounded, thread-safe
  * rate limiting with LRU eviction and TTL-aware cleanup.
  *
- * Max 10k entries. Evicts LRU (tail) when full.
- * Periodic cleanup removes expired entries every 30s.
- *
  * @module shared/rate-limit/memory-fallback
  */
 
@@ -26,8 +23,6 @@ export {
   type MemoryRateLimitOptions,
 };
 
-// ─── Memory Rate Limiter (LRU) ────────────────────────────────────────────────
-
 export class MemoryRateLimiter {
   private readonly cache: LRUCache<MemoryRateLimitEntry>;
   private readonly mutex = new AsyncMutex();
@@ -37,8 +32,6 @@ export class MemoryRateLimiter {
     this.cache = new LRUCache<MemoryRateLimitEntry>(maxEntries);
     this.startCleanup();
   }
-
-  // ─── Public API ─────────────────────────────────────────────────────────────
 
   /**
    * Check and record a rate limit hit for `userId`.
@@ -52,7 +45,6 @@ export class MemoryRateLimiter {
 
     return this.mutex.runExclusive(async () => {
       let node = this.cache.get(key);
-
       if (!node) {
         node = this.cache.set(key, { timestamps: [], expiresAt: now + windowMs, limit });
       } else {
@@ -60,8 +52,6 @@ export class MemoryRateLimiter {
       }
 
       const entry = node.entry;
-
-      // Evict timestamps outside the sliding window
       const valid = entry.timestamps.filter((ts: number) => ts > now - windowMs);
       entry.timestamps = valid;
       entry.expiresAt = now + windowMs;
@@ -70,10 +60,7 @@ export class MemoryRateLimiter {
       const allowed = count < limit;
       const remaining = Math.max(0, limit - count - (allowed ? 1 : 0));
 
-      if (allowed) {
-        entry.timestamps.push(now);
-      }
-
+      if (allowed) entry.timestamps.push(now);
       const retryAfterMs = allowed ? 0 : this.calcRetryAfter(valid, windowMs);
 
       return { allowed, remaining, retryAfterMs, isFallback: true };
@@ -89,7 +76,6 @@ export class MemoryRateLimiter {
     return this.mutex.runExclusive(async () => {
       const node = this.cache.get(key);
       if (!node) return 0;
-
       const valid = node.entry.timestamps.filter((ts: number) => ts > now - w);
       node.entry.timestamps = valid;
       return valid.length;
@@ -135,8 +121,6 @@ export class MemoryRateLimiter {
     return Math.max(0, oldest + windowMs - Date.now());
   }
 
-  // ─── Periodic Cleanup ────────────────────────────────────────────────────────
-
   private startCleanup(): void {
     this.cleanupTimer = setInterval(() => {
       this.cleanupExpired();
@@ -145,17 +129,12 @@ export class MemoryRateLimiter {
 
   private cleanupExpired(): void {
     const now = Date.now();
-
     this.mutex.runExclusive(async () => {
       const expired: string[] = [];
       for (const [key, node] of this.cache.entries()) {
         if (node.entry.expiresAt < now) expired.push(key);
       }
-
-      for (const key of expired) {
-        this.cache.delete(key);
-      }
-
+      for (const key of expired) this.cache.delete(key);
       if (expired.length > 0) {
         logger.debug('[MemoryRateLimiter] evicted expired entries', {
           evicted: expired.length,
@@ -170,5 +149,4 @@ export class MemoryRateLimiter {
   }
 }
 
-/** Singleton in-memory fallback limiter. */
 export const memoryRateLimiter = new MemoryRateLimiter();

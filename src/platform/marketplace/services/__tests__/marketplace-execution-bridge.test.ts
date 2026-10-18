@@ -58,13 +58,7 @@ function fakeSub(overrides: Record<string, unknown> = {}) {
 }
 
 function fakeExecResult(overrides: Record<string, unknown> = {}) {
-  return {
-    signal: 'BUY',
-    profit: 15.5,
-    status: 'FILLED',
-    confidence: 0.85,
-    ...overrides,
-  };
+  return { signal: 'BUY', profit: 15.5, status: 'FILLED', confidence: 0.85, ...overrides };
 }
 
 describe('MarketplaceExecutionBridge', () => {
@@ -80,18 +74,14 @@ describe('MarketplaceExecutionBridge', () => {
   describe('executeForSubscriber', () => {
     it('returns null for unknown subscription', async () => {
       mocks.mockFindById.mockResolvedValue(null);
-
       const result = await bridge.executeForSubscriber('bad_sub', {});
-
       expect(result).toBeNull();
       expect(mocks.mockExecute).not.toHaveBeenCalled();
     });
 
     it('skips inactive subscriptions', async () => {
       mocks.mockFindById.mockResolvedValue(fakeSub({ status: 'paused' }));
-
       const result = await bridge.executeForSubscriber('sub_001', {});
-
       expect(result).toBeNull();
       expect(mocks.mockExecute).not.toHaveBeenCalled();
     });
@@ -137,17 +127,12 @@ describe('MarketplaceExecutionBridge', () => {
   describe('executeActiveForStrategy', () => {
     it('returns empty array when no active subscribers', async () => {
       mocks.mockFindActiveByStrategy.mockResolvedValue([]);
-
       const results = await bridge.executeActiveForStrategy('strat_001', {});
-
       expect(results).toEqual([]);
     });
 
     it('executes for each active subscriber', async () => {
-      mocks.mockFindActiveByStrategy.mockResolvedValue([
-        fakeSub({ id: 'sub_001' }),
-        fakeSub({ id: 'sub_002' }),
-      ]);
+      mocks.mockFindActiveByStrategy.mockResolvedValue([fakeSub({ id: 'sub_001' }), fakeSub({ id: 'sub_002' })]);
       mocks.mockFindById.mockResolvedValue(fakeSub());
       mocks.mockExecute.mockResolvedValue(fakeExecResult());
 
@@ -158,13 +143,8 @@ describe('MarketplaceExecutionBridge', () => {
     });
 
     it('continues on individual subscriber failure', async () => {
-      mocks.mockFindActiveByStrategy.mockResolvedValue([
-        fakeSub({ id: 'sub_001' }),
-        fakeSub({ id: 'sub_002' }),
-      ]);
-      mocks.mockFindById
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(fakeSub({ id: 'sub_002' }));
+      mocks.mockFindActiveByStrategy.mockResolvedValue([fakeSub({ id: 'sub_001' }), fakeSub({ id: 'sub_002' })]);
+      mocks.mockFindById.mockResolvedValueOnce(null).mockResolvedValueOnce(fakeSub({ id: 'sub_002' }));
       mocks.mockExecute.mockResolvedValue(fakeExecResult());
 
       const results = await bridge.executeActiveForStrategy('strat_001', {});

@@ -11,8 +11,6 @@ import { z } from 'zod';
  */
 export const HURDLE_EPSILON_BPS = 1e-6;
 
-// ── Level & Depth Schemas ───────────────────────────────────────────────────
-
 export const OrderBookLevelSchema = z.union([
   z.object({
     price: z.number().positive('Level price must be positive'),
@@ -41,8 +39,6 @@ export type RawOrderBookDepth = {
   asks?: Array<OrderBookLevel | [number, number]>;
 };
 
-// ── Venue Trade Leg Schemas ─────────────────────────────────────────────────
-
 export const VenueTradeLegSchema = z.object({
   venue: z.string().min(1, 'Venue identifier required'),
   symbol: z.string().min(1, 'Trading symbol required'),
@@ -52,16 +48,8 @@ export const VenueTradeLegSchema = z.object({
   orderType: z.enum(['taker', 'maker']).default('taker'),
   polymarketCategory: z
     .enum([
-      'crypto',
-      'politics',
-      'finance',
-      'tech',
-      'culture',
-      'sports',
-      'science',
-      'pop_culture',
-      'geopolitics',
-      'world_events',
+      'crypto', 'politics', 'finance', 'tech', 'culture',
+      'sports', 'science', 'pop_culture', 'geopolitics', 'world_events',
     ])
     .optional(),
   marketDescription: z.string().optional(),
@@ -72,8 +60,6 @@ export const VenueTradeLegSchema = z.object({
 
 export type VenueTradeLegInput = z.input<typeof VenueTradeLegSchema>;
 export type VenueTradeLeg = z.output<typeof VenueTradeLegSchema>;
-
-// ── Configuration Schemas ───────────────────────────────────────────────────
 
 export const SlippageModelConfigSchema = z.object({
   cexBaseSlippageBps: z.number().nonnegative().default(2.0),
@@ -119,8 +105,6 @@ export const NetProfitabilityInputSchema = z.object({
 
 export type NetProfitabilityInput = z.input<typeof NetProfitabilityInputSchema>;
 export type NetProfitabilityResolved = z.output<typeof NetProfitabilityInputSchema>;
-
-// ── Result Types ────────────────────────────────────────────────────────────
 
 export type RejectionReason =
   | 'NEGATIVE_GROSS_SPREAD'

@@ -1,5 +1,22 @@
 # Project Changelog - Algo Trader
 
+## [3.3.05] - 2026-10-18 — Quantitative Desk Waves 330–332, UI/UX Pro Max 13-Screen Hardening (`2026.2-PRO-MAX`) & Deep 168-LOC Refactor (`--deep`)
+
+### Added
+- **UI/UX Pro Max 13-Screen Institutional Hardening (`site/public/assets/ui-ux-pro-max.css` & `ui-ux-pro-max.js`)**:
+  - Upgraded all 14 HTML screens in `site/public/*.html` with WCAG AAA `:focus-visible` cyan rings (`#00F2FE`), Skip-to-Main-Content link, `@media (prefers-reduced-motion: reduce)`, `Cmd+K` 13-Screen Command Palette, live 3-Theme Switcher (`OBSIDIAN_QUANTUM`, `BENTO_RAAS_GLASS`, `NORDIC_MINIMALIST_QUANT`), Pulse Pause toggle, and `<50ms` Double-Confirm Emergency Kill-Switch.
+- **Programmatic UI/UX Pro Max Auditor (`src/desk/opencoresaas2026monetization/ui-ux-pro-max-auditor.ts`)**:
+  - Implemented `UiUxProMaxAuditor` evaluating all 8 priority categories across `site/public/*.html` (`100%` score) and exposed `GET /ui-ux-audit` on `stitchCockpitRouter`.
+- **Wave 330: Gatheral (2006) SVI Volatility Surface & Durrleman No-Arbitrage Filter** (`src/desk/gatheral2006svisurface/`).
+- **Wave 331: Andersen & Bollerslev (1998) Intraday Diurnal U-Shape Volatility Filter** (`src/desk/andersenbollerslev1998intradayvol/`).
+- **Wave 332: Easley, López de Prado & O'Hara (2012) VPIN Flow Toxicity & Flash-Crash CDF Alert** (`src/desk/easleylopezdeprado2012vpintoxicity/`).
+- **Test Suite**:
+  - Added `tests/unit/desk/wave_330_332_ui_ux_pro_max_suite.test.ts` (4/4 passed).
+
+### Changed
+- **Deep 168-LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed all 28 remaining 169–170 LOC files in `src/` into cohesive single-responsibility submodules (`<= 158 LOC` each) so that **zero `.ts` files in `src/` exceed 168 LOC**.
+
 ## [3.3.04] - 2026-10-17 — Quantitative Desk Waves 327–329 (Multi-Venue SOR), Stitch Screen #13 (`order-routing-mesh`) & Deep 180-LOC Refactor (`--deep`)
 
 ### Added

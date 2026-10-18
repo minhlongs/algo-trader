@@ -139,8 +139,11 @@
       box-shadow: 0 0 12px rgba(255, 59, 48, 0.4);
     }
   </style>
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css"/>
+  <script src="assets/ui-ux-pro-max.js" defer></script>
 </head>
 <body class="bg-[#08090C] text-on-surface antialiased overflow-x-hidden select-none min-h-screen flex flex-col">
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
 <!-- ================= TOP HUD TELEMETRY SUB-STRIP ================= -->
 <div class="w-full bg-[#0a0c10] border-b border-outline-variant px-space-md py-1 flex items-center justify-between font-data-mono-sm text-data-mono-sm text-on-surface-variant z-50">
 <div class="flex items-center gap-space-lg divide-x divide-outline-variant">
@@ -178,7 +181,7 @@
 </div>
 </div>
 <!-- ================= TOP NAV BAR (Shared Component Anchor) ================= -->
-<header class="flex justify-between items-center w-full px-space-md py-space-xs h-11 border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-40">
+<header aria-live="polite" class="flex justify-between items-center w-full px-space-md py-space-xs h-11 border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-40">
 <!-- Brand Logo & Left Search -->
 <div class="flex items-center gap-space-xl">
 <div class="flex items-center gap-2">

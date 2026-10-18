@@ -19,15 +19,13 @@ const { mockLogger, mockSend, mockInitialize, mockIsInitialized, mockGetInstance
 
 vi.mock('../../utils/logger', () => ({ logger: mockLogger }));
 vi.mock('../../notifications/email-service', () => ({
-  EmailService: {
-    getInstance: mockGetInstance,
-  },
+  EmailService: { getInstance: mockGetInstance },
 }));
 
 import { notifyTam } from '../enterprise-tam-notifier';
 
 function makeInquiry(overrides: Partial<EnterpriseInquiry> = {}): EnterpriseInquiry {
-  const defaults: EnterpriseInquiry = {
+  return {
     id: 'ent-001',
     companyName: 'Acme Corp',
     contactName: 'Jane Doe',
@@ -36,31 +34,22 @@ function makeInquiry(overrides: Partial<EnterpriseInquiry> = {}): EnterpriseInqu
     teamSize: '15',
     useCase: 'Multi-strategy institutional deployment',
     createdAt: '2026-09-01T12:00:00Z',
+    ...overrides,
   };
-  return { ...defaults, ...overrides };
 }
 
 describe('Enterprise TAM Notifier', () => {
-  let fakeEmailSvc: {
-    isInitialized: typeof mockIsInitialized;
-    initialize: typeof mockInitialize;
-    send: typeof mockSend;
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
-    fakeEmailSvc = {
+    mockGetInstance.mockReturnValue({
       isInitialized: mockIsInitialized,
       initialize: mockInitialize,
       send: mockSend,
-    };
-    mockGetInstance.mockReturnValue(fakeEmailSvc);
+    });
     mockIsInitialized.mockReturnValue(true);
     mockSend.mockResolvedValue(true);
     delete process.env['ENTERPRISE_TAM_EMAIL'];
   });
-
-  // ── notifyTam happy path ──────────────────────────────────────────────────
 
   describe('notifyTam', () => {
     it('sends email and returns true on success', async () => {
@@ -74,9 +63,7 @@ describe('Enterprise TAM Notifier', () => {
     });
 
     it('initializes EmailService if not yet initialized', async () => {
-      mockIsInitialized
-        .mockReturnValueOnce(false)  // first check before initialize()
-        .mockReturnValueOnce(true);  // second check after initialize()
+      mockIsInitialized.mockReturnValueOnce(false).mockReturnValueOnce(true);
       const result = await notifyTam(makeInquiry());
       expect(mockInitialize).toHaveBeenCalledTimes(1);
       expect(result).toBe(true);
@@ -93,20 +80,16 @@ describe('Enterprise TAM Notifier', () => {
       );
     });
 
-    it('returns false and warns on send failure', async () => {
-      mockSend.mockRejectedValue(new Error('SMTP timeout'));
-      const result = await notifyTam(makeInquiry());
-      expect(result).toBe(false);
+    it('returns false and warns on Error or non-Error send failure', async () => {
+      mockSend.mockRejectedValueOnce(new Error('SMTP timeout'));
+      expect(await notifyTam(makeInquiry())).toBe(false);
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to notify TAM'),
         expect.objectContaining({ error: 'SMTP timeout' }),
       );
-    });
 
-    it('handles non-Error thrown values gracefully', async () => {
-      mockSend.mockRejectedValue('string error');
-      const result = await notifyTam(makeInquiry());
-      expect(result).toBe(false);
+      mockSend.mockRejectedValueOnce('string error');
+      expect(await notifyTam(makeInquiry())).toBe(false);
       expect(mockLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Failed to notify TAM'),
         expect.objectContaining({ error: 'string error' }),
@@ -114,12 +97,9 @@ describe('Enterprise TAM Notifier', () => {
     });
   });
 
-  // ── email content ─────────────────────────────────────────────────────────
-
   describe('email content', () => {
     it('includes inquiry details in the email body', async () => {
-      const inquiry = makeInquiry();
-      await notifyTam(inquiry);
+      await notifyTam(makeInquiry());
       const [opts] = mockSend.mock.calls[0]!;
       expect(opts.body).toContain('NEW ENTERPRISE INQUIRY');
       expect(opts.body).toContain('ID:        ent-001');
@@ -130,35 +110,29 @@ describe('Enterprise TAM Notifier', () => {
     });
 
     it('includes HTML with escaped HTML characters', async () => {
-      const inquiry = makeInquiry({
+      await notifyTam(makeInquiry({
         companyName: 'O\'Brien & Sons <Inc>',
         useCase: '<script>alert("xss")</script>',
-      });
-      await notifyTam(inquiry);
+      }));
       const [opts] = mockSend.mock.calls[0]!;
       expect(opts.html).toContain("O'Brien &amp; Sons &lt;Inc&gt;");
       expect(opts.html).toContain('&lt;script&gt;alert("xss")&lt;/script&gt;');
     });
 
     it('includes the correct subject with tier label', async () => {
-      const inquiry = makeInquiry({ tier: 'enterprise', companyName: 'Globex' });
-      await notifyTam(inquiry);
+      await notifyTam(makeInquiry({ tier: 'enterprise', companyName: 'Globex' }));
       const [opts] = mockSend.mock.calls[0]!;
       expect(opts.subject).toContain('Globex');
       expect(opts.subject).toContain('Enterprise — $299/mo');
     });
 
-    it('sends to the default TAM email when env is not set', async () => {
+    it('uses default TAM email or ENTERPRISE_TAM_EMAIL env var when set', async () => {
       await notifyTam(makeInquiry());
-      const [sendOpts] = mockSend.mock.calls[0]!;
-      expect(sendOpts.to).toBe('tam@cashclaw.cc');
-    });
+      expect(mockSend.mock.calls[0]![0].to).toBe('tam@cashclaw.cc');
 
-    it('uses ENTERPRISE_TAM_EMAIL env var when set', async () => {
       process.env['ENTERPRISE_TAM_EMAIL'] = 'custom-tam@company.com';
       await notifyTam(makeInquiry());
-      const [sendOpts] = mockSend.mock.calls[0]!;
-      expect(sendOpts.to).toBe('custom-tam@company.com');
+      expect(mockSend.mock.calls[1]![0].to).toBe('custom-tam@company.com');
     });
 
     it('shows "not specified" when teamSize is undefined', async () => {

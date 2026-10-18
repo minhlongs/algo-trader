@@ -3,10 +3,6 @@
  *
  * Usage: pnpm tsx src/alpha-lab/run-experiment.ts --config <path> [--record] [--suggest]
  *        pnpm tsx src/alpha-lab/run-experiment.ts --suggest
- *
- * Runs the full pipeline (split -> label -> evaluate) and outputs JSON to
- * stdout. --record persists the alpha verdict (provenance to stderr only).
- * --suggest ranks strategy families against the research ledger.
  */
 
 import { logger } from '../shared/utils/logger';
@@ -21,9 +17,8 @@ import {
   candidateResultFromExperiment,
   recordAlphaVerdict,
 } from './provenance/record-alpha-verdict';
-import { hashConfig } from './provenance/run-card';
+import { hashConfig, type DataSourceProvenance } from './provenance/run-card';
 import { DEFAULT_LEDGER_PATH } from './provenance/research-ledger';
-import type { DataSourceProvenance } from './provenance/run-card';
 import {
   parseArgs,
   suggestFamilies,
@@ -53,24 +48,18 @@ export async function runExperimentCli(
 ): Promise<number> {
   const { configPath, record, suggest } = parseArgs(argv);
 
-  // Standalone suggest mode: no --config required.
   if (suggest && !configPath) {
-    io.stderr.write(
-      `[run-experiment] suggest: loading ledger from ${DEFAULT_LEDGER_PATH}\n`,
-    );
+    io.stderr.write(`[run-experiment] suggest: loading ledger from ${DEFAULT_LEDGER_PATH}\n`);
     const { summary, suggestions } = await suggestFamilies(DEFAULT_LEDGER_PATH);
     io.stderr.write(
       `[run-experiment] suggest: ${summary.totalRecords} ledger records across ` +
-      `${Object.keys(summary.byStrategy).length} strategies; ` +
-      `${suggestions.length} families ranked\n`,
+      `${Object.keys(summary.byStrategy).length} strategies; ${suggestions.length} families ranked\n`,
     );
     io.stdout.write(JSON.stringify(suggestions, null, 2) + '\n');
     return 0;
   }
 
-  const config: ExperimentConfig = JSON.parse(
-    readFileSync(configPath!, 'utf-8'),
-  ) as ExperimentConfig;
+  const config = JSON.parse(readFileSync(configPath!, 'utf-8')) as ExperimentConfig;
   validateConfig(config);
 
   const minBars = Math.ceil(
@@ -79,8 +68,6 @@ export async function runExperimentCli(
   const candleCount = Math.max(500, minBars * 3);
   const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
 
-  // Construct data source provenance (funding series get their real provider
-  // label + transform description via the shared adapter helper).
   const dataSources: DataSourceProvenance[] = buildDataSources(
     config.symbol,
     config.timeframe,
@@ -95,8 +82,6 @@ export async function runExperimentCli(
     ...(record
       ? {
           runCardDir: join('data', 'runs', config.experimentId),
-          // CLI runs are classified in-sample per standing doctrine;
-          // OOS callers must pass resultClass explicitly elsewhere.
           resultClass: 'IS' as const,
         }
       : {}),
@@ -124,7 +109,6 @@ export async function runExperimentCli(
     baselines: mapBaselines(baselines, regimeSeries),
   };
 
-  // Provenance (--record): persist alpha verdict + ledger entry.
   if (record) {
     const candidate = candidateResultFromExperiment(result);
     const outcome = await recordAlphaVerdict({
@@ -146,7 +130,6 @@ export async function runExperimentCli(
     );
   }
 
-  // Suggest mode combined with --config: append suggestedNext to artifact.
   if (suggest) {
     const { suggestions } = await suggestFamilies(DEFAULT_LEDGER_PATH);
     (artifact as Record<string, unknown>).suggestedNext = suggestions
@@ -163,9 +146,7 @@ export async function main(
   runner: (argv?: string[], io?: RunExperimentIO) => Promise<number> = runExperimentCli,
 ): Promise<void> {
   const exitCode = await runner();
-  if (exitCode !== 0) {
-    process.exit(exitCode);
-  }
+  if (exitCode !== 0) process.exit(exitCode);
 }
 
 /* v8 ignore start */

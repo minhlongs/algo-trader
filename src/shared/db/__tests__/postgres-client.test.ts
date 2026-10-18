@@ -1,18 +1,12 @@
 /**
  * PostgreSQL Client Tests
  *
- * Covers the full client surface: getDbClient singleton + config merge,
- * query passthrough, transaction commit/rollback/release, and closeDbConnection.
- * The real `pg` pool is replaced with a deterministic mock via vi.hoist so no
- * network is touched and the module-level `pool` singleton can be reset between
- * tests by calling closeDbConnection.
+ * Covers getDbClient singleton + config merge, query passthrough,
+ * transaction commit/rollback/release, and closeDbConnection.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// hoisted mock factory for the `pg` module — vi.hoist lets us reference it
-// before the import statement below executes (required because the import
-// above is hoisted by the loader).
 const { mockPool, mockConnect, poolCtor } = vi.hoisted(() => {
   const query = vi.fn(async () => ({ rows: [{ id: 1 }], rowCount: 1 }));
   const release = vi.fn();
@@ -20,7 +14,6 @@ const { mockPool, mockConnect, poolCtor } = vi.hoisted(() => {
   const end = vi.fn();
   const on = vi.fn();
   const pool = { query, on, end, connect };
-  // vi.fn used as a constructor via `new Pool(...)` must return a real object.
   const poolCtor = vi.fn(function PoolMock(_config: unknown) {
     return pool;
   });
@@ -36,7 +29,6 @@ vi.mock('pg', async (importOriginal) => {
   };
 });
 
-// import after the mock is registered so the module picks up the fake pool
 import { getDbClient, query, transaction, closeDbConnection } from '../postgres-client';
 
 describe('getDbClient', () => {
@@ -142,12 +134,7 @@ describe('transaction', () => {
   });
 
   it('rolls back and rethrows when the callback throws', async () => {
-    const boom = new Error('boom');
-    await expect(
-      transaction(async () => {
-        throw boom;
-      }),
-    ).rejects.toThrow('boom');
+    await expect(transaction(async () => { throw new Error('boom'); })).rejects.toThrow('boom');
     expect(client.query).toHaveBeenCalledWith('BEGIN');
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.query).not.toHaveBeenCalledWith('COMMIT');
@@ -172,7 +159,6 @@ describe('closeDbConnection', () => {
     expect(poolCtor).toHaveBeenCalledTimes(1);
     await closeDbConnection();
     expect(mockPool.end).toHaveBeenCalledTimes(1);
-    // subsequent getDbClient builds a fresh pool (singleton was cleared)
     getDbClient();
     expect(poolCtor).toHaveBeenCalledTimes(2);
   });

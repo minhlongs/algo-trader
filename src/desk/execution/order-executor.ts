@@ -122,24 +122,16 @@ export class OrderExecutor {
   private async placeOrder(params: { exchange: string; symbol: string; side: 'buy' | 'sell'; price: number; amount: number }): Promise<OrderResult> {
     const orderId = `${params.exchange}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     return {
-      orderId,
-      exchange: params.exchange,
-      symbol: params.symbol,
-      side: params.side,
-      price: params.price,
-      amount: params.amount,
-      filled: params.amount,
-      remaining: 0,
-      status: 'closed',
-      fee: params.amount * params.price * 0.001,
+      orderId, exchange: params.exchange, symbol: params.symbol, side: params.side,
+      price: params.price, amount: params.amount, filled: params.amount,
+      remaining: 0, status: 'closed', fee: params.amount * params.price * 0.001,
     };
   }
 
   private calculateProfit(opportunity: ArbitrageOpportunity, amount: number): number {
     const buyCost = opportunity.buyPrice * amount;
     const sellRevenue = opportunity.sellPrice * amount;
-    const fees = (buyCost + sellRevenue) * 0.001;
-    return sellRevenue - buyCost - fees;
+    return sellRevenue - buyCost - (buyCost + sellRevenue) * 0.001;
   }
 
   getExecution(id: string): ExecutionResult | undefined {

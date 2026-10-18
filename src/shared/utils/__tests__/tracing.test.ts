@@ -1,8 +1,7 @@
 /**
  * Tracing initialization unit tests — part 1: noop + init gate
  *
- * Exercises src/shared/utils/tracing.ts default behavior and env-gated
- * init paths.
+ * Exercises src/shared/utils/tracing.ts default behavior and env-gated init paths.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -82,21 +81,18 @@ describe('tracing', () => {
     });
 
     it('ignores the name parameter and returns the module tracer', () => {
-      const tracer = getTracer('custom-name');
-      expect(tracer).toBe(getTracer());
+      expect(getTracer('custom-name')).toBe(getTracer());
     });
   });
 
   describe('noop default behavior', () => {
     it('startActiveSpan invokes callback and returns its result when tracing disabled', async () => {
-      const tracer = getTracer();
-      const result = await tracer.startActiveSpan('test', async () => 'ok');
+      const result = await getTracer().startActiveSpan('test', async () => 'ok');
       expect(result).toBe('ok');
     });
 
     it('startSpan returns a span-like object when tracing disabled', () => {
-      const tracer = getTracer();
-      const span = tracer.startSpan('noop');
+      const span = getTracer().startSpan('noop');
       expect(typeof span.end).toBe('function');
       expect(typeof span.setAttribute).toBe('function');
     });
@@ -116,20 +112,14 @@ describe('tracing', () => {
 
     it('is idempotent — concurrent callers share the same promise', () => {
       delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-      const p1 = initTracing();
-      const p2 = initTracing();
-      expect(p1).toBe(p2);
+      expect(initTracing()).toBe(initTracing());
     });
 
     it('initializes OTEL tracer when endpoint is set', async () => {
       process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4318/v1/traces';
-
       await initTracing();
-
       expect(mockOTelApi.trace.getTracer).toHaveBeenCalledWith('algo-trader');
-
-      const tracer = getTracer();
-      expect(typeof tracer.startActiveSpan).toBe('function');
+      expect(typeof getTracer().startActiveSpan).toBe('function');
     });
   });
 
@@ -166,8 +156,7 @@ describe('tracing', () => {
       delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
       await initTracing();
       resetTracingForTests();
-      const tracer = getTracer();
-      const result = await tracer.startActiveSpan('test', async () => 'reset');
+      const result = await getTracer().startActiveSpan('test', async () => 'reset');
       expect(result).toBe('reset');
     });
   });

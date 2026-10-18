@@ -3,10 +3,6 @@
  *
  * Splits large orders into $500-$2K chunks with orderbook depth checks.
  * Aborts if slippage exceeds threshold, chunk times out, or 3 consecutive failures.
- * Handles SIGTERM gracefully — cancels remaining chunks.
- *
- * Extracted from twap-executor.ts to keep files under 200 lines.
- * Re-exported via twap-executor.ts facade.
  */
 
 import { logger } from '../utils/logger';
@@ -20,10 +16,11 @@ export class TwapExecutor {
   private config: TwapConfig;
   private activeController: AbortController | null = null;
   private activeTimers: Set<ReturnType<typeof setTimeout>> = new Set();
+  private static signalHandlerRegistered = false;
+  private static activeInstances: Set<TwapExecutor> = new Set();
 
   constructor(config?: Partial<TwapConfig>) {
     this.config = { ...DEFAULT_TWAP_CONFIG, ...config };
-    // EC#25: Instance registry instead of overwrite — support multiple concurrent instances
     if (!TwapExecutor.signalHandlerRegistered) {
       TwapExecutor.signalHandlerRegistered = true;
       if (typeof process !== 'undefined' && process.on) {
@@ -33,9 +30,6 @@ export class TwapExecutor {
     }
     TwapExecutor.activeInstances.add(this);
   }
-
-  private static signalHandlerRegistered = false;
-  private static activeInstances: Set<TwapExecutor> = new Set();
 
   cancelActive(reason: string): void {
     if (this.activeController && !this.activeController.signal.aborted) {
@@ -72,7 +66,6 @@ export class TwapExecutor {
   }
 
   async execute(order: TwapOrder, getDepth: GetDepthFn, executeChunk: ExecuteChunkFn, getPrice: GetPriceFn): Promise<TwapResult> {
-    // EC#27: Each execute() gets its own controller — no race from concurrent calls
     const controller = new AbortController();
     this.activeController = controller;
     const { signal } = controller;
@@ -80,7 +73,6 @@ export class TwapExecutor {
     const startedAt = Date.now();
     const delayMs = order.delayMs ?? this.config.delayMs;
     const maxSlippage = order.maxSlippagePercent ?? this.config.maxSlippagePercent;
-
     const arrivalPrice = await getPrice(order.marketId);
     const chunks = this.planChunks(order.totalSizeUsd, order.chunkSizeUsd);
 

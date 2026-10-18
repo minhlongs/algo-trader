@@ -32,17 +32,12 @@ export async function runGruStrategy(options: Partial<GruCommandOptions> = {}): 
   logger.info('='.repeat(60));
   logger.info('  GRU Neural Network Trading Strategy');
   logger.info('='.repeat(60));
-  logger.info(`Symbol: ${config.symbol}`);
-  logger.info(`Interval: ${config.interval}`);
-  logger.info(`Mode: ${config.mode.toUpperCase()}`);
-  logger.info(`Input Steps: ${config.inputSteps}`);
-  logger.info(`GRU Units: ${config.gruUnits}`);
-  logger.info(`Epochs: ${config.epochs}`);
+  logger.info(`Symbol: ${config.symbol} | Interval: ${config.interval} | Mode: ${config.mode.toUpperCase()}`);
+  logger.info(`Input Steps: ${config.inputSteps} | GRU Units: ${config.gruUnits} | Epochs: ${config.epochs}`);
   logger.info(`Confidence Threshold: ${(config.confidenceThreshold * 100).toFixed(0)}%`);
   logger.info('='.repeat(60));
 
   try {
-    // Initialize strategy
     const strategy = new GruStrategy({
       inputSteps: config.inputSteps,
       gruUnits: config.gruUnits,
@@ -53,40 +48,30 @@ export async function runGruStrategy(options: Partial<GruCommandOptions> = {}): 
     logger.info('\n[1/3] Initializing GRU model...');
     await strategy.initialize();
 
-    // Generate mock historical data for demo
     logger.info('\n[2/3] Loading historical data...');
     const historicalData = generateMockData(config.inputSteps + 20);
     logger.info(`Loaded ${historicalData.length} candles`);
 
-    // Train model
     logger.info('\n[3/3] Training GRU model...');
     await strategy.train(historicalData);
 
-    logger.info('\n' + '='.repeat(60));
-    logger.info('  Training Complete - Ready for Trading');
-    logger.info('='.repeat(60));
+    logger.info('\n' + '='.repeat(60) + '\n  Training Complete - Ready for Trading\n' + '='.repeat(60));
 
-    // Run live or backtest
     if (config.mode === 'live') {
-      logger.info('\n🔴 LIVE TRADING MODE - Simulated');
-      logger.info('Watching for new candles...\n');
+      logger.info('\n🔴 LIVE TRADING MODE - Simulated\nWatching for new candles...\n');
 
-      // Simulate a few trading cycles
       for (let i = 0; i < 5; i++) {
         const newCandle = generateMockCandle(historicalData[historicalData.length - 1]);
         const signal = await strategy.execute([newCandle]);
 
         logger.info(`\n[${new Date().toISOString()}] ${config.symbol}`);
-        logger.info(`  Price: $${newCandle.close.toFixed(2)}`);
-        logger.info(`  Signal: ${signal.action.toUpperCase()}`);
-        logger.info(`  Confidence: ${(signal.confidence * 100).toFixed(1)}%`);
-        logger.info(`  Reason: ${signal.reason}`);
+        logger.info(`  Price: $${newCandle.close.toFixed(2)} | Signal: ${signal.action.toUpperCase()}`);
+        logger.info(`  Confidence: ${(signal.confidence * 100).toFixed(1)}% | Reason: ${signal.reason}`);
 
         await sleep(1000);
       }
     } else {
-      logger.info('\n📊 BACKTEST MODE');
-      logger.info('Running on historical data...\n');
+      logger.info('\n📊 BACKTEST MODE\nRunning on historical data...\n');
 
       let wins = 0;
       let losses = 0;
@@ -94,7 +79,6 @@ export async function runGruStrategy(options: Partial<GruCommandOptions> = {}): 
       for (let i = 20; i < historicalData.length; i++) {
         const inputCandles = historicalData.slice(i - config.inputSteps, i);
         const nextCandle = historicalData[i];
-
         const signal = await strategy.execute(inputCandles);
 
         if (signal.action !== 'wait') {

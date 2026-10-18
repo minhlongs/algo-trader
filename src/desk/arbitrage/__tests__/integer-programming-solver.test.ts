@@ -1,8 +1,6 @@
 /**
  * Tests for integer-programming-solver — ILP model construction, result
- * parsing, and the public solveILP entrypoint. The real solver and the
- * constraint-builder module are mocked so the tests exercise only this
- * file's logic (net-edge math, size caps, position assembly, error path).
+ * parsing, and the public solveILP entrypoint.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -59,9 +57,7 @@ describe('solveILP', () => {
 
   it('returns feasible=false with no eligible markets and never calls the solver', () => {
     filterMock.mockReturnValue([]);
-
     const result = solveILP([makeMarket(), makeMarket({ marketId: 'M2' })], makeConfig());
-
     expect(result).toEqual({
       positions: [],
       totalExpectedProfit: 0,
@@ -74,7 +70,6 @@ describe('solveILP', () => {
 
   it('calls the solver and returns a parsed result for a single eligible market', () => {
     solveMock.mockReturnValue({ feasible: true, M1_YES: 200, M1_NO: 0, result: 16 });
-
     const result = solveILP([makeMarket()], makeConfig());
 
     expect(result.feasible).toBe(true);
@@ -83,7 +78,7 @@ describe('solveILP', () => {
       marketId: 'M1',
       side: 'YES',
       size: 200,
-      expectedProfit: 200 * 0.08, // size * (expectedEdge - feeRate)
+      expectedProfit: 200 * 0.08,
     });
     expect(result.totalCost).toBe(200);
     expect(result.totalExpectedProfit).toBeCloseTo(16, 5);
@@ -91,7 +86,6 @@ describe('solveILP', () => {
 
   it('parses both YES and NO positions when both have meaningful size', () => {
     solveMock.mockReturnValue({ feasible: true, M1_YES: 100, M1_NO: 50, result: 12 });
-
     const result = solveILP([makeMarket({ expectedEdge: 0.12 })], makeConfig({ feeRate: 0.02 }));
 
     expect(result.positions).toHaveLength(2);
@@ -104,48 +98,35 @@ describe('solveILP', () => {
 
   it('drops positions below the 0.001 size threshold', () => {
     solveMock.mockReturnValue({ feasible: true, M1_YES: 0.0005, M1_NO: 0.0009, result: 0 });
-
     const result = solveILP([makeMarket()], makeConfig());
-
     expect(result.positions).toHaveLength(0);
     expect(result.totalCost).toBe(0);
   });
 
   it('returns feasible=false with no positions when the solver reports infeasible', () => {
     solveMock.mockReturnValue({ feasible: false, result: -Infinity });
-
     const result = solveILP([makeMarket()], makeConfig());
-
     expect(result.feasible).toBe(false);
     expect(result.positions).toHaveLength(0);
     expect(result.totalExpectedProfit).toBe(0);
   });
 
   it('caps position size at liquidity and per-market budget fraction', () => {
-    // budget 1000 * 0.2 = 200; liquidity 50 → cap is 50.
     solveMock.mockReturnValue({ feasible: true, M1_YES: 50, M1_NO: 0, result: 4 });
-
     const result = solveILP([makeMarket({ liquidity: 50 })], makeConfig());
-
     expect(result.positions[0].size).toBe(50);
   });
 
   it('treats missing solver output keys as zero size', () => {
     solveMock.mockReturnValue({ feasible: true });
-
     const result = solveILP([makeMarket()], makeConfig());
-
     expect(result.positions).toHaveLength(0);
     expect(result.totalCost).toBe(0);
   });
 
   it('returns feasible=false and logs when the solver throws', () => {
-    solveMock.mockImplementation(() => {
-      throw new Error('solver exploded');
-    });
-
+    solveMock.mockImplementation(() => { throw new Error('solver exploded'); });
     const result = solveILP([makeMarket()], makeConfig());
-
     expect(result.feasible).toBe(false);
     expect(result.positions).toHaveLength(0);
     expect(result.solveTimeMs).toBeGreaterThanOrEqual(0);
@@ -153,18 +134,13 @@ describe('solveILP', () => {
 
   it('measures solve time across an async gap', () => {
     solveMock.mockReturnValue({ feasible: true, M1_YES: 10, result: 0.8 });
-
     const result = solveILP([makeMarket()], makeConfig());
-
-    // solveTimeMs records startMs via Date.now() at entry; the stub resolves
-    // synchronously so the elapsed clock time is 0.
     expect(result.solveTimeMs).toBe(0);
   });
 
   it('passes the eligible markets to the model and the timeout through', () => {
     solveMock.mockReturnValue({ feasible: true });
     filterMock.mockImplementation((markets) => markets.filter((m) => m.marketId === 'M1'));
-
     solveILP([makeMarket(), makeMarket({ marketId: 'M2', expectedEdge: 0.001 })], makeConfig({ timeoutMs: 1234 }));
 
     expect(solveMock).toHaveBeenCalledOnce();

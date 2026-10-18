@@ -8,11 +8,7 @@ import {
   type PaperTradeRecord,
   type PaperTradingStatus,
 } from './paper-trading-types';
-import {
-  loadLoopState,
-  saveLoopState,
-  persistClosedTradeToD1,
-} from './paper-trading-persistence';
+import { loadLoopState, saveLoopState, persistClosedTradeToD1 } from './paper-trading-persistence';
 import { buildLoopStatus } from './paper-trading-metrics';
 import {
   basePriceForSymbol,
@@ -22,7 +18,6 @@ import {
   calculateOrderSize,
 } from './trade-executor';
 
-// Re-export public types and interfaces for backward compatibility
 export type {
   D1Database,
   D1PreparedStatement,
@@ -34,11 +29,7 @@ export type {
 } from './paper-trading-types';
 export { asKVStore } from './paper-trading-types';
 
-/**
- * Automated paper trading loop.
- * Rotates through configured symbols, simulates trade entries and exits,
- * and optionally persists closed trades to the database.
- */
+/** Automated paper trading loop. */
 export class PaperTradingLoop {
   private readonly config: PaperTradingConfig;
   private readonly pipeline?: TradingPipeline;
@@ -75,38 +66,24 @@ export class PaperTradingLoop {
     if (this.handle) return;
     this.startTime = Date.now();
     this.handle = setInterval(() => this.tick(), this.config.intervalMs);
-    logger.info('[PaperTradingLoop] Started', {
-      symbols: this.config.symbols,
-      intervalMs: this.config.intervalMs,
-    });
+    logger.info('[PaperTradingLoop] Started', { symbols: this.config.symbols, intervalMs: this.config.intervalMs });
   }
 
   async runTick(): Promise<void> {
     logger.debug(`[PaperTradingLoop] runTick start: hasKV=${!!this.kv}, trades=${this.trades.length}`);
     await this.tick();
     logger.debug(`[PaperTradingLoop] runTick after tick: trades=${this.trades.length}, hasKV=${!!this.kv}`);
-    if (this.kv) {
-      await this.saveState();
-    } else {
-      logger.debug('[PaperTradingLoop] runTick: no KV, skipping save');
-    }
+    if (this.kv) await this.saveState();
+    else logger.debug('[PaperTradingLoop] runTick: no KV, skipping save');
   }
 
   stop(): void {
-    if (this.handle) {
-      clearInterval(this.handle);
-      this.handle = undefined;
-    }
+    if (this.handle) { clearInterval(this.handle); this.handle = undefined; }
     logger.info('[PaperTradingLoop] Stopped', { trades: this.trades.length });
   }
 
-  getState(): PaperTradingStatus {
-    return buildLoopStatus(this.handle !== undefined, this.trades, this.startTime);
-  }
-
-  getTrades(): PaperTradeRecord[] {
-    return [...this.trades];
-  }
+  getState(): PaperTradingStatus { return buildLoopStatus(this.handle !== undefined, this.trades, this.startTime); }
+  getTrades(): PaperTradeRecord[] { return [...this.trades]; }
 
   private async persistClosedTrade(closed: PaperTradeRecord): Promise<void> {
     await persistClosedTradeToD1(this.db, closed);

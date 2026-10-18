@@ -1,16 +1,17 @@
-import { inverseNormalCdf } from '../../alpha-lab/validation/stats-math';
 import type { PositionRisk, VarCvarResult } from './portfolio-risk-types';
+import {
+  acklamNormalQuantile,
+  normalPdf,
+  computePortfolioParametricSigma,
+  aggregateWeightedAssetReturns,
+} from './cross-engine-var-cvar-math';
 
-export function acklamNormalQuantile(confidence: number): number {
-  if (confidence <= 0 || confidence >= 1) {
-    throw new RangeError(`Confidence must be strictly between 0 and 1, got ${confidence}`);
-  }
-  return inverseNormalCdf(confidence);
-}
-
-export function normalPdf(z: number): number {
-  return (1 / Math.sqrt(2 * Math.PI)) * Math.exp(-0.5 * z * z);
-}
+export {
+  acklamNormalQuantile,
+  normalPdf,
+  computePortfolioParametricSigma,
+  aggregateWeightedAssetReturns,
+};
 
 export function computeVarCvar(
   returns: readonly number[],
@@ -67,21 +68,6 @@ export function computeVarCvar(
   };
 }
 
-export function computePortfolioParametricSigma(
-  weights: readonly number[],
-  covarianceMatrix: readonly (readonly number[])[]
-): number {
-  const n = weights.length;
-  if (n === 0 || covarianceMatrix.length !== n) return 0;
-  let variance = 0;
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) {
-      variance += weights[i] * weights[j] * (covarianceMatrix[i][j] ?? 0);
-    }
-  }
-  return Math.sqrt(Math.max(variance, 1e-12));
-}
-
 export function computeMultiAssetVarCvar(
   weights: readonly number[],
   covarianceMatrix: readonly (readonly number[])[],
@@ -113,16 +99,7 @@ export function computeMultiAssetVarCvar(
     };
   }
 
-  const numObs = Math.min(...assetReturns.map((r) => r.length));
-  const portfolioReturns: number[] = [];
-  for (let t = 0; t < numObs; t++) {
-    let r_p = 0;
-    for (let i = 0; i < weights.length; i++) {
-      r_p += weights[i] * (assetReturns[i][t] ?? 0);
-    }
-    portfolioReturns.push(r_p);
-  }
-
+  const portfolioReturns = aggregateWeightedAssetReturns(weights, assetReturns);
   const histResult = computeVarCvar(portfolioReturns, portfolioNav, confidence, horizonDays);
   return {
     parametricVaR,

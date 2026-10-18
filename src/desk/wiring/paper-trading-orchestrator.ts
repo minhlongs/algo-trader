@@ -94,15 +94,10 @@ export async function processCandidate(candidate: SignalCandidate, maxPositions:
     const entryPrice = side === 'YES' ? market.yesPrice : market.noPrice;
     const trade: PaperTrade = {
       id: `paper-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      marketId: market.id,
-      side,
-      size,
-      entryPrice,
-      strategy: candidate.signalType,
-      source,
+      marketId: market.id, side, size, entryPrice,
+      strategy: candidate.signalType, source,
       signalConfidence: isEndgame ? candidate.expectedEdge : 0.8,
-      swarmApproved: !isEndgame,
-      aiValidated: !isEndgame,
+      swarmApproved: !isEndgame, aiValidated: !isEndgame,
       timestamp: Date.now(),
     };
 
@@ -110,7 +105,6 @@ export async function processCandidate(candidate: SignalCandidate, maxPositions:
     portfolio.positions.push(trade);
     reservation.commit();
     saveTrades();
-
     void savePaperTradeV3(trade);
 
     recordPrediction({
@@ -139,15 +133,9 @@ export function recordMarlPaperFill(
   const paperSide: 'YES' | 'NO' = side === 'buy' ? 'YES' : 'NO';
   const trade: PaperTrade = {
     id: `marl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    marketId,
-    side: paperSide,
-    size: notional,
-    entryPrice: price,
-    strategy,
-    source: deriveSource(strategy),
-    signalConfidence: 0.95,
-    swarmApproved: true,
-    aiValidated: true,
+    marketId, side: paperSide, size: notional, entryPrice: price,
+    strategy, source: deriveSource(strategy),
+    signalConfidence: 0.95, swarmApproved: true, aiValidated: true,
     timestamp: Date.now(),
   };
 

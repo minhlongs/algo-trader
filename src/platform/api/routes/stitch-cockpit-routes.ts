@@ -12,6 +12,7 @@ import {
   StitchUiCockpitEngine,
   STITCH_8_SCREENS,
   STITCH_DESIGN_THEMES,
+  UiUxProMaxAuditor,
 } from '../../../desk/opencoresaas2026monetization/stitch-ui-cockpit';
 import { sanitizeHttpError } from '../../../shared/utils/error-sanitize';
 
@@ -108,6 +109,16 @@ stitchCockpitRouter.get('/sor-mesh', (req: Request, res: Response) => {
       parsed.data.parentOrderNotionalUsd,
     );
     res.status(200).json({ ok: true, sorMesh });
+  } catch (err) {
+    res.status(500).json(sanitizeHttpError(err));
+  }
+});
+
+stitchCockpitRouter.get('/ui-ux-audit', (_req: Request, res: Response) => {
+  try {
+    const auditor = new UiUxProMaxAuditor();
+    const audit = auditor.auditPublicDirectory();
+    res.status(200).json({ ok: true, audit });
   } catch (err) {
     res.status(500).json(sanitizeHttpError(err));
   }

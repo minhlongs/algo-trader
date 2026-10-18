@@ -4,11 +4,7 @@
  */
 
 import type { DurableObjectState } from '@cloudflare/workers-types';
-import {
-  buildRing,
-  getShardForStrategy,
-  type HashRing,
-} from '../desk/utils/consistent-hash';
+import { buildRing, getShardForStrategy, type HashRing } from '../desk/utils/consistent-hash';
 import { logger } from '../shared/utils/logger';
 import type {
   DistributedLock,
@@ -85,7 +81,6 @@ export class ShardCoordinator {
   routeStrategy(strategyId: string): number {
     const candidate = getShardForStrategy(this.ring, strategyId);
     const node = this.topology.shards.find((s) => s.shardId === candidate);
-
     if (node && node.status === 'HEALTHY') return candidate;
 
     const healthyShards = this.topology.shards.filter((s) => s.status === 'HEALTHY');
@@ -106,11 +101,8 @@ export class ShardCoordinator {
     const now = Date.now();
     for (const node of this.topology.shards) {
       const elapsed = now - node.lastHeartbeat;
-      if (elapsed > this.config.heartbeatTimeoutMs * 2) {
-        node.status = 'UNHEALTHY';
-      } else if (elapsed > this.config.heartbeatTimeoutMs) {
-        node.status = 'DEGRADED';
-      }
+      if (elapsed > this.config.heartbeatTimeoutMs * 2) node.status = 'UNHEALTHY';
+      else if (elapsed > this.config.heartbeatTimeoutMs) node.status = 'DEGRADED';
     }
     return [...this.topology.shards];
   }
@@ -126,11 +118,7 @@ export class ShardCoordinator {
 
     const lock: DistributedLock = {
       lockId: `${resourceId}:${ownerShardId}:${now}`,
-      resourceId,
-      ownerShardId,
-      acquiredAt: now,
-      expiresAt: now + ttl,
-      ttlMs: ttl,
+      resourceId, ownerShardId, acquiredAt: now, expiresAt: now + ttl, ttlMs: ttl,
     };
     this.locks.set(resourceId, lock);
     await this.state.storage?.put(`lock:${resourceId}`, lock);

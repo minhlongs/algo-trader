@@ -18,8 +18,6 @@ import {
   type StrategyDeps,
 } from './base-polymarket-strategy';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
 export interface LiquidityMigrationConfig extends BaseStrategyConfig {
   depthWindow: number;
   migrationThreshold: number;
@@ -27,28 +25,16 @@ export interface LiquidityMigrationConfig extends BaseStrategyConfig {
 }
 
 export const DEFAULT_CONFIG: LiquidityMigrationConfig = {
-  depthWindow: 10,
-  migrationThreshold: 0.15,
-  smoothingAlpha: 0.12,
-  minVolume: 5000,
-  takeProfitPct: 0.025,
-  stopLossPct: 0.02,
-  maxHoldMs: 15 * 60_000,
-  maxPositions: 5,
-  cooldownMs: 90_000,
-  positionSize: '10',
+  depthWindow: 10, migrationThreshold: 0.15, smoothingAlpha: 0.12,
+  minVolume: 5000, takeProfitPct: 0.025, stopLossPct: 0.02,
+  maxHoldMs: 15 * 60_000, maxPositions: 5, cooldownMs: 90_000, positionSize: '10',
 };
 
 const STRATEGY_NAME = 'liquidity-migration' as StrategyName;
 
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
 export function calcDepthChangeRate(depthHistory: number[]): number {
-  if (depthHistory.length < 2) return 0;
-  const first = depthHistory[0];
-  if (first === 0) return 0;
-  const last = depthHistory[depthHistory.length - 1];
-  return (last - first) / first;
+  if (depthHistory.length < 2 || depthHistory[0] === 0) return 0;
+  return (depthHistory[depthHistory.length - 1] - depthHistory[0]) / depthHistory[0];
 }
 
 export function calcMigrationScore(bidChangeRate: number, askChangeRate: number): number {
@@ -56,17 +42,14 @@ export function calcMigrationScore(bidChangeRate: number, askChangeRate: number)
 }
 
 export function smoothMigration(prevSmoothed: number | null, current: number, alpha: number): number {
-  if (prevSmoothed === null) return current;
+  if (prevSmoothed === null || alpha >= 1) return current;
   if (alpha <= 0) return prevSmoothed;
-  if (alpha >= 1) return current;
   return alpha * current + (1 - alpha) * prevSmoothed;
 }
 
 export function isMigrationSignal(score: number, threshold: number): boolean {
   return Math.abs(score) > threshold;
 }
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class LiquidityMigrationStrategy extends BasePolymarketStrategy {
   private readonly cfg: LiquidityMigrationConfig;
@@ -84,16 +67,12 @@ export class LiquidityMigrationStrategy extends BasePolymarketStrategy {
     let bidHist = this.bidDepthHistory.get(tokenId);
     if (!bidHist) { bidHist = []; this.bidDepthHistory.set(tokenId, bidHist); }
     bidHist.push(bidDepth);
-    if (bidHist.length > this.cfg.depthWindow) {
-      bidHist.splice(0, bidHist.length - this.cfg.depthWindow);
-    }
+    if (bidHist.length > this.cfg.depthWindow) bidHist.splice(0, bidHist.length - this.cfg.depthWindow);
 
     let askHist = this.askDepthHistory.get(tokenId);
     if (!askHist) { askHist = []; this.askDepthHistory.set(tokenId, askHist); }
     askHist.push(askDepth);
-    if (askHist.length > this.cfg.depthWindow) {
-      askHist.splice(0, askHist.length - this.cfg.depthWindow);
-    }
+    if (askHist.length > this.cfg.depthWindow) askHist.splice(0, askHist.length - this.cfg.depthWindow);
   }
 
   private totalDepth(levels: { price: string; size: string }[]): number {

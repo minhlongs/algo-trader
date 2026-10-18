@@ -38,7 +38,6 @@ const SELECT_COLS = `id, name, description, control_name as "controlName",
   min_samples as "minSamples", confidence_level as "confidenceLevel",
   started_at as "startedAt", ended_at as "endedAt", created_at as "createdAt"`;
 
-/** Create a new experiment in draft status */
 export async function createExperiment(params: {
   name: string; description?: string; controlName: string;
   treatmentName: string; trafficPct?: number; minSamples?: number;
@@ -47,8 +46,7 @@ export async function createExperiment(params: {
   const pool = getDbClient();
   const result = await pool.query<{ id: number }>(
     `INSERT INTO ab_test_experiments
-       (name, description, control_name, treatment_name,
-        traffic_pct, min_samples, confidence_level)
+       (name, description, control_name, treatment_name, traffic_pct, min_samples, confidence_level)
      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
     [params.name, params.description ?? null, params.controlName,
      params.treatmentName, params.trafficPct ?? 50,
@@ -58,7 +56,6 @@ export async function createExperiment(params: {
   return getExperiment(result.rows[0].id);
 }
 
-/** Start an experiment (draft -> running) */
 export async function startExperiment(id: number): Promise<Experiment> {
   const pool = getDbClient();
   await pool.query(
@@ -68,21 +65,19 @@ export async function startExperiment(id: number): Promise<Experiment> {
   return getExperiment(id);
 }
 
-/** Deterministic hash-based group assignment */
 export async function assignGroup(
   experimentId: number, signalId: string,
 ): Promise<{ group: GroupName; alreadyAssigned: boolean }> {
   const pool = getDbClient();
   const existing = await pool.query<{ group_name: GroupName }>(
-    `SELECT group_name FROM ab_test_assignments
-     WHERE experiment_id=$1 AND signal_id=$2`, [experimentId, signalId],
+    `SELECT group_name FROM ab_test_assignments WHERE experiment_id=$1 AND signal_id=$2`,
+    [experimentId, signalId],
   );
   if (existing.rows.length > 0) {
     return { group: existing.rows[0].group_name, alreadyAssigned: true };
   }
-  const hash = simpleHash(signalId);
   const exp = await getExperiment(experimentId);
-  const group: GroupName = hash % 100 < exp.trafficPct ? 'treatment' : 'control';
+  const group: GroupName = simpleHash(signalId) % 100 < exp.trafficPct ? 'treatment' : 'control';
   await pool.query(
     `INSERT INTO ab_test_assignments (experiment_id, signal_id, group_name)
      VALUES ($1,$2,$3) ON CONFLICT (experiment_id, signal_id) DO NOTHING`,
@@ -91,7 +86,6 @@ export async function assignGroup(
   return { group, alreadyAssigned: false };
 }
 
-/** Record an outcome for a signal */
 export async function recordOutcome(
   experimentId: number, signalId: string, group: GroupName,
   correct: boolean, confidence?: number, pnl?: number,
@@ -110,7 +104,6 @@ export async function recordOutcome(
   );
 }
 
-/** Get results with statistical significance */
 export async function getResults(experimentId: number): Promise<ExperimentResult> {
   const experiment = await getExperiment(experimentId);
   const pool = getDbClient();
@@ -118,10 +111,8 @@ export async function getResults(experimentId: number): Promise<ExperimentResult
     `SELECT group_name, correct, confidence, pnl FROM ab_test_outcomes WHERE experiment_id=$1`,
     [experimentId],
   );
-  const ctrl = outcomes.rows.filter(r => r.group_name === 'control');
-  const treat = outcomes.rows.filter(r => r.group_name === 'treatment');
-  const control = computeGroupStats('control', ctrl);
-  const treatment = computeGroupStats('treatment', treat);
+  const control = computeGroupStats('control', outcomes.rows.filter(r => r.group_name === 'control'));
+  const treatment = computeGroupStats('treatment', outcomes.rows.filter(r => r.group_name === 'treatment'));
   const { pValue, significant } = computeSignificance(control, treatment, experiment.confidenceLevel);
   const winner = significant
     ? (treatment.accuracy > control.accuracy ? 'treatment' as const : 'control' as const)
@@ -132,7 +123,6 @@ export async function getResults(experimentId: number): Promise<ExperimentResult
   };
 }
 
-/** List all experiments */
 export async function listExperiments(): Promise<Experiment[]> {
   const pool = getDbClient();
   const result = await pool.query<Record<string, unknown>>(
@@ -140,8 +130,6 @@ export async function listExperiments(): Promise<Experiment[]> {
   );
   return result.rows.map(r => r as unknown as Experiment);
 }
-
-// ─── Private ───────────────────────────────────────────────────────────
 
 async function getExperiment(id: number): Promise<Experiment> {
   const pool = getDbClient();
@@ -167,8 +155,6 @@ function computeGroupStats(name: string, rows: OutcomeRow[]): GroupStats {
 
 function simpleHash(str: string): number {
   let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-  }
+  for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
   return Math.abs(hash);
 }

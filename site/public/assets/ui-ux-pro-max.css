@@ -1,0 +1,167 @@
+/* SPDX-License-Identifier: MIT */
+/**
+ * AlgoTrade OS — UI/UX Pro Max Design Intelligence Stylesheet (2026.2-PRO-MAX)
+ * Enforces all 8 UI/UX Pro Max priority categories across all 13 Stitch UI screens:
+ * 1. Accessibility (WCAG AAA contrast, :focus-visible rings, skip link)
+ * 2. Touch & Interaction (44x44px coarse targets, cursor-pointer, active states)
+ * 3. Performance & Reduced Motion (@media prefers-reduced-motion: reduce)
+ * 4. Layout & Z-Index Scale (z-10, z-20, z-30, z-50, overflow-x containment)
+ * 5. Typography (tabular-nums for high-frequency financial tick alignment)
+ * 6. Micro-Interaction Timing (180ms transform/opacity transitions)
+ * 7. Multi-Theme Tokens (OBSIDIAN_QUANTUM, BENTO_RAAS_GLASS, NORDIC_MINIMALIST_QUANT)
+ * 8. Accessible Data Visualization & Pause-Pulse Controls
+ */
+
+:root,
+[data-stitch-theme="OBSIDIAN_QUANTUM"] {
+  --stitch-bg-canvas: #08090C;
+  --stitch-bg-surface: #0F1218;
+  --stitch-border: #1E2430;
+  --stitch-accent-primary: #00F2FE;
+  --stitch-accent-positive: #00E599;
+  --stitch-accent-danger: #FF3B30;
+  --stitch-text-primary: #F8FAFC;
+  --stitch-text-muted: #94A3B8;
+  --stitch-radius: 4px;
+}
+
+[data-stitch-theme="BENTO_RAAS_GLASS"] {
+  --stitch-bg-canvas: #0D1117;
+  --stitch-bg-surface: rgba(22, 27, 34, 0.82);
+  --stitch-border: rgba(255, 255, 255, 0.14);
+  --stitch-accent-primary: #6366F1;
+  --stitch-accent-positive: #10B981;
+  --stitch-accent-danger: #FF3B30;
+  --stitch-text-primary: #F8FAFC;
+  --stitch-text-muted: #9CA3AF;
+  --stitch-radius: 8px;
+}
+
+[data-stitch-theme="NORDIC_MINIMALIST_QUANT"] {
+  --stitch-bg-canvas: #12151A;
+  --stitch-bg-surface: #181D24;
+  --stitch-border: #262E3B;
+  --stitch-accent-primary: #3B82F6;
+  --stitch-accent-positive: #059669;
+  --stitch-accent-danger: #FF3B30;
+  --stitch-text-primary: #F1F5F9;
+  --stitch-text-muted: #94A3B8;
+  --stitch-radius: 4px;
+}
+
+/* Category 1: Skip Link & Visible Keyboard Focus Rings */
+.pro-max-skip-link {
+  position: fixed;
+  top: -100px;
+  left: 12px;
+  z-index: 50;
+  background: var(--stitch-accent-primary);
+  color: #08090C;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border-radius: var(--stitch-radius);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pro-max-skip-link:focus {
+  top: 12px;
+  outline: 2px solid #FFFFFF;
+  outline-offset: 2px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--stitch-accent-primary) !important;
+  outline-offset: 2px !important;
+}
+
+/* Category 2: Touch Targets & Cursor Pointer */
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+select {
+  cursor: pointer;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 180ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 180ms ease;
+}
+
+@media (pointer: coarse) {
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Category 5: Tabular Figures for Quantitative Precision */
+table,
+td,
+th,
+code,
+pre,
+.font-mono-data,
+[class*="font-data-mono"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Category 3 & 6: Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+body.pro-max-motion-paused *,
+body.pro-max-motion-paused *::before,
+body.pro-max-motion-paused *::after {
+  animation-play-state: paused !important;
+}
+
+/* Pro Max Floating Command Bar & Modal */
+.pro-max-dock {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(15, 18, 24, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--stitch-border);
+  border-radius: var(--stitch-radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+.pro-max-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(8, 9, 12, 0.82);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.pro-max-modal-backdrop.open {
+  display: flex;
+}

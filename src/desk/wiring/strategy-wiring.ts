@@ -1,17 +1,14 @@
 /**
  * Strategy wiring — registers strategy tick functions with StrategyOrchestrator.
  * Pure orchestration: creates tick factories and wires them into the orchestrator.
- *
- * When NATS_URL (or REDIS_URL) is set, also initialises the NATS event loop so
- * strategies can receive event-driven market updates in addition to tick polling.
  */
-import { StrategyOrchestrator } from'../strategies/strategy-orchestrator';
-import { createPolymarketArbTick } from'../strategies/polymarket-arb-strategy';
-import { createGridDcaTick } from'../strategies/grid-dca-strategy';
-import { createBookImbalanceReversalTick } from'../strategies/polymarket/book-imbalance-reversal';
+import { StrategyOrchestrator } from '../strategies/strategy-orchestrator';
+import { createPolymarketArbTick } from '../strategies/polymarket-arb-strategy';
+import { createGridDcaTick } from '../strategies/grid-dca-strategy';
+import { createBookImbalanceReversalTick } from '../strategies/polymarket/book-imbalance-reversal';
 import { createVwapDeviationSniperTick } from '../strategies/polymarket/vwap-deviation-sniper-v2';
-import { createPairsStatArbTick } from'../strategies/polymarket/pairs-stat-arb';
-import { createSessionVolSniperTick } from'../strategies/polymarket/session-vol-sniper';
+import { createPairsStatArbTick } from '../strategies/polymarket/pairs-stat-arb';
+import { createSessionVolSniperTick } from '../strategies/polymarket/session-vol-sniper';
 import { createOrderbookDepthRatioTick } from '../strategies/polymarket/orderbook-depth-ratio-v2';
 import { createCrossEventDriftTick } from '../strategies/polymarket/cross-event-drift-v2';
 import { createVolCompressionBreakoutTick } from '../strategies/polymarket/vol-compression-breakout-v2';
@@ -19,34 +16,33 @@ import { createWhaleTrackerTick } from '../strategies/polymarket/whale-tracker-v
 import { createResolutionFrontrunnerTick } from '../strategies/polymarket/resolution-frontrunner-v2';
 import { createMultiLegHedgeTick } from '../strategies/polymarket/multi-leg-hedge';
 import { createRegimeAdaptiveMomentumTick } from '../strategies/polymarket/regime-adaptive-momentum-v2';
-import { createLiquidationCascadeTick } from'../strategies/polymarket/liquidation-cascade';
-import { createOrderFlowToxicityTick } from'../strategies/polymarket/order-flow-toxicity';
-import { createGammaScalpingTick } from'../strategies/polymarket/gamma-scalping';
-import { createFundingRateArbTick } from'../strategies/polymarket/funding-rate-arb';
-import { createExpiryThetaDecayTick } from'../strategies/polymarket/expiry-theta-decay';
-import { createMicrostructureAlphaTick } from'../strategies/polymarket/microstructure-alpha';
-import { createSentimentMomentumTick } from'../strategies/polymarket/sentiment-momentum';
-import { createSmartMoneyDivergenceTick } from'../strategies/polymarket/smart-money-divergence';
-import { createVolatilitySurfaceArbTick } from'../strategies/polymarket/volatility-surface-arb';
-import { createNewsCatalystFadeTick } from'../strategies/polymarket/news-catalyst-fade';
+import { createLiquidationCascadeTick } from '../strategies/polymarket/liquidation-cascade';
+import { createOrderFlowToxicityTick } from '../strategies/polymarket/order-flow-toxicity';
+import { createGammaScalpingTick } from '../strategies/polymarket/gamma-scalping';
+import { createFundingRateArbTick } from '../strategies/polymarket/funding-rate-arb';
+import { createExpiryThetaDecayTick } from '../strategies/polymarket/expiry-theta-decay';
+import { createMicrostructureAlphaTick } from '../strategies/polymarket/microstructure-alpha';
+import { createSentimentMomentumTick } from '../strategies/polymarket/sentiment-momentum';
+import { createSmartMoneyDivergenceTick } from '../strategies/polymarket/smart-money-divergence';
+import { createVolatilitySurfaceArbTick } from '../strategies/polymarket/volatility-surface-arb';
+import { createNewsCatalystFadeTick } from '../strategies/polymarket/news-catalyst-fade';
 import { createInventorySkewRebalancerTick } from '../strategies/polymarket/inventory-skew-rebalancer';
-import { createKalmanFilterTrackerTick } from'../strategies/polymarket/kalman-filter-tracker';
-import { createLiquidityVacuumTick } from'../strategies/polymarket/liquidity-vacuum';
-import { createTwapAccumulatorTick } from'../strategies/polymarket/twap-accumulator';
-import { createCorrelationBreakdownTick } from'../strategies/polymarket/correlation-breakdown';
-import { createEntropyScorerTick } from'../strategies/polymarket/entropy-scorer';
-import { createAdverseSelectionFilterTick } from'../strategies/polymarket/adverse-selection-filter';
-import { createMomentumExhaustionTick } from'../strategies/polymarket/momentum-exhaustion';
-import { createCrossPlatformBasisTick } from'../strategies/polymarket/cross-platform-basis';
-import type { MarketScanner } from'../polymarket/market-scanner';
+import { createKalmanFilterTrackerTick } from '../strategies/polymarket/kalman-filter-tracker';
+import { createLiquidityVacuumTick } from '../strategies/polymarket/liquidity-vacuum';
+import { createTwapAccumulatorTick } from '../strategies/polymarket/twap-accumulator';
+import { createCorrelationBreakdownTick } from '../strategies/polymarket/correlation-breakdown';
+import { createEntropyScorerTick } from '../strategies/polymarket/entropy-scorer';
+import { createAdverseSelectionFilterTick } from '../strategies/polymarket/adverse-selection-filter';
+import { createMomentumExhaustionTick } from '../strategies/polymarket/momentum-exhaustion';
+import { createCrossPlatformBasisTick } from '../strategies/polymarket/cross-platform-basis';
+import type { MarketScanner } from '../polymarket/market-scanner';
 import type { OrderManager } from '../polymarket/order-manager';
-import type { OrderExecutor } from'../cex/order-executor';
-import type { ExchangeClient } from'../cex/exchange-client';
+import type { OrderExecutor } from '../cex/order-executor';
+import type { ExchangeClient } from '../cex/exchange-client';
 import type { EventBus } from '../events/event-bus';
 import type { GammaClient } from '../polymarket/gamma-client';
 import type { ClobClient } from '../polymarket/clob-client';
-import { startNatsEventLoop } from './nats-event-loop';
-import type { NatsEventLoop } from './nats-event-loop';
+import { startNatsEventLoop, type NatsEventLoop } from './nats-event-loop';
 
 export interface WireStrategyDeps {
   eventBus: EventBus;
@@ -60,7 +56,6 @@ export interface WireStrategyDeps {
 
 const env = (key: string, fallback: string) => process.env[key] ?? fallback;
 
-// Data-driven Polymarket strategy definitions — eliminates DRY violation
 type StrategyFactory = (deps: unknown) => () => Promise<void>;
 const POLY_STRATEGIES: Array<{ id: string; name: string; envKey: string; defaultMs: string; factory: StrategyFactory }> = [
   { id: 'book-imbalance', name: 'Book Imbalance Reversal', envKey: 'BOOK_IMBALANCE_INTERVAL_MS', defaultMs: '15000', factory: createBookImbalanceReversalTick },
@@ -95,15 +90,17 @@ const POLY_STRATEGIES: Array<{ id: string; name: string; envKey: string; default
   { id: 'cross-platform-basis', name: 'Cross-Platform Basis', envKey: 'CROSS_PLATFORM_BASIS_INTERVAL_MS', defaultMs: '15000', factory: createCrossPlatformBasisTick },
 ];
 
-/**
- * Wire all strategy factories into a new StrategyOrchestrator.
- * Strategies without required deps are silently skipped.
- */
+const ENABLED_IDS = new Set([
+  'momentum-exhaustion', 'session-vol-sniper', 'sentiment-momentum', 'book-imbalance-reversal',
+  'microstructure-alpha', 'order-flow-toxicity', 'correlation-breakdown', 'pairs-stat-arb',
+  'funding-rate-arb', 'gamma-scalping', 'kalman-filter-tracker', 'liquidation-cascade',
+]);
+
+/** Wire all strategy factories into a new StrategyOrchestrator. */
 export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
   const { eventBus, scanner, orderManager, cexExecutor, cexClient, clobClient, gammaClient } = deps;
   const orc = new StrategyOrchestrator(eventBus);
 
-  // Polymarket Arb (needs scanner + orderManager)
   if (scanner && orderManager) {
     orc.register(
       { id: 'polymarket-arb', name: 'Polymarket Arbitrage', type: 'polymarket-arb', enabled: true, params: {}, intervalMs: parseInt(env('POLYMARKET_ARB_INTERVAL_MS', '30000'), 10) },
@@ -111,7 +108,6 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
     );
   }
 
-  // All Polymarket strategies (need clobClient + orderManager + gammaClient)
   if (clobClient && orderManager && gammaClient) {
     const polyDeps = { clob: clobClient, orderManager, eventBus, gamma: gammaClient };
     for (const s of POLY_STRATEGIES) {
@@ -131,11 +127,6 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
         { id: 'book-imbalance-reversal', name: 'Book Imbalance Reversal', type: 'book-imbalance-reversal', enabled: true, params: {}, intervalMs: parseInt(env('BOOK_IMBALANCE_INTERVAL_MS', '15000'), 10) },
         createBookImbalanceReversalTick(polyDeps),
       );
-      const ENABLED_IDS = new Set([
-  'momentum-exhaustion', 'session-vol-sniper', 'sentiment-momentum', 'book-imbalance-reversal',
-  'microstructure-alpha', 'order-flow-toxicity', 'correlation-breakdown', 'pairs-stat-arb',
-  'funding-rate-arb', 'gamma-scalping', 'kalman-filter-tracker', 'liquidation-cascade',
- ]);
       if (!ENABLED_IDS.has(s.id)) {
         orc.register(
           { id: s.id, name: s.name, type: s.id, enabled: false, params: {}, intervalMs: parseInt(env(s.envKey, s.defaultMs), 10) },
@@ -145,7 +136,6 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
     }
   }
 
-  // Grid/DCA (needs CEX executor + client)
   if (cexExecutor && cexClient) {
     orc.register(
       { id: 'grid-dca', name: 'Grid / DCA', type: 'grid', enabled: false, params: {}, intervalMs: parseInt(env('GRID_DCA_INTERVAL_MS', '60000'), 10) },
@@ -153,10 +143,10 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
         executor: cexExecutor, client: cexClient, eventBus,
         params: {
           exchange: 'binance',
-          symbol:      env('GRID_SYMBOL', 'BTC/USDT'),
+          symbol: env('GRID_SYMBOL', 'BTC/USDT'),
           gridSpacing: parseFloat(env('GRID_SPACING', '0.01')),
-          numLevels:   parseInt(env('GRID_LEVELS', '5'), 10),
-          orderSize:   parseFloat(env('GRID_ORDER_SIZE', '0.001')),
+          numLevels: parseInt(env('GRID_LEVELS', '5'), 10),
+          orderSize: parseFloat(env('GRID_ORDER_SIZE', '0.001')),
         },
       }),
     );
@@ -165,9 +155,6 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
   return orc;
 }
 
-/**
- * Wire strategies AND start the NATS event loop when a messaging transport is configured.
- */
 export async function wireStrategiesWithNats(
   deps: WireStrategyDeps,
 ): Promise<{ orc: StrategyOrchestrator; eventLoop: NatsEventLoop }> {

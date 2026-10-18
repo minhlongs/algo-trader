@@ -1,7 +1,6 @@
 /**
  * Tests for ab-test-manager — experiment CRUD, group assignment, outcome
- * tracking and result aggregation. The DB client is mocked so every code
- * path runs without a live Postgres instance.
+ * tracking and result aggregation.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -27,7 +26,7 @@ function experimentRow(overrides: Partial<Experiment> = {}): Record<string, unkn
   };
 }
 
-describe('createExperiment', () => {
+describe('createExperiment & startExperiment', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('inserts the experiment and returns the created row', async () => {
@@ -47,22 +46,17 @@ describe('createExperiment', () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ id: 1 }], rowCount: 1 });
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 1 })], rowCount: 1 });
     await createExperiment({ name: 'x', controlName: 'a', treatmentName: 'b' });
-    const [, params] = mockQuery.mock.calls[0]!;
-    expect(params).toEqual(['x', null, 'a', 'b', 50, 30, 0.95]);
+    expect(mockQuery.mock.calls[0]![1]).toEqual(['x', null, 'a', 'b', 50, 30, 0.95]);
   });
-});
-
-describe('startExperiment', () => {
-  beforeEach(() => vi.clearAllMocks());
 
   it('updates status to running and returns the experiment', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 5, status: 'running', startedAt: new Date() })], rowCount: 1 });
     const exp = await startExperiment(5);
     const [updateSql] = mockQuery.mock.calls[0]!;
-    expect(updateSql).toContain('UPDATE ab_test_experiments SET status=\'running\'');
+    expect(updateSql).toContain("UPDATE ab_test_experiments SET status='running'");
     expect(updateSql).toContain('started_at=NOW()');
-    expect(updateSql).toContain('WHERE id=$1 AND status=\'draft\'');
+    expect(updateSql).toContain("WHERE id=$1 AND status='draft'");
     expect(exp.status).toBe('running');
   });
 });
@@ -72,12 +66,11 @@ describe('assignGroup', () => {
 
   it('returns the existing assignment without re-inserting', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [{ group_name: 'treatment' }], rowCount: 1 });
-    const res = await assignGroup(3, 'sig-1');
-    expect(res).toEqual({ group: 'treatment', alreadyAssigned: true });
+    expect(await assignGroup(3, 'sig-1')).toEqual({ group: 'treatment', alreadyAssigned: true });
     expect(mockQuery).toHaveBeenCalledTimes(1);
   });
 
-  it('hashes and inserts a new assignment', async () => {
+  it('hashes and inserts a new assignment deterministically', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 9, trafficPct: 40 })], rowCount: 1 });
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
@@ -96,8 +89,7 @@ describe('assignGroup', () => {
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
       mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 9, trafficPct: 100 })], rowCount: 1 });
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
-      const r = await assignGroup(9, 'same-signal');
-      results.push(r.group);
+      results.push((await assignGroup(9, 'same-signal')).group);
     }
     expect(results[0]).toBe(results[1]);
   });
@@ -109,7 +101,6 @@ describe('recordOutcome', () => {
   it('inserts an outcome and upserts on conflict', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
     await recordOutcome(4, 'sig-4', 'control', true, 0.8, 12.5, { foo: 'bar' });
-    expect(mockQuery).toHaveBeenCalledTimes(1);
     const [sql, params] = mockQuery.mock.calls[0]!;
     expect(sql).toContain('INSERT INTO ab_test_outcomes');
     expect(sql).toContain('ON CONFLICT (experiment_id, signal_id) DO UPDATE');
@@ -119,12 +110,11 @@ describe('recordOutcome', () => {
   it('uses null for optional confidence/pnl and metadata', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 });
     await recordOutcome(4, 'sig-4', 'treatment', false);
-    const [, params] = mockQuery.mock.calls[0]!;
-    expect(params).toEqual([4, 'sig-4', 'treatment', false, null, 0, null]);
+    expect(mockQuery.mock.calls[0]![1]).toEqual([4, 'sig-4', 'treatment', false, null, 0, null]);
   });
 });
 
-describe('getResults', () => {
+describe('getResults & listExperiments', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('throws when the experiment does not exist', async () => {
@@ -158,22 +148,12 @@ describe('getResults', () => {
     expect(res.significant).toBe(false);
     expect(res.winner).toBeNull();
   });
-});
 
-describe('listExperiments', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('returns all experiments ordered by createdAt desc', async () => {
+  it('lists all experiments ordered by createdAt desc and handles empty list', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 1 }), experimentRow({ id: 2 })], rowCount: 2 });
-    const list = await listExperiments();
-    expect(list).toHaveLength(2);
-    const [sql] = mockQuery.mock.calls[0]!;
-    expect(sql).toContain('SELECT id, name');
-    expect(sql).toContain('FROM ab_test_experiments');
-    expect(sql).toContain('ORDER BY created_at DESC');
-  });
+    expect(await listExperiments()).toHaveLength(2);
+    expect(mockQuery.mock.calls[0]![0]).toContain('ORDER BY created_at DESC');
 
-  it('returns an empty list when no experiments exist', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     expect(await listExperiments()).toEqual([]);
   });

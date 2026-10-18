@@ -9,83 +9,35 @@
  */
 
 import { logger } from '../../shared/utils/logger';
+import {
+  type NegRiskOutcome,
+  type NegRiskOpportunity,
+  type GammaEvent,
+  type GammaMarket,
+  POLY_FEE,
+  MIN_OUTCOMES,
+  MIN_EDGE,
+  extractYesPrice,
+  extractTokenId,
+  extractOutcomeTitle,
+  evaluateNegRiskBasketEdge,
+} from './neg-risk-arb-math';
 
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-export interface NegRiskOutcome {
-  tokenId: string;
-  title: string;
-  yesPrice: number;
-}
-
-export interface NegRiskOpportunity {
-  eventId: string;
-  eventTitle: string;
-  outcomes: NegRiskOutcome[];
-  sumYesPrices: number;
-  /** Net edge after 2% Polymarket fee */
-  edge: number;
-  direction: 'BUY_ALL_YES' | 'SELL_ALL_YES';
-}
-
-// Minimal shape we need from Gamma API events
-interface GammaEvent {
-  id: string;
-  title: string;
-  markets?: GammaMarket[];
-}
-
-interface GammaMarket {
-  conditionId?: string;
-  clobTokenIds?: string[];
-  tokens?: Array<{ token_id?: string; outcome?: string }>;
-  question?: string;
-  outcomePrices?: string | string[];
-  active?: boolean;
-  closed?: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+export {
+  type NegRiskOutcome,
+  type NegRiskOpportunity,
+  type GammaEvent,
+  type GammaMarket,
+  POLY_FEE,
+  MIN_OUTCOMES,
+  MIN_EDGE,
+  extractYesPrice,
+  extractTokenId,
+  extractOutcomeTitle,
+  evaluateNegRiskBasketEdge,
+};
 
 const GAMMA_EVENTS_URL = 'https://gamma-api.polymarket.com/events?closed=false&limit=100';
-const POLY_FEE = 0.02;          // 2% fee on profit
-const MIN_OUTCOMES = 2;         // skip binary (true neg-risk has ≥2 outcomes)
-const MIN_EDGE = 0.005;         // minimum 0.5% net edge to surface opportunity
-
-// ---------------------------------------------------------------------------
-// Price extraction
-// ---------------------------------------------------------------------------
-
-function extractYesPrice(market: GammaMarket): number {
-  const raw = market.outcomePrices;
-  if (Array.isArray(raw) && raw.length > 0) return parseFloat(raw[0]) || 0;
-  if (typeof raw === 'string') {
-    try {
-      const arr = JSON.parse(raw) as string[];
-      return parseFloat(arr[0]) || 0;
-    } catch { return 0; }
-  }
-  return 0;
-}
-
-function extractTokenId(market: GammaMarket): string {
-  if (market.clobTokenIds && market.clobTokenIds.length > 0) return market.clobTokenIds[0];
-  if (market.tokens && market.tokens.length > 0) return market.tokens[0].token_id ?? '';
-  return market.conditionId ?? '';
-}
-
-function extractOutcomeTitle(market: GammaMarket, index: number): string {
-  if (market.tokens && market.tokens[index]) return market.tokens[index].outcome ?? `Outcome ${index}`;
-  return market.question ?? `Outcome ${index}`;
-}
-
-// ---------------------------------------------------------------------------
-// Core scanner
-// ---------------------------------------------------------------------------
 
 /**
  * Scan a list of Gamma events for neg-risk arbitrage opportunities.
@@ -104,36 +56,21 @@ export function scanNegRiskArbitrage(events: GammaEvent[]): NegRiskOpportunity[]
       yesPrice: extractYesPrice(m),
     }));
 
-    // Skip if any price is missing (illiquid / not yet priced)
-    if (outcomes.some(o => o.yesPrice <= 0)) continue;
-
-    const sumYesPrices = outcomes.reduce((acc, o) => acc + o.yesPrice, 0);
-    const deviation = sumYesPrices - 1.0;
-    const absDeviation = Math.abs(deviation);
-
-    // Net edge after fee drag
-    const edge = absDeviation - POLY_FEE;
-    if (edge < MIN_EDGE) continue;
-
-    const direction: NegRiskOpportunity['direction'] =
-      deviation > 0 ? 'SELL_ALL_YES' : 'BUY_ALL_YES';
+    const evaluation = evaluateNegRiskBasketEdge(outcomes, POLY_FEE, MIN_EDGE);
+    if (!evaluation) continue;
 
     opportunities.push({
       eventId: String(event.id),
       eventTitle: event.title,
       outcomes,
-      sumYesPrices,
-      edge,
-      direction,
+      sumYesPrices: evaluation.sumYesPrices,
+      edge: evaluation.edge,
+      direction: evaluation.direction,
     });
   }
 
   return opportunities.sort((a, b) => b.edge - a.edge);
 }
-
-// ---------------------------------------------------------------------------
-// Fetch + scan entry point
-// ---------------------------------------------------------------------------
 
 /**
  * Fetch active events from Gamma API then scan for neg-risk opportunities.

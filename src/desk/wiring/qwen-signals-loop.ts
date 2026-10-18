@@ -40,12 +40,8 @@ export async function computeQualityMetrics(source: string, windowMs = getReview
   const windowEnd = Date.now();
   const windowStart = windowEnd - windowMs;
   const base: QualityMetrics = {
-    winRate: null,
-    sharpe: null,
-    signalCount: 0,
-    closedTradeCount: 0,
-    windowStartMs: windowStart,
-    windowEndMs: windowEnd,
+    winRate: null, sharpe: null, signalCount: 0, closedTradeCount: 0,
+    windowStartMs: windowStart, windowEndMs: windowEnd,
   };
   try {
     const signalRes = await query<{ cnt: string }>(
@@ -146,8 +142,7 @@ export async function evaluateAndQueue(source: string): Promise<void> {
       await persistRunJournal(source, metrics, 'error', [], String(err));
       return;
     }
-    const minSignals = getMinSignals();
-    const minTrades = getMinTradesForSharpe();
+    const minSignals = getMinSignals(), minTrades = getMinTradesForSharpe();
     logger.info('[QwenSignalsLoop] Quality check', { source, signalCount: metrics.signalCount, closedTradeCount: metrics.closedTradeCount, winRate: metrics.winRate, sharpe: metrics.sharpe });
     if (metrics.signalCount < minSignals) {
       span.setAttribute('qwen.decision', 'skipped_insufficient_data');

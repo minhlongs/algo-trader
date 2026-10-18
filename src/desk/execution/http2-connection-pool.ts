@@ -13,51 +13,36 @@ import { DnsResolver } from './http2-pool-dns';
 import { acquireSession, createSession } from './http2-pool-factory';
 import { extractOrigin } from './http2-pool-origin';
 
-// Re-export all public symbols for backward compatibility
 export type { DnsCacheEntry, PoolConfig, SessionInfo } from './http2-pool-types';
 export { initMetrics } from './http2-pool-metrics';
 export { extractOrigin };
 
-// ── Http2ConnectionPool ───────────────────────────────────────────────────────
-
 /**
  * Singleton pool managing HTTP/2 sessions per origin with DNS caching.
- *
- * Features:
- * - DNS caching with TTL-aware refresh (refreshes 30s before expiry)
- * - Session multiplexing (multiple concurrent streams per connection)
- * - Connection limits per origin (default 10)
- * - Automatic reconnection on session errors
- * - Pre-warming with PING frames
  */
 export class Http2ConnectionPool {
   private static instance: Http2ConnectionPool | null = null;
 
   private config: Required<PoolConfig>;
-  private sessions: Map<string, SessionInfo[]>; // origin -> sessions
+  private sessions: Map<string, SessionInfo[]>;
   private dns: DnsResolver;
   private cleanupTimer: NodeJS.Timeout | null = null;
 
   private constructor() {
     this.config = {
       maxConnectionsPerOrigin: parseInt(process.env.POLY_MAX_CONNECTIONS || '10', 10),
-      dnsTtlMs: 5 * 60 * 1000, // 5 minutes default TTL
-      dnsRefreshBeforeMs: 30 * 1000, // Refresh 30s before expiry
+      dnsTtlMs: 5 * 60 * 1000,
+      dnsRefreshBeforeMs: 30 * 1000,
     };
 
     this.sessions = new Map();
     this.dns = new DnsResolver(this.config);
-
     initMetrics();
 
-    // Periodic DNS cache cleanup (unref'd to prevent keeping Node event loop alive, EC-3.3)
     this.cleanupTimer = setInterval(() => this.dns.cleanup(), 60 * 1000);
     this.cleanupTimer.unref();
   }
 
-  /**
-   * Get singleton instance
-   */
   public static getInstance(): Http2ConnectionPool {
     if (!Http2ConnectionPool.instance) {
       Http2ConnectionPool.instance = new Http2ConnectionPool();
@@ -65,31 +50,18 @@ export class Http2ConnectionPool {
     return Http2ConnectionPool.instance;
   }
 
-  /**
-   * Get or create an HTTP/2 session for the given URL origin.
-   * Sessions are reused and multiplexed.
-   *
-   * @param url - Full URL (extracts origin: scheme://host:port)
-   * @returns http2.ClientHttp2Session ready for request()
-   */
+  /** Get or create an HTTP/2 session for the given URL origin. */
   public async getSession(url: string): Promise<http2.ClientHttp2Session> {
     const origin = extractOrigin(url);
     const ip = await this.dns.resolve(origin);
     const sessionInfo = await acquireSession(origin, ip, this.sessions, this.config);
-
     return sessionInfo.session;
   }
 
-  /**
-   * Release a session back to the pool after use.
-   *
-   * @param url - Full URL (origin used for pool lookup)
-   * @param session - Session to release
-   */
+  /** Release a session back to the pool after use. */
   public releaseSession(url: string, session: http2.ClientHttp2Session): void {
     const origin = extractOrigin(url);
     const sessions = this.sessions.get(origin);
-
     if (sessions) {
       const info = sessions.find(s => s.session === session);
       if (info) {
@@ -99,9 +71,7 @@ export class Http2ConnectionPool {
     }
   }
 
-  /**
-   * Pre-warm connections for an origin.
-   */
+  /** Pre-warm connections for an origin. */
   public async warmConnections(url: string, count: number = 3): Promise<void> {
     const origin = extractOrigin(url);
     const ip = await this.dns.resolve(origin);
@@ -116,12 +86,9 @@ export class Http2ConnectionPool {
     });
   }
 
-  /**
-   * Get current pool statistics for monitoring
-   */
+  /** Get current pool statistics for monitoring */
   public getStats(): Record<string, unknown> {
     const stats: Record<string, unknown> = {};
-
     for (const [origin, sessions] of this.sessions.entries()) {
       stats[origin] = {
         total: sessions.length,
@@ -130,13 +97,10 @@ export class Http2ConnectionPool {
         lastUsed: Math.max(...sessions.map(s => s.lastUsed), 0),
       };
     }
-
     return stats;
   }
 
-  /**
-   * Close all sessions and clear caches (for shutdown)
-   */
+  /** Close all sessions and clear caches (for shutdown) */
   public async shutdown(): Promise<void> {
     logger.info('Shutting down HTTP/2 connection pool');
 
@@ -147,11 +111,7 @@ export class Http2ConnectionPool {
 
     for (const [, sessions] of this.sessions.entries()) {
       await Promise.allSettled(
-        sessions.map(s =>
-          new Promise(resolve => {
-            s.session.close(() => resolve(null));
-          }),
-        ),
+        sessions.map(s => new Promise(resolve => { s.session.close(() => resolve(null)); })),
       );
     }
 
@@ -160,9 +120,6 @@ export class Http2ConnectionPool {
     Http2ConnectionPool.instance = null;
   }
 
-  /**
-   * Shutdown singleton instance if active (EC-3.3)
-   */
   public static async shutdownInstance(): Promise<void> {
     if (Http2ConnectionPool.instance) {
       await Http2ConnectionPool.instance.shutdown();
@@ -170,10 +127,6 @@ export class Http2ConnectionPool {
   }
 }
 
-/**
- * Gracefully teardown HTTP/2 connection pool singleton (EC-3.3)
- */
 export async function shutdownHttp2Pool(): Promise<void> {
   await Http2ConnectionPool.shutdownInstance();
 }
-

@@ -9,10 +9,6 @@
 import { logger } from '../../shared/utils/logger';
 import { getMessageBus } from '../../shared/messaging/index';
 
-// ---------------------------------------------------------------------------
-// Public types (also consumed by whale-copy-trader)
-// ---------------------------------------------------------------------------
-
 export interface RawGammaTrade {
   id: string;
   market: string;          // conditionId or marketId
@@ -36,20 +32,12 @@ export interface WhaleActivity {
   timestamp: number;       // unix ms
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 const GAMMA_TRADES_URL = 'https://gamma-api.polymarket.com/trades?limit=100';
 const NATS_TOPIC = 'whale.activity.detected';
-const WHALE_MIN_USDC = 1_000;            // trades >= $1000 are "whale"
-const CACHE_MAX_SIZE = 2_000;            // max dedup cache entries
+const WHALE_MIN_USDC = 1_000;
+const CACHE_MAX_SIZE = 2_000;
 const DEFAULT_POLL_MS = 30_000;
 const FETCH_TIMEOUT_MS = 10_000;
-
-// ---------------------------------------------------------------------------
-// WhaleActivityFeed class
-// ---------------------------------------------------------------------------
 
 export class WhaleActivityFeed {
   private pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -65,7 +53,6 @@ export class WhaleActivityFeed {
   start(pollMs = DEFAULT_POLL_MS): void {
     if (this.stopped) return;
     logger.info('[WhaleActivityFeed] Starting', { pollMs, minUsdc: WHALE_MIN_USDC });
-    // Immediate first poll, then interval
     void this.poll();
     this.pollTimer = setInterval(() => { void this.poll(); }, pollMs);
   }
@@ -75,8 +62,6 @@ export class WhaleActivityFeed {
     if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null; }
     logger.info('[WhaleActivityFeed] Stopped');
   }
-
-  // ─── Internal ────────────────────────────────────────────────────────────
 
   private async poll(): Promise<void> {
     try {
@@ -94,17 +79,13 @@ export class WhaleActivityFeed {
       let detected = 0;
       for (const trade of raw) {
         const activity = this.parseTrade(trade);
-        if (!activity) continue;
-        if (this.seenTradeIds.has(activity.tradeId)) continue;
+        if (!activity || this.seenTradeIds.has(activity.tradeId)) continue;
 
-        // Trim cache before adding
         if (this.seenTradeIds.size >= CACHE_MAX_SIZE) {
-          // Drop oldest entries (Set iteration order is insertion order)
           const iter = this.seenTradeIds.values();
           for (let i = 0; i < 200; i++) this.seenTradeIds.delete(iter.next().value as string);
         }
         this.seenTradeIds.add(activity.tradeId);
-
         detected++;
         this.emit(activity);
       }
@@ -121,14 +102,9 @@ export class WhaleActivityFeed {
     try {
       const size = parseFloat(raw.size);
       const price = parseFloat(raw.price);
-      if (isNaN(size) || isNaN(price)) return null;
-      if (size < WHALE_MIN_USDC) return null;
+      if (isNaN(size) || isNaN(price) || size < WHALE_MIN_USDC) return null;
 
-      // Determine YES/NO from price: YES tokens trade near their probability
-      // If price > 0.5 token is more likely the YES side, else NO side
       const side: 'YES' | 'NO' = price >= 0.5 ? 'YES' : 'NO';
-
-      // Prefer taker as the initiating wallet (they pay spread)
       const walletAddress = raw.taker || raw.maker;
       if (!walletAddress) return null;
 
@@ -148,12 +124,10 @@ export class WhaleActivityFeed {
   }
 
   private emit(activity: WhaleActivity): void {
-    // Notify local handlers
     for (const handler of this.handlers) {
       try { handler(activity); } catch (err) { logger.warn('[WhaleActivityFeed] Handler error', { err }); }
     }
 
-    // Publish to NATS (best-effort — no NATS = degraded, not fatal)
     const bus = getMessageBus();
     if (bus.isConnected()) {
       bus.publish(NATS_TOPIC, activity, 'whale-activity-feed').catch((err) =>
@@ -162,10 +136,6 @@ export class WhaleActivityFeed {
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// Module-level singleton factory
-// ---------------------------------------------------------------------------
 
 let feedInstance: WhaleActivityFeed | null = null;
 

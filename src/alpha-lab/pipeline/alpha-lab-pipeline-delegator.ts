@@ -31,13 +31,15 @@ import {
   capturePipelineStatus,
 } from './alpha-lab-pipeline-runner';
 
+type PersistLedgerFn = (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>;
+
 export async function executeDiscovery(
   subsystems: PipelineSubsystems,
   state: PipelineStateManager,
   symbol: string,
   timeframe: string,
   runCardDir: string,
-  persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
+  persistLedger: PersistLedgerFn,
   candles?: CandleLike[],
 ): Promise<ContinuousDiscoveryResult> {
   return runDiscoveryAndRegistration(
@@ -56,7 +58,7 @@ export async function executeDiscovery(
 export function executeCandidateIngestion(
   candidate: DiscoveredAlphaCandidate,
   state: PipelineStateManager,
-  persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
+  persistLedger: PersistLedgerFn,
   reason?: string,
 ): PromotionStateTransition {
   return ingestCandidateToPaperStateMachine(
@@ -76,13 +78,7 @@ export async function executeSignalProcessing(
   marketPrice: number,
   symbol: string,
 ): Promise<SignalRoutingOutcome[]> {
-  return routeCandidateSignals(
-    subsystems.paperRouter,
-    state.stateMachines,
-    signals,
-    marketPrice,
-    symbol,
-  );
+  return routeCandidateSignals(subsystems.paperRouter, state.stateMachines, signals, marketPrice, symbol);
 }
 
 export async function executePromotionEvaluation(
@@ -90,7 +86,7 @@ export async function executePromotionEvaluation(
   symbol: string,
   timeframe: string,
   runCardDir: string,
-  persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
+  persistLedger: PersistLedgerFn,
   gateInputs?: Map<string, GateEvaluatorInput>,
 ): Promise<PromotionStateTransition[]> {
   return evaluateActivePaperPromotions(
@@ -108,18 +104,9 @@ export function executeLiveRiskEvaluation(
   subsystems: PipelineSubsystems,
   state: PipelineStateManager,
   symbol: string,
-  request: {
-    strategyId: string;
-    order: PolymarketOrder;
-    signal?: TradeSignal | AISignal;
-  },
+  request: { strategyId: string; order: PolymarketOrder; signal?: TradeSignal | AISignal },
 ): LiveOrderHandoffVerdict {
-  return evaluateLiveRiskHandoff(
-    subsystems.liveCoordinator,
-    state.stateMachines,
-    symbol,
-    request,
-  );
+  return evaluateLiveRiskHandoff(subsystems.liveCoordinator, state.stateMachines, symbol, request);
 }
 
 export async function executePipelineCycle(
@@ -130,7 +117,7 @@ export async function executePipelineCycle(
   initialBalanceUsd: number,
   ledgerPath: string,
   runCardDir: string,
-  persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
+  persistLedger: PersistLedgerFn,
   options?: AutonomousCycleOptions,
 ): Promise<AutonomousCycleResult> {
   const cycleCount = state.incrementCycle();

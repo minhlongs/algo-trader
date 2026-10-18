@@ -8,8 +8,7 @@
  * GET    /api/v1/marketplace/providers/:tenantId/dashboard
  */
 
-import { Router, Request, Response } from 'express';
-import type { Router as RouterType } from 'express';
+import { Router, Request, Response, type Router as RouterType } from 'express';
 import { z } from 'zod';
 import { providerRepository } from '../../marketplace/repositories/provider-repository';
 import { strategyVersionRepository } from '../../marketplace/repositories/strategy-version-repository';
@@ -33,10 +32,6 @@ const updateProfileSchema = z.object({
   payoutAddress: z.string().max(128).optional().nullable(),
 });
 
-/**
- * Authenticate tenant — parent route should have already resolved req.tenant / req.user.
- * For this initial implementation we rely on getTenantId helper logic.
- */
 function _getTenantIdFromReq(req: Request): string {
   const tenantId =
     (req.body as Record<string, string> | undefined)?.tenantId ??
@@ -46,10 +41,7 @@ function _getTenantIdFromReq(req: Request): string {
   return tenantId;
 }
 
-/**
- * POST /api/v1/marketplace/providers/register
- * Register a tenant as a signal provider.
- */
+/** POST /api/v1/marketplace/providers/register — Register a tenant as a signal provider. */
 marketplaceProviderRouter.post(
   '/register',
   requireTier('PRO'),
@@ -57,20 +49,12 @@ marketplaceProviderRouter.post(
     try {
       const parsed = registerProviderSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res
-          .status(400)
-          .json({ error: 'Invalid request', details: parsed.error.issues });
+        return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
       }
       const { tenantId, userId, displayName, bio, payoutAddress } = parsed.data;
       const providerId = `prov_${Date.now()}_${userId.slice(0, 8)}`;
       const profile = await providerRepository.create({
-        id: providerId,
-        tenantId,
-        userId,
-        displayName,
-        bio,
-        payoutAddress,
-        status: 'approved',
+        id: providerId, tenantId, userId, displayName, bio, payoutAddress, status: 'approved',
       });
       return res.status(201).json({ provider: profile });
     } catch (err) {
@@ -80,10 +64,7 @@ marketplaceProviderRouter.post(
   },
 );
 
-/**
- * GET /api/v1/marketplace/providers/:tenantId
- * Get provider profile.
- */
+/** GET /api/v1/marketplace/providers/:tenantId — Get provider profile. */
 marketplaceProviderRouter.get(
   '/:tenantId',
   requireTier('FREE'),
@@ -100,10 +81,7 @@ marketplaceProviderRouter.get(
   },
 );
 
-/**
- * PATCH /api/v1/marketplace/providers/:tenantId/profile
- * Update provider profile.
- */
+/** PATCH /api/v1/marketplace/providers/:tenantId/profile — Update provider profile. */
 marketplaceProviderRouter.patch(
   '/:tenantId/profile',
   requireTier('FREE'),
@@ -112,13 +90,10 @@ marketplaceProviderRouter.patch(
       const { tenantId } = req.params as Record<string, string>;
       const parsed = updateProfileSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res
-          .status(400)
-          .json({ error: 'Invalid request', details: parsed.error.issues });
+        return res.status(400).json({ error: 'Invalid request', details: parsed.error.issues });
       }
       const existing = await providerRepository.findByTenant(tenantId);
-      if (!existing)
-        return res.status(404).json({ error: 'Provider profile not found' });
+      if (!existing) return res.status(404).json({ error: 'Provider profile not found' });
       const updated = await providerRepository.update(existing.id, parsed.data);
       return res.json({ provider: updated });
     } catch (err) {
@@ -128,10 +103,7 @@ marketplaceProviderRouter.patch(
   },
 );
 
-/**
- * GET /api/v1/marketplace/providers/:tenantId/dashboard
- * Dashboard: subscriber count, active strategies, revenue.
- */
+/** GET /api/v1/marketplace/providers/:tenantId/dashboard — Dashboard metrics. */
 marketplaceProviderRouter.get(
   '/:tenantId/dashboard',
   requireTier('FREE'),
@@ -139,24 +111,15 @@ marketplaceProviderRouter.get(
     try {
       const { tenantId } = req.params as Record<string, string>;
       const profile = await providerRepository.findByTenant(tenantId);
-      if (!profile)
-        return res.status(404).json({ error: 'Provider profile not found' });
+      if (!profile) return res.status(404).json({ error: 'Provider profile not found' });
       const [activeStrategyCount, revenueRows] = await Promise.all([
         strategyVersionRepository.countByTenant(tenantId),
-        revenueShareRepository.findAll({
-          tenantId,
-        }),
+        revenueShareRepository.findAll({ tenantId }),
       ]);
-      const totalCents = revenueRows.data.reduce(
-        (s: number, r) => s + r.creatorShareCents,
-        0,
-      );
+      const totalCents = revenueRows.data.reduce((s: number, r) => s + r.creatorShareCents, 0);
       const pendingCents = revenueRows.data
         .filter((r) => r.status === 'pending')
-        .reduce(
-          (s: number, r) => s + r.creatorShareCents,
-          0,
-        );
+        .reduce((s: number, r) => s + r.creatorShareCents, 0);
       const metrics = {
         provider: profile,
         earningsCents: totalCents,

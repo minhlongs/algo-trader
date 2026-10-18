@@ -6,7 +6,6 @@
  *
  * Causal invariant: every label and metric uses only data within its split window
  * plus the explicit `lookback` warmup. No future-bar leakage.
- * @see docs/ALPHA_DISCOVERY_ARCHITECTURE.md — "Foundation vs Integration Contract"
  */
 
 import type { CandleLike, MarketRegime } from '../regimes/regime-types';
@@ -18,37 +17,18 @@ import type { ExperimentConfig, ExperimentResult, WalkForwardStep } from './expe
 import { generateSplits } from './splitter';
 import { computeSplitMetrics } from './split-metrics';
 import { computeRegimeSeries, distinctRegimes } from '../regimes/regime-series';
-import { writeRunCard } from '../provenance/run-card';
-import type { ResultClassName, DataSourceProvenance } from '../provenance/run-card';
-
-// ── Public API ────────────────────────────────────────────────────────────────
+import { writeRunCard, type ResultClassName, type DataSourceProvenance } from '../provenance/run-card';
 
 export interface RunExperimentInput {
   candles: CandleLike[];
   config: ExperimentConfig;
-  /**
-   * Data source provenance for the candles used in this experiment.
-   * When provided, this is written to the run card for full provenance.
-   */
   dataSources?: DataSourceProvenance[];
-  /**
-   * Directory to write the provenance run card into. When set, a run card is
-   * written (fail-safe) recording this experiment's config hash, result class,
-   * and metrics. Omit to skip provenance — useful for pure unit tests.
-   */
   runCardDir?: string;
-  /**
-   * Result class for the run card. Defaults to 'IS' (in-sample) — callers that
-   * run on an out-of-sample window must pass 'OOS' explicitly so the card
-   * cannot be mis-cited as in-sample evidence.
-   */
   resultClass?: ResultClassName;
 }
 
 /**
  * Run a single experiment: generate splits → label → compute metrics.
- *
- * Returns a structured artifact capturing every decision point for reproducibility.
  */
 export function runExperiment(input: RunExperimentInput): ExperimentResult {
   const { candles, config } = input;
@@ -60,13 +40,11 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
     );
   }
 
-  // Generate walk-forward splits (causal boundaries enforced inside generateSplits).
   const rawSplits = generateSplits(config.split, candles.length, config.lookback);
   if (rawSplits.length === 0) {
     throw new Error('No splits generated — check config ratios vs data length');
   }
 
-  // Group into steps.
   const stepMap = new Map<number, Partial<WalkForwardStep> & { step: number }>();
   for (const s of rawSplits) {
     let existing = stepMap.get(s.step);
@@ -80,7 +58,6 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
   }
   const steps = Array.from(stepMap.values()) as WalkForwardStep[];
 
-  // Aggregate labels + trades across all steps.
   const allTrainLabels: Array<TripleBarrierResult & { entryIdx: number }> = [];
   const allValLabels: Array<TripleBarrierResult & { entryIdx: number }> = [];
   const allTestLabels: Array<TripleBarrierResult & { entryIdx: number }> = [];
@@ -107,9 +84,6 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
     }
   }
 
-  // Aggregate labels + trades across ALL walk-forward steps, then compute one
-  // equity curve over the full candle range. Regime attribution still reports
-  // the union of distinct regimes across each split kind's own windows.
   const fullRange = { startIdx: 0, endIdx: candles.length };
   const regimeSeries = computeRegimeSeries(candles, {
     market: config.symbol,
@@ -120,6 +94,7 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
     distinctRegimes(rawSplits
       .filter((s) => s.kind === kind)
       .flatMap((s) => regimeSeries.slice(s.startIdx, s.endIdx)));
+
   const metrics = {
     train: computeSplitMetrics({
       labels: allTrainLabels,
@@ -152,7 +127,6 @@ export function runExperiment(input: RunExperimentInput): ExperimentResult {
     numSteps: steps.length,
   };
 
-  // Provenance: fail-safe run card (never throws) records config hash + result class.
   if (input.runCardDir) {
     void writeRunCard(input.runCardDir, {
       runId: config.experimentId,

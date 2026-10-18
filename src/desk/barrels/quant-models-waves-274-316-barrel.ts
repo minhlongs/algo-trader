@@ -57,3 +57,6 @@ export * as Bouchaud2018TradesBook from '../bouchaud2018tradesbook/index';
 export * as ContKukanov2017MultiExchange from '../contkukanov2017multiexchange/index';
 export * as LaruelleLehalle2013DarkPoolSplit from '../laruellelehalle2013darkpool/index';
 export * as FoucaultKadanKandel2005MakeTake from '../foucault2005maketake/index';
+export * as Gatheral2006SviSurface from '../gatheral2006svisurface/index';
+export * as AndersenBollerslev1998IntradayVol from '../andersenbollerslev1998intradayvol/index';
+export * as EasleyLopezDePrado2012VpinToxicity from '../easleylopezdeprado2012vpintoxicity/index';

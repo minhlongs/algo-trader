@@ -16,31 +16,17 @@ import type { ExperimentConfig } from '../../experiments/experiment-types';
 
 function baseConfig(overrides: Partial<ExperimentConfig> = {}): ExperimentConfig {
   return {
-    experimentId: 'test-exp',
-    hypothesis: 'Test hypothesis',
-    symbol: 'BTC/USDT',
-    timeframe: '1h',
-    features: ['returns'],
-    regimes: 'all',
-    tp: 0.02,
-    sl: 0.01,
-    maxHolding: 10,
-    lookback: 20,
+    experimentId: 'test-exp', hypothesis: 'Test hypothesis', symbol: 'BTC/USDT', timeframe: '1h',
+    features: ['returns'], regimes: 'all', tp: 0.02, sl: 0.01, maxHolding: 10, lookback: 20,
     split: { mode: 'expanding', trainRatio: 0.6, valRatio: 0.2, testRatio: 0.2 },
     cost: { feeBps: 5, slippageBps: 2, scenario: 'normal' },
-    seed: 42,
-    gitCommit: 'test',
-    createdAt: '2025-01-01T00:00:00.000Z',
+    seed: 42, gitCommit: 'test', createdAt: '2025-01-01T00:00:00.000Z',
     ...overrides,
   };
 }
 
 function robustnessConfig(overrides: Partial<RobustnessConfig> = {}): RobustnessConfig {
-  return {
-    experimentId: 'test-exp',
-    baseConfig: baseConfig(),
-    ...overrides,
-  };
+  return { experimentId: 'test-exp', baseConfig: baseConfig(), ...overrides };
 }
 
 // ── Full robustness runner ───────────────────────────────────────────────────
@@ -64,11 +50,7 @@ describe('runRobustnessTest', () => {
 
   it('runs parameter perturbation when enabled', () => {
     const result = runRobustnessTest(robustnessConfig({
-      parameterPerturbation: {
-        enabled: true,
-        ranges: [-0.1, 0.1],
-        paramsToPerturb: ['tp', 'sl'],
-      },
+      parameterPerturbation: { enabled: true, ranges: [-0.1, 0.1], paramsToPerturb: ['tp', 'sl'] },
     }));
     expect(result.parameterPerturbation.length).toBeGreaterThan(0);
   });
@@ -100,20 +82,14 @@ describe('runRobustnessTest', () => {
 
   it('overall score is between 0 and 1', () => {
     const result = runRobustnessTest(robustnessConfig({
-      parameterPerturbation: {
-        enabled: true,
-        ranges: [-0.2, -0.1, 0.1, 0.2],
-        paramsToPerturb: ['tp'],
-      },
+      parameterPerturbation: { enabled: true, ranges: [-0.2, -0.1, 0.1, 0.2], paramsToPerturb: ['tp'] },
     }));
     expect(result.overallScore).toBeGreaterThanOrEqual(0);
     expect(result.overallScore).toBeLessThanOrEqual(1);
   });
 
   it('deterministic: same config → same results', () => {
-    const config = robustnessConfig({
-      feeStress: { enabled: true, multipliers: [1, 2] },
-    });
+    const config = robustnessConfig({ feeStress: { enabled: true, multipliers: [1, 2] } });
     const a = runRobustnessTest(config);
     const b = runRobustnessTest(config);
     expect(a.baselineMetrics.sharpeRatio).toBe(b.baselineMetrics.sharpeRatio);
@@ -122,11 +98,7 @@ describe('runRobustnessTest', () => {
 
   it('skips non-numeric parameters and invalid perturbations gracefully', () => {
     const result = runRobustnessTest(robustnessConfig({
-      parameterPerturbation: {
-        enabled: true,
-        ranges: [-1.0, 0.1],
-        paramsToPerturb: ['symbol', 'tp'],
-      },
+      parameterPerturbation: { enabled: true, ranges: [-1.0, 0.1], paramsToPerturb: ['symbol', 'tp'] },
     }));
     expect(result.parameterPerturbation.length).toBe(1);
     expect(result.parameterPerturbation[0]!.paramName).toBe('tp');

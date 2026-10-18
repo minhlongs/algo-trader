@@ -1,9 +1,5 @@
 /**
  * Notification Service — in-memory queue with retry for marketplace events.
- *
- * Real implementation would call an email/SMS provider (SendGrid, Twilio, etc.).
- * This module logs every notification so ops can verify delivery without external
- * dependencies.
  */
 
 import { logger } from '../../../shared/utils/logger';
@@ -22,17 +18,12 @@ import {
 } from './notification-helpers';
 
 export type {
-  NotificationPayload,
-  NotificationType,
-  NotificationStatus,
-  SubscriptionNotificationData,
-  PayoutNotificationData,
-  DisputeNotificationData,
+  NotificationPayload, NotificationType, NotificationStatus,
+  SubscriptionNotificationData, PayoutNotificationData, DisputeNotificationData,
 } from './notification-types';
 
 export class NotificationService {
   private static instance: NotificationService | null = null;
-
   private queue: NotificationPayload[] = [];
   private deadLetter: NotificationPayload[] = [];
   private processing = false;
@@ -50,7 +41,6 @@ export class NotificationService {
     return NotificationService.instance;
   }
 
-  /** Enqueue a notification. */
   enqueue(payload: Omit<NotificationPayload, 'id' | 'createdAt' | 'attempts' | 'status'>): NotificationPayload {
     const notification: NotificationPayload = {
       ...payload,
@@ -61,24 +51,19 @@ export class NotificationService {
     };
     this.queue.push(notification);
     logger.info('[NotificationService] Enqueued', {
-      notificationId: notification.id,
-      type: notification.type,
-      recipient: notification.recipient,
+      notificationId: notification.id, type: notification.type, recipient: notification.recipient,
     });
     return notification;
   }
 
-  /** Send subscription confirmation to buyer and seller. */
   sendSubscriptionConfirmation(data: SubscriptionNotificationData): { buyer: NotificationPayload; seller: NotificationPayload } {
     return buildSubscriptionNotifications((p) => this.enqueue(p), data);
   }
 
-  /** Send payout notification to creator. */
   sendPayoutNotification(data: PayoutNotificationData): NotificationPayload {
     return buildPayoutNotification((p) => this.enqueue(p), data);
   }
 
-  /** Send dispute notification to both parties. */
   sendDisputeNotification(data: DisputeNotificationData): { filer: NotificationPayload; respondent: NotificationPayload } {
     return buildDisputeNotifications((p) => this.enqueue(p), data);
   }

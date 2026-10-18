@@ -3,18 +3,11 @@
  *
  * Fetches market snapshots from Gamma API at intervals for backtesting.
  * Caches snapshots in memory for the duration of a backtest session.
- *
- * Limitation: Gamma API only provides current snapshot, not true historical
- * time-series. For MVP backtesting, we fetch multiple snapshots over time
- * and simulate price evolution. For production, replace with a proper
- * historical data store (TimescaleDB or S3 archive).
  */
 
 import type { GammaMarket } from '../polymarket/gamma-client';
 import type { HistoricalSnapshot, HistoricalMarketData } from './types';
 import { logger } from '../../shared/utils/logger';
-
-// ── Provider ───────────────────────────────────────────────────────────────────
 
 export class GammaHistoricalProvider {
   private baseUrl = 'https://gamma-api.polymarket.com';
@@ -22,11 +15,6 @@ export class GammaHistoricalProvider {
 
   /**
    * Fetch a time-series of market snapshots for backtesting.
-   *
-   * Strategy: fetch current snapshot as the "latest" data point,
-   * then generate synthetic historical snapshots with slight variations
-   * for backtesting purposes. Real historical data would require
-   * a dedicated archive.
    *
    * @param days Number of days of data
    * @param intervalMs Tick interval (default: 1 hour)
@@ -40,7 +28,7 @@ export class GammaHistoricalProvider {
     if (cached) return cached;
 
     const tickCount = Math.ceil((days * 24 * 60 * 60 * 1000) / intervalMs);
-    const maxTicks = Math.min(tickCount, 168); // Cap at 1 week of hourly data
+    const maxTicks = Math.min(tickCount, 168);
 
     logger.info('Fetching historical market snapshots', 'GammaHistoricalProvider', {
       days,
@@ -48,20 +36,17 @@ export class GammaHistoricalProvider {
       tickCount: maxTicks,
     });
 
-    // Fetch current markets as base
     const markets = await this.fetchCurrentMarkets();
     if (markets.length === 0) {
       throw new Error('GammaHistoricalProvider: failed to fetch any markets — backtest aborted');
     }
 
-    // Generate synthetic historical snapshots from current data
-    // Each snapshot perturbs prices slightly to simulate market movement
     const snapshots: HistoricalSnapshot[] = [];
     const now = Date.now();
     const startTime = now - days * 24 * 60 * 60 * 1000;
 
     for (let i = 0; i < maxTicks; i++) {
-      const progress = i / (maxTicks - 1 || 1); // 0 → 1
+      const progress = i / (maxTicks - 1 || 1);
       const timestamp = new Date(startTime + progress * (now - startTime)).toISOString();
 
       snapshots.push({
@@ -79,13 +64,6 @@ export class GammaHistoricalProvider {
     this.cache.clear();
   }
 
-  // ── Private ─────────────────────────────────────────────────────────────────
-
-  /**
-   * Fetch current markets from the Gamma API and normalise them into GammaMarket
-   * objects. The raw API does NOT return yesPrice, yesTokenId, noTokenId, or tokens
-   * as top-level fields — we derive them from outcomePrices and conditionId.
-   */
   private async fetchCurrentMarkets(): Promise<GammaMarket[]> {
     try {
       const resp = await fetch(
@@ -103,8 +81,6 @@ export class GammaHistoricalProvider {
         const yesPrice = parseFloat(outcomePrices[0] ?? '0.5');
         const noPrice = parseFloat(outcomePrices[1] ?? String(1 - yesPrice));
 
-        // Build synthetic GammaMarket — the API doesn't include yesTokenId/noTokenId
-        // or tokens as top-level fields, so we derive them from conditionId.
         return {
           id: String(r.id ?? conditionId),
           question: String(r.question ?? ''),
@@ -135,23 +111,16 @@ export class GammaHistoricalProvider {
     }
   }
 
-  /**
-   * Simulate price evolution from historical start to current.
-   * Uses deterministic random walk based on market index + progress.
-   */
   private simulatePriceEvolution(
     market: GammaMarket,
-    progress: number, // 0 = start of period, 1 = now
+    progress: number,
     seed: number,
   ): HistoricalMarketData {
-    // Deterministic pseudo-random from seed + progress
     const randomWalk = Math.sin(seed * 127.1 + progress * 12.9898) * 0.03 +
       Math.sin(seed * 269.5 + progress * 7.8342) * 0.015;
 
     const currentPrice = market.yesPrice;
-    // Start price drifted from current by random walk
     const startPrice = clamp(currentPrice - randomWalk, 0.01, 0.99);
-    // Interpolate between start and current
     const price = startPrice + (currentPrice - startPrice) * progress;
 
     return {
@@ -167,8 +136,6 @@ export class GammaHistoricalProvider {
     };
   }
 }
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function clamp(val: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, val));

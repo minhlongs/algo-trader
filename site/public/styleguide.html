@@ -156,12 +156,15 @@
       );
     }
   </style>
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css"/>
+  <script src="assets/ui-ux-pro-max.js" defer></script>
 </head>
 <body class="bg-surface-container-lowest text-on-surface font-body-sm text-body-sm antialiased min-h-screen overflow-x-hidden selection:bg-primary-container selection:text-surface-container-lowest">
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
 <!-- ========================================================================= -->
 <!-- TOP APP BAR (Shared Component: TopNavBar with exact JSON properties)     -->
 <!-- ========================================================================= -->
-<header class="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center px-space-md py-space-xs h-11 select-none">
+<header aria-live="polite" class="fixed top-0 left-0 w-full z-50 bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center px-space-md py-space-xs h-11 select-none">
 <!-- Left: Brand Logo & Terminal Identifier & Fast Search -->
 <div class="flex items-center gap-space-md">
 <div class="flex items-center gap-space-xs">

@@ -20,6 +20,9 @@ import {
   calcATR,
   detectCompression,
   detectBreakout,
+  appendBoundedPrice,
+  hasVolumeConfirmation,
+  isFailedBreakoutReversal,
 } from './vol-compression-math';
 
 export class VolCompressionBreakoutStrategy extends BasePolymarketStrategy {
@@ -42,11 +45,7 @@ export class VolCompressionBreakoutStrategy extends BasePolymarketStrategy {
   }
 
   private recordTick(tokenId: string, price: number): void {
-    let history = this.priceHistory.get(tokenId);
-    if (!history) { history = []; this.priceHistory.set(tokenId, history); }
-    history.push(price);
-    const max = this.cfg.longVolWindow * 3;
-    if (history.length > max) history.splice(0, history.length - max);
+    appendBoundedPrice(this.priceHistory, tokenId, price, this.cfg.longVolWindow * 3);
   }
 
   private getPrices(tokenId: string, count: number): number[] {
@@ -75,8 +74,7 @@ export class VolCompressionBreakoutStrategy extends BasePolymarketStrategy {
 
         const shortPrices = this.getPrices(market.yesTokenId, this.cfg.shortVolWindow);
         const longPrices = this.getPrices(market.yesTokenId, this.cfg.longVolWindow);
-        if (shortPrices.length < this.cfg.shortVolWindow) continue;
-        if (longPrices.length < this.cfg.longVolWindow) continue;
+        if (shortPrices.length < this.cfg.shortVolWindow || longPrices.length < this.cfg.longVolWindow) continue;
 
         const volShort = calcRealizedVol(shortPrices);
         const volLong = calcRealizedVol(longPrices);
@@ -89,19 +87,11 @@ export class VolCompressionBreakoutStrategy extends BasePolymarketStrategy {
         }
 
         if (!isCompressed && state?.compressed) {
-          // Exited compression — check for breakout
-          const atrPrices = this.getPrices(market.yesTokenId, this.cfg.atrPeriod + 1);
-          const atr = calcATR(atrPrices, this.cfg.atrPeriod);
-          const breakoutPrices = this.getPrices(market.yesTokenId, this.cfg.shortVolWindow);
-          const breakoutDir = detectBreakout(breakoutPrices, atr, this.cfg.breakoutMultiplier);
+          const atr = calcATR(this.getPrices(market.yesTokenId, this.cfg.atrPeriod + 1), this.cfg.atrPeriod);
+          const breakoutDir = detectBreakout(shortPrices, atr, this.cfg.breakoutMultiplier);
 
           this.compressionState.set(market.yesTokenId, { compressed: false, compressedAt: 0 });
-          if (!breakoutDir) continue;
-
-          // Volume confirmation proxy
-          if (market.volume24h !== undefined && market.volume !== undefined) {
-            if (market.volume > 0 && (market.volume24h / market.volume) < 0.01) continue;
-          }
+          if (!breakoutDir || !hasVolumeConfirmation(market.volume24h, market.volume)) continue;
 
           const side: 'yes' | 'no' = breakoutDir === 'up' ? 'yes' : 'no';
           const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
@@ -150,10 +140,7 @@ export class VolCompressionBreakoutStrategy extends BasePolymarketStrategy {
       try {
         const book = await this.deps.clob.getOrderBook(pos.tokenId);
         const currentPrice = this.bestBidAsk(book).mid;
-        const movedBack = pos.side === 'yes'
-          ? currentPrice <= compressionMid
-          : currentPrice >= compressionMid;
-        if (movedBack) {
+        if (isFailedBreakoutReversal(pos.side, currentPrice, compressionMid, pos.openedAt, now)) {
           await this.exitPosition(pos, currentPrice, 'failed breakout (reversed into compression range)');
           toRemove.push(i);
         }
@@ -161,8 +148,7 @@ export class VolCompressionBreakoutStrategy extends BasePolymarketStrategy {
     }
 
     for (let i = toRemove.length - 1; i >= 0; i--) {
-      const conditionId = this.positions[toRemove[i]].conditionId;
-      this.compressionMids.delete(conditionId);
+      this.compressionMids.delete(this.positions[toRemove[i]].conditionId);
       this.positions.splice(toRemove[i], 1);
     }
   }

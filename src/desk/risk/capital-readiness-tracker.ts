@@ -49,27 +49,19 @@ export const DEFAULT_CAPITAL_READINESS_CONFIG: CapitalReadinessConfig = {
   minWinRate: 0.55,
 };
 
-/**
- * Tracks whether the trading system has sufficient capital and track record
- * to go live. Evaluates capital level, paper trading duration, drawdown limits,
- * and win rate against configurable thresholds.
- */
 export class CapitalReadinessTracker {
   private config: CapitalReadinessConfig;
-  private capitalUsd: number = 0;
+  private capitalUsd = 0;
   private trades: TradeRecord[] = [];
   private paperDays: Set<string> = new Set();
-  private peakEquity: number = 0;
-  private currentEquity: number = 0;
+  private peakEquity = 0;
+  private currentEquity = 0;
 
   constructor(config: CapitalReadinessConfig) {
     this.config = config;
   }
 
-  /**
-   * Update the current capital level.
-   * @param usd - Current capital in USD
-   */
+  /** Update the current capital level in USD */
   updateCapital(usd: number): void {
     this.capitalUsd = usd;
     if (usd > this.peakEquity) {
@@ -79,70 +71,45 @@ export class CapitalReadinessTracker {
     logger.info(`[CapitalReadiness] Capital updated: $${usd}`);
   }
 
-  /**
-   * Record a trade result and track paper trading days.
-   * @param trade - Trade record with date, PnL, and paper flag
-   */
+  /** Record a trade result and track paper trading days */
   recordTrade(trade: TradeRecord): void {
     this.trades.push(trade);
-
     if (trade.isPaper) {
-      const dayKey = trade.date.slice(0, 10);
-      this.paperDays.add(dayKey);
+      this.paperDays.add(trade.date.slice(0, 10));
     }
-
-    // Update equity tracking for drawdown calculation
     this.currentEquity += trade.pnlUsd;
     if (this.currentEquity > this.peakEquity) {
       this.peakEquity = this.currentEquity;
     }
-
-    logger.info(
-      `[CapitalReadiness] Trade recorded: PnL $${trade.pnlUsd}, paper=${trade.isPaper}`
-    );
+    logger.info(`[CapitalReadiness] Trade recorded: PnL $${trade.pnlUsd}, paper=${trade.isPaper}`);
   }
 
-  /**
-   * Evaluate all readiness conditions and return current state with blockers.
-   * @returns Current capital readiness state with pass/fail per condition
-   */
+  /** Evaluate all readiness conditions and return current state with blockers */
   evaluate(): CapitalReadinessState {
     const blockers: string[] = [];
     const paperTradingDays = this.paperDays.size;
 
-    // Check capital requirement
     if (this.capitalUsd < this.config.minCapitalUsd) {
-      blockers.push(
-        `Capital $${this.capitalUsd} below minimum $${this.config.minCapitalUsd}`
-      );
+      blockers.push(`Capital $${this.capitalUsd} below minimum $${this.config.minCapitalUsd}`);
     }
-
-    // Check paper trading duration
     if (paperTradingDays < this.config.minPaperDays) {
-      blockers.push(
-        `Paper trading ${paperTradingDays} days below minimum ${this.config.minPaperDays} days`
-      );
+      blockers.push(`Paper trading ${paperTradingDays} days below minimum ${this.config.minPaperDays} days`);
     }
 
-    // Check drawdown
     const maxDrawdownPct = this.calculateMaxDrawdown();
     if (maxDrawdownPct > this.config.maxDrawdownPct) {
-      blockers.push(
-        `Drawdown ${maxDrawdownPct.toFixed(2)}% exceeds maximum ${this.config.maxDrawdownPct}%`
-      );
+      blockers.push(`Drawdown ${maxDrawdownPct.toFixed(2)}% exceeds maximum ${this.config.maxDrawdownPct}%`);
     }
 
-    // Check win rate (only if trades exist)
     const winRate = this.calculateWinRate();
     if (this.trades.length > 0 && winRate < this.config.minWinRate) {
-      blockers.push(
-        `Win rate ${(winRate * 100).toFixed(1)}% below minimum ${(this.config.minWinRate * 100).toFixed(1)}%`
-      );
+      blockers.push(`Win rate ${(winRate * 100).toFixed(1)}% below minimum ${(this.config.minWinRate * 100).toFixed(1)}%`);
     }
 
     const isReady = blockers.length === 0;
+    logger.info(`[CapitalReadiness] Evaluation: ${isReady ? 'READY' : `NOT READY (${blockers.length} blockers)`}`);
 
-    const state: CapitalReadinessState = {
+    return {
       capitalUsd: this.capitalUsd,
       paperTradingDays,
       maxDrawdownPct,
@@ -150,28 +117,13 @@ export class CapitalReadinessTracker {
       isReady,
       blockers,
     };
-
-    logger.info(
-      `[CapitalReadiness] Evaluation: ${isReady ? 'READY' : `NOT READY (${blockers.length} blockers)`}`
-    );
-
-    return state;
   }
 
-  /**
-   * Calculate maximum drawdown percentage from peak equity.
-   * @returns Maximum drawdown as a percentage (0-100)
-   */
   private calculateMaxDrawdown(): number {
     if (this.peakEquity <= 0) return 0;
-    const drawdownUsd = this.peakEquity - this.currentEquity;
-    return (drawdownUsd / this.peakEquity) * 100;
+    return ((this.peakEquity - this.currentEquity) / this.peakEquity) * 100;
   }
 
-  /**
-   * Calculate win rate across all recorded trades.
-   * @returns Win rate as a fraction (0-1)
-   */
   private calculateWinRate(): number {
     if (this.trades.length === 0) return 0;
     const winners = this.trades.filter((t) => t.pnlUsd > 0).length;

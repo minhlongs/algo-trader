@@ -3,10 +3,6 @@
  *
  * Unified entry point for all risk computations.
  * Manages feature flag, service lifecycle, and cross-module coordination.
- *
- * Services: VaR, Correlation, Drawdown, ATR Stops, Kelly Sizer.
- *
- * All services are lazy-initialized; Redis optional for single-call usage.
  */
 
 import { getRedisClient, type RedisClientType } from '../../redis';
@@ -33,9 +29,7 @@ export class RiskEngine {
     this.featureEnabled = featureEnabled;
   }
 
-  /**
-   * Check feature flag — returns false if risk engine is disabled.
-   */
+  /** Check feature flag — returns false if risk engine is disabled. */
   isEnabled(): boolean {
     return this.featureEnabled;
   }
@@ -74,10 +68,7 @@ export class RiskEngine {
     return this.getVar().compute(params, userId);
   }
 
-  async computeVaRWithIntervals(
-    params: Parameters<VaRService['computeWithIntervals']>[0],
-    userId: string,
-  ) {
+  async computeVaRWithIntervals(params: Parameters<VaRService['computeWithIntervals']>[0], userId: string) {
     if (!this.featureEnabled) return this.disabledResponse();
     return this.getVar().computeWithIntervals(params, userId);
   }
@@ -143,12 +134,7 @@ export class RiskEngine {
     return this.getKelly().calculate(params, userId);
   }
 
-  async kellyFromTradeHistory(
-    userId: string,
-    tradeReturns: number[],
-    portfolioValue: number,
-    correlation = 0,
-  ) {
+  async kellyFromTradeHistory(userId: string, tradeReturns: number[], portfolioValue: number, correlation = 0) {
     if (!this.featureEnabled) return this.disabledResponse();
     return this.getKelly().fromTradeHistory(userId, tradeReturns, portfolioValue, correlation);
   }
@@ -164,13 +150,7 @@ export class RiskEngine {
     ]);
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
-
   private disabledResponse() {
-    return {
-      success: false,
-      error: `${RISK_FEATURE_FLAG} is disabled`,
-      data: null,
-    };
+    return { success: false, error: `${RISK_FEATURE_FLAG} is disabled`, data: null };
   }
 }

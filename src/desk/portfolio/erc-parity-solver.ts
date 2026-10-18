@@ -39,7 +39,6 @@ export function solveErcCcd(
   maxIterations = 25
 ): RawCcdResult {
   const n = sigma.length;
-  // Initialize x using inverse volatility
   const x = new Array<number>(n);
   for (let i = 0; i < n; i++) {
     const diag = Math.max(sigma[i][i], 1e-8);
@@ -47,12 +46,9 @@ export function solveErcCcd(
     x[i] = Math.sqrt(b / diag);
   }
 
-  // Precompute sigma * x
   const sigmaX = new Array<number>(n).fill(0);
   for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) {
-      sigmaX[i] += sigma[i][j] * x[j];
-    }
+    for (let j = 0; j < n; j++) sigmaX[i] += sigma[i][j] * x[j];
   }
 
   let iterations = 0;
@@ -65,27 +61,21 @@ export function solveErcCcd(
   while (iterations < maxIterations) {
     iterations++;
 
-    // Coordinate descent sweep
     for (let i = 0; i < n; i++) {
       const a = sigma[i][i];
       const bi = budgets[i];
       const ci = sigmaX[i] - a * x[i];
-
-      // Stabilized quadratic root to prevent catastrophic cancellation
       const disc = ci * ci + 4 * a * bi;
       const sqrtDisc = Math.sqrt(Math.max(disc, 0));
       const xNew = ci > 0 ? (2 * bi) / (ci + sqrtDisc) : (-ci + sqrtDisc) / (2 * a);
 
       const deltaX = xNew - x[i];
       if (Math.abs(deltaX) > 1e-15) {
-        for (let j = 0; j < n; j++) {
-          sigmaX[j] += sigma[j][i] * deltaX;
-        }
+        for (let j = 0; j < n; j++) sigmaX[j] += sigma[j][i] * deltaX;
         x[i] = xNew;
       }
     }
 
-    // Compute normalized weights and relative risk contributions
     const sumX = x.reduce((acc, val) => acc + val, 0);
     if (sumX <= 0) break;
 
@@ -93,10 +83,7 @@ export function solveErcCcd(
     const sigmaW = sigmaX.map((val) => val / sumX);
 
     portVar = 0;
-    for (let i = 0; i < n; i++) {
-      portVar += weights[i] * sigmaW[i];
-    }
-
+    for (let i = 0; i < n; i++) portVar += weights[i] * sigmaW[i];
     if (portVar <= 1e-12) break;
 
     riskContributions = weights.map((w, i) => (w * sigmaW[i]) / portVar);
@@ -104,9 +91,7 @@ export function solveErcCcd(
     maxDiscrepancy = 0;
     for (let i = 0; i < n; i++) {
       const diff = Math.abs(riskContributions[i] - budgets[i]);
-      if (diff > maxDiscrepancy) {
-        maxDiscrepancy = diff;
-      }
+      if (diff > maxDiscrepancy) maxDiscrepancy = diff;
     }
 
     if (maxDiscrepancy <= tolerance) {
@@ -143,10 +128,7 @@ export class ErcParitySolver {
     const tol = options?.tolerance ?? this.defaultTolerance;
     const maxIter = options?.maxIterations ?? this.defaultMaxIterations;
 
-    const bVec = ENGINE_IDS.map((id) => {
-      const b = targetBudgets?.[id] ?? 1 / k;
-      return Math.max(b, 0.01);
-    });
+    const bVec = ENGINE_IDS.map((id) => Math.max(targetBudgets?.[id] ?? 1 / k, 0.01));
     const sumB = bVec.reduce((a, b) => a + b, 0);
     const normalizedB = bVec.map((b) => b / sumB);
 

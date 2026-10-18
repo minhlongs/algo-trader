@@ -107,36 +107,22 @@ export class PolymarketTerminalCache {
     const clientOrderId = existing?.clientOrderId ?? params?.clientOrderId ?? this.clientOrderIdMap.get(state.orderId);
 
     const result: ExchangeOrderResult = {
-      orderId: state.orderId,
-      clientOrderId,
-      exchange: this.exchangeId,
-      symbol: state.tokenId,
-      side: state.side.toLowerCase() as 'buy' | 'sell',
-      price: state.price,
-      amount: state.size,
-      filled: state.size,
-      remaining: 0,
-      status: 'closed',
-      fee: { amount: 0, currency: 'USDC' },
-      timestamp: state.submittedAt || Date.now(),
+      orderId: state.orderId, clientOrderId, exchange: this.exchangeId,
+      symbol: state.tokenId, side: state.side.toLowerCase() as 'buy' | 'sell',
+      price: state.price, amount: state.size, filled: state.size, remaining: 0,
+      status: 'closed', fee: { amount: 0, currency: 'USDC' }, timestamp: state.submittedAt || Date.now(),
     };
 
     this.setTerminalOrder(state.orderId, result);
     logger.debug(`[polymarket] Reconciled terminal fill for order ${state.orderId}`, {
-      symbol: state.tokenId,
-      size: state.size,
-      price: state.price,
+      symbol: state.tokenId, size: state.size, price: state.price,
     });
   }
 
   handleLiveOrderTerminal(orderId: string, status: 'expired' | 'canceled', liveOrderManager?: LiveOrderManager): void {
     const existing = this.getTerminalOrder(orderId);
     if (existing) {
-      this.setTerminalOrder(orderId, {
-        ...existing,
-        status,
-        remaining: Math.max(0, existing.amount - existing.filled),
-      });
+      this.setTerminalOrder(orderId, { ...existing, status, remaining: Math.max(0, existing.amount - existing.filled) });
       return;
     }
 
@@ -151,18 +137,10 @@ export class PolymarketTerminalCache {
       : { symbol: 'unknown', side: 'buy', price: 0, amount: 0, timestamp: Date.now() };
 
     this.setTerminalOrder(orderId, {
-      orderId,
-      clientOrderId,
-      exchange: this.exchangeId,
-      symbol: base.symbol ?? 'unknown',
-      side: base.side ?? 'buy',
-      price: base.price ?? 0,
-      amount: base.amount ?? 0,
-      filled: 0,
-      remaining: base.amount ?? 0,
-      status,
-      fee: { amount: 0, currency: 'USDC' },
-      timestamp: base.timestamp ?? Date.now(),
+      orderId, clientOrderId, exchange: this.exchangeId,
+      symbol: base.symbol ?? 'unknown', side: base.side ?? 'buy',
+      price: base.price ?? 0, amount: base.amount ?? 0, filled: 0, remaining: base.amount ?? 0,
+      status, fee: { amount: 0, currency: 'USDC' }, timestamp: base.timestamp ?? Date.now(),
     });
   }
 

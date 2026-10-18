@@ -15,7 +15,6 @@ import { DEFAULT_CONFIG } from './tiered-drawdown-types';
 import { buildPersistedState, scheduleDeferredWrite, loadPersistedState } from './tiered-drawdown-persistence';
 import { evaluateDrawdownTier } from './tiered-drawdown-evaluator';
 
-// Re-export types for backward compatibility
 export type { TieredDrawdownConfig, TieredDrawdownState, DrawdownTier, DrawdownEvent } from './tiered-drawdown-types';
 export { evaluateDrawdownTier };
 
@@ -57,34 +56,25 @@ export class TieredDrawdownBreaker {
     const now = Date.now();
     const dd = this.highWaterMark > 0 ? (this.highWaterMark - this.currentValue) / this.highWaterMark : 0;
 
-    // HARD_STOP is terminal: requires manual restart via reset()
     if (this.tier === 'HARD_STOP') {
       this.saveToDisk();
       return this.getState();
     }
 
-    // Catastrophic drawdown: HARD_STOP takes absolute precedence over any active halt/pause
     if (dd >= this.config.hardStopThreshold) {
       this.haltedUntil = null;
       this.dailyPausedUntil = null;
       this.evaluateTier(prevTier);
     } else if (this.dailyPausedUntil && now < this.dailyPausedUntil) {
-      // While in DAILY_PAUSE window, escalate if total drawdown breaches HALT or REDUCE thresholds
-      if (dd >= this.config.haltThreshold) {
-        this.dailyPausedUntil = null;
-        this.evaluateTier(prevTier);
-      } else if (dd >= this.config.reduceThreshold) {
+      if (dd >= this.config.haltThreshold || dd >= this.config.reduceThreshold) {
         this.dailyPausedUntil = null;
         this.evaluateTier(prevTier);
       } else {
         this.tier = 'DAILY_PAUSE';
       }
     } else if (this.haltedUntil && now < this.haltedUntil) {
-      // While in HALT window, maintain HALT (unless already escalated to HARD_STOP above)
       this.tier = 'HALT';
     } else if (wasPaused) {
-      // Pause/halt window expired — clear timers and re-evaluate at a lower tier
-      // (resuming=true prevents re-entry at the same HALT threshold)
       this.haltedUntil = null;
       this.dailyPausedUntil = null;
       this.evaluateTier(prevTier, true);
@@ -114,10 +104,8 @@ export class TieredDrawdownBreaker {
     if (result.event) this.events.push(result.event);
   }
 
-  /** Check if new trades are allowed */
   canOpenNewTrades(): boolean { return this.tier === 'NORMAL' || this.tier === 'ALERT'; }
 
-  /** Get sizing multiplier (1.0 = full size, 0.5 = half size) */
   getSizingMultiplier(): number {
     if (this.tier === 'HARD_STOP' || this.tier === 'HALT') return 0;
     if (this.tier === 'REDUCE') return 1 - this.config.reduceSizingReduction;
@@ -125,7 +113,6 @@ export class TieredDrawdownBreaker {
     return 1.0;
   }
 
-  /** Get fraction of portfolio positions to close (0 = none, 0.5 = half) */
   getPositionsToCloseFraction(): number {
     if (this.tier === 'HARD_STOP') return 1.0;
     if (this.tier === 'HALT') return 0.5;
@@ -133,7 +120,6 @@ export class TieredDrawdownBreaker {
     return 0;
   }
 
-  /** Reset to NORMAL (manual override after hard stop) */
   reset(newPortfolioValue: number): void {
     this.highWaterMark = newPortfolioValue;
     this.currentValue = newPortfolioValue;

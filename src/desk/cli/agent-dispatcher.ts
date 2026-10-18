@@ -52,9 +52,6 @@ export class ModelTierDispatcher {
 
   /**
    * Execute an agent with automatic tier routing.
-   * - Tier1 (Haiku): direct sync, <200ms
-   * - Tier2 (Sonnet): async queue, returns jobId immediately
-   * - Tier3 (Opus): direct sync with timeout, fallback to Tier2 on timeout/rate-limit
    */
   async execute(agentName: string, input: AgentInput, context: AgentExecutionContext): Promise<AgentExecutionResult> {
     const config = getAgentConfig(agentName);
@@ -114,17 +111,18 @@ export class ModelTierDispatcher {
       return result;
     } catch (error) {
       const latency = Date.now() - start;
-      span.recordException(error instanceof Error ? error : new Error(String(error)));
+      const errMsg = error instanceof Error ? error.message : String(error);
+      span.recordException(error instanceof Error ? error : new Error(errMsg));
       span.setAttributes({
         'agent.latency_ms': latency,
         'agent.success': false,
-        'agent.error': error instanceof Error ? error.message : String(error),
+        'agent.error': errMsg,
         'agent.model_tier': config.tier,
       });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errMsg,
         latencyMs: latency,
         agentName,
         modelTier: config.tier,
@@ -138,18 +136,11 @@ export class ModelTierDispatcher {
     config: AgentConfig,
     input: AgentInput,
     context: AgentExecutionContext,
-    enableFallback: boolean = false,
+    enableFallback = false,
   ): Promise<AgentExecutionResult> {
     return executeDirectCall(
-      {
-        gateway: this.gateway,
-        circuitBreaker: this.circuitBreaker,
-        tierQueues: this.tierQueues,
-      },
-      config,
-      input,
-      context,
-      enableFallback,
+      { gateway: this.gateway, circuitBreaker: this.circuitBreaker, tierQueues: this.tierQueues },
+      config, input, context, enableFallback,
     );
   }
 

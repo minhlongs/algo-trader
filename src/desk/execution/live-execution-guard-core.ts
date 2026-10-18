@@ -109,18 +109,16 @@ export class LiveExecutionGuard {
     return { approved: true, checks };
   }
 
-  /** Record a winning trade */
   recordWin(pnl: number): void {
     this.consecutiveLosses = 0;
     this.totalWins++;
     this.dailyPnl += pnl;
   }
 
-  /** Record a losing trade — trips circuit breaker after maxConsecutiveLosses */
   recordLoss(pnl: number): void {
     this.consecutiveLosses++;
     this.totalLosses++;
-    this.dailyPnl += pnl; // pnl is negative
+    this.dailyPnl += pnl;
 
     if (this.consecutiveLosses >= this.config.maxConsecutiveLosses) {
       this.circuitTripped = true;
@@ -128,15 +126,11 @@ export class LiveExecutionGuard {
       logger.error(
         `Circuit breaker tripped after ${this.consecutiveLosses} consecutive losses`,
         'LiveExecutionGuard',
-        {
-          dailyPnl: this.dailyPnl.toFixed(2),
-          totalLosses: this.totalLosses,
-        },
+        { dailyPnl: this.dailyPnl.toFixed(2), totalLosses: this.totalLosses },
       );
     }
   }
 
-  /** Manually reset the circuit breaker */
   resetCircuit(): void {
     this.circuitTripped = false;
     setCircuitBreakerState(false);
@@ -144,7 +138,6 @@ export class LiveExecutionGuard {
     logger.info('Circuit breaker reset', 'LiveExecutionGuard');
   }
 
-  /** Reset daily P&L (called at start of new trading day) */
   resetDaily(): void {
     this.dailyPnl = 0;
   }
@@ -161,7 +154,6 @@ export class LiveExecutionGuard {
     };
   }
 
-  /** Enable or disable the guard at runtime */
   setEnabled(enabled: boolean): void {
     this.config.enabled = enabled;
     logger.info(`Guard ${enabled ? 'ENABLED' : 'DISABLED'}`, 'LiveExecutionGuard');

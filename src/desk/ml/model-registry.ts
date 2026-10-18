@@ -3,8 +3,6 @@
  *
  * Tracks versioned ML model artifacts with metrics, training data hashes,
  * and deployment status. Enables model comparison and rollback.
- *
- * Supports: meta-learner, gru, kronos, rl, and custom model types.
  */
 
 import { getDbClient } from '../../db/postgres-client';
@@ -34,9 +32,7 @@ export interface VersionComparison {
   bestByF1: ModelRecord | null;
 }
 
-/**
- * Register a new model version
- */
+/** Register a new model version */
 export async function registerModel(params: {
   modelName: string;
   version: string;
@@ -62,27 +58,19 @@ export async function registerModel(params: {
       params.modelType ?? null, params.registeredBy ?? null,
     ],
   );
-  logger.info(
-    `[ModelRegistry] Registered ${params.modelName}@${params.version} (id=${result.rows[0].id})`,
-    'ModelRegistry',
-  );
+  logger.info(`[ModelRegistry] Registered ${params.modelName}@${params.version} (id=${result.rows[0].id})`, 'ModelRegistry');
   return getModelById(result.rows[0].id);
 }
 
 /** Get the latest version of a model by name */
-export async function getLatestVersion(
-  modelName: string,
-  status?: ModelStatus,
-): Promise<ModelRecord | null> {
+export async function getLatestVersion(modelName: string, status?: ModelStatus): Promise<ModelRecord | null> {
   const pool = getDbClient();
   const statusClause = status ? `AND status = $3` : '';
   const params: (string | number)[] = [modelName];
   if (status) params.push(status);
   params.push(1);
   const result = await pool.query<Record<string, unknown>>(
-    `SELECT * FROM model_registry
-     WHERE model_name = $1 ${statusClause}
-     ORDER BY created_at DESC LIMIT $${params.length}`,
+    `SELECT * FROM model_registry WHERE model_name = $1 ${statusClause} ORDER BY created_at DESC LIMIT $${params.length}`,
     params,
   );
   return result.rows.length > 0 ? mapRow(result.rows[0]) : null;
@@ -99,52 +87,42 @@ export async function getModelVersions(modelName: string): Promise<ModelRecord[]
 }
 
 /** Compare two or more versions side by side */
-export async function compareVersions(
-  modelName: string,
-  versions: string[],
-): Promise<VersionComparison> {
+export async function compareVersions(modelName: string, versions: string[]): Promise<VersionComparison> {
   const pool = getDbClient();
   const result = await pool.query<Record<string, unknown>>(
-    `SELECT * FROM model_registry
-     WHERE model_name = $1 AND version = ANY($2)
-     ORDER BY created_at DESC`,
+    `SELECT * FROM model_registry WHERE model_name = $1 AND version = ANY($2) ORDER BY created_at DESC`,
     [modelName, versions],
   );
   const records = result.rows.map(mapRow);
-  const bestByAccuracy = findBest(records, 'accuracy');
-  const bestByF1 = findBest(records, 'f1');
-  return { versions: records, bestByAccuracy, bestByF1 };
+  return {
+    versions: records,
+    bestByAccuracy: findBest(records, 'accuracy'),
+    bestByF1: findBest(records, 'f1'),
+  };
 }
 
 /** Promote a model version to production (demotes previous) */
-export async function promoteModel(
-  modelName: string, version: string,
-): Promise<ModelRecord> {
+export async function promoteModel(modelName: string, version: string): Promise<ModelRecord> {
   const pool = getDbClient();
   await pool.query(
-    `UPDATE model_registry SET status='archived', updated_at=NOW()
-     WHERE model_name=$1 AND status='production'`, [modelName],
+    `UPDATE model_registry SET status='archived', updated_at=NOW() WHERE model_name=$1 AND status='production'`,
+    [modelName],
   );
   await pool.query(
-    `UPDATE model_registry SET status='production', promoted_at=NOW(), updated_at=NOW()
-     WHERE model_name=$1 AND version=$2`, [modelName, version],
+    `UPDATE model_registry SET status='production', promoted_at=NOW(), updated_at=NOW() WHERE model_name=$1 AND version=$2`,
+    [modelName, version],
   );
   logger.info(`[ModelRegistry] Promoted ${modelName}@${version} to production`, 'ModelRegistry');
-  return getModelById(
-    (await pool.query<{ id: number }>(
-      `SELECT id FROM model_registry WHERE model_name=$1 AND version=$2`,
-      [modelName, version],
-    )).rows[0].id,
+  const idRes = await pool.query<{ id: number }>(
+    `SELECT id FROM model_registry WHERE model_name=$1 AND version=$2`,
+    [modelName, version],
   );
+  return getModelById(idRes.rows[0].id);
 }
-
-// ─── Private Helpers ───────────────────────────────────────────────────
 
 async function getModelById(id: number): Promise<ModelRecord> {
   const pool = getDbClient();
-  const result = await pool.query<Record<string, unknown>>(
-    'SELECT * FROM model_registry WHERE id=$1', [id],
-  );
+  const result = await pool.query<Record<string, unknown>>('SELECT * FROM model_registry WHERE id=$1', [id]);
   if (result.rows.length === 0) throw new Error(`Model record ${id} not found`);
   return mapRow(result.rows[0]);
 }

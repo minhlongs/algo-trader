@@ -34,13 +34,11 @@ export interface GovernanceProposerConfig {
 }
 
 export class GovernanceProposer {
-  private proposals: Map<string, Proposal>;
-  private votes: Map<string, Vote[]>;
+  private proposals: Map<string, Proposal> = new Map();
+  private votes: Map<string, Vote[]> = new Map();
   private config: Required<GovernanceProposerConfig>;
 
   constructor(config?: Partial<GovernanceProposerConfig>) {
-    this.proposals = new Map();
-    this.votes = new Map();
     this.config = {
       votingPeriodSec: config?.votingPeriodSec ?? 604800,
       quorumFraction: config?.quorumFraction ?? 0.1,
@@ -76,7 +74,6 @@ export class GovernanceProposer {
 
     this.proposals.set(proposalId, proposal);
     this.votes.set(proposalId, []);
-
     return proposalId;
   }
 
@@ -86,33 +83,22 @@ export class GovernanceProposer {
     }
 
     const proposal = this.proposals.get(proposalId);
-    if (!proposal) {
-      throw new Error('Proposal not found');
-    }
-
-    if (proposal.status !== 'active') {
-      throw new Error('Proposal is not active');
-    }
-
-    if (Date.now() > proposal.expiresAt) {
-      throw new Error('Voting period has expired');
-    }
+    if (!proposal) throw new Error('Proposal not found');
+    if (proposal.status !== 'active') throw new Error('Proposal is not active');
+    if (Date.now() > proposal.expiresAt) throw new Error('Voting period has expired');
 
     const proposalVotes = this.votes.get(proposalId) ?? [];
-    const hasVoted = proposalVotes.some(v => v.voter === voter);
-    if (hasVoted) {
+    if (proposalVotes.some(v => v.voter === voter)) {
       throw new Error('Voter has already voted');
     }
 
-    const vote: Vote = {
+    proposalVotes.push({
       voter,
       proposalId,
       support,
       weight,
       castAt: Date.now(),
-    };
-
-    proposalVotes.push(vote);
+    });
     this.votes.set(proposalId, proposalVotes);
 
     if (support) {
@@ -124,9 +110,7 @@ export class GovernanceProposer {
 
   getProposal(proposalId: string): Proposal | undefined {
     const proposal = this.proposals.get(proposalId);
-    if (!proposal) return undefined;
-
-    return { ...proposal };
+    return proposal ? { ...proposal } : undefined;
   }
 
   listActiveProposals(): Proposal[] {
@@ -138,42 +122,26 @@ export class GovernanceProposer {
 
   finalise(proposalId: string, totalSupply: bigint): ProposalStatus {
     const proposal = this.proposals.get(proposalId);
-    if (!proposal) {
-      throw new Error('Proposal not found');
-    }
-
-    if (proposal.status !== 'active') {
-      return proposal.status;
-    }
+    if (!proposal) throw new Error('Proposal not found');
+    if (proposal.status !== 'active') return proposal.status;
 
     const totalVotes = proposal.votesFor + proposal.votesAgainst;
     const quorumRequired = (totalSupply * BigInt(Math.floor(this.config.quorumFraction * 100))) / BigInt(100);
-    const quorumMet = totalVotes >= quorumRequired;
-
-    if (!quorumMet) {
+    if (totalVotes < quorumRequired || proposal.votesFor <= proposal.votesAgainst) {
       proposal.status = 'rejected';
       return 'rejected';
     }
 
-    if (proposal.votesFor > proposal.votesAgainst) {
-      proposal.status = 'passed';
-      return 'passed';
-    } else {
-      proposal.status = 'rejected';
-      return 'rejected';
-    }
+    proposal.status = 'passed';
+    return 'passed';
   }
 
   getVotes(proposalId: string): Vote[] {
     const proposalVotes = this.votes.get(proposalId);
-    if (!proposalVotes) return [];
-
-    return proposalVotes.map(v => ({ ...v }));
+    return proposalVotes ? proposalVotes.map(v => ({ ...v })) : [];
   }
 
   private generateProposalId(): string {
-    const timestamp = Date.now().toString(16);
-    const random = Math.random().toString(16).slice(2);
-    return `prop_${timestamp}_${random}`;
+    return `prop_${Date.now().toString(16)}_${Math.random().toString(16).slice(2)}`;
   }
 }

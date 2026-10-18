@@ -14,16 +14,12 @@ import {
   RebalanceResult,
   RebalanceSignal,
 } from '../../../shared/types/delta-neutral-types';
-import {
-  estimateHedgeSize,
-} from './delta-calculator';
+import { estimateHedgeSize } from './delta-calculator';
 
 /** Maximum number of rebalance iterations to avoid infinite loops */
 const MAX_REBALANCE_ITERATIONS = 10;
 
-/**
- * Determine if portfolio requires rebalancing.
- */
+/** Determine if portfolio requires rebalancing. */
 export function requiresRebalance(
   portfolio: DeltaNeutralPortfolio,
   threshold: number
@@ -34,10 +30,6 @@ export function requiresRebalance(
 /**
  * Generate minimum rebalance signals to bring |netDelta| below threshold.
  * Picks the position that most efficiently reduces delta at each step.
- *
- * @param portfolio - Current portfolio state
- * @param threshold - Delta threshold (e.g. 0.1)
- * @param maxLegSize - Max USDC size per individual rebalance trade
  */
 export function computeRebalanceSignals(
   portfolio: DeltaNeutralPortfolio,
@@ -47,52 +39,31 @@ export function computeRebalanceSignals(
   const signals: RebalanceSignal[] = [];
   const deltaBefore = portfolio.netDelta;
   let remainingDelta = deltaBefore;
-
-  // Work on a mutable copy of positions for simulation
   const positions: HedgePosition[] = portfolio.positions.map((p) => ({ ...p }));
 
   for (let iter = 0; iter < MAX_REBALANCE_ITERATIONS; iter++) {
     if (Math.abs(remainingDelta) <= threshold) break;
 
-    // Find the best position to rebalance: prefer positions where
-    // a trade direction counters the remaining delta
-    const signal = findBestRebalanceTrade(
-      positions,
-      remainingDelta,
-      maxLegSize
-    );
-
+    const signal = findBestRebalanceTrade(positions, remainingDelta, maxLegSize);
     if (!signal) break;
 
     signals.push(signal);
 
-    // Simulate the delta impact of this trade
-    const priceFactor =
-      signal.side === 'NO'
-        ? 1 - (getPositionPrice(positions, signal.marketId, signal.side) ?? 0.5)
-        : (getPositionPrice(positions, signal.marketId, signal.side) ?? 0.5);
-
+    const rawPrice = getPositionPrice(positions, signal.marketId, signal.side) ?? 0.5;
+    const priceFactor = signal.side === 'NO' ? 1 - rawPrice : rawPrice;
     const deltaImpact = signal.size * ((priceFactor - 0.5) / 0.5);
-    remainingDelta =
-      signal.action === 'BUY'
-        ? remainingDelta - deltaImpact
-        : remainingDelta + deltaImpact;
+    remainingDelta = signal.action === 'BUY' ? remainingDelta - deltaImpact : remainingDelta + deltaImpact;
   }
-
-  const estimatedCost = signals.reduce((sum, s) => sum + s.size, 0);
 
   return {
     signals,
     deltaBefore,
     deltaAfter: remainingDelta,
-    estimatedCost,
+    estimatedCost: signals.reduce((sum, s) => sum + s.size, 0),
   };
 }
 
-/**
- * Find the single best trade to reduce |remainingDelta|.
- * Returns null if no suitable position found.
- */
+/** Find the single best trade to reduce |remainingDelta|. */
 function findBestRebalanceTrade(
   positions: HedgePosition[],
   remainingDelta: number,
@@ -102,10 +73,8 @@ function findBestRebalanceTrade(
   let bestEfficiency = 0;
 
   for (const pos of positions) {
-    const effectivePrice =
-      pos.side === 'NO' ? 1 - pos.currentPrice : pos.currentPrice;
+    const effectivePrice = pos.side === 'NO' ? 1 - pos.currentPrice : pos.currentPrice;
     const priceDev = (effectivePrice - 0.5) / 0.5;
-
     if (Math.abs(priceDev) < 1e-6) continue;
 
     const hedgeSize = estimateHedgeSize(
@@ -113,18 +82,12 @@ function findBestRebalanceTrade(
       effectivePrice,
       Math.min(maxLegSize, pos.size)
     );
+    if (hedgeSize < 1) continue;
 
-    if (hedgeSize < 1) continue; // Minimum $1 trade
-
-    // Efficiency: delta reduced per dollar spent
     const efficiency = Math.abs(hedgeSize * priceDev) / hedgeSize;
-
     if (efficiency > bestEfficiency) {
       bestEfficiency = efficiency;
-      // If delta is positive we need to SELL (reduce long exposure),
-      // if negative we need to BUY (increase long exposure)
       const action: 'BUY' | 'SELL' = remainingDelta > 0 ? 'SELL' : 'BUY';
-
       best = {
         action,
         marketId: pos.marketId,
@@ -138,23 +101,17 @@ function findBestRebalanceTrade(
   return best;
 }
 
-/**
- * Get current price for a position by marketId+side.
- */
 function getPositionPrice(
   positions: HedgePosition[],
   marketId: string,
   side: 'YES' | 'NO'
 ): number | undefined {
-  return positions.find((p) => p.marketId === marketId && p.side === side)
-    ?.currentPrice;
+  return positions.find((p) => p.marketId === marketId && p.side === side)?.currentPrice;
 }
 
 /**
  * Apply confirmed rebalance signals to update portfolio positions.
  * Adjusts sizes in-place based on BUY/SELL actions.
- *
- * @returns Updated positions after applying signals
  */
 export function applyRebalanceSignals(
   positions: HedgePosition[],
@@ -163,12 +120,8 @@ export function applyRebalanceSignals(
   const updated = positions.map((p) => ({ ...p }));
 
   for (const signal of signals) {
-    const pos = updated.find(
-      (p) => p.marketId === signal.marketId && p.side === signal.side
-    );
-
+    const pos = updated.find((p) => p.marketId === signal.marketId && p.side === signal.side);
     if (!pos) continue;
-
     if (signal.action === 'BUY') {
       pos.size += signal.size;
     } else {

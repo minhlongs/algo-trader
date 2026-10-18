@@ -6,17 +6,14 @@
 import { EventEmitter } from 'events';
 import { logger } from '../../shared/utils/logger';
 import type {
-  EmergencyHaltable,
-  FeedWatchdogOptions,
-  FreshnessStatus,
-  StaleFeedRecord,
-  WatchdogState,
-  WatchdogTargetMultiplexer,
-  WatchdogTripEvent,
+  EmergencyHaltable, FeedWatchdogOptions, FreshnessStatus, WatchdogState, WatchdogTargetMultiplexer, WatchdogTripEvent,
 } from './feed-freshness-watchdog-types';
-import { scanFeedFreshness, type FreshnessScanResult, type FreshnessScanInput } from './feed-freshness-inspector';
+import {
+  scanFeedFreshness, buildFreshnessStatus, buildWatchdogTripEvent, computeVenueLag,
+  type FreshnessScanResult, type FreshnessScanInput,
+} from './feed-freshness-inspector';
 
-export { scanFeedFreshness };
+export { scanFeedFreshness, buildFreshnessStatus, buildWatchdogTripEvent, computeVenueLag };
 export type { FreshnessScanResult, FreshnessScanInput };
 
 export class FeedFreshnessWatchdog extends EventEmitter {
@@ -57,15 +54,10 @@ export class FeedFreshnessWatchdog extends EventEmitter {
   }
 
   public stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
   }
 
-  public attachToLoop(loop: EmergencyHaltable): void {
-    this.haltTarget = loop;
-  }
+  public attachToLoop(loop: EmergencyHaltable): void { this.haltTarget = loop; }
 
   public attachToMultiplexer(mux: WatchdogTargetMultiplexer): void {
     mux.on('tick', (tick) => this.recordTick(tick.venueId, tick.symbol, tick.timestamp));
@@ -75,15 +67,11 @@ export class FeedFreshnessWatchdog extends EventEmitter {
   }
 
   public recordTick(venue: string, symbolOrTs?: string | number, timestamp?: number): void {
-    if (typeof symbolOrTs === 'number' || symbolOrTs === undefined) {
-      const ts = symbolOrTs ?? Date.now();
-      this.lastTickTimes.set(`${venue}:*`, ts);
-      this.lastHeartbeatTimes.set(venue, ts);
-    } else {
-      const ts = timestamp ?? Date.now();
-      this.lastTickTimes.set(`${venue}:${symbolOrTs}`, ts);
-      this.lastHeartbeatTimes.set(venue, ts);
-    }
+    const isLegacyTs = typeof symbolOrTs === 'number' || symbolOrTs === undefined;
+    const ts = isLegacyTs ? (symbolOrTs ?? Date.now()) : (timestamp ?? Date.now());
+    const key = isLegacyTs ? `${venue}:*` : `${venue}:${symbolOrTs}`;
+    this.lastTickTimes.set(key, ts);
+    this.lastHeartbeatTimes.set(venue, ts);
     if (this.state === 'DEGRADED') this.state = 'HEALTHY';
   }
 
@@ -98,7 +86,7 @@ export class FeedFreshnessWatchdog extends EventEmitter {
   }
 
   public checkFreshness(now = Date.now()): FreshnessStatus {
-    const { staleFeeds, hasWarning, worstLatencyMs } = scanFeedFreshness({
+    const scan = scanFeedFreshness({
       lastTickTimes: this.lastTickTimes,
       lastHeartbeatTimes: this.lastHeartbeatTimes,
       maxStalenessMs: this.maxStalenessMs,
@@ -106,31 +94,21 @@ export class FeedFreshnessWatchdog extends EventEmitter {
       now,
     });
 
-    if (staleFeeds.length > 0) {
-      const worst = staleFeeds.reduce((max, cur) => (cur.elapsedMs > max.elapsedMs ? cur : max));
+    if (scan.staleFeeds.length > 0) {
+      const worst = scan.staleFeeds.reduce((max, cur) => (cur.elapsedMs > max.elapsedMs ? cur : max));
       this.trip(`Feed latency exceeded ${this.maxStalenessMs}ms`, worst.venueId, worst.symbol, worst.elapsedMs);
-    } else if (hasWarning && this.state === 'HEALTHY') {
+    } else if (scan.hasWarning && this.state === 'HEALTHY') {
       this.state = 'DEGRADED';
     }
 
-    const isStale = staleFeeds.length > 0;
-    const staleVenues = Array.from(new Set(staleFeeds.map((f) => f.venueId)));
-    return { isHealthy: this.state === 'HEALTHY', state: this.state, staleFeeds, checkedAt: now, isStale, worstLatencyMs, staleVenues };
+    return buildFreshnessStatus(this.state, scan, now);
   }
 
   public trip(reason: string, venue: string, symbol?: string, elapsedMs = this.maxStalenessMs): void {
     if (this.state === 'TRIPPED') return;
     this.state = 'TRIPPED';
 
-    const event: WatchdogTripEvent = {
-      reason,
-      venueId: venue,
-      symbol,
-      elapsedMs,
-      thresholdMs: this.maxStalenessMs,
-      timestamp: Date.now(),
-      latencyMs: elapsedMs,
-    };
+    const event = buildWatchdogTripEvent(reason, venue, symbol, elapsedMs, this.maxStalenessMs);
     this.lastTripEvent = event;
     logger.warn('Feed freshness watchdog tripped emergency halt', { venue, symbol, elapsedMs, reason });
 
@@ -155,24 +133,11 @@ export class FeedFreshnessWatchdog extends EventEmitter {
     for (const venue of this.lastHeartbeatTimes.keys()) this.lastHeartbeatTimes.set(venue, now);
   }
 
-  public getState(): WatchdogState {
-    return this.state;
-  }
-
-  public isTripped(): boolean {
-    return this.state === 'TRIPPED';
-  }
-
-  public getLastTripEvent(): WatchdogTripEvent | undefined {
-    return this.lastTripEvent;
-  }
+  public getState(): WatchdogState { return this.state; }
+  public isTripped(): boolean { return this.state === 'TRIPPED'; }
+  public getLastTripEvent(): WatchdogTripEvent | undefined { return this.lastTripEvent; }
 
   public getVenueLag(venue: string, symbol?: string, now = Date.now()): number {
-    if (symbol) {
-      const last = this.lastTickTimes.get(`${venue}:${symbol}`);
-      return last ? Math.max(0, now - last) : Infinity;
-    }
-    const lastHb = this.lastHeartbeatTimes.get(venue);
-    return lastHb ? Math.max(0, now - lastHb) : Infinity;
+    return computeVenueLag(this.lastTickTimes, this.lastHeartbeatTimes, venue, symbol, now);
   }
 }

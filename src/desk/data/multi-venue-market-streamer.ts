@@ -1,7 +1,6 @@
 /**
  * Multi-Venue Market Streamer
- * Multiplexed market stream manager wrapping Binance, Hyperliquid, and Polymarket feeds
- * into normalized UnifiedOrderBook and UnifiedTrade event emitters with exponential backoff reconnection.
+ * Multiplexed market stream manager wrapping Binance, Hyperliquid, and Polymarket feeds.
  */
 
 import { EventEmitter } from 'events';
@@ -107,7 +106,10 @@ export class MultiVenueMarketStreamer extends EventEmitter {
       this.connections.set(venue, ws);
       ws.on('open', () => this.handleOpen(venue, ws));
       ws.on('message', (data: unknown) => this.handleMessage(venue, data));
-      ws.on('error', (err: unknown) => this.handleError(venue, err));
+      ws.on('error', (err: unknown) => {
+        logger.warn(`[MultiVenueStreamer] WS error on ${venue}`, { err });
+        this.emit('venue_error', { venue, error: err });
+      });
       ws.on('close', () => this.handleClose(venue));
     } catch (err) {
       logger.error(`[MultiVenueStreamer] Connect failed for ${venue}`, { err });
@@ -117,11 +119,7 @@ export class MultiVenueMarketStreamer extends EventEmitter {
 
   private handleOpen(venue: SupportedVenue, ws: WebSocketLike): void {
     const state = this.states.get(venue);
-    if (state) {
-      state.connected = true;
-      state.reconnectAttempts = 0;
-      state.lastHeartbeat = Date.now();
-    }
+    if (state) { state.connected = true; state.reconnectAttempts = 0; state.lastHeartbeat = Date.now(); }
     const subs = this.activeSubscriptions.get(venue);
     if (subs) for (const sym of subs) sendVenueSubscription(venue, ws, sym);
     this.emit('connected', venue);
@@ -131,8 +129,7 @@ export class MultiVenueMarketStreamer extends EventEmitter {
     const state = this.states.get(venue);
     if (state) state.lastHeartbeat = Date.now();
     try {
-      const text = typeof rawData === 'string' ? rawData : String(rawData);
-      const msg = JSON.parse(text) as Record<string, unknown>;
+      const msg = JSON.parse(typeof rawData === 'string' ? rawData : String(rawData)) as Record<string, unknown>;
       const book = parseVenueOrderBook(venue, msg);
       if (book) this.emitOrderBook(book);
       const trade = parseVenueTrade(venue, msg);
@@ -140,11 +137,6 @@ export class MultiVenueMarketStreamer extends EventEmitter {
     } catch (err) {
       logger.debug(`[MultiVenueStreamer] Parse fail on ${venue}`, { err });
     }
-  }
-
-  private handleError(venue: SupportedVenue, err: unknown): void {
-    logger.warn(`[MultiVenueStreamer] WS error on ${venue}`, { err });
-    this.emit('venue_error', { venue, error: err });
   }
 
   private handleClose(venue: SupportedVenue): void {
@@ -171,9 +163,6 @@ export class MultiVenueMarketStreamer extends EventEmitter {
 
   private clearReconnectTimer(venue: SupportedVenue): void {
     const timer = this.reconnectTimers.get(venue);
-    if (timer) {
-      clearTimeout(timer);
-      this.reconnectTimers.set(venue, null);
-    }
+    if (timer) { clearTimeout(timer); this.reconnectTimers.set(venue, null); }
   }
 }

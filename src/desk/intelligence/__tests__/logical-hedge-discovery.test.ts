@@ -82,47 +82,30 @@ describe('discoverLogicalHedges', () => {
     expect(redisSetex.mock.calls[0]![1]).toBe(2 * 60 * 60);
   });
 
-  it('discovers a T2 hedge for confidence 0.90', async () => {
+  it('discovers a T2/T3 hedge and rejects below MIN_CONFIDENCE or unknown market', async () => {
     llmChat.mockResolvedValueOnce({ content: hedgeJson(0.90) });
-    const out = await discoverLogicalHedges(PAIR);
-    expect(out[0]!.tier).toBe('T2');
-  });
+    expect((await discoverLogicalHedges(PAIR))[0]!.tier).toBe('T2');
 
-  it('discovers a T3 hedge for confidence 0.85', async () => {
     llmChat.mockResolvedValueOnce({ content: hedgeJson(0.85) });
-    const out = await discoverLogicalHedges(PAIR);
-    expect(out[0]!.tier).toBe('T3');
-  });
+    expect((await discoverLogicalHedges(PAIR))[0]!.tier).toBe('T3');
 
-  it('rejects a hedge below MIN_CONFIDENCE (0.84)', async () => {
     llmChat.mockResolvedValueOnce({ content: hedgeJson(0.84) });
-    const out = await discoverLogicalHedges(PAIR);
-    expect(out).toEqual([]);
-  });
+    expect(await discoverLogicalHedges(PAIR)).toEqual([]);
 
-  it('rejects a hedge referencing an unknown market', async () => {
     llmChat.mockResolvedValueOnce({ content: hedgeJson(0.95, 'A', 'GHOST') });
-    const out = await discoverLogicalHedges(PAIR);
-    expect(out).toEqual([]);
+    expect(await discoverLogicalHedges(PAIR)).toEqual([]);
   });
 
-  it('strips ```json fences before parsing', async () => {
+  it('strips ```json fences and handles invalid JSON or LLM errors', async () => {
     llmChat.mockResolvedValueOnce({ content: '```json\n' + hedgeJson(0.95) + '\n```' });
-    const out = await discoverLogicalHedges(PAIR);
-    expect(out.length).toBe(1);
-  });
+    expect((await discoverLogicalHedges(PAIR)).length).toBe(1);
 
-  it('returns [] when the LLM response is not valid JSON', async () => {
     llmChat.mockResolvedValueOnce({ content: 'not json at all' });
-    const out = await discoverLogicalHedges(PAIR);
-    expect(out).toEqual([]);
-    expect(redisSetex).toHaveBeenCalledTimes(1);
-  });
+    expect(await discoverLogicalHedges(PAIR)).toEqual([]);
+    expect(redisSetex).toHaveBeenCalledTimes(2);
 
-  it('returns [] when the LLM throws (batch failure is swallowed)', async () => {
     llmChat.mockRejectedValueOnce(new Error('network down'));
-    const out = await discoverLogicalHedges(PAIR);
-    expect(out).toEqual([]);
+    expect(await discoverLogicalHedges(PAIR)).toEqual([]);
   });
 
   it('sorts by confidence desc, then expectedEdge desc', async () => {

@@ -74,9 +74,8 @@ export class SubscriptionService {
   }
 
   async getSubscription(idOrUserId: string): Promise<Subscription | undefined> {
-    const byId = this.subscriptions.get(idOrUserId);
-    if (byId) return byId;
-    return Array.from(this.subscriptions.values()).find((s) => s.userId === idOrUserId);
+    return this.subscriptions.get(idOrUserId) ??
+      Array.from(this.subscriptions.values()).find((s) => s.userId === idOrUserId);
   }
 
   async getSubscriptionByProviderId(providerId: string): Promise<Subscription | undefined> {
@@ -121,10 +120,7 @@ export class SubscriptionService {
     existing.status = 'active';
     existing.updatedAt = new Date().toISOString();
 
-    const license = await this.licenseService.createLicense({
-      name: existing.customerEmail,
-      tier: existing.tier,
-    });
+    const license = await this.licenseService.createLicense({ name: existing.customerEmail, tier: existing.tier });
     license.userId = existing.customerEmail;
     license.maxUsage = getDefaultMaxUsage(existing.tier);
     license.subscriptionId = id;
@@ -145,18 +141,12 @@ export class SubscriptionService {
     this.subscriptions.set(id, sub);
     saveToFile(this.subscriptions);
 
-    if (sub.licenseId) {
-      await downgradeLicenseToFree(this.licenseService, this.auditService, sub.licenseId);
-    }
+    if (sub.licenseId) await downgradeLicenseToFree(this.licenseService, this.auditService, sub.licenseId);
     return sub;
   }
 
   async handlePaymentConfirmation(input: {
-    userId: string;
-    tier: LicenseTier;
-    paymentId?: string;
-    amount?: number;
-    currency?: string;
+    userId: string; tier: LicenseTier; paymentId?: string; amount?: number; currency?: string;
   }): Promise<Subscription> {
     return handleUserPaymentConfirmation(this.subscriptions, input, () => this.generateId());
   }

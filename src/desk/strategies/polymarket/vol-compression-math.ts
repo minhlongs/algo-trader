@@ -40,3 +40,37 @@ export function detectBreakout(
   if (move < -(multiplier * atr)) return 'down';
   return null;
 }
+
+export function appendBoundedPrice(
+  historyMap: Map<string, number[]>,
+  tokenId: string,
+  price: number,
+  maxLen: number,
+): void {
+  let history = historyMap.get(tokenId);
+  if (!history) {
+    history = [];
+    historyMap.set(tokenId, history);
+  }
+  history.push(price);
+  if (history.length > maxLen) history.splice(0, history.length - maxLen);
+}
+
+export function hasVolumeConfirmation(volume24h?: number, volume?: number, minRatio = 0.01): boolean {
+  if (volume24h !== undefined && volume !== undefined && volume > 0) {
+    return (volume24h / volume) >= minRatio;
+  }
+  return true;
+}
+
+export function isFailedBreakoutReversal(
+  side: 'yes' | 'no',
+  currentPrice: number,
+  compressionMid: number | undefined,
+  openedAt: number,
+  now: number,
+  windowMs = 2 * 60_000,
+): boolean {
+  if (compressionMid === undefined || (now - openedAt) >= windowMs) return false;
+  return side === 'yes' ? currentPrice <= compressionMid : currentPrice >= compressionMid;
+}

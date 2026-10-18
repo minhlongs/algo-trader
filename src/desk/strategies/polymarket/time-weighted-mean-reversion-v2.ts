@@ -11,70 +11,29 @@ import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
 import {
   BasePolymarketStrategy,
-  type BaseStrategyConfig,
   type StrategyDeps,
 } from './base-polymarket-strategy';
+import {
+  type TimeWeightedMeanReversionConfig,
+  DEFAULT_CONFIG,
+  calcRollingMean,
+  calcRollingStd,
+  calcZScore,
+  getTimeWeight,
+  isSignalActive,
+} from './time-weighted-mean-reversion-math';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
-export interface TimeWeightedMeanReversionConfig extends BaseStrategyConfig {
-  priceWindow: number;
-  baseZThreshold: number;
-  timeWeights: number[];
-  minStdDev: number;
-}
-
-export const DEFAULT_CONFIG: TimeWeightedMeanReversionConfig = {
-  priceWindow: 25,
-  baseZThreshold: 2.0,
-  timeWeights: Array(24).fill(1.0),
-  minStdDev: 0.005,
-  minVolume: 5000,
-  takeProfitPct: 0.025,
-  stopLossPct: 0.02,
-  maxHoldMs: 20 * 60_000,
-  maxPositions: 5,
-  cooldownMs: 90_000,
-  positionSize: '10',
+export {
+  type TimeWeightedMeanReversionConfig,
+  DEFAULT_CONFIG,
+  calcRollingMean,
+  calcRollingStd,
+  calcZScore,
+  getTimeWeight,
+  isSignalActive,
 };
 
 const STRATEGY_NAME = 'time-weighted-mean-reversion' as StrategyName;
-
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
-export function calcRollingMean(prices: number[]): number {
-  if (prices.length === 0) return 0;
-  let sum = 0;
-  for (const p of prices) sum += p;
-  return sum / prices.length;
-}
-
-export function calcRollingStd(prices: number[], mean: number): number {
-  if (prices.length === 0) return 0;
-  let sumSq = 0;
-  for (const p of prices) {
-    const diff = p - mean;
-    sumSq += diff * diff;
-  }
-  return Math.sqrt(sumSq / prices.length);
-}
-
-export function calcZScore(price: number, mean: number, std: number): number {
-  if (std === 0) return 0;
-  return (price - mean) / std;
-}
-
-export function getTimeWeight(hour: number, weights: number[]): number {
-  const idx = ((hour % 24) + 24) % 24;
-  if (idx < 0 || idx >= weights.length) return 1.0;
-  return weights[idx];
-}
-
-export function isSignalActive(zScore: number, baseThreshold: number, timeWeight: number): boolean {
-  return Math.abs(zScore) > baseThreshold * timeWeight;
-}
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class TimeWeightedMeanReversionStrategy extends BasePolymarketStrategy {
   private readonly cfg: TimeWeightedMeanReversionConfig;

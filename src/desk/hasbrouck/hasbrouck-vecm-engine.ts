@@ -2,7 +2,6 @@
  * Joel Hasbrouck (1991) VAR / VECM Empirical Microstructure Engine.
  * Implements Bivariate VAR(K) estimation, Wold moving average representation,
  * Impulse Response Function (IRF), and Information Share (R_w^2) variance decomposition.
- * Strictly < 180 LOC, zero :any types.
  */
 
 import {
@@ -24,9 +23,6 @@ export class HasbrouckVecmEngine {
     }
   }
 
-  /**
-   * Estimates Bivariate VAR(K) for midpoint return r_t and signed trade flow x_t.
-   */
   public static estimate(
     obs: readonly HasbrouckTradeObservation[],
     cfg: HasbrouckVarConfig,
@@ -97,9 +93,6 @@ export class HasbrouckVecmEngine {
     };
   }
 
-  /**
-   * Computes Wold moving average representation and IRF through forward recursion.
-   */
   public static computeImpulseResponses(
     coef: HasbrouckVarCoefficients,
     horizon: number
@@ -119,20 +112,14 @@ export class HasbrouckVecmEngine {
     for (let tau = 0; tau <= horizon; tau++) {
       const idx = K + tau;
       if (tau > 0) {
-        let rT = 0;
-        let xT = 0;
-        let rQ = 0;
-        let xQ = 0;
+        let rT = 0, xT = 0, rQ = 0, xQ = 0;
         for (let lag = 1; lag <= K; lag++) {
           rT += coef.alphaLagMidpoint[lag - 1] * tR[idx - lag] + coef.alphaLagSignedTrade[lag - 1] * tX[idx - lag];
           xT += coef.betaLagMidpoint[lag - 1] * tR[idx - lag] + coef.betaLagSignedTrade[lag - 1] * tX[idx - lag];
           rQ += coef.alphaLagMidpoint[lag - 1] * qR[idx - lag] + coef.alphaLagSignedTrade[lag - 1] * qX[idx - lag];
           xQ += coef.betaLagMidpoint[lag - 1] * qR[idx - lag] + coef.betaLagSignedTrade[lag - 1] * qX[idx - lag];
         }
-        tR[idx] = rT;
-        tX[idx] = xT;
-        qR[idx] = rQ;
-        qX[idx] = xQ;
+        tR[idx] = rT; tX[idx] = xT; qR[idx] = rQ; qX[idx] = xQ;
       }
       cumTQ += tR[idx];
       cumQQ += qR[idx];
@@ -147,9 +134,6 @@ export class HasbrouckVecmEngine {
     return steps;
   }
 
-  /**
-   * Hasbrouck (1991) Information Share (R_w^2) and permanent price impact.
-   */
   public static computeVarianceDecomposition(
     irf: readonly HasbrouckImpulseResponseStep[],
     residuals: HasbrouckResiduals

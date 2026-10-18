@@ -115,24 +115,17 @@ describe('LiveTradingStrategyExecutor', () => {
   });
 
   describe('paper stats', () => {
-    it('updatePaperPnl accumulates deltas per strategy', () => {
+    it('updatePaperPnl and recordPaperTrade accumulate per strategy', () => {
       executor.updatePaperPnl('s', 10);
       executor.updatePaperPnl('s', -3);
       executor.updatePaperPnl('other', 5);
-
-      const stats = executor.getPaperStats();
-      expect(stats.get('s')).toEqual({ paperTrades: 0, paperPnl: 7 });
-      expect(stats.get('other')).toEqual({ paperTrades: 0, paperPnl: 5 });
-    });
-
-    it('recordPaperTrade increments the trade count', () => {
       executor.recordPaperTrade('s');
       executor.recordPaperTrade('s');
       executor.recordPaperTrade('other');
 
       const stats = executor.getPaperStats();
-      expect(stats.get('s')).toEqual({ paperTrades: 2, paperPnl: 0 });
-      expect(stats.get('other')).toEqual({ paperTrades: 1, paperPnl: 0 });
+      expect(stats.get('s')).toEqual({ paperTrades: 2, paperPnl: 7 });
+      expect(stats.get('other')).toEqual({ paperTrades: 1, paperPnl: 5 });
     });
 
     it('restorePaperStats replaces the stats map wholesale', () => {
@@ -158,7 +151,6 @@ describe('LiveTradingStrategyExecutor', () => {
       expect(executor.getStrategyErrors().size).toBe(1);
 
       executor.clearStats();
-
       expect(executor.getPaperStats().size).toBe(0);
       expect(executor.getStrategyErrors().size).toBe(0);
     });

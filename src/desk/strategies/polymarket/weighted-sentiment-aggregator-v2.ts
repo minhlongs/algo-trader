@@ -3,9 +3,6 @@
  *
  * Aggregates multiple market microstructure signals into a single weighted
  * sentiment score: book imbalance, price velocity, volume trend.
- * Trades when the composite score exceeds a threshold.
- *
- * score > threshold → BUY YES. score < -threshold → BUY NO.
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
@@ -25,14 +22,8 @@ import {
 } from './weighted-sentiment-math';
 
 export {
-  calcBookImbalance,
-  calcPriceVelocity,
-  calcVolumeTrend,
-  calcCompositeScore,
-  determineSignal,
+  calcBookImbalance, calcPriceVelocity, calcVolumeTrend, calcCompositeScore, determineSignal,
 };
-
-// ── Config ───────────────────────────────────────────────────────────────────
 
 export interface WeightedSentimentAggregatorConfig extends BaseStrategyConfig {
   wImbalance: number;
@@ -44,24 +35,13 @@ export interface WeightedSentimentAggregatorConfig extends BaseStrategyConfig {
 }
 
 export const DEFAULT_CONFIG: WeightedSentimentAggregatorConfig = {
-  wImbalance: 0.4,
-  wVelocity: 0.35,
-  wVolume: 0.25,
-  scoreThreshold: 0.15,
-  velocityWindow: 5,
-  volumeWindow: 10,
-  minVolume: 5000,
-  takeProfitPct: 0.025,
-  stopLossPct: 0.02,
-  maxHoldMs: 15 * 60_000,
-  maxPositions: 5,
-  cooldownMs: 90_000,
-  positionSize: '10',
+  wImbalance: 0.4, wVelocity: 0.35, wVolume: 0.25,
+  scoreThreshold: 0.15, velocityWindow: 5, volumeWindow: 10,
+  minVolume: 5000, takeProfitPct: 0.025, stopLossPct: 0.02,
+  maxHoldMs: 15 * 60_000, maxPositions: 5, cooldownMs: 90_000, positionSize: '10',
 };
 
 const STRATEGY_NAME = 'weighted-sentiment-aggregator' as StrategyName;
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class WeightedSentimentAggregatorStrategy extends BasePolymarketStrategy {
   private readonly cfg: WeightedSentimentAggregatorConfig;

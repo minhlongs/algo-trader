@@ -1,9 +1,6 @@
 /**
  * Threshold Alerts — facade
  * ROIaaS Phase 4 - Threshold alert events for usage monitoring.
- *
- * Types live in ./threshold-alerts-types
- * Dispatch/body helpers live in ./threshold-alerts-dispatch
  */
 
 import { EventEmitter } from 'events';
@@ -26,20 +23,19 @@ import type {
   AlertChannelConfig,
 } from './threshold-alerts-types';
 
-// Re-export types so existing callers keep their imports working
 export type { AlertHandler, AlertNotification, AlertRecipient, AlertChannelConfig };
 export * from './threshold-alerts-notification';
 
 export class ThresholdAlerts extends EventEmitter {
   private static instance: ThresholdAlerts;
   private handlers: Map<number, AlertHandler[]> = new Map();
-  private recipients: Map<string, AlertRecipient> = new Map(); // licenseKey -> recipient
+  private recipients: Map<string, AlertRecipient> = new Map();
   private channelConfig: AlertChannelConfig = {
     email: { enabled: true, minThreshold: 80 },
     sms: { enabled: true, minThreshold: 90 },
     telegram: { enabled: true, minThreshold: 80 },
   };
-  private initialized: boolean = false;
+  private initialized = false;
 
   private constructor() {
     super();
@@ -80,7 +76,6 @@ export class ThresholdAlerts extends EventEmitter {
 
     meteringService.on('threshold_alert', (alert: ThresholdAlert) => {
       this.emit('alert', alert);
-
       this.dispatchAlert(alert).catch((err) => {
         logger.error('[ThresholdAlerts] Failed to dispatch alert:', { err });
       });
@@ -103,17 +98,9 @@ export class ThresholdAlerts extends EventEmitter {
     this.handlers.get(threshold)!.push(handler);
   }
 
-  onEightyPercent(handler: AlertHandler): void {
-    this.onThreshold(80, handler);
-  }
-
-  onNinetyPercent(handler: AlertHandler): void {
-    this.onThreshold(90, handler);
-  }
-
-  onHundredPercent(handler: AlertHandler): void {
-    this.onThreshold(100, handler);
-  }
+  onEightyPercent(handler: AlertHandler): void { this.onThreshold(80, handler); }
+  onNinetyPercent(handler: AlertHandler): void { this.onThreshold(90, handler); }
+  onHundredPercent(handler: AlertHandler): void { this.onThreshold(100, handler); }
 
   createNotification(alert: ThresholdAlert): AlertNotification {
     return createThresholdNotification(alert);
@@ -125,9 +112,7 @@ export class ThresholdAlerts extends EventEmitter {
     recipient: string,
   ): Promise<void> {
     const notification = this.createNotification(alert);
-    const subject = `Usage Alert: ${alert.threshold}% threshold reached`;
-    const body = generateEmailBody(notification);
-    await sendFn(recipient, subject, body);
+    await sendFn(recipient, `Usage Alert: ${alert.threshold}% threshold reached`, generateEmailBody(notification));
   }
 
   async sendSmsNotification(
@@ -136,8 +121,7 @@ export class ThresholdAlerts extends EventEmitter {
     recipient: string,
   ): Promise<void> {
     const notification = this.createNotification(alert);
-    const message = generateSmsBody(notification);
-    await sendFn(recipient, message);
+    await sendFn(recipient, generateSmsBody(notification));
   }
 
   /** @internal kept for legacy callers; delegates to alert-formatter */
@@ -146,8 +130,7 @@ export class ThresholdAlerts extends EventEmitter {
   }
 
   logAlert(alert: ThresholdAlert): void {
-    const notification = this.createNotification(alert);
-    logger.info('[THRESHOLD ALERT]', { notification });
+    logger.info('[THRESHOLD ALERT]', { notification: this.createNotification(alert) });
   }
 
   async dispatchAlert(alert: ThresholdAlert): Promise<void> {

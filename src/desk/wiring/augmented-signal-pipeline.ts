@@ -35,18 +35,15 @@ export {
 /** Process a single raw signal through fusion + AI validation gate */
 async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<void> {
   const { topic, data: raw, source } = envelope;
-
   logger.debug('[AugmentedPipeline] Received signal', { topic, source });
 
-  // Bypass mode — pass straight through (for backtesting)
   if (!AI_VALIDATION_ENABLED) {
     const bus = getMessageBus();
     if (bus.isConnected()) {
       const passEnvelope: ValidatedSignalEnvelope = {
         original: raw,
         validation: {
-          valid: true,
-          confidence: 1,
+          valid: true, confidence: 1,
           reasoning: 'AI validation bypassed (AI_VALIDATION_ENABLED=false)',
           risks: [],
         },
@@ -58,8 +55,6 @@ async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<
   }
 
   const candidate = toSignalCandidate(raw, topic);
-
-  // Adaptive fusion — enrich signal with consensus data
   const currentInput = toSignalInput(candidate.signalType, raw.expectedEdge ?? 0);
   const fusionResult = runAdaptiveFusion(currentInput);
 
@@ -72,20 +67,15 @@ async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<
   }
 
   bufferSignal(toSignalInput(candidate.signalType, raw.expectedEdge ?? 0));
-
-  // Kronos sidecar enrichment (when available)
   await enrichWithKronos(candidate);
 
-  // AI validation gate
   let validation: ValidationResult;
-
   try {
     validation = await validateSignal(candidate);
   } catch (err) {
     logger.error('[AugmentedPipeline] Unexpected error during validation — rejecting signal', { err });
     validation = {
-      valid: false,
-      confidence: 0,
+      valid: false, confidence: 0,
       reasoning: 'Unexpected validation error — signal rejected for safety',
       risks: ['internal-error'],
     };
@@ -97,39 +87,24 @@ async function processSignal(envelope: MessageEnvelope<RawSignalData>): Promise<
     return;
   }
 
-  const passed = validation.valid && validation.confidence >= MIN_CONFIDENCE;
-
-  if (passed) {
-    const passEnvelope: ValidatedSignalEnvelope = {
-      original: raw,
-      validation,
-      passedAt: Date.now(),
-    };
+  if (validation.valid && validation.confidence >= MIN_CONFIDENCE) {
+    const passEnvelope: ValidatedSignalEnvelope = { original: raw, validation, passedAt: Date.now() };
     await bus.publish(TOPIC_SIGNAL_VALIDATED, passEnvelope, 'augmented-signal-pipeline');
     logger.info('[AugmentedPipeline] Signal PASSED AI gate', {
-      signalType: candidate.signalType,
-      edge: candidate.expectedEdge,
+      signalType: candidate.signalType, edge: candidate.expectedEdge,
       confidence: validation.confidence,
       fusionDirection: fusionResult?.fusedDirection,
       fusionConfidence: fusionResult?.fusedConfidence,
     });
   } else {
     const reason: RejectedSignalEnvelope['reason'] = !validation.valid ? 'ai-rejected' : 'low-confidence';
-    const rejectEnvelope: RejectedSignalEnvelope = {
-      original: raw,
-      validation,
-      rejectedAt: Date.now(),
-      reason,
-    };
+    const rejectEnvelope: RejectedSignalEnvelope = { original: raw, validation, rejectedAt: Date.now(), reason };
     await bus.publish(TOPIC_SIGNAL_REJECTED, rejectEnvelope, 'augmented-signal-pipeline');
     logger.warn('[AugmentedPipeline] Signal REJECTED by AI gate', {
-      signalType: candidate.signalType,
-      edge: candidate.expectedEdge,
-      confidence: validation.confidence,
-      reason,
+      signalType: candidate.signalType, edge: candidate.expectedEdge,
+      confidence: validation.confidence, reason,
       fusionDirection: fusionResult?.fusedDirection,
-      aiReasoning: validation.reasoning,
-      risks: validation.risks,
+      aiReasoning: validation.reasoning, risks: validation.risks,
     });
   }
 }
@@ -139,12 +114,7 @@ type Unsubscriber = () => void;
 export async function startAugmentedSignalPipeline(): Promise<() => Promise<void>> {
   const bus = getMessageBus();
   const unsubs: Unsubscriber[] = [];
-
-  const signalTopics = [
-    Topics.SIGNAL_SIMPLE_ARB,
-    Topics.SIGNAL_CROSS_MARKET,
-    Topics.SIGNAL_DELTA_NEUTRAL,
-  ];
+  const signalTopics = [Topics.SIGNAL_SIMPLE_ARB, Topics.SIGNAL_CROSS_MARKET, Topics.SIGNAL_DELTA_NEUTRAL];
 
   logger.info('[AugmentedPipeline] Starting', {
     aiEnabled: AI_VALIDATION_ENABLED,

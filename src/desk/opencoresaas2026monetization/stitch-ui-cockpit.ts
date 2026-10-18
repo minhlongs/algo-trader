@@ -136,3 +136,4 @@ export class StitchUiCockpitEngine {
 }
 
 export * from './stitch-sor-mesh-telemetry';
+export * from './ui-ux-pro-max-auditor';

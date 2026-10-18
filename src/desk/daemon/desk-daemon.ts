@@ -13,7 +13,7 @@ import type { IEngineSupervisor } from './engine-supervisor-types';
 import { DeskStatusServer } from './desk-status-server';
 import type { DeskStatusResponse, DeskAllocationsResponse } from './desk-status-server-types';
 import { DeskMetricsRegistry } from '../telemetry/desk-metrics-registry';
-import { type DeskDaemonOptions, type DriftVerificationResult, prioritizeTradeIntents, verifyZeroDrift } from './desk-daemon-types';
+import { type DeskDaemonOptions, type DriftVerificationResult, prioritizeTradeIntents } from './desk-daemon-types';
 import { DeskDaemonStatusBuilder } from './desk-daemon-status-builder';
 
 export class DeskDaemon implements IDeskDaemon {
@@ -112,10 +112,9 @@ export class DeskDaemon implements IDeskDaemon {
   }
 
   public updateMetrics(): void {
-    const allocated = this.loop.riskGate.getEngineBudgets();
     const drift = this.verifyAccountingDrift();
     this.metricsRegistry.updateFromSnapshot({
-      allocatedCapital: allocated,
+      allocatedCapital: this.loop.riskGate.getEngineBudgets(),
       queueDepth: this.loop.queue.size(),
       fillRate: this.processedOrders > 0 ? 1.0 : 0.0,
       circuitBreakerTier: this.loop.riskGate.getTier(),
@@ -123,13 +122,8 @@ export class DeskDaemon implements IDeskDaemon {
     });
   }
 
-  public getAllocationsPayload(): DeskAllocationsResponse {
-    return DeskDaemonStatusBuilder.buildAllocationsPayload(this.loop);
-  }
-
-  public verifyAccountingDrift(): DriftVerificationResult {
-    return DeskDaemonStatusBuilder.verifyDrift(this.loop);
-  }
+  public getAllocationsPayload(): DeskAllocationsResponse { return DeskDaemonStatusBuilder.buildAllocationsPayload(this.loop); }
+  public verifyAccountingDrift(): DriftVerificationResult { return DeskDaemonStatusBuilder.verifyDrift(this.loop); }
 
   public async triggerEmergencyHalt(reason = 'Critical emergency halt'): Promise<number> {
     const t0 = performance.now();
@@ -152,20 +146,15 @@ export class DeskDaemon implements IDeskDaemon {
 
   public getStatus(): Record<string, unknown> {
     return DeskDaemonStatusBuilder.buildStatus({
-      loop: this.loop,
-      supervisor: this.supervisor,
-      config: this.config,
-      running: this.running,
-      uptimeSeconds: this.getUptimeSeconds(),
-      cycleCount: this.cycleCount,
-      processedOrders: this.processedOrders,
+      loop: this.loop, supervisor: this.supervisor, config: this.config,
+      running: this.running, uptimeSeconds: this.getUptimeSeconds(),
+      cycleCount: this.cycleCount, processedOrders: this.processedOrders,
     });
   }
 
   private bindSignalHandlers(): void {
     if (this.options.skipSignalHandlers) return;
-    const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
-    for (const sig of signals) {
+    for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP'] as NodeJS.Signals[]) {
       const listener = () => { void this.handleSignal(sig); };
       process.on(sig, listener);
       this.boundSignals.push({ event: sig, listener });

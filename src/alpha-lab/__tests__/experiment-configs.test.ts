@@ -15,8 +15,6 @@ import { listFeatures } from '../features/feature-registry';
 
 const CONFIGS_DIR = join(__dirname, '..', 'configs');
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 function loadConfig(fileName: string): ExperimentConfig {
   const raw = readFileSync(join(CONFIGS_DIR, fileName), 'utf-8');
   return JSON.parse(raw) as ExperimentConfig;
@@ -48,8 +46,6 @@ function makeMockCandles(symbol: string, count: number): CandleLike[] {
   return candles;
 }
 
-// ── Schema Validation ────────────────────────────────────────────────────────
-
 function validateSchema(config: ExperimentConfig): string[] {
   const errors: string[] = [];
   const requiredString = ['experimentId', 'hypothesis', 'symbol', 'timeframe'] as const;
@@ -61,29 +57,14 @@ function validateSchema(config: ExperimentConfig): string[] {
   if (!Array.isArray(config.features) || config.features.length === 0) {
     errors.push('features must be a non-empty array');
   }
-  if (typeof config.tp !== 'number' || config.tp <= 0) {
-    errors.push('tp must be positive');
-  }
-  if (typeof config.sl !== 'number' || config.sl <= 0) {
-    errors.push('sl must be positive');
-  }
-  if (typeof config.maxHolding !== 'number' || config.maxHolding < 1) {
-    errors.push('maxHolding must be >= 1');
-  }
-  if (typeof config.lookback !== 'number' || config.lookback < 1) {
-    errors.push('lookback must be >= 1');
-  }
-  if (typeof config.seed !== 'number') {
-    errors.push('seed must be a number');
-  }
-  if (typeof config.gitCommit !== 'string') {
-    errors.push('gitCommit must be a string');
-  }
-  if (typeof config.createdAt !== 'string') {
-    errors.push('createdAt must be a string');
-  }
+  if (typeof config.tp !== 'number' || config.tp <= 0) errors.push('tp must be positive');
+  if (typeof config.sl !== 'number' || config.sl <= 0) errors.push('sl must be positive');
+  if (typeof config.maxHolding !== 'number' || config.maxHolding < 1) errors.push('maxHolding must be >= 1');
+  if (typeof config.lookback !== 'number' || config.lookback < 1) errors.push('lookback must be >= 1');
+  if (typeof config.seed !== 'number') errors.push('seed must be a number');
+  if (typeof config.gitCommit !== 'string') errors.push('gitCommit must be a string');
+  if (typeof config.createdAt !== 'string') errors.push('createdAt must be a string');
 
-  // Split validation
   if (!config.split) {
     errors.push('split is required');
   } else {
@@ -96,22 +77,15 @@ function validateSchema(config: ExperimentConfig): string[] {
     }
   }
 
-  // Cost validation
   if (!config.cost) {
     errors.push('cost is required');
   } else {
-    if (typeof config.cost.feeBps !== 'number' || config.cost.feeBps < 0) {
-      errors.push('cost.feeBps must be >= 0');
-    }
-    if (typeof config.cost.slippageBps !== 'number' || config.cost.slippageBps < 0) {
-      errors.push('cost.slippageBps must be >= 0');
-    }
+    if (typeof config.cost.feeBps !== 'number' || config.cost.feeBps < 0) errors.push('cost.feeBps must be >= 0');
+    if (typeof config.cost.slippageBps !== 'number' || config.cost.slippageBps < 0) errors.push('cost.slippageBps must be >= 0');
   }
 
   return errors;
 }
-
-// ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('Experiment configs', () => {
   const configFiles = readdirSync(CONFIGS_DIR).filter((f) => f.endsWith('.json'));
@@ -124,35 +98,19 @@ describe('Experiment configs', () => {
     describe(file, () => {
       let config: ExperimentConfig;
 
-      it('loads and parses JSON', () => {
+      it('loads, validates schema, and verifies features in registry', () => {
         config = loadConfig(file);
         expect(config).toBeDefined();
-      });
+        expect(validateSchema(config)).toEqual([]);
 
-      it('passes schema validation', () => {
-        config = config ?? loadConfig(file);
-        const errors = validateSchema(config);
-        expect(errors).toEqual([]);
-      });
-
-      it('features exist in registry', () => {
-        config = config ?? loadConfig(file);
         const registered = listFeatures().map((f) => f.name);
-        for (const feat of config.features) {
-          expect(registered).toContain(feat);
-        }
+        for (const feat of config.features) expect(registered).toContain(feat);
       });
 
       it('runs end-to-end with mock candles', () => {
         config = config ?? loadConfig(file);
         const minBars = Math.ceil(
-          1 /
-            (1 -
-              config.split.trainRatio -
-              config.split.valRatio -
-              config.split.testRatio +
-              0.01) *
-            100,
+          1 / (1 - config.split.trainRatio - config.split.valRatio - config.split.testRatio + 0.01) * 100,
         );
         const candles = makeMockCandles(config.symbol, Math.max(500, minBars * 3));
         const result = runExperiment({ candles, config });

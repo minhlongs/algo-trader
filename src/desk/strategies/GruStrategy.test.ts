@@ -24,33 +24,25 @@ describe('GruStrategy', () => {
     { timestamp: 15, open: 137, high: 140, low: 136, close: 139, volume: 2400 },
   ];
 
-  it('should initialize with default config', async () => {
+  it('should initialize with default and custom configs', async () => {
     const strategy = new GruStrategy();
     await strategy.initialize();
-
     const status = strategy.getStatus();
     expect(status.modelName).toBe('GRU Neural Network');
     expect(status.trained).toBe(false);
-
     strategy.dispose?.();
-  }, 15000);
 
-  it('should initialize with custom config', async () => {
-    const strategy = new GruStrategy({
+    const custom = new GruStrategy({
       inputSteps: 5,
       outputSteps: 1,
       gruUnits: 32,
       epochs: 10,
       confidenceThreshold: 0.5,
     });
-
-    await strategy.initialize();
-
-    const status = strategy.getStatus();
-    expect(status.modelName).toBe('GRU Neural Network');
-
-    strategy.dispose?.();
-  });
+    await custom.initialize();
+    expect(custom.getStatus().modelName).toBe('GRU Neural Network');
+    custom.dispose?.();
+  }, 15000);
 
   it('should return wait signal when not trained', async () => {
     const strategy = new GruStrategy({ inputSteps: 5 });

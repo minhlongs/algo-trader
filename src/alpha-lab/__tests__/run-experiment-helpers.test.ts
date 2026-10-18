@@ -26,26 +26,20 @@ const VALID_CONFIG: ExperimentConfig = {
 
 describe('run-experiment-helpers', () => {
   describe('parseArgs', () => {
-    it('parses --config flag', () => {
-      const parsed = parseArgs(['node', 'script', '--config', 'cfg.json']);
-      expect(parsed).toEqual({ configPath: 'cfg.json', record: false, suggest: false });
+    it('parses --config, --record, and --suggest flags', () => {
+      expect(parseArgs(['node', 'script', '--config', 'cfg.json'])).toEqual({
+        configPath: 'cfg.json', record: false, suggest: false,
+      });
+      expect(parseArgs(['node', 'script', '--config', 'cfg.json', '--record', '--suggest'])).toEqual({
+        configPath: 'cfg.json', record: true, suggest: true,
+      });
+      expect(parseArgs(['node', 'script', '--suggest'])).toEqual({
+        configPath: undefined, record: false, suggest: true,
+      });
     });
 
-    it('parses --config with --record and --suggest', () => {
-      const parsed = parseArgs(['node', 'script', '--config', 'cfg.json', '--record', '--suggest']);
-      expect(parsed).toEqual({ configPath: 'cfg.json', record: true, suggest: true });
-    });
-
-    it('parses standalone --suggest flag', () => {
-      const parsed = parseArgs(['node', 'script', '--suggest']);
-      expect(parsed).toEqual({ configPath: undefined, record: false, suggest: true });
-    });
-
-    it('throws when neither --config nor --suggest provided', () => {
+    it('throws when flags are missing or incomplete', () => {
       expect(() => parseArgs(['node', 'script'])).toThrow('Usage: run-experiment');
-    });
-
-    it('throws when --config is passed without path argument', () => {
       expect(() => parseArgs(['node', 'script', '--config'])).toThrow('Usage: run-experiment');
     });
   });
@@ -64,38 +58,24 @@ describe('run-experiment-helpers', () => {
       expect(() => validateConfig(VALID_CONFIG)).not.toThrow();
     });
 
-    it('throws on missing experimentId', () => {
+    it('throws on missing experimentId, symbol, or timeframe', () => {
       expect(() => validateConfig({ ...VALID_CONFIG, experimentId: '' })).toThrow('Missing experimentId');
-    });
-
-    it('throws on missing symbol', () => {
       expect(() => validateConfig({ ...VALID_CONFIG, symbol: '' })).toThrow('Missing symbol');
-    });
-
-    it('throws on missing timeframe', () => {
       expect(() => validateConfig({ ...VALID_CONFIG, timeframe: '' })).toThrow('Missing timeframe');
     });
 
-    it('throws on empty features', () => {
+    it('throws on empty or non-array features', () => {
       expect(() => validateConfig({ ...VALID_CONFIG, features: [] })).toThrow('Features must be a non-empty array');
-    });
-
-    it('throws on non-array features', () => {
       const bad = { ...VALID_CONFIG, features: null as unknown as string[] };
       expect(() => validateConfig(bad)).toThrow('Features must be a non-empty array');
     });
 
-    it('throws on invalid tp', () => {
+    it('throws on invalid tp, sl, or split config', () => {
       expect(() => validateConfig({ ...VALID_CONFIG, tp: 0 })).toThrow('tp must be a positive number');
       expect(() => validateConfig({ ...VALID_CONFIG, tp: -1 })).toThrow('tp must be a positive number');
-    });
-
-    it('throws on invalid sl', () => {
       expect(() => validateConfig({ ...VALID_CONFIG, sl: 0 })).toThrow('sl must be a positive number');
       expect(() => validateConfig({ ...VALID_CONFIG, sl: -0.5 })).toThrow('sl must be a positive number');
-    });
 
-    it('throws on invalid split config', () => {
       const noSplit = { ...VALID_CONFIG, split: null as unknown as ExperimentConfig['split'] };
       expect(() => validateConfig(noSplit)).toThrow('Invalid split config');
 
@@ -107,31 +87,21 @@ describe('run-experiment-helpers', () => {
   describe('pickMetrics', () => {
     it('picks 8 core metric fields', () => {
       const input: SplitMetrics = {
-        numTrades: 50,
-        winRate: 0.6,
-        lossRate: 0.4,
-        timeoutRate: 0.05,
-        meanLabel: 0.01,
-        totalPnl: 1200,
-        sharpeRatio: 1.8,
-        maxDrawdown: 0.08,
+        numTrades: 50, winRate: 0.6, lossRate: 0.4, timeoutRate: 0.05,
+        meanLabel: 0.01, totalPnl: 1200, sharpeRatio: 1.8, maxDrawdown: 0.08,
       };
       expect(pickMetrics(input)).toEqual(input);
     });
   });
 
   describe('mapBaselines', () => {
-    it('maps baseline report to artifact shape with regimes present', () => {
+    it('maps baseline report to artifact shape with regimes present and handles zero trades', () => {
       const mockBaselines = [
         {
           name: 'buy_and_hold',
           report: {
-            totalPnl: 500,
-            winRate: 0.55,
-            losingTrades: 20,
-            totalTrades: 50,
-            sharpeRatio: 1.2,
-            maxDrawdown: 0.15,
+            totalPnl: 500, winRate: 0.55, losingTrades: 20,
+            totalTrades: 50, sharpeRatio: 1.2, maxDrawdown: 0.15,
           },
         },
       ];
@@ -139,34 +109,19 @@ describe('run-experiment-helpers', () => {
       const mapped = mapBaselines(mockBaselines as unknown as ReturnType<typeof import('../baselines/baseline-runner').runAllBaselines>, regimes);
       expect(mapped).toEqual([
         {
-          name: 'buy_and_hold',
-          totalPnl: 500,
-          winRate: 0.55,
-          lossRate: 0.4,
-          totalTrades: 50,
-          sharpeRatio: 1.2,
-          maxDrawdown: 0.15,
-          regimesPresent: ['BEAR', 'BULL'],
+          name: 'buy_and_hold', totalPnl: 500, winRate: 0.55, lossRate: 0.4,
+          totalTrades: 50, sharpeRatio: 1.2, maxDrawdown: 0.15, regimesPresent: ['BEAR', 'BULL'],
         },
       ]);
-    });
 
-    it('handles zero total trades safely', () => {
-      const mockBaselines = [
+      const zeroBaselines = [
         {
           name: 'empty',
-          report: {
-            totalPnl: 0,
-            winRate: 0,
-            losingTrades: 0,
-            totalTrades: 0,
-            sharpeRatio: 0,
-            maxDrawdown: 0,
-          },
+          report: { totalPnl: 0, winRate: 0, losingTrades: 0, totalTrades: 0, sharpeRatio: 0, maxDrawdown: 0 },
         },
       ];
-      const mapped = mapBaselines(mockBaselines as unknown as ReturnType<typeof import('../baselines/baseline-runner').runAllBaselines>, []);
-      expect(mapped[0]?.lossRate).toBe(0);
+      const mappedZero = mapBaselines(zeroBaselines as unknown as ReturnType<typeof import('../baselines/baseline-runner').runAllBaselines>, []);
+      expect(mappedZero[0]?.lossRate).toBe(0);
     });
   });
 });

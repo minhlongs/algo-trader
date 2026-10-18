@@ -22,17 +22,14 @@ describe('detectRegimeFilter', () => {
     expect(detectRegimeFilter(report)).toEqual([]);
   });
 
-  it('returns empty when best regime netPnl is non-positive', () => {
+  it('returns empty when best regime netPnl is non-positive or other regimes are positive', () => {
     const report = emptyReport();
     report.byRegime = [
       { regime: 'TRENDING_UP', numTrades: 10, winRate: 0.5, lossRate: 0.5, meanLabel: 0, netPnl: 0 },
       { regime: 'RANGING', numTrades: 10, winRate: 0.4, lossRate: 0.6, meanLabel: -0.1, netPnl: -0.05 },
     ];
     expect(detectRegimeFilter(report)).toEqual([]);
-  });
 
-  it('returns empty when other regimes do not all have negative netPnl', () => {
-    const report = emptyReport();
     report.byRegime = [
       { regime: 'TRENDING_UP', numTrades: 20, winRate: 0.6, lossRate: 0.4, meanLabel: 0.2, netPnl: 0.1 },
       { regime: 'RANGING', numTrades: 20, winRate: 0.55, lossRate: 0.45, meanLabel: 0.1, netPnl: 0.02 },
@@ -54,17 +51,14 @@ describe('detectRegimeFilter', () => {
 });
 
 describe('detectSeasonality', () => {
-  it('returns empty when fewer than 3 months', () => {
+  it('returns empty when fewer than 3 months or monthly PnL mean is zero or CV <= 1.5', () => {
     const report = emptyReport();
     report.byMonth = [
       { month: '2025-01', numTrades: 10, winRate: 0.5, netPnl: 0.05 },
       { month: '2025-02', numTrades: 10, winRate: 0.5, netPnl: 0.05 },
     ];
     expect(detectSeasonality(report)).toEqual([]);
-  });
 
-  it('returns empty when monthly PnL mean is zero or CV <= 1.5', () => {
-    const report = emptyReport();
     report.byMonth = [
       { month: '2025-01', numTrades: 10, winRate: 0.5, netPnl: 1 },
       { month: '2025-02', numTrades: 10, winRate: 0.5, netPnl: -1 },
@@ -72,11 +66,7 @@ describe('detectSeasonality', () => {
     ];
     expect(detectSeasonality(report)).toEqual([]);
 
-    report.byMonth = [
-      { month: '2025-01', numTrades: 10, winRate: 0.5, netPnl: 10 },
-      { month: '2025-02', numTrades: 10, winRate: 0.5, netPnl: 11 },
-      { month: '2025-03', numTrades: 10, winRate: 0.5, netPnl: 10 },
-    ];
+    report.byMonth = [1, 2, 3, 4].map((m) => ({ month: `2025-0${m}`, numTrades: 10, winRate: 0.5, netPnl: 10 }));
     expect(detectSeasonality(report)).toEqual([]);
   });
 
@@ -107,19 +97,15 @@ describe('detectSeasonality', () => {
 });
 
 describe('detectVolatilityDegradation', () => {
-  it('returns empty when fewer than 2 buckets or high bucket missing', () => {
+  it('returns empty when fewer than 2 buckets, high bucket missing, or high-vol >= best non-high', () => {
     const report = emptyReport();
     expect(detectVolatilityDegradation(report)).toEqual([]);
-
     report.byVolatilityBucket = [
       { bucket: 'low', numTrades: 10, winRate: 0.5, netPnl: 0.05 },
       { bucket: 'medium', numTrades: 10, winRate: 0.5, netPnl: 0.02 },
     ];
     expect(detectVolatilityDegradation(report)).toEqual([]);
-  });
 
-  it('returns empty when high-vol netPnl is >= best non-high bucket', () => {
-    const report = emptyReport();
     report.byVolatilityBucket = [
       { bucket: 'low', numTrades: 10, winRate: 0.5, netPnl: 0.02 },
       { bucket: 'high', numTrades: 10, winRate: 0.6, netPnl: 0.05 },
@@ -169,11 +155,8 @@ describe('detectOverfit', () => {
     expect(detectOverfit(candidate, [makeBaseline('random-entry', 60)])).toEqual([]);
   });
 
-  it('returns empty when candidate does not beat buy-and-hold', () => {
+  it('returns empty when candidate does not beat buy-and-hold or beats random-entry', () => {
     expect(detectOverfit(candidate, [makeBaseline('buy-and-hold', 60), makeBaseline('random-entry', 80)])).toEqual([]);
-  });
-
-  it('returns empty when candidate beats random-entry', () => {
     expect(detectOverfit(candidate, [makeBaseline('buy-and-hold', 20), makeBaseline('random-entry', 40)])).toEqual([]);
   });
 });

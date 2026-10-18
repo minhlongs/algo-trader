@@ -90,9 +90,7 @@ export class SupervisedEngine implements ISupervisedEngine {
     if (this.status !== 'RUNNING') return [];
     const intents = [...this.queuedIntents];
     this.queuedIntents = [];
-    if (intents.length > 0) {
-      this.lastSignalTime = Date.now();
-    }
+    if (intents.length > 0) this.lastSignalTime = Date.now();
     return intents;
   }
 }
@@ -114,9 +112,7 @@ export class EngineSupervisor implements IEngineSupervisor {
     }
 
     for (const id of ENGINE_IDS) {
-      if (!this.engines.has(id)) {
-        this.engines.set(id, new SupervisedEngine(id, normalizer));
-      }
+      if (!this.engines.has(id)) this.engines.set(id, new SupervisedEngine(id, normalizer));
     }
   }
 
@@ -152,20 +148,11 @@ export class EngineSupervisor implements IEngineSupervisor {
   public getEngineStatuses(): Record<string, { status: string; lastSignalTime?: number; error?: string }> {
     const statuses: Record<string, { status: string; lastSignalTime?: number; error?: string }> = {};
     for (const [id, engine] of this.engines.entries()) {
-      statuses[id] = {
-        status: engine.status,
-        lastSignalTime: engine.lastSignalTime,
-        error: engine.errorMessage,
-      };
+      statuses[id] = { status: engine.status, lastSignalTime: engine.lastSignalTime, error: engine.errorMessage };
     }
     return statuses;
   }
 
-  public getEngine(engineId: EngineId): ISupervisedEngine | undefined {
-    return this.engines.get(engineId);
-  }
-
-  public isRunning(): boolean {
-    return Array.from(this.engines.values()).some((e) => e.status === 'RUNNING');
-  }
+  public getEngine(engineId: EngineId): ISupervisedEngine | undefined { return this.engines.get(engineId); }
+  public isRunning(): boolean { return Array.from(this.engines.values()).some((e) => e.status === 'RUNNING'); }
 }

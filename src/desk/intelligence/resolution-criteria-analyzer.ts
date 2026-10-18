@@ -19,14 +19,12 @@ export interface ResolutionAnalysis {
   marketId: string;
   title: string;
   resolutionSource: string;
-  deadlineDate: string | null; // ISO date extracted from criteria
-  ambiguityScore: number; // 0=crystal clear, 1=very ambiguous
+  deadlineDate: string | null;
+  ambiguityScore: number;
   risks: string[];
   recommendation: 'SAFE' | 'CAUTION' | 'AVOID';
   reasoning: string;
 }
-
-// ─── Cache ────────────────────────────────────────────────────────────────────
 
 const analysisCache = new Map<string, { analysis: ResolutionAnalysis; expiresAt: number }>();
 const CACHE_TTL_MS = 60 * 60 * 1_000;
@@ -39,8 +37,6 @@ function getCached(id: string): ResolutionAnalysis | null {
 function setCache(id: string, analysis: ResolutionAnalysis): void {
   analysisCache.set(id, { analysis, expiresAt: Date.now() + CACHE_TTL_MS });
 }
-
-// ─── Prompt ───────────────────────────────────────────────────────────────────
 
 const SYSTEM_PROMPT = `You are a Polymarket resolution criteria analyst. Detect ambiguous, trick, or unusual resolution conditions.
 
@@ -73,25 +69,15 @@ Flag: subjective criteria, multiple interpretations, tight deadlines, unusual or
 Respond with JSON only.`;
 }
 
-// ─── LLM Call via LlmRouter ──────────────────────────────────────────────────
-
 async function callLlm(prompt: string): Promise<string> {
   const router = new LlmRouter();
   const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
     { role: 'user', content: prompt },
   ];
-
-  const response = await router.chat({
-    messages,
-    temperature: 0.1,
-    maxTokens: 512,
-  });
-
+  const response = await router.chat({ messages, temperature: 0.1, maxTokens: 512 });
   return response.content;
 }
-
-// ─── Parse ────────────────────────────────────────────────────────────────────
 
 function parseResponse(raw: string, m: MarketInput): ResolutionAnalysis {
   const fallback = (reason: string): ResolutionAnalysis => ({
@@ -122,8 +108,6 @@ function parseResponse(raw: string, m: MarketInput): ResolutionAnalysis {
     return fallback('AI response parse error — treating as CAUTION');
   }
 }
-
-// ─── Public API ───────────────────────────────────────────────────────────────
 
 /** Analyze a single market's resolution criteria. Caches result for 1h. */
 export async function analyzeResolutionCriteria(market: MarketInput): Promise<ResolutionAnalysis> {
@@ -156,9 +140,7 @@ export async function analyzeResolutionCriteria(market: MarketInput): Promise<Re
 /** Analyze multiple markets sequentially to avoid LLM overload. Cache-aware. */
 export async function batchAnalyzeMarkets(markets: MarketInput[]): Promise<ResolutionAnalysis[]> {
   const results: ResolutionAnalysis[] = [];
-  for (const market of markets) {
-    results.push(await analyzeResolutionCriteria(market));
-  }
+  for (const market of markets) results.push(await analyzeResolutionCriteria(market));
   return results;
 }
 

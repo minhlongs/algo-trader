@@ -42,17 +42,9 @@ export class TradingLoop extends EventEmitter {
 
   private setupFeedHandlers(): void {
     this.feedAggregator.onFeed((msg) => {
-      switch (msg.type) {
-        case 'orderbook':
-          this.handleOrderBook(msg.data);
-          break;
-        case 'trade':
-          this.handleTrade(msg.data);
-          break;
-        case 'ticker':
-          this.handleTicker(msg.data);
-          break;
-      }
+      if (msg.type === 'orderbook') this.handleOrderBook(msg.data);
+      else if (msg.type === 'trade') this.handleTrade(msg.data);
+      else if (msg.type === 'ticker') this.handleTicker(msg.data);
     });
   }
 
@@ -75,9 +67,7 @@ export class TradingLoop extends EventEmitter {
   }
 
   async start(): Promise<void> {
-    if (this.isRunning) {
-      throw new Error('Trading loop already running');
-    }
+    if (this.isRunning) throw new Error('Trading loop already running');
     this.log('info', 'Starting trading loop...');
     this.startTime = Date.now();
     try {
@@ -98,10 +88,7 @@ export class TradingLoop extends EventEmitter {
   async stop(): Promise<void> {
     if (!this.isRunning) return;
     this.log('info', 'Stopping trading loop...');
-    if (this.scanInterval) {
-      clearInterval(this.scanInterval);
-      this.scanInterval = null;
-    }
+    if (this.scanInterval) { clearInterval(this.scanInterval); this.scanInterval = null; }
     await this.feedAggregator.disconnect();
     this.spreadDetector.stop();
     this.isRunning = false;

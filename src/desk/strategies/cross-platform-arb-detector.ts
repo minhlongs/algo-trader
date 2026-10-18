@@ -13,6 +13,13 @@ import { PolymarketWebSocketFeed, PriceUpdate as PmPriceUpdate } from '../feeds/
 import { startKalshiPolling, KalshiMarket } from '../feeds/kalshi-price-feed';
 import { FeedAggregator, FeedMessage, UnifiedTicker } from '../feeds/feed-aggregator';
 import type { PlatformPrice, ArbOpportunity, ArbConfig } from './cross-platform-arb-types';
+import {
+  computeArbConfidence,
+  evaluateAssetArb,
+  upsertPlatformPrice,
+} from './cross-platform-arb-math';
+
+export { computeArbConfidence, evaluateAssetArb, upsertPlatformPrice };
 
 export class CrossPlatformArbDetector {
   private config: ArbConfig;
@@ -20,17 +27,12 @@ export class CrossPlatformArbDetector {
   private pmFeed: PolymarketWebSocketFeed | null = null;
   private kalshiStop: (() => void) | null = null;
   private aggregator: FeedAggregator | null = null;
-  private running: boolean = false;
+  private running = false;
   private handlers: Array<(opp: ArbOpportunity) => void> = [];
   private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(config?: Partial<ArbConfig>) {
-    this.config = {
-      minSpreadPercent: 0.5,
-      maxAssets: 20,
-      pollIntervalMs: 30_000,
-      ...config,
-    };
+    this.config = { minSpreadPercent: 0.5, maxAssets: 20, pollIntervalMs: 30_000, ...config };
   }
 
   async start(): Promise<void> {
@@ -82,8 +84,7 @@ export class CrossPlatformArbDetector {
 
   comparePrices(asset: string, platforms: string[]): PlatformPrice[] {
     const all = this.prices.get(asset) ?? [];
-    if (platforms.length === 0) return all;
-    return all.filter((p) => platforms.includes(p.platform));
+    return platforms.length === 0 ? all : all.filter((p) => platforms.includes(p.platform));
   }
 
   detectArb(): ArbOpportunity[] {
@@ -92,23 +93,8 @@ export class CrossPlatformArbDetector {
     const now = Date.now();
 
     for (const [asset, priceList] of this.prices.entries()) {
-      if (priceList.length < 2) continue;
-      const sortedByAsk = [...priceList].sort((a, b) => a.ask - b.ask);
-      const sortedByBid = [...priceList].sort((a, b) => b.bid - a.bid);
-      const bestAsk = sortedByAsk[0];
-      const bestBid = sortedByBid[0];
-      if (!bestAsk || !bestBid) continue;
-      if (bestAsk.platform === bestBid.platform) continue;
-
-      const spread = bestBid.bid - bestAsk.ask;
-      const spreadPercent = (spread / bestAsk.ask) * 100;
-
-      if (spreadPercent >= this.config.minSpreadPercent) {
-        const opp: ArbOpportunity = {
-          asset, buyPlatform: bestAsk.platform, sellPlatform: bestBid.platform,
-          buyPrice: bestAsk.ask, sellPrice: bestBid.bid, spread, spreadPercent,
-          estimatedProfit: spread, confidence: this._confidence(priceList, spreadPercent), timestamp: now,
-        };
+      const opp = evaluateAssetArb(asset, priceList, this.config.minSpreadPercent, now);
+      if (opp) {
         opportunities.push(opp);
         this._notifyHandlers(opp);
       }
@@ -136,21 +122,11 @@ export class CrossPlatformArbDetector {
   }
 
   private _upsertPrice(asset: string, price: PlatformPrice): void {
-    const existing = this.prices.get(asset) ?? [];
-    const idx = existing.findIndex((p) => p.platform === price.platform);
-    if (idx >= 0) { existing[idx] = price; } else { existing.push(price); }
-    if (this.prices.size >= this.config.maxAssets && !this.prices.has(asset)) {
-      const firstKey = this.prices.keys().next().value;
-      if (firstKey) this.prices.delete(firstKey);
-    }
-    this.prices.set(asset, existing);
+    upsertPlatformPrice(this.prices, asset, price, this.config.maxAssets);
   }
 
   private _confidence(priceList: PlatformPrice[], spreadPercent: number): 'high' | 'medium' | 'low' {
-    const freshness = priceList.every((p) => Date.now() - p.timestamp < 10_000);
-    if (freshness && spreadPercent > 2) return 'high';
-    if (freshness && spreadPercent > 1) return 'medium';
-    return 'low';
+    return computeArbConfidence(priceList, spreadPercent);
   }
 
   private _notifyHandlers(opp: ArbOpportunity): void {
@@ -159,8 +135,6 @@ export class CrossPlatformArbDetector {
     }
   }
 }
-
-// ─── Singleton ────────────────────────────────────────────────────────────────
 
 let arbInstance: CrossPlatformArbDetector | null = null;
 

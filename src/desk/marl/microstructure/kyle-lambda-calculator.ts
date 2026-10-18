@@ -2,8 +2,6 @@
  * Kyle's Lambda Price Impact Calculator for MARL Microstructure Alpha.
  * Estimates Kyle's lambda (lambda) via rolling OLS regression of price changes
  * on signed order flow: dP = lambda * Q + epsilon.
- * Maintains an adaptive EMA baseline and computes instantaneous impact ratio.
- * Strict Visual LOC Budget: <= 200 lines. Conforms to AGENTS.md Hard Rules.
  */
 import { z } from 'zod';
 
@@ -52,9 +50,7 @@ export class KyleLambdaCalculator {
     }
     this.config = KyleLambdaConfigSchema.parse(parsed);
     this.currentBaseline = this.config.baselineLambda;
-    if (this.config.initialPrice !== undefined) {
-      this.lastPrice = this.config.initialPrice;
-    }
+    if (this.config.initialPrice !== undefined) this.lastPrice = this.config.initialPrice;
   }
 
   public addTrade(price: number, quantity: number, signedVolume: number, timestamp: number): void {

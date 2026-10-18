@@ -62,8 +62,7 @@ export class ContentDistributionDaemon {
 
     for (const file of files) {
       try {
-        const fullPath = path.join(targetDir, file);
-        const content = fs.readFileSync(fullPath, 'utf8');
+        const content = fs.readFileSync(path.join(targetDir, file), 'utf8');
         const slug = file.replace(/\.md$/, '');
         const titleMatch = content.match(/^#\s+(.+)$/m);
         const title = titleMatch ? titleMatch[1].trim() : slug;
@@ -75,16 +74,10 @@ export class ContentDistributionDaemon {
           : ['BLOG', 'TELEGRAM'];
 
         const post: PostMetadata = {
-          id: `post-${slug}`,
-          title,
-          slug,
-          content,
-          tags: ['automated-syndication'],
-          targetChannels,
-          author: 'CashClaw Editorial',
-          locale: 'bilingual',
-          status: 'QUEUED',
-          sourceFile: file,
+          id: `post-${slug}`, title, slug, content,
+          tags: ['automated-syndication'], targetChannels,
+          author: 'CashClaw Editorial', locale: 'bilingual',
+          status: 'QUEUED', sourceFile: file,
         };
 
         this.queuePost(post);
@@ -108,14 +101,9 @@ export class ContentDistributionDaemon {
         try {
           const res = await this.publisher(post, channel);
           const record: SyndicationRecord = {
-            id: recordId,
-            postId: post.id,
-            postSlug: post.slug,
-            channel,
-            status: 'SUCCESS',
-            dispatchedAt: Date.now(),
-            externalId: res.externalId,
-            externalUrl: res.externalUrl,
+            id: recordId, postId: post.id, postSlug: post.slug, channel,
+            status: 'SUCCESS', dispatchedAt: Date.now(),
+            externalId: res.externalId, externalUrl: res.externalUrl,
           };
           records.push(record);
           this.syndicationHistory.push(record);
@@ -123,13 +111,8 @@ export class ContentDistributionDaemon {
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           const record: SyndicationRecord = {
-            id: recordId,
-            postId: post.id,
-            postSlug: post.slug,
-            channel,
-            status: 'FAILED',
-            dispatchedAt: Date.now(),
-            error: errorMsg,
+            id: recordId, postId: post.id, postSlug: post.slug, channel,
+            status: 'FAILED', dispatchedAt: Date.now(), error: errorMsg,
           };
           records.push(record);
           this.syndicationHistory.push(record);
@@ -143,9 +126,8 @@ export class ContentDistributionDaemon {
   }
 
   private emitAudit(event: DistributionAuditRecord['event'], payload: Record<string, unknown>): void {
-    const record: DistributionAuditRecord = { event, timestamp: Date.now(), payload };
     try {
-      appendJsonl(this.auditLogPath, record);
+      appendJsonl(this.auditLogPath, { event, timestamp: Date.now(), payload } satisfies DistributionAuditRecord);
     } catch (err) {
       logger.error(`[ContentDaemon] Failed to append audit log: ${err instanceof Error ? err.message : String(err)}`);
     }

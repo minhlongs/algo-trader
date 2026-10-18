@@ -9,10 +9,7 @@
 import { logger } from '../../shared/utils/logger';
 import type { Candle } from './types';
 import type { GapDetectorConfig, GapTrackingState, GapStats } from './gap-detector-types';
-import {
-  recordStaleDataMetric,
-  updateMetrics,
-} from './gap-detector-metrics';
+import { recordStaleDataMetric, updateMetrics } from './gap-detector-metrics';
 import {
   getKey,
   getOrCreateState,
@@ -32,13 +29,8 @@ export class GapDetector {
     this.config = {
       maxAcceptableGap: config.maxAcceptableGap ?? 2,
       timeframeIntervals: {
-        '1m': 60_000,
-        '5m': 300_000,
-        '15m': 900_000,
-        '30m': 1_800_000,
-        '1h': 3_600_000,
-        '4h': 14_400_000,
-        '1d': 86_400_000,
+        '1m': 60_000, '5m': 300_000, '15m': 900_000, '30m': 1_800_000,
+        '1h': 3_600_000, '4h': 14_400_000, '1d': 86_400_000,
         ...config.timeframeIntervals,
       },
       slaWindowMs: config.slaWindowMs ?? 24 * 60 * 60 * 1000,
@@ -51,39 +43,32 @@ export class GapDetector {
     const key = getKey(provider, symbol, timeframe);
     if (this.trackingStates.has(key)) return;
 
-    const state: GapTrackingState = {
-      provider,
-      symbol,
-      timeframe,
+    this.trackingStates.set(key, {
+      provider, symbol, timeframe,
       lastCandleTimestamp: null,
       consecutiveMissing: 0,
       expectedCandles: 0,
       receivedCandles: 0,
       windowStartTime: Date.now(),
       gapsDetected: 0,
-    };
-    this.trackingStates.set(key, state);
+    });
     logger.debug('GapDetector: Started tracking', { provider, symbol, timeframe });
   }
 
   stopTracking(provider: string, symbol: string, timeframe: string): void {
-    const key = getKey(provider, symbol, timeframe);
-    this.trackingStates.delete(key);
+    this.trackingStates.delete(getKey(provider, symbol, timeframe));
   }
 
   recordCandle(provider: string, symbol: string, timeframe: string, candle: Candle): void {
     const key = getKey(provider, symbol, timeframe);
     const state = getOrCreateState(this.trackingStates, key, provider, symbol, timeframe);
-
     const outcome = applyRecordedCandle(this.config, state, candle.timestamp, Date.now());
 
     if (outcome.kind === 'unknown-timeframe') {
       logger.warn('GapDetector: Unknown timeframe, skipping gap check', { provider, symbol, timeframe });
     } else if (outcome.kind === 'gap') {
       logger.warn('GapDetector: Data gap detected', {
-        provider,
-        symbol,
-        timeframe,
+        provider, symbol, timeframe,
         missingCount: outcome.missingCount,
         lastCandle: outcome.lastCandle,
         currentCandle: outcome.currentCandle,
@@ -92,23 +77,18 @@ export class GapDetector {
   }
 
   checkGaps(provider: string, symbol: string, timeframe: string): boolean {
-    const key = getKey(provider, symbol, timeframe);
-    const state = this.trackingStates.get(key);
+    const state = this.trackingStates.get(getKey(provider, symbol, timeframe));
     if (!state) return false;
 
     const outcome = detectGaps(this.config, state, Date.now());
-
     if (outcome.kind === 'gap') {
       logger.error('GapDetector: Gap threshold exceeded', {
-        provider,
-        symbol,
-        timeframe,
+        provider, symbol, timeframe,
         consecutiveMissing: outcome.consecutiveMissing,
         maxAcceptable: this.config.maxAcceptableGap,
       });
       return true;
     }
-
     return false;
   }
 
@@ -120,16 +100,10 @@ export class GapDetector {
     if (!interval) return;
 
     const staleMinutes = Math.floor((receivedAt - candleTimestamp) / 60_000);
-
     if (staleMinutes > 5) {
       recordStaleDataMetric(this.config, symbol, timeframe, staleMinutes);
       logger.warn('GapDetector: Stale data detected', {
-        provider,
-        symbol,
-        timeframe,
-        staleMinutes,
-        candleTimestamp,
-        receivedAt,
+        provider, symbol, timeframe, staleMinutes, candleTimestamp, receivedAt,
       });
     }
   }

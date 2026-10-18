@@ -4,7 +4,7 @@
  * @module desk/feeds/feed-freshness-inspector
  */
 
-import type { StaleFeedRecord } from './feed-freshness-watchdog-types';
+import type { FreshnessStatus, StaleFeedRecord, WatchdogState, WatchdogTripEvent } from './feed-freshness-watchdog-types';
 
 export interface FreshnessScanInput {
   lastTickTimes: Map<string, number>;
@@ -47,4 +47,56 @@ export function scanFeedFreshness(input: FreshnessScanInput): FreshnessScanResul
   }
 
   return { staleFeeds, hasWarning, worstLatencyMs };
+}
+
+export function buildFreshnessStatus(
+  state: WatchdogState,
+  scan: FreshnessScanResult,
+  checkedAt: number,
+): FreshnessStatus {
+  const isStale = scan.staleFeeds.length > 0;
+  const staleVenues = Array.from(new Set(scan.staleFeeds.map((f) => f.venueId)));
+  return {
+    isHealthy: state === 'HEALTHY',
+    state,
+    staleFeeds: scan.staleFeeds,
+    checkedAt,
+    isStale,
+    worstLatencyMs: scan.worstLatencyMs,
+    staleVenues,
+  };
+}
+
+export function buildWatchdogTripEvent(
+  reason: string,
+  venue: string,
+  symbol: string | undefined,
+  elapsedMs: number,
+  thresholdMs: number,
+  timestamp = Date.now(),
+): WatchdogTripEvent {
+  return {
+    reason,
+    venueId: venue,
+    symbol,
+    elapsedMs,
+    thresholdMs,
+    timestamp,
+    latencyMs: elapsedMs,
+  };
+}
+
+export function computeVenueLag(
+  lastTickTimes: Map<string, number>,
+  lastHeartbeatTimes: Map<string, number>,
+  venue: string,
+  symbol?: string,
+  now = Date.now(),
+): number {
+  if (symbol) {
+    const last = lastTickTimes.get(`${venue}:${symbol}`);
+    return last ? Math.max(0, now - last) : Infinity;
+  }
+  const lastHb = lastHeartbeatTimes.get(venue);
+  return lastHb ? Math.max(0, now - lastHb) : Infinity;
 }

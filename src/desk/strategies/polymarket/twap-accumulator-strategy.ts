@@ -85,35 +85,22 @@ export class TwapAccumulatorStrategy extends BasePolymarketStrategy {
         // Start a new accumulator
         const sliceSize = this.cfg.targetSizeUsdc / this.cfg.numSlices;
         const acc: AccumulatorState = {
-          marketId: tokenId,
-          conditionId: market.conditionId,
-          yesTokenId: market.yesTokenId,
-          noTokenId: market.noTokenId,
-          direction: dir,
-          targetSize: this.cfg.targetSizeUsdc,
-          sliceSize,
-          slicesFilled: 0,
-          totalSlices: this.cfg.numSlices,
-          lastSliceAt: 0,
-          entryPrices: [],
-          side: dir,
+          marketId: tokenId, conditionId: market.conditionId,
+          yesTokenId: market.yesTokenId, noTokenId: market.noTokenId,
+          direction: dir, targetSize: this.cfg.targetSizeUsdc, sliceSize,
+          slicesFilled: 0, totalSlices: this.cfg.numSlices, lastSliceAt: 0,
+          entryPrices: [], side: dir,
         };
         this.accumulators.set(market.conditionId, acc);
-
-        // Execute first slice immediately
         await this.processSlice(acc);
       } catch (err) {
-        logger.debug('TWAP scan error', STRATEGY_NAME, {
-          market: market.conditionId,
-          err: String(err),
-        });
+        logger.debug('TWAP scan error', STRATEGY_NAME, { market: market.conditionId, err: String(err) });
       }
     }
   }
 
   private async processSlice(acc: AccumulatorState): Promise<void> {
-    if (!isSliceDue(acc.lastSliceAt, this.cfg.sliceIntervalMs)) return;
-    if (acc.slicesFilled >= acc.totalSlices) return;
+    if (!isSliceDue(acc.lastSliceAt, this.cfg.sliceIntervalMs) || acc.slicesFilled >= acc.totalSlices) return;
 
     const sliceSize = acc.targetSize / acc.totalSlices;
     const side = acc.direction;
@@ -125,41 +112,26 @@ export class TwapAccumulatorStrategy extends BasePolymarketStrategy {
 
       const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
 
-      // Check slippage against first entry price
       if (acc.entryPrices.length > 0) {
         const avgPrice = computeAverageEntryPrice(acc.entryPrices);
         const slippage = Math.abs(entryPrice - avgPrice) / avgPrice;
         if (slippage > this.cfg.maxSlippage) {
-          logger.debug('TWAP slice skipped — slippage too high', STRATEGY_NAME, {
-            slippage: (slippage * 100).toFixed(2),
-          });
+          logger.debug('TWAP slice skipped — slippage too high', STRATEGY_NAME, { slippage: (slippage * 100).toFixed(2) });
           return;
         }
       }
 
-      await this.enterPosition(
-        acc.yesTokenId,
-        acc.conditionId,
-        side,
-        entryPrice,
-        sliceSize,
-      );
-
+      await this.enterPosition(acc.yesTokenId, acc.conditionId, side, entryPrice, sliceSize);
       acc.slicesFilled++;
       acc.entryPrices.push(entryPrice);
       acc.lastSliceAt = Date.now();
 
       logger.debug('TWAP slice executed', STRATEGY_NAME, {
-        conditionId: acc.conditionId,
-        slice: `${acc.slicesFilled}/${acc.totalSlices}`,
-        price: entryPrice.toFixed(4),
-        size: sliceSize.toFixed(2),
+        conditionId: acc.conditionId, slice: `${acc.slicesFilled}/${acc.totalSlices}`,
+        price: entryPrice.toFixed(4), size: sliceSize.toFixed(2),
       });
     } catch (err) {
-      logger.debug('TWAP slice error', STRATEGY_NAME, {
-        conditionId: acc.conditionId,
-        err: String(err),
-      });
+      logger.debug('TWAP slice error', STRATEGY_NAME, { conditionId: acc.conditionId, err: String(err) });
     }
   }
 
