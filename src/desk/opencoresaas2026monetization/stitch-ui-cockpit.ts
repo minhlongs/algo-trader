@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
- * Stitch UI Cockpit Engine & Design System Facade (2026.4-PRO-MAX)
- * Re-exports themes, SOR Mesh (#13), Regime-Kelly Matrix (#14), Hawkes Radar (#15), and Auditor.
+ * Stitch UI Cockpit Engine & Design System Facade (2026.5-PRO-MAX)
+ * Re-exports themes, SOR Mesh (#13), Regime-Kelly (#14), Hawkes Radar (#15), Queue Cockpit (#16), and Auditor.
  */
 
 import { ComplianceAuditLogger, type ChainedAuditRecord } from '../security/audit-logger';
@@ -9,6 +9,7 @@ import { StrategyMarketplaceManager } from '../strategies/marketplace';
 import { BillingMeter, TIER_ENTITLEMENTS } from './billing-meter';
 import type { TierLevel } from './catalog';
 import { buildHawkesOrderFlowRadarSnapshot } from './stitch-hawkes-radar-telemetry';
+import { buildQueueReactiveCockpitSnapshot } from './stitch-queue-reactive-telemetry';
 import {
   buildRegimeKellyCockpitSnapshot,
   type MarketRegimeState,
@@ -27,6 +28,7 @@ export * from './stitch-ui-themes';
 export * from './stitch-sor-mesh-telemetry';
 export * from './stitch-regime-kelly-telemetry';
 export * from './stitch-hawkes-radar-telemetry';
+export * from './stitch-queue-reactive-telemetry';
 export * from './ui-ux-pro-max-auditor';
 
 export class StitchUiCockpitEngine {
@@ -81,5 +83,9 @@ export class StitchUiCockpitEngine {
 
   public getHawkesRadarSnapshot(inventoryUnits = 4.5, riskAversionGamma = 0.15) {
     return buildHawkesOrderFlowRadarSnapshot(inventoryUnits, riskAversionGamma);
+  }
+
+  public getQueueReactiveSnapshot(bestBidQueueSizeLots = 18.4, bestAskQueueSizeLots = 9.6) {
+    return buildQueueReactiveCockpitSnapshot(bestBidQueueSizeLots, bestAskQueueSizeLots);
   }
 }

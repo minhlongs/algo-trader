@@ -5,10 +5,7 @@
 
 import { z } from 'zod';
 
-/**
- * Numerical precision margin for hurdle comparison to prevent IEEE-754
- * floating-point subtraction noise from rejecting exact threshold opportunities.
- */
+/** Numerical precision margin for hurdle comparison to prevent IEEE-754 floating-point subtraction noise. */
 export const HURDLE_EPSILON_BPS = 1e-6;
 
 export const OrderBookLevelSchema = z.union([
@@ -16,10 +13,7 @@ export const OrderBookLevelSchema = z.union([
     price: z.number().positive('Level price must be positive'),
     amount: z.number().positive('Level amount must be positive'),
   }),
-  z.tuple([z.number().positive(), z.number().positive()]).transform(([price, amount]) => ({
-    price,
-    amount,
-  })),
+  z.tuple([z.number().positive(), z.number().positive()]).transform(([price, amount]) => ({ price, amount })),
 ]);
 
 export type OrderBookLevel = { price: number; amount: number };
@@ -29,10 +23,7 @@ export const OrderBookDepthSchema = z.object({
   asks: z.array(OrderBookLevelSchema).default([]),
 });
 
-export type OrderBookDepth = {
-  bids: OrderBookLevel[];
-  asks: OrderBookLevel[];
-};
+export type OrderBookDepth = { bids: OrderBookLevel[]; asks: OrderBookLevel[] };
 
 export type RawOrderBookDepth = {
   bids?: Array<OrderBookLevel | [number, number]>;
@@ -87,17 +78,13 @@ export const NetProfitabilityInputSchema = z.object({
   sellLeg: VenueTradeLegSchema,
   tradeAmount: z.number().positive().optional(),
   minHurdleBps: z.number().nonnegative().default(10.0),
-  feeOverrides: z
-    .object({
-      buyFeeRate: z.number().min(0).max(1).optional(),
-      sellFeeRate: z.number().min(0).max(1).optional(),
-    })
-    .optional(),
-  gasOverrides: z
-    .object({
-      polygonGasUsd: z.number().nonnegative().optional(),
-    })
-    .optional(),
+  feeOverrides: z.object({
+    buyFeeRate: z.number().min(0).max(1).optional(),
+    sellFeeRate: z.number().min(0).max(1).optional(),
+  }).optional(),
+  gasOverrides: z.object({
+    polygonGasUsd: z.number().nonnegative().optional(),
+  }).optional(),
   slippageModel: z.enum(['auto', 'vwap_orderbook', 'volume_based', 'fixed_bps']).default('auto'),
   slippageConfig: SlippageModelConfigSchema.partial().optional(),
   gasConfig: GasConfigSchema.partial().optional(),

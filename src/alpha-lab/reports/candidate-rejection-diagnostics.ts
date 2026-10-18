@@ -8,6 +8,12 @@
 import type { AlphaSurvivalGateResult } from '../attribution/alpha-survival-gate';
 import type { WalkForwardSummary } from '../walkforward/walkforward-types';
 import type { ExperimentConfig } from '../experiments/experiment-types';
+import {
+  buildSharpeRejectionDiagnostic,
+  buildCostStressDiagnostics,
+} from './candidate-rejection-rules';
+
+export { buildSharpeRejectionDiagnostic, buildCostStressDiagnostics };
 
 export interface CandidateRejectionDiagnostic {
   /** Identifier of the failed metric. */
@@ -44,49 +50,7 @@ export function generateCandidateRejectionDiagnostics(
 
   // 1. OOS Sharpe Ratio Failure
   if (!gateResult.checks.sharpePassed) {
-    const value = gateResult.metrics.oosSharpeRatio;
-    const threshold = gateResult.thresholds.minOosSharpeRatio;
-
-    if (summary.testWinRate >= 0.5) {
-      diagnostics.push({
-        metric: 'oos_sharpe_ratio',
-        value,
-        threshold,
-        reason: `OOS Sharpe ratio of ${value.toFixed(2)} is below hurdle rate ${threshold.toFixed(2)} despite win rate ${(summary.testWinRate * 100).toFixed(1)}%. Large losing trades drag down risk-adjusted return.`,
-        refinementHypothesis: 'Stop-Loss Tightening',
-        details: {
-          recommendedParamChanges: {
-            stopLossBps: config ? Math.round(config.sl * 10000 * 0.75) : 100,
-          },
-        },
-      });
-    } else if (summary.testProfitFactor < 1.3) {
-      diagnostics.push({
-        metric: 'oos_sharpe_ratio',
-        value,
-        threshold,
-        reason: `OOS Sharpe ratio of ${value.toFixed(2)} is below hurdle rate ${threshold.toFixed(2)} with thin profit factor ${summary.testProfitFactor.toFixed(2)}. Edge is insufficient.`,
-        refinementHypothesis: 'Profit Factor Improvement',
-        details: {
-          recommendedParamChanges: {
-            takeProfitBps: config ? Math.round(config.tp * 10000 * 1.3) : 250,
-          },
-        },
-      });
-    } else {
-      diagnostics.push({
-        metric: 'oos_sharpe_ratio',
-        value,
-        threshold,
-        reason: `OOS Sharpe ratio of ${value.toFixed(2)} is below hurdle rate ${threshold.toFixed(2)} with low win rate ${(summary.testWinRate * 100).toFixed(1)}%.`,
-        refinementHypothesis: 'Signal Conviction Threshold',
-        details: {
-          recommendedParamChanges: {
-            breakoutLookback: config ? config.lookback + 5 : 25,
-          },
-        },
-      });
-    }
+    diagnostics.push(buildSharpeRejectionDiagnostic(gateResult, summary, config));
   }
 
   // 2. Max Drawdown Failure
@@ -123,39 +87,8 @@ export function generateCandidateRejectionDiagnostics(
     });
   }
 
-  // 4. Conservative Cost Stress Failure (20 bps)
-  if (!gateResult.checks.costStressConservativePassed) {
-    const value = gateResult.metrics.conservativeStressPnl;
-    const threshold = 0.0;
-    diagnostics.push({
-      metric: 'cost_stress_conservative',
-      value,
-      threshold,
-      reason: `Net PnL collapses to ${value.toFixed(4)} under CONSERVATIVE cost stress (${gateResult.thresholds.conservativeFrictionBps} bps friction). Strategy is a fee trap.`,
-      refinementHypothesis: 'Trade Frequency Reduction',
-      details: {
-        recommendedParamChanges: {
-          breakoutLookback: config ? config.lookback + 10 : 30,
-        },
-      },
-    });
-  }
-
-  // 5. Adverse Cost Stress Failure (50 bps)
-  if (!gateResult.checks.costStressAdversePassed) {
-    const value = gateResult.metrics.adverseStressPnl;
-    const threshold = 0.0;
-    diagnostics.push({
-      metric: 'cost_stress_adverse',
-      value,
-      threshold,
-      reason: `Net PnL collapses to ${value.toFixed(4)} under ADVERSE cost stress (${gateResult.thresholds.adverseFrictionBps} bps friction). Insufficient margin for adverse execution conditions.`,
-      refinementHypothesis: 'Execution Hurdle & Volatility Filter',
-      details: {
-        suggestedFeatures: ['ATR', 'realizedVol'],
-      },
-    });
-  }
+  // 4 & 5. Conservative & Adverse Cost Stress Failures
+  diagnostics.push(...buildCostStressDiagnostics(gateResult, config));
 
   return diagnostics;
 }

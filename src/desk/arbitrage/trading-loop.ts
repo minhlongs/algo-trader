@@ -34,9 +34,7 @@ export class TradingLoop extends EventEmitter {
       checkIntervalMs: this.config.checkIntervalMs,
       enableMLScoring: true,
     });
-    this.executionEngine = new ExecutionEngine({
-      dryRun: this.config.enableDryRun,
-    });
+    this.executionEngine = new ExecutionEngine({ dryRun: this.config.enableDryRun });
     this.setupFeedHandlers();
   }
 
@@ -103,8 +101,7 @@ export class TradingLoop extends EventEmitter {
       try {
         const startTime = Date.now();
         const opportunities = await this.spreadDetector.scan(this.config.symbols, this.config.exchanges);
-        const scanLatency = Date.now() - startTime;
-        this.recordLatency(scanLatency);
+        this.recordLatency(Date.now() - startTime);
         if (opportunities.length > 0) {
           this.metrics.opportunitiesFound += opportunities.length;
           this.handleOpportunities(opportunities);
@@ -141,20 +138,13 @@ export class TradingLoop extends EventEmitter {
   }
 
   private log(level: string, message: string): void {
-    if (this.config.enableLogging) {
-      const timestamp = new Date().toISOString();
-      const prefix = `[TradingLoop:${level}]`;
-      if (level === 'error') {
-        logger.error(`${prefix} ${timestamp} ${message}`);
-      } else {
-        logger.info(`${prefix} ${timestamp} ${message}`);
-      }
-    }
+    if (!this.config.enableLogging) return;
+    const msg = `[TradingLoop:${level}] ${new Date().toISOString()} ${message}`;
+    if (level === 'error') logger.error(msg);
+    else logger.info(msg);
   }
 
-  isLoopRunning(): boolean {
-    return this.isRunning;
-  }
+  isLoopRunning(): boolean { return this.isRunning; }
 
   updateConfig(config: Partial<TradingLoopConfig>): void {
     this.config = { ...this.config, ...config };

@@ -5,8 +5,12 @@
 
 import WebSocket from 'ws';
 import { logger } from '../../shared/utils/logger';
-import { type TradingEventBus, type PriceUpdatePayload } from '../events/trading-event-bus';
-import { parseWsMessage } from './orderbook-stream-parse';
+import { type TradingEventBus } from '../events/trading-event-bus';
+import {
+  parseWsMessage,
+  mergeAndBuildPricePayload,
+  buildSubscribePayload,
+} from './orderbook-stream-parse';
 import { handleDisconnect, type OrderBookStreamReconnectCtx } from './orderbook-stream-reconnect';
 
 /** Structural view of the OrderBookStream facade that ws handlers need. */
@@ -49,7 +53,6 @@ export function onOpen(ctx: OrderBookStreamWsCtx): void {
   ctx.reconnectAttempts = 0;
   startHeartbeat(ctx);
 
-  // Re-subscribe all tracked tokens after reconnect
   for (const tokenId of ctx.subscribedTokenIds) {
     sendSubscribe(ctx, tokenId);
   }
@@ -97,49 +100,22 @@ export function processPriceEvent(
   event: { tokenId: string; bestBid: number; bestAsk: number; lastTradePrice?: number; volume24h?: number }
 ): void {
   const { tokenId, bestBid, bestAsk } = event;
+  const merged = mergeAndBuildPricePayload(tokenId, bestBid, bestAsk, ctx.lastPrices.get(tokenId));
+  if (!merged) return;
 
-  // Merge with last known state for complete picture
-  const existing = ctx.lastPrices.get(tokenId) ?? { bestBid: 0, bestAsk: 0 };
-  const mergedBid = bestBid > 0 ? bestBid : existing.bestBid;
-  const mergedAsk = bestAsk > 0 ? bestAsk : existing.bestAsk;
-
-  if (mergedBid === 0 && mergedAsk === 0) return; // Skip empty updates
-
-  ctx.lastPrices.set(tokenId, { bestBid: mergedBid, bestAsk: mergedAsk });
-
-  const spread = mergedAsk > 0 && mergedBid > 0 ? mergedAsk - mergedBid : 0;
-  const spreadBps = spread > 0 && mergedBid > 0 ? (spread / mergedBid) * 10_000 : 0;
-
-  const payload: PriceUpdatePayload = {
-    tokenId,
-    bid: mergedBid,
-    ask: mergedAsk,
-    timestamp: Date.now(),
-    spread,
-    spreadBps,
-  };
-
-  // Emit to EventEmitter (legacy compatibility)
-  ctx.emit('update', { tokenId, bestBid: mergedBid, bestAsk: mergedAsk });
-
-  // Emit to typed TradingEventBus
-  ctx.eventBus.emitPriceUpdate(payload);
-
-  logger.debug('[OrderBookStream] PRICE_UPDATE', payload);
+  ctx.lastPrices.set(tokenId, { bestBid: merged.mergedBid, bestAsk: merged.mergedAsk });
+  ctx.emit('update', { tokenId, bestBid: merged.mergedBid, bestAsk: merged.mergedAsk });
+  ctx.eventBus.emitPriceUpdate(merged.payload);
+  logger.debug('[OrderBookStream] PRICE_UPDATE', merged.payload);
 }
 
 /** Send subscribe message for a token. */
 export function sendSubscribe(ctx: OrderBookStreamWsCtx, tokenId: string): void {
   if (!ctx.ws || ctx.ws.readyState !== WebSocket.OPEN) return;
-
-  const msg = JSON.stringify({
-    type: 'subscribe',
-    assets_ids: [tokenId],
-    channels: ['price_change', 'trade', 'book'],
-  });
-  ctx.ws.send(msg);
+  ctx.ws.send(buildSubscribePayload(tokenId));
   logger.debug('[OrderBookStream] Subscribed', { tokenId });
 }
+
 
 /** Start heartbeat ping interval. */
 export function startHeartbeat(ctx: OrderBookStreamWsCtx): void {

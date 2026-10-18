@@ -47,9 +47,7 @@ export class LicenseService {
 		return LicenseService.instance;
 	}
 
-	generateLicenseKey(tier: LicenseTier): string {
-		return createLicenseKey(tier);
-	}
+	generateLicenseKey(tier: LicenseTier): string { return createLicenseKey(tier); }
 
 	generateLicense(input: { userId?: string; tier: string; validUntil?: Date }): string {
 		const tierUpper = input.tier.toUpperCase();
@@ -115,9 +113,7 @@ export class LicenseService {
 		return license;
 	}
 
-	getLicense(id: string): License | undefined {
-		return this.licenses.get(id);
-	}
+	getLicense(id: string): License | undefined { return this.licenses.get(id); }
 
 	getLicenseByKey(key: string): License | undefined {
 		for (const license of this.licenses.values()) {

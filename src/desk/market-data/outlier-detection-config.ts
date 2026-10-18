@@ -15,7 +15,7 @@ import type {
   StatsWindow,
   SymbolStats,
 } from './outlier-detection-types';
-import { computeStatsFromWindow } from './outlier-statistical-helpers';
+import { computeStatsFromWindow, createSymbolStats } from './outlier-statistical-helpers';
 
 export const DEFAULT_CONFIG: OutlierDetectorConfig = {
   zScoreThreshold: 3.0,
@@ -41,6 +41,40 @@ export function computeMedianValue(prices: number[]): number {
   return sorted.length % 2 !== 0
     ? sorted[mid]!
     : (sorted[mid - 1]! + sorted[mid]!) / 2;
+}
+
+export function ensureSymbolStatsEntry(
+  statsMap: Map<string, SymbolStats>,
+  symbol: string,
+): SymbolStats {
+  let s = statsMap.get(symbol);
+  if (!s) {
+    s = createSymbolStats();
+    statsMap.set(symbol, s);
+  }
+  return s;
+}
+
+export function appendWindowSample(
+  windowMap: Map<string, StatsWindow>,
+  symbol: string,
+  sampleValue: number,
+  windowSize: number,
+  mode: 'price' | 'volume',
+): StatsWindow {
+  let w = windowMap.get(symbol);
+  if (!w) {
+    w = { prices: [], volumes: [], timestamps: [] };
+    windowMap.set(symbol, w);
+  }
+  const target = mode === 'price' ? w.prices : w.volumes;
+  target.push(sampleValue);
+  w.timestamps.push(Date.now());
+  if (target.length > windowSize) {
+    target.shift();
+    w.timestamps.shift();
+  }
+  return w;
 }
 
 export function resolveOutlierStatsAndWindow(

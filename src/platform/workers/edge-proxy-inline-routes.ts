@@ -94,3 +94,34 @@ export function handleVpsFallbackRoute(): Response {
   );
 }
 
+export function handleMetricsGetRoute(
+  url: URL,
+  env: Env,
+  metricsHandler: (env: Env) => Promise<Response> | Response,
+): Promise<Response> | Response {
+  const secret = env.METRIC_PASSWORD;
+  if (secret && url.searchParams.get('token') !== secret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: JSON_HEADERS,
+    });
+  }
+  return metricsHandler(env);
+}
+
+export async function handlePaperTradingTickRoute(
+  env: Env,
+  runTick: () => Promise<unknown>,
+): Promise<Response> {
+  try {
+    const result = await runTick();
+    return new Response(JSON.stringify({
+      ok: true, triggered: 'manual', kvNamespace: env.CACHE ? 'bound' : 'UNDEFINED',
+      hasCache: !!env.CACHE, hasDb: !!env.SUBSCRIBERS, dbType: typeof env.SUBSCRIBERS, result,
+    }), { status: 200, headers: JSON_HEADERS });
+  } catch (err) {
+    logger.error('[EdgeProxy] Paper trading tick failed', { err });
+    return new Response(JSON.stringify({ error: 'Tick failed', err: String(err) }), {
+      status: 500, headers: JSON_HEADERS,
+    });
+  }
+}

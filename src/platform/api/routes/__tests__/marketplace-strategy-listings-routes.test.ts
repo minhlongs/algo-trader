@@ -15,8 +15,8 @@ vi.mock('../../../middleware/feature-gate', () => ({
 
 const mocks = vi.hoisted(() => ({
   mockStrategy: { id: 'strat_001', name: 'Test Strategy', status: 'approved', tenantId: 'tenant_001' },
-  mockStrategyDetails: {} as any,
-  mockListResult: {} as any,
+  mockStrategyDetails: {} as Record<string, unknown>,
+  mockListResult: {} as Record<string, unknown>,
   mockService: {
     listStrategies: vi.fn().mockResolvedValue(undefined),
     getStrategyWithDetails: vi.fn().mockResolvedValue(undefined),
@@ -32,9 +32,7 @@ mocks.mockStrategyDetails = {
 mocks.mockListResult = { data: [mocks.mockStrategy], total: 1, page: 1, limit: 20 };
 
 vi.mock('../../../marketplace/services/marketplace.service', () => ({
-  MarketplaceService: {
-    getInstance: () => mocks.mockService,
-  },
+  MarketplaceService: { getInstance: () => mocks.mockService },
 }));
 
 vi.mock('../../../../shared/utils/logger', () => ({
@@ -42,11 +40,7 @@ vi.mock('../../../../shared/utils/logger', () => ({
 }));
 
 vi.mock('../../../audit/audit-log-service', () => ({
-  AuditLogService: {
-    getInstance: () => ({
-      log: vi.fn().mockResolvedValue(undefined),
-    }),
-  },
+  AuditLogService: { getInstance: () => ({ log: vi.fn().mockResolvedValue(undefined) }) },
 }));
 
 import { marketplaceStrategyListingsRouter } from '../marketplace-strategy-listings-routes';
@@ -73,35 +67,27 @@ describe('Marketplace Strategy Listings Routes', () => {
   });
 
   describe('GET /', () => {
-    it('returns 200 with paginated strategies', async () => {
+    it('returns 200 with paginated strategies and supports category filter', async () => {
       const app = buildApp();
       const res = await request(app).get('/');
-
       expect(res.status).toBe(200);
       expect(res.body.data).toHaveLength(1);
       expect(res.body.total).toBe(1);
-    });
 
-    it('accepts category filter', async () => {
-      const app = buildApp();
-      const res = await request(app).get('/?category=arbitrage');
-
-      expect(res.status).toBe(200);
+      const catRes = await request(app).get('/?category=arbitrage');
+      expect(catRes.status).toBe(200);
       expect(mocks.mockService.listStrategies).toHaveBeenCalled();
     });
 
     it('returns 400 for invalid query params', async () => {
-      const app = buildApp();
-      const res = await request(app).get('/?page=-1');
-
+      const res = await request(buildApp()).get('/?page=-1');
       expect(res.status).toBe(400);
     });
   });
 
   describe('POST /publish', () => {
     it('returns 201 with created strategy and listing', async () => {
-      const app = buildApp({ tier: 'PRO' });
-      const res = await request(app)
+      const res = await request(buildApp({ tier: 'PRO' }))
         .post('/publish')
         .send({
           name: 'New Strategy',
@@ -118,9 +104,8 @@ describe('Marketplace Strategy Listings Routes', () => {
       expect(res.body).toHaveProperty('listing');
     });
 
-    it('returns 403 for FREE tier', async () => {
-      const app = buildApp({ tier: 'FREE' });
-      const res = await request(app)
+    it('returns 403 for FREE tier and 400 for invalid body', async () => {
+      const freeRes = await request(buildApp({ tier: 'FREE' }))
         .post('/publish')
         .send({
           name: 'Test Strategy',
@@ -129,35 +114,23 @@ describe('Marketplace Strategy Listings Routes', () => {
           riskLevel: 5,
           priceUsdMonthly: 0,
         });
+      expect(freeRes.status).toBe(403);
 
-      expect(res.status).toBe(403);
-    });
-
-    it('returns 400 for invalid body', async () => {
-      const app = buildApp({ tier: 'PRO' });
-      const res = await request(app)
-        .post('/publish')
-        .send({});
-
-      expect(res.status).toBe(400);
+      const badRes = await request(buildApp({ tier: 'PRO' })).post('/publish').send({});
+      expect(badRes.status).toBe(400);
     });
   });
 
   describe('GET /:id', () => {
-    it('returns 200 with strategy details', async () => {
+    it('returns 200 with strategy details and 404 for unknown strategy', async () => {
       const app = buildApp();
       const res = await request(app).get('/strat_001');
-
       expect(res.status).toBe(200);
       expect(res.body.strategy.name).toBe('Test Strategy');
-    });
 
-    it('returns 404 for unknown strategy', async () => {
       mocks.mockService.getStrategyWithDetails.mockResolvedValueOnce(null);
-      const app = buildApp();
-      const res = await request(app).get('/nonexistent');
-
-      expect(res.status).toBe(404);
+      const missingRes = await request(app).get('/nonexistent');
+      expect(missingRes.status).toBe(404);
     });
   });
 });

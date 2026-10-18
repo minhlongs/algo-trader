@@ -17,23 +17,13 @@ import { VettingService } from '../services/vetting.service';
 
 const { mockStrategyRepo: mockVSRepo, mockVettingRepo: mockVVRepo } = vi.hoisted(() => {
   const mockStrategyRepo = {
-    findById: vi.fn(),
-    findAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    updateStatus: vi.fn(),
-    findByStatus: vi.fn(),
-    findLatestPerformance: vi.fn(),
-    count: vi.fn(),
-    delete: vi.fn(),
+    findById: vi.fn(), findAll: vi.fn(), create: vi.fn(), update: vi.fn(),
+    updateStatus: vi.fn(), findByStatus: vi.fn(), findLatestPerformance: vi.fn(),
+    count: vi.fn(), delete: vi.fn(),
   };
   const mockVettingRepo = {
-    findById: vi.fn(),
-    findByStrategyId: vi.fn(),
-    create: vi.fn(),
-    findAll: vi.fn(),
-    count: vi.fn(),
-    complete: vi.fn(),
+    findById: vi.fn(), findByStrategyId: vi.fn(), create: vi.fn(),
+    findAll: vi.fn(), count: vi.fn(), complete: vi.fn(),
   };
   return { mockStrategyRepo, mockVettingRepo };
 });
@@ -51,31 +41,17 @@ describe('VettingService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new VettingService(mockVSRepo as any, mockVVRepo as any);
+    service = new VettingService(mockVSRepo as never, mockVVRepo as never);
   });
 
   const mockStrategy = {
-    id: 'strat_001',
-    tenantId: 'tenant_001',
-    creatorId: 'creator_001',
-    name: 'Test Strategy',
-    description: 'A test strategy',
-    category: 'momentum' as const,
-    status: 'draft',
-    riskLevel: 5,
-    minAllocationUsd: 1000,
-    maxAllocationUsd: 50000,
-    supportedExchanges: ['binance'],
-    tags: ['momentum'],
-    backtestSummary: {
-      sharpe: 1.5,
-      maxDrawdown: 15,
-      winRate: 60,
-      periodDays: 120,
-      totalTrades: 200,
-    },
-    createdAt: new Date('2024-01-01'),
-    updatedAt: new Date('2024-01-01'),
+    id: 'strat_001', tenantId: 'tenant_001', creatorId: 'creator_001',
+    name: 'Test Strategy', description: 'A test strategy',
+    category: 'momentum' as const, status: 'draft', riskLevel: 5,
+    minAllocationUsd: 1000, maxAllocationUsd: 50000,
+    supportedExchanges: ['binance'], tags: ['momentum'],
+    backtestSummary: { sharpe: 1.5, maxDrawdown: 15, winRate: 60, periodDays: 120, totalTrades: 200 },
+    createdAt: new Date('2024-01-01'), updatedAt: new Date('2024-01-01'),
   };
 
   it('should submit strategy for vetting', async () => {
@@ -141,13 +117,7 @@ describe('VettingService', () => {
   it('should run vetting checks on bad strategy', async () => {
     const badStrategy = {
       ...mockStrategy,
-      backtestSummary: {
-        sharpe: 0.5,
-        maxDrawdown: 35,
-        winRate: 30,
-        periodDays: 60,
-        totalTrades: 50,
-      },
+      backtestSummary: { sharpe: 0.5, maxDrawdown: 35, winRate: 30, periodDays: 60, totalTrades: 50 },
     };
     mockVSRepo.findById.mockResolvedValue(badStrategy);
     const result = await service.runVettingChecks('strat_001');

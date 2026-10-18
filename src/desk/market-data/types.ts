@@ -4,9 +4,7 @@
  * Shared types for market data providers and quality monitoring
  */
 
-/**
- * Supported market data providers
- */
+/** Supported market data providers */
 export enum MarketDataSource {
   SANTIMENT = 'santiment',
   LUNARCRUSH = 'lunarcrush',
@@ -15,9 +13,7 @@ export enum MarketDataSource {
   KUCOIN = 'kucoin',
 }
 
-/**
- * Candle (OHLCV) data structure
- */
+/** Candle (OHLCV) data structure */
 export interface Candle {
   symbol: string;
   timeframe: string;
@@ -31,14 +27,10 @@ export interface Candle {
   provider?: MarketDataSource;
 }
 
-/**
- * Timeframe enum
- */
+/** Timeframe enum */
 export type Timeframe = '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d';
 
-/**
- * Provider health status for failover
- */
+/** Provider health status for failover */
 export enum ProviderHealthStatus {
   HEALTHY = 'healthy',
   DEGRADED = 'degraded',
@@ -47,9 +39,7 @@ export enum ProviderHealthStatus {
   FAILOVER_ACTIVE = 'failover_active',
 }
 
-/**
- * Quality configuration for a provider
- */
+/** Quality configuration for a provider */
 export interface ProviderQualityConfig {
   provider: MarketDataSource;
   maxLatencyMs?: number;
@@ -61,9 +51,7 @@ export interface ProviderQualityConfig {
   enableSlaTracking?: boolean;
 }
 
-/**
- * Failover configuration
- */
+/** Failover configuration */
 export interface ProviderFailoverConfig {
   primary: MarketDataSource;
   secondary: MarketDataSource;
@@ -74,9 +62,7 @@ export interface ProviderFailoverConfig {
   healthCheckIntervalMs: number;
 }
 
-/**
- * Quality report for a provider
- */
+/** Quality report for a provider */
 export interface QualityReport {
   provider: MarketDataSource;
   slaReport: SlaReport | null;
@@ -87,9 +73,7 @@ export interface QualityReport {
   lastUpdate: number;
 }
 
-/**
- * SLA window report
- */
+/** SLA window report */
 export interface SlaWindowReport {
   windowHours: number;
   availability: number;
@@ -100,9 +84,7 @@ export interface SlaWindowReport {
   totalRequests: number;
 }
 
-/**
- * SLA report
- */
+/** SLA report */
 export interface SlaReport {
   provider: MarketDataSource;
   windows: Record<number, SlaWindowReport>;
@@ -110,9 +92,7 @@ export interface SlaReport {
   lastUpdate: number;
 }
 
-/**
- * Gap statistics
- */
+/** Gap statistics */
 export interface GapStats {
   symbol: string;
   timeframe: string;
@@ -125,9 +105,7 @@ export interface GapStats {
   lastCandleTime: number | null;
 }
 
-/**
- * Outlier event
- */
+/** Outlier event */
 export interface OutlierEvent {
   symbol: string;
   timestamp: number;
@@ -140,9 +118,7 @@ export interface OutlierEvent {
   provider?: MarketDataSource;
 }
 
-/**
- * Rolling statistics window
- */
+/** Rolling statistics window */
 export interface StatsWindow {
   values: number[];
   sum: number;
@@ -151,9 +127,7 @@ export interface StatsWindow {
   sortedDirty: boolean;
 }
 
-/**
- * Failover event
- */
+/** Failover event */
 export interface FailoverEvent {
   timestamp: number;
   fromProvider: MarketDataSource;

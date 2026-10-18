@@ -27,8 +27,6 @@ export class PolymarketWebSocketFeed {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
   private closed = false;
-
-  /** Last-known price state per token, merged incrementally */
   private lastPrices: Map<string, Partial<PriceUpdate>> = new Map();
 
   connect(): void {
@@ -40,10 +38,7 @@ export class PolymarketWebSocketFeed {
       logger.info('[PolyWsFeed] Connected');
       this.reconnectAttempts = 0;
       this.startHeartbeat();
-      // Re-subscribe all tracked tokens after reconnect
-      for (const tokenId of this.subscribedTokenIds) {
-        this.sendSubscribe(tokenId);
-      }
+      for (const tokenId of this.subscribedTokenIds) this.sendSubscribe(tokenId);
     });
 
     this.ws.on('message', (data: WebSocket.RawData) => {
@@ -52,7 +47,6 @@ export class PolymarketWebSocketFeed {
     });
 
     this.ws.on('pong', () => logger.debug('[PolyWsFeed] Pong received'));
-
     this.ws.on('error', (err) => logger.error('[PolyWsFeed] WebSocket error', { err }));
 
     this.ws.on('close', (code, reason) => {
@@ -88,10 +82,10 @@ export class PolymarketWebSocketFeed {
     this.stopHeartbeat();
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-  this.ws.removeAllListeners();
-  this.ws.close();
-}
-this.ws = null;
+      this.ws.removeAllListeners();
+      this.ws.close();
+    }
+    this.ws = null;
     logger.info('[PolyWsFeed] Closed');
   }
 
@@ -160,4 +154,3 @@ this.ws = null;
 }
 
 export { startPolymarketWebSocket } from './polymarket-websocket-launcher';
-

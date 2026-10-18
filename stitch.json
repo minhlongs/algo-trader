@@ -77,6 +77,11 @@
       "title": "Hawkes Order-Flow Criticality, Avellaneda-Stoikov & Kyle Lambda Radar",
       "file": "site/public/hawkes-orderflow-radar.html",
       "screenId": "projects/1566829715937419119/screens/f1a4c839e2054b719d824a63109e4c52"
+    },
+    {
+      "title": "Queue-Reactive LOB, Roll Implied Spread & Hasbrouck Information Share Cockpit",
+      "file": "site/public/limit-order-queue-cockpit.html",
+      "screenId": "projects/1566829715937419119/screens/a8b3d172c9404e6685f10293847561ab"
     }
   ]
 }

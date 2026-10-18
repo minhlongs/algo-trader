@@ -10,10 +10,16 @@
 import { referralRepository } from './referral-repository';
 import { query } from '../../shared/db/postgres-client.js';
 import { logger } from '../../shared/utils/logger';
-import { PAYOUT_METHODS } from './referral-payout-types';
 import type { PayoutMethod, ProcessPayoutResult, ReferralPayoutLike } from './referral-payout-types';
-import { calculatePayoutFee, generatePayoutId, generateTransactionId } from './payout-calculators';
+import {
+  calculatePayoutFee,
+  generatePayoutId,
+  generateTransactionId,
+  validatePayoutEligibility,
+} from './payout-calculators';
 import { ensurePayoutTables } from './payout-tables';
+
+export { validatePayoutEligibility };
 
 /**
  * Process a payout for a tenant.
@@ -27,48 +33,25 @@ export async function processPayout(
   await ensurePayoutTables();
 
   const earnings = await this.getEarnings(tenantId);
-  if (!earnings.payoutMethod || !earnings.payoutAddress) {
-    return {
-      success: false,
-      payoutId: '',
-      amount: 0,
-      method: 'crypto_usdt',
-      error: 'No payout method configured. Set payout method first.',
-    };
-  }
+  const validationError = validatePayoutEligibility(earnings);
+  if (validationError) return validationError;
 
-  const config = PAYOUT_METHODS[earnings.payoutMethod];
-  if (earnings.pendingBalance < config.minimumPayout) {
-    return {
-      success: false,
-      payoutId: '',
-      amount: 0,
-      method: earnings.payoutMethod,
-      error: `Minimum payout is $${config.minimumPayout}. Current balance: $${earnings.pendingBalance.toFixed(2)}`,
-    };
-  }
-
+  const payoutMethod = earnings.payoutMethod!;
+  const payoutAddress = earnings.payoutAddress!;
   const grossAmount = earnings.pendingBalance;
-  const { fee: feeAmount, net: netAmount } = calculatePayoutFee(grossAmount, earnings.payoutMethod);
-
+  const { fee: feeAmount, net: netAmount } = calculatePayoutFee(grossAmount, payoutMethod);
   const payoutId = generatePayoutId();
 
   // Create payout history record
   await query(
     `INSERT INTO payout_history (id, tenant_id, amount, currency, method, status, commission_ids, payout_address)
      VALUES ($1, $2, $3, 'usd', $4, 'pending', $5, $6)`,
-    [payoutId, tenantId, netAmount, earnings.payoutMethod, commissionIds, earnings.payoutAddress],
+    [payoutId, tenantId, netAmount, payoutMethod, commissionIds, payoutAddress],
   );
 
   try {
-    // Execute payout via configured method
-    const transactionId = await this.executeTransfer(
-      earnings.payoutMethod,
-      earnings.payoutAddress,
-      netAmount,
-    );
+    const transactionId = await this.executeTransfer(payoutMethod, payoutAddress, netAmount);
 
-    // Mark payout as completed
     await query(
       `UPDATE payout_history
        SET status = 'completed', transaction_id = $2, processed_at = NOW()
@@ -76,7 +59,6 @@ export async function processPayout(
       [payoutId, transactionId],
     );
 
-    // Update earnings balance
     await query(
       `UPDATE referral_earnings
        SET total_paid_out = total_paid_out + $2,
@@ -87,25 +69,19 @@ export async function processPayout(
       [tenantId, grossAmount],
     );
 
-    // Mark commissions as paid
     for (const commId of commissionIds) {
       await referralRepository.updateCommissionStatus(commId, 'paid');
     }
 
     logger.info('[ReferralPayout] Payout completed', {
-      payoutId,
-      tenantId,
-      amount: netAmount,
-      fee: feeAmount,
-      method: earnings.payoutMethod,
-      transactionId,
+      payoutId, tenantId, amount: netAmount, fee: feeAmount, method: payoutMethod, transactionId,
     });
 
     return {
       success: true,
       payoutId,
       amount: netAmount,
-      method: earnings.payoutMethod,
+      method: payoutMethod,
       transactionId,
     };
   } catch (error) {
@@ -116,17 +92,13 @@ export async function processPayout(
       [payoutId, errorMsg],
     );
 
-    logger.error('[ReferralPayout] Payout failed', {
-      payoutId,
-      tenantId,
-      error: errorMsg,
-    });
+    logger.error('[ReferralPayout] Payout failed', { payoutId, tenantId, error: errorMsg });
 
     return {
       success: false,
       payoutId,
       amount: netAmount,
-      method: earnings.payoutMethod,
+      method: payoutMethod,
       error: errorMsg,
     };
   }
@@ -144,16 +116,12 @@ export async function executeTransfer(
 ): Promise<string> {
   const txId = generateTransactionId();
 
-  // Crypto payouts
   if (method.startsWith('crypto_')) {
-    // TODO: integrate with exchange withdrawal API (Binance, OKX)
     logger.info('[ReferralPayout] Crypto transfer initiated', { method, address, amount, txId });
     return txId;
   }
 
-  // Bank payouts
   if (method.startsWith('bank_')) {
-    // TODO: integrate with banking provider (Wise, Stripe Connect)
     logger.info('[ReferralPayout] Bank transfer initiated', { method, address, amount, txId });
     return txId;
   }

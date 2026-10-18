@@ -5,7 +5,8 @@
  * No side effects: no metrics emission, no mutation of inputs.
  */
 
-import type { WindowMetrics, SlaWindowReport } from './sla-tracker-types';
+import type { MarketDataSource } from './types';
+import type { WindowMetrics, SlaWindowReport, SlaReport } from './sla-tracker-types';
 
 /**
  * Compute a percentile value from an ascending-sorted sample array.
@@ -106,4 +107,27 @@ export function calculateHealthScore(windows: Record<number, SlaWindowReport>): 
   }
 
   return weightSum > 0 ? totalScore / weightSum : 0;
+}
+
+export function buildProviderSlaReport(
+  provider: MarketDataSource,
+  providerData: Map<number, WindowMetrics>,
+  now: number = Date.now(),
+): SlaReport {
+  const windows: Record<number, SlaWindowReport> = {};
+  for (const [windowHours, window] of providerData) {
+    windows[windowHours] = buildWindowReport(window, windowHours, now);
+  }
+  const healthScore = calculateHealthScore(windows);
+  return { provider, windows, healthScore, lastUpdate: now };
+}
+
+export function doesWindowMeetSlaTarget(
+  report: SlaReport | null,
+  windowHours: number,
+  targetAvailability: number,
+): boolean {
+  const windowReport = report?.windows[windowHours];
+  if (!windowReport) return false;
+  return windowReport.availability >= targetAvailability && windowReport.avgLatency < 1000;
 }

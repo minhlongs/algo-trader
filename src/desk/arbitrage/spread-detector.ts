@@ -33,10 +33,10 @@ export class SpreadDetector {
   private config: SpreadConfig;
   private running = false;
   private intervalId: NodeJS.Timeout | null = null;
-  private priceCache: Map<string, PriceCacheEntry>;
-  private exchangeLatencies: Map<string, ExchangeLatency>;
-  private latencySamples: Map<string, number[]>;
-  private scanStartTime: number = 0;
+  private priceCache = new Map<string, PriceCacheEntry>();
+  private exchangeLatencies = new Map<string, ExchangeLatency>();
+  private latencySamples = new Map<string, number[]>();
+  private scanStartTime = 0;
   private scoringModel = createDefaultScoringModel();
   private metrics: ScanMetrics = {
     totalScans: 0, opportunitiesFound: 0, avgScanDurationMs: 0,
@@ -55,10 +55,6 @@ export class SpreadDetector {
       parallelBatchSize: config?.parallelBatchSize ?? 10,
       ...config,
     };
-
-    this.priceCache = new Map();
-    this.exchangeLatencies = new Map();
-    this.latencySamples = new Map();
   }
 
   private getExchangeLatency(exchange: string): ExchangeLatency {
@@ -87,8 +83,7 @@ export class SpreadDetector {
     const startTime = Date.now();
     const { bestBid, bestAsk } = await this.getBestPrices(symbol, exchanges);
     if (!bestBid || !bestAsk) return null;
-    const scanLatency = Date.now() - startTime;
-    return evaluateSpread(this.buildContext(), symbol, bestBid, bestAsk, scanLatency);
+    return evaluateSpread(this.buildContext(), symbol, bestBid, bestAsk, Date.now() - startTime);
   }
 
   async scan(symbols: string[], exchanges: string[]): Promise<ArbitrageOpportunity[]> {
@@ -104,24 +99,16 @@ export class SpreadDetector {
       }
     }
 
-    const scanDuration = Date.now() - this.scanStartTime;
-    updateScanMetrics(this.metrics, scanDuration);
+    updateScanMetrics(this.metrics, Date.now() - this.scanStartTime);
     this.metrics.opportunitiesFound += opportunities.length;
 
-    if (this.config.enableMLScoring) {
-      opportunities.sort((a, b) => (b.score || 0) - (a.score || 0));
-    } else {
-      opportunities.sort((a, b) => b.spreadPercent - a.spreadPercent);
-    }
-
+    opportunities.sort((a, b) =>
+      this.config.enableMLScoring ? (b.score || 0) - (a.score || 0) : b.spreadPercent - a.spreadPercent,
+    );
     return opportunities;
   }
 
-  start(
-    symbols: string[],
-    exchanges: string[],
-    onOpportunity: (opps: ArbitrageOpportunity[]) => void
-  ): void {
+  start(symbols: string[], exchanges: string[], onOpportunity: (opps: ArbitrageOpportunity[]) => void): void {
     if (this.running) return;
     this.running = true;
     logger.info(`[SpreadDetector] Started: ${symbols.length} symbols, ${exchanges.length} exchanges`);
@@ -137,10 +124,7 @@ export class SpreadDetector {
   }
 
   stop(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
+    if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
     this.running = false;
     logger.info('[SpreadDetector] Stopped');
   }

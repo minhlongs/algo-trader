@@ -24,6 +24,7 @@ import { handleMetrics, metricEntry } from './edge-proxy-metrics';
 import {
   handleTenantConfigSave, handlePaperTradesLedger,
   handleHealthRoute, handleRootRoute, handleVpsFallbackRoute,
+  handleMetricsGetRoute, handlePaperTradingTickRoute,
 } from './edge-proxy-inline-routes';
 
 // ── Paper trading (env-gated startup) ──
@@ -56,15 +57,7 @@ export default {
     }
 
     // ── Metrics (Prometheus) ──
-    if (path === '/metrics' && request.method === 'GET') {
-      const secret = env.METRIC_PASSWORD;
-      if (secret && url.searchParams.get('token') !== secret) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401, headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
-        });
-      }
-      return handleMetrics(env);
-    }
+    if (path === '/metrics' && request.method === 'GET') return handleMetricsGetRoute(url, env, handleMetrics);
     if (path === '/metrics' && request.method === 'POST') return metricEntry(request, env);
 
     // ── Multi-region routing (uses sub-ms KV-cached health probes) ──
@@ -96,19 +89,10 @@ export default {
 
     // ── Paper trading tick (dev/test trigger) ──
     if (path === '/api/v1/paper-trading/tick' && request.method === 'POST') {
-      try {
+      return handlePaperTradingTickRoute(env, () => {
         ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
-        const result = await runPaperTradingTick(env.CACHE, env, env.SUBSCRIBERS);
-        return new Response(JSON.stringify({
-          ok: true, triggered: 'manual', kvNamespace: env.CACHE ? 'bound' : 'UNDEFINED',
-          hasCache: !!env.CACHE, hasDb: !!env.SUBSCRIBERS, dbType: typeof env.SUBSCRIBERS, result,
-        }), { status: 200, headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' } });
-      } catch (err) {
-        logger.error('[EdgeProxy] Paper trading tick failed', { err });
-        return new Response(JSON.stringify({ error: 'Tick failed', err: String(err) }), {
-          status: 500, headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
-        });
-      }
+        return runPaperTradingTick(env.CACHE, env, env.SUBSCRIBERS);
+      });
     }
 
     // ── Webhooks + Coupons ──

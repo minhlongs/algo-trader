@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.3.08] - 2026-10-18 — Quantitative Desk Waves 339–341, UI/UX Pro Max v5 Stitch Screen #16 (`limit-order-queue-cockpit`) & Deep 160-LOC Refactor (`--deep`)
+
+### Added
+- **Stitch Screen #16 (`site/public/limit-order-queue-cockpit.html`) & UI/UX Pro Max v5 (`2026.5-PRO-MAX`)**:
+  - Delivered `site/public/limit-order-queue-cockpit.html` registered in `SITE.md`, `stitch.json`, and `site/public/assets/ui-ux-pro-max.js` (16-Screen Command Palette with live search filter).
+  - Extracted `src/desk/opencoresaas2026monetization/catalog-phase-5.ts`, `src/desk/opencoresaas2026monetization/repository-blueprint-helpers.ts`, and `src/desk/opencoresaas2026monetization/stitch-queue-reactive-telemetry.ts`, and exposed `GET /queue-reactive` on `stitchCockpitRouter`.
+- **Wave 339: Roll (1984) Implicit Effective Bid-Ask Spread Estimator** (`src/desk/roll1984spread/`).
+- **Wave 340: Hasbrouck (1995) VECM Price Discovery & Venue Information Share** (`src/desk/hasbrouck1995infoshare/`).
+- **Wave 341: Huang & Stoll (1997) Three-Way Spread Decomposition** (`src/desk/huangstoll1997threeway/`).
+- **Test Suite**:
+  - Added `tests/unit/desk/wave_339_341_ui_ux_pro_max_v5_suite.test.ts` (4/4 passed).
+
+### Changed
+- **Deep 160-LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed all remaining 161–163 LOC files in `src/` into cohesive single-responsibility submodules (`<= 148 LOC` each) so that **zero `.ts` files in `src/` exceed 160 LOC**.
+
 ## [3.3.07] - 2026-10-18 — Quantitative Desk Waves 336–338, UI/UX Pro Max v4 Stitch Screen #15 (`hawkes-orderflow-radar`) & Deep 163-LOC Refactor (`--deep`)
 
 ### Added

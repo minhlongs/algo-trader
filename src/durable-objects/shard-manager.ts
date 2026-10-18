@@ -9,35 +9,20 @@
 import type { RedisClientType } from '../redis';
 import type { DurableObjectState } from '@cloudflare/workers-types';
 import { logger } from '../shared/utils/logger';
-import {
-  buildRing, getShardForStrategy, serializeRing, deserializeRing, type HashRing,
-} from '../desk/utils/consistent-hash';
-import { TOTAL_SHARDS, VIRTUAL_NODES_PER_SHARD } from './shard-manager-types';
+import { buildRing, getShardForStrategy, serializeRing, deserializeRing, type HashRing } from '../desk/utils/consistent-hash';
+import { TOTAL_SHARDS, VIRTUAL_NODES_PER_SHARD, mergeShardHealthUpdate } from './shard-manager-types';
 import type { Env, ShardHealth, ShardMetrics, RingStateResponse } from './shard-manager-types';
-import {
-  computeRingState, rebuildRing, collectRingMetrics, createDefaultShardHealth,
-} from './shard-manager-routing';
+import { computeRingState, rebuildRing, collectRingMetrics, createDefaultShardHealth } from './shard-manager-routing';
 import {
   handleAdminRequest, handleHealthCheck, handleMetrics, isAdminAuth,
   handleStrategyRouting, applyMetricUpdate, flushMetricsToHealth,
 } from './shard-manager-handlers';
 
-// Re-export all public symbols for backward compatibility.
-export { TOTAL_SHARDS, VIRTUAL_NODES_PER_SHARD } from './shard-manager-types';
+export { TOTAL_SHARDS, VIRTUAL_NODES_PER_SHARD, mergeShardHealthUpdate } from './shard-manager-types';
 export type { Env, ShardHealth, ShardMetrics, RingStateResponse } from './shard-manager-types';
-export {
-  getShardAssignment, computeRingState, rebuildRing, collectRingMetrics,
-  createDefaultShardHealth, fetchAllStrategyIds,
-} from './shard-manager-routing';
-export {
-  handleAdminRequest, handleHealthCheck, handleMetrics, isAdminAuth,
-  handleStrategyRouting, applyMetricUpdate, flushMetricsToHealth,
-} from './shard-manager-handlers';
+export { getShardAssignment, computeRingState, rebuildRing, collectRingMetrics, createDefaultShardHealth, fetchAllStrategyIds } from './shard-manager-routing';
+export { handleAdminRequest, handleHealthCheck, handleMetrics, isAdminAuth, handleStrategyRouting, applyMetricUpdate, flushMetricsToHealth } from './shard-manager-handlers';
 
-/**
- * Durable Object that owns the consistent hash ring and exposes
- * routing, health, and rebalance endpoints via a single fetch handler.
- */
 export class ShardManager {
   private currentEnv?: Env;
   private state: DurableObjectState;
@@ -50,27 +35,21 @@ export class ShardManager {
   constructor(state: DurableObjectState) {
     this.state = state;
     this.currentEnv = (state as unknown as { env?: Env }).env;
-    this.redisInitPromise = null;
     const init = () => this.initializeRing();
-    const p = typeof this.state.blockConcurrencyWhile === 'function'
-      ? this.state.blockConcurrencyWhile(init)
-      : init();
+    const p = typeof this.state.blockConcurrencyWhile === 'function' ? this.state.blockConcurrencyWhile(init) : init();
     p.catch((error: unknown) => logger.error('[ShardManager] Init failed:', error));
   }
 
   private async getRedis(): Promise<RedisClientType | null> {
     if (this.redis) return this.redis;
-    if (this.redisInitPromise) return this.redisInitPromise;
-    this.redisInitPromise = (async (): Promise<RedisClientType | null> => {
-      try {
-        const mod = await import('../redis');
-        this.redis = mod.getRedisClient();
-        return this.redis;
-      } catch (err) {
-        logger.warn('[ShardManager] Redis unavailable in WASM runtime', { error: String(err) });
-        return null;
-      }
-    })();
+    if (!this.redisInitPromise) {
+      this.redisInitPromise = import('../redis')
+        .then((mod) => { this.redis = mod.getRedisClient(); return this.redis; })
+        .catch((err: unknown) => {
+          logger.warn('[ShardManager] Redis unavailable in WASM runtime', { error: String(err) });
+          return null;
+        });
+    }
     return this.redisInitPromise;
   }
 
@@ -127,22 +106,18 @@ export class ShardManager {
 
   getRingState(): RingStateResponse {
     if (!this.ring) throw new Error('Ring not initialized');
-    const state = computeRingState(this.ring, []);
-    return { ...state, totalShards: TOTAL_SHARDS, virtualNodesPerShard: VIRTUAL_NODES_PER_SHARD };
+    return { ...computeRingState(this.ring, []), totalShards: TOTAL_SHARDS, virtualNodesPerShard: VIRTUAL_NODES_PER_SHARD };
   }
 
   async rebalance(): Promise<{ previous: Map<number, number>; updated: Map<number, number> }> {
     if (!this.ring) throw new Error('Ring not initialized');
-    const previous = new Map<number, number>();
     this.ring = rebuildRing();
     await this.persistRing();
-    const updated = new Map<number, number>();
-    return { previous, updated };
+    return { previous: new Map<number, number>(), updated: new Map<number, number>() };
   }
 
   updateShardHealth(shardId: number, health: Partial<ShardHealth>): void {
-    const existing = this.shardHealths.get(shardId) ?? createDefaultShardHealth(shardId);
-    this.shardHealths.set(shardId, { ...existing, ...health, lastHeartbeat: Date.now() });
+    mergeShardHealthUpdate(this.shardHealths, shardId, health, createDefaultShardHealth);
   }
 
   getShardHealths(): ShardHealth[] { return Array.from(this.shardHealths.values()); }

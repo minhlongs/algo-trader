@@ -42,3 +42,8 @@ export const hawkesRadarQuerySchema = z.object({
   inventoryUnits: z.coerce.number().min(-1000).max(1000).default(4.5),
   riskAversionGamma: z.coerce.number().positive().max(10).default(0.15),
 });
+
+export const queueReactiveQuerySchema = z.object({
+  bestBidQueueSizeLots: z.coerce.number().positive().max(10000).default(18.4),
+  bestAskQueueSizeLots: z.coerce.number().positive().max(10000).default(9.6),
+});

@@ -47,3 +47,14 @@ export async function verifyWebhookSignature(
     return false;
   }
 }
+
+/**
+ * Parse customer reference from order_id (format: algotrade_{ref}_{timestamp})
+ */
+export function parseCustomerRefFromOrderId(orderId: string): string | null {
+  const parts = orderId.split('_');
+  if (parts.length >= 3 && parts[0] === 'algotrade') {
+    return parts.slice(1, -1).join('_');
+  }
+  return null;
+}

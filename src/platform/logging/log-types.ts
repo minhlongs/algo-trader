@@ -46,3 +46,37 @@ export function generateTraceId(): string {
   const random = Math.random().toString(36).substring(2, 8);
   return `${timestamp}-${random}`;
 }
+
+/** Check if a log level meets or exceeds the configured minimum level */
+export function shouldLogLevel(level: LogLevel, minLevel: LogLevel): boolean {
+  return LEVEL_PRIORITY[level] >= LEVEL_PRIORITY[minLevel];
+}
+
+/** Create a structured log entry */
+export function buildLogEntry(
+  serviceName: string,
+  level: LogLevel,
+  message: string,
+  context?: Record<string, unknown>,
+  traceId?: string,
+  error?: Error,
+): LogEntry {
+  const entry: LogEntry = {
+    level,
+    message,
+    timestamp: new Date().toISOString(),
+    service: serviceName,
+  };
+
+  if (traceId) entry.traceId = traceId;
+  if (context && Object.keys(context).length > 0) entry.context = context;
+  if (error) {
+    entry.error = {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return entry;
+}

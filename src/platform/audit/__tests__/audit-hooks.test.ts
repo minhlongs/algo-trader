@@ -1,10 +1,4 @@
-import {
-	describe,
-	expect,
-	it,
-	vi,
-	beforeEach,
-} from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
 	emitRateLimitAuditEvent,
 	emitTradeAuditEvent,
@@ -20,7 +14,7 @@ vi.mock('../../../seed/security/audit-log', () => ({
 
 import { logAudit, hashIpAddress } from '../../../seed/security/audit-log';
 const mockedLogAudit = vi.mocked(logAudit);
-const mockedHashIpAddress = vi.mocked(hashIpAddress);
+const _mockedHashIpAddress = vi.mocked(hashIpAddress);
 
 describe('audit-hooks', () => {
 	beforeEach(() => {
@@ -31,25 +25,16 @@ describe('audit-hooks', () => {
 		it('emits rate_limit.exceeded with enriched metadata', async () => {
 			await expect(
 				emitRateLimitAuditEvent({
-					tenantId: 't-1',
-					tier: 'PRO',
-					endpoint: '/api/v1/trades',
-					remainingMs: 233,
-					retryAfter: 1000,
+					tenantId: 't-1', tier: 'PRO', endpoint: '/api/v1/trades', remainingMs: 233, retryAfter: 1000,
 				}),
 			).resolves.toBeUndefined();
 
 			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
-			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			const [entry] = mockedLogAudit.mock.calls[0]!;
 			expect(entry.tenantId).toBe('t-1');
 			expect(entry.action).toBe('rate_limit.exceeded');
 			expect(entry.metadata).toEqual(
-				expect.objectContaining({
-					endpoint: '/api/v1/trades',
-					tier: 'PRO',
-					remainingMs: 233,
-					retryAfter: 1000,
-				}),
+				expect.objectContaining({ endpoint: '/api/v1/trades', tier: 'PRO', remainingMs: 233, retryAfter: 1000 }),
 			);
 		});
 	});
@@ -58,14 +43,12 @@ describe('audit-hooks', () => {
 		it('emits credentials.deleted', async () => {
 			await expect(
 				emitCredentialDeletionAuditEvent({
-					tenantId: 't-1',
-					actionBy: 'operator',
-					endpoint: '/api/v1/credentials',
+					tenantId: 't-1', actionBy: 'operator', endpoint: '/api/v1/credentials',
 				}),
 			).resolves.toBeUndefined();
 
 			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
-			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			const [entry] = mockedLogAudit.mock.calls[0]!;
 			expect(entry.action).toBe('credentials.deleted');
 			expect(entry.actor).toBe('operator');
 		});
@@ -75,14 +58,12 @@ describe('audit-hooks', () => {
 		it('emits credentials.upsert', async () => {
 			await expect(
 				emitCredentialUpsertAuditEvent({
-					tenantId: 't-1',
-					actionBy: 'operator',
-					endpoint: '/api/v1/subscriber/credentials',
+					tenantId: 't-1', actionBy: 'operator', endpoint: '/api/v1/subscriber/credentials',
 				}),
 			).resolves.toBeUndefined();
 
 			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
-			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			const [entry] = mockedLogAudit.mock.calls[0]!;
 			expect(entry.action).toBe('credentials.upsert');
 			expect(entry.actor).toBe('operator');
 		});
@@ -91,15 +72,11 @@ describe('audit-hooks', () => {
 	describe('emitTradeAuditEvent', () => {
 		it('emits trade_executed', async () => {
 			await expect(
-				emitTradeAuditEvent({
-					eventType: 'trade_executed',
-					tenantId: 't-1',
-					actionBy: 'trader',
-				}),
+				emitTradeAuditEvent({ eventType: 'trade_executed', tenantId: 't-1', actionBy: 'trader' }),
 			).resolves.toBeUndefined();
 
 			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
-			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			const [entry] = mockedLogAudit.mock.calls[0]!;
 			expect(entry.action).toBe('trade_executed');
 			expect(entry.actor).toBe('trader');
 		});
@@ -116,7 +93,7 @@ describe('audit-hooks', () => {
 			).resolves.toBeUndefined();
 
 			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
-			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			const [entry] = mockedLogAudit.mock.calls[0]!;
 			expect(entry.action).toBe('trade_rejected');
 			expect(entry.actor).toBe('trader');
 			expect(entry.metadata?.reason).toBe('insufficient balance');
@@ -137,7 +114,7 @@ describe('audit-hooks', () => {
 			).resolves.toBeUndefined();
 
 			expect(mockedLogAudit).toHaveBeenCalledTimes(1);
-			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			const [entry] = mockedLogAudit.mock.calls[0]!;
 			expect(entry.action).toBe('config.changed');
 			expect(entry.actor).toBe('admin');
 			expect(entry.metadata?.reason).toBe('updated limits');
@@ -146,15 +123,11 @@ describe('audit-hooks', () => {
 		});
 
 		it('defaults reason to "config_changed" when omitted', async () => {
-			// Covers the `params.reason ?? 'config_changed'` fallback (line 131)
 			await expect(
-				emitConfigAuditEvent({
-					tenantId: 't-1',
-					actionBy: 'admin',
-				}),
+				emitConfigAuditEvent({ tenantId: 't-1', actionBy: 'admin' }),
 			).resolves.toBeUndefined();
 
-			const [entry] = mockedLogAudit.mock.calls[0] as [any];
+			const [entry] = mockedLogAudit.mock.calls[0]!;
 			expect(entry.metadata?.reason).toBe('config_changed');
 		});
 	});

@@ -58,45 +58,31 @@ describe('moderateComment', () => {
       'Great analysis on the endgame strategy! Have you considered using half-Kelly sizing?',
       'TraderJoe',
     );
-    // LLM may or may not be available; keyword check passes this
     expect(result.approved).toBe(true);
   });
 
   it('approves genuine questions', async () => {
-    const result = await moderateComment(
-      'How does the cross-market arbitrage handle gas fees on Polygon?',
-      'CuriousTrader',
-    );
+    const result = await moderateComment('How does the cross-market arbitrage handle gas fees on Polygon?', 'CuriousTrader');
     expect(result.approved).toBe(true);
   });
 
   it('rejects .ru spam domains', async () => {
-    const result = await moderateComment(
-      'Visit https://spam-casino.ru for free tokens',
-      'Spammer',
-    );
+    const result = await moderateComment('Visit https://spam-casino.ru for free tokens', 'Spammer');
     expect(result.approved).toBe(false);
   });
 
   // ── LLM success path (lines 58-74) ────────────────────────────────────────
 
   it('returns parsed result when LLM returns valid JSON approval', async () => {
-    fastChatMock.mockResolvedValue({
-      content: '{"approved":true,"reason":"on-topic trading discussion","confidence":9}',
-    });
-    const result = await moderateComment(
-      'Great analysis on the endgame strategy!',
-      'TraderJoe',
-    );
+    fastChatMock.mockResolvedValue({ content: '{"approved":true,"reason":"on-topic trading discussion","confidence":9}' });
+    const result = await moderateComment('Great analysis on the endgame strategy!', 'TraderJoe');
     expect(result.approved).toBe(true);
     expect(result.reason).toBe('on-topic trading discussion');
     expect(result.confidenceScore).toBe(9);
   });
 
   it('returns parsed result when LLM returns valid JSON rejection', async () => {
-    fastChatMock.mockResolvedValue({
-      content: 'Here is my verdict:\n{"approved":false,"reason":"spam","confidence":8}',
-    });
+    fastChatMock.mockResolvedValue({ content: 'Here is my verdict:\n{"approved":false,"reason":"spam","confidence":8}' });
     const result = await moderateComment('Buy now cheap pills', 'Spammer');
     expect(result.approved).toBe(false);
     expect(result.reason).toBe('spam');
@@ -104,27 +90,20 @@ describe('moderateComment', () => {
   });
 
   it('falls back to keyword check when LLM JSON has no confidence number', async () => {
-    fastChatMock.mockResolvedValue({
-      content: '{"approved":true,"reason":"looks fine"}',
-    });
-    // No blocked keywords, length >= 3 → keyword path approves
+    fastChatMock.mockResolvedValue({ content: '{"approved":true,"reason":"looks fine"}' });
     const result = await moderateComment('A solid post, thanks for sharing', 'Reader');
     expect(result.approved).toBe(true);
-    expect(result.confidenceScore).toBe(5); // default when confidence missing
+    expect(result.confidenceScore).toBe(5);
   });
 
   it('falls back to keyword check when LLM returns no JSON object', async () => {
-    fastChatMock.mockResolvedValue({
-      content: 'I cannot parse this comment.',
-    });
+    fastChatMock.mockResolvedValue({ content: 'I cannot parse this comment.' });
     const result = await moderateComment('Great post about trading', 'Reader');
-    expect(result.approved).toBe(true); // keyword path approves clean text
+    expect(result.approved).toBe(true);
   });
 
   it('falls back to keyword check when LLM returns malformed JSON', async () => {
-    fastChatMock.mockResolvedValue({
-      content: '{approved: true, broken json}',
-    });
+    fastChatMock.mockResolvedValue({ content: '{approved: true, broken json}' });
     const result = await moderateComment('Nice analysis today', 'Reader');
     expect(result.approved).toBe(true);
   });
@@ -138,23 +117,15 @@ describe('moderateComment', () => {
   it('handles non-Error throws from LLM (line 81)', async () => {
     fastChatMock.mockImplementation(() => { throw 'string-error'; });
     const result = await moderateComment('hello world', 'Author');
-    // Falls back to keyword path — clean text → approved
     expect(result.approved).toBe(true);
     expect(result.confidenceScore).toBe(5);
   });
 
   it('truncates long content to 500 chars before sending to LLM', async () => {
-    fastChatMock.mockResolvedValue({
-      content: '{"approved":true,"reason":"ok","confidence":7}',
-    });
-    const longContent = 'a'.repeat(2000);
-    await moderateComment(longContent, 'Verbose');
-    const callArg = fastChatMock.mock.calls[0][0];
-    const userMessage = callArg.messages[1];
-    // content.slice(0, 500) → the Comment portion is capped at 500 chars.
-    // Format: `Author: "Verbose"\nComment: "<500 a's>"` → 500 char body is the key invariant.
+    fastChatMock.mockResolvedValue({ content: '{"approved":true,"reason":"ok","confidence":7}' });
+    await moderateComment('a'.repeat(2000), 'Verbose');
+    const userMessage = fastChatMock.mock.calls[0][0].messages[1];
     expect(userMessage.content).toContain(`Comment: "${'a'.repeat(500)}"`);
-    // Total payload length: prefix + 500 chars of content (+ optional trailing quote).
     expect(userMessage.content.length).toBeGreaterThanOrEqual(500);
     expect(userMessage.content.length).toBeLessThan(600);
   });

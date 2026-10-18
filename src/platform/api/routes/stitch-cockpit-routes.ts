@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /**
- * Stitch UI Cockpit & Emergency Kill-Switch API Routes (15-Screen Suite)
- * Serves Stitch UI PRD state, themes, SOR mesh (#13), Regime-Kelly (#14), Hawkes Radar (#15), and Auditor.
+ * Stitch UI Cockpit & Emergency Kill-Switch API Routes (16-Screen Suite)
+ * Serves Stitch UI PRD state, themes, SOR mesh (#13), Regime-Kelly (#14), Hawkes Radar (#15), Queue Cockpit (#16), and Auditor.
  *
  * @module platform/api/routes/stitch-cockpit-routes
  */
@@ -17,6 +17,7 @@ import { sanitizeHttpError } from '../../../shared/utils/error-sanitize';
 import {
   hawkesRadarQuerySchema,
   killSwitchBodySchema,
+  queueReactiveQuerySchema,
   regimeKellyQuerySchema,
   snapshotQuerySchema,
   sorMeshQuerySchema,
@@ -112,6 +113,20 @@ stitchCockpitRouter.get('/hawkes-radar', (req: Request, res: Response) => {
     }
     const hawkesRadar = cockpitEngine.getHawkesRadarSnapshot(parsed.data.inventoryUnits, parsed.data.riskAversionGamma);
     res.status(200).json({ ok: true, hawkesRadar });
+  } catch (err) {
+    res.status(500).json(sanitizeHttpError(err));
+  }
+});
+
+stitchCockpitRouter.get('/queue-reactive', (req: Request, res: Response) => {
+  try {
+    const parsed = queueReactiveQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ ok: false, reason: 'Invalid queue-reactive query parameters', issues: parsed.error.issues });
+      return;
+    }
+    const queueReactive = cockpitEngine.getQueueReactiveSnapshot(parsed.data.bestBidQueueSizeLots, parsed.data.bestAskQueueSizeLots);
+    res.status(200).json({ ok: true, queueReactive });
   } catch (err) {
     res.status(500).json(sanitizeHttpError(err));
   }

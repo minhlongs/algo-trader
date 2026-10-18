@@ -127,17 +127,7 @@ describe('GruStrategy', () => {
     strategy.dispose?.();
   }, 15000);
 
-  it('should return strategy name', async () => {
-    const strategy = new GruStrategy();
-    await strategy.initialize();
-
-    const name = strategy.getName();
-    expect(name).toBe('GRU Neural Network');
-
-    strategy.dispose?.();
-  }, 15000);
-
-  it('should handle multiple execute calls', async () => {
+  it('should return strategy name and handle multiple execute calls', async () => {
     const strategy = new GruStrategy({
       inputSteps: 5,
       outputSteps: 1,
@@ -147,9 +137,9 @@ describe('GruStrategy', () => {
     });
 
     await strategy.initialize();
+    expect(strategy.getName()).toBe('GRU Neural Network');
     await strategy.train(sampleCandles);
 
-    // Multiple executions
     const signal1 = await strategy.execute([{ timestamp: 16, open: 139, high: 142, low: 138, close: 141, volume: 2500 }]);
     const signal2 = await strategy.execute([{ timestamp: 17, open: 141, high: 144, low: 140, close: 143, volume: 2600 }]);
     const signal3 = await strategy.execute([{ timestamp: 18, open: 143, high: 146, low: 142, close: 145, volume: 2700 }]);
@@ -159,5 +149,5 @@ describe('GruStrategy', () => {
     expect(signal3).toBeDefined();
 
     strategy.dispose?.();
-  });
+  }, 15000);
 }, 60000);

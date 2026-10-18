@@ -10,30 +10,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { OPEN_CORE_25_STEPS } from './catalog';
-import { OpenCoreReadinessAuditor, OverallAuditReport } from './readiness-auditor';
+import { OpenCoreReadinessAuditor } from './readiness-auditor';
+import {
+  checkTargetModuleExistsOnDisk,
+  evaluateQuarantineAndBillingFiles,
+  REQUIRED_GOVERNANCE_FILES,
+  type LiveRepositoryBlueprintAudit,
+} from './repository-blueprint-helpers';
 
-export interface LiveRepositoryBlueprintAudit {
-  readonly repoRoot: string;
-  readonly verifiedStepModulesCount: number;
-  readonly missingStepModules: string[];
-  readonly governanceFilesIntact: boolean;
-  readonly missingGovernanceFiles: string[];
-  readonly polarBlockedInCompanyConfig: boolean;
-  readonly gitignoreQuarantineIntact: boolean;
-  readonly npmignoreQuarantineIntact: boolean;
-  readonly blueprintTreeDigestSha256: string;
-  readonly readinessReport: OverallAuditReport;
-}
-
-const REQUIRED_GOVERNANCE_FILES = [
-  'LICENSE',
-  'CLA.md',
-  'CODE_OF_CONDUCT.md',
-  'SECURITY.md',
-  'CONTRIBUTING.md',
-  '.gitleaks.toml',
-  '.env.example',
-] as const;
+export * from './repository-blueprint-helpers';
 
 export class RepositoryBlueprintAuditor {
   private readonly secretSalt: string;
@@ -42,21 +27,12 @@ export class RepositoryBlueprintAuditor {
     this.secretSalt = secretSalt;
   }
 
-  private checkTargetModuleExists(repoRoot: string, targetModule: string): boolean {
-    if (targetModule.includes(' vs ')) {
-      return targetModule
-        .split(' vs ')
-        .every((segment) => fs.existsSync(path.join(repoRoot, segment.trim())));
-    }
-    return fs.existsSync(path.join(repoRoot, targetModule));
-  }
-
   auditRepository(repoRoot: string): LiveRepositoryBlueprintAudit {
     const missingStepModules: string[] = [];
     const hash = crypto.createHmac('sha256', this.secretSalt);
 
     for (const step of OPEN_CORE_25_STEPS) {
-      const exists = this.checkTargetModuleExists(repoRoot, step.targetModule);
+      const exists = checkTargetModuleExistsOnDisk(repoRoot, step.targetModule);
       if (!exists) {
         missingStepModules.push(`Step ${step.stepNumber} (${step.id}): ${step.targetModule}`);
       }
@@ -72,34 +48,24 @@ export class RepositoryBlueprintAuditor {
       hash.update(`gov:${govFile}:${exists ? '1' : '0'}\n`);
     }
 
-    const gitignorePath = path.join(repoRoot, '.gitignore');
-    const gitignoreContent = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8') : '';
-    const gitignoreQuarantineIntact =
-      gitignoreContent.includes('.env') && gitignoreContent.includes('.mekong/');
+    const {
+      gitignoreQuarantineIntact,
+      npmignoreQuarantineIntact,
+      polarBlockedInCompanyConfig,
+      companyRawLength,
+    } = evaluateQuarantineAndBillingFiles(repoRoot);
 
-    const npmignorePath = path.join(repoRoot, '.npmignore');
-    const npmignoreContent = fs.existsSync(npmignorePath) ? fs.readFileSync(npmignorePath, 'utf8') : '';
-    const npmignoreQuarantineIntact =
-      npmignoreContent.includes('.env') &&
-      npmignoreContent.includes('.mekong/') &&
-      npmignoreContent.includes('.claude/');
-
-    const companyJsonPath = path.join(repoRoot, '.mekong/company.json');
-    let polarBlockedInCompanyConfig = false;
-    if (fs.existsSync(companyJsonPath)) {
-      const raw = fs.readFileSync(companyJsonPath, 'utf8');
-      hash.update(`company:${raw.length}\n`);
-      polarBlockedInCompanyConfig =
-        raw.includes('"NOWPayments') && raw.includes('"PayOS') && raw.includes('"Polar"');
+    if (companyRawLength > 0) {
+      hash.update(`company:${companyRawLength}\n`);
     }
 
     const verifiedStepModulesCount = OPEN_CORE_25_STEPS.length - missingStepModules.length;
     const leakedSecretsCount = gitignoreQuarantineIntact && npmignoreQuarantineIntact ? 0 : 1;
     const licenseGateEnforced = fs.existsSync(
-      path.join(repoRoot, 'src/desk/opencoresaas2026monetization/license-gate.ts')
+      path.join(repoRoot, 'src/desk/opencoresaas2026monetization/license-gate.ts'),
     );
     const quotaMeteringEnforced = fs.existsSync(
-      path.join(repoRoot, 'src/desk/opencoresaas2026monetization/billing-meter.ts')
+      path.join(repoRoot, 'src/desk/opencoresaas2026monetization/billing-meter.ts'),
     );
     const protectedFlowsIntact =
       polarBlockedInCompanyConfig && missingGovernanceFiles.length === 0;

@@ -69,9 +69,7 @@ export class MarketReplayEngine {
 
   public step(): ReplayStepResult {
     this.currentStep++;
-    const dt = this.config.timeStepSec;
-    const vol = this.config.volatility;
-    const shock = this.nextGaussian() * vol * Math.sqrt(dt);
+    const shock = this.nextGaussian() * this.config.volatility * Math.sqrt(this.config.timeStepSec);
     this.currentMidPrice = Number(
       Math.max(0.02, Math.min(0.98, this.currentMidPrice * Math.exp(shock))).toFixed(4),
     );
@@ -107,14 +105,11 @@ export class MarketReplayEngine {
       const isBuy = order.side === 'buy';
       let isFilled = false;
 
-      if (isBuy && order.price >= (book.asks[0]?.price ?? 1.0)) {
-        isFilled = true;
-      } else if (!isBuy && order.price <= (book.bids[0]?.price ?? 0.0)) {
+      if ((isBuy && order.price >= (book.asks[0]?.price ?? 1.0)) || (!isBuy && order.price <= (book.bids[0]?.price ?? 0.0))) {
         isFilled = true;
       } else {
-        const dist = Math.abs(order.price - this.currentMidPrice);
         const fillProb = calculateFillProbability({
-          spreadDistance: dist,
+          spreadDistance: Math.abs(order.price - this.currentMidPrice),
           baselineArrivalRate: this.config.arrivalIntensity,
           kappa: 1.5,
           timeDeltaSec: this.config.timeStepSec,
@@ -132,17 +127,10 @@ export class MarketReplayEngine {
         order.filledAmount = order.amount;
         order.remainingAmount = 0;
         fills.push({
-          fillId: `fill-${order.orderId}`,
-          orderId: order.orderId,
-          agentId: order.agentId,
-          symbol: order.symbol,
-          venue: order.venue,
-          side: order.side,
-          price: order.price,
-          amount: order.amount,
-          fee: Number((order.amount * order.price * 0.001).toFixed(4)),
-          liquidity: 'maker',
-          timestamp: Date.now(),
+          fillId: `fill-${order.orderId}`, orderId: order.orderId, agentId: order.agentId,
+          symbol: order.symbol, venue: order.venue, side: order.side, price: order.price,
+          amount: order.amount, fee: Number((order.amount * order.price * 0.001).toFixed(4)),
+          liquidity: 'maker', timestamp: Date.now(),
         });
       } else {
         remainingActive.push(order);
@@ -153,11 +141,6 @@ export class MarketReplayEngine {
     return fills;
   }
 
-  public getActiveOrders(): MarlLimitOrder[] {
-    return [...this.activeOrders];
-  }
-
-  public getCurrentMidPrice(): number {
-    return this.currentMidPrice;
-  }
+  public getActiveOrders(): MarlLimitOrder[] { return [...this.activeOrders]; }
+  public getCurrentMidPrice(): number { return this.currentMidPrice; }
 }

@@ -66,4 +66,8 @@ export * as ElEuchRosenbaum2019RoughHeston from '../eluchalanrosenbaum2019roughh
 export * as AvellanedaStoikov2008Reservation from '../avellanedastoikov2008/index';
 export * as GlostenMilgrom1985SequentialTrade from '../glostenmilgrom1985/index';
 export * as Kyle1985ContinuousAuction from '../kyle1985auction/index';
+export * as Roll1984ImplicitSpread from '../roll1984spread/index';
+export * as Hasbrouck1995InfoShare from '../hasbrouck1995infoshare/index';
+export * as HuangStoll1997ThreeWay from '../huangstoll1997threeway/index';
+
 

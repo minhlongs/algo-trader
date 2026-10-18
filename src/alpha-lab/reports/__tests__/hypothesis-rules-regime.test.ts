@@ -6,10 +6,7 @@ import type { BaselineRun } from '../../baselines/baseline-runner';
 
 function emptyReport(): EvaluationReport {
   return {
-    overall: {
-      totalTrades: 100, winningTrades: 50, losingTrades: 50, winRate: 0.5, lossRate: 0.5,
-      profitFactor: 1.5, avgPnlPerTrade: 0.001, totalNetPnl: 0.1, maxDrawdown: 0.1, sharpeRatio: 1.0,
-    },
+    overall: { totalTrades: 100, winningTrades: 50, losingTrades: 50, winRate: 0.5, lossRate: 0.5, profitFactor: 1.5, avgPnlPerTrade: 0.001, totalNetPnl: 0.1, maxDrawdown: 0.1, sharpeRatio: 1.0 },
     byRegime: [], byMonth: [], byVolatilityBucket: [],
   };
 }
@@ -29,7 +26,6 @@ describe('detectRegimeFilter', () => {
       { regime: 'RANGING', numTrades: 10, winRate: 0.4, lossRate: 0.6, meanLabel: -0.1, netPnl: -0.05 },
     ];
     expect(detectRegimeFilter(report)).toEqual([]);
-
     report.byRegime = [
       { regime: 'TRENDING_UP', numTrades: 20, winRate: 0.6, lossRate: 0.4, meanLabel: 0.2, netPnl: 0.1 },
       { regime: 'RANGING', numTrades: 20, winRate: 0.55, lossRate: 0.45, meanLabel: 0.1, netPnl: 0.02 },
@@ -58,14 +54,8 @@ describe('detectSeasonality', () => {
       { month: '2025-02', numTrades: 10, winRate: 0.5, netPnl: 0.05 },
     ];
     expect(detectSeasonality(report)).toEqual([]);
-
-    report.byMonth = [
-      { month: '2025-01', numTrades: 10, winRate: 0.5, netPnl: 1 },
-      { month: '2025-02', numTrades: 10, winRate: 0.5, netPnl: -1 },
-      { month: '2025-03', numTrades: 10, winRate: 0.5, netPnl: 0 },
-    ];
+    report.byMonth = [1, -1, 0].map((netPnl, i) => ({ month: `2025-0${i + 1}`, numTrades: 10, winRate: 0.5, netPnl }));
     expect(detectSeasonality(report)).toEqual([]);
-
     report.byMonth = [1, 2, 3, 4].map((m) => ({ month: `2025-0${m}`, numTrades: 10, winRate: 0.5, netPnl: 10 }));
     expect(detectSeasonality(report)).toEqual([]);
   });
@@ -105,7 +95,6 @@ describe('detectVolatilityDegradation', () => {
       { bucket: 'medium', numTrades: 10, winRate: 0.5, netPnl: 0.02 },
     ];
     expect(detectVolatilityDegradation(report)).toEqual([]);
-
     report.byVolatilityBucket = [
       { bucket: 'low', numTrades: 10, winRate: 0.5, netPnl: 0.02 },
       { bucket: 'high', numTrades: 10, winRate: 0.6, netPnl: 0.05 },
@@ -120,7 +109,7 @@ describe('detectVolatilityDegradation', () => {
       { bucket: 'medium', numTrades: 10, winRate: 0.5, netPnl: 0.3 },
       { bucket: 'high', numTrades: 10, winRate: 0.2, netPnl: -0.5 },
     ];
-    const res1 = detectVolatilityDegradation(report1);
+    const [res1] = [detectVolatilityDegradation(report1)];
     expect(res1).toHaveLength(1);
     expect(res1[0]!.confidence).toBe(1);
     expect(res1[0]!.features).toContain('volatilityFilter');
@@ -138,16 +127,10 @@ describe('detectVolatilityDegradation', () => {
 });
 
 describe('detectOverfit', () => {
-  const candidate: CandidateResult = {
-    name: 'test', totalNetPnl: 50, winRate: 0.55, sharpeRatio: 1.0, totalTrades: 100, profitFactor: 1.5, maxDrawdown: 0.1,
-  };
-
+  const candidate: CandidateResult = { name: 'test', totalNetPnl: 50, winRate: 0.55, sharpeRatio: 1.0, totalTrades: 100, profitFactor: 1.5, maxDrawdown: 0.1 };
   const makeBaseline = (name: string, totalPnl: number): BaselineRun => ({
     name, equityCurve: [],
-    report: {
-      totalPnl, sharpeRatio: 0, maxDrawdown: 0, winRate: 0.5, profitFactor: 1,
-      totalTrades: 10, winningTrades: 5, losingTrades: 5, bestTrade: 0, worstTrade: 0, avgPnlPerTrade: 0,
-    },
+    report: { totalPnl, sharpeRatio: 0, maxDrawdown: 0, winRate: 0.5, profitFactor: 1, totalTrades: 10, winningTrades: 5, losingTrades: 5, bestTrade: 0, worstTrade: 0, avgPnlPerTrade: 0 },
   });
 
   it('returns empty when baselines are missing buy-and-hold or random-entry', () => {

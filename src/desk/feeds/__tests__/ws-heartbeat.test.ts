@@ -1,9 +1,6 @@
 /**
  * Tests for ws-heartbeat — start/stop/handle-response cycle over a stub
- * BaseWebSocketClient. Fake timers drive the interval and the timeout window;
- * logger is mocked. The client methods the helpers call (stopHeartbeat,
- * sendHeartbeat, emit, forceReconnect) are spies so virtual dispatch and the
- * timeout path are observable.
+ * BaseWebSocketClient. Fake timers drive the interval and the timeout window.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -55,27 +52,22 @@ describe('ws-heartbeat', () => {
   describe('startHeartbeat', () => {
     it('clears any prior cycle before starting', () => {
       const client = makeClient();
-
       startHeartbeat.call(client as unknown as BaseWebSocketClient);
-
       expect(client.stopHeartbeat).toHaveBeenCalledOnce();
     });
 
     it('sends a heartbeat and arms the timeout after one interval', () => {
       const client = makeClient(1000, 500);
-
       startHeartbeat.call(client as unknown as BaseWebSocketClient);
       vi.advanceTimersByTime(1000);
 
       expect(client.sendHeartbeat).toHaveBeenCalledOnce();
       expect(client.pendingHeartbeat).toBe(true);
-      // Timeout not yet elapsed — no reconnect.
       expect(client.forceReconnect).not.toHaveBeenCalled();
     });
 
     it('forces reconnect when the heartbeat response never arrives', () => {
       const client = makeClient(1000, 500);
-
       startHeartbeat.call(client as unknown as BaseWebSocketClient);
       vi.advanceTimersByTime(1000 + 500);
 
@@ -86,10 +78,9 @@ describe('ws-heartbeat', () => {
 
     it('does not force reconnect when the response arrived in time', () => {
       const client = makeClient(1000, 500);
-
       startHeartbeat.call(client as unknown as BaseWebSocketClient);
       vi.advanceTimersByTime(1000);
-      client.pendingHeartbeat = false; // response arrived
+      client.pendingHeartbeat = false;
       vi.advanceTimersByTime(500);
 
       expect(client.forceReconnect).not.toHaveBeenCalled();
@@ -98,7 +89,6 @@ describe('ws-heartbeat', () => {
 
     it('keeps beating on each subsequent interval', () => {
       const client = makeClient(1000, 500);
-
       startHeartbeat.call(client as unknown as BaseWebSocketClient);
       vi.advanceTimersByTime(3000);
 
@@ -110,7 +100,7 @@ describe('ws-heartbeat', () => {
     it('clears both timers and resets the pending flag', () => {
       const client = makeClient(1000, 500);
       startHeartbeat.call(client as unknown as BaseWebSocketClient);
-      vi.advanceTimersByTime(1000); // interval fired → timeout timer armed
+      vi.advanceTimersByTime(1000);
       expect(client.heartbeatTimer).not.toBeNull();
       expect(client.heartbeatTimeoutTimer).not.toBeNull();
       expect(client.pendingHeartbeat).toBe(true);
@@ -120,15 +110,13 @@ describe('ws-heartbeat', () => {
       expect(client.heartbeatTimer).toBeNull();
       expect(client.heartbeatTimeoutTimer).toBeNull();
       expect(client.pendingHeartbeat).toBe(false);
-      // Timers truly cleared: nothing fires after the window passes.
       vi.advanceTimersByTime(5000);
-      expect(client.sendHeartbeat).toHaveBeenCalledOnce(); // only the pre-stop beat
+      expect(client.sendHeartbeat).toHaveBeenCalledOnce();
       expect(client.forceReconnect).not.toHaveBeenCalled();
     });
 
     it('is a no-op when no cycle was started', () => {
       const client = makeClient();
-
       expect(() => stopHeartbeat.call(client as unknown as BaseWebSocketClient)).not.toThrow();
       expect(client.pendingHeartbeat).toBe(false);
     });
@@ -146,17 +134,14 @@ describe('ws-heartbeat', () => {
       expect(client.pendingHeartbeat).toBe(false);
       expect(client.stats.heartbeatCount).toBe(1);
       expect(client.heartbeatTimeoutTimer).toBeNull();
-      // Timeout window passes with no consequence.
       vi.advanceTimersByTime(500);
       expect(client.forceReconnect).not.toHaveBeenCalled();
     });
 
     it('counts multiple responses', () => {
       const client = makeClient();
-
       handleHeartbeatResponse.call(client as unknown as BaseWebSocketClient);
       handleHeartbeatResponse.call(client as unknown as BaseWebSocketClient);
-
       expect(client.stats.heartbeatCount).toBe(2);
     });
   });

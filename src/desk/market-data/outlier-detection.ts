@@ -14,10 +14,7 @@ import type {
   SymbolStats,
   StatsWindow,
 } from './outlier-detection-types';
-import {
-  createSymbolStats,
-  updateSymbolStats,
-} from './outlier-statistical-helpers';
+import { updateSymbolStats } from './outlier-statistical-helpers';
 import {
   detectPriceOutliers,
   detectVolumeOutliers,
@@ -26,9 +23,11 @@ import {
 import {
   DEFAULT_CONFIG,
   SEVERITY_ORDER,
+  appendWindowSample,
   computeMedianValue,
-  resolveOutlierStatsAndWindow,
   dispatchOutlierEvent,
+  ensureSymbolStatsEntry,
+  resolveOutlierStatsAndWindow,
 } from './outlier-detection-config';
 
 // Re-exports for backward compatibility
@@ -45,9 +44,11 @@ export { detectPriceOutliers, detectVolumeOutliers } from './outlier-detection-a
 export {
   DEFAULT_CONFIG,
   SEVERITY_ORDER,
+  appendWindowSample,
   computeMedianValue,
-  resolveOutlierStatsAndWindow,
   dispatchOutlierEvent,
+  ensureSymbolStatsEntry,
+  resolveOutlierStatsAndWindow,
 } from './outlier-detection-config';
 
 export class OutlierDetector {
@@ -62,25 +63,19 @@ export class OutlierDetector {
   }
 
   addPriceSample(symbol: string, price: number, provider: MarketDataSource): void {
-    this.ensureStats(symbol);
-    const w = this.ensureWindow(this.priceWindows, symbol);
-    w.prices.push(price);
-    w.timestamps.push(Date.now());
-    if (w.prices.length > this.config.windowSize) { w.prices.shift(); w.timestamps.shift(); }
-    updateSymbolStats(this.stats.get(symbol)!, price, 0);
-    this.computeMedian(symbol, w.prices);
-    const events = detectPriceOutliers(symbol, this.stats.get(symbol)!, w, this.config, provider);
+    const symbolStats = ensureSymbolStatsEntry(this.stats, symbol);
+    const w = appendWindowSample(this.priceWindows, symbol, price, this.config.windowSize, 'price');
+    updateSymbolStats(symbolStats, price, 0);
+    if (w.prices.length > 0) symbolStats.priceMedian = computeMedianValue(w.prices);
+    const events = detectPriceOutliers(symbol, symbolStats, w, this.config, provider);
     events.forEach((e) => this.processEvent(e));
   }
 
   addVolumeSample(symbol: string, volume: number, provider: MarketDataSource): void {
-    this.ensureStats(symbol);
-    const w = this.ensureWindow(this.volumeWindows, symbol);
-    w.volumes.push(volume);
-    w.timestamps.push(Date.now());
-    if (w.volumes.length > this.config.windowSize) { w.volumes.shift(); w.timestamps.shift(); }
-    updateSymbolStats(this.stats.get(symbol)!, 0, volume);
-    const events = detectVolumeOutliers(symbol, this.stats.get(symbol)!, w, this.config, provider);
+    const symbolStats = ensureSymbolStatsEntry(this.stats, symbol);
+    const w = appendWindowSample(this.volumeWindows, symbol, volume, this.config.windowSize, 'volume');
+    updateSymbolStats(symbolStats, 0, volume);
+    const events = detectVolumeOutliers(symbol, symbolStats, w, this.config, provider);
     events.forEach((e) => this.processEvent(e));
   }
 
@@ -125,22 +120,6 @@ export class OutlierDetector {
   onOutlier(cb: (event: OutlierEvent) => void): void { this.callbacks.push(cb); }
   removeCallback(cb: (event: OutlierEvent) => void): void {
     this.callbacks = this.callbacks.filter((c) => c !== cb);
-  }
-
-  private ensureStats(symbol: string): void {
-    if (!this.stats.has(symbol)) this.stats.set(symbol, createSymbolStats());
-  }
-
-  private ensureWindow(map: Map<string, StatsWindow>, symbol: string): StatsWindow {
-    let w = map.get(symbol);
-    if (!w) { w = { prices: [], volumes: [], timestamps: [] }; map.set(symbol, w); }
-    return w;
-  }
-
-  private computeMedian(symbol: string, prices: number[]): void {
-    const stats = this.stats.get(symbol);
-    if (!stats || prices.length === 0) return;
-    stats.priceMedian = computeMedianValue(prices);
   }
 
   private processEvent(event: OutlierEvent): void {

@@ -2,30 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { runMonteCarloPermutation } from '../monte-carlo-permutation';
 import { mulberry32 } from '../validation-types';
 
-// ── Fixtures (computed, not hardcoded metrics) ───────────────────────────────
-
-/** Skilled path: wins arrive early, losses late — extremal ordering. */
 function goodPathPnls(): number[] {
-  return [
-    ...Array.from({ length: 40 }, () => 10),
-    ...Array.from({ length: 20 }, () => -5),
-  ];
+  return [...Array.from({ length: 40 }, () => 10), ...Array.from({ length: 20 }, () => -5)];
 }
-
-/** Same trade multiset as goodPathPnls but worst-case ordering. */
 function badPathPnls(): number[] {
   return [...goodPathPnls()].reverse();
 }
-
-/** Seeded zero-drift random PnLs — a strategy with no edge. */
 function randomPnls(seed: number, n = 60): number[] {
   const rng = mulberry32(seed);
   return Array.from({ length: n }, () => (rng() < 0.5 ? 10 : -10));
 }
 
 const BASE = { initialCapital: 1000, nSimulations: 500, seed: 42 };
-
-// ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('runMonteCarloPermutation', () => {
   it('gives a low Sharpe p-value for a genuinely good path', () => {
@@ -34,8 +22,6 @@ describe('runMonteCarloPermutation', () => {
     if (!result.ok) return;
     expect(result.actualSharpe).toBeGreaterThan(0);
     expect(result.pValueSharpe).toBeLessThan(0.05);
-    // A shallow observed drawdown is not beatable by random orderings, so
-    // the max-drawdown p-value is high (not significant) — that is correct.
     expect(result.actualMaxDrawdown).toBeGreaterThan(-0.15);
     expect(result.pValueMaxDrawdown).toBeGreaterThanOrEqual(0);
     expect(result.pValueMaxDrawdown).toBeLessThanOrEqual(1);
@@ -107,12 +93,8 @@ describe('runMonteCarloPermutation', () => {
   });
 
   it('returns an error object for negative or fractional nSimulations', () => {
-    expect(
-      runMonteCarloPermutation(goodPathPnls(), { ...BASE, nSimulations: -5 }).ok,
-    ).toBe(false);
-    expect(
-      runMonteCarloPermutation(goodPathPnls(), { ...BASE, nSimulations: 10.5 }).ok,
-    ).toBe(false);
+    expect(runMonteCarloPermutation(goodPathPnls(), { ...BASE, nSimulations: -5 }).ok).toBe(false);
+    expect(runMonteCarloPermutation(goodPathPnls(), { ...BASE, nSimulations: 10.5 }).ok).toBe(false);
   });
 
   it('returns an error object for a negative seed', () => {
@@ -123,12 +105,8 @@ describe('runMonteCarloPermutation', () => {
   });
 
   it('returns an error object for non-positive initial capital', () => {
-    expect(
-      runMonteCarloPermutation(goodPathPnls(), { ...BASE, initialCapital: 0 }).ok,
-    ).toBe(false);
-    expect(
-      runMonteCarloPermutation(goodPathPnls(), { ...BASE, initialCapital: -100 }).ok,
-    ).toBe(false);
+    expect(runMonteCarloPermutation(goodPathPnls(), { ...BASE, initialCapital: 0 }).ok).toBe(false);
+    expect(runMonteCarloPermutation(goodPathPnls(), { ...BASE, initialCapital: -100 }).ok).toBe(false);
   });
 
   it('returns an error object when a PnL value is not finite', () => {
@@ -147,14 +125,12 @@ describe('runMonteCarloPermutation', () => {
   });
 
   it('handles running equity dropping to zero in returns computation', () => {
-    const pnls = [-1000, 10, 20];
-    const result = runMonteCarloPermutation(pnls, { initialCapital: 1000, nSimulations: 10, seed: 1 });
+    const result = runMonteCarloPermutation([-1000, 10, 20], { initialCapital: 1000, nSimulations: 10, seed: 1 });
     expect(result.ok).toBe(true);
   });
 
   it('handles non-positive peak equity in drawdown computation', () => {
-    const pnls = [-1500, -50, -50];
-    const result = runMonteCarloPermutation(pnls, { initialCapital: 1000, nSimulations: 10, seed: 1 });
+    const result = runMonteCarloPermutation([-1500, -50, -50], { initialCapital: 1000, nSimulations: 10, seed: 1 });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.actualMaxDrawdown).toBeLessThanOrEqual(0);

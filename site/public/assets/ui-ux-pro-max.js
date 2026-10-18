@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 /**
- * AlgoTrade OS — UI/UX Pro Max Interactive Command Palette, Theme Switcher & Kill-Switch Runtime
- * Attaches WCAG AAA keyboard navigation, Cmd+K 15-Screen Launcher, 3-Theme Switcher,
- * Bilingual VI/EN toggle, Pause-Pulse accessibility toggle, and <50ms Emergency Kill-Switch Modal.
+ * AlgoTrade OS — UI/UX Pro Max v5 Interactive Command Palette, Theme Switcher & Kill-Switch Runtime
+ * Attaches WCAG AAA keyboard navigation, Cmd+K 16-Screen Launcher with live search filter,
+ * 3-Theme Switcher, Bilingual VI/EN toggle, Pause-Pulse accessibility toggle, and <50ms Kill-Switch.
  */
 (function () {
   const SCREENS = [
@@ -21,6 +21,7 @@
     { id: '13', titleEn: 'Smart Order Routing (SOR) Liquidity Mesh', titleVi: 'Mạng Lưới Định Tuyến Lệnh Thông Minh SOR', href: 'order-routing-mesh.html' },
     { id: '14', titleEn: 'Multi-Regime Kelly, SVI & VPIN Cockpit', titleVi: 'Buồng Lái Kelly Đa Chế Độ, SVI & VPIN', href: 'regime-kelly-matrix.html' },
     { id: '15', titleEn: 'Hawkes Order-Flow, Avellaneda & Kyle Radar', titleVi: 'Radar Dòng Lệnh Hawkes, Avellaneda & Kyle', href: 'hawkes-orderflow-radar.html' },
+    { id: '16', titleEn: 'Queue-Reactive LOB, Roll & Hasbrouck Cockpit', titleVi: 'Buồng Lái Hàng Đợi LOB, Roll & Hasbrouck', href: 'limit-order-queue-cockpit.html' },
   ];
 
   const THEMES = ['OBSIDIAN_QUANTUM', 'BENTO_RAAS_GLASS', 'NORDIC_MINIMALIST_QUANT'];
@@ -63,7 +64,7 @@
     dock.className = 'pro-max-dock';
     dock.setAttribute('aria-label', 'UI/UX Pro Max Quick Controls');
     dock.innerHTML = [
-      '<button type="button" id="pro-max-cmd-btn" aria-label="Open 15-Screen Command Palette (Cmd+K)" style="padding:4px 8px;background:#161B24;color:#00F2FE;border:1px solid #1E2430;border-radius:4px;">&#8984;K SCREENS (15)</button>',
+      '<button type="button" id="pro-max-cmd-btn" aria-label="Open 16-Screen Command Palette (Cmd+K)" style="padding:4px 8px;background:#161B24;color:#00F2FE;border:1px solid #1E2430;border-radius:4px;">&#8984;K SCREENS (16)</button>',
       '<button type="button" id="pro-max-lang-btn" aria-label="Toggle Bilingual Language EN/VI" style="padding:4px 8px;background:#161B24;color:#F59E0B;border:1px solid #1E2430;border-radius:4px;">LANG: ' + savedLang + '</button>',
       '<button type="button" id="pro-max-theme-btn" aria-label="Cycle Design Theme" style="padding:4px 8px;background:#161B24;color:#E3E2E6;border:1px solid #1E2430;border-radius:4px;">THEME: ' + savedTheme.split('_')[0] + '</button>',
       '<button type="button" id="pro-max-motion-btn" aria-label="Toggle Live Pulse Animation" style="padding:4px 8px;background:#161B24;color:#00E599;border:1px solid #1E2430;border-radius:4px;">PULSE: ON</button>',
@@ -76,10 +77,10 @@
     modal.id = 'pro-max-cmd-modal';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
-    modal.setAttribute('aria-label', 'AlgoTrade OS 15-Screen Command Palette');
+    modal.setAttribute('aria-label', 'AlgoTrade OS 16-Screen Command Palette');
     const linksHtml = SCREENS.map(function (s) {
       return (
-        '<a href="' + s.href + '" style="display:flex;justify-content:space-between;padding:8px 10px;border:1px solid #1E2430;border-radius:4px;background:#141821;color:#F8FAFC;text-decoration:none;font-size:12px;">' +
+        '<a class="pro-max-screen-item" data-search="' + (s.id + ' ' + s.titleEn + ' ' + s.titleVi).toLowerCase() + '" href="' + s.href + '" style="display:flex;justify-content:space-between;padding:8px 10px;border:1px solid #1E2430;border-radius:4px;background:#141821;color:#F8FAFC;text-decoration:none;font-size:12px;">' +
         '<span><strong style="color:#00F2FE;">[' + s.id + ']</strong> ' + s.titleEn + '</span>' +
         '<span style="color:#94A3B8;font-size:11px;">' + s.titleVi + '</span>' +
         '</a>'
@@ -88,16 +89,27 @@
 
     modal.innerHTML =
       '<div style="width:100%;max-width:680px;background:#0F1218;border:1px solid #00F2FE;border-radius:4px;padding:16px;font-family:JetBrains Mono,monospace;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-      '<span style="color:#00F2FE;font-weight:700;font-size:13px;">ALGOTRADE OS // 15-SCREEN STITCH COMMAND PALETTE (UI/UX PRO MAX v4)</span>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+      '<span style="color:#00F2FE;font-weight:700;font-size:13px;">ALGOTRADE OS // 16-SCREEN STITCH COMMAND PALETTE (UI/UX PRO MAX v5)</span>' +
       '<button type="button" id="pro-max-close-modal" aria-label="Close Command Palette" style="padding:2px 8px;background:#161B24;color:#94A3B8;border:1px solid #1E2430;border-radius:4px;">ESC</button>' +
       '</div>' +
-      '<div style="display:grid;gap:6px;max-height:68vh;overflow-y:auto;">' + linksHtml + '</div>' +
+      '<input id="pro-max-cmd-filter" type="search" placeholder="Filter 16 screens (e.g. Hawkes, Kelly, SOR, Queue, Billing)..." aria-label="Filter Stitch screens" style="width:100%;padding:7px 10px;margin-bottom:10px;background:#141821;color:#F8FAFC;border:1px solid #1E2430;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:12px;" />' +
+      '<div style="display:grid;gap:6px;max-height:64vh;overflow-y:auto;">' + linksHtml + '</div>' +
       '</div>';
     document.body.appendChild(modal);
 
+    const filterInput = document.getElementById('pro-max-cmd-filter');
+    filterInput?.addEventListener('input', function (e) {
+      const q = (e.target.value || '').toLowerCase().trim();
+      modal.querySelectorAll('.pro-max-screen-item').forEach(function (item) {
+        const hay = item.getAttribute('data-search') || '';
+        item.style.display = !q || hay.includes(q) ? 'flex' : 'none';
+      });
+    });
+
     document.getElementById('pro-max-cmd-btn')?.addEventListener('click', function () {
       modal.classList.add('open');
+      filterInput?.focus();
     });
     document.getElementById('pro-max-close-modal')?.addEventListener('click', function () {
       modal.classList.remove('open');
@@ -109,6 +121,7 @@
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         modal.classList.toggle('open');
+        if (modal.classList.contains('open')) filterInput?.focus();
       } else if (e.key === 'Escape') {
         modal.classList.remove('open');
       }

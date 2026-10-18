@@ -107,3 +107,19 @@ export function generateHtmlBody(
 </html>
   `.trim();
 }
+
+export function buildThresholdAlertNotification(
+  recipient: string,
+  licenseKey: string,
+  threshold: number,
+  currentUsage: number,
+  dailyLimit: number,
+  percentUsed: number,
+  urgency: string,
+  urgencyColor: string,
+): { to: string; subject: string; body: string; html: string } {
+  const subject = `[${urgency}] Usage Alert: ${threshold}% threshold reached`;
+  const body = generatePlainTextBody(licenseKey, threshold, currentUsage, dailyLimit, percentUsed, urgency);
+  const html = generateHtmlBody(licenseKey, threshold, currentUsage, dailyLimit, percentUsed, urgency, urgencyColor);
+  return { to: recipient, subject, body, html };
+}

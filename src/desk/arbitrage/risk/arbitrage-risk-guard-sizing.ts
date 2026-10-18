@@ -63,21 +63,14 @@ export function evaluateSizingGates(
   // Gate 5: Max Trade Notional
   if (totalNotionalUsd > config.maxPerTradeNotionalUsd) {
     checks.notionalCapOk = false;
-    logger.warn('[ArbitrageRiskGuard] Basket exceeds max per-trade notional', {
-      totalNotionalUsd,
-      limit: config.maxPerTradeNotionalUsd,
-    });
+    logger.warn('[ArbitrageRiskGuard] Basket exceeds max per-trade notional', { totalNotionalUsd, limit: config.maxPerTradeNotionalUsd });
     return {
       errorResult: {
         allowed: false,
         rejectionReason: ArbitrageRejectionReason.EXCEEDS_NOTIONAL_CAP,
         adjustedNotionalUsd: 0,
         checks,
-        details: {
-          totalNotionalUsd,
-          limit: config.maxPerTradeNotionalUsd,
-          maxPerTradeNotionalUsd: config.maxPerTradeNotionalUsd,
-        },
+        details: { totalNotionalUsd, limit: config.maxPerTradeNotionalUsd, maxPerTradeNotionalUsd: config.maxPerTradeNotionalUsd },
       },
       effectiveKellyLimitUsd: 0,
     };

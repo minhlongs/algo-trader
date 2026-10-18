@@ -1,12 +1,6 @@
 /**
  * Cryptographically-verified SHA-256 HMAC hash-chained audit logger for arbitrage execution.
  *
- * Implements Milestone 4 (Requirement R4) audit logging:
- * - Integrates with unified audit log and computeRowHash
- * - Monotonic per-sequence HMAC-SHA256 chains linking each record to previousHash
- * - Dedicated lifecycle actions: arb.opportunity.ingested, arb.risk.rejected,
- *   arb.order.submitted, arb.order.filled, arb.order.unwound, arb.order.failed
- *
  * @module desk/arbitrage/telemetry/arbitrage-audit-logger
  */
 
@@ -62,17 +56,9 @@ export class ArbitrageAuditLogger {
     const sequenceNumber = this.chain.length + 1;
     const previousHash = this.chain.length > 0 ? this.chain[this.chain.length - 1].hash : '';
     const row = buildAuditRow({
-      actor: this.actor,
-      action,
-      resource,
-      result,
-      metadata,
-      ipHash: this.defaultIpHash,
-      tenantId,
-      customTimestamp,
-      sequenceNumber,
-      previousHash,
-      hmacKey: this.hmacKey,
+      actor: this.actor, action, resource, result, metadata,
+      ipHash: this.defaultIpHash, tenantId, customTimestamp,
+      sequenceNumber, previousHash, hmacKey: this.hmacKey,
     });
 
     try {
@@ -80,9 +66,7 @@ export class ArbitrageAuditLogger {
       row.writtenToDb = true;
     } catch (err: unknown) {
       logger.warn('[ArbitrageAuditLogger] DB write skipped (falling back to in-memory hash chain)', {
-        action,
-        resource,
-        error: err instanceof Error ? err.message : String(err),
+        action, resource, error: err instanceof Error ? err.message : String(err),
       });
     }
 
@@ -141,23 +125,9 @@ export class ArbitrageAuditLogger {
     await this.appendRow('arbitrage:risk_rejection', `arbitrage/opportunity/${params.opportunityId}`, 'denied', { rule: params.rule, reason: params.reason }, params.tenantId ?? 'system');
   }
 
-  getAuditHistory(): ChainedAuditRow[] {
-    return [...this.chain];
-  }
-
-  getChain(): ChainedAuditRow[] {
-    return [...this.chain];
-  }
-
-  getLastRecord(): ChainedAuditRow | undefined {
-    return this.chain.length > 0 ? this.chain[this.chain.length - 1] : undefined;
-  }
-
-  clear(): void {
-    this.chain.length = 0;
-  }
-
-  verifyChainIntegrity(): ChainVerificationResult {
-    return verifyAuditChainIntegrity(this.chain, this.hmacKey);
-  }
+  getAuditHistory(): ChainedAuditRow[] { return [...this.chain]; }
+  getChain(): ChainedAuditRow[] { return [...this.chain]; }
+  getLastRecord(): ChainedAuditRow | undefined { return this.chain.length > 0 ? this.chain[this.chain.length - 1] : undefined; }
+  clear(): void { this.chain.length = 0; }
+  verifyChainIntegrity(): ChainVerificationResult { return verifyAuditChainIntegrity(this.chain, this.hmacKey); }
 }

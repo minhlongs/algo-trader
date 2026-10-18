@@ -14,7 +14,12 @@ import type {
   SlaWindowReport,
   SlaReport,
 } from './sla-tracker-types';
-import { buildWindowReport, calculateHealthScore } from './sla-tracker-scoring';
+import {
+  buildWindowReport,
+  calculateHealthScore,
+  buildProviderSlaReport,
+  doesWindowMeetSlaTarget,
+} from './sla-tracker-scoring';
 import {
   recordRequestInWindows,
   recordCandlesInWindows,
@@ -23,6 +28,7 @@ import {
 import { updateProviderMetrics } from './sla-tracker-metrics';
 
 export type { SlaTrackerConfig, SlaWindowReport, SlaReport } from './sla-tracker-types';
+export { buildWindowReport, calculateHealthScore, buildProviderSlaReport, doesWindowMeetSlaTarget };
 
 /**
  * SLA Tracker — maintains sliding windows for provider SLA tracking:
@@ -68,49 +74,20 @@ export class SlaTracker {
    */
   getSlaReport(provider: MarketDataSource): SlaReport | null {
     const providerData = this.providerMetrics.get(provider);
-    if (!providerData) {
-      return null;
-    }
+    if (!providerData) return null;
 
-    const now = Date.now();
-    const windows: Record<number, SlaWindowReport> = {};
-
-    for (const [windowHours, window] of providerData) {
-      windows[windowHours] = buildWindowReport(window, windowHours, now);
-    }
-
-    const healthScore = calculateHealthScore(windows);
-
+    const report = buildProviderSlaReport(provider, providerData);
     if (this.config.enableMetrics) {
-      setProviderHealthScore(provider as string, healthScore);
+      setProviderHealthScore(provider as string, report.healthScore);
     }
-
-    return {
-      provider,
-      windows,
-      healthScore,
-      lastUpdate: now,
-    };
+    return report;
   }
 
   /**
    * Check if provider meets SLA target for a specific window
    */
   meetsSlaTarget(provider: MarketDataSource, windowHours: number = 24): boolean {
-    const report = this.getSlaReport(provider);
-    if (!report) {
-      return false;
-    }
-
-    const windowReport = report.windows[windowHours];
-    if (!windowReport) {
-      return false;
-    }
-
-    const meetsAvailability = windowReport.availability >= this.config.targetAvailability;
-    const meetsLatency = windowReport.avgLatency < 1000; // 1 second threshold
-
-    return meetsAvailability && meetsLatency;
+    return doesWindowMeetSlaTarget(this.getSlaReport(provider), windowHours, this.config.targetAvailability);
   }
 
   /**

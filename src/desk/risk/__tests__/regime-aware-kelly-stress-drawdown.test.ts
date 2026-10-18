@@ -31,7 +31,6 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
       const trade = sizeSignalToTradeSignal(highConvictionShock, {
         portfolioEquity: 10_000_000, currentPrice: 50_000, strictMaxCap: false,
       });
-
       expect(trade.quantity).toBe(0);
       expect(trade.side).toBe('buy');
     });
@@ -54,17 +53,11 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
     });
   });
 
-  // ==========================================================================
-  // 2. TieredDrawdownBreaker Protection & Tier Progression
-  // ==========================================================================
   describe('TieredDrawdownBreaker blocks trading and attenuates sizing across all tiers', () => {
     it('evaluates individual tiers: NORMAL, ALERT, REDUCE, HALT, HARD_STOP, and DAILY_PAUSE', () => {
       const breaker = new TieredDrawdownBreaker(100_000, {
-        alertThreshold: 0.05,
-        reduceThreshold: 0.10,
-        haltThreshold: 0.15,
-        hardStopThreshold: 0.20,
-        dailyLossThreshold: 0.03,
+        alertThreshold: 0.05, reduceThreshold: 0.10, haltThreshold: 0.15,
+        hardStopThreshold: 0.20, dailyLossThreshold: 0.03,
       });
 
       // 1. NORMAL (0% DD)
@@ -72,7 +65,6 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
       expect(breaker.getState().tier).toBe('NORMAL');
       expect(breaker.canOpenNewTrades()).toBe(true);
       expect(breaker.getSizingMultiplier()).toBe(1.0);
-
       let trade = sizeSignalToTradeSignal(makeSignal(), { portfolioEquity: 100_000, currentPrice: 50_000, drawdownBreaker: breaker });
       expect(trade.quantity).toBeGreaterThan(0);
 
@@ -82,7 +74,6 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
       expect(breaker.getState().tier).toBe('ALERT');
       expect(breaker.canOpenNewTrades()).toBe(true);
       expect(breaker.getSizingMultiplier()).toBe(0.75);
-
       trade = sizeSignalToTradeSignal(makeSignal(), { portfolioEquity: 94_000, currentPrice: 50_000, drawdownBreaker: breaker });
       expect(trade.quantity).toBeGreaterThan(0);
 
@@ -91,7 +82,6 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
       breaker.update(89_000);
       expect(breaker.getState().tier).toBe('REDUCE');
       expect(breaker.canOpenNewTrades()).toBe(false);
-
       trade = sizeSignalToTradeSignal(makeSignal(), { portfolioEquity: 89_000, currentPrice: 50_000, drawdownBreaker: breaker });
       expect(trade.quantity).toBe(0);
 
@@ -100,7 +90,6 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
       breaker.update(84_000);
       expect(breaker.getState().tier).toBe('HALT');
       expect(breaker.canOpenNewTrades()).toBe(false);
-
       trade = sizeSignalToTradeSignal(makeSignal(), { portfolioEquity: 84_000, currentPrice: 50_000, drawdownBreaker: breaker });
       expect(trade.quantity).toBe(0);
 
@@ -109,7 +98,6 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
       breaker.update(79_000);
       expect(breaker.getState().tier).toBe('HARD_STOP');
       expect(breaker.canOpenNewTrades()).toBe(false);
-
       trade = sizeSignalToTradeSignal(makeSignal(), { portfolioEquity: 79_000, currentPrice: 50_000, drawdownBreaker: breaker });
       expect(trade.quantity).toBe(0);
 
@@ -118,7 +106,6 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
       breaker.update(96_000);
       expect(breaker.getState().tier).toBe('DAILY_PAUSE');
       expect(breaker.canOpenNewTrades()).toBe(false);
-
       trade = sizeSignalToTradeSignal(makeSignal(), { portfolioEquity: 96_000, currentPrice: 50_000, drawdownBreaker: breaker });
       expect(trade.quantity).toBe(0);
     });
@@ -126,27 +113,21 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
     it('escalates from HALT to HARD_STOP during catastrophic collapse in halt window', () => {
       const breaker = new TieredDrawdownBreaker(100_000);
       breaker.reset(100_000);
-
       breaker.update(84_000);
       expect(breaker.getState().tier).toBe('HALT');
       expect(breaker.getPositionsToCloseFraction()).toBe(0.5);
 
       breaker.update(50_000);
-
       const stateDuringCollapse = breaker.getState();
       expect(stateDuringCollapse.tier).toBe('HARD_STOP');
       expect(breaker.getPositionsToCloseFraction()).toBe(1.0);
     });
   });
 
-  // ==========================================================================
-  // 3. Adversarial Robustness: Non-Finite Values (NaN, undefined, Infinity)
-  // ==========================================================================
   describe('Adversarial Robustness: Handling of Non-Finite Inputs', () => {
     it('handles NaN confidence safely by returning quantity 0', () => {
       const nanConfidenceSignal = makeSignal({ confidence: NaN, expectancy: 0.05 });
       const trade = sizeSignalToTradeSignal(nanConfidenceSignal, { portfolioEquity: 100_000, currentPrice: 50_000 });
-
       expect(Number.isFinite(trade.quantity)).toBe(true);
       expect(trade.quantity).toBe(0);
     });
@@ -154,7 +135,6 @@ describe('Regime-Aware Kelly Stress: Regimes, Breakers & Robustness', () => {
     it('handles NaN expectancy safely by returning quantity 0', () => {
       const nanExpectancySignal = makeSignal({ confidence: 0.70, expectancy: NaN });
       const trade = sizeSignalToTradeSignal(nanExpectancySignal, { portfolioEquity: 100_000, currentPrice: 50_000 });
-
       expect(Number.isFinite(trade.quantity)).toBe(true);
       expect(trade.quantity).toBe(0);
     });

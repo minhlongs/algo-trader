@@ -15,7 +15,12 @@ import {
   generateSmsBody,
   dispatchAlert as dispatchAlertFn,
 } from './threshold-alerts-dispatch';
-import { createThresholdNotification } from './threshold-alerts-notification';
+import {
+  DEFAULT_ALERT_CHANNEL_CONFIG,
+  createThresholdNotification,
+  invokeThresholdHandlers,
+  mergeAlertChannelConfig,
+} from './threshold-alerts-notification';
 import type {
   AlertHandler,
   AlertNotification,
@@ -30,11 +35,7 @@ export class ThresholdAlerts extends EventEmitter {
   private static instance: ThresholdAlerts;
   private handlers: Map<number, AlertHandler[]> = new Map();
   private recipients: Map<string, AlertRecipient> = new Map();
-  private channelConfig: AlertChannelConfig = {
-    email: { enabled: true, minThreshold: 80 },
-    sms: { enabled: true, minThreshold: 90 },
-    telegram: { enabled: true, minThreshold: 80 },
-  };
+  private channelConfig: AlertChannelConfig = { ...DEFAULT_ALERT_CHANNEL_CONFIG };
   private initialized = false;
 
   private constructor() {
@@ -57,9 +58,7 @@ export class ThresholdAlerts extends EventEmitter {
     const telegramInitialized = telegramBotService.initialize();
 
     logger.info('[ThresholdAlerts] Services initialized:', {
-      email: emailInitialized,
-      sms: smsInitialized,
-      telegram: telegramInitialized,
+      email: emailInitialized, sms: smsInitialized, telegram: telegramInitialized,
     });
 
     if (telegramInitialized) {
@@ -79,22 +78,14 @@ export class ThresholdAlerts extends EventEmitter {
       this.dispatchAlert(alert).catch((err) => {
         logger.error('[ThresholdAlerts] Failed to dispatch alert:', { err });
       });
-
-      const handlers = this.handlers.get(alert.threshold) || [];
-      for (const handler of handlers) {
-        try {
-          handler(alert);
-        } catch (error) {
-          logger.error('Alert handler error:', { error });
-        }
-      }
+      invokeThresholdHandlers(this.handlers.get(alert.threshold), alert, (error) => {
+        logger.error('Alert handler error:', { error });
+      });
     });
   }
 
   onThreshold(threshold: number, handler: AlertHandler): void {
-    if (!this.handlers.has(threshold)) {
-      this.handlers.set(threshold, []);
-    }
+    if (!this.handlers.has(threshold)) this.handlers.set(threshold, []);
     this.handlers.get(threshold)!.push(handler);
   }
 
@@ -148,13 +139,7 @@ export class ThresholdAlerts extends EventEmitter {
   }
 
   updateChannelConfig(config: Partial<AlertChannelConfig>): void {
-    this.channelConfig = {
-      ...this.channelConfig,
-      ...config,
-      email: { ...this.channelConfig.email, ...config.email },
-      sms: { ...this.channelConfig.sms, ...config.sms },
-      telegram: { ...this.channelConfig.telegram, ...config.telegram },
-    };
+    this.channelConfig = mergeAlertChannelConfig(this.channelConfig, config);
     logger.info('[ThresholdAlerts] Updated channel config:', { config: this.channelConfig });
   }
 }

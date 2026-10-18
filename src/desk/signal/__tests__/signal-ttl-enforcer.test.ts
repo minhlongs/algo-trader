@@ -1,15 +1,10 @@
-/**
- * Signal TTL Enforcer Tests
- * Covers register (incl. timer cancellation + zero-delay expiry), evict,
- * getLive filtering, sweepExpired, size, and clear
- */
+/** Signal TTL Enforcer Tests */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Signal } from '../signal-types';
 
 const { mockLogger } = vi.hoisted(() => ({
   mockLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
-
 vi.mock('../../utils/logger', () => ({ logger: mockLogger }));
 
 import { SignalTtlEnforcer } from '../signal-ttl-enforcer';
@@ -34,7 +29,6 @@ describe('SignalTtlEnforcer', () => {
     vi.clearAllMocks();
     enforcer = new SignalTtlEnforcer();
   });
-
   afterEach(() => vi.useRealTimers());
 
   describe('register', () => {
@@ -43,34 +37,28 @@ describe('SignalTtlEnforcer', () => {
       expect(enforcer.size).toBe(1);
       expect(enforcer.getLive()).toHaveLength(1);
     });
-
     it('cancels a stale timer before re-registering the same ID', () => {
       vi.useFakeTimers();
       enforcer.register(makeSignal({ id: 'dup', expiresAt: Date.now() + 1000 }));
       const firstTimer = getTimers(enforcer).get('dup');
       expect(firstTimer).toBeTruthy();
-
       enforcer.register(makeSignal({ id: 'dup', expiresAt: Date.now() + 5000 }));
       const secondTimer = getTimers(enforcer).get('dup');
       expect(secondTimer).not.toBe(firstTimer);
       expect(enforcer.size).toBe(1);
     });
-
     it('evicts the signal after the TTL expires (fake timers)', async () => {
       vi.useFakeTimers();
       enforcer.register(makeSignal({ id: 'exp', expiresAt: Date.now() + 1000 }));
       expect(enforcer.size).toBe(1);
-
       await vi.advanceTimersByTimeAsync(1001);
       expect(enforcer.size).toBe(0);
       expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Evicted signal exp'));
     });
-
     it('uses zero delay when the signal is already expired (delay <= 0)', async () => {
       vi.useFakeTimers();
       enforcer.register(makeSignal({ id: 'stale', expiresAt: Date.now() - 100 }));
       expect(enforcer.size).toBe(1);
-
       await vi.advanceTimersByTimeAsync(1);
       expect(enforcer.size).toBe(0);
     });
@@ -84,13 +72,11 @@ describe('SignalTtlEnforcer', () => {
       expect(enforcer.size).toBe(0);
       expect(getTimers(enforcer).has('ev')).toBe(false);
     });
-
     it('is a no-op when the signal does not exist', () => {
       enforcer.evict('missing');
       expect(enforcer.size).toBe(0);
       expect(mockLogger.debug).not.toHaveBeenCalled();
     });
-
     it('cancels the timer even when the signal is absent', () => {
       enforcer.register(makeSignal({ id: 'x', expiresAt: Date.now() + 1000 }));
       enforcer.evict('x');
@@ -107,7 +93,6 @@ describe('SignalTtlEnforcer', () => {
       expect(live).toHaveLength(1);
       expect(live[0]!.id).toBe('live');
     });
-
     it('returns empty array when no signals are live', () => {
       expect(enforcer.getLive()).toEqual([]);
     });
@@ -119,18 +104,15 @@ describe('SignalTtlEnforcer', () => {
       enforcer.register(makeSignal({ id: 'a', expiresAt: now - 100 }));
       enforcer.register(makeSignal({ id: 'b', expiresAt: now - 200 }));
       enforcer.register(makeSignal({ id: 'c', expiresAt: now + 1000 }));
-
       expect(enforcer.sweepExpired()).toBe(2);
       expect(enforcer.size).toBe(1);
       expect(enforcer.getLive().map((s) => s.id)).toEqual(['c']);
     });
-
     it('returns 0 when nothing is expired', () => {
       enforcer.register(makeSignal({ id: 'fresh', expiresAt: Date.now() + 1000 }));
       expect(enforcer.sweepExpired()).toBe(0);
       expect(enforcer.size).toBe(1);
     });
-
     it('returns 0 on an empty store', () => {
       expect(enforcer.sweepExpired()).toBe(0);
     });
@@ -153,7 +135,6 @@ describe('SignalTtlEnforcer', () => {
       expect(enforcer.size).toBe(0);
       expect(getTimers(enforcer).size).toBe(0);
     });
-
     it('is safe to call on an empty store', () => {
       expect(() => enforcer.clear()).not.toThrow();
     });
