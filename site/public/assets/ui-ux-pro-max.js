@@ -19,6 +19,7 @@
     { id: '11', titleEn: 'Algorithmic Stress Lab & Tail-Risk VaR', titleVi: 'Phòng Thí Nghiệm Stress & Rủi Ro Đuôi VaR', href: 'stress-lab.html' },
     { id: '12', titleEn: 'Walk-Forward & CPCV Backtest Studio', titleVi: 'Xưởng Kiểm Định Walk-Forward & CPCV', href: 'backtest-studio.html' },
     { id: '13', titleEn: 'Smart Order Routing (SOR) Liquidity Mesh', titleVi: 'Mạng Lưới Định Tuyến Lệnh Thông Minh SOR', href: 'order-routing-mesh.html' },
+    { id: '14', titleEn: 'Multi-Regime Kelly, SVI & VPIN Cockpit', titleVi: 'Buồng Lái Kelly Đa Chế Độ, SVI & VPIN', href: 'regime-kelly-matrix.html' },
   ];
 
   const THEMES = ['OBSIDIAN_QUANTUM', 'BENTO_RAAS_GLASS', 'NORDIC_MINIMALIST_QUANT'];

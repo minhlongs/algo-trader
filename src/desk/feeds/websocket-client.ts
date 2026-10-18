@@ -15,14 +15,25 @@ export { computeReconnectDelay, scheduleReconnect } from './ws-reconnect';
 export { startHeartbeat, stopHeartbeat, handleHeartbeatResponse } from './ws-heartbeat';
 export { forceReconnect } from './ws-force-reconnect';
 export { connectWebSocket, waitForConnection } from './ws-connection';
-export { computeLatencyStats, recordLatency, type LatencyStatsResult } from './ws-latency-stats';
+export {
+  computeLatencyStats,
+  recordLatency,
+  buildDefaultWebSocketConfig,
+  createInitialConnectionStats,
+  type LatencyStatsResult,
+} from './ws-latency-stats';
 
 import type { WebSocketMessage, WebSocketConfig, ConnectionStats, WebSocketState } from './ws-types';
 import { scheduleReconnect } from './ws-reconnect';
 import { startHeartbeat, stopHeartbeat, handleHeartbeatResponse } from './ws-heartbeat';
 import { forceReconnect } from './ws-force-reconnect';
 import { connectWebSocket, waitForConnection } from './ws-connection';
-import { computeLatencyStats, recordLatency } from './ws-latency-stats';
+import {
+  computeLatencyStats,
+  recordLatency,
+  buildDefaultWebSocketConfig,
+  createInitialConnectionStats,
+} from './ws-latency-stats';
 
 export abstract class BaseWebSocketClient extends EventEmitter {
   protected ws: WebSocket | null = null;
@@ -39,29 +50,8 @@ export abstract class BaseWebSocketClient extends EventEmitter {
 
   constructor(config: Partial<WebSocketConfig>) {
     super();
-    this.config = {
-      url: config.url || '',
-      reconnectDelay: config.reconnectDelay || 1000,
-      maxReconnectDelay: config.maxReconnectDelay || 30000,
-      heartbeatInterval: config.heartbeatInterval || 30000,
-      reconnectMultiplier: config.reconnectMultiplier || 2,
-      maxReconnectAttempts: config.maxReconnectAttempts || 10,
-      enableJitter: config.enableJitter ?? true,
-      heartbeatTimeout: config.heartbeatTimeout || 10000,
-      latencyTracking: config.latencyTracking ?? true,
-    };
-
-    this.stats = {
-      reconnectCount: 0,
-      messageCount: 0,
-      heartbeatCount: 0,
-      avgLatency: 0,
-      minLatency: Infinity,
-      maxLatency: 0,
-      p95Latency: 0,
-      latencySamples: [],
-      uptime: 0,
-    };
+    this.config = buildDefaultWebSocketConfig(config);
+    this.stats = createInitialConnectionStats();
   }
 
   abstract connect(): Promise<void>;
@@ -152,16 +142,6 @@ export abstract class BaseWebSocketClient extends EventEmitter {
    * Reset statistics
    */
   public resetStats(): void {
-    this.stats = {
-      reconnectCount: this.stats.reconnectCount,
-      messageCount: 0,
-      heartbeatCount: 0,
-      avgLatency: 0,
-      minLatency: Infinity,
-      maxLatency: 0,
-      p95Latency: 0,
-      latencySamples: [],
-      uptime: 0,
-    };
+    this.stats = createInitialConnectionStats(this.stats.reconnectCount);
   }
 }

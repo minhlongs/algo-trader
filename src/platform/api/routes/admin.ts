@@ -9,19 +9,25 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { CircuitBreaker, type CircuitStatus } from '../../../desk/risk/circuit-breaker';
+import { CircuitBreaker } from '../../../desk/risk/circuit-breaker';
 import { DrawdownMonitor } from '../../../desk/risk/drawdown-monitor';
 import { requireAdminKey } from '../middleware/require-admin-key';
 import { logger } from '../../../shared/utils/logger';
-import crypto from 'crypto';
-import { logAudit, hashIpAddress } from '../../../seed/security/audit-log';
-import type { IAuditEntry } from '../../../seed/security/audit-log';
+import {
+  haltSchema,
+  resetBreakerNameSchema,
+  logAdminTradingAudit,
+  formatAdminStatusPayload,
+  extractAdminErrorMessage,
+} from './admin-helpers';
 
-// Zod schemas for request body validation
-const haltSchema = z.object({
-  reason: z.string().min(1, 'Reason is required').max(500, 'Reason too long'),
-});
+export {
+  haltSchema,
+  resetBreakerNameSchema,
+  logAdminTradingAudit,
+  formatAdminStatusPayload,
+  extractAdminErrorMessage,
+} from './admin-helpers';
 
 export const adminRouter: Router = Router();
 const circuitBreaker = new CircuitBreaker();
@@ -40,27 +46,12 @@ adminRouter.post('/halt', async (req: Request, res: Response) => {
     }
 
     await circuitBreaker.halt(parsed.data.reason);
-
-    await logAudit({
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      actor: 'admin',
-      action: 'admin_halt',
-      resource: 'Trading',
-      result: 'success',
-      metadata: {
-        reason: parsed.data.reason,
-      },
-      ipHash: hashIpAddress(undefined),
-      tenantId: 'system-tenant',
-    } as IAuditEntry);
+    await logAdminTradingAudit('admin_halt', { reason: parsed.data.reason });
 
     res.json({ success: true, message: `Trading halted: ${parsed.data.reason}` });
   } catch (error) {
     logger.error('[Admin] Halt trading failed', { error: String(error) });
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to halt trading',
-    });
+    res.status(500).json({ error: extractAdminErrorMessage(error, 'Failed to halt trading') });
   }
 });
 
@@ -72,25 +63,12 @@ adminRouter.post('/resume', async (req: Request, res: Response) => {
   try {
     await circuitBreaker.reset();
     await drawdownMonitor.resume();
-
-    await logAudit({
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      actor: 'admin',
-      action: 'admin_resume',
-      resource: 'Trading',
-      result: 'success',
-      metadata: {},
-      ipHash: hashIpAddress(undefined),
-      tenantId: 'system-tenant',
-    } as IAuditEntry);
+    await logAdminTradingAudit('admin_resume', {});
 
     res.json({ success: true, message: 'Trading resumed' });
   } catch (error) {
     logger.error('[Admin] Resume trading failed', { error: String(error) });
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to resume trading',
-    });
+    res.status(500).json({ error: extractAdminErrorMessage(error, 'Failed to resume trading') });
   }
 });
 
@@ -104,17 +82,9 @@ adminRouter.get('/status', async (req: Request, res: Response) => {
       circuitBreaker.getStatus(),
       drawdownMonitor.getMetrics(),
     ]);
-
-    res.json({
-      trading: circuitStatus.state === 'CLOSED' && !drawdownMetrics.isHalted,
-      circuitBreaker: circuitStatus,
-      drawdown: drawdownMetrics,
-      timestamp: Date.now(),
-    });
+    res.json(formatAdminStatusPayload(circuitStatus, drawdownMetrics));
   } catch (error) {
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch status',
-    });
+    res.status(500).json({ error: extractAdminErrorMessage(error, 'Failed to fetch status') });
   }
 });
 
@@ -138,8 +108,7 @@ adminRouter.get('/circuit-breakers', requireAdminKey, async (_req: Request, res:
  */
 adminRouter.post('/circuit-breakers/:name/reset', requireAdminKey, async (req: Request, res: Response) => {
   try {
-    const schema = z.object({ name: z.string().min(1) });
-    const parsed = schema.safeParse({ name: req.params.name });
+    const parsed = resetBreakerNameSchema.safeParse({ name: req.params.name });
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid name' });
     }

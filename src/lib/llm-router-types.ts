@@ -67,3 +67,37 @@ export function assertOmniRouteConfig(config: LlmConfig): void {
     );
   }
 }
+
+export function initEndpointHealthMap(config: LlmConfig): Map<string, HealthState> {
+  const health = new Map<string, HealthState>();
+  for (const ep of [config.primary, config.fastTriage, config.fallback, config.qwen, config.cloud]) {
+    if (ep?.url && !health.has(ep.url)) {
+      health.set(ep.url, { healthy: true, lastCheck: 0, consecutiveFailures: 0 });
+    }
+  }
+  return health;
+}
+
+export function checkEndpointHealth(
+  health: Map<string, HealthState>,
+  url: string,
+  healthCheckIntervalMs: number,
+): boolean {
+  const state = health.get(url);
+  if (!state) return true;
+  if (Date.now() - state.lastCheck > healthCheckIntervalMs) return true;
+  return state.healthy;
+}
+
+export function recordEndpointHealthy(health: Map<string, HealthState>, url: string): void {
+  health.set(url, { healthy: true, lastCheck: Date.now(), consecutiveFailures: 0 });
+}
+
+export function recordEndpointUnhealthy(health: Map<string, HealthState>, url: string): number {
+  const state = health.get(url) || { healthy: false, lastCheck: 0, consecutiveFailures: 0 };
+  state.healthy = false;
+  state.lastCheck = Date.now();
+  state.consecutiveFailures++;
+  health.set(url, state);
+  return state.consecutiveFailures;
+}

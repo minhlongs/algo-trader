@@ -5,21 +5,19 @@
  */
 
 import { logger } from '../../../shared/utils/logger';
-import { MultiTokenPool } from '../pool/multi-token-pool';
-import { ArbitrageType, ExecutionLeg, UnwindResult } from '../types/arbitrage-types';
+import { ExecutionLeg, UnwindResult } from '../types/arbitrage-types';
+import {
+  type UnwindOrderExecutor,
+  type UnwindOptions,
+  createEmptyUnwindResult,
+  computeInitialCashFlow,
+  computeUnwindCashDelta,
+  computeFallbackUnwindPrice,
+  buildFinalUnwindResult,
+  verifyZeroDeltaExposure as verifyZeroDeltaExposureMath,
+} from './compensatory-unwind-math';
 
-export type UnwindOrderExecutor = (
-  outcomeIndex: number,
-  action: 'BUY' | 'SELL',
-  size: number
-) => Promise<{ price: number; filled: number }>;
-
-export interface UnwindOptions {
-  opportunityType?: ArbitrageType;
-  pool?: MultiTokenPool;
-  unwindExecutor?: UnwindOrderExecutor;
-  takerFeeBps?: number;
-}
+export type { UnwindOrderExecutor, UnwindOptions };
 
 export class CompensatoryUnwindHandler {
   public static async unwindPartialFills(
@@ -27,24 +25,13 @@ export class CompensatoryUnwindHandler {
     options?: UnwindOptions
   ): Promise<UnwindResult> {
     if (!legs || legs.length === 0) {
-      return {
-        unwoundSets: 0, recoveredUsdc: 0, residualLossUsd: 0, completed: true,
-        netResidualPositions: [], residualDeltaExposure: 0, postUnwindLegs: [],
-      };
+      return createEmptyUnwindResult();
     }
 
-    const filledAmounts = legs.map((l) => l.filledSize);
-    const qMatched = Math.min(...filledAmounts);
+    const qMatched = Math.min(...legs.map((l) => l.filledSize));
     const isUnderpriced = options?.opportunityType === 'UNDERPRICED_BASKET';
     const feeRate = (options?.takerFeeBps ?? 10) / 10000;
-    let [netCashFlow, totalRecovered, allCompleted] = [0, 0, true];
-
-    // Net cash flow: BUY is cash outflow (-), SELL is cash inflow (+)
-    for (const leg of legs) {
-      netCashFlow += leg.action === 'BUY'
-        ? -leg.filledSize * leg.avgFillPrice
-        : leg.filledSize * leg.avgFillPrice;
-    }
+    let [netCashFlow, totalRecovered, allCompleted] = [computeInitialCashFlow(legs), 0, true];
 
     // Handle matched complete sets across all outcomes
     let matchedSetsSettled = false;
@@ -84,17 +71,13 @@ export class CompensatoryUnwindHandler {
       });
 
       let liquidatedSize = 0;
-      let unwindPrice = leg.avgFillPrice;
 
       try {
         if (options?.unwindExecutor) {
           const res = await options.unwindExecutor(outcomeIdx, unwindAction, surplus);
-          unwindPrice = res.price;
           liquidatedSize = res.filled;
           if (liquidatedSize < surplus) allCompleted = false;
-          const delta = unwindAction === 'SELL'
-            ? liquidatedSize * unwindPrice * (1 - feeRate)
-            : -liquidatedSize * unwindPrice * (1 + feeRate);
+          const delta = computeUnwindCashDelta(unwindAction, liquidatedSize, res.price, feeRate);
           netCashFlow += delta;
           if (unwindAction === 'SELL') totalRecovered += delta;
         } else if (options?.pool) {
@@ -103,7 +86,6 @@ export class CompensatoryUnwindHandler {
           const tradeRes = options.pool.executeTrade({
             poolId: options.pool.poolId, outcomeIndex: outcomeIdx, action: unwindAction, amount: tradeAmount,
           });
-          unwindPrice = tradeRes.effectivePrice;
           liquidatedSize = surplus;
           if (unwindAction === 'SELL') {
             netCashFlow += tradeRes.outputAmount;
@@ -112,11 +94,9 @@ export class CompensatoryUnwindHandler {
             netCashFlow -= tradeRes.inputAmount;
           }
         } else {
-          unwindPrice = unwindAction === 'SELL' ? leg.avgFillPrice * 0.98 : leg.avgFillPrice * 1.02;
+          const unwindPrice = computeFallbackUnwindPrice(unwindAction, leg.avgFillPrice);
           liquidatedSize = surplus;
-          const delta = unwindAction === 'SELL'
-            ? liquidatedSize * unwindPrice * (1 - feeRate)
-            : -liquidatedSize * unwindPrice * (1 + feeRate);
+          const delta = computeUnwindCashDelta(unwindAction, liquidatedSize, unwindPrice, feeRate);
           netCashFlow += delta;
           if (unwindAction === 'SELL') totalRecovered += delta;
         }
@@ -132,37 +112,18 @@ export class CompensatoryUnwindHandler {
       postUnwindLegs.push({ ...leg, filledSize: finalFilled });
     }
 
-    const netResidualPositions = postUnwindLegs.map((l) => l.filledSize);
-    const maxPos = Math.max(...netResidualPositions);
-    const minPos = Math.min(...netResidualPositions);
-    const residualDeltaExposure = Math.abs(maxPos - minPos);
-    const residualLossUsd = Math.max(0, -netCashFlow);
-    const finalCompleted = allCompleted && residualDeltaExposure < 1e-6;
-
+    const result = buildFinalUnwindResult(qMatched, totalRecovered, netCashFlow, allCompleted, postUnwindLegs);
     logger.info('[CompensatoryUnwindHandler] Unwind execution completed', {
       qMatched,
-      totalRecovered: Number(totalRecovered.toFixed(4)),
-      residualLossUsd: Number(residualLossUsd.toFixed(4)),
-      residualDeltaExposure: Number(residualDeltaExposure.toFixed(6)),
-      completed: finalCompleted,
+      totalRecovered: result.recoveredUsdc,
+      residualLossUsd: result.residualLossUsd,
+      residualDeltaExposure: result.residualDeltaExposure,
+      completed: result.completed,
     });
-
-    return {
-      unwoundSets: qMatched,
-      recoveredUsdc: Number(totalRecovered.toFixed(4)),
-      residualLossUsd: Number(residualLossUsd.toFixed(4)),
-      completed: finalCompleted,
-      netResidualPositions,
-      residualDeltaExposure: Number(residualDeltaExposure.toFixed(6)),
-      postUnwindLegs,
-    };
+    return result;
   }
 
   public static verifyZeroDeltaExposure(legsOrPositions: ExecutionLeg[] | number[]): boolean {
-    if (!legsOrPositions || legsOrPositions.length === 0) return true;
-    const values = typeof legsOrPositions[0] === 'number'
-      ? (legsOrPositions as number[])
-      : (legsOrPositions as ExecutionLeg[]).map((l) => l.filledSize);
-    return Math.abs(Math.max(...values) - Math.min(...values)) < 1e-6;
+    return verifyZeroDeltaExposureMath(legsOrPositions);
   }
 }

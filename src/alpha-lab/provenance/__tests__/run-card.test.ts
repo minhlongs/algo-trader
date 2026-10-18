@@ -10,21 +10,13 @@ import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  writeRunCard,
-  renderMarkdown,
-  hashConfig,
-  RUN_CARD_SCHEMA_VERSION,
-  type WriteRunCardInput,
-  type RunCard,
+  writeRunCard, renderMarkdown, hashConfig, RUN_CARD_SCHEMA_VERSION,
+  type WriteRunCardInput, type RunCard,
 } from '../run-card';
 
 let tmp: string;
-beforeEach(async () => {
-  tmp = await mkdtemp(join(tmpdir(), 'runcard-'));
-});
-afterEach(async () => {
-  await rm(tmp, { recursive: true, force: true });
-});
+beforeEach(async () => { tmp = await mkdtemp(join(tmpdir(), 'runcard-')); });
+afterEach(async () => { await rm(tmp, { recursive: true, force: true }); });
 
 const sampleInput: WriteRunCardInput = {
   runId: 'run-alpha-101',
@@ -39,29 +31,15 @@ const sampleInput: WriteRunCardInput = {
     filters: { regime: 'trending', minVol: 0.02 },
   },
   foldMetrics: {
-    fold_0_sharpe: 1.72,
-    fold_1_sharpe: 1.95,
-    fold_2_sharpe: 2.14,
-    fold_3_sharpe: 1.88,
-    fold_4_sharpe: undefined,
+    fold_0_sharpe: 1.72, fold_1_sharpe: 1.95, fold_2_sharpe: 2.14,
+    fold_3_sharpe: 1.88, fold_4_sharpe: undefined,
   },
-  dataSources: [
-    {
-      provider: 'gamma',
-      symbol: 'ETH/USDT',
-      timeframe: '1h',
-      start: '2026-01-01T00:00:00Z',
-      end: '2026-06-01T00:00:00Z',
-      retrievedAt: '2026-06-02T00:00:00Z',
-      candleCount: 3600,
-    },
-  ],
-  metrics: {
-    sharpe: 1.92,
-    maxDrawdown: -0.09,
-    winRate: 0.58,
-    profitFactor: 1.65,
-  },
+  dataSources: [{
+    provider: 'gamma', symbol: 'ETH/USDT', timeframe: '1h',
+    start: '2026-01-01T00:00:00Z', end: '2026-06-01T00:00:00Z',
+    retrievedAt: '2026-06-02T00:00:00Z', candleCount: 3600,
+  }],
+  metrics: { sharpe: 1.92, maxDrawdown: -0.09, winRate: 0.58, profitFactor: 1.65 },
   gateResults: [
     { gateId: 'sharpe-threshold', passed: true, detail: 'Sharpe >= 1.5' },
     { gateId: 'max-drawdown', passed: true, detail: 'Max DD <= 12%' },
@@ -111,13 +89,9 @@ describe('writeRunCard', () => {
 describe('renderMarkdown', () => {
   it('renders all sections when populated', () => {
     const card: RunCard = {
-      schemaVersion: '1.0.0',
-      runId: 'rc-full',
-      configHash: 'hash-123',
-      createdAt: '2026-09-28T12:00:00Z',
-      resultClass: 'PROMOTED_LIVE_ELIGIBLE',
-      strategyRef: 'strat-live',
-      hypothesisId: 'hyp-live-1',
+      schemaVersion: '1.0.0', runId: 'rc-full', configHash: 'hash-123',
+      createdAt: '2026-09-28T12:00:00Z', resultClass: 'PROMOTED_LIVE_ELIGIBLE',
+      strategyRef: 'strat-live', hypothesisId: 'hyp-live-1',
       hypothesis: 'Proven edge across 50 paper trades',
       lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
       parameters: { fastPeriod: 10, slowPeriod: 30 },
@@ -144,16 +118,9 @@ describe('renderMarkdown', () => {
 
   it('omits optional sections when absent', () => {
     const card: RunCard = {
-      schemaVersion: '1.0.0',
-      runId: 'rc-minimal',
-      configHash: 'hash-min',
-      createdAt: '2026-09-28T12:00:00Z',
-      resultClass: 'DISCOVERED',
-      strategyRef: 'strat-min',
-      dataSources: [],
-      metrics: {},
-      gateResults: [],
-      warnings: [],
+      schemaVersion: '1.0.0', runId: 'rc-minimal', configHash: 'hash-min',
+      createdAt: '2026-09-28T12:00:00Z', resultClass: 'DISCOVERED', strategyRef: 'strat-min',
+      dataSources: [], metrics: {}, gateResults: [], warnings: [],
     };
 
     const md = renderMarkdown(card);

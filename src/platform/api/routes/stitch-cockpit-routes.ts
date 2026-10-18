@@ -123,3 +123,25 @@ stitchCockpitRouter.get('/ui-ux-audit', (_req: Request, res: Response) => {
     res.status(500).json(sanitizeHttpError(err));
   }
 });
+
+const regimeKellyQuerySchema = z.object({
+  activeRegime: z
+    .enum(['BULL_QUIET', 'NORMAL_LIQUID', 'VOL_EXPANSION', 'TOXIC_FLASH_CRASH'])
+    .default('NORMAL_LIQUID'),
+  portfolioEquityUsd: z.coerce.number().positive().default(1248500),
+});
+
+stitchCockpitRouter.get('/regime-kelly', (req: Request, res: Response) => {
+  try {
+    const parsed = regimeKellyQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ ok: false, reason: 'Invalid regime-kelly query parameters', issues: parsed.error.issues });
+      return;
+    }
+    const regimeKelly = cockpitEngine.getRegimeKellySnapshot(parsed.data.activeRegime, parsed.data.portfolioEquityUsd);
+    res.status(200).json({ ok: true, regimeKelly });
+  } catch (err) {
+    res.status(500).json(sanitizeHttpError(err));
+  }
+});
+

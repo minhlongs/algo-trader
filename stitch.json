@@ -67,6 +67,11 @@
       "title": "Smart Order Routing (SOR) & Liquidity Aggregation Mesh Control Console",
       "file": "site/public/order-routing-mesh.html",
       "screenId": "projects/1566829715937419119/screens/c4f8a921b30d4e55a8179c6304d2e118"
+    },
+    {
+      "title": "Multi-Regime Fractional Kelly, SVI Surface & VPIN Toxicity Cockpit",
+      "file": "site/public/regime-kelly-matrix.html",
+      "screenId": "projects/1566829715937419119/screens/e9d2b741a60c4f88b3149e7205c3f229"
     }
   ]
 }

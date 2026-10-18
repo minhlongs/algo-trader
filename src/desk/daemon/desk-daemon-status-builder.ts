@@ -5,12 +5,13 @@
  */
 
 import type { DeskAutoConfig } from '../commands/desk-auto-types';
-import type { UnifiedTradingLoop } from '../orchestrator/unified-trading-loop';
+import { UnifiedTradingLoop } from '../orchestrator/unified-trading-loop';
 import type { IEngineSupervisor } from './engine-supervisor-types';
 import type {
   DeskStatusEngineEntry,
   DeskAllocationsResponse,
 } from './desk-status-server-types';
+import type { DeskMetricsRegistry } from '../telemetry/desk-metrics-registry';
 import { type DriftVerificationResult, verifyZeroDrift } from './desk-daemon-types';
 import { logger } from '../../shared/utils/logger';
 
@@ -25,6 +26,44 @@ export interface DeskStatusBuilderParams {
 }
 
 export class DeskDaemonStatusBuilder {
+  public static initLoop(config: DeskAutoConfig, existingLoop?: UnifiedTradingLoop): UnifiedTradingLoop {
+    if (existingLoop) return existingLoop;
+    const cash = config.capitalUsd * 0.20, alloc = (config.capitalUsd - cash) / 4;
+    const loop = new UnifiedTradingLoop(config.mode, config.capitalUsd, cash);
+    loop.riskGate.setEngineBudgets({ arbitrage: alloc, marl: alloc, amm: alloc, 'alpha-lab': alloc });
+    loop.riskGate.setNavAndCash(config.capitalUsd, cash);
+    return loop;
+  }
+
+  public static updateMetrics(
+    metricsRegistry: DeskMetricsRegistry,
+    loop: UnifiedTradingLoop,
+    processedOrders: number,
+  ): void {
+    const drift = DeskDaemonStatusBuilder.verifyDrift(loop);
+    metricsRegistry.updateFromSnapshot({
+      allocatedCapital: loop.riskGate.getEngineBudgets(),
+      queueDepth: loop.queue.size(),
+      fillRate: processedOrders > 0 ? 1.0 : 0.0,
+      circuitBreakerTier: loop.riskGate.getTier(),
+      driftUsd: drift.driftUsd,
+    });
+  }
+
+  public static bindSignalHandlers(
+    onSignal: (sig: string) => void,
+    skipSignalHandlers?: boolean,
+  ): Array<{ event: string; listener: () => void }> {
+    const bound: Array<{ event: string; listener: () => void }> = [];
+    if (skipSignalHandlers) return bound;
+    for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP'] as NodeJS.Signals[]) {
+      const listener = () => { onSignal(sig); };
+      process.on(sig, listener);
+      bound.push({ event: sig, listener });
+    }
+    return bound;
+  }
+
   public static verifyDrift(loop: UnifiedTradingLoop): DriftVerificationResult {
     const nav = loop.riskGate.getNav();
     const allocated = loop.riskGate.getEngineBudgets();

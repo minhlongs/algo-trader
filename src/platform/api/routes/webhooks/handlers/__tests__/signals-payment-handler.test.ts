@@ -40,8 +40,9 @@ import {
   handleSignalsIpnFinished,
   handleSignalsIpnCancelled,
 } from '../signals-payment-handler';
+import type { NowPaymentsIpnPayload } from '../../../../../billing/nowpayments-service';
 
-function ipn(overrides: Record<string, unknown> = {}) {
+function ipn(overrides: Record<string, unknown> = {}): NowPaymentsIpnPayload {
   return {
     payment_id: 'pay-1',
     payment_status: 'finished',
@@ -49,13 +50,11 @@ function ipn(overrides: Record<string, unknown> = {}) {
     price_currency: 'usd',
     order_id: 'sig_sub-1_1700000000',
     ...overrides,
-  } as any;
+  } as unknown as NowPaymentsIpnPayload;
 }
 
 describe('handleSignalsIpnFinished', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('returns early when the order_id has no subscriberId', async () => {
     await handleSignalsIpnFinished(ipn({ order_id: 'no-underscore-here' }));
@@ -95,23 +94,13 @@ describe('handleSignalsIpnFinished', () => {
 
   it('upgrades an existing subscription to PRO on a $99 payment', async () => {
     mockGetBySubscriberId.mockResolvedValue({
-      id: 'row-1',
-      subscriberId: 'sub-1',
-      chatId: 'chat-1',
-      tier: 'FREE',
-      active: true,
-      createdAt: 1,
+      id: 'row-1', subscriberId: 'sub-1', chatId: 'chat-1', tier: 'FREE', active: true, createdAt: 1,
     });
     await handleSignalsIpnFinished(ipn({ price_amount: 99 }));
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'row-1',
-        subscriberId: 'sub-1',
-        chatId: 'chat-1',
-        tier: 'PRO',
-        active: true,
-        createdAt: 1,
-        updatedAt: expect.any(Number),
+        id: 'row-1', subscriberId: 'sub-1', chatId: 'chat-1', tier: 'PRO',
+        active: true, createdAt: 1, updatedAt: expect.any(Number),
       }),
     );
     expect(mockLogger.info).toHaveBeenCalledWith(
@@ -125,19 +114,14 @@ describe('handleSignalsIpnFinished', () => {
     await handleSignalsIpnFinished(ipn({ price_amount: 299, order_id: 'sig_sub-5_2' }));
     expect(mockUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        subscriberId: 'sub-5',
-        tier: 'ENTERPRISE',
-        active: true,
-        chatId: undefined,
+        subscriberId: 'sub-5', tier: 'ENTERPRISE', active: true, chatId: undefined,
       }),
     );
   });
 });
 
 describe('handleSignalsIpnCancelled', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it('returns early when there is no subscriberId', async () => {
     await handleSignalsIpnCancelled(ipn({ order_id: 'bad' }));

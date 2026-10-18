@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.3.06] - 2026-10-18 — Quantitative Desk Waves 333–335, Stitch Screen #14 (`regime-kelly-matrix`) & Deep 165-LOC Refactor (`--deep`)
+
+### Added
+- **Stitch Screen #14 (`site/public/regime-kelly-matrix.html`) & UI/UX Pro Max v3**:
+  - Delivered `site/public/regime-kelly-matrix.html` and `queue/regime-kelly-matrix.html`, registered in `SITE.md`, `stitch.json`, and `site/public/assets/ui-ux-pro-max.js` (14-Screen Command Palette).
+  - Extracted `src/desk/opencoresaas2026monetization/stitch-ui-themes.ts` and `src/desk/opencoresaas2026monetization/stitch-regime-kelly-telemetry.ts`, and exposed `GET /regime-kelly` on `stitchCockpitRouter`.
+- **Wave 333: Thorp (2006) Continuous Multi-Regime Fractional Kelly & Drawdown Survival** (`src/desk/thorp2006kellycriterion/`).
+- **Wave 334: Bacry, Mastromatteo & Muzy (2015) Hawkes Order-Flow Branching Ratio & Criticality** (`src/desk/bacrymuzy2014hawkes/`).
+- **Wave 335: El Euch & Rosenbaum (2019) Rough Heston Fractional Kernel & Short-Term ATM Skew** (`src/desk/eluchalanrosenbaum2019roughheston/`).
+- **Test Suite**:
+  - Added `tests/unit/desk/wave_333_335_ui_ux_pro_max_v3_suite.test.ts` (4/4 passed).
+
+### Changed
+- **Deep 165-LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed all 30 remaining 166–168 LOC files in `src/` into cohesive single-responsibility submodules (`<= 155 LOC` each) so that **zero `.ts` files in `src/` exceed 165 LOC**.
+
 ## [3.3.05] - 2026-10-18 — Quantitative Desk Waves 330–332, UI/UX Pro Max 13-Screen Hardening (`2026.2-PRO-MAX`) & Deep 168-LOC Refactor (`--deep`)
 
 ### Added

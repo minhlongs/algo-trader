@@ -10,6 +10,7 @@ import {
   TwapConfig, TwapOrder, TwapResult, TwapChunkResult,
   GetDepthFn, ExecuteChunkFn, GetPriceFn,
   DEFAULT_TWAP_CONFIG, FLOAT_EPSILON,
+  planTwapChunks, createInitialTwapResult, finalizeTwapResult, waitInterChunkDelay,
 } from './twap-executor-types';
 
 export class TwapExecutor {
@@ -49,20 +50,7 @@ export class TwapExecutor {
   }
 
   planChunks(totalSizeUsd: number, requestedChunkSize?: number): number[] {
-    const chunkSize = Math.max(this.config.minChunkUsd, Math.min(this.config.maxChunkUsd, requestedChunkSize ?? this.config.maxChunkUsd));
-    const chunks: number[] = [];
-    let remaining = totalSizeUsd;
-    while (remaining > 0) {
-      const size = Math.min(chunkSize, remaining);
-      if (size < this.config.minChunkUsd && chunks.length > 0) {
-        chunks[chunks.length - 1] += size;
-        remaining = 0;
-      } else {
-        chunks.push(size);
-        remaining -= size;
-      }
-    }
-    return chunks;
+    return planTwapChunks(this.config, totalSizeUsd, requestedChunkSize);
   }
 
   async execute(order: TwapOrder, getDepth: GetDepthFn, executeChunk: ExecuteChunkFn, getPrice: GetPriceFn): Promise<TwapResult> {
@@ -75,14 +63,7 @@ export class TwapExecutor {
     const maxSlippage = order.maxSlippagePercent ?? this.config.maxSlippagePercent;
     const arrivalPrice = await getPrice(order.marketId);
     const chunks = this.planChunks(order.totalSizeUsd, order.chunkSizeUsd);
-
-    const result: TwapResult = {
-      marketId: order.marketId, side: order.side,
-      totalSizeUsd: order.totalSizeUsd, executedSizeUsd: 0,
-      chunksPlanned: chunks.length, chunksExecuted: 0,
-      averagePrice: 0, arrivalPrice, totalSlippagePercent: 0,
-      aborted: false, chunks: [], startedAt, completedAt: 0,
-    };
+    const result = createInitialTwapResult(order, arrivalPrice, chunks.length, startedAt);
 
     let totalCostWeighted = 0;
     let consecutiveFailures = 0;
@@ -146,19 +127,14 @@ export class TwapExecutor {
       }
 
       if (i < chunks.length - 1 && !result.aborted && !signal.aborted) {
-        await new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(resolve, delayMs);
-          signal.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('Aborted during delay')); }, { once: true });
-        }).catch(() => {
+        await waitInterChunkDelay(delayMs, signal).catch(() => {
           result.aborted = true;
           result.abortReason = result.abortReason ?? 'Cancelled during inter-chunk delay';
         });
       }
     }
 
-    result.averagePrice = result.executedSizeUsd > 0 ? totalCostWeighted / result.executedSizeUsd : 0;
-    result.totalSlippagePercent = arrivalPrice > 0 ? Math.abs(result.averagePrice - arrivalPrice) / arrivalPrice * 100 : 0;
-    result.completedAt = Date.now();
+    finalizeTwapResult(result, totalCostWeighted, arrivalPrice);
     this.activeController = null;
     logger.info(`[TWAP] Complete: ${result.chunksExecuted}/${result.chunksPlanned} chunks, $${result.executedSizeUsd.toFixed(0)}/$${order.totalSizeUsd.toFixed(0)}, avg slippage ${result.totalSlippagePercent.toFixed(2)}%`);
     return result;

@@ -60,3 +60,6 @@ export * as FoucaultKadanKandel2005MakeTake from '../foucault2005maketake/index'
 export * as Gatheral2006SviSurface from '../gatheral2006svisurface/index';
 export * as AndersenBollerslev1998IntradayVol from '../andersenbollerslev1998intradayvol/index';
 export * as EasleyLopezDePrado2012VpinToxicity from '../easleylopezdeprado2012vpintoxicity/index';
+export * as Thorp2006KellyCriterion from '../thorp2006kellycriterion/index';
+export * as BacryMuzy2014Hawkes from '../bacrymuzy2014hawkes/index';
+export * as ElEuchRosenbaum2019RoughHeston from '../eluchalanrosenbaum2019roughheston/index';

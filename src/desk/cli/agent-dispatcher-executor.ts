@@ -1,19 +1,71 @@
+import { trace, type Span } from '@opentelemetry/api';
 import { logger } from '../../shared/utils/logger';
 import { AgentConfig, ModelTier, TIER_CONFIG } from '../../agents/agent-config';
 import { OpenClawGateway } from '../../platform/workers/openclaw-gateway/client';
 import { CircuitBreaker } from '../../shared/resilience/circuit-breaker';
 import { AgentQueueManager } from '../../queues/agent-queue-manager';
 import type {
-  AgentExecutionContext,
-  AgentInput,
-  AgentOutputData,
-  AgentExecutionResult,
+  AgentExecutionContext, AgentInput, AgentOutputData, AgentExecutionResult,
 } from './agent-dispatcher-types';
 
 export interface DispatcherDependencies {
   gateway: OpenClawGateway;
   circuitBreaker: CircuitBreaker;
   tierQueues: Map<ModelTier, AgentQueueManager>;
+}
+
+export function startAgentSpan(
+  agentName: string,
+  config: AgentConfig,
+  context: AgentExecutionContext,
+): Span {
+  const tracer = trace.getTracer('algo-trader-agent');
+  return tracer.startSpan(`agent.${agentName}`, {
+    attributes: {
+      'agent.name': agentName,
+      'agent.tier': config.tier,
+      'tenant.id': context.tenantId,
+      'agent.priority': config.priority,
+      'cloud.region': process.env.REGION || 'unknown',
+      'deployment.environment': process.env.ENVIRONMENT || 'development',
+    },
+  });
+}
+
+export function recordAgentSpanResult(
+  span: Span,
+  result: AgentExecutionResult,
+  agentName: string,
+  latency: number,
+): AgentExecutionResult {
+  result.latencyMs = latency;
+  result.agentName = agentName;
+  span.setAttributes({
+    'agent.latency_ms': latency,
+    'agent.success': result.success,
+    'agent.model_tier': result.modelTier,
+    ...(result.jobId && { 'agent.job_id': result.jobId }),
+    ...(result.error && { 'agent.error': result.error }),
+  });
+  return result;
+}
+
+export function recordAgentSpanFailure(
+  span: Span,
+  error: unknown,
+  config: AgentConfig,
+  agentName: string,
+  latency: number,
+): AgentExecutionResult {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  span.recordException(error instanceof Error ? error : new Error(errMsg));
+  span.setAttributes({
+    'agent.latency_ms': latency,
+    'agent.success': false,
+    'agent.error': errMsg,
+    'agent.model_tier': config.tier,
+  });
+  return { success: false, error: errMsg, latencyMs: latency, agentName, modelTier: config.tier };
 }
 
 /**
@@ -37,11 +89,8 @@ export async function executeDirectCall(
     });
 
     return {
-      success: true,
-      data: response as AgentOutputData,
-      latencyMs: 0,
-      agentName: config.name,
-      modelTier: config.tier,
+      success: true, data: response as AgentOutputData,
+      latencyMs: 0, agentName: config.name, modelTier: config.tier,
     };
   } catch (error: unknown) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -52,13 +101,7 @@ export async function executeDirectCall(
       result.modelTier = config.fallbackTier;
       return result;
     }
-    return {
-      success: false,
-      error: errorMsg,
-      latencyMs: 0,
-      agentName: config.name,
-      modelTier: config.tier,
-    };
+    return { success: false, error: errorMsg, latencyMs: 0, agentName: config.name, modelTier: config.tier };
   } finally {
     clearTimeout(timeoutId);
   }
@@ -75,25 +118,16 @@ export async function executeQueuedCall(
   context: AgentExecutionContext,
 ): Promise<AgentExecutionResult> {
   const queue = tierQueues.get(config.tier);
-  if (!queue) {
-    throw new Error(`No queue configured for tier: ${config.tier}`);
-  }
+  if (!queue) throw new Error(`No queue configured for tier: ${config.tier}`);
 
   const job = await queue.add(config.name, {
     agentName: config.name,
     input,
-    context: {
-      tenantId: context.tenantId,
-      strategyId: context.strategyId,
-    },
+    context: { tenantId: context.tenantId, strategyId: context.strategyId },
   });
 
   return {
-    success: true,
-    jobId: job.id,
-    data: { status: 'queued' },
-    latencyMs: 0,
-    agentName: config.name,
-    modelTier: config.tier,
+    success: true, jobId: job.id, data: { status: 'queued' },
+    latencyMs: 0, agentName: config.name, modelTier: config.tier,
   };
 }

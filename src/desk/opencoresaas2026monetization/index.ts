@@ -14,6 +14,8 @@ export * from './readiness-auditor';
 export * from './repository-blueprint-auditor';
 export * from './license-gate';
 export * from './billing-meter';
+export * from './stitch-ui-themes';
 export * from './stitch-ui-cockpit';
 export * from './stitch-sor-mesh-telemetry';
+export * from './stitch-regime-kelly-telemetry';
 export * from './ui-ux-pro-max-auditor';

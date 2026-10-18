@@ -47,3 +47,33 @@ export function evaluatePressureLevel(
   if (rssMb >= warningMb) return 'warning';
   return 'normal';
 }
+
+export function appendMetricsHistory(
+  history: MemoryMetrics[],
+  metrics: MemoryMetrics,
+  maxSize: number,
+): void {
+  history.push(metrics);
+  if (history.length > maxSize) {
+    history.shift();
+  }
+}
+
+export function invokeGarbageCollection(): void {
+  if (typeof gc === 'function') (gc as () => void)();
+}
+
+export function buildCriticalPressurePayload(rss: number): string {
+  return JSON.stringify({
+    level: 'critical',
+    rss,
+    timestamp: Date.now(),
+  });
+}
+
+export function buildDegradedPressurePayload(): string {
+  return JSON.stringify({
+    action: 'degrade',
+    timestamp: Date.now(),
+  });
+}

@@ -13,10 +13,15 @@ import { logger } from '../utils/logger';
 import type { TieredDrawdownConfig, TieredDrawdownState, DrawdownTier, DrawdownEvent } from './tiered-drawdown-types';
 import { DEFAULT_CONFIG } from './tiered-drawdown-types';
 import { buildPersistedState, scheduleDeferredWrite, loadPersistedState } from './tiered-drawdown-persistence';
-import { evaluateDrawdownTier } from './tiered-drawdown-evaluator';
+import {
+  evaluateDrawdownTier,
+  resolveTierUpdate,
+  computeSizingMultiplier,
+  computePositionsToCloseFraction,
+} from './tiered-drawdown-evaluator';
 
 export type { TieredDrawdownConfig, TieredDrawdownState, DrawdownTier, DrawdownEvent } from './tiered-drawdown-types';
-export { evaluateDrawdownTier };
+export { evaluateDrawdownTier, resolveTierUpdate, computeSizingMultiplier, computePositionsToCloseFraction };
 
 interface DeferredWrite { data: ReturnType<typeof buildPersistedState>; timer: ReturnType<typeof setTimeout> | null; }
 
@@ -51,74 +56,35 @@ export class TieredDrawdownBreaker {
     if (newValue > this.highWaterMark) this.highWaterMark = newValue;
     this.dailyPnl = newValue - this.dailyStartValue;
 
-    const prevTier = this.tier;
-    const wasPaused = this.tier === 'DAILY_PAUSE' || this.tier === 'HALT';
-    const now = Date.now();
-    const dd = this.highWaterMark > 0 ? (this.highWaterMark - this.currentValue) / this.highWaterMark : 0;
-
     if (this.tier === 'HARD_STOP') {
       this.saveToDisk();
       return this.getState();
     }
 
-    if (dd >= this.config.hardStopThreshold) {
-      this.haltedUntil = null;
-      this.dailyPausedUntil = null;
-      this.evaluateTier(prevTier);
-    } else if (this.dailyPausedUntil && now < this.dailyPausedUntil) {
-      if (dd >= this.config.haltThreshold || dd >= this.config.reduceThreshold) {
-        this.dailyPausedUntil = null;
-        this.evaluateTier(prevTier);
-      } else {
-        this.tier = 'DAILY_PAUSE';
-      }
-    } else if (this.haltedUntil && now < this.haltedUntil) {
-      this.tier = 'HALT';
-    } else if (wasPaused) {
-      this.haltedUntil = null;
-      this.dailyPausedUntil = null;
-      this.evaluateTier(prevTier, true);
-      this.saveToDisk();
-      return this.getState();
-    } else {
-      this.evaluateTier(prevTier);
-    }
+    const result = resolveTierUpdate({
+      highWaterMark: this.highWaterMark,
+      currentValue: this.currentValue,
+      dailyStartValue: this.dailyStartValue,
+      config: this.config,
+      prevTier: this.tier,
+      haltedUntil: this.haltedUntil,
+      dailyPausedUntil: this.dailyPausedUntil,
+    });
+
+    this.tier = result.tier;
+    this.haltedUntil = result.haltedUntil;
+    this.dailyPausedUntil = result.dailyPausedUntil;
+    if (result.event) this.events.push(result.event);
 
     this.saveToDisk();
     return this.getState();
   }
 
-  private evaluateTier(prevTier: DrawdownTier, resuming = false): void {
-    const result = evaluateDrawdownTier({
-      highWaterMark: this.highWaterMark,
-      currentValue: this.currentValue,
-      dailyStartValue: this.dailyStartValue,
-      config: this.config,
-      prevTier,
-      resuming,
-    });
-
-    this.tier = result.tier;
-    if (result.haltedUntil !== null) this.haltedUntil = result.haltedUntil;
-    if (result.dailyPausedUntil !== null) this.dailyPausedUntil = result.dailyPausedUntil;
-    if (result.event) this.events.push(result.event);
-  }
-
   canOpenNewTrades(): boolean { return this.tier === 'NORMAL' || this.tier === 'ALERT'; }
 
-  getSizingMultiplier(): number {
-    if (this.tier === 'HARD_STOP' || this.tier === 'HALT') return 0;
-    if (this.tier === 'REDUCE') return 1 - this.config.reduceSizingReduction;
-    if (this.tier === 'ALERT') return 1 - this.config.alertSizingReduction;
-    return 1.0;
-  }
+  getSizingMultiplier(): number { return computeSizingMultiplier(this.tier, this.config); }
 
-  getPositionsToCloseFraction(): number {
-    if (this.tier === 'HARD_STOP') return 1.0;
-    if (this.tier === 'HALT') return 0.5;
-    if (this.tier === 'REDUCE') return 0.25;
-    return 0;
-  }
+  getPositionsToCloseFraction(): number { return computePositionsToCloseFraction(this.tier); }
 
   reset(newPortfolioValue: number): void {
     this.highWaterMark = newPortfolioValue;
@@ -135,7 +101,12 @@ export class TieredDrawdownBreaker {
 
   getState(): TieredDrawdownState {
     const dd = this.highWaterMark > 0 ? (this.highWaterMark - this.currentValue) / this.highWaterMark : 0;
-    return { highWaterMark: this.highWaterMark, currentValue: this.currentValue, drawdownPercent: dd * 100, tier: this.tier, sizingMultiplier: this.getSizingMultiplier(), haltedUntil: this.haltedUntil, dailyPausedUntil: this.dailyPausedUntil, dailyStartValue: this.dailyStartValue, dailyPnl: this.dailyPnl, events: [...this.events] };
+    return {
+      highWaterMark: this.highWaterMark, currentValue: this.currentValue, drawdownPercent: dd * 100,
+      tier: this.tier, sizingMultiplier: this.getSizingMultiplier(), haltedUntil: this.haltedUntil,
+      dailyPausedUntil: this.dailyPausedUntil, dailyStartValue: this.dailyStartValue,
+      dailyPnl: this.dailyPnl, events: [...this.events],
+    };
   }
 
   private shouldPersist(): boolean {
@@ -145,7 +116,10 @@ export class TieredDrawdownBreaker {
 
   private saveToDisk(): void {
     if (!this.shouldPersist()) return;
-    this.writeQueue.data = buildPersistedState(this.highWaterMark, this.currentValue, this.tier, this.haltedUntil, this.dailyPausedUntil, this.dailyStartValue, this.dailyPnl, this.events);
+    this.writeQueue.data = buildPersistedState(
+      this.highWaterMark, this.currentValue, this.tier, this.haltedUntil,
+      this.dailyPausedUntil, this.dailyStartValue, this.dailyPnl, this.events,
+    );
     scheduleDeferredWrite(this.writeQueue, this.writeQueue.data);
   }
 

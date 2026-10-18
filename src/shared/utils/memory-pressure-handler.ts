@@ -15,6 +15,10 @@ import {
   PressureLevel,
   DEFAULT_MEMORY_PRESSURE_CONFIG,
   evaluatePressureLevel,
+  appendMetricsHistory,
+  invokeGarbageCollection,
+  buildCriticalPressurePayload,
+  buildDegradedPressurePayload,
 } from './memory-pressure-types';
 import {
   extractMemoryMetrics,
@@ -63,12 +67,7 @@ export class MemoryPressureHandler {
 
   async checkAndHandle(): Promise<void> {
     const metrics = this.getMemoryMetrics();
-
-    this.metricsHistory.push(metrics);
-    if (this.metricsHistory.length > this.MAX_HISTORY_SIZE) {
-      this.metricsHistory.shift();
-    }
-
+    appendMetricsHistory(this.metricsHistory, metrics, this.MAX_HISTORY_SIZE);
     this.exportMetrics(metrics);
 
     const previousLevel = this.pressureLevel;
@@ -79,12 +78,8 @@ export class MemoryPressureHandler {
     );
 
     if (this.pressureLevel !== previousLevel) {
-      const rssMb = metrics.rss / 1024 / 1024;
-      logger.warn('[MemoryPressure] Level changed', {
-        from: previousLevel,
-        to: this.pressureLevel,
-        rssMb: rssMb.toFixed(1),
-      });
+      const rssMb = (metrics.rss / 1024 / 1024).toFixed(1);
+      logger.warn('[MemoryPressure] Level changed', { from: previousLevel, to: this.pressureLevel, rssMb });
 
       if (this.pressureLevel === 'critical') {
         recordMemoryPressureEvent('critical');
@@ -100,22 +95,14 @@ export class MemoryPressureHandler {
     }
   }
 
-  getMemoryMetrics(): MemoryMetrics {
-    return extractMemoryMetrics();
-  }
+  getMemoryMetrics(): MemoryMetrics { return extractMemoryMetrics(); }
 
   private async triggerCriticalCleanup(): Promise<void> {
     logger.error('[MemoryPressure] CRITICAL: Triggering aggressive cleanup');
     await this.triggerCleanup();
-
-    if (typeof gc === 'function') (gc as () => void)();
+    invokeGarbageCollection();
     if (this.config.onCritical) await this.config.onCritical();
-
-    await this.redis.publish('memory-pressure', JSON.stringify({
-      level: 'critical',
-      rss: this.getMemoryMetrics().rss,
-      timestamp: Date.now(),
-    }));
+    await this.redis.publish('memory-pressure', buildCriticalPressurePayload(this.getMemoryMetrics().rss));
     logger.error('[MemoryPressure] Aggressive cleanup complete');
   }
 
@@ -135,19 +122,14 @@ export class MemoryPressureHandler {
 
   private async defaultCriticalHandler(): Promise<void> {
     logger.error('[MemoryPressure] Critical handler - degrading functionality');
-    await this.redis.publish('memory-pressure:degraded', JSON.stringify({
-      action: 'degrade',
-      timestamp: Date.now(),
-    }));
+    await this.redis.publish('memory-pressure:degraded', buildDegradedPressurePayload());
   }
 
   private exportMetrics(metrics: MemoryMetrics): void {
     exportMetricsToPrometheus(metrics, this.pressureLevel, this.metricsHistory.length);
   }
 
-  getPressureLevel(): PressureLevel {
-    return this.pressureLevel;
-  }
+  getPressureLevel(): PressureLevel { return this.pressureLevel; }
 
   getMemorySummary(): { metrics: MemoryMetrics; level: PressureLevel; historySize: number } {
     return {

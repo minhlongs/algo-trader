@@ -25,6 +25,7 @@ Bilingual (Vietnamese & English) Multi-Tenant Quantitative Engine & Cloud RaaS C
 - [x] `stress-lab.html` — Algorithmic Stress Testing Lab & Extreme Tail-Risk VaR Simulation Cockpit
 - [x] `backtest-studio.html` — Walk-Forward & CPCV Backtest Studio
 - [x] `order-routing-mesh.html` — Smart Order Routing (SOR) & Liquidity Aggregation Mesh Console
+- [x] `regime-kelly-matrix.html` — Multi-Regime Fractional Kelly, SVI Surface & VPIN Toxicity Cockpit
 
 ## Roadmap & Delivered Screens
 
@@ -41,10 +42,13 @@ Bilingual (Vietnamese & English) Multi-Tenant Quantitative Engine & Cloud RaaS C
 11. `stress-lab.html` — Historical crisis replay presets (2010 Flash Crash, May 2021, FTX 2022), 99% CVaR/Expected Shortfall (-$84,200), GARCH(1,1) volatility smile, auto-deleveraging circuit breaker.
 12. `backtest-studio.html` — Walk-forward efficiency matrix (2021-2026 rolling folds), Marcos López de Prado PBO (4.2%) & Deflated Sharpe (2.91), Python/Cython parameter hyperspace sliders, non-linear slippage impact curve.
 13. `order-routing-mesh.html` — Multi-Venue Best Execution Heatmap (Binance, OKX, Bybit, Coinbase Prime, Kraken, Deribit), Dynamic Splitter Algorithm Selector (Almgren-Chriss, VIL, IS, Dark Pool Iceberg), $2.5M Fill Routing Sankey Diagram (98.4% fill rate, -0.42 bps slip), and Pre-Trade Toxicity Sentry (100ms, 1s, 10s mark-out PnL).
+14. `regime-kelly-matrix.html` — Multi-Regime Fractional Kelly Allocation Matrix (Thorp 2006), Gatheral (2006) SVI Volatility Smile & Durrleman No-Arbitrage Monitor, Andersen-Bollerslev (1998) Intraday Diurnal U-Shape Seasonality, and Easley-López de Prado (2012) VPIN Flow Toxicity CDF.
 
 ## Creative Freedom
 
 - [x] Cloudflare Durable Objects live shard telemetry map (`shard-asia-1`, `shard-us-east`, `shard-eu-west`).
 - [x] Real-time WebSockets trade feed simulator with simulated latency jitter (< 12ms live green pulse).
 - [x] Multi-Venue Smart Order Routing (SOR) Mesh Console with Cont-Kukanov (2017) & Laruelle-Lehalle (2013) dark/lit pool allocation.
+- [x] Multi-Regime Fractional Kelly & SVI Volatility Surface Cockpit with UI/UX Pro Max (`Cmd+K` 14-Screen Command Palette & 3-Theme Switcher).
+
 
