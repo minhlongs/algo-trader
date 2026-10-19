@@ -17,6 +17,13 @@ import {
   type PositionSizerFn,
   type ScenarioResult,
 } from './kelly-backtest-simulation';
+import {
+  createFixed2PercentSizer,
+  createKellyCorrelationSizer,
+  runSingleScenarioSimulation,
+} from './kelly-backtest-scenario-helpers';
+
+export { createFixed2PercentSizer, createKellyCorrelationSizer, runSingleScenarioSimulation };
 
 export interface BacktestParams {
   initialBankroll: number;
@@ -45,38 +52,18 @@ export function runScenarios(params: BacktestParams): ScenarioResult[] {
     randomSeed,
   } = params;
 
-  // Initialize Kelly position sizer
   const kellySizer = new KellyPositionSizer({
     kellyFraction,
     maxPositionFraction,
-    minPositionUsd: 1, // effectively no minimum for this simulation
+    minPositionUsd: 1,
   });
 
-  // ==========================================================================
-  // Define position sizing functions for each scenario
-  // ==========================================================================
+  const fixedSizer: PositionSizerFn = createFixed2PercentSizer();
+  const _kellySizers: PositionSizerFn[] = correlationScenarios.map((correlation) =>
+    createKellyCorrelationSizer(kellySizer, winProbability, winLossRatio, correlation),
+  );
 
-  // Fixed 2% sizing
-  const fixedSizer: PositionSizerFn = (portfolio) => portfolio * 0.02;
-
-  // Kelly sizers with different correlations
-  const _kellySizers: PositionSizerFn[] = correlationScenarios.map((correlation) => {
-    return (portfolio: number, _tradeIndex: number): number => {
-      const result = kellySizer.calculatePositionSize({
-        winProbability,
-        winLossRatio,
-        portfolioValue: portfolio,
-        correlation,
-      });
-      return result.positionSizeUsd;
-    };
-  });
-
-  // ==========================================================================
-  // Run simulations
-  // ==========================================================================
-
-  // Fixed 2% scenario (base case)
+  // Preserved verbatim for RNG consumption contract
   const rngFixed = new SeededRandom(randomSeed);
   const _fixedMetrics = simulateTrades(
     initialBankroll,
@@ -84,81 +71,54 @@ export function runScenarios(params: BacktestParams): ScenarioResult[] {
     winProbability,
     winLossRatio,
     fixedSizer,
-    rngFixed
+    rngFixed,
   );
 
-  // Kelly scenarios (each with fresh RNG seeded same value for fair comparison)
   for (let i = 0; i < correlationScenarios.length; i++) {
     const correlation = correlationScenarios[i];
-    // Create a sizer function that captures this correlation value
-    const sizer: PositionSizerFn = (portfolio: number, _tradeIndex: number) => {
-      const result = kellySizer.calculatePositionSize({
-        winProbability,
-        winLossRatio,
-        portfolioValue: portfolio,
-        correlation,
-      });
-      return result.positionSizeUsd;
-    };
-    const rng = new SeededRandom(randomSeed);
-    const kellyResults: { name: string; metrics: ReturnType<typeof simulateTrades> }[] = [];
-    kellyResults.push({
-      name: `Kelly (corr=${correlation})`,
-      metrics: simulateTrades(
+    const sizer = createKellyCorrelationSizer(kellySizer, winProbability, winLossRatio, correlation);
+    const kellyResults: ScenarioResult[] = [];
+    kellyResults.push(
+      runSingleScenarioSimulation(
+        `Kelly (corr=${correlation})`,
         initialBankroll,
         numTrades,
         winProbability,
         winLossRatio,
         sizer,
-        rng
+        randomSeed,
       ),
-    });
+    );
   }
 
-  // Wait, I need to be careful here. The kellySizers array has different correlation values
-  // Let me fix the simulation loop
-
-  const kellyResults: ScenarioResult[] = [];
-
-  // Run fixed scenario
-  const rngFixed2 = new SeededRandom(randomSeed);
-  kellyResults.push({
-    name: 'Fixed 2%',
-    metrics: simulateTrades(
+  const kellyResults: ScenarioResult[] = [
+    runSingleScenarioSimulation(
+      'Fixed 2%',
       initialBankroll,
       numTrades,
       winProbability,
       winLossRatio,
       fixedSizer,
-      rngFixed2
+      randomSeed,
     ),
-  });
+  ];
 
-  // Run Kelly scenarios
   for (let i = 0; i < correlationScenarios.length; i++) {
     const correlation = correlationScenarios[i];
-    const sizer: PositionSizerFn = (portfolio: number, _tradeIndex: number) => {
-      const result = kellySizer.calculatePositionSize({
-        winProbability,
-        winLossRatio,
-        portfolioValue: portfolio,
-        correlation,
-      });
-      return result.positionSizeUsd;
-    };
-    const rng = new SeededRandom(randomSeed);
-    kellyResults.push({
-      name: `Kelly (corr=${correlation})`,
-      metrics: simulateTrades(
+    const sizer = createKellyCorrelationSizer(kellySizer, winProbability, winLossRatio, correlation);
+    kellyResults.push(
+      runSingleScenarioSimulation(
+        `Kelly (corr=${correlation})`,
         initialBankroll,
         numTrades,
         winProbability,
         winLossRatio,
         sizer,
-        rng
+        randomSeed,
       ),
-    });
+    );
   }
 
   return kellyResults;
 }
+

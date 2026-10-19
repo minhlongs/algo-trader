@@ -1,13 +1,20 @@
-import { VenueBook, VenueId, OrderSide, OrderBookLevel } from './sor-types';
+import { VenueBook, VenueId, OrderSide } from './sor-types';
 import { FeeGasModel } from './fee-gas-model';
+import {
+  type UnifiedLiquidityLevel,
+  synthesizeCpmmOrderBook,
+  synthesizeLmsrOrderBook,
+  computeTopDepth,
+  mergeUnifiedLadder,
+} from './venue-book-aggregator-helpers';
 
-export interface UnifiedLiquidityLevel {
-  venueId: VenueId;
-  price: number;
-  quantity: number;
-  takerFeeBps: number;
-  gasCostUsd: number;
-}
+export type { UnifiedLiquidityLevel };
+export {
+  synthesizeCpmmOrderBook,
+  synthesizeLmsrOrderBook,
+  computeTopDepth,
+  mergeUnifiedLadder,
+};
 
 export class VenueBookAggregator {
   private readonly books: Map<VenueId, VenueBook> = new Map();
@@ -41,40 +48,7 @@ export class VenueBookAggregator {
     maxDepthRatio?: number;
   }): void {
     const venueId = params.venueId ?? 'amm_cpmm';
-    const slices = params.slices ?? 10;
-    const maxDepth = params.baseReserve * (params.maxDepthRatio ?? 0.20);
-    const sliceQty = maxDepth / slices;
-    const k = params.baseReserve * params.quoteReserve;
-
-    const asks: OrderBookLevel[] = [];
-    const bids: OrderBookLevel[] = [];
-
-    // Synthesize asks (buying base token)
-    let currentBase = params.baseReserve;
-    let currentQuote = params.quoteReserve;
-    for (let i = 0; i < slices; i++) {
-      const nextBase = currentBase - sliceQty;
-      if (nextBase <= 0) break;
-      const nextQuote = k / nextBase;
-      const quoteDelta = nextQuote - currentQuote;
-      const marginalPrice = quoteDelta / sliceQty;
-      asks.push([marginalPrice, sliceQty]);
-      currentBase = nextBase;
-      currentQuote = nextQuote;
-    }
-
-    // Synthesize bids (selling base token)
-    currentBase = params.baseReserve;
-    currentQuote = params.quoteReserve;
-    for (let i = 0; i < slices; i++) {
-      const nextBase = currentBase + sliceQty;
-      const nextQuote = k / nextBase;
-      const quoteDelta = currentQuote - nextQuote;
-      const marginalPrice = quoteDelta / sliceQty;
-      bids.push([marginalPrice, sliceQty]);
-      currentBase = nextBase;
-      currentQuote = nextQuote;
-    }
+    const { bids, asks } = synthesizeCpmmOrderBook(params);
 
     this.registerBook({
       venueId,
@@ -98,39 +72,7 @@ export class VenueBookAggregator {
     maxDepth?: number;
   }): void {
     const venueId = params.venueId ?? 'amm_lmsr';
-    const slices = params.slices ?? 10;
-    const maxDepth = params.maxDepth ?? params.b * 0.5;
-    const sliceQty = maxDepth / slices;
-    const { liabilities, b, outcomeIndex } = params;
-
-    const costFn = (q: number[]): number => {
-      const maxScaled = Math.max(...q.map(v => v / b));
-      const sumExp = q.reduce((acc, v) => acc + Math.exp(v / b - maxScaled), 0);
-      return b * (maxScaled + Math.log(sumExp));
-    };
-
-    const asks: OrderBookLevel[] = [];
-    const bids: OrderBookLevel[] = [];
-    const currentQ = [...liabilities];
-
-    // Asks: buy outcome token
-    for (let i = 0; i < slices; i++) {
-      const costBefore = costFn(currentQ);
-      currentQ[outcomeIndex] += sliceQty;
-      const costAfter = costFn(currentQ);
-      const marginalPrice = (costAfter - costBefore) / sliceQty;
-      asks.push([marginalPrice, sliceQty]);
-    }
-
-    // Bids: sell outcome token
-    const sellQ = [...liabilities];
-    for (let i = 0; i < slices; i++) {
-      const costBefore = costFn(sellQ);
-      sellQ[outcomeIndex] -= sliceQty;
-      const costAfter = costFn(sellQ);
-      const marginalPrice = (costBefore - costAfter) / sliceQty;
-      bids.push([marginalPrice, sliceQty]);
-    }
+    const { bids, asks } = synthesizeLmsrOrderBook(params);
 
     this.registerBook({
       venueId,
@@ -151,32 +93,10 @@ export class VenueBookAggregator {
   }
 
   public getTopDepth(side: OrderSide, levels = 5): number {
-    let total = 0;
-    for (const book of this.books.values()) {
-      const ladder = side === 'BUY' ? book.asks : book.bids;
-      for (let i = 0; i < Math.min(levels, ladder.length); i++) {
-        total += ladder[i][1];
-      }
-    }
-    return total;
+    return computeTopDepth(this.books.values(), side, levels);
   }
 
   public buildUnifiedLadder(side: OrderSide): UnifiedLiquidityLevel[] {
-    const ladder: UnifiedLiquidityLevel[] = [];
-    for (const book of this.books.values()) {
-      const levels = side === 'BUY' ? book.asks : book.bids;
-      for (const [price, quantity] of levels) {
-        if (quantity > 0) {
-          ladder.push({
-            venueId: book.venueId,
-            price,
-            quantity,
-            takerFeeBps: book.takerFeeBps,
-            gasCostUsd: book.gasCostUsd ?? 0,
-          });
-        }
-      }
-    }
-    return ladder;
+    return mergeUnifiedLadder(this.books.values(), side);
   }
 }

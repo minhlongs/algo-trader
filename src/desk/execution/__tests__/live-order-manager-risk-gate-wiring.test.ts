@@ -28,36 +28,22 @@ function makeAdapter(): PolymarketAdapter {
 }
 
 function makeTracker(): LivePositionTracker {
-  return {
-    recordFill: vi.fn(),
-    getPositions: vi.fn().mockReturnValue([]),
-    closePosition: vi.fn(),
-  } as unknown as LivePositionTracker;
+  return { recordFill: vi.fn(), getPositions: vi.fn().mockReturnValue([]), closePosition: vi.fn() } as unknown as LivePositionTracker;
 }
 
 function makeSignal(overrides: Partial<TradeSignal> = {}): TradeSignal {
   return {
-    tokenId: '0xtoken123',
-    side: 'BUY',
-    price: 0.65,
-    size: 15,
-    timestamp: Date.now(),
-    confidence: 0.85,
-    strategy: 'test-strat',
+    tokenId: '0xtoken123', side: 'BUY', price: 0.65, size: 15,
+    timestamp: Date.now(), confidence: 0.85, strategy: 'test-strat',
     ...overrides,
   } as TradeSignal;
 }
-
-// ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('LiveOrderManager — RiskGateManager wiring', () => {
   let adapter: PolymarketAdapter;
   let tracker: LivePositionTracker;
 
   beforeEach(() => {
-    // These tests exercise the live order-placement path directly, so they
-    // opt into LIVE mode explicitly. Production code never sets this — it is
-    // an operator env var gated by a literal-string comparison.
     process.env.LIVE_TRADING_ENABLED = 'true';
     resetExecutionModeCache();
     adapter = makeAdapter();
@@ -76,8 +62,6 @@ describe('LiveOrderManager — RiskGateManager wiring', () => {
     const guard = new LiveExecutionGuard({ capitalUsdc: 10_000, enabled: true });
     const riskGate = new RiskGateManager(guard);
     const mgr = new LiveOrderManager(adapter, tracker, 300_000, riskGate);
-
-    // 15 * 0.65 = $9.75 on $10k = 0.1% (well under 2.5% limit)
     const signal = makeSignal({ size: 15 });
     const result = await mgr.submitSignal(signal, 'test-strat');
     expect(result.orderID).toBe('ord-001');
@@ -88,21 +72,16 @@ describe('LiveOrderManager — RiskGateManager wiring', () => {
     const guard = new LiveExecutionGuard({ capitalUsdc: 1000, maxDailyDrawdown: 0.05, enabled: true });
     const riskGate = new RiskGateManager(guard);
     const mgr = new LiveOrderManager(adapter, tracker, 300_000, riskGate);
-
-    // Simulate loss exceeding 5% of $1000 = $50
     guard.recordLoss(-60);
-
     const signal = makeSignal({ size: 10 });
     await expect(mgr.submitSignal(signal, 'test-strat')).rejects.toThrow('RISK_GATE_REJECTED');
     expect(adapter.placeOrder).not.toHaveBeenCalled();
   });
 
   it('rejects order when position too large', async () => {
-    // 50 * 0.65 = $32.50 vs maxPositionFraction 2.5% of $1000 = $25 → rejected
     const guard = new LiveExecutionGuard({ capitalUsdc: 1000, maxPositionFraction: 0.025, enabled: true });
     const riskGate = new RiskGateManager(guard);
     const mgr = new LiveOrderManager(adapter, tracker, 300_000, riskGate);
-
     const signal = makeSignal({ size: 50 });
     await expect(mgr.submitSignal(signal, 'test-strat')).rejects.toThrow('RISK_GATE_REJECTED');
     expect(adapter.placeOrder).not.toHaveBeenCalled();
@@ -111,12 +90,9 @@ describe('LiveOrderManager — RiskGateManager wiring', () => {
   it('rejects order when circuit breaker is open', async () => {
     const guard = new LiveExecutionGuard({ capitalUsdc: 10_000, enabled: true });
     const riskGate = new RiskGateManager(guard);
-
-    // Trip circuit breaker: 3 consecutive losses (default maxConsecutiveLosses=3)
     guard.recordLoss(-100);
     guard.recordLoss(-100);
     guard.recordLoss(-100);
-
     const mgr = new LiveOrderManager(adapter, tracker, 300_000, riskGate);
     const signal = makeSignal({ size: 10 });
     await expect(mgr.submitSignal(signal, 'test-strat')).rejects.toThrow('RISK_GATE_REJECTED');
@@ -124,15 +100,10 @@ describe('LiveOrderManager — RiskGateManager wiring', () => {
   });
 
   it('bypasses position-size and circuit checks when guard is disabled', async () => {
-    // Guard disabled → guardOrder returns approved:true immediately.
-    // But RiskGateManager still runs its own drawdown/concurrent checks.
-    // So set capital high enough that drawdown/concurrent checks pass.
     const guard = new LiveExecutionGuard({ capitalUsdc: 100_000, enabled: false });
     const riskGate = new RiskGateManager(guard);
     const mgr = new LiveOrderManager(adapter, tracker, 300_000, riskGate);
-
-    // Oversized order → would normally fail position check, but guard is disabled
-    const signal = makeSignal({ size: 5000 }); // 5000 * 0.65 = $3250
+    const signal = makeSignal({ size: 5000 });
     const result = await mgr.submitSignal(signal, 'test-strat');
     expect(result.orderID).toBe('ord-001');
   });
@@ -141,8 +112,7 @@ describe('LiveOrderManager — RiskGateManager wiring', () => {
     const guard = new LiveExecutionGuard({ capitalUsdc: 10_000, enabled: true });
     const riskGate = new RiskGateManager(guard);
     const mgr = new LiveOrderManager(adapter, tracker, 300_000, riskGate);
-
-    const staleSignal = makeSignal({ timestamp: Date.now() - 300 }); // 300ms > 200ms TTL
+    const staleSignal = makeSignal({ timestamp: Date.now() - 300 });
     await expect(mgr.submitSignal(staleSignal, 'test-strat')).rejects.toThrow('STALE_SIGNAL');
     expect(adapter.placeOrder).not.toHaveBeenCalled();
   });
@@ -151,13 +121,9 @@ describe('LiveOrderManager — RiskGateManager wiring', () => {
     const guard = new LiveExecutionGuard({ capitalUsdc: 10_000, enabled: true });
     const riskGate = new RiskGateManager(guard);
     const mgr = new LiveOrderManager(adapter, tracker, 300_000, riskGate);
-
-    // Fire 10 rapid signals (burst limit) to exhaust rate limiter
     for (let i = 0; i < 10; i++) {
       await mgr.submitSignal(makeSignal(), 'rate-test');
     }
-
-    // 11th should be rate-limited
     await expect(mgr.submitSignal(makeSignal(), 'rate-test')).rejects.toThrow('RATE_LIMITED');
     expect(adapter.placeOrder).toHaveBeenCalledTimes(10);
   });

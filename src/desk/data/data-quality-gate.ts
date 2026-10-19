@@ -15,8 +15,13 @@
  */
 
 import type { OhlcvCandle } from './ohlcv-store';
-import { atrAt, timeframeToMs } from './quality-metrics';
+import { timeframeToMs } from './quality-metrics';
 import { logger } from '../../shared/utils/logger';
+import {
+  checkCandleInvariants,
+  checkCandleTransition,
+  computeCandleCoveragePct,
+} from './data-quality-checks';
 import type {
   DataQualityGateOptions,
   DataQualityReport,
@@ -25,6 +30,7 @@ import type {
 } from './data-quality-types';
 
 export { timeframeToMs } from './quality-metrics';
+export * from './data-quality-checks';
 export type {
   DataQualityGateOptions,
   DataQualityReport,
@@ -77,26 +83,7 @@ export function runDataQualityGate(
 
   for (let i = 0; i < candles.length; i++) {
     const c = candles[i];
-
-    // OHLC invariants
-    const maxOH = Math.max(c.open, c.close);
-    const minOH = Math.min(c.open, c.close);
-    if (c.high < maxOH || c.low > minOH) {
-      violations.push({
-        code: 'ohlc-invariant',
-        index: i,
-        message: `OHLC invariant violated at index ${i}: ` +
-          `high=${c.high} low=${c.low} open=${c.open} close=${c.close}`,
-      });
-    }
-
-    if (c.volume < 0) {
-      violations.push({
-        code: 'negative-volume',
-        index: i,
-        message: `Negative volume ${c.volume} at index ${i}`,
-      });
-    }
+    checkCandleInvariants(c, i, violations);
 
     if (c.volume === 0) {
       zeroStreak++;
@@ -105,46 +92,15 @@ export function runDataQualityGate(
       zeroStreak = 0;
     }
 
-    // Timestamp ordering + duplicates + gaps + price jumps (needs previous candle)
     if (i > 0) {
-      const prev = candles[i - 1];
-      const delta = c.timestamp.getTime() - prev.timestamp.getTime();
-
-      if (delta === 0) {
-        violations.push({
-          code: 'duplicate-timestamp',
-          index: i,
-          message: `Duplicate timestamp ${c.timestamp.toISOString()} at index ${i}`,
-        });
-      } else if (delta < 0) {
-        violations.push({
-          code: 'gap',
-          index: i,
-          message: `Out-of-order timestamp at index ${i}: ` +
-            `${c.timestamp.toISOString()} precedes ${prev.timestamp.toISOString()}`,
-        });
-      } else if (timeframeMs !== undefined && delta > 2 * timeframeMs) {
-        const missing = Math.round(delta / timeframeMs) - 1;
-        violations.push({
-          code: 'gap',
-          index: i,
-          message: `Gap of ${missing} missing candle(s) before index ${i} ` +
-            `(${prev.timestamp.toISOString()} -> ${c.timestamp.toISOString()})`,
-        });
-      }
-
-      const atr = atrAt(candles, i, atrPeriod);
-      if (atr !== undefined && atr > 0) {
-        const jump = Math.abs(c.close - prev.close);
-        if (jump > priceJumpAtrMultiple * atr) {
-          violations.push({
-            code: 'price-jump',
-            index: i,
-            message: `Price jump ${jump.toFixed(6)} exceeds ` +
-              `${priceJumpAtrMultiple}x ATR (${(priceJumpAtrMultiple * atr).toFixed(6)}) at index ${i}`,
-          });
-        }
-      }
+      checkCandleTransition(
+        candles,
+        i,
+        timeframeMs,
+        atrPeriod,
+        priceJumpAtrMultiple,
+        violations,
+      );
     }
   }
 
@@ -156,13 +112,7 @@ export function runDataQualityGate(
   }
 
   // ── Coverage ────────────────────────────────────────────────────────────────
-  let coveragePct = 1;
-  if (timeframeMs !== undefined && candles.length >= 2) {
-    const first = candles[0].timestamp.getTime();
-    const last = candles[candles.length - 1].timestamp.getTime();
-    const expected = Math.floor((last - first) / timeframeMs) + 1;
-    coveragePct = expected > 0 ? Math.min(1, candles.length / expected) : 1;
-  }
+  const coveragePct = computeCandleCoveragePct(candles, timeframeMs);
 
   if (coveragePct < minCoverage) {
     warnings.push({

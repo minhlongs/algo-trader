@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlgoTrade OS | Screen #16 — Queue-Reactive LOB, Roll Implied Spread &amp; Hasbrouck Information Share Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css" />
+  <style>
+    :root {
+      --bg-void: #08090C;
+      --bg-card: #12151C;
+      --border-hairline: #1E2430;
+      --cyan: #00F2FE;
+      --emerald: #00E599;
+      --amber: #FFB800;
+      --crimson: #FF3B30;
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-void);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: #0D1017;
+      border-bottom: 1px solid var(--border-hairline);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+    .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      padding: 4px 8px;
+      border: 1px solid var(--border-hairline);
+      border-radius: 4px;
+    }
+    .nav-links a.active {
+      color: var(--cyan);
+      border-color: var(--cyan);
+      background: rgba(0, 242, 254, 0.08);
+    }
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+      padding: 16px 20px 72px;
+    }
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-hairline);
+      border-radius: 4px;
+      padding: 16px;
+    }
+    .col-8 { grid-column: span 8; }
+    .col-4 { grid-column: span 4; }
+    .col-3 { grid-column: span 3; }
+    @media (max-width: 1024px) {
+      .col-8, .col-4, .col-3 { grid-column: span 12; }
+    }
+    h1, h2 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+    .kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    th, td {
+      padding: 9px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-hairline);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    th { color: var(--text-secondary); font-weight: 600; text-transform: uppercase; font-size: 11px; }
+    .pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .pill-emerald { background: rgba(0, 229, 153, 0.14); color: var(--emerald); border: 1px solid rgba(0, 229, 153, 0.4); }
+    .pill-cyan { background: rgba(0, 242, 254, 0.14); color: var(--cyan); border: 1px solid rgba(0, 242, 254, 0.4); }
+    .pill-amber { background: rgba(255, 184, 0, 0.14); color: var(--amber); border: 1px solid rgba(255, 184, 0, 0.4); }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+  <header class="topbar" role="banner">
+    <div>
+      <strong style="color:var(--cyan);">ALGOTRADE OS // SCREEN #16</strong>
+      <span style="color:var(--text-secondary);margin-left:10px;" data-en="QUEUE-REACTIVE LOB, ROLL IMPLIED SPREAD &amp; HASBROUCK INFORMATION SHARE COCKPIT" data-vi="BUỒNG LÁI HÀNG ĐỢI SỔ LỆNH LOB, CHÊNH LỆCH NGẦM ROLL &amp; THỊ PHẦN THÔNG TIN HASBROUCK">QUEUE-REACTIVE LOB, ROLL IMPLIED SPREAD &amp; HASBROUCK INFORMATION SHARE COCKPIT</span>
+    </div>
+    <nav class="nav-links" aria-label="Stitch Suite Navigation">
+      <a href="dashboard.html">01 Dashboard</a>
+      <a href="order-routing-mesh.html">13 SOR Mesh</a>
+      <a href="regime-kelly-matrix.html">14 Regime Kelly</a>
+      <a href="hawkes-orderflow-radar.html">15 Hawkes Radar</a>
+      <a href="limit-order-queue-cockpit.html" class="active">16 Queue Cockpit</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="bento-grid" role="main" aria-live="polite">
+    <section class="card col-3" aria-label="Top-of-Book Queue Imbalance">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="QUEUE IMBALANCE RATIO (CONT-STOIKOV)" data-vi="TỶ LỆ MẤT CÂN BẰNG HÀNG ĐỢI LOB">QUEUE IMBALANCE RATIO (CONT-STOIKOV)</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">+0.3143 <span class="pill pill-emerald">BID HEAVY</span></div>
+      <div class="kpi-sub mono">Best Bid: 18.4 BTC | Best Ask: 9.6 BTC</div>
+    </section>
+
+    <section class="card col-3" aria-label="Roll 1984 Implied Effective Spread">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="ROLL (1984) IMPLIED EFFECTIVE SPREAD" data-vi="CHÊNH LỆCH GIÁ NGẦM ĐỊNH ROLL (1984)">ROLL (1984) IMPLIED EFFECTIVE SPREAD</div>
+      <div class="kpi-value mono" style="color:var(--cyan);">1.64 bps <span class="pill pill-cyan">2√(-Cov)</span></div>
+      <div class="kpi-sub mono">Serial Return Autocovariance: -0.6724 bps²</div>
+    </section>
+
+    <section class="card col-3" aria-label="Hasbrouck 1995 Leader Information Share">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="HASBROUCK (1995) LEADER INFO SHARE" data-vi="THỊ PHẦN PHÁT HIỆN GIÁ HASBROUCK (1995)">HASBROUCK (1995) LEADER INFO SHARE</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">48.50% <span class="pill pill-emerald">BINANCE TY3</span></div>
+      <div class="kpi-sub mono">Co-Discovery: OKX (24.2%) + Hyperliquid (16.8%)</div>
+    </section>
+
+    <section class="card col-3" aria-label="Huang-Stoll 1997 Three-Way Decomposition">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="HUANG-STOLL (1997) ADVERSE SELECTION α" data-vi="PHÂN RÃ 3 THÀNH PHẦN HUANG-STOLL (1997)">HUANG-STOLL (1997) ADVERSE SELECTION α</div>
+      <div class="kpi-value mono" style="color:var(--amber);">46.20% <span class="pill pill-amber">3-WAY SPLIT</span></div>
+      <div class="kpi-sub mono">Inventory β: 18.5% | Order Processing: 35.3%</div>
+    </section>
+
+    <section class="card col-8" aria-label="Hasbrouck Price Discovery and Queue Depletion Matrix">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;" data-en="Hasbrouck (1995) Venue Information Share &amp;Huang-Stoll (1997) Spread Decomposition" data-vi="Thị Phần Khám Phá Giá Hasbrouck (1995) &amp; Phân Rã Chênh Lệch Giá Huang-Stoll (1997)">Hasbrouck (1995) Venue Information Share &amp; Huang-Stoll (1997) Spread Decomposition</h2>
+        <span class="pill pill-cyan mono">WAVES 339–341 LIVE</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Venue Node</th>
+            <th>Hasbrouck Info Share</th>
+            <th>Roll Spread (bps)</th>
+            <th>Adverse Selection α</th>
+            <th>100ms Depletion Prob</th>
+            <th>Discovery Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Binance Perp (TY3)</td>
+            <td style="color:var(--emerald);">48.5%</td>
+            <td>1.24 bps</td>
+            <td>44.8%</td>
+            <td>14.0%</td>
+            <td><span class="pill pill-emerald">PRICE_LEADER</span></td>
+          </tr>
+          <tr>
+            <td>OKX Perp (HKG)</td>
+            <td style="color:var(--cyan);">24.2%</td>
+            <td>1.58 bps</td>
+            <td>47.1%</td>
+            <td>21.0%</td>
+            <td><span class="pill pill-cyan">CO_DISCOVERY</span></td>
+          </tr>
+          <tr>
+            <td>Hyperliquid L1</td>
+            <td style="color:var(--cyan);">16.8%</td>
+            <td>1.82 bps</td>
+            <td>51.4%</td>
+            <td>26.0%</td>
+            <td><span class="pill pill-cyan">CO_DISCOVERY</span></td>
+          </tr>
+          <tr>
+            <td>Bybit Linear (SIN)</td>
+            <td style="color:var(--amber);">10.5%</td>
+            <td>1.94 bps</td>
+            <td>39.6%</td>
+            <td>19.0%</td>
+            <td><span class="pill pill-amber">LAGGING_FOLLOWER</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card col-4" aria-label="Huang-Stoll Three-Way Spread Breakdown Chart">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h2 style="font-size:15px;" data-en="Huang &amp; Stoll (1997) 3-Way Spread Split" data-vi="Phân Rã 3 Thành Phần Huang &amp; Stoll (1997)">Huang &amp; Stoll (1997) 3-Way Spread Split</h2>
+        <span class="pill pill-emerald mono">S = 1.64 bps</span>
+      </div>
+      <svg viewBox="0 0 360 175" width="100%" height="175" role="img" aria-label="Huang-Stoll Three-Way Spread Decomposition">
+        <rect width="360" height="175" fill="#0B0E14" rx="4" />
+        <rect x="28" y="34" width="140" height="28" fill="#FF3B30" rx="3" />
+        <rect x="168" y="34" width="56" height="28" fill="#FFB800" rx="3" />
+        <rect x="224" y="34" width="108" height="28" fill="#00F2FE" rx="3" />
+        <text x="28" y="88" fill="#FF3B30" font-family="JetBrains Mono" font-size="11">■ Adverse Selection (α = 46.2%)</text>
+        <text x="28" y="112" fill="#FFB800" font-family="JetBrains Mono" font-size="11">■ Inventory Holding (β = 18.5%)</text>
+        <text x="28" y="136" fill="#00F2FE" font-family="JetBrains Mono" font-size="11">■ Order Processing (1-α-β = 35.3%)</text>
+        <text x="28" y="160" fill="#00E599" font-family="JetBrains Mono" font-size="10">Queue Priority Survival: 86.0% @ 100ms</text>
+      </svg>
+    </section>
+  </main>
+
+  <script src="assets/ui-ux-pro-max.js" defer></script>
+</body>
+</html>

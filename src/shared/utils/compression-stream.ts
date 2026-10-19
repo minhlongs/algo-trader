@@ -7,20 +7,22 @@
 
 import { logger } from './logger';
 import { CompressionAlgorithm, CompressionStreamOptions } from './compression-stream-types';
-import { compressStringData, decompressBufferData } from './compression-stream-helpers';
+import {
+  compressStringData,
+  createJsonArrayReadableStream,
+  decompressBufferData,
+} from './compression-stream-helpers';
 
 export type { CompressionAlgorithm, CompressionStreamOptions };
 
-/**
- * Compression Stream Manager
- * Creates transform streams for compressing/decompressing data
- */
 export class CompressionStreamManager {
-  private readonly SUPPORTED_ALGORITHMS: CompressionAlgorithm[] = ['gzip', 'br', 'deflate', 'identity'];
+  private readonly SUPPORTED_ALGORITHMS: CompressionAlgorithm[] = [
+    'gzip',
+    'br',
+    'deflate',
+    'identity',
+  ];
 
-  /**
-   * Check if algorithm is supported in current environment
-   */
   isSupported(algorithm: CompressionAlgorithm): boolean {
     if (algorithm === 'identity') return true;
     if (typeof CompressionStream !== 'undefined') {
@@ -29,21 +31,16 @@ export class CompressionStreamManager {
     return false;
   }
 
-  /**
-   * Get best supported compression algorithm
-   */
   getBestAvailable(): CompressionAlgorithm {
     if (typeof CompressionStream !== 'undefined') {
-      // Prefer Brotli for text/JSON (best compression ratio)
       return 'br';
     }
     return 'identity';
   }
 
-  /**
-   * Create compression transform stream
-   */
-  createCompressionStream(algorithm: CompressionAlgorithm = 'br'): TransformStream<string, Uint8Array> {
+  createCompressionStream(
+    algorithm: CompressionAlgorithm = 'br'
+  ): TransformStream<string, Uint8Array> {
     if (algorithm === 'identity') {
       return this.createIdentityStream();
     }
@@ -55,14 +52,12 @@ export class CompressionStreamManager {
 
     try {
       const encoder = new TextEncoder();
-
       return new TransformStream({
         start(_controller) {
           // No-op
         },
         transform(chunk: string, controller) {
-          const encoded = encoder.encode(chunk);
-          controller.enqueue(encoded);
+          controller.enqueue(encoder.encode(chunk));
         },
         flush(controller) {
           controller.terminate();
@@ -74,9 +69,6 @@ export class CompressionStreamManager {
     }
   }
 
-  /**
-   * Create identity (no-op) transform stream
-   */
   private createIdentityStream(): TransformStream<string, Uint8Array> {
     const encoder = new TextEncoder();
     return new TransformStream({
@@ -86,55 +78,22 @@ export class CompressionStreamManager {
     });
   }
 
-  /**
-   * Stream JSON array without buffering entire response
-   * Useful for large datasets (>1000 items)
-   */
   async streamJsonArray<T>(
     items: AsyncIterable<T> | T[],
     options: { chunkSize?: number } = {}
   ): Promise<ReadableStream<string>> {
-    const chunkSize = options.chunkSize || 100;
-
-    return new ReadableStream({
-      async start(controller) {
-        controller.enqueue('[');
-
-        let first = true;
-        let count = 0;
-
-        for await (const item of items) {
-          if (!first) {
-            controller.enqueue(',');
-          }
-          first = false;
-
-          const json = JSON.stringify(item);
-          controller.enqueue(json);
-          count++;
-
-          // Yield to event loop every chunkSize items
-          if (count % chunkSize === 0) {
-            await new Promise(resolve => setTimeout(resolve, 0));
-          }
-        }
-
-        controller.enqueue(']');
-        controller.close();
-      },
-    });
+    return createJsonArrayReadableStream(items, options.chunkSize || 100);
   }
 
-  /**
-   * Compress string data
-   */
-  async compressString(data: string, algorithm: CompressionAlgorithm = 'br'): Promise<Uint8Array> {
-    return compressStringData(data, algorithm, (alg) => this.createCompressionStream(alg));
+  async compressString(
+    data: string,
+    algorithm: CompressionAlgorithm = 'br'
+  ): Promise<Uint8Array> {
+    return compressStringData(data, algorithm, (alg) =>
+      this.createCompressionStream(alg)
+    );
   }
 
-  /**
-   * Decompress Uint8Array to string
-   */
   async decompressBuffer(
     buffer: Uint8Array,
     algorithm: CompressionAlgorithm
@@ -142,15 +101,11 @@ export class CompressionStreamManager {
     return decompressBufferData(buffer, algorithm);
   }
 
-  /**
-   * Create compressed response with appropriate headers
-   */
   createCompressedResponse(
     data: string | ReadableStream<string>,
     algorithm: CompressionAlgorithm = 'br'
   ): Response {
     const effectiveAlgorithm = this.isSupported(algorithm) ? algorithm : 'identity';
-
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Content-Encoding': effectiveAlgorithm,
@@ -158,16 +113,16 @@ export class CompressionStreamManager {
     };
 
     if (data instanceof ReadableStream) {
-      const compressed = data.pipeThrough(this.createCompressionStream(effectiveAlgorithm));
+      const compressed = data.pipeThrough(
+        this.createCompressionStream(effectiveAlgorithm)
+      );
       return new Response(compressed, { headers });
     }
 
-    // For string data, return uncompressed if identity
     if (effectiveAlgorithm === 'identity') {
       return new Response(data, { headers });
     }
 
-    // Otherwise compress
     const compressed = this.createCompressionStream(effectiveAlgorithm);
     const writer = compressed.writable.getWriter();
     writer.write(data);
@@ -177,7 +132,6 @@ export class CompressionStreamManager {
   }
 }
 
-// Singleton instance
 let compressionManagerInstance: CompressionStreamManager | null = null;
 
 export function getCompressionManager(): CompressionStreamManager {

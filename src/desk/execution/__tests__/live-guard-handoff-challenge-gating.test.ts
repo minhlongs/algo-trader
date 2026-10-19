@@ -33,6 +33,15 @@ function createSignal(ageMs = 50, base = Date.now()): TradeSignal {
   };
 }
 
+function makeRequest(
+  strategyId: string,
+  lifecycleState: AlphaLifecycleState,
+  signal = createSignal(20),
+  order = createOrder(),
+): LiveOrderHandoffRequest {
+  return { strategyId, lifecycleState, signal, order };
+}
+
 describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
   let coordinator: LiveGuardHandoffCoordinator;
 
@@ -53,75 +62,45 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
     const nonEligibleStates: AlphaLifecycleState[] = ['DISCOVERED', 'PAPER_ACTIVE', 'RETIRED'];
 
     it.each(nonEligibleStates)('strictly rejects order with lifecycleState %s', (state) => {
-      const request: LiveOrderHandoffRequest = {
-        strategyId: `strat-${state.toLowerCase()}`,
-        lifecycleState: state,
-        signal: createSignal(20),
-        order: createOrder(),
-      };
-
-      const verdict = coordinator.evaluateLiveOrder(request);
-
+      const verdict = coordinator.evaluateLiveOrder(makeRequest(`strat-${state.toLowerCase()}`, state));
       expect(verdict.approved).toBe(false);
       expect(verdict.checks.promotionEligible).toBe(false);
-      expect(verdict.reason).toContain(`must be PROMOTED_LIVE_ELIGIBLE`);
+      expect(verdict.reason).toContain('must be PROMOTED_LIVE_ELIGIBLE');
     });
 
     it('approves promotion eligibility check ONLY for PROMOTED_LIVE_ELIGIBLE', () => {
-      const request: LiveOrderHandoffRequest = {
-        strategyId: 'strat-promoted',
-        lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-        signal: createSignal(20),
-        order: createOrder(),
-      };
-
-      const verdict = coordinator.evaluateLiveOrder(request);
-
+      const verdict = coordinator.evaluateLiveOrder(makeRequest('strat-promoted', 'PROMOTED_LIVE_ELIGIBLE'));
       expect(verdict.checks.promotionEligible).toBe(true);
       expect(verdict.approved).toBe(true);
     });
 
     it('adversarial test: non-promoted orders are rejected BEFORE any downstream risk check executes', () => {
-      const catastrophicRequest: LiveOrderHandoffRequest = {
-        strategyId: 'strat-adversarial',
-        lifecycleState: 'DISCOVERED',
-        signal: createSignal(5000),
-        order: createOrder(1.0, 10_000_000),
-      };
+      const catastrophicRequest = makeRequest(
+        'strat-adversarial',
+        'DISCOVERED',
+        createSignal(5000),
+        createOrder(1.0, 10_000_000),
+      );
 
       const verdict = coordinator.evaluateLiveOrder(catastrophicRequest);
-
       expect(verdict.approved).toBe(false);
       expect(verdict.checks.promotionEligible).toBe(false);
       expect(verdict.checks.signalTtlOk).toBe(true);
       expect(verdict.checks.positionSizeOk).toBe(true);
       expect(verdict.reason).toContain('must be PROMOTED_LIVE_ELIGIBLE');
 
-      const validPromotedRequest: LiveOrderHandoffRequest = {
-        strategyId: 'strat-adversarial',
-        lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-        signal: createSignal(20),
-        order: createOrder(),
-      };
-
+      const validPromotedRequest = makeRequest('strat-adversarial', 'PROMOTED_LIVE_ELIGIBLE');
       for (let i = 0; i < 10; i++) {
-        const v = coordinator.evaluateLiveOrder(validPromotedRequest);
-        expect(v.approved).toBe(true);
+        expect(coordinator.evaluateLiveOrder(validPromotedRequest).approved).toBe(true);
       }
     });
   });
 
   describe('Area 2: Signal TTL Boundary', () => {
     it('approves signal with age 199ms (within 200ms TTL)', () => {
-      const request: LiveOrderHandoffRequest = {
-        strategyId: 'strat-ttl',
-        lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-        signal: createSignal(199),
-        order: createOrder(),
-      };
-
-      const verdict = coordinator.evaluateLiveOrder(request);
-
+      const verdict = coordinator.evaluateLiveOrder(
+        makeRequest('strat-ttl', 'PROMOTED_LIVE_ELIGIBLE', createSignal(199)),
+      );
       expect(verdict.approved).toBe(true);
       expect(verdict.checks.signalTtlOk).toBe(true);
     });
@@ -130,15 +109,9 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
       const fixedNow = 1_700_000_000_000;
       vi.spyOn(Date, 'now').mockReturnValue(fixedNow);
       try {
-        const request: LiveOrderHandoffRequest = {
-          strategyId: 'strat-ttl',
-          lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-          signal: createSignal(201, fixedNow),
-          order: createOrder(),
-        };
-
-        const verdict = coordinator.evaluateLiveOrder(request);
-
+        const verdict = coordinator.evaluateLiveOrder(
+          makeRequest('strat-ttl', 'PROMOTED_LIVE_ELIGIBLE', createSignal(201, fixedNow)),
+        );
         expect(verdict.approved).toBe(false);
         expect(verdict.checks.signalTtlOk).toBe(false);
         expect(verdict.reason).toMatch(/STALE_SIGNAL.*exceeds TTL of 200ms/i);
@@ -151,15 +124,9 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
       const fixedNow = 1_700_000_000_000;
       vi.spyOn(Date, 'now').mockReturnValue(fixedNow);
       try {
-        const request: LiveOrderHandoffRequest = {
-          strategyId: 'strat-ttl',
-          lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-          signal: createSignal(200, fixedNow),
-          order: createOrder(),
-        };
-
-        const verdict = coordinator.evaluateLiveOrder(request);
-
+        const verdict = coordinator.evaluateLiveOrder(
+          makeRequest('strat-ttl', 'PROMOTED_LIVE_ELIGIBLE', createSignal(200, fixedNow)),
+        );
         expect(verdict.approved).toBe(true);
         expect(verdict.checks.signalTtlOk).toBe(true);
       } finally {
@@ -168,15 +135,9 @@ describe('Empirical Challenge: Promotion Gating & Signal TTL', () => {
     });
 
     it('rejects missing or zero timestamp signal as stale', () => {
-      const request: LiveOrderHandoffRequest = {
-        strategyId: 'strat-ttl',
-        lifecycleState: 'PROMOTED_LIVE_ELIGIBLE',
-        signal: { ...createSignal(50), timestamp: 0 },
-        order: createOrder(),
-      };
-
-      const verdict = coordinator.evaluateLiveOrder(request);
-
+      const verdict = coordinator.evaluateLiveOrder(
+        makeRequest('strat-ttl', 'PROMOTED_LIVE_ELIGIBLE', { ...createSignal(50), timestamp: 0 }),
+      );
       expect(verdict.approved).toBe(false);
       expect(verdict.checks.signalTtlOk).toBe(false);
       expect(verdict.reason).toMatch(/STALE_SIGNAL/i);

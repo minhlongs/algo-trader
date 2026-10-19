@@ -57,31 +57,17 @@ export class LsmcEngine {
     return type === OptionType.CALL ? Math.max(0, S - K) : Math.max(0, K - S);
   }
 
-  /**
-   * Main entry point for Longstaff-Schwartz Monte Carlo
-   */
   public static calculate(params: LsmcParams): LsmcResult {
-    const S0 = params.spotPrice;
-    const K = params.strikePrice;
-    const r = params.riskFreeRate;
-    const q = params.dividendYield;
-    const vol = params.volatility;
-    const T = params.timeToMaturity;
-    const type = params.optionType;
+    const { spotPrice: S0, strikePrice: K, riskFreeRate: r, dividendYield: q, volatility: vol, timeToMaturity: T, optionType: type } = params;
     const N = params.numPaths ?? 10000;
     const M = params.numSteps ?? 50;
     const basisTerms = params.basisTerms ?? 3;
-
     const dt = T / M;
     const df = Math.exp(-r * dt);
-
     const paths = this.generatePaths(S0, r, q, vol, T, M, N);
 
-    // Track the realized cashflow value for each path
     const cashflows = new Float64Array(N);
     const euroCashflows = new Float64Array(N);
-
-    // Terminal payoff
     for (let i = 0; i < N; i++) {
       const p = this.payoff(paths[i]![M]!, K, type);
       cashflows[i] = p;

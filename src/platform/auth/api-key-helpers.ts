@@ -3,21 +3,22 @@
  * Generates, hashes, stores, lists, and revokes developer API keys.
  * Uses scrypt for key hashing (N=16384, r=8, p=1 defaults).
  */
-import { scrypt, timingSafeEqual, randomBytes, randomUUID } from 'node:crypto';
-import { promisify } from 'node:util';
 import { getDbClient } from '../../shared/db/postgres-client';
-import { logger } from '../../shared/utils/logger';
+import {
+  createRawApiKeyMaterial,
+  hashKey,
+  verifyApiKey,
+  mapApiKeyListRow,
+  mapActiveKeyPrefixRow,
+} from './api-key-crypto-helpers';
 
-const scryptAsync = promisify(scrypt);
-
-// ── Constants ──────────────────────────────────────────────────────────
-
-const KEY_LENGTH_BYTES = 32;
-const KEY_PREFIX_LENGTH = 8;
-const SALT_LENGTH = 16;
-const HASH_LENGTH = 64;
-
-// ── Key Generation ────────────────────────────────────────────────────
+export {
+  createRawApiKeyMaterial,
+  hashKey,
+  verifyApiKey,
+  mapApiKeyListRow,
+  mapActiveKeyPrefixRow,
+};
 
 /**
  * Generate a new API key, hash it with scrypt, and persist to the database.
@@ -36,11 +37,7 @@ export async function generateApiKey(
   label: string;
   createdAt: Date;
 }> {
-  const rawBytes = randomBytes(KEY_LENGTH_BYTES);
-  const rawKey = rawBytes.toString('base64url');
-  const keyPrefix = rawKey.slice(0, KEY_PREFIX_LENGTH);
-  const keyHash = await hashKey(rawKey);
-  const id = randomUUID();
+  const { id, keyPrefix, keyHash, fullKey } = await createRawApiKeyMaterial();
 
   const db = getDbClient();
   await db.query(
@@ -50,7 +47,7 @@ export async function generateApiKey(
   );
 
   return {
-    fullKey: `${keyPrefix}.${rawKey}`,
+    fullKey,
     keyPrefix,
     keyHash,
     id,
@@ -59,32 +56,6 @@ export async function generateApiKey(
     createdAt: new Date(),
   };
 }
-
-// ── Hashing ───────────────────────────────────────────────────────────
-
-async function hashKey(key: string): Promise<string> {
-  const salt = randomBytes(SALT_LENGTH).toString('hex');
-  const derivedKey = (await scryptAsync(key, salt, HASH_LENGTH)) as Buffer;
-  return `${salt}:${derivedKey.toString('hex')}`;
-}
-
-/**
- * Verify a plaintext key against a stored scrypt hash (salt:hex format).
- */
-export async function verifyApiKey(key: string, stored: string): Promise<boolean> {
-  const [salt, hash] = stored.split(':');
-  if (!salt || !hash) return false;
-  try {
-    const derivedKey = (await scryptAsync(key, salt, HASH_LENGTH)) as Buffer;
-    const storedBuffer = Buffer.from(hash, 'hex');
-    if (derivedKey.length !== storedBuffer.length) return false;
-    return timingSafeEqual(derivedKey, storedBuffer);
-  } catch {
-    return false;
-  }
-}
-
-// ── Lookup ────────────────────────────────────────────────────────────
 
 /**
  * List active API keys for a tenant (masked — prefix only, no full hash).
@@ -106,15 +77,7 @@ export async function listApiKeys(tenantId: string): Promise<Array<{
      ORDER BY created_at DESC`,
     [tenantId],
   );
-  return result.rows.map((r: Record<string, unknown>) => ({
-    id: r.id as string,
-    label: r.label as string,
-    keyPrefix: r.key_prefix as string,
-    lastUsedAt: r.last_used_at as Date | null,
-    createdAt: r.created_at as Date,
-    revokedAt: r.revoked_at as Date | null,
-    expiresAt: r.expires_at as Date | null,
-  }));
+  return result.rows.map((r: Record<string, unknown>) => mapApiKeyListRow(r));
 }
 
 /**
@@ -150,14 +113,7 @@ export async function findActiveKeysByPrefix(prefix: string): Promise<Array<{
      LIMIT 10`,
     [prefix],
   );
-  return result.rows.map((r: Record<string, unknown>) => ({
-    id: r.id as string,
-    tenantId: r.tenant_id as string,
-    label: r.label as string,
-    keyHash: r.key_hash as string,
-    revokedAt: r.revoked_at as Date | null,
-    expiresAt: r.expires_at as Date | null,
-  }));
+  return result.rows.map((r: Record<string, unknown>) => mapActiveKeyPrefixRow(r));
 }
 
 /**

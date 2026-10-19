@@ -17,9 +17,7 @@ import type { TradeSignal } from '../../desk/polymarket/strategy-live-bridge-typ
 import type { GateEvaluatorInput } from '../gates/gate-evaluator-types';
 import { recordPromotionProvenance } from './alpha-lab-pipeline-provenance';
 
-/**
- * Ingests a discovered candidate into the paper state machine.
- */
+/** Ingests a discovered candidate into the paper state machine. */
 export function ingestCandidateToPaperStateMachine(
   candidate: DiscoveredAlphaCandidate,
   stateMachines: Map<string, AlphaLifecycleStateMachine>,
@@ -40,7 +38,6 @@ export function ingestCandidateToPaperStateMachine(
   lastKnownCandidates.set(candidate.strategyId, candidate);
 
   const transition = sm.startPaperTrading(reason);
-
   const config = (candidate.config ?? candidateConfigs.get(candidate.strategyId) ?? {}) as unknown as Record<string, unknown>;
   void persistLedger({
     runId: `paper-ingest-${candidate.strategyId}-${transition.timestamp}`,
@@ -54,9 +51,7 @@ export function ingestCandidateToPaperStateMachine(
   return transition;
 }
 
-/**
- * Routes an array of AISignals through validation and paper execution.
- */
+/** Routes an array of AISignals through validation and paper execution. */
 export async function routeCandidateSignals(
   paperRouter: AISignalPaperRouter,
   stateMachines: Map<string, AlphaLifecycleStateMachine>,
@@ -78,11 +73,7 @@ export async function routeCandidateSignals(
         signal,
         symbol,
         marketPrice,
-        validation: {
-          valid: false,
-          signal,
-          rejectionReasons: [reason],
-        },
+        validation: { valid: false, signal, rejectionReasons: [reason] },
         reason,
         timestamp: Date.now(),
       });
@@ -96,9 +87,7 @@ export async function routeCandidateSignals(
   return outcomes;
 }
 
-/**
- * Evaluates active paper strategies against 10+1 canonical criteria and retirement triggers.
- */
+/** Evaluates active paper strategies against 10+1 canonical criteria and retirement triggers. */
 export async function evaluateActivePaperPromotions(
   stateMachines: Map<string, AlphaLifecycleStateMachine>,
   candidateConfigs: Map<string, Record<string, unknown>>,
@@ -111,20 +100,14 @@ export async function evaluateActivePaperPromotions(
   const transitions: PromotionStateTransition[] = [];
 
   for (const [strategyId, sm] of stateMachines.entries()) {
-    if (sm.getState() !== 'PAPER_ACTIVE') {
-      continue;
-    }
-
+    if (sm.getState() !== 'PAPER_ACTIVE') continue;
     const input = gateInputs?.get(strategyId);
-    if (!input) {
-      continue;
-    }
+    if (!input) continue;
 
     const evalResult = sm.evaluate(input);
     if (evalResult.transition) {
       const transition = evalResult.transition;
       transitions.push(transition);
-
       const config = candidateConfigs.get(strategyId) ?? {};
       await recordPromotionProvenance(
         transition,
@@ -141,9 +124,7 @@ export async function evaluateActivePaperPromotions(
   return transitions;
 }
 
-/**
- * Evaluates a live order against the multi-tier pre-trade risk gate handoff.
- */
+/** Evaluates a live order against the multi-tier pre-trade risk gate handoff. */
 export function evaluateLiveRiskHandoff(
   liveCoordinator: LiveGuardHandoffCoordinator,
   stateMachines: Map<string, AlphaLifecycleStateMachine>,
@@ -154,8 +135,7 @@ export function evaluateLiveRiskHandoff(
     signal?: TradeSignal | AISignal;
   },
 ): LiveOrderHandoffVerdict {
-  const lifecycleState =
-    stateMachines.get(request.strategyId)?.getState() ?? 'DISCOVERED';
+  const lifecycleState = stateMachines.get(request.strategyId)?.getState() ?? 'DISCOVERED';
 
   const signal: TradeSignal | AISignal = request.signal ?? {
     strategyId: request.strategyId,

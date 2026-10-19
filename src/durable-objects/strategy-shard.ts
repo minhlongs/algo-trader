@@ -2,10 +2,6 @@
  * Strategy Shard Durable Object
  * Hosts 4-5 strategies and executes them with isolated state
  * One instance per shard (12 total)
- *
- * Types:           strategy-shard-types.ts
- * State/persistence: strategy-shard-state.ts
- * Execution handlers: shard-fetch-handlers.ts
  */
 
 import type { DurableObjectState } from '@cloudflare/workers-types';
@@ -17,7 +13,6 @@ import type { Env, ShardMetrics } from './strategy-shard-types';
 import { initializeShard, persistHealth, restoreMetrics } from './strategy-shard-state';
 import { handleHealthCheck, handleMetricsResponse, handleExecute } from './shard-fetch-handlers';
 
-// Re-export all types for backward compatibility
 export type { Env, ShardExecutionResult, ShardMetrics } from './strategy-shard-types';
 
 export class StrategyShard {
@@ -87,24 +82,10 @@ export class StrategyShard {
     const pathname = url.pathname;
 
     if (pathname === '/health') {
-      return handleHealthCheck({
-        shardId: this.shardId,
-        activeExecutions: this.activeExecutions,
-        maxConcurrent: this.MAX_CONCURRENT,
-        metrics: this.metrics,
-        strategiesLoaded: this.strategies.size,
-      });
+      return this.handleHealthCheck();
     }
     if (pathname === '/execute' && request.method === 'POST') {
-      return handleExecute(request, env, {
-        shardId: this.shardId,
-        metrics: this.metrics,
-        activeExecutions: this.activeExecutions,
-        maxConcurrent: this.MAX_CONCURRENT,
-        maxQueueSize: this.MAX_QUEUE_SIZE,
-        storage: this.state.storage,
-        strategies: this.strategies,
-      });
+      return this.handleExecute(request);
     }
     if (pathname === '/metrics') {
       return handleMetricsResponse(this.shardId, this.metrics);

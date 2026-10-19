@@ -14,28 +14,21 @@
 import { createDefaultRegistry } from './strategy-family-registry';
 import { generateAllCandidateConfigs, type CandidateAlphaConfig } from './candidate-generator';
 import { loadCandles, buildDataSources } from '../experiments/alpha-backtest-candles';
-import { evaluateWalkForward } from '../walkforward/walkforward-evaluator';
-import { evaluateAlphaSurvivalGate } from '../attribution/alpha-survival-gate';
-import { generateCandidateRejectionDiagnostics } from '../reports/candidate-rejection-diagnostics';
 import { logger } from '../../shared/utils/logger';
 import type { CandleLike } from '../regimes/regime-types';
-import type { ExperimentConfig, SplitConfig } from '../experiments/experiment-types';
 import type {
   ContinuousDiscoveryPipelineConfig,
   ContinuousDiscoveryResult,
   DiscoveredAlphaCandidate,
   ContinuousDiscoverySummary,
 } from './continuous-discovery-types';
+import {
+  DEFAULT_SPLIT_CONFIG,
+  evaluateDiscoveryCandidate,
+} from './candidate-evaluator';
 
 export * from './continuous-discovery-types';
-
-const DEFAULT_SPLIT_CONFIG: SplitConfig = {
-  mode: 'rolling',
-  trainRatio: 0.3,
-  valRatio: 0.2,
-  testRatio: 0.5,
-  numFolds: 5,
-};
+export * from './candidate-evaluator';
 
 export class ContinuousDiscoveryPipeline {
   private config: ContinuousDiscoveryPipelineConfig;
@@ -158,38 +151,6 @@ export class ContinuousDiscoveryPipeline {
     cand: CandidateAlphaConfig,
     candles: CandleLike[],
   ): Promise<DiscoveredAlphaCandidate> {
-    const split: SplitConfig = {
-      ...DEFAULT_SPLIT_CONFIG,
-      ...this.config.split,
-      ...(cand.experimentConfig.split?.numFolds !== undefined ? cand.experimentConfig.split : {}),
-      numFolds: cand.experimentConfig.split?.numFolds ?? this.config.split?.numFolds ?? 5,
-      mode: 'rolling',
-    };
-    const expConfig: ExperimentConfig = { ...cand.experimentConfig, split };
-    const wfResult = evaluateWalkForward({ candles, config: expConfig });
-
-    const gateResult = evaluateAlphaSurvivalGate({
-      summary: wfResult.summary,
-      trades: wfResult.allTestTrades,
-      criteria: this.config.survivalGates,
-      baselineFeeBps: expConfig.cost.feeBps,
-      baselineSlippageBps: expConfig.cost.slippageBps,
-    });
-
-    const diagnostics = gateResult.passed
-      ? undefined
-      : generateCandidateRejectionDiagnostics(gateResult, wfResult.summary, expConfig);
-
-    return {
-      strategyId: cand.candidateId,
-      familyId: cand.familyId,
-      params: cand.params,
-      config: expConfig,
-      walkforwardResult: wfResult,
-      walkforwardSummary: wfResult.summary,
-      survivalGateResult: gateResult,
-      status: gateResult.passed ? 'PASSED' : 'REJECTED',
-      rejectionDiagnostics: diagnostics,
-    };
+    return evaluateDiscoveryCandidate(cand, candles, this.config);
   }
 }

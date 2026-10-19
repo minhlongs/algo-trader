@@ -5,18 +5,11 @@
  */
 
 import type { MarketDataSource } from './types';
-import type {
-  OutlierEvent,
-  OutlierDetectorConfig,
-  SymbolStats,
-  StatsWindow,
-} from './outlier-detection-types';
-import {
-  isZScoreOutlier,
-  isIQROutlier,
-  calculateSeverity,
-  percentile,
-} from './outlier-statistical-helpers';
+import type { OutlierEvent, OutlierDetectorConfig, SymbolStats, StatsWindow } from './outlier-detection-types';
+import { isZScoreOutlier, isIQROutlier, calculateSeverity } from './outlier-statistical-helpers';
+import { computePriceIQRBounds, computeVolumeWindowStats, isHampelOutlier } from './outlier-detection-stats';
+
+export { computePriceIQRBounds, computeVolumeWindowStats, isHampelOutlier };
 
 /**
  * Detect price outliers using z-score and IQR on the symbol's sliding window.
@@ -32,46 +25,28 @@ export function detectPriceOutliers(
   currentPriceOverride?: number,
 ): OutlierEvent[] {
   const events: OutlierEvent[] = [];
-  if (stats.sampleCount < config.minSamples || window.prices.length < config.minSamples) {
-    return events;
-  }
+  if (stats.sampleCount < config.minSamples || window.prices.length < config.minSamples) return events;
 
   const currentPrice = currentPriceOverride ?? window.prices[window.prices.length - 1];
-
-  // Z-score check
   const zResult = isZScoreOutlier(currentPrice, stats.priceMean, stats.stdDev, config.zScoreThreshold);
   if (zResult.isOutlier) {
     events.push({
-      timestamp: Date.now(),
-      symbol,
-      outlierType: 'price_spike',
-      severity: calculateSeverity(zResult.zScore),
-      value: currentPrice,
+      timestamp: Date.now(), symbol, outlierType: 'price_spike',
+      severity: calculateSeverity(zResult.zScore), value: currentPrice,
       expectedRange: {
         min: stats.priceMean - config.zScoreThreshold * stats.stdDev,
         max: stats.priceMean + config.zScoreThreshold * stats.stdDev,
       },
-      zScore: zResult.zScore,
-      provider,
+      zScore: zResult.zScore, provider,
     });
   }
 
-  // IQR check
-  const sorted = [...window.prices].sort((a, b) => a - b);
-  const q1 = percentile(sorted, 25);
-  const q3 = percentile(sorted, 75);
-  const iqr = q3 - q1;
-  const iqrMin = q1 - config.iqrMultiplier * iqr;
-  const iqrMax = q3 + config.iqrMultiplier * iqr;
+  const { min: iqrMin, max: iqrMax } = computePriceIQRBounds(window.prices, config.iqrMultiplier);
   if (currentPrice < iqrMin || currentPrice > iqrMax) {
     events.push({
-      timestamp: Date.now(),
-      symbol,
-      outlierType: 'price_iqr',
+      timestamp: Date.now(), symbol, outlierType: 'price_iqr',
       severity: calculateSeverity((currentPrice - stats.priceMean) / (stats.stdDev || 1)),
-      value: currentPrice,
-      expectedRange: { min: iqrMin, max: iqrMax },
-      provider,
+      value: currentPrice, expectedRange: { min: iqrMin, max: iqrMax }, provider,
     });
   }
 
@@ -92,47 +67,31 @@ export function detectVolumeOutliers(
   currentVolumeOverride?: number,
 ): OutlierEvent[] {
   const events: OutlierEvent[] = [];
-  if (stats.sampleCount < config.minSamples || window.volumes.length < config.minSamples) {
-    return events;
-  }
+  if (stats.sampleCount < config.minSamples || window.volumes.length < config.minSamples) return events;
 
   const currentVolume = currentVolumeOverride ?? window.volumes[window.volumes.length - 1];
-  const volumeMean = stats.volumeSum / stats.sampleCount;
-  const volumeVariance = stats.sampleCount > 1
-    ? (stats.volumeSumSq - (stats.volumeSum * stats.volumeSum) / stats.sampleCount) / (stats.sampleCount - 1)
-    : 0;
-  const volumeStdDev = Math.sqrt(Math.max(0, volumeVariance));
+  const { volumeMean, volumeStdDev } = computeVolumeWindowStats(stats);
 
-  // Z-score check
   const zResult = isZScoreOutlier(currentVolume, volumeMean, volumeStdDev, config.volumeSpikeThreshold);
   if (zResult.isOutlier) {
     events.push({
-      timestamp: Date.now(),
-      symbol,
-      outlierType: 'volume_spike',
-      severity: calculateSeverity(zResult.zScore),
-      value: currentVolume,
+      timestamp: Date.now(), symbol, outlierType: 'volume_spike',
+      severity: calculateSeverity(zResult.zScore), value: currentVolume,
       expectedRange: {
         min: Math.max(0, volumeMean - config.volumeSpikeThreshold * volumeStdDev),
         max: volumeMean + config.volumeSpikeThreshold * volumeStdDev,
       },
-      zScore: zResult.zScore,
-      provider,
+      zScore: zResult.zScore, provider,
     });
   }
 
-  // IQR check
   const sorted = [...window.volumes].sort((a, b) => a - b);
   const iqrResult = isIQROutlier(currentVolume, sorted, config.iqrMultiplier);
   if (iqrResult.isOutlier) {
     events.push({
-      timestamp: Date.now(),
-      symbol,
-      outlierType: 'volume_iqr',
+      timestamp: Date.now(), symbol, outlierType: 'volume_iqr',
       severity: calculateSeverity((currentVolume - volumeMean) / (volumeStdDev || 1)),
-      value: currentVolume,
-      expectedRange: { min: iqrResult.min, max: iqrResult.max },
-      provider,
+      value: currentVolume, expectedRange: { min: iqrResult.min, max: iqrResult.max }, provider,
     });
   }
 
@@ -155,16 +114,12 @@ export function detectPriceGap(
 
   const zScore = gapPercent / config.priceGapThreshold;
   return {
-    timestamp: Date.now(),
-    symbol,
-    outlierType: 'price_gap',
-    severity: calculateSeverity(zScore),
-    value: currentPrice,
+    timestamp: Date.now(), symbol, outlierType: 'price_gap',
+    severity: calculateSeverity(zScore), value: currentPrice,
     expectedRange: {
       min: prevPrice * (1 - config.priceGapThreshold),
       max: prevPrice * (1 + config.priceGapThreshold),
     },
-    zScore,
-    provider,
+    zScore, provider,
   };
 }

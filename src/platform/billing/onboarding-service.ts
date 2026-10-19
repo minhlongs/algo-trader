@@ -23,6 +23,15 @@ import {
   isValidEmail,
   buildApiInstructions,
 } from './onboarding-helpers';
+import {
+  checkActiveLicense,
+  checkPendingSignup,
+  expireOldPendingSignups,
+  insertPendingSignup,
+  getPendingSignup,
+  markSignupStatus,
+  getVerifiedSignup,
+} from './onboarding-db';
 
 export class OnboardingService {
   private static instance: OnboardingService;
@@ -47,38 +56,21 @@ export class OnboardingService {
 
     const client = await getDbClient().connect();
     try {
-      const licResult = await client.query(
-        `SELECT id FROM licenses WHERE name = $1 AND status = 'active' LIMIT 1`,
-        [email],
-      );
-      if (licResult.rows.length > 0) {
+      if (await checkActiveLicense(client, email)) {
         throw new Error('Email already has an active license');
       }
 
-      const pendingResult = await client.query(
-        `SELECT id FROM onboarding_signups
-         WHERE email = $1 AND status = 'pending' AND expires_at > NOW()`,
-        [email],
-      );
-      if (pendingResult.rows.length > 0) {
+      if (await checkPendingSignup(client, email)) {
         throw new Error('Signup already pending. Check your verification code.');
       }
 
-      await client.query(
-        `UPDATE onboarding_signups SET status = 'expired'
-         WHERE email = $1 AND status = 'pending' AND expires_at <= NOW()`,
-        [email],
-      );
+      await expireOldPendingSignups(client, email);
 
       const verificationToken = generateSixDigitCode();
       const pendingId = crypto.randomUUID();
       const tierEnum = req.tier as LicenseTier;
 
-      await client.query(
-        `INSERT INTO onboarding_signups (id, email, tier, verification_code, expires_at, status)
-         VALUES ($1, $2, $3, $4, NOW() + INTERVAL '15 minutes', 'pending')`,
-        [pendingId, email, tierEnum, verificationToken],
-      );
+      await insertPendingSignup(client, pendingId, email, tierEnum, verificationToken);
 
       const emailSent = await sendVerificationEmail(email, verificationToken);
       if (!emailSent) {
@@ -100,22 +92,13 @@ export class OnboardingService {
     const normalizedEmail = email.trim().toLowerCase();
     const client = await getDbClient().connect();
     try {
-      const result = await client.query(
-        `SELECT id, verification_code, expires_at FROM onboarding_signups
-         WHERE email = $1 AND status = 'pending'`,
-        [normalizedEmail],
-      );
-
-      if (result.rows.length === 0) {
+      const row = await getPendingSignup(client, normalizedEmail);
+      if (!row) {
         throw new Error('No pending signup found for this email');
       }
 
-      const row = result.rows[0];
       if (new Date(row.expires_at).getTime() < Date.now()) {
-        await client.query(
-          `UPDATE onboarding_signups SET status = 'expired' WHERE id = $1`,
-          [row.id],
-        );
+        await markSignupStatus(client, row.id, 'expired');
         throw new Error('Verification code has expired. Please sign up again.');
       }
 
@@ -123,10 +106,7 @@ export class OnboardingService {
         throw new Error('Invalid verification code');
       }
 
-      await client.query(
-        `UPDATE onboarding_signups SET status = 'verified' WHERE id = $1`,
-        [row.id],
-      );
+      await markSignupStatus(client, row.id, 'verified');
       logger.info(`[Onboarding] Email verified: ${normalizedEmail}`);
     } finally {
       client.release();
@@ -141,22 +121,13 @@ export class OnboardingService {
     const normalizedEmail = email.trim().toLowerCase();
     const client = await getDbClient().connect();
     try {
-      const result = await client.query(
-        `SELECT id, tier, expires_at FROM onboarding_signups
-         WHERE email = $1 AND status = 'verified'`,
-        [normalizedEmail],
-      );
-
-      if (result.rows.length === 0) {
+      const row = await getVerifiedSignup(client, normalizedEmail);
+      if (!row) {
         throw new Error('No verified signup found. Complete verification first.');
       }
 
-      const row = result.rows[0];
       if (new Date(row.expires_at).getTime() < Date.now()) {
-        await client.query(
-          `UPDATE onboarding_signups SET status = 'expired' WHERE id = $1`,
-          [row.id],
-        );
+        await markSignupStatus(client, row.id, 'expired');
         throw new Error('Session expired. Please sign up again.');
       }
 
@@ -167,12 +138,7 @@ export class OnboardingService {
         tier,
       });
 
-      await client.query(
-        `UPDATE onboarding_signups
-         SET status = 'activated', license_key = $1, activated_at = NOW()
-         WHERE id = $2`,
-        [license.key, row.id],
-      );
+      await markSignupStatus(client, row.id, 'activated', license.key);
 
       logger.info(`[Onboarding] License activated for ${normalizedEmail}: ${license.key} (${tier})`);
 

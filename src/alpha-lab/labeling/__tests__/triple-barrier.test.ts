@@ -27,13 +27,8 @@ describe('TripleBarrier', () => {
     ]);
 
     it('returns +1 when TP is hit first', () => {
-      const entryIdx = 0;
-      const entryPrice = candles[entryIdx]!.close;
-      const tp = 0.05;
-      const sl = 0.05;
-      const maxHolding = 10;
       // bar 2: high=104 => close * 1.05 = 105; no. bar 3: high=105 => hit.
-      const result = tripleBarrierLabel(candles, entryIdx, tp, sl, maxHolding);
+      const result = tripleBarrierLabel(candles, 0, 0.05, 0.05, 10);
       expect(result.label).toBe(1);
     });
 

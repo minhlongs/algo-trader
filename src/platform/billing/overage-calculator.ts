@@ -4,32 +4,26 @@
  */
 
 import { LicenseTier } from '../../shared/types/license';
-import { DAILY_LIMITS, OVERAGE_PRICE_PER_CALL } from '../metering/usage-metering-service';
+import { DAILY_LIMITS } from '../metering/usage-metering-service';
+import {
+  computeDailyOverage,
+  computePeriodOverage,
+  formatOverageInvoice,
+  getCurrentBillingPeriod,
+  type DailyUsageRecord,
+  type OverageCharge,
+  type OverageSummary,
+} from './overage-calculator-helpers';
 
-export interface OverageCharge {
-  metric: string;
-  overageUnits: number;
-  unitPrice: number;
-  totalCharge: number;
-}
-
-export interface OverageSummary {
-  licenseKey: string;
-  tenantId?: string;
-  tier: LicenseTier;
-  period: string;
-  charges: OverageCharge[];
-  totalOverage: number;
-  calculatedAt: string;
-}
-
-export interface DailyUsageRecord {
-  date: string;
-  apiCalls: number;
-  dailyLimit: number;
-  overageUnits: number;
-  overageCost: number;
-}
+export {
+  computeDailyOverage,
+  computePeriodOverage,
+  formatOverageInvoice,
+  getCurrentBillingPeriod,
+  type DailyUsageRecord,
+  type OverageCharge,
+  type OverageSummary,
+};
 
 export class OverageCalculator {
   private static instance: OverageCalculator;
@@ -44,63 +38,25 @@ export class OverageCalculator {
   }
 
   calculateDailyOverage(
-    licenseKey: string,
+    _licenseKey: string,
     tier: LicenseTier,
-    apiCalls: number
+    apiCalls: number,
   ): DailyUsageRecord {
-    const date = new Date().toISOString().split('T')[0];
-    const dailyLimit = DAILY_LIMITS[tier];
-    const unitPrice = OVERAGE_PRICE_PER_CALL[tier];
-    const overageUnits = Math.max(0, apiCalls - dailyLimit);
-    const overageCost = overageUnits * unitPrice;
-
-    return {
-      date,
-      apiCalls,
-      dailyLimit,
-      overageUnits,
-      overageCost,
-    };
+    return computeDailyOverage(tier, apiCalls);
   }
 
   calculatePeriodOverage(
     licenseKey: string,
     tier: LicenseTier,
-    dailyUsage: DailyUsageRecord[]
+    dailyUsage: DailyUsageRecord[],
   ): OverageSummary {
-    const charges: OverageCharge[] = [];
-    let totalOverage = 0;
-
-    const _totalApiCalls = dailyUsage.reduce((sum, day) => sum + day.apiCalls, 0); // reserved for reporting
-    const totalOverageUnits = dailyUsage.reduce((sum, day) => sum + day.overageUnits, 0);
-    const totalOverageCost = dailyUsage.reduce((sum, day) => sum + day.overageCost, 0);
-
-    if (totalOverageUnits > 0) {
-      charges.push({
-        metric: 'api_calls',
-        overageUnits: totalOverageUnits,
-        unitPrice: OVERAGE_PRICE_PER_CALL[tier],
-        totalCharge: totalOverageCost,
-      });
-      totalOverage = totalOverageCost;
-    }
-
-    const period = this.getCurrentPeriod();
-
-    return {
-      licenseKey,
-      tier,
-      period,
-      charges,
-      totalOverage,
-      calculatedAt: new Date().toISOString(),
-    };
+    return computePeriodOverage(licenseKey, tier, dailyUsage, this.getCurrentPeriod());
   }
 
   async calculateOverageSummary(
     licenseKey: string,
     tier: LicenseTier,
-    tenantId?: string
+    tenantId?: string,
   ): Promise<OverageSummary> {
     const dailyUsage = this.getDailyUsageRecords(licenseKey, tier);
     const summary = this.calculatePeriodOverage(licenseKey, tier, dailyUsage);
@@ -111,7 +67,7 @@ export class OverageCalculator {
   private getDailyUsageRecords(
     licenseKey: string,
     tier: LicenseTier,
-    days: number = 30
+    days: number = 30,
   ): DailyUsageRecord[] {
     const records: DailyUsageRecord[] = [];
     const now = new Date();
@@ -131,31 +87,11 @@ export class OverageCalculator {
   }
 
   private getCurrentPeriod(): string {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}`;
+    return getCurrentBillingPeriod();
   }
 
   generateInvoice(summary: OverageSummary): string {
-    let invoice = `OVERAGE INVOICE\n`;
-    invoice += `================\n\n`;
-    invoice += `License: ${summary.licenseKey}\n`;
-    if (summary.tenantId) {
-      invoice += `Tenant: ${summary.tenantId}\n`;
-    }
-    invoice += `Tier: ${summary.tier}\n`;
-    invoice += `Period: ${summary.period}\n`;
-    invoice += `Generated: ${summary.calculatedAt}\n\n`;
-    invoice += `CHARGES\n`;
-    invoice += `--------\n`;
-
-    for (const charge of summary.charges) {
-      invoice += `${charge.metric}: ${charge.overageUnits} units x $${charge.unitPrice.toFixed(4)} = $${charge.totalCharge.toFixed(2)}\n`;
-    }
-
-    invoice += `\nTOTAL: $${summary.totalOverage.toFixed(2)}\n`;
-    return invoice;
+    return formatOverageInvoice(summary);
   }
 }
 

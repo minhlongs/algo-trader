@@ -8,19 +8,17 @@
  */
 
 import { getRedisClient } from './index';
+import {
+  buildZsetMembers,
+  parseBestLevel,
+  parseTopLevels,
+  calculateBookDepth,
+  type OrderBookLevel,
+  type OrderBook,
+} from './orderbook-helpers';
 
-export interface OrderBookLevel {
-  price: number;
-  amount: number;
-}
-
-export interface OrderBook {
-  exchange: string;
-  symbol: string;
-  bids: OrderBookLevel[];
-  asks: OrderBookLevel[];
-  timestamp: number;
-}
+export type { OrderBookLevel, OrderBook };
+export { buildZsetMembers, parseBestLevel, parseTopLevels, calculateBookDepth };
 
 export class OrderbookManager {
   private redis: ReturnType<typeof getRedisClient>;
@@ -51,15 +49,8 @@ export class OrderbookManager {
     const bidsKey = this.getBidsKey(exchange, symbol);
     const asksKey = this.getAsksKey(exchange, symbol);
 
-    const bidMembers = bids.map((level) => ({
-      score: -level.price, // Negative for descending sort
-      value: `${level.price}:${level.amount}`,
-    }));
-
-    const askMembers = asks.map((level) => ({
-      score: level.price,
-      value: `${level.price}:${level.amount}`,
-    }));
+    const bidMembers = buildZsetMembers(bids, true);
+    const askMembers = buildZsetMembers(asks, false);
 
     const tx = this.redis.multi();
 
@@ -87,11 +78,7 @@ export class OrderbookManager {
   async getBestBid(exchange: string, symbol: string): Promise<OrderBookLevel | null> {
     const key = this.getBidsKey(exchange, symbol);
     const result = await this.redis.zrange(key, 0, 0);
-    if (!result || result.length === 0) return null;
-
-    const member = result[0];
-    const [price, amount] = member.split(':').map(parseFloat);
-    return { price, amount };
+    return parseBestLevel(result);
   }
 
   /**
@@ -100,11 +87,7 @@ export class OrderbookManager {
   async getBestAsk(exchange: string, symbol: string): Promise<OrderBookLevel | null> {
     const key = this.getAsksKey(exchange, symbol);
     const result = await this.redis.zrange(key, 0, 0);
-    if (!result || result.length === 0) return null;
-
-    const member = result[0];
-    const [price, amount] = member.split(':').map(parseFloat);
-    return { price, amount };
+    return parseBestLevel(result);
   }
 
   /**
@@ -123,18 +106,9 @@ export class OrderbookManager {
       this.redis.zrange(asksKey, 0, levels - 1),
     ]);
 
-    const parseLevels = (raw: string[]): OrderBookLevel[] => {
-      const result: OrderBookLevel[] = [];
-      for (let i = 0; i < raw.length; i++) {
-        const [price, amount] = raw[i].split(':').map(parseFloat);
-        result.push({ price, amount });
-      }
-      return result;
-    };
-
     return {
-      bids: parseLevels(bidsRaw || []),
-      asks: parseLevels(asksRaw || []),
+      bids: parseTopLevels(bidsRaw || []),
+      asks: parseTopLevels(asksRaw || []),
     };
   }
 
@@ -146,11 +120,7 @@ export class OrderbookManager {
     askDepth: number;
   }> {
     const { bids, asks } = await this.getTopLevels(exchange, symbol, levels);
-
-    const bidDepth = bids.reduce((sum, level) => sum + level.amount, 0);
-    const askDepth = asks.reduce((sum, level) => sum + level.amount, 0);
-
-    return { bidDepth, askDepth };
+    return calculateBookDepth(bids, asks);
   }
 
   /**
@@ -162,3 +132,4 @@ export class OrderbookManager {
     await this.redis.del([bidsKey, asksKey]);
   }
 }
+

@@ -5,7 +5,6 @@
  * and uses circuit breaker for resilience.
  */
 
-import { trace } from '@opentelemetry/api';
 import { AgentQueueManager } from '../../queues/agent-queue-manager';
 import { CircuitBreaker } from '../../shared/resilience/circuit-breaker';
 import { logger } from '../../shared/utils/logger';
@@ -17,7 +16,13 @@ import type {
   AgentOutputData,
   AgentExecutionResult,
 } from './agent-dispatcher-types';
-import { executeDirectCall, executeQueuedCall } from './agent-dispatcher-executor';
+import {
+  executeDirectCall,
+  executeQueuedCall,
+  startAgentSpan,
+  recordAgentSpanResult,
+  recordAgentSpanFailure,
+} from './agent-dispatcher-executor';
 import {
   initTierQueues,
   startWorkerQueues,
@@ -52,9 +57,6 @@ export class ModelTierDispatcher {
 
   /**
    * Execute an agent with automatic tier routing.
-   * - Tier1 (Haiku): direct sync, <200ms
-   * - Tier2 (Sonnet): async queue, returns jobId immediately
-   * - Tier3 (Opus): direct sync with timeout, fallback to Tier2 on timeout/rate-limit
    */
   async execute(agentName: string, input: AgentInput, context: AgentExecutionContext): Promise<AgentExecutionResult> {
     const config = getAgentConfig(agentName);
@@ -68,18 +70,7 @@ export class ModelTierDispatcher {
       };
     }
 
-    const tracer = trace.getTracer('algo-trader-agent');
-    const span = tracer.startSpan(`agent.${agentName}`, {
-      attributes: {
-        'agent.name': agentName,
-        'agent.tier': config.tier,
-        'tenant.id': context.tenantId,
-        'agent.priority': config.priority,
-        'cloud.region': process.env.REGION || 'unknown',
-        'deployment.environment': process.env.ENVIRONMENT || 'development',
-      },
-    });
-
+    const span = startAgentSpan(agentName, config, context);
     const start = Date.now();
 
     try {
@@ -99,36 +90,9 @@ export class ModelTierDispatcher {
           throw new Error(`Unsupported tier: ${config.tier}`);
       }
 
-      const latency = Date.now() - start;
-      result.latencyMs = latency;
-      result.agentName = agentName;
-
-      span.setAttributes({
-        'agent.latency_ms': latency,
-        'agent.success': result.success,
-        'agent.model_tier': result.modelTier,
-        ...(result.jobId && { 'agent.job_id': result.jobId }),
-        ...(result.error && { 'agent.error': result.error }),
-      });
-
-      return result;
+      return recordAgentSpanResult(span, result, agentName, Date.now() - start);
     } catch (error) {
-      const latency = Date.now() - start;
-      span.recordException(error instanceof Error ? error : new Error(String(error)));
-      span.setAttributes({
-        'agent.latency_ms': latency,
-        'agent.success': false,
-        'agent.error': error instanceof Error ? error.message : String(error),
-        'agent.model_tier': config.tier,
-      });
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        latencyMs: latency,
-        agentName,
-        modelTier: config.tier,
-      };
+      return recordAgentSpanFailure(span, error, config, agentName, Date.now() - start);
     } finally {
       span.end();
     }
@@ -138,18 +102,11 @@ export class ModelTierDispatcher {
     config: AgentConfig,
     input: AgentInput,
     context: AgentExecutionContext,
-    enableFallback: boolean = false,
+    enableFallback = false,
   ): Promise<AgentExecutionResult> {
     return executeDirectCall(
-      {
-        gateway: this.gateway,
-        circuitBreaker: this.circuitBreaker,
-        tierQueues: this.tierQueues,
-      },
-      config,
-      input,
-      context,
-      enableFallback,
+      { gateway: this.gateway, circuitBreaker: this.circuitBreaker, tierQueues: this.tierQueues },
+      config, input, context, enableFallback,
     );
   }
 

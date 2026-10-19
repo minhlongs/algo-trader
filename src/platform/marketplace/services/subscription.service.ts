@@ -1,13 +1,14 @@
 import { AuditLogService } from '../../audit/audit-log-service';
 import { SubscriptionRepository, subscriptionRepository, ReviewRepository, reviewRepository, ListingRepository, listingRepository } from './repositories';
 import { NotificationService } from '../notifications/notification-service';
-import { NowPaymentsService } from '../../billing/nowpayments-service';
 import type { IMarketplaceSubscription, IMarketplaceReview, CustomRiskLimits, SubscriptionStatus } from '../models/types';
 import { activateByPaymentId as _activateByPaymentId, cancelByPaymentId as _cancelByPaymentId } from './subscription-payment-handlers';
 import { createReview as _createReview, getReview as _getReview, markReviewHelpful as _markReviewHelpful, flagReview as _flagReview } from './subscription-review-handlers';
+import { createMarketplaceSubscription } from './subscription-subscribe-handler';
 
 export * from './subscription-payment-handlers';
 export * from './subscription-review-handlers';
+export * from './subscription-subscribe-handler';
 
 export class SubscriptionService {
   private static instance: SubscriptionService;
@@ -39,72 +40,16 @@ export class SubscriptionService {
     allocationPercent: number;
     customRiskLimits?: CustomRiskLimits;
   }): Promise<{ subscription: IMarketplaceSubscription; checkoutUrl: string | null }> {
-    const id = `sub_${Date.now()}_${data.userId.slice(0, 8)}`;
-
-    const listing = await this.listingRepo.findById(data.listingId);
-    if (!listing) throw new Error('Listing not found');
-    if (!listing.isActive) throw new Error('Listing is not active');
-
-    const hasActive = await this.subRepo.hasActiveSubscription(data.tenantId, listing.strategyId);
-    if (hasActive) throw new Error('Already subscribed to this strategy');
-
-    let paymentId: string | undefined;
-    let checkoutUrl: string | null = null;
-    let strategy: { id: string; creatorId: string; name: string } | null = null;
-
-    if (listing.priceUsdMonthly > 0) {
-      const nowpaymentsService = NowPaymentsService.getInstance();
-      strategy = await this.strategyRepoForListing(listing.strategyId);
-      const strategyName = strategy?.name ?? 'Strategy Subscription';
-
-      const result = await nowpaymentsService.createMarketplaceCheckoutUrl({
-        listingId: data.listingId,
-        strategyName,
-        priceUsd: listing.priceUsdMonthly / 100,
-        tenantId: data.tenantId,
-      });
-
-      if (result) {
-        paymentId = result.paymentId;
-        checkoutUrl = result.checkoutUrl;
-      }
-    }
-
-    const subscription = await this.subRepo.create({
-      id,
-      tenantId: data.tenantId,
-      listingId: data.listingId,
-      strategyId: listing.strategyId,
-      allocationPercent: data.allocationPercent,
-      customRiskLimits: data.customRiskLimits as Record<string, unknown> | undefined,
-      currentInvestmentUsd: 0,
-      paymentId,
-      paymentStatus: paymentId ? 'pending' : undefined,
-      initialStatus: paymentId ? 'pending_payment' : 'active',
-    });
-
-    if (checkoutUrl && strategy) {
-      this.notificationService.sendSubscriptionConfirmation({
-        subscriptionId: subscription.id,
-        buyerId: data.tenantId,
-        sellerId: strategy.creatorId,
-        strategyName: strategy.name,
-        priceUsdMonthly: listing.priceUsdMonthly,
-      });
-    }
-
-    await this.auditService.log(data.tenantId, 'api_call', {
-      tier: undefined,
-      metadata: {
-        action: 'subscription_created',
-        userId: data.userId,
-        resourceId: subscription.id,
-        listingId: data.listingId,
-        paymentId: paymentId ?? null,
+    return createMarketplaceSubscription(
+      {
+        subRepo: this.subRepo,
+        listingRepo: this.listingRepo,
+        auditService: this.auditService,
+        notificationService: this.notificationService,
+        getStrategy: (id) => this.strategyRepoForListing(id),
       },
-    });
-
-    return { subscription, checkoutUrl };
+      data
+    );
   }
 
   async activateByPaymentId(paymentId: string): Promise<IMarketplaceSubscription | null> {

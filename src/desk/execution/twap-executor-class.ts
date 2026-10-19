@@ -3,10 +3,6 @@
  *
  * Splits large orders into $500-$2K chunks with orderbook depth checks.
  * Aborts if slippage exceeds threshold, chunk times out, or 3 consecutive failures.
- * Handles SIGTERM gracefully — cancels remaining chunks.
- *
- * Extracted from twap-executor.ts to keep files under 200 lines.
- * Re-exported via twap-executor.ts facade.
  */
 
 import { logger } from '../utils/logger';
@@ -14,16 +10,18 @@ import {
   TwapConfig, TwapOrder, TwapResult, TwapChunkResult,
   GetDepthFn, ExecuteChunkFn, GetPriceFn,
   DEFAULT_TWAP_CONFIG, FLOAT_EPSILON,
+  planTwapChunks, createInitialTwapResult, finalizeTwapResult, waitInterChunkDelay,
 } from './twap-executor-types';
 
 export class TwapExecutor {
   private config: TwapConfig;
   private activeController: AbortController | null = null;
   private activeTimers: Set<ReturnType<typeof setTimeout>> = new Set();
+  private static signalHandlerRegistered = false;
+  private static activeInstances: Set<TwapExecutor> = new Set();
 
   constructor(config?: Partial<TwapConfig>) {
     this.config = { ...DEFAULT_TWAP_CONFIG, ...config };
-    // EC#25: Instance registry instead of overwrite — support multiple concurrent instances
     if (!TwapExecutor.signalHandlerRegistered) {
       TwapExecutor.signalHandlerRegistered = true;
       if (typeof process !== 'undefined' && process.on) {
@@ -33,9 +31,6 @@ export class TwapExecutor {
     }
     TwapExecutor.activeInstances.add(this);
   }
-
-  private static signalHandlerRegistered = false;
-  private static activeInstances: Set<TwapExecutor> = new Set();
 
   cancelActive(reason: string): void {
     if (this.activeController && !this.activeController.signal.aborted) {
@@ -55,24 +50,10 @@ export class TwapExecutor {
   }
 
   planChunks(totalSizeUsd: number, requestedChunkSize?: number): number[] {
-    const chunkSize = Math.max(this.config.minChunkUsd, Math.min(this.config.maxChunkUsd, requestedChunkSize ?? this.config.maxChunkUsd));
-    const chunks: number[] = [];
-    let remaining = totalSizeUsd;
-    while (remaining > 0) {
-      const size = Math.min(chunkSize, remaining);
-      if (size < this.config.minChunkUsd && chunks.length > 0) {
-        chunks[chunks.length - 1] += size;
-        remaining = 0;
-      } else {
-        chunks.push(size);
-        remaining -= size;
-      }
-    }
-    return chunks;
+    return planTwapChunks(this.config, totalSizeUsd, requestedChunkSize);
   }
 
   async execute(order: TwapOrder, getDepth: GetDepthFn, executeChunk: ExecuteChunkFn, getPrice: GetPriceFn): Promise<TwapResult> {
-    // EC#27: Each execute() gets its own controller — no race from concurrent calls
     const controller = new AbortController();
     this.activeController = controller;
     const { signal } = controller;
@@ -80,17 +61,9 @@ export class TwapExecutor {
     const startedAt = Date.now();
     const delayMs = order.delayMs ?? this.config.delayMs;
     const maxSlippage = order.maxSlippagePercent ?? this.config.maxSlippagePercent;
-
     const arrivalPrice = await getPrice(order.marketId);
     const chunks = this.planChunks(order.totalSizeUsd, order.chunkSizeUsd);
-
-    const result: TwapResult = {
-      marketId: order.marketId, side: order.side,
-      totalSizeUsd: order.totalSizeUsd, executedSizeUsd: 0,
-      chunksPlanned: chunks.length, chunksExecuted: 0,
-      averagePrice: 0, arrivalPrice, totalSlippagePercent: 0,
-      aborted: false, chunks: [], startedAt, completedAt: 0,
-    };
+    const result = createInitialTwapResult(order, arrivalPrice, chunks.length, startedAt);
 
     let totalCostWeighted = 0;
     let consecutiveFailures = 0;
@@ -154,19 +127,14 @@ export class TwapExecutor {
       }
 
       if (i < chunks.length - 1 && !result.aborted && !signal.aborted) {
-        await new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(resolve, delayMs);
-          signal.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('Aborted during delay')); }, { once: true });
-        }).catch(() => {
+        await waitInterChunkDelay(delayMs, signal).catch(() => {
           result.aborted = true;
           result.abortReason = result.abortReason ?? 'Cancelled during inter-chunk delay';
         });
       }
     }
 
-    result.averagePrice = result.executedSizeUsd > 0 ? totalCostWeighted / result.executedSizeUsd : 0;
-    result.totalSlippagePercent = arrivalPrice > 0 ? Math.abs(result.averagePrice - arrivalPrice) / arrivalPrice * 100 : 0;
-    result.completedAt = Date.now();
+    finalizeTwapResult(result, totalCostWeighted, arrivalPrice);
     this.activeController = null;
     logger.info(`[TWAP] Complete: ${result.chunksExecuted}/${result.chunksPlanned} chunks, $${result.executedSizeUsd.toFixed(0)}/$${order.totalSizeUsd.toFixed(0)}, avg slippage ${result.totalSlippagePercent.toFixed(2)}%`);
     return result;

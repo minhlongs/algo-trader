@@ -3,15 +3,6 @@
  *
  * End-to-end live trading pipeline for Polymarket. Wires:
  *   PolymarketAdapter -> LiveOrderManager -> LiveExecutionGuard -> LivePositionTracker
- *
- * PAPER mode (default): no API keys needed, safe for development.
- * LIVE mode: all orders pass through the guard before hitting the CLOB.
- *
- * Usage:
- *   const orch = new LiveTradingOrchestrator({ paperTrading: false, capitalUsdc: 1000 });
- *   await orch.start();
- *   // ... strategies call orch.placeOrder() ...
- *   await orch.stop();
  */
 
 import { EventEmitter } from 'events';
@@ -24,12 +15,12 @@ import type { LiveTradingJournal } from '../execution/live-trading-journal';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
 import { setStrategyActive } from '../../platform/middleware/prometheus-metrics';
 import { logger } from '../../shared/utils/logger';
-import { tradingEventBus, type PriceUpdatePayload } from '../events/trading-event-bus';
 import type { TradeSignal } from './strategy-live-bridge';
 import { LiveTradingStrategyExecutor } from './live-trading-strategy-executor';
 import type { OrchestratorStatus, LiveTradingConfig } from './live-trading-types';
 import { normalizeConfig, buildCoreComponents, buildStartComponents } from './live-trading-adapter-setup';
 import { persistOrchestratorState, restoreOrchestratorState } from './live-trading-state-persistence';
+import { LiveTradingEventSubscriber } from './live-trading-event-subscriber';
 
 // Backward-compat re-exports
 export type { OrchestratorStatus, LiveTradingConfig } from './live-trading-types';
@@ -44,10 +35,6 @@ export {
   restoreOrchestratorState,
 } from './live-trading-public';
 
-// ---------------------------------------------------------------------------
-// Orchestrator
-// ---------------------------------------------------------------------------
-
 export class LiveTradingOrchestrator extends EventEmitter {
   private status: OrchestratorStatus = 'stopped';
   private config: LiveTradingConfig;
@@ -58,7 +45,7 @@ export class LiveTradingOrchestrator extends EventEmitter {
   private journal: LiveTradingJournal;
   private riskManager: RiskGateManager;
   private strategyExecutor: LiveTradingStrategyExecutor;
-  private priceUpdateHandler: ((payload: PriceUpdatePayload) => void) | null = null;
+  private eventSubscriber: LiveTradingEventSubscriber;
 
   constructor(rawConfig: LiveTradingConfig) {
     super();
@@ -71,10 +58,9 @@ export class LiveTradingOrchestrator extends EventEmitter {
     this.journal = c.journal;
     this.riskManager = c.riskManager;
     this.strategyExecutor = c.strategyExecutor;
+    this.eventSubscriber = new LiveTradingEventSubscriber(() => this.status, this.positionTracker);
     this.restoreState();
   }
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   async start(): Promise<void> {
     if (this.status === 'running') return;
@@ -89,6 +75,8 @@ export class LiveTradingOrchestrator extends EventEmitter {
       buildStartComponents(this.config, c);
       this.adapter = c.adapter;
       this.orderManager = c.orderManager;
+      this.eventSubscriber = new LiveTradingEventSubscriber(() => this.status, this.positionTracker);
+      this.eventSubscriber.subscribe();
       this.status = 'running';
       setStrategyActive('live-orchestrator', true);
       this.emit('started', { mode });
@@ -110,8 +98,6 @@ export class LiveTradingOrchestrator extends EventEmitter {
     this.emit('stopped');
   }
 
-  // ── Trading ───────────────────────────────────────────────────────────────
-
   async placeOrder(order: PolymarketOrder): Promise<PolymarketOrderResponse> {
     if (this.status !== 'running') throw new Error('Orchestrator not running');
     const result = this.guard.guardOrder(order);
@@ -127,8 +113,6 @@ export class LiveTradingOrchestrator extends EventEmitter {
     if (this.orderManager) await this.orderManager.cancelOrder(orderId);
   }
 
-  // ── Queries ───────────────────────────────────────────────────────────────
-
   getStatus(): OrchestratorStatus { return this.status; }
   getMode(): 'PAPER' | 'LIVE' { return this.config.paperTrading ? 'PAPER' : 'LIVE'; }
   getPositions() { return this.positionTracker.getPositions(); }
@@ -140,8 +124,6 @@ export class LiveTradingOrchestrator extends EventEmitter {
     if (!this.adapter) throw new Error('Orderbook only available in LIVE mode');
     return this.adapter.getOrderBook(tokenId);
   }
-
-  // ── Strategy Execution ────────────────────────────────────────────────────
 
   async submitSignal(signal: TradeSignal, strategyName: string): Promise<PolymarketOrderResponse> {
     if (!this.orderManager) throw new Error('submitSignal only available in LIVE mode');
@@ -163,29 +145,8 @@ export class LiveTradingOrchestrator extends EventEmitter {
   getPaperStats() { return this.strategyExecutor.getPaperStats(); }
   getRiskManager(): RiskGateManager { return this.riskManager; }
 
-  // ── Price Event Bus ───────────────────────────────────────────────────────
-
-  private subscribeToPriceUpdates(): void {
-    this.priceUpdateHandler = (p: PriceUpdatePayload) => this.handlePriceUpdate(p);
-    tradingEventBus.on('PRICE_UPDATE', this.priceUpdateHandler);
-  }
-  private unsubscribeFromPriceUpdates(): void {
-    if (this.priceUpdateHandler) {
-      tradingEventBus.off('PRICE_UPDATE', this.priceUpdateHandler);
-      this.priceUpdateHandler = null;
-    }
-  }
-  private handlePriceUpdate(payload: PriceUpdatePayload): void {
-    if (this.status !== 'running') return;
-    const { tokenId, bid, ask } = payload;
-    if (bid > 0 && ask > 0) {
-      const prices = new Map<string, { bid: number; ask: number }>();
-      prices.set(tokenId, { bid, ask });
-      this.positionTracker.updatePrices(prices);
-    }
-  }
-
-  // ── Persistence (delegated) ───────────────────────────────────────────────
+  private subscribeToPriceUpdates(): void { this.eventSubscriber.subscribe(); }
+  private unsubscribeFromPriceUpdates(): void { this.eventSubscriber.unsubscribe(); }
 
   private async persistState(): Promise<void> {
     await persistOrchestratorState({ journal: this.journal, guard: this.guard, positionTracker: this.positionTracker });

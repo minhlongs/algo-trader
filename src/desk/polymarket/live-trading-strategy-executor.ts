@@ -16,6 +16,7 @@ import {
   DEFAULT_GATING_CONFIG,
 } from './live-trading-gating-types';
 import { evaluatePaperToLiveGating } from './live-trading-gating-evaluator';
+import { LiveTradingPaperStatsTracker } from './live-trading-paper-stats-tracker';
 
 export type {
   StrategyTradingTier,
@@ -40,8 +41,7 @@ export interface TickExecutionOptions {
 }
 
 export class LiveTradingStrategyExecutor {
-  private paperStats = new Map<string, PaperTradeStats>();
-  private paperProfiles = new Map<string, StrategyPaperProfile>();
+  private tracker = new LiveTradingPaperStatsTracker();
   private strategyErrors = new Map<string, { count: number; lastError: string }>();
   private gatingConfig: GatingCriteriaConfig;
 
@@ -65,7 +65,6 @@ export class LiveTradingStrategyExecutor {
     const mode = options?.mode ?? tickData.mode ?? 'PAPER';
     const now = options?.currentTimeMs ?? Date.now();
 
-    // --- 30-day Paper-to-Live Gating Enforcement ---
     if (mode === 'LIVE') {
       const gatingResult = this.evaluateGating(strategyKey, now);
       if (!gatingResult.eligible) {
@@ -75,7 +74,6 @@ export class LiveTradingStrategyExecutor {
       }
     }
 
-    // --- Risk gate pre-check ---
     const gateResult = await this.riskManager.check(strategyKey);
     if (!gateResult.allowed) {
       this.log(`Risk gate blocked strategy ${strategyKey}: ${gateResult.reason}`, 'Orchestrator', {
@@ -85,7 +83,6 @@ export class LiveTradingStrategyExecutor {
       return { success: false, error: gateResult.reason };
     }
 
-    // --- Execute tick with error boundary ---
     try {
       await tickFn(tickData);
       this.strategyErrors.delete(strategyKey);
@@ -93,10 +90,7 @@ export class LiveTradingStrategyExecutor {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       const prev = this.strategyErrors.get(strategyKey) ?? { count: 0, lastError: '' };
-      this.strategyErrors.set(strategyKey, {
-        count: prev.count + 1,
-        lastError: errorMsg,
-      });
+      this.strategyErrors.set(strategyKey, { count: prev.count + 1, lastError: errorMsg });
       this.log(`Strategy tick failed for ${strategyKey}`, 'Orchestrator', {
         strategyKey,
         error: errorMsg,
@@ -106,92 +100,44 @@ export class LiveTradingStrategyExecutor {
     }
   }
 
-  /** Register or update a strategy's paper trading profile */
   registerPaperProfile(profile: StrategyPaperProfile): void {
-    this.paperProfiles.set(profile.strategyKey, { ...profile });
+    this.tracker.registerPaperProfile(profile);
   }
 
-  /** Get paper profile for a strategy */
   getPaperProfile(strategyKey: string): StrategyPaperProfile | undefined {
-    return this.paperProfiles.get(strategyKey);
+    return this.tracker.getPaperProfile(strategyKey);
   }
 
-  /** Evaluate 10-gate paper-to-live transition eligibility */
   evaluateGating(strategyKey: string, currentTimeMs = Date.now()): PaperToLiveEvaluationResult {
-    let profile = this.paperProfiles.get(strategyKey);
-    if (!profile) {
-      const stats = this.paperStats.get(strategyKey) ?? { paperTrades: 0, paperPnl: 0 };
-      profile = {
-        strategyKey,
-        paperStartDate: currentTimeMs,
-        totalPaperTrades: stats.paperTrades,
-        winningTrades: stats.paperPnl > 0 ? stats.paperTrades : 0,
-        losingTrades: stats.paperPnl < 0 ? stats.paperTrades : 0,
-        grossProfitUsd: stats.paperPnl > 0 ? stats.paperPnl : 0,
-        grossLossUsd: stats.paperPnl < 0 ? Math.abs(stats.paperPnl) : 0,
-        maxDrawdown: 0.0,
-        sharpeRatio: 0.0,
-      };
-      this.paperProfiles.set(strategyKey, profile);
-    }
+    const profile = this.tracker.getOrCreateProfile(strategyKey, currentTimeMs);
     return evaluatePaperToLiveGating(profile, this.gatingConfig, currentTimeMs);
   }
 
-  /** Record a paper trade PnL delta and update profile stats. */
   updatePaperPnl(strategyKey: string, pnlDelta: number): void {
-    const stats = this.paperStats.get(strategyKey) ?? { paperTrades: 0, paperPnl: 0 };
-    stats.paperPnl += pnlDelta;
-    this.paperStats.set(strategyKey, stats);
-
-    const profile = this.paperProfiles.get(strategyKey);
-    if (profile) {
-      if (pnlDelta > 0) {
-        profile.winningTrades += 1;
-        profile.grossProfitUsd += pnlDelta;
-      } else if (pnlDelta < 0) {
-        profile.losingTrades += 1;
-        profile.grossLossUsd += Math.abs(pnlDelta);
-      }
-      this.paperProfiles.set(strategyKey, profile);
-    }
+    this.tracker.updatePaperPnl(strategyKey, pnlDelta);
   }
 
-  /** Record a paper trade execution. */
   recordPaperTrade(strategyKey: string): void {
-    const stats = this.paperStats.get(strategyKey) ?? { paperTrades: 0, paperPnl: 0 };
-    stats.paperTrades += 1;
-    this.paperStats.set(strategyKey, stats);
-
-    const profile = this.paperProfiles.get(strategyKey);
-    if (profile) {
-      profile.totalPaperTrades += 1;
-      this.paperProfiles.set(strategyKey, profile);
-    }
+    this.tracker.recordPaperTrade(strategyKey);
   }
 
-  /** Get per-strategy paper trade stats (read-only view). */
   getPaperStats(): ReadonlyMap<string, PaperTradeStats> {
-    return this.paperStats;
+    return this.tracker.getPaperStats();
   }
 
-  /** Get per-strategy error counts (for health dashboard). */
   getStrategyErrors(): ReadonlyMap<string, { count: number; lastError: string }> {
     return this.strategyErrors;
   }
 
-  /** Restore paper stats from a persistence snapshot. */
   restorePaperStats(entries: Array<[string, { paperTrades: number; paperPnl: number }]>): void {
-    this.paperStats = new Map(entries);
+    this.tracker.restorePaperStats(entries);
   }
 
-  /** Clear all tracked stats (fresh start). */
   clearStats(): void {
-    this.paperStats.clear();
-    this.paperProfiles.clear();
+    this.tracker.clear();
     this.strategyErrors.clear();
   }
 
-  /** Access the RiskGateManager (for external consumers). */
   getRiskManager(): RiskGateManager {
     return this.riskManager;
   }

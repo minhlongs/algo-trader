@@ -8,13 +8,8 @@ import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  appendLedgerRecord,
-  readLedgerRecords,
-  verifyLedgerChain,
-  filterLedgerRecords,
-  queryLedgerRecords,
-  computeRecordHash,
-  canonicalRecord,
+  appendLedgerRecord, readLedgerRecords, verifyLedgerChain,
+  filterLedgerRecords, queryLedgerRecords, computeRecordHash, canonicalRecord,
 } from '../research-ledger';
 
 let tmp: string;
@@ -23,15 +18,10 @@ beforeEach(async () => {
   tmp = await mkdtemp(join(tmpdir(), 'ledger-'));
   ledger = join(tmp, 'research-ledger.jsonl');
 });
-afterEach(async () => {
-  await rm(tmp, { recursive: true, force: true });
-});
+afterEach(async () => { await rm(tmp, { recursive: true, force: true }); });
 
 const rec = (runId: string, hash = 'h-' + runId) => ({
-  runId,
-  configHash: hash,
-  resultClass: 'IS' as const,
-  strategyRef: 'strat',
+  runId, configHash: hash, resultClass: 'IS' as const, strategyRef: 'strat',
   gates: { statistical_significance: true },
 });
 
@@ -50,12 +40,8 @@ describe('appendLedgerRecord & chaining', () => {
 
   it('records provenance fields: hypothesis, parameters, foldMetrics, and gateVerdict', async () => {
     const r = await appendLedgerRecord({
-      runId: 'run-prov-1',
-      configHash: 'cfg-hash-1',
-      resultClass: 'VALIDATED' as const,
-      strategyRef: 'strat-momentum',
-      lifecycleState: 'VALIDATED',
-      hypothesisId: 'hyp-42',
+      runId: 'run-prov-1', configHash: 'cfg-hash-1', resultClass: 'VALIDATED' as const,
+      strategyRef: 'strat-momentum', lifecycleState: 'VALIDATED', hypothesisId: 'hyp-42',
       hypothesis: 'Momentum breakout in trending regime',
       parameters: { fastPeriod: 12, slowPeriod: 26, threshold: 0.05 },
       foldMetrics: { fold_0_sharpe: 1.85, fold_1_sharpe: 2.1 },
@@ -94,19 +80,13 @@ describe('verifyLedgerChain', () => {
     await writeFile(ledger, records.map((r) => JSON.stringify(r)).join('\n') + '\n', 'utf8');
     expect(verifyLedgerChain(await readLedgerRecords(ledger))).toBe(1);
 
-    // Deletion
     const fresh = await readLedgerRecords(ledger);
     fresh.splice(1, 1);
     expect(verifyLedgerChain(fresh)).not.toBe(-1);
   });
 
   it('detects tampering in parameters or foldMetrics', async () => {
-    await appendLedgerRecord({
-      ...rec('run-p'),
-      parameters: { window: 20 },
-      foldMetrics: { sharpe: 1.5 },
-    }, ledger);
-
+    await appendLedgerRecord({ ...rec('run-p'), parameters: { window: 20 }, foldMetrics: { sharpe: 1.5 } }, ledger);
     const records = await readLedgerRecords(ledger);
     records[0]!.parameters = { window: 999 };
     expect(verifyLedgerChain(records)).toBe(0);
@@ -116,12 +96,8 @@ describe('verifyLedgerChain', () => {
 describe('deterministic canonicalRecord', () => {
   it('produces identical canonical string regardless of parameter key insertion order', () => {
     const base = {
-      runId: 'r1',
-      configHash: 'c1',
-      resultClass: 'IS' as const,
-      strategyRef: 's1',
-      recordedAt: '2026-01-01T00:00:00Z',
-      gates: { g1: true },
+      runId: 'r1', configHash: 'c1', resultClass: 'IS' as const,
+      strategyRef: 's1', recordedAt: '2026-01-01T00:00:00Z', gates: { g1: true },
     };
     const s1 = canonicalRecord({ ...base, parameters: { a: 1, b: { z: 9, y: 8 } } });
     const s2 = canonicalRecord({ ...base, parameters: { b: { y: 8, z: 9 }, a: 1 } });

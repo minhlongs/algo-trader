@@ -69,3 +69,20 @@ export function registerBotCommands(bot: Bot<Context>): void {
   // Catch-all: auto-match unknown text messages to FAQ
   bot.on('message:text', (ctx: Context) => handleUnknownMessage(ctx));
 }
+
+export function registerBotMiddleware(bot: Bot<Context>): void {
+  // Sessions are persisted in D1 — no auto-creation needed.
+  bot.use(async (_ctx: Context, next: () => Promise<void>) => next());
+}
+
+export function launchBotPolling(
+  bot: Bot<Context>,
+  onInfo: (msg: string) => void,
+  onError: (msg: string, meta: Record<string, unknown>) => void,
+): void {
+  bot.start({
+    onStart: (info) => onInfo(`[TelegramBot] Running as @${info.username}`),
+  });
+  bot.catch((error) => onError('[TelegramBot] Error:', { error }));
+}
+

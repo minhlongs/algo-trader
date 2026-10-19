@@ -2,10 +2,7 @@
  * @module security/audit-trail-queries
  *
  * Read-only query functions for the audit trail.
- *
  * Extracted from `audit-log.ts` to keep modules under 200 lines.
- * These are the query/read side of the audit system — writes remain
- * in `audit-log.ts` + `audit-hash-chain.ts`.
  */
 
 import { query } from '../../db/postgres-client';
@@ -14,15 +11,8 @@ import { mapRowToEntry } from './audit-validate';
 import { initHmacKey } from './audit-hmac-key';
 import { computeRowHash } from './audit-hash-chain';
 
-// ─── Public Query Functions ───────────────────────────────────────────────────
-
 /**
  * Retrieve audit trail for a resource (or all resources for a tenant).
- *
- * @param resource - Resource identifier (e.g., 'ApiKey:42') or tenant-scoped query
- * @param limit - Max rows (default 100, max 100)
- * @param tenantId - Optional tenant filter (when resource is generic)
- * @returns Array of audit entries, newest first
  */
 export async function getAuditTrail(
   resource: string,
@@ -55,9 +45,6 @@ export async function getAuditTrail(
 
 /**
  * Verify the hash chain integrity for a tenant (or all tenants).
- *
- * @param tenantId - Tenant to verify, or undefined for all
- * @returns { valid: true } or { valid: false, brokenAt, reason }
  */
 export async function verifyAuditChain(tenantId?: string): Promise<{
   valid: boolean;
@@ -78,15 +65,14 @@ export async function verifyAuditChain(tenantId?: string): Promise<{
   sql += ` ORDER BY tenant_id, sequence_number ASC`;
 
   const { rows } = await query(sql, params);
-  let prevHashByTenant: Record<string, string> = {};
-  let prevSeqByTenant: Record<string, number> = {};
+  const prevHashByTenant: Record<string, string> = {};
+  const prevSeqByTenant: Record<string, number> = {};
 
   for (const row of rows) {
     const rowTyped = row as Record<string, unknown>;
     const tid = (rowTyped.tenant_id as string) ?? '__system__';
     const seq = Number(rowTyped.sequence_number);
 
-    // Check sequence continuity
     const expectedSeq = (prevSeqByTenant[tid] ?? 0) + 1;
     if (seq !== expectedSeq) {
       return {
@@ -96,17 +82,16 @@ export async function verifyAuditChain(tenantId?: string): Promise<{
       };
     }
 
-    // Recompute and verify hash
     const prevHash = prevHashByTenant[tid] ?? '';
     const entry: IAuditEntry = {
       id: rowTyped.id as string,
-      timestamp: '', // not needed for hash verification
-      actor: '',     // not needed for hash verification
+      timestamp: '',
+      actor: '',
       action: rowTyped.action as string,
       resource: rowTyped.resource as string,
       result: rowTyped.result as IAuditEntry['result'],
       metadata: JSON.parse((rowTyped.metadata as string) ?? '{}'),
-      ipHash: '',    // not needed for hash verification
+      ipHash: '',
     };
     const expectedHash = computeRowHash(
       key,
@@ -133,10 +118,6 @@ export async function verifyAuditChain(tenantId?: string): Promise<{
 
 /**
  * Retrieve audit trail scoped to a specific tenant.
- *
- * @param tenantId - Tenant identifier
- * @param limit - Max rows (default 100, max 100)
- * @returns Array of audit entries, newest first
  */
 export async function getAuditTrailByTenant(
   tenantId: string,
@@ -147,7 +128,6 @@ export async function getAuditTrailByTenant(
   }
 
   const clamped = Math.min(Math.max(1, Math.trunc(Number(limit)) || 100), 100);
-
   const { rows } = await query(
     `SELECT id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id, sequence_number, hash, previous_hash
      FROM audit_log

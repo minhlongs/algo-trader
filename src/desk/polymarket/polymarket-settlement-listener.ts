@@ -8,53 +8,25 @@ import { EventEmitter } from 'events';
 import { logger } from '../../shared/utils/logger';
 import type { PortfolioTelemetryHub } from '../telemetry/portfolio-telemetry-hub';
 import type { EngineId } from '../portfolio/types';
+import {
+  buildMarketResolutionSettlement,
+  buildCtfPayoutSettlement,
+  type MarketResolutionEvent,
+  type CtfPayoutEvent,
+  type TrackedPosition,
+  type RealizedSettlement,
+  type SettlementListenerConfig,
+} from './polymarket-settlement-helpers';
 
-export interface MarketResolutionEvent {
-  conditionId: string;
-  questionId?: string;
-  winningOutcomeIndex: number;
-  winningTokenId: string;
-  payoutNumerators: number[];
-  payoutDenominator: number;
-  timestamp: number;
-}
-
-export interface CtfPayoutEvent {
-  conditionId: string;
-  stakeholder: string;
-  collateralToken: string;
-  parentCollectionId: string;
-  indexSets: string[];
-  payoutAmount: number;
-  transactionHash?: string;
-  timestamp: number;
-}
-
-export interface TrackedPosition {
-  positionId: string;
-  conditionId: string;
-  tokenId: string;
-  outcomeIndex: number;
-  entryPrice: number;
-  size: number;
-  engineId?: EngineId;
-}
-
-export interface RealizedSettlement {
-  positionId: string;
-  conditionId: string;
-  tokenId: string;
-  realizedPnlUsd: number;
-  payoutUsd: number;
-  costBasisUsd: number;
-  won: boolean;
-  timestamp: number;
-}
-
-export interface SettlementListenerConfig {
-  portfolioHub?: PortfolioTelemetryHub;
-  defaultEngineId?: EngineId;
-}
+export {
+  buildMarketResolutionSettlement,
+  buildCtfPayoutSettlement,
+  type MarketResolutionEvent,
+  type CtfPayoutEvent,
+  type TrackedPosition,
+  type RealizedSettlement,
+  type SettlementListenerConfig,
+};
 
 export class PolymarketSettlementListener extends EventEmitter {
   private readonly positions = new Map<string, TrackedPosition>();
@@ -107,8 +79,7 @@ export class PolymarketSettlementListener extends EventEmitter {
       for (const id of Array.from(positionIds)) {
         const pos = this.positions.get(id);
         if (pos) {
-          const settlement = this.settlePosition(pos, event);
-          settlements.push(settlement);
+          settlements.push(this.settlePosition(pos, event));
         }
       }
     }
@@ -124,22 +95,7 @@ export class PolymarketSettlementListener extends EventEmitter {
       for (const id of Array.from(positionIds)) {
         const pos = this.positions.get(id);
         if (pos) {
-          const won = event.payoutAmount > 0;
-          const costBasisUsd = pos.size * pos.entryPrice;
-          const payoutUsd = won ? event.payoutAmount : 0;
-          const realizedPnlUsd = payoutUsd - costBasisUsd;
-
-          const settlement: RealizedSettlement = {
-            positionId: pos.positionId,
-            conditionId: pos.conditionId,
-            tokenId: pos.tokenId,
-            realizedPnlUsd,
-            payoutUsd,
-            costBasisUsd,
-            won,
-            timestamp: event.timestamp || Date.now(),
-          };
-
+          const settlement = buildCtfPayoutSettlement(pos, event);
           this.recordSettlement(settlement, pos.engineId);
           settlements.push(settlement);
           this.untrackPosition(pos.positionId);
@@ -150,23 +106,7 @@ export class PolymarketSettlementListener extends EventEmitter {
   }
 
   private settlePosition(pos: TrackedPosition, res: MarketResolutionEvent): RealizedSettlement {
-    const isWinner = pos.tokenId === res.winningTokenId || pos.outcomeIndex === res.winningOutcomeIndex;
-    const payoutPerUnit = isWinner ? 1.0 : 0.0;
-    const payoutUsd = pos.size * payoutPerUnit;
-    const costBasisUsd = pos.size * pos.entryPrice;
-    const realizedPnlUsd = payoutUsd - costBasisUsd;
-
-    const settlement: RealizedSettlement = {
-      positionId: pos.positionId,
-      conditionId: pos.conditionId,
-      tokenId: pos.tokenId,
-      realizedPnlUsd,
-      payoutUsd,
-      costBasisUsd,
-      won: isWinner,
-      timestamp: res.timestamp || Date.now(),
-    };
-
+    const settlement = buildMarketResolutionSettlement(pos, res);
     this.recordSettlement(settlement, pos.engineId);
     this.untrackPosition(pos.positionId);
     return settlement;

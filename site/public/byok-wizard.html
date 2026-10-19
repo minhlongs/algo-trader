@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AlgoTrade OS - BYOK Zero-Knowledge Enclave Onboarding</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container": "#1f1f23",
+            "surface-container-high": "#292a2d",
+            "secondary-container": "#01e599",
+            "on-secondary-fixed-variant": "#005234",
+            "on-tertiary-container": "#c3000a",
+            "tertiary-container": "#ffd0ca",
+            "on-secondary-container": "#00613e",
+            "on-error-container": "#ffdad6",
+            "primary-fixed-dim": "#00dce6",
+            "on-primary": "#00373a",
+            "error": "#ffb4ab",
+            "on-primary-container": "#006a70",
+            "inverse-primary": "#00696f",
+            "outline": "#849495",
+            "tertiary-fixed": "#ffdad5",
+            "surface-dim": "#121316",
+            "on-tertiary-fixed": "#410001",
+            "on-secondary": "#003822",
+            "surface": "#121316",
+            "on-surface-variant": "#b9cacb",
+            "on-primary-fixed": "#002022",
+            "surface-container-low": "#1b1b1f",
+            "background": "#121316",
+            "primary-container": "#00f2fe",
+            "outline-variant": "#3a494b",
+            "on-secondary-fixed": "#002112",
+            "surface-container-highest": "#343538",
+            "surface-container-lowest": "#0d0e11",
+            "secondary-fixed": "#4dffb2",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "inverse-on-surface": "#2f3034",
+            "primary": "#e0fdff",
+            "on-tertiary": "#690003",
+            "error-container": "#93000a",
+            "on-background": "#e3e2e6",
+            "surface-bright": "#38393d",
+            "surface-tint": "#00dce6",
+            "secondary-fixed-dim": "#00e297",
+            "inverse-surface": "#e3e2e6",
+            "surface-variant": "#343538",
+            "on-error": "#690005",
+            "secondary": "#70ffba",
+            "primary-fixed": "#6ff6ff",
+            "on-primary-fixed-variant": "#004f53",
+            "tertiary": "#fff5f4",
+            "on-surface": "#e3e2e6",
+            "on-tertiary-fixed-variant": "#930005"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "gutter-mobile": "0.25rem",
+            "space-xs": "0.125rem",
+            "space-sm": "0.25rem",
+            "space-lg": "0.75rem",
+            "margin-mobile": "0.5rem",
+            "gutter-desktop": "0.5rem",
+            "margin": "0.75rem",
+            "gutter": "0.5rem",
+            "space-xl": "1rem",
+            "space-md": "0.5rem",
+            "margin-desktop": "0.75rem"
+          },
+          "fontFamily": {
+            "headline-md": ["Space Grotesk"],
+            "headline-lg": ["Space Grotesk"],
+            "label-caps": ["JetBrains Mono"],
+            "data-mono-md": ["JetBrains Mono"],
+            "headline-xl": ["Space Grotesk"],
+            "body-md": ["Inter"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "body-sm": ["Inter"],
+            "body-lg": ["Inter"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "data-mono-sm": ["JetBrains Mono"]
+          },
+          "fontSize": {
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }],
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Custom scrollbars for cybernetic terminal density */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d0e11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3a494b;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00f2fe;
+    }
+    .neon-border-glow {
+      box-shadow: 0 0 12px rgba(0, 242, 254, 0.12), inset 0 0 1px rgba(0, 242, 254, 0.3);
+    }
+    .neon-pulse-glow {
+      animation: pulse-glow 2s infinite ease-in-out;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.9; filter: drop-shadow(0 0 4px rgba(0, 242, 254, 0.4)); }
+      50% { opacity: 0.5; filter: drop-shadow(0 0 1px rgba(0, 242, 254, 0.1)); }
+    }
+    .killswitch-glow {
+      box-shadow: 0 0 8px rgba(255, 59, 48, 0.35);
+    }
+  </style>
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css"/>
+  <script src="assets/ui-ux-pro-max.js" defer></script>
+</head>
+<body class="bg-surface-dim text-on-surface antialiased font-body-sm selection:bg-primary-container selection:text-surface-container-lowest min-h-screen flex flex-col justify-between overflow-x-hidden">
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+<!-- ================= TOP NAVIGATION BAR (SHARED COMPONENT) ================= -->
+<header aria-live="polite" class="bg-surface-container-lowest dark:bg-surface-container-lowest border-b border-outline-variant dark:border-outline-variant w-full h-11 flex justify-between items-center px-space-md py-space-xs fixed top-0 left-0 z-50 select-none">
+<!-- Left: Brand + Search Bar -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-lg">terminal</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary dark:text-primary">AlgoTrade OS</span>
+</div>
+<!-- Live Desk & Subtext -->
+<div class="hidden lg:flex items-center gap-2 px-2 py-0.5 rounded bg-surface-container-low border border-outline-variant font-data-mono-sm text-data-mono-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-ping"></span>
+<span class="text-primary font-semibold">DESK-ALPHA-01</span>
+<span class="text-outline">//</span>
+<span class="text-secondary font-mono">P99: 4.2ms</span>
+</div>
+<!-- TopNavBar Search Input -->
+<div class="relative hidden md:block w-48">
+<span class="material-symbols-outlined absolute left-2 top-1.5 text-on-surface-variant text-sm">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant text-on-surface pl-7 pr-2 py-0.5 text-body-sm rounded font-body-sm focus:border-primary-container focus:ring-0 focus:outline-none placeholder:text-outline text-xs" placeholder="Search commands, algos, telemetry..." type="text"/>
+</div>
+</div>
+<!-- Center Navigation Links -->
+<nav class="hidden xl:flex items-center gap-4">
+<a class="text-on-surface-variant dark:text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Strategies</a>
+<a class="text-primary-container dark:text-primary-container border-b-2 border-primary-container pb-0.5 font-bold font-data-mono-sm text-data-mono-sm" href="#">Execution</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Telemetry</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Ledger</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Shards</a>
+</nav>
+<!-- Right Trailing Cluster -->
+<div class="flex items-center gap-2">
+<!-- ZK Enclave Status Badge -->
+<div class="flex items-center gap-1.5 px-2 py-1 bg-surface-container border border-primary-container/40 rounded text-primary-container font-data-mono-sm text-data-mono-sm">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="hidden sm:inline">NITRO-ENCLAVE</span>
+<span class="text-secondary text-[9px] font-bold">ONLINE</span>
+</div>
+<!-- Icon Actions -->
+<div class="hidden sm:flex items-center gap-1 border-x border-outline-variant px-1">
+<button class="p-1 hover:bg-surface-container hover:text-primary transition-colors text-on-surface-variant" title="Cluster Hub">
+<span class="material-symbols-outlined text-base">hub</span>
+</button>
+<button class="p-1 hover:bg-surface-container hover:text-primary transition-colors text-on-surface-variant" title="Terminal CLI">
+<span class="material-symbols-outlined text-base">terminal</span>
+</button>
+<button class="p-1 relative hover:bg-surface-container hover:text-primary transition-colors text-on-surface-variant" title="Notifications">
+<span class="material-symbols-outlined text-base">notifications</span>
+<span class="absolute top-1 right-1 w-1.5 h-1.5 bg-secondary-container rounded-full"></span>
+</button>
+</div>
+<!-- Secondary Trailing Action -->
+<button class="hidden md:inline-flex items-center gap-1 px-2 py-1 bg-surface-container-low hover:bg-surface-container border border-outline-variant text-on-surface text-body-sm rounded font-data-mono-sm text-data-mono-sm transition-colors">
+<span class="material-symbols-outlined text-xs">download</span>
+        Audit Export
+      </button>
+<!-- Trailing Primary Action: Emergency Kill-Switch -->
+<button class="flex items-center gap-1 px-2.5 py-1 bg-error-container hover:bg-on-error-container text-white font-label-caps text-label-caps uppercase rounded killswitch-glow transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-xs">power_settings_new</span>
+<span class="tracking-wider font-bold">Emergency Kill-Switch</span>
+</button>
+<!-- Profile Image -->
+<div class="w-6 h-6 rounded-sm bg-surface-container-high border border-outline-variant flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Cyberpunk high frequency quant desk administrator avatar in holographic teal glow wearing tactical operator glasses and cryptographic badge in high-tech server environment with sharp neon lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbOizroMYKaXrxC8v5w85cmVcLqGOsbfg40X7sAjW7QWvp4j-bVWUIoX-o3QYfc75uqfh4Kq43GYa3AaZ2gdoli9lGttOJQYPpg9k1KDJHISwBmH3gASaQl8-9ePN4h7Xaxrd-p13Libk-ysGNt2e675sWtXiK27awf4ENhgmVnHqXkRfZB8ncKrnsmqASXMJVmbO8fVg8LnQL0Tzb37e7pPP8mESgJY-Cgw-2AwmQUPxoIjL6voCcShMEAGLdfPtnS3mQ1cumG_M"/>
+</div>
+</div>
+</header>
+<!-- ================= MAIN CONTAINER / MISSION-CRITICAL WIZARD ================= -->
+<main class="w-full pt-14 pb-16 px-2 sm:px-4 md:px-6 flex justify-center items-start flex-1">
+<div class="w-full max-w-7xl bg-surface-container-lowest border border-outline-variant rounded-DEFAULT neon-border-glow flex flex-col my-2">
+<!-- Wizard Cockpit Header Ribbon -->
+<div class="border-b border-outline-variant bg-surface-container-low/80 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+<div>
+<div class="flex items-center gap-2 text-on-surface-variant font-data-mono-sm text-data-mono-sm uppercase tracking-widest">
+<span class="material-symbols-outlined text-xs text-primary-container">dns</span>
+<span>SYSTEM ONBOARDING // ENCLAVE INITIALIZATION</span>
+<span class="text-outline">::</span>
+<span class="text-primary-container">ISOLATION LEVEL HIGH</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight mt-0.5">
+            Zero-Knowledge Bring-Your-Own-Key (BYOK) Setup
+          </h1>
+</div>
+<div class="flex items-center gap-2 font-data-mono-sm text-data-mono-sm">
+<div class="px-2 py-1 bg-surface-container border border-outline-variant flex items-center gap-1.5 rounded">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+<span class="text-outline text-xs">ATTESTATION:</span>
+<span class="text-primary font-mono font-bold">VERIFIED_NITRO</span>
+</div>
+<div class="hidden sm:flex px-2 py-1 bg-surface-container border border-outline-variant items-center gap-1 text-on-surface-variant rounded">
+<span class="text-xs">EPOCH:</span>
+<span class="text-on-surface font-mono">#9284-SEC</span>
+</div>
+</div>
+</div>
+<!-- Prominent Zero-Knowledge Security Badge & Cryptographic Attestation -->
+<div class="mx-3 sm:mx-4 mt-3 bg-surface-container-low border border-primary-container/30 rounded p-3 relative overflow-hidden">
+<div class="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-primary-container/5 to-transparent pointer-events-none"></div>
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded bg-primary-container/10 border border-primary-container/40 flex items-center justify-center text-primary-container shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">enhanced_encryption</span>
+</div>
+<div>
+<div class="flex items-center gap-2 flex-wrap">
+<span class="px-1.5 py-0.5 bg-primary-container text-surface-container-lowest font-label-caps text-[9px] font-bold rounded">
+                  AES-256-GCM HARDWARE ENCLAVE ENCRYPTED
+                </span>
+<span class="text-secondary font-data-mono-sm text-data-mono-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">verified_user</span>
+                  Zero-Proof Attestation Verified
+                </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 max-w-4xl">
+                Keys are envelope-encrypted with AES-256-GCM at Cloudflare Edge. Zero plaintext stored. Decrypted only inside confidential Nitro Enclaves with ephemeral session tokens. AlgoTrade OS nodes execute order routing with hardware-guaranteed isolation.
+              </p>
+</div>
+</div>
+<!-- Cryptographic Telemetry Hashes -->
+<div class="flex flex-col sm:flex-row lg:flex-col gap-1 text-[11px] font-data-mono-sm text-outline border-t sm:border-t-0 lg:border-l border-outline-variant pt-2 sm:pt-0 lg:pl-4 shrink-0">
+<div>
+<span class="text-on-surface-variant font-medium">Merkle Root:</span>
+<span class="text-primary-container select-all font-mono">0x7f9a...3c21d8</span>
+</div>
+<div>
+<span class="text-on-surface-variant font-medium">KMS Key ID:</span>
+<span class="text-on-surface select-all font-mono">kms-apne1-encl-prod-9</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 4-Step Interactive Stepper Matrix -->
+<div class="px-3 sm:px-4 mt-4">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-2 bg-surface-container-low p-1.5 border border-outline-variant rounded">
+<!-- Step 1 Indicator -->
+<div class="flex items-center gap-2 p-2 bg-surface-container-lowest border-l-2 border-primary-container border border-outline-variant/60 rounded">
+<span class="w-5 h-5 rounded-full bg-primary-container text-surface-container-lowest flex items-center justify-center font-bold text-xs font-mono">1</span>
+<div class="overflow-hidden">
+<span class="block font-label-caps text-label-caps text-secondary uppercase leading-none">CONFIGURED</span>
+<span class="font-data-mono-md text-data-mono-md text-primary font-semibold truncate block">1. Select Exchange</span>
+</div>
+</div>
+<!-- Step 2 Indicator (Active/Focus) -->
+<div class="flex items-center gap-2 p-2 bg-surface-container border-l-2 border-primary-container border border-primary-container/50 rounded shadow-[inset_0_0_8px_rgba(0,242,254,0.15)]">
+<span class="w-5 h-5 rounded-full bg-primary-container text-surface-container-lowest flex items-center justify-center font-bold text-xs font-mono">2</span>
+<div class="overflow-hidden">
+<span class="block font-label-caps text-label-caps text-primary-container uppercase leading-none animate-pulse">IN FOCUS</span>
+<span class="font-data-mono-md text-data-mono-md text-white font-bold truncate block">2. API Key &amp; Secret Enclave</span>
+</div>
+</div>
+<!-- Step 3 Indicator -->
+<div class="flex items-center gap-2 p-2 bg-surface-container-lowest/60 border-l-2 border-outline-variant border border-outline-variant/40 rounded">
+<span class="w-5 h-5 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-bold text-xs font-mono">3</span>
+<div class="overflow-hidden">
+<span class="block font-label-caps text-label-caps text-outline uppercase leading-none">PENDING</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface-variant truncate block">3. Risk Guardrails</span>
+</div>
+</div>
+<!-- Step 4 Indicator -->
+<div class="flex items-center gap-2 p-2 bg-surface-container-lowest/60 border-l-2 border-outline-variant border border-outline-variant/40 rounded">
+<span class="w-5 h-5 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-bold text-xs font-mono">4</span>
+<div class="overflow-hidden">
+<span class="block font-label-caps text-label-caps text-outline uppercase leading-none">STANDBY</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface-variant truncate block">4. Telegram Bot Hook</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Wizard Main Sections Grid (Bento Matrix Layout) -->
+<div class="p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+<!-- ================= LEFT COLUMN: STEP 1 & STEP 2 (7 COLS) ================= -->
+<div class="lg:col-span-7 flex flex-col gap-3">
+<!-- STEP 1: SELECT EXCHANGE MODULE -->
+<div class="bg-surface-container-low border border-outline-variant rounded p-3 sm:p-4">
+<div class="flex items-center justify-between mb-2.5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-sm">hub</span>
+<span class="font-headline-md text-headline-md text-on-surface">STEP 1 // SELECT ROUTING VENUE</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary bg-surface-container px-2 py-0.5 rounded border border-outline-variant">
+                L3 DIRECT SOCKET READY
+              </span>
+</div>
+<!-- Exchange Cards Grid -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+<!-- Binance (Selected) -->
+<div class="relative bg-surface-container border-2 border-primary-container p-2.5 rounded cursor-pointer transition-all shadow-[0_0_10px_rgba(0,242,254,0.2)]">
+<div class="flex items-center justify-between">
+<span class="font-data-mono-md text-data-mono-md font-bold text-primary">Binance</span>
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+</div>
+<div class="font-label-caps text-[9px] text-outline mt-1">CROSS &amp; ISOLATED</div>
+<div class="mt-2 text-body-sm font-data-mono-sm text-on-surface-variant text-[10px]">
+<div>Rate: <span class="text-white">1200 req/m</span></div>
+<div>WS: <span class="text-secondary font-bold">L3 Enabled</span></div>
+</div>
+<div class="absolute -top-2 right-2 bg-primary-container text-surface-container-lowest font-label-caps text-[8px] font-bold px-1 rounded">
+                  ACTIVE
+                </div>
+</div>
+<!-- OKX -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded hover:border-outline transition-colors cursor-pointer opacity-75 hover:opacity-100">
+<div class="flex items-center justify-between">
+<span class="font-data-mono-md text-data-mono-md font-bold text-on-surface">OKX</span>
+<span class="w-2 h-2 rounded-full bg-surface-variant"></span>
+</div>
+<div class="font-label-caps text-[9px] text-outline mt-1">DERIVATIVES V5</div>
+<div class="mt-2 text-body-sm font-data-mono-sm text-on-surface-variant text-[10px]">
+<div>Rate: <span class="text-white">900 req/m</span></div>
+<div>Passphrase: <span class="text-outline">Req</span></div>
+</div>
+</div>
+<!-- Bybit -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded hover:border-outline transition-colors cursor-pointer opacity-75 hover:opacity-100">
+<div class="flex items-center justify-between">
+<span class="font-data-mono-md text-data-mono-md font-bold text-on-surface">Bybit</span>
+<span class="w-2 h-2 rounded-full bg-surface-variant"></span>
+</div>
+<div class="font-label-caps text-[9px] text-outline mt-1">UNIFIED TRADING</div>
+<div class="mt-2 text-body-sm font-data-mono-sm text-on-surface-variant text-[10px]">
+<div>Rate: <span class="text-white">600 req/m</span></div>
+<div>Unified: <span class="text-outline">Ready</span></div>
+</div>
+</div>
+<!-- Polymarket Prediction -->
+<div class="bg-surface-container-lowest border border-outline-variant p-2.5 rounded hover:border-outline transition-colors cursor-pointer opacity-75 hover:opacity-100 relative">
+<div class="flex items-center justify-between">
+<span class="font-data-mono-md text-data-mono-md font-bold text-on-surface">Polymarket</span>
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+</div>
+<div class="font-label-caps text-[9px] text-primary-container mt-1">CTF CLOB ARB</div>
+<div class="mt-2 text-body-sm font-data-mono-sm text-on-surface-variant text-[10px]">
+<div>Polygon RPC: <span class="text-white">12ms</span></div>
+<div>EIP-712: <span class="text-secondary">OK</span></div>
+</div>
+<span class="absolute top-1 right-1 text-[8px] bg-secondary-container/20 text-secondary border border-secondary/40 px-1 rounded font-mono">
+                  PREDICT
+                </span>
+</div>
+</div>
+</div>
+<!-- STEP 2: API KEY & ENCLAVE FORM (IN FOCUS) -->
+<div class="bg-surface-container-low border border-primary-container/40 rounded p-3 sm:p-4 shadow-[0_0_12px_rgba(0,242,254,0.06)]">
+<div class="flex items-center justify-between border-b border-outline-variant pb-2 mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-sm">key</span>
+<span class="font-headline-md text-headline-md text-primary">STEP 2 // API CREDENTIALS ENCLAVE INJECTION</span>
+</div>
+<span class="font-label-caps text-label-caps text-primary-container tracking-wider flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-ping"></span>
+                ZERO-PLAINTEXT SESSION
+              </span>
+</div>
+<!-- Credential Fields -->
+<div class="space-y-3">
+<!-- Field: API Key -->
+<div>
+<div class="flex items-center justify-between mb-1">
+<label class="font-data-mono-sm text-data-mono-sm text-on-surface font-semibold flex items-center gap-1.5">
+                    API Key (Public Ident)
+                    <span class="text-primary-container">*</span>
+</label>
+<span class="font-data-mono-sm text-[10px] text-outline">ED25519 or HMAC Public String</span>
+</div>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant text-primary font-data-mono-sm text-data-mono-sm px-3 py-2 rounded focus:border-primary-container focus:ring-0 focus:outline-none tracking-wider" type="text" value="vm8K72bNx9zLpQ01aQw88941_prod_alpha_feed"/>
+<button class="absolute right-2 top-2 text-outline hover:text-primary-container" title="Paste from clipboard">
+<span class="material-symbols-outlined text-sm">content_paste</span>
+</button>
+</div>
+</div>
+<!-- Field: API Secret Key -->
+<div>
+<div class="flex items-center justify-between mb-1">
+<label class="font-data-mono-sm text-data-mono-sm text-on-surface font-semibold flex items-center gap-1.5">
+                    API Secret Key (Envelope Encrypted with KMS)
+                    <span class="text-primary-container">*</span>
+</label>
+<span class="font-data-mono-sm text-[10px] text-secondary">ENCRYPTED AT BROWSER LEAF</span>
+</div>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant text-primary-container font-data-mono-sm text-data-mono-sm px-3 py-2 rounded focus:border-primary-container focus:ring-0 focus:outline-none tracking-widest" type="password" value="••••••••••••••••••••••••••••••••••••••••••••••••••••••••"/>
+<div class="absolute right-2 top-2 flex items-center gap-1.5 text-outline">
+<button class="hover:text-primary-container" title="Toggle reveal preview">
+<span class="material-symbols-outlined text-sm">visibility</span>
+</button>
+<span class="text-outline-variant">|</span>
+<span class="material-symbols-outlined text-sm text-secondary" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+</div>
+<p class="font-body-sm text-[10px] text-on-surface-variant mt-1">
+                  Pushed directly into confidential Nitro instance memory buffer. Plaintext destroyed immediately post-ephemeral handshake.
+                </p>
+</div>
+<!-- Field: Passphrase (Optional for Binance, mandatory for OKX) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+<div>
+<label class="block font-data-mono-sm text-data-mono-sm text-on-surface font-medium mb-1">
+                    Passphrase (OKX/KuCoin Only)
+                  </label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-data-mono-sm text-data-mono-sm px-3 py-1.5 rounded focus:border-primary-container focus:ring-0 focus:outline-none placeholder:text-outline text-xs" placeholder="Leave empty for Binance" type="password"/>
+</div>
+<!-- Cluster IP Whitelist Generator -->
+<div>
+<div class="flex items-center justify-between mb-1">
+<label class="font-data-mono-sm text-data-mono-sm text-on-surface font-medium">
+                      Egress IP Whitelist Cluster
+                    </label>
+<button class="font-data-mono-sm text-[10px] text-primary-container hover:underline flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[11px]">content_copy</span>
+                      Copy All
+                    </button>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant px-2.5 py-1.5 rounded font-data-mono-sm text-data-mono-sm text-secondary flex items-center justify-between">
+<span class="truncate">104.28.14.22, 104.28.14.23</span>
+<span class="material-symbols-outlined text-xs text-outline">verified</span>
+</div>
+</div>
+</div>
+<!-- Permissions Matrix & Safeguards -->
+<div class="mt-3 pt-2.5 border-t border-outline-variant">
+<span class="block font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider mb-2">
+                  RESTRICTIVE PERMISSIONS CHECKLIST (VALIDATED BEFORE INGRESS)
+                </span>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+<!-- Read-Only -->
+<div class="flex items-center gap-2 p-2 bg-surface-container-lowest border border-outline-variant rounded">
+<input checked="" class="rounded text-primary-container bg-surface-container border-outline-variant focus:ring-0" disabled="" type="checkbox"/>
+<div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface font-bold">Read-Only</div>
+<div class="text-[9px] text-outline">Book &amp; Balance Feeds</div>
+</div>
+</div>
+<!-- Margin & Futures -->
+<div class="flex items-center gap-2 p-2 bg-surface-container-lowest border border-outline-variant rounded">
+<input checked="" class="rounded text-primary-container bg-surface-container border-outline-variant focus:ring-0" type="checkbox"/>
+<div>
+<div class="font-data-mono-sm text-data-mono-sm text-on-surface font-bold">Trade &amp; Orders</div>
+<div class="text-[9px] text-secondary">Futures / Margin L2</div>
+</div>
+</div>
+<!-- Withdrawals (LOCKED / FORBIDDEN) -->
+<div class="flex items-center gap-2 p-2 bg-error-container/10 border border-error/30 rounded">
+<span class="material-symbols-outlined text-error text-base">block</span>
+<div>
+<div class="font-data-mono-sm text-data-mono-sm text-error font-bold flex items-center gap-1">
+                        Withdrawals
+                        <span class="text-[8px] bg-error text-surface-container-lowest font-black px-1 rounded">LOCKED</span>
+</div>
+<div class="text-[9px] text-outline">Strictly Rejected by Enclave</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ================= RIGHT COLUMN: STEP 3 & STEP 4 (5 COLS) ================= -->
+<div class="lg:col-span-5 flex flex-col gap-3">
+<!-- STEP 3: RISK GUARDRAILS & CIRCUIT BREAKERS -->
+<div class="bg-surface-container-low border border-outline-variant rounded p-3 sm:p-4">
+<div class="flex items-center justify-between mb-3 border-b border-outline-variant pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-sm">shield</span>
+<span class="font-headline-md text-headline-md text-on-surface">STEP 3 // CIRCUIT BREAKERS</span>
+</div>
+<span class="font-label-caps text-label-caps text-secondary uppercase">
+                HARD CODED
+              </span>
+</div>
+<div class="space-y-3 font-data-mono-sm text-data-mono-sm">
+<!-- Slider 1: Max Drawdown -->
+<div>
+<div class="flex justify-between items-center text-xs mb-1">
+<span class="text-on-surface">Max Drawdown Cap (Intraday)</span>
+<span class="text-error font-mono font-bold bg-error-container/20 px-1.5 py-0.5 rounded border border-error/30">-2.5%</span>
+</div>
+<input class="w-full accent-primary-container h-1 bg-surface-container-highest rounded cursor-pointer" max="10.0" min="0.5" step="0.5" type="range" value="2.5"/>
+<div class="flex justify-between text-[9px] text-outline mt-0.5">
+<span>-0.5% (Ultra-Safe)</span>
+<span>-5.0% (Aggressive)</span>
+<span>-10.0% (Liquidate)</span>
+</div>
+</div>
+<!-- Input: Max Single-Position Notional -->
+<div>
+<label class="block text-on-surface mb-1">Max Single-Position Notional</label>
+<div class="relative">
+<span class="absolute left-2.5 top-1.5 text-outline text-xs font-mono">$</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant text-white font-data-mono-sm pl-6 pr-14 py-1.5 rounded focus:border-primary-container focus:ring-0 focus:outline-none text-xs" type="text" value="250,000"/>
+<span class="absolute right-2 top-1.5 text-[10px] text-outline font-mono">USDT</span>
+</div>
+</div>
+<!-- Two Column: Auto-Killswitch & Latency Tolerance -->
+<div class="grid grid-cols-2 gap-2 pt-1">
+<div class="bg-surface-container-lowest border border-outline-variant p-2 rounded">
+<div class="text-[10px] text-outline mb-1">Daily Loss Killswitch</div>
+<div class="text-error font-mono font-bold text-xs">$12,500 USDT</div>
+<div class="text-[9px] text-on-surface-variant mt-0.5">Auto-cancels open GTCs</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant p-2 rounded">
+<div class="text-[10px] text-outline mb-1">Latency Tolerance</div>
+<div class="text-secondary font-mono font-bold text-xs">&lt; 15.0 ms</div>
+<div class="text-[9px] text-on-surface-variant mt-0.5">Rejects stale tick books</div>
+</div>
+</div>
+</div>
+</div>
+<!-- STEP 4: TELEGRAM NOTIFICATION BOT -->
+<div class="bg-surface-container-low border border-outline-variant rounded p-3 sm:p-4">
+<div class="flex items-center justify-between mb-2.5 border-b border-outline-variant pb-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-sm">send</span>
+<span class="font-headline-md text-headline-md text-on-surface">STEP 4 // TELEGRAM BOT HOOK</span>
+</div>
+<div class="flex items-center gap-1 font-data-mono-sm text-[10px] text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+                WEBHOOK LIVE
+              </div>
+</div>
+<div class="flex flex-col sm:flex-row items-center gap-3 bg-surface-container-lowest border border-outline-variant p-2.5 rounded">
+<!-- QR Code Mock for Instant Mobile Link -->
+<div class="w-20 h-20 bg-surface-container-high border border-primary-container/40 p-1 flex flex-col items-center justify-center shrink-0 rounded text-center">
+<span class="material-symbols-outlined text-primary-container text-3xl">qr_code_2</span>
+<span class="text-[8px] font-mono text-outline leading-tight">SCAN TO AUTH</span>
+</div>
+<!-- Telegram Handle & Actions -->
+<div class="flex-1 w-full text-center sm:text-left">
+<div class="flex items-center justify-center sm:justify-start gap-1.5">
+<span class="font-data-mono-md text-data-mono-md font-bold text-primary">@Sophia_Bbot</span>
+<span class="material-symbols-outlined text-xs text-primary-container">verified</span>
+</div>
+<p class="font-body-sm text-[10px] text-on-surface-variant mt-0.5">
+                  Instant fills, risk violations &amp; remote <code class="text-error bg-surface-container px-1 py-0.5 rounded">/kill_desk</code> trigger in Telegram.
+                </p>
+<div class="flex items-center justify-center sm:justify-start gap-2 mt-2">
+<a class="inline-flex items-center gap-1 px-2.5 py-1 bg-surface-container hover:bg-surface-container-high border border-primary-container text-primary-container rounded font-data-mono-sm text-[11px] font-semibold transition-all" href="#">
+<span class="material-symbols-outlined text-xs">open_in_new</span>
+                    Connect @Sophia_Bbot
+                  </a>
+<button class="px-2 py-1 bg-surface-container-lowest hover:bg-surface-container border border-outline-variant text-outline text-[11px] font-mono rounded">
+                    Test Ping
+                  </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ================= ENCLAVE LIVE VERIFICATION & ACTIONS FOOTER ================= -->
+<div class="border-t border-outline-variant bg-surface-container-low px-4 py-3 flex flex-col lg:flex-row items-center justify-between gap-3">
+<!-- Handshake Diagnostics Feed -->
+<div class="flex items-center gap-3 overflow-x-auto w-full lg:w-auto font-data-mono-sm text-data-mono-sm text-on-surface-variant">
+<div class="flex items-center gap-1.5 whitespace-nowrap">
+<span class="w-2 h-2 rounded-full bg-secondary-container"></span>
+<span>TLS 1.3 Handshake: <strong class="text-white">OK</strong></span>
+</div>
+<span class="text-outline">|</span>
+<div class="flex items-center gap-1.5 whitespace-nowrap">
+<span class="material-symbols-outlined text-xs text-primary-container">speed</span>
+<span>Direct Connect (AWS Tokyo): <strong class="text-secondary font-mono">1.82ms</strong></span>
+</div>
+<span class="text-outline">|</span>
+<div class="flex items-center gap-1.5 whitespace-nowrap">
+<span class="material-symbols-outlined text-xs text-secondary">lock</span>
+<span>HMAC-SHA256 Sig: <strong class="text-white">PASS</strong></span>
+</div>
+</div>
+<!-- Action Buttons Cluster -->
+<div class="flex items-center justify-end gap-2 w-full lg:w-auto">
+<!-- Cancel / Abort Button -->
+<button class="px-3 py-1.5 bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface text-body-sm font-data-mono-sm text-data-mono-sm rounded transition-all">
+            Cancel / Abort
+          </button>
+<!-- Test Connection & Validate Nonce -->
+<button class="px-3 py-1.5 bg-surface-container hover:bg-surface-container-high border border-primary-container/60 text-primary-container font-data-mono-sm text-data-mono-sm rounded flex items-center gap-1.5 transition-all">
+<span class="material-symbols-outlined text-xs">sync</span>
+<span>Test Connection &amp; Nonce</span>
+</button>
+<!-- Primary Glowing Action CTA -->
+<button class="px-4 py-1.5 bg-primary-container hover:bg-white text-surface-container-lowest font-headline-md text-data-mono-md font-bold rounded flex items-center gap-2 shadow-[0_0_14px_rgba(0,242,254,0.4)] hover:shadow-[0_0_20px_rgba(0,242,254,0.7)] transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined text-base">rocket_launch</span>
+<span>Deploy Live Enclave</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Global Footer / Terminal Status Bar -->
+<footer class="h-6 bg-surface-container-lowest border-t border-outline-variant text-outline font-data-mono-sm text-[10px] px-3 flex items-center justify-between select-none">
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1 text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+        SHARD: TOK-04-A
+      </span>
+<span>MEMORY ISOLATION: 100%</span>
+<span class="hidden sm:inline">ZERO-PROOF RUNTIME: NITRO-V2.1</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant font-mono">ENCLAVE_TIMESTAMP: 1714589204.092</span>
+<span class="text-outline">::</span>
+<span class="text-primary-container font-bold">ALGORITHMIC TRADING OS</span>
+</div>
+</footer>
+
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-wrap: wrap; gap: 6px; background: rgba(15, 18, 24, 0.95); backdrop-filter: blur(12px); border: 1px solid #1E2430; padding: 6px 12px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 11px;">
+  <a href="dashboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">DASHBOARD</a>
+  <a href="quant-terminal.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">TERMINAL</a>
+  <a href="marketplace.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">MARKETPLACE</a>
+  <a href="leaderboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">LEADERBOARD</a>
+  <a href="billing.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BILLING</a>
+  <a href="byok-wizard.html" style="color: #00F2FE; font-weight: bold; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); text-decoration: none; padding: 4px 8px; border-radius: 4px;">⚡ BYOK</a>
+  <a href="mobile-sentry.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">SENTRY</a>
+  <a href="telemetry.html" style="color: #00F2FE; text-decoration: none; padding: 4px 8px;">TELEMETRY</a>
+  <a href="latency-simulator.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">FEED SIMULATOR</a>
+  <a href="styleguide.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">STYLEGUIDE</a>
+</div>
+
+
+
+<!-- ALGOTRADE UNIVERSAL DOCK NAVIGATION -->
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; align-items: center; gap: 8px; background: rgba(15, 18, 24, 0.92); border: 1px solid #1E2430; backdrop-filter: blur(16px); padding: 6px 14px; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(0, 242, 254, 0.15); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-width: 95vw; overflow-x: auto;">
+  <div style="display: flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid #1E2430;">
+    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #00E599; box-shadow: 0 0 8px #00E599;"></span>
+    <span style="color: #00F2FE; font-weight: 700; letter-spacing: 0.5px;">ALGOTRADE</span>
+  </div>
+  <nav style="display: flex; align-items: center; gap: 4px;">
+    <a href="dashboard.html" class="nav-item-dashboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">DASHBOARD</a>
+    <a href="quant-terminal.html" class="nav-item-quant-terminal" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">QUANT TERMINAL</a>
+    <a href="marketplace.html" class="nav-item-marketplace" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MARKETPLACE</a>
+    <a href="leaderboard.html" class="nav-item-leaderboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LEADERBOARD</a>
+    <a href="backtest-studio.html" class="nav-item-backtest-studio" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BACKTEST STUDIO</a>
+    <a href="stress-lab.html" class="nav-item-stress-lab" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STRESS LAB</a>
+    <a href="telemetry.html" class="nav-item-telemetry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">TELEMETRY</a>
+    <a href="latency-simulator.html" class="nav-item-latency-simulator" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LATENCY SIM</a>
+    <a href="billing.html" class="nav-item-billing" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BILLING</a>
+    <a href="byok-wizard.html" class="nav-item-byok-wizard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BYOK WIZARD</a>
+    <a href="mobile-sentry.html" class="nav-item-mobile-sentry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MOBILE SENTRY</a>
+    <a href="styleguide.html" class="nav-item-styleguide" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STYLE GUIDE</a>
+  </nav>
+</div>
+<script>
+  (function() {
+    var cur = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (cur === 'index.html') cur = 'dashboard.html';
+    var key = cur.split('.')[0];
+    var activeLink = document.querySelector('.nav-item-' + key);
+    if (activeLink) {
+      activeLink.style.color = '#00F2FE';
+      activeLink.style.background = 'rgba(0, 242, 254, 0.12)';
+      activeLink.style.border = '1px solid rgba(0, 242, 254, 0.3)';
+      activeLink.style.fontWeight = '600';
+    }
+  })();
+</script>
+
+</body></html>

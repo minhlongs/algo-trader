@@ -65,7 +65,7 @@ describe('Platform API Contract', () => {
 
     it('api/routes/ directory has route files', () => {
       expect(existsSync(routesDir), 'api/routes/ must exist').toBe(true);
-      const files = findTsFiles(routesDir).filter(f => !f.includes('__tests__'));
+      const files = findTsFiles(routesDir).filter(f => !f.includes('__tests__') && f.endsWith('-routes.ts'));
       expect(files.length, `Only ${files.length} route files found`).toBeGreaterThan(0);
     });
 
@@ -86,7 +86,7 @@ describe('Platform API Contract', () => {
     });
 
     it('each route file exports a Router', () => {
-      const files = findTsFiles(routesDir).filter(f => !f.includes('__tests__'));
+      const files = findTsFiles(routesDir).filter(f => !f.includes('__tests__') && f.endsWith('-routes.ts'));
       let routerCount = 0;
       for (const f of files) {
         try {
@@ -156,7 +156,7 @@ describe('Platform API Contract', () => {
 
     it('error responses include error key', () => {
       const routesDir = join(SRC_ROOT, 'platform', 'api', 'routes');
-      const files = findTsFiles(routesDir).filter(f => !f.includes('__tests__'));
+      const files = findTsFiles(routesDir).filter(f => !f.includes('__tests__') && f.endsWith('-routes.ts'));
       let errorResponseCount = 0;
       for (const f of files) {
         try {

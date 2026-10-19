@@ -7,11 +7,12 @@ import {
   type StrategyDeps,
 } from './base-polymarket-strategy';
 import {
-  calcATR,
+  appendExhaustionTick,
   calcVelocity,
   calcVolumeRate,
   DEFAULT_CONFIG,
   detectExhaustion,
+  evaluateExhaustionExit,
   type MomentumExhaustionConfig,
 } from './momentum-exhaustion-helpers';
 
@@ -30,23 +31,8 @@ export class MomentumExhaustionStrategy extends BasePolymarketStrategy {
   }
 
   private recordTick(tokenId: string, price: number, volume: number): void {
-    let prices = this.priceHistory.get(tokenId);
-    if (!prices) {
-      prices = [];
-      this.priceHistory.set(tokenId, prices);
-    }
-    prices.push(price);
-
-    let vols = this.volumeHistory.get(tokenId);
-    if (!vols) {
-      vols = [];
-      this.volumeHistory.set(tokenId, vols);
-    }
-    vols.push(volume);
-
     const maxLen = Math.max(this.cfg.velocityWindow, this.cfg.atrPeriod) * 4;
-    if (prices.length > maxLen) prices.splice(0, prices.length - maxLen);
-    if (vols.length > maxLen) vols.splice(0, vols.length - maxLen);
+    appendExhaustionTick(this.priceHistory, this.volumeHistory, tokenId, price, volume, maxLen);
   }
 
   // -----------------------------------------------------------------------
@@ -57,34 +43,14 @@ export class MomentumExhaustionStrategy extends BasePolymarketStrategy {
     pos: OpenPosition,
     currentPrice: number,
   ): { exit: boolean; reason: string } {
-    const prices = this.priceHistory.get(pos.tokenId);
-    const vols = this.volumeHistory.get(pos.tokenId);
-    if (!prices || !vols || prices.length < this.cfg.velocityWindow + 1) {
-      return { exit: false, reason: '' };
-    }
-
-    // 2x ATR stop
-    const atr = calcATR(prices, this.cfg.atrPeriod);
-    if (atr > 0) {
-      const priceMove = Math.abs(currentPrice - pos.entryPrice);
-      if (priceMove > atr * this.cfg.atrStopMultiplier) {
-        return {
-          exit: true,
-          reason: `atr-stop (${(priceMove / atr).toFixed(2)}x ATR)`,
-        };
-      }
-    }
-
-    // Opposite exhaustion signal
-    const priceVel = calcVelocity(prices, this.cfg.velocityWindow);
-    const prevVel = this.prevVelocity.get(pos.tokenId) ?? priceVel;
-    const volumeRate = calcVolumeRate(vols, this.cfg.velocityWindow);
-    const signal = detectExhaustion(priceVel, prevVel, volumeRate);
-    if (signal !== null && signal !== pos.side) {
-      return { exit: true, reason: `opposite-exhaustion (signal=${signal})` };
-    }
-
-    return { exit: false, reason: '' };
+    return evaluateExhaustionExit(
+      pos,
+      currentPrice,
+      this.priceHistory.get(pos.tokenId),
+      this.volumeHistory.get(pos.tokenId),
+      this.prevVelocity,
+      this.cfg,
+    );
   }
 
   // -----------------------------------------------------------------------
@@ -114,19 +80,15 @@ export class MomentumExhaustionStrategy extends BasePolymarketStrategy {
         if (prices.length < this.cfg.velocityWindow + 2) continue;
 
         const priceVel = calcVelocity(prices, this.cfg.velocityWindow);
-
-        // Velocity from one tick earlier
         const prevPrices = prices.slice(0, -1);
         const prevPriceVel = prevPrices.length >= this.cfg.velocityWindow + 1
           ? calcVelocity(prevPrices, this.cfg.velocityWindow)
           : priceVel;
-
         const volumeRate = calcVolumeRate(vols, this.cfg.velocityWindow);
 
         const signal = detectExhaustion(priceVel, prevPriceVel, volumeRate);
         if (!signal) continue;
 
-        // Store the current velocity for future exit checks
         this.prevVelocity.set(market.yesTokenId, priceVel);
 
         const side: 'yes' | 'no' = signal;

@@ -10,7 +10,6 @@
  */
 
 import { logger } from '../../shared/utils/logger';
-import { sortObjectDeep, constantTimeEqual } from '../workers/nowpayments-utils';
 import {
   NOWPAYMENTS_TIERS,
   type NowPaymentsIpnPayload,
@@ -24,9 +23,11 @@ import {
   getStatusAction,
   createPayout,
 } from './nowpayments-marketplace';
+import { verifyWebhookSignature, parseCustomerRefFromOrderId } from './nowpayments-webhook-verifier';
 
 export * from './nowpayments-types';
 export * from './nowpayments-marketplace';
+export { verifyWebhookSignature, parseCustomerRefFromOrderId };
 
 export class NowPaymentsService {
   private static instance: NowPaymentsService;
@@ -53,73 +54,33 @@ export class NowPaymentsService {
     return NowPaymentsService.instance;
   }
 
-  /**
-   * Verify IPN webhook signature (HMAC-SHA512 over sorted JSON keys with raw fallback)
-   */
+  /** Verify IPN webhook signature (HMAC-SHA512 over sorted JSON keys with raw fallback) */
   async verifyWebhook(rawBody: string, signature: string): Promise<boolean> {
-    if (!this.ipnSecret) {
-      logger.warn('NOWPAYMENTS_IPN_SECRET not configured');
-      return false;
-    }
-    try {
-      const encoder = new TextEncoder();
-      const key = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(this.ipnSecret),
-        { name: 'HMAC', hash: 'SHA-512' },
-        false,
-        ['sign']
-      );
-      const signHmac = async (data: string): Promise<string> => {
-        const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
-        return Array.from(new Uint8Array(sig))
-          .map((b) => b.toString(16).padStart(2, '0'))
-          .join('');
-      };
-      try {
-        const sorted = sortObjectDeep(JSON.parse(rawBody));
-        const sortedSig = await signHmac(JSON.stringify(sorted));
-        if (constantTimeEqual(sortedSig, signature)) return true;
-      } catch {
-        // Fallback for non-JSON or raw payload
-      }
-      return constantTimeEqual(await signHmac(rawBody), signature);
-    } catch (error) {
-      logger.error('IPN signature verification failed:', { error });
-      return false;
-    }
+    return verifyWebhookSignature(rawBody, signature, this.ipnSecret);
   }
 
-  /**
-   * Generate checkout URL for a tier (pre-created invoice)
-   */
+  /** Generate checkout URL for a tier (pre-created invoice) */
   createCheckoutUrl(tierKey: string, customerRef: string): string | null {
     const config = NOWPAYMENTS_TIERS[tierKey];
     if (!config || !config.invoiceId) {
       logger.warn(`No invoice configured for tier: ${tierKey}`);
       return null;
     }
-
     const orderId = `algotrade_${customerRef}_${Date.now()}`;
     return `https://nowpayments.io/payment?iid=${config.invoiceId}&order_id=${orderId}`;
   }
 
-  /**
-   * Check payment status via NOWPayments API
-   */
+  /** Check payment status via NOWPayments API */
   async getPaymentStatus(paymentId: string): Promise<NowPaymentsIpnPayload | null> {
     if (!this.apiKey) return null;
-
     try {
       const res = await fetch(`${this.baseUrl}/payment/${paymentId}`, {
         headers: { 'x-api-key': this.apiKey },
       });
-
       if (!res.ok) {
         logger.error(`NOWPayments API error: ${res.status}`);
         return null;
       }
-
       return (await res.json()) as NowPaymentsIpnPayload;
     } catch (error) {
       logger.error('Failed to check payment status:', { error });
@@ -127,29 +88,17 @@ export class NowPaymentsService {
     }
   }
 
-  /**
-   * Look up tier by invoice ID from IPN payload
-   */
+  /** Look up tier by invoice ID from IPN payload */
   getTierByInvoiceId(invoiceId: string): NowPaymentsTierConfig | null {
-    return (
-      Object.values(NOWPAYMENTS_TIERS).find((t) => t.invoiceId === invoiceId) ?? null
-    );
+    return Object.values(NOWPAYMENTS_TIERS).find((t) => t.invoiceId === invoiceId) ?? null;
   }
 
-  /**
-   * Parse customer reference from order_id (format: algotrade_{ref}_{timestamp})
-   */
+  /** Parse customer reference from order_id (format: algotrade_{ref}_{timestamp}) */
   parseCustomerRef(orderId: string): string | null {
-    const parts = orderId.split('_');
-    if (parts.length >= 3 && parts[0] === 'algotrade') {
-      return parts.slice(1, -1).join('_');
-    }
-    return null;
+    return parseCustomerRefFromOrderId(orderId);
   }
 
-  /**
-   * Generate a marketplace checkout URL by creating a dynamic NOWPayments invoice.
-   */
+  /** Generate a marketplace checkout URL by creating a dynamic NOWPayments invoice. */
   async createMarketplaceCheckoutUrl(params: {
     listingId: string;
     strategyName: string;
@@ -160,30 +109,22 @@ export class NowPaymentsService {
     return createMarketplaceCheckoutUrl(this.baseUrl, this.apiKey, params);
   }
 
-  /**
-   * Check if an order_id is a marketplace payment (prefix: mp_)
-   */
+  /** Check if an order_id is a marketplace payment (prefix: mp_) */
   isMarketplaceOrderId(orderId: string): boolean {
     return isMarketplaceOrderId(orderId);
   }
 
-  /**
-   * Parse marketplace order_id back to listing and tenant info.
-   */
+  /** Parse marketplace order_id back to listing and tenant info. */
   parseMarketplaceOrderId(orderId: string): { listingId: string; tenantIdPrefix: string } | null {
     return parseMarketplaceOrderId(orderId);
   }
 
-  /**
-   * Map IPN status to internal action
-   */
+  /** Map IPN status to internal action */
   getStatusAction(status: NowPaymentsStatus): 'activate' | 'cancel' | 'ignore' {
     return getStatusAction(status);
   }
 
-  /**
-   * Create a payout to a wallet address via NOWPayments API.
-   */
+  /** Create a payout to a wallet address via NOWPayments API. */
   async createPayout(params: { address: string; amount: number }): Promise<{ payoutId: string } | null> {
     return createPayout(this.baseUrl, this.apiKey, params);
   }

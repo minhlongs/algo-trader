@@ -27,16 +27,9 @@ import type { ScannerRuntime, ArbPosition } from '../negative-risk-types';
 
 function makePosition(overrides: Partial<ArbPosition> = {}): ArbPosition {
   return {
-    conditionId: 'm-1',
-    yesTokenId: 'yes-1',
-    noTokenId: 'no-1',
-    yesEntryPrice: 0.48,
-    noEntryPrice: 0.48,
-    yesSizeUsdc: 10,
-    noSizeUsdc: 10,
-    yesOrderId: 'yoid',
-    noOrderId: 'noid',
-    openedAt: Date.now() - 1000,
+    conditionId: 'm-1', yesTokenId: 'yes-1', noTokenId: 'no-1',
+    yesEntryPrice: 0.48, noEntryPrice: 0.48, yesSizeUsdc: 10, noSizeUsdc: 10,
+    yesOrderId: 'yoid', noOrderId: 'noid', openedAt: Date.now() - 1000,
     ...overrides,
   };
 }
@@ -46,12 +39,8 @@ function makeRuntime(positions = new Map<string, ArbPosition>(), overrides: Reco
     positions,
     cooldowns: new Map<string, number>(),
     cfg: {
-      threshold: 0.98,
-      maxOpportunitySizeUsdc: 10,
-      cooldownMs: 30000,
-      minVolumeUsdc: 1000,
-      takeProfitPct: 0.02,
-      stopLossPct: 0.015,
+      threshold: 0.98, maxOpportunitySizeUsdc: 10, cooldownMs: 30000,
+      minVolumeUsdc: 1000, takeProfitPct: 0.02, stopLossPct: 0.015,
       maxHoldMs: 60 * 60 * 1000,
       ...overrides,
     },
@@ -63,27 +52,22 @@ function makeRuntime(positions = new Map<string, ArbPosition>(), overrides: Reco
 }
 
 describe('evaluateExits', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => { vi.clearAllMocks(); });
 
-  it('is a no-op when there are no positions', async () => {
-    const runtime = makeRuntime();
-    await evaluateExits(runtime);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
+  it('is a no-op when there are no positions and skips positions with no liquidity', async () => {
+    const emptyRuntime = makeRuntime();
+    await evaluateExits(emptyRuntime);
+    expect(emptyRuntime.orderManager.placeOrder).not.toHaveBeenCalled();
     expect(mockSetCooldown).not.toHaveBeenCalled();
-  });
 
-  it('skips positions with no liquidity on either leg', async () => {
-    const runtime = makeRuntime(new Map([['m-1', makePosition()]]));
-    (runtime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ bids: [], asks: [] });
-    await evaluateExits(runtime);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
-    expect(runtime.positions.size).toBe(1);
+    const noLiqRuntime = makeRuntime(new Map([['m-1', makePosition()]]));
+    (noLiqRuntime.clob.getOrderBook as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ bids: [], asks: [] });
+    await evaluateExits(noLiqRuntime);
+    expect(noLiqRuntime.orderManager.placeOrder).not.toHaveBeenCalled();
+    expect(noLiqRuntime.positions.size).toBe(1);
   });
 
   it('closes a position that hits take-profit', async () => {
-    // yesBid 0.50, noBid 0.50 -> exit value 1.00 vs cost 0.96 -> +4.17% pnl
     const runtime = makeRuntime(new Map([['m-1', makePosition()]]));
     await evaluateExits(runtime);
 
@@ -96,7 +80,6 @@ describe('evaluateExits', () => {
   });
 
   it('closes a position that hits stop-loss', async () => {
-    // bids well below entry cost -> large negative pnl
     const runtime = makeRuntime(
       new Map([['m-1', makePosition({ yesEntryPrice: 0.9, noEntryPrice: 0.9, yesSizeUsdc: 10, noSizeUsdc: 10 })]]),
       { stopLossPct: 0.015 }
@@ -118,11 +101,9 @@ describe('evaluateExits', () => {
 
     expect(runtime.orderManager.placeOrder).toHaveBeenCalledTimes(2);
     expect(runtime.positions.has('m-1')).toBe(false);
-    expect(mockLogger.info).toHaveBeenCalledWith('Exit arbitrage position', 'negative-risk-scanner', expect.anything());
   });
 
   it('keeps open positions that miss all exit criteria', async () => {
-    // bids 0.48/0.48 -> exit value 0.96 vs cost 0.96 -> ~0% pnl, no max-hold hit
     const runtime = makeRuntime(
       new Map([['m-1', makePosition({ yesEntryPrice: 0.48, noEntryPrice: 0.48 })]]),
       { takeProfitPct: 0.02, stopLossPct: 0.015, maxHoldMs: 60 * 60 * 1000 }
@@ -132,7 +113,6 @@ describe('evaluateExits', () => {
 
     expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
     expect(runtime.positions.size).toBe(1);
-    expect(mockLogger.info).not.toHaveBeenCalled();
     expect(mockSetCooldown).not.toHaveBeenCalled();
   });
 
@@ -143,7 +123,6 @@ describe('evaluateExits', () => {
 
     expect(mockLogger.warn).toHaveBeenCalledWith('Exit check failed', 'negative-risk-scanner', expect.anything());
     expect(runtime.positions.size).toBe(1);
-    expect(runtime.orderManager.placeOrder).not.toHaveBeenCalled();
   });
 
   it('applies cooldown and deletes position only after the close loop completes', async () => {

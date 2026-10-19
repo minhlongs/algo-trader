@@ -20,6 +20,7 @@ import {
 } from './ingestion/ingestion-types';
 import { evaluateOpportunity } from './ingestion/ingestion-evaluator';
 import { processOpportunityWorker } from './ingestion/ingestion-worker';
+import { enqueueOpportunities } from './ingestion/ingestion-queue-ops';
 
 export * from './ingestion/ingestion-types';
 export * from './ingestion/ingestion-evaluator';
@@ -107,34 +108,7 @@ export class OpportunityIngestionPipeline {
   handleOpportunities(opps: ArbitrageOpportunity[]): void {
     try {
       if (!opps || opps.length === 0) return;
-
-      const now = Date.now();
-      this.pruneDedupCache(now);
-
-      for (const opp of opps) {
-        this.metrics.scannedCount++;
-        const dedupKey = `${opp.symbol}:${opp.buyExchange}:${opp.sellExchange}`;
-        const lastSeen = this.dedupCache.get(dedupKey);
-
-        if (lastSeen !== undefined && now - lastSeen < this.config.dedupTtlMs) {
-          this.metrics.dedupDroppedCount++;
-          logger.debug('[OpportunityIngestionPipeline] Duplicate dropped', { dedupKey });
-          continue;
-        }
-
-        this.dedupCache.set(dedupKey, now);
-
-        if (this.queue.length >= this.config.maxQueueSize) {
-          this.queue.shift();
-          this.metrics.queueDroppedCount++;
-          logger.warn('[OpportunityIngestionPipeline] Queue overflow, oldest opportunity dropped', {
-            queueSize: this.queue.length,
-            maxQueueSize: this.config.maxQueueSize,
-          });
-        }
-
-        this.queue.push(opp);
-      }
+      enqueueOpportunities(opps, this.queue, this.dedupCache, this.config, this.metrics, Date.now());
 
       void this.processQueue().catch((err: unknown) => {
         logger.error('[OpportunityIngestionPipeline] Unexpected worker error', {
@@ -177,16 +151,6 @@ export class OpportunityIngestionPipeline {
             void this.processQueue();
           }
         });
-    }
-  }
-
-  private pruneDedupCache(now: number): void {
-    if (this.dedupCache.size > 200) {
-      for (const [key, timestamp] of this.dedupCache.entries()) {
-        if (now - timestamp > this.config.dedupTtlMs * 2) {
-          this.dedupCache.delete(key);
-        }
-      }
     }
   }
 }

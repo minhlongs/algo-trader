@@ -52,26 +52,16 @@ export async function checkExitsFor(
       continue;
     }
 
-    // Take profit
-    if (pos.primaryLeg.side === 'yes') {
-      const gain = (currentPrice - pos.primaryLeg.entryPrice) / pos.primaryLeg.entryPrice;
-      if (gain >= ctx.cfg.takeProfitPct) {
-        shouldExit = true;
-        reason = `take-profit (${(gain * 100).toFixed(2)}%)`;
-      } else if (-gain >= ctx.cfg.stopLossPct) {
-        shouldExit = true;
-        reason = `stop-loss (${(gain * 100).toFixed(2)}%)`;
-      }
-    } else {
-      // NO side: profit when price goes down
-      const gain = (pos.primaryLeg.entryPrice - currentPrice) / pos.primaryLeg.entryPrice;
-      if (gain >= ctx.cfg.takeProfitPct) {
-        shouldExit = true;
-        reason = `take-profit (${(gain * 100).toFixed(2)}%)`;
-      } else if (-gain >= ctx.cfg.stopLossPct) {
-        shouldExit = true;
-        reason = `stop-loss (${(gain * 100).toFixed(2)}%)`;
-      }
+    // Take profit / Stop loss
+    const gain = pos.primaryLeg.side === 'yes'
+      ? (currentPrice - pos.primaryLeg.entryPrice) / pos.primaryLeg.entryPrice
+      : (pos.primaryLeg.entryPrice - currentPrice) / pos.primaryLeg.entryPrice;
+    if (gain >= ctx.cfg.takeProfitPct) {
+      shouldExit = true;
+      reason = `take-profit (${(gain * 100).toFixed(2)}%)`;
+    } else if (-gain >= ctx.cfg.stopLossPct) {
+      shouldExit = true;
+      reason = `stop-loss (${(gain * 100).toFixed(2)}%)`;
     }
 
     // Convergence exit: check if deviation returned within convergenceThreshold

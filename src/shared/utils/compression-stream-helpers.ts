@@ -1,10 +1,38 @@
 /**
- * Compression Streaming Helpers — Buffer compression and decompression
+ * Compression Streaming Helpers — Buffer compression, decompression, and JSON array streaming
  */
 
 import { logger } from './logger';
 import { recordCompressionRatio } from '../../shared/observability/prometheus-metrics';
 import type { CompressionAlgorithm } from './compression-stream-types';
+
+export function createJsonArrayReadableStream<T>(
+  items: AsyncIterable<T> | T[],
+  chunkSize: number = 100
+): ReadableStream<string> {
+  return new ReadableStream({
+    async start(controller) {
+      controller.enqueue('[');
+      let first = true;
+      let count = 0;
+
+      for await (const item of items) {
+        if (!first) {
+          controller.enqueue(',');
+        }
+        first = false;
+        controller.enqueue(JSON.stringify(item));
+        count++;
+        if (count % chunkSize === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+      }
+
+      controller.enqueue(']');
+      controller.close();
+    },
+  });
+}
 
 export async function compressStringData(
   data: string,

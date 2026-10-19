@@ -5,28 +5,28 @@
 
 import { logger } from '../../shared/utils/logger';
 import { getMessageBus } from '../../shared/messaging/index';
+import {
+  type LimitlessMarket,
+  type LimitlessFeed,
+  type LimitlessRawMarket,
+  type LimitlessMarketsResponse,
+  parsePrice,
+  normalize,
+  parseActiveLimitlessMarkets,
+} from './limitless-price-parsers';
+
+export {
+  type LimitlessMarket,
+  type LimitlessFeed,
+  type LimitlessRawMarket,
+  type LimitlessMarketsResponse,
+  parsePrice,
+  normalize,
+  parseActiveLimitlessMarkets,
+};
 
 // ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-export interface LimitlessMarket {
-  id: string;
-  title: string;
-  yesPrice: number;   // normalized 0–1
-  noPrice: number;    // normalized 0–1
-  volume: number;
-  platform: 'limitless';
-  lastUpdated: number;
-}
-
-export interface LimitlessFeed {
-  markets: LimitlessMarket[];
-  fetchedAt: number;
-}
-
-// ---------------------------------------------------------------------------
-// Constants & raw API shapes
+// Constants
 // ---------------------------------------------------------------------------
 
 const BASE_URL = 'https://api.limitless.exchange/v1';
@@ -34,22 +34,6 @@ const NATS_TOPIC = 'market.limitless.update';
 const DEFAULT_POLL_MS = 60_000;
 const CACHE_TTL_MS = 60_000;
 const FETCH_TIMEOUT_MS = 10_000;
-
-interface LimitlessRawMarket {
-  id?: string;
-  title?: string;
-  question?: string;
-  outcomePrices?: string[] | number[];  // [yesCents, noCents] as strings or numbers
-  volume?: number;
-  volumeFormatted?: string;
-  active?: boolean;
-  closed?: boolean;
-}
-
-interface LimitlessMarketsResponse {
-  markets?: LimitlessRawMarket[];
-  data?: LimitlessRawMarket[];
-}
 
 // ---------------------------------------------------------------------------
 // In-memory cache
@@ -62,34 +46,6 @@ const isCacheValid = (): boolean => cache !== null && Date.now() < cache.expires
 function setCache(markets: LimitlessMarket[]): void {
   const data = new Map<string, LimitlessMarket>(markets.map((m) => [m.id, m]));
   cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Parse price value which may be string "0.75" or number 75 (cents) */
-function parsePrice(val: string | number | undefined): number {
-  if (val === undefined || val === null) return 0;
-  const n = typeof val === 'string' ? parseFloat(val) : val;
-  if (isNaN(n)) return 0;
-  // If value > 1, treat as cents (0–100) → convert to probability
-  return n > 1 ? Math.min(1, Math.max(0, n / 100)) : Math.min(1, Math.max(0, n));
-}
-
-function normalize(raw: LimitlessRawMarket): LimitlessMarket | null {
-  const id = raw.id;
-  if (!id) return null;
-  const prices = raw.outcomePrices ?? [];
-  return {
-    id,
-    title: raw.title ?? raw.question ?? '',
-    yesPrice: parsePrice(prices[0]),
-    noPrice: parsePrice(prices[1]),
-    volume: raw.volume ?? 0,
-    platform: 'limitless',
-    lastUpdated: Date.now(),
-  };
 }
 
 async function limitlessFetch<T>(path: string): Promise<T> {
@@ -114,11 +70,7 @@ export async function fetchLimitlessMarkets(): Promise<LimitlessFeed> {
 
   logger.debug('[LimitlessFeed] Fetching markets from API');
   const data = await limitlessFetch<LimitlessMarketsResponse>('/markets');
-  const raw = data.markets ?? data.data ?? [];
-  const markets = raw
-    .filter((m) => m.active !== false && !m.closed)
-    .map(normalize)
-    .filter((m): m is LimitlessMarket => m !== null);
+  const markets = parseActiveLimitlessMarkets(data);
   setCache(markets);
   logger.info('[LimitlessFeed] Markets fetched', { count: markets.length });
   return { markets, fetchedAt: Date.now() };

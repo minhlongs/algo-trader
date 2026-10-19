@@ -8,7 +8,6 @@ import {
   validateLicenseKeyFormat,
   extractTierFromKey,
   LicenseStore,
-  activateLicenseKey,
   encryptLicenseKey,
 } from '../../lib/license-keys';
 import {
@@ -22,6 +21,13 @@ import {
   promptLicenseKey,
   saveEncryptedLicenseToEnv,
 } from './activate-license-storage';
+import {
+  applyLicenseStoreActivation,
+  buildNewLicenseEntry,
+  getMaxUsageForTier,
+  logActivationComplete,
+  type LicenseTier,
+} from './activate-license-helpers';
 
 export {
   RATE_LIMIT_MAX_ATTEMPTS,
@@ -37,6 +43,14 @@ export {
   promptLicenseKey,
   saveEncryptedLicenseToEnv,
 } from './activate-license-storage';
+
+export {
+  applyLicenseStoreActivation,
+  buildNewLicenseEntry,
+  getMaxUsageForTier,
+  logActivationComplete,
+  type LicenseTier,
+} from './activate-license-helpers';
 
 export async function runActivateCommand(licenseKey?: string): Promise<void> {
   logger.info('\n🔑 Algo Trader License Activation\n');
@@ -92,43 +106,9 @@ export async function runActivateCommand(licenseKey?: string): Promise<void> {
 
   // Step 3: Store license (in production, this would call API)
   const store = LicenseStore.getInstance();
-
-  // Check if already activated
-  const existingLicense = store.getLicenseByKey(key);
-  if (existingLicense) {
-    if (existingLicense.status === 'active') {
-      logger.info('✅ License already activated!\n');
-      logger.info(`  Tier: ${existingLicense.tier.toUpperCase()}`);
-      logger.info(`  Usage: ${existingLicense.usageCount}/${existingLicense.maxUsage}`);
-      if (existingLicense.expiresAt) {
-        logger.info(`  Expires: ${new Date(existingLicense.expiresAt).toLocaleDateString()}`);
-      }
-      logger.info('');
-      return;
-    }
-
-    if (existingLicense.status === 'revoked') {
-      logger.info('❌ This license has been revoked\n');
-      return;
-    }
-
-    // Activate pending license
-    activateLicenseKey(existingLicense);
-    logger.info('✅ License activated successfully!\n');
-  } else {
-    // Create new license entry
-    const newLicense = {
-      id: `lic_${Date.now()}`,
-      key,
-      tier,
-      status: 'active' as const,
-      createdAt: new Date().toISOString(),
-      activatedAt: new Date().toISOString(),
-      usageCount: 0,
-      maxUsage: tier === 'free' ? 100 : tier === 'pro' ? 10000 : 100000,
-    };
-    store.saveLicense(newLicense);
-    logger.info('✅ License activated successfully!\n');
+  const activationOutcome = applyLicenseStoreActivation(store, key, tier);
+  if (activationOutcome !== 'activated') {
+    return;
   }
 
   // Step 4: Encrypt and save to .env
@@ -149,16 +129,5 @@ export async function runActivateCommand(licenseKey?: string): Promise<void> {
   logger.info(`✅ Saved to: ${ENV_PATH}\n`);
 
   // Step 5: Show next steps
-  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  logger.info('🎉 ACTIVATION COMPLETE!');
-  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-  logger.info('Next steps:');
-  logger.info('  1. Run `algo-trader quickstart` to start trading');
-  logger.info('  2. Access premium features with your tier');
-  logger.info('  3. Check usage: `algo-trader status`\n');
-
-  if (tier === 'free') {
-    logger.info('⚠️  Free tier limit: 100 API calls/month');
-    logger.info('   Upgrade to Pro for unlimited trading\n');
-  }
+  logActivationComplete(tier);
 }

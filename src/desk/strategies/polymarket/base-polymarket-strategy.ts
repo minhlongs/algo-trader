@@ -8,9 +8,6 @@
  * - base-polymarket-strategy-exits.ts: pure TP/SL/maxHold + pnl math
  * - base-polymarket-strategy-price-cache.ts: reactive price cache (composed)
  * - base-polymarket-strategy-trades.ts: entry/exit execution (composed)
- *
- * Migration: extend this class, override scanEntries() for entry logic and
- * getCustomExitCondition() for custom exits. Existing strategies migrate one at a time.
  */
 
 import type { RawOrderBook } from '../../polymarket/clob-client';
@@ -24,14 +21,15 @@ import type {
   StrategyDeps,
   TradeEvent,
 } from './base-polymarket-strategy-types';
-import { computePositionGain, evaluateExitCondition } from './base-polymarket-strategy-exits';
 import { StrategyPriceCache } from './base-polymarket-strategy-price-cache';
 import { performEntry, performExit } from './base-polymarket-strategy-trades';
 import type { TradeLifecycleContext } from './base-polymarket-strategy-trades';
+import { processPositionExits, type ExitCheckContext } from './base-polymarket-strategy-exit-runner';
 import { logger } from '../../core/logger';
 
-// Facade re-exports: every existing importer keeps compiling unmodified.
 export type { BaseStrategyConfig, OpenPosition, StrategyDeps, TradeEvent, ExecutionContext } from './base-polymarket-strategy-types';
+export { processPositionExits };
+export type { ExitCheckContext };
 
 export abstract class BasePolymarketStrategy {
   protected readonly positions: OpenPosition[] = [];
@@ -57,10 +55,7 @@ export abstract class BasePolymarketStrategy {
   /** Strategy-specific entry scanning. Called each execution after exit checks. */
   protected abstract scanEntries(markets: GammaMarket[]): Promise<void>;
 
-  /**
-   * Override to add strategy-specific exit conditions beyond TP/SL/maxHold.
-   * Return { exit: true, reason: '...' } or { exit: false }. Default: never exit.
-   */
+  /** Override to add strategy-specific exit conditions beyond TP/SL/maxHold. */
   protected getCustomExitCondition(
     _pos: OpenPosition,
     _currentPrice: number,
@@ -73,9 +68,7 @@ export abstract class BasePolymarketStrategy {
     return this.positions.some(p => p.conditionId === conditionId);
   }
 
-  protected getPositionCount(): number {
-    return this.positions.length;
-  }
+  protected getPositionCount(): number { return this.positions.length; }
 
   protected isOnCooldown(conditionId: string, now = Date.now()): boolean {
     return now < (this.cooldowns.get(conditionId) ?? 0);
@@ -86,9 +79,7 @@ export abstract class BasePolymarketStrategy {
   }
 
   /** Update cached price from a reactive PRICE_UPDATE event (called by StrategyRunner). */
-  updatePrice(tokenId: string, bid: number, ask: number): void {
-    this.priceCache.update(tokenId, bid, ask);
-  }
+  updatePrice(tokenId: string, bid: number, ask: number): void { this.priceCache.update(tokenId, bid, ask); }
 
   /** Get cached price for a token, or fetch from CLOB if not cached/stale. */
   protected async getCurrentPrice(tokenId: string): Promise<{ mid: number; bid: number; ask: number; fromCache: boolean }> {
@@ -96,13 +87,9 @@ export abstract class BasePolymarketStrategy {
   }
 
   /** Get cached orderbook snapshot for a token (undefined if not cached or stale >5s). */
-  protected getCachedOrderbook(tokenId: string): RawOrderBook | undefined {
-    return this.priceCache.getCachedOrderbook(tokenId);
-  }
+  protected getCachedOrderbook(tokenId: string): RawOrderBook | undefined { return this.priceCache.getCachedOrderbook(tokenId); }
 
-  protected bestBidAsk(book: RawOrderBook): { bid: number; ask: number; mid: number } {
-    return this.priceCache.bestBidAsk(book);
-  }
+  protected bestBidAsk(book: RawOrderBook): { bid: number; ask: number; mid: number } { return this.priceCache.bestBidAsk(book); }
 
   /** Place a GTC entry order, record the position, log and emit the trade. */
   protected async enterPosition(
@@ -115,48 +102,18 @@ export abstract class BasePolymarketStrategy {
     await performEntry(this.tradeCtx, tokenId, conditionId, side, entryPrice, sizeUsdc);
   }
 
-  /**
-   * Check all open positions for exit conditions (TP/SL/maxHold + custom).
-   * Called at the start of every execution. Uses cached prices when available.
-   * TP/SL/maxHold math lives in evaluateExitCondition (pure); the custom verdict
-   * is resolved HERE via virtual dispatch so subclass overrides keep working.
-   */
+  /** Check all open positions for exit conditions (TP/SL/maxHold + custom). */
   protected async checkExits(now = Date.now()): Promise<void> {
-    const toRemove: number[] = [];
-
-    for (let i = 0; i < this.positions.length; i++) {
-      const pos = this.positions[i];
-      const { mid: currentPrice, fromCache } = await this.getCurrentPrice(pos.tokenId);
-      const book = this.getCachedOrderbook(pos.tokenId);
-
-      if (currentPrice === 0) continue; // No price available, skip exit check
-
-      // TP/SL/maxHold first (pure math). Custom verdict resolved via virtual
-      // dispatch ONLY when none fired — some overrides have side effects, so
-      // they must not run on TP/SL exits.
-      let { shouldExit, reason } = evaluateExitCondition(pos, currentPrice, this.config, undefined, now);
-      if (!shouldExit) {
-        const custom = this.getCustomExitCondition(pos, currentPrice, book);
-        ({ shouldExit, reason } = evaluateExitCondition(pos, currentPrice, this.config, custom, now));
-      }
-
-      if (shouldExit) {
-        await this.exitPosition(pos, currentPrice, reason);
-        toRemove.push(i);
-      } else if (fromCache) {
-        const gain = computePositionGain(pos, currentPrice);
-        logger.debug('Position check (cached price)', this.strategyName, {
-          conditionId: pos.conditionId,
-          currentPrice: currentPrice.toFixed(4),
-          gain: (gain * 100).toFixed(2) + '%',
-        });
-      }
-    }
-
-    // Remove closed positions in reverse order
-    for (let i = toRemove.length - 1; i >= 0; i--) {
-      this.positions.splice(toRemove[i], 1);
-    }
+    const ctx: ExitCheckContext = {
+      positions: this.positions,
+      config: this.config,
+      strategyName: this.strategyName,
+      getCurrentPrice: this.getCurrentPrice.bind(this),
+      getCachedOrderbook: this.getCachedOrderbook.bind(this),
+      getCustomExitCondition: this.getCustomExitCondition.bind(this),
+      exitPosition: this.exitPosition.bind(this),
+    };
+    await processPositionExits(ctx, now);
   }
 
   /** Place an IOC exit order, log pnl, emit the trade, set cooldown. Swallows errors (logged). */
@@ -168,10 +125,7 @@ export abstract class BasePolymarketStrategy {
     this.deps.eventBus.emit('trade.executed', { trade });
   }
 
-  /**
-   * Main execution: check exits, scan trending markets, scan entries.
-   * Strategies can override for different logic. Accepts optional reactive context.
-   */
+  /** Main execution: check exits, scan trending markets, scan entries. */
   async execute(context?: ExecutionContext): Promise<void> {
     try {
       await this.checkExits();

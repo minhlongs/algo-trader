@@ -6,9 +6,6 @@ function candle(timestamp: number, close: number, volume = 1000): ICandle {
   return { timestamp, open: close, high: close, low: close, close, volume };
 }
 
-// Mildly wiggling prices followed by a strong dip then a recovery — drives RSI
-// below the oversold threshold and then back above it, which the strategy
-// treats as a buy signal.
 function dipThenRecoverCandles(): ICandle[] {
   const candles: ICandle[] = [];
   let p = 100;
@@ -36,13 +33,9 @@ describe('examples::03-rsi-mean-reversion-strategy', () => {
     expect(res.reason).toContain('Insufficient data');
   });
 
-  it('reports strategy name', () => {
-    const strat = new RsiMeanReversionStrategy();
-    expect(strat.getName()).toBe('RsiMeanReversion');
-  });
-
-  it('initializes successfully', async () => {
+  it('reports strategy name and initializes successfully', async () => {
     const strat = new RsiMeanReversionStrategy({ rsiPeriod: 14, oversoldThreshold: 30, overboughtThreshold: 70 });
+    expect(strat.getName()).toBe('RsiMeanReversion');
     await expect(strat.initialize()).resolves.toBeUndefined();
   });
 
@@ -73,7 +66,6 @@ describe('examples::03-rsi-mean-reversion-strategy', () => {
   it('returns a wait signal while the RSI history is still building', async () => {
     const strat = new RsiMeanReversionStrategy({ lookback: 5 });
     const candles = dipThenRecoverCandles();
-    // Feed candles one at a time until lookback is reached
     const res = await strat.execute(candles.slice(0, 16));
     expect(res.action).toBe('wait');
     expect(res.reason).toContain('Building RSI history');
@@ -82,7 +74,6 @@ describe('examples::03-rsi-mean-reversion-strategy', () => {
   it('produces a buy signal after an oversold dip followed by a recovery', async () => {
     const strat = new RsiMeanReversionStrategy();
     const candles = dipThenRecoverCandles();
-    // Feed the candles one bar at a time to mimic a live execution loop
     let res: ReturnType<typeof strat.execute> extends Promise<infer U> ? U : never;
     for (let i = 0; i < candles.length; i++) {
       res = await strat.execute([candles[i]!]);
@@ -97,14 +88,12 @@ describe('examples::03-rsi-mean-reversion-strategy', () => {
 
   it('returns a wait signal when the RSI history is flat and never crosses a threshold', async () => {
     const strat = new RsiMeanReversionStrategy();
-    // Steady single-direction prices never produce an oversold/overbought flip
     const candles: ICandle[] = [];
     let p = 100;
     for (let i = 0; i < 80; i++) {
       candles.push(candle(1_000_000 + i, p));
       p += 0.5;
     }
-    // Feed one candle at a time so the RSI history grows past lookback
     let res: ReturnType<typeof strat.execute> extends Promise<infer U> ? U : never;
     for (const c of candles) {
       res = await strat.execute([c]);
@@ -113,20 +102,13 @@ describe('examples::03-rsi-mean-reversion-strategy', () => {
     expect(res!.reason).toContain('No RSI signal');
   });
 
-  it('truncates price history to the last 300 candles', async () => {
+  it('truncates price history to the last 300 candles and RSI history to the last 200 values', async () => {
     const strat = new RsiMeanReversionStrategy();
     const candles: ICandle[] = [];
     for (let i = 0; i < 450; i++) candles.push(candle(i, 100 + (i % 10)));
     await strat.execute(candles);
     // @ts-expect-error - reach into private fields for assertions
     expect(strat.priceHistory.length).toBe(300);
-  });
-
-  it('truncates RSI history to the last 200 values', async () => {
-    const strat = new RsiMeanReversionStrategy();
-    const candles: ICandle[] = [];
-    for (let i = 0; i < 450; i++) candles.push(candle(i, 100 + (i % 10)));
-    await strat.execute(candles);
     await strat.execute(candles.slice(0, 50));
     // @ts-expect-error - reach into private fields for assertions
     expect(strat.rsiValues.length).toBeLessThanOrEqual(200);
@@ -142,7 +124,7 @@ describe('examples::03-rsi-mean-reversion-strategy', () => {
     expect(strat.priceHistory.length).toBe(4);
   });
 
-  it('reports a status snapshot after a run', async () => {
+  it('reports a status snapshot after a run and handles single candle cleanly', async () => {
     const strat = new RsiMeanReversionStrategy({ oversoldThreshold: 25, overboughtThreshold: 75 });
     await strat.execute(dipThenRecoverCandles());
     const st = strat.getStatus() as Record<string, unknown>;
@@ -150,11 +132,8 @@ describe('examples::03-rsi-mean-reversion-strategy', () => {
     expect(st.candles).toBeGreaterThan(0);
     expect(st.oversoldThreshold).toBe(25);
     expect(st.overboughtThreshold).toBe(75);
-  });
 
-  it('handles a single candle without throwing', async () => {
-    const strat = new RsiMeanReversionStrategy();
-    const res = await strat.execute([candle(1, 100)]);
+    const res = await new RsiMeanReversionStrategy().execute([candle(1, 100)]);
     expect(res).toHaveProperty('action');
     expect(res).toHaveProperty('reason');
   });

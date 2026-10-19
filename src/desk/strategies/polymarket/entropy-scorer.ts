@@ -2,12 +2,7 @@
  * Entropy Scorer Strategy — V2 implementation.
  *
  * Scores market uncertainty using information entropy derived from
- * order book probabilities. Trades when entropy indicates mispricing:
- * low entropy = high consensus (follow consensus direction),
- * high entropy = uncertainty (avoid or exit).
- *
- * Entry: entropy below threshold with clear directional bias
- * Exit: entropy rises above threshold (uncertainty returns)
+ * order book probabilities.
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
@@ -20,59 +15,34 @@ import {
   type StrategyDeps,
 } from './base-polymarket-strategy';
 
-// ── Config ─────────────────────────────────────────────────────────────────────
-
 export interface EntropyScorerConfig extends BaseStrategyConfig {
-  /** Entropy threshold (0-1) below which we consider a signal reliable */
   entropyThreshold: number;
-  /** Minimum directional bias (0-1) to confirm signal */
   minBias: number;
-  /** Lookback ticks for tracking entropy history */
   lookback: number;
 }
 
 export const DEFAULT_CONFIG: EntropyScorerConfig = {
-  entropyThreshold: 0.7,
-  minBias: 0.15,
-  lookback: 5,
-  minVolume: 1000,
-  takeProfitPct: 0.04,
-  stopLossPct: 0.025,
-  maxHoldMs: 10 * 60_000,
-  maxPositions: 4,
-  cooldownMs: 60_000,
-  positionSize: '12',
+  entropyThreshold: 0.7, minBias: 0.15, lookback: 5,
+  minVolume: 1000, takeProfitPct: 0.04, stopLossPct: 0.025,
+  maxHoldMs: 10 * 60_000, maxPositions: 4, cooldownMs: 60_000, positionSize: '12',
 };
 
 const STRATEGY_NAME: StrategyName = 'entropy-scorer';
 
-// ── Pure helpers ───────────────────────────────────────────────────────────────
-
-/**
- * Compute Shannon entropy from a probability distribution.
- * entropy(p) = -(p * ln(p) + (1-p) * ln(1-p)) / ln(2)
- * Returns 0 (certain) to 1 (maximum uncertainty).
- */
 export function computeEntropy(probability: number): number {
   const p = Math.max(0.001, Math.min(0.999, probability));
   const q = 1 - p;
-  const entropy = -(p * Math.log(p) + q * Math.log(q)) / Math.LN2;
-  return Math.min(1, entropy);
+  return Math.min(1, -(p * Math.log(p) + q * Math.log(q)) / Math.LN2);
 }
 
-/** Directional bias: how far from 0.5 (neutral). 0 = neutral, 1 = max bias. */
 export function computeBias(probability: number): number {
   return Math.abs(probability - 0.5) * 2;
 }
 
-/** Determine trade direction from probability bias. */
 export function getDirection(probability: number): 'yes' | 'no' | null {
-  const bias = computeBias(probability);
-  if (bias < 0.05) return null;
+  if (computeBias(probability) < 0.05) return null;
   return probability > 0.5 ? 'yes' : 'no';
 }
-
-// ── Strategy class ─────────────────────────────────────────────────────────────
 
 export class EntropyScorerStrategy extends BasePolymarketStrategy {
   private readonly cfg: EntropyScorerConfig;
@@ -84,20 +54,13 @@ export class EntropyScorerStrategy extends BasePolymarketStrategy {
     this.cfg = fullConfig;
   }
 
-  // ── Custom exit: entropy rise ──────────────────────────────────────────
-
-  protected getCustomExitCondition(
-    pos: OpenPosition,
-    currentPrice: number,
-  ): { exit: boolean; reason: string } {
+  protected getCustomExitCondition(pos: OpenPosition, currentPrice: number): { exit: boolean; reason: string } {
     const entropy = computeEntropy(pos.side === 'yes' ? currentPrice : 1 - currentPrice);
     if (entropy > this.cfg.entropyThreshold) {
       return { exit: true, reason: `entropy-rising (${entropy.toFixed(2)})` };
     }
     return { exit: false, reason: '' };
   }
-
-  // ── Entry scanning ─────────────────────────────────────────────────────
 
   protected async scanEntries(markets: GammaMarket[]): Promise<void> {
     if (this.getPositionCount() >= this.cfg.maxPositions) return;

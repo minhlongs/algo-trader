@@ -24,33 +24,25 @@ describe('GruStrategy', () => {
     { timestamp: 15, open: 137, high: 140, low: 136, close: 139, volume: 2400 },
   ];
 
-  it('should initialize with default config', async () => {
+  it('should initialize with default and custom configs', async () => {
     const strategy = new GruStrategy();
     await strategy.initialize();
-
     const status = strategy.getStatus();
     expect(status.modelName).toBe('GRU Neural Network');
     expect(status.trained).toBe(false);
-
     strategy.dispose?.();
-  }, 15000);
 
-  it('should initialize with custom config', async () => {
-    const strategy = new GruStrategy({
+    const custom = new GruStrategy({
       inputSteps: 5,
       outputSteps: 1,
       gruUnits: 32,
       epochs: 10,
       confidenceThreshold: 0.5,
     });
-
-    await strategy.initialize();
-
-    const status = strategy.getStatus();
-    expect(status.modelName).toBe('GRU Neural Network');
-
-    strategy.dispose?.();
-  });
+    await custom.initialize();
+    expect(custom.getStatus().modelName).toBe('GRU Neural Network');
+    custom.dispose?.();
+  }, 15000);
 
   it('should return wait signal when not trained', async () => {
     const strategy = new GruStrategy({ inputSteps: 5 });
@@ -135,17 +127,7 @@ describe('GruStrategy', () => {
     strategy.dispose?.();
   }, 15000);
 
-  it('should return strategy name', async () => {
-    const strategy = new GruStrategy();
-    await strategy.initialize();
-
-    const name = strategy.getName();
-    expect(name).toBe('GRU Neural Network');
-
-    strategy.dispose?.();
-  }, 15000);
-
-  it('should handle multiple execute calls', async () => {
+  it('should return strategy name and handle multiple execute calls', async () => {
     const strategy = new GruStrategy({
       inputSteps: 5,
       outputSteps: 1,
@@ -155,9 +137,9 @@ describe('GruStrategy', () => {
     });
 
     await strategy.initialize();
+    expect(strategy.getName()).toBe('GRU Neural Network');
     await strategy.train(sampleCandles);
 
-    // Multiple executions
     const signal1 = await strategy.execute([{ timestamp: 16, open: 139, high: 142, low: 138, close: 141, volume: 2500 }]);
     const signal2 = await strategy.execute([{ timestamp: 17, open: 141, high: 144, low: 140, close: 143, volume: 2600 }]);
     const signal3 = await strategy.execute([{ timestamp: 18, open: 143, high: 146, low: 142, close: 145, volume: 2700 }]);
@@ -167,5 +149,5 @@ describe('GruStrategy', () => {
     expect(signal3).toBeDefined();
 
     strategy.dispose?.();
-  });
+  }, 15000);
 }, 60000);

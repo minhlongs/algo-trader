@@ -3,9 +3,6 @@
  *
  * Aggregates multiple market microstructure signals into a single weighted
  * sentiment score: book imbalance, price velocity, volume trend.
- * Trades when the composite score exceeds a threshold.
- *
- * score > threshold → BUY YES. score < -threshold → BUY NO.
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
@@ -16,8 +13,17 @@ import {
   type BaseStrategyConfig,
   type StrategyDeps,
 } from './base-polymarket-strategy';
+import {
+  calcBookImbalance,
+  calcPriceVelocity,
+  calcVolumeTrend,
+  calcCompositeScore,
+  determineSignal,
+} from './weighted-sentiment-math';
 
-// ── Config ───────────────────────────────────────────────────────────────────
+export {
+  calcBookImbalance, calcPriceVelocity, calcVolumeTrend, calcCompositeScore, determineSignal,
+};
 
 export interface WeightedSentimentAggregatorConfig extends BaseStrategyConfig {
   wImbalance: number;
@@ -29,63 +35,13 @@ export interface WeightedSentimentAggregatorConfig extends BaseStrategyConfig {
 }
 
 export const DEFAULT_CONFIG: WeightedSentimentAggregatorConfig = {
-  wImbalance: 0.4,
-  wVelocity: 0.35,
-  wVolume: 0.25,
-  scoreThreshold: 0.15,
-  velocityWindow: 5,
-  volumeWindow: 10,
-  minVolume: 5000,
-  takeProfitPct: 0.025,
-  stopLossPct: 0.02,
-  maxHoldMs: 15 * 60_000,
-  maxPositions: 5,
-  cooldownMs: 90_000,
-  positionSize: '10',
+  wImbalance: 0.4, wVelocity: 0.35, wVolume: 0.25,
+  scoreThreshold: 0.15, velocityWindow: 5, volumeWindow: 10,
+  minVolume: 5000, takeProfitPct: 0.025, stopLossPct: 0.02,
+  maxHoldMs: 15 * 60_000, maxPositions: 5, cooldownMs: 90_000, positionSize: '10',
 };
 
 const STRATEGY_NAME = 'weighted-sentiment-aggregator' as StrategyName;
-
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
-export function calcBookImbalance(bidSize: number, askSize: number): number {
-  const total = bidSize + askSize;
-  if (total === 0) return 0;
-  return (bidSize - askSize) / total;
-}
-
-export function calcPriceVelocity(prices: number[]): number {
-  if (prices.length < 2) return 0;
-  const first = prices[0];
-  if (first === 0) return 0;
-  return (prices[prices.length - 1] - first) / first;
-}
-
-export function calcVolumeTrend(currentVol: number, avgVol: number): number {
-  if (avgVol === 0) return 0;
-  return currentVol / avgVol;
-}
-
-export function calcCompositeScore(
-  imbalance: number,
-  velocity: number,
-  volumeTrend: number,
-  config: Pick<WeightedSentimentAggregatorConfig, 'wImbalance' | 'wVelocity' | 'wVolume'>,
-): number {
-  return (
-    config.wImbalance * imbalance +
-    config.wVelocity * velocity +
-    config.wVolume * (volumeTrend - 1)
-  );
-}
-
-export function determineSignal(score: number, threshold: number): 'yes' | 'no' | null {
-  if (score > threshold) return 'yes';
-  if (score < -threshold) return 'no';
-  return null;
-}
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class WeightedSentimentAggregatorStrategy extends BasePolymarketStrategy {
   private readonly cfg: WeightedSentimentAggregatorConfig;
@@ -143,7 +99,6 @@ export class WeightedSentimentAggregatorStrategy extends BasePolymarketStrategy 
         const ba = this.bestBidAsk(book);
         if (ba.mid <= 0 || ba.mid >= 1) continue;
 
-        // Calculate total bid/ask sizes from order book
         let bidSize = 0;
         for (const b of book.bids) bidSize += parseFloat(b.size);
         let askSize = 0;

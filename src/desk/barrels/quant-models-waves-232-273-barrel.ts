@@ -1,0 +1,46 @@
+/**
+ * Barrel cluster 3: Quantitative Desk Models (Waves 232 - 273).
+ * Rule: strictly < 85 LOC.
+ */
+export * as GatheralSchied from '../gatheralschied/index';
+export * as AlfonsiFruth from '../alfonsifruthor/index';
+export * as ObizhaevaWang from '../obizhaevawang/index';
+export * as GatheralManipulation from '../gatheralmanipulation/index';
+export * as AlmgrenEmpirical from '../almgrenempirical/index';
+export * as AlmgrenLorenz from '../almgrenlorenz/index';
+export * as HubermanStanzl from '../hubermanstanzl/index';
+export * as GatheralSchiedGbm from '../gatheralschied/index';
+export * as CarteaJaimungalLiquidation from '../carteajaimungal_liquidation/index';
+export * as AlmgrenPowerLaw from '../almgrenpowerlaw/index';
+export * as GatheralArbitrageKernel from '../gatheralarbitragekernel/index';
+export * as AvellanedaMultiAsset from '../avellanedamultiasset/index';
+export * as LehalleVolumeCurve from '../lehallemetric/index';
+export * as CarteaAlphaMm from '../carteajaimungalalpha/index';
+export * as GatheralSchiedImpact from '../gatheralschiedimpact/index';
+export * as KyleObizhaevaSmooth from '../kyleobizhaewasmooth/index';
+export * as AvellanedaStoikovHf from '../avellanedastoikovhf/index';
+export * as ContKukanovFragmented from '../contkukanovfragmented/index';
+export * as GatheralRoughVol from '../gatheralroughvol/index';
+export * as CarteaCrossImpact from '../carteacrossimpact/index';
+export * as BouchaudFluctuation from '../bouchaudfluctuation/index';
+export * as AlmgrenPowerLawV2 from '../almgrenpowerlawv2/index';
+export * as GatheralSchied2012 from '../gatheralschied2012/index';
+export * as AvellanedaGueantJump from '../avellanedagueantjump/index';
+export * as ContDeLarrard2013 from '../contdelarrard2013/index';
+export * as LehalleMounjid2017 from '../lehallemounjid2017/index';
+export * as Gueant2015MultiAsset from '../gueant2015multiasset/index';
+export * as AlfonsiSchied2012 from '../alfonsischied2012/index';
+export * as CarteaJaimungal2014Alpha from '../carteajaimungal2014alpha/index';
+export * as GatheralSchied2011Kernel from '../gatheralschied2011kernel/index';
+export * as Gueant2015ClosedForm from '../gueant2015closedform/index';
+export * as LopezDePrado2018FracDiff from '../lopezdeprado2018fracdiff/index';
+export * as AlmgrenLi2016Option from '../almgrenli2016option/index';
+export * as LehalleNeuman2019Book from '../lehalleneuman2019book/index';
+export * as CarteaJaimungalTan2016Latency from '../carteajaimungaltan2016latency/index';
+export * as ObizhaevaWang2020Decomp from '../obizhaevawang2020decomp/index';
+export * as LehalleNeuman2019QueueReactive from '../lehalleneuman2019queuereactive/index';
+export * as CarteaJaimungal2017Ambiguity from '../carteajaimungal2017ambiguity/index';
+export * as GatheralSchied2013Rough from '../gatheralschied2013rough/index';
+export * as CarteaJaimungal2015LimitMarket from '../carteajaimungal2015limitmarket/index';
+export * as GueantLehalle2015Intensity from '../gueantlehalle2015intensity/index';
+export * as Bouchaud2004Response from '../bouchaud2004response/index';

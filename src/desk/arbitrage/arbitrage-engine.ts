@@ -22,18 +22,8 @@ import {
   type ArbitrageOpportunity,
   type ArbitrageEngineStatus,
 } from './engine/arbitrage-engine-types';
-import {
-  extractOpportunityParams,
-  normalizeSpreadOpportunity,
-} from './engine/arbitrage-engine-normalizer';
-import {
-  recordExecutionMetrics,
-  logExecutionAuditOutcome,
-} from './engine/arbitrage-engine-telemetry';
-import {
-  validatePreTradeRiskAndHurdle,
-  buildTwoLegExecutionPlan,
-} from './engine/arbitrage-engine-pretrade';
+import { normalizeSpreadOpportunity } from './engine/arbitrage-engine-normalizer';
+import { runOpportunityExecutionFlow } from './engine/arbitrage-execution-flow';
 
 export * from './engine/arbitrage-engine-types';
 
@@ -125,69 +115,25 @@ export class ArbitrageEngine {
   }
 
   async executeOpportunity(opp: ArbitrageOpportunity): Promise<MultiLegExecutionReport | null> {
-    const extracted = extractOpportunityParams(opp);
-    const { buyVenue, sellVenue, symbol, buyPrice, sellPrice } = extracted;
-
-    await this.auditLogger.logOpportunityIngested({
-      id: opp.id,
-      symbol,
-      buyVenue,
-      sellVenue,
-      buyPrice,
-      sellPrice,
-      spreadBps: opp.spreadBps ?? (buyPrice > 0 ? ((sellPrice - buyPrice) / buyPrice) * 10000 : 0),
-      netProfitBps: opp.netProfitBps,
-    });
-
-    const minHurdleBps = this.config.minNetProfitBps ?? this.config.riskConfig?.minHurdleBps ?? 10;
-    const preTrade = await validatePreTradeRiskAndHurdle({
+    return runOpportunityExecutionFlow({
       opp,
-      extracted,
-      minHurdleBps,
+      config: this.config,
       mode: this.mode,
-      riskGuard: this.riskGuard,
+      metrics: this.metrics,
       auditLogger: this.auditLogger,
+      riskGuard: this.riskGuard,
+      profitabilityCalc: this.profitabilityCalc,
+      coordinator: this.coordinator,
       connectorResolver: this.connectorResolver,
+      onExecutionStart: () => {
+        this.metrics.incActiveExecutions();
+        this.activeExecutionCount++;
+        this.lastExecutionTimestamp = Date.now();
+      },
+      onExecutionEnd: () => {
+        this.metrics.decActiveExecutions();
+        this.activeExecutionCount = Math.max(0, this.activeExecutionCount - 1);
+      },
     });
-
-    if (!preTrade.allowed) {
-      return null;
-    }
-
-    const plan = buildTwoLegExecutionPlan({
-      opportunityId: opp.id,
-      symbol,
-      buyVenue,
-      sellVenue,
-      sizedAmount: preTrade.sizedAmount,
-      buyPrice,
-      sellPrice,
-    });
-
-    await this.auditLogger.logOrderSubmitted({
-      orderId: plan.orderId,
-      opportunityId: plan.opportunityId,
-      symbol,
-      legsCount: plan.legs.length,
-      totalNotionalUsd: preTrade.sizedAmount * buyPrice,
-      executionMode: plan.executionMode,
-    });
-
-    this.metrics.incActiveExecutions();
-    this.activeExecutionCount++;
-    this.lastExecutionTimestamp = Date.now();
-
-    let report: MultiLegExecutionReport;
-    try {
-      report = await this.coordinator.execute(plan);
-    } finally {
-      this.metrics.decActiveExecutions();
-      this.activeExecutionCount = Math.max(0, this.activeExecutionCount - 1);
-    }
-
-    recordExecutionMetrics(report, this.metrics, this.mode, buyVenue, sellVenue);
-    await logExecutionAuditOutcome(report, this.auditLogger, this.metrics, buyVenue);
-
-    return report;
   }
 }

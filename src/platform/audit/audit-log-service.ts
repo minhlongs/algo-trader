@@ -7,32 +7,21 @@
  */
 
 import { config } from '../../shared/config/env';
-import { query } from '../../db/postgres-client.js';
 import { logAudit } from '../../seed/security/audit-log';
-import type { IAuditEntry } from '../../seed/security/audit-log';
 import { hashIpAddress } from '../../seed/security/audit-ip-hash';
 import { AuditLogExporter } from './exporters';
-import { AuditLogValidators } from './validators';
 import { AuditLogBatchWriter, type BatchWriteEntry, type BatchWriteResult } from './batch-writer';
 import type { AuditLog, AuditEventType, AuditLogFilters } from './audit-log-types';
 import { executeGetExpiredLogIds, executeCleanupExpiredLogs } from './audit-log-db-cleanup';
+import {
+  fetchLogsByLicense,
+  fetchAllLogs,
+  fetchRecentActivity,
+  mapRowToAuditLog,
+} from './audit-log-query';
 
 export * from './audit-log-types';
-
-const SELECT_BY_LICENSE_SQL = `
-  SELECT id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id
-  FROM audit_log
-  WHERE tenant_id = $1
-  ORDER BY "timestamp" DESC
-  LIMIT $2
-`;
-
-const SELECT_ALL_SQL = `
-  SELECT id, "timestamp", actor, action, resource, result, metadata, ip_hash, tenant_id
-  FROM audit_log
-  ORDER BY "timestamp" DESC
-  LIMIT $1
-`;
+export * from './audit-log-query';
 
 export class AuditLogService {
   private static instance: AuditLogService | null = null;
@@ -44,9 +33,7 @@ export class AuditLogService {
     this.batchSize = parseInt(config.AUDIT_BATCH_SIZE || '100', 10);
   }
 
-  static resetInstance(): void {
-    AuditLogService.instance = null;
-  }
+  static resetInstance(): void { AuditLogService.instance = null; }
 
   static getInstance(): AuditLogService {
     if (!AuditLogService.instance) {
@@ -55,13 +42,8 @@ export class AuditLogService {
     return AuditLogService.instance;
   }
 
-  getRetentionDays(): number {
-    return this.retentionDays;
-  }
-
-  getBatchSize(): number {
-    return this.batchSize;
-  }
+  getRetentionDays(): number { return this.retentionDays; }
+  getBatchSize(): number { return this.batchSize; }
 
   async log(
     licenseId: string,
@@ -72,17 +54,14 @@ export class AuditLogService {
       metadata?: Record<string, unknown>;
     },
   ): Promise<AuditLog> {
-    const now = new Date().toISOString();
-    const id = crypto.randomUUID();
-
     const log: AuditLog = {
-      id,
+      id: crypto.randomUUID(),
       licenseId,
       event,
       tier: options?.tier,
       ip: options?.ip,
       metadata: options?.metadata,
-      createdAt: now,
+      createdAt: new Date().toISOString(),
     };
 
     await logAudit({
@@ -100,33 +79,20 @@ export class AuditLogService {
     return log;
   }
 
-  private mapRowToAuditLog(entry: IAuditEntry): AuditLog {
-    const metadata = (entry.metadata ?? {}) as Record<string, unknown>;
-    return {
-      id: entry.id,
-      licenseId: entry.tenantId ?? entry.actor,
-      event: entry.action as AuditEventType,
-      createdAt: entry.timestamp,
-      metadata,
-      tier: metadata.tier as string | undefined,
-    };
+  private mapRowToAuditLog(entry: Parameters<typeof mapRowToAuditLog>[0]): AuditLog {
+    return mapRowToAuditLog(entry);
   }
 
   async getLogsByLicense(licenseId: string, filters: AuditLogFilters = {}): Promise<AuditLog[]> {
-    const limit = filters.limit ?? this.batchSize;
-    const { rows } = await query(SELECT_BY_LICENSE_SQL, [licenseId, limit]);
-    return AuditLogValidators.filterLogs(rows.map((r) => this.mapRowToAuditLog(r as unknown as IAuditEntry)), { ...filters, licenseId });
+    return fetchLogsByLicense(licenseId, filters, this.batchSize);
   }
 
   async getAllLogs(filters: AuditLogFilters = {}): Promise<AuditLog[]> {
-    const limit = filters.limit ?? this.batchSize;
-    const { rows } = await query(SELECT_ALL_SQL, [limit]);
-    return AuditLogValidators.filterLogs(rows.map((r) => this.mapRowToAuditLog(r as unknown as IAuditEntry)), filters);
+    return fetchAllLogs(filters, this.batchSize);
   }
 
   async getRecentActivity(limit = 10): Promise<AuditLog[]> {
-    const { rows } = await query(SELECT_ALL_SQL, [limit]);
-    return AuditLogValidators.getRecentActivity(rows.map((r) => this.mapRowToAuditLog(r as unknown as IAuditEntry)), limit);
+    return fetchRecentActivity(limit);
   }
 
   async logApiCall(
@@ -134,11 +100,7 @@ export class AuditLogService {
     endpoint: string,
     options?: { ip?: string; tier?: string },
   ): Promise<AuditLog> {
-    return this.log(licenseId, 'api_call', {
-      tier: options?.tier,
-      ip: options?.ip,
-      metadata: { endpoint },
-    });
+    return this.log(licenseId, 'api_call', { tier: options?.tier, ip: options?.ip, metadata: { endpoint } });
   }
 
   async logMlFeature(
@@ -146,11 +108,7 @@ export class AuditLogService {
     feature: string,
     options?: { ip?: string; tier?: string },
   ): Promise<AuditLog> {
-    return this.log(licenseId, 'ml_feature', {
-      tier: options?.tier,
-      ip: options?.ip,
-      metadata: { feature },
-    });
+    return this.log(licenseId, 'ml_feature', { tier: options?.tier, ip: options?.ip, metadata: { feature } });
   }
 
   async logRateLimit(
@@ -159,14 +117,9 @@ export class AuditLogService {
     current: number,
     options?: { ip?: string; tier?: string },
   ): Promise<AuditLog> {
-    return this.log(licenseId, 'rate_limit', {
-      tier: options?.tier,
-      ip: options?.ip,
-      metadata: { limit, current },
-    });
+    return this.log(licenseId, 'rate_limit', { tier: options?.tier, ip: options?.ip, metadata: { limit, current } });
   }
 
-  // Batch write audit logs
   async batchWrite(entries: BatchWriteEntry[]): Promise<BatchWriteResult> {
     return AuditLogBatchWriter.write(entries, this.batchSize, async (entry) => {
       await this.log(entry.licenseId, entry.event, {
@@ -185,11 +138,6 @@ export class AuditLogService {
     return executeCleanupExpiredLogs(this.retentionDays);
   }
 
-  exportToCsv(logs: AuditLog[]): string {
-    return AuditLogExporter.toCsv(logs);
-  }
-
-  exportToJson(logs: AuditLog[]): string {
-    return AuditLogExporter.toJson(logs);
-  }
+  exportToCsv(logs: AuditLog[]): string { return AuditLogExporter.toCsv(logs); }
+  exportToJson(logs: AuditLog[]): string { return AuditLogExporter.toJson(logs); }
 }

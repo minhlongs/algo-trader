@@ -43,6 +43,25 @@ export interface BacktestCreateInput {
   config?: Record<string, unknown> | null;
 }
 
+function buildFilterWhere(filters?: { strategyId?: string; tenantId?: string }): { where: string; params: unknown[]; nextIdx: number } {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let idx = 1;
+  if (filters?.strategyId) {
+    conditions.push(`strategy_id=$${idx++}`);
+    params.push(filters.strategyId);
+  }
+  if (filters?.tenantId) {
+    conditions.push(`tenant_id=$${idx++}`);
+    params.push(filters.tenantId);
+  }
+  return {
+    where: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
+    params,
+    nextIdx: idx,
+  };
+}
+
 export class BacktestRepository {
   async findById(id: string): Promise<MarketplaceBacktestRow | null> {
     const result = await query('SELECT * FROM marketplace_backtests WHERE id=$1', [id]);
@@ -57,9 +76,7 @@ export class BacktestRepository {
     return result.rows as unknown as MarketplaceBacktestRow[];
   }
 
-  async findLatestByStrategy(
-    strategyId: string,
-  ): Promise<MarketplaceBacktestRow | null> {
+  async findLatestByStrategy(strategyId: string): Promise<MarketplaceBacktestRow | null> {
     const result = await query(
       'SELECT * FROM marketplace_backtests WHERE strategy_id=$1 ORDER BY created_at DESC LIMIT 1',
       [strategyId],
@@ -84,54 +101,25 @@ export class BacktestRepository {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,COALESCE($18,'{}'::jsonb))
        RETURNING *`,
       [
-        data.id,
-        data.strategyId,
-        data.tenantId,
-        data.sharpeRatio ?? null,
-        data.maxDrawdown ?? null,
-        data.winRate ?? null,
-        data.totalPnlUsd ?? 0,
-        data.profitFactor ?? null,
-        data.totalTrades ?? 0,
-        data.winningTrades ?? 0,
-        data.losingTrades ?? 0,
-        data.avgWinUsd ?? null,
-        data.avgLossUsd ?? null,
-        data.volatility ?? null,
-        data.equityCurve ?? null,
-        data.totalReturn ?? null,
-        data.initialCapitalUsd ?? 10000,
-        data.config ?? null,
+        data.id, data.strategyId, data.tenantId, data.sharpeRatio ?? null,
+        data.maxDrawdown ?? null, data.winRate ?? null, data.totalPnlUsd ?? 0,
+        data.profitFactor ?? null, data.totalTrades ?? 0, data.winningTrades ?? 0,
+        data.losingTrades ?? 0, data.avgWinUsd ?? null, data.avgLossUsd ?? null,
+        data.volatility ?? null, data.equityCurve ?? null, data.totalReturn ?? null,
+        data.initialCapitalUsd ?? 10000, data.config ?? null,
       ],
     );
     return result.rows[0] as unknown as MarketplaceBacktestRow;
   }
 
   async countByTenant(tenantId: string): Promise<number> {
-    const result = await query(
-      'SELECT COUNT(*) AS cnt FROM marketplace_backtests WHERE tenant_id=$1',
-      [tenantId],
-    );
+    const result = await query('SELECT COUNT(*) AS cnt FROM marketplace_backtests WHERE tenant_id=$1', [tenantId]);
     return parseInt(String(result.rows[0]?.cnt ?? '0'), 10);
   }
 
   async count(filters?: { strategyId?: string; tenantId?: string }): Promise<number> {
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-    let idx = 1;
-    if (filters?.strategyId) {
-      conditions.push(`strategy_id=$${idx++}`);
-      params.push(filters.strategyId);
-    }
-    if (filters?.tenantId) {
-      conditions.push(`tenant_id=$${idx++}`);
-      params.push(filters.tenantId);
-    }
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const result = await query(
-      `SELECT COUNT(*) AS cnt FROM marketplace_backtests ${where}`,
-      params,
-    );
+    const { where, params } = buildFilterWhere(filters);
+    const result = await query(`SELECT COUNT(*) AS cnt FROM marketplace_backtests ${where}`, params);
     return parseInt(String(result.rows[0]?.cnt ?? '0'), 10);
   }
 
@@ -141,19 +129,8 @@ export class BacktestRepository {
     limit?: number;
     offset?: number;
   }): Promise<MarketplaceBacktestRow[]> {
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-    let idx = 1;
-    if (filters?.strategyId) {
-      conditions.push(`strategy_id=$${idx++}`);
-      params.push(filters.strategyId);
-    }
-    if (filters?.tenantId) {
-      conditions.push(`tenant_id=$${idx++}`);
-      params.push(filters.tenantId);
-    }
-    const where =
-      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const { where, params, nextIdx } = buildFilterWhere(filters);
+    let idx = nextIdx;
     const limit = filters?.limit ?? 20;
     const offset = filters?.offset ?? 0;
     const result = await query(

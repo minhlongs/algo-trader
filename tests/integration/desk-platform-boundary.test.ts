@@ -92,6 +92,11 @@ const ALLOWED_DESK_IMPORTS: RegExp[] = [
  /platform\/workers\/openclaw-gateway\//, // desk agent dispatcher uses platform worker gateway
 ];
 
+const DESK_TENANT_DB_ALLOWLIST = new Set<string>([
+  'billing-meter.ts', // tenant billing ledger is inherently tenant-scoped
+  'license-gate.ts', // license entitlement gate is per-tenant
+]);
+
 const ALLOWED_PLATFORM_IMPORTS: RegExp[] = [
   /desk\/strategies/,      // admin routes load strategies directly
   /desk\/signal/,          // signal routes bridge desk signal pipeline
@@ -107,6 +112,7 @@ const ALLOWED_PLATFORM_IMPORTS: RegExp[] = [
   /desk\/execution\//,     // trade-repository imports execution types
   /desk\/paper-trading\//, // paper-trading-entry.ts wires loop into worker startup (Step 1.4)
   /desk\/telemetry\//,     // prometheus-registry registers desk telemetry & portfolio metrics
+  /desk\/opencoresaas2026monetization/, // documented cockpit/API adapter boundary (stitch + open-core routes)
 ];
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -174,6 +180,7 @@ describe('Desk-Platform Boundary Contract', () => {
       const files = findTsFiles(deskDir);
       const violations: string[] = [];
       for (const f of files) {
+        if (DESK_TENANT_DB_ALLOWLIST.has(f.split('/').pop() ?? '')) continue;
         try {
           const content = readFileSync(f, 'utf8');
           if (/\btenantId\b/.test(content) && /query\(|findMany\(|findFirst\(|create\(|update\(|delete\(/.test(content)) {

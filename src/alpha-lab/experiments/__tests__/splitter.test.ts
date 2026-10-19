@@ -3,13 +3,7 @@ import { generateSplits, generateRollingSplits, Splitter } from '../splitter';
 import type { SplitConfig } from '../experiment-types';
 
 function makeConfig(overrides: Partial<SplitConfig> = {}): SplitConfig {
-  return {
-    mode: 'rolling',
-    trainRatio: 0.5,
-    valRatio: 0.25,
-    testRatio: 0.25,
-    ...overrides,
-  };
+  return { mode: 'rolling', trainRatio: 0.5, valRatio: 0.25, testRatio: 0.25, ...overrides };
 }
 
 describe('generateSplits', () => {
@@ -23,23 +17,12 @@ describe('generateSplits', () => {
   it('throws on ratio <= 0 or >= 1', () => {
     expect(() => generateSplits({ ...makeConfig(), trainRatio: 0 }, totalBars, lookback)).toThrow();
     expect(() => generateSplits({ ...makeConfig(), testRatio: 1 }, totalBars, lookback)).toThrow();
-    expect(() =>
-      generateSplits(
-        { ...makeConfig(), trainRatio: 1.2, valRatio: -0.1, testRatio: -0.1 },
-        totalBars,
-        lookback,
-      ),
-    ).toThrow(/Split ratio must be in \(0,1\)/);
+    expect(() => generateSplits({ ...makeConfig(), trainRatio: 1.2, valRatio: -0.1, testRatio: -0.1 }, totalBars, lookback)).toThrow(/Split ratio must be in \(0,1\)/);
   });
 
   it('throws when explicit rolling window sizes exceed usable bars', () => {
     const config: SplitConfig = {
-      mode: 'rolling',
-      trainRatio: 0.5,
-      valRatio: 0.25,
-      testRatio: 0.25,
-      trainWindowSize: 60,
-      valWindowSize: 30,
+      mode: 'rolling', trainRatio: 0.5, valRatio: 0.25, testRatio: 0.25, trainWindowSize: 60, valWindowSize: 30,
     };
     // usable = 80 - 10 = 70; trainW(60) + valW(30) + testW(1) = 91 > 70
     expect(() => generateSplits(config, 80, 10)).toThrow(/Windows exceed usable data/);
@@ -105,26 +88,18 @@ describe('generateSplits', () => {
     const splits = generateSplits(makeConfig({ mode: 'rolling' }), 200, 20);
     const testSplits = splits.filter((s) => s.kind === 'test');
     for (let i = 1; i < testSplits.length; i++) {
-      const prevStart = testSplits[i - 1]!.startIdx;
-      const currStart = testSplits[i]!.startIdx;
-      expect(currStart).toBeGreaterThan(prevStart);
+      expect(testSplits[i]!.startIdx).toBeGreaterThan(testSplits[i - 1]!.startIdx);
     }
   });
 
   it('rolls off cleanly after data exhausted', () => {
     const splits = generateSplits(makeConfig({ mode: 'rolling' }), 200, 20);
-    const last = splits[splits.length - 1];
-    expect(last?.endIdx).toBeLessThanOrEqual(200);
+    expect(splits[splits.length - 1]?.endIdx).toBeLessThanOrEqual(200);
   });
 
   it('supports explicit window sizes via rolling config', () => {
     const config: SplitConfig = {
-      mode: 'rolling',
-      trainRatio: 0.5,
-      valRatio: 0.25,
-      testRatio: 0.25,
-      trainWindowSize: 50,
-      valWindowSize: 25,
+      mode: 'rolling', trainRatio: 0.5, valRatio: 0.25, testRatio: 0.25, trainWindowSize: 50, valWindowSize: 25,
     };
     const splits = generateSplits(config, 200, 20);
     expect(splits.length).toBeGreaterThan(0);
@@ -139,12 +114,10 @@ describe('generateSplits', () => {
     const testSplits = splits.filter((s) => s.kind === 'test');
     expect(testSplits.length).toBeGreaterThanOrEqual(5);
 
-    // Verify zero overlap in test periods and contiguous sequence
     for (let i = 1; i < testSplits.length; i++) {
       expect(testSplits[i]!.startIdx).toBe(testSplits[i - 1]!.endIdx);
     }
 
-    // Verify causal boundary & no lookahead leakage within each step
     const steps = Math.max(...splits.map((s) => s.step)) + 1;
     for (let step = 0; step < steps; step++) {
       const train = splits.find((s) => s.step === step && s.kind === 'train')!;

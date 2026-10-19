@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: MIT
+/**
+ * Open-Core 25-Step Catalog — Phases 1 to 3 (Steps 1 to 15)
+ *
+ * @module desk/opencoresaas2026monetization/catalog-phases-1-to-3
+ */
+
+import type { OpenCoreStep } from './catalog';
+
+export const OPEN_CORE_STEPS_1_TO_15: readonly OpenCoreStep[] = [
+  {
+    stepNumber: 1, id: 'git-history-secret-purge', name: 'Git History Secret Purge',
+    phase: 'PHASE_1_SPLIT_AND_HYGIENE', targetModule: '.gitleaks.toml', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Scan and purge leaked keys from git history before making public repo.',
+    descriptionVi: 'Quét và thanh lọc toàn bộ khóa bí mật khỏi lịch sử git trước khi public.',
+  },
+  {
+    stepNumber: 2, id: 'oss-vs-ee-directory-split', name: 'OSS vs EE Directory Split',
+    phase: 'PHASE_1_SPLIT_AND_HYGIENE', targetModule: 'src/desk vs src/raas', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Separate open MIT core (desk/strategies) from hosted enterprise RaaS control plane.',
+    descriptionVi: 'Phân tách mã nguồn mở MIT (desk/chiến lược) khỏi control plane RaaS đám mây.',
+  },
+  {
+    stepNumber: 3, id: 'gitignore-quarantine-lock', name: 'Gitignore Quarantine Lock',
+    phase: 'PHASE_1_SPLIT_AND_HYGIENE', targetModule: '.gitignore', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Lock gitignore against .env*, *.pem, wallet seeds, and tenant state files.',
+    descriptionVi: 'Khóa chặt .gitignore chặn hoàn toàn file .env, chứng chỉ pem, seed ví và dữ liệu tenant.',
+  },
+  {
+    stepNumber: 4, id: 'env-example-byok-template', name: 'Zero-Secret BYOK Template',
+    phase: 'PHASE_1_SPLIT_AND_HYGIENE', targetModule: '.env.example', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Provide safe .env.example template for BYOK exchange and Polymarket keys.',
+    descriptionVi: 'Cung cấp file mẫu .env.example không chứa secret dành cho key sàn BYOK và Polymarket.',
+  },
+  {
+    stepNumber: 5, id: 'mit-license-and-sbom', name: 'MIT License & Dependency SBOM',
+    phase: 'PHASE_1_SPLIT_AND_HYGIENE', targetModule: 'LICENSE', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Enforce MIT license headers across OSS modules and verify clean dependency SBOM.',
+    descriptionVi: 'Áp dụng giấy phép MIT cho các module mã nguồn mở và kiểm toán SBOM phụ thuộc sạch.',
+  },
+  {
+    stepNumber: 6, id: 'strategy-plugin-interfaces', name: 'Strategy Plugin Interfaces',
+    phase: 'PHASE_2_PLUGIN_AND_SEAMS', targetModule: 'src/desk/strategies/loader.ts', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Open IStrategy and MarketDataSource interfaces for community extension.',
+    descriptionVi: 'Mở giao diện IStrategy và MarketDataSource cho cộng đồng phát triển chiến lược riêng.',
+  },
+  {
+    stepNumber: 7, id: 'byok-exchange-adapters', name: 'BYOK Exchange Adapters',
+    phase: 'PHASE_2_PLUGIN_AND_SEAMS', targetModule: 'src/desk/market-data/', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Local BYOK CCXT (Binance, OKX, Bybit) and Polymarket CLOB connectors.',
+    descriptionVi: 'Bộ kết nối BYOK cục bộ qua CCXT (Binance, OKX, Bybit) và Polymarket CLOB.',
+  },
+  {
+    stepNumber: 8, id: 'cloud-signal-bridge', name: 'Cloud Signal Bridge',
+    phase: 'PHASE_2_PLUGIN_AND_SEAMS', targetModule: 'src/desk/execution/order-dispatcher.ts', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Lightweight webhook/WebSocket bridge dispatching signals from local CLI to cloud.',
+    descriptionVi: 'Cầu nối webhook/WebSocket truyền phát tín hiệu giao dịch từ CLI cục bộ lên đám mây.',
+  },
+  {
+    stepNumber: 9, id: 'local-paper-trading-sandbox', name: 'Local Paper Trading Sandbox',
+    phase: 'PHASE_2_PLUGIN_AND_SEAMS', targetModule: 'src/desk/commands/arb-auto.ts', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Deterministic local backtesting and zero-risk dry-run execution sandbox.',
+    descriptionVi: 'Môi trường mô phỏng backtesting và dry-run không rủi ro thực thi ngay trên máy trạm.',
+  },
+  {
+    stepNumber: 10, id: 'versioned-openapi-sdk', name: 'Versioned OpenAPI v3 Spec & SDK',
+    phase: 'PHASE_2_PLUGIN_AND_SEAMS', targetModule: 'docs/api/openapi.yaml', minTier: 'BASIC', isOssCore: true,
+    descriptionEn: 'Public versioned OpenAPI 3.0 specification and typed TypeScript client contracts.',
+    descriptionVi: 'Đặc tả OpenAPI 3.0 chuẩn hóa cùng bộ thư viện SDK client định kiểu TypeScript.',
+  },
+  {
+    stepNumber: 11, id: 'hmac-jwt-license-gate', name: 'HMAC-SHA256 License Gate',
+    phase: 'PHASE_3_CLOUD_CONTROL_PLANE', targetModule: 'src/desk/opencoresaas2026monetization/license-gate.ts', minTier: 'PREMIUM', isOssCore: false,
+    descriptionEn: 'Cryptographic license token verification enforcing HTTP 402 Payment Required.',
+    descriptionVi: 'Cổng xác thực token bản quyền mật mã HMAC-SHA256 trả về HTTP 402 khi hết hạn.',
+  },
+  {
+    stepNumber: 12, id: 'mcu-and-quota-metering', name: 'MCU & Strategy Quota Metering',
+    phase: 'PHASE_3_CLOUD_CONTROL_PLANE', targetModule: 'src/billing/billing-meter.ts', minTier: 'PREMIUM', isOssCore: false,
+    descriptionEn: 'Real-time API & strategy computation unit (MCU) meter with upgrade triggers.',
+    descriptionVi: 'Bộ đo hạn mức API và đơn vị tính toán chiến lược (MCU) thời gian thực.',
+  },
+  {
+    stepNumber: 13, id: 'four-tier-entitlements', name: 'Four-Tier Entitlements Guard',
+    phase: 'PHASE_3_CLOUD_CONTROL_PLANE', targetModule: 'src/billing/tier-activation-types.ts', minTier: 'BASIC', isOssCore: false,
+    descriptionEn: 'Enforce strict limits for BASIC, PREMIUM, ENTERPRISE, and MASTER tiers.',
+    descriptionVi: 'Phân quyền chặt chẽ theo 4 cấp bậc chuẩn: BASIC, PREMIUM, ENTERPRISE, MASTER.',
+  },
+  {
+    stepNumber: 14, id: 'durable-object-sharding', name: 'Durable Object Strategy Sharding',
+    phase: 'PHASE_3_CLOUD_CONTROL_PLANE', targetModule: 'src/durable-objects/strategy-shard-state.ts', minTier: 'PREMIUM', isOssCore: false,
+    descriptionEn: 'Cloudflare Durable Objects & Redis queues isolating high-frequency trading state.',
+    descriptionVi: 'Phân mảnh trạng thái giao dịch cao tần qua Cloudflare Durable Objects và Redis.',
+  },
+  {
+    stepNumber: 15, id: 'encrypted-api-key-vault', name: 'Encrypted API Key Vault',
+    phase: 'PHASE_3_CLOUD_CONTROL_PLANE', targetModule: 'src/seed/security/', minTier: 'PREMIUM', isOssCore: false,
+    descriptionEn: 'AES-256-GCM encrypted tenant exchange key storage with zero plaintext leaks.',
+    descriptionVi: 'Kho lưu trữ API key sàn mã hóa AES-256-GCM tuyệt đối không lưu khóa thô.',
+  },
+];

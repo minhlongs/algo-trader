@@ -4,6 +4,13 @@
  */
 
 import { logger } from '../../../shared/utils/logger';
+import {
+  applyPriceLevelEntries,
+  normalizeBinanceTrade,
+  buildSortedOrderBook,
+} from './binance-ws-helpers';
+
+export { applyPriceLevelEntries, normalizeBinanceTrade, buildSortedOrderBook };
 
 export interface BookLevel {
   price: number;
@@ -78,14 +85,8 @@ export class BinanceWsConnector {
   applySnapshot(snapshot: BinanceDepthSnapshot): void {
     this.bids.clear();
     this.asks.clear();
-    for (const [p, q] of snapshot.bids) {
-      const price = parseFloat(p), qty = parseFloat(q);
-      if (qty > 0) this.bids.set(price, qty);
-    }
-    for (const [p, q] of snapshot.asks) {
-      const price = parseFloat(p), qty = parseFloat(q);
-      if (qty > 0) this.asks.set(price, qty);
-    }
+    applyPriceLevelEntries(this.bids, snapshot.bids, false);
+    applyPriceLevelEntries(this.asks, snapshot.asks, false);
     this.lastUpdateId = snapshot.lastUpdateId;
     this.isSynchronized = true;
 
@@ -119,47 +120,16 @@ export class BinanceWsConnector {
   }
 
   private applyDepthDelta(update: BinanceDepthUpdate): void {
-    for (const [p, q] of update.b) {
-      const price = parseFloat(p), qty = parseFloat(q);
-      if (qty === 0) this.bids.delete(price);
-      else this.bids.set(price, qty);
-    }
-    for (const [p, q] of update.a) {
-      const price = parseFloat(p), qty = parseFloat(q);
-      if (qty === 0) this.asks.delete(price);
-      else this.asks.set(price, qty);
-    }
+    applyPriceLevelEntries(this.bids, update.b, true);
+    applyPriceLevelEntries(this.asks, update.a, true);
   }
 
   parseTrade(msg: BinanceTradeMsg): NormalizedTrade {
-    return {
-      venue: 'binance',
-      symbol: msg.s,
-      side: msg.m ? 'sell' : 'buy',
-      price: parseFloat(msg.p),
-      amount: parseFloat(msg.q),
-      timestamp: msg.T,
-      tradeId: String(msg.t),
-    };
+    return normalizeBinanceTrade(msg);
   }
 
   getOrderBook(depth = 20): NormalizedOrderBook {
-    const sortedBids = Array.from(this.bids.entries())
-      .map(([price, amount]) => ({ price, amount }))
-      .sort((a, b) => b.price - a.price)
-      .slice(0, depth);
-    const sortedAsks = Array.from(this.asks.entries())
-      .map(([price, amount]) => ({ price, amount }))
-      .sort((a, b) => a.price - b.price)
-      .slice(0, depth);
-    return {
-      venue: 'binance',
-      symbol: this.symbol,
-      timestamp: Date.now(),
-      seq: this.lastUpdateId,
-      bids: sortedBids,
-      asks: sortedAsks,
-    };
+    return buildSortedOrderBook(this.symbol, this.lastUpdateId, this.bids, this.asks, depth);
   }
 
   getBestBidAsk(): { bestBid: number; bestBidQty: number; bestAsk: number; bestAskQty: number } | null {

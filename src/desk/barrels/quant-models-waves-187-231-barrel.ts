@@ -1,0 +1,43 @@
+/**
+ * Barrel cluster 2: Quantitative Desk Models (Waves 187 - 231).
+ * Rule: strictly < 85 LOC.
+ */
+export * as CarrWu from '../carrwu/index';
+export * as EppsEffect from '../eppseffect/index';
+export * as ScholesWilliams from '../scholeswilliams/index';
+export * as DermanKani from '../dermankani/index';
+export * as EngleRussell from '../englerussell/index';
+export * as GatheralSvi from '../gatheralsvi/index';
+export * as DupireLocalVol from '../dupire/index';
+export * as GjrGarch from '../garch/index';
+export * as BiaisOrderFlow from '../biais/index';
+export * as EgarchVol from '../egarch/index';
+export * as DccGarch from '../dccgarch/index';
+export * as BiPowerVariation from '../bipower/index';
+export * as RealizedKernel from '../realizedkernel/index';
+export * as Rqv from '../rqv/index';
+export * as Vrp from '../vrp/index';
+export * as RealizedSemivariance from '../semivariance/index';
+export * as RealizedBeta from '../realizedbeta/index';
+export * as BekaertDecomposition from '../bekaert/index';
+export * as Propagator from '../propagator/index';
+export * as RoughHeston from '../roughheston/index';
+export * as CarteaJaimungal from '../carteajaimungal/index';
+export * as AlmgrenThum from '../almgrenthum/index';
+export * as GatheralArbitrage from '../gatheralarbitrage/index';
+export * as AvellanedaLipkin from '../avellanedalipkin/index';
+export * as KyleObizhaeva from '../kyleobizhaeva/index';
+export * as ContDeLarrard from '../contdelarrardqueue/index';
+export * as LehalleNeuman from '../lehalleneuman/index';
+export * as GatheralOomen from '../gatheraloomen/index';
+export * as ContKukanov from '../contkukanov/index';
+export * as BouchaudPropagator from '../bouchaudpropagator/index';
+export * as GueantAsr from '../gueantasr/index';
+export * as CarteaCrossAsset from '../carteacrossasset/index';
+export * as DonierImpact from '../donierimpact/index';
+export * as Mastromatteo from '../mastromatteo/index';
+export * as GatheralWang from '../gatheralwang/index';
+export * as AlmgrenNonLinear from '../almgrennonlinear/index';
+export * as BouchaudMetaorder from '../bouchaudmetaorder/index';
+export * as CuratoQueue from '../curatoborgerlillo/index';
+export * as JaissonHawkes from '../jaissonspread/index';

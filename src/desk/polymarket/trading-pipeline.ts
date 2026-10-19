@@ -1,7 +1,5 @@
 // Polymarket live trading pipeline: wires scanner → orderbook → strategies → risk → executor → DB
 // Paper trading is the DEFAULT mode (safe). Set paperTrading: false for live execution.
-// Facade: init/discovery + prediction-feed bodies live in trading-pipeline-init.ts /
-// trading-pipeline-prediction.ts; leaves operate on the structural TradingPipelineCtx.
 import { EventEmitter } from 'events';
 import type { ClobClientInterface } from './clob-client';
 import { OrderBookStream } from './orderbook-stream';
@@ -30,15 +28,14 @@ import {
   recordEquitySnapshotFor,
   getMarketMakerInstanceFor,
 } from './trading-pipeline-prediction';
+import { wireOrderbookStreamFor } from './trading-pipeline-wiring';
 
-// ── Facade re-exports (importers compile UNMODIFIED) ───────────────────────────
 export type { PipelineConfig, PipelineStatus } from './trading-pipeline-types';
+export { wireOrderbookStreamFor };
 
 /**
  * TradingPipeline: end-to-end orchestrator for Polymarket strategies.
  * ALL trade signals flow through RiskGateManager before execution.
- * Fields are public (not private) so the instance satisfies the structural
- * TradingPipelineCtx interface used by the leaf modules.
  */
 export class TradingPipeline extends EventEmitter {
   status: PipelineStatus = 'stopped';
@@ -85,8 +82,6 @@ export class TradingPipeline extends EventEmitter {
       this.status = 'running';
       this.emit('started', { mode: this.cfg.paperTrading ? 'paper' : 'live' });
       logger.info(`Pipeline running ${mode}`, 'TradingPipeline');
-
-      // Start AI prediction loop — feeds fair values to MarketMaker
       this.startPredictionFeed();
     } catch (err) {
       this.status = 'error';
@@ -102,17 +97,12 @@ export class TradingPipeline extends EventEmitter {
     this.status = 'stopping';
     logger.info('Stopping trading pipeline', 'TradingPipeline');
 
-    if (this.predictionLoop) {
-      this.predictionLoop = null;
-    }
-    if (this.meanReversion) {
-      await this.meanReversion.stop();
-    }
+    if (this.predictionLoop) this.predictionLoop = null;
+    if (this.meanReversion) await this.meanReversion.stop();
     await this.strategyRunner.stopAll().catch(err =>
       logger.error('Error stopping strategies', 'TradingPipeline', { err: String(err) }),
     );
 
-    // Cancel ALL open GTC orders before disconnecting — prevents stale fills after shutdown
     try {
       const cancelled = await this.orderManager.cancelAllOpen();
       if (cancelled > 0) {
@@ -122,11 +112,7 @@ export class TradingPipeline extends EventEmitter {
       logger.error('Failed to cancel orders during shutdown', 'TradingPipeline', { err: String(err) });
     }
 
-    // Cleanup event bus subscriptions
-    if (this._priceUpdateCleanup) {
-      this._priceUpdateCleanup();
-    }
-
+    if (this._priceUpdateCleanup) this._priceUpdateCleanup();
     this.orderManager.stopStalePoll();
     this.orderbookStream.disconnect();
 
@@ -137,56 +123,13 @@ export class TradingPipeline extends EventEmitter {
 
   getStatus(): PipelineStatus { return this.status; }
   getStrategiesStatus() { return this.strategyRunner.getAllStatus(); }
-
-  /** Expose risk gate for strategies that need pre-tick/order checks */
   getRiskGate(): RiskGateManager { return this.riskGateManager; }
 
-  private wireOrderbookStream(): void {
-    // Listen for connection status from OrderBookStream via event bus
-    this.eventBus.onConnectionStatus((payload) => {
-      if (payload.component === 'OrderBookStream' && payload.status === 'disconnected') {
-        logger.warn('Orderbook stream disconnected', 'TradingPipeline');
-        this.emit('stream_disconnected');
-      }
-    });
-
-    // Feed price updates to mean reversion strategy (Layer 3) via event bus
-    const cleanupPriceUpdates = this.eventBus.onPriceUpdate((data) => {
-      if (this.meanReversion && data.bid > 0 && data.ask > 0) {
-        this.meanReversion.onPriceUpdate(data.tokenId, (data.bid + data.ask) / 2);
-      }
-    });
-
-    // Store cleanup function for potential shutdown
-    this._priceUpdateCleanup = cleanupPriceUpdates;
-
-    this.orderbookStream.connect();
-    logger.info('Orderbook stream connected', 'TradingPipeline');
-  }
-
-  // ── Private: thin delegates to leaf modules ─────────────────────────────────
-
-  private initComponents(): void {
-    initComponentsFor(this);
-  }
-
-  private async discoverAndRegisterStrategies(): Promise<void> {
-    await discoverAndRegisterStrategiesFor(this);
-  }
-
-  private startPredictionFeed(): void {
-    startPredictionFeedFor(this);
-  }
-
-  private initPredictionExecutor(): void {
-    initPredictionExecutorFor(this);
-  }
-
-  private async recordEquitySnapshot(): Promise<void> {
-    await recordEquitySnapshotFor(this);
-  }
-
-  private getMarketMakerInstance(): MarketMakerStrategy | null {
-    return getMarketMakerInstanceFor(this);
-  }
+  private wireOrderbookStream(): void { wireOrderbookStreamFor(this); }
+  private initComponents(): void { initComponentsFor(this); }
+  private async discoverAndRegisterStrategies(): Promise<void> { await discoverAndRegisterStrategiesFor(this); }
+  private startPredictionFeed(): void { startPredictionFeedFor(this); }
+  private initPredictionExecutor(): void { initPredictionExecutorFor(this); }
+  private async recordEquitySnapshot(): Promise<void> { await recordEquitySnapshotFor(this); }
+  private getMarketMakerInstance(): MarketMakerStrategy | null { return getMarketMakerInstanceFor(this); }
 }

@@ -11,12 +11,24 @@ import {
   type ArbitrageRiskContext,
   type ArbitrageRiskGateChecks,
   type ArbitrageRiskCheckResult,
-  ArbitrageRejectionReason,
 } from './arbitrage-risk-types';
 import type { LiveExecutionGuard } from '../../execution/live-execution-guard-core';
 import type { RiskGateManager } from '../../risk/risk-gate-manager';
 import type { TieredDrawdownBreaker } from '../../risk/tiered-drawdown-breaker';
 import type { DrawdownMonitor } from '../../risk/drawdown-monitor';
+import {
+  tripDrawdownRejection,
+  isExplicitDrawdownBreached,
+  isTieredBreakerHalted,
+  computeGuardDailyDrawdownFraction,
+} from './arbitrage-risk-guard-drawdown-math';
+
+export {
+  tripDrawdownRejection,
+  isExplicitDrawdownBreached,
+  isTieredBreakerHalted,
+  computeGuardDailyDrawdownFraction,
+};
 
 export interface DrawdownGateDependencies {
   config: ArbitrageRiskConfig;
@@ -35,53 +47,37 @@ export async function evaluateDrawdownBreaker(
   const { config, liveExecutionGuard, riskGateManager, tieredDrawdownBreaker, drawdownMonitor } = deps;
 
   // 1a. Explicit drawdown passed in context
-  if (
-    context?.currentDrawdown !== undefined &&
-    context.currentDrawdown >= config.maxDailyDrawdownFraction
-  ) {
-    checks.drawdownBreakerOk = false;
+  if (isExplicitDrawdownBreached(context?.currentDrawdown, config.maxDailyDrawdownFraction)) {
     logger.warn('[ArbitrageRiskGuard] Cumulative daily drawdown breached limit', {
       currentDrawdown: context.currentDrawdown,
       maxDailyDrawdown: config.maxDailyDrawdownFraction,
     });
-    return {
-      allowed: false,
-      rejectionReason: ArbitrageRejectionReason.DRAWDOWN_BREAKER_TRIPPED,
-      adjustedNotionalUsd: 0,
-      checks,
-      details: {
-        currentDrawdown: context.currentDrawdown,
-        maxDailyDrawdownFraction: config.maxDailyDrawdownFraction,
-      },
-    };
+    return tripDrawdownRejection(checks, {
+      currentDrawdown: context.currentDrawdown,
+      maxDailyDrawdownFraction: config.maxDailyDrawdownFraction,
+    });
   }
 
   // 1b. TieredDrawdownBreaker check (haltThreshold = 0.15)
   if (tieredDrawdownBreaker) {
     const state = tieredDrawdownBreaker.getState();
-    const ddFrac = state.drawdownPercent / 100;
     if (
-      ddFrac >= config.maxDailyDrawdownFraction ||
-      !tieredDrawdownBreaker.canOpenNewTrades() ||
-      state.tier === 'HALT' ||
-      state.tier === 'HARD_STOP'
+      isTieredBreakerHalted(
+        state.drawdownPercent,
+        state.tier,
+        tieredDrawdownBreaker.canOpenNewTrades(),
+        config.maxDailyDrawdownFraction,
+      )
     ) {
-      checks.drawdownBreakerOk = false;
       logger.warn('[ArbitrageRiskGuard] TieredDrawdownBreaker halted trading', {
         tier: state.tier,
         drawdownPercent: state.drawdownPercent,
       });
-      return {
-        allowed: false,
-        rejectionReason: ArbitrageRejectionReason.DRAWDOWN_BREAKER_TRIPPED,
-        adjustedNotionalUsd: 0,
-        checks,
-        details: {
-          tier: state.tier,
-          drawdownPercent: state.drawdownPercent,
-          haltedUntil: state.haltedUntil,
-        },
-      };
+      return tripDrawdownRejection(checks, {
+        tier: state.tier,
+        drawdownPercent: state.drawdownPercent,
+        haltedUntil: state.haltedUntil,
+      });
     }
   }
 
@@ -89,77 +85,42 @@ export async function evaluateDrawdownBreaker(
   if (drawdownMonitor) {
     const canTrade = await drawdownMonitor.canTrade();
     if (!canTrade) {
-      checks.drawdownBreakerOk = false;
-      return {
-        allowed: false,
-        rejectionReason: ArbitrageRejectionReason.DRAWDOWN_BREAKER_TRIPPED,
-        adjustedNotionalUsd: 0,
-        checks,
-        details: { monitorHalted: true },
-      };
+      return tripDrawdownRejection(checks, { monitorHalted: true });
     }
     const metrics = await drawdownMonitor.getMetrics();
     if (metrics.dailyDrawdown >= config.maxDailyDrawdownFraction) {
-      checks.drawdownBreakerOk = false;
-      return {
-        allowed: false,
-        rejectionReason: ArbitrageRejectionReason.DRAWDOWN_BREAKER_TRIPPED,
-        adjustedNotionalUsd: 0,
-        checks,
-        details: {
-          dailyDrawdown: metrics.dailyDrawdown,
-          maxDailyDrawdown: config.maxDailyDrawdownFraction,
-        },
-      };
+      return tripDrawdownRejection(checks, {
+        dailyDrawdown: metrics.dailyDrawdown,
+        maxDailyDrawdown: config.maxDailyDrawdownFraction,
+      });
     }
   }
 
   // 1d. LiveExecutionGuard & RiskGateManager status
   const guardStatus = liveExecutionGuard.getStatus();
   if (guardStatus.circuitTripped) {
-    checks.drawdownBreakerOk = false;
-    return {
-      allowed: false,
-      rejectionReason: ArbitrageRejectionReason.DRAWDOWN_BREAKER_TRIPPED,
-      adjustedNotionalUsd: 0,
-      checks,
-      details: {
-        circuitTripped: true,
-        consecutiveLosses: guardStatus.consecutiveLosses,
-      },
-    };
+    return tripDrawdownRejection(checks, {
+      circuitTripped: true,
+      consecutiveLosses: guardStatus.consecutiveLosses,
+    });
   }
 
-  const guardDailyDrawdown =
-    config.capitalUsdc > 0
-      ? Math.abs(Math.min(0, guardStatus.dailyPnl)) / config.capitalUsdc
-      : 0;
+  const guardDailyDrawdown = computeGuardDailyDrawdownFraction(
+    guardStatus.dailyPnl,
+    config.capitalUsdc,
+  );
   if (guardDailyDrawdown >= config.maxDailyDrawdownFraction) {
-    checks.drawdownBreakerOk = false;
-    return {
-      allowed: false,
-      rejectionReason: ArbitrageRejectionReason.DRAWDOWN_BREAKER_TRIPPED,
-      adjustedNotionalUsd: 0,
-      checks,
-      details: {
-        guardDailyDrawdown,
-        limit: config.maxDailyDrawdownFraction,
-      },
-    };
+    return tripDrawdownRejection(checks, {
+      guardDailyDrawdown,
+      limit: config.maxDailyDrawdownFraction,
+    });
   }
 
   const gateResult = await riskGateManager.check(
     basket.strategyKey ?? 'arbitrage',
   );
   if (!gateResult.allowed) {
-    checks.drawdownBreakerOk = false;
-    return {
-      allowed: false,
-      rejectionReason: ArbitrageRejectionReason.DRAWDOWN_BREAKER_TRIPPED,
-      adjustedNotionalUsd: 0,
-      checks,
-      details: { reason: gateResult.reason },
-    };
+    return tripDrawdownRejection(checks, { reason: gateResult.reason });
   }
 
   return null;

@@ -2,14 +2,17 @@
  * Alpha-Lab Autonomous Pipeline Discovery Integration
  */
 
-import type { CandleLike } from '../regimes/regime-types';
+import { classifyRegime } from '../regimes/regime-engine';
+import type { CandleLike, MarketRegime } from '../regimes/regime-types';
 import type {
   ContinuousDiscoveryPipeline,
   ContinuousDiscoveryResult,
   DiscoveredAlphaCandidate,
 } from '../alpha-discovery/continuous-discovery-pipeline';
+import { candidateToAISignal, type AISignal } from '../../desk/strategies/ai-signal-adapter';
 import { AlphaLifecycleStateMachine } from '../attribution/alpha-lifecycle-state-machine';
 import type { LedgerRecord, LedgerWriteResult } from '../provenance/research-ledger';
+import type { AutonomousCycleOptions } from './alpha-lab-pipeline-types';
 import { recordCandidateProvenance } from './alpha-lab-pipeline-provenance';
 
 /**
@@ -54,4 +57,28 @@ export async function runDiscoveryAndRegistration(
   }
 
   return discoveryResult;
+}
+
+export function buildCandidateSignalsForCycle(
+  passedCandidates: DiscoveredAlphaCandidate[],
+  symbol: string,
+  timeframe: string,
+  options?: AutonomousCycleOptions,
+): AISignal[] {
+  let currentRegime: MarketRegime = options?.regime ?? 'TREND_UP';
+  if (!options?.regime && options?.candles && options.candles.length >= 20) {
+    try {
+      currentRegime = classifyRegime(
+        { market: symbol, timeframe, lookback: 20 },
+        options.candles,
+      ).regime;
+    } catch {
+      currentRegime = 'TREND_UP';
+    }
+  }
+
+  const direction = options?.signalDirection ?? 'BUY';
+  return passedCandidates.map((cand) =>
+    candidateToAISignal(cand, currentRegime, direction, symbol),
+  );
 }

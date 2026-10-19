@@ -9,9 +9,8 @@
  * Hard Risk Circuit: SignalTTL (200ms) + token-bucket rate limiter (5/sec,
  * burst 10) per strategy.
  *
- * Split into leaf modules (types, polling, terminal, risk-gates) to stay
- * under 200 LOC. Leaves operate via structural LiveOrderManagerCtx — fields
- * are public/readonly (not private) for structural assignability.
+ * Split into leaf modules (types, polling, terminal, risk-gates, submission)
+ * to stay strictly under 150 LOC.
  */
 
 import { EventEmitter } from 'events';
@@ -21,7 +20,6 @@ import type { LivePositionTracker } from './live-position-tracker';
 import { logger } from '../../shared/utils/logger';
 import type { TradeSignal } from '../polymarket/strategy-live-bridge';
 import type { RiskGateManager } from '../risk/risk-gate-manager';
-import { requireLiveEnabled } from './execution-mode';
 import { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
 import {
   DEFAULT_MAX_ORDER_LIFETIME,
@@ -32,24 +30,19 @@ import {
 import { schedulePollFor } from './live-order-polling';
 import { handleFillFor } from './live-order-manager-terminal';
 import { runRiskGates } from './live-order-risk-gates';
+import { submitAndTrackOrder, submitOnlyOrder } from './live-order-submission';
 
 // ── Facade re-exports (importers compile UNMODIFIED) ───────────────────────────
 export { TokenBucketRateLimiter } from './token-bucket-rate-limiter';
 export type { OrderState, OrderTerminalState, LiveOrderManagerEvents } from './live-order-manager-types';
 
-// ── Manager ────────────────────────────────────────────────────────────────────
-
 export class LiveOrderManager extends EventEmitter {
-  // Public (not private) so the instance satisfies the structural
-  // LiveOrderManagerCtx interface used by the leaf modules.
   activeOrders = new Map<string, OrderState>();
   pollTimers = new Map<string, NodeJS.Timeout>();
   readonly adapter: PolymarketAdapter;
   readonly positionTracker: LivePositionTracker;
   readonly maxOrderLifetimeMs: number;
   stopped = false;
-
-  // Rate limiter per strategy
   strategyRateLimiters = new Map<string, TokenBucketRateLimiter>();
 
   constructor(
@@ -68,51 +61,17 @@ export class LiveOrderManager extends EventEmitter {
 
   /** Submit a signed order to CLOB and begin polling for fill status */
   async submitAndTrack(order: PolymarketOrder): Promise<PolymarketOrderResponse> {
-    if (this.stopped) throw new Error('LiveOrderManager is stopped');
-
-    // Hard env gate: LIVE mode requires the operator to set
-    // LIVE_TRADING_ENABLED=true explicitly. Without this, no order can reach
-    // the exchange regardless of how the guard was configured.
-    requireLiveEnabled('LiveOrderManager.submitAndTrack');
-
-    const response = await this.adapter.placeOrder(order);
-
-    const state: OrderState = {
-      orderId: response.orderID,
-      tokenId: order.tokenId,
-      side: order.side,
-      size: order.size,
-      price: order.price,
-      status: response.status === 'matched' ? 'matched' : 'pending',
-      submittedAt: Date.now(),
-      lastPollAt: Date.now(),
-      pollAttempts: 0,
-    };
-
-    this.activeOrders.set(response.orderID, state);
-
-    if (response.status === 'matched') {
-      this.handleFill(state);
-    } else {
-      this.schedulePoll(response.orderID);
-    }
-
-    return response;
+    return submitAndTrackOrder(this, order);
   }
 
   /** Submit order without tracking (fire-and-forget) */
   async submitOnly(order: PolymarketOrder): Promise<PolymarketOrderResponse> {
-    return this.adapter.placeOrder(order);
+    return submitOnlyOrder(this, order);
   }
 
   // ── Hard Risk Circuit: Signal Processing ─────────────────────────────────────
 
-  /**
-   * Submit a TradeSignal through Hard Risk Circuit gates — the FINAL gate
-   * before any order reaches the CLOB (cannot be bypassed by strategy logic).
-   * Gate order: SignalTTL → Rate Limiter → LiveExecutionGuard → submitAndTrack.
-   * Throws if rejected; returns PolymarketOrderResponse if approved.
-   */
+  /** Submit a TradeSignal through Hard Risk Circuit gates */
   async submitSignal(
     signal: TradeSignal,
     strategyName: string
@@ -175,7 +134,6 @@ export class LiveOrderManager extends EventEmitter {
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 
-  /** Stop all polling and cancel all active orders */
   async stop(): Promise<void> {
     this.stopped = true;
     for (const timer of this.pollTimers.values()) {
@@ -188,13 +146,11 @@ export class LiveOrderManager extends EventEmitter {
     });
   }
 
-  // ── Private: thin delegates to leaf modules (called by submitAndTrack) ─────
-
-  private schedulePoll(orderId: string): void {
+  schedulePoll(orderId: string): void {
     schedulePollFor(this, orderId);
   }
 
-  private handleFill(state: OrderState): void {
+  handleFill(state: OrderState): void {
     handleFillFor(this, state);
   }
 }

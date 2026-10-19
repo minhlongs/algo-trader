@@ -21,7 +21,11 @@ import type { Env, CloudflareCf } from './edge-proxy-types';
 import { CORS, SECURITY_HEADERS } from './edge-proxy-constants';
 import { getClientRegion, getCachedRegionHealth, selectBestRegion, routeToRegion, updateRegionHealthCache } from './edge-proxy-regions';
 import { handleMetrics, metricEntry } from './edge-proxy-metrics';
-import { handleTenantConfigSave, handlePaperTradesLedger } from './edge-proxy-inline-routes';
+import {
+  handleTenantConfigSave, handlePaperTradesLedger,
+  handleHealthRoute, handleRootRoute, handleVpsFallbackRoute,
+  handleMetricsGetRoute, handlePaperTradingTickRoute,
+} from './edge-proxy-inline-routes';
 
 // ── Paper trading (env-gated startup) ──
 import { initPaperTrading, runPaperTradingTick } from './paper-trading-entry';
@@ -53,44 +57,20 @@ export default {
     }
 
     // ── Metrics (Prometheus) ──
-    if (path === '/metrics' && request.method === 'GET') {
-      const secret = env.METRIC_PASSWORD;
-      if (secret && url.searchParams.get('token') !== secret) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401, headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
-        });
-      }
-      return handleMetrics(env);
-    }
+    if (path === '/metrics' && request.method === 'GET') return handleMetricsGetRoute(url, env, handleMetrics);
     if (path === '/metrics' && request.method === 'POST') return metricEntry(request, env);
 
     // ── Multi-region routing (uses sub-ms KV-cached health probes) ──
     const routingEnabled = env.REGION_ROUTING_ENABLED !== 'false';
     if (routingEnabled && path.startsWith('/api/') && env.VPS_ORIGIN) {
       const cf = (request as unknown as { cf?: CloudflareCf }).cf;
-      const clientRegion = getClientRegion(cf);
-      const health = await getCachedRegionHealth(env);
-      const bestRegion = selectBestRegion(health, clientRegion);
+      const bestRegion = selectBestRegion(await getCachedRegionHealth(env), getClientRegion(cf));
       if (bestRegion !== env.ENVIRONMENT) return await routeToRegion(request, bestRegion, env);
     }
 
-    // ── Health ──
-    if (path === '/health' && request.method === 'GET') {
-      return new Response(JSON.stringify({
-        status: 'ok', service: 'Cloudflare Worker Edge Proxy', environment: env.ENVIRONMENT,
-        edge: 'cloudflare', hasVps: !!env.VPS_ORIGIN, timestamp: new Date().toISOString(),
-        checks: { kv: env.CACHE ? 'configured' : 'missing', d1: env.DB ? 'configured' : 'missing',
-          metrics: !!env.METRIC_PASSWORD, regionRouting: routingEnabled },
-      }), { status: 200, headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' } });
-    }
-
-    // ── Root ──
-    if (path === '/' && request.method === 'GET') {
-      return new Response(JSON.stringify({
-        service: 'algo-trader API', version: '1.0', status: 'ok', edge: 'cloudflare',
-        environment: env.ENVIRONMENT, hasVps: !!env.VPS_ORIGIN, timestamp: new Date().toISOString(),
-      }), { headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' } });
-    }
+    // ── Health & Root ──
+    if (path === '/health' && request.method === 'GET') return handleHealthRoute(env, routingEnabled);
+    if (path === '/' && request.method === 'GET') return handleRootRoute(env);
 
     // ── Auth routes ──
     const auth = env as AnyEnv;
@@ -109,20 +89,10 @@ export default {
 
     // ── Paper trading tick (dev/test trigger) ──
     if (path === '/api/v1/paper-trading/tick' && request.method === 'POST') {
-      try {
+      return handlePaperTradingTickRoute(env, () => {
         ensurePaperTrading(env.CACHE, env, env.SUBSCRIBERS);
-        const result = await runPaperTradingTick(env.CACHE, env, env.SUBSCRIBERS);
-        return new Response(JSON.stringify({
-          ok: true, triggered: 'manual',
-          kvNamespace: env.CACHE ? 'bound' : 'UNDEFINED',
-          hasCache: !!env.CACHE, hasDb: !!env.SUBSCRIBERS, dbType: typeof env.SUBSCRIBERS, result,
-        }), { status: 200, headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' } });
-      } catch (err) {
-        logger.error('[EdgeProxy] Paper trading tick failed', { err });
-        return new Response(JSON.stringify({ error: 'Tick failed', err: String(err) }), {
-          status: 500, headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
-        });
-      }
+        return runPaperTradingTick(env.CACHE, env, env.SUBSCRIBERS);
+      });
     }
 
     // ── Webhooks + Coupons ──
@@ -151,12 +121,7 @@ export default {
     if (path === '/api/v1/paper-trades' && request.method === 'GET') return handlePaperTradesLedger(request, env);
 
     // ── Fallback ──
-    if (env.VPS_ORIGIN && path.startsWith('/api/')) {
-      return new Response(
-        JSON.stringify({ error: 'Not implemented', message: 'VPS backend removed — endpoint not yet migrated to CF Worker' }),
-        { status: 501, headers: { 'Content-Type': 'application/json', ...CORS, ...SECURITY_HEADERS } }
-      );
-    }
+    if (env.VPS_ORIGIN && path.startsWith('/api/')) return handleVpsFallbackRoute();
     if (path.startsWith('/api/')) return notImplementedResponse(path);
     return new Response('Not Found', { status: 404, headers: { ...CORS, ...SECURITY_HEADERS } });
   },

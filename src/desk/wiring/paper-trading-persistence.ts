@@ -16,13 +16,9 @@ import type { TradeOutcome } from '../intelligence/dual-level-reflection-engine'
 import type { PaperTrade, PaperPortfolio } from './paper-trading-orchestrator';
 import { resetCapitalReservations } from './paper-capital-reservation';
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-
 const TRADES_FILE = path.join(process.cwd(), 'data', 'paper-trades.json');
 export const POSITION_SIZE_PCT = 0.05;
 export const MIN_AI_CONFIDENCE = 0.7;
-
-// ─── Default Portfolio ───────────────────────────────────────────────────────
 
 export function createDefaultPortfolio(capital = 1000): PaperPortfolio {
   return {
@@ -38,34 +34,19 @@ export function createDefaultPortfolio(capital = 1000): PaperPortfolio {
 let portfolio: PaperPortfolio = createDefaultPortfolio();
 let tradesFile = TRADES_FILE;
 
-/** Get current portfolio reference (used by orchestrator) */
-export function getPortfolio(): PaperPortfolio {
-  return portfolio;
-}
+export function getPortfolio(): PaperPortfolio { return portfolio; }
+export function setPortfolio(p: PaperPortfolio): void { portfolio = p; }
+export function setTradesFile(filePath: string): void { tradesFile = filePath; }
 
-/** Set portfolio reference (for test injection / reset) */
-export function setPortfolio(p: PaperPortfolio): void {
-  portfolio = p;
-}
-
-/** Set trades file path (for test isolation) */
-export function setTradesFile(filePath: string): void {
-  tradesFile = filePath;
-}
-
-/** Reset portfolio to defaults — for test isolation only. */
 export function __resetPortfolioForTests(): void {
   portfolio = createDefaultPortfolio();
   resetCapitalReservations();
 }
 
-/** Reset portfolio to initial state (for test isolation). */
 export function resetPortfolio(): void {
   portfolio = createDefaultPortfolio();
   resetCapitalReservations();
 }
-
-// ─── File Persistence ────────────────────────────────────────────────────────
 
 export function saveTrades(): void {
   try {
@@ -86,8 +67,6 @@ export function loadTrades(): void {
   } catch { logger.info('[PaperOrchestrator] Fresh portfolio'); }
 }
 
-// ─── Position Settlement ──────────────────────────────────────────────────────
-
 export async function settleStalePositions(): Promise<void> {
   const now = Date.now();
   const stale = portfolio.positions.filter(p => now - p.timestamp > 5 * 60_000);
@@ -96,13 +75,7 @@ export async function settleStalePositions(): Promise<void> {
     const isEndgameTrade = trade.entryPrice > 0.90 || trade.entryPrice < 0.10;
     const costPerShare = trade.side === 'YES' ? trade.entryPrice : (1 - trade.entryPrice);
     const shares = trade.size / costPerShare;
-
-    let won: boolean;
-    if (isEndgameTrade) {
-      won = Math.random() < 0.95;
-    } else {
-      won = Math.random() < 0.52;
-    }
+    const won = Math.random() < (isEndgameTrade ? 0.95 : 0.52);
 
     const exitPrice = won ? 1.0 : 0.0;
     const pnl = won ? shares * (1 - costPerShare) - trade.size * 0.02 : -trade.size;
@@ -114,7 +87,6 @@ export async function settleStalePositions(): Promise<void> {
     if (pnl >= 0) { portfolio.winCount++; } else { portfolio.lossCount++; }
     saveTrades();
 
-    // Async reflection — non-blocking
     const outcome: TradeOutcome = {
       tradeId: trade.id,
       marketId: trade.marketId,
@@ -139,12 +111,9 @@ export async function settleStalePositions(): Promise<void> {
   }
 }
 
-// ─── DB Persistence (paper_trades_v3) ────────────────────────────────────────
-
 /**
  * Persist a paper trade to paper_trades_v3 table (source-tagged).
  * Qwen trades are always paper_only=TRUE — NEVER routed to live.
- * Non-blocking: errors are logged but do not fail the trade flow.
  */
 export async function savePaperTradeV3(trade: PaperTrade): Promise<void> {
   try {
@@ -154,15 +123,9 @@ export async function savePaperTradeV3(trade: PaperTrade): Promise<void> {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9)
       ON CONFLICT (id) DO NOTHING`,
       [
-        trade.id,
-        trade.marketId,
-        trade.side,
-        trade.size,
-        trade.entryPrice,
-        trade.strategy,
-        trade.source,
-        trade.signalConfidence,
-        trade.timestamp,
+        trade.id, trade.marketId, trade.side, trade.size,
+        trade.entryPrice, trade.strategy, trade.source,
+        trade.signalConfidence, trade.timestamp,
       ]
     );
   } catch (err) {

@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>AlgoTrade OS // SENTRY - Mobile Risk Companion</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Fonts: Space Grotesk, JetBrains Mono, Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-dim": "#121316",
+            "inverse-on-surface": "#2f3034",
+            "inverse-primary": "#00696f",
+            "on-tertiary": "#690003",
+            "secondary-container": "#01e599",
+            "on-primary-container": "#006a70",
+            "background": "#121316",
+            "primary-fixed-dim": "#00dce6",
+            "surface-container-highest": "#343538",
+            "secondary-fixed": "#4dffb2",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "surface-bright": "#38393d",
+            "outline-variant": "#3a494b",
+            "outline": "#849495",
+            "on-tertiary-fixed-variant": "#930005",
+            "secondary-fixed-dim": "#00e297",
+            "on-tertiary-fixed": "#410001",
+            "on-surface": "#e3e2e6",
+            "error-container": "#93000a",
+            "on-error": "#690005",
+            "on-tertiary-container": "#c3000a",
+            "surface-container-lowest": "#0d0e11",
+            "tertiary-container": "#ffd0ca",
+            "on-surface-variant": "#b9cacb",
+            "primary": "#e0fdff",
+            "primary-fixed": "#6ff6ff",
+            "surface-variant": "#343538",
+            "error": "#ffb4ab",
+            "surface": "#121316",
+            "surface-container-high": "#292a2d",
+            "on-background": "#e3e2e6",
+            "on-primary-fixed-variant": "#004f53",
+            "on-primary-fixed": "#002022",
+            "tertiary-fixed": "#ffdad5",
+            "on-primary": "#00373a",
+            "secondary": "#70ffba",
+            "surface-tint": "#00dce6",
+            "on-secondary": "#003822",
+            "primary-container": "#00f2fe",
+            "on-error-container": "#ffdad6",
+            "inverse-surface": "#e3e2e6",
+            "surface-container-low": "#1b1b1f",
+            "surface-container": "#1f1f23",
+            "tertiary": "#fff5f4",
+            "on-secondary-container": "#00613e",
+            "on-secondary-fixed": "#002112",
+            "on-secondary-fixed-variant": "#005234"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin-desktop": "0.75rem",
+            "space-sm": "0.25rem",
+            "space-md": "0.5rem",
+            "space-xl": "1rem",
+            "margin": "0.75rem",
+            "gutter": "0.5rem",
+            "gutter-desktop": "0.5rem",
+            "margin-mobile": "0.5rem",
+            "gutter-mobile": "0.25rem",
+            "space-xs": "0.125rem",
+            "space-lg": "0.75rem"
+          },
+          "fontFamily": {
+            "headline-lg": ["Space Grotesk"],
+            "data-mono-md": ["JetBrains Mono"],
+            "body-lg": ["Inter"],
+            "body-sm": ["Inter"],
+            "body-md": ["Inter"],
+            "headline-xl": ["Space Grotesk"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "data-mono-sm": ["JetBrains Mono"],
+            "headline-md": ["Space Grotesk"],
+            "label-caps": ["JetBrains Mono"],
+            "headline-xl-mobile": ["Space Grotesk"]
+          },
+          "fontSize": {
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }],
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }],
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }],
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Custom terminal scanlines & hazard diagonal textures */
+    .hazard-stripe {
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(147, 0, 10, 0.15),
+        rgba(147, 0, 10, 0.15) 8px,
+        transparent 8px,
+        transparent 16px
+      );
+    }
+    .cyan-glow {
+      box-shadow: 0 0 12px rgba(0, 242, 254, 0.18);
+    }
+    .red-pulse-glow {
+      box-shadow: 0 0 14px rgba(255, 59, 48, 0.28);
+    }
+    /* Touch target optimizations */
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      width: 48px;
+      height: 48px;
+      border-radius: 4px;
+      background: #ffd0ca;
+      border: 2px solid #ffb4ab;
+      cursor: grab;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+    <link rel="stylesheet" href="assets/ui-ux-pro-max.css"/>
+  <script src="assets/ui-ux-pro-max.js" defer></script>
+</head>
+<body class="bg-surface-container-lowest text-on-surface antialiased select-none font-body-md flex justify-center min-h-screen">
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+<!-- Mobile Viewport Container (390px constrained canvas for institutional handheld fidelity) -->
+<div class="w-full max-w-[414px] min-h-screen bg-surface-container-lowest flex flex-col relative pb-20 overflow-x-hidden border-x border-outline-variant">
+<!-- 1. TopAppBar (Shared Component Implementation) -->
+<header aria-live="polite" class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[414px] z-50 flex items-center justify-between px-margin-mobile h-12 bg-surface-container-lowest border-b border-outline-variant">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="shield">shield</span>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-primary tracking-tight leading-none">SENTRY // PORTFOLIO</span>
+<div class="flex items-center gap-1 mt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="font-data-mono-sm text-data-mono-sm text-secondary">ENCLAVE LIVE: 4.2ms</span>
+</div>
+</div>
+</div>
+<!-- Trailing Action: KILL-ALL emergency shortcut mapped from JSON -->
+<div class="flex items-center gap-space-sm">
+<span class="font-data-mono-sm text-data-mono-sm px-1.5 py-0.5 rounded-DEFAULT bg-surface-container-high text-on-surface-variant border border-outline-variant">NY4-DIRECT</span>
+<button class="h-7 px-2 bg-error-container text-on-error-container font-label-caps text-label-caps rounded-DEFAULT border border-error flex items-center gap-1 active:scale-95 transition-transform duration-75" onclick="document.getElementById('kill-switch-card').scrollIntoView({behavior: 'smooth'})">
+<span class="material-symbols-outlined text-[13px]" data-icon="warning">warning</span>
+          KILL-ALL
+        </button>
+</div>
+</header>
+<!-- Sub-header Meta Ribbon: Telegram Sync & Zero Knowledge Shielding -->
+<div class="mt-12 px-margin-mobile pt-space-sm pb-space-sm bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary-container text-[14px]" data-icon="verified_user">verified_user</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface">ZK-SHIELDED</span>
+<span class="text-outline text-data-mono-sm">•</span>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">ED25519 ACTIVE</span>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-highest px-1.5 py-0.5 rounded-DEFAULT border border-outline-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-ping"></span>
+<span class="font-data-mono-sm text-data-mono-sm text-primary">@Sophia_Bbot</span>
+<span class="material-symbols-outlined text-primary-container text-[12px]" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Main Mobile Content Area -->
+<main class="flex-1 px-margin-mobile py-space-md flex flex-col gap-space-md">
+<!-- 2. Portfolio Value & Sparkline Hero Card -->
+<section class="bg-surface-container-low border border-outline-variant rounded-DEFAULT p-space-md relative overflow-hidden">
+<!-- Ambient trace glow -->
+<div class="absolute -top-12 -right-12 w-28 h-28 bg-primary-container/10 blur-2xl pointer-events-none rounded-full"></div>
+<div class="flex items-start justify-between relative z-10">
+<div>
+<div class="flex items-center gap-1.5 mb-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant">CONSOLIDATED QUANT NAV</span>
+<span class="px-1 py-0.2 bg-surface-container-high text-primary-container font-data-mono-sm text-[9px] rounded-DEFAULT">LIVE</span>
+</div>
+<div class="font-headline-xl-mobile text-headline-xl-mobile text-on-surface tracking-tight font-bold font-headline-lg flex items-baseline gap-1">
+              $1,248,500.00
+              <span class="font-data-mono-sm text-data-mono-sm text-secondary font-normal">+3.42%</span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-secondary flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[12px]" data-icon="trending_up">trending_up</span>
+              +$41,280.00 (24h)
+            </div>
+</div>
+<!-- Period Selector Tabs -->
+<div class="flex bg-surface-container-lowest p-0.5 border border-outline-variant rounded-DEFAULT">
+<button class="px-1.5 py-0.5 font-label-caps text-[9px] text-on-surface-variant hover:text-primary">1H</button>
+<button class="px-1.5 py-0.5 font-label-caps text-[9px] bg-surface-container-high text-primary-container font-bold rounded-DEFAULT">24H</button>
+<button class="px-1.5 py-0.5 font-label-caps text-[9px] text-on-surface-variant hover:text-primary">7D</button>
+<button class="px-1.5 py-0.5 font-label-caps text-[9px] text-on-surface-variant hover:text-primary">30D</button>
+</div>
+</div>
+<!-- SVG Sparkline & Price Depth Curve -->
+<div class="mt-3 w-full h-24 relative">
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 340 85">
+<defs>
+<lineargradient id="neonGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#00f2fe" stop-opacity="0.35"></stop>
+<stop offset="100%" stop-color="#00f2fe" stop-opacity="0.0"></stop>
+</lineargradient>
+</defs>
+<!-- Fill under curve -->
+<path d="M 0,65 Q 40,70 80,55 T 160,40 T 240,48 T 300,18 L 340,12 L 340,85 L 0,85 Z" fill="url(#neonGradient)"></path>
+<!-- Line path -->
+<path d="M 0,65 Q 40,70 80,55 T 160,40 T 240,48 T 300,18 L 340,12" fill="none" stroke="#00f2fe" stroke-linecap="round" stroke-width="2"></path>
+<!-- Current Pulse Point -->
+<circle class="animate-ping" cx="340" cy="12" fill="#e0fdff" opacity="0.7" r="3.5"></circle>
+<circle cx="340" cy="12" fill="#00f2fe" r="3"></circle>
+</svg>
+<!-- 24h High/Low Indicators -->
+<div class="absolute top-1 right-1 font-data-mono-sm text-[9px] text-primary-container bg-surface-container-lowest/80 px-1 border border-outline-variant rounded-DEFAULT">
+            H: $1.248M
+          </div>
+<div class="absolute bottom-1 left-1 font-data-mono-sm text-[9px] text-on-surface-variant bg-surface-container-lowest/80 px-1 border border-outline-variant rounded-DEFAULT">
+            L: $1.208M
+          </div>
+</div>
+<!-- Risk Posture Matrix Footer -->
+<div class="mt-2.5 pt-2 border-t border-outline-variant flex items-center justify-between text-on-surface-variant font-data-mono-sm text-data-mono-sm">
+<div class="flex items-center gap-1">
+<span class="text-outline">NET DELTA:</span>
+<span class="text-secondary font-semibold">+0.14 BTC</span>
+</div>
+<div class="h-3 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1">
+<span class="text-outline">1D VaR:</span>
+<span class="text-error font-semibold">$14,200</span>
+</div>
+<div class="h-3 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1">
+<span class="text-outline">SHARPE:</span>
+<span class="text-primary font-semibold">3.82</span>
+</div>
+</div>
+</section>
+<!-- 3. Emergency Kill-Switch (High-Priority Flash Crash Sentry) -->
+<section class="bg-surface-container-lowest border-2 border-on-tertiary-container rounded-DEFAULT p-space-md hazard-stripe relative red-pulse-glow" id="kill-switch-card">
+<div class="flex items-center justify-between pb-space-sm border-b border-outline-variant mb-space-sm bg-surface-container-lowest/90 px-1 py-0.5 rounded-DEFAULT">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-error text-[18px] animate-pulse" data-icon="report">report</span>
+<span class="font-label-caps text-label-caps text-tertiary-fixed tracking-wider">EMERGENCY PROTOCOL // HARD-HALT</span>
+</div>
+<span class="font-data-mono-sm text-[9px] px-1 py-0.5 bg-error-container text-on-error-container border border-error rounded-DEFAULT">STANDBY</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-snug mb-3">
+          Instantly revokes API keys, liquidates open perps to USDT, and flushes limit orders across all active shards via ED25519 cryptographic signal.
+        </p>
+<!-- Slide to Confirm Safety Mechanism -->
+<div class="relative w-full h-12 bg-surface-container-high rounded-DEFAULT border border-error-container flex items-center p-1 overflow-hidden select-none" id="slider-track">
+<!-- Slide Track Background Text -->
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<span class="font-label-caps text-[10px] text-tertiary-fixed-dim uppercase tracking-widest pl-8 flex items-center gap-1">
+              SLIDE TO KILL ALL ORDERS &amp; FLATTEN
+              <span class="material-symbols-outlined text-[14px]" data-icon="chevron_right">chevron_right</span>
+</span>
+</div>
+<!-- Interactive Slider Handle -->
+<div class="w-10 h-10 bg-on-tertiary-container hover:bg-error border border-tertiary-fixed text-on-primary flex items-center justify-center rounded-DEFAULT shadow-lg z-20 cursor-ew-resize active:scale-95 transition-transform duration-75" id="slider-handle">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="power_settings_new">power_settings_new</span>
+</div>
+</div>
+<!-- Latency Micro-Telemetry Strip -->
+<div class="mt-2 flex items-center justify-between font-data-mono-sm text-[9px] text-on-surface-variant">
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> NY4 Router: 1.1ms
+          </span>
+<span class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> TY3 Route: 14.8ms
+          </span>
+<span class="text-error">CRYPT-ID: #8F29-E1</span>
+</div>
+</section>
+<!-- 4. Active Bot Positions List -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary-container text-[16px]" data-icon="memory">memory</span>
+<span class="font-label-caps text-label-caps text-on-surface">ACTIVE BOT POSITIONS (4 LOADED)</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">SORT: PNL DESC</span>
+</div>
+<!-- Position Card 1: Almgren-Chriss Optimal Exec -->
+<div class="bg-surface-container-low border border-outline-variant hover:border-primary-container transition-colors rounded-DEFAULT p-space-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-md text-headline-md text-primary font-semibold">Almgren-Chriss Exec</span>
+<span class="px-1 py-0.2 bg-surface-container-high border border-outline-variant font-data-mono-sm text-[9px] text-secondary">ACTIVE</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">PAIR: BTC-USDT PERP (BINANCE PRIME)</span>
+</div>
+<button class="px-2 py-1 bg-surface-container-lowest border border-error text-error font-label-caps text-[9px] rounded-DEFAULT hover:bg-error-container hover:text-on-error-container active:scale-95 transition-transform duration-75">
+              CLOSE
+            </button>
+</div>
+<div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-outline-variant">
+<div>
+<span class="font-label-caps text-[9px] text-outline block">SIZE</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface">14.8 BTC LONG</span>
+</div>
+<div>
+<span class="font-label-caps text-[9px] text-outline block">SLIPPAGE</span>
+<span class="font-data-mono-md text-data-mono-md text-primary">+1.4 bps</span>
+</div>
+<div class="text-right">
+<span class="font-label-caps text-[9px] text-outline block">UNREALIZED PnL</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary font-bold">+$18,420.00</span>
+<span class="font-data-mono-sm text-[9px] text-secondary block">(+2.14%)</span>
+</div>
+</div>
+</div>
+<!-- Position Card 2: Cross-DEX Arbitrage -->
+<div class="bg-surface-container-low border border-outline-variant hover:border-primary-container transition-colors rounded-DEFAULT p-space-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-md text-headline-md text-primary font-semibold">Cross-DEX Arbitrage</span>
+<span class="px-1 py-0.2 bg-surface-container-high border border-outline-variant font-data-mono-sm text-[9px] text-primary-container">ROUTING</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">DOCKS: ETH/SOL RAYDIUM+UNISWAP V3</span>
+</div>
+<div class="flex gap-1">
+<button class="px-1.5 py-1 bg-surface-container-lowest border border-outline-variant text-on-surface-variant font-label-caps text-[9px] rounded-DEFAULT hover:border-primary hover:text-primary active:scale-95 transition-transform duration-75">
+                PAUSE
+              </button>
+<button class="px-2 py-1 bg-surface-container-lowest border border-error text-error font-label-caps text-[9px] rounded-DEFAULT hover:bg-error-container hover:text-on-error-container active:scale-95 transition-transform duration-75">
+                CLOSE
+              </button>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-outline-variant">
+<div>
+<span class="font-label-caps text-[9px] text-outline block">NOTIONAL</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface">$142,500</span>
+</div>
+<div>
+<span class="font-label-caps text-[9px] text-outline block">ROUNDTRIP</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary font-medium">8.2ms</span>
+</div>
+<div class="text-right">
+<span class="font-label-caps text-[9px] text-outline block">UNREALIZED PnL</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary font-bold">+$14,250.00</span>
+<span class="font-data-mono-sm text-[9px] text-secondary block">(+1.82%)</span>
+</div>
+</div>
+</div>
+<!-- Position Card 3: Stat Mean-Reversion -->
+<div class="bg-surface-container-low border border-outline-variant hover:border-primary-container transition-colors rounded-DEFAULT p-space-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-md text-headline-md text-primary font-semibold">Stat Mean-Reversion</span>
+<span class="px-1 py-0.2 bg-surface-container-high border border-outline-variant font-data-mono-sm text-[9px] text-secondary">HEDGED</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">PAIR: SOL-USDT DRIFT+BYBIT</span>
+</div>
+<button class="px-2 py-1 bg-surface-container-lowest border border-error text-error font-label-caps text-[9px] rounded-DEFAULT hover:bg-error-container hover:text-on-error-container active:scale-95 transition-transform duration-75">
+              CLOSE
+            </button>
+</div>
+<div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-outline-variant">
+<div>
+<span class="font-label-caps text-[9px] text-outline block">BASKETS</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface">6 BASKETS</span>
+</div>
+<div>
+<span class="font-label-caps text-[9px] text-outline block">Z-SCORE</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary-fixed-dim font-medium">+2.18σ</span>
+</div>
+<div class="text-right">
+<span class="font-label-caps text-[9px] text-outline block">UNREALIZED PnL</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary font-bold">+$7,930.00</span>
+<span class="font-data-mono-sm text-[9px] text-secondary block">(+0.94%)</span>
+</div>
+</div>
+</div>
+<!-- Position Card 4: HFT OFI Alpha -->
+<div class="bg-surface-container-low border border-outline-variant hover:border-primary-container transition-colors rounded-DEFAULT p-space-md">
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-headline-md text-headline-md text-primary font-semibold">HFT OFI Alpha</span>
+<span class="px-1 py-0.2 bg-surface-container-high border border-outline-variant font-data-mono-sm text-[9px] text-outline">SHADOW</span>
+</div>
+<span class="font-data-mono-sm text-data-mono-sm text-on-surface-variant">PAIR: BTC-USD PRIME (COINBASE)</span>
+</div>
+<button class="px-2 py-1 bg-error-container border border-error text-on-error font-label-caps text-[9px] rounded-DEFAULT hover:bg-error hover:text-surface-container-lowest active:scale-95 transition-transform duration-75">
+              KILL
+            </button>
+</div>
+<div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-outline-variant">
+<div>
+<span class="font-label-caps text-[9px] text-outline block">ORDERS</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface">32 QUEUED</span>
+</div>
+<div>
+<span class="font-label-caps text-[9px] text-outline block">DEPTH RATIO</span>
+<span class="font-data-mono-md text-data-mono-md text-on-surface-variant">0.68 OFI</span>
+</div>
+<div class="text-right">
+<span class="font-label-caps text-[9px] text-outline block">SHADOW PnL</span>
+<span class="font-data-mono-md text-data-mono-md text-secondary font-bold">+$2,100.00</span>
+<span class="font-data-mono-sm text-[9px] text-outline block">(BENCHMARK)</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Terminal Telemetry Micro-Feed -->
+<section class="bg-surface-container-lowest border border-outline-variant p-space-sm rounded-DEFAULT">
+<div class="flex items-center justify-between text-on-surface-variant font-data-mono-sm text-[9px]">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[11px]" data-icon="terminal">terminal</span>
+            LATEST ENCLAVE LOG
+          </span>
+<span class="text-secondary font-mono">13:42:09.182 UTC</span>
+</div>
+<p class="font-data-mono-sm text-[10px] text-on-surface font-mono mt-1 truncate">
+          [SIG-ROUTE] Order #91482 matched at CME FX @ 67,420.50 | 0 slippage recorded.
+        </p>
+</section>
+</main>
+<!-- 5. BottomNavBar (Shared Component Implementation) -->
+<!-- Destination count: 4 | Sentry is Active Tab -->
+<nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[414px] z-50 flex justify-around items-center px-gutter-mobile py-space-xs bg-surface-container-lowest border-t border-outline-variant">
+<!-- Destination 1: Sentry (ACTIVE) -->
+<a class="flex flex-col items-center justify-center text-primary-container dark:text-primary-container font-bold py-1 active:scale-95 transition-transform duration-75" href="#sentry">
+<span class="material-symbols-outlined text-[20px]" data-icon="radar" style="font-variation-settings: 'FILL' 1;">radar</span>
+<span class="font-label-caps text-label-caps mt-0.5">Sentry</span>
+</a>
+<!-- Destination 2: Positions -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant py-1 hover:text-primary dark:hover:text-primary active:scale-95 transition-transform duration-75" href="#positions">
+<div class="relative">
+<span class="material-symbols-outlined text-[20px]" data-icon="candlestick_chart">candlestick_chart</span>
+<span class="absolute -top-1 -right-2 bg-primary-container text-surface-container-lowest font-data-mono-sm text-[8px] font-bold px-1 rounded-full">4</span>
+</div>
+<span class="font-label-caps text-label-caps mt-0.5">Positions</span>
+</a>
+<!-- Destination 3: Terminal -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant py-1 hover:text-primary dark:hover:text-primary active:scale-95 transition-transform duration-75" href="#terminal">
+<span class="material-symbols-outlined text-[20px]" data-icon="terminal">terminal</span>
+<span class="font-label-caps text-label-caps mt-0.5">Terminal</span>
+</a>
+<!-- Destination 4: Logs -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant dark:text-on-surface-variant py-1 hover:text-primary dark:hover:text-primary active:scale-95 transition-transform duration-75" href="#logs">
+<span class="material-symbols-outlined text-[20px]" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-caps text-label-caps mt-0.5">Logs</span>
+</a>
+</nav>
+</div>
+<!-- Interactive Slide-to-Kill Script Simulation -->
+<script>
+    (function initSlider() {
+      const handle = document.getElementById('slider-handle');
+      const track = document.getElementById('slider-track');
+      if (!handle || !track) return;
+
+      let isDragging = false;
+      let startX = 0;
+      let currentX = 0;
+      const maxSlide = 260; // approximate slide distance
+
+      function onStart(e) {
+        isDragging = true;
+        startX = (e.touches ? e.touches[0].clientX : e.clientX) - currentX;
+      }
+
+      function onMove(e) {
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        currentX = Math.max(0, Math.min(clientX - startX, maxSlide));
+        handle.style.transform = `translateX(${currentX}px)`;
+        
+        if (currentX >= maxSlide * 0.9) {
+          triggerHalt();
+        }
+      }
+
+      function onEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        if (currentX < maxSlide * 0.9) {
+          handle.style.transition = 'transform 0.2s ease-out';
+          handle.style.transform = 'translateX(0px)';
+          setTimeout(() => {
+            handle.style.transition = '';
+            currentX = 0;
+          }, 200);
+        }
+      }
+
+      function triggerHalt() {
+        isDragging = false;
+        handle.style.transform = `translateX(${maxSlide}px)`;
+        handle.classList.remove('bg-on-tertiary-container');
+        handle.classList.add('bg-error');
+        alert('EMERGENCY HARD-HALT TRIGGERED: All active shards notified via ED25519 signature. Orders liquidated to USDT.');
+        setTimeout(() => {
+          handle.style.transform = 'translateX(0px)';
+          handle.classList.add('bg-on-tertiary-container');
+          handle.classList.remove('bg-error');
+          currentX = 0;
+        }, 1500);
+      }
+
+      handle.addEventListener('mousedown', onStart);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+
+      handle.addEventListener('touchstart', onStart, { passive: true });
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onEnd);
+    })();
+  </script>
+
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-wrap: wrap; gap: 6px; background: rgba(15, 18, 24, 0.95); backdrop-filter: blur(12px); border: 1px solid #1E2430; padding: 6px 12px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 11px;">
+  <a href="dashboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">DASHBOARD</a>
+  <a href="quant-terminal.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">TERMINAL</a>
+  <a href="marketplace.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">MARKETPLACE</a>
+  <a href="leaderboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">LEADERBOARD</a>
+  <a href="billing.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BILLING</a>
+  <a href="byok-wizard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BYOK</a>
+  <a href="mobile-sentry.html" style="color: #00F2FE; font-weight: bold; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); text-decoration: none; padding: 4px 8px; border-radius: 4px;">⚡ SENTRY</a>
+  <a href="telemetry.html" style="color: #00F2FE; text-decoration: none; padding: 4px 8px;">TELEMETRY</a>
+  <a href="latency-simulator.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">FEED SIMULATOR</a>
+  <a href="styleguide.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">STYLEGUIDE</a>
+</div>
+
+
+
+<!-- ALGOTRADE UNIVERSAL DOCK NAVIGATION -->
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; align-items: center; gap: 8px; background: rgba(15, 18, 24, 0.92); border: 1px solid #1E2430; backdrop-filter: blur(16px); padding: 6px 14px; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(0, 242, 254, 0.15); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-width: 95vw; overflow-x: auto;">
+  <div style="display: flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid #1E2430;">
+    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #00E599; box-shadow: 0 0 8px #00E599;"></span>
+    <span style="color: #00F2FE; font-weight: 700; letter-spacing: 0.5px;">ALGOTRADE</span>
+  </div>
+  <nav style="display: flex; align-items: center; gap: 4px;">
+    <a href="dashboard.html" class="nav-item-dashboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">DASHBOARD</a>
+    <a href="quant-terminal.html" class="nav-item-quant-terminal" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">QUANT TERMINAL</a>
+    <a href="marketplace.html" class="nav-item-marketplace" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MARKETPLACE</a>
+    <a href="leaderboard.html" class="nav-item-leaderboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LEADERBOARD</a>
+    <a href="backtest-studio.html" class="nav-item-backtest-studio" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BACKTEST STUDIO</a>
+    <a href="stress-lab.html" class="nav-item-stress-lab" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STRESS LAB</a>
+    <a href="telemetry.html" class="nav-item-telemetry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">TELEMETRY</a>
+    <a href="latency-simulator.html" class="nav-item-latency-simulator" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LATENCY SIM</a>
+    <a href="billing.html" class="nav-item-billing" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BILLING</a>
+    <a href="byok-wizard.html" class="nav-item-byok-wizard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BYOK WIZARD</a>
+    <a href="mobile-sentry.html" class="nav-item-mobile-sentry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MOBILE SENTRY</a>
+    <a href="styleguide.html" class="nav-item-styleguide" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STYLE GUIDE</a>
+  </nav>
+</div>
+<script>
+  (function() {
+    var cur = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (cur === 'index.html') cur = 'dashboard.html';
+    var key = cur.split('.')[0];
+    var activeLink = document.querySelector('.nav-item-' + key);
+    if (activeLink) {
+      activeLink.style.color = '#00F2FE';
+      activeLink.style.background = 'rgba(0, 242, 254, 0.12)';
+      activeLink.style.border = '1px solid rgba(0, 242, 254, 0.3)';
+      activeLink.style.fontWeight = '600';
+    }
+  })();
+</script>
+
+</body></html>

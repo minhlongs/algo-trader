@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>AlgoTrade OS — Smart Order Routing (SOR) &amp; Liquidity Aggregation Mesh Console</title>
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <style>
+    body {
+      background-color: #08090C;
+      color: #E3E2E6;
+      font-family: 'Inter', sans-serif;
+    }
+    .font-display { font-family: 'Space Grotesk', sans-serif; }
+    .font-mono-data { font-family: 'JetBrains Mono', monospace; }
+    .obsidian-card {
+      background-color: #0F1218;
+      border: 1px solid #1E2430;
+      border-radius: 4px;
+    }
+    .cyan-glow { box-shadow: 0 0 14px rgba(0, 242, 254, 0.18); }
+  </style>
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css"/>
+  <script src="assets/ui-ux-pro-max.js" defer></script>
+</head>
+<body class="min-h-screen p-4 md:p-6">
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+  <!-- Top Navigation & System Header -->
+  <header aria-live="polite" class="obsidian-card p-4 mb-4 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <span class="inline-block w-3 h-3 rounded-full bg-[#00F2FE] animate-pulse"></span>
+      <div>
+        <h1 class="font-display text-lg md:text-xl font-bold tracking-tight text-white">
+          ALGOTRADE OS // SMART ORDER ROUTING (SOR) &amp; LIQUIDITY MESH
+        </h1>
+        <p class="font-mono-data text-xs text-slate-400">
+          CONT-KUKANOV (2017) MULTI-EXCHANGE ROUTER &bull; LARUELLE-LEHALLE (2013) DARK/LIT SPLIT &bull; SCREEN #13
+        </p>
+      </div>
+    </div>
+    <nav class="flex flex-wrap items-center gap-2 text-xs font-mono-data">
+      <a href="dashboard.html" class="px-2.5 py-1 rounded bg-[#161B24] border border-[#1E2430] hover:border-[#00F2FE]">01.DASHBOARD</a>
+      <a href="quant-terminal.html" class="px-2.5 py-1 rounded bg-[#161B24] border border-[#1E2430] hover:border-[#00F2FE]">02.TERMINAL</a>
+      <a href="telemetry.html" class="px-2.5 py-1 rounded bg-[#161B24] border border-[#1E2430] hover:border-[#00F2FE]">09.TELEMETRY</a>
+      <a href="order-routing-mesh.html" class="px-2.5 py-1 rounded bg-[#00F2FE]/15 text-[#00F2FE] border border-[#00F2FE]">13.SOR-MESH</a>
+      <button id="kill-switch-btn" class="px-3 py-1 rounded bg-[#FF3B30]/20 text-[#FF3B30] border border-[#FF3B30] font-bold">
+        KILL-SWITCH (&lt;50ms)
+      </button>
+    </nav>
+  </header>
+
+  <!-- KPI Ribbon -->
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 font-mono-data">
+    <div class="obsidian-card p-3">
+      <div class="text-[11px] text-slate-400 uppercase">Parent Order Notional (BTC/USDT)</div>
+      <div class="text-xl font-bold text-[#00F2FE] mt-1">$2,500,000.00</div>
+      <div class="text-[11px] text-[#00E599]">26.525 BTC @ $94,250.70 VWAP</div>
+    </div>
+    <div class="obsidian-card p-3">
+      <div class="text-[11px] text-slate-400 uppercase">Fill Completion Rate</div>
+      <div class="text-xl font-bold text-[#00E599] mt-1">98.4%</div>
+      <div class="text-[11px] text-slate-400">6 Active Institutional Venues</div>
+    </div>
+    <div class="obsidian-card p-3">
+      <div class="text-[11px] text-slate-400 uppercase">Realized Implementation Slip</div>
+      <div class="text-xl font-bold text-[#00E599] mt-1">-0.42 bps</div>
+      <div class="text-[11px] text-[#00F2FE]">Net Price Improvement vs Arrival</div>
+    </div>
+    <div class="obsidian-card p-3">
+      <div class="text-[11px] text-slate-400 uppercase">Adverse Selection Sentry</div>
+      <div class="text-xl font-bold text-[#00E599] mt-1">PROTECTED</div>
+      <div class="text-[11px] text-slate-400">Mark-Out 100ms: +0.68 bps</div>
+    </div>
+  </section>
+
+  <!-- Main 12-Column Cockpit Grid -->
+  <main class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+    <!-- Panel 1: Multi-Venue Best Execution Heatmap (7 cols) -->
+    <section class="obsidian-card p-4 lg:col-span-7">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-display text-sm font-bold uppercase tracking-wider text-[#00F2FE]">
+          1. Multi-Venue Best Execution Heatmap (Live Cross-Exchange Depth)
+        </h2>
+        <span class="font-mono-data text-[11px] text-[#00E599]">SYNC: 4.2ms QUORUM</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left font-mono-data text-xs">
+          <thead>
+            <tr class="border-b border-[#1E2430] text-slate-400 text-[11px]">
+              <th class="py-2">VENUE</th>
+              <th class="py-2">BEST BID / ASK</th>
+              <th class="py-2">L2 DEPTH</th>
+              <th class="py-2">MAKER / TAKER</th>
+              <th class="py-2">FILL PROB</th>
+              <th class="py-2 text-right">ROUTED SLICE</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#1E2430]">
+            <tr>
+              <td class="py-2.5 font-bold text-white">BINANCE</td>
+              <td class="py-2.5 text-[#00E599]">94,250.50 <span class="text-slate-500">/</span> 94,251.00</td>
+              <td class="py-2.5">$1,450,000</td>
+              <td class="py-2.5 text-[#00F2FE]">+1.5 / -3.5 bps</td>
+              <td class="py-2.5 text-[#00E599]">99.2%</td>
+              <td class="py-2.5 text-right font-bold text-white">$850,000 (34%)</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 font-bold text-white">OKX</td>
+              <td class="py-2.5 text-[#00E599]">94,250.40 <span class="text-slate-500">/</span> 94,251.10</td>
+              <td class="py-2.5">$980,000</td>
+              <td class="py-2.5 text-[#00F2FE]">+1.2 / -4.0 bps</td>
+              <td class="py-2.5 text-[#00E599]">98.7%</td>
+              <td class="py-2.5 text-right font-bold text-white">$525,000 (21%)</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 font-bold text-white">BYBIT</td>
+              <td class="py-2.5 text-[#00E599]">94,250.30 <span class="text-slate-500">/</span> 94,251.20</td>
+              <td class="py-2.5">$820,000</td>
+              <td class="py-2.5 text-[#00F2FE]">+1.0 / -4.5 bps</td>
+              <td class="py-2.5 text-[#00E599]">98.1%</td>
+              <td class="py-2.5 text-right font-bold text-white">$400,000 (16%)</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 font-bold text-white">COINBASE PRIME</td>
+              <td class="py-2.5 text-[#00E599]">94,250.60 <span class="text-slate-500">/</span> 94,251.30</td>
+              <td class="py-2.5">$760,000</td>
+              <td class="py-2.5 text-[#00F2FE]">+0.8 / -5.0 bps</td>
+              <td class="py-2.5 text-[#00E599]">98.5%</td>
+              <td class="py-2.5 text-right font-bold text-white">$350,000 (14%)</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 font-bold text-white">KRAKEN</td>
+              <td class="py-2.5 text-[#00E599]">94,250.10 <span class="text-slate-500">/</span> 94,251.40</td>
+              <td class="py-2.5">$490,000</td>
+              <td class="py-2.5 text-[#00F2FE]">+1.0 / -4.8 bps</td>
+              <td class="py-2.5 text-[#00E599]">97.4%</td>
+              <td class="py-2.5 text-right font-bold text-white">$200,000 (8%)</td>
+            </tr>
+            <tr>
+              <td class="py-2.5 font-bold text-white">DERIBIT</td>
+              <td class="py-2.5 text-[#00E599]">94,250.70 <span class="text-slate-500">/</span> 94,251.50</td>
+              <td class="py-2.5">$610,000</td>
+              <td class="py-2.5 text-[#00F2FE]">+1.4 / -3.8 bps</td>
+              <td class="py-2.5 text-[#00E599]">98.0%</td>
+              <td class="py-2.5 text-right font-bold text-white">$175,000 (7%)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Panel 2: Dynamic Splitter Algorithm Selector (5 cols) -->
+    <section class="obsidian-card p-4 lg:col-span-5">
+      <h2 class="font-display text-sm font-bold uppercase tracking-wider text-[#00F2FE] mb-3">
+        2. Dynamic Splitter Algorithm Selector
+      </h2>
+      <div class="grid grid-cols-1 gap-2.5 font-mono-data text-xs">
+        <div class="p-3 rounded bg-[#00F2FE]/10 border border-[#00F2FE] cyan-glow">
+          <div class="flex justify-between font-bold text-[#00F2FE]">
+            <span>[ACTIVE] ALMGREN-CHRISS OPTIMAL EXECUTION</span>
+            <span>&kappa; = 0.42</span>
+          </div>
+          <p class="text-[11px] text-slate-300 mt-1">
+            Hyperbolic trajectory sinh(&kappa;(T-t))/sinh(&kappa;T) minimizing E[X] + &lambda;Var[X].
+          </p>
+        </div>
+        <div class="p-3 rounded bg-[#141821] border border-[#1E2430]">
+          <div class="flex justify-between font-bold text-white">
+            <span>VOLUME IN-LINE (VIL) POV TARGET</span>
+            <span>POV: 12.5%</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">
+            Guéant-Lehalle (2015) proportional participation tracking real-time market volume.
+          </p>
+        </div>
+        <div class="p-3 rounded bg-[#141821] border border-[#1E2430]">
+          <div class="flex justify-between font-bold text-white">
+            <span>IMPLEMENTATION SHORTFALL (IS-ADAPTIVE)</span>
+            <span>URGENCY: MED</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">
+            Cartea-Jaimungal (2018) short-term alpha decay filter with dynamic spread capture.
+          </p>
+        </div>
+        <div class="p-3 rounded bg-[#141821] border border-[#1E2430]">
+          <div class="flex justify-between font-bold text-white">
+            <span>DARK POOL ICEBERG STEALTH ROUTING</span>
+            <span>DARK RATIO: 38%</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">
+            Laruelle-Lehalle (2013) stochastic pool allocation with zero pre-trade information leakage.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 3: Real-Time Fill Routing Sankey Diagram (7 cols) -->
+    <section class="obsidian-card p-4 lg:col-span-7">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-display text-sm font-bold uppercase tracking-wider text-[#00F2FE]">
+          3. Real-Time Fill Routing Sankey Flow ($2,500,000 BTC/USDT Parent Order)
+        </h2>
+        <span class="font-mono-data text-xs text-[#00E599]">FILLED: 98.4% | SLIP: -0.42 bps</span>
+      </div>
+      <div class="space-y-2.5 font-mono-data text-xs">
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>PARENT ($2.50M) &rarr; BINANCE ($850K / 34.0%)</span>
+            <span class="text-[#00E599]">99.2% FILLED (-0.55 bps)</span>
+          </div>
+          <div class="w-full bg-[#161B24] h-2.5 rounded overflow-hidden">
+            <div class="bg-[#00F2FE] h-full" style="width: 34%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>PARENT ($2.50M) &rarr; OKX ($525K / 21.0%)</span>
+            <span class="text-[#00E599]">98.7% FILLED (-0.41 bps)</span>
+          </div>
+          <div class="w-full bg-[#161B24] h-2.5 rounded overflow-hidden">
+            <div class="bg-[#00E599] h-full" style="width: 21%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>PARENT ($2.50M) &rarr; BYBIT ($400K / 16.0%)</span>
+            <span class="text-[#00E599]">98.1% FILLED (-0.36 bps)</span>
+          </div>
+          <div class="w-full bg-[#161B24] h-2.5 rounded overflow-hidden">
+            <div class="bg-[#00F2FE] h-full" style="width: 16%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between mb-1">
+            <span>PARENT ($2.50M) &rarr; COINBASE PRIME + KRAKEN + DERIBIT ($725K / 29.0%)</span>
+            <span class="text-[#00E599]">98.0% FILLED (-0.31 bps)</span>
+          </div>
+          <div class="w-full bg-[#161B24] h-2.5 rounded overflow-hidden">
+            <div class="bg-[#00E599] h-full" style="width: 29%"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel 4: Pre-Trade Toxicity & Adverse Selection Sentry (5 cols) -->
+    <section class="obsidian-card p-4 lg:col-span-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-display text-sm font-bold uppercase tracking-wider text-[#00F2FE]">
+          4. Pre-Trade Toxicity &amp; Adverse Selection Sentry
+        </h2>
+        <span class="font-mono-data text-[11px] text-[#00E599]">LEHALLE-MOUNJID (2019)</span>
+      </div>
+      <div class="space-y-3 font-mono-data text-xs">
+        <div class="p-2.5 rounded bg-[#141821] border border-[#1E2430] flex justify-between items-center">
+          <div>
+            <div class="text-slate-400 text-[11px]">POST-FILL MARK-OUT @ 100ms</div>
+            <div class="text-sm font-bold text-[#00E599]">+0.68 bps (Non-Toxic Flow)</div>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-[#00E599]/15 text-[#00E599]">TOXICITY: 0.14</span>
+        </div>
+        <div class="p-2.5 rounded bg-[#141821] border border-[#1E2430] flex justify-between items-center">
+          <div>
+            <div class="text-slate-400 text-[11px]">POST-FILL MARK-OUT @ 1s</div>
+            <div class="text-sm font-bold text-[#00E599]">+0.51 bps (Queue Stable)</div>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-[#00E599]/15 text-[#00E599]">TOXICITY: 0.19</span>
+        </div>
+        <div class="p-2.5 rounded bg-[#141821] border border-[#1E2430] flex justify-between items-center">
+          <div>
+            <div class="text-slate-400 text-[11px]">POST-FILL MARK-OUT @ 10s</div>
+            <div class="text-sm font-bold text-[#00E599]">+0.42 bps (Zero Sweep Leak)</div>
+          </div>
+          <span class="px-2 py-0.5 rounded bg-[#00F2FE]/15 text-[#00F2FE]">AUTO-REROUTE: STANDBY</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

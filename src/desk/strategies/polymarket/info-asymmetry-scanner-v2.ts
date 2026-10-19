@@ -1,25 +1,13 @@
 /**
  * Information Asymmetry Scanner V2 — extends BasePolymarketStrategy.
  *
- * Detects informed trading by tracking depth depletion rates on each
- * side of the order book. When one side depletes significantly faster
- * than the other, informed traders may have private information.
- * Trades in the direction of the aggressive side.
- *
- * Asks depleting faster → buyers aggressive → BUY YES.
- * Bids depleting faster → sellers aggressive → BUY NO.
+ * Detects informed trading by tracking depth depletion rates on each side of the order book.
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
 import type { StrategyName } from '../../core/types';
 import { logger } from '../../core/logger';
-import {
-  BasePolymarketStrategy,
-  type BaseStrategyConfig,
-  type StrategyDeps,
-} from './base-polymarket-strategy';
-
-// ── Config ───────────────────────────────────────────────────────────────────
+import { BasePolymarketStrategy, type BaseStrategyConfig, type StrategyDeps } from './base-polymarket-strategy';
 
 export interface InfoAsymmetryScannerConfig extends BaseStrategyConfig {
   asymmetryThreshold: number;
@@ -28,21 +16,12 @@ export interface InfoAsymmetryScannerConfig extends BaseStrategyConfig {
 }
 
 export const DEFAULT_CONFIG: InfoAsymmetryScannerConfig = {
-  asymmetryThreshold: 0.3,
-  depthWindow: 10,
-  minDepletionRate: 0.01,
-  minVolume: 5000,
-  takeProfitPct: 0.025,
-  stopLossPct: 0.02,
-  maxHoldMs: 12 * 60_000,
-  maxPositions: 5,
-  cooldownMs: 90_000,
-  positionSize: '10',
+  asymmetryThreshold: 0.3, depthWindow: 10, minDepletionRate: 0.01,
+  minVolume: 5000, takeProfitPct: 0.025, stopLossPct: 0.02,
+  maxHoldMs: 12 * 60_000, maxPositions: 5, cooldownMs: 90_000, positionSize: '10',
 };
 
 const STRATEGY_NAME = 'info-asymmetry-scanner' as StrategyName;
-
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
 
 export function calcTotalDepth(levels: { price: string; size: string }[]): number {
   let total = 0;
@@ -51,17 +30,13 @@ export function calcTotalDepth(levels: { price: string; size: string }[]): numbe
 }
 
 export function calcDepletionRate(depthHistory: number[]): number {
-  if (depthHistory.length < 2) return 0;
-  const first = depthHistory[0];
-  if (first === 0) return 0;
-  const last = depthHistory[depthHistory.length - 1];
-  return (first - last) / first;
+  if (depthHistory.length < 2 || depthHistory[0] === 0) return 0;
+  return (depthHistory[0] - depthHistory[depthHistory.length - 1]) / depthHistory[0];
 }
 
 export function calcAsymmetryScore(bidDepletion: number, askDepletion: number): number {
   const sum = bidDepletion + askDepletion;
-  if (sum === 0) return 0;
-  return (bidDepletion - askDepletion) / sum;
+  return sum === 0 ? 0 : (bidDepletion - askDepletion) / sum;
 }
 
 export function isInformedFlow(
@@ -69,8 +44,6 @@ export function isInformedFlow(
 ): boolean {
   return Math.abs(asymmetry) > threshold && totalDepletion > minDepletion;
 }
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class InfoAsymmetryScannerStrategy extends BasePolymarketStrategy {
   private readonly cfg: InfoAsymmetryScannerConfig;
@@ -87,25 +60,16 @@ export class InfoAsymmetryScannerStrategy extends BasePolymarketStrategy {
     let bidHist = this.bidDepthHistory.get(tokenId);
     if (!bidHist) { bidHist = []; this.bidDepthHistory.set(tokenId, bidHist); }
     bidHist.push(bidDepth);
-    if (bidHist.length > this.cfg.depthWindow) {
-      bidHist.splice(0, bidHist.length - this.cfg.depthWindow);
-    }
+    if (bidHist.length > this.cfg.depthWindow) bidHist.splice(0, bidHist.length - this.cfg.depthWindow);
 
     let askHist = this.askDepthHistory.get(tokenId);
     if (!askHist) { askHist = []; this.askDepthHistory.set(tokenId, askHist); }
     askHist.push(askDepth);
-    if (askHist.length > this.cfg.depthWindow) {
-      askHist.splice(0, askHist.length - this.cfg.depthWindow);
-    }
+    if (askHist.length > this.cfg.depthWindow) askHist.splice(0, askHist.length - this.cfg.depthWindow);
   }
 
-  private getBidHistory(tokenId: string): number[] {
-    return this.bidDepthHistory.get(tokenId) ?? [];
-  }
-
-  private getAskHistory(tokenId: string): number[] {
-    return this.askDepthHistory.get(tokenId) ?? [];
-  }
+  private getBidHistory(tokenId: string): number[] { return this.bidDepthHistory.get(tokenId) ?? []; }
+  private getAskHistory(tokenId: string): number[] { return this.askDepthHistory.get(tokenId) ?? []; }
 
   protected async scanEntries(markets: GammaMarket[]): Promise<void> {
     if (this.getPositionCount() >= this.cfg.maxPositions) return;

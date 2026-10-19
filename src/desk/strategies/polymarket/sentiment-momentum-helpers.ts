@@ -106,3 +106,36 @@ export function detectVolumeConfirmation(volumes: number[], lookback: number): b
 
   return recentAvg >= priorAvg;
 }
+
+export function appendBoundedHistory(
+  map: Map<string, number[]>,
+  tokenId: string,
+  val: number,
+  maxLen: number,
+): number[] {
+  let arr = map.get(tokenId);
+  if (!arr) {
+    arr = [];
+    map.set(tokenId, arr);
+  }
+  arr.push(val);
+  if (arr.length > maxLen) arr.splice(0, arr.length - maxLen);
+  return arr;
+}
+
+export function evaluateSentimentExit(
+  prices: number[] | undefined,
+  vols: number[] | undefined,
+  prevStrength: number | undefined,
+  cfg: SentimentMomentumConfig,
+): { exit: boolean; reason: string } {
+  if (!prices || !vols || prices.length < cfg.adxPeriod * 2) return { exit: false, reason: '' };
+  const strength = calcTrendStrength(prices, cfg.adxPeriod);
+  if (prevStrength !== undefined && strength < prevStrength * 0.7 && strength < cfg.adxThreshold) {
+    return { exit: true, reason: `trend-weakening (${prevStrength.toFixed(1)} -> ${strength.toFixed(1)})` };
+  }
+  if (vols.length >= cfg.volumeLookback * 2 && !detectVolumeConfirmation(vols, cfg.volumeLookback)) {
+    return { exit: true, reason: 'volume-divergence' };
+  }
+  return { exit: false, reason: '' };
+}

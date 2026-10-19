@@ -20,14 +20,12 @@ export class SubscriptionRepository {
   private readonly TABLE = 'marketplace_subscriptions';
 
   async findById(id: string): Promise<IMarketplaceSubscription | null> {
-    const sql = `SELECT * FROM ${this.TABLE} WHERE id = $1`;
-    const result = await query(sql, [id]);
+    const result = await query(`SELECT * FROM ${this.TABLE} WHERE id = $1`, [id]);
     return (result.rows[0] as unknown as IMarketplaceSubscription) || null;
   }
 
   async findByPaymentId(paymentId: string): Promise<IMarketplaceSubscription | null> {
-    const sql = `SELECT * FROM ${this.TABLE} WHERE payment_id = $1`;
-    const result = await query(sql, [paymentId]);
+    const result = await query(`SELECT * FROM ${this.TABLE} WHERE payment_id = $1`, [paymentId]);
     return (result.rows[0] as unknown as IMarketplaceSubscription) || null;
   }
 
@@ -52,8 +50,7 @@ export class SubscriptionRepository {
     const page = pagination?.page ?? 1;
     const offset = (page - 1) * limit;
 
-    const countSql = `SELECT COUNT(*) as total FROM ${this.TABLE} ${whereClause}`;
-    const countResult = await query(countSql, params);
+    const countResult = await query(`SELECT COUNT(*) as total FROM ${this.TABLE} ${whereClause}`, params);
     const total = parseInt(String(countResult.rows[0].total), 10);
 
     const dataSql = `SELECT * FROM ${this.TABLE} ${whereClause} ORDER BY ${sortField} ${sortOrder} LIMIT $${idx++} OFFSET $${idx++}`;
@@ -77,8 +74,7 @@ export class SubscriptionRepository {
       (id, tenant_id, listing_id, strategy_id, status, allocation_percent, custom_risk_limits, current_investment_usd, payment_id, payment_status, subscription_started_at, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW(), NOW()) RETURNING *`;
     const params = [
-      data.id, data.tenantId, data.listingId, data.strategyId,
-      status,
+      data.id, data.tenantId, data.listingId, data.strategyId, status,
       data.allocationPercent,
       data.customRiskLimits ? JSON.stringify(data.customRiskLimits) : null,
       data.currentInvestmentUsd,
@@ -97,8 +93,7 @@ export class SubscriptionRepository {
     const columnMap: Record<string, string> = {
       status: 'status', allocationPercent: 'allocation_percent',
       customRiskLimits: 'custom_risk_limits', currentInvestmentUsd: 'current_investment_usd',
-      totalPnlUsd: 'total_pnl_usd',
-      paymentId: 'payment_id', paymentStatus: 'payment_status',
+      totalPnlUsd: 'total_pnl_usd', paymentId: 'payment_id', paymentStatus: 'payment_status',
     };
 
     for (const [key, column] of Object.entries(columnMap)) {
@@ -109,19 +104,17 @@ export class SubscriptionRepository {
       }
     }
 
-    if (data.status === 'paused') fields.push(`paused_at = NOW()`);
-    if (data.status === 'cancelled') fields.push(`cancelled_at = NOW()`);
+    if (data.status === 'paused') fields.push('paused_at = NOW()');
+    if (data.status === 'cancelled') fields.push('cancelled_at = NOW()');
 
     if (fields.length === 0) return this.findById(id);
     params.push(id);
-    const sql = `UPDATE ${this.TABLE} SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`;
-    const result = await query(sql, params);
+    const result = await query(`UPDATE ${this.TABLE} SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`, params);
     return (result.rows[0] as unknown as IMarketplaceSubscription) || null;
   }
 
   async delete(id: string): Promise<boolean> {
-    const sql = `DELETE FROM ${this.TABLE} WHERE id = $1`;
-    const result = await query(sql, [id]);
+    const result = await query(`DELETE FROM ${this.TABLE} WHERE id = $1`, [id]);
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -133,26 +126,22 @@ export class SubscriptionRepository {
     if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }
     if (filters?.status) { conditions.push(`status = $${idx++}`); params.push(filters.status); }
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const sql = `SELECT COUNT(*) as total FROM ${this.TABLE} ${whereClause}`;
-    const result = await query(sql, params);
+    const result = await query(`SELECT COUNT(*) as total FROM ${this.TABLE} ${whereClause}`, params);
     return parseInt(String(result.rows[0].total), 10);
   }
 
   async hasActiveSubscription(tenantId: string, strategyId: string): Promise<boolean> {
-    const sql = `SELECT COUNT(*) as total FROM ${this.TABLE} WHERE tenant_id = $1 AND strategy_id = $2 AND status = 'active'`;
-    const result = await query(sql, [tenantId, strategyId]);
+    const result = await query(`SELECT COUNT(*) as total FROM ${this.TABLE} WHERE tenant_id = $1 AND strategy_id = $2 AND status = 'active'`, [tenantId, strategyId]);
     return parseInt(String(result.rows[0].total), 10) > 0;
   }
 
   async findActiveByTenant(tenantId: string): Promise<IMarketplaceSubscription[]> {
-    const sql = `SELECT * FROM ${this.TABLE} WHERE tenant_id = $1 AND status = 'active' ORDER BY created_at DESC`;
-    const result = await query(sql, [tenantId]);
+    const result = await query(`SELECT * FROM ${this.TABLE} WHERE tenant_id = $1 AND status = 'active' ORDER BY created_at DESC`, [tenantId]);
     return result.rows as unknown as IMarketplaceSubscription[];
   }
 
   async findActiveByStrategy(strategyId: string): Promise<IMarketplaceSubscription[]> {
-    const sql = `SELECT * FROM ${this.TABLE} WHERE strategy_id = $1 AND status = 'active' ORDER BY created_at DESC`;
-    const result = await query(sql, [strategyId]);
+    const result = await query(`SELECT * FROM ${this.TABLE} WHERE strategy_id = $1 AND status = 'active' ORDER BY created_at DESC`, [strategyId]);
     return result.rows as unknown as IMarketplaceSubscription[];
   }
 }

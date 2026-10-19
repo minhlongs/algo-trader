@@ -18,6 +18,13 @@ import {
   calculateMultiLegRealizedPnl,
 } from './atomic-multileg-types';
 import { CompensatoryUnwindHandler } from './compensatory-unwind-handler';
+import {
+  executeSingleLeg,
+  executeConcurrentLegs,
+  executeStagedLegs,
+} from './atomic-multileg-leg-runner';
+
+export { executeSingleLeg, executeConcurrentLegs, executeStagedLegs };
 
 export class AtomicMultiLegCoordinator {
   private readonly unwindHandler: CompensatoryUnwindHandler;
@@ -46,9 +53,9 @@ export class AtomicMultiLegCoordinator {
     const legResults: LegExecutionRecord[] = [];
 
     if (plan.executionStrategy === 'staged') {
-      await this.executeStaged(plan, legResults);
+      await executeStagedLegs(plan, legResults, this.connectorResolver);
     } else {
-      await this.executeConcurrent(plan, legResults);
+      await executeConcurrentLegs(plan, legResults, this.connectorResolver);
     }
 
     const allFilled =
@@ -96,97 +103,5 @@ export class AtomicMultiLegCoordinator {
       timestamp: Date.now(),
     };
   }
-
-  private async executeConcurrent(
-    plan: MultiLegExecutionPlan,
-    outRecords: LegExecutionRecord[],
-  ): Promise<void> {
-    const promises = plan.legs.map((leg) => this.executeSingleLeg(leg));
-    const settled = await Promise.allSettled(promises);
-
-    for (let i = 0; i < settled.length; i++) {
-      const res = settled[i];
-      if (res.status === 'fulfilled') {
-        outRecords.push(res.value);
-      } else {
-        const leg = plan.legs[i];
-        outRecords.push({
-          legId: leg.legId, venue: leg.venue, symbol: leg.symbol, side: leg.side,
-          requestedAmount: leg.amount, filledAmount: 0, price: leg.price, status: 'failed',
-          latencyMs: 0, error: res.reason instanceof Error ? res.reason.message : String(res.reason),
-        });
-      }
-    }
-  }
-
-  private async executeStaged(
-    plan: MultiLegExecutionPlan,
-    outRecords: LegExecutionRecord[],
-  ): Promise<void> {
-    for (const leg of plan.legs) {
-      const record = await this.executeSingleLeg(leg);
-      outRecords.push(record);
-      if (record.status !== 'filled' || record.filledAmount < record.requestedAmount) break;
-    }
-  }
-
-  private async executeSingleLeg(leg: LegOrderSpec): Promise<LegExecutionRecord> {
-    const connector = this.connectorResolver(leg.venue);
-    const start = Date.now();
-    if (!connector) {
-      return {
-        legId: leg.legId, venue: leg.venue, symbol: leg.symbol, side: leg.side,
-        requestedAmount: leg.amount, filledAmount: 0, price: leg.price, status: 'failed',
-        latencyMs: 0, error: `No connector found for venue ${leg.venue}`,
-      };
-    }
-
-    const timeout = leg.timeoutMs ?? 500;
-    try {
-      const orderPromise = connector.placeOrder({
-        symbol: leg.symbol,
-        side: leg.side,
-        type: leg.type,
-        amount: leg.amount,
-        price: leg.price,
-        clientOrderId: `${leg.legId}-${Date.now()}`,
-      });
-
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Leg ${leg.legId} timed out after ${timeout}ms`)), timeout),
-      );
-
-      const res = await Promise.race([orderPromise, timeoutPromise]);
-      const isFilled = res.status === 'closed' || res.filled >= leg.amount;
-
-      return {
-        legId: leg.legId,
-        orderId: res.orderId,
-        clientOrderId: res.clientOrderId,
-        venue: leg.venue,
-        symbol: leg.symbol,
-        side: leg.side,
-        requestedAmount: leg.amount,
-        filledAmount: res.filled,
-        price: res.price,
-        avgFillPrice: res.price,
-        status: isFilled ? 'filled' : res.filled > 0 ? 'partial' : 'failed',
-        fee: res.fee,
-        latencyMs: Date.now() - start,
-      };
-    } catch (err) {
-      return {
-        legId: leg.legId,
-        venue: leg.venue,
-        symbol: leg.symbol,
-        side: leg.side,
-        requestedAmount: leg.amount,
-        filledAmount: 0,
-        price: leg.price,
-        status: 'failed',
-        latencyMs: Date.now() - start,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
-  }
 }
+

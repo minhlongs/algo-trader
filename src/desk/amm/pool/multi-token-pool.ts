@@ -81,7 +81,7 @@ export class MultiTokenPool {
       throw new Error(`Invalid outcome index: ${outcomeIdx}`);
     }
 
-    let inputAmount = trade.amount;
+    const inputAmount = trade.amount;
     let outputAmount = 0;
     let feePaidUsdc = 0;
 
@@ -108,7 +108,6 @@ export class MultiTokenPool {
         outputAmount = res.outputAmount;
       }
     } else {
-      // LMSR model
       const liabilities = this.tracker.getVirtualReserves();
       const feeRate = this.feeBps / 10000;
       if (trade.action === 'BUY') {
@@ -120,8 +119,7 @@ export class MultiTokenPool {
       } else if (trade.action === 'SELL') {
         const delta = new Array(this.outcomes.length).fill(0);
         delta[outcomeIdx] = -inputAmount;
-        const grossCost = LmsrPricing.calculateTradeCost(liabilities, delta, this.b);
-        const grossUsdc = Math.abs(grossCost);
+        const grossUsdc = Math.abs(LmsrPricing.calculateTradeCost(liabilities, delta, this.b));
         feePaidUsdc = grossUsdc * feeRate;
         outputAmount = grossUsdc - feePaidUsdc;
         this.tracker.updateVirtualReserve(outcomeIdx, -inputAmount);
@@ -130,39 +128,22 @@ export class MultiTokenPool {
     }
 
     const spotAfter = this.getSpotPrices();
-    const effectivePrice = trade.action === 'BUY'
-      ? inputAmount / outputAmount
-      : outputAmount / inputAmount;
+    const effectivePrice = trade.action === 'BUY' ? inputAmount / outputAmount : outputAmount / inputAmount;
 
     logger.debug('[MultiTokenPool] Executed trade', {
-      poolId: this.poolId,
-      action: trade.action,
-      outcomeIndex: outcomeIdx,
-      effectivePrice,
+      poolId: this.poolId, action: trade.action, outcomeIndex: outcomeIdx, effectivePrice,
     });
 
     return {
-      poolId: this.poolId,
-      outcomeIndex: outcomeIdx,
-      action: trade.action,
-      inputAmount,
-      outputAmount,
-      feePaidUsdc,
-      effectivePrice,
-      spotPriceBefore: spotBefore[outcomeIdx],
-      spotPriceAfter: spotAfter[outcomeIdx],
+      poolId: this.poolId, outcomeIndex: outcomeIdx, action: trade.action,
+      inputAmount, outputAmount, feePaidUsdc, effectivePrice,
+      spotPriceBefore: spotBefore[outcomeIdx], spotPriceAfter: spotAfter[outcomeIdx],
       timestampMs: Date.now(),
     };
   }
 
-  public mintCompleteSets(setCount: number): CompleteSetResult {
-    return this.tracker.mintCompleteSets(setCount, this.feeBps);
-  }
-
-  public mergeCompleteSets(setCount: number): CompleteSetResult {
-    return this.tracker.mergeCompleteSets(setCount, this.feeBps);
-  }
-
+  public mintCompleteSets(setCount: number): CompleteSetResult { return this.tracker.mintCompleteSets(setCount, this.feeBps); }
+  public mergeCompleteSets(setCount: number): CompleteSetResult { return this.tracker.mergeCompleteSets(setCount, this.feeBps); }
   public getB(): number { return this.b; }
   public setB(newB: number): void {
     if (newB <= 0) throw new Error('b must be positive');
@@ -170,7 +151,5 @@ export class MultiTokenPool {
   }
   public getReserves(): number[] { return this.tracker.getVirtualReserves(); }
   public getCollateralReserve(): number { return this.tracker.getCollateralReserve(); }
-  public getCpmmReserves(): CpmmReserves | undefined {
-    return this.cpmmReserves ? { ...this.cpmmReserves } : undefined;
-  }
+  public getCpmmReserves(): CpmmReserves | undefined { return this.cpmmReserves ? { ...this.cpmmReserves } : undefined; }
 }

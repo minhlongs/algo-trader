@@ -61,3 +61,72 @@ export function getOrCreateWindow(
 
   return window;
 }
+
+/**
+ * Record a request result across sliding windows
+ */
+export function recordRequestInWindows(
+  providerMetrics: Map<MarketDataSource, Map<number, WindowMetrics>>,
+  provider: MarketDataSource,
+  windows: number[],
+  success: boolean,
+  latencyMs: number,
+  now: number = Date.now(),
+): void {
+  ensureProvider(providerMetrics, provider);
+
+  for (const windowHours of windows) {
+    const window = getOrCreateWindow(providerMetrics, provider, windowHours, now);
+    window.totalRequests++;
+    if (!success) window.failedRequests++;
+    window.totalLatency += latencyMs;
+    window.latencySamples.push(latencyMs);
+
+    // Trim latency samples if too large
+    if (window.latencySamples.length > 1000) {
+      window.latencySamples = window.latencySamples.slice(-500);
+    }
+  }
+}
+
+/**
+ * Record candle completeness across sliding windows
+ */
+export function recordCandlesInWindows(
+  providerMetrics: Map<MarketDataSource, Map<number, WindowMetrics>>,
+  provider: MarketDataSource,
+  windows: number[],
+  expected: number,
+  received: number,
+  now: number = Date.now(),
+): void {
+  ensureProvider(providerMetrics, provider);
+
+  for (const windowHours of windows) {
+    const window = getOrCreateWindow(providerMetrics, provider, windowHours, now);
+    window.expectedCandles += expected;
+    window.receivedCandles += received;
+  }
+}
+
+/**
+ * Reset all sliding windows for a given provider
+ */
+export function resetProviderWindows(
+  providerMetrics: Map<MarketDataSource, Map<number, WindowMetrics>>,
+  provider: MarketDataSource,
+  now: number = Date.now(),
+): void {
+  const providerData = providerMetrics.get(provider);
+  if (providerData) {
+    for (const [, window] of providerData) {
+      window.totalRequests = 0;
+      window.failedRequests = 0;
+      window.totalLatency = 0;
+      window.latencySamples = [];
+      window.expectedCandles = 0;
+      window.receivedCandles = 0;
+      window.startTime = now;
+    }
+  }
+}

@@ -7,14 +7,23 @@ import type {
   ExecutionResult,
   StrategyExecutor,
   StrategyMetrics,
-  SplitMergeArbitrageOpportunity,
 } from '../types';
+import { executePaperSplitMerge } from '../split-merge-arb-executor';
 import {
-  executePaperSplitMerge,
-  type SplitMergeOpportunity,
-} from '../split-merge-arb-executor';
+  buildSplitMergeOpportunity,
+  computeSplitMergePayout,
+  createFailedSplitMergeResult,
+  hasRequiredSplitMergeFields,
+  POLY_FEE,
+} from './split-merge-executor-helpers';
 
-const POLY_FEE = 0.02;
+export {
+  POLY_FEE,
+  hasRequiredSplitMergeFields,
+  buildSplitMergeOpportunity,
+  computeSplitMergePayout,
+  createFailedSplitMergeResult,
+} from './split-merge-executor-helpers';
 
 export class SplitMergeArbitrageExecutor implements StrategyExecutor {
   private metrics: StrategyMetrics = {
@@ -54,61 +63,25 @@ export class SplitMergeArbitrageExecutor implements StrategyExecutor {
 
     if (opportunity.type !== 'settlement-arb') {
       this.metrics.errors++;
-      return {
-        opportunityId: opportunity.id,
-        success: false,
-        executedLegs: [],
-        actualProfit: 0,
-        actualProfitPct: 0,
-        totalFees: 0,
-        error: 'Not a split-merge arbitrage opportunity',
-        executedAt: Date.now(),
-      };
+      return createFailedSplitMergeResult(opportunity.id, 'Not a split-merge arbitrage opportunity');
     }
 
-    // Validate required fields for a settlement-arb opportunity
-    const candidate = opportunity as unknown as Record<string, unknown>;
-    if (
-      typeof candidate.marketId !== 'string' ||
-      typeof candidate.yesPrice !== 'number' ||
-      typeof candidate.noPrice !== 'number'
-    ) {
+    if (!hasRequiredSplitMergeFields(opportunity)) {
       this.metrics.errors++;
-      return {
-        opportunityId: opportunity.id,
-        success: false,
-        executedLegs: [],
-        actualProfit: 0,
-        actualProfitPct: 0,
-        totalFees: 0,
-        error: 'Settlement-arb opportunity missing required fields (marketId, yesPrice, noPrice)',
-        executedAt: Date.now(),
-      };
+      return createFailedSplitMergeResult(
+        opportunity.id,
+        'Settlement-arb opportunity missing required fields (marketId, yesPrice, noPrice)',
+      );
     }
 
     try {
-      // Use actual fields from the opportunity
-      const smOpp = opportunity as SplitMergeArbitrageOpportunity;
-      const { yesPrice, noPrice } = smOpp;
-      const totalCost = yesPrice + noPrice;
-      const splitMergeOpp: SplitMergeOpportunity = {
-        marketId: opportunity.id,
-        title: opportunity.id,
-        yesPrice,
-        noPrice,
-        totalCost,
-        profit: 1.0 - POLY_FEE - totalCost,
-        profitPercent: ((1.0 - POLY_FEE - totalCost) / totalCost) * 100,
-      };
+      const splitMergeOpp = buildSplitMergeOpportunity(opportunity);
+      await executePaperSplitMerge(splitMergeOpp, this.config.maxPositionSize);
 
-      const _trade = await executePaperSplitMerge(
-        splitMergeOpp,
+      const { netProfit, totalFees, actualProfitPct } = computeSplitMergePayout(
+        splitMergeOpp.totalCost,
         this.config.maxPositionSize,
       );
-
-      // Compute net profit from trade: proceeds (pairs * 1.0) - fee - sizeUsdc
-      const pairs = this.config.maxPositionSize / splitMergeOpp.totalCost;
-      const netProfit = pairs - pairs * POLY_FEE - this.config.maxPositionSize;
       const success = netProfit > 0;
 
       if (success) {
@@ -129,33 +102,22 @@ export class SplitMergeArbitrageExecutor implements StrategyExecutor {
         success,
         executedLegs: [],
         actualProfit: netProfit,
-        actualProfitPct: (netProfit / (this.config.maxPositionSize || 1)) * 100,
-        totalFees: pairs * POLY_FEE,
+        actualProfitPct,
+        totalFees,
         executedAt: Date.now(),
       };
     } catch (error) {
       this.metrics.errors++;
-      return {
-        opportunityId: opportunity.id,
-        success: false,
-        executedLegs: [],
-        actualProfit: 0,
-        actualProfitPct: 0,
-        totalFees: 0,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        executedAt: Date.now(),
-      };
+      return createFailedSplitMergeResult(
+        opportunity.id,
+        error instanceof Error ? error.message : 'Unknown error',
+      );
     }
   }
 
   validate(opportunity: ArbitrageOpportunity): boolean {
     if (opportunity.type !== 'settlement-arb') return false;
-    const opp = opportunity as unknown as Record<string, unknown>;
-    return (
-      typeof opp.marketId === 'string' &&
-      typeof opp.yesPrice === 'number' &&
-      typeof opp.noPrice === 'number'
-    );
+    return hasRequiredSplitMergeFields(opportunity);
   }
 
   getMetrics(): StrategyMetrics {

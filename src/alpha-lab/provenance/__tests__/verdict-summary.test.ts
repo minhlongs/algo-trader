@@ -27,9 +27,7 @@ afterEach(async () => {
   await rm(tmp, { recursive: true, force: true });
 });
 
-function makeRecord(
-  overrides: Partial<LedgerRecord> & { runId: string },
-): LedgerRecord {
+function makeRecord(overrides: Partial<LedgerRecord> & { runId: string }): LedgerRecord {
   return {
     configHash: 'hash-' + overrides.runId,
     resultClass: 'IS',
@@ -60,13 +58,8 @@ describe('summarizeVerdicts', () => {
     const summary = summarizeVerdicts(records);
     expect(summary.totalRecords).toBe(3);
     expect(summary.byStrategy['alpha']).toEqual({
-      strategyRef: 'alpha',
-      totalRuns: 3,
-      passedCount: 2,
-      passRate: 2 / 3,
-      lastVerdictPassed: true,
-      lastResultClass: 'IS',
-      lastRecordedAt: '2026-08-22T10:00:00.000Z',
+      strategyRef: 'alpha', totalRuns: 3, passedCount: 2, passRate: 2 / 3,
+      lastVerdictPassed: true, lastResultClass: 'IS', lastRecordedAt: '2026-08-22T10:00:00.000Z',
     });
   });
 
@@ -110,17 +103,10 @@ describe('summarizeVerdicts', () => {
       valuesCallCount++;
       if (valuesCallCount === 2) {
         // Second call: Object.values(byStrategy) in summarizeVerdicts pass 2
-        return [
-          {
-            strategyRef: 'orphan-strategy',
-            totalRuns: 0,
-            passedCount: 0,
-            passRate: 0,
-            lastVerdictPassed: null,
-            lastResultClass: null,
-            lastRecordedAt: null,
-          },
-        ];
+        return [{
+          strategyRef: 'orphan-strategy', totalRuns: 0, passedCount: 0, passRate: 0,
+          lastVerdictPassed: null, lastResultClass: null, lastRecordedAt: null,
+        }];
       }
       return origValues.call(Object, target as object);
     });
@@ -158,9 +144,6 @@ describe('loadVerdictSummary', () => {
   });
 
   it('uses DEFAULT_LEDGER_PATH when no path provided', async () => {
-    // DEFAULT_LEDGER_PATH is cwd-relative; chdir into the isolated tmp dir so
-    // the default path resolves to a nonexistent file regardless of whether
-    // the repo has a real gitignored ledger (fail-safe returns empty).
     process.chdir(tmp);
     const summary = await loadVerdictSummary();
     expect(summary.totalRecords).toBe(0);

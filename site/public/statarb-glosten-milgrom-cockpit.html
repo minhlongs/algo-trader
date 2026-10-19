@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlgoTrade OS | Screen #18 — Cointegration Stat-Arb, OU Half-Life &amp; Glosten-Milgrom Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css" />
+  <style>
+    :root { --bg-void:#08090C; --bg-card:#12151C; --border-hairline:#1E2430; --cyan:#00F2FE; --emerald:#00E599; --amber:#FFB800; --crimson:#FF3B30; --text-primary:#F8FAFC; --text-secondary:#94A3B8; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg-void); color:var(--text-primary); font-family:'Inter',sans-serif; min-height:100vh; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0D1017; border-bottom:1px solid var(--border-hairline); font-family:'JetBrains Mono',monospace; font-size:12px; }
+    .nav-links { display:flex; gap:8px; flex-wrap:wrap; }
+    .nav-links a { color:var(--text-secondary); text-decoration:none; padding:4px 8px; border:1px solid var(--border-hairline); border-radius:4px; }
+    .nav-links a.active { color:var(--cyan); border-color:var(--cyan); background:rgba(0,242,254,0.08); }
+    .bento-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:12px; padding:16px 20px 72px; }
+    .card { background:var(--bg-card); border:1px solid var(--border-hairline); border-radius:4px; padding:16px; }
+    .col-8 { grid-column:span 8; } .col-4 { grid-column:span 4; } .col-3 { grid-column:span 3; } .col-6 { grid-column:span 6; }
+    @media (max-width:1024px) { .col-8,.col-4,.col-3,.col-6 { grid-column:span 12; } }
+    h1,h2 { font-family:'Space Grotesk',sans-serif; letter-spacing:-0.02em; }
+    .mono { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+    .kpi-value { font-size:24px; font-weight:700; margin-top:6px; }
+    .kpi-sub { font-size:11px; color:var(--text-secondary); margin-top:4px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; }
+    th,td { padding:9px 10px; text-align:left; border-bottom:1px solid var(--border-hairline); font-family:'JetBrains Mono',monospace; }
+    th { color:var(--text-secondary); font-weight:600; text-transform:uppercase; font-size:11px; }
+    .pill { display:inline-block; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600; }
+    .pill-emerald { background:rgba(0,229,153,0.14); color:var(--emerald); border:1px solid rgba(0,229,153,0.4); }
+    .pill-cyan { background:rgba(0,242,254,0.14); color:var(--cyan); border:1px solid rgba(0,242,254,0.4); }
+    .pill-amber { background:rgba(255,184,0,0.14); color:var(--amber); border:1px solid rgba(255,184,0,0.4); }
+    .pill-crimson { background:rgba(255,59,48,0.14); color:var(--crimson); border:1px solid rgba(255,59,48,0.4); }
+    .bar { height:6px; background:#1E2430; border-radius:3px; overflow:hidden; margin-top:6px; }
+    .bar > span { display:block; height:100%; background:var(--cyan); }
+    .footer { display:flex; justify-content:space-between; padding:12px 20px; color:var(--text-secondary); font-family:'JetBrains Mono',monospace; font-size:11px; border-top:1px solid var(--border-hairline); }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+  <header class="topbar" role="banner">
+    <div>
+      <strong style="color:var(--cyan);">ALGOTRADE OS // SCREEN #18</strong>
+      <span style="color:var(--text-secondary);margin-left:10px;" data-en="COINTEGRATION STAT-ARB, OU HALF-LIFE &amp; GLOSTEN-MILGROM SEQUENTIAL TRADE COCKPIT" data-vi="BUỒNG LÁI STAT-ARB ĐỒNG LIÊN KẾT, CHU KỲ BÁN RÃ OU &amp; GIAO DỊCH TUẦN TỰ GLOSTEN-MILGROM">COINTEGRATION STAT-ARB, OU HALF-LIFE &amp; GLOSTEN-MILGROM SEQUENTIAL TRADE COCKPIT</span>
+    </div>
+    <nav class="nav-links" aria-label="Stitch Suite Navigation">
+      <a href="dashboard.html">01 Dashboard</a>
+      <a href="order-routing-mesh.html">13 SOR Mesh</a>
+      <a href="regime-kelly-matrix.html">14 Regime Kelly</a>
+      <a href="hawkes-orderflow-radar.html">15 Hawkes Radar</a>
+      <a href="limit-order-queue-cockpit.html">16 Queue Cockpit</a>
+      <a href="avellaneda-lipkin-kyle-back-cockpit.html">17 AL / Kyle-Back</a>
+      <a href="statarb-glosten-milgrom-cockpit.html" class="active">18 Stat-Arb / GM</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="bento-grid" role="main" aria-live="polite">
+    <section class="card col-3" aria-label="Best cointegrated pair">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="BEST COINTEGRATED PAIR" data-vi="CẶP ĐỒNG LIÊN KẾT TỐT NHẤT">BEST COINTEGRATED PAIR</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">ETH/BTC <span class="pill pill-emerald">ADF -5.19</span></div>
+      <div class="kpi-sub mono">β = 1.4991 | R² = 0.9998 | z = +1.16</div>
+    </section>
+
+    <section class="card col-3" aria-label="OU half life">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="ORNSTEIN-UHLENBECK HALF-LIFE" data-vi="CHU KỲ BÁN RÃ ORNSTEIN-UHLENBECK">ORNSTEIN-UHLENBECK HALF-LIFE</div>
+      <div class="kpi-value mono" style="color:var(--cyan);">0.73 days <span class="pill pill-cyan">θ 0.9444</span></div>
+      <div class="kpi-sub mono">μ = 0.0032 | σ = 0.1347 | Spread 0.1170</div>
+    </section>
+
+    <section class="card col-3" aria-label="Cointegrated pairs">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="COINTEGRATED PAIRS (ADF &lt; -2.85)" data-vi="CẶP ĐỒNG LIÊN KẾT (ADF &lt; -2.85)">COINTEGRATED PAIRS (ADF &lt; -2.85)</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">1 / 3 <span class="pill pill-emerald">STATIONARY</span></div>
+      <div class="kpi-sub mono">ETH/BTC only | SOL/AVAX, BNB/UNI rejected</div>
+    </section>
+
+    <section class="card col-3" aria-label="Glosten Milgrom spread">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="GLOSTEN-MILGROM ADVERSE-SELECTION SPREAD" data-vi="CHÊNH LỆCH CHỌN LỰA ĐỐI NGHỊCH GLOSTEN-MILGROM">GLOSTEN-MILGROM ADVERSE-SELECTION SPREAD</div>
+      <div class="kpi-value mono" style="color:var(--amber);">2.8904 <span class="pill pill-amber">28.9%</span></div>
+      <div class="kpi-sub mono">Bid 99.4681 | Ask 102.3585 | Fair 101.0000</div>
+    </section>
+
+    <section class="card col-8" aria-label="Stat arb pair matrix">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;" data-en="Engle-Granger Cointegration &amp; Pair Trading Matrix" data-vi="Ma Trận Đồng Liên Kết Engle-Granger &amp; Giao Dịch Cặp">Engle-Granger Cointegration &amp; Pair Trading Matrix</h2>
+        <span class="pill pill-cyan mono">SCREEN #18 LIVE</span>
+      </div>
+      <table aria-label="Pair trading matrix">
+        <thead><tr><th>Pair</th><th>β Hedge</th><th>ADF</th><th>R²</th><th>Half-Life</th><th>Z-Score</th><th>Signal</th></tr></thead>
+        <tbody>
+          <tr><td>ETH/BTC</td><td>1.4991</td><td style="color:var(--emerald);">-5.1854</td><td>0.9998</td><td>0.73d</td><td>+1.16</td><td><span class="pill pill-emerald">NEUTRAL</span></td></tr>
+          <tr><td>SOL/AVAX</td><td>0.1266</td><td style="color:var(--amber);">-0.8099</td><td>0.0239</td><td>35.18d</td><td>+0.54</td><td><span class="pill pill-emerald">NEUTRAL</span></td></tr>
+          <tr><td>BNB/UNI</td><td>-1.2003</td><td style="color:var(--crimson);">-0.1060</td><td>0.3036</td><td>456.41d</td><td>+5.55</td><td><span class="pill pill-crimson">SHORT SPREAD</span></td></tr>
+        </tbody>
+      </table>
+      <div class="kpi-sub mono" style="margin-top:10px;">Entry |z| ≥ 2.0 · Exit |z| ≤ 0.5 · Stop |z| ≥ 3.5 · ADF 5% critical value -2.85</div>
+    </section>
+
+    <section class="card col-4" aria-label="OU mean reversion">
+      <h2 style="font-size:16px;" data-en="Ornstein-Uhlenbeck Mean Reversion" data-vi="Bán Rã Về Trung Bình Ornstein-Uhlenbeck">Ornstein-Uhlenbeck Mean Reversion</h2>
+      <div class="kpi-sub mono" style="margin-top:10px;">Mean-reversion speed θ</div>
+      <div class="kpi-value mono" style="color:var(--cyan);">0.9444</div>
+      <div class="bar"><span style="width:94.44%;"></span></div>
+      <div class="kpi-sub mono" style="margin-top:12px;">Long-term mean μ: 0.0032</div>
+      <div class="kpi-sub mono">Spread volatility σ: 0.1347</div>
+      <div class="kpi-sub mono">Current spread: 0.1170 | z: +1.16</div>
+      <div class="kpi-sub mono" style="margin-top:10px;">Signal state: <span class="pill pill-emerald">NEUTRAL</span></div>
+    </section>
+
+    <section class="card col-6" aria-label="Glosten Milgrom Bayesian beliefs">
+      <h2 style="font-size:16px;" data-en="Glosten-Milgrom Sequential Trade" data-vi="Giao Dịch Tuần Tự Glosten-Milgrom">Glosten-Milgrom Sequential Trade</h2>
+      <table aria-label="Glosten Milgrom beliefs">
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Unconditional fair value</td><td>101.0000</td></tr>
+          <tr><td>Bid (E[V | Sell])</td><td style="color:var(--emerald);">99.4681</td></tr>
+          <tr><td>Ask (E[V | Buy])</td><td style="color:var(--crimson);">102.3585</td></tr>
+          <tr><td>Posterior μ after Buy</td><td>0.7358</td></tr>
+          <tr><td>Posterior μ after Sell</td><td>0.4468</td></tr>
+          <tr><td>Adverse-selection spread</td><td>2.8904 (28.9%)</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card col-6" aria-label="Stat arb risk controls">
+      <h2 style="font-size:16px;" data-en="Stat-Arb Risk Controls" data-vi="Kiểm Soát Rủi Ro Stat-Arb">Stat-Arb Risk Controls</h2>
+      <table aria-label="Risk controls">
+        <thead><tr><th>Control</th><th>State</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Cointegration gate</td><td><span class="pill pill-emerald">PASS</span></td><td>ADF &lt; -2.85</td></tr>
+          <tr><td>Half-life cap</td><td><span class="pill pill-emerald">OK</span></td><td>≤ 10 days</td></tr>
+          <tr><td>Entry Z threshold</td><td><span class="pill pill-cyan">ARMED</span></td><td>2.0σ</td></tr>
+          <tr><td>Stop-loss Z</td><td><span class="pill pill-amber">ARMED</span></td><td>3.5σ</td></tr>
+          <tr><td>Informed-trader α</td><td><span class="pill pill-emerald">OK</span></td><td>0.30</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>SCREEN #18 · CODE-AUTHORED · OBSIDIAN QUANTUM</span>
+    <span>ENGLE-GRANGER 1987 · ORNSTEIN-UHLENBECK · GLOSTEN-MILGROM 1985</span>
+  </footer>
+  <script src="assets/ui-ux-pro-max.js"></script>
+</body>
+</html>

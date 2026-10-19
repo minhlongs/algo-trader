@@ -10,67 +10,30 @@
 import { Router, Request, Response } from 'express';
 import { logger } from '../../../utils/logger';
 import { requireAdminKey } from '../../middleware/require-admin-key';
+import {
+  type WebhookEvent,
+  type WebhookHandler,
+  processedIds,
+  retryQueue,
+  deadLetterQueue,
+  handlerRegistry,
+  MAX_RETRIES,
+  RETRY_INTERVAL_MS,
+  isAlreadyProcessed,
+  markProcessed,
+  isReadyForRetry,
+  registerHandler,
+} from './webhook-resilience-store';
 
-export interface WebhookEvent {
-  id: string;           // idempotency key (from webhook payload)
-  provider: string;     // e.g. 'nowpayments'
-  payload: unknown;
-  receivedAt: number;
-  attempts: number;
-  lastAttemptAt: number | null;
-  status: 'pending' | 'processed' | 'failed' | 'dead-letter';
-}
-
-type WebhookHandler = (event: WebhookEvent) => Promise<void>;
-
-// --- In-memory stores ---
-
-/** Processed IDs with timestamp for TTL eviction (1h) */
-const processedIds = new Map<string, number>();
-
-/** Retry queue: events awaiting re-processing */
-const retryQueue = new Map<string, WebhookEvent>();
-
-/** Dead-letter store: events that exhausted all retries */
-const deadLetterQueue = new Map<string, WebhookEvent>();
-
-// --- Constants ---
-const MAX_RETRIES = 5;
-const IDEMPOTENCY_TTL_MS = 60 * 60 * 1000; // 1 hour
-const RETRY_INTERVAL_MS = 5_000;            // poll every 5s
-const BACKOFF_BASE_MS = 1_000;              // 1s, 2s, 4s, 8s, 16s
-
-// --- Idempotency ---
-
-/** Purge processedIds older than 1h to prevent unbounded memory growth */
-function purgeExpiredIds(): void {
-  const cutoff = Date.now() - IDEMPOTENCY_TTL_MS;
-  for (const [id, ts] of processedIds) {
-    if (ts < cutoff) processedIds.delete(id);
-  }
-}
-
-function isAlreadyProcessed(eventId: string): boolean {
-  purgeExpiredIds();
-  return processedIds.has(eventId);
-}
-
-function markProcessed(eventId: string): void {
-  processedIds.set(eventId, Date.now());
-}
-
-// --- Backoff ---
-
-function backoffDelayMs(attempt: number): number {
-  // attempt 1 → 1s, 2 → 2s, 3 → 4s, 4 → 8s, 5 → 16s
-  return BACKOFF_BASE_MS * Math.pow(2, attempt - 1);
-}
-
-function isReadyForRetry(event: WebhookEvent): boolean {
-  if (event.lastAttemptAt === null) return true;
-  const delay = backoffDelayMs(event.attempts);
-  return Date.now() - event.lastAttemptAt >= delay;
-}
+export type { WebhookEvent, WebhookHandler };
+export {
+  processedIds,
+  retryQueue,
+  deadLetterQueue,
+  handlerRegistry,
+  MAX_RETRIES,
+  registerHandler,
+};
 
 // --- Core processor ---
 
@@ -118,13 +81,6 @@ export async function processWebhook(
 }
 
 // --- Retry worker ---
-
-// Handlers registered per provider for retry processing
-const handlerRegistry = new Map<string, WebhookHandler>();
-
-export function registerHandler(provider: string, handler: WebhookHandler): void {
-  handlerRegistry.set(provider, handler);
-}
 
 async function runRetryPass(): Promise<void> {
   for (const [id, event] of retryQueue) {
@@ -191,3 +147,4 @@ webhookResilienceRouter.post('/dead-letter/:id/retry', async (req: Request, res:
     return res.status(500).json({ error: 'Retry failed, re-queued or dead-lettered', event });
   }
 });
+

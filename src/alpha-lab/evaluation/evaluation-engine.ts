@@ -11,18 +11,13 @@ import type { WalkForwardStep } from '../experiments/experiment-types';
 import { computeMetrics } from '../../desk/backtesting/metrics-calculator';
 import type { BacktestTrade } from '../../desk/backtesting/types';
 import { buildEquityCurve } from '../shared/equity-curve';
-import type {
-  EvaluationReport, RegimeBreakdown, MonthBreakdown, VolatilityBucketBreakdown,
-} from './evaluation-types';
-
-// ── Internal Types ────────────────────────────────────────────────────────────
-
-interface GroupData {
-  labels: number[];
-  pnls: number[];
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+import type { EvaluationReport } from './evaluation-types';
+import {
+  type GroupData,
+  buildRegimeBreakdown,
+  buildMonthBreakdown,
+  buildVolatilityBreakdown,
+} from './evaluation-bucket-builders';
 
 export function realizedVol(candles: CandleLike[]): number | null {
   if (candles.length < 2) return null;
@@ -48,64 +43,6 @@ export function volBucket(vol: number | null): 'low' | 'medium' | 'high' {
   if (vol > 0.03) return 'high';
   return 'medium';
 }
-
-// ── Bucket Builders ──────────────────────────────────────────────────────────
-
-function buildRegimeBreakdown(
-  regimeGroups: Map<MarketRegime, { labels: number[]; pnls: number[] }>,
-): RegimeBreakdown[] {
-  const out: RegimeBreakdown[] = [];
-  for (const [regime, group] of regimeGroups) {
-    const wins = group.labels.filter((l) => l === 1).length;
-    const losses = group.labels.filter((l) => l === -1).length;
-    const n = group.labels.length;
-    out.push({
-      regime,
-      numTrades: n,
-      winRate: wins / n,
-      lossRate: losses / n,
-      meanLabel: group.labels.reduce((a, b) => a + b, 0) / n,
-      netPnl: group.pnls.reduce((a, b) => a + b, 0),
-    });
-  }
-  return out;
-}
-
-function buildMonthBreakdown(
-  monthGroups: Map<string, { labels: number[]; pnls: number[] }>,
-): MonthBreakdown[] {
-  const out: MonthBreakdown[] = [];
-  for (const [month, group] of monthGroups) {
-    const wins = group.labels.filter((l) => l === 1).length;
-    const n = group.labels.length;
-    out.push({
-      month,
-      numTrades: n,
-      winRate: wins / n,
-      netPnl: group.pnls.reduce((a, b) => a + b, 0),
-    });
-  }
-  return out.sort((a, b) => a.month.localeCompare(b.month));
-}
-
-function buildVolatilityBreakdown(
-  volGroups: Map<string, { labels: number[]; pnls: number[] }>,
-): VolatilityBucketBreakdown[] {
-  const out: VolatilityBucketBreakdown[] = [];
-  for (const [bucket, group] of volGroups) {
-    const wins = group.labels.filter((l) => l === 1).length;
-    const n = group.labels.length;
-    out.push({
-      bucket: bucket as 'low' | 'medium' | 'high',
-      numTrades: n,
-      winRate: wins / n,
-      netPnl: group.pnls.reduce((a, b) => a + b, 0),
-    });
-  }
-  return out;
-}
-
-// ── Public API ────────────────────────────────────────────────────────────────
 
 export interface EvaluateInput {
   candles: CandleLike[];
@@ -139,22 +76,16 @@ export function evaluate(input: EvaluateInput): EvaluationReport {
     };
   }
 
-  // Overall metrics: delegate to existing computeMetrics (proves reuse).
-  // Build a strategy equity curve by compounding trade PnL from 1.0 so Sharpe
-  // and maxDrawdown reflect strategy returns, not the raw price series.
   const equity = buildEquityCurve(candles, trades);
   const report = computeMetrics(trades, equity);
 
-  // Pre-compute volatility bucket from overall dataset.
   const overallVol = realizedVol(candles);
   const bucket = volBucket(overallVol);
 
-  // Bucket groups.
   const regimeGroups = new Map<MarketRegime, GroupData>();
   const monthGroups = new Map<string, GroupData>();
   const volGroups = new Map<string, GroupData>();
 
-  // Initialize vol group.
   volGroups.set(bucket, { labels: [], pnls: [] });
 
   for (let i = 0; i < trades.length; i++) {
@@ -164,17 +95,14 @@ export function evaluate(input: EvaluateInput): EvaluationReport {
     const regime = regimesPerBar[entryIdx] ?? 'UNKNOWN';
     const month = monthKey(trade.timestamp);
 
-    // Regime.
     if (!regimeGroups.has(regime)) regimeGroups.set(regime, { labels: [], pnls: [] });
     regimeGroups.get(regime)!.labels.push(trade.pnl! > 0 ? 1 : trade.pnl! < 0 ? -1 : 0);
     regimeGroups.get(regime)!.pnls.push(trade.pnl ?? 0);
 
-    // Month.
     if (!monthGroups.has(month)) monthGroups.set(month, { labels: [], pnls: [] });
     monthGroups.get(month)!.labels.push(trade.pnl! > 0 ? 1 : trade.pnl! < 0 ? -1 : 0);
     monthGroups.get(month)!.pnls.push(trade.pnl ?? 0);
 
-    // Volatility bucket (same bucket for all trades in this dataset).
     volGroups.get(bucket)!.labels.push(trade.pnl! > 0 ? 1 : trade.pnl! < 0 ? -1 : 0);
     volGroups.get(bucket)!.pnls.push(trade.pnl ?? 0);
   }

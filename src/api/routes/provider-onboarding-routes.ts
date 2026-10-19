@@ -6,22 +6,27 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { SignalProviderOnboarding, type ProviderApplication } from '../../agentic/signal-provider-onboarding';
-import { logger } from '../../shared/utils/logger';
+import { SignalProviderOnboarding } from '../../agentic/signal-provider-onboarding';
+import {
+  applySchema,
+  idParamSchema,
+  serializeProviderApplication,
+  parseIdParam,
+  sendNotFound,
+  handleOnboardingError,
+} from './provider-onboarding-helpers';
+
+export {
+  applySchema,
+  idParamSchema,
+  serializeProviderApplication,
+  parseIdParam,
+  sendNotFound,
+  handleOnboardingError,
+};
 
 export const providerOnboardingRouter: Router = Router();
 const onboarding = new SignalProviderOnboarding();
-
-const applySchema = z.object({
-  userId: z.string().min(1, 'userId is required'),
-  apiKey: z.string().min(10, 'API key must be at least 10 characters'),
-  strategyId: z.string().min(1, 'strategyId is required'),
-});
-
-const idParamSchema = z.object({
-  id: z.string().min(1),
-});
 
 /**
  * POST /api/providers/apply
@@ -37,11 +42,9 @@ providerOnboardingRouter.post('/apply', async (req: Request, res: Response) => {
 
   try {
     const application = await onboarding.submitApplication(userId, apiKey, strategyId);
-    return res.status(201).json(serialize(application));
+    return res.status(201).json(serializeProviderApplication(application));
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to submit application';
-    logger.error('[ProviderOnboardingRoutes] submit failed', { err, message });
-    return res.status(400).json({ error: message });
+    return handleOnboardingError(res, 'submit', 'Failed to submit application', err);
   }
 });
 
@@ -50,24 +53,16 @@ providerOnboardingRouter.post('/apply', async (req: Request, res: Response) => {
  * Trigger API key verification for an application
  */
 providerOnboardingRouter.post('/:id/verify', async (req: Request, res: Response) => {
-  const params = idParamSchema.safeParse(req.params);
-  if (!params.success) {
-    return res.status(400).json({ error: 'Invalid id' });
-  }
-
-  const { id } = params.data;
+  const id = parseIdParam(req, res);
+  if (!id) return;
 
   try {
     const passed = await onboarding.verifyApiKeys(id);
     const application = await onboarding.getApplication(id);
-    if (!application) {
-      return res.status(404).json({ error: 'Not Found', message: `Application ${id} not found` });
-    }
-    return res.json({ verified: passed, application: serialize(application) });
+    if (!application) return sendNotFound(res, id);
+    return res.json({ verified: passed, application: serializeProviderApplication(application) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Verification failed';
-    logger.error('[ProviderOnboardingRoutes] verify failed', { id, err, message });
-    return res.status(400).json({ error: message });
+    return handleOnboardingError(res, 'verify', 'Verification failed', err, id);
   }
 });
 
@@ -76,26 +71,18 @@ providerOnboardingRouter.post('/:id/verify', async (req: Request, res: Response)
  * Run backtest validation
  */
 providerOnboardingRouter.post('/:id/backtest', async (req: Request, res: Response) => {
-  const params = idParamSchema.safeParse(req.params);
-  if (!params.success) {
-    return res.status(400).json({ error: 'Invalid id' });
-  }
-
-  const { id } = params.data;
+  const id = parseIdParam(req, res);
+  if (!id) return;
 
   try {
     const application = await onboarding.getApplication(id);
-    if (!application) {
-      return res.status(404).json({ error: 'Not Found', message: `Application ${id} not found` });
-    }
+    if (!application) return sendNotFound(res, id);
 
     const result = await onboarding.runBacktest(id, application.strategyId);
     const updated = await onboarding.getApplication(id);
-    return res.json({ backtestResult: result, application: serialize(updated!) });
+    return res.json({ backtestResult: result, application: serializeProviderApplication(updated!) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Backtest failed';
-    logger.error('[ProviderOnboardingRoutes] backtest failed', { id, err, message });
-    return res.status(400).json({ error: message });
+    return handleOnboardingError(res, 'backtest', 'Backtest failed', err, id);
   }
 });
 
@@ -104,24 +91,16 @@ providerOnboardingRouter.post('/:id/backtest', async (req: Request, res: Respons
  * Start 7-day paper trading simulation
  */
 providerOnboardingRouter.post('/:id/paper-trade', async (req: Request, res: Response) => {
-  const params = idParamSchema.safeParse(req.params);
-  if (!params.success) {
-    return res.status(400).json({ error: 'Invalid id' });
-  }
-
-  const { id } = params.data;
+  const id = parseIdParam(req, res);
+  if (!id) return;
 
   try {
     await onboarding.startPaperTrading(id);
     const application = await onboarding.getApplication(id);
-    if (!application) {
-      return res.status(404).json({ error: 'Not Found', message: `Application ${id} not found` });
-    }
-    return res.json({ application: serialize(application) });
+    if (!application) return sendNotFound(res, id);
+    return res.json({ application: serializeProviderApplication(application) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Paper trading failed';
-    logger.error('[ProviderOnboardingRoutes] paper-trade failed', { id, err, message });
-    return res.status(400).json({ error: message });
+    return handleOnboardingError(res, 'paper-trade', 'Paper trading failed', err, id);
   }
 });
 
@@ -130,24 +109,16 @@ providerOnboardingRouter.post('/:id/paper-trade', async (req: Request, res: Resp
  * Approve an application that has passed all stages
  */
 providerOnboardingRouter.post('/:id/approve', async (req: Request, res: Response) => {
-  const params = idParamSchema.safeParse(req.params);
-  if (!params.success) {
-    return res.status(400).json({ error: 'Invalid id' });
-  }
-
-  const { id } = params.data;
+  const id = parseIdParam(req, res);
+  if (!id) return;
 
   try {
     await onboarding.approveApplication(id);
     const application = await onboarding.getApplication(id);
-    if (!application) {
-      return res.status(404).json({ error: 'Not Found', message: `Application ${id} not found` });
-    }
-    return res.json({ application: serialize(application) });
+    if (!application) return sendNotFound(res, id);
+    return res.json({ application: serializeProviderApplication(application) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Approval failed';
-    logger.error('[ProviderOnboardingRoutes] approve failed', { id, err, message });
-    return res.status(400).json({ error: message });
+    return handleOnboardingError(res, 'approve', 'Approval failed', err, id);
   }
 });
 
@@ -156,33 +127,11 @@ providerOnboardingRouter.post('/:id/approve', async (req: Request, res: Response
  * Get current application status
  */
 providerOnboardingRouter.get('/:id', async (req: Request, res: Response) => {
-  const params = idParamSchema.safeParse(req.params);
-  if (!params.success) {
-    return res.status(400).json({ error: 'Invalid id' });
-  }
+  const id = parseIdParam(req, res);
+  if (!id) return;
 
-  const { id } = params.data;
   const application = await onboarding.getApplication(id);
+  if (!application) return sendNotFound(res, id);
 
-  if (!application) {
-    return res.status(404).json({ error: 'Not Found', message: `Application ${id} not found` });
-  }
-
-  return res.json({ application: serialize(application) });
+  return res.json({ application: serializeProviderApplication(application) });
 });
-
-// --- Serialization helper (strip sensitive data + ensure ISO dates) ---
-
-function serialize(application: ProviderApplication): Record<string, unknown> {
-  return {
-    id: application.id,
-    userId: application.userId,
-    strategyId: application.strategyId,
-    status: application.status,
-    backtestResult: application.backtestResult,
-    paperTradingResult: application.paperTradingResult,
-    createdAt: application.createdAt.toISOString(),
-    updatedAt: application.updatedAt.toISOString(),
-    rejectionReason: application.rejectionReason,
-  };
-}

@@ -7,6 +7,21 @@
 
 import { logger } from '../shared/utils/logger';
 import type { ShardHealth, ShardMetrics, RingStateResponse } from './shard-manager-types';
+import {
+  applyMetricUpdate,
+  flushMetricsToHealth,
+  handleHealthCheck,
+  handleMetrics,
+  isAdminAuth,
+} from './shard-manager-handler-helpers';
+
+export {
+  applyMetricUpdate,
+  flushMetricsToHealth,
+  handleHealthCheck,
+  handleMetrics,
+  isAdminAuth,
+};
 
 /** Minimal context needed by admin/health handlers. */
 export interface HandlerContext {
@@ -20,44 +35,6 @@ export interface HandlerCallbacks {
   getRingState: () => RingStateResponse;
   rebalance: () => Promise<{ previous: Map<number, number>; updated: Map<number, number> }>;
   updateShardHealth: (shardId: number, health: Partial<ShardHealth>) => Promise<void> | void;
-}
-
-/**
- * Timing-safe check for admin API key — prevents timing attacks on the bearer token.
- */
-export function isAdminAuth(request: Request, env?: { ADMIN_API_KEY?: string }): boolean {
-  const key = env?.ADMIN_API_KEY;
-  if (!key) return false;
-  const auth = request.headers.get('Authorization') || '';
-  const expected = `Bearer ${key}`;
-  if (auth.length !== expected.length) return false;
-  let diff = 0;
-  for (let i = 0; i < auth.length; i++) {
-    diff |= auth.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
-/**
- * Build health check response for the /health endpoint.
- */
-export function handleHealthCheck(ringState: RingStateResponse, shardHealth: Map<number, ShardHealth>): Response {
-  return Response.json({
-    status: 'ok',
-    ring: ringState,
-    shardHealth: Object.fromEntries(shardHealth),
-  });
-}
-
-/**
- * Build metrics response for the /shard/metrics endpoint.
- */
-export function handleMetrics(shardMetrics: Map<number, ShardMetrics>): Response {
-  const metrics: Record<number, { errorCount: number; lastUpdated: number }> = {};
-  for (const [shardId, m] of shardMetrics.entries()) {
-    metrics[shardId] = { errorCount: m.errors, lastUpdated: m.lastUpdated };
-  }
-  return Response.json(metrics);
 }
 
 /**
@@ -111,5 +88,25 @@ export async function handleAdminRequest(
   } catch (error) {
     logger.error('[ShardManager] Admin request error:', { error, path });
     return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+/**
+ * Route a strategy lookup request to the appropriate shard binding.
+ */
+export function handleStrategyRouting(url: URL, getShard: (strategyId: string) => number): Response {
+  const strategyId = url.searchParams.get('strategyId');
+  if (!strategyId) return Response.json({ error: 'strategyId query parameter required' }, { status: 400 });
+  try {
+    const shardId = getShard(strategyId);
+    return Response.json({
+      shardId,
+      shardBinding: `SHARD_${shardId}`,
+      strategyId,
+      message: 'Route to appropriate StrategyShard DO',
+    });
+  } catch (error) {
+    logger.error('[ShardManager] Routing error:', { error, strategyId });
+    return Response.json({ error: 'Failed to route strategy' }, { status: 500 });
   }
 }

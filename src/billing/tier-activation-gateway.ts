@@ -3,40 +3,27 @@
  * Verifies NOWPayments IPN webhooks, provisions subscriber tiers, and enforces idempotency.
  */
 
-import crypto from 'node:crypto';
 import { logger } from '../shared/utils/logger';
-import { sortObjectDeep } from '../platform/workers/nowpayments-utils';
 import {
   NowPaymentsIpnSchema,
   TIER_ENTITLEMENTS,
-  TierEnum,
   type ActivationResult,
   type NowPaymentsIpnInput,
   type SubscriptionStore,
-  type TenantSubscriptionRecord,
   type Tier,
   type TierActivationGatewayConfig,
   type TierEntitlements,
   type TierInvalidationCallback,
 } from './tier-activation-types';
+import { InMemorySubscriptionStore } from './tier-activation-store';
+import {
+  verifyIpnSignature,
+  resolveTenantAndTier,
+  handleTierDowngrade,
+  buildFailureResult,
+} from './tier-activation-signature';
 
-export class InMemorySubscriptionStore implements SubscriptionStore {
-  private tenants = new Map<string, TenantSubscriptionRecord>();
-  private processed = new Set<string>();
-
-  async getTenant(tenantId: string): Promise<TenantSubscriptionRecord | null> {
-    return this.tenants.get(tenantId) ?? null;
-  }
-
-  async saveTenant(record: TenantSubscriptionRecord): Promise<void> {
-    this.tenants.set(record.tenantId, { ...record });
-    record.processedPayments.forEach((p) => this.processed.add(p));
-  }
-
-  async isPaymentProcessed(paymentId: string): Promise<boolean> {
-    return this.processed.has(paymentId);
-  }
-}
+export { InMemorySubscriptionStore, verifyIpnSignature, resolveTenantAndTier };
 
 export class TierActivationGateway {
   private ipnSecret?: string;
@@ -50,43 +37,11 @@ export class TierActivationGateway {
   }
 
   verifySignature(rawBody: string, signature: string): boolean {
-    if (!this.ipnSecret) return false;
-    try {
-      const sigBuf = Buffer.from(signature.trim(), 'utf8');
-      try {
-        const sorted = sortObjectDeep(JSON.parse(rawBody));
-        const sortedHmac = crypto.createHmac('sha512', this.ipnSecret).update(JSON.stringify(sorted)).digest('hex');
-        const sortedBuf = Buffer.from(sortedHmac, 'utf8');
-        if (sortedBuf.length === sigBuf.length && crypto.timingSafeEqual(sortedBuf, sigBuf)) return true;
-      } catch {
-        // Fallback to raw verification if sorting fails
-      }
-      const rawHmac = crypto.createHmac('sha512', this.ipnSecret).update(rawBody).digest('hex');
-      const rawBuf = Buffer.from(rawHmac, 'utf8');
-      return rawBuf.length === sigBuf.length && crypto.timingSafeEqual(rawBuf, sigBuf);
-    } catch (err) {
-      logger.error('[TierActivationGateway] Signature check error:', { err });
-      return false;
-    }
+    return verifyIpnSignature(rawBody, signature, this.ipnSecret);
   }
 
   resolveTenantAndTier(payload: NowPaymentsIpnInput): { tenantId: string; tier: Tier } {
-    const rawOrder = payload.order_id ?? '';
-    const desc = payload.order_description ?? '';
-
-    if (rawOrder.includes(':')) {
-      const parts = rawOrder.split(':');
-      const parsed = TierEnum.safeParse(parts[1]?.trim().toUpperCase());
-      if (parsed.success) return { tenantId: parts[0] || 'default-tenant', tier: parsed.data };
-    }
-
-    const matches = (rawOrder + ' ' + desc).toUpperCase().match(/\b(MASTER|ENTERPRISE|PREMIUM|BASIC)\b/);
-    if (matches?.[1]) {
-      const parsed = TierEnum.safeParse(matches[1]);
-      if (parsed.success) return { tenantId: rawOrder.split(':')[0] || 'default-tenant', tier: parsed.data };
-    }
-
-    return { tenantId: rawOrder || 'default-tenant', tier: 'BASIC' };
+    return resolveTenantAndTier(payload);
   }
 
   async processWebhook(rawBody: string, signature?: string): Promise<ActivationResult> {
@@ -112,25 +67,7 @@ export class TierActivationGateway {
     const currentStatus = payload.payment_status.toLowerCase();
 
     if (!validStatuses.includes(currentStatus)) {
-      const downgradeStatuses = ['refunded', 'failed', 'expired'];
-      if (downgradeStatuses.includes(currentStatus)) {
-        try {
-          const existing = await this.store.getTenant(tenantId);
-          if (existing && existing.status === 'ACTIVE') {
-            existing.status = currentStatus === 'expired' ? 'EXPIRED' : 'CANCELLED';
-            await this.store.saveTenant(existing);
-          }
-          if (this.onTierInvalidation) {
-            await this.onTierInvalidation(tenantId, {
-              status: currentStatus,
-              paymentId: payload.payment_id,
-              previousTier: existing?.tier,
-            });
-          }
-        } catch (err) {
-          logger.error('[TierActivationGateway] Downgrade invalidation error:', { err });
-        }
-      }
+      await handleTierDowngrade(this.store, tenantId, currentStatus, payload.payment_id, this.onTierInvalidation);
       return this.failureResult(tenantId, tier, payload.payment_id, `Payment status '${payload.payment_status}' is not confirmed`);
     }
 
@@ -184,15 +121,7 @@ export class TierActivationGateway {
   }
 
   private failureResult(tenantId: string, tier: Tier, paymentId: string, error: string): ActivationResult {
-    return {
-      success: false,
-      tenantId,
-      tier,
-      paymentId,
-      strategyQuotaProvisioned: 0,
-      isDuplicate: false,
-      activatedAt: new Date().toISOString(),
-      error,
-    };
+    return buildFailureResult(tenantId, tier, paymentId, error);
   }
 }
+

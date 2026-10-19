@@ -29,47 +29,19 @@ describe('TradeRepository', () => {
     const repo = new TradeRepository();
 
     const opportunity = {
-      id: 'opp-1',
-      symbol: 'BTC/USDT',
-      buyExchange: 'binance',
-      sellExchange: 'okx',
-      buyPrice: 50000,
-      sellPrice: 50500,
-      spread: 500,
-      spreadPercent: 1.0,
-      timestamp: Date.now(),
-      latency: 50,
+      id: 'opp-1', symbol: 'BTC/USDT', buyExchange: 'binance', sellExchange: 'okx',
+      buyPrice: 50000, sellPrice: 50500, spread: 500, spreadPercent: 1.0, timestamp: Date.now(), latency: 50,
     };
 
     const execution = {
-      id: 'exec-1',
-      opportunityId: opportunity.id,
-      status: 'FILLED' as const,
-      profit: 4.95,
-      timestamp: Date.now(),
+      id: 'exec-1', opportunityId: opportunity.id, status: 'FILLED' as const, profit: 4.95, timestamp: Date.now(),
       buyOrder: {
-        orderId: 'order-1',
-        exchange: 'binance',
-        symbol: 'BTC/USDT',
-        side: 'buy' as const,
-        price: 50000,
-        amount: 0.01,
-        filled: 0.01,
-        remaining: 0,
-        status: 'closed' as const,
-        fee: 0.5,
+        orderId: 'order-1', exchange: 'binance', symbol: 'BTC/USDT', side: 'buy' as const,
+        price: 50000, amount: 0.01, filled: 0.01, remaining: 0, status: 'closed' as const, fee: 0.5,
       },
       sellOrder: {
-        orderId: 'order-2',
-        exchange: 'okx',
-        symbol: 'BTC/USDT',
-        side: 'sell' as const,
-        price: 50500,
-        amount: 0.01,
-        filled: 0.01,
-        remaining: 0,
-        status: 'closed' as const,
-        fee: 0.505,
+        orderId: 'order-2', exchange: 'okx', symbol: 'BTC/USDT', side: 'sell' as const,
+        price: 50500, amount: 0.01, filled: 0.01, remaining: 0, status: 'closed' as const, fee: 0.505,
       },
     };
 
@@ -82,14 +54,7 @@ describe('TradeRepository', () => {
     const repo = new TradeRepository();
 
     mockQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 'trade-1',
-          symbol: 'BTC/USDT',
-          profit: 5.0,
-          status: 'FILLED',
-        },
-      ],
+      rows: [{ id: 'trade-1', symbol: 'BTC/USDT', profit: 5.0, status: 'FILLED' }],
     });
 
     const trade = await repo.getById('trade-1');
@@ -102,10 +67,7 @@ describe('TradeRepository', () => {
     const repo = new TradeRepository();
 
     mockQuery.mockResolvedValueOnce({
-      rows: [
-        { id: 'trade-1', profit: 5.0 },
-        { id: 'trade-2', profit: -2.0 },
-      ],
+      rows: [{ id: 'trade-1', profit: 5.0 }, { id: 'trade-2', profit: -2.0 }],
     });
 
     const trades = await repo.getRecent(100);
@@ -135,18 +97,10 @@ describe('PnLService', () => {
     const service = new PnLService();
 
     mockQuery.mockResolvedValueOnce({
-      rows: [
-        {
-          trade_count: '10',
-          total_profit: '50.0',
-          total_loss: '20.0',
-          net_pnl: '30.0',
-          win_count: '6',
-          loss_count: '4',
-          avg_win: '8.33',
-          avg_loss: '5.0',
-        },
-      ],
+      rows: [{
+        trade_count: '10', total_profit: '50.0', total_loss: '20.0', net_pnl: '30.0',
+        win_count: '6', loss_count: '4', avg_win: '8.33', avg_loss: '5.0',
+      }],
     });
 
     const summary = await service.getDailySummary(new Date());
@@ -165,15 +119,7 @@ describe('PnLService', () => {
       .mockResolvedValueOnce({ rows: [] }) // weekly
       .mockResolvedValueOnce({ rows: [] }) // monthly
       .mockResolvedValueOnce({
-        rows: [
-          {
-            total: '100',
-            wins: '55',
-            avg_trade: '1.0',
-            best_trade: '50.0',
-            worst_trade: '-20.0',
-          },
-        ],
+        rows: [{ total: '100', wins: '55', avg_trade: '1.0', best_trade: '50.0', worst_trade: '-20.0' }],
       }); // stats
 
     const metrics = await service.getPerformanceMetrics();

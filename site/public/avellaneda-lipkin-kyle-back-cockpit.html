@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlgoTrade OS | Screen #17 — Avellaneda-Lipkin Market Making &amp; Kyle-Back Insider Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css" />
+  <style>
+    :root {
+      --bg-void: #08090C; --bg-card: #12151C; --border-hairline: #1E2430;
+      --cyan: #00F2FE; --emerald: #00E599; --amber: #FFB800; --crimson: #FF3B30;
+      --text-primary: #F8FAFC; --text-secondary: #94A3B8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg-void); color: var(--text-primary); font-family: 'Inter', sans-serif; min-height: 100vh; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #0D1017; border-bottom: 1px solid var(--border-hairline); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .nav-links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .nav-links a { color: var(--text-secondary); text-decoration: none; padding: 4px 8px; border: 1px solid var(--border-hairline); border-radius: 4px; }
+    .nav-links a.active { color: var(--cyan); border-color: var(--cyan); background: rgba(0,242,254,0.08); }
+    .bento-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; padding: 16px 20px 72px; }
+    .card { background: var(--bg-card); border: 1px solid var(--border-hairline); border-radius: 4px; padding: 16px; }
+    .col-8 { grid-column: span 8; } .col-4 { grid-column: span 4; } .col-3 { grid-column: span 3; } .col-6 { grid-column: span 6; }
+    @media (max-width: 1024px) { .col-8, .col-4, .col-3, .col-6 { grid-column: span 12; } }
+    h1, h2 { font-family: 'Space Grotesk', sans-serif; letter-spacing: -0.02em; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+    .kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border-hairline); font-family: 'JetBrains Mono', monospace; }
+    th { color: var(--text-secondary); font-weight: 600; text-transform: uppercase; font-size: 11px; }
+    .pill { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .pill-emerald { background: rgba(0,229,153,0.14); color: var(--emerald); border: 1px solid rgba(0,229,153,0.4); }
+    .pill-cyan { background: rgba(0,242,254,0.14); color: var(--cyan); border: 1px solid rgba(0,242,254,0.4); }
+    .pill-amber { background: rgba(255,184,0,0.14); color: var(--amber); border: 1px solid rgba(255,184,0,0.4); }
+    .bar { height: 6px; background: #1E2430; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+    .bar > span { display: block; height: 100%; background: var(--cyan); }
+    .footer { display: flex; justify-content: space-between; padding: 12px 20px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; font-size: 11px; border-top: 1px solid var(--border-hairline); }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+  <header class="topbar" role="banner">
+    <div>
+      <strong style="color:var(--cyan);">ALGOTRADE OS // SCREEN #17</strong>
+      <span style="color:var(--text-secondary);margin-left:10px;" data-en="AVELLANEDA-LIPKIN MARKET MAKING, KYLE-BACK INSIDER &amp; VPIN TOXICITY COCKPIT" data-vi="BUỒNG LÁI TẠO LẬP THỊ TRƯỜNG AVELLANEDA-LIPKIN, NỘI GIÁN KYLE-BACK &amp; ĐỘC TÍNH VPIN">AVELLANEDA-LIPKIN MARKET MAKING, KYLE-BACK INSIDER &amp; VPIN TOXICITY COCKPIT</span>
+    </div>
+    <nav class="nav-links" aria-label="Stitch Suite Navigation">
+      <a href="dashboard.html">01 Dashboard</a>
+      <a href="order-routing-mesh.html">13 SOR Mesh</a>
+      <a href="regime-kelly-matrix.html">14 Regime Kelly</a>
+      <a href="hawkes-orderflow-radar.html">15 Hawkes Radar</a>
+      <a href="limit-order-queue-cockpit.html">16 Queue Cockpit</a>
+      <a href="avellaneda-lipkin-kyle-back-cockpit.html" class="active">17 AL / Kyle-Back</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="bento-grid" role="main" aria-live="polite">
+    <section class="card col-3" aria-label="Optimal half spread">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="AVELLANEDA-LIPKIN (2018) OPTIMAL HALF-SPREAD" data-vi="NỬA CHÊNH LỆCH TỐI ƯU AVELLANEDA-LIPKIN (2018)">AVELLANEDA-LIPKIN (2018) OPTIMAL HALF-SPREAD</div>
+      <div class="kpi-value mono" style="color:var(--cyan);">5.00 bps <span class="pill pill-cyan">γσκ</span></div>
+      <div class="kpi-sub mono">γ = 0.50 | σ = 5.0% | k = 20 | T = 1s</div>
+    </section>
+
+    <section class="card col-3" aria-label="Reservation price">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="INVENTORY RESERVATION PRICE" data-vi="GIÁ ĐẶT TRƯỚC THEO TỒN KHO">INVENTORY RESERVATION PRICE</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">99.9944 <span class="pill pill-emerald">LONG 4.5</span></div>
+      <div class="kpi-sub mono">Skew: -0.5625 bps | Mid: 100.0000</div>
+    </section>
+
+    <section class="card col-3" aria-label="Kyle-Back lambda">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="KYLE-BACK (1992) INSIDER LAMBDA" data-vi="LAMBDA NỘI GIÁN KYLE-BACK (1992)">KYLE-BACK (1992) INSIDER LAMBDA</div>
+      <div class="kpi-value mono" style="color:var(--amber);">0.3333 <span class="pill pill-amber">25.0% INFO</span></div>
+      <div class="kpi-sub mono">Expected Insider PnL: $184,500 | Depth: $2.4M</div>
+    </section>
+
+    <section class="card col-3" aria-label="VPIN toxicity">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="VPIN FLOW TOXICITY" data-vi="ĐỘC TÍNH DÒNG LỆNH VPIN">VPIN FLOW TOXICITY</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">21.17% <span class="pill pill-emerald">MODERATE</span></div>
+      <div class="kpi-sub mono">5 volume buckets | Bucket B4: 36.84%</div>
+    </section>
+
+    <section class="card col-8" aria-label="Avellaneda-Lipkin quote ladder">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;" data-en="Avellaneda-Lipkin Optimal Quote Ladder" data-vi="Thang Báo Giá Tối Ưu Avellaneda-Lipkin">Avellaneda-Lipkin Optimal Quote Ladder</h2>
+        <span class="pill pill-cyan mono">SCREEN #17 LIVE</span>
+      </div>
+      <table aria-label="Quote ladder">
+        <thead><tr><th>Level</th><th>Bid</th><th>Ask</th><th>Bid Size</th><th>Ask Size</th><th>Half-Spread</th></tr></thead>
+        <tbody>
+          <tr><td>L1</td><td style="color:var(--emerald);">99.9444</td><td style="color:var(--crimson);">100.0444</td><td>18.4</td><td>9.6</td><td>5.00 bps</td></tr>
+          <tr><td>L2</td><td style="color:var(--emerald);">99.8944</td><td style="color:var(--crimson);">100.0944</td><td>22.1</td><td>14.3</td><td>10.00 bps</td></tr>
+          <tr><td>L3</td><td style="color:var(--emerald);">99.8444</td><td style="color:var(--crimson);">100.1444</td><td>31.7</td><td>20.8</td><td>15.00 bps</td></tr>
+        </tbody>
+      </table>
+      <div class="kpi-sub mono" style="margin-top:10px;">Reservation r = s − qγσ²(T−t) | Fill probability 68.4% | Adverse-selection guard active</div>
+    </section>
+
+    <section class="card col-4" aria-label="Kyle-Back insider dynamics">
+      <h2 style="font-size:16px;" data-en="Kyle-Back Insider Dynamics" data-vi="Động Thái Nội Gián Kyle-Back">Kyle-Back Insider Dynamics</h2>
+      <div class="kpi-sub mono" style="margin-top:10px;">Kyle Lambda</div>
+      <div class="kpi-value mono" style="color:var(--amber);">0.3333</div>
+      <div class="bar"><span style="width:33.33%;background:var(--amber);"></span></div>
+      <div class="kpi-sub mono" style="margin-top:12px;">Insider information share: 25.0%</div>
+      <div class="bar"><span style="width:25.00%;"></span></div>
+      <div class="kpi-sub mono" style="margin-top:12px;">Market depth: $2,400,000</div>
+      <div class="kpi-sub mono">Expected insider profit: $184,500</div>
+      <div class="kpi-sub mono" style="margin-top:10px;">Posterior belief update: Bayesian sequential trade</div>
+    </section>
+
+    <section class="card col-6" aria-label="VPIN toxicity buckets">
+      <h2 style="font-size:16px;" data-en="VPIN Toxicity by Volume Bucket" data-vi="Độc Tính VPIN Theo Xô Khối Lượng">VPIN Toxicity by Volume Bucket</h2>
+      <table aria-label="VPIN buckets">
+        <thead><tr><th>Bucket</th><th>Buy Vol</th><th>Sell Vol</th><th>Imbalance</th><th>Toxicity</th></tr></thead>
+        <tbody>
+          <tr><td>B1</td><td>1,200</td><td>900</td><td>0.143</td><td><span class="pill pill-emerald">14.29%</span></td></tr>
+          <tr><td>B2</td><td>800</td><td>1,100</td><td>0.158</td><td><span class="pill pill-emerald">15.79%</span></td></tr>
+          <tr><td>B3</td><td>1,500</td><td>700</td><td>0.364</td><td><span class="pill pill-amber">36.36%</span></td></tr>
+          <tr><td>B4</td><td>600</td><td>1,300</td><td>0.368</td><td><span class="pill pill-amber">36.84%</span></td></tr>
+          <tr><td>B5</td><td>1,000</td><td>950</td><td>0.026</td><td><span class="pill pill-emerald">2.56%</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card col-6" aria-label="Market making risk controls">
+      <h2 style="font-size:16px;" data-en="Market-Making Risk Controls" data-vi="Kiểm Soát Rủi Ro Tạo Lập Thị Trường">Market-Making Risk Controls</h2>
+      <table aria-label="Risk controls">
+        <thead><tr><th>Control</th><th>State</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Inventory cap</td><td><span class="pill pill-emerald">OK</span></td><td>±10.0 lots</td></tr>
+          <tr><td>Max half-spread</td><td><span class="pill pill-emerald">OK</span></td><td>25.0 bps</td></tr>
+          <tr><td>VPIN kill-switch</td><td><span class="pill pill-amber">ARMED</span></td><td>≥ 45.0%</td></tr>
+          <tr><td>Adverse selection</td><td><span class="pill pill-emerald">OK</span></td><td>α = 44.8%</td></tr>
+          <tr><td>Quote latency</td><td><span class="pill pill-emerald">OK</span></td><td>8.4 ms</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>SCREEN #17 · CODE-AUTHORED · OBSIDIAN QUANTUM</span>
+    <span>AVELLANEDA-LIPKIN 2018 · KYLE-BACK 1992 · VPIN EASLEY-LÓPEZ DE PRADO 2012</span>
+  </footer>
+  <script src="assets/ui-ux-pro-max.js"></script>
+</body>
+</html>

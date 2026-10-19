@@ -16,36 +16,20 @@
  *   await adapter.exitPosition({ tokenId, conditionId, price: 0.62, reason: 'tp' });
  */
 
-import type { StrategyLiveBridge, TradeSignal } from './strategy-live-bridge';
+import type { StrategyLiveBridge } from './strategy-live-bridge';
 import { logger } from '../../shared/utils/logger';
+import {
+  type EntryRequest,
+  type ExitRequest,
+  type AdapterFill,
+  buildEntrySignal,
+  buildExitSignal,
+  buildAdapterFill,
+  computeActiveFills,
+} from './strategy-adapter-helpers';
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-export interface EntryRequest {
-  tokenId: string;
-  conditionId: string;
-  side: 'yes' | 'no';
-  price: number;
-  size: number;
-  strategy?: string;
-}
-
-export interface ExitRequest {
-  tokenId: string;
-  conditionId: string;
-  price: number;
-  reason: string;
-}
-
-export interface AdapterFill {
-  orderId: string;
-  tokenId: string;
-  conditionId: string;
-  side: 'BUY' | 'SELL';
-  price: number;
-  size: number;
-  timestamp: number;
-}
+export type { EntryRequest, ExitRequest, AdapterFill };
+export { buildEntrySignal, buildExitSignal, buildAdapterFill, computeActiveFills };
 
 // ── Adapter ────────────────────────────────────────────────────────────────────
 
@@ -67,16 +51,7 @@ export class StrategyAdapter {
   async enterPosition(req: EntryRequest): Promise<AdapterFill> {
     this.entryCount++;
 
-    const signal: TradeSignal = {
-      tokenId: req.tokenId,
-      side: 'BUY',
-      size: req.size,
-      price: req.price,
-      description: `${this.strategyName}:${req.conditionId.slice(0, 12)}`,
-      confidence: 0.7,
-      timestamp: Date.now(),
-    };
-
+    const signal = buildEntrySignal(this.strategyName, req);
     const result = await this.bridge.onSignal(signal);
 
     if (result.error && !result.rejected) {
@@ -87,15 +62,14 @@ export class StrategyAdapter {
       throw new Error(`Entry rejected by guard: ${result.rejectReason}`);
     }
 
-    const fill: AdapterFill = {
-      orderId: result.response?.orderID ?? `adapter-${Date.now()}`,
-      tokenId: req.tokenId,
-      conditionId: req.conditionId,
-      side: 'BUY',
-      price: req.price,
-      size: req.size,
-      timestamp: Date.now(),
-    };
+    const fill = buildAdapterFill(
+      'BUY',
+      req.tokenId,
+      req.conditionId,
+      req.price,
+      req.size,
+      result.response?.orderID,
+    );
 
     this.fills.push(fill);
     logger.info(`Adapter: ${this.strategyName} entered`, 'StrategyAdapter', {
@@ -112,35 +86,24 @@ export class StrategyAdapter {
   async exitPosition(req: ExitRequest): Promise<AdapterFill> {
     this.exitCount++;
 
-    // Look up the actual position size from active fills
     const activeFill = this.getActiveFills().get(req.conditionId);
     const positionSize = activeFill?.size ?? 0;
 
-    const signal: TradeSignal = {
-      tokenId: req.tokenId,
-      side: 'SELL',
-      size: positionSize, // Use actual position size for correct exit
-      price: req.price,
-      description: `${this.strategyName}:exit:${req.reason}`,
-      confidence: 1.0,
-      timestamp: Date.now(),
-    };
-
+    const signal = buildExitSignal(this.strategyName, req, positionSize);
     const result = await this.bridge.onSignal(signal);
 
     if (result.error && !result.rejected) {
       throw new Error(`Exit failed: ${result.error}`);
     }
 
-    const fill: AdapterFill = {
-      orderId: result.response?.orderID ?? `adapter-${Date.now()}`,
-      tokenId: req.tokenId,
-      conditionId: req.conditionId,
-      side: 'SELL',
-      price: req.price,
-      size: 0,
-      timestamp: Date.now(),
-    };
+    const fill = buildAdapterFill(
+      'SELL',
+      req.tokenId,
+      req.conditionId,
+      req.price,
+      0,
+      result.response?.orderID,
+    );
 
     this.fills.push(fill);
     logger.info(`Adapter: ${this.strategyName} exited`, 'StrategyAdapter', {
@@ -169,16 +132,6 @@ export class StrategyAdapter {
   }
 
   getActiveFills(): Map<string, AdapterFill> {
-    // Track which conditionIds have open positions
-    // An entry without a matching exit = open
-    const open = new Map<string, AdapterFill>();
-    for (const fill of this.fills) {
-      if (fill.side === 'BUY') {
-        open.set(fill.conditionId, fill);
-      } else {
-        open.delete(fill.conditionId);
-      }
-    }
-    return open;
+    return computeActiveFills(this.fills);
   }
 }

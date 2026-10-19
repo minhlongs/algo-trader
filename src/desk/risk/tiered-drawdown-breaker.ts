@@ -13,9 +13,15 @@ import { logger } from '../utils/logger';
 import type { TieredDrawdownConfig, TieredDrawdownState, DrawdownTier, DrawdownEvent } from './tiered-drawdown-types';
 import { DEFAULT_CONFIG } from './tiered-drawdown-types';
 import { buildPersistedState, scheduleDeferredWrite, loadPersistedState } from './tiered-drawdown-persistence';
+import {
+  evaluateDrawdownTier,
+  resolveTierUpdate,
+  computeSizingMultiplier,
+  computePositionsToCloseFraction,
+} from './tiered-drawdown-evaluator';
 
-// Re-export types for backward compatibility
 export type { TieredDrawdownConfig, TieredDrawdownState, DrawdownTier, DrawdownEvent } from './tiered-drawdown-types';
+export { evaluateDrawdownTier, resolveTierUpdate, computeSizingMultiplier, computePositionsToCloseFraction };
 
 interface DeferredWrite { data: ReturnType<typeof buildPersistedState>; timer: ReturnType<typeof setTimeout> | null; }
 
@@ -50,100 +56,36 @@ export class TieredDrawdownBreaker {
     if (newValue > this.highWaterMark) this.highWaterMark = newValue;
     this.dailyPnl = newValue - this.dailyStartValue;
 
-    const prevTier = this.tier;
-    const wasPaused = this.tier === 'DAILY_PAUSE' || this.tier === 'HALT';
-    const now = Date.now();
-    const dd = this.highWaterMark > 0 ? (this.highWaterMark - this.currentValue) / this.highWaterMark : 0;
-
-    // HARD_STOP is terminal: requires manual restart via reset()
     if (this.tier === 'HARD_STOP') {
       this.saveToDisk();
       return this.getState();
     }
 
-    // Catastrophic drawdown: HARD_STOP takes absolute precedence over any active halt/pause
-    if (dd >= this.config.hardStopThreshold) {
-      this.haltedUntil = null;
-      this.dailyPausedUntil = null;
-      this.evaluateTier(prevTier);
-    } else if (this.dailyPausedUntil && now < this.dailyPausedUntil) {
-      // While in DAILY_PAUSE window, escalate if total drawdown breaches HALT or REDUCE thresholds
-      if (dd >= this.config.haltThreshold) {
-        this.dailyPausedUntil = null;
-        this.evaluateTier(prevTier);
-      } else if (dd >= this.config.reduceThreshold) {
-        this.dailyPausedUntil = null;
-        this.evaluateTier(prevTier);
-      } else {
-        this.tier = 'DAILY_PAUSE';
-      }
-    } else if (this.haltedUntil && now < this.haltedUntil) {
-      // While in HALT window, maintain HALT (unless already escalated to HARD_STOP above)
-      this.tier = 'HALT';
-    } else if (wasPaused) {
-      // Pause/halt window expired — clear timers and re-evaluate at a lower tier
-      // (resuming=true prevents re-entry at the same HALT threshold)
-      this.haltedUntil = null;
-      this.dailyPausedUntil = null;
-      this.evaluateTier(prevTier, true);
-      this.saveToDisk();
-      return this.getState();
-    } else {
-      this.evaluateTier(prevTier);
-    }
+    const result = resolveTierUpdate({
+      highWaterMark: this.highWaterMark,
+      currentValue: this.currentValue,
+      dailyStartValue: this.dailyStartValue,
+      config: this.config,
+      prevTier: this.tier,
+      haltedUntil: this.haltedUntil,
+      dailyPausedUntil: this.dailyPausedUntil,
+    });
+
+    this.tier = result.tier;
+    this.haltedUntil = result.haltedUntil;
+    this.dailyPausedUntil = result.dailyPausedUntil;
+    if (result.event) this.events.push(result.event);
 
     this.saveToDisk();
     return this.getState();
   }
 
-  private evaluateTier(prevTier: DrawdownTier, resuming = false): void {
-    const dd = this.highWaterMark > 0 ? (this.highWaterMark - this.currentValue) / this.highWaterMark : 0;
-    const now = Date.now();
-    // When resuming from a pause, use strict > for HALT to avoid immediate re-entry
-    // at the same threshold — step down to REDUCE instead
-    const haltCmp = resuming ? dd > this.config.haltThreshold : dd >= this.config.haltThreshold;
-    if (dd >= this.config.hardStopThreshold) this.tier = 'HARD_STOP';
-    else if (haltCmp) { this.tier = 'HALT'; this.haltedUntil = now + this.config.haltDurationMs; }
-    else if (dd >= this.config.reduceThreshold) this.tier = 'REDUCE';
-    else if (dd >= this.config.alertThreshold) this.tier = 'ALERT';
-    else this.tier = 'NORMAL';
-
-    // Daily loss check
-    if (this.tier === 'NORMAL' && this.highWaterMark > 0) {
-      const dailyDd = (this.dailyStartValue - this.currentValue) / this.dailyStartValue;
-      if (dailyDd >= this.config.dailyLossThreshold) {
-        this.tier = 'DAILY_PAUSE';
-        this.dailyPausedUntil = Date.now() + this.config.dailyPauseDurationMs;
-      }
-    }
-
-    if (prevTier !== this.tier) {
-      const event: DrawdownEvent = { tier: this.tier, drawdownPercent: dd * 100, portfolioValue: this.currentValue, highWaterMark: this.highWaterMark, timestamp: Date.now(), action: `Tier changed ${prevTier} → ${this.tier}` };
-      this.events.push(event);
-      logger.warn(`[TieredDrawdown] ${event.action} (${dd.toFixed(2)}%)`);
-    }
-  }
-
-  /** Check if new trades are allowed */
   canOpenNewTrades(): boolean { return this.tier === 'NORMAL' || this.tier === 'ALERT'; }
 
-  /** Get sizing multiplier (1.0 = full size, 0.5 = half size) */
-  getSizingMultiplier(): number {
-    if (this.tier === 'HARD_STOP' || this.tier === 'HALT') return 0;
-    if (this.tier === 'REDUCE') return 1 - this.config.reduceSizingReduction;
-    if (this.tier === 'ALERT') return 1 - this.config.alertSizingReduction;
-    return 1.0;
-  }
+  getSizingMultiplier(): number { return computeSizingMultiplier(this.tier, this.config); }
 
-  /** Get fraction of portfolio positions to close (0 = none, 0.5 = half) */
-  getPositionsToCloseFraction(): number {
-    if (this.tier === 'HARD_STOP') return 1.0;
-    if (this.tier === 'HALT') return 0.5;
-    if (this.tier === 'REDUCE') return 0.25;
-    return 0;
-  }
+  getPositionsToCloseFraction(): number { return computePositionsToCloseFraction(this.tier); }
 
-  /** Reset to NORMAL (manual override after hard stop) */
   reset(newPortfolioValue: number): void {
     this.highWaterMark = newPortfolioValue;
     this.currentValue = newPortfolioValue;
@@ -159,7 +101,12 @@ export class TieredDrawdownBreaker {
 
   getState(): TieredDrawdownState {
     const dd = this.highWaterMark > 0 ? (this.highWaterMark - this.currentValue) / this.highWaterMark : 0;
-    return { highWaterMark: this.highWaterMark, currentValue: this.currentValue, drawdownPercent: dd * 100, tier: this.tier, sizingMultiplier: this.getSizingMultiplier(), haltedUntil: this.haltedUntil, dailyPausedUntil: this.dailyPausedUntil, dailyStartValue: this.dailyStartValue, dailyPnl: this.dailyPnl, events: [...this.events] };
+    return {
+      highWaterMark: this.highWaterMark, currentValue: this.currentValue, drawdownPercent: dd * 100,
+      tier: this.tier, sizingMultiplier: this.getSizingMultiplier(), haltedUntil: this.haltedUntil,
+      dailyPausedUntil: this.dailyPausedUntil, dailyStartValue: this.dailyStartValue,
+      dailyPnl: this.dailyPnl, events: [...this.events],
+    };
   }
 
   private shouldPersist(): boolean {
@@ -169,7 +116,10 @@ export class TieredDrawdownBreaker {
 
   private saveToDisk(): void {
     if (!this.shouldPersist()) return;
-    this.writeQueue.data = buildPersistedState(this.highWaterMark, this.currentValue, this.tier, this.haltedUntil, this.dailyPausedUntil, this.dailyStartValue, this.dailyPnl, this.events);
+    this.writeQueue.data = buildPersistedState(
+      this.highWaterMark, this.currentValue, this.tier, this.haltedUntil,
+      this.dailyPausedUntil, this.dailyStartValue, this.dailyPnl, this.events,
+    );
     scheduleDeferredWrite(this.writeQueue, this.writeQueue.data);
   }
 

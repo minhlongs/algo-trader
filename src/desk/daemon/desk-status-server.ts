@@ -11,11 +11,14 @@ import { sanitizeHttpError } from '../../shared/utils/error-sanitize';
 import { DeskMetricsRegistry } from '../telemetry/desk-metrics-registry';
 import {
   type DeskStatusServerOptions,
-  type DeskStatusResponse,
-  type DeskAllocationsResponse,
   type IDeskStatusDataProvider,
   DeskStatusServerConfigSchema,
 } from './desk-status-server-types';
+import {
+  sendStatusJson,
+  buildDefaultDeskStatus,
+  buildDefaultDeskAllocations,
+} from './desk-status-defaults';
 
 export class DeskStatusServer {
   public readonly metricsRegistry: DeskMetricsRegistry;
@@ -101,12 +104,10 @@ export class DeskStatusServer {
     }
 
     try {
-      if (method !== 'GET') {
-        throw new Error('Resource not found');
-      }
+      if (method !== 'GET') throw new Error('Resource not found');
 
       if (pathname === '/health') {
-        this.sendJson(res, 200, {
+        sendStatusJson(res, 200, {
           status: 'ok',
           uptimeSeconds: this.getUptimeSeconds(),
           timestamp: new Date().toISOString(),
@@ -115,16 +116,18 @@ export class DeskStatusServer {
       }
 
       if (pathname === '/status') {
-        const data = this.dataProvider?.getStatus ? await this.dataProvider.getStatus() : this.getDefaultStatus();
-        this.sendJson(res, 200, data);
+        const data = this.dataProvider?.getStatus
+          ? await this.dataProvider.getStatus()
+          : buildDefaultDeskStatus(this.running, this.getUptimeSeconds());
+        sendStatusJson(res, 200, data);
         return;
       }
 
       if (pathname === '/api/desk/allocations') {
         const data = this.dataProvider?.getAllocations
           ? await this.dataProvider.getAllocations()
-          : this.getDefaultAllocations();
-        this.sendJson(res, 200, data);
+          : buildDefaultDeskAllocations();
+        sendStatusJson(res, 200, data);
         return;
       }
 
@@ -143,47 +146,7 @@ export class DeskStatusServer {
       throw new Error('Resource not found');
     } catch (err) {
       const sanitized = sanitizeHttpError(err);
-      this.sendJson(res, sanitized.error.statusCode, sanitized);
+      sendStatusJson(res, sanitized.error.statusCode, sanitized);
     }
-  }
-
-  private sendJson(res: ServerResponse, statusCode: number, data: unknown): void {
-    const payload = JSON.stringify(data);
-    res.writeHead(statusCode, {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Content-Length': Buffer.byteLength(payload),
-    });
-    res.end(payload);
-  }
-
-  private getDefaultStatus(): DeskStatusResponse {
-    return {
-      status: this.running ? 'RUNNING' : 'STOPPED',
-      mode: 'PAPER',
-      circuitBreakerTier: 'NORMAL',
-      navUsd: 0,
-      driftUsd: 0,
-      engines: {
-        arbitrage: { status: 'STOPPED', allocatedCapitalUsd: 0 },
-        marl: { status: 'STOPPED', allocatedCapitalUsd: 0 },
-        amm: { status: 'STOPPED', allocatedCapitalUsd: 0 },
-        'alpha-lab': { status: 'STOPPED', allocatedCapitalUsd: 0 },
-      },
-      uptimeSeconds: this.getUptimeSeconds(),
-      cycleCount: 0,
-    };
-  }
-
-  private getDefaultAllocations(): DeskAllocationsResponse {
-    const allocations = { arbitrage: 0, marl: 0, amm: 0, 'alpha-lab': 0 };
-    return {
-      totalNavUsd: 0,
-      unallocatedCashUsd: 0,
-      cashBufferRatio: 1.0,
-      allocations,
-      allocatedCapitalUsd: allocations,
-      driftUsd: 0,
-      isZeroDrift: true,
-    };
   }
 }

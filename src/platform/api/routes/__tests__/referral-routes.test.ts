@@ -12,7 +12,14 @@ vi.mock('../../../middleware/feature-gate', () => ({
 }));
 
 const mocks = vi.hoisted(() => ({
-  mockReferralCode: { code: 'REFCODE1', tenantId: 'tenant_001', isActive: true, usedCount: 0, maxUses: null } as any,
+  mockReferralCode: {
+    code: 'REFCODE1',
+    tenantId: 'tenant_001',
+    createdAt: new Date('2026-07-03T12:00:00Z'),
+    isActive: true,
+    usedCount: 0,
+    maxUses: null,
+  },
   mockStats: { totalClicks: 10, totalConversions: 2, commissionEarned: 150 },
   mockClick: { id: 'click_001', code: 'REFCODE1', ip: '127.0.0.1' },
   mockCommissions: { commissions: [{ id: 'comm_001', commissionAmount: 50, status: 'pending' }], total: 1 },
@@ -32,7 +39,7 @@ const mocks = vi.hoisted(() => ({
     isActive: true,
     usedCount: 0,
     maxUses: null,
-  } as any),
+  }),
 }));
 
 vi.mock('../../../../platform/referral/referral-service', () => ({
@@ -64,13 +71,13 @@ describe('Referral Routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mockService.registerReferralCode.mockResolvedValue({
-    code: 'TEN-ABC12',
-    tenantId: 'tenant_001',
-    createdAt: new Date('2026-07-03T12:00:00Z'),
-    isActive: true,
-    usedCount: 0,
-    maxUses: null,
-  });
+      code: 'TEN-ABC12',
+      tenantId: 'tenant_001',
+      createdAt: new Date('2026-07-03T12:00:00Z'),
+      isActive: true,
+      usedCount: 0,
+      maxUses: null,
+    });
     mocks.mockService.getReferralStats.mockResolvedValue(mocks.mockStats);
     mocks.mockService.getReferralCode.mockResolvedValue(mocks.mockReferralCode);
     mocks.mockService.getReferralCodeByCode.mockResolvedValue(mocks.mockReferralCode);
@@ -80,100 +87,60 @@ describe('Referral Routes', () => {
 
   describe('POST /generate-code', () => {
     it('returns 201 with referral code and createdAt', async () => {
-      const app = buildApp({ sub: 'tenant_001' });
-      const res = await request(app)
-        .post('/api/v1/referral/generate-code')
-        .send({});
-
+      const res = await request(buildApp({ sub: 'tenant_001' })).post('/api/v1/referral/generate-code').send({});
       expect(res.status).toBe(201);
       expect(res.body.code).toBe('TEN-ABC12');
       expect(res.body.createdAt).toBeDefined();
     });
 
     it('returns 401 without claims', async () => {
-      const app = buildApp();
-      const res = await request(app)
-        .post('/api/v1/referral/generate-code')
-        .send({});
-
+      const res = await request(buildApp()).post('/api/v1/referral/generate-code').send({});
       expect(res.status).toBe(401);
     });
   });
 
   describe('GET /stats', () => {
-    it('returns 200 with referral stats', async () => {
-      const app = buildApp({ sub: 'tenant_001' });
-      const res = await request(app).get('/api/v1/referral/stats');
-
+    it('returns 200 with referral stats, 401 without claims, and 404 when stats not found', async () => {
+      const res = await request(buildApp({ sub: 'tenant_001' })).get('/api/v1/referral/stats');
       expect(res.status).toBe(200);
       expect(res.body.data.totalClicks).toBe(10);
-    });
 
-    it('returns 401 without claims', async () => {
-      const app = buildApp();
-      const res = await request(app).get('/api/v1/referral/stats');
+      expect((await request(buildApp()).get('/api/v1/referral/stats')).status).toBe(401);
 
-      expect(res.status).toBe(401);
-    });
-
-    it('returns 404 when stats not found', async () => {
       mocks.mockService.getReferralStats.mockResolvedValueOnce(null);
-      const app = buildApp({ sub: 'tenant_002' });
-      const res = await request(app).get('/api/v1/referral/stats');
-
-      expect(res.status).toBe(404);
+      expect((await request(buildApp({ sub: 'tenant_002' })).get('/api/v1/referral/stats')).status).toBe(404);
     });
   });
 
   describe('POST /track-click', () => {
-    it('returns 201 with tracking data', async () => {
-      const app = buildApp({ sub: 'tenant_001' });
-      const res = await request(app)
+    it('returns 201 with tracking data and 400 without code query param', async () => {
+      const res = await request(buildApp({ sub: 'tenant_001' }))
         .post('/api/v1/referral/track-click?code=REFCODE1')
         .send({ ip: '127.0.0.1', userAgent: 'test-agent' });
-
       expect(res.status).toBe(201);
       expect(res.body.data.id).toBe('click_001');
-    });
 
-    it('returns 400 without code query param', async () => {
-      const app = buildApp({ sub: 'tenant_001' });
-      const res = await request(app)
+      const bad = await request(buildApp({ sub: 'tenant_001' }))
         .post('/api/v1/referral/track-click')
         .send({ ip: '127.0.0.1' });
-
-      expect(res.status).toBe(400);
+      expect(bad.status).toBe(400);
     });
   });
 
-  describe('POST /validate', () => {
-    it('returns 200 with valid code info', async () => {
-      const app = buildApp({ sub: 'tenant_001' });
-      const res = await request(app)
+  describe('POST /validate & GET /my-code', () => {
+    it('validates code and fetches my-code', async () => {
+      const res = await request(buildApp({ sub: 'tenant_001' }))
         .post('/api/v1/referral/validate')
         .send({ referralCode: 'REFCODE1', tenantId: 'new_tenant' });
-
       expect(res.status).toBe(200);
       expect(res.body.data.isValid).toBe(true);
-    });
 
-    it('returns 400 without required fields', async () => {
-      const app = buildApp({ sub: 'tenant_001' });
-      const res = await request(app)
-        .post('/api/v1/referral/validate')
-        .send({});
+      const bad = await request(buildApp({ sub: 'tenant_001' })).post('/api/v1/referral/validate').send({});
+      expect(bad.status).toBe(400);
 
-      expect(res.status).toBe(400);
-    });
-  });
-
-  describe('GET /my-code', () => {
-    it('returns 200 with referral code', async () => {
-      const app = buildApp({ sub: 'tenant_001' });
-      const res = await request(app).get('/api/v1/referral/my-code');
-
-      expect(res.status).toBe(200);
-      expect(res.body.data.code).toBe('REFCODE1');
+      const myCode = await request(buildApp({ sub: 'tenant_001' })).get('/api/v1/referral/my-code');
+      expect(myCode.status).toBe(200);
+      expect(myCode.body.data.code).toBe('REFCODE1');
     });
   });
 });

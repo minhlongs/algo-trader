@@ -29,7 +29,6 @@ export class LicenseService {
 	private licenses: Map<string, License> = new Map();
 	private options: LicenseServiceOptions = {};
 
-	/** Test/API convenience constructor — also acts as singleton factory */
 	constructor(options: LicenseServiceOptions = {}) {
 		if (LicenseService.instance) return LicenseService.instance;
 		this.licenses = loadFromFile();
@@ -37,7 +36,6 @@ export class LicenseService {
 		LicenseService.instance = this;
 	}
 
-	/** Standard singleton — production use */
 	static resetInstance(): void {
 		LicenseService.instance = null as unknown as LicenseService;
 	}
@@ -49,51 +47,35 @@ export class LicenseService {
 		return LicenseService.instance;
 	}
 
-	generateLicenseKey(tier: LicenseTier): string {
-		return createLicenseKey(tier);
-	}
+	generateLicenseKey(tier: LicenseTier): string { return createLicenseKey(tier); }
 
-	/**
-	 * Test/API convenience: generate a license key for a tier.
-	 * Stores the license in-memory for validateLicense to check.
-	 * Maps tier string to LicenseTier enum for prefix selection.
-	 */
 	generateLicense(input: { userId?: string; tier: string; validUntil?: Date }): string {
 		const tierUpper = input.tier.toUpperCase();
 		const tierEnum = LicenseTier[tierUpper as keyof typeof LicenseTier] || LicenseTier.FREE;
 		const key = this.generateLicenseKey(tierEnum);
-		const license: License = {
+		const now = new Date().toISOString();
+		this.licenses.set(key, {
 			id: `lic_${this.generateId()}`,
 			key,
 			name: tierUpper,
 			tier: tierEnum,
 			status: LicenseStatus.ACTIVE,
 			userId: input.userId || 'anon',
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
+			createdAt: now,
+			updatedAt: now,
 			usageCount: 0,
 			maxUsage: getDefaultMaxUsage(tierEnum),
 			expiresAt: input.validUntil?.toISOString(),
-		};
-		this.licenses.set(key, license);
+		});
 		return key;
 	}
 
-	/**
-	 * Validate a license key against stored licenses.
-	 * Returns true if key exists, is ACTIVE, and userId matches (if provided).
-	 */
 	validateLicense(key: string, userId?: string): boolean {
 		const license = this.licenses.get(key);
-		if (!license) return false;
-		if (userId && license.userId !== userId) return false;
+		if (!license || (userId && license.userId !== userId)) return false;
 		return license.status === LicenseStatus.ACTIVE;
 	}
 
-	/**
-	 * Record an API call against a license key (increments usageCount).
-	 * Returns the updated usage snapshot.
-	 */
 	async recordApiCall(key: string): Promise<void> {
 		const license = this.licenses.get(key);
 		if (!license) return;
@@ -102,24 +84,16 @@ export class LicenseService {
 		saveToFile(this.licenses);
 	}
 
-	/**
-	 * Get usage snapshot for a license key.
-	 */
 	getUsage(key: string): LicenseUsage | null {
 		const license = this.licenses.get(key);
 		if (!license) return null;
-		return {
-			callsToday: license.usageCount || 0,
-			tier: license.tier,
-			key: license.key,
-		};
+		return { callsToday: license.usageCount || 0, tier: license.tier, key: license.key };
 	}
 
 	async createLicense(input: CreateLicenseInput): Promise<License> {
 		const id = `lic_${this.generateId()}`;
 		const key = this.generateLicenseKey(input.tier);
 		const now = new Date().toISOString();
-
 		const license: License = {
 			id,
 			name: input.name,
@@ -134,15 +108,12 @@ export class LicenseService {
 			domain: input.domain,
 			expiresAt: input.expiresAt,
 		};
-
 		this.licenses.set(id, license);
 		saveToFile(this.licenses);
 		return license;
 	}
 
-	getLicense(id: string): License | undefined {
-		return this.licenses.get(id);
-	}
+	getLicense(id: string): License | undefined { return this.licenses.get(id); }
 
 	getLicenseByKey(key: string): License | undefined {
 		for (const license of this.licenses.values()) {
@@ -165,7 +136,6 @@ export class LicenseService {
 	async revokeLicense(id: string): Promise<License | undefined> {
 		const license = this.licenses.get(id);
 		if (!license) return undefined;
-
 		license.status = LicenseStatus.REVOKED;
 		license.updatedAt = new Date().toISOString();
 		this.licenses.set(id, license);

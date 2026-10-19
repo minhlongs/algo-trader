@@ -1,6 +1,5 @@
 /**
  * check-gates — Unit Tests
- *
  * Covers loadPaperData and checkExchangeHealth.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -19,9 +18,7 @@ vi.mock('../../utils/logger', () => ({
 vi.mock('../../desk/tests/exchange-connection-test', () => ({
   ExchangeConnectionTester: class {
     testAll() {
-      if (shouldTestAllThrow) {
-        return Promise.reject(new Error('connection failed'));
-      }
+      if (shouldTestAllThrow) return Promise.reject(new Error('connection failed'));
       return Promise.resolve(mockTestAllResults);
     }
   },
@@ -37,19 +34,12 @@ describe('check-gates paper data loader', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     shouldTestAllThrow = false;
-    mockTestAllResults = [
-      { restOk: true, wsOk: true, error: null },
-      { restOk: true, wsOk: true, error: null },
-    ];
+    mockTestAllResults = [{ restOk: true, wsOk: true, error: null }, { restOk: true, wsOk: true, error: null }];
   });
 
   describe('loadPaperData', () => {
     it('fetches paper trades and builds GateEvaluatorInput', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ trades: TEST_TRADES }),
-      }));
-
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ trades: TEST_TRADES }) }));
       const input = await loadPaperData();
 
       expect(input.trades).toHaveLength(2);
@@ -66,12 +56,7 @@ describe('check-gates paper data loader', () => {
     });
 
     it('falls back to empty trades when API returns error', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: async () => ({}),
-      }));
-
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({}) }));
       const input = await loadPaperData();
 
       expect(input.trades).toHaveLength(0);
@@ -81,7 +66,6 @@ describe('check-gates paper data loader', () => {
 
     it('falls back to empty trades when API throws', async () => {
       vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')));
-
       const input = await loadPaperData();
 
       expect(input.trades).toHaveLength(0);
@@ -89,21 +73,13 @@ describe('check-gates paper data loader', () => {
     });
 
     it('handles response without trades property', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({}),
-      }));
-
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
       const input = await loadPaperData();
       expect(input.trades).toHaveLength(0);
     });
 
     it('starts date from 15 days ago when no closed trades', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ trades: [{ ...TEST_TRADES[2] }] }),
-      }));
-
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ trades: [{ ...TEST_TRADES[2] }] }) }));
       const input = await loadPaperData();
       expect(input.startDate).toBeTruthy();
     });
@@ -114,10 +90,7 @@ describe('check-gates paper data loader', () => {
         { id: 't2', tokenId: 'Y', side: 'SELL' as const, price: 200, size: 1, pnl: 100, timestamp: '2026-08-01T10:00:00Z' },
         { id: 't3', tokenId: 'Z', side: 'BUY' as const, price: 300, size: 1, pnl: 20, timestamp: '2026-08-03T10:00:00Z' },
       ];
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ trades: unsorted }),
-      }));
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ trades: unsorted }) }));
 
       const input = await loadPaperData();
       expect(input.startDate).toBe('2026-08-01T10:00:00Z');
@@ -129,10 +102,7 @@ describe('check-gates paper data loader', () => {
 
   describe('checkExchangeHealth via loadPaperData', () => {
     it('returns true when all exchanges have restOk and wsOk', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ trades: [] }),
-      }));
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ trades: [] }) }));
       mockTestAllResults = [{ restOk: true, wsOk: true, error: null }];
 
       const input = await loadPaperData();
@@ -140,10 +110,7 @@ describe('check-gates paper data loader', () => {
     });
 
     it('returns true when wsOk is false but no error exists', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ trades: [] }),
-      }));
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ trades: [] }) }));
       mockTestAllResults = [{ restOk: true, wsOk: false, error: null }];
 
       const input = await loadPaperData();
@@ -151,10 +118,7 @@ describe('check-gates paper data loader', () => {
     });
 
     it('returns false when wsOk is false and error exists', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ trades: [] }),
-      }));
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ trades: [] }) }));
       mockTestAllResults = [{ restOk: true, wsOk: false, error: 'timeout' }];
 
       const input = await loadPaperData();
@@ -162,10 +126,7 @@ describe('check-gates paper data loader', () => {
     });
 
     it('returns false when restOk is false', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ trades: [] }),
-      }));
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ trades: [] }) }));
       mockTestAllResults = [{ restOk: false, wsOk: true, error: null }];
 
       const input = await loadPaperData();
@@ -173,10 +134,7 @@ describe('check-gates paper data loader', () => {
     });
 
     it('returns false when ExchangeConnectionTester throws', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ trades: [] }),
-      }));
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ trades: [] }) }));
       shouldTestAllThrow = true;
 
       const input = await loadPaperData();

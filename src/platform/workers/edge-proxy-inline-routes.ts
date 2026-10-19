@@ -68,3 +68,60 @@ export async function handlePaperTradesLedger(_request: Request, env: Env): Prom
     });
   }
 }
+
+export function handleHealthRoute(env: Env, routingEnabled: boolean): Response {
+  return new Response(JSON.stringify({
+    status: 'ok', service: 'Cloudflare Worker Edge Proxy', environment: env.ENVIRONMENT,
+    edge: 'cloudflare', hasVps: !!env.VPS_ORIGIN, timestamp: new Date().toISOString(),
+    checks: {
+      kv: env.CACHE ? 'configured' : 'missing', d1: env.DB ? 'configured' : 'missing',
+      metrics: !!env.METRIC_PASSWORD, regionRouting: routingEnabled,
+    },
+  }), { status: 200, headers: JSON_HEADERS });
+}
+
+export function handleRootRoute(env: Env): Response {
+  return new Response(JSON.stringify({
+    service: 'algo-trader API', version: '1.0', status: 'ok', edge: 'cloudflare',
+    environment: env.ENVIRONMENT, hasVps: !!env.VPS_ORIGIN, timestamp: new Date().toISOString(),
+  }), { headers: JSON_HEADERS });
+}
+
+export function handleVpsFallbackRoute(): Response {
+  return new Response(
+    JSON.stringify({ error: 'Not implemented', message: 'VPS backend removed — endpoint not yet migrated to CF Worker' }),
+    { status: 501, headers: JSON_HEADERS },
+  );
+}
+
+export function handleMetricsGetRoute(
+  url: URL,
+  env: Env,
+  metricsHandler: (env: Env) => Promise<Response> | Response,
+): Promise<Response> | Response {
+  const secret = env.METRIC_PASSWORD;
+  if (secret && url.searchParams.get('token') !== secret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: JSON_HEADERS,
+    });
+  }
+  return metricsHandler(env);
+}
+
+export async function handlePaperTradingTickRoute(
+  env: Env,
+  runTick: () => Promise<unknown>,
+): Promise<Response> {
+  try {
+    const result = await runTick();
+    return new Response(JSON.stringify({
+      ok: true, triggered: 'manual', kvNamespace: env.CACHE ? 'bound' : 'UNDEFINED',
+      hasCache: !!env.CACHE, hasDb: !!env.SUBSCRIBERS, dbType: typeof env.SUBSCRIBERS, result,
+    }), { status: 200, headers: JSON_HEADERS });
+  } catch (err) {
+    logger.error('[EdgeProxy] Paper trading tick failed', { err });
+    return new Response(JSON.stringify({ error: 'Tick failed', err: String(err) }), {
+      status: 500, headers: JSON_HEADERS,
+    });
+  }
+}

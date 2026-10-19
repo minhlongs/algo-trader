@@ -1,21 +1,11 @@
 /**
  * Tests for TradeStream — Redis Streams-backed trade history.
- *
- * getRedisClient is mocked with a fake ioredis-like client (xadd / xrange /
- * xtrim / del) so addTrade, getRecentTrades, getTradesSince (incl. drift
- * buffer + timestamp filter), trim, and clear are exercised without a live
- * Redis server.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const { fakeRedis } = vi.hoisted(() => ({
-  fakeRedis: {
-    xadd: vi.fn(),
-    xrange: vi.fn(),
-    xtrim: vi.fn(),
-    del: vi.fn(),
-  },
+  fakeRedis: { xadd: vi.fn(), xrange: vi.fn(), xtrim: vi.fn(), del: vi.fn() },
 }));
 
 vi.mock('../index', () => ({ getRedisClient: () => fakeRedis }));
@@ -25,21 +15,12 @@ import { TradeStream, type Trade } from '../trade-stream';
 /** Build a raw xrange entry: [id, [field, value, field, value...]]. */
 function rawEntry(id: string, fields: Record<string, string>): [string, string[]] {
   const flat: string[] = [];
-  for (const [k, v] of Object.entries(fields)) {
-    flat.push(k, v);
-  }
+  for (const [k, v] of Object.entries(fields)) flat.push(k, v);
   return [id, flat];
 }
 
 function sampleTrade(): Trade {
-  return {
-    id: 't-1',
-    price: 123.45,
-    amount: 0.5,
-    side: 'buy',
-    timestamp: 1750000000000,
-    tradeId: 'trade-abc',
-  };
+  return { id: 't-1', price: 123.45, amount: 0.5, side: 'buy', timestamp: 1750000000000, tradeId: 'trade-abc' };
 }
 
 describe('TradeStream', () => {
@@ -56,14 +37,9 @@ describe('TradeStream', () => {
     fakeRedis.xadd.mockResolvedValue('1750000000000-0');
     const result = await stream.addTrade('binance', 'BTC/USDT', sampleTrade());
     expect(fakeRedis.xadd).toHaveBeenCalledWith(
-      'trades:binance:BTC/USDT',
-      'MAXLEN', '~', '10000', '*',
-      'id', 't-1',
-      'price', '123.45',
-      'amount', '0.5',
-      'side', 'buy',
-      'timestamp', '1750000000000',
-      'tradeId', 'trade-abc',
+      'trades:binance:BTC/USDT', 'MAXLEN', '~', '10000', '*',
+      'id', 't-1', 'price', '123.45', 'amount', '0.5',
+      'side', 'buy', 'timestamp', '1750000000000', 'tradeId', 'trade-abc',
     );
     expect(result).toBe('1750000000000-0');
   });
@@ -87,26 +63,19 @@ describe('TradeStream', () => {
   it('queries xrange with full range and the requested count', async () => {
     fakeRedis.xrange.mockResolvedValue([]);
     await stream.getRecentTrades('binance', 'BTC/USDT', 42);
-    expect(fakeRedis.xrange).toHaveBeenCalledWith(
-      'trades:binance:BTC/USDT', '-', '+', 'COUNT', 42);
+    expect(fakeRedis.xrange).toHaveBeenCalledWith('trades:binance:BTC/USDT', '-', '+', 'COUNT', 42);
   });
 
   it('defaults count to 100', async () => {
     fakeRedis.xrange.mockResolvedValue([]);
     await stream.getRecentTrades('binance', 'BTC/USDT');
-    expect(fakeRedis.xrange).toHaveBeenCalledWith(
-      'trades:binance:BTC/USDT', '-', '+', 'COUNT', 100);
+    expect(fakeRedis.xrange).toHaveBeenCalledWith('trades:binance:BTC/USDT', '-', '+', 'COUNT', 100);
   });
 
   it('parses raw entries into Trade objects', async () => {
     fakeRedis.xrange.mockResolvedValue([
-      rawEntry('1-1', {
-        id: 't-1', price: '123.45', amount: '0.5',
-        side: 'sell', timestamp: '1750000000000', tradeId: 'trade-abc',
-      }),
-      rawEntry('2-2', {
-        id: 't-2', price: '99', amount: '2', side: 'buy', timestamp: '200',
-      }),
+      rawEntry('1-1', { id: 't-1', price: '123.45', amount: '0.5', side: 'sell', timestamp: '1750000000000', tradeId: 'trade-abc' }),
+      rawEntry('2-2', { id: 't-2', price: '99', amount: '2', side: 'buy', timestamp: '200' }),
     ]);
     const trades = await stream.getRecentTrades('binance', 'BTC/USDT');
     expect(trades).toEqual([
@@ -121,12 +90,8 @@ describe('TradeStream', () => {
       ['4-4', ['price', '5']],
     ]);
     const trades = await stream.getRecentTrades('binance', 'BTC/USDT');
-    expect(trades[0]).toEqual({
-      id: '', price: 0, amount: 0, side: 'buy', timestamp: 0, tradeId: undefined,
-    });
-    expect(trades[1]).toEqual({
-      id: '', price: 5, amount: 0, side: 'buy', timestamp: 0, tradeId: undefined,
-    });
+    expect(trades[0]).toEqual({ id: '', price: 0, amount: 0, side: 'buy', timestamp: 0, tradeId: undefined });
+    expect(trades[1]).toEqual({ id: '', price: 5, amount: 0, side: 'buy', timestamp: 0, tradeId: undefined });
   });
 
   // ── getTradesSince ────────────────────────────────────────────────────────
@@ -135,7 +100,6 @@ describe('TradeStream', () => {
     fakeRedis.xrange.mockResolvedValue([]);
     await stream.getTradesSince('binance', 'BTC/USDT', 1750000010000);
     const startId = fakeRedis.xrange.mock.calls[0]![1] as string;
-    // 1750000010000 - 10000 = 1750000000000
     expect(startId).toBe('1750000000000-0');
   });
 
@@ -158,16 +122,10 @@ describe('TradeStream', () => {
 
   it('parses entries identically to getRecentTrades', async () => {
     fakeRedis.xrange.mockResolvedValue([
-      rawEntry('1-1', {
-        id: 't-1', price: '123.45', amount: '0.5',
-        side: 'sell', timestamp: '1750000000000', tradeId: 'trade-abc',
-      }),
+      rawEntry('1-1', { id: 't-1', price: '123.45', amount: '0.5', side: 'sell', timestamp: '1750000000000', tradeId: 'trade-abc' }),
     ]);
     const trades = await stream.getTradesSince('binance', 'BTC/USDT', 0);
-    expect(trades).toEqual([{
-      id: 't-1', price: 123.45, amount: 0.5, side: 'sell',
-      timestamp: 1750000000000, tradeId: 'trade-abc',
-    }]);
+    expect(trades).toEqual([{ id: 't-1', price: 123.45, amount: 0.5, side: 'sell', timestamp: 1750000000000, tradeId: 'trade-abc' }]);
   });
 
   // ── trim / clear ──────────────────────────────────────────────────────────
@@ -175,15 +133,13 @@ describe('TradeStream', () => {
   it('trims the stream with XTRIM MAXLEN ~', async () => {
     fakeRedis.xtrim.mockResolvedValue(3);
     await stream.trim('binance', 'BTC/USDT', 500);
-    expect(fakeRedis.xtrim).toHaveBeenCalledWith(
-      'trades:binance:BTC/USDT', 'MAXLEN', '~', 500);
+    expect(fakeRedis.xtrim).toHaveBeenCalledWith('trades:binance:BTC/USDT', 'MAXLEN', '~', 500);
   });
 
   it('defaults maxLen to 10000 when trimming', async () => {
     fakeRedis.xtrim.mockResolvedValue(0);
     await stream.trim('binance', 'BTC/USDT');
-    expect(fakeRedis.xtrim).toHaveBeenCalledWith(
-      'trades:binance:BTC/USDT', 'MAXLEN', '~', 10000);
+    expect(fakeRedis.xtrim).toHaveBeenCalledWith('trades:binance:BTC/USDT', 'MAXLEN', '~', 10000);
   });
 
   it('clears the stream key with DEL', async () => {

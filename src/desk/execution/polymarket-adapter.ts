@@ -14,21 +14,15 @@ import { Http2ConnectionPool } from './http2-connection-pool';
 import * as http2 from 'node:http2';
 import { logger } from '../utils/logger';
 import {
-  CLOB_BASE,
-  PolymarketOrderResponse,
-  PolymarketOpenOrder,
-  PolymarketOrderBook,
-  PolymarketMarketInfo,
+  CLOB_BASE, PolymarketOrderResponse, PolymarketOpenOrder, PolymarketOrderBook, PolymarketMarketInfo,
 } from './polymarket-adapter-types';
 import {
-  serializeSignedOrder,
-  computePolymarketSignature,
-  buildPolymarketHeaders,
-  executeHttp2StreamRequest,
+  serializeSignedOrder, computePolymarketSignature, buildPolymarketHeaders, executeHttp2StreamRequest,
 } from './polymarket-adapter-transport';
 
-// Re-export all types so existing callers importing from this file keep working.
+// Re-export all types and transport helpers so existing callers importing from this file keep working.
 export * from './polymarket-adapter-types';
+export * from './polymarket-adapter-transport';
 
 /**
  * Execution adapter for Polymarket CLOB REST API.
@@ -44,11 +38,7 @@ export class PolymarketAdapter {
   private readonly passphrase: string;
   private readonly http2Pool: Http2ConnectionPool;
 
-  constructor(
-    signer: PolymarketSigner,
-    apiUrl: string = CLOB_BASE,
-    http2Pool?: Http2ConnectionPool,
-  ) {
+  constructor(signer: PolymarketSigner, apiUrl: string = CLOB_BASE, http2Pool?: Http2ConnectionPool) {
     this.signer = signer;
     this.apiUrl = apiUrl.replace(/\/$/, '');
     this.apiKey = process.env.POLYMARKET_API_KEY || process.env.POLY_API_KEY || '';
@@ -58,8 +48,7 @@ export class PolymarketAdapter {
 
     // Warm connections on startup (async, don't await)
     this.warmPool().catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.warn('Failed to warm HTTP/2 pool', { error: msg });
+      logger.warn('Failed to warm HTTP/2 pool', { error: err instanceof Error ? err.message : String(err) });
     });
   }
 
@@ -68,8 +57,7 @@ export class PolymarketAdapter {
     try {
       await this.http2Pool.warmConnections(this.apiUrl, 3);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.warn('Pool warming failed', { error: msg });
+      logger.warn('Pool warming failed', { error: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -79,11 +67,8 @@ export class PolymarketAdapter {
    */
   async placeOrder(order: PolymarketOrder): Promise<PolymarketOrderResponse> {
     requireLiveEnabled('PolymarketAdapter.placeOrder');
-
     const signed: SignedOrder = await this.signer.signOrder(order);
-    const body = this.serializeSignedOrder(signed);
-
-    return this.request<PolymarketOrderResponse>('POST', '/order', body);
+    return this.request<PolymarketOrderResponse>('POST', '/order', this.serializeSignedOrder(signed));
   }
 
   /** Cancel an open order by ID. */
@@ -106,8 +91,6 @@ export class PolymarketAdapter {
     return this.request<PolymarketOrderBook>('GET', `/book?token_id=${tokenId}`);
   }
 
-  // ── Internal helpers ─────────────────────────────────────────────────────
-
   /** Make an HTTP/2 request using pooled sessions */
   private async request<T>(
     method: 'GET' | 'POST' | 'DELETE',
@@ -128,22 +111,14 @@ export class PolymarketAdapter {
       }
       throw err;
     } finally {
-      if (session) {
-        this.http2Pool.releaseSession(url, session);
-      }
-
-      const latencyMs = Date.now() - start;
+      if (session) this.http2Pool.releaseSession(url, session);
       const region = process.env.REGION || 'unknown';
-      recordExternalApiLatency('polymarket', path, region, latencyMs / 1000);
+      recordExternalApiLatency('polymarket', path, region, (Date.now() - start) / 1000);
     }
   }
 
   /** Build auth headers required by Polymarket CLOB API */
-  private buildHeaders(
-    method: string,
-    path: string,
-    body?: Record<string, unknown>,
-  ): Record<string, string> {
+  private buildHeaders(method: string, path: string, body?: Record<string, unknown>): Record<string, string> {
     return buildPolymarketHeaders(this.apiKey, this.apiSecret, this.passphrase, method, path, body);
   }
 
@@ -151,12 +126,7 @@ export class PolymarketAdapter {
     return serializeSignedOrder(order);
   }
 
-  private _computeSignature(
-    timestamp: string,
-    method: string,
-    path: string,
-    body?: Record<string, unknown>,
-  ): string {
+  private _computeSignature(timestamp: string, method: string, path: string, body?: Record<string, unknown>): string {
     return computePolymarketSignature(this.apiSecret, timestamp, method, path, body);
   }
 }

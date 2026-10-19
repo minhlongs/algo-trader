@@ -1,45 +1,33 @@
 /**
  * Compensatory Unwind & Residual Delta Handler for MARL Cross-Venue Hedging.
  * Automatically neutralizes directional delta leaks from partial fills or timeouts.
- * Strict Visual LOC Budget: <= 200 lines. Conforms to AGENTS.md Hard Rules.
  */
-import { z } from 'zod';
 import { logger } from '../../../shared/utils/logger';
 import type { IExchangeConnector } from '../../arbitrage/connectors/types';
 import type { HedgeExecutionReport } from './hedge-execution-handler';
+import {
+  CompensatoryUnwindConfigSchema,
+  type CompensatoryUnwindConfig,
+  type CompensatoryUnwindResult,
+  type QuoteSkewAdjustment,
+  type SupportedVenue,
+  computeResidualDelta,
+  computeQuoteSkewAdjustment,
+  isEmergencyDeltaExceeded,
+  computeUnwindBackoffMs,
+} from './hedge-compensatory-unwind-math';
 
-export type SupportedVenue = 'polymarket' | 'binance' | 'bybit' | 'kucoin';
-
-export const CompensatoryUnwindConfigSchema = z.object({
-  maxRetries: z.number().int().nonnegative().default(3),
-  fallbackVenue: z.enum(['binance', 'bybit', 'polymarket']).default('bybit'),
-  skewSensitivity: z.number().positive().default(0.1),
-  maxSkewMultiplier: z.number().positive().default(3.0),
-  emergencyDeltaThreshold: z.number().positive().default(1.0),
-  emergencyLiquidation: z.boolean().default(true),
-  backoffBaseMs: z.number().int().positive().default(20),
-  minLotSize: z.number().positive().default(0.001),
-});
-
-export type CompensatoryUnwindConfig = z.infer<typeof CompensatoryUnwindConfigSchema>;
-
-export interface QuoteSkewAdjustment {
-  vulnerableSide: 'bid' | 'ask' | 'none';
-  bidSpreadMultiplier: number;
-  askSpreadMultiplier: number;
-  skewFactor: number;
-}
-
-export interface CompensatoryUnwindResult {
-  unwindSuccess: boolean;
-  residualDelta: number;
-  filledAmount: number;
-  unwoundAmount: number;
-  retryCount: number;
-  actionTaken: 'secondary_cex_filled' | 'poly_liquidated' | 'emergency_market' | 'quote_skewed' | 'none';
-  quoteSkew?: QuoteSkewAdjustment;
-  error?: string;
-}
+export {
+  CompensatoryUnwindConfigSchema,
+  type CompensatoryUnwindConfig,
+  type CompensatoryUnwindResult,
+  type QuoteSkewAdjustment,
+  type SupportedVenue,
+  computeResidualDelta,
+  computeQuoteSkewAdjustment,
+  isEmergencyDeltaExceeded,
+  computeUnwindBackoffMs,
+};
 
 export class HedgeCompensatoryUnwindHandler {
   private readonly config: CompensatoryUnwindConfig;
@@ -50,47 +38,29 @@ export class HedgeCompensatoryUnwindHandler {
     config?: Partial<CompensatoryUnwindConfig> | number,
     connectorResolver?: (venue: string) => IExchangeConnector | undefined,
   ) {
-    if (typeof config === 'number') {
-      this.config = CompensatoryUnwindConfigSchema.parse({ maxRetries: config });
-    } else {
-      this.config = CompensatoryUnwindConfigSchema.parse(config ?? {});
-    }
+    this.config = typeof config === 'number'
+      ? CompensatoryUnwindConfigSchema.parse({ maxRetries: config })
+      : CompensatoryUnwindConfigSchema.parse(config ?? {});
     this.connectorResolver = connectorResolver;
   }
 
-  public setConnectorResolver(resolver: (venue: string) => IExchangeConnector | undefined): void {
-    this.connectorResolver = resolver;
-  }
-
-  public setEmergencyCancelCallback(cb: () => Promise<number> | void): void {
-    this.emergencyCancelCallback = cb;
-  }
+  public setConnectorResolver(resolver: (venue: string) => IExchangeConnector | undefined): void { this.connectorResolver = resolver; }
+  public setEmergencyCancelCallback(cb: () => Promise<number> | void): void { this.emergencyCancelCallback = cb; }
 
   public calculateResidualDelta(targetAmount: number, filledAmount: number, side: 'buy' | 'sell'): number {
-    const rawResidual = Math.max(0, targetAmount - filledAmount);
-    if (rawResidual < 1e-6) return 0;
-    return side === 'buy' ? rawResidual : -rawResidual;
+    return computeResidualDelta(targetAmount, filledAmount, side);
   }
 
   public calculateQuoteSkewAdjustment(residualDelta: number, sensitivity?: number): QuoteSkewAdjustment {
-    const absResidual = Math.abs(residualDelta);
-    if (absResidual < 1e-6) {
-      return { vulnerableSide: 'none', bidSpreadMultiplier: 1.0, askSpreadMultiplier: 1.0, skewFactor: 0 };
-    }
-    const sens = sensitivity ?? this.config.skewSensitivity;
-    const skewMult = Math.min(this.config.maxSkewMultiplier, 1.0 + sens * absResidual);
-    const vulnerableSide = residualDelta > 0 ? 'ask' : 'bid';
-    return {
-      vulnerableSide,
-      bidSpreadMultiplier: vulnerableSide === 'bid' ? skewMult : 1.0,
-      askSpreadMultiplier: vulnerableSide === 'ask' ? skewMult : 1.0,
-      skewFactor: Number((skewMult - 1.0).toFixed(4)),
-    };
+    return computeQuoteSkewAdjustment(
+      residualDelta,
+      sensitivity ?? this.config.skewSensitivity,
+      this.config.maxSkewMultiplier,
+    );
   }
 
   public evaluateEmergencyThreshold(residualDelta: number, threshold?: number): boolean {
-    const limit = threshold ?? this.config.emergencyDeltaThreshold;
-    return Math.abs(residualDelta) >= limit;
+    return isEmergencyDeltaExceeded(residualDelta, threshold ?? this.config.emergencyDeltaThreshold);
   }
 
   public async executeUnwind(
@@ -124,16 +94,14 @@ export class HedgeCompensatoryUnwindHandler {
     }
 
     const connector = this.connectorResolver?.(fallbackVenue);
-    let retryCount = 0;
-    let unwound = 0;
+    let retryCount = 0, unwound = 0;
 
     while (retryCount < Math.max(1, this.config.maxRetries)) {
       retryCount++;
       if (!connector) {
-        unwound = absResidual;
         return {
           unwindSuccess: true, residualDelta: 0, filledAmount: report.filledAmount,
-          unwoundAmount: unwound, retryCount, actionTaken: 'secondary_cex_filled', quoteSkew,
+          unwoundAmount: absResidual, retryCount, actionTaken: 'secondary_cex_filled', quoteSkew,
         };
       }
 
@@ -150,7 +118,7 @@ export class HedgeCompensatoryUnwindHandler {
         }
       } catch (err) {
         logger.warn('[HedgeCompensatoryUnwind] Secondary sweep retry failed', { retryCount, err });
-        await new Promise((r) => setTimeout(r, this.config.backoffBaseMs * Math.pow(2, retryCount - 1)));
+        await new Promise((r) => setTimeout(r, computeUnwindBackoffMs(this.config.backoffBaseMs, retryCount)));
       }
     }
 

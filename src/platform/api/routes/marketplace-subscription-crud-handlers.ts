@@ -27,23 +27,14 @@ const auditService = AuditLogService.getInstance();
 
 /**
  * POST / — Subscribe to a strategy listing
- *
- * Creates a new marketplace subscription. Validates the listing exists,
- * allocates capital, and generates a payment checkout if needed.
  */
-export async function createSubscription(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function createSubscription(req: Request, res: Response): Promise<void> {
   const tenantId = getTenantId(req);
   const userId = getUserId(req);
 
   const parsed = subscribeSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: 'Invalid request body',
-      details: parsed.error.issues,
-    });
+    res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
     return;
   }
 
@@ -62,25 +53,18 @@ export async function createSubscription(
       listingId: parsed.data.listingId,
     });
 
-    await auditService.log(
-      tenantId,
-      'api_call' as AuditEventType,
-      {
-        tier: undefined,
-        metadata: {
-          action: 'subscription.create',
-          userId,
-          resourceId: result.subscription.id,
-        },
+    await auditService.log(tenantId, 'api_call' as AuditEventType, {
+      tier: undefined,
+      metadata: {
+        action: 'subscription.create',
+        userId,
+        resourceId: result.subscription.id,
       },
-    );
+    });
 
     res.status(201).json(result);
   } catch (error) {
-    logger.error('[Marketplace] Error creating subscription', {
-      error,
-      tenantId,
-    });
+    logger.error('[Marketplace] Error creating subscription', { error, tenantId });
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to create subscription',
@@ -90,22 +74,13 @@ export async function createSubscription(
 
 /**
  * GET / — List my subscriptions
- *
- * Returns paginated subscriptions for the current tenant/user.
- * Supports filtering by status.
  */
-export async function listSubscriptions(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function listSubscriptions(req: Request, res: Response): Promise<void> {
   const tenantId = getTenantId(req);
 
   const parsed = subscriptionFilterSchema.safeParse(req.query);
   if (!parsed.success) {
-    res.status(400).json({
-      error: 'Invalid query parameters',
-      details: parsed.error.issues,
-    });
+    res.status(400).json({ error: 'Invalid query parameters', details: parsed.error.issues });
     return;
   }
 
@@ -131,32 +106,20 @@ export async function listSubscriptions(
 
 /**
  * GET /:id — Get subscription details
- *
- * Returns a single subscription. Accessible to the subscription's tenant
- * or admin users.
  */
-export async function getSubscription(
-  req: Request,
-  res: Response,
-): Promise<void> {
+export async function getSubscription(req: Request, res: Response): Promise<void> {
   const id = getQueryString(req.params.id);
   const tenantId = getTenantId(req);
 
   try {
     const subscription = await subscriptionService.getSubscription(id);
     if (!subscription) {
-      res.status(404).json({
-        error: 'Not found',
-        message: `Subscription ${id} not found`,
-      });
+      res.status(404).json({ error: 'Not found', message: `Subscription ${id} not found` });
       return;
     }
 
     if (subscription.tenantId !== tenantId && !isAdmin(req)) {
-      res.status(404).json({
-        error: 'Not found',
-        message: 'Subscription not found',
-      });
+      res.status(404).json({ error: 'Not found', message: 'Subscription not found' });
       return;
     }
 

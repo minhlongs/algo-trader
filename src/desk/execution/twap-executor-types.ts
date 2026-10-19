@@ -84,3 +84,52 @@ export const DEFAULT_TWAP_CONFIG: TwapConfig = {
 
 /** Epsilon for floating-point comparisons */
 export const FLOAT_EPSILON = 0.0001;
+
+export function planTwapChunks(
+  config: TwapConfig,
+  totalSizeUsd: number,
+  requestedChunkSize?: number,
+): number[] {
+  const chunkSize = Math.max(config.minChunkUsd, Math.min(config.maxChunkUsd, requestedChunkSize ?? config.maxChunkUsd));
+  const chunks: number[] = [];
+  let remaining = totalSizeUsd;
+  while (remaining > 0) {
+    const size = Math.min(chunkSize, remaining);
+    if (size < config.minChunkUsd && chunks.length > 0) {
+      chunks[chunks.length - 1] += size;
+      remaining = 0;
+    } else {
+      chunks.push(size);
+      remaining -= size;
+    }
+  }
+  return chunks;
+}
+
+export function createInitialTwapResult(
+  order: TwapOrder,
+  arrivalPrice: number,
+  chunksPlanned: number,
+  startedAt: number,
+): TwapResult {
+  return {
+    marketId: order.marketId, side: order.side,
+    totalSizeUsd: order.totalSizeUsd, executedSizeUsd: 0,
+    chunksPlanned, chunksExecuted: 0,
+    averagePrice: 0, arrivalPrice, totalSlippagePercent: 0,
+    aborted: false, chunks: [], startedAt, completedAt: 0,
+  };
+}
+
+export function finalizeTwapResult(result: TwapResult, totalCostWeighted: number, arrivalPrice: number): void {
+  result.averagePrice = result.executedSizeUsd > 0 ? totalCostWeighted / result.executedSizeUsd : 0;
+  result.totalSlippagePercent = arrivalPrice > 0 ? (Math.abs(result.averagePrice - arrivalPrice) / arrivalPrice) * 100 : 0;
+  result.completedAt = Date.now();
+}
+
+export function waitInterChunkDelay(delayMs: number, signal: AbortSignal): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, delayMs);
+    signal.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('Aborted during delay')); }, { once: true });
+  });
+}

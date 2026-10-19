@@ -6,8 +6,6 @@
  * fastChat() — Nemotron Nano (fast triage) → DeepSeek R1 → Ollama → Claude
  * qwenChat() — Qwen3-30B MoE (long-context) → DeepSeek R1 → Ollama → Claude
  * Gated by LLM_QWEN_ENABLED=true. Falls back to chat() if disabled/unhealthy.
- *
- * OpenAI-compatible /v1/chat/completions for all providers.
  */
 
 import { EventEmitter } from 'events';
@@ -19,6 +17,10 @@ import {
   RouterResponse,
   HealthState,
   assertOmniRouteConfig,
+  initEndpointHealthMap,
+  checkEndpointHealth,
+  recordEndpointHealthy,
+  recordEndpointUnhealthy,
 } from './llm-router-types';
 import { LlmSpendTracker, executeLlmEndpointCall } from './llm-router-executor';
 
@@ -27,29 +29,14 @@ export type { ChatMessage, RouterRequest, RouterResponse };
 
 export class LlmRouter extends EventEmitter {
   private config: LlmConfig;
-  private health: Map<string, HealthState> = new Map();
+  private health: Map<string, HealthState>;
   private spendTracker = new LlmSpendTracker();
 
   constructor(config?: Partial<LlmConfig>) {
     super();
     this.config = { ...loadLlmConfig(), ...config };
     assertOmniRouteConfig(this.config);
-
-    const urls: string[] = [];
-    for (const ep of [
-      this.config.primary,
-      this.config.fastTriage,
-      this.config.fallback,
-      this.config.qwen,
-      this.config.cloud,
-    ]) {
-      if (ep?.url) urls.push(ep.url);
-    }
-    for (const url of urls) {
-      if (!this.health.has(url)) {
-        this.health.set(url, { healthy: true, lastCheck: 0, consecutiveFailures: 0 });
-      }
-    }
+    this.health = initEndpointHealthMap(this.config);
   }
 
   /** Deep reasoning route: DeepSeek R1 → Ollama → Claude cloud */
@@ -91,9 +78,7 @@ export class LlmRouter extends EventEmitter {
    * No-op (delegates to chat()) when LLM_QWEN_ENABLED is not 'true'.
    */
   async qwenChat(request: RouterRequest): Promise<RouterResponse> {
-    if (!this.config.qwen) {
-      return this.chat(request);
-    }
+    if (!this.config.qwen) return this.chat(request);
 
     if (this.isHealthy(this.config.qwen.url)) {
       try {
@@ -127,41 +112,25 @@ export class LlmRouter extends EventEmitter {
   ): Promise<RouterResponse> {
     const res = await executeLlmEndpointCall(endpoint, request, provider);
     this.markHealthy(endpoint.url);
-    if (provider === 'cloud') {
-      this.spendTracker.trackCloudSpend(res.tokensUsed);
-    }
+    if (provider === 'cloud') this.spendTracker.trackCloudSpend(res.tokensUsed);
     return res;
   }
 
   private isHealthy(url: string): boolean {
-    const state = this.health.get(url);
-    if (!state) return true;
-    if (Date.now() - state.lastCheck > this.config.healthCheckIntervalMs) return true;
-    return state.healthy;
+    return checkEndpointHealth(this.health, url, this.config.healthCheckIntervalMs);
   }
 
   private markHealthy(url: string): void {
-    this.health.set(url, { healthy: true, lastCheck: Date.now(), consecutiveFailures: 0 });
+    recordEndpointHealthy(this.health, url);
   }
 
   private markUnhealthy(url: string): void {
-    const state = this.health.get(url) || { healthy: false, lastCheck: 0, consecutiveFailures: 0 };
-    state.healthy = false;
-    state.lastCheck = Date.now();
-    state.consecutiveFailures++;
-    this.health.set(url, state);
-    this.emit('unhealthy', { url, failures: state.consecutiveFailures });
+    const failures = recordEndpointUnhealthy(this.health, url);
+    this.emit('unhealthy', { url, failures });
   }
 
-  /** Read-only access to the resolved LLM config (for diagnostics/metadata). */
-  getConfig(): LlmConfig {
-    return this.config;
-  }
-
-  getHealth(): Record<string, HealthState> {
-    return Object.fromEntries(this.health);
-  }
-
+  getConfig(): LlmConfig { return this.config; }
+  getHealth(): Record<string, HealthState> { return Object.fromEntries(this.health); }
   getCloudSpend(): { spent: number; budget: number; remaining: number } {
     return this.spendTracker.getCloudSpend(this.config.cloudDailyBudgetUsd);
   }

@@ -105,9 +105,7 @@ export class ArbitrageRiskGuard {
     basketOrParams: MultiLegArbitrageBasket | ArbitrageRiskCheckParams,
     context?: ArbitrageRiskContext,
   ): Promise<ArbitrageRiskCheckResult> {
-    if ('legs' in basketOrParams) {
-      return this.checkBasket(basketOrParams, context);
-    }
+    if ('legs' in basketOrParams) return this.checkBasket(basketOrParams, context);
     const { basket, mergedContext } = adaptPreTradeParamsToBasket(basketOrParams, context);
     return this.checkBasket(basket, mergedContext);
   }
@@ -142,55 +140,20 @@ export class ArbitrageRiskGuard {
     this.exposureTracker.resetExposures();
   }
 
-  computeQuarterKellySizing(
-    requestedNotional: number,
-    bankroll: number,
-    p: number,
-    b: number,
-  ): number {
+  computeQuarterKellySizing(requestedNotional: number, bankroll: number, p: number, b: number): number {
     return computeQuarterKellySizingFormula(
-      requestedNotional,
-      bankroll,
-      p,
-      b,
-      this.config.maxKellyPositionFraction,
-      this.config.maxPerTradeNotionalUsd,
+      requestedNotional, bankroll, p, b,
+      this.config.maxKellyPositionFraction, this.config.maxPerTradeNotionalUsd,
     );
   }
 
-  getConfig(): Readonly<ArbitrageRiskConfig> {
-    return this.config;
-  }
-
-  updateConfig(patch: Partial<ArbitrageRiskConfig>): void {
-    this.config = { ...this.config, ...patch };
-  }
-
-  getLiveExecutionGuard(): LiveExecutionGuard {
-    return this.liveExecutionGuard;
-  }
-
-  getRiskGateManager(): RiskGateManager {
-    return this.riskGateManager;
-  }
-
-  getKellyPositionSizer(): KellyPositionSizer {
-    return this.kellyPositionSizer;
-  }
-
-  getTieredDrawdownBreaker(): TieredDrawdownBreaker | undefined {
-    return this.tieredDrawdownBreaker;
-  }
-
-  getDrawdownMonitor(): DrawdownMonitor | undefined {
-    return this.drawdownMonitor;
-  }
-
-  getCircuitBreaker(): CircuitBreaker | undefined {
-    return this.circuitBreaker;
-  }
-
-  getSpreadDetector(): SpreadDetector | undefined {
-    return this.spreadDetector;
-  }
+  getConfig(): Readonly<ArbitrageRiskConfig> { return this.config; }
+  updateConfig(patch: Partial<ArbitrageRiskConfig>): void { this.config = { ...this.config, ...patch }; }
+  getLiveExecutionGuard(): LiveExecutionGuard { return this.liveExecutionGuard; }
+  getRiskGateManager(): RiskGateManager { return this.riskGateManager; }
+  getKellyPositionSizer(): KellyPositionSizer { return this.kellyPositionSizer; }
+  getTieredDrawdownBreaker(): TieredDrawdownBreaker | undefined { return this.tieredDrawdownBreaker; }
+  getDrawdownMonitor(): DrawdownMonitor | undefined { return this.drawdownMonitor; }
+  getCircuitBreaker(): CircuitBreaker | undefined { return this.circuitBreaker; }
+  getSpreadDetector(): SpreadDetector | undefined { return this.spreadDetector; }
 }

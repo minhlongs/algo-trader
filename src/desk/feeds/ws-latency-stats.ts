@@ -1,15 +1,44 @@
 /**
- * WebSocket Latency Statistics Helpers
- * Pure functions for latency calculations
+ * WebSocket Latency Statistics & Initial Config/Stats Helpers
+ * Pure functions for latency calculations and initial state creation
  */
 
 import type { BaseWebSocketClient } from './websocket-client';
+import type { ConnectionStats, WebSocketConfig } from './ws-types';
 
 export interface LatencyStatsResult {
   avgLatency: number;
   minLatency: number;
   maxLatency: number;
   p95Latency: number;
+}
+
+export function buildDefaultWebSocketConfig(config: Partial<WebSocketConfig>): WebSocketConfig {
+  return {
+    url: config.url || '',
+    reconnectDelay: config.reconnectDelay || 1000,
+    maxReconnectDelay: config.maxReconnectDelay || 30000,
+    heartbeatInterval: config.heartbeatInterval || 30000,
+    reconnectMultiplier: config.reconnectMultiplier || 2,
+    maxReconnectAttempts: config.maxReconnectAttempts || 10,
+    enableJitter: config.enableJitter ?? true,
+    heartbeatTimeout: config.heartbeatTimeout || 10000,
+    latencyTracking: config.latencyTracking ?? true,
+  };
+}
+
+export function createInitialConnectionStats(reconnectCount = 0): ConnectionStats {
+  return {
+    reconnectCount,
+    messageCount: 0,
+    heartbeatCount: 0,
+    avgLatency: 0,
+    minLatency: Infinity,
+    maxLatency: 0,
+    p95Latency: 0,
+    latencySamples: [],
+    uptime: 0,
+  };
 }
 
 /**

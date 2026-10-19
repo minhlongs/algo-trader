@@ -11,10 +11,15 @@ import {
   type CircuitState,
   type CircuitStatus,
   DEFAULT_CIRCUIT_BREAKER_CONFIG,
+  parseRedisCircuitStatus,
+  resolveSyncCircuitStatus,
 } from './circuit-breaker-types';
 import { logCircuitBreakerTripped, logCircuitBreakerReset } from './circuit-breaker-audit';
 
-export { DEFAULT_CIRCUIT_BREAKER_CONFIG, type CircuitBreakerConfig, type CircuitState, type CircuitStatus } from './circuit-breaker-types';
+export {
+  DEFAULT_CIRCUIT_BREAKER_CONFIG, parseRedisCircuitStatus, resolveSyncCircuitStatus,
+  type CircuitBreakerConfig, type CircuitState, type CircuitStatus,
+} from './circuit-breaker-types';
 
 export class CircuitBreaker {
   private redis: RedisClientType;
@@ -35,11 +40,10 @@ export class CircuitBreaker {
   async getStatus(): Promise<CircuitStatus> {
     try {
       const status = await this.redis.hgetall('circuit_breaker:status');
-      if (status?.state) {
-        this.state = status.state as CircuitState;
-        this.reason = status.reason;
-        this.triggeredAt = status.triggeredAt ? parseInt(status.triggeredAt) : undefined;
-      }
+      const parsed = parseRedisCircuitStatus(status, { state: this.state, reason: this.reason, triggeredAt: this.triggeredAt });
+      this.state = parsed.state;
+      this.reason = parsed.reason;
+      this.triggeredAt = parsed.triggeredAt;
     } catch {
       // Fall back to in-memory state
     }
@@ -48,16 +52,9 @@ export class CircuitBreaker {
 
   /** Get synchronous in-memory snapshot */
   getSyncStatus(): CircuitStatus {
-    if (this.state === 'OPEN' && this.triggeredAt) {
-      const elapsed = Date.now() - this.triggeredAt;
-      const remaining = Math.max(0, this.config.cooldownMs - elapsed);
-      if (remaining <= 0) {
-        this.state = 'HALF_OPEN';
-        return { state: 'HALF_OPEN', reason: this.reason, triggeredAt: this.triggeredAt, cooldownRemaining: 0 };
-      }
-      return { state: 'OPEN', reason: this.reason, triggeredAt: this.triggeredAt, cooldownRemaining: remaining };
-    }
-    return { state: this.state, reason: this.reason, triggeredAt: this.triggeredAt };
+    const resolved = resolveSyncCircuitStatus(this.state, this.reason, this.triggeredAt, this.config.cooldownMs);
+    this.state = resolved.nextState;
+    return resolved.status;
   }
 
   /** Check if trading is allowed */
@@ -79,7 +76,6 @@ export class CircuitBreaker {
     } catch {
       // In-memory fallback
     }
-
     if (newStreak >= this.config.maxLossStreak) {
       await this.trip('Loss streak', `${newStreak} consecutive losses`);
     }
@@ -88,11 +84,7 @@ export class CircuitBreaker {
   /** Record win - reset loss streak */
   async recordWin(): Promise<void> {
     this.localLossStreak = 0;
-    try {
-      await this.redis.del('circuit_breaker:loss_streak');
-    } catch {
-      // In-memory fallback
-    }
+    try { await this.redis.del('circuit_breaker:loss_streak'); } catch { /* In-memory fallback */ }
   }
 
   /** Check latency - trip if exceeds threshold */
@@ -119,26 +111,12 @@ export class CircuitBreaker {
     this.reason = `${reason}: ${details || ''}`.trim();
     this.triggeredAt = Date.now();
     try {
-      await this.redis.hset('circuit_breaker:status', {
-        state: 'OPEN',
-        reason: this.reason,
-        triggeredAt: this.triggeredAt.toString(),
-      });
+      await this.redis.hset('circuit_breaker:status', { state: 'OPEN', reason: this.reason, triggeredAt: this.triggeredAt.toString() });
     } catch (err) {
       logger.warn('[CircuitBreaker] Failed to update status in Redis:', { err });
     }
     await logCircuitBreakerTripped(reason, details, this.triggeredAt);
     logger.warn(`[CircuitBreaker] TRIPPED: ${reason} - ${details}`);
-  }
-
-  /** Set circuit to half-open (after cooldown) */
-  private async setHalfOpen(): Promise<void> {
-    this.state = 'HALF_OPEN';
-    try {
-      await this.redis.hset('circuit_breaker:status', 'state', 'HALF_OPEN');
-    } catch {
-      // In-memory fallback
-    }
   }
 
   /** Reset circuit breaker to closed */
@@ -158,19 +136,15 @@ export class CircuitBreaker {
   }
 
   /** Manual halt - force open circuit */
-  async halt(reason: string): Promise<void> {
-    await this.trip('Manual halt', reason);
-  }
+  async halt(reason: string): Promise<void> { await this.trip('Manual halt', reason); }
 
   /** Check daily drawdown - trip if exceeds max threshold */
   async checkDailyDrawdown(): Promise<boolean> {
     if (!this.drawdownMonitor) return true;
     const metrics = await this.drawdownMonitor.getMetrics();
     if (metrics.dailyDrawdown >= this.config.maxDailyDrawdown) {
-      await this.trip(
-        'Daily drawdown breach',
-        `${(metrics.dailyDrawdown * 100).toFixed(2)}% exceeds ${(this.config.maxDailyDrawdown * 100).toFixed(2)}%`
-      );
+      const msg = `${(metrics.dailyDrawdown * 100).toFixed(2)}% exceeds ${(this.config.maxDailyDrawdown * 100).toFixed(2)}%`;
+      await this.trip('Daily drawdown breach', msg);
       return false;
     }
     return true;

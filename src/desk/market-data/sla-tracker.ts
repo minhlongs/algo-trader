@@ -14,11 +14,21 @@ import type {
   SlaWindowReport,
   SlaReport,
 } from './sla-tracker-types';
-import { buildWindowReport, calculateHealthScore } from './sla-tracker-scoring';
-import { ensureProvider, getOrCreateWindow } from './sla-tracker-state';
+import {
+  buildWindowReport,
+  calculateHealthScore,
+  buildProviderSlaReport,
+  doesWindowMeetSlaTarget,
+} from './sla-tracker-scoring';
+import {
+  recordRequestInWindows,
+  recordCandlesInWindows,
+  resetProviderWindows,
+} from './sla-tracker-state';
 import { updateProviderMetrics } from './sla-tracker-metrics';
 
 export type { SlaTrackerConfig, SlaWindowReport, SlaReport } from './sla-tracker-types';
+export { buildWindowReport, calculateHealthScore, buildProviderSlaReport, doesWindowMeetSlaTarget };
 
 /**
  * SLA Tracker — maintains sliding windows for provider SLA tracking:
@@ -41,23 +51,7 @@ export class SlaTracker {
    * Record a request result
    */
   recordRequest(provider: MarketDataSource, success: boolean, latencyMs: number): void {
-    const now = Date.now();
-    ensureProvider(this.providerMetrics, provider);
-
-    for (const windowHours of this.config.windows) {
-      const window = getOrCreateWindow(this.providerMetrics, provider, windowHours, now);
-
-      window.totalRequests++;
-      if (!success) window.failedRequests++;
-      window.totalLatency += latencyMs;
-      window.latencySamples.push(latencyMs);
-
-      // Trim latency samples if too large
-      if (window.latencySamples.length > 1000) {
-        window.latencySamples = window.latencySamples.slice(-500);
-      }
-    }
-
+    recordRequestInWindows(this.providerMetrics, provider, this.config.windows, success, latencyMs);
     this.updateMetrics(provider);
   }
 
@@ -71,17 +65,7 @@ export class SlaTracker {
     expected: number,
     received: number
   ): void {
-    // For SLA purposes, we aggregate across all symbols/timeframes
-    // Individual symbol tracking would be in GapDetector
-    const now = Date.now();
-    ensureProvider(this.providerMetrics, provider);
-
-    for (const windowHours of this.config.windows) {
-      const window = getOrCreateWindow(this.providerMetrics, provider, windowHours, now);
-      window.expectedCandles += expected;
-      window.receivedCandles += received;
-    }
-
+    recordCandlesInWindows(this.providerMetrics, provider, this.config.windows, expected, received);
     this.updateMetrics(provider);
   }
 
@@ -90,70 +74,27 @@ export class SlaTracker {
    */
   getSlaReport(provider: MarketDataSource): SlaReport | null {
     const providerData = this.providerMetrics.get(provider);
-    if (!providerData) {
-      return null;
-    }
+    if (!providerData) return null;
 
-    const now = Date.now();
-    const windows: Record<number, SlaWindowReport> = {};
-
-    for (const [windowHours, window] of providerData) {
-      windows[windowHours] = buildWindowReport(window, windowHours, now);
-    }
-
-    const healthScore = calculateHealthScore(windows);
-    const lastUpdate = now;
-
-    // Cache health score in metrics
+    const report = buildProviderSlaReport(provider, providerData);
     if (this.config.enableMetrics) {
-      setProviderHealthScore(provider as string, healthScore);
+      setProviderHealthScore(provider as string, report.healthScore);
     }
-
-    return {
-      provider,
-      windows,
-      healthScore,
-      lastUpdate,
-    };
+    return report;
   }
 
   /**
    * Check if provider meets SLA target for a specific window
    */
   meetsSlaTarget(provider: MarketDataSource, windowHours: number = 24): boolean {
-    const report = this.getSlaReport(provider);
-    if (!report) {
-      return false;
-    }
-
-    const windowReport = report.windows[windowHours];
-    if (!windowReport) {
-      return false;
-    }
-
-    const meetsAvailability = windowReport.availability >= this.config.targetAvailability;
-    const meetsLatency = windowReport.avgLatency < 1000; // 1 second threshold
-
-    return meetsAvailability && meetsLatency;
+    return doesWindowMeetSlaTarget(this.getSlaReport(provider), windowHours, this.config.targetAvailability);
   }
 
   /**
    * Reset metrics for a provider
    */
   reset(provider: MarketDataSource): void {
-    const providerData = this.providerMetrics.get(provider);
-    if (providerData) {
-      // Reset each window to initial state instead of deleting
-      for (const [, window] of providerData) {
-        window.totalRequests = 0;
-        window.failedRequests = 0;
-        window.totalLatency = 0;
-        window.latencySamples = [];
-        window.expectedCandles = 0;
-        window.receivedCandles = 0;
-        window.startTime = Date.now();
-      }
-    }
+    resetProviderWindows(this.providerMetrics, provider);
     if (this.config.enableMetrics) {
       setProviderHealthScore(provider as string, 0);
     }

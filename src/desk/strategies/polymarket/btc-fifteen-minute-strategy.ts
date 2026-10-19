@@ -13,6 +13,21 @@
 
 import { logger } from '../../core/logger';
 import { fuseSignals, type SignalInput } from '../../intelligence/signal-fusion-engine';
+import {
+  extractCloses,
+  extractVolumes,
+  computeMomentum,
+  computeVolatility,
+  computeMeanReversion,
+} from './btc-signals-math';
+
+export {
+  extractCloses,
+  extractVolumes,
+  computeMomentum,
+  computeVolatility,
+  computeMeanReversion,
+};
 
 // ── Public interface ──────────────────────────────────────────────────────────
 
@@ -28,7 +43,7 @@ export interface BtcSignal {
 // ── Binance kline response shape ──────────────────────────────────────────────
 
 /** Binance kline tuple: [openTime, open, high, low, close, volume, ...] */
-type BinanceKline = [
+export type BinanceKline = [
   number,  // 0: open time
   string,  // 1: open
   string,  // 2: high
@@ -47,20 +62,11 @@ const INTERVAL = '1m';
 const LIMIT = 16;
 const FETCH_TIMEOUT_MS = 8_000;
 
-// ── Signal config — tune these to adjust sensitivity ─────────────────────────
-
-/** How many recent candles define "momentum" */
-const MOMENTUM_WINDOW = 5;
-/** Initial equal weights — updated externally via updateWeights() */
 const DEFAULT_WEIGHTS: Record<string, number> = {
   momentum: 0.4,
   volatility: 0.3,
   'mean-reversion': 0.3,
 };
-/** Volatility normalization reference (1% stddev = score 0) */
-const VOL_NEUTRAL_PCT = 0.01;
-/** Mean reversion normalization: distance > this % = max score */
-const REVERSION_MAX_PCT = 0.005;
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
@@ -76,79 +82,6 @@ async function fetchBinanceKlines(): Promise<BinanceKline[]> {
   }
 
   return resp.json() as Promise<BinanceKline[]>;
-}
-
-// ── Signal computation ────────────────────────────────────────────────────────
-
-/** Extract close prices from klines (all except the last, incomplete candle) */
-function extractCloses(klines: BinanceKline[]): number[] {
-  // Exclude last candle (still open); use the 15 closed ones
-  return klines.slice(0, -1).map(k => parseFloat(k[4]));
-}
-
-/** Extract volume from klines (parallel to closes) */
-function extractVolumes(klines: BinanceKline[]): number[] {
-  return klines.slice(0, -1).map(k => parseFloat(k[5]));
-}
-
-/**
- * Momentum signal: returns score in [-1, +1].
- * Positive = price rising, negative = falling.
- * Normalized by the momentum window length to avoid magnitude explosion.
- */
-function computeMomentum(closes: number[]): number {
-  if (closes.length < MOMENTUM_WINDOW + 1) return 0;
-  const recent = closes[closes.length - 1];
-  const baseline = closes[closes.length - 1 - MOMENTUM_WINDOW];
-  if (baseline === 0) return 0;
-
-  const pctChange = (recent - baseline) / baseline;
-  // Normalize: +/-2% move = +/-1 score (clamp to [-1, +1])
-  return Math.max(-1, Math.min(1, pctChange / 0.02));
-}
-
-/**
- * Volatility signal: returns score in [-1, +1].
- * High volatility → positive score (favors breakout / directional trade).
- * Low volatility → negative score (mean-reverting conditions, avoid).
- * Normalized relative to VOL_NEUTRAL_PCT.
- */
-function computeVolatility(closes: number[]): number {
-  if (closes.length < 2) return 0;
-
-  const mean = closes.reduce((s, c) => s + c, 0) / closes.length;
-  const variance = closes.reduce((s, c) => s + Math.pow(c - mean, 2), 0) / closes.length;
-  const stddev = Math.sqrt(variance);
-  const stddevPct = mean > 0 ? stddev / mean : 0;
-
-  // Normalize: stddev at VOL_NEUTRAL_PCT → score 0; double → score +1
-  const raw = (stddevPct - VOL_NEUTRAL_PCT) / VOL_NEUTRAL_PCT;
-  return Math.max(-1, Math.min(1, raw));
-}
-
-/**
- * Mean reversion signal: returns score in [-1, +1].
- * Negative (below VWAP) → expects UP (positive score).
- * Positive (above VWAP) → expects DOWN (negative score).
- * Uses volume-weighted average price over the candle window.
- */
-function computeMeanReversion(closes: number[], volumes: number[]): number {
-  if (closes.length === 0 || closes.length !== volumes.length) return 0;
-
-  const totalVol = volumes.reduce((s, v) => s + v, 0);
-  if (totalVol === 0) {
-    // Fallback to simple average if no volume data
-    const avg = closes.reduce((s, c) => s + c, 0) / closes.length;
-    const last = closes[closes.length - 1];
-    const dist = (avg - last) / avg;
-    return Math.max(-1, Math.min(1, dist / REVERSION_MAX_PCT));
-  }
-
-  const vwap = closes.reduce((s, c, i) => s + c * volumes[i], 0) / totalVol;
-  const last = closes[closes.length - 1];
-  // Positive dist = price below VWAP → expect reversion UP
-  const dist = (vwap - last) / vwap;
-  return Math.max(-1, Math.min(1, dist / REVERSION_MAX_PCT));
 }
 
 // ── Main entry point ──────────────────────────────────────────────────────────

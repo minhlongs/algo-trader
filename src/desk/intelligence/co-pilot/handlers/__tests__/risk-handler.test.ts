@@ -18,15 +18,8 @@ import type { Position } from '../../../risk/position-manager-types';
 
 function makeMetrics(overrides: Partial<DrawdownMetrics> = {}): DrawdownMetrics {
   return {
-    currentDrawdown: 0.05,
-    maxDrawdown: 0.1,
-    peakValue: 1000,
-    currentValue: 950,
-    dailyPnl: 0,
-    dailyDrawdown: 0.05,
-    consecutiveLosses: 0,
-    isHalted: false,
-    ...overrides,
+    currentDrawdown: 0.05, maxDrawdown: 0.1, peakValue: 1000, currentValue: 950,
+    dailyPnl: 0, dailyDrawdown: 0.05, consecutiveLosses: 0, isHalted: false, ...overrides,
   };
 }
 
@@ -36,15 +29,8 @@ function makeCircuit(overrides: Partial<CircuitStatus> = {}): CircuitStatus {
 
 function makePosition(overrides: Partial<Position> = {}): Position {
   return {
-    symbol: 'BTC',
-    exchange: 'binance',
-    side: 'long',
-    amount: 1,
-    entryPrice: 50000,
-    currentValue: 50000,
-    unrealizedPnl: 0,
-    openedAt: Date.now(),
-    ...overrides,
+    symbol: 'BTC', exchange: 'binance', side: 'long', amount: 1,
+    entryPrice: 50000, currentValue: 50000, unrealizedPnl: 0, openedAt: Date.now(), ...overrides,
   };
 }
 
@@ -57,12 +43,8 @@ function makeDeps(overrides: Partial<{
   const metricsVal = overrides.metrics !== undefined ? overrides.metrics : makeMetrics();
   return {
     kellySizer: {} as KellyPositionSizer,
-    drawdownMonitor: {
-      getMetrics: vi.fn().mockResolvedValue(metricsVal),
-    } as unknown as DrawdownMonitor,
-    circuitBreaker: {
-      getStatus: vi.fn().mockResolvedValue(overrides.circuit ?? makeCircuit()),
-    } as unknown as CircuitBreaker,
+    drawdownMonitor: { getMetrics: vi.fn().mockResolvedValue(metricsVal) } as unknown as DrawdownMonitor,
+    circuitBreaker: { getStatus: vi.fn().mockResolvedValue(overrides.circuit ?? makeCircuit()) } as unknown as CircuitBreaker,
     positionManager: {
       getAllPositions: vi.fn().mockResolvedValue(overrides.positions ?? []),
       getExposureSummary: vi.fn().mockResolvedValue({}),
@@ -77,22 +59,14 @@ describe('handleRiskQuery', () => {
     expect(res.answer).toContain('**Risk Assessment**');
     expect(res.actions).toHaveLength(2);
     expect(res.sourceData).toEqual({
-      riskScore: expect.any(Number),
-      drawdown: expect.any(Number),
-      circuitState: 'CLOSED',
-      warnings: [],
+      riskScore: expect.any(Number), drawdown: expect.any(Number), circuitState: 'CLOSED', warnings: [],
     });
   });
 
   it('uses zeroed metrics when the monitor returns null', async () => {
     const deps = makeDeps({ metrics: null, positions: [] });
     const res = await handleRiskQuery(undefined, deps);
-    expect(res.sourceData).toEqual({
-      riskScore: 0,
-      drawdown: 0,
-      circuitState: 'CLOSED',
-      warnings: [],
-    });
+    expect(res.sourceData).toEqual({ riskScore: 0, drawdown: 0, circuitState: 'CLOSED', warnings: [] });
     expect(res.answer).toContain('Drawdown: 0.00%');
   });
 

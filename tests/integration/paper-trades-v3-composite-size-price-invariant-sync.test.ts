@@ -135,6 +135,8 @@ const PERSISTENCE_PATH = resolve(
 );
 const DRAWDOWN_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-monitor.ts');
 const SIGNALS_LOOP_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
+const PNL_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-pnl.ts');
+const HELPERS_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-helpers.ts');
 
 /** Strip SQL comments. */
 function stripSqlComments(src: string): string {
@@ -232,8 +234,8 @@ describe('paper_trades_v3 composite {size_usd > 0, entry_price ∈ [0,1]} — 5-
   const migration = readFileSync(MIGRATION_PATH, 'utf8');
   const orchestrator = readFileSync(ORCHESTRATOR_PATH, 'utf8');
   const persistence = readFileSync(PERSISTENCE_PATH, 'utf8');
-  const drawdown = readFileSync(DRAWDOWN_PATH, 'utf8');
-  const signalsLoop = readFileSync(SIGNALS_LOOP_PATH, 'utf8');
+  const drawdown = readFileSync(DRAWDOWN_PATH, 'utf8') + '\n' + readFileSync(PNL_PATH, 'utf8');
+  const signalsLoop = readFileSync(SIGNALS_LOOP_PATH, 'utf8') + '\n' + readFileSync(HELPERS_PATH, 'utf8');
 
   const shape = extractCompositeColumnShape(stripSqlComments(migration));
 

@@ -56,10 +56,7 @@ export class PortfolioTelemetryHub {
   public setEngineAllocatedCapital(engineId: EngineId, capitalUsd: number): void {
     const existing = this.engineSnapshots[engineId];
     if (existing) {
-      this.engineSnapshots[engineId] = {
-        ...existing,
-        allocatedCapitalUsd: Math.max(0, capitalUsd),
-      };
+      this.engineSnapshots[engineId] = { ...existing, allocatedCapitalUsd: Math.max(0, capitalUsd) };
     }
   }
 
@@ -86,29 +83,15 @@ export class PortfolioTelemetryHub {
 
   public getConsolidatedSnapshot(): ConsolidatedPortfolioSnapshot {
     const snapshots = { ...this.engineSnapshots };
-    const allocatedCapitalUsd = Object.values(snapshots).reduce(
-      (sum, s) => sum + s.allocatedCapitalUsd,
-      0
-    );
-    const totalMtmPnlUsd = Object.values(snapshots).reduce(
-      (sum, s) => sum + s.mtmPnlUsd,
-      0
-    );
-    const totalMarginUsedUsd = Object.values(snapshots).reduce(
-      (sum, s) => sum + s.marginUsedUsd,
-      0
-    );
+    const values = Object.values(snapshots);
+    const allocatedCapitalUsd = values.reduce((sum, s) => sum + s.allocatedCapitalUsd, 0);
+    const totalMtmPnlUsd = values.reduce((sum, s) => sum + s.mtmPnlUsd, 0);
+    const totalMarginUsedUsd = values.reduce((sum, s) => sum + s.marginUsedUsd, 0);
 
     const totalEquityUsd = this.unallocatedCashUsd + allocatedCapitalUsd + totalMtmPnlUsd;
-    const marginUtilizationRatio =
-      totalEquityUsd > 0 ? totalMarginUsedUsd / totalEquityUsd : 0;
-    const grossLeverage =
-      totalEquityUsd > 0 ? (allocatedCapitalUsd + totalMarginUsedUsd) / totalEquityUsd : 0;
-    const { roceAnnualized } = RoceCalculator.computeRoce(
-      totalMtmPnlUsd,
-      allocatedCapitalUsd,
-      30
-    );
+    const marginUtilizationRatio = totalEquityUsd > 0 ? totalMarginUsedUsd / totalEquityUsd : 0;
+    const grossLeverage = totalEquityUsd > 0 ? (allocatedCapitalUsd + totalMarginUsedUsd) / totalEquityUsd : 0;
+    const { roceAnnualized } = RoceCalculator.computeRoce(totalMtmPnlUsd, allocatedCapitalUsd, 30);
 
     const tempSnapshot: ConsolidatedPortfolioSnapshot = {
       timestamp: Date.now(),
@@ -124,10 +107,7 @@ export class PortfolioTelemetryHub {
     };
 
     const recon = this.reconciler.reconcileSnapshot(tempSnapshot);
-    const finalSnapshot: ConsolidatedPortfolioSnapshot = {
-      ...tempSnapshot,
-      accountingDriftUsd: recon.driftUsd,
-    };
+    const finalSnapshot: ConsolidatedPortfolioSnapshot = { ...tempSnapshot, accountingDriftUsd: recon.driftUsd };
 
     this.eventBus.emit(TELEMETRY_TOPICS.SNAPSHOT, finalSnapshot);
     PortfolioMetricsRecorder.recordSnapshot(finalSnapshot);
@@ -144,8 +124,7 @@ export class PortfolioTelemetryHub {
   }
 
   public verifyBalance(): ZeroDriftResult {
-    const snapshot = this.getConsolidatedSnapshot();
-    return this.reconciler.reconcileSnapshot(snapshot);
+    return this.reconciler.reconcileSnapshot(this.getConsolidatedSnapshot());
   }
 
   public archiveEod(

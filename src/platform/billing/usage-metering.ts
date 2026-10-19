@@ -1,11 +1,6 @@
 /**
  * Usage Metering Service
- * Track trades against tier limits and sync with payment provider
- *
- * Facade: types/constants in usage-metering-types.ts, analytics queries in
- * usage-metering-analytics.ts, payment-provider sync in usage-metering-sync.ts,
- * trade tracking in usage-metering-tracking.ts.
- * All public symbols are re-exported here so importers stay unchanged.
+ * Track trades against tier limits and sync with payment provider.
  */
 
 import { getRedisClient, type RedisClientType } from '../../redis';
@@ -29,9 +24,13 @@ import {
   resetForNewPeriod as resetForNewPeriodWrite,
   trackTrade as trackTradeWrite,
 } from './usage-metering-tracking';
+import {
+  calculateOverageCharge,
+  calculateUsageStatus,
+} from './usage-metering-status';
 
 export type { UsageStatus, UsageMetrics, OverageCharge };
-export { MONTHLY_LIMITS, OVERAGE_PRICE_PER_TRADE };
+export { MONTHLY_LIMITS, OVERAGE_PRICE_PER_TRADE, calculateUsageStatus, calculateOverageCharge };
 
 export class UsageMeteringService extends EventEmitter {
   private static instance: UsageMeteringService;
@@ -54,22 +53,14 @@ export class UsageMeteringService extends EventEmitter {
     return UsageMeteringService.instance;
   }
 
-  /**
-   * Get current period (YYYY-MM format)
-   */
+  /** Get current period (YYYY-MM format) */
   getCurrentPeriod(): string {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  /**
-   * Track a trade for usage metering
-   */
-  async trackTrade(
-    licenseKey: string,
-    tier: LicenseTier,
-    tradeVolume?: number
-  ): Promise<UsageStatus> {
+  /** Track a trade for usage metering */
+  async trackTrade(licenseKey: string, tier: LicenseTier, tradeVolume?: number): Promise<UsageStatus> {
     return trackTradeWrite(
       {
         redis: this.redis,
@@ -80,76 +71,38 @@ export class UsageMeteringService extends EventEmitter {
       },
       licenseKey,
       tier,
-      tradeVolume
+      tradeVolume,
     );
   }
 
-  /**
-   * Get current usage status for a license
-   */
-  getUsageStatus(
-    licenseKey: string,
-    tier: LicenseTier,
-    cachedUsage?: number
-  ): UsageStatus {
-    const period = this.getCurrentPeriod();
-    const monthlyLimit = MONTHLY_LIMITS[tier];
-    const currentUsage = cachedUsage !== undefined
-      ? cachedUsage
-      : this.getUsageFromCache(licenseKey, period);
-
-    const remaining = Math.max(0, monthlyLimit - currentUsage);
-    const percentUsed = (currentUsage / monthlyLimit) * 100;
-    const isExceeded = currentUsage > monthlyLimit;
-    const overageUnits = isExceeded ? currentUsage - monthlyLimit : 0;
-    const overageCost = overageUnits * OVERAGE_PRICE_PER_TRADE[tier];
-
-    return {
+  /** Get current usage status for a license */
+  getUsageStatus(licenseKey: string, tier: LicenseTier, cachedUsage?: number): UsageStatus {
+    return calculateUsageStatus(
       licenseKey,
-      period,
       tier,
-      monthlyLimit,
-      currentUsage,
-      remaining,
-      percentUsed,
-      isExceeded,
-      overageUnits,
-      overageCost,
-    };
+      this.getCurrentPeriod(),
+      cachedUsage,
+      (key, period) => this.getUsageFromCache(key, period),
+    );
   }
 
   private getUsageFromCache(_licenseKey: string, _period: string): number {
-    // This would normally fetch from Redis, but we use cached value from trackTrade
     return 0;
   }
 
-  /**
-   * Calculate overage charges for a period
-   */
+  /** Calculate overage charges for a period */
   async calculateOverage(licenseKey: string, tier: LicenseTier): Promise<OverageCharge> {
     const period = this.getCurrentPeriod();
     const status = this.getUsageStatus(licenseKey, tier);
-
-    return {
-      licenseKey,
-      period,
-      units: status.overageUnits,
-      pricePerUnit: OVERAGE_PRICE_PER_TRADE[tier],
-      totalCost: status.overageCost,
-      status: status.overageUnits > 0 ? 'pending' : 'billed',
-    };
+    return calculateOverageCharge(licenseKey, tier, period, status);
   }
 
-  /**
-   * Get usage metrics for a license
-   */
+  /** Get usage metrics for a license */
   async getMetrics(licenseKey: string): Promise<UsageMetrics> {
     return getMetricsQuery(this.redis, () => this.getCurrentPeriod(), licenseKey);
   }
 
-  /**
-   * Sync usage data with payment provider
-   */
+  /** Sync usage data with payment provider */
   async syncUsage(licenseKey: string, tier: LicenseTier): Promise<boolean> {
     return syncUsageWithProvider(
       {
@@ -160,20 +113,16 @@ export class UsageMeteringService extends EventEmitter {
         emit: (event, payload) => this.emit(event, payload),
       },
       licenseKey,
-      tier
+      tier,
     );
   }
 
-  /**
-   * Get all usage data for revenue analytics
-   */
+  /** Get all usage data for revenue analytics */
   async getAllUsageData(period?: string): Promise<UsageStatus[]> {
     return getAllUsageDataQuery(this.redis, () => this.getCurrentPeriod(), period);
   }
 
-  /**
-   * Get revenue summary for period
-   */
+  /** Get revenue summary for period */
   async getRevenueSummary(period?: string): Promise<{
     subscriptionRevenue: number;
     overageRevenue: number;
@@ -184,15 +133,13 @@ export class UsageMeteringService extends EventEmitter {
     return getRevenueSummaryQuery(this.redis, () => this.getCurrentPeriod(), period);
   }
 
-  /**
-   * Reset usage for new period (called at period boundary)
-   */
+  /** Reset usage for new period (called at period boundary) */
   async resetForNewPeriod(licenseKey: string): Promise<void> {
     return resetForNewPeriodWrite(
       this.redis,
       this.alertedThresholds,
       () => this.getCurrentPeriod(),
-      licenseKey
+      licenseKey,
     );
   }
 }

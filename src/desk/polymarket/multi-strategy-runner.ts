@@ -16,41 +16,22 @@
  *   await runner.stop();
  */
 
-import { LiveTradingOrchestrator, type LiveTradingConfig } from './live-trading-orchestrator';
-import { StrategyRunner, type RunnerStatus } from './strategy-runner';
-import { getStrategy, type StrategyEntry } from './strategy-registry';
+import { LiveTradingOrchestrator } from './live-trading-orchestrator';
+import { StrategyRunner } from './strategy-runner';
 import { logger } from '../../shared/utils/logger';
+import {
+  resolveStrategyEntries,
+  buildMultiRunnerStatus,
+  type MultiRunnerConfig,
+  type MultiRunnerStatus,
+} from './multi-strategy-runner-helpers';
 
-// ── Types ──────────────────────────────────────────────────────────────────────
-
-export interface MultiRunnerConfig {
-  /** Strategy names to run (kebab-case registry keys) */
-  strategies: string[];
-  /** Trading config — all strategies share this */
-  tradingConfig: LiveTradingConfig;
-  /** Tick interval in ms (all strategies tick at same cadence, staggered) */
-  tickIntervalMs?: number;
-  /** Max ticks (0=unlimited, shared across all runners) */
-  maxTicks?: number;
-}
-
-export interface MultiRunnerStatus {
-  status: 'stopped' | 'running' | 'error';
-  mode: 'PAPER' | 'LIVE';
-  runnerCount: number;
-  runners: Array<{
-    strategy: string;
-    status: RunnerStatus['status'];
-    ticks: number;
-    orders: number;
-    positions: number;
-  }>;
-  summary: {
-    totalTicks: number;
-    totalOrders: number;
-    totalPositions: number;
-  };
-}
+export {
+  resolveStrategyEntries,
+  buildMultiRunnerStatus,
+  type MultiRunnerConfig,
+  type MultiRunnerStatus,
+};
 
 // ── Runner ─────────────────────────────────────────────────────────────────────
 
@@ -61,22 +42,7 @@ export class MultiStrategyRunner {
   private status: 'stopped' | 'running' | 'error' = 'stopped';
 
   constructor(config: MultiRunnerConfig) {
-    if (config.strategies.length === 0) {
-      throw new Error('At least one strategy required');
-    }
-
-    // Validate all strategies exist
-    const missing: string[] = [];
-    const entries: StrategyEntry[] = [];
-    for (const name of config.strategies) {
-      const entry = getStrategy(name);
-      if (!entry) missing.push(name);
-      else entries.push(entry);
-    }
-    if (missing.length > 0) {
-      throw new Error(`Unknown strategies: ${missing.join(', ')}`);
-    }
-
+    const entries = resolveStrategyEntries(config.strategies);
     this.config = config;
 
     // One shared orchestrator
@@ -135,28 +101,7 @@ export class MultiStrategyRunner {
   // ── Queries ──────────────────────────────────────────────────────────────────
 
   getStatus(): MultiRunnerStatus {
-    const runnerStatuses = this.runners.map((r) => {
-      const s = r.getStatus();
-      return {
-        strategy: s.strategyName,
-        status: s.status,
-        ticks: s.tickCount,
-        orders: s.proxyStats.ordersPlaced,
-        positions: this.orchestrator.getPositions().length,
-      };
-    });
-
-    return {
-      status: this.status,
-      mode: this.orchestrator.getMode(),
-      runnerCount: this.runners.length,
-      runners: runnerStatuses,
-      summary: {
-        totalTicks: runnerStatuses.reduce((sum, r) => sum + r.ticks, 0),
-        totalOrders: runnerStatuses.reduce((sum, r) => sum + r.orders, 0),
-        totalPositions: this.orchestrator.getPositions().length,
-      },
-    };
+    return buildMultiRunnerStatus(this.status, this.orchestrator, this.runners);
   }
 
   /** Check if all runners have stopped (e.g., maxTicks reached) */

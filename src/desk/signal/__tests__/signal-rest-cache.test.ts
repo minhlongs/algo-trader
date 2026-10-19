@@ -42,11 +42,7 @@ describe('signal-rest-cache: setCachedSignals', () => {
     await setCachedSignals(TIER, 1000, 50, SIGS);
 
     expect(mockGetRedis).toHaveBeenCalledTimes(1);
-    expect(redis.setex).toHaveBeenCalledWith(
-      'signal:rest:premium:1000:50',
-      10,
-      JSON.stringify(SIGS),
-    );
+    expect(redis.setex).toHaveBeenCalledWith('signal:rest:premium:1000:50', 10, JSON.stringify(SIGS));
   });
 
   it('swallows Redis write failures and logs a warning', async () => {
@@ -55,7 +51,6 @@ describe('signal-rest-cache: setCachedSignals', () => {
     mockGetRedis.mockReturnValue(redis);
 
     await expect(setCachedSignals(TIER, 0, 5, SIGS)).resolves.toBeUndefined();
-
     expect(mockLogger.warn).toHaveBeenCalledWith(
       '[SignalCache] Redis write failed',
       expect.objectContaining({ err: expect.any(Error) }),
@@ -72,7 +67,6 @@ describe('signal-rest-cache: getCachedSignals', () => {
     mockGetRedis.mockReturnValue(redis);
 
     const result = await getCachedSignals(TIER, 1000, 50);
-
     expect(result).toBeNull();
     expect(redis.get).toHaveBeenCalledWith('signal:rest:premium:1000:50');
   });
@@ -83,7 +77,6 @@ describe('signal-rest-cache: getCachedSignals', () => {
     mockGetRedis.mockReturnValue(redis);
 
     const result = await getCachedSignals(TIER, 1000, 50);
-
     expect(result).toEqual(SIGS);
   });
 
@@ -93,7 +86,6 @@ describe('signal-rest-cache: getCachedSignals', () => {
     mockGetRedis.mockReturnValue(redis);
 
     const result = await getCachedSignals(TIER, 0, 5);
-
     expect(result).toBeNull();
     expect(mockLogger.warn).toHaveBeenCalledWith(
       '[SignalCache] Redis read failed',
@@ -109,13 +101,8 @@ describe('signal-rest-cache: getCachedSignals', () => {
     mockGetRedis.mockReturnValue(redis);
 
     const result = await getCachedSignals(TIER, 1000, 50);
-
-    // JSON.parse throws -> caught -> null
     expect(result).toBeNull();
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      '[SignalCache] Redis read failed',
-      expect.anything(),
-    );
+    expect(mockLogger.warn).toHaveBeenCalledWith('[SignalCache] Redis read failed', expect.anything());
   });
 });
 
@@ -127,12 +114,8 @@ describe('signal-rest-cache: invalidateSignalCache', () => {
     mockGetRedis.mockReturnValue(redis);
 
     await invalidateSignalCache();
-
     expect(redis.keys).toHaveBeenCalledWith('signal:rest:*');
-    expect(redis.del).toHaveBeenCalledWith(
-      'signal:rest:a:1:10',
-      'signal:rest:b:2:20',
-    );
+    expect(redis.del).toHaveBeenCalledWith('signal:rest:a:1:10', 'signal:rest:b:2:20');
   });
 
   it('skips the delete call when there are no matching keys', async () => {
@@ -141,7 +124,6 @@ describe('signal-rest-cache: invalidateSignalCache', () => {
     mockGetRedis.mockReturnValue(redis);
 
     await invalidateSignalCache();
-
     expect(redis.del).not.toHaveBeenCalled();
   });
 
@@ -151,7 +133,6 @@ describe('signal-rest-cache: invalidateSignalCache', () => {
     mockGetRedis.mockReturnValue(redis);
 
     await expect(invalidateSignalCache()).resolves.toBeUndefined();
-
     expect(mockLogger.warn).toHaveBeenCalledWith(
       '[SignalCache] Invalidation failed',
       expect.objectContaining({ err: expect.any(Error) }),

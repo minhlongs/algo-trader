@@ -17,7 +17,6 @@ import {
   type LegExecutionReport,
   type MultiLegExecutionReport,
   MultiLegArbitrageOrderSchema,
-  calculateMultiLegRealizedPnl,
 } from './execution-types';
 import {
   CompensatoryUnwindHandler,
@@ -29,18 +28,17 @@ import {
 } from './execution/multileg-batch-executor';
 import { buildArbitrageBasket } from './execution/multileg-risk-helper';
 import { handleMultiLegUnwind } from './execution/multileg-unwind-orchestrator';
+import {
+  type CoordinatorOptions,
+  areAllMultiLegsFilled,
+  buildFilledMultiLegReport,
+  buildRiskRejectedMultiLegReport,
+  resolveCoordinatorDependencies,
+} from './atomic-multileg-helpers';
 
 export * from './execution-types';
 export * from './compensatory-unwind-handler';
-
-export interface CoordinatorOptions {
-  /** ArbitrageRiskGuard instance for pre-trade risk gating & exposure tracking */
-  riskGuard?: ArbitrageRiskGuard;
-  /** CompensatoryUnwindHandler instance */
-  unwindHandler?: CompensatoryUnwindHandler;
-  /** Default leg timeout in ms if not specified per leg (default: 500ms) */
-  defaultTimeoutMs?: number;
-}
+export * from './atomic-multileg-helpers';
 
 export class AtomicMultiLegCoordinator {
   private readonly unwindHandler: CompensatoryUnwindHandler;
@@ -52,17 +50,14 @@ export class AtomicMultiLegCoordinator {
     unwindHandlerOrOptions?: CompensatoryUnwindHandler | CoordinatorOptions,
     riskGuard?: ArbitrageRiskGuard,
   ) {
-    if (unwindHandlerOrOptions && 'executeUnwind' in unwindHandlerOrOptions) {
-      this.unwindHandler = unwindHandlerOrOptions;
-      this.riskGuard = riskGuard;
-      this.defaultTimeoutMs = 500;
-    } else {
-      const opts = unwindHandlerOrOptions as CoordinatorOptions | undefined;
-      this.unwindHandler =
-        opts?.unwindHandler ?? new CompensatoryUnwindHandler(connectorResolver);
-      this.riskGuard = opts?.riskGuard ?? riskGuard;
-      this.defaultTimeoutMs = opts?.defaultTimeoutMs ?? 500;
-    }
+    const resolved = resolveCoordinatorDependencies(
+      connectorResolver,
+      unwindHandlerOrOptions,
+      riskGuard,
+    );
+    this.unwindHandler = resolved.unwindHandler;
+    this.riskGuard = resolved.riskGuard;
+    this.defaultTimeoutMs = resolved.defaultTimeoutMs;
   }
 
   /**
@@ -78,7 +73,6 @@ export class AtomicMultiLegCoordinator {
       currentState = to;
     };
 
-    // 0. Validate input order schema
     const parsedOrder = MultiLegArbitrageOrderSchema.parse(order);
     const executionMode = parsedOrder.executionMode ?? 'concurrent';
 
@@ -89,28 +83,18 @@ export class AtomicMultiLegCoordinator {
       legsCount: parsedOrder.legs.length,
     });
 
-    // 1. Prepare basket representation & 2. Pre-Trade Risk Gate Checks
     const basket = buildArbitrageBasket(parsedOrder);
     if (this.riskGuard) {
       const riskCheck = await this.riskGuard.checkBasket(basket);
       if (!riskCheck.allowed) {
         const errorMsg = `Pre-trade risk check failed: ${riskCheck.rejectionReason ?? 'RISK_REJECTED'}`;
         recordTransition('FAILED', errorMsg);
-        logger.warn('[AtomicMultiLegCoordinator] Pre-trade risk gate rejected order', {
-          orderId: parsedOrder.orderId,
-          reason: riskCheck.rejectionReason,
-        });
-
-        return {
-          executionId: parsedOrder.orderId,
-          opportunityId: parsedOrder.opportunityId,
-          state: 'FAILED',
+        return buildRiskRejectedMultiLegReport(
+          parsedOrder,
           stateHistory,
-          legs: [],
-          latencyMs: Date.now() - startTime,
-          error: errorMsg,
-          timestamp: Date.now(),
-        };
+          startTime,
+          riskCheck.rejectionReason,
+        ).report;
       }
       this.riskGuard.recordTradeOpened(basket);
     }
@@ -121,49 +105,18 @@ export class AtomicMultiLegCoordinator {
     try {
       recordTransition('SUBMITTED', 'Order dispatched to execution venues');
 
-      if (executionMode === 'sequential') {
-        legResults = await executeSequentialLegs(
-          this.connectorResolver,
-          parsedOrder.legs,
-          this.defaultTimeoutMs,
-          abortController.signal,
-        );
-      } else {
-        legResults = await executeConcurrentLegs(
-          this.connectorResolver,
-          parsedOrder.legs,
-          this.defaultTimeoutMs,
-          abortController.signal,
-        );
-      }
+      const executeFn =
+        executionMode === 'sequential' ? executeSequentialLegs : executeConcurrentLegs;
+      legResults = await executeFn(
+        this.connectorResolver,
+        parsedOrder.legs,
+        this.defaultTimeoutMs,
+        abortController.signal,
+      );
 
-      // Check fill status across all legs
-      const allFilled =
-        legResults.length === parsedOrder.legs.length &&
-        legResults.every(
-          (leg) => leg.status === 'filled' && leg.remainingAmount === 0 && leg.filledAmount >= leg.requestedAmount,
-        );
-
-      if (allFilled) {
+      if (areAllMultiLegsFilled(legResults, parsedOrder.legs.length)) {
         recordTransition('FILLED', 'All arbitrage legs filled completely');
-        const netRealizedPnlUsd = calculateMultiLegRealizedPnl(legResults);
-
-        logger.info('[AtomicMultiLegCoordinator] Multi-leg order filled completely', {
-          orderId: parsedOrder.orderId,
-          netRealizedPnlUsd,
-          latencyMs: Date.now() - startTime,
-        });
-
-        return {
-          executionId: parsedOrder.orderId,
-          opportunityId: parsedOrder.opportunityId,
-          state: 'FILLED',
-          stateHistory,
-          legs: legResults,
-          netRealizedPnlUsd,
-          latencyMs: Date.now() - startTime,
-          timestamp: Date.now(),
-        };
+        return buildFilledMultiLegReport(parsedOrder, stateHistory, legResults, startTime);
       }
 
       return await handleMultiLegUnwind({

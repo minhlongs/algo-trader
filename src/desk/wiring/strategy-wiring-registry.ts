@@ -1,0 +1,119 @@
+/**
+ * Strategy registration metadata and binding helpers for StrategyOrchestrator.
+ */
+import type { StrategyOrchestrator } from '../strategies/strategy-orchestrator';
+import { createBookImbalanceReversalTick } from '../strategies/polymarket/book-imbalance-reversal';
+import { createVwapDeviationSniperTick } from '../strategies/polymarket/vwap-deviation-sniper-v2';
+import { createPairsStatArbTick } from '../strategies/polymarket/pairs-stat-arb';
+import { createSessionVolSniperTick } from '../strategies/polymarket/session-vol-sniper';
+import { createOrderbookDepthRatioTick } from '../strategies/polymarket/orderbook-depth-ratio-v2';
+import { createCrossEventDriftTick } from '../strategies/polymarket/cross-event-drift-v2';
+import { createVolCompressionBreakoutTick } from '../strategies/polymarket/vol-compression-breakout-v2';
+import { createWhaleTrackerTick } from '../strategies/polymarket/whale-tracker-v2';
+import { createResolutionFrontrunnerTick } from '../strategies/polymarket/resolution-frontrunner-v2';
+import { createMultiLegHedgeTick } from '../strategies/polymarket/multi-leg-hedge';
+import { createRegimeAdaptiveMomentumTick } from '../strategies/polymarket/regime-adaptive-momentum-v2';
+import { createLiquidationCascadeTick } from '../strategies/polymarket/liquidation-cascade';
+import { createOrderFlowToxicityTick } from '../strategies/polymarket/order-flow-toxicity';
+import { createGammaScalpingTick } from '../strategies/polymarket/gamma-scalping';
+import { createFundingRateArbTick } from '../strategies/polymarket/funding-rate-arb';
+import { createExpiryThetaDecayTick } from '../strategies/polymarket/expiry-theta-decay';
+import { createMicrostructureAlphaTick } from '../strategies/polymarket/microstructure-alpha';
+import { createSentimentMomentumTick } from '../strategies/polymarket/sentiment-momentum';
+import { createSmartMoneyDivergenceTick } from '../strategies/polymarket/smart-money-divergence';
+import { createVolatilitySurfaceArbTick } from '../strategies/polymarket/volatility-surface-arb';
+import { createNewsCatalystFadeTick } from '../strategies/polymarket/news-catalyst-fade';
+import { createInventorySkewRebalancerTick } from '../strategies/polymarket/inventory-skew-rebalancer';
+import { createKalmanFilterTrackerTick } from '../strategies/polymarket/kalman-filter-tracker';
+import { createLiquidityVacuumTick } from '../strategies/polymarket/liquidity-vacuum';
+import { createTwapAccumulatorTick } from '../strategies/polymarket/twap-accumulator';
+import { createCorrelationBreakdownTick } from '../strategies/polymarket/correlation-breakdown';
+import { createEntropyScorerTick } from '../strategies/polymarket/entropy-scorer';
+import { createAdverseSelectionFilterTick } from '../strategies/polymarket/adverse-selection-filter';
+import { createMomentumExhaustionTick } from '../strategies/polymarket/momentum-exhaustion';
+import { createCrossPlatformBasisTick } from '../strategies/polymarket/cross-platform-basis';
+import type { OrderManager } from '../polymarket/order-manager';
+import type { EventBus } from '../events/event-bus';
+import type { GammaClient } from '../polymarket/gamma-client';
+import type { ClobClient } from '../polymarket/clob-client';
+
+export const env = (key: string, fallback: string) => process.env[key] ?? fallback;
+
+export type StrategyFactory = (deps: unknown) => () => Promise<void>;
+
+export interface PolyStrategyDescriptor {
+  id: string;
+  name: string;
+  envKey: string;
+  defaultMs: string;
+  factory: StrategyFactory;
+}
+
+export const POLY_STRATEGIES: PolyStrategyDescriptor[] = [
+  { id: 'book-imbalance', name: 'Book Imbalance Reversal', envKey: 'BOOK_IMBALANCE_INTERVAL_MS', defaultMs: '15000', factory: createBookImbalanceReversalTick },
+  { id: 'vwap-sniper', name: 'VWAP Deviation Sniper', envKey: 'VWAP_SNIPER_INTERVAL_MS', defaultMs: '10000', factory: createVwapDeviationSniperTick },
+  { id: 'pairs-stat-arb', name: 'Pairs Statistical Arbitrage', envKey: 'PAIRS_STAT_ARB_INTERVAL_MS', defaultMs: '30000', factory: createPairsStatArbTick },
+  { id: 'session-vol-sniper', name: 'Session Volatility Sniper', envKey: 'SESSION_VOL_SNIPER_INTERVAL_MS', defaultMs: '5000', factory: createSessionVolSniperTick },
+  { id: 'orderbook-depth', name: 'Orderbook Depth Ratio', envKey: 'ORDERBOOK_DEPTH_INTERVAL_MS', defaultMs: '10000', factory: createOrderbookDepthRatioTick },
+  { id: 'cross-event-drift', name: 'Cross-Event Drift Catcher', envKey: 'CROSS_EVENT_DRIFT_INTERVAL_MS', defaultMs: '15000', factory: createCrossEventDriftTick },
+  { id: 'vol-compression', name: 'Volatility Compression Breakout', envKey: 'VOL_COMPRESSION_INTERVAL_MS', defaultMs: '8000', factory: createVolCompressionBreakoutTick },
+  { id: 'whale-tracker', name: 'Whale Tracker', envKey: 'WHALE_TRACKER_INTERVAL_MS', defaultMs: '10000', factory: createWhaleTrackerTick },
+  { id: 'resolution-frontrunner', name: 'Resolution Frontrunner', envKey: 'RESOLUTION_FRONTRUNNER_INTERVAL_MS', defaultMs: '30000', factory: createResolutionFrontrunnerTick },
+  { id: 'multi-leg-hedge', name: 'Multi-Leg Hedge', envKey: 'MULTI_LEG_HEDGE_INTERVAL_MS', defaultMs: '20000', factory: createMultiLegHedgeTick },
+  { id: 'regime-adaptive-momentum', name: 'Regime-Adaptive Momentum', envKey: 'REGIME_MOMENTUM_INTERVAL_MS', defaultMs: '10000', factory: createRegimeAdaptiveMomentumTick },
+  { id: 'liquidation-cascade', name: 'Liquidation Cascade', envKey: 'LIQUIDATION_CASCADE_INTERVAL_MS', defaultMs: '5000', factory: createLiquidationCascadeTick },
+  { id: 'order-flow-toxicity', name: 'Order Flow Toxicity', envKey: 'ORDER_FLOW_TOXICITY_INTERVAL_MS', defaultMs: '8000', factory: createOrderFlowToxicityTick },
+  { id: 'gamma-scalping', name: 'Gamma Scalping', envKey: 'GAMMA_SCALPING_INTERVAL_MS', defaultMs: '10000', factory: createGammaScalpingTick },
+  { id: 'funding-rate-arb', name: 'Funding Rate Arbitrage', envKey: 'FUNDING_RATE_ARB_INTERVAL_MS', defaultMs: '15000', factory: createFundingRateArbTick },
+  { id: 'expiry-theta-decay', name: 'Expiry Theta Decay', envKey: 'EXPIRY_THETA_DECAY_INTERVAL_MS', defaultMs: '20000', factory: createExpiryThetaDecayTick },
+  { id: 'microstructure-alpha', name: 'Microstructure Alpha', envKey: 'MICROSTRUCTURE_ALPHA_INTERVAL_MS', defaultMs: '3000', factory: createMicrostructureAlphaTick },
+  { id: 'sentiment-momentum', name: 'Sentiment Momentum', envKey: 'SENTIMENT_MOMENTUM_INTERVAL_MS', defaultMs: '10000', factory: createSentimentMomentumTick },
+  { id: 'smart-money-divergence', name: 'Smart Money Divergence', envKey: 'SMART_MONEY_DIVERGENCE_INTERVAL_MS', defaultMs: '10000', factory: createSmartMoneyDivergenceTick },
+  { id: 'volatility-surface-arb', name: 'Volatility Surface Arb', envKey: 'VOLATILITY_SURFACE_ARB_INTERVAL_MS', defaultMs: '15000', factory: createVolatilitySurfaceArbTick },
+  { id: 'news-catalyst-fade', name: 'News Catalyst Fade', envKey: 'NEWS_CATALYST_FADE_INTERVAL_MS', defaultMs: '10000', factory: createNewsCatalystFadeTick },
+  { id: 'inventory-skew-rebalancer', name: 'Inventory Skew Rebalancer', envKey: 'INVENTORY_SKEW_INTERVAL_MS', defaultMs: '30000', factory: createInventorySkewRebalancerTick },
+  { id: 'kalman-filter-tracker', name: 'Kalman Filter Tracker', envKey: 'KALMAN_FILTER_INTERVAL_MS', defaultMs: '8000', factory: createKalmanFilterTrackerTick },
+  { id: 'liquidity-vacuum', name: 'Liquidity Vacuum', envKey: 'LIQUIDITY_VACUUM_INTERVAL_MS', defaultMs: '5000', factory: createLiquidityVacuumTick },
+  { id: 'twap-accumulator', name: 'TWAP Accumulator', envKey: 'TWAP_ACCUMULATOR_INTERVAL_MS', defaultMs: '30000', factory: createTwapAccumulatorTick },
+  { id: 'correlation-breakdown', name: 'Correlation Breakdown', envKey: 'CORRELATION_BREAKDOWN_INTERVAL_MS', defaultMs: '15000', factory: createCorrelationBreakdownTick },
+  { id: 'entropy-scorer', name: 'Entropy Scorer', envKey: 'ENTROPY_SCORER_INTERVAL_MS', defaultMs: '10000', factory: createEntropyScorerTick },
+  { id: 'adverse-selection-filter', name: 'Adverse Selection Filter', envKey: 'ADVERSE_SELECTION_INTERVAL_MS', defaultMs: '10000', factory: createAdverseSelectionFilterTick },
+  { id: 'momentum-exhaustion', name: 'Momentum Exhaustion', envKey: 'MOMENTUM_EXHAUSTION_INTERVAL_MS', defaultMs: '10000', factory: createMomentumExhaustionTick },
+  { id: 'cross-platform-basis', name: 'Cross-Platform Basis', envKey: 'CROSS_PLATFORM_BASIS_INTERVAL_MS', defaultMs: '15000', factory: createCrossPlatformBasisTick },
+];
+
+export const ENABLED_IDS = new Set([
+  'momentum-exhaustion', 'session-vol-sniper', 'sentiment-momentum', 'book-imbalance-reversal',
+  'microstructure-alpha', 'order-flow-toxicity', 'correlation-breakdown', 'pairs-stat-arb',
+  'funding-rate-arb', 'gamma-scalping', 'kalman-filter-tracker', 'liquidation-cascade',
+]);
+
+export function registerPolymarketStrategies(
+  orc: StrategyOrchestrator,
+  polyDeps: { clob: ClobClient; orderManager: OrderManager; eventBus: EventBus; gamma: GammaClient },
+): void {
+  for (const s of POLY_STRATEGIES) {
+    orc.register(
+      { id: 'momentum-exhaustion', name: 'Momentum Exhaustion', type: 'momentum-exhaustion', enabled: true, params: {}, intervalMs: parseInt(env('MOMENTUM_EXHAUSTION_INTERVAL_MS', '10000'), 10) },
+      createMomentumExhaustionTick(polyDeps),
+    );
+    orc.register(
+      { id: 'session-vol-sniper', name: 'Session Volatility Sniper', type: 'session-vol-sniper', enabled: true, params: {}, intervalMs: parseInt(env('SESSION_VOL_SNIPER_INTERVAL_MS', '5000'), 10) },
+      createSessionVolSniperTick(polyDeps),
+    );
+    orc.register(
+      { id: 'sentiment-momentum', name: 'Sentiment Momentum', type: 'sentiment-momentum', enabled: true, params: {}, intervalMs: parseInt(env('SENTIMENT_MOMENTUM_INTERVAL_MS', '10000'), 10) },
+      createSentimentMomentumTick(polyDeps),
+    );
+    orc.register(
+      { id: 'book-imbalance-reversal', name: 'Book Imbalance Reversal', type: 'book-imbalance-reversal', enabled: true, params: {}, intervalMs: parseInt(env('BOOK_IMBALANCE_INTERVAL_MS', '15000'), 10) },
+      createBookImbalanceReversalTick(polyDeps),
+    );
+    if (!ENABLED_IDS.has(s.id)) {
+      orc.register(
+        { id: s.id, name: s.name, type: s.id, enabled: false, params: {}, intervalMs: parseInt(env(s.envKey, s.defaultMs), 10) },
+        s.factory(polyDeps),
+      );
+    }
+  }
+}

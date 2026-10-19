@@ -3,6 +3,7 @@
  * Pure functions extracted from orderbook-stream.ts. Bodies moved VERBATIM; zero behavior change.
  */
 
+import type { PriceUpdatePayload } from '../events/trading-event-bus';
 import type {
   ParsedEvent,
   RawBookEvent,
@@ -44,4 +45,33 @@ export function parseWsMessage(raw: string): ParsedEvent[] {
   }
 
   return results;
+}
+
+/** Merge incoming bestBid/bestAsk with last known prices and build PriceUpdatePayload. */
+export function mergeAndBuildPricePayload(
+  tokenId: string,
+  bestBid: number,
+  bestAsk: number,
+  existing: { bestBid: number; bestAsk: number } | undefined,
+): { mergedBid: number; mergedAsk: number; payload: PriceUpdatePayload } | null {
+  const prev = existing ?? { bestBid: 0, bestAsk: 0 };
+  const mergedBid = bestBid > 0 ? bestBid : prev.bestBid;
+  const mergedAsk = bestAsk > 0 ? bestAsk : prev.bestAsk;
+  if (mergedBid === 0 && mergedAsk === 0) return null;
+  const spread = mergedAsk > 0 && mergedBid > 0 ? mergedAsk - mergedBid : 0;
+  const spreadBps = spread > 0 && mergedBid > 0 ? (spread / mergedBid) * 10_000 : 0;
+  return {
+    mergedBid,
+    mergedAsk,
+    payload: { tokenId, bid: mergedBid, ask: mergedAsk, timestamp: Date.now(), spread, spreadBps },
+  };
+}
+
+/** Build JSON subscription message for a token ID. */
+export function buildSubscribePayload(tokenId: string): string {
+  return JSON.stringify({
+    type: 'subscribe',
+    assets_ids: [tokenId],
+    channels: ['price_change', 'trade', 'book'],
+  });
 }

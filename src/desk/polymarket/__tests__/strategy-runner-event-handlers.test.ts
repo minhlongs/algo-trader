@@ -17,32 +17,11 @@ vi.mock('@shared/utils/logger', () => ({ logger: mockLogger }));
 
 import { handlePriceUpdate, createEventBusSubscription } from '../strategy-runner-event-handlers';
 import type { EventHandlerContext } from '../strategy-runner-event-handlers';
+import { buildEventHandlerCtx, buildPricePayload } from './strategy-runner-event-handlers-fixtures';
 
-function makeCtx(overrides: Partial<EventHandlerContext> = {}): EventHandlerContext {
-  return {
-    status: 'running',
-    strategy: mockStrategy as any,
-    config: { maxTicks: 0, minExecutionIntervalMs: 50 } as any,
-    strategyName: 'test-strategy',
-    executionCount: 0,
-    lastExecutionTime: 0,
-    trackedTokens: { has: () => false, size: 0 },
-    updateLastExecutionTime: vi.fn(),
-    incrementExecutionCount: vi.fn(),
-    stop: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  };
-}
-
-function makePayload(overrides: Partial<{ tokenId: string; bid: number; ask: number; timestamp: number }> = {}) {
-  return {
-    tokenId: 'yes-token',
-    bid: 0.5,
-    ask: 0.51,
-    timestamp: Date.now(),
-    ...overrides,
-  };
-}
+const makeCtx = (overrides: Partial<EventHandlerContext> = {}) =>
+  buildEventHandlerCtx(mockStrategy, overrides);
+const makePayload = buildPricePayload;
 
 describe('handlePriceUpdate', () => {
   beforeEach(() => {
@@ -66,7 +45,7 @@ describe('handlePriceUpdate', () => {
   it('returns early when debounced (too soon after last execution)', async () => {
     const ctx = makeCtx({
       lastExecutionTime: Date.now(),
-      config: { maxTicks: 0, minExecutionIntervalMs: 60_000 } as any,
+      config: { maxTicks: 0, minExecutionIntervalMs: 60_000 } as unknown as EventHandlerContext['config'],
     });
     await handlePriceUpdate(ctx, makePayload());
     expect(ctx.updateLastExecutionTime).not.toHaveBeenCalled();
@@ -105,7 +84,7 @@ describe('handlePriceUpdate', () => {
     const ctx = makeCtx({
       lastExecutionTime: 0,
       executionCount: 5,
-      config: { maxTicks: 5, minExecutionIntervalMs: 50 } as any,
+      config: { maxTicks: 5, minExecutionIntervalMs: 50 } as unknown as EventHandlerContext['config'],
     });
     await handlePriceUpdate(ctx, makePayload());
     expect(ctx.incrementExecutionCount).toHaveBeenCalled();
@@ -147,42 +126,29 @@ describe('handlePriceUpdate', () => {
 
 describe('createEventBusSubscription', () => {
   it('returns subscribe/unsubscribe/handler', () => {
-    const on = vi.fn();
-    const off = vi.fn();
-    const eventBus = { on, off } as any;
-    const ctx = makeCtx();
-    const sub = createEventBusSubscription(eventBus, ctx);
+    const eventBus = { on: vi.fn(), off: vi.fn() } as unknown as Parameters<typeof createEventBusSubscription>[0];
+    const sub = createEventBusSubscription(eventBus, makeCtx());
     expect(typeof sub.subscribe).toBe('function');
     expect(typeof sub.unsubscribe).toBe('function');
     expect(typeof sub.handler).toBe('function');
   });
 
-  it('subscribe registers handler on PRICE_UPDATE', () => {
+  it('subscribe and unsubscribe register/remove handler on PRICE_UPDATE', () => {
     const on = vi.fn();
     const off = vi.fn();
-    const eventBus = { on, off } as any;
+    const eventBus = { on, off } as unknown as Parameters<typeof createEventBusSubscription>[0];
     const sub = createEventBusSubscription(eventBus, makeCtx());
     sub.subscribe();
     expect(on).toHaveBeenCalledWith('PRICE_UPDATE', sub.handler);
-  });
-
-  it('unsubscribe removes handler from PRICE_UPDATE', () => {
-    const on = vi.fn();
-    const off = vi.fn();
-    const eventBus = { on, off } as any;
-    const sub = createEventBusSubscription(eventBus, makeCtx());
     sub.unsubscribe();
     expect(off).toHaveBeenCalledWith('PRICE_UPDATE', sub.handler);
   });
 
   it('handler delegates to handlePriceUpdate', async () => {
-    const on = vi.fn();
-    const off = vi.fn();
-    const eventBus = { on, off } as any;
+    const eventBus = { on: vi.fn(), off: vi.fn() } as unknown as Parameters<typeof createEventBusSubscription>[0];
     const ctx = makeCtx({ lastExecutionTime: 0 });
     const sub = createEventBusSubscription(eventBus, ctx);
-    const payload = makePayload();
-    await sub.handler(payload);
+    await sub.handler(makePayload());
     expect(ctx.incrementExecutionCount).toHaveBeenCalled();
     expect(mockStrategy.execute).toHaveBeenCalled();
   });

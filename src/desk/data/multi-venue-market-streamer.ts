@@ -1,30 +1,22 @@
 /**
  * Multi-Venue Market Streamer
- * Multiplexed market stream manager wrapping Binance, Hyperliquid, and Polymarket feeds
- * into normalized UnifiedOrderBook and UnifiedTrade event emitters with exponential backoff reconnection.
+ * Multiplexed market stream manager wrapping Binance, Hyperliquid, and Polymarket feeds.
  */
 
 import { EventEmitter } from 'events';
 import { logger } from '../../shared/utils/logger';
-import { parseVenueOrderBook, parseVenueTrade } from './multi-venue-streamer-parsers';
+import {
+  VENUE_URLS, sendVenueSubscription, createInitialVenueState,
+  markVenueOpened, dispatchRawVenueMessage, computeReconnectBackoffDelay,
+} from './multi-venue-streamer-protocol';
 import type {
-  SupportedVenue,
-  UnifiedOrderBook,
-  UnifiedTrade,
-  StreamerConfig,
-  VenueConnectionState,
-  WebSocketLike,
-  WebSocketFactory,
+  SupportedVenue, UnifiedOrderBook, UnifiedTrade, StreamerConfig,
+  VenueConnectionState, WebSocketLike, WebSocketFactory,
 } from './multi-venue-streamer-types';
 
 export * from './multi-venue-streamer-types';
 export * from './multi-venue-streamer-parsers';
-
-const VENUE_URLS: Record<SupportedVenue, string> = {
-  binance: 'wss://stream.binance.com:9443/ws',
-  hyperliquid: 'wss://api.hyperliquid.xyz/ws',
-  polymarket: 'wss://ws-subscriptions-clob.polymarket.com/ws/market',
-};
+export * from './multi-venue-streamer-protocol';
 
 export class MultiVenueMarketStreamer extends EventEmitter {
   private readonly venues: Set<SupportedVenue>;
@@ -49,7 +41,7 @@ export class MultiVenueMarketStreamer extends EventEmitter {
     this.setMaxListeners(200);
 
     for (const venue of this.venues) {
-      this.states.set(venue, { venue, connected: false, reconnectAttempts: 0, lastHeartbeat: 0 });
+      this.states.set(venue, createInitialVenueState(venue));
       this.activeSubscriptions.set(venue, new Set());
       this.connections.set(venue, null);
       this.reconnectTimers.set(venue, null);
@@ -80,7 +72,7 @@ export class MultiVenueMarketStreamer extends EventEmitter {
     if (!subs) return;
     subs.add(symbol);
     const ws = this.connections.get(venue);
-    if (ws && this.states.get(venue)?.connected) this.sendSubscription(venue, ws, symbol);
+    if (ws && this.states.get(venue)?.connected) sendVenueSubscription(venue, ws, symbol);
   }
 
   public unsubscribe(venue: SupportedVenue, symbol: string): void {
@@ -111,7 +103,10 @@ export class MultiVenueMarketStreamer extends EventEmitter {
       this.connections.set(venue, ws);
       ws.on('open', () => this.handleOpen(venue, ws));
       ws.on('message', (data: unknown) => this.handleMessage(venue, data));
-      ws.on('error', (err: unknown) => this.handleError(venue, err));
+      ws.on('error', (err: unknown) => {
+        logger.warn(`[MultiVenueStreamer] WS error on ${venue}`, { err });
+        this.emit('venue_error', { venue, error: err });
+      });
       ws.on('close', () => this.handleClose(venue));
     } catch (err) {
       logger.error(`[MultiVenueStreamer] Connect failed for ${venue}`, { err });
@@ -120,35 +115,12 @@ export class MultiVenueMarketStreamer extends EventEmitter {
   }
 
   private handleOpen(venue: SupportedVenue, ws: WebSocketLike): void {
-    const state = this.states.get(venue);
-    if (state) {
-      state.connected = true;
-      state.reconnectAttempts = 0;
-      state.lastHeartbeat = Date.now();
-    }
-    const subs = this.activeSubscriptions.get(venue);
-    if (subs) for (const sym of subs) this.sendSubscription(venue, ws, sym);
+    markVenueOpened(this.states.get(venue), venue, ws, this.activeSubscriptions.get(venue));
     this.emit('connected', venue);
   }
 
   private handleMessage(venue: SupportedVenue, rawData: unknown): void {
-    const state = this.states.get(venue);
-    if (state) state.lastHeartbeat = Date.now();
-    try {
-      const text = typeof rawData === 'string' ? rawData : String(rawData);
-      const msg = JSON.parse(text) as Record<string, unknown>;
-      const book = parseVenueOrderBook(venue, msg);
-      if (book) this.emitOrderBook(book);
-      const trade = parseVenueTrade(venue, msg);
-      if (trade) this.emitTrade(trade);
-    } catch (err) {
-      logger.debug(`[MultiVenueStreamer] Parse fail on ${venue}`, { err });
-    }
-  }
-
-  private handleError(venue: SupportedVenue, err: unknown): void {
-    logger.warn(`[MultiVenueStreamer] WS error on ${venue}`, { err });
-    this.emit('venue_error', { venue, error: err });
+    dispatchRawVenueMessage(venue, rawData, this.states.get(venue), (b) => this.emitOrderBook(b), (t) => this.emitTrade(t));
   }
 
   private handleClose(venue: SupportedVenue): void {
@@ -168,30 +140,13 @@ export class MultiVenueMarketStreamer extends EventEmitter {
       this.emit('reconnect_failed', venue);
       return;
     }
-    const delay = Math.min(this.reconnectBaseMs * Math.pow(2, state.reconnectAttempts), this.reconnectMaxMs);
+    const delay = computeReconnectBackoffDelay(this.reconnectBaseMs, this.reconnectMaxMs, state.reconnectAttempts);
     state.reconnectAttempts++;
     this.reconnectTimers.set(venue, setTimeout(() => this.connectVenue(venue), delay));
   }
 
   private clearReconnectTimer(venue: SupportedVenue): void {
     const timer = this.reconnectTimers.get(venue);
-    if (timer) {
-      clearTimeout(timer);
-      this.reconnectTimers.set(venue, null);
-    }
-  }
-
-  private sendSubscription(venue: SupportedVenue, ws: WebSocketLike, symbol: string): void {
-    try {
-      if (venue === 'binance') {
-        ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: [`${symbol.toLowerCase()}@depth@100ms`, `${symbol.toLowerCase()}@trade`], id: Date.now() }));
-      } else if (venue === 'hyperliquid') {
-        ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'l2Book', coin: symbol } }));
-      } else if (venue === 'polymarket') {
-        ws.send(JSON.stringify({ type: 'subscribe', assets_ids: [symbol] }));
-      }
-    } catch (err) {
-      logger.warn(`[MultiVenueStreamer] Send sub error ${venue}:${symbol}`, { err });
-    }
+    if (timer) { clearTimeout(timer); this.reconnectTimers.set(venue, null); }
   }
 }

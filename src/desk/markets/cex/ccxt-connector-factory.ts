@@ -12,6 +12,39 @@ import {
 import { ExchangeConnectorError } from '../../arbitrage/connectors/types';
 import { logger } from '../../../shared/utils/logger';
 
+export function validateKucoinPassphrase(
+  exchangeId: SupportedCexExchange,
+  adapter?: CcxtExchangeAdapter,
+  options?: CcxtExchangeConnectorOptions
+): void {
+  if (exchangeId === 'kucoin' && !adapter) {
+    const prefix = exchangeId.toUpperCase();
+    const pwd =
+      options?.password ?? process.env[`${prefix}_API_PASSPHRASE`] ?? process.env[`${prefix}_PASSPHRASE`];
+    if (options?.apiKey && !pwd) {
+      throw new ExchangeConnectorError(
+        'KuCoin requires an API passphrase (password) when API credentials are provided',
+        exchangeId,
+        'MISSING_CREDENTIALS'
+      );
+    }
+  }
+}
+
+export function buildSpotExtraParams(
+  exchangeId: SupportedCexExchange,
+  clientOrderId?: string
+): Record<string, unknown> {
+  const extraParams: Record<string, unknown> = {};
+  if (clientOrderId) {
+    extraParams.clientOrderId = clientOrderId;
+  }
+  if (exchangeId === 'bybit') {
+    extraParams.category = 'spot';
+  }
+  return extraParams;
+}
+
 /** Factory creating real CCXT exchange adapter with configuration */
 export function createCcxtExchange(
   exchangeId: SupportedCexExchange,

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AlgoTrade OS - Strategy Marketplace &amp; Creator Hub</title>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Space Grotesk, JetBrains Mono, Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS v3 -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-tint": "#00dce6",
+            "secondary-container": "#01e599",
+            "inverse-on-surface": "#2f3034",
+            "on-surface-variant": "#b9cacb",
+            "on-error-container": "#ffdad6",
+            "on-secondary": "#003822",
+            "on-tertiary": "#690003",
+            "primary-fixed": "#6ff6ff",
+            "on-tertiary-container": "#c3000a",
+            "on-surface": "#e3e2e6",
+            "tertiary": "#fff5f4",
+            "surface-dim": "#121316",
+            "surface-container": "#1f1f23",
+            "secondary-fixed-dim": "#00e297",
+            "tertiary-fixed": "#ffdad5",
+            "surface-container-high": "#292a2d",
+            "surface-container-lowest": "#0d0e11",
+            "error-container": "#93000a",
+            "surface-container-low": "#1b1b1f",
+            "primary": "#e0fdff",
+            "on-primary-fixed-variant": "#004f53",
+            "on-tertiary-fixed": "#410001",
+            "on-primary-container": "#006a70",
+            "on-background": "#e3e2e6",
+            "inverse-primary": "#00696f",
+            "surface-bright": "#38393d",
+            "on-secondary-fixed-variant": "#005234",
+            "tertiary-container": "#ffd0ca",
+            "error": "#ffb4ab",
+            "primary-fixed-dim": "#00dce6",
+            "on-primary": "#00373a",
+            "on-error": "#690005",
+            "primary-container": "#00f2fe",
+            "outline": "#849495",
+            "tertiary-fixed-dim": "#ffb4aa",
+            "surface-container-highest": "#343538",
+            "secondary": "#70ffba",
+            "on-secondary-container": "#00613e",
+            "background": "#121316",
+            "surface-variant": "#343538",
+            "on-secondary-fixed": "#002112",
+            "outline-variant": "#3a494b",
+            "on-tertiary-fixed-variant": "#930005",
+            "surface": "#121316",
+            "inverse-surface": "#e3e2e6",
+            "on-primary-fixed": "#002022",
+            "secondary-fixed": "#4dffb2"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin-mobile": "0.5rem",
+            "gutter-desktop": "0.5rem",
+            "space-lg": "0.75rem",
+            "space-xs": "0.125rem",
+            "space-md": "0.5rem",
+            "margin-desktop": "0.75rem",
+            "gutter-mobile": "0.25rem",
+            "gutter": "0.5rem",
+            "margin": "0.75rem",
+            "space-xl": "1rem",
+            "space-sm": "0.25rem"
+          },
+          "fontFamily": {
+            "body-md": ["Inter"],
+            "headline-xl": ["Space Grotesk"],
+            "headline-md": ["Space Grotesk"],
+            "data-mono-md": ["JetBrains Mono"],
+            "body-lg": ["Inter"],
+            "headline-xl-mobile": ["Space Grotesk"],
+            "headline-lg": ["Space Grotesk"],
+            "data-mono-lg": ["JetBrains Mono"],
+            "data-mono-sm": ["JetBrains Mono"],
+            "body-sm": ["Inter"],
+            "label-caps": ["JetBrains Mono"]
+          },
+          "fontSize": {
+            "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+            "headline-xl": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "headline-md": ["16px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "data-mono-md": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500" }],
+            "body-lg": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "headline-xl-mobile": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+            "headline-lg": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "data-mono-lg": ["18px", { "lineHeight": "22px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+            "data-mono-sm": ["10px", { "lineHeight": "13px", "letterSpacing": "0em", "fontWeight": "500" }],
+            "body-sm": ["11px", { "lineHeight": "15px", "fontWeight": "400" }],
+            "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    /* Custom Micro-Scrollbars & Institutional HUD styling */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d0e11;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f1f23;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3a494b;
+    }
+    .neon-glow-cyan {
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.35);
+    }
+    .neon-glow-red {
+      box-shadow: 0 0 12px rgba(255, 59, 48, 0.4);
+    }
+  </style>
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css"/>
+  <script src="assets/ui-ux-pro-max.js" defer></script>
+</head>
+<body class="bg-[#08090C] text-on-surface antialiased overflow-x-hidden select-none min-h-screen flex flex-col">
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+<!-- ================= TOP HUD TELEMETRY SUB-STRIP ================= -->
+<div class="w-full bg-[#0a0c10] border-b border-outline-variant px-space-md py-1 flex items-center justify-between font-data-mono-sm text-data-mono-sm text-on-surface-variant z-50">
+<div class="flex items-center gap-space-lg divide-x divide-outline-variant">
+<div class="flex items-center gap-1.5 text-on-surface pr-space-md">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-bold text-primary">PORTFOLIO TVL:</span>
+<span class="text-secondary font-semibold">$14,291,480.00</span>
+<span class="text-secondary text-[9px]">(+2.41% 24h)</span>
+</div>
+<div class="flex items-center gap-1.5 pl-space-md">
+<span class="text-on-surface-variant font-label-caps text-label-caps">P99 LATENCY:</span>
+<span class="text-secondary-fixed font-bold">4.2ms</span>
+<span class="text-outline text-[9px]">SOL-SHARD-NY4</span>
+</div>
+<div class="flex items-center gap-1.5 pl-space-md hidden lg:flex">
+<span class="text-on-surface-variant font-label-caps text-label-caps">DPDK CORES:</span>
+<span class="text-primary-container">64/64 ALLOC</span>
+</div>
+<div class="flex items-center gap-1.5 pl-space-md hidden xl:flex">
+<span class="text-on-surface-variant font-label-caps text-label-caps">GAS OPTIMIZER:</span>
+<span class="text-secondary font-bold">ACTIVE (14 GWEI)</span>
+</div>
+</div>
+<!-- Creator Pool Ticker Highlight -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-1.5 bg-surface-container-low px-2 py-0.5 border border-outline-variant rounded">
+<span class="text-primary-container text-[9px] font-label-caps text-label-caps">CREATOR REVENUE YTD:</span>
+<span class="text-primary font-bold font-data-mono-md text-data-mono-md">$148,290.00</span>
+<span class="bg-secondary-container/20 text-secondary text-[9px] px-1 rounded font-bold">70% POOL</span>
+</div>
+<div class="flex items-center gap-1 text-[9px] text-outline">
+<span class="material-symbols-outlined text-[13px] text-primary-container" data-icon="lock_clock">lock_clock</span>
+<span>SETTLEMENT: 14:00:00 UTC</span>
+</div>
+</div>
+</div>
+<!-- ================= TOP NAV BAR (Shared Component Anchor) ================= -->
+<header aria-live="polite" class="flex justify-between items-center w-full px-space-md py-space-xs h-11 border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-40">
+<!-- Brand Logo & Left Search -->
+<div class="flex items-center gap-space-xl">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-xl" data-icon="terminal" data-weight="fill">terminal</span>
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">AlgoTrade OS</span>
+<span class="bg-surface-container-high border border-outline-variant text-[9px] font-data-mono-sm text-data-mono-sm px-1 py-0.2 rounded text-primary-container">v3.4-alpha</span>
+</div>
+<!-- Quick Search Bar (Left Oriented) -->
+<div class="relative w-64 hidden md:block">
+<span class="material-symbols-outlined absolute left-2 top-2 text-outline text-[15px]" data-icon="search">search</span>
+<input class="w-full bg-[#08090C] border border-outline-variant text-on-surface placeholder-outline font-data-mono-sm text-data-mono-sm pl-7 pr-2 py-1 rounded focus:outline-none focus:border-primary-container transition-colors" placeholder="Search strategy ID, author, pair..." type="text"/>
+</div>
+</div>
+<!-- Center Navigation Links -->
+<nav class="hidden md:flex items-center gap-space-lg">
+<!-- Active Link: Strategies (Current Screen: Strategy Marketplace) -->
+<a class="text-primary-container border-b-2 border-primary-container pb-0.5 font-bold font-data-mono-sm text-data-mono-sm flex items-center gap-1" href="#">
+<span>Strategies</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Execution</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Telemetry</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Ledger</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors" href="#">Shards</a>
+<a class="text-on-surface-variant font-data-mono-sm text-data-mono-sm hover:text-on-surface transition-colors flex items-center gap-1" href="#">
+<span>Creator Studio</span>
+<span class="text-[9px] px-1 bg-primary/10 text-primary rounded">NEW</span>
+</a>
+</nav>
+<!-- Trailing Actions Cluster -->
+<div class="flex items-center gap-space-sm">
+<!-- Icon actions -->
+<div class="flex items-center gap-1 border-r border-outline-variant pr-space-sm">
+<button class="p-1 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors duration-150 rounded" title="Shard Hub">
+<span class="material-symbols-outlined text-[18px]" data-icon="hub">hub</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors duration-150 rounded" title="Quant Shell Terminal">
+<span class="material-symbols-outlined text-[18px]" data-icon="terminal">terminal</span>
+</button>
+<button class="p-1 text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors duration-150 relative rounded" title="Alerts">
+<span class="material-symbols-outlined text-[18px]" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-1.5 h-1.5 bg-error rounded-full"></span>
+</button>
+</div>
+<!-- Secondary Audit Export Action -->
+<button class="hidden lg:flex items-center gap-1 px-2 py-1 bg-surface-container-low border border-outline-variant hover:border-outline text-on-surface font-data-mono-sm text-data-mono-sm rounded transition-colors">
+<span class="material-symbols-outlined text-[14px]" data-icon="download">download</span>
+<span>Audit Export</span>
+</button>
+<!-- Trailing Primary Action: Emergency Kill-Switch with Lock Indicator -->
+<button class="flex items-center gap-1 px-2.5 py-1 bg-error-container text-on-error hover:bg-[#b00010] active:scale-[0.98] transition-all rounded font-data-mono-sm text-data-mono-sm font-bold neon-glow-red border border-red-500/40">
+<span class="material-symbols-outlined text-[14px] animate-pulse" data-icon="gpp_bad" data-weight="fill">gpp_bad</span>
+<span class="tracking-tight">Emergency Kill-Switch</span>
+</button>
+<!-- Profile Avatar -->
+<div class="w-6 h-6 rounded bg-surface-container-high border border-outline flex items-center justify-center font-data-mono-sm text-data-mono-sm text-primary font-bold overflow-hidden" title="Quant Desk Admin Avatar">
+        QD
+      </div>
+</div>
+</header>
+<!-- ================= MAIN APPLICATION FRAMEWORK ================= -->
+<div class="flex-1 flex overflow-hidden">
+<!-- ================= LEFT DOCKED SIDEBAR (Shared Component Anchor) ================= -->
+<aside class="flex flex-col justify-between h-[calc(100vh-4.75rem)] w-56 p-space-xs border-r border-outline-variant bg-surface-container-lowest select-none shrink-0 z-30">
+<div>
+<!-- Desk Identity Badge -->
+<div class="p-space-sm mb-2 border-b border-outline-variant bg-surface-container-low rounded">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-primary font-bold">DESK-ALPHA-01</span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</div>
+<p class="font-data-mono-sm text-data-mono-sm text-outline mt-0.5">ONLINE // P99: 4.2ms</p>
+</div>
+<!-- Deploy Algorithm Fast-CTA -->
+<button class="w-full mb-3 px-2 py-1.5 bg-primary-container text-[#08090C] hover:bg-primary-fixed transition-colors rounded font-data-mono-sm text-data-mono-sm font-bold flex items-center justify-center gap-1.5 neon-glow-cyan active:scale-[0.99]">
+<span class="material-symbols-outlined text-[15px]" data-icon="bolt">bolt</span>
+<span>Deploy Algo</span>
+</button>
+<!-- Main Workspace Tabs -->
+<div class="space-y-0.5">
+<!-- Tab 1: Cockpit -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[17px]" data-icon="query_stats">query_stats</span>
+<span>Cockpit</span>
+</a>
+<!-- Tab 2: Strategy Marketplace (ACTIVE TAB) -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 bg-surface-container text-primary-container border-l-2 border-primary-container font-data-mono-sm text-data-mono-sm font-semibold rounded-r" href="#">
+<span class="material-symbols-outlined text-[17px]" data-icon="table_chart" data-weight="fill">table_chart</span>
+<span>Order Books</span>
+</a>
+<!-- Tab 3: Shard Health -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[17px]" data-icon="dns">dns</span>
+<span>Shard Health</span>
+</a>
+<!-- Tab 4: Algorithms -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[17px]" data-icon="memory">memory</span>
+<span>Algorithms</span>
+</a>
+<!-- Tab 5: Risk Engine -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[17px]" data-icon="shield">shield</span>
+<span>Risk Engine</span>
+</a>
+<!-- Tab 6: Audit Log -->
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[17px]" data-icon="enhanced_encryption">enhanced_encryption</span>
+<span>Audit Log</span>
+</a>
+</div>
+</div>
+<!-- Footer Action Tabs -->
+<div class="border-t border-outline-variant pt-2 space-y-0.5">
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[17px]" data-icon="speed">speed</span>
+<span>Latency Stats</span>
+</a>
+<a class="flex items-center gap-space-sm px-space-sm py-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low font-data-mono-sm text-data-mono-sm transition-colors rounded" href="#">
+<span class="material-symbols-outlined text-[17px]" data-icon="tune">tune</span>
+<span>Settings</span>
+</a>
+</div>
+</aside>
+<!-- ================= MAIN VIEWPORT SPLIT CANVAS ================= -->
+<main class="flex-1 flex flex-col xl:flex-row overflow-hidden bg-[#08090C]">
+<!-- ================= LEFT COLUMN: CATALOG & FILTERS & CARDS ================= -->
+<section class="flex-1 flex flex-col overflow-y-auto border-r border-outline-variant">
+<!-- Top Institutional Stat Strip -->
+<div class="grid grid-cols-2 md:grid-cols-4 bg-[#0B0E14] border-b border-outline-variant p-space-md gap-3">
+<div class="border-r border-outline-variant/60 pr-2">
+<div class="text-outline font-label-caps text-label-caps">TVL IN STRATEGIES</div>
+<div class="text-primary font-headline-md text-headline-md font-bold mt-0.5">$84.2M</div>
+<div class="text-[9px] text-secondary font-data-mono-sm flex items-center gap-1">
+<span class="material-symbols-outlined text-[11px]" data-icon="trending_up">trending_up</span> +14.8% this quarter
+            </div>
+</div>
+<div class="border-r border-outline-variant/60 pr-2 pl-1">
+<div class="text-outline font-label-caps text-label-caps">INSTITUTIONAL RENTERS</div>
+<div class="text-on-surface font-headline-md text-headline-md font-bold mt-0.5">1,420 <span class="text-primary-container text-xs font-normal">Funds</span></div>
+<div class="text-[9px] text-on-surface-variant font-data-mono-sm">99.8% shard retention</div>
+</div>
+<div class="border-r border-outline-variant/60 pr-2 pl-1">
+<div class="text-outline font-label-caps text-label-caps">CREATOR POOL PAYOUTS</div>
+<div class="text-secondary font-headline-md text-headline-md font-bold mt-0.5">$2.8M</div>
+<div class="text-[9px] text-primary-container font-data-mono-sm">Automated 70/30 split</div>
+</div>
+<div class="pl-1">
+<div class="text-outline font-label-caps text-label-caps">MEDIAN SHARPE RATIO</div>
+<div class="text-primary-fixed-dim font-headline-md text-headline-md font-bold mt-0.5">2.64</div>
+<div class="text-[9px] text-outline font-data-mono-sm">Audit Verified &gt; 180D</div>
+</div>
+</div>
+<!-- Filter & Search Command Ribbon -->
+<div class="p-space-md border-b border-outline-variant bg-[#0c0f16] flex flex-col gap-2">
+<div class="flex items-center justify-between flex-wrap gap-2">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-primary font-semibold">Institutional Strategy Pool</span>
+<span class="px-2 py-0.5 bg-surface-container text-primary-container text-data-mono-sm font-data-mono-sm rounded border border-outline-variant">42 Verified Algorithmic Engines</span>
+</div>
+<!-- Sorting Dropdown Cluster -->
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-outline">SORT BY:</span>
+<select class="bg-[#08090C] border border-outline-variant text-on-surface text-data-mono-sm font-data-mono-sm px-2 py-1 rounded focus:border-primary-container focus:outline-none">
+<option selected="">Highest Sharpe Ratio (Descending)</option>
+<option>Win Rate &gt; 75%</option>
+<option>Lowest Monthly Rent</option>
+<option>24h Realized Volume</option>
+</select>
+</div>
+</div>
+<!-- Category Filter Chips -->
+<div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-data-mono-sm font-data-mono-sm">
+<button class="px-2.5 py-1 bg-primary-container text-[#08090C] font-bold rounded flex items-center gap-1">
+<span>All Protocols</span>
+<span class="w-1.5 h-1.5 rounded-full bg-[#08090C]"></span>
+</button>
+<button class="px-2 py-1 bg-surface-container text-on-surface hover:text-primary border border-outline-variant rounded transition-colors whitespace-nowrap">
+              HFT Arbitrage
+            </button>
+<button class="px-2 py-1 bg-surface-container text-on-surface hover:text-primary border border-outline-variant rounded transition-colors whitespace-nowrap">
+              Statistical Mean-Reversion
+            </button>
+<button class="px-2 py-1 bg-surface-container text-on-surface hover:text-primary border border-outline-variant rounded transition-colors whitespace-nowrap">
+              Optimal Execution
+            </button>
+<button class="px-2 py-1 bg-[#131a24] text-primary-container border border-primary-container/40 rounded transition-colors whitespace-nowrap flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+              Market Making Avellaneda-Stoikov
+            </button>
+<button class="px-2 py-1 bg-surface-container text-on-surface hover:text-primary border border-outline-variant rounded transition-colors whitespace-nowrap">
+              Cross-DEX Flash Arb
+            </button>
+</div>
+</div>
+<!-- Strategy Grid List -->
+<div class="p-space-md grid grid-cols-1 gap-2.5">
+<!-- ================= STRATEGY CARD 2: SELECTED / ACTIVE (Avellaneda-Stoikov) ================= -->
+<article class="relative bg-[#0F141E] border-2 border-primary-container rounded p-space-md transition-all cursor-pointer neon-glow-cyan">
+<div class="absolute -top-2.5 right-4 bg-primary-container text-[#08090C] font-label-caps text-[9px] font-bold px-2 py-0.5 rounded shadow">
+              INSPECTION ACTIVE
+            </div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-outline-variant/60 pb-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[18px]" data-icon="tune" data-weight="fill">tune</span>
+<h3 class="font-headline-md text-headline-md font-bold text-primary">Avellaneda-Stoikov HFT Market Maker</h3>
+<span class="bg-secondary-container/20 text-secondary text-data-mono-sm font-data-mono-sm px-1.5 py-0.2 rounded font-semibold border border-secondary/30">L3 High-Density</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-data-mono-sm font-data-mono-sm">
+<span class="text-on-surface-variant">Asset: <span class="text-primary font-bold">SOL-USDT L3 Orderbook</span></span>
+<span class="text-outline">•</span>
+<span class="flex items-center gap-1 text-on-surface-variant">
+                    Creator: <span class="text-primary-container">@CitadelEx-Lead</span>
+<span class="material-symbols-outlined text-[13px] text-secondary" data-icon="verified" data-weight="fill">verified</span>
+</span>
+</div>
+</div>
+<!-- Rent Pricing Badge -->
+<div class="text-right">
+<div class="text-primary font-headline-md text-headline-md font-bold">$250<span class="text-xs text-outline font-normal">/mo</span></div>
+<div class="text-[10px] text-on-surface-variant font-data-mono-sm">6,250,000 VND / month</div>
+</div>
+</div>
+<!-- Quantitative Key Metrics Strip -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-2 my-2 py-1.5 bg-[#08090C]/80 rounded border border-outline-variant/40 px-2 font-data-mono-sm text-data-mono-sm">
+<div>
+<div class="text-outline text-[9px] font-label-caps">SHARPE RATIO</div>
+<div class="text-secondary font-bold text-data-mono-md">3.42</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">MAX DRAWDOWN</div>
+<div class="text-primary font-bold text-data-mono-md">-2.1%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">WIN RATE</div>
+<div class="text-secondary font-bold text-data-mono-md">82.1%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">INVENTORY SKEW</div>
+<div class="text-primary-container font-bold text-data-mono-md">Dynamic Delta</div>
+</div>
+</div>
+<!-- Footer Details & Quick Action -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-2 text-data-mono-sm font-data-mono-sm text-outline">
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 284 Active Shards</span>
+<span>•</span>
+<span>SHA-256 Attested</span>
+</div>
+<button class="px-3 py-1 bg-primary-container text-[#08090C] font-bold text-data-mono-sm font-data-mono-sm rounded hover:bg-primary-fixed transition-colors flex items-center gap-1">
+<span>View Full Telemetry</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</article>
+<!-- ================= STRATEGY CARD 1 (Almgren-Chriss) ================= -->
+<article class="bg-[#0F1218] border border-outline-variant hover:border-primary-container/60 rounded p-space-md transition-colors cursor-pointer">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-outline-variant/60 pb-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="monitoring">monitoring</span>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface hover:text-primary">Almgren-Chriss TWAP/VWAP Execution</h3>
+<span class="bg-surface-container text-on-surface-variant text-data-mono-sm font-data-mono-sm px-1.5 py-0.2 rounded border border-outline-variant">Optimal Slippage</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-data-mono-sm font-data-mono-sm">
+<span class="text-on-surface-variant">Asset: <span class="text-primary font-bold">BTC/ETH Perps</span></span>
+<span class="text-outline">•</span>
+<span class="flex items-center gap-1 text-on-surface-variant">
+                    Creator: <span class="text-primary-container">@OxfordQuantLab</span>
+<span class="material-symbols-outlined text-[13px] text-secondary" data-icon="verified" data-weight="fill">verified</span>
+</span>
+</div>
+</div>
+<div class="text-right">
+<div class="text-primary font-headline-md text-headline-md font-bold">$100<span class="text-xs text-outline font-normal">/mo</span></div>
+<div class="text-[10px] text-on-surface-variant font-data-mono-sm">2,500,000 VND / month</div>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-2 my-2 py-1.5 bg-[#08090C] rounded border border-outline-variant/40 px-2 font-data-mono-sm text-data-mono-sm">
+<div>
+<div class="text-outline text-[9px] font-label-caps">SHARPE RATIO</div>
+<div class="text-secondary font-bold text-data-mono-md">3.14</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">MAX DRAWDOWN</div>
+<div class="text-primary font-bold text-data-mono-md">-3.8%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">WIN RATE</div>
+<div class="text-secondary font-bold text-data-mono-md">78.4%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">24H VOL</div>
+<div class="text-on-surface font-bold text-data-mono-md">$4.8M</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-2 text-data-mono-sm font-data-mono-sm text-outline">
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 192 Rented Nodes</span>
+<span>•</span>
+<span>P99 &lt; 1.2ms</span>
+</div>
+<button class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:text-primary hover:border-primary-container font-data-mono-sm text-data-mono-sm rounded transition-colors">
+                Inspect Parameters
+              </button>
+</div>
+</article>
+<!-- ================= STRATEGY CARD 3 (Cross-DEX Flash Liquidity) ================= -->
+<article class="bg-[#0F1218] border border-outline-variant hover:border-primary-container/60 rounded p-space-md transition-colors cursor-pointer">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-outline-variant/60 pb-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="flash_on">flash_on</span>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface hover:text-primary">Cross-DEX Flash Liquidity Arbitrage</h3>
+<span class="bg-surface-container text-on-surface-variant text-data-mono-sm font-data-mono-sm px-1.5 py-0.2 rounded border border-outline-variant">Atomic Swaps</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-data-mono-sm font-data-mono-sm">
+<span class="text-on-surface-variant">Asset: <span class="text-primary font-bold">ETH/SOL/Base</span></span>
+<span class="text-outline">•</span>
+<span class="flex items-center gap-1 text-on-surface-variant">
+                    Creator: <span class="text-primary-container">@ZeroKnowledgeAlpha</span>
+<span class="material-symbols-outlined text-[13px] text-secondary" data-icon="verified" data-weight="fill">verified</span>
+</span>
+</div>
+</div>
+<div class="text-right">
+<div class="text-primary font-headline-md text-headline-md font-bold">$150<span class="text-xs text-outline font-normal">/mo</span></div>
+<div class="text-[10px] text-on-surface-variant font-data-mono-sm">3,750,000 VND / month</div>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-2 my-2 py-1.5 bg-[#08090C] rounded border border-outline-variant/40 px-2 font-data-mono-sm text-data-mono-sm">
+<div>
+<div class="text-outline text-[9px] font-label-caps">SHARPE RATIO</div>
+<div class="text-secondary font-bold text-data-mono-md">2.85</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">MAX DRAWDOWN</div>
+<div class="text-primary font-bold text-data-mono-md">-4.2%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">WIN RATE</div>
+<div class="text-secondary font-bold text-data-mono-md">74.0%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">AVG LATENCY</div>
+<div class="text-secondary-fixed font-bold text-data-mono-md">4.8ms</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-2 text-data-mono-sm font-data-mono-sm text-outline">
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 410 Rented Nodes</span>
+<span>•</span>
+<span>Mev-Boost Shielded</span>
+</div>
+<button class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:text-primary hover:border-primary-container font-data-mono-sm text-data-mono-sm rounded transition-colors">
+                Inspect Parameters
+              </button>
+</div>
+</article>
+<!-- ================= STRATEGY CARD 4 (OFI Microstructure) ================= -->
+<article class="bg-[#0F1218] border border-outline-variant hover:border-primary-container/60 rounded p-space-md transition-colors cursor-pointer">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-outline-variant/60 pb-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="waterfall_chart">waterfall_chart</span>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface hover:text-primary">OFI Microstructure Momentum</h3>
+<span class="bg-surface-container text-on-surface-variant text-data-mono-sm font-data-mono-sm px-1.5 py-0.2 rounded border border-outline-variant">Order Flow Imbalance</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-data-mono-sm font-data-mono-sm">
+<span class="text-on-surface-variant">Asset: <span class="text-primary font-bold">Binance/Coinbase Prime</span></span>
+<span class="text-outline">•</span>
+<span class="flex items-center gap-1 text-on-surface-variant">
+                    Creator: <span class="text-primary-container">@KxSystemsAlum</span>
+<span class="material-symbols-outlined text-[13px] text-secondary" data-icon="verified" data-weight="fill">verified</span>
+</span>
+</div>
+</div>
+<div class="text-right">
+<div class="text-primary font-headline-md text-headline-md font-bold">$120<span class="text-xs text-outline font-normal">/mo</span></div>
+<div class="text-[10px] text-on-surface-variant font-data-mono-sm">3,000,000 VND / month</div>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-2 my-2 py-1.5 bg-[#08090C] rounded border border-outline-variant/40 px-2 font-data-mono-sm text-data-mono-sm">
+<div>
+<div class="text-outline text-[9px] font-label-caps">SHARPE RATIO</div>
+<div class="text-secondary font-bold text-data-mono-md">2.71</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">MAX DRAWDOWN</div>
+<div class="text-primary font-bold text-data-mono-md">-5.1%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">WIN RATE</div>
+<div class="text-secondary font-bold text-data-mono-md">71.5%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">TICK HORIZON</div>
+<div class="text-on-surface font-bold text-data-mono-md">150 Ticks</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-2 text-data-mono-sm font-data-mono-sm text-outline">
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 89 Rented Nodes</span>
+</div>
+<button class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:text-primary hover:border-primary-container font-data-mono-sm text-data-mono-sm rounded transition-colors">
+                Inspect Parameters
+              </button>
+</div>
+</article>
+<!-- ================= STRATEGY CARD 5 (Ornstein-Uhlenbeck) ================= -->
+<article class="bg-[#0F1218] border border-outline-variant hover:border-primary-container/60 rounded p-space-md transition-colors cursor-pointer">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-outline-variant/60 pb-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline text-[18px]" data-icon="compare_arrows">compare_arrows</span>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface hover:text-primary">Ornstein-Uhlenbeck Statistical Pairs</h3>
+<span class="bg-surface-container text-on-surface-variant text-data-mono-sm font-data-mono-sm px-1.5 py-0.2 rounded border border-outline-variant">Cointegration</span>
+</div>
+<div class="flex items-center gap-3 mt-1 text-data-mono-sm font-data-mono-sm">
+<span class="text-on-surface-variant">Asset: <span class="text-primary font-bold">Layer-1 Baskets</span></span>
+<span class="text-outline">•</span>
+<span class="flex items-center gap-1 text-on-surface-variant">
+                    Creator: <span class="text-primary-container">@DeepAlphaQuant</span>
+<span class="material-symbols-outlined text-[13px] text-secondary" data-icon="verified" data-weight="fill">verified</span>
+</span>
+</div>
+</div>
+<div class="text-right">
+<div class="text-primary font-headline-md text-headline-md font-bold">$90<span class="text-xs text-outline font-normal">/mo</span></div>
+<div class="text-[10px] text-on-surface-variant font-data-mono-sm">2,250,000 VND / month</div>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-2 my-2 py-1.5 bg-[#08090C] rounded border border-outline-variant/40 px-2 font-data-mono-sm text-data-mono-sm">
+<div>
+<div class="text-outline text-[9px] font-label-caps">SHARPE RATIO</div>
+<div class="text-secondary font-bold text-data-mono-md">2.58</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">MAX DRAWDOWN</div>
+<div class="text-primary font-bold text-data-mono-md">-4.9%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">WIN RATE</div>
+<div class="text-secondary font-bold text-data-mono-md">69.8%</div>
+</div>
+<div>
+<div class="text-outline text-[9px] font-label-caps">HALF-LIFE</div>
+<div class="text-on-surface font-bold text-data-mono-md">4.2 Hours</div>
+</div>
+</div>
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-2 text-data-mono-sm font-data-mono-sm text-outline">
+<span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 114 Rented Nodes</span>
+</div>
+<button class="px-2.5 py-1 bg-surface-container border border-outline-variant text-on-surface hover:text-primary hover:border-primary-container font-data-mono-sm text-data-mono-sm rounded transition-colors">
+                Inspect Parameters
+              </button>
+</div>
+</article>
+</div>
+</section>
+<!-- ================= RIGHT COLUMN: DETAILED STRATEGY INSPECTION DRAWER ================= -->
+<section class="w-full xl:w-[480px] 2xl:w-[540px] bg-[#0c1017] border-l border-outline-variant flex flex-col shrink-0 overflow-y-auto">
+<!-- Drawer Header Ribbon -->
+<div class="p-space-md border-b border-outline-variant bg-[#0e121b] flex items-center justify-between sticky top-0 z-20">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" data-icon="terminal">terminal</span>
+<div>
+<div class="font-headline-md text-headline-md font-bold text-primary flex items-center gap-2">
+<span>Avellaneda-Stoikov HFT</span>
+<span class="text-[9px] font-data-mono-sm bg-primary-container/20 text-primary-container px-1 rounded border border-primary-container/30">ACTIVE LIVE</span>
+</div>
+<div class="font-data-mono-sm text-data-mono-sm text-outline">SHARD-ALLOC // SOL-USDT L3 BOOK</div>
+</div>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 text-outline hover:text-primary rounded hover:bg-surface-container transition-colors" title="Pop-out telemetry">
+<span class="material-symbols-outlined text-[17px]" data-icon="open_in_new">open_in_new</span>
+</button>
+<button class="p-1 text-outline hover:text-primary rounded hover:bg-surface-container transition-colors" title="Lock Window">
+<span class="material-symbols-outlined text-[17px]" data-icon="lock">lock</span>
+</button>
+</div>
+</div>
+<div class="p-space-md space-y-4">
+<!-- Creator Identity Card & Verification Badge -->
+<div class="p-space-md bg-[#0F141E] border border-outline-variant rounded flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<div class="w-9 h-9 rounded bg-[#161d2b] border border-primary-container/40 flex items-center justify-center text-primary-container font-bold font-data-mono-md">
+                CX
+              </div>
+<div>
+<div class="flex items-center gap-1.5">
+<span class="font-headline-md text-[14px] font-bold text-primary">@CitadelEx-Lead</span>
+<span class="material-symbols-outlined text-[15px] text-secondary" data-icon="verified" data-weight="fill">verified</span>
+</div>
+<div class="text-[10px] text-outline font-data-mono-sm">Institutional Creator • 284 Active Subscribers</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-[9px] font-label-caps text-secondary bg-secondary-container/10 px-1.5 py-0.5 rounded border border-secondary/20">VERIFIED SHA-256</div>
+<div class="text-[9px] text-outline font-data-mono-sm mt-1">hash: 9a7f...d04e</div>
+</div>
+</div>
+<!-- Quantitative Strategy Overview & Parameters -->
+<div class="bg-[#0F1218] border border-outline-variant rounded p-space-md">
+<div class="flex items-center justify-between border-b border-outline-variant/60 pb-2 mb-2">
+<span class="font-label-caps text-label-caps text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-primary-container" data-icon="settings_suggest">settings_suggest</span>
+                MATHEMATICAL PARAMETERS
+              </span>
+<span class="text-[9px] text-secondary font-data-mono-sm">KERNEL: DPDK-RUST-0.9</span>
+</div>
+<div class="grid grid-cols-3 gap-2 font-data-mono-sm text-data-mono-sm">
+<div class="bg-[#08090C] p-2 rounded border border-outline-variant/30">
+<div class="text-outline text-[9px]">INVENTORY LIMIT</div>
+<div class="text-primary font-bold mt-0.5">q_max = 5.0 SOL</div>
+<div class="text-[8px] text-outline">Hard circuit limit</div>
+</div>
+<div class="bg-[#08090C] p-2 rounded border border-outline-variant/30">
+<div class="text-outline text-[9px]">RISK AVERSION (γ)</div>
+<div class="text-secondary font-bold mt-0.5">γ = 0.15</div>
+<div class="text-[8px] text-outline">Optimal spread offset</div>
+</div>
+<div class="bg-[#08090C] p-2 rounded border border-outline-variant/30">
+<div class="text-outline text-[9px]">TICK-TO-TRADE</div>
+<div class="text-primary-container font-bold mt-0.5">850ns</div>
+<div class="text-[8px] text-outline">Kernel bypass UDP</div>
+</div>
+</div>
+</div>
+<!-- 500-Path Monte Carlo Simulated Returns Fan Chart -->
+<div class="bg-[#0F1218] border border-outline-variant rounded p-space-md">
+<div class="flex items-center justify-between mb-2">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary-container text-[16px]" data-icon="show_chart">show_chart</span>
+<span class="font-label-caps text-label-caps text-primary">500-PATH MONTE CARLO RETURN CONE</span>
+</div>
+<div class="flex items-center gap-2 text-[9px] font-data-mono-sm">
+<span class="flex items-center gap-1 text-primary-container"><span class="w-2 h-0.5 bg-primary-container"></span> Median</span>
+<span class="flex items-center gap-1 text-secondary"><span class="w-2 h-0.5 bg-secondary"></span> 95% Conf</span>
+</div>
+</div>
+<!-- Precision SVG Fan Chart -->
+<div class="relative w-full h-44 bg-[#08090C] rounded border border-outline-variant/60 overflow-hidden flex flex-col justify-end p-2">
+<!-- Grid coordinate lines -->
+<div class="absolute inset-0 flex flex-col justify-between p-2 pointer-events-none opacity-20">
+<div class="border-b border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+<div class="border-b border-dashed border-outline"></div>
+</div>
+<!-- Inline Vector Fan Graphics -->
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 500 160">
+<defs>
+<lineargradient id="coneGrad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#00f2fe" stop-opacity="0.35"></stop>
+<stop offset="50%" stop-color="#01e599" stop-opacity="0.15"></stop>
+<stop offset="100%" stop-color="#08090C" stop-opacity="0.0"></stop>
+</lineargradient>
+<lineargradient id="innerCone" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#00f2fe" stop-opacity="0.5"></stop>
+<stop offset="100%" stop-color="#00f2fe" stop-opacity="0.05"></stop>
+</lineargradient>
+</defs>
+<!-- 5th-95th Percentile Confidence Cone Outer Polygon -->
+<polygon fill="url(#coneGrad)" points="0,110 50,102 100,95 150,84 200,75 250,60 300,48 350,35 400,24 450,15 500,5 500,155 450,148 400,140 350,135 300,130 250,128 200,125 150,122 100,118 50,114 0,110"></polygon>
+<!-- 25th-75th Quartile Inner Envelope -->
+<polygon fill="url(#innerCone)" points="0,110 50,105 100,98 150,90 200,82 250,72 300,62 350,54 400,44 450,38 500,30 500,135 450,130 400,125 350,122 300,120 250,118 200,116 150,114 100,112 50,111 0,110"></polygon>
+<!-- Monte Carlo Median Trajectory Line (Primary Cyan Glow) -->
+<polyline fill="none" points="0,110 50,104 100,96 150,86 200,78 250,66 300,55 350,45 400,34 450,26 500,18" stroke="#00f2fe" stroke-linecap="round" stroke-width="2.5"></polyline>
+<!-- 95th Percentile Upper Boundary -->
+<polyline fill="none" points="0,110 50,102 100,95 150,84 200,75 250,60 300,48 350,35 400,24 450,15 500,5" stroke="#01e599" stroke-dasharray="3,3" stroke-width="1.2"></polyline>
+<!-- Worst Case Lower Boundary (5th Percentile) -->
+<polyline fill="none" points="0,110 50,114 100,118 150,122 200,125 250,128 300,130 350,135 400,140 450,148 500,155" stroke="#849495" stroke-dasharray="2,2" stroke-width="1"></polyline>
+<!-- Target Apex Indicator -->
+<circle class="animate-ping" cx="500" cy="18" fill="#00f2fe" opacity="0.75" r="4"></circle>
+<circle cx="500" cy="18" fill="#ffffff" r="3"></circle>
+</svg>
+<!-- Axis Footnote -->
+<div class="flex justify-between items-center text-[9px] font-data-mono-sm text-outline pt-1 border-t border-outline-variant/40 mt-1">
+<span>T=0 (Deploy)</span>
+<span>T+30D (+14.2% Med)</span>
+<span>T+90D (+48.6% Med / Sharpe 3.42)</span>
+</div>
+</div>
+</div>
+<!-- Transparent Revenue Split Widget (70% Creator / 30% Platform) -->
+<div class="bg-[#0F1218] border border-outline-variant rounded p-space-md">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-caps text-label-caps text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-secondary" data-icon="pie_chart">pie_chart</span>
+                70/30 TRANSPARENT REVENUE ENGINE
+              </span>
+<span class="text-data-mono-sm font-data-mono-sm text-primary font-bold">$250.00 / Node / Mo</span>
+</div>
+<!-- Two-tone ratio bar -->
+<div class="w-full h-2.5 bg-surface-container rounded-sm overflow-hidden flex mb-2 border border-outline-variant">
+<div class="h-full bg-secondary-container" style="width: 70%;" title="70% Creator Royalty"></div>
+<div class="h-full bg-primary-container" style="width: 30%;" title="30% Shard Compute &amp; Infrastructure"></div>
+</div>
+<div class="grid grid-cols-2 gap-2 font-data-mono-sm text-data-mono-sm">
+<div class="p-2 bg-[#08090C] rounded border border-secondary/20">
+<div class="flex items-center gap-1 text-secondary text-[10px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>70% CREATOR ROYALTY</span>
+</div>
+<div class="text-primary font-headline-md text-headline-md font-bold mt-1">$175.00</div>
+<div class="text-[9px] text-outline">Paid direct to @CitadelEx</div>
+</div>
+<div class="p-2 bg-[#08090C] rounded border border-primary-container/20">
+<div class="flex items-center gap-1 text-primary-container text-[10px] font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span>30% SHARD INFRA</span>
+</div>
+<div class="text-on-surface font-headline-md text-headline-md font-bold mt-1">$75.00</div>
+<div class="text-[9px] text-outline">Co-location, L3 feed &amp; DPDK</div>
+</div>
+</div>
+</div>
+<!-- Action Hub CTAs -->
+<div class="space-y-2 pt-1 pb-4">
+<!-- Primary Execution Button -->
+<button class="w-full py-2.5 px-space-md bg-primary-container hover:bg-primary-fixed text-[#08090C] font-headline-md text-headline-md font-bold rounded flex items-center justify-center gap-2 neon-glow-cyan active:scale-[0.99] transition-all">
+<span class="material-symbols-outlined text-[20px]" data-icon="rocket_launch" data-weight="fill">rocket_launch</span>
+<span>1-Click Rent &amp; Deploy to Shard-NY4</span>
+</button>
+<!-- Secondary Actions Row -->
+<div class="grid grid-cols-2 gap-2">
+<button class="py-1.5 px-2 bg-surface-container hover:bg-surface-container-high border border-outline-variant hover:border-primary-container text-on-surface font-data-mono-sm text-data-mono-sm rounded flex items-center justify-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[15px]" data-icon="history">history</span>
+<span>Backtest (100ms L3)</span>
+</button>
+<button class="py-1.5 px-2 bg-surface-container hover:bg-surface-container-high border border-outline-variant hover:border-secondary text-secondary font-data-mono-sm text-data-mono-sm rounded flex items-center justify-center gap-1 transition-colors">
+<span class="material-symbols-outlined text-[15px]" data-icon="verified_user">verified_user</span>
+<span>Signal Attestation</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+<!-- Real-time HUD Status Bar Footer -->
+<footer class="h-6 bg-[#060709] border-t border-outline-variant px-space-md flex items-center justify-between text-outline font-data-mono-sm text-[9px] select-none z-50">
+<div class="flex items-center gap-4">
+<span class="text-primary-container font-semibold">FEED: SOL-L3-DIRECT-FEED // 424,890 MSGS/SEC</span>
+<span class="hidden md:inline">•</span>
+<span class="hidden md:inline">FPGA CO-LOCATED: NY4 EQUINIX</span>
+<span class="hidden md:inline">•</span>
+<span class="text-secondary">DPDK PACKET LOSS: 0.0000%</span>
+</div>
+<div class="flex items-center gap-3">
+<span>BLOCK #284,910,214</span>
+<span class="text-primary">UTC 14:02:18.490</span>
+</div>
+</footer>
+
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; flex-wrap: wrap; gap: 6px; background: rgba(15, 18, 24, 0.95); backdrop-filter: blur(12px); border: 1px solid #1E2430; padding: 6px 12px; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); font-family: 'Space Grotesk', sans-serif; font-size: 11px;">
+  <a href="dashboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">DASHBOARD</a>
+  <a href="quant-terminal.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">TERMINAL</a>
+  <a href="marketplace.html" style="color: #00F2FE; font-weight: bold; background: rgba(0,242,254,0.15); border: 1px solid rgba(0,242,254,0.3); text-decoration: none; padding: 4px 8px; border-radius: 4px;">⚡ MARKETPLACE</a>
+  <a href="leaderboard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">LEADERBOARD</a>
+  <a href="billing.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BILLING</a>
+  <a href="byok-wizard.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">BYOK</a>
+  <a href="mobile-sentry.html" style="color: #8E9AA8; text-decoration: none; padding: 4px 8px;">SENTRY</a>
+  <a href="telemetry.html" style="color: #00F2FE; text-decoration: none; padding: 4px 8px;">TELEMETRY</a>
+  <a href="latency-simulator.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">FEED SIMULATOR</a>
+  <a href="styleguide.html" style="color: #00E599; text-decoration: none; padding: 4px 8px;">STYLEGUIDE</a>
+</div>
+
+
+
+<!-- ALGOTRADE UNIVERSAL DOCK NAVIGATION -->
+<div id="algotrade-universal-nav" style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 99999; display: flex; align-items: center; gap: 8px; background: rgba(15, 18, 24, 0.92); border: 1px solid #1E2430; backdrop-filter: blur(16px); padding: 6px 14px; border-radius: 9999px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(0, 242, 254, 0.15); font-family: 'JetBrains Mono', monospace; font-size: 11px; max-width: 95vw; overflow-x: auto;">
+  <div style="display: flex; align-items: center; gap: 6px; padding-right: 10px; border-right: 1px solid #1E2430;">
+    <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #00E599; box-shadow: 0 0 8px #00E599;"></span>
+    <span style="color: #00F2FE; font-weight: 700; letter-spacing: 0.5px;">ALGOTRADE</span>
+  </div>
+  <nav style="display: flex; align-items: center; gap: 4px;">
+    <a href="dashboard.html" class="nav-item-dashboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">DASHBOARD</a>
+    <a href="quant-terminal.html" class="nav-item-quant-terminal" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">QUANT TERMINAL</a>
+    <a href="marketplace.html" class="nav-item-marketplace" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MARKETPLACE</a>
+    <a href="leaderboard.html" class="nav-item-leaderboard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LEADERBOARD</a>
+    <a href="backtest-studio.html" class="nav-item-backtest-studio" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BACKTEST STUDIO</a>
+    <a href="stress-lab.html" class="nav-item-stress-lab" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STRESS LAB</a>
+    <a href="telemetry.html" class="nav-item-telemetry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">TELEMETRY</a>
+    <a href="latency-simulator.html" class="nav-item-latency-simulator" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">LATENCY SIM</a>
+    <a href="billing.html" class="nav-item-billing" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BILLING</a>
+    <a href="byok-wizard.html" class="nav-item-byok-wizard" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">BYOK WIZARD</a>
+    <a href="mobile-sentry.html" class="nav-item-mobile-sentry" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">MOBILE SENTRY</a>
+    <a href="styleguide.html" class="nav-item-styleguide" style="color: #94A3B8; text-decoration: none; padding: 4px 8px; border-radius: 4px; transition: all 0.2s; white-space: nowrap;">STYLE GUIDE</a>
+  </nav>
+</div>
+<script>
+  (function() {
+    var cur = window.location.pathname.split('/').pop() || 'dashboard.html';
+    if (cur === 'index.html') cur = 'dashboard.html';
+    var key = cur.split('.')[0];
+    var activeLink = document.querySelector('.nav-item-' + key);
+    if (activeLink) {
+      activeLink.style.color = '#00F2FE';
+      activeLink.style.background = 'rgba(0, 242, 254, 0.12)';
+      activeLink.style.border = '1px solid rgba(0, 242, 254, 0.3)';
+      activeLink.style.fontWeight = '600';
+    }
+  })();
+</script>
+
+</body></html>

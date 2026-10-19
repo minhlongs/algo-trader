@@ -16,18 +16,26 @@ import {
   type PnlSummary,
   createDefaultAccount,
   updatePositionsPrices,
-  persistPaperState,
-  computePnlSummary,
 } from './paper-position-tracker';
-import { executeBuy, executeSell } from './paper-execution-helpers';
-import { initPaperSession } from './paper-executor-session';
+import { dispatchPaperBuy, dispatchPaperSell } from './paper-order-dispatcher';
+import { initPaperSession, savePaperSession } from './paper-executor-session';
 import { getPaperExecutorSingleton } from './paper-executor-singleton';
+import {
+  calculateAccountEquity,
+  validateTradeSignal,
+  applyDispatchResult,
+} from './paper-equity-tracker';
+import {
+  buildExecutorConfig,
+  buildPnlSummaryWithReserves,
+} from './paper-executor-state-helpers';
 
 export type {
-  PaperTrade, PaperPosition, PaperAccount, ExecutionResult, PaperExecutorConfig, TradeSignal,
-  OrderbookSnapshot, PnlSummary,
+  PaperTrade, PaperPosition, PaperAccount, ExecutionResult,
+  PaperExecutorConfig, TradeSignal, OrderbookSnapshot, PnlSummary,
 } from './paper-position-tracker';
 export { resetPaperExecutor } from './paper-executor-singleton';
+export { buildExecutorConfig, buildPnlSummaryWithReserves };
 
 export class PaperExecutor {
   private config: PaperExecutorConfig;
@@ -41,13 +49,7 @@ export class PaperExecutor {
   private readonly TRADES_FILE = cashclawPath('paper-trades.jsonl');
 
   constructor(config?: Partial<PaperExecutorConfig>) {
-    this.config = {
-      initialBalance: 10_000,
-      slippagePercent: 0.001,
-      feePercent: 0.001,
-      simulateFillRate: 0.95,
-      ...config,
-    };
+    this.config = buildExecutorConfig(config);
     this.account = createDefaultAccount(this.config);
   }
 
@@ -85,19 +87,11 @@ export class PaperExecutor {
     marketPrice: number,
     orderbook?: OrderbookSnapshot,
   ): Promise<ExecutionResult> {
-    if (!this.running) {
-      return { success: false, message: 'Paper trading not started. Call start() first.' };
-    }
-    const price = signal.price ?? marketPrice;
-    if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
-      return { success: false, message: `Invalid execution price: ${price}` };
-    }
-    if (typeof signal.quantity !== 'number' || !Number.isFinite(signal.quantity) || signal.quantity <= 0) {
-      return { success: false, message: `Invalid trade quantity: ${signal.quantity}` };
-    }
+    const val = validateTradeSignal(signal, marketPrice, this.running);
+    if (!val.valid) return { success: false, message: val.message };
     return signal.side === 'buy'
-      ? this._executeBuy(signal.symbol, signal.quantity, price, orderbook)
-      : this._executeSell(signal.symbol, signal.quantity, price, orderbook);
+      ? this._executeBuy(signal.symbol, signal.quantity, val.price, orderbook)
+      : this._executeSell(signal.symbol, signal.quantity, val.price, orderbook);
   }
 
   getPositions(): PaperPosition[] {
@@ -109,12 +103,7 @@ export class PaperExecutor {
   }
 
   getPnlSummary(): PnlSummary {
-    const summary = computePnlSummary(this.account, this.tradeHistory, this.config.initialBalance);
-    return {
-      ...summary,
-      cashReserves: this.account.cashReserves ?? this.account.balance,
-      marginUsed: this.account.marginUsed ?? 0,
-    };
+    return buildPnlSummaryWithReserves(this.account, this.tradeHistory, this.config.initialBalance);
   }
 
   updatePrices(prices: Map<string, number>): PaperPosition[] {
@@ -125,67 +114,38 @@ export class PaperExecutor {
   }
 
   private _updateAccountEquity(): void {
-    this.account.unrealizedPnl = this.positions.reduce((s, p) => s + p.unrealizedPnl, 0);
-    const positionValue = this.positions.reduce((s, p) => s + p.quantity * p.currentPrice, 0);
-    this.account.equity = this.account.balance + positionValue;
-    this.account.cashReserves = this.account.balance;
-    this.account.marginUsed = positionValue;
-    this.account.marginUtilization = this.account.equity > 0 ? positionValue / this.account.equity : 0;
+    calculateAccountEquity(this.account, this.positions);
   }
 
   private async _executeBuy(
     symbol: string, quantity: number, price: number, orderbook?: OrderbookSnapshot,
   ): Promise<ExecutionResult> {
-    const cost = quantity * price;
-    if (cost > this.account.balance) {
-      return { success: false, message: `Insufficient balance: need $${cost.toFixed(2)}, have $${this.account.balance.toFixed(2)}` };
-    }
-    if (Math.random() > this.config.simulateFillRate) {
-      return { success: false, message: 'Order not filled (simulated market conditions)' };
-    }
-    const result = executeBuy(symbol, quantity, price, this.account, this.positions, this.config, orderbook);
-    if (result.trade.status === 'rejected') {
-      return { success: false, trade: result.trade, message: 'Order rejected: insufficient orderbook depth' };
-    }
-    this.account.balance = result.newBalance;
-    this.positions = result.newPositions;
+    const dispatch = dispatchPaperBuy(symbol, quantity, price, this.account, this.positions, this.config, orderbook);
+    if (!dispatch.result.success) return dispatch.result;
+    const newPos = applyDispatchResult(dispatch, this.tradeHistory);
+    if (newPos) this.positions = newPos;
     this._updateAccountEquity();
-    this.tradeHistory.push(result.trade);
     this._persist();
-    logger.info(`[PaperExecutor] BUY ${result.trade.quantity} ${symbol} @ $${result.trade.executedPrice.toFixed(2)} (${result.trade.status})`);
-    return { success: true, trade: result.trade, account: { ...this.account } };
+    return dispatch.result;
   }
 
   private async _executeSell(
     symbol: string, quantity: number, price: number, orderbook?: OrderbookSnapshot,
   ): Promise<ExecutionResult> {
-    const position = this.positions.find((p) => p.symbol === symbol);
-    if (!position || position.quantity < quantity) {
-      return { success: false, message: `Insufficient position: have ${position?.quantity ?? 0} ${symbol}` };
-    }
-    if (Math.random() > this.config.simulateFillRate) {
-      return { success: false, message: 'Order not filled (simulated market conditions)' };
-    }
-    const result = executeSell(symbol, quantity, price, this.account, this.positions, this.config, orderbook);
-    if (result.trade.status === 'rejected') {
-      return { success: false, trade: result.trade, message: 'Order rejected: insufficient orderbook depth' };
-    }
-    this.account.balance = result.newBalance;
-    this.account.realizedPnl += result.realizedPnlDelta;
-    this.account.totalTrades += 1;
-    this.account.winningTrades += result.winningTradesDelta;
-    this.account.losingTrades += result.losingTradesDelta;
-    this.positions = result.newPositions;
+    const dispatch = dispatchPaperSell(symbol, quantity, price, this.account, this.positions, this.config, orderbook);
+    if (!dispatch.result.success) return dispatch.result;
+    const newPos = applyDispatchResult(dispatch, this.tradeHistory);
+    if (newPos) this.positions = newPos;
     this._updateAccountEquity();
-    this.tradeHistory.push(result.trade);
     this._persist();
-    logger.info(`[PaperExecutor] SELL ${result.trade.quantity} ${symbol} @ $${result.trade.executedPrice.toFixed(2)} (${result.trade.status}) | P&L: $${result.trade.pnl!.toFixed(2)}`);
-    return { success: true, trade: result.trade, account: { ...this.account } };
+    return dispatch.result;
   }
 
   private _persist(): void {
-    persistPaperState(this.ACCOUNT_FILE, this.POSITIONS_FILE, this.TRADES_FILE, this.account, this.positions, this.tradeHistory);
-    if (this.tradeHistory.length > 1000) this.tradeHistory = this.tradeHistory.slice(-1000);
+    this.tradeHistory = savePaperSession(
+      this.ACCOUNT_FILE, this.POSITIONS_FILE, this.TRADES_FILE,
+      this.account, this.positions, this.tradeHistory,
+    );
   }
 }
 

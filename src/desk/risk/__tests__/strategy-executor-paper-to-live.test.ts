@@ -16,16 +16,16 @@ describe('Paper-to-Live 30-Day Gating Mechanism', () => {
     const now = Date.now();
     const profile: StrategyPaperProfile = {
       strategyKey: 'strat-alpha-1',
-      paperStartDate: now - 35 * DAY_MS, // 35 days active (>=30)
-      totalPaperTrades: 60,              // 60 trades (>=50)
-      winningTrades: 36,                 // 36/60 = 60% win rate (>=55%)
+      paperStartDate: now - 35 * DAY_MS,
+      totalPaperTrades: 60,
+      winningTrades: 36,
       losingTrades: 24,
       grossProfitUsd: 7200,
-      grossLossUsd: 4000,                // PF = 1.8 (>=1.3)
-      maxDrawdown: 0.08,                 // 8% drawdown (<=15%)
-      sharpeRatio: 1.45,                 // 1.45 (>=1.0)
+      grossLossUsd: 4000,
+      maxDrawdown: 0.08,
+      sharpeRatio: 1.45,
       valWinRate: 0.62,
-      testWinRate: 0.60,                 // Degradation = 0.02 (<=0.05)
+      testWinRate: 0.60,
       regimeKellyWired: true,
       circuitBreakerTested: true,
       exchangeConnected: true,
@@ -42,7 +42,7 @@ describe('Paper-to-Live 30-Day Gating Mechanism', () => {
     const now = Date.now();
     const profile: StrategyPaperProfile = {
       strategyKey: 'strat-young-alpha',
-      paperStartDate: now - 15 * DAY_MS, // 15 days active (<30)
+      paperStartDate: now - 15 * DAY_MS,
       totalPaperTrades: 70,
       winningTrades: 45,
       losingTrades: 25,
@@ -68,7 +68,7 @@ describe('Paper-to-Live 30-Day Gating Mechanism', () => {
       losingTrades: 32,
       grossProfitUsd: 12000,
       grossLossUsd: 8000,
-      maxDrawdown: 0.18, // 18% drawdown (>15%)
+      maxDrawdown: 0.18,
       sharpeRatio: 1.1,
     };
 
@@ -82,7 +82,6 @@ describe('Paper-to-Live 30-Day Gating Mechanism', () => {
     const tickFn = vi.fn().mockResolvedValue(undefined);
     const now = Date.now();
 
-    // Register a strategy that has only 10 days of paper trading
     executor.registerPaperProfile({
       strategyKey: 'strat-gated',
       paperStartDate: now - 10 * DAY_MS,
@@ -95,39 +94,25 @@ describe('Paper-to-Live 30-Day Gating Mechanism', () => {
       sharpeRatio: 1.2,
     });
 
-    // 1. PAPER tick succeeds
     const paperRes = await executor.executeStrategyTick(
       'strat-gated',
       tickFn,
-      {
-        capitalUsdc: 10000,
-        allocatedUsdc: 2000,
-        positions: new Map(),
-        riskManager: mockRiskManager,
-        mode: 'PAPER',
-      },
+      { capitalUsdc: 10000, allocatedUsdc: 2000, positions: new Map(), riskManager: mockRiskManager, mode: 'PAPER' },
       { mode: 'PAPER', currentTimeMs: now },
     );
     expect(paperRes.success).toBe(true);
     expect(tickFn).toHaveBeenCalledTimes(1);
 
-    // 2. LIVE tick is blocked by 30-day paper-to-live gate
     const liveRes = await executor.executeStrategyTick(
       'strat-gated',
       tickFn,
-      {
-        capitalUsdc: 10000,
-        allocatedUsdc: 2000,
-        positions: new Map(),
-        riskManager: mockRiskManager,
-        mode: 'LIVE',
-      },
+      { capitalUsdc: 10000, allocatedUsdc: 2000, positions: new Map(), riskManager: mockRiskManager, mode: 'LIVE' },
       { mode: 'LIVE', currentTimeMs: now },
     );
     expect(liveRes.success).toBe(false);
     expect(liveRes.error).toContain('Live execution blocked by Paper-to-Live Gating');
     expect(liveRes.gatingResult?.eligible).toBe(false);
-    expect(tickFn).toHaveBeenCalledTimes(1); // Tick was NOT executed
+    expect(tickFn).toHaveBeenCalledTimes(1);
   });
 
   it('allows LIVE tick execution once all 10 transition gates pass', async () => {
@@ -153,13 +138,7 @@ describe('Paper-to-Live 30-Day Gating Mechanism', () => {
     const liveRes = await executor.executeStrategyTick(
       'strat-promoted',
       tickFn,
-      {
-        capitalUsdc: 10000,
-        allocatedUsdc: 2000,
-        positions: new Map(),
-        riskManager: mockRiskManager,
-        mode: 'LIVE',
-      },
+      { capitalUsdc: 10000, allocatedUsdc: 2000, positions: new Map(), riskManager: mockRiskManager, mode: 'LIVE' },
       { mode: 'LIVE', currentTimeMs: now },
     );
     expect(liveRes.success).toBe(true);

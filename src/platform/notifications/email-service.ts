@@ -7,10 +7,13 @@ import sgMail from '@sendgrid/mail';
 import { logger } from '../../shared/utils/logger';
 import { formatAlert } from './alert-formatter';
 import type { EmailConfig, EmailNotification } from './email-service-types';
-import { generatePlainTextBody, generateHtmlBody } from './email-service-formatters';
+import {
+  generatePlainTextBody, generateHtmlBody, buildThresholdAlertNotification,
+} from './email-service-formatters';
 import { applyEmailRateLimit } from './email-service-rate-limiter';
 
 export type { EmailConfig, EmailNotification };
+export { generatePlainTextBody, generateHtmlBody, buildThresholdAlertNotification, applyEmailRateLimit };
 
 export class EmailService {
   private static instance: EmailService;
@@ -84,16 +87,12 @@ export class EmailService {
       return false;
     }
 
-    // Rate limiting via Redis
     await applyEmailRateLimit(this.redisKeyPrefix, this.rateLimitDelay);
 
     try {
       const msg: sgMail.MailDataRequired = {
         to: notification.to,
-        from: {
-          email: this.config.fromEmail,
-          name: this.config.fromName,
-        },
+        from: { email: this.config.fromEmail, name: this.config.fromName },
         subject: notification.subject,
         text: notification.body,
         ...(notification.html ? { html: notification.html } : {}),
@@ -117,40 +116,13 @@ export class EmailService {
     percentUsed: number
   ): Promise<boolean> {
     const { urgency, urgencyColor } = formatAlert({
-      licenseKey,
-      threshold,
-      currentUsage,
-      dailyLimit,
-      percentUsed,
+      licenseKey, threshold, currentUsage, dailyLimit, percentUsed,
     });
-
-    const subject = `[${urgency}] Usage Alert: ${threshold}% threshold reached`;
-
-    const body = generatePlainTextBody(
-      licenseKey,
-      threshold,
-      currentUsage,
-      dailyLimit,
-      percentUsed,
-      urgency
+    return this.send(
+      buildThresholdAlertNotification(
+        recipient, licenseKey, threshold, currentUsage, dailyLimit, percentUsed, urgency, urgencyColor,
+      ),
     );
-
-    const html = generateHtmlBody(
-      licenseKey,
-      threshold,
-      currentUsage,
-      dailyLimit,
-      percentUsed,
-      urgency,
-      urgencyColor
-    );
-
-    return this.send({
-      to: recipient,
-      subject,
-      body,
-      html,
-    });
   }
 
   setRateLimit(delayMs: number): void {

@@ -3,7 +3,6 @@
  *
  * Measures the rate at which price momentum decays. Fast decay → fade the
  * spike (counter-trend). Slow decay → genuine trend (follow it).
- * Uses exponential decay curve fitting on multi-window momentum measurements.
  */
 
 import type { GammaMarket } from '../../polymarket/gamma-client';
@@ -14,8 +13,6 @@ import {
   type BaseStrategyConfig,
   type StrategyDeps,
 } from './base-polymarket-strategy';
-
-// ── Config ───────────────────────────────────────────────────────────────────
 
 export interface DecayRateMomentumConfig extends BaseStrategyConfig {
   lookbackWindows: number[];
@@ -42,14 +39,11 @@ export const DEFAULT_CONFIG: DecayRateMomentumConfig = {
 
 const STRATEGY_NAME = 'decay-rate-momentum' as StrategyName;
 
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
 export function calcMomentumAtWindow(prices: number[], window: number): number {
   if (prices.length < window || window <= 0) return 0;
   const reference = prices[prices.length - window];
   if (reference === 0) return 0;
-  const last = prices[prices.length - 1];
-  return (last - reference) / reference;
+  return (prices[prices.length - 1] - reference) / reference;
 }
 
 export function estimateDecayRate(momentums: number[]): number {
@@ -60,9 +54,7 @@ export function estimateDecayRate(momentums: number[]): number {
   const ratio = last / first;
   if (ratio <= 0) return 0;
   const lambda = -Math.log(ratio) / (momentums.length - 1);
-  if (lambda < 0) return 0;
-  if (lambda > 1) return 1;
-  return lambda;
+  return Math.max(0, Math.min(1, lambda));
 }
 
 export function classifyDecay(
@@ -83,8 +75,6 @@ export function determineSignal(
   if (decayClass === 'fast') return latestMomentum > 0 ? 'no' : 'yes';
   return null;
 }
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class DecayRateMomentumStrategy extends BasePolymarketStrategy {
   private readonly cfg: DecayRateMomentumConfig;
@@ -114,8 +104,7 @@ export class DecayRateMomentumStrategy extends BasePolymarketStrategy {
     for (const market of markets) {
       if (this.getPositionCount() >= this.cfg.maxPositions) break;
       if (!market.yesTokenId || market.closed || market.resolved) continue;
-      if (this.hasPosition(market.conditionId)) continue;
-      if (this.isOnCooldown(market.conditionId)) continue;
+      if (this.hasPosition(market.conditionId) || this.isOnCooldown(market.conditionId)) continue;
       if ((market.volume ?? 0) < this.cfg.minVolume) continue;
 
       try {
@@ -129,18 +118,12 @@ export class DecayRateMomentumStrategy extends BasePolymarketStrategy {
         const maxWindow = Math.max(...this.cfg.lookbackWindows);
         if (prices.length < maxWindow) continue;
 
-        const momentums: number[] = [];
-        for (const window of this.cfg.lookbackWindows) {
-          momentums.push(calcMomentumAtWindow(prices, window));
-        }
-
+        const momentums = this.cfg.lookbackWindows.map((w) => calcMomentumAtWindow(prices, w));
         const latestMomentum = momentums[0];
         if (Math.abs(latestMomentum) < this.cfg.minMomentumAbs) continue;
 
-        const absMomentums = momentums.map(m => Math.abs(m));
-        const lambda = estimateDecayRate(absMomentums);
+        const lambda = estimateDecayRate(momentums.map((m) => Math.abs(m)));
         const decayClass = classifyDecay(lambda, this.cfg.slowDecayThreshold, this.cfg.fastDecayThreshold);
-
         const signal = determineSignal(decayClass, latestMomentum);
         if (signal === null) continue;
 
@@ -148,8 +131,7 @@ export class DecayRateMomentumStrategy extends BasePolymarketStrategy {
         const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
 
-        await this.enterPosition(tokenId, market.conditionId, side, entryPrice,
-          parseFloat(this.cfg.positionSize));
+        await this.enterPosition(tokenId, market.conditionId, side, entryPrice, parseFloat(this.cfg.positionSize));
 
         logger.debug('Decay momentum entry', this.strategyName, {
           lambda: lambda.toFixed(4),
@@ -157,16 +139,11 @@ export class DecayRateMomentumStrategy extends BasePolymarketStrategy {
           latestMomentum: latestMomentum.toFixed(4),
         });
       } catch (err) {
-        logger.debug('Scan error', this.strategyName, {
-          market: market.conditionId,
-          err: String(err),
-        });
+        logger.debug('Scan error', this.strategyName, { market: market.conditionId, err: String(err) });
       }
     }
   }
 }
-
-// ── Legacy factory (backward compat) ─────────────────────────────────────────
 
 export interface DecayRateMomentumDeps extends StrategyDeps {
   config?: Partial<DecayRateMomentumConfig>;

@@ -1,6 +1,7 @@
 import type { DunningRecord, DunningStatus, DunningConfig } from './dunning-types';
 import { DunningWorkflow } from './dunning/workflow';
 import type { AuditLogService } from '../audit/audit-log-service';
+import type { LicenseService } from './license-service';
 
 export interface SuspensionStatusResult {
   isSuspended: boolean;
@@ -69,4 +70,46 @@ export async function logSuspensionWarning(
       daysSinceFirstFailure,
     },
   });
+}
+
+export async function processExistingFailure(
+  existing: DunningRecord,
+  config: DunningConfig,
+  licenseService: LicenseService,
+  auditService: AuditLogService,
+  saveFn: (record: DunningRecord) => Promise<void>,
+): Promise<DunningRecord> {
+  existing.retryCount += 1;
+  existing.lastAttemptDate = new Date().toISOString();
+  existing.updatedAt = new Date().toISOString();
+
+  const { shouldSuspend, daysSinceFirstFailure } = DunningWorkflow.shouldSuspend(
+    existing.retryCount,
+    existing.firstFailureDate,
+    config,
+  );
+
+  if (shouldSuspend) {
+    await DunningWorkflow.suspendLicense(existing.licenseId, existing, licenseService, auditService, saveFn);
+  } else {
+    existing.status = 'warning';
+    await logSuspensionWarning(auditService, existing.licenseId, existing.retryCount, config, daysSinceFirstFailure);
+  }
+  return existing;
+}
+
+export async function processExistingPaymentSuccess(
+  existing: DunningRecord,
+  licenseService: LicenseService,
+  auditService: AuditLogService,
+  saveFn: (record: DunningRecord) => Promise<void>,
+): Promise<DunningRecord> {
+  if (existing.status === 'suspended') {
+    await DunningWorkflow.reinstateLicense(existing.licenseId, existing, licenseService, auditService, saveFn);
+  }
+  existing.reinstatementDate = new Date().toISOString();
+  existing.status = 'reinstated';
+  existing.updatedAt = new Date().toISOString();
+  existing.retryCount = 0;
+  return existing;
 }

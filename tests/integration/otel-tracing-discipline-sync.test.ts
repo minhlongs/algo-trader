@@ -72,11 +72,12 @@ import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
 const TRACE_FILE = resolve(REPO_ROOT, 'src/shared/utils/tracing.ts');
+const TRACE_HELPERS_FILE = resolve(REPO_ROOT, 'src/shared/utils/tracing-helpers.ts');
 
 const REQUIRED_EXPORTS = ['getTracer', 'initTracing', 'resetTracingForTests'];
 
 function readTrace(): string {
-  return readFileSync(TRACE_FILE, 'utf8');
+  return readFileSync(TRACE_FILE, 'utf8') + '\n' + readFileSync(TRACE_HELPERS_FILE, 'utf8');
 }
 
 describe('OTEL tracing initialization discipline — 64th edge (TETRAHEXACONTAGON)', () => {

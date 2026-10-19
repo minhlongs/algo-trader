@@ -9,46 +9,19 @@
  */
 
 import { logger } from './logger';
+import {
+  type Span,
+  type Tracer,
+  noopTracer,
+  applyRegionAttributes,
+  resolveActiveSpan,
+} from './tracing-helpers';
 
-interface Span {
-  end(): void;
-  setAttribute(key: string, value: string | number | boolean): void;
-  recordException(err: unknown): void;
-}
-
-interface Tracer {
-  startActiveSpan<T>(name: string, fn: (span: Span) => Promise<T>): Promise<T>;
-  startSpan(name: string): Span;
-}
-
-const noopSpan: Span = {
-  end: () => undefined,
-  setAttribute: () => undefined,
-  recordException: () => undefined,
-};
-
-const noopTracer: Tracer = {
-  startActiveSpan: async <T>(_name: string, fn: (s: Span) => Promise<T>) => fn(noopSpan),
-  startSpan: () => noopSpan,
-};
+export * from './tracing-helpers';
 
 let _tracer: Tracer = noopTracer;
 let _initPromise: Promise<void> | null = null;
 let _otelApi: typeof import('@opentelemetry/api') | null = null;
-
-/**
- * Get current region from Cloudflare headers or environment
- */
-function getCurrentRegion(): string {
-  // In Cloudflare Workers, use cf-colo or cf-region
-  const globalWithReq = globalThis as typeof globalThis & { request?: Request };
-  const globalRequest = globalWithReq.request;
-  if (globalRequest?.headers) {
-    const colo = globalRequest.headers.get('cf-colo');
-    if (colo) return colo;
-  }
-  return process.env.REGION || 'unknown';
-}
 
 /**
  * Add region and environment attributes to the active span
@@ -56,8 +29,7 @@ function getCurrentRegion(): string {
 export function withRegionAttributes<T>(fn: () => Promise<T>): Promise<T> {
   const span = _tracer.startSpan('with-region');
   try {
-    span.setAttribute('cloud.region', getCurrentRegion());
-    span.setAttribute('deployment.environment', process.env.ENVIRONMENT || 'development');
+    applyRegionAttributes(span);
     return fn();
   } finally {
     span.end();
@@ -135,22 +107,7 @@ export function resetTracingForTests(): void {
  * Returns null if no active span or tracing disabled.
  */
 export function getActiveSpan(): Span | null {
-  try {
-    if (_otelApi?.trace) {
-      const active = _otelApi.trace.getActiveSpan();
-      return active ? (active as unknown as Span) : null;
-    }
-    const globalOtel = (globalThis as unknown as Record<symbol, typeof import('@opentelemetry/api')>)[
-      Symbol.for('opentelemetry.js.api.1')
-    ];
-    if (globalOtel?.trace) {
-      const active = globalOtel.trace.getActiveSpan();
-      return active ? (active as unknown as Span) : null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  return resolveActiveSpan(_otelApi);
 }
 
 /**
@@ -159,7 +116,6 @@ export function getActiveSpan(): Span | null {
 export function annotateActiveSpanWithRegion(region: string): void {
   const span = getActiveSpan();
   if (span) {
-    span.setAttribute('cloud.region', region);
-    span.setAttribute('deployment.environment', process.env.ENVIRONMENT || 'development');
+    applyRegionAttributes(span, region);
   }
 }

@@ -9,29 +9,20 @@
  */
 import { Router, Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
-import { z } from 'zod';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
 import { getDbClient } from '../../../shared/db/postgres-client';
-import { getTenantId, getUserId, isAdmin } from './marketplace-strategy-helpers';
+import { getTenantId, getUserId } from './marketplace-strategy-helpers';
+import {
+  autoRenewSchema,
+  verifyAccess,
+  parseUsageDays,
+  formatStatusHistoryRow,
+  formatCurrentUsage,
+  formatUsageSnapshotRow,
+} from './marketplace-subscription-enhancements-helpers';
 
 export const marketplaceSubscriptionEnhancementsRouter: RouterType = Router();
-
-const autoRenewSchema = z.object({ autoRenew: z.boolean() });
-
-/**
- * Verify the requesting tenant owns the subscription (or is admin).
- */
-async function verifyAccess(subscriptionId: string, tenantId: string, req: Request) {
-  const db = getDbClient();
-  const result = await db.query(
-    `SELECT id, tenant_id, status FROM marketplace_subscriptions WHERE id = $1`,
-    [subscriptionId],
-  );
-  if (result.rows.length === 0) return null;
-  const sub = result.rows[0] as Record<string, unknown>;
-  return isAdmin(req) || sub.tenant_id === tenantId ? sub : null;
-}
 
 /**
  * GET /:id/status-history — Status change history for a subscription
@@ -58,10 +49,7 @@ marketplaceSubscriptionEnhancementsRouter.get(
 
       return res.json({
         subscriptionId,
-        history: history.rows.map((r: Record<string, unknown>) => ({
-          id: r.id, previousStatus: r.previous_status, newStatus: r.new_status,
-          reason: r.reason, changedBy: r.changed_by, changedAt: r.created_at,
-        })),
+        history: history.rows.map((r: Record<string, unknown>) => formatStatusHistoryRow(r)),
       });
     } catch (error) {
       logger.error('[SubEnhance] Error fetching status history', { error, subId: req.params.id });
@@ -78,7 +66,7 @@ marketplaceSubscriptionEnhancementsRouter.get(
     try {
       const subscriptionId = req.params.id as string;
       const tenantId = getTenantId(req);
-      const days = Math.min(Math.max(parseInt((req.query.days as string) || '30', 10) || 30, 1), 365);
+      const days = parseUsageDays(req.query.days);
 
       const sub = await verifyAccess(subscriptionId, tenantId, req);
       if (!sub) {
@@ -104,27 +92,10 @@ marketplaceSubscriptionEnhancementsRouter.get(
         ),
       ]);
 
-      const curr = current.rows[0] as Record<string, unknown>;
-
       return res.json({
         subscriptionId,
-        current: curr ? {
-          signalsDelivered: Number(curr.total_signals_delivered ?? 0),
-          executionErrors: Number(curr.total_execution_errors ?? 0),
-          currentInvestmentUsd: Number(curr.current_investment_usd ?? 0),
-          totalPnlUsd: Number(curr.total_pnl_usd ?? 0),
-        } : null,
-        snapshots: snapshots.rows.map((r: Record<string, unknown>) => ({
-          date: r.snapshot_date,
-          signalsDelivered: Number(r.signals_delivered ?? 0),
-          executionErrors: Number(r.execution_errors ?? 0),
-          allocationPercent: Number(r.allocation_percent ?? 0),
-          currentInvestmentUsd: Number(r.current_investment_usd ?? 0),
-          totalPnlUsd: Number(r.total_pnl_usd ?? 0),
-          pnlTodayUsd: Number(r.pnl_today_usd ?? 0),
-          winRateToday: r.win_rate_today as number | null,
-          tradesToday: Number(r.trades_today ?? 0),
-        })),
+        current: formatCurrentUsage(current.rows[0] as Record<string, unknown> | undefined),
+        snapshots: snapshots.rows.map((r: Record<string, unknown>) => formatUsageSnapshotRow(r)),
       });
     } catch (error) {
       logger.error('[SubEnhance] Error fetching usage', { error, subId: req.params.id });
@@ -154,15 +125,12 @@ marketplaceSubscriptionEnhancementsRouter.patch(
       }
 
       const { autoRenew } = parsed.data;
-
       const db = getDbClient();
       await db.query(
         `UPDATE marketplace_subscriptions SET auto_renew = $1, updated_at = NOW()
          WHERE id = $2 AND tenant_id = $3`,
         [autoRenew, subscriptionId, tenantId],
       );
-
-      // Record in status history
       await db.query(
         `INSERT INTO subscription_status_history
          (subscription_id, previous_status, new_status, reason, changed_by)
@@ -171,7 +139,6 @@ marketplaceSubscriptionEnhancementsRouter.patch(
       );
 
       logger.info('[SubEnhance] Auto-renewal toggled', { subscriptionId, autoRenew, tenantId, userId });
-
       return res.json({
         id: subscriptionId,
         autoRenew,

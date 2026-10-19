@@ -16,6 +16,8 @@ import {
   calcTrendStrength,
   calcDirection,
   detectVolumeConfirmation,
+  appendBoundedHistory,
+  evaluateSentimentExit,
 } from './sentiment-momentum-helpers';
 
 export class SentimentMomentumStrategy extends BasePolymarketStrategy {
@@ -31,56 +33,21 @@ export class SentimentMomentumStrategy extends BasePolymarketStrategy {
   }
 
   private recordTick(tokenId: string, price: number, volume: number): void {
-    let prices = this.priceHistory.get(tokenId);
-    if (!prices) {
-      prices = [];
-      this.priceHistory.set(tokenId, prices);
-    }
-    prices.push(price);
-
-    let vols = this.volumeHistory.get(tokenId);
-    if (!vols) {
-      vols = [];
-      this.volumeHistory.set(tokenId, vols);
-    }
-    vols.push(volume);
-
     const maxLen = this.cfg.adxPeriod * 4;
-    if (prices.length > maxLen) prices.splice(0, prices.length - maxLen);
-    if (vols.length > maxLen) vols.splice(0, vols.length - maxLen);
+    appendBoundedHistory(this.priceHistory, tokenId, price, maxLen);
+    appendBoundedHistory(this.volumeHistory, tokenId, volume, maxLen);
   }
-
-  // -----------------------------------------------------------------------
-  // Custom exit
-  // -----------------------------------------------------------------------
 
   protected getCustomExitCondition(
     pos: OpenPosition,
     _currentPrice: number,
   ): { exit: boolean; reason: string } {
-    const prices = this.priceHistory.get(pos.tokenId);
-    const vols = this.volumeHistory.get(pos.tokenId);
-    if (!prices || !vols || prices.length < this.cfg.adxPeriod * 2) {
-      return { exit: false, reason: '' };
-    }
-
-    const strength = calcTrendStrength(prices, this.cfg.adxPeriod);
-    const prevStrength = this.prevTrendStrength.get(pos.tokenId);
-
-    // Trend weakening: strength dropped significantly and is below threshold
-    if (prevStrength !== undefined && strength < prevStrength * 0.7 && strength < this.cfg.adxThreshold) {
-      return {
-        exit: true,
-        reason: `trend-weakening (${prevStrength.toFixed(1)} -> ${strength.toFixed(1)})`,
-      };
-    }
-
-    // Volume divergence: volume decreasing relative to prior period
-    if (vols.length >= this.cfg.volumeLookback * 2 && !detectVolumeConfirmation(vols, this.cfg.volumeLookback)) {
-      return { exit: true, reason: 'volume-divergence' };
-    }
-
-    return { exit: false, reason: '' };
+    return evaluateSentimentExit(
+      this.priceHistory.get(pos.tokenId),
+      this.volumeHistory.get(pos.tokenId),
+      this.prevTrendStrength.get(pos.tokenId),
+      this.cfg,
+    );
   }
 
   // -----------------------------------------------------------------------

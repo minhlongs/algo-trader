@@ -2,20 +2,10 @@
  * Split + CLOB Entry Mechanism (Paper Trading)
  * Cheaper entry via CTF split: deposit USDC → mint YES+NO → sell unwanted side on CLOB.
  *
- * Economics:
- *   Direct buy YES:  cost = yesPrice per share
- *   Split entry:     deposit $1 → mint 1 YES + 1 NO → sell NO at bestNoBid
- *                    net cost = 1.0 - bestNoBid per YES share
- *   Savings exist when: yesPrice + bestNoBid > 1.0 (spread exceeds $1)
- *
  * NOTE: Pure paper-trading calculation — no real on-chain transactions.
  */
 
 import { logger } from '../../shared/utils/logger';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface OrderBookLevel {
   price: number;
@@ -46,10 +36,6 @@ export interface SplitEntry {
   isCheaper: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /** Best bid = highest price a buyer will pay. Returns 0 if no bids. */
 function getBestBid(bids: OrderBookLevel[]): number {
   return bids.length > 0 ? bids[0].price : 0;
@@ -59,10 +45,6 @@ function getBestBid(bids: OrderBookLevel[]): number {
 function getAvailableLiquidity(bids: OrderBookLevel[], minPrice: number): number {
   return bids.filter(b => b.price >= minPrice).reduce((sum, b) => sum + b.size, 0);
 }
-
-// ---------------------------------------------------------------------------
-// Core calculations
-// ---------------------------------------------------------------------------
 
 /**
  * Calculate split+CLOB entry economics.
@@ -76,7 +58,7 @@ export function calculateSplitEntry(
 ): SplitEntry {
   if (depositAmount <= 0) throw new Error('depositAmount must be > 0');
 
-  const mintedShares = depositAmount; // 1:1 binary CTF
+  const mintedShares = depositAmount;
   const sellSide: 'YES' | 'NO' = targetSide === 'YES' ? 'NO' : 'YES';
   const sellBids = sellSide === 'NO' ? market.noBids : market.yesBids;
   const directCostPerShare = targetSide === 'YES' ? market.yesPrice : market.noPrice;
@@ -115,12 +97,7 @@ export function calculateSplitEntry(
   return result;
 }
 
-/**
- * Quick check: is split+sell cheaper than direct CLOB buy?
- *
- * For YES: savings = yesPrice - (1 - bestNoBid) = yesPrice + bestNoBid - 1
- * Savings > 0  ⟺  targetPrice + bestOppBid > 1.0
- */
+/** Quick check: is split+sell cheaper than direct CLOB buy? */
 export function isSplitCheaper(targetSide: 'YES' | 'NO', market: MarketPrices): boolean {
   const sellBids = targetSide === 'YES' ? market.noBids : market.yesBids;
   const bestOppBid = getBestBid(sellBids);
@@ -137,10 +114,7 @@ export function isSplitCheaper(targetSide: 'YES' | 'NO', market: MarketPrices): 
   return isCheaper;
 }
 
-/**
- * Find the side (YES or NO) with maximum savings from a split entry.
- * Returns null if neither side is cheaper than direct buy.
- */
+/** Find the side (YES or NO) with maximum savings from a split entry. */
 export function findBestSplitSide(market: MarketPrices, depositAmount: number): SplitEntry | null {
   const yesSplit = calculateSplitEntry(market.marketId, 'YES', depositAmount, market);
   const noSplit = calculateSplitEntry(market.marketId, 'NO', depositAmount, market);
@@ -149,10 +123,7 @@ export function findBestSplitSide(market: MarketPrices, depositAmount: number): 
   return candidates.reduce((best, c) => (c.savings > best.savings ? c : best));
 }
 
-/**
- * Returns true if CLOB bids can absorb the full sell side of a split entry.
- * @param minBidPrice - minimum acceptable bid price (default 1 cent)
- */
+/** Returns true if CLOB bids can absorb the full sell side of a split entry. */
 export function hasSufficientLiquidity(
   targetSide: 'YES' | 'NO',
   market: MarketPrices,
@@ -163,11 +134,7 @@ export function hasSufficientLiquidity(
   return getAvailableLiquidity(sellBids, minBidPrice) >= depositAmount;
 }
 
-/**
- * Minimum deposit where savings exceed a given percentage threshold.
- * Useful for sizing trades: splits only make sense above a certain size.
- * Returns null if split is never cheaper for this market + side.
- */
+/** Minimum deposit where savings exceed a given percentage threshold. */
 export function minimumDepositForSplit(
   targetSide: 'YES' | 'NO',
   market: MarketPrices,

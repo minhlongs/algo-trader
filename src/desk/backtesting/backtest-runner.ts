@@ -20,19 +20,17 @@
  */
 
 import type { StrategyName } from '../core/types';
-import type { OrderManager } from '../polymarket/order-manager';
-import type { BasePolymarketStrategy, StrategyDeps } from '../strategies/polymarket/base-polymarket-strategy';
 import { getStrategy } from '../polymarket/strategy-registry';
 import { GammaHistoricalProvider } from './gamma-historical-provider';
 import { computeMetrics } from './metrics-calculator';
 import { logger } from '../../shared/utils/logger';
-import type { BacktestResult, HistoricalSnapshot } from './types';
-import type { BacktestRunnerOptions } from './types';
-import { BacktestOrderManager } from './backtest-order-manager';
-import { createTickState, createMockClob, createHistoricalGammaClient } from './backtest-mock-factory';
-import { fetchFromOhlcvStore, type LoadedHistoricalData } from './backtest-data-loader';
+import type { BacktestResult, BacktestRunnerOptions } from './types';
 import { writeBacktestRunCard } from './backtest-run-card';
-import type { OhlcvCandle } from '../data/ohlcv-store';
+import {
+  loadBacktestSnapshots,
+  instantiateBacktestStrategy,
+  replayStrategyTicks,
+} from './backtest-runner-simulation';
 
 // Facade re-exports — moved symbols keep their public API here.
 export type { BacktestRunnerOptions, DataQualityGateConfig } from './types';
@@ -41,12 +39,12 @@ export { createTickState, createMockClob, createHistoricalGammaClient } from './
 export type { TickState } from './backtest-mock-factory';
 export { fetchFromOhlcvStore } from './backtest-data-loader';
 export { writeBacktestRunCard } from './backtest-run-card';
-
-type StrategyConstructor = new (
-  deps: StrategyDeps,
-  config: Record<string, unknown>,
-  name: string,
-) => BasePolymarketStrategy;
+export {
+  loadBacktestSnapshots,
+  instantiateBacktestStrategy,
+  replayStrategyTicks,
+  type StrategyConstructor,
+} from './backtest-runner-simulation';
 
 export class BacktestRunner {
   private historicalProvider = new GammaHistoricalProvider();
@@ -63,69 +61,22 @@ export class BacktestRunner {
     }
 
     // Fetch historical data — use OHLCV store if configured, else live Gamma API
-    const ohlcvMarket = (config as unknown as Record<string, unknown>).ohlcvMarket as string | undefined;
-    const ohlcvTimeframe = (config as unknown as Record<string, unknown>).ohlcvTimeframe as string | undefined;
-    let snapshots: HistoricalSnapshot[];
-    let ohlcvCandles: OhlcvCandle[] = [];
-    if (ohlcvMarket && ohlcvTimeframe) {
-      const loaded: LoadedHistoricalData = await fetchFromOhlcvStore(
-        this.historicalProvider, ohlcvMarket, ohlcvTimeframe, config.days, config.dataQuality, warnings,
-      );
-      snapshots = loaded.snapshots;
-      ohlcvCandles = loaded.candles;
-    } else {
-      snapshots = await this.historicalProvider.fetchHistoricalSnapshots(
-        config.days, config.tickIntervalMs ?? 3_600_000,
-      );
-    }
+    const { snapshots, candles: ohlcvCandles } = await loadBacktestSnapshots(
+      this.historicalProvider,
+      config,
+      warnings,
+    );
 
-    if (snapshots.length === 0) {
-      throw new Error('No historical data available for backtest');
-    }
-
-    // Build mock services with a shared tick state object so both the
-    // GammaClient (getTrending) and ClobClient (getOrderBook) read the
-    // same current-snapshot data without desynchronizing.
-    const orderManager = new BacktestOrderManager(config.capitalUsdc);
-    const tickState = createTickState(snapshots);
-    const gammaClient = createHistoricalGammaClient(tickState);
-    const mockClob = createMockClob(tickState);
-
-    const deps: StrategyDeps = {
-      clob: mockClob,
-      orderManager,
-      eventBus: { emit: () => {}, on: () => {}, off: () => {} },
-      gamma: gammaClient,
-    };
-
-    const strategy = new (entry.ctor as unknown as StrategyConstructor)(
-      deps,
-      config.strategyConfig ?? entry.defaultConfig,
-      config.strategy as StrategyName,
+    // Build mock services with a shared tick state object
+    const { strategy, orderManager, tickState } = instantiateBacktestStrategy(
+      entry,
+      config,
+      snapshots,
     );
 
     // Replay ticks - advance tick state before each execute so strategies
     // see fresh market data on every call.
-    for (let tickIdx = 0; tickIdx < snapshots.length; tickIdx++) {
-      const snapshot = snapshots[tickIdx];
-      tickState.setCurrent(snapshot);
-
-      try {
-        await (strategy as BasePolymarketStrategy).execute();
-      } catch (err) {
-        logger.warn('Backtest tick error', 'BacktestRunner', {
-          strategy: config.strategy,
-          timestamp: snapshot.timestamp,
-          err: String(err),
-        });
-      }
-
-      // Record equity point
-      orderManager.equityCurve.push({
-        timestamp: snapshot.timestamp,
-        equity: orderManager.getCurrentEquity(),
-      });
-    }
+    await replayStrategyTicks(strategy, config.strategy, snapshots, tickState, orderManager);
 
     // Compute metrics
     const trades = orderManager.getTrades();

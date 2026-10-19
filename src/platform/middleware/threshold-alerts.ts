@@ -1,9 +1,6 @@
 /**
  * Threshold Alerts — facade
  * ROIaaS Phase 4 - Threshold alert events for usage monitoring.
- *
- * Types live in ./threshold-alerts-types
- * Dispatch/body helpers live in ./threshold-alerts-dispatch
  */
 
 import { EventEmitter } from 'events';
@@ -18,6 +15,12 @@ import {
   generateSmsBody,
   dispatchAlert as dispatchAlertFn,
 } from './threshold-alerts-dispatch';
+import {
+  DEFAULT_ALERT_CHANNEL_CONFIG,
+  createThresholdNotification,
+  invokeThresholdHandlers,
+  mergeAlertChannelConfig,
+} from './threshold-alerts-notification';
 import type {
   AlertHandler,
   AlertNotification,
@@ -25,19 +28,15 @@ import type {
   AlertChannelConfig,
 } from './threshold-alerts-types';
 
-// Re-export types so existing callers keep their imports working
 export type { AlertHandler, AlertNotification, AlertRecipient, AlertChannelConfig };
+export * from './threshold-alerts-notification';
 
 export class ThresholdAlerts extends EventEmitter {
   private static instance: ThresholdAlerts;
   private handlers: Map<number, AlertHandler[]> = new Map();
-  private recipients: Map<string, AlertRecipient> = new Map(); // licenseKey -> recipient
-  private channelConfig: AlertChannelConfig = {
-    email: { enabled: true, minThreshold: 80 },
-    sms: { enabled: true, minThreshold: 90 },
-    telegram: { enabled: true, minThreshold: 80 },
-  };
-  private initialized: boolean = false;
+  private recipients: Map<string, AlertRecipient> = new Map();
+  private channelConfig: AlertChannelConfig = { ...DEFAULT_ALERT_CHANNEL_CONFIG };
+  private initialized = false;
 
   private constructor() {
     super();
@@ -59,9 +58,7 @@ export class ThresholdAlerts extends EventEmitter {
     const telegramInitialized = telegramBotService.initialize();
 
     logger.info('[ThresholdAlerts] Services initialized:', {
-      email: emailInitialized,
-      sms: smsInitialized,
-      telegram: telegramInitialized,
+      email: emailInitialized, sms: smsInitialized, telegram: telegramInitialized,
     });
 
     if (telegramInitialized) {
@@ -78,60 +75,26 @@ export class ThresholdAlerts extends EventEmitter {
 
     meteringService.on('threshold_alert', (alert: ThresholdAlert) => {
       this.emit('alert', alert);
-
       this.dispatchAlert(alert).catch((err) => {
         logger.error('[ThresholdAlerts] Failed to dispatch alert:', { err });
       });
-
-      const handlers = this.handlers.get(alert.threshold) || [];
-      for (const handler of handlers) {
-        try {
-          handler(alert);
-        } catch (error) {
-          logger.error('Alert handler error:', { error });
-        }
-      }
+      invokeThresholdHandlers(this.handlers.get(alert.threshold), alert, (error) => {
+        logger.error('Alert handler error:', { error });
+      });
     });
   }
 
   onThreshold(threshold: number, handler: AlertHandler): void {
-    if (!this.handlers.has(threshold)) {
-      this.handlers.set(threshold, []);
-    }
+    if (!this.handlers.has(threshold)) this.handlers.set(threshold, []);
     this.handlers.get(threshold)!.push(handler);
   }
 
-  onEightyPercent(handler: AlertHandler): void {
-    this.onThreshold(80, handler);
-  }
-
-  onNinetyPercent(handler: AlertHandler): void {
-    this.onThreshold(90, handler);
-  }
-
-  onHundredPercent(handler: AlertHandler): void {
-    this.onThreshold(100, handler);
-  }
+  onEightyPercent(handler: AlertHandler): void { this.onThreshold(80, handler); }
+  onNinetyPercent(handler: AlertHandler): void { this.onThreshold(90, handler); }
+  onHundredPercent(handler: AlertHandler): void { this.onThreshold(100, handler); }
 
   createNotification(alert: ThresholdAlert): AlertNotification {
-    const notification: AlertNotification = {
-      licenseKey: alert.licenseKey,
-      threshold: alert.threshold,
-      currentUsage: alert.currentUsage,
-      dailyLimit: alert.dailyLimit,
-      percentUsed: alert.percentUsed,
-      timestamp: alert.timestamp,
-    };
-
-    if (alert.threshold === 80) {
-      notification.action = 'warn';
-    } else if (alert.threshold === 90) {
-      notification.action = 'urgent';
-    } else if (alert.threshold === 100) {
-      notification.action = 'critical';
-    }
-
-    return notification;
+    return createThresholdNotification(alert);
   }
 
   async sendEmailNotification(
@@ -140,9 +103,7 @@ export class ThresholdAlerts extends EventEmitter {
     recipient: string,
   ): Promise<void> {
     const notification = this.createNotification(alert);
-    const subject = `Usage Alert: ${alert.threshold}% threshold reached`;
-    const body = generateEmailBody(notification);
-    await sendFn(recipient, subject, body);
+    await sendFn(recipient, `Usage Alert: ${alert.threshold}% threshold reached`, generateEmailBody(notification));
   }
 
   async sendSmsNotification(
@@ -151,8 +112,7 @@ export class ThresholdAlerts extends EventEmitter {
     recipient: string,
   ): Promise<void> {
     const notification = this.createNotification(alert);
-    const message = generateSmsBody(notification);
-    await sendFn(recipient, message);
+    await sendFn(recipient, generateSmsBody(notification));
   }
 
   /** @internal kept for legacy callers; delegates to alert-formatter */
@@ -161,8 +121,7 @@ export class ThresholdAlerts extends EventEmitter {
   }
 
   logAlert(alert: ThresholdAlert): void {
-    const notification = this.createNotification(alert);
-    logger.info('[THRESHOLD ALERT]', { notification });
+    logger.info('[THRESHOLD ALERT]', { notification: this.createNotification(alert) });
   }
 
   async dispatchAlert(alert: ThresholdAlert): Promise<void> {
@@ -180,13 +139,7 @@ export class ThresholdAlerts extends EventEmitter {
   }
 
   updateChannelConfig(config: Partial<AlertChannelConfig>): void {
-    this.channelConfig = {
-      ...this.channelConfig,
-      ...config,
-      email: { ...this.channelConfig.email, ...config.email },
-      sms: { ...this.channelConfig.sms, ...config.sms },
-      telegram: { ...this.channelConfig.telegram, ...config.telegram },
-    };
+    this.channelConfig = mergeAlertChannelConfig(this.channelConfig, config);
     logger.info('[ThresholdAlerts] Updated channel config:', { config: this.channelConfig });
   }
 }

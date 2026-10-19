@@ -43,22 +43,18 @@ export function evaluateAlphaSurvivalGate(input: EvaluateAlphaSurvivalGateInput)
   const trades = input.trades ?? [];
   const evaluatedAt = new Date().toISOString();
 
-  // 1. Performance Gate 1: Sharpe Ratio Hurdle (>= 1.5 default)
   const oosSharpe = summary.testSharpe;
   const sharpePassed = oosSharpe >= criteria.minOosSharpeRatio;
 
-  // 2. Performance Gate 2: Max Drawdown Ceiling (<= 12% default)
   const observedMaxDrawdown = Math.abs(summary.testMaxDrawdown);
   const drawdownPassed = observedMaxDrawdown <= criteria.maxDrawdown;
 
-  // 3. Performance Gate 3: Profit Factor Hurdle (>= 1.25 default)
   let profitFactor = summary.testProfitFactor ?? 0;
   if ((profitFactor === 0 || Number.isNaN(profitFactor)) && trades.length > 0) {
     profitFactor = computeProfitFactor(trades);
   }
   const profitFactorPassed = profitFactor >= criteria.minProfitFactor;
 
-  // 4. DSR & P-Hacking Filter (DSR >= 0.95 default)
   const returns = input.periodicReturns?.length ? [...input.periodicReturns]
     : trades.length ? trades.map((t) => t.pnl ?? 0)
     : (summary.cumulativeEquity ?? []).slice(1).map((pt, i) => {
@@ -75,7 +71,6 @@ export function evaluateAlphaSurvivalGate(input: EvaluateAlphaSurvivalGateInput)
   const dsr = deflatedSharpeRatio(oosSharpe, srVar, trials, skewness, kurtosis, nObs);
   const dsrPassed = dsr >= criteria.minDsr;
 
-  // 5. Cost-Stress Testing (up to 3x base friction)
   const baseFeeBps = input.baselineFeeBps ?? 5;
   const baseSlippageBps = input.baselineSlippageBps ?? 2;
   const baseFrictionBps = criteria.baseFrictionBps ?? (2 * (baseFeeBps + baseSlippageBps));
@@ -95,11 +90,9 @@ export function evaluateAlphaSurvivalGate(input: EvaluateAlphaSurvivalGateInput)
 
   const stress = computeCostStressMetrics(trades, summary, criteria, baseFeeBps, baseSlippageBps);
 
-  // 6. Regime Consistency Hurdle (>= 70% default)
   const regimeConsistencyScore = summary.regimeConsistencyScore;
   const regimeConsistencyPassed = regimeConsistencyScore >= criteria.minRegimeConsistencyScore;
 
-  // Compile detailed failure diagnostics
   const diagnostics: string[] = [];
   if (!sharpePassed) diagnostics.push(`OOS Sharpe ratio of ${oosSharpe.toFixed(2)} is below hurdle rate ${criteria.minOosSharpeRatio.toFixed(2)}`);
   if (!drawdownPassed) diagnostics.push(`Out-of-sample max drawdown of ${(observedMaxDrawdown * 100).toFixed(1)}% exceeds allowable ceiling of ${(criteria.maxDrawdown * 100).toFixed(1)}%`);
@@ -118,57 +111,28 @@ export function evaluateAlphaSurvivalGate(input: EvaluateAlphaSurvivalGateInput)
     costStressPassed && regimeConsistencyPassed && stress.costStressConservativePassed && stress.costStressAdversePassed;
 
   return {
-    passed,
-    evaluatedAt,
-    sharpeRatio: oosSharpe,
-    maxDrawdown: observedMaxDrawdown,
-    profitFactor,
-    dsr,
-    regimeConsistencyScore,
-    regimeConsistencyPassed,
-    costStressPassed,
-    conservativePnl: stress.conservativeStressPnl,
-    adversePnl: stress.adverseStressPnl,
+    passed, evaluatedAt, sharpeRatio: oosSharpe, maxDrawdown: observedMaxDrawdown,
+    profitFactor, dsr, regimeConsistencyScore, regimeConsistencyPassed,
+    costStressPassed, conservativePnl: stress.conservativeStressPnl, adversePnl: stress.adverseStressPnl,
     metrics: {
-      oosSharpeRatio: oosSharpe,
-      maxDrawdown: observedMaxDrawdown,
-      profitFactor,
-      dsr,
-      expectedMaxSharpe: expectedMaxSr,
-      skewness,
-      kurtosis,
-      regimeConsistencyScore,
+      oosSharpeRatio: oosSharpe, maxDrawdown: observedMaxDrawdown, profitFactor, dsr,
+      expectedMaxSharpe: expectedMaxSr, skewness, kurtosis, regimeConsistencyScore,
       splitConsistencyScore: summary.consistencyScore,
-      conservativeStressPnl: stress.conservativeStressPnl,
-      adverseStressPnl: stress.adverseStressPnl,
-      conservativeStressSharpe: stress.conservativeStressSharpe,
-      adverseStressSharpe: stress.adverseStressSharpe,
-      stressedPnl3x,
-      testWinRate: summary.testWinRate,
-      testProfitFactor: summary.testProfitFactor,
+      conservativeStressPnl: stress.conservativeStressPnl, adverseStressPnl: stress.adverseStressPnl,
+      conservativeStressSharpe: stress.conservativeStressSharpe, adverseStressSharpe: stress.adverseStressSharpe,
+      stressedPnl3x, testWinRate: summary.testWinRate, testProfitFactor: summary.testProfitFactor,
       totalTestTrades: summary.totalTestTrades,
     },
     checks: {
-      sharpePassed,
-      drawdownPassed,
-      profitFactorPassed,
-      dsrPassed,
-      regimeConsistencyPassed,
-      costStressPassed,
+      sharpePassed, drawdownPassed, profitFactorPassed, dsrPassed,
+      regimeConsistencyPassed, costStressPassed,
       costStressConservativePassed: stress.costStressConservativePassed,
       costStressAdversePassed: stress.costStressAdversePassed,
     },
     gateChecks: {
-      sharpePassed,
-      drawdownPassed,
-      profitFactorPassed,
-      dsrPassed,
-      regimeConsistencyPassed,
-      costStressPassed,
+      sharpePassed, drawdownPassed, profitFactorPassed,
+      dsrPassed, regimeConsistencyPassed, costStressPassed,
     },
-    thresholds: criteria,
-    diagnostics,
-    failures: diagnostics,
-    rejectionReasons: diagnostics,
+    thresholds: criteria, diagnostics, failures: diagnostics, rejectionReasons: diagnostics,
   };
 }

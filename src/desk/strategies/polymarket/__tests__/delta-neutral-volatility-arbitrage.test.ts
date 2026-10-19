@@ -1,14 +1,5 @@
 /**
  * Delta-Neutral Volatility Arbitrage Strategy — Unit Tests
- *
- * Covers the public surface of DeltaNeutralVolatilityArbitrage:
- * initializeFromGraph (pair filtering, missing-price skip, open + monitor
- * start), updatePrices delegation, stop delegation, and the getPortfolios
- * snapshot.
- *
- * DeltaNeutralPortfolioMonitor and computePortfolioDelta are mocked so the
- * strategy's branching (eligibility filter, price lookup, emit) is exercised
- * without the monitor's real setInterval loop or rebalance engine.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -39,7 +30,6 @@ import {
   MarketRelationship,
   RelationType,
 } from '../../../../shared/types/semantic-relationships';
-import type { DeltaNeutralPortfolio } from '../../../../shared/types/delta-neutral-types';
 
 function correlatedPair(overrides: Partial<MarketRelationship> = {}): MarketRelationship {
   return {
@@ -96,16 +86,11 @@ describe('DeltaNeutralVolatilityArbitrage', () => {
         makeGraph([correlatedPair({ type: RelationType.MUTUAL_EXCLUSION })]),
         PRICES,
       );
-
       expect(strategy.getPortfolios()).toHaveLength(1);
     });
 
     it('skips relationships below the minimum confidence threshold', () => {
-      strategy.initializeFromGraph(
-        makeGraph([correlatedPair({ confidence: 0.3 })]),
-        PRICES,
-      );
-
+      strategy.initializeFromGraph(makeGraph([correlatedPair({ confidence: 0.3 })]), PRICES);
       expect(strategy.getPortfolios()).toHaveLength(0);
       expect(monitorStartMock).toHaveBeenCalledOnce();
     });
@@ -118,16 +103,14 @@ describe('DeltaNeutralVolatilityArbitrage', () => {
         ]),
         { a: { yes: 0.6, no: 0.4 }, b: { yes: 0.55, no: 0.45 } },
       );
-
       expect(strategy.getPortfolios()).toHaveLength(0);
     });
 
     it('skips a pair when prices are missing for one leg', () => {
       strategy.initializeFromGraph(
         makeGraph([correlatedPair()]),
-      { 'm-yes': { yes: 0.6, no: 0.4 } }, // m-no missing
+        { 'm-yes': { yes: 0.6, no: 0.4 } },
       );
-
       expect(strategy.getPortfolios()).toHaveLength(0);
     });
 
@@ -142,7 +125,6 @@ describe('DeltaNeutralVolatilityArbitrage', () => {
           m3: { yes: 0.7, no: 0.3 }, m4: { yes: 0.5, no: 0.5 },
         },
       );
-
       expect(strategy.getPortfolios()).toHaveLength(2);
     });
   });
@@ -150,13 +132,11 @@ describe('DeltaNeutralVolatilityArbitrage', () => {
   describe('updatePrices / stop delegation', () => {
     it('delegates price updates to the monitor', () => {
       strategy.updatePrices('m-yes', 0.65, 0.35);
-
       expect(monitorUpdatePricesMock).toHaveBeenCalledWith('m-yes', 0.65, 0.35);
     });
 
     it('delegates stop to the monitor', () => {
       strategy.stop();
-
       expect(monitorStopMock).toHaveBeenCalledOnce();
     });
   });
@@ -168,9 +148,7 @@ describe('DeltaNeutralVolatilityArbitrage', () => {
 
     it('returns a read-only snapshot of active portfolios', () => {
       strategy.initializeFromGraph(makeGraph([correlatedPair()]), PRICES);
-
       const snapshot = strategy.getPortfolios();
-
       expect(snapshot).toHaveLength(1);
       expect(snapshot[0]).toMatchObject({ netDelta: 0.02, unrealizedPnl: 0 });
     });

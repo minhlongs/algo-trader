@@ -2,7 +2,6 @@
  * Paper Trading Commands
  *
  * CLI commands: paper start, paper stop, paper status, paper report
- *
  * Phase 25 — Paper Trading CLI
  */
 
@@ -24,16 +23,12 @@ let tracker: ReturnType<typeof getPaperPnlTracker> | null = null;
 let arbDetector: ReturnType<typeof getCrossPlatformArbDetector> | null = null;
 
 function getExecutor(): PaperExecutor {
-  if (!executor) {
-    executor = getPaperExecutor();
-  }
+  if (!executor) executor = getPaperExecutor();
   return executor;
 }
 
 function getTracker() {
-  if (!tracker) {
-    tracker = getPaperPnlTracker(getExecutor());
-  }
+  if (!tracker) tracker = getPaperPnlTracker(getExecutor());
   return tracker;
 }
 
@@ -44,7 +39,6 @@ export async function paperStart(options: PaperCommandOptions = {}): Promise<voi
 
   executor = getPaperExecutor();
   const account = await executor.start();
-
   tracker = getPaperPnlTracker(executor);
 
   if (options.verbose !== false) {
@@ -64,8 +58,7 @@ export async function paperStop(_options: PaperCommandOptions = {}): Promise<voi
 
   if (executor) {
     await executor.stop();
-    const summary = getTracker().getSummary();
-    const at = summary.allTime;
+    const at = getTracker().getSummary().allTime;
     logger.info('  Session ended');
     logger.info(`  Final equity: $${at.equity.toFixed(2)}`);
     logger.info(`  Total P&L:    $${at.pnl.toFixed(2)} (${at.winRate.toFixed(1)}% win rate)`);
@@ -109,9 +102,7 @@ export async function paperStatus(_options: PaperCommandOptions = {}): Promise<v
   logger.info(`\n  Recent Trades (last ${recentTrades.length}):`);
   for (const t of recentTrades) {
     const pnlStr = t.pnl !== undefined ? ` | P&L: $${t.pnl.toFixed(2)}` : '';
-    logger.info(
-      `    ${t.side.toUpperCase()} ${t.quantity} ${t.symbol} @ $${t.executedPrice.toFixed(2)}${pnlStr}`,
-    );
+    logger.info(`    ${t.side.toUpperCase()} ${t.quantity} ${t.symbol} @ $${t.executedPrice.toFixed(2)}${pnlStr}`);
   }
   logger.info('');
 }
@@ -124,13 +115,10 @@ export async function paperReport(_options: PaperCommandOptions = {}): Promise<v
   const pnlTracker = getTracker();
   pnlTracker.logReport();
 
-  // Also export Prometheus format if verbose
   const prom = pnlTracker.exportPrometheus();
   logger.info('\n  Prometheus metrics (for Grafana):');
   for (const line of prom.split('\n')) {
-    if (line.startsWith('#') || line.startsWith('paper_trading')) {
-      logger.info(`    ${line}`);
-    }
+    if (line.startsWith('#') || line.startsWith('paper_trading')) logger.info(`    ${line}`);
   }
   logger.info('');
 }
@@ -155,14 +143,12 @@ export async function paperArb(options: PaperCommandOptions = {}): Promise<void>
 
   await arbDetector.start();
 
-  // Run one detection sweep immediately
   const opportunities = arbDetector.detectArb();
   if (opportunities.length === 0) {
     logger.info('  No arbitrage opportunities found at this time.');
     logger.info('  Monitoring for 30 seconds...\n');
     await new Promise((r) => setTimeout(r, 30_000));
-    const after = arbDetector.detectArb();
-    if (after.length === 0) {
+    if (arbDetector.detectArb().length === 0) {
       logger.info('  No opportunities detected in monitoring window.');
     }
   }

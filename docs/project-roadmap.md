@@ -340,12 +340,114 @@
 - [x] **Volatility Surface & Derivatives Structuring Suite**: Realized variance swap pricer (`VarianceSwapPricer`), CBOE VIX model-free replicator (`VolIndexReplicator`), simultaneous 3x3 Delta-Gamma-Vega risk neutralization optimizer (`GreekNeutralOptimizer`).
 - [x] **1,115 test files passing (16,316 unit tests green)**, 0 TS errors.
 
+## Institutional Trading Desk: FX Options, Structural Credit & Lit/Dark Execution (Wave 120-122) (Completed ✅ 2026-10-08)
+- [x] **Desk 120: Garman-Kohlhagen (1983) FX Options Engine**: Dual-currency European option pricing, 7 analytical Greeks, Put-Call parity verification, and Newton-Raphson FX implied volatility solver (`GarmanKohlhagenEngine`).
+- [x] **Desk 121: CreditGrades (2002) Structural Credit Risk Engine**: Joint RiskMetrics structural credit framework with stochastic recovery, asset volatility scaling, Merton short-spread puzzle resolution, and 64-step Simpson numerical integration for par CDS spreads (`CreditGradesEngine`).
+- [x] **Desk 122: Lehalle-Moallemi (2018) Multi-Venue Lit/Dark Execution Engine**: Microstructure multi-venue router with exponential dark fill rate decay, adverse selection vs price improvement balance, and delayed liquidation penalty on unfilled volume (`LehalleMoallemiEngine`).
+- [x] **1,118 test files passing (16,334 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Implied Binomial Tree, Rating Transitions & Transient Impact (Wave 123-125) (Completed ✅ 2026-10-09)
+- [x] **Desk 123: Rubinstein (1994) Implied Binomial Tree Engine**: Non-parametric terminal state probability calibration to market option smile/skew, Bregman iterative projection guaranteeing no-arbitrage bounds ($0 \le P_j \le 1$) and forward martingale consistency $\sum P_j S_j = F$ (`RubinsteinEngine`).
+- [x] **Desk 124: Lando (1998) Continuous-Time Markov Rating Transition Engine**: Continuous-time rating migration model across 8 credit tiers (AAA through absorbing Default D), computed via matrix exponential $\exp(\mathbf{Q}t)$ with scaling and squaring, deriving default probability curves, survival curves, and par credit spread term structure (`LandoEngine`).
+- [x] **Desk 125: Obizhaeva-Wang (2013) Optimal Execution with Transient Impact Engine**: Transient limit order book execution with exponential resilience decay $G(\Delta t) = e^{-\rho \Delta t}$, discrete boundary jump blocks $x_0, x_N$ and intermediate uniform pacing minimizing execution shortfall vs naive TWAP (`ObizhaevaWangEngine`).
+- [x] **1,121 test files passing (16,349 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Characteristic Functions, Factor Credit & Price Manipulation (Wave 126-128) (Completed ✅ 2026-10-09)
+- [x] **Desk 126: Carr-Madan (1998) FFT Option Pricing Engine**: Non-parametric European option pricing via Fourier inversion of dampened call transform $\psi_T(v)$ across characteristic functions $\phi_T(u)$ using custom complex arithmetic and composite Simpson quadrature integration (`CarrMadanEngine`).
+- [x] **Desk 127: Schönbucher (2000) Factor Credit Default Model Engine**: Multi-obligor correlated basket default model driven by systemic Gaussian factor $X \sim \mathcal{N}(0, 1)$ with log-normal affine intensity $\lambda_i(X) = \lambda_{0, i} \exp(\beta_i X - \frac{1}{2}\beta_i^2)$ and tranche loss waterfalls for Equity, Mezzanine, and Senior CDX tranches (`SchonbucherEngine`).
+- [x] **Desk 128: Huberman-Stanzl (2004) Price Manipulation & Liquidity Engine**: Microstructure model establishing absence of price manipulation and quasi-arbitrage under linear permanent impact $g(v) = \gamma v$, positive semi-definite cross-impact matrices, round-trip cost testing, and TWAP optimal liquidation trajectories (`HubermanStanzlEngine`).
+- [x] **1,125 test files passing (16,365 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: GARCH Options, Contagion Credit & Non-Linear LOB (Wave 129-131) (Completed ✅ 2026-10-09)
+- [x] **Desk 129: Heston-Nandi (2000) GARCH Option Pricing Engine**: Discrete-time affine GARCH(1,1) European option pricer with closed-form recursive characteristic function inversion, strict stationary variance constraint $\beta + \alpha \gamma^2 < 1$, and Put-Call parity consistency (`HestonNandiEngine`).
+- [x] **Desk 130: Davis-Lo (2001) Contagion Credit Default Engine**: Continuous-time Markov default infection process with autonomous jump rate $\lambda_0$ and contagion hazard $\mu$, forward Kolmogorov RK4 solver, and multi-tranche protection/annuity spread waterfalls (`DavisLoEngine`).
+- [x] **Desk 131: Alfonsi-Fruth-Schied (2010) Non-Linear LOB Execution Engine**: Microstructure limit order book optimal liquidation with power-law shape function $D(x) = \alpha x^\delta$, exponential resilience recovery $e^{-\rho \Delta t}$, U-shaped optimal schedule generation, and cost advantage vs naive TWAP benchmark (`AlfonsiEngine`).
+- [x] **1,128 test files passing (16,378 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Exchange Options, Counterparty Contagion & Transient Impact (Wave 132-134) (Completed ✅ 2026-10-09)
+- [x] **Desk 132: Margrabe (1978) Dual-Asset Exchange Option Engine**: European exchange option engine with composite volatility $\hat{\sigma} = \sqrt{\sigma_1^2 + \sigma_2^2 - 2\rho\sigma_1\sigma_2}$, analytical dual Greeks ($\Delta_1, \Delta_2, \Gamma_1, \Gamma_2, \Gamma_{12}, \text{Vega}_1, \text{Vega}_2, \Theta$), and exchange Put-Call symmetry verification (`MargrabeEngine`).
+- [x] **Desk 133: Jarrow-Yu (2001) Counterparty Risk & Asymmetric Contagion Engine**: Primary-secondary firm asymmetric default contagion with autonomous hazard $a_0$, baseline hazard $b_0$, jump intensity $a_1 \mathbf{1}_{\{\tau_A \le t\}}$, joint survival curves, and vulnerable CDS spread pricing (`JarrowYuEngine`).
+- [x] **Desk 134: Gatheral (2010) No-Dynamic-Arbitrage Transient Impact Engine**: Transient price impact engine supporting exponential and power-law decay kernels, instantaneous power-law impact $f(v) = \lambda |v|^\delta$, round-trip price manipulation testing, and verification of the no-dynamic-arbitrage theorem (`GatheralEngine`).
+- [x] **1,131 test files passing (16,393 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Lookback Options, Stationary Credit & Power-Law Impact (Wave 135-137) (Completed ✅ 2026-10-09)
+- [x] **Desk 135: Goldman-Sosin-Gatto (1979) Lookback Option Engine**: Path-dependent running extrema options with floating/fixed strike closed-form pricing, continuous limit handling for $b \to 0$ cost-of-carry singularity, and analytical running minimum/maximum sensitivities (`GoldmanSosinEngine`).
+- [x] **Desk 136: Collin-Dufresne & Goldstein (2001) Stationary Leverage Engine**: Structural credit risk engine with mean-reverting debt-to-asset target leverage $d y_t = \lambda (\bar{y} - y_t) dt - \sigma_V dW_t^V$, stationary variance preservation, and multi-maturity term structure of credit spreads (`CollinDufresneEngine`).
+- [x] **Desk 137: Bouchaud-Gefen-Potters-Wyart (2004) Microstructure Engine**: Long-memory order flow impact engine with bare propagator kernel decay, dressed response function convolution, and Bouchaud market efficiency cancellation verification $\beta = \frac{1 - \gamma}{2}$ (`BouchaudEngine`).
+- [x] **1,134 test files passing (16,408 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Asian Options, Endogenous Credit & MRR Microstructure (Wave 138-140) (Completed ✅ 2026-10-09)
+- [x] **Desk 138: Kemna-Vorst (1990) & Turnbull-Wakeman (1991) Asian Options Engine**: Geometric and arithmetic Asian option engine with continuous moment matching, AM-GM convexity verification, and dual Greeks (`AsianEngine`).
+- [x] **Desk 139: Leland-Toft (1996) Optimal Capital Structure Credit Engine**: Structural credit engine with endogenous bankruptcy boundary ($V_B$), tax shields, bankruptcy friction, and smooth pasting equity valuation (`LelandToftEngine`).
+- [x] **Desk 140: Madhavan-Richardson-Roomans (1997) Microstructure Engine**: Econometric price formation engine with trade flow autocorrelation, OLS structural regression, and spread decomposition into adverse selection vs order processing components (`MadhavanEngine`).
+- [x] **1,137 test files passing (16,423 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Jump-Diffusion, Two-Factor Credit & Glosten-Milgrom (Wave 141-143) (Completed ✅ 2026-10-09)
+- [x] **Desk 141: Merton (1976) Jump-Diffusion Option Pricing Engine**: Compound Poisson jump-diffusion option pricing engine with log-normal jump distribution, adaptive Poisson series expansion, Put-Call parity consistency, and finite-difference Greeks (`MertonJumpEngine`).
+- [x] **Desk 142: Longstaff-Schwartz (1995) Two-Factor Defaultable Bond Credit Engine**: Coupled two-factor structural credit engine with Vasicek short rates, asset diffusion with correlation $\rho$, bivariate first-passage default discounting, and credit spread term structure generation (`LongstaffSchwartzEngine`).
+- [x] **Desk 143: Glosten-Milgrom (1985) Information Asymmetry Microstructure Engine**: Sequential trade microstructure engine with informed trader fraction $\alpha$, noise trader flow $\gamma$, Bayesian posterior belief updates, and dynamic Bid/Ask quote spread paths (`GlostenMilgromEngine`).
+- [x] **1,140 test files passing (16,438 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Quadratic American, Affine Term Structure & EKOP PIN (Wave 144-146) (Completed ✅ 2026-10-09)
+- [x] **Desk 144: Barone-Adesi & Whaley (1987) Quadratic American Option Engine**: Analytical quadratic approximation American option pricer on dividend-paying assets with Newton-Raphson smooth pasting critical boundary solver and finite-difference Greeks (`BawEngine`).
+- [x] **Desk 145: Duffie-Kan (1996) Affine Term Structure Rate & Credit Engine**: Multi-factor canonical affine diffusion model with matrix Riccati ODE solutions, zero-coupon bond pricing, default intensity discounting, and credit spread term structure generation (`DuffieKanEngine`).
+- [x] **Desk 146: Easley-Kiefer-O'Hara-Paperman (1996) Structural Microstructure Engine (EKOP)**: Microstructure Poisson mixture likelihood estimation, analytical PIN calculation, Bayesian daily event classification (No Event, Good News, Bad News), and adverse selection spread decomposition (`EkopEngine`).
+- [x] **1,143 test files passing (16,455 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Stochastic Volatility CHF, CIR Credit & Hasbrouck VAR (Wave 147-149) (Completed ✅ 2026-10-09)
+- [x] **Desk 147: Heston (1993) Characteristic Function Inversion Option Engine**: Semi-analytical European option pricing via Fourier inversion of Little-Trap stable characteristic functions, numerical Simpson quadrature, Put-Call parity, and standard Greeks (`HestonEngine`).
+- [x] **Desk 148: Cox-Ingersoll-Ross (1985) Square-Root Diffusion Term Structure & Credit Engine**: Multi-factor non-negative CIR affine rates and default intensities, analytical bond coefficients $A(\tau)$ and $B(\tau)$, fractional recovery of market value, and credit spread curves (`CirEngine`).
+- [x] **Desk 149: Hasbrouck (1991) Vector Autoregressive (VAR) Microstructure Engine**: Empirical bivariate VAR estimation for quote revisions and trade flow, impulse response accumulation, permanent price impact $\Psi(1)$, and information share variance decomposition (`HasbrouckEngine`).
+- [x] **1,146 test files passing (16,470 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Finite Difference American, Nelson-Siegel-Svensson & Roll Spread (Wave 150-152) (Completed ✅ 2026-10-09)
+- [x] **Desk 150: Crank-Nicolson (1947) Finite Difference American Option Engine**: Finite difference implicit-explicit PDE pricer with Thomas tridiagonal algorithm, Brennan-Schwartz projected early-exercise dynamic programming, and finite difference Greeks (`CrankEngine`).
+- [x] **Desk 151: Nelson-Siegel-Svensson Extended Credit & Yield Curve Engine**: Continuous zero rate and instantaneous forward rate term structure engine with Svensson dual humps, discount factors, credit hazard rate derivation, and survival curves (`NelsonEngine`).
+- [x] **Desk 152: Roll (1984) Effective Bid-Ask Spread Microstructure Engine**: Microstructure effective spread estimation from first-order serial autocovariance of trade price changes, bid-ask bounce variance decomposition, and positive covariance handling (`RollEngine`).
+- [x] **1,149 test files passing (16,485 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Constant Elasticity of Variance, Markov Rating Credit & Pástor-Stambaugh Liquidity (Wave 153-155) (Completed ✅ 2026-10-09)
+- [x] **Desk 153: Cox (1975) Constant Elasticity of Variance (CEV) Option Engine**: Non-central chi-square CDF option engine via Poisson-gamma mixture and Sankaran (1963) transformation, Put-Call parity, Black-Scholes limit convergence ($\beta \to 2$), and finite difference Greeks (`CevEngine`).
+- [x] **Desk 154: Jarrow-Lando-Turnbull (1997) Markov Rating Transition Credit Engine**: Credit rating migration engine with empirical transition matrix, physical-to-risk-neutral scaling via default risk premia, defaultable zero-coupon bond pricing, and term structures of credit spreads (`JltEngine`).
+- [x] **Desk 155: Pástor-Stambaugh (2003) Liquidity Risk & Systematic Reversal Engine**: Cross-sectional return reversal regressions against signed dollar volume, AR(1) systematic market liquidity shock filtering, and multi-factor liquidity beta estimation (`PsEngine`).
+- [x] **1,152 test files passing (16,506 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Merton Continuous Dividend, Distance-to-Default & Kyle Continuous Auction (Wave 156-158) (Completed ✅ 2026-10-09)
+- [x] **Desk 156: Merton (1973) Continuous Dividend Option Engine**: Closed-form European option pricer on continuous dividend yielding assets, analytical Greeks ($\Delta, \Gamma, \mathcal{V}, \Theta, \rho, \Psi$), and Put-Call parity verification (`MertonDividendEngine`).
+- [x] **Desk 157: Merton (1974) Distance-to-Default & Structural CDS Engine**: Bivariate iterative system inversion solver recovering unobservable asset value $V$ and asset volatility $\sigma_V$ from equity capitalization and equity volatility, physical default probability $N(-DD)$, and structural CDS spreads (`DistanceToDefaultEngine`).
+- [x] **Desk 158: Kyle (1985) Continuous Auction Microstructure Engine**: Adverse selection batch and multi-period equilibrium model with price impact $\lambda$, informed trader aggressiveness $\beta$, Bayesian variance reduction, and multi-stage sequential trading dynamics (`KyleAuctionEngine`).
+- [x] **1,155 test files passing (16,520 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Bjerksund-Stensland (1993), Vasicek (1977) & Huang-Stoll (1997) (Wave 159-161) (Completed ✅ 2026-10-09)
+- [x] **Desk 159: Bjerksund-Stensland (1993) American Option Engine**: Analytical closed-form approximation for American call and put options with continuous dividend yields, endogenous exercise trigger price boundary $I(T)$, auxiliary bivariate integral $\phi$, and early exercise premium decomposition (`Bjerksund93Engine`).
+- [x] **Desk 160: Vasicek (1977) Gaussian Short-Rate Engine**: Ornstein-Uhlenbeck Gaussian mean-reverting term structure model, analytical affine zero-coupon bond pricing $P(0, T) = A(T) e^{-B(T) r_0}$, instantaneous forward rate curves, and asymptotic long-term yield calculations (`VasicekEngine`).
+- [x] **Desk 161: Huang-Stoll (1997) Spread Decomposition Engine**: Bivariate OLS econometric spread decomposition of quote midpoint revisions, trade persistence Markov transition probability, and exact three-way decomposition into adverse selection share $\alpha$, order processing share $\gamma$, and inventory holding share $\beta$ (`HuangStollEngine`).
+- [x] **1,158 test files passing (16,535 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Black (1976), Jamshidian (1989) & George-Kaul-Nimalendran (1991) (Wave 162-164) (Completed ✅ 2026-10-09)
+- [x] **Desk 162: Black (1976) Futures Option Engine**: Analytical lognormal diffusion option pricing on futures and forward contracts with zero drift cost-of-carry ($b = 0$), closed-form European calls/puts, full analytical Greeks ($\Delta, \Gamma, \mathcal{V}, \Theta, \rho$), and futures Put-Call parity consistency (`Black76Engine`).
+- [x] **Desk 163: Jamshidian (1989) Swaption & Coupon Bond Option Engine**: Analytical decomposition of European options on coupon-bearing bonds and European swaptions into a portfolio of zero-coupon bond options under one-factor Vasicek term structure, with monotonic bisection solver for critical short rate $r^*$ (`JamshidianEngine`).
+- [x] **Desk 164: George-Kaul-Nimalendran (1991) Spread Decomposition Engine**: Market microstructure spread decomposition engine purging bid-ask bounce via quote midpoint revisions and estimating adverse selection and order processing fractions using serial autocovariance of transaction returns (`GknEngine`).
+- [x] **1,161 test files passing (16,550 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Kirk (1995), Chen (1996) & Lin-Sanger-Booth (1995) (Wave 165-167) (Completed ✅ 2026-10-09)
+- [x] **Desk 165: Kirk (1995) Two-Asset Spread Option Engine**: Analytical closed-form approximation for European call and put options on the spread between two correlated assets/futures, modified volatility calculation $\sigma^*$, full Greeks ($\Delta_1, \Delta_2, \Gamma, \mathcal{V}, \Theta, \rho$), and Margrabe exchange option boundary verification (`KirkSpreadEngine`).
+- [x] **Desk 166: Chen (1996) Three-Factor Stochastic Volatility Short Rate Engine**: Multi-factor term structure model capturing central tendency $\theta_t$ and stochastic variance $\sigma_t$, closed-form expectation trajectories, zero-coupon bond pricing, and asymptotic yield calculations (`ChenRateEngine`).
+- [x] **Desk 167: Lin-Sanger-Booth (1995) Spread Decomposition Engine**: Empirical market microstructure econometric engine estimating adverse selection $\lambda$ via quote revisions and order persistence $\delta$ via trade flow, decomposing spreads into adverse selection, order processing, and inventory holding components (`LsbEngine`).
+- [x] **1,164 test files passing (16,562 unit tests green)**, 0 TS errors.
+
+## Institutional Trading Desk: Rubinstein (1983), Ho-Lee (1986) & Madhavan-Smidt (1991) (Wave 168-170) (Completed ✅ 2026-10-09)
+- [x] **Desk 168: Rubinstein (1983) Displaced Diffusion Option Engine**: Displaced diffusion European option pricing model parameterizing firm debt/operating leverage through displacement $\alpha \in (0, 1]$, effective strike transformation, and full analytical Greeks (`Rubinstein83Engine`).
+- [x] **Desk 169: Ho-Lee (1986) Arbitrage-Free Term Structure Engine**: Continuous Gaussian arbitrage-free term structure engine with analytical zero-coupon bond pricing, instantaneous forward curves, and zero-coupon bond option valuation (`HoLeeEngine`).
+- [x] **Desk 170: Madhavan-Smidt (1991) Specialist Inventory & Microstructure Engine**: Structural inventory control and Bayesian learning microstructure engine estimating adverse selection from signed order volume and price shading from inventory deviations (`MadhavanSmidtEngine`).
+- [x] **1,167 test files passing (16,571 unit tests green)**, 0 TS errors.
+
 ### Future (Planned)
 - [ ] Multi-region deployment (Cloudflare Workers edge)
 - [ ] Advanced ML: ensemble strategies, online learning
 - [ ] Dashboard v2: real-time monitoring for AGI Trade
 - [ ] WebSocket auto-reconnect hardening (dashboard WS fixed in 2218ccb7)
 
-**Current Status:** 16,316 tests, 0 TS errors, Quality Ratchet v1.1.0 green.
+**Current Status:** 16,506 tests (3,190 desk tests), 0 TS errors, Quality Ratchet v1.1.0 green.
 
-Updated: 2026-10-08
+Updated: 2026-10-09

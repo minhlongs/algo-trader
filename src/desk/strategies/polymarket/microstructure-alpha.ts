@@ -18,8 +18,6 @@ import {
 } from './base-polymarket-strategy';
 import { calcSMA } from './strategy-math-helpers';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
 export interface MicrostructureAlphaConfig extends BaseStrategyConfig {
   depthLevels: number;
   imbalanceThreshold: number;
@@ -45,8 +43,6 @@ export const DEFAULT_CONFIG: MicrostructureAlphaConfig = {
 };
 
 const STRATEGY_NAME: StrategyName = 'microstructure-alpha';
-
-// ── Pure helpers ─────────────────────────────────────────────────────────────
 
 export function calcWeightedImbalance(book: RawOrderBook, levels: number): number {
   const bids = book.bids.slice(0, levels);
@@ -75,8 +71,6 @@ export function calcSpreadPct(book: RawOrderBook): number {
   return (ask - bid) / ((bid + ask) / 2);
 }
 
-// ── Strategy class ───────────────────────────────────────────────────────────
-
 export class MicrostructureAlphaStrategy extends BasePolymarketStrategy {
   private readonly cfg: MicrostructureAlphaConfig;
   private readonly priceHistory = new Map<string, number[]>();
@@ -91,9 +85,7 @@ export class MicrostructureAlphaStrategy extends BasePolymarketStrategy {
     let h = this.priceHistory.get(tokenId);
     if (!h) { h = []; this.priceHistory.set(tokenId, h); }
     h.push(price);
-    if (h.length > this.cfg.priceWindow * 3) {
-      h.splice(0, h.length - this.cfg.priceWindow * 3);
-    }
+    if (h.length > this.cfg.priceWindow * 3) h.splice(0, h.length - this.cfg.priceWindow * 3);
   }
 
   protected async scanEntries(markets: GammaMarket[]): Promise<void> {
@@ -102,8 +94,7 @@ export class MicrostructureAlphaStrategy extends BasePolymarketStrategy {
     for (const market of markets) {
       if (this.getPositionCount() >= this.cfg.maxPositions) break;
       if (!market.yesTokenId || market.closed || market.resolved) continue;
-      if (this.hasPosition(market.conditionId)) continue;
-      if (this.isOnCooldown(market.conditionId)) continue;
+      if (this.hasPosition(market.conditionId) || this.isOnCooldown(market.conditionId)) continue;
       if (market.volume < this.cfg.minVolume) continue;
 
       try {
@@ -118,13 +109,9 @@ export class MicrostructureAlphaStrategy extends BasePolymarketStrategy {
         if (spreadPct > 0.10) continue;
 
         let side: 'yes' | 'no' | null = null;
-        if (imbalance >= this.cfg.imbalanceThreshold) {
-          side = 'yes';
-        } else if (imbalance <= 1 / this.cfg.imbalanceThreshold) {
-          side = 'no';
-        }
-        if (!side) continue;
-        if (side === 'no' && !market.noTokenId) continue;
+        if (imbalance >= this.cfg.imbalanceThreshold) side = 'yes';
+        else if (imbalance <= 1 / this.cfg.imbalanceThreshold) side = 'no';
+        if (!side || (side === 'no' && !market.noTokenId)) continue;
 
         const prices = this.priceHistory.get(market.yesTokenId) ?? [];
         if (prices.length >= 2) {
@@ -163,8 +150,6 @@ export class MicrostructureAlphaStrategy extends BasePolymarketStrategy {
     }
   }
 }
-
-// ── Legacy factory ───────────────────────────────────────────────────────────
 
 export function createMicrostructureAlphaTick(deps: StrategyDeps): () => Promise<void> {
   const strategy = new MicrostructureAlphaStrategy(deps);

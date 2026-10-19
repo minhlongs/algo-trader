@@ -3,13 +3,11 @@
  * Covers: validateILPResult, createBasket, buildValidatedBasket, formatBasketSummary.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ILPResult, ILPSolverConfig } from '../../../shared/types/ilp-types';
 
 const mockLogger = { debug: vi.fn(), warn: vi.fn(), info: vi.fn(), error: vi.fn() };
 vi.mock('../../../shared/utils/logger', () => ({ logger: mockLogger }));
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeConfig(overrides: Partial<ILPSolverConfig> = {}): ILPSolverConfig {
   return { budgetUsdc: 100, maxMarketExposureFraction: 0.2, minEdgeThreshold: 0.025, feeRate: 0.02, timeoutMs: 500, ...overrides };
@@ -26,12 +24,8 @@ function makeResult(overrides: Partial<ILPResult> = {}): ILPResult {
   };
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
 describe('multi-leg-basket', () => {
   beforeEach(() => { vi.clearAllMocks(); });
-
-  // ── validateILPResult ─────────────────────────────────────────────────────
 
   describe('validateILPResult', () => {
     it('returns valid for a correct result', async () => {
@@ -41,67 +35,50 @@ describe('multi-leg-basket', () => {
       expect(r.reasons).toHaveLength(0);
     });
 
-    it('rejects infeasible ILP', async () => {
+    it('rejects infeasible ILP, empty positions, cost exceeding budget, and zero profit', async () => {
       const { validateILPResult } = await import('../multi-leg-basket');
-      const r = validateILPResult(makeResult({ feasible: false }), makeConfig());
-      expect(r.valid).toBe(false);
-      expect(r.reasons[0]).toContain('infeasible');
+      const rInfeasible = validateILPResult(makeResult({ feasible: false }), makeConfig());
+      expect(rInfeasible.valid).toBe(false);
+      expect(rInfeasible.reasons[0]).toContain('infeasible');
+
+      const rEmpty = validateILPResult(makeResult({ positions: [] }), makeConfig());
+      expect(rEmpty.valid).toBe(false);
+      expect(rEmpty.reasons[0]).toContain('No positions');
+
+      const rCost = validateILPResult(makeResult({ totalCost: 200 }), makeConfig({ budgetUsdc: 100 }));
+      expect(rCost.valid).toBe(false);
+      expect(rCost.reasons[0]).toContain('exceeds budget');
+
+      const rProfit = validateILPResult(makeResult({ totalExpectedProfit: 0 }), makeConfig());
+      expect(rProfit.valid).toBe(false);
+      expect(rProfit.reasons[0]).toContain('non-positive');
     });
 
-    it('rejects empty positions', async () => {
+    it('rejects positions with non-positive expected profit or near-zero size and collects multiple reasons', async () => {
       const { validateILPResult } = await import('../multi-leg-basket');
-      const r = validateILPResult(makeResult({ positions: [] }), makeConfig());
-      expect(r.valid).toBe(false);
-      expect(r.reasons[0]).toContain('No positions');
-    });
-
-    it('rejects cost exceeding budget', async () => {
-      const { validateILPResult } = await import('../multi-leg-basket');
-      const r = validateILPResult(makeResult({ totalCost: 200 }), makeConfig({ budgetUsdc: 100 }));
-      expect(r.valid).toBe(false);
-      expect(r.reasons[0]).toContain('exceeds budget');
-    });
-
-    it('rejects zero expected profit', async () => {
-      const { validateILPResult } = await import('../multi-leg-basket');
-      const r = validateILPResult(makeResult({ totalExpectedProfit: 0 }), makeConfig());
-      expect(r.valid).toBe(false);
-      expect(r.reasons[0]).toContain('non-positive');
-    });
-
-    it('rejects positions with non-positive expected profit', async () => {
-      const { validateILPResult } = await import('../multi-leg-basket');
-      const positions = [
+      const badProfitPos = [
         { marketId: 'm1', side: 'YES' as const, size: 50, expectedProfit: 5 },
         { marketId: 'm2', side: 'NO' as const, size: 30, expectedProfit: 0 },
       ];
-      const r = validateILPResult(makeResult({ positions, totalExpectedProfit: 5, totalCost: 80 }), makeConfig());
-      expect(r.valid).toBe(false);
-      expect(r.reasons[0]).toContain('non-positive expected profit');
-    });
+      const r1 = validateILPResult(makeResult({ positions: badProfitPos, totalExpectedProfit: 5, totalCost: 80 }), makeConfig());
+      expect(r1.valid).toBe(false);
+      expect(r1.reasons[0]).toContain('non-positive expected profit');
 
-    it('rejects positions with near-zero size', async () => {
-      const { validateILPResult } = await import('../multi-leg-basket');
-      const positions = [
+      const smallPos = [
         { marketId: 'm1', side: 'YES' as const, size: 50, expectedProfit: 5 },
         { marketId: 'm2', side: 'NO' as const, size: 0.005, expectedProfit: 1 },
       ];
-      const r = validateILPResult(makeResult({ positions, totalExpectedProfit: 6, totalCost: 50.005 }), makeConfig());
-      expect(r.valid).toBe(false);
-      expect(r.reasons[0]).toContain('near-zero size');
-    });
+      const r2 = validateILPResult(makeResult({ positions: smallPos, totalExpectedProfit: 6, totalCost: 50.005 }), makeConfig());
+      expect(r2.valid).toBe(false);
+      expect(r2.reasons[0]).toContain('near-zero size');
 
-    it('collects multiple reasons', async () => {
-      const { validateILPResult } = await import('../multi-leg-basket');
-      const r = validateILPResult(makeResult({ feasible: false, positions: [] }), makeConfig());
-      expect(r.reasons.length).toBeGreaterThanOrEqual(2);
+      const rMulti = validateILPResult(makeResult({ feasible: false, positions: [] }), makeConfig());
+      expect(rMulti.reasons.length).toBeGreaterThanOrEqual(2);
     });
   });
 
-  // ── createBasket ──────────────────────────────────────────────────────────
-
   describe('createBasket', () => {
-    it('creates basket with filtered positions and validated=true', async () => {
+    it('creates basket with filtered positions, validated flag, and debug log', async () => {
       const { createBasket } = await import('../multi-leg-basket');
       const positions = [
         { marketId: 'm1', side: 'YES' as const, size: 50, expectedProfit: 5 },
@@ -114,40 +91,24 @@ describe('multi-leg-basket', () => {
       expect(basket.validated).toBe(true);
       expect(basket.totalExpectedProfit).toBe(5);
       expect(basket.totalCost).toBe(50);
-    });
-
-    it('sets validated=false', async () => {
-      const { createBasket } = await import('../multi-leg-basket');
-      const basket = createBasket(makeResult(), false);
-      expect(basket.validated).toBe(false);
-    });
-
-    it('logs debug with basket details', async () => {
-      const { createBasket } = await import('../multi-leg-basket');
-      createBasket(makeResult(), true);
       expect(mockLogger.debug).toHaveBeenCalled();
+
+      expect(createBasket(makeResult(), false).validated).toBe(false);
     });
   });
 
-  // ── buildValidatedBasket ──────────────────────────────────────────────────
-
   describe('buildValidatedBasket', () => {
-    it('returns basket when validation passes', async () => {
+    it('returns basket when validation passes and null when validation fails', async () => {
       const { buildValidatedBasket } = await import('../multi-leg-basket');
       const basket = buildValidatedBasket(makeResult(), makeConfig());
       expect(basket).not.toBeNull();
       expect(basket!.validated).toBe(true);
-    });
 
-    it('returns null when validation fails', async () => {
-      const { buildValidatedBasket } = await import('../multi-leg-basket');
-      const basket = buildValidatedBasket(makeResult({ feasible: false }), makeConfig());
-      expect(basket).toBeNull();
+      const invalid = buildValidatedBasket(makeResult({ feasible: false }), makeConfig());
+      expect(invalid).toBeNull();
       expect(mockLogger.warn).toHaveBeenCalled();
     });
   });
-
-  // ── formatBasketSummary ───────────────────────────────────────────────────
 
   describe('formatBasketSummary', () => {
     it('returns formatted string with leg details', async () => {

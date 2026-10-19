@@ -2,41 +2,30 @@
  * Atomic Taker Order Execution Handler for MARL Delta Hedging.
  * Dispatches IOC/Market hedge orders via IExchangeConnector,
  * enforces venue latency tripwires, monitors timeouts, and tracks residual delta.
- * Strict Visual LOC Budget: <= 200 lines. Conforms to AGENTS.md Hard Rules.
  */
-import { z } from 'zod';
 import { logger } from '../../../shared/utils/logger';
 import type { IExchangeConnector, ExchangeOrderParams } from '../../arbitrage/connectors/types';
+import {
+  type VenueId,
+  HedgeExecutionConfigSchema,
+  type HedgeExecutionConfig,
+  type HedgeExecutionReport,
+  buildHedgeReport,
+  computeSimulatedHedgeReport,
+  computeLiveFillReport,
+  raceWithOrderTimeout,
+} from './hedge-execution-helpers';
 
-export type VenueId = 'polymarket' | 'binance' | 'bybit' | 'kucoin';
-
-export const HedgeExecutionConfigSchema = z.object({
-  deltaThreshold: z.number().positive().default(0.10),
-  hysteresisRatio: z.number().min(0.01).max(0.99).default(0.50),
-  primaryHedgeVenue: z.enum(['binance', 'bybit']).default('binance'),
-  fallbackHedgeVenue: z.enum(['binance', 'bybit']).default('bybit'),
-  maxHedgeSlippageBps: z.number().nonnegative().default(15),
-  orderTimeoutMs: z.number().int().positive().default(300),
-  maxLatencyMs: z.number().int().positive().default(200),
-  minLotSize: z.number().positive().default(0.001),
-  circuitCooldownMs: z.number().int().positive().default(15_000),
-});
-
-export type HedgeExecutionConfig = z.infer<typeof HedgeExecutionConfigSchema>;
-
-export interface HedgeExecutionReport {
-  hedgeId: string;
-  venue: VenueId | string;
-  symbol: string;
-  side: 'buy' | 'sell';
-  requestedAmount: number;
-  filledAmount: number;
-  avgFillPrice: number;
-  latencyMs: number;
-  status: 'FILLED' | 'PARTIAL' | 'FAILED' | 'UNWOUND';
-  residualDelta: number;
-  error?: string;
-}
+export {
+  type VenueId,
+  HedgeExecutionConfigSchema,
+  type HedgeExecutionConfig,
+  type HedgeExecutionReport,
+  buildHedgeReport,
+  computeSimulatedHedgeReport,
+  computeLiveFillReport,
+  raceWithOrderTimeout,
+};
 
 export class HedgeExecutionHandler {
   private readonly config: HedgeExecutionConfig;
@@ -77,13 +66,13 @@ export class HedgeExecutionHandler {
     const hedgeId = `hdg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
     if (absAmount === 0) {
-      return this.buildReport(hedgeId, venue, symbol, side, 0, 0, 0, 0, 'FAILED', 0, 'ZERO_AMOUNT');
+      return buildHedgeReport(hedgeId, venue, symbol, side, 0, 0, 0, 0, 'FAILED', 0, 'ZERO_AMOUNT');
     }
     if (absAmount < this.config.minLotSize) {
-      return this.buildReport(hedgeId, venue, symbol, side, absAmount, 0, 0, 1, 'FAILED', targetDelta, 'BELOW_MIN_LOT');
+      return buildHedgeReport(hedgeId, venue, symbol, side, absAmount, 0, 0, 1, 'FAILED', targetDelta, 'BELOW_MIN_LOT');
     }
     if (this.isCircuitBroken(venueKey)) {
-      return this.buildReport(hedgeId, venue, symbol, side, absAmount, 0, 0, 1, 'FAILED', targetDelta, 'CIRCUIT_BROKEN');
+      return buildHedgeReport(hedgeId, venue, symbol, side, absAmount, 0, 0, 1, 'FAILED', targetDelta, 'CIRCUIT_BROKEN');
     }
 
     const connector = this.connectors.get(venueKey);
@@ -91,14 +80,7 @@ export class HedgeExecutionHandler {
       return this.executeLiveOrder(connector, hedgeId, venue, symbol, side, absAmount, targetDelta);
     }
 
-    const fillFraction = Math.max(0, Math.min(1.0, simulatedFillFraction));
-    const filledAmount = Number((absAmount * fillFraction).toFixed(4));
-    const residual = absAmount - filledAmount;
-    const status = fillFraction >= 1.0 ? 'FILLED' : fillFraction > 0 ? 'PARTIAL' : 'FAILED';
-    const rawResidual = side === 'buy' ? residual : -residual;
-    const residualDelta = Math.abs(rawResidual) < 1e-12 ? 0 : Number(rawResidual.toFixed(4));
-
-    return this.buildReport(hedgeId, venue, symbol, side, absAmount, filledAmount, 50_000, 15, status, residualDelta);
+    return computeSimulatedHedgeReport(hedgeId, venue, symbol, side, absAmount, simulatedFillFraction);
   }
 
   private async executeLiveOrder(
@@ -115,52 +97,27 @@ export class HedgeExecutionHandler {
       const pingMs = await connector.getLatencyMs();
       if (pingMs > this.config.maxLatencyMs) {
         this.tripCircuit(String(venue));
-        return this.buildReport(hedgeId, venue, symbol, side, absAmount, 0, 0, pingMs, 'FAILED', targetDelta, 'LATENCY_EXCEEDED');
+        return buildHedgeReport(hedgeId, venue, symbol, side, absAmount, 0, 0, pingMs, 'FAILED', targetDelta, 'LATENCY_EXCEEDED');
       }
 
-      const clientOrderId = `marl-${hedgeId}`;
-      const params: ExchangeOrderParams = { symbol, side, type: 'market', amount: absAmount, clientOrderId };
-
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => {
-          reject(new Error(`Hedge order timeout after ${this.config.orderTimeoutMs}ms`));
-        }, this.config.orderTimeoutMs);
-      });
-
-      const orderResult = await Promise.race([connector.placeOrder(params), timeoutPromise])
-        .finally(() => { if (timer) clearTimeout(timer); });
-
+      const params: ExchangeOrderParams = {
+        symbol,
+        side,
+        type: 'market',
+        amount: absAmount,
+        clientOrderId: `marl-${hedgeId}`,
+      };
+      const orderResult = await raceWithOrderTimeout(connector.placeOrder(params), this.config.orderTimeoutMs);
       const latencyMs = Math.max(1, Date.now() - startTime);
-      const filled = orderResult.filled ?? 0;
-      const fillPrice = orderResult.price ?? 0;
-      const fillRatio = absAmount > 0 ? filled / absAmount : 0;
-      const status = fillRatio >= 0.999 ? 'FILLED' : filled > 0 ? 'PARTIAL' : 'FAILED';
-      const residual = absAmount - filled;
-      const signedResidual = side === 'buy' ? residual : -residual;
-
-      return this.buildReport(
-        hedgeId, venue, symbol, side, absAmount, filled, fillPrice, latencyMs,
-        status, status === 'FILLED' ? 0 : Number(signedResidual.toFixed(4)),
+      return computeLiveFillReport(
+        hedgeId, venue, symbol, side, absAmount, orderResult.filled ?? 0, orderResult.price ?? 0, latencyMs,
       );
     } catch (err) {
       const latencyMs = Math.max(1, Date.now() - startTime);
       const errMsg = err instanceof Error ? err.message : String(err);
       logger.error(`[HedgeExecutionHandler] Order execution failed for ${venue}:${symbol}`, { err });
-      return this.buildReport(hedgeId, venue, symbol, side, absAmount, 0, 0, latencyMs, 'FAILED', targetDelta, errMsg);
+      return buildHedgeReport(hedgeId, venue, symbol, side, absAmount, 0, 0, latencyMs, 'FAILED', targetDelta, errMsg);
     }
-  }
-
-  private buildReport(
-    hedgeId: string, venue: VenueId | string, symbol: string, side: 'buy' | 'sell',
-    requestedAmount: number, filledAmount: number, avgFillPrice: number, latencyMs: number,
-    status: 'FILLED' | 'PARTIAL' | 'FAILED' | 'UNWOUND', residualDelta: number, error?: string,
-  ): HedgeExecutionReport {
-    return {
-      hedgeId, venue: venue as VenueId, symbol, side, requestedAmount,
-      filledAmount, avgFillPrice, latencyMs, status, residualDelta,
-      ...(error ? { error } : {}),
-    };
   }
 }
 

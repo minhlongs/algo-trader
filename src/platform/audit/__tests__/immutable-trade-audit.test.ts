@@ -41,7 +41,6 @@ describe('ImmutableTradeAudit', () => {
     it('should log circuit breaker events', () => {
       const audit = new ImmutableTradeAudit(tmpLogPath());
       const entry = audit.logCircuitBreaker('Loss streak: 3 consecutive', { streak: 3 });
-
       expect(entry.eventType).toBe('circuit_breaker');
       expect(entry.metadata).toEqual({ streak: 3 });
     });
@@ -49,7 +48,6 @@ describe('ImmutableTradeAudit', () => {
     it('should log drawdown tier changes', () => {
       const audit = new ImmutableTradeAudit(tmpLogPath());
       const entry = audit.logDrawdownTierChange('ALERT', 0.05, 95000);
-
       expect(entry.eventType).toBe('drawdown_tier_change');
       expect(entry.metadata).toEqual({ tier: 'ALERT', drawdownPercent: 0.05, portfolioValue: 95000 });
     });
@@ -61,7 +59,7 @@ describe('ImmutableTradeAudit', () => {
       const entry = audit.append('trade_decision', 'First trade');
       expect(entry.previousHash).toBe('0');
       expect(entry.hash).toBeTruthy();
-      expect(entry.hash.length).toBe(64); // SHA-256 hex = 64 chars
+      expect(entry.hash.length).toBe(64);
     });
 
     it('should chain hashes: each entry references previous hash', () => {
@@ -88,9 +86,7 @@ describe('ImmutableTradeAudit', () => {
       audit.append('trade_decision', 'Trade 1');
       audit.append('trade_executed', 'Trade 2');
       audit.append('circuit_breaker', 'Event 3');
-
-      const result = audit.verifyChainIntegrity();
-      expect(result.valid).toBe(true);
+      expect(audit.verifyChainIntegrity().valid).toBe(true);
     });
 
     it('should protect internal state from external tampering', () => {
@@ -98,13 +94,9 @@ describe('ImmutableTradeAudit', () => {
       audit.append('trade_decision', 'Trade 1');
       audit.append('trade_executed', 'Trade 2');
 
-      // getAuditTrail returns copies — external mutation doesn't affect internal state
       const entries = audit.getAuditTrail();
-      (entries[0] as any).reason = 'TAMPERED';
-
-      // Internal chain remains intact
-      const result = audit.verifyChainIntegrity();
-      expect(result.valid).toBe(true);
+      (entries[0] as unknown as Record<string, unknown>).reason = 'TAMPERED';
+      expect(audit.verifyChainIntegrity().valid).toBe(true);
     });
 
     it('should return valid for empty log', () => {
@@ -129,51 +121,27 @@ describe('ImmutableTradeAudit', () => {
       audit.append('trade_decision', 'Decision');
       audit.append('circuit_breaker', 'Breaker');
       audit.append('trade_decision', 'Decision 2');
-
-      const decisions = audit.getAuditTrail({ eventType: 'trade_decision' });
-      expect(decisions.length).toBe(2);
+      expect(audit.getAuditTrail({ eventType: 'trade_decision' }).length).toBe(2);
     });
 
-    it('should filter by date range', () => {
+    it('should filter by date range and respect limit', () => {
       const audit = new ImmutableTradeAudit(tmpLogPath());
-      audit.append('trade_decision', 'Entry 1');
-      audit.append('trade_decision', 'Entry 2');
-
-      const all = audit.getAuditTrail();
-      expect(all.length).toBe(2);
-
-      // Filter with future start date should return empty
-      const future = audit.getAuditTrail({ startDate: '2099-01-01T00:00:00Z' });
-      expect(future.length).toBe(0);
-    });
-
-    it('should respect limit', () => {
-      const audit = new ImmutableTradeAudit(tmpLogPath());
-      for (let i = 0; i < 10; i++) {
-        audit.append('trade_decision', `Entry ${i}`);
-      }
-
-      const limited = audit.getAuditTrail({ limit: 3 });
-      expect(limited.length).toBe(3);
+      for (let i = 0; i < 10; i++) audit.append('trade_decision', `Entry ${i}`);
+      expect(audit.getAuditTrail().length).toBe(10);
+      expect(audit.getAuditTrail({ startDate: '2099-01-01T00:00:00Z' }).length).toBe(0);
+      expect(audit.getAuditTrail({ limit: 3 }).length).toBe(3);
     });
   });
 
-  describe('latest entry', () => {
-    it('should return undefined for empty log', () => {
+  describe('latest entry and persistence', () => {
+    it('should return undefined for empty log and most recent entry when populated', () => {
       const audit = new ImmutableTradeAudit(tmpLogPath());
       expect(audit.getLatestEntry()).toBeUndefined();
-    });
-
-    it('should return the most recent entry', () => {
-      const audit = new ImmutableTradeAudit(tmpLogPath());
       audit.append('trade_decision', 'First');
       audit.append('trade_executed', 'Last');
-
       expect(audit.getLatestEntry()?.reason).toBe('Last');
     });
-  });
 
-  describe('persistence', () => {
     it('should restore entries after reload (simulates PM2 restart)', async () => {
       const logPath = tmpLogPath();
       const audit1 = new ImmutableTradeAudit(logPath);
@@ -182,10 +150,8 @@ describe('ImmutableTradeAudit', () => {
       audit1.append('trade_executed', 'Trade 2');
       await audit1.writePromise;
 
-      // New instance on same path = simulates PM2 restart
       const audit2 = new ImmutableTradeAudit(logPath);
       expect(audit2.getEntryCount()).toBe(2);
-      // Sequence counter should resume from last sequence
       const e3 = audit2.append('circuit_breaker', 'Trade 3');
       expect(e3.sequenceNumber).toBe(3);
     });

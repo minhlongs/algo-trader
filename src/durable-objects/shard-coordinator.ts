@@ -4,23 +4,31 @@
  */
 
 import type { DurableObjectState } from '@cloudflare/workers-types';
-import {
-  buildRing,
-  getShardForStrategy,
-  type HashRing,
-} from '../desk/utils/consistent-hash';
+import { buildRing, type HashRing } from '../desk/utils/consistent-hash';
 import { logger } from '../shared/utils/logger';
 import type {
   DistributedLock,
   LockAcquisitionResult,
-  RebalanceMove,
   RebalancePlan,
   ShardCoordinatorConfig,
   ShardNode,
   ShardTopology,
 } from './shard-coordinator-types';
+import {
+  computeRebalanceMoves,
+  createInitialTopology,
+  DEFAULT_REGIONS,
+  evaluateShardHealth,
+  routeStrategyToShard,
+} from './shard-coordinator-helpers';
 
-const DEFAULT_REGIONS = ['us-east', 'us-west', 'eu-west', 'ap-southeast'];
+export {
+  DEFAULT_REGIONS,
+  createInitialTopology,
+  routeStrategyToShard,
+  evaluateShardHealth,
+  computeRebalanceMoves,
+} from './shard-coordinator-helpers';
 
 export class ShardCoordinator {
   private state: DurableObjectState;
@@ -38,20 +46,7 @@ export class ShardCoordinator {
       heartbeatTimeoutMs: config?.heartbeatTimeoutMs ?? 30000,
       lockTtlMs: config?.lockTtlMs ?? 10000,
     };
-    this.topology = {
-      version: 1,
-      regions: DEFAULT_REGIONS,
-      shards: Array.from({ length: this.config.totalShards }, (_, i) => ({
-        shardId: i,
-        region: DEFAULT_REGIONS[i % DEFAULT_REGIONS.length],
-        endpoint: `shard-${i}.internal`,
-        status: 'HEALTHY',
-        weight: 1,
-        lastHeartbeat: Date.now(),
-        strategyCount: 0,
-      })),
-      updatedAt: Date.now(),
-    };
+    this.topology = createInitialTopology(this.config.totalShards);
     this.ring = buildRing(this.config.totalShards, this.config.virtualNodesPerShard);
 
     this.initPromise = this.initializeState().catch((err: unknown) => {
@@ -83,14 +78,7 @@ export class ShardCoordinator {
   }
 
   routeStrategy(strategyId: string): number {
-    const candidate = getShardForStrategy(this.ring, strategyId);
-    const node = this.topology.shards.find((s) => s.shardId === candidate);
-
-    if (node && node.status === 'HEALTHY') return candidate;
-
-    const healthyShards = this.topology.shards.filter((s) => s.status === 'HEALTHY');
-    if (healthyShards.length === 0) return candidate;
-    return healthyShards[Math.abs(candidate) % healthyShards.length].shardId;
+    return routeStrategyToShard(this.ring, this.topology.shards, strategyId);
   }
 
   heartbeat(shardId: number, strategyCount = 0): void {
@@ -103,16 +91,7 @@ export class ShardCoordinator {
   }
 
   checkHealth(): ShardNode[] {
-    const now = Date.now();
-    for (const node of this.topology.shards) {
-      const elapsed = now - node.lastHeartbeat;
-      if (elapsed > this.config.heartbeatTimeoutMs * 2) {
-        node.status = 'UNHEALTHY';
-      } else if (elapsed > this.config.heartbeatTimeoutMs) {
-        node.status = 'DEGRADED';
-      }
-    }
-    return [...this.topology.shards];
+    return evaluateShardHealth(this.topology.shards, this.config.heartbeatTimeoutMs);
   }
 
   async acquireLock(resourceId: string, ownerShardId: number, ttlMs?: number): Promise<LockAcquisitionResult> {
@@ -126,11 +105,7 @@ export class ShardCoordinator {
 
     const lock: DistributedLock = {
       lockId: `${resourceId}:${ownerShardId}:${now}`,
-      resourceId,
-      ownerShardId,
-      acquiredAt: now,
-      expiresAt: now + ttl,
-      ttlMs: ttl,
+      resourceId, ownerShardId, acquiredAt: now, expiresAt: now + ttl, ttlMs: ttl,
     };
     this.locks.set(resourceId, lock);
     await this.state.storage?.put(`lock:${resourceId}`, lock);
@@ -148,27 +123,11 @@ export class ShardCoordinator {
   generateRebalancePlan(assignedStrategies: Map<number, string[]>): RebalancePlan {
     this.checkHealth();
     const healthyShards = this.topology.shards.filter((s) => s.status === 'HEALTHY');
-    const moves: RebalanceMove[] = [];
-
     if (healthyShards.length === 0) {
-      return { moves, targetVersion: this.topology.version, generatedAt: Date.now() };
+      return { moves: [], targetVersion: this.topology.version, generatedAt: Date.now() };
     }
 
-    for (const [shardId, strategies] of assignedStrategies.entries()) {
-      const node = this.topology.shards.find((s) => s.shardId === shardId);
-      if (node && node.status === 'UNHEALTHY') {
-        strategies.forEach((stratId, idx) => {
-          const target = healthyShards[idx % healthyShards.length];
-          moves.push({
-            strategyId: stratId,
-            fromShardId: shardId,
-            toShardId: target.shardId,
-            reason: `Failover from unhealthy shard ${shardId}`,
-          });
-        });
-      }
-    }
-
+    const moves = computeRebalanceMoves(this.topology.shards, assignedStrategies);
     this.topology.version += 1;
     this.topology.updatedAt = Date.now();
     return { moves, targetVersion: this.topology.version, generatedAt: Date.now() };

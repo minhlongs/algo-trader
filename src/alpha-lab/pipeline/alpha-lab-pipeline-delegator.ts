@@ -11,12 +11,6 @@ import type { PolymarketOrder } from '../../desk/execution/polymarket-signer';
 import type { TradeSignal } from '../../desk/polymarket/strategy-live-bridge-types';
 import type { LiveOrderHandoffVerdict } from '../../desk/execution/live-guard-handoff';
 import type { PromotionStateTransition } from '../attribution/alpha-lifecycle-state-machine';
-import type { LedgerRecord, LedgerWriteResult } from '../provenance/research-ledger';
-import type {
-  AutonomousCycleOptions,
-  AutonomousCycleResult,
-  AlphaLabPipelineStatus,
-} from './alpha-lab-pipeline-types';
 import type { PipelineSubsystems } from './alpha-lab-pipeline-factory';
 import type { PipelineStateManager } from './alpha-lab-pipeline-state';
 import { runDiscoveryAndRegistration } from './alpha-lab-pipeline-discovery';
@@ -27,9 +21,12 @@ import {
   evaluateLiveRiskHandoff,
 } from './alpha-lab-pipeline-promoter';
 import {
-  runAutonomousPipelineCycle,
-  capturePipelineStatus,
-} from './alpha-lab-pipeline-runner';
+  executePipelineCycle,
+  executeStatusCapture,
+  type PersistLedgerFn,
+} from './alpha-lab-pipeline-cycle-delegator';
+
+export { executePipelineCycle, executeStatusCapture, type PersistLedgerFn };
 
 export async function executeDiscovery(
   subsystems: PipelineSubsystems,
@@ -37,7 +34,7 @@ export async function executeDiscovery(
   symbol: string,
   timeframe: string,
   runCardDir: string,
-  persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
+  persistLedger: PersistLedgerFn,
   candles?: CandleLike[],
 ): Promise<ContinuousDiscoveryResult> {
   return runDiscoveryAndRegistration(
@@ -56,7 +53,7 @@ export async function executeDiscovery(
 export function executeCandidateIngestion(
   candidate: DiscoveredAlphaCandidate,
   state: PipelineStateManager,
-  persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
+  persistLedger: PersistLedgerFn,
   reason?: string,
 ): PromotionStateTransition {
   return ingestCandidateToPaperStateMachine(
@@ -76,13 +73,7 @@ export async function executeSignalProcessing(
   marketPrice: number,
   symbol: string,
 ): Promise<SignalRoutingOutcome[]> {
-  return routeCandidateSignals(
-    subsystems.paperRouter,
-    state.stateMachines,
-    signals,
-    marketPrice,
-    symbol,
-  );
+  return routeCandidateSignals(subsystems.paperRouter, state.stateMachines, signals, marketPrice, symbol);
 }
 
 export async function executePromotionEvaluation(
@@ -90,7 +81,7 @@ export async function executePromotionEvaluation(
   symbol: string,
   timeframe: string,
   runCardDir: string,
-  persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
+  persistLedger: PersistLedgerFn,
   gateInputs?: Map<string, GateEvaluatorInput>,
 ): Promise<PromotionStateTransition[]> {
   return evaluateActivePaperPromotions(
@@ -108,71 +99,8 @@ export function executeLiveRiskEvaluation(
   subsystems: PipelineSubsystems,
   state: PipelineStateManager,
   symbol: string,
-  request: {
-    strategyId: string;
-    order: PolymarketOrder;
-    signal?: TradeSignal | AISignal;
-  },
+  request: { strategyId: string; order: PolymarketOrder; signal?: TradeSignal | AISignal },
 ): LiveOrderHandoffVerdict {
-  return evaluateLiveRiskHandoff(
-    subsystems.liveCoordinator,
-    state.stateMachines,
-    symbol,
-    request,
-  );
+  return evaluateLiveRiskHandoff(subsystems.liveCoordinator, state.stateMachines, symbol, request);
 }
 
-export async function executePipelineCycle(
-  subsystems: PipelineSubsystems,
-  state: PipelineStateManager,
-  symbol: string,
-  timeframe: string,
-  initialBalanceUsd: number,
-  ledgerPath: string,
-  runCardDir: string,
-  persistLedger: (input: Omit<LedgerRecord, 'prevHash' | 'recordedAt' | 'entryHash'>) => Promise<LedgerWriteResult>,
-  options?: AutonomousCycleOptions,
-): Promise<AutonomousCycleResult> {
-  const cycleCount = state.incrementCycle();
-  const { result, completedAt } = await runAutonomousPipelineCycle(
-    {
-      discoveryPipeline: subsystems.discoveryPipeline,
-      paperRouter: subsystems.paperRouter,
-      paperExecutor: subsystems.paperExecutor,
-      liveCoordinator: subsystems.liveCoordinator,
-      stateMachines: state.stateMachines,
-      candidateConfigs: state.candidateConfigs,
-      lastKnownCandidates: state.lastKnownCandidates,
-      symbol,
-      timeframe,
-      initialBalanceUsd,
-      ledgerPath,
-      runCardDir,
-      cycleCount,
-      isRunning: state.isRunning,
-      persistLedger,
-    },
-    options,
-  );
-  state.setLastCycleAt(completedAt);
-  return result;
-}
-
-export async function executeStatusCapture(
-  subsystems: PipelineSubsystems,
-  state: PipelineStateManager,
-  ledgerPath: string,
-  initialBalanceUsd: number,
-): Promise<AlphaLabPipelineStatus> {
-  return capturePipelineStatus(
-    state.stateMachines,
-    subsystems.paperExecutor,
-    subsystems.paperRouter,
-    subsystems.liveCoordinator,
-    ledgerPath,
-    initialBalanceUsd,
-    state.cycleCount,
-    state.lastCycleAt,
-    state.isRunning,
-  );
-}

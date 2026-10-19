@@ -13,6 +13,7 @@ import type {
 import type { PaperEquityTracker } from './ai-signal-paper-router-tracker';
 import { mapExecutionToFillRecord } from '../execution/paper-position-types';
 import type { AlphaLifecycleStateMachine } from '../../alpha-lab/attribution/alpha-lifecycle-state-machine';
+import { checkSignalPreconditions } from './ai-signal-paper-router-validator';
 
 export async function dispatchSignalOrder(
   signal: AISignal,
@@ -25,86 +26,20 @@ export async function dispatchSignalOrder(
   const timestamp = Date.now();
   const isBuy = signal.direction === 'BUY' || signal.action === 'BUY';
 
-  // Strategy Lifecycle State Inspection: Block signals if strategy is QUARANTINED or RETIRED
-  const sm = stateMachineOverride ??
-    (signal.strategyId ? config.stateMachines?.get(signal.strategyId) : undefined) ??
-    config.stateMachine;
-  const state = sm ? sm.getState() : (signal.strategyId ? config.getState?.(signal.strategyId) : undefined);
-
-  if (state === 'QUARANTINED' || state === 'RETIRED') {
-    const reason = state === 'QUARANTINED'
-      ? 'Strategy is quarantined by drawdown circuit breaker'
-      : 'Strategy is in RETIRED state: Strategy is quarantined by drawdown circuit breaker';
-    logger.warn(`[AISignalPaperRouter] Signal blocked for ${signal.strategyId ?? 'unknown'}: ${reason}`);
-    return {
-      status: 'REJECTED',
-      signal,
-      symbol,
-      marketPrice,
-      validation: { valid: false, signal, rejectionReasons: [reason] },
-      reason,
-      timestamp,
-    };
+  const check = await checkSignalPreconditions(
+    signal,
+    marketPrice,
+    config,
+    symbol,
+    timestamp,
+    isBuy,
+    stateMachineOverride,
+  );
+  if (check.errorOutcome) {
+    return check.errorOutcome;
   }
 
   const validation = config.adapter.validateSignal(signal);
-  if (!validation.valid) {
-    const identifier = signal.strategyId ?? signal.signalId ?? 'unknown';
-    logger.info(`[AISignalPaperRouter] Signal validation rejected for ${identifier}: ${validation.rejectionReasons.join('; ')}`);
-    return {
-      status: 'REJECTED',
-      signal,
-      symbol,
-      marketPrice,
-      validation,
-      reason: `Validation failed: ${validation.rejectionReasons.join('; ')}`,
-      timestamp,
-    };
-  }
-
-  if (typeof marketPrice !== 'number' || !Number.isFinite(marketPrice) || marketPrice <= 0) {
-    logger.warn(`[AISignalPaperRouter] Invalid marketPrice: ${marketPrice} for ${symbol}`);
-    return {
-      status: 'REJECTED',
-      signal,
-      symbol,
-      marketPrice,
-      validation,
-      reason: 'Invalid marketPrice: must be a positive finite number',
-      timestamp,
-    };
-  }
-
-  if (config.drawdownBreaker && !config.drawdownBreaker.canOpenNewTrades() && isBuy) {
-    const tier = config.drawdownBreaker.getState().tier;
-    logger.warn(`[AISignalPaperRouter] Signal blocked by circuit breaker (Tier: ${tier})`);
-    return {
-      status: 'REJECTED',
-      signal,
-      symbol,
-      marketPrice,
-      validation,
-      reason: `Circuit breaker active (${tier})`,
-      timestamp,
-    };
-  }
-
-  if (config.circuitBreaker && isBuy) {
-    const canTrade = await config.circuitBreaker.canTrade();
-    if (!canTrade) {
-      const status = await config.circuitBreaker.getStatus();
-      logger.warn(`[AISignalPaperRouter] Signal blocked by risk circuit breaker (${status.reason ?? status.state})`);
-      return {
-        status: 'REJECTED',
-        signal,
-        symbol,
-        marketPrice,
-        validation,
-        reason: `Risk circuit breaker active: ${status.reason ?? status.state}`,
-        timestamp,
-      };
-    }
-  }
 
   let tradeSignal: TradeSignal;
   if (isBuy) {

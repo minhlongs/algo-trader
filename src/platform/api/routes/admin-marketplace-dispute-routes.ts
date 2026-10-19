@@ -9,32 +9,31 @@
 
 import type { Request, Response } from 'express';
 import type { Router as RouterType } from 'express';
-import { z } from 'zod';
 import { DisputeService } from '../../marketplace/services/dispute.service';
-import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
+import { AuditLogService } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
 import {
-  getUserId,
   isAdmin,
   getQueryString,
 } from './admin-marketplace-helpers';
+import {
+  resolveDisputeSchema,
+  disputeFilterSchema,
+  type ResolveDisputeInput,
+  type DisputeFilterInput,
+} from './admin-marketplace-dispute-schemas';
+import {
+  handleResolveDispute,
+  handleEscalateDispute,
+} from './admin-marketplace-dispute-actions';
+
+export { resolveDisputeSchema, disputeFilterSchema };
+export type { ResolveDisputeInput, DisputeFilterInput };
+export { handleResolveDispute, handleEscalateDispute };
 
 const disputeService = DisputeService.getInstance();
 const auditService = AuditLogService.getInstance();
-
-// ==================== Validation Schemas ====================
-
-export const resolveDisputeSchema = z.object({
-  resolution: z.string().min(10).max(5000),
-  compensationType: z.enum(['full_refund', 'partial_refund', 'credit', 'none']).optional(),
-  compensationAmountCents: z.number().int().min(0).optional(),
-  adminNotes: z.string().max(5000).optional(),
-});
-
-export const disputeFilterSchema = z.object({
-  status: z.enum(['open', 'under_review', 'resolved_creator', 'resolved_subscriber', 'escalated', 'closed']).optional(),
-});
 
 // ==================== Route Registration ====================
 
@@ -81,67 +80,7 @@ export function registerMarketplaceDisputeRoutes(router: RouterType): void {
    * Resolve a dispute
    */
   router.patch('/disputes/:id/resolve', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-    try {
-      if (!isAdmin(req)) {
-        return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
-      }
-
-      const id = getQueryString(req.params.id);
-      const adminUserId = getUserId(req);
-
-      const parsed = resolveDisputeSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({
-          error: 'Invalid request body',
-          details: parsed.error.issues,
-        });
-      }
-
-      const dispute = await disputeService.getDispute(getQueryString(req.params.id));
-      if (!dispute) {
-        return res.status(404).json({
-          error: 'Not found',
-          message: `Dispute ${id} not found`,
-        });
-      }
-
-      const updated = await disputeService.resolveDispute(id, {
-        resolution: parsed.data.resolution,
-        compensationType: parsed.data.compensationType || 'none',
-        compensationAmountCents: parsed.data.compensationAmountCents,
-        resolvedBy: adminUserId,
-        adminNotes: parsed.data.adminNotes,
-      });
-
-      await auditService.log(
-        dispute.tenantId,
-        'api_call' as AuditEventType,
-        {
-          tier: (req as Request & { user?: { tier?: string } }).user?.tier,
-          metadata: {
-            action: 'dispute_resolved',
-            adminUserId,
-            resourceId: id,
-            resolution: parsed.data.resolution,
-            compensationType: parsed.data.compensationType,
-          },
-        }
-      );
-
-      logger.info('[MarketplaceAdmin] Dispute resolved', {
-        disputeId: id,
-        adminUserId,
-        compensationType: parsed.data.compensationType,
-      });
-
-      return res.json(updated);
-    } catch (error) {
-      logger.error('[MarketplaceAdmin] Error resolving dispute', { error, disputeId: req.params.id });
-      return res.status(500).json({
-        error: 'Internal server error',
-        message: 'Failed to resolve dispute',
-      });
-    }
+    return handleResolveDispute(req, res, disputeService, auditService);
   });
 
   /**
@@ -149,46 +88,7 @@ export function registerMarketplaceDisputeRoutes(router: RouterType): void {
    * Escalate a dispute
    */
   router.patch('/disputes/:id/escalate', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
-    try {
-      if (!isAdmin(req)) {
-        return res.status(403).json({ error: 'Forbidden', message: 'Admin access required' });
-      }
-
-      const id = getQueryString(req.params.id);
-      const adminUserId = getUserId(req);
-
-      const dispute = await disputeService.getDispute(getQueryString(req.params.id));
-      if (!dispute) {
-        return res.status(404).json({
-          error: 'Not found',
-          message: `Dispute ${id} not found`,
-        });
-      }
-
-      const updated = await disputeService.escalateDispute(id, adminUserId);
-
-      await auditService.log(
-        dispute.tenantId,
-        'api_call' as AuditEventType,
-        {
-          tier: (req as Request & { user?: { tier?: string } }).user?.tier,
-          metadata: {
-            action: 'dispute_escalated',
-            adminUserId,
-            resourceId: id,
-          },
-        }
-      );
-
-      logger.info('[MarketplaceAdmin] Dispute escalated', { disputeId: id, adminUserId });
-
-      return res.json(updated);
-    } catch (error) {
-      logger.error('[MarketplaceAdmin] Error escalating dispute', { error, disputeId: req.params.id });
-      return res.status(500).json({
-        error: 'Internal server error',
-        message: 'Failed to escalate dispute',
-      });
-    }
+    return handleEscalateDispute(req, res, disputeService, auditService);
   });
 }
+

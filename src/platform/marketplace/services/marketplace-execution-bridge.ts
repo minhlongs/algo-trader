@@ -4,12 +4,6 @@
  * Connects marketplace subscriptions to the RaaS SubscriberExecutor.
  * When a subscription is active, market events can trigger strategy execution
  * per subscriber with their custom risk limits and allocation.
- *
- * Flow:
- * 1. activateSubscriberForExecution(subscriptionId) — marks subscription as executable
- * 2. executeForSubscriber(subscriptionId, marketPayload) — single execution
- * 3. executeActiveForStrategy(strategyId, marketPayload) — all active subscribers for a strategy
- * 4. Results sync back to subscription P&L and marketplace performance
  */
 
 import { logger } from '../../../shared/utils/logger';
@@ -47,7 +41,6 @@ export class MarketplaceExecutionBridge {
 
   /**
    * Execute strategy for a single active marketplace subscription.
-   * Uses subscription's risk limits and allocation for the execution.
    */
   async executeForSubscriber(
     subscriptionId: string,
@@ -67,11 +60,7 @@ export class MarketplaceExecutionBridge {
       return null;
     }
 
-    // Build execution request from subscription settings
-    const capitalUsdt = sub.currentInvestmentUsd > 0
-      ? sub.currentInvestmentUsd / 100 // Convert cents to dollars
-      : 100; // Default $100
-
+    const capitalUsdt = sub.currentInvestmentUsd > 0 ? sub.currentInvestmentUsd / 100 : 100;
     const req: SubscriberExecRequest = {
       subscriberId: sub.tenantId,
       strategyId: sub.strategyId,
@@ -80,8 +69,6 @@ export class MarketplaceExecutionBridge {
     };
 
     const result = await this.executor.execute(req);
-
-    // Sync execution result back to subscription
     await this.syncExecutionResult(sub, result);
 
     logger.info('Marketplace execution complete', {
@@ -103,16 +90,13 @@ export class MarketplaceExecutionBridge {
 
   /**
    * Execute strategy for ALL active subscribers of a given strategy.
-   * Called when market data arrives for a published strategy.
    */
   async executeActiveForStrategy(
     strategyId: string,
     marketPayload: Record<string, unknown>,
   ): Promise<ExecutionBridgeResult[]> {
     const activeSubs = await this.subRepo.findActiveByStrategy(strategyId);
-    if (activeSubs.length === 0) {
-      return [];
-    }
+    if (activeSubs.length === 0) return [];
 
     logger.info('Executing strategy for active subscribers', {
       strategyId,
@@ -136,14 +120,10 @@ export class MarketplaceExecutionBridge {
     return results;
   }
 
-  /**
-   * Sync execution result back to subscription P&L and marketplace performance.
-   */
   private async syncExecutionResult(
     sub: IMarketplaceSubscription,
     result: SubscriberExecResult,
   ): Promise<void> {
-    // Update subscription running P&L (profit is in dollars, convert to cents)
     const profitCents = Math.round(result.profit * 100);
     const newPnl = sub.totalPnlUsd + profitCents;
     const newInvestment = sub.currentInvestmentUsd + profitCents;
@@ -153,7 +133,6 @@ export class MarketplaceExecutionBridge {
       currentInvestmentUsd: Math.max(0, newInvestment),
     });
 
-    // Update marketplace performance (aggregate, no tenant breakdown)
     if (result.status === 'FILLED') {
       const isWin = result.profit > 0;
       await this.perfRepo.upsert({

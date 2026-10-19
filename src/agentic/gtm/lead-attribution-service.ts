@@ -11,13 +11,29 @@ import { randomUUID } from 'crypto';
 import type {
   LeadAttributionRecord,
   LeadSourceNetwork,
-  LeadTouchpoint,
   OnboardingStatus,
   SubscriberTier,
   TierOnboardingEvent,
   UtmParameters,
 } from './lead-attribution-types';
 import { LeadScoringEngine } from './lead-scoring-engine';
+import {
+  resolveNetworkSource,
+  generateTierOnboardingSteps,
+  createLeadTouchpoint,
+  mergeLeadRecords,
+  buildTierOnboardingEvent,
+  applyOnboardingStepCompletion,
+} from './lead-attribution-helpers';
+
+export {
+  resolveNetworkSource,
+  generateTierOnboardingSteps,
+  createLeadTouchpoint,
+  mergeLeadRecords,
+  buildTierOnboardingEvent,
+  applyOnboardingStepCompletion,
+};
 
 export class LeadAttributionService {
   private readonly records = new Map<string, LeadAttributionRecord>();
@@ -31,15 +47,7 @@ export class LeadAttributionService {
   }
 
   public resolveNetwork(source?: string): LeadSourceNetwork {
-    if (!source) return 'DIRECT';
-    const s = source.toUpperCase();
-    if (s.includes('TIKTOK')) return 'TIKTOK';
-    if (s.includes('SHOPEE')) return 'SHOPEE';
-    if (s.includes('TELEGRAM') || s.includes('TG')) return 'TELEGRAM';
-    if (s.includes('TWITTER') || s.includes('X.COM')) return 'TWITTER';
-    if (s.includes('PARTNER') || s.includes('AFFILIATE')) return 'PARTNER';
-    if (s.includes('GOOGLE') || s.includes('FACEBOOK') || s.includes('WEB')) return 'WEB';
-    return 'DIRECT';
+    return resolveNetworkSource(source);
   }
 
   public recordTouchpoint(
@@ -49,34 +57,30 @@ export class LeadAttributionService {
   ): LeadAttributionRecord {
     const now = options?.timestamp ?? Date.now();
     const network = this.resolveNetwork(utm.utmSource);
+    const touchpoint = createLeadTouchpoint(network, utm, now, options?.ipAddress);
     let leadId = this.visitorToLead.get(visitorId);
-    let record: LeadAttributionRecord;
-
-    const touchpoint: LeadTouchpoint = {
-      touchpointId: randomUUID(),
-      network,
-      campaignId: utm.utmCampaign,
-      referralCode: utm.referralCode,
-      timestamp: now,
-      ipAddress: options?.ipAddress,
-    };
 
     if (leadId && this.records.has(leadId)) {
-      record = this.records.get(leadId)!;
+      const record = this.records.get(leadId)!;
       record.touchpoints.push(touchpoint);
       record.lastSeenAt = now;
       record.lastTouchNetwork = network;
-    } else {
-      leadId = randomUUID();
-      this.visitorToLead.set(visitorId, leadId);
-      record = {
-        leadId, visitorId, primaryNetwork: network,
-        touchpoints: [touchpoint], firstSeenAt: now, lastSeenAt: now,
-        firstTouchNetwork: network, lastTouchNetwork: network,
-      };
-      this.records.set(leadId, record);
+      return record;
     }
 
+    leadId = randomUUID();
+    this.visitorToLead.set(visitorId, leadId);
+    const record: LeadAttributionRecord = {
+      leadId,
+      visitorId,
+      primaryNetwork: network,
+      touchpoints: [touchpoint],
+      firstSeenAt: now,
+      lastSeenAt: now,
+      firstTouchNetwork: network,
+      lastTouchNetwork: network,
+    };
+    this.records.set(leadId, record);
     return record;
   }
 
@@ -92,9 +96,7 @@ export class LeadAttributionService {
     if (existingLeadId && existingLeadId !== leadId) {
       const existingRecord = this.records.get(existingLeadId);
       if (existingRecord) {
-        existingRecord.touchpoints = existingRecord.touchpoints.concat(record.touchpoints);
-        existingRecord.lastSeenAt = Math.max(existingRecord.lastSeenAt, record.lastSeenAt);
-        existingRecord.lastTouchNetwork = record.lastTouchNetwork;
+        mergeLeadRecords(existingRecord, record);
         this.records.delete(leadId);
         this.visitorToLead.set(visitorId, existingLeadId);
         return existingRecord;
@@ -129,25 +131,8 @@ export class LeadAttributionService {
     paymentReference: string;
     timestamp?: number;
   }): TierOnboardingEvent {
-    const verified = Boolean(
-      event.paymentReference &&
-      event.paymentReference.length >= 8 &&
-      event.email.includes('@') &&
-      event.newTier !== 'FREE'
-    );
-
-    const onboardingEvent: TierOnboardingEvent = {
-      subscriberId: event.subscriberId,
-      email: event.email.toLowerCase().trim(),
-      previousTier: event.previousTier,
-      newTier: event.newTier,
-      timestamp: event.timestamp ?? Date.now(),
-      paymentReference: event.paymentReference,
-      verified,
-      onboardingSequenceId: `seq-${event.newTier.toLowerCase()}-${randomUUID().slice(0, 8)}`,
-    };
-
-    const steps = this.generateOnboardingSteps(event.newTier);
+    const onboardingEvent = buildTierOnboardingEvent(event);
+    const steps = generateTierOnboardingSteps(event.newTier);
     this.onboardingStatuses.set(event.subscriberId, {
       subscriberId: event.subscriberId,
       tier: event.newTier,
@@ -155,42 +140,15 @@ export class LeadAttributionService {
       pendingSteps: steps,
       isFullyOnboarded: steps.length === 0,
     });
-
     return onboardingEvent;
   }
 
   public completeOnboardingStep(subscriberId: string, stepId: string): OnboardingStatus | undefined {
     const status = this.onboardingStatuses.get(subscriberId);
-    if (!status) return undefined;
-
-    const idx = status.pendingSteps.indexOf(stepId);
-    if (idx !== -1) {
-      status.pendingSteps.splice(idx, 1);
-      if (!status.completedSteps.includes(stepId)) {
-        status.completedSteps.push(stepId);
-      }
-      status.isFullyOnboarded = status.pendingSteps.length === 0;
-    }
-
-    return status;
+    return status ? applyOnboardingStepCompletion(status, stepId) : undefined;
   }
 
   public getOnboardingStatus(subscriberId: string): OnboardingStatus | undefined {
     return this.onboardingStatuses.get(subscriberId);
-  }
-
-  private generateOnboardingSteps(tier: SubscriberTier): string[] {
-    switch (tier) {
-      case 'BASIC':
-        return ['setup-api-keys', 'select-trading-pair', 'enable-paper-mode'];
-      case 'PREMIUM':
-        return ['setup-api-keys', 'configure-statarb', 'enable-telegram-alerts', 'run-backtest'];
-      case 'ENTERPRISE':
-      case 'MASTER':
-        return ['dedicated-edge-routing', 'risk-cockpit-setup', 'multi-region-failover', 'vip-consultation'];
-      case 'FREE':
-      default:
-        return ['verify-email'];
-    }
   }
 }

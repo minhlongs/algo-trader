@@ -740,6 +740,26 @@ graph TD
 - **Minimum Backtest Length Gating (MinBTL)** (`src/alpha-lab/optimizer/min-btl.ts`):
   - Evaluates `WalkForwardSummary` against statistical significance thresholds (`minBars`, `minTrades`) to prevent underpowered strategy graduation into production.
 
+### Phase 6: Quantitative Derivatives & Execution Desks (Waves 120-122)
+
+**1. Desk 120: Garman-Kohlhagen (1983) Dual-Currency FX Options Engine (`src/desk/garmankohlhagen/`)**:
+- Closed-form European currency option pricing accounting for continuous foreign ($r_f$) and domestic ($r_d$) risk-free yields.
+- Analytical Greek calculations: $\Delta, \Gamma, \nu, \Theta, \rho_d, \rho_f, \text{Dual }\Delta$.
+- Put-Call parity validation guaranteeing arbitrage-free cross-currency pricing surfaces.
+- Robust Newton-Raphson FX Implied Volatility solver with Vega safety clamps.
+
+**2. Desk 121: CreditGrades (2002) Structural Credit Risk Engine (`src/desk/creditgrades/`)**:
+- RiskMetrics structural credit framework linking equity valuation, debt obligations, and equity volatility to default likelihood.
+- Stochastic recovery barrier dynamics ($\bar{L}, \lambda$) resolving the Merton short-term credit spread puzzle.
+- Cumulative default and survival term structures $Q(t)$.
+- 64-step composite Simpson rule numerical integration over the continuous discount curve for fair Par CDS spreads.
+
+**3. Desk 122: Lehalle-Moallemi (2018) Multi-Venue Lit/Dark Execution Engine (`src/desk/lehallemoallemi/`)**:
+- Microstructure routing optimizer dividing parent orders $Q$ between lit order books and dark liquidity venues.
+- Non-linear dark fill probability decay: $p_{\text{dark}}(q_d) = p_0 e^{-\alpha q_d / Q}$.
+- Rigorous modeling of dark adverse selection versus midpoint price improvement.
+- Penalized delayed liquidation cost model accounting for market impact on unfilled volumes.
+
 ---
 
 

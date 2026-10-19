@@ -9,14 +9,25 @@ import { MarketplaceService } from '../../marketplace/services/marketplace.servi
 import { AuditLogService, type AuditEventType } from '../../audit/audit-log-service';
 import { logger } from '../../../shared/utils/logger';
 import { requireTier } from '../../middleware/feature-gate';
-import type { StrategyCategory } from '../../marketplace/models/types';
 import {
   publishBodySchema,
   strategyFilterSchema,
   getTenantId,
   getUserId,
-  isAdmin,
 } from './marketplace-strategy-helpers';
+import {
+  buildListStrategiesQuery,
+  canPublishStrategy,
+  buildCreateStrategyPayload,
+  canAccessStrategyDetails,
+} from './marketplace-strategy-listings-helpers';
+
+export {
+  buildListStrategiesQuery,
+  canPublishStrategy,
+  buildCreateStrategyPayload,
+  canAccessStrategyDetails,
+} from './marketplace-strategy-listings-helpers';
 
 export const marketplaceStrategyListingsRouter: RouterType = Router();
 
@@ -33,20 +44,7 @@ marketplaceStrategyListingsRouter.get('/', requireTier('FREE'), async (req: Requ
       return res.status(400).json({ error: 'Invalid query parameters', details: parsed.error.issues });
     }
 
-    const filters = parsed.data;
-    const result = await marketplaceService.listStrategies({
-      category: filters.category as StrategyCategory | undefined,
-      riskLevel: filters.riskLevel,
-      minSharpe: filters.minSharpe,
-      maxDrawdown: filters.maxDrawdown,
-      status: filters.status || 'approved',
-      sortBy: filters.sortBy,
-      sortOrder: filters.sortOrder,
-      page: filters.page || 1,
-      limit: filters.limit || 20,
-      search: filters.search,
-    });
-
+    const result = await marketplaceService.listStrategies(buildListStrategiesQuery(parsed.data));
     return res.json(result);
   } catch (error) {
     logger.error('[Marketplace] Error listing strategies', { error });
@@ -62,9 +60,7 @@ marketplaceStrategyListingsRouter.post('/publish', requireTier('FREE'), async (r
     const tenantId = getTenantId(req);
     const userId = getUserId(req);
 
-    const reqWithTier = req as Request & { tenant?: { tier?: string }; user?: { tier?: string } };
-    const tenantTier = reqWithTier.tenant?.tier || reqWithTier.user?.tier;
-    if (tenantTier !== 'PRO' && tenantTier !== 'ENTERPRISE') {
+    if (!canPublishStrategy(req)) {
       return res.status(403).json({
         error: 'Insufficient permissions',
         message: 'Only PRO and ENTERPRISE tenants can publish strategies',
@@ -76,39 +72,10 @@ marketplaceStrategyListingsRouter.post('/publish', requireTier('FREE'), async (r
       return res.status(400).json({ error: 'Invalid request body', details: parsed.error.issues });
     }
 
-    const strategyData = parsed.data;
     const strategyId = `strat_${Date.now()}_${userId.slice(0, 8)}`;
-
-    let backtestSummary: {
-      totalTrades: number; winRate: number; totalPnl: number;
-      sharpeRatio: number; maxDrawdown: number; periodDays?: number;
-    } | undefined;
-    if (strategyData.backtestSummary) {
-      const bs = strategyData.backtestSummary;
-      backtestSummary = {
-        totalTrades: bs.totalTrades || 0,
-        winRate: bs.winRate,
-        totalPnl: 0,
-        sharpeRatio: bs.sharpe ?? 0,
-        maxDrawdown: bs.maxDrawdown,
-        periodDays: bs.periodDays,
-      };
-    }
-
-    const strategy = await marketplaceService.createStrategy({
-      id: strategyId,
-      tenantId,
-      creatorId: userId,
-      name: strategyData.name,
-      description: strategyData.description,
-      category: strategyData.category,
-      riskLevel: strategyData.riskLevel,
-      minAllocationUsd: strategyData.minAllocationUsd,
-      maxAllocationUsd: strategyData.maxAllocationUsd,
-      supportedExchanges: strategyData.supportedExchanges || [],
-      tags: strategyData.tags || [],
-      backtestSummary: backtestSummary as unknown as Parameters<typeof marketplaceService.createStrategy>[0]['backtestSummary'],
-    });
+    const strategy = await marketplaceService.createStrategy(
+      buildCreateStrategyPayload(strategyId, tenantId, userId, parsed.data),
+    );
 
     const listing = await marketplaceService.createListing({
       strategyId: strategy.id,
@@ -151,11 +118,7 @@ marketplaceStrategyListingsRouter.get('/:id', requireTier('FREE'), async (req: R
       return res.status(404).json({ error: 'Not found', message: `Strategy ${id} not found` });
     }
 
-    const tenantId = getTenantId(req);
-    const isOwner = strategy.strategy.tenantId === tenantId;
-    const isApproved = strategy.strategy.status === 'approved';
-
-    if (!isApproved && !isOwner && !isAdmin(req)) {
+    if (!canAccessStrategyDetails(strategy, req)) {
       return res.status(404).json({ error: 'Not found', message: 'Strategy not found or not approved' });
     }
 

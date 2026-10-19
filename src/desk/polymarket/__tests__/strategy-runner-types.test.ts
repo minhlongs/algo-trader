@@ -1,51 +1,34 @@
 /**
  * Tests for strategy-runner-types — DEFAULT_RUNNER_CONFIG constants and the
- * GammaClientImpl HTTP client (getMarkets / getMarket / getMarketGroup /
- * searchMarkets / getTrending / getEvents) against a mocked global fetch.
+ * GammaClientImpl HTTP client against a mocked global fetch.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Raw API row (as returned by Gamma) and its expected mapped GammaMarket.
 const RAW_MARKET = {
   id: 'm1', conditionId: 'c1', question: 'Will X happen?', slug: 'x',
   outcomes: ['Yes', 'No'], outcomePrices: ['0.6', '0.4'],
-  volume: '1000', liquidity: '2000', active: true, closed: false,
-  end_date_iso: '2026-12-31',
-  tokens: [
-    { token_id: 'yes-1', outcome: 'Yes', price: '0.6' },
-    { token_id: 'no-1', outcome: 'No', price: '0.4' },
-  ],
+  volume: '1000', liquidity: '2000', active: true, closed: false, end_date_iso: '2026-12-31',
+  tokens: [{ token_id: 'yes-1', outcome: 'Yes', price: '0.6' }, { token_id: 'no-1', outcome: 'No', price: '0.4' }],
 };
 
 const MAPPED_MARKET = {
   id: 'm1', conditionId: 'c1', question: 'Will X happen?', slug: 'x',
   outcomes: ['Yes', 'No'], outcomePrices: ['0.6', '0.4'],
-  active: true, closed: false, volume: 1000, liquidity: 2000,
-  endDate: '2026-12-31',
-  tokens: [
-    { token_id: 'yes-1', outcome: 'Yes', price: 0.6 },
-    { token_id: 'no-1', outcome: 'No', price: 0.4 },
-  ],
+  active: true, closed: false, volume: 1000, liquidity: 2000, endDate: '2026-12-31',
+  tokens: [{ token_id: 'yes-1', outcome: 'Yes', price: 0.6 }, { token_id: 'no-1', outcome: 'No', price: 0.4 }],
   yesTokenId: 'yes-1', noTokenId: 'no-1', yesPrice: 0.6,
 };
 
 function jsonResponse(body: unknown, init?: { status?: number; ok?: boolean }): Response {
-  return {
-    ok: init?.ok ?? true,
-    status: init?.status ?? 200,
-    json: async () => body,
-  } as unknown as Response;
+  return { ok: init?.ok ?? true, status: init?.status ?? 200, json: async () => body } as unknown as Response;
 }
 
 describe('DEFAULT_RUNNER_CONFIG', () => {
   it('exposes the documented polling defaults', async () => {
     const { DEFAULT_RUNNER_CONFIG } = await import('../strategy-runner-types');
     expect(DEFAULT_RUNNER_CONFIG).toEqual({
-      tickIntervalMs: 30_000,
-      maxTicks: 0,
-      minExecutionIntervalMs: 50,
-      autoScan: false,
+      tickIntervalMs: 30_000, maxTicks: 0, minExecutionIntervalMs: 50, autoScan: false,
     });
   });
 });
@@ -69,15 +52,11 @@ describe('GammaClientImpl', () => {
   beforeEach(async () => {
     fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
-    // AbortSignal.timeout may be absent in the test runtime; return an already
-    // aborted signal so no live timer keeps the event loop alive.
-    (AbortSignal as unknown as { timeout: (ms: number) => AbortSignal }).timeout = vi.fn(
-      () => {
-        const controller = new AbortController();
-        controller.abort();
-        return controller.signal;
-      },
-    );
+    (AbortSignal as unknown as { timeout: (ms: number) => AbortSignal }).timeout = vi.fn(() => {
+      const controller = new AbortController();
+      controller.abort();
+      return controller.signal;
+    });
     const mod = await import('../strategy-runner-types');
     client = new mod.GammaClientImpl();
   });
@@ -109,14 +88,12 @@ describe('GammaClientImpl', () => {
   it('returns null from getMarket when the API reports not-found', async () => {
     fetchMock.mockResolvedValue(jsonResponse([]));
     expect(await client.getMarket('c1')).toBeNull();
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://gamma-api.polymarket.com/markets?conditionId=c1&limit=1', expect.any(Object));
+    expect(fetchMock).toHaveBeenCalledWith('https://gamma-api.polymarket.com/markets?conditionId=c1&limit=1', expect.any(Object));
   });
 
   it('returns the market from getMarket when present', async () => {
     fetchMock.mockResolvedValue(jsonResponse([RAW_MARKET]));
-    const result = await client.getMarket('c1');
-    expect(result).toEqual(MAPPED_MARKET);
+    expect(await client.getMarket('c1')).toEqual(MAPPED_MARKET);
   });
 
   it('rejects from getMarketGroup (not implemented)', async () => {
@@ -127,10 +104,7 @@ describe('GammaClientImpl', () => {
   it('URL-encodes the searchMarkets query', async () => {
     fetchMock.mockResolvedValue(jsonResponse([RAW_MARKET]));
     const result = await client.searchMarkets('will btc hit 100k?');
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://gamma-api.polymarket.com/markets?tag=will%20btc%20hit%20100k%3F&limit=50',
-      expect.any(Object),
-    );
+    expect(fetchMock).toHaveBeenCalledWith('https://gamma-api.polymarket.com/markets?tag=will%20btc%20hit%20100k%3F&limit=50', expect.any(Object));
     expect(result).toEqual([MAPPED_MARKET]);
   });
 
@@ -141,19 +115,14 @@ describe('GammaClientImpl', () => {
 
   it('getTrending honours the limit parameter', async () => {
     fetchMock.mockResolvedValue(jsonResponse([RAW_MARKET]));
-    const result = await client.getTrending(5);
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://gamma-api.polymarket.com/markets?closed=false&limit=5', expect.any(Object));
-    expect(result).toEqual([MAPPED_MARKET]);
+    expect(await client.getTrending(5)).toEqual([MAPPED_MARKET]);
+    expect(fetchMock).toHaveBeenCalledWith('https://gamma-api.polymarket.com/markets?closed=false&limit=5', expect.any(Object));
   });
 
   it('getEvents honours the limit parameter', async () => {
-    const events = [{ id: 'e1', title: 'Event', slug: 'event' }];
-    fetchMock.mockResolvedValue(jsonResponse(events));
-    const result = await client.getEvents(10);
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://gamma-api.polymarket.com/events?limit=10', expect.any(Object));
-    expect(result).toEqual([{ id: 'e1', title: 'Event', slug: 'event', markets: [] }]);
+    fetchMock.mockResolvedValue(jsonResponse([{ id: 'e1', title: 'Event', slug: 'event' }]));
+    expect(await client.getEvents(10)).toEqual([{ id: 'e1', title: 'Event', slug: 'event', markets: [] }]);
+    expect(fetchMock).toHaveBeenCalledWith('https://gamma-api.polymarket.com/events?limit=10', expect.any(Object));
   });
 
   it('returns [] from getEvents on a non-ok response', async () => {
@@ -168,12 +137,10 @@ describe('GammaClientImpl', () => {
 
   it('falls back to defaults when token fields are missing', async () => {
     fetchMock.mockResolvedValue(jsonResponse([{ id: 'm2', tokens: [] }]));
-    const result = await client.getMarkets({ limit: 1 });
-    expect(result).toEqual([{
+    expect(await client.getMarkets({ limit: 1 })).toEqual([{
       id: 'm2', conditionId: undefined, question: undefined, slug: undefined,
-      outcomes: undefined, outcomePrices: undefined,
-      active: undefined, closed: undefined, volume: 0, liquidity: 0,
-      endDate: undefined, tokens: [], yesTokenId: '', noTokenId: undefined, yesPrice: 0,
+      outcomes: undefined, outcomePrices: undefined, active: undefined, closed: undefined,
+      volume: 0, liquidity: 0, endDate: undefined, tokens: [], yesTokenId: '', noTokenId: undefined, yesPrice: 0,
     }]);
   });
 });

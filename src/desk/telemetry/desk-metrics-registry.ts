@@ -24,7 +24,6 @@ export const KNOWN_CIRCUIT_BREAKER_TIERS = [
 
 export class DeskMetricsRegistry {
   public readonly registry: client.Registry;
-
   public readonly engineAllocatedCapitalUsd: client.Gauge<'engine'>;
   public readonly priorityQueueDepth: client.Gauge<string>;
   public readonly ordersFillRate: client.Gauge<string>;
@@ -88,7 +87,6 @@ export class DeskMetricsRegistry {
       registers: [this.registry],
     });
 
-    // Default zero drift compliant on initialization
     this.zeroDriftCompliant.set(1);
   }
 
@@ -101,8 +99,7 @@ export class DeskMetricsRegistry {
   }
 
   public setOrdersFillRate(rate: number): void {
-    const clamped = Math.max(0, Math.min(1, rate));
-    this.ordersFillRate.set(clamped);
+    this.ordersFillRate.set(Math.max(0, Math.min(1, rate)));
   }
 
   public setRealizedSlippageBps(bps: number): void {
@@ -140,32 +137,14 @@ export class DeskMetricsRegistry {
         this.setEngineAllocatedCapital(engine, amount);
       }
     }
-    if (snapshot.queueDepth !== undefined) {
-      this.setPriorityQueueDepth(snapshot.queueDepth);
-    }
-    if (snapshot.fillRate !== undefined) {
-      this.setOrdersFillRate(snapshot.fillRate);
-    }
-    if (snapshot.realizedSlippageBps !== undefined) {
-      this.setRealizedSlippageBps(snapshot.realizedSlippageBps);
-    }
-    if (snapshot.circuitBreakerTier !== undefined) {
-      this.setCircuitBreakerTier(snapshot.circuitBreakerTier);
-    }
-    if (snapshot.driftUsd !== undefined) {
-      this.setAccountingDriftUsd(snapshot.driftUsd);
-    }
+    if (snapshot.queueDepth !== undefined) this.setPriorityQueueDepth(snapshot.queueDepth);
+    if (snapshot.fillRate !== undefined) this.setOrdersFillRate(snapshot.fillRate);
+    if (snapshot.realizedSlippageBps !== undefined) this.setRealizedSlippageBps(snapshot.realizedSlippageBps);
+    if (snapshot.circuitBreakerTier !== undefined) this.setCircuitBreakerTier(snapshot.circuitBreakerTier);
+    if (snapshot.driftUsd !== undefined) this.setAccountingDriftUsd(snapshot.driftUsd);
   }
 
-  public async getMetricsText(): Promise<string> {
-    return this.registry.metrics();
-  }
-
-  public getContentType(): string {
-    return this.registry.contentType;
-  }
-
-  public reset(): void {
-    this.registry.resetMetrics();
-  }
+  public async getMetricsText(): Promise<string> { return this.registry.metrics(); }
+  public getContentType(): string { return this.registry.contentType; }
+  public reset(): void { this.registry.resetMetrics(); }
 }

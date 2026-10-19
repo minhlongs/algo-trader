@@ -57,10 +57,7 @@ describe('Leaderboard Routes', () => {
   describe('GET /', () => {
     it('returns 200 with leaderboard data', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('data');
       expect(res.body).toHaveProperty('count');
@@ -71,10 +68,7 @@ describe('Leaderboard Routes', () => {
 
     it('returns entries with all required fields', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       const entry = res.body.data[0];
       expect(entry).toHaveProperty('strategyName');
@@ -88,10 +82,7 @@ describe('Leaderboard Routes', () => {
 
     it('includes strategies from backtest CSV that are not in accuracy data', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       const names = (res.body.data as Array<{ strategyName: string }>).map((e) => e.strategyName);
       expect(names).toContain('vwap-deviation-sniper');
@@ -99,30 +90,21 @@ describe('Leaderboard Routes', () => {
 
     it('respects limit query param', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard?limit=1')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard?limit=1').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       expect(res.body.data.length).toBe(1);
     });
 
     it('enforces maximum limit of 200', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard?limit=999')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard?limit=999').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       expect(res.body.data.length).toBeLessThanOrEqual(200);
     });
 
     it('defaults to 50 limit when not specified', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       expect(res.body.data.length).toBeLessThanOrEqual(50);
     });
@@ -131,38 +113,26 @@ describe('Leaderboard Routes', () => {
   describe('Sorting (PRO+ feature)', () => {
     it('returns 200 when sort by winRate desc (default)', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard?sort=winRate&order=desc')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard?sort=winRate&order=desc').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       expect(res.body.data.length).toBeGreaterThan(0);
     });
 
     it('returns 200 when sort by sharpe asc', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard?sort=sharpe&order=asc')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard?sort=sharpe&order=asc').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
     });
 
     it('returns 200 when sort by drawdown', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard?sort=drawdown')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard?sort=drawdown').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
     });
 
     it('ignores invalid sort field (falls back to unsorted)', async () => {
       const app = buildApp();
-      const res = await request(app)
-        .get('/api/v1/leaderboard?sort=invalid')
-        .set('Authorization', 'Bearer test-key');
-
+      const res = await request(app).get('/api/v1/leaderboard?sort=invalid').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
     });
   });

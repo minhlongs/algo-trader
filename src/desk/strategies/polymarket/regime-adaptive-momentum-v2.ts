@@ -26,7 +26,10 @@ import {
 import {
   evaluateRegimeExit,
   evaluateRegimeEntrySignal,
+  resolveRegimeEntryOrderParams,
+  cleanupExitedRegimePositions,
 } from './regime-adaptive-momentum-evaluators';
+import { createRegimeAdaptiveMomentumTick } from './regime-adaptive-momentum-factory';
 
 export type {
   RegimeAdaptiveMomentumConfig,
@@ -40,14 +43,12 @@ export {
   calcPullbackDepth,
   calcOBI,
   calcTrendDirection,
+  createRegimeAdaptiveMomentumTick,
 };
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class RegimeAdaptiveMomentumStrategy extends BasePolymarketStrategy {
   private readonly cfg: RegimeAdaptiveMomentumConfig;
   private readonly tracker = new RegimePriceTracker();
-  /** Tracks regime and trend direction at entry for custom exits. */
   private readonly entryRegimes = new Map<string, Regime>();
   private readonly entryTrendDirs = new Map<string, 'up' | 'down'>();
 
@@ -85,15 +86,8 @@ export class RegimeAdaptiveMomentumStrategy extends BasePolymarketStrategy {
       const entryRegime = this.entryRegimes.get(pos.conditionId) ?? 'ranging';
       const shortP = this.getPrices(pos.tokenId, this.cfg.shortWindow);
       const longP = this.getPrices(pos.tokenId, this.cfg.longWindow);
-
       const { shouldExit, reason } = evaluateRegimeExit(
-        pos,
-        currentPrice,
-        now,
-        entryRegime,
-        shortP,
-        longP,
-        this.cfg
+        pos, currentPrice, now, entryRegime, shortP, longP, this.cfg
       );
 
       if (shouldExit) {
@@ -102,12 +96,7 @@ export class RegimeAdaptiveMomentumStrategy extends BasePolymarketStrategy {
       }
     }
 
-    for (let i = toRemove.length - 1; i >= 0; i--) {
-      const conditionId = this.positions[toRemove[i]].conditionId;
-      this.entryRegimes.delete(conditionId);
-      this.entryTrendDirs.delete(conditionId);
-      this.positions.splice(toRemove[i], 1);
-    }
+    cleanupExitedRegimePositions(toRemove, this.positions, this.entryRegimes, this.entryTrendDirs);
   }
 
   protected async scanEntries(markets: GammaMarket[]): Promise<void> {
@@ -116,8 +105,7 @@ export class RegimeAdaptiveMomentumStrategy extends BasePolymarketStrategy {
     for (const market of markets) {
       if (this.getPositionCount() >= this.cfg.maxPositions) break;
       if (!market.yesTokenId || market.closed || market.resolved) continue;
-      if (this.hasPosition(market.conditionId)) continue;
-      if (this.isOnCooldown(market.conditionId)) continue;
+      if (this.hasPosition(market.conditionId) || this.isOnCooldown(market.conditionId)) continue;
 
       try {
         const book = await this.deps.clob.getOrderBook(market.yesTokenId);
@@ -125,38 +113,26 @@ export class RegimeAdaptiveMomentumStrategy extends BasePolymarketStrategy {
         if (ba.mid <= 0 || ba.mid >= 1) continue;
 
         this.recordTick(market.yesTokenId, ba.mid);
-
         const shortPrices = this.getPrices(market.yesTokenId, this.cfg.shortWindow);
         const longPrices = this.getPrices(market.yesTokenId, this.cfg.longWindow);
-        if (shortPrices.length < this.cfg.shortWindow) continue;
-        if (longPrices.length < this.cfg.longWindow) continue;
+        if (shortPrices.length < this.cfg.shortWindow || longPrices.length < this.cfg.longWindow) continue;
 
-        const signal = evaluateRegimeEntrySignal(
-          shortPrices,
-          longPrices,
-          ba.mid,
-          book,
-          this.cfg
-        );
-
+        const signal = evaluateRegimeEntrySignal(shortPrices, longPrices, ba.mid, book, this.cfg);
         if (!signal) continue;
-        if (signal.side === 'no' && !market.noTokenId) continue;
 
-        const tokenId = signal.side === 'yes' ? market.yesTokenId : market.noTokenId!;
-        const entryPrice = signal.side === 'yes' ? ba.ask : (1 - ba.bid);
-        const posSize = this.cfg.baseSizeUsdc * signal.sizeMultiplier;
+        const orderParams = resolveRegimeEntryOrderParams(market, ba, signal, this.cfg.baseSizeUsdc);
+        if (!orderParams) continue;
 
-        await this.enterPosition(tokenId, market.conditionId, signal.side, entryPrice, posSize);
+        await this.enterPosition(
+          orderParams.tokenId, market.conditionId, signal.side, orderParams.entryPrice, orderParams.posSize
+        );
         this.entryRegimes.set(market.conditionId, signal.regime);
         this.entryTrendDirs.set(market.conditionId, signal.trendDir);
 
         logger.debug('Regime-adaptive entry', this.strategyName, {
-          conditionId: market.conditionId,
-          side: signal.side,
-          regime: signal.regime,
-          trendDir: signal.trendDir,
-          entryPrice: entryPrice.toFixed(4),
-          size: posSize.toFixed(2),
+          conditionId: market.conditionId, side: signal.side, regime: signal.regime,
+          trendDir: signal.trendDir, entryPrice: orderParams.entryPrice.toFixed(4),
+          size: orderParams.posSize.toFixed(2),
         });
       } catch (err) {
         logger.debug('Scan error', this.strategyName, { market: market.conditionId, err: String(err) });
@@ -170,21 +146,10 @@ export class RegimeAdaptiveMomentumStrategy extends BasePolymarketStrategy {
       const markets = await this.deps.gamma.getTrending(this.cfg.scanLimit);
       await this.scanEntries(markets);
       logger.debug('Tick complete', this.strategyName, {
-        openPositions: this.positions.length,
-        trackedMarkets: this.tracker.size,
+        openPositions: this.positions.length, trackedMarkets: this.tracker.size,
       });
     } catch (err) {
       logger.error('Tick failed', this.strategyName, { err: String(err) });
     }
   }
-}
-
-// ── Legacy factory (backward compat) ─────────────────────────────────────────
-
-export function createRegimeAdaptiveMomentumTick(
-  deps: RegimeAdaptiveMomentumDeps,
-): () => Promise<void> {
-  const { config, ...baseDeps } = deps;
-  const strategy = new RegimeAdaptiveMomentumStrategy(baseDeps, config);
-  return strategy.toTickFn();
 }

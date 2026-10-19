@@ -9,58 +9,32 @@
  * Uses express Router. Authenticated via auth middleware.
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { logger } from '../../../shared/utils/logger';
-import { auth } from '../../auth/auth-server';
 import {
   getAIDecisionRepository,
   type DecisionFilters,
 } from '../../audit/ai-decision-repository';
 import { requireTier } from '../../middleware/feature-gate';
+import {
+  recordDecisionSchema,
+  decisionFiltersSchema,
+  authenticate,
+  recordDecisionMetadataEntries,
+  formatDecisionListResponse,
+} from './ai-audit-routes-helpers';
+
+export {
+  recordDecisionSchema,
+  decisionFiltersSchema,
+  authenticate,
+  recordDecisionMetadataEntries,
+  formatDecisionListResponse,
+};
 
 const router: Router = Router();
 const repo = getAIDecisionRepository();
-
-// ──── Zod Schemas ────
-
-const recordDecisionSchema = z.object({
-  model_name: z.string().min(1),
-  input_hash: z.string().min(1),
-  output: z.record(z.string(), z.unknown()).default({}),
-  confidence: z.number().min(0).max(1),
-  latency_ms: z.number().int().nonnegative().default(0),
-  metadata: z.record(z.string(), z.string()).optional(),
-});
-
-const decisionFiltersSchema = z.object({
-  model_name: z.string().optional(),
-  start_date: z.string().datetime().optional(),
-  end_date: z.string().datetime().optional(),
-  min_confidence: z.number().min(0).max(1).optional(),
-  max_confidence: z.number().min(0).max(1).optional(),
-  limit: z.number().int().positive().max(1000).default(100),
-  offset: z.number().int().nonnegative().default(0),
-});
-
-// ──── Middleware ────
-
-/**
- * Auth middleware using Better Auth session check.
- * Requires a valid session cookie or Bearer token.
- */
-async function authenticate(req: Request, res: Response, next: NextFunction) {
-  try {
-    const session = await auth.api.getSession({ headers: req.headers as unknown as Headers });
-    if (!session) {
-      return res.status(401).json({ error: 'Unauthorized', message: 'Valid session required' });
-    }
-    (req as Request & { user?: unknown }).user = session.user;
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Unauthorized', message: 'Authentication failed' });
-  }
-}
 
 // ──── Endpoints ────
 
@@ -80,14 +54,11 @@ router.post('/decisions', requireTier('PRO'), authenticate, async (req: Request,
       latency_ms: body.latency_ms,
     });
 
-    // Attach metadata entries if provided
-    if (body.metadata && Object.keys(body.metadata).length > 0) {
-      const entries: Promise<void>[] = [];
-      for (const [key, value] of Object.entries(body.metadata)) {
-        entries.push(repo.recordMetadata(decision.id, key, value).then(() => {}));
-      }
-      await Promise.all(entries);
-    }
+    await recordDecisionMetadataEntries(
+      (id, key, val) => repo.recordMetadata(id, key, val),
+      decision.id,
+      body.metadata,
+    );
 
     logger.info('[AI-Audit] Decision recorded', {
       decisionId: decision.id,
@@ -120,13 +91,7 @@ router.get('/decisions', requireTier('PRO'), authenticate, async (req: Request, 
       repo.countDecisions(filters),
     ]);
 
-    res.json({
-      decisions,
-      total,
-      limit: filters.limit,
-      offset: filters.offset ?? 0,
-      hasMore: total > (filters.offset ?? 0) + decisions.length,
-    });
+    res.json(formatDecisionListResponse(decisions, total, filters));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

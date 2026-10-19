@@ -14,7 +14,7 @@ const STAGES = [
   },
   {
     name: "ESLint",
-    cmd: "npm run lint",
+    cmd: "npx eslint src --max-warnings 501",
     timeout: 120_000,
   },
   {

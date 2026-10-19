@@ -4,9 +4,13 @@
  */
 
 import twilio from 'twilio';
-import { getRedisClient } from '../../redis';
 import { logger } from '../../shared/utils/logger';
 import { formatSmsBody } from './alert-formatter';
+import {
+  applySmsRateLimitRedis,
+  checkSmsDailyLimitRedis,
+  incrementSmsDailyCountRedis,
+} from './sms-redis-limiter';
 
 export interface SmsConfig {
   accountSid: string;
@@ -24,8 +28,8 @@ export class SmsService {
   private config: SmsConfig;
   private client: ReturnType<typeof twilio> | null = null;
   private initialized: boolean = false;
-  private rateLimitDelay: number = 5000; // 5 seconds between SMS (cost control)
-  private dailyLimit: number = 10; // Max SMS per day per recipient
+  private rateLimitDelay: number = 5000;
+  private dailyLimit: number = 10;
   private redisKeyPrefix: string = 'algo:rate_limit:sms:';
 
   private constructor(config?: SmsConfig) {
@@ -70,11 +74,9 @@ export class SmsService {
       return false;
     }
 
-    // Rate limiting via Redis
-    await this.applyRateLimitRedis();
+    await applySmsRateLimitRedis(this.redisKeyPrefix, this.rateLimitDelay);
 
-    // Daily limit check via Redis
-    if (!(await this.checkDailyLimitRedis(notification.to))) {
+    if (!(await checkSmsDailyLimitRedis(this.redisKeyPrefix, notification.to, this.dailyLimit))) {
       logger.warn(`[SmsService] Daily limit reached for ${notification.to}`);
       return false;
     }
@@ -86,7 +88,7 @@ export class SmsService {
         to: notification.to,
       });
 
-      await this.incrementDailyCountRedis(notification.to);
+      await incrementSmsDailyCountRedis(this.redisKeyPrefix, notification.to);
       logger.info(`[SmsService] SMS sent to ${notification.to}: ${message.sid}`);
       return true;
     } catch (error) {
@@ -103,7 +105,6 @@ export class SmsService {
     dailyLimit: number,
     percentUsed: number
   ): Promise<boolean> {
-    // Only send SMS for critical thresholds (90%+)
     if (threshold < 90) {
       logger.info(`[SmsService] Skipping SMS for threshold ${threshold}% (< 90%)`);
       return false;
@@ -121,59 +122,6 @@ export class SmsService {
       to: recipient,
       message,
     });
-  }
-
-  /**
-   * Redis-backed daily limit check for crash resilience
-   */
-  private async checkDailyLimitRedis(recipient: string): Promise<boolean> {
-    try {
-      const redis = getRedisClient();
-      const key = `${this.redisKeyPrefix}daily:${recipient}`;
-      const count = await redis.get(key);
-      return !count || parseInt(count) < this.dailyLimit;
-    } catch (error) {
-      logger.warn('[SmsService] Redis daily limit check failed:', { error });
-      return true; // Allow on error to avoid blocking critical alerts
-    }
-  }
-
-  /**
-   * Redis-backed daily count increment
-   */
-  private async incrementDailyCountRedis(recipient: string): Promise<void> {
-    try {
-      const redis = getRedisClient();
-      const key = `${this.redisKeyPrefix}daily:${recipient}`;
-      const ttl = 86400; // 24 hours in seconds
-
-      await redis.incr(key);
-      await redis.expire(key, ttl);
-    } catch (error) {
-      logger.warn('[SmsService] Redis daily count increment failed:', { error });
-    }
-  }
-
-  /**
-   * Redis-backed rate limiting
-   */
-  private async applyRateLimitRedis(): Promise<void> {
-    try {
-      const redis = getRedisClient();
-      const key = `${this.redisKeyPrefix}last_send`;
-      const lastSend = await redis.get(key);
-
-      if (lastSend) {
-        const elapsed = Date.now() - parseInt(lastSend);
-        if (elapsed < this.rateLimitDelay) {
-          await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - elapsed));
-        }
-      }
-
-      await redis.setex(key, 3600, Date.now().toString());
-    } catch (error) {
-      logger.warn('[SmsService] Redis rate limiting failed:', { error });
-    }
   }
 
   setRateLimit(delayMs: number): void {

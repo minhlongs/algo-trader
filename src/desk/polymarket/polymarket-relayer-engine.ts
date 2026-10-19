@@ -5,7 +5,6 @@
  */
 
 import { ethers } from 'ethers';
-import { z } from 'zod';
 import { logger } from '../../shared/utils/logger';
 import { RelayerNonceManager } from './relayer-nonce-manager';
 import { GasStationClient } from './gas-station-client';
@@ -18,8 +17,16 @@ import {
   type RelayerOrderResponse,
   type RelayerConfig,
 } from './polymarket-relayer-types';
+import {
+  ORDER_EIP712_TYPES,
+  buildEip712Domain,
+  buildEip712OrderMessage,
+  buildRelayerSubmitPayload,
+  parseRelayerSubmitResponse,
+} from './polymarket-relayer-helpers';
 
 export * from './polymarket-relayer-types';
+export * from './polymarket-relayer-helpers';
 
 export class PolymarketRelayerEngine {
   private readonly wallet: ethers.Wallet;
@@ -73,46 +80,21 @@ export class PolymarketRelayerEngine {
 
     // Fetch gas dynamics
     const gas = await this.gasStation.getRecommendedGas();
+    const maxFeePerGasStr = gas.maxFeePerGas.toString();
+    const maxPriorityFeePerGasStr = gas.maxPriorityFeePerGas.toString();
 
-    const domain = {
-      name: 'Polymarket CTF Exchange',
-      version: '1',
-      chainId: this.chainId,
-      verifyingContract: this.verifyingContract,
-    };
-
-    const types = {
-      Order: [
-        { name: 'tokenId', type: 'uint256' },
-        { name: 'makerAmount', type: 'uint256' },
-        { name: 'takerAmount', type: 'uint256' },
-        { name: 'expiration', type: 'uint256' },
-        { name: 'nonce', type: 'uint256' },
-        { name: 'feeRateBps', type: 'uint256' },
-        { name: 'side', type: 'uint8' },
-        { name: 'signatureType', type: 'uint8' },
-        { name: 'maxFeePerGas', type: 'uint256' },
-        { name: 'maxPriorityFeePerGas', type: 'uint256' },
-      ],
-    };
-
-    const makerAmount = Math.round(req.size * 1e6).toString();
-    const takerAmount = Math.round(req.size * req.price * 1e6).toString();
-
-    const message = {
-      tokenId: req.tokenId,
-      makerAmount,
-      takerAmount,
-      expiration: expiration.toString(),
+    const domain = buildEip712Domain(this.chainId, this.verifyingContract);
+    const message = buildEip712OrderMessage(
+      req,
       nonce,
-      feeRateBps: feeRateBps.toString(),
-      side: req.side === 'BUY' ? 0 : 1,
+      expiration,
+      feeRateBps,
       signatureType,
-      maxFeePerGas: gas.maxFeePerGas.toString(),
-      maxPriorityFeePerGas: gas.maxPriorityFeePerGas.toString(),
-    };
+      maxFeePerGasStr,
+      maxPriorityFeePerGasStr,
+    );
 
-    const signature = await this.wallet.signTypedData(domain, types, message);
+    const signature = await this.wallet.signTypedData(domain, ORDER_EIP712_TYPES, message);
 
     return {
       ...req,
@@ -122,30 +104,15 @@ export class PolymarketRelayerEngine {
       expiration,
       feeRateBps,
       signatureType,
-      maxFeePerGas: gas.maxFeePerGas.toString(),
-      maxPriorityFeePerGas: gas.maxPriorityFeePerGas.toString(),
+      maxFeePerGas: maxFeePerGasStr,
+      maxPriorityFeePerGas: maxPriorityFeePerGasStr,
     };
   }
 
   public async submitRelayerOrder(order: RelayerSignedOrder): Promise<RelayerOrderResponse> {
     const startTime = Date.now();
     try {
-      const payload = {
-        order: {
-          tokenId: order.tokenId,
-          maker: order.maker,
-          price: order.price,
-          size: order.size,
-          side: order.side,
-          expiration: order.expiration,
-          nonce: order.nonce,
-          feeRateBps: order.feeRateBps,
-          signatureType: order.signatureType,
-          signature: order.signature,
-          maxFeePerGas: order.maxFeePerGas,
-          maxPriorityFeePerGas: order.maxPriorityFeePerGas,
-        },
-      };
+      const payload = buildRelayerSubmitPayload(order);
 
       const res = await this.fetchFn(`${this.relayerUrl}/submit`, {
         method: 'POST',
@@ -159,19 +126,8 @@ export class PolymarketRelayerEngine {
         return { orderId: '', status: 'FAILED', latencyMs, error: `Relayer rejected: ${res.status} ${errText}` };
       }
 
-      const data = (await res.json()) as { orderId?: string; status?: string; transactionHash?: string };
-      const parsedData = z.object({
-        orderId: z.string().optional(),
-        status: z.string().optional(),
-        transactionHash: z.string().optional(),
-      }).parse(data);
-
-      return {
-        orderId: parsedData.orderId ?? `relayer-${Date.now()}`,
-        status: (parsedData.status as RelayerOrderResponse['status']) ?? 'PENDING',
-        transactionHash: parsedData.transactionHash,
-        latencyMs,
-      };
+      const data = await res.json();
+      return parseRelayerSubmitResponse(data, latencyMs);
     } catch (err) {
       const latencyMs = Date.now() - startTime;
       const error = err instanceof Error ? err.message : String(err);

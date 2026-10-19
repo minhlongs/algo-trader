@@ -54,12 +54,8 @@ export class SignalSubscriberRepositoryD1 {
         updated_at BIGINT NOT NULL
       )
     `);
-    await query(
-      'CREATE INDEX IF NOT EXISTS idx_signal_subs_subscriber ON signal_subscriptions (subscriber_id)',
-    );
-    await query(
-      'CREATE INDEX IF NOT EXISTS idx_signal_subs_active ON signal_subscriptions (active) WHERE active = TRUE',
-    );
+    await query('CREATE INDEX IF NOT EXISTS idx_signal_subs_subscriber ON signal_subscriptions (subscriber_id)');
+    await query('CREATE INDEX IF NOT EXISTS idx_signal_subs_active ON signal_subscriptions (active) WHERE active = TRUE');
     await query(`
       CREATE TABLE IF NOT EXISTS signal_webhooks (
         subscriber_id TEXT PRIMARY KEY,
@@ -70,14 +66,9 @@ export class SignalSubscriberRepositoryD1 {
     logger.info('[SignalSubscriberRepo] Tables ensured');
   }
 
-  async getBySubscriberId(
-    subscriberId: string,
-  ): Promise<SignalSubscription | undefined> {
+  async getBySubscriberId(subscriberId: string): Promise<SignalSubscription | undefined> {
     await this.ensureTable();
-    const result = await query(
-      'SELECT * FROM signal_subscriptions WHERE subscriber_id = $1',
-      [subscriberId],
-    );
+    const result = await query('SELECT * FROM signal_subscriptions WHERE subscriber_id = $1', [subscriberId]);
     const row = result.rows[0] as unknown as SignalSubscriptionRow | undefined;
     return row ? rowToSubscription(row) : undefined;
   }
@@ -93,44 +84,29 @@ export class SignalSubscriberRepositoryD1 {
          tier = EXCLUDED.tier,
          active = EXCLUDED.active,
          updated_at = EXCLUDED.updated_at`,
-      [
-        sub.id,
-        sub.subscriberId,
-        sub.chatId ?? null,
-        sub.tier,
-        sub.active,
-        sub.createdAt,
-        now,
-      ],
+      [sub.id, sub.subscriberId, sub.chatId ?? null, sub.tier, sub.active, sub.createdAt, now],
     );
   }
 
   async setActive(subscriberId: string, active: boolean): Promise<void> {
     await this.ensureTable();
-    const now = Date.now();
     await query(
       'UPDATE signal_subscriptions SET active = $1, updated_at = $2 WHERE subscriber_id = $3',
-      [active, now, subscriberId],
+      [active, Date.now(), subscriberId],
     );
   }
 
   async getActiveSubscriptions(): Promise<SignalSubscription[]> {
     await this.ensureTable();
-    const result = await query(
-      'SELECT * FROM signal_subscriptions WHERE active = TRUE ORDER BY created_at',
-    );
+    const result = await query('SELECT * FROM signal_subscriptions WHERE active = TRUE ORDER BY created_at');
     return result.rows.map((r) => rowToSubscription(r as unknown as SignalSubscriptionRow));
   }
 
   async countActive(): Promise<number> {
     await this.ensureTable();
-    const result = await query(
-      'SELECT COUNT(*) AS count FROM signal_subscriptions WHERE active = TRUE',
-    );
+    const result = await query('SELECT COUNT(*) AS count FROM signal_subscriptions WHERE active = TRUE');
     return parseInt((result.rows[0] as { count: string } | undefined)?.count ?? '0', 10);
   }
-
-  // --- Webhooks ---
 
   async setWebhook(subscriberId: string, url: string): Promise<void> {
     await this.ensureTable();
@@ -142,12 +118,8 @@ export class SignalSubscriberRepositoryD1 {
 
   async getWebhook(subscriberId: string): Promise<string | undefined> {
     await this.ensureTable();
-    const result = await query(
-      'SELECT url FROM signal_webhooks WHERE subscriber_id = $1',
-      [subscriberId],
-    );
-    const row = result.rows[0] as { url: string } | undefined;
-    return row?.url;
+    const result = await query('SELECT url FROM signal_webhooks WHERE subscriber_id = $1', [subscriberId]);
+    return (result.rows[0] as { url: string } | undefined)?.url;
   }
 
   async removeWebhook(subscriberId: string): Promise<void> {

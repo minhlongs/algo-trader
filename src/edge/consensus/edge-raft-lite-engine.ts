@@ -1,26 +1,14 @@
 import {
-  RegionId,
-  RaftNodeRole,
-  VectorClock,
-  LeaseInfo,
-  RaftMessage,
-  RaftLiteState,
-  EngineConfig,
+  RegionId, RaftNodeRole, VectorClock, LeaseInfo,
+  RaftMessage, RaftLiteState, EngineConfig,
 } from './edge-raft-lite-types';
+import { ALL_REGIONS, createInitialClock, mergeClocks } from './edge-raft-lite-clock';
+import {
+  cloneRaftState, isLeaseActive, createLeaderLease,
+  buildVoteRequestMessages, buildHeartbeatMessage, buildCommitMessage,
+} from './edge-raft-lite-helpers';
 
-export const ALL_REGIONS: readonly RegionId[] = ['nrt', 'sin', 'fra'] as const;
-
-export function createInitialClock(): VectorClock {
-  return { nrt: 0, sin: 0, fra: 0 };
-}
-
-export function mergeClocks(a: VectorClock, b: VectorClock): VectorClock {
-  return {
-    nrt: Math.max(a.nrt, b.nrt),
-    sin: Math.max(a.sin, b.sin),
-    fra: Math.max(a.fra, b.fra),
-  };
-}
+export { ALL_REGIONS, createInitialClock, mergeClocks };
 
 export class EdgeRaftLiteEngine<T = unknown> {
   private readonly regionId: RegionId;
@@ -42,21 +30,15 @@ export class EdgeRaftLiteEngine<T = unknown> {
   }
 
   public getState(): RaftLiteState<T> {
-    return {
-      regionId: this.regionId,
-      currentTerm: this.currentTerm,
-      role: this.role,
-      leaderId: this.leaderId,
-      activeLease: this.activeLease ? { ...this.activeLease } : null,
-      clock: { ...this.clock },
-      store: { ...this.store },
-      uncommittedLogs: [...this.uncommittedLogs],
-    };
+    return cloneRaftState({
+      regionId: this.regionId, currentTerm: this.currentTerm, role: this.role,
+      leaderId: this.leaderId, activeLease: this.activeLease, clock: this.clock,
+      store: this.store, uncommittedLogs: this.uncommittedLogs,
+    });
   }
 
   public isLeaseValid(nowMs = Date.now()): boolean {
-    if (!this.activeLease) return false;
-    return nowMs < this.activeLease.expiresAtMs;
+    return isLeaseActive(this.activeLease, nowMs);
   }
 
   public startElection(nowMs = Date.now()): { term: number; messages: RaftMessage<T>[] } {
@@ -66,15 +48,7 @@ export class EdgeRaftLiteEngine<T = unknown> {
     this.votesReceived = new Set<RegionId>([this.regionId]);
     this.clock[this.regionId] += 1;
 
-    const messages: RaftMessage<T>[] = ALL_REGIONS
-      .filter((r) => r !== this.regionId)
-      .map((target) => ({
-        type: 'REQUEST_VOTE',
-        term: this.currentTerm,
-        senderId: this.regionId,
-        vectorClock: { ...this.clock },
-      }));
-
+    const messages = buildVoteRequestMessages<T>(this.regionId, this.currentTerm, this.clock);
     if (this.votesReceived.size >= this.quorumSize) {
       this.promoteToLeader(nowMs);
     }
@@ -112,16 +86,10 @@ export class EdgeRaftLiteEngine<T = unknown> {
     }
     this.clock[this.regionId] += 1;
     this.renewLease(nowMs);
-    return {
-      type: 'HEARTBEAT',
-      term: this.currentTerm,
-      senderId: this.regionId,
-      vectorClock: { ...this.clock },
-      leaseInfo: this.activeLease ? { ...this.activeLease } : undefined,
-    };
+    return buildHeartbeatMessage(this.regionId, this.currentTerm, this.clock, this.activeLease);
   }
 
-  public handleHeartbeat(msg: RaftMessage<T>, nowMs = Date.now()): { success: boolean; term: number } {
+  public handleHeartbeat(msg: RaftMessage<T>, _nowMs = Date.now()): { success: boolean; term: number } {
     if (msg.term < this.currentTerm) {
       return { success: false, term: this.currentTerm };
     }
@@ -152,15 +120,7 @@ export class EdgeRaftLiteEngine<T = unknown> {
     const logEntry = { term: this.currentTerm, key, value, clock: { ...this.clock } };
     this.uncommittedLogs.push(logEntry);
 
-    const message: RaftMessage<T> = {
-      type: 'COMMIT',
-      term: this.currentTerm,
-      senderId: this.regionId,
-      payload: { key, value, clock: { ...this.clock } },
-      vectorClock: { ...this.clock },
-      leaseInfo: this.activeLease ? { ...this.activeLease } : undefined,
-    };
-
+    const message = buildCommitMessage(this.regionId, this.currentTerm, key, value, this.clock, this.activeLease);
     this.store[key] = value;
     return { success: true, message };
   }
@@ -185,12 +145,6 @@ export class EdgeRaftLiteEngine<T = unknown> {
   }
 
   private renewLease(nowMs: number): void {
-    this.activeLease = {
-      leaderId: this.regionId,
-      term: this.currentTerm,
-      grantedAtMs: nowMs,
-      expiresAtMs: nowMs + this.leaseDurationMs,
-      durationMs: this.leaseDurationMs,
-    };
+    this.activeLease = createLeaderLease(this.regionId, this.currentTerm, nowMs, this.leaseDurationMs);
   }
 }

@@ -42,3 +42,14 @@ export interface RingStateResponse {
   distribution: Map<number, number>;
   balanced: boolean;
 }
+
+/** Merge a partial health update into a shard health map with fresh heartbeat */
+export function mergeShardHealthUpdate(
+  shardHealths: Map<number, ShardHealth>,
+  shardId: number,
+  health: Partial<ShardHealth>,
+  createDefault: (id: number) => ShardHealth,
+): void {
+  const existing = shardHealths.get(shardId) ?? createDefault(shardId);
+  shardHealths.set(shardId, { ...existing, ...health, lastHeartbeat: Date.now() });
+}

@@ -8,64 +8,18 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { z } from 'zod';
 import { BUILT_IN_RULES } from '../../../desk/arbitrage/compliance/compliance-rules';
-import type { ComplianceRule, ComplianceContext, ComplianceResult, AuditEntry } from '../../../desk/arbitrage/compliance/compliance-types';
+import type { ComplianceContext, ComplianceResult } from '../../../desk/arbitrage/compliance/compliance-types';
 import { logger } from '../../../shared/utils/logger';
+import {
+  ruleState,
+  auditLog,
+  appendAudit,
+  getActiveRules,
+  validateBodySchema,
+} from './compliance-routes-state';
 
 export const complianceRouter: Router = Router();
-
-// ---------------------------------------------------------------------------
-// Mutable rule state (runtime toggles — in-memory for demo; D1-backed in prod)
-// ---------------------------------------------------------------------------
-
-const ruleState: Map<string, boolean> = new Map(
-  BUILT_IN_RULES.map(r => [r.id, r.enabled]),
-);
-
-// ---------------------------------------------------------------------------
-// Audit log (in-memory ring buffer — last 100 entries)
-// ---------------------------------------------------------------------------
-
-const MAX_AUDIT_ENTRIES = 100;
-const auditLog: AuditEntry[] = [];
-
-function appendAudit(entry: AuditEntry): void {
-  if (auditLog.length >= MAX_AUDIT_ENTRIES) {
-    auditLog.shift();
-  }
-  auditLog.push(entry);
-}
-
-// ---------------------------------------------------------------------------
-// Schemas
-// ---------------------------------------------------------------------------
-
-const validateBodySchema = z.object({
-  pair: z.string().min(1),
-  side: z.enum(['buy', 'sell']),
-  amount: z.number().positive(),
-  price: z.number().positive(),
-  counterparty: z.string().min(1),
-  counterpartyDailyTotal: z.number().optional(),
-  recentTrades: z.array(z.object({
-    action: z.enum(['buy', 'sell']),
-    timestamp: z.number(),
-  })).optional(),
-  destinationJurisdiction: z.string().optional(),
-});
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function getActiveRules(): ComplianceRule[] {
-  return BUILT_IN_RULES.filter(r => ruleState.get(r.id) === true);
-}
-
-// ---------------------------------------------------------------------------
-// Routes
-// ---------------------------------------------------------------------------
 
 /**
  * POST /api/compliance/validate — validate trade against all enabled rules

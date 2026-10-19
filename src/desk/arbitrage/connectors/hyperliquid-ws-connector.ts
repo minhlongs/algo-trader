@@ -4,62 +4,31 @@
  */
 
 import { logger } from '../../../shared/utils/logger';
+import {
+  type BookLevel,
+  type NormalizedOrderBook,
+  type HyperliquidL2Level,
+  type HyperliquidL2BookData,
+  type HyperliquidL2BookMsg,
+  type HyperliquidTradeData,
+  type HyperliquidTradesMsg,
+  type NormalizedTrade,
+  parseHyperliquidL2Levels,
+  parseHyperliquidTrades,
+} from './hyperliquid-ws-parser';
 
-export interface BookLevel {
-  price: number;
-  amount: number;
-}
-
-export interface NormalizedOrderBook {
-  venue: 'hyperliquid';
-  symbol: string;
-  timestamp: number;
-  seq: number;
-  bids: BookLevel[];
-  asks: BookLevel[];
-}
-
-export interface HyperliquidL2Level {
-  px: string;
-  sz: string;
-  n: number;
-}
-
-export interface HyperliquidL2BookData {
-  coin: string;
-  levels: [HyperliquidL2Level[], HyperliquidL2Level[]];
-  time: number;
-}
-
-export interface HyperliquidL2BookMsg {
-  channel: 'l2Book';
-  data: HyperliquidL2BookData;
-}
-
-export interface HyperliquidTradeData {
-  coin: string;
-  side: 'B' | 'A' | 'buy' | 'sell';
-  px: string;
-  sz: string;
-  time: number;
-  hash?: string;
-  tid?: number;
-}
-
-export interface HyperliquidTradesMsg {
-  channel: 'trades';
-  data: HyperliquidTradeData[];
-}
-
-export interface NormalizedTrade {
-  venue: 'hyperliquid';
-  symbol: string;
-  side: 'buy' | 'sell';
-  price: number;
-  amount: number;
-  timestamp: number;
-  tradeId: string;
-}
+export {
+  type BookLevel,
+  type NormalizedOrderBook,
+  type HyperliquidL2Level,
+  type HyperliquidL2BookData,
+  type HyperliquidL2BookMsg,
+  type HyperliquidTradeData,
+  type HyperliquidTradesMsg,
+  type NormalizedTrade,
+  parseHyperliquidL2Levels,
+  parseHyperliquidTrades,
+};
 
 export class HyperliquidWsConnector {
   private readonly coin: string;
@@ -72,17 +41,9 @@ export class HyperliquidWsConnector {
     this.coin = coin.toUpperCase();
   }
 
-  getCoin(): string {
-    return this.coin;
-  }
-
-  isSynced(): boolean {
-    return this.isSynchronized;
-  }
-
-  getLastTime(): number {
-    return this.lastTime;
-  }
+  getCoin(): string { return this.coin; }
+  isSynced(): boolean { return this.isSynchronized; }
+  getLastTime(): number { return this.lastTime; }
 
   static buildSubscription(type: 'l2Book' | 'trades', coin: string): {
     method: 'subscribe';
@@ -96,10 +57,7 @@ export class HyperliquidWsConnector {
 
   processL2Book(payload: HyperliquidL2BookMsg | HyperliquidL2BookData): NormalizedOrderBook | null {
     const data = 'channel' in payload ? payload.data : payload;
-
-    if (data.coin.toUpperCase() !== this.coin) {
-      return null;
-    }
+    if (data.coin.toUpperCase() !== this.coin) return null;
 
     if (data.time < this.lastTime) {
       logger.warn(`[HyperliquidWS] Out-of-order timestamp for ${this.coin}: current ${this.lastTime}, received ${data.time}`);
@@ -108,36 +66,16 @@ export class HyperliquidWsConnector {
 
     this.lastTime = data.time;
     const [rawBids, rawAsks] = data.levels;
-
-    this.bids = rawBids
-      .map((l) => ({ price: parseFloat(l.px), amount: parseFloat(l.sz) }))
-      .filter((l) => l.amount > 0)
-      .sort((a, b) => b.price - a.price);
-
-    this.asks = rawAsks
-      .map((l) => ({ price: parseFloat(l.px), amount: parseFloat(l.sz) }))
-      .filter((l) => l.amount > 0)
-      .sort((a, b) => a.price - b.price);
+    const parsed = parseHyperliquidL2Levels(rawBids, rawAsks);
+    this.bids = parsed.bids;
+    this.asks = parsed.asks;
 
     this.isSynchronized = true;
-
     return this.getOrderBook();
   }
 
   parseTrades(payload: HyperliquidTradesMsg | HyperliquidTradeData[]): NormalizedTrade[] {
-    const trades = Array.isArray(payload) ? payload : payload.data;
-
-    return trades
-      .filter((t) => t.coin.toUpperCase() === this.coin)
-      .map((t) => ({
-        venue: 'hyperliquid',
-        symbol: t.coin.toUpperCase(),
-        side: (t.side === 'B' || t.side === 'buy' ? 'buy' : 'sell') as 'buy' | 'sell',
-        price: parseFloat(t.px),
-        amount: parseFloat(t.sz),
-        timestamp: t.time,
-        tradeId: t.hash ?? (t.tid !== undefined ? String(t.tid) : `${t.coin}-${t.time}-${t.px}-${t.sz}`),
-      }));
+    return parseHyperliquidTrades(payload, this.coin);
   }
 
   getOrderBook(depth = 20): NormalizedOrderBook {

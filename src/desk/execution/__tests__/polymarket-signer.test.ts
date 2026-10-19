@@ -14,12 +14,7 @@ const { walletAddress, signTypedData, hashResult } = vi.hoisted(() => ({
 }));
 
 vi.mock('ethers', () => ({
-  ethers: {
-    Wallet: vi.fn(),
-    TypedDataEncoder: {
-      hash: vi.fn(() => hashResult),
-    },
-  },
+  ethers: { Wallet: vi.fn(), TypedDataEncoder: { hash: vi.fn(() => hashResult) } },
 }));
 
 import { ethers } from 'ethers';
@@ -40,8 +35,7 @@ const VALID_KEY_0X = '0x' + 'a'.repeat(64);
 
 const sampleOrder = (over: Partial<PolymarketOrder> = {}): PolymarketOrder => ({
   tokenId: '12345', price: 0.5, size: 10, side: 'BUY',
-  expiration: 1750000000, nonce: 'nonce-1', feeRateBps: 0, signatureType: 0,
-  ...over,
+  expiration: 1750000000, nonce: 'nonce-1', feeRateBps: 0, signatureType: 0, ...over,
 });
 
 describe('PolymarketSigner.isPaperKey', () => {
@@ -98,32 +92,21 @@ describe('PolymarketSigner constructor', () => {
 
 describe('PolymarketSigner.buildTypedData', () => {
   let signer: PolymarketSigner;
-  beforeEach(() => {
-    signer = new PolymarketSigner(VALID_KEY);
-  });
+  beforeEach(() => { signer = new PolymarketSigner(VALID_KEY); });
 
   it('builds the EIP-712 domain, types and message for a BUY order', () => {
     const typed = signer.buildTypedData(sampleOrder());
     expect(typed.domain).toEqual({
-      name: 'Polymarket CTF Exchange',
-      version: '1',
-      chainId: 137,
+      name: 'Polymarket CTF Exchange', version: '1', chainId: 137,
       verifyingContract: '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E',
     });
     expect(typed.primaryType).toBe('Order');
     expect(typed.types.Order.map((f) => f.name)).toEqual([
-      'tokenId', 'makerAmount', 'takerAmount', 'expiration', 'nonce',
-      'feeRateBps', 'side', 'signatureType',
+      'tokenId', 'makerAmount', 'takerAmount', 'expiration', 'nonce', 'feeRateBps', 'side', 'signatureType',
     ]);
     expect(typed.message).toEqual({
-      tokenId: '12345',
-      makerAmount: '10000000',
-      takerAmount: '5000000',
-      expiration: '1750000000',
-      nonce: 'nonce-1',
-      feeRateBps: '0',
-      side: 0,
-      signatureType: 0,
+      tokenId: '12345', makerAmount: '10000000', takerAmount: '5000000',
+      expiration: '1750000000', nonce: 'nonce-1', feeRateBps: '0', side: 0, signatureType: 0,
     });
   });
 
@@ -148,11 +131,7 @@ describe('PolymarketSigner.signOrder', () => {
     const order = sampleOrder();
     const signed = await signer.signOrder(order);
     expect(signTypedData).toHaveBeenCalledTimes(1);
-    expect(signed).toEqual({
-      ...order,
-      signature: '0xsig',
-      maker: walletAddress,
-    });
+    expect(signed).toEqual({ ...order, signature: '0xsig', maker: walletAddress });
   });
 });
 

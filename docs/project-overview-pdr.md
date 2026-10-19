@@ -75,6 +75,6 @@ Algo Trader is a **RaaS (Robot-as-a-Service)** automated trading platform — No
 - 27 desk subdirectories: strategies, execution, risk, intelligence, signal, market-data, feeds, arbitrage, cli, gate, wiring
 - 25 platform subdirectories: api, auth, billing, marketplace, raas, metering, middleware, audit, referral, telegram, notifications
 - 9 shared subdirectories: types, config, db, utils, persistence, resilience, messaging, backtesting, redis
-- Latest: Phases 39-55 (Polymarket live execution stack, backtesting, marketplace backtesting, cleanup)
+- Latest: Phases 39-55 (Polymarket live execution stack, backtesting, marketplace backtesting, cleanup), Waves 120-122 Quantitative Desks (Garman-Kohlhagen, CreditGrades, Lehalle-Moallemi)
 
-Updated: 2026-07-02
+Updated: 2026-10-08

@@ -14,57 +14,17 @@ import type { ClobClient } from '../../polymarket/clob-client';
 import type { MarketScanner } from '../../polymarket/market-scanner';
 import type { StrategyConfig } from '../../core/types';
 import { logger } from '../../core/logger';
+import {
+  type CrossMarketArbConfig,
+  type ArbPosition,
+  DEFAULT_CONFIG,
+  computeBasis,
+  getArbDirection,
+  calcBookMidPrice,
+} from './cross-market-arb-types';
 
-// ── Config ─────────────────────────────────────────────────────────────────────
-
-export interface CrossMarketArbConfig {
-  /** Minimum basis (absolute price difference) to enter */
-  minBasis: number;
-  /** Basis level at which to exit (must be <= minBasis) */
-  exitBasis: number;
-  /** Default position size in USDC per leg */
-  defaultSizeUsdc: number;
-  /** Max concurrent arb positions */
-  maxPositions: number;
-}
-
-const DEFAULT_CONFIG: CrossMarketArbConfig = {
-  minBasis: 0.05,
-  exitBasis: 0.02,
-  defaultSizeUsdc: 50,
-  maxPositions: 3,
-};
-
-// ── Tracked position ──────────────────────────────────────────────────────────
-
-interface ArbPosition {
-  tokenIdA: string;
-  tokenIdB: string;
-  conditionIdA: string;
-  conditionIdB: string;
-  entryBasis: number;
-  sideA: 'yes' | 'no';
-  sizeUsdc: number;
-  openedAt: number;
-}
-
-// ── Pure helpers ───────────────────────────────────────────────────────────────
-
-/** Compute absolute basis between two mid-prices. */
-export function computeBasis(priceA: number, priceB: number): number {
-  return Math.abs(priceA - priceB);
-}
-
-/** Determine direction: buy the cheaper side (relative to the other). */
-export function getArbDirection(
-  priceA: number,
-  priceB: number,
-): { sideA: 'yes' | 'no'; sideB: 'yes' | 'no' } {
-  if (priceA < priceB) return { sideA: 'yes', sideB: 'no' };
-  return { sideA: 'no', sideB: 'yes' };
-}
-
-// ── Strategy class (keeps original constructor interface) ────────────────────
+export type { CrossMarketArbConfig } from './cross-market-arb-types';
+export { computeBasis, getArbDirection } from './cross-market-arb-types';
 
 export class CrossMarketArbStrategy extends EventEmitter {
   private readonly cfg: CrossMarketArbConfig;
@@ -94,10 +54,8 @@ export class CrossMarketArbStrategy extends EventEmitter {
     if (!this.running) return;
 
     try {
-      // Check exits for existing positions
       await this.checkExits();
 
-      // Find new opportunities
       const result = await this.scanner.scan({ minVolume: 500 });
       const opps = result.opportunities;
 
@@ -106,15 +64,14 @@ export class CrossMarketArbStrategy extends EventEmitter {
           const oppA = opps[i]!;
           const oppB = opps[j]!;
 
-          // Skip same market
           if (oppA.conditionId === oppB.conditionId) continue;
 
           try {
             const bookA = await this.clobClient.getOrderBook(oppA.yesTokenId);
             const bookB = await this.clobClient.getOrderBook(oppB.yesTokenId);
 
-            const midA = this.midPrice(bookA);
-            const midB = this.midPrice(bookB);
+            const midA = calcBookMidPrice(bookA);
+            const midB = calcBookMidPrice(bookB);
             if (midA <= 0 || midB <= 0) continue;
 
             const basis = computeBasis(midA, midB);
@@ -153,14 +110,6 @@ export class CrossMarketArbStrategy extends EventEmitter {
     logger.info('[cross-market-arb] Stopped');
   }
 
-  // ── Private ──────────────────────────────────────────────────────────────
-
-  private midPrice(book: { bids: Array<{ price: string }>; asks: Array<{ price: string }> }): number {
-    const bid = book.bids.length > 0 ? parseFloat(book.bids[0]!.price) : 0;
-    const ask = book.asks.length > 0 ? parseFloat(book.asks[0]!.price) : 1;
-    return (bid + ask) / 2;
-  }
-
   private async checkExits(): Promise<void> {
     const toRemove: number[] = [];
 
@@ -170,12 +119,11 @@ export class CrossMarketArbStrategy extends EventEmitter {
       try {
         const bookA = await this.clobClient.getOrderBook(pos.tokenIdA);
         const bookB = await this.clobClient.getOrderBook(pos.tokenIdB);
-        const midA = this.midPrice(bookA);
-        const midB = this.midPrice(bookB);
+        const midA = calcBookMidPrice(bookA);
+        const midB = calcBookMidPrice(bookB);
 
         const currentBasis = computeBasis(midA, midB);
 
-        // Exit when basis converges or max hold time exceeded
         if (currentBasis <= this.cfg.exitBasis || Date.now() - pos.openedAt > 30 * 60_000) {
           toRemove.push(i);
           const reason = currentBasis <= this.cfg.exitBasis ? 'converged' : 'timeout';

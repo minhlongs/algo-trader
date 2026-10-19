@@ -10,7 +10,6 @@ import {
   type ExchangeOrderResult,
   type ExchangeBalance,
   ExchangeOrderParamsSchema,
-  ExchangeConnectorError,
   OrderCancellationError,
   OrderNotFoundError,
 } from '../../arbitrage/connectors/types';
@@ -20,16 +19,22 @@ import {
   type CcxtExchangeAdapter,
   type CcxtExchangeConnectorOptions,
 } from './ccxt-connector-types';
-import { createCcxtExchange } from './ccxt-connector-factory';
+import {
+  createCcxtExchange,
+  validateKucoinPassphrase,
+  buildSpotExtraParams,
+} from './ccxt-connector-factory';
 import {
   mapCcxtOrder,
   mapCcxtStatus,
+  mapCcxtBalance,
+  isBenignCancelError,
   handleCcxtError,
 } from './ccxt-connector-mappers';
 
 export * from './ccxt-connector-types';
 export * from './ccxt-connector-factory';
-export { mapCcxtStatus, mapCcxtOrder, handleCcxtError };
+export { mapCcxtStatus, mapCcxtOrder, mapCcxtBalance, isBenignCancelError, handleCcxtError };
 
 export class CcxtExchangeConnector implements IExchangeConnector {
   readonly exchangeId: SupportedCexExchange;
@@ -41,33 +46,13 @@ export class CcxtExchangeConnector implements IExchangeConnector {
     options?: CcxtExchangeConnectorOptions
   ) {
     this.exchangeId = exchangeId;
-
-    if (exchangeId === 'kucoin' && !adapter) {
-      const prefix = exchangeId.toUpperCase();
-      const pwd =
-        options?.password ?? process.env[`${prefix}_API_PASSPHRASE`] ?? process.env[`${prefix}_PASSPHRASE`];
-      if (options?.apiKey && !pwd) {
-        throw new ExchangeConnectorError(
-          'KuCoin requires an API passphrase (password) when API credentials are provided',
-          exchangeId,
-          'MISSING_CREDENTIALS'
-        );
-      }
-    }
-
+    validateKucoinPassphrase(exchangeId, adapter, options);
     this.adapter = adapter ?? createCcxtExchange(exchangeId, options);
   }
 
   async placeOrder(params: ExchangeOrderParams): Promise<ExchangeOrderResult> {
     const validated = ExchangeOrderParamsSchema.parse(params);
-    const extraParams: Record<string, unknown> = {};
-
-    if (validated.clientOrderId) {
-      extraParams.clientOrderId = validated.clientOrderId;
-    }
-    if (this.exchangeId === 'bybit') {
-      extraParams.category = 'spot';
-    }
+    const extraParams = buildSpotExtraParams(this.exchangeId, validated.clientOrderId);
 
     try {
       const raw = await this.adapter.createOrder(
@@ -78,7 +63,6 @@ export class CcxtExchangeConnector implements IExchangeConnector {
         validated.price,
         extraParams
       );
-
       return mapCcxtOrder(this.exchangeId, raw, validated);
     } catch (err) {
       handleCcxtError(this.exchangeId, err, 'placeOrder', { symbol: validated.symbol, side: validated.side });
@@ -90,23 +74,13 @@ export class CcxtExchangeConnector implements IExchangeConnector {
       throw new OrderCancellationError('orderId and symbol are required to cancel order', this.exchangeId);
     }
 
-    const extraParams: Record<string, unknown> = {};
-    if (this.exchangeId === 'bybit') {
-      extraParams.category = 'spot';
-    }
+    const extraParams = buildSpotExtraParams(this.exchangeId);
 
     try {
       await this.adapter.cancelOrder(orderId, symbol, extraParams);
       return true;
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      const lower = errMsg.toLowerCase();
-      if (
-        lower.includes('order not found') ||
-        lower.includes('unknown order') ||
-        lower.includes('order does not exist') ||
-        lower.includes('already closed')
-      ) {
+      if (isBenignCancelError(err)) {
         logger.warn(`[${this.exchangeId}] cancelOrder: order ${orderId} already closed or not found`, {
           orderId,
           symbol,
@@ -122,10 +96,7 @@ export class CcxtExchangeConnector implements IExchangeConnector {
       throw new OrderNotFoundError('orderId and symbol are required', this.exchangeId);
     }
 
-    const extraParams: Record<string, unknown> = {};
-    if (this.exchangeId === 'bybit') {
-      extraParams.category = 'spot';
-    }
+    const extraParams = buildSpotExtraParams(this.exchangeId);
 
     try {
       const raw = await this.adapter.fetchOrder(orderId, symbol, extraParams);
@@ -138,25 +109,7 @@ export class CcxtExchangeConnector implements IExchangeConnector {
   async fetchBalance(): Promise<ExchangeBalance> {
     try {
       const raw = await this.adapter.fetchBalance();
-      const balance: ExchangeBalance = {};
-
-      const assets = new Set<string>([
-        ...Object.keys(raw.total ?? {}),
-        ...Object.keys(raw.free ?? {}),
-        ...Object.keys(raw.used ?? {}),
-      ]);
-
-      for (const asset of assets) {
-        const free = raw.free?.[asset] ?? 0;
-        const used = raw.used?.[asset] ?? 0;
-        const total = raw.total?.[asset] ?? (free + used);
-
-        if (total > 0 || free > 0 || used > 0) {
-          balance[asset] = { free, used, total };
-        }
-      }
-
-      return balance;
+      return mapCcxtBalance(raw);
     } catch (err) {
       handleCcxtError(this.exchangeId, err, 'fetchBalance');
     }

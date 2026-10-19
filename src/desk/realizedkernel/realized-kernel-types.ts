@@ -1,16 +1,35 @@
-export type KernelFunctionType = 'PARZEN' | 'MODIFIED_TUKEY_HANNING';
+/**
+ * Wave 205: Hansen & Lunde (2006) Realized Kernel Types.
+ * Microstructure noise-robust integrated variance estimation.
+ * Strictly < 180 LOC, zero :any.
+ */
 
-export interface RealizedKernelOptions {
-  readonly kernelType?: KernelFunctionType;
-  readonly maxLags?: number;
-  readonly subsampleStep?: number;
+export type KernelType = 'PARZEN' | 'TUKEY_HANNING' | 'BARTLETT' | 'CUBIC';
+export type KernelFunctionType = KernelType | 'MODIFIED_TUKEY_HANNING';
+
+export interface HighFrequencyTick {
+  timestampMs: number;
+  price: number;
+  volume: number;
+}
+
+export interface RealizedKernelConfig {
+  kernelType: KernelType;
+  autoBandwidth: boolean;
+  manualBandwidthH?: number;
+  subsamplingStep: number;
+  jitterNoiseCorrection: boolean;
 }
 
 export interface RealizedKernelResult {
-  readonly realizedKernelVariance: number; // RK
-  readonly annualizedVolatilityPct: number; // sqrt(252 * RK) * 100
-  readonly optimalBandwidthH: number;      // H*
-  readonly standardRealizedVariance: number; // gamma_0
-  readonly noiseVarianceEstimate: number;    // omega^2
-  readonly sampleCount: number;
+  realizedVarianceRaw: number;
+  realizedKernelVariance: number;
+  realizedKernelVolatilityAnnualized: number;
+  noiseVarianceOmega2: number;
+  noiseToSignalRatio: number;
+  optimalBandwidthH: number;
+  sampleSize: number;
+  autocovariances: number[];
+  kernelWeights: number[];
+  noiseRobustnessGainPct: number;
 }

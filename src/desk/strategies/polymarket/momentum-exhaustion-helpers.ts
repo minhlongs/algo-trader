@@ -1,4 +1,4 @@
-import type { BaseStrategyConfig } from './base-polymarket-strategy';
+import type { BaseStrategyConfig, OpenPosition } from './base-polymarket-strategy';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -64,18 +64,74 @@ export function detectExhaustion(
   prevPriceVel: number,
   volumeRate: number,
 ): 'yes' | 'no' | null {
-  // Need minimum velocity magnitude
   if (Math.abs(priceVel) < 0.0005) return null;
-  // Need volume to be increasing
   if (volumeRate <= 0) return null;
 
-  // Up-trend exhaustion: velocity positive but decelerating
   if (priceVel > 0 && priceVel < prevPriceVel) {
     return 'no';
   }
-  // Down-trend exhaustion: velocity negative but improving (less negative)
   if (priceVel < 0 && priceVel > prevPriceVel) {
     return 'yes';
   }
   return null;
+}
+
+/** Append price & volume samples to history maps and cap length at maxLen. */
+export function appendExhaustionTick(
+  priceHistory: Map<string, number[]>,
+  volumeHistory: Map<string, number[]>,
+  tokenId: string,
+  price: number,
+  volume: number,
+  maxLen: number,
+): { prices: number[]; vols: number[] } {
+  let prices = priceHistory.get(tokenId);
+  if (!prices) {
+    prices = [];
+    priceHistory.set(tokenId, prices);
+  }
+  prices.push(price);
+
+  let vols = volumeHistory.get(tokenId);
+  if (!vols) {
+    vols = [];
+    volumeHistory.set(tokenId, vols);
+  }
+  vols.push(volume);
+
+  if (prices.length > maxLen) prices.splice(0, prices.length - maxLen);
+  if (vols.length > maxLen) vols.splice(0, vols.length - maxLen);
+  return { prices, vols };
+}
+
+/** Evaluate custom ATR stop or opposite-exhaustion exit condition. */
+export function evaluateExhaustionExit(
+  pos: OpenPosition,
+  currentPrice: number,
+  prices: number[] | undefined,
+  vols: number[] | undefined,
+  prevVelMap: Map<string, number>,
+  cfg: MomentumExhaustionConfig,
+): { exit: boolean; reason: string } {
+  if (!prices || !vols || prices.length < cfg.velocityWindow + 1) {
+    return { exit: false, reason: '' };
+  }
+
+  const atr = calcATR(prices, cfg.atrPeriod);
+  if (atr > 0) {
+    const priceMove = Math.abs(currentPrice - pos.entryPrice);
+    if (priceMove > atr * cfg.atrStopMultiplier) {
+      return { exit: true, reason: `atr-stop (${(priceMove / atr).toFixed(2)}x ATR)` };
+    }
+  }
+
+  const priceVel = calcVelocity(prices, cfg.velocityWindow);
+  const prevVel = prevVelMap.get(pos.tokenId) ?? priceVel;
+  const volumeRate = calcVolumeRate(vols, cfg.velocityWindow);
+  const signal = detectExhaustion(priceVel, prevVel, volumeRate);
+  if (signal !== null && signal !== pos.side) {
+    return { exit: true, reason: `opposite-exhaustion (signal=${signal})` };
+  }
+
+  return { exit: false, reason: '' };
 }

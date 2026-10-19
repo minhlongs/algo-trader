@@ -1,0 +1,48 @@
+# NPM Package Quarantine (.npmignore)
+# Ensures only clean OSS runtime & CLI artifacts are published to npm
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Internal Harnesses, Plans & AI Context
+.claude/
+.codex/
+.agents/
+.opencode/
+.orchestrate/
+.mekong/
+.wrangler/
+plans/
+state/
+tasks/
+workflows/
+backups/
+stitch-exports/
+
+# Tests, Coverage & CI
+tests/
+**/__tests__/
+**/*.test.ts
+**/*.spec.ts
+coverage/
+.coverage
+.nyc_output/
+.pytest_cache/
+playwright.config.ts
+vitest.config.ts
+.github/
+.gitleaks.toml
+.pre-commit-config.yaml
+
+# Build & Temp Artifacts
+tsconfig.tsbuildinfo
+*.log
+*.bak
+*.bak-*
+repomix-output.xml
+dump.rdb

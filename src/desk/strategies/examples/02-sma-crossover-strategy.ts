@@ -30,6 +30,23 @@
 
 import type { IStrategy, ICandle, ISignal } from '../../interfaces/IStrategy';
 import { logger } from '../../../shared/utils/logger';
+import {
+  calculateSmaSeries,
+  calculateCrossoverConfidence,
+  calculateRecentMomentum,
+  createBuySignal,
+  createSellSignal,
+  createWaitSignal,
+} from './02-sma-crossover-helpers';
+
+export {
+  calculateSmaSeries,
+  calculateCrossoverConfidence,
+  calculateRecentMomentum,
+  createBuySignal,
+  createSellSignal,
+  createWaitSignal,
+};
 
 const STRATEGY_NAME = 'SmaCrossover';
 
@@ -68,16 +85,16 @@ export class SmaCrossoverStrategy implements IStrategy {
 
     const requiredCandles = Math.max(this.fastPeriod, this.slowPeriod);
     if (this.priceHistory.length < requiredCandles) {
-      return this.waitSignal(`Insufficient data: ${this.priceHistory.length}/${requiredCandles} candles`);
+      return createWaitSignal(`Insufficient data: ${this.priceHistory.length}/${requiredCandles} candles`);
     }
 
     const closes = this.priceHistory.map(c => c.close);
-    const fastSma = this.calculateSma(closes, this.fastPeriod);
-    const slowSma = this.calculateSma(closes, this.slowPeriod);
+    const fastSma = calculateSmaSeries(closes, this.fastPeriod);
+    const slowSma = calculateSmaSeries(closes, this.slowPeriod);
 
     // Check for crossover
-    const prevFast = this.calculateSma(closes.slice(0, -1), this.fastPeriod);
-    const prevSlow = this.calculateSma(closes.slice(0, -1), this.slowPeriod);
+    const prevFast = calculateSmaSeries(closes.slice(0, -1), this.fastPeriod);
+    const prevSlow = calculateSmaSeries(closes.slice(0, -1), this.slowPeriod);
 
     const currentFast = fastSma[fastSma.length - 1]!;
     const currentSlow = slowSma[slowSma.length - 1]!;
@@ -86,9 +103,9 @@ export class SmaCrossoverStrategy implements IStrategy {
 
     // Golden cross: fast crosses above slow
     if (previousFast <= previousSlow && currentFast > currentSlow) {
-      const confidence = this.calculateConfidence(currentFast, currentSlow, closes);
+      const confidence = calculateCrossoverConfidence(currentFast, currentSlow, closes);
       if (confidence >= this.confidenceThreshold) {
-        this.lastSignal = this.buySignal(confidence, 'SMA bullish crossover', {
+        this.lastSignal = createBuySignal(confidence, 'SMA bullish crossover', {
           fastSma: currentFast,
           slowSma: currentSlow,
           period: `${this.fastPeriod}/${this.slowPeriod}`,
@@ -99,9 +116,9 @@ export class SmaCrossoverStrategy implements IStrategy {
 
     // Death cross: fast crosses below slow
     if (previousFast >= previousSlow && currentFast < currentSlow) {
-      const confidence = this.calculateConfidence(currentSlow, currentFast, closes);
+      const confidence = calculateCrossoverConfidence(currentSlow, currentFast, closes);
       if (confidence >= this.confidenceThreshold) {
-        this.lastSignal = this.sellSignal(confidence, 'SMA bearish crossover', {
+        this.lastSignal = createSellSignal(confidence, 'SMA bearish crossover', {
           fastSma: currentFast,
           slowSma: currentSlow,
           period: `${this.fastPeriod}/${this.slowPeriod}`,
@@ -111,69 +128,17 @@ export class SmaCrossoverStrategy implements IStrategy {
     }
 
     // No clear signal
-    return this.waitSignal('No SMA crossover detected', {
+    return createWaitSignal('No SMA crossover detected', {
       fastSma: currentFast,
       slowSma: currentSlow,
       spread: currentFast - currentSlow,
     });
   }
 
-  /**
-   * Calculate Simple Moving Average
-   */
-  private calculateSma(data: number[], period: number): number[] {
-    const result: number[] = [];
-    for (let i = period - 1; i < data.length; i++) {
-      const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
-      result.push(sum / period);
-    }
-    return result;
-  }
-
-  /**
-   * Calculate confidence based on crossover strength
-   */
-  private calculateConfidence(primary: number, secondary: number, closes: number[]): number {
-    const diff = primary - secondary;
-    const avgPrice = closes[closes.length - 1]!;
-    const spreadPercent = Math.abs(diff / avgPrice);
-
-    // Base confidence from spread (0.5 - 1.0)
-    const baseConfidence = 0.5 + Math.min(spreadPercent * 100, 0.5);
-
-    // Add momentum component
-    const recentReturns = this.calculateRecentMomentum(closes, 5);
-    const momentumBoost = recentReturns > 0 ? 0.2 : 0;
-
-    return Math.min(baseConfidence + momentumBoost, 1.0);
-  }
-
-  /**
-   * Calculate recent price momentum
-   */
-  private calculateRecentMomentum(closes: number[], period: number): number {
-    if (closes.length < period + 1) return 0;
-    const current = closes[closes.length - 1]!;
-    const previous = closes[closes.length - period - 1]!;
-    return (current - previous) / previous;
-  }
-
-  private buySignal(confidence: number, reason: string, metadata?: Record<string, unknown>): ISignal {
-    return { action: 'buy', confidence, reason, metadata };
-  }
-
-  private sellSignal(confidence: number, reason: string, metadata?: Record<string, unknown>): ISignal {
-    return { action: 'sell', confidence, reason, metadata };
-  }
-
-  private waitSignal(reason: string, metadata?: Record<string, unknown>): ISignal {
-    return { action: 'wait', confidence: 0, reason, metadata };
-  }
-
   getStatus?(): Record<string, unknown> {
     const closes = this.priceHistory.map(c => c.close);
-    const fastSma = this.calculateSma(closes, this.fastPeriod);
-    const slowSma = this.calculateSma(closes, this.slowPeriod);
+    const fastSma = calculateSmaSeries(closes, this.fastPeriod);
+    const slowSma = calculateSmaSeries(closes, this.slowPeriod);
 
     return {
       name: STRATEGY_NAME,
