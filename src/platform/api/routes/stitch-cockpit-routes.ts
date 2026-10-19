@@ -15,7 +15,6 @@ import {
 } from '../../../desk/opencoresaas2026monetization/stitch-ui-cockpit';
 import { sanitizeHttpError } from '../../../shared/utils/error-sanitize';
 import {
-  avellanedaLipkinQuerySchema,
   hawkesRadarQuerySchema,
   killSwitchBodySchema,
   queueReactiveQuerySchema,
@@ -23,11 +22,13 @@ import {
   snapshotQuerySchema,
   sorMeshQuerySchema,
 } from './stitch-cockpit-schemas';
+import { registerAdvancedCockpitRoutes } from './stitch-cockpit-advanced-routes';
 
 export * from './stitch-cockpit-schemas';
 
 export const stitchCockpitRouter = Router();
 const cockpitEngine = new StitchUiCockpitEngine();
+registerAdvancedCockpitRoutes(stitchCockpitRouter, cockpitEngine);
 
 stitchCockpitRouter.get('/screens', (_req: Request, res: Response) => {
   res.status(200).json({
@@ -133,21 +134,3 @@ stitchCockpitRouter.get('/queue-reactive', (req: Request, res: Response) => {
   }
 });
 
-stitchCockpitRouter.get('/avellaneda-lipkin', (req: Request, res: Response) => {
-  try {
-    const parsed = avellanedaLipkinQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      res.status(400).json({ ok: false, reason: 'Invalid avellaneda-lipkin query parameters', issues: parsed.error.issues });
-      return;
-    }
-    const avellanedaLipkin = cockpitEngine.getAvellanedaLipkinSnapshot(
-      parsed.data.inventoryUnits,
-      parsed.data.riskAversionGamma,
-      parsed.data.volatilitySigma,
-      parsed.data.midPrice,
-    );
-    res.status(200).json({ ok: true, avellanedaLipkin });
-  } catch (err) {
-    res.status(500).json(sanitizeHttpError(err));
-  }
-});

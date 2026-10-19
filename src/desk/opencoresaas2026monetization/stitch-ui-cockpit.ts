@@ -11,6 +11,7 @@ import type { TierLevel } from './catalog';
 import { buildAvellanedaLipkinCockpitSnapshot } from './stitch-avellaneda-lipkin-telemetry';
 import { buildHawkesOrderFlowRadarSnapshot } from './stitch-hawkes-radar-telemetry';
 import { buildQueueReactiveCockpitSnapshot } from './stitch-queue-reactive-telemetry';
+import { buildStatArbGlostenMilgromSnapshot } from './stitch-statarb-glosten-milgrom-telemetry';
 import {
   buildRegimeKellyCockpitSnapshot,
   type MarketRegimeState,
@@ -31,6 +32,7 @@ export * from './stitch-regime-kelly-telemetry';
 export * from './stitch-avellaneda-lipkin-telemetry';
 export * from './stitch-hawkes-radar-telemetry';
 export * from './stitch-queue-reactive-telemetry';
+export * from './stitch-statarb-glosten-milgrom-telemetry';
 export * from './ui-ux-pro-max-auditor';
 
 export class StitchUiCockpitEngine {
@@ -98,5 +100,9 @@ export class StitchUiCockpitEngine {
     midPrice = 100,
   ) {
     return buildAvellanedaLipkinCockpitSnapshot(inventoryUnits, riskAversionGamma, volatilitySigma, midPrice);
+  }
+
+  public getStatArbGlostenMilgromSnapshot(informedTraderShareAlpha = 0.3, priorProbHighMu = 0.6) {
+    return buildStatArbGlostenMilgromSnapshot(informedTraderShareAlpha, priorProbHighMu);
   }
 }

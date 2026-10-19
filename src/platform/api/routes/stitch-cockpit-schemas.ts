@@ -54,3 +54,8 @@ export const avellanedaLipkinQuerySchema = z.object({
   volatilitySigma: z.coerce.number().positive().max(1).default(0.05),
   midPrice: z.coerce.number().positive().default(100),
 });
+
+export const statarbGlostenMilgromQuerySchema = z.object({
+  informedTraderShareAlpha: z.coerce.number().min(0).max(1).default(0.3),
+  priorProbHighMu: z.coerce.number().min(0.000001).max(0.999999).default(0.6),
+});
