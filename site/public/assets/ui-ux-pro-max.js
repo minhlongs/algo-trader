@@ -22,6 +22,7 @@
     { id: '14', titleEn: 'Multi-Regime Kelly, SVI & VPIN Cockpit', titleVi: 'Buồng Lái Kelly Đa Chế Độ, SVI & VPIN', href: 'regime-kelly-matrix.html' },
     { id: '15', titleEn: 'Hawkes Order-Flow, Avellaneda & Kyle Radar', titleVi: 'Radar Dòng Lệnh Hawkes, Avellaneda & Kyle', href: 'hawkes-orderflow-radar.html' },
     { id: '16', titleEn: 'Queue-Reactive LOB, Roll & Hasbrouck Cockpit', titleVi: 'Buồng Lái Hàng Đợi LOB, Roll & Hasbrouck', href: 'limit-order-queue-cockpit.html' },
+    { id: '17', titleEn: 'Avellaneda-Lipkin Market Making & Kyle-Back Insider Cockpit', titleVi: 'Buồng Lái Tạo Lập Thị Trường Avellaneda-Lipkin & Nội Gián Kyle-Back', href: 'avellaneda-lipkin-kyle-back-cockpit.html' },
   ];
 
   const THEMES = ['OBSIDIAN_QUANTUM', 'BENTO_RAAS_GLASS', 'NORDIC_MINIMALIST_QUANT'];

@@ -8,6 +8,7 @@ import { ComplianceAuditLogger, type ChainedAuditRecord } from '../security/audi
 import { StrategyMarketplaceManager } from '../strategies/marketplace';
 import { BillingMeter, TIER_ENTITLEMENTS } from './billing-meter';
 import type { TierLevel } from './catalog';
+import { buildAvellanedaLipkinCockpitSnapshot } from './stitch-avellaneda-lipkin-telemetry';
 import { buildHawkesOrderFlowRadarSnapshot } from './stitch-hawkes-radar-telemetry';
 import { buildQueueReactiveCockpitSnapshot } from './stitch-queue-reactive-telemetry';
 import {
@@ -27,6 +28,7 @@ import {
 export * from './stitch-ui-themes';
 export * from './stitch-sor-mesh-telemetry';
 export * from './stitch-regime-kelly-telemetry';
+export * from './stitch-avellaneda-lipkin-telemetry';
 export * from './stitch-hawkes-radar-telemetry';
 export * from './stitch-queue-reactive-telemetry';
 export * from './ui-ux-pro-max-auditor';
@@ -87,5 +89,14 @@ export class StitchUiCockpitEngine {
 
   public getQueueReactiveSnapshot(bestBidQueueSizeLots = 18.4, bestAskQueueSizeLots = 9.6) {
     return buildQueueReactiveCockpitSnapshot(bestBidQueueSizeLots, bestAskQueueSizeLots);
+  }
+
+  public getAvellanedaLipkinSnapshot(
+    inventoryUnits = 4.5,
+    riskAversionGamma = 0.5,
+    volatilitySigma = 0.05,
+    midPrice = 100,
+  ) {
+    return buildAvellanedaLipkinCockpitSnapshot(inventoryUnits, riskAversionGamma, volatilitySigma, midPrice);
   }
 }

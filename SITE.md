@@ -28,6 +28,7 @@ Bilingual (Vietnamese & English) Multi-Tenant Quantitative Engine & Cloud RaaS C
 - [x] `regime-kelly-matrix.html` — Multi-Regime Fractional Kelly, SVI Surface & VPIN Toxicity Cockpit
 - [x] `hawkes-orderflow-radar.html` — Hawkes Order-Flow Criticality, Avellaneda-Stoikov Reservation & Kyle Lambda Radar
 - [x] `limit-order-queue-cockpit.html` — Queue-Reactive LOB, Roll Implied Spread & Hasbrouck Information Share Cockpit
+- [x] `avellaneda-lipkin-kyle-back-cockpit.html` — Avellaneda-Lipkin Market Making, Kyle-Back Insider & VPIN Toxicity Cockpit
 
 ## Roadmap & Delivered Screens
 
@@ -47,14 +48,16 @@ Bilingual (Vietnamese & English) Multi-Tenant Quantitative Engine & Cloud RaaS C
 14. `regime-kelly-matrix.html` — Multi-Regime Fractional Kelly Allocation Matrix (Thorp 2006), Gatheral (2006) SVI Volatility Smile & Durrleman No-Arbitrage Monitor, Andersen-Bollerslev (1998) Intraday Diurnal U-Shape Seasonality, and Easley-López de Prado (2012) VPIN Flow Toxicity CDF.
 15. `hawkes-orderflow-radar.html` — Hawkes Mutually-Exciting Order-Flow Criticality ($n^*$), Avellaneda-Stoikov (2008) Inventory Reservation Price & Quote Skew, Glosten-Milgrom (1985) Sequential Trade Bayesian Belief, and Kyle (1985) Continuous Auction Lambda Radar.
 16. `limit-order-queue-cockpit.html` — Queue-Reactive LOB Imbalance, Roll (1984) Implied Effective Spread, Hasbrouck (1995) Venue Information Share, and Huang-Stoll (1997) Three-Way Spread Decomposition Cockpit.
+17. `avellaneda-lipkin-kyle-back-cockpit.html` — Avellaneda-Lipkin (2018) Optimal Market-Making Quote Ladder, Kyle-Back (1992) Insider Lambda & Information Share, and Easley-López de Prado (2012) VPIN Flow Toxicity Buckets.
 
 ## Creative Freedom
 
 - [x] Cloudflare Durable Objects live shard telemetry map (`shard-asia-1`, `shard-us-east`, `shard-eu-west`).
 - [x] Real-time WebSockets trade feed simulator with simulated latency jitter (< 12ms live green pulse).
 - [x] Multi-Venue Smart Order Routing (SOR) Mesh Console with Cont-Kukanov (2017) & Laruelle-Lehalle (2013) dark/lit pool allocation.
-- [x] Multi-Regime Fractional Kelly & SVI Volatility Surface Cockpit with UI/UX Pro Max (`Cmd+K` 16-Screen Command Palette with live search filter, Bilingual EN/VI Switcher & 3-Theme Switcher).
+- [x] Multi-Regime Fractional Kelly & SVI Volatility Surface Cockpit with UI/UX Pro Max (`Cmd+K` 17-Screen Command Palette with live search filter, Bilingual EN/VI Switcher & 3-Theme Switcher).
 - [x] Hawkes Order-Flow Criticality & Avellaneda-Stoikov Reservation Radar (`hawkes-orderflow-radar.html`).
 - [x] Queue-Reactive LOB, Roll Implied Spread & Hasbrouck Information Share Cockpit (`limit-order-queue-cockpit.html`).
+- [x] Avellaneda-Lipkin Market Making & Kyle-Back Insider Dynamics Cockpit (`avellaneda-lipkin-kyle-back-cockpit.html`).
 
 
