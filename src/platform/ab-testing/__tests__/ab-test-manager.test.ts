@@ -138,7 +138,7 @@ describe('getResults & listExperiments', () => {
     expect(typeof res.recommendation).toBe('string');
   });
 
-  it('reports no winner when significance is not reached', async () => {
+  it('reports no winner when significance is not reached and lists experiments', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 1, confidenceLevel: 0.95, minSamples: 30 })], rowCount: 1 });
     mockQuery.mockResolvedValueOnce({ rows: [
       { group_name: 'control', correct: false, confidence: '0.5', pnl: '0' },
@@ -147,12 +147,10 @@ describe('getResults & listExperiments', () => {
     const res = await getResults(1);
     expect(res.significant).toBe(false);
     expect(res.winner).toBeNull();
-  });
 
-  it('lists all experiments ordered by createdAt desc and handles empty list', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [experimentRow({ id: 1 }), experimentRow({ id: 2 })], rowCount: 2 });
     expect(await listExperiments()).toHaveLength(2);
-    expect(mockQuery.mock.calls[0]![0]).toContain('ORDER BY created_at DESC');
+    expect(mockQuery.mock.calls[2]![0]).toContain('ORDER BY created_at DESC');
 
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 });
     expect(await listExperiments()).toEqual([]);

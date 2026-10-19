@@ -10,8 +10,6 @@ import type { EventBus } from '../../events/event-bus';
 import type { GammaClient } from '../../polymarket/gamma-client';
 import type { StrategyName } from '../../core/types';
 
-// ── Config ─────────────────────────────────────────────────────────────────────
-
 export interface PriceImpactEstimatorConfig {
   /** Simulated order size in shares */
   hypotheticalSize: number;
@@ -50,8 +48,6 @@ export const DEFAULT_CONFIG: PriceImpactEstimatorConfig = {
 
 export const STRATEGY_NAME = 'price-impact-estimator' as StrategyName;
 
-// ── Internal types ─────────────────────────────────────────────────────────────
-
 export interface OpenPosition {
   tokenId: string;
   conditionId: string;
@@ -62,8 +58,6 @@ export interface OpenPosition {
   openedAt: number;
 }
 
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
 /**
  * Walk through orderbook levels filling orderSize, return volume-weighted
  * average fill price. Returns 0 if insufficient liquidity.
@@ -72,8 +66,7 @@ export function simulatePriceImpact(
   levels: { price: string; size: string }[],
   orderSize: number,
 ): number {
-  if (orderSize <= 0) return 0;
-  if (levels.length === 0) return 0;
+  if (orderSize <= 0 || levels.length === 0) return 0;
 
   let remaining = orderSize;
   let totalCost = 0;
@@ -92,9 +85,7 @@ export function simulatePriceImpact(
     if (remaining <= 0) break;
   }
 
-  if (remaining > 0) return 0; // insufficient liquidity
-  if (totalFilled === 0) return 0;
-
+  if (remaining > 0 || totalFilled === 0) return 0;
   return totalCost / totalFilled;
 }
 
@@ -107,15 +98,11 @@ export function calcImpactAsymmetry(
   sellImpact: number,
   mid: number,
 ): number {
-  if (mid === 0) return 0;
-  return Math.abs(buyImpact - sellImpact) / mid;
+  return mid === 0 ? 0 : Math.abs(buyImpact - sellImpact) / mid;
 }
 
 /**
  * Determine which side to trade based on impact comparison.
- * buyImpact < sellImpact → 'yes' (strong bid support)
- * sellImpact < buyImpact → 'no' (strong ask resistance)
- * equal → null
  */
 export function determineSide(
   buyImpact: number,
@@ -128,17 +115,14 @@ export function determineSide(
 
 /**
  * Update an exponential moving average with a simple alpha-based formula.
- * newEma = alpha * value + (1 - alpha) * prev
- * Returns value when there is no previous EMA (initial case).
  */
 export function updateImpactEma(
   prev: number | null,
   value: number,
   alpha: number,
 ): number {
-  if (prev === null) return value;
+  if (prev === null || alpha >= 1) return value;
   if (alpha <= 0) return prev;
-  if (alpha >= 1) return value;
   return alpha * value + (1 - alpha) * prev;
 }
 
@@ -148,8 +132,6 @@ export function bestBidAsk(book: RawOrderBook): { bid: number; ask: number; mid:
   const ask = book.asks.length > 0 ? parseFloat(book.asks[0].price) : 1;
   return { bid, ask, mid: (bid + ask) / 2 };
 }
-
-// ── Dependencies ─────────────────────────────────────────────────────────────
 
 export interface PriceImpactEstimatorDeps {
   clob: ClobClient;

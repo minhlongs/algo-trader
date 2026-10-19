@@ -24,21 +24,13 @@ export class RealizedKernelEngine {
     };
   }
 
-  /**
-   * Calculate Realized Kernel from high-frequency tick price stream.
-   */
+  /** Calculate Realized Kernel from high-frequency tick price stream. */
   public estimateFromTicks(ticks: HighFrequencyTick[]): RealizedKernelResult {
-    if (ticks.length < 2) {
-      return this.emptyResult();
-    }
-
-    const prices = ticks.map((t) => t.price);
-    return this.estimateFromPrices(prices);
+    if (ticks.length < 2) return this.emptyResult();
+    return this.estimateFromPrices(ticks.map((t) => t.price));
   }
 
-  /**
-   * Calculate Realized Kernel from array of raw price levels.
-   */
+  /** Calculate Realized Kernel from array of raw price levels. */
   public estimateFromPrices(prices: number[]): RealizedKernelResult {
     const nPrices = prices.length;
     if (nPrices < 2) return this.emptyResult();
@@ -55,9 +47,7 @@ export class RealizedKernelEngine {
     return this.estimateFromReturns(returns);
   }
 
-  /**
-   * Calculate Realized Kernel variance from high-frequency log returns.
-   */
+  /** Calculate Realized Kernel variance from high-frequency log returns. */
   public estimateFromReturns(returns: number[]): RealizedKernelResult {
     const n = returns.length;
     if (n === 0) return this.emptyResult();
@@ -66,17 +56,10 @@ export class RealizedKernelEngine {
     const omega2 = RealizedKernelMath.estimateNoiseVariance(returns);
     const noiseToSignal = gamma0 > 0 ? omega2 / gamma0 : 0.0;
 
-    let h = 1;
-    if (!this.config.autoBandwidth && this.config.manualBandwidthH !== undefined) {
-      h = Math.max(1, this.config.manualBandwidthH);
-    } else {
-      h = RealizedKernelMath.calculateOptimalBandwidth(
-        n,
-        omega2,
-        gamma0,
-        this.config.kernelType
-      );
-    }
+    const h =
+      !this.config.autoBandwidth && this.config.manualBandwidthH !== undefined
+        ? Math.max(1, this.config.manualBandwidthH)
+        : RealizedKernelMath.calculateOptimalBandwidth(n, omega2, gamma0, this.config.kernelType);
 
     let rkSum = gamma0;
     const autocovs: number[] = [gamma0];
@@ -84,21 +67,15 @@ export class RealizedKernelEngine {
 
     for (let lag = 1; lag <= h; lag++) {
       const gammaLag = RealizedKernelMath.calculateAutocovariance(returns, lag);
-      const w = RealizedKernelMath.evaluateKernelWeight(
-        (lag - 1) / h,
-        this.config.kernelType
-      );
+      const w = RealizedKernelMath.evaluateKernelWeight((lag - 1) / h, this.config.kernelType);
       rkSum += 2.0 * w * gammaLag;
       autocovs.push(gammaLag);
       weights.push(w);
     }
 
-    // Guard against negative variance in severe finite samples
     const rkVariance = Math.max(1e-12, rkSum);
-    // Annualize (assuming 252 trading days * 6.5 trading hours)
     const annualizedVol = Math.sqrt(rkVariance * 252.0);
-    const gainPct =
-      gamma0 > 0 ? ((gamma0 - rkVariance) / gamma0) * 100.0 : 0.0;
+    const gainPct = gamma0 > 0 ? ((gamma0 - rkVariance) / gamma0) * 100.0 : 0.0;
 
     return {
       realizedVarianceRaw: gamma0,
@@ -116,7 +93,7 @@ export class RealizedKernelEngine {
 
   public estimateVolatility(
     prices: number[],
-    _opts?: { kernelType?: 'PARZEN' | 'MODIFIED_TUKEY_HANNING' }
+    _opts?: { kernelType?: 'PARZEN' | 'MODIFIED_TUKEY_HANNING' },
   ): {
     sampleCount: number;
     realizedKernelVariance: number;

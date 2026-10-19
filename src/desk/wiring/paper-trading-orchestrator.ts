@@ -34,7 +34,7 @@ export function deriveSource(strategy: string): string {
   return 'legacy';
 }
 
-export { getPortfolio, saveTrades, loadTrades, savePaperTradeV3, __resetPortfolioForTests, resetPortfolio } from './paper-trading-persistence';
+export { getPortfolio, saveTrades, loadTrades, savePaperTradeV3, __resetPortfolioForTests, resetPortfolio, settleStalePositions as checkPositions } from './paper-trading-persistence';
 export { resetCapitalReservations } from './paper-capital-reservation';
 
 export async function processCandidate(candidate: SignalCandidate, maxPositions: number): Promise<void> {
@@ -126,14 +126,13 @@ export function recordMarlPaperFill(
   side: 'buy' | 'sell',
   amount: number,
   price: number,
-  strategy = 'marl-avellaneda-stoikov'
+  strategy = 'marl-avellaneda-stoikov',
 ): PaperTrade {
   const portfolio = getPortfolio();
   const notional = amount * price;
-  const paperSide: 'YES' | 'NO' = side === 'buy' ? 'YES' : 'NO';
   const trade: PaperTrade = {
     id: `marl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    marketId, side: paperSide, size: notional, entryPrice: price,
+    marketId, side: side === 'buy' ? 'YES' : 'NO', size: notional, entryPrice: price,
     strategy, source: deriveSource(strategy),
     signalConfidence: 0.95, swarmApproved: true, aiValidated: true,
     timestamp: Date.now(),
@@ -143,13 +142,9 @@ export function recordMarlPaperFill(
   portfolio.positions.push(trade);
   saveTrades();
   void savePaperTradeV3(trade);
-  logger.info('[PaperOrchestrator] MARL Maker Fill recorded', {
-    id: trade.id, marketId, side: trade.side, size: notional, price,
-  });
+  logger.info('[PaperOrchestrator] MARL Maker Fill recorded', { id: trade.id, marketId, side: trade.side, size: notional, price });
   return trade;
 }
-
-export { settleStalePositions as checkPositions } from './paper-trading-persistence';
 
 export async function startPaperTrading(config?: {
   capitalUsdc?: number;

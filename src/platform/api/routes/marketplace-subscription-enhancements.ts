@@ -92,11 +92,9 @@ marketplaceSubscriptionEnhancementsRouter.get(
         ),
       ]);
 
-      const curr = current.rows[0] as Record<string, unknown> | undefined;
-
       return res.json({
         subscriptionId,
-        current: formatCurrentUsage(curr),
+        current: formatCurrentUsage(current.rows[0] as Record<string, unknown> | undefined),
         snapshots: snapshots.rows.map((r: Record<string, unknown>) => formatUsageSnapshotRow(r)),
       });
     } catch (error) {
@@ -127,15 +125,12 @@ marketplaceSubscriptionEnhancementsRouter.patch(
       }
 
       const { autoRenew } = parsed.data;
-
       const db = getDbClient();
       await db.query(
         `UPDATE marketplace_subscriptions SET auto_renew = $1, updated_at = NOW()
          WHERE id = $2 AND tenant_id = $3`,
         [autoRenew, subscriptionId, tenantId],
       );
-
-      // Record in status history
       await db.query(
         `INSERT INTO subscription_status_history
          (subscription_id, previous_status, new_status, reason, changed_by)
@@ -144,7 +139,6 @@ marketplaceSubscriptionEnhancementsRouter.patch(
       );
 
       logger.info('[SubEnhance] Auto-renewal toggled', { subscriptionId, autoRenew, tenantId, userId });
-
       return res.json({
         id: subscriptionId,
         autoRenew,

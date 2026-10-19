@@ -40,18 +40,14 @@ describe('loadPersistedState', () => {
 
   it('should return null when file does not exist', () => {
     vi.mocked(fs.existsSync).mockReturnValue(false);
-
-    const result = loadPersistedState();
-    expect(result).toBeNull();
+    expect(loadPersistedState()).toBeNull();
     expect(fs.readFileSync).not.toHaveBeenCalled();
   });
 
   it('should return null when file contains invalid JSON', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.readFileSync).mockReturnValue('NOT VALID JSON {{{');
-
-    const result = loadPersistedState();
-    expect(result).toBeNull();
+    expect(loadPersistedState()).toBeNull();
   });
 
   it('should return null when readFileSync throws', () => {
@@ -59,9 +55,7 @@ describe('loadPersistedState', () => {
     vi.mocked(fs.readFileSync).mockImplementation(() => {
       throw new Error('EACCES: permission denied');
     });
-
-    const result = loadPersistedState();
-    expect(result).toBeNull();
+    expect(loadPersistedState()).toBeNull();
   });
 });
 
@@ -75,50 +69,39 @@ describe('scheduleDeferredWrite', () => {
     vi.useRealTimers();
   });
 
-  it('should debounce writes: only the last state is persisted', () => {
-    const dw: { data: DrawdownPersistedState; timer: ReturnType<typeof setTimeout> | null } = {
-      data: sampleState(),
-      timer: null,
-    };
+  const makeDw = (): { data: DrawdownPersistedState; timer: ReturnType<typeof setTimeout> | null } => ({
+    data: sampleState(),
+    timer: null,
+  });
 
+  it('should debounce writes: only the last state is persisted', () => {
+    const dw = makeDw();
     scheduleDeferredWrite(dw, sampleState({ currentValue: 94000 }));
     scheduleDeferredWrite(dw, sampleState({ currentValue: 93000 }));
     scheduleDeferredWrite(dw, sampleState({ currentValue: 92000 }));
 
-    // No writes yet — timer hasn't fired
     expect(mockWriteJsonState).not.toHaveBeenCalled();
-
     vi.advanceTimersByTime(500);
 
-    // Only the last state should be written
     expect(mockWriteJsonState).toHaveBeenCalledTimes(1);
     const writtenState = mockWriteJsonState.mock.calls[0][1] as DrawdownPersistedState;
     expect(writtenState.currentValue).toBe(92000);
   });
 
   it('should clear previous timer when rescheduled', () => {
-    const dw: { data: DrawdownPersistedState; timer: ReturnType<typeof setTimeout> | null } = {
-      data: sampleState(),
-      timer: null,
-    };
-
+    const dw = makeDw();
     scheduleDeferredWrite(dw, sampleState());
     expect(dw.timer).not.toBeNull();
 
     const firstTimer = dw.timer;
     scheduleDeferredWrite(dw, sampleState());
 
-    // Timer should have been replaced (cleared + new)
     expect(dw.timer).not.toBe(firstTimer);
     expect(dw.timer).not.toBeNull();
   });
 
   it('should write to the correct file path', () => {
-    const dw: { data: DrawdownPersistedState; timer: ReturnType<typeof setTimeout> | null } = {
-      data: sampleState(),
-      timer: null,
-    };
-
+    const dw = makeDw();
     scheduleDeferredWrite(dw, sampleState());
     vi.advanceTimersByTime(500);
 
@@ -132,29 +115,17 @@ describe('scheduleDeferredWrite', () => {
     mockWriteJsonState.mockImplementation(() => {
       throw new Error('Disk full');
     });
-
-    const dw: { data: DrawdownPersistedState; timer: ReturnType<typeof setTimeout> | null } = {
-      data: sampleState(),
-      timer: null,
-    };
-
+    const dw = makeDw();
     scheduleDeferredWrite(dw, sampleState());
-
-    // Should not throw
     expect(() => vi.advanceTimersByTime(500)).not.toThrow();
   });
 
   it('should set dw.timer to null after write completes', () => {
-    const dw: { data: DrawdownPersistedState; timer: ReturnType<typeof setTimeout> | null } = {
-      data: sampleState(),
-      timer: null,
-    };
-
+    const dw = makeDw();
     scheduleDeferredWrite(dw, sampleState());
     expect(dw.timer).not.toBeNull();
 
     vi.advanceTimersByTime(500);
-
     expect(dw.timer).toBeNull();
   });
 });

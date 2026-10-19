@@ -6,18 +6,11 @@
  * at runtime: filesystem access, network egress, secret access, and an
  * unbounded API surface.
  *
- * This is a source-text scan (regex + AST-lite), not a sandbox — the WASM
- * sandbox in this directory handles runtime isolation. Together they form the
- * two-layer boundary: the scanner rejects code that should never reach the
- * sandbox; the sandbox limits what code that does reach it can do.
- *
  * Exit code: 0 = clean, 1 = blocked. Never throws.
  */
 
 import { readFileSync } from 'node:fs';
 import { logger } from '../../shared/utils/logger';
-
-// ── Findings ──────────────────────────────────────────────────────────────────
 
 export type ScanSeverity = 'error' | 'warn';
 
@@ -34,12 +27,6 @@ export interface ScanResult {
   findings: ScanFinding[];
 }
 
-// ── Blocked APIs ──────────────────────────────────────────────────────────────
-
-/**
- * Module-level imports that would let a generated strategy escape its
- * sandbox boundary. Each entry is a regex matched against the import source.
- */
 const BLOCKED_IMPORT_PATTERNS: Array<{ pattern: RegExp; code: string; message: string }> = [
   { pattern: /\bfs\b/, code: 'blocked-import-fs', message: 'import of "fs" — strategies must not read the host filesystem' },
   { pattern: /\bchild_process\b/, code: 'blocked-import-child_process', message: 'import of "child_process" — strategies must not spawn processes' },
@@ -53,17 +40,11 @@ const BLOCKED_IMPORT_PATTERNS: Array<{ pattern: RegExp; code: string; message: s
   { pattern: /\bnode:tls\b/, code: 'blocked-import-node-tls', message: 'import of "node:tls" — strategies must not open TLS sockets' },
 ];
 
-/**
- * Property accesses that would read secrets from the host environment.
- * Generated strategies receive a typed market-data feed, never env.
- */
 const BLOCKED_ENV_PATTERNS: Array<{ pattern: RegExp; code: string; message: string }> = [
   { pattern: /\bprocess\.env\./, code: 'blocked-env-access', message: 'access to process.env — strategies must not read host secrets' },
   { pattern: /\bprocess\.argv\b/, code: 'blocked-argv-access', message: 'access to process.argv — strategies must not read host arguments' },
   { pattern: /\bprocess\.exit\b/, code: 'blocked-process-exit', message: 'process.exit — strategies must not terminate the host' },
 ];
-
-// ── Scanner ───────────────────────────────────────────────────────────────────
 
 /**
  * Scan generated strategy source. Returns a ScanResult; never throws — a scan
@@ -74,7 +55,6 @@ export function scanStrategyCode(source: string): ScanResult {
   const findings: ScanFinding[] = [];
   const lines = source.split('\n');
 
-  // 1. Blocked imports.
   for (const line of lines) {
     for (const { pattern, code, message } of BLOCKED_IMPORT_PATTERNS) {
       if (pattern.test(line)) {
@@ -83,7 +63,6 @@ export function scanStrategyCode(source: string): ScanResult {
     }
   }
 
-  // 2. Blocked env / process access.
   for (const line of lines) {
     for (const { pattern, code, message } of BLOCKED_ENV_PATTERNS) {
       if (pattern.test(line)) {
@@ -92,10 +71,6 @@ export function scanStrategyCode(source: string): ScanResult {
     }
   }
 
-  // 3. Suspicious runtime code generation — eval / Function constructor.
-  //    Patterns are assembled from fragments so the scanner's own source never
-  //    contains the call shapes it is detecting (a static rule against dynamic
-  //    code execution must not itself require dynamic code execution to state).
   const EVAL_CALL = 'eval';
   const CALL_OPEN = '(';
   const CLOSE = ')';
@@ -112,7 +87,6 @@ export function scanStrategyCode(source: string): ScanResult {
     }
   }
 
-  // 4. Warning: broad import surface (import *). Not blocked, but flagged.
   for (const line of lines) {
     if (/\bimport\s+\*\s+as\b/.test(line)) {
       findings.push({
@@ -125,7 +99,6 @@ export function scanStrategyCode(source: string): ScanResult {
   }
 
   const passed = findings.filter((f) => f.severity === 'error').length === 0;
-
   if (!passed) {
     logger.warn('Strategy scan blocked code', 'StrategyStaticScanner', {
       errors: findings.filter((f) => f.severity === 'error').map((f) => f.code),
@@ -137,9 +110,8 @@ export function scanStrategyCode(source: string): ScanResult {
 
 /** Scan a file by path. Fail-safe: a missing/unreadable file is blocked. */
 export function scanStrategyFile(path: string): ScanResult {
-  let source: string;
   try {
-    source = readFileSync(path, 'utf8');
+    return scanStrategyCode(readFileSync(path, 'utf8'));
   } catch (err) {
     return {
       passed: false,
@@ -150,10 +122,7 @@ export function scanStrategyFile(path: string): ScanResult {
       }],
     };
   }
-  return scanStrategyCode(source);
 }
-
-// ── Internal ──────────────────────────────────────────────────────────────────
 
 function lineIndex(lines: string[], target: string): number {
   const idx = lines.indexOf(target);

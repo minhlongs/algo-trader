@@ -42,12 +42,11 @@ describe('paper-execution-helpers', () => {
         symbol: 'BTC/USDT',
         bids: [],
         asks: [
-          { price: 50_200, size: 0.06 }, // 2nd level
-          { price: 50_000, size: 0.04 }, // 1st level
+          { price: 50_200, size: 0.06 },
+          { price: 50_000, size: 0.04 },
         ],
       };
 
-      // Quantity = 0.10: 0.04 @ 50000 ($2000) + 0.06 @ 50200 ($3012) = $5012 / 0.10 = 50120 VWAP
       const res = executeBuy('BTC/USDT', 0.1, 50_000, account, [], config, orderbook);
 
       expect(res.trade.status).toBe('filled');
@@ -62,8 +61,6 @@ describe('paper-execution-helpers', () => {
     it('handles partial fills when asks depth is insufficient', () => {
       const account = createAccount(10_000);
       const orderbook: OrderbookSnapshot = { symbol: 'ETH/USDT', bids: [], asks: [{ price: 3_000, size: 0.75 }] };
-
-      // Request 1.0, only 0.75 available
       const res = executeBuy('ETH/USDT', 1.0, 3_000, account, [], config, orderbook);
 
       expect(res.trade.status).toBe('partial');
@@ -75,7 +72,6 @@ describe('paper-execution-helpers', () => {
     it('rejects order cleanly when book has zero liquidity', () => {
       const account = createAccount(10_000);
       const orderbook: OrderbookSnapshot = { symbol: 'SOL/USDT', bids: [], asks: [] };
-
       const res = executeBuy('SOL/USDT', 1.0, 100, account, [], config, orderbook);
 
       expect(res.trade.status).toBe('rejected');
@@ -113,20 +109,18 @@ describe('paper-execution-helpers', () => {
       const orderbook: OrderbookSnapshot = {
         symbol: 'BTC/USDT',
         bids: [
-          { price: 49_800, size: 0.15 }, // 2nd level
-          { price: 50_000, size: 0.10 }, // 1st level
+          { price: 49_800, size: 0.15 },
+          { price: 50_000, size: 0.10 },
         ],
         asks: [],
       };
 
-      // Sell 0.2: 0.10 @ 50000 ($5000) + 0.10 @ 49800 ($4980) = $9980 / 0.2 = 49900 VWAP
       const res = executeSell('BTC/USDT', 0.2, 50_000, account, createPositions(), config, orderbook);
 
       expect(res.trade.status).toBe('filled');
       expect(res.trade.quantity).toBe(0.2);
       expect(res.trade.executedPrice).toBeCloseTo(49_900, 2);
       expect(res.trade.slippage).toBeCloseTo(100, 2);
-      // PnL = (49900 - 48000) * 0.2 - fee
       const fee = 9980 * 0.002;
       const expectedPnl = (49900 - 48000) * 0.2 - fee;
       expect(res.trade.pnl).toBeCloseTo(expectedPnl, 2);
@@ -137,8 +131,6 @@ describe('paper-execution-helpers', () => {
     it('supports partial sell fills when bids are partially exhausted', () => {
       const account = createAccount(10_000);
       const orderbook: OrderbookSnapshot = { symbol: 'BTC/USDT', bids: [{ price: 51_000, size: 0.1 }], asks: [] };
-
-      // Request sell 0.3, only 0.1 available in book
       const res = executeSell('BTC/USDT', 0.3, 51_000, account, createPositions(), config, orderbook);
 
       expect(res.trade.status).toBe('partial');
@@ -149,7 +141,6 @@ describe('paper-execution-helpers', () => {
     it('rejects sell cleanly when bids have 0 liquidity', () => {
       const account = createAccount(10_000);
       const orderbook: OrderbookSnapshot = { symbol: 'BTC/USDT', bids: [], asks: [] };
-
       const res = executeSell('BTC/USDT', 0.1, 50_000, account, createPositions(), config, orderbook);
 
       expect(res.trade.status).toBe('rejected');

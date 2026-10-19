@@ -18,8 +18,6 @@ import {
   type StrategyDeps,
 } from './base-polymarket-strategy';
 
-// ── Config ───────────────────────────────────────────────────────────────────
-
 export interface VolatilityTargetingConfig extends BaseStrategyConfig {
   targetVol: number;
   volWindow: number;
@@ -45,8 +43,6 @@ export const DEFAULT_CONFIG: VolatilityTargetingConfig = {
 
 const STRATEGY_NAME = 'volatility-targeting' as StrategyName;
 
-// ── Pure helpers (exported for testing) ──────────────────────────────────────
-
 export function calcRealizedVol(prices: number[]): number {
   if (prices.length < 2) return 0;
   const returns: number[] = [];
@@ -62,22 +58,17 @@ export function calcRealizedVol(prices: number[]): number {
 
 export function calcVolRatio(targetVol: number, realizedVol: number, maxScaling: number): number {
   if (realizedVol === 0) return 1.0;
-  const ratio = targetVol / realizedVol;
-  return Math.min(Math.max(ratio, 0), maxScaling);
+  return Math.min(Math.max(targetVol / realizedVol, 0), maxScaling);
 }
 
 export function calcMomentum(prices: number[]): number {
-  if (prices.length < 2) return 0;
-  const first = prices[0];
-  if (first === 0) return 0;
-  return (prices[prices.length - 1] - first) / first;
+  if (prices.length < 2 || prices[0] === 0) return 0;
+  return (prices[prices.length - 1] - prices[0]) / prices[0];
 }
 
 export function adjustPositionSize(baseSize: number, volRatio: number): number {
   return baseSize * volRatio;
 }
-
-// ── Strategy class ───────────────────────────────────────────────────────────
 
 export class VolatilityTargetingStrategy extends BasePolymarketStrategy {
   private readonly cfg: VolatilityTargetingConfig;
@@ -91,10 +82,15 @@ export class VolatilityTargetingStrategy extends BasePolymarketStrategy {
 
   private recordPrice(tokenId: string, price: number): void {
     let history = this.priceHistory.get(tokenId);
-    if (!history) { history = []; this.priceHistory.set(tokenId, history); }
+    if (!history) {
+      history = [];
+      this.priceHistory.set(tokenId, history);
+    }
     history.push(price);
     const maxLen = Math.max(this.cfg.volWindow, this.cfg.momentumWindow) + 1;
-    if (history.length > maxLen) { history.splice(0, history.length - maxLen); }
+    if (history.length > maxLen) {
+      history.splice(0, history.length - maxLen);
+    }
   }
 
   private getPrices(tokenId: string): number[] {
@@ -107,8 +103,7 @@ export class VolatilityTargetingStrategy extends BasePolymarketStrategy {
     for (const market of markets) {
       if (this.getPositionCount() >= this.cfg.maxPositions) break;
       if (!market.yesTokenId || market.closed || market.resolved) continue;
-      if (this.hasPosition(market.conditionId)) continue;
-      if (this.isOnCooldown(market.conditionId)) continue;
+      if (this.hasPosition(market.conditionId) || this.isOnCooldown(market.conditionId)) continue;
       if ((market.volume ?? 0) < this.cfg.minVolume) continue;
 
       try {
@@ -133,10 +128,13 @@ export class VolatilityTargetingStrategy extends BasePolymarketStrategy {
         await this.enterPosition(tokenId, market.conditionId, side, entryPrice, posSize);
 
         logger.debug('Vol-targeting entry', this.strategyName, {
-          conditionId: market.conditionId, side,
+          conditionId: market.conditionId,
+          side,
           entryPrice: entryPrice.toFixed(4),
-          momentum: momentum.toFixed(4), realizedVol: realizedVol.toFixed(4),
-          volRatio: volRatio.toFixed(4), size: posSize.toFixed(2),
+          momentum: momentum.toFixed(4),
+          realizedVol: realizedVol.toFixed(4),
+          volRatio: volRatio.toFixed(4),
+          size: posSize.toFixed(2),
         });
       } catch (err) {
         logger.debug('Scan error', this.strategyName, { market: market.conditionId, err: String(err) });
@@ -145,15 +143,11 @@ export class VolatilityTargetingStrategy extends BasePolymarketStrategy {
   }
 }
 
-// ── Legacy factory (backward compat) ─────────────────────────────────────────
-
 export interface VolatilityTargetingDeps extends StrategyDeps {
   config?: Partial<VolatilityTargetingConfig>;
 }
 
-export function createVolatilityTargetingTick(
-  deps: VolatilityTargetingDeps,
-): () => Promise<void> {
+export function createVolatilityTargetingTick(deps: VolatilityTargetingDeps): () => Promise<void> {
   const { config, ...baseDeps } = deps;
   const strategy = new VolatilityTargetingStrategy(baseDeps, config);
   return strategy.toTickFn();

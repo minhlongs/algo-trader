@@ -114,8 +114,8 @@ export async function getResults(experimentId: number): Promise<ExperimentResult
   const control = computeGroupStats('control', outcomes.rows.filter(r => r.group_name === 'control'));
   const treatment = computeGroupStats('treatment', outcomes.rows.filter(r => r.group_name === 'treatment'));
   const { pValue, significant } = computeSignificance(control, treatment, experiment.confidenceLevel);
-  const winner = significant
-    ? (treatment.accuracy > control.accuracy ? 'treatment' as const : 'control' as const)
+  const winner: GroupName | null = significant
+    ? (treatment.accuracy > control.accuracy ? 'treatment' : 'control')
     : null;
   return {
     experiment, control, treatment, pValue, significant, winner,
@@ -146,10 +146,8 @@ function computeGroupStats(name: string, rows: OutcomeRow[]): GroupStats {
   const sumConf = rows.reduce((a, r) => a + (r.confidence ? parseFloat(r.confidence) : 0), 0);
   const sumPnl = rows.reduce((a, r) => a + (r.pnl ? parseFloat(r.pnl) : 0), 0);
   return {
-    name, total, correct,
-    accuracy: total > 0 ? correct / total : 0,
-    avgConfidence: total > 0 ? sumConf / total : 0,
-    avgPnl: total > 0 ? sumPnl / total : 0,
+    name, total, correct, accuracy: total > 0 ? correct / total : 0,
+    avgConfidence: total > 0 ? sumConf / total : 0, avgPnl: total > 0 ? sumPnl / total : 0,
   };
 }
 

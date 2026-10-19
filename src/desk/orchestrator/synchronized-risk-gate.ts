@@ -30,25 +30,15 @@ export class SynchronizedRiskGate {
   private readonly liveGuard?: LiveExecutionGuard;
 
   private engineBudgets: Record<EngineId, number> = {
-    arbitrage: 20000,
-    marl: 20000,
-    amm: 20000,
-    'alpha-lab': 20000,
+    arbitrage: 20000, marl: 20000, amm: 20000, 'alpha-lab': 20000,
   };
 
   private engineCommitted: Record<EngineId, number> = {
-    arbitrage: 0,
-    marl: 0,
-    amm: 0,
-    'alpha-lab': 0,
+    arbitrage: 0, marl: 0, amm: 0, 'alpha-lab': 0,
   };
 
   private venuePositions: Record<string, number> = {
-    binance: 0,
-    bybit: 0,
-    polymarket_clob: 0,
-    amm_cpmm: 0,
-    amm_lmsr: 0,
+    binance: 0, bybit: 0, polymarket_clob: 0, amm_cpmm: 0, amm_lmsr: 0,
   };
 
   constructor(options: SynchronizedRiskGateOptions = {}) {
@@ -133,21 +123,11 @@ export class SynchronizedRiskGate {
 
     if (!res.approved) {
       logger.debug(`[SynchronizedRiskGate] Order rejected: ${res.reason}`, { intentId: intent.intentId });
-      return {
-        approved: false,
-        reason: res.reason,
-        scaledQuantity: res.scaledQty,
-        originalQuantity: intent.quantity,
-        allocatedCapitalUsd: this.engineBudgets[intent.engineId] ?? 0,
-        currentNavUsd: this.totalNavUsd,
-        cashBufferRatio: res.postCashRatio,
-        grossLeverage: res.grossLev,
-        circuitBreakerTier: this.currentTier,
-      };
     }
 
     return {
-      approved: true,
+      approved: res.approved,
+      ...(res.approved ? {} : { reason: res.reason }),
       scaledQuantity: res.scaledQty,
       originalQuantity: intent.quantity,
       allocatedCapitalUsd: this.engineBudgets[intent.engineId] ?? 0,

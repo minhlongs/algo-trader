@@ -21,8 +21,6 @@ import {
 
 export * from './trading-alert-formatters';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-
 function getBotToken(): string {
   return process.env.TELEGRAM_BOT_TOKEN ?? '';
 }
@@ -33,11 +31,8 @@ function getChatId(): string {
 
 const TELEGRAM_API_BASE = 'https://api.telegram.org';
 
-// ─── Core HTTP send ───────────────────────────────────────────────────────────
-
 /**
  * Send a text message to the configured Telegram chat.
- * Uses MarkdownV2 parse mode; caller is responsible for escaping special chars.
  */
 async function sendMessage(text: string): Promise<boolean> {
   const token = getBotToken();
@@ -48,10 +43,8 @@ async function sendMessage(text: string): Promise<boolean> {
     return false;
   }
 
-  const url = `${TELEGRAM_API_BASE}/bot${token}/sendMessage`;
-
   try {
-    const resp = await fetch(url, {
+    const resp = await fetch(`${TELEGRAM_API_BASE}/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -76,11 +69,8 @@ async function sendMessage(text: string): Promise<boolean> {
   }
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
-
 /**
  * Alert when a paper trade is opened.
- * Example: "🟢 OPEN: YES @0.96 on 'Will X happen?' | edge: 2.4% | size: $50"
  */
 export async function sendTradeAlert(trade: PaperTrade): Promise<boolean> {
   const text = formatTradeAlert(trade);
@@ -90,7 +80,6 @@ export async function sendTradeAlert(trade: PaperTrade): Promise<boolean> {
 
 /**
  * Periodic P&L summary pushed to Telegram.
- * Example: "📊 P&L: +$2,251 | Win: 66.7% | Open: 3 | Capital: $12,500"
  */
 export async function sendPnlSummary(portfolio: PaperPortfolio): Promise<boolean> {
   const text = formatPnlSummary(portfolio);
@@ -103,7 +92,6 @@ export async function sendPnlSummary(portfolio: PaperPortfolio): Promise<boolean
 
 /**
  * Alert on large whale trades detected by the whale-activity feed.
- * Example: "🐋 Whale: $5,000 YES @0.72 on market ABC123 | wallet: 0x1234…"
  */
 export async function sendWhaleAlert(whale: WhaleActivity): Promise<boolean> {
   const text = formatWhaleAlert(whale);
@@ -115,17 +103,10 @@ export async function sendWhaleAlert(whale: WhaleActivity): Promise<boolean> {
   return sendMessage(text);
 }
 
-// ─── Periodic reporter ────────────────────────────────────────────────────────
-
 let periodicTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Start a periodic P&L report on the given interval.
- * Calls `getPortfolio()` each tick to retrieve current state.
- * Call `stopPeriodicPnlReport()` to cancel.
- *
- * @param getPortfolio - supplier function returning current portfolio state
- * @param intervalMs - report interval in ms (default 3600000 = 1 hour)
  */
 export function startPeriodicPnlReport(
   getPortfolio: () => PaperPortfolio,
@@ -137,7 +118,6 @@ export function startPeriodicPnlReport(
   }
 
   logger.info('[TradingAlerts] Starting periodic P&L report', { intervalMs });
-
   periodicTimer = setInterval(async () => {
     try {
       await sendPnlSummary(getPortfolio());
@@ -146,7 +126,6 @@ export function startPeriodicPnlReport(
     }
   }, intervalMs);
 
-  // Ensure the interval doesn't keep Node alive unnecessarily in test envs
   if (periodicTimer.unref) periodicTimer.unref();
 }
 

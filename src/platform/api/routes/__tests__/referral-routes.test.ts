@@ -100,61 +100,47 @@ describe('Referral Routes', () => {
   });
 
   describe('GET /stats', () => {
-    it('returns 200 with referral stats', async () => {
+    it('returns 200 with referral stats, 401 without claims, and 404 when stats not found', async () => {
       const res = await request(buildApp({ sub: 'tenant_001' })).get('/api/v1/referral/stats');
       expect(res.status).toBe(200);
       expect(res.body.data.totalClicks).toBe(10);
-    });
 
-    it('returns 401 without claims', async () => {
-      const res = await request(buildApp()).get('/api/v1/referral/stats');
-      expect(res.status).toBe(401);
-    });
+      expect((await request(buildApp()).get('/api/v1/referral/stats')).status).toBe(401);
 
-    it('returns 404 when stats not found', async () => {
       mocks.mockService.getReferralStats.mockResolvedValueOnce(null);
-      const res = await request(buildApp({ sub: 'tenant_002' })).get('/api/v1/referral/stats');
-      expect(res.status).toBe(404);
+      expect((await request(buildApp({ sub: 'tenant_002' })).get('/api/v1/referral/stats')).status).toBe(404);
     });
   });
 
   describe('POST /track-click', () => {
-    it('returns 201 with tracking data', async () => {
+    it('returns 201 with tracking data and 400 without code query param', async () => {
       const res = await request(buildApp({ sub: 'tenant_001' }))
         .post('/api/v1/referral/track-click?code=REFCODE1')
         .send({ ip: '127.0.0.1', userAgent: 'test-agent' });
       expect(res.status).toBe(201);
       expect(res.body.data.id).toBe('click_001');
-    });
 
-    it('returns 400 without code query param', async () => {
-      const res = await request(buildApp({ sub: 'tenant_001' }))
+      const bad = await request(buildApp({ sub: 'tenant_001' }))
         .post('/api/v1/referral/track-click')
         .send({ ip: '127.0.0.1' });
-      expect(res.status).toBe(400);
+      expect(bad.status).toBe(400);
     });
   });
 
-  describe('POST /validate', () => {
-    it('returns 200 with valid code info', async () => {
+  describe('POST /validate & GET /my-code', () => {
+    it('validates code and fetches my-code', async () => {
       const res = await request(buildApp({ sub: 'tenant_001' }))
         .post('/api/v1/referral/validate')
         .send({ referralCode: 'REFCODE1', tenantId: 'new_tenant' });
       expect(res.status).toBe(200);
       expect(res.body.data.isValid).toBe(true);
-    });
 
-    it('returns 400 without required fields', async () => {
-      const res = await request(buildApp({ sub: 'tenant_001' })).post('/api/v1/referral/validate').send({});
-      expect(res.status).toBe(400);
-    });
-  });
+      const bad = await request(buildApp({ sub: 'tenant_001' })).post('/api/v1/referral/validate').send({});
+      expect(bad.status).toBe(400);
 
-  describe('GET /my-code', () => {
-    it('returns 200 with referral code', async () => {
-      const res = await request(buildApp({ sub: 'tenant_001' })).get('/api/v1/referral/my-code');
-      expect(res.status).toBe(200);
-      expect(res.body.data.code).toBe('REFCODE1');
+      const myCode = await request(buildApp({ sub: 'tenant_001' })).get('/api/v1/referral/my-code');
+      expect(myCode.status).toBe(200);
+      expect(myCode.body.data.code).toBe('REFCODE1');
     });
   });
 });

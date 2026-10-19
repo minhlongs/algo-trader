@@ -65,7 +65,6 @@ export class LiveTradingStrategyExecutor {
     const mode = options?.mode ?? tickData.mode ?? 'PAPER';
     const now = options?.currentTimeMs ?? Date.now();
 
-    // --- 30-day Paper-to-Live Gating Enforcement ---
     if (mode === 'LIVE') {
       const gatingResult = this.evaluateGating(strategyKey, now);
       if (!gatingResult.eligible) {
@@ -75,7 +74,6 @@ export class LiveTradingStrategyExecutor {
       }
     }
 
-    // --- Risk gate pre-check ---
     const gateResult = await this.riskManager.check(strategyKey);
     if (!gateResult.allowed) {
       this.log(`Risk gate blocked strategy ${strategyKey}: ${gateResult.reason}`, 'Orchestrator', {
@@ -85,7 +83,6 @@ export class LiveTradingStrategyExecutor {
       return { success: false, error: gateResult.reason };
     }
 
-    // --- Execute tick with error boundary ---
     try {
       await tickFn(tickData);
       this.strategyErrors.delete(strategyKey);
@@ -93,10 +90,7 @@ export class LiveTradingStrategyExecutor {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       const prev = this.strategyErrors.get(strategyKey) ?? { count: 0, lastError: '' };
-      this.strategyErrors.set(strategyKey, {
-        count: prev.count + 1,
-        lastError: errorMsg,
-      });
+      this.strategyErrors.set(strategyKey, { count: prev.count + 1, lastError: errorMsg });
       this.log(`Strategy tick failed for ${strategyKey}`, 'Orchestrator', {
         strategyKey,
         error: errorMsg,
@@ -106,54 +100,44 @@ export class LiveTradingStrategyExecutor {
     }
   }
 
-  /** Register or update a strategy's paper trading profile */
   registerPaperProfile(profile: StrategyPaperProfile): void {
     this.tracker.registerPaperProfile(profile);
   }
 
-  /** Get paper profile for a strategy */
   getPaperProfile(strategyKey: string): StrategyPaperProfile | undefined {
     return this.tracker.getPaperProfile(strategyKey);
   }
 
-  /** Evaluate 10-gate paper-to-live transition eligibility */
   evaluateGating(strategyKey: string, currentTimeMs = Date.now()): PaperToLiveEvaluationResult {
     const profile = this.tracker.getOrCreateProfile(strategyKey, currentTimeMs);
     return evaluatePaperToLiveGating(profile, this.gatingConfig, currentTimeMs);
   }
 
-  /** Record a paper trade PnL delta and update profile stats. */
   updatePaperPnl(strategyKey: string, pnlDelta: number): void {
     this.tracker.updatePaperPnl(strategyKey, pnlDelta);
   }
 
-  /** Record a paper trade execution. */
   recordPaperTrade(strategyKey: string): void {
     this.tracker.recordPaperTrade(strategyKey);
   }
 
-  /** Get per-strategy paper trade stats (read-only view). */
   getPaperStats(): ReadonlyMap<string, PaperTradeStats> {
     return this.tracker.getPaperStats();
   }
 
-  /** Get per-strategy error counts (for health dashboard). */
   getStrategyErrors(): ReadonlyMap<string, { count: number; lastError: string }> {
     return this.strategyErrors;
   }
 
-  /** Restore paper stats from a persistence snapshot. */
   restorePaperStats(entries: Array<[string, { paperTrades: number; paperPnl: number }]>): void {
     this.tracker.restorePaperStats(entries);
   }
 
-  /** Clear all tracked stats (fresh start). */
   clearStats(): void {
     this.tracker.clear();
     this.strategyErrors.clear();
   }
 
-  /** Access the RiskGateManager (for external consumers). */
   getRiskManager(): RiskGateManager {
     return this.riskManager;
   }

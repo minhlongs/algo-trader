@@ -61,37 +61,28 @@ describe('raas-gate validators', () => {
   });
 
   describe('isFeatureEnabled', () => {
-    it('should allow FREE features for FREE tier', () => {
+    it('should allow FREE features for FREE tier and deny PRO features', () => {
       expect(isFeature('basic_strategies', LicenseTier.FREE)).toBe(true);
       expect(isFeature('live_trading', LicenseTier.FREE)).toBe(true);
       expect(isFeature('basic_backtest', LicenseTier.FREE)).toBe(true);
-    });
-
-    it('should deny PRO features for FREE tier', () => {
       expect(isFeature('ml_strategies', LicenseTier.FREE)).toBe(false);
       expect(isFeature('premium_data', LicenseTier.FREE)).toBe(false);
       expect(isFeature('advanced_optimization', LicenseTier.FREE)).toBe(false);
     });
 
-    it('should allow FREE and STARTER features for STARTER tier', () => {
+    it('should allow FREE and STARTER features for STARTER tier and deny PRO features', () => {
       expect(isFeature('basic_strategies', LicenseTier.STARTER)).toBe(true);
       expect(isFeature('live_trading', LicenseTier.STARTER)).toBe(true);
       expect(isFeature('tenant_management', LicenseTier.STARTER)).toBe(true);
-    });
-
-    it('should deny PRO features for STARTER tier', () => {
       expect(isFeature('ml_strategies', LicenseTier.STARTER)).toBe(false);
       expect(isFeature('premium_data', LicenseTier.STARTER)).toBe(false);
       expect(isFeature('advanced_optimization', LicenseTier.STARTER)).toBe(false);
     });
 
-    it('should allow PRO features for PRO tier', () => {
+    it('should allow PRO features for PRO tier and deny ENTERPRISE features', () => {
       expect(isFeature('ml_strategies', LicenseTier.PRO)).toBe(true);
       expect(isFeature('premium_data', LicenseTier.PRO)).toBe(true);
       expect(isFeature('hyperparameter_tuning', LicenseTier.PRO)).toBe(true);
-    });
-
-    it('should deny ENTERPRISE features for PRO tier', () => {
       expect(isFeature('arbitrage_scanning', LicenseTier.PRO)).toBe(false);
       expect(isFeature('multi_exchange_trading', LicenseTier.PRO)).toBe(false);
       expect(isFeature('custom_strategies', LicenseTier.PRO)).toBe(false);
@@ -111,46 +102,21 @@ describe('raas-gate validators', () => {
   });
 
   describe('getRateLimits', () => {
-    it('should return correct rate limits for FREE tier', () => {
-      const limits = rateLimits(LicenseTier.FREE);
-      expect(limits.requestsPerMin).toBe(10);
-      expect(limits.requestsPerHour).toBe(100);
-      expect(limits.burstPerSec).toBe(2);
-    });
-
-    it('should return correct rate limits for STARTER tier', () => {
-      const limits = rateLimits(LicenseTier.STARTER);
-      expect(limits.requestsPerMin).toBe(50);
-      expect(limits.requestsPerHour).toBe(500);
-      expect(limits.burstPerSec).toBe(5);
-    });
-
-    it('should return correct rate limits for PRO tier', () => {
-      const limits = rateLimits(LicenseTier.PRO);
-      expect(limits.requestsPerMin).toBe(100);
-      expect(limits.requestsPerHour).toBe(1000);
-      expect(limits.burstPerSec).toBe(10);
-    });
-
-    it('should return correct rate limits for ENTERPRISE tier', () => {
-      const limits = rateLimits(LicenseTier.ENTERPRISE);
-      expect(limits.requestsPerMin).toBe(1000);
-      expect(limits.requestsPerHour).toBe(10000);
-      expect(limits.burstPerSec).toBe(50);
+    it('should return correct rate limits for each tier', () => {
+      expect(rateLimits(LicenseTier.FREE)).toMatchObject({ requestsPerMin: 10, requestsPerHour: 100, burstPerSec: 2 });
+      expect(rateLimits(LicenseTier.STARTER)).toMatchObject({ requestsPerMin: 50, requestsPerHour: 500, burstPerSec: 5 });
+      expect(rateLimits(LicenseTier.PRO)).toMatchObject({ requestsPerMin: 100, requestsPerHour: 1000, burstPerSec: 10 });
+      expect(rateLimits(LicenseTier.ENTERPRISE)).toMatchObject({ requestsPerMin: 1000, requestsPerHour: 10000, burstPerSec: 50 });
     });
   });
 
-  describe('getDailyLimit', () => {
-    it('should return correct daily limits', () => {
+  describe('getDailyLimit & getOveragePrice', () => {
+    it('should return correct daily limits and overage prices', () => {
       expect(dailyLimit(LicenseTier.FREE)).toBe(100);
       expect(dailyLimit(LicenseTier.STARTER)).toBe(5000);
       expect(dailyLimit(LicenseTier.PRO)).toBe(10000);
       expect(dailyLimit(LicenseTier.ENTERPRISE)).toBe(100000);
-    });
-  });
 
-  describe('getOveragePrice', () => {
-    it('should return correct overage prices', () => {
       expect(overagePrice(LicenseTier.FREE)).toBe(0);
       expect(overagePrice(LicenseTier.STARTER)).toBe(0);
       expect(overagePrice(LicenseTier.PRO)).toBe(0.01);
