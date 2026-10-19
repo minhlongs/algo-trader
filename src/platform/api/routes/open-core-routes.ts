@@ -18,7 +18,7 @@ import {
   TIER_ENTITLEMENTS,
 } from '../../../desk/opencoresaas2026monetization';
 
-export const openCoreRouter = Router();
+export const openCoreRouter: Router = Router();
 
 const defaultMeter = new BillingMeter();
 

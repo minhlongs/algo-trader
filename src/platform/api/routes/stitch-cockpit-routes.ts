@@ -26,7 +26,7 @@ import { registerAdvancedCockpitRoutes } from './stitch-cockpit-advanced-routes'
 
 export * from './stitch-cockpit-schemas';
 
-export const stitchCockpitRouter = Router();
+export const stitchCockpitRouter: Router = Router();
 const cockpitEngine = new StitchUiCockpitEngine();
 registerAdvancedCockpitRoutes(stitchCockpitRouter, cockpitEngine);
 
