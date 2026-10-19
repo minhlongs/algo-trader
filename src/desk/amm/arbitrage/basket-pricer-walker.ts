@@ -1,9 +1,9 @@
 /**
-194 * Depth-walking simulation and orderbook normalization helpers for BasketPricer.
-195 *
-196 * @module desk/amm/arbitrage/basket-pricer-walker
-197 */
-198
+* Depth-walking simulation and orderbook normalization helpers for BasketPricer.
+*
+* @module desk/amm/arbitrage/basket-pricer-walker
+*/
+
 import type { OrderbookSnapshot } from '../types/amm-types';
 import type { ArbitrageOpportunity } from '../types/arbitrage-types';
 import type { BasketValuation } from './basket-pricer-types';
