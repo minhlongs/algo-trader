@@ -25,6 +25,7 @@
     { id: '17', titleEn: 'Avellaneda-Lipkin Market Making & Kyle-Back Insider Cockpit', titleVi: 'Buồng Lái Tạo Lập Thị Trường Avellaneda-Lipkin & Nội Gián Kyle-Back', href: 'avellaneda-lipkin-kyle-back-cockpit.html' },
     { id: '18', titleEn: 'Cointegration Stat-Arb, OU Half-Life & Glosten-Milgrom Cockpit', titleVi: 'Buồng Lái Stat-Arb Đồng Liên Kết, Chu Kỳ Bán Rã OU & Glosten-Milgrom', href: 'statarb-glosten-milgrom-cockpit.html' },
     { id: '19', titleEn: 'Black-Litterman Posterior & Equal Risk Contribution Cockpit', titleVi: 'Buồng Lái Lợi Nhuận Hậu Nghiệm Black-Litterman & Đóng Góp Rủi Ro Đồng Đều', href: 'black-litterman-risk-parity-cockpit.html' },
+    { id: '20', titleEn: 'Amihud Illiquidity, Almgren-Chriss & Bouchaud Impact Cockpit', titleVi: 'Buồng Lái Thanh Khoản Amihud, Almgren-Chriss & Tác Động Bouchaud', href: 'liquidity-impact-cockpit.html' },
   ];
 
   const THEMES = ['OBSIDIAN_QUANTUM', 'BENTO_RAAS_GLASS', 'NORDIC_MINIMALIST_QUANT'];

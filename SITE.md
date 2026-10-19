@@ -31,6 +31,7 @@ Bilingual (Vietnamese & English) Multi-Tenant Quantitative Engine & Cloud RaaS C
 - [x] `avellaneda-lipkin-kyle-back-cockpit.html` — Avellaneda-Lipkin Market Making, Kyle-Back Insider & VPIN Toxicity Cockpit
 - [x] `statarb-glosten-milgrom-cockpit.html` — Cointegration Stat-Arb, OU Half-Life & Glosten-Milgrom Sequential Trade Cockpit
 - [x] `black-litterman-risk-parity-cockpit.html` — Black-Litterman Posterior & Equal Risk Contribution Cockpit
+- [x] `liquidity-impact-cockpit.html` — Amihud Illiquidity, Almgren-Chriss Execution & Bouchaud Propagator Cockpit
 
 ## Roadmap & Delivered Screens
 
@@ -53,17 +54,19 @@ Bilingual (Vietnamese & English) Multi-Tenant Quantitative Engine & Cloud RaaS C
 17. `avellaneda-lipkin-kyle-back-cockpit.html` — Avellaneda-Lipkin (2018) Optimal Market-Making Quote Ladder, Kyle-Back (1992) Insider Lambda & Information Share, and Easley-López de Prado (2012) VPIN Flow Toxicity Buckets.
 18. `statarb-glosten-milgrom-cockpit.html` — Engle-Granger (1987) Cointegration ADF Pair Matrix, Ornstein-Uhlenbeck Half-Life & Z-Score State Machine, and Glosten-Milgrom (1985) Sequential Trade Bayesian Belief Updates.
 19. `black-litterman-risk-parity-cockpit.html` — Black-Litterman (1992) posterior returns & active tilts, and Equal Risk Contribution (ERC) portfolio weights with marginal risk contributions.
+20. `liquidity-impact-cockpit.html` — Amihud (2002) illiquidity ratio & regime, Almgren-Chriss (2000) optimal liquidation trajectory, and Bouchaud et al. (2004) propagator impact decay.
 
 ## Creative Freedom
 
 - [x] Cloudflare Durable Objects live shard telemetry map (`shard-asia-1`, `shard-us-east`, `shard-eu-west`).
 - [x] Real-time WebSockets trade feed simulator with simulated latency jitter (< 12ms live green pulse).
 - [x] Multi-Venue Smart Order Routing (SOR) Mesh Console with Cont-Kukanov (2017) & Laruelle-Lehalle (2013) dark/lit pool allocation.
-- [x] Multi-Regime Fractional Kelly & SVI Volatility Surface Cockpit with UI/UX Pro Max (`Cmd+K` 19-Screen Command Palette with live search filter, Bilingual EN/VI Switcher & 3-Theme Switcher).
+- [x] Multi-Regime Fractional Kelly & SVI Volatility Surface Cockpit with UI/UX Pro Max (`Cmd+K` 20-Screen Command Palette with live search filter, Bilingual EN/VI Switcher & 3-Theme Switcher).
 - [x] Hawkes Order-Flow Criticality & Avellaneda-Stoikov Reservation Radar (`hawkes-orderflow-radar.html`).
 - [x] Queue-Reactive LOB, Roll Implied Spread & Hasbrouck Information Share Cockpit (`limit-order-queue-cockpit.html`).
 - [x] Avellaneda-Lipkin Market Making & Kyle-Back Insider Dynamics Cockpit (`avellaneda-lipkin-kyle-back-cockpit.html`).
 - [x] Cointegration Stat-Arb, OU Half-Life & Glosten-Milgrom Sequential Trade Cockpit (`statarb-glosten-milgrom-cockpit.html`).
 - [x] Black-Litterman Posterior & Equal Risk Contribution Cockpit (`black-litterman-risk-parity-cockpit.html`).
+- [x] Amihud Illiquidity, Almgren-Chriss Execution & Bouchaud Propagator Cockpit (`liquidity-impact-cockpit.html`).
 
 

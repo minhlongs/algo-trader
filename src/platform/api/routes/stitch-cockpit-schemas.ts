@@ -64,3 +64,8 @@ export const blackLittermanRiskParityQuerySchema = z.object({
   riskAversionLambda: z.coerce.number().positive().max(10).default(1.2),
   tau: z.coerce.number().min(0.01).max(0.5).default(0.05),
 });
+
+export const liquidityImpactQuerySchema = z.object({
+  totalShares: z.coerce.number().positive().max(1_000_000_000).default(100000),
+  riskAversion: z.coerce.number().positive().max(1).default(0.001),
+});

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlgoTrade OS | Screen #20 — Amihud Illiquidity, Almgren-Chriss Execution &amp; Bouchaud Propagator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css" />
+  <style>
+    :root { --bg-void:#08090C; --bg-card:#12151C; --border-hairline:#1E2430; --cyan:#00F2FE; --emerald:#00E599; --amber:#FFB800; --crimson:#FF3B30; --text-primary:#F8FAFC; --text-secondary:#94A3B8; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg-void); color:var(--text-primary); font-family:'Inter',sans-serif; min-height:100vh; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0D1017; border-bottom:1px solid var(--border-hairline); font-family:'JetBrains Mono',monospace; font-size:12px; }
+    .nav-links { display:flex; gap:8px; flex-wrap:wrap; }
+    .nav-links a { color:var(--text-secondary); text-decoration:none; padding:4px 8px; border:1px solid var(--border-hairline); border-radius:4px; }
+    .nav-links a.active { color:var(--cyan); border-color:var(--cyan); background:rgba(0,242,254,0.08); }
+    .bento-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:12px; padding:16px 20px 72px; }
+    .card { background:var(--bg-card); border:1px solid var(--border-hairline); border-radius:4px; padding:16px; }
+    .col-8 { grid-column:span 8; } .col-4 { grid-column:span 4; } .col-3 { grid-column:span 3; } .col-6 { grid-column:span 6; }
+    @media (max-width:1024px) { .col-8,.col-4,.col-3,.col-6 { grid-column:span 12; } }
+    h1,h2 { font-family:'Space Grotesk',sans-serif; letter-spacing:-0.02em; }
+    .mono { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+    .kpi-value { font-size:24px; font-weight:700; margin-top:6px; }
+    .kpi-sub { font-size:11px; color:var(--text-secondary); margin-top:4px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; }
+    th,td { padding:9px 10px; text-align:left; border-bottom:1px solid var(--border-hairline); font-family:'JetBrains Mono',monospace; }
+    th { color:var(--text-secondary); font-weight:600; text-transform:uppercase; font-size:11px; }
+    .pill { display:inline-block; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600; }
+    .pill-emerald { background:rgba(0,229,153,0.14); color:var(--emerald); border:1px solid rgba(0,229,153,0.4); }
+    .pill-cyan { background:rgba(0,242,254,0.14); color:var(--cyan); border:1px solid rgba(0,242,254,0.4); }
+    .pill-amber { background:rgba(255,184,0,0.14); color:var(--amber); border:1px solid rgba(255,184,0,0.4); }
+    .footer { display:flex; justify-content:space-between; padding:12px 20px; color:var(--text-secondary); font-family:'JetBrains Mono',monospace; font-size:11px; border-top:1px solid var(--border-hairline); }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+  <header class="topbar" role="banner">
+    <div>
+      <strong style="color:var(--cyan);">ALGOTRADE OS // SCREEN #20</strong>
+      <span style="color:var(--text-secondary);margin-left:10px;" data-en="AMIHUD ILLIQUIDITY, ALMGREN-CHRISS EXECUTION &amp; BOUCHAUD PROPAGATOR COCKPIT" data-vi="BUỒNG LÁI THANH KHOẢN AMIHUD, THỰC THI ALMGREN-CHRISS &amp; LAN TRUYỀN BOUCHAUD">AMIHUD ILLIQUIDITY, ALMGREN-CHRISS EXECUTION &amp; BOUCHAUD PROPAGATOR COCKPIT</span>
+    </div>
+    <nav class="nav-links" aria-label="Stitch Suite Navigation">
+      <a href="dashboard.html">01 Dashboard</a>
+      <a href="regime-kelly-matrix.html">14 Regime Kelly</a>
+      <a href="hawkes-orderflow-radar.html">15 Hawkes Radar</a>
+      <a href="limit-order-queue-cockpit.html">16 Queue Cockpit</a>
+      <a href="avellaneda-lipkin-kyle-back-cockpit.html">17 AL / Kyle-Back</a>
+      <a href="statarb-glosten-milgrom-cockpit.html">18 Stat-Arb / GM</a>
+      <a href="black-litterman-risk-parity-cockpit.html">19 BL / ERC</a>
+      <a href="liquidity-impact-cockpit.html" class="active">20 Liquidity / Impact</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="bento-grid" role="main" aria-live="polite">
+    <section class="card col-3" aria-label="Composite liquidity score">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="COMPOSITE LIQUIDITY SCORE" data-vi="ĐIỂM THANH KHOẢN TỔNG HỢP">COMPOSITE LIQUIDITY SCORE</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">86.36 <span class="pill pill-emerald">NORMAL</span></div>
+      <div class="kpi-sub mono">Roll spread 0.3325% | Amihud 0.2798 | 0–100 scale</div>
+    </section>
+
+    <section class="card col-3" aria-label="Kyle lambda">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="KYLE LAMBDA PRICE IMPACT" data-vi="TÁC ĐỘNG GIÁ KYLE LAMBDA">KYLE LAMBDA PRICE IMPACT</div>
+      <div class="kpi-value mono" style="color:var(--cyan);">0.004314 <span class="pill pill-cyan">R² 0.9124</span></div>
+      <div class="kpi-sub mono">Signed-flow regression | permanent impact coefficient</div>
+    </section>
+
+    <section class="card col-3" aria-label="Almgren Chriss cost">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="ALMGREN-CHRISS EXPECTED COST" data-vi="CHI PHÍ KỲ VỌNG ALMGREN-CHRISS">ALMGREN-CHRISS EXPECTED COST</div>
+      <div class="kpi-value mono" style="color:var(--amber);">15.94 bps <span class="pill pill-amber">$16,022</span></div>
+      <div class="kpi-sub mono">100,000 shares | half-life 1.94 days | 10 intervals</div>
+    </section>
+
+    <section class="card col-3" aria-label="Bouchaud residual impact">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="BOUCHAUD PERMANENT RESIDUAL" data-vi="TỒN DƯ TÁC ĐỘNG BOUCHAUD">BOUCHAUD PERMANENT RESIDUAL</div>
+      <div class="kpi-value mono" style="color:var(--crimson);">35.78% <span class="pill pill-crimson">1H DECAY</span></div>
+      <div class="kpi-sub mono">Kernel 0.1200 → 0.0429 | impact 4.157 → 2.016</div>
+    </section>
+
+    <section class="card col-8" aria-label="Almgren Chriss liquidation trajectory">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;" data-en="Almgren-Chriss (2000) Optimal Liquidation Trajectory" data-vi="Quỹ Đạo Thanh Lý Tối Ưu Almgren-Chriss (2000)">Almgren-Chriss (2000) Optimal Liquidation Trajectory</h2>
+        <span class="pill pill-cyan mono">SCREEN #20 LIVE</span>
+      </div>
+      <table aria-label="Execution trajectory">
+        <thead><tr><th>Time</th><th>Holdings Remaining</th><th>Trade Rate</th></tr></thead>
+        <tbody>
+          <tr><td>0.0</td><td>100,000</td><td>0</td></tr>
+          <tr><td>0.2</td><td>78,748</td><td>105,068</td></tr>
+          <tr><td>0.4</td><td>58,337</td><td>101,142</td></tr>
+          <tr><td>0.6</td><td>38,549</td><td>98,297</td></tr>
+          <tr><td>0.8</td><td>19,172</td><td>96,500</td></tr>
+          <tr><td>1.0</td><td>0</td><td>95,734</td></tr>
+        </tbody>
+      </table>
+      <div class="kpi-sub mono" style="margin-top:10px;">E[x] = ½γX² + ηΣ(nₖ²/τ) · κ = arccosh(1 + ½λσ²τ²/η)/τ</div>
+    </section>
+
+    <section class="card col-4" aria-label="Liquidity metrics">
+      <h2 style="font-size:16px;" data-en="Liquidity Metrics" data-vi="Các Chỉ Số Thanh Khoản">Liquidity Metrics</h2>
+      <table aria-label="Liquidity metrics">
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Roll effective spread</td><td>0.3325%</td></tr>
+          <tr><td>Amihud illiquidity</td><td>0.2798</td></tr>
+          <tr><td>Liquidity regime</td><td><span class="pill pill-emerald">NORMAL</span></td></tr>
+          <tr><td>Kyle lambda</td><td>0.004314</td></tr>
+          <tr><td>Regression R²</td><td>0.9124</td></tr>
+          <tr><td>Composite score</td><td>86.36 / 100</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card col-6" aria-label="Bouchaud propagator trajectory">
+      <h2 style="font-size:16px;" data-en="Bouchaud (2004) Propagator Impact Decay" data-vi="Suy Giảm Tác Động Lan Truyền Bouchaud (2004)">Bouchaud (2004) Propagator Impact Decay</h2>
+      <table aria-label="Propagator trajectory">
+        <thead><tr><th>Time</th><th>Cumulative Impact</th><th>Order-Flow Imbalance</th></tr></thead>
+        <tbody>
+          <tr><td>0s</td><td>4.1569</td><td>1,200</td></tr>
+          <tr><td>60s</td><td>3.7316</td><td>1,400</td></tr>
+          <tr><td>300s</td><td>3.3431</td><td>2,000</td></tr>
+          <tr><td>3,600s</td><td>2.0163</td><td>2,000</td></tr>
+        </tbody>
+      </table>
+      <div class="kpi-sub mono" style="margin-top:10px;">Kernel Γ(t) = Γ₀ · (τ₀/(τ₀+t))^γ · permanent residual 35.78%</div>
+    </section>
+
+    <section class="card col-6" aria-label="Execution risk controls">
+      <h2 style="font-size:16px;" data-en="Liquidity &amp; Execution Risk Controls" data-vi="Kiểm Soát Rủi Ro Thanh Khoản &amp; Thực Thi">Liquidity &amp; Execution Risk Controls</h2>
+      <table aria-label="Risk controls">
+        <thead><tr><th>Control</th><th>State</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Liquidity regime</td><td><span class="pill pill-emerald">OK</span></td><td>NORMAL</td></tr>
+          <tr><td>Impact half-life</td><td><span class="pill pill-emerald">OK</span></td><td>1.94 days</td></tr>
+          <tr><td>Expected cost cap</td><td><span class="pill pill-amber">WATCH</span></td><td>15.94 bps</td></tr>
+          <tr><td>Residual impact</td><td><span class="pill pill-emerald">OK</span></td><td>35.78%</td></tr>
+          <tr><td>Participation rate</td><td><span class="pill pill-cyan">ARMED</span></td><td>≤ 12% ADV</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>SCREEN #20 · CODE-AUTHORED · OBSIDIAN QUANTUM</span>
+    <span>AMIHUD 2002 · ALMGREN-CHRISS 2000 · BOUCHAUD ET AL. 2004</span>
+  </footer>
+  <script src="assets/ui-ux-pro-max.js"></script>
+</body>
+</html>

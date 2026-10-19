@@ -11,6 +11,7 @@ import type { TierLevel } from './catalog';
 import { buildAvellanedaLipkinCockpitSnapshot } from './stitch-avellaneda-lipkin-telemetry';
 import { buildBlackLittermanRiskParitySnapshot } from './stitch-black-litterman-risk-parity-telemetry';
 import { buildHawkesOrderFlowRadarSnapshot } from './stitch-hawkes-radar-telemetry';
+import { buildLiquidityImpactSnapshot } from './stitch-liquidity-impact-telemetry';
 import { buildQueueReactiveCockpitSnapshot } from './stitch-queue-reactive-telemetry';
 import { buildStatArbGlostenMilgromSnapshot } from './stitch-statarb-glosten-milgrom-telemetry';
 import {
@@ -33,6 +34,7 @@ export * from './stitch-regime-kelly-telemetry';
 export * from './stitch-avellaneda-lipkin-telemetry';
 export * from './stitch-black-litterman-risk-parity-telemetry';
 export * from './stitch-hawkes-radar-telemetry';
+export * from './stitch-liquidity-impact-telemetry';
 export * from './stitch-queue-reactive-telemetry';
 export * from './stitch-statarb-glosten-milgrom-telemetry';
 export * from './ui-ux-pro-max-auditor';
@@ -110,5 +112,9 @@ export class StitchUiCockpitEngine {
 
   public getBlackLittermanRiskParitySnapshot(riskAversionLambda = 1.2, tau = 0.05) {
     return buildBlackLittermanRiskParitySnapshot(riskAversionLambda, tau);
+  }
+
+  public getLiquidityImpactSnapshot(totalShares = 100000, riskAversion = 0.001) {
+    return buildLiquidityImpactSnapshot(totalShares, riskAversion);
   }
 }
