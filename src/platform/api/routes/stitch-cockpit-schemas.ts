@@ -59,3 +59,8 @@ export const statarbGlostenMilgromQuerySchema = z.object({
   informedTraderShareAlpha: z.coerce.number().min(0).max(1).default(0.3),
   priorProbHighMu: z.coerce.number().min(0.000001).max(0.999999).default(0.6),
 });
+
+export const blackLittermanRiskParityQuerySchema = z.object({
+  riskAversionLambda: z.coerce.number().positive().max(10).default(1.2),
+  tau: z.coerce.number().min(0.01).max(0.5).default(0.05),
+});

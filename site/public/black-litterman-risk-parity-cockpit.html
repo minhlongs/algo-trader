@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlgoTrade OS | Screen #19 — Black-Litterman Posterior &amp; Equal Risk Contribution Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/ui-ux-pro-max.css" />
+  <style>
+    :root { --bg-void:#08090C; --bg-card:#12151C; --border-hairline:#1E2430; --cyan:#00F2FE; --emerald:#00E599; --amber:#FFB800; --crimson:#FF3B30; --text-primary:#F8FAFC; --text-secondary:#94A3B8; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg-void); color:var(--text-primary); font-family:'Inter',sans-serif; min-height:100vh; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#0D1017; border-bottom:1px solid var(--border-hairline); font-family:'JetBrains Mono',monospace; font-size:12px; }
+    .nav-links { display:flex; gap:8px; flex-wrap:wrap; }
+    .nav-links a { color:var(--text-secondary); text-decoration:none; padding:4px 8px; border:1px solid var(--border-hairline); border-radius:4px; }
+    .nav-links a.active { color:var(--cyan); border-color:var(--cyan); background:rgba(0,242,254,0.08); }
+    .bento-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:12px; padding:16px 20px 72px; }
+    .card { background:var(--bg-card); border:1px solid var(--border-hairline); border-radius:4px; padding:16px; }
+    .col-8 { grid-column:span 8; } .col-4 { grid-column:span 4; } .col-3 { grid-column:span 3; } .col-6 { grid-column:span 6; }
+    @media (max-width:1024px) { .col-8,.col-4,.col-3,.col-6 { grid-column:span 12; } }
+    h1,h2 { font-family:'Space Grotesk',sans-serif; letter-spacing:-0.02em; }
+    .mono { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+    .kpi-value { font-size:24px; font-weight:700; margin-top:6px; }
+    .kpi-sub { font-size:11px; color:var(--text-secondary); margin-top:4px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; }
+    th,td { padding:9px 10px; text-align:left; border-bottom:1px solid var(--border-hairline); font-family:'JetBrains Mono',monospace; }
+    th { color:var(--text-secondary); font-weight:600; text-transform:uppercase; font-size:11px; }
+    .pill { display:inline-block; padding:2px 7px; border-radius:4px; font-size:11px; font-weight:600; }
+    .pill-emerald { background:rgba(0,229,153,0.14); color:var(--emerald); border:1px solid rgba(0,229,153,0.4); }
+    .pill-cyan { background:rgba(0,242,254,0.14); color:var(--cyan); border:1px solid rgba(0,242,254,0.4); }
+    .pill-amber { background:rgba(255,184,0,0.14); color:var(--amber); border:1px solid rgba(255,184,0,0.4); }
+    .pill-crimson { background:rgba(255,59,48,0.14); color:var(--crimson); border:1px solid rgba(255,59,48,0.4); }
+    .bar { height:6px; background:#1E2430; border-radius:3px; overflow:hidden; margin-top:6px; }
+    .bar > span { display:block; height:100%; background:var(--cyan); }
+    .footer { display:flex; justify-content:space-between; padding:12px 20px; color:var(--text-secondary); font-family:'JetBrains Mono',monospace; font-size:11px; border-top:1px solid var(--border-hairline); }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="pro-max-skip-link">Skip to main content</a>
+  <header class="topbar" role="banner">
+    <div>
+      <strong style="color:var(--cyan);">ALGOTRADE OS // SCREEN #19</strong>
+      <span style="color:var(--text-secondary);margin-left:10px;" data-en="BLACK-LITTERMAN POSTERIOR RETURNS &amp; EQUAL RISK CONTRIBUTION COCKPIT" data-vi="BUỒNG LÁI LỢI NHUẬN HẬU NGHIỆM BLACK-LITTERMAN &amp; ĐÓNG GÓP RỦI RO ĐỒNG ĐỀU">BLACK-LITTERMAN POSTERIOR RETURNS &amp; EQUAL RISK CONTRIBUTION COCKPIT</span>
+    </div>
+    <nav class="nav-links" aria-label="Stitch Suite Navigation">
+      <a href="dashboard.html">01 Dashboard</a>
+      <a href="order-routing-mesh.html">13 SOR Mesh</a>
+      <a href="regime-kelly-matrix.html">14 Regime Kelly</a>
+      <a href="hawkes-orderflow-radar.html">15 Hawkes Radar</a>
+      <a href="limit-order-queue-cockpit.html">16 Queue Cockpit</a>
+      <a href="avellaneda-lipkin-kyle-back-cockpit.html">17 AL / Kyle-Back</a>
+      <a href="statarb-glosten-milgrom-cockpit.html">18 Stat-Arb / GM</a>
+      <a href="black-litterman-risk-parity-cockpit.html" class="active">19 BL / ERC</a>
+    </nav>
+  </header>
+
+  <main id="main-content" class="bento-grid" role="main" aria-live="polite">
+    <section class="card col-3" aria-label="Black Litterman posterior">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="BLACK-LITTERMAN POSTERIOR RETURN" data-vi="LỢI NHUẬN HẬU NGHIỆM BLACK-LITTERMAN">BLACK-LITTERMAN POSTERIOR RETURN</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">ETH 13.23% <span class="pill pill-emerald">TOP</span></div>
+      <div class="kpi-sub mono">BTC 11.75% | SOL 12.11% | BNB 10.31%</div>
+    </section>
+
+    <section class="card col-3" aria-label="Active weight tilt">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="LARGEST ACTIVE WEIGHT TILT" data-vi="ĐỘ LỆCH TỶ TRỌNG CHỦ ĐỘNG LỚN NHẤT">LARGEST ACTIVE WEIGHT TILT</div>
+      <div class="kpi-value mono" style="color:var(--crimson);">BTC -15.51% <span class="pill pill-crimson">UNDERWEIGHT</span></div>
+      <div class="kpi-sub mono">ETH +7.11% | SOL +8.70% | BNB -0.30%</div>
+    </section>
+
+    <section class="card col-3" aria-label="ERC portfolio volatility">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="ERC PORTFOLIO VOLATILITY" data-vi="BIẾN ĐỘNG DANH MỤC ERC">ERC PORTFOLIO VOLATILITY</div>
+      <div class="kpi-value mono" style="color:var(--cyan);">39.67% <span class="pill pill-cyan">4 ASSETS</span></div>
+      <div class="kpi-sub mono">Converged in 4 iterations | λ = 1.2 | τ = 0.05</div>
+    </section>
+
+    <section class="card col-3" aria-label="Risk contribution parity">
+      <div class="mono" style="font-size:11px;color:var(--text-secondary);" data-en="RISK CONTRIBUTION PARITY" data-vi="CÂN BẰNG ĐÓNG GÓP RỦI RO">RISK CONTRIBUTION PARITY</div>
+      <div class="kpi-value mono" style="color:var(--emerald);">25.00% <span class="pill pill-emerald">EACH</span></div>
+      <div class="kpi-sub mono">Max disparity 0.0007% | Equal Risk Contribution</div>
+    </section>
+
+    <section class="card col-8" aria-label="Black Litterman and risk parity allocation">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="font-size:16px;" data-en="Black-Litterman Posterior &amp; Equal Risk Contribution Allocation" data-vi="Phân Bổ Lợi Nhuận Hậu Nghiệm Black-Litterman &amp; Đóng Góp Rủi Ro Đồng Đều">Black-Litterman Posterior &amp; Equal Risk Contribution Allocation</h2>
+        <span class="pill pill-cyan mono">SCREEN #19 LIVE</span>
+      </div>
+      <table aria-label="Allocation matrix">
+        <thead><tr><th>Asset</th><th>Market Wt</th><th>Prior</th><th>Posterior</th><th>BL Wt</th><th>Tilt</th><th>RP Wt</th><th>Risk Ctb</th></tr></thead>
+        <tbody>
+          <tr><td>BTC</td><td>70.65%</td><td>14.35%</td><td>11.75%</td><td>55.14%</td><td style="color:var(--crimson);">-15.51%</td><td>33.93%</td><td>25.00%</td></tr>
+          <tr><td>ETH</td><td>21.74%</td><td>16.15%</td><td style="color:var(--emerald);">13.23%</td><td>28.85%</td><td style="color:var(--emerald);">+7.11%</td><td>25.55%</td><td>25.00%</td></tr>
+          <tr><td>SOL</td><td>4.35%</td><td>19.58%</td><td>12.11%</td><td>13.04%</td><td style="color:var(--emerald);">+8.70%</td><td>17.95%</td><td>25.00%</td></tr>
+          <tr><td>BNB</td><td>3.26%</td><td>14.01%</td><td>10.31%</td><td>2.96%</td><td style="color:var(--crimson);">-0.30%</td><td>22.58%</td><td>25.00%</td></tr>
+        </tbody>
+      </table>
+      <div class="kpi-sub mono" style="margin-top:10px;">Π = λΣw · Posterior = Π + τΣPᵀ(PτΣPᵀ + Ω)⁻¹(Q − PΠ) · ERC: wᵢ(Σw)ᵢ = σ²/N</div>
+    </section>
+
+    <section class="card col-4" aria-label="Investor views">
+      <h2 style="font-size:16px;" data-en="Investor Views" data-vi="Quan Điểm Nhà Đầu Tư">Investor Views</h2>
+      <table aria-label="Views">
+        <thead><tr><th>View</th><th>Q</th><th>Ω</th></tr></thead>
+        <tbody>
+          <tr><td>ETH outperforms BTC</td><td style="color:var(--emerald);">+5.00%</td><td>0.020</td></tr>
+          <tr><td>SOL underperforms</td><td style="color:var(--crimson);">-3.00%</td><td>0.040</td></tr>
+        </tbody>
+      </table>
+      <div class="kpi-sub mono" style="margin-top:10px;">Confidence feed: ETH view higher conviction than SOL view</div>
+    </section>
+
+    <section class="card col-6" aria-label="Risk parity weights">
+      <h2 style="font-size:16px;" data-en="Equal Risk Contribution Weights" data-vi="Tỷ Trọng Đóng Góp Rủi Ro Đồng Đều">Equal Risk Contribution Weights</h2>
+      <table aria-label="Risk parity weights">
+        <thead><tr><th>Asset</th><th>RP Weight</th><th>MRC</th><th>TRC</th></tr></thead>
+        <tbody>
+          <tr><td>BTC</td><td>33.93%</td><td>0.2923</td><td>25.00%</td></tr>
+          <tr><td>ETH</td><td>25.55%</td><td>0.3882</td><td>25.00%</td></tr>
+          <tr><td>SOL</td><td>17.95%</td><td>0.5525</td><td>25.00%</td></tr>
+          <tr><td>BNB</td><td>22.58%</td><td>0.4392</td><td>25.00%</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card col-6" aria-label="Portfolio risk controls">
+      <h2 style="font-size:16px;" data-en="Portfolio Risk Controls" data-vi="Kiểm Soát Rủi Ro Danh Mục">Portfolio Risk Controls</h2>
+      <table aria-label="Risk controls">
+        <thead><tr><th>Control</th><th>State</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Posterior sanity</td><td><span class="pill pill-emerald">PASS</span></td><td>4 / 4 assets</td></tr>
+          <tr><td>ERC convergence</td><td><span class="pill pill-emerald">PASS</span></td><td>4 iterations</td></tr>
+          <tr><td>Max TRC disparity</td><td><span class="pill pill-emerald">OK</span></td><td>0.0007%</td></tr>
+          <tr><td>Portfolio volatility</td><td><span class="pill pill-amber">WATCH</span></td><td>39.67%</td></tr>
+          <tr><td>View confidence</td><td><span class="pill pill-cyan">ARMED</span></td><td>Ω 0.02 / 0.04</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>SCREEN #19 · CODE-AUTHORED · OBSIDIAN QUANTUM</span>
+    <span>BLACK-LITTERMAN 1992 · EQUAL RISK CONTRIBUTION · LEDOIT-WOLF COVARIANCE</span>
+  </footer>
+  <script src="assets/ui-ux-pro-max.js"></script>
+</body>
+</html>

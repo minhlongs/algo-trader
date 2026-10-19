@@ -9,6 +9,7 @@ import type { StitchUiCockpitEngine } from '../../../desk/opencoresaas2026moneti
 import { sanitizeHttpError } from '../../../shared/utils/error-sanitize';
 import {
   avellanedaLipkinQuerySchema,
+  blackLittermanRiskParityQuerySchema,
   statarbGlostenMilgromQuerySchema,
 } from './stitch-cockpit-schemas';
 
@@ -44,6 +45,23 @@ export function registerAdvancedCockpitRoutes(router: Router, engine: StitchUiCo
         parsed.data.priorProbHighMu,
       );
       res.status(200).json({ ok: true, statarbGlostenMilgrom });
+    } catch (err) {
+      res.status(500).json(sanitizeHttpError(err));
+    }
+  });
+
+  router.get('/black-litterman-risk-parity', (req: Request, res: Response) => {
+    try {
+      const parsed = blackLittermanRiskParityQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        res.status(400).json({ ok: false, reason: 'Invalid black-litterman-risk-parity query parameters', issues: parsed.error.issues });
+        return;
+      }
+      const blackLittermanRiskParity = engine.getBlackLittermanRiskParitySnapshot(
+        parsed.data.riskAversionLambda,
+        parsed.data.tau,
+      );
+      res.status(200).json({ ok: true, blackLittermanRiskParity });
     } catch (err) {
       res.status(500).json(sanitizeHttpError(err));
     }

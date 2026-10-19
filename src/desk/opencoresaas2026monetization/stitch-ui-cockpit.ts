@@ -9,6 +9,7 @@ import { StrategyMarketplaceManager } from '../strategies/marketplace';
 import { BillingMeter, TIER_ENTITLEMENTS } from './billing-meter';
 import type { TierLevel } from './catalog';
 import { buildAvellanedaLipkinCockpitSnapshot } from './stitch-avellaneda-lipkin-telemetry';
+import { buildBlackLittermanRiskParitySnapshot } from './stitch-black-litterman-risk-parity-telemetry';
 import { buildHawkesOrderFlowRadarSnapshot } from './stitch-hawkes-radar-telemetry';
 import { buildQueueReactiveCockpitSnapshot } from './stitch-queue-reactive-telemetry';
 import { buildStatArbGlostenMilgromSnapshot } from './stitch-statarb-glosten-milgrom-telemetry';
@@ -30,6 +31,7 @@ export * from './stitch-ui-themes';
 export * from './stitch-sor-mesh-telemetry';
 export * from './stitch-regime-kelly-telemetry';
 export * from './stitch-avellaneda-lipkin-telemetry';
+export * from './stitch-black-litterman-risk-parity-telemetry';
 export * from './stitch-hawkes-radar-telemetry';
 export * from './stitch-queue-reactive-telemetry';
 export * from './stitch-statarb-glosten-milgrom-telemetry';
@@ -104,5 +106,9 @@ export class StitchUiCockpitEngine {
 
   public getStatArbGlostenMilgromSnapshot(informedTraderShareAlpha = 0.3, priorProbHighMu = 0.6) {
     return buildStatArbGlostenMilgromSnapshot(informedTraderShareAlpha, priorProbHighMu);
+  }
+
+  public getBlackLittermanRiskParitySnapshot(riskAversionLambda = 1.2, tau = 0.05) {
+    return buildBlackLittermanRiskParitySnapshot(riskAversionLambda, tau);
   }
 }
