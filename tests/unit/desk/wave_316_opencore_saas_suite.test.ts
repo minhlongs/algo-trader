@@ -11,6 +11,10 @@ import {
 } from '../../../src/desk/opencoresaas2026monetization/index';
 import { BillingMeter as BillingMeterFacade } from '../../../src/billing/billing-meter';
 
+const companyConfigPath = path.resolve(__dirname, '../../../.mekong/company.json');
+// .mekong/ is gitignored operator state; skip on clean CI checkouts.
+const hasCompanyConfig = fs.existsSync(companyConfigPath);
+
 describe('Wave 316: 25-Step Open-Core Public GitHub + SaaS Monetization Suite (Core & Control Plane)', () => {
   it('blocks public release or SaaS flywheel when secrets leak or license gate is disabled', () => {
     const res = OpenCoreSaas2026Monetization.OpenCoreSaasMonetizationCoordinator.evaluate({
@@ -154,7 +158,7 @@ describe('Wave 316: 25-Step Open-Core Public GitHub + SaaS Monetization Suite (C
     expect(facadeMeter.checkQuota('t-facade', 'BASIC', 50).isAllowed).toBe(true);
   });
 
-  it('audits live repository blueprint tree, OSS governance files, and SHA-256 digest', () => {
+  it.skipIf(!hasCompanyConfig)('audits live repository blueprint tree, OSS governance files, and SHA-256 digest', () => {
     const repoRoot = path.resolve(__dirname, '../../../');
     const repoAuditor = new RepositoryBlueprintAuditor();
     const audit = repoAuditor.auditRepository(repoRoot);
