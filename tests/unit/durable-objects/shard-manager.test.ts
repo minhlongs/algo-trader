@@ -62,12 +62,16 @@ const {
   mockHandleMetrics: vi.fn(),
   mockIsAdminAuth: vi.fn(),
 }));
-vi.mock('../../../src/durable-objects/shard-manager-handlers', () => ({
-  handleAdminRequest: mockHandleAdminRequest,
-  handleHealthCheck: mockHandleHealthCheck,
-  handleMetrics: mockHandleMetrics,
-  isAdminAuth: mockIsAdminAuth,
-}));
+vi.mock('../../../src/durable-objects/shard-manager-handlers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/durable-objects/shard-manager-handlers')>();
+  return {
+    ...actual,
+    handleAdminRequest: mockHandleAdminRequest,
+    handleHealthCheck: mockHandleHealthCheck,
+    handleMetrics: mockHandleMetrics,
+    isAdminAuth: mockIsAdminAuth,
+  };
+});
 
 const mockGetRedisClient = vi.hoisted(() => vi.fn());
 vi.mock('../../../src/redis', () => ({ getRedisClient: mockGetRedisClient }));

@@ -83,11 +83,12 @@ import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
 const SERVER_FILE = resolve(REPO_ROOT, 'src/platform/api/server.ts');
+const SERVER_MIDDLEWARE_FILE = resolve(REPO_ROOT, 'src/platform/api/server-middleware.ts');
 
 const HSTS_MIN_MAX_AGE = 31536000;
 
 function readServer(): string {
-  return readFileSync(SERVER_FILE, 'utf8');
+  return readFileSync(SERVER_FILE, 'utf8') + '\n' + readFileSync(SERVER_MIDDLEWARE_FILE, 'utf8');
 }
 
 describe('Express API-server security middleware discipline — 43rd edge (TRITETRACONTAGON)', () => {
@@ -100,7 +101,7 @@ describe('Express API-server security middleware discipline — 43rd edge (TRITE
   it('`helmet` imported AND applied via app.use', () => {
     expect(/from\s+['"]helmet['"]/.test(src), 'helmet import missing').toBe(true);
     expect(
-      /this\.app\.use\(helmet\(/.test(src),
+      /(?:this\.)?app\.use\(helmet\(/.test(src),
       'helmet() not mounted via this.app.use() — security header baseline missing',
     ).toBe(true);
   });
@@ -108,7 +109,7 @@ describe('Express API-server security middleware discipline — 43rd edge (TRITE
   it('`cors` imported AND applied', () => {
     expect(/from\s+['"]cors['"]/.test(src)).toBe(true);
     expect(
-      /this\.app\.use\(cors\(/.test(src),
+      /(?:this\.)?app\.use\(cors\(/.test(src),
       'cors() not mounted — browser cross-origin access broken',
     ).toBe(true);
   });
@@ -122,14 +123,14 @@ describe('Express API-server security middleware discipline — 43rd edge (TRITE
     const hasRateLimit = src.includes('rateLimitMiddleware') && (src.includes('rateLimitMiddleware()') || /rateLimitMiddleware\s*\(/.test(src));
     expect(hasRateLimit, 'rateLimit() invocation missing').toBe(true);
     expect(
-      /this\.app\.use\(\s*['"]\/api['"]\s*,\s*limiter\s*\)/.test(src),
+      /(?:this\.)?app\.use\(\s*['"]\/api['"]\s*,\s*limiter\s*\)/.test(src),
       'rateLimit not scoped to /api — either global (throttles health probes) or absent',
     ).toBe(true);
   });
 
   it('`metricsMiddleware` applied (Prometheus HTTP sampling)', () => {
     expect(
-      /\bmetricsMiddleware\b/.test(src) && /this\.app\.use\(metricsMiddleware\)/.test(src),
+      /\bmetricsMiddleware\b/.test(src) && /(?:this\.)?app\.use\(metricsMiddleware\)/.test(src),
       'metricsMiddleware not mounted — /metrics exporter receives no HTTP samples',
     ).toBe(true);
   });
@@ -137,7 +138,7 @@ describe('Express API-server security middleware discipline — 43rd edge (TRITE
   it('`errorHandler` imported AND applied', () => {
     expect(/errorHandler/.test(src)).toBe(true);
     expect(
-      /this\.app\.use\(errorHandler\)/.test(src),
+      /(?:this\.)?app\.use\(errorHandler\)/.test(src),
       'errorHandler not mounted as final handler — 5xx returns raw stack traces',
     ).toBe(true);
   });
@@ -177,9 +178,10 @@ describe('Express API-server security middleware discipline — 43rd edge (TRITE
   });
 
   it('middleware ordering: errorHandler must be the LAST app.use call', () => {
-    const usages = [...src.matchAll(/this\.app\.use\(([^)]+)\)/g)].map((m) => m[1].trim());
+    const usages = [...src.matchAll(/(?:this\.)?app\.use\(([^)]+)\)/g)].map((m) => m[1].trim());
     expect(usages.length, 'no app.use() calls parsed').toBeGreaterThan(5);
-    const last = usages[usages.length - 1];
+    const serverUsages = [...readFileSync(SERVER_FILE, 'utf8').matchAll(/(?:this\.)?app\.use\(([^)]+)\)/g)].map((m) => m[1].trim());
+    const last = serverUsages[serverUsages.length - 1] ?? '';
     expect(
       last.startsWith('errorHandler'),
       `last app.use() is "${last}" — errorHandler must be terminal or 5xx escape path broken`,
@@ -188,11 +190,11 @@ describe('Express API-server security middleware discipline — 43rd edge (TRITE
 
   it('composite: 8 axes hold simultaneously (server security posture)', () => {
     expect(/from\s+['"]helmet['"]/.test(src)).toBe(true);
-    expect(/this\.app\.use\(helmet\(/.test(src)).toBe(true);
-    expect(/this\.app\.use\(cors\(/.test(src)).toBe(true);
-    expect(/this\.app\.use\(['"]\/api['"],\s*limiter\s*\)/.test(src) || /this\.app\.use\(\s*['"]\/api['"]\s*,\s*limiter\s*\)/.test(src)).toBe(true);
-    expect(/this\.app\.use\(metricsMiddleware\)/.test(src)).toBe(true);
-    expect(/this\.app\.use\(errorHandler\)/.test(src)).toBe(true);
+    expect(/(?:this\.)?app\.use\(helmet\(/.test(src)).toBe(true);
+    expect(/(?:this\.)?app\.use\(cors\(/.test(src)).toBe(true);
+    expect(/(?:this\.)?app\.use\(['"]\/api['"],\s*limiter\s*\)/.test(src) || /(?:this\.)?app\.use\(\s*['"]\/api['"]\s*,\s*limiter\s*\)/.test(src)).toBe(true);
+    expect(/(?:this\.)?app\.use\(metricsMiddleware\)/.test(src)).toBe(true);
+    expect(/(?:this\.)?app\.use\(errorHandler\)/.test(src)).toBe(true);
     const maxAge = Number(/maxAge\s*:\s*(\d+)/.exec(src)?.[1] ?? 0);
     expect(maxAge).toBeGreaterThanOrEqual(HSTS_MIN_MAX_AGE);
     expect(/process\.env\.METRICS_TOKEN/.test(src)).toBe(true);

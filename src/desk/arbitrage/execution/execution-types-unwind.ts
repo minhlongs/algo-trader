@@ -14,7 +14,7 @@ import {
 import {
   type LegExecutionReport,
   LegExecutionReportSchema,
-} from './execution-types-reports';
+} from './execution-types-leg-report';
 
 // ── Compensatory Unwind Request & Target ─────────────────────────────────────
 

@@ -267,8 +267,11 @@ async function createApp(routerPath: string, extraEnv?: Record<string, string>) 
   }));
 
   const mod = await import(routerPath);
-  const routerKey = Object.keys(mod).find((k) => k !== 'default');
-  const router = routerKey ? mod[routerKey] : mod.default;
+  const entries = Object.entries(mod).filter(([k]) => k !== 'default');
+  const router = (entries.find(([k, v]) =>
+    typeof v === 'function' &&
+    (k.toLowerCase().includes('router') || Array.isArray((v as unknown as { stack?: unknown[] }).stack))
+  )?.[1] ?? mod.default) as express.Router;
 
   const app = express();
   app.use(express.json());

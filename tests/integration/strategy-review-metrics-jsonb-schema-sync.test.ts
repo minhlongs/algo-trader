@@ -121,6 +121,7 @@ const SIGNALS_LOOP_PATH = resolve(
   REPO_ROOT,
   'src/desk/wiring/qwen-signals-loop.ts',
 );
+const SIGNALS_HELPERS_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-helpers.ts');
 
 /** Canonical QualityMetrics field set — the single source of truth for this test. */
 const CANONICAL_KEYS = new Set<string>([
@@ -204,6 +205,8 @@ function extractDefaultLiteralKeys(src: string): Set<string> {
   const m = litRe.exec(clean);
   if (!m) return out;
   for (const k of m[1].matchAll(/\b([a-zA-Z_]\w*)\s*:/g)) out.add(k[1]);
+  // Shorthand properties (`windowStartMs,`) have no colon — capture them too.
+  for (const k of m[1].matchAll(/(?:^|,)\s*([a-zA-Z_]\w*)\s*(?=,|\s*\})/g)) out.add(k[1]);
   return out;
 }
 
@@ -222,7 +225,7 @@ function countMetricsStringifyCallSites(src: string): number {
 describe('QualityMetrics JSONB structured-document shape — 4-surface sync', () => {
   const mig017 = readFileSync(MIGRATION_017_PATH, 'utf8');
   const mig018 = readFileSync(MIGRATION_018_PATH, 'utf8');
-  const loop = readFileSync(SIGNALS_LOOP_PATH, 'utf8');
+  const loop = readFileSync(SIGNALS_LOOP_PATH, 'utf8') + '\n' + readFileSync(SIGNALS_HELPERS_PATH, 'utf8');
 
   const has017 = hasMetricsJsonbColumn(stripSqlComments(mig017), 'strategy_review_tasks');
   const has018 = hasMetricsJsonbColumn(stripSqlComments(mig018), 'qwen_signals_loop_runs');

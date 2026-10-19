@@ -118,6 +118,7 @@ const SIGNALS_LOOP_PATH = resolve(
   REPO_ROOT,
   'src/desk/wiring/qwen-signals-loop.ts',
 );
+const SIGNALS_HELPERS_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-helpers.ts');
 const DOCS_PATH = resolve(
   REPO_ROOT,
   'docs/strategy-review-reasons.md',
@@ -209,7 +210,7 @@ function extractDocActiveReasons(md: string): Set<string> {
 
 describe('qwen_signals_loop_runs.trigger_reasons TEXT[] element-subset-of-enum — 4-surface sync', () => {
   const migration = readFileSync(MIGRATION_PATH, 'utf8');
-  const signalsLoop = readFileSync(SIGNALS_LOOP_PATH, 'utf8');
+  const signalsLoop = readFileSync(SIGNALS_LOOP_PATH, 'utf8') + '\n' + readFileSync(SIGNALS_HELPERS_PATH, 'utf8');
   const docs = readFileSync(DOCS_PATH, 'utf8');
 
   const colShape = extractArrayColumnShape(stripSqlComments(migration));

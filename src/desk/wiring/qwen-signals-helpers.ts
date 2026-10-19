@@ -13,7 +13,7 @@ export interface QualityMetrics {
 }
 
 export function createEmptyQualityMetrics(windowStartMs = 0, windowEndMs = 0): QualityMetrics {
-  return {
+  const base: QualityMetrics = {
     winRate: null,
     sharpe: null,
     signalCount: 0,
@@ -21,6 +21,7 @@ export function createEmptyQualityMetrics(windowStartMs = 0, windowEndMs = 0): Q
     windowStartMs,
     windowEndMs,
   };
+  return base;
 }
 
 export function parseTradeWinStats(row?: { total?: string; wins?: string }): {
@@ -48,18 +49,18 @@ export function parseAnnualizedSharpe(row?: {
 }
 
 export function evaluateQualityThresholds(metrics: QualityMetrics): string[] {
-  const reasons: string[] = [];
+  const triggerReasons: string[] = [];
   if (metrics.winRate !== null && metrics.winRate < getWinRateMin()) {
-    reasons.push('win_rate_below_threshold');
+    triggerReasons.push('win_rate_below_threshold');
   }
   if (
     metrics.closedTradeCount >= getMinTradesForSharpe() &&
     metrics.sharpe !== null &&
     metrics.sharpe < getSharpeMin()
   ) {
-    reasons.push('sharpe_below_threshold');
+    triggerReasons.push('sharpe_below_threshold');
   }
-  return reasons;
+  return triggerReasons;
 }
 
 export function parseBacklogGauges(

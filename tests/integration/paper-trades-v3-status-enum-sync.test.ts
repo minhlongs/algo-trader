@@ -81,6 +81,8 @@ const PERSISTENCE_PATH = resolve(
 );
 const DRAWDOWN_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-monitor.ts');
 const SIGNALS_LOOP_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-loop.ts');
+const PNL_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-pnl.ts');
+const HELPERS_PATH = resolve(REPO_ROOT, 'src/desk/wiring/qwen-signals-helpers.ts');
 
 /** Migration values reserved for future use — declared in CHECK but not yet exercised by code literals. Empty today — both declared states are wired. */
 const RESERVED_STATUSES = new Set<string>([]);
@@ -173,8 +175,8 @@ describe('paper_trades_v3.status enum — 3-surface sync', () => {
   const migration = readFileSync(MIGRATION_PATH, 'utf8');
   const orchestrator = readFileSync(ORCHESTRATOR_PATH, 'utf8');
   const persistence = readFileSync(PERSISTENCE_PATH, 'utf8');
-  const drawdown = readFileSync(DRAWDOWN_PATH, 'utf8');
-  const signalsLoop = readFileSync(SIGNALS_LOOP_PATH, 'utf8');
+  const drawdown = readFileSync(DRAWDOWN_PATH, 'utf8') + '\n' + readFileSync(PNL_PATH, 'utf8');
+  const signalsLoop = readFileSync(SIGNALS_LOOP_PATH, 'utf8') + '\n' + readFileSync(HELPERS_PATH, 'utf8');
 
   const migrationStatuses = extractMigrationStatuses(stripSqlComments(migration));
   const orchestratorStatuses = extractSqlStatusesForTable(

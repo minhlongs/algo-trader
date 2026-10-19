@@ -90,6 +90,7 @@ import { resolve } from 'path';
 
 const REPO_ROOT = resolve(__dirname, '../..');
 const MONITOR_FILE = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-monitor.ts');
+const PNL_FILE = resolve(REPO_ROOT, 'src/desk/wiring/qwen-drawdown-pnl.ts');
 
 const EXPECTED_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const EXPECTED_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -104,7 +105,7 @@ const REQUIRED_EXPORTS = [
 ];
 
 function readMonitor(): string {
-  return readFileSync(MONITOR_FILE, 'utf8');
+  return readFileSync(MONITOR_FILE, 'utf8') + '\n' + readFileSync(PNL_FILE, 'utf8');
 }
 
 describe('Qwen drawdown-monitor wiring discipline — 53rd edge (TRIPENTACONTAGON)', () => {

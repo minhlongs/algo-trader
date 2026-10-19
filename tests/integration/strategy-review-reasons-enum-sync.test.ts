@@ -21,6 +21,7 @@ import { resolve } from 'path';
 
 const DOC_PATH = resolve(__dirname, '../../docs/strategy-review-reasons.md');
 const CODE_PATH = resolve(__dirname, '../../src/desk/wiring/qwen-signals-loop.ts');
+const HELPERS_PATH = resolve(__dirname, '../../src/desk/wiring/qwen-signals-helpers.ts');
 
 /**
  * Strip `//` line comments and `/* ... *\/` block comments so that commented-out
@@ -62,12 +63,12 @@ function extractDocReasons(md: string): Set<string> {
  */
 function extractCodeReasons(src: string): Set<string> {
   const reasons = new Set<string>();
-  const callRegex = /insertReviewTask\s*\(\s*[a-zA-Z_][\w.]*\s*,\s*['"]([\w-]+)['"]\s*,/g;
   const uncommented = stripComments(src);
+  const callRegex = /insertReviewTask\s*\(\s*[a-zA-Z_][\w.]*\s*,\s*['"]([\w-]+)['"]\s*,/g;
   let m: RegExpExecArray | null;
-  while ((m = callRegex.exec(uncommented)) !== null) {
-    reasons.add(m[1]);
-  }
+  while ((m = callRegex.exec(uncommented)) !== null) reasons.add(m[1]);
+  const pushRegex = /(?:triggerReasons|reasons)\.push\s*\(\s*['"]([\w-]+)['"]\s*\)/g;
+  while ((m = pushRegex.exec(uncommented)) !== null) reasons.add(m[1]);
   return reasons;
 }
 
@@ -75,7 +76,7 @@ const STYLE_RE = /^[a-z][a-z0-9_]*$/;
 
 describe('strategy-review trigger-reason enum — doc↔code sync', () => {
   const docContent = readFileSync(DOC_PATH, 'utf8');
-  const codeContent = readFileSync(CODE_PATH, 'utf8');
+  const codeContent = readFileSync(CODE_PATH, 'utf8') + '\n' + readFileSync(HELPERS_PATH, 'utf8');
   const docReasons = extractDocReasons(docContent);
   const codeReasons = extractCodeReasons(codeContent);
 
@@ -86,10 +87,10 @@ describe('strategy-review trigger-reason enum — doc↔code sync', () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
-  it('code parser extracts at least 2 insertReviewTask call sites (sanity floor)', () => {
+  it('code parser extracts at least 2 emitted reason literals (sanity floor)', () => {
     expect(
       codeReasons.size,
-      'qwen-signals-loop.ts yielded 0 insertReviewTask calls — call site may have gone dynamic'
+      'qwen-signals-loop.ts yielded 0 emitted reason literals — emission may have gone dynamic'
     ).toBeGreaterThanOrEqual(2);
   });
 
