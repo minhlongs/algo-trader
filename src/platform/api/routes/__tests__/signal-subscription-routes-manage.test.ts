@@ -112,14 +112,32 @@ describe('Signal Subscription Routes — Management Endpoints', () => {
   });
 
   describe('DELETE /subscriptions/:id/unsubscribe', () => {
-    it('returns 200 (alias for DELETE /:id)', async () => {
+    it('returns 200 when cancelling the caller own subscription', async () => {
+      mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockResolvedValue([
+        { id: 'sub_001', subscriberId: 'user_001', tier: 'PRO', active: true },
+      ]);
+      mocks.signalSubscriberRepoMock.setActive.mockResolvedValue(undefined);
+      const res = await request(createTestApp()).delete('/api/v1/signals/subscriptions/sub_001/unsubscribe').set('Authorization', 'Bearer test-key');
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Subscription cancelled');
+    });
+
+    it("cancels on subscriber_id, not the row's primary key", async () => {
+      mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockResolvedValue([
+        { id: 'sub_001', subscriberId: 'user_001', tier: 'PRO', active: true },
+      ]);
+      mocks.signalSubscriberRepoMock.setActive.mockResolvedValue(undefined);
+      await request(createTestApp()).delete('/api/v1/signals/subscriptions/sub_001/unsubscribe').set('Authorization', 'Bearer test-key');
+      expect(mocks.signalSubscriberRepoMock.setActive).toHaveBeenCalledWith('user_001', false);
+    });
+
+    it('returns 503 when the target belongs to another tenant and no admin key is supplied', async () => {
       mocks.signalSubscriberRepoMock.getActiveSubscriptions.mockResolvedValue([
         { id: 'sub_002', subscriberId: 'user_002', tier: 'FREE', active: true },
       ]);
-      mocks.signalSubscriberRepoMock.setActive.mockResolvedValue(undefined);
       const res = await request(createTestApp()).delete('/api/v1/signals/subscriptions/sub_002/unsubscribe').set('Authorization', 'Bearer test-key');
-      expect(res.status).toBe(200);
-      expect(res.body.message).toBe('Subscription cancelled');
+      expect(res.status).toBe(503);
+      expect(mocks.signalSubscriberRepoMock.setActive).not.toHaveBeenCalled();
     });
   });
 });
