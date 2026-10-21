@@ -10,10 +10,11 @@
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { resolveSubscriberId } from '@platform/middleware/signal-tier-resolver';
+import { resolveSubscriberId, resolveSubscriberTier } from '@platform/middleware/signal-tier-resolver';
 import { requireSignalTier } from '@platform/middleware/feature-gate';
 import { getCachedSignals, setCachedSignals } from '@desk/signal/signal-rest-cache';
 import { signalTtlEnforcer } from '@desk/signal/signal-ttl-enforcer';
+import { signalSubscriberRepo } from '@platform/signal/signal-subscriber-repository-d1';
 import { logger } from '@shared/utils/logger';
 
 export const signalFeedRouter: ReturnType<typeof Router> = Router();
@@ -39,7 +40,12 @@ signalFeedRouter.get('/feed', requireSignalTier('SIGNALS_BASIC'), async (req: Re
       res.status(401).json({ error: 'Valid API key required' });
       return;
     }
-    const tier = identity.tier;
+    // Tier comes from the purchased subscription row, not the platform license.
+    const tier = await resolveSubscriberTier(identity.subscriberId);
+    if (tier === 'FREE') {
+      res.status(403).json({ error: 'No active signals subscription', upgrade: 'https://cashclaw.cc/pricing' });
+      return;
+    }
     const parsed = feedQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid query' });
@@ -70,11 +76,17 @@ signalFeedRouter.get('/feed', requireSignalTier('SIGNALS_BASIC'), async (req: Re
 /**
  * GET /feed/:id — single signal lookup, TTL-gated.
  */
-signalFeedRouter.get('/feed/:id', requireSignalTier('SIGNALS_BASIC'), (req: Request, res: Response) => {
+signalFeedRouter.get('/feed/:id', requireSignalTier('SIGNALS_BASIC'), async (req: Request, res: Response) => {
   try {
     const identity = resolveSubscriberId(req);
     if (!identity) {
       res.status(401).json({ error: 'Valid API key required' });
+      return;
+    }
+    // Tier comes from the purchased subscription row, not the platform license.
+    const tier = await resolveSubscriberTier(identity.subscriberId);
+    if (tier === 'FREE') {
+      res.status(403).json({ error: 'No active signals subscription', upgrade: 'https://cashclaw.cc/pricing' });
       return;
     }
     const { id } = req.params;

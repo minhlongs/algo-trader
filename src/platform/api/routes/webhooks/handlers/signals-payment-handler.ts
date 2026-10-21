@@ -12,6 +12,7 @@
 
 import { NowPaymentsService, NowPaymentsIpnPayload } from '../../../../billing/nowpayments-service';
 import { signalSubscriberRepo } from '../../../../signal/signal-subscriber-repository-d1';
+import type { TierKey } from '../../../../../desk/signal/signal-types';
 import { logger } from '../../../../../shared/utils/logger';
 
 /**
@@ -38,9 +39,11 @@ export async function handleSignalsIpnFinished(
     return;
   }
 
-  // Map payment tier → signal delivery tier (BASIC = FREE for delivery)
-  const PAYMENT_TO_SIGNAL_TIER: Record<string, 'FREE' | 'PRO' | 'ENTERPRISE'> = {
-    BASIC: 'FREE',
+  // Map payment tier → signal delivery tier. BASIC must stay BASIC: FREE is the
+  // unsubscribed state, so collapsing a paid Basic buy into FREE made it
+  // indistinguishable from never having bought.
+  const PAYMENT_TO_SIGNAL_TIER: Record<string, TierKey> = {
+    BASIC: 'BASIC',
     PRO: 'PRO',
     ENTERPRISE: 'ENTERPRISE',
   };

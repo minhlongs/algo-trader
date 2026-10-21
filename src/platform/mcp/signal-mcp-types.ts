@@ -20,5 +20,5 @@ export interface ResourceQuery {
   limit: number;
 }
 
-export const TIER_RANK: Record<TierKey, number> = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
+export const TIER_RANK: Record<TierKey, number> = { FREE: 0, BASIC: 1, PRO: 2, ENTERPRISE: 3 };
 export const SIGNALS_BASIC_RANK = 0; // any paid tier counts
