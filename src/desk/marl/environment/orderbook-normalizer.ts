@@ -2,110 +2,71 @@
  * Order Book Normalizer for MARL Market-Making.
  * Converts disparate Polymarket CLOB and CEX orderbook formats into canonical MarlOrderBook
  * and computes microstructural features including the 24-D observation vector.
+ *
+ * Static facade over the split normalizer (raw → canonical book) and the
+ * microstructure/observation computation; both halves are individually testable.
  */
 
 import type { MarlOrderBook, MarlOrderBookLevel, AgentObservation } from '../types/marl-types';
+import {
+  normalizeCex,
+  normalizeClob,
+  normalizeLevel,
+  type RawCexOrderBook,
+  type RawClobOrderBook,
+} from './orderbook-level-normalizer';
 
-export interface RawCexOrderBook {
-  symbol: string;
-  venue?: string;
-  bids?: Array<[string | number, string | number]>;
-  asks?: Array<[string | number, string | number]>;
-  timestamp?: number;
+export type { RawCexOrderBook, RawClobOrderBook };
+
+/** Mid/imbalance features derived from a canonical book at a given depth. */
+export interface Microstructure {
+  midPrice: number;
+  bestBid: number;
+  bestAsk: number;
+  spread: number;
+  microPrice: number;
+  l1Imbalance: number;
+  depthImbalance: number;
 }
 
-export interface RawClobOrderBook {
-  symbol?: string;
-  tokenId?: string;
-  bids?: Array<{ price: string | number; size: string | number }>;
-  asks?: Array<{ price: string | number; size: string | number }>;
-  timestamp?: number;
-}
+/** Fallback best bid/ask for an empty book side. */
+const FLAT_BOOK_PRICE = 0.50;
+
+/** Fallback L1 volume for an empty book side. */
+const FLAT_BOOK_SIZE = 1;
+
+/** Decimal places kept on derived microstructure values. */
+const MICRO_DECIMALS = 4;
 
 export class OrderBookNormalizer {
   public static normalizeLevel(rawPrice: string | number, rawSize: string | number): MarlOrderBookLevel | null {
-    const price = typeof rawPrice === 'string' ? parseFloat(rawPrice) : rawPrice;
-    const size = typeof rawSize === 'string' ? parseFloat(rawSize) : rawSize;
-    if (!Number.isFinite(price) || !Number.isFinite(size) || price <= 0 || size <= 0) return null;
-    return { price: Number(price.toFixed(4)), size: Number(size.toFixed(4)) };
+    return normalizeLevel(rawPrice, rawSize);
   }
 
   public static normalizeCex(raw: RawCexOrderBook, venue = 'cex'): MarlOrderBook {
-    const bids: MarlOrderBookLevel[] = [];
-    const asks: MarlOrderBookLevel[] = [];
-
-    for (const [p, s] of raw.bids ?? []) {
-      const lvl = this.normalizeLevel(p, s);
-      if (lvl) bids.push(lvl);
-    }
-    for (const [p, s] of raw.asks ?? []) {
-      const lvl = this.normalizeLevel(p, s);
-      if (lvl) asks.push(lvl);
-    }
-
-    bids.sort((a, b) => b.price - a.price);
-    asks.sort((a, b) => a.price - b.price);
-
-    return {
-      symbol: raw.symbol,
-      venue: raw.venue ?? venue,
-      bids,
-      asks,
-      timestamp: raw.timestamp ?? Date.now(),
-    };
+    return normalizeCex(raw, venue);
   }
 
   public static normalizeClob(raw: RawClobOrderBook, venue = 'polymarket'): MarlOrderBook {
-    const bids: MarlOrderBookLevel[] = [];
-    const asks: MarlOrderBookLevel[] = [];
-
-    for (const item of raw.bids ?? []) {
-      if (!item) continue;
-      const lvl = this.normalizeLevel(item.price, item.size);
-      if (lvl) bids.push(lvl);
-    }
-    for (const item of raw.asks ?? []) {
-      if (!item) continue;
-      const lvl = this.normalizeLevel(item.price, item.size);
-      if (lvl) asks.push(lvl);
-    }
-
-    bids.sort((a, b) => b.price - a.price);
-    asks.sort((a, b) => a.price - b.price);
-
-    return {
-      symbol: raw.symbol ?? raw.tokenId ?? 'POLY',
-      venue,
-      bids,
-      asks,
-      timestamp: raw.timestamp ?? Date.now(),
-    };
+    return normalizeClob(raw, venue);
   }
 
-  public static computeMicrostructure(book: MarlOrderBook, depthLevels = 5): {
-    midPrice: number;
-    bestBid: number;
-    bestAsk: number;
-    spread: number;
-    microPrice: number;
-    l1Imbalance: number;
-    depthImbalance: number;
-  } {
-    const bestBid = book.bids[0]?.price ?? 0.50;
-    const bestAsk = book.asks[0]?.price ?? 0.50;
-    const bidL1Vol = book.bids[0]?.size ?? 1;
-    const askL1Vol = book.asks[0]?.size ?? 1;
+  public static computeMicrostructure(book: MarlOrderBook, depthLevels = 5): Microstructure {
+    const bestBid = book.bids[0]?.price ?? FLAT_BOOK_PRICE;
+    const bestAsk = book.asks[0]?.price ?? FLAT_BOOK_PRICE;
+    const bidL1Vol = book.bids[0]?.size ?? FLAT_BOOK_SIZE;
+    const askL1Vol = book.asks[0]?.size ?? FLAT_BOOK_SIZE;
 
-    const midPrice = Number(((bestBid + bestAsk) / 2).toFixed(4));
-    const spread = Number((bestAsk - bestBid).toFixed(4));
+    const midPrice = Number(((bestBid + bestAsk) / 2).toFixed(MICRO_DECIMALS));
+    const spread = Number((bestAsk - bestBid).toFixed(MICRO_DECIMALS));
     const totL1Vol = bidL1Vol + askL1Vol;
 
     const microPrice = totL1Vol > 0
-      ? Number(((bestAsk * bidL1Vol + bestBid * askL1Vol) / totL1Vol).toFixed(4))
+      ? Number(((bestAsk * bidL1Vol + bestBid * askL1Vol) / totL1Vol).toFixed(MICRO_DECIMALS))
       : midPrice;
 
     const l1Imbalance = totL1Vol > 0
-      ? Number(((bidL1Vol - askL1Vol) / totL1Vol).toFixed(4))
+      ? Number(((bidL1Vol - askL1Vol) / totL1Vol).toFixed(MICRO_DECIMALS))
       : 0;
 
     let sumBidDepth = 0;
@@ -116,7 +77,7 @@ export class OrderBookNormalizer {
     }
     const totDepth = sumBidDepth + sumAskDepth;
     const depthImbalance =
-      totDepth > 0 ? Number(((sumBidDepth - sumAskDepth) / totDepth).toFixed(4)) : 0;
+      totDepth > 0 ? Number(((sumBidDepth - sumAskDepth) / totDepth).toFixed(MICRO_DECIMALS)) : 0;
 
     return { midPrice, bestBid, bestAsk, spread, microPrice, l1Imbalance, depthImbalance };
   }

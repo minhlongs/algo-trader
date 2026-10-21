@@ -5,14 +5,24 @@
 
 import { License, LicenseTier, LicenseStatus } from '../../shared/types/license';
 import { Subscription } from './subscription-service';
+import {
+  TIER_MO_PRICE,
+  averageLifespanDays,
+  isLicenseActive,
+  licenseMrr,
+} from './revenue-license-metrics';
 
-const TIER_MO_PRICE: Record<LicenseTier, number> = {
-  [LicenseTier.FREE]: 0,
-  [LicenseTier.STARTER]: 19,
-  [LicenseTier.PRO]: 99,
-  [LicenseTier.ENTERPRISE]: 299,
-  [LicenseTier.MASTER]: 999,
-};
+/** Year-month key, e.g. "2026-04". */
+function toYM(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Whole months from one year-month key to another. */
+function moOffset(from: string, to: string): number {
+  const [fy, fm] = from.split('-').map(Number);
+  const [ty, tm] = to.split('-').map(Number);
+  return (ty - fy) * 12 + (tm - fm);
+}
 
 export interface RevenueMetrics {
   mrr: number;
@@ -39,35 +49,6 @@ export interface ChurnAnalysis {
   atRiskCustomers: string[];  // license IDs with declining usage
 }
 
-function toYM(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function moOffset(from: string, to: string): number {
-  const [fy, fm] = from.split('-').map(Number);
-  const [ty, tm] = to.split('-').map(Number);
-  return (ty - fy) * 12 + (tm - fm);
-}
-
-function isActive(l: License): boolean {
-  return l.status === LicenseStatus.ACTIVE && (!l.expiresAt || new Date(l.expiresAt) > new Date());
-}
-
-function moRevenue(l: License): number {
-  return TIER_MO_PRICE[l.tier] ?? 0;
-}
-
-function avgLifespan(licenses: License[]): number {
-  const inactive = licenses.filter((l) => l.status !== LicenseStatus.ACTIVE);
-  if (!inactive.length) return 0;
-  return (
-    inactive.reduce((acc, l) => {
-      const end = l.updatedAt || l.expiresAt || new Date().toISOString();
-      return acc + (new Date(end).getTime() - new Date(l.createdAt).getTime()) / 86400000;
-    }, 0) / inactive.length
-  );
-}
-
 export function calculateRevenueMetrics(licenses: License[], subscriptions: Subscription[]): RevenueMetrics {
   const thisMonth = toYM(new Date());
 
@@ -79,11 +60,11 @@ export function calculateRevenueMetrics(licenses: License[], subscriptions: Subs
   }, 0);
 
   const subLicIds = new Set(activeSubs.filter((s) => s.licenseId).map((s) => s.licenseId!));
-  const licMRR = licenses.filter(isActive).filter((l) => !subLicIds.has(l.id)).reduce((acc, l) => acc + moRevenue(l), 0);
+  const licMRR = licenses.filter(isLicenseActive).filter((l) => !subLicIds.has(l.id)).reduce((acc, l) => acc + licenseMrr(l), 0);
 
   const mrr = subMRR + licMRR;
   const arr = mrr * 12;
-  const activeCustomers = licenses.filter(isActive).length;
+  const activeCustomers = licenses.filter(isLicenseActive).length;
   const totalCustomers = licenses.length;
 
   const prevActive = licenses.filter((l) => toYM(new Date(l.createdAt)) < thisMonth && l.status === LicenseStatus.ACTIVE).length;
@@ -91,10 +72,10 @@ export function calculateRevenueMetrics(licenses: License[], subscriptions: Subs
   const churnRate = prevActive > 0 ? (churnedNow / prevActive) * 100 : 0;
 
   const arpu = activeCustomers > 0 ? mrr / activeCustomers : 0;
-  const lifespan = avgLifespan(licenses) || 365;
+  const lifespan = averageLifespanDays(licenses) || 365;
   const ltv = predictLTV('PRO', lifespan, arpu);
 
-  const prevMRR = licenses.filter((l) => toYM(new Date(l.createdAt)) < thisMonth).reduce((acc, l) => acc + moRevenue(l), 0);
+  const prevMRR = licenses.filter((l) => toYM(new Date(l.createdAt)) < thisMonth).reduce((acc, l) => acc + licenseMrr(l), 0);
   const mrrGrowthRate = prevMRR > 0 ? ((mrr - prevMRR) / prevMRR) * 100 : 0;
 
   return { mrr, arr, totalCustomers, activeCustomers, churnRate, ltv, arpu, mrrGrowthRate };
@@ -127,7 +108,7 @@ export function buildCohortAnalysis(licenses: License[]): CohortData[] {
           return ended ? toYM(new Date(ended)) > targetMonth : false;
         });
         retainedByMonth[offset] = retained.length;
-        revenueByMonth[offset] = retained.reduce((acc, l) => acc + moRevenue(l), 0);
+        revenueByMonth[offset] = retained.reduce((acc, l) => acc + licenseMrr(l), 0);
       }
 
       return { cohortMonth, totalSignups: cohortLicenses.length, retainedByMonth, revenueByMonth };
@@ -144,12 +125,12 @@ export function analyzeChurn(
   const churnByTier: Record<string, number> = { [LicenseTier.FREE]: 0, [LicenseTier.PRO]: 0, [LicenseTier.ENTERPRISE]: 0, [LicenseTier.MASTER]: 0 };
   for (const l of churned) churnByTier[l.tier] = (churnByTier[l.tier] ?? 0) + 1;
 
-  const activeIds = new Set(licenses.filter(isActive).map((l) => l.id));
+  const activeIds = new Set(licenses.filter(isLicenseActive).map((l) => l.id));
   const atRiskCustomers = usageData
     .filter((u) => activeIds.has(u.licenseId) && u.previousMonthUsage > 0 && u.currentUsage === 0)
     .map((u) => u.licenseId);
 
-  return { currentMonthChurn: churned.length, churnByTier, avgLifespanDays: avgLifespan(licenses), atRiskCustomers };
+  return { currentMonthChurn: churned.length, churnByTier, avgLifespanDays: averageLifespanDays(licenses), atRiskCustomers };
 }
 
 /** LTV = monthly_price × avg_lifespan_months */

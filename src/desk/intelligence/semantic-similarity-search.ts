@@ -10,23 +10,12 @@
 
 import { getAllEmbeddings, getEmbedding } from './vector-embedding-store';
 import { logger } from '../../shared/utils/logger';
+import { rankCandidates, scoreSpecificCandidates } from './semantic-similarity-scoring';
 
 export interface SimilarMarket {
   marketId: string;
   /** Cosine similarity score in [0, 1] — higher = more similar */
   score: number;
-}
-
-/**
- * Cosine similarity between two equal-length numeric vectors.
- * Assumes pre-normalized (unit) vectors → result is just dot product.
- */
-function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length || a.length === 0) return 0;
-  let dot = 0;
-  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
-  // Clamp to [0,1] — floating point may yield tiny negatives on orthogonal vecs
-  return Math.max(0, Math.min(1, dot));
 }
 
 /**
@@ -55,17 +44,7 @@ export async function findSimilarMarkets(
     return [];
   }
 
-  const results: SimilarMarket[] = [];
-  for (const [candidateId, candidateVec] of allEmbeddings) {
-    if (candidateId === marketId) continue; // skip self
-    if (candidateVec.length !== queryVec.length) continue; // dimension mismatch
-    const score = cosineSimilarity(queryVec, candidateVec);
-    results.push({ marketId: candidateId, score });
-  }
-
-  // Sort descending by score, take top-K
-  results.sort((a, b) => b.score - a.score);
-  const topResults = results.slice(0, topK);
+  const topResults = rankCandidates(allEmbeddings, queryVec, marketId).slice(0, topK);
 
   logger.debug('[SimilaritySearch] Top matches', {
     queryMarketId: marketId,
@@ -103,16 +82,7 @@ export async function batchFindSimilarMarkets(
       resultMap.set(marketId, []);
       continue;
     }
-
-    const candidates: SimilarMarket[] = [];
-    for (const [candidateId, candidateVec] of allEmbeddings) {
-      if (candidateId === marketId) continue;
-      if (candidateVec.length !== queryVec.length) continue;
-      candidates.push({ marketId: candidateId, score: cosineSimilarity(queryVec, candidateVec) });
-    }
-
-    candidates.sort((a, b) => b.score - a.score);
-    resultMap.set(marketId, candidates.slice(0, topK));
+    resultMap.set(marketId, rankCandidates(allEmbeddings, queryVec, marketId).slice(0, topK));
   }
 
   logger.info(`[SimilaritySearch] Batch lookup complete`, {
@@ -136,17 +106,14 @@ export async function filterBySimilarity(
   if (!queryVec) return candidateIds; // can't filter without embedding — return all
 
   const allEmbeddings = await getAllEmbeddings();
-  const filtered: string[] = [];
+  const scores = scoreSpecificCandidates(allEmbeddings, queryVec, candidateIds);
 
-  for (const candidateId of candidateIds) {
-    const candidateVec = allEmbeddings.get(candidateId);
-    if (!candidateVec || candidateVec.length !== queryVec.length) {
-      filtered.push(candidateId); // include if no embedding data
-      continue;
-    }
-    const score = cosineSimilarity(queryVec, candidateVec);
-    if (score >= minScore) filtered.push(candidateId);
-  }
+  // Ids with no usable embedding are kept, so absence of data never shrinks
+  // the candidate set; ids with a score must clear the threshold.
+  const filtered = candidateIds.filter((id) => {
+    const score = scores.get(id);
+    return score === undefined || score >= minScore;
+  });
 
   logger.debug('[SimilaritySearch] filterBySimilarity', {
     marketId,

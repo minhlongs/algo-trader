@@ -5,18 +5,15 @@
 
 import { query } from '../../../shared/db/postgres-client';
 import type { IMarketplaceRevenueShare, RevenueShareStatus, PaginatedResult, PaginationParams, SortOrder } from '../models/types';
+import {
+  buildRevenueShareOrder,
+  buildRevenueShareWhere,
+  resolvePagination,
+  type RevenueShareFilters,
+  type SqlParam,
+} from './revenue-share-query-builder';
 
-/** PostgreSQL query parameter types */
-type SqlParam = string | number | boolean | null | Date;
-
-export interface RevenueShareFilters {
-  strategyId?: string;
-  tenantId?: string;
-  subscriptionId?: string;
-  status?: RevenueShareStatus;
-  periodStart?: Date;
-  periodEnd?: Date;
-}
+export type { RevenueShareFilters };
 
 export class RevenueShareRepository {
   private readonly TABLE = 'marketplace_revenue_shares';
@@ -32,31 +29,16 @@ export class RevenueShareRepository {
     pagination?: PaginationParams,
     sort?: { field: string; order: SortOrder },
   ): Promise<PaginatedResult<IMarketplaceRevenueShare>> {
-    const conditions: string[] = [];
-    const params: SqlParam[] = [];
-    let idx = 1;
-
-    if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }
-    if (filters?.tenantId) { conditions.push(`tenant_id = $${idx++}`); params.push(filters.tenantId); }
-    if (filters?.subscriptionId) { conditions.push(`subscription_id = $${idx++}`); params.push(filters.subscriptionId); }
-    if (filters?.status) { conditions.push(`status = $${idx++}`); params.push(filters.status); }
-    if (filters?.periodStart) { conditions.push(`period_start >= $${idx++}`); params.push(filters.periodStart); }
-    if (filters?.periodEnd) { conditions.push(`period_end <= $${idx++}`); params.push(filters.periodEnd); }
-
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const sortField = sort?.field || 'period_start';
-    const sortOrder = sort?.order || 'desc';
-    const limit = pagination?.limit ?? 20;
-    const page = pagination?.page ?? 1;
-    const offset = (page - 1) * limit;
+    const { whereClause, params, nextIndex } = buildRevenueShareWhere(filters);
+    const { limit, page, offset } = resolvePagination(pagination);
 
     const countSql = `SELECT COUNT(*) as total FROM ${this.TABLE} ${whereClause}`;
     const countResult = await query(countSql, params);
     const total = parseInt(String(countResult.rows[0].total), 10);
 
-    const dataSql = `SELECT * FROM ${this.TABLE} ${whereClause} ORDER BY ${sortField} ${sortOrder} LIMIT $${idx++} OFFSET $${idx++}`;
-    params.push(limit, offset);
-    const dataResult = await query(dataSql, params);
+    const dataParams = [...params, limit, offset];
+    const dataSql = `SELECT * FROM ${this.TABLE} ${whereClause} ${buildRevenueShareOrder(sort)} LIMIT $${nextIndex} OFFSET $${nextIndex + 1}`;
+    const dataResult = await query(dataSql, dataParams);
 
     return {
       data: dataResult.rows as unknown as IMarketplaceRevenueShare[],
@@ -142,13 +124,7 @@ export class RevenueShareRepository {
   }
 
   async count(filters?: { strategyId?: string; tenantId?: string; status?: RevenueShareStatus }): Promise<number> {
-    const conditions: string[] = [];
-    const params: SqlParam[] = [];
-    let idx = 1;
-    if (filters?.strategyId) { conditions.push(`strategy_id = $${idx++}`); params.push(filters.strategyId); }
-    if (filters?.tenantId) { conditions.push(`tenant_id = $${idx++}`); params.push(filters.tenantId); }
-    if (filters?.status) { conditions.push(`status = $${idx++}`); params.push(filters.status); }
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const { whereClause, params } = buildRevenueShareWhere(filters);
     const sql = `SELECT COUNT(*) as total FROM ${this.TABLE} ${whereClause}`;
     const result = await query(sql, params);
     return parseInt(String(result.rows[0].total), 10);

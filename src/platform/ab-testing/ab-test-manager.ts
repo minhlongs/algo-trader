@@ -1,42 +1,34 @@
 /**
  * A/B Test Manager — experiment CRUD, group assignment, outcome tracking.
  * Statistical helpers live in ab-test-stats.ts.
+ * Shared row shapes and pure reductions live in ab-test-model.ts.
  */
 
 import { getDbClient } from '../../db/postgres-client';
 import { logger } from '../../shared/utils/logger';
 import { computeSignificance, buildRecommendation } from './ab-test-stats';
+import {
+  EXPERIMENT_SELECT_COLS,
+  computeGroupStats,
+  hashSignalId,
+  type Experiment,
+  type ExperimentResult,
+  type ExperimentStatus,
+  type GroupName,
+  type GroupStats,
+  type OutcomeRow,
+} from './ab-test-model';
 
-export type ExperimentStatus = 'draft' | 'running' | 'paused' | 'completed' | 'archived';
-export type GroupName = 'control' | 'treatment';
+export type { ExperimentStatus, GroupName, Experiment, GroupStats, ExperimentResult };
 
-export interface Experiment {
-  id: number; name: string; description: string | null;
-  controlName: string; treatmentName: string; status: ExperimentStatus;
-  trafficPct: number; minSamples: number; confidenceLevel: number;
-  startedAt: Date | null; endedAt: Date | null; createdAt: Date;
-}
+/** Traffic share (percent) assigned to treatment when the caller omits one. */
+const DEFAULT_TRAFFIC_PCT = 50;
 
-export interface GroupStats {
-  name: string; total: number; correct: number;
-  accuracy: number; avgConfidence: number; avgPnl: number;
-}
+/** Sample count a completed experiment must reach per arm. */
+const DEFAULT_MIN_SAMPLES = 30;
 
-export interface ExperimentResult {
-  experiment: Experiment; control: GroupStats; treatment: GroupStats;
-  pValue: number; significant: boolean; winner: GroupName | null;
-  recommendation: string;
-}
-
-interface OutcomeRow {
-  group_name: string; correct: boolean;
-  confidence: string | null; pnl: string | null;
-}
-
-const SELECT_COLS = `id, name, description, control_name as "controlName",
-  treatment_name as "treatmentName", status, traffic_pct as "trafficPct",
-  min_samples as "minSamples", confidence_level as "confidenceLevel",
-  started_at as "startedAt", ended_at as "endedAt", created_at as "createdAt"`;
+/** Confidence level for significance testing. */
+const DEFAULT_CONFIDENCE_LEVEL = 0.95;
 
 export async function createExperiment(params: {
   name: string; description?: string; controlName: string;
@@ -49,8 +41,8 @@ export async function createExperiment(params: {
        (name, description, control_name, treatment_name, traffic_pct, min_samples, confidence_level)
      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
     [params.name, params.description ?? null, params.controlName,
-     params.treatmentName, params.trafficPct ?? 50,
-     params.minSamples ?? 30, params.confidenceLevel ?? 0.95],
+     params.treatmentName, params.trafficPct ?? DEFAULT_TRAFFIC_PCT,
+     params.minSamples ?? DEFAULT_MIN_SAMPLES, params.confidenceLevel ?? DEFAULT_CONFIDENCE_LEVEL],
   );
   logger.info(`[ABTest] Created "${params.name}" (id=${result.rows[0].id})`, 'ABTestManager');
   return getExperiment(result.rows[0].id);
@@ -77,7 +69,7 @@ export async function assignGroup(
     return { group: existing.rows[0].group_name, alreadyAssigned: true };
   }
   const exp = await getExperiment(experimentId);
-  const group: GroupName = simpleHash(signalId) % 100 < exp.trafficPct ? 'treatment' : 'control';
+  const group: GroupName = hashSignalId(signalId) % 100 < exp.trafficPct ? 'treatment' : 'control';
   await pool.query(
     `INSERT INTO ab_test_assignments (experiment_id, signal_id, group_name)
      VALUES ($1,$2,$3) ON CONFLICT (experiment_id, signal_id) DO NOTHING`,
@@ -126,7 +118,7 @@ export async function getResults(experimentId: number): Promise<ExperimentResult
 export async function listExperiments(): Promise<Experiment[]> {
   const pool = getDbClient();
   const result = await pool.query<Record<string, unknown>>(
-    `SELECT ${SELECT_COLS} FROM ab_test_experiments ORDER BY created_at DESC`,
+    `SELECT ${EXPERIMENT_SELECT_COLS} FROM ab_test_experiments ORDER BY created_at DESC`,
   );
   return result.rows.map(r => r as unknown as Experiment);
 }
@@ -134,25 +126,8 @@ export async function listExperiments(): Promise<Experiment[]> {
 async function getExperiment(id: number): Promise<Experiment> {
   const pool = getDbClient();
   const result = await pool.query<Record<string, unknown>>(
-    `SELECT ${SELECT_COLS} FROM ab_test_experiments WHERE id=$1`, [id],
+    `SELECT ${EXPERIMENT_SELECT_COLS} FROM ab_test_experiments WHERE id=$1`, [id],
   );
   if (result.rows.length === 0) throw new Error(`Experiment ${id} not found`);
   return result.rows[0] as unknown as Experiment;
-}
-
-function computeGroupStats(name: string, rows: OutcomeRow[]): GroupStats {
-  const total = rows.length;
-  const correct = rows.filter(r => r.correct).length;
-  const sumConf = rows.reduce((a, r) => a + (r.confidence ? parseFloat(r.confidence) : 0), 0);
-  const sumPnl = rows.reduce((a, r) => a + (r.pnl ? parseFloat(r.pnl) : 0), 0);
-  return {
-    name, total, correct, accuracy: total > 0 ? correct / total : 0,
-    avgConfidence: total > 0 ? sumConf / total : 0, avgPnl: total > 0 ? sumPnl / total : 0,
-  };
-}
-
-function simpleHash(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-  return Math.abs(hash);
 }

@@ -17,8 +17,11 @@ import {
 	LicenseUsage,
 	LicenseAnalyticsSummary,
 	createLicenseKey,
-	getDefaultMaxUsage,
 } from './license-types';
+import {
+	buildLicenseFromInput,
+	buildLicenseFromTierInput,
+} from './license-record-factory';
 import { saveToFile, loadFromFile } from './license-store';
 import { paginateLicenses, computeLicenseAnalytics } from './license-analytics';
 
@@ -50,24 +53,9 @@ export class LicenseService {
 	generateLicenseKey(tier: LicenseTier): string { return createLicenseKey(tier); }
 
 	generateLicense(input: { userId?: string; tier: string; validUntil?: Date }): string {
-		const tierUpper = input.tier.toUpperCase();
-		const tierEnum = LicenseTier[tierUpper as keyof typeof LicenseTier] || LicenseTier.FREE;
-		const key = this.generateLicenseKey(tierEnum);
-		const now = new Date().toISOString();
-		this.licenses.set(key, {
-			id: `lic_${this.generateId()}`,
-			key,
-			name: tierUpper,
-			tier: tierEnum,
-			status: LicenseStatus.ACTIVE,
-			userId: input.userId || 'anon',
-			createdAt: now,
-			updatedAt: now,
-			usageCount: 0,
-			maxUsage: getDefaultMaxUsage(tierEnum),
-			expiresAt: input.validUntil?.toISOString(),
-		});
-		return key;
+		const license = buildLicenseFromTierInput(input);
+		this.licenses.set(license.key, license);
+		return license.key;
 	}
 
 	validateLicense(key: string, userId?: string): boolean {
@@ -91,24 +79,8 @@ export class LicenseService {
 	}
 
 	async createLicense(input: CreateLicenseInput): Promise<License> {
-		const id = `lic_${this.generateId()}`;
-		const key = this.generateLicenseKey(input.tier);
-		const now = new Date().toISOString();
-		const license: License = {
-			id,
-			name: input.name,
-			key,
-			tier: input.tier,
-			status: LicenseStatus.ACTIVE,
-			createdAt: now,
-			updatedAt: now,
-			usageCount: 0,
-			maxUsage: getDefaultMaxUsage(input.tier),
-			tenantId: input.tenantId,
-			domain: input.domain,
-			expiresAt: input.expiresAt,
-		};
-		this.licenses.set(id, license);
+		const license = buildLicenseFromInput(input);
+		this.licenses.set(license.id, license);
 		saveToFile(this.licenses);
 		return license;
 	}
@@ -151,9 +123,5 @@ export class LicenseService {
 
 	async getAnalytics(): Promise<LicenseAnalyticsSummary> {
 		return computeLicenseAnalytics(this.licenses);
-	}
-
-	private generateId(): string {
-		return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 	}
 }

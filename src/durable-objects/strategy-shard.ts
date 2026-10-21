@@ -12,6 +12,7 @@ import type { IStrategy } from '../desk/strategies/types';
 import type { Env, ShardMetrics } from './strategy-shard-types';
 import { initializeShard, persistHealth, restoreMetrics } from './strategy-shard-state';
 import { handleHealthCheck, handleMetricsResponse, handleExecute } from './shard-fetch-handlers';
+import { buildShardHealth, deriveShardId } from './strategy-shard-identity';
 
 export type { Env, ShardExecutionResult, ShardMetrics } from './strategy-shard-types';
 
@@ -53,13 +54,7 @@ export class StrategyShard {
   }
 
   private extractShardId(): number {
-    const id = this.state.id.toString();
-    let hash = 2166136261 >>> 0;
-    for (let i = 0; i < id.length; i++) {
-      hash ^= id.charCodeAt(i);
-      hash = ((hash << 1) + (hash >>> 31) + (hash << 4) + (hash >>> 27)) >>> 0;
-    }
-    return hash % 12;
+    return deriveShardId(this.state);
   }
 
   private async initialize(): Promise<void> {
@@ -130,21 +125,14 @@ export class StrategyShard {
   async alarm(): Promise<void> {
     try {
       this.metrics = await restoreMetrics(this.state.storage);
-      const avgLatency = this.metrics.requests > 0
-        ? this.metrics.totalLatencyMs / this.metrics.requests
-        : 0;
 
-      const status: 'healthy' | 'degraded' = this.activeExecutions < this.MAX_CONCURRENT ? 'healthy' : 'degraded';
-
-      const health = {
-        shardId: this.shardId,
-        lastHeartbeat: Date.now(),
-        rps: this.metrics.requests / 10,
-        avgLatencyMs: avgLatency,
-        errorCount: this.metrics.errors,
-        strategyCount: this.strategies.size,
-        status,
-      };
+      const health = buildShardHealth(
+        this.shardId,
+        this.metrics,
+        this.strategies.size,
+        this.activeExecutions,
+        this.MAX_CONCURRENT,
+      );
 
       const shardManager = this.currentEnv?.SHARD_MANAGER as unknown as ShardManager;
       if (shardManager) {
