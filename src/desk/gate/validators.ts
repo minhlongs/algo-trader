@@ -130,29 +130,14 @@ export function requireTier(
 }
 
 /**
- * Get rate limit configuration for tier
+ * Get rate limit / quota configuration for a tier.
  */
-export function getRateLimits(tier: LicenseTier): {
-  requestsPerMin: number;
-  requestsPerHour: number;
-  burstPerSec: number;
-} {
-  return TIER_CONFIG[tier];
-}
-
-/**
- * Get daily API limit for tier
- */
-export function getDailyLimit(tier: LicenseTier): number {
-  return TIER_CONFIG[tier].dailyApiLimit;
-}
-
-/**
- * Calculate overage price for tier
- */
-export function getOveragePrice(tier: LicenseTier): number {
-  return TIER_CONFIG[tier].overagePrice;
-}
+export {
+  getRateLimits,
+  getDailyLimit,
+  getOveragePrice,
+} from './tier-quota';
+export type { RateLimits } from './tier-quota';
 
 // Re-export errors for convenience
 export { LicenseError, RateLimitError } from './errors';

@@ -24,6 +24,7 @@ import {
   shouldThrottleAlert,
   isWithinHaltPeriod,
 } from './drawdown-monitor-alerts-eval';
+import { evaluateThreshold } from './drawdown-threshold-evaluator';
 
 export {
   formatThresholdLabel,
@@ -41,15 +42,7 @@ export function evaluateDailyDrawdown(
   metrics: DrawdownMetrics,
   config: DrawdownThresholdConfig = DEFAULT_THRESHOLD_CONFIG,
 ): DrawdownThresholdEvaluation {
-  const current = metrics.dailyDrawdown;
-  const threshold = config.dailyDrawdownLimit;
-  return {
-    type: 'daily',
-    breached: current >= threshold,
-    current,
-    threshold,
-    headroom: threshold - current,
-  };
+  return evaluateThreshold('daily', metrics.dailyDrawdown, config.dailyDrawdownLimit);
 }
 
 /** Evaluate total (peak-to-current) drawdown against threshold. */
@@ -57,15 +50,7 @@ export function evaluateTotalDrawdown(
   metrics: DrawdownMetrics,
   config: DrawdownThresholdConfig = DEFAULT_THRESHOLD_CONFIG,
 ): DrawdownThresholdEvaluation {
-  const current = metrics.currentDrawdown;
-  const threshold = config.totalDrawdownLimit;
-  return {
-    type: 'total',
-    breached: current >= threshold,
-    current,
-    threshold,
-    headroom: threshold - current,
-  };
+  return evaluateThreshold('total', metrics.currentDrawdown, config.totalDrawdownLimit);
 }
 
 /** Evaluate consecutive losses against threshold. */
@@ -73,15 +58,7 @@ export function evaluateConsecutiveLosses(
   metrics: DrawdownMetrics,
   config: DrawdownThresholdConfig = DEFAULT_THRESHOLD_CONFIG,
 ): DrawdownThresholdEvaluation {
-  const current = metrics.consecutiveLosses;
-  const threshold = config.consecutiveLossLimit;
-  return {
-    type: 'consecutive',
-    breached: current >= threshold,
-    current,
-    threshold,
-    headroom: threshold - current,
-  };
+  return evaluateThreshold('consecutive', metrics.consecutiveLosses, config.consecutiveLossLimit);
 }
 
 // ── Aggregate Evaluation ──────────────────────────────────────────────────────

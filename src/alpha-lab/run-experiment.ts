@@ -19,6 +19,7 @@ import {
 } from './provenance/record-alpha-verdict';
 import { hashConfig, type DataSourceProvenance } from './provenance/run-card';
 import { DEFAULT_LEDGER_PATH } from './provenance/research-ledger';
+import { buildArtifact, requiredCandleCount, topSuggestedFamilies } from './run-experiment-artifact';
 import {
   parseArgs,
   suggestFamilies,
@@ -62,11 +63,11 @@ export async function runExperimentCli(
   const config = JSON.parse(readFileSync(configPath!, 'utf-8')) as ExperimentConfig;
   validateConfig(config);
 
-  const minBars = Math.ceil(
-    (1 / (1 - config.split.trainRatio - config.split.valRatio - config.split.testRatio + 0.01)) * 100,
+  const { candles, source } = await loadCandles(
+    config.symbol,
+    config.timeframe,
+    requiredCandleCount(config.split),
   );
-  const candleCount = Math.max(500, minBars * 3);
-  const { candles, source } = await loadCandles(config.symbol, config.timeframe, candleCount);
 
   const dataSources: DataSourceProvenance[] = buildDataSources(
     config.symbol,
@@ -86,28 +87,6 @@ export async function runExperimentCli(
         }
       : {}),
   });
-
-  const baselines = runAllBaselines(candles, config.cost.feeBps, config.cost.slippageBps, config.seed);
-  const regimeSeries = computeRegimeSeries(candles, {
-    market: config.symbol,
-    timeframe: config.timeframe,
-    lookback: config.lookback,
-  });
-
-  const artifact = {
-    experimentId: result.config.experimentId,
-    symbol: result.config.symbol,
-    timeframe: result.config.timeframe,
-    dataSource: source,
-    totalBars: result.totalBars,
-    numSteps: result.numSteps,
-    metrics: {
-      train: pickMetrics(result.metrics.train),
-      val: pickMetrics(result.metrics.val),
-      test: pickMetrics(result.metrics.test),
-    },
-    baselines: mapBaselines(baselines, regimeSeries),
-  };
 
   if (record) {
     const candidate = candidateResultFromExperiment(result);
@@ -130,13 +109,20 @@ export async function runExperimentCli(
     );
   }
 
+  let suggestedNext: string[] | undefined;
   if (suggest) {
     const { suggestions } = await suggestFamilies(DEFAULT_LEDGER_PATH);
-    (artifact as Record<string, unknown>).suggestedNext = suggestions
-      .filter((s) => s.reason !== 'passed-demoted')
-      .slice(0, 5)
-      .map((s) => s.familyId);
+    suggestedNext = topSuggestedFamilies(suggestions);
   }
+
+  const baselines = runAllBaselines(candles, config.cost.feeBps, config.cost.slippageBps, config.seed);
+  const regimeSeries = computeRegimeSeries(candles, {
+    market: config.symbol,
+    timeframe: config.timeframe,
+    lookback: config.lookback,
+  });
+
+  const artifact = buildArtifact(result, source, baselines, regimeSeries, suggestedNext);
 
   io.stdout.write(JSON.stringify(artifact, null, 2) + '\n');
   return 0;

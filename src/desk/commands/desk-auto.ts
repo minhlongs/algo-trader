@@ -3,6 +3,9 @@
  *
  * Orchestrates all 4 autonomous trading engines (Arbitrage, MARL MM, AMM Liquidity, Alpha-Lab)
  * through the UnifiedTradingLoop, priority signal queue, and live risk guards.
+ *
+ * Split: the in-memory IDeskDaemon stub lives in desk-auto-stub-daemon.ts; this
+ * module owns the CLI entry point and its live-mode confirmation flow.
  */
 
 import { createInterface } from 'readline';
@@ -15,76 +18,15 @@ import {
   parseDeskAutoConfig,
 } from './desk-auto-types';
 
+export { StubDeskDaemon } from './desk-auto-stub-daemon';
+
 export interface RunDeskAutoDependencies {
   daemon?: IDeskDaemon;
   createDaemon?: (config: DeskAutoConfig) => IDeskDaemon;
   promptConfirm?: () => Promise<boolean>;
 }
 
-/**
- * Stateful in-memory daemon implementation satisfying IDeskDaemon interface.
- * Used when running stand-alone or before full M3 supervisor wiring.
- */
-export class StubDeskDaemon implements IDeskDaemon {
-  private running = false;
-  private startedAt = 0;
-  private cycleCount = 0;
-
-  constructor(public readonly config: DeskAutoConfig) {}
-
-  async start(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
-    this.startedAt = Date.now();
-    this.cycleCount = 1;
-
-    logger.info(`[DeskDaemon] Daemon started in ${this.config.mode} mode`, {
-      capitalUsd: this.config.capitalUsd,
-      dryRun: this.config.dryRun,
-      pollIntervalMs: this.config.pollIntervalMs,
-      metricsPort: this.config.metricsPort,
-    });
-  }
-
-  async stop(): Promise<void> {
-    if (!this.running) return;
-    this.running = false;
-    logger.info('[DeskDaemon] Daemon stopped gracefully', {
-      totalCycles: this.cycleCount,
-      uptimeSeconds: this.getUptimeSeconds(),
-    });
-  }
-
-  isRunning(): boolean {
-    return this.running;
-  }
-
-  getUptimeSeconds(): number {
-    return this.running ? Math.floor((Date.now() - this.startedAt) / 1000) : 0;
-  }
-
-  getStatus(): Record<string, unknown> {
-    return {
-      status: this.running ? 'RUNNING' : 'STOPPED',
-      mode: this.config.mode,
-      capitalUsd: this.config.capitalUsd,
-      dryRun: this.config.dryRun,
-      circuitBreakerTier: 'NORMAL',
-      navUsd: this.config.capitalUsd,
-      uptimeSeconds: this.getUptimeSeconds(),
-      cycleCount: this.cycleCount,
-      exchanges: [...this.config.exchanges],
-      symbols: [...this.config.symbols],
-      engines: {
-        arbitrage: { status: this.running ? 'ACTIVE' : 'STOPPED' },
-        marl: { status: this.running ? 'ACTIVE' : 'STOPPED' },
-        amm: { status: this.running ? 'ACTIVE' : 'STOPPED' },
-        alphaLab: { status: this.running ? 'ACTIVE' : 'STOPPED' },
-      },
-    };
-  }
-}
-
+/** Accept only an explicit affirmative answer to the live-capital prompt. */
 async function promptConfirmation(): Promise<boolean> {
   if (process.env.CONFIRM_LIVE === 'true') {
     return true;
@@ -108,6 +50,25 @@ async function promptConfirmation(): Promise<boolean> {
   });
 }
 
+/** Fail-closed live gate: nothing runs until an operator confirms. */
+async function confirmLiveExecution(deps: RunDeskAutoDependencies): Promise<void> {
+  logger.warn('⚠️  LIVE MODE ACTIVE — REAL CAPITAL AT RISK ACROSS VENUES!');
+  const confirmFn = deps.promptConfirm ?? promptConfirmation;
+  const confirmed = await confirmFn();
+  if (!confirmed) {
+    logger.warn('⚠️  Live trading confirmation declined by operator. Aborting desk execution.');
+    throw new Error('Live trading confirmation declined');
+  }
+  logger.info('✅ Live execution confirmed by operator.');
+}
+
+/** Resolve the daemon to run, honouring injected test doubles. */
+function resolveDaemon(config: DeskAutoConfig, deps: RunDeskAutoDependencies): IDeskDaemon {
+  if (deps.daemon) return deps.daemon;
+  if (deps.createDaemon) return deps.createDaemon(config);
+  return new DeskDaemon(config);
+}
+
 /**
  * Main entry point for `desk:auto` CLI command.
  */
@@ -123,25 +84,10 @@ export async function runDeskAuto(
   logger.info(`  Poll Interval: ${config.pollIntervalMs}ms | Metrics Port: ${config.metricsPort}`);
 
   if (config.mode === 'LIVE' && !config.dryRun) {
-    logger.warn('⚠️  LIVE MODE ACTIVE — REAL CAPITAL AT RISK ACROSS VENUES!');
-    const confirmFn = deps.promptConfirm ?? promptConfirmation;
-    const confirmed = await confirmFn();
-    if (!confirmed) {
-      logger.warn('⚠️  Live trading confirmation declined by operator. Aborting desk execution.');
-      throw new Error('Live trading confirmation declined');
-    }
-    logger.info('✅ Live execution confirmed by operator.');
+    await confirmLiveExecution(deps);
   }
 
-  let daemon: IDeskDaemon;
-  if (deps.daemon) {
-    daemon = deps.daemon;
-  } else if (deps.createDaemon) {
-    daemon = deps.createDaemon(config);
-  } else {
-    daemon = new DeskDaemon(config);
-  }
-
+  const daemon = resolveDaemon(config, deps);
   await daemon.start();
 
   if (config.durationSeconds !== undefined && config.durationSeconds > 0) {

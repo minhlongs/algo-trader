@@ -16,6 +16,7 @@ import {
   buildPayoutNotification,
   buildDisputeNotifications,
 } from './notification-helpers';
+import { applyRetryPolicy } from './notification-retry-policy';
 
 export type {
   NotificationPayload, NotificationType, NotificationStatus,
@@ -89,23 +90,20 @@ export class NotificationService {
             recipient: notification.recipient,
           });
         } catch (err) {
-          notification.attempts += 1;
-          if (notification.attempts >= notification.maxAttempts) {
-            notification.status = 'dead_letter';
+          const outcome = applyRetryPolicy(notification, now, err, this.backoffMs.bind(this));
+          if (outcome.outcome === 'dead_letter') {
             this.deadLetter.push(notification);
             this.queue = this.queue.filter((n) => n.id !== notification.id);
             logger.error('[NotificationService] Moved to dead letter', {
               notificationId: notification.id,
-              attempts: notification.attempts,
-              error: err instanceof Error ? err.message : String(err),
+              attempts: outcome.attempts,
+              error: outcome.error,
             });
           } else {
-            notification.status = 'queued';
-            notification.nextRetryAt = new Date(now.getTime() + this.backoffMs(notification.attempts));
             logger.warn('[NotificationService] Retry scheduled', {
               notificationId: notification.id,
-              attempt: notification.attempts,
-              nextRetryAt: notification.nextRetryAt.toISOString(),
+              attempt: outcome.attempts,
+              nextRetryAt: outcome.nextRetryAt?.toISOString(),
             });
           }
         }
@@ -142,6 +140,11 @@ export class NotificationService {
 
   // ── Private ──────────────────────────────────────────────────────
 
+  /** Backoff before the next attempt; kept as a seam for tests. */
+  private backoffMs(attempt: number): number {
+    return calculateBackoffMs(attempt);
+  }
+
   private async deliver(notification: NotificationPayload): Promise<void> {
     logger.info('[NotificationService] Delivery (logged)', {
       notificationId: notification.id,
@@ -151,9 +154,5 @@ export class NotificationService {
       body: notification.body,
       metadata: notification.metadata,
     });
-  }
-
-  private backoffMs(attempt: number): number {
-    return calculateBackoffMs(attempt);
   }
 }
