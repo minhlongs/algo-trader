@@ -62,7 +62,7 @@ export function headingToTierKey(heading: string): string | null {
 }
 
 /**
- * Every tier name this formatter advertises, read from the numbered, bolded list
+ * Every tier name a formatter advertises, read from the numbered, bolded list
  * items its tier blocks are built from (`*1. Signals Basic*`), normalised so a
  * renamed or invented tier reaches the assertion instead of being unrecognised.
  */
