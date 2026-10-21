@@ -104,22 +104,33 @@ command = "npx tsc -p tsconfig.worker.json"
 crons = ["*/5 * * * *"]
 
 # Add environment-specific configurations for multi-region workers
+#
+# `routes = []` on every env block is REQUIRED, not cosmetic. An env that omits
+# `routes` inherits the top-level [[routes]] above, and deploying that env
+# reassigns api.cashclaw.cc/* away from the production Worker onto it. Wrangler
+# warns about exactly this (cli.js: "Deploying this environment will reassign
+# these custom domains away from the top-level Worker"). Keep this list in sync
+# if a new [env.*] is ever added.
 [env.staging]
 name = "algo-trader-staging"
+routes = []
 [env.staging.vars]
 ENVIRONMENT = "staging"
 
 [env.us-east]
 name = "algo-trader-us-east"
+routes = []
 [env.us-east.vars]
 ENVIRONMENT = "us-east"
 
 [env.eu-central]
 name = "algo-trader-eu-central"
+routes = []
 [env.eu-central.vars]
 ENVIRONMENT = "eu-central"
 
 [env.ap-southeast]
 name = "algo-trader-ap-southeast"
+routes = []
 [env.ap-southeast.vars]
 ENVIRONMENT = "ap-southeast"

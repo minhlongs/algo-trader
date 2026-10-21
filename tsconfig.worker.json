@@ -18,5 +18,5 @@
     "src/durable-objects/**/*.ts",
     "src/regions/**/*.ts"
   ],
-  "exclude": []
+  "exclude": ["**/*.test.ts", "**/__tests__/**", "**/*.spec.ts", "**/*.d.ts"]
 }
