@@ -1,10 +1,18 @@
 /**
  * Edge Multi-Region Deploy & Smoke Verification Suite
  * Verifies /api/health, DO consensus, and shard routing across Tokyo, Singapore, and Frankfurt.
+ *
+ * The region entries are logical identifiers, not separate Worker hosts. The
+ * deployment is a single Worker behind api.cashclaw.cc/*, and the previous
+ * `*.algo-trader.workers.dev` hostnames do not resolve. Each region therefore
+ * points at the one deployed origin until multi-region is actually built; the
+ * `colo` field stays descriptive of the region's intended location.
  */
 
 import { logger } from '../src/shared/utils/logger';
 import { buildRing, getShardForStrategy } from '../src/desk/utils/consistent-hash';
+
+const DEPLOYED_HOST = process.env.API_HOST ?? 'api.cashclaw.cc';
 
 export interface EdgeRegionTarget {
   id: 'tokyo' | 'singapore' | 'frankfurt';
@@ -14,9 +22,9 @@ export interface EdgeRegionTarget {
 }
 
 export const EDGE_REGIONS: Record<EdgeRegionTarget['id'], EdgeRegionTarget> = {
-  tokyo: { id: 'tokyo', name: 'Tokyo (AP-East)', host: 'tyo.algo-trader.workers.dev', colo: 'NRT' },
-  singapore: { id: 'singapore', name: 'Singapore (AP-SouthEast)', host: 'sin.algo-trader.workers.dev', colo: 'SIN' },
-  frankfurt: { id: 'frankfurt', name: 'Frankfurt (EU-Central)', host: 'fra.algo-trader.workers.dev', colo: 'FRA' },
+  tokyo: { id: 'tokyo', name: 'Tokyo (AP-East)', host: DEPLOYED_HOST, colo: 'NRT' },
+  singapore: { id: 'singapore', name: 'Singapore (AP-SouthEast)', host: DEPLOYED_HOST, colo: 'SIN' },
+  frankfurt: { id: 'frankfurt', name: 'Frankfurt (EU-Central)', host: DEPLOYED_HOST, colo: 'FRA' },
 };
 
 export interface RegionCheckResult {

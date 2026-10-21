@@ -18,6 +18,12 @@ import {
 export type { RegionMetrics, ProbeResult, LatencyMonitorOptions } from './latency-monitor-types';
 export { calculatePercentile, computeRegionMetrics } from './latency-monitor-math';
 
+/** Deployed origin for probes. Overridable for local runs and staging. */
+function defaultApiBaseUrl(): string {
+  const host = process.env.API_HOST ?? 'api.cashclaw.cc';
+  return `https://${host}`;
+}
+
 export class LatencyMonitor {
   private regions: string[];
   private targetUrl: (region: string) => string;
@@ -31,7 +37,10 @@ export class LatencyMonitor {
 
   constructor(regions: string[], options: LatencyMonitorOptions = {}) {
     this.regions = regions;
-    this.targetUrl = options.targetUrl || ((region) => `https://${region}.algo-trader.workers.dev/api/health`);
+    // No per-region Workers exist yet: they all resolve to the one deployed
+    // origin. The previous `${region}.algo-trader.workers.dev` default does not
+    // resolve in DNS, so every probe failed against an unreachable host.
+    this.targetUrl = options.targetUrl || ((_region) => `${defaultApiBaseUrl()}/api/health`);
     this.probeInterval = options.probeInterval || 30000;
     this.alertThresholdP95 = options.alertThresholdP95 || 100;
     this.alertCallback = options.onAlert;

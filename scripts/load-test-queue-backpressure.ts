@@ -1,10 +1,17 @@
 import http from 'k6/http';
 import { sleep, check } from 'k6';
-import { Counter, Gauge, Rate } from 'k6/metrics';
+import { Counter, Gauge, Rate, Trend } from 'k6/metrics';
+import { LOAD_TEST_BASE_URL } from './load-test-config';
+
+// The Worker has no `/api/v1/agents/*` or `/api/v1/queue/*` route, so this
+// script measures a real public route and reports backpressure as a derived
+// signal (latency under burst) rather than queue depth it cannot observe.
+const AGENT_TARGET = '/api/v1/strategies/execute';
 
 const queueDepth = new Gauge('agent_queue_depth');
 const queueRejections = new Counter('queue_rejection_total');
 const queueWaitTime = new Trend('queue_wait_ms');
+const unavailableRoutes = new Counter('unavailable_route_total');
 
 const AGENTS = 19;
 const PRIORITIES = ['critical', 'normal', 'background'];
@@ -36,10 +43,11 @@ export function burstRequests(): void {
   const agent = randomAgent();
   const priority = randomPriority();
 
-  const url = `https://algo-trader.workers.dev/api/v1/agents/${agent}/execute`;
+  const url = `${LOAD_TEST_BASE_URL}${AGENT_TARGET}`;
   const body = JSON.stringify({
+    agent,
     priority,
-    input: { text: 'Test input for queue backpressure' },
+    strategy: 'burst-probe',
   });
 
   const start = Date.now();
@@ -51,27 +59,16 @@ export function burstRequests(): void {
   const waitTime = Date.now() - start;
   queueWaitTime.add({ priority }, waitTime);
 
-  // Check if queued or rejected
-  const isQueued = res.body?.includes('"status":"queued"');
+  // Unreachable because the route does not exist: report it rather than
+  // letting a 404/405 masquerade as measured backpressure.
+  if (res.status === 404 || res.status === 405) {
+    unavailableRoutes.add(1);
+  }
+
   const isRejected = res.body?.includes('"status":"rejected"');
 
   if (isRejected) {
     queueRejections.add({ priority });
-  }
-
-  // Report current queue depth (if stats endpoint exists)
-  const depthRes = http.get('https://algo-trader.workers.dev/api/v1/queue/stats');
-  if (depthRes.status === 200) {
-    try {
-      const stats = JSON.parse(depthRes.body);
-      if (stats.depth) {
-        for (const [p, depth] of Object.entries(stats.depth)) {
-          queueDepth.add({ priority: p }, depth);
-        }
-      }
-    } catch {
-      // ignore parse errors
-    }
   }
 
   check(res, {
