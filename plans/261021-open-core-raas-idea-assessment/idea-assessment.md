@@ -199,3 +199,83 @@ Blocking, in dependency order — the first two are prerequisites for the rest:
 - Who owns the shared NOWPayments account, and should algo-trader get its own coupon table?
 - Should `data/invoices/` be deleted (64 MB, gitignored) or is it retained deliberately as E2E
   evidence? Deletion is destructive, so I have not done it.
+
+---
+
+## 7. Architecture decision — RESOLVED by user on 2026-10-21
+
+**Decision: B — algo-trader stays a standalone trading product. It will NOT converge on
+Sophia's Open-Core architecture.**
+
+This closes blocking condition #2 from §6. The `/idea` Open-Core pipeline is retired for this
+repository; the Sophia scaffolding named in §1 will not be built.
+
+Consequence: the correct ideation pipeline for this repo is the standalone one already present —
+`plans/260705-0025-signals-api-ideation/go-nogo-report.md` (**GO 21/30**, Signals API
+Marketplace) with its 4-phase implementation plan in
+`plans/260704-0941-signals-api-marketplace/`.
+
+## 8. Re-verification of the §6 GO conditions after decision B
+
+Checked at HEAD after the user's decision. Only conditions 1 and 2 were technical; 3-5 were
+planning. Re-read rather than trusting the prior report:
+
+| §6 condition | Status now | Evidence |
+|---|---|---|
+| 1. Fix live billing defects | **Code fixed, deploy unverified** | `subscriptions-handlers.ts:143` now `label: 'Master — $999/mo'`, `selfServe: false`. Old `Master (Custom)` auto-charge label is gone. Pricing is single-sourced — `src/billing/pricing-tiers.ts` is a pure re-export of `src/platform/billing/pricing-tiers.ts`, no second table. **Live payload not re-checked: network egress is blocked in this sandbox.** |
+| 2. Decide Open-Core or not | **CLOSED — decision B** | §7 above |
+| 3. Quarantine `data/invoices/` | **Verified safe** | `git ls-files data/invoices/` = 0, gitignored. Not deleted — deletion is destructive and the user has not asked for it. |
+| 4. Fix the gate system | **NOT VERIFIED this session** | The harness state path (`me-deep-wrapper/state/evidence/first-revenue.json`) does not exist in this checkout, so the gate-failure claim could not be re-read. Carried forward unverified. |
+| 5. Re-run `/idea` with a specific idea | **Superseded** | The standalone `go-nogo-report.md` already fills this role; no re-run of the Open-Core pipeline is warranted |
+
+### Verified today (independent of the pipeline verdict)
+
+| Claim | Evidence |
+|---|---|
+| 3,843 TypeScript files, 302k LOC, **0 files >180 LOC** | `find src -name '*.ts' -o -name '*.tsx' \| xargs wc -l` |
+| 185 Polymarket strategy files | `ls src/desk/strategies/polymarket/ \| wc -l` |
+| 516 test files | `find src -name '*.test.ts' \| wc -l` |
+| 0 `console.log` | grep |
+| **0 `: any` but 143 `as any`** | grep, counted separately |
+
+Correction to a number reported in conversation: the 143 figure is **`as any`**, not `: any`.
+`: any` is 0. Same type-safety hole, different spelling — and it means a lint guard written as
+`/: any/` would report a false clean. Any future zero-`any` rule must match both forms.
+
+Standalone GO conditions from `go-nogo-report.md`, re-checked today at HEAD:
+
+| Condition | Status now |
+|---|---|
+| Resolve pricing ($49 vs $99 PRO) | **Done** — STARTER $49 / PRO $99 / ENTERPRISE $299 / MASTER $999, single-sourced |
+| D1 subscriber storage migration | **Done** — `src/platform/marketplace/repositories/subscription-repository.ts` exists |
+| OpenAPI spec | **Done** — `docs/openapi-signals-api.json`, `docs/api/openapi.yaml` |
+| Consolidate overlapping subscribe routes | **Done** — single handler chain via `edge-proxy.ts:91` → `handleGetTiers()` |
+| Legal review of signal distribution | **NOT DONE — open, and it is not a code task** |
+
+## 9. Remaining work, in dependency order
+
+1. **Deploy the billing fix.** The `Master (Custom)` auto-charge defect is fixed in source but the
+   live endpoint was never re-verified. Until deploy, assume production still serves the old
+   tier. This is the only item that can cost money today.
+2. **Legal review of signal distribution** — the last unmet condition of the standalone GO.
+   Blocking external launch, not blocking internal work.
+3. **Gate system re-verification** (§8 row 4) — the state path is absent from this checkout, so
+   this needs to be checked wherever the harness actually runs.
+4. **143 `as any`** — repo rule is zero `any`; both spellings must be counted.
+5. `data/invoices/` (64 MB, gitignored, gitignored-clean) — keep or delete is still the user's call.
+
+## Evidence labels
+
+| Statement | Label |
+|---|---|
+| Decision B recorded | **Verified** — user stated it in this session |
+| Billing fix in source, single price source | **Verified** — read source lines |
+| `data/invoices/` never committed | **Verified** — `git ls-files` = 0 |
+| 3,843 TS files / 302k LOC / 0 over 180 | **Verified** — `wc -l` |
+| 185 strategies, 516 tests, 0 `console.log` | **Verified** — file count + grep |
+| `: any` = 0, `as any` = 143 | **Verified** — separate greps |
+| Standalone GO conditions 1-4 met | **Verified** — file/source reads |
+| Legal review outstanding | **Verified** — no artifact found |
+| Production still serves the old tier | **Hypothesis** — deploy unverified, network blocked |
+| Gate system still cannot report failure | **Not verified** — state path absent from this checkout |
+| Signals API Marketplace will reach revenue | **Target** — MRR $0, 0 paying customers |
