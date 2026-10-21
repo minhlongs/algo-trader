@@ -3,11 +3,19 @@
  * Region definitions, CORS headers, and cache TTL.
  */
 
-/** Region routing configuration */
+/**
+ * Region routing configuration.
+ *
+ * `host` is the one deployed origin: the per-region
+ * `<region>.algo-trader.workers.dev` hostnames do not resolve, so probing them
+ * reported every region unhealthy. The entries stay keyed by region so the
+ * routing type (`RegionId`) and priority ordering are unchanged; only the host
+ * they point at is corrected.
+ */
 export const REGIONS = {
-  'us-east': { id: 'us-east', host: 'us-east.algo-trader.workers.dev', priority: 1 },
-  'eu-central': { id: 'eu-central', host: 'eu.algo-trader.workers.dev', priority: 2 },
-  'ap-southeast': { id: 'ap-southeast', host: 'asia.algo-trader.workers.dev', priority: 3 },
+  'us-east': { id: 'us-east', host: 'api.cashclaw.cc', priority: 1 },
+  'eu-central': { id: 'eu-central', host: 'api.cashclaw.cc', priority: 2 },
+  'ap-southeast': { id: 'ap-southeast', host: 'api.cashclaw.cc', priority: 3 },
 } as const;
 
 /** Region identifier derived from REGIONS keys */

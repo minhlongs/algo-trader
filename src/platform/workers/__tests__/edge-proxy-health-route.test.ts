@@ -30,10 +30,20 @@ describe('Worker health route', () => {
   });
 
   it('serves /api/health identically to /health', async () => {
-    const bare = await worker.fetch(get('/health'), makeEnv());
-    const aliased = await worker.fetch(get('/api/health'), makeEnv());
-    expect(aliased.status).toBe(200);
-    expect(await aliased.json()).toEqual(await bare.json());
+    const bareResponse = await worker.fetch(get('/health'), makeEnv());
+    const aliasedResponse = await worker.fetch(get('/api/health'), makeEnv());
+    expect(aliasedResponse.status).toBe(200);
+
+    const bare = (await bareResponse.json()) as Record<string, unknown>;
+    const aliased = (await aliasedResponse.json()) as Record<string, unknown>;
+
+    // `timestamp` is a clock reading and differs between any two calls; the
+    // rest of the payload must be identical.
+    expect(aliased.status).toBe(bare.status);
+    expect(aliased.service).toBe(bare.service);
+    expect(aliased.environment).toBe(bare.environment);
+    expect(aliased.checks).toEqual(bare.checks);
+    expect(Object.keys(aliased).sort()).toEqual(Object.keys(bare).sort());
   });
 
   it('does not 501 on the aliased path (regression: deploy verifier probes /api/health)', async () => {

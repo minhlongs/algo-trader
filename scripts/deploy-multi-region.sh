@@ -1,9 +1,14 @@
 #!/bin/bash
 #
 # Multi-Region Deployment Script
-# Deploys algo-trader to all 3 regions: us-east, eu-central, ap-southeast
+# Intended to deploy algo-trader to all 3 regions: us-east, eu-central, ap-southeast
 #
-# Usage: ./scripts/deploy-multi-region.sh [--dry-run] [--skip-verify]
+# BLOCKED until multi-region is built: the deployment is a single Worker on
+# api.cashclaw.cc, so region names resolve to one origin. This script refuses to
+# run unless MULTI_REGION_ENABLED=1, rather than deploying the same Worker three
+# times and reporting a topology that does not exist.
+#
+# Usage: MULTI_REGION_ENABLED=1 ./scripts/deploy-multi-region.sh [--dry-run] [--skip-verify]
 #
 # Options:
 #   --dry-run     Show what would be deployed without actually deploying
@@ -16,11 +21,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# shellcheck source=scripts/lib/host-contract.sh
+source "$SCRIPT_DIR/lib/host-contract.sh"
+
 # Configuration
 REGIONS=("us-east" "eu-central" "ap-southeast")
 DRY_RUN=false
 SKIP_VERIFY=false
 SPECIFIC_REGION=""
+
+# The deployment is single-region today. Deploying "to each region" would push
+# the same Worker three times and re-verify the same origin three times, so
+# refuse to fabricate a topology. Set MULTI_REGION_ENABLED=1 once regions exist.
+if [[ "${MULTI_REGION_ENABLED:-0}" != "1" ]]; then
+  echo "❌ Multi-region is not built: the deployment is one Worker on ${API_HOST}."
+  echo "   Run scripts/deploy-region.sh <region> for the single Worker instead."
+  echo "   Set MULTI_REGION_ENABLED=1 to override once per-region Workers exist."
+  exit 1
+fi
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -68,7 +86,8 @@ deploy_region() {
     return 0
   fi
 
-  # Deploy
+  # Deploy. `--env` inherits the top-level api.cashclaw.cc/* route unless that
+  # env declares `routes = []` (see wrangler.toml); all four envs now do.
   if wrangler deploy --env "$region" --minify; then
     echo "✅ $region deployment successful"
   else
@@ -76,14 +95,14 @@ deploy_region() {
     return 1
   fi
 
-  # Health check
+  # Health check against the deployed origin. Every region resolves to the same
+  # Worker until per-region hosts exist, so verify the shared origin.
   echo "  Checking health..."
-  local host="${region}.algo-trader.workers.dev"
   local max_attempts=10
   local attempt=1
 
   while [[ $attempt -le $max_attempts ]]; do
-    if curl -sf "https://$host/api/health" > /dev/null 2>&1; then
+    if curl -sf "${API_HEALTH_URL}" > /dev/null 2>&1; then
       echo "  ✅ $region health check passed (attempt $attempt/$max_attempts)"
       return 0
     fi
@@ -127,7 +146,7 @@ verify_deployment() {
         continue
       fi
 
-      local host="${region}.algo-trader.workers.dev"
+      local host="${API_HOST}"
       if curl -sf "https://$host/api/health" > /dev/null 2>&1; then
         echo "  ✅ $region: healthy"
       else
@@ -177,7 +196,7 @@ if [[ $FAILED -eq 0 ]]; then
     echo "Deployed regions:"
     for region in "${REGIONS[@]}"; do
       [[ -n "$SPECIFIC_REGION" && "$region" != "$SPECIFIC_REGION" ]] && continue
-      echo "  • https://$region.algo-trader.workers.dev"
+      echo "  • ${API_HEALTH_URL}"
     done
     echo ""
     exit 0

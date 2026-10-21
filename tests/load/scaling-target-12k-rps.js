@@ -19,7 +19,7 @@ const rampUpDuration = __ENV.RAMP_UP || '30s';
 const rampDownDuration = __ENV.RAMP_DOWN || '30s';
 
 // Target endpoints - use actual deployed Cloudflare Workers URL
-const baseUrl = __ENV.API_HOST || 'https://algo-trader.workers.dev';
+const baseUrl = __ENV.API_HOST || 'https://api.cashclaw.cc';
 
 export const options = {
   scenarios: {

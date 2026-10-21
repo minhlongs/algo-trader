@@ -129,7 +129,7 @@ describe('edge-proxy-regions', () => {
       expect(res.status).toBe(200);
 
       const [calledUrl, calledInit] = mockFetch.mock.calls[0];
-      expect(calledUrl).toContain('eu.algo-trader.workers.dev');
+      expect(calledUrl).toContain('api.cashclaw.cc');
       expect(calledInit.method).toBe('GET');
       expect(calledInit.body).toBeUndefined();
     });
