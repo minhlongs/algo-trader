@@ -4,10 +4,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# shellcheck source=scripts/lib/host-contract.sh
+source "$SCRIPT_DIR/lib/host-contract.sh"
+
 REGION=$1
 if [[ -z "$REGION" ]]; then
   echo "Usage: $0 <region>"
-  echo "Regions: us-east, eu-central, ap-southeast"
+  echo "Note: the active topology is a single Worker on ${API_HOST}."
+  echo "Region names are accepted for script compatibility but resolve to the same host."
   exit 1
 fi
 
@@ -27,16 +31,18 @@ echo "Deploying to region: $REGION"
 echo "========================================"
 
 # Set region environment
-export CF_WORKER_ENV=$REGION
-export DEPLOY_REGION=$REGION
+export CF_WORKER_ENV="$REGION"
+export DEPLOY_REGION="$REGION"
 
 # Build
 echo "[1/5] Building..."
 npm run build
 
-# Deploy with wrangler
+# Deploy with wrangler.
+# NOTE: `--env` inherits the top-level api.cashclaw.cc/* route unless that env
+# declares `routes = []` (see wrangler.toml). All four envs now do.
 echo "[2/5] Deploying Worker..."
-npx wrangler deploy --env $REGION --minify
+npx wrangler deploy --env "$REGION" --minify
 
 # Wait for deployment to stabilize
 echo "[3/5] Waiting for deployment to stabilize..."
@@ -44,7 +50,7 @@ sleep 10
 
 # Health check
 echo "[4/5] Running health check..."
-HEALTH_URL="https://${REGION}.algo-trader.workers.dev/api/health"
+HEALTH_URL="$API_HEALTH_URL"
 MAX_RETRIES=10
 RETRY_COUNT=0
 STATUS=0
@@ -67,7 +73,7 @@ fi
 
 # Verify shard ring
 echo "[5/5] Verifying shard ring..."
-RING_URL="https://${REGION}.algo-trader.workers.dev/api/v1/shard/ring"
+RING_URL="$API_RING_URL"
 SHARD_COUNT=$(curl -s "$RING_URL" | jq -r '.shards // [] | length' 2>/dev/null || echo "0")
 if [[ "$SHARD_COUNT" -ge 4 ]]; then
   echo "  ✓ $SHARD_COUNT shards active"
@@ -77,5 +83,5 @@ fi
 
 echo ""
 echo "✅ $REGION deployment complete"
-echo "URL: https://${REGION}.algo-trader.workers.dev"
+echo "URL: $API_BASE_URL"
 echo ""
