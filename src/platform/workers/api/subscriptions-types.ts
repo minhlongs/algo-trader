@@ -10,6 +10,8 @@ export interface Env {
   JWT_SECRET?: string;
   ALLOWED_ORIGINS?: string;
   NOWPAYMENTS_IPN_SECRET?: string;
+  /** Required to create a checkout invoice; absent means paid upgrade cannot proceed. */
+  NOWPAYMENTS_API_KEY?: string;
   ENVIRONMENT?: string;
   VPS_ORIGIN?: string;
   REGION_ROUTING_ENABLED?: string;
