@@ -197,6 +197,23 @@ Deploy is a separate step requiring a deploy decision (see `plans/261020-1345-go
 CLAUDE.md's blockers — on-call notified, 12k capacity measured, NO-GO resolved — are unmet, so the
 repo's own contract forbids deploying from this state. The code is ready; the operational gate is not.
 
+## Verification results (commit `a86e7718`)
+
+| Gate | Result |
+|---|---|
+| `tsc --noEmit` | 0 errors |
+| `tsc -p tsconfig.worker.json` | 0 errors |
+| `vitest run` (full) | **1348 passed / 1 skipped, 17169 tests, 0 failed** |
+| Quality ratchet | 5/5 pass |
+| `handleUpgrade` fail-open | proven in both directions (gate disabled → 2 tests fail) |
+| Credential scan on the full diff | 0 hits |
+
+**One flaky test, named not waved off:** `tests/desk/arbitrage/m2-challenger-stress.test.ts`
+("sanitizes NaN notional inputs…") failed on one full-suite run and passed in isolation (22/22)
+and on two subsequent full runs. It is unrelated to this change — nothing here touches the
+arbitrage desk — and it is a stderr-logging stress test, consistent with a timing/parallelism
+flake. Worth a look separately.
+
 ## Deliberately not done
 - `data/invoices/` (64 MB) not deleted — destructive, needs approval.
 - Write path (Track C follow-up #1) not guarded: `payment-handler.ts:33` still writes fixture
