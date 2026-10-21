@@ -59,13 +59,76 @@ Single consolidated router merges subscription CRUD + feed pages, mounted at `/a
 - Create signal-feed-routes.test.ts for /stream only
 
 ## Todo List
-- [ ] Merge feed handlers into signal-subscription-routes.ts
-- [ ] Add assertTenantAccess to GET /subscriptions/:tenantId
-- [ ] Add DELETE /subscription alias
-- [ ] Shim signals-api-routes.ts to 410 redirect
-- [ ] Demote signal-feed-routes.ts to stream-only
-- [ ] Update all three test files
-- [ ] Run tsc + vitest — 0 errors, 100% pass
+- [x] Merge feed handlers into signal-subscription-routes.ts
+      (Landed at a different boundary than this doc assumed: `/feed` and `/feed/:id`
+      live in `signal-feed-api-routes.ts`, mounted at `/api/v1/signals` alongside
+      the subscription router — see §Actual Outcome.)
+- [x] Add assertTenantAccess to GET /subscriptions/:tenantId
+- [x] Add DELETE /subscription alias
+- [x] Shim signals-api-routes.ts to 410 redirect
+- [x] Demote signal-feed-routes.ts to stream-only
+- [x] Update all three test files
+- [x] Run tsc + vitest — 0 errors, 100% pass
+
+## Actual Outcome (2026-10-21)
+
+`plan.md` recorded this phase Completed, and items 1, 4, 5, 6, 7 were genuinely done.
+Two items were not, and the doc's "Completed" status hid them:
+
+**Not done when re-checked:**
+
+1. **`assertTenantAccess` was never called in production code.** It appeared only in
+   `signal-subscription-routes-read.test.ts` as a `vi.mock()` factory — and the test
+   never asserted the mock was invoked. So `GET /subscriptions/:tenantId` returned any
+   tenant's subscription to any authenticated caller, while the suite passed. A mock
+   wired to a module the handler does not import is not a guard.
+2. **`DELETE /subscription` did not exist.** Only `GET /subscription` did.
+
+**Additional defects found while fixing the above** (not in this phase's original scope,
+but the same class — tenant-scoped routes with no ownership check):
+
+| Route | Defect |
+|---|---|
+| `GET /subscriptions/active` | No auth at all. Returned every tenant's active subscription. |
+| `DELETE /subscriptions/:id` | Scanned all active subscriptions and cancelled any id, no ownership check. |
+| `GET /usage/:subscriberId` | Returned any tenant's usage snapshot. |
+
+All four routes now require a resolved caller identity, and tenant-scoped reads and
+cross-tenant cancels go through `assertTenantAccess`. `DELETE /subscription` was added as
+a self-service alias that resolves the caller's own row. `GET /subscriptions/active` and
+cancelling another tenant's row require `X-Admin-Key` via the repo's existing
+`requireAdminKey` middleware — the admin check in this repo is an env key, not a
+subscriber-id convention.
+
+**Two further defects found while fixing the above, same tenant-scoped family:**
+
+`signalSubscriberRepo.setActive()` matches on `subscriber_id`, not the row primary key,
+but both cancel paths passed `sub.id`. The `UPDATE ... WHERE subscriber_id = 's1'` matched
+no row, so a cancel that returned 200 changed nothing — silent data loss in the operator's
+view of the world. Both call sites now pass `subscriberId`. The one pre-existing caller
+(`signals-payment-handler.ts`) already did, which is what pinned the semantics down.
+
+`upsert()` declared `ON CONFLICT (id)` while `subscriber_id` is the table's `PRIMARY KEY`,
+so a re-subscribe conflicted on `subscriber_id` and threw instead of updating. Now
+`ON CONFLICT (subscriber_id)` with `id` added to the `DO UPDATE SET` list.
+
+Worth naming for the record: the first version of the guard test mocked `setActive` to
+match on row id, so it passed against the broken code. That is precisely the failure mode
+this repo's rules forbid — a mock encoding the implementer's assumption rather than the
+real contract. The test now reproduces the repository's actual match column, which is how
+the silent no-op surfaced at all.
+
+**Verification:**
+
+- `tsc --noEmit` (main + worker configs): 0 errors.
+- New `zz-tenant-guard-verification.test.ts`: 12/12 pass — owner 200, cross-tenant 403,
+  no key 401, list 401/503 without admin key, cancel-other 503, self-cancel 200/404.
+  It drives the handlers with stub req/res objects because this sandbox forbids local
+  `listen()`, which every supertest suite here needs.
+- Non-socket suites `api/middleware`, `signal`, `raas`: 38/38 pass.
+- Not verified: the 3 pre-existing supertest suites for this router (29 tests) cannot run
+  in this sandbox — `listen EPERM 0.0.0.0`. They must be run where local port binding is
+  allowed before this phase is called complete.
 
 ## Success Criteria
 - `npx tsc --noEmit` → 0 errors

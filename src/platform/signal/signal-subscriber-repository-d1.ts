@@ -79,7 +79,8 @@ export class SignalSubscriberRepositoryD1 {
     await query(
       `INSERT INTO signal_subscriptions (id, subscriber_id, chat_id, tier, active, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (id) DO UPDATE SET
+       ON CONFLICT (subscriber_id) DO UPDATE SET
+         id = EXCLUDED.id,
          chat_id = EXCLUDED.chat_id,
          tier = EXCLUDED.tier,
          active = EXCLUDED.active,
