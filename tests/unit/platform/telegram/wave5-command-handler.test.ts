@@ -15,6 +15,12 @@ import {
   handleWave5SubscribeRoute,
   type Wave5Telemetry,
 } from '../../../../src/platform/telegram/handlers/wave5-routes';
+import { NOWPAYMENTS_TIERS } from '../../../../src/platform/billing/nowpayments-types';
+
+/** Match a bare tier label ("BASIC"), ignoring the legitimate SIGNALS_BASIC key. */
+function hasBareLabel(text: string, label: string): boolean {
+  return new RegExp(`(?<![A-Z_])${label}(?![A-Z_])`).test(text);
+}
 import {
   Wave5CommandHandler,
   registerWave5Commands,
@@ -65,12 +71,33 @@ describe('Wave V Telegram Formatters & Handlers', () => {
     expect(text).toContain('Hiệu suất Giao dịch');
   });
 
-  it('formats subscription tiers with BASIC, PREMIUM, MASTER options', () => {
+  it('formats subscription tiers with the real signals tiers and their prices', () => {
     const text = formatWave5Subscribe();
-    expect(text).toContain('BASIC');
-    expect(text).toContain('PREMIUM');
-    expect(text).toContain('MASTER');
+
+    const signalsKeys = ['SIGNALS_BASIC', 'SIGNALS_PRO', 'SIGNALS_ENTERPRISE'];
+
+    // Names are derived from the pricing source, not hardcoded.
+    for (const key of signalsKeys) {
+      const tier = NOWPAYMENTS_TIERS[key];
+      expect(tier, `tier ${key} must exist in NOWPAYMENTS_TIERS`).toBeDefined();
+      expect(text).toContain(tier.name);
+      // Every advertised tier carries its USD price.
+      expect(text).toContain(`$${tier.price}`);
+    }
+
+    // Guard against regression of the BASIC/PREMIUM defect: no unmappable tier key
+    // may be offered to a customer. Word-boundary matched so the legitimate
+    // SIGNALS_* keys above do not trip the guard.
+    expect(hasBareLabel(text, 'BASIC')).toBe(false);
+    expect(hasBareLabel(text, 'PREMIUM')).toBe(false);
+
     expect(text).toContain('NOWPayments');
+    expect(text).toContain('USDT TRC20');
+    // Bilingual surface is preserved.
+    expect(text).toContain('Gói Dịch Vụ');
+    expect(text).toContain('Tín hiệu');
+    expect(text).toContain('/link <license-key>');
+    expect(text).toContain('https://cashclaw.cc');
   });
 
   it('routes invoke ctx.reply with markdown parse_mode', async () => {

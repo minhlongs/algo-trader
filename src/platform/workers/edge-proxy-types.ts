@@ -16,6 +16,8 @@ export interface _InternalEnv {
   REGION_ROUTING_ENABLED?: string;
   SUBSCRIBERS?: D1Database;
   NOWPAYMENTS_IPN_SECRET?: string;
+  /** Required to create a checkout invoice; absent means paid upgrade cannot proceed. */
+  NOWPAYMENTS_API_KEY?: string;
   METRIC_PASSWORD?: string;
 }
 
