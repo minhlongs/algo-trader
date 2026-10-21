@@ -13,7 +13,7 @@ provable: the two blockers with the greatest consequence (12k RPS load test, ME
 revenue gate) have never been satisfied, and the contract fix that removes the
 most dangerous failure mode is written but **not deployed**.
 
-Live Worker SHA `bca78f2e`; the fixes live on local `5e263d30` **uncommitted**.
+Live Worker SHA `bca78f2e`; the fixes are now committed on local `049af752`, **not yet deployed**.
 
 ---
 
@@ -39,7 +39,7 @@ engineer notified.
 
 | Item | Before | After |
 |---|---|---|
-| `/api/health` | live **501**; advertised by root handler + deploy verifier | routed to `/health` handler; verified 200 via worker harness + `wrangler dev`. **Not deployed** |
+| `/api/health` | live **501**; advertised by root handler + deploy verifier | routed to `/health` handler; verified 200 via worker harness + `wrangler dev`. Committed in `dbd982de`, **not yet deployed to production** |
 | Worker build | 3 real TS errors blocked any local deploy | 0 errors (`missing export type`; a call to `getRegionHealth`, a function that never existed) |
 | `tsconfig.worker.json` | `"exclude": []` → compiled test files into the worker bundle | tests excluded; matches base tsconfig convention |
 | Dead-host scripts | 23 refs to a non-resolving host across 8 scripts; `final-integration-check.js` could never pass | single source `scripts/lib/host-contract.sh`; 3 scripts corrected, Gate 5 left untouched |
@@ -80,11 +80,16 @@ an incident it directed operators to a nonexistent endpoint.
 
 | # | Condition | Status | What remains |
 |---|---|---|---|
-| 1 | Deploy the contract fix | **READY, BLOCKED ON #2** | Fix verified working: built bundle carries it, live `wrangler dev` returns 200 for `/api/health` and `/health` with identical bodies. Cannot deploy yet — the tree is dirty and the deploy diff is not reviewable. Creds confirmed present. The route-takeover trap is now guarded. |
-| 2 | Commit & review the 77 files | **PLANNED** | `region-health-monitor.ts` carries both tracks in one unsplittable hunk, so the clean split Track D recommended is impossible by file. See `evidence/track-d-commit-separation-plan.md` for the recommended 3-commit path and the honest reassessment of whether the split is worth it. |
+| 1 | Deploy the contract fix | **READY — TREE CLEAN, DIFF REVIEWABLE** | Landed as `dbd982de` and verified independently deployable: in an isolated worktree with only that commit's files, `tsc --noEmit` exits 0, `tsc -p tsconfig.worker.json` exits 0, and 17125 tests pass. Fix itself verified end-to-end — bundle emits the alias, live `wrangler dev` returns 200 for both paths, tests are fail-open. |
+| 2 | Commit & review the 77 files | **DONE** | Split into 5 commits (`dbd982de` deployable-alone, `66d2b580` tooling, `36da325d` refactor wave, `e9e3d004` records, `049af752` dead-host follow-ups). The clean per-track split is impossible — `region-health-monitor.ts` carries both tracks in one unsplittable hunk — so C1 is cherry-pickable rather than surgically pure. See `evidence/track-d-commit-separation-plan.md`. |
 | 3 | Measure capacity honestly | **STILL OPEN, NOW BOUNDED** | 12k is not provable locally: the local harness *crashes* above ~1000 RPS rather than degrading, so no local number extrapolates to the edge. Two honest options remain: a distributed k6 run against production in an approved window, or revise the target to what is measured and state the caveat. The second is defensible today. |
 | 4 | Fix the gate evidence | **RESOLVED → MUST NOT "FIX"** | The gate is not evidence-free, it is **mislabeled**: the artifact says `current_mrr: 0` (truthful) beside `status: "passed"` (false). Upstream bug means green exit codes prove nothing. Do **not** edit the status to make it pass. Correct action: restate to `pending` in the upstream repo, or accept MRR=0 as the gate answer. |
 | 5 | Notify on-call | **NOT DONE** | No record anywhere in either repo. |
+
+**Deploy is now the only mechanical step left.** With the tree clean and the
+route-takeover guarded, `dbd982de` can be deployed as-is:
+`npx wrangler deploy --config wrangler.toml`, then confirm
+`https://api.cashclaw.cc/api/health` returns 200.
 
 Only after 1–4 does "zero bug" mean something defensible: *no known bug against an
 asserted contract, with the gate actually run*.
