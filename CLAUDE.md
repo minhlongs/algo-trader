@@ -99,12 +99,30 @@ See `scripts/` for deploy commands: `deploy-region.sh`, `final-integration-check
 
 ### Rollback (L1 Kill Switch)
 
-```bash
-# Disable multi-region routing
-curl -X POST https://algo-trader.workers.dev/api/admin/rollback/kill/MULTI_REGION \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
+The deployed Worker is reachable only at `https://api.cashclaw.cc` (route
+`api.cashclaw.cc/*`, zone `cashclaw.cc`). The old `algo-trader.workers.dev`
+hostname does not resolve.
 
-# Disable sharding
-curl -X POST https://algo-trader.workers.dev/api/admin/rollback/kill/SHARDING \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
+**Release rollback — revert to the previous Worker version (the primary path):**
+
+```bash
+npx wrangler rollback --config wrangler.toml
 ```
+
+**Behaviour kill switch — QWEN_KILL (L1).** This is an env/KV flag read by
+`isKillSwitchActive()` (`src/desk/wiring/qwen-drawdown-monitor.ts`), not an HTTP
+endpoint. Set it on the Worker and redeploy:
+
+```bash
+echo "1" | npx wrangler secret put QWEN_KILL --config wrangler.toml
+```
+
+**L2 (in-process) disable — `SWARM_QWEN_ENABLED=false`:**
+
+```bash
+echo "false" | npx wrangler secret put SWARM_QWEN_ENABLED --config wrangler.toml
+```
+
+There is no `POST /api/admin/rollback/kill/{MULTI_REGION,SHARDING}` route on the
+Worker — an earlier revision of this section documented endpoints that never
+existed. See `docs/ai-first-enforcement-gates.md` for the full L0–L4 stack.
