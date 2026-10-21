@@ -121,7 +121,7 @@ describe('upsert', () => {
     const [sql, params] = mockQuery.mock.calls.find((c) =>
       (c[0] as string).includes('INSERT INTO signal_subscriptions'),
     )!;
-    expect(sql).toContain('ON CONFLICT (id) DO UPDATE SET');
+    expect(sql).toContain('ON CONFLICT (subscriber_id) DO UPDATE SET');
     expect(params).toEqual(['s1', 'sub-1', 42, 'FREE', true, 1, expect.any(Number)]);
   });
 

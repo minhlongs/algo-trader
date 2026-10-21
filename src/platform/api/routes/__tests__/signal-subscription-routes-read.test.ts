@@ -18,8 +18,19 @@ vi.mock('../../../middleware/feature-gate', () => ({
   requireSignalTier: (_t?: string) => (_req: unknown, _res: unknown, next: NextFunction) => next(),
 }));
 vi.mock('../../../middleware/signal-tier-resolver', () => ({ resolveSubscriberId: mocks.resolveSubscriberIdMock }));
-vi.mock('../../../raas/subscriber-tenant-isolator', () => ({
-  assertTenantAccess: (...args: unknown[]) => { mocks.assertTenantAccessMock(...args); },
+// Must resolve to the SAME module the handler imports: from __tests__/ the
+// specifier '../../../raas/...' lands in src/platform/raas, which is a
+// different file from the src/raas module the handler actually uses. Use the
+// path-arithmetic-equivalent ../../../../ instead so the mock intercepts it.
+vi.mock('../../../../raas/subscriber-tenant-isolator', () => ({
+  assertTenantAccess: (...args: unknown[]) => {
+    mocks.assertTenantAccessMock(...args);
+    // Mirror the real contract so a 403 assertion means a denial happened.
+    const [requested, caller, isAdmin] = args as [string, string | null | undefined, boolean];
+    if (isAdmin) return;
+    if (!caller) throw new Error('TenantIsolator: no subscriber identity in token');
+    if (caller !== requested) throw new Error(`TenantIsolator: cross-tenant access denied - token=${caller} requested=${requested}`);
+  },
 }));
 vi.mock('../../../shared/tenant', () => ({
   validateTenantId: (...args: unknown[]) => mocks.validateTenantIdMock(args[0] as string),
@@ -80,6 +91,11 @@ describe('Signal Subscription Routes — Read Endpoints', () => {
       const res = await request(createTestApp()).get('/api/v1/signals/subscriptions/user_001').set('Authorization', 'Bearer test-key');
       expect(res.status).toBe(200);
       expect(res.body.data.subscriberId).toBe('user_001');
+      // The guard must be reached, not merely present. An earlier revision
+      // mocked a module the handler never imports, so these assertions passed
+      // against code with no guard at all.
+      expect(mocks.assertTenantAccessMock).toHaveBeenCalledTimes(1);
+      expect(mocks.assertTenantAccessMock).toHaveBeenCalledWith('user_001', 'user_001', false);
     });
 
     it('returns 403 when the caller reads another tenant', async () => {
