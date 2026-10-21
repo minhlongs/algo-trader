@@ -22,7 +22,7 @@ export interface SignalSubscription {
   id: string;
   subscriberId: string;
   chatId?: number;
-  tier: 'FREE' | 'PRO' | 'ENTERPRISE';
+  tier: 'FREE' | 'BASIC' | 'PRO' | 'ENTERPRISE';
   active: boolean;
   createdAt: number;
   updatedAt: number;
@@ -33,6 +33,11 @@ export const TIER_SIGNAL_CONFIG = {
   FREE: {
     sseEnabled: false,
     minIntervalMs: 24 * 60 * 60 * 1000,
+    minConfidence: 0.7,
+  },
+  BASIC: {
+    sseEnabled: false,
+    minIntervalMs: 4 * 60 * 60 * 1000,
     minConfidence: 0.7,
   },
   PRO: {
