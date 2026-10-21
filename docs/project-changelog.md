@@ -1,5 +1,29 @@
 # Project Changelog - Algo Trader
 
+## [3.3.09] - 2026-10-20 — Deep Modularization Wave: `src/` Ceiling 160 → 159 LOC (`--deep`)
+
+### Changed
+- **Deep LOC Hotspot Decomposition (`src/`)**:
+  - Decomposed 25 production files with genuine multi-responsibility structure into 27 focused modules, eliminating the last 160-LOC file (`src/platform/workers/coupon-helpers.ts`) and dropping the `src/` ceiling from **160 to 159 LOC**.
+  - Highest-impact extractions:
+    - `coupon-helpers.ts` (160 → 38): split into `coupon-model` (types + JSON/CORS helpers), `coupon-kv-store` (KV persistence + single-writer redeem lock), `coupon-lifecycle-rules` (pure redemption eligibility), `coupon-invoice-client` (NOWPayments invoice creation). The barrel is retained as a facade because `coupon-validate.test.ts` does `vi.mock('../coupon-helpers', ...)`.
+    - `trade-repository.ts` (159 → 92) and its `src/platform/db/` twin (159 → 92): both now share one `trade-sql-statements.ts` catalogue, removing a near-duplicate SQL copy.
+    - `multi-regime-candle-generator.ts` (159 → 70): per-regime OHLCV shaping extracted to `multi-regime-candle-shaping.ts`, preserving the regime-feature invariants the `computeRegimeSeries` tests assert.
+    - `slippage-calculator.ts` (159 → 78): duplicated buy/sell book-walking collapsed into `slippage-book-walk.ts` (4 copies of the `insufficientLiquidity` result reduced to one factory).
+    - `ccxt-connector-mappers.ts` (158 → 110): the network/balance/rate-limit error signal table moved to `ccxt-error-classifier.ts`.
+    - `social-auto-poster.ts` (158 → 62): per-channel posters (Twitter OAuth 1.0a, Telegram bot API) moved to `social-channel-posters.ts`.
+- **Behaviour preservation**:
+  - `notification-service.ts` kept its private `backoffMs` seam, which `notification-service-queue.test.ts` stubs to force zero backoff; the extracted `notification-retry-policy.ts` receives the backoff as an injected function so that override still applies.
+  - `arbitrage-risk-guard.ts` moved its dependency interface into `arbitrage-risk-guard-factory.ts` (re-exported from the guard) to break a type-only import cycle while keeping the public import path stable for its two test files.
+- **Reverted**: a session-singleton extraction from `src/desk/commands/paper-trading.ts` was reverted — it would have landed at 160 LOC (above the 158 baseline) because the original used a module-level variable directly rather than accessors, so there was no net gain.
+- **Accepted at natural ceiling**: 8 files remain at 158–159 LOC because their bulk is one cohesive algorithm or an already-split module facade — notably `hasbrouck-vecm-engine` and `hjm-engine` (each method is a distinct statistical formula, math already in sibling modules) and `ws-adapter-redis` (whose `shutdown` touches private state that tests reach via bracket access).
+
+### Verified
+- `npm run typecheck` → 0 errors.
+- `npx vitest run` → 17,122 tests passed / 11 skipped (1,343 files) — identical to the pre-wave baseline, no regressions.
+- `node scripts/check-quality-baseline.mjs --quality` → 5/5 PASS: 0 `:any` types, console calls within baseline, 0 new/grown files over the line limit, 0 banned imports, 0 new eslint-disables.
+- `npm run lint` → 0 errors, 149 warnings (all pre-existing; none introduced — 27 new modules are warning-free).
+
 ## [3.3.08] - 2026-10-18 — Quantitative Desk Waves 339–341, UI/UX Pro Max v5 Stitch Screen #16 (`limit-order-queue-cockpit`) & Deep 160-LOC Refactor (`--deep`)
 
 ### Added
