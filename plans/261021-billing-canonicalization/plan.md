@@ -185,7 +185,24 @@ so the test targets one function. Keep `subscriptions-handlers.ts` under 180 LOC
 | C (revenue-corpus guard) | **DONE** — 19/19. Verified: `listInvoices` has **zero production callers**, so the $26.7M hazard is **latent, not live** |
 | D (cross-source consistency) | **DONE** — 14/14; caught the STARTER gap, which is now closed in `PRICING_TIERS` |
 | E (Telegram unmappable tiers) | **DONE** — 115/115; renders real signals tiers at $29/$99/$299, bilingual layout intact |
-| A (single source of truth) | **PARTIAL** — STARTER added to canonical table; `handleGetTiers` still hardcodes its literal |
+| A (single source of truth) | **PARTIAL** — STARTER added to canonical table; `handleGetTiers` still hardcodes its literal — converted to derive from `PRICING`/`PRICING_TIERS` so drift is structurally impossible (Track D's test #6 already guards this and will fail until done) |
+
+## Committed: `eb07d8e2` — not deployed
+
+The live Worker still serves `MASTER / "Master (Custom)"` and still contains the free-upgrade
+hole. **Both defects are live in production until deployed.** Verified: `curl
+https://api.cashclaw.cc/api/v1/subscriptions/tiers` returns the old label today.
+
+Deploy is a separate step requiring a deploy decision (see `plans/261020-1345-golive-zero-bug/go-no-go.md`):
+CLAUDE.md's blockers — on-call notified, 12k capacity measured, NO-GO resolved — are unmet, so the
+repo's own contract forbids deploying from this state. The code is ready; the operational gate is not.
+
+## Deliberately not done
+- `data/invoices/` (64 MB) not deleted — destructive, needs approval.
+- Write path (Track C follow-up #1) not guarded: `payment-handler.ts:33` still writes fixture
+  invoices, so residue keeps accumulating.
+- Malformed-email policy (Track C follow-up #2) left as-is; it is a deliberate trade-off.
+- Coupon table has no `algo-trader` key — reported only; it is shared across four products.
 
 ### C's correction to my original framing
 
