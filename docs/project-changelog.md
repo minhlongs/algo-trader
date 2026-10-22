@@ -1,5 +1,21 @@
 # Project Changelog - Algo Trader
 
+## [3.1.97] - 2026-10-22 — Behavioral Open-Core Readiness & License Gate Fail-Closed
+
+### Changed
+- **Open-Core readiness verdict is now behavior-verified, not file-existence.** `RepositoryBlueprintAuditor.auditRepository` runs one behavioral probe per catalog step instead of relying on `fs.existsSync`. Each 25-step entry now carries `verified`, `kind` (`behavioral` or `absent`), and `evidence`; the report exposes `stepBehaviorAudit`, `behaviorallyVerifiedCount`, and `existenceOnlyStepCount`. `isReadyForPublicGithub` is `false` whenever a behavioral probe fails or any step is existence-only, so a READY verdict can no longer be produced by committing files alone.
+- **License gate and quota meter now report enforcement, not presence.** `licenseGateEnforced` and `quotaMeteringEnforced` come from the probes that exercise the HMAC sign/verify path (tamper rejected 401, under-tier and expiry 402) and the billing meter (allowed under limit 200, denied 402 once the monthly MCU ceiling is consumed).
+- **PLG funnel is labeled a projection.** `opencore-saas --funnel` prints its conversion and revenue inputs from the named `SAAS_TARGET_METRICS` assumptions constant, and reads `completedRestructuringSteps`, `leakedSecretsCount`, and `licenseGateEnforced` from the live audit. Callers cannot override those three, so a blocked repository cannot produce a healthy funnel. When the audit reports blocking issues the funnel says so rather than printing an optimal verdict.
+- **`GET /api/v1/open-core/status` and `POST /verify-license` read their inputs instead of literals.** The route response shape is unchanged.
+
+### Security
+- **The license gate no longer falls back to a compiled-in secret.** `LicenseGate` reads `LICENSE_HMAC_SECRET` and throws at startup when it is unset — an HMAC gate cannot survive a default key that any reader of the source can use to mint a valid token. `POST /verify-license` answers 503 when the key is not configured and logs the configuration error server-side, so the response never echoes key details.
+- **An unlisted `tier` is rejected.** `TIER_HIERARCHY[unknownTier]` is `undefined`, and `undefined < N` is `false`, so the old entitlement comparison passed unknown tiers instead of failing them. `isKnownTier` now validates the parsed tier against the four known values.
+
+### Verified
+- `npx tsc --noEmit` → 0 errors; `npx eslint` on the touched files → clean; 0 `: any`.
+- `tests/unit/desk/wave_316_opencore_saas_suite.test.ts` → 9/9; the Open-Core probe suites and the open-core route license-gate suite → 81/81 total.
+
 ## [3.3.09] - 2026-10-20 — Deep Modularization Wave: `src/` Ceiling 160 → 159 LOC (`--deep`)
 
 ### Changed
