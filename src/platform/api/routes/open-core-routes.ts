@@ -9,6 +9,7 @@
 import path from 'node:path';
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
+import { logger } from '../../../shared/utils/logger';
 import {
   OPEN_CORE_25_STEPS,
   RepositoryBlueprintAuditor,
@@ -68,7 +69,24 @@ openCoreRouter.post('/verify-license', (req: Request, res: Response) => {
   }
 
   const { token, requiredTier, requestedMcu } = parsed.data;
-  const gate = new LicenseGate();
+
+  // The gate fails closed when LICENSE_HMAC_SECRET is unset, which surfaces here as a
+  // constructor throw. A missing deployment secret is a server-side configuration fault, not a
+  // client credential failure, so report it as 503 rather than letting it escape as an
+  // unhandled handler error.
+  let gate: LicenseGate;
+  try {
+    gate = new LicenseGate();
+  } catch (error) {
+    logger.error('[OpenCore] License gate is not configured', { message: (error as Error).message });
+    res.status(503).json({
+      isValid: false,
+      statusCode: 503,
+      error: 'License verification is not configured on this deployment',
+    });
+    return;
+  }
+
   const licenseCheck = gate.verifyToken(token, requiredTier);
 
   if (!licenseCheck.isValid || !licenseCheck.payload) {
