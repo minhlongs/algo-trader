@@ -28,10 +28,11 @@ const verifyLicenseSchema = z.object({
   requestedMcu: z.number().int().nonnegative().optional(),
 });
 
-openCoreRouter.get('/status', (_req: Request, res: Response) => {
+openCoreRouter.get('/status', async (_req: Request, res: Response) => {
   const repoRoot = path.resolve(__dirname, '../../../../');
   const auditor = new RepositoryBlueprintAuditor();
-  const blueprintAudit = auditor.auditRepository(repoRoot);
+  const blueprintAudit = await auditor.auditRepository(repoRoot);
+  const telemetry = blueprintAudit.readinessReport.telemetry;
 
   const plgSimulation = OpenCoreSaasMonetizationCoordinator.evaluate({
     completedRestructuringSteps: blueprintAudit.verifiedStepModulesCount,
@@ -41,8 +42,8 @@ openCoreRouter.get('/status', (_req: Request, res: Response) => {
     avgMonthlyMcuSpendUsd: 145,
     enterpriseSeatsCount: 28,
     enterpriseSeatPriceUsd: 1_250,
-    leakedSecretsCount: blueprintAudit.readinessReport.blockingIssues.length > 0 ? 1 : 0,
-    licenseGateEnforced: true,
+    leakedSecretsCount: telemetry.leakedSecretsCount,
+    licenseGateEnforced: telemetry.licenseGateEnforced,
   });
 
   res.status(200).json({
@@ -67,7 +68,7 @@ openCoreRouter.post('/verify-license', (req: Request, res: Response) => {
   }
 
   const { token, requiredTier, requestedMcu } = parsed.data;
-  const gate = new LicenseGate(process.env.ALGO_LICENSE_SECRET ?? 'algo-trader-raas-secret-2026');
+  const gate = new LicenseGate();
   const licenseCheck = gate.verifyToken(token, requiredTier);
 
   if (!licenseCheck.isValid || !licenseCheck.payload) {
