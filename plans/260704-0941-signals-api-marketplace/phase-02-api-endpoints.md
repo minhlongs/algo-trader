@@ -126,9 +126,15 @@ the silent no-op surfaced at all.
   It drives the handlers with stub req/res objects because this sandbox forbids local
   `listen()`, which every supertest suite here needs.
 - Non-socket suites `api/middleware`, `signal`, `raas`: 38/38 pass.
-- Not verified: the 3 pre-existing supertest suites for this router (29 tests) cannot run
-  in this sandbox — `listen EPERM 0.0.0.0`. They must be run where local port binding is
-  allowed before this phase is called complete.
+- The three pre-existing supertest suites for this router, run where local port binding
+  is allowed: **34/34 pass** (the original 29 plus the 5 added above). Run confirmed by
+  the user outside this sandbox, which forbids `listen()`.
+
+## Phase status
+
+Phase 2 is complete and verified. The "Completed" status it carried before this work was
+inaccurate: two of the seven todo items were unfinished, and one of them left every
+tenant-scoped route on this router readable by any authenticated caller.
 
 ## Success Criteria
 - `npx tsc --noEmit` → 0 errors
