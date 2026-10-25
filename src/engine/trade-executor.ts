@@ -20,6 +20,9 @@ export class TradeExecutor {
   constructor(config: TradeExecutorConfig = {}) {
     this.adapter = config.polymarket ?? null;
     this.guard = config.guard;
+    if (this.adapter && this.guard) {
+      this.guard.setEnabled(true);
+    }
     logger.debug(
       `TradeExecutor initialized (${this.adapter ? 'LIVE_ADAPTER' : 'PAPER_STUB'})`,
       'TradeExecutor',

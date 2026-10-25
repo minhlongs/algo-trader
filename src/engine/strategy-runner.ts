@@ -38,7 +38,7 @@ export class StrategyRunner {
       configs.filter((c) => c.enabled !== false).map((c) => c.name),
     );
     for (const [name, strat] of this.strategies) {
-      if (configs.length > 0 && !enabledSet.has(name) && !this.statuses.has(name)) {
+      if (configs.length > 0 && !enabledSet.has(name)) {
         continue;
       }
       try {

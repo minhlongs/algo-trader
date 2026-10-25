@@ -142,9 +142,9 @@ export class LivePositionTracker {
   restorePositions(savedPositions: LivePosition[], realizedPnl?: number): void {
     this.positions.clear();
     for (const pos of savedPositions) {
-      if (pos && typeof pos.tokenId === 'string' && typeof pos.size === 'number' && pos.size > 0) {
-        const entryPrice = typeof pos.entryPrice === 'number' ? pos.entryPrice : 0.5;
-        const currentPrice = typeof pos.currentPrice === 'number' ? pos.currentPrice : entryPrice;
+      if (pos && typeof pos.tokenId === 'string' && Number.isFinite(pos.size) && pos.size > 0) {
+        const entryPrice = Number.isFinite(pos.entryPrice) && pos.entryPrice > 0 ? pos.entryPrice : 0.5;
+        const currentPrice = Number.isFinite(pos.currentPrice) && pos.currentPrice > 0 ? pos.currentPrice : entryPrice;
         const side = pos.side === 'SELL' ? 'SELL' : 'BUY';
         const hydrated: LivePosition = {
           tokenId: pos.tokenId,
@@ -152,9 +152,9 @@ export class LivePositionTracker {
           size: pos.size,
           entryPrice,
           currentPrice,
-          unrealizedPnl: typeof pos.unrealizedPnl === 'number' ? pos.unrealizedPnl : 0,
-          openedAt: typeof pos.openedAt === 'number' ? pos.openedAt : Date.now(),
-          lastPriceUpdate: typeof pos.lastPriceUpdate === 'number' ? pos.lastPriceUpdate : Date.now(),
+          unrealizedPnl: Number.isFinite(pos.unrealizedPnl) ? pos.unrealizedPnl : 0,
+          openedAt: Number.isFinite(pos.openedAt) ? pos.openedAt : Date.now(),
+          lastPriceUpdate: Number.isFinite(pos.lastPriceUpdate) ? pos.lastPriceUpdate : Date.now(),
         };
         hydrated.unrealizedPnl = computeUnrealizedPnl(hydrated);
         this.positions.set(pos.tokenId, hydrated);
