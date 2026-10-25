@@ -1,11 +1,10 @@
 import { Router, Request, Response } from 'express';
-import { UsageMeteringService } from '../../billing/usage-metering';
+import { usageMetering } from '../../signals-api/usage-metering-service';
 import { requireTier } from '../../middleware/feature-gate';
 import { getCurrentPeriod, calculateMRR, calculateChurn } from './revenue-analytics';
 import type { RevenueSummary, CustomerUsage } from './revenue-types';
 
 export function registerRevenueRoutes(router: Router): void {
-  const usageMetering = UsageMeteringService.getInstance();
 
   router.get('/summary', requireTier('ENTERPRISE'), async (req: Request, res: Response) => {
     try {
@@ -51,14 +50,14 @@ export function registerRevenueRoutes(router: Router): void {
       const usageData = await usageMetering.getAllUsageData(period);
 
       const customerUsage: CustomerUsage[] = usageData.slice(0, limit).map(usage => ({
-        licenseKey: usage.licenseKey,
+        licenseKey: usage.subscriberId,
         tier: usage.tier,
-        tradesUsed: usage.currentUsage,
+        tradesUsed: usage.callsUsed,
         tradesLimit: usage.monthlyLimit,
         percentUsed: usage.percentUsed,
         overageUnits: usage.overageUnits,
         overageCost: usage.overageCost,
-        lastActiveAt: usage.lastSyncedAt || 0,
+        lastActiveAt: 0,
       }));
 
       res.json({
@@ -82,7 +81,7 @@ export function registerRevenueRoutes(router: Router): void {
       const overageCustomers = usageData
         .filter(u => u.overageUnits > 0)
         .map(u => ({
-          licenseKey: u.licenseKey,
+          licenseKey: u.subscriberId,
           overageUnits: u.overageUnits,
           overageCost: u.overageCost,
         }));

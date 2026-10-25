@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { runOpenCoreSaasCommand } from '../../../src/desk/commands/opencore-saas';
 import { OrderDispatcher } from '../../../src/desk/execution/order-dispatcher';
 import { SubscriberTenantIsolator } from '../../../src/desk/subscriber-tenant-isolator';
@@ -9,6 +9,17 @@ import { ComplianceAuditLogger } from '../../../src/desk/security/audit-logger';
 import { StrategyMarketplaceManager } from '../../../src/desk/strategies/marketplace';
 import { UnifiedIpnWebhookHandler } from '../../../src/billing/ipn-webhook';
 import { openCoreRouter } from '../../../src/platform/api/routes/open-core-routes';
+
+// The audit runs the behavioral probes, which read the one durable meter — and that
+// meter deliberately throws rather than answer an unreadable counter as "no usage".
+// This suite checks that the CLI commands run, not that a local Postgres has the
+// usage_metrics table, so the row read answers like an empty billing period.
+vi.mock('../../../src/db/postgres-client', () => ({
+  query: vi.fn(async () => ({ rows: [] })),
+}));
+vi.mock('../../../src/shared/utils/logger', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
 
 const companyConfigPath = path.resolve(__dirname, '../../../.mekong/company.json');
 // .mekong/ is gitignored operator state; skip on clean CI checkouts.

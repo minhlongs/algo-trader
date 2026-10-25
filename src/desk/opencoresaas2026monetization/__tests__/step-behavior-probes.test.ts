@@ -7,30 +7,42 @@
  * and fails when the underlying behavior is broken.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { behaviorallyProbedStepIds, probeStep, probeUnsupported } from '../step-behavior-probes';
 import { probeQuotaMetering } from '../step-gate-probes';
 import { OPEN_CORE_25_STEPS } from '../catalog';
-import { BillingMeter } from '../billing-meter';
+import { UsageMeteringService } from '../../../platform/signals-api/usage-metering-service';
+
+/**
+ * The probe reads the durable meter, so its query must answer like a real empty
+ * period row: no usage recorded yet. Returning `undefined` here would throw
+ * inside the meter and the probe would fail for the wrong reason.
+ */
+const queryMock = vi.fn(async () => ({ rows: [] as { mcu_this_period: number }[] }));
+
+vi.mock('../../../db/postgres-client', () => ({ query: (...a: unknown[]) => queryMock(...a) }));
+vi.mock('../../../shared/utils/logger', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
+}));
 
 describe('quota metering probe (step 12)', () => {
-  it('verifies a meter that allows under limit and denies with 402 past it', () => {
-    const result = probeQuotaMetering();
+  it('verifies a meter that allows under limit and denies with 402 past it', async () => {
+    const result = await probeQuotaMetering();
     expect(result.verified).toBe(true);
     expect(result.kind).toBe('behavioral');
   });
 
-  it('fails a meter that never denies', () => {
+  it('fails a meter that never denies', async () => {
     const neverDenies = {
-      checkQuota: () => ({ isAllowed: true, statusCode: 200 as const }),
-      recordConsumption: () => undefined,
+      checkMcu: async () => ({ isAllowed: true, statusCode: 200 as const }),
     };
-    const real = BillingMeter.prototype.checkQuota;
-    BillingMeter.prototype.checkQuota = neverDenies.checkQuota as typeof real;
+    const real = UsageMeteringService.prototype.checkMcu;
+    UsageMeteringService.prototype.checkMcu = neverDenies.checkMcu as typeof real;
     try {
-      expect(probeQuotaMetering().verified).toBe(false);
+      const result = await probeQuotaMetering();
+      expect(result.verified).toBe(false);
     } finally {
-      BillingMeter.prototype.checkQuota = real;
+      UsageMeteringService.prototype.checkMcu = real;
     }
   });
 });

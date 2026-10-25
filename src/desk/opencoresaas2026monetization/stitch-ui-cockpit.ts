@@ -6,7 +6,8 @@
 
 import { ComplianceAuditLogger, type ChainedAuditRecord } from '../security/audit-logger';
 import { StrategyMarketplaceManager } from '../strategies/marketplace';
-import { BillingMeter, TIER_ENTITLEMENTS } from './billing-meter';
+import { TIER_ENTITLEMENTS } from './billing-meter';
+import { usageMetering } from '../../platform/signals-api/usage-metering-service';
 import type { TierLevel } from './catalog';
 import { buildAvellanedaLipkinCockpitSnapshot } from './stitch-avellaneda-lipkin-telemetry';
 import { buildBlackLittermanRiskParitySnapshot } from './stitch-black-litterman-risk-parity-telemetry';
@@ -40,13 +41,24 @@ export * from './stitch-statarb-glosten-milgrom-telemetry';
 export * from './ui-ux-pro-max-auditor';
 
 export class StitchUiCockpitEngine {
-  private readonly meter = new BillingMeter();
   private readonly marketplace = new StrategyMarketplaceManager();
   private readonly auditLogger = new ComplianceAuditLogger();
   private killSwitchActive = false;
 
-  public getCockpitSnapshot(tenantId: string, tier: TierLevel, theme: StitchThemeId = 'OBSIDIAN_QUANTUM') {
-    const quota = this.meter.checkQuota(tenantId, tier, 0);
+  /**
+   * Build the cockpit snapshot for a tenant.
+   *
+   * The quota is read from the one durable meter, so the number the cockpit shows
+   * a tenant is the number the API would deny them at. It is async because that
+   * read hits the store — the in-memory counter it replaces answered instantly
+   * precisely because it was wrong.
+   *
+   * `mcuQuota` keeps its original field names (`currentUsage`, `maxLimit`,
+   * `remainingMcu`) so the UI contract does not change; only the store behind
+   * them does.
+   */
+  public async getCockpitSnapshot(tenantId: string, tier: TierLevel, theme: StitchThemeId = 'OBSIDIAN_QUANTUM') {
+    const quota = await usageMetering.checkMcu(tenantId, tier, 0);
     return {
       version: '2026.1-STITCH',
       tenantId,
@@ -54,7 +66,13 @@ export class StitchUiCockpitEngine {
       theme: STITCH_DESIGN_THEMES[theme],
       screens: STITCH_8_SCREENS,
       tierEntitlements: TIER_ENTITLEMENTS[tier],
-      mcuQuota: quota,
+      mcuQuota: {
+        isAllowed: quota.isAllowed,
+        statusCode: quota.statusCode,
+        currentUsage: quota.used,
+        maxLimit: quota.limit,
+        remainingMcu: quota.remainingMcu,
+      },
       killSwitchActive: this.killSwitchActive,
       billingProviders: { primary: 'NOWPayments (USDT)', secondary: 'PayOS (VietQR VND)', blocked: ['Polar'] },
       auditChainIntegrity: this.auditLogger.verifyIntegrity(),

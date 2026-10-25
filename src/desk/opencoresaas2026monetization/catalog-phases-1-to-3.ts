@@ -76,7 +76,7 @@ export const OPEN_CORE_STEPS_1_TO_15: readonly OpenCoreStep[] = [
   },
   {
     stepNumber: 12, id: 'mcu-and-quota-metering', name: 'MCU & Strategy Quota Metering',
-    phase: 'PHASE_3_CLOUD_CONTROL_PLANE', targetModule: 'src/billing/billing-meter.ts', minTier: 'PREMIUM', isOssCore: false,
+    phase: 'PHASE_3_CLOUD_CONTROL_PLANE', targetModule: 'src/platform/signals-api/usage-metering-service-core.ts', minTier: 'PREMIUM', isOssCore: false,
     descriptionEn: 'Real-time API & strategy computation unit (MCU) meter with upgrade triggers.',
     descriptionVi: 'Bộ đo hạn mức API và đơn vị tính toán chiến lược (MCU) thời gian thực.',
   },

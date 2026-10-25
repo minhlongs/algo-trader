@@ -12,6 +12,8 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { resolveSubscriberId, resolveSubscriberTier } from '@platform/middleware/signal-tier-resolver';
 import { requireSignalTier } from '@platform/middleware/feature-gate';
+import { enforceQuotaGate } from '@platform/middleware/signal-quota-gate';
+import { usageTrackingMiddleware } from '@platform/middleware/usage-tracking-express';
 import { getCachedSignals, setCachedSignals } from '@desk/signal/signal-rest-cache';
 import { signalTtlEnforcer } from '@desk/signal/signal-ttl-enforcer';
 import { signalSubscriberRepo } from '@platform/signal/signal-subscriber-repository-d1';
@@ -33,7 +35,15 @@ const feedQuerySchema = z.object({
  * Both paths are tier-segmented. Cache write failure is surfaced by a warning only
  * so callers still get the live signals via the 200 response.
  */
-signalFeedRouter.get('/feed', requireSignalTier('SIGNALS_BASIC'), async (req: Request, res: Response) => {
+signalFeedRouter.get(
+  '/feed',
+  requireSignalTier('SIGNALS_BASIC'),
+  enforceQuotaGate,
+  usageTrackingMiddleware,
+  handleFeedRequest,
+);
+
+async function handleFeedRequest(req: Request, res: Response): Promise<void> {
   try {
     const identity = resolveSubscriberId(req);
     if (!identity) {
@@ -71,12 +81,20 @@ signalFeedRouter.get('/feed', requireSignalTier('SIGNALS_BASIC'), async (req: Re
     logger.error('[SignalFeed] Feed list error', { err });
     res.status(500).json({ error: 'Failed to fetch feed' });
   }
-});
+}
 
 /**
  * GET /feed/:id — single signal lookup, TTL-gated.
  */
-signalFeedRouter.get('/feed/:id', requireSignalTier('SIGNALS_BASIC'), async (req: Request, res: Response) => {
+signalFeedRouter.get(
+  '/feed/:id',
+  requireSignalTier('SIGNALS_BASIC'),
+  enforceQuotaGate,
+  usageTrackingMiddleware,
+  handleSignalLookup,
+);
+
+async function handleSignalLookup(req: Request, res: Response): Promise<void> {
   try {
     const identity = resolveSubscriberId(req);
     if (!identity) {
@@ -101,4 +119,4 @@ signalFeedRouter.get('/feed/:id', requireSignalTier('SIGNALS_BASIC'), async (req
     logger.error('[SignalFeed] Signal lookup error', { err });
     res.status(500).json({ error: 'Failed to fetch signal' });
   }
-});
+}

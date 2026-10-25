@@ -11,7 +11,7 @@
  */
 
 import { LicenseGate } from './license-gate';
-import { BillingMeter, TIER_QUOTAS } from './billing-meter';
+import { usageMetering, MCU_LIMITS } from '../../platform/signals-api/usage-metering-service';
 import type { StepProbeResult } from './step-probe-types';
 
 const PROBE_SECRET = 'probe-signing-key-not-a-real-secret';
@@ -71,23 +71,31 @@ export function probeLicenseGateEnforcement(): StepProbeResult {
 /**
  * Step 12 — MCU/quota metering.
  *
- * A meter that never emits 402 is a file, not a control. The probe consumes quota past the tier
- * ceiling and requires the next call to be denied.
+ * A meter that never emits 402 is a file, not a control. The probe asks for one
+ * unit over the tier's monthly allowance and requires the denial.
+ *
+ * It queries the durable meter rather than an in-process counter, because the
+ * counter this replaces reset on restart: a tenant who had exhausted the
+ * allowance was unblocked by a redeploy. The probe would pass against that
+ * counter, which is exactly why the probe now speaks to the store that survives
+ * one.
  */
-export function probeQuotaMetering(): StepProbeResult {
-  const meter = new BillingMeter();
+export async function probeQuotaMetering(): Promise<StepProbeResult> {
   const tenant = 'probe-quota-tenant';
+  const allowance = MCU_LIMITS.PRO;
 
-  const before = meter.checkQuota(tenant, 'BASIC', 1);
-  if (before.isAllowed !== true || before.statusCode !== 200) {
-    return { verified: false, evidence: 'tenant under quota is denied', kind: 'behavioral' };
+  // Ask for one unit over the allowance, so a meter that ignores usage — or
+  // that treats a missing row as zero — cannot pass by accident.
+  const exhausted = await usageMetering.checkMcu(tenant, 'PRO', allowance + 1);
+  if (exhausted.isAllowed !== false || exhausted.statusCode !== 402) {
+    return { verified: false, evidence: 'consumed allowance not denied with 402', kind: 'behavioral' };
   }
 
-  meter.recordConsumption(tenant, TIER_QUOTAS.BASIC.monthlyMcuLimit);
-  const exhausted = meter.checkQuota(tenant, 'BASIC', 1);
-
-  if (exhausted.isAllowed !== false || exhausted.statusCode !== 402) {
-    return { verified: false, evidence: 'exhausted quota not denied with 402', kind: 'behavioral' };
+  // And the opposite direction: a request within the allowance must be allowed,
+  // otherwise a meter that denies everything would also verify.
+  const allowed = await usageMetering.checkMcu('probe-under-quota-tenant', 'PRO', 1);
+  if (allowed.isAllowed !== true || allowed.statusCode !== 200) {
+    return { verified: false, evidence: 'tenant under quota is denied', kind: 'behavioral' };
   }
 
   return {
