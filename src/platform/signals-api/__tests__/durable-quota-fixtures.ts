@@ -41,13 +41,7 @@ export class FakeUsageStore {
     if (/mcu_this_period/i.test(sql)) {
       return this.upsertMcu(params);
     }
-    if (/trades_this_period/i.test(sql)) {
-      return this.upsertTrade(params);
-    }
-    if (/^INSERT/i.test(sql)) {
-      return this.upsertCall(params);
-    }
-    throw new Error(`unexpected SQL: ${sql}`);
+    return this.upsertCall(params);
   }
 
   /** recordCall: (id, subscriber, period, period_limit, now) — one call. */
@@ -60,23 +54,6 @@ export class FakeUsageStore {
     }
     const row = emptyRow(Number(params[3]));
     row.calls_this_period = 1;
-    this.rows.set(key, row);
-    return { rows: [row] };
-  }
-
-  /** recordTrade: (id, subscriber, period, volume, period_limit, now) — one trade. */
-  private upsertTrade(params: unknown[]): { rows: Row[] } {
-    const key = keyOf(params);
-    const volume = Number(params[3]);
-    const existing = this.rows.get(key);
-    if (existing) {
-      existing.trades_this_period += 1;
-      existing.trade_volume += volume;
-      return { rows: [existing] };
-    }
-    const row = emptyRow(Number(params[4]));
-    row.trades_this_period = 1;
-    row.trade_volume = volume;
     this.rows.set(key, row);
     return { rows: [row] };
   }
@@ -108,25 +85,6 @@ export class FakeUsageStore {
     const row = emptyRow(0);
     row.mcu_this_period = mcu;
     this.rows.set(`${subscriberId}|${period}`, row);
-  }
-
-  /** Mark a threshold as already alerted, to test the durable dedup. */
-  seedAlertedThresholds(subscriberId: string, period: string, thresholds: number[]): void {
-    const row = this.rows.get(`${subscriberId}|${period}`) ?? emptyRow(0);
-    row.alerted_thresholds = thresholds;
-    this.rows.set(`${subscriberId}|${period}`, row);
-  }
-
-  read(subscriberId: string, period: string): number | undefined {
-    return this.rows.get(`${subscriberId}|${period}`)?.calls_this_period;
-  }
-
-  readMcu(subscriberId: string, period: string): number | undefined {
-    return this.rows.get(`${subscriberId}|${period}`)?.mcu_this_period;
-  }
-
-  readAlertedThresholds(subscriberId: string, period: string): number[] | undefined {
-    return this.rows.get(`${subscriberId}|${period}`)?.alerted_thresholds;
   }
 }
 

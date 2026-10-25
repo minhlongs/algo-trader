@@ -144,4 +144,44 @@ describe('single metering store', () => {
     // The dashboard needs the tier and the real limit, not a placeholder.
     expect(all.every((u) => u.tier === 'PRO' && u.monthlyLimit === 10_000)).toBe(true);
   });
+
+  it('aggregates overage revenue and tier breakdown across durable usage rows', async () => {
+    rows.set('lic-over|2026-10', {
+      calls_this_period: 10_500,
+      trades_this_period: 0,
+      trade_volume: 0,
+      period_limit: 10_000,
+    });
+    rows.set('lic-custom|2026-10', {
+      calls_this_period: 200,
+      trades_this_period: 0,
+      trade_volume: 0,
+      period_limit: 999,
+    });
+
+    const summary = await service.getRevenueSummary('2026-10');
+    expect(summary.customerCount).toBe(2);
+    expect(summary.overageRevenue).toBeCloseTo(500 * 0.01, 4);
+    expect(summary.totalRevenue).toBe(summary.overageRevenue);
+    expect(summary.averageRevenuePerCustomer).toBeCloseTo(summary.totalRevenue / 2, 4);
+
+    const emptySummary = await service.getRevenueSummary('1999-01');
+    expect(emptySummary.customerCount).toBe(0);
+    expect(emptySummary.averageRevenuePerCustomer).toBe(0);
+  });
+
+  it('reads tier breakdown from signal_subscriptions and computes call overage for capped tiers', async () => {
+    queryMock.mockImplementationOnce(() =>
+      Promise.resolve({
+        rows: [
+          { tier: 'PRO', cnt: 4 },
+          { tier: 'ENTERPRISE', cnt: 2 },
+        ],
+      }),
+    );
+    const breakdown = await service.getTierBreakdown();
+    expect(breakdown).toEqual({ PRO: 4, ENTERPRISE: 2 });
+    expect(service.computeOverage('PRO', 10_200)).toBeCloseTo(200 * 0.01, 4);
+    expect(service.computeMcuOverage('PRO', 26_000)).toBeCloseTo(1_000 * 0.01, 4);
+  });
 });
