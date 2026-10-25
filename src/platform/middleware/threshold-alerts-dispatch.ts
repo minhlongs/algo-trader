@@ -5,7 +5,7 @@
  */
 
 import { logger } from '../../shared/utils/logger';
-import type { ThresholdAlert } from '../metering/usage-metering-service';
+import type { ThresholdAlert } from '../signals-api/usage-metering-service';
 import { emailService } from '../notifications/email-service';
 import { smsService } from '../notifications/sms-service';
 import { telegramBotService } from '../telegram/bot';
@@ -17,7 +17,7 @@ export function generateEmailBody(notification: AlertNotification): string {
     licenseKey: notification.licenseKey,
     threshold: notification.threshold,
     currentUsage: notification.currentUsage,
-    dailyLimit: notification.dailyLimit,
+    dailyLimit: notification.monthlyLimit,
     percentUsed: notification.percentUsed,
   });
   const actionMessage = getActionMessage(notification.threshold);
@@ -28,7 +28,7 @@ USAGE THRESHOLD ALERT [${urgency}]
 License Key: ${notification.licenseKey}
 Threshold Reached: ${notification.threshold}%
 Current Usage: ${notification.currentUsage.toLocaleString()} calls
-Daily Limit: ${notification.dailyLimit.toLocaleString()} calls
+Monthly Limit: ${notification.monthlyLimit.toLocaleString()} calls
 Percent Used: ${notification.percentUsed.toFixed(1)}%
 Time: ${notification.timestamp}
 
@@ -43,11 +43,11 @@ export function generateSmsBody(notification: AlertNotification): string {
     licenseKey: notification.licenseKey,
     threshold: notification.threshold,
     currentUsage: notification.currentUsage,
-    dailyLimit: notification.dailyLimit,
+    dailyLimit: notification.monthlyLimit,
     percentUsed: notification.percentUsed,
   });
 
-  return `USAGE ALERT: ${notification.threshold}% reached. ${notification.currentUsage}/${notification.dailyLimit} calls. ${urgency}`;
+  return `USAGE ALERT: ${notification.threshold}% reached. ${notification.currentUsage}/${notification.monthlyLimit} calls. ${urgency}`;
 }
 
 export async function dispatchAlert(
@@ -74,8 +74,8 @@ export async function dispatchAlert(
         recipient.email,
         alert.licenseKey,
         alert.threshold,
-        alert.currentUsage,
-        alert.dailyLimit,
+        alert.used,
+        alert.limit,
         alert.percentUsed,
       ),
     );
@@ -92,8 +92,8 @@ export async function dispatchAlert(
         recipient.phone,
         alert.licenseKey,
         alert.threshold,
-        alert.currentUsage,
-        alert.dailyLimit,
+        alert.used,
+        alert.limit,
         alert.percentUsed,
       ),
     );
@@ -110,8 +110,8 @@ export async function dispatchAlert(
         recipient.telegramChatId,
         alert.licenseKey,
         alert.threshold,
-        alert.currentUsage,
-        alert.dailyLimit,
+        alert.used,
+        alert.limit,
         alert.percentUsed,
       ),
     );

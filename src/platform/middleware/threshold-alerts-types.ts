@@ -3,7 +3,7 @@
  * Extracted from threshold-alerts.ts for modularization
  */
 
-import type { ThresholdAlert } from '../metering/usage-metering-service';
+import type { ThresholdAlert } from '../signals-api/usage-metering-service';
 
 export interface AlertHandler {
   (alert: ThresholdAlert): Promise<void> | void;
@@ -13,7 +13,7 @@ export interface AlertNotification {
   licenseKey: string;
   threshold: number;
   currentUsage: number;
-  dailyLimit: number;
+  monthlyLimit: number;
   percentUsed: number;
   timestamp: string;
   action?: string;

@@ -5,7 +5,7 @@
 
 import { EventEmitter } from 'events';
 import { logger } from '../../shared/utils/logger';
-import { UsageMeteringService, ThresholdAlert } from '../metering/usage-metering-service';
+import { usageMetering, ThresholdAlert } from '../signals-api/usage-metering-service';
 import { emailService } from '../notifications/email-service';
 import { smsService } from '../notifications/sms-service';
 import { telegramBotService } from '../telegram/bot';
@@ -71,7 +71,7 @@ export class ThresholdAlerts extends EventEmitter {
   }
 
   private setupDefaultHandlers(): void {
-    const meteringService = UsageMeteringService.getInstance();
+    const meteringService = usageMetering;
 
     meteringService.on('threshold_alert', (alert: ThresholdAlert) => {
       this.emit('alert', alert);

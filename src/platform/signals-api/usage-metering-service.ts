@@ -8,12 +8,19 @@
 export type {
 	UsageSnapshot,
 	UsageCheckResult,
+	ThresholdAlert,
+	UsageMetrics,
+	UsageStatusView,
+	QuotaAllocation,
+	McuCheckResult,
 } from './usage-metering-types';
 
 export {
 	MONTHLY_LIMITS,
 	DAILY_LIMITS,
 	OVERAGE_PRICES,
+	MCU_LIMITS,
+	MCU_OVERAGE_PRICES,
 	currentPeriod,
 } from './usage-metering-types';
 
