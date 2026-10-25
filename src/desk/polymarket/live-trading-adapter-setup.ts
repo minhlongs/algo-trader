@@ -68,7 +68,7 @@ export function buildCoreComponents(config: LiveTradingConfig): OrchestratorComp
   });
   guard.attachTracker(positionTracker);
   const journal = new LiveTradingJournal();
-  const riskManager = new RiskGateManager(guard, new CircuitBreaker());
+  const riskManager = new RiskGateManager(guard, new CircuitBreaker(undefined, { failClosed: !config.paperTrading }));
   const strategyExecutor = new LiveTradingStrategyExecutor(
     riskManager,
     (msg, ctx, meta) => logger.warn(msg, ctx, meta),

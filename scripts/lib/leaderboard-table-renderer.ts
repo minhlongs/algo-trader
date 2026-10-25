@@ -8,8 +8,10 @@
 
 import {
   INSUFFICIENT_LABEL,
+  NO_TRADES_LABEL,
   fixed,
   profitFactorCell,
+  sampleSizeCell,
   sharpeCell,
   type LeaderboardCsvRow,
   type RankedRow,
@@ -30,7 +32,7 @@ export function renderRankedTable(ranked: RankedRow[]): string {
       sharpeCell(row.sharpe_ratio),
       `-${fixed(row.max_drawdown_pct, 2)}%`,
       `${fixed(row.win_rate_pct, 2)}%`,
-      row.total_trades,
+      sampleSizeCell(row.total_trades),
       profitFactorCell(row.profit_factor),
       fixed(row.total_pnl_usd, 2),
     ].join(' | ') + ' |',
@@ -47,7 +49,7 @@ export function renderInsufficientTable(insufficient: LeaderboardCsvRow[]): stri
   ];
 
   const rows = insufficient.map(
-    (row) => `| \`${row.strategy}\` | ${row.total_trades} | ${INSUFFICIENT_LABEL} |`,
+    (row) => `| \`${row.strategy}\` | ${row.total_trades} | ${INSUFFICIENT_LABEL} (${NO_TRADES_LABEL}) |`,
   );
 
   return [...header, ...rows].join('\n');

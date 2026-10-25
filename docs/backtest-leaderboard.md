@@ -24,7 +24,9 @@ listed separately and marked "không đủ dữ liệu".
 |:---|:---:|
 | Strategies in CSV / Số chiến lược trong CSV | 30 |
 | Ranked (have trades) / Có xếp hạng (có lệnh) | 14 |
-| Insufficient sample / Không đủ dữ liệu | 16 |
+| Statistically significant (≥ 30 trades) / Đủ mẫu thống kê (≥ 30 lệnh) | 0 |
+| Small sample (< 30 trades — `INSUFFICIENT_SAMPLE (<30)`) / Cỡ mẫu nhỏ (< 30 lệnh) | 14 |
+| Insufficient sample (0 trades — `NO_TRADES`) / Không đủ dữ liệu (0 lệnh) | 16 |
 | Total trades backtested / Tổng số lệnh đã kiểm thử | 87 |
 | Net P&L across all rows / Lãi lỗ ròng toàn bộ dòng | -6.81 USD |
 | Ranked rows with negative Sharpe / Dòng có Sharpe âm | 8 |
@@ -44,20 +46,20 @@ trade in a very small sample; that number is not comparable to a finite one.
 
 | Rank / Hạng | Strategy / Chiến lược | Sharpe | Max Drawdown | Win Rate | Total Trades / Cỡ mẫu | Profit Factor | P&L (USD) |
 |:---:|:---|:---:|:---:|:---:|:---:|:---:|:---:|
- | 1 | `bollinger-squeeze` | 19.52 | -0.00% | 100.00% | 7 | n/a — profit factor vô hạn trên mẫu quá nhỏ | 2.54 |
- | 2 | `volatility-targeting` | 8.11 | -0.02% | 50.00% | 8 | 2.20 | 1.98 |
- | 3 | `decay-rate-momentum` | 7.24 | -0.00% | 100.00% | 1 | n/a — profit factor vô hạn trên mẫu quá nhỏ | 0.36 |
- | 4 | `event-deadline-scalper` | 7.24 | -0.00% | 100.00% | 1 | n/a — profit factor vô hạn trên mẫu quá nhỏ | 0.32 |
- | 5 | `info-asymmetry-scanner` | 5.65 | -0.00% | 57.14% | 7 | 1.70 | 0.45 |
- | 6 | `liquidity-migration` | 2.37 | -0.01% | 50.00% | 8 | 1.23 | 0.19 |
- | 7 | `weighted-sentiment-aggregator` | -3.11 | -0.01% | 33.33% | 3 | 0.60 | -0.17 |
- | 8 | `regime-switch-detector` | -6.16 | -0.02% | 28.57% | 7 | 0.57 | -0.56 |
- | 9 | `vol-compression-breakout` | -7.24 | -0.00% | 0.00% | 1 | 0.00 | -0.12 |
- | 10 | `pivot-point-bounce` | -8.24 | -0.02% | 28.57% | 7 | 0.48 | -0.57 |
- | 11 | `mean-variance-optimizer` | -13.44 | -0.05% | 12.50% | 8 | 0.21 | -1.79 |
- | 12 | `time-weighted-mean-reversion` | -15.49 | -0.03% | 0.00% | 7 | 0.00 | -1.48 |
- | 13 | `vwap-deviation-sniper` | -17.12 | -0.01% | 0.00% | 7 | 0.00 | -0.54 |
- | 14 | `regime-adaptive-momentum` | -23.27 | -0.15% | 6.67% | 15 | 0.08 | -7.42 |
+ | 1 | `bollinger-squeeze` | 19.52 | -0.00% | 100.00% | 7 (INSUFFICIENT_SAMPLE (<30)) | n/a — profit factor vô hạn trên mẫu quá nhỏ | 2.54 |
+ | 2 | `volatility-targeting` | 8.11 | -0.02% | 50.00% | 8 (INSUFFICIENT_SAMPLE (<30)) | 2.20 | 1.98 |
+ | 3 | `decay-rate-momentum` | 7.24 | -0.00% | 100.00% | 1 (INSUFFICIENT_SAMPLE (<30)) | n/a — profit factor vô hạn trên mẫu quá nhỏ | 0.36 |
+ | 4 | `event-deadline-scalper` | 7.24 | -0.00% | 100.00% | 1 (INSUFFICIENT_SAMPLE (<30)) | n/a — profit factor vô hạn trên mẫu quá nhỏ | 0.32 |
+ | 5 | `info-asymmetry-scanner` | 5.65 | -0.00% | 57.14% | 7 (INSUFFICIENT_SAMPLE (<30)) | 1.70 | 0.45 |
+ | 6 | `liquidity-migration` | 2.37 | -0.01% | 50.00% | 8 (INSUFFICIENT_SAMPLE (<30)) | 1.23 | 0.19 |
+ | 7 | `weighted-sentiment-aggregator` | -3.11 | -0.01% | 33.33% | 3 (INSUFFICIENT_SAMPLE (<30)) | 0.60 | -0.17 |
+ | 8 | `regime-switch-detector` | -6.16 | -0.02% | 28.57% | 7 (INSUFFICIENT_SAMPLE (<30)) | 0.57 | -0.56 |
+ | 9 | `vol-compression-breakout` | -7.24 | -0.00% | 0.00% | 1 (INSUFFICIENT_SAMPLE (<30)) | 0.00 | -0.12 |
+ | 10 | `pivot-point-bounce` | -8.24 | -0.02% | 28.57% | 7 (INSUFFICIENT_SAMPLE (<30)) | 0.48 | -0.57 |
+ | 11 | `mean-variance-optimizer` | -13.44 | -0.05% | 12.50% | 8 (INSUFFICIENT_SAMPLE (<30)) | 0.21 | -1.79 |
+ | 12 | `time-weighted-mean-reversion` | -15.49 | -0.03% | 0.00% | 7 (INSUFFICIENT_SAMPLE (<30)) | 0.00 | -1.48 |
+ | 13 | `vwap-deviation-sniper` | -17.12 | -0.01% | 0.00% | 7 (INSUFFICIENT_SAMPLE (<30)) | 0.00 | -0.54 |
+ | 14 | `regime-adaptive-momentum` | -23.27 | -0.15% | 6.67% | 15 (INSUFFICIENT_SAMPLE (<30)) | 0.08 | -7.42 |
 
 ---
 
@@ -71,22 +73,22 @@ rank — their response status is not performance.
 
 | Strategy / Chiến lược | Total Trades / Cỡ mẫu | Status / Trạng thái |
 |:---|:---:|:---|
-| `spread-mean-reversion` | 0 | không đủ dữ liệu |
-| `momentum-cascade` | 0 | không đủ dữ liệu |
-| `cross-event-drift` | 0 | không đủ dữ liệu |
-| `gap-fill-reversion` | 0 | không đủ dữ liệu |
-| `orderbook-depth-ratio` | 0 | không đủ dữ liệu |
-| `cluster-breakout` | 0 | không đủ dữ liệu |
-| `cross-correlation-lag` | 0 | không đủ dữ liệu |
-| `herd-behavior-detector` | 0 | không đủ dữ liệu |
-| `markov-chain-predictor` | 0 | không đủ dữ liệu |
-| `order-arrival-rate` | 0 | không đủ dữ liệu |
-| `price-acceleration` | 0 | không đủ dữ liệu |
-| `recency-bias-exploiter` | 0 | không đủ dữ liệu |
-| `relative-strength-rotation` | 0 | không đủ dữ liệu |
-| `stale-quote-sniper` | 0 | không đủ dữ liệu |
-| `tail-risk-harvester` | 0 | không đủ dữ liệu |
-| `whale-tracker` | 0 | không đủ dữ liệu |
+| `spread-mean-reversion` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `momentum-cascade` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `cross-event-drift` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `gap-fill-reversion` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `orderbook-depth-ratio` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `cluster-breakout` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `cross-correlation-lag` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `herd-behavior-detector` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `markov-chain-predictor` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `order-arrival-rate` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `price-acceleration` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `recency-bias-exploiter` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `relative-strength-rotation` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `stale-quote-sniper` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `tail-risk-harvester` | 0 | không đủ dữ liệu (NO_TRADES) |
+| `whale-tracker` | 0 | không đủ dữ liệu (NO_TRADES) |
 
 ---
 

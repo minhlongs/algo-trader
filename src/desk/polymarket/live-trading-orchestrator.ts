@@ -59,7 +59,6 @@ export class LiveTradingOrchestrator extends EventEmitter {
     this.riskManager = c.riskManager;
     this.strategyExecutor = c.strategyExecutor;
     this.eventSubscriber = new LiveTradingEventSubscriber(() => this.status, this.positionTracker);
-    this.restoreState();
   }
 
   async start(): Promise<void> {
@@ -71,7 +70,14 @@ export class LiveTradingOrchestrator extends EventEmitter {
       const c = buildCoreComponents(this.config);
       this.positionTracker = c.positionTracker;
       this.guard = c.guard;
+      this.journal = c.journal;
+      this.riskManager = c.riskManager;
+      this.strategyExecutor = c.strategyExecutor;
       this.guard.attachTracker(this.positionTracker);
+
+      // Hydrate state before wiring live execution (fail-closed if live mode)
+      await this.restoreState({ failClosed: !this.config.paperTrading });
+
       buildStartComponents(this.config, c);
       this.adapter = c.adapter;
       this.orderManager = c.orderManager;
@@ -151,7 +157,10 @@ export class LiveTradingOrchestrator extends EventEmitter {
   private async persistState(): Promise<void> {
     await persistOrchestratorState({ journal: this.journal, guard: this.guard, positionTracker: this.positionTracker });
   }
-  private async restoreState(): Promise<void> {
-    await restoreOrchestratorState({ journal: this.journal, guard: this.guard, positionTracker: this.positionTracker });
+  private async restoreState(options: { failClosed?: boolean } = {}): Promise<void> {
+    await restoreOrchestratorState(
+      { journal: this.journal, guard: this.guard, positionTracker: this.positionTracker },
+      options,
+    );
   }
 }

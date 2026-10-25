@@ -44,8 +44,16 @@ export class CircuitBreaker {
       this.state = parsed.state;
       this.reason = parsed.reason;
       this.triggeredAt = parsed.triggeredAt;
-    } catch {
-      // Fall back to in-memory state
+    } catch (err) {
+      if (this.config.failClosed) {
+        logger.error('[CircuitBreaker] Redis read failed in fail-closed mode — halting trading', { err });
+        return {
+          state: 'OPEN',
+          reason: 'Redis unavailable (fail-closed)',
+          triggeredAt: Date.now(),
+        };
+      }
+      // Fall back to in-memory state when failClosed is not enabled
     }
     return this.getSyncStatus();
   }

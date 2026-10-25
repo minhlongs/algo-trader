@@ -8,6 +8,8 @@ export interface CircuitBreakerConfig {
   maxVolatilityPercent: number;
   cooldownMs: number;
   maxDailyDrawdown: number; // 5% default
+  /** When true, Redis connection/read failure trips circuit OPEN (fail-closed for LIVE trading). */
+  failClosed?: boolean;
 }
 
 export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';

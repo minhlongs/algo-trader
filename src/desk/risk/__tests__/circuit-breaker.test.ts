@@ -77,4 +77,23 @@ describe('CircuitBreaker Unit Tests', () => {
     const syncStatus = cb.getSyncStatus();
     expect(syncStatus.state).toBe('HALF_OPEN');
   });
+
+  it('fails closed (OPEN / canTrade=false) on Redis outage when failClosed is enabled', async () => {
+    const strictCb = new CircuitBreaker(mockRedis as never, {
+      maxLossStreak: 3,
+      maxLatencyMs: 1000,
+      maxVolatilityPercent: 0.05,
+      maxDailyDrawdown: 0.05,
+      cooldownMs: 50,
+      failClosed: true,
+    });
+    mockRedis.hgetall.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+
+    const status = await strictCb.getStatus();
+    expect(status.state).toBe('OPEN');
+    expect(status.reason).toContain('fail-closed');
+
+    mockRedis.hgetall.mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    expect(await strictCb.canTrade()).toBe(false);
+  });
 });

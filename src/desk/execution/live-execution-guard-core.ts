@@ -76,6 +76,31 @@ export class LiveExecutionGuard {
     this.dailyPnl = 0;
   }
 
+  /** Hydrate persisted risk state on startup */
+  hydrateState(snapshot: {
+    dailyPnl?: number;
+    totalWins?: number;
+    totalLosses?: number;
+    consecutiveLosses?: number;
+    circuitTripped?: boolean;
+  }): void {
+    if (typeof snapshot.dailyPnl === 'number' && Number.isFinite(snapshot.dailyPnl)) {
+      this.dailyPnl = snapshot.dailyPnl;
+    }
+    if (typeof snapshot.totalWins === 'number' && snapshot.totalWins >= 0) {
+      this.totalWins = snapshot.totalWins;
+    }
+    if (typeof snapshot.totalLosses === 'number' && snapshot.totalLosses >= 0) {
+      this.totalLosses = snapshot.totalLosses;
+    }
+    if (typeof snapshot.consecutiveLosses === 'number' && snapshot.consecutiveLosses >= 0) {
+      this.consecutiveLosses = snapshot.consecutiveLosses;
+    }
+    const shouldTrip = Boolean(snapshot.circuitTripped) || this.consecutiveLosses >= this.config.maxConsecutiveLosses;
+    this.circuitTripped = shouldTrip;
+    setCircuitBreakerState(shouldTrip);
+  }
+
   getStatus(): GuardStatus {
     return {
       enabled: this.config.enabled,

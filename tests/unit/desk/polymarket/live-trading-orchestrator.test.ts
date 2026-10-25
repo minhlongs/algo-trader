@@ -166,7 +166,7 @@ describe('LiveTradingOrchestrator & Setup & Persistence', () => {
       expect(recordEvent).toHaveBeenCalledWith('daily_reset', { prevDay: '2026-09-24' });
     });
 
-    it('catches restore failure and logs warning without throwing', async () => {
+    it('catches restore failure and logs warning without throwing in default/paper mode', async () => {
       const ctx = {
         journal: {
           checkDayRollover: vi.fn().mockImplementation(() => {
@@ -178,6 +178,57 @@ describe('LiveTradingOrchestrator & Setup & Persistence', () => {
       };
 
       await expect(restoreOrchestratorState(ctx as never)).resolves.toBeUndefined();
+    });
+
+    it('fails closed and rethrows in LIVE mode when restore fails', async () => {
+      const ctx = {
+        journal: {
+          checkDayRollover: vi.fn().mockImplementation(() => {
+            throw new Error('Database connection refused during state restoration');
+          }),
+        },
+        guard: {},
+        positionTracker: {},
+      };
+
+      await expect(
+        restoreOrchestratorState(ctx as never, { failClosed: true }),
+      ).rejects.toThrow('Database connection refused during state restoration');
+    });
+
+    it('hydrates guard and position tracker from saved state snapshot', async () => {
+      const hydrateState = vi.fn();
+      const restorePositions = vi.fn();
+      const ctx = {
+        journal: {
+          checkDayRollover: vi.fn().mockReturnValue(null),
+          loadDailyPnl: vi.fn().mockResolvedValue({
+            realizedPnl: -120,
+            winCount: 1,
+            lossCount: 3,
+            consecutiveLosses: 3,
+            circuitTripped: true,
+          }),
+          loadPositions: vi.fn().mockResolvedValue([{ tokenId: 'tok-hydrated', size: 50 }]),
+          getLifetimeStats: vi.fn().mockResolvedValue({ totalFills: 12 }),
+          getToday: vi.fn().mockResolvedValue('2026-10-26'),
+        },
+        guard: { hydrateState },
+        positionTracker: { restorePositions },
+      };
+
+      await restoreOrchestratorState(ctx as never);
+      expect(hydrateState).toHaveBeenCalledWith({
+        dailyPnl: -120,
+        totalWins: 1,
+        totalLosses: 3,
+        consecutiveLosses: 3,
+        circuitTripped: true,
+      });
+      expect(restorePositions).toHaveBeenCalledWith(
+        [{ tokenId: 'tok-hydrated', size: 50 }],
+        -120,
+      );
     });
   });
 

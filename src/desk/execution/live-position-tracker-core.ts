@@ -138,6 +138,34 @@ export class LivePositionTracker {
     this.filledOrders = [];
   }
 
+  /** Restore persisted open positions and realized P&L on startup */
+  restorePositions(savedPositions: LivePosition[], realizedPnl?: number): void {
+    this.positions.clear();
+    for (const pos of savedPositions) {
+      if (pos && typeof pos.tokenId === 'string' && typeof pos.size === 'number' && pos.size > 0) {
+        const entryPrice = typeof pos.entryPrice === 'number' ? pos.entryPrice : 0.5;
+        const currentPrice = typeof pos.currentPrice === 'number' ? pos.currentPrice : entryPrice;
+        const side = pos.side === 'SELL' ? 'SELL' : 'BUY';
+        const hydrated: LivePosition = {
+          tokenId: pos.tokenId,
+          side,
+          size: pos.size,
+          entryPrice,
+          currentPrice,
+          unrealizedPnl: typeof pos.unrealizedPnl === 'number' ? pos.unrealizedPnl : 0,
+          openedAt: typeof pos.openedAt === 'number' ? pos.openedAt : Date.now(),
+          lastPriceUpdate: typeof pos.lastPriceUpdate === 'number' ? pos.lastPriceUpdate : Date.now(),
+        };
+        hydrated.unrealizedPnl = computeUnrealizedPnl(hydrated);
+        this.positions.set(pos.tokenId, hydrated);
+      }
+    }
+    if (typeof realizedPnl === 'number' && Number.isFinite(realizedPnl)) {
+      this.realizedPnl = realizedPnl;
+      dailyPnlUsd.set({ strategy: 'live' }, this.realizedPnl);
+    }
+  }
+
   toJSON(): object {
     return {
       positions: Array.from(this.positions.values()),
