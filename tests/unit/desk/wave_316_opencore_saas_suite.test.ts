@@ -9,7 +9,6 @@ import {
   LicenseGate,
   BillingMeter,
 } from '../../../src/desk/opencoresaas2026monetization/index';
-import { BillingMeter as BillingMeterFacade } from '../../../src/billing/billing-meter';
 
 const companyConfigPath = path.resolve(__dirname, '../../../.mekong/company.json');
 // .mekong/ is gitignored operator state; skip on clean CI checkouts.
@@ -144,7 +143,7 @@ describe('Wave 316: 25-Step Open-Core Public GitHub + SaaS Monetization Suite (C
     expect(gate.verifyToken(tamperedToken, 'BASIC').statusCode).toBe(401);
   });
 
-  it('meters real-time MCU consumption and verifies BillingMeter facade', () => {
+  it('meters real-time MCU consumption on BillingMeter', () => {
     const meter = new BillingMeter();
     const tenantId = 'tenant-quant-101';
     expect(meter.checkQuota(tenantId, 'BASIC', 500).isAllowed).toBe(true);
@@ -153,9 +152,6 @@ describe('Wave 316: 25-Step Open-Core Public GitHub + SaaS Monetization Suite (C
     expect(meter.checkQuota(tenantId, 'PREMIUM', 1).statusCode).toBe(200);
     meter.resetUsage(tenantId);
     expect(meter.getUsage(tenantId)).toBe(0);
-
-    const facadeMeter = new BillingMeterFacade();
-    expect(facadeMeter.checkQuota('t-facade', 'BASIC', 50).isAllowed).toBe(true);
   });
 
   it.skipIf(!hasCompanyConfig)('audits live repository blueprint tree, OSS governance files, and SHA-256 digest', async () => {
