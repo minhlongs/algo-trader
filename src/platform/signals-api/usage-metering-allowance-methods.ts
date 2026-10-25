@@ -16,8 +16,6 @@ import type {
 import {
 	MONTHLY_LIMITS,
 	DAILY_LIMITS,
-	MCU_LIMITS,
-	MCU_OVERAGE_PRICES,
 	OVERAGE_PRICES,
 	allowanceFor,
 	isUnlimited,

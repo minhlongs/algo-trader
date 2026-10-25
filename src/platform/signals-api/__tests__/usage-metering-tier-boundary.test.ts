@@ -48,6 +48,7 @@ describe('the tier boundary between the two contracts', () => {
       // instead of the 25,000 they bought) and under-bill them, so the decision
       // must fail closed rather than guess an allowance.
       await expect(service.checkMcu('tenant-crossing', tier, 1)).rejects.toThrow(/unknown tier/i);
+      expect(queryMock).not.toHaveBeenCalled();
     },
   );
 
@@ -61,8 +62,9 @@ describe('the tier boundary between the two contracts', () => {
     expect(after.used).toBe(0);
   });
 
-  it('refuses the API-call decision for a desk-only tier, for the same reason', async () => {
+  it('refuses the API-call decision for a desk-only tier before touching the store', async () => {
     await expect(service.check('tenant-crossing', 'PREMIUM')).rejects.toThrow(/unknown tier/i);
+    expect(queryMock).not.toHaveBeenCalled();
   });
 
   it('still answers every tier the canonical price book declares', async () => {

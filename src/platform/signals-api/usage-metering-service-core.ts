@@ -9,14 +9,14 @@
  */
 
 import { EventEmitter } from 'events';
-import { UsageCheckResult, currentPeriod } from './usage-metering-types';
+import { UsageCheckResult } from './usage-metering-types';
 import {
 	recordCall as recordCallInStore,
 	raiseCrossedThresholds as raiseCallThresholds,
 } from './usage-metering-call-domain';
 import { recordTrade as recordTradeInStore } from './usage-metering-trade-domain';
 import { getPeriodUsage as getPeriodUsageFromStore } from './usage-metering-queries';
-import { decideCallAllowance } from './usage-metering-call-decision';
+import { checkCallAllowance } from './usage-metering-call-decision';
 import {
 	readQuotaAllocation,
 	readTierLimits,
@@ -68,8 +68,7 @@ export class UsageMeteringService extends EventEmitter {
 	 * pass, after a restart resets it to zero).
 	 */
 	async check(subscriberId: string, tier: string): Promise<UsageCheckResult> {
-		const used = await this.getPeriodUsage(subscriberId, currentPeriod());
-		return decideCallAllowance(tier, used);
+		return checkCallAllowance(subscriberId, tier, (id, p) => this.getPeriodUsage(id, p));
 	}
 
 	/**

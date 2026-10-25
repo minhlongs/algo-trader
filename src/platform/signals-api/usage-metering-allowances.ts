@@ -8,8 +8,8 @@
 /**
  * Monthly call allowance per tier, read from the public price book
  * (platform/billing/pricing-tiers.ts `apiCallsPerMonth`). Keeping the two in
- * step matters: a tier missing here silently falls back to the FREE allowance,
- * which both under-serves a paying customer and under-bills them.
+ * step matters: a tier missing here is refused by `allowanceFor` rather than
+ * served under the wrong allowance.
  */
 export const MONTHLY_LIMITS: Record<string, number> = {
 	FREE: 1_000,

@@ -21,9 +21,12 @@ import type { UsageCheckResult } from './usage-metering-types';
  * An unlimited tier is declared with a negative limit, which must never be read
  * as "already over budget" — so the unlimited check runs before any comparison.
  */
-export function decideCallAllowance(tier: string, used: number): UsageCheckResult {
-	const period = currentPeriod();
-	const periodLimit = allowanceFor(MONTHLY_LIMITS, tier);
+export function decideCallAllowance(
+	tier: string,
+	used: number,
+	period: string = currentPeriod(),
+	periodLimit: number = allowanceFor(MONTHLY_LIMITS, tier),
+): UsageCheckResult {
 	const unlimited = isUnlimited(periodLimit);
 	const overLimit = !unlimited && used >= periodLimit;
 
@@ -50,4 +53,20 @@ export function decideCallAllowance(tier: string, used: number): UsageCheckResul
 		used,
 		limit: periodLimit,
 	};
+}
+
+/**
+ * Validate the tier against the price book and snapshot the billing period
+ * before reading the durable store, so an unknown tier fails without touching
+ * the database and the period cannot drift across the await.
+ */
+export async function checkCallAllowance(
+	subscriberId: string,
+	tier: string,
+	readPeriodUsage: (subscriberId: string, period: string) => Promise<number>,
+): Promise<UsageCheckResult> {
+	const period = currentPeriod();
+	const periodLimit = allowanceFor(MONTHLY_LIMITS, tier);
+	const used = await readPeriodUsage(subscriberId, period);
+	return decideCallAllowance(tier, used, period, periodLimit);
 }
