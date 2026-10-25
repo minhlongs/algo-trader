@@ -1,7 +1,7 @@
 ---
 title: "Open-core monetization làm thật — một meter, một bộ tier, quota thật sự chặn"
 description: "Thi hành 8 requirement từ advice-261024-1117: hợp nhất 5 meter về một nguồn durable, tạo migration usage_metrics còn thiếu, nối check() vào đường request, thống nhất tier, định nghĩa MCU, sinh leaderboard từ CSV, đổi nhãn license cho đúng."
-status: in-progress
+status: completed
 created: "2026-10-24T11:42:00.000Z"
 source: "advise-261024-1117-opencore-monetization-advice.md"
 branch: feat/opencore-monetization-real
