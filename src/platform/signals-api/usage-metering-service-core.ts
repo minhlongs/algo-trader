@@ -1,38 +1,43 @@
 /**
- * Core Usage Metering Service implementation.
+ * The quota decision and the counter writes of the one usage meter.
+ *
+ * Everything here either answers "is this request allowed" or increments the
+ * durable row that answer reads from. The allowance/pricing tables
+ * (`usage-metering-allowance-methods.ts`) and the dashboard reads
+ * (`usage-metering-dashboard-reads.ts`) live apart: nothing on the request path
+ * uses them, so a change there cannot widen a quota.
  */
 
 import { EventEmitter } from 'events';
-import {
-	UsageSnapshot,
-	UsageCheckResult,
-	UsageMetrics,
-	UsageStatusView,
-	QuotaAllocation,
-	McuCheckResult,
-	MONTHLY_LIMITS,
-	DAILY_LIMITS,
-	OVERAGE_PRICES,
-	allowanceFor,
-	isUnlimited,
-	currentPeriod,
-} from './usage-metering-types';
-import { checkMcu, recordMcu, computeMcuOverage } from './usage-metering-mcu-domain';
+import { UsageCheckResult, currentPeriod } from './usage-metering-types';
 import {
 	recordCall as recordCallInStore,
 	raiseCrossedThresholds as raiseCallThresholds,
 } from './usage-metering-call-domain';
 import { recordTrade as recordTradeInStore } from './usage-metering-trade-domain';
+import { getPeriodUsage as getPeriodUsageFromStore } from './usage-metering-queries';
+import { decideCallAllowance } from './usage-metering-call-decision';
 import {
-	getMetrics as getMetricsFromStore,
-	getRevenueSummary as getRevenueSummaryFromStore,
-	getAllUsageData as getAllUsageDataFromStore,
-} from './usage-metering-reporting-domain';
+	readQuotaAllocation,
+	readTierLimits,
+	priceCallOverage,
+	isMcuAllowed,
+	recordMcuUsage,
+	priceMcuOverage,
+	type TierLimits,
+} from './usage-metering-allowance-methods';
 import {
-	getPeriodUsage as getPeriodUsageFromStore,
-	getSnapshot as getSnapshotFromStore,
-	getTierBreakdown as getTierBreakdownFromStore,
-} from './usage-metering-queries';
+	readSnapshot,
+	readMetrics,
+	readTierBreakdown,
+	readRevenueSummary,
+	readAllUsageData,
+} from './usage-metering-dashboard-reads';
+
+import type { RevenueSummary } from './usage-metering-dashboard-reads';
+
+export type { TierLimits } from './usage-metering-allowance-methods';
+export type { RevenueSummary } from './usage-metering-dashboard-reads';
 
 /**
  * The one usage meter. It extends EventEmitter only to raise `threshold_alert`
@@ -41,7 +46,6 @@ import {
  * request, bills it, and alerts on it is the same number.
  */
 export class UsageMeteringService extends EventEmitter {
-
 	/**
 	 * The singleton the rest of the app shares. `usageMetering` below is the
 	 * preferred spelling; this exists so callers written against the previous
@@ -64,65 +68,27 @@ export class UsageMeteringService extends EventEmitter {
 	 * pass, after a restart resets it to zero).
 	 */
 	async check(subscriberId: string, tier: string): Promise<UsageCheckResult> {
-		const period = currentPeriod();
-		const periodLimit = allowanceFor(MONTHLY_LIMITS, tier);
-		const used = await this.getPeriodUsage(subscriberId, period);
-
-		// Unlimited tiers are declared with a negative limit; a negative limit
-		// must never be read as "already over budget".
-		const unlimited = isUnlimited(periodLimit);
-		const overLimit = !unlimited && used >= periodLimit;
-
-		if (overLimit) {
-			return {
-				allowed: false,
-				remaining: 0,
-				limitReached: true,
-				overage: used - periodLimit,
-				tier,
-				period,
-				used,
-				limit: periodLimit,
-			};
-		}
-
-		return {
-			allowed: true,
-			remaining: unlimited ? Number.MAX_SAFE_INTEGER : periodLimit - used,
-			limitReached: false,
-			overage: 0,
-			tier,
-			period,
-			used,
-			limit: periodLimit,
-		};
+		const used = await this.getPeriodUsage(subscriberId, currentPeriod());
+		return decideCallAllowance(tier, used);
 	}
 
 	/**
 	 * Whether a compute-unit (MCU) request is within this subscriber's allowance.
-	 *
 	 * MCU is a separate unit from API calls on the same durable row, so consuming
-	 * one never spends the other's allowance. The implementation lives in its own
-	 * module for the file-size ceiling; the store and the tier lookups are shared.
+	 * one never spends the other's allowance.
 	 */
-	async checkMcu(subscriberId: string, tier: string, requestedMcu = 1): Promise<McuCheckResult> {
-		return checkMcu(subscriberId, tier, requestedMcu);
+	checkMcu(subscriberId: string, tier: string, requestedMcu = 1) {
+		return isMcuAllowed(subscriberId, tier, requestedMcu);
 	}
 
 	/**
 	 * Record compute units for billing and return the new durable count.
-	 *
-	 * Same row, same statement shape as `recordCall`: the count that denies a
-	 * request and the count that bills it are one number.
-	 *
-	 * Compute units deliberately raise no threshold alert. The previous compute
-	 * meter had none, and the alert dedup markers are shared across domains on
-	 * this row — so reusing them would let an API-call alert silently suppress a
-	 * compute one, or vice versa. That policy needs a decision, so it is left out
+	 * Compute units deliberately raise no threshold alert — see
+	 * `usage-metering-allowance-methods.ts` for why that policy is left out
 	 * rather than guessed at.
 	 */
-	async recordMcu(subscriberId: string, tier: string, mcuUsed: number): Promise<number> {
-		return recordMcu(subscriberId, tier, mcuUsed);
+	recordMcu(subscriberId: string, tier: string, mcuUsed: number): Promise<number> {
+		return recordMcuUsage(subscriberId, tier, mcuUsed);
 	}
 
 	/**
@@ -131,7 +97,7 @@ export class UsageMeteringService extends EventEmitter {
 	 * a negative allowance.
 	 */
 	computeMcuOverage(tier: string, mcuThisPeriod: number): number {
-		return computeMcuOverage(tier, mcuThisPeriod);
+		return priceMcuOverage(tier, mcuThisPeriod);
 	}
 
 	/**
@@ -165,26 +131,13 @@ export class UsageMeteringService extends EventEmitter {
 		return getPeriodUsageFromStore(subscriberId, period);
 	}
 
-	/** Get full usage snapshot for a subscriber. */
-	async getSnapshot(subscriberId: string): Promise<UsageSnapshot | undefined> {
-		return getSnapshotFromStore(subscriberId);
-	}
-
-	/** Get per-tier usage breakdown (for dashboard). */
-	async getTierBreakdown(): Promise<Record<string, number>> {
-		return getTierBreakdownFromStore();
-	}
-
 	/**
 	 * Compute overage charges for a subscriber this period.
 	 * An unlimited tier has no overage, so it is answered directly rather than
 	 * priced off a negative allowance (which would compute an enormous charge).
 	 */
 	computeOverage(tier: string, callsThisPeriod: number): number {
-		const limit = allowanceFor(MONTHLY_LIMITS, tier);
-		if (isUnlimited(limit)) return 0;
-		const overage = Math.max(0, callsThisPeriod - limit);
-		return overage * (OVERAGE_PRICES[tier] ?? 0);
+		return priceCallOverage(tier, callsThisPeriod);
 	}
 
 	/**
@@ -207,48 +160,39 @@ export class UsageMeteringService extends EventEmitter {
 		return recordTradeInStore(subscriberId, tier, volume);
 	}
 
-	/** Trade-volume counters for a subscriber this period. */
-	async getMetrics(subscriberId: string): Promise<UsageMetrics> {
-		return getMetricsFromStore(subscriberId);
-	}
-
-	/**
-	 * Revenue summary for a period, computed from the same durable rows the
-	 * quota gate reads — never from a second store.
-	 */
-	async getRevenueSummary(period?: string): Promise<{
-		subscriptionRevenue: number;
-		overageRevenue: number;
-		totalRevenue: number;
-		customerCount: number;
-		averageRevenuePerCustomer: number;
-	}> {
-		return getRevenueSummaryFromStore(period);
-	}
-
 	/** The metered-unit allowance a tier is entitled to. */
-	getQuotaAllocation(tier: string): QuotaAllocation {
-		return {
-			tier,
-			monthlyQuota: allowanceFor(MONTHLY_LIMITS, tier),
-			dailyQuota: allowanceFor(DAILY_LIMITS, tier),
-			overagePricePerUnit: OVERAGE_PRICES[tier] ?? 0,
-		};
+	getQuotaAllocation(tier: string) {
+		return readQuotaAllocation(tier);
 	}
 
 	/** Monthly allowance for a tier, for the tier-discipline checks. */
-	getTierLimits(tier: string): { monthlyLimit: number; dailyLimit: number } {
-		return {
-			monthlyLimit: allowanceFor(MONTHLY_LIMITS, tier),
-			dailyLimit: allowanceFor(DAILY_LIMITS, tier),
-		};
+	getTierLimits(tier: string): TierLimits {
+		return readTierLimits(tier);
 	}
 
-	/**
-	 * Every subscriber with usage this period, for the revenue dashboard.
-	 */
-	async getAllUsageData(period?: string): Promise<UsageStatusView[]> {
-		return getAllUsageDataFromStore(period);
+	/** Full usage snapshot for a subscriber. */
+	async getSnapshot(subscriberId: string) {
+		return readSnapshot(subscriberId);
+	}
+
+	/** Trade-volume counters for a subscriber this period. */
+	async getMetrics(subscriberId: string) {
+		return readMetrics(subscriberId);
+	}
+
+	/** Per-tier usage breakdown, for the dashboard. */
+	async getTierBreakdown(): Promise<Record<string, number>> {
+		return readTierBreakdown();
+	}
+
+	/** Revenue summary for a period, computed from the same durable rows. */
+	async getRevenueSummary(period?: string): Promise<RevenueSummary> {
+		return readRevenueSummary(period);
+	}
+
+	/** Every subscriber with usage this period, for the revenue dashboard. */
+	async getAllUsageData(period?: string) {
+		return readAllUsageData(period);
 	}
 }
 
