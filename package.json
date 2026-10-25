@@ -1,6 +1,6 @@
 {
   "name": "@mekong/algo-trader",
-  "version": "3.1.97",
+  "version": "3.3.10",
   "description": "Modular algorithmic trading bot with RSI+SMA strategy, backtesting, and multi-exchange support via CCXT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -44,6 +44,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
+    "generate:leaderboard": "node --import tsx scripts/generate-leaderboard.mjs",
+    "check:leaderboard": "node --import tsx scripts/check-leaderboard-drift.mjs",
     "test:load": "k6 run -e TARGET_RPS=12000 -e DURATION=30m tests/load/api-gateway-load-test.js",
     "test:load:ci": "k6 run --quiet -e TARGET_RPS=12000 -e DURATION=30m tests/load/api-gateway-load-test.js",
     "typecheck": "tsc --noEmit",

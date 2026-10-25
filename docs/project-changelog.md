@@ -1,6 +1,6 @@
 # Project Changelog - Algo Trader
 
-## [3.1.97] - 2026-10-22 — Behavioral Open-Core Readiness & License Gate Fail-Closed
+## [3.3.10] - 2026-10-22 — Behavioral Open-Core Readiness & License Gate Fail-Closed
 
 ### Changed
 - **Open-Core readiness verdict is now behavior-verified, not file-existence.** `RepositoryBlueprintAuditor.auditRepository` runs one behavioral probe per catalog step instead of relying on `fs.existsSync`. Each 25-step entry now carries `verified`, `kind` (`behavioral` or `absent`), and `evidence`; the report exposes `stepBehaviorAudit`, `behaviorallyVerifiedCount`, and `existenceOnlyStepCount`. `isReadyForPublicGithub` is `false` whenever a behavioral probe fails or any step is existence-only, so a READY verdict can no longer be produced by committing files alone.
