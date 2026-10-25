@@ -31,7 +31,24 @@ import {
   handleMarketplaceIpnCancelled,
   handleSignalsIpnFinished,
   handleSignalsIpnCancelled,
+  TierNotResolvedError,
 } from './handlers';
+import { SignalsPriceNotFoundError } from '../../../billing/signals-price-book';
+
+/**
+ * Read a single field from the raw IPN body for diagnostics after a failure, without
+ * re-parsing the request inside a catch block. Returns null rather than throwing so
+ * that an already-failed activation is never masked by a logging error.
+ */
+function readIpnField(rawBody: string, field: string): string | null {
+  try {
+    const parsed = JSON.parse(rawBody) as Record<string, unknown>;
+    const value = parsed[field];
+    return typeof value === 'string' || typeof value === 'number' ? String(value) : null;
+  } catch {
+    return null;
+  }
+}
 
 export const nowpaymentsWebhookRouter: Router = Router();
 
@@ -131,6 +148,20 @@ nowpaymentsWebhookRouter.post('/', async (req: Request, res: Response) => {
 
     return res.status(200).json({ received: true });
   } catch (error) {
+    if (
+      error instanceof SignalsPriceNotFoundError ||
+      error instanceof TierNotResolvedError
+    ) {
+      // Fail closed: no tier was granted and nothing was partially activated. 502 tells
+      // NOWPayments the activation did not take, so the provider retries the IPN while
+      // the operator fixes the invoice/price-book mapping.
+      logger.error('[NOWPayments IPN] Tier not resolved from price book — activation refused', {
+        error,
+        paymentId: readIpnField(rawBody, 'payment_id'),
+        orderId: readIpnField(rawBody, 'order_id'),
+      });
+      return res.status(502).json({ error: 'Payment tier could not be resolved' });
+    }
     logger.error('[NOWPayments IPN] Processing error:', { error });
     return res.status(500).json({ error: 'Internal Server Error' });
   }

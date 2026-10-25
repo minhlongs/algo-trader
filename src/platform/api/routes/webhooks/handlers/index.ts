@@ -5,6 +5,7 @@
 export {
   handleIpnFinished,
   handleIpnRefunded,
+  TierNotResolvedError,
 } from './subscription-handler';
 
 export { handleIpnPaymentSuccess, handleIpnPaymentFailed } from './payment-handler';
