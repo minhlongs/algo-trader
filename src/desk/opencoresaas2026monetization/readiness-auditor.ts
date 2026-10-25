@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * 25-Step Open-Core & SaaS Readiness Auditor
  * Evaluates the readiness of the 25 open-core steps and blocks secret leaks.

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Behavioral probes for the two gates the readiness verdict depends on.
  *

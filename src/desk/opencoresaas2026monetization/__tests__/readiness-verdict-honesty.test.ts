@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Verdict honesty — existence must never outrun behavior.
  *

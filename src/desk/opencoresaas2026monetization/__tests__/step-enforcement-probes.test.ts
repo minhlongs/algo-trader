@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Enforcement probes — each must be able to fail.
  *

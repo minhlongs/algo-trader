@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Behavioral probes for the 25-step Open-Core catalog.
  *

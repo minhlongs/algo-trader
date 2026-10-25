@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Behavioral probes for the Open-Core monetization and access steps.
  *

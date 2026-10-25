@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * HMAC-SHA256 Cryptographic License Gate
  * Enforces tier entitlements with HTTP 402 Payment Required for unauthorized access.

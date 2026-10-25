@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Stitch UI Cockpit Engine & Design System Facade (2026.5-PRO-MAX)
  * Re-exports themes, SOR Mesh (#13), Regime-Kelly (#14), Hawkes Radar (#15), Queue Cockpit (#16), and Auditor.

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Behavioral probes — each probe must be able to fail.
  *

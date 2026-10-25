@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * Behavioral probes for the Open-Core boundary and policy-enforcement steps.
  *

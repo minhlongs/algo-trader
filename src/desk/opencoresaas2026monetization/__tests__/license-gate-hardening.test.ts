@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 /**
  * License gate hardening — entitlement and signing-key failure modes.
  *
