@@ -32,6 +32,8 @@ export interface DailyPnlState {
   tradeCount: number;
   winCount: number;
   lossCount: number;
+  consecutiveLosses?: number;
+  circuitTripped?: boolean;
 }
 
 // ── Paths ──────────────────────────────────────────────────────────────────────

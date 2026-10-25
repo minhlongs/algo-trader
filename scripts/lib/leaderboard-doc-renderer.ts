@@ -11,6 +11,9 @@ import {
   INFINITE_PF_LABEL,
   INSUFFICIENT_LABEL,
   MIN_SAMPLE_TRADES,
+  NO_TRADES_LABEL,
+  SMALL_SAMPLE_WARNING_LABEL,
+  STATISTICALLY_SIGNIFICANT_TRADES,
   fixed,
   type RankedRow,
 } from './leaderboard-cell-formatters.ts';
@@ -20,12 +23,17 @@ export {
   INFINITE_PF_LABEL,
   INSUFFICIENT_LABEL,
   MIN_SAMPLE_TRADES,
+  NO_TRADES_LABEL,
+  SMALL_SAMPLE_WARNING_LABEL,
+  STATISTICALLY_SIGNIFICANT_TRADES,
   type RankedRow,
 };
 
 export interface LeaderboardStats {
   totalStrategies: number;
   withTrades: number;
+  statisticallySignificantCount: number;
+  smallSampleCount: number;
   withoutTrades: number;
   totalTrades: number;
   totalPnl: number;
@@ -55,10 +63,15 @@ export function partitionRows(rows: LeaderboardCsvRow[]): {
 /** Totals computed strictly from the CSV rows. */
 export function summarize(rows: LeaderboardCsvRow[]): LeaderboardStats {
   const withTrades = rows.filter((row) => row.total_trades >= MIN_SAMPLE_TRADES);
+  const statisticallySignificant = withTrades.filter(
+    (row) => row.total_trades >= STATISTICALLY_SIGNIFICANT_TRADES,
+  );
 
   return {
     totalStrategies: rows.length,
     withTrades: withTrades.length,
+    statisticallySignificantCount: statisticallySignificant.length,
+    smallSampleCount: withTrades.length - statisticallySignificant.length,
     withoutTrades: rows.length - withTrades.length,
     totalTrades: withTrades.reduce((sum, row) => sum + row.total_trades, 0),
     totalPnl: rows.reduce((sum, row) => sum + row.total_pnl_usd, 0),
@@ -106,7 +119,9 @@ listed separately and marked "${INSUFFICIENT_LABEL}".
 |:---|:---:|
 | Strategies in CSV / Số chiến lược trong CSV | ${stats.totalStrategies} |
 | Ranked (have trades) / Có xếp hạng (có lệnh) | ${stats.withTrades} |
-| Insufficient sample / Không đủ dữ liệu | ${stats.withoutTrades} |
+| Statistically significant (≥ ${STATISTICALLY_SIGNIFICANT_TRADES} trades) / Đủ mẫu thống kê (≥ ${STATISTICALLY_SIGNIFICANT_TRADES} lệnh) | ${stats.statisticallySignificantCount} |
+| Small sample (< ${STATISTICALLY_SIGNIFICANT_TRADES} trades — \`${SMALL_SAMPLE_WARNING_LABEL}\`) / Cỡ mẫu nhỏ (< ${STATISTICALLY_SIGNIFICANT_TRADES} lệnh) | ${stats.smallSampleCount} |
+| Insufficient sample (0 trades — \`${NO_TRADES_LABEL}\`) / Không đủ dữ liệu (0 lệnh) | ${stats.withoutTrades} |
 | Total trades backtested / Tổng số lệnh đã kiểm thử | ${stats.totalTrades} |
 | Net P&L across all rows / Lãi lỗ ròng toàn bộ dòng | ${fixed(stats.totalPnl, 2)} USD |
 | Ranked rows with negative Sharpe / Dòng có Sharpe âm | ${stats.negativeSharpeCount} |
